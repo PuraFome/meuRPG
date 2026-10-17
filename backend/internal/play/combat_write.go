@@ -26,6 +26,13 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
+// Names in the write RPCs of a combat. The body of the transaction a handler runs inside
+// s.write is `<verb>Write` (startWrite, spendWrite, removePartWrite); the reader of the
+// request is `read<Verb>Call` and returns a `<verb>Call` struct (readStartCall,
+// readSpendCall); the scratch state a long write keeps between its steps is `<verb>Run`.
+// Helpers that only look something up in a value carry `Of` or `From` (movementLeftOf), never
+// `In` or `Tx`.
+
 // The kinds of session_events rows a combat writes (session_event_kinds).
 // Their payloads hold IDs and numbers only, never a name (docs/privacy.md).
 const (

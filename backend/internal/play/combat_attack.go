@@ -231,7 +231,7 @@ func (f *attackFlow) prepare(ctx context.Context) error {
 // writeAttack is what the settled d20 does: the event, the economy, the damage it opens and the offer it answers.
 func (f *attackFlow) writeAttack(ctx context.Context) error {
 	for _, phase := range []func(context.Context) error{
-		f.resolve, f.record, f.spendEconomy, f.closeThrow, f.openHit, f.answerOffer, f.settle,
+		f.resolve, f.record, f.spendEconomy, f.closeThrow, f.openHitDamage, f.answerOffer, f.settle,
 	} {
 		if err := phase(ctx); err != nil {
 			return err
@@ -696,9 +696,9 @@ func (f *attackFlow) closeThrow(ctx context.Context) error {
 	return err
 }
 
-// openHit opens the damage of a hit: the dice of the weapon, what a critical hit adds, the parts of the
+// openHitDamage opens the damage of a hit: the dice of the weapon, what a critical hit adds, the parts of the
 // damage and the riders the hit offers.
-func (f *attackFlow) openHit(ctx context.Context) error {
+func (f *attackFlow) openHitDamage(ctx context.Context) error {
 	if !f.result.Hit {
 		return nil
 	}
@@ -715,7 +715,7 @@ func (f *attackFlow) openHit(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := f.hitParts(ctx, bonus, p.ID); err != nil {
+	if err := f.writeHitParts(ctx, bonus, p.ID); err != nil {
 		return err
 	}
 	f.out.made.Pending = p.ID
@@ -734,8 +734,8 @@ func (f *attackFlow) damageBonus() int {
 	return f.attack.DiceBonus
 }
 
-// hitParts writes the parts of the damage of a hit.
-func (f *attackFlow) hitParts(ctx context.Context, bonus int, pendingID string) error {
+// writeHitParts writes the parts of the damage of a hit.
+func (f *attackFlow) writeHitParts(ctx context.Context, bonus int, pendingID string) error {
 	disadvantage := slices.ContainsFunc(f.truth.Sources, func(s combat.Source) bool { return s.Effect == combat.ModeDisadvantage })
 	return f.s.hitParts(ctx, f.c, f.m.CampaignID, f.v, f.modeIn, f.attacker, f.coverTarget, f.sheet, f.attack, bonus, f.rolled.Choice.Mode, disadvantage, f.call.opportunity(), pendingID)
 }

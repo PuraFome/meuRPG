@@ -370,7 +370,7 @@ func (s *Service) AnswerRageEnd(
 	}
 	endRage := req.Msg.GetEndRage()
 	res, err := s.write(ctx, combatWrite{m: call.m, key: call.key, hash: idem.Hash(req.Msg), kind: eventStateChanged, encounterID: call.encID}, func(c *combatTx) (any, error) {
-		return s.answerRageIn(ctx, c, call, endRage)
+		return s.answerRageWrite(ctx, c, call, endRage)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "answer the rage question", err)
@@ -382,9 +382,9 @@ func (s *Service) AnswerRageEnd(
 	return connect.NewResponse(&playv1.AnswerRageEndResponse{Encounter: out}), nil
 }
 
-// answerRageIn is the change of AnswerRageEnd: the question is dropped, and the rage ends when
+// answerRageWrite is the change of AnswerRageEnd: the question is dropped, and the rage ends when
 // the player lets it. It writes no event when the turn simply goes on.
-func (s *Service) answerRageIn(ctx context.Context, c *combatTx, call rageCall, endRage bool) (any, error) {
+func (s *Service) answerRageWrite(ctx context.Context, c *combatTx, call rageCall, endRage bool) (any, error) {
 	if err := notEnded(c.enc); err != nil {
 		return nil, err
 	}
@@ -424,7 +424,7 @@ func (s *Service) EndRage(
 		return nil, err
 	}
 	res, err := s.write(ctx, combatWrite{m: call.m, key: call.key, hash: idem.Hash(req.Msg), kind: eventStateChanged, encounterID: call.encID}, func(c *combatTx) (any, error) {
-		return s.endRageIn(ctx, c, call)
+		return s.endRageWrite(ctx, c, call)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "end the rage", err)
@@ -436,9 +436,9 @@ func (s *Service) EndRage(
 	return connect.NewResponse(&playv1.EndRageResponse{Encounter: out}), nil
 }
 
-// endRageIn is the change of EndRage: the combatant must be raging and, but for the master,
+// endRageWrite is the change of EndRage: the combatant must be raging and, but for the master,
 // have its bonus action; the bonus action is spent and the rage ends by choice.
-func (s *Service) endRageIn(ctx context.Context, c *combatTx, call rageCall) (any, error) {
+func (s *Service) endRageWrite(ctx context.Context, c *combatTx, call rageCall) (any, error) {
 	who, v, err := s.actorOf(ctx, c, call)
 	if err != nil {
 		return nil, err

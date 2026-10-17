@@ -33,7 +33,7 @@ func (s *Service) EndTurn(
 	ctx context.Context,
 	req *connect.Request[playv1.EndTurnRequest],
 ) (*connect.Response[playv1.EndTurnResponse], error) {
-	m, call, err := readEndTurn(ctx, req.Msg)
+	m, call, err := readEndTurnCall(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}

@@ -428,7 +428,7 @@ func (f *takeActionFlow) performFeature(ctx context.Context) (string, error) {
 	if standard == actionHide || standard == actionHelp {
 		return "", errHideOrHelp()
 	}
-	if err := f.spendResource(ctx, fa); err != nil {
+	if err := f.spendFeatureUse(ctx, fa); err != nil {
 		return "", err
 	}
 	if err := f.performKind(ctx, sheet); err != nil {
@@ -437,9 +437,9 @@ func (f *takeActionFlow) performFeature(ctx context.Context) (string, error) {
 	return standard, f.s.beginFeatureState(ctx, f.c, f.v, f.who, key, sheet, f.call.frenzy, &f.made)
 }
 
-// spendResource spends one use of the feature's resource: only a player's character counts them, and a
+// spendFeatureUse spends one use of the feature's resource: only a player's character counts them, and a
 // pool of points (Cura pelas mãos) is the master's.
-func (f *takeActionFlow) spendResource(ctx context.Context, fa link.FeatureAction) error {
+func (f *takeActionFlow) spendFeatureUse(ctx context.Context, fa link.FeatureAction) error {
 	if fa.Resource == "" || fa.Pool || f.who.Kind != kindPlayer {
 		return nil
 	}
@@ -457,17 +457,17 @@ func (f *takeActionFlow) spendResource(ctx context.Context, fa link.FeatureActio
 func (f *takeActionFlow) performKind(ctx context.Context, sheet link.Sheet) error {
 	switch f.call.actionKey {
 	case slowFallAction:
-		return f.slowFall(ctx, sheet)
+		return f.cutFall(ctx, sheet)
 	case flurryOfBlows:
 		return f.flurry(ctx, sheet)
 	case secondWind:
-		return f.secondWind(ctx, sheet)
+		return f.healFighter(ctx, sheet)
 	}
 	return nil
 }
 
-// slowFall is the monk's Slow Fall: it cuts the damage of the last fall.
-func (f *takeActionFlow) slowFall(ctx context.Context, sheet link.Sheet) error {
+// cutFall is the monk's Slow Fall: it cuts the damage of the last fall.
+func (f *takeActionFlow) cutFall(ctx context.Context, sheet link.Sheet) error {
 	cuts, taken, err := f.s.slowFall(ctx, f.c, f.who, sheet.MonkLevel)
 	if err != nil {
 		return err
@@ -490,8 +490,8 @@ func (f *takeActionFlow) flurry(ctx context.Context, sheet link.Sheet) error {
 	return nil
 }
 
-// secondWind is Retomar o fôlego: it heals the fighter and keeps the vitals for the answer.
-func (f *takeActionFlow) secondWind(ctx context.Context, sheet link.Sheet) error {
+// healFighter is Retomar o fôlego: it heals the fighter and keeps the vitals for the answer.
+func (f *takeActionFlow) healFighter(ctx context.Context, sheet link.Sheet) error {
 	vit, err := f.s.secondWind(ctx, f.c, f.m, f.v, f.who, sheet.FighterLevel, f.call.in, f.call.rolled, &f.made)
 	if err != nil {
 		return err

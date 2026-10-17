@@ -235,7 +235,7 @@ func (f *castFlow) run(ctx context.Context) (any, error) {
 func (f *castFlow) prepare(ctx context.Context) error {
 	for _, phase := range []func(context.Context) error{
 		f.findCaster, f.findTargets, f.pickSpell, f.checkEnabled, f.pickSlot, f.checkTargetsAlive,
-		f.applyMetamagic, f.readMap, f.placeArea, f.checkMembers, f.checkTargetList, f.prepareSummon,
+		f.applyMetamagic, f.readMap, f.placeArea, f.checkMembers, f.checkTargetList, f.planSummon,
 		f.aimAtCaster, f.checkPool, f.readModes, f.checkSpellAttack,
 	} {
 		if err := phase(ctx); err != nil {
@@ -248,7 +248,7 @@ func (f *castFlow) prepare(ctx context.Context) error {
 // writeCast is what the cast does once it is spent: the concentration, the creatures it summons, what it
 // does to each target and the event's last marks.
 func (f *castFlow) writeCast(ctx context.Context) error {
-	for _, phase := range []func(context.Context) error{f.concentrate, f.markHunters, f.joinSummon, f.affect, f.seal} {
+	for _, phase := range []func(context.Context) error{f.concentrate, f.markHunters, f.bringSummons, f.affect, f.seal} {
 		if err := phase(ctx); err != nil {
 			return err
 		}
@@ -467,8 +467,8 @@ func (f *castFlow) checkTargetList(context.Context) error {
 	return f.s.checkMetaTargets(f.meta, f.v, planOn(f.v, f.terrain, f.known), f.cs, f.sp, f.caster, f.targs, dartList, dartsOf(f.sp, f.slotLevel), f.slotLevel, isTheatre(f.c.enc))
 }
 
-// prepareSummon works out the creatures a summoning spell brings.
-func (f *castFlow) prepareSummon(ctx context.Context) error {
+// planSummon works out the creatures a summoning spell brings.
+func (f *castFlow) planSummon(ctx context.Context) error {
 	if !f.sp.Summon {
 		return nil
 	}
@@ -558,7 +558,7 @@ func (f *castFlow) spend(ctx context.Context) error {
 		ActionBefore: f.caster.ActionUsed, BonusBefore: f.caster.BonusActionUsed, ReactionBefore: f.caster.ReactionUsed, DashedBefore: f.caster.Dashed,
 		SpellCastBefore: f.caster.SpellCast, BonusSpellBefore: f.caster.BonusSpellCast,
 	}
-	for _, phase := range []func(context.Context) error{f.spendSlot, f.spendPoints, f.spendEconomy, f.noteSpellCast} {
+	for _, phase := range []func(context.Context) error{f.spendCastSlot, f.spendPoints, f.spendEconomy, f.noteSpellCast} {
 		if err := phase(ctx); err != nil {
 			return err
 		}
@@ -566,8 +566,8 @@ func (f *castFlow) spend(ctx context.Context) error {
 	return nil
 }
 
-// spendSlot spends the slot of a player's character.
-func (f *castFlow) spendSlot(ctx context.Context) error {
+// spendCastSlot spends the slot of a player's character.
+func (f *castFlow) spendCastSlot(ctx context.Context) error {
 	if f.slot == nil || f.caster.Kind != kindPlayer {
 		return nil
 	}
@@ -678,8 +678,8 @@ func (f *castFlow) markHunters(ctx context.Context) error {
 	return nil
 }
 
-// joinSummon brings the creatures a summoning spell made into the combat.
-func (f *castFlow) joinSummon(ctx context.Context) error {
+// bringSummons brings the creatures a summoning spell made into the combat.
+func (f *castFlow) bringSummons(ctx context.Context) error {
 	if f.summon == nil {
 		return nil
 	}

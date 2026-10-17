@@ -28,9 +28,9 @@ type partRemoval struct {
 	reason    string
 }
 
-// partRemovalOf checks the request in the order the handler always refused it: the
+// readPartRemovalCall checks the request in the order the handler always refused it: the
 // master's role, the key, the combat, the pending damage, the part, the reason.
-func partRemovalOf(ctx context.Context, msg *playv1.RemoveDamagePartRequest) (partRemoval, error) {
+func readPartRemovalCall(ctx context.Context, msg *playv1.RemoveDamagePartRequest) (partRemoval, error) {
 	m, key, encID, err := masterCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
 	if err != nil {
 		return partRemoval{}, err
@@ -63,13 +63,13 @@ func (s *Service) RemoveDamagePart(
 	ctx context.Context,
 	req *connect.Request[playv1.RemoveDamagePartRequest],
 ) (*connect.Response[playv1.RemoveDamagePartResponse], error) {
-	r, err := partRemovalOf(ctx, req.Msg)
+	r, err := readPartRemovalCall(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
 	var made actionEvent
 	res, err := s.write(ctx, combatWrite{m: r.m, key: r.key, hash: idem.Hash(req.Msg), kind: eventDamagePartRemoved, encounterID: r.encID}, func(c *combatTx) (any, error) {
-		ev, err := s.removePartInTx(ctx, c, r)
+		ev, err := s.removePartWrite(ctx, c, r)
 		if err != nil {
 			return nil, err
 		}
@@ -97,9 +97,9 @@ func (s *Service) RemoveDamagePart(
 	return connect.NewResponse(&playv1.RemoveDamagePartResponse{Encounter: out, PendingDamage: pending}), nil
 }
 
-// removePartInTx is the removal inside its transaction: the part comes out of the rolled
+// removePartWrite is the removal inside its transaction: the part comes out of the rolled
 // damage, the damage is worked out again and kept, and the removal's event is returned.
-func (s *Service) removePartInTx(ctx context.Context, c *combatTx, r partRemoval) (actionEvent, error) {
+func (s *Service) removePartWrite(ctx context.Context, c *combatTx, r partRemoval) (actionEvent, error) {
 	if err := notEnded(c.enc); err != nil {
 		return actionEvent{}, err
 	}

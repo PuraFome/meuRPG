@@ -294,7 +294,7 @@ func (f *damageFlow) rollDice(ctx context.Context) error {
 	case f.expr.Count == 0:
 		f.roll = dice.Result{Expr: f.expr, Modifier: f.expr.Modifier, Total: f.expr.Modifier}
 	default:
-		if err := f.rollGroup(ctx); err != nil {
+		if err := f.rollPlainDamage(ctx); err != nil {
 			return err
 		}
 	}
@@ -323,8 +323,8 @@ func (f *damageFlow) rollParts(ctx context.Context) error {
 	return err
 }
 
-// rollGroup rolls the one group of dice of a damage with no parts, in the app or from the typed sum.
-func (f *damageFlow) rollGroup(ctx context.Context) error {
+// rollPlainDamage rolls the one group of dice of a damage with no parts, in the app or from the typed sum.
+func (f *damageFlow) rollPlainDamage(ctx context.Context) error {
 	if !f.out.v.master {
 		if err := f.s.mustRollThisWay(ctx, f.c.tx, f.m, f.call.in); err != nil {
 			return err
