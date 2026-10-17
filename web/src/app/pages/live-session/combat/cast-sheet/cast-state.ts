@@ -1,5 +1,6 @@
 import { computed, signal } from '@angular/core';
 
+import type { Square } from '../../../../core/combat/combat-grid';
 import type { SpellCast } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import type { RollMode } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
 import type { SpellDetails } from '../../../../../gen/meurpg/rules/v1/rules_pb';
@@ -29,11 +30,17 @@ export class CastState {
   /** The picked damage type; the first of the spell's choices until the caster picks another. */
   readonly pickedType = signal('');
   readonly sculpted = signal<string[]>([]);
+  /** The square a teleport spell takes the caster to, picked on the map; `null` until picked. */
+  readonly destination = signal<Square | null>(null);
+  /** How far the spell teleports the caster on the combat's map, in feet; 0 for any other spell and without a grid. */
+  readonly teleportFt: number;
   /** A list spell that may hit nobody, with nobody ticked: "Conjurar" asks in place first (PM-02d state 13). */
   readonly listAsking = signal(false);
   readonly slotLevel = computed(() => this.slot()?.level ?? this.data.level);
   /** Whether the cast happened (or is being resumed): the result stage. */
   readonly done = computed(() => this.cast() !== null || !!this.data.resume);
 
-  constructor(readonly data: CastSheetData) {}
+  constructor(readonly data: CastSheetData) {
+    this.teleportFt = data.map ? (data.targets?.teleportRangeFt ?? 0) : 0;
+  }
 }

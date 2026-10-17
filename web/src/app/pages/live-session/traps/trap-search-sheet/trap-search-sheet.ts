@@ -17,20 +17,14 @@ import type { Observable } from 'rxjs';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import type { SearchForTrapsResponse } from '../../../../../gen/meurpg/play/v1/traps_pb';
-import {
-  ResourceClient,
-  type InspirationRoll,
-  type LuckyRoll,
-} from '../../../../core/resources/resources-client';
-import { classResourceErrorMessage } from '../../../../core/resources/resources-errors';
-import { InspirationOffer } from '../../inspiration/inspiration-offer';
-import { LuckyOfferCard } from '../../inspiration/lucky-offer';
+import { ResourceClient } from '../../../../core/resources/resources-client';
+import { HeldRollController } from '../../../../core/held-rolls/held-roll-controller';
+import { heldOfferOf } from '../../../../core/held-rolls/held-roll-offer';
+import { HeldRollPrompt } from '../../../../shared/held-roll-prompt/held-roll-prompt';
 import { luckyText } from '../../../../core/combat/lucky';
 import { effectivePreference } from '../../../../core/campaigns/dice-labels';
-import type {
-  LuckyOffer,
-  OutsideInspirationOffer,
-} from '../../../../../gen/meurpg/play/v1/combat_pb';
+import type { HeldRollOffer } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import type { AnswerHeldRollResponse } from '../../../../../gen/meurpg/play/v1/resources_pb';
 import { parseFace } from '../../../../core/combat/combat-dice';
 import { RollAnimator, showOfDice } from '../../../../shared/roll-overlay/roll-animator';
 import { ActionKey } from '../../../../core/connect/idempotency';
@@ -111,15 +105,7 @@ export function openTrapSearch(
  */
 @Component({
   selector: 'app-trap-search-sheet',
-  imports: [
-    CheckMode,
-    ExtraDice,
-    InspirationOffer,
-    LuckyOfferCard,
-    MatButtonModule,
-    MatIconModule,
-    SheetFrame,
-  ],
+  imports: [CheckMode, ExtraDice, HeldRollPrompt, MatButtonModule, MatIconModule, SheetFrame],
   templateUrl: './trap-search-sheet.html',
   styleUrl: './trap-search-sheet.scss',
 })
@@ -165,13 +151,15 @@ export class TrapSearchSheet {
   protected readonly error = signal('');
   /** The d4 an effect adds (Orientação, Bênção) with physical dice: asked when the server says the roll takes them. */
   protected readonly extra = new ExtraDiceState();
-  /** The d20 was rolled and kept: the character holds a Bardic Inspiration die, and the player decides before the result. */
-  protected readonly offer = signal<OutsideInspirationOffer | null>(null);
-  /** The d20 was rolled and kept because a halfling's d20 shows a 1 ("Tirou 1: rolar de novo?"): asked before the die's. */
-  protected readonly luckyOffer = signal<LuckyOffer | null>(null);
-  private readonly dieKey = new ActionKey();
-  /** One key per Lucky answer (roll again this way, or keep the 1): the same answer again is a retry. */
-  private readonly luckyKey = new ActionKey();
+  /** The d20 was rolled and kept and the search waits for a question: the halfling's Lucky about a 1 ("Tirou 1: rolar de
+   * novo?") first, then the Bardic Inspiration die's; the player decides before the result. */
+  protected readonly held = new HeldRollController({
+    send: (holdId, answer, key) =>
+      this.resources.answerHeldRoll(this.data.campaignId, holdId, answer, key),
+    settle: (res) => this.answeredHeld(res),
+    busy: this.busy,
+    error: this.error,
+  });
   protected readonly result = signal<SearchResultView | null>(null);
   /** The server said a trap was found, whether or not its name could be read. */
   protected readonly found = computed(() => (this.result()?.res.foundPointIds.length ?? 0) > 0);
@@ -334,7 +322,9 @@ export class TrapSearchSheet {
         other,
         extra,
       );
-      if (this.holdFor(res.luckyOffer, res.inspirationOffer)) {
+      const asked = heldOfferOf(res);
+      if (asked) {
+        this.hold(asked);
         return;
       }
       await this.showResult(res);
@@ -352,22 +342,14 @@ export class TrapSearchSheet {
   }
 
   /** The d20 is rolled and kept for a question, the halfling's Lucky about a 1 (first) or the Bardic Inspiration die: the
-   * d20 alone tumbles, and the result is told after the answer. `false` when the search asks nothing. */
-  private holdFor(
-    lucky: LuckyOffer | undefined,
-    offer: OutsideInspirationOffer | undefined,
-  ): boolean {
-    if (!lucky && !offer) {
-      return false;
-    }
-    this.luckyOffer.set(lucky ?? null);
-    this.offer.set(lucky ? null : (offer ?? null));
+   * d20 alone tumbles, and the result is told after the answer. */
+  private hold(question: HeldRollOffer): void {
+    this.held.ask(question);
     this.typing.set(false);
-    const held = showOfDice('Procurar armadilhas', (lucky ?? offer)?.d20);
-    if (held) {
-      this.animator.play(held);
+    const shown = showOfDice('Procurar armadilhas', question.d20);
+    if (shown) {
+      this.animator.play(shown);
     }
-    return true;
   }
 
   /** The search as the result card tells it. */
@@ -385,67 +367,17 @@ export class TrapSearchSheet {
     this.animate(res);
   }
 
-  /** The answer about the die: the search is made now, with the d20 it rolled and the die when it was used. */
-  protected async answerDie(use: boolean, die: InspirationRoll | null): Promise<void> {
-    const offer = this.offer();
-    if (!offer || this.busy()) {
+  /** What the answer to the question brought: the search made now with the new d20 (and the die when it was used), or,
+   * when the character holds a Bardic Inspiration die, the die's question next, on the new roll. */
+  private async answeredHeld(res: AnswerHeldRollResponse): Promise<void> {
+    if (res.result.case !== 'trapSearch') {
+      throw new Error('AnswerHeldRoll answered without its trap search');
+    }
+    if (res.next) {
+      this.hold(res.next);
       return;
     }
-    this.busy.set(true);
-    this.error.set('');
-    try {
-      const res = await this.resources.answerOutsideInspiration(
-        this.data.campaignId,
-        offer.holdId,
-        use,
-        die,
-        this.dieKey.keyFor({ hold: offer.holdId, use, die }),
-      );
-      if (res.result.case !== 'trapSearch') {
-        throw new Error('AnswerOutsideInspiration answered without its trap search');
-      }
-      this.offer.set(null);
-      await this.showResult(res.result.value);
-    } catch (err) {
-      this.error.set(classResourceErrorMessage(err, 'responder sobre a Inspiração de Bardo'));
-    } finally {
-      this.busy.set(false);
-    }
-  }
-
-  /** "Rolar de novo" (rolled in the app, or the typed face) or "Ficar com o 1": the search is made now with the new d20, or,
-   * when the character holds a Bardic Inspiration die, the die's question comes next, on the new roll. */
-  protected async answerLucky(reroll: boolean, die: LuckyRoll | null): Promise<void> {
-    const offer = this.luckyOffer();
-    if (!offer || this.busy()) {
-      return;
-    }
-    this.busy.set(true);
-    this.error.set('');
-    try {
-      const res = await this.resources.answerOutsideLucky(
-        this.data.campaignId,
-        offer.holdId,
-        reroll,
-        die,
-        this.luckyKey.keyFor({ hold: offer.holdId, reroll, die }),
-      );
-      if (res.result.case !== 'trapSearch') {
-        throw new Error('AnswerOutsideLucky answered without its trap search');
-      }
-      this.luckyKey.renew();
-      this.luckyOffer.set(null);
-      const next = res.result.value.inspirationOffer;
-      if (next) {
-        this.holdFor(undefined, next);
-        return;
-      }
-      await this.showResult(res.result.value);
-    } catch (err) {
-      this.error.set(classResourceErrorMessage(err, 'responder ao Sortudo'));
-    } finally {
-      this.busy.set(false);
-    }
+    await this.showResult(res.result.value);
   }
 
   /** The d20 of the search, with "Achou" or "Nada": exactly what the result card tells (the DC never comes). */

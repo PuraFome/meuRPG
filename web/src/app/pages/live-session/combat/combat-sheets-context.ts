@@ -6,6 +6,7 @@ import type {
   Combatant,
   Encounter,
   GetTurnOptionsResponse,
+  HeldRollOffer,
   PendingDamage,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
 import type { CombatClient } from '../../../core/combat/combat-client';
@@ -16,7 +17,7 @@ import type { MapState } from '../../../core/maps/map-state';
 import type { MapLayers } from '../../../core/maps/layers';
 import type { VitalsVm } from '../../../core/play/live-session.types';
 import type { SearchSkills } from '../../../core/traps/trap-search';
-import { type HeldRoll, type ThrownAttack } from './attack-sheet/attack-sheet-data';
+import { type ThrownAttack } from './attack-sheet/attack-sheet-data';
 import { type CastMapData } from './cast-sheet/cast-sheet';
 
 /** The sheet for a combatant of the Attack action: which attack, and what turns it into a reaction, a resume or a held roll. */
@@ -28,7 +29,7 @@ export interface AttackOpen {
   /** One of the player's creatures (or the master's NPC) attacks, with its own `GetTurnOptions`. */
   readonly who?: Combatant;
   readonly creatureOpts?: GetTurnOptionsResponse | null;
-  readonly held?: HeldRoll;
+  readonly held?: HeldRollOffer;
   readonly catchWindowId?: string;
   readonly useExtraAction?: boolean;
   readonly thrown?: ThrownAttack;

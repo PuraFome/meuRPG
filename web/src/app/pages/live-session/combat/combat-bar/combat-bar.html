@@ -24,6 +24,9 @@
     } @else {
       <span class="bar__round">{{ round() }}</span>
     }
+    @if (pending() > 0) {
+      <span class="bar__held"><mat-icon aria-hidden="true">schedule</mat-icon>{{ pendingText() }}</span>
+    }
   </div>
   <span class="bar__sep" aria-hidden="true"></span>
 

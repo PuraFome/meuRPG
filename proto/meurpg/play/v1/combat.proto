@@ -1833,11 +1833,21 @@ enum EncounterBlockedReason {
   // A table maneuver that starts a grapple after a hit: the character made no melee
   // weapon hit this turn.
   ENCOUNTER_BLOCKED_REASON_NO_MELEE_HIT = 105;
+  // CastSpell (a teleport with `destination`): the square is farther than the spell
+  // reaches.
+  ENCOUNTER_BLOCKED_REASON_TELEPORT_TOO_FAR = 106;
+  // CastSpell (a teleport with `destination`), for a player: the square cannot be used.
+  // It may be out of the caster's sight, a wall or taken by a creature; the answer
+  // never says which, so it cannot name a creature the player does not see (RN-10).
+  ENCOUNTER_BLOCKED_REASON_DESTINATION_UNAVAILABLE = 107;
+  // CastSpell (a teleport on a map with a grid), for a player's character: the cast came
+  // without `destination`. The player picks the square; only the master may leave it out.
+  ENCOUNTER_BLOCKED_REASON_DESTINATION_REQUIRED = 108;
   // Preserve Life (TakeActionRequest.preserve_life): a creature that is not in the combat, is more than
   // 30 ft from the cleric, or is an undead or a construct.
-  ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TARGET = 106;
+  ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TARGET = 109;
   // Preserve Life: the hit points asked add up to more than five times the cleric's level.
-  ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TOO_MUCH = 107;
+  ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TOO_MUCH = 110;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -3210,6 +3220,10 @@ message SpellTargets {
   // How far the point of origin may be from the caster, in feet, for POINT; 0 for
   // the others. The master is not held to it.
   int32 range_ft = 11;
+  // A teleport spell (Passo Nebuloso) on a map with a grid: how far it takes the
+  // caster, in feet. The screen asks the player for the square (CastSpellRequest.
+  // destination) within it. 0 for any other spell, and in a combat without a map.
+  int32 teleport_range_ft = 12;
 }
 
 // AreaPlacement is how a spell's area is set on a map with a grid (SRD 5.1,
@@ -3872,6 +3886,21 @@ message CastSpellRequest {
   // false), a spell that is not of evocation, a creature that is not among the targets
   // or is the caster, a repeated one and too many. Empty is a cast without it.
   repeated string sculpted_ids = 31;
+  // A teleport spell on a map with a grid (Passo Nebuloso): the square the caster
+  // lands on, chosen by the caster's player (or by the master, for an NPC or on a
+  // player's behalf). A player's character must give it (DESTINATION_REQUIRED); without
+  // it, for the master, the spell changes nothing on the map and the master moves the
+  // token. The server checks it before anything is spent: a
+  // square of the grid (otherwise `invalid_argument`), within the spell's reach
+  // (30 ft, 6 squares, by the grid's own distance; otherwise `failed_precondition`
+  // with TELEPORT_TOO_FAR), free of any creature and of walls and, for a player,
+  // seen by the caster (otherwise `failed_precondition` with DESTINATION_UNAVAILABLE,
+  // which never says whether a creature the player does not see is the reason, RN-10).
+  // The master is not held to sight and gets SQUARE_OCCUPIED or WALL_ON_SQUARE. The
+  // teleport provokes no opportunity attack and spends no movement; the undo puts the
+  // caster back. It is `invalid_argument` for any other spell, and in a combat
+  // without a map.
+  SpellOrigin destination = 32;
 }
 
 // MetamagicChoice is one Metamagic option on a casting.

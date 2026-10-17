@@ -64,6 +64,8 @@ export interface LiveStreamHandlers {
   onRevivifyChanged?(): void;
   /** `puzzle_changed` (MR-038): a puzzle changed; the page reads it again (the server already throttles the hint). */
   onPuzzleChanged?(puzzleId: string): void;
+  /** `held_rolls_changed`: the questions of the held rolls changed (content-free); read the list again. */
+  onHeldRollsChanged?(): void;
   /** `calling_you`: the master is calling this player; the page alerts (vibration, chime, shake) and says it. */
   onCallingYou?(): void;
   /** `session_ended`, or `NO_OPEN_SESSION` when (re)connecting. */

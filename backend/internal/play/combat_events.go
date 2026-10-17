@@ -671,6 +671,8 @@ type actionEvent struct {
 	// move's undo puts it back).
 	Dragged     string     `json:"dragged_id,omitempty"`
 	DraggedFrom *moveState `json:"dragged_from,omitempty"`
+	// Teleport is where a teleport spell put the caster, and where it stood: the undo puts it back.
+	Teleport *teleportEvent `json:"teleport,omitempty"`
 	// Contest is what a contest or a special action says of the event: grapple, shove,
 	// escape, Hide, Help, surprise (combat_contests_core.go).
 	Contest *contestEvent `json:"contest,omitempty"`

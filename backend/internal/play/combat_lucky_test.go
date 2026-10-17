@@ -475,6 +475,7 @@ func TestTheLuckyQuestionIsAnsweredByItsPlayerOrTheMaster(t *testing.T) {
 	if _, err := a.answerLucky(t, a.caio, e, newKey(), keepTheOne); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Errorf("an unknown roll = %v, want not_found", err)
 	}
+	a.h.afterThePlayersChance()
 	res, err := a.answerLucky(t, a.master, e, holdID, rerollTyped(11))
 	if err != nil {
 		t.Fatalf("the master's AnswerLucky() error = %v", err)

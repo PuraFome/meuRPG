@@ -213,6 +213,9 @@ type Traits struct {
 	KiSaveDC                 int
 	// PackTactics is a monster's trait.
 	PackTactics bool
+	// Evasion says the sheet has Evasion: the monk's, the rogue's, the ranger's Superior
+	// Hunter's Defense choice, or a stat block's trait (combat.HalfSaveShare).
+	Evasion bool
 	// Lucky is the halfling's trait (LuckyTrait): a 1 on the d20 of an attack roll or a saving
 	// throw may be rolled again, and the new roll stands. The player is asked before the result.
 	Lucky bool

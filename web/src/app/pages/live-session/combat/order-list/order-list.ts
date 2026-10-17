@@ -55,7 +55,12 @@ import {
   listNames,
   orderItems,
 } from '../../../../core/combat/joint-turn';
+import {
+  type HeldQuestions,
+  type MasterQuestion,
+} from '../../../../core/held-rolls/held-questions';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
+import { HeldQuestion } from '../../held-questions/held-question';
 import type { CombatantInfo } from '../combat-info';
 import { CombatantTags } from '../combatant-tags/combatant-tags';
 import { BeastPool, FormTag } from '../combatant-tags/form-tag';
@@ -91,6 +96,7 @@ function concentrationOf(c: Combatant): string {
     ConcPill,
     EndAidQuestion,
     FormTag,
+    HeldQuestion,
     LoseQuestion,
     CombatantTags,
     CombatantToken,
@@ -150,8 +156,18 @@ export class OrderList {
   readonly deathDismissed = input<ReadonlySet<string>>(new Set());
   /** "Confirmar a morte": the question again. */
   readonly askDeath = output<string>();
+  /** The questions of the rolls that wait for their roller: each is drawn inside the row of the combatant who rolled. */
+  readonly heldQuestions = input<HeldQuestions | null>(null);
+  /** The master may type the face of a real die (the campaign did not force the app dice). */
+  readonly heldCanType = input(true);
 
   protected readonly Stable = CombatantState.STABLE;
+
+  /** Who the held attack was against, for the question's words. */
+  protected heldTarget(q: MasterQuestion): string {
+    const target = q.controller.offer()?.targetId;
+    return (target && this.encounter().combatants.find((c) => c.id === target)?.label) || '';
+  }
   protected readonly removing = signal<string | null>(null);
   /** The combatant whose "Perdeu a concentração" question is open. */
   protected readonly losing = signal<string | null>(null);
