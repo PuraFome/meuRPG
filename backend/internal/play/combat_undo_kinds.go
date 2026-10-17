@@ -892,6 +892,38 @@ func (u *undoer) conditionsSet(ctx context.Context, ev actionEvent) error {
 	return u.endedConcentrationBack(ctx, who, ev)
 }
 
+// tempBack gives back the temporary hit points the ended effects of the action took off (Heroism's).
+func (u *undoer) tempBack(ctx context.Context, ev actionEvent) error {
+	if len(ev.TempCleared) == 0 {
+		return nil
+	}
+	cs, err := listCombatants(ctx, u.c)
+	if err != nil {
+		return err
+	}
+	for _, tc := range ev.TempCleared {
+		who, ok := combatantByID(cs, tc.Combatant)
+		if !ok {
+			continue
+		}
+		temp := min(tc.Temp, maxTempHitPoints)
+		if holdsHP(who) {
+			hp := hpOf(who)
+			hp.Temp = temp
+			if err := u.setHP(ctx, who, hp); err != nil {
+				return err
+			}
+			continue
+		}
+		_, after, err := u.s.vitalsOf(ctx, u.c, who.CharacterID, &playv1.AdjustCharacterVitalsRequest{HitPointsTemporary: &temp})
+		if err != nil {
+			return err
+		}
+		u.keep(after)
+	}
+	return nil
+}
+
 // endedConcentrationBack puts back the concentration an action ended (stopConcentrating) and the
 // creatures that went with it.
 func (u *undoer) endedConcentrationBack(ctx context.Context, who playdb.Combatant, ev actionEvent) error {

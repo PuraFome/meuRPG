@@ -438,8 +438,11 @@ type actionEvent struct {
 	// FollowUps are the effects the ended ones left behind (Haste's lethargy), and
 	// FollowUpLines the IDs of their "added" lines, written before the action's own event:
 	// its undo, which puts the ended effects back, takes these away, rows and lines.
-	FollowUps     []effectRef `json:"follow_ups,omitempty"`
-	FollowUpLines []string    `json:"follow_up_lines,omitempty"`
+	FollowUps []effectRef `json:"follow_ups,omitempty"`
+	// TempCleared are the temporary hit points the ended effects took off their targets
+	// (Heroism's): the undo gives them back.
+	TempCleared   []tempCleared `json:"temp_cleared,omitempty"`
+	FollowUpLines []string      `json:"follow_up_lines,omitempty"`
 	// ExtraUsed says the action spent the extra action of an effect (Velocidade).
 	ExtraUsed bool `json:"extra_used,omitempty"`
 
@@ -681,6 +684,12 @@ type markState struct {
 	Target    string    `json:"target"`
 	Round     int32     `json:"round"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+// tempCleared is the temporary hit points an ended effect took off a combatant.
+type tempCleared struct {
+	Combatant string `json:"combatant"`
+	Temp      int32  `json:"temp"`
 }
 
 // effectRef is an effect that lasts (a combatant_states row of the kind 'effect') and
