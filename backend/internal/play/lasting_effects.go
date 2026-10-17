@@ -333,9 +333,9 @@ func (s *Service) dropSameSpell(ctx context.Context, c *combatTx, cs []playdb.Co
 // speed, and whether it can act and move; and the exhaustion it carries (a character's is
 // its vitals').
 func (s *Service) refreshCombatants(ctx context.Context, c *combatTx, ids ...string) error {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	rows, err := c.q.ListLastingEffects(ctx, c.enc.ID)
 	if err != nil {
@@ -739,9 +739,9 @@ func (s *Service) endConcentrationEffects(ctx context.Context, c *combatTx, cast
 	if len(held) == 0 {
 		return nil
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	return s.endEffectRows(ctx, c, cs, held, reason)
 }

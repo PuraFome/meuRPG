@@ -341,9 +341,9 @@ func (s *Service) castRevivify(
 // answer, spend the slot and the action, and bring the creature back.
 func (s *Service) revivifyWrite(ctx context.Context, c *combatTx, m authz.Membership, msg *playv1.CastSpellRequest, in revivifyInput, out *revivifyOutcome) (any, error) {
 	out.vitals, out.told = nil, nil
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	out.v = c.viewer(m, cs)
 	caster, slot, err := s.revivifyCaster(ctx, c, m, out.v, cs, in.casterID, msg.GetSlot())
@@ -377,8 +377,8 @@ func (s *Service) revivifyCountered(ctx context.Context, c *combatTx, caster pla
 	out.made.Secret = caster.Hidden
 	out.made.Reaction = &reactionEvent{Kind: string(reaction.CounterspellKind), Countered: true, Spell: revivifyKey, Level: slot.Level}
 	var err error
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return nil, fmt.Errorf("touch the encounter: %w", err)
+	if err = touch(ctx, c); err != nil {
+		return nil, err
 	}
 	c.characterID = &caster.CharacterID
 	return out.made, nil

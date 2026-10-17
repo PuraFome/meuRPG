@@ -408,9 +408,9 @@ func (s *Service) addLastingEffectTx(ctx context.Context, c *combatTx, m authz.M
 	if err := notEnded(c.enc); err != nil {
 		return nil, none, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, none, fmt.Errorf("list the combatants: %w", err)
+		return nil, none, err
 	}
 	targets, caster, err := lastingPartiesOf(cs, in, viewerOf(m))
 	if err != nil {
@@ -433,8 +433,8 @@ func (s *Service) addLastingEffectTx(ctx context.Context, c *combatTx, m authz.M
 	}
 	ev := addedPayload(c, rows, spec.key)
 	c.characterID = &targets[0].CharacterID
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return nil, none, fmt.Errorf("touch the encounter: %w", err)
+	if err = touch(ctx, c); err != nil {
+		return nil, none, err
 	}
 	return rows, ev, nil
 }
@@ -719,15 +719,6 @@ func loadEffectGroup(ctx context.Context, c *combatTx, effID string) ([]playdb.C
 	return groupRowsOf(all, effID)
 }
 
-// touchEncounter marks the combat as changed by the call.
-func touchEncounter(ctx context.Context, c *combatTx) error {
-	var err error
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return fmt.Errorf("touch the encounter: %w", err)
-	}
-	return nil
-}
-
 // roundsLeftOf are the rounds from the one that runs to the end of a row, none for one with no end.
 func roundsLeftOf(enc playdb.Encounter, endsRound *int32) int32 {
 	if endsRound == nil {
@@ -782,9 +773,9 @@ func (s *Service) changeDurationTx(ctx context.Context, c *combatTx, effID strin
 	if err != nil {
 		return none, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return none, fmt.Errorf("list the combatants: %w", err)
+		return none, err
 	}
 	var caster *playdb.Combatant
 	if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == conv.OrZero(rows[0].SourceID) }); i >= 0 {
@@ -805,7 +796,7 @@ func (s *Service) changeDurationTx(ctx context.Context, c *combatTx, effID strin
 	secret := s.effectHiddenFrom(first, targetsOf(cs, targets))
 	rounds := roundsLeftOf(c.enc, first.EndsRound)
 	c.characterID = &cs[0].CharacterID
-	if err := touchEncounter(ctx, c); err != nil {
+	if err := touch(ctx, c); err != nil {
 		return none, err
 	}
 	return actionEvent{
@@ -918,7 +909,7 @@ func (s *Service) setVisibilityTx(ctx context.Context, c *combatTx, effID string
 			return nil, fmt.Errorf("set the visibility: %w", err)
 		}
 	}
-	if err := touchEncounter(ctx, c); err != nil {
+	if err := touch(ctx, c); err != nil {
 		return nil, err
 	}
 	// A line for the master alone: a switch is nothing the table reads.
@@ -984,9 +975,9 @@ func (s *Service) endEffectTx(ctx context.Context, c *combatTx, rawID string, sc
 	if err := notEnded(c.enc); err != nil {
 		return nil, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	if strings.HasPrefix(rawID, looseConditionPrefix) {
 		return s.endLooseCondition(ctx, c, cs, rawID, ended)
@@ -1021,7 +1012,7 @@ func (s *Service) endEffectTx(ctx context.Context, c *combatTx, rawID string, sc
 	}
 	*ended = clamp32(before, 0, 100)
 	c.characterID = &cs[0].CharacterID
-	if err := touchEncounter(ctx, c); err != nil {
+	if err := touch(ctx, c); err != nil {
 		return nil, err
 	}
 	return actionEvent{
@@ -1067,7 +1058,7 @@ func (s *Service) endLooseCondition(ctx context.Context, c *combatTx, cs []playd
 	}
 	*ended = 1
 	c.characterID = &who.CharacterID
-	if err := touchEncounter(ctx, c); err != nil {
+	if err := touch(ctx, c); err != nil {
 		return nil, err
 	}
 	return actionEvent{Round: c.enc.Round, Secret: true, Actor: who.ID, CondSet: true, Conditions: next, CondBefore: who.Conditions}, nil
@@ -1114,16 +1105,16 @@ func (s *Service) removeTargetTx(ctx context.Context, c *combatTx, effID, combID
 	if i < 0 {
 		return nil, errEffectNotFound()
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	row := rows[i]
 	if err := s.endEffectRows(ctx, c, cs, []playdb.CombatantState{row}, endByMaster); err != nil {
 		return nil, err
 	}
 	c.characterID = &cs[0].CharacterID
-	if err := touchEncounter(ctx, c); err != nil {
+	if err := touch(ctx, c); err != nil {
 		return nil, err
 	}
 	return actionEvent{

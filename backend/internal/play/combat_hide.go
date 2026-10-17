@@ -142,9 +142,9 @@ func (s *Service) attemptHide(ctx context.Context, c *combatTx, m authz.Membersh
 	if err := mustBeRunning(c); err != nil {
 		return actionEvent{}, nil, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return actionEvent{}, nil, fmt.Errorf("list the combatants: %w", err)
+		return actionEvent{}, nil, err
 	}
 	v := c.viewer(m, cs)
 	who, err := s.hider(ctx, c, m, v, cs, p)
@@ -378,9 +378,9 @@ func (s *Service) decideHide(ctx context.Context, c *combatTx, m authz.Membershi
 	if err != nil {
 		return actionEvent{}, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return actionEvent{}, fmt.Errorf("list the combatants: %w", err)
+		return actionEvent{}, err
 	}
 	hider, ok := combatantByID(cs, attempt.HiderID)
 	if !ok {

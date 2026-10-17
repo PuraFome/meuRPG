@@ -386,8 +386,8 @@ func (s *Service) sightSeal(ctx context.Context, c *combatTx, r *sightRun) (any,
 			r.made.Round, r.made.Secret, r.made.Actor = c.enc.Round, r.who.Hidden, r.who.ID
 		}
 		var err error
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
+		if err = touch(ctx, c); err != nil {
+			return nil, err
 		}
 	}
 	c.characterID = &r.characterID
@@ -399,9 +399,9 @@ func (s *Service) sightSeal(ctx context.Context, c *combatTx, r *sightRun) (any,
 // loses the conditions it gave, and a familiar_sight event says why. It runs inside
 // the transaction that starts the turn; what it changed is told after the commit.
 func (s *Service) endFamiliarSights(ctx context.Context, c *combatTx, ids []string) error {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	for _, id := range ids {
 		if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == id }); i >= 0 {

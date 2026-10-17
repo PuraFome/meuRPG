@@ -256,9 +256,9 @@ func cuttingFill(re *reactionEvent, cut *playv1.CuttingWordsResult) func() {
 // canBeCut says Cutting Words can change the roller's roll: it can hear the bard and is
 // not immune to being charmed (SRD, College of Lore).
 func (s *Service) canBeCut(ctx context.Context, c *combatTx, rollerID string) (bool, error) {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return false, fmt.Errorf("list the combatants: %w", err)
+		return false, err
 	}
 	i := slices.IndexFunc(cs, func(x playdb.Combatant) bool { return x.ID == rollerID })
 	if i < 0 {
@@ -312,9 +312,9 @@ func (s *Service) answerHellishRebuke(ctx context.Context, c *combatTx, m authz.
 	t.CastLevel, t.Racial, t.Dice = level, racial, int32(reaction.HellishRebukeDice(int(level))) //nolint:gosec // 2 to 10 dice
 	c.lastAnswered = reaction.HellishRebukeKind
 	c.characterID = &reactor.CharacterID
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	ai := slices.IndexFunc(cs, func(x playdb.Combatant) bool { return x.ID == t.Actor })
 	if ai >= 0 && cs[ai].Kind != kindPlayer {
@@ -389,9 +389,9 @@ type rebukeSave struct {
 
 // resolveRebuke rolls the aggressor's saving throw and puts the fire on it.
 func (s *Service) resolveRebuke(ctx context.Context, c *combatTx, w playdb.ReactionWindow, reactor playdb.Combatant, t windowTrigger, req *playv1.AnswerReactionRequest, got *answered) error {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	ai := slices.IndexFunc(cs, func(x playdb.Combatant) bool { return x.ID == t.Actor })
 	if ai < 0 {

@@ -2,7 +2,6 @@ package play
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"slices"
 
@@ -104,8 +103,8 @@ func (s *Service) holdAttackRoll(ctx context.Context, c *combatTx, m authz.Membe
 	if ev, err = s.holdAction(ctx, c, m, "attack", attacker, req, holdData{}, specs, ev); err != nil {
 		return ev, false, err
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return ev, false, fmt.Errorf("touch the encounter: %w", err)
+	if err = touch(ctx, c); err != nil {
+		return ev, false, err
 	}
 	c.characterID = &attacker.CharacterID
 	return ev, true, nil
@@ -250,8 +249,8 @@ func (s *Service) holdDamage(ctx context.Context, c *combatTx, m authz.Membershi
 	if err != nil {
 		return ev, false, err
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return ev, false, fmt.Errorf("touch the encounter: %w", err)
+	if err = touch(ctx, c); err != nil {
+		return ev, false, err
 	}
 	c.characterID = &attacker.CharacterID
 	return ev, true, nil
@@ -283,9 +282,9 @@ func (s *Service) hellishWindow(ctx context.Context, c *combatTx, target playdb.
 	if !rebukeOwed(target, d) {
 		return nil
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	i := slices.IndexFunc(cs, func(x playdb.Combatant) bool { return x.ID == d.attacker })
 	if i < 0 || cs[i].Defeated || cs[i].Side == target.Side {

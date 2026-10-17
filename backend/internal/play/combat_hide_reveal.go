@@ -3,7 +3,6 @@ package play
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"connectrpc.com/connect"
 
@@ -78,9 +77,9 @@ func (s *Service) revealHiderIn(ctx context.Context, c *combatTx, combID string)
 	if err := notEnded(c.enc); err != nil {
 		return actionEvent{}, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return actionEvent{}, fmt.Errorf("list the combatants: %w", err)
+		return actionEvent{}, err
 	}
 	hider, ok := combatantByID(cs, combID)
 	if !ok {

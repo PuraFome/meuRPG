@@ -80,9 +80,9 @@ func (s *Service) summonRollOK(ctx context.Context, c *combatTx, m authz.Members
 // before anything is spent: a combat holds 40 combatants, and the creatures of the
 // concentration this one ends leave first.
 func (s *Service) summonHasRoom(ctx context.Context, c *combatTx, m authz.Membership, caster playdb.Combatant, concentration bool, bringing int) error {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	leaving := 0
 	if concentration {
@@ -132,9 +132,9 @@ func (s *Service) joinSummon(ctx context.Context, c *combatTx, caster playdb.Com
 		return err
 	}
 	made.SummonRoll = &roll
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	order, _, err := s.joinCreatures(ctx, c, cs, res.Created, map[string]groupRoll{made.CastID: roll})
 	if err != nil {
@@ -466,9 +466,9 @@ func (s *Service) endConcentrationTx(ctx context.Context, c *combatTx, m authz.M
 	if err := notEnded(c.enc); err != nil {
 		return nil, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	v := c.viewer(m, cs) // the fog: an NPC the player does not see is not found
 	target, err := findCombatant(cs, combID, v)
@@ -488,8 +488,8 @@ func (s *Service) endConcentrationTx(ctx context.Context, c *combatTx, m authz.M
 	if err := s.stopConcentrating(ctx, c, target, &ev); err != nil {
 		return nil, err
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return nil, fmt.Errorf("touch the encounter: %w", err)
+	if err = touch(ctx, c); err != nil {
+		return nil, err
 	}
 	c.characterID = &target.CharacterID
 	ev.Round = c.enc.Round

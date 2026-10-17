@@ -289,9 +289,9 @@ func (s *Service) readContestRun(ctx context.Context, c *combatTx, st contestSta
 	if err := mustBeRunning(c); err != nil {
 		return nil, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	v := c.viewer(st.m, cs) // the fog: an NPC the player does not see is not found
 	initiator, err := findCombatant(cs, st.initiatorID, v)
@@ -675,9 +675,9 @@ func (s *Service) readAnswerRun(ctx context.Context, c *combatTx, ans contestAns
 	if err := mustBeRunning(c); err != nil {
 		return nil, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	v := c.viewer(ans.m, cs)
 	row, err := c.q.GetContest(ctx, playdb.GetContestParams{EncounterID: c.enc.ID, ID: ans.contestID})
@@ -920,9 +920,9 @@ func (s *Service) readShoveRun(ctx context.Context, c *combatTx, req shoveChoice
 	if err := mustBeRunning(c); err != nil {
 		return nil, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	v := c.viewer(req.m, cs)
 	row, err := c.q.GetContest(ctx, playdb.GetContestParams{EncounterID: c.enc.ID, ID: req.contestID})
@@ -1090,9 +1090,9 @@ func (s *Service) closeContestTx(ctx context.Context, c *combatTx, req contestCl
 	if row.Status != contestAwaitingDefender && row.Status != contestAwaitingOutcome {
 		return actionEvent{}, errNotAwaiting()
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return actionEvent{}, fmt.Errorf("list the combatants: %w", err)
+		return actionEvent{}, err
 	}
 	initiator, _ := combatantByID(cs, row.InitiatorID)
 	defender, _ := combatantByID(cs, row.DefenderID)
@@ -1142,9 +1142,9 @@ func (s *Service) releaseTx(ctx context.Context, c *combatTx, m authz.Membership
 	if err := notEnded(c.enc); err != nil {
 		return actionEvent{}, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return actionEvent{}, fmt.Errorf("list the combatants: %w", err)
+		return actionEvent{}, err
 	}
 	v := c.viewer(m, cs)
 	grappled, err := findCombatant(cs, grappledID, v)
@@ -1276,9 +1276,9 @@ func (s *Service) pruneHolds(ctx context.Context, c *combatTx) error {
 	if err != nil || len(holds) == 0 {
 		return err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	by := combatantsByID(cs)
 	for _, h := range holds {

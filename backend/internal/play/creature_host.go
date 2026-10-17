@@ -55,8 +55,8 @@ func (s *Service) CreaturesLeaving(ctx context.Context, tx pgx.Tx, campaignID, a
 	if err := s.dismissLeavers(ctx, c, cs, leaving); err != nil {
 		return "", err
 	}
-	if c.enc, err = q.TouchEncounter(ctx, enc.ID); err != nil {
-		return "", fmt.Errorf("touch the encounter: %w", err)
+	if err = touch(ctx, c); err != nil {
+		return "", err
 	}
 	if len(leaving) > 0 {
 		if err := insertEvent(ctx, c, eventCombatantRemoved, &actorUserID, nil, actionEvent{Round: c.enc.Round, Reason: "creature_dismissed", Created: creatureIDsOf(leaving)}); err != nil {
@@ -98,8 +98,8 @@ func (s *Service) endSights(ctx context.Context, c *combatTx, blind []playdb.Com
 	if len(blind) == 0 {
 		return cs, leaving, nil
 	}
-	if cs, err = c.q.ListCombatants(ctx, c.enc.ID); err != nil { // their conditions changed
-		return nil, nil, fmt.Errorf("list the combatants: %w", err)
+	if cs, err = listCombatants(ctx, c); err != nil { // their conditions changed
+		return nil, nil, err
 	}
 	return cs, creatureCombatantsOf(cs, creatureIDs), nil
 }

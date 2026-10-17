@@ -200,8 +200,8 @@ func (s *Service) writeExhaustion(ctx context.Context, c *combatTx, m authz.Memb
 		}
 	}
 	if c.enc.ID != "" {
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
+		if err = touch(ctx, c); err != nil {
+			return nil, err
 		}
 	}
 	// The exhaustion is the owner's and the master's: no line for the other players (RN-10).
@@ -228,9 +228,9 @@ func (s *Service) exhaustionCombat(ctx context.Context, c *combatTx) ([]playdb.C
 	if c.enc.ID == "" {
 		return nil, nil
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	return cs, nil
 }
@@ -368,9 +368,9 @@ func (s *Service) setNPCExhaustion(ctx context.Context, c *combatTx, who playdb.
 		return 0, fmt.Errorf("set the exhaustion: %w", err)
 	}
 	if defeated && !who.Defeated && c.enc.Status == statusActive {
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+		cs, err := listCombatants(ctx, c)
 		if err != nil {
-			return 0, fmt.Errorf("list the combatants: %w", err)
+			return 0, err
 		}
 		if _, err := leaveTurn(ctx, c, cs, who); err != nil {
 			return 0, err

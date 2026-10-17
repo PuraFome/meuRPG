@@ -349,8 +349,8 @@ func (s *Service) loadEffectSave(ctx context.Context, c *combatTx, x *effectSave
 	}
 	x.ev = actionEvent{Round: c.enc.Round, Secret: s.effectHiddenFrom(st, []playdb.Combatant{x.reactor}), Actor: x.reactor.ID, Key: conv.OrZero(st.SourceKey)}
 	x.le = &lastingEvent{Key: conv.OrZero(st.SourceKey), Change: "saved", Targets: []string{x.reactor.ID}, Caster: conv.OrZero(st.SourceID), Ability: x.ability, DC: x.dc, Effects: []string{st.ID}}
-	if x.cs, err = c.q.ListCombatants(ctx, c.enc.ID); err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+	if x.cs, err = listCombatants(ctx, c); err != nil {
+		return err
 	}
 	return nil
 }
@@ -479,8 +479,8 @@ func (s *Service) settleEffectSave(ctx context.Context, c *combatTx, x *effectSa
 	}
 	x.ev.Lasting = x.le
 	var err error
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return nil, fmt.Errorf("touch the encounter: %w", err)
+	if err = touch(ctx, c); err != nil {
+		return nil, err
 	}
 	c.characterID = &x.reactor.CharacterID
 	x.run.made = x.ev

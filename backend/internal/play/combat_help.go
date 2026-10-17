@@ -204,9 +204,9 @@ func (s *Service) giveHelp(ctx context.Context, c *combatTx, m authz.Membership,
 	if err := mustBeRunning(c); err != nil {
 		return actionEvent{}, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return actionEvent{}, fmt.Errorf("list the combatants: %w", err)
+		return actionEvent{}, err
 	}
 	v := c.viewer(m, cs)
 	helper, ally, err := s.helpParties(ctx, c, v, cs, p)
