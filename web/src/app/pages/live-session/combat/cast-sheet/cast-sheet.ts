@@ -31,6 +31,7 @@ import {
 import { AreaList } from '../../../../shared/area-picker/area-list';
 import { AreaMap } from '../../../../shared/area-picker/area-map';
 import { AreaStep } from '../../../../shared/area-picker/area-step';
+import { TeleportMap } from '../../../../shared/area-picker/teleport-map';
 import { RollAnimator } from '../../../../shared/roll-overlay/roll-animator';
 import { RollPicker } from '../../../../shared/roll-picker/roll-picker';
 import { SheetFrame } from '../../../../shared/sheet/sheet-frame/sheet-frame';
@@ -100,6 +101,7 @@ export type { CastMapData, CastSheetData } from './cast-sheet-types';
     SheetFrame,
     SlotPicker,
     SpellHelp,
+    TeleportMap,
   ],
   templateUrl: './cast-sheet.html',
   styleUrl: './cast-sheet.scss',

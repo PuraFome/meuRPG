@@ -173,6 +173,8 @@ export interface CastExtras {
   readonly abilityKey?: string;
   /** Sculpt Spells: the creatures of the area the caster spares. */
   readonly sculptedIds?: readonly string[];
+  /** A teleport spell on a map with a grid (Passo Nebuloso): the square the caster lands on. */
+  readonly destination?: { readonly col: number; readonly row: number };
 }
 
 /** What a summoning spell brings (`SummonChoice`): the option, a content key per creature and, optionally, a name each. */
