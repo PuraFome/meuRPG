@@ -89,6 +89,29 @@ describe('viewLine: how a line looks to its reader', () => {
     expect(viewLine(msg, master, directory).label).toBe('Jogador removido');
   });
 
+  // The server sends author_removed with no name for an account that exists but never chose a display name.
+  it('a present player who has no display name is not "Jogador removido"', () => {
+    const msg = line('1', {
+      speakerKind: Kind.OUT_OF_CHARACTER,
+      authorUserId: 'u9',
+      authorRemoved: true,
+      speakerName: '',
+    });
+    expect(viewLine(msg, master, new Map()).label).toBe('Jogador · fora do personagem');
+  });
+
+  it("an out-of-character line without a name takes the table's name for its author", () => {
+    const msg = line('1', {
+      speakerKind: Kind.OUT_OF_CHARACTER,
+      authorUserId: 'u9',
+      authorRemoved: true,
+      speakerName: '',
+    });
+    expect(viewLine(msg, player, new Map([['u9', 'Toren']])).label).toBe(
+      'Toren · fora do personagem',
+    );
+  });
+
   it("a player reads the master's chosen-readers line as a whisper", () => {
     const msg = line('1', { speakerKind: Kind.NARRATOR, forEveryone: false });
     expect(viewLine(msg, player, directory)).toMatchObject({
