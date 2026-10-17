@@ -133,7 +133,7 @@ func TestAddLastingEffectRefusals(t *testing.T) { //nolint:tparallel // the case
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := a.addRaw(t, tc.by, e, tc.edit)
-			wantEffectRefusal(t, tc.name, err, tc.code, tc.msg)
+			wantRefusal(t, tc.name, err, tc.code, tc.msg)
 		})
 	}
 	if rows := a.combatEffectRows(t, e); len(rows) != 0 {
@@ -155,7 +155,7 @@ func TestAddLastingEffectRefusesAnEndedCombat(t *testing.T) {
 		t.Fatalf("EndEncounter() error = %v", err)
 	}
 	_, err := a.addRaw(t, a.master, e, nil)
-	wantEffectRefusal(t, "an ended combat", err, connect.CodeFailedPrecondition, "the combat has ended")
+	wantRefusal(t, "an ended combat", err, connect.CodeFailedPrecondition, "the combat has ended")
 	ce, _ := errors.AsType[*connect.Error](err)
 	var reasons []string
 	for _, d := range ce.Details() {
@@ -340,7 +340,7 @@ func TestAddLastingEffectConcentrationLogAndStreams(t *testing.T) {
 	res, err = a.addRaw(t, a.master, e, withFixed)
 	record("Longstrider again with the same key (frozen: looks wrong because the retry answers without the cards)", res, err)
 	_, err = a.addRaw(t, a.master, e, all(withFixed, a.key(heroismKey)))
-	wantEffectRefusal(t, "the key of another request", err, connect.CodeInvalidArgument, "idempotency_key was already used for another change")
+	wantRefusal(t, "the key of another request", err, connect.CodeInvalidArgument, "idempotency_key was already used for another change")
 
 	for _, s := range steps {
 		name, got, _ := strings.Cut(s, " | ")

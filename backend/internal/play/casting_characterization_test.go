@@ -1,7 +1,6 @@
 package play
 
 import (
-	"errors"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -16,18 +15,6 @@ import (
 // and message, the Life Domain's healing at the levels the party fixture does not
 // reach, and what each viewer reads. These tests need the database
 // (MEURPG_TEST_DATABASE_URL).
-
-// wantCastRefusal fails unless err is a Connect error with this code and exactly this message.
-func wantCastRefusal(t *testing.T, call string, err error, code connect.Code, msg string) {
-	t.Helper()
-	if err == nil {
-		t.Fatalf("%s succeeded, want %v %q", call, code, msg)
-	}
-	var ce *connect.Error
-	if !errors.As(err, &ce) || ce.Code() != code || ce.Message() != msg {
-		t.Fatalf("%s error = %v, want %v %q", call, err, code, msg)
-	}
-}
 
 // newCastingHighParty is the party of newCastingParty with Brisa a level 17 cleric of the Life
 // Domain (Supreme Healing, Blessed Healer and the 6th-circle Heal), for the healing cases the
@@ -147,9 +134,9 @@ func TestCastingOutside_FalseLifeGivesTheCasterTemporaryHitPoints(t *testing.T) 
 	hiero := a.bri
 
 	_, err := a.castOut(t, a.bia, hiero, falseLife, slotOfLevel(1), false, []*charactersv1.Character{a.toren})
-	wantCastRefusal(t, "False Life with a target", err, connect.CodeInvalidArgument, "this spell reaches the caster alone: leave the targets out")
+	wantRefusal(t, "False Life with a target", err, connect.CodeInvalidArgument, "this spell reaches the caster alone: leave the targets out")
 	_, err = a.castOut(t, a.bia, hiero, falseLife, slotOfLevel(1), false, nil, func(r *playv1.CastSpellOutsideCombatRequest) { r.Roll = nil })
-	wantCastRefusal(t, "False Life with no roll", err, connect.CodeInvalidArgument, "set roll_in_app or pool_sum: this spell rolls a pool of dice")
+	wantRefusal(t, "False Life with no roll", err, connect.CodeInvalidArgument, "set roll_in_app or pool_sum: this spell rolls a pool of dice")
 
 	a.h.roller.queue(3)
 	cast := a.mustCastOut(t, a.bia, hiero, falseLife, slotOfLevel(1), false, nil).GetCast()
@@ -230,7 +217,7 @@ func TestCastingOutside_TheRequestAndThePlanAreRefusedWithTheirMessages(t *testi
 		if tc.msg == "character not found" && connect.CodeOf(err) == connect.CodeNotFound {
 			continue // errCharacterNotFound's message is not this test's to freeze
 		}
-		wantCastRefusal(t, name, err, tc.code, tc.msg)
+		wantRefusal(t, name, err, tc.code, tc.msg)
 	}
 	// Nothing was spent or written by the refusals.
 	if n := a.eventCount(t, eventSpellCastOutside); n != 0 {
@@ -248,7 +235,7 @@ func TestCastingOutside_GuardCastDecidesWhoMayCastForWhomAndWhatTheMasterSees(t 
 	_, err := a.castOut(t, a.ana, mage, magicMissileSpell, slotOfLevel(1), false, []*charactersv1.Character{a.toren})
 	wantCode(t, "a player casting for an NPC", err, connect.CodeNotFound)
 	_, err = a.castOut(t, a.caio, a.pens, magicMissileSpell, slotOfLevel(1), false, []*charactersv1.Character{a.toren})
-	wantCastRefusal(t, "another player's character", err, connect.CodePermissionDenied, "only the character's player or the master may cast for it")
+	wantRefusal(t, "another player's character", err, connect.CodePermissionDenied, "only the character's player or the master may cast for it")
 	// The master casts for any of them, and a cast for a hidden NPC is the master's alone.
 	secret := a.mustCastOut(t, a.master, a.pens, magicMissileSpell, slotOfLevel(1), false, []*charactersv1.Character{mage}).GetCast()
 	if !secret.GetSecret() || secret.GetCasterIsNpc() {

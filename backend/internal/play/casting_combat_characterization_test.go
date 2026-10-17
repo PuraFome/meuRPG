@@ -1,7 +1,6 @@
 package play
 
 import (
-	"errors"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -14,18 +13,6 @@ import (
 // point spells, written before the functions behind them were split into phases: each
 // refusal with its code, reason and exact message. These tests need the database
 // (MEURPG_TEST_DATABASE_URL).
-
-// wantCombatCastMessage fails unless err is a Connect error with this code and this message.
-func wantCombatCastMessage(t *testing.T, call string, err error, code connect.Code, msg string) {
-	t.Helper()
-	if err == nil {
-		t.Fatalf("%s succeeded, want %v %q", call, code, msg)
-	}
-	var ce *connect.Error
-	if !errors.As(err, &ce) || ce.Code() != code || ce.Message() != msg {
-		t.Fatalf("%s error = %v, want %v %q", call, err, code, msg)
-	}
-}
 
 // TestMetamagicRefusalsSayWhy: every refusal of a Metamagic choice, in the order the checks run,
 // with its message, and that none of them spends a slot or a point.
@@ -96,7 +83,7 @@ func TestMetamagicRefusalsSayWhy(t *testing.T) {
 		},
 	} {
 		_, err := a.castWith(t, a.ana, e, "Nael", tc.spell, slotOfLevel(tc.slot), a.at(t, tc.at...), tc.meta...)
-		wantCombatCastMessage(t, name, err, connect.CodeInvalidArgument, tc.msg)
+		wantRefusal(t, name, err, connect.CodeInvalidArgument, tc.msg)
 	}
 	if left, _ := poolOf(a.vitalsOfCharacter(t, a.pens), rules.SorceryPointsKey); left != 5 {
 		t.Errorf("the refusals spent points: %d left, want 5", left)
@@ -116,7 +103,7 @@ func TestMetamagicTwinnedRefusesADefeatedSecondTarget(t *testing.T) {
 	_, err := a.castWith(t, a.ana, e, "Nael", holdPerson, slotOfLevel(2), a.at(t, "Goblin"),
 		&playv1.MetamagicChoice{Key: rules.MetamagicTwinned, TargetIds: []string{a.id(t, "Capitão Goblin")}})
 	wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEFEATED)
-	wantCombatCastMessage(t, "a defeated second target", err, connect.CodeFailedPrecondition, "a target is defeated")
+	wantRefusal(t, "a defeated second target", err, connect.CodeFailedPrecondition, "a target is defeated")
 }
 
 // TestMetamagicHeightenedNeedsASpellTarget: Heightened Spell burdens a creature the spell reaches.
@@ -126,10 +113,10 @@ func TestMetamagicHeightenedNeedsASpellTarget(t *testing.T) {
 	a.sorcererFight(t, map[string][2]int32{"Nael": {4, 9}, "Tavo": {9, 3}, "Orla": {10, 3}, "Goblin": {4, 4}, "Capitão Goblin": {9, 9}})
 	_, err := a.castWith(t, a.ana, a.get(t, a.master), "Nael", fireballSpell, slotOfLevel(3), a.at(t, "Goblin"),
 		&playv1.MetamagicChoice{Key: rules.MetamagicHeightened, HeightenedId: a.id(t, "Tavo")})
-	wantCombatCastMessage(t, "Heightened Spell on a creature not hit", err, connect.CodeInvalidArgument, "the creature with disadvantage must be one of the spell's targets")
+	wantRefusal(t, "Heightened Spell on a creature not hit", err, connect.CodeInvalidArgument, "the creature with disadvantage must be one of the spell's targets")
 	_, err = a.castWith(t, a.ana, a.get(t, a.master), "Nael", fireballSpell, slotOfLevel(3), a.at(t, "Goblin"), choice(rules.MetamagicHeightened))
 	// An empty id is parsed like any combatant's: not found.
-	wantCombatCastMessage(t, "Heightened Spell with no creature", err, connect.CodeNotFound, "combatant not found")
+	wantRefusal(t, "Heightened Spell with no creature", err, connect.CodeNotFound, "combatant not found")
 }
 
 // TestMetamagicQuickenedNeedsAFreeBonusActionAndRespectsTheSpellLimit: the bonus action must be
@@ -141,12 +128,12 @@ func TestMetamagicQuickenedNeedsAFreeBonusActionAndRespectsTheSpellLimit(t *test
 	a.execSQL(t, `UPDATE combatants SET bonus_action_used = true WHERE id = $1`, a.id(t, "Nael"))
 	_, err := a.castWith(t, a.ana, e, "Nael", burningHands, slotOfLevel(1), a.at(t, "Goblin"), choice(rules.MetamagicQuickened))
 	wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED)
-	wantCombatCastMessage(t, "a used bonus action", err, connect.CodeFailedPrecondition, "the bonus action of this turn is used")
+	wantRefusal(t, "a used bonus action", err, connect.CodeFailedPrecondition, "the bonus action of this turn is used")
 
 	a.execSQL(t, `UPDATE combatants SET bonus_action_used = false, spell_cast = true WHERE id = $1`, a.id(t, "Nael"))
 	_, err = a.castWith(t, a.ana, e, "Nael", holdPerson, slotOfLevel(2), a.at(t, "Goblin"), choice(rules.MetamagicQuickened))
 	wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_SPELL_LIMIT)
-	wantCombatCastMessage(t, "the bonus action spell limit", err, connect.CodeFailedPrecondition,
+	wantRefusal(t, "the bonus action spell limit", err, connect.CodeFailedPrecondition,
 		"a spell cast with a bonus action leaves no other spell this turn but a cantrip of 1 action")
 	if left, _ := poolOf(a.vitalsOfCharacter(t, a.pens), rules.SorceryPointsKey); left != 5 {
 		t.Errorf("the refusals spent points: %d left, want 5", left)
@@ -159,21 +146,21 @@ func TestPreviewSpellAreaIsRefusedWithItsMessages(t *testing.T) {
 	c := newAreaCave(t)
 	c.areaFight(t)
 	_, err := c.preview(t, c.ana, "Pensantus", "", slotOfLevel(3), at(20, 7), nil)
-	wantCombatCastMessage(t, "no spell key", err, connect.CodeInvalidArgument, "spell_key must name one of the caster's spells")
+	wantRefusal(t, "no spell key", err, connect.CodeInvalidArgument, "spell_key must name one of the caster's spells")
 	_, err = c.preview(t, c.ana, "Pensantus", thunderwave, slotOfLevel(1), at(20, 7), nil)
-	wantCombatCastMessage(t, "a point for a spell that comes out of the caster", err, connect.CodeInvalidArgument, "this spell comes out of the caster: set direction")
+	wantRefusal(t, "a point for a spell that comes out of the caster", err, connect.CodeInvalidArgument, "this spell comes out of the caster: set direction")
 	_, err = c.preview(t, c.ana, "Pensantus", fireball, slotOfLevel(3), nil, nil)
-	wantCombatCastMessage(t, "no point for a spell placed at a point", err, connect.CodeInvalidArgument, "this spell is placed at a point: set origin")
+	wantRefusal(t, "no point for a spell placed at a point", err, connect.CodeInvalidArgument, "this spell is placed at a point: set origin")
 	_, err = c.preview(t, c.ana, "Pensantus", fireball, slotOfLevel(3), at(-1, 7), nil)
-	wantCombatCastMessage(t, "a point outside the map", err, connect.CodeInvalidArgument, "the point of origin must be a square of the map")
+	wantRefusal(t, "a point outside the map", err, connect.CodeInvalidArgument, "the point of origin must be a square of the map")
 	_, err = c.preview(t, c.ana, "Pensantus", fireball, slotOfLevel(3), nil, toward(0, 0))
-	wantCombatCastMessage(t, "a direction that is not one of the eight", err, connect.CodeInvalidArgument, "the direction must be one of the eight: dx and dy from -1 to 1, not both 0")
+	wantRefusal(t, "a direction that is not one of the eight", err, connect.CodeInvalidArgument, "the direction must be one of the eight: dx and dy from -1 to 1, not both 0")
 
 	// The caster must stand on the map.
 	c.execSQL(t, `UPDATE combatants SET grid_col = NULL, grid_row = NULL WHERE id = $1`, c.id(t, "Pensantus"))
 	_, err = c.preview(t, c.master, "Pensantus", fireball, slotOfLevel(3), at(20, 7), nil)
 	wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED)
-	wantCombatCastMessage(t, "a caster off the map", err, connect.CodeFailedPrecondition, "the caster must be on the map")
+	wantRefusal(t, "a caster off the map", err, connect.CodeFailedPrecondition, "the caster must be on the map")
 }
 
 // TestPreviewSpellAreaNeedsARunningCombatWithAMap: a combat in setup is not running, and a
@@ -185,10 +172,10 @@ func TestPreviewSpellAreaNeedsARunningCombatWithAMap(t *testing.T) {
 	c.execSQL(t, `UPDATE encounters SET status = 'setup'`)
 	_, err := c.preview(t, c.master, "Pensantus", fireball, slotOfLevel(3), at(20, 7), nil)
 	wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE)
-	wantCombatCastMessage(t, "a combat in setup", err, connect.CodeFailedPrecondition, "the combat is not running")
+	wantRefusal(t, "a combat in setup", err, connect.CodeFailedPrecondition, "the combat is not running")
 	c.execSQL(t, `UPDATE encounters SET status = 'active', mode = 'theatre', grid_columns = 0, grid_rows = 0, map_id = NULL, map_point_id = NULL`)
 	_, err = c.preview(t, c.master, "Pensantus", fireball, slotOfLevel(3), at(20, 7), nil)
-	wantCombatCastMessage(t, "a combat without a map", err, connect.CodeInvalidArgument, "a combat without a map has no area to place: the master decides who is inside")
+	wantRefusal(t, "a combat without a map", err, connect.CodeInvalidArgument, "a combat without a map has no area to place: the master decides who is inside")
 }
 
 // TestColorSprayOnACreatureThatIsAlreadyBlindedChangesNoCondition: the pool reaches a creature
