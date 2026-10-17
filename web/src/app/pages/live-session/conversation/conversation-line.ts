@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { LineView } from '../../../core/conversation/message-view';
@@ -54,7 +54,16 @@ import { ListenButton } from './listen-button';
         }
       </div>
       @if (view().image; as image) {
-        <img class="line__image" [src]="image.url" [alt]="image.name" loading="lazy" />
+        <img
+          class="line__image"
+          [src]="image.url"
+          [alt]="image.name"
+          [attr.width]="image.width || null"
+          [attr.height]="image.height || null"
+          [style.aspect-ratio]="image.width && image.height ? image.width + ' / ' + image.height : null"
+          loading="lazy"
+          (load)="imageLoaded.emit()"
+        />
       }
       <p [class]="textClass()">{{ view().text }}</p>
     }
@@ -68,6 +77,8 @@ export class ConversationLine {
   readonly voice = input(false);
   /** The phone's full-screen feed is on the page ground, so the narration is a white card there. */
   readonly card = input(false);
+  /** The picture finished loading (the feed may have grown under the reader). */
+  readonly imageLoaded = output();
 
   protected readonly hearable = computed(
     () => this.voice() && this.view().canHear && this.view().audioUrl !== '',

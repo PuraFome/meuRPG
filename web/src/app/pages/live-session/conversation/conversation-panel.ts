@@ -163,6 +163,14 @@ export class ConversationPanel {
     this.followNewest();
   }
 
+  /** A lazy picture grows the feed after it was placed: a reader at the end stays at the end; one who scrolled up is left alone. */
+  protected onImageLoaded(): void {
+    if (this.stuck) {
+      const el = this.feed().nativeElement;
+      el.scrollTop = el.scrollHeight;
+    }
+  }
+
   /** Reads the reader's scroll: near the end, the feed keeps following; scrolled up, it stays put. */
   protected onScroll(): void {
     const el = this.feed().nativeElement;

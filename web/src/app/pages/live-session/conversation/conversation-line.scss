@@ -67,6 +67,7 @@ app-listen-button {
 .line__image {
   display: block;
   width: 100%;
+  height: auto;
   max-height: 220px;
   object-fit: cover;
   border-radius: var(--mr-radius-sm);
