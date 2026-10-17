@@ -251,12 +251,6 @@ func rangedAttackValues() []MenuValue {
 	return out
 }
 
-// The bounds the menu offers for an extra_attack effect.
-const (
-	menuExtraAttackMin = 2
-	menuExtraAttackMax = 4
-)
-
 // EffectMenu gives the closed menu for this content: the table's classes are in
 // ClassIndexes, and everything else is the SRD's.
 func (c *Content) EffectMenu() EffectMenu {
@@ -264,7 +258,7 @@ func (c *Content) EffectMenu() EffectMenu {
 	m := EffectMenu{
 		Types:               slices.Clone(menuTypes),
 		MaxFeaturesPerClass: MaxTableFeatures, MaxEffectsPerFeature: MaxFeatureEffects, MaxTagsPerEffect: maxEffectList,
-		ExtraAttackMin: menuExtraAttackMin, ExtraAttackMax: menuExtraAttackMax,
+		ExtraAttackMin: minExtraAttacks, ExtraAttackMax: maxExtraAttacks,
 	}
 	m.Lists = x.menuLists()
 	m.OptionSets = x.menuOptionSets()

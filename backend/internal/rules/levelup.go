@@ -499,10 +499,6 @@ func newClassFeatures(dBefore, dBare Derived, classKey string) []NamedKey {
 	return out
 }
 
-// magicalSecretsSpells is how many spells of any class one Magical Secrets
-// feature of the Bard lets the player learn (SRD 5.1, Bard).
-const magicalSecretsSpells = 2
-
 // addFeatureNotes reads the features of the new level: the ones the master adds in
 // the editor, and the Bard's Magical Secrets of the SRD.
 func (o *LevelUpOffer) addFeatureNotes(c *content, features []string) {
@@ -510,8 +506,10 @@ func (o *LevelUpOffer) addFeatureNotes(c *content, features []string) {
 		if masterAdds[fk] {
 			o.MasterAdds = append(o.MasterAdds, NamedKey{Key: fk, NamePT: c.namePT(fk)})
 		}
-		if strings.HasPrefix(fk, "feature:magical-secrets-") && !isTableKey(fk) {
-			o.AnyClassSpells = magicalSecretsSpells
+		// Only the Bard's own feature counts here; the Lore feature is added by
+		// addMagicalSecrets.
+		if s, beyondKnown := magicalSecretsOf(fk); s > 0 && beyondKnown == 0 {
+			o.AnyClassSpells = s
 		}
 	}
 }
@@ -599,9 +597,9 @@ func newSpellsOf(kind string, newClass, casts bool, knownGain int) (int, string)
 // spells of any class never exceed the spells the level gives.
 func (o *LevelUpOffer) addMagicalSecrets(sub *srd51.Subclass, subFeatures []string) {
 	if sub != nil && slices.Contains(subFeatures, "feature:additional-magical-secrets") {
-		o.Spells += magicalSecretsSpells
+		o.Spells += secretsPerFeature
 		o.SpellsKind = PreparationKnown
-		o.AnyClassSpells += magicalSecretsSpells
+		o.AnyClassSpells += secretsPerFeature
 	}
 	o.AnyClassSpells = min(o.AnyClassSpells, o.Spells)
 }

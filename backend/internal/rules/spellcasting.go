@@ -474,13 +474,9 @@ func (s *spellSheet) checkSpell(field, key string, offList bool) (*srd51.Spell, 
 // the list.
 func (s *spellSheet) countSecrets() {
 	for _, f := range s.x.d.Features {
-		switch {
-		case strings.HasPrefix(f.Key, "feature:magical-secrets-") && !isTableKey(f.Key):
-			s.offListLeft += secretsPerFeature
-		case f.Key == "feature:additional-magical-secrets" && !isTableKey(f.Key):
-			s.offListLeft += secretsPerFeature
-			s.extraKnown += secretsPerFeature
-		}
+		secrets, beyondKnown := magicalSecretsOf(f.Key)
+		s.offListLeft += secrets
+		s.extraKnown += beyondKnown
 	}
 }
 
