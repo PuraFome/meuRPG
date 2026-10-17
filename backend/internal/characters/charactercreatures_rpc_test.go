@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 )
@@ -162,7 +163,7 @@ func (tb *creatureTable) creatureRow(t *testing.T, id string) string {
 	if err := tb.h.pool.QueryRow(t.Context(), "SELECT hp_current, hp_max, dismissed_reason FROM character_creatures WHERE id = $1", id).Scan(&hp, &hpMax, &reason); err != nil {
 		t.Fatalf("read the creature: %v", err)
 	}
-	return fmt.Sprintf("hp %d/%d dismissed %q", hp, hpMax, deref(reason))
+	return fmt.Sprintf("hp %d/%d dismissed %q", hp, hpMax, conv.OrZero(reason))
 }
 
 // describeCharacterCreature is what a CharacterCreature says, without its IDs and time.

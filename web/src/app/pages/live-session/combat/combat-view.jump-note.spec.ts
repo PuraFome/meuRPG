@@ -18,6 +18,7 @@ import { MapsClient } from '../../../core/maps/maps-client';
 import { RosterClient } from '../../../core/maps/roster-client';
 import { SpellCatalog } from '../../../core/combat/spell-catalog';
 import { CombatView } from './combat-view';
+import { fakeCombatClient } from '../../../core/combat/combat-client-testing';
 
 // A long jump the server stopped early (a hidden creature holds the landing) keeps the generic note.
 
@@ -55,7 +56,7 @@ describe('a jump stopped early keeps its note', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
-        { provide: CombatClient, useValue: api },
+        { provide: CombatClient, useValue: fakeCombatClient(api) },
         { provide: RosterClient, useValue: { list: async () => [] } },
         { provide: MapsClient, useValue: { layers: async () => ({}) } },
         { provide: SpellCatalog, useValue: { details: async () => null } },
@@ -89,13 +90,12 @@ describe('a jump stopped early keeps its note', () => {
     await fixture.whenStable();
 
     const view = fixture.componentInstance as unknown as {
-      confirmJump(r: unknown): Promise<void>;
-      moveNote(): string;
+      moves: { confirmJump(r: unknown): Promise<void>; moveNote(): string };
     };
-    await view.confirmJump({ kind: 'long', square: { col: 3, row: 3 } });
+    await view.moves.confirmJump({ kind: 'long', square: { col: 3, row: 3 } });
 
-    expect(view.moveNote()).toContain('parou antes');
-    expect(view.moveNote()).not.toContain('saltou');
+    expect(view.moves.moveNote()).toContain('parou antes');
+    expect(view.moves.moveNote()).not.toContain('saltou');
   });
 });
 
@@ -127,7 +127,7 @@ describe("the master's drag that a door stopped", () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
-        { provide: CombatClient, useValue: api },
+        { provide: CombatClient, useValue: fakeCombatClient(api) },
         { provide: RosterClient, useValue: { list: async () => [] } },
         { provide: MapsClient, useValue: { layers: async () => ({}) } },
         { provide: SpellCatalog, useValue: { details: async () => null } },
@@ -160,10 +160,10 @@ describe("the master's drag that a door stopped", () => {
     fixture.detectChanges();
     await fixture.whenStable();
     const view = fixture.componentInstance as unknown as {
-      drop(d: { id: string; col: number; row: number }): Promise<void>;
+      moves: { drop(d: { id: string; col: number; row: number }): Promise<void> };
       error(): string;
     };
-    await view.drop({ id: 'g', col: 4, row: 4 });
+    await view.moves.drop({ id: 'g', col: 4, row: 4 });
     return view.error();
   }
 

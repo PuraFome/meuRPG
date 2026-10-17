@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"flag"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -20,6 +18,7 @@ import (
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/goldentest"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -30,11 +29,9 @@ import (
 // revealed to one character, fired, revealed), the treasures (hidden, shown, found)
 // and the submap points that name the parents. Each answer is a golden file
 // (testdata/layers_*.golden.json, ids replaced by names and the times by <time>); run
-// with -update-layers-golden to write them again after a change of behavior that was
+// with -update to write them again after a change of behavior that was
 // meant. The refusals of the calls that write the layers are frozen with their exact
-// words in TestLayersFrozen_Refusals.
-
-var updateLayersGolden = flag.Bool("update-layers-golden", false, "write the golden files of the layers again")
+// words in TestLayers_Refusals.
 
 var (
 	layersIDPattern   = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
@@ -97,23 +94,7 @@ func (g *layersGolden) check(t *testing.T, viewer string, parts map[string]proto
 		t.Fatal(err)
 	}
 	out.WriteByte('\n')
-	path := filepath.Join("testdata", "layers_"+g.table+"_"+viewer+".golden.json")
-	if *updateLayersGolden {
-		if err := os.MkdirAll("testdata", 0o750); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(path, out.Bytes(), 0o600); err != nil {
-			t.Fatal(err)
-		}
-		return
-	}
-	want, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("read the golden file: %v (write it with -update-layers-golden)", err)
-	}
-	if !bytes.Equal(out.Bytes(), want) {
-		t.Errorf("what %s reads differs from %s:\n--- got\n%s\n--- want\n%s", viewer, path, out.Bytes(), want)
-	}
+	goldentest.Compare(t, filepath.Join("testdata", "layers_"+g.table+"_"+viewer+".golden.json"), out.Bytes())
 }
 
 // layersShapeOf is what a refusal says: the code, the message and the reasons of its details.
@@ -319,32 +300,30 @@ func TestLayersGolden_WhatEachViewerReadsWithFog(t *testing.T) {
 		g.name(id, label)
 	}
 	maps := map[string]string{"cave": c.mapID, "crypt": crypt.GetId(), "probe": c.probeMap}
-	viewers := []layersReader{
-		{"master", m, ""},
-		{"master_as_pens", m, c.pens.GetId()},
-		{"master_as_toren", m, c.toren.GetId()},
-		{"ana", c.ana, ""},
-		{"caio", c.caio, ""},
-		{"visitor", visitor, ""},
-	}
-	phase := func(prefix string) {
+	master, asPens, asToren := layersReader{"master", m, ""}, layersReader{"master_as_pens", m, c.pens.GetId()}, layersReader{"master_as_toren", m, c.toren.GetId()}
+	ana, caio, visitorReads := layersReader{"ana", c.ana, ""}, layersReader{"caio", c.caio, ""}, layersReader{"visitor", visitor, ""}
+	// Each state reads the layers again for the viewers it can change: the fog for all of them
+	// (the two characters the master reads as, and the two players, whose own lights differ),
+	// the party's vision for the master, a player and the member with no character, the fog
+	// off for the master, one character and one player.
+	phase := func(prefix string, viewers ...layersReader) {
 		t.Helper()
 		for _, r := range viewers {
 			r.name = prefix + r.name
 			g.read(t, c.campaign, r, maps)
 		}
 	}
-	phase("fog_")
+	phase("fog_", master, asPens, asToren, ana, caio, visitorReads)
 
 	// The party's vision, then the fog off: the same layers read again.
 	if _, err := m.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: c.campaign, MapId: c.mapID, GroupVision: new(true)})); err != nil {
 		t.Fatal(err)
 	}
-	phase("group_")
+	phase("group_", master, ana, visitorReads)
 	if _, err := m.maps.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: c.campaign, MapId: c.mapID, FogEnabled: new(false)})); err != nil {
 		t.Fatal(err)
 	}
-	phase("nofog_")
+	phase("nofog_", master, asPens, ana)
 }
 
 // layersCall runs a call and returns its refusal's words.
@@ -363,9 +342,9 @@ func checkLayersCalls(t *testing.T, calls []layersCall) {
 	}
 }
 
-// TestLayersFrozen_Refusals: every refusal of the calls that paint, set the fog, carry a
+// TestLayers_Refusals: every refusal of the calls that paint, set the fog, carry a
 // light and read the layers, in the order the checks run, with the exact words.
-func TestLayersFrozen_Refusals(t *testing.T) {
+func TestLayers_Refusals(t *testing.T) {
 	t.Parallel()
 	s := newScenes(t, true)
 	m := s.master
@@ -477,10 +456,10 @@ func TestLayersFrozen_Refusals(t *testing.T) {
 	}
 }
 
-// TestLayersFrozen_PaintingCountsAndRevisions: what PaintMapCells answers (the squares that
+// TestLayers_PaintingCountsAndRevisions: what PaintMapCells answers (the squares that
 // changed and the revision the caller reads), and the revisions the other readers see, for
 // each layer; a calibrated map paints a whole door and square by square the rest.
-func TestLayersFrozen_PaintingCountsAndRevisions(t *testing.T) {
+func TestLayers_PaintingCountsAndRevisions(t *testing.T) {
 	t.Parallel()
 	s := newScenes(t, true)
 	m := s.master
@@ -563,10 +542,10 @@ func TestLayersFrozen_PaintingCountsAndRevisions(t *testing.T) {
 	}
 }
 
-// TestLayersFrozen_FogSettingsAnswerAndHints: SetMapFog answers the master's map after the
+// TestLayers_FogSettingsAnswerAndHints: SetMapFog answers the master's map after the
 // change, tells the players only what they read (the switch and the party's vision, never the
 // base light) and only while they see the map; the master hears of every call.
-func TestLayersFrozen_FogSettingsAnswerAndHints(t *testing.T) {
+func TestLayers_FogSettingsAnswerAndHints(t *testing.T) {
 	t.Parallel()
 	s := newScenes(t, true)
 	m := s.master
@@ -622,10 +601,10 @@ func TestLayersFrozen_FogSettingsAnswerAndHints(t *testing.T) {
 	}
 }
 
-// TestLayersFrozen_OpenDoors: the doors a move opens, in the transaction of the move: the
+// TestLayers_OpenDoors: the doors a move opens, in the transaction of the move: the
 // refusals, a map with no grid or nothing painted, a calibrated map (one square comes back for
 // a block), repeated squares and squares outside the grid.
-func TestLayersFrozen_OpenDoors(t *testing.T) {
+func TestLayers_OpenDoors(t *testing.T) {
 	t.Parallel()
 	s := newScenes(t, true)
 	m := s.master
@@ -679,10 +658,10 @@ func TestLayersFrozen_OpenDoors(t *testing.T) {
 	}
 }
 
-// TestLayersFrozen_CarriedLightAnswers: the token SetCarriedLight answers to each caller, and the
+// TestLayers_CarriedLightAnswers: the token SetCarriedLight answers to each caller, and the
 // order of the checks that find the token: a hidden token is no token to a player on a map with no
 // fog, and is there on a fog map.
-func TestLayersFrozen_CarriedLightAnswers(t *testing.T) {
+func TestLayers_CarriedLightAnswers(t *testing.T) {
 	t.Parallel()
 	s := newScenes(t, true)
 	m := s.master

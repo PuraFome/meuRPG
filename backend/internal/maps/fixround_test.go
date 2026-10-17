@@ -10,7 +10,7 @@ import (
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 )
 
-// The fix round of slice 9.3: a triggered trap stays public, found treasure is
+// A triggered trap stays public, found treasure is
 // never deleted silently, the players who know a trap hear of its changes, a
 // hidden token has no light to set, and the master's settings leak no metadata.
 
@@ -19,7 +19,7 @@ func (s *scenes) pointOf(u *user, id string) *mapsv1.MapPoint {
 	return pointByID(u.mustGetMap(s.campaign, s.mapID), id)
 }
 
-// D5: a trap that fired is visible to everyone for good: disarming it keeps it
+// A trap that fired is visible to everyone for good: disarming it keeps it
 // ("Desarmada"), and an edit that does not send the state never re-arms it.
 func TestMR035_ATriggeredTrapStaysPublic(t *testing.T) {
 	t.Parallel()
@@ -86,7 +86,7 @@ func TestMR035_ATriggeredTrapStaysPublic(t *testing.T) {
 	}
 }
 
-// D8: a treasure that was found cannot be deleted, nor its map; unmarked, it can.
+// A treasure that was found cannot be deleted, nor its map; unmarked, it can.
 func TestMR041_FoundTreasureIsNeverDeletedSilently(t *testing.T) {
 	t.Parallel()
 	s := newScenes(t, false)
@@ -191,7 +191,7 @@ func TestRN10_PlayersWhoKnowATrapHearOfItsChanges(t *testing.T) {
 	}
 }
 
-// D6: a player has no light to set on a hidden token, and learns nothing from asking.
+// A player has no light to set on a hidden token, and learns nothing from asking.
 func TestMR036_ACarriedLightOnAHiddenToken(t *testing.T) {
 	t.Parallel()
 	s := newScenes(t, true)

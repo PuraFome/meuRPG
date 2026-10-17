@@ -117,7 +117,7 @@ func EndedByRest(d SpellDuration) string {
 	return RestNone
 }
 
-// RestEnds says a rest of restMinutes (RestMinutes: a short rest's 60 or a
+// RestEnds says a rest of restMinutes (restMinutes: a short rest's 60 or a
 // long rest's 480) is long enough for the spell's whole duration to pass.
 func RestEnds(d SpellDuration, restMinutes int) bool {
 	secs, timed := d.Seconds()

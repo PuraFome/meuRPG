@@ -381,6 +381,20 @@ func wantCode(t *testing.T, call string, err error, want connect.Code) {
 	}
 }
 
+// wantRefusal fails unless err is a Connect error with this code and exactly this message.
+// call names the request in the failure.
+func wantRefusal(t *testing.T, call string, err error, code connect.Code, msg string) {
+	t.Helper()
+	ce, ok := errors.AsType[*connect.Error](err)
+	if !ok {
+		t.Errorf("%s: error = %v, want a connect error %v %q", call, err, code, msg)
+		return
+	}
+	if ce.Code() != code || ce.Message() != msg {
+		t.Errorf("%s: error = %v %q, want %v %q", call, ce.Code(), ce.Message(), code, msg)
+	}
+}
+
 // testDice is the service's DiceModes over the campaigns service, as cmd/api
 // wires it.
 type testDice struct{ camps *campaigns.Service }

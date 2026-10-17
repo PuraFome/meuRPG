@@ -12,6 +12,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -19,7 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
-// Spells that read hit points (MR-014, RN-20, Etapa 8): Sono, Leque Cromático,
+// Spells that read hit points (MR-014, RN-20): Sono, Leque Cromático,
 // the Palavras de Poder, Estabilizar and Cura Completa. The rules say
 // what each one does (effects/spells.json, rules.SpellEffect) and do the
 // arithmetic (combat.ResolvePool and the others, pure); this file reads the
@@ -47,7 +48,7 @@ type fxTarget struct {
 // damage and healing use (RN-02).
 func (s *Service) readFxTarget(ctx context.Context, c *combatTx, t playdb.Combatant) (fxTarget, error) {
 	if holdsHP(t) {
-		return fxTarget{c: t, hp: int(num(t.HpCurrent)), max: int(num(t.HpMax)), temp: int(num(t.HpTemp))}, nil
+		return fxTarget{c: t, hp: int(conv.OrZero(t.HpCurrent)), max: int(conv.OrZero(t.HpMax)), temp: int(conv.OrZero(t.HpTemp))}, nil
 	}
 	v, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, t.CharacterID)
 	if err != nil {
@@ -440,7 +441,7 @@ func (s *Service) raiseCombatantMaxHP(ctx context.Context, c *combatTx, t fxTarg
 	bonusBefore := t.c.HpMaxBonus
 	stronger := max(bonus, bonusBefore)
 	rose := stronger - bonusBefore
-	before, maxBefore := hpOf(t.c), num(t.c.HpMax)
+	before, maxBefore := hpOf(t.c), conv.OrZero(t.c.HpMax)
 	h.Healed, h.Gain, h.Restore, h.MaxBefore, h.BonusBefore = &rose, gainMaximum, &before, &maxBefore, &bonusBefore
 	now := before
 	if rose > 0 {

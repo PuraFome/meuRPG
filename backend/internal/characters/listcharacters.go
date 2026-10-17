@@ -9,6 +9,7 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -74,8 +75,8 @@ func (l *characterList) summary(row charactersdb.ListCharactersRow, now time.Tim
 		Kind:              kindFromDB[row.Kind],
 		State:             characterState(row.Status, row.SheetLockedAt),
 		Name:              row.Name,
-		PlayerUserId:      deref(row.PlayerUserID),
-		PlayerDisplayName: l.displayNames[deref(row.PlayerUserID)],
+		PlayerUserId:      conv.OrZero(row.PlayerUserID),
+		PlayerDisplayName: l.displayNames[conv.OrZero(row.PlayerUserID)],
 		CreatedAt:         timestamppb.New(row.CreatedAt),
 		Reserved:          row.Reserved,
 	}

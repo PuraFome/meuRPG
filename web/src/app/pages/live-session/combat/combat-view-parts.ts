@@ -10,6 +10,7 @@ import { searchRoute } from '../../../core/traps/trap-search';
 import { acts } from '../../../core/combat/joint-turn';
 import { featureNote } from '../../../core/combat/combat-derived';
 import { CombatSheets } from './combat-sheets';
+import { CombatOffers } from './combat-offers';
 import { MoveFlow } from './move-flow';
 import { ContestHost } from './contest-host';
 import { ContestClient } from '../../../core/combat/contest-client';
@@ -77,20 +78,17 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
     takeAction: (id, key) => this.takeActionFor(id, key),
     openSpend: (id) => this.sheets.actions.spend(id),
   });
-  protected readonly moverId = this.moves.moverId;
-  protected readonly dropStart = this.moves.dropStart;
-  protected readonly moveError = this.moves.moveError;
-  protected readonly moveNote = this.moves.moveNote;
-  protected readonly lockedDoor = this.moves.lockedDoor;
-  protected readonly forcedMove = this.moves.forcedMove;
-  protected readonly forcedNote = this.moves.forcedNote;
-  protected readonly moveJump = this.moves.jump;
-  protected readonly reachOn = this.moves.reachOn;
-  protected readonly moveOptions = this.moves.options;
-  protected readonly canDisengage = this.moves.canDisengage;
-  protected readonly moverJumps = this.moves.jumps;
-  protected readonly masterReach = this.moves.masterReach;
-  protected readonly reachSwitch = this.moves.reachSwitch;
+  /** The master's side of the opportunity attacks: the offer form, his answers and the reactors' attacks (`CombatOffers`). */
+  protected readonly offers = new CombatOffers({
+    api: this.api,
+    calls: this.calls,
+    campaignId: () => this.campaignId(),
+    encounter: () => this.encounter(),
+    toAnswer: () => this.toAnswer(),
+    info: () => this.info(),
+    attack: (offer, key, options) =>
+      this.sheets.reactions.opportunityAttack(offer, key, options, true),
+  });
   /** The player's side of the contests (W7-X): grapple, shove, escape, Hide, Help, and the questions a contest asks. */
   protected readonly contest = new ContestHost({
     dialog: this.dialog,
@@ -108,14 +106,14 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
   // ---- calls ----
 
   protected begin(): Promise<boolean> {
-    return this.calls.run((e) => this.api.begin(this.campaignId(), e.id));
+    return this.calls.run((e) => this.api.turn.begin(this.campaignId(), e.id));
   }
 
   /** `discard`: the master passes the turn although a damage waits. */
   protected nextTurn(discard = false): Promise<boolean> {
     // A death save still due: the server lets the master pass it, but he is asked first, in place.
     if (this.deathDue().length > 0) {
-      this.passAsking.set({ discard });
+      this.deaths.asking.set({ discard });
       return Promise.resolve(false);
     }
     return this.endTurn(discard);
@@ -123,8 +121,8 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
 
   /** "Passar sem rolar": the turn ends with the death save unrolled. */
   protected passUnrolled(): Promise<boolean> {
-    const asked = this.passAsking();
-    this.passAsking.set(null);
+    const asked = this.deaths.asking();
+    this.deaths.asking.set(null);
     return this.endTurn(asked?.discard ?? false);
   }
 
@@ -134,14 +132,14 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
     return this.calls.run((e) => {
       const own = this.own();
       const who = !this.isMaster() && own && acts(e, own) ? own.id : e.currentCombatantId;
-      return this.api.endTurn(this.campaignId(), e.id, who, discard, e.round);
+      return this.api.turn.endTurn(this.campaignId(), e.id, who, discard, e.round);
     });
   }
 
   /** "Revelar" or "Manter escondidas" on a question about hidden creatures (PM-02c state 9). */
   protected answerReveal(a: RevealAnswer): Promise<boolean> {
     return this.calls.run((e) =>
-      this.api.resolveHiddenReveal(this.campaignId(), e.id, a.id, a.reveal),
+      this.api.casts.resolveHiddenReveal(this.campaignId(), e.id, a.id, a.reveal),
     );
   }
 
@@ -160,7 +158,9 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
 
   /** "Encerrar a parte da Brisa": the master ends one member's part. */
   protected endPart(id: string): Promise<boolean> {
-    return this.calls.run((e) => this.api.endTurn(this.campaignId(), e.id, id, false, e.round));
+    return this.calls.run((e) =>
+      this.api.turn.endTurn(this.campaignId(), e.id, id, false, e.round),
+    );
   }
 
   /** A standard action ("Disparada"): it spends the action; Dash doubles the
@@ -173,7 +173,7 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
   /** The same for a combatant of the player's: their character, or one of their creatures. */
   protected takeActionFor(id: string, key: string): Promise<boolean> {
     return this.calls.run(
-      async (e) => (await this.api.takeAction(this.campaignId(), e.id, id, key)).encounter,
+      async (e) => (await this.api.turn.takeAction(this.campaignId(), e.id, id, key)).encounter,
     );
   }
 
@@ -243,7 +243,7 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
       await this.calls.run(
         async (current) =>
           (
-            await this.api.takeAction(
+            await this.api.turn.takeAction(
               this.campaignId(),
               current.id,
               own.id,
@@ -289,7 +289,7 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
       void this.calls.run(
         async (e) =>
           (
-            await this.api.takeAction(
+            await this.api.turn.takeAction(
               this.campaignId(),
               e.id,
               own.id,

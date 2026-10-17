@@ -20,8 +20,8 @@
         [imageHeight]="map()?.image?.height ?? 1"
         backTo="à sua vista"
         (noteChange)="viewNote.set($event)"
-        (gone)="viewAsGone()"
-        (back)="setViewAs(null)"
+        (gone)="viewAsCtl.gone()"
+        (back)="viewAsCtl.set(null)"
       />
     </div>
     <aside class="layout__side" aria-label="Ver como">
@@ -32,7 +32,7 @@
         [selected]="viewAs()"
         [groupVision]="map()?.groupVision ?? false"
         [note]="viewNote()"
-        (choose)="setViewAs($event)"
+        (choose)="viewAsCtl.set($event)"
       />
     </aside>
   </div>
@@ -58,7 +58,7 @@
     (modeChange)="setMode($event)"
     (settingsChange)="paint.settings.set($event)"
     (toggleKind)="toggleKind($event)"
-    (addToken)="addToken($event)"
+    (addToken)="items.addToken($event)"
     (zoomIn)="view()?.zoomIn()"
     (zoomOut)="view()?.zoomOut()"
     (fit)="view()?.fit()"
@@ -95,7 +95,7 @@
           (pointSelect)="requestSelect({ kind: 'point', id: $event })"
           (tokenSelect)="requestSelect({ kind: 'token', id: $event })"
           (emptyClick)="onEmptyClick($event)"
-          (moved)="onMoved($event)"
+          (moved)="items.move($event)"
         >
           <app-editor-overlay
             mapOverlay
@@ -150,21 +150,21 @@
         />
       </div>
       @if (mode() === 'paint' && map(); as m) {
-        <app-fog-panel [campaignId]="campaignId()" [map]="m" (changed)="onMapChanged($event)" (forgotten)="onForgotten()" />
+        <app-fog-panel [campaignId]="campaignId()" [map]="m" (changed)="onMapChanged($event)" (forgotten)="viewAsCtl.forgotten()" />
       }
     </div>
 
     <aside class="layout__side" [attr.aria-label]="mode() === 'paint' ? 'Camadas e grade' : 'Item selecionado'">
       @if (dungeon.rooms(); as d) {
         @if (map(); as m) {
-          <app-dungeon-image [campaignId]="campaignId()" [map]="m" [info]="d" [prepare]="beforeRedraw" (redrawn)="onMapChanged($event)" (refused)="refreshFlags(); reloadDungeon()" />
+          <app-dungeon-image [campaignId]="campaignId()" [map]="m" [info]="d" [prepare]="beforeRedraw" (redrawn)="onMapChanged($event)" (refused)="staleFlags.emit(); dungeonCtl.reload()" />
         }
       } @else if (dungeon.failed()) {
         <div class="mr-notice mr-notice--danger" role="alert">
           <mat-icon aria-hidden="true">error</mat-icon>
           <p>
             <strong>Não deu para ler as salas da masmorra.</strong>
-            <button matButton type="button" (click)="reloadDungeon()">Tentar de novo</button>
+            <button matButton type="button" (click)="dungeonCtl.reload()">Tentar de novo</button>
           </p>
         </div>
       }
@@ -177,7 +177,7 @@
         }
         <app-layers-panel [layers]="paint.painted.layers()" [visible]="paint.visible()" [status]="paint.queue.status()" [active]="paint.canPaint()" [problem]="paint.saveProblem()" [retryable]="paint.queue.retryable()" (visibleChange)="paint.visible.set($event)" (retry)="paint.retrySave()" />
         @if (map(); as m) {
-          <app-grid-panel [campaignId]="campaignId()" [map]="m" [erases]="paint.erases()" [combatRunning]="combatRunning()" (changed)="onMapChanged($event)" (blocked)="refreshFlags()" />
+          <app-grid-panel [campaignId]="campaignId()" [map]="m" [erases]="paint.erases()" [combatRunning]="combatRunning()" (changed)="onMapChanged($event)" (blocked)="staleFlags.emit()" />
         }
       } @else {
         @if (pending() || pendingMode()) {
@@ -186,10 +186,10 @@
               [title]="'Salvar as mudanças em ' + pendingName() + '?'"
               cancelLabel="Continuar editando"
               confirmLabel="Salvar e continuar"
-              (cancel)="keepEditing()"
-              (confirm)="saveAndContinue()"
+              (cancel)="sel.keepEditing()"
+              (confirm)="sel.saveAndContinue()"
             >
-              <button extra matButton type="button" class="ask__discard" (click)="discardAndContinue()">Descartar mudanças</button>
+              <button extra matButton type="button" class="ask__discard" (click)="sel.discardAndContinue()">Descartar mudanças</button>
             </app-map-ask>
           </div>
         }
@@ -204,8 +204,8 @@
                   [saving]="saving()"
                   [error]="panelError()"
                   [focusName]="justCreated()"
-                  (saveRequested)="save()"
-                  (removeConfirmed)="remove()"
+                  (saveRequested)="pointSaves.save()"
+                  (removeConfirmed)="pointSaves.remove()"
                   (dirtyChange)="dirty.set($event)"
                 />
               }
@@ -218,10 +218,10 @@
                   [saving]="saving()"
                   [error]="panelError()"
                   [focusName]="justCreated()"
-                  (saveRequested)="save()"
-                  (removeConfirmed)="remove()"
+                  (saveRequested)="pointSaves.save()"
+                  (removeConfirmed)="pointSaves.remove()"
                   (dirtyChange)="dirty.set($event)"
-                  (pointChange)="setPoint($event)"
+                  (pointChange)="pointSaves.put($event)"
                 />
               }
               @case (Light) {
@@ -231,8 +231,8 @@
                   [saving]="saving()"
                   [error]="panelError()"
                   [focusName]="justCreated()"
-                  (saveRequested)="save()"
-                  (removeConfirmed)="remove()"
+                  (saveRequested)="pointSaves.save()"
+                  (removeConfirmed)="pointSaves.remove()"
                   (dirtyChange)="dirty.set($event)"
                   (reachChange)="lightReach.set($event)"
                 />
@@ -247,8 +247,8 @@
                   [saving]="saving()"
                   [error]="panelError()"
                   [focusName]="justCreated()"
-                  (saveRequested)="save()"
-                  (removeConfirmed)="remove()"
+                  (saveRequested)="pointSaves.save()"
+                  (removeConfirmed)="pointSaves.remove()"
                   (sceneActionsChange)="setSceneActions(p, $event)"
                   (cluesChange)="setClues(p, $event)"
                   (imagesChange)="setImages(p, $event)"
@@ -269,16 +269,16 @@
             </p>
             <div class="tk__actions">
               @if (!token.creatureId) {
-                <button matButton="outlined" type="button" (click)="toggleTokenHidden()">
+                <button matButton="outlined" type="button" (click)="items.toggleTokenHidden()">
                   {{ token.hidden ? 'Revelar aos jogadores' : 'Esconder' }}
                 </button>
               }
-              <button matButton type="button" class="tk__remove" (click)="removeToken()">Remover do mapa</button>
+              <button matButton type="button" class="tk__remove" (click)="items.removeToken()">Remover do mapa</button>
             </div>
           </section>
         } @else {
           @if (dungeon.rooms(); as d) {
-            <app-dungeon-rooms [campaignId]="campaignId()" [mapId]="mapId()" [info]="d" [state]="state()" (outline)="onRoomOutline($event)" (changed)="reloadDungeon()" />
+            <app-dungeon-rooms [campaignId]="campaignId()" [mapId]="mapId()" [info]="d" [state]="state()" (outline)="dungeonCtl.outline($event)" (changed)="dungeonCtl.reload()" />
           }
           @if (map()?.fogEnabled && viewAsPeople().length > 0) {
             <app-view-as-list
@@ -287,7 +287,7 @@
               [total]="counts.total()"
               [selected]="null"
               [groupVision]="map()?.groupVision ?? false"
-              (choose)="setViewAs($event)"
+              (choose)="viewAsCtl.set($event)"
             />
           } @else if (map()?.fogEnabled && rosterLoaded()) {
             <p class="mr-notice mr-notice--neutral" role="note">

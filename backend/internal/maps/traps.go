@@ -3,7 +3,6 @@ package maps
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -22,8 +21,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 )
 
-// Traps, treasure and who knows about them (MR-035, MR-041; Etapa 9, D5, D8;
-// RN-10).
+// Traps, treasure and who knows about them (MR-035, MR-041, RN-10).
 //
 // A trap is hidden from a player until it was revealed to one of their
 // characters (a row in map_point_reveals), revealed to everyone (the point's
@@ -279,12 +277,9 @@ func (s *Service) lockPoint(ctx context.Context, q *mapsdb.Queries, campaignID, 
 	if err != nil {
 		return mapsdb.Map{}, mapsdb.MapPoint{}, err
 	}
-	p, err := q.GetMapPointForUpdate(ctx, mapsdb.GetMapPointForUpdateParams{MapID: mapID, ID: pointID})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return mapsdb.Map{}, mapsdb.MapPoint{}, errPointNotFound()
-	}
+	p, err := findPointForUpdate(ctx, q, mapID, pointID)
 	if err != nil {
-		return mapsdb.Map{}, mapsdb.MapPoint{}, fmt.Errorf("find point: %w", err)
+		return mapsdb.Map{}, mapsdb.MapPoint{}, err
 	}
 	if p.Kind != kindToDB[kind] {
 		return mapsdb.Map{}, mapsdb.MapPoint{}, badSpec("the point is not a %s point", kind.String()[len("MAP_POINT_KIND_"):])
@@ -319,8 +314,9 @@ func (s *Service) RevealTrap(
 
 	var res trapReveal
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		res = trapReveal{}
-		return s.revealTrapIn(ctx, tx, m, trapRevealCall{mapID: mapID, pointID: pointID, all: all, ids: ids, userOf: userOf}, &res)
+		var err error
+		res, err = s.revealTrapTx(ctx, tx, m, trapRevealCall{mapID: mapID, pointID: pointID, all: all, ids: ids, userOf: userOf})
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "reveal a trap", err)
@@ -360,65 +356,59 @@ type trapReveal struct {
 	changed  bool
 }
 
-// revealTrapIn is the transaction of RevealTrap: lock the trap, reveal it, and record the
+// revealTrapTx is the transaction of RevealTrap: lock the trap, reveal it, and record the
 // reveal when it changed something.
-func (s *Service) revealTrapIn(ctx context.Context, tx pgx.Tx, m authz.Membership, call trapRevealCall, res *trapReveal) error {
+func (s *Service) revealTrapTx(ctx context.Context, tx pgx.Tx, m authz.Membership, call trapRevealCall) (trapReveal, error) {
 	q := s.queries.WithTx(tx)
 	mapRow, before, err := s.lockPoint(ctx, q, m.CampaignID, call.mapID, call.pointID, mapsv1.MapPointKind_MAP_POINT_KIND_TRAP)
 	if err != nil {
-		return err
+		return trapReveal{}, err
 	}
-	res.mapRow = mapRow
+	res := trapReveal{mapRow: mapRow, after: before}
 	now := s.now()
-	res.after = before
 	if call.all {
-		if res.after, err = s.revealToAll(ctx, q, m.CampaignID, before); err != nil {
-			return err
+		reveal := true // as the master's "revealed" switch does
+		if res.after, err = s.applyPointChange(ctx, q, m.CampaignID, before, pointChange{revealed: &reveal}); err != nil {
+			return trapReveal{}, err
 		}
 		res.changed = before.RevealedAt == nil
 	}
-	gave, err := s.revealToCharacters(ctx, q, call, now, res)
+	gave, newUsers, err := s.revealToCharacters(ctx, q, call, now)
 	if err != nil {
-		return err
+		return trapReveal{}, err
 	}
+	res.newUsers = newUsers
 	if !res.changed && len(gave) == 0 {
-		return nil // everyone it names already knew: nothing changes, nothing is recorded
+		return res, nil // everyone it names already knew: nothing changes, nothing is recorded
 	}
 	res.changed = true
 	payload, err := json.Marshal(trapRevealedEvent{PointID: call.pointID, CharacterIDs: gave, All: call.all})
 	if err != nil {
-		return fmt.Errorf("encode the event payload: %w", err)
+		return trapReveal{}, fmt.Errorf("encode the event payload: %w", err)
 	}
 	// With no open session nothing is written here: the reveal is still made.
 	if _, err := s.live.AppendEvent(ctx, tx, m.CampaignID, eventTrapRevealed, m.UserID, payload, now); err != nil {
-		return fmt.Errorf("record the reveal: %w", err)
+		return trapReveal{}, fmt.Errorf("record the reveal: %w", err)
 	}
-	return nil
+	return res, nil
 }
 
-// revealToAll makes the trap public, as the master's "revealed" switch does.
-func (s *Service) revealToAll(ctx context.Context, q *mapsdb.Queries, campaignID string, before mapsdb.MapPoint) (mapsdb.MapPoint, error) {
-	reveal := true
-	return s.applyPointChange(ctx, q, campaignID, before, pointChange{revealed: &reveal})
-}
-
-// revealToCharacters writes a reveal for each character of the call, and returns the ones
-// that did not know the trap yet; the players of those are added to res.newUsers.
-func (s *Service) revealToCharacters(ctx context.Context, q *mapsdb.Queries, call trapRevealCall, now time.Time, res *trapReveal) ([]string, error) {
-	var gave []string
+// revealToCharacters writes a reveal for each character of the call. It returns the ones
+// that did not know the trap yet and their players, each once.
+func (s *Service) revealToCharacters(ctx context.Context, q *mapsdb.Queries, call trapRevealCall, now time.Time) (gave, newUsers []string, err error) {
 	for _, id := range call.ids {
 		n, err := q.InsertPointReveal(ctx, mapsdb.InsertPointRevealParams{PointID: call.pointID, CharacterID: id, How: "master", At: now})
 		if err != nil {
-			return nil, fmt.Errorf("reveal the trap: %w", err)
+			return nil, nil, fmt.Errorf("reveal the trap: %w", err)
 		}
 		if n == 1 {
 			gave = append(gave, id)
-			if !slices.Contains(res.newUsers, call.userOf[id]) {
-				res.newUsers = append(res.newUsers, call.userOf[id])
+			if !slices.Contains(newUsers, call.userOf[id]) {
+				newUsers = append(newUsers, call.userOf[id])
 			}
 		}
 	}
-	return gave, nil
+	return gave, newUsers, nil
 }
 
 // mapChangedEvent is the stream event that makes a watcher read the map again.
@@ -446,10 +436,11 @@ func (s *Service) MarkTreasureFound(
 		return nil, err
 	}
 
-	var res treasureChange // changed: this call is the one that found it (a retried transaction starts false again)
+	var res treasureChange // changed: this call is the one that found it
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		res.changed = false
-		return s.markTreasureIn(ctx, tx, m, mapID, pointID, ids, &res)
+		var err error
+		res, err = s.markTreasureFoundTx(ctx, tx, m, mapID, pointID, ids)
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "mark a treasure found", err)
@@ -474,23 +465,24 @@ type treasureChange struct {
 	changed bool
 }
 
-// markTreasureIn is the transaction of MarkTreasureFound: lock the treasure, mark it found
+// markTreasureFoundTx is the transaction of MarkTreasureFound: lock the treasure, mark it found
 // (in the session open now, if any), replace its finders and, when it was not found
 // before, record the find.
-func (s *Service) markTreasureIn(ctx context.Context, tx pgx.Tx, m authz.Membership, mapID, pointID string, ids []string, res *treasureChange) error {
+func (s *Service) markTreasureFoundTx(ctx context.Context, tx pgx.Tx, m authz.Membership, mapID, pointID string, ids []string) (treasureChange, error) {
+	var res treasureChange
 	q := s.queries.WithTx(tx)
 	mapRow, before, err := s.lockPoint(ctx, q, m.CampaignID, mapID, pointID, mapsv1.MapPointKind_MAP_POINT_KIND_TREASURE)
 	if err != nil {
-		return err
+		return treasureChange{}, err
 	}
 	res.mapRow = mapRow
 	if before.TreasureConvertedAwardID != nil {
-		return errTreasureConverted()
+		return treasureChange{}, errTreasureConverted()
 	}
 	// The session open now, if any, is the one whose summary counts it.
 	session, err := s.live.OpenSessionID(ctx, tx, m.CampaignID)
 	if err != nil {
-		return fmt.Errorf("read the open session: %w", err)
+		return treasureChange{}, fmt.Errorf("read the open session: %w", err)
 	}
 	now := s.now()
 	params := mapsdb.SetTreasureFoundParams{MapID: mapID, ID: pointID, FoundAt: now, Now: now}
@@ -498,23 +490,23 @@ func (s *Service) markTreasureIn(ctx context.Context, tx pgx.Tx, m authz.Members
 		params.SessionID = &session
 	}
 	if res.after, err = q.SetTreasureFound(ctx, params); err != nil {
-		return fmt.Errorf("mark the treasure found: %w", err)
+		return treasureChange{}, fmt.Errorf("mark the treasure found: %w", err)
 	}
 	if err := replaceTreasureFinders(ctx, q, pointID, ids); err != nil {
-		return err
+		return treasureChange{}, err
 	}
 	if before.TreasureFoundAt != nil {
-		return nil // already found: only the finders changed, and no new event
+		return res, nil // already found: only the finders changed, and no new event
 	}
 	payload, err := json.Marshal(treasureEvent{PointID: pointID, CharacterIDs: ids, ValuePO: int32PtrValue(res.after.TreasureValuePo)})
 	if err != nil {
-		return fmt.Errorf("encode the event payload: %w", err)
+		return treasureChange{}, fmt.Errorf("encode the event payload: %w", err)
 	}
 	if _, err := s.live.AppendEvent(ctx, tx, m.CampaignID, eventTreasureFound, m.UserID, payload, now); err != nil {
-		return fmt.Errorf("record the find: %w", err)
+		return treasureChange{}, fmt.Errorf("record the find: %w", err)
 	}
 	res.changed = true
-	return nil
+	return res, nil
 }
 
 // replaceTreasureFinders: marking a found treasure again changes who found it, and keeps when.
@@ -546,8 +538,9 @@ func (s *Service) UnmarkTreasureFound(
 
 	var res treasureChange
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		res.changed = false
-		return s.unmarkTreasureIn(ctx, tx, m, mapID, pointID, &res)
+		var err error
+		res, err = s.unmarkTreasureFoundTx(ctx, tx, m, mapID, pointID)
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "unmark a treasure", err)
@@ -563,38 +556,39 @@ func (s *Service) UnmarkTreasureFound(
 	return connect.NewResponse(&mapsv1.UnmarkTreasureFoundResponse{Point: out}), nil
 }
 
-// unmarkTreasureIn is the transaction of UnmarkTreasureFound: a treasure that is not
+// unmarkTreasureFoundTx is the transaction of UnmarkTreasureFound: a treasure that is not
 // found has nothing to unmark; a found one is cleared, its finders forgotten and the
 // change recorded.
-func (s *Service) unmarkTreasureIn(ctx context.Context, tx pgx.Tx, m authz.Membership, mapID, pointID string, res *treasureChange) error {
+func (s *Service) unmarkTreasureFoundTx(ctx context.Context, tx pgx.Tx, m authz.Membership, mapID, pointID string) (treasureChange, error) {
+	var res treasureChange
 	q := s.queries.WithTx(tx)
 	mapRow, before, err := s.lockPoint(ctx, q, m.CampaignID, mapID, pointID, mapsv1.MapPointKind_MAP_POINT_KIND_TREASURE)
 	if err != nil {
-		return err
+		return treasureChange{}, err
 	}
 	res.mapRow, res.after = mapRow, before
 	if before.TreasureFoundAt == nil {
-		return nil // not found: nothing to unmark
+		return res, nil // not found: nothing to unmark
 	}
 	if before.TreasureConvertedAwardID != nil {
-		return errTreasureConverted()
+		return treasureChange{}, errTreasureConverted()
 	}
 	now := s.now()
 	if res.after, err = q.ClearTreasureFound(ctx, mapsdb.ClearTreasureFoundParams{MapID: mapID, ID: pointID, Now: now}); err != nil {
-		return fmt.Errorf("unmark the treasure: %w", err)
+		return treasureChange{}, fmt.Errorf("unmark the treasure: %w", err)
 	}
 	if err := q.DeleteTreasureFinders(ctx, pointID); err != nil {
-		return fmt.Errorf("forget the finders: %w", err)
+		return treasureChange{}, fmt.Errorf("forget the finders: %w", err)
 	}
 	res.changed = true
 	payload, err := json.Marshal(treasureEvent{PointID: pointID, ValuePO: int32PtrValue(res.after.TreasureValuePo)})
 	if err != nil {
-		return fmt.Errorf("encode the event payload: %w", err)
+		return treasureChange{}, fmt.Errorf("encode the event payload: %w", err)
 	}
 	if _, err := s.live.AppendEvent(ctx, tx, m.CampaignID, eventTreasureUnfound, m.UserID, payload, now); err != nil {
-		return fmt.Errorf("record the unmark: %w", err)
+		return treasureChange{}, fmt.Errorf("record the unmark: %w", err)
 	}
-	return nil
+	return res, nil
 }
 
 // trapKnowers returns the players whose characters know a trap that not everyone

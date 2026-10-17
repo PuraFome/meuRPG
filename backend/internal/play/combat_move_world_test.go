@@ -33,7 +33,7 @@ func TestMoveCombatantFrozen_Doors(t *testing.T) {
 	t.Parallel()
 	closed, locked, barred := mapsv1.DoorState_DOOR_STATE_CLOSED, mapsv1.DoorState_DOOR_STATE_LOCKED, mapsv1.DoorState_DOOR_STATE_BARRED
 	nextToTheDoor := standAt(map[string][2]int32{"Toren": {7, 7}})
-	doorLockedRefusal := ptr(blockedBy("DOOR_LOCKED", "the door is locked"))
+	doorLockedRefusal := new(blockedBy("DOOR_LOCKED", "the door is locked"))
 	for _, tc := range []doorMove{
 		{
 			name: "a player through a closed door", door: closed, col: 10,
@@ -44,7 +44,7 @@ func TestMoveCombatantFrozen_Doors(t *testing.T) {
 			want: moveWant{col: 7, row: 7, usedDft: 50, lastDft: 50, locked: true, event: `{"col": 7, "combatant_id": "<Toren>", "cost_dft": 50, "cost_ft": 5, "distance_dft": 50, "distance_ft": 5, "from": {"col": 6, "cover": "none", "placed": true, "row": 7}, "locked_door": true, "on_turn": true, "round": 1, "row": 7, "spent_dft": 50}`},
 		},
 		{name: "a player in front of a locked door", door: locked, setup: nextToTheDoor, col: 10, refused: doorLockedRefusal},
-		{name: "a player at a barred door", door: barred, col: 10, refused: ptr(blockedBy("MOVE_BLOCKED", "a wall, a column or a squeeze is in the way"))},
+		{name: "a player at a barred door", door: barred, col: 10, refused: new(blockedBy("MOVE_BLOCKED", "a wall, a column or a squeeze is in the way"))},
 		{
 			name: "the master through a closed door", door: closed, as: "master", col: 10,
 			want: moveWant{col: 10, row: 7, usedDft: 0, lastDft: 0, event: `{"col": 10, "combatant_id": "<Toren>", "distance_dft": 200, "distance_ft": 20, "from": {"col": 6, "cover": "none", "placed": true, "row": 7}, "on_turn": true, "round": 1, "row": 7}`}, opened: `{"col": 8, "combatant_id": "<Toren>", "from": {"col": 6, "cover": "none", "placed": true, "row": 7}, "round": 1, "row": 7}`,

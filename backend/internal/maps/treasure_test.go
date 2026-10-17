@@ -18,7 +18,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
-// MR-044 (the server of slice 10.10b): the treasure generator. The rules of the
+// MR-044: the treasure generator. The rules of the
 // tables are tested in package rules; these tests prove what the server does with
 // them: the party's level, who may ask, "Pôr no mapa" and what a player never reads.
 

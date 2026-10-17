@@ -1,4 +1,4 @@
-// Package vision is the fog of war's arithmetic (MR-036, Etapa 9, D6): which
+// Package vision is the fog of war's arithmetic (MR-036): which
 // squares of a map a viewer sees, from the light and the walls, with the
 // viewer's senses. It is pure, like package rules (ADR-0008): the scene and the
 // viewers come in, the states of the squares come out. The maps module stores

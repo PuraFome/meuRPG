@@ -6,7 +6,7 @@ import type {
 } from '../../../../gen/meurpg/play/v1/combat_pb';
 import { reactorAttacks } from '../../../core/combat/opportunity';
 import { openWindows, promptView } from '../../../core/combat/reactions';
-import { openSheet } from '../../../shared/sheet/sheet-host';
+import { openSheet, trackOpen } from '../../../shared/sheet/sheet-host';
 import {
   EffectSaveSheet,
   type EffectSaveSheetData,
@@ -66,25 +66,27 @@ export class ReactionSheets {
       diceMode: this.ctx.diceMode(),
       preference: this.ctx.preference(),
     };
-    this.reactionOpen.set(true);
-    openSheet<ReactionSheet, ReactionSheetData, ReactionSheetResult>(
-      this.ctx.dialog,
-      this.ctx.bottomSheet,
-      ReactionSheet,
+    trackOpen(
+      this.reactionOpen,
+      openSheet<ReactionSheet, ReactionSheetData, ReactionSheetResult>(
+        this.ctx.dialog,
+        this.ctx.bottomSheet,
+        ReactionSheet,
+        {
+          data,
+          ariaLabel: promptView(window, e.round)?.ariaLabel ?? 'Reação',
+          alert: true,
+        },
+      ),
       {
-        data,
-        ariaLabel: promptView(window, e.round)?.ariaLabel ?? 'Reação',
-        alert: true,
+        next: (result) => {
+          if (result?.throwWindowId) {
+            this.reactionHandled.add(result.throwWindowId);
+            this.throwBack(result.throwWindowId);
+          }
+        },
       },
-    ).subscribe({
-      next: (result) => {
-        if (result?.throwWindowId) {
-          this.reactionHandled.add(result.throwWindowId);
-          this.throwBack(result.throwWindowId);
-        }
-      },
-      complete: () => this.reactionOpen.set(false),
-    });
+    );
   }
 
   /** The saving throw an effect asks at the end or the start of this player's turn (RN-22): opens by itself, and again from "Rolar o teste". */
@@ -102,13 +104,15 @@ export class ReactionSheets {
       diceMode: this.ctx.diceMode(),
       preference: this.ctx.preference(),
     };
-    this.reactionOpen.set(true);
-    openSheet<EffectSaveSheet, EffectSaveSheetData, void>(
-      this.ctx.dialog,
-      this.ctx.bottomSheet,
-      EffectSaveSheet,
-      { data, ariaLabel: 'Teste de resistência do fim do turno', labelledBy: 'sheet-t' },
-    ).subscribe({ complete: () => this.reactionOpen.set(false) });
+    trackOpen(
+      this.reactionOpen,
+      openSheet<EffectSaveSheet, EffectSaveSheetData, void>(
+        this.ctx.dialog,
+        this.ctx.bottomSheet,
+        EffectSaveSheet,
+        { data, ariaLabel: 'Teste de resistência do fim do turno', labelledBy: 'sheet-t' },
+      ),
+    );
   }
 
   /**
@@ -136,7 +140,7 @@ export class ReactionSheets {
       return;
     }
     const answer = { use: false };
-    void this.ctx.api
+    void this.ctx.api.attacks
       .answerReaction(this.ctx.campaignId(), e.id, windowId, answer, `keep-${windowId}`)
       .then((r) => this.ctx.state().apply(r.encounter))
       .catch(() => undefined);
@@ -155,7 +159,7 @@ export class ReactionSheets {
       offer,
       round: e.round,
       load: async () => {
-        const options = await this.ctx.api.turnOptions(
+        const options = await this.ctx.api.moves.turnOptions(
           this.ctx.campaignId(),
           e.id,
           offer.reactorId,

@@ -24,7 +24,7 @@ func spellEffectsCases() map[string]string {
 		"source": `"source":"SRD"`, "creatures": `"creatures":["monster:wolf"]`, "count": `"count":2`, "attack": `"attack":"none"`,
 		"type": `"type":"beast"`, "options": `"options":[{"count":1,"max_cr":"1"}]`,
 	}
-	// withOnly builds an entry of a kind plus one extra field.
+	// add builds an entry of a kind plus one extra field.
 	add := func(prefix, base string, fields ...string) {
 		for _, f := range fields {
 			cases[prefix+" with "+f] = entry(base + "," + forbidden[f])

@@ -94,18 +94,6 @@ func puzzleMasterCalls() []puzzleMasterCall {
 	}
 }
 
-// wantPuzzleMasterRefusal checks an error's code and message as the app reads them.
-func wantPuzzleMasterRefusal(t *testing.T, call string, err error, code connect.Code, message string) {
-	t.Helper()
-	if err == nil || connect.CodeOf(err) != code {
-		t.Errorf("%s error = %v, want code %v", call, err, code)
-		return
-	}
-	if got := strings.TrimPrefix(err.Error(), code.String()+": "); got != message {
-		t.Errorf("%s message = %q, want %q", call, got, message)
-	}
-}
-
 // Every master call is the master's: a player, a stranger to the campaign and an anonymous caller
 // are refused before the call reads anything.
 func TestPuzzleMasterCallsAreTheMastersOnly(t *testing.T) {
@@ -126,7 +114,7 @@ func TestPuzzleMasterCallsAreTheMastersOnly(t *testing.T) {
 	for _, caller := range callers {
 		for _, call := range puzzleMasterCalls() {
 			err := call.do(t.Context(), caller.c, p.campaignID, puz.GetId())
-			wantPuzzleMasterRefusal(t, call.name+" by "+caller.name, err, caller.code, caller.msg)
+			wantRefusal(t, call.name+" by "+caller.name, err, caller.code, caller.msg)
 		}
 	}
 }
@@ -145,9 +133,9 @@ func TestPuzzleMasterCallsRefuseABadOrUnknownPuzzleID(t *testing.T) {
 			continue
 		}
 		err := call.do(t.Context(), p.pc(p.master), p.campaignID, "nope")
-		wantPuzzleMasterRefusal(t, call.name+" with a bad ID", err, connect.CodeNotFound, "puzzle not found")
+		wantRefusal(t, call.name+" with a bad ID", err, connect.CodeNotFound, "puzzle not found")
 		err = call.do(t.Context(), p.pc(p.master), p.campaignID, newKey())
-		wantPuzzleMasterRefusal(t, call.name+" with an unknown ID", err, connect.CodeNotFound, "puzzle not found")
+		wantRefusal(t, call.name+" with an unknown ID", err, connect.CodeNotFound, "puzzle not found")
 	}
 }
 
@@ -174,7 +162,7 @@ func TestPuzzleMasterCreateReplayAndKey(t *testing.T) {
 		t.Fatalf("ListPuzzles() = %v, %v; want the one puzzle", listed, err)
 	}
 	_, err = p.pc(p.master).CreatePuzzle(t.Context(), connect.NewRequest(req("Outro nome")))
-	wantPuzzleMasterRefusal(t, "a create with a key spent on another request", err, connect.CodeInvalidArgument, "idempotency_key was used for another change")
+	wantRefusal(t, "a create with a key spent on another request", err, connect.CodeInvalidArgument, "idempotency_key was used for another change")
 	// Finding: a create takes any text as its key (idem.Clean does not demand a UUID, unlike the
 	// other calls), and the key makes a puzzle of its own.
 	loose := req("Solto")
@@ -235,11 +223,11 @@ func TestPuzzleMasterUpdateRefusals(t *testing.T) {
 		_, err := p.pc(p.master).UpdatePuzzle(t.Context(), connect.NewRequest(&playv1.UpdatePuzzleRequest{CampaignId: p.campaignID, PuzzleId: id, Name: "Luzes 2", Config: lightsConfig(5)}))
 		return err
 	}
-	wantPuzzleMasterRefusal(t, "an edit of no puzzle", update(newKey()), connect.CodeNotFound, "puzzle not found")
+	wantRefusal(t, "an edit of no puzzle", update(newKey()), connect.CodeNotFound, "puzzle not found")
 	p.show(t, puz.GetId())
 	err := update(puz.GetId())
 	wantPuzzleBlocked(t, "an edit of a shown puzzle", err, playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_ALREADY_SHOWN)
-	wantPuzzleMasterRefusal(t, "an edit of a shown puzzle", err, connect.CodeFailedPrecondition, "the puzzle was shown in a session: it cannot be edited any more")
+	wantRefusal(t, "an edit of a shown puzzle", err, connect.CodeFailedPrecondition, "the puzzle was shown in a session: it cannot be edited any more")
 }
 
 // A reseed of a kind with no generated start is refused; a reseed of a run prepared and not shown
@@ -257,7 +245,7 @@ func TestPuzzleSessionReseedPreparedAndNotGenerated(t *testing.T) {
 	riddle := p.riddle(t, "Enigma")
 	_, err := reseed(riddle.GetId())
 	wantPuzzleBlocked(t, "a reseed of a riddle", err, playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NO_GENERATED_START)
-	wantPuzzleMasterRefusal(t, "a reseed of a riddle", err, connect.CodeFailedPrecondition, "this kind has no generated start")
+	wantRefusal(t, "a reseed of a riddle", err, connect.CodeFailedPrecondition, "this kind has no generated start")
 
 	lights := p.lights(t, "Luzes", 5)
 	one, err := reseed(lights.GetId())
@@ -327,18 +315,18 @@ func TestPuzzleHintTryRefusesBeforeRolling(t *testing.T) {
 		return err
 	}
 	inApp := func(r *playv1.TryPuzzleHintRequest) { r.Roll = &playv1.TryPuzzleHintRequest_RollInApp{RollInApp: true} }
-	wantPuzzleMasterRefusal(t, "a try by a stranger", try(p.h.newUser("Estranho"), puz.GetId(), newKey(), inApp), connect.CodeNotFound, "campaign not found")
-	wantPuzzleMasterRefusal(t, "a try by the master", try(p.master, puz.GetId(), newKey(), inApp), connect.CodePermissionDenied, "only the campaign's player can do this")
-	wantPuzzleMasterRefusal(t, "a try with a bad key", try(p.caio, puz.GetId(), "x", inApp), connect.CodeInvalidArgument, "idempotency_key must be a UUID")
-	wantPuzzleMasterRefusal(t, "a try with a bad ID", try(p.caio, "nope", newKey(), inApp), connect.CodeNotFound, "puzzle not found")
-	wantPuzzleMasterRefusal(t, "a try with roll_in_app false", try(p.caio, puz.GetId(), newKey(), func(r *playv1.TryPuzzleHintRequest) {
+	wantRefusal(t, "a try by a stranger", try(p.h.newUser("Estranho"), puz.GetId(), newKey(), inApp), connect.CodeNotFound, "campaign not found")
+	wantRefusal(t, "a try by the master", try(p.master, puz.GetId(), newKey(), inApp), connect.CodePermissionDenied, "only the campaign's player can do this")
+	wantRefusal(t, "a try with a bad key", try(p.caio, puz.GetId(), "x", inApp), connect.CodeInvalidArgument, "idempotency_key must be a UUID")
+	wantRefusal(t, "a try with a bad ID", try(p.caio, "nope", newKey(), inApp), connect.CodeNotFound, "puzzle not found")
+	wantRefusal(t, "a try with roll_in_app false", try(p.caio, puz.GetId(), newKey(), func(r *playv1.TryPuzzleHintRequest) {
 		r.Roll = &playv1.TryPuzzleHintRequest_RollInApp{}
 	}), connect.CodeInvalidArgument, "roll_in_app must be true")
-	wantPuzzleMasterRefusal(t, "a try with three typed dice", try(p.caio, puz.GetId(), newKey(), func(r *playv1.TryPuzzleHintRequest) { r.D20Faces = []int32{1, 2, 3} }),
+	wantRefusal(t, "a try with three typed dice", try(p.caio, puz.GetId(), newKey(), func(r *playv1.TryPuzzleHintRequest) { r.D20Faces = []int32{1, 2, 3} }),
 		connect.CodeInvalidArgument, "set roll_in_app, d20_face or d20_faces")
-	wantPuzzleMasterRefusal(t, "a try with a typed die out of range", try(p.caio, puz.GetId(), newKey(), func(r *playv1.TryPuzzleHintRequest) { r.D20Faces = []int32{21} }),
+	wantRefusal(t, "a try with a typed die out of range", try(p.caio, puz.GetId(), newKey(), func(r *playv1.TryPuzzleHintRequest) { r.D20Faces = []int32{21} }),
 		connect.CodeInvalidArgument, "d20_faces must be 1 to 20 each")
-	wantPuzzleMasterRefusal(t, "a try with two typed dice and no advantage", try(p.caio, puz.GetId(), newKey(), func(r *playv1.TryPuzzleHintRequest) { r.D20Faces = []int32{3, 4} }),
+	wantRefusal(t, "a try with two typed dice and no advantage", try(p.caio, puz.GetId(), newKey(), func(r *playv1.TryPuzzleHintRequest) { r.D20Faces = []int32{3, 4} }),
 		connect.CodeInvalidArgument, "the roll takes 1 d20: type 1 face(s) in d20_faces")
 	if m := p.masterRun(t, puz.GetId()); len(m.GetHintTries()) != 0 {
 		t.Errorf("a refused try left %d tries", len(m.GetHintTries()))
@@ -355,7 +343,7 @@ func TestPuzzleHintTryNeedsACharacter(t *testing.T) {
 	p.h.join(p.master, p.campaignID, late)
 	_, err := p.tryHint(t, late, puz.GetId(), 12)
 	wantPuzzleBlocked(t, "a try with no character", err, playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_NO_CHARACTER)
-	wantPuzzleMasterRefusal(t, "a try with no character", err, connect.CodeFailedPrecondition, "you have no living character to roll for")
+	wantRefusal(t, "a try with no character", err, connect.CodeFailedPrecondition, "you have no living character to roll for")
 }
 
 // A try that was stopped by a limit, or on a closed puzzle, says so before it rolls anything.
@@ -370,7 +358,7 @@ func TestPuzzleHintTryOnAStoppedPuzzle(t *testing.T) {
 	p.mustMove(t, p.caio, puz.GetId(), riddleMove("luz"))
 	_, err := p.tryHint(t, p.ana, puz.GetId(), 12)
 	wantPuzzleBlocked(t, "a try at a stopped puzzle", err, playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_STOPPED)
-	wantPuzzleMasterRefusal(t, "a try at a stopped puzzle", err, connect.CodeFailedPrecondition, "a limit stopped the puzzle")
+	wantRefusal(t, "a try at a stopped puzzle", err, connect.CodeFailedPrecondition, "a limit stopped the puzzle")
 }
 
 // sameTypedFaces and hintRollProto read a try row without a database.

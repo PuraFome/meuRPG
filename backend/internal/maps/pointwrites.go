@@ -8,7 +8,6 @@ import (
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
 
-	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
@@ -16,12 +15,45 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 )
 
-// The phases of the master's writes to points and tokens (MapService's
-// CreateMapPoint, UpdateMapPoint, DeleteMapPoint, SetMapPointRevealed,
-// PlaceMapToken and RemoveMapToken): check the request, change the rows in one
-// transaction, tell the watchers after the commit. Each handler keeps the
-// order of its checks; who sees a change (RN-10) is decided by the publish
-// helpers in fogwrites.go, which these call exactly as the handlers did.
+// CreateMapPoint implements mapsv1connect.MapServiceHandler.
+func (s *Service) CreateMapPoint(
+	ctx context.Context,
+	req *connect.Request[mapsv1.CreateMapPointRequest],
+) (*connect.Response[mapsv1.CreateMapPointResponse], error) {
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return nil, err
+	}
+	in, err := s.checkNewPoint(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	current, err := s.currentMap(ctx, m.CampaignID)
+	if err != nil {
+		return nil, err
+	}
+	// The key is unique in the campaign (it shares the column of "Pôr no mapa"), and kept with a
+	// hash of the whole request: a retry returns the first point only when it is the same request.
+	scopedKey, requestHash, err := keyOf(m.CampaignID, req.Msg.GetIdempotencyKey(), req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	created, mapRow, replayed, err := s.createPointTx(ctx, m.CampaignID, in, scopedKey, requestHash)
+	if err != nil {
+		return nil, s.dbError(ctx, "create a point", err)
+	}
+	// A new point is hidden: only the master hears about it (MR-009), unless it
+	// is born visible to everyone (a trap created already triggered). A retry announces
+	// nothing: the first call did.
+	if !replayed {
+		s.publishPointsChanged(ctx, m.CampaignID, mapRow, playersSee(in.mapID, mapRow.RevealedAt, current) && everyoneSees(created), created)
+	}
+	out, err := s.masterPoint(ctx, m, created)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&mapsv1.CreateMapPointResponse{Point: out}), nil
+}
 
 // newPoint is a CreateMapPoint request after its checks.
 type newPoint struct {
@@ -159,6 +191,106 @@ func findPointForUpdate(ctx context.Context, q *mapsdb.Queries, mapID, pointID s
 		return p, fmt.Errorf("find point: %w", err)
 	}
 	return p, nil
+}
+
+// UpdateMapPoint implements mapsv1connect.MapServiceHandler.
+func (s *Service) UpdateMapPoint(
+	ctx context.Context,
+	req *connect.Request[mapsv1.UpdateMapPointRequest],
+) (*connect.Response[mapsv1.UpdateMapPointResponse], error) {
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return nil, err
+	}
+	mapID, ok := parseID(req.Msg.GetMapId())
+	if !ok {
+		return nil, errMapNotFound()
+	}
+	pointID, ok := parseID(req.Msg.GetPointId())
+	if !ok {
+		return nil, errPointNotFound()
+	}
+	change, err := pointChangeOf(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+	current, err := s.currentMap(ctx, m.CampaignID)
+	if err != nil {
+		return nil, err
+	}
+	ch, err := s.changePointTx(ctx, m.CampaignID, mapID, pointID, change)
+	if err != nil {
+		return nil, s.dbError(ctx, "update a point", err)
+	}
+	s.announcePointChange(ctx, m.CampaignID, mapID, current, ch)
+	// The open scene shows the point's name and description, and stops being
+	// one when the point changes kind.
+	s.publishSceneChangedIf(ctx, m.CampaignID, pointID)
+	out, err := s.masterPoint(ctx, m, ch.after)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&mapsv1.UpdateMapPointResponse{Point: out}), nil
+}
+
+// applyPointChange checks a change against the point as it is, inside the
+// transaction, and saves it.
+func (s *Service) applyPointChange(ctx context.Context, q *mapsdb.Queries, campaignID string, p mapsdb.MapPoint, c pointChange) (mapsdb.MapPoint, error) {
+	params := s.baseUpdateParams(p)
+	c.overlay(&params)
+	if err := resolvePointTarget(ctx, q, campaignID, p, c, &params); err != nil {
+		return mapsdb.MapPoint{}, err
+	}
+	if c.revealed != nil {
+		params.RevealedAt = revealedAt(p.RevealedAt, *c.revealed, params.Now)
+	}
+	if err := s.applySpecChange(ctx, q, p, c, &params); err != nil {
+		return mapsdb.MapPoint{}, err
+	}
+	if err := checkChangeSceneOnlyData(params.Kind, c); err != nil {
+		return mapsdb.MapPoint{}, err
+	}
+	if err := leaveScene(ctx, q, p, &params); err != nil {
+		return mapsdb.MapPoint{}, err
+	}
+	if err := discoverScene(ctx, q, campaignID, p, params); err != nil {
+		return mapsdb.MapPoint{}, err
+	}
+	out, err := q.UpdateMapPoint(ctx, params)
+	if err != nil {
+		return mapsdb.MapPoint{}, fmt.Errorf("update point: %w", err)
+	}
+	return out, nil
+}
+
+// applySpecChange works out the data of the new kinds (a trap, a treasure's
+// value, a light) for the point after the change, and cleans up what a point
+// that changes kind leaves behind. Each kind needs its own data, and refuses
+// another's; a point keeps what it has unless the request replaces it.
+func (s *Service) applySpecChange(ctx context.Context, q *mapsdb.Queries, p mapsdb.MapPoint, c pointChange, params *mapsdb.UpdateMapPointParams) error {
+	if err := s.applyTrapChange(ctx, q, p, c, params); err != nil {
+		return err
+	}
+	if err := applyTreasureChange(ctx, q, p, c, params); err != nil {
+		return err
+	}
+	return s.applyLightChange(p, c, params)
+}
+
+// pointChange is what the master asks to change in a point. Nil fields
+// stay as they are.
+type pointChange struct {
+	kind        *string
+	name        *string
+	description *string
+	hooks       *string // a SCENE point's private text; "" clears it
+	showDC      *bool   // a SCENE point's "Mostrar a CD aos jogadores"
+	x, y        *int32
+	target      *string // "" removes the target
+	revealed    *bool
+	trap        *mapsv1.TrapSpec
+	treasure    *int32
+	light       *mapsv1.LightSpec
 }
 
 // isEmptyPointChange says that an UpdateMapPoint request names nothing to change.
@@ -357,12 +489,83 @@ func discoverScene(ctx context.Context, q *mapsdb.Queries, campaignID string, p 
 	if params.Kind != scene || params.RevealedAt == nil || (p.RevealedAt != nil && p.Kind == scene) {
 		return nil
 	}
-	// Revealing a scene makes it "discovered" (MR-030, question 61): the
+	// Revealing a scene makes it "discovered" (MR-030): the
 	// group may tag notes with it from now on, even if it is hidden again.
 	if err := q.UpsertSceneDiscovery(ctx, mapsdb.UpsertSceneDiscoveryParams{CampaignID: campaignID, PointID: p.ID, DiscoveredAt: params.Now}); err != nil {
 		return fmt.Errorf("record the scene's discovery: %w", err)
 	}
 	return nil
+}
+
+// DeleteMapPoint implements mapsv1connect.MapServiceHandler.
+func (s *Service) DeleteMapPoint(
+	ctx context.Context,
+	req *connect.Request[mapsv1.DeleteMapPointRequest],
+) (*connect.Response[mapsv1.DeleteMapPointResponse], error) {
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return nil, err
+	}
+	mapID, ok := parseID(req.Msg.GetMapId())
+	if !ok {
+		return nil, errMapNotFound()
+	}
+	pointID, ok := parseID(req.Msg.GetPointId())
+	if !ok {
+		return nil, errPointNotFound()
+	}
+	current, err := s.currentMap(ctx, m.CampaignID)
+	if err != nil {
+		return nil, err
+	}
+	openScene, err := s.live.OpenScenePoint(ctx, m.CampaignID) // the foreign key closes it with the point
+	if err != nil {
+		return nil, s.dbError(ctx, "read the open scene", err)
+	}
+	gone, err := s.deletePointTx(ctx, m.CampaignID, mapID, pointID)
+	if err != nil {
+		return nil, s.dbError(ctx, "delete a point", err)
+	}
+	s.publishPointsChanged(ctx, m.CampaignID, gone.mapRow, playersSee(mapID, gone.mapRow.RevealedAt, current) && everyoneSees(gone.deleted), gone.deleted)
+	s.tellTrapKnowers(m.CampaignID, mapID, gone.mapRow, current, gone.knowers)
+	if openScene == pointID {
+		s.publishSceneChanged(m.CampaignID)
+	}
+	return connect.NewResponse(&mapsv1.DeleteMapPointResponse{}), nil
+}
+
+// SetMapPointRevealed implements mapsv1connect.MapServiceHandler.
+func (s *Service) SetMapPointRevealed(
+	ctx context.Context,
+	req *connect.Request[mapsv1.SetMapPointRevealedRequest],
+) (*connect.Response[mapsv1.SetMapPointRevealedResponse], error) {
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return nil, err
+	}
+	mapID, ok := parseID(req.Msg.GetMapId())
+	if !ok {
+		return nil, errMapNotFound()
+	}
+	pointID, ok := parseID(req.Msg.GetPointId())
+	if !ok {
+		return nil, errPointNotFound()
+	}
+	current, err := s.currentMap(ctx, m.CampaignID)
+	if err != nil {
+		return nil, err
+	}
+	revealed := req.Msg.GetRevealed()
+	ch, err := s.changePointTx(ctx, m.CampaignID, mapID, pointID, pointChange{revealed: &revealed})
+	if err != nil {
+		return nil, s.dbError(ctx, "reveal or hide a point", err)
+	}
+	s.announcePointChange(ctx, m.CampaignID, mapID, current, ch)
+	out, err := s.masterPoint(ctx, m, ch.after)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&mapsv1.SetMapPointRevealedResponse{Point: out}), nil
 }
 
 // pointDeleted is what a deletion leaves to announce.
@@ -415,111 +618,4 @@ func (s *Service) deletePointTx(ctx context.Context, campaignID, mapID, pointID 
 		return nil
 	})
 	return out, err
-}
-
-// tokenPlacement is a token after PlaceMapToken: the row, the row it replaced
-// and whether it is new.
-type tokenPlacement struct {
-	mapRow     mapsdb.Map
-	token, was mapsdb.MapToken
-	placed     bool // a new token, not a move
-}
-
-// putToken inserts the character's token, or moves the one it has.
-func (s *Service) putToken(ctx context.Context, q *mapsdb.Queries, mapID string, x, y int32, character *charactersv1.CharacterSummary, pl *tokenPlacement) error {
-	var err error
-	key := mapsdb.GetMapTokenForUpdateParams{MapID: mapID, CharacterID: character.GetId()}
-	pl.was, err = q.GetMapTokenForUpdate(ctx, key)
-	switch {
-	case errors.Is(err, pgx.ErrNoRows):
-		// A player's character starts visible, an NPC hidden (question
-		// 31 for Samuel): the master reveals an NPC when the group meets
-		// it.
-		pl.token, err = q.InsertMapToken(ctx, mapsdb.InsertMapTokenParams{
-			MapID: mapID, CharacterID: character.GetId(), XBp: x, YBp: y,
-			Hidden:    character.GetKind() != charactersv1.CharacterKind_CHARACTER_KIND_PLAYER,
-			UpdatedAt: s.now(),
-		})
-		pl.placed = true
-	case err == nil:
-		pl.token, err = q.MoveMapToken(ctx, mapsdb.MoveMapTokenParams{
-			MapID: mapID, CharacterID: character.GetId(), XBp: x, YBp: y, UpdatedAt: s.now(),
-		})
-	}
-	if err != nil {
-		return fmt.Errorf("place token: %w", err)
-	}
-	return nil
-}
-
-// placeTokenTx places or moves the character's token in one transaction.
-func (s *Service) placeTokenTx(ctx context.Context, campaignID, mapID string, x, y int32, character *charactersv1.CharacterSummary) (tokenPlacement, error) {
-	var pl tokenPlacement
-	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
-		pl.placed = false
-		var err error
-		if pl.mapRow, err = s.campaignMap(ctx, q, campaignID, mapID); err != nil {
-			return err
-		}
-		return s.putToken(ctx, q, mapID, x, y, character, &pl)
-	})
-	return pl, err
-}
-
-// announceTokenPlaced tells the watchers of a placed or moved token, and lets a
-// trap react to it.
-func (s *Service) announceTokenPlaced(ctx context.Context, m authz.Membership, mapID, current string, pl tokenPlacement, character *charactersv1.CharacterSummary) {
-	// A new token needs its name: the app reads the map again. A move is a
-	// `token_moved`, except for an NPC on a fog map, which reaches a player only as
-	// what they see (publishTokenWritten).
-	var before *mapsdb.MapToken
-	if !pl.placed {
-		before = &pl.was
-	}
-	s.publishTokenWritten(ctx, m.CampaignID, pl.mapRow, current, before, &pl.token, isPlayerCharacter(character), !pl.placed)
-	s.tokenLanded(ctx, m.CampaignID, m.UserID, mapID, pl.token, character) // a trap may fire, or be noticed (MR-035)
-}
-
-// removeCharacterToken takes a character's token off the map and tells the
-// watchers.
-func (s *Service) removeCharacterToken(ctx context.Context, m authz.Membership, mapID, characterID string) error {
-	current, err := s.currentMap(ctx, m.CampaignID)
-	if err != nil {
-		return err
-	}
-	mapRow, deleted, err := s.deleteTokenTx(ctx, m.CampaignID, mapID, characterID)
-	if err != nil {
-		return s.dbError(ctx, "remove a token", err)
-	}
-	// Whose token it was: a dead character's is told as an NPC's, which reaches no
-	// player on a fog map but through what they see.
-	player := false
-	if found, err := s.characters.MapCharacters(ctx, nil, m.CampaignID, []string{characterID}); err == nil && len(found) == 1 {
-		player = isPlayerCharacter(found[0])
-	}
-	s.publishTokenWritten(ctx, m.CampaignID, mapRow, current, &deleted, nil, player, false)
-	return nil
-}
-
-// deleteTokenTx deletes the character's token in one transaction.
-func (s *Service) deleteTokenTx(ctx context.Context, campaignID, mapID, characterID string) (mapsdb.Map, mapsdb.MapToken, error) {
-	var mapRow mapsdb.Map
-	var deleted mapsdb.MapToken
-	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
-		var err error
-		if mapRow, err = s.campaignMap(ctx, q, campaignID, mapID); err != nil {
-			return err
-		}
-		deleted, err = q.DeleteMapToken(ctx, mapsdb.DeleteMapTokenParams{MapID: mapID, CharacterID: characterID})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errTokenNotFound()
-		}
-		if err != nil {
-			return fmt.Errorf("remove token: %w", err)
-		}
-		return nil
-	})
-	return mapRow, deleted, err
 }

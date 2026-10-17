@@ -34,9 +34,9 @@ func (u Usage) clone() Usage {
 	return u
 }
 
-// SlotsFree is how many slots of a spell level (1 to 9) are free.
+// SlotsFree is how many slots of a spell level (1 to rules.MaxSlotLevel) are free.
 func SlotsFree(d rules.Derived, u Usage, level int) int {
-	if level < 1 || level > 9 || level > len(d.SpellSlots) {
+	if level < 1 || level > rules.MaxSlotLevel || level > len(d.SpellSlots) {
 		return 0
 	}
 	return max(d.SpellSlots[level-1]-u.SlotsUsed[level-1], 0)
@@ -50,7 +50,7 @@ func PactSlotsFree(d rules.Derived, u Usage) int {
 	return max(d.PactMagic.Slots-u.PactSlotsUsed, 0)
 }
 
-// SpendSlot uses one slot of the level (1 to 9). ErrNoSlot when none is
+// SpendSlot uses one slot of the level (1 to rules.MaxSlotLevel). ErrNoSlot when none is
 // free.
 func SpendSlot(d rules.Derived, u Usage, level int) (Usage, error) {
 	if SlotsFree(d, u, level) == 0 {

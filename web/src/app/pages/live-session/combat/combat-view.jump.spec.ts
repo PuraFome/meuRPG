@@ -100,7 +100,9 @@ async function mountToren(answer: (method: string, input: unknown) => unknown) {
   await fixture.whenStable();
   return {
     enc,
-    view: fixture.componentInstance as unknown as { confirmJump(r: unknown): Promise<void> },
+    view: fixture.componentInstance as unknown as {
+      moves: { confirmJump(r: unknown): Promise<void> };
+    },
   };
 }
 
@@ -118,8 +120,8 @@ describe('CombatView: a jump', () => {
       }
       return { encounter: enc };
     });
-    await view.confirmJump({ kind: 'high', heightDft: 18 });
-    await view.confirmJump({ kind: 'high', heightDft: 18 });
+    await view.moves.confirmJump({ kind: 'high', heightDft: 18 });
+    await view.moves.confirmJump({ kind: 'high', heightDft: 18 });
 
     expect(keys).toHaveLength(2);
     expect(keys[1]).toBe(keys[0]);
@@ -138,10 +140,10 @@ describe('CombatView: a jump', () => {
       }
       return undefined;
     });
-    await view.confirmJump({ kind: 'long', square: { col: 9, row: 3 }, disengage: true });
+    await view.moves.confirmJump({ kind: 'long', square: { col: 9, row: 3 }, disengage: true });
     expect(calls).toEqual(['action standard:disengage', 'move']);
     calls.length = 0;
-    await view.confirmJump({ kind: 'long', square: { col: 9, row: 3 } });
+    await view.moves.confirmJump({ kind: 'long', square: { col: 9, row: 3 } });
     expect(calls).toEqual(['move']);
   });
 
@@ -154,7 +156,7 @@ describe('CombatView: a jump', () => {
       }
       return undefined;
     });
-    await view.confirmJump({ kind: 'long', square: { col: 9, row: 3 }, disengage: true });
+    await view.moves.confirmJump({ kind: 'long', square: { col: 9, row: 3 }, disengage: true });
     expect(calls).not.toContain('MoveCombatant');
   });
 });

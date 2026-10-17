@@ -6,6 +6,7 @@ import {
   switchedOffKey,
 } from '../../core/characters/character-errors';
 import { ActionKey } from '../../core/connect/idempotency';
+import { IDLE_SAVING, type SavingState } from '../../core/connect/saving-state';
 import type {
   AbilityMethodKey,
   BasicCharacterFormValue,
@@ -14,7 +15,7 @@ import type {
   CreateCharacterInput,
   UpdateCharacterInput,
 } from './character-editor.types';
-import type { ReadyState, SavingState } from './editor-state';
+import type { ReadyState } from './editor-state';
 
 /** The class block a refusal points at (`full.classes[i]`), so the block says so; `null` for any other refusal. */
 export function classBlockOfRefusal(err: unknown): number | null {
@@ -74,7 +75,7 @@ export interface SaveFlowContext {
  * the page. Plain class the editor builds; the editor decides whether the forms may be saved at all.
  */
 export class SaveFlow {
-  readonly state = signal<SavingState>({ status: 'idle' });
+  readonly state = signal<SavingState>(IDLE_SAVING);
   /** The class block a refusal points at (`full.classes[i]`), so the block says so. */
   readonly classProblem = signal<number | null>(null);
   private readonly createKey = new ActionKey();

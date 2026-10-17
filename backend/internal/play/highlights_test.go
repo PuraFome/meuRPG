@@ -609,3 +609,47 @@ func TestMR031_TheMastersNPCCardHasThePortrait(t *testing.T) {
 		t.Errorf("a player's combat names the portrait's image: %s", asJSON(t, player))
 	}
 }
+
+// TestHighlights_ReservedCharactersAreInvisibleToPlayers is the highlights twin of
+// the summary's rule (RN-10): a character given back to the reserve, that fought
+// in an ended combat, is in no category and no row for a player, not even for its
+// former player; the master still reads it.
+func TestHighlights_ReservedCharactersAreInvisibleToPlayers(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	e := a.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: a.goblin.GetId(), Hidden: new(false)}},
+		npcRolls: []int{1},
+		players:  map[string]int32{"Toren": 20, "Pensantus": 15, "Brisa": 10},
+		at:       map[string][2]int32{"Toren": {3, 3}, "Goblin": {4, 3}, "Pensantus": {10, 3}, "Brisa": {11, 3}},
+	})
+	a.h.roller.queue(20, 8, 8)
+	res := a.mustAttack(t, a.master, e, "Toren", battleaxe, "Goblin", inAppRoll)
+	dmg := a.mustDamage(t, a.master, e, res.GetPendingDamage().GetId(), inAppDamage).GetPendingDamage()
+	if dmg.GetStatus() == playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_ROLLED {
+		if _, err := a.settle(t, a.master, e, dmg.GetId(), true); err != nil {
+			t.Fatalf("ApplyPendingDamage() error = %v", err)
+		}
+	}
+	a.endEncounter(t, e)
+	if _, err := a.h.pool.Exec(t.Context(), `UPDATE characters SET reserved = true, player_user_id = NULL WHERE id = $1`, a.toren.GetId()); err != nil {
+		t.Fatalf("reserve the character: %v", err)
+	}
+	// Toren's former player (the owner) reads nothing of him: the reserve hides the
+	// character from players whole, as the session summary does.
+	for who, u := range map[string]*user{"Toren's old player": a.caio, "Pensantus's player": a.ana} {
+		got := a.mustHighlights(t, u, e)
+		if cats := categories(got); len(cats) != 0 {
+			t.Errorf("%s: categories = %q, want none: the only numbers are the reserved character's", who, cats)
+		}
+		for _, c := range got.GetCharacters() {
+			if c.GetName() == "Toren" {
+				t.Errorf("%s: rows = %v, want no row of the reserved Toren", who, got.GetCharacters())
+			}
+		}
+	}
+	m := a.mustHighlights(t, a.master, e)
+	if len(categories(m)) == 0 || !slices.ContainsFunc(m.GetCharacters(), func(c *playv1.CharacterHighlights) bool { return c.GetName() == "Toren" }) {
+		t.Errorf("the master's highlights = %v, want the reserved Toren still in them", m)
+	}
+}

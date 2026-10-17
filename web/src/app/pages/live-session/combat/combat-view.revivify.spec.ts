@@ -28,6 +28,7 @@ import { MapsClient } from '../../../core/maps/maps-client';
 import { RosterClient } from '../../../core/maps/roster-client';
 import { CombatView } from './combat-view';
 import { RevivifySheet } from './revivify-sheet/revivify-sheet';
+import { anyCallCombatClient } from '../../../core/combat/combat-client-testing';
 
 describe('CombatView: Revivificar in the cast list', () => {
   function mount() {
@@ -39,21 +40,17 @@ describe('CombatView: Revivificar in the cast list', () => {
       addListener: () => undefined,
       removeListener: () => undefined,
     }));
-    const api = new Proxy(
-      {},
-      {
-        get: (_t, name: string) =>
-          name === 'turnOptions'
-            ? async () => ({
-                options: create(TurnOptionsSchema, {}),
-                attackTargets: [],
-                spellTargets: [],
-                pendingDamages: [],
-              })
-            : name === 'log'
-              ? async () => ({ rounds: [], undoableEventId: '' })
-              : async () => ({}),
-      },
+    const api = anyCallCombatClient((name) =>
+      name === 'turnOptions'
+        ? async () => ({
+            options: create(TurnOptionsSchema, {}),
+            attackTargets: [],
+            spellTargets: [],
+            pendingDamages: [],
+          })
+        : name === 'log'
+          ? async () => ({ rounds: [], undoableEventId: '' })
+          : async () => ({}),
     );
     const open = vi.fn((..._args: unknown[]) => ({ afterClosed: () => of(undefined) }));
     const state = new CombatState();
@@ -123,8 +120,8 @@ describe('CombatView: Revivificar in the cast list', () => {
   it('opens the Revivificar sheet for the combatant that casts, with the combat to answer to', async () => {
     const { fixture, open } = mount();
     await (
-      fixture.componentInstance as unknown as { openCast(key: string): Promise<void> }
-    ).openCast('spell:revivify');
+      fixture.componentInstance as unknown as { sheets: { cast(key: string): Promise<void> } }
+    ).sheets.cast('spell:revivify');
 
     expect(open).toHaveBeenCalledTimes(1);
     const [component, config] = open.mock.calls[0] as [unknown, { data: Record<string, unknown> }];
@@ -141,8 +138,8 @@ describe('CombatView: Revivificar in the cast list', () => {
   it('keeps the other spells on the cast sheet', async () => {
     const { fixture, open } = mount();
     await (
-      fixture.componentInstance as unknown as { openCast(key: string): Promise<void> }
-    ).openCast('spell:cure-wounds');
+      fixture.componentInstance as unknown as { sheets: { cast(key: string): Promise<void> } }
+    ).sheets.cast('spell:cure-wounds');
 
     // No options are loaded here, so the cast sheet has nothing to open: what matters is that Revivificar's did not.
     expect(open.mock.calls.some(([component]) => component === RevivifySheet)).toBe(false);

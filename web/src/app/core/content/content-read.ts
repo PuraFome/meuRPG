@@ -19,19 +19,9 @@ import {
   names,
 } from './content-read-parts';
 import { bonusText } from './feature-draft';
-import { previewRows, spellToDraft } from './spell-draft';
+import { spellToDraft } from './spell-draft';
+import { previewRows } from './spell-preview';
 import { prerequisiteParts } from './feat-text';
-
-export {
-  type EntryRead,
-  type NameOf,
-  type ReadItem,
-  type ReadRow,
-  type ReadSection,
-  effectLine,
-  ensureStop,
-  featureItem,
-} from './content-read-parts';
 
 function raceAbilitiesRow(r: TableRace, nameOf: NameOf): ReadRow {
   const choice =

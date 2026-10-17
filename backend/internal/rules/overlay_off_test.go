@@ -84,7 +84,7 @@ func TestOverlayOffHidesTheChildrenOfAnOffParent(t *testing.T) {
 		t.Error("the children of an on parent are on")
 	}
 	// OffKeys names what a sheet uses that is off. A sheet that has the off class or
-	// race judges its subclass and subrace by their own switch (question 80)...
+	// race judges its subclass and subrace by their own switch...
 	b := sweepBase(t, c, "class:fighter", "subclass:champion")
 	b = sweepUp(t, c, b, "class:fighter", "subclass:champion", 3)
 	b.Race, b.Subrace = "race:elf", "subrace:high-elf"
@@ -98,7 +98,7 @@ func TestOverlayOffHidesTheChildrenOfAnOffParent(t *testing.T) {
 	if got := c.OffKeys(lacking); !slices.Equal(got, []string{"subclass:champion", "subrace:high-elf"}) {
 		t.Errorf("OffKeys without the parents = %v, want the subclass and the subrace", got)
 	}
-	// An off key never makes a sheet invalid: it keeps working (question 80).
+	// An off key never makes a sheet invalid: it keeps working.
 	if err := Validate(b, c); err != nil {
 		t.Errorf("Validate of a sheet with off options: %v", err)
 	}

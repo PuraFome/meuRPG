@@ -18,7 +18,8 @@ import {
   wizardOptions,
 } from '../../core/levelup/levelup-testing';
 import type { LevelUpClient } from '../../core/levelup/levelup-client';
-import { LevelUpSession, newSpellsTitle } from './level-up-session';
+import { LevelUpSession } from './level-up-session';
+import { newSpellsTitle } from './level-up-gives';
 
 describe('LevelUpSession', () => {
   const client = { rollHitPoints: vi.fn(), preview: vi.fn() };
@@ -132,6 +133,7 @@ describe('LevelUpSession', () => {
     expect(newSpellsTitle(0, false)).toBe('');
     expect(newSpellsTitle(1, false)).toBe('1 magia conhecida');
     expect(newSpellsTitle(2, false)).toBe('2 magias conhecidas');
+    expect(newSpellsTitle(1, true)).toBe('1 magia para o livro');
     expect(newSpellsTitle(2, true)).toBe('2 magias para o livro');
   });
 

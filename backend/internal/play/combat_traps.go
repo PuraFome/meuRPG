@@ -13,6 +13,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -20,7 +21,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// A trap fired in a combat (MR-035, Etapa 9, D5, slice 9.8). The maps module owns
+// A trap fired in a combat (MR-035). The maps module owns
 // the trap (where it is, whether it is armed, who knows it); this file is the
 // combat's side of it: who the trap catches, what the dice do to each combatant
 // and how the master takes it back.
@@ -353,14 +354,14 @@ func attackOutcome(a trapAttackRoll) string {
 
 // trapAttackEventOf is an attack roll as the event keeps it outside a combat: the dice and the result.
 func trapAttackEventOf(a trapAttackRoll) trapAttackEvent {
-	return trapAttackEvent{D20: clampInt32(a.d20), Modifier: clampInt32(a.bonus), Total: clampInt32(a.total), Outcome: attackOutcome(a), TargetAC: clampInt32(a.armorClass)}
+	return trapAttackEvent{D20: conv.Int32(a.d20), Modifier: conv.Int32(a.bonus), Total: conv.Int32(a.total), Outcome: attackOutcome(a), TargetAC: conv.Int32(a.armorClass)}
 }
 
 // trapAttackEventInCombat is trapAttackEventOf with the other d20 of a roll with advantage or
 // disadvantage, which of the two came first, the mode and the circumstances.
 func trapAttackEventInCombat(a trapAttackRoll, sources []combat.Source) trapAttackEvent {
 	ev := trapAttackEventOf(a)
-	ev.D20B, ev.Counted, ev.Mode, ev.Sources = clampInt32(a.other), clampInt32(a.counted), modeKey(a.mode), sourceRecs(sources)
+	ev.D20B, ev.Counted, ev.Mode, ev.Sources = conv.Int32(a.other), conv.Int32(a.counted), modeKey(a.mode), sourceRecs(sources)
 	return ev
 }
 
@@ -377,8 +378,8 @@ func savesEventOf(rs []trapSaveRoll) []saveRoll {
 	var out []saveRoll
 	for _, r := range rs {
 		out = append(out, saveRoll{
-			D20: clampInt32(r.d20), Bonus: clampInt32(r.bonus), Total: clampInt32(r.total), DC: clampInt32(r.dc), Saved: r.saved, Unknown: !r.known, Extra: r.extra,
-			D20B: clampInt32(r.other), Counted: clampInt32(r.counted), RollMode: modeKey(r.mode), Auto: r.auto, Lucky: r.lucky,
+			D20: conv.Int32(r.d20), Bonus: conv.Int32(r.bonus), Total: conv.Int32(r.total), DC: conv.Int32(r.dc), Saved: r.saved, Unknown: !r.known, Extra: r.extra,
+			D20B: conv.Int32(r.other), Counted: conv.Int32(r.counted), RollMode: modeKey(r.mode), Auto: r.auto, Lucky: r.lucky,
 		})
 	}
 	return out
@@ -396,14 +397,14 @@ func (s *Service) trapDamageInCombat(ctx context.Context, c *combatTx, pointID s
 	} else if holdsHP(*who) {
 		status, resolved = pendingApplied, &c.now
 	}
-	amount, err := s.afterResistance(ctx, c, *who, d.damageType, clampInt32(d.amount))
+	amount, err := s.afterResistance(ctx, c, *who, d.damageType, conv.Int32(d.amount))
 	if err != nil {
 		return trapDamageEvent{}, err
 	}
 	p, err := c.q.InsertTrapPendingDamage(ctx, playdb.InsertTrapPendingDamageParams{
 		EncounterID: c.enc.ID, TargetID: who.ID, Status: status, Critical: d.critical,
 		DiceCount: clamp32(d.count, 0, 100), DiceSides: clamp32(d.sides, 0, 100), DiceBonus: clamp32(d.bonus, -1000, 1000),
-		DamageType: d.damageType, Faces: faces32(d.faces), Amount: &amount, RollTotal: new(clampInt32(d.rollTotal)), Half: d.half,
+		DamageType: d.damageType, Faces: faces32(d.faces), Amount: &amount, RollTotal: new(conv.Int32(d.rollTotal)), Half: d.half,
 		CreatedAt: c.now, ResolvedAt: resolved, TrapPointID: &pointID, CriticalMax: clamp32(d.criticalMax, 0, 10000), CriticalMaxRule: d.maxRule,
 	})
 	if err != nil {
@@ -428,7 +429,7 @@ func (s *Service) trapDamageInCombat(ctx context.Context, c *combatTx, pointID s
 func trapDamageEventOf(d trapDamageRoll) trapDamageEvent {
 	return trapDamageEvent{
 		Type: d.damageType, DiceCount: clamp32(d.count, 0, 100), DiceSides: clamp32(d.sides, 0, 100), Bonus: clamp32(d.bonus, -1000, 1000),
-		Faces: faces32(d.faces), RollTotal: clampInt32(d.rollTotal), Critical: d.critical, CriticalMax: clamp32(d.criticalMax, 0, 10000), MaxRule: d.maxRule,
+		Faces: faces32(d.faces), RollTotal: conv.Int32(d.rollTotal), Critical: d.critical, CriticalMax: clamp32(d.criticalMax, 0, 10000), MaxRule: d.maxRule,
 	}
 }
 
@@ -633,7 +634,7 @@ func (s *Service) noticeAfterMove(ctx context.Context, campaignID string, enc pl
 	}
 	ob := maplink.Observer{CharacterID: moved.CharacterID, At: squareOfCombatant(moved)}
 	if isCreature(moved) {
-		eyes, ok, err := s.roster.CreatureEyes(ctx, nil, campaignID, deref(moved.MonsterKey))
+		eyes, ok, err := s.roster.CreatureEyes(ctx, nil, campaignID, conv.OrZero(moved.MonsterKey))
 		if err != nil {
 			s.logger.ErrorContext(ctx, "play: cannot read a creature's senses after a move", "error", err)
 			return

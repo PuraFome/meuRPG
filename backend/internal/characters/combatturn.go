@@ -11,6 +11,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -37,7 +38,7 @@ func (s *Service) fighter(ctx context.Context, tx pgx.Tx, campaignID, characterI
 // is set: only the reads of a combat that ran use it (the log names the attacks of
 // the dead, and their player's page reads the turn options, all disabled).
 func (s *Service) fighterOf(ctx context.Context, tx pgx.Tx, campaignID, characterID string, withDead bool) (kind string, d rules.Derived, content *rules.Content, err error) {
-	id, ok := parseUUID(characterID)
+	id, ok := uid.Canonical(characterID)
 	if !ok {
 		return "", rules.Derived{}, nil, errCharacterNotFound()
 	}

@@ -10,6 +10,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
@@ -36,17 +37,11 @@ type endTurnOutcome struct {
 // readEndTurn reads and checks the request, in the order the answers are given: who may call, the
 // key, the encounter, then the expected member.
 func readEndTurn(ctx context.Context, req *playv1.EndTurnRequest) (authz.Membership, endTurnCall, error) {
-	m, err := authz.RequireCampaignMember(ctx, req.GetCampaignId())
+	m, key, encID, err := memberCall(ctx, req.GetCampaignId(), req.GetIdempotencyKey(), req.GetEncounterId())
 	if err != nil {
 		return m, endTurnCall{}, err
 	}
-	call := endTurnCall{round: req.GetExpectedRound(), discard: req.GetDiscardPendingDamage()}
-	if call.key, err = parseKey(req.GetIdempotencyKey()); err != nil {
-		return m, call, err
-	}
-	if call.encounterID, err = parseCombatID(req.GetEncounterId(), "encounter"); err != nil {
-		return m, call, err
-	}
+	call := endTurnCall{key: key, encounterID: encID, round: req.GetExpectedRound(), discard: req.GetDiscardPendingDamage()}
 	if raw := req.GetExpectedCombatantId(); raw != "" {
 		if call.expected, err = parseCombatID(raw, "combatant"); err != nil {
 			return m, call, err
@@ -99,9 +94,9 @@ func (s *Service) readEndTurnState(ctx context.Context, c *combatTx, m authz.Mem
 	if call.round != 0 && call.round != c.enc.Round {
 		return nil, combatViewer{}, errStaleTurnPart()
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, combatViewer{}, fmt.Errorf("list the combatants: %w", err)
+		return nil, combatViewer{}, err
 	}
 	// A combatant the player does not see is not found, before anything else can
 	// answer differently (a stale turn, a part that ended): so it is on every call.
@@ -229,7 +224,7 @@ func (s *Service) dropPendingDamageOnEnd(ctx context.Context, c *combatTx, m aut
 		tgt, _ := findCombatant(cs, p.TargetID, combatViewer{master: true})
 		if err := insertEvent(ctx, c, eventDamageDiscarded, &m.UserID, nil, actionEvent{
 			Round: c.enc.Round, Secret: secretOf(current, tgt), Actor: current.ID, Target: p.TargetID, Pending: p.ID, Key: p.AttackKey,
-			Amount: num(p.Amount), PrevStatus: p.Status,
+			Amount: conv.OrZero(p.Amount), PrevStatus: p.Status,
 		}); err != nil {
 			return dropped, err
 		}

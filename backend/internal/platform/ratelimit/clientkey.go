@@ -42,7 +42,7 @@ import (
 // So only entries counted from the right are trustworthy. Cloud Run alone
 // (on its run.app URL) appends the address that connected to it, the
 // client's, so the count is 1; Google documents no count for that case, and
-// the first deploy checks it (docs/operations/README.md). Behind an external
+// the first deploy checks it (docs/operations/reference.md, "The client IP"). Behind an external
 // Application Load Balancer, the balancer appends <client-ip>,
 // <load-balancer-ip>, so the count is 2. A count that is too low is safe:
 // every client then lands on a proxy's address, shares one bucket and only

@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"slices"
 
 	"connectrpc.com/connect"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -162,15 +162,7 @@ func (s *Service) UseHitRider(
 	ctx context.Context,
 	req *connect.Request[playv1.UseHitRiderRequest],
 ) (*connect.Response[playv1.UseHitRiderResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
-	if err != nil {
-		return nil, err
-	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
+	m, key, encID, err := memberCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
 	if err != nil {
 		return nil, err
 	}
@@ -197,9 +189,9 @@ func (s *Service) UseHitRider(
 // answerRider answers an offer: the choice is checked, applied (a decline spends nothing) and the
 // offer closed.
 func (s *Service) answerRider(ctx context.Context, c *combatTx, m authz.Membership, riderID string, in playv1.HitRiderChoice) (actionEvent, error) {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return actionEvent{}, fmt.Errorf("list the combatants: %w", err)
+		return actionEvent{}, err
 	}
 	row, attacker, target, err := s.riderOffer(ctx, c, m, cs, riderID)
 	if err != nil {
@@ -265,9 +257,8 @@ func (s *Service) closeRider(ctx context.Context, c *combatTx, row playdb.HitRid
 	if err := c.q.UseHitRider(ctx, playdb.UseHitRiderParams{EncounterID: c.enc.ID, ID: row.ID, Choice: &choice}); err != nil {
 		return actionEvent{}, fmt.Errorf("close the offer: %w", err)
 	}
-	var err error
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return actionEvent{}, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return actionEvent{}, err
 	}
 	c.characterID = &attacker.CharacterID
 	return ev, nil
@@ -388,7 +379,7 @@ func (s *Service) rollRiderSave(ctx context.Context, c *combatTx, m authz.Member
 	if err != nil {
 		return false, err
 	}
-	re.D20, re.Total = clamp32(d20.Face(), 1, 20), clamp32(d20.Total, math.MinInt32, math.MaxInt32)
+	re.D20, re.Total = clamp32(d20.Face(), 1, 20), conv.Int32(d20.Total)
 	return combat.SaveSucceeded(d20.Total, int(dc)), nil
 }
 

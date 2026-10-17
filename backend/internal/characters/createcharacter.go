@@ -12,6 +12,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -139,7 +140,7 @@ func newCharacterKey(m authz.Membership, msg *charactersv1.CreateCharacterReques
 		return nil, nil
 	}
 	// The column is a UUID: the key of this create is the one the app made for the form.
-	if _, ok := parseUUID(key); !ok {
+	if _, ok := uid.Canonical(key); !ok {
 		return nil, invalidArgument(fieldErr("idempotency_key", "must be a UUID"))
 	}
 	scoped := callerCreateKey(m.UserID, key)
@@ -173,7 +174,7 @@ func (s *Service) insertNewCharacter(ctx context.Context, nc *newCharacter) (cha
 		}
 		return nil
 	})
-	if isUniqueViolation(err, "characters_one_living_player_character") {
+	if db.IsUniqueViolation(err, "characters_one_living_player_character") {
 		// Another CreateCharacter of the same player won the race: answer
 		// as the check in the transaction would have.
 		return row, s.livingCharacterRaced(ctx, nc.m)

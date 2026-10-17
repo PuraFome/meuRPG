@@ -192,4 +192,4 @@ ADR-0018 requires that a table class works end to end.
 `TestLevelUpSweepTable` levels from 1 to 20, doing exactly what the options ask, one table class of each casting type (none, full that prepares, full that knows, half, pact) with subclasses (one with features, another with always-prepared spells) and the third casters of two SRD classes (the Fighter's Eldritch Knight, which knows, and the Rogue's Arcane Trickster, which prepares).
 `TestLevelUpSweepTableMulticlass` repeats it with each of them together with an SRD class, in both orders.
 No step may fail `CheckLevelUp` or `Validate`, leave an `Issue` or panic.
-`TestDeriveTableCharacterGolden` pins a table character's sheet at levels 1, 5 and 11 (`testdata/golden/table-character.json`; rewrite with `go test ./internal/rules -run TableCharacterGolden -update`).
+`TestDeriveTableCharacterGolden` pins a table character's sheet at levels 1, 5 and 11 (`testdata/golden/table-character.json`; rewrite with `go test ./internal/rules -update`).

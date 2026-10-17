@@ -35,7 +35,7 @@ func goldenPlan(cols, rows int, seed uint64, withSeen bool) Plan {
 // The pixels and the palette of Render, frozen by a hash for plans that show everything, plans
 // with unseen squares and plans with markers, at sizes that are and are not a multiple of the
 // grid.
-func TestRenderPixelsAreFrozen(t *testing.T) {
+func TestRenderPixels(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		name string
@@ -70,7 +70,7 @@ func TestRenderPixelsAreFrozen(t *testing.T) {
 // too small for the plan is refused by the drawing under it, and the error that comes up is
 // dungeonimg's ErrPlan, not refimg's (frozen as it is: the caller sees one error value or the
 // other depending on which check caught it).
-func TestRenderPlanRefusalsAreFrozen(t *testing.T) {
+func TestRenderPlanRefusals(t *testing.T) {
 	t.Parallel()
 	for name, p := range map[string]Plan{
 		"no columns":       {Cols: 0, Rows: 3},

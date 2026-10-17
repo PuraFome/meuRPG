@@ -20,7 +20,7 @@ func TestResolvePool(t *testing.T) {
 		want      []want
 	}{
 		{
-			// E8-03: 5d8 = 15; Goblin 1 (7) sleeps, 8 are left; the Capitão (27) does not fit.
+			// 5d8 = 15; Goblin 1 (7) sleeps, 8 are left; the Capitão (27) does not fit.
 			name: "Sono in the canonical fight", total: 15,
 			creatures: []HPCreature{{HP: 27}, {HP: 7}},
 			want:      []want{{1, true, PoolAffected, 8}, {0, false, PoolTooHigh, 8}},

@@ -14,6 +14,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -112,8 +113,9 @@ type encounterData struct {
 	// roll mode requests that wait or have an answer to use.
 	states   []playdb.CombatantState
 	requests []playdb.RollModeRequest
-	// holds are the attack rolls that wait for the answer about a Bardic Inspiration die.
-	holds  []playdb.RollHold
+	// holds are the attack rolls that wait for the answer about a Bardic Inspiration die or a Lucky 1,
+	// kept in either table.
+	holds  []heldRoll
 	riders []playdb.HitRider
 }
 
@@ -131,15 +133,36 @@ func loadEncounter(ctx context.Context, q *playdb.Queries, enc playdb.Encounter)
 	if err != nil {
 		return nil, fmt.Errorf("list the roll mode requests: %w", err)
 	}
-	holds, err := q.ListOpenRollHolds(ctx, enc.ID) // the rolls that wait for the answer about a die
+	holds, err := openAttackHolds(ctx, q, enc.ID)
 	if err != nil {
-		return nil, fmt.Errorf("list the held rolls: %w", err)
+		return nil, err
 	}
 	riders, err := q.ListHitRiders(ctx, enc.ID)
 	if err != nil {
 		return nil, fmt.Errorf("list the riders: %w", err)
 	}
 	return &encounterData{enc: enc, cs: cs, states: states, requests: requests, holds: holds, riders: riders}, nil
+}
+
+// openAttackHolds are the weapon attacks of a combat that wait for an answer: the ones roll_holds keeps and the ones a
+// later release keeps in inspiration_holds, in the shape of the gate.
+func openAttackHolds(ctx context.Context, q *playdb.Queries, encounterID string) ([]heldRoll, error) {
+	rolls, err := q.ListOpenRollHolds(ctx, encounterID) // the rolls that wait for the answer about a die
+	if err != nil {
+		return nil, fmt.Errorf("list the held rolls: %w", err)
+	}
+	inspirations, err := q.ListOpenAttackHolds(ctx, &encounterID)
+	if err != nil {
+		return nil, fmt.Errorf("list the held attacks: %w", err)
+	}
+	out := make([]heldRoll, 0, len(rolls)+len(inspirations))
+	for _, row := range rolls {
+		out = append(out, heldOfRollHold(row))
+	}
+	for _, row := range inspirations {
+		out = append(out, heldOfInspirationHold(row))
+	}
+	return out, nil
 }
 
 // turnView is the turn as one viewer sees it (RN-20, joint turns): who acts,
@@ -290,7 +313,7 @@ func (d *encounterData) encounterHeader(v combatViewer) *playv1.Encounter {
 		Name:        e.Name,
 		Status:      statusToProto[e.Status],
 		Round:       e.Round,
-		MapId:       deref(e.MapID),
+		MapId:       conv.OrZero(e.MapID),
 		GridColumns: e.GridColumns,
 		GridRows:    e.GridRows,
 		Mode:        modeProto(e.Mode),
@@ -299,7 +322,7 @@ func (d *encounterData) encounterHeader(v combatViewer) *playv1.Encounter {
 		EndedAt:     timestampOrNil(e.EndedAt),
 	}
 	if v.master {
-		out.MapPointId = deref(e.MapPointID)
+		out.MapPointId = conv.OrZero(e.MapPointID)
 	}
 	return out
 }
@@ -408,7 +431,7 @@ func publicCombatant(c playdb.Combatant, v combatViewer, controls bool) *playv1.
 		DeathSuccesses:     c.DeathSuccesses,
 		DeathFailures:      c.DeathFailures,
 		Conditions:         c.Conditions,
-		ConcentrationSpell: deref(c.ConcentrationSpell),
+		ConcentrationSpell: conv.OrZero(c.ConcentrationSpell),
 		Side:               sideProto(c.Side),
 		Size:               sizeProto(c.Size),
 		CoverMark:          coverDegreeProto(markKeyOf(c)),
@@ -429,9 +452,9 @@ func identityFor(out *playv1.Combatant, c playdb.Combatant, v combatViewer, deta
 		// A creature stands for no character of its own: its owner is public (the
 		// party knows whose it is), the rest is its owner's and the master's.
 		out.OwnerCharacterId = c.CharacterID
-		out.MonsterKey, out.MonsterNamePt = deref(c.MonsterKey), names(deref(c.MonsterKey))
+		out.MonsterKey, out.MonsterNamePt = conv.OrZero(c.MonsterKey), names(conv.OrZero(c.MonsterKey))
 		if detail {
-			out.CreatureId, out.CreatureAttack, out.SummonGroupId = deref(c.CreatureID), creatureAttackToProto[deref(c.SummonAttack)], deref(c.SummonGroupID)
+			out.CreatureId, out.CreatureAttack, out.SummonGroupId = conv.OrZero(c.CreatureID), creatureAttackToProto[conv.OrZero(c.SummonAttack)], conv.OrZero(c.SummonGroupID)
 		}
 	case c.Kind == kindPlayer || v.master:
 		out.CharacterId = c.CharacterID // an NPC's character is the master's secret

@@ -2,7 +2,6 @@ package maps
 
 import (
 	"context"
-	"errors"
 	"slices"
 	"testing"
 	"uuid"
@@ -14,10 +13,10 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// SetMapGrid is frozen here before its phases are split (MR-013, MR-025, RN-24):
+// SetMapGrid (MR-013, MR-025, RN-24):
 // the order of its refusals, the fog rule that meets a map's first grid, and the
 // copy of the image that rule makes for nothing when the map changed meanwhile.
-// The calibration itself (same grid, scale, clear) is frozen by TestMR025_*.
+// The calibration itself (same grid, scale, clear) is in TestMR025_*.
 
 // gridRefusal is what a refused SetMapGrid says.
 type gridRefusal struct {
@@ -27,14 +26,7 @@ type gridRefusal struct {
 
 func wantGridRefusal(t *testing.T, call string, err error, want gridRefusal) {
 	t.Helper()
-	var ce *connect.Error
-	if !errors.As(err, &ce) {
-		t.Errorf("%s error = %v, want a connect error %v %q", call, err, want.code, want.message)
-		return
-	}
-	if ce.Code() != want.code || ce.Message() != want.message {
-		t.Errorf("%s error = %v %q, want %v %q", call, ce.Code(), ce.Message(), want.code, want.message)
-	}
+	wantRefusal(t, call, err, want.code, want.message)
 }
 
 func (u *user) setGridWith(campaignID, mapID string, columns, factor int32) error {

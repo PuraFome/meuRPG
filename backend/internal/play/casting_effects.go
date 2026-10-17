@@ -122,7 +122,7 @@ func (s *Service) finishCastRow(ctx context.Context, c *combatTx, plan castPlan,
 	now := c.now
 	status, reason, endedAt := castActive, (*string)(nil), (*time.Time)(nil)
 	if !lasts {
-		status, reason, endedAt = castEnded, ptr(endInstant), &now
+		status, reason, endedAt = castEnded, new(endInstant), &now
 	}
 	targets, err := json.Marshal(nonNilTargets(out.targets))
 	if err != nil {
@@ -141,8 +141,6 @@ func (s *Service) finishCastRow(ctx context.Context, c *combatTx, plan castPlan,
 	out.row = row
 	return nil
 }
-
-func ptr[T any](v T) *T { return &v }
 
 func nonNilTargets(t []castTarget) []castTarget {
 	if t == nil {

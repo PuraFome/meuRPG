@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
@@ -145,7 +146,7 @@ func (s *Service) publishReactions(ctx context.Context, campaignID string, res c
 // master.
 func (s *Service) publishNote(campaignID, encounterID string, n reactionNote, byID map[string]playdb.Combatant) {
 	w := n.window
-	reactor, hasReactor := byID[deref(w.ReactorID)]
+	reactor, hasReactor := byID[conv.OrZero(w.ReactorID)]
 	audience := []live.Audience{{Master: true}}
 	if hasReactor && reactor.UserID != nil {
 		audience = append(audience, live.Audience{UserID: *reactor.UserID})

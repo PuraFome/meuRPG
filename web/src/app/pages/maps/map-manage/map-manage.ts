@@ -31,7 +31,7 @@ import { MapPinsLegend } from '../../../shared/map-pins/map-pins-legend';
 import { MapLegend } from '../../../shared/map-view/map-legend/map-legend';
 import { MapView } from '../../../shared/map-view/map-view';
 import { GenerateImageButton } from '../../../shared/image-generate/generate-image-button';
-import type { GenerateOutcome } from '../../../shared/image-generate/image-generate-dialog';
+import type { GenerateOutcome } from '../../../shared/image-generate/image-generate.types';
 import { DungeonRooms, type RoomOutline } from '../dungeon-rooms/dungeon-rooms';
 import { EditorOverlay } from '../../../shared/editor-overlay/editor-overlay';
 import { FogPanel } from '../fog-panel/fog-panel';

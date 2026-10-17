@@ -189,11 +189,11 @@ func TestUniqueViolationIsRecognized(t *testing.T) {
 	_, err := h.pool.Exec(t.Context(), `
 		INSERT INTO characters (campaign_id, kind, player_user_id, name, sheet, created_at, updated_at)
 		VALUES ($1, 'player', $2, 'Segundo', '{}', now(), now())`, campaign, player.id)
-	if !isUniqueViolation(err, "characters_one_living_player_character") {
+	if !db.IsUniqueViolation(err, "characters_one_living_player_character") {
 		t.Errorf("second living character error = %v, want the characters_one_living_player_character violation", err)
 	}
-	if isUniqueViolation(err, "game_sessions_one_open_per_campaign") {
-		t.Error("isUniqueViolation() matched another index")
+	if db.IsUniqueViolation(err, "game_sessions_one_open_per_campaign") {
+		t.Error("db.IsUniqueViolation() matched another index")
 	}
 }
 
@@ -313,7 +313,7 @@ func TestGetSpellDetails(t *testing.T) {
 		t.Errorf("GetSpellDetails(cure wounds) = %v", cw)
 	}
 
-	// The spells that read hit points carry their rule (Etapa 8): Sono's pool at its own circle and
+	// The spells that read hit points carry their rule: Sono's pool at its own circle and
 	// what each circle adds, Palavra de Poder's limit, Cura Completa's amount; any other spell has none.
 	sleep, _ := get(player, campaign, "spell:sleep")
 	if e := sleep.GetHitPointEffect(); e.GetKind() != rulesv1.SpellHitPointEffectKind_SPELL_HIT_POINT_EFFECT_KIND_POOL ||

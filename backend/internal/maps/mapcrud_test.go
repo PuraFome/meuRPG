@@ -1,7 +1,6 @@
 package maps
 
 import (
-	"errors"
 	"slices"
 	"strings"
 	"testing"
@@ -14,8 +13,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
-// GetMap, CreateMap, DeleteMap and SetMapRevealed are frozen here before their
-// phases are split (MR-008, MR-009, RN-10, RN-24): the order of their refusals, what
+// GetMap, CreateMap, DeleteMap and SetMapRevealed (MR-008, MR-009, RN-10, RN-24): the order of their refusals, what
 // each viewer reads of a map, and who hears about each write, in which order.
 
 // crudRefusal is what a refused call of these four says.
@@ -27,14 +25,7 @@ type crudRefusal struct {
 
 func wantCrudRefusal(t *testing.T, call string, err error, want crudRefusal) {
 	t.Helper()
-	ce, _ := errors.AsType[*connect.Error](err)
-	if ce == nil {
-		t.Errorf("%s error = %v, want %v %q", call, err, want.code, want.message)
-		return
-	}
-	if ce.Code() != want.code || ce.Message() != want.message {
-		t.Errorf("%s error = %v %q, want %v %q", call, ce.Code(), ce.Message(), want.code, want.message)
-	}
+	wantRefusal(t, call, err, want.code, want.message)
 	if want.reason != mapsv1.MapBlockedReason_MAP_BLOCKED_REASON_UNSPECIFIED {
 		wantMapBlocked(t, call, err, want.reason)
 	}

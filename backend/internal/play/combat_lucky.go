@@ -129,11 +129,11 @@ func luckyOfferView(d *encounterData, c playdb.Combatant, v combatViewer) *playv
 	if !v.master && !v.owns(c) {
 		return nil
 	}
-	for _, row := range d.holds {
-		if row.CombatantID != c.ID || row.Round != d.enc.Round {
+	for _, h := range d.holds {
+		if h.CombatantID != c.ID || derefInt32(h.Round) != d.enc.Round {
 			continue
 		}
-		if h := heldOfRollHold(row); luckyAsks(h) {
+		if luckyAsks(h) {
 			return heldOffer{Hold: h, Asks: askLucky}.luckyOffer()
 		}
 	}
@@ -184,7 +184,7 @@ func (s *Service) AnswerLucky(
 		return nil, err
 	}
 	out, err := s.answerHeld(ctx, m, answerRequest{
-		ref: holdRef{Table: rollHolds, Campaign: m.CampaignID, Encounter: encID, ID: holdID}, key: key, question: askLucky, yes: req.Msg.GetReroll(), in: in,
+		ref: holdRef{Class: attackHold, Campaign: m.CampaignID, Encounter: encID, ID: holdID}, key: key, question: askLucky, yes: req.Msg.GetReroll(), in: in,
 	})
 	if err != nil {
 		return nil, err

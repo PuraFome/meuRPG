@@ -21,6 +21,7 @@ import {
   ShoveOutcome,
 } from '../../../../../gen/meurpg/play/v1/contest_types_pb';
 import { RollAnimator, showOfCheck } from '../../../../shared/roll-overlay/roll-animator';
+import { runBusy } from '../../../../shared/sheet/run-busy';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { type CheckDie, ContestClient } from '../../../../core/combat/contest-client';
@@ -44,12 +45,12 @@ import {
   proneWord,
   skillLine,
   skillName,
-  upFirst,
   whoIs,
   checkNaturalMark,
 } from '../../../../core/combat/contest-view';
 import { ActionKey } from '../../../../core/connect/idempotency';
 import { CheckRollForm } from '../check-roll-form/check-roll-form';
+import { upFirst } from '../../../../core/format/text';
 
 let nextId = 0;
 
@@ -381,14 +382,8 @@ export class ContestCard {
   }
 
   private async run(what: string, call: () => Promise<void>): Promise<void> {
-    this.busy.set(true);
-    this.error.set('');
-    try {
-      await call();
-    } catch (err) {
-      this.error.set(combatErrorMessage(err, what));
-    } finally {
-      this.busy.set(false);
-    }
+    await runBusy(this.busy, this.error, call, (err) =>
+      this.error.set(combatErrorMessage(err, what)),
+    );
   }
 }

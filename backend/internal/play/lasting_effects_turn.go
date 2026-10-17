@@ -8,6 +8,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -152,7 +153,7 @@ func extraActionOf(d *encounterData, who playdb.Combatant) *playv1.ExtraActionOp
 
 // stateName is the Portuguese name of an effect's source, for what the turn calls it.
 func stateName(st playdb.CombatantState) string {
-	if deref(st.SourceKey) == "spell:haste" {
+	if conv.OrZero(st.SourceKey) == "spell:haste" {
 		return "Velocidade"
 	}
 	return "efeito"
@@ -174,7 +175,7 @@ func (s *Service) endEffectsOfLeaver(ctx context.Context, c *combatTx, cs []play
 		return fmt.Errorf("list the effects: %w", err)
 	}
 	rows = slices.DeleteFunc(rows, func(st playdb.CombatantState) bool {
-		return st.CombatantID != who.ID && (!st.Concentration || deref(st.SourceID) != who.ID)
+		return st.CombatantID != who.ID && (!st.Concentration || conv.OrZero(st.SourceID) != who.ID)
 	})
 	return s.endRowsOfLeaver(ctx, c, cs, rows, who)
 }
@@ -307,7 +308,7 @@ func (s *Service) endEffectsOfTheDead(ctx context.Context, c *combatTx, cs []pla
 		return fmt.Errorf("list the effects: %w", err)
 	}
 	rows = slices.DeleteFunc(rows, func(st playdb.CombatantState) bool {
-		return st.CombatantID != who.ID && (!st.Concentration || deref(st.SourceID) != who.ID)
+		return st.CombatantID != who.ID && (!st.Concentration || conv.OrZero(st.SourceID) != who.ID)
 	})
 	if err := s.endRowsOfLeaver(ctx, c, cs, rows, who); err != nil {
 		return err

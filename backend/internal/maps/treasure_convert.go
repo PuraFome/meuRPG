@@ -13,8 +13,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/progression/link"
 )
 
-// What the progression and play modules ask of the treasures (MR-041, MR-032;
-// Etapa 9, D8): the found ones to turn into XP ("Voltar à cidade"), and the PO
+// What the progression and play modules ask of the treasures (MR-041, MR-032): the found ones to turn into XP ("Voltar à cidade"), and the PO
 // found in a session. Plain SQL, not sqlc, so this file adds nothing to the
 // generated queries the other slices share. The types are small and pool-only,
 // like SessionMaps: they need no Service.

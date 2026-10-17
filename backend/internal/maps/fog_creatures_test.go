@@ -16,7 +16,7 @@ import (
 )
 
 // What a druid in Wild Shape sees, the familiar's eyes and the tokens of a character's
-// creatures on a map with the fog of war on (MR-036, MR-037, Etapa 9, slice 9.10).
+// creatures on a map with the fog of war on (MR-036, MR-037).
 // The table is the cave of the designs (fog_test.go) with two more players: Folha, a
 // level 5 druid (half-elf: darkvision 18 m), and Mago, a level 5 wizard with a
 // familiar owl (Nanquim). Every response is read as the app's JSON where it matters.

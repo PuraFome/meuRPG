@@ -24,7 +24,8 @@ import {
   type PendingDamage,
   PendingDamageStatus,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { CombatClient, newKey } from '../../../../core/combat/combat-client';
+import { CombatClient } from '../../../../core/combat/combat-client';
+import { newKey } from '../../../../core/connect/idempotency';
 import { RollAnimator, showOfDice } from '../../../../shared/roll-overlay/roll-animator';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
@@ -32,6 +33,7 @@ import { article } from '../../../../core/combat/combat-log';
 import { DamageBreakdown } from '../damage-parts/damage-breakdown';
 import { pendingCard } from './pending-damage-card';
 import { RollPicker } from '../../../../shared/roll-picker/roll-picker';
+import { runBusy } from '../../../../shared/sheet/run-busy';
 
 /**
  * The damage the master owes a hit (E6-11, E6-12, RN-02): "Rolar dano" for
@@ -136,15 +138,9 @@ export class PendingDamages {
     if (this.busy()) {
       return;
     }
-    this.busy.set(true);
-    this.error.set('');
-    try {
-      await work();
-    } catch (err) {
-      this.error.set(combatErrorMessage(err, 'resolver o dano'));
-    } finally {
-      this.busy.set(false);
-    }
+    await runBusy(this.busy, this.error, work, (err) =>
+      this.error.set(combatErrorMessage(err, 'resolver o dano')),
+    );
   }
 
   protected rollInApp(p: PendingDamage): Promise<void> {
@@ -158,7 +154,7 @@ export class PendingDamages {
   private rolled(p: PendingDamage, die: { inApp: true } | { sum: number }): Promise<void> {
     return this.run(async () => {
       const name = `roll:${p.id}:${JSON.stringify(die)}`;
-      const res = await this.api.rollDamage(
+      const res = await this.api.attacks.rollDamage(
         this.campaignId(),
         this.encounter().id,
         p.id,
@@ -227,7 +223,7 @@ export class PendingDamages {
     return this.run(async () => {
       const ignore = this.ignored()[p.id] ?? [];
       const name = `apply:${p.id}:${amount ?? 'rolled'}:${ignore.join(',')}`;
-      const res = await this.api.applyDamage(
+      const res = await this.api.attacks.applyDamage(
         this.campaignId(),
         this.encounter().id,
         p.id,
@@ -274,7 +270,7 @@ export class PendingDamages {
   /** "Tirar": the extra leaves the damage, with the reason the master gave. */
   protected takeOut(p: PendingDamage, part: { partKey: string; reason: string }): Promise<void> {
     return this.run(async () => {
-      const res = await this.api.removeDamagePart(
+      const res = await this.api.attacks.removeDamagePart(
         this.campaignId(),
         this.encounter().id,
         p.id,
@@ -293,7 +289,11 @@ export class PendingDamages {
 
   protected discard(p: PendingDamage): Promise<void> {
     return this.run(async () => {
-      const res = await this.api.discardDamage(this.campaignId(), this.encounter().id, p.id);
+      const res = await this.api.attacks.discardDamage(
+        this.campaignId(),
+        this.encounter().id,
+        p.id,
+      );
       this.state().apply(res.encounter);
       this.discarding.set(null);
       this.settled.set(`Dano de ${p.amountAfterSteps ?? p.amount} descartado.`);

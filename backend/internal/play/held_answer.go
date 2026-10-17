@@ -62,7 +62,7 @@ func (s *Service) answerHeld(ctx context.Context, m authz.Membership, req answer
 	return s.rerunHeld(ctx, h, a, state)
 }
 
-// heldToAnswer finds the roll the answer is for. The question of a roll in inspiration_holds is its
+// heldToAnswer finds the roll the answer is for. The question of a roll that is not a weapon attack is its
 // player's alone: another's is not found.
 func (s *Service) heldToAnswer(ctx context.Context, m authz.Membership, ref holdRef) (heldRoll, error) {
 	h, err := newHeldStores(s.queries).byID(ctx, ref)
@@ -72,7 +72,7 @@ func (s *Service) heldToAnswer(ctx context.Context, m authz.Membership, ref hold
 	if err != nil {
 		return heldRoll{}, s.dbError(ctx, "find the held roll", err)
 	}
-	if h.table == inspirationHolds {
+	if h.Kind != heldWeaponAttack {
 		if err := s.mayAnswerHeld(ctx, m, h); err != nil {
 			return heldRoll{}, err
 		}
@@ -89,7 +89,7 @@ func errHeldNotFound() error {
 // the question of every other roll is its player's alone (the master cannot, TestTheMasterCannotAnswerAnOutsideHoldToday;
 // E4-7 lets the master answer every question).
 func (s *Service) mayAnswerHeld(ctx context.Context, m authz.Membership, h heldRoll) error {
-	if h.table == inspirationHolds {
+	if h.Kind != heldWeaponAttack {
 		if _, err := authz.RequireCampaignRole(ctx, m.CampaignID, authz.RolePlayer); err != nil {
 			return err //nolint:wrapcheck // the authz refusal, as the RPC gives it
 		}
@@ -174,7 +174,7 @@ func (s *Service) rollAnswer(ctx context.Context, m authz.Membership, h heldRoll
 	if req.question == askDie {
 		return s.rollDieAnswer(ctx, m, h, req, a)
 	}
-	if h.table == rollHolds {
+	if h.Kind == heldWeaponAttack {
 		if err := s.mayAnswerHeld(ctx, m, h); err != nil {
 			return err
 		}

@@ -367,20 +367,24 @@ func TestGetLevelUpOptionsFrozenGolden(t *testing.T) {
 	t.Parallel()
 	tb := newLevelUpTable(t, 2700, 5)
 	labels := map[string]string{tb.pc.GetId(): "<pensantus>", tb.campaign: "<campaign>"}
-	for _, v := range []struct {
-		name string
-		u    *user
-	}{{"owner", tb.owner}, {"master", tb.master}} {
-		o, err := tb.options(v.u, tb.pc)
-		if err != nil {
-			t.Fatalf("GetLevelUpOptions(%s) error = %v", v.name, err)
-		}
-		levelUpGolden(t, "options_pensantus_"+v.name, o, labels)
-		f, err := tb.optionsFor(v.u, tb.pc, "class:fighter")
-		if err != nil {
-			t.Fatalf("GetLevelUpOptions(%s, fighter) error = %v", v.name, err)
-		}
-		levelUpGolden(t, "options_pensantus_fighter_"+v.name, f, labels)
+	// The owner reads exactly what the master reads: the golden is the master's.
+	master, err := tb.options(tb.master, tb.pc)
+	if err != nil {
+		t.Fatalf("GetLevelUpOptions(master) error = %v", err)
+	}
+	masterFighter, err := tb.optionsFor(tb.master, tb.pc, "class:fighter")
+	if err != nil {
+		t.Fatalf("GetLevelUpOptions(master, fighter) error = %v", err)
+	}
+	levelUpGolden(t, "options_pensantus_master", master, labels)
+	levelUpGolden(t, "options_pensantus_fighter_master", masterFighter, labels)
+	owner, err := tb.options(tb.owner, tb.pc)
+	if err != nil || !proto.Equal(owner, master) {
+		t.Errorf("the owner reads %v, %v; want what the master reads", owner, err)
+	}
+	ownerFighter, err := tb.optionsFor(tb.owner, tb.pc, "class:fighter")
+	if err != nil || !proto.Equal(ownerFighter, masterFighter) {
+		t.Errorf("the owner reads %v, %v for the fighter; want what the master reads", ownerFighter, err)
 	}
 	if _, err := tb.roll(tb.owner, tb.pc); err != nil {
 		t.Fatalf("RollLevelUpHitPoints() error = %v", err)

@@ -1,6 +1,6 @@
 import { Component, input } from '@angular/core';
 
-import type { EntryRead as Read } from '../../../core/content/content-read';
+import type { EntryRead as Read } from '../../../core/content/content-read-parts';
 
 /**
  * An entry read in full (E10-01 state 9): the numbers in a panel of rows (dado de vida, deslocamento, habilidades...), then the

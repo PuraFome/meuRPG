@@ -21,8 +21,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// The painted layers of a map and its fog of war settings (MR-034, MR-036,
-// Etapa 9, D2 and D6).
+// The painted layers of a map and its fog of war settings (MR-034, MR-036).
 //
 // Five layers sit on a map's grid: difficult terrain and walls (one bit a
 // square), cover (two bits: none, half, three-quarters), light (two bits: not
@@ -160,7 +159,7 @@ func (s *Service) PaintMapCells(
 	var done paintDone
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
-		done, err = s.paintInTx(ctx, s.queries.WithTx(tx), batch)
+		done, err = s.paintTx(ctx, s.queries.WithTx(tx), batch)
 		return err
 	})
 	if err != nil {
@@ -191,15 +190,13 @@ type paintDone struct {
 	playersToo bool
 }
 
-// paintInTx paints the batch inside the transaction of q. The map's row lock makes
+// paintTx paints the batch inside the transaction of q. The map's row lock makes
 // two batches of paint take turns: each reads the layers the other left.
-func (s *Service) paintInTx(ctx context.Context, q *mapsdb.Queries, b paintBatch) (paintDone, error) {
+func (s *Service) paintTx(ctx context.Context, q *mapsdb.Queries, b paintBatch) (paintDone, error) {
 	done := paintDone{playersToo: b.layer != mapsv1.MapLayer_MAP_LAYER_LIGHT}
 	var err error
-	if done.mapRow, err = q.GetMapForUpdate(ctx, mapsdb.GetMapForUpdateParams{CampaignID: b.campaignID, ID: b.mapID}); errors.Is(err, pgx.ErrNoRows) {
-		return done, errMapNotFound()
-	} else if err != nil {
-		return done, fmt.Errorf("find map: %w", err)
+	if done.mapRow, err = lockMap(ctx, q, b.campaignID, b.mapID); err != nil {
+		return done, err
 	}
 	if done.mapRow.GridColumns == nil {
 		return done, errNoGrid()
@@ -566,7 +563,7 @@ func (s *Service) GetMapLayers(
 }
 
 // readLayersSnapshot reads the map the viewer asks for and its stored layers. The
-// revision in the answer and the layers it counts are one snapshot (audit D-03): read
+// revision in the answer and the layers it counts are one snapshot: read
 // apart, a paint between them gives layers newer than their revision, and the app would
 // not ask again.
 func (s *Service) readLayersSnapshot(ctx context.Context, campaignID, mapID string, v viewer) (mapsdb.ListMapDetailsRow, mapsdb.MapLayer, error) {
@@ -642,16 +639,14 @@ func (s *Service) SetMapFog(
 		return nil, err
 	}
 	before, after, copied, err := s.writeFog(ctx, m, mapID, msg, baseLight, imageCopy)
-	if imageCopy != nil && (err != nil || !copied) {
-		s.deleteFiles(ctx, m.CampaignID, imageCopy.id) // made for nothing
-	}
+	s.discardFogCopy(ctx, m.CampaignID, imageCopy, err != nil || !copied)
 	if err != nil {
 		return nil, s.dbError(ctx, "set a map's fog", err)
 	}
 	// The players hear of what they read (the switch, "Visão do grupo"), not of the
 	// base light, which is the master's.
-	playersRead := before.FogEnabled != after.FogEnabled || before.GroupVision != after.GroupVision
-	s.publishMapChanged(m.CampaignID, mapID, playersRead && playersSee(mapID, after.RevealedAt, current))
+	playersHear := before.FogEnabled != after.FogEnabled || before.GroupVision != after.GroupVision
+	s.publishMapChanged(m.CampaignID, mapID, playersHear && playersSee(mapID, after.RevealedAt, current))
 	// What everyone sees, and remembers, is worked out again (the base light is the
 	// master's, but it moves what the squares look like).
 	if after.FogEnabled {
@@ -688,15 +683,11 @@ func (s *Service) fogImageCopy(ctx context.Context, campaignID, mapID string, ms
 	if !msg.GetFogEnabled() {
 		return nil, nil
 	}
-	row, err := s.queries.GetMap(ctx, mapsdb.GetMapParams{CampaignID: campaignID, ID: mapID})
-	if err == nil && !row.FogEnabled {
-		imageCopy, err := s.prepareFogCopy(ctx, campaignID, mapID, row.ImageID)
-		if err != nil {
-			return nil, s.dbError(ctx, "copy the map's image for the fog", err)
-		}
-		return imageCopy, nil
+	imageCopy, err := s.fogCopyOf(ctx, campaignID, mapID, func(m mapsdb.Map) bool { return !m.FogEnabled })
+	if err != nil {
+		return nil, s.dbError(ctx, "copy the map's image for the fog", err)
 	}
-	return nil, nil
+	return imageCopy, nil
 }
 
 // writeFog sets the fog's settings in one transaction and returns the map's row before
@@ -706,10 +697,8 @@ func (s *Service) writeFog(ctx context.Context, m authz.Membership, mapID string
 		q := s.queries.WithTx(tx)
 		var err error
 		copied = false
-		if before, err = q.GetMapForUpdate(ctx, mapsdb.GetMapForUpdateParams{CampaignID: m.CampaignID, ID: mapID}); errors.Is(err, pgx.ErrNoRows) {
-			return errMapNotFound()
-		} else if err != nil {
-			return fmt.Errorf("find map: %w", err)
+		if before, err = lockMap(ctx, q, m.CampaignID, mapID); err != nil {
+			return err
 		}
 		if msg.GetFogEnabled() && before.GridColumns == nil {
 			return errNoGrid() // the fog is made of squares
@@ -734,11 +723,8 @@ func (s *Service) useFogCopy(ctx context.Context, q *mapsdb.Queries, m authz.Mem
 	if imageCopy == nil || before.FogEnabled || before.ImageID != imageCopy.source.ID {
 		return false, nil
 	}
-	if err := imageCopy.insert(ctx, q, s, m.CampaignID, m.UserID); err != nil {
+	if err := imageCopy.giveMapItsCopy(ctx, q, s, m.CampaignID, m.UserID, before.ID); err != nil {
 		return false, err
-	}
-	if _, err := q.SetMapImageOnly(ctx, mapsdb.SetMapImageOnlyParams{CampaignID: m.CampaignID, ID: before.ID, ImageID: imageCopy.id, Now: s.now()}); err != nil {
-		return false, fmt.Errorf("give the map its copy of the image: %w", err)
 	}
 	return true, nil
 }

@@ -1,15 +1,16 @@
 import type { Encounter, SpellCast } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { dartTargets } from '../../../../core/combat/cast-flow';
+import { type CombatClient } from '../../../../core/combat/combat-client';
 import {
   type AttackDie,
-  type CombatClient,
   type PairDie,
   type PoolDie,
-  newKey,
-} from '../../../../core/combat/combat-client';
+} from '../../../../core/combat/combat-client-types';
+import { newKey } from '../../../../core/connect/idempotency';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import { metamagicChoices } from '../../../../core/resources/metamagic';
 import type { RollAnimator } from '../../../../shared/roll-overlay/roll-animator';
+import { runBusy } from '../../../../shared/sheet/run-busy';
 import type { CastArea } from './cast-area';
 import type { CastChoices } from './cast-choices';
 import type { CastDamage } from './cast-damage';
@@ -69,7 +70,9 @@ export class CastCaller {
       return;
     }
     const { data } = this.s;
-    await this.s.run(
+    await runBusy(
+      this.s.busy,
+      this.s.error,
       async () => {
         const slot = this.area.slotRef();
         const flow = this.area.flow;
@@ -81,7 +84,7 @@ export class CastCaller {
           ? this.area.key.keyFor([slot, area, roll, this.choices.damageType(), sculpted])
           : this.castKey;
         const picked = this.s.picked();
-        const res = await this.host.api.castSpell(
+        const res = await this.host.api.casts.castSpell(
           data.campaignId,
           data.encounterId,
           data.casterId,

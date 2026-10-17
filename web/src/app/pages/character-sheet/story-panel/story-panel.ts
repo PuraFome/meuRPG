@@ -5,10 +5,9 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 
 import { describeCharacterError } from '../../../core/characters/character-errors';
+import { IDLE_SAVING, type SavingState } from '../../../core/connect/saving-state';
 import { FictionNotice } from '../../../shared/fiction-notice/fiction-notice';
 import { CharacterSheetSource, CharacterSheetVm, CharacterStoryVm } from '../character-sheet.types';
-
-type SavingState = { status: 'idle' } | { status: 'saving' } | { status: 'error'; message: string };
 
 interface StoryEntry {
   readonly label: string;
@@ -50,7 +49,7 @@ export class StoryPanel {
   readonly changed = output<CharacterSheetVm>();
 
   protected readonly editing = signal(false);
-  protected readonly saveState = signal<SavingState>({ status: 'idle' });
+  protected readonly saveState = signal<SavingState>(IDLE_SAVING);
 
   protected readonly story = computed(() => this.vm().story ?? emptyStory);
   protected readonly appearance = computed<StoryEntry[]>(() => {

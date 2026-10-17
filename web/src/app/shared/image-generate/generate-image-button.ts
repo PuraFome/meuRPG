@@ -14,7 +14,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { ImageGenClient } from '../../core/images/imagegen-client';
 import type { GenerateOrigin } from '../../core/images/imagegen-copy';
-import type { GenerateOutcome } from './image-generate-dialog';
+import type { GenerateOutcome } from './image-generate.types';
 
 let nextId = 0;
 

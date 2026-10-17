@@ -243,13 +243,20 @@ func decodeUpload(data []byte) (*images.Result, error) {
 // checks the quota. If anything fails after a file was written, the files
 // are deleted again.
 func (s *Service) store(ctx context.Context, m authz.Membership, name string, res *images.Result) (mapsdb.GalleryImage, error) {
-	return s.storeImage(ctx, m.CampaignID, &m.UserID, name, res, false, "", nil, nil)
+	return s.storeImage(ctx, imageStore{campaignID: m.CampaignID, uploadedBy: &m.UserID, name: name, res: res})
 }
 
 // imageStore is one storeImage: what the image is, and who and how it is made.
+// uploadedBy is who made it (nil when nobody is left to name). A generated image
+// (MR-039) says so, with the way it was made (generatedKind), and an edit names its
+// parent, which is kept only if that image still exists inside the transaction: the
+// master may have deleted it meanwhile. finish, when set, runs inside the same
+// transaction after the insert, and an error from it rolls the image back and is
+// returned as it is: the generated image and the request that made it are recorded
+// together, or not at all.
 type imageStore struct {
 	campaignID    string
-	id            string
+	id            string // set by storeImage
 	uploadedBy    *string
 	name          string
 	res           *images.Result
@@ -259,25 +266,18 @@ type imageStore struct {
 	finish        func(ctx context.Context, q *mapsdb.Queries, imageID string) error
 }
 
-// storeImage is store for any image of the campaign: uploadedBy is who made it
-// (nil when nobody is left to name), and a generated image (MR-039) says so and,
-// with the way it was made (generatedKind) and, when it is an edit, names its parent (kept only if that image still exists
-// inside the transaction: the master may have deleted it meanwhile). finish, when
-// set, runs inside the same transaction after the insert, and an error from it
-// rolls the image back and is returned as it is: the generated image and the
-// request that made it are recorded together, or not at all.
-func (s *Service) storeImage(ctx context.Context, campaignID string, uploadedBy *string, name string, res *images.Result, generated bool, generatedKind string, parent *string, finish func(ctx context.Context, q *mapsdb.Queries, imageID string) error) (mapsdb.GalleryImage, error) {
-	st := &imageStore{
-		campaignID: campaignID, id: uuid.New().String(), uploadedBy: uploadedBy, name: name, res: res,
-		generated: generated, generatedKind: generatedKind, parent: parent, finish: finish,
-	}
-	if err := s.writeImageFiles(ctx, st); err != nil {
+// storeImage writes the files of an image of the campaign, then its row in a transaction
+// that checks the quota. If anything fails after a file was written, the files are
+// deleted again.
+func (s *Service) storeImage(ctx context.Context, st imageStore) (mapsdb.GalleryImage, error) {
+	st.id = uuid.New().String()
+	if err := s.writeImageFiles(ctx, &st); err != nil {
 		return mapsdb.GalleryImage{}, err
 	}
 	var row mapsdb.GalleryImage
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
-		row, err = s.insertImageRow(ctx, s.queries.WithTx(tx), st)
+		row, err = s.insertImageRow(ctx, s.queries.WithTx(tx), &st)
 		return err
 	})
 	if err != nil {

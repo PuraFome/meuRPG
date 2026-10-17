@@ -15,7 +15,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 )
 
-// The light a character carries (MR-036, Etapa 9, D6): a light preset's key on
+// The light a character carries (MR-036): a light preset's key on
 // the character's token, set by the player for their own character and by the
 // master for anyone. It moves with the token. The master and the character's
 // own player read it (MapToken.carried_light); what the other players see of it

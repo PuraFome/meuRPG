@@ -210,7 +210,7 @@ type Move struct {
 	Opens []Square
 }
 
-// Move is the cost of a straight move from one square to another (D1): the
+// Move is the cost of a straight move from one square to another: the
 // distance between the centers, exact to the nearest tenth of a foot, plus
 // 5 ft for each square the line enters that is difficult terrain or holds a
 // creature (the SRD counts another creature's space as difficult terrain,
@@ -343,7 +343,7 @@ type Stopped struct {
 }
 
 // MoveUntil is the move as it really happens when the mover may not know all
-// that is on the way (the fog of war, D1, and a trap's area, D5). The player
+// that is on the way (the fog of war, and a trap's area). The player
 // plans the move with what the character sees (Move on what it sees), and the
 // server runs the plan here with what is really there: the move follows the
 // line and ends
@@ -484,7 +484,7 @@ type Reachable struct {
 }
 
 // Reach is every square the mover can get to from one square with movement
-// left tenths of a foot, in one straight move (D1): a circle, shrunk by
+// left tenths of a foot, in one straight move: a circle, shrunk by
 // difficult terrain and creatures on the way, and cut by walls, columns and
 // hostile creatures. The start is not in the list, and neither is a square
 // the mover may not end in. The list is in reading order (row by row), so it

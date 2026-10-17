@@ -7,6 +7,7 @@ import (
 
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/link"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	playlink "github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/vision"
@@ -17,13 +18,13 @@ const basicPassivePerception = 10
 
 // PartyVision returns the campaign's player characters that have a player (the
 // living ones, and the dead ones as Dead), each with what it sees with: its derived darkvision, blindsight and
-// truesight (MR-036, D6). The maps module asks for it to work out what each
+// truesight (MR-036). The maps module asks for it to work out what each
 // player sees on a map with the fog of war on, after its own authorization
 // check, so it takes no caller. It implements maps.CharacterDirectory.
 //
 // The senses come from the derived sheet, so the race and the features count. A
 // druid in Wild Shape sends the beast's senses instead (a wolf has no darkvision),
-// and a player looking through their familiar's eyes sends them as Eyes (MR-037, D6).
+// and a player looking through their familiar's eyes sends them as Eyes (MR-037).
 func (s *Service) PartyVision(ctx context.Context, tx pgx.Tx, campaignID string) ([]link.PartyMember, error) {
 	rows, err := s.queriesIn(tx).ListPartyVision(ctx, campaignID)
 	if err != nil {
@@ -35,7 +36,7 @@ func (s *Service) PartyVision(ctx context.Context, tx pgx.Tx, campaignID string)
 	}
 	out := make([]link.PartyMember, 0, len(rows))
 	for _, row := range rows {
-		user := deref(row.PlayerUserID)
+		user := conv.OrZero(row.PlayerUserID)
 		if user == "" {
 			continue // its player deleted the account (RN-16): nobody sees through it
 		}

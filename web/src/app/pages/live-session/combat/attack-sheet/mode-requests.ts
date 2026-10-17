@@ -9,11 +9,12 @@ import type { CombatClient } from '../../../../core/combat/combat-client';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { ActionKey } from '../../../../core/connect/idempotency';
+import { runBusy } from '../../../../shared/sheet/run-busy';
 import { currentRequest } from './attack-sheet-view';
 
 /** What `ModeRequests` reads from the sheet it asks for. */
 export interface ModeRequestsContext {
-  readonly api: Pick<CombatClient, 'requestRollMode' | 'cancelRollModeRequest'>;
+  readonly api: Pick<CombatClient, 'attacks'>;
   readonly campaignId: string;
   readonly encounterId: string;
   readonly attackerId: string;
@@ -54,7 +55,7 @@ export class ModeRequests {
     this.reason.set('');
     this.asked.set(null);
     if (sent && sent.status === RollModeRequestStatus.PENDING) {
-      void this.host.api
+      void this.host.api.attacks
         .cancelRollModeRequest(
           this.host.campaignId,
           this.host.encounterId,
@@ -72,28 +73,27 @@ export class ModeRequests {
     if (id === null || this.host.busy()) {
       return;
     }
-    this.host.busy.set(true);
-    this.host.error.set('');
-    try {
-      const mode = this.host.chosen();
-      const reason = this.reason().trim();
-      const res = await this.host.api.requestRollMode(
-        this.host.campaignId,
-        this.host.encounterId,
-        this.host.attackerId,
-        this.host.attackKey,
-        id,
-        mode,
-        reason,
-        this.keys.keyFor({ id, mode, reason }),
-      );
-      this.host.state.apply(res.encounter);
-      this.asked.set(res.request);
-    } catch (err) {
-      this.host.error.set(combatErrorMessage(err, 'pedir ao mestre'));
-    } finally {
-      this.host.busy.set(false);
-    }
+    await runBusy(
+      this.host.busy,
+      this.host.error,
+      async () => {
+        const mode = this.host.chosen();
+        const reason = this.reason().trim();
+        const res = await this.host.api.attacks.requestRollMode(
+          this.host.campaignId,
+          this.host.encounterId,
+          this.host.attackerId,
+          this.host.attackKey,
+          id,
+          mode,
+          reason,
+          this.keys.keyFor({ id, mode, reason }),
+        );
+        this.host.state.apply(res.encounter);
+        this.asked.set(res.request);
+      },
+      (err) => this.host.error.set(combatErrorMessage(err, 'pedir ao mestre')),
+    );
   }
 
   /** "Cancelar pedido": the player takes it back and picks again. */
@@ -102,23 +102,22 @@ export class ModeRequests {
     if (!sent || this.host.busy()) {
       return;
     }
-    this.host.busy.set(true);
-    this.host.error.set('');
-    try {
-      const e = await this.host.api.cancelRollModeRequest(
-        this.host.campaignId,
-        this.host.encounterId,
-        sent.id,
-        this.keys.keyFor({ cancel: sent.id }),
-      );
-      this.host.state.apply(e);
-      this.asked.set(null);
-      this.picked.set(null);
-      this.reason.set('');
-    } catch (err) {
-      this.host.error.set(combatErrorMessage(err, 'cancelar o pedido'));
-    } finally {
-      this.host.busy.set(false);
-    }
+    await runBusy(
+      this.host.busy,
+      this.host.error,
+      async () => {
+        const e = await this.host.api.attacks.cancelRollModeRequest(
+          this.host.campaignId,
+          this.host.encounterId,
+          sent.id,
+          this.keys.keyFor({ cancel: sent.id }),
+        );
+        this.host.state.apply(e);
+        this.asked.set(null);
+        this.picked.set(null);
+        this.reason.set('');
+      },
+      (err) => this.host.error.set(combatErrorMessage(err, 'cancelar o pedido')),
+    );
   }
 }

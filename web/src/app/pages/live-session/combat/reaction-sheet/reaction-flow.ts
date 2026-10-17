@@ -9,11 +9,11 @@ import {
   type ReactionWindow,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import type { SlotRow } from '../../../../core/combat/cast-flow';
+import { type CombatClient } from '../../../../core/combat/combat-client';
 import {
-  type CombatClient,
   type ConcentrationAnswer,
   type ReactionAnswer,
-} from '../../../../core/combat/combat-client';
+} from '../../../../core/combat/combat-client-types';
 import { combatErrorMessage, encounterBlocked } from '../../../../core/combat/combat-errors';
 import { luckyReroll } from '../../../../core/combat/lucky-question';
 import { isOptionalReaction } from '../../../../core/combat/reaction-autopass';
@@ -33,6 +33,7 @@ import {
   showOfDie,
   showOfReaction,
 } from '../../../../shared/roll-overlay/roll-animator';
+import { runBusy } from '../../../../shared/sheet/run-busy';
 import type { ReactionSheetData, ReactionSheetResult } from './reaction-sheet-data';
 import { slotAfter } from './reaction-sheet-view';
 
@@ -113,7 +114,7 @@ export class ReactionFlow {
 
   private async tellRolling(windowId: string): Promise<void> {
     try {
-      const e = await this.host.api.markReactionRolling(
+      const e = await this.host.api.attacks.markReactionRolling(
         this.host.data.campaignId,
         this.host.data.encounterId,
         windowId,
@@ -127,35 +128,36 @@ export class ReactionFlow {
 
   async send(answer: ReactionAnswer): Promise<void> {
     const w = this.host.asked();
-    this.busy.set(true);
-    this.error.set('');
-    try {
-      const res = await this.host.api.answerReaction(
-        this.host.data.campaignId,
-        this.host.data.encounterId,
-        w.id,
-        answer,
-        this.keys.keyFor({ window: w.id, answer }),
-      );
-      this.host.data.state.apply(res.encounter);
-      if (!answer.use) {
-        this.host.close();
-        return;
-      }
-      if (res.result) {
-        this.afterSlot.set(slotAfter(answer, this.host.chosen()));
-        this.nextWindowId.set(res.result.nextWindowId);
-        this.answered.set({ kind: 'reaction', result: res.result });
-        // The dice its result sheet shows, tumbling (a physical die is never animated).
-        this.play(() => showOfReaction(res.result));
-      }
-      this.step.set('result');
-      this.typingSave.set(false);
-    } catch (err) {
-      await this.failed(err, answer, 'usar a reação');
-    } finally {
-      this.busy.set(false);
-    }
+    await runBusy(
+      this.busy,
+      this.error,
+      async () => {
+        const res = await this.host.api.attacks.answerReaction(
+          this.host.data.campaignId,
+          this.host.data.encounterId,
+          w.id,
+          answer,
+          this.keys.keyFor({ window: w.id, answer }),
+        );
+        this.host.data.state.apply(res.encounter);
+        if (!answer.use) {
+          this.host.close();
+          return;
+        }
+        if (res.result) {
+          this.afterSlot.set(slotAfter(answer, this.host.chosen()));
+          this.nextWindowId.set(res.result.nextWindowId);
+          this.answered.set({ kind: 'reaction', result: res.result });
+          // The dice its result sheet shows, tumbling (a physical die is never animated).
+          this.play(() => showOfReaction(res.result));
+        }
+        this.step.set('result');
+        this.typingSave.set(false);
+      },
+      async (err) => {
+        await this.failed(err, answer, 'usar a reação');
+      },
+    );
   }
 
   async concentrate(how: ConcentrationAnswer): Promise<void> {
@@ -170,40 +172,41 @@ export class ReactionFlow {
     }
     const sent: ConcentrationAnswer =
       how.kind === 'typed' && extra.length > 0 ? { ...how, extra } : how;
-    this.busy.set(true);
-    this.error.set('');
-    try {
-      const res = await this.host.api.resolveConcentrationSave(
-        this.host.data.campaignId,
-        this.host.data.encounterId,
-        w.id,
-        sent,
-        this.keys.keyFor({ window: w.id, how: sent }),
-      );
-      this.host.data.state.apply(res.encounter);
-      if (res.lucky || res.offer) {
-        // Nothing was written: the window stays open and the question comes (Lucky's first).
-        this.luckyOffer.set(res.lucky ?? null);
-        this.offer.set(res.offer ?? null);
-        this.typingSave.set(false);
-        return;
-      }
-      if (!res.result) {
-        // Left to the master: nothing more to read here.
-        this.host.close();
-        return;
-      }
-      this.showSave(res.result);
-    } catch (err) {
-      const more = this.extra.fromRefusal(err);
-      if (more) {
-        this.error.set(more);
-        return;
-      }
-      await this.failed(err, null, 'resolver o teste de concentração');
-    } finally {
-      this.busy.set(false);
-    }
+    await runBusy(
+      this.busy,
+      this.error,
+      async () => {
+        const res = await this.host.api.attacks.resolveConcentrationSave(
+          this.host.data.campaignId,
+          this.host.data.encounterId,
+          w.id,
+          sent,
+          this.keys.keyFor({ window: w.id, how: sent }),
+        );
+        this.host.data.state.apply(res.encounter);
+        if (res.lucky || res.offer) {
+          // Nothing was written: the window stays open and the question comes (Lucky's first).
+          this.luckyOffer.set(res.lucky ?? null);
+          this.offer.set(res.offer ?? null);
+          this.typingSave.set(false);
+          return;
+        }
+        if (!res.result) {
+          // Left to the master: nothing more to read here.
+          this.host.close();
+          return;
+        }
+        this.showSave(res.result);
+      },
+      async (err) => {
+        const more = this.extra.fromRefusal(err);
+        if (more) {
+          this.error.set(more);
+          return;
+        }
+        await this.failed(err, null, 'resolver o teste de concentração');
+      },
+    );
   }
 
   private showSave(result: ConcentrationSaveResult): void {
@@ -220,36 +223,37 @@ export class ReactionFlow {
     if (!offer || this.busy()) {
       return;
     }
-    this.busy.set(true);
-    this.error.set('');
-    try {
-      const res = await this.host
-        .resources()
-        .answerOutsideLucky(
-          this.host.data.campaignId,
-          offer.holdId,
-          reroll,
-          die,
-          this.luckyKey.keyFor({ hold: offer.holdId, reroll, die }),
-        );
-      const settled = res.result.case === 'concentrationSave' ? res.result.value : null;
-      if (!settled?.encounter || (!settled.result && !settled.inspirationOffer)) {
-        throw new Error('AnswerOutsideLucky answered without its concentration save');
-      }
-      this.host.data.state.apply(settled.encounter);
-      this.luckyKey.renew();
-      this.luckyOffer.set(null);
-      if (settled.inspirationOffer) {
-        this.offer.set(settled.inspirationOffer);
-        this.tumbleReroll(die, settled.inspirationOffer);
-        return;
-      }
-      this.showSave(settled.result!);
-    } catch (err) {
-      this.error.set(classResourceErrorMessage(err, 'responder ao Sortudo'));
-    } finally {
-      this.busy.set(false);
-    }
+    await runBusy(
+      this.busy,
+      this.error,
+      async () => {
+        const res = await this.host
+          .resources()
+          .answerOutsideLucky(
+            this.host.data.campaignId,
+            offer.holdId,
+            reroll,
+            die,
+            this.luckyKey.keyFor({ hold: offer.holdId, reroll, die }),
+          );
+        const settled = res.result.case === 'concentrationSave' ? res.result.value : null;
+        if (!settled?.encounter || (!settled.result && !settled.inspirationOffer)) {
+          throw new Error('AnswerOutsideLucky answered without its concentration save');
+        }
+        this.host.data.state.apply(settled.encounter);
+        this.luckyKey.renew();
+        this.luckyOffer.set(null);
+        if (settled.inspirationOffer) {
+          this.offer.set(settled.inspirationOffer);
+          this.tumbleReroll(die, settled.inspirationOffer);
+          return;
+        }
+        this.showSave(settled.result!);
+      },
+      (err) => {
+        this.error.set(classResourceErrorMessage(err, 'responder ao Sortudo'));
+      },
+    );
   }
 
   /** The d20 the app rolled again, tumbling: the new face alone, "1 → 14" (the die's question shows the rest). */
@@ -268,30 +272,31 @@ export class ReactionFlow {
     if (!offer || this.busy()) {
       return;
     }
-    this.busy.set(true);
-    this.error.set('');
-    try {
-      const res = await this.host
-        .resources()
-        .answerOutsideInspiration(
-          this.host.data.campaignId,
-          offer.holdId,
-          use,
-          die,
-          this.dieKey.keyFor({ hold: offer.holdId, use, die }),
-        );
-      const settled = res.result.case === 'concentrationSave' ? res.result.value : null;
-      if (!settled?.encounter || !settled.result) {
-        throw new Error('AnswerOutsideInspiration answered without its concentration save');
-      }
-      this.host.data.state.apply(settled.encounter);
-      this.offer.set(null);
-      this.showSave(settled.result);
-    } catch (err) {
-      this.error.set(classResourceErrorMessage(err, 'responder sobre a Inspiração de Bardo'));
-    } finally {
-      this.busy.set(false);
-    }
+    await runBusy(
+      this.busy,
+      this.error,
+      async () => {
+        const res = await this.host
+          .resources()
+          .answerOutsideInspiration(
+            this.host.data.campaignId,
+            offer.holdId,
+            use,
+            die,
+            this.dieKey.keyFor({ hold: offer.holdId, use, die }),
+          );
+        const settled = res.result.case === 'concentrationSave' ? res.result.value : null;
+        if (!settled?.encounter || !settled.result) {
+          throw new Error('AnswerOutsideInspiration answered without its concentration save');
+        }
+        this.host.data.state.apply(settled.encounter);
+        this.offer.set(null);
+        this.showSave(settled.result);
+      },
+      (err) => {
+        this.error.set(classResourceErrorMessage(err, 'responder sobre a Inspiração de Bardo'));
+      },
+    );
   }
 
   /** The dice tumble; whatever happens here never turns an answered reaction into an error. */
@@ -316,7 +321,7 @@ export class ReactionFlow {
     this.error.set(combatErrorMessage(err, what));
     if (blocked?.reason === EncounterBlockedReason.NOT_YOUR_TURN_TO_ANSWER) {
       try {
-        const fresh = await this.host.api.get(this.host.data.campaignId);
+        const fresh = await this.host.api.turn.get(this.host.data.campaignId);
         if (fresh) {
           this.host.data.state.apply(fresh);
         }
@@ -346,26 +351,27 @@ export class ReactionFlow {
       this.host.close();
       return;
     }
-    this.busy.set(true);
-    this.error.set('');
-    try {
-      const answer: ReactionAnswer = { use: false };
-      this.host.data.state.apply(
-        (
-          await this.host.api.answerReaction(
-            this.host.data.campaignId,
-            this.host.data.encounterId,
-            id,
-            answer,
-            this.keys.keyFor({ window: id, answer }),
-          )
-        ).encounter,
-      );
-      this.host.close();
-    } catch (err) {
-      this.error.set(combatErrorMessage(err, 'guardar a flecha'));
-    } finally {
-      this.busy.set(false);
-    }
+    await runBusy(
+      this.busy,
+      this.error,
+      async () => {
+        const answer: ReactionAnswer = { use: false };
+        this.host.data.state.apply(
+          (
+            await this.host.api.attacks.answerReaction(
+              this.host.data.campaignId,
+              this.host.data.encounterId,
+              id,
+              answer,
+              this.keys.keyFor({ window: id, answer }),
+            )
+          ).encounter,
+        );
+        this.host.close();
+      },
+      (err) => {
+        this.error.set(combatErrorMessage(err, 'guardar a flecha'));
+      },
+    );
   }
 }

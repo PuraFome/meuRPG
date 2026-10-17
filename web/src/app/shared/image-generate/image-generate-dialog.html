@@ -1,4 +1,4 @@
-<app-sheet-frame [focusableBody]="true" [title]="title()" [subtitle]="subtitle()" titleId="gen-t" [phone]="inSheet" (closed)="requestClose()">
+<app-sheet-frame [focusableBody]="true" [title]="title()" [subtitle]="subtitle()" titleId="gen-t" [phone]="inSheet" (closed)="flow.requestClose()">
   @switch (stage()) {
     @case ('loading') {
       <p class="wait" role="status">Preparando…</p>
@@ -21,9 +21,9 @@
         [status]="status()"
         [issue]="issue()"
         [phone]="inSheet"
-        (formChange)="patch($event)"
+        (formChange)="formState.patch($event)"
         (pickReference)="pickReference()"
-        (removeReference)="removeReference($event)"
+        (removeReference)="formState.removeReference($event)"
         (retryReference)="retryReference()"
       />
       <p class="synth synth--body">{{ synthid }}</p>
@@ -32,7 +32,7 @@
       @if (run(); as r) {
         <app-generate-running [run]="r" [summary]="summary()" [prompt]="runPrompt()" />
       }
-      @if (closing()) {
+      @if (flow.closing()) {
         <section class="ask" role="group" aria-labelledby="gen-close-t">
           <h3 class="ask__title" id="gen-close-t" tabindex="-1">Parar de esperar a imagem?</h3>
           <p class="ask-text">O pedido continua no servidor. Se ele já saiu, a vaga do mês continua gasta e a imagem, se chegar, vai para a galeria.</p>
@@ -40,7 +40,7 @@
       }
     }
     @case ('result') {
-      @if (view(); as v) {
+      @if (result.view(); as v) {
         @if (notice(); as note) {
           <div class="mr-notice mr-notice--neutral" role="status">
             <mat-icon aria-hidden="true">info</mat-icon>
@@ -49,17 +49,17 @@
         }
         <app-generate-result
           [view]="v"
-          [chain]="chain()"
-          [shown]="shown()"
-          [showBusy]="showBusy()"
-          [showError]="showError()"
+          [chain]="result.chain()"
+          [shown]="result.shown()"
+          [showBusy]="result.showBusy()"
+          [showError]="result.showError()"
           [gridColumns]="v.texture ? (textureGrid()?.columns ?? 0) : 0"
           [gridRows]="v.texture ? (textureGrid()?.rows ?? 0) : 0"
           [canUse]="canUse()"
-          [showStage]="showStage()"
+          [showStage]="result.showStage()"
           [sessionOpen]="sessionOpen()"
-          [useStage]="useStage()"
-          [useError]="useError()"
+          [useStage]="result.useStage()"
+          [useError]="result.useError()"
           [instruction]="instruction()"
           [editError]="editError()"
           [status]="status()"
@@ -93,14 +93,14 @@
         <p class="synth synth--foot">{{ synthid }}</p>
       }
       @case ('running') {
-        @if (closing()) {
+        @if (flow.closing()) {
           <div class="pair pair--stack">
-            <button matButton="outlined" type="button" (click)="keepWaiting()">Continuar esperando</button>
-            <button matButton="filled" type="button" (click)="stopAndClose()">Parar de esperar</button>
+            <button matButton="outlined" type="button" (click)="flow.keepWaiting()">Continuar esperando</button>
+            <button matButton="filled" type="button" (click)="flow.stopAndClose()">Parar de esperar</button>
           </div>
         } @else if (run(); as r) {
           <div class="pair">
-            <button matButton="outlined" type="button" [disabled]="r.phase() === 'canceling'" (click)="cancelRun()">
+            <button matButton="outlined" type="button" [disabled]="r.phase() === 'canceling'" (click)="flow.cancel()">
               <mat-icon aria-hidden="true">stop</mat-icon>{{ r.phase() === 'sending' ? 'Cancelar' : 'Parar de esperar' }}
             </button>
             <button matButton="filled" type="button" class="mr-button--off" disabled disabledInteractive aria-describedby="gen-wait">Gerando…</button>
@@ -109,15 +109,15 @@
         }
       }
       @case ('result') {
-        @if (useStage() === 'asking' || useStage() === 'busy') {
+        @if (result.useStage() === 'asking' || result.useStage() === 'busy') {
           <div class="pair pair--stack">
-            <button matButton="outlined" type="button" [disabled]="useStage() === 'busy'" (click)="cancelUse()">Voltar</button>
-            <button matButton="filled" type="button" [disabled]="useStage() === 'busy'" (click)="confirmUse()">Usar como imagem do mapa</button>
+            <button matButton="outlined" type="button" [disabled]="result.useStage() === 'busy'" (click)="result.cancelUse()">Voltar</button>
+            <button matButton="filled" type="button" [disabled]="result.useStage() === 'busy'" (click)="result.confirmUse()">Usar como imagem do mapa</button>
           </div>
-        } @else if (showStage() === 'asking') {
+        } @else if (result.showStage() === 'asking') {
           <div class="pair pair--stack">
-            <button matButton="outlined" type="button" [disabled]="showBusy()" (click)="cancelShow()">Voltar</button>
-            <button matButton="filled" type="button" [disabled]="showBusy()" (click)="show()">Mostrar mesmo assim</button>
+            <button matButton="outlined" type="button" [disabled]="result.showBusy()" (click)="result.cancelShow()">Voltar</button>
+            <button matButton="filled" type="button" [disabled]="result.showBusy()" (click)="result.show()">Mostrar mesmo assim</button>
           </div>
         } @else {
           @if (editWhy(); as reason) {
@@ -137,17 +137,17 @@
             </button>
             @switch (main()) {
               @case ('use') {
-                <button matButton="filled" type="button" (click)="askUse()"><mat-icon aria-hidden="true">map</mat-icon>Usar como imagem do mapa</button>
+                <button matButton="filled" type="button" (click)="result.askUse()"><mat-icon aria-hidden="true">map</mat-icon>Usar como imagem do mapa</button>
               }
               @case ('show') {
                 <button
                   matButton="filled"
                   type="button"
                   [class.mr-button--off]="!sessionOpen()"
-                  [disabled]="!sessionOpen() || showBusy()"
+                  [disabled]="!sessionOpen() || result.showBusy()"
                   disabledInteractive
                   [attr.aria-describedby]="sessionOpen() ? null : 'show-why'"
-                  (click)="sessionOpen() && !showBusy() && show()"
+                  (click)="sessionOpen() && !result.showBusy() && result.show()"
                 >
                   <mat-icon aria-hidden="true">visibility</mat-icon>Mostrar aos jogadores
                 </button>
@@ -157,10 +157,10 @@
                   matButton="filled"
                   type="button"
                   [class.mr-button--off]="!sessionOpen()"
-                  [disabled]="!sessionOpen() || showBusy()"
+                  [disabled]="!sessionOpen() || result.showBusy()"
                   disabledInteractive
                   [attr.aria-describedby]="sessionOpen() ? null : 'show-why'"
-                  (click)="sessionOpen() && !showBusy() && askShow()"
+                  (click)="sessionOpen() && !result.showBusy() && result.askShow()"
                 >
                   <mat-icon aria-hidden="true">visibility</mat-icon>Mostrar aos jogadores
                 </button>

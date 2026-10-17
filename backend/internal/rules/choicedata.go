@@ -43,7 +43,7 @@ type choiceData struct {
 	enemyHumanoidRaces int
 	terrains           []string
 	resistances        map[string]racialResistance
-	// summaries are the one-line rules of the options (OptionSummaries).
+	// summaries are the one-line rules of the options (option_summaries in the data).
 	summaries map[string]string
 }
 

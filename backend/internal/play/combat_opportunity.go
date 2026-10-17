@@ -13,6 +13,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -125,7 +126,7 @@ func (s *Service) offerOpportunities(ctx context.Context, c *combatTx, cs []play
 		}
 		if err := insertEvent(ctx, c, eventOpportunityOffered, &c.actorUserID, nil, actionEvent{
 			Round: c.enc.Round, Secret: mover.Hidden || p.reactor.Hidden, Actor: mover.ID, Target: p.reactor.ID,
-			OfferID: offer.ID, MoveID: moveID, Col: valueOf(offer.LeftCol), Row: valueOf(offer.LeftRow),
+			OfferID: offer.ID, MoveID: moveID, Col: conv.OrZero(offer.LeftCol), Row: conv.OrZero(offer.LeftRow),
 		}); err != nil {
 			return "", nil, err
 		}
@@ -145,8 +146,8 @@ func (s *Service) publishOffersMade(campaignID string, d *encounterData, mover p
 		users = append(users, *mover.UserID)
 	}
 	for _, id := range reactorIDs {
-		if i := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == id }); i >= 0 && d.cs[i].UserID != nil {
-			users = append(users, *d.cs[i].UserID)
+		if r, ok := combatantByID(d.cs, id); ok && r.UserID != nil {
+			users = append(users, *r.UserID)
 		}
 	}
 	slices.Sort(users)
@@ -186,11 +187,10 @@ func (s *Service) mustNotWaitForOffers(ctx context.Context, c *combatTx, who pla
 		return fmt.Errorf("list the combatants: %w", err)
 	}
 	for _, o := range offers {
-		i := slices.IndexFunc(cs, func(m playdb.Combatant) bool { return m.ID == o.MoverID })
-		if i < 0 {
+		mover, ok := combatantByID(cs, o.MoverID)
+		if !ok {
 			continue
 		}
-		mover := cs[i]
 		mine := mover.ID == who.ID || (inTurn(c.enc, who) && inTurn(c.enc, mover) && who.UserID != nil && mover.UserID != nil && *who.UserID == *mover.UserID)
 		if mine {
 			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_OPPORTUNITY_PENDING, "an opportunity attack waits for its answer")
@@ -356,9 +356,9 @@ func (s *Service) publishReturned(ctx context.Context, campaignID string, d *enc
 	if ev.ReturnedFrom == nil {
 		return
 	}
-	if i := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == ev.Target }); i >= 0 {
-		s.publishCombatantMoved(ctx, campaignID, d.enc, d.cs[i], squareOfState(ev.ReturnedFrom))
-		s.positionChanged(ctx, campaignID, d.enc, d.cs[i], squareOfState(ev.ReturnedFrom))
+	if back, ok := combatantByID(d.cs, ev.Target); ok {
+		s.publishCombatantMoved(ctx, campaignID, d.enc, back, squareOfState(ev.ReturnedFrom))
+		s.positionChanged(ctx, campaignID, d.enc, back, squareOfState(ev.ReturnedFrom))
 	}
 }
 

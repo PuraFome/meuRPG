@@ -15,6 +15,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -231,7 +232,7 @@ func (s *Service) startOnGrid(ctx context.Context, c *combatTx, p startPlan, out
 
 // startMap says which map the fight is on and reads its grid; it writes nothing.
 func (s *Service) startMap(ctx context.Context, c *combatTx, p startPlan) (string, link.Grid, error) {
-	mapID := deref(c.session.CurrentMapID)
+	mapID := conv.OrZero(c.session.CurrentMapID)
 	if p.point.TargetMapID != "" {
 		mapID = p.point.TargetMapID
 	}
@@ -253,7 +254,7 @@ func (s *Service) startMap(ctx context.Context, c *combatTx, p startPlan) (strin
 // showStartMap makes the fight's map the current one when it is not: as SetCurrentMap, the
 // players see the current map, so it is revealed.
 func (s *Service) showStartMap(ctx context.Context, c *combatTx, campaignID, mapID string, out *startOutcome) error {
-	if mapID == deref(c.session.CurrentMapID) {
+	if mapID == conv.OrZero(c.session.CurrentMapID) {
 		return nil
 	}
 	if err := s.maps.RevealMap(ctx, c.tx, campaignID, mapID, c.now); err != nil {

@@ -23,15 +23,16 @@ The `rules` packages are pure (no database, Docker or network) and are the fast 
 ```bash
 cd backend
 go test ./internal/rules/...                              # the engine, the SRD snapshot, the formulas
-go test ./internal/rules -run Golden -update              # rewrite testdata/golden/pensantus.json after an intentional change; review the diff
-go test ./internal/rules -run TableCharacterGolden -update
-go test ./internal/rules/dungeon -run Golden -update      # changing the generator's output also requires bumping Version in types.go
+go test ./internal/rules -update                          # rewrite every golden of the package (testdata/golden/*.json) after an intentional change; review the diff
+go test ./internal/rules/dungeon -update                  # changing the generator's output also requires bumping Version in types.go
 ```
 
-Characterization tests pin what a function answers, refuses and writes, so that it can be split without changing it (see [CI](ci.md#complexity-limits)); they sit next to the code in every module, with their golden files under `testdata/`.
-A failing one means the output changed, which is not necessarily wrong: review the diff, and rewrite the golden only for an intended change.
+Characterization tests pin what a function answers, refuses and writes, so that it can be split without changing it (see [CI](ci.md#complexity-limits)); they sit next to the code in every module, with their golden files under `testdata/` (the sweeps of `rules/grid`, `vision`, `puzzle`, `combat` and `encounter` keep `testdata/*.sha256` hashes instead).
+A failing one means the output changed, which is not necessarily wrong: read the diff, and if the change is intended, refresh the files with the package's `-update` flag.
 Run a new golden test with `-count=5` once before committing it: a Go map's order is random, and a golden that depends on it fails only some of the time.
 In `internal/play` the goldens are written with `UPDATE_GOLDEN=1 go test -run <name> ./internal/play`. `runGolden` plays each scenario on a fight of its own and compares the blocks by name; `wantGolden` compares one whole text; both live in `harness_test.go`, with `wantRefusal` for a refusal's code and exact message. A block prints `state unchanged` when the call left every printed table as it found it, so a refusal that writes nothing reads as one line. `testdata/turn_options.golden` prints the turn options of a hero and viewer whole once and the other scenarios as how they differ from it.
+Golden files outside `internal/rules` are compared by `backend/internal/platform/goldentest` (`Compare`, `JSON`, `Names` for IDs, `MaskTimes`), and `go test ./internal/<pkg> -update` rewrites them: one flag for every package that uses it; read the diff.
+`dbtest.QueryFaults` fails a sqlc query by name (`Arm`, or `ArmOnce(name, skip)` after skipping runs), so a test reaches a database-error path without a broken database; wrap the service pool's tracer with it.
 Other pure suites: `rules/grid` and `rules/vision` (geometry, movement, cover, sight), `rules/puzzle` (the puzzle maths), `rules/encounter` (the party budget and the generator) and `rules/dungeon` (properties over many options; `DUNGEON_SWEEP=1` adds a sweep of thousands of combinations).
 Fuzz targets exist for the formulas (`FuzzCompileFormula`), the dungeon options (`FuzzOptions`), the encounter generator (`FuzzGenerate`) and the treasure generator (`FuzzGenerateTreasure`).
 CI does not run them, so run them when you touch that code:
@@ -121,6 +122,7 @@ The spec files are not isolated from one another, so the shared setup keeps test
 
 - `web/src/test-setup.ts` undoes every `vi.stubGlobal` and restores real timers after each test, and gives each test fresh `scrollIntoView` and `window.scrollTo` mocks (jsdom has none).
 - `web/src/test-providers.ts` turns off the Material animations.
+- `fakeCombatClient({ rollAttack, ... })` (`web/src/app/core/combat/combat-client-testing.ts`) builds a `CombatClient` from the calls a spec answers, each placed in the part that owns it; `anyCallCombatClient` answers every call by name.
 - A spec settles a component with `settle(fixture)` or waits one turn with `nextTurn()` from `web/src/test-settle.ts`, never with its own `setTimeout` (ESLint fails a `setTimeout(` in a `*.spec.ts`): under a fake clock the turn advances that clock instead of waiting for a timer that would never fire.
 - A spec that turns a fake clock on (`vi.useFakeTimers`) or stubs a global also undoes it in its own `afterEach`, because with `--coverage` the setup file's hooks reach only the first file of each worker.
 

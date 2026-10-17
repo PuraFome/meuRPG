@@ -20,7 +20,7 @@ func monsterDerived(t *testing.T, c *Content, key string) Derived {
 }
 
 // TestMonsterDerived: a stat block becomes the Derived that combat reads. The
-// numbers are the ones of the Etapa 9 designs (the wolves and the raven).
+// numbers are the ones of the designs (the wolves and the raven).
 func TestMonsterDerived(t *testing.T) {
 	t.Parallel()
 	c := loadForTest(t)
@@ -327,8 +327,8 @@ func TestListCreatures(t *testing.T) {
 	}
 }
 
-// TestListCreaturesBestiary: the filters the bestiary (MR-042) adds to the Etapa
-// 9 ones, and what a row carries.
+// TestListCreaturesBestiary: the filters the bestiary (MR-042) adds to the basic
+// ones, and what a row carries.
 func TestListCreaturesBestiary(t *testing.T) {
 	t.Parallel()
 	c := loadForTest(t)
@@ -350,7 +350,7 @@ func TestListCreaturesBestiary(t *testing.T) {
 		t.Errorf("rows without numbers: %+v", got)
 	}
 
-	// E10-08: "lobo" finds the Portuguese names, and "Wolf spider" through "wolf".
+	// "lobo" finds the Portuguese names, and "Wolf spider" through "wolf".
 	lobo := keys(CreatureFilter{Query: "lobo"})
 	for _, k := range []string{"monster:wolf", "monster:giant-wolf-spider", "monster:dire-wolf", "monster:winter-wolf"} {
 		if !slices.Contains(lobo, k) {

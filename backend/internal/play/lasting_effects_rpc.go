@@ -13,6 +13,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -65,7 +66,7 @@ func (s *Service) ListLastingEffects(
 	if err != nil {
 		return nil, err
 	}
-	res := &playv1.ListLastingEffectsResponse{Round: d.enc.Round, CurrentCombatantId: deref(d.enc.CurrentCombatantID)}
+	res := &playv1.ListLastingEffectsResponse{Round: d.enc.Round, CurrentCombatantId: conv.OrZero(d.enc.CurrentCombatantID)}
 	groups := groupsOf(d.states)
 	for _, g := range groups {
 		res.Effects = append(res.Effects, ev.card(g, ""))
@@ -133,9 +134,9 @@ func (b *turnClockBuilder) add(r int32, who, text string, phase string, save boo
 // addGroup puts the end of a casting and the saving throws of its targets on the clock.
 func (b *turnClockBuilder) addGroup(g effectGroup) {
 	f := g.first()
-	name := b.ev.names(deref(f.SourceKey))
+	name := b.ev.names(conv.OrZero(f.SourceKey))
 	b.addEnd(g, f, name)
-	casterLabel := b.ev.byID[deref(f.SourceID)].Label
+	casterLabel := b.ev.byID[conv.OrZero(f.SourceID)].Label
 	for _, st := range g.rows {
 		b.addSaves(st, name, casterLabel)
 	}
@@ -161,7 +162,7 @@ func (b *turnClockBuilder) addEnd(g effectGroup, f playdb.CombatantState, name s
 // addSaves puts the saving throws of one target on the clock: at the end of its turn, then at the
 // start of the one after.
 func (b *turnClockBuilder) addSaves(st playdb.CombatantState, name, casterLabel string) {
-	dc := derefInt32(st.SaveDc)
+	dc := conv.OrZero(st.SaveDc)
 	if dc == 0 {
 		dc = defaultEffectDC
 	}
@@ -222,7 +223,7 @@ func (ev *effectViewer) concentrations(groups []effectGroup) []*playv1.Concentra
 		i := slices.IndexFunc(out, func(e *playv1.ConcentrationEntry) bool { return e.CasterId == *f.SourceID })
 		if i < 0 {
 			caster := ev.byID[*f.SourceID]
-			out = append(out, &playv1.ConcentrationEntry{CasterId: caster.ID, CasterLabel: caster.Label, SpellKey: deref(caster.ConcentrationSpell), SpellNamePt: ev.names(deref(caster.ConcentrationSpell))})
+			out = append(out, &playv1.ConcentrationEntry{CasterId: caster.ID, CasterLabel: caster.Label, SpellKey: conv.OrZero(caster.ConcentrationSpell), SpellNamePt: ev.names(conv.OrZero(caster.ConcentrationSpell))})
 			i = len(out) - 1
 		}
 		for _, st := range g.rows {
@@ -650,9 +651,9 @@ func addedPayload(c *combatTx, rows []playdb.CombatantState, key string) actionE
 	if first.EndsRound != nil {
 		rounds = max(*first.EndsRound-max(c.enc.Round, 1), 0)
 	}
-	ev.Actor, ev.Target = deref(first.SourceID), targets[0]
+	ev.Actor, ev.Target = conv.OrZero(first.SourceID), targets[0]
 	ev.Secret = !first.PlayerVisible || first.Audience == "owner"
-	ev.Lasting = &lastingEvent{Key: key, Change: "added", Targets: targets, Caster: deref(first.SourceID), Rounds: rounds, Effects: ids}
+	ev.Lasting = &lastingEvent{Key: key, Change: "added", Targets: targets, Caster: conv.OrZero(first.SourceID), Rounds: rounds, Effects: ids}
 	return ev
 }
 
@@ -676,7 +677,7 @@ func groupRowsOf(rows []playdb.CombatantState, id string) ([]playdb.CombatantSta
 	}
 	f := rows[i]
 	return slices.DeleteFunc(slices.Clone(rows), func(st playdb.CombatantState) bool {
-		return deref(st.GroupID) != deref(f.GroupID) || deref(st.SourceKey) != deref(f.SourceKey)
+		return conv.OrZero(st.GroupID) != conv.OrZero(f.GroupID) || conv.OrZero(st.SourceKey) != conv.OrZero(f.SourceKey)
 	}), nil
 }
 
@@ -786,10 +787,10 @@ func (s *Service) changeDurationTx(ctx context.Context, c *combatTx, effID strin
 		return none, fmt.Errorf("list the combatants: %w", err)
 	}
 	var caster *playdb.Combatant
-	if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == deref(rows[0].SourceID) }); i >= 0 {
+	if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == conv.OrZero(rows[0].SourceID) }); i >= 0 {
 		caster = &cs[i]
 	}
-	dur, err := lastingDurationOf(choice, durationSpec{Kind: deref(rows[0].DurationKind)})
+	dur, err := lastingDurationOf(choice, durationSpec{Kind: conv.OrZero(rows[0].DurationKind)})
 	if err != nil {
 		return none, err
 	}
@@ -808,8 +809,8 @@ func (s *Service) changeDurationTx(ctx context.Context, c *combatTx, effID strin
 		return none, err
 	}
 	return actionEvent{
-		Round: c.enc.Round, Secret: secret, Actor: deref(first.SourceID), Target: targets[0],
-		Lasting: &lastingEvent{Key: deref(first.SourceKey), Change: "duration", Targets: targets, Rounds: rounds, Effects: []string{first.ID}},
+		Round: c.enc.Round, Secret: secret, Actor: conv.OrZero(first.SourceID), Target: targets[0],
+		Lasting: &lastingEvent{Key: conv.OrZero(first.SourceKey), Change: "duration", Targets: targets, Rounds: rounds, Effects: []string{first.ID}},
 	}, nil
 }
 
@@ -922,8 +923,8 @@ func (s *Service) setVisibilityTx(ctx context.Context, c *combatTx, effID string
 	}
 	// A line for the master alone: a switch is nothing the table reads.
 	return actionEvent{
-		Round: c.enc.Round, Secret: true, Actor: deref(rows[0].SourceID), Target: rows[0].CombatantID,
-		Lasting: &lastingEvent{Key: deref(rows[0].SourceKey), Change: "visibility", Effects: []string{rows[0].ID}},
+		Round: c.enc.Round, Secret: true, Actor: conv.OrZero(rows[0].SourceID), Target: rows[0].CombatantID,
+		Lasting: &lastingEvent{Key: conv.OrZero(rows[0].SourceKey), Change: "visibility", Effects: []string{rows[0].ID}},
 	}, nil
 }
 
@@ -1006,7 +1007,9 @@ func (s *Service) endEffectTx(ctx context.Context, c *combatTx, rawID string, sc
 	reason := endByMaster
 	if scope == playv1.EffectEndScope_EFFECT_END_SCOPE_CONCENTRATION_GROUP && first.Concentration && first.SourceID != nil {
 		// The whole concentration: the caster stops concentrating and everything it held ends.
-		rows = slices.DeleteFunc(all, func(st playdb.CombatantState) bool { return !st.Concentration || deref(st.SourceID) != *first.SourceID })
+		rows = slices.DeleteFunc(all, func(st playdb.CombatantState) bool {
+			return !st.Concentration || conv.OrZero(st.SourceID) != *first.SourceID
+		})
 		if err := s.stopCasterOf(ctx, c, cs, *first.SourceID); err != nil {
 			return nil, err
 		}
@@ -1022,8 +1025,8 @@ func (s *Service) endEffectTx(ctx context.Context, c *combatTx, rawID string, sc
 		return nil, err
 	}
 	return actionEvent{
-		Round: c.enc.Round, Secret: s.effectHiddenFrom(first, targetsOf(cs, []string{first.CombatantID})), Actor: deref(first.SourceID), Target: first.CombatantID,
-		Lasting: &lastingEvent{Key: deref(first.SourceKey), Change: "ended", Reason: reason, Effects: []string{first.ID}},
+		Round: c.enc.Round, Secret: s.effectHiddenFrom(first, targetsOf(cs, []string{first.CombatantID})), Actor: conv.OrZero(first.SourceID), Target: first.CombatantID,
+		Lasting: &lastingEvent{Key: conv.OrZero(first.SourceKey), Change: "ended", Reason: reason, Effects: []string{first.ID}},
 	}, nil
 }
 
@@ -1124,7 +1127,7 @@ func (s *Service) removeTargetTx(ctx context.Context, c *combatTx, effID, combID
 		return nil, err
 	}
 	return actionEvent{
-		Round: c.enc.Round, Secret: s.effectHiddenFrom(row, targetsOf(cs, []string{combID})), Actor: deref(row.SourceID), Target: combID,
-		Lasting: &lastingEvent{Key: deref(row.SourceKey), Change: "ended", Reason: endByMaster, Targets: []string{combID}, Effects: []string{row.ID}},
+		Round: c.enc.Round, Secret: s.effectHiddenFrom(row, targetsOf(cs, []string{combID})), Actor: conv.OrZero(row.SourceID), Target: combID,
+		Lasting: &lastingEvent{Key: conv.OrZero(row.SourceKey), Change: "ended", Reason: endByMaster, Targets: []string{combID}, Effects: []string{row.ID}},
 	}, nil
 }

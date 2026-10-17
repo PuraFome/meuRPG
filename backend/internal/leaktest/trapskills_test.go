@@ -1,6 +1,7 @@
 package leaktest
 
 import (
+	"bytes"
 	"testing"
 	"time"
 
@@ -195,5 +196,36 @@ func TestOnlyTheAllowedSkillFindsTheTrap(t *testing.T) {
 	}
 	for _, f := range w.inspect(w.caio, r, nil) {
 		t.Errorf("the answer that found the trap: %s", f)
+	}
+}
+
+// oneDieSearch is Caio's Perception search with a single real die from where his character
+// stands in the dim light of the fog map (a human: dim light is lightly obscured to him,
+// so the search needs a second die). With a trap, it sits next to him; without, nothing
+// is within reach. The place and the light are the same.
+func oneDieSearch(t *testing.T, withTrap bool) reply {
+	t.Helper()
+	w := newWorld(t)
+	if withTrap {
+		w.pts["trap-dim"] = w.point(w.fogMap, mapsv1.MapPointKind_MAP_POINT_KIND_TRAP, w.secrets.marker("trap-dim-name"), w.secrets.marker("trap-dim-description"), 9, 13, func(r *mapsv1.CreateMapPointRequest) {
+			r.Trap = &mapsv1.TrapSpec{NoticeDc: 12, FindDc: 15, AreaSize: 1, Trigger: rulesv1.TrapTrigger_TRAP_TRIGGER_ENTER, Effect: &rulesv1.TrapEffect{}}
+		})
+	}
+	must(w.master.combat.EndEncounter(t.Context(), rq(&playv1.EndEncounterRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), IdempotencyKey: newKey()})))
+	req := w.searchRequest("perception", lowFace)
+	req.D20Face_2 = nil
+	return w.caio.call(playv1connect.PlayServiceSearchForTrapsProcedure, req)
+}
+
+// TestADimLightSearchOnOneDieAnswersTheSameWhateverTheTrapsOnTheMap: the refusal that asks
+// for a second die depends on the light around the searcher, never on the map's traps, so
+// a map with a trap and a map with none answer the same status and the same words.
+func TestADimLightSearchOnOneDieAnswersTheSameWhateverTheTrapsOnTheMap(t *testing.T) {
+	trapped, empty := oneDieSearch(t, true), oneDieSearch(t, false)
+	if trapped.ok() {
+		t.Fatalf("premise: a Perception search on one die in dim light was answered %d %s, want the refusal that asks for a second die", trapped.status, trapped.body)
+	}
+	if trapped.status != empty.status || !bytes.Equal(trapped.body, empty.body) {
+		t.Errorf("with a trap on the map the answer is %d %s, with none %d %s; want the same", trapped.status, trapped.body, empty.status, empty.body)
 	}
 }

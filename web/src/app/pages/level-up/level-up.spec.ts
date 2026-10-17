@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
+import { BehaviorSubject } from 'rxjs';
 
 import { DicePreference, XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
@@ -47,7 +48,6 @@ import {
   wizardOptions,
 } from '../../core/levelup/levelup-testing';
 import { LevelUpPage } from './level-up';
-import { newSpellsTitle } from './level-up-session';
 import { QUIET_MS } from './level-up-preview';
 
 // With --coverage test-setup.ts only hooks the first file of a worker, so the fake clock this file leaves on would
@@ -95,8 +95,13 @@ describe('LevelUpPage', () => {
   };
   let navigate: ReturnType<typeof vi.spyOn>;
   let watcher = fakeContentWatcher();
+  const paramsOf = (id: string, characterId: string) => ({
+    get: (k: string) => (k === 'id' ? id : characterId),
+  });
+  let routeParams: BehaviorSubject<ReturnType<typeof paramsOf>>;
 
   beforeEach(() => {
+    routeParams = new BehaviorSubject(paramsOf('camp-1', 'ch-1'));
     vi.useFakeTimers();
     // jsdom has no layout: scrolling does nothing.
     Element.prototype.scrollIntoView = vi.fn();
@@ -137,13 +142,7 @@ describe('LevelUpPage', () => {
     });
     // The route's params, read the way the page reads them.
     const { ActivatedRoute } = await import('@angular/router');
-    TestBed.overrideProvider(ActivatedRoute, {
-      useValue: {
-        paramMap: (await import('rxjs')).of({
-          get: (k: string) => (k === 'id' ? 'camp-1' : 'ch-1'),
-        }),
-      },
-    });
+    TestBed.overrideProvider(ActivatedRoute, { useValue: { paramMap: routeParams } });
     navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     const fixture = TestBed.createComponent(LevelUpPage);
     await load(fixture);
@@ -1462,6 +1461,13 @@ describe('LevelUpPage', () => {
     });
   });
 
+  it('stops following the route when the page is destroyed', async () => {
+    const fixture = await setup();
+    expect(routeParams.observed).toBe(true);
+    fixture.destroy();
+    expect(routeParams.observed).toBe(false);
+  });
+
   describe('when there is nothing to level up', () => {
     it('says why a character that cannot level up now cannot, with no steps (as for a locked sheet)', async () => {
       const blocked = new ConnectError('x', Code.FailedPrecondition, undefined, [
@@ -1666,15 +1672,5 @@ describe('LevelUpPage with the real client: a content_changed hint really reads 
     expect(listContent).toHaveBeenCalledTimes(2);
     expect(row('Prestidigitação')).toBeUndefined();
     expect(root.textContent).toContain('O mestre mudou as opções da mesa');
-  });
-});
-
-describe('newSpellsTitle', () => {
-  it('agrees the participle with the count, and keeps "para o livro" for a spellbook', () => {
-    expect(newSpellsTitle(1, false)).toBe('1 magia conhecida');
-    expect(newSpellsTitle(2, false)).toBe('2 magias conhecidas');
-    expect(newSpellsTitle(1, true)).toBe('1 magia para o livro');
-    expect(newSpellsTitle(2, true)).toBe('2 magias para o livro');
-    expect(newSpellsTitle(0, false)).toBe('');
   });
 });

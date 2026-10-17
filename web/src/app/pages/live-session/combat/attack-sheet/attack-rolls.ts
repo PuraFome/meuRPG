@@ -10,13 +10,13 @@ import {
 import { EffectRollKind } from '../../../../../gen/meurpg/play/v1/lasting_effects_pb';
 import type { Attack } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { awaitsReaction, stageAfterRoll, stageOfAnswer } from '../../../../core/combat/attack-flow';
+import type { CombatClient } from '../../../../core/combat/combat-client';
 import type {
   AttackDie,
-  CombatClient,
   DamageDie,
   ModeChoice,
   PairDie,
-} from '../../../../core/combat/combat-client';
+} from '../../../../core/combat/combat-client-types';
 import { ActionKey } from '../../../../core/connect/idempotency';
 import {
   type ExtraDieField,
@@ -25,6 +25,7 @@ import {
   rollDiceOf,
 } from '../../../../core/effects/effects';
 import type { RollAnimator, RollShow } from '../../../../shared/roll-overlay/roll-animator';
+import { runBusy } from '../../../../shared/sheet/run-busy';
 import type { AttackDamage } from './attack-damage';
 import type { AttackQuestions } from './attack-questions';
 import {
@@ -79,10 +80,12 @@ export class AttackRolls {
       return;
     }
     const { data } = this.s;
-    await this.s.run(
+    await runBusy(
+      this.s.busy,
+      this.s.error,
       async () => {
         const mode = this.host.modeChoice();
-        const res = await this.host.api.rollAttack(
+        const res = await this.host.api.attacks.rollAttack(
           data.campaignId,
           data.encounterId,
           data.attackerId,
@@ -113,14 +116,16 @@ export class AttackRolls {
       return;
     }
     const { data } = this.s;
-    await this.s.run(
+    await runBusy(
+      this.s.busy,
+      this.s.error,
       async () => {
         // With parts the answer is the whole choice, the extras marked (even none) and the sums typed.
         const choice =
           this.damage.parts().length > 0
             ? { extras: this.s.picks(), ...(typedParts ? { typedParts } : {}) }
             : undefined;
-        const res = await this.host.api.rollDamage(
+        const res = await this.host.api.attacks.rollDamage(
           data.campaignId,
           data.encounterId,
           p.id,
@@ -175,7 +180,7 @@ export class AttackRolls {
       return;
     }
     try {
-      const res = await this.host.api.turnOptions(
+      const res = await this.host.api.moves.turnOptions(
         s.data.campaignId,
         s.data.encounterId,
         s.data.attackerId,

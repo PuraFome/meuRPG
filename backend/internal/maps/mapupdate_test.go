@@ -1,7 +1,6 @@
 package maps
 
 import (
-	"errors"
 	"slices"
 	"testing"
 	"uuid"
@@ -11,8 +10,7 @@ import (
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 )
 
-// UpdateMap is frozen here before its phases are split (MR-008, AIP-154, RN-10,
-// MR-025, D2): the order of its refusals, what a rename and an image swap do, the
+// UpdateMap (MR-008, AIP-154, RN-10, MR-025): the order of its refusals, what a rename and an image swap do, the
 // copy of the image a fog map takes, and who hears about it.
 
 // updateRefusal is what a refused UpdateMap says.
@@ -23,14 +21,7 @@ type updateRefusal struct {
 
 func wantUpdateRefusal(t *testing.T, call string, err error, want updateRefusal) {
 	t.Helper()
-	var ce *connect.Error
-	if !errors.As(err, &ce) {
-		t.Errorf("%s error = %v, want a connect error %v %q", call, err, want.code, want.message)
-		return
-	}
-	if ce.Code() != want.code || ce.Message() != want.message {
-		t.Errorf("%s error = %v %q, want %v %q", call, ce.Code(), ce.Message(), want.code, want.message)
-	}
+	wantRefusal(t, call, err, want.code, want.message)
 }
 
 func (u *user) updateMapWith(req *mapsv1.UpdateMapRequest) (*mapsv1.Map, error) {

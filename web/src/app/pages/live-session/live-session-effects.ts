@@ -2,34 +2,28 @@ import { type Signal, type TemplateRef, effect, untracked } from '@angular/core'
 
 import { foundToastTitle } from '../../core/traps/treasure-text';
 import { firstLine } from '../../core/traps/trap-text';
-import type { LiveSessionLoader } from './live-session-loader';
-import type { LiveSessionParts } from './live-session-parts';
-import type { LiveSessionServices } from './live-session-services';
+import type { LiveSessionParts, LiveSessionServices } from './live-session-deps';
 import type { LiveSessionState } from './live-session-state';
 import type { LiveSessionView } from './live-session-view';
 
-/** What the effects of the page need from it. */
-export interface LiveSessionEffectsContext {
-  readonly services: LiveSessionServices;
-  readonly state: LiveSessionState;
-  readonly parts: LiveSessionParts;
-  readonly view: LiveSessionView;
-  readonly loader: LiveSessionLoader;
-  /** The app bar's "Anotações" button, drawn by the bar (see `SessionNotes`). */
-  readonly notesBar: Signal<TemplateRef<unknown> | undefined>;
-  /** Starts a load of a campaign (the stream included). */
-  readonly load: (campaignId: string) => void;
-}
-
-/** The page's effects; call it in the injection context (the component's constructor). */
-export function wireLiveSessionEffects(ctx: LiveSessionEffectsContext): void {
-  const { services, state, parts, view } = ctx;
+/** The page's effects; call it in the injection context (the component's constructor). `notesBar` is the app bar's
+ * "Anotações" button, drawn by the bar (see `SessionNotes`); `load` starts a load of a campaign (the stream included). */
+export function wireLiveSessionEffects(
+  services: LiveSessionServices,
+  state: LiveSessionState,
+  parts: LiveSessionParts,
+  view: LiveSessionView,
+  notesBar: Signal<TemplateRef<unknown> | undefined>,
+  load: (campaignId: string) => void,
+): void {
+  // Whether the open-sessions list named the campaign the last time the waiting effect looked.
+  let listedCampaign = { id: '', listed: false };
 
   // A player's session page hands the app bar the "Anotações" button (the
   // bar only draws it); the master has no notes.
   effect(() => {
     const show = state.phase() === 'live' && !state.isMaster();
-    const bar = ctx.notesBar();
+    const bar = notesBar();
     untracked(() => services.sessionNotes.bar.set(show ? (bar ?? null) : null));
   });
 
@@ -99,10 +93,10 @@ export function wireLiveSessionEffects(ctx: LiveSessionEffectsContext): void {
     const listed = services.openSessions.liveCampaignIds().has(id);
     // Only a campaign that newly shows up in the list opens the page: a stale list still naming a session that
     // ended would otherwise load, find none, and load again without end.
-    const appeared = state.listedCampaign.id === id && !state.listedCampaign.listed && listed;
-    state.listedCampaign = { id, listed };
+    const appeared = listedCampaign.id === id && !listedCampaign.listed && listed;
+    listedCampaign = { id, listed };
     if (state.phase() === 'no-session' && appeared) {
-      untracked(() => ctx.load(id));
+      untracked(() => load(id));
     }
   });
 }

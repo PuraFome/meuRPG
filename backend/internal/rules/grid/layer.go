@@ -169,7 +169,7 @@ func (c crumbs) set(col, row int, v byte) bool {
 	return true
 }
 
-// Light is how lit a square is, from what the master painted (Etapa 9, D2).
+// Light is how lit a square is, from what the master painted.
 // The values are in order of brightness, and the value is what the two bits
 // of a LightLayer hold.
 type Light uint8
@@ -238,7 +238,7 @@ func (l *LightLayer) Set(col, row int, v Light) bool {
 	return l.c.set(col, row, byte(v))
 }
 
-// Cover is how much a square covers whoever is behind it (D4, the SRD's
+// Cover is how much a square covers whoever is behind it (the SRD's
 // cover): half gives +2 to AC and Dexterity saves, three-quarters +5, and
 // total makes the creature untargetable.
 type Cover uint8

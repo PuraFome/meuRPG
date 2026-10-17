@@ -2,7 +2,6 @@ package maps
 
 import (
 	"context"
-	"errors"
 	"strconv"
 	"testing"
 	"time"
@@ -13,8 +12,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 )
 
-// applySpecChange is frozen here before it is split by kind (MR-035, MR-036,
-// MR-041): UpdateMapPoint's trap, treasure and light data for the point after the
+// applySpecChange (MR-035, MR-036, MR-041): UpdateMapPoint's trap, treasure and light data for the point after the
 // change, what a point that changes kind leaves behind, and the order in which the
 // three kinds are checked (trap, then treasure, then light, all inside the
 // transaction that rolls back every write when one refuses).
@@ -85,14 +83,7 @@ type specRefusal struct {
 
 func wantSpecRefusal(t *testing.T, call string, err error, want specRefusal) {
 	t.Helper()
-	ce, _ := errors.AsType[*connect.Error](err)
-	if ce == nil {
-		t.Errorf("%s error = %v, want %v %q", call, err, want.code, want.message)
-		return
-	}
-	if ce.Code() != want.code || ce.Message() != want.message {
-		t.Errorf("%s error = %v %q, want %v %q", call, ce.Code(), ce.Message(), want.code, want.message)
-	}
+	wantRefusal(t, call, err, want.code, want.message)
 	if want.reason != mapsv1.MapBlockedReason_MAP_BLOCKED_REASON_UNSPECIFIED {
 		wantMapBlocked(t, call, err, want.reason)
 	}

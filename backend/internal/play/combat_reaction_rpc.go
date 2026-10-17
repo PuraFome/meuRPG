@@ -10,6 +10,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
@@ -36,8 +37,8 @@ type answerInput struct {
 	choice playv1.ReactionChoice
 }
 
-// parseAnswerInput reads the caller and the request of AnswerReaction, in the order its
-// refusals have always come: the member, the key, the combat, the window, the answer.
+// parseAnswerInput reads the caller and the request of AnswerReaction. The refusals come
+// in this order: the member, the key, the combat, the window, the answer.
 func parseAnswerInput(ctx context.Context, msg *playv1.AnswerReactionRequest) (authz.Membership, answerInput, error) {
 	m, err := authz.RequireCampaignMember(ctx, msg.GetCampaignId())
 	if err != nil {
@@ -237,7 +238,7 @@ func (s *Service) answerShield(ctx context.Context, c *combatTx, w playdb.Reacti
 	if err != nil {
 		return fmt.Errorf("list the combatants: %w", err)
 	}
-	attacker, _ := findCombatant(cs, deref(p.AttackerID), combatViewer{master: true})
+	attacker, _ := findCombatant(cs, conv.OrZero(p.AttackerID), combatViewer{master: true})
 	if !use {
 		ev, err := s.passShield(ctx, c, w, p, reactor)
 		got.ev = ev
