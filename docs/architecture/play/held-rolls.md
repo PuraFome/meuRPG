@@ -70,6 +70,8 @@ Two stores, behind `heldStores`, read and write the rows.
 | `rollHoldStore` | `roll_holds` | Scoped by the combat, owned by the combatant | The weapon attack. A row converts on read: the faces from the request pinned with them, the die that counts by the pinned mode, the total as the face and the bonus, physical when the request typed the d20. A reaction window's replay key (`#window`) moves to `Window`. A question moves the combat's revision (`asked`) |
 | `inspirationHoldStore` | `inspiration_holds` | Scoped by the campaign, owned by the character | Every other roll. A question does not move the combat's revision |
 
+`inspiration_holds` already has the columns that let it hold the weapon attack too (`combatant_id`, `encounter_id`, `window_hold`, and the `weapon_attack` kind, migration 00255; the index of 00256 serves the open questions of a combat). No code reads or writes them yet: the weapon attack stays in `roll_holds` until the releases that read both tables and then write the new one.
+
 Both are read together for the one-question-at-a-time rule: a weapon attack waiting in `roll_holds` and a hold in `inspiration_holds` block each other (`INSPIRATION_PENDING`).
 A weapon attack's Lucky answer keeps the new d20 on the row only when the die's question follows.
 A hold made in a combat records its `round`; one of an earlier round, or whose combatant no longer holds the die, is stale and forgotten by the next roll (`heldRoll.stale`).
