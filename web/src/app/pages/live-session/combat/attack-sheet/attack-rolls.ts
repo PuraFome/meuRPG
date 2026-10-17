@@ -27,6 +27,7 @@ import {
   genericDieFields,
   rollDiceOf,
 } from '../../../../core/effects/effects';
+import { rerollShow } from '../../../../shared/held-roll-prompt/held-roll-shows';
 import type { RollAnimator, RollShow } from '../../../../shared/roll-overlay/roll-animator';
 import { runBusy } from '../../../../shared/sheet/run-busy';
 import type { AttackDamage } from './attack-damage';
@@ -36,7 +37,6 @@ import {
   damageShow,
   extraDiceProblem,
   inspirationShow,
-  luckyRerollShow,
   rollRefusal,
 } from './attack-sheet-view';
 import type { AttackState } from './attack-state';
@@ -184,7 +184,7 @@ export class AttackRolls {
     const { answer } = done;
     this.play(
       answer.kind === 'lucky'
-        ? luckyRerollShow(attack.roll, answer.roll)
+        ? rerollShow(attack.roll.d20, answer.roll)
         : inspirationShow(attack.roll, answer.use, answer.roll),
     );
   }

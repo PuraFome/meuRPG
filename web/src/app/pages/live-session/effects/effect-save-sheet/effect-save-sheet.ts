@@ -23,7 +23,7 @@ import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { luckyText } from '../../../../core/combat/lucky';
-import { luckyHeldLine, luckyReroll } from '../../../../core/combat/lucky-question';
+import { luckyHeldLine, luckyReroll } from '../../../../core/held-rolls/held-roll-offer';
 import { isOpen } from '../../../../core/combat/reactions';
 import { ActionKey } from '../../../../core/connect/idempotency';
 import { type EffectSaveAnswer, EffectsClient } from '../../../../core/effects/effects-client';

@@ -11,7 +11,8 @@ import { ActionEconomy } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
 import { SpellCatalog } from '../../../../core/combat/spell-catalog';
-import { inspirationOffer } from '../../../../core/play/scene-testing';
+import type { HeldAnswer } from '../../../../core/held-rolls/held-roll-offer';
+import { heldAnswer, heldDie } from '../../../../core/held-rolls/held-roll-testing';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { CastSheet, type CastSheetData } from './cast-sheet';
 
@@ -19,7 +20,7 @@ describe('the cast sheet and the Bardic Inspiration question', () => {
   function setup() {
     TestBed.resetTestingModule();
     const apply = vi.fn();
-    const resources = { answerOutsideInspiration: vi.fn() };
+    const resources = { answerHeldRoll: vi.fn() };
     const data = {
       campaignId: 'c',
       encounterId: 'enc',
@@ -59,14 +60,14 @@ describe('the cast sheet and the Bardic Inspiration question', () => {
     const sheet = fixture.componentInstance as unknown as {
       offer: { set(v: unknown): void };
       cast: () => unknown;
-      answerDie(use: boolean, die: { inApp: true } | null): Promise<void>;
+      questions: { held: { answer(answer: HeldAnswer): Promise<void> } };
     };
     return { fixture, el: fixture.nativeElement as HTMLElement, sheet, resources, apply };
   }
 
   it('shows the question in place of the form while the d20 waits, with no result', async () => {
     const { fixture, el, sheet } = setup();
-    sheet.offer.set(inspirationOffer(4, 5));
+    sheet.offer.set(heldDie(4, 5));
     fixture.detectChanges();
     expect(el.textContent).toContain('Usar a Inspiração de Bardo (d8)?');
     expect(el.textContent).not.toContain('Voltar à sua vez');
@@ -74,24 +75,25 @@ describe('the cast sheet and the Bardic Inspiration question', () => {
 
   it('casts the spell with the answer, applying the combat it brings', async () => {
     const { fixture, sheet, resources, apply } = setup();
-    sheet.offer.set(inspirationOffer(4, 5));
+    sheet.offer.set(heldDie(4, 5));
     fixture.detectChanges();
     const enc = encounter({});
-    resources.answerOutsideInspiration.mockResolvedValue({
-      result: {
-        case: 'spellCast',
-        value: {
-          encounter: enc,
-          cast: create(SpellCastSchema, { spellKey: 'spell:guiding-bolt' }),
+    resources.answerHeldRoll.mockResolvedValue(
+      heldAnswer({
+        result: {
+          case: 'spellCast',
+          value: {
+            encounter: enc,
+            cast: create(SpellCastSchema, { spellKey: 'spell:guiding-bolt' }),
+          },
         },
-      },
-    });
-    await sheet.answerDie(true, { inApp: true });
-    expect(resources.answerOutsideInspiration.mock.calls[0].slice(0, 4)).toEqual([
+      }),
+    );
+    await sheet.questions.held.answer({ kind: 'die', use: true, roll: { inApp: true } });
+    expect(resources.answerHeldRoll.mock.calls[0].slice(0, 3)).toEqual([
       'c',
       'h1',
-      true,
-      { inApp: true },
+      { kind: 'die', use: true, roll: { inApp: true } },
     ]);
     expect(apply).toHaveBeenCalledWith(enc);
     expect(sheet.cast()).not.toBeNull();
@@ -99,27 +101,28 @@ describe('the cast sheet and the Bardic Inspiration question', () => {
 
   it('keeps the die: the answer sends no roll, and the cast is told without it', async () => {
     const { fixture, el, sheet, resources } = setup();
-    sheet.offer.set(inspirationOffer(4, 5));
+    sheet.offer.set(heldDie(4, 5));
     fixture.detectChanges();
-    resources.answerOutsideInspiration.mockResolvedValue({
-      result: {
-        case: 'spellCast',
-        value: {
-          encounter: encounter({}),
-          cast: create(SpellCastSchema, { spellKey: 'spell:guiding-bolt' }),
+    resources.answerHeldRoll.mockResolvedValue(
+      heldAnswer({
+        result: {
+          case: 'spellCast',
+          value: {
+            encounter: encounter({}),
+            cast: create(SpellCastSchema, { spellKey: 'spell:guiding-bolt' }),
+          },
         },
-      },
-    });
+      }),
+    );
     Array.from(el.querySelectorAll('button'))
       .find((b) => b.textContent?.includes('Guardar o dado'))!
       .click();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(resources.answerOutsideInspiration.mock.calls[0].slice(0, 4)).toEqual([
+    expect(resources.answerHeldRoll.mock.calls[0].slice(0, 3)).toEqual([
       'c',
       'h1',
-      false,
-      null,
+      { kind: 'die', use: false, roll: null },
     ]);
     expect(sheet.cast()).not.toBeNull();
     expect(el.textContent).not.toContain('Usar a Inspiração de Bardo (d8)?');

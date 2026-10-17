@@ -1,4 +1,4 @@
-import { type MessageInitShape, create } from '@bufbuild/protobuf';
+import { create } from '@bufbuild/protobuf';
 import { timestampFromMs } from '@bufbuild/protobuf/wkt';
 
 import {
@@ -90,26 +90,34 @@ export function askedAt(ms: number): { createdAt: ReturnType<typeof timestampFro
   return { createdAt: timestampFromMs(ms) };
 }
 
-/** What `AnswerHeldRoll` answers: the path's own response and, while the roll waits, the next question. */
+/** What `AnswerHeldRoll` answers: the path's own response (`result`, the messages kept as given) and, while the roll
+ * waits, the next question (copied out of the result's `heldRollOffer`, as the server does, unless a spec sets it). */
 export function heldAnswer(
-  over: MessageInitShape<typeof AnswerHeldRollResponseSchema> = {},
+  over: {
+    readonly result?: { readonly case: string; readonly value: object };
+    readonly next?: HeldRollOffer;
+  } = {},
 ): AnswerHeldRollResponse {
-  return create(AnswerHeldRollResponseSchema, over);
+  const res = create(AnswerHeldRollResponseSchema);
+  if (over.result) {
+    res.result = over.result as AnswerHeldRollResponse['result'];
+  }
+  const next =
+    over.next ??
+    (over.result?.value as { heldRollOffer?: HeldRollOffer } | undefined)?.heldRollOffer;
+  if (next) {
+    res.next = next;
+  }
+  return res;
 }
 
 /** What `AnswerHeldRoll` answers for a weapon attack: the attack as the path answers it, resolved, or still held with its
  * next question (copied out into `next`, as the server does). */
 export function heldAttackAnswer(res: AttackResult): AnswerHeldRollResponse {
-  return heldAnswer({
-    result: {
-      case: 'attack',
-      value: create(RollAttackResponseSchema, {
-        encounter: res.encounter,
-        roll: res.roll,
-        pendingDamage: res.pending,
-        heldRollOffer: res.held,
-      }),
-    },
-    next: res.held,
-  });
+  const attack = create(RollAttackResponseSchema);
+  attack.encounter = res.encounter;
+  attack.roll = res.roll;
+  attack.pendingDamage = res.pending;
+  attack.heldRollOffer = res.held;
+  return heldAnswer({ result: { case: 'attack', value: attack }, next: res.held });
 }

@@ -35,7 +35,6 @@ import {
 } from '../../../../core/combat/critical';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import { isPlayer, stateWord } from '../../../../core/combat/combat-view';
-import { LUCKY_TRAIT } from '../../../../core/combat/lucky';
 import { reactionWait } from '../../../../core/combat/reactions';
 import { liveRequest } from '../../../../core/combat/roll-mode';
 import { type ExtraDieField, missingDice } from '../../../../core/effects/effects';
@@ -343,17 +342,6 @@ export function damageShow(p: PendingDamage | undefined): RollShow | null {
     return null;
   }
   return showOfDice('Dano', p.roll, { withTotal: true, note: p.damageTypePt || undefined });
-}
-
-/** The d20 the app rolled again for Lucky, tumbling: the new face alone, "1 → 14" (the sheet tells the result). */
-export function luckyRerollShow(roll: AttackRoll, die: HeldRolled | null): RollShow | null {
-  if (!die || !('inApp' in die)) {
-    return null;
-  }
-  const again = roll.d20?.rerolled.find((r) => r.sourceKey === LUCKY_TRAIT);
-  return again
-    ? showOfDie('Sortudo', roll.d20?.diceSides ?? 0, again.to, `${again.from} → ${again.to}`)
-    : null;
 }
 
 /** The die the player added after the d20, rolled in the app (the sheet's "Com o d8 da Inspiração de Bardo (+5)" line). */

@@ -20,7 +20,7 @@ import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import { type SlotRow, defaultSlot, lastSlotWarning } from '../../../../core/combat/cast-flow';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { type ReactionAnswer } from '../../../../core/combat/combat-client-types';
-import { luckyHeldLine } from '../../../../core/combat/lucky-question';
+import { luckyHeldLine } from '../../../../core/held-rolls/held-roll-offer';
 import {
   type ConcentrationMode,
   type PromptView,

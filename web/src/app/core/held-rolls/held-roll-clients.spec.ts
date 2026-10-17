@@ -8,9 +8,8 @@ import {
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 import { EffectsClient } from '../effects/effects-client';
-import { CombatClient } from './combat-client';
-import { LUCKY_TRAIT } from './lucky';
-import { LuckyQuestion, luckyHeldLine, luckyReroll } from './lucky-question';
+import { CombatClient } from '../combat/combat-client';
+import { HeldRollAsked } from './held-roll-offer';
 
 // The halfling's Lucky on the combat's d20 rolls that are not a weapon attack: the clients carry the question the server
 // asks instead of the result, and the sheets share the words of the held d20.
@@ -28,29 +27,7 @@ const offer = (faces: number[] = [1], modifier = 5) =>
     }),
   });
 
-describe('the held d20 of a Lucky question', () => {
-  it('says the d20 and its bonus, and that the result comes after the answer', () => {
-    expect(luckyHeldLine(offer())).toBe(
-      'Seu d20: 1d20 (1) + 5 = 6. O resultado só aparece depois da sua escolha.',
-    );
-    expect(luckyHeldLine(null)).toBe('');
-  });
-
-  it('finds the d20 Lucky rolled again, and nothing for a reroll of another feature', () => {
-    const roll = create(DiceRollSchema, {
-      faces: [14],
-      rerolled: [
-        { index: 0, from: 1, to: 4, sourceKey: '' },
-        { index: 0, from: 1, to: 14, sourceKey: LUCKY_TRAIT },
-      ],
-    });
-    expect(luckyReroll(roll)?.to).toBe(14);
-    expect(luckyReroll(create(DiceRollSchema, { faces: [1] }))).toBeUndefined();
-    expect(luckyReroll(undefined)).toBeUndefined();
-  });
-});
-
-describe('the clients carry the Lucky question', () => {
+describe('the clients carry the question of a held roll', () => {
   function combatClient(answer: Record<string, unknown>): CombatClient {
     TestBed.configureTestingModule({
       providers: [CombatClient, { provide: CONNECT_TRANSPORT, useValue: {} }],
@@ -70,10 +47,10 @@ describe('the clients carry the Lucky question', () => {
       inspirationOffer: create(OutsideInspirationOfferSchema, { holdId: 'h1', sides: 8 }),
     });
     const cast = client.casts.castSpell('c', 'e', 'p', 'spell:guiding-bolt', null, [], null, 'k');
-    await expect(cast).rejects.toBeInstanceOf(LuckyQuestion);
+    await expect(cast).rejects.toBeInstanceOf(HeldRollAsked);
     await cast.catch((err: unknown) => {
-      expect((err as LuckyQuestion).offer.holdId).toBe('h1');
-      expect((err as LuckyQuestion).encounter.id).toBe('enc');
+      expect((err as HeldRollAsked).offer.holdId).toBe('h1');
+      expect((err as HeldRollAsked).encounter.id).toBe('enc');
     });
   });
 

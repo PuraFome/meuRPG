@@ -15,7 +15,7 @@ import {
   type ReactionAnswer,
 } from '../../../../core/combat/combat-client-types';
 import { combatErrorMessage, encounterBlocked } from '../../../../core/combat/combat-errors';
-import { luckyReroll } from '../../../../core/combat/lucky-question';
+import { luckyReroll } from '../../../../core/held-rolls/held-roll-offer';
 import { isOptionalReaction } from '../../../../core/combat/reaction-autopass';
 import type { SlotAfter } from '../../../../core/combat/reactions';
 import { ActionKey } from '../../../../core/connect/idempotency';
