@@ -565,3 +565,16 @@ func milestoneByID(views []*progressionv1.Milestone, id string) *progressionv1.M
 	}
 	return nil
 }
+
+// committedViews reads the milestones for the answer of a write that is
+// committed.
+func (s *Service) committedViews(ctx context.Context, what string, read func() ([]*progressionv1.Milestone, error)) []*progressionv1.Milestone {
+	views, _ := read()
+	return views
+}
+
+// writtenMilestone is the milestone a write made or changed, as the answer
+// shows it.
+func writtenMilestone(views []*progressionv1.Milestone, row progressiondb.PlannedMilestone) *progressionv1.Milestone {
+	return milestoneByID(views, row.ID)
+}
