@@ -10,6 +10,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
@@ -106,9 +107,13 @@ func (s *Service) AddMilestone(
 	return connect.NewResponse(&progressionv1.AddMilestoneResponse{Milestone: milestoneByID(views, added.ID), Milestones: views}), nil
 }
 
-// addMilestoneHash is the hash AddMilestone keeps with its key.
+// addMilestoneHash is the hash AddMilestone keeps with its key: the request's,
+// with the cleaned text the milestone is stored with, so a retry that differs
+// only by the whitespace around the text is the same request.
 func addMilestoneHash(req *progressionv1.AddMilestoneRequest, text string) *string {
-	return idem.Hash(req)
+	cleaned := proto.Clone(req).(*progressionv1.AddMilestoneRequest)
+	cleaned.Text = text
+	return idem.Hash(cleaned)
 }
 
 // plannedInsert is the milestone AddMilestone writes: its campaign, its text
