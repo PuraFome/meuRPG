@@ -32,7 +32,7 @@ describe('SpellEditor', () => {
   const save = vi.fn();
   const cat = catalog();
 
-  function setup(existing = false) {
+  function setup(existing = false, extra: Record<string, unknown> = {}) {
     save.mockReset();
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
@@ -56,6 +56,7 @@ describe('SpellEditor', () => {
               duration: { kind: 1 },
               target: { kind: 1 },
               components: { verbal: true },
+              ...extra,
             }),
           },
         }),
@@ -272,5 +273,32 @@ describe('SpellEditor', () => {
         .sort(),
     ).toEqual(['Fogo', 'Necrótico']);
     expect(text(el)).toContain('Em níveis superiores (opcional, só texto)');
+  });
+
+  it('warns about damage with no attack, saving throw or area, and still saves', async () => {
+    const damage = [{ damageTypeKey: 'damage-type:fire', dice: '2d6' }];
+    const { fixture, el } = setup(true, { damage });
+    const warning = () => el.querySelector('[data-warning="unapplied-damage"]');
+    expect(text(warning()!)).toContain('O app não sabe aplicar este dano');
+    save.mockResolvedValue({
+      entry: entry(TableContentKind.SPELL, 'Lâmina de Nanquim'),
+      affected: [],
+    });
+    click(el, 'Salvar magia');
+    await settle(fixture, 3);
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not warn once the spell has an attack, and not for a spell without damage', async () => {
+    const { fixture, el } = setup(true, {
+      damage: [{ damageTypeKey: 'damage-type:fire', dice: '2d6' }],
+    });
+    const radio = Array.from(el.querySelectorAll('app-segmented input[type="radio"]')).find((i) =>
+      i.closest('label')?.textContent?.includes('Ataque'),
+    ) as HTMLInputElement;
+    radio.click();
+    await settle(fixture, 3);
+    expect(el.querySelector('[data-warning="unapplied-damage"]')).toBeNull();
+    expect(setup(true).el.querySelector('[data-warning="unapplied-damage"]')).toBeNull();
   });
 });

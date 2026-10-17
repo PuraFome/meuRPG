@@ -11,8 +11,17 @@ import {
 } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { describeConnectError } from '../connect/connect-errors';
 
-const IMAGES_OFF_TEXT =
+export const IMAGES_OFF_TEXT =
   'Este servidor ainda não guarda pacotes de campanha: o armazenamento de arquivos está desligado. Peça a quem cuida do servidor para ligá-lo.';
+
+/** What a `failed_precondition` of the upload calls says, by its typed reason (`HAS_PROBLEMS` is the preview, not a sentence). */
+const BLOCKED_TEXT: ReadonlyMap<CampaignPackageBlockedReason, string> = new Map([
+  [CampaignPackageBlockedReason.IMAGES_OFF, IMAGES_OFF_TEXT],
+  [
+    CampaignPackageBlockedReason.INCOMPLETE,
+    'O envio não terminou: faltam partes do arquivo. Escolha o arquivo de novo para continuar de onde parou.',
+  ],
+]);
 
 /** Why a step of an import did not go through, by the Connect code and its typed detail (never the message). */
 export type ImportIssue =
@@ -62,10 +71,7 @@ export function importIssue(err: unknown): ImportIssue {
   const text = describeConnectError(err, {
     [Code.InvalidArgument]:
       'Esse arquivo não pôde ser enviado: o nome está vazio, ou ele passa de 200 MB.',
-    [Code.FailedPrecondition]:
-      blocked?.reason === CampaignPackageBlockedReason.INCOMPLETE
-        ? 'O envio não terminou: faltam partes do arquivo. Escolha o arquivo de novo para continuar de onde parou.'
-        : IMAGES_OFF_TEXT,
+    [Code.FailedPrecondition]: (blocked && BLOCKED_TEXT.get(blocked.reason)) ?? IMAGES_OFF_TEXT,
   });
   return { kind: 'text', text, unknown: e.code === Code.Unknown, retryable: !REFUSALS.has(e.code) };
 }
