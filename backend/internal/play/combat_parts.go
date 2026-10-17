@@ -1256,8 +1256,8 @@ func (s *Service) settleParts(ctx context.Context, c *combatTx, attacker playdb.
 		}
 		if spent {
 			vit = v
-			continue
 		}
+		// A table's extra that spends a use is once per turn too: the mark does not wait for a part that spends nothing.
 		once.mark(r.Key)
 		if pr.parts[i].Once {
 			once.markTable(r.Key)
