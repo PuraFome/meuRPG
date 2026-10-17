@@ -26,6 +26,13 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
+// Names in the write RPCs of a combat. The body of the transaction a handler runs inside
+// s.write is `<verb>Write` (startWrite, spendWrite, removePartWrite); the reader of the
+// request is `read<Verb>Call` and returns a `<verb>Call` struct (readStartCall,
+// readSpendCall); the scratch state a long write keeps between its steps is `<verb>Run`.
+// Helpers that only look something up in a value carry `Of` or `From` (movementLeftOf), never
+// `In` or `Tx`.
+
 // The kinds of session_events rows a combat writes (session_event_kinds).
 // Their payloads hold IDs and numbers only, never a name (docs/privacy.md).
 const (
@@ -39,7 +46,7 @@ const (
 	eventCombatantsAdded     = "combatants_added"
 	eventCombatantRemoved    = "combatant_removed"
 	eventEncounterEnded      = "encounter_ended"
-	// The actions of a turn (combat_actions.go, combat_undo.go).
+	// The actions of a turn (combat_attack.go, combat_damage.go, combat_take_action.go, combat_undo.go).
 	eventAttackRolled      = "attack_rolled"
 	eventDamageRolled      = "damage_rolled"
 	eventDamageApplied     = "damage_applied"
@@ -60,7 +67,7 @@ const (
 	eventCombatEffectEnded = "combat_effect_ended"
 )
 
-// The kinds of Etapa 7: the XP awards (package progression writes them
+// The kinds of the XP awards (package progression writes them
 // through AppendEvent) and the scenes. session_event_kinds lists them
 // all, and TestSessionEventKindsMatchTheTable keeps the two in step.
 const (
@@ -72,26 +79,23 @@ const (
 	eventSceneCheckRolled = "scene_check_rolled"
 )
 
-// The kinds of Etapa 8: a clue revealed to players (package maps writes it
+// The kinds of a clue revealed to players (package maps writes it
 // through AppendEvent) and the stage changing (MR-031).
 const (
 	eventClueRevealed = "clue_revealed"
 	eventStageChanged = "stage_changed"
 )
 
-// The kinds of the second Etapa 8 wave (migration 00083). The master gave a
+// The kinds of migration 00083. The master gave a
 // character one more attempt at a scene action (scene_attempt_granted,
 // MR-015); a member of a joint turn ended their part and the turn goes on
-// (turn_part_ended, MR-013). The last part to end writes turn_ended, as a turn
-// always did.
+// (turn_part_ended, MR-013). The last part to end writes turn_ended.
 const (
 	eventSceneAttemptGranted = "scene_attempt_granted"
 	eventTurnPartEnded       = "turn_part_ended"
 )
 
-// The kinds of Etapa 9 (migration 00090), added in one migration before the
-// slices that write them, so that slices built at the same time never fight
-// over the CHECK. Traps and treasure are written by package maps through
+// The kinds of migration 00090. Traps and treasure are written by package maps through
 // AppendEvent, the rest by this package.
 const (
 	eventTrapNoticed        = "trap_noticed"
@@ -115,7 +119,7 @@ const (
 	eventFamiliarSight        = "familiar_sight"
 )
 
-// The kind of Etapa 10 (migration 00121): a move opened a closed door (MR-010,
+// The kind of migration 00121: a move opened a closed door (MR-010,
 // RN-26). Written by this package, in the move's transaction.
 const eventDoorOpened = "door_opened"
 

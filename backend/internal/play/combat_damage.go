@@ -21,10 +21,10 @@ import (
 )
 
 // The damage roll (RollDamage), in phases. rollDamage reads the request, runs the transaction as a sequence
-// of phases of a damageFlow, each one of the checks or the writes the damage has always made in that order,
+// of phases of a damageFlow, each one of the checks or the writes the damage makes, in that order,
 // and answers from what the transaction left in a damageOut. The phases keep the order of the reads, the
-// dice and the writes: the scripted dice of the tests and the golden of combat_roll_damage_frozen_test.go
-// read it.
+// dice and the writes, because the scripted dice of the tests and the frozen characterization tests
+// depend on it.
 
 // damageCall is what RollDamage reads from its request, checked.
 type damageCall struct {
@@ -294,7 +294,7 @@ func (f *damageFlow) rollDice(ctx context.Context) error {
 	case f.expr.Count == 0:
 		f.roll = dice.Result{Expr: f.expr, Modifier: f.expr.Modifier, Total: f.expr.Modifier}
 	default:
-		if err := f.rollGroup(ctx); err != nil {
+		if err := f.rollPlainDamage(ctx); err != nil {
 			return err
 		}
 	}
@@ -323,8 +323,8 @@ func (f *damageFlow) rollParts(ctx context.Context) error {
 	return err
 }
 
-// rollGroup rolls the one group of dice of a damage with no parts, in the app or from the typed sum.
-func (f *damageFlow) rollGroup(ctx context.Context) error {
+// rollPlainDamage rolls the one group of dice of a damage with no parts, in the app or from the typed sum.
+func (f *damageFlow) rollPlainDamage(ctx context.Context) error {
 	if !f.out.v.master {
 		if err := f.s.mustRollThisWay(ctx, f.c.tx, f.m, f.call.in); err != nil {
 			return err

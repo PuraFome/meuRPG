@@ -9,7 +9,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
-// These tests freeze what the rest of combat_actions.go does today, scenario by scenario: ApplyPendingDamage
+// These tests freeze what the settling of a hit, the NPC hit points and the turn options do today, scenario by scenario: ApplyPendingDamage
 // and DiscardPendingDamage (the master settles a hit on a player's character), AdjustCombatantHitPoints (the
 // master's hand on an NPC's hit points) and GetTurnOptions (the read of what a combatant can do, as each viewer
 // sees it). For a write: every refusal with its code, message and blocked reason, and for each one that goes

@@ -18,15 +18,14 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
-	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
 // The attack roll (RollAttack), in phases. rollAttack reads the request, runs the transaction as a
-// sequence of phases of an attackFlow, each one of the checks or the writes the attack has always made in
+// sequence of phases of an attackFlow, each one of the checks or the writes the attack makes, in
 // that order, and answers from what the transaction left in an attackOut. The phases keep the order of the
-// reads, the dice and the writes: the scripted dice of the tests and the golden of
-// combat_roll_attack_frozen_test.go read it.
+// reads, the dice and the writes, because the scripted dice of the tests and the
+// frozen characterization tests depend on it.
 
 // attackCall is what RollAttack reads from its request, checked.
 type attackCall struct {
@@ -170,7 +169,6 @@ type attackFlow struct {
 	caught           playdb.ReactionWindow
 	attack           link.Attack
 	attackKey        string
-	terrain          grid.Terrain
 	bonusKind        combat.BonusKind
 	// coverTarget is the target on the square the mode and the cover are read at: where an opportunity
 	// attack's mover left the reach.
@@ -218,20 +216,24 @@ func (f *attackFlow) run(ctx context.Context) (any, error) {
 // prepare is the part of the attack that checks and reads: who and what, the turn, the attack, the economy
 // and the cover. Nothing is written.
 func (f *attackFlow) prepare(ctx context.Context) error {
-	for _, phase := range []func(context.Context) error{
-		f.findAttacker, f.findTarget, f.checkOffer, f.checkTiming, f.pickAttack, f.checkAttack, f.checkEconomy, f.readCover,
-	} {
+	for _, phase := range []func(context.Context) error{f.findAttacker, f.findTarget, f.checkOffer, f.checkTiming, f.pickAttack} {
 		if err := phase(ctx); err != nil {
 			return err
 		}
 	}
-	return nil
+	if err := f.checkAttack(); err != nil {
+		return err
+	}
+	if err := f.checkEconomy(ctx); err != nil {
+		return err
+	}
+	return f.readCover(ctx)
 }
 
 // writeAttack is what the settled d20 does: the event, the economy, the damage it opens and the offer it answers.
 func (f *attackFlow) writeAttack(ctx context.Context) error {
 	for _, phase := range []func(context.Context) error{
-		f.resolve, f.record, f.spendEconomy, f.closeThrow, f.openHit, f.answerOffer, f.settle,
+		f.resolve, f.record, f.spendEconomy, f.closeThrow, f.openHitDamage, f.answerOffer, f.settle,
 	} {
 		if err := phase(ctx); err != nil {
 			return err
@@ -370,12 +372,7 @@ func (f *attackFlow) catchMissile(ctx context.Context) error {
 
 // checkAttack checks the attack is a roll to hit: not a saving throw (CastSpell), and a melee weapon for an
 // opportunity attack, thrown or not (a dagger counts), not a bow or a spell.
-func (f *attackFlow) checkAttack(ctx context.Context) error {
-	terrain, err := f.s.terrainOf(ctx, f.c.tx, f.m.CampaignID, f.c.enc)
-	if err != nil {
-		return err
-	}
-	f.terrain = terrain
+func (f *attackFlow) checkAttack() error {
 	if f.attack.Save {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("this attack asks for a saving throw, not an attack roll: use CastSpell"))
 	}
@@ -457,13 +454,17 @@ func (f *attackFlow) readCover(ctx context.Context) error {
 	if f.call.offerID != "" && f.offer.LeftCol != nil && f.offer.LeftRow != nil { // an offer made by hand has no square
 		f.coverTarget.GridCol, f.coverTarget.GridRow = f.offer.LeftCol, f.offer.LeftRow
 	}
+	terrain, err := f.s.terrainOf(ctx, f.c.tx, f.m.CampaignID, f.c.enc)
+	if err != nil {
+		return err
+	}
 	known, err := f.c.sight.knownTerrain(ctx, f.c.tx, f.v)
 	if err != nil {
 		return err
 	}
 	// The real cover sets the armor class; the player is told, and refused, only by what they know of the
 	// map and see of the creatures (RN-10, MR-036).
-	cp, err := f.c.coverOf(ctx, f.v, f.terrain, known, f.attacker, f.coverTarget, f.cs)
+	cp, err := f.c.coverOf(ctx, f.v, terrain, known, f.attacker, f.coverTarget, f.cs)
 	if err != nil {
 		return err
 	}
@@ -696,9 +697,9 @@ func (f *attackFlow) closeThrow(ctx context.Context) error {
 	return err
 }
 
-// openHit opens the damage of a hit: the dice of the weapon, what a critical hit adds, the parts of the
+// openHitDamage opens the damage of a hit: the dice of the weapon, what a critical hit adds, the parts of the
 // damage and the riders the hit offers.
-func (f *attackFlow) openHit(ctx context.Context) error {
+func (f *attackFlow) openHitDamage(ctx context.Context) error {
 	if !f.result.Hit {
 		return nil
 	}
@@ -715,7 +716,7 @@ func (f *attackFlow) openHit(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := f.hitParts(ctx, bonus, p.ID); err != nil {
+	if err := f.writeHitParts(ctx, bonus, p.ID); err != nil {
 		return err
 	}
 	f.out.made.Pending = p.ID
@@ -734,8 +735,8 @@ func (f *attackFlow) damageBonus() int {
 	return f.attack.DiceBonus
 }
 
-// hitParts writes the parts of the damage of a hit.
-func (f *attackFlow) hitParts(ctx context.Context, bonus int, pendingID string) error {
+// writeHitParts writes the parts of the damage of a hit.
+func (f *attackFlow) writeHitParts(ctx context.Context, bonus int, pendingID string) error {
 	disadvantage := slices.ContainsFunc(f.truth.Sources, func(s combat.Source) bool { return s.Effect == combat.ModeDisadvantage })
 	return f.s.hitParts(ctx, f.c, f.m.CampaignID, f.v, f.modeIn, f.attacker, f.coverTarget, f.sheet, f.attack, bonus, f.rolled.Choice.Mode, disadvantage, f.call.opportunity(), pendingID)
 }

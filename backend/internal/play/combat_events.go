@@ -466,7 +466,7 @@ type actionEvent struct {
 
 	// A move: the square, what it cost the combatant and how far it went, in feet
 	// (rounded down) and in tenths of a foot, which is the exact number (RN-21;
-	// events written before Etapa 9 have only the feet).
+	// older events have only the feet).
 	Col         int32 `json:"col,omitempty"`
 	Row         int32 `json:"row,omitempty"`
 	CostFt      int32 `json:"cost_ft,omitempty"`

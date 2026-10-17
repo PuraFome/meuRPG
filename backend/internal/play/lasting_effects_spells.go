@@ -16,7 +16,7 @@ import (
 
 // What a spell that lasts leaves on its targets (RN-22): Bênção, Perdição, Velocidade,
 // Imobilizar Pessoa, Riso Histérico, Fogo das Fadas and Teia (SRD 5.1). The cast rolls the
-// saving throw of the spell as it always did; this puts the effect on the targets it took
+// saving throw of the spell; this puts the effect on the targets it took
 // hold of, with the duration of the spell on the clock (one minute is 10 rounds, counted to
 // the start of the caster's turn) and the caster's concentration holding it. The rider of an
 // instantaneous spell (Zombaria Viciosa's disadvantage) has a clock of its own, on its target's

@@ -18,8 +18,7 @@ import (
 // damage and the hit points. Each scenario is a branch of takeBack.
 
 // deltaDoorOpened: a door a move opened stays open after the undo of the move, on
-// purpose (RN-26, "a door opened stays opened"; the comment of lastAction in
-// combat_undo.go). openDoors (combat_move.go:625) opens it through the maps module
+// purpose (RN-26, "a door opened stays opened"; chainMoveCompanions). openDoors opens it through the maps module
 // with the move's transaction and writes the door_opened event, and the
 // eventCombatantMoved case of takeBack does not close it. The log line stays for the
 // master and for each player who saw Toren, and the door's cell in the map's layers

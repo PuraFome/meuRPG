@@ -20,7 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
-// The actions of a turn (MR-012, MR-014, Etapa 6, slice 6.4a): the options of a
+// The actions of a turn (MR-012, MR-014): the options of a
 // combatant, the attack in two steps, the damage, the standard actions, the
 // NPCs' hit points, the undo and the combat log. These tests need the
 // database (MEURPG_TEST_DATABASE_URL). The fixture is the party of the

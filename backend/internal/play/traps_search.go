@@ -285,7 +285,7 @@ func (s *Service) prepareSearchRoll(ctx context.Context, ts *trapSearch, r *sear
 	cm, err := s.checkModeOf(ctx, r.c.tx, ts.m.CampaignID, r.c.session.ID, ts.who.ID, searchCheckKey[ts.skill], ability, isCheck)
 	// Reliable Talent: a d20 of 9 or lower counts as 10 for a skill the character is
 	// proficient in, each die of a search with disadvantage before the lower is
-	// chosen. Not for the light's penalty: that is the second die, as before.
+	// chosen. Not for the light's penalty: that is the second die.
 	if err != nil {
 		return false, err
 	}

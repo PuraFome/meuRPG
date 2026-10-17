@@ -112,7 +112,7 @@ var effectGainToProto = map[string]playv1.SpellEffectGain{
 // alone gets why, the target's hit points and the pool's arithmetic (an enemy's
 // hit points never reach a player, and the order of the pool would tell who has
 // fewer); a heal's amount, capped at the target's maximum, goes only to the
-// master and the target's own player, as for any heal (slice 6.4b): on an NPC,
+// master and the target's own player, as for any heal: on an NPC,
 // the amount would tell the caster how many hit points it lacked.
 func effectView(h castHit, v combatViewer, target playdb.Combatant) *playv1.SpellEffectResult {
 	if h.Fx == "" {

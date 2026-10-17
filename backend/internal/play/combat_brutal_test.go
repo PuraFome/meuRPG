@@ -92,7 +92,7 @@ func TestBrutalCriticalAddsWeaponDiceToAMeleeCritical(t *testing.T) {
 }
 
 // TestBrutalCriticalIsOnlyForAMeleeCritical: a normal hit, a ranged attack and a
-// spell attack roll their damage as they always did.
+// spell attack roll their damage without it.
 func TestBrutalCriticalIsOnlyForAMeleeCritical(t *testing.T) {
 	t.Parallel()
 	t.Run("a plain hit", func(t *testing.T) {

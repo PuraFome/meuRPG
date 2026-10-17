@@ -17,7 +17,7 @@ import (
 )
 
 // More scenarios of the undo property (combat_undo_snapshot_test.go) for the events the
-// master's Desfazer takes back (takeBack in combat_undo.go), one for each branch the
+// master's Desfazer takes back (takeBack), one for each branch the
 // first scenarios of combat_undo_kinds_test.go leave out. A scenario that names a
 // difference (undoDelta) freezes what today's undo does not put back.
 
@@ -57,12 +57,10 @@ func (w *undoWatch) runWithHolds(t *testing.T, name string, want undoDelta, do f
 }
 
 // deltaAnsweredHold: the row of a held roll stays after the answer (AnswerInspirationHold, queries.sql)
-// as the record of the answer's idempotency key, and the undo of the attack does not delete it
-// (the attack case of takeBack, combat_undo.go, puts back the action and the die, not the
-// hold). Nothing reads it: only the unanswered holds are listed, so it is invisible. The weapon attack
-// waits in inspiration_holds since E4-6 (it waited in roll_holds before). lucky is the columns of the
-// Lucky answer, for a roll that was asked about its 1: the d20 it was rolled again to (15) is the one
-// the row keeps, typed from a real die.
+// as the record of the answer's idempotency key, and the undo of the attack does not delete it: the attack
+// case of takeBack puts back the action and the die, not the hold. Nothing reads it: only the unanswered
+// holds are listed, so it is invisible. lucky is the columns of the Lucky answer, for a roll that was asked
+// about its 1: the d20 it was rolled again to (15) is the one the row keeps, typed from a real die.
 func deltaAnsweredHold(face, modifier int, lucky bool) undoDelta {
 	physical, counted := "false", "0"
 	if lucky {
@@ -503,8 +501,8 @@ func TestUndoKindActionTakenDisengagedBefore(t *testing.T) {
 
 // deltaAnsweredInspirationHold: the row of the question about a Bardic Inspiration die
 // stays after the answer (AnswerInspirationHold, queries.sql) as the record of the
-// answer's idempotency key, and the undo of the cast (the spell case of takeBack,
-// combat_undo.go) holds the die again without deleting it. Only the unanswered holds are
+// answer's idempotency key, and the undo of the cast (the spell case of takeBack)
+// holds the die again without deleting it. Only the unanswered holds are
 // listed, so nobody reads it.
 var deltaAnsweredInspirationHold = undoDelta{
 	"+ db/inspiration_holds[#].answer_key=#", "+ db/inspiration_holds[#].campaign_id=#", "+ db/inspiration_holds[#].character_id=#",
@@ -733,9 +731,9 @@ func TestUndoKindSpellCastFromHiding(t *testing.T) {
 	})
 }
 
-// deltaNPCSlotsZero: an NPC's spent slots are a JSON object on the combatant (bumpUsed,
-// combat_reaction_kit.go:190) that starts as {}; the Mage's Escudo writes {"1": 1} and the undo
-// (giveBackNPCSlot, the NPC branch of the reaction case of takeBack, combat_undo.go) writes
+// deltaNPCSlotsZero: an NPC's spent slots are a JSON object on the combatant (bumpUsed in
+// combat_reaction_kit.go) that starts as {}; the Mage's Escudo writes {"1": 1} and the undo
+// (giveBackNPCSlot, the NPC branch of the reaction case of takeBack) writes
 // {"1": 0}: the level stays as a key with no use. Nothing reads a zero as a slot spent, so it is
 // invisible.
 var deltaNPCSlotsZero = undoDelta{"+ db/combatants[#].slots_used.1=0", "- db/combatants[#].slots_used={}"}
