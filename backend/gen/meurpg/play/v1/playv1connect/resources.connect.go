@@ -272,6 +272,14 @@ type ResourceServiceClient interface {
 	// `failed_precondition` (the roll was answered already), the die spent once. Another player gets
 	// `not_found`, never "permission denied", which would say the roll exists.
 	//
+	// The master waits for the player's first chance (E4-10): for 10 s after the question was asked
+	// (`HeldRollOffer.created_at`), only the roller's player may answer it, and the master's answer is refused
+	// with `failed_precondition` and ResourceBlocked PLAYER_FIRST (`RESOURCE_BLOCKED_REASON_PLAYER_FIRST`), whose
+	// `wait_seconds` says how long is left. It does not apply when no player plays the roll (an NPC's, or a
+	// player who left). This holds for the master's own rolls for a player's character (a save, a spell attack,
+	// a group check) too: the master is asked in his own sheet, the player reads the same question, and the first
+	// answer after the 10 s wins.
+	//
 	// Errors: `not_found` for a hold that is gone or one the caller may not answer; `invalid_argument`
 	// for an answer of the wrong question, for a missing roll_in_app or typed_face, or a typed face outside
 	// the die; ResourceBlocked LUCKY_PENDING for the die's answer while the Lucky question of the same
@@ -677,6 +685,14 @@ type ResourceServiceHandler interface {
 	// of it (it unblocks a player who left). Both may try at once; the first answer wins and the other gets
 	// `failed_precondition` (the roll was answered already), the die spent once. Another player gets
 	// `not_found`, never "permission denied", which would say the roll exists.
+	//
+	// The master waits for the player's first chance (E4-10): for 10 s after the question was asked
+	// (`HeldRollOffer.created_at`), only the roller's player may answer it, and the master's answer is refused
+	// with `failed_precondition` and ResourceBlocked PLAYER_FIRST (`RESOURCE_BLOCKED_REASON_PLAYER_FIRST`), whose
+	// `wait_seconds` says how long is left. It does not apply when no player plays the roll (an NPC's, or a
+	// player who left). This holds for the master's own rolls for a player's character (a save, a spell attack,
+	// a group check) too: the master is asked in his own sheet, the player reads the same question, and the first
+	// answer after the 10 s wins.
 	//
 	// Errors: `not_found` for a hold that is gone or one the caller may not answer; `invalid_argument`
 	// for an answer of the wrong question, for a missing roll_in_app or typed_face, or a typed face outside

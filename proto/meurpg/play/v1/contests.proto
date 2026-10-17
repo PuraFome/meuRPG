@@ -508,7 +508,7 @@ message RollGroupCheckResponse {
   OutsideInspirationOffer inspiration_offer = 2;
   // Set when the character is a halfling and a d20 shows a 1 (Lucky): the d20 was rolled and
   // the check was not written; AnswerOutsideLucky rolls it again or keeps the 1. It comes before
-  // the die's question. A roll the master makes for a player never asks.
+  // the die's question. A roll the master makes for a player asks too (RollForPlayer, E4-10).
   LuckyOffer lucky_offer = 3;
 
   // The question the roll asks now, in the one shape every held roll has (HeldRollOffer), set beside
@@ -529,6 +529,13 @@ message RollForPlayerRequest {
 // RollForPlayerResponse returns the group check.
 message RollForPlayerResponse {
   GroupCheckView group_check = 1;
+  // Set instead of `group_check` when the character's player has a Bardic Inspiration die or the character is a
+  // halfling whose d20 shows a 1: the master's roll for a player asks like the player's own (E4-10). The master is
+  // asked in his own sheet, the player reads the same question, and the first answer wins (AnswerHeldRoll); the
+  // master's own answer waits for the player's 10 s first chance (PLAYER_FIRST).
+  OutsideInspirationOffer inspiration_offer = 2;
+  LuckyOffer lucky_offer = 3;
+  HeldRollOffer held_roll_offer = 4;
 }
 
 // CloseGroupCheckRequest ends the check.

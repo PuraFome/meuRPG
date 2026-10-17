@@ -11,6 +11,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -140,7 +141,7 @@ var errRollHeld = errors.New("the roll is held")
 type groupHold struct {
 	m     authz.Membership
 	key   string
-	raw   *playv1.RollGroupCheckRequest
+	raw   proto.Message // the request that rolled: a player's own (RollGroupCheck) or the master's for a player (RollForPlayer)
 	offer *playv1.OutsideInspirationOffer
 	lucky *playv1.LuckyOffer
 	held  *playv1.HeldRollOffer
@@ -479,7 +480,7 @@ type memberRoll struct {
 // answers whether to use it, and so has a halfling's d20 that shows a 1, for the Lucky
 // question (a roll the master makes for the player waits for no one).
 func (s *Service) memberRollOf(ctx context.Context, q *playdb.Queries, tx pgx.Tx, spec memberRoll) (roll contestRoll, held bool, err error) {
-	if gh := groupHoldOf(ctx); gh != nil && !spec.byMaster {
+	if gh := groupHoldOf(ctx); gh != nil && s.mayAskMember(ctx, tx, gh, spec) {
 		var settled bool
 		roll, settled, held, err = s.gatedMemberRoll(ctx, q, tx, gh, spec)
 		if err != nil || held {
@@ -491,6 +492,16 @@ func (s *Service) memberRollOf(ctx context.Context, q *playdb.Queries, tx pgx.Tx
 	}
 	roll, err = s.rollCheck(spec.in, checkModeOfRoll(spec.mode.Mode), spec.bonus, spec.check.SkillKey, nil, !spec.known)
 	return roll, false, err
+}
+
+// mayAskMember says the member's roll may wait for an answer: the player's own always, the master's for a player's
+// character only while a player plays it (a roll for a character nobody plays waits for nobody).
+func (s *Service) mayAskMember(ctx context.Context, tx pgx.Tx, gh *groupHold, spec memberRoll) bool {
+	if !spec.byMaster {
+		return true
+	}
+	cs, err := s.roster.CombatCharacters(ctx, tx, gh.m.CampaignID, []string{spec.characterID})
+	return err == nil && len(cs) == 1 && cs[0].PlayerUserID != ""
 }
 
 // gatedMemberRoll puts the member's d20 through the held-roll gate. It says whether the gate
@@ -550,7 +561,7 @@ func (s *Service) RollForPlayer(
 	ctx context.Context,
 	req *connect.Request[playv1.RollForPlayerRequest],
 ) (*connect.Response[playv1.RollForPlayerResponse], error) {
-	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	m, err := heldRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
 	if err != nil {
 		return nil, err
 	}
@@ -570,14 +581,25 @@ func (s *Service) RollForPlayer(
 	if err != nil {
 		return nil, err
 	}
+	// The master's roll for a player asks like the player's own (E4-10): the master is asked in his own sheet, the
+	// player reads the same question, and the first answer wins (AnswerHeldRoll).
+	hold := &groupHold{m: m, key: key, raw: req.Msg}
+	ctx = context.WithValue(ctx, groupHoldKey{}, hold)
 	_, repeated, err := s.groupWrite(ctx, m, key, idem.Hash(req.Msg), eventGroupCheckRolled, func(q *playdb.Queries, tx pgx.Tx, session playdb.GameSession) (groupCheckEvent, string, error) {
+		hold.offer, hold.lucky, hold.held = nil, nil, nil
 		if err := s.rollMember(ctx, q, tx, m.CampaignID, session, checkID, characterID, in, true); err != nil {
 			return groupCheckEvent{}, "", err
+		}
+		if hold.asking() {
+			return groupCheckEvent{}, "", errRollHeld
 		}
 		return groupCheckEvent{GroupCheckID: checkID, CharacterID: characterID}, characterID, nil
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "roll for a player", err)
+	}
+	if hold.asking() {
+		return connect.NewResponse(&playv1.RollForPlayerResponse{InspirationOffer: hold.offer, LuckyOffer: hold.lucky, HeldRollOffer: hold.held}), nil
 	}
 	if !repeated {
 		s.publishGroupCheckChanged(m.CampaignID)
