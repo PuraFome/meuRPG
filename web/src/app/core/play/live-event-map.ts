@@ -82,6 +82,7 @@ const TRANSLATORS: Translators = {
   characterRevived: (v) => ({ kind: 'characterRevived', characterId: v.characterId }),
   revivifyChanged: () => ({ kind: 'revivifyChanged' }),
   callingYou: () => ({ kind: 'callingYou' }),
+  heldRollsChanged: () => ({ kind: 'heldRollsChanged' }),
   puzzleChanged: (v) => ({ kind: 'puzzleChanged', puzzleId: v.puzzleId }),
 };
 
