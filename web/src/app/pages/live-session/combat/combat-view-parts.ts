@@ -10,6 +10,7 @@ import { searchRoute } from '../../../core/traps/trap-search';
 import { acts } from '../../../core/combat/joint-turn';
 import { featureNote } from '../../../core/combat/combat-derived';
 import { CombatSheets } from './combat-sheets';
+import { CombatOffers } from './combat-offers';
 import { MoveFlow } from './move-flow';
 import { ContestHost } from './contest-host';
 import { ContestClient } from '../../../core/combat/contest-client';
@@ -76,6 +77,17 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
     creatureOptions: () => this.creatureOptions.data(),
     takeAction: (id, key) => this.takeActionFor(id, key),
     openSpend: (id) => this.sheets.actions.spend(id),
+  });
+  /** The master's side of the opportunity attacks: the offer form, his answers and the reactors' attacks (`CombatOffers`). */
+  protected readonly offers = new CombatOffers({
+    api: this.api,
+    calls: this.calls,
+    campaignId: () => this.campaignId(),
+    encounter: () => this.encounter(),
+    toAnswer: () => this.toAnswer(),
+    info: () => this.info(),
+    attack: (offer, key, options) =>
+      this.sheets.reactions.opportunityAttack(offer, key, options, true),
   });
   /** The player's side of the contests (W7-X): grapple, shove, escape, Hide, Help, and the questions a contest asks. */
   protected readonly contest = new ContestHost({

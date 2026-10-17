@@ -520,16 +520,16 @@
     />
     <app-opportunity-card
       [encounter]="e"
-      [attacksByOffer]="masterAttacks()"
+      [attacksByOffer]="offers.attacks()"
       [info]="info()"
       [busy]="busy()"
       [autoLeft]="offerLeft()"
-      [failed]="reactorFailed()"
+      [failed]="offers.failed()"
       [canUndo]="canUndoMove()"
-      (answer)="answerOpportunity($event)"
-      (skip)="skipOpportunity($event)"
-      (withdraw)="withdrawOpportunity($event)"
-      (retry)="loadReactor($event)"
+      (answer)="offers.answer($event)"
+      (skip)="offers.skip($event)"
+      (withdraw)="offers.withdraw($event)"
+      (retry)="offers.loadReactor($event)"
       (undo)="undoMove()"
     />
     <app-death-save-due
@@ -577,24 +577,24 @@
         [reactionStopped]="reactionStopped()"
         [turnBusy]="busy()"
         [theatre]="theatre()"
-        [offering]="offering()"
-        [offerWhy]="offerWhy()"
+        [offering]="offers.offering()"
+        [offerWhy]="offers.why()"
         [waitWhy]="waitWhy()"
         (castArea)="sheets.masterArea($event)"
-        (offer)="toggleOffer()"
+        (offer)="offers.toggle()"
         (next)="nextTurn($event)"
         (endRage)="rage.end($event)"
         (settledNote)="settled()"
       >
-        @if (offering()) {
+        @if (offers.offering()) {
           <app-offer-panel
             offer-slot
             [moverLabel]="who.label"
-            [rows]="offerRows()"
+            [rows]="offers.rows()"
             [busy]="busy()"
-            [error]="offerError()"
-            (offer)="makeOffer($event)"
-            (cancel)="offering.set(false)"
+            [error]="offers.error()"
+            (offer)="offers.make($event)"
+            (cancel)="offers.offering.set(false)"
           />
         }
       </app-npc-card>

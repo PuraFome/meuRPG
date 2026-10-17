@@ -3,19 +3,12 @@ import {
   CombatLogKind,
   CombatantSide,
   EncounterStatus,
-  type OpportunityOffer,
-  type GetTurnOptionsResponse,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
 import { ActionKey } from '../../../core/connect/idempotency';
 import { combatErrorMessage } from '../../../core/combat/combat-errors';
 import { wildActionLine } from '../../../core/combat/combat-notices';
-import { coverTargets, everyoneStanding, reactorRows } from '../../../core/combat/theatre';
-import {
-  type ReactorAttack,
-  offersHolding,
-  reactorAttacks,
-  waitingText,
-} from '../../../core/combat/opportunity';
+import { coverTargets, everyoneStanding } from '../../../core/combat/theatre';
+import { offersHolding, waitingText } from '../../../core/combat/opportunity';
 import type { OfferMark } from '../../../shared/combat-map/combat-map';
 import { openDamages, pendingNote } from '../../../core/combat/attack-flow';
 import { isDown, isPlayer } from '../../../core/combat/combat-view';
@@ -79,29 +72,6 @@ export abstract class CombatViewDerivedDirective extends CombatViewStateDirectiv
   /** "Combate atualizado agora." (PM-02c 9c): said once when the page comes up with the turn on hold, that is, after a reload;
    * it goes when the wait is over. Nothing here is kept in the browser: the combat says what waits. */
   protected readonly refreshed = signal('');
-  /** The master's "Oferecer ataque de oportunidade" form is open. */
-  protected readonly offering = signal(false);
-  protected readonly offerError = signal('');
-  /** Who the mover can have left the reach of (the other side, standing): the form's rows. */
-  protected readonly offerRows = computed(() => {
-    const e = this.encounter();
-    return e
-      ? reactorRows(
-          e,
-          (c) =>
-            this.info().get(c.characterId)?.classSummary ??
-            this.info().get(c.characterId)?.kindLabel ??
-            '',
-        )
-      : [];
-  });
-  /** Why the offer cannot be made now (nobody on the other side can react), or `''`. */
-  protected readonly offerWhy = computed(() => {
-    const rows = this.offerRows();
-    return rows.every((r) => r.spent || r.offered) ? 'Ninguém pode reagir agora.' : '';
-  });
-  /** One idempotency key per form and reactor: a repeated tap never offers twice, a new form is a new offer. */
-  protected offerKeys = new Map<string, string>();
   /** The cover editor asked for from the order's menu (the fallback for a joint or master turn): the panel opens on that combatant. */
   protected readonly coverRequest = signal<{ id: string; n: number } | null>(null);
   protected readonly everyone = computed(() => {
@@ -186,28 +156,6 @@ export abstract class CombatViewDerivedDirective extends CombatViewStateDirectiv
     const e = this.encounter();
     return e && this.isMaster() ? revealWhy(e) : '';
   });
-  /** The NPC reactors' attacks with their numbers, by offer (read from the reactor's own options). */
-  protected readonly reactorOptions = signal<ReadonlyMap<string, GetTurnOptionsResponse>>(
-    new Map(),
-  );
-  protected readonly masterAttacks = computed<ReadonlyMap<string, readonly ReactorAttack[]>>(
-    () =>
-      new Map(
-        this.toAnswer().map((o) => [
-          o.id,
-          reactorAttacks(
-            o,
-            (this.reactorOptions().get(o.id)?.options?.attacks ?? []).flatMap((a) =>
-              a.attack ? [a.attack] : [],
-            ),
-          ),
-        ]),
-      ),
-  );
-  protected readonly offersHandled = new Set<string>();
-  protected readonly reactorReading = new Set<string>();
-  /** The offers whose reactor's attacks could not be read: the master's card offers "Tentar de novo". */
-  protected readonly reactorFailed = signal<ReadonlySet<string>>(new Set());
   /** The master's last action is a move: the log's undoable entry says so ("Desfazer o movimento"). */
   protected readonly canUndoMove = computed(
     () => this.log.undoable()?.kind === CombatLogKind.MOVED,
@@ -317,27 +265,6 @@ export abstract class CombatViewDerivedDirective extends CombatViewStateDirectiv
   protected readonly creatureTrapNotes = computed(() =>
     creatureTrapNotes(this.encounter(), this.isMaster(), this.log.rounds()),
   );
-  /** Reads an NPC reactor's own options (its attacks with their numbers) for the master's prompt. */
-  protected async loadReactor(offer: OpportunityOffer): Promise<void> {
-    const e = this.encounter();
-    if (!e) {
-      return;
-    }
-    this.reactorReading.add(offer.id);
-    this.reactorFailed.update((s) => {
-      const next = new Set(s);
-      next.delete(offer.id);
-      return next;
-    });
-    try {
-      const res = await this.api.turnOptions(this.campaignId(), e.id, offer.reactorId);
-      this.reactorOptions.update((m) => new Map(m).set(offer.id, res));
-    } catch {
-      this.reactorFailed.update((s) => new Set(s).add(offer.id));
-    } finally {
-      this.reactorReading.delete(offer.id);
-    }
-  }
   /** The Bardic Inspiration die the player's character holds (the server sends it to the holder and the master only). */
   protected readonly ownDie = computed(() => this.own()?.inspirationDie ?? null);
   /** The attack roll of the player's character that waits for the answer about the die. */

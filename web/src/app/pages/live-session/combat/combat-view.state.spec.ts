@@ -321,7 +321,7 @@ describe('CombatView state: the combat as the master reads it', () => {
         },
       },
     );
-    expect(rows.view.offerRows()).toEqual([
+    expect(rows.view.offers.rows()).toEqual([
       {
         id: 't',
         label: 'Toren',
@@ -332,16 +332,16 @@ describe('CombatView state: the combat as the master reads it', () => {
         hidden: false,
       },
     ]);
-    expect(rows.view.offerWhy()).toBe('');
+    expect(rows.view.offers.why()).toBe('');
     const spent = master({ combatants: [{ ...toren, reactionUsed: true } as never, goblin] });
-    expect(spent.view.offerWhy()).toBe('Ninguém pode reagir agora.');
+    expect(spent.view.offers.why()).toBe('Ninguém pode reagir agora.');
     const alone = master({ combatants: [goblin] });
-    expect(alone.view.offerRows()).toEqual([]);
-    expect(alone.view.offerWhy()).toBe('Ninguém pode reagir agora.');
+    expect(alone.view.offers.rows()).toEqual([]);
+    expect(alone.view.offers.why()).toBe('Ninguém pode reagir agora.');
     // The NPC kind label is the fallback line when the roster says no class.
     const npcs = master({ currentCombatantId: 't', combatants: [toren, goblin] });
     npcs.view.rosterInfo.set(new Map([['char-g', { kindLabel: 'Inimigo' } as never]]));
-    expect(npcs.view.offerRows()[0].sub).toBe('Inimigo');
+    expect(npcs.view.offers.rows()[0].sub).toBe('Inimigo');
   });
 
   it('lists the characters at three failures for the master only', () => {
@@ -671,14 +671,14 @@ describe('CombatView state: the master reach and the moves', () => {
   it('closes the offer form when the turn passes', async () => {
     const enc = player();
     const { view, fixture, state } = mountCombatView({ enc });
-    view.offering.set(true);
+    view.offers.offering.set(true);
     await settle(fixture);
     state.apply(next(enc));
     await settle(fixture);
-    expect(view.offering()).toBe(true);
+    expect(view.offers.offering()).toBe(true);
     state.apply(next(enc, { revision: 3, currentCombatantId: 'g' }));
     await settle(fixture);
-    expect(view.offering()).toBe(false);
+    expect(view.offers.offering()).toBe(false);
   });
 
   it('can disengage while the mover has the action and has not disengaged', () => {
@@ -790,8 +790,8 @@ describe('CombatView state: the opportunity attacks', () => {
     const reads = callsOf('turnOptions').filter((c) => c.args[2] === 'g');
     expect(reads.length).toBeGreaterThan(0);
     const before = callsOf('turnOptions').length;
-    expect(view.reactorOptions().has('o1')).toBe(true);
-    const attacks = view.masterAttacks().get('o1');
+    expect(view.offers.reactorOptions().has('o1')).toBe(true);
+    const attacks = view.offers.attacks().get('o1');
     expect(attacks).toHaveLength(1);
     expect(attacks[0].key).toBe('scimitar');
     expect(attacks[0].attack.key).toBe('scimitar');
@@ -802,13 +802,13 @@ describe('CombatView state: the opportunity attacks', () => {
       reads.length,
     );
     expect(before).toBeGreaterThan(0);
-    expect(view.reactorFailed().size).toBe(0);
+    expect(view.offers.failed().size).toBe(0);
   });
 
   it('keeps the attack by name when the options of the reactor do not list it', async () => {
     const { view, fixture } = npcOffer();
     await settle(fixture);
-    const [attack] = view.masterAttacks().get('o1');
+    const [attack] = view.offers.attacks().get('o1');
     expect(attack).toEqual({
       key: 'scimitar',
       name: 'Cimitarra',
@@ -828,19 +828,19 @@ describe('CombatView state: the opportunity attacks', () => {
       },
     });
     await settle(fixture);
-    expect([...view.reactorFailed()]).toEqual(['o1']);
-    expect(view.reactorOptions().has('o1')).toBe(false);
+    expect([...view.offers.failed()]).toEqual(['o1']);
+    expect(view.offers.reactorOptions().has('o1')).toBe(false);
     fail = false;
-    await view.loadReactor(offerOf('o1', 'g'));
-    expect(view.reactorFailed().size).toBe(0);
-    expect(view.reactorOptions().has('o1')).toBe(true);
+    await view.offers.loadReactor(offerOf('o1', 'g'));
+    expect(view.offers.failed().size).toBe(0);
+    expect(view.offers.reactorOptions().has('o1')).toBe(true);
   });
 
   it('reads nothing for the reactor when there is no combat', async () => {
     const { view, state, callsOf } = npcOffer();
     state.encounter.set(null);
     const before = callsOf('turnOptions').length;
-    await view.loadReactor(offerOf('o2', 'g'));
+    await view.offers.loadReactor(offerOf('o2', 'g'));
     expect(callsOf('turnOptions')).toHaveLength(before);
   });
 

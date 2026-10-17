@@ -229,8 +229,8 @@ const SIMPLE: Row[] = [
     'setCover',
     ['c', 'enc', 'g', CoverDegree.HALF],
   ],
-  ['skipOpportunity', [OFFER], 'skipOpportunity', ['c', 'enc', 'o1']],
-  ['withdrawOpportunity', [OFFER], 'withdrawOpportunity', ['c', 'enc', 'o1']],
+  ['offers.skip', [OFFER], 'skipOpportunity', ['c', 'enc', 'o1']],
+  ['offers.withdraw', [OFFER], 'withdrawOpportunity', ['c', 'enc', 'o1']],
   ['standUp', ['g'], 'standUp', ['c', 'enc', 'g']],
   ['answerReveal', [{ id: 'q1', reveal: true }], 'resolveHiddenReveal', ['c', 'enc', 'q1', true]],
 ];
@@ -1116,7 +1116,7 @@ describe('CombatView calls: opportunity attacks', () => {
         master: true,
         api: answers(grid('g', goblin()), 'declineOpportunity'),
       });
-      const result = await view.answerOpportunity({ offer: offer(), attack: null });
+      const result = await view.offers.answer({ offer: offer(), attack: null });
       expect(result).toBe(true);
       expect(callsOf('declineOpportunity')[0].args).toEqual(['c', 'enc', 'o1']);
     });
@@ -1126,9 +1126,7 @@ describe('CombatView calls: opportunity attacks', () => {
       // Only the reactor's read has to land: rendering the NPC's card is not needed (and has no stat block here).
       await nextTurn();
       expect(callsOf('turnOptions').some((c) => c.args[2] === 'g')).toBe(true);
-      expect(
-        view.answerOpportunity({ offer: offer(), attack: { key: 'scimitar' } }),
-      ).toBeUndefined();
+      expect(view.offers.answer({ offer: offer(), attack: { key: 'scimitar' } })).toBeUndefined();
       expect(opened).toHaveLength(1);
       expect(opened[0].component).toBe(AttackSheet);
       expect(opened[0].config.data).toMatchObject({
@@ -1140,15 +1138,15 @@ describe('CombatView calls: opportunity attacks', () => {
     it("does not ask again after the attack sheet closes: it is not the master's prompt", async () => {
       const { view, opened } = masterOffer();
       await nextTurn();
-      view.answerOpportunity({ offer: offer(), attack: { key: 'scimitar' } });
+      view.offers.answer({ offer: offer(), attack: { key: 'scimitar' } });
       opened[0].close(true);
       expect(opened).toHaveLength(1);
     });
 
     it("opens nothing while the reactor's options are not in", () => {
       const { view, opened } = mountCombatView({ enc: withOffer(), master: true });
-      view.reactorOptions.set(new Map());
-      view.answerOpportunity({ offer: offer(), attack: { key: 'scimitar' } });
+      view.offers.reactorOptions.set(new Map());
+      view.offers.answer({ offer: offer(), attack: { key: 'scimitar' } });
       expect(opened).toEqual([]);
     });
   });
@@ -1208,28 +1206,28 @@ describe('CombatView calls: offering an opportunity attack by hand', () => {
 
   it("sends the offer of the one on turn leaving the reactor's reach, and closes the form", async () => {
     const { view, callsOf } = mount();
-    view.toggleOffer();
-    expect(view.offering()).toBe(true);
-    await view.makeOffer('g');
+    view.offers.toggle();
+    expect(view.offers.offering()).toBe(true);
+    await view.offers.make('g');
     const args = callsOf('offerOpportunity')[0].args;
     expect(args.slice(0, 4)).toEqual(['c', 'enc', 't', 'g']);
     expect(typeof args[4]).toBe('string');
-    expect(view.offering()).toBe(false);
+    expect(view.offers.offering()).toBe(false);
   });
 
   it('a repeated tap on the same reactor is the same request (same key)', async () => {
     const { view, callsOf } = mount();
-    view.toggleOffer();
-    await view.makeOffer('g');
-    await view.makeOffer('g');
+    view.offers.toggle();
+    await view.offers.make('g');
+    await view.offers.make('g');
     const [first, second] = callsOf('offerOpportunity');
     expect(second.args[4]).toBe(first.args[4]);
   });
 
   it('another reactor is another request (another key)', async () => {
     const { view, callsOf } = mount();
-    await view.makeOffer('g');
-    await view.makeOffer('h');
+    await view.offers.make('g');
+    await view.offers.make('h');
     const [first, second] = callsOf('offerOpportunity');
     expect(second.args[4]).not.toBe(first.args[4]);
   });
@@ -1244,32 +1242,32 @@ describe('CombatView calls: offering an opportunity attack by hand', () => {
         return theatre('t', toren(), goblin());
       },
     });
-    view.toggleOffer();
-    await view.makeOffer('g');
-    expect(view.offerError()).toBe('Você não pode fazer isso agora.');
+    view.offers.toggle();
+    await view.offers.make('g');
+    expect(view.offers.error()).toBe('Você não pode fazer isso agora.');
     expect(view.error()).toBe('');
-    expect(view.offering()).toBe(true);
+    expect(view.offers.offering()).toBe(true);
     refused = false;
-    await view.makeOffer('g');
+    await view.offers.make('g');
     const [first, second] = callsOf('offerOpportunity');
     expect(second.args[4]).not.toBe(first.args[4]);
-    expect(view.offering()).toBe(false);
+    expect(view.offers.offering()).toBe(false);
   });
 
   it('a tap while another call is in flight sends nothing and keeps the key for the next one', async () => {
     const { view, callsOf } = mount();
     view.busy.set(true);
-    await view.makeOffer('g');
+    await view.offers.make('g');
     expect(callsOf('offerOpportunity')).toEqual([]);
-    expect(view.offerError()).toBe('');
-    expect(view.offerKeys.size).toBe(1);
+    expect(view.offers.error()).toBe('');
+    expect(view.offers.keys.size).toBe(1);
   });
 
   it('clears the last refusal when it tries again', async () => {
     const { view } = mount();
-    view.offerError.set('old');
-    await view.makeOffer('g');
-    expect(view.offerError()).toBe('');
+    view.offers.error.set('old');
+    await view.offers.make('g');
+    expect(view.offers.error()).toBe('');
   });
 
   it('does nothing when nobody is on turn', async () => {
@@ -1277,25 +1275,25 @@ describe('CombatView calls: offering an opportunity attack by hand', () => {
       enc: theatre('', toren(), goblin()),
       master: true,
     });
-    await view.makeOffer('g');
+    await view.offers.make('g');
     expect(callsOf('offerOpportunity')).toEqual([]);
   });
 
   it('opening the form starts with new keys and no old refusal; closing it keeps them', async () => {
     const { view } = mount();
     view.busy.set(true);
-    await view.makeOffer('g');
-    expect(view.offerKeys.size).toBe(1);
-    view.offerError.set('old');
-    view.toggleOffer();
-    expect(view.offering()).toBe(true);
-    expect(view.offerKeys.size).toBe(0);
-    expect(view.offerError()).toBe('');
-    await view.makeOffer('g');
-    expect(view.offerKeys.size).toBe(1);
-    view.toggleOffer();
-    expect(view.offering()).toBe(false);
-    expect(view.offerKeys.size).toBe(1);
+    await view.offers.make('g');
+    expect(view.offers.keys.size).toBe(1);
+    view.offers.error.set('old');
+    view.offers.toggle();
+    expect(view.offers.offering()).toBe(true);
+    expect(view.offers.keys.size).toBe(0);
+    expect(view.offers.error()).toBe('');
+    await view.offers.make('g');
+    expect(view.offers.keys.size).toBe(1);
+    view.offers.toggle();
+    expect(view.offers.offering()).toBe(false);
+    expect(view.offers.keys.size).toBe(1);
   });
 });
 

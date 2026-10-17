@@ -65,7 +65,7 @@ export class CombatView extends CombatViewFlowsDirective {
     // The offer's form belongs to a turn: when it passes, or the combat ends, it closes.
     effect(() => {
       void this.turnKey();
-      untracked(() => this.offering.set(false));
+      untracked(() => this.offers.offering.set(false));
     });
     // The options are asked for again whenever the combat changes (every
     // call and every event bumps its revision) and whoever is in the
@@ -169,8 +169,8 @@ export class CombatView extends CombatViewFlowsDirective {
         return;
       }
       for (const offer of offersToAnswer(e)) {
-        if (!this.offersHandled.has(offer.id)) {
-          this.offersHandled.add(offer.id);
+        if (!this.offers.handled.has(offer.id)) {
+          this.offers.handled.add(offer.id);
           untracked(() => this.sheets.reactions.opportunity(offer));
         }
       }
@@ -251,9 +251,11 @@ export class CombatView extends CombatViewFlowsDirective {
       for (const offer of this.toAnswer()) {
         if (
           reactorIsMasters(e, offer) &&
-          !untracked(() => this.reactorOptions().has(offer.id) || this.reactorReading.has(offer.id))
+          !untracked(
+            () => this.offers.reactorOptions().has(offer.id) || this.offers.reading.has(offer.id),
+          )
         ) {
-          untracked(() => void this.loadReactor(offer));
+          untracked(() => void this.offers.loadReactor(offer));
         }
       }
     });
