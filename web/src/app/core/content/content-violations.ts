@@ -160,6 +160,12 @@ function fallbackText(shape: string, r: string): string {
     case 'duplicate_name':
     case 'duplicate_key':
       return 'Já existe uma entrada com isto. Escolha outro.';
+    case 'bad_table':
+      return 'A tabela tem um erro. Confira os níveis, as linhas e os espaços de magia.';
+    case 'bad_casting':
+      return 'A conjuração tem um erro. Confira como e com o quê ela funciona.';
+    case 'unknown_field':
+      return 'Este campo não existe. Tire-o do arquivo e importe de novo.';
     default:
       return 'Este valor não é aceito. Confira o campo.';
   }

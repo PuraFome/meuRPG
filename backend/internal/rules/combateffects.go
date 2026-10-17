@@ -152,12 +152,25 @@ type EffectSave struct {
 	OnDamage bool `json:"on_damage,omitempty"`
 }
 
-// EffectTrigger is damage an effect deals to a creature that starts its turn
-// under it, with no saving throw (the Web that burns).
+// EffectTrigger is damage an effect deals to a creature, with no saving throw: at the start of
+// its turn when the effect's clock does not end at the end of a turn (the Web that burns), and as
+// the effect ends at the end of the creature's turn when it does (Acid Arrow's later damage).
 type EffectTrigger struct {
 	Dice        string `json:"dice"`
 	DamageType  string `json:"damage_type"`
 	MaxTriggers int    `json:"max_triggers"`
+	// PerSlotLevel is the dice a slot level above the spell's own adds to Dice (same die).
+	PerSlotLevel string `json:"per_slot_level,omitempty"`
+}
+
+// DiceAt is the trigger's dice for a spell cast levelsAbove slot levels above its own.
+func (t EffectTrigger) DiceAt(levelsAbove int) string {
+	base, ok := ParseDice(t.Dice)
+	extra, extraOK := ParseDice(t.PerSlotLevel)
+	if !ok || !extraOK || levelsAbove < 1 || base.Sides != extra.Sides {
+		return t.Dice
+	}
+	return fmt.Sprintf("%dd%d", base.Count+extra.Count*levelsAbove, base.Sides)
 }
 
 // EffectDef is what an effect of the catalog is: a spell's, an action's or one
@@ -184,8 +197,8 @@ type EffectDef struct {
 	StartSave *EffectSave    `json:"start_save,omitempty"`
 	Trigger   *EffectTrigger `json:"turn_trigger,omitempty"`
 	// Applies says which targets get the effect when a spell is cast: "all" (Bless,
-	// Haste), or "failed_save" (Bane, Hold Person: the ones that failed the save the
-	// spell asks).
+	// Haste), "failed_save" (Bane, Hold Person: the ones that failed the save the
+	// spell asks) or "hit" (Acid Arrow: the ones the spell attack hit).
 	Applies string `json:"applies,omitempty"`
 	// TargetType limits the targets to a creature type ("humanoid": Hold Person).
 	TargetType string `json:"target_type,omitempty"`
@@ -235,7 +248,7 @@ type combatEffects struct {
 
 var (
 	effectKinds     = []string{"spell", "feature", "master"}
-	effectApplies   = []string{"all", "failed_save"}
+	effectApplies   = []string{"all", "failed_save", "hit"}
 	effectDurations = []string{
 		EffectDurationRounds, EffectDurationUntilStartOfTurnOf, EffectDurationUntilEndOfTurnOf,
 		EffectDurationConcentration, EffectDurationUntilDismissed, EffectDurationLongRest,
@@ -440,7 +453,7 @@ func checkEffectHeader(_ *content, d *EffectDef, _ *combatEffects, bad effectFai
 		return err
 	}
 	if d.Applies != "" && !slices.Contains(effectApplies, d.Applies) {
-		return bad("applies must be all or failed_save")
+		return bad("applies must be all, failed_save or hit")
 	}
 	if d.Visibility != "" && d.Visibility != EffectVisibilityPublic && d.Visibility != EffectVisibilityOwner {
 		return bad("unknown visibility %q", d.Visibility)
@@ -526,6 +539,11 @@ func checkEffectTrigger(c *content, d *EffectDef, _ *combatEffects, bad effectFa
 	}
 	if t.MaxTriggers < 1 {
 		return bad("turn_trigger.max_triggers must be at least 1")
+	}
+	if t.PerSlotLevel != "" {
+		if more, ok := ParseDice(t.PerSlotLevel); !ok || more.Count < 1 || more.AddsModifier || more.Sides != f.Sides {
+			return bad("turn_trigger.per_slot_level %q is not dice of the same die as %q", t.PerSlotLevel, t.Dice)
+		}
 	}
 	return nil
 }

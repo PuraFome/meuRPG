@@ -710,7 +710,7 @@ func (f *castFlow) affect(ctx context.Context) error {
 		return err
 	}
 	// What a spell that lasts leaves on the targets it took hold of (RN-22).
-	return f.s.applyLastingSpell(ctx, f.c, f.cs, f.sp, f.caster, f.targs, f.abilityKey, &f.out.made)
+	return f.s.applyLastingSpell(ctx, f.c, f.cs, f.sp, f.slotLevel, f.caster, f.targs, f.abilityKey, &f.out.made)
 }
 
 // affectHitPoints is a hit point spell (a pool of dice that sleeps, or hit points that change).
@@ -830,7 +830,7 @@ func (s *Service) castPublisher(m authz.Membership, ev actionEvent, vitals []*pl
 		if ev.PendingReveal != "" { // the master alone is told a question waits
 			s.publishHiddenHitPending(m.CampaignID, d.enc.ID, ev.PendingReveal)
 		}
-		if anyInTurn(d, ev.Revealed) { // a creature of the turn that appeared changes the players' copy of it
+		if anyInTurn(d, ev.revealedIDs()) { // a creature of the turn that appeared changes the players' copy of it
 			s.publishTurnChanged(ctx, m.CampaignID, d)
 		}
 	}

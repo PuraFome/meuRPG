@@ -137,6 +137,7 @@ func spellKinds(out *link.Spell, content *rules.Content, d rules.Derived, det *r
 	_, summonErr := content.SummonOptions(spellKey, det.Spell.Level, rules.Build{})
 	out.Summon = !errors.Is(summonErr, rules.ErrNotSummonSpell)
 	out.IgnoresCover = content.IgnoresCover(spellKey)
+	out.HalfOnMiss = content.HalvesOnMiss(spellKey)
 	out.Evocation = det.Spell.School == "school:evocation"
 	out.Sculpts = rules.HasFeature(d, "feature:sculpt-spells")
 }
