@@ -169,7 +169,8 @@ func TestAddCharacterEffectOutcomes(t *testing.T) { //nolint:tparallel // the ca
 		{name: "a condition for its owner against its default", want: "{\"audience\": \"owner\", \"character_id\": \"pens\", \"condition_keys\": [\"condition:blinded\"], \"duration_kind\": \"until_dismissed\", \"player_visible\": true, \"source_key\": \"condition:blinded\", \"source_kind\": \"master\"}\nseen 1/1/0\nids 1", edit: func(r *playv1.AddCharacterEffectRequest) {
 			r.CatalogKey, r.Audience = "condition:blinded", playv1.EffectAudience_EFFECT_AUDIENCE_OWNER
 		}},
-		{name: "an audience the server does not know (frozen: looks wrong because the owner-only Poisoned then reads as for everyone)", want: "{\"audience\": \"all\", \"character_id\": \"pens\", \"condition_keys\": [\"condition:poisoned\"], \"duration_kind\": \"until_dismissed\", \"player_visible\": true, \"source_key\": \"condition:poisoned\", \"source_kind\": \"master\"}\nseen 1/1/1\nids 1", edit: func(r *playv1.AddCharacterEffectRequest) {
+		// Finding fix/lasting-effects-audience: an unknown audience fails closed, hidden from the players and kept as owner.
+		{name: "an audience the server does not know is the master's alone", want: "{\"audience\": \"owner\", \"character_id\": \"pens\", \"condition_keys\": [\"condition:poisoned\"], \"duration_kind\": \"until_dismissed\", \"player_visible\": false, \"source_key\": \"condition:poisoned\", \"source_kind\": \"master\"}\nseen 1/0/0\nids 1", edit: func(r *playv1.AddCharacterEffectRequest) {
 			r.CatalogKey, r.Audience = "condition:poisoned", playv1.EffectAudience(99)
 		}},
 		{name: "hidden from the players", want: "{\"audience\": \"all\", \"character_id\": \"pens\", \"condition_keys\": [\"condition:blinded\"], \"duration_kind\": \"until_dismissed\", \"player_visible\": false, \"source_key\": \"condition:blinded\", \"source_kind\": \"master\"}\nseen 1/0/0\nids 1", edit: func(r *playv1.AddCharacterEffectRequest) {
