@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { MAT_BOTTOM_SHEET_DATA, MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
 import { AudienceChooser, type AudienceData } from './audience-chooser';
@@ -11,14 +12,19 @@ const PLAYERS: ChooserPlayer[] = [
 ];
 
 describe('AudienceChooser', () => {
-  function setup(selected: string[] = []) {
+  function setup(selected: string[] = [], inSheet = false) {
     const close = vi.fn();
     const data: AudienceData = { players: PLAYERS, selected };
     TestBed.configureTestingModule({
-      providers: [
-        { provide: MAT_DIALOG_DATA, useValue: data },
-        { provide: MatDialogRef, useValue: { close, disableClose: false } },
-      ],
+      providers: inSheet
+        ? [
+            { provide: MAT_BOTTOM_SHEET_DATA, useValue: data },
+            { provide: MatBottomSheetRef, useValue: { dismiss: close, disableClose: false } },
+          ]
+        : [
+            { provide: MAT_DIALOG_DATA, useValue: data },
+            { provide: MatDialogRef, useValue: { close, disableClose: false } },
+          ],
     });
     const fixture = TestBed.createComponent(AudienceChooser);
     fixture.detectChanges();
@@ -51,6 +57,25 @@ describe('AudienceChooser', () => {
     const boxes = Array.from(el.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'));
     expect(boxes.map((b) => b.checked)).toEqual([true, true, false]);
     expect(status()).toBe('Pensantus e Brisa leem esta mensagem.');
+  });
+
+  it('as a bottom sheet: the board\'s 21/26 title, no grab handle and a 44 px "Fechar" close button', () => {
+    const { el, close, click } = setup([], true);
+    expect(el.querySelector('.frame__handle')).toBeNull();
+    const title = el.querySelector('h2') as HTMLElement;
+    expect(getComputedStyle(title).fontSize).toBe('21px');
+    expect(getComputedStyle(title).lineHeight).toBe('26px');
+    const closer = el.querySelector('.frame__close') as HTMLButtonElement;
+    expect(closer.getAttribute('aria-label')).toBe('Fechar');
+    expect(closer.getAttribute('title')).toBe('Fechar');
+    click(closer);
+    expect(close).toHaveBeenCalledWith(undefined);
+  });
+
+  it('as a dialog it keeps the shared frame look', () => {
+    const { el } = setup();
+    expect(getComputedStyle(el.querySelector('h2') as HTMLElement).fontSize).not.toBe('21px');
+    expect(el.querySelector('.frame__close')?.getAttribute('aria-label')).toBe('Fechar');
   });
 
   it('says the master always reads and the others never see the line', () => {
