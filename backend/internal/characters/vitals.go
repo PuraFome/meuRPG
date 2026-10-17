@@ -10,7 +10,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
-	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -183,9 +182,7 @@ func vitalsToProto(row vitalsRow, m vitalsMax) *playv1.CharacterVitals {
 			Used:      min(derefInt(row.PactSlotsUsed), i32(m.pactSlots)),
 		}
 	}
-	for _, hd := range m.hitDice {
-		v.HitDice = append(v.HitDice, &rulesv1.HitDice{Faces: i32(hd.Die), Count: i32(hd.Count)})
-	}
+	v.HitDice = mapToProto(m.hitDice, derivedHitDiceToProto)
 	// The stored uses are a JSON object {key: n}; a value that does not read
 	// counts as nothing spent, and each is cut to the sheet's total.
 	var used map[string]int32

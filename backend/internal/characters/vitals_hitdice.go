@@ -97,7 +97,7 @@ func hitDiceProto(dice rules.HitDiceUsed, have []rules.HitDice) []*rulesv1.HitDi
 	var out []*rulesv1.HitDice
 	for _, hd := range have { // the character's order: the largest die first
 		if n := dice[hd.Die]; n > 0 {
-			out = append(out, &rulesv1.HitDice{Faces: i32(hd.Die), Count: i32(n)})
+			out = append(out, derivedHitDiceToProto(rules.HitDice{Die: hd.Die, Count: n}))
 		}
 	}
 	return out

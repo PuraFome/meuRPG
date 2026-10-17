@@ -62,7 +62,7 @@ func (s *Service) ReviveCharacter(
 	now := s.now()
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
-		done, err = s.reviveInTx(ctx, tx, m, id, scoped, hash, now)
+		done, err = s.reviveCharacterTx(ctx, tx, m, id, scoped, hash, now)
 		return err
 	})
 	if err != nil {
@@ -88,10 +88,10 @@ type revival struct {
 	encounterID string
 }
 
-// reviveInTx is ReviveCharacter's transaction: the character, locked FOR UPDATE, must be
+// reviveCharacterTx is ReviveCharacter's transaction: the character, locked FOR UPDATE, must be
 // a dead player character, or the same call again; then it lives again and the table
 // reads the line.
-func (s *Service) reviveInTx(ctx context.Context, tx pgx.Tx, m authz.Membership, id string, key, hash *string, now time.Time) (revival, error) {
+func (s *Service) reviveCharacterTx(ctx context.Context, tx pgx.Tx, m authz.Membership, id string, key, hash *string, now time.Time) (revival, error) {
 	row, err := visibleForUpdate(ctx, s.queries.WithTx(tx), m, id)
 	if err != nil {
 		return revival{}, err
@@ -103,7 +103,7 @@ func (s *Service) reviveInTx(ctx context.Context, tx pgx.Tx, m authz.Membership,
 		replayed, err := reviveReplayed(row, key, hash)
 		return revival{row: row, replayed: replayed}, err
 	}
-	if row, err = s.reviveTx(ctx, tx, row, key, hash, now); err != nil {
+	if row, err = s.revivedRow(ctx, tx, row, key, hash, now); err != nil {
 		return revival{}, err
 	}
 	done := revival{row: row}
@@ -123,10 +123,10 @@ func reviveReplayed(row charactersdb.Character, key, hash *string) (bool, error)
 	return true, nil
 }
 
-// reviveTx brings the dead character row back inside tx: RN-03 first, then the status, then
+// revivedRow brings the dead character row back inside tx: RN-03 first, then the status, then
 // its hit points. row is the character locked FOR UPDATE and dead. It returns the character
 // as it is now.
-func (s *Service) reviveTx(ctx context.Context, tx pgx.Tx, row charactersdb.Character, key, hash *string, at time.Time) (charactersdb.Character, error) {
+func (s *Service) revivedRow(ctx context.Context, tx pgx.Tx, row charactersdb.Character, key, hash *string, at time.Time) (charactersdb.Character, error) {
 	q := s.queries.WithTx(tx)
 	if row.PlayerUserID != nil && row.CampaignID != nil {
 		other, err := q.GetLivingPlayerCharacterID(ctx, charactersdb.GetLivingPlayerCharacterIDParams{CampaignID: *row.CampaignID, PlayerUserID: *row.PlayerUserID})
@@ -228,7 +228,7 @@ func (s *Service) ReviveDead(ctx context.Context, tx pgx.Tx, campaignID, charact
 	if row.Kind != kindPlayer || row.Status != statusDead {
 		return "", errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_NOT_DEAD, row.ID)
 	}
-	if _, err := s.reviveTx(ctx, tx, row, nil, nil, at); err != nil {
+	if _, err := s.revivedRow(ctx, tx, row, nil, nil, at); err != nil {
 		return "", err
 	}
 	return row.Name, nil
