@@ -233,6 +233,7 @@ var notReads = map[string]classified{
 	playv1connect.PlayServiceLeaveWildShapeProcedure:                            {playerAction, "a player leaves their own Wild Shape"},
 	playv1connect.PlayServiceOpenSceneProcedure:                                 {masterWrite, masterOnlyWhy},
 	playv1connect.PlayServicePutOnStageProcedure:                                {masterWrite, masterOnlyWhy},
+	playv1connect.PlayServiceRollFreeDiceProcedure:                              {playerAction, "a member rolls dice with no character and no game rule; only the master may keep a roll to himself, and that roll reaches no player (RN-10): the free roll tests aim at it"},
 	playv1connect.PlayServiceSendSessionMessageProcedure:                        {playerAction, "a member speaks as their own character, or out of character; only the master chooses readers or attaches an image (RN-36): the conversation tests aim it at what is hidden"},
 	playv1connect.PlayServiceSignalMasterTypingProcedure:                        {masterWrite, masterOnlyWhy},
 	playv1connect.PlayServiceSetCurrentMapProcedure:                             {masterWrite, masterOnlyWhy},

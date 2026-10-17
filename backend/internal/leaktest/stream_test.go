@@ -293,6 +293,10 @@ func (w *world) streamScript() {
 	must(m.play.SendSessionMessage(ctx, rq(&playv1.SendSessionMessageRequest{CampaignId: w.campaign, SpeakerKind: playv1.SessionMessageSpeakerKind_SESSION_MESSAGE_SPEAKER_KIND_NARRATOR, Text: line, ReaderUserIds: []string{w.ana.id}, IdempotencyKey: newKey()})))
 	must(m.play.SignalMasterTyping(ctx, rq(&playv1.SignalMasterTypingRequest{CampaignId: w.campaign})))
 
+	// -- the free dice roller: the master rolls "Só eu" and Ana rolls for the table; every stream
+	// hears Ana's roll and none hears the master's
+	w.freeRollsOnTheStream()
+
 	// -- images: the master shows another image, and takes one back from the players
 	must(m.play.SetShownImage(ctx, rq(&playv1.SetShownImageRequest{CampaignId: w.campaign, ImageId: w.imgLeft})))
 	must(m.play.TakeBackLeftImage(ctx, rq(&playv1.TakeBackLeftImageRequest{CampaignId: w.campaign, ImageId: w.imgLeft})))

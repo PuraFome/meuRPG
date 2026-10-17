@@ -1132,7 +1132,7 @@ func TestSessionEventKindsMatchTheTable(t *testing.T) {
 		eventRollModeRequested, eventRollModeAnswered, eventDamagePartRemoved, eventStateChanged, eventHitRider,
 		eventRestTaken, eventHitDiceSpent, eventArcaneRecovery, eventInspirationGiven,
 		eventSpellCastOutside, eventSpellCastStarted, eventSpellCastFinished, eventSpellCastInterrupted, eventSpellCastEnded,
-		eventLastingAdded, eventLastingChanged, eventLastingEnded, eventLastingVisibility, eventLastingSaved, eventLastingTriggered, eventExhaustion, eventGameTimeAdvanced,
+		eventLastingAdded, eventLastingChanged, eventLastingEnded, eventLastingVisibility, eventLastingSaved, eventLastingTriggered, eventExhaustion, eventGameTimeAdvanced, eventFreeRoll,
 	}
 	rows, err := h.pool.Query(t.Context(), `SELECT kind FROM session_event_kinds`)
 	if err != nil {

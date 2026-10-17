@@ -1,0 +1,102 @@
+syntax = "proto3";
+
+// The free dice roller, "Rolar dados" (MR-052): any dice the app rolls on
+// request during an open session, outside every game rule. The RPCs are
+// PlayService's (play.proto: RollFreeDice, ListFreeRolls); the stream event is
+// WatchGameSessionResponse's (free_roll_rolled); the messages are here.
+package meurpg.play.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// FreeRollMode says how a single d20 is rolled.
+enum FreeRollMode {
+  // A normal roll: one die of each. Also what every roll of other dice is.
+  FREE_ROLL_MODE_UNSPECIFIED = 0;
+  // Two d20 are rolled and the higher counts; the other is discarded.
+  FREE_ROLL_MODE_ADVANTAGE = 1;
+  // Two d20 are rolled and the lower counts; the other is discarded.
+  FREE_ROLL_MODE_DISADVANTAGE = 2;
+}
+
+// FreeRollDie is one die of a roll.
+message FreeRollDie {
+  // The face that came up, from 1 to the sides of the roll.
+  int32 face = 1;
+  // True for the d20 that did not count under advantage or disadvantage (the
+  // app writes "descartado"). It is not in the total.
+  bool discarded = 2;
+}
+
+// FreeRoll is a roll of the free dice roller, as the caller may read it.
+message FreeRoll {
+  // The roll's id (a UUID): the session event that holds it.
+  string id = 1;
+  // The display name of whoever rolled; empty when that account no longer
+  // exists. The roll is not tied to a character.
+  string roller_name = 2;
+  // True when the master rolled.
+  bool by_master = 3;
+  // True for a roll only its roller (the master) reads: "Só eu". Players never
+  // receive one, so on a player's answer it is always false (RN-10).
+  bool secret = 4;
+  // The die: 4, 6, 8, 10, 12, 20 or 100 sides.
+  int32 sides = 5;
+  // How many dice were asked for, 1 to 20. Under advantage or disadvantage it
+  // is 1 and `dice` holds two.
+  int32 count = 6;
+  // Added to the sum of the counted dice, -20 to +20.
+  int32 modifier = 7;
+  // UNSPECIFIED unless a single d20 was rolled with advantage or disadvantage.
+  FreeRollMode mode = 8;
+  // Every die rolled, in the order they were rolled.
+  repeated FreeRollDie dice = 9;
+  // The sum of the counted dice plus the modifier. It may be zero or negative
+  // (1d4 - 20).
+  int32 total = 10;
+  // The formula in Portuguese: "2d6 + 3", "1d20 - 2", "1d20 + 5 com vantagem".
+  string formula = 11;
+  // The line of the session log: "Rolagem livre · Brisa: 2d6 + 3 = 11 (4, 4)".
+  // Under advantage the discarded face reads "9 descartado".
+  string log_text = 12;
+  google.protobuf.Timestamp created_at = 13;
+}
+
+// RollFreeDiceRequest asks the server to roll dice.
+message RollFreeDiceRequest {
+  string campaign_id = 1;
+  // 4, 6, 8, 10, 12, 20 or 100.
+  int32 sides = 2;
+  // 1 to 20.
+  int32 count = 3;
+  // -20 to +20.
+  int32 modifier = 4;
+  // Advantage or disadvantage: only with one d20 (sides 20, count 1).
+  FreeRollMode mode = 5;
+  // "Só eu": only the master may ask for it. The roll is then written for the
+  // master alone and reaches no player.
+  bool secret = 6;
+  // Required, 1 to 64 characters: the same key with the same request returns
+  // the first roll and rolls nothing again; the same key with another request
+  // is refused.
+  string idempotency_key = 7;
+}
+
+// RollFreeDiceResponse returns the roll.
+message RollFreeDiceResponse {
+  FreeRoll roll = 1;
+}
+
+// ListFreeRollsRequest asks for the free rolls of the open session.
+message ListFreeRollsRequest {
+  string campaign_id = 1;
+}
+
+// ListFreeRollsResponse holds the log of the free rolls and the caller's own.
+message ListFreeRollsResponse {
+  // The rolls the caller may read, newest first, at most 50: everybody's table
+  // rolls, and for the master also the secret ones. It feeds the session log.
+  repeated FreeRoll table = 1;
+  // The caller's own rolls, newest first, at most 10, secret ones included for
+  // the master who made them. It feeds "Suas últimas rolagens".
+  repeated FreeRoll mine = 2;
+}
