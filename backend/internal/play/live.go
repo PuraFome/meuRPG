@@ -17,7 +17,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// The live session (Etapa 5; ADR-0005, docs/architecture/play/live-session.md#live-session).
+// The live session (ADR-0005, docs/architecture/play/live-session.md#live-session).
 //
 //   - The notice (RN-06) is a light poll, not a stream: the app calls
 //     ListOpenGameSessions about every 30 seconds while its tab is visible.
@@ -174,7 +174,7 @@ func encounterInSessionWith(ctx context.Context, q *playdb.Queries, sessionID, e
 }
 
 // readEncounter reads the open session, one of its encounters and the
-// encounter's combatants in one read-only transaction (audit D-03), so a combat
+// encounter's combatants in one read-only transaction, so a combat
 // the master changes while the request runs is seen whole or not at all: never
 // new combatants beside the old revision.
 func (s *Service) readEncounter(ctx context.Context, campaignID, encounterID string) (playdb.GameSession, *encounterData, error) {

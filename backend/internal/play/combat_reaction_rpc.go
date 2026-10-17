@@ -37,8 +37,9 @@ type answerInput struct {
 	choice playv1.ReactionChoice
 }
 
-// parseAnswerInput reads the caller and the request of AnswerReaction, in the order its
-// refusals have always come: the member, the key, the combat, the window, the answer.
+// parseAnswerInput reads the caller and the request of AnswerReaction, in the order of its
+// refusals: the member first, so a stranger learns nothing about the ids (RN-10), then the
+// key, the combat, the window and the answer.
 func parseAnswerInput(ctx context.Context, msg *playv1.AnswerReactionRequest) (authz.Membership, answerInput, error) {
 	m, err := authz.RequireCampaignMember(ctx, msg.GetCampaignId())
 	if err != nil {

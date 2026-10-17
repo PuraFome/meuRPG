@@ -11,7 +11,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
-// The table's rules inside the combat (MR-025, RN-24, slice 10.4b): the critical
+// The table's rules inside the combat (MR-025, RN-24): the critical
 // hit and who sees the death saves. They are read, never cached: a change inside
 // a transaction reads them in that transaction (combatTx.rules, PR #121), and a
 // read outside one reads them when it builds the viewer (combatViewer.hideDeath),

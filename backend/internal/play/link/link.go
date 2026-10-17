@@ -616,7 +616,7 @@ type SceneOption struct {
 	Lucky bool
 }
 
-// Creature is a creature of a player's character (MR-037, Etapa 9) as a
+// Creature is a creature of a player's character (MR-037) as a
 // combat reads it: an SRD creature the table named, with its own hit points.
 // The stat block is rules content; what a combat needs of it is copied in.
 type Creature struct {

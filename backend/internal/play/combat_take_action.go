@@ -23,7 +23,7 @@ import (
 
 // The standard and feature actions that only spend the economy and a use (TakeAction).
 // TakeAction reads the request, runs the transaction on a takeActionFlow, which checks and writes in the
-// order the golden of combat_take_action_frozen_test.go reads (the reads, the dice, the writes), and
+// order the frozen characterization tests pin (the reads, the dice, the writes), and
 // answers from what the transaction left in a takeActionOut. Each kind of action (a standard action, a
 // feature's, one of the feature kinds with its own effect) is a function behind a dispatch.
 
@@ -407,8 +407,8 @@ func (f *takeActionFlow) dodge(ctx context.Context) error {
 	return nil
 }
 
-// disengage is the Disengage action: no opportunity attacks for the rest of the turn (slice 9.6b reads
-// the flag).
+// disengage is the Disengage action: no opportunity attacks for the rest of the turn
+// (the opportunity attack reads the flag).
 func (f *takeActionFlow) disengage(ctx context.Context) error {
 	if err := f.c.q.SetCombatantDisengaged(ctx, playdb.SetCombatantDisengagedParams{ID: f.who.ID, Disengaged: true}); err != nil {
 		return fmt.Errorf("mark the disengage: %w", err)

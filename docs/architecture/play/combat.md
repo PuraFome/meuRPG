@@ -11,19 +11,25 @@ Attacks and damage are in [Attacks and damage](attacks-and-damage.md), movement 
 
 | File | Holds |
 | --- | --- |
-| `combat.go` | The lifecycle calls |
+| `combat.go` | `EndTurn` and `EndEncounter` (the thin handlers) |
+| `combat_start.go`, `combat_setup.go`, `combat_join.go` | `StartEncounter`; the initiative, the order of a tie, `BeginCombat` and the roster; who joins and where each one stands |
+| `combat_endturn.go`, `combat_turn.go` | The phases of `EndTurn`; the joint turn |
+| `combat_place.go`, `combat_surprise.go`, `combat_partedit.go` | "Colocar no mapa"; surprise; removing a part of a pending damage |
 | `combat_write.go` | The transaction every change shares (`combatTx`, `write`, `finish`) |
-| `combat_view.go` | Who sees what |
+| `combat_view.go` | Who sees what, and the publishers of the live events (`publishEncounterChanged`, `publishTurnChanged`, `publishCombatantMoved`) |
 | `combat_rules.go` | The arithmetic, pure and tested without a database |
 | `combat_turn_options.go`, `combat_spell_targets.go` | The options of a turn and who each one can target |
-| `combat_attack.go`, `combat_damage.go`, `combat_parts.go` | The attack roll, the damage and its parts |
+| `combat_attack.go`, `combat_damage.go`, `combat_parts.go` | The attack roll, the damage roll and its parts |
+| `combat_cast.go`, `combat_spells.go` | Casting a spell and what each kind of spell does to its targets |
 | `combat_apply_damage.go`, `combat_hit_points.go`, `combat_take_action.go` | The master settling a hit, NPC hit points, the standard and feature actions |
 | `combat_gate.go` | Why a combatant cannot act now |
 | `combat_landing.go`, `combat_pending_view.go` | Where a damage or heal lands, and the pending damage as the viewer reads it |
-| `combat_turn.go` | The joint turn |
 | `combat_events.go`, `combat_log.go` | Event payloads and the log |
 | `combat_vitals.go` | Slots, uses and HP through `character_vitals` |
 | `combat_undo.go`, `combat_undo_kinds.go` | Undo |
+
+`RollAttack`, `CastSpell`, `RollDamage`, `TakeAction`, `ApplyPendingDamage` and `DiscardPendingDamage` share one shape: the handler reads the request into a `*Call`, runs the transaction as a `*Flow` whose phases keep the order of the reads, the dice and the writes, and answers from a `*Out`.
+The frozen characterization tests pin that order.
 
 Pure rules live in `rules/combat`.
 

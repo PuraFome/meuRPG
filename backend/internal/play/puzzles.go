@@ -25,7 +25,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// Puzzles (MR-038, RN-27, Etapa 10, slice 10.7a): the master makes them in the
+// Puzzles (MR-038, RN-27): the master makes them in the
 // campaign, shows them in the open session, and the players solve them live. The
 // files:
 //
@@ -280,7 +280,7 @@ func parsePuzzleID(raw string) (string, error) {
 
 var (
 	protoOut = protojson.MarshalOptions{}
-	protoIn  = protojson.UnmarshalOptions{DiscardUnknown: true} // slice 10.7b adds fields: older rows still read
+	protoIn  = protojson.UnmarshalOptions{DiscardUnknown: true} // older rows without the newer fields still read
 )
 
 // toJSON is the stored form of a message (the columns are JSONB).
@@ -312,7 +312,7 @@ type puzzleDef struct {
 	start    *playv1.PuzzleState
 	hints    []string
 	onSolve  *playv1.PuzzleOnSolve
-	// The master's other settings (slice 10.7b): the skill check that wins a hint (nil:
+	// The master's other settings: the skill check that wins a hint (nil:
 	// none), the split information and "Ao errar" (nil: nothing). None of them reaches a
 	// player but as the counters and the part that are theirs (puzzles_view.go).
 	hintCheck *playv1.PuzzleHintCheck

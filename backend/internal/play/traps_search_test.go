@@ -476,7 +476,7 @@ func TestSearchForTrapsEffectDiceAndSources(t *testing.T) {
 	}
 	// 9 + 4 (Intelligence) + 3 (the d4) = 16 clears DC 14.
 	// Finding: the answer's roll leaves the effect die out of its total (13, not the 16 the search
-	// counted and wrote in the history), and the die is told only in the sources (traps.go:410).
+	// counted and wrote in the history), and the die is told only in the sources (the search in traps_search.go).
 	if res.GetRoll().GetTotal() != 13 || res.GetRoll().GetModifier() != 4 || len(res.GetFoundPointIds()) != 1 || len(res.GetBonusDice()) != 0 ||
 		len(res.GetSources()) != 1 || res.GetSources()[0].GetKind() != playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_DIE {
 		t.Errorf("the search = %v, want the roll 9 + 4 = 13, the pit found (16 counted) and the die in the sources", res)

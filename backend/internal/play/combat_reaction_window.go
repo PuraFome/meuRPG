@@ -524,7 +524,7 @@ func (s *Service) releaseOne(ctx context.Context, c *combatTx, p playdb.PendingD
 	}
 	cur, err := c.q.GetPendingDamage(ctx, playdb.GetPendingDamageParams{EncounterID: c.enc.ID, ID: p.ID})
 	if err != nil || cur.Status != pendingAwaitingReaction {
-		return false, nil //nolint:nilerr // a hit that cannot be read, or that moved on already, is left alone, as the loop always did
+		return false, nil //nolint:nilerr // a hit that cannot be read, or that moved on already, is left alone
 	}
 	if _, err := c.q.SetPendingDamageStatus(ctx, playdb.SetPendingDamageStatusParams{ID: p.ID, Status: pendingAwaitingRoll}); err != nil {
 		return false, fmt.Errorf("let the hit go on: %w", err)

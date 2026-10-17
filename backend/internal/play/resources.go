@@ -243,7 +243,7 @@ type restRun struct {
 	spellVitals  []*playv1.CharacterVitals
 }
 
-// readRestCall reads and checks the request, in the order the refusals have always come.
+// readRestCall reads and checks the request. Who may call comes first, so a stranger learns nothing about the ids (RN-10).
 func readRestCall(ctx context.Context, msg *playv1.TakeRestRequest) (restCall, error) {
 	m, err := authz.RequireCampaignRole(ctx, msg.GetCampaignId(), authz.RoleMaster)
 	if err != nil {
@@ -438,7 +438,7 @@ type hitDiceRun struct {
 	repeated bool
 }
 
-// readHitDiceCall reads and checks the request, in the order the refusals have always come.
+// readHitDiceCall reads and checks the request. Who may call comes first, so a stranger learns nothing about the ids (RN-10).
 func readHitDiceCall(ctx context.Context, req *playv1.SpendHitDiceRequest) (hitDiceCall, error) {
 	m, err := authz.RequireCampaignMember(ctx, req.GetCampaignId())
 	if err != nil {

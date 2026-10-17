@@ -67,7 +67,7 @@ func errNeedsAMap() error {
 // modeOfStart works out the mode a new combat is played in: the one the request
 // chose, or, when it chose none, the table's rule "combate com mapa" (RN-24), read
 // in the caller's transaction (tx). Without the rule's source, every combat is on a
-// map, as it was before the modes.
+// map.
 func (s *Service) modeOfStart(ctx context.Context, tx pgx.Tx, campaignID string, asked playv1.EncounterMode) (string, error) {
 	switch asked {
 	case playv1.EncounterMode_ENCOUNTER_MODE_GRID:
@@ -126,7 +126,7 @@ type spendRun struct {
 	hidden, onTurn bool
 }
 
-// readSpendCall reads and checks the request, in the order the refusals have always come.
+// readSpendCall reads and checks the request. Who may call comes first, so a stranger learns nothing about the ids (RN-10).
 func readSpendCall(ctx context.Context, req *playv1.SpendMovementRequest) (spendCall, error) {
 	m, key, encID, err := memberCall(ctx, req.GetCampaignId(), req.GetIdempotencyKey(), req.GetEncounterId())
 	if err != nil {
@@ -278,7 +278,7 @@ type offerRun struct {
 	mover playdb.Combatant
 }
 
-// readOfferCall reads and checks the request, in the order the refusals have always come.
+// readOfferCall reads and checks the request. Who may call comes first, so a stranger learns nothing about the ids (RN-10).
 func readOfferCall(ctx context.Context, req *playv1.OfferOpportunityRequest) (offerCall, error) {
 	m, key, encID, err := masterCall(ctx, req.GetCampaignId(), req.GetIdempotencyKey(), req.GetEncounterId())
 	if err != nil {

@@ -297,7 +297,7 @@ type undoRequest struct {
 	expected string // the event the master saw as the last action
 }
 
-// undoRequestOf checks the request in the order the handler always refused it: the
+// undoRequestOf checks the request in the order the handler refuses it: the
 // master's role, the key, the combat, the event the master expects.
 func undoRequestOf(ctx context.Context, msg *playv1.UndoLastActionRequest) (undoRequest, error) {
 	m, key, encID, err := masterCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())

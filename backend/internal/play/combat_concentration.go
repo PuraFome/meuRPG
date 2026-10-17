@@ -159,8 +159,8 @@ type concentrationCall struct {
 	msg *playv1.ResolveConcentrationSaveRequest
 }
 
-// readConcentrationCall reads a ResolveConcentrationSave request, refusing in the order the
-// handler always did: the caller, the keys, the ids, the answer.
+// readConcentrationCall reads a ResolveConcentrationSave request, refusing in this order: the
+// caller, the keys, the ids, the answer.
 func readConcentrationCall(ctx context.Context, msg *playv1.ResolveConcentrationSaveRequest) (concentrationCall, error) {
 	call := concentrationCall{msg: msg}
 	var err error

@@ -14,7 +14,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// Conditions and concentration (RN-22, Etapa 6, slice 6.4b): labels the master
+// Conditions and concentration (RN-22): labels the master
 // marks and the app reminds the table about; the engine applies no effect. A
 // concentration spell is set by CastSpell (a second one replaces the first); here
 // the master, or the character's own player, ends it. When damage reaches a

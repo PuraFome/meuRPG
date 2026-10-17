@@ -134,7 +134,7 @@ func TestARiderRefusalsKeepTheirCodesAndMessages(t *testing.T) {
 	// Another player is told the same whether the offer exists or not (RN-10).
 	_, errReal := a.useRider(t, a.ana, e, open, playv1.HitRiderChoice_HIT_RIDER_CHOICE_PRONE)
 	_, errFake := a.useRider(t, a.ana, e, fake, playv1.HitRiderChoice_HIT_RIDER_CHOICE_PRONE)
-	// Finding (combat_riders.go:215-220 against :205-207): both are permission_denied, but the words differ,
+	// Finding (the refusals of useRider for an open offer and an invented one): both are permission_denied, but the words differ,
 	// so a player can tell a real offer from an invented one by the message. Frozen.
 	wantRiderRefusal(t, "another player answering a real offer", errReal, connect.CodePermissionDenied, "only the combatant's player or the master may do this")
 	wantRiderRefusal(t, "another player answering a missing offer", errFake, connect.CodePermissionDenied, "only the monk's player or the master may answer")

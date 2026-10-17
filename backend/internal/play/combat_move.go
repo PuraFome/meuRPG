@@ -21,7 +21,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// Combat movement (MR-034, RN-21, Etapa 9, slice 9.6). The geometry is package
+// Combat movement (MR-034, RN-21). The geometry is package
 // rules/grid's (the circle, the cost of a straight line, walls, other
 // creatures, jumps); this file asks it and keeps the combatant's numbers. The
 // browser does no geometry: GetMoveOptions says where a combatant can go.
@@ -182,7 +182,7 @@ func placed(c playdb.Combatant) bool { return c.GridCol != nil && c.GridRow != n
 // occupantsFor says who stands where, as far as the mover's move goes: every
 // other combatant on the map that is not defeated, hostile when its side is the
 // other one, with the largest size when several share a square. A player plans
-// on the combatants they see (RN-10); with the fog of war (slice 9.4) it will be
+// on the combatants they see (RN-10), which with the fog of war are
 // the ones the mover sees, and the real move is then cut short where something
 // unseen is in the way. The master sees everyone.
 func occupantsFor(cs []playdb.Combatant, mover playdb.Combatant, v combatViewer) grid.OccupantMap {
@@ -1122,8 +1122,8 @@ type masterTargetCall struct {
 	key, encID, combID string
 }
 
-// readMasterTargetCall reads and checks the master's call, in the order the refusals have
-// always come.
+// readMasterTargetCall reads and checks the master's call. The master check comes
+// first, so a stranger learns nothing about the ids (RN-10).
 func readMasterTargetCall(ctx context.Context, campaignID, rawKey, encounterID, combatantID string) (masterTargetCall, error) {
 	m, key, encID, err := masterCall(ctx, campaignID, rawKey, encounterID)
 	if err != nil {

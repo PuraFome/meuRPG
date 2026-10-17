@@ -73,7 +73,7 @@ type arcaneRun struct {
 	repeated bool
 }
 
-// readArcaneCall reads and checks the request, in the order the refusals have always come.
+// readArcaneCall reads and checks the request. Who may call comes first, so a stranger learns nothing about the ids (RN-10).
 func readArcaneCall(ctx context.Context, req *playv1.UseArcaneRecoveryRequest) (arcaneCall, error) {
 	m, err := authz.RequireCampaignMember(ctx, req.GetCampaignId())
 	if err != nil {

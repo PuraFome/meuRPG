@@ -16,7 +16,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/progression/link"
 )
 
-// What the progression module (MR-016, Etapa 7) needs from play: a combat's
+// What the progression module (MR-016) needs from play: a combat's
 // defeated NPCs and their XP, the session's log and its live stream. Package
 // progression declares the interface (progression.Combats and
 // progression.SessionLog); this Service implements it, as it does the

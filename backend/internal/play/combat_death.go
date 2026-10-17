@@ -15,7 +15,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
-// The fallen (RN-03, MR-014, Etapa 6, slice 6.4b). A player's character at 0 hit
+// The fallen (RN-03, MR-014). A player's character at 0 hit
 // points is "Caído": its turn starts with a death save due, and the turn waits
 // for it. 10 or more is a success, less a failure, a natural 1 two failures, a
 // natural 20 brings it back with 1 hit point. Three successes make it stable;

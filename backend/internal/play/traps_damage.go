@@ -23,7 +23,7 @@ import (
 )
 
 // The damage a fired trap did to a player's character, waiting for the master
-// (MR-035, Etapa 9, D5; RN-02). In a combat it is a pending_damages row, which the
+// (MR-035; RN-02). In a combat it is a pending_damages row, which the
 // master applies with CombatService.ApplyPendingDamage like any other; outside a
 // combat it is a trap_damages row, applied here to the character's vitals. The
 // master may change the amount before applying: resistances are not modeled.

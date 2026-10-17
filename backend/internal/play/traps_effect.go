@@ -13,7 +13,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
-// What a fired trap does to the creatures it caught (MR-035, Etapa 9, D5): the
+// What a fired trap does to the creatures it caught (MR-035): the
 // server rolls the trap's attack, its damage and each creature's saving throw, as
 // it does for the saves of a spell, and this file is the arithmetic of it: no
 // database, no combatant, only dice and numbers. Where the results go (a

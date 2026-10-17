@@ -28,7 +28,7 @@ import (
 // never does) and keeps what each rolled for the log.
 //
 // A pending damage with no parts (a spell's, a trap's, a creature's attack that has
-// no extra) is one roll, as it always was.
+// no extra) is one roll.
 
 // maxIgnoredSources is how many sources of resistance the master may leave out of one damage.
 const maxIgnoredSources = 20

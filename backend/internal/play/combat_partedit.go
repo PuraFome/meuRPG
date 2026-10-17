@@ -28,7 +28,7 @@ type partRemoval struct {
 	reason    string
 }
 
-// readPartRemovalCall checks the request in the order the handler always refused it: the
+// readPartRemovalCall checks the request in the order of the refusals: the
 // master's role, the key, the combat, the pending damage, the part, the reason.
 func readPartRemovalCall(ctx context.Context, msg *playv1.RemoveDamagePartRequest) (partRemoval, error) {
 	m, key, encID, err := masterCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())

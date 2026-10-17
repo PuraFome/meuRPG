@@ -44,7 +44,7 @@ type adjustRun struct {
 	shapeChanged bool
 }
 
-// readAdjustCall reads and checks the request, in the order the refusals have always come.
+// readAdjustCall reads and checks the request. Who may call comes first, so a stranger learns nothing about the ids (RN-10).
 func readAdjustCall(ctx context.Context, msg *playv1.AdjustCharacterVitalsRequest) (adjustCall, error) {
 	m, err := authz.RequireCampaignRole(ctx, msg.GetCampaignId(), authz.RoleMaster)
 	if err != nil {
@@ -254,7 +254,7 @@ type vitalsNumbers struct {
 	PactSlotsUsed      int32   `json:"pact_slots_used,omitempty"`
 	HitDiceUsed        int32   `json:"hit_dice_used"`
 	// ResourcesUsed are the uses spent of the class and race resources, by
-	// resource key (Etapa 6).
+	// resource key.
 	ResourcesUsed map[string]int32 `json:"resources_used,omitempty"`
 	// The beast of a Wild Shape form and its hit points (MR-037), when there is one.
 	WildShapeBeast string `json:"wild_shape_beast,omitempty"`

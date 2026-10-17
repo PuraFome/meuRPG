@@ -24,9 +24,9 @@ import (
 )
 
 // The spell cast (CastSpell), in phases. castSpell reads the request, runs the transaction as a sequence of
-// phases of a castFlow, each one of the checks or the writes the cast has always made in that order, and
+// phases of a castFlow, each one of the checks or the writes the cast makes, in that order, and
 // answers from what the transaction left in a castOut. The phases keep the order of the reads, the dice and
-// the writes: the scripted dice of the tests and the golden of combat_cast_spell_frozen_test.go read it.
+// the writes, because the scripted dice of the tests and the frozen characterization tests depend on it.
 
 const (
 	// maxSpellKeyLen is the longest spell key a request may name.

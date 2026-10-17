@@ -275,7 +275,7 @@ func (s *Service) GetCombatHighlights(
 }
 
 // readHighlightInputs reads the events and combatants of an ended combat. The
-// encounter, its events and its combatants are one snapshot (audit D-03).
+// encounter, its events and its combatants are one snapshot.
 func (s *Service) readHighlightInputs(ctx context.Context, campaignID, encID string) ([]playdb.ListEncounterCombatEventsRow, []playdb.Combatant, error) {
 	var (
 		events []playdb.ListEncounterCombatEventsRow

@@ -21,7 +21,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// A trap fired in a combat (MR-035, Etapa 9, D5, slice 9.8). The maps module owns
+// A trap fired in a combat (MR-035). The maps module owns
 // the trap (where it is, whether it is armed, who knows it); this file is the
 // combat's side of it: who the trap catches, what the dice do to each combatant
 // and how the master takes it back.

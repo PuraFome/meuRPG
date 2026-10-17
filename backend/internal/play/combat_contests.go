@@ -230,8 +230,8 @@ func checkContestSkill(st *contestStart) error {
 	return nil
 }
 
-// parseContestStart is the first phase of StartContest: read and validate the request, in
-// the order the refusals have always come.
+// parseContestStart is the first phase of StartContest: read and validate the request. Who
+// may call comes first, so a stranger learns nothing about the ids (RN-10).
 func parseContestStart(ctx context.Context, msg *playv1.StartContestRequest) (contestStart, error) {
 	m, key, encID, err := memberCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
 	if err != nil {
@@ -595,8 +595,8 @@ type contestAnswer struct {
 	in    checkInput
 }
 
-// parseContestAnswer is the first phase of RespondContest: read and validate the request, in
-// the order the refusals have always come.
+// parseContestAnswer is the first phase of RespondContest: read and validate the request. Who
+// may call comes first, so a stranger learns nothing about the ids (RN-10).
 func parseContestAnswer(ctx context.Context, msg *playv1.RespondContestRequest) (contestAnswer, error) {
 	m, key, encID, err := memberCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
 	if err != nil {
@@ -884,8 +884,8 @@ type shoveChoiceReq struct {
 	outcome   playv1.ShoveOutcome
 }
 
-// parseShoveChoice is the first phase of ResolveShove: read and validate the request, in the
-// order the refusals have always come.
+// parseShoveChoice is the first phase of ResolveShove: read and validate the request. Who may
+// call comes first, so a stranger learns nothing about the ids (RN-10).
 func parseShoveChoice(ctx context.Context, msg *playv1.ResolveShoveRequest) (shoveChoiceReq, error) {
 	m, key, encID, err := memberCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
 	if err != nil {
@@ -1056,7 +1056,7 @@ type contestClose struct {
 }
 
 // parseContestClose is the first phase of CloseContest: only the master closes, and the
-// refusals come in the order they always have.
+// refusals come in the same order as in the other contest calls.
 func parseContestClose(ctx context.Context, msg *playv1.CloseContestRequest) (contestClose, error) {
 	m, err := authz.RequireCampaignRole(ctx, msg.GetCampaignId(), authz.RoleMaster)
 	if err != nil {
@@ -1297,7 +1297,7 @@ func (s *Service) pruneHolds(ctx context.Context, c *combatTx) error {
 }
 
 // endHold lets go of a hold that ended: the condition goes when the creature still carries
-// it, and the row always does.
+// it, and the row goes either way.
 func endHold(ctx context.Context, c *combatTx, by map[string]playdb.Combatant, h playdb.CombatHold) error {
 	if grappled, ok := by[h.GrappledID]; ok && isGrappled(grappled) {
 		return releaseHold(ctx, c, grappled)

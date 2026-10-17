@@ -17,8 +17,7 @@ import (
 )
 
 // The master's hand on an NPC's hit points (AdjustCombatantHitPoints). The call reads the request, runs the
-// transaction (find the combatant, work out the hit points, write them) and answers with the encounter. The
-// golden of combat_actions_rest_frozen_hp_test.go reads it.
+// transaction (find the combatant, work out the hit points, write them) and answers with the encounter. The order is pinned by the frozen characterization tests.
 
 // The ways the master changes the hit points of an NPC; the event keeps the word.
 const (

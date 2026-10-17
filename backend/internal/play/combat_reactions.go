@@ -23,7 +23,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
-// Reactions (MR-014, timeline decision 5, Etapa 6, slice 6.4b). Escudo is the
+// Reactions (MR-014, timeline decision 5). Escudo is the
 // one reaction spell the combat runs: it is cast when an attack hits a player's
 // character, so the hit waits (AWAITING_REACTION) until the target's player, or
 // the master, answers. The opportunity attack is RollAttack's as_reaction
