@@ -18,10 +18,14 @@ import (
 
 // The combat (MR-013): CombatService, in the same Service as
 // PlayService because a combat lives inside the open game session and its
-// events travel on the same stream. The handlers that start and set a combat up are
-// in combat_start.go and combat_setup.go (who joins: combat_join.go); this file has
-// the turn and the end. The helpers are in combat_write.go (the transaction every change shares),
-// combat_view.go (what each viewer sees) and combat_rules.go (the pure rules).
+// events travel on the same stream. This file has EndTurn and EndEncounter; the
+// rest of the lifecycle is in combat_start.go and combat_setup.go (who joins:
+// combat_join.go), the phases of EndTurn in combat_endturn.go. The helpers are
+// in combat_write.go (the transaction every change shares), combat_view.go
+// (what each viewer sees) and combat_rules.go (the pure rules). The write
+// calls of a turn (attack, spell, damage, action) read the request into a call,
+// run the transaction as a flow and answer from an out; see
+// docs/architecture/play/combat.md.
 //
 // A combat is an encounters row with combatants rows (migration 00043 and
 // 00044). Every handler starts with one explicit check, and every change
@@ -33,7 +37,7 @@ func (s *Service) EndTurn(
 	ctx context.Context,
 	req *connect.Request[playv1.EndTurnRequest],
 ) (*connect.Response[playv1.EndTurnResponse], error) {
-	m, call, err := readEndTurn(ctx, req.Msg)
+	m, call, err := readEndTurnCall(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}

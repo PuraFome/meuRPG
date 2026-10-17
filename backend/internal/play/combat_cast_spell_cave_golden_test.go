@@ -11,11 +11,11 @@ import (
 // wizard spares and the hidden creatures an area hits.
 
 // caveCast is a scenario of the cave: build starts the fight, cast casts.
-func caveCast(name string, build func(t *testing.T) *cave, cast func(t *testing.T, c *cave) (*playv1.CastSpellResponse, error)) castScenario {
+func caveCast(name string, build func(t *testing.T) *cave, cast func(t *testing.T, c *cave) (*playv1.CastSpellResponse, error)) goldenScenario {
 	return castOn(name, func(t *testing.T) (*armed, int, *playv1.CastSpellResponse, error) {
 		t.Helper()
 		c := build(t)
-		before := c.castEvents(t)
+		before := c.markCall(t)
 		res, err := cast(t, c)
 		return c.armed, before, res, err
 	})
@@ -54,8 +54,8 @@ func revealCave(t *testing.T) *cave {
 	return c
 }
 
-func castCaveScenarios() []castScenario {
-	return []castScenario{
+func castCaveScenarios() []goldenScenario {
+	return []goldenScenario{
 		caveCast("a sculpted cone", coneCave, func(t *testing.T, c *cave) (*playv1.CastSpellResponse, error) {
 			t.Helper()
 			c.h.roller.queue(10, 10)

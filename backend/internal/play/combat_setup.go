@@ -39,7 +39,7 @@ func (s *Service) SubmitInitiative(
 	ctx context.Context,
 	req *connect.Request[playv1.SubmitInitiativeRequest],
 ) (*connect.Response[playv1.SubmitInitiativeResponse], error) {
-	call, err := readInitiativeRequest(ctx, req.Msg)
+	call, err := readInitiativeCall(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
@@ -65,9 +65,9 @@ func (s *Service) SubmitInitiative(
 	return connect.NewResponse(&playv1.SubmitInitiativeResponse{Encounter: out}), nil
 }
 
-// readInitiativeRequest reads the request in the order the answers are given: who may call,
+// readInitiativeCall reads the request in the order the answers are given: who may call,
 // the key, the encounter, the combatant, then the roll.
-func readInitiativeRequest(ctx context.Context, req *playv1.SubmitInitiativeRequest) (initiativeCall, error) {
+func readInitiativeCall(ctx context.Context, req *playv1.SubmitInitiativeRequest) (initiativeCall, error) {
 	m, key, encID, err := memberCall(ctx, req.GetCampaignId(), req.GetIdempotencyKey(), req.GetEncounterId())
 	if err != nil {
 		return initiativeCall{}, err
@@ -209,7 +209,7 @@ func (s *Service) SetInitiativeOrder(
 	ctx context.Context,
 	req *connect.Request[playv1.SetInitiativeOrderRequest],
 ) (*connect.Response[playv1.SetInitiativeOrderResponse], error) {
-	call, err := readOrderRequest(ctx, req.Msg)
+	call, err := readOrderCall(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
@@ -226,9 +226,9 @@ func (s *Service) SetInitiativeOrder(
 	return connect.NewResponse(&playv1.SetInitiativeOrderResponse{Encounter: out}), nil
 }
 
-// readOrderRequest reads the request in the order the answers are given: who may call, the
+// readOrderCall reads the request in the order the answers are given: who may call, the
 // key, the encounter, then the combatants, each once and at least two.
-func readOrderRequest(ctx context.Context, req *playv1.SetInitiativeOrderRequest) (orderCall, error) {
+func readOrderCall(ctx context.Context, req *playv1.SetInitiativeOrderRequest) (orderCall, error) {
 	m, key, encID, err := masterCall(ctx, req.GetCampaignId(), req.GetIdempotencyKey(), req.GetEncounterId())
 	if err != nil {
 		return orderCall{}, err

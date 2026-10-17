@@ -50,7 +50,9 @@ func TestLastingCoreWhoTakesHoldOfAnEffectThatNeedsTheSheet(t *testing.T) {
 	e := a.closeFight(t)
 	res := a.mustAddEffect(t, e, mageArmorKey, []string{"Brisa", "Pensantus", "Toren"}, nil)
 	l.say("mage armor on Brisa (armored), Pensantus and Toren: %d effects", len(res.GetEffects()))
-	a.mustAddEffect(t, e, mageArmorKey, []string{"Brisa"}, nil)
+	// Finding fix/lasting-effects-outside-combat (d): Mage Armor on the armored one alone is refused.
+	_, err := a.addEffect(t, e, mageArmorKey, []string{"Brisa"}, nil)
+	wantRefusal(t, "Mage Armor on the armored one alone", err, connect.CodeFailedPrecondition, "the effect takes no hold of these targets")
 	a.mustAddEffect(t, e, heroismKey, []string{"Toren"}, withCaster(t, a, "Goblin"))
 	l.say("%s%s", a.coreEffects(t, e.GetId()), a.coreCombatants(t, e.GetId(), "Brisa", "Pensantus", "Toren"))
 	l.say("events:\n%s", a.coreEvents(t, eventLastingAdded))

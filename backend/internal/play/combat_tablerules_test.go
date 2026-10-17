@@ -16,7 +16,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/tablerules"
 )
 
-// The table's rules inside the combat (MR-025, RN-24; Etapa 10, slice 10.4b): the
+// The table's rules inside the combat (MR-025, RN-24): the
 // critical hit ("dados dobrados" or "o máximo mais uma rolagem") and the death
 // saves that only the owner and the master see. These tests need the database
 // (MEURPG_TEST_DATABASE_URL). The fixtures are the combat tests' (newCasters,

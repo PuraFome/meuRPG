@@ -67,7 +67,7 @@ func errNeedsAMap() error {
 // modeOfStart works out the mode a new combat is played in: the one the request
 // chose, or, when it chose none, the table's rule "combate com mapa" (RN-24), read
 // in the caller's transaction (tx). Without the rule's source, every combat is on a
-// map, as it was before the modes.
+// map.
 func (s *Service) modeOfStart(ctx context.Context, tx pgx.Tx, campaignID string, asked playv1.EncounterMode) (string, error) {
 	switch asked {
 	case playv1.EncounterMode_ENCOUNTER_MODE_GRID:
@@ -154,7 +154,7 @@ func (s *Service) SpendMovement(
 	}
 	var run spendRun
 	res, err := s.write(ctx, combatWrite{m: call.m, key: call.key, hash: call.hash, kind: eventCombatantMoved, encounterID: call.encID}, func(c *combatTx) (any, error) {
-		return s.spendMovementIn(ctx, c, call, &run)
+		return s.spendWrite(ctx, c, call, &run)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "spend movement", err)
@@ -168,20 +168,20 @@ func (s *Service) SpendMovement(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&playv1.SpendMovementResponse{Encounter: out, MovementLeftDft: movementLeftIn(out, call.combID)}), nil
+	return connect.NewResponse(&playv1.SpendMovementResponse{Encounter: out, MovementLeftDft: movementLeftFromEncounter(out, call.combID)}), nil
 }
 
-// movementLeftIn is what is left, from the combatant as the caller reads it: a replay answers
+// movementLeftFromEncounter is what is left, from the combatant as the caller reads it: a replay answers
 // with what is left now, as every read does.
-func movementLeftIn(out *playv1.Encounter, combatantID string) int32 {
+func movementLeftFromEncounter(out *playv1.Encounter, combatantID string) int32 {
 	if i := slices.IndexFunc(out.GetCombatants(), func(c *playv1.Combatant) bool { return c.GetId() == combatantID }); i >= 0 {
 		return out.GetCombatants()[i].GetMovementLeftDft()
 	}
 	return 0
 }
 
-// spendMovementIn is the change of SpendMovement: find the combatant, check the turn, spend.
-func (s *Service) spendMovementIn(ctx context.Context, c *combatTx, call spendCall, run *spendRun) (any, error) {
+// spendWrite is the change of SpendMovement: find the combatant, check the turn, spend.
+func (s *Service) spendWrite(ctx context.Context, c *combatTx, call spendCall, run *spendRun) (any, error) {
 	if err := notEnded(c.enc); err != nil {
 		return nil, err
 	}
@@ -309,7 +309,7 @@ func (s *Service) OfferOpportunity(
 	}
 	var run offerRun
 	res, err := s.write(ctx, combatWrite{m: call.m, key: call.key, hash: call.hash, kind: eventOpportunityOffered, encounterID: call.encID}, func(c *combatTx) (any, error) {
-		return s.offerIn(ctx, c, call, &run)
+		return s.offerWrite(ctx, c, call, &run)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "offer an opportunity attack", err)
@@ -327,9 +327,9 @@ func (s *Service) OfferOpportunity(
 	return connect.NewResponse(&playv1.OfferOpportunityResponse{Encounter: out, OpportunityOfferId: ev.OfferID}), nil
 }
 
-// offerIn is the change of OfferOpportunity: the combat must be a running one without a
+// offerWrite is the change of OfferOpportunity: the combat must be a running one without a
 // grid, the parties must be fit for the offer, and the offer is written.
-func (s *Service) offerIn(ctx context.Context, c *combatTx, call offerCall, run *offerRun) (any, error) {
+func (s *Service) offerWrite(ctx context.Context, c *combatTx, call offerCall, run *offerRun) (any, error) {
 	if err := notEnded(c.enc); err != nil {
 		return nil, err
 	}

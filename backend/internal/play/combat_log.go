@@ -103,7 +103,7 @@ type logSnapshot struct {
 }
 
 // readLogSnapshot reads the combat's events, its combatants and the master's undo marker
-// as one snapshot (audit D-03): a log line whose actor is missing, or an "undo" that
+// as one snapshot: a log line whose actor is missing, or an "undo" that
 // points at an event the list does not have, would be a torn read.
 func (s *Service) readLogSnapshot(ctx context.Context, m authz.Membership, encID string) (logSnapshot, error) {
 	var snap logSnapshot
