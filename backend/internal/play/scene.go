@@ -173,18 +173,6 @@ func errNoOpenScene() error {
 	return errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_NO_OPEN_SCENE, "no scene is open")
 }
 
-// lockSceneSession locks the campaign's open game session inside the transaction of q.
-func lockSceneSession(ctx context.Context, q *playdb.Queries, campaignID string) (playdb.GameSession, error) {
-	session, err := q.GetOpenGameSessionForUpdate(ctx, campaignID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return playdb.GameSession{}, errNoOpenSession()
-	}
-	if err != nil {
-		return playdb.GameSession{}, fmt.Errorf("lock the open session: %w", err)
-	}
-	return session, nil
-}
-
 // openSceneIn reads the scene the session has open, inside tx like everything else
 // the caller reads: a second connection from the pool would deadlock a few rolls at once.
 func (s *Service) openSceneIn(ctx context.Context, tx pgx.Tx, campaignID string, session playdb.GameSession) (link.Scene, error) {
@@ -268,7 +256,7 @@ func (s *Service) OpenScene(
 // (the rolls so far stay), and empties the stage: another scene is another stage (MR-031).
 func (s *Service) switchSceneOn(ctx context.Context, tx pgx.Tx, m authz.Membership, point string, actions int, sw *sceneSwitch) error {
 	q := s.queries.WithTx(tx)
-	session, err := lockSceneSession(ctx, q, m.CampaignID)
+	session, err := lockOpenSessionOrNone(ctx, q, m.CampaignID)
 	sw.session = session
 	if err != nil {
 		return err
@@ -327,7 +315,7 @@ func (s *Service) CloseScene(
 // stage: no scene, no stage (MR-031).
 func (s *Service) switchSceneOff(ctx context.Context, tx pgx.Tx, m authz.Membership, sw *sceneSwitch) error {
 	q := s.queries.WithTx(tx)
-	session, err := lockSceneSession(ctx, q, m.CampaignID)
+	session, err := lockOpenSessionOrNone(ctx, q, m.CampaignID)
 	if err != nil {
 		return err
 	}
@@ -747,11 +735,6 @@ type sceneRollCall struct {
 	out      *sceneRolled
 }
 
-// errBadIdempotencyKey is the refusal of a key that was used for another change.
-func errBadIdempotencyKey() error {
-	return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
-}
-
 // sceneRollInput reads how the player rolls: in the app, or the faces they typed.
 func sceneRollInput(req *playv1.RollSceneCheckRequest) (rollInput, error) {
 	var in rollInput
@@ -853,7 +836,7 @@ func (s *Service) sceneRollAnswer(ctx context.Context, m authz.Membership, out *
 // run is the transaction of a roll: a retry gets its roll back; otherwise the rules and the
 // attempts allow it, the dice are rolled (or held for a question) and the roll is written.
 func (c *sceneRollCall) run(ctx context.Context) error {
-	session, err := lockSceneSession(ctx, c.q, c.m.CampaignID)
+	session, err := lockOpenSessionOrNone(ctx, c.q, c.m.CampaignID)
 	if err != nil {
 		return err
 	}
@@ -907,10 +890,10 @@ func (c *sceneRollCall) replay(ctx context.Context, sessionID string) (bool, err
 	}
 	c.out.doneRow = done
 	if done.Kind != eventSceneCheckRolled {
-		return false, errBadIdempotencyKey()
+		return false, errKeyReused()
 	}
 	if done.ActorUserID == nil || *done.ActorUserID != c.m.UserID || hashDiffers(done.IdempotencyHash, c.hash) {
-		return false, errBadIdempotencyKey()
+		return false, errKeyReused()
 	}
 	c.out.repeated = true
 	c.out.rollID, c.out.at = done.ID, done.CreatedAt
@@ -1078,7 +1061,7 @@ func (s *Service) GrantSceneAttempt(
 // character must be the open scene's and the party's, and an action with a limit gets an event.
 func (g grantSceneCall) run(ctx context.Context, tx pgx.Tx, granted *bool) error {
 	q := g.s.queries.WithTx(tx)
-	session, err := lockSceneSession(ctx, q, g.m.CampaignID)
+	session, err := lockOpenSessionOrNone(ctx, q, g.m.CampaignID)
 	if err != nil {
 		return err
 	}
@@ -1126,7 +1109,7 @@ func (g grantSceneCall) replay(ctx context.Context, q *playdb.Queries, sessionID
 	var prev sceneGrantEvent
 	if done.Kind != eventSceneAttemptGranted || json.Unmarshal(done.Payload, &prev) != nil ||
 		prev.ActionID != g.actionID || conv.OrZero(done.CharacterID) != g.characterID {
-		return false, errBadIdempotencyKey()
+		return false, errKeyReused()
 	}
 	return true, nil
 }

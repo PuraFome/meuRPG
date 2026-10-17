@@ -333,9 +333,9 @@ func (s *Service) dropSameSpell(ctx context.Context, c *combatTx, cs []playdb.Co
 // speed, and whether it can act and move; and the exhaustion it carries (a character's is
 // its vitals').
 func (s *Service) refreshCombatants(ctx context.Context, c *combatTx, ids ...string) error {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	rows, err := c.q.ListLastingEffects(ctx, c.enc.ID)
 	if err != nil {
@@ -492,11 +492,7 @@ func (s *Service) dropConcentrationIfIncapacitated(ctx context.Context, c *comba
 	if cb.ConcentrationSpell == nil || !(combat.Creature{Conditions: cb.Conditions}).Incapacitated() {
 		return nil
 	}
-	ev := actionEvent{Round: c.enc.Round, Secret: cb.Hidden, Actor: cb.ID}
-	if err := s.stopConcentrating(ctx, c, cb, &ev); err != nil {
-		return err
-	}
-	return insertEvent(ctx, c, eventConditionsSet, &c.actorUserID, nil, ev)
+	return s.loseConcentration(ctx, c, cb)
 }
 
 // casting is the rows of one casting of an effect: they share a group and a source key.
@@ -739,9 +735,9 @@ func (s *Service) endConcentrationEffects(ctx context.Context, c *combatTx, cast
 	if len(held) == 0 {
 		return nil
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	return s.endEffectRows(ctx, c, cs, held, reason)
 }

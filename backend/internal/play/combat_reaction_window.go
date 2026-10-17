@@ -448,14 +448,11 @@ func (s *Service) loadSettleState(ctx context.Context, c *combatTx) (settleState
 	if len(st.open) == 0 && len(st.holds) == 0 && len(st.waiting) == 0 {
 		return st, false, nil
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return st, false, fmt.Errorf("list the combatants: %w", err)
+		return st, false, err
 	}
-	st.byID = make(map[string]playdb.Combatant, len(cs))
-	for _, x := range cs {
-		st.byID[x.ID] = x
-	}
+	st.byID = combatantsByID(cs)
 	return st, true, nil
 }
 
