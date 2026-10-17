@@ -38,21 +38,6 @@ import (
 // The contest waits without a timeout; the master may answer for anyone or close it.
 // The wait is a reaction window of kind CONTEST (combat_contests_window.go).
 
-// contestCaller reads what every contest call starts with: the caller, the idempotency
-// key and the combat.
-func contestCaller(ctx context.Context, campaignID, keyRaw, encounterRaw string) (m authz.Membership, key, encID string, err error) {
-	if m, err = authz.RequireCampaignMember(ctx, campaignID); err != nil {
-		return m, "", "", err
-	}
-	if key, err = parseKey(keyRaw); err != nil {
-		return m, "", "", err
-	}
-	if encID, err = parseCombatID(encounterRaw, "encounter"); err != nil {
-		return m, "", "", err
-	}
-	return m, key, encID, nil
-}
-
 // mustBeRunning refuses a contest call when the combat is not running.
 func mustBeRunning(c *combatTx) error {
 	if err := notEnded(c.enc); err != nil {
@@ -248,7 +233,7 @@ func checkContestSkill(st *contestStart) error {
 // parseContestStart is the first phase of StartContest: read and validate the request, in
 // the order the refusals have always come.
 func parseContestStart(ctx context.Context, msg *playv1.StartContestRequest) (contestStart, error) {
-	m, key, encID, err := contestCaller(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
+	m, key, encID, err := memberCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
 	if err != nil {
 		return contestStart{}, err
 	}
@@ -613,7 +598,7 @@ type contestAnswer struct {
 // parseContestAnswer is the first phase of RespondContest: read and validate the request, in
 // the order the refusals have always come.
 func parseContestAnswer(ctx context.Context, msg *playv1.RespondContestRequest) (contestAnswer, error) {
-	m, key, encID, err := contestCaller(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
+	m, key, encID, err := memberCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
 	if err != nil {
 		return contestAnswer{}, err
 	}
@@ -902,7 +887,7 @@ type shoveChoiceReq struct {
 // parseShoveChoice is the first phase of ResolveShove: read and validate the request, in the
 // order the refusals have always come.
 func parseShoveChoice(ctx context.Context, msg *playv1.ResolveShoveRequest) (shoveChoiceReq, error) {
-	m, key, encID, err := contestCaller(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
+	m, key, encID, err := memberCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
 	if err != nil {
 		return shoveChoiceReq{}, err
 	}
@@ -1199,7 +1184,7 @@ func (s *Service) ReleaseGrapple(
 	ctx context.Context,
 	req *connect.Request[playv1.ReleaseGrappleRequest],
 ) (*connect.Response[playv1.ReleaseGrappleResponse], error) {
-	m, key, encID, err := contestCaller(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
+	m, key, encID, err := memberCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
 	if err != nil {
 		return nil, err
 	}

@@ -39,10 +39,7 @@ type applyDamageCall struct {
 func readApplyDamageCall(req *playv1.ApplyPendingDamageRequest) (applyDamageCall, error) {
 	var call applyDamageCall
 	var err error
-	if call.key, err = parseKey(req.GetIdempotencyKey()); err != nil {
-		return call, err
-	}
-	if call.encounterID, err = parseCombatID(req.GetEncounterId(), "encounter"); err != nil {
+	if call.key, call.encounterID, err = parseCall(req.GetIdempotencyKey(), req.GetEncounterId()); err != nil {
 		return call, err
 	}
 	if call.pendingID, err = parseCombatID(req.GetPendingDamageId(), "pending damage"); err != nil {
@@ -333,9 +330,8 @@ func (f *applyDamageFlow) afterHit(ctx context.Context) error {
 
 // touch moves the encounter's revision and names the character the change was about.
 func (f *applyDamageFlow) touch(ctx context.Context) error {
-	var err error
-	if f.c.enc, err = f.c.q.TouchEncounter(ctx, f.c.enc.ID); err != nil {
-		return fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, f.c); err != nil {
+		return err
 	}
 	f.c.characterID = &f.target.CharacterID
 	return nil
@@ -350,10 +346,7 @@ type discardDamageCall struct {
 func readDiscardDamageCall(req *playv1.DiscardPendingDamageRequest) (discardDamageCall, error) {
 	var call discardDamageCall
 	var err error
-	if call.key, err = parseKey(req.GetIdempotencyKey()); err != nil {
-		return call, err
-	}
-	if call.encounterID, err = parseCombatID(req.GetEncounterId(), "encounter"); err != nil {
+	if call.key, call.encounterID, err = parseCall(req.GetIdempotencyKey(), req.GetEncounterId()); err != nil {
 		return call, err
 	}
 	call.pendingID, err = parseCombatID(req.GetPendingDamageId(), "pending damage")
@@ -464,9 +457,8 @@ func (f *discardDamageFlow) drop(ctx context.Context) error {
 
 // touch moves the encounter's revision and names the character the change was about.
 func (f *discardDamageFlow) touch(ctx context.Context) error {
-	var err error
-	if f.c.enc, err = f.c.q.TouchEncounter(ctx, f.c.enc.ID); err != nil {
-		return fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, f.c); err != nil {
+		return err
 	}
 	f.c.characterID = &f.attacker.CharacterID
 	return nil

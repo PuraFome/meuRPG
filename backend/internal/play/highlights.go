@@ -102,7 +102,12 @@ type highlightTally struct {
 // each player's character, in the order of the combatants.
 func tallyHighlights(events []playdb.ListEncounterCombatEventsRow, combatants []playdb.Combatant) []*characterTally {
 	h, out := newHighlightTally(combatants)
-	undone := undoneHighlightIDs(events)
+	undone := map[string]bool{}
+	for _, e := range events {
+		if e.Kind == eventActionUndone {
+			markUndone(undone, e.Payload)
+		}
+	}
 	for _, e := range events {
 		if e.Kind == eventActionUndone || undone[e.ID] {
 			continue
@@ -134,20 +139,6 @@ func newHighlightTally(combatants []playdb.Combatant) (*highlightTally, []*chara
 		out = append(out, t)
 	}
 	return h, out
-}
-
-// undoneHighlightIDs is the ids the undos name: the first pass finds them all.
-func undoneHighlightIDs(events []playdb.ListEncounterCombatEventsRow) map[string]bool {
-	undone := map[string]bool{}
-	for _, e := range events {
-		if e.Kind != eventActionUndone {
-			continue
-		}
-		if ev, err := readEvent(e.Payload); err == nil {
-			undone[ev.Undone] = true
-		}
-	}
-	return undone
 }
 
 // fold adds one event to the numbers.

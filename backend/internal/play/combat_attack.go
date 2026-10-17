@@ -69,10 +69,7 @@ func readAttackCall(req *playv1.RollAttackRequest) (attackCall, error) {
 func readAttackIDs(req *playv1.RollAttackRequest) (attackCall, error) {
 	var call attackCall
 	var err error
-	if call.key, err = parseKey(req.GetIdempotencyKey()); err != nil {
-		return call, err
-	}
-	if call.encounterID, err = parseCombatID(req.GetEncounterId(), "encounter"); err != nil {
+	if call.key, call.encounterID, err = parseCall(req.GetIdempotencyKey(), req.GetEncounterId()); err != nil {
 		return call, err
 	}
 	if call.attackerID, err = parseCombatID(req.GetAttackerId(), "combatant"); err != nil {
@@ -245,9 +242,9 @@ func (f *attackFlow) writeAttack(ctx context.Context) error {
 // findAttacker reads the combat's combatants as the caller sees them (the fog: an NPC the player does not see
 // is not found) and the attacker, who the caller must be able to act for.
 func (f *attackFlow) findAttacker(ctx context.Context) error {
-	cs, err := f.c.q.ListCombatants(ctx, f.c.enc.ID)
+	cs, err := listCombatants(ctx, f.c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	f.cs = cs
 	f.v = f.c.viewer(f.m, cs)
@@ -764,9 +761,8 @@ func (f *attackFlow) answerOffer(ctx context.Context) error {
 
 // settle moves the combat's revision and says whose character acted.
 func (f *attackFlow) settle(ctx context.Context) error {
-	var err error
-	if f.c.enc, err = f.c.q.TouchEncounter(ctx, f.c.enc.ID); err != nil {
-		return fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, f.c); err != nil {
+		return err
 	}
 	f.c.characterID = &f.attacker.CharacterID
 	return nil

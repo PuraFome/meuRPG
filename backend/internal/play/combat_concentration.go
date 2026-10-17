@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"slices"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -118,10 +117,7 @@ func (s *Service) handSaveToMaster(ctx context.Context, c *combatTx, w playdb.Re
 	if _, err := c.q.SetReactionWindowStep(ctx, playdb.SetReactionWindowStepParams{ID: w.ID, Step: w.Step, Trigger: body}); err != nil {
 		return fmt.Errorf("hand the save to the master: %w", err)
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return fmt.Errorf("touch the encounter: %w", err)
-	}
-	return nil
+	return touch(ctx, c)
 }
 
 // concentrationRollOf reads how a concentration save is answered: the app's die, a
@@ -181,13 +177,7 @@ type concentrationCall struct {
 func readConcentrationCall(ctx context.Context, msg *playv1.ResolveConcentrationSaveRequest) (concentrationCall, error) {
 	var call concentrationCall
 	var err error
-	if call.m, err = authz.RequireCampaignMember(ctx, msg.GetCampaignId()); err != nil {
-		return call, err
-	}
-	if call.key, err = parseKey(msg.GetIdempotencyKey()); err != nil {
-		return call, err
-	}
-	if call.encID, err = parseCombatID(msg.GetEncounterId(), "encounter"); err != nil {
+	if call.m, call.key, call.encID, err = memberCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId()); err != nil {
 		return call, err
 	}
 	if call.winID, err = parseCombatID(msg.GetWindowId(), "window"); err != nil {
@@ -306,8 +296,8 @@ func (s *Service) writeConcentrationSave(ctx context.Context, c *combatTx, call 
 	if _, err := s.closeWindow(ctx, c, w, windowAnswered, reaction.ReasonNone, windowOutcome{ByMaster: master, Used: true}, ""); err != nil {
 		return nil, err
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return nil, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return nil, err
 	}
 	c.characterID = &reactor.CharacterID
 	run.made = ev
@@ -436,12 +426,12 @@ func (s *Service) windowToAnswer(ctx context.Context, c *combatTx, m authz.Membe
 	}
 	var reactor playdb.Combatant
 	if w.ReactorID != nil {
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+		cs, err := listCombatants(ctx, c)
 		if err != nil {
-			return none, reactor, fmt.Errorf("list the combatants: %w", err)
+			return none, reactor, err
 		}
-		if i := slices.IndexFunc(cs, func(x playdb.Combatant) bool { return x.ID == *w.ReactorID }); i >= 0 {
-			reactor = cs[i]
+		if r, ok := combatantByID(cs, *w.ReactorID); ok {
+			reactor = r
 		}
 	}
 	if !master && (w.ReactorID == nil || reactor.ID == "" || reactor.UserID == nil || *reactor.UserID != m.UserID || isCreature(reactor)) {

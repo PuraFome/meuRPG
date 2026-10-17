@@ -63,7 +63,7 @@ func (s *Service) SetCombatantConditions(
 // readConditionsRequest reads the request in the order the answers are given: who may call,
 // the key, the encounter, the combatant, that there is something to do, then the conditions.
 func (s *Service) readConditionsRequest(ctx context.Context, req *playv1.SetCombatantConditionsRequest) (conditionsCall, error) {
-	m, key, encID, err := contestCaller(ctx, req.GetCampaignId(), req.GetIdempotencyKey(), req.GetEncounterId())
+	m, key, encID, err := memberCall(ctx, req.GetCampaignId(), req.GetIdempotencyKey(), req.GetEncounterId())
 	if err != nil {
 		return conditionsCall{}, err
 	}

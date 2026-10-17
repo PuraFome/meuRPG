@@ -158,7 +158,7 @@ func (s *Service) Help(
 	ctx context.Context,
 	req *connect.Request[playv1.HelpRequest],
 ) (*connect.Response[playv1.HelpResponse], error) {
-	m, key, encID, err := contestCaller(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
+	m, key, encID, err := memberCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
 	if err != nil {
 		return nil, err
 	}

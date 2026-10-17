@@ -49,10 +49,7 @@ type takeActionCall struct {
 func readTakeActionCall(req *playv1.TakeActionRequest) (takeActionCall, error) {
 	var call takeActionCall
 	var err error
-	if call.key, err = parseKey(req.GetIdempotencyKey()); err != nil {
-		return call, err
-	}
-	if call.encounterID, err = parseCombatID(req.GetEncounterId(), "encounter"); err != nil {
+	if call.key, call.encounterID, err = parseCall(req.GetIdempotencyKey(), req.GetEncounterId()); err != nil {
 		return call, err
 	}
 	if call.combatantID, err = parseCombatID(req.GetCombatantId(), "combatant"); err != nil {
@@ -176,9 +173,9 @@ func (f *takeActionFlow) run(ctx context.Context) (any, error) {
 
 // locate finds the combatant that acts, as the caller sees the fog, and the options it has.
 func (f *takeActionFlow) locate(ctx context.Context) error {
-	cs, err := f.c.q.ListCombatants(ctx, f.c.enc.ID)
+	cs, err := listCombatants(ctx, f.c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	f.v = f.c.viewer(f.m, cs) // the fog: an NPC the player does not see is not found
 	if f.who, err = findCombatant(cs, f.call.combatantID, f.v); err != nil {
@@ -506,9 +503,8 @@ func (f *takeActionFlow) secondWind(ctx context.Context, sheet link.Sheet) error
 
 // touch marks the encounter as changed and names the character the event belongs to.
 func (f *takeActionFlow) touch(ctx context.Context) error {
-	var err error
-	if f.c.enc, err = f.c.q.TouchEncounter(ctx, f.c.enc.ID); err != nil {
-		return fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, f.c); err != nil {
+		return err
 	}
 	f.c.characterID = &f.who.CharacterID
 	return nil

@@ -742,6 +742,58 @@ func (s *Service) changed(campaignID string) func(ctx context.Context, d *encoun
 	return func(ctx context.Context, d *encounterData) { s.publishEncounterChanged(ctx, campaignID, d.enc) }
 }
 
+// parseCall reads what every combat call carries after the caller is known: the
+// idempotency key, then the combat. The order is the order of the refusals.
+func parseCall(keyRaw, encounterRaw string) (key, encID string, err error) {
+	if key, err = parseKey(keyRaw); err != nil {
+		return "", "", err
+	}
+	if encID, err = parseCombatID(encounterRaw, "encounter"); err != nil {
+		return "", "", err
+	}
+	return key, encID, nil
+}
+
+// memberCall reads the head of a request any member of the campaign may make, in the
+// order the refusals are given: who may call, the key, then the combat.
+func memberCall(ctx context.Context, campaignID, keyRaw, encounterRaw string) (m authz.Membership, key, encID string, err error) {
+	if m, err = authz.RequireCampaignMember(ctx, campaignID); err != nil {
+		return m, "", "", err
+	}
+	key, encID, err = parseCall(keyRaw, encounterRaw)
+	return m, key, encID, err
+}
+
+// masterCall reads the head of a request only the master may make, in the order the
+// refusals are given: who may call, the key, then the combat.
+func masterCall(ctx context.Context, campaignID, keyRaw, encounterRaw string) (m authz.Membership, key, encID string, err error) {
+	if m, err = authz.RequireCampaignRole(ctx, campaignID, authz.RoleMaster); err != nil {
+		return m, "", "", err
+	}
+	key, encID, err = parseCall(keyRaw, encounterRaw)
+	return m, key, encID, err
+}
+
+// listCombatants reads the combatants of the combat c.enc.
+func listCombatants(ctx context.Context, c *combatTx) ([]playdb.Combatant, error) {
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the combatants: %w", err)
+	}
+	return cs, nil
+}
+
+// touch bumps the encounter's revision, as every change of a combat does, and keeps
+// the new row in c.enc.
+func touch(ctx context.Context, c *combatTx) error {
+	enc, err := c.q.TouchEncounter(ctx, c.enc.ID)
+	if err != nil {
+		return fmt.Errorf("touch the encounter: %w", err)
+	}
+	c.enc = enc
+	return nil
+}
+
 // parseKey reads an idempotency key.
 func parseKey(raw string) (string, error) {
 	key, err := uuid.Parse(raw)

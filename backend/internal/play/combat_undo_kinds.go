@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 
 	"github.com/jackc/pgx/v5"
 
@@ -51,13 +50,9 @@ var undoers = map[string]func(*undoer, context.Context, actionEvent) error{
 	eventFamiliarSight:     (*undoer).familiarSight,
 }
 
-// find is the combatant of that ID, as the undo found them.
+// find is the combatant of that ID among the ones the undo found.
 func (u *undoer) find(id string) (playdb.Combatant, bool) {
-	i := slices.IndexFunc(u.cs, func(o playdb.Combatant) bool { return o.ID == id })
-	if i < 0 {
-		return playdb.Combatant{}, false
-	}
-	return u.cs[i], true
+	return combatantByID(u.cs, id)
 }
 
 // keep remembers the vitals of a character the undo restored, to tell the table.

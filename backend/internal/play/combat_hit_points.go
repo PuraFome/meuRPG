@@ -41,10 +41,7 @@ type adjustHitPointsCall struct {
 func readAdjustHitPointsCall(req *playv1.AdjustCombatantHitPointsRequest) (adjustHitPointsCall, error) {
 	var call adjustHitPointsCall
 	var err error
-	if call.key, err = parseKey(req.GetIdempotencyKey()); err != nil {
-		return call, err
-	}
-	if call.encounterID, err = parseCombatID(req.GetEncounterId(), "encounter"); err != nil {
+	if call.key, call.encounterID, err = parseCall(req.GetIdempotencyKey(), req.GetEncounterId()); err != nil {
 		return call, err
 	}
 	if call.combatantID, err = parseCombatID(req.GetCombatantId(), "combatant"); err != nil {
@@ -143,9 +140,9 @@ func (f *adjustHitPointsFlow) locate(ctx context.Context) error {
 	if err := notEnded(f.c.enc); err != nil {
 		return err
 	}
-	cs, err := f.c.q.ListCombatants(ctx, f.c.enc.ID)
+	cs, err := listCombatants(ctx, f.c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	if f.target, err = findCombatant(cs, f.call.combatantID, viewerOf(f.m)); err != nil {
 		return err
@@ -189,9 +186,8 @@ func (f *adjustHitPointsFlow) save(ctx context.Context) error {
 
 // touch moves the encounter's revision, names the character the change was about and builds the event.
 func (f *adjustHitPointsFlow) touch(ctx context.Context) error {
-	var err error
-	if f.c.enc, err = f.c.q.TouchEncounter(ctx, f.c.enc.ID); err != nil {
-		return fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, f.c); err != nil {
+		return err
 	}
 	before := hpOf(f.target)
 	f.c.characterID = &f.target.CharacterID
