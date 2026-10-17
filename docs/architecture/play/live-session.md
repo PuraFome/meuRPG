@@ -188,7 +188,7 @@ A line the caller may not read is answered exactly like one that does not exist 
   `GET /images/{id}` lets a player open an image when a line they may read carries it or an NPC with it as its portrait speaks (`LiveSession.ImageInConversation`); the fog map's own image stays refused (MR-036).
 - **The speaker** is kept with the line (`speaker_name`, `speaker_image_id`), so a renamed or deleted NPC does not change what was said.
   A line of an erased account stays and reads "Jogador removido" (`author_removed`).
-- **The summary** (`GetSessionSummary.conversation`) holds the last 200 lines the caller may read, with `conversation_truncated` when there are more.
+- **The summary** (`GetSessionSummary.conversation`) holds the last 500 lines the caller may read, with `conversation_truncated` when there are more.
 
 ### The voice ("Ouvir")
 

@@ -1,6 +1,7 @@
 package play
 
 import (
+	"bytes"
 	"io"
 	"net/http"
 	"strings"
@@ -278,10 +279,8 @@ func TestMessagesNeedAnOpenSessionAndMembership(t *testing.T) {
 
 func TestListMessagesPagesNewestLast(t *testing.T) {
 	a := newArmed(t)
-	var want []string
 	for _, text := range []string{"1", "2", "3", "4", "5"} {
 		a.mustSay(a.master, asNarrator, text)
-		want = append(want, text)
 	}
 	a.mustSay(a.master, asNarrator, "secreta", to(a.ana.id))
 	list := func(u *user, before string) *playv1.ListSessionMessagesResponse {
@@ -386,8 +385,16 @@ func TestSummaryHoldsOnlyTheLinesTheReaderMayRead(t *testing.T) {
 	wantTexts(t, "Bia", summary(a.bia), "para todos")
 }
 
+// audioReply is what the audio route answered: the status, the two headers the tests read, and the body.
+type audioReply struct {
+	status       int
+	contentType  string
+	cacheControl string
+	body         []byte
+}
+
 // audio asks for the voice of a line as userID ("" is nobody signed in).
-func (a *armed) audio(userID, messageID string) (*http.Response, []byte) {
+func (a *armed) audio(userID, messageID string) audioReply {
 	a.h.t.Helper()
 	req, err := http.NewRequestWithContext(a.h.t.Context(), http.MethodGet, a.h.server.URL+AudioPath+messageID+"/audio", nil)
 	if err != nil {
@@ -402,13 +409,13 @@ func (a *armed) audio(userID, messageID string) (*http.Response, []byte) {
 	}
 	defer func() { _ = res.Body.Close() }()
 	body, _ := io.ReadAll(res.Body)
-	return res, body
+	return audioReply{status: res.StatusCode, contentType: res.Header.Get("Content-Type"), cacheControl: res.Header.Get("Cache-Control"), body: body}
 }
 
 func (a *armed) wantAudioStatus(who, messageID, userID string, want int) {
 	a.h.t.Helper()
-	if res, _ := a.audio(userID, messageID); res.StatusCode != want {
-		a.h.t.Errorf("audio for %s = %d, want %d", who, res.StatusCode, want)
+	if r := a.audio(userID, messageID); r.status != want {
+		a.h.t.Errorf("audio for %s = %d, want %d", who, r.status, want)
 	}
 }
 
@@ -418,11 +425,11 @@ func TestAudioIsForTheReadersOfTheLineOnly(t *testing.T) {
 	if !line.GetCanHear() || !strings.HasSuffix(line.GetAudioUrl(), line.GetId()+"/audio") {
 		t.Errorf("line = %v, want audio for its readers", line)
 	}
-	res, body := a.audio(a.ana.id, line.GetId())
-	if res.StatusCode != http.StatusOK || res.Header.Get("Content-Type") != "audio/wav" || len(body) < 44 || string(body[:4]) != "RIFF" {
-		t.Fatalf("Ana got %d %q (%d bytes), want a WAV", res.StatusCode, res.Header.Get("Content-Type"), len(body))
+	res := a.audio(a.ana.id, line.GetId())
+	if res.status != http.StatusOK || res.contentType != "audio/wav" || len(res.body) < 44 || string(res.body[:4]) != "RIFF" {
+		t.Fatalf("Ana got %d %q (%d bytes), want a WAV", res.status, res.contentType, len(res.body))
 	}
-	if cc := res.Header.Get("Cache-Control"); !strings.Contains(cc, "private") {
+	if cc := res.cacheControl; !strings.Contains(cc, "private") {
 		t.Errorf("Cache-Control = %q, want private (no cache shared across users)", cc)
 	}
 	a.wantAudioStatus("the master", line.GetId(), a.master.id, http.StatusOK)
@@ -432,10 +439,10 @@ func TestAudioIsForTheReadersOfTheLineOnly(t *testing.T) {
 	a.wantAudioStatus("a line that does not exist", newKey(), a.ana.id, http.StatusNotFound)
 	a.wantAudioStatus("an id that is not one", "x", a.ana.id, http.StatusNotFound)
 	// Not hearing is the same answer whether the line exists or not, and says nothing more.
-	missing, missingBody := a.audio(a.caio.id, newKey())
-	unread, unreadBody := a.audio(a.caio.id, line.GetId())
-	if missing.StatusCode != unread.StatusCode || string(missingBody) != string(unreadBody) {
-		t.Errorf("an unreadable line answers %d %q, a missing one %d %q: they must match", unread.StatusCode, unreadBody, missing.StatusCode, missingBody)
+	missing := a.audio(a.caio.id, newKey())
+	unread := a.audio(a.caio.id, line.GetId())
+	if missing.status != unread.status || !bytes.Equal(missing.body, unread.body) {
+		t.Errorf("an unreadable line answers %d %q, a missing one %d %q: they must match", unread.status, unread.body, missing.status, missing.body)
 	}
 }
 
@@ -481,9 +488,9 @@ func TestAudioDailyCap(t *testing.T) {
 	first := a.mustSay(a.master, asNarrator, "primeira")
 	second := a.mustSay(a.master, asNarrator, "segunda")
 	a.wantAudioStatus("the first line", first.GetId(), a.ana.id, http.StatusOK)
-	res, body := a.audio(a.ana.id, second.GetId())
-	if res.StatusCode != http.StatusTooManyRequests || !strings.Contains(string(body), "DAILY_LIMIT_REACHED") {
-		t.Errorf("the second voice = %d %s, want the day's limit", res.StatusCode, body)
+	res := a.audio(a.ana.id, second.GetId())
+	if res.status != http.StatusTooManyRequests || !strings.Contains(string(res.body), "DAILY_LIMIT_REACHED") {
+		t.Errorf("the second voice = %d %s, want the day's limit", res.status, res.body)
 	}
 	a.wantAudioStatus("the first line, kept", first.GetId(), a.caio.id, http.StatusOK)
 	if n := a.h.voice.Calls(); n != 1 {
@@ -498,9 +505,9 @@ func TestAudioIsOffWithoutAVoice(t *testing.T) {
 	if line.GetCanHear() {
 		t.Errorf("line = %v, want no \"Ouvir\" while the voice is off", line)
 	}
-	res, body := a.audio(a.ana.id, line.GetId())
-	if res.StatusCode != http.StatusPreconditionFailed || !strings.Contains(string(body), `"reason":"OFF"`) {
-		t.Errorf("audio = %d %s, want failed_precondition OFF", res.StatusCode, body)
+	res := a.audio(a.ana.id, line.GetId())
+	if res.status != http.StatusPreconditionFailed || !strings.Contains(string(res.body), `"reason":"OFF"`) {
+		t.Errorf("audio = %d %s, want failed_precondition OFF", res.status, res.body)
 	}
 	// What the caller may not read is still a 404, voice or not.
 	b := a.mustSay(a.master, asNarrator, "segredo", to(a.ana.id))

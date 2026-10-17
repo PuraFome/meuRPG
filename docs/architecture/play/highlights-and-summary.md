@@ -66,4 +66,4 @@ The server answers `not_found` both for a number that does not exist and for a n
 
 **Tests.** `TestMR032_SessionSummary` (a combat and three scenes, one with the DC hidden), `TestRN20_SessionSummaryHidesWhatTheSceneHid`, and the `GetSessionSummary` and `GrantSceneAttempt` rows in the authorization matrices.
 
-The summary also carries the conversation of the session (`conversation`, the last 200 lines, `conversation_truncated`) under the same reading rule as the live feed: a player reads only the lines meant for them (RN-36; [live session](live-session.md#the-conversation-of-the-scene)).
+The summary also carries the conversation of the session (`conversation`, the last 500 lines, `conversation_truncated`) under the same reading rule as the live feed: a player reads only the lines meant for them (RN-36; [live session](live-session.md#the-conversation-of-the-scene)).

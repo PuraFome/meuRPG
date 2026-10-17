@@ -128,7 +128,7 @@ func (g *Gemini) client() *http.Client {
 
 func (g *Gemini) log(ctx context.Context, what string, attrs ...any) {
 	if g.Logger != nil {
-		g.Logger.WarnContext(ctx, "voice: "+what, attrs...)
+		g.Logger.WarnContext(ctx, "voice: the model call failed", append([]any{"what", what}, attrs...)...)
 	}
 }
 
