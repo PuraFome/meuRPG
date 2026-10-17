@@ -255,12 +255,7 @@ func undoneEvents(events []playdb.ListEncounterEventsRow) map[string]bool {
 		if e.Kind != eventActionUndone {
 			continue
 		}
-		if ev, err := readEvent(e.Payload); err == nil {
-			undone[ev.Undone] = true
-			for _, id := range ev.UndoneAlso {
-				undone[id] = true
-			}
-		}
+		markUndone(undone, e.Payload)
 	}
 	return undone
 }

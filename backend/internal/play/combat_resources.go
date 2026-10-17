@@ -91,9 +91,9 @@ type resourceFlow struct {
 // is held to nothing of the economy), and the action is spent. It returns the event
 // to fill in.
 func (s *Service) startFlow(ctx context.Context, c *combatTx, m authz.Membership, actorID, actionKey string) (*resourceFlow, error) {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	v := c.viewer(m, cs) // the fog: an NPC the player does not see is not found
 	who, err := findCombatant(cs, actorID, v)
@@ -156,9 +156,8 @@ func (s *Service) startFlow(ctx context.Context, c *combatTx, m authz.Membership
 
 // finishFlow touches the combat's revision, which every change does.
 func (s *Service) finishFlow(ctx context.Context, c *combatTx, f *resourceFlow) (actionEvent, error) {
-	var err error
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return actionEvent{}, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return actionEvent{}, err
 	}
 	return f.made, nil
 }

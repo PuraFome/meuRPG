@@ -46,7 +46,7 @@ func lastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string) 
 	undone := map[string]bool{}
 	for _, e := range recent {
 		if e.Kind == eventActionUndone {
-			markUndone(undone, e)
+			markUndone(undone, e.Payload)
 			continue
 		}
 		if undone[e.ID] {
@@ -63,9 +63,10 @@ func lastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string) 
 	return playdb.ListRecentSessionEventsRow{}, false
 }
 
-// markUndone notes the events an undo event took back.
-func markUndone(undone map[string]bool, e playdb.ListRecentSessionEventsRow) {
-	if ev, err := readEvent(e.Payload); err == nil {
+// markUndone notes the events an undo event took back, from its payload: the one it
+// names and the older ones it took back with it (UndoneAlso).
+func markUndone(undone map[string]bool, payload []byte) {
+	if ev, err := readEvent(payload); err == nil {
 		undone[ev.Undone] = true
 		for _, id := range ev.UndoneAlso {
 			undone[id] = true
@@ -299,15 +300,7 @@ type undoRequest struct {
 // undoRequestOf checks the request in the order the handler always refused it: the
 // master's role, the key, the combat, the event the master expects.
 func undoRequestOf(ctx context.Context, msg *playv1.UndoLastActionRequest) (undoRequest, error) {
-	m, err := authz.RequireCampaignRole(ctx, msg.GetCampaignId(), authz.RoleMaster)
-	if err != nil {
-		return undoRequest{}, err
-	}
-	key, err := parseKey(msg.GetIdempotencyKey())
-	if err != nil {
-		return undoRequest{}, err
-	}
-	encID, err := parseCombatID(msg.GetEncounterId(), "encounter")
+	m, key, encID, err := masterCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
 	if err != nil {
 		return undoRequest{}, err
 	}
@@ -394,8 +387,8 @@ func (s *Service) undoInTx(ctx context.Context, c *combatTx, expected string, ru
 	if err := s.takeBackCompanions(ctx, c, run, recent, last, ev); err != nil {
 		return nil, err
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return nil, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return nil, err
 	}
 	// The undo is told to the players who were told of the action it takes back,
 	// and counts for them alone.
@@ -416,12 +409,12 @@ func creatureToPutBack(ev actionEvent) string {
 // noteSnapBack remembers where the creature the undo puts back stands now, if it is
 // placed: the fog follows it when the undo moves it.
 func (u *undoRun) noteSnapBack(ctx context.Context, c *combatTx, id string) error {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
-	if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == id }); i >= 0 && placed(cs[i]) {
-		sq := squareOfCombatant(cs[i])
+	if t, ok := combatantByID(cs, id); ok && placed(t) {
+		sq := squareOfCombatant(t)
 		u.snapBack, u.snapped = &sq, id
 	}
 	return nil
@@ -518,8 +511,8 @@ func (s *Service) publishUndoRun(ctx context.Context, campaignID string, d *enco
 
 // followToSquare tells the fog that a combatant of the combat is back on a square.
 func (s *Service) followToSquare(ctx context.Context, campaignID string, d *encounterData, combatantID string, sq *grid.Square) {
-	if i := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == combatantID }); i >= 0 {
-		s.positionChanged(ctx, campaignID, d.enc, d.cs[i], sq)
+	if who, ok := combatantByID(d.cs, combatantID); ok {
+		s.positionChanged(ctx, campaignID, d.enc, who, sq)
 	}
 }
 
@@ -538,8 +531,8 @@ func (s *Service) publishUndone(ctx context.Context, campaignID string, d *encou
 	told := slices.Clone(ev.SeenBy)
 	if !ev.Secret {
 		for _, id := range ev.combatantIDs() {
-			if i := slices.IndexFunc(d.cs, func(o playdb.Combatant) bool { return o.ID == id }); i >= 0 && d.cs[i].Kind != kindNPC && d.cs[i].UserID != nil {
-				told = append(told, *d.cs[i].UserID)
+			if o, ok := combatantByID(d.cs, id); ok && o.Kind != kindNPC && o.UserID != nil {
+				told = append(told, *o.UserID)
 			}
 		}
 	}
@@ -559,9 +552,9 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 	if err := closeDamageWindows(ctx, c, kind, ev); err != nil {
 		return nil, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	// The hiding an attack or a cast gave away, and the Help the attack used, come back.
 	if err := restoreContestState(ctx, c, ev); err != nil {

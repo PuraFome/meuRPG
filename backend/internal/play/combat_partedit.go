@@ -30,15 +30,7 @@ type partRemoval struct {
 // partRemovalOf checks the request in the order the handler always refused it: the
 // master's role, the key, the combat, the pending damage, the part, the reason.
 func partRemovalOf(ctx context.Context, msg *playv1.RemoveDamagePartRequest) (partRemoval, error) {
-	m, err := authz.RequireCampaignRole(ctx, msg.GetCampaignId(), authz.RoleMaster)
-	if err != nil {
-		return partRemoval{}, err
-	}
-	key, err := parseKey(msg.GetIdempotencyKey())
-	if err != nil {
-		return partRemoval{}, err
-	}
-	encID, err := parseCombatID(msg.GetEncounterId(), "encounter")
+	m, key, encID, err := masterCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
 	if err != nil {
 		return partRemoval{}, err
 	}
@@ -114,9 +106,9 @@ func (s *Service) removePartInTx(ctx context.Context, c *combatTx, r partRemoval
 	if err != nil {
 		return actionEvent{}, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return actionEvent{}, fmt.Errorf("list the combatants: %w", err)
+		return actionEvent{}, err
 	}
 	attacker, _ := findCombatant(cs, deref(p.AttackerID), combatViewer{master: true})
 	target, _ := findCombatant(cs, p.TargetID, combatViewer{master: true})
@@ -140,8 +132,8 @@ func (s *Service) removePartInTx(ctx context.Context, c *combatTx, r partRemoval
 	if err != nil {
 		return actionEvent{}, err
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return actionEvent{}, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return actionEvent{}, err
 	}
 	c.characterID = &attacker.CharacterID
 	return made, nil

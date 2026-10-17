@@ -77,9 +77,9 @@ func (s *Service) EndEncounter(
 		if c.enc.Status == statusEnded {
 			return nil, nil // ended before: nothing changes, and no event
 		}
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+		cs, err := listCombatants(ctx, c)
 		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
+			return nil, err
 		}
 		if err := s.endEncounter(ctx, c, cs); err != nil {
 			return nil, err

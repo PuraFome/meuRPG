@@ -104,7 +104,7 @@ func (s *Service) RollDeathSave(
 // readDeathSaveRequest reads the request in the order the answers are given: who may call,
 // the key, the encounter, the combatant, then the roll.
 func readDeathSaveRequest(ctx context.Context, req *playv1.RollDeathSaveRequest) (deathSaveCall, error) {
-	m, key, encID, err := contestCaller(ctx, req.GetCampaignId(), req.GetIdempotencyKey(), req.GetEncounterId())
+	m, key, encID, err := memberCall(ctx, req.GetCampaignId(), req.GetIdempotencyKey(), req.GetEncounterId())
 	if err != nil {
 		return deathSaveCall{}, err
 	}
@@ -237,7 +237,7 @@ func (s *Service) ConfirmDeath(
 	ctx context.Context,
 	req *connect.Request[playv1.ConfirmDeathRequest],
 ) (*connect.Response[playv1.ConfirmDeathResponse], error) {
-	m, key, encID, err := masterCaller(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
+	m, key, encID, err := masterCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
 	if err != nil {
 		return nil, err
 	}

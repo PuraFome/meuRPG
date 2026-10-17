@@ -101,7 +101,7 @@ func (s *Service) SetSurprised(
 	ctx context.Context,
 	req *connect.Request[playv1.SetSurprisedRequest],
 ) (*connect.Response[playv1.SetSurprisedResponse], error) {
-	m, key, encID, err := masterCaller(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
+	m, key, encID, err := masterCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
 	if err != nil {
 		return nil, err
 	}

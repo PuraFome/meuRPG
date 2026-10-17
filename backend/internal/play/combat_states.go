@@ -220,9 +220,9 @@ func (s *Service) afterStatesEnded(ctx context.Context, c *combatTx, rows []play
 	if len(rows) == 0 {
 		return nil
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	for _, st := range rows {
 		i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == st.CombatantID })
@@ -273,9 +273,8 @@ func (s *Service) askRageEnd(ctx context.Context, c *combatTx, current playdb.Co
 	if err := c.q.SetCombatantRageFlags(ctx, playdb.SetCombatantRageFlagsParams{ID: current.ID, RageEndPending: true}); err != nil {
 		return fmt.Errorf("ask about the rage: %w", err)
 	}
-	var err error
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return err
 	}
 	return nil
 }
@@ -353,9 +352,9 @@ func (s *Service) publishRageChanged(campaignID string, run *rageRun) func(ctx c
 // actorOf finds the combatant a call names in the combat, as the caller sees it, and checks
 // that the caller may act for it.
 func (s *Service) actorOf(ctx context.Context, c *combatTx, call rageCall) (playdb.Combatant, combatViewer, error) {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return playdb.Combatant{}, combatViewer{}, fmt.Errorf("list the combatants: %w", err)
+		return playdb.Combatant{}, combatViewer{}, err
 	}
 	v := c.viewer(call.m, cs)
 	who, err := findCombatant(cs, call.combID, v)
@@ -405,8 +404,8 @@ func (s *Service) answerRageIn(ctx context.Context, c *combatTx, call rageCall, 
 	if !who.RageEndPending {
 		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_RAGE_END_NOT_PENDING, "no question waits")
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return nil, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return nil, err
 	}
 	c.characterID = &who.CharacterID
 	if err := c.q.SetCombatantRageFlags(ctx, playdb.SetCombatantRageFlagsParams{ID: who.ID, AttackedHostile: who.AttackedHostile, TookDamage: who.TookDamage}); err != nil {
@@ -476,8 +475,8 @@ func (s *Service) endRageIn(ctx context.Context, c *combatTx, call rageCall, run
 	if err := s.endRage(ctx, c, who, "by_choice"); err != nil {
 		return nil, err
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return nil, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return nil, err
 	}
 	c.characterID = &who.CharacterID
 	return actionEvent{Round: c.enc.Round, Secret: who.Hidden, Actor: who.ID, StateKind: stateRage, StateReason: "by_choice", BonusBefore: who.BonusActionUsed}, nil
@@ -566,9 +565,9 @@ func (s *Service) dropConditionSourcesEndingNow(ctx context.Context, c *combatTx
 
 // endConditionSources ends the conditions whose source entry matches, in the whole combat.
 func (s *Service) endConditionSources(ctx context.Context, c *combatTx, ends func(conditionSource) bool) error {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	for _, who := range cs {
 		sources := readConditionSources(who.ConditionSources)

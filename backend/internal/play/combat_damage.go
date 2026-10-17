@@ -36,10 +36,7 @@ type damageCall struct {
 func readDamageCall(req *playv1.RollDamageRequest) (damageCall, error) {
 	var call damageCall
 	var err error
-	if call.key, err = parseKey(req.GetIdempotencyKey()); err != nil {
-		return call, err
-	}
-	if call.encounterID, err = parseCombatID(req.GetEncounterId(), "encounter"); err != nil {
+	if call.key, call.encounterID, err = parseCall(req.GetIdempotencyKey(), req.GetEncounterId()); err != nil {
 		return call, err
 	}
 	if call.pendingID, err = parseCombatID(req.GetPendingDamageId(), "pending damage"); err != nil {
@@ -164,8 +161,8 @@ func (f *damageFlow) run(ctx context.Context) (any, error) {
 			return nil, err
 		}
 	}
-	if f.c.enc, err = f.c.q.TouchEncounter(ctx, f.c.enc.ID); err != nil {
-		return nil, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, f.c); err != nil {
+		return nil, err
 	}
 	f.c.characterID = &f.attacker.CharacterID
 	return f.out.made, nil
@@ -220,9 +217,9 @@ func (f *damageFlow) findPending(ctx context.Context) error {
 // findParties reads the combatants and finds the attacker and the target for the caller: the fog hides an NPC
 // the player does not see.
 func (f *damageFlow) findParties(ctx context.Context) error {
-	cs, err := f.c.q.ListCombatants(ctx, f.c.enc.ID)
+	cs, err := listCombatants(ctx, f.c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	f.cs = cs
 	v := f.c.viewer(f.m, cs) // the fog: an NPC the player does not see is not found
