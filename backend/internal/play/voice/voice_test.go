@@ -138,3 +138,22 @@ func TestGeminiWithoutAModelOrTextAsksNothing(t *testing.T) {
 		t.Error("a call without a model or text reached the service")
 	}
 }
+
+func TestSampleRateIsBoundedAndFallsBackToTheDefault(t *testing.T) {
+	t.Parallel()
+	for mime, want := range map[string]uint32{
+		"audio/L16;codec=pcm;rate=24000": 24000,
+		"audio/L16;rate=16000":           16000,
+		"audio/L16":                      defaultRate,
+		"audio/L16;rate=0":               defaultRate,
+		"audio/L16;rate=99999999999":     defaultRate,
+		"audio/L16;rate=4294967295":      defaultRate,
+		"audio/L16;rate=7999":            defaultRate,
+		"audio/L16;rate=192001":          defaultRate,
+		"audio/L16;rate=192000":          192000,
+	} {
+		if got := sampleRate(mime); got != want {
+			t.Errorf("sampleRate(%q) = %d, want %d", mime, got, want)
+		}
+	}
+}

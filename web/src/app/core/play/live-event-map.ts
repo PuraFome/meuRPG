@@ -83,6 +83,9 @@ const TRANSLATORS: Translators = {
   revivifyChanged: () => ({ kind: 'revivifyChanged' }),
   callingYou: () => ({ kind: 'callingYou' }),
   puzzleChanged: (v) => ({ kind: 'puzzleChanged', puzzleId: v.puzzleId }),
+  // The Conversa panel (MR-051) reads these two; until it exists the shared stream has nothing to do with them.
+  sessionMessageAdded: () => null,
+  masterTyping: () => null,
 };
 
 /** The view-model event for a wire event; `null` when it carries nothing to tell. */

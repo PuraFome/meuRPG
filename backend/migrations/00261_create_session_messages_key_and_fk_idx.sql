@@ -22,4 +22,5 @@ DROP INDEX IF EXISTS session_messages_speaker_image_id_idx;
 DROP INDEX IF EXISTS session_messages_image_id_idx;
 DROP INDEX IF EXISTS session_messages_author_user_id_idx;
 DROP INDEX IF EXISTS session_messages_campaign_id_idx;
-DROP INDEX IF EXISTS session_messages_create_key_idx;
+-- CASCADE: CockroachDB keeps a unique index as a unique constraint and refuses to drop it without it.
+DROP INDEX IF EXISTS session_messages_create_key_idx CASCADE;

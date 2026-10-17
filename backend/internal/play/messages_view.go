@@ -67,7 +67,7 @@ func (s *Service) messageViews(ctx context.Context, rows []playdb.SessionMessage
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, messageToProto(r, image, readers[r.ID], names))
+		out = append(out, messageToProto(r, image, readers[r.ID], names, s.msgs.voiceOn()))
 	}
 	return out, nil
 }
@@ -148,8 +148,9 @@ var speakerKindsOfRow = map[string]playv1.SessionMessageSpeakerKind{
 	speakerOutOfCharacter: playv1.SessionMessageSpeakerKind_SESSION_MESSAGE_SPEAKER_KIND_OUT_OF_CHARACTER,
 }
 
-// messageToProto shapes a row. readers is what the viewer may know of the readers (empty for a player).
-func messageToProto(r playdb.SessionMessage, image *playv1.SessionMessageImage, readers []string, names map[string]string) *playv1.SessionMessage {
+// messageToProto shapes a row. readers is what the viewer may know of the readers (empty for a player);
+// voiceOn says the server can voice a line, and only then does a narrator or NPC line offer its audio.
+func messageToProto(r playdb.SessionMessage, image *playv1.SessionMessageImage, readers []string, names map[string]string, voiceOn bool) *playv1.SessionMessage {
 	out := &playv1.SessionMessage{
 		Id: r.ID, GameSessionId: r.GameSessionID, SpeakerKind: speakerKindsOfRow[r.SpeakerKind], SpeakerId: deref(r.SpeakerRef),
 		SpeakerName: deref(r.SpeakerName), AuthorUserId: deref(r.AuthorUserID), AuthorRemoved: r.AuthorUserID == nil,
@@ -162,7 +163,7 @@ func messageToProto(r playdb.SessionMessage, image *playv1.SessionMessageImage, 
 	if r.SpeakerImageID != nil {
 		out.SpeakerPortrait = &playv1.SessionMessageImage{Id: *r.SpeakerImageID, Url: imagesPath + *r.SpeakerImageID, ThumbnailUrl: imagesPath + *r.SpeakerImageID + "/thumb"}
 	}
-	if r.SpeakerKind == speakerNarrator || r.SpeakerKind == speakerNPC {
+	if voiceOn && (r.SpeakerKind == speakerNarrator || r.SpeakerKind == speakerNPC) { // with the voice off the app shows no "Ouvir"
 		out.CanHear, out.AudioUrl = true, AudioPath+r.ID+"/audio"
 	}
 	return out
