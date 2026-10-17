@@ -29,15 +29,7 @@ func (s *Service) RevealHider(
 	if err != nil {
 		return nil, err
 	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
-	if err != nil {
-		return nil, err
-	}
-	combID, err := parseCombatID(req.Msg.GetCombatantId(), "combatant")
+	key, encID, combID, err := parseRevealHider(req.Msg)
 	if err != nil {
 		return nil, err
 	}
@@ -45,34 +37,11 @@ func (s *Service) RevealHider(
 	var made actionEvent
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventHideResolved, encounterID: encID}, func(c *combatTx) (any, error) {
 		made = actionEvent{}
-		if err := notEnded(c.enc); err != nil {
-			return nil, err
-		}
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return nil, fmt.Errorf("list the combatants: %w", err)
-		}
-		hider, ok := combatantByID(cs, combID)
-		if !ok {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("combatant not found"))
-		}
-		snaps, err := s.endHiding(ctx, c, hider)
+		ev, err := s.revealHiderIn(ctx, c, combID)
 		if err != nil {
 			return nil, err
 		}
-		if len(snaps) == 0 {
-			return nil, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_HIDDEN, "the combatant is not hidden")
-		}
-		if err := touch(ctx, c); err != nil {
-			return nil, err
-		}
-		c.characterID = &hider.CharacterID
-		// Secret keeps the line from the other players; the log shows it to the hider's
-		// own player (logEntry.ownerToo). HidBefore is what the master's undo gives back.
-		made = actionEvent{
-			Round: c.enc.Round, Secret: true, Actor: hider.ID, HidBefore: snaps,
-			Contest: &contestEvent{Line: contestLineHideRevealed},
-		}
+		made = ev
 		return made, nil
 	})
 	if err != nil {
@@ -86,6 +55,54 @@ func (s *Service) RevealHider(
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.RevealHiderResponse{Encounter: out}), nil
+}
+
+// parseRevealHider reads the idempotency key, the encounter and the combatant of the request,
+// in that order.
+func parseRevealHider(msg *playv1.RevealHiderRequest) (key, encID, combID string, err error) {
+	if key, err = parseKey(msg.GetIdempotencyKey()); err != nil {
+		return "", "", "", err
+	}
+	if encID, err = parseCombatID(msg.GetEncounterId(), "encounter"); err != nil {
+		return "", "", "", err
+	}
+	if combID, err = parseCombatID(msg.GetCombatantId(), "combatant"); err != nil {
+		return "", "", "", err
+	}
+	return key, encID, combID, nil
+}
+
+// revealHiderIn ends the hiding of the combatant inside the transaction and builds the event
+// that carries what the undo gives back.
+func (s *Service) revealHiderIn(ctx context.Context, c *combatTx, combID string) (actionEvent, error) {
+	if err := notEnded(c.enc); err != nil {
+		return actionEvent{}, err
+	}
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return actionEvent{}, fmt.Errorf("list the combatants: %w", err)
+	}
+	hider, ok := combatantByID(cs, combID)
+	if !ok {
+		return actionEvent{}, connect.NewError(connect.CodeNotFound, errors.New("combatant not found"))
+	}
+	snaps, err := s.endHiding(ctx, c, hider)
+	if err != nil {
+		return actionEvent{}, err
+	}
+	if len(snaps) == 0 {
+		return actionEvent{}, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_HIDDEN, "the combatant is not hidden")
+	}
+	if err := touch(ctx, c); err != nil {
+		return actionEvent{}, err
+	}
+	c.characterID = &hider.CharacterID
+	// Secret keeps the line from the other players; the log shows it to the hider's
+	// own player (logEntry.ownerToo). HidBefore is what the master's undo gives back.
+	return actionEvent{
+		Round: c.enc.Round, Secret: true, Actor: hider.ID, HidBefore: snaps,
+		Contest: &contestEvent{Line: contestLineHideRevealed},
+	}, nil
 }
 
 // undoableHideResolved says whether a hide_resolved event can be undone: only the reveal

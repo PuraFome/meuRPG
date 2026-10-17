@@ -329,17 +329,7 @@ type storedPart struct {
 // decodePuzzle reads the stored JSON of a puzzle row.
 func decodePuzzle(row playdb.Puzzle) (puzzleDef, error) {
 	d := puzzleDef{row: row, config: &playv1.PuzzleConfig{}, solution: &playv1.PuzzleSolution{}, start: &playv1.PuzzleState{}, onSolve: &playv1.PuzzleOnSolve{}}
-	var err error
-	if err = fromJSON(row.Config, d.config); err == nil {
-		err = fromJSON(row.Solution, d.solution)
-	}
-	if err == nil {
-		err = fromJSON(row.Start, d.start)
-	}
-	if err == nil {
-		err = fromJSON(row.SolveTarget, d.onSolve)
-	}
-	if err != nil {
+	if err := d.decodeBodies(); err != nil {
 		return puzzleDef{}, err
 	}
 	if len(row.Hints) > 0 {
@@ -354,14 +344,8 @@ func decodePuzzle(row playdb.Puzzle) (puzzleDef, error) {
 	if row.HintSkill != nil && row.HintDc != nil {
 		d.hintCheck = &playv1.PuzzleHintCheck{SkillKey: *row.HintSkill, Dc: *row.HintDc}
 	}
-	if len(row.Parts) > 0 {
-		var parts []storedPart
-		if err := json.Unmarshal(row.Parts, &parts); err != nil {
-			return puzzleDef{}, fmt.Errorf("decode the stored parts: %w", err)
-		}
-		for _, p := range parts {
-			d.parts = append(d.parts, &playv1.PuzzlePart{CharacterId: p.CharacterID, Text: p.Text})
-		}
+	if err := d.decodeParts(); err != nil {
+		return puzzleDef{}, err
 	}
 	if len(row.OnWrong) > 0 {
 		d.onWrong = &playv1.PuzzleOnWrong{}
@@ -370,6 +354,36 @@ func decodePuzzle(row playdb.Puzzle) (puzzleDef, error) {
 		}
 	}
 	return d, nil
+}
+
+// decodeBodies reads the config, the solution, the start and the solve target, in that
+// order, and stops at the first that does not decode.
+func (d *puzzleDef) decodeBodies() error {
+	if err := fromJSON(d.row.Config, d.config); err != nil {
+		return err
+	}
+	if err := fromJSON(d.row.Solution, d.solution); err != nil {
+		return err
+	}
+	if err := fromJSON(d.row.Start, d.start); err != nil {
+		return err
+	}
+	return fromJSON(d.row.SolveTarget, d.onSolve)
+}
+
+// decodeParts reads the split information, if the row has any.
+func (d *puzzleDef) decodeParts() error {
+	if len(d.row.Parts) == 0 {
+		return nil
+	}
+	var parts []storedPart
+	if err := json.Unmarshal(d.row.Parts, &parts); err != nil {
+		return fmt.Errorf("decode the stored parts: %w", err)
+	}
+	for _, p := range parts {
+		d.parts = append(d.parts, &playv1.PuzzlePart{CharacterId: p.CharacterID, Text: p.Text})
+	}
+	return nil
 }
 
 func solveActionOf(stored string) playv1.PuzzleSolveAction {
@@ -451,9 +465,6 @@ func (in *puzzleInput) checkTexts() error {
 // the campaign's: a door with a square, a point of a map, a clue. It returns the
 // stored action and target (nil for NOTIFY).
 func (s *Service) checkOnSolve(ctx context.Context, tx pgx.Tx, campaignID string, on *playv1.PuzzleOnSolve) (string, *playv1.PuzzleOnSolve, error) {
-	bad := func(field string) error {
-		return puzzleInvalid(playv1.PuzzleInvalidReason_PUZZLE_INVALID_REASON_TARGET, field, field+" is not valid for this action")
-	}
 	action := on.GetAction()
 	if action == playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_UNSPECIFIED {
 		action = playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_NOTIFY
@@ -467,51 +478,82 @@ func (s *Service) checkOnSolve(ctx context.Context, tx pgx.Tx, campaignID string
 	}
 	on = proto.Clone(on).(*playv1.PuzzleOnSolve) //nolint:forcetypeassert // Clone returns the same type
 	on.Action, on.Message = action, message
-	var check func() error
-	switch action {
-	case playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_NOTIFY:
-		if on.GetTarget() != nil {
-			return "", nil, bad("on_solve.target")
-		}
-		if message == "" {
-			return solveNotify, nil, nil
-		}
-		return solveNotify, on, nil // only the text to keep
-	case playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_OPEN_DOOR:
-		t := on.GetDoor()
-		if t == nil {
-			return "", nil, bad("on_solve.door")
-		}
-		check = func() error {
-			return s.puzzles.maps.PuzzleCheckDoor(ctx, tx, campaignID, t.GetMapId(), int(t.GetCol()), int(t.GetRow()))
-		}
-	case playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_REVEAL_POINT:
-		t := on.GetPoint()
-		if t == nil {
-			return "", nil, bad("on_solve.point")
-		}
-		check = func() error {
-			return s.puzzles.maps.PuzzleCheckPoint(ctx, tx, campaignID, t.GetMapId(), t.GetPointId())
-		}
-	case playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_REVEAL_CLUE:
-		t := on.GetClue()
-		if t == nil {
-			return "", nil, bad("on_solve.clue")
-		}
-		check = func() error { return s.puzzles.maps.PuzzleCheckClue(ctx, tx, campaignID, t.GetClueId()) }
-	default:
-		return "", nil, bad("on_solve.action")
+	if action == playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_NOTIFY {
+		return checkNotifyOnSolve(on, message)
+	}
+	targetOf, ok := solveTargetChecks[action]
+	if !ok {
+		return "", nil, solveTargetInvalid("on_solve.action")
+	}
+	check, err := targetOf(s, ctx, tx, campaignID, on)
+	if err != nil {
+		return "", nil, err
 	}
 	if s.puzzles.maps == nil {
 		return "", nil, errors.New("play: the maps module is not connected to the puzzles")
 	}
 	if err := check(); err != nil {
 		if connect.CodeOf(err) == connect.CodeNotFound {
-			return "", nil, bad("on_solve.target")
+			return "", nil, solveTargetInvalid("on_solve.target")
 		}
 		return "", nil, err
 	}
 	return solveActionName(action), on, nil
+}
+
+func solveTargetInvalid(field string) error {
+	return puzzleInvalid(playv1.PuzzleInvalidReason_PUZZLE_INVALID_REASON_TARGET, field, field+" is not valid for this action")
+}
+
+// checkNotifyOnSolve checks a NOTIFY: no target, and only the text to keep, if any.
+func checkNotifyOnSolve(on *playv1.PuzzleOnSolve, message string) (string, *playv1.PuzzleOnSolve, error) {
+	if on.GetTarget() != nil {
+		return "", nil, solveTargetInvalid("on_solve.target")
+	}
+	if message == "" {
+		return solveNotify, nil, nil
+	}
+	return solveNotify, on, nil
+}
+
+// solveTargetChecks has, for each action that aims at something, the function that
+// reads its target and returns the maps module's check of it, to run once the module
+// is known to be there.
+var solveTargetChecks = map[playv1.PuzzleSolveAction]func(s *Service, ctx context.Context, tx pgx.Tx, campaignID string, on *playv1.PuzzleOnSolve) (func() error, error){
+	playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_OPEN_DOOR:    (*Service).doorCheck,
+	playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_REVEAL_POINT: (*Service).pointCheck,
+	playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_REVEAL_CLUE:  (*Service).clueCheck,
+}
+
+// doorCheck builds the check of a door target.
+func (s *Service) doorCheck(ctx context.Context, tx pgx.Tx, campaignID string, on *playv1.PuzzleOnSolve) (func() error, error) {
+	t := on.GetDoor()
+	if t == nil {
+		return nil, solveTargetInvalid("on_solve.door")
+	}
+	return func() error {
+		return s.puzzles.maps.PuzzleCheckDoor(ctx, tx, campaignID, t.GetMapId(), int(t.GetCol()), int(t.GetRow()))
+	}, nil
+}
+
+// pointCheck builds the check of a point target.
+func (s *Service) pointCheck(ctx context.Context, tx pgx.Tx, campaignID string, on *playv1.PuzzleOnSolve) (func() error, error) {
+	t := on.GetPoint()
+	if t == nil {
+		return nil, solveTargetInvalid("on_solve.point")
+	}
+	return func() error {
+		return s.puzzles.maps.PuzzleCheckPoint(ctx, tx, campaignID, t.GetMapId(), t.GetPointId())
+	}, nil
+}
+
+// clueCheck builds the check of a clue target.
+func (s *Service) clueCheck(ctx context.Context, tx pgx.Tx, campaignID string, on *playv1.PuzzleOnSolve) (func() error, error) {
+	t := on.GetClue()
+	if t == nil {
+		return nil, solveTargetInvalid("on_solve.clue")
+	}
+	return func() error { return s.puzzles.maps.PuzzleCheckClue(ctx, tx, campaignID, t.GetClueId()) }, nil
 }
 
 // --- the stream ---

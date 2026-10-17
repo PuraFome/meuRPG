@@ -7,17 +7,3 @@
 # The list may only shrink: CI fails when a function enters it or gets
 # worse, and when one gets better until this file is written again.
 # See CONTRIBUTING.md, "Complexity totals".
-cognitive internal/play (*Service).ConfirmCastTimePassed 23
-cognitive internal/play (*Service).EndActiveSpell 18
-cognitive internal/play (*Service).RevealHider 18
-cognitive internal/play (*Service).castProto 34
-cognitive internal/play (*Service).checkOnSolve 18
-cognitive internal/play (*Service).checkOnWrong 31
-cognitive internal/play (*Service).checkParts 16
-cognitive internal/play (*Service).syncContests 26
-cognitive internal/play decodePuzzle 18
-cyclomatic internal/play (*Service).ConfirmCastTimePassed 16
-cyclomatic internal/play (*Service).castProto 21
-cyclomatic internal/play (*Service).checkOnSolve 16
-cyclomatic internal/play (*Service).checkOnWrong 24
-cyclomatic internal/play (*Service).syncContests 19
