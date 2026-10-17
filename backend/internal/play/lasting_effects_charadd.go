@@ -360,6 +360,9 @@ func (s *Service) charEffectModifiers(ctx context.Context, c *combatTx, plan cha
 // insertCharEffect writes one character's record (replacing the same spell's older one) and
 // answers its id.
 func (s *Service) insertCharEffect(ctx context.Context, c *combatTx, campaignID string, plan charEffectPlan, characterID, group string, mods []rules.EffectModifier) (string, error) {
+	if mods == nil {
+		mods = []rules.EffectModifier{} // the table holds an array: an effect of conditions only writes [], never null
+	}
 	body, err := json.Marshal(mods)
 	if err != nil {
 		return "", fmt.Errorf("encode the modifiers: %w", err)
