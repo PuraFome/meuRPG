@@ -510,7 +510,7 @@ func (s *Service) fireAndRecordTrap(ctx context.Context, q *playdb.Queries, c *c
 	}
 	ev := actionEvent{Trap: fired}
 	if inCombat {
-		if err = touch(ctx, c); err != nil {
+		if err := touch(ctx, c); err != nil {
 			return nil, err
 		}
 		ev.Round = c.enc.Round

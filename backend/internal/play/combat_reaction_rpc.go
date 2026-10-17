@@ -149,7 +149,7 @@ func (s *Service) answerWindow(ctx context.Context, c *combatTx, m authz.Members
 	if got.kind != "" {
 		c.kind = got.kind
 	}
-	if err = touch(ctx, c); err != nil {
+	if err := touch(ctx, c); err != nil {
 		return nil, err
 	}
 	got.ev.Round = c.enc.Round

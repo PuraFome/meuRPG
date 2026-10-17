@@ -398,7 +398,7 @@ func (s *Service) shieldChange(ctx context.Context, c *combatTx, v combatViewer,
 	if err != nil {
 		return made, vitals, err
 	}
-	if err = touch(ctx, c); err != nil {
+	if err := touch(ctx, c); err != nil {
 		return made, vitals, err
 	}
 	made.Round = c.enc.Round
@@ -475,7 +475,7 @@ func (s *Service) DeclineReaction(
 		if err != nil {
 			return nil, err
 		}
-		if err = touch(ctx, c); err != nil {
+		if err := touch(ctx, c); err != nil {
 			return nil, err
 		}
 		ev.Round = c.enc.Round

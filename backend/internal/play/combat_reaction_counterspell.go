@@ -140,7 +140,7 @@ func (s *Service) holdCast(ctx context.Context, c *combatTx, m authz.Membership,
 	if ev, err = s.holdAction(ctx, c, m, "cast", caster, req, holdData{}, specs, ev); err != nil {
 		return ev, false, err
 	}
-	if err = touch(ctx, c); err != nil {
+	if err := touch(ctx, c); err != nil {
 		return ev, false, err
 	}
 	c.characterID = &caster.CharacterID

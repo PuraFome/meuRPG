@@ -422,7 +422,7 @@ func (s *Service) writeTrapSearch(ctx context.Context, ts *trapSearch, r *search
 	ts.told = found.Users
 	ts.ev = trapSearchEvent(ts, r, d, found)
 	if ts.place.spent {
-		if err = touch(ctx, c); err != nil {
+		if err := touch(ctx, c); err != nil {
 			return err
 		}
 		ts.place.enc = c.enc

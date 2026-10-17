@@ -384,8 +384,7 @@ func (s *Service) sightSeal(ctx context.Context, c *combatTx, r *sightRun) (any,
 		if r.made.Actor == "" {
 			r.made.Round, r.made.Secret, r.made.Actor = c.enc.Round, r.who.Hidden, r.who.ID
 		}
-		var err error
-		if err = touch(ctx, c); err != nil {
+		if err := touch(ctx, c); err != nil {
 			return nil, err
 		}
 	}

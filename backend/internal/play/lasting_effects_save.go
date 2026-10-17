@@ -478,8 +478,7 @@ func (s *Service) settleEffectSave(ctx context.Context, c *combatTx, x *effectSa
 		return nil, err
 	}
 	x.ev.Lasting = x.le
-	var err error
-	if err = touch(ctx, c); err != nil {
+	if err := touch(ctx, c); err != nil {
 		return nil, err
 	}
 	c.characterID = &x.reactor.CharacterID

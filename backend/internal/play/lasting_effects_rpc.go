@@ -433,7 +433,7 @@ func (s *Service) addLastingEffectTx(ctx context.Context, c *combatTx, m authz.M
 	}
 	ev := addedPayload(c, rows, spec.key)
 	c.characterID = &targets[0].CharacterID
-	if err = touch(ctx, c); err != nil {
+	if err := touch(ctx, c); err != nil {
 		return nil, none, err
 	}
 	return rows, ev, nil

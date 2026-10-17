@@ -55,7 +55,7 @@ func (s *Service) CreaturesLeaving(ctx context.Context, tx pgx.Tx, campaignID, a
 	if err := s.dismissLeavers(ctx, c, cs, leaving); err != nil {
 		return "", err
 	}
-	if err = touch(ctx, c); err != nil {
+	if err := touch(ctx, c); err != nil {
 		return "", err
 	}
 	if len(leaving) > 0 {
