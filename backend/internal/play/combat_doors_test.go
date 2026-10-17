@@ -12,7 +12,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// Doors in a combat (MR-010, RN-26, Etapa 10, slice 10.6c). The fixture is the
+// Doors in a combat (MR-010, RN-26). The fixture is the
 // fog cave with the real maps service behind it, the doors painted through
 // PaintMapCells. Toren (the player of Caio) is first in the order, at (6, 7),
 // with 30 ft of movement; the row 7 corridor east of him is open floor, so a door

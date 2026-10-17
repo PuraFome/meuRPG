@@ -34,9 +34,9 @@ type endTurnOutcome struct {
 	secret  bool                   // the part that ended is a hidden member's: no line for the players
 }
 
-// readEndTurn reads and checks the request, in the order the answers are given: who may call, the
+// readEndTurnCall reads and checks the request, in the order the answers are given: who may call, the
 // key, the encounter, then the expected member.
-func readEndTurn(ctx context.Context, req *playv1.EndTurnRequest) (authz.Membership, endTurnCall, error) {
+func readEndTurnCall(ctx context.Context, req *playv1.EndTurnRequest) (authz.Membership, endTurnCall, error) {
 	m, key, encID, err := memberCall(ctx, req.GetCampaignId(), req.GetIdempotencyKey(), req.GetEncounterId())
 	if err != nil {
 		return m, endTurnCall{}, err

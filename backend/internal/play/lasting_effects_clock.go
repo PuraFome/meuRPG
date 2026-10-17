@@ -353,6 +353,7 @@ func (s *Service) clearTempHP(ctx context.Context, c *combatTx, who playdb.Comba
 	if t.temp == 0 {
 		return nil
 	}
+	c.tempCleared = append(c.tempCleared, tempCleared{Combatant: who.ID, Temp: clamp32(t.temp, 0, maxTempHitPoints)})
 	none := int32(0)
 	if holdsHP(who) {
 		before := hpOf(who)

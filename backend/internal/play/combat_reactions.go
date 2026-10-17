@@ -27,7 +27,7 @@ import (
 // one reaction spell the combat runs: it is cast when an attack hits a player's
 // character, so the hit waits (AWAITING_REACTION) until the target's player, or
 // the master, answers. The opportunity attack is RollAttack's as_reaction
-// (combat_actions.go). Every other reaction spell stays the table's.
+// (combat_attack.go). Every other reaction spell stays the table's.
 
 // shield is the reaction spell the combat knows.
 const shield = "spell:shield"

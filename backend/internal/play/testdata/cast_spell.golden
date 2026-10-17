@@ -119,10 +119,7 @@ vitals Orla | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0
 inspiration hold spell_attack | {5} | 5 | 10 | 0 | true | -1
 == a boss's cantrip that is an attack roll ==
 refused invalid_argument: this cantrip is an attack roll: use RollAttack
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Mago Sombrio | false | false | false | false | false | 37 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == a boss's fireball that a player counters ==
 cast 
 area 
@@ -166,11 +163,7 @@ window counterspell | answered | - | 1
 hold cast | released | true
 == a cantrip as the master out of turn ==
 refused failed_precondition: it is not this combatant's turn
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == a careful fireball ==
 cast {"metamagicKeys":["feature:metamagic-careful-spell"],"pendingDamages":[{"attackKey":"spell:fireball","attackerId":"Nael","castId":"?","damageTypeKey":"damage-type:fire","damageTypePt":"fogo","diceCount":8,"diceSides":6,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Nael"},{"attackKey":"spell:fireball","attackerId":"Nael","castId":"?","damageTypeKey":"damage-type:fire","damageTypePt":"fogo","diceCount":8,"diceSides":6,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Tavo"},{"attackKey":"spell:fireball","attackerId":"Nael","castId":"?","damageTypeKey":"damage-type:fire","damageTypePt":"fogo","diceCount":8,"diceSides":6,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Orla"},{"attackKey":"spell:fireball","attackerId":"Nael","castId":"?","damageTypeKey":"damage-type:fire","damageTypePt":"fogo","diceCount":8,"diceSides":6,"half":true,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin"},{"attackKey":"spell:fireball","attackerId":"Nael","castId":"?","damageTypeKey":"damage-type:fire","damageTypePt":"fogo","diceCount":8,"diceSides":6,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Capitão Goblin"}],"slot":{"level":3},"sorceryPointsSpent":1,"spellKey":"spell:fireball","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Nael","cover":"COVER_DEGREE_NONE","pendingDamageId":"?","save":{"dc":14,"mode":"ROLL_MODE_NORMAL","outcome":"SAVE_OUTCOME_FAILED","roll":{"diceCount":1,"diceSides":20,"faces":[1],"modifier":2,"total":3}}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Tavo","cover":"COVER_DEGREE_NONE","pendingDamageId":"?","save":{"dc":14,"outcome":"SAVE_OUTCOME_FAILED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Orla","cover":"COVER_DEGREE_HALF","coverSource":"COVER_SOURCE_MAP","pendingDamageId":"?","save":{"dc":14,"outcome":"SAVE_OUTCOME_FAILED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin","cover":"COVER_DEGREE_NONE","pendingDamageId":"?","save":{"dc":14,"outcome":"SAVE_OUTCOME_SAVED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Capitão Goblin","cover":"COVER_DEGREE_NONE","pendingDamageId":"?","save":{"dc":14,"outcome":"SAVE_OUTCOME_FAILED"}}]}
 area {"origin":{"col":4,"row":4},"squares":[{"col":4},{"col":2,"row":1},{"col":3,"row":1},{"col":4,"row":1},{"col":5,"row":1},{"col":6,"row":1},{"col":1,"row":2},{"col":2,"row":2},{"col":3,"row":2},{"col":4,"row":2},{"col":5,"row":2},{"col":6,"row":2},{"col":7,"row":2},{"col":1,"row":3},{"col":2,"row":3},{"col":3,"row":3},{"col":4,"row":3},{"col":5,"row":3},{"col":6,"row":3},{"col":7,"row":3},{"row":4},{"col":1,"row":4},{"col":2,"row":4},{"col":3,"row":4},{"col":4,"row":4},{"col":5,"row":4},{"col":6,"row":4},{"col":7,"row":4},{"col":8,"row":4},{"col":1,"row":5},{"col":2,"row":5},{"col":3,"row":5},{"col":4,"row":5},{"col":5,"row":5},{"col":6,"row":5},{"col":7,"row":5},{"col":1,"row":6},{"col":2,"row":6},{"col":3,"row":6},{"col":4,"row":6},{"col":5,"row":6},{"col":6,"row":6},{"col":7,"row":6},{"col":2,"row":7},{"col":3,"row":7},{"col":4,"row":7},{"col":5,"row":7},{"col":6,"row":7},{"col":4,"row":8}]}
@@ -206,11 +199,7 @@ combatant Orla | false | false | false | false | false | -1 | -1 | 0 | false | {
 combatant Tavo | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 == a careful spell for nobody ==
 refused invalid_argument: Careful Spell protects from one creature up to the Charisma modifier
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Nael | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Orla | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Tavo | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == a cast held by the mage's counterspell ==
 cast 
 area 
@@ -300,40 +289,16 @@ damage Pensantus | Goblin | spell:burning-hands | awaiting_roll | false | 3 | 6 
 vitals Pensantus | <nil> | 0 | {1,0,0,0,0,0,0,0,0} | 0
 == a cone sculpted for a creature outside it ==
 refused invalid_argument: a creature to spare must be one the spell reaches and the caster sees
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 1 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 2 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 3 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == a cone sculpted for a creature twice ==
 refused invalid_argument: a creature is spared twice
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 1 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 2 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 3 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == a cone sculpted for the caster ==
 refused invalid_argument: Sculpt Spells spares other creatures, not the caster
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 1 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 2 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 3 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == a cone sculpted for three from a first level slot ==
 refused invalid_argument: Sculpt Spells spares at most 2 creatures with this spell
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 1 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 2 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 3 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == a cone sculpted for three from a second level slot ==
 cast {"slot":{"level":2},"spellKey":"spell:burning-hands","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Toren","cover":"COVER_DEGREE_HALF","coverSource":"COVER_SOURCE_MAP","save":{"dc":14,"outcome":"SAVE_OUTCOME_SAVED","sculpted":true}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin 1","cover":"COVER_DEGREE_NONE","save":{"dc":14,"outcome":"SAVE_OUTCOME_SAVED","sculpted":true}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin 2","cover":"COVER_DEGREE_HALF","coverSource":"COVER_SOURCE_MAP","save":{"dc":14,"outcome":"SAVE_OUTCOME_SAVED","sculpted":true}}]}
 area {"origin":{"col":17,"row":7},"squares":[{"col":19,"row":6},{"col":20,"row":6},{"col":18,"row":7},{"col":19,"row":7},{"col":20,"row":7},{"col":19,"row":8},{"col":20,"row":8}]}
@@ -422,13 +387,7 @@ damage Pensantus | Goblin | spell:burning-hands | awaiting_roll | false | 3 | 6 
 vitals Pensantus | <nil> | 0 | {1,0,0,0,0,0,0,0,0} | 0
 == a cone with an origin ==
 refused invalid_argument: this spell comes out of the caster: set direction
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 1 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 2 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 3 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == a distant spell ==
 cast {"concentrating":true,"metamagicKeys":["feature:metamagic-distant-spell"],"slot":{"level":2},"sorceryPointsSpent":1,"spellKey":"spell:hold-person","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin","cover":"COVER_DEGREE_NONE","lastingEffect":"LASTING_EFFECT_OUTCOME_APPLIED","save":{"dc":14,"outcome":"SAVE_OUTCOME_FAILED"}}]}
 area 
@@ -453,10 +412,7 @@ vitals Nael | <nil> | 0 | {0,1,0,0,0,0,0,0,0} | 0
 state Goblin | effect | spell:hold-person | true | {condition:paralyzed} | rounds | 14 | 0
 == a familiar cast in a fight ==
 refused failed_precondition: this spell takes too long to cast in a fight: cast it outside the combat
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Sálvia | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == a fireball in the cave ==
 cast {"pendingDamages":[{"attackKey":"spell:fireball","attackerId":"Pensantus","castId":"?","damageTypeKey":"damage-type:fire","damageTypePt":"fogo","diceCount":8,"diceSides":6,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Toren"},{"attackKey":"spell:fireball","attackerId":"Pensantus","castId":"?","damageTypeKey":"damage-type:fire","damageTypePt":"fogo","diceCount":8,"diceSides":6,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin 1"},{"attackKey":"spell:fireball","attackerId":"Pensantus","castId":"?","damageTypeKey":"damage-type:fire","damageTypePt":"fogo","diceCount":8,"diceSides":6,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin 2"},{"attackKey":"spell:fireball","attackerId":"Pensantus","castId":"?","damageTypeKey":"damage-type:fire","damageTypePt":"fogo","diceCount":8,"diceSides":6,"half":true,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin 3"}],"slot":{"level":3},"spellKey":"spell:fireball","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Toren","cover":"COVER_DEGREE_NONE","pendingDamageId":"?","save":{"dc":15,"outcome":"SAVE_OUTCOME_FAILED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin 1","cover":"COVER_DEGREE_HALF","coverSource":"COVER_SOURCE_MAP","pendingDamageId":"?","save":{"dc":15,"outcome":"SAVE_OUTCOME_FAILED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin 2","cover":"COVER_DEGREE_HALF","coverSource":"COVER_SOURCE_MAP","pendingDamageId":"?","save":{"dc":15,"outcome":"SAVE_OUTCOME_FAILED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin 3","cover":"COVER_DEGREE_THREE_QUARTERS","coverSource":"COVER_SOURCE_MAP","pendingDamageId":"?","save":{"dc":15,"outcome":"SAVE_OUTCOME_SAVED"}}]}
 area {"origin":{"col":20,"row":7},"squares":[{"col":20,"row":3},{"col":18,"row":4},{"col":19,"row":4},{"col":20,"row":4},{"col":21,"row":4},{"col":22,"row":4},{"col":17,"row":5},{"col":18,"row":5},{"col":19,"row":5},{"col":20,"row":5},{"col":21,"row":5},{"col":22,"row":5},{"col":17,"row":6},{"col":18,"row":6},{"col":19,"row":6},{"col":20,"row":6},{"col":21,"row":6},{"col":22,"row":6},{"col":16,"row":7},{"col":17,"row":7},{"col":18,"row":7},{"col":19,"row":7},{"col":20,"row":7},{"col":21,"row":7},{"col":22,"row":7},{"col":17,"row":8},{"col":18,"row":8},{"col":19,"row":8},{"col":20,"row":8},{"col":21,"row":8},{"col":22,"row":8},{"col":17,"row":9},{"col":18,"row":9},{"col":19,"row":9},{"col":20,"row":9},{"col":21,"row":9},{"col":22,"row":9}]}
@@ -522,13 +478,7 @@ damage Pensantus | Pensantus | spell:fireball | awaiting_roll | false | 8 | 6 | 
 vitals Pensantus | <nil> | 0 | {0,0,1,0,0,0,0,0,0} | 0
 == a fireball with a direction ==
 refused invalid_argument: this spell is placed at a point: set origin
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 1 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 2 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 3 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == a halfling keeps the one ==
 cast 
 area 
@@ -875,22 +825,10 @@ vitals Pensantus | <nil> | 0 | {1,0,0,0,0,0,0,0,0} | 0
 state Pensantus | rage | - | false | {} | - | 0 | 0
 == a sculpt by a wizard without the feature ==
 refused invalid_argument: only a wizard with Sculpt Spells can spare creatures from a spell
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 1 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 2 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 3 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == a sculpt id that is not an id ==
 refused not_found: combatant not found
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 1 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 2 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 3 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == a sculpted cone ==
 cast {"pendingDamages":[{"attackKey":"spell:burning-hands","attackerId":"Pensantus","castId":"?","damageTypeKey":"damage-type:fire","damageTypePt":"fogo","diceCount":3,"diceSides":6,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin 1"},{"attackKey":"spell:burning-hands","attackerId":"Pensantus","castId":"?","damageTypeKey":"damage-type:fire","damageTypePt":"fogo","diceCount":3,"diceSides":6,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin 2"}],"slot":{"level":1},"spellKey":"spell:burning-hands","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Toren","cover":"COVER_DEGREE_HALF","coverSource":"COVER_SOURCE_MAP","save":{"dc":14,"outcome":"SAVE_OUTCOME_SAVED","sculpted":true}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin 1","cover":"COVER_DEGREE_NONE","pendingDamageId":"?","save":{"dc":14,"outcome":"SAVE_OUTCOME_FAILED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin 2","cover":"COVER_DEGREE_HALF","coverSource":"COVER_SOURCE_MAP","pendingDamageId":"?","save":{"dc":14,"outcome":"SAVE_OUTCOME_FAILED"}}]}
 area {"origin":{"col":17,"row":7},"squares":[{"col":19,"row":6},{"col":20,"row":6},{"col":18,"row":7},{"col":19,"row":7},{"col":20,"row":7},{"col":19,"row":8},{"col":20,"row":8}]}
@@ -942,13 +880,7 @@ state Goblin | effect | spell:hold-person | true | {condition:paralyzed} | round
 window effect_save | answered | - | 1
 == a sleep sculpted ==
 refused invalid_argument: Sculpt Spells is for spells of the school of evocation
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 1 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 2 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 3 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == a spell at a hidden creature as the master ==
 cast {"concentrating":true,"slot":{"level":2},"spellKey":"spell:hold-person","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Capitão Goblin","cover":"COVER_DEGREE_NONE","lastingEffect":"LASTING_EFFECT_OUTCOME_APPLIED","save":{"dc":14,"mode":"ROLL_MODE_NORMAL","outcome":"SAVE_OUTCOME_FAILED","roll":{"diceCount":1,"diceSides":20,"faces":[8],"total":8}}}]}
 area 
@@ -1014,29 +946,13 @@ damage Pensantus | Goblin | spell:burning-hands | awaiting_roll | false | 3 | 6 
 vitals Pensantus | <nil> | 0 | {1,0,0,0,0,0,0,0,0} | 0
 == a spell cast in a combat without a map, too many targets ==
 refused invalid_argument: this spell takes at most 1 targets with this slot
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == a spell centered on the caster ==
 refused invalid_argument: this spell comes out of the caster: set direction
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 1 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 2 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 3 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == a spell centered on the caster with an origin ==
 refused invalid_argument: this spell comes out of the caster: set direction
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 1 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 2 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 3 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == a spell out of range with no distant option ==
 refused failed_precondition: the target is beyond the spell's range
 event combatant_moved {"col": 18, "combatant_id": "Capitão Goblin", "distance_dft": 743, "distance_ft": 74, "from": {"col": 4, "cover": "none", "placed": true, "row": 6}, "round": 1, "row": 1}
@@ -1072,11 +988,7 @@ damage Nael | Tavo | spell:fireball | awaiting_roll | false | 8 | 6 | 0 | damage
 vitals Nael | <nil> | 0 | {0,0,1,0,0,0,0,0,0} | 0
 == a twinned area spell ==
 refused invalid_argument: the spell does not take this Metamagic option
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Nael | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Orla | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Tavo | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == a twinned hold person ==
 cast {"concentrating":true,"metamagicKeys":["feature:metamagic-twinned-spell"],"slot":{"level":2},"sorceryPointsSpent":2,"spellKey":"spell:hold-person","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin","cover":"COVER_DEGREE_NONE","lastingEffect":"LASTING_EFFECT_OUTCOME_APPLIED","save":{"dc":14,"outcome":"SAVE_OUTCOME_FAILED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Capitão Goblin","cover":"COVER_DEGREE_NONE","lastingEffect":"LASTING_EFFECT_OUTCOME_APPLIED","save":{"dc":14,"outcome":"SAVE_OUTCOME_FAILED"}}]}
 area 
@@ -1097,11 +1009,7 @@ state Capitão Goblin | effect | spell:hold-person | true | {condition:paralyzed
 state Goblin | effect | spell:hold-person | true | {condition:paralyzed} | rounds | 14 | 0
 == a twinned spell on the same target ==
 refused invalid_argument: the second target must be another creature
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Nael | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Orla | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Tavo | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == an ability key sent with burning hands ==
 cast {"pendingDamages":[{"attackKey":"spell:burning-hands","attackerId":"Pensantus","castId":"?","damageTypeKey":"damage-type:fire","damageTypePt":"fogo","diceCount":3,"diceSides":6,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Toren"},{"attackKey":"spell:burning-hands","attackerId":"Pensantus","castId":"?","damageTypeKey":"damage-type:fire","damageTypePt":"fogo","diceCount":3,"diceSides":6,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin"}],"slot":{"level":1},"spellKey":"spell:burning-hands","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Toren","cover":"COVER_DEGREE_NONE","pendingDamageId":"?","save":{"dc":14,"outcome":"SAVE_OUTCOME_FAILED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin","cover":"COVER_DEGREE_HALF","coverSource":"COVER_SOURCE_MAP","pendingDamageId":"?","save":{"dc":14,"outcome":"SAVE_OUTCOME_FAILED"}}]}
 area {"origin":{"col":5,"row":5},"squares":[{"col":7,"row":4},{"col":8,"row":4},{"col":6,"row":5},{"col":7,"row":5},{"col":8,"row":5},{"col":7,"row":6},{"col":8,"row":6}]}
@@ -1145,11 +1053,7 @@ combatant Tavo | false | false | false | false | false | -1 | -1 | 0 | false | {
 state Nael | dodging | - | false | {} | - | 0 | 0
 == an area on a combat without a map ==
 refused invalid_argument: this spell has no area to place on this map: list its targets
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == an area that hits hidden creatures when the table asks ==
 cast {"pendingDamages":[{"attackKey":"spell:fireball","attackerId":"Pensantus","castId":"?","damageTypeKey":"damage-type:fire","damageTypePt":"fogo","diceCount":8,"diceSides":6,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Toren"},{"attackKey":"spell:fireball","attackerId":"Pensantus","castId":"?","damageTypeKey":"damage-type:fire","damageTypePt":"fogo","diceCount":8,"diceSides":6,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin 1"}],"slot":{"level":3},"spellKey":"spell:fireball","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Toren","cover":"COVER_DEGREE_NONE","pendingDamageId":"?","save":{"dc":15,"outcome":"SAVE_OUTCOME_FAILED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin 1","cover":"COVER_DEGREE_HALF","coverSource":"COVER_SOURCE_MAP","pendingDamageId":"?","save":{"dc":15,"outcome":"SAVE_OUTCOME_FAILED"}}]}
 area {"origin":{"col":20,"row":7},"squares":[{"col":20,"row":3},{"col":18,"row":4},{"col":19,"row":4},{"col":20,"row":4},{"col":21,"row":4},{"col":22,"row":4},{"col":17,"row":5},{"col":18,"row":5},{"col":19,"row":5},{"col":20,"row":5},{"col":21,"row":5},{"col":22,"row":5},{"col":17,"row":6},{"col":18,"row":6},{"col":19,"row":6},{"col":20,"row":6},{"col":21,"row":6},{"col":22,"row":6},{"col":16,"row":7},{"col":17,"row":7},{"col":18,"row":7},{"col":19,"row":7},{"col":20,"row":7},{"col":21,"row":7},{"col":22,"row":7},{"col":17,"row":8},{"col":18,"row":8},{"col":19,"row":8},{"col":20,"row":8},{"col":21,"row":8},{"col":22,"row":8},{"col":17,"row":9},{"col":18,"row":9},{"col":19,"row":9},{"col":20,"row":9},{"col":21,"row":9},{"col":22,"row":9}]}
@@ -1305,17 +1209,10 @@ damage Pensantus | Toren | spell:fireball | awaiting_roll | false | 8 | 6 | 0 | 
 vitals Pensantus | <nil> | 0 | {0,0,1,0,0,0,0,0,0} | 0
 == an option the sorcerer does not know ==
 refused invalid_argument: the Metamagic is not one the character knows, or it is more than one option (only Empowered Spell joins another)
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Nael | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Orla | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Tavo | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == animate dead cast in a fight ==
 refused failed_precondition: this spell takes too long to cast in a fight: cast it outside the combat
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Sálvia | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == bless after another concentration ==
 cast {"concentrating":true,"concentrationEndedSpellKey":"spell:bless","slot":{"level":1},"spellKey":"spell:bless","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Pensantus","cover":"COVER_DEGREE_NONE","lastingEffect":"LASTING_EFFECT_OUTCOME_APPLIED"},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Brisa","cover":"COVER_DEGREE_NONE","lastingEffect":"LASTING_EFFECT_OUTCOME_APPLIED"}]}
 area 
@@ -1505,34 +1402,19 @@ vitals Lobo atroz 2 | <nil> | 0 | {0,0,2,0,0,0,0,0,0} | 0
 vitals Sálvia | <nil> | 0 | {0,0,2,0,0,0,0,0,0} | 0
 == conjure animals with a creature that does not fit ==
 refused failed_precondition: that is not a choice the spell allows
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Sálvia | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == conjure animals with a pool ==
 refused failed_precondition: set roll_in_app or d20_face: it is the initiative roll of the creatures
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Sálvia | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == conjure animals with a target ==
 refused invalid_argument: a summoning spell takes no targets: the creatures appear next to the caster
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Sálvia | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == conjure animals with no d20 ==
 refused failed_precondition: set roll_in_app or d20_face: it is the initiative roll of the creatures
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Sálvia | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == conjure animals with no summon ==
 refused invalid_argument: summon is for a summoning spell, and a summoning spell needs it
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Sálvia | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == cure wounds ==
 cast {"pendingDamages":[{"attackKey":"spell:cure-wounds","attackerId":"Brisa","bonus":3,"castId":"?","diceCount":1,"diceSides":8,"healing":true,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Toren"}],"slot":{"level":1},"spellKey":"spell:cure-wounds","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Toren","cover":"COVER_DEGREE_NONE","pendingDamageId":"?"}]}
 area 
@@ -1656,14 +1538,10 @@ vitals Brisa | <nil> | 0 | {0,1,0,0,0,0,0,0,0} | 0
 state Toren | effect | spell:enhance-ability | true | {} | rounds | 13 | 0
 == enhance ability with a wrong ability ==
 refused invalid_argument: ability_key must be one of str, dex, con, int, wis or cha for this spell
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == enhance ability with no ability ==
 refused invalid_argument: ability_key must be one of str, dex, con, int, wis or cha for this spell
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == false life ==
 cast {"effectKind":"SPELL_EFFECT_KIND_TEMP_HP","poolRoll":{"diceCount":1,"diceSides":4,"faces":[4],"modifier":4,"total":8},"slot":{"level":1},"spellKey":"spell:false-life","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Pensantus","cover":"COVER_DEGREE_NONE","effect":{"healed":8,"outcome":"SPELL_EFFECT_OUTCOME_AFFECTED"}}]}
 area 
@@ -1682,11 +1560,7 @@ combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | 
 vitals Pensantus | <nil> | 8 | {1,0,0,0,0,0,0,0,0} | 0
 == false life with no pool ==
 refused invalid_argument: set roll_in_app or pool_sum: this spell rolls a pool of dice
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == guidance ==
 cast {"concentrating":true,"spellKey":"spell:guidance","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Toren","cover":"COVER_DEGREE_NONE","lastingEffect":"LASTING_EFFECT_OUTCOME_APPLIED"}]}
 area 
@@ -1836,11 +1710,7 @@ damage Brisa | Goblin | spell:guiding-bolt | awaiting_roll | true | 8 | 6 | 0 | 
 vitals Brisa | <nil> | 0 | {1,0,0,0,0,0,0,0,0} | 0
 == guiding bolt with a pair of faces and no mode asked ==
 refused invalid_argument: the roll takes 1 d20: type 1 face(s) in d20_faces
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == guiding bolt with advantage asked by the master and a pair of faces ==
 cast {"pendingDamages":[{"attackKey":"spell:guiding-bolt","attackerId":"Brisa","damageTypeKey":"damage-type:radiant","damageTypePt":"radiante","diceCount":5,"diceSides":6,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin"}],"slot":{"level":2},"spellKey":"spell:guiding-bolt","targets":[{"attackMode":"ROLL_MODE_ADVANTAGE","attackRoll":{"countedIndex":1,"diceCount":2,"diceSides":20,"faces":[3,17],"modifier":5,"physical":true,"total":22},"combatantId":"Goblin","cover":"COVER_DEGREE_HALF","coverSource":"COVER_SOURCE_MAP","outcome":"ATTACK_OUTCOME_HIT","pendingDamageId":"?"}]}
 area 
@@ -2112,212 +1982,81 @@ combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {
 combatant Nael | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Orla | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Tavo | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-== refused a Revivify the caster does not have ==
-refused invalid_argument: Revivify takes one target: the dead creature, as dead_target_id
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 == refused a bonus action spell after a leveled spell ==
 refused failed_precondition: a spell cast with a bonus action leaves no other spell this turn but a cantrip of 1 action
-combatant Brisa | true | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | true | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-damage Brisa | Toren | spell:cure-wounds | awaiting_roll | false | 1 | 8 | 3 |  | false | true | 0 | 0 | true | 0 | 0
-vitals Brisa | <nil> | 0 | {1,0,0,0,0,0,0,0,0} | 0
+state unchanged
 == refused a cantrip that is an attack roll ==
 refused invalid_argument: this cantrip is an attack roll: use RollAttack
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused a cantrip with a slot ==
 refused invalid_argument: a cantrip is cast with no slot
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused a caster of another player ==
 refused permission_denied: only the combatant's player or the master may do this
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-== refused a caster that is not a UUID ==
-refused not_found: combatant not found
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused a caster that is not in the combat ==
 refused not_found: combatant not found
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused a damage type the spell does not offer ==
 refused invalid_argument: damage_type_key must be one of the damage types of a spell that lets the caster choose
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused a dart with no target ==
 refused invalid_argument: the darts of the targets must add up to 3
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused a defeated player's character as a target ==
 refused failed_precondition: a target is defeated
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | true | {} | {} | - | false | false | false | {} | false | false
-vitals Toren | 0 | 0 | {0,0,0,0,0,0,0,0,0} | 0
+state unchanged
 == refused a defeated target ==
 refused failed_precondition: a target is defeated
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 0 | 0 | 0 | true | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused a fighter with no spells ==
 refused invalid_argument: spell_key is not one of the caster's spells
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused a healing on a confirmed dead target ==
 refused failed_precondition: the target is dead and regains no hit points
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | true | {} | {} | - | false | false | false | {} | false | false
-vitals Toren | 0 | 0 | {0,0,0,0,0,0,0,0,0} | 0
+state unchanged
 == refused a healing on a dead target ==
 refused failed_precondition: the target is dead and regains no hit points
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-vitals Toren | 0 | 0 | {0,0,0,0,0,0,0,0,0} | 0
+state unchanged
 == refused a healing out of touch reach ==
 refused failed_precondition: the target is beyond the spell's range
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-== refused a key that is not a UUID ==
-refused invalid_argument: idempotency_key must be a UUID
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused a leveled spell after a bonus action spell ==
 refused failed_precondition: a spell cast with a bonus action leaves no other spell this turn but a cantrip of 1 action
-combatant Brisa | false | true | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | true | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-damage Brisa | Toren | spell:healing-word | awaiting_roll | false | 1 | 4 | 3 |  | false | true | 0 | 0 | true | 0 | 0
-vitals Brisa | <nil> | 0 | {1,0,0,0,0,0,0,0,0} | 0
+state unchanged
 == refused a leveled spell with no slot ==
 refused invalid_argument: slot must be a spell slot of at least the spell's level
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused a pact slot the caster has not got ==
 refused invalid_argument: slot is not one the caster has free
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused a pool spell with a d20 face ==
 refused invalid_argument: set roll_in_app or pool_sum: this spell rolls a pool of dice
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused a pool spell with no roll ==
 refused invalid_argument: set roll_in_app or pool_sum: this spell rolls a pool of dice
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused a reaction spell ==
 refused invalid_argument: a reaction spell is cast when its trigger happens (UseReaction, for Escudo)
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused a second action spell ==
 refused failed_precondition: the action of this turn is used
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {condition:unconscious} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | true | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | true | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-vitals Pensantus | <nil> | 0 | {1,0,0,0,0,0,0,0,0} | 0
+state unchanged
 == refused a second bonus action spell ==
 refused failed_precondition: the bonus action of this turn is used
-combatant Brisa | false | true | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | true | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-damage Brisa | Toren | spell:healing-word | awaiting_roll | false | 1 | 4 | 3 |  | false | true | 0 | 0 | true | 0 | 0
-vitals Brisa | <nil> | 0 | {1,0,0,0,0,0,0,0,0} | 0
+state unchanged
 == refused a slot above the ninth ==
 refused invalid_argument: slot must be a spell slot of at least the spell's level
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused a slot below the spell's level ==
 refused invalid_argument: slot must be a spell slot of at least the spell's level
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused a slot the caster has not got ==
 refused invalid_argument: slot is not one the caster has free
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused a spell attack at two targets as a player ==
 refused invalid_argument: this spell takes at most 1 targets with this slot
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused a spell attack in app for a player who rolls physical dice ==
 cast {"pendingDamages":[{"attackKey":"spell:guiding-bolt","attackerId":"Brisa","damageTypeKey":"damage-type:radiant","damageTypePt":"radiante","diceCount":4,"diceSides":6,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin"}],"slot":{"level":1},"spellKey":"spell:guiding-bolt","targets":[{"attackMode":"ROLL_MODE_NORMAL","attackRoll":{"diceCount":1,"diceSides":20,"faces":[10],"modifier":5,"total":15},"combatantId":"Goblin","cover":"COVER_DEGREE_HALF","coverSource":"COVER_SOURCE_MAP","outcome":"ATTACK_OUTCOME_HIT","pendingDamageId":"?"}]}
 area 
@@ -2337,137 +2076,49 @@ damage Brisa | Goblin | spell:guiding-bolt | awaiting_roll | false | 4 | 6 | 0 |
 vitals Brisa | <nil> | 0 | {1,0,0,0,0,0,0,0,0} | 0
 == refused a spell attack with a face for a player who rolls in the app ==
 refused failed_precondition: this is not how the campaign has you roll your dice
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused a spell attack with a face for several targets ==
 refused invalid_argument: d20_face fits a single target: use roll_in_app for several
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused a spell attack with a pool ==
 refused invalid_argument: pool_sum is for a spell that rolls a pool of dice
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused a spell attack with no roll ==
 refused invalid_argument: set roll_in_app or d20_face for a spell attack
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-== refused a spell key of 101 characters ==
-refused invalid_argument: spell_key must name one of the caster's spells
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused a spell the caster does not know ==
 refused invalid_argument: spell_key is not one of the caster's spells
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused a spell with no target ==
 refused invalid_argument: this spell needs a target
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused a summon sent to a spell that does not summon ==
 refused invalid_argument: summon is for a summoning spell, and a summoning spell needs it
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused a target behind total cover ==
 refused failed_precondition: the target has total cover
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused a target out of range ==
 refused failed_precondition: the target is beyond the spell's range
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-== refused a target that is not a UUID ==
-refused not_found: combatant not found
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused a target that is not in the combat ==
 refused not_found: combatant not found
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-== refused a target twice ==
-refused invalid_argument: targets[1] repeats a combatant
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused a target with no dart ==
 refused invalid_argument: every target of Magic Missile needs at least one dart
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-== refused a typed face out of range ==
-refused invalid_argument: d20_faces must be 1 to 20 each
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused advantage asked by a player ==
 refused failed_precondition: a better mode needs the master's approval
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused advantage asked with no reason ==
 refused invalid_argument: the reason must be 1 to 120 characters on one line
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused an area for a spell that has none ==
 refused invalid_argument: this spell has no area to place on this map: list its targets
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused an area outside the grid ==
 refused invalid_argument: the direction must be one of the eight: dx and dy from -1 to 1, not both 0
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused an area with no origin or direction ==
 cast {"concentrating":true,"slot":{"level":2},"spellKey":"spell:web","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin","cover":"COVER_DEGREE_NONE","lastingEffect":"LASTING_EFFECT_OUTCOME_APPLIED"}]}
 area 
@@ -2485,69 +2136,12 @@ combatant Pensantus | true | false | false | false | false | -1 | -1 | 0 | false
 combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 vitals Pensantus | <nil> | 0 | {0,1,0,0,0,0,0,0,0} | 0
 state Goblin | effect | spell:web | true | {} | rounds | 14 | 0
-== refused an empty spell key ==
-refused invalid_argument: spell_key must name one of the caster's spells
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-== refused an encounter that is not a UUID ==
-refused not_found: encounter not found
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-== refused d20_face of 0 ==
-refused invalid_argument: d20_face must be 1 to 20
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-== refused d20_face of 21 ==
-refused invalid_argument: d20_face must be 1 to 20
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 == refused darts for another spell ==
 refused invalid_argument: darts are only for Magic Missile
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused darts that do not add up ==
 refused invalid_argument: the darts of the targets must add up to 3
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-== refused eleven targets ==
-refused invalid_argument: targets must have at most 10 entries
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-== refused eleven targets as the master ==
-refused invalid_argument: targets must have at most 10 entries
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-== refused negative darts ==
-refused invalid_argument: targets[0].darts must be 0 to 20
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused no free slot ==
 cast {"effectConditionKey":"condition:unconscious","effectKind":"SPELL_EFFECT_KIND_POOL","poolRoll":{"diceCount":5,"diceSides":8,"faces":[8,8,8,8,8],"total":40},"slot":{"level":1},"spellKey":"spell:sleep","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Pensantus","cover":"COVER_DEGREE_NONE","effect":{"outcome":"SPELL_EFFECT_OUTCOME_AFFECTED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Toren","cover":"COVER_DEGREE_NONE","effect":{"outcome":"SPELL_EFFECT_OUTCOME_NOT_AFFECTED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Brisa","cover":"COVER_DEGREE_NONE","effect":{"outcome":"SPELL_EFFECT_OUTCOME_NOT_AFFECTED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin","cover":"COVER_DEGREE_NONE","effect":{"outcome":"SPELL_EFFECT_OUTCOME_AFFECTED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Capitão Goblin","cover":"COVER_DEGREE_NONE","effect":{"outcome":"SPELL_EFFECT_OUTCOME_NOT_AFFECTED"}}]}
 area {"origin":{"col":7,"row":5},"squares":[{"col":7,"row":1},{"col":5,"row":2},{"col":6,"row":2},{"col":7,"row":2},{"col":8,"row":2},{"col":9,"row":2},{"col":4,"row":3},{"col":5,"row":3},{"col":6,"row":3},{"col":7,"row":3},{"col":8,"row":3},{"col":9,"row":3},{"col":10,"row":3},{"col":4,"row":4},{"col":5,"row":4},{"col":6,"row":4},{"col":7,"row":4},{"col":8,"row":4},{"col":9,"row":4},{"col":10,"row":4},{"col":3,"row":5},{"col":4,"row":5},{"col":5,"row":5},{"col":6,"row":5},{"col":7,"row":5},{"col":8,"row":5},{"col":9,"row":5},{"col":10,"row":5},{"col":11,"row":5},{"col":4,"row":6},{"col":5,"row":6},{"col":6,"row":6},{"col":7,"row":6},{"col":8,"row":6},{"col":9,"row":6},{"col":10,"row":6},{"col":4,"row":7},{"col":5,"row":7},{"col":6,"row":7},{"col":7,"row":7},{"col":8,"row":7},{"col":9,"row":7},{"col":10,"row":7},{"col":5,"row":8},{"col":6,"row":8},{"col":7,"row":8},{"col":8,"row":8},{"col":9,"row":8},{"col":7,"row":9}]}
@@ -2566,53 +2160,16 @@ combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | 
 vitals Pensantus | <nil> | 0 | {1,0,0,0,0,0,0,0,0} | 0
 == refused out of turn ==
 refused failed_precondition: it is not this combatant's turn
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-== refused reveal_hidden from a player ==
-refused permission_denied: only the master decides whether hidden creatures are revealed
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-== refused reveal_hidden from a player before anything else ==
-refused permission_denied: only the master decides whether hidden creatures are revealed
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-== refused roll_in_app false ==
-refused invalid_argument: roll_in_app must be true
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-== refused three typed faces ==
-refused invalid_argument: set roll_in_app, d20_face or d20_faces
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-== refused twenty-one darts ==
-refused invalid_argument: targets[0].darts must be 0 to 20
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
+== refused spells rest, a spell attack at a target off the map ==
+refused failed_precondition: the caster and the target must be on the map
+state unchanged
+== refused spells rest, a spell attack by a caster off the map ==
+refused failed_precondition: the caster and the target must be on the map
+state unchanged
 == refused two targets for a single target spell ==
 refused invalid_argument: this spell takes at most 1 targets with this slot
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == revivify on the dead ==
 cast {"effectKind":"SPELL_EFFECT_KIND_REVIVE","slot":{"level":3},"spellKey":"spell:revivify","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Toren","cover":"COVER_DEGREE_NONE","effect":{"outcome":"SPELL_EFFECT_OUTCOME_AFFECTED","revivedCharacterId":"?"}}]}
 area 
@@ -2631,11 +2188,7 @@ vitals Ilaria | <nil> | 0 | {0,0,1,0,0,0,0,0,0} | 0
 vitals Toren | 1 | 0 | {0,0,0,0,0,0,0,0,0} | 0
 == revivify on the living ==
 refused invalid_argument: Revivify takes one target: the dead creature, as dead_target_id
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Ilaria | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | true | {} | {} | - | false | false | false | {} | false | false
-vitals Toren | 0 | 0 | {0,0,0,0,0,0,0,0,0} | 0
+state unchanged
 == revivify retried with the same key ==
 cast {"effectKind":"SPELL_EFFECT_KIND_REVIVE","slot":{"level":3},"spellKey":"spell:revivify","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Toren","cover":"COVER_DEGREE_NONE","effect":{"outcome":"SPELL_EFFECT_OUTCOME_AFFECTED","revivedCharacterId":"?"}}]}
 area 
@@ -2654,11 +2207,7 @@ vitals Ilaria | <nil> | 0 | {0,0,1,0,0,0,0,0,0} | 0
 vitals Toren | 1 | 0 | {0,0,0,0,0,0,0,0,0} | 0
 == revivify with no diamonds ==
 refused invalid_argument: material_confirmed is required: the spell consumes diamonds worth 300 gp
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Ilaria | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | true | {} | {} | - | false | false | false | {} | false | false
-vitals Toren | 0 | 0 | {0,0,0,0,0,0,0,0,0} | 0
+state unchanged
 == sacred flame as the master ==
 cast {"pendingDamages":[{"attackKey":"spell:sacred-flame","attackerId":"Brisa","castId":"?","damageTypeKey":"damage-type:radiant","damageTypePt":"radiante","diceCount":1,"diceSides":8,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Capitão Goblin"}],"spellKey":"spell:sacred-flame","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Capitão Goblin","cover":"COVER_DEGREE_NONE","pendingDamageId":"?","save":{"dc":13,"mode":"ROLL_MODE_NORMAL","outcome":"SAVE_OUTCOME_FAILED","roll":{"diceCount":1,"diceSides":20,"faces":[9],"total":9}}}]}
 area 
@@ -2751,14 +2300,7 @@ damage Pensantus | Goblin 2 | spell:scorching-ray | awaiting_roll | false | 2 | 
 vitals Pensantus | <nil> | 0 | {0,1,0,0,0,0,0,0,0} | 0
 == scorching ray at too many creatures ==
 refused invalid_argument: this spell takes at most 4 targets with this slot
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 1 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 2 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 3 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin 4 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == shield of faith ==
 cast {"concentrating":true,"slot":{"level":1},"spellKey":"spell:shield-of-faith","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Toren","cover":"COVER_DEGREE_NONE","lastingEffect":"LASTING_EFFECT_OUTCOME_APPLIED"}]}
 area 
@@ -2824,6 +2366,75 @@ combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {
 combatant Pensantus | true | false | false | false | false | -1 | -1 | 0 | false | {condition:unconscious} | {} | - | true | false | false | {} | false | false
 combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 vitals Pensantus | <nil> | 0 | {0,1,0,0,0,0,0,0,0} | 0
+== spells rest, a caster-only spell aimed at another creature ==
+refused invalid_argument: this spell reaches the caster alone: leave the targets out
+state unchanged
+== spells rest, a dexterity save a paralyzed target fails by itself ==
+cast {"pendingDamages":[{"attackKey":"spell:sacred-flame","attackerId":"Brisa","castId":"?","damageTypeKey":"damage-type:radiant","damageTypePt":"radiante","diceCount":1,"diceSides":8,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin"}],"spellKey":"spell:sacred-flame","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin","cover":"COVER_DEGREE_NONE","pendingDamageId":"?","save":{"dc":13,"outcome":"SAVE_OUTCOME_FAILED"}}]}
+area 
+inspiration 
+lucky 
+summoned 0
+hidden hits {}
+pending reveal false
+held false
+event spell_cast {"cast_id": "?", "combatant_id": "Brisa", "hits": [{"pending_id": "?", "save": {"auto": true, "bonus_unknown": true, "d20": 0, "dc": 13, "total": 0}, "target_id": "Goblin"}], "key": "spell:sacred-flame", "round": 1}
+combatant Brisa | true | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {condition:paralyzed} | {} | - | false | false | false | {} | false | false
+combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+damage Brisa | Goblin | spell:sacred-flame | awaiting_roll | false | 1 | 8 | 0 | damage-type:radiant | false | false | 0 | 0 | true | 0 | 0
+== spells rest, a spell attack hits a paralyzed target far from the caster ==
+cast {"pendingDamages":[{"attackKey":"spell:guiding-bolt","attackerId":"Brisa","damageTypeKey":"damage-type:radiant","damageTypePt":"radiante","diceCount":4,"diceSides":6,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin"}],"slot":{"level":1},"spellKey":"spell:guiding-bolt","targets":[{"attackMode":"ROLL_MODE_ADVANTAGE","attackRoll":{"diceCount":2,"diceSides":20,"faces":[16,3],"modifier":5,"physical":true,"total":21},"attackSources":[{"effect":"ROLL_MODE_ADVANTAGE","kind":"ADVANTAGE_SOURCE_KIND_PARALYZED_TARGET","textPt":"Alvo Paralisado: vantagem"}],"combatantId":"Goblin","cover":"COVER_DEGREE_HALF","coverSource":"COVER_SOURCE_MAP","outcome":"ATTACK_OUTCOME_HIT","pendingDamageId":"?"}]}
+area 
+inspiration 
+lucky 
+summoned 0
+hidden hits {}
+pending reveal false
+held false
+event spell_cast {"cast_id": "?", "combatant_id": "Brisa", "hits": [{"cover": "half", "cover_bonus": 2, "cover_source": "map", "d20": 16, "d20_b": 3, "modifier": 5, "outcome": "hit", "pending_id": "?", "physical": true, "roll_mode": "advantage", "suggested_mode": "advantage", "target_ac": 14, "target_id": "Goblin", "total": 21}], "key": "spell:guiding-bolt", "round": 1, "slot": {"level": 1}}
+combatant Brisa | true | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | true | false | false | {} | false | false
+combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {condition:paralyzed} | {} | - | false | false | false | {} | false | false
+combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+damage Brisa | Goblin | spell:guiding-bolt | awaiting_roll | false | 4 | 6 | 0 | damage-type:radiant | false | false | 21 | 14 | false | 0 | 0
+vitals Brisa | <nil> | 0 | {1,0,0,0,0,0,0,0,0} | 0
+== spells rest, a spell attack hits a paralyzed target next to the caster ==
+cast {"pendingDamages":[{"attackKey":"spell:guiding-bolt","attackerId":"Brisa","critical":true,"criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","damageTypeKey":"damage-type:radiant","damageTypePt":"radiante","diceCount":8,"diceSides":6,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin"}],"slot":{"level":1},"spellKey":"spell:guiding-bolt","targets":[{"attackMode":"ROLL_MODE_ADVANTAGE","attackRoll":{"diceCount":2,"diceSides":20,"faces":[16,3],"modifier":5,"physical":true,"total":21},"attackSources":[{"effect":"ROLL_MODE_ADVANTAGE","kind":"ADVANTAGE_SOURCE_KIND_PARALYZED_TARGET","textPt":"Alvo Paralisado: vantagem"}],"combatantId":"Goblin","cover":"COVER_DEGREE_NONE","outcome":"ATTACK_OUTCOME_CRITICAL_HIT","pendingDamageId":"?"}]}
+area 
+inspiration 
+lucky 
+summoned 0
+hidden hits {}
+pending reveal false
+held false
+event spell_cast {"cast_id": "?", "combatant_id": "Brisa", "hits": [{"d20": 16, "d20_b": 3, "modifier": 5, "outcome": "critical", "pending_id": "?", "physical": true, "roll_mode": "advantage", "suggested_mode": "advantage", "target_ac": 12, "target_id": "Goblin", "total": 21}], "key": "spell:guiding-bolt", "round": 1, "slot": {"level": 1}}
+combatant Brisa | true | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | true | false | false | {} | false | false
+combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {condition:paralyzed} | {} | - | false | false | false | {} | false | false
+combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+damage Brisa | Goblin | spell:guiding-bolt | awaiting_roll | true | 8 | 6 | 0 | damage-type:radiant | false | false | 21 | 12 | false | 0 | 0
+vitals Brisa | <nil> | 0 | {1,0,0,0,0,0,0,0,0} | 0
+== spells rest, a spell attack misses a paralyzed target next to the caster ==
+cast {"slot":{"level":1},"spellKey":"spell:guiding-bolt","targets":[{"attackMode":"ROLL_MODE_ADVANTAGE","attackRoll":{"countedIndex":1,"diceCount":2,"diceSides":20,"faces":[2,3],"modifier":5,"physical":true,"total":8},"attackSources":[{"effect":"ROLL_MODE_ADVANTAGE","kind":"ADVANTAGE_SOURCE_KIND_PARALYZED_TARGET","textPt":"Alvo Paralisado: vantagem"}],"combatantId":"Goblin","cover":"COVER_DEGREE_NONE","outcome":"ATTACK_OUTCOME_MISS"}]}
+area 
+inspiration 
+lucky 
+summoned 0
+hidden hits {}
+pending reveal false
+held false
+event spell_cast {"cast_id": "?", "combatant_id": "Brisa", "hits": [{"counted": 1, "d20": 3, "d20_b": 2, "modifier": 5, "outcome": "miss", "physical": true, "roll_mode": "advantage", "suggested_mode": "advantage", "target_ac": 12, "target_id": "Goblin", "total": 8}], "key": "spell:guiding-bolt", "round": 1, "slot": {"level": 1}}
+combatant Brisa | true | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | true | false | false | {} | false | false
+combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {condition:paralyzed} | {} | - | false | false | false | {} | false | false
+combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+vitals Brisa | <nil> | 0 | {1,0,0,0,0,0,0,0,0} | 0
 == ten goblins asleep ==
 cast {"effectConditionKey":"condition:unconscious","effectKind":"SPELL_EFFECT_KIND_POOL","poolRoll":{"diceCount":5,"diceSides":8,"faces":[8,8,8,8,8],"total":40},"slot":{"level":1},"spellKey":"spell:sleep","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Pensantus","cover":"COVER_DEGREE_NONE","effect":{"outcome":"SPELL_EFFECT_OUTCOME_NOT_AFFECTED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Toren","cover":"COVER_DEGREE_NONE","effect":{"outcome":"SPELL_EFFECT_OUTCOME_NOT_AFFECTED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Brisa","cover":"COVER_DEGREE_NONE","effect":{"outcome":"SPELL_EFFECT_OUTCOME_NOT_AFFECTED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin 1","cover":"COVER_DEGREE_NONE","effect":{"outcome":"SPELL_EFFECT_OUTCOME_AFFECTED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin 2","cover":"COVER_DEGREE_NONE","effect":{"outcome":"SPELL_EFFECT_OUTCOME_AFFECTED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin 3","cover":"COVER_DEGREE_NONE","effect":{"outcome":"SPELL_EFFECT_OUTCOME_AFFECTED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin 4","cover":"COVER_DEGREE_NONE","effect":{"outcome":"SPELL_EFFECT_OUTCOME_AFFECTED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin 5","cover":"COVER_DEGREE_NONE","effect":{"outcome":"SPELL_EFFECT_OUTCOME_AFFECTED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin 6","cover":"COVER_DEGREE_NONE","effect":{"outcome":"SPELL_EFFECT_OUTCOME_NOT_AFFECTED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin 7","cover":"COVER_DEGREE_NONE","effect":{"outcome":"SPELL_EFFECT_OUTCOME_NOT_AFFECTED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin 8","cover":"COVER_DEGREE_NONE","effect":{"outcome":"SPELL_EFFECT_OUTCOME_NOT_AFFECTED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin 9","cover":"COVER_DEGREE_NONE","effect":{"outcome":"SPELL_EFFECT_OUTCOME_NOT_AFFECTED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin 10","cover":"COVER_DEGREE_NONE","effect":{"outcome":"SPELL_EFFECT_OUTCOME_NOT_AFFECTED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Capitão Goblin","cover":"COVER_DEGREE_NONE","effect":{"outcome":"SPELL_EFFECT_OUTCOME_NOT_AFFECTED"}}]}
 area {"origin":{"col":7,"row":5},"squares":[{"col":7,"row":1},{"col":5,"row":2},{"col":6,"row":2},{"col":7,"row":2},{"col":8,"row":2},{"col":9,"row":2},{"col":4,"row":3},{"col":5,"row":3},{"col":6,"row":3},{"col":7,"row":3},{"col":8,"row":3},{"col":9,"row":3},{"col":10,"row":3},{"col":4,"row":4},{"col":5,"row":4},{"col":6,"row":4},{"col":7,"row":4},{"col":8,"row":4},{"col":9,"row":4},{"col":10,"row":4},{"col":3,"row":5},{"col":4,"row":5},{"col":5,"row":5},{"col":6,"row":5},{"col":7,"row":5},{"col":8,"row":5},{"col":9,"row":5},{"col":10,"row":5},{"col":11,"row":5},{"col":4,"row":6},{"col":5,"row":6},{"col":6,"row":6},{"col":7,"row":6},{"col":8,"row":6},{"col":9,"row":6},{"col":10,"row":6},{"col":4,"row":7},{"col":5,"row":7},{"col":6,"row":7},{"col":7,"row":7},{"col":8,"row":7},{"col":9,"row":7},{"col":10,"row":7},{"col":5,"row":8},{"col":6,"row":8},{"col":7,"row":8},{"col":8,"row":8},{"col":9,"row":8},{"col":7,"row":9}]}
@@ -2889,11 +2500,7 @@ window counterspell | answered | - | 1
 hold cast | released | true
 == two options that do not join ==
 refused invalid_argument: the Metamagic is not one the character knows, or it is more than one option (only Empowered Spell joins another)
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Nael | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Orla | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Tavo | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == vicious mockery failed ==
 cast {"pendingDamages":[{"attackKey":"spell:vicious-mockery","attackerId":"Orla","castId":"?","damageTypeKey":"damage-type:psychic","damageTypePt":"psíquico","diceCount":1,"diceSides":4,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin"}],"spellKey":"spell:vicious-mockery","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin","cover":"COVER_DEGREE_NONE","lastingEffect":"LASTING_EFFECT_OUTCOME_APPLIED","pendingDamageId":"?","save":{"dc":13,"outcome":"SAVE_OUTCOME_FAILED"}}]}
 area 

@@ -158,7 +158,7 @@ func (s *Service) AddLastingEffect(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&playv1.AddLastingEffectResponse{Encounter: out, Effects: s.addedCards(ctx, m, res, made)}), nil
+	return connect.NewResponse(&playv1.AddLastingEffectResponse{Encounter: out, Effects: s.addedCards(ctx, m, res, addedIDs(res, made))}), nil
 }
 
 // addLastingEffectTx is the change AddLastingEffect makes inside the combat's transaction: read
@@ -341,7 +341,8 @@ func (s *Service) holdConcentration(ctx context.Context, c *combatTx, spec effec
 }
 
 // putLastingEffects writes the effect on the targets. An effect that sets a base armor class is a
-// record for each target, with the class worked out for it, and none for a target that wears armor.
+// record for each target, with the class worked out for it, and none for a target that wears armor;
+// when it takes no hold of any, the master is told.
 func (s *Service) putLastingEffects(ctx context.Context, c *combatTx, cs []playdb.Combatant, spec effectSpec, opts castOpts) ([]playdb.CombatantState, error) {
 	if !hasBaseAC(spec.def) {
 		return s.addEffects(ctx, c, cs, spec)
@@ -365,12 +366,32 @@ func (s *Service) putLastingEffects(ctx context.Context, c *combatTx, cs []playd
 		}
 		rows = append(rows, made...)
 	}
+	if len(rows) == 0 {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the effect takes no hold of these targets"))
+	}
 	return rows, nil
 }
 
-// addedCards are the cards of the effects the call made, as the master reads them; read after the
-// commit, and none when the read fails or the call made nothing.
-func (s *Service) addedCards(ctx context.Context, m authz.Membership, res combatResult, made []playdb.CombatantState) []*playv1.LastingEffect {
+// addedIDs are the ids of the effect rows an AddLastingEffect call answers for: the ones it made,
+// or, for a retry that made nothing, the ones its first answer named in the event it wrote.
+func addedIDs(res combatResult, made []playdb.CombatantState) []string {
+	if !res.repeated {
+		var ids []string
+		for _, st := range made {
+			ids = append(ids, st.ID)
+		}
+		return ids
+	}
+	ev, err := readEvent(res.payload)
+	if err != nil || ev.Lasting == nil {
+		return nil
+	}
+	return ev.Lasting.Effects
+}
+
+// addedCards are the cards of the effects the call answers for (their row ids), as the master
+// reads them; read after the commit, and none when the read fails or there are none.
+func (s *Service) addedCards(ctx context.Context, m authz.Membership, res combatResult, made []string) []*playv1.LastingEffect {
 	if len(made) == 0 {
 		return nil
 	}
@@ -385,7 +406,7 @@ func (s *Service) addedCards(ctx context.Context, m authz.Membership, res combat
 	var cards []*playv1.LastingEffect
 	for _, g := range groupsOf(d.states) {
 		if slices.ContainsFunc(g.rows, func(st playdb.CombatantState) bool {
-			return slices.ContainsFunc(made, func(o playdb.CombatantState) bool { return o.ID == st.ID })
+			return slices.Contains(made, st.ID)
 		}) {
 			cards = append(cards, ev.card(g, ""))
 		}

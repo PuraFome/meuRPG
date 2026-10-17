@@ -21,7 +21,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// Combat movement (MR-034, RN-21, Etapa 9, slice 9.6). The geometry is package
+// Combat movement (MR-034, RN-21). The geometry is package
 // rules/grid's (the circle, the cost of a straight line, walls, other
 // creatures, jumps); this file asks it and keeps the combatant's numbers. The
 // browser does no geometry: GetMoveOptions says where a combatant can go.
@@ -182,7 +182,7 @@ func placed(c playdb.Combatant) bool { return c.GridCol != nil && c.GridRow != n
 // occupantsFor says who stands where, as far as the mover's move goes: every
 // other combatant on the map that is not defeated, hostile when its side is the
 // other one, with the largest size when several share a square. A player plans
-// on the combatants they see (RN-10); with the fog of war (slice 9.4) it will be
+// on the combatants they see (RN-10), which with the fog of war are
 // the ones the mover sees, and the real move is then cut short where something
 // unseen is in the way. The master sees everyone.
 func occupantsFor(cs []playdb.Combatant, mover playdb.Combatant, v combatViewer) grid.OccupantMap {
@@ -383,7 +383,7 @@ func (s *Service) MoveCombatant(
 	}
 	var a moveAttempt
 	res, err := s.write(ctx, combatWrite{m: mv.m, key: mv.key, hash: idem.Hash(req.Msg), kind: eventCombatantMoved, altKind: eventTrapTriggered, encounterID: mv.encID}, func(c *combatTx) (any, error) {
-		a = moveAttempt{req: mv, c: c, factor: 1}
+		a = moveAttempt{req: mv, c: c}
 		return s.moveInTx(ctx, &a)
 	})
 	if err != nil {
@@ -400,11 +400,20 @@ func (s *Service) MoveCombatant(
 	return connect.NewResponse(&playv1.MoveCombatantResponse{Encounter: out, StoppedEarly: ev.StoppedEarly, Provoked: ev.MoveID != "", LockedDoor: ev.LockedDoor}), nil
 }
 
-// moveInTx is the move's transaction: it finds who moves and where (resolve),
-// works out the path (plan), writes the move and what it brings with it (write)
-// and fills the event the log keeps (describe).
+// moveInTx is the move's transaction: it finds who moves and where, checks the
+// caller may move it now, works out the path (plan), writes the move and what it
+// brings with it (write) and fills the event the log keeps (describe).
 func (s *Service) moveInTx(ctx context.Context, a *moveAttempt) (any, error) {
-	if err := s.resolveMove(ctx, a); err != nil {
+	if err := s.loadMover(ctx, a); err != nil {
+		return nil, err
+	}
+	if err := s.chooseSquare(ctx, a); err != nil {
+		return nil, err
+	}
+	if err := s.readTerrain(ctx, a); err != nil {
+		return nil, err
+	}
+	if err := s.mayMove(ctx, a); err != nil {
 		return nil, err
 	}
 	if err := s.planMove(ctx, a); err != nil {
@@ -415,21 +424,6 @@ func (s *Service) moveInTx(ctx context.Context, a *moveAttempt) (any, error) {
 	}
 	a.describeMove()
 	return a.th.finish(ctx, a.c, a.made, a.cs, a.moved)
-}
-
-// resolveMove loads the combatants, picks the square and the terrain, and checks
-// that the caller may move the combatant now.
-func (s *Service) resolveMove(ctx context.Context, a *moveAttempt) error {
-	if err := s.loadMover(ctx, a); err != nil {
-		return err
-	}
-	if err := s.chooseSquare(ctx, a); err != nil {
-		return err
-	}
-	if err := s.readTerrain(ctx, a); err != nil {
-		return err
-	}
-	return s.mayMove(ctx, a)
 }
 
 // loadMover finds the combatant in the combat as the caller sees it, and what a
@@ -463,6 +457,7 @@ func (s *Service) loadMover(ctx context.Context, a *moveAttempt) error {
 
 // setFactor works out what a foot of path costs.
 func (a *moveAttempt) setFactor() {
+	a.factor = 1
 	if a.dragging && a.req.walking() && combat.DragHalvesSpeed(a.target.Size, a.dragged.Size) {
 		a.factor, a.dragHalves = slowedFoot, true
 	}
@@ -476,17 +471,6 @@ func (a *moveAttempt) setFactor() {
 // chooseSquare takes the square the request names, or picks one for a placement.
 func (s *Service) chooseSquare(ctx context.Context, a *moveAttempt) error {
 	a.col, a.row = a.req.col, a.req.row // the closure runs again on a retry: a placement picks its square afresh
-	if err := s.pickSquare(ctx, a); err != nil {
-		return err
-	}
-	if a.req.jump != playv1.JumpKind_JUMP_KIND_UNSPECIFIED && !placed(a.target) {
-		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "a jump starts from a square of the map")
-	}
-	return nil
-}
-
-// pickSquare is the placement's choice, or the check that the square is on the grid.
-func (s *Service) pickSquare(ctx context.Context, a *moveAttempt) error {
 	switch {
 	case a.req.place && placed(a.target):
 		return errAlreadyPlaced
@@ -502,6 +486,9 @@ func (s *Service) pickSquare(ctx context.Context, a *moveAttempt) error {
 		a.col, a.row = clamp32(sq.Col, 0, math.MaxInt32), clamp32(sq.Row, 0, math.MaxInt32)
 	case a.req.jump != playv1.JumpKind_JUMP_KIND_HIGH && !inGrid(a.c.enc, a.col, a.row):
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("col and row must be a square of the grid"))
+	}
+	if a.req.jump != playv1.JumpKind_JUMP_KIND_UNSPECIFIED && !placed(a.target) {
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "a jump starts from a square of the map")
 	}
 	return nil
 }
@@ -721,10 +708,26 @@ func (a *moveAttempt) planMasterWalk() error {
 }
 
 // writeMove writes the move, the creature it drags, the opportunity offers it
-// makes and the doors it opens, in the order the undo takes them back.
+// makes and the doors it opens, in the order the undo takes them back. The row it
+// leaves is the square, the master's cover mark (cleared when the combatant
+// changes square, not when nobody moved: a high jump, a move to where it stands)
+// and the movement walked.
 func (s *Service) writeMove(ctx context.Context, a *moveAttempt) error {
-	a.settleMove()
-	if err := s.saveMove(ctx, a); err != nil {
+	a.newCol, a.newRow = clamp32(a.to.Col, 0, math.MaxInt32), clamp32(a.to.Row, 0, math.MaxInt32)
+	a.squareChanged = !placed(a.target) || a.to != squareOfCombatant(a.target)
+	a.coverMark = a.target.CoverMark
+	if a.squareChanged {
+		a.markCleared = a.coverMark != "" && a.coverMark != "none"
+		a.coverMark = "none"
+	}
+	a.used = int(a.target.MovementUsedDft) + a.cost*a.factor
+	if err := a.c.q.SetCombatantMove(ctx, playdb.SetCombatantMoveParams{
+		ID: a.target.ID, GridCol: &a.newCol, GridRow: &a.newRow,
+		MovementUsedFt: clamp32(a.used/10, 0, math.MaxInt32), MovementUsedDft: clamp32(a.used, 0, math.MaxInt32), LastMoveDft: clamp32(a.last, 0, math.MaxInt32), CoverMark: a.coverMark,
+	}); err != nil {
+		return fmt.Errorf("move the combatant: %w", err)
+	}
+	if err := touch(ctx, a.c); err != nil {
 		return err
 	}
 	if err := s.dragAlong(ctx, a); err != nil {
@@ -733,37 +736,13 @@ func (s *Service) writeMove(ctx context.Context, a *moveAttempt) error {
 	if err := s.offerAttacks(ctx, a); err != nil {
 		return err
 	}
-	a.setMoved()
+	a.moved = a.target // the mover as it stands after the move
+	a.moved.GridCol, a.moved.GridRow, a.moved.MovementUsedFt, a.moved.MovementUsedDft = &a.newCol, &a.newRow, clamp32(a.used/10, 0, math.MaxInt32), clamp32(a.used, 0, math.MaxInt32)
+	a.moved.LastMoveDft, a.moved.CoverMark = clamp32(a.last, 0, math.MaxInt32), a.coverMark
 	a.c.characterID = &a.target.CharacterID
 	var err error
 	a.opened, err = s.openDoors(ctx, a.c, a.target, a.opened, a.from)
 	return err
-}
-
-// settleMove works out the row the move leaves: the square, the cover mark and
-// the movement walked.
-func (a *moveAttempt) settleMove() {
-	a.newCol, a.newRow = clamp32(a.to.Col, 0, math.MaxInt32), clamp32(a.to.Row, 0, math.MaxInt32)
-	// The master's cover mark clears when the combatant changes square, not
-	// when nobody moved (a high jump, a move to where it stands).
-	a.squareChanged = !placed(a.target) || a.to != squareOfCombatant(a.target)
-	a.coverMark = a.target.CoverMark
-	if a.squareChanged {
-		a.markCleared = a.coverMark != "" && a.coverMark != "none"
-		a.coverMark = "none"
-	}
-	a.used = int(a.target.MovementUsedDft) + a.cost*a.factor
-}
-
-// saveMove writes the combatant's row and touches the encounter.
-func (s *Service) saveMove(ctx context.Context, a *moveAttempt) error {
-	if err := a.c.q.SetCombatantMove(ctx, playdb.SetCombatantMoveParams{
-		ID: a.target.ID, GridCol: &a.newCol, GridRow: &a.newRow,
-		MovementUsedFt: clamp32(a.used/10, 0, math.MaxInt32), MovementUsedDft: clamp32(a.used, 0, math.MaxInt32), LastMoveDft: clamp32(a.last, 0, math.MaxInt32), CoverMark: a.coverMark,
-	}); err != nil {
-		return fmt.Errorf("move the combatant: %w", err)
-	}
-	return touch(ctx, a.c)
 }
 
 // dragAlong moves the creature the mover holds to the square behind its path.
@@ -798,13 +777,6 @@ func (s *Service) offerAttacks(ctx context.Context, a *moveAttempt) error {
 	return nil
 }
 
-// setMoved is the mover as it stands after the move.
-func (a *moveAttempt) setMoved() {
-	a.moved = a.target
-	a.moved.GridCol, a.moved.GridRow, a.moved.MovementUsedFt, a.moved.MovementUsedDft = &a.newCol, &a.newRow, clamp32(a.used/10, 0, math.MaxInt32), clamp32(a.used, 0, math.MaxInt32)
-	a.moved.LastMoveDft, a.moved.CoverMark = clamp32(a.last, 0, math.MaxInt32), a.coverMark
-}
-
 // describeMove fills the event the log keeps. The log tells how far a combatant
 // went on its turn: the line between where it was and where it goes, whoever
 // moves it.
@@ -816,23 +788,18 @@ func (a *moveAttempt) describeMove() {
 	if a.req.jump == playv1.JumpKind_JUMP_KIND_UNSPECIFIED && a.cost > 0 { // what the walk spent: the path's cost, doubled by a drag and by a crawl
 		made.SpentDFt, made.Dragging, made.Crawling = clamp32(a.cost*a.factor, 0, math.MaxInt32), a.dragHalves, crawls(a.target) && !a.req.forced
 	}
-	a.describeJump()
+	switch a.req.jump {
+	case playv1.JumpKind_JUMP_KIND_LONG:
+		made.Jump, made.JumpRunning = jumpLong, combat.HasRunningStart(int(a.target.LastMoveDft))
+		// SRD: landing in difficult terrain asks for a DC 10 Acrobatics check or
+		// the jumper falls prone. The app rolls nothing: the master's log says it.
+		made.LandingDifficult = !moverOf(a.target).Flier && a.terrain.Difficult.Has(a.to)
+	case playv1.JumpKind_JUMP_KIND_HIGH:
+		made.Jump, made.HeightDFt = jumpHigh, a.req.height
+	}
 	a.logged = a.onTurn && (a.length > 0 || made.Jump == jumpHigh)
 	if a.v.master && a.squareChanged {
 		a.th.landed(a.to) // the master's move is not a walk: only where it ends counts
-	}
-}
-
-// describeJump names the jump in the event.
-func (a *moveAttempt) describeJump() {
-	switch a.req.jump {
-	case playv1.JumpKind_JUMP_KIND_LONG:
-		a.made.Jump, a.made.JumpRunning = jumpLong, combat.HasRunningStart(int(a.target.LastMoveDft))
-		// SRD: landing in difficult terrain asks for a DC 10 Acrobatics check or
-		// the jumper falls prone. The app rolls nothing: the master's log says it.
-		a.made.LandingDifficult = !moverOf(a.target).Flier && a.terrain.Difficult.Has(a.to)
-	case playv1.JumpKind_JUMP_KIND_HIGH:
-		a.made.Jump, a.made.HeightDFt = jumpHigh, a.req.height
 	}
 }
 

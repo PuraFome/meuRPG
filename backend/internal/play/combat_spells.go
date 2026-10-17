@@ -27,7 +27,7 @@ import (
 // throw spell has the server roll each target's save, Magic Missile's darts
 // never miss, a healing spell opens a heal, and the rest only spends and logs.
 // The damage and the heals wait as pending damages for RollDamage
-// (combat_actions.go), which is also where an area spell's one damage roll
+// (combat_damage.go), which is also where an area spell's one damage roll
 // settles all its targets.
 
 // Magic Missile is the one spell whose darts the caster shares out: three, and

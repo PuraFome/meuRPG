@@ -20,20 +20,19 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/vision"
 )
 
-// Combat on a map with the fog of war on (MR-036, RN-10, RN-20, Etapa 9, slice
-// 9.7). A player sees only the NPC combatants their character sees now (with
-// "Visão do grupo", the party); an NPC they do not see is, for them, a hidden
+// Combat on a map with the fog of war on (MR-036, RN-10, RN-20). A player sees only the NPC combatants their character sees
+// (with "Visão do grupo", the party); an NPC they do not see is, for them, a hidden
 // combatant: not in the order, no name, no state, no square, its turn "Vez do
 // mestre", and not found when they name it. Players' characters and their
 // creatures are never hidden (the party knows where its people are). The master
-// sees everyone. A map without the fog behaves as before.
+// sees everyone. A map without the fog shows everyone.
 //
 // How it is built:
 //
 //   - The maps module says what each player sees (FogSource.CombatSight); this
 //     file turns that into the set of combatants a viewer does not see
 //     (combatViewer.unseen), and every place that asked "does the viewer see it?"
-//     (combatViewer.sees) now gets the fog's answer too: the order, the turn, the
+//     (combatViewer.sees) gets the fog's answer: the order, the turn, the
 //     targets, the pending damage, the reaction prompts, the offers, the move's
 //     plan, and the not_found of naming an NPC.
 //   - The sight is read before a change opens its transaction (write), never inside
@@ -590,7 +589,7 @@ func (s *Service) publishTurnChangedToPlayers(ctx context.Context, campaignID st
 
 // publishMovedToPlayers tells the players that a combatant moved. A player's
 // character or creature, and any combatant on a map without the fog, go to every
-// player as before; an NPC of a fog map goes only to the players who see its new
+// player; an NPC of a fog map goes only to the players who see its new
 // square. A player who saw the square it left (in the sight read before the change)
 // and not the new one gets the content-free encounter_changed, to read the combat
 // again and find it gone; the others hear nothing. from is where it stood.

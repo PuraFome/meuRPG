@@ -4,7 +4,7 @@
 // session's live stream (ADR-0005), the master's correction of the
 // characters' vitals (RN-02), each one recorded in session_events
 // (ADR-0007), and what the session shows at the table: the current map and
-// a gallery image (onscreen.go). Turns and actions come with combat
+// a gallery image (onscreen.go). Turns and actions are in the combat files
 // (combat.go).
 //
 // Starting a session locks the sheets in the same transaction that opens
@@ -472,7 +472,7 @@ type Config struct {
 	// Dice says where a player rolls (RN-18). Required.
 	Dice DiceModes
 	// Defaults gives the mode of a combat started without one (RN-24, RN-25).
-	// Optional: nil means every such combat is on a map, as before the modes.
+	// Optional: nil means every such combat is on a map.
 	Defaults CombatDefaults
 	// Terrain gives a combat the walls, difficult terrain and cover of its map
 	// (RN-21, D2). Optional: cmd/api sets it with SetTerrain once the maps module

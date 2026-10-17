@@ -29,13 +29,13 @@ func TestPutOnStage_RefusalsWithTheirMessages(t *testing.T) {
 	}
 	a.endEncounter(t, c.refresh(t))
 
-	rmWant(t, "no scene", a.putOnStage(t, a.goblin.GetId()), connect.CodeFailedPrecondition, "no scene is open, so there is no stage")
+	wantRefusal(t, "no scene", a.putOnStage(t, a.goblin.GetId()), connect.CodeFailedPrecondition, "no scene is open, so there is no stage")
 	point, _ := a.h.newScene(a.mapID, "A clareira", true, 1)
 	a.openScene(t, point)
-	rmWant(t, "a monster's NPC", a.putOnStage(t, monsterNPC), connect.CodeInvalidArgument, "a monster's NPC is not a character the master can put on the stage")
-	rmWant(t, "a player's character", a.putOnStage(t, a.toren.GetId()), connect.CodeNotFound, "character not found")
-	rmWant(t, "not an ID", a.putOnStage(t, "nope"), connect.CodeNotFound, "character not found")
-	rmWant(t, "an unknown character", a.putOnStage(t, newKey()), connect.CodeNotFound, "character not found")
+	wantRefusal(t, "a monster's NPC", a.putOnStage(t, monsterNPC), connect.CodeInvalidArgument, "a monster's NPC is not a character the master can put on the stage")
+	wantRefusal(t, "a player's character", a.putOnStage(t, a.toren.GetId()), connect.CodeNotFound, "character not found")
+	wantRefusal(t, "not an ID", a.putOnStage(t, "nope"), connect.CodeNotFound, "character not found")
+	wantRefusal(t, "an unknown character", a.putOnStage(t, newKey()), connect.CodeNotFound, "character not found")
 	if err := a.putOnStage(t, a.goblin.GetId()); err != nil {
 		t.Fatalf("PutOnStage(goblin) error = %v", err)
 	}
@@ -44,5 +44,5 @@ func TestPutOnStage_RefusalsWithTheirMessages(t *testing.T) {
 	}
 	// A player may not.
 	_, err := a.caio.play.PutOnStage(t.Context(), connect.NewRequest(&playv1.PutOnStageRequest{CampaignId: a.campaignID, CharacterId: a.goblin.GetId()}))
-	rmWant(t, "a player", err, connect.CodePermissionDenied, "")
+	wantRefusal(t, "a player", err, connect.CodePermissionDenied, "")
 }

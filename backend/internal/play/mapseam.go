@@ -87,7 +87,7 @@ func (s *Service) CombatPositions(ctx context.Context, tx pgx.Tx, campaignID, ma
 		}
 		out.Running = true
 		// Only a player character is placed by character: copies of one NPC share a
-		// character_id, so an NPC has no square here (combatants are seen by
+		// character_id, so an NPC has no square here (the fog of war reads combatants by
 		// their own ID). A light an NPC carries stays on its token during a combat.
 		if kind == "player" && col != nil && row != nil {
 			out.Positions[id] = grid.Square{Col: int(*col), Row: int(*row)}
