@@ -45,6 +45,9 @@ import (
 // with a range of sight or Touch) stays on the caster's list: the SRD gives the
 // shape a point of origin the table does not lay out here.
 func placementOf(sp link.Spell) playv1.AreaPlacement {
+	if z, ok := zoneDefOf(sp.Key); ok { // the area a spell keeps on the map is laid out as its zone says
+		return z.placement
+	}
 	shape := grid.Shape(sp.AreaShape)
 	switch shape {
 	case grid.ShapeSphere, grid.ShapeCylinder:
@@ -64,6 +67,9 @@ func placementOf(sp link.Spell) playv1.AreaPlacement {
 
 // areaOf is the grid shape of a spell's area.
 func areaOf(sp link.Spell) grid.Area {
+	if z, ok := zoneDefOf(sp.Key); ok {
+		return z.area()
+	}
 	return grid.Area{Shape: grid.Shape(sp.AreaShape), SizeFt: sp.AreaSizeFt, WidthFt: sp.AreaWidthFt}
 }
 
@@ -512,30 +518,18 @@ func areaShapeProto(sp link.Spell, theatre bool) rulesv1.SpellAreaShape {
 	if placementFor(sp, theatre) == playv1.AreaPlacement_AREA_PLACEMENT_UNSPECIFIED {
 		return rulesv1.SpellAreaShape_SPELL_AREA_SHAPE_UNSPECIFIED
 	}
-	switch grid.Shape(sp.AreaShape) {
-	case grid.ShapeCone:
-		return rulesv1.SpellAreaShape_SPELL_AREA_SHAPE_CONE
-	case grid.ShapeCube:
-		return rulesv1.SpellAreaShape_SPELL_AREA_SHAPE_CUBE
-	case grid.ShapeCylinder:
-		return rulesv1.SpellAreaShape_SPELL_AREA_SHAPE_CYLINDER
-	case grid.ShapeLine:
-		return rulesv1.SpellAreaShape_SPELL_AREA_SHAPE_LINE
-	case grid.ShapeSphere:
-		return rulesv1.SpellAreaShape_SPELL_AREA_SHAPE_SPHERE
-	}
-	return rulesv1.SpellAreaShape_SPELL_AREA_SHAPE_UNSPECIFIED
+	return shapeProto(areaOf(sp).Shape)
 }
 
 func areaSizeFor(sp link.Spell, theatre bool) int32 {
 	if placementFor(sp, theatre) == playv1.AreaPlacement_AREA_PLACEMENT_UNSPECIFIED {
 		return 0
 	}
-	return clamp32(sp.AreaSizeFt, 0, math.MaxInt32)
+	return clamp32(areaOf(sp).SizeFt, 0, math.MaxInt32)
 }
 
 func areaWidthFor(sp link.Spell, theatre bool) int32 {
-	if placementFor(sp, theatre) == playv1.AreaPlacement_AREA_PLACEMENT_UNSPECIFIED || grid.Shape(sp.AreaShape) != grid.ShapeLine {
+	if placementFor(sp, theatre) == playv1.AreaPlacement_AREA_PLACEMENT_UNSPECIFIED || areaOf(sp).Shape != grid.ShapeLine {
 		return 0
 	}
 	return clamp32(sp.AreaWidthFt, 0, math.MaxInt32)

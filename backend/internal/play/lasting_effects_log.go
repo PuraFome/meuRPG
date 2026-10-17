@@ -42,19 +42,22 @@ var effectLogKinds = map[string]playv1.CombatLogKind{
 	eventLastingEnded:      playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT,
 	eventLastingSaved:      playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT,
 	eventLastingTriggered:  playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT,
+	eventZoneTriggered:     playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT,
+	eventZoneMoved:         playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT,
 	eventLastingVisibility: playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT,
 	eventExhaustion:        playv1.CombatLogKind_COMBAT_LOG_KIND_EXHAUSTION,
 }
 
 var effectChangeToProto = map[string]playv1.CombatLogEffectChange{
-	"added":    playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_ADDED,
-	"ended":    playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_ENDED,
-	"duration": playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_DURATION_CHANGED,
-	"saved":    playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_SAVED,
-	"failed":   playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_SAVE_FAILED,
-	"damage":   playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_DAMAGE,
-	"skipped":  playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_SAVE_SKIPPED,
-	"temp_hp":  playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_TEMP_HP,
+	"added":      playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_ADDED,
+	"ended":      playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_ENDED,
+	"duration":   playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_DURATION_CHANGED,
+	"saved":      playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_SAVED,
+	"failed":     playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_SAVE_FAILED,
+	"damage":     playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_DAMAGE,
+	"skipped":    playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_SAVE_SKIPPED,
+	"temp_hp":    playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_TEMP_HP,
+	"zone_moved": playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_ZONE_MOVED,
 }
 
 // kindKeyOf is the event kind that makes a line of the kind, "" for a kind that is no effect's.

@@ -303,6 +303,8 @@ var logHandlers = map[string]logHandler{
 	eventLastingEnded:            effectLine,
 	eventLastingSaved:            effectLine,
 	eventLastingTriggered:        effectLine,
+	eventZoneTriggered:           effectLine,
+	eventZoneMoved:               effectLine,
 	eventLastingVisibility:       effectLine,
 	eventExhaustion:              effectLine,
 	eventHitRider:                plainLine(playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_RIDER),

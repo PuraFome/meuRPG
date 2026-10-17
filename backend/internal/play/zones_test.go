@@ -167,7 +167,7 @@ func TestSpiritGuardiansHitsWhoStartsItsTurnInTheArea(t *testing.T) {
 	}
 	lines := c.zoneLines(t, c.master, spiritGuardiansKey)
 	if !slices.ContainsFunc(lines, func(en *playv1.CombatLogEntry) bool {
-		return en.GetEffect().GetChange() == playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_ZONE_ENTERED && slices.Contains(en.GetEffect().GetTargetLabels(), "Ogro")
+		return en.GetEffect().GetChange() == playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_SAVE_FAILED && slices.Contains(en.GetEffect().GetTargetLabels(), "Ogro")
 	}) {
 		t.Errorf("the master's log = %v, want a line for the ogre in the aura", lines)
 	}
@@ -232,6 +232,7 @@ func TestSpiritGuardiansHitsOncePerTurnWhoEnters(t *testing.T) {
 		t.Errorf("the ogre's hit points after moving about = %d, want 47: once on a turn", cur)
 	}
 	// The next round it starts its turn inside: hit again.
+	c.h.roller.queue(5, 2, 2, 2)
 	c.nextTurnOf(t, "Ogro")
 	_ = e
 	if cur, _, _ := c.hp(t, "Ogro"); cur != 59-12-6 {
@@ -319,7 +320,7 @@ func TestMoonbeamIsMovedByItsCasterWithAnAction(t *testing.T) {
 	}
 	// Farther than 60 feet is refused for a player.
 	c.nextTurnOf(t, "Toren")
-	if _, err := c.moveZone(t, c.caio, z.GetId(), 22, 15); err == nil {
+	if _, err := c.moveZone(t, c.caio, z.GetId(), 22, 9); err == nil {
 		t.Error("MoveSpellZone() beyond 60 feet succeeded, want it refused")
 	}
 }
@@ -414,5 +415,107 @@ func TestAForcedMoveIntoTheAreaHitsAsAnEntry(t *testing.T) {
 	c.mustMove(t, c.master, "Ogro", 7, 7)
 	if cur, _, _ := c.hp(t, "Ogro"); cur != 59-12 {
 		t.Errorf("the ogre's hit points = %d, want 47", cur)
+	}
+}
+
+// A creature that was not in the web and walks in makes the Dexterity save of the web at once, and a
+// failure restrains it with the same effect the web always put on who it caught at the cast.
+func TestWebCatchesWhoComesInLaterWithADexteritySave(t *testing.T) {
+	t.Parallel()
+	c := zoneCave(t)
+	e := c.zoneFight(t)
+	c.mustMove(t, c.master, "Goblin", 21, 6) // outside the cube of columns 17 to 20, rows 2 to 5
+	c.mustMove(t, c.master, "Pensantus", 17, 7)
+	c.passTo(t, e, "Pensantus")
+	c.mustCastArea(t, c.ana, "Pensantus", webKey, slotOfLevel(2), at(18, 3), nil)
+	c.passTo(t, c.get(t, c.master), "Goblin")
+	c.h.roller.queue(5) // the Dexterity save of the goblin: 5 + 0 < 15
+	if _, err := c.move(t, c.master, "Goblin", 20, 5); err != nil {
+		t.Fatalf("MoveCombatant() error = %v", err)
+	}
+	if card := cardOf(t, byLabel(t, c.get(t, c.master), "Goblin"), "effect:web-restrained"); card == nil {
+		t.Fatal("the goblin that walked into the web is not restrained")
+	}
+}
+
+// A creature that passes the save is not restrained.
+func TestWebLetsWhoPassesTheSaveWalkThrough(t *testing.T) {
+	t.Parallel()
+	c := zoneCave(t)
+	e := c.zoneFight(t)
+	c.mustMove(t, c.master, "Goblin", 21, 6)
+	c.mustMove(t, c.master, "Pensantus", 17, 7)
+	c.passTo(t, e, "Pensantus")
+	c.mustCastArea(t, c.ana, "Pensantus", webKey, slotOfLevel(2), at(18, 3), nil)
+	c.passTo(t, c.get(t, c.master), "Goblin")
+	c.h.roller.queue(20)
+	c.mustMove(t, c.master, "Goblin", 20, 5)
+	if card := cardOf(t, byLabel(t, c.get(t, c.master), "Goblin"), "effect:web-restrained"); card != nil {
+		t.Errorf("the goblin that passed the save is restrained: %v", card)
+	}
+}
+
+// A player's character caught by a zone does not lose hit points by itself: the damage waits for the
+// master, as every damage on a character does.
+func TestAZoneHitsAPlayersCharacterAsADamageThatWaitsForTheMaster(t *testing.T) {
+	t.Parallel()
+	c := zoneCave(t)
+	e := c.zoneFight(t)
+	c.mustMove(t, c.master, "Toren", 16, 7)
+	c.passTo(t, e, "Pensantus")
+	c.mustCastArea(t, c.ana, "Pensantus", cloudkillKey, slotOfLevel(5), at(15, 7), nil)
+	c.h.roller.queue(5, 4, 4, 4, 4, 4) // Toren's Constitution save, then 5d8 = 20
+	c.nextTurnOf(t, "Toren")
+	var status string
+	var amount int32
+	if err := c.h.pool.QueryRow(t.Context(), `SELECT status, amount FROM pending_damages WHERE target_id = $1 AND effect_source_key = $2`, c.id(t, "Toren"), cloudkillKey).Scan(&status, &amount); err != nil {
+		t.Fatalf("read the damage of the cloud: %v", err)
+	}
+	if status != "rolled" || amount != 20 {
+		t.Errorf("the pending damage = %s for %d, want rolled for 20: it waits for the master", status, amount)
+	}
+}
+
+// Only the caster's player moves the beam, and the master any; a zone that is not there is not found.
+func TestMoveSpellZoneIsTheCastersAndTheMasters(t *testing.T) {
+	t.Parallel()
+	c := druidCave(t)
+	c.zoneFight(t)
+	c.mustCastArea(t, c.caio, "Toren", moonbeamKey, slotOfLevel(2), at(18, 7), nil)
+	z := c.oneZone(t, c.master, moonbeamKey)
+	if _, err := c.moveZone(t, c.ana, z.GetId(), 18, 8); connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Errorf("another player moved the beam: error = %v, want permission_denied", err)
+	}
+	if _, err := c.moveZone(t, c.master, "not-a-uuid", 18, 8); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Errorf("a zone that does not exist: error = %v, want not_found", err)
+	}
+	// The master puts it right at once: no action, no distance, and the caster's action stays as it was.
+	if _, err := c.moveZone(t, c.master, z.GetId(), 21, 9); err != nil {
+		t.Fatalf("MoveSpellZone() as the master error = %v", err)
+	}
+	if got := c.oneZone(t, c.master, moonbeamKey); got.GetOrigin().GetCol() != 21 || got.GetOrigin().GetRow() != 9 {
+		t.Errorf("zone = %v, want it at (21,9)", got)
+	}
+	if _, err := c.moveZone(t, c.master, z.GetId(), 30, 30); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Errorf("a square off the map: error = %v, want invalid_argument", err)
+	}
+}
+
+// A retry of the move with the same key answers the same and does not spend a second action.
+func TestMoveSpellZoneRetryWithTheSameKeyChangesNothingTwice(t *testing.T) {
+	t.Parallel()
+	c := druidCave(t)
+	c.zoneFight(t)
+	c.mustCastArea(t, c.caio, "Toren", moonbeamKey, slotOfLevel(2), at(18, 7), nil)
+	z := c.oneZone(t, c.master, moonbeamKey)
+	c.nextTurnOf(t, "Toren")
+	req := &playv1.MoveSpellZoneRequest{CampaignId: c.campaignID, EncounterId: c.get(t, c.master).GetId(), ZoneId: z.GetId(), Origin: at(14, 7), IdempotencyKey: newKey()}
+	for range 2 {
+		if _, err := c.caio.combat.MoveSpellZone(t.Context(), connect.NewRequest(req)); err != nil {
+			t.Fatalf("MoveSpellZone() error = %v", err)
+		}
+	}
+	if got := c.oneZone(t, c.master, moonbeamKey); got.GetOrigin().GetCol() != 14 {
+		t.Errorf("zone = %v, want it at column 14", got)
 	}
 }

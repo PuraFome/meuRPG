@@ -4873,11 +4873,10 @@ enum CombatLogEffectChange {
   COMBAT_LOG_EFFECT_CHANGE_SAVE_SKIPPED = 7;
   // The effect gave the target temporary hit points (Heroísmo, at the start of its turn); `amount`.
   COMBAT_LOG_EFFECT_CHANGE_TEMP_HP = 8;
-  // A spell's area moved (Moonbeam moved by its caster, Cloudkill drifting).
+  // A spell's area moved (Moonbeam moved by its caster, Cloudkill drifting). A creature the
+  // area catches (it came in, or began its turn there) is a SAVED or SAVE_FAILED line with
+  // `reason` zone_enter or zone_start, the roll, and the damage in `amount`.
   COMBAT_LOG_EFFECT_CHANGE_ZONE_MOVED = 9;
-  // A creature entered, or began its turn in, the area a spell keeps on the map; the
-  // saving throw it makes follows as SAVED or SAVE_FAILED.
-  COMBAT_LOG_EFFECT_CHANGE_ZONE_ENTERED = 10;
 }
 
 // CombatLogMonster is a monster of a MONSTERS_ADDED line, only the master's.

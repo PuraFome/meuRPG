@@ -37,5 +37,14 @@ CREATE TABLE IF NOT EXISTS spell_zones (
 CREATE INDEX IF NOT EXISTS spell_zones_encounter_id_idx ON spell_zones (encounter_id);
 CREATE INDEX IF NOT EXISTS spell_zones_owner_id_idx ON spell_zones (owner_id);
 
+-- The events a zone leaves: a creature caught by one (spell_zone_triggered: ids, the saving throw and
+-- the damage) and an area that changed place (spell_zone_moved: the zone's spell and caster).
+INSERT INTO session_event_kinds (kind) VALUES
+    ('spell_zone_triggered'),
+    ('spell_zone_moved')
+ON CONFLICT (kind) DO NOTHING;
+
 -- +goose Down
+DELETE FROM session_events WHERE kind IN ('spell_zone_triggered', 'spell_zone_moved');
+DELETE FROM session_event_kinds WHERE kind IN ('spell_zone_triggered', 'spell_zone_moved');
 DROP TABLE IF EXISTS spell_zones;

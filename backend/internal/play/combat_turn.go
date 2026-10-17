@@ -156,7 +156,12 @@ func (s *Service) startOfTurnEffects(ctx context.Context, c *combatTx, ids []str
 	}
 	// The effects that last: what ends now, the damage a turn under them brings and
 	// the saving throws of the start of the turn (RN-22).
-	return s.effectsAfterTurnStart(ctx, c, ids, round)
+	if err := s.effectsAfterTurnStart(ctx, c, ids, round); err != nil {
+		return err
+	}
+	// The areas spells keep on the map: the ones whose time is out end, the ones that drift move, and
+	// who starts the turn in one is caught.
+	return s.zonesAtTurnStart(ctx, c, ids, round)
 }
 
 // setCurrent saves where the combat is: the round and the member that the

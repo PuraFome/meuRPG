@@ -1,6 +1,7 @@
 package play
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -8,6 +9,7 @@ import (
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 )
 
 // What the master hides from the players reaches them through no channel (RN-10): the zone of a hidden
@@ -37,7 +39,7 @@ func (c *cave) druidFight(t *testing.T, reveal ...string) *playv1.Encounter {
 	druid := c.master.npcCaster(t, c.campaignID, "Druida")
 	return c.start(t, plan{
 		npcs:     []*playv1.Participant{{CharacterId: druid.GetId()}, {CharacterId: c.ogre.GetId()}, {CharacterId: c.goblins.GetId()}},
-		npcRolls: []int{20, 2, 2},
+		npcRolls: []int{20, 2, 1},
 		players:  map[string]int32{"Toren": 1, "Pensantus": 1, "Brisa": 1},
 		reveal:   append([]string{"Ogro"}, reveal...),
 		at:       map[string][2]int32{"Druida": {5, 7}, "Toren": {3, 7}, "Brisa": {3, 8}, "Pensantus": {12, 7}, "Ogro": {7, 7}, "Goblin": {7, 8}},
@@ -118,8 +120,8 @@ func TestAZoneThatHitsAHiddenCreatureDoesNotNameIt(t *testing.T) {
 	c.mustCastArea(t, c.master, "Druida", moonbeamKey, slotOfLevel(2), at(7, 8), nil) // over the hidden goblin
 	c.h.roller.queue(5, 6, 6)
 	c.passTo(t, c.get(t, c.master), "Goblin")
-	if cur, _, _ := c.hp(t, "Goblin"); cur != 0 && cur >= 7 {
-		t.Fatalf("the goblin's hit points = %d, want it hurt by the beam", cur)
+	if cur, _, down := c.hp(t, "Goblin"); cur != 0 || !down {
+		t.Fatalf("the goblin's hit points = %d, down = %v, want it down: 12 of the beam on 7 hit points", cur, down)
 	}
 	for who, u := range map[string]*user{"Toren's player": c.caio, "Pensantus's player": c.ana} {
 		e := c.get(t, u)
@@ -129,8 +131,56 @@ func TestAZoneThatHitsAHiddenCreatureDoesNotNameIt(t *testing.T) {
 				t.Errorf("%s's copy names the hidden goblin (%q)", who, w)
 			}
 		}
-		if lines := c.zoneLines(t, u, moonbeamKey); len(lines) != 0 {
-			t.Errorf("%s reads the lines %v about a hidden creature", who, lines)
+		for _, line := range c.zoneLines(t, u, moonbeamKey) { // the ogre next to the goblin is caught too, and is theirs to read
+			if slices.Contains(line.GetEffect().GetTargetLabels(), "Goblin") || line.GetTargetLabel() == "Goblin" {
+				t.Errorf("%s reads the line %v about the hidden goblin", who, line)
+			}
+		}
+	}
+}
+
+// The hint of a zone that moves goes to the master alone when its caster is hidden, and a player
+// cannot ask for the zone: it is not found for them, as one that never existed.
+func TestAHiddenCastersZoneMovesWithoutAHintToThePlayers(t *testing.T) {
+	t.Parallel()
+	c := newCaveWith(t, 5, []string{thunderwave})
+	c.druidFight(t)
+	c.mustCastArea(t, c.master, "Druida", moonbeamKey, slotOfLevel(2), at(7, 7), nil)
+	z := c.oneZone(t, c.master, moonbeamKey)
+	master, err := c.h.svc.hub.Subscribe(c.campaignID, live.Subscriber{UserID: "m", Master: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer master.Close()
+	player, err := c.h.svc.hub.Subscribe(c.campaignID, live.Subscriber{UserID: c.ana.id})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer player.Close()
+	if _, err := c.moveZone(t, c.ana, z.GetId(), 8, 8); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Errorf("a player asked to move a hidden caster's zone: error = %v, want not_found", err)
+	}
+	if _, err := c.moveZone(t, c.master, z.GetId(), 8, 8); err != nil {
+		t.Fatalf("MoveSpellZone() as the master error = %v", err)
+	}
+	if got := heard(master); got == 0 {
+		t.Error("the master heard nothing of the zone that moved")
+	}
+	if got := heard(player); got != 0 {
+		t.Errorf("a player heard %d events of a hidden caster's zone that moved, want none", got)
+	}
+}
+
+// heard drains a subscription and counts the events it had.
+func heard(sub *live.Subscription) int {
+	n := 0
+	for {
+		select {
+		case ev := <-sub.Events():
+			sub.Taken(ev)
+			n++
+		default:
+			return n
 		}
 	}
 }

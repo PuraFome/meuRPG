@@ -725,6 +725,9 @@ func (s *Service) effectHiddenFrom(st playdb.CombatantState, targets []playdb.Co
 // endConcentrationEffects ends the effects a caster's concentration holds (all of its
 // castings): the caster stopped concentrating.
 func (s *Service) endConcentrationEffects(ctx context.Context, c *combatTx, caster playdb.Combatant, reason string) error {
+	if err := s.endZonesOf(ctx, c, caster); err != nil { // the areas it keeps on the map go with it
+		return err
+	}
 	rows, err := c.q.ListLastingEffects(ctx, c.enc.ID)
 	if err != nil {
 		return fmt.Errorf("list the effects: %w", err)

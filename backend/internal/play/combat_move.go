@@ -423,6 +423,9 @@ func (s *Service) moveInTx(ctx context.Context, a *moveAttempt) (any, error) {
 		return nil, err
 	}
 	a.describeMove()
+	if err := s.zonesAfterMove(ctx, a); err != nil { // the areas spells keep on the map (zones_hooks.go)
+		return nil, err
+	}
 	return a.th.finish(ctx, a.c, a.made, a.cs, a.moved)
 }
 

@@ -2658,27 +2658,25 @@ const (
 	CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_SAVE_SKIPPED     CombatLogEffectChange = 7
 	// The effect gave the target temporary hit points (Heroísmo, at the start of its turn); `amount`.
 	CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_TEMP_HP CombatLogEffectChange = 8
-	// A spell's area moved (Moonbeam moved by its caster, Cloudkill drifting).
+	// A spell's area moved (Moonbeam moved by its caster, Cloudkill drifting). A creature the
+	// area catches (it came in, or began its turn there) is a SAVED or SAVE_FAILED line with
+	// `reason` zone_enter or zone_start, the roll, and the damage in `amount`.
 	CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_ZONE_MOVED CombatLogEffectChange = 9
-	// A creature entered, or began its turn in, the area a spell keeps on the map; the
-	// saving throw it makes follows as SAVED or SAVE_FAILED.
-	CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_ZONE_ENTERED CombatLogEffectChange = 10
 )
 
 // Enum value maps for CombatLogEffectChange.
 var (
 	CombatLogEffectChange_name = map[int32]string{
-		0:  "COMBAT_LOG_EFFECT_CHANGE_UNSPECIFIED",
-		1:  "COMBAT_LOG_EFFECT_CHANGE_ADDED",
-		2:  "COMBAT_LOG_EFFECT_CHANGE_ENDED",
-		3:  "COMBAT_LOG_EFFECT_CHANGE_DURATION_CHANGED",
-		4:  "COMBAT_LOG_EFFECT_CHANGE_SAVED",
-		5:  "COMBAT_LOG_EFFECT_CHANGE_SAVE_FAILED",
-		6:  "COMBAT_LOG_EFFECT_CHANGE_DAMAGE",
-		7:  "COMBAT_LOG_EFFECT_CHANGE_SAVE_SKIPPED",
-		8:  "COMBAT_LOG_EFFECT_CHANGE_TEMP_HP",
-		9:  "COMBAT_LOG_EFFECT_CHANGE_ZONE_MOVED",
-		10: "COMBAT_LOG_EFFECT_CHANGE_ZONE_ENTERED",
+		0: "COMBAT_LOG_EFFECT_CHANGE_UNSPECIFIED",
+		1: "COMBAT_LOG_EFFECT_CHANGE_ADDED",
+		2: "COMBAT_LOG_EFFECT_CHANGE_ENDED",
+		3: "COMBAT_LOG_EFFECT_CHANGE_DURATION_CHANGED",
+		4: "COMBAT_LOG_EFFECT_CHANGE_SAVED",
+		5: "COMBAT_LOG_EFFECT_CHANGE_SAVE_FAILED",
+		6: "COMBAT_LOG_EFFECT_CHANGE_DAMAGE",
+		7: "COMBAT_LOG_EFFECT_CHANGE_SAVE_SKIPPED",
+		8: "COMBAT_LOG_EFFECT_CHANGE_TEMP_HP",
+		9: "COMBAT_LOG_EFFECT_CHANGE_ZONE_MOVED",
 	}
 	CombatLogEffectChange_value = map[string]int32{
 		"COMBAT_LOG_EFFECT_CHANGE_UNSPECIFIED":      0,
@@ -2691,7 +2689,6 @@ var (
 		"COMBAT_LOG_EFFECT_CHANGE_SAVE_SKIPPED":     7,
 		"COMBAT_LOG_EFFECT_CHANGE_TEMP_HP":          8,
 		"COMBAT_LOG_EFFECT_CHANGE_ZONE_MOVED":       9,
-		"COMBAT_LOG_EFFECT_CHANGE_ZONE_ENTERED":     10,
 	}
 )
 
@@ -24240,7 +24237,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x12LayOnHandsCureKind\x12&\n" +
 	"\"LAY_ON_HANDS_CURE_KIND_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eLAY_ON_HANDS_CURE_KIND_DISEASE\x10\x01\x12!\n" +
-	"\x1dLAY_ON_HANDS_CURE_KIND_POISON\x10\x02*\xd0\x03\n" +
+	"\x1dLAY_ON_HANDS_CURE_KIND_POISON\x10\x02*\xa5\x03\n" +
 	"\x15CombatLogEffectChange\x12(\n" +
 	"$COMBAT_LOG_EFFECT_CHANGE_UNSPECIFIED\x10\x00\x12\"\n" +
 	"\x1eCOMBAT_LOG_EFFECT_CHANGE_ADDED\x10\x01\x12\"\n" +
@@ -24251,9 +24248,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x1fCOMBAT_LOG_EFFECT_CHANGE_DAMAGE\x10\x06\x12)\n" +
 	"%COMBAT_LOG_EFFECT_CHANGE_SAVE_SKIPPED\x10\a\x12$\n" +
 	" COMBAT_LOG_EFFECT_CHANGE_TEMP_HP\x10\b\x12'\n" +
-	"#COMBAT_LOG_EFFECT_CHANGE_ZONE_MOVED\x10\t\x12)\n" +
-	"%COMBAT_LOG_EFFECT_CHANGE_ZONE_ENTERED\x10\n" +
-	"*\x8f\x02\n" +
+	"#COMBAT_LOG_EFFECT_CHANGE_ZONE_MOVED\x10\t*\x8f\x02\n" +
 	"\rHighlightKind\x12\x1e\n" +
 	"\x1aHIGHLIGHT_KIND_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aHIGHLIGHT_KIND_MOST_DAMAGE\x10\x01\x12\x1f\n" +

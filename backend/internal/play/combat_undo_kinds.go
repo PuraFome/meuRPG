@@ -626,6 +626,11 @@ func (u *undoer) castDieBack(ctx context.Context, who playdb.Combatant, ev actio
 // castEffectsBack takes away the effects the cast put on its targets and the mark of
 // Hunter's Mark, and puts back the marks the cast took off.
 func (u *undoer) castEffectsBack(ctx context.Context, who playdb.Combatant, ev actionEvent) error {
+	if ev.CastID != "" { // the area the cast kept on the map
+		if err := u.c.q.DeleteSpellZonesOfCast(ctx, playdb.DeleteSpellZonesOfCastParams{EncounterID: u.c.enc.ID, CastID: ev.CastID}); err != nil {
+			return fmt.Errorf("take the spell zone of the cast away: %w", err)
+		}
+	}
 	if ev.Lasting != nil { // the effects the cast put on its targets
 		for _, id := range ev.Lasting.Effects {
 			if err := u.c.q.DeleteLastingEffect(ctx, id); err != nil {
