@@ -239,7 +239,7 @@ func TestAMasterAddedEffectShowsItsRoundsLeftToThePlayer(t *testing.T) {
 func TestMageArmorCastInACombatOnAnArmoredTargetHasNoEffect(t *testing.T) {
 	t.Parallel()
 	a := newCastingParty(t)
-	c := a.ana.character(t, a.pens)
+	c := a.caio.character(t, a.toren)
 	sheet := c.GetSheet()
 	sheet.GetFull().ArmorKey = leatherArmorKey
 	if _, err := a.master.characters.UpdateCharacter(t.Context(), connect.NewRequest(&charactersv1.UpdateCharacterRequest{
@@ -247,9 +247,15 @@ func TestMageArmorCastInACombatOnAnArmoredTargetHasNoEffect(t *testing.T) {
 	})); err != nil {
 		t.Fatalf("UpdateCharacter() error = %v", err)
 	}
-	a.closeFight(t)
+	a.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: a.goblin.GetId()}},
+		npcRolls: []int{3},
+		players:  map[string]int32{"Toren": 18, "Pensantus": 10, "Brisa": 1},
+		reveal:   []string{"Goblin"},
+		at:       map[string][2]int32{"Toren": {3, 3}, "Goblin": {8, 3}, "Pensantus": {4, 3}, "Brisa": {4, 4}},
+	})
 	e := a.turnOf(t, "Pensantus")
-	res, err := a.cast(t, a.ana, e, "Pensantus", mageArmorKey, slotOfLevel(1), a.at(t, "Pensantus"), noCastRoll)
+	res, err := a.cast(t, a.ana, e, "Pensantus", mageArmorKey, slotOfLevel(1), a.at(t, "Toren"), noCastRoll)
 	if err != nil {
 		t.Fatalf("CastSpell() error = %v", err)
 	}
