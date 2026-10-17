@@ -2,9 +2,7 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,12 +15,11 @@ import (
 
 	"github.com/PuraFome/meuRPG/backend/internal/platform/config"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/goldentest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 )
 
 func TestMain(m *testing.M) { dbtest.Main(m) }
-
-var updateRunGolden = flag.Bool("update-run-golden", false, "write testdata/golden/run.json again from the current run")
 
 // runLog is the log of one run: it sends the process SIGTERM once the HTTP
 // server has started, which is how Cloud Run stops the container, so run
@@ -46,14 +43,15 @@ func (l *runLog) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-// lines is the log, one record per line, without the time and the static
-// attributes, with what depends on the machine (the port, the content
-// revision, the wrapped errors) masked.
+// lines is the log's warnings and errors, one record per line, without the
+// time and the static attributes, with what depends on the machine (the port,
+// the content revision, the wrapped errors) masked. The INFO lines are
+// progress, not behavior.
 func (l *runLog) lines(t *testing.T) []string {
 	t.Helper()
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	var out []string
+	out := []string{}
 	sc := bufio.NewScanner(strings.NewReader(l.buf.String()))
 	for sc.Scan() {
 		dec := json.NewDecoder(strings.NewReader(sc.Text()))
@@ -82,14 +80,16 @@ func (l *runLog) lines(t *testing.T) []string {
 			}
 			parts = append(parts, fmt.Sprintf("%s=%v", key, value))
 		}
-		out = append(out, strings.Join(parts, " "))
+		if line := strings.Join(parts, " "); !strings.HasPrefix(line, "severity=INFO ") {
+			out = append(out, line)
+		}
 	}
 	return out
 }
 
 // tempDirName is the folder name t.TempDir gives this test, which changes
 // from run to run.
-var tempDirName = regexp.MustCompile(`TestRunCharacterization\d+`)
+var tempDirName = regexp.MustCompile(`TestRunConfigurations\d+`)
 
 // maskRunError hides what an error owes to the machine rather than to run:
 // the temporary folders, and why the metadata server could not be reached
@@ -100,7 +100,7 @@ func maskRunError(msg string) string {
 		return metadata + "*"
 	}
 	msg = strings.ReplaceAll(msg, os.TempDir(), "$TMPDIR")
-	return tempDirName.ReplaceAllString(msg, "TestRunCharacterization*")
+	return tempDirName.ReplaceAllString(msg, "TestRunConfigurations*")
 }
 
 // runOutcome is what one run gives: its error and its log.
@@ -193,11 +193,11 @@ func runCases() []runCase {
 	}
 }
 
-// TestRunCharacterization freezes, for every configuration of runCases, the
-// error run returns and every line it logs, in order, in
-// testdata/golden/run.json. Not parallel: the server is stopped with a
-// signal to the whole process.
-func TestRunCharacterization(t *testing.T) {
+// TestRunConfigurations: for every configuration of runCases, the error run
+// returns and every warning or error it logs, in order, in
+// testdata/golden/run.json. Not parallel: the server is stopped with a signal
+// to the whole process.
+func TestRunConfigurations(t *testing.T) {
 	got := map[string]runOutcome{}
 	for _, c := range runCases() {
 		cfg := c.cfg(t)
@@ -216,26 +216,5 @@ func TestRunCharacterization(t *testing.T) {
 		}
 		got[c.name] = out
 	}
-	data, err := json.MarshalIndent(got, "", "  ")
-	if err != nil {
-		t.Fatal(err)
-	}
-	data = append(data, '\n')
-	path := filepath.Join("testdata", "golden", "run.json")
-	if *updateRunGolden {
-		if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(path, data, 0o600); err != nil {
-			t.Fatal(err)
-		}
-		return
-	}
-	want, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("read the golden (run with -update-run-golden): %v", err)
-	}
-	if !bytes.Equal(want, data) {
-		t.Errorf("run drifted from %s; diff it after running with -update-run-golden", path)
-	}
+	goldentest.JSON(t, "testdata/golden/run.json", got)
 }

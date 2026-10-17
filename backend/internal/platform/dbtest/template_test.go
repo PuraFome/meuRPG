@@ -36,7 +36,7 @@ func scratchDatabase(t *testing.T, label string, stmts ...string) *sql.DB {
 	return conn
 }
 
-// TestSchemaDDLOrdersTablesAfterTheirReferences freezes schemaDDL: the
+// TestSchemaDDLOrdersTablesAfterTheirReferences checks schemaDDL: the
 // sequences first, then the tables in rounds, each round taking (in name
 // order) the tables whose references are all created; a table that points
 // at itself is ready at once.
@@ -80,7 +80,7 @@ func TestSchemaDDLOrdersTablesAfterTheirReferences(t *testing.T) {
 	}
 }
 
-// TestSchemaDDLRefusesACycle freezes the error for foreign keys in a cycle:
+// TestSchemaDDLRefusesACycle checks the error for foreign keys in a cycle:
 // it names, in name order, every table left once no round makes progress
 // (the tables that only depend on the cycle, too).
 func TestSchemaDDLRefusesACycle(t *testing.T) {
@@ -101,7 +101,7 @@ func TestSchemaDDLRefusesACycle(t *testing.T) {
 	}
 }
 
-// TestSchemaDDLErrors freezes the error of a catalog that cannot be read.
+// TestSchemaDDLErrors checks the error of a catalog that cannot be read.
 func TestSchemaDDLErrors(t *testing.T) {
 	t.Parallel()
 	conn := scratchDatabase(t, "closed")
@@ -112,7 +112,7 @@ func TestSchemaDDLErrors(t *testing.T) {
 	}
 }
 
-// TestBuildTemplateErrors freezes buildTemplate's refusals: a URL that does
+// TestBuildTemplateErrors checks buildTemplate's refusals: a URL that does
 // not parse, and a server that does not answer.
 func TestBuildTemplateErrors(t *testing.T) {
 	t.Parallel()
@@ -126,7 +126,7 @@ func TestBuildTemplateErrors(t *testing.T) {
 	}
 }
 
-// TestBuildTemplateFindsTheMigratedTemplate freezes the path of every process
+// TestBuildTemplateFindsTheMigratedTemplate checks the path of every process
 // but the first: the template exists (CREATE DATABASE says 42P04) and is
 // complete, so it is read, not migrated again, and gives what the first
 // process got.
@@ -159,7 +159,7 @@ func TestBuildTemplateFindsTheMigratedTemplate(t *testing.T) {
 	}
 }
 
-// TestGooseIDsOfACopiedDatabase freezes a finding, not fixed: the template's
+// TestGooseIDsOfACopiedDatabase documents a known defect, not fixed: the template's
 // DDL creates goose's identity sequence (goose_db_version_id_seq) as a
 // sequence of its own, before goose_db_version, whose identity column then
 // makes another one. NewPool's setval moves the copy, not the sequence the

@@ -546,7 +546,7 @@ func TestAttacksLeft(t *testing.T) {
 	}
 }
 
-// MR-014 (question 57): the spells come sorted: castable now first, then the
+// MR-014: the spells come sorted: castable now first, then the
 // rest, each group by circle (cantrips first) and Portuguese name.
 func TestMR014_SpellsSortByAvailabilityThenCircle(t *testing.T) {
 	t.Parallel()
@@ -559,7 +559,7 @@ func TestMR014_SpellsSortByAvailabilityThenCircle(t *testing.T) {
 		return out
 	}
 
-	// Round 2, 1 slot of the 1st circle left (E8-02 state 1): the cantrip and
+	// Round 2, 1 slot of the 1st circle left: the cantrip and
 	// Magic Missile and Sleep are castable; Shield, Web and Misty Step are not.
 	one := Options(d, TurnState{}, Usage{SlotsUsed: [9]int{3, 2}})
 	want := []string{"spell:minor-illusion", "spell:magic-missile", "spell:sleep", "spell:shield", "spell:misty-step", "spell:web"}
@@ -567,7 +567,7 @@ func TestMR014_SpellsSortByAvailabilityThenCircle(t *testing.T) {
 		t.Errorf("1 slot: %v, want %v", got, want)
 	}
 
-	// Round 4, 0 slots of the 1st circle (E8-02 state 2): only the cantrip is
+	// Round 4, 0 slots of the 1st circle: only the cantrip is
 	// castable. Then the rest, by circle and name: the 1st (Escudo Arcano,
 	// Mísseis Mágicos, Sono), the 2nd (Passo Nebuloso, Teia).
 	none := Options(d, TurnState{}, Usage{SlotsUsed: [9]int{4, 2}})

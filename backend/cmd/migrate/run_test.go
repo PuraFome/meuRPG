@@ -67,7 +67,7 @@ func runMigrate(t *testing.T, cfg config.Config, args ...string) ([]string, erro
 	return migrateLogLines(t, buf.String()), err
 }
 
-// TestRunRefusals freezes the refusals that need no database, in order: the
+// TestRunRefusals checks the refusals that need no database, in order: the
 // arguments first, then DATABASE_URL.
 func TestRunRefusals(t *testing.T) {
 	t.Parallel()
@@ -103,7 +103,7 @@ func TestRunRefusals(t *testing.T) {
 	}
 }
 
-// TestRunOnADatabase freezes the log of each command on a migrated database:
+// TestRunOnADatabase checks the log of each command on a migrated database:
 // status lists every migration, up with nothing pending says so, down rolls
 // the latest back, status shows it pending, and up applies it again.
 func TestRunOnADatabase(t *testing.T) {
@@ -189,7 +189,7 @@ func migrationSources(t *testing.T, dsn string) []migrationSource {
 	return out
 }
 
-// TestRunErrorsOfTheDatabase freezes the errors of each command when the
+// TestRunErrorsOfTheDatabase checks the errors of each command when the
 // database fails it: unreachable (the lock comes first for up and down), or
 // empty, where down has nothing to roll back and status lists every migration
 // as pending.

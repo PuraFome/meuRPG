@@ -12,7 +12,7 @@ import (
 
 // The dice of a table spell's damage or healing
 // must be a die that exists at a table (the SRD uses d4..d12; the dice package
-// accepts 4, 6, 8, 10, 12, 20 and 100). With checks only the count today, so a
+// accepts 4, 6, 8, 10, 12, 20 and 100). With checks only the count, so a
 // 1d200 spell silently rolls as 1d100 (play clamps the sides to 100) and a d7
 // cannot be rolled with real dice.
 func TestTableSpellDiceAreDiceThatExist(t *testing.T) {

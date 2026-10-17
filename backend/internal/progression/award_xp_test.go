@@ -13,12 +13,10 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
-// Characterization of AwardXP, give, sameRequest and UndoLastXPAward: every
-// refusal as the app reads it (code, message and XPBlocked detail) and which
-// comes first, the rows, session events, log lines and publishes of each kind
-// of award and of its undo, the retries, and what each failure of another
-// module leaves. They freeze what the code does today so the split of those functions
-// changes none of it.
+// AwardXP and UndoLastXPAward: every refusal as the app reads it (code,
+// message and XPBlocked detail) and which comes first, the rows and session
+// events of each kind of award and of its undo, the retries of a key, what a
+// failure of another module leaves, and the races inside the transaction.
 
 const (
 	modeManualAward  = progressionv1.XPAwardMode_XP_AWARD_MODE_MANUAL
@@ -33,7 +31,7 @@ const (
 // the treasures, the reason, the key and the characters.
 func TestAwardXPRefusesABadRequestExactly(t *testing.T) {
 	t.Parallel()
-	rig := newAwardRig(t, enemies, 1)
+	rig := newFaultRig(t, enemies, 1)
 	pc := rig.pcs[0].GetId()
 	manual := func(r *progressionv1.AwardXPRequest) {
 		r.Mode, r.Amount, r.CharacterIds = modeManualAward, 10, []string{pc}
@@ -211,7 +209,6 @@ func TestAwardXPRefusesABadRequestExactly(t *testing.T) {
 	if n := len(rig.master.history(t, rig.campaign)); n != 1 {
 		t.Errorf("history has %d awards, want only the one given: a refusal writes nothing", n)
 	}
-	wantAwardLines(t, "logs", rig.takeLogs(t), nil) // no session open: nothing is logged
 }
 
 // TestUndoLastXPAwardRefusesExactly: the caller, the key, the expected award,
@@ -219,7 +216,7 @@ func TestAwardXPRefusesABadRequestExactly(t *testing.T) {
 // whatever happened since.
 func TestUndoLastXPAwardRefusesExactly(t *testing.T) {
 	t.Parallel()
-	rig := newAwardRig(t, enemies, 1)
+	rig := newFaultRig(t, enemies, 1)
 	pc := rig.pcs[0].GetId()
 
 	_, err := rig.players[0].xp.UndoLastXPAward(t.Context(), connect.NewRequest(&progressionv1.UndoLastXPAwardRequest{CampaignId: rig.campaign, IdempotencyKey: "1"}))
@@ -255,158 +252,82 @@ func TestUndoLastXPAwardRefusesExactly(t *testing.T) {
 	if got := rig.master.xpOf(t, rig.pcs[0]); got != 35 {
 		t.Errorf("sheet XP = %d, want 35: the retry took nothing back", got)
 	}
-	wantAwardLines(t, "rows", []string{
+	wantLines(t, "rows", []string{
 		rig.awardRow(t, first.GetAward().GetId()), rig.awardRow(t, second.GetAward().GetId()), rig.awardRow(t, third.GetAward().GetId()),
 	}, []string{
 		`award <first> mode=manual reason="Pela ajuda ao ferreiro" given_by=<master> encounter= gold=null total=30 milestone= again=false hashed=true undone=false undone_by= undo_key=false; share <pensantus> xp=30 level_at_mark=null`,
 		`award <second> mode=manual reason="Pela ajuda ao ferreiro" given_by=<master> encounter= gold=null total=20 milestone= again=false hashed=true undone=true undone_by=<master> undo_key=true; share <pensantus> xp=20 level_at_mark=null`,
 		`award <third> mode=manual reason="Pela ajuda ao ferreiro" given_by=<master> encounter= gold=null total=5 milestone= again=false hashed=true undone=false undone_by= undo_key=false; share <pensantus> xp=5 level_at_mark=null`,
 	})
-	if n := rig.faults.xpChanged(rig.campaign); n != 0 {
-		t.Errorf("PublishXPChanged ran %d times with no session open, want 0", n)
-	}
-	wantAwardLines(t, "logs", rig.takeLogs(t), nil)
 }
 
-// TestGiveRefusalsAndTheirOrder: the refusals the database decides, with
-// their detail, and which one wins when a request has two faults.
+// TestGiveRefusalsAndTheirOrder: the refusals the database decides in an
+// enemies campaign, with their detail, and which one wins when a request has
+// two faults. The refusals of the gold and milestones campaigns are in
+// gold_test.go and milestones_test.go.
 func TestGiveRefusalsAndTheirOrder(t *testing.T) {
 	t.Parallel()
-	t.Run("enemies campaign", func(t *testing.T) {
-		t.Parallel()
-		rig := newAwardRig(t, enemies, 2)
-		pens, toren := rig.pcs[0].GetId(), rig.pcs[1].GetId()
-		npc := rig.master.minion(t, rig.campaign, "Goblin", 1)
-		rig.label(npc.GetId(), "goblin")
-		stranger := newKey()
-		rig.label(stranger, "stranger")
+	rig := newFaultRig(t, enemies, 2)
+	pens, toren := rig.pcs[0].GetId(), rig.pcs[1].GetId()
+	npc := rig.master.minion(t, rig.campaign, "Goblin", 1)
+	rig.label(npc.GetId(), "goblin")
+	stranger := newKey()
+	rig.label(stranger, "stranger")
 
-		_, err := rig.master.award(rig.campaign, func(r *progressionv1.AwardXPRequest) {
-			r.Mode, r.Gold, r.CharacterIds = modeGoldAward, 10, []string{stranger}
-		})
-		rig.wantAwardRefusal(t, "the campaign's mode comes before the party", err,
-			"failed_precondition: this campaign's XP mode does not take this [reason=XP_BLOCKED_REASON_MODE_NOT_ALLOWED character= xp_mode=XP_MODE_ENEMIES treasure=]")
-		_, err = rig.master.award(rig.campaign, func(r *progressionv1.AwardXPRequest) {
-			r.Mode, r.Amount, r.CharacterIds = modeManualAward, 10, []string{pens, stranger, npc.GetId()}
-		})
-		rig.wantAwardRefusal(t, "the first character not in the party", err,
-			"failed_precondition: only the campaign's living player characters can get XP [reason=XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE character=<stranger> xp_mode=XP_MODE_UNSPECIFIED treasure=]")
-		_, err = rig.master.award(rig.campaign, func(r *progressionv1.AwardXPRequest) {
-			r.Mode, r.Amount, r.CharacterIds = modeManualAward, 1, []string{pens, toren}
-		})
-		rig.wantAwardRefusal(t, "less than 1 XP each", err,
-			"failed_precondition: there is no XP to give each character [reason=XP_BLOCKED_REASON_NOTHING_TO_GIVE character= xp_mode=XP_MODE_UNSPECIFIED treasure=]")
+	_, err := rig.master.award(rig.campaign, func(r *progressionv1.AwardXPRequest) {
+		r.Mode, r.Gold, r.CharacterIds = modeGoldAward, 10, []string{stranger}
+	})
+	rig.wantAwardRefusal(t, "the campaign's mode comes before the party", err,
+		"failed_precondition: this campaign's XP mode does not take this [reason=XP_BLOCKED_REASON_MODE_NOT_ALLOWED character= xp_mode=XP_MODE_ENEMIES treasure=]")
+	_, err = rig.master.award(rig.campaign, func(r *progressionv1.AwardXPRequest) {
+		r.Mode, r.Amount, r.CharacterIds = modeManualAward, 10, []string{pens, stranger, npc.GetId()}
+	})
+	rig.wantAwardRefusal(t, "the first character not in the party", err,
+		"failed_precondition: only the campaign's living player characters can get XP [reason=XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE character=<stranger> xp_mode=XP_MODE_UNSPECIFIED treasure=]")
+	_, err = rig.master.award(rig.campaign, func(r *progressionv1.AwardXPRequest) {
+		r.Mode, r.Amount, r.CharacterIds = modeManualAward, 1, []string{pens, toren}
+	})
+	rig.wantAwardRefusal(t, "less than 1 XP each", err,
+		"failed_precondition: there is no XP to give each character [reason=XP_BLOCKED_REASON_NOTHING_TO_GIVE character= xp_mode=XP_MODE_UNSPECIFIED treasure=]")
 
-		open := rig.fight(t, npc, 2, 1, false)
-		rig.label(open.GetId(), "open")
-		_, err = rig.enemies(open.GetId(), pens, stranger)
-		rig.wantAwardRefusal(t, "the party comes before the combat", err,
-			"failed_precondition: only the campaign's living player characters can get XP [reason=XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE character=<stranger> xp_mode=XP_MODE_UNSPECIFIED treasure=]")
-		_, err = rig.enemies(open.GetId(), pens)
-		rig.wantAwardRefusal(t, "a combat not ended", err,
-			"failed_precondition: the combat has not ended [reason=XP_BLOCKED_REASON_ENCOUNTER_NOT_ENDED character= xp_mode=XP_MODE_UNSPECIFIED treasure=]")
-		_, err = rig.enemies(newKey(), pens)
-		rig.wantAwardRefusal(t, "a combat that does not exist", err, "not_found: encounter not found")
-		if _, err := rig.master.combat.EndEncounter(t.Context(), connect.NewRequest(&playv1.EndEncounterRequest{CampaignId: rig.campaign, EncounterId: open.GetId(), IdempotencyKey: newKey()})); err != nil {
-			t.Fatalf("EndEncounter() error = %v", err)
-		}
-		_, err = rig.enemies(open.GetId(), pens, toren)
-		rig.wantAwardRefusal(t, "1 XP of defeated among two", err,
-			"failed_precondition: there is no XP to give each character [reason=XP_BLOCKED_REASON_NOTHING_TO_GIVE character= xp_mode=XP_MODE_UNSPECIFIED treasure=]")
-		res, err := rig.enemies(open.GetId(), pens)
-		if err != nil || res.GetXpEach() != 1 {
-			t.Fatalf("AwardXP(enemies, 1 XP to one) = %v, %v; want 1 each", res, err)
-		}
-		_, err = rig.enemies(open.GetId(), toren)
-		rig.wantAwardRefusal(t, "the combat's XP given already", err,
-			"failed_precondition: the combat's XP was already given [reason=XP_BLOCKED_REASON_ALREADY_AWARDED character= xp_mode=XP_MODE_UNSPECIFIED treasure=]")
-		none := rig.fight(t, npc, 1, 0, true)
-		_, err = rig.enemies(none.GetId(), pens)
-		rig.wantAwardRefusal(t, "a combat with no one defeated", err,
-			"failed_precondition: there is no XP to give each character [reason=XP_BLOCKED_REASON_NOTHING_TO_GIVE character= xp_mode=XP_MODE_UNSPECIFIED treasure=]")
-	})
-	t.Run("gold campaign", func(t *testing.T) {
-		t.Parallel()
-		rig := newAwardRig(t, gold, 1)
-		pens := rig.pcs[0].GetId()
-		mapID := rig.newMap()
-		hidden := rig.treasure(t, mapID, "Escondido", 10, nil)
-		rig.label(hidden, "hidden")
-		converted := rig.treasure(t, mapID, "Ídolo", 10, nil, pens)
-		rig.label(converted, "converted")
-		if _, err := rig.backToTown("", []string{pens}, converted); err != nil {
-			t.Fatalf("AwardXP(voltar à cidade) error = %v", err)
-		}
-		found := rig.treasure(t, mapID, "Bolsa", 10, nil, pens)
-		stranger := newKey()
-		rig.label(stranger, "stranger")
-		_, err := rig.backToTown("", []string{stranger}, converted)
-		rig.wantAwardRefusal(t, "the party comes before the treasures", err,
-			"failed_precondition: only the campaign's living player characters can get XP [reason=XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE character=<stranger> xp_mode=XP_MODE_UNSPECIFIED treasure=]")
-		_, err = rig.backToTown("", []string{pens}, found, newKey(), hidden)
-		rig.wantAwardRefusal(t, "a point that is not the campaign's comes first", err, "not_found: treasure not found")
-		_, err = rig.backToTown("", []string{pens}, found, hidden, converted)
-		rig.wantAwardRefusal(t, "the first treasure that does not fit, in the order sent", err,
-			"failed_precondition: the treasure was not found yet [reason=XP_BLOCKED_REASON_TREASURE_NOT_FOUND_YET character= xp_mode=XP_MODE_UNSPECIFIED treasure=<hidden>]")
-		_, err = rig.backToTown("", []string{pens}, found, converted, hidden)
-		rig.wantAwardRefusal(t, "a treasure converted already", err,
-			"failed_precondition: the treasure was already turned into XP [reason=XP_BLOCKED_REASON_TREASURE_ALREADY_CONVERTED character= xp_mode=XP_MODE_UNSPECIFIED treasure=<converted>]")
-		big := rig.treasure(t, mapID, "Enorme", 999_999, nil, pens)
-		_, err = rig.backToTown("", []string{pens}, found, big)
-		rig.wantAwardRefusal(t, "one PO more than a sheet holds", err,
-			"failed_precondition: the treasures are worth more than a sheet can hold in XP [reason=XP_BLOCKED_REASON_TREASURES_OVER_LIMIT character= xp_mode=XP_MODE_UNSPECIFIED treasure=]")
-		// The limit itself converts.
-		bigger := rig.treasure(t, mapID, "Quase", 999_990, nil, pens)
-		if res, err := rig.backToTown("", []string{pens}, found, bigger); err != nil || res.GetXpEach() != 1_000_000 {
-			t.Errorf("AwardXP(1000000 PO) = %v, %v; want 1000000 XP", res, err)
-		}
-	})
-	t.Run("milestones campaign", func(t *testing.T) {
-		t.Parallel()
-		rig := newAwardRig(t, milestones, 2)
-		pens, toren := rig.pcs[0].GetId(), rig.pcs[1].GetId()
-		stranger := newKey()
-		rig.label(stranger, "stranger")
-		_, err := rig.master.award(rig.campaign, func(r *progressionv1.AwardXPRequest) {
-			r.Mode, r.Amount, r.CharacterIds = modeManualAward, 10, []string{pens}
-		})
-		rig.wantAwardRefusal(t, "a manual award", err,
-			"failed_precondition: this campaign's XP mode does not take this [reason=XP_BLOCKED_REASON_MODE_NOT_ALLOWED character= xp_mode=XP_MODE_MILESTONES treasure=]")
-		planned := rig.master.plan(t, rig.campaign, "A ponte")
-		_, err = rig.master.giveMilestone(planned.GetId(), rig.campaign, pens)
-		rig.wantAwardRefusal(t, "give a milestone not reached", err,
-			"failed_precondition: the milestone was not reached yet [reason=XP_BLOCKED_REASON_MILESTONE_NOT_REACHED character= xp_mode=XP_MODE_UNSPECIFIED treasure=]")
-		_, err = rig.master.xp.MarkMilestoneReached(t.Context(), connect.NewRequest(&progressionv1.MarkMilestoneReachedRequest{
-			CampaignId: rig.campaign, MilestoneId: newKey(), CharacterIds: []string{stranger}, IdempotencyKey: newKey(),
-		}))
-		rig.wantAwardRefusal(t, "the party comes before the milestone", err,
-			"failed_precondition: only the campaign's living player characters can get XP [reason=XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE character=<stranger> xp_mode=XP_MODE_UNSPECIFIED treasure=]")
-		_, err = rig.master.xp.MarkMilestoneReached(t.Context(), connect.NewRequest(&progressionv1.MarkMilestoneReachedRequest{
-			CampaignId: rig.campaign, MilestoneId: newKey(), CharacterIds: []string{pens}, IdempotencyKey: newKey(),
-		}))
-		rig.wantAwardRefusal(t, "a milestone that does not exist", err, "not_found: milestone not found")
-		rig.master.reach(t, rig.campaign, planned.GetId(), pens)
-		_, err = rig.master.xp.MarkMilestoneReached(t.Context(), connect.NewRequest(&progressionv1.MarkMilestoneReachedRequest{
-			CampaignId: rig.campaign, MilestoneId: planned.GetId(), CharacterIds: []string{toren}, IdempotencyKey: newKey(),
-		}))
-		rig.wantAwardRefusal(t, "reach a milestone reached", err,
-			"failed_precondition: the milestone was already reached [reason=XP_BLOCKED_REASON_MILESTONE_ALREADY_REACHED character= xp_mode=XP_MODE_UNSPECIFIED treasure=]")
-		_, err = rig.master.giveMilestone(planned.GetId(), rig.campaign, toren, pens)
-		rig.wantAwardRefusal(t, "give it to one who has it", err,
-			"failed_precondition: the character already has this milestone [reason=XP_BLOCKED_REASON_CHARACTER_ALREADY_MARKED character=<pensantus> xp_mode=XP_MODE_UNSPECIFIED treasure=]")
-	})
+	open := rig.fight(t, npc, 2, 1, false)
+	rig.label(open.GetId(), "open")
+	_, err = rig.enemies(open.GetId(), pens, stranger)
+	rig.wantAwardRefusal(t, "the party comes before the combat", err,
+		"failed_precondition: only the campaign's living player characters can get XP [reason=XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE character=<stranger> xp_mode=XP_MODE_UNSPECIFIED treasure=]")
+	_, err = rig.enemies(open.GetId(), pens)
+	rig.wantAwardRefusal(t, "a combat not ended", err,
+		"failed_precondition: the combat has not ended [reason=XP_BLOCKED_REASON_ENCOUNTER_NOT_ENDED character= xp_mode=XP_MODE_UNSPECIFIED treasure=]")
+	_, err = rig.enemies(newKey(), pens)
+	rig.wantAwardRefusal(t, "a combat that does not exist", err, "not_found: encounter not found")
+	if _, err := rig.master.combat.EndEncounter(t.Context(), connect.NewRequest(&playv1.EndEncounterRequest{CampaignId: rig.campaign, EncounterId: open.GetId(), IdempotencyKey: newKey()})); err != nil {
+		t.Fatalf("EndEncounter() error = %v", err)
+	}
+	_, err = rig.enemies(open.GetId(), pens, toren)
+	rig.wantAwardRefusal(t, "1 XP of defeated among two", err,
+		"failed_precondition: there is no XP to give each character [reason=XP_BLOCKED_REASON_NOTHING_TO_GIVE character= xp_mode=XP_MODE_UNSPECIFIED treasure=]")
+	res, err := rig.enemies(open.GetId(), pens)
+	if err != nil || res.GetXpEach() != 1 {
+		t.Fatalf("AwardXP(enemies, 1 XP to one) = %v, %v; want 1 each", res, err)
+	}
+	_, err = rig.enemies(open.GetId(), toren)
+	rig.wantAwardRefusal(t, "the combat's XP given already", err,
+		"failed_precondition: the combat's XP was already given [reason=XP_BLOCKED_REASON_ALREADY_AWARDED character= xp_mode=XP_MODE_UNSPECIFIED treasure=]")
+	none := rig.fight(t, npc, 1, 0, true)
+	_, err = rig.enemies(none.GetId(), pens)
+	rig.wantAwardRefusal(t, "a combat with no one defeated", err,
+		"failed_precondition: there is no XP to give each character [reason=XP_BLOCKED_REASON_NOTHING_TO_GIVE character= xp_mode=XP_MODE_UNSPECIFIED treasure=]")
 }
 
 // TestEachAwardKindAndItsUndo: with a session open, each kind of award writes
-// its rows, its session event and its log lines and tells the streams once; a
-// retry of its key changes and sends nothing; its undo takes it back and
-// writes its own event and line. Then the same with no session open: the rows
-// only.
+// its rows and its session event; a retry of its key changes nothing; its undo
+// takes it back and writes its own event. Then the same with no session open:
+// the rows only.
 func TestEachAwardKindAndItsUndo(t *testing.T) {
 	t.Parallel()
 	t.Run("enemies and manual", func(t *testing.T) {
 		t.Parallel()
-		rig := newAwardRig(t, enemies, 3)
+		rig := newFaultRig(t, enemies, 3)
 		pens, toren, brisa := rig.pcs[0].GetId(), rig.pcs[1].GetId(), rig.pcs[2].GetId()
 		goblin := rig.master.minion(t, rig.campaign, "Goblin", 50)
 		enc := rig.fight(t, goblin, 2, 2, true) // opens the session
@@ -436,22 +357,15 @@ func TestEachAwardKindAndItsUndo(t *testing.T) {
 			t.Fatalf("AwardXP(manual) error = %v", err)
 		}
 		rig.label(manual.GetAward().GetId(), "manual")
-		wantAwardLines(t, "rows", []string{rig.awardRow(t, res.GetAward().GetId()), rig.awardRow(t, manual.GetAward().GetId())}, []string{
+		wantLines(t, "rows", []string{rig.awardRow(t, res.GetAward().GetId()), rig.awardRow(t, manual.GetAward().GetId())}, []string{
 			`award <enemies> mode=enemies reason="Pela ajuda ao ferreiro" given_by=<master> encounter=<combat> gold=null total=100 milestone= again=false hashed=true undone=false undone_by= undo_key=false; share <brisa> xp=33 level_at_mark=null; share <pensantus> xp=33 level_at_mark=null; share <toren> xp=33 level_at_mark=null`,
 			`award <manual> mode=manual reason="Boa ideia" given_by=<master> encounter= gold=null total=7 milestone= again=false hashed=true undone=false undone_by= undo_key=false; share <brisa> xp=7 level_at_mark=null`,
 		})
 		// The award's event keeps the characters in the order sent.
-		wantAwardLines(t, "events", rig.takeEvents(t), []string{
+		wantLines(t, "events", rig.takeEvents(t), []string{
 			`xp_awarded by <master> {"award_id":"<enemies>","character_ids":["<toren>","<pensantus>","<brisa>"],"encounter_id":"<combat>","lost_xp":1,"mode":"enemies","total_xp":100,"xp_each":33}`,
 			`xp_awarded by <master> {"award_id":"<manual>","character_ids":["<brisa>"],"mode":"manual","total_xp":7,"xp_each":7}`,
 		})
-		wantAwardLines(t, "logs", rig.takeLogs(t), []string{
-			`DEBUG event award_id=<enemies> characters=3 event=xp.awarded mode=enemies total_xp=100`,
-			`DEBUG event award_id=<manual> characters=1 event=xp.awarded mode=manual total_xp=7`,
-		})
-		if n := rig.faults.xpChanged(rig.campaign); n != 2 {
-			t.Errorf("PublishXPChanged ran %d times, want 2 (the retry sends nothing)", n)
-		}
 
 		for _, undoing := range []string{"manual", "enemies"} {
 			undoKey := newKey()
@@ -466,22 +380,15 @@ func TestEachAwardKindAndItsUndo(t *testing.T) {
 				t.Fatalf("UndoLastXPAward(%s, retry) error = %v", undoing, err)
 			}
 		}
-		wantAwardLines(t, "rows after the undos", []string{rig.awardRow(t, res.GetAward().GetId()), rig.awardRow(t, manual.GetAward().GetId())}, []string{
+		wantLines(t, "rows after the undos", []string{rig.awardRow(t, res.GetAward().GetId()), rig.awardRow(t, manual.GetAward().GetId())}, []string{
 			`award <enemies> mode=enemies reason="Pela ajuda ao ferreiro" given_by=<master> encounter=<combat> gold=null total=100 milestone= again=false hashed=true undone=true undone_by=<master> undo_key=true; share <brisa> xp=33 level_at_mark=null; share <pensantus> xp=33 level_at_mark=null; share <toren> xp=33 level_at_mark=null`,
 			`award <manual> mode=manual reason="Boa ideia" given_by=<master> encounter= gold=null total=7 milestone= again=false hashed=true undone=true undone_by=<master> undo_key=true; share <brisa> xp=7 level_at_mark=null`,
 		})
 		// The undo's event lists the characters in the order they were created.
-		wantAwardLines(t, "events of the undos", rig.takeEvents(t), []string{
+		wantLines(t, "events of the undos", rig.takeEvents(t), []string{
 			`xp_award_undone by <master> {"award_id":"<manual>","character_ids":["<brisa>"],"mode":"manual","total_xp":7}`,
 			`xp_award_undone by <master> {"award_id":"<enemies>","character_ids":["<pensantus>","<toren>","<brisa>"],"encounter_id":"<combat>","mode":"enemies","total_xp":100}`,
 		})
-		wantAwardLines(t, "logs of the undos", rig.takeLogs(t), []string{
-			`DEBUG event award_id=<manual> event=xp.undone`,
-			`DEBUG event award_id=<enemies> event=xp.undone`,
-		})
-		if n := rig.faults.xpChanged(rig.campaign); n != 4 {
-			t.Errorf("PublishXPChanged ran %d times, want 4 (the retries send nothing)", n)
-		}
 		for i, pc := range rig.pcs {
 			if got := rig.master.xpOf(t, pc); got != 0 {
 				t.Errorf("sheet %d XP = %d after the undos, want 0", i, got)
@@ -494,7 +401,7 @@ func TestEachAwardKindAndItsUndo(t *testing.T) {
 	})
 	t.Run("gold", func(t *testing.T) {
 		t.Parallel()
-		rig := newAwardRig(t, gold, 2)
+		rig := newFaultRig(t, gold, 2)
 		pens, toren := rig.pcs[0].GetId(), rig.pcs[1].GetId()
 		first, second := rig.newMap(), rig.newMap()
 		rig.label(first, "map1")
@@ -529,51 +436,37 @@ func TestEachAwardKindAndItsUndo(t *testing.T) {
 		if _, err := rig.backToTown(key, []string{pens, toren}, bolsa, idolo, calice); err != nil {
 			t.Errorf("AwardXP(voltar à cidade, retry in another order) error = %v", err)
 		}
-		wantAwardLines(t, "rows", []string{rig.awardRow(t, typed.GetAward().GetId()), rig.awardRow(t, town.GetAward().GetId())}, []string{
+		wantLines(t, "rows", []string{rig.awardRow(t, typed.GetAward().GetId()), rig.awardRow(t, town.GetAward().GetId())}, []string{
 			`award <typed> mode=gold reason="Pela ajuda ao ferreiro" given_by=<master> encounter= gold=25 total=25 milestone= again=false hashed=true undone=false undone_by= undo_key=false; share <pensantus> xp=12 level_at_mark=null; share <toren> xp=12 level_at_mark=null`,
 			`award <town> mode=gold reason="Voltar à cidade" given_by=<master> encounter= gold=201 total=201 milestone= again=false hashed=true undone=false undone_by= undo_key=false; share <pensantus> xp=100 level_at_mark=null; share <toren> xp=100 level_at_mark=null; treasure <bolsa> po=120; treasure <calice> po=0; treasure <idolo> po=81`,
 		})
 		// The award's event keeps the characters and the treasures in the order sent.
-		wantAwardLines(t, "events", rig.takeEvents(t), []string{
+		wantLines(t, "events", rig.takeEvents(t), []string{
 			`xp_awarded by <master> {"award_id":"<typed>","character_ids":["<pensantus>","<toren>"],"gold":25,"lost_xp":1,"mode":"gold","total_xp":25,"xp_each":12}`,
 			`xp_awarded by <master> {"award_id":"<town>","character_ids":["<toren>","<pensantus>"],"gold":201,"lost_xp":1,"mode":"gold","total_xp":201,"treasures":[{"point_id":"<idolo>","value_po":81},{"point_id":"<calice>","value_po":0},{"point_id":"<bolsa>","value_po":120}],"xp_each":100}`,
 		})
-		wantAwardLines(t, "logs", rig.takeLogs(t), []string{
-			`DEBUG event award_id=<typed> characters=2 event=xp.awarded mode=gold total_xp=25`,
-			`DEBUG event award_id=<town> characters=2 event=xp.awarded mode=gold total_xp=201`,
-			`DEBUG event award_id=<town> event=treasure.converted treasures=3`,
-		})
-		wantAwardLines(t, "maps told", rig.redactPublished(), []string{`<campaign> <map1>,<map2>`})
 
 		for range 2 {
 			if _, err := rig.undoWith(newKey(), ""); err != nil {
 				t.Fatalf("UndoLastXPAward() error = %v", err)
 			}
 		}
-		wantAwardLines(t, "rows after the undos", []string{rig.awardRow(t, typed.GetAward().GetId()), rig.awardRow(t, town.GetAward().GetId())}, []string{
+		wantLines(t, "rows after the undos", []string{rig.awardRow(t, typed.GetAward().GetId()), rig.awardRow(t, town.GetAward().GetId())}, []string{
 			`award <typed> mode=gold reason="Pela ajuda ao ferreiro" given_by=<master> encounter= gold=25 total=25 milestone= again=false hashed=true undone=true undone_by=<master> undo_key=true; share <pensantus> xp=12 level_at_mark=null; share <toren> xp=12 level_at_mark=null`,
 			`award <town> mode=gold reason="Voltar à cidade" given_by=<master> encounter= gold=201 total=201 milestone= again=false hashed=true undone=true undone_by=<master> undo_key=true; share <pensantus> xp=100 level_at_mark=null; share <toren> xp=100 level_at_mark=null; treasure <bolsa> po=120; treasure <calice> po=0; treasure <idolo> po=81`,
 		})
 		// The undo's event has no xp_each, lost_xp or gold.
-		wantAwardLines(t, "events of the undos", rig.takeEvents(t), []string{
+		wantLines(t, "events of the undos", rig.takeEvents(t), []string{
 			`xp_award_undone by <master> {"award_id":"<town>","character_ids":["<pensantus>","<toren>"],"mode":"gold","total_xp":201,"treasures":[{"point_id":"<bolsa>","value_po":120},{"point_id":"<calice>","value_po":0},{"point_id":"<idolo>","value_po":81}]}`,
 			`xp_award_undone by <master> {"award_id":"<typed>","character_ids":["<pensantus>","<toren>"],"mode":"gold","total_xp":25}`,
 		})
-		wantAwardLines(t, "logs of the undos", rig.takeLogs(t), []string{
-			`DEBUG event award_id=<town> event=xp.undone`,
-			`DEBUG event award_id=<typed> event=xp.undone`,
-		})
-		wantAwardLines(t, "maps told after the undos", rig.redactPublished(), []string{`<campaign> <map1>,<map2>`, `<campaign> <map1>,<map2>`})
-		if n := rig.faults.xpChanged(rig.campaign); n != 4 {
-			t.Errorf("PublishXPChanged ran %d times, want 4", n)
-		}
 		if left := rig.toConvert(t); len(left) != 3 {
 			t.Errorf("%d treasures to convert after the undo, want the 3 back", len(left))
 		}
 	})
 	t.Run("milestones", func(t *testing.T) {
 		t.Parallel()
-		rig := newAwardRig(t, milestones, 2)
+		rig := newFaultRig(t, milestones, 2)
 		pens, toren := rig.pcs[0].GetId(), rig.pcs[1].GetId()
 		rig.startSession(t)
 		adHoc, err := rig.master.xp.MarkMilestone(t.Context(), connect.NewRequest(&progressionv1.MarkMilestoneRequest{
@@ -600,48 +493,35 @@ func TestEachAwardKindAndItsUndo(t *testing.T) {
 			}
 			return out
 		}
-		wantAwardLines(t, "rows", rows(), []string{
+		wantLines(t, "rows", rows(), []string{
 			`award <adhoc> mode=milestone reason="Derrotaram o chefe" given_by=<master> encounter= gold=null total=0 milestone= again=false hashed=true undone=false undone_by= undo_key=false; share <pensantus> xp=0 level_at_mark=1; share <toren> xp=0 level_at_mark=1`,
 			`award <reached> mode=milestone reason="A ponte" given_by=<master> encounter= gold=null total=0 milestone=<ponte> again=false hashed=true undone=false undone_by= undo_key=false; share <pensantus> xp=0 level_at_mark=1`,
 			`award <given> mode=milestone reason="A ponte" given_by=<master> encounter= gold=null total=0 milestone=<ponte> again=true hashed=true undone=false undone_by= undo_key=false; share <toren> xp=0 level_at_mark=1`,
 		})
-		wantAwardLines(t, "events", rig.takeEvents(t), []string{
+		wantLines(t, "events", rig.takeEvents(t), []string{
 			`milestone_marked by <master> {"award_id":"<adhoc>","character_ids":["<toren>","<pensantus>"],"mode":"milestone"}`,
 			`milestone_marked by <master> {"award_id":"<reached>","character_ids":["<pensantus>"],"milestone_id":"<ponte>","mode":"milestone"}`,
 			`milestone_marked by <master> {"award_id":"<given>","character_ids":["<toren>"],"milestone_id":"<ponte>","mode":"milestone"}`,
-		})
-		wantAwardLines(t, "logs", rig.takeLogs(t), []string{
-			`DEBUG event award_id=<adhoc> characters=2 event=xp.milestone_marked mode=milestone total_xp=0`,
-			`DEBUG event award_id=<reached> characters=1 event=xp.milestone_marked mode=milestone total_xp=0`,
-			`DEBUG event award_id=<given> characters=1 event=xp.milestone_marked mode=milestone total_xp=0`,
 		})
 		for range 3 {
 			if _, err := rig.undoWith(newKey(), ""); err != nil {
 				t.Fatalf("UndoLastXPAward() error = %v", err)
 			}
 		}
-		wantAwardLines(t, "rows after the undos", rows(), []string{
+		wantLines(t, "rows after the undos", rows(), []string{
 			`award <adhoc> mode=milestone reason="Derrotaram o chefe" given_by=<master> encounter= gold=null total=0 milestone= again=false hashed=true undone=true undone_by=<master> undo_key=true; share <pensantus> xp=0 level_at_mark=1; share <toren> xp=0 level_at_mark=1`,
 			`award <reached> mode=milestone reason="A ponte" given_by=<master> encounter= gold=null total=0 milestone=<ponte> again=false hashed=true undone=true undone_by=<master> undo_key=true; share <pensantus> xp=0 level_at_mark=1`,
 			`award <given> mode=milestone reason="A ponte" given_by=<master> encounter= gold=null total=0 milestone=<ponte> again=true hashed=true undone=true undone_by=<master> undo_key=true; share <toren> xp=0 level_at_mark=1`,
 		})
-		wantAwardLines(t, "events of the undos", rig.takeEvents(t), []string{
+		wantLines(t, "events of the undos", rig.takeEvents(t), []string{
 			`xp_award_undone by <master> {"award_id":"<given>","character_ids":["<toren>"],"milestone_id":"<ponte>","mode":"milestone"}`,
 			`xp_award_undone by <master> {"award_id":"<reached>","character_ids":["<pensantus>"],"milestone_id":"<ponte>","mode":"milestone"}`,
 			`xp_award_undone by <master> {"award_id":"<adhoc>","character_ids":["<pensantus>","<toren>"],"mode":"milestone"}`,
 		})
-		wantAwardLines(t, "logs of the undos", rig.takeLogs(t), []string{
-			`DEBUG event award_id=<given> event=xp.undone`,
-			`DEBUG event award_id=<reached> event=xp.undone`,
-			`DEBUG event award_id=<adhoc> event=xp.undone`,
-		})
-		if n := rig.faults.xpChanged(rig.campaign); n != 6 {
-			t.Errorf("PublishXPChanged ran %d times, want 6", n)
-		}
 	})
 	t.Run("no session open", func(t *testing.T) {
 		t.Parallel()
-		rig := newAwardRig(t, gold, 1)
+		rig := newFaultRig(t, gold, 1)
 		pens := rig.pcs[0].GetId()
 		mapID := rig.newMap()
 		rig.label(mapID, "map")
@@ -655,19 +535,10 @@ func TestEachAwardKindAndItsUndo(t *testing.T) {
 		if _, err := rig.undoWith(newKey(), ""); err != nil {
 			t.Fatalf("UndoLastXPAward() error = %v", err)
 		}
-		wantAwardLines(t, "rows", []string{rig.awardRow(t, town.GetAward().GetId())}, []string{
+		wantLines(t, "rows", []string{rig.awardRow(t, town.GetAward().GetId())}, []string{
 			`award <town> mode=gold reason="Voltar à cidade" given_by=<master> encounter= gold=120 total=120 milestone= again=false hashed=true undone=true undone_by=<master> undo_key=true; share <pensantus> xp=120 level_at_mark=null; treasure <bolsa> po=120`,
 		})
-		wantAwardLines(t, "events", rig.takeEvents(t), nil)
-		// Finding: with no session open, an award and its undo write no
-		// xp.awarded, treasure.converted or xp.undone log line and tell no
-		// stream that the XP changed (both wait for a session event); the maps
-		// are told all the same.
-		wantAwardLines(t, "logs", rig.takeLogs(t), nil)
-		wantAwardLines(t, "maps told", rig.redactPublished(), []string{`<campaign> <map>`, `<campaign> <map>`})
-		if n := rig.faults.xpChanged(rig.campaign); n != 0 {
-			t.Errorf("PublishXPChanged ran %d times with no session, want 0", n)
-		}
+		wantLines(t, "events", rig.takeEvents(t), nil)
 	})
 }
 
@@ -677,7 +548,7 @@ func TestEachAwardKindAndItsUndo(t *testing.T) {
 // own first request finds it inside the transaction.
 func TestARetriedAwardKeyAnswersTheFirstAward(t *testing.T) {
 	t.Parallel()
-	rig := newAwardRig(t, enemies, 2)
+	rig := newFaultRig(t, enemies, 2)
 	pens, toren := rig.pcs[0].GetId(), rig.pcs[1].GetId()
 	rig.startSession(t)
 	key := newKey()
@@ -707,7 +578,6 @@ func TestARetriedAwardKeyAnswersTheFirstAward(t *testing.T) {
 		t.Fatalf("SetCampaignXpMode() error = %v", err)
 	}
 	rig.takeEvents(t)
-	rig.takeLogs(t)
 
 	// The first request commits in the gap between the checks and the
 	// transaction of its retry: the retry finds it inside, and answers it.
@@ -740,17 +610,10 @@ func TestARetriedAwardKeyAnswersTheFirstAward(t *testing.T) {
 		t.Errorf("sheet XP = %d, want %d: each request given once", got, 5+8+9)
 	}
 	// Each request that wrote is logged once; the ones that found it are not.
-	wantAwardLines(t, "events of the races", rig.takeEvents(t), []string{
+	wantLines(t, "events of the races", rig.takeEvents(t), []string{
 		`xp_awarded by <master> {"award_id":"<raced>","character_ids":["<pensantus>"],"mode":"manual","total_xp":8,"xp_each":8}`,
 		`xp_awarded by <master> {"award_id":"<uuid1>","character_ids":["<pensantus>"],"mode":"manual","total_xp":9,"xp_each":9}`,
 	})
-	wantAwardLines(t, "logs of the races", rig.takeLogs(t), []string{
-		`DEBUG event award_id=<raced> characters=1 event=xp.awarded mode=manual total_xp=8`,
-		`DEBUG event award_id=<uuid1> characters=1 event=xp.awarded mode=manual total_xp=9`,
-	})
-	if n := rig.faults.xpChanged(rig.campaign); n != 3 {
-		t.Errorf("PublishXPChanged ran %d times, want 3: once per award written", n)
-	}
 }
 
 // TestARetryOfAnAwardWithoutAHashIsComparedByWhatItLeft: an award written
@@ -759,7 +622,7 @@ func TestARetriedAwardKeyAnswersTheFirstAward(t *testing.T) {
 // milestones).
 func TestARetryOfAnAwardWithoutAHashIsComparedByWhatItLeft(t *testing.T) {
 	t.Parallel()
-	forget := func(t *testing.T, rig *awardRig, awardID string) {
+	forget := func(t *testing.T, rig *faultRig, awardID string) {
 		t.Helper()
 		if _, err := rig.h.pool.Exec(t.Context(), `UPDATE xp_awards SET idempotency_hash = NULL WHERE id = $1`, awardID); err != nil {
 			t.Fatalf("forget the hash: %v", err)
@@ -768,7 +631,7 @@ func TestARetryOfAnAwardWithoutAHashIsComparedByWhatItLeft(t *testing.T) {
 	const reused = "invalid_argument: idempotency_key was already used for another change"
 	t.Run("manual", func(t *testing.T) {
 		t.Parallel()
-		rig := newAwardRig(t, enemies, 2)
+		rig := newFaultRig(t, enemies, 2)
 		pens, toren := rig.pcs[0].GetId(), rig.pcs[1].GetId()
 		key := newKey()
 		send := func(mode progressionv1.XPAwardMode, amount int32, reason string, ids ...string) (*progressionv1.AwardXPResponse, error) {
@@ -807,7 +670,7 @@ func TestARetryOfAnAwardWithoutAHashIsComparedByWhatItLeft(t *testing.T) {
 	})
 	t.Run("gold", func(t *testing.T) {
 		t.Parallel()
-		rig := newAwardRig(t, gold, 1)
+		rig := newFaultRig(t, gold, 1)
 		pens := rig.pcs[0].GetId()
 		mapID := rig.newMap()
 		a := rig.treasure(t, mapID, "A", 10, nil, pens)
@@ -847,7 +710,7 @@ func TestARetryOfAnAwardWithoutAHashIsComparedByWhatItLeft(t *testing.T) {
 	})
 	t.Run("milestones", func(t *testing.T) {
 		t.Parallel()
-		rig := newAwardRig(t, milestones, 2)
+		rig := newFaultRig(t, milestones, 2)
 		pens, toren := rig.pcs[0].GetId(), rig.pcs[1].GetId()
 		adHocKey := newKey()
 		mark := func(reason string, ids ...string) (*progressionv1.XPAward, error) {
@@ -900,16 +763,16 @@ func TestARetryOfAnAwardWithoutAHashIsComparedByWhatItLeft(t *testing.T) {
 }
 
 // TestAnAwardAndAnUndoWhenAnotherModuleFails: each call to another module
-// that fails rolls the whole award or undo back, answers the client and logs
-// the wrapped error once; a sheet that is no longer a player character's is
-// refused when giving and skipped when undoing.
+// that fails rolls the whole award or undo back and answers the client; a
+// sheet that is no longer a player character's is refused when giving and
+// skipped when undoing.
 func TestAnAwardAndAnUndoWhenAnotherModuleFails(t *testing.T) {
 	t.Parallel()
-	rig := newAwardRig(t, gold, 2)
+	rig := newFaultRig(t, gold, 2)
 	pens, toren := rig.pcs[0].GetId(), rig.pcs[1].GetId()
 	mapID := rig.newMap()
 	rig.startSession(t)
-	notFound := connect.NewError(connect.CodeNotFound, errAwardInjected)
+	notFound := connect.NewError(connect.CodeNotFound, errInjected)
 	bolsa := rig.treasure(t, mapID, "Bolsa", 40, nil, pens)
 	rig.label(bolsa, "bolsa")
 	town := func() error {
@@ -920,29 +783,23 @@ func TestAnAwardAndAnUndoWhenAnotherModuleFails(t *testing.T) {
 		fault string
 		err   error
 		want  string
-		logs  []string
 	}{
-		{"xp_mode", errAwardInjected, internalError, []string{
-			`ERROR progression: cannot read the campaign's XP mode code=internal error=injected failure`,
-		}},
-		{"xp_mode_in_tx", errAwardInjected, internalError, []string{
-			`ERROR progression: cannot give XP code=internal error=read the campaign's XP mode: injected failure`,
-		}},
-		{"party", errAwardInjected, internalError, []string{`ERROR progression: cannot give XP code=internal error=read the party: injected failure`}},
-		{"lock_treasures", errAwardInjected, internalError, []string{`ERROR progression: cannot give XP code=internal error=lock the treasures: injected failure`}},
-		{"add_experience", errAwardInjected, internalError, []string{`ERROR progression: cannot give XP code=internal error=add the XP to a sheet: injected failure`}},
+		{"xp_mode", errInjected, internalError},
+		{"xp_mode_in_tx", errInjected, internalError},
+		{"party", errInjected, internalError},
+		{"lock_treasures", errInjected, internalError},
+		{"add_experience", errInjected, internalError},
 		// A sheet the party listed but the characters module no longer finds.
 		{
 			"add_experience", notFound,
-			"failed_precondition: only the campaign's living player characters can get XP [reason=XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE character=<pensantus> xp_mode=XP_MODE_UNSPECIFIED treasure=]", nil,
+			"failed_precondition: only the campaign's living player characters can get XP [reason=XP_BLOCKED_REASON_CHARACTER_NOT_ELIGIBLE character=<pensantus> xp_mode=XP_MODE_UNSPECIFIED treasure=]",
 		},
 		// The treasures' own errors go back unwrapped.
-		{"mark_converted", errAwardInjected, internalError, []string{`ERROR progression: cannot give XP code=internal error=injected failure`}},
-		{"append_event", errAwardInjected, internalError, []string{`ERROR progression: cannot give XP code=internal error=append the session event: injected failure`}},
+		{"mark_converted", errInjected, internalError},
+		{"append_event", errInjected, internalError},
 	} {
 		rig.faults.arm(c.fault, c.err)
 		rig.wantAwardRefusal(t, "AwardXP with "+c.fault+" failing", town(), c.want)
-		wantAwardLines(t, c.fault+" logs", rig.takeLogs(t), c.logs)
 	}
 	if n := len(rig.master.history(t, rig.campaign)); n != 0 {
 		t.Fatalf("history has %d awards after the failures, want none", n)
@@ -953,7 +810,7 @@ func TestAnAwardAndAnUndoWhenAnotherModuleFails(t *testing.T) {
 	if left := rig.toConvert(t); len(left) != 1 {
 		t.Errorf("%d treasures to convert after the failures, want 1", len(left))
 	}
-	wantAwardLines(t, "events after the failures", rig.takeEvents(t), nil)
+	wantLines(t, "events after the failures", rig.takeEvents(t), nil)
 
 	given, err := rig.backToTown("", []string{pens, toren}, bolsa)
 	if err != nil {
@@ -961,20 +818,10 @@ func TestAnAwardAndAnUndoWhenAnotherModuleFails(t *testing.T) {
 	}
 	rig.label(given.GetAward().GetId(), "town")
 	rig.takeEvents(t)
-	rig.takeLogs(t)
-	for _, c := range []struct {
-		fault string
-		want  string
-		logs  []string
-	}{
-		{"add_experience", internalError, []string{`ERROR progression: cannot undo an XP award code=internal error=take the XP off a sheet: injected failure`}},
-		{"release", internalError, []string{`ERROR progression: cannot undo an XP award code=internal error=injected failure`}},
-		{"append_event", internalError, []string{`ERROR progression: cannot undo an XP award code=internal error=append the session event: injected failure`}},
-	} {
-		rig.faults.arm(c.fault, errAwardInjected)
+	for _, fault := range []string{"add_experience", "release", "append_event"} {
+		rig.faults.arm(fault, errInjected)
 		_, err := rig.undoWith(newKey(), "")
-		rig.wantAwardRefusal(t, "UndoLastXPAward with "+c.fault+" failing", err, c.want)
-		wantAwardLines(t, c.fault+" logs of the undo", rig.takeLogs(t), c.logs)
+		rig.wantAwardRefusal(t, "UndoLastXPAward with "+fault+" failing", err, internalError)
 	}
 	if got := rig.master.xpOf(t, rig.pcs[0]); got != 20 {
 		t.Errorf("sheet XP = %d after the failed undos, want 20", got)
@@ -988,19 +835,30 @@ func TestAnAwardAndAnUndoWhenAnotherModuleFails(t *testing.T) {
 	if a, b := rig.master.xpOf(t, rig.pcs[0]), rig.master.xpOf(t, rig.pcs[1]); a != 20 || b != 0 {
 		t.Errorf("sheet XP = %d and %d after the undo, want 20 (not found, skipped) and 0", a, b)
 	}
-	wantAwardLines(t, "events of the undo", rig.takeEvents(t), []string{
+	wantLines(t, "events of the undo", rig.takeEvents(t), []string{
 		`xp_award_undone by <master> {"award_id":"<town>","character_ids":["<pensantus>","<toren>"],"mode":"gold","total_xp":40,"treasures":[{"point_id":"<bolsa>","value_po":40}]}`,
 	})
-	wantAwardLines(t, "logs of the undo", rig.takeLogs(t), []string{`DEBUG event award_id=<town> event=xp.undone`})
 
 	// A combat that cannot be read: its error goes back unwrapped.
-	en := newAwardRig(t, enemies, 1)
+	en := newFaultRig(t, enemies, 1)
 	goblin := en.master.minion(t, en.campaign, "Goblin", 50)
 	enc := en.fight(t, goblin, 1, 1, true)
-	en.faults.arm("encounter", errAwardInjected)
+	en.faults.arm("encounter", errInjected)
 	_, err = en.enemies(enc.GetId(), en.pcs[0].GetId())
 	en.wantAwardRefusal(t, "AwardXP with the combat failing", err, internalError)
-	wantAwardLines(t, "logs of the combat failing", en.takeLogs(t), []string{`ERROR progression: cannot give XP code=internal error=injected failure`})
+}
+
+// TestAFailureOfAnotherModuleIsLogged: what the client reads of a failure it
+// cannot fix says nothing, so the service logs it at ERROR for the operator.
+func TestAFailureOfAnotherModuleIsLogged(t *testing.T) {
+	t.Parallel()
+	rig := newFaultRig(t, enemies, 1)
+	rig.faults.arm("party", errInjected)
+	_, err := rig.master.award(rig.campaign, func(r *progressionv1.AwardXPRequest) {
+		r.Mode, r.Amount, r.CharacterIds = modeManualAward, 10, []string{rig.pcs[0].GetId()}
+	})
+	rig.wantAwardRefusal(t, "AwardXP with the party failing", err, internalError)
+	rig.wantFailureLogged(t, "AwardXP")
 }
 
 // TestAnUndoSkipsWhatItHasNoXPToTakeBack: a share of 0 XP (the sheet was
@@ -1008,7 +866,7 @@ func TestAnAwardAndAnUndoWhenAnotherModuleFails(t *testing.T) {
 // and the undo still goes through.
 func TestAnUndoSkipsWhatItHasNoXPToTakeBack(t *testing.T) {
 	t.Parallel()
-	rig := newAwardRig(t, enemies, 2)
+	rig := newFaultRig(t, enemies, 2)
 	pens, toren := rig.pcs[0].GetId(), rig.pcs[1].GetId()
 	if _, err := rig.h.pool.Exec(t.Context(), `UPDATE characters SET sheet = jsonb_set(sheet, '{full,experience_points}', '1000000') WHERE id = $1`, toren); err != nil {
 		t.Fatalf("fill Toren's sheet: %v", err)
@@ -1022,7 +880,7 @@ func TestAnUndoSkipsWhatItHasNoXPToTakeBack(t *testing.T) {
 		t.Fatalf("UndoLastXPAward() error = %v", err)
 	}
 	// Toren's share is what the full sheet gained: nothing.
-	wantAwardLines(t, "rows", []string{rig.awardRow(t, res.GetAward().GetId())}, []string{
+	wantLines(t, "rows", []string{rig.awardRow(t, res.GetAward().GetId())}, []string{
 		`award <full> mode=manual reason="Pela ajuda ao ferreiro" given_by=<master> encounter= gold=null total=20 milestone= again=false hashed=true undone=true undone_by=<master> undo_key=true; share <pensantus> xp=10 level_at_mark=null; share <toren> xp=0 level_at_mark=null`,
 	})
 	var pensXP, torenXP int32
@@ -1044,7 +902,7 @@ func TestAnUndoSkipsWhatItHasNoXPToTakeBack(t *testing.T) {
 func TestAnAwardThatLosesARaceInsideItsTransaction(t *testing.T) {
 	t.Parallel()
 	dbtest.PoolSize(t, 3) // the racing request runs while the award's transaction holds a connection
-	rig := newAwardRig(t, enemies, 2)
+	rig := newFaultRig(t, enemies, 2)
 	pens, toren := rig.pcs[0].GetId(), rig.pcs[1].GetId()
 	manual := func(r *progressionv1.AwardXPRequest) {
 		r.Mode, r.Amount, r.CharacterIds = modeManualAward, 10, []string{pens}
@@ -1064,13 +922,11 @@ func TestAnAwardThatLosesARaceInsideItsTransaction(t *testing.T) {
 
 	goblin := rig.master.minion(t, rig.campaign, "Goblin", 50)
 	enc := rig.fight(t, goblin, 2, 2, true)
-	rig.faults.mu.Lock()
-	rig.faults.beforeWrite = func() {
+	rig.faults.setBeforeWrite(func() {
 		if _, err := rig.enemies(enc.GetId(), pens); err != nil {
 			t.Errorf("AwardXP(the racing award) error = %v", err)
 		}
-	}
-	rig.faults.mu.Unlock()
+	})
 	_, err = rig.enemies(enc.GetId(), toren)
 	// The insert conflicts with the racing write (40001), and the retry of the
 	// transaction finds the combat's award: the unique index's own refusal
@@ -1080,14 +936,12 @@ func TestAnAwardThatLosesARaceInsideItsTransaction(t *testing.T) {
 
 	key := newKey()
 	var first *progressionv1.AwardXPResponse
-	rig.faults.mu.Lock()
-	rig.faults.beforeWrite = func() {
+	rig.faults.setBeforeWrite(func() {
 		var err error
 		if first, err = rig.awardWith(key, manual); err != nil {
 			t.Errorf("AwardXP(the racing first request) error = %v", err)
 		}
-	}
-	rig.faults.mu.Unlock()
+	})
 	res, err := rig.awardWith(key, manual)
 	// The same way, the retry of the transaction finds the key: the answer is
 	// the first request's award.

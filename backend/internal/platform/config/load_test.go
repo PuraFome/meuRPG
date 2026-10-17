@@ -1,16 +1,11 @@
 package config
 
 import (
-	"bytes"
-	"encoding/json"
-	"flag"
 	"maps"
-	"os"
-	"path/filepath"
 	"testing"
-)
 
-var updateLoadGolden = flag.Bool("update-load-golden", false, "write testdata/golden/load.json again from the current Load")
+	"github.com/PuraFome/meuRPG/backend/internal/platform/goldentest"
+)
 
 // loadOutcome is what Load gives for one environment: the exact error, or the
 // configuration with its secrets revealed (Config's JSON redacts them).
@@ -88,7 +83,7 @@ func loadCorpus() map[string]map[string]string {
 		"cap too big":          {"MAX_CAMPAIGNS_PER_USER": "1001"},
 		"creators bad entries": {"CAMPAIGN_CREATORS": "a@x.com, mestre ,, other"},
 		"creators separators":  {"CAMPAIGN_CREATORS": " , ,"},
-		// Finding, frozen: the "no e-mail address" check looks at every error
+		// The "no e-mail address" check looks at every error
 		// loadLimits has collected so far, not only the list's, so a bad
 		// multiplier hides it (the bad multiplier still fails the load).
 		"creators separators after a bad multiplier": {"RATE_LIMIT_MULTIPLIER": "x", "CAMPAIGN_CREATORS": ","},
@@ -151,10 +146,10 @@ func loadCorpus() map[string]map[string]string {
 	}
 }
 
-// TestLoadCharacterization freezes, for every environment of loadCorpus, the
-// exact error (every message, in order) or the exact configuration Load gives,
-// in testdata/golden/load.json.
-func TestLoadCharacterization(t *testing.T) {
+// TestLoadEnvironments: for every environment of loadCorpus, the exact error
+// (every message, in order) or the exact configuration Load gives, in
+// testdata/golden/load.json.
+func TestLoadEnvironments(t *testing.T) {
 	t.Parallel()
 	got := map[string]loadOutcome{}
 	for name, vars := range loadCorpus() {
@@ -175,26 +170,5 @@ func TestLoadCharacterization(t *testing.T) {
 		}
 		got[name] = out
 	}
-	data, err := json.MarshalIndent(got, "", "  ")
-	if err != nil {
-		t.Fatal(err)
-	}
-	data = append(data, '\n')
-	path := filepath.Join("testdata", "golden", "load.json")
-	if *updateLoadGolden {
-		if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(path, data, 0o600); err != nil {
-			t.Fatal(err)
-		}
-		return
-	}
-	want, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("read the golden (run with -update-load-golden): %v", err)
-	}
-	if !bytes.Equal(want, data) {
-		t.Errorf("Load drifted from %s; diff it after running with -update-load-golden", path)
-	}
+	goldentest.JSON(t, "testdata/golden/load.json", got)
 }

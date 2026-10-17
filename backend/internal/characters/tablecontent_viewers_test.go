@@ -1,6 +1,8 @@
 package characters
 
 import (
+	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -15,10 +17,11 @@ import (
 // Characterization of the table content's RPCs (MR-025, RN-23): what each viewer reads of
 // the table's entries once the master hid some of them (archived, switched off, or under a
 // hidden parent, with references to hidden SRD keys), what each switch answers, and the exact
-// shape of every refusal of the writes, each for who may call it. The answers are golden
-// files (testdata/table_content_*.golden.json, ids replaced by names).
+// shape of every refusal of the writes, each for who may call it. The viewers' answers are
+// stated inline; the refusals and the create with a key are golden files
+// (testdata/table_content_*.golden.json, ids replaced by names).
 
-// viewersTable is the campaign of the viewers' golden: a master, Dona with a sheet that uses
+// viewersTable is the campaign of the viewers' test: a master, Dona with a sheet that uses
 // the table's race, subrace, background and spell, Davi without one, a pending member and an
 // outsider.
 type viewersTable struct {
@@ -81,44 +84,110 @@ func (v *viewersTable) fill(t *testing.T) {
 	v.dona.create(t, v.campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Icaro", sheet)
 }
 
-// step records the answer of a call in the golden.
-func (v *viewersTable) step(label string, res proto.Message, err error) {
-	if err != nil {
-		v.steps = append(v.steps, tableContentGoldenStep{label, err})
-		return
-	}
-	v.steps = append(v.steps, tableContentGoldenStep{label, res})
-}
-
-// switches calls SetOptionSwitches as the master with each key's off.
-func (v *viewersTable) switches(t *testing.T, label string, switches ...*rulesv1.OptionSwitch) {
+// switches calls SetOptionSwitches as the master with each key's off and says what it
+// answered (see optionsSummary).
+func (v *viewersTable) switches(t *testing.T, switches ...*rulesv1.OptionSwitch) string {
 	t.Helper()
 	res, err := v.master.table.SetOptionSwitches(t.Context(), connect.NewRequest(&rulesv1.SetOptionSwitchesRequest{CampaignId: v.campaign, Switches: switches}))
 	if err != nil {
-		t.Fatalf("SetOptionSwitches(%s) error = %v", label, err)
+		t.Fatalf("SetOptionSwitches() error = %v", err)
 	}
-	v.step("switches: "+label, res.Msg, nil)
+	return optionsSummary(res.Msg)
 }
 
-// archive retires an entry as the master.
-func (v *viewersTable) archive(t *testing.T, name string) {
+// optionsSummary is "changed=N rev=R:" and each option that answered, with its flags.
+func optionsSummary(res *rulesv1.SetOptionSwitchesResponse) string {
+	parts := make([]string, 0, len(res.GetOptions()))
+	for _, o := range res.GetOptions() {
+		var flags []string
+		for _, f := range []struct {
+			on   bool
+			name string
+		}{{o.GetOff(), "off"}, {o.GetHidden(), "hidden"}, {o.GetArchived(), "archived"}, {o.GetTable(), "table"}} {
+			if f.on {
+				flags = append(flags, f.name)
+			}
+		}
+		if n := o.GetCharactersUsing(); n > 0 {
+			flags = append(flags, fmt.Sprintf("users=%d", n))
+		}
+		parts = append(parts, o.GetKey()+"("+strings.Join(flags, ",")+")")
+	}
+	return fmt.Sprintf("changed=%d rev=%d: %s", res.GetChanged(), res.GetTableRevision(), strings.Join(parts, " "))
+}
+
+// archive retires an entry as the master and says what it answered.
+func (v *viewersTable) archive(t *testing.T, name string) string {
 	t.Helper()
 	res, err := v.master.table.ArchiveTableEntry(t.Context(), connect.NewRequest(&rulesv1.ArchiveTableEntryRequest{CampaignId: v.campaign, Key: v.keys[name]}))
 	if err != nil {
 		t.Fatalf("ArchiveTableEntry(%s) error = %v", name, err)
 	}
-	v.step("archive "+name, res.Msg, nil)
+	return fmt.Sprintf("%s archived=%v rev=%d", res.Msg.GetEntry().GetKey(), res.Msg.GetEntry().GetArchived(), res.Msg.GetTableRevision())
 }
 
-// read records ListTableEntries as u.
-func (v *viewersTable) read(t *testing.T, label string, u *user) {
+// list reads the table's entries as u.
+func (v *viewersTable) list(t *testing.T, u *user) (*rulesv1.ListTableEntriesResponse, error) {
 	t.Helper()
 	res, err := u.table.ListTableEntries(t.Context(), connect.NewRequest(&rulesv1.ListTableEntriesRequest{CampaignId: v.campaign}))
 	if err != nil {
-		v.step(label, nil, err)
-		return
+		return nil, err
 	}
-	v.step(label, res.Msg, nil)
+	return res.Msg, nil
+}
+
+// mustList is list for a viewer that may read.
+func (v *viewersTable) mustList(t *testing.T, u *user) *rulesv1.ListTableEntriesResponse {
+	t.Helper()
+	res, err := v.list(t, u)
+	if err != nil {
+		t.Fatalf("ListTableEntries() error = %v", err)
+	}
+	return res
+}
+
+// viewerDiffs says, for each of the master's entries, how a viewer's copy differs: absent,
+// or the fields moved (path=value for a changed field, -path for a removed one). An entry
+// that reads the same is not listed.
+func viewerDiffs(t *testing.T, master, viewer []*rulesv1.TableEntry) []string {
+	t.Helper()
+	byKey := map[string]*rulesv1.TableEntry{}
+	for _, e := range viewer {
+		byKey[e.GetKey()] = e
+	}
+	var out []string
+	for _, e := range master {
+		seen, ok := byKey[e.GetKey()]
+		if !ok {
+			out = append(out, e.GetKey()+": absent")
+			continue
+		}
+		if moved := fieldsMoved(protoFlat(t, e), protoFlat(t, seen)); moved != "unchanged" {
+			out = append(out, e.GetKey()+": "+moved)
+		}
+	}
+	return out
+}
+
+// entryLines lists the entries with the master's marks: (off) for a switched-off one,
+// (archived) for a retired one.
+func entryLines(entries []*rulesv1.TableEntry) []string {
+	out := make([]string, 0, len(entries))
+	for _, e := range entries {
+		var marks []string
+		if e.GetOff() {
+			marks = append(marks, "off")
+		}
+		if e.GetArchived() {
+			marks = append(marks, "archived")
+		}
+		line := e.GetKey()
+		if len(marks) > 0 {
+			line += "(" + strings.Join(marks, ",") + ")"
+		}
+		out = append(out, line)
+	}
+	return out
 }
 
 // names are the ids of the golden replaced by names.
@@ -133,45 +202,129 @@ func optionSwitchOf(key string, isOff bool) *rulesv1.OptionSwitch {
 	return &rulesv1.OptionSwitch{Key: key, Off: isOff}
 }
 
-// TestTableEntriesGoldenOfEveryViewer: what the master, a player whose sheet uses hidden
-// entries, a player without a sheet, a pending member, an outsider and nobody read of the
-// table's entries, before and after the master switches options off and archives some, and
-// what each switch answers (only the options whose state changed for the players, the
-// characters that use them, no change when nothing changes).
-func TestTableEntriesGoldenOfEveryViewer(t *testing.T) {
+// TestTableEntriesOfEveryViewer: what the master, a player whose sheet uses hidden entries,
+// a player without a sheet, a pending member, an outsider and nobody read of the table's
+// entries, before and after the master switches options off and archives some, and what each
+// switch answers (only the options whose state changed for the players, the characters that
+// use them, no change when nothing changes). What the master hid or switched off never
+// reaches a player (RN-10, RN-23): a hidden entry is absent from their list, and an entry
+// they keep has no reference to a hidden SRD key, no hidden race requirement and no count of
+// the characters that use it.
+func TestTableEntriesOfEveryViewer(t *testing.T) {
 	t.Parallel()
 	v := newViewersTable(t)
 	v.fill(t)
-	v.read(t, "nothing hidden: master", v.master)
-	v.read(t, "nothing hidden: dona", v.dona)
+	master, dona := v.mustList(t, v.master), v.mustList(t, v.dona)
+	if n := len(master.GetEntries()); n != 12 || master.GetTableRevision() != 12 {
+		t.Errorf("master reads %d entries at revision %d, want 12 at 12", n, master.GetTableRevision())
+	}
+	// Nothing is hidden yet: Dona reads what the master reads, without who uses it.
+	wantDiffs(t, "dona before", viewerDiffs(t, master.GetEntries(), dona.GetEntries()), []string{
+		`race:anao-das-brumas@mesa: -charactersUsing`,
+		`subrace:da-colina@mesa: -charactersUsing`,
+		`background:guarda-de-farol@mesa: -charactersUsing`,
+		`spell:raio-de-teste@mesa: -charactersUsing`,
+	})
 	hintsBefore := v.hintsOf()
 
-	v.switches(t, "off the druid, cure wounds, the race and a feat",
-		optionSwitchOf("class:druid", true), optionSwitchOf("spell:cure-wounds", true), optionSwitchOf(v.keys["race"], true), optionSwitchOf(v.keys["off feat"], true))
-	v.switches(t, "the same again changes nothing", optionSwitchOf("class:druid", true), optionSwitchOf("spell:fire-bolt", false))
-	v.switches(t, "on and off in one call", optionSwitchOf("class:druid", false), optionSwitchOf("spell:magic-missile", true))
-	v.switches(t, "the druid off again, magic missile on", optionSwitchOf("class:druid", true), optionSwitchOf("spell:magic-missile", false))
-	v.archive(t, "secret race")
-	v.archive(t, "archived spell")
-	v.switches(t, "an archived entry switched off", optionSwitchOf(v.keys["archived spell"], true))
+	wantString(t, "switches: off the druid, cure wounds, the race and a feat", v.switches(t,
+		optionSwitchOf("class:druid", true), optionSwitchOf("spell:cure-wounds", true), optionSwitchOf(v.keys["race"], true), optionSwitchOf(v.keys["off feat"], true)),
+		`changed=4 rev=13: class:druid(off,hidden) subclass:land(hidden) race:anao-das-brumas@mesa(off,hidden,table,users=1) subrace:da-colina@mesa(hidden,table,users=1) spell:cure-wounds(off,hidden) feat:talento-desligado@mesa(off,hidden,table)`)
+	wantString(t, "switches: the same again changes nothing", v.switches(t, optionSwitchOf("class:druid", true), optionSwitchOf("spell:fire-bolt", false)),
+		`changed=0 rev=13: `)
+	wantString(t, "switches: on and off in one call", v.switches(t, optionSwitchOf("class:druid", false), optionSwitchOf("spell:magic-missile", true)),
+		`changed=2 rev=14: class:druid() subclass:land() spell:magic-missile(off,hidden,users=1)`)
+	wantString(t, "switches: the druid off again, magic missile on", v.switches(t, optionSwitchOf("class:druid", true), optionSwitchOf("spell:magic-missile", false)),
+		`changed=2 rev=15: class:druid(off,hidden) subclass:land(hidden) spell:magic-missile(users=1)`)
+	wantString(t, "archive secret race", v.archive(t, "secret race"), `race:raca-secreta@mesa archived=true rev=16`)
+	wantString(t, "archive archived spell", v.archive(t, "archived spell"), `spell:raio-arquivado@mesa archived=true rev=17`)
+	wantString(t, "switches: an archived entry switched off", v.switches(t, optionSwitchOf(v.keys["archived spell"], true)),
+		`changed=1 rev=18: spell:raio-arquivado@mesa(off,hidden,archived,table)`)
 
+	master, dona = v.mustList(t, v.master), v.mustList(t, v.dona)
+	davi := v.mustList(t, v.davi)
+	// The master reads every entry, marked when it is off or archived.
+	wantDiffs(t, "master", entryLines(master.GetEntries()), []string{
+		`class:guardiao-do-vale@mesa`,
+		`subclass:caminho-do-vale@mesa`,
+		`subclass:lamina-de-tinta@mesa`,
+		`race:anao-das-brumas@mesa(off)`,
+		`race:raca-secreta@mesa(archived)`,
+		`subrace:da-colina@mesa`,
+		`subrace:sub-raca-secreta@mesa`,
+		`background:guarda-de-farol@mesa`,
+		`spell:raio-arquivado@mesa(off,archived)`,
+		`spell:raio-de-teste@mesa`,
+		`feat:punho-de-ferro@mesa`,
+		`feat:talento-desligado@mesa(off)`,
+	})
+	// Dona's sheet uses the race and the subrace, so she still reads the subrace; Davi, with no
+	// sheet, does not.
+	wantDiffs(t, "dona, whose sheet uses the race and the subrace", viewerDiffs(t, master.GetEntries(), dona.GetEntries()), []string{
+		`class:guardiao-do-vale@mesa: -tableClass.casting.listFrom -tableClass.levels[0].features[1].effects[0].spells[1] tableClass.levels[0].features[1].effects[0].spells[0]="spell:fire-bolt"`,
+		`subclass:caminho-do-vale@mesa: -tableSubclass.alwaysPrepared[1].classLevel -tableSubclass.alwaysPrepared[1].spellKey tableSubclass.alwaysPrepared[0].classLevel=5 tableSubclass.alwaysPrepared[0].spellKey="spell:lesser-restoration"`,
+		`subclass:lamina-de-tinta@mesa: -tableSubclass.casting.listFrom`,
+		`race:anao-das-brumas@mesa: absent`,
+		`race:raca-secreta@mesa: absent`,
+		`subrace:da-colina@mesa: -charactersUsing`,
+		`subrace:sub-raca-secreta@mesa: absent`,
+		`background:guarda-de-farol@mesa: -charactersUsing -tableBackground.feature.effects[0].spells[1] tableBackground.feature.effects[0].spells[0]="spell:fire-bolt"`,
+		`spell:raio-arquivado@mesa: absent`,
+		`spell:raio-de-teste@mesa: -charactersUsing -tableSpell.classKeys[2] tableSpell.classKeys[1]="class:guardiao-do-vale@mesa"`,
+		`feat:punho-de-ferro@mesa: -tableFeat.prerequisite.raceKey`,
+		`feat:talento-desligado@mesa: absent`,
+	})
+	wantDiffs(t, "davi, without a sheet", viewerDiffs(t, master.GetEntries(), davi.GetEntries()), []string{
+		`class:guardiao-do-vale@mesa: -tableClass.casting.listFrom -tableClass.levels[0].features[1].effects[0].spells[1] tableClass.levels[0].features[1].effects[0].spells[0]="spell:fire-bolt"`,
+		`subclass:caminho-do-vale@mesa: -tableSubclass.alwaysPrepared[1].classLevel -tableSubclass.alwaysPrepared[1].spellKey tableSubclass.alwaysPrepared[0].classLevel=5 tableSubclass.alwaysPrepared[0].spellKey="spell:lesser-restoration"`,
+		`subclass:lamina-de-tinta@mesa: -tableSubclass.casting.listFrom`,
+		`race:anao-das-brumas@mesa: absent`,
+		`race:raca-secreta@mesa: absent`,
+		`subrace:da-colina@mesa: absent`,
+		`subrace:sub-raca-secreta@mesa: absent`,
+		`background:guarda-de-farol@mesa: -charactersUsing -tableBackground.feature.effects[0].spells[1] tableBackground.feature.effects[0].spells[0]="spell:fire-bolt"`,
+		`spell:raio-arquivado@mesa: absent`,
+		`spell:raio-de-teste@mesa: -charactersUsing -tableSpell.classKeys[2] tableSpell.classKeys[1]="class:guardiao-do-vale@mesa"`,
+		`feat:punho-de-ferro@mesa: -tableFeat.prerequisite.raceKey`,
+		`feat:talento-desligado@mesa: absent`,
+	})
+	for _, res := range []*rulesv1.ListTableEntriesResponse{master, dona, davi} {
+		if res.GetTableRevision() != 18 {
+			t.Errorf("table revision read = %d, want 18", res.GetTableRevision())
+		}
+	}
 	for _, viewer := range []struct {
 		label string
 		u     *user
+		want  string
 	}{
-		{"master", v.master},
-		{"dona, whose sheet uses the race and the subrace", v.dona},
-		{"davi, without a sheet", v.davi},
-		{"pending", v.pending},
-		{"outsider", v.outsider},
-		{"nobody", v.h.anonymous()},
+		{"pending", v.pending, "not_found: campaign not found"},
+		{"outsider", v.outsider, "not_found: campaign not found"},
+		{"nobody", v.h.anonymous(), "unauthenticated: sign in to continue"},
 	} {
-		v.read(t, "hidden: "+viewer.label, viewer.u)
+		if _, err := v.list(t, viewer.u); tableRefusalShape(err) != viewer.want {
+			t.Errorf("%s reads: %s, want %s", viewer.label, tableRefusalShape(err), viewer.want)
+		}
 	}
 	if n := v.hintsOf() - hintsBefore; n != 6 {
 		t.Errorf("content_changed hints = %d, want 6: four switches that changed something and two archives", n)
 	}
-	tableContentGolden(t, "viewers", v.names(), v.steps...)
+}
+
+// wantString fails when got is not want.
+func wantString(t *testing.T, label, got, want string) {
+	t.Helper()
+	if got != want {
+		t.Errorf("%s:\n got  %s\n want %s", label, got, want)
+	}
+}
+
+// wantDiffs fails when got is not the lines of want.
+func wantDiffs(t *testing.T, label string, got, want []string) {
+	t.Helper()
+	if !slices.Equal(got, want) {
+		t.Errorf("%s:\n got  %s\n want %s", label, strings.Join(got, "\n      "), strings.Join(want, "\n      "))
+	}
 }
 
 // hintsOf counts the content_changed hints of the campaign.

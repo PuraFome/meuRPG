@@ -10,7 +10,7 @@ import (
 	"unicode/utf8"
 )
 
-// The treasure generator's content (MR-044, Etapa 10, slice 10.10b). Two files
+// The treasure generator's content (MR-044). Two files
 // in effects/, both written by hand and checked by the loader:
 //
 //   - magic_item_values.json: the SRD 5.2.1 table "Magic Item Rarities and

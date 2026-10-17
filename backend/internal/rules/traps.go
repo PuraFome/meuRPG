@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// Trap presets (MR-035, Etapa 9, D5): the eight sample traps of the SRD 5.1
+// Trap presets (MR-035): the eight sample traps of the SRD 5.1
 // ("Sample Traps" in the Dungeon Master's rules, 5e-database's 5e-SRD-Rules
 // section "sample-traps"), in our own words, with the SRD's numbers, plus the
 // SRD's tables of how severe a trap is. The file is effects/traps.json, written

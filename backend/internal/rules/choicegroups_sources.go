@@ -179,7 +179,7 @@ func (cb *choiceBuilder) invocations(oc ownedClass, idx int) {
 	cb.optionChoice(g, invocationsFeature, known, inv.Options)
 }
 
-// ordinalEnemy and ordinalTerrain are the titles of the 2nd and 3rd pick of a
+// enemyTitles and terrainTitles are the titles of the 2nd and 3rd pick of a
 // ranger feature that comes again at levels 6, 10 and 14.
 var (
 	enemyTitles   = []string{"Inimigo Favorito", "Segundo inimigo favorito", "Terceiro inimigo favorito"}

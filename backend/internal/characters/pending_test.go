@@ -10,7 +10,7 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 )
 
-// Q24 and Q25 (RN-15, MR-024), the characters half: a pending member's
+// Pending members (RN-15, MR-024), the characters half: a pending member's
 // character and the invite, and the 30-day deadline. The rest is in package
 // campaigns' pending_test.go.
 
@@ -25,7 +25,7 @@ func (h *harness) pendingExpiresAt(campaignID, userID string) *time.Time {
 	return at
 }
 
-// Q25: Dado um membro pendente com personagem esperando aprovação, quando
+// Dado um membro pendente com personagem esperando aprovação, quando
 // ele aceita um convite sem aprovação, então ele vira jogador e o
 // personagem é aprovado, com o mesmo efeito de o mestre aprovar.
 func TestQ25_PlainInvitePromotesPendingMember(t *testing.T) {
@@ -73,7 +73,7 @@ func TestQ25_PlainInvitePromotesPendingMember(t *testing.T) {
 	}
 }
 
-// Q24: Dado um membro pendente, quando ele cria o personagem, então o prazo
+// Dado um membro pendente, quando ele cria o personagem, então o prazo
 // de 30 dias para quem não tem personagem some, ele deixa a lista do mestre
 // de "pendentes sem personagem", e o mestre não o remove por ali: recusa o
 // personagem.

@@ -14,6 +14,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -32,7 +33,7 @@ func (s *Service) GetSummonOptions(
 	if err != nil {
 		return nil, err
 	}
-	id, ok := parseUUID(req.Msg.GetCharacterId())
+	id, ok := uid.Canonical(req.Msg.GetCharacterId())
 	if !ok {
 		return nil, errCharacterNotFound()
 	}

@@ -10,7 +10,7 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 )
 
-// MR-016 (D1, question 44): an NPC's sheet carries the challenge rating ("ND")
+// MR-016: an NPC's sheet carries the challenge rating ("ND")
 // and the XP it gives when defeated. The server stores what it gets, checks the
 // rating against the rules' list and the XP's range, and a player's character
 // refuses both with an error (never a silent drop).

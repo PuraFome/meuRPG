@@ -7,7 +7,7 @@ import (
 )
 
 // The SRD writes a creature's languages in English ("Common, Goblin", "telepathy
-// 60 ft.", "understands Common but can't speak"). languagesPT says the same line
+// 60 ft.", "understands Common but can't speak"). LanguagesPT says the same line
 // in Portuguese, with the official names of the Brazilian editions for the
 // languages the characters have (names_pt.json, "language:<key>") and the same
 // style for the rest. Words it does not know stay as the SRD has them.

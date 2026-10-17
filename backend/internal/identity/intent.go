@@ -8,7 +8,7 @@ import (
 )
 
 // A sign-in intent is something the user asked for while signed out, which
-// needs them signed in: today, accepting a campaign invite. The app sends it
+// needs them signed in, such as accepting a campaign invite. The app sends it
 // with the sign-in itself, the server keeps it inside the login state, and
 // the callback completes it right after the session exists. Nothing about
 // it waits in the browser (no localStorage or sessionStorage), and nothing

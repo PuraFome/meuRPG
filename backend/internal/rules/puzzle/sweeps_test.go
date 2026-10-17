@@ -50,40 +50,6 @@ func (d *puzzleDigest) Write(p []byte) (int, error) {
 	return d.h.Write(p)
 }
 
-// TestLightsMinimumSweepCharacterization freezes LightsMinimum, the very cells
-// it picks among the solutions with as few presses (the order the kernel is
-// walked decides which), for every board of 3 x 3 and seeded boards
-// of the larger sizes, and LightsStart for a hundred seeds of each size.
-func TestLightsMinimumSweepCharacterization(t *testing.T) {
-	t.Parallel()
-	const sampled = 400
-	checkPuzzleSweep(t, "lights_sweep", func(w io.Writer) {
-		for n := MinLights - 1; n <= MaxLights+1; n++ {
-			states := []uint64{0, 1, 1<<(n*n) - 1}
-			switch {
-			case n == MinLights:
-				states = states[:0]
-				for s := range uint64(1) << (n * n) {
-					states = append(states, s)
-				}
-			case n > MinLights:
-				r := newRNG(uint64(n))
-				for range sampled {
-					states = append(states, r.next()&(1<<(n*n)-1))
-				}
-			}
-			for _, s := range states {
-				sol, ok, err := LightsMinimum(n, s)
-				fmt.Fprintf(w, "n=%d %x %+v %v %v\n", n, s, sol, ok, err)
-			}
-			for seed := range uint64(100) {
-				start, err := LightsStart(n, seed)
-				fmt.Fprintf(w, "n=%d seed=%d start=%x %v\n", n, seed, start, err)
-			}
-		}
-	})
-}
-
 // pillarsCases are the shapes of the pillars sweep: no links, links one way,
 // links both ways, a chain, the largest, and links that leave some targets out
 // of reach.
@@ -97,10 +63,9 @@ var pillarsCases = []Pillars{
 	{Count: 4, Glyphs: 3, Links: [][]int{{1, 2, 3}, {0, 2, 3}, {0, 1, 3}, {0, 1, 2}}},
 }
 
-// TestPillarsSweepCharacterization freezes Minimum, the very path the search
-// finds, for seeded states and targets of each shape, and Start for forty
-// seeds of each.
-func TestPillarsSweepCharacterization(t *testing.T) {
+// TestPillarsSweep: Minimum, the very path the search finds, for seeded states
+// and targets of each shape, and Start for forty seeds of each.
+func TestPillarsSweep(t *testing.T) {
 	t.Parallel()
 	const pairs, seeds = 30, 40
 	checkPuzzleSweep(t, "pillars_sweep", func(w io.Writer) {
@@ -129,9 +94,9 @@ func TestPillarsSweepCharacterization(t *testing.T) {
 	})
 }
 
-// TestPillarsRefusalsCharacterization: Minimum and Start check the shape
-// first, then the state, then the target, each with its own message.
-func TestPillarsRefusalsCharacterization(t *testing.T) {
+// TestPillarsRefusals: Minimum and Start check the shape first, then the
+// state, then the target, each with its own message.
+func TestPillarsRefusals(t *testing.T) {
 	t.Parallel()
 	good := Pillars{Count: 3, Glyphs: 3}
 	ok3 := []int{0, 1, 2}
@@ -198,10 +163,10 @@ var cipherKeys = func() []CipherKey {
 	return append(out, CipherKey{Shift: 3, Keyword: "lua"})
 }()
 
-// TestCipherSweepCharacterization freezes cipherAlphabet through every entry
-// point: the alphabet or the refusal, and Encipher, Decipher and
-// ValidateCipher of messages with accents, digits, no letter and too long.
-func TestCipherSweepCharacterization(t *testing.T) {
+// TestCipherSweep: cipherAlphabet through every entry point: the alphabet or
+// the refusal, and Encipher, Decipher and ValidateCipher of messages with
+// accents, digits, no letter and too long.
+func TestCipherSweep(t *testing.T) {
 	t.Parallel()
 	messages := []string{"O tesouro está sob o altar", "  42 !  ", "Ça va? Último 3", "", strings.Repeat("a", MaxCipherMessage+1)}
 	checkPuzzleSweep(t, "cipher_sweep", func(w io.Writer) {

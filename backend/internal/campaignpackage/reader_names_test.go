@@ -10,11 +10,11 @@ import (
 	pkgv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaignpackage/v1"
 )
 
-// Characterization tests of FileName and of nameImages (the label an image's
-// problem gets from images.json), frozen before both are split. They need no
-// database.
+// FileName (the name of the downloaded file, which the web app mirrors) and
+// nameImages (the label an image's problem gets from images.json). They need
+// no database.
 
-func TestCharacterizeFileNameEdges(t *testing.T) {
+func TestFileNameEdges(t *testing.T) {
 	t.Parallel()
 	for in, want := range map[string]string{
 		"":                            "campanha.meurpg.zip",
@@ -39,7 +39,7 @@ func TestCharacterizeFileNameEdges(t *testing.T) {
 		"ABC.def-GHI_jkl":             "ABC.def-GHI_jkl.meurpg.zip",
 		"é" + strings.Repeat("b", 70): "e" + strings.Repeat("b", 59) + ".meurpg.zip",
 		strings.Repeat("a ", 40):      strings.Repeat("a_", 29) + "a" + ".meurpg.zip",
-		// FINDING (frozen): the dots that are trimmed at the end still
+		// The dots that are trimmed at the end still
 		// count toward the 60 letters, so a name that starts with 60 dots
 		// loses what follows and falls back to "campanha".
 		strings.Repeat(".", 70) + "z": "campanha.meurpg.zip",
@@ -114,7 +114,7 @@ func breakLocalHeader(t *testing.T, b []byte, name string) []byte {
 	return nil
 }
 
-func TestCharacterizeNameImages(t *testing.T) {
+func TestNameImages(t *testing.T) {
 	t.Parallel()
 	good := []byte(`{"images":[{"id":"x","name":"Mapa\nantigo.png","file":"images/1"},{"name":"Outra","file":"images/2"}]}`)
 	ratio := pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_COMPRESSION_RATIO

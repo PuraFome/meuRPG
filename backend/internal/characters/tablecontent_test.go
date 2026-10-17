@@ -824,7 +824,7 @@ func pensantusWith(spell string) *charactersv1.CharacterSheet {
 	return s
 }
 
-// TestTableContentChangeShowsOnTheSheet (question 80): a change applies at once,
+// TestTableContentChangeShowsOnTheSheet: a change applies at once,
 // also on a locked sheet; the owner sees "A classe mudou" (an issue and a
 // ChangedContent) until the sheet is saved again; the master is told which sheets
 // ended with issues; nobody else's sheet is touched.
@@ -899,7 +899,7 @@ func TestTableContentChangeShowsOnTheSheet(t *testing.T) {
 	if n := len(master.get(t, campaign, pc.GetId()).GetDerived().GetChangedContent()); n != 1 {
 		t.Errorf("the master sees %d changed entries, want 1", n)
 	}
-	// A save that does not fix the mismatch keeps the notice (E10-02 state 8): the
+	// A save that does not fix the mismatch keeps the notice: the
 	// master renames the sheet, and the spell is still off the list.
 	same, err := master.api.UpdateCharacter(t.Context(), connect.NewRequest(&charactersv1.UpdateCharacterRequest{
 		CampaignId: campaign, CharacterId: pc.GetId(), Revision: got.GetRevision(), Name: "Pensantus renomeado", Sheet: got.GetSheet(),
@@ -1146,7 +1146,7 @@ func sheetWithTable(race, background, spell string) *charactersv1.CharacterSheet
 	return s
 }
 
-// TestTableContentEveryMechanicalChangeLetsTheSheetSave (question 80, the review's
+// TestTableContentEveryMechanicalChangeLetsTheSheetSave (the review's
 // finding): the master makes every mechanical change an entry allows, and the
 // player can still rename the sheet that uses it.
 func TestTableContentEveryMechanicalChangeLetsTheSheetSave(t *testing.T) {

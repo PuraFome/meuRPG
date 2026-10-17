@@ -21,9 +21,11 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -245,7 +247,7 @@ func (s *Service) levelUpSheet(row charactersdb.Character) (*charactersv1.FullSh
 // level to take now (RN-12).
 func (s *Service) checkLevelUpDue(ctx context.Context, tx pgx.Tx, row charactersdb.Character, full *charactersv1.FullSheet, content *rules.Content) error {
 	d := rules.Derive(buildOf(full), content)
-	reason, err := s.levelUps.LevelUpReason(ctx, tx, deref(row.CampaignID), row.ID, i32(d.TotalLevel), full.GetExperiencePoints(), i32(d.NextLevelXP))
+	reason, err := s.levelUps.LevelUpReason(ctx, tx, conv.OrZero(row.CampaignID), row.ID, i32(d.TotalLevel), full.GetExperiencePoints(), i32(d.NextLevelXP))
 	if err != nil {
 		return wrap("check the level up", err)
 	}
@@ -316,7 +318,7 @@ func newClassRefusal(content *rules.Content, m authz.Membership, classKey string
 // reads through tx, a read transaction of the caller, so the row, the content and
 // the level-up reason are one moment.
 func (s *Service) readLevelUpTarget(ctx context.Context, tx pgx.Tx, m authz.Membership, characterID, classKey string) (levelUpTarget, error) {
-	id, ok := parseUUID(characterID)
+	id, ok := uid.Canonical(characterID)
 	if !ok {
 		return levelUpTarget{}, errCharacterNotFound()
 	}
@@ -489,7 +491,7 @@ func (s *Service) PreviewLevelUp(
 		if t, err = s.readLevelUpTarget(ctx, tx, m, req.Msg.GetCharacterId(), choices.GetClassKey()); err != nil {
 			return err
 		}
-		plan, err = s.planLevelUpIn(ctx, tx, s.queries.WithTx(tx), m, t, choices)
+		plan, err = s.planLevelUp(ctx, tx, s.queries.WithTx(tx), m, t, choices)
 		return err
 	})
 	if err != nil {
@@ -552,11 +554,11 @@ func checkRollRequest(m authz.Membership, req *charactersv1.RollLevelUpHitPoints
 	if isMaster(m) {
 		return "", errOnlyThePlayer()
 	}
-	id, ok := parseUUID(req.GetCharacterId())
+	id, ok := uid.Canonical(req.GetCharacterId())
 	if !ok {
 		return "", errCharacterNotFound()
 	}
-	if _, ok := parseUUID(req.GetIdempotencyKey()); !ok {
+	if _, ok := uid.Canonical(req.GetIdempotencyKey()); !ok {
 		return "", invalidArgument(fieldErr("idempotency_key", "must be a UUID"))
 	}
 	return id, nil
@@ -678,7 +680,7 @@ func checkLevelUpRequest(m authz.Membership, req *charactersv1.LevelUpCharacterR
 	if isMaster(m) {
 		return "", errOnlyThePlayer()
 	}
-	id, ok := parseUUID(req.GetCharacterId())
+	id, ok := uid.Canonical(req.GetCharacterId())
 	if !ok {
 		return "", errCharacterNotFound()
 	}
@@ -716,7 +718,7 @@ func (s *Service) levelUpIn(ctx context.Context, tx pgx.Tx, m authz.Membership, 
 	if err != nil {
 		return leveledUp{}, err
 	}
-	plan, err := s.planLevelUpIn(ctx, tx, q, m, t, choices)
+	plan, err := s.planLevelUp(ctx, tx, q, m, t, choices)
 	if err != nil {
 		return leveledUp{}, err
 	}
@@ -844,7 +846,7 @@ func levelUpsParams(m authz.Membership, req *charactersv1.ListLevelUpsRequest) (
 		params.BeforeCreatedAt, params.BeforeID = &at, &id
 	}
 	if raw := req.GetCharacterId(); raw != "" {
-		id, ok := parseUUID(raw)
+		id, ok := uid.Canonical(raw)
 		if !ok {
 			return charactersdb.ListLevelUpsParams{}, errCharacterNotFound()
 		}
@@ -883,7 +885,7 @@ func levelUpToProto(content *rules.Content, displayNames map[string]string, row 
 	}
 	return &charactersv1.LevelUp{
 		Id: row.ID, CharacterId: row.CharacterID, CharacterName: row.CharacterName,
-		PlayerDisplayName: displayNames[deref(row.PlayerUserID)],
+		PlayerDisplayName: displayNames[conv.OrZero(row.PlayerUserID)],
 		ClassKey:          row.ClassKey, ClassNamePt: content.NamePT(row.ClassKey),
 		FromLevel: row.FromLevel, ToLevel: row.ToLevel,
 		Choices: choices, NamesPt: levelUpNames(content, row.ClassKey, choices),
@@ -956,9 +958,7 @@ func applyLevelUp(full *charactersv1.FullSheet, after rules.Build, idx int) *cha
 		hp := &charactersv1.HitPoints{Method: charactersv1.HitPointsMethod_HIT_POINTS_METHOD_AVERAGE}
 		if after.HitPoints.Method == rules.HitPointsRolled {
 			hp.Method = charactersv1.HitPointsMethod_HIT_POINTS_METHOD_ROLLED
-			for _, r := range after.HitPoints.Rolls {
-				hp.Rolls = append(hp.Rolls, i32(r))
-			}
+			hp.Rolls = int32s(after.HitPoints.Rolls)
 		}
 		out.HitPoints = hp
 	}
@@ -1050,11 +1050,7 @@ func pactMagicToProto(p *rules.PactMagic) *rulesv1.PactMagic {
 
 // slotCountsToProto copies the slot count of each of the nine spell levels.
 func slotCountsToProto(s [9]int) []int32 {
-	out := make([]int32, len(s))
-	for i, n := range s {
-		out[i] = i32(n)
-	}
-	return out
+	return int32s(s[:])
 }
 
 // multiclassOfferToProto copies what a new class brings: the proficiencies it
@@ -1186,12 +1182,8 @@ func multiclassSummaryToProto(sum rules.MulticlassSummary, after rules.Derived) 
 		NewClassKey: sum.NewClass, CasterLevelBefore: i32(sum.CasterLevelBefore), CasterLevelAfter: i32(sum.CasterLevelAfter),
 		SlotsByTable: sum.SlotsByTable,
 	}
-	for _, n := range after.SpellSlots {
-		out.SlotsAfter = append(out.SlotsAfter, i32(n))
-	}
-	for _, h := range after.HitDice {
-		out.HitDiceAfter = append(out.HitDiceAfter, &rulesv1.HitDice{Faces: i32(h.Die), Count: i32(h.Count)})
-	}
+	out.SlotsAfter = int32s(after.SpellSlots)
+	out.HitDiceAfter = mapToProto(after.HitDice, derivedHitDiceToProto)
 	for _, p := range sum.ProficienciesGained {
 		out.ProficienciesGained = append(out.ProficienciesGained, &charactersv1.LevelUpNamedKey{Key: p.Key, NamePt: p.NamePT})
 	}

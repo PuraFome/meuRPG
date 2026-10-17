@@ -6,6 +6,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 )
 
 // NpcPortraits returns, for those of ids that are living NPCs of the campaign, the
@@ -19,7 +20,7 @@ import (
 func (s *Service) NpcPortraits(ctx context.Context, tx pgx.Tx, campaignID string, ids []string) (map[string]string, error) {
 	valid := make([]string, 0, len(ids))
 	for _, id := range ids {
-		if id, ok := parseUUID(id); ok {
+		if id, ok := uid.Canonical(id); ok {
 			valid = append(valid, id)
 		}
 	}

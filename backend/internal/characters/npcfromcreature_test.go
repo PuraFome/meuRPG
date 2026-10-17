@@ -18,7 +18,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
-// TestNpcSheetFromCreature: the ogre of the "Criar NPC" design (E10-08) and a
+// TestNpcSheetFromCreature: the ogre of the "Criar NPC" design and a
 // creature that does not walk and one whose attacks the sheet cannot say.
 func TestNpcSheetFromCreature(t *testing.T) {
 	t.Parallel()
@@ -132,7 +132,7 @@ func TestCreatureSizeWord(t *testing.T) {
 
 // TestListCreaturesBestiaryRequests: the size and the range filters, the rows of
 // the list ("Lobo · Wolf · SRD", CA, PV), and the bad requests; and that the
-// Etapa 9 requests (no size, no min_cr) answer what the rules module lists.
+// basic requests (no size, no min_cr) answer what the rules module lists.
 func TestListCreaturesBestiaryRequests(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
@@ -195,7 +195,7 @@ func TestListCreaturesBestiaryRequests(t *testing.T) {
 		wantCode(t, name, err, connect.CodeInvalidArgument)
 	}
 
-	// The Etapa 9 callers: the same rows as the rules module's list for the same
+	// The basic callers: the same rows as the rules module's list for the same
 	// filters (the Wild Shape list and the summon choices are such requests).
 	content := loadRules(t)
 	for _, f := range []rules.CreatureFilter{

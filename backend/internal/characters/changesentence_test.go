@@ -9,7 +9,7 @@ import (
 // TestChangeSentenceNamesOnlyTheChangedEntry: "A classe mudou" names the class or
 // subclass a sentence is about only when it is the entry that changed; for any
 // other it tells the same sentence without a name; an issue with no change
-// sentence keeps its own (review of slice 10.3, the SRD Ladino of a table race).
+// sentence keeps its own(the SRD Ladino of a table race).
 func TestChangeSentenceNamesOnlyTheChangedEntry(t *testing.T) {
 	t.Parallel()
 	is := rules.Issue{Message: "Há 5 perícias escolhidas; o personagem escolhe 4.", ChangeMessage: "agora dá 4 perícias no nível 1; esta ficha tem 5.", ChangeSubject: "class:rogue"}

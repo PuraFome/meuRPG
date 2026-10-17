@@ -14,9 +14,11 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 )
 
 // Reviver (RN-03, SRD 5.1 "Dropping to 0 Hit Points").
@@ -44,7 +46,7 @@ func (s *Service) ReviveCharacter(
 	if err != nil {
 		return nil, err
 	}
-	id, ok := parseUUID(req.Msg.GetCharacterId())
+	id, ok := uid.Canonical(req.Msg.GetCharacterId())
 	if !ok {
 		return nil, errCharacterNotFound()
 	}
@@ -62,7 +64,7 @@ func (s *Service) ReviveCharacter(
 	now := s.now()
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
-		done, err = s.reviveInTx(ctx, tx, m, id, scoped, hash, now)
+		done, err = s.reviveCharacterTx(ctx, tx, m, id, scoped, hash, now)
 		return err
 	})
 	if err != nil {
@@ -88,10 +90,10 @@ type revival struct {
 	encounterID string
 }
 
-// reviveInTx is ReviveCharacter's transaction: the character, locked FOR UPDATE, must be
+// reviveCharacterTx is ReviveCharacter's transaction: the character, locked FOR UPDATE, must be
 // a dead player character, or the same call again; then it lives again and the table
 // reads the line.
-func (s *Service) reviveInTx(ctx context.Context, tx pgx.Tx, m authz.Membership, id string, key, hash *string, now time.Time) (revival, error) {
+func (s *Service) reviveCharacterTx(ctx context.Context, tx pgx.Tx, m authz.Membership, id string, key, hash *string, now time.Time) (revival, error) {
 	row, err := visibleForUpdate(ctx, s.queries.WithTx(tx), m, id)
 	if err != nil {
 		return revival{}, err
@@ -103,7 +105,7 @@ func (s *Service) reviveInTx(ctx context.Context, tx pgx.Tx, m authz.Membership,
 		replayed, err := reviveReplayed(row, key, hash)
 		return revival{row: row, replayed: replayed}, err
 	}
-	if row, err = s.reviveTx(ctx, tx, row, key, hash, now); err != nil {
+	if row, err = s.revivedRow(ctx, tx, row, key, hash, now); err != nil {
 		return revival{}, err
 	}
 	done := revival{row: row}
@@ -123,10 +125,10 @@ func reviveReplayed(row charactersdb.Character, key, hash *string) (bool, error)
 	return true, nil
 }
 
-// reviveTx brings the dead character row back inside tx: RN-03 first, then the status, then
+// revivedRow brings the dead character row back inside tx: RN-03 first, then the status, then
 // its hit points. row is the character locked FOR UPDATE and dead. It returns the character
 // as it is now.
-func (s *Service) reviveTx(ctx context.Context, tx pgx.Tx, row charactersdb.Character, key, hash *string, at time.Time) (charactersdb.Character, error) {
+func (s *Service) revivedRow(ctx context.Context, tx pgx.Tx, row charactersdb.Character, key, hash *string, at time.Time) (charactersdb.Character, error) {
 	q := s.queries.WithTx(tx)
 	if row.PlayerUserID != nil && row.CampaignID != nil {
 		other, err := q.GetLivingPlayerCharacterID(ctx, charactersdb.GetLivingPlayerCharacterIDParams{CampaignID: *row.CampaignID, PlayerUserID: *row.PlayerUserID})
@@ -138,13 +140,13 @@ func (s *Service) reviveTx(ctx context.Context, tx pgx.Tx, row charactersdb.Char
 		}
 	}
 	revived, err := q.ReviveCharacter(ctx, charactersdb.ReviveCharacterParams{
-		CampaignID: deref(row.CampaignID), ID: row.ID, Now: at, ReviveKey: key, ReviveHash: hash,
+		CampaignID: conv.OrZero(row.CampaignID), ID: row.ID, Now: at, ReviveKey: key, ReviveHash: hash,
 	})
 	if err != nil {
 		return row, wrap("revive a character", err)
 	}
 	hp := int32(reviveHitPoints)
-	if _, _, err := s.AdjustVitals(ctx, tx, deref(revived.CampaignID), revived.ID, &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: &hp}); err != nil {
+	if _, _, err := s.AdjustVitals(ctx, tx, conv.OrZero(revived.CampaignID), revived.ID, &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: &hp}); err != nil {
 		return row, err
 	}
 	return revived, nil
@@ -213,7 +215,7 @@ const eventCharacterRevived = "character_revived"
 // package play does, in the same transaction. A character that is not dead is
 // `failed_precondition`.
 func (s *Service) ReviveDead(ctx context.Context, tx pgx.Tx, campaignID, characterID string, at time.Time) (name string, err error) {
-	id, ok := parseUUID(characterID)
+	id, ok := uid.Canonical(characterID)
 	if !ok {
 		return "", errCharacterNotFound()
 	}
@@ -228,7 +230,7 @@ func (s *Service) ReviveDead(ctx context.Context, tx pgx.Tx, campaignID, charact
 	if row.Kind != kindPlayer || row.Status != statusDead {
 		return "", errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_NOT_DEAD, row.ID)
 	}
-	if _, err := s.reviveTx(ctx, tx, row, nil, nil, at); err != nil {
+	if _, err := s.revivedRow(ctx, tx, row, nil, nil, at); err != nil {
 		return "", err
 	}
 	return row.Name, nil

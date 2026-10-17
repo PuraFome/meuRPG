@@ -8,6 +8,7 @@ import (
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
@@ -22,7 +23,7 @@ func (s *Service) ReactionStats(ctx context.Context, tx pgx.Tx, campaignID, char
 	if err != nil {
 		return link.ReactionStats{}, err
 	}
-	id, _ := parseUUID(characterID)
+	id, _ := uid.Canonical(characterID)
 	rows, err := s.queriesIn(tx).ListCombatCharacters(ctx, charactersdb.ListCombatCharactersParams{CampaignID: campaignID, Ids: []string{id}})
 	if err != nil {
 		return link.ReactionStats{}, s.dbError(ctx, "read a character for a combat", err)

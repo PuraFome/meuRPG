@@ -11,6 +11,8 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/progression/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
@@ -93,7 +95,7 @@ func (s *Service) Party(ctx context.Context, tx pgx.Tx, campaignID string) ([]li
 		}
 		d := rules.Derive(buildOf(full), content)
 		out = append(out, link.Member{
-			ID: row.ID, Name: row.Name, PlayerUserID: deref(row.PlayerUserID),
+			ID: row.ID, Name: row.Name, PlayerUserID: conv.OrZero(row.PlayerUserID),
 			Level: i32(d.TotalLevel), XP: full.GetExperiencePoints(), NextLevelXP: i32(d.NextLevelXP),
 		})
 	}
@@ -105,7 +107,7 @@ func (s *Service) Party(ctx context.Context, tx pgx.Tx, campaignID string) ([]li
 func (s *Service) Names(ctx context.Context, campaignID string, ids []string) (map[string]string, error) {
 	valid := make([]string, 0, len(ids))
 	for _, id := range ids {
-		if id, ok := parseUUID(id); ok {
+		if id, ok := uid.Canonical(id); ok {
 			valid = append(valid, id)
 		}
 	}
