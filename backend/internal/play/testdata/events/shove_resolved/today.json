@@ -735,6 +735,18 @@
     "last_dft": 1,
     "cover": "x"
   },
+  "teleport": {
+    "from": {
+      "placed": true,
+      "col": 1,
+      "row": 1,
+      "used_dft": 1,
+      "last_dft": 1,
+      "cover": "x"
+    },
+    "col": 1,
+    "row": 1
+  },
   "contest": {
     "contest_id": "x",
     "purpose": "x",
