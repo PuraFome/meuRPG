@@ -11,7 +11,7 @@ import {
 import { MapPointKind, MapPointSchema } from '../../../../../gen/meurpg/maps/v1/maps_pb';
 import { AdvantageSourceSchema, RollMode } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
 import { SearchForTrapsResponseSchema } from '../../../../../gen/meurpg/play/v1/traps_pb';
-import { inspirationOffer } from '../../../../core/play/scene-testing';
+import { heldAnswer, heldDie } from '../../../../core/held-rolls/held-roll-testing';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { TrapsClient } from '../../../../core/traps/traps-client';
 import { TrapSearchSheet, type TrapSearchData } from './trap-search-sheet';
@@ -31,7 +31,7 @@ function blockedBy(reason: EncounterBlockedReason): ConnectError {
 const twoDiceError = () => blockedBy(EncounterBlockedReason.SEARCH_NEEDS_TWO_DICE);
 
 describe('TrapSearchSheet', () => {
-  const resources = { answerOutsideInspiration: vi.fn() };
+  const resources = { answerHeldRoll: vi.fn() };
   function setup(
     responses: (unknown | Error)[],
     listed?: ReturnType<typeof create<typeof MapPointSchema>>[],
@@ -429,7 +429,7 @@ describe('TrapSearchSheet', () => {
   describe('a character that holds a Bardic Inspiration die', () => {
     it('is asked about the die before the result, and the answer tells what the search found', async () => {
       const { fixture, el, roller } = setup([
-        create(SearchForTrapsResponseSchema, { inspirationOffer: inspirationOffer(5, 4) }),
+        create(SearchForTrapsResponseSchema, { heldRollOffer: heldDie(5, 4) }),
       ]);
       await roller.rollWith({ inApp: true });
       fixture.detectChanges();
@@ -437,34 +437,47 @@ describe('TrapSearchSheet', () => {
       expect(text).toContain('Usar a Inspiração de Bardo (d8)?');
       expect(text).not.toContain('Achou');
       expect(text).not.toContain('Nada');
-      resources.answerOutsideInspiration.mockResolvedValue({
-        result: {
-          case: 'trapSearch',
-          value: create(SearchForTrapsResponseSchema, { roll: roll(5, 17), foundPointIds: ['x'] }),
-        },
-      });
+      resources.answerHeldRoll.mockResolvedValue(
+        heldAnswer({
+          result: {
+            case: 'trapSearch',
+            value: create(SearchForTrapsResponseSchema, {
+              roll: roll(5, 17),
+              foundPointIds: ['x'],
+            }),
+          },
+        }),
+      );
       Array.from(el.querySelectorAll('button'))
         .find((b) => b.textContent?.includes('Guardar o dado'))!
         .click();
       await fixture.whenStable();
       fixture.detectChanges();
-      expect(resources.answerOutsideInspiration.mock.calls[0].slice(1, 3)).toEqual(['h1', false]);
+      expect(resources.answerHeldRoll.mock.calls[0].slice(1, 3)).toEqual([
+        'h1',
+        { kind: 'die', use: false, roll: null },
+      ]);
       expect(el.textContent).toContain('Achou');
     });
 
     it('uses the die rolled in the app and tells what the search found', async () => {
-      resources.answerOutsideInspiration.mockClear();
+      resources.answerHeldRoll.mockClear();
       const { fixture, el, roller } = setup([
-        create(SearchForTrapsResponseSchema, { inspirationOffer: inspirationOffer(5, 4) }),
+        create(SearchForTrapsResponseSchema, { heldRollOffer: heldDie(5, 4) }),
       ]);
       await roller.rollWith({ inApp: true });
       fixture.detectChanges();
-      resources.answerOutsideInspiration.mockResolvedValue({
-        result: {
-          case: 'trapSearch',
-          value: create(SearchForTrapsResponseSchema, { roll: roll(5, 21), foundPointIds: ['x'] }),
-        },
-      });
+      resources.answerHeldRoll.mockResolvedValue(
+        heldAnswer({
+          result: {
+            case: 'trapSearch',
+            value: create(SearchForTrapsResponseSchema, {
+              roll: roll(5, 21),
+              foundPointIds: ['x'],
+            }),
+          },
+        }),
+      );
       const press = async (text: string) => {
         Array.from(el.querySelectorAll('button'))
           .find((b) => b.textContent?.includes(text))!
@@ -473,27 +486,28 @@ describe('TrapSearchSheet', () => {
         fixture.detectChanges();
       };
       await press('Usar e rolar o d8');
-      expect(resources.answerOutsideInspiration.mock.calls[0].slice(1, 4)).toEqual([
+      expect(resources.answerHeldRoll.mock.calls[0].slice(1, 3)).toEqual([
         'h1',
-        true,
-        { inApp: true },
+        { kind: 'die', use: true, roll: { inApp: true } },
       ]);
       expect(el.textContent).toContain('Achou');
     });
 
     it('sends the typed face of the die, 1 to 8', async () => {
-      resources.answerOutsideInspiration.mockClear();
+      resources.answerHeldRoll.mockClear();
       const { fixture, el, roller } = setup([
-        create(SearchForTrapsResponseSchema, { inspirationOffer: inspirationOffer(5, 4) }),
+        create(SearchForTrapsResponseSchema, { heldRollOffer: heldDie(5, 4) }),
       ]);
       await roller.rollWith({ inApp: true });
       fixture.detectChanges();
-      resources.answerOutsideInspiration.mockResolvedValue({
-        result: {
-          case: 'trapSearch',
-          value: create(SearchForTrapsResponseSchema, { roll: roll(5, 21), foundPointIds: [] }),
-        },
-      });
+      resources.answerHeldRoll.mockResolvedValue(
+        heldAnswer({
+          result: {
+            case: 'trapSearch',
+            value: create(SearchForTrapsResponseSchema, { roll: roll(5, 21), foundPointIds: [] }),
+          },
+        }),
+      );
       Array.from(el.querySelectorAll('button'))
         .find((b) => b.textContent?.includes('Digitar o dado'))!
         .click();
@@ -507,10 +521,9 @@ describe('TrapSearchSheet', () => {
         .find((b) => b.textContent?.includes('Usar o dado digitado'))!
         .click();
       await fixture.whenStable();
-      expect(resources.answerOutsideInspiration.mock.calls[0].slice(1, 4)).toEqual([
+      expect(resources.answerHeldRoll.mock.calls[0].slice(1, 3)).toEqual([
         'h1',
-        true,
-        { face: 6 },
+        { kind: 'die', use: true, roll: { face: 6 } },
       ]);
     });
   });
