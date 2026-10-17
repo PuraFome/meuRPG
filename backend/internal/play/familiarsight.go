@@ -2,7 +2,6 @@ package play
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"slices"
 	"strconv"
@@ -228,34 +227,6 @@ func (s *Service) sightChange(ctx context.Context, campaignID, rawCharacter, raw
 	return vitals, out, nil
 }
 
-// answerFormChange is what a change of a form or a sight answers with, after its
-// transaction: a retry of another character's change is refused, a retry answers
-// with the vitals as they are now, and a change made in a combat tells the combat.
-func (s *Service) answerFormChange(ctx context.Context, m authz.Membership, characterID string, res combatResult, ev actionEvent, vitals *playv1.CharacterVitals) (*playv1.CharacterVitals, *playv1.Encounter, error) {
-	if res.repeated && ev.OwnerCharacter != characterID {
-		// The key is another character's change: never answer with that character's vitals.
-		return nil, nil, connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
-	}
-	if res.repeated {
-		var err error
-		if vitals, err = s.vitals.GetVitals(ctx, m.CampaignID, characterID); err != nil {
-			return nil, nil, s.dbError(ctx, "get vitals", err)
-		}
-	}
-	if ev.EncounterID == "" {
-		return vitals, nil, nil
-	}
-	res.encounterID = ev.EncounterID
-	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
-		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
-		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
-	})
-	if err != nil {
-		return nil, nil, err
-	}
-	return vitals, out, nil
-}
-
 // sightTx is the sight transaction: where the character stands in the table's
 // play, then the start or the stop, then the event's own fields.
 func (s *Service) sightTx(ctx context.Context, c *combatTx, r *sightRun) (any, error) {
@@ -385,9 +356,8 @@ func (s *Service) sightSeal(ctx context.Context, c *combatTx, r *sightRun) (any,
 		if r.made.Actor == "" {
 			r.made.Round, r.made.Secret, r.made.Actor = c.enc.Round, r.who.Hidden, r.who.ID
 		}
-		var err error
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
+		if err := touch(ctx, c); err != nil {
+			return nil, err
 		}
 	}
 	c.characterID = &r.characterID
@@ -399,9 +369,9 @@ func (s *Service) sightSeal(ctx context.Context, c *combatTx, r *sightRun) (any,
 // loses the conditions it gave, and a familiar_sight event says why. It runs inside
 // the transaction that starts the turn; what it changed is told after the commit.
 func (s *Service) endFamiliarSights(ctx context.Context, c *combatTx, ids []string) error {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	for _, id := range ids {
 		if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == id }); i >= 0 {
@@ -470,26 +440,6 @@ func (s *Service) sightUndo(ctx context.Context, c *combatTx, ev actionEvent, fi
 	}
 	keep(after)
 	c.told = append(c.told, after)
-	return nil
-}
-
-// putBackSpentAction gives back what a change spent on its turn: the economy and
-// the running start the event kept. It does nothing for a change that spent
-// nothing (the master's, or one made in SETUP).
-func putBackSpentAction(ctx context.Context, c *combatTx, who playdb.Combatant, ev actionEvent) error {
-	if !ev.Spent {
-		return nil
-	}
-	if err := c.q.SetCombatantEconomy(ctx, playdb.SetCombatantEconomyParams{
-		ID: who.ID, ActionUsed: ev.ActionBefore, BonusActionUsed: ev.BonusBefore, ReactionUsed: ev.ReactionBefore, Dashed: ev.DashedBefore,
-	}); err != nil {
-		return fmt.Errorf("put back the economy: %w", err)
-	}
-	if ev.RunBefore != 0 {
-		if err := c.q.SetCombatantRun(ctx, playdb.SetCombatantRunParams{ID: who.ID, LastMoveDft: ev.RunBefore}); err != nil {
-			return fmt.Errorf("put back the running start: %w", err)
-		}
-	}
 	return nil
 }
 

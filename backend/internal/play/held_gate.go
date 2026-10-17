@@ -343,11 +343,14 @@ func (s *Service) gateOpen(ctx context.Context, ae answering, stores heldStores)
 	if err != nil {
 		return err
 	}
+	if def.ownKindOnly {
+		open = slices.DeleteFunc(open, func(h heldRoll) bool { return h.Kind != ae.spec.Kind })
+	}
 	for _, h := range open {
 		switch {
 		case !h.stale(ae.st):
 			return heldRefusal(h)
-		case h.table == def.write:
+		case h.table == def.write || def.ownKindOnly:
 			if err := stores.of(h.table).forget(ctx, h); err != nil {
 				return fmt.Errorf("forget the old held roll: %w", err)
 			}
@@ -370,7 +373,7 @@ func (s *Service) gateInsert(ctx context.Context, ae answering, stores heldStore
 		return gateResult{}, err
 	}
 	// The question may be part of what the combat's readers see: its revision moves.
-	if err := store.asked(ctx, ae.gateEnv); err != nil {
+	if err := store.asked(ctx, ae.gateEnv, h); err != nil {
 		return gateResult{}, err
 	}
 	return gateResult{Held: new(askedBy(h, ae.st))}, nil
@@ -386,6 +389,10 @@ func (ae answering) newRoll(body []byte, roll d20Roll, luckyAt *int32) heldRoll 
 	}
 	if r.Combatant != nil {
 		h.CombatantID, h.EncounterID, h.Round = r.Combatant.ID, r.Combatant.EncounterID, &r.Round
+		if h.CharacterID == "" {
+			// A creature or the copy of an NPC is not backed by its character, but carries one, and the row needs it.
+			h.CharacterID = r.Combatant.CharacterID
+		}
 	}
 	return h
 }
@@ -394,7 +401,7 @@ func (ae answering) newRoll(body []byte, roll d20Roll, luckyAt *int32) heldRoll 
 // question's offer, or the settled d20.
 func (s *Service) gateAnswer(ctx context.Context, ae answering, a heldReply) (gateResult, error) {
 	def := heldRegistry[ae.spec.Kind]
-	if a.die != nil && !ae.st.Holds && def.write.checksTheAnswer() {
+	if a.die != nil && !ae.st.Holds && checksTheAnswer(ae.spec.Kind, def.write) {
 		return gateResult{}, errDieGone()
 	}
 	stores := newHeldStores(ae.q)
@@ -416,7 +423,7 @@ func (s *Service) gateAnswer(ctx context.Context, ae answering, a heldReply) (ga
 	if !(dieQuestion{}).pending(h, ae.st) {
 		return s.gateSettle(ctx, ae, h, a)
 	}
-	if err := stores.of(h.table).asked(ctx, ae.gateEnv); err != nil {
+	if err := stores.of(h.table).asked(ctx, ae.gateEnv, h); err != nil {
 		return gateResult{}, err
 	}
 	return gateResult{Held: new(askedBy(h, ae.st))}, nil

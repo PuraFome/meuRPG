@@ -37,9 +37,9 @@ import (
 // effectsBeforeTurn ends what ends at the end of the turn that is ending: it runs as the next
 // turn starts, once the saving throws that held the turn were answered.
 func (s *Service) effectsBeforeTurn(ctx context.Context, c *combatTx) error {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	members := turnMembers(cs)
 	if len(members) == 0 {
@@ -63,9 +63,9 @@ func (s *Service) effectsBeforeTurn(ctx context.Context, c *combatTx) error {
 
 // effectsAfterTurnStart does what the start of the turn of ids does to the effects.
 func (s *Service) effectsAfterTurnStart(ctx context.Context, c *combatTx, ids []string, round int32) error {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	rows, err := c.q.ListLastingEffects(ctx, c.enc.ID)
 	if err != nil {
@@ -81,8 +81,8 @@ func (s *Service) effectsAfterTurnStart(ctx context.Context, c *combatTx, ids []
 	if rows, err = c.q.ListLastingEffects(ctx, c.enc.ID); err != nil {
 		return fmt.Errorf("list the effects: %w", err)
 	}
-	if cs, err = c.q.ListCombatants(ctx, c.enc.ID); err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+	if cs, err = listCombatants(ctx, c); err != nil {
+		return err
 	}
 	// (1b) The temporary hit points an effect gives at the start of each turn (Heroísmo).
 	if err := s.giveTurnTempHPs(ctx, c, cs, rows, ids, round); err != nil {
@@ -235,9 +235,9 @@ func (s *Service) effectDamage(ctx context.Context, c *combatTx, who playdb.Comb
 		}
 	}
 	if st.TriggersFired+1 >= conv.OrZero(st.TriggerMaxTriggers) {
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+		cs, err := listCombatants(ctx, c)
 		if err != nil {
-			return fmt.Errorf("list the combatants: %w", err)
+			return err
 		}
 		return s.endEffectRows(ctx, c, cs, []playdb.CombatantState{st}, endBurned)
 	}
@@ -287,9 +287,9 @@ func (s *Service) releaseHeldTurn(ctx context.Context, c *combatTx) error {
 	if c.enc.ID == "" || c.enc.Status != statusActive {
 		return nil
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	if slices.ContainsFunc(cs, func(o playdb.Combatant) bool { return o.TurnState == turnActing }) {
 		return nil
@@ -353,6 +353,7 @@ func (s *Service) clearTempHP(ctx context.Context, c *combatTx, who playdb.Comba
 	if t.temp == 0 {
 		return nil
 	}
+	c.tempCleared = append(c.tempCleared, tempCleared{Combatant: who.ID, Temp: clamp32(t.temp, 0, maxTempHitPoints)})
 	none := int32(0)
 	if holdsHP(who) {
 		before := hpOf(who)

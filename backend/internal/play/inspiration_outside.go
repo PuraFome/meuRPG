@@ -95,12 +95,9 @@ func (s *Service) giveOutsideTx(ctx context.Context, m authz.Membership, key str
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		given = outsideGiven{}
 		q := s.queries.WithTx(tx)
-		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errNoOpenSession()
-		}
+		session, err := lockOpenSessionOrNone(ctx, q, m.CampaignID)
 		if err != nil {
-			return fmt.Errorf("lock the open session: %w", err)
+			return err
 		}
 		done, again, err := eventByKey(ctx, q, session.ID, key, eventInspirationGiven, hash)
 		if err != nil {
@@ -121,7 +118,7 @@ func (s *Service) giveOutsideTx(ctx context.Context, m authz.Membership, key str
 // replayGive answers a key the caller already used: the bard, and nothing written.
 func (s *Service) replayGive(ctx context.Context, tx pgx.Tx, m authz.Membership, done playdb.GetSessionEventByIdempotencyKeyRow, given *outsideGiven) error {
 	if done.ActorUserID == nil || *done.ActorUserID != m.UserID {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
+		return errKeyReused()
 	}
 	bard, _, err := s.myCharacter(ctx, tx, m)
 	given.bard = bard
@@ -389,7 +386,7 @@ func bardicTargets(party []link.Character, me link.Character, rows []playdb.Char
 
 // heldRollsOf lists the rolls of a character that wait for an answer, with the die it holds
 // (found): about the die, or the halfling's Lucky question, which needs no die. A stale roll (its
-// combat round is over, or its die is gone) is left out.
+// combat round is over, or its die is gone) is left out, and so is a weapon attack.
 func (s *Service) heldRollsOf(ctx context.Context, campaignID, characterID string) (heldDie, bool, []heldRoll, error) {
 	die, found, err := s.dieOf(ctx, s.queries, campaignID, characterID)
 	if err != nil {
@@ -400,7 +397,8 @@ func (s *Service) heldRollsOf(ctx context.Context, campaignID, characterID strin
 		return heldDie{}, false, nil, err
 	}
 	state := rollerState{Die: die, Holds: found}
-	return die, found, slices.DeleteFunc(all, func(h heldRoll) bool { return h.stale(state) }), nil
+	// A weapon attack's question is on its combatant in the combat view, answered by the combat's RPCs, not by these.
+	return die, found, slices.DeleteFunc(all, func(h heldRoll) bool { return h.Kind == heldWeaponAttack || h.stale(state) }), nil
 }
 
 // openEncounterOf is the open combat of the campaign's open game session, nil when none.

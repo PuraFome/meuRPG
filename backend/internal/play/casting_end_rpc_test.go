@@ -170,7 +170,7 @@ func castEndAid(t *testing.T, a *armed) string {
 // what a second call on the same cast reads (nothing changes, no event), and the dismissal of a cast already over.
 func TestCastEndTheEndingIsWhatEachCallerReads(t *testing.T) {
 	t.Parallel()
-	g := &castGolden{}
+	g := &goldenBlocks{}
 	for _, who := range []struct {
 		name string
 		as   func(a *armed) *user
@@ -239,7 +239,7 @@ func TestCastEndAConcentrationInACombatIsEndedThere(t *testing.T) {
 // the same cast read by the caster's player, and AbandonCast on a cast that is not being cast any more.
 func TestCastEndConfirmIsWhatEachCallerReads(t *testing.T) {
 	t.Parallel()
-	g := &castGolden{}
+	g := &goldenBlocks{}
 	a := newCastingParty(t)
 	id := castEndStartPrayer(t, a)
 	names := castEndNames(a, map[string]string{id: "cast"})

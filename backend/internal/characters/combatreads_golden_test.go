@@ -145,9 +145,9 @@ func TestCombatSpellGoldenOfEveryKind(t *testing.T) {
 	casts["cleric spell:flame-strike@6 radiant"] = cast{who: cleric, spell: "spell:flame-strike", slot: 6, damageType: "damage-type:radiant"}
 	casts["fighter casting spell:fire-bolt (no spellcasting)"] = cast{who: fighter, spell: "spell:fire-bolt"}
 	casts["fighter casting spell:cure-wounds (no spellcasting)"] = cast{who: fighter, spell: "spell:cure-wounds", slot: 1}
-	// Finding: a character that casts nothing (a basic sheet, a fighter) casting a spell with a
-	// saving throw keeps the save's ability with a DC of 0, so the target saves against 0.
-	// Frozen as it is.
+	// A character that casts nothing (a basic sheet, a fighter) casting a spell with a saving
+	// throw has no DC: the spell carries no save at all, so the engine rolls none and the master
+	// decides (the DC-0 finding).
 	casts["basic sheet casting spell:sacred-flame"] = cast{who: goblin, spell: "spell:sacred-flame"}
 	casts["refused: an unknown spell"] = cast{who: wizard, spell: "spell:nao-existe", slot: 1}
 	casts["refused: a dead character"] = cast{who: dead, spell: "spell:fire-bolt"}

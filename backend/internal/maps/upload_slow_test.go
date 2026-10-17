@@ -9,6 +9,8 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -92,11 +94,10 @@ func TestQueuedUploadsDoNotReadTheirBodies(t *testing.T) {
 	}
 
 	// Correct behavior: while the slot is busy, the waiting requests do not
-	// all hold a full body. Give them time to (wrongly) read everything.
-	deadline := time.Now().Add(10 * time.Second)
-	for consumed.Load() < total && time.Now().Before(deadline) {
-		time.Sleep(50 * time.Millisecond)
-	}
+	// all hold a full body. Wait until every upload is parked on the slot: from
+	// then on none of them can read more, so the count is final (a sleep would
+	// either end too early and pass for the wrong reason, or cost its whole length).
+	waitForUploadsOnTheSlot(t, k)
 	got := consumed.Load()
 	cancel()
 	release()
@@ -104,6 +105,26 @@ func TestQueuedUploadsDoNotReadTheirBodies(t *testing.T) {
 	if got >= total-total/10 {
 		t.Errorf("with the processing slot busy, the server read %d of %d bytes of %d queued uploads (about %d bodies of %d MiB held in memory); want at most about one body", got, total, k, got/fileSize, fileSize>>20)
 	}
+}
+
+// waitForUploadsOnTheSlot returns once n goroutines are blocked in acquireProcessing.
+func waitForUploadsOnTheSlot(t *testing.T, n int) {
+	t.Helper()
+	buf := make([]byte, 1<<20)
+	deadline := time.Now().Add(30 * time.Second)
+	for time.Now().Before(deadline) {
+		parked := 0
+		for _, g := range strings.Split(string(buf[:runtime.Stack(buf, true)]), "\n\n") {
+			if strings.Contains(g, "(*Service).acquireProcessing(") {
+				parked++
+			}
+		}
+		if parked >= n {
+			return
+		}
+		time.Sleep(time.Millisecond)
+	}
+	t.Fatalf("fewer than %d uploads reached the processing slot", n)
 }
 
 // The processing slot is shared with the fog tiles and every image job, so an

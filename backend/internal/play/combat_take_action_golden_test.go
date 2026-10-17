@@ -22,12 +22,7 @@ import (
 
 const takeActionGolden = "testdata/take_action.golden"
 
-// takeActionScenario is one scenario of the golden: run plays it on a fight of its own and reads the outcome.
-type takeActionScenario struct {
-	name string
-	run  func(t *testing.T) string
-}
-
+// goldenScenario is one scenario of the golden: run plays it on a fight of its own and reads the outcome.
 // takeActionFight starts a fight and hands back the campaign and the combat.
 type takeActionFight func(t *testing.T) (*armed, *playv1.Encounter)
 
@@ -58,8 +53,8 @@ func takeActionPlayerOf(a *armed, who string) *user {
 
 func takeActionAsMaster(a *armed) *user { return a.master }
 
-func (c takeActionCase) scenario() takeActionScenario {
-	return takeActionScenario{name: c.name, run: func(t *testing.T) string {
+func (c takeActionCase) scenario() goldenScenario {
+	return goldenScenario{name: c.name, run: func(t *testing.T) string {
 		t.Helper()
 		fight := c.fight
 		if fight == nil {
@@ -78,7 +73,7 @@ func (c takeActionCase) scenario() takeActionScenario {
 		if c.as != nil {
 			u = c.as(a)
 		}
-		before := a.events(t)
+		before := a.markCall(t)
 		res, err := a.takeActionRaw(t, u, e, who, c.key, c.edit)
 		return a.takeActionReport(t, e, before, res, err)
 	}}
@@ -139,18 +134,20 @@ func (a *armed) takeActionReport(t *testing.T, e *playv1.Encounter, after int, r
 	for _, l := range a.eventTrace(t, e, after) {
 		lines = append(lines, "event "+l)
 	}
+	var state []string
 	for _, r := range a.rowsOf(t, `SELECT label, action_used, bonus_action_used, reaction_used, dashed, disengaged, attacks_made, action_surged, extra_action_used, jump_doubled, bonus_attacks_left, COALESCE(action_attack_key, '-'), hp_current, hp_temp, defeated, hidden, movement_used_dft FROM combatants ORDER BY label`) {
-		lines = append(lines, "combatant "+r)
+		state = append(state, "combatant "+r)
 	}
 	for _, r := range a.rowsOf(t, `SELECT c.label, s.kind, s.amount, COALESCE(s.ends_phase, '-'), COALESCE(s.ends_round::TEXT, '-'), s.started_round, COALESCE(s.ends_combatant_id::TEXT, '-') FROM combatant_states s JOIN combatants c ON c.id = s.combatant_id`) {
-		lines = append(lines, "state "+r)
+		state = append(state, "state "+r)
 	}
 	for _, r := range a.rowsOf(t, `SELECT c.name, v.hit_points_current, v.hit_points_temporary, v.spell_slots_used::TEXT, v.pact_slots_used, v.resources_used::TEXT FROM character_vitals v JOIN characters c ON c.id = v.character_id`) {
-		lines = append(lines, "vitals "+r)
+		state = append(state, "vitals "+r)
 	}
 	for _, r := range a.rowsOf(t, `SELECT attack_key, status, COALESCE(amount, -1), damage_type FROM pending_damages`) {
-		lines = append(lines, "damage "+r)
+		state = append(state, "damage "+r)
 	}
+	lines = append(lines, a.printedState(t, err != nil, state)...)
 	out := strings.Join(lines, "\n")
 	return uuidPattern.ReplaceAllStringFunc(out, func(id string) string {
 		if l, ok := names[id]; ok {
@@ -395,7 +392,7 @@ func takeActionExtra(r *playv1.TakeActionRequest)  { r.UseExtraAction = true }
 func takeActionFrenzy(r *playv1.TakeActionRequest) { r.Frenzy = true }
 
 // takeActionRefusals are the refusals of the request itself and of who may act and when.
-func takeActionRefusals() []takeActionScenario {
+func takeActionRefusals() []goldenScenario {
 	long := strings.Repeat("x", 101)
 	stranger := func(a *armed) *user { return a.h.newUser("Zé") }
 	cases := []takeActionCase{
@@ -457,7 +454,7 @@ func takeActionRefusals() []takeActionScenario {
 		{name: "a Dodge with the app's roll that it does not use", key: "standard:dodge", edit: takeActionInApp},
 		{name: "a poisoned and a prone combatant still acts", key: "standard:dodge", prep: takeActionConditions("Toren", "condition:poisoned", "condition:prone")},
 	}
-	out := make([]takeActionScenario, 0, len(cases))
+	out := make([]goldenScenario, 0, len(cases))
 	for _, c := range cases {
 		out = append(out, c.scenario())
 	}
@@ -465,7 +462,7 @@ func takeActionRefusals() []takeActionScenario {
 }
 
 // takeActionStandards are the standard actions: who takes them, when, and what each does to the turn.
-func takeActionStandards() []takeActionScenario {
+func takeActionStandards() []goldenScenario {
 	cases := []takeActionCase{
 		{name: "Dodge", key: "standard:dodge"},
 		{name: "Dash", key: "standard:dash"},
@@ -498,7 +495,7 @@ func takeActionStandards() []takeActionScenario {
 		{name: "Dodge of a combatant that was Dodging last round", key: "standard:dodge", prep: takeActionSteps(
 			takeActionFirst("Toren", "standard:dodge", nil), takeActionPass("Toren"))},
 	}
-	out := make([]takeActionScenario, 0, len(cases)+4)
+	out := make([]goldenScenario, 0, len(cases)+4)
 	for _, c := range cases {
 		out = append(out, c.scenario())
 	}
@@ -506,7 +503,7 @@ func takeActionStandards() []takeActionScenario {
 }
 
 // takeActionHasteCases are the extra action of Haste: which standard actions it takes and when.
-func takeActionHasteCases() []takeActionScenario {
+func takeActionHasteCases() []goldenScenario {
 	cases := []takeActionCase{
 		{name: "Dash with the extra action", key: "standard:dash", edit: takeActionExtra, prep: takeActionHaste},
 		{name: "Disengage with the extra action", key: "standard:disengage", edit: takeActionExtra, prep: takeActionHaste},
@@ -523,7 +520,7 @@ func takeActionHasteCases() []takeActionScenario {
 		{name: "the extra action for a feature with Haste", key: "feature:second-wind", edit: takeActionRequestEdits(takeActionExtra, takeActionInApp), prep: takeActionHaste},
 		{name: "the extra action in a combat without a map", key: "standard:dash", edit: takeActionExtra, fight: takeActionTheatre, prep: takeActionHaste},
 	}
-	out := make([]takeActionScenario, 0, len(cases))
+	out := make([]goldenScenario, 0, len(cases))
 	for _, c := range cases {
 		out = append(out, c.scenario())
 	}
@@ -531,8 +528,8 @@ func takeActionHasteCases() []takeActionScenario {
 }
 
 // takeActionOnce is a scenario that plays an own fight and reads what it hands back.
-func takeActionOnce(name string, play func(t *testing.T) (*armed, *playv1.Encounter, int, *playv1.TakeActionResponse, error)) takeActionScenario {
-	return takeActionScenario{name: name, run: func(t *testing.T) string {
+func takeActionOnce(name string, play func(t *testing.T) (*armed, *playv1.Encounter, int, *playv1.TakeActionResponse, error)) goldenScenario {
+	return goldenScenario{name: name, run: func(t *testing.T) string {
 		t.Helper()
 		a, e, before, res, err := play(t)
 		return a.takeActionReport(t, e, before, res, err)
@@ -541,8 +538,8 @@ func takeActionOnce(name string, play func(t *testing.T) (*armed, *playv1.Encoun
 
 // takeActionReplays are the retries of one request: the same key is the same answer, and a different body
 // with the same key is a conflict.
-func takeActionReplays() []takeActionScenario {
-	return []takeActionScenario{
+func takeActionReplays() []goldenScenario {
+	return []goldenScenario{
 		takeActionOnce("the same request twice", func(t *testing.T) (*armed, *playv1.Encounter, int, *playv1.TakeActionResponse, error) {
 			t.Helper()
 			a, e := takeActionFighters(t)
@@ -551,7 +548,7 @@ func takeActionReplays() []takeActionScenario {
 			if _, err := a.takeActionRaw(t, a.caio, e, "Toren", "standard:dash", set); err != nil {
 				t.Fatalf("TakeAction() error = %v", err)
 			}
-			before := a.events(t)
+			before := a.markCall(t)
 			res, err := a.takeActionRaw(t, a.caio, e, "Toren", "standard:dash", set)
 			return a, e, before, res, err
 		}),
@@ -563,7 +560,7 @@ func takeActionReplays() []takeActionScenario {
 			if _, err := a.takeActionRaw(t, a.caio, e, "Toren", "standard:dash", set); err != nil {
 				t.Fatalf("TakeAction() error = %v", err)
 			}
-			before := a.events(t)
+			before := a.markCall(t)
 			res, err := a.takeActionRaw(t, a.caio, e, "Toren", "standard:dodge", set)
 			return a, e, before, res, err
 		}),
@@ -575,7 +572,7 @@ func takeActionReplays() []takeActionScenario {
 			if _, err := a.takeActionRaw(t, a.caio, e, "Toren", "standard:dash", set); err != nil {
 				t.Fatalf("TakeAction() error = %v", err)
 			}
-			before := a.events(t)
+			before := a.markCall(t)
 			res, err := a.takeActionRaw(t, a.master, e, "Toren", "standard:dash", set)
 			return a, e, before, res, err
 		}),
@@ -589,7 +586,7 @@ func takeActionReplays() []takeActionScenario {
 			if _, err := a.takeActionRaw(t, a.caio, e, "Toren", "feature:second-wind", set); err != nil {
 				t.Fatalf("TakeAction() error = %v", err)
 			}
-			before := a.events(t)
+			before := a.markCall(t)
 			res, err := a.takeActionRaw(t, a.caio, e, "Toren", "feature:second-wind", set)
 			return a, e, before, res, err
 		}),
@@ -597,8 +594,8 @@ func takeActionReplays() []takeActionScenario {
 }
 
 // takeActionScenarios are the scenarios of the golden, in the order they are listed.
-func takeActionScenarios() []takeActionScenario {
-	var all []takeActionScenario
+func takeActionScenarios() []goldenScenario {
+	var all []goldenScenario
 	all = append(all, takeActionRefusals()...)
 	all = append(all, takeActionStandards()...)
 	all = append(all, takeActionHasteCases()...)
@@ -609,18 +606,7 @@ func takeActionScenarios() []takeActionScenario {
 }
 
 // TestTakeActionIsFrozen runs every scenario on a fight of its own and compares what each reads with the golden.
-//
-//nolint:tparallel // the group waits for its parallel scenarios, so that the golden is settled after them.
 func TestTakeActionIsFrozen(t *testing.T) {
 	t.Parallel()
-	g := &goldenBlocks{}
-	t.Run("scenarios", func(t *testing.T) {
-		for _, sc := range takeActionScenarios() {
-			t.Run(sc.name, func(t *testing.T) {
-				t.Parallel()
-				g.put(sc.name, sc.run(t))
-			})
-		}
-	})
-	g.settle(t, takeActionGolden)
+	runGolden(t, takeActionGolden, takeActionScenarios())
 }

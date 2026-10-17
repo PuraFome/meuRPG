@@ -67,27 +67,37 @@ func (s *Service) reactionView(ctx context.Context, m authz.Membership, d *encou
 	if len(open) == 0 && len(offers) == 0 && len(reveals) == 0 {
 		return nil, nil, nil
 	}
-	wv := &windowView{s: s, ctx: ctx, m: m, v: v, d: d, names: names, byID: make(map[string]playdb.Combatant, len(d.cs))}
-	for _, x := range d.cs {
-		wv.byID[x.ID] = x
-	}
-	var wait reaction.Wait
-	holds := reaction.HoldsTurn
-	holdsSet := false
-	windows, err := wv.openWindows(open, &wait, &holds, &holdsSet)
+	wv := &windowView{s: s, ctx: ctx, m: m, v: v, d: d, names: names, byID: combatantsByID(d.cs)}
+	line := waitLine{holds: reaction.HoldsTurn}
+	windows, err := wv.openWindows(open, &line)
 	if err != nil {
 		return nil, nil, err
 	}
-	windows = wv.offerWindows(offers, windows, &wait, &holds, &holdsSet)
+	windows = wv.offerWindows(offers, windows, &line)
 	// The master's question about a hidden creature an area hit (PM-02c) is a window too: the
 	// master answers it with ResolveHiddenReveal, and every player reads the same wait.
-	windows = wv.revealWindows(reveals, windows, &wait, &holds, &holdsSet)
-	return windows, wv.waitLine(wait, holds), nil
+	windows = wv.revealWindows(reveals, windows, &line)
+	return windows, line.build(wv.v.master), nil
+}
+
+// waitLine gathers what the windows the caller does not answer say of the wait: who is waited
+// for, and what the first of them holds.
+type waitLine struct {
+	wait     reaction.Wait
+	holds    reaction.Holds
+	holdsSet bool
+}
+
+// holdFirst remembers what a window holds; only the first one counts.
+func (l *waitLine) holdFirst(h reaction.Holds) {
+	if !l.holdsSet {
+		l.holds, l.holdsSet = h, true
+	}
 }
 
 // openWindows builds the open windows the caller answers and adds each to the line the
 // caller reads.
-func (wv *windowView) openWindows(open []playdb.ReactionWindow, wait *reaction.Wait, holds *reaction.Holds, holdsSet *bool) ([]*playv1.ReactionWindow, error) {
+func (wv *windowView) openWindows(open []playdb.ReactionWindow, line *waitLine) ([]*playv1.ReactionWindow, error) {
 	order := make([]reaction.Window, len(open))
 	for i, w := range open {
 		order[i] = reaction.Window{ID: w.ID, Group: w.GroupID, Seq: w.Seq, Open: true}
@@ -103,13 +113,13 @@ func (wv *windowView) openWindows(open []playdb.ReactionWindow, wait *reaction.W
 			}
 			windows = append(windows, pw)
 		}
-		wv.waitOf(w, reactor, answers, wait)
-		if !*holdsSet && !answers {
+		wv.waitOf(w, reactor, answers, &line.wait)
+		if !line.holdsSet && !answers {
 			h, err := wv.holdsOf(w)
 			if err != nil {
 				return nil, err
 			}
-			*holds, *holdsSet = h, true
+			line.holdFirst(h)
 		}
 	}
 	return windows, nil
@@ -126,23 +136,23 @@ func (wv *windowView) reactorOf(w playdb.ReactionWindow) *playdb.Combatant {
 	return nil
 }
 
-// waitLine is the line the caller reads of the windows it does not answer, with what they
-// hold for the player; nil when nothing is waited for.
-func (wv *windowView) waitLine(wait reaction.Wait, holds reaction.Holds) *playv1.ReactionWait {
-	title := wait.Title()
+// build is the line the caller reads of the windows it does not answer, with what they hold for
+// the player; nil when nothing is waited for.
+func (l *waitLine) build(master bool) *playv1.ReactionWait {
+	title := l.wait.Title()
 	if title == "" {
 		return nil
 	}
 	out := &playv1.ReactionWait{TitlePt: title}
-	if !wv.v.master {
-		out.DetailPt = reaction.Detail(holds, wait, "")
+	if !master {
+		out.DetailPt = reaction.Detail(l.holds, l.wait, "")
 	}
 	return out
 }
 
 // offerWindows adds the opportunity-attack offers the reader may see, as windows (RN-21): the offer's
 // own calls answer them.
-func (wv *windowView) offerWindows(offers []playdb.OpportunityOffer, windows []*playv1.ReactionWindow, wait *reaction.Wait, holds *reaction.Holds, holdsSet *bool) []*playv1.ReactionWindow {
+func (wv *windowView) offerWindows(offers []playdb.OpportunityOffer, windows []*playv1.ReactionWindow, line *waitLine) []*playv1.ReactionWindow {
 	// The opportunity attacks are windows too (RN-21): the offer's own calls answer them.
 	for _, o := range offers {
 		mover, ok1 := wv.byID[o.MoverID]
@@ -157,9 +167,9 @@ func (wv *windowView) offerWindows(offers []playdb.OpportunityOffer, windows []*
 		if answers {
 			windows = append(windows, wv.opportunityWindow(o, mover, reactor))
 		}
-		wv.waitOf(playdb.ReactionWindow{Kind: "opportunity"}, &reactor, answers, wait)
-		if !*holdsSet && !answers {
-			*holds, *holdsSet = reaction.HoldsTurn, true
+		wv.waitOf(playdb.ReactionWindow{Kind: "opportunity"}, &reactor, answers, &line.wait)
+		if !answers {
+			line.holdFirst(reaction.HoldsTurn)
 		}
 	}
 	return windows
@@ -167,7 +177,7 @@ func (wv *windowView) offerWindows(offers []playdb.OpportunityOffer, windows []*
 
 // revealWindows adds the master's questions about hidden creatures an area hit: the master reads each
 // as a window, and every reader's wait counts them (the master as his own reaction, a player as "o mestre").
-func (wv *windowView) revealWindows(reveals []playdb.HiddenReveal, windows []*playv1.ReactionWindow, wait *reaction.Wait, holds *reaction.Holds, holdsSet *bool) []*playv1.ReactionWindow {
+func (wv *windowView) revealWindows(reveals []playdb.HiddenReveal, windows []*playv1.ReactionWindow, line *waitLine) []*playv1.ReactionWindow {
 	for _, q := range reveals {
 		switch {
 		case wv.v.master:
@@ -176,13 +186,11 @@ func (wv *windowView) revealWindows(reveals []playdb.HiddenReveal, windows []*pl
 				GroupId: q.ID, ForYou: true, AnswerNow: true,
 				Trigger: &playv1.ReactionTrigger{ActorId: q.CasterID},
 			})
-			wait.Self = true
+			line.wait.Self = true
 		default:
-			wait.Master = true
+			line.wait.Master = true
 		}
-		if !*holdsSet {
-			*holds, *holdsSet = reaction.HoldsTurn, true
-		}
+		line.holdFirst(reaction.HoldsTurn)
 	}
 	return windows
 }
@@ -296,7 +304,7 @@ func (wv *windowView) window(w playdb.ReactionWindow, reactor *playdb.Combatant,
 	case reaction.Shield:
 		err = wv.shieldPrompt(w, reactor, out)
 	case reaction.MasterCheck:
-		err = wv.masterCheckPrompt(w, out)
+		wv.masterCheckPrompt(w, out)
 	case reaction.Contest:
 		out.Prompt = &playv1.ReactionWindow_Contest{Contest: &playv1.ContestPrompt{ContestId: windowTriggerOf(w).Contest}}
 	case reaction.Concentration:
@@ -340,6 +348,7 @@ func (wv *windowView) trigger(w playdb.ReactionWindow) *playv1.ReactionTrigger {
 	if reaction.Kind(w.Kind) == reaction.Concentration {
 		out.ConcentrationSpellKey = t.Spell
 	}
+	// Unlike rollKindOf, a trigger that names no roll stays unspecified.
 	switch t.Roll {
 	case "attack":
 		out.RollKind = playv1.ReactionRollKind_REACTION_ROLL_KIND_ATTACK
@@ -376,6 +385,8 @@ func (wv *windowView) attackerOf(t windowTrigger) (label, attack string) {
 	return a.Label, wv.attackName(t)
 }
 
+// shieldPrompt is the Shield prompt of a window: the pending damage, the attacker when the viewer
+// sees it and the free slots of the reactor; the master also reads the armor class with the spell.
 func (wv *windowView) shieldPrompt(w playdb.ReactionWindow, reactor *playdb.Combatant, out *playv1.ReactionWindow) error {
 	t := windowTriggerOf(w)
 	p := &playv1.ShieldPrompt{PendingDamageId: conv.OrZero(w.PendingDamageID), MagicMissile: t.Magic, SpellNamePt: wv.names(shield)}
@@ -399,7 +410,7 @@ func (wv *windowView) shieldPrompt(w playdb.ReactionWindow, reactor *playdb.Comb
 	return nil
 }
 
-func (wv *windowView) masterCheckPrompt(w playdb.ReactionWindow, out *playv1.ReactionWindow) error {
+func (wv *windowView) masterCheckPrompt(w playdb.ReactionWindow, out *playv1.ReactionWindow) {
 	t := windowTriggerOf(w)
 	a, tg := wv.byID[t.Actor], wv.byID[t.Target]
 	summary := fmt.Sprintf("Ataque de %s contra %s", a.Label, tg.Label)
@@ -414,7 +425,6 @@ func (wv *windowView) masterCheckPrompt(w playdb.ReactionWindow, out *playv1.Rea
 		summary += " · acertou"
 	}
 	out.Prompt = &playv1.ReactionWindow_MasterCheck{MasterCheck: &playv1.MasterCheckPrompt{SummaryPt: summary}}
-	return nil
 }
 
 func (wv *windowView) concentrationPrompt(w playdb.ReactionWindow, reactor *playdb.Combatant, out *playv1.ReactionWindow) error {

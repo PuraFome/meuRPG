@@ -10,7 +10,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
-// The review round of slice 9.10: replayed keys, the SRD's end of the form at 0 hit
+// The review round of Wild Shape: replayed keys, the SRD's end of the form at 0 hit
 // points and unconscious, the 0 hit points rule of an opportunity attack, a sight
 // across a combat's start. They need the database (MEURPG_TEST_DATABASE_URL).
 
