@@ -11,7 +11,7 @@ import (
 )
 
 // The characterization of MoveCombatant on the cave of combat_move_test.go (see
-// combat_move_frozen_test.go): a player and the master move on a map with no fog.
+// combat_move_helpers_test.go): a player and the master move on a map with no fog.
 
 // caveMove is one move on the cave. Toren is on turn at (6, 7) with 30 ft (300
 // dft) of movement, and his jump limits are 16 ft with a running start and 8 ft

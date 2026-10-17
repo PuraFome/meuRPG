@@ -232,7 +232,6 @@ func TestCombatLogGolden(t *testing.T) {
 	wantGolden(t, goldenPath, renderGolden())
 }
 
-
 // What the golden shows, said in four assertions: the leaks the rules forbid (RN-10, RN-20).
 func TestCombatLogLeakRules(t *testing.T) {
 	t.Parallel()

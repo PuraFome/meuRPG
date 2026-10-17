@@ -16,7 +16,7 @@ import (
 // fog (RN-10: a player never learns of what they cannot see), works the options out and disables them with
 // the reason the combatant cannot act, and lists, for each attack and spell, who it can target as the viewer
 // sees them. The phases are those of a turnOptionsFlow, each one of the reads the call has always made in that
-// order: the golden of combat_actions_rest_frozen_options_test.go reads it, by viewer.
+// order: the golden of combat_turn_options_golden_test.go reads it, by viewer.
 
 // turnOptionsCall is what GetTurnOptions reads from its request, checked.
 type turnOptionsCall struct {

@@ -17,7 +17,7 @@ import (
 
 // The master's hand on an NPC's hit points (AdjustCombatantHitPoints), in phases. The call reads the request,
 // runs the transaction as a sequence of phases of a flow, each one of the checks or the writes the call has
-// always made in that order, and answers with the encounter. The golden of combat_actions_rest_frozen_hp_test.go
+// always made in that order, and answers with the encounter. The golden of combat_adjust_hp_golden_test.go
 // reads it.
 
 // The ways the master changes the hit points of an NPC; the event keeps the word.

@@ -19,7 +19,7 @@ import (
 // or the writes the call has always made in that order, and answers from what the transaction left in an out.
 // Applying works the amount out of the roll, the target's resistances and the master's last word, and lands
 // it as a character's vitals, a druid's beast form or a character at 0 hit points would take it. The phases
-// keep the order of the reads and the writes: the golden of combat_actions_rest_frozen_test.go reads it.
+// keep the order of the reads and the writes: the golden of combat_pending_damage_golden_test.go reads it.
 
 // resolvedDamageError is the refusal of a pending damage that was settled already.
 func resolvedDamageError() error {

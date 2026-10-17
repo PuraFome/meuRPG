@@ -23,7 +23,7 @@ import (
 // one of the checks or the writes the action has always made in that order, and answers from what the
 // transaction left in a takeActionOut. Each kind of action (a standard action, a feature's, one of the
 // feature kinds with its own effect) is a function behind a dispatch. The phases keep the order of the
-// reads, the dice and the writes: the golden of combat_take_action_frozen_test.go reads it.
+// reads, the dice and the writes: the golden of combat_take_action_golden_test.go reads it.
 
 // The standard actions with an effect on the turn of their own.
 const (

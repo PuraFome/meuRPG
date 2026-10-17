@@ -11,7 +11,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
-// Characterization of the pure pieces the "leftovers 2" refactor split: what an attack costs,
+// Characterization of the pure pieces of the combat: what an attack costs,
 // the Portuguese sentences of the attack-roll sources, the free square next to an owner, the
 // line a viewer reads of the windows it waits for, and the Cutting Words line. None needs a
 // database: each is frozen as the code answered before it was split.

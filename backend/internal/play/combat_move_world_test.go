@@ -11,7 +11,7 @@ import (
 )
 
 // The characterization of MoveCombatant beyond the plain cave (see
-// combat_move_frozen_test.go): doors, the state of the combat, the request, and what the other modules add
+// combat_move_helpers_test.go): doors, the state of the combat, the request, and what the other modules add
 // to a move.
 
 // doorMove is one move on the door cave: Toren on turn at (6, 7) with the door

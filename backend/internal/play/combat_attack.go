@@ -25,7 +25,7 @@ import (
 // sequence of phases of an attackFlow, each one of the checks or the writes the attack has always made in
 // that order, and answers from what the transaction left in an attackOut. The phases keep the order of the
 // reads, the dice and the writes: the scripted dice of the tests and the golden of
-// combat_roll_attack_frozen_test.go read it.
+// combat_roll_attack_golden_test.go read it.
 
 // attackCall is what RollAttack reads from its request, checked.
 type attackCall struct {
