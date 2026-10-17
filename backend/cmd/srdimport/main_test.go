@@ -305,13 +305,49 @@ func TestMonsterXPComesFromTheChallengeRating(t *testing.T) {
 		source int
 		want   int
 	}{{"1/4", 25, 50}, {"1", 100, 200}, {"1/2", 50, 100}, {"5", 1800, 1800}, {"0", 0, 0}, {"0", 10, 10}} {
-		got, err := monsterXP(c.cr, c.source)
-		if err != nil || got != c.want {
-			t.Errorf("monsterXP(%q, %d) = %d, %v, want %d", c.cr, c.source, got, err, c.want)
+		if got := monsterXP(c.cr, c.source); got != c.want {
+			t.Errorf("monsterXP(%q, %d) = %d, want %d", c.cr, c.source, got, c.want)
 		}
 	}
-	if _, err := monsterXP("31", 0); err == nil {
-		t.Error("monsterXP(31) accepted a challenge rating the table lacks")
+}
+
+// Every challenge rating challengeRating gives has an XP in the table, so
+// monsterXP has nothing to refuse.
+func TestEveryChallengeRatingHasXP(t *testing.T) {
+	for _, v := range []float64{0, 0.125, 0.25, 0.5, 1, 2, 10, 29, 30} {
+		cr, err := challengeRating(v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, ok := xpByChallengeRating[cr]; !ok {
+			t.Errorf("challenge rating %q has no XP", cr)
+		}
+	}
+	for i := 0; i <= 30; i++ {
+		cr, err := challengeRating(float64(i))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, ok := xpByChallengeRating[cr]; !ok {
+			t.Errorf("challenge rating %q has no XP", cr)
+		}
+	}
+}
+
+// A feature with subfeature options and invocations offers both: the
+// invocations are added to the options already read.
+func TestFeatureSpecificAccumulatesOptions(t *testing.T) {
+	t.Parallel()
+	fs := map[string]json.RawMessage{
+		"subfeature_options": json.RawMessage(`{"choose": 1, "from": {"options": [{"option_type": "reference", "item": {"index": "a"}}]}}`),
+		"invocations":        json.RawMessage(`[{"index": "b"}, {"index": "c"}]`),
+	}
+	var f srd51.Feature
+	if err := featureSpecific(fs, &f); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := strings.Join(f.Options, ","), "feature:a,feature:b,feature:c"; got != want {
+		t.Errorf("options = %s, want %s", got, want)
 	}
 }
 
