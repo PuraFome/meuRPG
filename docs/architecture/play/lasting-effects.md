@@ -69,6 +69,9 @@ The concentration save reads `combat.SaveMode` like the other saves (exhaustion 
 ## Other details
 
 - A base-AC effect (Mage Armor) is worked out per target (`modifiersForTarget`: the sheet for a character; 13 + the initiative bonus, the Dexterity modifier, for a summoned creature).
+- A base-AC effect takes no hold of a creature that wears armor (or an NPC with a basic sheet) in every path: a cast outside a combat is refused (`TARGET_WEARS_ARMOR`); a cast in a combat reads "no effect" on that hit (`dropWithoutHold`, the reason is the master's) and spends the slot like any other effect the target resists; `AddCharacterEffect` and `AddLastingEffect` leave that target out and answer `failed_precondition` ("the effect takes no hold of ...") when no target is left.
+- `AddCharacterEffect` reads `seconds` with no `duration_kind` as `ROUNDS` (the clock of game time, 1 second to 24 hours); an unknown kind reads as no kind. An effect with conditions and no numeric modifiers (Hold Person, Web, Faerie Fire) is stored with an empty `modifiers` array.
+- A retry of `AddLastingEffect` (same key) answers with the cards of the effects its first answer made, read from the ids in the event it wrote (`addedIDs`).
 - When a caster who concentrates dies or leaves, the effects it held on others end with reason `caster_left` (logged as `left`) and their follow-up runs (Haste's lethargy, Heroism's temporary hit points).
 - An effect whose end gives another (`on_end` in the catalogue) makes it in the same change (`leaveFollowUp`), with a `lasting_effect_added` line before the change's own event (see [Undo](undo.md)).
 - Shield's +5 (`combatants.ac_bonus`) is cleared when the caster's turn starts; `startTurn` writes a `combat_effect_ended` event first (the line "O Escudo Arcano de X acabou", read by the master and the caster).
