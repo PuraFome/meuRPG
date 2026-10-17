@@ -388,7 +388,9 @@ func TestUndoKindDamageRolledDivineSmite(t *testing.T) {
 	res := a.mustAttack(t, a.caio, a.get(t, a.caio), "Toren", battleaxe, "Esqueleto", d20(15))
 	w := newUndoWatch(t, a)
 
-	w.run(t, "a damage roll with Divine Smite", deltaPartsSelected, func() {
+	// Finding fix/undo-leftovers: the undo gives back the parts the hit offered, not the list the roll
+	// rewrote with Divine Smite chosen and its slot level.
+	w.run(t, "a damage roll with Divine Smite", nil, func() {
 		a.mustDamage(t, a.caio, a.get(t, a.caio), res.GetPendingDamage().GetId(), func(r *playv1.RollDamageRequest) {
 			r.ExtrasChosen = true
 			r.SelectedExtras = []*playv1.SelectedExtra{{Key: "divine-smite", SlotLevel: 1}}
@@ -406,7 +408,8 @@ func TestUndoKindDamageRolledManeuver(t *testing.T) {
 	pending := m.hit(t, e)
 	w := newUndoWatch(t, m.armed)
 
-	w.run(t, "a damage roll with a maneuver", deltaManeuverParts(m.bull), func() {
+	// Finding fix/undo-leftovers: the undo offers the other maneuver again and leaves none pre-selected.
+	w.run(t, "a damage roll with a maneuver", nil, func() {
 		m.h.roller.queue(5, 4)
 		m.mustDamage(t, m.ana, e, pending.GetId(), marking(m.heron))
 	})
@@ -420,32 +423,6 @@ func (a *armed) wantMark(t *testing.T, label, column string) {
 	if err := a.h.pool.QueryRow(t.Context(), `SELECT `+column+` IS NOT NULL FROM combatants WHERE id = $1`, a.id(t, label)).Scan(&set); err != nil || !set {
 		t.Fatalf("%s of %s is set = %v (error %v), want the roll to have marked the turn", column, label, set, err)
 	}
-}
-
-// deltaPartsSelected: the roll rewrites the parts the damage offered (SetPendingDamageDetail
-// in storePartsRoll, combat_parts.go) with the choice that was made, and the undo
-// (ClearPendingDamageRoll, queries.sql, from takeBack's eventDamageRolled case) puts back
-// the rolled columns and an empty list the roll left alone, but not a list the roll
-// rewrote: the list the hit offered is kept nowhere (an event holds no text, and the
-// offered parts carry labels and riders), so the damage that waits to be rolled again is
-// offered with Divine Smite already chosen, at the slot level of the undone roll.
-var deltaPartsSelected = undoDelta{
-	"+ db/pending_damages[#].parts[1].selected=true", "+ db/pending_damages[#].parts[1].slot_level=1",
-	"+ db/pending_damages[#].parts[2].selected=true", "+ db/pending_damages[#].parts[2].slot_level=1",
-}
-
-// deltaManeuverParts: the same for a table maneuver. The rewritten parts list holds only
-// the golpe that was chosen, so after the undo the other golpe the character could use
-// (bull, its key) is no longer offered on the damage and the chosen one is pre-selected.
-func deltaManeuverParts(bull string) undoDelta {
-	out := undoDelta{"+ db/pending_damages[#].parts[1].selected=true"}
-	for _, f := range []string{
-		"available=true", "choosable=true", "count=1", "damage_type=damage-type:slashing", "key=" + bull, "kind=extra", "label=Golpe do Touro",
-		"resource=dados_de_golpe", "resource_left=4", "rider=O alvo faz um teste de Sabedoria.", "sides=8", "source=" + bull,
-	} {
-		out = append(out, "- db/pending_damages[#].parts[2]."+f)
-	}
-	return out
 }
 
 // nextTurnOf ends the turn that is on (dropping any damage left) and passes on to the
