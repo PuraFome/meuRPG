@@ -134,11 +134,7 @@ func (s *Service) endAid(ctx context.Context, c *combatTx, target playdb.Combata
 			return nil, nil, nil
 		}
 		before, maxBefore := hpOf(target), conv.OrZero(target.HpMax)
-		maxAfter := max(maxBefore-bonus, 1)
-		hp := before.HP
-		if hp > 0 {
-			hp = max(min(hp, maxAfter), 1)
-		}
+		hp, maxAfter := aidEnd(before.HP, maxBefore, bonus)
 		// The current hit points first: they never pass the maximum (the table says so).
 		if hp != before.HP {
 			if err := c.q.SetCombatantHitPoints(ctx, playdb.SetCombatantHitPointsParams{ID: target.ID, HpCurrent: &hp, HpTemp: &before.Temp, Defeated: before.Defeated}); err != nil {
@@ -150,7 +146,7 @@ func (s *Service) endAid(ctx context.Context, c *combatTx, target playdb.Combata
 		}
 		return &effectEnd{Effect: effectAid, HP0: before.HP, HP1: hp, Max0: maxBefore, Max1: maxAfter}, nil, nil
 	}
-	before, after, err := s.vitals.SetHitPointsMaxBonus(ctx, c.tx, c.session.CampaignID, target.CharacterID, 0)
+	before, after, err := s.lowerCharacterAid(ctx, c, target.CharacterID, 0)
 	if err != nil {
 		return nil, nil, err
 	}

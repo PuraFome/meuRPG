@@ -133,7 +133,7 @@ What the server applies when the spell takes effect:
 | False Life | Temporary hit points; the larger value stays |
 | Mage Armor | Base AC 13 + Dexterity for a target with no armor; a target in armor is refused (`TARGET_WEARS_ARMOR`). Ending the spell takes it back |
 | Summons | The same creatures as `CastSummon`, with the same concentration rule |
-| Aid | Recorded; raising the maximum waits for the stored maximum bonus (not applied outside combat) |
+| Aid | The maximum and the current HP of each player character it reaches rise by the spell's amount for the slot (`maxHPTargets`, through the same `raiseCharacterMaxHP` as in a combat); a character at 0 HP gets up. Casts of Aid do not add: the stronger bonus applies. Ending the cast, a long rest or an interrupted cast gives the bonus back (`takeBackMaxHP`): the maximum falls to the strongest Aid still on the target, and the current HP lose only what is above it, never the last one |
 | Anything else | Recorded in the log; the master narrates |
 
 An NPC has no hit points or slots outside combat, so a cast on an NPC changes nothing about it and an NPC caster spends no slot.

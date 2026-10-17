@@ -8,7 +8,6 @@ import (
 	"time"
 	"uuid"
 
-	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -104,6 +103,8 @@ func (s *Service) applyCastEffect(ctx context.Context, c *combatTx, m authz.Memb
 		rolled, out.targets, err = s.healTargets(ctx, c, plan, out)
 	case link.EffectTempHP:
 		rolled, out.targets, err = s.tempHPTargets(ctx, c, plan, out)
+	case link.EffectMaxHP:
+		out.targets, err = s.maxHPTargets(ctx, c, plan, out)
 	case link.EffectArmorClass:
 		out.targets, err = s.armorTargets(ctx, c, m, plan)
 	case link.EffectSummon:
@@ -430,9 +431,4 @@ func (s *Service) summonFor(ctx context.Context, c *combatTx, m authz.Membership
 		}
 	}
 	return nil
-}
-
-// takeBackMaxHP takes Aid's hit point bonus off the targets of a cast that ended.
-func (s *Service) takeBackMaxHP(_ context.Context, _ *combatTx, _ playdb.SpellCast) ([]*playv1.CharacterVitals, error) {
-	return nil, nil
 }
