@@ -57,9 +57,8 @@ describe('the clients carry the question of a held roll', () => {
   it('a concentration save that waits for Lucky answers the question and no result', async () => {
     const client = combatClient({ encounter: { id: 'enc' }, luckyOffer: offer() });
     const res = await client.attacks.resolveConcentrationSave('c', 'e', 'w', { kind: 'app' }, 'k');
-    expect(res.lucky?.holdId).toBe('h1');
+    expect(res.held?.holdId).toBe('h1');
     expect(res.result).toBeUndefined();
-    expect(res.offer).toBeUndefined();
   });
 
   it('an effect’s saving throw that waits for Lucky answers the question and no result', async () => {

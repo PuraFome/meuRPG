@@ -7,10 +7,8 @@ import {
   type Encounter,
   EncounterMode,
   type HeldRollOffer,
-  type LuckyOffer,
   type PendingDamage,
   type SpellCast,
-  type OutsideInspirationOffer,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { type RollMode } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
 import type { Square } from './combat-grid';
@@ -246,11 +244,9 @@ export type ConcentrationAnswer =
 export interface ConcentrationOutcome {
   readonly encounter: Encounter;
   readonly result: ConcentrationSaveResult | undefined;
-  /** The d20 was rolled and kept: the player holds a Bardic Inspiration die and decides before the result is told. */
-  readonly offer?: OutsideInspirationOffer;
-  /** The d20 was rolled and kept because it shows a 1 and the character is a halfling: the Lucky question ("Tirou 1:
-   * rolar de novo?"), which comes before the die's. */
-  readonly lucky?: LuckyOffer;
+  /** The d20 was rolled and kept and the save waits for a question (the halfling's Lucky about a 1, which comes first,
+   * or the Bardic Inspiration die): the player decides before the result is told (`AnswerHeldRoll`). */
+  readonly held?: HeldRollOffer;
 }
 
 /** One adjustment of an NPC's hit points ("Dano/Cura"): at most one of the

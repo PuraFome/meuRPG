@@ -14,7 +14,7 @@ import {
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { CombatState } from '../../../../core/combat/combat-state';
 import { encounter, reactionWindow } from '../../../../core/combat/combat-testing';
-import { inspirationOffer } from '../../../../core/play/scene-testing';
+import { heldAnswer, heldDie } from '../../../../core/held-rolls/held-roll-testing';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { ReactionSheet, type ReactionSheetData } from './reaction-sheet';
 import { fakeCombatClient } from '../../../../core/combat/combat-client-testing';
@@ -54,7 +54,7 @@ const shield = () =>
   );
 
 describe('ReactionSheet', () => {
-  const resources = { answerOutsideInspiration: vi.fn() };
+  const resources = { answerHeldRoll: vi.fn() };
   const api = {
     answerReaction: vi.fn(),
     resolveConcentrationSave: vi.fn(),
@@ -673,7 +673,7 @@ describe('ReactionSheet', () => {
       api.resolveConcentrationSave.mockResolvedValue({
         encounter: encounter({ reactionWindows: [held] } as never),
         result: undefined,
-        offer: inspirationOffer(7, 2),
+        held: heldDie(7, 2),
       });
       const { fixture, el } = setup(held);
       button(el, 'Rolar no app').click();
@@ -681,40 +681,39 @@ describe('ReactionSheet', () => {
       expect(plain(el.textContent)).toContain('Usar a Inspiração de Bardo (d8)?');
       expect(plain(el.textContent)).not.toContain('Concentração perdida');
       expect(plain(el.textContent)).not.toContain('Deixar o mestre rolar por mim');
-      resources.answerOutsideInspiration.mockResolvedValue({
-        result: { case: 'concentrationSave', value: lost },
-      });
+      resources.answerHeldRoll.mockResolvedValue(
+        heldAnswer({ result: { case: 'concentrationSave', value: lost } }),
+      );
       button(el, 'Guardar o dado').click();
       await flush(fixture);
-      expect(resources.answerOutsideInspiration.mock.calls[0].slice(0, 3)).toEqual([
+      expect(resources.answerHeldRoll.mock.calls[0].slice(0, 3)).toEqual([
         'camp',
         'h1',
-        false,
+        { kind: 'die', use: false, roll: null },
       ]);
       expect(plain(el.textContent)).toContain('Concentração perdida');
     });
 
     it('uses the Bardic Inspiration die rolled in the app, and the answer settles the save', async () => {
-      resources.answerOutsideInspiration.mockClear();
+      resources.answerHeldRoll.mockClear();
       const held = save();
       api.resolveConcentrationSave.mockResolvedValue({
         encounter: encounter({ reactionWindows: [held] } as never),
         result: undefined,
-        offer: inspirationOffer(7, 2),
+        held: heldDie(7, 2),
       });
       const { fixture, el } = setup(held);
       button(el, 'Rolar no app').click();
       await flush(fixture);
-      resources.answerOutsideInspiration.mockResolvedValue({
-        result: { case: 'concentrationSave', value: lost },
-      });
+      resources.answerHeldRoll.mockResolvedValue(
+        heldAnswer({ result: { case: 'concentrationSave', value: lost } }),
+      );
       button(el, 'Usar e rolar o d8').click();
       await flush(fixture);
-      expect(resources.answerOutsideInspiration.mock.calls[0].slice(0, 4)).toEqual([
+      expect(resources.answerHeldRoll.mock.calls[0].slice(0, 3)).toEqual([
         'camp',
         'h1',
-        true,
-        { inApp: true },
+        { kind: 'die', use: true, roll: { inApp: true } },
       ]);
       expect(plain(el.textContent)).toContain('Concentração perdida');
       expect(plain(el.textContent)).not.toContain('Usar a Inspiração de Bardo (d8)?');
