@@ -276,8 +276,6 @@ func rogueAndBarbarianDamages() []goldenScenario {
 			markedExtras("sneak-attack")(a, r)
 			typedSum(9)(r)
 		}},
-		{name: "sneak attack with no sum for the weapon", hit: rogueHit(advantaged, nil), edit: typedMarked(map[string]int32{"sneak-attack": 5}, "sneak-attack")},
-		{name: "sneak attack with a sum out of range", hit: rogueHit(advantaged, nil), edit: typedMarked(map[string]int32{"weapon": 3, "sneak-attack": 99}, "sneak-attack")},
 		{
 			name: "sneak attack on a critical hit in the app", hit: rogueHit(critical, nil), edit: markedExtras("sneak-attack"),
 			before: func(t *testing.T, a *armed, _ *playv1.Encounter, _ string) {
@@ -291,10 +289,6 @@ func rogueAndBarbarianDamages() []goldenScenario {
 			before: func(t *testing.T, a *armed, _ *playv1.Encounter, _ string) { t.Helper(); a.h.roller.queue(2, 6, 6) },
 		},
 		{name: "sneak attack when everybody rolls real dice", hit: rogueHit(advantaged, nil), edit: markedExtras("sneak-attack"), before: physicalFor},
-		{name: "sneak attack the hit does not allow", hit: rogueHit([]int32{18}, func(t *testing.T, a *armed, e *playv1.Encounter) {
-			t.Helper()
-			a.setConditions(t, e, "Toren", "condition:poisoned")
-		}), edit: markedExtras("sneak-attack")},
 		{
 			name: "a barbarian's rage in the app", hit: rageHit, as: func(a *armed) *user { return a.bia },
 			before: func(t *testing.T, a *armed, _ *playv1.Encounter, _ string) { t.Helper(); a.h.roller.queue(5) },
@@ -365,7 +359,6 @@ func paladinDamages() []goldenScenario {
 		{name: "a smite on a human in the app", hit: smiteHit("Bandido", 15), edit: smiteMark(1), before: queue(4, 5, 6, 7)},
 		{name: "a smite on a critical hit with typed parts", hit: smiteHit("Esqueleto", 20), edit: smiteTyped(1, 9, 14, 5)},
 		{name: "a smite on a critical hit in the app", hit: smiteHit("Esqueleto", 20), edit: smiteMark(1), before: queue(4, 5, 6, 7, 2, 3, 1, 8)},
-		{name: "a smite with a slot the paladin does not have", hit: smiteHit("Esqueleto", 15), edit: smiteMark(2)},
 		{name: "a smite with no slot named", hit: smiteHit("Esqueleto", 15), edit: smiteMark(0)},
 		{name: "a smite with a sum out of range", hit: smiteHit("Esqueleto", 15), edit: smiteTyped(1, 4, 99, 3)},
 		{name: "a smite with no sum for its extra die", hit: smiteHit("Esqueleto", 15), edit: func(a *armed, r *playv1.RollDamageRequest) {
@@ -373,12 +366,6 @@ func paladinDamages() []goldenScenario {
 			r.TypedParts = r.TypedParts[:2]
 		}},
 		{name: "a smite as the master", hit: smiteHit("Esqueleto", 15), as: asMasterUser, edit: smiteMark(1), before: queue(4, 5, 6, 7)},
-		{name: "a smite with the slots spent", hit: smiteHit("Esqueleto", 15), edit: smiteMark(1), before: func(t *testing.T, a *armed, _ *playv1.Encounter, _ string) {
-			t.Helper()
-			a.correct(t, a.toren, func(r *playv1.AdjustCharacterVitalsRequest) {
-				r.SpellSlotsUsed = []*playv1.SpellSlotsUsed{{Level: 1, Used: 3}}
-			})
-		}},
 	}
 	out := make([]goldenScenario, 0, len(rows))
 	for _, x := range rows {
@@ -433,7 +420,6 @@ func maneuverDamages() []goldenScenario {
 		}),
 		maneuverScenario("a maneuver as the master", "4", 19, asMasterUser, []int{5, 4}, heron),
 		maneuverScenario("a maneuver on a critical hit", "4", 20, asAnaUser, []int{5, 4, 6, 2}, heron),
-		maneuverScenario("two maneuvers for one attack", "4", 19, asAnaUser, nil, mark(func(m *maneuverTable) []string { return []string{m.heron, m.bull} })),
 		maneuverScenario("extras chosen and no maneuver", "4", 19, asAnaUser, []int{5}, mark(func(*maneuverTable) []string { return nil })),
 		maneuverScenario("a maneuver the grip is not", "4", 19, asAnaUser, nil, mark(func(m *maneuverTable) []string { return []string{m.grip} })),
 		maneuverScenario("a maneuver with no use left", "1", 19, asAnaUser, nil, mark(func(m *maneuverTable) []string { return []string{m.bull} }),

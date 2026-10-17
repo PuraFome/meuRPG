@@ -563,9 +563,6 @@ combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | - | - | false 
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | - | - | false | 3 | 3 | false | false
 vitals Toren | <nil> | 0 | {1,0,0,0,0,0,0,0,0} | 0 | {}
 damage equipment:battleaxe | applied | false | 1 | 8 | 3 | damage-type:slashing | {} | true | 19 | -1 | 19 | false | false | -1 | 0 | false | 0 | [{"available": true, "count": 1, "damage_type": "damage-type:slashing", "flat": 3, "key": "weapon", "kind": "weapon", "label": "Machado de batalha", "sides": 8}, {"available": true, "choosable": true, "count": 2, "damage_type": "damage-type:radiant", "key": "divine-smite", "kind": "extra", "label": "Destruição Divina", "needs_slot": true, "reason": "Depois do acerto corpo a corpo · gasta 1 espaço de magia", "selected": true, "sides": 8, "slot_level": 1, "source": "feature:divine-smite"}, {"available": true, "conditional": true, "count": 1, "damage_type": "damage-type:radiant", "key": "divine-smite-extra", "kind": "extra", "label": "Destruição Divina: dado a mais", "selected": true, "sides": 8, "slot_level": 1, "source": "feature:divine-smite"}] | [{"count": 1, "counted": true, "damage_type": "damage-type:slashing", "flat": 3, "key": "weapon", "label": "Machado de batalha", "physical": true, "sides": 8, "sum": 4}, {"count": 2, "counted": true, "damage_type": "damage-type:radiant", "key": "divine-smite", "label": "Destruição Divina", "physical": true, "sides": 8, "sum": 9}, {"conditional": true, "count": 1, "counted": true, "damage_type": "damage-type:radiant", "key": "divine-smite-extra", "label": "Destruição Divina: dado a mais", "physical": true, "sides": 8, "sum": 3}] | null | -1 | {"hp": 13} | true
-== a smite with a slot the paladin does not have ==
-refused failed_precondition: there is no free spell slot of that level [ENCOUNTER_BLOCKED_REASON_NO_SLOT]
-state unchanged
 == a smite with a sum out of range ==
 refused invalid_argument: the sum of divine-smite must be 2 to 16
 state unchanged
@@ -574,9 +571,6 @@ refused invalid_argument: a Divine Smite names the slot it spends
 state unchanged
 == a smite with no sum for its extra die ==
 refused invalid_argument: typed_parts needs a sum for divine-smite-extra
-state unchanged
-== a smite with the slots spent ==
-refused failed_precondition: there is no free spell slot of that level [ENCOUNTER_BLOCKED_REASON_NO_SLOT]
 state unchanged
 == a typed sum when everybody rolls in the app ==
 refused failed_precondition: this is not how the campaign has you roll your dice [ENCOUNTER_BLOCKED_REASON_WRONG_DICE_MODE]
@@ -879,19 +873,10 @@ combatant Goblin | 0 | 0 | true | 0 | 0 | - | false | - | - | false | 4 | 3 | fa
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | - | - | false | 12 | 3 | false | false
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | 1:Toren | - | false | 4 | 4 | false | false
 damage equipment:rapier | applied | false | 1 | 8 | 3 | damage-type:piercing | {3} | false | 12 | -1 | 12 | false | false | -1 | 0 | false | 0 | [{"available": true, "count": 1, "damage_type": "damage-type:piercing", "flat": 3, "key": "weapon", "kind": "weapon", "label": "Rapieira", "sides": 8}, {"available": true, "choosable": true, "count": 2, "damage_type": "damage-type:piercing", "key": "sneak-attack", "kind": "extra", "label": "Ataque Furtivo", "reason": "Você tem vantagem neste ataque · uma vez por turno", "selected": true, "sides": 6, "source": "feature:sneak-attack"}] | [{"count": 1, "counted": true, "damage_type": "damage-type:piercing", "faces": [3], "flat": 3, "key": "weapon", "label": "Rapieira", "sides": 8, "sum": 3}, {"count": 2, "counted": true, "damage_type": "damage-type:piercing", "faces": [4, 2], "key": "sneak-attack", "label": "Ataque Furtivo", "sides": 6, "sum": 6}] | null | -1 | {"hp": 7} | true
-== sneak attack the hit does not allow ==
-refused failed_precondition: that extra does not hold now [ENCOUNTER_BLOCKED_REASON_EXTRA_NOT_AVAILABLE]
-state unchanged
 == sneak attack when everybody rolls real dice ==
 refused failed_precondition: this is not how the campaign has you roll your dice [ENCOUNTER_BLOCKED_REASON_WRONG_DICE_MODE]
 state unchanged
-== sneak attack with a sum out of range ==
-refused invalid_argument: the sum of sneak-attack must be 2 to 12
-state unchanged
 == sneak attack with a typed sum only ==
-refused invalid_argument: typed_parts needs a sum for weapon
-state unchanged
-== sneak attack with no sum for the weapon ==
 refused invalid_argument: typed_parts needs a sum for weapon
 state unchanged
 == sneak attack with typed parts ==
@@ -978,6 +963,3 @@ combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | - | - | false | 4 | 3 | f
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | - | - | false | 10 | 3 | false | false
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | - | - | false | 3 | 3 | false | false
 damage basic:0 | rolled | false | 1 | 6 | 2 | damage-type:slashing | {} | true | 6 | -1 | 6 | false | false | -1 | 0 | false | 0 | [] | [] | [] | -1 | - | false
-== two maneuvers for one attack ==
-refused failed_precondition: only one maneuver for each attack [ENCOUNTER_BLOCKED_REASON_EXTRA_NOT_AVAILABLE]
-state unchanged

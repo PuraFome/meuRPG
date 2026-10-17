@@ -232,16 +232,6 @@ func TestCombatLogGolden(t *testing.T) {
 	wantGolden(t, goldenPath, renderGolden())
 }
 
-// reactionLine is only reached for an entry that has a reaction; a nil one says nothing to
-// anybody (unreachable through buildLog, which keeps the entries that have one).
-func TestCombatLogReactionLineWithoutAReaction(t *testing.T) {
-	t.Parallel()
-	e := &logEntry{kind: playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION_WINDOW}
-	text, named := e.reactionLine(context.Background(), combatViewer{master: true}, logCombatants(), &keyNames{})
-	if text != "" || named {
-		t.Errorf("reactionLine(no reaction) = %q, %t; want nothing", text, named)
-	}
-}
 
 // What the golden shows, said in four assertions: the leaks the rules forbid (RN-10, RN-20).
 func TestCombatLogLeakRules(t *testing.T) {

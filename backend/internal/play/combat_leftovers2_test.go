@@ -51,9 +51,20 @@ func TestAttackEconomyFreezesWhatEachAttackCosts(t *testing.T) {
 		{"a frenzy attack follows no Attack action", playdb.Combatant{ActionUsed: true, AttacksMade: 1, ActionAttackKey: strp("sword")}, sheet(1, sword), sword, true, combat.BonusFrenzy, ""},
 		{"a frenzy attack with the bonus action used", playdb.Combatant{ActionUsed: true, AttacksMade: 1, BonusActionUsed: true, ActionAttackKey: strp("sword")}, sheet(1, sword), sword, true, combat.BonusNone, "the bonus action of this turn is used"},
 	}
+	// reasons are the blocked reasons a refusal carries, for the rows that name one.
+	reasons := map[string]playv1.EncounterBlockedReason{
+		"a spent action with one attack is refused":      playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ACTION_USED,
+		"all the attacks of the Attack action made":      playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ATTACKS_USED,
+		"two-weapon fighting with the bonus action used": playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED,
+	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			kind, err := attackEconomy(c.who, c.sheet, c.attack, c.frenzy)
+			if want, ok := reasons[c.name]; ok {
+				if got := encounterBlocked(t, err).GetReason(); got != want {
+					t.Errorf("reason = %v, want %v", got, want)
+				}
+			}
 			if kind != c.wantKind {
 				t.Errorf("kind = %v, want %v", kind, c.wantKind)
 			}
@@ -64,31 +75,6 @@ func TestAttackEconomyFreezesWhatEachAttackCosts(t *testing.T) {
 				t.Errorf("err = %v, want %q", err, c.wantErr)
 			}
 		})
-	}
-}
-
-func TestAttackEconomyRefusalsCarryTheirReason(t *testing.T) {
-	sword := link.Attack{Key: "sword", Melee: true}
-	dagger := link.Attack{Key: "dagger", Melee: true, Light: true}
-	second := link.Attack{Key: "second", Melee: true, Light: true}
-	reasonOf := func(err error) playv1.EncounterBlockedReason {
-		t.Helper()
-		return encounterBlocked(t, err).GetReason()
-	}
-	used := playdb.Combatant{ActionUsed: true, AttacksMade: 1, ActionAttackKey: strp("sword")}
-	_, err := attackEconomy(used, link.Sheet{AttacksPerAction: 1, Attacks: []link.Attack{sword}}, sword, false)
-	if got := reasonOf(err); got != playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ACTION_USED {
-		t.Errorf("a spent action: reason %v", got)
-	}
-	all := playdb.Combatant{ActionUsed: true, AttacksMade: 2, ActionAttackKey: strp("sword")}
-	_, err = attackEconomy(all, link.Sheet{AttacksPerAction: 2, Attacks: []link.Attack{sword}}, sword, false)
-	if got := reasonOf(err); got != playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ATTACKS_USED {
-		t.Errorf("all attacks made: reason %v", got)
-	}
-	bonus := playdb.Combatant{ActionUsed: true, AttacksMade: 1, BonusActionUsed: true, ActionAttackKey: strp("dagger")}
-	_, err = attackEconomy(bonus, link.Sheet{AttacksPerAction: 1, Attacks: []link.Attack{dagger, second}}, second, false)
-	if got := reasonOf(err); got != playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED {
-		t.Errorf("a spent bonus action: reason %v", got)
 	}
 }
 

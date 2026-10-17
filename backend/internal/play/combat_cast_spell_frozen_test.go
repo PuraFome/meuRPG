@@ -245,6 +245,7 @@ func castSpellScenarios() []goldenScenario {
 	out = append(out, castOtherScenarios()...)
 	out = append(out, castCaveScenarios()...)
 	out = append(out, castEffectScenarios()...)
+	out = append(out, spellsRestScenarios()...)
 	return out
 }
 

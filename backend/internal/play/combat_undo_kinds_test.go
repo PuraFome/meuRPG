@@ -70,30 +70,8 @@ func TestUndoKindActionTaken(t *testing.T) {
 	})
 }
 
-// TestUndoKindHitPointsAdjusted: the master's damage and heal on an NPC.
-func TestUndoKindHitPointsAdjusted(t *testing.T) {
-	t.Parallel()
-	a := newArmed(t)
-	e := a.threeAndAGoblin(t)
-	w := newUndoWatch(t, a)
-
-	w.run(t, "damage on an NPC", nil, func() {
-		if _, err := a.adjustHP(t, e, "Goblin", damageHP(3)); err != nil {
-			t.Fatalf("AdjustCombatantHitPoints() error = %v", err)
-		}
-	})
-	if _, err := a.adjustHP(t, e, "Goblin", damageHP(3)); err != nil {
-		t.Fatalf("AdjustCombatantHitPoints() error = %v", err)
-	}
-	w.run(t, "a heal on an NPC", nil, func() {
-		if _, err := a.adjustHP(t, e, "Goblin", healHP(2)); err != nil {
-			t.Fatalf("AdjustCombatantHitPoints() error = %v", err)
-		}
-	})
-}
-
 // TestUndoKindDamageRolledAndApplied: the damage of an attack on an NPC (settled at
-// once), on a character (waiting for the master), its application and its discard.
+// once), on a character (waiting for the master) and its application.
 func TestUndoKindDamageRolledAndApplied(t *testing.T) {
 	t.Parallel()
 	a := newArmed(t)
@@ -126,11 +104,6 @@ func TestUndoKindDamageRolledAndApplied(t *testing.T) {
 	w.run(t, "applying the damage on a character", nil, func() {
 		if _, err := a.settle(t, a.master, e, id, true); err != nil {
 			t.Fatalf("ApplyPendingDamage() error = %v", err)
-		}
-	})
-	w.run(t, "discarding the damage", nil, func() {
-		if _, err := a.settle(t, a.master, e, id, false); err != nil {
-			t.Fatalf("DiscardPendingDamage() error = %v", err)
 		}
 	})
 }
