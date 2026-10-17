@@ -30,7 +30,7 @@ The service is `play/combat_contests*.go` (start, answer, shove choice, close, r
   A cast with a verbal component ends the hiding too.
   A grapple or a shove starts with `endHiding` and, against the other side, notes the attack for the Rage.
 - **The stand-in attack key.** A grapple or a shove writes `special:contest` (`combat.ContestAttackKey`): Flurry of Blows sees the Attack action taken, the Martial Arts strike does not.
-- **Dragging.** `GetMoveOptions` halves the movement (`dragging_halved`, the path costs twice) and `MoveCombatant` carries the grappled creature to the penultimate square of the path (`NO_ROOM_TO_DRAG` when that square is taken).
+- **Dragging.** `GetMoveOptions` halves the movement (`dragging_halved`, the path costs twice) and `MoveCombatant` carries the grappled creature to the penultimate square of the path (`NO_ROOM_TO_DRAG` when a creature the caller sees is on that square; for a player, a creature they do not see there gets the walk's generic `MOVE_BLOCKED` refusal, so the drag does not reveal it, RN-10).
   The dragged creature is not a reactor against its grappler (`opportunityReactors` skips it), while the other enemies the pair leaves still get their opportunity attacks.
   `pruneHolds` ends a grapple whose grappler is incapacitated or out of the fight, or whose target left the reach.
 - **Surprise.** A surprised creature's turn options are all disabled with `SURPRISED`, and an opportunity attack skips it.

@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 )
 
 // Characterization of SetShownImage (onscreen.go) with the real maps module's
@@ -97,7 +98,7 @@ func (st *shownTable) dbShown(t *testing.T) (id string, keep bool) {
 	if err := st.pool.QueryRow(t.Context(), `SELECT shown_image_id, shown_image_keep FROM game_sessions WHERE campaign_id = $1 AND ended_at IS NULL`, st.campaign).Scan(&shown, &keep); err != nil {
 		t.Fatalf("read the shown image: %v", err)
 	}
-	return deref(shown), keep
+	return conv.OrZero(shown), keep
 }
 
 func (st *shownTable) left(t *testing.T) []string {

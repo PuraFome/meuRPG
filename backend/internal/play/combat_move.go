@@ -211,6 +211,12 @@ func moveStop(mv grid.Move, occ grid.Occupants, to grid.Square) error {
 		}
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ENEMY_IN_THE_WAY, "an enemy is in the way")
 	}
+	return errMoveBlocked()
+}
+
+// errMoveBlocked is the generic refusal of a move that cannot go on: it names no
+// creature, so it reveals none.
+func errMoveBlocked() error {
 	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_MOVE_BLOCKED, "a wall, a column or a squeeze is in the way")
 }
 
@@ -264,15 +270,7 @@ func (r moveRequest) walking() bool {
 
 // readMoveRequest authorizes the caller and reads what the call asks.
 func readMoveRequest(ctx context.Context, msg *playv1.MoveCombatantRequest) (moveRequest, error) {
-	m, err := authz.RequireCampaignMember(ctx, msg.GetCampaignId())
-	if err != nil {
-		return moveRequest{}, err
-	}
-	key, err := parseKey(msg.GetIdempotencyKey())
-	if err != nil {
-		return moveRequest{}, err
-	}
-	encID, err := parseCombatID(msg.GetEncounterId(), "encounter")
+	m, key, encID, err := memberCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
 	if err != nil {
 		return moveRequest{}, err
 	}
@@ -444,9 +442,9 @@ func (s *Service) loadMover(ctx context.Context, a *moveAttempt) error {
 	if isTheatre(a.c.enc) {
 		return errNeedsAMap() // no squares: a move, a jump and a placement are the master's word (SpendMovement)
 	}
-	cs, err := a.c.q.ListCombatants(ctx, a.c.enc.ID)
+	cs, err := listCombatants(ctx, a.c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	a.cs = cs
 	a.v = a.c.viewer(a.req.m, cs) // the fog: an NPC the player does not see is not found
@@ -765,11 +763,7 @@ func (s *Service) saveMove(ctx context.Context, a *moveAttempt) error {
 	}); err != nil {
 		return fmt.Errorf("move the combatant: %w", err)
 	}
-	var err error
-	if a.c.enc, err = a.c.q.TouchEncounter(ctx, a.c.enc.ID); err != nil {
-		return fmt.Errorf("touch the encounter: %w", err)
-	}
-	return nil
+	return touch(ctx, a.c)
 }
 
 // dragAlong moves the creature the mover holds to the square behind its path.
@@ -778,7 +772,7 @@ func (s *Service) dragAlong(ctx context.Context, a *moveAttempt) error {
 		return nil
 	}
 	from := squareOfCombatant(a.dragged)
-	moved, err := s.dragTo(ctx, a.c, a.cs, a.target, a.dragged, dragSquare(a.terrain, squareOfCombatant(a.target), a.to, moverOf(a.target)))
+	moved, err := s.dragTo(ctx, a.c, a.v, a.cs, a.target, a.dragged, dragSquare(a.terrain, squareOfCombatant(a.target), a.to, moverOf(a.target)))
 	if err != nil {
 		return err
 	}
@@ -1167,18 +1161,10 @@ type masterTargetCall struct {
 	key, encID, combID string
 }
 
-// readMasterTargetCall reads and checks the master's call, in the order the refusals have
-// always come.
+// readMasterTargetCall reads and checks the master's call. The refusals come in the order of
+// the checks below.
 func readMasterTargetCall(ctx context.Context, campaignID, rawKey, encounterID, combatantID string) (masterTargetCall, error) {
-	m, err := authz.RequireCampaignRole(ctx, campaignID, authz.RoleMaster)
-	if err != nil {
-		return masterTargetCall{}, err
-	}
-	key, err := parseKey(rawKey)
-	if err != nil {
-		return masterTargetCall{}, err
-	}
-	encID, err := parseCombatID(encounterID, "encounter")
+	m, key, encID, err := masterCall(ctx, campaignID, rawKey, encounterID)
 	if err != nil {
 		return masterTargetCall{}, err
 	}
@@ -1251,8 +1237,8 @@ func (s *Service) sideIn(ctx context.Context, c *combatTx, call masterTargetCall
 	}); err != nil {
 		return nil, fmt.Errorf("pass over the offers between allies: %w", err)
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return nil, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return nil, err
 	}
 	c.characterID = &target.CharacterID
 	return actionEvent{Round: c.enc.Round, Secret: target.Hidden, Actor: target.ID, Side: side, SideBefore: target.Side}, nil
@@ -1260,9 +1246,9 @@ func (s *Service) sideIn(ctx context.Context, c *combatTx, call masterTargetCall
 
 // masterTargetOf finds the combatant the master's call names, as the master sees it.
 func (s *Service) masterTargetOf(ctx context.Context, c *combatTx, call masterTargetCall) (playdb.Combatant, error) {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return playdb.Combatant{}, fmt.Errorf("list the combatants: %w", err)
+		return playdb.Combatant{}, err
 	}
 	return findCombatant(cs, call.combID, viewerOf(call.m))
 }
@@ -1306,8 +1292,8 @@ func (s *Service) coverIn(ctx context.Context, c *combatTx, call masterTargetCal
 	if err := c.q.SetCombatantCoverMark(ctx, playdb.SetCombatantCoverMarkParams{ID: target.ID, CoverMark: mark}); err != nil {
 		return nil, fmt.Errorf("set the cover: %w", err)
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return nil, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return nil, err
 	}
 	c.characterID = &target.CharacterID
 	return actionEvent{Round: c.enc.Round, Secret: target.Hidden, Actor: target.ID, CoverMark: mark, CoverMarkBefore: target.CoverMark}, nil

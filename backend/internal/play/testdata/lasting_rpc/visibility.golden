@@ -20,41 +20,16 @@ refused invalid_argument: player_label must have at most 30 characters
   "clockTextPt": "Restam 10 rodadas: acaba no turno de Pensantus, na rodada 11.",
   "concentration": true,
   "durationKind": "EFFECT_DURATION_KIND_ROUNDS",
-  "encounterId": "\u003cuuid\u003e",
-  "endTextPt": "Restam 10 rodadas: acaba no turno de Pensantus, rodada 11.",
   "endsAt": {
    "combatantId": "\u003cPensantus\u003e",
    "phase": "EFFECT_PHASE_START",
    "round": 11
   },
-  "groupId": "\u003cgroup:spell:bless\u003e",
   "id": "\u003cfx:spell:bless@Brisa+Toren\u003e",
-  "modifiers": [
-   {
-    "appliesTo": [
-     "EFFECT_ROLL_KIND_ATTACK",
-     "EFFECT_ROLL_KIND_SAVE"
-    ],
-    "die": 4,
-    "kind": "EFFECT_MODIFIER_KIND_ROLL_DIE",
-    "sign": 1
-   }
-  ],
-  "originPt": "De Pensantus",
   "playerLabel": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "playerVisible": true,
-  "playersSeePt": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "roundsLeft": 10,
   "sourceKey": "spell:bless",
-  "sourceKind": "EFFECT_SOURCE_KIND_SPELL",
-  "sourceNamePt": "Bênção",
-  "tagsPt": [
-   "+1d4 em ataques e resistências"
-  ],
-  "targetIds": [
-   "\u003cBrisa\u003e",
-   "\u003cToren\u003e"
-  ],
   "targetLabels": [
    "Brisa",
    "Toren"
@@ -76,41 +51,16 @@ lasting_effect_visibility_changed by <user:master> {"combatant_id":"<Pensantus>"
   "clockTextPt": "Restam 10 rodadas: acaba no turno de Pensantus, na rodada 11.",
   "concentration": true,
   "durationKind": "EFFECT_DURATION_KIND_ROUNDS",
-  "encounterId": "\u003cuuid\u003e",
-  "endTextPt": "Restam 10 rodadas: acaba no turno de Pensantus, rodada 11.",
   "endsAt": {
    "combatantId": "\u003cPensantus\u003e",
    "phase": "EFFECT_PHASE_START",
    "round": 11
   },
-  "groupId": "\u003cgroup:spell:bless\u003e",
   "id": "\u003cfx:spell:bless@Brisa+Toren\u003e",
-  "modifiers": [
-   {
-    "appliesTo": [
-     "EFFECT_ROLL_KIND_ATTACK",
-     "EFFECT_ROLL_KIND_SAVE"
-    ],
-    "die": 4,
-    "kind": "EFFECT_MODIFIER_KIND_ROLL_DIE",
-    "sign": 1
-   }
-  ],
-  "originPt": "De Pensantus",
   "playerLabel": "Abençoado",
   "playerVisible": true,
-  "playersSeePt": "Abençoado",
   "roundsLeft": 10,
   "sourceKey": "spell:bless",
-  "sourceKind": "EFFECT_SOURCE_KIND_SPELL",
-  "sourceNamePt": "Bênção",
-  "tagsPt": [
-   "+1d4 em ataques e resistências"
-  ],
-  "targetIds": [
-   "\u003cBrisa\u003e",
-   "\u003cToren\u003e"
-  ],
   "targetLabels": [
    "Brisa",
    "Toren"
@@ -125,38 +75,14 @@ lasting_effect_visibility_changed by <user:master> {"combatant_id":"<Pensantus>"
   "clockTextPt": "Restam 10 rodadas: acaba no turno de Pensantus, na rodada 11.",
   "concentration": true,
   "durationKind": "EFFECT_DURATION_KIND_ROUNDS",
-  "encounterId": "\u003cuuid\u003e",
-  "endTextPt": "Restam 10 rodadas: acaba no turno de Pensantus, rodada 11.",
   "endsAt": {
    "combatantId": "\u003cPensantus\u003e",
    "phase": "EFFECT_PHASE_START",
    "round": 11
   },
-  "groupId": "\u003cgroup:spell:bless\u003e",
   "id": "\u003cfx:spell:bless@Brisa+Toren\u003e",
-  "modifiers": [
-   {
-    "appliesTo": [
-     "EFFECT_ROLL_KIND_ATTACK",
-     "EFFECT_ROLL_KIND_SAVE"
-    ],
-    "die": 4,
-    "kind": "EFFECT_MODIFIER_KIND_ROLL_DIE",
-    "sign": 1
-   }
-  ],
-  "originPt": "De Pensantus",
   "roundsLeft": 10,
   "sourceKey": "spell:bless",
-  "sourceKind": "EFFECT_SOURCE_KIND_SPELL",
-  "sourceNamePt": "Bênção",
-  "tagsPt": [
-   "+1d4 em ataques e resistências"
-  ],
-  "targetIds": [
-   "\u003cBrisa\u003e",
-   "\u003cToren\u003e"
-  ],
   "targetLabels": [
    "Brisa",
    "Toren"
@@ -168,42 +94,17 @@ lasting_effect_visibility_changed by <user:master> {"combatant_id":"<Pensantus>"
  "effect": {
   "audience": "EFFECT_AUDIENCE_ALL",
   "casterId": "\u003cBrisa\u003e",
-  "changesPt": [
-   "Você não age nem se move, e não fala.",
-   "Falha em testes de resistência de Força e de Destreza.",
-   "Ataques contra você têm vantagem, e um acerto a 1,5 m é crítico."
-  ],
   "clockTextPt": "Restam 10 rodadas: acaba no turno de Brisa, na rodada 11.",
   "concentration": true,
-  "conditionKeys": [
-   "condition:paralyzed"
-  ],
-  "conditionNamesPt": [
-   "Paralisado"
-  ],
   "durationKind": "EFFECT_DURATION_KIND_ROUNDS",
-  "encounterId": "\u003cuuid\u003e",
-  "endSave": {
-   "ability": "wis",
-   "abilityNamePt": "Sabedoria",
-   "phase": "EFFECT_PHASE_END"
-  },
-  "endTextPt": "Restam 10 rodadas: acaba no turno de Brisa, rodada 11.",
   "endsAt": {
    "combatantId": "\u003cBrisa\u003e",
    "phase": "EFFECT_PHASE_START",
    "round": 11
   },
-  "groupId": "\u003cgroup:spell:hold-person\u003e",
   "id": "\u003cfx:spell:hold-person@Goblin\u003e",
-  "originPt": "De Brisa",
   "roundsLeft": 10,
   "sourceKey": "spell:hold-person",
-  "sourceKind": "EFFECT_SOURCE_KIND_SPELL",
-  "sourceNamePt": "Imobilizar Pessoa",
-  "targetIds": [
-   "\u003cGoblin\u003e"
-  ],
   "targetLabels": [
    "Goblin"
   ]
@@ -214,45 +115,19 @@ lasting_effect_visibility_changed by <user:master> {"combatant_id":"<Pensantus>"
  "effect": {
   "audience": "EFFECT_AUDIENCE_ALL",
   "casterId": "\u003cBrisa\u003e",
-  "changesPt": [
-   "Você não age nem se move, e não fala.",
-   "Falha em testes de resistência de Força e de Destreza.",
-   "Ataques contra você têm vantagem, e um acerto a 1,5 m é crítico."
-  ],
   "clockTextPt": "Restam 10 rodadas: acaba no turno de Brisa, na rodada 11.",
   "concentration": true,
-  "conditionKeys": [
-   "condition:paralyzed"
-  ],
-  "conditionNamesPt": [
-   "Paralisado"
-  ],
   "durationKind": "EFFECT_DURATION_KIND_ROUNDS",
-  "encounterId": "\u003cuuid\u003e",
-  "endSave": {
-   "ability": "wis",
-   "abilityNamePt": "Sabedoria",
-   "phase": "EFFECT_PHASE_END"
-  },
-  "endTextPt": "Restam 10 rodadas: acaba no turno de Brisa, rodada 11.",
   "endsAt": {
    "combatantId": "\u003cBrisa\u003e",
    "phase": "EFFECT_PHASE_START",
    "round": 11
   },
-  "groupId": "\u003cgroup:spell:hold-person\u003e",
   "id": "\u003cfx:spell:hold-person@Goblin\u003e",
-  "originPt": "De Brisa",
   "playerLabel": "Paralisado",
   "playerVisible": true,
-  "playersSeePt": "Paralisado",
   "roundsLeft": 10,
   "sourceKey": "spell:hold-person",
-  "sourceKind": "EFFECT_SOURCE_KIND_SPELL",
-  "sourceNamePt": "Imobilizar Pessoa",
-  "targetIds": [
-   "\u003cGoblin\u003e"
-  ],
   "targetLabels": [
    "Goblin"
   ]
@@ -263,44 +138,18 @@ lasting_effect_visibility_changed by <user:master> {"combatant_id":"<Pensantus>"
  "effect": {
   "audience": "EFFECT_AUDIENCE_ALL",
   "casterId": "\u003cBrisa\u003e",
-  "changesPt": [
-   "Você não age nem se move, e não fala.",
-   "Falha em testes de resistência de Força e de Destreza.",
-   "Ataques contra você têm vantagem, e um acerto a 1,5 m é crítico."
-  ],
   "clockTextPt": "Restam 10 rodadas: acaba no turno de Brisa, na rodada 11.",
   "concentration": true,
-  "conditionKeys": [
-   "condition:paralyzed"
-  ],
-  "conditionNamesPt": [
-   "Paralisado"
-  ],
   "durationKind": "EFFECT_DURATION_KIND_ROUNDS",
-  "encounterId": "\u003cuuid\u003e",
-  "endSave": {
-   "ability": "wis",
-   "abilityNamePt": "Sabedoria",
-   "phase": "EFFECT_PHASE_END"
-  },
-  "endTextPt": "Restam 10 rodadas: acaba no turno de Brisa, rodada 11.",
   "endsAt": {
    "combatantId": "\u003cBrisa\u003e",
    "phase": "EFFECT_PHASE_START",
    "round": 11
   },
-  "groupId": "\u003cgroup:spell:hold-person\u003e",
   "id": "\u003cfx:spell:hold-person@Goblin\u003e",
-  "originPt": "De Brisa",
   "playerVisible": true,
-  "playersSeePt": "Paralisado",
   "roundsLeft": 10,
   "sourceKey": "spell:hold-person",
-  "sourceKind": "EFFECT_SOURCE_KIND_SPELL",
-  "sourceNamePt": "Imobilizar Pessoa",
-  "targetIds": [
-   "\u003cGoblin\u003e"
-  ],
   "targetLabels": [
    "Goblin"
   ]
@@ -311,44 +160,18 @@ lasting_effect_visibility_changed by <user:master> {"combatant_id":"<Pensantus>"
  "effect": {
   "audience": "EFFECT_AUDIENCE_ALL",
   "casterId": "\u003cBrisa\u003e",
-  "changesPt": [
-   "Você não age nem se move, e não fala.",
-   "Falha em testes de resistência de Força e de Destreza.",
-   "Ataques contra você têm vantagem, e um acerto a 1,5 m é crítico."
-  ],
   "clockTextPt": "Restam 10 rodadas: acaba no turno de Brisa, na rodada 11.",
   "concentration": true,
-  "conditionKeys": [
-   "condition:paralyzed"
-  ],
-  "conditionNamesPt": [
-   "Paralisado"
-  ],
   "durationKind": "EFFECT_DURATION_KIND_ROUNDS",
-  "encounterId": "\u003cuuid\u003e",
-  "endSave": {
-   "ability": "wis",
-   "abilityNamePt": "Sabedoria",
-   "phase": "EFFECT_PHASE_END"
-  },
-  "endTextPt": "Restam 10 rodadas: acaba no turno de Brisa, rodada 11.",
   "endsAt": {
    "combatantId": "\u003cBrisa\u003e",
    "phase": "EFFECT_PHASE_START",
    "round": 11
   },
-  "groupId": "\u003cgroup:spell:hold-person\u003e",
   "id": "\u003cfx:spell:hold-person@Goblin\u003e",
-  "originPt": "De Brisa",
   "playerVisible": true,
-  "playersSeePt": "Paralisado",
   "roundsLeft": 10,
   "sourceKey": "spell:hold-person",
-  "sourceKind": "EFFECT_SOURCE_KIND_SPELL",
-  "sourceNamePt": "Imobilizar Pessoa",
-  "targetIds": [
-   "\u003cGoblin\u003e"
-  ],
   "targetLabels": [
    "Goblin"
   ]

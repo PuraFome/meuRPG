@@ -72,12 +72,12 @@ func TestRevivifyFrozen_OutsidePreview(t *testing.T) {
 	a := newVigil(t)
 	for call, id := range map[string]string{"a bad id": "nope", "a character that is not there": newKey(), "an NPC": a.goblin.GetId()} {
 		_, err := a.previewOutsideRaw(t, a.master, id)
-		wantRevivifyRefusal(t, "PreviewRevivify with "+call, err, connect.CodeNotFound, noCharacterMsg)
+		wantRefusal(t, "PreviewRevivify with "+call, err, connect.CodeNotFound, noCharacterMsg)
 	}
 	_, err := a.previewOutsideRaw(t, a.caio, a.pens.GetId())
-	wantRevivifyRefusal(t, "another player's character", err, connect.CodePermissionDenied, notYoursMsg)
+	wantRefusal(t, "another player's character", err, connect.CodePermissionDenied, notYoursMsg)
 	_, err = a.previewOutsideRaw(t, a.bia, a.bri.GetId())
-	wantRevivifyRefusal(t, "a caster with no Revivify", err, connect.CodeInvalidArgument, "spell_key is not one of the caster's spells")
+	wantRefusal(t, "a caster with no Revivify", err, connect.CodeInvalidArgument, "spell_key is not one of the caster's spells")
 
 	// Two dead characters, one of them marked by the master.
 	if _, err := a.master.characters.MarkCharacterDead(t.Context(), connect.NewRequest(&charactersv1.MarkCharacterDeadRequest{CampaignId: a.campaignID, CharacterId: a.bri.GetId()})); err != nil {
@@ -111,34 +111,34 @@ func TestRevivifyFrozen_RequestRefusalsAndWhoReadsThem(t *testing.T) {
 		_, err := a.ask(u, a.pens, a.toren, newKey(), edits...)
 		return err
 	}
-	wantRevivifyRefusal(t, "a bad key", ask(a.ana, func(r *playv1.RequestRevivifyRequest) { r.IdempotencyKey = "nope" }), connect.CodeInvalidArgument, notIdempotentOK)
-	wantRevivifyRefusal(t, "no diamonds", ask(a.ana, func(r *playv1.RequestRevivifyRequest) { r.MaterialConfirmed = false }), connect.CodeInvalidArgument,
+	wantRefusal(t, "a bad key", ask(a.ana, func(r *playv1.RequestRevivifyRequest) { r.IdempotencyKey = "nope" }), connect.CodeInvalidArgument, notIdempotentOK)
+	wantRefusal(t, "no diamonds", ask(a.ana, func(r *playv1.RequestRevivifyRequest) { r.MaterialConfirmed = false }), connect.CodeInvalidArgument,
 		"material_confirmed is required: the spell consumes diamonds worth 300 gp")
-	wantRevivifyRefusal(t, "a bad target", ask(a.ana, func(r *playv1.RequestRevivifyRequest) { r.TargetCharacterId = "nope" }), connect.CodeNotFound, noCharacterMsg)
+	wantRefusal(t, "a bad target", ask(a.ana, func(r *playv1.RequestRevivifyRequest) { r.TargetCharacterId = "nope" }), connect.CodeNotFound, noCharacterMsg)
 	// The key is read before the diamonds, and the diamonds before the target.
-	wantRevivifyRefusal(t, "a bad key and no diamonds", ask(a.ana, func(r *playv1.RequestRevivifyRequest) {
+	wantRefusal(t, "a bad key and no diamonds", ask(a.ana, func(r *playv1.RequestRevivifyRequest) {
 		r.IdempotencyKey, r.MaterialConfirmed, r.TargetCharacterId = "nope", false, "nope"
 	}), connect.CodeInvalidArgument, notIdempotentOK)
-	wantRevivifyRefusal(t, "a caster that is not there", ask(a.ana, func(r *playv1.RequestRevivifyRequest) { r.CasterCharacterId = newKey() }), connect.CodeNotFound, noCharacterMsg)
-	wantRevivifyRefusal(t, "a bad caster", ask(a.ana, func(r *playv1.RequestRevivifyRequest) { r.CasterCharacterId = "nope" }), connect.CodeNotFound, noCharacterMsg)
-	wantRevivifyRefusal(t, "an NPC as the caster", ask(a.master, func(r *playv1.RequestRevivifyRequest) { r.CasterCharacterId = a.goblin.GetId() }), connect.CodeNotFound, noCharacterMsg)
-	wantRevivifyRefusal(t, "another player's caster", ask(a.caio, nil), connect.CodePermissionDenied, notYoursMsg)
-	wantRevivifyRefusal(t, "a caster with no Revivify", ask(a.bia, func(r *playv1.RequestRevivifyRequest) { r.CasterCharacterId = a.bri.GetId() }), connect.CodeInvalidArgument,
+	wantRefusal(t, "a caster that is not there", ask(a.ana, func(r *playv1.RequestRevivifyRequest) { r.CasterCharacterId = newKey() }), connect.CodeNotFound, noCharacterMsg)
+	wantRefusal(t, "a bad caster", ask(a.ana, func(r *playv1.RequestRevivifyRequest) { r.CasterCharacterId = "nope" }), connect.CodeNotFound, noCharacterMsg)
+	wantRefusal(t, "an NPC as the caster", ask(a.master, func(r *playv1.RequestRevivifyRequest) { r.CasterCharacterId = a.goblin.GetId() }), connect.CodeNotFound, noCharacterMsg)
+	wantRefusal(t, "another player's caster", ask(a.caio, nil), connect.CodePermissionDenied, notYoursMsg)
+	wantRefusal(t, "a caster with no Revivify", ask(a.bia, func(r *playv1.RequestRevivifyRequest) { r.CasterCharacterId = a.bri.GetId() }), connect.CodeInvalidArgument,
 		"spell_key is not one of the caster's spells")
 	slot := func(call string, s *playv1.SpellSlot, msg string) {
 		t.Helper()
-		wantRevivifyRefusal(t, call, ask(a.ana, func(r *playv1.RequestRevivifyRequest) { r.Slot = s }), connect.CodeInvalidArgument, msg)
+		wantRefusal(t, call, ask(a.ana, func(r *playv1.RequestRevivifyRequest) { r.Slot = s }), connect.CodeInvalidArgument, msg)
 	}
 	slot("no slot", nil, revivifyNoSlotMsg)
 	slot("a 2nd level slot", slotOfLevel(2), revivifyNoSlotMsg)
 	slot("a pact slot the caster does not have", &playv1.SpellSlot{Level: 3, Pact: true}, "slot is not one the caster has free")
-	wantRevivifyRefusal(t, "a character that is alive", ask(a.ana, func(r *playv1.RequestRevivifyRequest) { r.TargetCharacterId = a.bri.GetId() }), connect.CodeNotFound, noCharacterMsg)
+	wantRefusal(t, "a character that is alive", ask(a.ana, func(r *playv1.RequestRevivifyRequest) { r.TargetCharacterId = a.bri.GetId() }), connect.CodeNotFound, noCharacterMsg)
 
 	a.correct(t, a.pens, func(r *playv1.AdjustCharacterVitalsRequest) {
 		r.SpellSlotsUsed = []*playv1.SpellSlotsUsed{{Level: 3, Used: 2}}
 	})
 	err := ask(a.ana, nil)
-	wantRevivifyRefusal(t, "no slot left", err, connect.CodeFailedPrecondition, "there is no free spell slot for this spell")
+	wantRefusal(t, "no slot left", err, connect.CodeFailedPrecondition, "there is no free spell slot for this spell")
 	wantBlockedBy(t, "no slot left", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_SLOT)
 	a.correct(t, a.pens, func(r *playv1.AdjustCharacterVitalsRequest) {
 		r.SpellSlotsUsed = []*playv1.SpellSlotsUsed{{Level: 3, Used: 0}}
@@ -167,7 +167,7 @@ func TestRevivifyFrozen_RequestRefusalsAndWhoReadsThem(t *testing.T) {
 	}
 
 	// The master answers someone else's request only as the master.
-	wantRevivifyRefusal(t, "a player answering", func() error { _, e := a.answerRevivify(t, a.ana, mine.GetId(), false, newKey()); return e }(), connect.CodeNotFound, notRequestMsg)
+	wantRefusal(t, "a player answering", func() error { _, e := a.answerRevivify(t, a.ana, mine.GetId(), false, newKey()); return e }(), connect.CodeNotFound, notRequestMsg)
 }
 
 // A cast outside a combat is refused for a caster that is in one.
@@ -176,9 +176,9 @@ func TestRevivifyFrozen_RequestRefusedForACasterInACombat(t *testing.T) {
 	a, e := newMortuary(t)
 	a.dies(t, e, "Toren", a.toren)
 	_, err := a.ask(a.ana, a.pens, a.toren, newKey())
-	wantRevivifyRefusal(t, "a request while the caster is in a combat", err, connect.CodeInvalidArgument, "the caster is in a combat: cast Revivify inside it")
+	wantRefusal(t, "a request while the caster is in a combat", err, connect.CodeInvalidArgument, "the caster is in a combat: cast Revivify inside it")
 	_, err = a.ask(a.master, a.pens, a.toren, newKey())
-	wantRevivifyRefusal(t, "the master's request while the caster is in a combat", err, connect.CodeInvalidArgument, "the caster is in a combat: cast Revivify inside it")
+	wantRefusal(t, "the master's request while the caster is in a combat", err, connect.CodeInvalidArgument, "the caster is in a combat: cast Revivify inside it")
 	// A caster that is not in the combat may ask.
 	if _, err := a.ask(a.bia, a.bri, a.toren, newKey()); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Errorf("a fighter's request error = %v, want the spell refusal", err)
@@ -196,15 +196,15 @@ func TestRevivifyFrozen_RequestsNeedTheOpenSession(t *testing.T) {
 	}
 	a.endRevivifySession(t)
 	_, err = a.ask(a.ana, a.pens, a.toren, newKey())
-	wantRevivifyRefusal(t, "a request with no session", err, connect.CodeFailedPrecondition, noSessionMsg)
+	wantRefusal(t, "a request with no session", err, connect.CodeFailedPrecondition, noSessionMsg)
 	_, err = a.answerRevivify(t, a.master, req.GetId(), true, newKey())
-	wantRevivifyRefusal(t, "an answer with no session", err, connect.CodeFailedPrecondition, noSessionMsg)
+	wantRefusal(t, "an answer with no session", err, connect.CodeFailedPrecondition, noSessionMsg)
 	_, err = a.master.revivify.ListRevivifyRequests(t.Context(), connect.NewRequest(&playv1.ListRevivifyRequestsRequest{CampaignId: a.campaignID}))
-	wantRevivifyRefusal(t, "the list with no session", err, connect.CodeFailedPrecondition, noSessionMsg)
+	wantRefusal(t, "the list with no session", err, connect.CodeFailedPrecondition, noSessionMsg)
 
 	a.master.start(t, a.campaignID)
 	_, err = a.answerRevivify(t, a.master, req.GetId(), true, newKey())
-	wantRevivifyRefusal(t, "an answer to a request of the session before", err, connect.CodeNotFound, notRequestMsg)
+	wantRefusal(t, "an answer to a request of the session before", err, connect.CodeNotFound, notRequestMsg)
 	if got := a.requests(t, a.master); len(got) != 0 {
 		t.Errorf("the new session lists %v, want none", got)
 	}
@@ -224,11 +224,11 @@ func TestRevivifyFrozen_ConfirmRefusalsAndReplays(t *testing.T) {
 		return err
 	}
 	// A player is told the request is not there before anything else is read, even for a bad key.
-	wantRevivifyRefusal(t, "a player with a bad key", answer(a.ana, req.GetId(), true, "nope"), connect.CodeNotFound, notRequestMsg)
-	wantRevivifyRefusal(t, "a bad id", answer(a.master, "nope", true, newKey()), connect.CodeNotFound, notRequestMsg)
-	wantRevivifyRefusal(t, "a bad id with a bad key", answer(a.master, "nope", true, "nope"), connect.CodeNotFound, notRequestMsg)
-	wantRevivifyRefusal(t, "a bad key", answer(a.master, req.GetId(), true, "nope"), connect.CodeInvalidArgument, notIdempotentOK)
-	wantRevivifyRefusal(t, "a request that is not there", answer(a.master, newKey(), true, newKey()), connect.CodeNotFound, notRequestMsg)
+	wantRefusal(t, "a player with a bad key", answer(a.ana, req.GetId(), true, "nope"), connect.CodeNotFound, notRequestMsg)
+	wantRefusal(t, "a bad id", answer(a.master, "nope", true, newKey()), connect.CodeNotFound, notRequestMsg)
+	wantRefusal(t, "a bad id with a bad key", answer(a.master, "nope", true, "nope"), connect.CodeNotFound, notRequestMsg)
+	wantRefusal(t, "a bad key", answer(a.master, req.GetId(), true, "nope"), connect.CodeInvalidArgument, notIdempotentOK)
+	wantRefusal(t, "a request that is not there", answer(a.master, newKey(), true, newKey()), connect.CodeNotFound, notRequestMsg)
 
 	// Not enough slots when the master says yes: nothing is spent and the request still waits.
 	a.correct(t, a.pens, func(r *playv1.AdjustCharacterVitalsRequest) {
@@ -261,7 +261,7 @@ func TestRevivifyFrozen_ConfirmRefusalsAndReplays(t *testing.T) {
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Errorf("the same key with the other answer error = %v, want invalid_argument", err)
 	}
-	wantRevivifyRefusal(t, "a new key after the answer", answer(a.master, req.GetId(), false, newKey()), connect.CodeFailedPrecondition, "the request was answered already")
+	wantRefusal(t, "a new key after the answer", answer(a.master, req.GetId(), false, newKey()), connect.CodeFailedPrecondition, "the request was answered already")
 
 	// "Faz menos de 1 minuto": confirmed with the slots left; the replay reads the same request.
 	second, err := a.ask(a.ana, a.pens, a.toren, newKey())
@@ -316,11 +316,11 @@ func TestRevivifyFrozen_SwitchInACombat(t *testing.T) {
 	}
 
 	// The input.
-	wantRevivifyRefusal(t, "no target", a.switchRaw(t, nil, true), connect.CodeInvalidArgument, "set combatant_id or character_id")
-	wantRevivifyRefusal(t, "a bad combatant id", a.switchRaw(t, switchCombatant("nope"), true), connect.CodeNotFound, "combatant not found")
-	wantRevivifyRefusal(t, "a bad character id", a.switchRaw(t, switchCharacter("nope"), true), connect.CodeNotFound, noCharacterMsg)
-	wantRevivifyRefusal(t, "a combatant that is not there", a.switchRaw(t, switchCombatant(newKey()), true), connect.CodeNotFound, "combatant not found")
-	wantRevivifyRefusal(t, "a creature that is alive", a.switchRaw(t, switchCombatant(a.id(t, "Brisa")), true), connect.CodeFailedPrecondition, "the creature is not dead")
+	wantRefusal(t, "no target", a.switchRaw(t, nil, true), connect.CodeInvalidArgument, "set combatant_id or character_id")
+	wantRefusal(t, "a bad combatant id", a.switchRaw(t, switchCombatant("nope"), true), connect.CodeNotFound, "combatant not found")
+	wantRefusal(t, "a bad character id", a.switchRaw(t, switchCharacter("nope"), true), connect.CodeNotFound, noCharacterMsg)
+	wantRefusal(t, "a combatant that is not there", a.switchRaw(t, switchCombatant(newKey()), true), connect.CodeNotFound, "combatant not found")
+	wantRefusal(t, "a creature that is alive", a.switchRaw(t, switchCombatant(a.id(t, "Brisa")), true), connect.CodeFailedPrecondition, "the creature is not dead")
 	err := a.switchRaw(t, switchCharacter(a.bri.GetId()), true)
 	t.Logf("a living character answers %v", err)
 	if connect.CodeOf(err) != connect.CodeFailedPrecondition {
@@ -375,7 +375,7 @@ func TestRevivifyFrozen_SwitchInACombat(t *testing.T) {
 	if _, err := a.master.combat.EndEncounter(t.Context(), connect.NewRequest(&playv1.EndEncounterRequest{CampaignId: a.campaignID, EncounterId: e.GetId(), IdempotencyKey: newKey()})); err != nil {
 		t.Fatalf("EndEncounter() error = %v", err)
 	}
-	wantRevivifyRefusal(t, "a combatant of a combat that ended", a.switchRaw(t, switchCombatant(a.id(t, "Toren")), true), connect.CodeNotFound, "combatant not found")
+	wantRefusal(t, "a combatant of a combat that ended", a.switchRaw(t, switchCombatant(a.id(t, "Toren")), true), connect.CodeNotFound, "combatant not found")
 	if err := a.switchRaw(t, switchCharacter(a.toren.GetId()), true); err != nil {
 		t.Fatalf("SetRevivifyBlocked(character) after the end error = %v", err)
 	}
@@ -384,7 +384,7 @@ func TestRevivifyFrozen_SwitchInACombat(t *testing.T) {
 	}
 	// No open session: a combatant names nothing, a character is still switched.
 	a.endRevivifySession(t)
-	wantRevivifyRefusal(t, "a combatant with no session", a.switchRaw(t, switchCombatant(newKey()), true), connect.CodeFailedPrecondition, noSessionMsg)
+	wantRefusal(t, "a combatant with no session", a.switchRaw(t, switchCombatant(newKey()), true), connect.CodeFailedPrecondition, noSessionMsg)
 	if err := a.switchRaw(t, switchCharacter(a.toren.GetId()), false); err != nil {
 		t.Fatalf("SetRevivifyBlocked(character) with no session error = %v", err)
 	}

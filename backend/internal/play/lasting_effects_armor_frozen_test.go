@@ -91,7 +91,7 @@ func TestLastingCoreGearChangedWorksTheBaseOutAgain(t *testing.T) {
 	a.master.end(t, a.master.liveSession(t, a.campaignID).GetGameSession())
 	l.say("no session open: GearChanged -> %s", a.coreArmor(t, a.h.svc.GearChanged, a.pens.GetId()))
 	l.say("%s", a.coreCharacterEffects(t, a.pens.GetId()))
-	wantLastingGolden(t, "armor_gear_changed", a.coreNames(t, l.String()))
+	wantLastingGolden(t, "lasting_core", "armor_gear_changed", a.coreNames(t, l.String()))
 }
 
 // A character that dons armor loses the effects that set a base armor class, in a combat or out
@@ -123,7 +123,7 @@ func TestLastingCoreArmorWornEndsTheEffectsThatNeedNone(t *testing.T) {
 	a.master.end(t, a.master.liveSession(t, a.campaignID).GetGameSession())
 	l.say("no session open: ArmorWorn -> %s", a.coreArmor(t, a.h.svc.ArmorWorn, a.pens.GetId()))
 	l.say("%s", a.coreCharacterEffects(t, a.pens.GetId()))
-	wantLastingGolden(t, "armor_worn", a.coreNames(t, l.String()))
+	wantLastingGolden(t, "lasting_core", "armor_worn", a.coreNames(t, l.String()))
 }
 
 // FINDING, frozen as it is: a creature with no sheet (a summoned one) would have a base of 13
@@ -150,5 +150,5 @@ func TestLastingCoreTheBaseArmorClassOfACreatureWithNoSheet(t *testing.T) {
 		l.say("a fighter -> %v %v %v", mods, ok, err)
 		return nil
 	})
-	wantLastingGolden(t, "armor_no_sheet", a.coreNames(t, l.String()))
+	wantLastingGolden(t, "lasting_core", "armor_no_sheet", a.coreNames(t, l.String()))
 }

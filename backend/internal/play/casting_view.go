@@ -11,6 +11,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -242,7 +243,7 @@ func (s *Service) castAnswer(
 	return connect.NewResponse(build(cast, filterVitals(m, made.vitals), ev)), nil
 }
 
-// castAnswerFinish is the answer of FinishCast.
+// castAnswerFinish is the answer of ConfirmCastTimePassed.
 func (s *Service) castAnswerFinish(ctx context.Context, m authz.Membership, res combatResult, made castOutcome) (*connect.Response[playv1.ConfirmCastTimePassedResponse], error) {
 	cast, err := s.afterCastChange(ctx, m, res, made, "")
 	if err != nil {
@@ -307,7 +308,7 @@ func (s *Service) castsAbout(ctx context.Context, m authz.Membership, sessionID,
 	if raw == "" {
 		return "", nil
 	}
-	id, ok := parseID(raw)
+	id, ok := uid.Canonical(raw)
 	if !ok {
 		return "", errCharacterNotFound()
 	}
@@ -371,7 +372,7 @@ func (s *Service) GetCastOptions(
 	if err != nil {
 		return nil, err
 	}
-	id, ok := parseID(req.Msg.GetCharacterId())
+	id, ok := uid.Canonical(req.Msg.GetCharacterId())
 	if !ok {
 		return nil, errCharacterNotFound()
 	}

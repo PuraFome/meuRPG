@@ -19,10 +19,11 @@ import (
 // it is hidden, and a Blinded one does not; on a map with the fog of war the
 // callers ask the sight (fogSight.reactorSees) of the reactors a move leaves, after
 // the reach filter, never of all of them. A reactor in the mover's own turn group
-// may react too (the SRD allows reactions on any turn). Not exact is a player's warning in GetMoveOptions: only what the viewer
-// sees (RN-20), so hostile, not defeated, visible, its visible conditions, and a
-// 5 ft reach, never the reaction, the stat block or the vitals of an NPC. tx is the
-// open transaction, or nil for a read.
+// may react too (the SRD allows reactions on any turn). Not exact is a player's
+// warning in GetMoveOptions: only what the viewer sees (RN-20), so hostile, not
+// defeated, visible, its visible conditions, and a 5 ft reach, never the reaction,
+// the stat block or the vitals of an NPC. tx is the open transaction, or nil for a
+// read.
 func (s *Service) opportunityReactors(ctx context.Context, tx pgx.Tx, campaignID string, cs []playdb.Combatant, mover playdb.Combatant, v *combatViewer, draggedID string) ([]candidate, error) {
 	if mover.Hidden || mover.Disengaged || !placed(mover) {
 		return nil, nil

@@ -1,7 +1,6 @@
 package play
 
 import (
-	"errors"
 	"strings"
 	"testing"
 
@@ -16,18 +15,6 @@ import (
 // combat_reveal.go): the answers a request gets before any transaction opens, in the order
 // the checks run, with the exact code and message of each. The tests that already exist
 // follow the rules; these freeze the branches a refactor of the handlers could move.
-
-// wantCoreRefusal checks the code and the exact message of an error.
-func wantCoreRefusal(t *testing.T, call string, err error, code connect.Code, msg string) {
-	t.Helper()
-	var ce *connect.Error
-	if !errors.As(err, &ce) {
-		t.Fatalf("%s: error = %v, want a connect error %v %q", call, err, code, msg)
-	}
-	if ce.Code() != code || ce.Message() != msg {
-		t.Fatalf("%s: error = %v %q, want %v %q", call, ce.Code(), ce.Message(), code, msg)
-	}
-}
 
 // coreIDs is what a request names: each field can be spoiled by a case.
 type coreIDs struct {
@@ -148,24 +135,24 @@ func TestCoreHandlersReadTheirRequestInOrder(t *testing.T) {
 	)
 	for _, call := range coreCalls() {
 		good := coreIDs{key: newKey(), enc: newKey(), comb: newKey()}
-		wantCoreRefusal(t, call.name+" by a stranger", call.send(f, stranger, good), connect.CodeNotFound, "campaign not found")
+		wantRefusal(t, call.name+" by a stranger", call.send(f, stranger, good), connect.CodeNotFound, "campaign not found")
 		if call.master {
 			// A player gets the same answer for any id, whatever it names (RN-10).
 			msg := "only the campaign's master can do this"
 			if call.name == "ResolveHiddenReveal" {
 				msg = "only the master decides whether hidden creatures are revealed"
 			}
-			wantCoreRefusal(t, call.name+" by a player", call.send(f, f.caio, good), connect.CodePermissionDenied, msg)
+			wantRefusal(t, call.name+" by a player", call.send(f, f.caio, good), connect.CodePermissionDenied, msg)
 		}
 		badKey, badEnc, badComb := good, good, good
 		badKey.key, badEnc.enc, badComb.comb = "x", "x", "x"
-		wantCoreRefusal(t, call.name+" with a bad key", call.send(f, f.master, badKey), connect.CodeInvalidArgument, notUUIDKey)
-		wantCoreRefusal(t, call.name+" with a bad encounter", call.send(f, f.master, badEnc), connect.CodeNotFound, noEncounter)
+		wantRefusal(t, call.name+" with a bad key", call.send(f, f.master, badKey), connect.CodeInvalidArgument, notUUIDKey)
+		wantRefusal(t, call.name+" with a bad encounter", call.send(f, f.master, badEnc), connect.CodeNotFound, noEncounter)
 		both := coreIDs{key: "x", enc: "x", comb: "x"}
-		wantCoreRefusal(t, call.name+" with every id bad", call.send(f, f.master, both), connect.CodeInvalidArgument, notUUIDKey)
+		wantRefusal(t, call.name+" with every id bad", call.send(f, f.master, both), connect.CodeInvalidArgument, notUUIDKey)
 		switch call.name {
 		case "SubmitInitiative", "SetCombatantHidden", "RemoveCombatant", "SetCombatantConditions", "StandUp", "RollDeathSave", "ConfirmDeath", "SetSurprised":
-			wantCoreRefusal(t, call.name+" with a bad combatant", call.send(f, f.master, badComb), connect.CodeNotFound, noCombatant)
+			wantRefusal(t, call.name+" with a bad combatant", call.send(f, f.master, badComb), connect.CodeNotFound, noCombatant)
 		}
 	}
 }
@@ -178,7 +165,7 @@ func TestCoreHandlersAnswerAnUnknownEncounter(t *testing.T) {
 	for _, call := range coreCalls() {
 		ids := coreIDs{key: newKey(), enc: newKey(), comb: newKey()}
 		err := call.send(f, f.master, ids)
-		wantCoreRefusal(t, call.name+" on a missing combat", err, connect.CodeNotFound, "encounter not found")
+		wantRefusal(t, call.name+" on a missing combat", err, connect.CodeNotFound, "encounter not found")
 	}
 }
 
@@ -192,8 +179,8 @@ func TestSubmitInitiativeRefusesABadRollBeforeTheTransaction(t *testing.T) {
 		_, err := f.caio.combat.SubmitInitiative(t.Context(), connect.NewRequest(r))
 		return err
 	}
-	wantCoreRefusal(t, "no roll", send(func(*playv1.SubmitInitiativeRequest) {}), connect.CodeInvalidArgument, "set roll_in_app or d20_face")
-	wantCoreRefusal(t, "roll_in_app false", send(func(r *playv1.SubmitInitiativeRequest) {
+	wantRefusal(t, "no roll", send(func(*playv1.SubmitInitiativeRequest) {}), connect.CodeInvalidArgument, "set roll_in_app or d20_face")
+	wantRefusal(t, "roll_in_app false", send(func(r *playv1.SubmitInitiativeRequest) {
 		r.Roll = &playv1.SubmitInitiativeRequest_RollInApp{RollInApp: false}
 	}), connect.CodeInvalidArgument, "roll_in_app must be true")
 }
@@ -208,12 +195,12 @@ func TestRollDeathSaveRefusesABadRollBeforeTheTransaction(t *testing.T) {
 		_, err := f.caio.combat.RollDeathSave(t.Context(), connect.NewRequest(r))
 		return err
 	}
-	wantCoreRefusal(t, "no roll", send(func(*playv1.RollDeathSaveRequest) {}), connect.CodeInvalidArgument, "set roll_in_app or d20_face")
-	wantCoreRefusal(t, "roll_in_app false", send(func(r *playv1.RollDeathSaveRequest) {
+	wantRefusal(t, "no roll", send(func(*playv1.RollDeathSaveRequest) {}), connect.CodeInvalidArgument, "set roll_in_app or d20_face")
+	wantRefusal(t, "roll_in_app false", send(func(r *playv1.RollDeathSaveRequest) {
 		r.Roll = &playv1.RollDeathSaveRequest_RollInApp{RollInApp: false}
 	}), connect.CodeInvalidArgument, "roll_in_app must be true")
 	for _, face := range []int32{0, 21, -3} {
-		wantCoreRefusal(t, "a face out of range", send(func(r *playv1.RollDeathSaveRequest) {
+		wantRefusal(t, "a face out of range", send(func(r *playv1.RollDeathSaveRequest) {
 			r.Roll = &playv1.RollDeathSaveRequest_D20Face{D20Face: face}
 		}), connect.CodeInvalidArgument, "d20_face must be 1 to 20")
 	}
@@ -230,11 +217,11 @@ func TestSetInitiativeOrderRefusesABadListBeforeTheTransaction(t *testing.T) {
 		}))
 		return err
 	}
-	wantCoreRefusal(t, "an id that is not a UUID", send(a, "x"), connect.CodeNotFound, "combatant not found")
-	wantCoreRefusal(t, "a repeated combatant", send(a, b, a), connect.CodeInvalidArgument, "combatant_ids repeats a combatant")
-	wantCoreRefusal(t, "no combatants", send(), connect.CodeInvalidArgument, "combatant_ids must name at least two combatants")
-	wantCoreRefusal(t, "one combatant", send(a), connect.CodeInvalidArgument, "combatant_ids must name at least two combatants")
-	wantCoreRefusal(t, "a bad id after a repeat", send(a, a, "x"), connect.CodeInvalidArgument, "combatant_ids repeats a combatant")
+	wantRefusal(t, "an id that is not a UUID", send(a, "x"), connect.CodeNotFound, "combatant not found")
+	wantRefusal(t, "a repeated combatant", send(a, b, a), connect.CodeInvalidArgument, "combatant_ids repeats a combatant")
+	wantRefusal(t, "no combatants", send(), connect.CodeInvalidArgument, "combatant_ids must name at least two combatants")
+	wantRefusal(t, "one combatant", send(a), connect.CodeInvalidArgument, "combatant_ids must name at least two combatants")
+	wantRefusal(t, "a bad id after a repeat", send(a, a, "x"), connect.CodeInvalidArgument, "combatant_ids repeats a combatant")
 }
 
 // TestStartEncounterRefusesABadRequestBeforeTheTransaction freezes every refusal that comes from
@@ -315,7 +302,7 @@ func TestStartEncounterRefusesABadRequestBeforeTheTransaction(t *testing.T) {
 		}, invalid, "monsters[1] repeats a creature"},
 	}
 	for _, tc := range tests {
-		wantCoreRefusal(t, tc.name, send(tc.as, tc.edit), tc.code, tc.msg)
+		wantRefusal(t, tc.name, send(tc.as, tc.edit), tc.code, tc.msg)
 	}
 	if e := f.get(t, f.master); e != nil {
 		t.Errorf("a refused StartEncounter left a combat: %v", e)
@@ -333,13 +320,13 @@ func TestAddMonstersRefusesABadRequestBeforeTheTransaction(t *testing.T) {
 		return err
 	}
 	const invalid = connect.CodeInvalidArgument
-	wantCoreRefusal(t, "a count over the limit", send(func(r *playv1.AddMonstersRequest) { r.Count = maxNPCCopies + 1 }), invalid, "count must be 1 to 10")
-	wantCoreRefusal(t, "a negative count", send(func(r *playv1.AddMonstersRequest) { r.Count = -1 }), invalid, "count must be 1 to 10")
-	wantCoreRefusal(t, "an unknown hit points mode", send(func(r *playv1.AddMonstersRequest) { r.HitPoints = playv1.MonsterHitPoints(99) }), invalid, "hit_points is not a known mode")
-	wantCoreRefusal(t, "a creature that is not in the SRD", send(func(r *playv1.AddMonstersRequest) { r.CreatureKey = "monster:nope" }), invalid, "creature_key is not an SRD creature")
-	wantCoreRefusal(t, "a name that is too long", send(func(r *playv1.AddMonstersRequest) { r.Name = strings.Repeat("x", maxMonsterName+1) }), invalid, "name: must be at most 30 characters, got 31")
+	wantRefusal(t, "a count over the limit", send(func(r *playv1.AddMonstersRequest) { r.Count = maxNPCCopies + 1 }), invalid, "count must be 1 to 10")
+	wantRefusal(t, "a negative count", send(func(r *playv1.AddMonstersRequest) { r.Count = -1 }), invalid, "count must be 1 to 10")
+	wantRefusal(t, "an unknown hit points mode", send(func(r *playv1.AddMonstersRequest) { r.HitPoints = playv1.MonsterHitPoints(99) }), invalid, "hit_points is not a known mode")
+	wantRefusal(t, "a creature that is not in the SRD", send(func(r *playv1.AddMonstersRequest) { r.CreatureKey = "monster:nope" }), invalid, "creature_key is not an SRD creature")
+	wantRefusal(t, "a name that is too long", send(func(r *playv1.AddMonstersRequest) { r.Name = strings.Repeat("x", maxMonsterName+1) }), invalid, "name: must be at most 30 characters, got 31")
 	// The count is read before the mode, the mode before the creature, the creature before the name.
-	wantCoreRefusal(t, "every field bad", send(func(r *playv1.AddMonstersRequest) {
+	wantRefusal(t, "every field bad", send(func(r *playv1.AddMonstersRequest) {
 		r.Count, r.HitPoints, r.CreatureKey, r.Name = 99, playv1.MonsterHitPoints(99), "x", strings.Repeat("x", 99)
 	}), invalid, "count must be 1 to 10")
 }
@@ -359,10 +346,10 @@ func TestSetCombatantConditionsRefusesABadRequestBeforeTheTransaction(t *testing
 		return func(r *playv1.SetCombatantConditionsRequest) { r.Conditions = &playv1.ConditionList{Keys: k} }
 	}
 	const invalid = connect.CodeInvalidArgument
-	wantCoreRefusal(t, "nothing to do", send(func(*playv1.SetCombatantConditionsRequest) {}), invalid, "set conditions or end_concentration")
-	wantCoreRefusal(t, "an unknown condition", send(keys(condProne, "nope")), invalid, "conditions.keys[1] is not one of the SRD's conditions")
-	wantCoreRefusal(t, "a repeated condition", send(keys(condProne, condProne)), invalid, "conditions.keys[1] repeats a condition")
-	wantCoreRefusal(t, "too many conditions", send(keys(make([]string, maxConditions+1)...)), invalid, "conditions must have at most 20 keys")
+	wantRefusal(t, "nothing to do", send(func(*playv1.SetCombatantConditionsRequest) {}), invalid, "set conditions or end_concentration")
+	wantRefusal(t, "an unknown condition", send(keys(condProne, "nope")), invalid, "conditions.keys[1] is not one of the SRD's conditions")
+	wantRefusal(t, "a repeated condition", send(keys(condProne, condProne)), invalid, "conditions.keys[1] repeats a condition")
+	wantRefusal(t, "too many conditions", send(keys(make([]string, maxConditions+1)...)), invalid, "conditions must have at most 20 keys")
 }
 
 // TestAddCombatantsRefusesBadParticipantsBeforeTheTransaction freezes that an add, unlike a start,
@@ -373,10 +360,10 @@ func TestAddCombatantsRefusesBadParticipantsBeforeTheTransaction(t *testing.T) {
 	_, err := f.master.combat.AddCombatants(t.Context(), connect.NewRequest(&playv1.AddCombatantsRequest{
 		CampaignId: f.campaignID, EncounterId: newKey(), IdempotencyKey: newKey(),
 	}))
-	wantCoreRefusal(t, "no participants", err, connect.CodeInvalidArgument, "participants must list who fights")
+	wantRefusal(t, "no participants", err, connect.CodeInvalidArgument, "participants must list who fights")
 	_, err = f.master.combat.AddCombatants(t.Context(), connect.NewRequest(&playv1.AddCombatantsRequest{
 		CampaignId: f.campaignID, EncounterId: newKey(), IdempotencyKey: newKey(),
 		Participants: []*playv1.Participant{{CharacterId: f.goblin.GetId()}},
 	}))
-	wantCoreRefusal(t, "a combat that does not exist", err, connect.CodeNotFound, "encounter not found")
+	wantRefusal(t, "a combat that does not exist", err, connect.CodeNotFound, "encounter not found")
 }

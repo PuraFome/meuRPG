@@ -1,0 +1,11 @@
+the turn that passes to the goblin -> no error
+current: "<Goblin>"
+Brisa hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=idle
+Goblin hp 4/7 base - temp 0 defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=- turn=acting
+
+events:
+turn_ended {"discarded":0,"from":"<Toren>","round":1,"to":"<Pensantus>"}
+turn_ended {"discarded":0,"from":"<Pensantus>","round":1,"to":"<Brisa>"}
+lasting_effect_triggered {"after":{"hp":4},"applied":true,"before":{"hp":7},"combatant_id":"<Goblin>","key":"effect:web-fire","lasting":{"amount":3,"change":"damage","damage_type":"damage-type:fire","effects":["<uuid>"],"key":"effect:web-fire","targets":["<Goblin>"]},"pending_id":"<uuid>","round":1,"target_id":"<Goblin>"}
+turn_ended {"discarded":0,"from":"<Brisa>","round":1,"to":"<Goblin>"}
+

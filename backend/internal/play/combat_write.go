@@ -18,6 +18,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/tablerules"
@@ -437,7 +438,7 @@ func (s *Service) settleChange(ctx context.Context, c *combatTx) error {
 func (r *changeRun) record(ctx context.Context, c *combatTx, w combatWrite, payload any) error {
 	r.res.encounterID = c.enc.ID
 	r.res.kind = c.kind
-	r.res.characterID = deref(c.characterID)
+	r.res.characterID = conv.OrZero(c.characterID)
 	r.res.event = nil
 	if ev, ok := payload.(actionEvent); ok {
 		r.res.event = &ev
@@ -477,7 +478,7 @@ func (s *Service) tellEnded(ctx context.Context, campaignID string, ended *comba
 		for _, v := range ended.told {
 			s.publishVitals(campaignID, v)
 		}
-		s.maps.VisionChanged(ctx, campaignID, deref(ended.enc.MapID))
+		s.maps.VisionChanged(ctx, campaignID, conv.OrZero(ended.enc.MapID))
 	}
 }
 
@@ -740,6 +741,58 @@ func (s *Service) publishRetried(ctx context.Context, campaignID string, res com
 // changed is the usual publish: a hint that the combat changed.
 func (s *Service) changed(campaignID string) func(ctx context.Context, d *encounterData) {
 	return func(ctx context.Context, d *encounterData) { s.publishEncounterChanged(ctx, campaignID, d.enc) }
+}
+
+// parseCall reads what every combat call carries after the caller is known: the
+// idempotency key, then the combat. The order is the order of the refusals.
+func parseCall(keyRaw, encounterRaw string) (key, encID string, err error) {
+	if key, err = parseKey(keyRaw); err != nil {
+		return "", "", err
+	}
+	if encID, err = parseCombatID(encounterRaw, "encounter"); err != nil {
+		return "", "", err
+	}
+	return key, encID, nil
+}
+
+// memberCall reads the head of a request any member of the campaign may make, in the
+// order the refusals are given: who may call, the key, then the combat.
+func memberCall(ctx context.Context, campaignID, keyRaw, encounterRaw string) (m authz.Membership, key, encID string, err error) {
+	if m, err = authz.RequireCampaignMember(ctx, campaignID); err != nil {
+		return m, "", "", err
+	}
+	key, encID, err = parseCall(keyRaw, encounterRaw)
+	return m, key, encID, err
+}
+
+// masterCall reads the head of a request only the master may make, in the order the
+// refusals are given: who may call, the key, then the combat.
+func masterCall(ctx context.Context, campaignID, keyRaw, encounterRaw string) (m authz.Membership, key, encID string, err error) {
+	if m, err = authz.RequireCampaignRole(ctx, campaignID, authz.RoleMaster); err != nil {
+		return m, "", "", err
+	}
+	key, encID, err = parseCall(keyRaw, encounterRaw)
+	return m, key, encID, err
+}
+
+// listCombatants reads the combatants of the combat c.enc.
+func listCombatants(ctx context.Context, c *combatTx) ([]playdb.Combatant, error) {
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the combatants: %w", err)
+	}
+	return cs, nil
+}
+
+// touch bumps the encounter's revision, as every change of a combat does, and keeps
+// the new row in c.enc.
+func touch(ctx context.Context, c *combatTx) error {
+	enc, err := c.q.TouchEncounter(ctx, c.enc.ID)
+	if err != nil {
+		return fmt.Errorf("touch the encounter: %w", err)
+	}
+	c.enc = enc
+	return nil
 }
 
 // parseKey reads an idempotency key.

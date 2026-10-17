@@ -25,7 +25,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// Puzzles (MR-038, RN-27, Etapa 10, slice 10.7a): the master makes them in the
+// Puzzles (MR-038, RN-27): the master makes them in the
 // campaign, shows them in the open session, and the players solve them live. The
 // files:
 //

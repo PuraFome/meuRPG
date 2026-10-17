@@ -13,6 +13,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -55,10 +56,7 @@ type castCall struct {
 func readCastIDs(req *playv1.CastSpellRequest) (castCall, error) {
 	var call castCall
 	var err error
-	if call.key, err = parseKey(req.GetIdempotencyKey()); err != nil {
-		return call, err
-	}
-	if call.encounterID, err = parseCombatID(req.GetEncounterId(), "encounter"); err != nil {
+	if call.key, call.encounterID, err = parseCall(req.GetIdempotencyKey(), req.GetEncounterId()); err != nil {
 		return call, err
 	}
 	if call.casterID, err = parseCombatID(req.GetCasterId(), "combatant"); err != nil {
@@ -261,9 +259,9 @@ func (f *castFlow) writeCast(ctx context.Context) error {
 // findCaster reads the combat's combatants as the caller sees them (the fog: an NPC the player does not see
 // is not found) and the caster, who the caller must be able to act for and who must be able to cast now.
 func (f *castFlow) findCaster(ctx context.Context) error {
-	cs, err := f.c.q.ListCombatants(ctx, f.c.enc.ID)
+	cs, err := listCombatants(ctx, f.c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	f.cs = cs
 	f.v = f.c.viewer(f.m, cs)
@@ -633,9 +631,8 @@ func (f *castFlow) settleCountered(ctx context.Context) (any, error) {
 	made := &f.out.made
 	made.Secret = f.caster.Hidden
 	made.Reaction = &reactionEvent{Kind: string(reaction.CounterspellKind), Countered: true, Spell: f.call.spellKey, Level: int32(f.slotLevel)} //nolint:gosec // a slot level, 0 to 9
-	var err error
-	if f.c.enc, err = f.c.q.TouchEncounter(ctx, f.c.enc.ID); err != nil {
-		return nil, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, f.c); err != nil {
+		return nil, err
 	}
 	f.c.characterID = &f.caster.CharacterID
 	return *made, nil
@@ -648,7 +645,7 @@ func (f *castFlow) concentrate(ctx context.Context) error {
 		return nil
 	}
 	made := &f.out.made
-	made.Concentrate, made.ConcBefore = true, deref(f.caster.ConcentrationSpell)
+	made.Concentrate, made.ConcBefore = true, conv.OrZero(f.caster.ConcentrationSpell)
 	made.ConcEnded = made.ConcBefore
 	var err error
 	if made.Dismissed, err = f.s.endSummons(ctx, f.c, f.caster); err != nil {
@@ -759,8 +756,8 @@ func (f *castFlow) seal(ctx context.Context) error {
 			return err
 		}
 	}
-	if f.c.enc, err = f.c.q.TouchEncounter(ctx, f.c.enc.ID); err != nil {
-		return fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, f.c); err != nil {
+		return err
 	}
 	f.c.characterID = &f.caster.CharacterID
 	return nil

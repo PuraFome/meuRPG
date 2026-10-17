@@ -50,23 +50,23 @@ func TestCastEndConfirmRefusals(t *testing.T) {
 
 	// The campaign and the request come first.
 	err := castEndConfirm(t, a, a.master, prayer, func(r *playv1.ConfirmCastTimePassedRequest) { r.CampaignId = "nope" })
-	wantCastRefusal(t, "a campaign that is not one", err, connect.CodeNotFound, "campaign not found")
+	wantRefusal(t, "a campaign that is not one", err, connect.CodeNotFound, "campaign not found")
 	err = castEndConfirm(t, a, a.master, prayer, func(r *playv1.ConfirmCastTimePassedRequest) { r.IdempotencyKey = "nope" })
-	wantCastRefusal(t, "a key that is not a UUID", err, connect.CodeInvalidArgument, "idempotency_key must be a UUID")
+	wantRefusal(t, "a key that is not a UUID", err, connect.CodeInvalidArgument, "idempotency_key must be a UUID")
 	err = castEndConfirm(t, a, a.master, prayer, func(r *playv1.ConfirmCastTimePassedRequest) {
 		r.Roll = &playv1.ConfirmCastTimePassedRequest_RollInApp{RollInApp: false}
 	})
-	wantCastRefusal(t, "roll_in_app false", err, connect.CodeInvalidArgument, "roll_in_app must be true")
+	wantRefusal(t, "roll_in_app false", err, connect.CodeInvalidArgument, "roll_in_app must be true")
 
 	// The cast: one that is not found, one the caller may not act on, and who completes it.
 	err = castEndConfirm(t, a, a.master, "nope", noEdit)
-	wantCastRefusal(t, "a cast id that is not a UUID", err, connect.CodeNotFound, "cast not found")
+	wantRefusal(t, "a cast id that is not a UUID", err, connect.CodeNotFound, "cast not found")
 	err = castEndConfirm(t, a, a.master, newKey(), noEdit)
-	wantCastRefusal(t, "a cast that does not exist", err, connect.CodeNotFound, "cast not found")
+	wantRefusal(t, "a cast that does not exist", err, connect.CodeNotFound, "cast not found")
 	err = castEndConfirm(t, a, a.ana, prayer, noEdit)
-	wantCastRefusal(t, "another player's cast", err, connect.CodePermissionDenied, "only the character's player or the master may do this")
+	wantRefusal(t, "another player's cast", err, connect.CodePermissionDenied, "only the character's player or the master may do this")
 	err = castEndConfirm(t, a, a.bia, prayer, noEdit)
-	wantCastRefusal(t, "the caster's player", err, connect.CodePermissionDenied, "only the master completes a cast")
+	wantRefusal(t, "the caster's player", err, connect.CodePermissionDenied, "only the master completes a cast")
 
 	// A cast aimed at a creature the players do not see is not found for a player (RN-10).
 
@@ -74,12 +74,12 @@ func TestCastEndConfirmRefusals(t *testing.T) {
 	done := a.mustCastOut(t, a.ana, a.pens, mageArmorKey, slotOfLevel(1), false, []*charactersv1.Character{a.toren}).GetCast().GetId()
 	err = castEndConfirm(t, a, a.master, done, noEdit)
 	wantCastingBlocked(t, "a cast that is not going", err, playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_CAST_NOT_GOING)
-	wantCastRefusal(t, "a cast that is not going", err, connect.CodeFailedPrecondition, "the spell is not being cast")
+	wantRefusal(t, "a cast that is not going", err, connect.CodeFailedPrecondition, "the spell is not being cast")
 
 	// A cast that has a creature the players do not see in it is not found for a player (RN-10).
 	a.execSQL(t, `UPDATE spell_casts SET secret = true WHERE id = $1`, prayer)
 	err = castEndConfirm(t, a, a.bia, prayer, noEdit)
-	wantCastRefusal(t, "a secret cast as its player", err, connect.CodeNotFound, "cast not found")
+	wantRefusal(t, "a secret cast as its player", err, connect.CodeNotFound, "cast not found")
 }
 
 // TestCastEndConfirmPlanChangedSinceTheStart: the plan is rebuilt when the master confirms, and the sheet has to
@@ -92,20 +92,20 @@ func TestCastEndConfirmPlanChangedSinceTheStart(t *testing.T) {
 	ritual := castEndStartPrayer(t, a)
 	a.execSQL(t, `UPDATE spell_casts SET ritual = true WHERE id = $1`, ritual)
 	err := castEndConfirm(t, a, a.master, ritual, noEdit)
-	wantCastRefusal(t, "a ritual the cleric cannot cast", err, connect.CodeInvalidArgument, "the character cannot cast this spell as a ritual")
+	wantRefusal(t, "a ritual the cleric cannot cast", err, connect.CodeInvalidArgument, "the character cannot cast this spell as a ritual")
 
 	castEndInterrupt(t, a, ritual)
 	stranger := castEndStartPrayer(t, a)
 	a.execSQL(t, `UPDATE spell_casts SET spell_key = $2 WHERE id = $1`, stranger, magicMissileSpell)
 	err = castEndConfirm(t, a, a.master, stranger, noEdit)
-	wantCastRefusal(t, "a spell the sheet does not prepare", err, connect.CodeInvalidArgument, "spell_key is not one of the caster's spells")
+	wantRefusal(t, "a spell the sheet does not prepare", err, connect.CodeInvalidArgument, "spell_key is not one of the caster's spells")
 
 	castEndInterrupt(t, a, stranger)
 	noSlot := castEndStartPrayer(t, a)
 	a.execSQL(t, `UPDATE spell_casts SET slot_level = 4 WHERE id = $1`, noSlot)
 	err = castEndConfirm(t, a, a.master, noSlot, noEdit)
 	b := wantCastingBlocked(t, "a slot level the character has not got", err, playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_NO_SLOT)
-	wantCastRefusal(t, "a slot level the character has not got", err, connect.CodeFailedPrecondition, "there is no free spell slot for this spell")
+	wantRefusal(t, "a slot level the character has not got", err, connect.CodeFailedPrecondition, "there is no free spell slot for this spell")
 	if b.GetMinLevel() != 4 {
 		t.Errorf("min level = %d, want the slot's level 4", b.GetMinLevel())
 	}
@@ -128,21 +128,21 @@ func TestCastEndAbandonAndEndRefusals(t *testing.T) {
 		},
 	}
 	for name, call := range calls {
-		wantCastRefusal(t, name+" on a campaign that is not one", call(a.master, "nope", prayer, newKey()), connect.CodeNotFound, "campaign not found")
-		wantCastRefusal(t, name+" with a key that is not a UUID", call(a.master, a.campaignID, prayer, "nope"), connect.CodeInvalidArgument, "idempotency_key must be a UUID")
-		wantCastRefusal(t, name+" on a cast id that is not a UUID", call(a.master, a.campaignID, "nope", newKey()), connect.CodeNotFound, "cast not found")
-		wantCastRefusal(t, name+" on a cast that does not exist", call(a.master, a.campaignID, newKey(), newKey()), connect.CodeNotFound, "cast not found")
-		wantCastRefusal(t, name+" on another player's cast", call(a.ana, a.campaignID, prayer, newKey()), connect.CodePermissionDenied, "only the character's player or the master may do this")
+		wantRefusal(t, name+" on a campaign that is not one", call(a.master, "nope", prayer, newKey()), connect.CodeNotFound, "campaign not found")
+		wantRefusal(t, name+" with a key that is not a UUID", call(a.master, a.campaignID, prayer, "nope"), connect.CodeInvalidArgument, "idempotency_key must be a UUID")
+		wantRefusal(t, name+" on a cast id that is not a UUID", call(a.master, a.campaignID, "nope", newKey()), connect.CodeNotFound, "cast not found")
+		wantRefusal(t, name+" on a cast that does not exist", call(a.master, a.campaignID, newKey(), newKey()), connect.CodeNotFound, "cast not found")
+		wantRefusal(t, name+" on another player's cast", call(a.ana, a.campaignID, prayer, newKey()), connect.CodePermissionDenied, "only the character's player or the master may do this")
 	}
 	a.execSQL(t, `UPDATE spell_casts SET secret = true WHERE id = $1`, prayer)
 	for name, call := range calls {
-		wantCastRefusal(t, name+" on a secret cast as a player", call(a.bia, a.campaignID, prayer, newKey()), connect.CodeNotFound, "cast not found")
+		wantRefusal(t, name+" on a secret cast as a player", call(a.bia, a.campaignID, prayer, newKey()), connect.CodeNotFound, "cast not found")
 	}
 	a.execSQL(t, `UPDATE spell_casts SET secret = false WHERE id = $1`, prayer)
 	// A cast being cast is interrupted, not ended.
 	_, err := a.endSpell(t, a.bia, prayer)
 	wantCastingBlocked(t, "EndActiveSpell on a cast being cast", err, playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_CAST_NOT_ACTIVE)
-	wantCastRefusal(t, "EndActiveSpell on a cast being cast", err, connect.CodeFailedPrecondition, "the spell is still being cast: interrupt the casting")
+	wantRefusal(t, "EndActiveSpell on a cast being cast", err, connect.CodeFailedPrecondition, "the spell is still being cast: interrupt the casting")
 }
 
 // castEndNames names the ids a response holds: the characters of the party and the casts by what they are.
@@ -222,7 +222,7 @@ func TestCastEndAConcentrationInACombatIsEndedThere(t *testing.T) {
 	})
 	_, err := a.endSpell(t, a.bia, bless.GetId())
 	wantCastingBlocked(t, "EndActiveSpell in a combat", err, playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_IN_COMBAT)
-	wantCastRefusal(t, "EndActiveSpell in a combat", err, connect.CodeFailedPrecondition, "the concentration is in a combat: end it there")
+	wantRefusal(t, "EndActiveSpell in a combat", err, connect.CodeFailedPrecondition, "the concentration is in a combat: end it there")
 	if _, err := a.master.combat.EndEncounter(t.Context(), connect.NewRequest(&playv1.EndEncounterRequest{CampaignId: a.campaignID, EncounterId: e.GetId(), IdempotencyKey: newKey()})); err != nil {
 		t.Fatalf("EndEncounter() error = %v", err)
 	}

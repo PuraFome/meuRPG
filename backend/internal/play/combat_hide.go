@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"slices"
 
 	"connectrpc.com/connect"
@@ -13,6 +12,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -74,7 +74,7 @@ func (s *Service) Hide(
 	ctx context.Context,
 	req *connect.Request[playv1.HideRequest],
 ) (*connect.Response[playv1.HideResponse], error) {
-	m, key, encID, err := contestCaller(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
+	m, key, encID, err := memberCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
 	if err != nil {
 		return nil, err
 	}
@@ -393,7 +393,7 @@ func (s *Service) decideHide(ctx context.Context, c *combatTx, m authz.Membershi
 	status, line := hideRefused, contestLineHideRefused
 	var reason *string
 	if p.refuse {
-		reason = refusalReason(p.refusal)
+		reason = nilIfEmpty(p.refusal)
 	} else {
 		status, line = hideApplied, contestLineHideApplied
 		if err := s.noteObservers(ctx, c, m, hider, roll, p.clearly, cs); err != nil {
@@ -413,14 +413,6 @@ func (s *Service) decideHide(ctx context.Context, c *combatTx, m authz.Membershi
 		Round: c.enc.Round, Secret: true, Actor: hider.ID,
 		Contest: &contestEvent{ContestID: attempt.ID, Line: line},
 	}, nil
-}
-
-// refusalReason is the master's reason as the row keeps it: none when he gave none.
-func refusalReason(refusal string) *string {
-	if refusal == "" {
-		return nil
-	}
-	return &refusal
 }
 
 // pendingHideAttempt reads the attempt the master decides, which has to be waiting for him.
@@ -455,7 +447,7 @@ func (s *Service) noteObservers(ctx context.Context, c *combatTx, m authz.Member
 		noticed := ob.noticed || slices.Contains(clearly, o.ID)
 		if err := c.q.UpsertHiding(ctx, playdb.UpsertHidingParams{
 			HiderID: hider.ID, ObserverID: o.ID, EncounterID: c.enc.ID, Noticed: noticed,
-			Total: roll.Total, Passive: clamp32(ob.passive, math.MinInt32, math.MaxInt32), CreatedAt: c.now,
+			Total: roll.Total, Passive: conv.Int32(ob.passive), CreatedAt: c.now,
 		}); err != nil {
 			return fmt.Errorf("keep what a creature noticed: %w", err)
 		}
@@ -568,7 +560,7 @@ func (s *Service) consumeHelps(ctx context.Context, c *combatTx, attacker, targe
 	}
 	var used []string
 	for _, h := range helps {
-		if h.Kind == helpAttack && helpsAlly(h, attacker) && deref(h.TargetID) == target.ID {
+		if h.Kind == helpAttack && helpsAlly(h, attacker) && conv.OrZero(h.TargetID) == target.ID {
 			if err := c.q.SetHelpConsumed(ctx, playdb.SetHelpConsumedParams{ID: h.ID, ConsumedAt: &c.now}); err != nil {
 				return nil, fmt.Errorf("use the help: %w", err)
 			}
