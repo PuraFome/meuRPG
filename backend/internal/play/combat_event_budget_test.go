@@ -125,3 +125,38 @@ func TestTrimUndoHelpers(t *testing.T) {
 		})
 	}
 }
+
+// biggestRevealCast is the event of an area cast that hit the most creatures a combat
+// holds, every one of them hidden, under the table rule that reveals them: the cast the
+// master (or a player's spell under the default rule) makes into a crowd of hidden
+// creatures. It is built as settleHidden builds it.
+func biggestRevealCast() actionEvent {
+	ev := actionEvent{Round: 99, Actor: newKey(), Key: fireball, CastID: newKey(), Placed: true, AreaCol: 23, AreaRow: 15, Slot: &slotRef{Level: 9}}
+	var hit, lines []string
+	for range maxCombatants {
+		id := newKey()
+		ev.Hits = append(ev.Hits, castHit{
+			Target: id, Save: &saveRoll{D20: 20, Bonus: -5, Total: 15, DC: 20, Saved: true}, Pending: newKey(), More: []string{newKey()},
+			Cover: "three_quarters", CoverSource: "map", CoverBonus: 5, CoverSeenMask: 1<<5 | 1, HiddenAtCast: true,
+		})
+		hit = append(hit, id)
+		lines = append(lines, newKey())
+	}
+	ev.Revealed, ev.RevealLines = hit, lines
+	return ev
+}
+
+// TestTheBiggestRevealCastFitsTheEventBudget: a cast that reveals forty hidden creatures
+// writes an event under undoHelpersBudget, the undo helpers it may drop already dropped,
+// so that the table's 16 KiB check never refuses the cast.
+func TestTheBiggestRevealCastFitsTheEventBudget(t *testing.T) {
+	t.Parallel()
+	body, dropped, err := trimUndoHelpers(biggestRevealCast())
+	if err != nil {
+		t.Fatalf("trimUndoHelpers error = %v", err)
+	}
+	if len(body) > undoHelpersBudget {
+		t.Errorf("the event of a cast that reveals %d creatures takes %d bytes after dropping %v, over the %d the budget allows",
+			maxCombatants, len(body), dropped, undoHelpersBudget)
+	}
+}
