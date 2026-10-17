@@ -133,6 +133,16 @@ The typed face takes 1 to the die's size, and the ways to roll follow the table'
 Its `look` keeps what each place showed: `attack` (the attack sheet shows the d20 in its own result card), `sheet` (the held d20 in a line above the question) and `card` (the d20 and its bonus over the question).
 
 The places: the attack, cast, reaction (concentration save), effect-save, scene-roll, trap-search and group-check sheets, the hint try of a puzzle, and the session panel's Bardic block.
+
+### The master's pending questions
+
+The master answers for a roller who has not (RN-35 asks the roller first). `HeldQuestions` (`core/held-rolls/held-questions.ts`) keeps one `MasterQuestion` per hold, each with a `HeldRollController` built with `master: true`; the master answers through `AnswerHeldRoll` like the roller, rolling in the app or typing a face when the table's dice mode allows it (RN-18).
+
+- **Where the questions come from.** In a combat, from `Combatant.held_roll_offer` of the combat the master already reads (the combat view feeds `sync` from its encounter, and the question is drawn in the roller's row). Outside a combat, from `ListHeldRolls` (`app-held-rolls-panel`), read on open, after a reconnection (the page bumps `heldRollsTick` with its other ticks) and on each `held_rolls_changed` hint (`onHeldRollsChanged`); a read that comes back after a newer one is dropped. `sync` keeps the questions it knows, adds new ones, replaces a question by the next one of the same roll, and closes the ones the server stopped listing ("Brisa respondeu.").
+- **The wait.** `MASTER_WAIT_SECONDS` (10) counts from the offer's `created_at`, on an injectable clock; `HeldQuestions.now` moves once a second only while a question waits for its time or a closed one is still on screen (`NOTE_LINGER_MS`), and the interval is cleared otherwise. The server refuses an early answer with `MASTER_TOO_EARLY_REASON`: the question reads it as "wait" (`too-early`), shows the countdown again and keeps the buttons off for at least two more seconds when the clocks differ, then lets the master try again. A plain `failed_precondition` is the lost race: the question ends with "Essa pergunta já foi respondida."
+- **What the answer says.** A master's answer that ends the roll is worded from the path's result (`answeredText`, `settledRoll`): "Você respondeu por Brisa: rolou de novo e tirou 14 (19 com o bônus)."; a result with no d20 says only what was chosen.
+- **The roller.** `HeldRollController` records the answers sent from this browser (`markAnsweredHere`, from the moment the answer goes). A place that shows the roller their question (`HeldVanishWatch`: the combat view, the Bardic block) tells "O mestre respondeu por você." when the question is gone, or moved on to the next, without an answer from this browser. The roller's view carries no result of the master's answer, so that is the whole text.
+
 A group check that holds only a Bardic die, with no 1, closes its sheet and leaves the question to the session panel.
 
 ## Lucky (halfling, RN-35)
