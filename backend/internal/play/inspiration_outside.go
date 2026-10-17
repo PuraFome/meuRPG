@@ -395,7 +395,7 @@ func (s *Service) heldRollsOf(ctx context.Context, campaignID, characterID strin
 	if err != nil {
 		return heldDie{}, false, nil, err
 	}
-	all, err := newHeldStores(s.queries).of(inspirationHolds).openOf(ctx, heldRoller{CharacterID: characterID})
+	all, err := newHeldStores(s.queries).of(inspirationHolds).openOf(ctx, heldRoller{CharacterID: characterID, Combatant: die.Combatant, Round: die.Round})
 	if err != nil {
 		return heldDie{}, false, nil, err
 	}
@@ -460,7 +460,7 @@ func (s *Service) AnswerOutsideInspiration(
 		return nil, err
 	}
 	out, err := s.answerHeld(ctx, m, answerRequest{
-		ref: holdRef{Table: inspirationHolds, Campaign: m.CampaignID, ID: holdID}, key: key, question: askDie, yes: req.Msg.GetUse(), in: in,
+		ref: holdRef{Table: inspirationHolds, Class: outsideHold, Campaign: m.CampaignID, ID: holdID}, key: key, question: askDie, yes: req.Msg.GetUse(), in: in,
 	})
 	if err != nil {
 		return nil, err
@@ -524,7 +524,7 @@ func (s *Service) carryDieIn(ctx context.Context, c *combatTx, all []playdb.Comb
 	if _, err := c.q.DeleteCharacterInspiration(ctx, a.CharacterID); err != nil {
 		return fmt.Errorf("take the die off the character: %w", err)
 	}
-	if err := c.q.DeleteInspirationHoldsOfCharacter(ctx, a.CharacterID); err != nil {
+	if err := c.q.DeleteInspirationHoldsOf(ctx, playdb.DeleteInspirationHoldsOfParams(holdOwnerOfCombatant(a))); err != nil {
 		return fmt.Errorf("forget the held rolls: %w", err)
 	}
 	return nil
@@ -578,7 +578,7 @@ func (s *Service) giveDieBack(ctx context.Context, c *combatTx, cs []playdb.Comb
 		return fmt.Errorf("take the die off the combatant: %w", err)
 	}
 	// The rolls held in the combat have nothing to settle once it is over (or the character is out of it).
-	if err := c.q.DeleteInspirationHoldsOfCharacter(ctx, a.CharacterID); err != nil {
+	if err := c.q.DeleteInspirationHoldsOf(ctx, playdb.DeleteInspirationHoldsOfParams(holdOwnerOfCombatant(a))); err != nil {
 		return fmt.Errorf("forget the rolls held in the combat: %w", err)
 	}
 	return nil

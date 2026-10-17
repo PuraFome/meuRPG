@@ -55,7 +55,7 @@ func (s *Service) AnswerOutsideLucky(
 		return nil, err
 	}
 	out, err := s.answerHeld(ctx, m, answerRequest{
-		ref: holdRef{Table: inspirationHolds, Campaign: m.CampaignID, ID: holdID}, key: key, question: askLucky, yes: req.Msg.GetReroll(), in: in,
+		ref: holdRef{Table: inspirationHolds, Class: outsideHold, Campaign: m.CampaignID, ID: holdID}, key: key, question: askLucky, yes: req.Msg.GetReroll(), in: in,
 	})
 	if err != nil {
 		return nil, err

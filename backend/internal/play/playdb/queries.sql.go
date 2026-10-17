@@ -1102,12 +1102,21 @@ func (q *Queries) DeleteInspirationHold(ctx context.Context, id string) error {
 	return err
 }
 
-const deleteInspirationHoldsOfCharacter = `-- name: DeleteInspirationHoldsOfCharacter :exec
-DELETE FROM inspiration_holds WHERE character_id = $1
+const deleteInspirationHoldsOf = `-- name: DeleteInspirationHoldsOf :exec
+DELETE FROM inspiration_holds
+WHERE (encounter_id = $1 AND combatant_id = $2)
+   OR (combatant_id IS NULL AND character_id = $3)
 `
 
-func (q *Queries) DeleteInspirationHoldsOfCharacter(ctx context.Context, characterID string) error {
-	_, err := q.db.Exec(ctx, deleteInspirationHoldsOfCharacter, characterID)
+type DeleteInspirationHoldsOfParams struct {
+	EncounterID *string
+	CombatantID *string
+	CharacterID *string
+}
+
+// Every hold a roller owns, answered or not (ListOpenInspirationHolds says who owns what).
+func (q *Queries) DeleteInspirationHoldsOf(ctx context.Context, arg DeleteInspirationHoldsOfParams) error {
+	_, err := q.db.Exec(ctx, deleteInspirationHoldsOf, arg.EncounterID, arg.CombatantID, arg.CharacterID)
 	return err
 }
 
@@ -3803,8 +3812,8 @@ func (q *Queries) InsertHitRider(ctx context.Context, arg InsertHitRiderParams) 
 }
 
 const insertInspirationHold = `-- name: InsertInspirationHold :one
-INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at, round, lucky_index)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at, round, lucky_index, combatant_id, encounter_id, window_hold)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $16, $17, $15)
 RETURNING id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold
 `
 
@@ -3823,10 +3832,15 @@ type InsertInspirationHoldParams struct {
 	CreatedAt      time.Time
 	Round          *int32
 	LuckyIndex     *int32
+	WindowHold     bool
+	CombatantID    *string
+	EncounterID    *string
 }
 
 // A d20 roll that waits for the answer about a Bardic Inspiration die, or for the Lucky question
-// of a d20 that shows a 1 (lucky_index, NULL without one).
+// of a d20 that shows a 1 (lucky_index, NULL without one). A roll held in a combat also names its
+// combatant and its combat, which own the hold (00255); window_hold is the weapon attack a reaction
+// window kept.
 func (q *Queries) InsertInspirationHold(ctx context.Context, arg InsertInspirationHoldParams) (InspirationHold, error) {
 	row := q.db.QueryRow(ctx, insertInspirationHold,
 		arg.CampaignID,
@@ -3843,6 +3857,9 @@ func (q *Queries) InsertInspirationHold(ctx context.Context, arg InsertInspirati
 		arg.CreatedAt,
 		arg.Round,
 		arg.LuckyIndex,
+		arg.WindowHold,
+		arg.CombatantID,
+		arg.EncounterID,
 	)
 	var i InspirationHold
 	err := row.Scan(
@@ -6099,52 +6116,6 @@ func (q *Queries) ListHitRiders(ctx context.Context, encounterID string) ([]HitR
 	return items, nil
 }
 
-const listInspirationHoldsOfCharacter = `-- name: ListInspirationHoldsOfCharacter :many
-SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold FROM inspiration_holds WHERE character_id = $1 AND answer_key IS NULL ORDER BY created_at
-`
-
-func (q *Queries) ListInspirationHoldsOfCharacter(ctx context.Context, characterID string) ([]InspirationHold, error) {
-	rows, err := q.db.Query(ctx, listInspirationHoldsOfCharacter, characterID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []InspirationHold
-	for rows.Next() {
-		var i InspirationHold
-		if err := rows.Scan(
-			&i.ID,
-			&i.CampaignID,
-			&i.CharacterID,
-			&i.UserID,
-			&i.Kind,
-			&i.IdempotencyKey,
-			&i.Request,
-			&i.Faces,
-			&i.Modifier,
-			&i.Total,
-			&i.Counted,
-			&i.Physical,
-			&i.AnswerKey,
-			&i.CreatedAt,
-			&i.Round,
-			&i.LuckyIndex,
-			&i.LuckyAnswerKey,
-			&i.LuckyTo,
-			&i.CombatantID,
-			&i.EncounterID,
-			&i.WindowHold,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listLastingEffects = `-- name: ListLastingEffects :many
 SELECT id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, spent_at FROM combatant_states
 WHERE encounter_id = $1 AND kind = 'effect'
@@ -6192,6 +6163,54 @@ func (q *Queries) ListLastingEffects(ctx context.Context, encounterID string) ([
 			&i.Audience,
 			&i.PlayerLabel,
 			&i.SpentAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOpenAttackHolds = `-- name: ListOpenAttackHolds :many
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold FROM inspiration_holds WHERE encounter_id = $1 AND kind = 'weapon_attack' AND answer_key IS NULL
+`
+
+// The weapon attacks of the combat that wait for an answer and are kept in inspiration_holds, for
+// the combatants' views. The rolls of the other kinds held in a combat are not part of the view.
+func (q *Queries) ListOpenAttackHolds(ctx context.Context, encounterID *string) ([]InspirationHold, error) {
+	rows, err := q.db.Query(ctx, listOpenAttackHolds, encounterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []InspirationHold
+	for rows.Next() {
+		var i InspirationHold
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.CharacterID,
+			&i.UserID,
+			&i.Kind,
+			&i.IdempotencyKey,
+			&i.Request,
+			&i.Faces,
+			&i.Modifier,
+			&i.Total,
+			&i.Counted,
+			&i.Physical,
+			&i.AnswerKey,
+			&i.CreatedAt,
+			&i.Round,
+			&i.LuckyIndex,
+			&i.LuckyAnswerKey,
+			&i.LuckyTo,
+			&i.CombatantID,
+			&i.EncounterID,
+			&i.WindowHold,
 		); err != nil {
 			return nil, err
 		}
@@ -6352,6 +6371,67 @@ func (q *Queries) ListOpenGameSessions(ctx context.Context, campaignIds []string
 			&i.OpenScenePointID,
 			&i.CreateKey,
 			&i.CreateHash,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOpenInspirationHolds = `-- name: ListOpenInspirationHolds :many
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold FROM inspiration_holds
+WHERE answer_key IS NULL
+  AND ((encounter_id = $1 AND combatant_id = $2)
+    OR (combatant_id IS NULL AND character_id = $3))
+ORDER BY created_at
+`
+
+type ListOpenInspirationHoldsParams struct {
+	EncounterID *string
+	CombatantID *string
+	CharacterID *string
+}
+
+// The holds that wait for an answer and a roller owns. A combatant owns the holds made for it
+// (combatant_id), and, when a character backs it, the holds made before the column was written
+// (combatant_id NULL, found by the character); a roller out of a combat owns the holds that name
+// no combatant. The creatures and the copies of an NPC share a character_id with the one they
+// came from, so they pass no character: only the combatant owns. A NULL parameter matches nothing.
+func (q *Queries) ListOpenInspirationHolds(ctx context.Context, arg ListOpenInspirationHoldsParams) ([]InspirationHold, error) {
+	rows, err := q.db.Query(ctx, listOpenInspirationHolds, arg.EncounterID, arg.CombatantID, arg.CharacterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []InspirationHold
+	for rows.Next() {
+		var i InspirationHold
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.CharacterID,
+			&i.UserID,
+			&i.Kind,
+			&i.IdempotencyKey,
+			&i.Request,
+			&i.Faces,
+			&i.Modifier,
+			&i.Total,
+			&i.Counted,
+			&i.Physical,
+			&i.AnswerKey,
+			&i.CreatedAt,
+			&i.Round,
+			&i.LuckyIndex,
+			&i.LuckyAnswerKey,
+			&i.LuckyTo,
+			&i.CombatantID,
+			&i.EncounterID,
+			&i.WindowHold,
 		); err != nil {
 			return nil, err
 		}

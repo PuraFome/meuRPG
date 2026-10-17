@@ -249,7 +249,7 @@ func (s *Service) heldMayWait(ctx context.Context, env gateEnv, spec rollSpec) (
 // Cutting Words die already off it.
 func (s *Service) heldModifier(ctx context.Context, env gateEnv, spec rollSpec) (int, error) {
 	a, _ := heldReplyOf(ctx)
-	h, err := newHeldStores(env.q).of(heldRegistry[spec.Kind].write).byID(ctx, holdRef{Campaign: spec.Roller.CampaignID, Encounter: encounterOf(spec.Roller), ID: a.holdID})
+	h, err := newHeldStores(env.q).byIDOf(ctx, spec.Kind, holdRef{Campaign: spec.Roller.CampaignID, Encounter: encounterOf(spec.Roller), ID: a.holdID})
 	if err != nil {
 		return 0, fmt.Errorf("find the held roll: %w", err)
 	}
@@ -310,7 +310,7 @@ func (s *Service) gateRoll(spec rollSpec) (gateResult, error) {
 func (s *Service) gateAsk(ctx context.Context, ae answering) (gateResult, error) {
 	spec := ae.spec
 	stores := newHeldStores(ae.q)
-	h, found, err := stores.of(heldRegistry[spec.Kind].write).byKey(ctx, spec.Roller.in(ae.st), spec.Key)
+	h, found, err := stores.byKeyOf(ctx, spec.Kind, spec.Roller.in(ae.st), spec.Key)
 	if err != nil {
 		return gateResult{}, err
 	}
@@ -398,7 +398,7 @@ func (s *Service) gateAnswer(ctx context.Context, ae answering, a heldReply) (ga
 		return gateResult{}, errDieGone()
 	}
 	stores := newHeldStores(ae.q)
-	h, err := stores.of(def.write).byID(ctx, holdRef{Campaign: ae.spec.Roller.CampaignID, Encounter: encounterOf(ae.spec.Roller), ID: a.holdID})
+	h, err := stores.byIDOf(ctx, ae.spec.Kind, holdRef{Campaign: ae.spec.Roller.CampaignID, Encounter: encounterOf(ae.spec.Roller), ID: a.holdID})
 	if err != nil {
 		return gateResult{}, fmt.Errorf("find the held roll: %w", err)
 	}
@@ -428,7 +428,7 @@ func (h heldRoll) answerable(st rollerState, key string) error {
 	if h.AnswerKey != nil && *h.AnswerKey != key {
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("the roll was answered already"))
 	}
-	if h.AnswerKey == nil && h.table.checksTheAnswer() && h.stale(st) {
+	if h.AnswerKey == nil && h.checksTheAnswer() && h.stale(st) {
 		return connect.NewError(connect.CodeFailedPrecondition, errors.New("the roll waited too long: its round is over"))
 	}
 	return nil
