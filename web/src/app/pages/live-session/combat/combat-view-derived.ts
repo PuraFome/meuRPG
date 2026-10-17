@@ -5,6 +5,7 @@ import {
   EncounterStatus,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
 import { ActionKey } from '../../../core/connect/idempotency';
+import { asksLucky, heldOfferOf, weaponHold } from '../../../core/held-rolls/held-roll-offer';
 import { combatErrorMessage } from '../../../core/combat/combat-errors';
 import { wildActionLine } from '../../../core/combat/combat-notices';
 import { coverTargets, everyoneStanding } from '../../../core/combat/theatre';
@@ -267,8 +268,12 @@ export abstract class CombatViewDerivedDirective extends CombatViewStateDirectiv
   );
   /** The Bardic Inspiration die the player's character holds (the server sends it to the holder and the master only). */
   protected readonly ownDie = computed(() => this.own()?.inspirationDie ?? null);
-  /** The attack roll of the player's character that waits for the answer about the die. */
-  protected readonly ownOffer = computed(() => this.own()?.inspirationOffer ?? null);
-  /** The attack roll of the player's halfling that waits for the Lucky answer ("Tirou 1: rolar de novo?"), asked first. */
-  protected readonly ownLucky = computed(() => this.own()?.luckyOffer ?? null);
+  /** The weapon attack of the player's character that waits for an answer: the halfling's Lucky ("Tirou 1: rolar de
+   * novo?"), asked first, or the Bardic Inspiration die. The attack sheet reopens at it. */
+  protected readonly ownHeld = computed(() => {
+    const own = this.own();
+    return own ? weaponHold(heldOfferOf(own)) : null;
+  });
+  protected readonly ownLucky = computed(() => asksLucky(this.ownHeld()));
+  protected readonly ownDieAsked = computed(() => this.ownHeld() !== null && !this.ownLucky());
 }

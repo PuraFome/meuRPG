@@ -52,8 +52,9 @@ func (s *Service) inspirationGate(c *combatTx) gateEnv {
 	return env
 }
 
-// saveSpec is the saving throw a player rolls for their own combatant (an effect's, a concentration's):
-// the master's roll, an NPC's and a creature's never wait for anybody.
+// saveSpec is the saving throw of a player's combatant (an effect's, a concentration's), rolled by its player or by
+// the master for them (E4-10: the master is asked in his own sheet, the player sees the same question, and the first
+// answer wins). An NPC's and a creature's never wait for anybody.
 func saveSpec(
 	m authz.Membership, kind heldKind, reactor playdb.Combatant, key string, raw proto.Message,
 	in rollInput, bonus int, mode combat.RollMode, lucky bool,
@@ -61,8 +62,13 @@ func saveSpec(
 	return rollSpec{
 		Kind: kind, Key: key, Request: raw, Roller: heldRoller{CampaignID: m.CampaignID, CharacterID: reactor.CharacterID, UserID: m.UserID},
 		In: in, Modifier: bonus, Mode: mode, Lucky: lucky,
-		MayAsk: m.Role != authz.RoleMaster && reactor.Kind == kindPlayer && backedByCharacter(reactor) && reactor.UserID != nil && *reactor.UserID == m.UserID,
+		MayAsk: reactor.Kind == kindPlayer && backedByCharacter(reactor) && playedBy(reactor, m),
 	}
+}
+
+// playedBy says a player plays the combatant, and the caller is that player or the master.
+func playedBy(c playdb.Combatant, m authz.Membership) bool {
+	return c.UserID != nil && (m.Role == authz.RoleMaster || *c.UserID == m.UserID)
 }
 
 // attackRoller is the attacker of a weapon attack as the gate sees it: its combatant, in the round, and its

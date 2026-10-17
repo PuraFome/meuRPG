@@ -12,6 +12,7 @@ import {
   targetRule,
   toggled,
 } from '../../../../core/combat/cast-flow';
+import type { Square } from '../../../../core/combat/combat-grid';
 import { isPlayer } from '../../../../core/combat/combat-view';
 import { isCreature } from '../../../../core/combat/creature-names';
 import { poolDice } from '../../../../core/combat/hp-effects';
@@ -123,6 +124,8 @@ export class CastChoices {
       spellKey: this.s.data.spellKey,
       ability: this.s.ability(),
       placedArea: !!this.area.flow,
+      destinationMissing:
+        this.s.teleportFt > 0 && !this.s.data.master && this.s.destination() === null,
       targets: () =>
         targetsMissingText(
           this.rule(),
@@ -210,6 +213,12 @@ export class CastChoices {
 
   pickDamageType(key: string): void {
     this.s.pickedType.set(key);
+    this.chose();
+  }
+
+  /** The square the teleport takes the caster to, or `null` when the last one tried cannot be used. */
+  pickDestination(square: Square | null): void {
+    this.s.destination.set(square);
     this.chose();
   }
 

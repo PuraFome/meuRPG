@@ -225,6 +225,14 @@ service ResourceService {
   // `failed_precondition` (the roll was answered already), the die spent once. Another player gets
   // `not_found`, never "permission denied", which would say the roll exists.
   //
+  // The master waits for the player's first chance (E4-10): for 10 s after the question was asked
+  // (`HeldRollOffer.created_at`), only the roller's player may answer it, and the master's answer is refused
+  // with `failed_precondition` and ResourceBlocked PLAYER_FIRST (`RESOURCE_BLOCKED_REASON_PLAYER_FIRST`), whose
+  // `wait_seconds` says how long is left. It does not apply when no player plays the roll (an NPC's, or a
+  // player who left). This holds for the master's own rolls for a player's character (a save, a spell attack,
+  // a group check) too: the master is asked in his own sheet, the player reads the same question, and the first
+  // answer after the 10 s wins.
+  //
   // Errors: `not_found` for a hold that is gone or one the caller may not answer; `invalid_argument`
   // for an answer of the wrong question, for a missing roll_in_app or typed_face, or a typed face outside
   // the die; ResourceBlocked LUCKY_PENDING for the die's answer while the Lucky question of the same
@@ -246,6 +254,8 @@ message ResourceBlocked {
   // the ones there are.
   int32 needed = 2;
   int32 available = 3;
+  // PLAYER_FIRST: the whole seconds, rounded up, until the master may answer.
+  int32 wait_seconds = 4;
 }
 
 // ResourceBlockedReason is why a resource call was refused.
@@ -290,6 +300,11 @@ enum ResourceBlockedReason {
   // nothing else that could ask until it is answered, and the Bardic Inspiration question of
   // the same roll waits for it.
   RESOURCE_BLOCKED_REASON_LUCKY_PENDING = 16;
+  // AnswerHeldRoll, AnswerLucky, AnswerBardicInspiration, AnswerOutsideLucky and AnswerOutsideInspiration, by the master:
+  // the question of a player's roll was asked a few seconds ago (10), and the player gets the first chance to answer
+  // it. `wait_seconds` says how long is left; the app disables the master's controls for that time and says "Ainda é
+  // a vez de [nome] responder". It is not refused for the master's own rolls or for a roll whose player has left.
+  RESOURCE_BLOCKED_REASON_PLAYER_FIRST = 17;
 }
 
 // RestKind is the kind of a rest.

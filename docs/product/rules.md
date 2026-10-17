@@ -438,7 +438,7 @@ The master moves anyone anywhere, but not into a wall.
 | Range | Attack and spell range counts squares between centres, rounded down, so a 1.5 m reach holds on all eight sides. A weapon with the reach property reaches 3 m, also for the opportunity attack |
 | Jump | Long jump equals the Strength score in feet with a running start (at least 3 m on foot just before, in this turn) and half standing. High jump is 3 ft plus the Strength modifier with a running start and half standing. A long jump costs only its length and does not cross a wall |
 | Placement | A creature that comes to the map without a square is placed on free floor at least 3 squares from every player character, as near as possible to the encounter's battle point (or the middle of the map) |
-| Teleport and forced moves | The master's forced move never provokes |
+| Teleport and forced moves | The master's forced move never provokes. A teleport cast (Misty Step) moves the caster to the square the player picked, and provokes nothing either |
 
 - **The browser does no movement maths.** The server sends the reach (each square and its cost) and the screen draws it: a dashed circle of the remaining movement, each reachable square tinted, the cost in metres beside the chosen square. A square refused inside the circle says why (wall, enemy, occupied, extra cost) without naming what is in the way, and one outside says only "Longe demais". The remaining movement carries over to the next part ("Você já andou 3,0 m").
 - **Unseen obstacles.** The server stops a move before a wall, before a creature that cannot be crossed, before the first square the remaining movement cannot pay, or at the first square of a trap's area. If the cause is something the player does not know, the screen says only "Você parou antes: algo bloqueou o caminho." (RN-10).
@@ -459,6 +459,11 @@ Leaving an enemy's reach provokes an opportunity attack, which the app offers to
 **Sculpt Spells** (SRD 5.1, School of Evocation).
 An evocation wizard from level 2, casting an evocation spell that affects other creatures it can see, spares up to 1 + the spell's level of them (the level it is cast at). A spared creature succeeds on its saving throw with no roll and takes no damage when the spell would deal half; the save line says "Esculpir Magias".
 The caster is never among them, and only creatures the spell reaches and the caster sees can be named.
+
+**Evasion** (SRD 5.1, Monk 7 and Rogue 7; also the ranger's Superior Hunter's Defense choice and a stat block's Evasion trait).
+On a Dexterity saving throw that deals half damage on a success, a creature with Evasion takes no damage when it succeeds and half when it fails.
+It applies to a spell's save, a trap's save and the aggressor's save against Hellish Rebuke, and not while the creature is incapacitated (Incapacitated, Paralyzed, Petrified, Stunned or Unconscious).
+Any other ability, or a save that does not halve, is unchanged.
 
 See [Movement in combat](../architecture/play/movement.md), [Maps and the grid](../architecture/rules-maps.md#grid) and [Combat design](../design/combat.md).
 
@@ -533,6 +538,17 @@ On a map with a grid the caster does not list who an area spell touches: they pl
 - **Who is hit.** Everyone inside: allies, the caster when inside, hidden creatures. The damage is one roll for all. Cover is measured from the point of origin, and adds +2 (half) or +5 (three-quarters) only to a Dexterity saving throw. A creature reached only around a corner gets no automatic cover; the master marks it by hand.
 - **An empty area** is still cast and spends the slot and the action. The app asks first: "Ninguém que você vê está na área".
 - **Without a grid** (combat without a map, RN-25) none of this exists: the caster lists who is hit, and the master judges who is inside and the cover.
+
+### Teleport spells on the grid
+
+Misty Step is a bonus action that takes the caster up to 30 ft to a free space the caster can see (SRD 5.1, Misty Step).
+On a map with a grid the player must pick the square in the cast itself (the cast button stays off until a square is picked, by pointer or by keyboard), and the server checks it before the slot or the bonus action is spent. A cast from a player's character without a square is refused.
+
+- **Reach.** Up to 6 squares by the table's range rule (squares between centres, rounded down). A farther square is refused with "Longe demais".
+- **Free and seen.** A wall, a creature or a square the caster does not see cannot be picked. A player is told only "Esse espaço não está disponível", whatever the reason, so the answer never reveals a hidden creature (RN-10). The master is told which, and is not held to sight, and may pick for an NPC or for a player.
+- **Traps.** A trap on the landing square fires for the caster, as a move into its area does. Undoing goes one step at a time: the firing first, then the cast, which puts the caster back.
+- **No walking.** The teleport spends no movement and provokes no opportunity attack. It clears the master's cover mark, shows the new square to the players who see it, and undoing the cast puts the caster back.
+- **Without a square** the master may leave it out (and for an NPC caster usually does): the cast only spends the slot and the bonus action, and the master moves the token. A combat without a map (RN-25) has no square to pick, and the cast works the same way.
 
 ### Hidden creatures an area hits
 
@@ -803,7 +819,7 @@ These SRD 5.1 traits change the numbers of a combat (Half-Orc, Halfling, Monk, R
   - **The app asks** "Tirou 1: rolar de novo?" after the d20 and before it says whether the roll succeeds. "Rolar de novo" rolls in the app or takes a real die (RN-18); "Ficar com o 1" keeps it. The new roll stands, even another 1, and is never asked about again. The result and the log say "Sortudo: 1 → 14".
   - **With advantage or disadvantage** the question comes when either d20 shows a 1, only that die is rolled again (the first when both show a 1), and the die that counts is picked again. A halfling who also holds a Bardic Inspiration die answers Lucky first. Reliable Talent counts the new d20.
   - **Privacy.** Only the roller's player and the master see the question; another player reads nothing of it, not even that a roll waits. Nothing is resolved while it waits, and the character makes no other roll that could ask until it is answered.
-  - **Who answers.** The roller's player answers the question, and so does the master, for every roll that waits, in a combat or out of one (it unblocks a player who left the table). Both may try at once: the first answer wins and the other is told the roll was answered already, the die spent once. Another player cannot answer and is told the roll does not exist. The master reads every pending question of the table in one list; a player reads their own.
+  - **Who answers.** The roller's player answers the question, and so does the master, for every roll that waits, in a combat or out of one (it unblocks a player who left the table). The master's controls wait 10 seconds after the question is asked, so that a player who is present gets the first chance: the server refuses the master's answer before then ("PLAYER_FIRST", with the seconds left); the player's own answer never waits, nor does the master's for a roll no player rolls (an NPC's, or a player who left). After the 10 seconds both may try at once: the first answer wins and the other is told the roll was answered already, the die spent once. Another player cannot answer and is told the roll does not exist. The master's own roll for a player's character (a saving throw, a spell attack, a group check rolled for the player) asks like the player's own: the master is asked in his own sheet, the player reads the same question, and the first answer after the 10 seconds wins. The master reads every pending question of the table in one list; a player reads their own.
   - **Where it asks:** weapon attacks and attack cantrips (the master rolling for the character gets the question too), a scene check, a group check, a trap search out of a combat, a puzzle hint try, and in a combat a spell attack against one target, an effect's saving throw and a concentration save. A roll the master makes for the character on these does not ask.
   - **Where nobody can be asked** (a spell's save, a trap's save, the Dexterity save against Hellish Rebuke, rolled by the app inside someone else's action), the app rolls the 1 again by itself, since a reroll of a 1 never lowers the result. The line says "Sortudo: 1 → 14" to whoever sees that save's dice.
   - **Not covered:** an NPC never gets it, even with a halfling's sheet. The death save, initiative, contests, Hide, the Counterspell check and the Search action of a combat do not ask.

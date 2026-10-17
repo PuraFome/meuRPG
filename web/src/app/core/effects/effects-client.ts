@@ -1,11 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { createClient } from '@connectrpc/connect';
 
-import type {
-  Encounter,
-  LuckyOffer,
-  OutsideInspirationOffer,
-} from '../../../gen/meurpg/play/v1/combat_pb';
+import type { Encounter, HeldRollOffer } from '../../../gen/meurpg/play/v1/combat_pb';
 import type {
   CatalogEffect,
   CharacterEffect,
@@ -25,6 +21,7 @@ import {
   type SetExhaustionResponse,
 } from '../../../gen/meurpg/play/v1/lasting_effects_service_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
+import { heldOfferOf } from '../held-rolls/held-roll-offer';
 
 /** How a player answers the saving throw an effect asks: the d20 in the app, the faces of physical dice, or the master. */
 export type EffectSaveAnswer =
@@ -43,11 +40,9 @@ export type EffectSaveAnswer =
 export interface EffectSaveOutcome {
   readonly encounter: Encounter;
   readonly result: EffectSaveResult | undefined;
-  /** The d20 was rolled and kept: the player holds a Bardic Inspiration die and decides before the result is told. */
-  readonly offer?: OutsideInspirationOffer;
-  /** The d20 was rolled and kept because it shows a 1 and the character is a halfling: the Lucky question ("Tirou 1:
-   * rolar de novo?"), which comes before the die's. */
-  readonly lucky?: LuckyOffer;
+  /** The d20 was rolled and kept and the save waits for a question (the halfling's Lucky about a 1, which comes first, or
+   * the Bardic Inspiration die): the player decides before the result is told (`AnswerHeldRoll`). */
+  readonly held?: HeldRollOffer;
 }
 
 /** The duration the master picks, as the form holds it (the server's `EffectDurationChoice`). */
@@ -131,8 +126,7 @@ export class EffectsClient {
     return {
       encounter: res.encounter,
       result: res.result,
-      ...(res.inspirationOffer ? { offer: res.inspirationOffer } : {}),
-      ...(res.luckyOffer ? { lucky: res.luckyOffer } : {}),
+      held: heldOfferOf(res),
     };
   }
 

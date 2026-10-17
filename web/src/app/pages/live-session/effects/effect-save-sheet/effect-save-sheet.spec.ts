@@ -14,7 +14,7 @@ import {
 import { CombatState } from '../../../../core/combat/combat-state';
 import { encounter, reactionWindow } from '../../../../core/combat/combat-testing';
 import { EffectsClient } from '../../../../core/effects/effects-client';
-import { inspirationOffer } from '../../../../core/play/scene-testing';
+import { heldAnswer, heldDie } from '../../../../core/held-rolls/held-roll-testing';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { EffectSaveSheet, type EffectSaveSheetData } from './effect-save-sheet';
 
@@ -62,7 +62,7 @@ const passed = create(EffectSaveResultSchema, {
 
 describe('EffectSaveSheet', () => {
   const api = { rollEffectSave: vi.fn() };
-  const resources = { answerOutsideInspiration: vi.fn() };
+  const resources = { answerHeldRoll: vi.fn() };
   const closed: unknown[] = [];
 
   function setup(window = save(), over: Partial<EffectSaveSheetData> & { phone?: boolean } = {}) {
@@ -121,7 +121,7 @@ describe('EffectSaveSheet', () => {
 
   beforeEach(() => {
     api.rollEffectSave.mockReset();
-    resources.answerOutsideInspiration.mockReset();
+    resources.answerHeldRoll.mockReset();
   });
 
   describe('the sheet of the end of the turn', () => {
@@ -181,33 +181,39 @@ describe('EffectSaveSheet', () => {
       api.rollEffectSave.mockResolvedValue({
         encounter: encounter({ reactionWindows: [save()] } as never),
         result: undefined,
-        offer: inspirationOffer(4, 1),
+        held: heldDie(4, 1),
       });
       const { fixture, el } = setup();
       button(el, 'Rolar no app').click();
       await flush(fixture);
       expect(plain(el.textContent)).toContain('Usar a Inspiração de Bardo (d8)?');
       expect(plain(el.textContent)).not.toContain('Passou');
-      resources.answerOutsideInspiration.mockResolvedValue({
-        result: {
-          case: 'effectSave',
-          value: {
-            encounter: encounter({ reactionWindows: [] } as never),
-            result: create(EffectSaveResultSchema, {
-              d20: 4,
-              modifier: 1,
-              total: 13,
-              saved: true,
-              inspirationSides: 8,
-              inspirationFace: 8,
-            }),
+      resources.answerHeldRoll.mockResolvedValue(
+        heldAnswer({
+          result: {
+            case: 'effectSave',
+            value: {
+              encounter: encounter({ reactionWindows: [] } as never),
+              result: create(EffectSaveResultSchema, {
+                d20: 4,
+                modifier: 1,
+                total: 13,
+                saved: true,
+                inspirationSides: 8,
+                inspirationFace: 8,
+              }),
+            },
           },
-        },
-      });
+        }),
+      );
       button(el, 'Usar e rolar o d8').click();
       await flush(fixture);
-      const [campaign, hold, use] = resources.answerOutsideInspiration.mock.calls[0];
-      expect([campaign, hold, use]).toEqual(['camp', 'h1', true]);
+      const [campaign, hold, answer] = resources.answerHeldRoll.mock.calls[0];
+      expect([campaign, hold, answer]).toEqual([
+        'camp',
+        'h1',
+        { kind: 'die', use: true, roll: { inApp: true } },
+      ]);
       const text = plain(el.textContent);
       expect(text).toContain('Passou');
       expect(text).toContain('1d20 (4) + 1 + 1d8 de Inspiração (8)');
@@ -217,23 +223,34 @@ describe('EffectSaveSheet', () => {
       api.rollEffectSave.mockResolvedValue({
         encounter: encounter({ reactionWindows: [save()] } as never),
         result: undefined,
-        offer: inspirationOffer(4, 1),
+        held: heldDie(4, 1),
       });
       const { fixture, el } = setup();
       button(el, 'Rolar no app').click();
       await flush(fixture);
-      resources.answerOutsideInspiration.mockResolvedValue({
-        result: {
-          case: 'effectSave',
-          value: {
-            encounter: encounter({ reactionWindows: [] } as never),
-            result: create(EffectSaveResultSchema, { d20: 4, modifier: 1, total: 5, saved: false }),
+      resources.answerHeldRoll.mockResolvedValue(
+        heldAnswer({
+          result: {
+            case: 'effectSave',
+            value: {
+              encounter: encounter({ reactionWindows: [] } as never),
+              result: create(EffectSaveResultSchema, {
+                d20: 4,
+                modifier: 1,
+                total: 5,
+                saved: false,
+              }),
+            },
           },
-        },
-      });
+        }),
+      );
       button(el, 'Guardar o dado').click();
       await flush(fixture);
-      expect(resources.answerOutsideInspiration.mock.calls[0][2]).toBe(false);
+      expect(resources.answerHeldRoll.mock.calls[0][2]).toEqual({
+        kind: 'die',
+        use: false,
+        roll: null,
+      });
       expect(plain(el.textContent)).toContain('Falhou');
     });
   });

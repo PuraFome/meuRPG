@@ -147,6 +147,7 @@ func creatureFacts(c playdb.Combatant, states map[string][]playdb.CombatantState
 		Dodging:     hasState(states, c.ID, stateDodging),
 		Reckless:    hasState(states, c.ID, stateReckless),
 		PackTactics: traits.PackTactics,
+		Evasion:     traits.Evasion,
 		DangerSense: traits.DangerSense,
 		Raging:      hasState(states, c.ID, stateRage) && !traits.HeavyArmor,
 		// The effects that last (RN-22): exhaustion, Faerie Fire's outline, the advantage on saving

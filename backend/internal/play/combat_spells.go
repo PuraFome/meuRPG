@@ -497,9 +497,17 @@ func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership
 	if len(sp.Damages) == 0 || (saved && sp.SaveOnSuccess != "half" && sp.SaveOnSuccess != "other") {
 		return nil
 	}
+	share := combat.ShareFull
+	if sp.SaveOnSuccess == "half" {
+		// Evasion: a Dexterity save that passes takes none, one that fails takes half.
+		share = combat.HalfSaveShare(creature, sp.SaveAbility, saved)
+	}
+	if share == combat.ShareNone {
+		return nil
+	}
 	// One pending damage for each damage type, all of the cast: each is its own
 	// roll, and the resistance of the target is read for its type when it lands.
-	return s.openSavePendings(ctx, c, sp, caster, target, saved && sp.SaveOnSuccess == "half", hit)
+	return s.openSavePendings(ctx, c, sp, caster, target, share == combat.ShareHalf, hit)
 }
 
 // sculptedSave is the save of a creature Sculpt Spells (SRD 5.1) spares: it succeeds on its own, with no
