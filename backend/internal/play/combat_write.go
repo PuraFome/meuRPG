@@ -210,6 +210,9 @@ type combatTx struct {
 	endedLines    []string
 	followUps     []effectRef
 	followUpLines []string
+	// tempCleared are the temporary hit points the ended effects took off, kept in the event
+	// with the ended effects.
+	tempCleared []tempCleared
 	// hash is the request hash kept with the event that carries the change's key.
 	hash *string
 	// rules are the table's rules (RN-24), read in this transaction when it
@@ -464,6 +467,7 @@ func withEndedEffects(c *combatTx, payload any) any {
 		return payload
 	}
 	ev.Restore, ev.EndedLines, ev.FollowUps, ev.FollowUpLines = c.endedEffects, c.endedLines, c.followUps, c.followUpLines
+	ev.TempCleared = c.tempCleared
 	return ev
 }
 

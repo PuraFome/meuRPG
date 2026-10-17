@@ -570,10 +570,30 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		return nil, fmt.Errorf("event kind %q cannot be undone", kind)
 	}
 	u := &undoer{s: s, c: c, cs: cs}
-	if err := undo(u, ctx, ev); err != nil {
+	if err := u.undoWithTemp(ctx, kind, undo, ev); err != nil {
 		return nil, err
 	}
 	return u.vitals, nil
+}
+
+// undoWithTemp runs the undo of the kind and gives back the temporary hit points the action's
+// ended effects took off. A damage ends the effects after it landed, so the temporary hit points
+// come back first and the damage's own before overwrites them; any other action ends them before its
+// own changes, so they come back last.
+func (u *undoer) undoWithTemp(ctx context.Context, kind string, undo func(*undoer, context.Context, actionEvent) error, ev actionEvent) error {
+	damage := kind == eventDamageRolled || kind == eventDamageApplied
+	if damage {
+		if err := u.tempBack(ctx, ev); err != nil {
+			return err
+		}
+	}
+	if err := undo(u, ctx, ev); err != nil {
+		return err
+	}
+	if damage {
+		return nil
+	}
+	return u.tempBack(ctx, ev)
 }
 
 // effectsBack puts back the effects the action ended (ev.Restore), then takes away what

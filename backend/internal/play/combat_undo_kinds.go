@@ -311,7 +311,26 @@ func (u *undoer) damageRolled(ctx context.Context, ev actionEvent) error {
 			return err
 		}
 	}
+	if err := u.partsOfferedBack(ctx, ev); err != nil {
+		return err
+	}
 	return u.partsSpentBack(ctx, ev)
+}
+
+// emptyJSONList is the value of the columns a roll leaves empty (part_rolls, steps).
+var emptyJSONList = []byte("[]")
+
+// partsOfferedBack puts back the list of parts the hit offered, which the roll rewrote with the
+// choice made (Divine Smite and its slot, a maneuver): the damage that waits to be rolled again is
+// offered as before. A roll that kept the list (no parts of its own) has nothing to put back.
+func (u *undoer) partsOfferedBack(ctx context.Context, ev actionEvent) error {
+	if len(ev.PartsBefore) == 0 || ev.Pending == "" {
+		return nil
+	}
+	if err := u.c.q.SetPendingDamageDetail(ctx, playdb.SetPendingDamageDetailParams{ID: ev.Pending, Parts: ev.PartsBefore, PartRolls: emptyJSONList, Steps: emptyJSONList}); err != nil {
+		return fmt.Errorf("put back the parts the hit offered: %w", err)
+	}
+	return nil
 }
 
 // hitRolledBack makes one pending damage wait for its roll again, and puts back the
@@ -475,7 +494,7 @@ func (u *undoer) trapTriggered(ctx context.Context, ev actionEvent) error {
 }
 
 // actionTaken: the economy and every state the action began come back, then what
-// the resource it used spent, and the hit points of a heal.
+// the resource it used spent, the hit points of a heal and the concentration a rage ended.
 func (u *undoer) actionTaken(ctx context.Context, ev actionEvent) error {
 	who, ok := u.find(ev.Actor)
 	if !ok {
@@ -492,7 +511,10 @@ func (u *undoer) actionTaken(ctx context.Context, ev actionEvent) error {
 			return err
 		}
 	}
-	return u.actionSpentBack(ctx, who, ev)
+	if err := u.actionSpentBack(ctx, who, ev); err != nil {
+		return err
+	}
+	return u.endedConcentrationBack(ctx, who, ev) // a rage ends the concentration it begins on
 }
 
 // actionStatesBack gives back the economy of the action, and the states and flags it
@@ -867,6 +889,44 @@ func (u *undoer) conditionsSet(ctx context.Context, ev actionEvent) error {
 			return err
 		}
 	}
+	return u.endedConcentrationBack(ctx, who, ev)
+}
+
+// tempBack gives back the temporary hit points the ended effects of the action took off (Heroism's).
+func (u *undoer) tempBack(ctx context.Context, ev actionEvent) error {
+	if len(ev.TempCleared) == 0 {
+		return nil
+	}
+	cs, err := listCombatants(ctx, u.c)
+	if err != nil {
+		return err
+	}
+	for _, tc := range ev.TempCleared {
+		who, ok := combatantByID(cs, tc.Combatant)
+		if !ok {
+			continue
+		}
+		temp := min(tc.Temp, maxTempHitPoints)
+		if holdsHP(who) {
+			hp := hpOf(who)
+			hp.Temp = temp
+			if err := u.setHP(ctx, who, hp); err != nil {
+				return err
+			}
+			continue
+		}
+		_, after, err := u.s.vitalsOf(ctx, u.c, who.CharacterID, &playv1.AdjustCharacterVitalsRequest{HitPointsTemporary: &temp})
+		if err != nil {
+			return err
+		}
+		u.keep(after)
+	}
+	return nil
+}
+
+// endedConcentrationBack puts back the concentration an action ended (stopConcentrating) and the
+// creatures that went with it.
+func (u *undoer) endedConcentrationBack(ctx context.Context, who playdb.Combatant, ev actionEvent) error {
 	if ev.ConcEnded != "" {
 		if err := u.c.q.SetCombatantConcentration(ctx, playdb.SetCombatantConcentrationParams{ID: who.ID, ConcentrationSpell: &ev.ConcEnded}); err != nil {
 			return fmt.Errorf("put back the concentration: %w", err)

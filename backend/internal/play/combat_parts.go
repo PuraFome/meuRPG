@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"reflect"
 	"slices"
 
 	"connectrpc.com/connect"
@@ -124,6 +125,12 @@ func readParts(raw []byte) []partRecord {
 		return nil
 	}
 	return out
+}
+
+// rewritesParts says a roll stores a list of parts that is not the one the hit offered (the choice of a
+// Divine Smite or a maneuver changes it), which is then kept in the roll's event for the undo.
+func rewritesParts(offered []byte, rolled []partRecord) bool {
+	return len(rolled) > 0 && !reflect.DeepEqual(readParts(offered), rolled)
 }
 
 func readPartRolls(raw []byte) []partRoll {
