@@ -52,6 +52,7 @@ The undone line disappears from the log.
 - **A Hunter's Mark the cast moved.** The caster has one mark at a time: a new Hunter's Mark on another target, or another concentration spell, takes the old one off.
   The cast's event keeps the marks it took off (`marks_before`, `clearHuntersMark`), and its undo writes them back with their ids (`marksBack`, `RestoreHuntersMark`).
   A mark whose target or caster left the combat stays off.
+- **A creature a cast pushed.** Each hit keeps the forced move of a failed save (`pushed`, with the square it left); the undo puts the creature back there and the fog follows it (see [Movement](movement.md#forced-movement)).
 - **The "revealed" lines of an area spell.** Under the table rule that reveals the hidden creatures an area hits, the cast writes a `combatant_hidden_set` line (`by_area`) for each before its own event (`revealCombatants`).
   The event keeps their ids (`reveal_lines`), and its undo takes the lines back in `undone_also`: the master's log keeps no "revealed" line for a creature hidden again.
   A player's log never listed them once the creature was hidden again, so nothing appears or disappears for a player (RN-10).
