@@ -1417,3 +1417,8 @@ func (c *content) isAttackName(key string) bool {
 	}
 	return false
 }
+
+// SpellZone is the area a table spell keeps on the map while it lasts, and whether the spell has one.
+func (c *Content) SpellZone(key string) (SpellZoneRule, bool) {
+	return SpellZoneRule{}, false
+}

@@ -488,6 +488,33 @@ message TableSpell {
   SpellSave save = 15;
   repeated TableSpellDamage damage = 16;
   TableSpellHeal heal = 17;
+  // The area the spell keeps on the map while it lasts: a creature that comes into it, or begins its
+  // turn in it, is hit as `save` and `damage` say (a spell with no `save` just deals the damage).
+  // Unset: the spell does nothing of the kind. Needs an AREA target of a sphere, a cylinder or a cube,
+  // exactly one damage type, a timed duration or a concentration, and no attack and no heal.
+  TableSpellZone zone = 18;
+}
+
+// TableSpellZone is what a table spell leaves on the map (the areas of Moonbeam or Spirit Guardians,
+// for the table's own spells). Its shape and size are the spell's target, the damage and the save are
+// the spell's, its time is the spell's duration.
+message TableSpellZone {
+  // When the area catches a creature (required).
+  TableZoneTrigger trigger = 1;
+  // The area is centered on the caster and goes where the caster goes. It needs the range Self; without
+  // it the area is placed at a point within range and stays there.
+  bool follows_caster = 2;
+}
+
+// TableZoneTrigger is when a table spell's area catches a creature.
+enum TableZoneTrigger {
+  TABLE_ZONE_TRIGGER_UNSPECIFIED = 0;
+  // When the creature begins its turn in the area.
+  TABLE_ZONE_TRIGGER_START_OF_TURN = 1;
+  // When the creature comes into the area, the first time on a turn.
+  TABLE_ZONE_TRIGGER_FIRST_ENTRY = 2;
+  // Both.
+  TABLE_ZONE_TRIGGER_BOTH = 3;
 }
 
 // TableContentViolation is one thing the server refused in a write: the path of
