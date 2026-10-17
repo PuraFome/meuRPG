@@ -143,7 +143,7 @@ func TestSrdImportSubclasses(t *testing.T) {
 }
 
 // TestSrdImportFeatures: subclass, parent, the three kinds of
-// feature_specific, and the invocations replacing subfeature options when a
+// feature_specific, and the invocations added to the subfeature options when a
 // feature has both.
 func TestSrdImportFeatures(t *testing.T) {
 	t.Parallel()

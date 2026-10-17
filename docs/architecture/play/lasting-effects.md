@@ -46,6 +46,7 @@ A Guidance or Resistance die instead ends its effect with the roll (`spendOnceEf
 `castCharacterEffects` writes the rows when a cast that lasts takes effect (`takeEffect`), and `closeCast` deletes the cast's rows with it (`endCharacterEffectsOfCast`).
 `AdvanceGameTime`, a finished long cast and `TakeRest` move game time on (`advanceGameTime`); an effect whose seconds run out is deleted.
 `checkModeOf` (scene checks, puzzle hints, trap searches) reads the character's rows when it is not a combatant (`outsideModeOf`): conditions, exhaustion, the advantage on saves, the dice (Bless, Bane) and the fixed bonuses (Pass without Trace) go in the roll, and `checkMode.shownCheck` writes the sources.
+Aid's bonus to the maximum is not a `character_effects` row: it is `character_vitals.hit_points_max_bonus`, raised when the cast takes effect and lowered by `closeCast` (`takeBackMaxHP`), with the arithmetic of `casting_aid.go` shared with the combat's `raiseMaxHP` and `endAid`.
 A rider that asks a saving throw is not cast outside a combat (`castCharacterEffects` takes no such spell).
 
 ## What a player may read

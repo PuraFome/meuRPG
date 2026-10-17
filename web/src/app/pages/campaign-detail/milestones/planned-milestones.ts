@@ -53,6 +53,7 @@ export class PlannedMilestones {
   private readonly api = inject(ProgressionClient);
   private readonly store = inject(MilestonesStore);
   private readonly addKey = new ActionKey();
+  private readonly moveKey = new ActionKey();
   private readonly injector = inject(Injector);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
@@ -172,12 +173,15 @@ export class PlannedMilestones {
       return; // already first or last: nothing to do
     }
     const act = direction === 'up' ? 'up' : 'down';
+    // A retry of the same move (a lost answer, a second tap) sends the same key and moves once.
+    const key = this.moveKey.keyFor({ id: m.id, direction });
     if (
       await this.run(
-        () => this.api.moveMilestone(this.campaignId(), m.id, direction),
+        () => this.api.moveMilestone(this.campaignId(), m.id, direction, key),
         'mudar a ordem',
       )
     ) {
+      this.moveKey.renew();
       this.notice.set(`${m.text} foi ${direction === 'up' ? 'para cima' : 'para baixo'}.`);
       this.focus(`[data-id="${m.id}"][data-act="${act}"]`);
     }
