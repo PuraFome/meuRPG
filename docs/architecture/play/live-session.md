@@ -55,22 +55,22 @@ The master's page reads the map again on `xp_changed`, because converting a trea
 
 Events, after `ready`:
 
-| Event                                                                                                                                   | Meaning                                                                                                                              |
-| --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `heartbeat`                                                                                                                             | Every 25 s (`DefaultHeartbeat`)                                                                                                      |
-| `vitals_changed`                                                                                                                        | A character's HP, slots or resources changed; to the master and the owner                                                            |
-| `current_map_changed`, `map_changed`, `token_moved`, `vision_changed`, `trap_noticed`                                                   | The map (see [Architecture](../maps/README.md#maps-points-and-tokens))                                                               |
-| `shown_image_changed`, `left_images_changed`                                                                                            | The image on show and the list left with the players                                                                                 |
-| `encounter_changed`, `turn_changed`, `combatant_moved`, `combat_log_changed`                                                            | Combat (see [Combat log and events](combat-log.md))                                                                                  |
-| `scene_changed`, `scene_check_rolled`, `stage_changed`, `notes_changed`                                                                 | Scenes (see [Scenes and stage](scenes-and-stage.md))                                                                                 |
-| `xp_changed`                                                                                                                            | The campaign's XP changed                                                                                                            |
-| `spell_casts_changed`                                                                                                                   | A cast outside combat started, finished or ended                                                                                     |
-| `creatures_changed`, `revivify_changed`, `character_changes_requested`, `character_resubmitted`, `character_revived`, `content_changed` | Contentless hints; the app reads again                                                                                               |
-| `puzzle_changed`                                                                                                                        | A puzzle changed; only its id                                                                                                        |
-| `calling_you`                                                                                                                           | The master's nudge, to one player's streams only                                                                                     |
-| `session_message_added`                                                                                                                 | A line of the scene's conversation, carried whole, to its readers' streams only ([The conversation](#the-conversation-of-the-scene)) |
-| `master_typing`                                                                                                                         | The master is typing: content-free, to the players                                                                                   |
-| `session_ended`                                                                                                                         | The session ended; the event carries the session id                                                                                  |
+| Event | Meaning |
+| --- | --- |
+| `heartbeat` | Every 25 s (`DefaultHeartbeat`) |
+| `vitals_changed` | A character's HP, slots or resources changed; to the master and the owner |
+| `current_map_changed`, `map_changed`, `token_moved`, `vision_changed`, `trap_noticed` | The map (see [Architecture](../maps/README.md#maps-points-and-tokens)) |
+| `shown_image_changed`, `left_images_changed` | The image on show and the list left with the players |
+| `encounter_changed`, `turn_changed`, `combatant_moved`, `combat_log_changed` | Combat (see [Combat log and events](combat-log.md)) |
+| `scene_changed`, `scene_check_rolled`, `stage_changed`, `notes_changed` | Scenes (see [Scenes and stage](scenes-and-stage.md)) |
+| `xp_changed` | The campaign's XP changed |
+| `spell_casts_changed` | A cast outside combat started, finished or ended |
+| `creatures_changed`, `revivify_changed`, `character_changes_requested`, `character_resubmitted`, `character_revived`, `content_changed` | Contentless hints; the app reads again |
+| `puzzle_changed` | A puzzle changed; only its id |
+| `calling_you` | The master's nudge, to one player's streams only |
+| `session_message_added` | A line of the scene's conversation, carried whole, to its readers' streams only ([The conversation](#the-conversation-of-the-scene)) |
+| `master_typing` | The master is typing: content-free, to the players |
+| `session_ended` | The session ended; the event carries the session id |
 
 ```mermaid
 sequenceDiagram
@@ -174,11 +174,11 @@ The tables are in [Data](../../data/play.md#session_messages-and-session_message
 Every path asks it: the page, the cursor, the summary, the stream event, the image route and the audio route.
 A line the caller may not read is answered exactly like one that does not exist (`not_found`, or `404` on the audio route), so nothing tells it exists (RN-10).
 
-| Call                  | Who        | What it does                                                                                                                                                                                                                                                                                                                                                  |
-| --------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SendSessionMessage`  | A member   | Speaker kind and rules by role; text 1 to 2,000 characters; the key is required (`idem`). Per-user rate limit ([Abuse limits](../api.md#abuse-limits)). The master may name readers (players of the campaign) and attach one gallery image; a player writes to everyone or to the master alone (`only_master`) and as their own living character only (RN-18) |
-| `ListSessionMessages` | A member   | The readable lines of a session (the open one by default), newest last, paged with `before_id`; `voice_enabled` says the app may show "Ouvir"                                                                                                                                                                                                                 |
-| `SignalMasterTyping`  | The master | A content-free hint that expires on its own (6 s); one per campaign every 2 s, the rest are answered and sent to nobody                                                                                                                                                                                                                                       |
+| Call | Who | What it does |
+| --- | --- | --- |
+| `SendSessionMessage` | A member | Speaker kind and rules by role; text 1 to 2,000 characters; the key is required (`idem`). Per-user rate limit ([Abuse limits](../api.md#abuse-limits)). The master may name readers (players of the campaign) and attach one gallery image; a player writes to everyone or to the master alone (`only_master`) and as their own living character only (RN-18) |
+| `ListSessionMessages` | A member | The readable lines of a session (the open one by default), newest last, paged with `before_id`; `voice_enabled` says the app may show "Ouvir" |
+| `SignalMasterTyping` | The master | A content-free hint that expires on its own (6 s); one per campaign every 2 s, the rest are answered and sent to nobody |
 
 - **The stream.** After `COMMIT`, `session_message_added` carries the line itself.
   The hub's audience names one user, so the line is published once per reader (`live.Audience{UserID}`) and once to the master; a line for everyone goes to the master and the players (`Audience{Master}` plus `Audience{Players}`), never twice to the same stream.

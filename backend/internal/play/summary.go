@@ -19,7 +19,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// The session summary, "Resumo da sessão" (MR-032, Etapa 8; question 64 of
+// The session summary, "Resumo da sessão" (MR-032; question 64 of
 // the progress doc). Like the combat highlights, it is worked out on every
 // read from the session's events, never stored. It reuses the combat
 // highlights' code (tallyHighlights, categoriesOf) for each combat and sums
@@ -31,7 +31,7 @@ import (
 // anyone: the scene never told the players whether it was a pass or a fail,
 // and the summary must not tell it either (RN-20).
 //
-// "Mais tesouro encontrado" (MR-041, Etapa 9) is the last category: the PO of
+// "Mais tesouro encontrado" (MR-041) is the last category: the PO of
 // the treasures marked found while the session was open, per character, split
 // among a treasure's finders and rounded down (MapKeeper.TreasureFoundIn). It
 // counts in every XP mode, and every member who reads the summary gets it:

@@ -142,9 +142,9 @@ func (s *Service) attemptHide(ctx context.Context, c *combatTx, m authz.Membersh
 	if err := mustBeRunning(c); err != nil {
 		return actionEvent{}, nil, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return actionEvent{}, nil, fmt.Errorf("list the combatants: %w", err)
+		return actionEvent{}, nil, err
 	}
 	v := c.viewer(m, cs)
 	who, err := s.hider(ctx, c, m, v, cs, p)
@@ -320,15 +320,7 @@ func (s *Service) ResolveHide(
 	ctx context.Context,
 	req *connect.Request[playv1.ResolveHideRequest],
 ) (*connect.Response[playv1.ResolveHideResponse], error) {
-	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
-	if err != nil {
-		return nil, err
-	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
+	m, key, encID, err := masterCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
 	if err != nil {
 		return nil, err
 	}
@@ -378,9 +370,9 @@ func (s *Service) decideHide(ctx context.Context, c *combatTx, m authz.Membershi
 	if err != nil {
 		return actionEvent{}, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return actionEvent{}, fmt.Errorf("list the combatants: %w", err)
+		return actionEvent{}, err
 	}
 	hider, ok := combatantByID(cs, attempt.HiderID)
 	if !ok {

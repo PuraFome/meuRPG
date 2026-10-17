@@ -96,6 +96,7 @@ var notTriggered = map[string]string{
 	"hidden_hit_pending":     "needs a player's area spell that hits a hidden creature, which has a world of its own: TestAnAreaSpellThatHitsAHiddenCreatureNamesItToNoPlayerBeforeTheReveal (the master hears it, no player does)",
 	"reaction_window_opened": "TestAnNPCsReactionWindowIsHeardByTheMasterAlone needs its own combat state and checks the events of both kinds",
 	"reaction_window_closed": "same test",
+	"held_rolls_changed":     "needs a player's roll that waits for a question, which has a world of its own: TestHeldRollsReachOnlyWhoMayReadThem (the master and the roller hear it, no other player does)",
 }
 
 func checkStream(t *testing.T, w *world, got *answers) {

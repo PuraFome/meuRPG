@@ -299,77 +299,6 @@ func (s *Service) LeaveWildShape(
 	return connect.NewResponse(&playv1.LeaveWildShapeResponse{Vitals: vitals, Encounter: enc}), nil
 }
 
-// playerCharacterOf finds the character a caller may change inside a write: a
-// living player's character of the campaign that the master, or its own player,
-// acts for. It returns it, and the combat it is in, if it is a combatant of one that
-// is not ended (c.enc is then set).
-func (s *Service) playerCharacterOf(ctx context.Context, c *combatTx, m authz.Membership, characterID string) (link.Character, *playdb.Combatant, []playdb.Combatant, error) {
-	chars, err := s.roster.CombatCharacters(ctx, c.tx, m.CampaignID, []string{characterID})
-	if err != nil {
-		return link.Character{}, nil, nil, err
-	}
-	if len(chars) != 1 || !chars[0].Player {
-		return link.Character{}, nil, nil, errCharacterNotFound()
-	}
-	if m.Role != authz.RoleMaster && chars[0].PlayerUserID != m.UserID {
-		return link.Character{}, nil, nil, connect.NewError(connect.CodePermissionDenied, errors.New("only the character's player or the master may do this"))
-	}
-	enc, err := c.q.GetOpenEncounter(ctx, c.session.ID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return chars[0], nil, nil, nil
-	}
-	if err != nil {
-		return link.Character{}, nil, nil, fmt.Errorf("find the open encounter: %w", err)
-	}
-	cs, err := c.q.ListCombatants(ctx, enc.ID)
-	if err != nil {
-		return link.Character{}, nil, nil, fmt.Errorf("list the combatants: %w", err)
-	}
-	for i := range cs {
-		if cs[i].Kind == kindPlayer && cs[i].CharacterID == characterID {
-			c.enc = enc
-			return chars[0], &cs[i], cs, nil
-		}
-	}
-	return chars[0], nil, nil, nil
-}
-
-// spendAction spends the combatant's action (or its bonus action) for a change
-// made on its turn in a running combat, and fills in what an undo puts back. The
-// master may act again with the action used. It checks that it is the combatant's
-// turn and that it may act, and adds what an undo puts back to ev.
-func (s *Service) spendAction(ctx context.Context, c *combatTx, v combatViewer, who playdb.Combatant, bonus bool, ev *actionEvent) error {
-	if err := s.mustActNow(ctx, c, who); err != nil {
-		return err
-	}
-	used, reason, what := who.ActionUsed, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ACTION_USED, "the action of this turn is used"
-	if bonus {
-		used, reason, what = who.BonusActionUsed, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED, "the bonus action of this turn is used"
-	}
-	if used && !v.master {
-		return errEncounter(reason, what)
-	}
-	run, err := breakRun(ctx, c, who)
-	if err != nil {
-		return err
-	}
-	ev.Round, ev.Secret, ev.Actor, ev.RunBefore = c.enc.Round, who.Hidden, who.ID, run
-	ev.ActionBefore, ev.BonusBefore, ev.ReactionBefore, ev.DashedBefore = who.ActionUsed, who.BonusActionUsed, who.ReactionUsed, who.Dashed
-	ev.Spent = true
-	after := who
-	if bonus {
-		after.BonusActionUsed = true
-	} else {
-		after.ActionUsed = true
-	}
-	if err := c.q.SetCombatantEconomy(ctx, playdb.SetCombatantEconomyParams{
-		ID: who.ID, ActionUsed: after.ActionUsed, BonusActionUsed: after.BonusActionUsed, ReactionUsed: after.ReactionUsed, Dashed: after.Dashed,
-	}); err != nil {
-		return fmt.Errorf("spend the action: %w", err)
-	}
-	return nil
-}
-
 // shapeRun is what an AssumeWildShape or LeaveWildShape works with inside its
 // transaction, and what the answer reads after it.
 type shapeRun struct {
@@ -529,9 +458,8 @@ func (s *Service) shapeSeal(ctx context.Context, c *combatTx, r *shapeRun) (any,
 		if r.made.Actor == "" { // in SETUP no action is spent: still the combatant's
 			r.made.Round, r.made.Secret, r.made.Actor = c.enc.Round, r.who.Hidden, r.who.ID
 		}
-		var err error
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
+		if err := touch(ctx, c); err != nil {
+			return nil, err
 		}
 	}
 	c.characterID = &r.characterID

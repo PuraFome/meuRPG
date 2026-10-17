@@ -6,7 +6,6 @@ import (
 	"connectrpc.com/connect"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
-	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
 // giveCombatantDie puts a d8 on a combatant, as a bard's Bardic Inspiration would, for a few rounds.
@@ -109,33 +108,6 @@ func TestTheMastersConcentrationRollNeverAsksForTheDie(t *testing.T) {
 	res, err := a.resolveConcentration(t, a.master, e, w.GetId(), concentrationFace(15))
 	if err != nil || res.GetInspirationOffer() != nil || res.GetResult() == nil {
 		t.Fatalf("ResolveConcentrationSave(master) = %v, %v; want the result and no question", res, err)
-	}
-}
-
-// A hold of a combat round that is over, or whose combatant no longer holds the die, is stale.
-func TestStaleHoldOfACombat(t *testing.T) {
-	t.Parallel()
-	round := int32(3)
-	combatant := playdb.Combatant{}
-	held := playdb.InspirationHold{Round: &round}
-	out := playdb.InspirationHold{}
-	cases := []struct {
-		name  string
-		hold  playdb.InspirationHold
-		die   heldDie
-		found bool
-		want  bool
-	}{
-		{"same round", held, heldDie{Combatant: &combatant, Round: 3}, true, false},
-		{"later round", held, heldDie{Combatant: &combatant, Round: 4}, true, true},
-		{"die gone", held, heldDie{}, false, true},
-		{"combat over", held, heldDie{Sides: 8}, true, true},
-		{"out of a combat", out, heldDie{Sides: 8}, true, false},
-	}
-	for _, tc := range cases {
-		if got := staleHold(tc.hold, tc.die, tc.found); got != tc.want {
-			t.Errorf("%s: staleHold = %v, want %v", tc.name, got, tc.want)
-		}
 	}
 }
 

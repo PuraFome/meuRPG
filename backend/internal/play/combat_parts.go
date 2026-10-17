@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"reflect"
 	"slices"
 
 	"connectrpc.com/connect"
@@ -28,7 +29,7 @@ import (
 // never does) and keeps what each rolled for the log.
 //
 // A pending damage with no parts (a spell's, a trap's, a creature's attack that has
-// no extra) is one roll, as it always was.
+// no extra) is one roll.
 
 // maxIgnoredSources is how many sources of resistance the master may leave out of one damage.
 const maxIgnoredSources = 20
@@ -124,6 +125,12 @@ func readParts(raw []byte) []partRecord {
 		return nil
 	}
 	return out
+}
+
+// rewritesParts says a roll stores a list of parts that is not the one the hit offered (the choice of a
+// Divine Smite or a maneuver changes it), which is then kept in the roll's event for the undo.
+func rewritesParts(offered []byte, rolled []partRecord) bool {
+	return len(rolled) > 0 && !reflect.DeepEqual(readParts(offered), rolled)
 }
 
 func readPartRolls(raw []byte) []partRoll {

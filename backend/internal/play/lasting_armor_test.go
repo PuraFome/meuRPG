@@ -231,3 +231,33 @@ func TestAMasterAddedEffectShowsItsRoundsLeftToThePlayer(t *testing.T) {
 		t.Fatalf("Toren's Bless as the player reads it = %v, want the rounds left", f)
 	}
 }
+
+// Mage Armor cast in a combat on a creature that wears armor takes no hold, as it is refused
+// outside a combat and by AddLastingEffect (SRD 5.1): the hit reads "no effect" for the master
+// and no effect is made.
+// Finding fix/lasting-effects-outside-combat (d): the hit used to read "applied" with nothing made.
+func TestMageArmorCastInACombatOnAnArmoredTargetHasNoEffect(t *testing.T) {
+	t.Parallel()
+	a := newCastingParty(t)
+	c := a.ana.character(t, a.pens)
+	sheet := c.GetSheet()
+	sheet.GetFull().ArmorKey = leatherArmorKey
+	if _, err := a.master.characters.UpdateCharacter(t.Context(), connect.NewRequest(&charactersv1.UpdateCharacterRequest{
+		CampaignId: a.campaignID, CharacterId: c.GetId(), Revision: c.GetRevision(), Name: c.GetName(), Sheet: sheet,
+	})); err != nil {
+		t.Fatalf("UpdateCharacter() error = %v", err)
+	}
+	a.closeFight(t)
+	e := a.turnOf(t, "Pensantus")
+	res, err := a.cast(t, a.ana, e, "Pensantus", mageArmorKey, slotOfLevel(1), a.at(t, "Pensantus"), noCastRoll)
+	if err != nil {
+		t.Fatalf("CastSpell() error = %v", err)
+	}
+	hits := res.GetCast().GetTargets()
+	if len(hits) != 1 || hits[0].GetLastingEffect() != playv1.LastingEffectOutcome_LASTING_EFFECT_OUTCOME_NO_EFFECT {
+		t.Fatalf("the hits = %v, want one with no effect", hits)
+	}
+	if rows := a.combatEffectRows(t, e); len(rows) != 0 {
+		t.Errorf("the cast left effects: %v", rows)
+	}
+}

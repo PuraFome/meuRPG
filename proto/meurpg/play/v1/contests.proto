@@ -510,6 +510,11 @@ message RollGroupCheckResponse {
   // the check was not written; AnswerOutsideLucky rolls it again or keeps the 1. It comes before
   // the die's question. A roll the master makes for a player never asks.
   LuckyOffer lucky_offer = 3;
+
+  // The question the roll asks now, in the one shape every held roll has (HeldRollOffer), set beside
+  // `inspiration_offer` and `lucky_offer` until they are removed: set instead of the result, when the
+  // roll waits for an answer (AnswerHeldRoll). Whoever may answer gets it; nobody else does (RN-10).
+  HeldRollOffer held_roll_offer = 4;
 }
 
 // RollForPlayerRequest is the master's roll for a character.

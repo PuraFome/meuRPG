@@ -3172,6 +3172,585 @@ func (*AnswerOutsideLuckyResponse_EffectSave) isAnswerOutsideLuckyResponse_Resul
 
 func (*AnswerOutsideLuckyResponse_ConcentrationSave) isAnswerOutsideLuckyResponse_Result() {}
 
+type AnswerHeldRollRequest struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	// The held roll (a UUID), from the response's `held_roll_offer`, `Combatant.held_roll_offer` or ListHeldRolls.
+	HoldId         string `protobuf:"bytes,2,opt,name=hold_id,json=holdId,proto3" json:"hold_id,omitempty"`
+	IdempotencyKey string `protobuf:"bytes,3,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	// The answer to the question that waits.
+	//
+	// Types that are valid to be assigned to Answer:
+	//
+	//	*AnswerHeldRollRequest_Lucky
+	//	*AnswerHeldRollRequest_Die
+	Answer        isAnswerHeldRollRequest_Answer `protobuf_oneof:"answer"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AnswerHeldRollRequest) Reset() {
+	*x = AnswerHeldRollRequest{}
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AnswerHeldRollRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AnswerHeldRollRequest) ProtoMessage() {}
+
+func (x *AnswerHeldRollRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AnswerHeldRollRequest.ProtoReflect.Descriptor instead.
+func (*AnswerHeldRollRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *AnswerHeldRollRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *AnswerHeldRollRequest) GetHoldId() string {
+	if x != nil {
+		return x.HoldId
+	}
+	return ""
+}
+
+func (x *AnswerHeldRollRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+func (x *AnswerHeldRollRequest) GetAnswer() isAnswerHeldRollRequest_Answer {
+	if x != nil {
+		return x.Answer
+	}
+	return nil
+}
+
+func (x *AnswerHeldRollRequest) GetLucky() *LuckyAnswer {
+	if x != nil {
+		if x, ok := x.Answer.(*AnswerHeldRollRequest_Lucky); ok {
+			return x.Lucky
+		}
+	}
+	return nil
+}
+
+func (x *AnswerHeldRollRequest) GetDie() *DieAnswer {
+	if x != nil {
+		if x, ok := x.Answer.(*AnswerHeldRollRequest_Die); ok {
+			return x.Die
+		}
+	}
+	return nil
+}
+
+type isAnswerHeldRollRequest_Answer interface {
+	isAnswerHeldRollRequest_Answer()
+}
+
+type AnswerHeldRollRequest_Lucky struct {
+	Lucky *LuckyAnswer `protobuf:"bytes,4,opt,name=lucky,proto3,oneof"`
+}
+
+type AnswerHeldRollRequest_Die struct {
+	Die *DieAnswer `protobuf:"bytes,5,opt,name=die,proto3,oneof"`
+}
+
+func (*AnswerHeldRollRequest_Lucky) isAnswerHeldRollRequest_Answer() {}
+
+func (*AnswerHeldRollRequest_Die) isAnswerHeldRollRequest_Answer() {}
+
+// LuckyAnswer answers the halfling's question (SRD 5.1, Halfling, Lucky).
+type LuckyAnswer struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// True: roll the die that shows the 1 again, and the new roll stands. False: keep the 1.
+	Reroll bool `protobuf:"varint,1,opt,name=reroll,proto3" json:"reroll,omitempty"`
+	// How the new d20 comes (RN-18) when `reroll` is true: the app rolls it, or the player typed the face of a
+	// real die (1 to 20). Required then.
+	//
+	// Types that are valid to be assigned to Roll:
+	//
+	//	*LuckyAnswer_RollInApp
+	//	*LuckyAnswer_TypedFace
+	Roll          isLuckyAnswer_Roll `protobuf_oneof:"roll"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LuckyAnswer) Reset() {
+	*x = LuckyAnswer{}
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LuckyAnswer) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LuckyAnswer) ProtoMessage() {}
+
+func (x *LuckyAnswer) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LuckyAnswer.ProtoReflect.Descriptor instead.
+func (*LuckyAnswer) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *LuckyAnswer) GetReroll() bool {
+	if x != nil {
+		return x.Reroll
+	}
+	return false
+}
+
+func (x *LuckyAnswer) GetRoll() isLuckyAnswer_Roll {
+	if x != nil {
+		return x.Roll
+	}
+	return nil
+}
+
+func (x *LuckyAnswer) GetRollInApp() bool {
+	if x != nil {
+		if x, ok := x.Roll.(*LuckyAnswer_RollInApp); ok {
+			return x.RollInApp
+		}
+	}
+	return false
+}
+
+func (x *LuckyAnswer) GetTypedFace() int32 {
+	if x != nil {
+		if x, ok := x.Roll.(*LuckyAnswer_TypedFace); ok {
+			return x.TypedFace
+		}
+	}
+	return 0
+}
+
+type isLuckyAnswer_Roll interface {
+	isLuckyAnswer_Roll()
+}
+
+type LuckyAnswer_RollInApp struct {
+	RollInApp bool `protobuf:"varint,2,opt,name=roll_in_app,json=rollInApp,proto3,oneof"`
+}
+
+type LuckyAnswer_TypedFace struct {
+	TypedFace int32 `protobuf:"varint,3,opt,name=typed_face,json=typedFace,proto3,oneof"`
+}
+
+func (*LuckyAnswer_RollInApp) isLuckyAnswer_Roll() {}
+
+func (*LuckyAnswer_TypedFace) isLuckyAnswer_Roll() {}
+
+// DieAnswer answers the Bardic Inspiration question (SRD 5.1).
+type DieAnswer struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// True: roll the die and add it to the roll. False: keep it.
+	Use bool `protobuf:"varint,1,opt,name=use,proto3" json:"use,omitempty"`
+	// How the die comes (RN-18) when `use` is true: the app rolls it, or the player typed the face of a real die.
+	// Required then.
+	//
+	// Types that are valid to be assigned to Roll:
+	//
+	//	*DieAnswer_RollInApp
+	//	*DieAnswer_TypedFace
+	Roll          isDieAnswer_Roll `protobuf_oneof:"roll"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DieAnswer) Reset() {
+	*x = DieAnswer{}
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DieAnswer) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DieAnswer) ProtoMessage() {}
+
+func (x *DieAnswer) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DieAnswer.ProtoReflect.Descriptor instead.
+func (*DieAnswer) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *DieAnswer) GetUse() bool {
+	if x != nil {
+		return x.Use
+	}
+	return false
+}
+
+func (x *DieAnswer) GetRoll() isDieAnswer_Roll {
+	if x != nil {
+		return x.Roll
+	}
+	return nil
+}
+
+func (x *DieAnswer) GetRollInApp() bool {
+	if x != nil {
+		if x, ok := x.Roll.(*DieAnswer_RollInApp); ok {
+			return x.RollInApp
+		}
+	}
+	return false
+}
+
+func (x *DieAnswer) GetTypedFace() int32 {
+	if x != nil {
+		if x, ok := x.Roll.(*DieAnswer_TypedFace); ok {
+			return x.TypedFace
+		}
+	}
+	return 0
+}
+
+type isDieAnswer_Roll interface {
+	isDieAnswer_Roll()
+}
+
+type DieAnswer_RollInApp struct {
+	RollInApp bool `protobuf:"varint,2,opt,name=roll_in_app,json=rollInApp,proto3,oneof"`
+}
+
+type DieAnswer_TypedFace struct {
+	TypedFace int32 `protobuf:"varint,3,opt,name=typed_face,json=typedFace,proto3,oneof"`
+}
+
+func (*DieAnswer_RollInApp) isDieAnswer_Roll() {}
+
+func (*DieAnswer_TypedFace) isDieAnswer_Roll() {}
+
+type AnswerHeldRollResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The path of the held roll answers as it does: the roll written, or, when the roll waits for its next
+	// question, the response with its offer.
+	//
+	// Types that are valid to be assigned to Result:
+	//
+	//	*AnswerHeldRollResponse_Attack
+	//	*AnswerHeldRollResponse_SpellCast
+	//	*AnswerHeldRollResponse_EffectSave
+	//	*AnswerHeldRollResponse_ConcentrationSave
+	//	*AnswerHeldRollResponse_SceneCheck
+	//	*AnswerHeldRollResponse_GroupCheck
+	//	*AnswerHeldRollResponse_TrapSearch
+	//	*AnswerHeldRollResponse_HintTry
+	Result isAnswerHeldRollResponse_Result `protobuf_oneof:"result"`
+	// The next question of the same roll, copied out of the result, when the roll still waits: the d20 Lucky
+	// rolled again is asked about the die next. Unset when the roll was written.
+	Next          *HeldRollOffer `protobuf:"bytes,20,opt,name=next,proto3" json:"next,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AnswerHeldRollResponse) Reset() {
+	*x = AnswerHeldRollResponse{}
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AnswerHeldRollResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AnswerHeldRollResponse) ProtoMessage() {}
+
+func (x *AnswerHeldRollResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AnswerHeldRollResponse.ProtoReflect.Descriptor instead.
+func (*AnswerHeldRollResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{38}
+}
+
+func (x *AnswerHeldRollResponse) GetResult() isAnswerHeldRollResponse_Result {
+	if x != nil {
+		return x.Result
+	}
+	return nil
+}
+
+func (x *AnswerHeldRollResponse) GetAttack() *RollAttackResponse {
+	if x != nil {
+		if x, ok := x.Result.(*AnswerHeldRollResponse_Attack); ok {
+			return x.Attack
+		}
+	}
+	return nil
+}
+
+func (x *AnswerHeldRollResponse) GetSpellCast() *CastSpellResponse {
+	if x != nil {
+		if x, ok := x.Result.(*AnswerHeldRollResponse_SpellCast); ok {
+			return x.SpellCast
+		}
+	}
+	return nil
+}
+
+func (x *AnswerHeldRollResponse) GetEffectSave() *RollEffectSaveResponse {
+	if x != nil {
+		if x, ok := x.Result.(*AnswerHeldRollResponse_EffectSave); ok {
+			return x.EffectSave
+		}
+	}
+	return nil
+}
+
+func (x *AnswerHeldRollResponse) GetConcentrationSave() *ResolveConcentrationSaveResponse {
+	if x != nil {
+		if x, ok := x.Result.(*AnswerHeldRollResponse_ConcentrationSave); ok {
+			return x.ConcentrationSave
+		}
+	}
+	return nil
+}
+
+func (x *AnswerHeldRollResponse) GetSceneCheck() *RollSceneCheckResponse {
+	if x != nil {
+		if x, ok := x.Result.(*AnswerHeldRollResponse_SceneCheck); ok {
+			return x.SceneCheck
+		}
+	}
+	return nil
+}
+
+func (x *AnswerHeldRollResponse) GetGroupCheck() *RollGroupCheckResponse {
+	if x != nil {
+		if x, ok := x.Result.(*AnswerHeldRollResponse_GroupCheck); ok {
+			return x.GroupCheck
+		}
+	}
+	return nil
+}
+
+func (x *AnswerHeldRollResponse) GetTrapSearch() *SearchForTrapsResponse {
+	if x != nil {
+		if x, ok := x.Result.(*AnswerHeldRollResponse_TrapSearch); ok {
+			return x.TrapSearch
+		}
+	}
+	return nil
+}
+
+func (x *AnswerHeldRollResponse) GetHintTry() *TryPuzzleHintResponse {
+	if x != nil {
+		if x, ok := x.Result.(*AnswerHeldRollResponse_HintTry); ok {
+			return x.HintTry
+		}
+	}
+	return nil
+}
+
+func (x *AnswerHeldRollResponse) GetNext() *HeldRollOffer {
+	if x != nil {
+		return x.Next
+	}
+	return nil
+}
+
+type isAnswerHeldRollResponse_Result interface {
+	isAnswerHeldRollResponse_Result()
+}
+
+type AnswerHeldRollResponse_Attack struct {
+	Attack *RollAttackResponse `protobuf:"bytes,1,opt,name=attack,proto3,oneof"`
+}
+
+type AnswerHeldRollResponse_SpellCast struct {
+	SpellCast *CastSpellResponse `protobuf:"bytes,2,opt,name=spell_cast,json=spellCast,proto3,oneof"`
+}
+
+type AnswerHeldRollResponse_EffectSave struct {
+	EffectSave *RollEffectSaveResponse `protobuf:"bytes,3,opt,name=effect_save,json=effectSave,proto3,oneof"`
+}
+
+type AnswerHeldRollResponse_ConcentrationSave struct {
+	ConcentrationSave *ResolveConcentrationSaveResponse `protobuf:"bytes,4,opt,name=concentration_save,json=concentrationSave,proto3,oneof"`
+}
+
+type AnswerHeldRollResponse_SceneCheck struct {
+	SceneCheck *RollSceneCheckResponse `protobuf:"bytes,5,opt,name=scene_check,json=sceneCheck,proto3,oneof"`
+}
+
+type AnswerHeldRollResponse_GroupCheck struct {
+	GroupCheck *RollGroupCheckResponse `protobuf:"bytes,6,opt,name=group_check,json=groupCheck,proto3,oneof"`
+}
+
+type AnswerHeldRollResponse_TrapSearch struct {
+	TrapSearch *SearchForTrapsResponse `protobuf:"bytes,7,opt,name=trap_search,json=trapSearch,proto3,oneof"`
+}
+
+type AnswerHeldRollResponse_HintTry struct {
+	HintTry *TryPuzzleHintResponse `protobuf:"bytes,8,opt,name=hint_try,json=hintTry,proto3,oneof"`
+}
+
+func (*AnswerHeldRollResponse_Attack) isAnswerHeldRollResponse_Result() {}
+
+func (*AnswerHeldRollResponse_SpellCast) isAnswerHeldRollResponse_Result() {}
+
+func (*AnswerHeldRollResponse_EffectSave) isAnswerHeldRollResponse_Result() {}
+
+func (*AnswerHeldRollResponse_ConcentrationSave) isAnswerHeldRollResponse_Result() {}
+
+func (*AnswerHeldRollResponse_SceneCheck) isAnswerHeldRollResponse_Result() {}
+
+func (*AnswerHeldRollResponse_GroupCheck) isAnswerHeldRollResponse_Result() {}
+
+func (*AnswerHeldRollResponse_TrapSearch) isAnswerHeldRollResponse_Result() {}
+
+func (*AnswerHeldRollResponse_HintTry) isAnswerHeldRollResponse_Result() {}
+
+type ListHeldRollsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId    string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListHeldRollsRequest) Reset() {
+	*x = ListHeldRollsRequest{}
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListHeldRollsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListHeldRollsRequest) ProtoMessage() {}
+
+func (x *ListHeldRollsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListHeldRollsRequest.ProtoReflect.Descriptor instead.
+func (*ListHeldRollsRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *ListHeldRollsRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+type ListHeldRollsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The questions that wait and the caller may answer, oldest first.
+	Offers        []*HeldRollOffer `protobuf:"bytes,1,rep,name=offers,proto3" json:"offers,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListHeldRollsResponse) Reset() {
+	*x = ListHeldRollsResponse{}
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListHeldRollsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListHeldRollsResponse) ProtoMessage() {}
+
+func (x *ListHeldRollsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_resources_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListHeldRollsResponse.ProtoReflect.Descriptor instead.
+func (*ListHeldRollsResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_resources_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *ListHeldRollsResponse) GetOffers() []*HeldRollOffer {
+	if x != nil {
+		return x.Offers
+	}
+	return nil
+}
+
 var File_meurpg_play_v1_resources_proto protoreflect.FileDescriptor
 
 const file_meurpg_play_v1_resources_proto_rawDesc = "" +
@@ -3411,7 +3990,48 @@ const file_meurpg_play_v1_resources_proto_rawDesc = "" +
 	"\veffect_save\x18\x06 \x01(\v2&.meurpg.play.v1.RollEffectSaveResponseH\x00R\n" +
 	"effectSave\x12a\n" +
 	"\x12concentration_save\x18\a \x01(\v20.meurpg.play.v1.ResolveConcentrationSaveResponseH\x00R\x11concentrationSaveB\b\n" +
-	"\x06result*\x9c\x06\n" +
+	"\x06result\"\xe8\x01\n" +
+	"\x15AnswerHeldRollRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12\x17\n" +
+	"\ahold_id\x18\x02 \x01(\tR\x06holdId\x12'\n" +
+	"\x0fidempotency_key\x18\x03 \x01(\tR\x0eidempotencyKey\x123\n" +
+	"\x05lucky\x18\x04 \x01(\v2\x1b.meurpg.play.v1.LuckyAnswerH\x00R\x05lucky\x12-\n" +
+	"\x03die\x18\x05 \x01(\v2\x19.meurpg.play.v1.DieAnswerH\x00R\x03dieB\b\n" +
+	"\x06answer\"p\n" +
+	"\vLuckyAnswer\x12\x16\n" +
+	"\x06reroll\x18\x01 \x01(\bR\x06reroll\x12 \n" +
+	"\vroll_in_app\x18\x02 \x01(\bH\x00R\trollInApp\x12\x1f\n" +
+	"\n" +
+	"typed_face\x18\x03 \x01(\x05H\x00R\ttypedFaceB\x06\n" +
+	"\x04roll\"h\n" +
+	"\tDieAnswer\x12\x10\n" +
+	"\x03use\x18\x01 \x01(\bR\x03use\x12 \n" +
+	"\vroll_in_app\x18\x02 \x01(\bH\x00R\trollInApp\x12\x1f\n" +
+	"\n" +
+	"typed_face\x18\x03 \x01(\x05H\x00R\ttypedFaceB\x06\n" +
+	"\x04roll\"\xaa\x05\n" +
+	"\x16AnswerHeldRollResponse\x12<\n" +
+	"\x06attack\x18\x01 \x01(\v2\".meurpg.play.v1.RollAttackResponseH\x00R\x06attack\x12B\n" +
+	"\n" +
+	"spell_cast\x18\x02 \x01(\v2!.meurpg.play.v1.CastSpellResponseH\x00R\tspellCast\x12I\n" +
+	"\veffect_save\x18\x03 \x01(\v2&.meurpg.play.v1.RollEffectSaveResponseH\x00R\n" +
+	"effectSave\x12a\n" +
+	"\x12concentration_save\x18\x04 \x01(\v20.meurpg.play.v1.ResolveConcentrationSaveResponseH\x00R\x11concentrationSave\x12I\n" +
+	"\vscene_check\x18\x05 \x01(\v2&.meurpg.play.v1.RollSceneCheckResponseH\x00R\n" +
+	"sceneCheck\x12I\n" +
+	"\vgroup_check\x18\x06 \x01(\v2&.meurpg.play.v1.RollGroupCheckResponseH\x00R\n" +
+	"groupCheck\x12I\n" +
+	"\vtrap_search\x18\a \x01(\v2&.meurpg.play.v1.SearchForTrapsResponseH\x00R\n" +
+	"trapSearch\x12B\n" +
+	"\bhint_try\x18\b \x01(\v2%.meurpg.play.v1.TryPuzzleHintResponseH\x00R\ahintTry\x121\n" +
+	"\x04next\x18\x14 \x01(\v2\x1d.meurpg.play.v1.HeldRollOfferR\x04nextB\b\n" +
+	"\x06result\"7\n" +
+	"\x14ListHeldRollsRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\"N\n" +
+	"\x15ListHeldRollsResponse\x125\n" +
+	"\x06offers\x18\x01 \x03(\v2\x1d.meurpg.play.v1.HeldRollOfferR\x06offers*\x9c\x06\n" +
 	"\x15ResourceBlockedReason\x12'\n" +
 	"#RESOURCE_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12'\n" +
 	"#RESOURCE_BLOCKED_REASON_COMBAT_OPEN\x10\x01\x12,\n" +
@@ -3438,7 +4058,7 @@ const file_meurpg_play_v1_resources_proto_rawDesc = "" +
 	"\x0eLayOnHandsCure\x12!\n" +
 	"\x1dLAY_ON_HANDS_CURE_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19LAY_ON_HANDS_CURE_DISEASE\x10\x01\x12\x1c\n" +
-	"\x18LAY_ON_HANDS_CURE_POISON\x10\x022\xec\v\n" +
+	"\x18LAY_ON_HANDS_CURE_POISON\x10\x022\xab\r\n" +
 	"\x0fResourceService\x12d\n" +
 	"\x0eGetRestPreview\x12%.meurpg.play.v1.GetRestPreviewRequest\x1a&.meurpg.play.v1.GetRestPreviewResponse\"\x03\x90\x02\x02\x12M\n" +
 	"\bTakeRest\x12\x1f.meurpg.play.v1.TakeRestRequest\x1a .meurpg.play.v1.TakeRestResponse\x12Y\n" +
@@ -3453,7 +4073,9 @@ const file_meurpg_play_v1_resources_proto_rawDesc = "" +
 	"\x15GetOutsideInspiration\x12,.meurpg.play.v1.GetOutsideInspirationRequest\x1a-.meurpg.play.v1.GetOutsideInspirationResponse\x12\x89\x01\n" +
 	"\x1cGiveBardicInspirationOutside\x123.meurpg.play.v1.GiveBardicInspirationOutsideRequest\x1a4.meurpg.play.v1.GiveBardicInspirationOutsideResponse\x12}\n" +
 	"\x18AnswerOutsideInspiration\x12/.meurpg.play.v1.AnswerOutsideInspirationRequest\x1a0.meurpg.play.v1.AnswerOutsideInspirationResponse\x12k\n" +
-	"\x12AnswerOutsideLucky\x12).meurpg.play.v1.AnswerOutsideLuckyRequest\x1a*.meurpg.play.v1.AnswerOutsideLuckyResponseB\xbc\x01\n" +
+	"\x12AnswerOutsideLucky\x12).meurpg.play.v1.AnswerOutsideLuckyRequest\x1a*.meurpg.play.v1.AnswerOutsideLuckyResponse\x12_\n" +
+	"\x0eAnswerHeldRoll\x12%.meurpg.play.v1.AnswerHeldRollRequest\x1a&.meurpg.play.v1.AnswerHeldRollResponse\x12\\\n" +
+	"\rListHeldRolls\x12$.meurpg.play.v1.ListHeldRollsRequest\x1a%.meurpg.play.v1.ListHeldRollsResponseB\xbc\x01\n" +
 	"\x12com.meurpg.play.v1B\x0eResourcesProtoP\x01Z<github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1;playv1\xa2\x02\x03MPX\xaa\x02\x0eMeurpg.Play.V1\xca\x02\x0eMeurpg\\Play\\V1\xe2\x02\x1aMeurpg\\Play\\V1\\GPBMetadata\xea\x02\x10Meurpg::Play::V1b\x06proto3"
 
 var (
@@ -3469,7 +4091,7 @@ func file_meurpg_play_v1_resources_proto_rawDescGZIP() []byte {
 }
 
 var file_meurpg_play_v1_resources_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_meurpg_play_v1_resources_proto_msgTypes = make([]protoimpl.MessageInfo, 35)
+var file_meurpg_play_v1_resources_proto_msgTypes = make([]protoimpl.MessageInfo, 41)
 var file_meurpg_play_v1_resources_proto_goTypes = []any{
 	(ResourceBlockedReason)(0),                   // 0: meurpg.play.v1.ResourceBlockedReason
 	(RestKind)(0),                                // 1: meurpg.play.v1.RestKind
@@ -3509,99 +4131,122 @@ var file_meurpg_play_v1_resources_proto_goTypes = []any{
 	(*AnswerOutsideInspirationResponse)(nil),     // 35: meurpg.play.v1.AnswerOutsideInspirationResponse
 	(*AnswerOutsideLuckyRequest)(nil),            // 36: meurpg.play.v1.AnswerOutsideLuckyRequest
 	(*AnswerOutsideLuckyResponse)(nil),           // 37: meurpg.play.v1.AnswerOutsideLuckyResponse
-	(*v1.HitDice)(nil),                           // 38: meurpg.rules.v1.HitDice
-	(*CharacterVitals)(nil),                      // 39: meurpg.play.v1.CharacterVitals
-	(*Encounter)(nil),                            // 40: meurpg.play.v1.Encounter
-	(*RollAttackResponse)(nil),                   // 41: meurpg.play.v1.RollAttackResponse
-	(*OutsideInspirationOffer)(nil),              // 42: meurpg.play.v1.OutsideInspirationOffer
-	(*LuckyOffer)(nil),                           // 43: meurpg.play.v1.LuckyOffer
-	(*RollSceneCheckResponse)(nil),               // 44: meurpg.play.v1.RollSceneCheckResponse
-	(*RollGroupCheckResponse)(nil),               // 45: meurpg.play.v1.RollGroupCheckResponse
-	(*SearchForTrapsResponse)(nil),               // 46: meurpg.play.v1.SearchForTrapsResponse
-	(*TryPuzzleHintResponse)(nil),                // 47: meurpg.play.v1.TryPuzzleHintResponse
-	(*CastSpellResponse)(nil),                    // 48: meurpg.play.v1.CastSpellResponse
-	(*RollEffectSaveResponse)(nil),               // 49: meurpg.play.v1.RollEffectSaveResponse
-	(*ResolveConcentrationSaveResponse)(nil),     // 50: meurpg.play.v1.ResolveConcentrationSaveResponse
+	(*AnswerHeldRollRequest)(nil),                // 38: meurpg.play.v1.AnswerHeldRollRequest
+	(*LuckyAnswer)(nil),                          // 39: meurpg.play.v1.LuckyAnswer
+	(*DieAnswer)(nil),                            // 40: meurpg.play.v1.DieAnswer
+	(*AnswerHeldRollResponse)(nil),               // 41: meurpg.play.v1.AnswerHeldRollResponse
+	(*ListHeldRollsRequest)(nil),                 // 42: meurpg.play.v1.ListHeldRollsRequest
+	(*ListHeldRollsResponse)(nil),                // 43: meurpg.play.v1.ListHeldRollsResponse
+	(*v1.HitDice)(nil),                           // 44: meurpg.rules.v1.HitDice
+	(*CharacterVitals)(nil),                      // 45: meurpg.play.v1.CharacterVitals
+	(*Encounter)(nil),                            // 46: meurpg.play.v1.Encounter
+	(*RollAttackResponse)(nil),                   // 47: meurpg.play.v1.RollAttackResponse
+	(*OutsideInspirationOffer)(nil),              // 48: meurpg.play.v1.OutsideInspirationOffer
+	(*LuckyOffer)(nil),                           // 49: meurpg.play.v1.LuckyOffer
+	(*RollSceneCheckResponse)(nil),               // 50: meurpg.play.v1.RollSceneCheckResponse
+	(*RollGroupCheckResponse)(nil),               // 51: meurpg.play.v1.RollGroupCheckResponse
+	(*SearchForTrapsResponse)(nil),               // 52: meurpg.play.v1.SearchForTrapsResponse
+	(*TryPuzzleHintResponse)(nil),                // 53: meurpg.play.v1.TryPuzzleHintResponse
+	(*CastSpellResponse)(nil),                    // 54: meurpg.play.v1.CastSpellResponse
+	(*RollEffectSaveResponse)(nil),               // 55: meurpg.play.v1.RollEffectSaveResponse
+	(*ResolveConcentrationSaveResponse)(nil),     // 56: meurpg.play.v1.ResolveConcentrationSaveResponse
+	(*HeldRollOffer)(nil),                        // 57: meurpg.play.v1.HeldRollOffer
 }
 var file_meurpg_play_v1_resources_proto_depIdxs = []int32{
 	0,  // 0: meurpg.play.v1.ResourceBlocked.reason:type_name -> meurpg.play.v1.ResourceBlockedReason
 	1,  // 1: meurpg.play.v1.GetRestPreviewRequest.kind:type_name -> meurpg.play.v1.RestKind
 	6,  // 2: meurpg.play.v1.GetRestPreviewResponse.characters:type_name -> meurpg.play.v1.RestPreview
 	7,  // 3: meurpg.play.v1.RestPreview.resources:type_name -> meurpg.play.v1.RestResourceBack
-	38, // 4: meurpg.play.v1.RestPreview.hit_dice_spent:type_name -> meurpg.rules.v1.HitDice
-	38, // 5: meurpg.play.v1.RestPreview.hit_dice_back:type_name -> meurpg.rules.v1.HitDice
+	44, // 4: meurpg.play.v1.RestPreview.hit_dice_spent:type_name -> meurpg.rules.v1.HitDice
+	44, // 5: meurpg.play.v1.RestPreview.hit_dice_back:type_name -> meurpg.rules.v1.HitDice
 	8,  // 6: meurpg.play.v1.RestPreview.spell_slots_back:type_name -> meurpg.play.v1.SpellSlotBack
 	1,  // 7: meurpg.play.v1.TakeRestRequest.kind:type_name -> meurpg.play.v1.RestKind
 	10, // 8: meurpg.play.v1.TakeRestRequest.hit_dice_choices:type_name -> meurpg.play.v1.HitDiceChoice
-	38, // 9: meurpg.play.v1.HitDiceChoice.dice:type_name -> meurpg.rules.v1.HitDice
-	39, // 10: meurpg.play.v1.TakeRestResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
-	39, // 11: meurpg.play.v1.SpendHitDiceResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
+	44, // 9: meurpg.play.v1.HitDiceChoice.dice:type_name -> meurpg.rules.v1.HitDice
+	45, // 10: meurpg.play.v1.TakeRestResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
+	45, // 11: meurpg.play.v1.SpendHitDiceResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
 	8,  // 12: meurpg.play.v1.UseArcaneRecoveryRequest.slots:type_name -> meurpg.play.v1.SpellSlotBack
-	39, // 13: meurpg.play.v1.UseArcaneRecoveryResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
+	45, // 13: meurpg.play.v1.UseArcaneRecoveryResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
 	2,  // 14: meurpg.play.v1.UseLayOnHandsRequest.cure:type_name -> meurpg.play.v1.LayOnHandsCure
-	40, // 15: meurpg.play.v1.UseLayOnHandsResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	40, // 16: meurpg.play.v1.CreateSpellSlotResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	39, // 17: meurpg.play.v1.CreateSpellSlotResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
-	40, // 18: meurpg.play.v1.ConvertSpellSlotResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	39, // 19: meurpg.play.v1.ConvertSpellSlotResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
-	40, // 20: meurpg.play.v1.GiveBardicInspirationResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	39, // 21: meurpg.play.v1.GiveBardicInspirationResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
-	41, // 22: meurpg.play.v1.AnswerBardicInspirationResponse.attack:type_name -> meurpg.play.v1.RollAttackResponse
-	41, // 23: meurpg.play.v1.AnswerLuckyResponse.attack:type_name -> meurpg.play.v1.RollAttackResponse
+	46, // 15: meurpg.play.v1.UseLayOnHandsResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	46, // 16: meurpg.play.v1.CreateSpellSlotResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	45, // 17: meurpg.play.v1.CreateSpellSlotResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
+	46, // 18: meurpg.play.v1.ConvertSpellSlotResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	45, // 19: meurpg.play.v1.ConvertSpellSlotResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
+	46, // 20: meurpg.play.v1.GiveBardicInspirationResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	45, // 21: meurpg.play.v1.GiveBardicInspirationResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
+	47, // 22: meurpg.play.v1.AnswerBardicInspirationResponse.attack:type_name -> meurpg.play.v1.RollAttackResponse
+	47, // 23: meurpg.play.v1.AnswerLuckyResponse.attack:type_name -> meurpg.play.v1.RollAttackResponse
 	29, // 24: meurpg.play.v1.GetOutsideInspirationResponse.mine:type_name -> meurpg.play.v1.OutsideInspirationDie
 	30, // 25: meurpg.play.v1.GetOutsideInspirationResponse.targets:type_name -> meurpg.play.v1.BardicInspirationTarget
 	29, // 26: meurpg.play.v1.GetOutsideInspirationResponse.held:type_name -> meurpg.play.v1.OutsideInspirationDie
-	42, // 27: meurpg.play.v1.GetOutsideInspirationResponse.offers:type_name -> meurpg.play.v1.OutsideInspirationOffer
-	43, // 28: meurpg.play.v1.GetOutsideInspirationResponse.lucky_offers:type_name -> meurpg.play.v1.LuckyOffer
-	39, // 29: meurpg.play.v1.GiveBardicInspirationOutsideResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
+	48, // 27: meurpg.play.v1.GetOutsideInspirationResponse.offers:type_name -> meurpg.play.v1.OutsideInspirationOffer
+	49, // 28: meurpg.play.v1.GetOutsideInspirationResponse.lucky_offers:type_name -> meurpg.play.v1.LuckyOffer
+	45, // 29: meurpg.play.v1.GiveBardicInspirationOutsideResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
 	29, // 30: meurpg.play.v1.GiveBardicInspirationOutsideResponse.die:type_name -> meurpg.play.v1.OutsideInspirationDie
-	44, // 31: meurpg.play.v1.AnswerOutsideInspirationResponse.scene_check:type_name -> meurpg.play.v1.RollSceneCheckResponse
-	45, // 32: meurpg.play.v1.AnswerOutsideInspirationResponse.group_check:type_name -> meurpg.play.v1.RollGroupCheckResponse
-	46, // 33: meurpg.play.v1.AnswerOutsideInspirationResponse.trap_search:type_name -> meurpg.play.v1.SearchForTrapsResponse
-	47, // 34: meurpg.play.v1.AnswerOutsideInspirationResponse.hint_try:type_name -> meurpg.play.v1.TryPuzzleHintResponse
-	48, // 35: meurpg.play.v1.AnswerOutsideInspirationResponse.spell_cast:type_name -> meurpg.play.v1.CastSpellResponse
-	49, // 36: meurpg.play.v1.AnswerOutsideInspirationResponse.effect_save:type_name -> meurpg.play.v1.RollEffectSaveResponse
-	50, // 37: meurpg.play.v1.AnswerOutsideInspirationResponse.concentration_save:type_name -> meurpg.play.v1.ResolveConcentrationSaveResponse
-	44, // 38: meurpg.play.v1.AnswerOutsideLuckyResponse.scene_check:type_name -> meurpg.play.v1.RollSceneCheckResponse
-	45, // 39: meurpg.play.v1.AnswerOutsideLuckyResponse.group_check:type_name -> meurpg.play.v1.RollGroupCheckResponse
-	46, // 40: meurpg.play.v1.AnswerOutsideLuckyResponse.trap_search:type_name -> meurpg.play.v1.SearchForTrapsResponse
-	47, // 41: meurpg.play.v1.AnswerOutsideLuckyResponse.hint_try:type_name -> meurpg.play.v1.TryPuzzleHintResponse
-	48, // 42: meurpg.play.v1.AnswerOutsideLuckyResponse.spell_cast:type_name -> meurpg.play.v1.CastSpellResponse
-	49, // 43: meurpg.play.v1.AnswerOutsideLuckyResponse.effect_save:type_name -> meurpg.play.v1.RollEffectSaveResponse
-	50, // 44: meurpg.play.v1.AnswerOutsideLuckyResponse.concentration_save:type_name -> meurpg.play.v1.ResolveConcentrationSaveResponse
-	4,  // 45: meurpg.play.v1.ResourceService.GetRestPreview:input_type -> meurpg.play.v1.GetRestPreviewRequest
-	9,  // 46: meurpg.play.v1.ResourceService.TakeRest:input_type -> meurpg.play.v1.TakeRestRequest
-	12, // 47: meurpg.play.v1.ResourceService.SpendHitDice:input_type -> meurpg.play.v1.SpendHitDiceRequest
-	14, // 48: meurpg.play.v1.ResourceService.UseArcaneRecovery:input_type -> meurpg.play.v1.UseArcaneRecoveryRequest
-	16, // 49: meurpg.play.v1.ResourceService.UseLayOnHands:input_type -> meurpg.play.v1.UseLayOnHandsRequest
-	18, // 50: meurpg.play.v1.ResourceService.CreateSpellSlot:input_type -> meurpg.play.v1.CreateSpellSlotRequest
-	20, // 51: meurpg.play.v1.ResourceService.ConvertSpellSlot:input_type -> meurpg.play.v1.ConvertSpellSlotRequest
-	22, // 52: meurpg.play.v1.ResourceService.GiveBardicInspiration:input_type -> meurpg.play.v1.GiveBardicInspirationRequest
-	24, // 53: meurpg.play.v1.ResourceService.AnswerBardicInspiration:input_type -> meurpg.play.v1.AnswerBardicInspirationRequest
-	26, // 54: meurpg.play.v1.ResourceService.AnswerLucky:input_type -> meurpg.play.v1.AnswerLuckyRequest
-	28, // 55: meurpg.play.v1.ResourceService.GetOutsideInspiration:input_type -> meurpg.play.v1.GetOutsideInspirationRequest
-	32, // 56: meurpg.play.v1.ResourceService.GiveBardicInspirationOutside:input_type -> meurpg.play.v1.GiveBardicInspirationOutsideRequest
-	34, // 57: meurpg.play.v1.ResourceService.AnswerOutsideInspiration:input_type -> meurpg.play.v1.AnswerOutsideInspirationRequest
-	36, // 58: meurpg.play.v1.ResourceService.AnswerOutsideLucky:input_type -> meurpg.play.v1.AnswerOutsideLuckyRequest
-	5,  // 59: meurpg.play.v1.ResourceService.GetRestPreview:output_type -> meurpg.play.v1.GetRestPreviewResponse
-	11, // 60: meurpg.play.v1.ResourceService.TakeRest:output_type -> meurpg.play.v1.TakeRestResponse
-	13, // 61: meurpg.play.v1.ResourceService.SpendHitDice:output_type -> meurpg.play.v1.SpendHitDiceResponse
-	15, // 62: meurpg.play.v1.ResourceService.UseArcaneRecovery:output_type -> meurpg.play.v1.UseArcaneRecoveryResponse
-	17, // 63: meurpg.play.v1.ResourceService.UseLayOnHands:output_type -> meurpg.play.v1.UseLayOnHandsResponse
-	19, // 64: meurpg.play.v1.ResourceService.CreateSpellSlot:output_type -> meurpg.play.v1.CreateSpellSlotResponse
-	21, // 65: meurpg.play.v1.ResourceService.ConvertSpellSlot:output_type -> meurpg.play.v1.ConvertSpellSlotResponse
-	23, // 66: meurpg.play.v1.ResourceService.GiveBardicInspiration:output_type -> meurpg.play.v1.GiveBardicInspirationResponse
-	25, // 67: meurpg.play.v1.ResourceService.AnswerBardicInspiration:output_type -> meurpg.play.v1.AnswerBardicInspirationResponse
-	27, // 68: meurpg.play.v1.ResourceService.AnswerLucky:output_type -> meurpg.play.v1.AnswerLuckyResponse
-	31, // 69: meurpg.play.v1.ResourceService.GetOutsideInspiration:output_type -> meurpg.play.v1.GetOutsideInspirationResponse
-	33, // 70: meurpg.play.v1.ResourceService.GiveBardicInspirationOutside:output_type -> meurpg.play.v1.GiveBardicInspirationOutsideResponse
-	35, // 71: meurpg.play.v1.ResourceService.AnswerOutsideInspiration:output_type -> meurpg.play.v1.AnswerOutsideInspirationResponse
-	37, // 72: meurpg.play.v1.ResourceService.AnswerOutsideLucky:output_type -> meurpg.play.v1.AnswerOutsideLuckyResponse
-	59, // [59:73] is the sub-list for method output_type
-	45, // [45:59] is the sub-list for method input_type
-	45, // [45:45] is the sub-list for extension type_name
-	45, // [45:45] is the sub-list for extension extendee
-	0,  // [0:45] is the sub-list for field type_name
+	50, // 31: meurpg.play.v1.AnswerOutsideInspirationResponse.scene_check:type_name -> meurpg.play.v1.RollSceneCheckResponse
+	51, // 32: meurpg.play.v1.AnswerOutsideInspirationResponse.group_check:type_name -> meurpg.play.v1.RollGroupCheckResponse
+	52, // 33: meurpg.play.v1.AnswerOutsideInspirationResponse.trap_search:type_name -> meurpg.play.v1.SearchForTrapsResponse
+	53, // 34: meurpg.play.v1.AnswerOutsideInspirationResponse.hint_try:type_name -> meurpg.play.v1.TryPuzzleHintResponse
+	54, // 35: meurpg.play.v1.AnswerOutsideInspirationResponse.spell_cast:type_name -> meurpg.play.v1.CastSpellResponse
+	55, // 36: meurpg.play.v1.AnswerOutsideInspirationResponse.effect_save:type_name -> meurpg.play.v1.RollEffectSaveResponse
+	56, // 37: meurpg.play.v1.AnswerOutsideInspirationResponse.concentration_save:type_name -> meurpg.play.v1.ResolveConcentrationSaveResponse
+	50, // 38: meurpg.play.v1.AnswerOutsideLuckyResponse.scene_check:type_name -> meurpg.play.v1.RollSceneCheckResponse
+	51, // 39: meurpg.play.v1.AnswerOutsideLuckyResponse.group_check:type_name -> meurpg.play.v1.RollGroupCheckResponse
+	52, // 40: meurpg.play.v1.AnswerOutsideLuckyResponse.trap_search:type_name -> meurpg.play.v1.SearchForTrapsResponse
+	53, // 41: meurpg.play.v1.AnswerOutsideLuckyResponse.hint_try:type_name -> meurpg.play.v1.TryPuzzleHintResponse
+	54, // 42: meurpg.play.v1.AnswerOutsideLuckyResponse.spell_cast:type_name -> meurpg.play.v1.CastSpellResponse
+	55, // 43: meurpg.play.v1.AnswerOutsideLuckyResponse.effect_save:type_name -> meurpg.play.v1.RollEffectSaveResponse
+	56, // 44: meurpg.play.v1.AnswerOutsideLuckyResponse.concentration_save:type_name -> meurpg.play.v1.ResolveConcentrationSaveResponse
+	39, // 45: meurpg.play.v1.AnswerHeldRollRequest.lucky:type_name -> meurpg.play.v1.LuckyAnswer
+	40, // 46: meurpg.play.v1.AnswerHeldRollRequest.die:type_name -> meurpg.play.v1.DieAnswer
+	47, // 47: meurpg.play.v1.AnswerHeldRollResponse.attack:type_name -> meurpg.play.v1.RollAttackResponse
+	54, // 48: meurpg.play.v1.AnswerHeldRollResponse.spell_cast:type_name -> meurpg.play.v1.CastSpellResponse
+	55, // 49: meurpg.play.v1.AnswerHeldRollResponse.effect_save:type_name -> meurpg.play.v1.RollEffectSaveResponse
+	56, // 50: meurpg.play.v1.AnswerHeldRollResponse.concentration_save:type_name -> meurpg.play.v1.ResolveConcentrationSaveResponse
+	50, // 51: meurpg.play.v1.AnswerHeldRollResponse.scene_check:type_name -> meurpg.play.v1.RollSceneCheckResponse
+	51, // 52: meurpg.play.v1.AnswerHeldRollResponse.group_check:type_name -> meurpg.play.v1.RollGroupCheckResponse
+	52, // 53: meurpg.play.v1.AnswerHeldRollResponse.trap_search:type_name -> meurpg.play.v1.SearchForTrapsResponse
+	53, // 54: meurpg.play.v1.AnswerHeldRollResponse.hint_try:type_name -> meurpg.play.v1.TryPuzzleHintResponse
+	57, // 55: meurpg.play.v1.AnswerHeldRollResponse.next:type_name -> meurpg.play.v1.HeldRollOffer
+	57, // 56: meurpg.play.v1.ListHeldRollsResponse.offers:type_name -> meurpg.play.v1.HeldRollOffer
+	4,  // 57: meurpg.play.v1.ResourceService.GetRestPreview:input_type -> meurpg.play.v1.GetRestPreviewRequest
+	9,  // 58: meurpg.play.v1.ResourceService.TakeRest:input_type -> meurpg.play.v1.TakeRestRequest
+	12, // 59: meurpg.play.v1.ResourceService.SpendHitDice:input_type -> meurpg.play.v1.SpendHitDiceRequest
+	14, // 60: meurpg.play.v1.ResourceService.UseArcaneRecovery:input_type -> meurpg.play.v1.UseArcaneRecoveryRequest
+	16, // 61: meurpg.play.v1.ResourceService.UseLayOnHands:input_type -> meurpg.play.v1.UseLayOnHandsRequest
+	18, // 62: meurpg.play.v1.ResourceService.CreateSpellSlot:input_type -> meurpg.play.v1.CreateSpellSlotRequest
+	20, // 63: meurpg.play.v1.ResourceService.ConvertSpellSlot:input_type -> meurpg.play.v1.ConvertSpellSlotRequest
+	22, // 64: meurpg.play.v1.ResourceService.GiveBardicInspiration:input_type -> meurpg.play.v1.GiveBardicInspirationRequest
+	24, // 65: meurpg.play.v1.ResourceService.AnswerBardicInspiration:input_type -> meurpg.play.v1.AnswerBardicInspirationRequest
+	26, // 66: meurpg.play.v1.ResourceService.AnswerLucky:input_type -> meurpg.play.v1.AnswerLuckyRequest
+	28, // 67: meurpg.play.v1.ResourceService.GetOutsideInspiration:input_type -> meurpg.play.v1.GetOutsideInspirationRequest
+	32, // 68: meurpg.play.v1.ResourceService.GiveBardicInspirationOutside:input_type -> meurpg.play.v1.GiveBardicInspirationOutsideRequest
+	34, // 69: meurpg.play.v1.ResourceService.AnswerOutsideInspiration:input_type -> meurpg.play.v1.AnswerOutsideInspirationRequest
+	36, // 70: meurpg.play.v1.ResourceService.AnswerOutsideLucky:input_type -> meurpg.play.v1.AnswerOutsideLuckyRequest
+	38, // 71: meurpg.play.v1.ResourceService.AnswerHeldRoll:input_type -> meurpg.play.v1.AnswerHeldRollRequest
+	42, // 72: meurpg.play.v1.ResourceService.ListHeldRolls:input_type -> meurpg.play.v1.ListHeldRollsRequest
+	5,  // 73: meurpg.play.v1.ResourceService.GetRestPreview:output_type -> meurpg.play.v1.GetRestPreviewResponse
+	11, // 74: meurpg.play.v1.ResourceService.TakeRest:output_type -> meurpg.play.v1.TakeRestResponse
+	13, // 75: meurpg.play.v1.ResourceService.SpendHitDice:output_type -> meurpg.play.v1.SpendHitDiceResponse
+	15, // 76: meurpg.play.v1.ResourceService.UseArcaneRecovery:output_type -> meurpg.play.v1.UseArcaneRecoveryResponse
+	17, // 77: meurpg.play.v1.ResourceService.UseLayOnHands:output_type -> meurpg.play.v1.UseLayOnHandsResponse
+	19, // 78: meurpg.play.v1.ResourceService.CreateSpellSlot:output_type -> meurpg.play.v1.CreateSpellSlotResponse
+	21, // 79: meurpg.play.v1.ResourceService.ConvertSpellSlot:output_type -> meurpg.play.v1.ConvertSpellSlotResponse
+	23, // 80: meurpg.play.v1.ResourceService.GiveBardicInspiration:output_type -> meurpg.play.v1.GiveBardicInspirationResponse
+	25, // 81: meurpg.play.v1.ResourceService.AnswerBardicInspiration:output_type -> meurpg.play.v1.AnswerBardicInspirationResponse
+	27, // 82: meurpg.play.v1.ResourceService.AnswerLucky:output_type -> meurpg.play.v1.AnswerLuckyResponse
+	31, // 83: meurpg.play.v1.ResourceService.GetOutsideInspiration:output_type -> meurpg.play.v1.GetOutsideInspirationResponse
+	33, // 84: meurpg.play.v1.ResourceService.GiveBardicInspirationOutside:output_type -> meurpg.play.v1.GiveBardicInspirationOutsideResponse
+	35, // 85: meurpg.play.v1.ResourceService.AnswerOutsideInspiration:output_type -> meurpg.play.v1.AnswerOutsideInspirationResponse
+	37, // 86: meurpg.play.v1.ResourceService.AnswerOutsideLucky:output_type -> meurpg.play.v1.AnswerOutsideLuckyResponse
+	41, // 87: meurpg.play.v1.ResourceService.AnswerHeldRoll:output_type -> meurpg.play.v1.AnswerHeldRollResponse
+	43, // 88: meurpg.play.v1.ResourceService.ListHeldRolls:output_type -> meurpg.play.v1.ListHeldRollsResponse
+	73, // [73:89] is the sub-list for method output_type
+	57, // [57:73] is the sub-list for method input_type
+	57, // [57:57] is the sub-list for extension type_name
+	57, // [57:57] is the sub-list for extension extendee
+	0,  // [0:57] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_resources_proto_init() }
@@ -3659,13 +4304,35 @@ func file_meurpg_play_v1_resources_proto_init() {
 		(*AnswerOutsideLuckyResponse_EffectSave)(nil),
 		(*AnswerOutsideLuckyResponse_ConcentrationSave)(nil),
 	}
+	file_meurpg_play_v1_resources_proto_msgTypes[35].OneofWrappers = []any{
+		(*AnswerHeldRollRequest_Lucky)(nil),
+		(*AnswerHeldRollRequest_Die)(nil),
+	}
+	file_meurpg_play_v1_resources_proto_msgTypes[36].OneofWrappers = []any{
+		(*LuckyAnswer_RollInApp)(nil),
+		(*LuckyAnswer_TypedFace)(nil),
+	}
+	file_meurpg_play_v1_resources_proto_msgTypes[37].OneofWrappers = []any{
+		(*DieAnswer_RollInApp)(nil),
+		(*DieAnswer_TypedFace)(nil),
+	}
+	file_meurpg_play_v1_resources_proto_msgTypes[38].OneofWrappers = []any{
+		(*AnswerHeldRollResponse_Attack)(nil),
+		(*AnswerHeldRollResponse_SpellCast)(nil),
+		(*AnswerHeldRollResponse_EffectSave)(nil),
+		(*AnswerHeldRollResponse_ConcentrationSave)(nil),
+		(*AnswerHeldRollResponse_SceneCheck)(nil),
+		(*AnswerHeldRollResponse_GroupCheck)(nil),
+		(*AnswerHeldRollResponse_TrapSearch)(nil),
+		(*AnswerHeldRollResponse_HintTry)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_play_v1_resources_proto_rawDesc), len(file_meurpg_play_v1_resources_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   35,
+			NumMessages:   41,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

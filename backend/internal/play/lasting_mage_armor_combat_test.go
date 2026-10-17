@@ -34,7 +34,7 @@ func (a *armed) mageArmorAC(t *testing.T, label string) (ac int32, set bool) {
 }
 
 // Mage Armor cast in a combat (SRD 5.1): the target's base AC becomes 13 + its Dexterity modifier,
-// and the slot is spent. It used to fail with not_found because the base was worked out for no one.
+// and the slot is spent. The base is worked out for the target, not for no one.
 func TestMageArmorCastInACombatSetsThirteenPlusDexterityAndSpendsTheSlot(t *testing.T) {
 	t.Parallel()
 	a := newCastersWithMageArmor(t)

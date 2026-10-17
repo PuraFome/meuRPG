@@ -13,8 +13,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
-// The spells that read hit points (MR-014, RN-02, RN-18, RN-20, Etapa 8, slice
-// 8.1): Sono, Leque Cromático, Palavra de Poder Atordoar and Matar, Poupar os
+// The spells that read hit points (MR-014, RN-02, RN-18, RN-20): Sono, Leque Cromático, Palavra de Poder Atordoar and Matar, Poupar os
 // Moribundos and Cura Completa. These tests need the database
 // (MEURPG_TEST_DATABASE_URL). The numbers of E8-03: Pensantus's Sono rolls 5d8
 // (2, 4, 1, 5, 3) = 15 against a goblin with 7 PV and the Capitão with 27.
@@ -421,7 +420,7 @@ func TestMR014_CompleteHealHealsAndEndsBlindnessAndDeafness(t *testing.T) {
 		t.Errorf("the caster's effect = %v, want affected with no amount (it is capped at Toren's maximum)", got)
 	}
 	// The amount, capped at the maximum, goes to the master and Toren's player only
-	// (as any heal, slice 6.4b): on an NPC it would tell the caster what it lacked.
+	// (as any heal): on an NPC it would tell the caster what it lacked.
 	for who, c := range map[string]struct {
 		u    *user
 		want bool

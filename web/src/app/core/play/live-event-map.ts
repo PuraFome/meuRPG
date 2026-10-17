@@ -81,6 +81,8 @@ const TRANSLATORS: Translators = {
   characterResubmitted: (v) => ({ kind: 'characterChanged', characterId: v.characterId }),
   characterRevived: (v) => ({ kind: 'characterRevived', characterId: v.characterId }),
   revivifyChanged: () => ({ kind: 'revivifyChanged' }),
+  // The held rolls' questions are read from each roll's answer for now; the held-roll controller reads this hint.
+  heldRollsChanged: () => null,
   callingYou: () => ({ kind: 'callingYou' }),
   puzzleChanged: (v) => ({ kind: 'puzzleChanged', puzzleId: v.puzzleId }),
   // A line with no body says nothing.

@@ -31,6 +31,12 @@ const maxResponseBytes = 16 << 20
 // defaultRate is the sample rate the model answers with when its mime type names none.
 const defaultRate = 24000
 
+// minRate and maxRate bound the rate a mime type may name: anything else is the default.
+const (
+	minRate = 8000
+	maxRate = 192000
+)
+
 // Gemini is the Generator that calls the Gemini API with a key.
 type Gemini struct {
 	// Key is the API key, sent only in the x-goog-api-key header. It is a config.Secret: it prints as
@@ -183,10 +189,10 @@ func (g *Gemini) parse(ctx context.Context, status int, r io.Reader) (Audio, err
 }
 
 // sampleRate is the rate a mime type such as "audio/L16;codec=pcm;rate=24000" names, or the default.
-func sampleRate(mime string) int {
+func sampleRate(mime string) uint32 {
 	if m := rateOf.FindStringSubmatch(mime); m != nil {
-		if n, err := strconv.Atoi(m[1]); err == nil {
-			return n
+		if n, err := strconv.ParseUint(m[1], 10, 32); err == nil && n >= minRate && n <= maxRate {
+			return uint32(n)
 		}
 	}
 	return defaultRate

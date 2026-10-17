@@ -14,6 +14,7 @@ import {
   ChoiceSpellSourceSchema,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { fakeContentWatcher } from '../../core/content/content-testing';
+import { nextTurn } from '../../../test-settle';
 import { CharacterEditor } from './character-editor';
 import {
   CharacterEditorSource,
@@ -208,7 +209,7 @@ class FakeSource {
   }
 }
 
-const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+const wait = (ms: number) => vi.advanceTimersByTimeAsync(ms);
 /** Past the pause the editor lets the draft rest before asking the server. */
 const PAUSE = 350;
 
@@ -219,6 +220,8 @@ async function settle(fixture: ComponentFixture<CharacterEditor>) {
 }
 
 async function render() {
+  // The editor's pause before asking the server is crossed by advancing this clock, not by sleeping.
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
   const watcher = fakeContentWatcher();
   TestBed.overrideComponent(CharacterEditor, { set: { providers: [watcher.provider] } });
   TestBed.configureTestingModule({
@@ -232,7 +235,7 @@ async function render() {
   const fake = TestBed.inject(CharacterEditorSource) as unknown as FakeSource;
   const fixture = TestBed.createComponent(CharacterEditor);
   fixture.detectChanges();
-  await wait(0);
+  await nextTurn();
   await settle(fixture);
   const el = fixture.nativeElement as HTMLElement;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -256,6 +259,8 @@ async function render() {
 }
 
 describe('CharacterEditor, the Escolhas step (PM-05)', () => {
+  afterEach(() => vi.useRealTimers());
+
   beforeAll(async () => {
     await render();
     TestBed.resetTestingModule();

@@ -264,10 +264,8 @@ func (spec effectSpec) visibilityOf() (visible bool, audience string) {
 	if spec.visible != nil {
 		visible = *spec.visible
 	}
-	if audience == rules.EffectVisibilityOwner || audience == "owner" {
-		return visible, "owner"
-	}
-	return visible, "all"
+	masterOnly, stored := storedAudience(audience)
+	return visible && !masterOnly, stored
 }
 
 // insertParams is the row of the effect on one target.
@@ -333,9 +331,9 @@ func (s *Service) dropSameSpell(ctx context.Context, c *combatTx, cs []playdb.Co
 // speed, and whether it can act and move; and the exhaustion it carries (a character's is
 // its vitals').
 func (s *Service) refreshCombatants(ctx context.Context, c *combatTx, ids ...string) error {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	rows, err := c.q.ListLastingEffects(ctx, c.enc.ID)
 	if err != nil {
@@ -492,11 +490,7 @@ func (s *Service) dropConcentrationIfIncapacitated(ctx context.Context, c *comba
 	if cb.ConcentrationSpell == nil || !(combat.Creature{Conditions: cb.Conditions}).Incapacitated() {
 		return nil
 	}
-	ev := actionEvent{Round: c.enc.Round, Secret: cb.Hidden, Actor: cb.ID}
-	if err := s.stopConcentrating(ctx, c, cb, &ev); err != nil {
-		return err
-	}
-	return insertEvent(ctx, c, eventConditionsSet, &c.actorUserID, nil, ev)
+	return s.loseConcentration(ctx, c, cb)
 }
 
 // casting is the rows of one casting of an effect: they share a group and a source key.
@@ -571,7 +565,7 @@ func (s *Service) endCasting(ctx context.Context, c *combatTx, cs []playdb.Comba
 	hidden := s.effectHiddenFrom(first, targetsOf(cs, targets))
 	line, err := insertEventID(ctx, c, eventLastingEnded, &c.actorUserID, nil, actionEvent{
 		Round: c.enc.Round, Secret: hidden, Actor: conv.OrZero(first.SourceID), Target: targets[0],
-		Lasting: &lastingEvent{Key: k.key, Change: "ended", Targets: targets, Reason: reason, Effects: ids, OwnerOnly: first.Audience == audienceOwner},
+		Lasting: &lastingEvent{Key: k.key, Change: "ended", Targets: targets, Reason: reason, Effects: ids, OwnerOnly: first.Audience != audienceAll},
 	})
 	if err != nil {
 		return err
@@ -709,7 +703,7 @@ func (s *Service) addedEventID(ctx context.Context, c *combatTx, cs []playdb.Com
 	}
 	return insertEventID(ctx, c, eventLastingAdded, &c.actorUserID, nil, actionEvent{
 		Round: c.enc.Round, Secret: s.effectHiddenFrom(first, targetsOf(cs, targets)), Actor: conv.OrZero(first.SourceID), Target: targets[0],
-		Lasting: &lastingEvent{Key: key, Change: "added", Targets: targets, Caster: conv.OrZero(first.SourceID), Rounds: rounds, Effects: ids, OwnerOnly: first.Audience == audienceOwner},
+		Lasting: &lastingEvent{Key: key, Change: "added", Targets: targets, Caster: conv.OrZero(first.SourceID), Rounds: rounds, Effects: ids, OwnerOnly: first.Audience != audienceAll},
 	})
 }
 
@@ -739,9 +733,9 @@ func (s *Service) endConcentrationEffects(ctx context.Context, c *combatTx, cast
 	if len(held) == 0 {
 		return nil
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	return s.endEffectRows(ctx, c, cs, held, reason)
 }

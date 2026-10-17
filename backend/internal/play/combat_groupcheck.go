@@ -72,12 +72,9 @@ func (s *Service) groupWrite(ctx context.Context, m authz.Membership, key string
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		ev, repeated = groupCheckEvent{}, false
 		q := s.queries.WithTx(tx)
-		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errNoOpenSession()
-		}
+		session, err := lockOpenSessionOrNone(ctx, q, m.CampaignID)
 		if err != nil {
-			return fmt.Errorf("lock the open session: %w", err)
+			return err
 		}
 		replayed, found, err := groupReplay(ctx, q, session.ID, call)
 		if err != nil {
@@ -104,7 +101,7 @@ func groupReplay(ctx context.Context, q *playdb.Queries, sessionID string, call 
 		return groupCheckEvent{}, false, fmt.Errorf("find the event of this idempotency key: %w", err)
 	}
 	if done.Kind != call.kind || done.ActorUserID == nil || *done.ActorUserID != call.m.UserID || hashDiffers(done.IdempotencyHash, call.hash) {
-		return groupCheckEvent{}, false, connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
+		return groupCheckEvent{}, false, errKeyReused()
 	}
 	// A retry answers what the first call made: the check it names is in the event.
 	if err := json.Unmarshal(done.Payload, &ev); err != nil {
@@ -146,6 +143,7 @@ type groupHold struct {
 	raw   *playv1.RollGroupCheckRequest
 	offer *playv1.OutsideInspirationOffer
 	lucky *playv1.LuckyOffer
+	held  *playv1.HeldRollOffer
 }
 
 // asking says the roll was kept for one of the player's answers: nothing is written yet.
@@ -325,7 +323,7 @@ func (s *Service) RollGroupCheck(
 	ctx context.Context,
 	req *connect.Request[playv1.RollGroupCheckRequest],
 ) (*connect.Response[playv1.RollGroupCheckResponse], error) {
-	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RolePlayer)
+	m, err := heldRole(ctx, req.Msg.GetCampaignId(), authz.RolePlayer)
 	if err != nil {
 		return nil, err
 	}
@@ -350,7 +348,7 @@ func (s *Service) RollGroupCheck(
 		return nil, s.dbError(ctx, "roll a group check", err)
 	}
 	if hold.asking() {
-		return connect.NewResponse(&playv1.RollGroupCheckResponse{InspirationOffer: hold.offer, LuckyOffer: hold.lucky}), nil
+		return connect.NewResponse(&playv1.RollGroupCheckResponse{InspirationOffer: hold.offer, LuckyOffer: hold.lucky, HeldRollOffer: hold.held}), nil
 	}
 	if !repeated {
 		s.publishGroupRolled(m)
@@ -506,7 +504,7 @@ func (s *Service) gatedMemberRoll(ctx context.Context, q *playdb.Queries, tx pgx
 		return contestRoll{}, false, false, err
 	}
 	if step.Held != nil {
-		gh.offer, gh.lucky = s.outsideOffers(ctx, tx, step.Held)
+		gh.offer, gh.lucky, gh.held = s.outsideOffers(ctx, tx, step.Held)
 		return contestRoll{}, false, true, nil
 	}
 	if !step.Settled {
