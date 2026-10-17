@@ -76,7 +76,7 @@ func TestRollDamageRefusesASneakAttackThatDoesNotHold(t *testing.T) {
 			}
 			_, err := a.damage(t, a.caio, e, res.GetPendingDamage().GetId(), extrasMarked(sneak, typed...))
 			wantBlockedBy(t, "RollDamage(a Sneak Attack that does not hold)", err, blockedExtraNotAvailable)
-			wantPartsRefusal(t, "RollDamage(a Sneak Attack that does not hold)", err, connect.CodeFailedPrecondition, extraNotAvailableMsg)
+			wantRefusal(t, "RollDamage(a Sneak Attack that does not hold)", err, connect.CodeFailedPrecondition, extraNotAvailableMsg)
 			// Not marking it is fine: the weapon alone rolls.
 			if _, err := a.damage(t, a.caio, e, res.GetPendingDamage().GetId(), extrasMarked(nil, &playv1.TypedPart{PartKey: extraWeaponDamage, Sum: 3})); err != nil {
 				t.Errorf("RollDamage(the weapon alone) error = %v", err)
@@ -96,17 +96,17 @@ func TestRollDamageRefusesTypedSumsThatDoNotFit(t *testing.T) {
 		return err
 	}
 	part := func(key string, sum int32) *playv1.TypedPart { return &playv1.TypedPart{PartKey: key, Sum: sum} }
-	wantPartsRefusal(t, "RollDamage(no sum for Sneak Attack)", roll(part(extraWeaponDamage, 3)),
+	wantRefusal(t, "RollDamage(no sum for Sneak Attack)", roll(part(extraWeaponDamage, 3)),
 		connect.CodeInvalidArgument, "typed_parts needs a sum for sneak-attack")
-	wantPartsRefusal(t, "RollDamage(no sum for the weapon)", roll(part("sneak-attack", 5)),
+	wantRefusal(t, "RollDamage(no sum for the weapon)", roll(part("sneak-attack", 5)),
 		connect.CodeInvalidArgument, "typed_parts needs a sum for weapon")
-	wantPartsRefusal(t, "RollDamage(the weapon above its dice)", roll(part(extraWeaponDamage, 99), part("sneak-attack", 5)),
+	wantRefusal(t, "RollDamage(the weapon above its dice)", roll(part(extraWeaponDamage, 99), part("sneak-attack", 5)),
 		connect.CodeInvalidArgument, "the sum of weapon must be 1 to 8")
-	wantPartsRefusal(t, "RollDamage(Sneak Attack below its dice)", roll(part(extraWeaponDamage, 3), part("sneak-attack", 1)),
+	wantRefusal(t, "RollDamage(Sneak Attack below its dice)", roll(part(extraWeaponDamage, 3), part("sneak-attack", 1)),
 		connect.CodeInvalidArgument, "the sum of sneak-attack must be 2 to 12")
-	wantPartsRefusal(t, "RollDamage(a part twice)", roll(part(extraWeaponDamage, 3), part(extraWeaponDamage, 4)),
+	wantRefusal(t, "RollDamage(a part twice)", roll(part(extraWeaponDamage, 3), part(extraWeaponDamage, 4)),
 		connect.CodeInvalidArgument, "typed_parts must name each part once")
-	wantPartsRefusal(t, "RollDamage(a part with no key)", roll(part("", 3)),
+	wantRefusal(t, "RollDamage(a part with no key)", roll(part("", 3)),
 		connect.CodeInvalidArgument, "typed_parts must name each part once")
 	if err := roll(part(extraWeaponDamage, 3), part("sneak-attack", 5)); err != nil {
 		t.Errorf("RollDamage(the sums that fit) error = %v", err)
@@ -134,7 +134,7 @@ func TestRollDamageRefusesAColossusSlayerAlreadyUsed(t *testing.T) {
 	_, err := a.damage(t, a.caio, e, res.GetPendingDamage().GetId(),
 		extrasMarked([]*playv1.SelectedExtra{{Key: "colossus-slayer"}}, &playv1.TypedPart{PartKey: extraWeaponDamage, Sum: 1}, &playv1.TypedPart{PartKey: "colossus-slayer", Sum: 2}))
 	wantBlockedBy(t, "RollDamage(a Colossus Slayer already used)", err, blockedExtraNotAvailable)
-	wantPartsRefusal(t, "RollDamage(a Colossus Slayer already used)", err, connect.CodeFailedPrecondition, extraNotAvailableMsg)
+	wantRefusal(t, "RollDamage(a Colossus Slayer already used)", err, connect.CodeFailedPrecondition, extraNotAvailableMsg)
 }
 
 // TestSelectionCheckerHoldsTheExtrasThatDoNotNeedTheDatabase: the once-per-turn marks, the
@@ -178,7 +178,7 @@ func TestSelectionCheckerHoldsTheExtrasThatDoNotNeedTheDatabase(t *testing.T) {
 				return
 			}
 			wantBlockedBy(t, "the check", err, blockedExtraNotAvailable)
-			wantPartsRefusal(t, "the check", err, connect.CodeFailedPrecondition, extraNotAvailableMsg)
+			wantRefusal(t, "the check", err, connect.CodeFailedPrecondition, extraNotAvailableMsg)
 		})
 	}
 }
@@ -196,11 +196,11 @@ func TestRollDamageRefusesADivineSmiteWithoutASlot(t *testing.T) {
 		return err
 	}
 	const names = "a Divine Smite names the slot it spends"
-	wantPartsRefusal(t, "RollDamage(a smite with no slot)", roll(&playv1.SelectedExtra{Key: "divine-smite"}), connect.CodeInvalidArgument, names)
-	wantPartsRefusal(t, "RollDamage(a smite with slot 10)", roll(&playv1.SelectedExtra{Key: "divine-smite", SlotLevel: 10}), connect.CodeInvalidArgument, names)
+	wantRefusal(t, "RollDamage(a smite with no slot)", roll(&playv1.SelectedExtra{Key: "divine-smite"}), connect.CodeInvalidArgument, names)
+	wantRefusal(t, "RollDamage(a smite with slot 10)", roll(&playv1.SelectedExtra{Key: "divine-smite", SlotLevel: 10}), connect.CodeInvalidArgument, names)
 	err := roll(&playv1.SelectedExtra{Key: "divine-smite", SlotLevel: 3})
 	b := wantBlockedBy(t, "RollDamage(a smite with a slot the paladin has not)", err, blockedNoSlot)
-	wantPartsRefusal(t, "RollDamage(a smite with a slot the paladin has not)", err, connect.CodeFailedPrecondition, "there is no free spell slot of that level")
+	wantRefusal(t, "RollDamage(a smite with a slot the paladin has not)", err, connect.CodeFailedPrecondition, "there is no free spell slot of that level")
 	if b.GetMinLevel() != 3 {
 		t.Errorf("the refusal names level %d, want the 3 that was asked", b.GetMinLevel())
 	}
@@ -220,7 +220,7 @@ func TestRollDamageRefusesTwoManeuversAndOneWithNoUseLeft(t *testing.T) {
 	pending := m.hit(t, e)
 	_, err := m.damage(t, m.ana, e, pending.GetId(), marking(m.heron, m.bull))
 	wantBlockedBy(t, "RollDamage(two maneuvers)", err, blockedExtraNotAvailable)
-	wantPartsRefusal(t, "RollDamage(two maneuvers)", err, connect.CodeFailedPrecondition, "only one maneuver for each attack")
+	wantRefusal(t, "RollDamage(two maneuvers)", err, connect.CodeFailedPrecondition, "only one maneuver for each attack")
 
 	one := newManeuverTable(t, "1")
 	e = one.passTo(t, one.castersFight(t, 1), "Pensantus")
@@ -234,7 +234,7 @@ func TestRollDamageRefusesTwoManeuversAndOneWithNoUseLeft(t *testing.T) {
 	}
 	_, err = one.damage(t, one.ana, e, pending.GetId(), marking(one.heron))
 	wantBlockedBy(t, "RollDamage(a maneuver with no die left)", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_USES)
-	wantPartsRefusal(t, "RollDamage(a maneuver with no die left)", err, connect.CodeFailedPrecondition, "no uses left")
+	wantRefusal(t, "RollDamage(a maneuver with no die left)", err, connect.CodeFailedPrecondition, "no uses left")
 }
 
 // partsFight is a theatre combat with a creature of the SRD beside Toren (the party's

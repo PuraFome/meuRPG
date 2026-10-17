@@ -166,16 +166,16 @@ func TestMoveCombatantFrozen_OnFoot(t *testing.T) {
 			name: "ending in rubble", setup: standAt(map[string][2]int32{"Toren": {3, 9}}), col: 5, row: 9,
 			want: moveWant{col: 5, row: 9, usedDft: 200, lastDft: 100, event: `{"col": 5, "combatant_id": "<Toren>", "cost_dft": 200, "cost_ft": 20, "distance_dft": 100, "distance_ft": 10, "from": {"col": 3, "cover": "none", "placed": true, "row": 9}, "on_turn": true, "round": 1, "row": 9, "spent_dft": 200}`},
 		},
-		{name: "one square too far", col: 13, row: 7, refused: ptr(blockedBy("TOO_FAR", "that is beyond your movement", `"missingFt":5`, `"missingDft":50`))},
-		{name: "into a wall", col: 6, row: 5, refused: ptr(blockedBy("MOVE_BLOCKED", "a wall, a column or a squeeze is in the way"))},
-		{name: "onto a creature", col: 5, row: 8, refused: ptr(blockedBy("SQUARE_OCCUPIED", "another combatant is on that square"))},
+		{name: "one square too far", col: 13, row: 7, refused: new(blockedBy("TOO_FAR", "that is beyond your movement", `"missingFt":5`, `"missingDft":50`))},
+		{name: "into a wall", col: 6, row: 5, refused: new(blockedBy("MOVE_BLOCKED", "a wall, a column or a squeeze is in the way"))},
+		{name: "onto a creature", col: 5, row: 8, refused: new(blockedBy("SQUARE_OCCUPIED", "another combatant is on that square"))},
 		{
 			name: "through an enemy", setup: standAt(map[string][2]int32{"Goblin 1": {8, 7}}), col: 10, row: 7,
-			refused: ptr(blockedBy("ENEMY_IN_THE_WAY", "an enemy is in the way")),
+			refused: new(blockedBy("ENEMY_IN_THE_WAY", "an enemy is in the way")),
 		},
-		{name: "off the grid to the east", col: 24, row: 7, refused: ptr(refuse(connect.CodeInvalidArgument, "col and row must be a square of the grid"))},
-		{name: "off the grid to the south", col: 6, row: 16, refused: ptr(refuse(connect.CodeInvalidArgument, "col and row must be a square of the grid"))},
-		{name: "off the grid to the west", col: -1, row: 7, refused: ptr(refuse(connect.CodeInvalidArgument, "col and row must be a square of the grid"))},
+		{name: "off the grid to the east", col: 24, row: 7, refused: new(refuse(connect.CodeInvalidArgument, "col and row must be a square of the grid"))},
+		{name: "off the grid to the south", col: 6, row: 16, refused: new(refuse(connect.CodeInvalidArgument, "col and row must be a square of the grid"))},
+		{name: "off the grid to the west", col: -1, row: 7, refused: new(refuse(connect.CodeInvalidArgument, "col and row must be a square of the grid"))},
 	})
 }
 
@@ -214,7 +214,7 @@ func TestMoveCombatantFrozen_Jumps(t *testing.T) {
 		if running {
 			fields = append(fields, `"jumpRunningStart":true`)
 		}
-		return ptr(blockedBy("TOO_FAR", "that is beyond your movement", fields...))
+		return new(blockedBy("TOO_FAR", "that is beyond your movement", fields...))
 	}
 	runCaveMoves(t, []caveMove{
 		{name: "a long jump standing, too far", setup: onRow9, col: 5, row: 9, edit: []func(*playv1.MoveCombatantRequest){long}, refused: tooFar(20, 80, false)},
@@ -226,18 +226,18 @@ func TestMoveCombatantFrozen_Jumps(t *testing.T) {
 			name: "a long jump standing, one square", setup: onRow9, col: 2, row: 9, edit: []func(*playv1.MoveCombatantRequest){long},
 			want: moveWant{col: 2, row: 9, usedDft: 50, lastDft: 0, event: `{"col": 2, "combatant_id": "<Toren>", "cost_dft": 50, "cost_ft": 5, "distance_dft": 50, "distance_ft": 5, "from": {"col": 3, "cover": "none", "placed": true, "row": 9}, "jump": "long", "on_turn": true, "round": 1, "row": 9}`},
 		},
-		{name: "a long jump to the same square", col: 6, row: 7, edit: []func(*playv1.MoveCombatantRequest){long}, refused: ptr(refuse(connect.CodeInvalidArgument, "a jump needs another square"))},
+		{name: "a long jump to the same square", col: 6, row: 7, edit: []func(*playv1.MoveCombatantRequest){long}, refused: new(refuse(connect.CodeInvalidArgument, "a jump needs another square"))},
 		{
 			name: "a long jump over a wall", setup: then(standAt(map[string][2]int32{"Toren": {9, 7}}), walks(11, 7), walledAt([2]int32{12, 7})), col: 13, row: 7,
-			edit: []func(*playv1.MoveCombatantRequest){long}, refused: ptr(blockedBy("MOVE_BLOCKED", "a wall, a column or a squeeze is in the way")),
+			edit: []func(*playv1.MoveCombatantRequest){long}, refused: new(blockedBy("MOVE_BLOCKED", "a wall, a column or a squeeze is in the way")),
 		},
 		{
 			name: "a long jump onto a creature", setup: then(standAt(map[string][2]int32{"Toren": {9, 7}, "Goblin 2": {13, 7}}), walks(11, 7)), col: 13, row: 7,
-			edit: []func(*playv1.MoveCombatantRequest){long}, refused: ptr(blockedBy("SQUARE_OCCUPIED", "another combatant is on that square")),
+			edit: []func(*playv1.MoveCombatantRequest){long}, refused: new(blockedBy("SQUARE_OCCUPIED", "another combatant is on that square")),
 		},
 		{
 			name: "a long jump the movement left does not pay", setup: walks(11, 7), col: 13, row: 7,
-			edit: []func(*playv1.MoveCombatantRequest){long}, refused: ptr(blockedBy("TOO_FAR", "that is beyond your movement", `"missingFt":5`, `"missingDft":50`)),
+			edit: []func(*playv1.MoveCombatantRequest){long}, refused: new(blockedBy("TOO_FAR", "that is beyond your movement", `"missingFt":5`, `"missingDft":50`)),
 		},
 		{
 			name: "a high jump standing", col: 6, row: 7, edit: []func(*playv1.MoveCombatantRequest){high(30)},
@@ -247,17 +247,17 @@ func TestMoveCombatantFrozen_Jumps(t *testing.T) {
 		{name: "a high jump with a running start, too high", setup: walks(8, 7), col: 8, row: 7, edit: []func(*playv1.MoveCombatantRequest){high(61)}, refused: tooFar(1, 60, true)},
 		{
 			name: "a high jump the movement left does not pay", setup: walks(11, 7), col: 11, row: 7, edit: []func(*playv1.MoveCombatantRequest){high(60)},
-			refused: ptr(blockedBy("TOO_FAR", "that is beyond your movement", `"missingFt":1`, `"missingDft":10`)),
+			refused: new(blockedBy("TOO_FAR", "that is beyond your movement", `"missingFt":1`, `"missingDft":10`)),
 		},
-		{name: "a high jump of no height", col: 6, row: 7, edit: []func(*playv1.MoveCombatantRequest){high(0)}, refused: ptr(refuse(connect.CodeInvalidArgument, "jump_height_dft must be 1 to 1000"))},
-		{name: "a high jump of too much", col: 6, row: 7, edit: []func(*playv1.MoveCombatantRequest){high(1001)}, refused: ptr(refuse(connect.CodeInvalidArgument, "jump_height_dft must be 1 to 1000"))},
+		{name: "a high jump of no height", col: 6, row: 7, edit: []func(*playv1.MoveCombatantRequest){high(0)}, refused: new(refuse(connect.CodeInvalidArgument, "jump_height_dft must be 1 to 1000"))},
+		{name: "a high jump of too much", col: 6, row: 7, edit: []func(*playv1.MoveCombatantRequest){high(1001)}, refused: new(refuse(connect.CodeInvalidArgument, "jump_height_dft must be 1 to 1000"))},
 		{
 			name: "a kind of jump nobody knows", col: 6, row: 7, edit: []func(*playv1.MoveCombatantRequest){jumpTo(99)},
-			refused: ptr(refuse(connect.CodeInvalidArgument, "jump must be a kind of jump")),
+			refused: new(refuse(connect.CodeInvalidArgument, "jump must be a kind of jump")),
 		},
 		{
 			name: "a jump from off the map", setup: unplaced("Goblin 1"), as: "master", label: "Goblin 1", col: 17, row: 5, edit: []func(*playv1.MoveCombatantRequest){long},
-			refused: ptr(blockedBy("NOT_PLACED", "a jump starts from a square of the map")),
+			refused: new(blockedBy("NOT_PLACED", "a jump starts from a square of the map")),
 		},
 	})
 }
@@ -275,8 +275,8 @@ func TestMoveCombatantFrozen_TheMaster(t *testing.T) {
 			name: "a player on turn, forced, far away", as: "master", col: 14, row: 7, edit: []func(*playv1.MoveCombatantRequest){asForced},
 			want: moveWant{col: 14, row: 7, usedDft: 0, lastDft: 0, event: `{"col": 14, "combatant_id": "<Toren>", "distance_dft": 400, "distance_ft": 40, "from": {"col": 6, "cover": "none", "placed": true, "row": 7}, "on_turn": true, "round": 1, "row": 7}`},
 		},
-		{name: "into a wall", as: "master", label: "Goblin 1", col: 0, row: 0, refused: ptr(blockedBy("WALL_ON_SQUARE", "that square is a wall"))},
-		{name: "into a wall, forced", as: "master", label: "Goblin 1", col: 0, row: 0, edit: []func(*playv1.MoveCombatantRequest){asForced}, refused: ptr(blockedBy("WALL_ON_SQUARE", "that square is a wall"))},
+		{name: "into a wall", as: "master", label: "Goblin 1", col: 0, row: 0, refused: new(blockedBy("WALL_ON_SQUARE", "that square is a wall"))},
+		{name: "into a wall, forced", as: "master", label: "Goblin 1", col: 0, row: 0, edit: []func(*playv1.MoveCombatantRequest){asForced}, refused: new(blockedBy("WALL_ON_SQUARE", "that square is a wall"))},
 		{
 			name: "a long jump beyond the limits", as: "master", col: 16, row: 7, edit: []func(*playv1.MoveCombatantRequest){long},
 			want: moveWant{col: 16, row: 7, usedDft: 0, lastDft: 0, event: `{"col": 16, "combatant_id": "<Toren>", "distance_dft": 500, "distance_ft": 50, "from": {"col": 6, "cover": "none", "placed": true, "row": 7}, "jump": "long", "on_turn": true, "round": 1, "row": 7}`},
@@ -293,8 +293,8 @@ func TestMoveCombatantFrozen_TheMaster(t *testing.T) {
 			name: "a placement", setup: unplaced("Goblin 1"), as: "master", label: "Goblin 1", col: 0, row: 0, edit: []func(*playv1.MoveCombatantRequest){asPlaced},
 			want: moveWant{col: 12, row: 8, usedDft: 0, lastDft: 0, event: `{"col": 12, "combatant_id": "<Goblin 1>", "from": {"cover": "none"}, "round": 1, "row": 8}`},
 		},
-		{name: "a placement of a combatant already placed", as: "master", label: "Goblin 1", edit: []func(*playv1.MoveCombatantRequest){asPlaced}, refused: ptr(refuse(connect.CodeInvalidArgument, "the combatant is already on the map"))},
-		{name: "a placement that is a jump", as: "master", label: "Goblin 1", edit: []func(*playv1.MoveCombatantRequest){asPlaced, long}, refused: ptr(refuse(connect.CodeInvalidArgument, "a placement is not a jump"))},
+		{name: "a placement of a combatant already placed", as: "master", label: "Goblin 1", edit: []func(*playv1.MoveCombatantRequest){asPlaced}, refused: new(refuse(connect.CodeInvalidArgument, "the combatant is already on the map"))},
+		{name: "a placement that is a jump", as: "master", label: "Goblin 1", edit: []func(*playv1.MoveCombatantRequest){asPlaced, long}, refused: new(refuse(connect.CodeInvalidArgument, "a placement is not a jump"))},
 		{
 			name: "a placement with no free square", setup: then(unplaced("Goblin 1"), func(t *testing.T, c *cave) {
 				t.Helper()
@@ -304,7 +304,7 @@ func TestMoveCombatantFrozen_TheMaster(t *testing.T) {
 					}
 				}
 			}), as: "master", label: "Goblin 1", edit: []func(*playv1.MoveCombatantRequest){asPlaced},
-			refused: ptr(blockedBy("NO_FREE_SQUARE", "there is no free square on the map")),
+			refused: new(blockedBy("NO_FREE_SQUARE", "there is no free square on the map")),
 		},
 	})
 }
@@ -314,15 +314,15 @@ func TestMoveCombatantFrozen_TheGates(t *testing.T) {
 	t.Parallel()
 	notYours := refuse(connect.CodePermissionDenied, "only the combatant's player or the master may do this")
 	runCaveMoves(t, []caveMove{
-		{name: "a forced move", col: 7, row: 7, edit: []func(*playv1.MoveCombatantRequest){asForced}, refused: ptr(refuse(connect.CodePermissionDenied, "only the master may force a move"))},
-		{name: "a placement", col: 7, row: 7, edit: []func(*playv1.MoveCombatantRequest){asPlaced}, refused: ptr(refuse(connect.CodePermissionDenied, "only the master may place a combatant"))},
+		{name: "a forced move", col: 7, row: 7, edit: []func(*playv1.MoveCombatantRequest){asForced}, refused: new(refuse(connect.CodePermissionDenied, "only the master may force a move"))},
+		{name: "a placement", col: 7, row: 7, edit: []func(*playv1.MoveCombatantRequest){asPlaced}, refused: new(refuse(connect.CodePermissionDenied, "only the master may place a combatant"))},
 		{name: "somebody else's character", as: "ana", col: 7, row: 7, refused: &notYours},
-		{name: "off the turn", as: "ana", label: "Pensantus", col: 5, row: 9, refused: ptr(blockedBy("NOT_YOUR_TURN", "it is not your turn"))},
-		{name: "an NPC the master hid", setup: hiding("Goblin 1"), label: "Goblin 1", col: 17, row: 5, refused: ptr(refuse(connect.CodeNotFound, "combatant not found"))},
+		{name: "off the turn", as: "ana", label: "Pensantus", col: 5, row: 9, refused: new(blockedBy("NOT_YOUR_TURN", "it is not your turn"))},
+		{name: "an NPC the master hid", setup: hiding("Goblin 1"), label: "Goblin 1", col: 17, row: 5, refused: new(refuse(connect.CodeNotFound, "combatant not found"))},
 		{name: "an NPC of the master", label: "Goblin 1", col: 17, row: 5, refused: &notYours},
 		{
 			name: "off the map", setup: unplaced("Toren"), col: 7, row: 7,
-			refused: ptr(blockedBy("NOT_PLACED", "you are not on the map yet; ask the master")),
+			refused: new(blockedBy("NOT_PLACED", "you are not on the map yet; ask the master")),
 		},
 	})
 }
@@ -393,7 +393,7 @@ func TestMoveCombatantFrozen_Conditions(t *testing.T) {
 		},
 		{
 			name: "grappled has no speed", setup: conditioned("Toren", "condition:grappled"), col: 7, row: 7,
-			refused: ptr(blockedBy("TOO_FAR", "that is beyond your movement", `"missingFt":5`, `"missingDft":50`)),
+			refused: new(blockedBy("TOO_FAR", "that is beyond your movement", `"missingFt":5`, `"missingDft":50`)),
 		},
 	})
 }

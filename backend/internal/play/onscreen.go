@@ -12,6 +12,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -79,7 +80,7 @@ func (s *Service) SetCurrentMap(
 		return nil, s.dbError(ctx, "set the current map", err)
 	}
 
-	current := deref(mapID)
+	current := conv.OrZero(mapID)
 	if mapID != nil {
 		s.maps.MapShown(ctx, m.CampaignID, *mapID)
 	}
@@ -201,7 +202,7 @@ func (s *Service) swapShownImageIn(ctx context.Context, tx pgx.Tx, campaignID st
 		}
 		showID, out.copyCreated = &id, created
 	}
-	out.showing = deref(showID)
+	out.showing = conv.OrZero(showID)
 	out.changed = !equal(session.ShownImageID, showID)
 	if session.ShownImageKeep && session.ShownImageID != nil && out.changed {
 		if err := s.maps.LeaveImage(ctx, tx, campaignID, *session.ShownImageID, s.now()); err != nil {
@@ -264,7 +265,7 @@ func (s *Service) publishLeftImagesChanged(campaignID string) {
 
 // equal reports whether two optional IDs are the same.
 func equal(a, b *string) bool {
-	return deref(a) == deref(b)
+	return conv.OrZero(a) == conv.OrZero(b)
 }
 
 // OnScreen returns what the campaign's open game session shows: the IDs of
@@ -280,7 +281,7 @@ func (s *Service) OnScreen(ctx context.Context, campaignID string) (currentMapID
 	if err != nil {
 		return "", "", fmt.Errorf("read what the session shows: %w", err)
 	}
-	return deref(row.CurrentMapID), deref(row.ShownImageID), nil
+	return conv.OrZero(row.CurrentMapID), conv.OrZero(row.ShownImageID), nil
 }
 
 // ImageShown says whether the image is the one the campaign's open session
@@ -294,7 +295,7 @@ func (s *Service) ImageShown(ctx context.Context, tx pgx.Tx, campaignID, imageID
 	if err != nil {
 		return false, fmt.Errorf("read what the session shows: %w", err)
 	}
-	return deref(row.ShownImageID) == imageID, nil
+	return conv.OrZero(row.ShownImageID) == imageID, nil
 }
 
 // Publish sends an event on the campaign's live streams: to the master's
@@ -341,12 +342,8 @@ func optionalID(raw, notFound string) (*string, error) {
 	return &text, nil
 }
 
-func deref(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
-}
+// deref is conv.OrZero for the files of the held rolls, which still call it.
+func deref(s *string) string { return conv.OrZero(s) }
 
 // isForeignKeyViolation reports whether err is a foreign key violation
 // (23503).

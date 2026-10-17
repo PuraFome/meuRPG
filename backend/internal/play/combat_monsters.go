@@ -111,7 +111,7 @@ func (s *Service) AddMonsters(
 // readAddMonstersRequest reads the request in the order the answers are given: who may call,
 // the key, the encounter, the count, the hit points mode, the creature and the name.
 func (s *Service) readAddMonstersRequest(ctx context.Context, req *playv1.AddMonstersRequest) (addMonstersCall, error) {
-	m, key, encID, err := masterCaller(ctx, req.GetCampaignId(), req.GetIdempotencyKey(), req.GetEncounterId())
+	m, key, encID, err := masterCall(ctx, req.GetCampaignId(), req.GetIdempotencyKey(), req.GetEncounterId())
 	if err != nil {
 		return addMonstersCall{}, err
 	}

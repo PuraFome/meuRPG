@@ -117,14 +117,14 @@ func TestCoreSetupRefusals(t *testing.T) {
 	}
 
 	// SubmitInitiative.
-	wantCoreRefusal(t, "another player's combatant", x.submit(t, x.ana, "Toren", inApp), forbidden, "only the combatant's player or the master may do this")
+	wantRefusal(t, "another player's combatant", x.submit(t, x.ana, "Toren", inApp), forbidden, "only the combatant's player or the master may do this")
 	err := x.submit(t, x.caio, "Toren", inApp)
 	wantBlockedBy(t, "an initiative set already", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_INITIATIVE_ALREADY_SET)
-	wantCoreRefusal(t, "an initiative set already", err, connect.CodeFailedPrecondition, "your initiative is already set")
-	wantCoreRefusal(t, "a face of 0", x.submit(t, x.bia, "Brisa", func(r *playv1.SubmitInitiativeRequest) {
+	wantRefusal(t, "an initiative set already", err, connect.CodeFailedPrecondition, "your initiative is already set")
+	wantRefusal(t, "a face of 0", x.submit(t, x.bia, "Brisa", func(r *playv1.SubmitInitiativeRequest) {
 		r.Roll = &playv1.SubmitInitiativeRequest_D20Face{D20Face: 0}
 	}), invalid, "d20_face must be 1 to 20")
-	wantCoreRefusal(t, "a face of 21", x.submit(t, x.bia, "Brisa", func(r *playv1.SubmitInitiativeRequest) {
+	wantRefusal(t, "a face of 21", x.submit(t, x.bia, "Brisa", func(r *playv1.SubmitInitiativeRequest) {
 		r.Roll = &playv1.SubmitInitiativeRequest_D20Face{D20Face: 21}
 	}), invalid, "d20_face must be 1 to 20")
 	// The master may roll again for a combatant that has an initiative.
@@ -138,42 +138,42 @@ func TestCoreSetupRefusals(t *testing.T) {
 	// BeginCombat: Brisa has no initiative.
 	err = x.begin(t)
 	b := wantBlockedBy(t, "a combat with someone's initiative missing", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_INITIATIVE_MISSING)
-	wantCoreRefusal(t, "a combat with someone's initiative missing", err, connect.CodeFailedPrecondition, "missing the initiative of: [Brisa]")
+	wantRefusal(t, "a combat with someone's initiative missing", err, connect.CodeFailedPrecondition, "missing the initiative of: [Brisa]")
 	if ids := b.GetCombatantIds(); len(ids) != 1 || ids[0] != x.label(t, "Brisa") {
 		t.Errorf("the missing combatants = %v, want Brisa's", ids)
 	}
 
 	// SetInitiativeOrder.
-	wantCoreRefusal(t, "combatants that are not tied", x.order(t, "Goblin 1", "Toren"), invalid, "combatant_ids must be tied: the same initiative total and bonus")
+	wantRefusal(t, "combatants that are not tied", x.order(t, "Goblin 1", "Toren"), invalid, "combatant_ids must be tied: the same initiative total and bonus")
 	_, err = x.master.combat.SetInitiativeOrder(t.Context(), connect.NewRequest(&playv1.SetInitiativeOrderRequest{
 		CampaignId: x.campaignID, EncounterId: x.e.GetId(), IdempotencyKey: newKey(), CombatantIds: []string{x.label(t, "Goblin 1"), newKey()},
 	}))
-	wantCoreRefusal(t, "a combatant that is not in the combat", err, notFound, "combatant not found")
+	wantRefusal(t, "a combatant that is not in the combat", err, notFound, "combatant not found")
 
 	// SetCombatantHidden.
-	wantCoreRefusal(t, "a player's combatant", x.hide(t, "Toren", true), invalid, "a player's combatant is never hidden")
+	wantRefusal(t, "a player's combatant", x.hide(t, "Toren", true), invalid, "a player's combatant is never hidden")
 
 	// AddCombatants.
-	wantCoreRefusal(t, "a player's character that is in already", x.addCombatants(t, &playv1.Participant{CharacterId: x.toren.GetId()}),
+	wantRefusal(t, "a player's character that is in already", x.addCombatants(t, &playv1.Participant{CharacterId: x.toren.GetId()}),
 		invalid, "a player's character joins only before the combat begins, and once")
 	var many []*playv1.Participant
 	for _, name := range []string{"Arqueiro", "Lanceiro", "Mago", "Chefe"} {
 		many = append(many, &playv1.Participant{CharacterId: x.master.npc(t, x.campaignID, name, 5, 10).GetId(), Count: maxNPCCopies})
 	}
-	wantCoreRefusal(t, "more combatants than a combat holds", x.addCombatants(t, many...), invalid, "a combat has at most 40 combatants")
+	wantRefusal(t, "more combatants than a combat holds", x.addCombatants(t, many...), invalid, "a combat has at most 40 combatants")
 
 	// StandUp and RemoveCombatant in SETUP: a player may leave a combat that has not begun.
 	_, err = x.caio.combat.StandUp(t.Context(), connect.NewRequest(&playv1.StandUpRequest{
 		CampaignId: x.campaignID, EncounterId: x.e.GetId(), CombatantId: x.label(t, "Toren"), IdempotencyKey: newKey(),
 	}))
 	wantBlockedBy(t, "StandUp in SETUP", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE)
-	wantCoreRefusal(t, "StandUp in SETUP", err, connect.CodeFailedPrecondition, "the combat is not running")
+	wantRefusal(t, "StandUp in SETUP", err, connect.CodeFailedPrecondition, "the combat is not running")
 
 	// SetCombatantConditions.
-	wantCoreRefusal(t, "a player marks conditions", x.conditions(t, x.caio, "Toren", func(r *playv1.SetCombatantConditionsRequest) {
+	wantRefusal(t, "a player marks conditions", x.conditions(t, x.caio, "Toren", func(r *playv1.SetCombatantConditionsRequest) {
 		r.Conditions = &playv1.ConditionList{Keys: []string{condProne}}
 	}), forbidden, "only the master marks conditions")
-	wantCoreRefusal(t, "another player's combatant", x.conditions(t, x.ana, "Toren", func(r *playv1.SetCombatantConditionsRequest) {
+	wantRefusal(t, "another player's combatant", x.conditions(t, x.ana, "Toren", func(r *playv1.SetCombatantConditionsRequest) {
 		r.EndConcentration = true
 	}), forbidden, "only the combatant's player or the master may do this")
 	if err := x.conditions(t, x.master, "Toren", func(r *playv1.SetCombatantConditionsRequest) { r.Conditions = &playv1.ConditionList{} }); err != nil {
@@ -198,7 +198,7 @@ func TestCoreSubmitInitiativeFollowsTheTableDice(t *testing.T) {
 		r.Roll = &playv1.SubmitInitiativeRequest_RollInApp{RollInApp: true}
 	})
 	wantBlockedBy(t, "an app roll when the table rolls real dice", err, blockedWrongDice)
-	wantCoreRefusal(t, "an app roll when the table rolls real dice", err, connect.CodeFailedPrecondition, "this is not how the campaign has you roll your dice")
+	wantRefusal(t, "an app roll when the table rolls real dice", err, connect.CodeFailedPrecondition, "this is not how the campaign has you roll your dice")
 	x.forceDice(t, campaignsv1.DiceMode_DICE_MODE_APP)
 	err = x.submit(t, x.bia, "Brisa", func(r *playv1.SubmitInitiativeRequest) {
 		r.Roll = &playv1.SubmitInitiativeRequest_D20Face{D20Face: 7}
@@ -229,17 +229,17 @@ func TestCoreRunningCombatRefusals(t *testing.T) {
 
 	err := x.begin(t)
 	wantBlockedBy(t, "a second BeginCombat", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_IN_SETUP)
-	wantCoreRefusal(t, "a second BeginCombat", err, connect.CodeFailedPrecondition, "the combat already began or ended")
+	wantRefusal(t, "a second BeginCombat", err, connect.CodeFailedPrecondition, "the combat already began or ended")
 	err = x.submit(t, x.master, "Toren", func(r *playv1.SubmitInitiativeRequest) {
 		r.Roll = &playv1.SubmitInitiativeRequest_D20Face{D20Face: 4}
 	})
 	wantBlockedBy(t, "an initiative after the begin", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_IN_SETUP)
-	wantCoreRefusal(t, "an initiative after the begin", err, connect.CodeFailedPrecondition, "initiative is rolled before the combat begins")
-	wantCoreRefusal(t, "a player's character that joins late", x.addCombatants(t, &playv1.Participant{CharacterId: x.toren.GetId()}),
+	wantRefusal(t, "an initiative after the begin", err, connect.CodeFailedPrecondition, "initiative is rolled before the combat begins")
+	wantRefusal(t, "a player's character that joins late", x.addCombatants(t, &playv1.Participant{CharacterId: x.toren.GetId()}),
 		connect.CodeInvalidArgument, "a player's character joins only before the combat begins, and once")
 	err = x.remove(t, x.master, "Toren")
 	wantBlockedBy(t, "a player removed from a running combat", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_PLAYER_IN_COMBAT)
-	wantCoreRefusal(t, "a player removed from a running combat", err, connect.CodeFailedPrecondition, "a player's combatant cannot leave a combat that is running")
+	wantRefusal(t, "a player removed from a running combat", err, connect.CodeFailedPrecondition, "a player's combatant cannot leave a combat that is running")
 	if got := x.eventCount(t); got != before {
 		t.Errorf("the refused calls left %d events, want none", got-before)
 	}
@@ -316,7 +316,7 @@ func TestCoreEndedCombatRefusals(t *testing.T) {
 	} {
 		err := call()
 		wantBlockedBy(t, name+" on an ended combat", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ENDED)
-		wantCoreRefusal(t, name+" on an ended combat", err, connect.CodeFailedPrecondition, "the combat has ended")
+		wantRefusal(t, name+" on an ended combat", err, connect.CodeFailedPrecondition, "the combat has ended")
 	}
 	err := x.begin(t)
 	wantBlockedBy(t, "BeginCombat on an ended combat", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_IN_SETUP)
@@ -344,5 +344,5 @@ func TestCoreBeginCombatNeedsSomeone(t *testing.T) {
 	_, err := a.master.combat.BeginCombat(t.Context(), connect.NewRequest(&playv1.BeginCombatRequest{
 		CampaignId: a.campaignID, EncounterId: e.GetId(), IdempotencyKey: newKey(),
 	}))
-	wantCoreRefusal(t, "a combat with nobody", err, connect.CodeInvalidArgument, "the combat has no combatants")
+	wantRefusal(t, "a combat with nobody", err, connect.CodeInvalidArgument, "the combat has no combatants")
 }

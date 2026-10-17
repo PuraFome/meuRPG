@@ -15,6 +15,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -63,7 +64,7 @@ func parseCharacterIDs(raw []string) ([]string, error) {
 	}
 	var ids []string
 	for _, r := range raw {
-		id, ok := parseID(r)
+		id, ok := uid.Canonical(r)
 		if !ok {
 			return nil, errInvalidEffect("character_ids must be UUIDs")
 		}

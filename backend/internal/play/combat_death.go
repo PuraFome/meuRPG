@@ -15,7 +15,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
-// The fallen (RN-03, MR-014, Etapa 6, slice 6.4b). A player's character at 0 hit
+// The fallen (RN-03, MR-014). A player's character at 0 hit
 // points is "Caído": its turn starts with a death save due, and the turn waits
 // for it. 10 or more is a success, less a failure, a natural 1 two failures, a
 // natural 20 brings it back with 1 hit point. Three successes make it stable;
@@ -104,7 +104,7 @@ func (s *Service) RollDeathSave(
 // readDeathSaveRequest reads the request in the order the answers are given: who may call,
 // the key, the encounter, the combatant, then the roll.
 func readDeathSaveRequest(ctx context.Context, req *playv1.RollDeathSaveRequest) (deathSaveCall, error) {
-	m, key, encID, err := contestCaller(ctx, req.GetCampaignId(), req.GetIdempotencyKey(), req.GetEncounterId())
+	m, key, encID, err := memberCall(ctx, req.GetCampaignId(), req.GetIdempotencyKey(), req.GetEncounterId())
 	if err != nil {
 		return deathSaveCall{}, err
 	}
@@ -237,7 +237,7 @@ func (s *Service) ConfirmDeath(
 	ctx context.Context,
 	req *connect.Request[playv1.ConfirmDeathRequest],
 ) (*connect.Response[playv1.ConfirmDeathResponse], error) {
-	m, key, encID, err := masterCaller(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
+	m, key, encID, err := masterCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
 	if err != nil {
 		return nil, err
 	}

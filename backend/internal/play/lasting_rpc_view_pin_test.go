@@ -73,7 +73,7 @@ func TestLastingRPCViewsOfEveryViewer(t *testing.T) {
 	a := newCasters(t)
 	a.rpcAllEffects(t)
 	for name, u := range map[string]*user{"master": a.master, "owner": a.caio, "other": a.ana, "bystander": a.bia} {
-		wantRPCGolden(t, "view_"+name, a.rpcView(t, u))
+		wantLastingGolden(t, "lasting_rpc", "view_"+name, a.rpcView(t, u))
 	}
 	// The goblin hides: its spells have a caster the players do not see.
 	if _, err := a.master.combat.SetCombatantHidden(t.Context(), connect.NewRequest(&playv1.SetCombatantHiddenRequest{
@@ -82,7 +82,7 @@ func TestLastingRPCViewsOfEveryViewer(t *testing.T) {
 		t.Fatalf("SetCombatantHidden() error = %v", err)
 	}
 	for name, u := range map[string]*user{"owner": a.caio, "other": a.ana} {
-		wantRPCGolden(t, "view_goblin_hidden_"+name, a.rpcView(t, u))
+		wantLastingGolden(t, "lasting_rpc", "view_goblin_hidden_"+name, a.rpcView(t, u))
 	}
 }
 
@@ -106,7 +106,7 @@ func TestLastingRPCListsTheTableAndTheClock(t *testing.T) {
 	res := list(nil)
 	catalog := res.Catalog
 	res.Catalog = nil
-	wantRPCGolden(t, "list_table", a.rpcJSON(t, res))
+	wantLastingGolden(t, "lasting_rpc", "list_table", a.rpcRuleJSON(t, res))
 	var lines []string
 	for _, c := range catalog {
 		lines = append(lines, strings.Join([]string{
@@ -114,13 +114,13 @@ func TestLastingRPCListsTheTableAndTheClock(t *testing.T) {
 			fmt.Sprint(c.GetDefaultRounds()), rpcYes(c.GetConcentration()), rpcYes(c.GetHasCaster()),
 		}, " | "))
 	}
-	wantRPCGolden(t, "list_catalog", strings.Join(lines, "\n")+"\n")
+	wantLastingGolden(t, "lasting_rpc", "list_catalog", strings.Join(lines, "\n")+"\n")
 	// The same table later in the fight: the round, the turn and the clock move.
 	a.turnOf(t, "Toren")
 	a.turnOf(t, "Pensantus")
 	res = list(nil)
 	res.Catalog = nil
-	wantRPCGolden(t, "list_table_round_two", a.rpcJSON(t, res))
+	wantLastingGolden(t, "lasting_rpc", "list_table_round_two", a.rpcRuleJSON(t, res))
 	// Without a combat only the catalog comes.
 	bare := list(func(r *playv1.ListLastingEffectsRequest) { r.EncounterId = "" })
 	if len(bare.GetEffects()) != 0 || bare.GetRound() != 0 || len(bare.GetCatalog()) != len(catalog) {

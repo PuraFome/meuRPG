@@ -11,6 +11,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
@@ -112,7 +113,7 @@ func useModeRequest(ctx context.Context, c *combatTx, attacker, target playdb.Co
 	case "closed":
 		return out, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ROLL_MODE_REQUEST_CLOSED, "the request is closed")
 	}
-	out.Mode, out.Reason, out.RequestID, out.ByMaster = modeOfKey(deref(req.DecidedMode)), req.Reason, req.ID, true
+	out.Mode, out.Reason, out.RequestID, out.ByMaster = modeOfKey(conv.OrZero(req.DecidedMode)), req.Reason, req.ID, true
 	// The master decided: the mode may differ from today's suggestion (a condition
 	// changed meanwhile), and the player rolls what he answered.
 	return out, nil
@@ -173,10 +174,7 @@ const maxAttackKeyLength = 100
 func parseRollModeAsk(msg *playv1.RequestRollModeRequest) (rollModeAsk, error) {
 	var in rollModeAsk
 	var err error
-	if in.key, err = parseKey(msg.GetIdempotencyKey()); err != nil {
-		return in, err
-	}
-	if in.encID, err = parseCombatID(msg.GetEncounterId(), "encounter"); err != nil {
+	if in.key, in.encID, err = parseCall(msg.GetIdempotencyKey(), msg.GetEncounterId()); err != nil {
 		return in, err
 	}
 	if in.attackerID, err = parseCombatID(msg.GetAttackerId(), "combatant"); err != nil {
@@ -258,9 +256,9 @@ type askedAttack struct {
 // checks that the attacker may act now.
 func (s *Service) resolveAskedAttack(ctx context.Context, c *combatTx, m authz.Membership, in rollModeAsk) (askedAttack, error) {
 	var out askedAttack
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return out, fmt.Errorf("list the combatants: %w", err)
+		return out, err
 	}
 	out.cs = cs
 	out.viewer = c.viewer(m, cs)
@@ -317,8 +315,8 @@ func (s *Service) storeRollModeRequest(ctx context.Context, c *combatTx, m authz
 	if err != nil {
 		return zero, fmt.Errorf("keep the request: %w", err)
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return zero, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return zero, err
 	}
 	c.characterID = &ask.attacker.CharacterID
 	return actionEvent{
@@ -344,15 +342,7 @@ func (s *Service) AnswerRollModeRequest(
 	ctx context.Context,
 	req *connect.Request[playv1.AnswerRollModeRequestRequest],
 ) (*connect.Response[playv1.AnswerRollModeRequestResponse], error) {
-	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
-	if err != nil {
-		return nil, err
-	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
+	m, key, encID, err := masterCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
 	if err != nil {
 		return nil, err
 	}
@@ -391,7 +381,7 @@ func (s *Service) answerRollMode(ctx context.Context, c *combatTx, reqID string,
 	switch {
 	case row.Status == "closed":
 		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ROLL_MODE_REQUEST_CLOSED, "the request is closed")
-	case row.Status == "answered" && modeOfKey(deref(row.DecidedMode)) != decided:
+	case row.Status == "answered" && modeOfKey(conv.OrZero(row.DecidedMode)) != decided:
 		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ROLL_MODE_REQUEST_CLOSED, "the request is answered already")
 	case row.Status == "answered":
 		return nil, nil // the same answer again: nothing differs
@@ -400,12 +390,12 @@ func (s *Service) answerRollMode(ctx context.Context, c *combatTx, reqID string,
 	if _, err := c.q.AnswerRollModeRequest(ctx, playdb.AnswerRollModeRequestParams{ID: row.ID, DecidedMode: &mode, AnsweredAt: &c.now}); err != nil {
 		return nil, fmt.Errorf("answer the roll mode request: %w", err)
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return nil, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return nil, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	attacker, _ := findCombatant(cs, row.CombatantID, combatViewer{master: true})
 	target, _ := findCombatant(cs, row.TargetID, combatViewer{master: true})
@@ -421,15 +411,7 @@ func (s *Service) CancelRollModeRequest(
 	ctx context.Context,
 	req *connect.Request[playv1.CancelRollModeRequestRequest],
 ) (*connect.Response[playv1.CancelRollModeRequestResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
-	if err != nil {
-		return nil, err
-	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
+	m, key, encID, err := memberCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
 	if err != nil {
 		return nil, err
 	}
@@ -459,9 +441,9 @@ func (s *Service) cancelRollMode(ctx context.Context, c *combatTx, m authz.Membe
 	if err != nil {
 		return nil, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	v := c.viewer(m, cs)
 	attacker, err := findCombatant(cs, row.CombatantID, v)
@@ -477,8 +459,8 @@ func (s *Service) cancelRollMode(ctx context.Context, c *combatTx, m authz.Membe
 	if err := c.q.CloseRollModeRequest(ctx, playdb.CloseRollModeRequestParams{ID: row.ID, AnsweredAt: &c.now}); err != nil {
 		return nil, fmt.Errorf("close the roll mode request: %w", err)
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return nil, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return nil, err
 	}
 	c.characterID = &attacker.CharacterID
 	return actionEvent{

@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
@@ -109,7 +110,7 @@ func (s *Service) stopHeldConcentration(ctx context.Context, cc *combatTx, cs []
 		return false, nil
 	}
 	j := slices.IndexFunc(cs, func(o playdb.Combatant) bool {
-		return o.ID == *st.SourceID && o.ConcentrationSpell != nil && *o.ConcentrationSpell == deref(st.SourceKey)
+		return o.ID == *st.SourceID && o.ConcentrationSpell != nil && *o.ConcentrationSpell == conv.OrZero(st.SourceKey)
 	})
 	if j < 0 {
 		return false, nil

@@ -14,7 +14,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// Traps in play, the session's side (MR-035, Etapa 9, D5, slice 9.8; RN-10,
+// Traps in play, the session's side (MR-035; RN-10,
 // RN-02): the player's "Procurar armadilhas", the master's firing by hand and
 // the damage a trap does to a player's character while no combat runs. The
 // moves of a combat and the combat's own firing are combat_traps.go's; the dice

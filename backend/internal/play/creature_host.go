@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
@@ -181,7 +182,7 @@ func (s *Service) PublishEncounterChanged(ctx context.Context, campaignID, encou
 			s.publishVitals(campaignID, v)
 		}
 	}
-	s.maps.VisionChanged(ctx, campaignID, deref(enc.MapID))
+	s.maps.VisionChanged(ctx, campaignID, conv.OrZero(enc.MapID))
 }
 
 // LockSession takes the open session's row (characters.CreatureHost): the lock

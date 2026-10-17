@@ -9,6 +9,7 @@ import (
 	"time"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -717,20 +718,12 @@ func touchesHidden(cs []playdb.Combatant, pending []playdb.PendingDamage) bool {
 	for _, c := range cs {
 		hidden[c.ID] = c.Hidden
 	}
-	return slices.ContainsFunc(pending, func(p playdb.PendingDamage) bool { return hidden[deref(p.AttackerID)] || hidden[p.TargetID] })
+	return slices.ContainsFunc(pending, func(p playdb.PendingDamage) bool { return hidden[conv.OrZero(p.AttackerID)] || hidden[p.TargetID] })
 }
 
 // hpOf is a combatant's hit points as the undo stores them.
 func hpOf(c playdb.Combatant) hpState {
-	return hpState{HP: num(c.HpCurrent), Temp: num(c.HpTemp), Defeated: c.Defeated}
-}
-
-// num is the value of an optional number, 0 when unset.
-func num(n *int32) int32 {
-	if n == nil {
-		return 0
-	}
-	return *n
+	return hpState{HP: conv.OrZero(c.HpCurrent), Temp: conv.OrZero(c.HpTemp), Defeated: c.Defeated}
 }
 
 // pendingOf returns the damage the combatant's attacks still hold open:
@@ -740,7 +733,7 @@ func (c *combatTx) pendingOf(ctx context.Context, attackerID string) ([]playdb.P
 	if err != nil {
 		return nil, fmt.Errorf("list the pending damage: %w", err)
 	}
-	return slices.DeleteFunc(open, func(p playdb.PendingDamage) bool { return deref(p.AttackerID) != attackerID }), nil
+	return slices.DeleteFunc(open, func(p playdb.PendingDamage) bool { return conv.OrZero(p.AttackerID) != attackerID }), nil
 }
 
 // linesSeenBy is who may see at least one of the lines a change wrote, on a map with

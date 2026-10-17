@@ -1,7 +1,6 @@
 package play
 
 import (
-	"errors"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -15,18 +14,6 @@ import (
 // The branches of the reaction answers (PM-04) that the first reaction tests did not reach:
 // each refusal with its code and message, each way a reaction can end. Frozen as they are; a
 // finding is commented where the behavior looks odd.
-
-// wantReactionRefusal fails unless err is a connect error with this code and message.
-func wantReactionRefusal(t *testing.T, call string, err error, code connect.Code, msg string) {
-	t.Helper()
-	var ce *connect.Error
-	if !errors.As(err, &ce) {
-		t.Fatalf("%s error = %v, want a connect error %v %q", call, err, code, msg)
-	}
-	if ce.Code() != code || ce.Message() != msg {
-		t.Errorf("%s error = %v %q, want %v %q", call, ce.Code(), ce.Message(), code, msg)
-	}
-}
 
 // useWith is an answer that uses the reaction with the given edits.
 func useWith(edit func(*playv1.AnswerReactionRequest)) func(*playv1.AnswerReactionRequest) {
@@ -79,12 +66,12 @@ func TestHellishRebukeThroughAPactSlotAsksTheMastersSave(t *testing.T) {
 	// Refusals: no slot named, a slot the window does not offer, the Infernal Legacy of a
 	// warlock who has none.
 	_, err := a.answerReaction(t, a.ana, e, w.GetId(), useWith(func(*playv1.AnswerReactionRequest) {}))
-	wantReactionRefusal(t, "Hellish Rebuke with no slot", err, connect.CodeInvalidArgument, "slot is not one of the free slots the window offers")
+	wantRefusal(t, "Hellish Rebuke with no slot", err, connect.CodeInvalidArgument, "slot is not one of the free slots the window offers")
 	_, err = a.answerReaction(t, a.ana, e, w.GetId(), useWith(func(r *playv1.AnswerReactionRequest) { r.Slot = slotOfLevel(5) }))
-	wantReactionRefusal(t, "Hellish Rebuke with a slot of the 5th level", err, connect.CodeInvalidArgument, "slot is not one of the free slots the window offers")
+	wantRefusal(t, "Hellish Rebuke with a slot of the 5th level", err, connect.CodeInvalidArgument, "slot is not one of the free slots the window offers")
 	_, err = a.answerReaction(t, a.ana, e, w.GetId(), useWith(func(r *playv1.AnswerReactionRequest) { r.UseRacial = true }))
 	wantBlockedBy(t, "Hellish Rebuke through a legacy the warlock lacks", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_USES)
-	wantReactionRefusal(t, "Hellish Rebuke through a legacy the warlock lacks", err, connect.CodeFailedPrecondition, "the Infernal Legacy has no use left")
+	wantRefusal(t, "Hellish Rebuke through a legacy the warlock lacks", err, connect.CodeFailedPrecondition, "the Infernal Legacy has no use left")
 
 	res := a.mustAnswer(t, a.ana, e, w.GetId(), useWith(func(r *playv1.AnswerReactionRequest) {
 		r.Slot = &playv1.SpellSlot{Level: 2, Pact: true}
@@ -102,7 +89,7 @@ func TestHellishRebukeThroughAPactSlotAsksTheMastersSave(t *testing.T) {
 		t.Fatalf("the master's window = %v, want the second step", save)
 	}
 	_, err = a.answerReaction(t, a.master, e, save.GetId(), passAnswer)
-	wantReactionRefusal(t, "passing the aggressor's save", err, connect.CodeInvalidArgument, "the saving throw is rolled: use roll_in_app or typed")
+	wantRefusal(t, "passing the aggressor's save", err, connect.CodeInvalidArgument, "the saving throw is rolled: use roll_in_app or typed")
 	a.h.roller.queue(8, 9, 7) // the fire: 3d10
 	done := a.mustAnswer(t, a.master, e, save.GetId(), typedAnswer(20))
 	r := done.GetResult().GetHellishRebuke()
@@ -163,11 +150,11 @@ func TestCuttingWordsRefusalsAndAnEffectlessCut(t *testing.T) {
 		a, e := reactorFight(t, loreBard)
 		w := bardWindow(t, a, e, 8)
 		_, err := a.answerReaction(t, a.ana, e, w.GetId(), typedAnswer(9))
-		wantReactionRefusal(t, "Cutting Words with a typed 9 on a d6", err, connect.CodeInvalidArgument, "typed must be 1 to 6")
+		wantRefusal(t, "Cutting Words with a typed 9 on a d6", err, connect.CodeInvalidArgument, "typed must be 1 to 6")
 		a.setResourceUsed(t, a.pens, "bardic_inspiration", 3)
 		_, err = a.answerReaction(t, a.ana, e, w.GetId(), typedAnswer(4))
 		wantBlockedBy(t, "Cutting Words with no use left", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_SLOT)
-		wantReactionRefusal(t, "Cutting Words with no use left", err, connect.CodeFailedPrecondition, "no Bardic Inspiration use is left")
+		wantRefusal(t, "Cutting Words with no use left", err, connect.CodeFailedPrecondition, "no Bardic Inspiration use is left")
 	})
 	t.Run("a roller that cannot hear", func(t *testing.T) {
 		t.Parallel()
@@ -249,14 +236,14 @@ func TestDeflectMissilesEveryWayItEnds(t *testing.T) {
 		w := a.windowOf(t, a.ana, playv1.ReactionKind_REACTION_KIND_DEFLECT_MISSILES)
 		a.mustAnswer(t, a.ana, e, w.GetId(), typedAnswer(8))
 		_, err := a.answerReaction(t, a.ana, e, w.GetId(), useWith(func(*playv1.AnswerReactionRequest) {}))
-		wantReactionRefusal(t, "using the second step", err, connect.CodeInvalidArgument, "the missile is thrown back with RollAttack and catch_window_id")
+		wantRefusal(t, "using the second step", err, connect.CodeInvalidArgument, "the missile is thrown back with RollAttack and catch_window_id")
 		// A throw back through a window that is not the monk's second step.
 		_, err = a.throwBack(t, a.ana, e, "00000000-0000-4000-8000-000000000001", "Reator", "Goblin", disadvantage(15))
 		wantBlockedBy(t, "the throw back of a window that does not exist", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN_TO_ANSWER)
 		// The ki is gone meanwhile.
 		a.setResourceUsed(t, a.pens, "ki", 3)
 		_, err = a.throwBack(t, a.ana, e, w.GetId(), "Reator", "Goblin", disadvantage(15))
-		wantReactionRefusal(t, "the throw back with no ki", err, connect.CodeFailedPrecondition, "no ki left to throw the missile back")
+		wantRefusal(t, "the throw back with no ki", err, connect.CodeFailedPrecondition, "no ki left to throw the missile back")
 		res := a.mustAnswer(t, a.ana, e, w.GetId(), passAnswer)
 		if !res.GetResult().GetUsed() || res.GetResult().GetKind() != playv1.ReactionKind_REACTION_KIND_DEFLECT_MISSILES {
 			t.Errorf("the result = %v, want the arrow kept", res.GetResult())
@@ -298,15 +285,15 @@ func TestFeatherFallRefusalsKeepTheirWords(t *testing.T) {
 	}
 	const notOfTheFall = "creature_ids must be creatures of the fall"
 	_, err := r.answerReaction(t, r.ana, e, w.GetId(), use(slotOfLevel(1)))
-	wantReactionRefusal(t, "Feather Fall on nobody", err, connect.CodeInvalidArgument, "creature_ids must name 1 to 5 falling creatures")
+	wantRefusal(t, "Feather Fall on nobody", err, connect.CodeInvalidArgument, "creature_ids must name 1 to 5 falling creatures")
 	_, err = r.answerReaction(t, r.ana, e, w.GetId(), use(slotOfLevel(1), r.id(t, "Pensantus")))
-	wantReactionRefusal(t, "Feather Fall on a creature that does not fall", err, connect.CodeInvalidArgument, notOfTheFall)
+	wantRefusal(t, "Feather Fall on a creature that does not fall", err, connect.CodeInvalidArgument, notOfTheFall)
 	_, err = r.answerReaction(t, r.ana, e, w.GetId(), use(slotOfLevel(1), "not-a-creature"))
-	wantReactionRefusal(t, "Feather Fall on a creature that does not exist", err, connect.CodeInvalidArgument, notOfTheFall)
+	wantRefusal(t, "Feather Fall on a creature that does not exist", err, connect.CodeInvalidArgument, notOfTheFall)
 	_, err = r.answerReaction(t, r.ana, e, w.GetId(), use(nil, toren))
-	wantReactionRefusal(t, "Feather Fall with no slot", err, connect.CodeInvalidArgument, "slot is not one of the free slots the window offers")
+	wantRefusal(t, "Feather Fall with no slot", err, connect.CodeInvalidArgument, "slot is not one of the free slots the window offers")
 	_, err = r.answerReaction(t, r.ana, e, w.GetId(), use(slotOfLevel(5), toren))
-	wantReactionRefusal(t, "Feather Fall with a slot of the 5th level", err, connect.CodeInvalidArgument, "slot is not one of the free slots the window offers")
+	wantRefusal(t, "Feather Fall with a slot of the 5th level", err, connect.CodeInvalidArgument, "slot is not one of the free slots the window offers")
 	res := r.mustAnswer(t, r.ana, e, w.GetId(), use(slotOfLevel(1), toren, toren))
 	if got := res.GetResult().GetFeatherFall().GetSavedIds(); len(got) != 1 || got[0] != toren {
 		t.Errorf("the result = %v, want Toren saved once", res.GetResult())
@@ -565,7 +552,7 @@ func TestUseReactionRefusalsAndTheMastersAnswer(t *testing.T) {
 		t.Parallel()
 		a, e, _ := shieldedPensantus(t)
 		_, err := a.useReaction(t, a.ana, e, "00000000-0000-4000-8000-000000000001", slotOfLevel(1))
-		wantReactionRefusal(t, "UseReaction on a missing pending damage", err, connect.CodeNotFound, "pending damage not found")
+		wantRefusal(t, "UseReaction on a missing pending damage", err, connect.CodeNotFound, "pending damage not found")
 	})
 	t.Run("no slot left", func(t *testing.T) {
 		t.Parallel()
@@ -580,7 +567,7 @@ func TestUseReactionRefusalsAndTheMastersAnswer(t *testing.T) {
 		if b.GetMinLevel() != 1 {
 			t.Errorf("the refusal's minimum level = %d, want 1", b.GetMinLevel())
 		}
-		wantReactionRefusal(t, "UseReaction with no slot left", err, connect.CodeFailedPrecondition, "there is no free spell slot for Escudo")
+		wantRefusal(t, "UseReaction with no slot left", err, connect.CodeFailedPrecondition, "there is no free spell slot for Escudo")
 	})
 	t.Run("the master answers for the player", func(t *testing.T) {
 		t.Parallel()

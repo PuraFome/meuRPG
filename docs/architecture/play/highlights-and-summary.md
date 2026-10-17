@@ -10,6 +10,9 @@ Otherwise it is `failed_precondition` with `EncounterBlocked` `NOT_ENDED`; a com
 
 - **Where it comes from.** The combat's `session_events`.
   An event that `action_undone` undid is skipped (the first pass finds all the undone), and a player character's damage only counts when the master applies it (`damage_applied`): rolled and waiting, or discarded, does not count.
+- **Who reads what.** The master reads every row and every category.
+  A player reads only their own character's row (zeros included, RN-20), and the categories are worked out without the characters the master gave back to the reserve, which are invisible to players in the combats they fought before too (RN-10): not in a category, not in a row, not even for their former player.
+  `dropReserved` is the one filter, shared with the session summary.
 - **What counts**, per player character who fought:
   - damage dealt to NPCs, only the HP that really left (temporary too; damage beyond 0 does not count);
   - healing done, what really came back, to whoever;

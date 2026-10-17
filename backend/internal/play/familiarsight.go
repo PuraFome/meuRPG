@@ -11,11 +11,13 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// "Ver pelos olhos do familiar" (MR-036, Etapa 9, D6): the player of a character
+// "Ver pelos olhos do familiar" (MR-036): the player of a character
 // with a familiar sees what the familiar sees, with the familiar's senses, while
 // the familiar is on the same map within 30 m. The vision is the maps module's
 // (a viewer of its own for the fog, link.PartyMember.Eyes); what is kept here is
@@ -99,7 +101,7 @@ func (s *Service) familiarSquares(ctx context.Context, c *combatTx, who *playdb.
 // combatantSquares finds the squares of the character's combatant and of its
 // familiar's, which must be in the combat and placed.
 func combatantSquares(who playdb.Combatant, cs []playdb.Combatant, creatureID string) (me, it [2]int32, ok bool) {
-	i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return deref(o.CreatureID) == creatureID && !o.Dismissed })
+	i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return conv.OrZero(o.CreatureID) == creatureID && !o.Dismissed })
 	if i < 0 || !placed(who) || !placed(cs[i]) {
 		return me, it, false
 	}
@@ -109,7 +111,7 @@ func combatantSquares(who playdb.Combatant, cs []playdb.Combatant, creatureID st
 // familiarMapSquares finds the squares of the character's token and of its familiar's on
 // the session's current map.
 func (s *Service) familiarMapSquares(ctx context.Context, c *combatTx, characterID, creatureID string) (me, it [2]int32, ok bool, err error) {
-	mapID := deref(c.session.CurrentMapID)
+	mapID := conv.OrZero(c.session.CurrentMapID)
 	if mapID == "" {
 		return me, it, false, nil
 	}
@@ -200,7 +202,7 @@ func (s *Service) sightChange(ctx context.Context, campaignID, rawCharacter, raw
 	if err != nil {
 		return nil, nil, err
 	}
-	characterID, ok := parseID(rawCharacter)
+	characterID, ok := uid.Canonical(rawCharacter)
 	if !ok {
 		return nil, nil, errCharacterNotFound()
 	}
@@ -257,7 +259,7 @@ func (s *Service) answerFormChange(ctx context.Context, m authz.Membership, char
 // sightTx is the sight transaction: where the character stands in the table's
 // play, then the start or the stop, then the event's own fields.
 func (s *Service) sightTx(ctx context.Context, c *combatTx, r *sightRun) (any, error) {
-	r.made, r.vitals, r.mapID = actionEvent{}, nil, deref(c.session.CurrentMapID)
+	r.made, r.vitals, r.mapID = actionEvent{}, nil, conv.OrZero(c.session.CurrentMapID)
 	_, who, cs, err := s.playerCharacterOf(ctx, c, r.m, r.characterID)
 	if err != nil {
 		return nil, err
@@ -266,7 +268,7 @@ func (s *Service) sightTx(ctx context.Context, c *combatTx, r *sightRun) (any, e
 	r.inCombat = who != nil
 	r.turns = r.inCombat && c.enc.Status == statusActive
 	if r.inCombat {
-		r.mapID = deref(c.enc.MapID)
+		r.mapID = conv.OrZero(c.enc.MapID)
 	}
 	now, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, r.characterID)
 	if err != nil {

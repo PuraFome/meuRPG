@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -151,7 +152,7 @@ func (s *Service) checkCombatant(ctx context.Context, q *playdb.Queries, session
 func withCheckHelps(sources []combat.Source, helps []playdb.CombatHelp, who playdb.Combatant, skillKey string) ([]combat.Source, []string) {
 	var ids []string
 	for _, h := range helps {
-		if h.Kind == helpCheck && helpsAlly(h, who) && deref(h.Task) == skillKey {
+		if h.Kind == helpCheck && helpsAlly(h, who) && conv.OrZero(h.Task) == skillKey {
 			sources = append(sources, combat.Source{Kind: combat.SourceHelp, Effect: combat.ModeAdvantage})
 			ids = append(ids, h.ID)
 		}
@@ -164,7 +165,7 @@ func checkBonusesOf(states map[string][]playdb.CombatantState, combatantID, skil
 	var bonuses []effectBonus
 	for _, st := range effectsOn(states, combatantID) {
 		if n := combat.CheckBonus(effectModifiers(st), skillKey); n != 0 && check {
-			bonuses = append(bonuses, effectBonus{Key: deref(st.SourceKey), Value: n, Hidden: !st.PlayerVisible})
+			bonuses = append(bonuses, effectBonus{Key: conv.OrZero(st.SourceKey), Value: n, Hidden: !st.PlayerVisible})
 		}
 	}
 	return bonuses

@@ -13,6 +13,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -396,11 +397,11 @@ func (s *Service) insertCast(ctx context.Context, c *combatTx, m authz.Membershi
 	return row, nil
 }
 
-// startLongCast starts a casting that takes time: it keeps the chosen targets for FinishCast and
+// startLongCast starts a casting that takes time: it keeps the chosen targets for ConfirmCastTimePassed and
 // takes the caster's concentration from the start.
 func (s *Service) startLongCast(ctx context.Context, c *combatTx, plan castPlan) (castOutcome, error) {
 	g, row := plan.g, plan.row
-	// The targets chosen now are the ones FinishCast takes effect on.
+	// The targets chosen now are the ones ConfirmCastTimePassed takes effect on.
 	chosen := make([]castTarget, 0, len(g.targets))
 	for _, t := range g.targets {
 		chosen = append(chosen, castTarget{ID: t.ID})
@@ -688,7 +689,7 @@ type castRequest struct {
 func readCastRequest(msg *playv1.CastSpellOutsideCombatRequest) (castRequest, error) {
 	var in castRequest
 	var ok bool
-	if in.casterID, ok = parseID(msg.GetCasterCharacterId()); !ok {
+	if in.casterID, ok = uid.Canonical(msg.GetCasterCharacterId()); !ok {
 		return in, errCharacterNotFound()
 	}
 	in.spell = msg.GetSpellKey()
@@ -699,7 +700,7 @@ func readCastRequest(msg *playv1.CastSpellOutsideCombatRequest) (castRequest, er
 		return in, badCast(fmt.Sprintf("target_ids must have at most %d entries", maxSpellTargets))
 	}
 	for i, raw := range msg.GetTargetIds() {
-		id, ok := parseID(raw)
+		id, ok := uid.Canonical(raw)
 		if !ok {
 			return in, errCharacterNotFound()
 		}

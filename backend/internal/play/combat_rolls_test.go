@@ -2,6 +2,7 @@ package play
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -823,5 +824,43 @@ func TestPM06a_ARollWithAdvantageHeldForInspirationKeepsItsTwoDice(t *testing.T)
 	if roll.GetMode() != playv1.RollMode_ROLL_MODE_ADVANTAGE || len(roll.GetD20().GetFaces()) != 2 || roll.GetD20().GetCountedIndex() != 0 ||
 		roll.GetOutcome() != playv1.AttackOutcome_ATTACK_OUTCOME_HIT || roll.GetD20().GetTotal() != 18 {
 		t.Errorf("the settled attack = %v, want advantage, the pair 5 and 3, a hit with 18 (5 + 6 + 7)", roll)
+	}
+}
+
+// TestRageEndLogHintReachesThePlayersOnlyForALineTheyMayRead (RN-10): the master
+// ending the rage of a combatant the players do not see writes a secret line, so
+// the players' stream gets no "log changed" hint for it; for a visible one it does.
+func TestRageEndLogHintReachesThePlayersOnlyForALineTheyMayRead(t *testing.T) {
+	t.Parallel()
+	for _, hidden := range []bool{true, false} {
+		t.Run(fmt.Sprintf("hidden=%v", hidden), func(t *testing.T) {
+			t.Parallel()
+			a, e := rollsTable(t)
+			if _, err := a.action(t, a.bia, e, "Brisa", "feature:rage"); err != nil {
+				t.Fatalf("TakeAction(Rage) error = %v", err)
+			}
+			if hidden {
+				if _, err := a.h.pool.Exec(t.Context(), `UPDATE combatants SET hidden = true WHERE id = $1`, a.id(t, "Brisa")); err != nil {
+					t.Fatalf("hide Brisa: %v", err)
+				}
+			}
+			player := a.ana.watch(t, a.campaignID)
+			player.ready(t)
+			if _, err := a.master.combat.EndRage(t.Context(), connect.NewRequest(&playv1.EndRageRequest{
+				CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, "Brisa"), IdempotencyKey: newKey(),
+			})); err != nil {
+				t.Fatalf("EndRage() error = %v", err)
+			}
+			a.mustEndTurn(t, a.master, e) // the sentinel: its turn_changed closes what EndRage published
+			hints := 0
+			for ev := player.nextChange(t); ev.GetTurnChanged() == nil; ev = player.nextChange(t) {
+				if ev.GetCombatLogChanged() != nil {
+					hints++
+				}
+			}
+			if want := map[bool]int{true: 0, false: 1}[hidden]; hints != want {
+				t.Errorf("the player's stream got %d combat_log_changed for the end of the rage, want %d", hints, want)
+			}
+		})
 	}
 }

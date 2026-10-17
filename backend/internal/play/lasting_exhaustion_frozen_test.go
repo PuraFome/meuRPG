@@ -107,7 +107,7 @@ func TestLastingCoreExhaustionRefusals(t *testing.T) {
 	lower("a stale expected level", a.master, func(r *playv1.LowerExhaustionRequest) { lowerOn(goblin)(r); r.ExpectedLevel = 3 })
 	l.say("state:\n%s", a.coreCombatants(t, e.GetId()))
 	l.say("events:\n%s", a.coreEvents(t, eventExhaustion))
-	wantLastingGolden(t, "exhaustion_refusals", a.coreNames(t, l.String()))
+	wantLastingGolden(t, "lasting_core", "exhaustion_refusals", a.coreNames(t, l.String()))
 }
 
 // An NPC takes the levels one by one: the speed, the maximum halved at 4 with the old one kept,
@@ -161,7 +161,7 @@ func TestLastingCoreExhaustionLadderOfAnNPC(t *testing.T) {
 		step("lower by "+strconv.Itoa(int(by)), res, err)
 	}
 	l.say("events:\n%s", a.coreEvents(t, eventExhaustion, eventTurnEnded))
-	wantLastingGolden(t, "exhaustion_npc_ladder", a.coreNames(t, l.String()))
+	wantLastingGolden(t, "lasting_core", "exhaustion_npc_ladder", a.coreNames(t, l.String()))
 }
 
 // An NPC that is not on turn, and one the players do not see: the maximum and the speed are the
@@ -194,7 +194,7 @@ func TestLastingCoreExhaustionOfAnNPCOffTurnAndOfAHiddenOne(t *testing.T) {
 	}
 	l.say("%s", a.coreCombatants(t, e.GetId(), "Goblin", "Capitão Goblin"))
 	l.say("events:\n%s", a.coreEvents(t, eventExhaustion, eventTurnEnded))
-	wantLastingGolden(t, "exhaustion_npc_hidden", a.coreNames(t, l.String()))
+	wantLastingGolden(t, "lasting_core", "exhaustion_npc_hidden", a.coreNames(t, l.String()))
 }
 
 // A character is named by its combatant or by its character id, inside a combat or out of it:
@@ -246,7 +246,7 @@ func TestLastingCoreExhaustionOfCharacters(t *testing.T) {
 	l.say("out of a combat: Pensantus 6 again -> %v level %d", coreRefusal(err), res.GetLevel())
 	l.say("%s", a.coreCombatants(t, e.GetId()))
 	l.say("events:\n%s", a.coreEvents(t, eventExhaustion))
-	wantLastingGolden(t, "exhaustion_characters_out", a.coreNames(t, l.String()))
+	wantLastingGolden(t, "lasting_core", "exhaustion_characters_out", a.coreNames(t, l.String()))
 }
 
 // In a combat, a character is found among the combatants even when it is named by the character
@@ -300,5 +300,5 @@ func TestLastingCoreExhaustionOfCharactersInACombat(t *testing.T) {
 	l.say("Brisa 6 again -> %s level %d", coreRefusal(err), res.GetLevel())
 	l.say("%s", a.coreCombatants(t, e.GetId()))
 	l.say("events:\n%s", a.coreEvents(t, eventExhaustion))
-	wantLastingGolden(t, "exhaustion_characters_in", a.coreNames(t, l.String()))
+	wantLastingGolden(t, "lasting_core", "exhaustion_characters_in", a.coreNames(t, l.String()))
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
@@ -159,7 +160,7 @@ type endCharacterEnd struct {
 func (s *Service) endCharacterEffect(
 	ctx context.Context, m authz.Membership, msg *playv1.EndLastingEffectRequest, key string,
 ) (*connect.Response[playv1.EndLastingEffectResponse], error) {
-	id, ok := parseID(msg.GetEffectId())
+	id, ok := uid.Canonical(msg.GetEffectId())
 	if !ok {
 		return nil, errEffectNotFound()
 	}

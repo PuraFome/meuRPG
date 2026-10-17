@@ -13,6 +13,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -456,7 +457,7 @@ func (s *Service) bringBack(ctx context.Context, c *combatTx, m authz.Membership
 			return hit, nil, nil, err
 		}
 		vitals = append(vitals, after)
-		told = &revivedCharacter{characterID: target.CharacterID, owner: deref(target.UserID)}
+		told = &revivedCharacter{characterID: target.CharacterID, owner: conv.OrZero(target.UserID)}
 	}
 	if err := s.reviveCombatant(ctx, c, target); err != nil {
 		return hit, nil, nil, err
@@ -749,7 +750,7 @@ func deadInOrder(cs []playdb.Combatant, v combatViewer) []playdb.Combatant {
 		if c := int(*a.DeathRound) - int(*b.DeathRound); c != 0 {
 			return c
 		}
-		return int(deref32(a.DeathOrderIndex)) - int(deref32(b.DeathOrderIndex))
+		return int(conv.OrZero(a.DeathOrderIndex)) - int(conv.OrZero(b.DeathOrderIndex))
 	})
 	return dead
 }
@@ -767,11 +768,4 @@ func combatDeathOf(c playdb.Combatant, spec rules.ReviveSpec, d *encounterData, 
 		death.FitsRevivify, death.RevivifyBlocked = new(fits), new(c.RevivifyBlocked)
 	}
 	return death
-}
-
-func deref32(n *int32) int32 {
-	if n == nil {
-		return 0
-	}
-	return *n
 }

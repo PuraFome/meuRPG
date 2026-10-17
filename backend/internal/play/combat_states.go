@@ -9,6 +9,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -220,9 +221,9 @@ func (s *Service) afterStatesEnded(ctx context.Context, c *combatTx, rows []play
 	if len(rows) == 0 {
 		return nil
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	for _, st := range rows {
 		i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == st.CombatantID })
@@ -273,9 +274,8 @@ func (s *Service) askRageEnd(ctx context.Context, c *combatTx, current playdb.Co
 	if err := c.q.SetCombatantRageFlags(ctx, playdb.SetCombatantRageFlagsParams{ID: current.ID, RageEndPending: true}); err != nil {
 		return fmt.Errorf("ask about the rage: %w", err)
 	}
-	var err error
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return err
 	}
 	return nil
 }
@@ -313,7 +313,7 @@ type rageCall struct {
 	key, encID, combID string
 }
 
-// readRageCall reads and checks the call, in the order the refusals have always come.
+// readRageCall reads and checks the call. The refusals come in the order of the checks below.
 func readRageCall(ctx context.Context, campaignID, rawKey, encounterID, combatantID string) (rageCall, error) {
 	m, err := authz.RequireCampaignMember(ctx, campaignID)
 	if err != nil {
@@ -334,20 +334,28 @@ func readRageCall(ctx context.Context, campaignID, rawKey, encounterID, combatan
 	return rageCall{m: m, key: key, encID: encID, combID: combID}, nil
 }
 
-// publishRageChanged tells the streams that the combat and its log changed.
-func (s *Service) publishRageChanged(campaignID string) func(ctx context.Context, d *encounterData) {
+// rageRun is what the change of a rage call leaves for after the commit.
+type rageRun struct {
+	// hidden is set when the combatant is hidden from the players: the line it
+	// writes is theirs to see only when it is not.
+	hidden bool
+}
+
+// publishRageChanged tells the streams that the combat and its log changed, and
+// the players only when the line the call wrote is one they may read.
+func (s *Service) publishRageChanged(campaignID string, run *rageRun) func(ctx context.Context, d *encounterData) {
 	return func(ctx context.Context, d *encounterData) {
 		s.publishEncounterChanged(ctx, campaignID, d.enc)
-		s.publishLogChanged(ctx, campaignID, d.enc.ID, true)
+		s.publishLogChanged(ctx, campaignID, d.enc.ID, !run.hidden)
 	}
 }
 
 // actorOf finds the combatant a call names in the combat, as the caller sees it, and checks
 // that the caller may act for it.
 func (s *Service) actorOf(ctx context.Context, c *combatTx, call rageCall) (playdb.Combatant, combatViewer, error) {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return playdb.Combatant{}, combatViewer{}, fmt.Errorf("list the combatants: %w", err)
+		return playdb.Combatant{}, combatViewer{}, err
 	}
 	v := c.viewer(call.m, cs)
 	who, err := findCombatant(cs, call.combID, v)
@@ -369,13 +377,14 @@ func (s *Service) AnswerRageEnd(
 		return nil, err
 	}
 	endRage := req.Msg.GetEndRage()
+	var run rageRun
 	res, err := s.write(ctx, combatWrite{m: call.m, key: call.key, hash: idem.Hash(req.Msg), kind: eventStateChanged, encounterID: call.encID}, func(c *combatTx) (any, error) {
-		return s.answerRageIn(ctx, c, call, endRage)
+		return s.answerRageIn(ctx, c, call, endRage, &run)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "answer the rage question", err)
 	}
-	out, err := s.finish(ctx, call.m, res, s.publishRageChanged(call.m.CampaignID))
+	out, err := s.finish(ctx, call.m, res, s.publishRageChanged(call.m.CampaignID, &run))
 	if err != nil {
 		return nil, err
 	}
@@ -384,7 +393,7 @@ func (s *Service) AnswerRageEnd(
 
 // answerRageIn is the change of AnswerRageEnd: the question is dropped, and the rage ends when
 // the player lets it. It writes no event when the turn simply goes on.
-func (s *Service) answerRageIn(ctx context.Context, c *combatTx, call rageCall, endRage bool) (any, error) {
+func (s *Service) answerRageIn(ctx context.Context, c *combatTx, call rageCall, endRage bool, run *rageRun) (any, error) {
 	if err := notEnded(c.enc); err != nil {
 		return nil, err
 	}
@@ -392,11 +401,12 @@ func (s *Service) answerRageIn(ctx context.Context, c *combatTx, call rageCall, 
 	if err != nil {
 		return nil, err
 	}
+	run.hidden = who.Hidden
 	if !who.RageEndPending {
 		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_RAGE_END_NOT_PENDING, "no question waits")
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return nil, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return nil, err
 	}
 	c.characterID = &who.CharacterID
 	if err := c.q.SetCombatantRageFlags(ctx, playdb.SetCombatantRageFlagsParams{ID: who.ID, AttackedHostile: who.AttackedHostile, TookDamage: who.TookDamage}); err != nil {
@@ -423,13 +433,14 @@ func (s *Service) EndRage(
 	if err != nil {
 		return nil, err
 	}
+	var run rageRun
 	res, err := s.write(ctx, combatWrite{m: call.m, key: call.key, hash: idem.Hash(req.Msg), kind: eventStateChanged, encounterID: call.encID}, func(c *combatTx) (any, error) {
-		return s.endRageIn(ctx, c, call)
+		return s.endRageIn(ctx, c, call, &run)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "end the rage", err)
 	}
-	out, err := s.finish(ctx, call.m, res, s.publishRageChanged(call.m.CampaignID))
+	out, err := s.finish(ctx, call.m, res, s.publishRageChanged(call.m.CampaignID, &run))
 	if err != nil {
 		return nil, err
 	}
@@ -438,11 +449,12 @@ func (s *Service) EndRage(
 
 // endRageIn is the change of EndRage: the combatant must be raging and, but for the master,
 // have its bonus action; the bonus action is spent and the rage ends by choice.
-func (s *Service) endRageIn(ctx context.Context, c *combatTx, call rageCall) (any, error) {
+func (s *Service) endRageIn(ctx context.Context, c *combatTx, call rageCall, run *rageRun) (any, error) {
 	who, v, err := s.actorOf(ctx, c, call)
 	if err != nil {
 		return nil, err
 	}
+	run.hidden = who.Hidden
 	if err := s.mustActNow(ctx, c, who); err != nil {
 		return nil, err
 	}
@@ -464,8 +476,8 @@ func (s *Service) endRageIn(ctx context.Context, c *combatTx, call rageCall) (an
 	if err := s.endRage(ctx, c, who, "by_choice"); err != nil {
 		return nil, err
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return nil, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return nil, err
 	}
 	c.characterID = &who.CharacterID
 	return actionEvent{Round: c.enc.Round, Secret: who.Hidden, Actor: who.ID, StateKind: stateRage, StateReason: "by_choice", BonusBefore: who.BonusActionUsed}, nil
@@ -482,18 +494,18 @@ func statesFor(states []playdb.CombatantState, cs []playdb.Combatant, v combatVi
 		if isEffect(st) { // the effects that last have their own cards (lasting_effects_view.go)
 			continue
 		}
-		source, _ := findByID(cs, deref(st.SourceID))
+		source, _ := findByID(cs, conv.OrZero(st.SourceID))
 		if st.Kind == stateMark && !v.master && !v.owns(source) {
 			continue
 		}
 		e := &playv1.CombatantEffect{
-			Id: st.ID, Kind: stateKindProto(st.Kind), SourceId: deref(st.SourceID), LabelPt: stateLabelPT(st.Kind), EffectPt: stateEffectPT(st),
-			EndsCombatantId: deref(st.EndsCombatantID), EndsRound: derefInt32(st.EndsRound),
+			Id: st.ID, Kind: stateKindProto(st.Kind), SourceId: conv.OrZero(st.SourceID), LabelPt: stateLabelPT(st.Kind), EffectPt: stateEffectPT(st),
+			EndsCombatantId: conv.OrZero(st.EndsCombatantID), EndsRound: conv.OrZero(st.EndsRound),
 		}
 		if frenzied(st) {
 			e.SourceId, e.LabelPt, e.Frenzy = "", "Em frenesi", true
 		}
-		switch deref(st.EndsPhase) {
+		switch conv.OrZero(st.EndsPhase) {
 		case "start_of_turn":
 			e.EndsPhase = playv1.StatePhase_STATE_PHASE_START_OF_TURN
 		case "end_of_turn":
@@ -516,12 +528,8 @@ func findByID(cs []playdb.Combatant, id string) (playdb.Combatant, bool) {
 	return cs[i], true
 }
 
-func derefInt32(n *int32) int32 {
-	if n == nil {
-		return 0
-	}
-	return *n
-}
+// derefInt32 is conv.OrZero for the files of the held rolls, which still call it.
+func derefInt32(n *int32) int32 { return conv.OrZero(n) }
 
 // ---- conditions with a source ----
 
@@ -554,9 +562,9 @@ func (s *Service) dropConditionSourcesEndingNow(ctx context.Context, c *combatTx
 
 // endConditionSources ends the conditions whose source entry matches, in the whole combat.
 func (s *Service) endConditionSources(ctx context.Context, c *combatTx, ends func(conditionSource) bool) error {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	for _, who := range cs {
 		sources := readConditionSources(who.ConditionSources)

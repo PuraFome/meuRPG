@@ -24,21 +24,20 @@ import (
 // duration, the visibility, end, take a target off), of the card a viewer reads of them and of the
 // way the effects move between a combat and game time. A scenario's text is a file in
 // testdata/lasting_rpc with the ids replaced by labels; a change here is a change of behavior, not
-// of structure. Run with -update-lasting-rpc to write the files again after a change that was
+// of structure. Run with -update-lasting to write the files again after a change that was
 // meant, and read the diff.
 
-var updateLastingRPC = flag.Bool("update-lasting-rpc", false, "write the golden files of the lasting effects' calls again")
+var updateLasting = flag.Bool("update-lasting", false, "write the golden files of the lasting effects (testdata/lasting_core and testdata/lasting_rpc) again")
 
 var (
-	rpcUUID = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
 	rpcTime = regexp.MustCompile(`\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z`)
 )
 
-// wantRPCGolden compares got with the golden file of the scenario.
-func wantRPCGolden(t *testing.T, name, got string) {
+// wantLastingGolden compares got with the golden file of the scenario in testdata/<dir>.
+func wantLastingGolden(t *testing.T, dir, name, got string) {
 	t.Helper()
-	path := filepath.Join("testdata", "lasting_rpc", name+".golden")
-	if *updateLastingRPC {
+	path := filepath.Join("testdata", dir, name+".golden")
+	if *updateLasting {
 		if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 			t.Fatal(err)
 		}
@@ -49,10 +48,10 @@ func wantRPCGolden(t *testing.T, name, got string) {
 	}
 	want, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("read the golden file: %v (write it with -update-lasting-rpc)", err)
+		t.Fatalf("read the golden file: %v (write it with -update-lasting)", err)
 	}
 	if string(want) != got {
-		t.Errorf("%s differs from its golden file (-update-lasting-rpc writes it again):\n--- want\n%s\n--- got\n%s", name, want, got)
+		t.Errorf("%s differs from its golden file (-update-lasting writes it again):\n--- want\n%s\n--- got\n%s", name, want, got)
 	}
 }
 
@@ -182,7 +181,7 @@ func (a *armed) rpcClean(t *testing.T, text string) string {
 	t.Helper()
 	labels := a.rpcLabels(t)
 	text = rpcTime.ReplaceAllString(text, "<time>")
-	return rpcUUID.ReplaceAllStringFunc(text, func(id string) string {
+	return uuidText.ReplaceAllStringFunc(text, func(id string) string {
 		if l, ok := labels[id]; ok {
 			return l
 		}
@@ -203,6 +202,54 @@ func (a *armed) rpcJSON(t *testing.T, m proto.Message) string {
 		t.Fatalf("encode a message: %v", err)
 	}
 	return a.rpcCanonicalText(t, raw)
+}
+
+// rpcRuleKeys are the fields of an answer that carry the rules of an effect and not the shape of
+// the proto: who it is on, who may read it, whose it is, when it ends and the clock text that says
+// so. rpcRuleJSON keeps only these, so a new field of the proto does not rewrite a golden.
+var rpcRuleKeys = map[string]bool{
+	"effect": true, "effects": true, "concentrations": true, "id": true, "sourceKey": true,
+	"audience": true, "playerVisible": true, "label": true, "playerLabel": true,
+	"casterId": true, "casterLabel": true, "targetLabels": true, "combatantLabel": true,
+	"effectId": true, "effectIds": true, "spellKey": true, "concentration": true,
+	"durationKind": true, "roundsLeft": true, "clockTextPt": true,
+	"endsAt": true, "combatantId": true, "phase": true, "round": true, "currentCombatantId": true,
+	"characterName": true, "durationTextPt": true, "secondsLeft": true,
+}
+
+// rpcRuleJSON writes a message like rpcJSON, with only the fields of rpcRuleKeys.
+func (a *armed) rpcRuleJSON(t *testing.T, m proto.Message) string {
+	t.Helper()
+	raw, err := protojson.Marshal(m)
+	if err != nil {
+		t.Fatalf("encode a message: %v", err)
+	}
+	var v any
+	if err := json.Unmarshal([]byte(a.rpcClean(t, string(raw))), &v); err != nil {
+		t.Fatalf("read a message: %v", err)
+	}
+	return rpcCanonical(rpcKeepKeys(v))
+}
+
+// rpcKeepKeys drops, at every depth, the object fields that are not in rpcRuleKeys.
+func rpcKeepKeys(v any) any {
+	switch x := v.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(x))
+		for k, e := range x {
+			if rpcRuleKeys[k] {
+				out[k] = rpcKeepKeys(e)
+			}
+		}
+		return out
+	case []any:
+		out := make([]any, len(x))
+		for i, e := range x {
+			out[i] = rpcKeepKeys(e)
+		}
+		return out
+	}
+	return v
 }
 
 // rpcCanonicalText replaces the ids of a JSON text by their labels and then writes it indented,

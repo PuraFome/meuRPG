@@ -1,7 +1,6 @@
 package play
 
 import (
-	"errors"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -12,19 +11,6 @@ import (
 // Characterization of the request checks and the refusals of the rest, hit dice, Arcane
 // Recovery and rage handlers, frozen before they were split into phases: the exact code
 // and message of each refusal, and which check comes first.
-
-// wantResFrozen checks the code and the message of a refusal.
-func wantResFrozen(t *testing.T, name string, err error, code connect.Code, msg string) {
-	t.Helper()
-	ce, ok := errors.AsType[*connect.Error](err)
-	if !ok {
-		t.Errorf("%s: err = %v, want a connect error %v %q", name, err, code, msg)
-		return
-	}
-	if ce.Code() != code || ce.Message() != msg {
-		t.Errorf("%s: got %v %q, want %v %q", name, ce.Code(), ce.Message(), code, msg)
-	}
-}
 
 func TestSpendHitDiceRequestRefusalsFrozen(t *testing.T) {
 	t.Parallel()
@@ -57,14 +43,14 @@ func TestSpendHitDiceRequestRefusalsFrozen(t *testing.T) {
 		if tc.name == "bad character" {
 			code = connect.CodeNotFound
 		}
-		wantResFrozen(t, tc.name, err, code, tc.msg)
+		wantRefusal(t, tc.name, err, code, tc.msg)
 	}
 	// The check of the key comes before the check of the die, the character's before both.
 	_, err := r.spend(t, r.ana, r.fighter, 0, func(q *playv1.SpendHitDiceRequest) { q.IdempotencyKey = "no" })
-	wantResFrozen(t, "key before die", err, connect.CodeInvalidArgument, "idempotency_key must be a UUID")
+	wantRefusal(t, "key before die", err, connect.CodeInvalidArgument, "idempotency_key must be a UUID")
 	// Another player's character is not theirs.
 	_, err = r.spend(t, r.bia, r.fighter, 10)
-	wantResFrozen(t, "stranger", err, connect.CodePermissionDenied, "only the character's player or the master may do this")
+	wantRefusal(t, "stranger", err, connect.CodePermissionDenied, "only the character's player or the master may do this")
 	// A die size the character does not have is the keeper's refusal.
 	_, err = r.spend(t, r.ana, r.fighter, 6)
 	wantCode(t, "SpendHitDice(d6 of a fighter)", err, connect.CodeInvalidArgument)
@@ -84,21 +70,21 @@ func TestArcaneRecoveryRequestRefusalsFrozen(t *testing.T) {
 		return &playv1.SpellSlotBack{Level: level, Count: count}
 	}
 	const levelsMsg = "slots must name one to nine spell levels"
-	wantResFrozen(t, "no slots", call(func(*playv1.UseArcaneRecoveryRequest) {}), connect.CodeInvalidArgument, levelsMsg)
+	wantRefusal(t, "no slots", call(func(*playv1.UseArcaneRecoveryRequest) {}), connect.CodeInvalidArgument, levelsMsg)
 	tooMany := func(q *playv1.UseArcaneRecoveryRequest) {
 		for i := range 10 {
 			q.Slots = append(q.Slots, slot(int32(i%9)+1, 1))
 		}
 	}
-	wantResFrozen(t, "ten entries", call(tooMany), connect.CodeInvalidArgument, levelsMsg)
-	wantResFrozen(t, "level 0", call(func(q *playv1.UseArcaneRecoveryRequest) { q.Slots = []*playv1.SpellSlotBack{slot(0, 1)} }), connect.CodeInvalidArgument, "a slot level must be 1 to 9")
-	wantResFrozen(t, "level 10", call(func(q *playv1.UseArcaneRecoveryRequest) { q.Slots = []*playv1.SpellSlotBack{slot(10, 1)} }), connect.CodeInvalidArgument, "a slot level must be 1 to 9")
+	wantRefusal(t, "ten entries", call(tooMany), connect.CodeInvalidArgument, levelsMsg)
+	wantRefusal(t, "level 0", call(func(q *playv1.UseArcaneRecoveryRequest) { q.Slots = []*playv1.SpellSlotBack{slot(0, 1)} }), connect.CodeInvalidArgument, "a slot level must be 1 to 9")
+	wantRefusal(t, "level 10", call(func(q *playv1.UseArcaneRecoveryRequest) { q.Slots = []*playv1.SpellSlotBack{slot(10, 1)} }), connect.CodeInvalidArgument, "a slot level must be 1 to 9")
 	const countMsg = "the count of slots of a level must be at least 1"
-	wantResFrozen(t, "count 0", call(func(q *playv1.UseArcaneRecoveryRequest) { q.Slots = []*playv1.SpellSlotBack{slot(1, 0)} }), connect.CodeInvalidArgument, countMsg)
-	wantResFrozen(t, "count 10", call(func(q *playv1.UseArcaneRecoveryRequest) { q.Slots = []*playv1.SpellSlotBack{slot(1, 10)} }), connect.CodeInvalidArgument, countMsg)
-	wantResFrozen(t, "repeated level", call(func(q *playv1.UseArcaneRecoveryRequest) { q.Slots = []*playv1.SpellSlotBack{slot(1, 1), slot(1, 1)} }), connect.CodeInvalidArgument, "each slot level may appear once")
-	wantResFrozen(t, "bad key", call(func(q *playv1.UseArcaneRecoveryRequest) { q.IdempotencyKey = "no" }), connect.CodeInvalidArgument, "idempotency_key must be a UUID")
-	wantResFrozen(t, "bad character", call(func(q *playv1.UseArcaneRecoveryRequest) { q.CharacterId = "no" }), connect.CodeNotFound, "character not found")
+	wantRefusal(t, "count 0", call(func(q *playv1.UseArcaneRecoveryRequest) { q.Slots = []*playv1.SpellSlotBack{slot(1, 0)} }), connect.CodeInvalidArgument, countMsg)
+	wantRefusal(t, "count 10", call(func(q *playv1.UseArcaneRecoveryRequest) { q.Slots = []*playv1.SpellSlotBack{slot(1, 10)} }), connect.CodeInvalidArgument, countMsg)
+	wantRefusal(t, "repeated level", call(func(q *playv1.UseArcaneRecoveryRequest) { q.Slots = []*playv1.SpellSlotBack{slot(1, 1), slot(1, 1)} }), connect.CodeInvalidArgument, "each slot level may appear once")
+	wantRefusal(t, "bad key", call(func(q *playv1.UseArcaneRecoveryRequest) { q.IdempotencyKey = "no" }), connect.CodeInvalidArgument, "idempotency_key must be a UUID")
+	wantRefusal(t, "bad character", call(func(q *playv1.UseArcaneRecoveryRequest) { q.CharacterId = "no" }), connect.CodeNotFound, "character not found")
 }
 
 func TestRageEndRefusalsFrozen(t *testing.T) {

@@ -10,6 +10,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -82,10 +83,7 @@ func (s *Service) EndCombatEffect(
 // readEndCombatEffect reads the key, the combat and the combatant, and refuses an effect that is
 // not Ajuda.
 func readEndCombatEffect(msg *playv1.EndCombatEffectRequest) (key, encID, combID string, err error) {
-	if key, err = parseKey(msg.GetIdempotencyKey()); err != nil {
-		return "", "", "", err
-	}
-	if encID, err = parseCombatID(msg.GetEncounterId(), "encounter"); err != nil {
+	if key, encID, err = parseCall(msg.GetIdempotencyKey(), msg.GetEncounterId()); err != nil {
 		return "", "", "", err
 	}
 	if combID, err = parseCombatID(msg.GetCombatantId(), "combatant"); err != nil {
@@ -103,9 +101,9 @@ func (s *Service) endAidTx(ctx context.Context, c *combatTx, v combatViewer, com
 	if err := notEnded(c.enc); err != nil {
 		return nil, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	target, err := findCombatant(cs, combID, v)
 	if err != nil {
@@ -116,8 +114,8 @@ func (s *Service) endAidTx(ctx context.Context, c *combatTx, v combatViewer, com
 		return nil, err // nothing to end: no event
 	}
 	*vitals = after
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return nil, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return nil, err
 	}
 	c.characterID = &target.CharacterID
 	return actionEvent{Round: c.enc.Round, Secret: target.Hidden, Actor: target.ID, EffectEnd: end}, nil
@@ -135,7 +133,7 @@ func (s *Service) endAid(ctx context.Context, c *combatTx, target playdb.Combata
 		if bonus == 0 {
 			return nil, nil, nil
 		}
-		before, maxBefore := hpOf(target), num(target.HpMax)
+		before, maxBefore := hpOf(target), conv.OrZero(target.HpMax)
 		maxAfter := max(maxBefore-bonus, 1)
 		hp := before.HP
 		if hp > 0 {
@@ -169,9 +167,9 @@ func (s *Service) endAid(ctx context.Context, c *combatTx, target playdb.Combata
 // (SRD 5.1, Shield: the +5 lasts "until the start of your next turn"). The bonus
 // itself is taken off by ResetCombatantTurn.
 func (s *Service) endShields(ctx context.Context, c *combatTx, ids []string) error {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	for _, who := range cs {
 		if !slices.Contains(ids, who.ID) || who.AcBonus == 0 {
