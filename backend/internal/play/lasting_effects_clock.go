@@ -80,7 +80,7 @@ func (s *Service) dealDamageAtEnd(ctx context.Context, c *combatTx, cs []playdb.
 		if !triggersAtEnd(st) || st.TriggersFired >= conv.OrZero(st.TriggerMaxTriggers) || i < 0 || cs[i].Defeated {
 			continue
 		}
-		rolled, err := s.dealEffectDamage(ctx, c, cs[i], st, int32(endsAtOf(st).Round)) //nolint:gosec // a round of the combat
+		rolled, err := s.dealEffectDamage(ctx, c, cs[i], st, conv.Int32(endsAtOf(st).Round))
 		if err != nil {
 			return nil, err
 		}
