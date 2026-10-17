@@ -46,6 +46,9 @@ const (
 	// (Chama Sagrada, SRD 5.1). It reads no hit points either: SpellEffect does
 	// not return it, and IgnoresCover says it.
 	SpellKindIgnoresCover = "ignores_cover"
+	// SpellKindHalfOnMiss: the spell attack that misses still deals half of its
+	// damage (Acid Arrow, SRD 5.1). It reads no hit points either: HalvesOnMiss says it.
+	SpellKindHalfOnMiss = "half_on_miss"
 	// SpellKindRevive: the spell brings a creature that died in the last minute back
 	// to life with HitPoints hit points (Revivify, SRD 5.1). A minute is WindowRounds
 	// rounds in a combat ("a round is about 6 seconds", SRD 5.1, "The Order of Combat").
@@ -191,6 +194,7 @@ func (c *content) loadSpellEffects(fsys fs.FS) error {
 	}
 	c.spellEffects = map[string]spellEffectDef{}
 	c.coverIgnoring = map[string]bool{}
+	c.missHalving = map[string]bool{}
 	c.revives = map[string]ReviveSpec{}
 	for _, key := range sortedKeys(f.Spells) {
 		if err := c.loadSpellEffect(key, f.Spells[key]); err != nil {
@@ -250,7 +254,23 @@ func (c *content) loadApartKind(e spellEffectEntry) (done bool, err error) {
 		c.coverIgnoring[e.key] = true
 		return true, nil
 	}
+	if in.Kind == SpellKindHalfOnMiss {
+		return true, c.loadHalfOnMiss(e)
+	}
 	return false, nil
+}
+
+// loadHalfOnMiss stores a spell whose attack roll still deals half its damage on a miss: it must
+// be a spell attack, and takes nothing else.
+func (c *content) loadHalfOnMiss(e spellEffectEntry) error {
+	if e.in.set() != 0 {
+		return e.fail("a half_on_miss spell takes nothing else")
+	}
+	if c.spells[e.key].AttackType == "" {
+		return e.fail("a half_on_miss spell needs a spell attack")
+	}
+	c.missHalving[e.key] = true
+	return nil
 }
 
 func (c *content) loadRevive(e spellEffectEntry) error {
@@ -343,6 +363,10 @@ func (c *content) checkEffectConditions(e spellEffectEntry) error {
 // IgnoresCover says the spell's saving throw gets no benefit from cover (the
 // SRD's Chama Sagrada), from the "ignores_cover" kind of effects/spells.json.
 func (c *Content) IgnoresCover(key string) bool { return c.c.coverIgnoring[key] }
+
+// HalvesOnMiss says the spell attack deals half its damage when it misses (the SRD's Acid
+// Arrow), from the "half_on_miss" kind of effects/spells.json.
+func (c *Content) HalvesOnMiss(key string) bool { return c.c.missHalving[key] }
 
 // Revive says what a spell of the revive kind does (Revivify), and false for any other spell.
 func (c *Content) Revive(key string) (ReviveSpec, bool) {

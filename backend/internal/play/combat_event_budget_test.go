@@ -125,3 +125,55 @@ func TestTrimUndoHelpers(t *testing.T) {
 		})
 	}
 }
+
+// biggestRevealCast is the event of an area cast that hit the most creatures a combat
+// holds, every one of them hidden, under the table rule that reveals them: the cast the
+// master (or a player's spell under the default rule) makes into a crowd of hidden
+// creatures. It is built as settleHidden builds it.
+func biggestRevealCast() actionEvent {
+	ev := actionEvent{Round: 99, Actor: newKey(), Key: fireball, CastID: newKey(), Placed: true, AreaCol: 23, AreaRow: 15, Slot: &slotRef{Level: 9}}
+	var lines []string
+	for range maxCombatants {
+		ev.Hits = append(ev.Hits, castHit{
+			Target: newKey(), Save: &saveRoll{D20: 20, Bonus: -5, Total: 15, DC: 20, Saved: true}, Pending: newKey(), More: []string{newKey()},
+			Cover: "three_quarters", CoverSource: "map", CoverBonus: 5, CoverSeenMask: 1<<5 | 1, HiddenAtCast: true,
+		})
+		lines = append(lines, newKey())
+	}
+	ev.RevealedHits, ev.RevealLines = true, lines
+	return ev
+}
+
+// TestTheBiggestRevealCastFitsTheEventBudget: a cast that reveals forty hidden creatures
+// writes an event under undoHelpersBudget, the undo helpers it may drop already dropped,
+// so that the table's 16 KiB check never refuses the cast.
+func TestTheBiggestRevealCastFitsTheEventBudget(t *testing.T) {
+	t.Parallel()
+	body, dropped, err := trimUndoHelpers(biggestRevealCast())
+	if err != nil {
+		t.Fatalf("trimUndoHelpers error = %v", err)
+	}
+	if len(body) > undoHelpersBudget {
+		t.Errorf("the event of a cast that reveals %d creatures takes %d bytes after dropping %v, over the %d the budget allows",
+			maxCombatants, len(body), dropped, undoHelpersBudget)
+	}
+}
+
+// TestRevealedIDsReadsTheHitsAndTheList: a cast that flags RevealedHits reveals the hits made
+// on hidden creatures and no other; an answer or an older event lists its creatures.
+func TestRevealedIDsReadsTheHitsAndTheList(t *testing.T) {
+	t.Parallel()
+	hits := []castHit{{Target: "a", HiddenAtCast: true}, {Target: "b"}, {Target: "c", HiddenAtCast: true}}
+	for name, tc := range map[string]struct {
+		ev   actionEvent
+		want []string
+	}{
+		"hits of hidden creatures":     {actionEvent{Hits: hits, RevealedHits: true}, []string{"a", "c"}},
+		"hidden but kept hidden":       {actionEvent{Hits: hits}, []string{}},
+		"the list of an answer or old": {actionEvent{Hits: hits, Revealed: []string{"x"}}, []string{"x"}},
+	} {
+		if got := tc.ev.revealedIDs(); !slices.Equal(got, tc.want) && (len(got) != 0 || len(tc.want) != 0) {
+			t.Errorf("%s: revealedIDs = %v, want %v", name, got, tc.want)
+		}
+	}
+}
