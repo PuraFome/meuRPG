@@ -14,7 +14,7 @@ Any later event that is not undoable leaves `NOTHING_TO_UNDO`, because undoing o
 Some events are written just before the change's own event and never close the chain, because the undo acts on the change and takes them along:
 
 - the creatures a cast made or an ended concentration dismissed (`creature_summoned`, `creature_dismissed`);
-- a concentration that ended at 0 HP;
+- a concentration that ended at 0 HP, whether a damage or the master's adjustment of an NPC's HP took the combatant there (the event is grouped by the pending damage or by the combatant, and the undo of the change takes it back);
 - the opportunity offers a move made (an offer the master makes by hand in theatre closes the chain instead);
 - a door a move opened (it stays open after the undo) and a hiding an attack ended;
 - the puzzle events and the clue a solve gave;
