@@ -64,6 +64,13 @@ describe('ConversationLine', () => {
     expect(render(narration({ canHear: false })).el.querySelector('app-listen-button')).toBeNull();
   });
 
+  it('hides "Ouvir" for the line the server sends with no voice at all (can_hear false, no audio_url)', () => {
+    const silent = narration({ canHear: false, audioUrl: '' });
+    expect(render(silent).el.querySelector('app-listen-button')).toBeNull();
+    const noUrl = narration({ canHear: true, audioUrl: '' });
+    expect(render(noUrl).el.querySelector('app-listen-button')).toBeNull();
+  });
+
   it('draws an NPC with a round portrait, a bold name and the text in a bubble', () => {
     const { el, label } = render(
       line('b1', {
