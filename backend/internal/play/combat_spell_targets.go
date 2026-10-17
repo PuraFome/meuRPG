@@ -2,6 +2,7 @@ package play
 
 import (
 	"context"
+	"math"
 	"slices"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -79,6 +80,9 @@ func (sc *spellTargetScene) targetsOf(e spellTargetEntry, sp link.Spell) *playv1
 		AreaWidthFt: areaWidthFor(sp, sc.theatre), RangeFt: placedRangeFor(sp, sc.theatre),
 		MaxTargets: clamp32(maxTargetsOf(sp, e.level), 0, maxCombatants), ExtraTargetPerLevel: sp.ExtraTargetPerLevel || sp.Key == magicMissile,
 		TargetsPerLevel: clamp32(sp.TargetPerLevel, 0, maxCombatants),
+	}
+	if reach := teleportReachFt[sp.Key]; reach > 0 && !sc.theatre {
+		st.TeleportRangeFt = clamp32(reach, 0, math.MaxInt32)
 	}
 	if sp.AttackType != "" { // a spell attack roll: the target's mode, as CastSpell settles it (SRD 5.1)
 		shape := shapeOfSpell(sp)

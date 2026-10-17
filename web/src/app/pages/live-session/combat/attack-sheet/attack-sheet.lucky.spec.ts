@@ -10,9 +10,8 @@ import {
   CombatantKind,
   CombatantSide,
   DiceRollSchema,
-  InspirationDieSchema,
-  InspirationOfferSchema,
-  LuckyOfferSchema,
+  HeldRollKind,
+  HeldRollOfferSchema,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import {
   ResourceBlockedReason,
@@ -24,6 +23,7 @@ import { type AttackResult } from '../../../../core/combat/combat-client-types';
 import { CombatState } from '../../../../core/combat/combat-state';
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
 import { LUCKY_TRAIT } from '../../../../core/combat/lucky';
+import { heldAttackAnswer } from '../../../../core/held-rolls/held-roll-testing';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { AttackSheet, type AttackSheetData } from './attack-sheet';
 import { fakeCombatClient } from '../../../../core/combat/combat-client-testing';
@@ -64,10 +64,11 @@ const d20 = (faces: number[], counted = 0, again?: { index: number; to: number }
     rerolled: again ? [{ index: again.index, from: 1, to: again.to, sourceKey: LUCKY_TRAIT }] : [],
   });
 
-const lucky = create(LuckyOfferSchema, {
+const lucky = create(HeldRollOfferSchema, {
   holdId: 'hold-1',
+  kind: HeldRollKind.WEAPON_ATTACK,
   d20: d20([1]),
-  luckyIndex: 0,
+  question: { case: 'lucky', value: { luckyIndex: 0 } },
   attackKey: battleaxe.key,
   targetId: 'g',
 });
@@ -77,7 +78,7 @@ const held = (state: CombatState, offer = lucky): AttackResult => ({
   encounter: state.encounter()!,
   roll: create(AttackRollSchema, { attackKey: battleaxe.key, d20: offer.d20 }),
   pending: undefined,
-  lucky: offer,
+  held: offer,
 });
 
 /** The answer: the attack resolved with the new d20 (or with the 1 kept). */
@@ -93,11 +94,10 @@ const resolved = (state: CombatState, to: number | null): AttackResult => ({
 
 describe('AttackSheet: the halfling’s Lucky question, "Tirou 1: rolar de novo?"', () => {
   const rollAttack = vi.fn();
-  const answerLucky = vi.fn();
-  const answerBardicInspiration = vi.fn();
+  const answerHeldRoll = vi.fn();
   const onHeld = vi.fn();
 
-  function open(over: { diceMode?: DiceMode; lucky?: AttackSheetData['lucky'] } = {}) {
+  function open(over: { diceMode?: DiceMode; held?: AttackSheetData['held'] } = {}) {
     const state = new CombatState();
     state.apply(encounter({ currentCombatantId: 'p', combatants: [pipo, goblin] }));
     const data: AttackSheetData = {
@@ -111,17 +111,17 @@ describe('AttackSheet: the halfling’s Lucky question, "Tirou 1: rolar de novo?
       preference: DicePreference.APP,
       state,
       // The target is the mover of an opportunity, so the sheet opens at "Rolar".
-      opportunity: over.lucky
+      opportunity: over.held
         ? undefined
         : { offerId: 'o', targetId: 'g', targetLabel: 'Goblin', byMaster: false },
-      lucky: over.lucky,
+      held: over.held,
       onHeld,
     };
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
         { provide: CombatClient, useValue: fakeCombatClient({ rollAttack }) },
-        { provide: ResourceClient, useValue: { answerLucky, answerBardicInspiration } },
+        { provide: ResourceClient, useValue: { answerHeldRoll } },
         { provide: MAT_DIALOG_DATA, useValue: data },
         { provide: MatDialogRef, useValue: { close: vi.fn(), disableClose: false } },
       ],
@@ -149,8 +149,7 @@ describe('AttackSheet: the halfling’s Lucky question, "Tirou 1: rolar de novo?
     // The sheet scrolls its error into view; the test DOM has no scroll.
     Element.prototype.scrollTo = vi.fn();
     rollAttack.mockReset();
-    answerLucky.mockReset();
-    answerBardicInspiration.mockReset();
+    answerHeldRoll.mockReset();
     onHeld.mockReset();
   });
 
@@ -176,17 +175,15 @@ describe('AttackSheet: the halfling’s Lucky question, "Tirou 1: rolar de novo?
   it('"Rolar de novo" answers with the d20 rolled in the app, then shows the result and "Sortudo: 1 → 14"', async () => {
     const { el, state, settle, button } = open();
     rollAttack.mockImplementation(() => Promise.resolve(held(state)));
-    answerLucky.mockImplementation(() => Promise.resolve(resolved(state, 14)));
+    answerHeldRoll.mockImplementation(() => Promise.resolve(heldAttackAnswer(resolved(state, 14))));
     button('Rolar no app')!.click();
     await settle();
     button('Rolar de novo')!.click();
     await settle();
-    expect(answerLucky).toHaveBeenCalledWith(
+    expect(answerHeldRoll).toHaveBeenCalledWith(
       'camp',
-      'enc',
       'hold-1',
-      true,
-      { inApp: true },
+      { kind: 'lucky', reroll: true, roll: { inApp: true } },
       expect.any(String),
     );
     const text = flat(el);
@@ -199,17 +196,17 @@ describe('AttackSheet: the halfling’s Lucky question, "Tirou 1: rolar de novo?
   it('"Ficar com o 1" keeps it: the attack misses on the natural 1, and nothing says Lucky rolled', async () => {
     const { el, state, settle, button } = open();
     rollAttack.mockImplementation(() => Promise.resolve(held(state)));
-    answerLucky.mockImplementation(() => Promise.resolve(resolved(state, null)));
+    answerHeldRoll.mockImplementation(() =>
+      Promise.resolve(heldAttackAnswer(resolved(state, null))),
+    );
     button('Rolar no app')!.click();
     await settle();
     button('Ficar com o 1')!.click();
     await settle();
-    expect(answerLucky).toHaveBeenCalledWith(
+    expect(answerHeldRoll).toHaveBeenCalledWith(
       'camp',
-      'enc',
       'hold-1',
-      false,
-      null,
+      { kind: 'lucky', reroll: false, roll: null },
       expect.any(String),
     );
     const text = flat(el);
@@ -220,7 +217,7 @@ describe('AttackSheet: the halfling’s Lucky question, "Tirou 1: rolar de novo?
   it('with real dice the player types the new d20, 1 to 20', async () => {
     const { el, state, settle, button, type } = open({ diceMode: DiceMode.PHYSICAL });
     rollAttack.mockImplementation(() => Promise.resolve(held(state)));
-    answerLucky.mockImplementation(() => Promise.resolve(resolved(state, 15)));
+    answerHeldRoll.mockImplementation(() => Promise.resolve(heldAttackAnswer(resolved(state, 15))));
     type('1');
     button('Confirmar 1')!.click();
     await settle();
@@ -229,12 +226,10 @@ describe('AttackSheet: the halfling’s Lucky question, "Tirou 1: rolar de novo?
     type('15');
     button('Confirmar 15')!.click();
     await settle();
-    expect(answerLucky).toHaveBeenCalledWith(
+    expect(answerHeldRoll).toHaveBeenCalledWith(
       'camp',
-      'enc',
       'hold-1',
-      true,
-      { face: 15 },
+      { kind: 'lucky', reroll: true, roll: { face: 15 } },
       expect.any(String),
     );
     expect(flat(el)).toContain('Sortudo: 1 → 15');
@@ -242,7 +237,7 @@ describe('AttackSheet: the halfling’s Lucky question, "Tirou 1: rolar de novo?
 
   it('with advantage names the die that showed the 1', async () => {
     const { el, state, settle, button } = open();
-    const pair = create(LuckyOfferSchema, { ...lucky, d20: d20([1, 13], 1) });
+    const pair = create(HeldRollOfferSchema, { ...lucky, d20: d20([1, 13], 1) });
     rollAttack.mockImplementation(() => Promise.resolve(held(state, pair)));
     button('Rolar no app')!.click();
     await settle();
@@ -253,27 +248,24 @@ describe('AttackSheet: the halfling’s Lucky question, "Tirou 1: rolar de novo?
 
   it('after the new d20, a Bardic Inspiration die the attacker holds is asked about, on the new roll', async () => {
     const { el, state, settle, button } = open();
-    const die = create(InspirationDieSchema, {
-      sides: 8,
-      fromLabel: 'Orla',
-      fromCombatantId: 'o',
-      expiresAtRound: 90,
-    });
     const next = d20([6], 0, { index: 0, to: 6 });
     rollAttack.mockImplementation(() => Promise.resolve(held(state)));
-    answerLucky.mockImplementation(() =>
-      Promise.resolve({
-        encounter: state.encounter()!,
-        roll: create(AttackRollSchema, { attackKey: battleaxe.key, d20: next }),
-        pending: undefined,
-        offer: create(InspirationOfferSchema, {
-          holdId: 'hold-1',
-          die,
-          d20: next,
-          attackKey: battleaxe.key,
-          targetId: 'g',
+    answerHeldRoll.mockImplementation(() =>
+      Promise.resolve(
+        heldAttackAnswer({
+          encounter: state.encounter()!,
+          roll: create(AttackRollSchema, { attackKey: battleaxe.key, d20: next }),
+          pending: undefined,
+          held: create(HeldRollOfferSchema, {
+            holdId: 'hold-1',
+            kind: HeldRollKind.WEAPON_ATTACK,
+            question: { case: 'die', value: { sides: 8, fromName: 'Orla' } },
+            d20: next,
+            attackKey: battleaxe.key,
+            targetId: 'g',
+          }),
         }),
-      } satisfies AttackResult),
+      ),
     );
     button('Rolar no app')!.click();
     await settle();
@@ -289,7 +281,7 @@ describe('AttackSheet: the halfling’s Lucky question, "Tirou 1: rolar de novo?
   });
 
   it('opens at the question when the screen is read again (the offer is on the combatant)', () => {
-    const { el, button } = open({ lucky: { offer: lucky, targetLabel: 'Goblin' } });
+    const { el, button } = open({ held: { offer: lucky, targetLabel: 'Goblin' } });
     const text = flat(el);
     expect(text).toContain('Tirou 1: rolar de novo?');
     expect(text).toContain('Goblin');
@@ -299,14 +291,14 @@ describe('AttackSheet: the halfling’s Lucky question, "Tirou 1: rolar de novo?
   });
 
   it('keeps the key of an answer that failed, so a retry never rolls the d20 twice', async () => {
-    const { el, settle, button } = open({ lucky: { offer: lucky, targetLabel: 'Goblin' } });
-    answerLucky.mockRejectedValue(new ConnectError('down', Code.Unavailable));
+    const { el, settle, button } = open({ held: { offer: lucky, targetLabel: 'Goblin' } });
+    answerHeldRoll.mockRejectedValue(new ConnectError('down', Code.Unavailable));
     button('Rolar de novo')!.click();
     await settle();
     button('Rolar de novo')!.click();
     await settle();
     expect(flat(el.querySelector('[role=alert] p'))).toContain('o servidor não respondeu');
-    const keys = answerLucky.mock.calls.map((c) => c[5] as string);
+    const keys = answerHeldRoll.mock.calls.map((c) => c[3] as string);
     expect(keys[0]).toBe(keys[1]);
     expect(flat(el)).toContain('Tirou 1: rolar de novo?');
   });

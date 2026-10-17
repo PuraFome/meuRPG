@@ -1,7 +1,5 @@
 import { afterNextRender, computed, inject, Directive } from '@angular/core';
 import {
-  type InspirationOffer,
-  type LuckyOffer,
   EncounterStatus,
   type PendingDamage,
   PendingDamageStatus,
@@ -18,13 +16,12 @@ import { resourceFlow } from '../../../core/resources/resource-actions';
 import { openWindows } from '../../../core/combat/reactions';
 import { type RevealAnswer } from './hidden-reveal/hidden-reveal-card';
 import { CombatViewDerivedDirective } from './combat-view-derived';
+import { DiceMode } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import { HeldQuestions } from '../../../core/held-rolls/held-questions';
+import { HeldVanishWatch } from '../../../core/held-rolls/held-vanish';
+import { pendingCountText } from '../../../core/held-rolls/held-text';
+import { ResourceClient } from '../../../core/resources/resources-client';
 
-/** The questions of a held attack roll the page reopens the attack sheet at: the halfling's Lucky about a 1 (asked
- * first) and the Bardic Inspiration die. */
-interface HeldRoll {
-  readonly offer?: InspirationOffer;
-  readonly lucky?: LuckyOffer;
-}
 /** The parts the screen is composed of (`CombatSheets`, `MoveFlow`, `ContestHost`) and the calls of the turn, the
  * actions and the attacks. */
 @Directive()
@@ -103,6 +100,16 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
     diceMode: () => this.diceMode(),
     preference: () => this.dicePreference(),
   });
+  /** The master's questions about the rolls that wait for their roller (kept in step with the combat's, in its effects). */
+  protected readonly held = new HeldQuestions({
+    send: (holdId, answer, key) =>
+      this.injector.get(ResourceClient).answerHeldRoll(this.campaignId(), holdId, answer, key),
+  });
+  protected readonly heldCount = computed(() => pendingCountText(this.held.count()));
+  protected readonly heldCanType = computed(() => this.diceMode() !== DiceMode.APP);
+  /** The roller's notice when the master answered the question they were shown. */
+  protected readonly vanish = new HeldVanishWatch();
+
   // ---- calls ----
 
   protected begin(): Promise<boolean> {
@@ -263,13 +270,10 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
   /** "Responder": the question of a held roll (Lucky first, then the die's), at the d20 that was rolled. `false` while
    * the attack is not in the options. */
   protected openHeldRoll(): boolean {
-    const held: HeldRoll = {
-      offer: this.ownOffer() ?? undefined,
-      lucky: this.ownLucky() ?? undefined,
-    };
-    const key = (held.lucky ?? held.offer)?.attackKey;
+    const held = this.ownHeld();
+    const key = held?.attackKey;
     const attack = this.options()?.options?.attacks.find((a) => a.attack?.key === key);
-    if (!key || !attack) {
+    if (!held || !key || !attack) {
       return false;
     }
     this.sheets.attack({ key, held });

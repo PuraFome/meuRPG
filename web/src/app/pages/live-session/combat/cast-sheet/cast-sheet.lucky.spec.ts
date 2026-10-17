@@ -10,14 +10,14 @@ import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1
 import {
   AttackOutcome,
   DiceRollSchema,
-  LuckyOfferSchema,
-  OutsideInspirationOfferSchema,
   SpellCastSchema,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { ActionEconomy } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
 import { LUCKY_TRAIT } from '../../../../core/combat/lucky';
+import type { HeldAnswer } from '../../../../core/held-rolls/held-roll-offer';
+import { heldAnswer, heldDie, heldLucky } from '../../../../core/held-rolls/held-roll-testing';
 import { SpellCatalog } from '../../../../core/combat/spell-catalog';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { CastSheet, type CastSheetData } from './cast-sheet';
@@ -35,7 +35,7 @@ const d20 = (face: number, again?: number) =>
     rerolled: again ? [{ index: 0, from: 1, to: again, sourceKey: LUCKY_TRAIT }] : [],
   });
 
-const lucky = create(LuckyOfferSchema, { holdId: 'h1', d20: d20(1), luckyIndex: 0 });
+const lucky = heldLucky([1], 5, { holdId: 'h1' });
 
 /** The cast the answer brings: Raio Guiador on the Goblin, with the d20 after the answer. */
 const cast = (face: number, again?: number) =>
@@ -54,7 +54,7 @@ describe('the cast sheet and the halfling’s Lucky question', () => {
   function setup() {
     TestBed.resetTestingModule();
     const apply = vi.fn();
-    const resources = { answerOutsideLucky: vi.fn(), answerOutsideInspiration: vi.fn() };
+    const resources = { answerHeldRoll: vi.fn() };
     const data = {
       campaignId: 'c',
       encounterId: 'enc',
@@ -92,17 +92,18 @@ describe('the cast sheet and the halfling’s Lucky question', () => {
     const fixture = TestBed.createComponent(CastSheet);
     fixture.detectChanges();
     const sheet = fixture.componentInstance as unknown as {
-      luckyOffer: { set(v: unknown): void; (): unknown };
-      offer: () => unknown;
+      offer: { set(v: unknown): void; (): unknown };
       cast: () => unknown;
-      answerLucky(reroll: boolean, die: { inApp: true } | { face: number } | null): Promise<void>;
+      questions: { held: { answer(answer: HeldAnswer): Promise<void> } };
     };
+    const answerLucky = (reroll: boolean, roll: { inApp: true } | { face: number } | null) =>
+      sheet.questions.held.answer({ kind: 'lucky', reroll, roll });
     const el = fixture.nativeElement as HTMLElement;
     const ask = () => {
-      sheet.luckyOffer.set(lucky);
+      sheet.offer.set(lucky);
       fixture.detectChanges();
     };
-    return { fixture, el, sheet, resources, apply, ask };
+    return { fixture, el, sheet, resources, apply, ask, answerLucky };
   }
 
   beforeEach(() => {
@@ -126,68 +127,71 @@ describe('the cast sheet and the halfling’s Lucky question', () => {
   });
 
   it('"Rolar de novo" casts the spell with the new d20, and the result says "Sortudo: 1 → 14"', async () => {
-    const { fixture, el, sheet, resources, apply, ask } = setup();
+    const { fixture, el, sheet, resources, apply, ask, answerLucky } = setup();
     ask();
     const enc = encounter({ combatants: [combatant({ id: 't', label: 'Goblin' })] });
-    resources.answerOutsideLucky.mockResolvedValue({
-      result: { case: 'spellCast', value: { encounter: enc, cast: cast(14, 14) } },
-    });
-    await sheet.answerLucky(true, { inApp: true });
+    resources.answerHeldRoll.mockResolvedValue(
+      heldAnswer({ result: { case: 'spellCast', value: { encounter: enc, cast: cast(14, 14) } } }),
+    );
+    await answerLucky(true, { inApp: true });
     fixture.detectChanges();
-    expect(resources.answerOutsideLucky.mock.calls[0].slice(0, 4)).toEqual([
+    expect(resources.answerHeldRoll.mock.calls[0].slice(0, 3)).toEqual([
       'c',
       'h1',
-      true,
-      { inApp: true },
+      { kind: 'lucky', reroll: true, roll: { inApp: true } },
     ]);
     expect(apply).toHaveBeenCalledWith(enc);
     expect(sheet.cast()).not.toBeNull();
-    expect(sheet.luckyOffer()).toBeNull();
+    expect(sheet.offer()).toBeNull();
     const text = flat(el);
     expect(text).not.toContain('Tirou 1: rolar de novo?');
     expect(text).toContain('Sortudo: 1 → 14');
   });
 
   it('"Ficar com o 1" sends no new die, and the result says nothing of Lucky', async () => {
-    const { fixture, el, sheet, resources, ask } = setup();
+    const { fixture, el, resources, ask, answerLucky } = setup();
     ask();
-    resources.answerOutsideLucky.mockResolvedValue({
-      result: { case: 'spellCast', value: { encounter: encounter({}), cast: cast(1) } },
-    });
-    await sheet.answerLucky(false, null);
+    resources.answerHeldRoll.mockResolvedValue(
+      heldAnswer({
+        result: { case: 'spellCast', value: { encounter: encounter({}), cast: cast(1) } },
+      }),
+    );
+    await answerLucky(false, null);
     fixture.detectChanges();
-    expect(resources.answerOutsideLucky.mock.calls[0].slice(0, 4)).toEqual([
+    expect(resources.answerHeldRoll.mock.calls[0].slice(0, 3)).toEqual([
       'c',
       'h1',
-      false,
-      null,
+      { kind: 'lucky', reroll: false, roll: null },
     ]);
     expect(flat(el)).not.toContain('Sortudo:');
   });
 
   it('with real dice sends the typed face of the new d20', async () => {
-    const { sheet, resources, ask } = setup();
+    const { resources, ask, answerLucky } = setup();
     ask();
-    resources.answerOutsideLucky.mockResolvedValue({
-      result: { case: 'spellCast', value: { encounter: encounter({}), cast: cast(15, 15) } },
+    resources.answerHeldRoll.mockResolvedValue(
+      heldAnswer({
+        result: { case: 'spellCast', value: { encounter: encounter({}), cast: cast(15, 15) } },
+      }),
+    );
+    await answerLucky(true, { face: 15 });
+    expect(resources.answerHeldRoll.mock.calls[0][2]).toEqual({
+      kind: 'lucky',
+      reroll: true,
+      roll: { face: 15 },
     });
-    await sheet.answerLucky(true, { face: 15 });
-    expect(resources.answerOutsideLucky.mock.calls[0][3]).toEqual({ face: 15 });
   });
 
   it('after the new d20, a Bardic Inspiration die the caster holds is asked about, on the new roll', async () => {
-    const { fixture, el, sheet, resources, ask } = setup();
+    const { fixture, el, sheet, resources, ask, answerLucky } = setup();
     ask();
-    const next = create(OutsideInspirationOfferSchema, {
-      holdId: 'h1',
-      sides: 8,
-      fromName: 'Orla',
-      d20: d20(6, 6),
-    });
-    resources.answerOutsideLucky.mockResolvedValue({
-      result: { case: 'spellCast', value: { encounter: encounter({}), inspirationOffer: next } },
-    });
-    await sheet.answerLucky(true, { inApp: true });
+    const next = heldDie(6, 5, 8, { holdId: 'h1' });
+    resources.answerHeldRoll.mockResolvedValue(
+      heldAnswer({
+        result: { case: 'spellCast', value: { encounter: encounter({}), heldRollOffer: next } },
+      }),
+    );
+    await answerLucky(true, { inApp: true });
     fixture.detectChanges();
     expect(sheet.offer()).toBe(next);
     expect(sheet.cast()).toBeNull();
@@ -198,13 +202,13 @@ describe('the cast sheet and the halfling’s Lucky question', () => {
   });
 
   it('keeps the key of an answer that failed, so a retry never rolls the d20 twice', async () => {
-    const { fixture, el, sheet, resources, ask } = setup();
+    const { fixture, el, resources, ask, answerLucky } = setup();
     ask();
-    resources.answerOutsideLucky.mockRejectedValue(new ConnectError('down', Code.Unavailable));
-    await sheet.answerLucky(true, { inApp: true });
-    await sheet.answerLucky(true, { inApp: true });
+    resources.answerHeldRoll.mockRejectedValue(new ConnectError('down', Code.Unavailable));
+    await answerLucky(true, { inApp: true });
+    await answerLucky(true, { inApp: true });
     fixture.detectChanges();
-    const keys = resources.answerOutsideLucky.mock.calls.map((c) => c[4] as string);
+    const keys = resources.answerHeldRoll.mock.calls.map((c) => c[3] as string);
     expect(keys[0]).toBe(keys[1]);
     expect(flat(el.querySelector('[role=alert] p'))).toContain('o servidor não respondeu');
     expect(flat(el)).toContain('Tirou 1: rolar de novo?');

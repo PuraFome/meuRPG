@@ -15,7 +15,8 @@ import {
   EncounterMode,
   InspirationDieSchema,
   InspirationOfferSchema,
-  LuckyOfferSchema,
+  HeldRollKind,
+  HeldRollOfferSchema,
   ResourceTargetSchema,
   ResourceTargetsSchema,
   TargetInReachSchema,
@@ -269,8 +270,8 @@ describe('CombatView: the class resource dialogs', () => {
     const { fixture, state, el } = await render({ inspirationOffer: offer });
     const sheets = () => open.mock.calls.filter((c) => c[0] === AttackSheet);
     expect(sheets()).toHaveLength(1);
-    expect(sheets()[0][1].data.inspiration.offer.holdId).toBe('hold-1');
-    expect(sheets()[0][1].data.inspiration.targetLabel).toBe('Goblin');
+    expect(sheets()[0][1].data.held.offer.holdId).toBe('hold-1');
+    expect(sheets()[0][1].data.held.targetLabel).toBe('Goblin');
     expect(el.querySelector('[data-testid=inspiration-pending]')).not.toBeNull();
     // Reading the combat again with the same hold does not open a second question.
     state.apply(fresh(2, { inspirationOffer: offer }));
@@ -280,11 +281,12 @@ describe('CombatView: the class resource dialogs', () => {
   });
 
   it('opens the Lucky question of a held roll by itself (a halfling’s d20 of 1), and says in the page that it waits', async () => {
-    const lucky = create(LuckyOfferSchema, {
+    const lucky = create(HeldRollOfferSchema, {
       holdId: 'hold-2',
+      kind: HeldRollKind.WEAPON_ATTACK,
       attackKey: 'attack:longsword',
       targetId: 'g',
-      luckyIndex: 0,
+      question: { case: 'lucky', value: { luckyIndex: 0 } },
       d20: create(DiceRollSchema, {
         diceCount: 1,
         diceSides: 20,
@@ -293,12 +295,11 @@ describe('CombatView: the class resource dialogs', () => {
         total: 6,
       }),
     });
-    const { el } = await render({ luckyOffer: lucky });
+    const { el } = await render({ heldRollOffer: lucky });
     const sheets = open.mock.calls.filter((c) => c[0] === AttackSheet);
     expect(sheets).toHaveLength(1);
-    expect(sheets[0][1].data.lucky.offer.holdId).toBe('hold-2');
-    expect(sheets[0][1].data.lucky.targetLabel).toBe('Goblin');
-    expect(sheets[0][1].data.inspiration).toBeUndefined();
+    expect(sheets[0][1].data.held.offer.holdId).toBe('hold-2');
+    expect(sheets[0][1].data.held.targetLabel).toBe('Goblin');
     expect(el.querySelector('[data-testid=lucky-pending]')).not.toBeNull();
     expect(el.querySelector('[data-testid=inspiration-pending]')).toBeNull();
   });

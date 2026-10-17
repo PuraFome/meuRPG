@@ -3,16 +3,11 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { create } from '@bufbuild/protobuf';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { AnswerOutsideInspirationResponseSchema } from '../../../../../gen/meurpg/play/v1/resources_pb';
 import { RollSceneCheckResponseSchema } from '../../../../../gen/meurpg/play/v1/scene_pb';
+import { heldAnswer, heldDie } from '../../../../core/held-rolls/held-roll-testing';
 import { SceneClient } from '../../../../core/play/scene-client';
 import { SceneState } from '../../../../core/play/scene-state';
-import {
-  FakeSceneClient,
-  inspirationOffer,
-  playerScene,
-  sceneRoll,
-} from '../../../../core/play/scene-testing';
+import { FakeSceneClient, playerScene, sceneRoll } from '../../../../core/play/scene-testing';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { SceneRollSheet, type SceneRollSheetData } from './scene-roll-sheet';
 
@@ -21,15 +16,15 @@ describe('SceneRollSheet with a Bardic Inspiration die', () => {
     roll: { diceCount: 1, diceSides: 20, faces: [11], modifier: 6, total: 22 },
     bonusDice: [{ sourceKey: 'feature:bardic-inspiration-d6', sides: 8, face: 5, used: true }],
   });
-  const answered = create(AnswerOutsideInspirationResponseSchema, {
+  const answered = heldAnswer({
     result: { case: 'sceneCheck', value: create(RollSceneCheckResponseSchema, { roll: used }) },
   });
 
   function setup() {
     Element.prototype.scrollTo = vi.fn() as never;
     const api = new FakeSceneClient();
-    api.offer = inspirationOffer();
-    const resources = { answerOutsideInspiration: vi.fn().mockResolvedValue(answered) };
+    api.held = heldDie(11, 6);
+    const resources = { answerHeldRoll: vi.fn().mockResolvedValue(answered) };
     const data: SceneRollSheetData = {
       campaignId: 'c1',
       action: playerScene().actions[0],
@@ -80,11 +75,10 @@ describe('SceneRollSheet with a Bardic Inspiration die', () => {
     await settle();
     button('Usar e rolar o d8')!.click();
     await settle();
-    expect(resources.answerOutsideInspiration).toHaveBeenCalledWith(
+    expect(resources.answerHeldRoll).toHaveBeenCalledWith(
       'c1',
       'h1',
-      true,
-      { inApp: true },
+      { kind: 'die', use: true, roll: { inApp: true } },
       expect.any(String),
     );
     expect(el.textContent).toContain('1d20 (11) + 6 + d8 (5) = 22');
@@ -97,11 +91,10 @@ describe('SceneRollSheet with a Bardic Inspiration die', () => {
     await settle();
     button('Guardar o dado')!.click();
     await settle();
-    expect(resources.answerOutsideInspiration).toHaveBeenCalledWith(
+    expect(resources.answerHeldRoll).toHaveBeenCalledWith(
       'c1',
       'h1',
-      false,
-      null,
+      { kind: 'die', use: false, roll: null },
       expect.any(String),
     );
   });

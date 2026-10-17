@@ -36,7 +36,6 @@ import {
   idsWhere,
   isPlainCast,
   keptTargets,
-  luckyShow,
   nextRollOf,
   picksAfterTargets,
   reachFtOf,
@@ -261,6 +260,7 @@ describe('castMissing', () => {
     chosenMeta: [],
     picks: NO_PICKS,
     sorceryPoints: null,
+    destinationMissing: false,
   };
 
   it('waits for the spell to be read, and says when it could not be', () => {
@@ -286,6 +286,30 @@ describe('castMissing', () => {
   it('asks the targets, unless the area is placed on the map', () => {
     expect(castMissing({ ...base, targets: () => 'Escolha o alvo.' })).toBe('Escolha o alvo.');
     expect(castMissing({ ...base, targets: () => 'Escolha o alvo.', placedArea: true })).toBe('');
+  });
+});
+
+describe('castMissing: the square a teleport lands on', () => {
+  const base = {
+    detailsRead: true,
+    detailsFailed: false,
+    level: 2,
+    slotChosen: true,
+    spellKey: 'spell:misty-step',
+    ability: '',
+    placedArea: false,
+    targets: () => '',
+    metaOptions: [],
+    chosenMeta: [],
+    picks: NO_PICKS,
+    sorceryPoints: null,
+  };
+
+  it('asks the player for the square until one is picked', () => {
+    expect(castMissing({ ...base, destinationMissing: true })).toBe(
+      'Escolha no mapa o espaço para onde você vai.',
+    );
+    expect(castMissing({ ...base, destinationMissing: false })).toBe('');
   });
 });
 
@@ -668,16 +692,6 @@ describe('the dice animated', () => {
     expect(
       castShow('Raio', create(SpellCastSchema, { targets: [bad, { ...bad, combatantId: 'h' }] })),
     ).toBeNull();
-  });
-
-  it('shows the new face Lucky rolled, and nothing for a typed one', () => {
-    const rolled = d20(14, { rerolled: [{ index: 0, from: 1, to: 14, sourceKey: 'trait:lucky' }] });
-    expect(luckyShow(rolled, { inApp: true })?.line).toBe('1 → 14');
-    expect(luckyShow(rolled, { inApp: true })).not.toBeNull();
-    expect(luckyShow(rolled, { face: 14 })).toBeNull();
-    expect(luckyShow(rolled, null)).toBeNull();
-    expect(luckyShow(d20(14), { inApp: true })).toBeNull();
-    expect(luckyShow(undefined, { inApp: true })).toBeNull();
   });
 });
 

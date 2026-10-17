@@ -74,6 +74,11 @@ const (
 	// nothing else that could ask until it is answered, and the Bardic Inspiration question of
 	// the same roll waits for it.
 	ResourceBlockedReason_RESOURCE_BLOCKED_REASON_LUCKY_PENDING ResourceBlockedReason = 16
+	// AnswerHeldRoll, AnswerLucky, AnswerBardicInspiration, AnswerOutsideLucky and AnswerOutsideInspiration, by the master:
+	// the question of a player's roll was asked a few seconds ago (10), and the player gets the first chance to answer
+	// it. `wait_seconds` says how long is left; the app disables the master's controls for that time and says "Ainda é
+	// a vez de [nome] responder". It is not refused for the master's own rolls or for a roll whose player has left.
+	ResourceBlockedReason_RESOURCE_BLOCKED_REASON_PLAYER_FIRST ResourceBlockedReason = 17
 )
 
 // Enum value maps for ResourceBlockedReason.
@@ -96,6 +101,7 @@ var (
 		14: "RESOURCE_BLOCKED_REASON_OVER_ALLOWANCE",
 		15: "RESOURCE_BLOCKED_REASON_SONG_OF_REST_FACE_NEEDED",
 		16: "RESOURCE_BLOCKED_REASON_LUCKY_PENDING",
+		17: "RESOURCE_BLOCKED_REASON_PLAYER_FIRST",
 	}
 	ResourceBlockedReason_value = map[string]int32{
 		"RESOURCE_BLOCKED_REASON_UNSPECIFIED":              0,
@@ -115,6 +121,7 @@ var (
 		"RESOURCE_BLOCKED_REASON_OVER_ALLOWANCE":           14,
 		"RESOURCE_BLOCKED_REASON_SONG_OF_REST_FACE_NEEDED": 15,
 		"RESOURCE_BLOCKED_REASON_LUCKY_PENDING":            16,
+		"RESOURCE_BLOCKED_REASON_PLAYER_FIRST":             17,
 	}
 )
 
@@ -252,8 +259,10 @@ type ResourceBlocked struct {
 	Reason ResourceBlockedReason  `protobuf:"varint,1,opt,name=reason,proto3,enum=meurpg.play.v1.ResourceBlockedReason" json:"reason,omitempty"`
 	// NOT_ENOUGH_POINTS and SORCERY_POINTS_*: the points the action needs, and
 	// the ones there are.
-	Needed        int32 `protobuf:"varint,2,opt,name=needed,proto3" json:"needed,omitempty"`
-	Available     int32 `protobuf:"varint,3,opt,name=available,proto3" json:"available,omitempty"`
+	Needed    int32 `protobuf:"varint,2,opt,name=needed,proto3" json:"needed,omitempty"`
+	Available int32 `protobuf:"varint,3,opt,name=available,proto3" json:"available,omitempty"`
+	// PLAYER_FIRST: the whole seconds, rounded up, until the master may answer.
+	WaitSeconds   int32 `protobuf:"varint,4,opt,name=wait_seconds,json=waitSeconds,proto3" json:"wait_seconds,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -305,6 +314,13 @@ func (x *ResourceBlocked) GetNeeded() int32 {
 func (x *ResourceBlocked) GetAvailable() int32 {
 	if x != nil {
 		return x.Available
+	}
+	return 0
+}
+
+func (x *ResourceBlocked) GetWaitSeconds() int32 {
+	if x != nil {
+		return x.WaitSeconds
 	}
 	return 0
 }
@@ -3755,11 +3771,12 @@ var File_meurpg_play_v1_resources_proto protoreflect.FileDescriptor
 
 const file_meurpg_play_v1_resources_proto_rawDesc = "" +
 	"\n" +
-	"\x1emeurpg/play/v1/resources.proto\x12\x0emeurpg.play.v1\x1a\x1bmeurpg/play/v1/combat.proto\x1a\x1dmeurpg/play/v1/contests.proto\x1a,meurpg/play/v1/lasting_effects_service.proto\x1a\x19meurpg/play/v1/play.proto\x1a\x1cmeurpg/play/v1/puzzles.proto\x1a\x1ameurpg/play/v1/scene.proto\x1a\x1ameurpg/play/v1/traps.proto\x1a\x1bmeurpg/rules/v1/rules.proto\"\x86\x01\n" +
+	"\x1emeurpg/play/v1/resources.proto\x12\x0emeurpg.play.v1\x1a\x1bmeurpg/play/v1/combat.proto\x1a\x1dmeurpg/play/v1/contests.proto\x1a,meurpg/play/v1/lasting_effects_service.proto\x1a\x19meurpg/play/v1/play.proto\x1a\x1cmeurpg/play/v1/puzzles.proto\x1a\x1ameurpg/play/v1/scene.proto\x1a\x1ameurpg/play/v1/traps.proto\x1a\x1bmeurpg/rules/v1/rules.proto\"\xa9\x01\n" +
 	"\x0fResourceBlocked\x12=\n" +
 	"\x06reason\x18\x01 \x01(\x0e2%.meurpg.play.v1.ResourceBlockedReasonR\x06reason\x12\x16\n" +
 	"\x06needed\x18\x02 \x01(\x05R\x06needed\x12\x1c\n" +
-	"\tavailable\x18\x03 \x01(\x05R\tavailable\"f\n" +
+	"\tavailable\x18\x03 \x01(\x05R\tavailable\x12!\n" +
+	"\fwait_seconds\x18\x04 \x01(\x05R\vwaitSeconds\"f\n" +
 	"\x15GetRestPreviewRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12,\n" +
@@ -4031,7 +4048,7 @@ const file_meurpg_play_v1_resources_proto_rawDesc = "" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\"N\n" +
 	"\x15ListHeldRollsResponse\x125\n" +
-	"\x06offers\x18\x01 \x03(\v2\x1d.meurpg.play.v1.HeldRollOfferR\x06offers*\x9c\x06\n" +
+	"\x06offers\x18\x01 \x03(\v2\x1d.meurpg.play.v1.HeldRollOfferR\x06offers*\xc6\x06\n" +
 	"\x15ResourceBlockedReason\x12'\n" +
 	"#RESOURCE_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12'\n" +
 	"#RESOURCE_BLOCKED_REASON_COMBAT_OPEN\x10\x01\x12,\n" +
@@ -4050,7 +4067,8 @@ const file_meurpg_play_v1_resources_proto_rawDesc = "" +
 	")RESOURCE_BLOCKED_REASON_SLOT_NOT_EXPENDED\x10\r\x12*\n" +
 	"&RESOURCE_BLOCKED_REASON_OVER_ALLOWANCE\x10\x0e\x124\n" +
 	"0RESOURCE_BLOCKED_REASON_SONG_OF_REST_FACE_NEEDED\x10\x0f\x12)\n" +
-	"%RESOURCE_BLOCKED_REASON_LUCKY_PENDING\x10\x10*N\n" +
+	"%RESOURCE_BLOCKED_REASON_LUCKY_PENDING\x10\x10\x12(\n" +
+	"$RESOURCE_BLOCKED_REASON_PLAYER_FIRST\x10\x11*N\n" +
 	"\bRestKind\x12\x19\n" +
 	"\x15REST_KIND_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fREST_KIND_SHORT\x10\x01\x12\x12\n" +

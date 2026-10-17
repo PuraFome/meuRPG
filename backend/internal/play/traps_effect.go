@@ -55,6 +55,9 @@ type trapTarget struct {
 	// lucky says the target is a halfling player's character: the app rolls a 1 on its saving
 	// throw again by itself (autoLucky, combat_lucky.go). The trap's attack roll is the trap's.
 	lucky bool
+	// facts are the creature's conditions and Evasion, which decide the share of the damage a
+	// saving throw that halves it leaves (combat.HalfSaveShare).
+	facts combat.Creature
 }
 
 // trapDamageRoll is one damage part rolled for one creature.
@@ -289,18 +292,23 @@ func (r trapRolls) saveDice(t trapTarget) ([]effectDie, int, error) {
 // saveOutcome is what a saving throw does: a failure gives the damage and the condition of
 // the failure, a pass of "half" gives that damage halved.
 func (r trapRolls) saveOutcome(sv *rulesv1.TrapSaveEffect, o *trapOutcome, saved bool) error {
+	share := combat.ShareFull
 	switch {
-	case !saved:
-		if err := r.addDamages(o, sv.GetOnFail().GetDamage(), false); err != nil {
-			return err
-		}
+	case sv.GetOnPass() == rulesv1.TrapPassOutcome_TRAP_PASS_OUTCOME_HALF:
+		// Evasion: a Dexterity save that passes takes none, one that fails takes half.
+		share = combat.HalfSaveShare(o.target.facts, trapAbilityKeys[sv.GetAbility()], saved)
+	case saved:
+		share = combat.ShareNone
+	}
+	if !saved {
 		if c := sv.GetOnFail().GetCondition(); c != nil {
 			o.conditions = appendOnce(o.conditions, c.GetConditionKey())
 		}
-	case sv.GetOnPass() == rulesv1.TrapPassOutcome_TRAP_PASS_OUTCOME_HALF:
-		return r.addDamages(o, sv.GetOnFail().GetDamage(), true)
 	}
-	return nil
+	if share == combat.ShareNone {
+		return nil
+	}
+	return r.addDamages(o, sv.GetOnFail().GetDamage(), share == combat.ShareHalf)
 }
 
 // addDamages rolls each damage part for a creature, every part its own roll.

@@ -582,8 +582,27 @@ func (th *trapHook) landed(at grid.Square) {
 // the change's own (so a retry finds it under the idempotency key). cs are the
 // combatants as they stood before the move; moved is the mover after it.
 func (th *trapHook) finish(ctx context.Context, c *combatTx, made actionEvent, cs []playdb.Combatant, moved playdb.Combatant) (any, error) {
-	if th == nil || th.entered == nil {
+	ev, err := th.fire(ctx, c, cs, moved)
+	if err != nil {
+		return nil, err
+	}
+	if ev == nil {
 		return made, nil
+	}
+	// The move comes first in the history, the firing after it (the change's own event).
+	if err := insertEvent(ctx, c, eventCombatantMoved, &c.actorUserID, nil, made); err != nil {
+		return nil, err
+	}
+	th.fired = ev
+	c.kind = eventTrapTriggered
+	return actionEvent{Round: c.enc.Round, Actor: moved.ID, Trap: ev, StoppedEarly: made.StoppedEarly, OnTurn: made.OnTurn, MoveID: made.MoveID}, nil
+}
+
+// fire fires the trap the mover entered, on everyone it catches; nil when it entered none or the trap was fired
+// or disarmed meanwhile (the mover's change stands, the trap does not fire again).
+func (th *trapHook) fire(ctx context.Context, c *combatTx, cs []playdb.Combatant, moved playdb.Combatant) (*trapFireEvent, error) {
+	if th == nil || th.entered == nil {
+		return nil, nil
 	}
 	// Who is caught: the mover, and, when the trap hits the area, everyone in it.
 	after := slices.Clone(cs)
@@ -599,18 +618,9 @@ func (th *trapHook) finish(ctx context.Context, c *combatTx, made actionEvent, c
 	}
 	ev, err := th.s.fireInCombat(ctx, c, *th.entered, caught, false, "")
 	if errors.Is(err, maplink.ErrTrapNotArmed) {
-		return made, nil // fired or disarmed meanwhile: the move stands, the trap does not fire again
+		return nil, nil
 	}
-	if err != nil {
-		return nil, err
-	}
-	// The move comes first in the history, the firing after it (the change's own event).
-	if err := insertEvent(ctx, c, eventCombatantMoved, &c.actorUserID, nil, made); err != nil {
-		return nil, err
-	}
-	th.fired = ev
-	c.kind = eventTrapTriggered
-	return actionEvent{Round: c.enc.Round, Actor: moved.ID, Trap: ev, StoppedEarly: made.StoppedEarly, OnTurn: made.OnTurn, MoveID: made.MoveID}, nil
+	return ev, err
 }
 
 // after tells the streams about the traps the move changed, after the commit: the
@@ -849,6 +859,7 @@ func (s *Service) trapModesOf(ctx context.Context, tx pgx.Tx, campaignID string,
 		return err
 	}
 	creature := creatureFacts(c, states, sheet.Traits)
+	out.facts = creature
 	attack := combat.AttackMode(combat.AttackScene{Target: creature, Ranged: true})
 	out.attackSources = attack.Sources
 	out.attackMode = combat.Resolve(attack.Sources)

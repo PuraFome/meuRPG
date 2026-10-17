@@ -438,7 +438,7 @@ O mestre move qualquer um para qualquer lugar, mas não para dentro de uma pared
 | Alcance | O alcance de ataques e magias conta quadrados entre os centros, arredondado para baixo, então um alcance de 1,5 m vale nos oito lados. Uma arma com a propriedade alcance chega a 3 m, também para o ataque de oportunidade |
 | Salto | O salto em distância é igual ao valor de Força em pés com corrida (pelo menos 3 m a pé logo antes, neste turno) e metade parado. O salto em altura é 3 pés mais o modificador de Força com corrida e metade parado. Um salto em distância custa só o comprimento dele e não atravessa uma parede |
 | Colocação | Uma criatura que chega ao mapa sem quadrado é colocada em piso livre a pelo menos 3 quadrados de todo personagem de jogador, o mais perto possível do ponto de batalha do encontro (ou do meio do mapa) |
-| Teletransporte e movimentos forçados | O movimento forçado do mestre nunca provoca |
+| Teletransporte e movimentos forçados | O movimento forçado do mestre nunca provoca. Um teletransporte lançado (Passo Nebuloso) leva o conjurador ao espaço que o jogador escolheu, e também não provoca nada |
 
 - **O navegador não faz conta de movimento.** O servidor envia o alcance (cada quadrado e o custo dele) e a tela o desenha: um círculo tracejado do movimento restante, cada quadrado alcançável tingido, o custo em metros ao lado do quadrado escolhido. Um quadrado recusado dentro do círculo diz por quê (parede, inimigo, ocupado, custo extra) sem nomear o que está no caminho, e um fora dele diz só "Longe demais". O movimento restante passa para a parte seguinte ("Você já andou 3,0 m").
 - **Obstáculos não vistos.** O servidor para um movimento antes de uma parede, antes de uma criatura que não pode ser atravessada, antes do primeiro quadrado que o movimento restante não paga, ou no primeiro quadrado da área de uma armadilha. Se a causa é algo que o jogador não conhece, a tela diz só "Você parou antes: algo bloqueou o caminho." (RN-10).
@@ -459,6 +459,11 @@ Sair do alcance de um inimigo provoca um ataque de oportunidade, que o app ofere
 **Esculpir Magias** (SRD 5.1, Escola de Evocação).
 Um mago de evocação a partir do nível 2, ao conjurar uma magia de evocação que afeta outras criaturas que ele vê, poupa até 1 + o nível da magia delas (o nível em que é conjurada). Uma criatura poupada passa no teste de resistência sem rolar e não sofre dano quando a magia causaria metade; a linha do teste diz "Esculpir Magias".
 O conjurador nunca está entre elas, e só podem ser nomeadas criaturas que a magia alcança e que o conjurador vê.
+
+**Evasão** (SRD 5.1, Monge 7 e Ladino 7; também a escolha Defesa de Caçador Superior do patrulheiro e a característica Evasão de uma criatura).
+Num teste de resistência de Destreza que causa metade do dano em caso de sucesso, uma criatura com Evasão não sofre dano se passa e sofre metade se falha.
+Vale para o teste de uma magia, o de uma armadilha e o do agressor contra Repreensão Infernal, e não enquanto a criatura está incapacitada (Incapacitado, Paralisado, Petrificado, Atordoado ou Inconsciente).
+Outra habilidade, ou um teste que não reduz o dano à metade, não muda.
 
 Veja [Movimento em combate](../../architecture/play/movement.md), [Mapas e a grade](../../architecture/rules-maps.md#grid) e [Desenho do combate](../../design/combat.md).
 
@@ -532,6 +537,17 @@ Num mapa com grade, quem conjura não lista quem a magia atinge: coloca a área,
 - **Quem é atingido.** Todos lá dentro: aliados, quem conjura quando está dentro, criaturas escondidas. O dano é uma só rolagem para todos. A cobertura é medida a partir do ponto de origem e soma +2 (metade) ou +5 (três quartos) apenas a um teste de resistência de Destreza. Uma criatura alcançada só por um canto não ganha cobertura automática; o mestre a marca à mão.
 - **Uma área vazia** ainda é conjurada e gasta o espaço de magia e a ação. O app pergunta antes: "Ninguém que você vê está na área".
 - **Sem grade** (combate sem mapa, RN-25) nada disso existe: quem conjura lista quem é atingido, e o mestre julga quem está dentro e a cobertura.
+
+### Magias de teletransporte na grade
+
+Passo Nebuloso é uma ação bônus que leva quem conjura até 9 m para um espaço livre que essa pessoa enxergue (SRD 5.1, Misty Step).
+Num mapa com grade o jogador precisa escolher o espaço na própria conjuração (o botão de conjurar fica desligado até haver um espaço, com o ponteiro ou pelo teclado), e o servidor confere antes de gastar o espaço de magia ou a ação bônus. Uma conjuração do personagem de um jogador sem espaço é recusada.
+
+- **Alcance.** Até 6 quadrados pela regra de alcance da mesa (quadrados entre os centros, arredondado para baixo). Um espaço mais longe é recusado com "Longe demais".
+- **Livre e visto.** Não dá para escolher uma parede, uma criatura ou um espaço que quem conjura não vê. O jogador só ouve "Esse espaço não está disponível", seja qual for o motivo, então a resposta nunca revela uma criatura escondida (RN-10). O mestre ouve o motivo, não é preso à visão, e pode escolher por um NPC ou por um jogador.
+- **Armadilhas.** Uma armadilha no espaço de chegada dispara para quem conjurou, como uma entrada na sua área. Desfazer anda um passo de cada vez: primeiro o disparo, depois a conjuração, que devolve quem conjurou ao lugar.
+- **Sem andar.** O teletransporte não gasta movimento e não provoca ataque de oportunidade. Ele limpa a marca de cobertura do mestre, mostra o novo espaço a quem o enxerga, e desfazer a conjuração devolve quem conjurou ao lugar.
+- **Sem espaço** o mestre pode deixá-lo de fora (e, para um NPC, costuma deixar): a conjuração só gasta o espaço de magia e a ação bônus, e o mestre move a ficha. Um combate sem mapa (RN-25) não tem espaço para escolher, e a conjuração funciona do mesmo jeito.
 
 ### Criaturas escondidas atingidas por uma área
 
@@ -803,7 +819,7 @@ Esses traços do SRD 5.1 mudam os números de um combate (Meio-orc, Halfling, Mo
   - **O app pergunta** "Tirou 1: rolar de novo?" depois do d20 e antes de dizer se a jogada tem sucesso. "Rolar de novo" rola no app ou usa um dado real (RN-18); "Ficar com o 1" o mantém. A nova jogada vale, mesmo outro 1, e nunca é perguntada de novo. O resultado e o registro dizem "Sortudo: 1 → 14".
   - **Com vantagem ou desvantagem** a pergunta vem quando qualquer um dos d20 mostra 1, só aquele dado é rolado de novo (o primeiro quando os dois mostram 1), e o dado que conta é escolhido de novo. Um halfling que também tem um dado de Inspiração de Bardo responde primeiro ao Sortudo. O Talento Confiável conta o novo d20.
   - **Privacidade.** Só o jogador de quem rola e o mestre veem a pergunta; outro jogador não lê nada dela, nem que uma jogada espera. Nada é resolvido enquanto ela espera, e o personagem não faz outra jogada que possa perguntar até que seja respondida.
-  - **Quem responde.** O jogador de quem rola responde à pergunta, e o mestre também, de toda jogada que espera, num combate ou fora dele (isso destrava um jogador que saiu da mesa). Os dois podem tentar ao mesmo tempo: vale a primeira resposta, e a outra recebe que a jogada já foi respondida, com o dado gasto uma vez só. Outro jogador não pode responder e recebe que a jogada não existe. O mestre lê todas as perguntas pendentes da mesa numa lista; o jogador lê as suas.
+  - **Quem responde.** O jogador de quem rola responde à pergunta, e o mestre também, de toda jogada que espera, num combate ou fora dele (isso destrava um jogador que saiu da mesa). Os controles do mestre esperam 10 segundos depois que a pergunta é feita, para que um jogador presente tenha a primeira chance: o servidor recusa a resposta do mestre antes disso ("PLAYER_FIRST", com os segundos que faltam); a resposta do próprio jogador nunca espera, nem a do mestre para uma jogada que nenhum jogador rola (a de um NPC, ou a de um jogador que saiu). Depois dos 10 segundos os dois podem tentar ao mesmo tempo: vale a primeira resposta, e a outra recebe que a jogada já foi respondida, com o dado gasto uma vez só. Outro jogador não pode responder e recebe que a jogada não existe. A rolagem do mestre por um personagem de jogador (um teste de resistência, um ataque mágico, um teste em grupo rolado pelo jogador) pergunta como a do próprio jogador: o mestre é perguntado na própria ficha, o jogador lê a mesma pergunta e vale a primeira resposta depois dos 10 segundos. O mestre lê todas as perguntas pendentes da mesa numa lista; o jogador lê as suas.
   - **Onde pergunta:** ataques com arma e truques de ataque (o mestre que rola pelo personagem também recebe a pergunta), um teste de cena, um teste de grupo, uma busca de armadilha fora de um combate, uma tentativa de dica de quebra-cabeça e, em combate, um ataque de magia contra um alvo, o teste de resistência de um efeito e um teste de concentração. Uma jogada que o mestre faz pelo personagem nesses casos não pergunta.
   - **Onde ninguém pode ser perguntado** (o teste de resistência de uma magia, o de uma armadilha, o teste de resistência de Destreza contra a Repreensão Infernal, rolados pelo app dentro da ação de outra pessoa), o app rola o 1 de novo sozinho, já que repetir um 1 nunca baixa o resultado. A linha diz "Sortudo: 1 → 14" a quem vê os dados daquele teste.
   - **Não coberto:** um NPC nunca o tem, mesmo com a ficha de um halfling. O teste contra a morte, a iniciativa, as disputas, o Esconder-se, o teste da Contramágica e a ação Procurar de um combate não perguntam.

@@ -3,8 +3,7 @@ import { create } from '@bufbuild/protobuf';
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import type {
   GetTurnOptionsResponse,
-  InspirationOffer,
-  LuckyOffer,
+  HeldRollOffer,
   PendingDamage,
   TargetInReach,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
@@ -82,8 +81,7 @@ describe('attackSheetData', () => {
     expect(data).not.toHaveProperty('catchWindowId');
     expect(data).not.toHaveProperty('useExtraAction');
     expect(data?.resume).toBeUndefined();
-    expect(data?.inspiration).toBeUndefined();
-    expect(data?.lucky).toBeUndefined();
+    expect(data?.held).toBeUndefined();
   });
 
   it('is null when the attack is not among the options', () => {
@@ -143,12 +141,17 @@ describe('attackSheetData', () => {
     expect(attackSheetData(request({ resume: gone }))?.resume?.targetLabel).toBe('');
   });
 
-  it('reopens at the held roll, Lucky and the die each with the name of the target', () => {
-    const offer = { holdId: 'h1', targetId: 'g' } as unknown as InspirationOffer;
-    const lucky = { holdId: 'h2', targetId: 'ghost' } as unknown as LuckyOffer;
-    const data = attackSheetData(request({ held: { offer, lucky } }));
-    expect(data?.inspiration).toEqual({ offer, targetLabel: 'Goblin' });
-    expect(data?.lucky).toEqual({ offer: lucky, targetLabel: '' });
+  it('reopens at the held roll with the name of its target, which may have left the combat', () => {
+    const offer = { holdId: 'h1', targetId: 'g' } as unknown as HeldRollOffer;
+    const gone = { holdId: 'h2', targetId: 'ghost' } as unknown as HeldRollOffer;
+    expect(attackSheetData(request({ held: offer }))?.held).toEqual({
+      offer,
+      targetLabel: 'Goblin',
+    });
+    expect(attackSheetData(request({ held: gone }))?.held).toEqual({
+      offer: gone,
+      targetLabel: '',
+    });
   });
 
   it('tells the page about a hold through onHeld', () => {

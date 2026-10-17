@@ -26,21 +26,21 @@ import { isCreature } from '../../../../core/combat/creature-names';
 import { d20Formula } from '../../../../core/combat/roll-mode';
 import { isTheatre } from '../../../../core/combat/theatre';
 import { initialPicks } from '../../../../core/combat/damage-parts';
+import { HeldRollController } from '../../../../core/held-rolls/held-roll-controller';
+import { heldOfferOf } from '../../../../core/held-rolls/held-roll-offer';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { metersText } from '../../../../core/units';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
+import { HeldRollPrompt } from '../../../../shared/held-roll-prompt/held-roll-prompt';
 import { RollAnimator } from '../../../../shared/roll-overlay/roll-animator';
 import { RollPicker } from '../../../../shared/roll-picker/roll-picker';
 import { injectSheet } from '../../../../shared/sheet/sheet-host';
 import { ExtraDice } from '../../effects/extra-dice/extra-dice';
 import { DamageParts } from '../damage-parts/damage-parts';
-import { InspirationPrompt } from '../inspiration-prompt/inspiration-prompt';
-import { LuckyPrompt } from '../lucky-prompt/lucky-prompt';
 import { MultiRoll, type RollField } from '../multi-roll/multi-roll';
 import { RollModePicker } from '../roll-mode/roll-mode-picker';
 import { AttackDamage } from './attack-damage';
 import { AttackMode } from './attack-mode';
-import { AttackQuestions } from './attack-questions';
 import { AttackResult } from './attack-result';
 import { AttackRolls } from './attack-rolls';
 import type { AttackSheetData } from './attack-sheet-types';
@@ -85,8 +85,7 @@ export type { AttackSheetData } from './attack-sheet-types';
     MatIconModule,
     MultiRoll,
     RollModePicker,
-    InspirationPrompt,
-    LuckyPrompt,
+    HeldRollPrompt,
     RollPicker,
   ],
   templateUrl: './attack-sheet.html',
@@ -95,6 +94,7 @@ export type { AttackSheetData } from './attack-sheet-types';
 export class AttackSheet {
   private readonly api = inject(CombatClient);
   private readonly animator = inject(RollAnimator);
+  private readonly resources = inject(ResourceClient);
   private readonly sheet = injectSheet<AttackSheetData, boolean>();
   protected readonly data = this.sheet.data;
   protected readonly inSheet = this.sheet.inSheet;
@@ -102,23 +102,14 @@ export class AttackSheet {
   protected readonly s = new AttackState(this.data);
   protected readonly name = attackName(this.attack);
 
-  /** The questions of a held roll (`AttackQuestions`): the Bardic Inspiration die's, and the halfling's Lucky about a 1,
-   * asked before it. */
-  protected readonly questions = new AttackQuestions(
-    {
-      resources: inject(ResourceClient),
-      campaignId: this.data.campaignId,
-      encounterId: this.data.encounterId,
-      state: this.data.state,
-      animator: this.animator,
-      busy: this.s.busy,
-      error: this.s.error,
-      stage: this.s.stage,
-      onHeld: this.data.onHeld,
-      settle: (res) => this.rolls.settle(res),
-    },
-    { offer: this.data.inspiration?.offer ?? null, lucky: this.data.lucky?.offer ?? null },
-  );
+  /** The question of a held roll, Lucky's about a 1 and then the Bardic Inspiration die's (`HeldRollController`). */
+  protected readonly question = new HeldRollController({
+    send: (holdId, answer, key) =>
+      this.resources.answerHeldRoll(this.data.campaignId, holdId, answer, key),
+    settle: (res, done) => this.rolls.answered(res, done),
+    busy: this.s.busy,
+    error: this.s.error,
+  });
   /** The mode the player asks the master for (`ModeRequests`): the pick, why, and the request as the combat shows it. */
   protected readonly modes: ModeRequests = new ModeRequests({
     api: this.api,
@@ -141,7 +132,7 @@ export class AttackSheet {
     computed(() => this.outcome()?.crit),
     computed(() => this.targetLabel()),
   );
-  private readonly rolls: AttackRolls = new AttackRolls(this.s, this.dmg, this.questions, {
+  private readonly rolls: AttackRolls = new AttackRolls(this.s, this.dmg, this.question, {
     api: this.api,
     animator: this.animator,
     attack: this.attack,
@@ -240,6 +231,7 @@ export class AttackSheet {
 
   constructor() {
     const { s } = this;
+    this.question.ask(this.data.held?.offer);
     // After a result the focus goes to the one next action, as soon as it is drawn.
     effect(() => this.back()?.nativeElement.focus());
     // The extras that come marked are the starting choice of each damage.
@@ -270,7 +262,7 @@ export class AttackSheet {
       const waiting = s.roll()?.heldForReaction === true;
       const me = this.data.state.encounter()?.combatants.find((c) => c.id === this.data.attackerId);
       if (waiting && s.stage() === 'done') {
-        untracked(() => this.questions.askAfterWindow(me?.luckyOffer, me?.inspirationOffer));
+        untracked(() => this.rolls.askAfterWindow(me && heldOfferOf(me)));
       }
     });
   }

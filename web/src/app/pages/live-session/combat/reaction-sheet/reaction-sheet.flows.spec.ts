@@ -9,15 +9,13 @@ import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1
 import {
   EncounterBlockedReason,
   EncounterBlockedSchema,
-  LuckyOfferSchema,
-  OutsideInspirationOfferSchema,
   ReactionKind,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { CombatState } from '../../../../core/combat/combat-state';
 import { encounter, reactionWindow } from '../../../../core/combat/combat-testing';
-import { LUCKY_TRAIT } from '../../../../core/combat/lucky';
-import { inspirationOffer } from '../../../../core/play/scene-testing';
+import type { HeldAnswer } from '../../../../core/held-rolls/held-roll-offer';
+import { heldAnswer, heldDie, heldLucky } from '../../../../core/held-rolls/held-roll-testing';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { RollAnimator } from '../../../../shared/roll-overlay/roll-animator';
 import { settle } from '../../../../../test-settle';
@@ -97,25 +95,15 @@ const deflect = (secondStep = false) =>
   );
 
 /** The d20 of a save, with the faces and the total the overlay can tumble. */
-const d20 = (face: number, rerolled: object[] = []) => ({
-  diceCount: 1,
-  diceSides: 20,
-  faces: [face],
-  modifier: 2,
-  total: face + 2,
-  rerolled,
-});
-
 interface Members {
-  answerLucky(reroll: boolean, die: unknown): Promise<void>;
-  answerDie(use: boolean, die: unknown): Promise<void>;
+  held: { answer(answer: HeldAnswer): Promise<void> };
   use(die?: unknown): Promise<void>;
   throwBack(): void;
   keepMissile(): Promise<void>;
 }
 
 describe('ReactionSheet, the answers and the keys', () => {
-  const resources = { answerOutsideLucky: vi.fn(), answerOutsideInspiration: vi.fn() };
+  const resources = { answerHeldRoll: vi.fn() };
   const api = {
     answerReaction: vi.fn(),
     resolveConcentrationSave: vi.fn(),
@@ -354,32 +342,29 @@ describe('ReactionSheet, the answers and the keys', () => {
       await settle(s.fixture);
       return s;
     };
-    const luckyOffer = create(LuckyOfferSchema, { holdId: 'h1', luckyIndex: 0, d20: d20(1) });
+    const luckyOffer = heldLucky([1], 2);
 
     it('ignores an answer when nothing is asked, or one is already on the way', async () => {
       const { sheet } = setup(concentration());
-      await sheet.answerLucky(true, null);
-      await sheet.answerDie(true, null);
-      expect(resources.answerOutsideLucky).not.toHaveBeenCalled();
-      expect(resources.answerOutsideInspiration).not.toHaveBeenCalled();
+      await sheet.held.answer({ kind: 'lucky', reroll: true, roll: null });
+      await sheet.held.answer({ kind: 'die', use: true, roll: null });
+      expect(resources.answerHeldRoll).not.toHaveBeenCalled();
     });
 
     it('tumbles the d20 that Lucky rolled again, and asks about the Bardic Inspiration die on it', async () => {
-      const s = await asked({ lucky: luckyOffer });
-      resources.answerOutsideLucky.mockResolvedValue({
-        result: {
-          case: 'concentrationSave',
-          value: {
-            encounter: encounter({ reactionWindows: [concentration()] } as never),
-            inspirationOffer: create(OutsideInspirationOfferSchema, {
-              holdId: 'h1',
-              sides: 8,
-              fromName: 'Orla',
-              d20: d20(14, [{ index: 0, from: 1, to: 14, sourceKey: LUCKY_TRAIT }]),
-            }),
+      const s = await asked({ held: luckyOffer });
+      const next = heldDie(14, 2, 8, {}, 1);
+      resources.answerHeldRoll.mockResolvedValue(
+        heldAnswer({
+          result: {
+            case: 'concentrationSave',
+            value: {
+              encounter: encounter({ reactionWindows: [concentration()] } as never),
+              heldRollOffer: next,
+            },
           },
-        },
-      });
+        }),
+      );
       button(s.el, 'Rolar de novo').click();
       await settle(s.fixture);
       expect(animator.play).toHaveBeenCalledTimes(1);
@@ -391,28 +376,26 @@ describe('ReactionSheet, the answers and the keys', () => {
     });
 
     it('does not tumble a d20 that was typed', async () => {
-      const s = await asked({ lucky: luckyOffer });
-      resources.answerOutsideLucky.mockResolvedValue({
-        result: {
-          case: 'concentrationSave',
-          value: {
-            encounter: encounter({ reactionWindows: [concentration()] } as never),
-            inspirationOffer: create(OutsideInspirationOfferSchema, {
-              holdId: 'h1',
-              sides: 8,
-              d20: d20(14),
-            }),
+      const s = await asked({ held: luckyOffer });
+      resources.answerHeldRoll.mockResolvedValue(
+        heldAnswer({
+          result: {
+            case: 'concentrationSave',
+            value: {
+              encounter: encounter({ reactionWindows: [concentration()] } as never),
+              heldRollOffer: heldDie(14, 2, 8, { holdId: 'h1' }),
+            },
           },
-        },
-      });
+        }),
+      );
       button(s.el, 'Ficar com o 1').click();
       await settle(s.fixture);
       expect(animator.play).not.toHaveBeenCalled();
     });
 
     it('says so when the server settles Lucky without the save', async () => {
-      const s = await asked({ lucky: luckyOffer });
-      resources.answerOutsideLucky.mockResolvedValue({ result: { case: undefined } });
+      const s = await asked({ held: luckyOffer });
+      resources.answerHeldRoll.mockResolvedValue(heldAnswer());
       button(s.el, 'Ficar com o 1').click();
       await settle(s.fixture);
       expect(s.el.querySelector('[role="alert"]')).not.toBeNull();
@@ -420,20 +403,18 @@ describe('ReactionSheet, the answers and the keys', () => {
     });
 
     it('says so when the server settles the die without the save', async () => {
-      const s = await asked({ offer: inspirationOffer(7, 2) });
-      resources.answerOutsideInspiration.mockResolvedValue({
-        result: { case: 'concentrationSave', value: { encounter: encounter() } },
-      });
+      const s = await asked({ held: heldDie(7, 2) });
+      resources.answerHeldRoll.mockResolvedValue(
+        heldAnswer({ result: { case: 'concentrationSave', value: { encounter: encounter() } } }),
+      );
       button(s.el, 'Guardar o dado').click();
       await settle(s.fixture);
       expect(s.el.querySelector('[role="alert"]')).not.toBeNull();
     });
 
     it('keeps the question when the server fails the answer about the die', async () => {
-      const s = await asked({ offer: inspirationOffer(7, 2) });
-      resources.answerOutsideInspiration.mockRejectedValue(
-        new ConnectError('down', Code.Unavailable),
-      );
+      const s = await asked({ held: heldDie(7, 2) });
+      resources.answerHeldRoll.mockRejectedValue(new ConnectError('down', Code.Unavailable));
       button(s.el, 'Guardar o dado').click();
       await settle(s.fixture);
       expect(s.el.querySelector('[role="alert"]')).not.toBeNull();

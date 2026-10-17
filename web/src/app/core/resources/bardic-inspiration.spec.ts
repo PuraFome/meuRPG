@@ -27,8 +27,9 @@ const die = create(InspirationDieSchema, {
 describe('the die of Bardic Inspiration', () => {
   it('names the die and asks the question of the board', () => {
     expect(inspirationDieName(8)).toBe('d8');
-    expect(promptTitle(die)).toBe('Usar a Inspiração de Bardo (d8)?');
-    expect(useLabel(die)).toBe('Somar o d8 (Inspiração de Orla)');
+    expect(promptTitle(8)).toBe('Usar a Inspiração de Bardo (d8)?');
+    expect(useLabel(8, 'Orla')).toBe('Somar o d8 (Inspiração de Orla)');
+    expect(useLabel(8, '')).toBe('Somar o d8');
   });
 
   it('counts the minutes left from the rounds (6 s each), rounded up', () => {

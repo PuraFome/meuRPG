@@ -7,6 +7,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/authz"
 )
 
 // heldKindDef is what a kind of held roll does that the gate cannot know.
@@ -60,7 +61,7 @@ func init() {
 		heldEffectSave:        {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).RollEffectSave)},
 		heldConcentrationSave: {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).ResolveConcentrationSave)},
 		heldSceneCheck:        {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).RollSceneCheck)},
-		heldGroupCheck:        {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).RollGroupCheck), ownRoll: true},
+		heldGroupCheck:        {write: inspirationHolds, refusedBy: outside, rerun: rerunGroupCheck, ownRoll: true},
 		heldTrapSearch:        {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).SearchForTraps), ownRoll: true},
 		heldHintTry:           {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).TryPuzzleHint)},
 	}
@@ -85,6 +86,20 @@ func registerRerun[Req, Res any, PReq interface {
 		}
 		return PRes(out.Msg), nil
 	}
+}
+
+// rerunGroupCheck runs a group check's roll again: the player's own roll (RollGroupCheck), or the master's roll for a
+// player (RollForPlayer, E4-10), which the hold's roller says: the master rolled it when the user who rolled is
+// not the character's player.
+func rerunGroupCheck(ctx context.Context, s *Service, h heldRoll, key string) (proto.Message, error) {
+	role, err := s.holdRollerRole(ctx, h)
+	if err != nil {
+		return nil, err
+	}
+	if role == authz.RoleMaster {
+		return registerRerun((*Service).RollForPlayer)(ctx, s, h, key)
+	}
+	return registerRerun((*Service).RollGroupCheck)(ctx, s, h, key)
 }
 
 // rerunAttack runs the weapon attack again. The attack that a reaction window held first has its event

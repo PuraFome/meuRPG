@@ -14,6 +14,7 @@ import {
   type Encounter,
   EncounterMode,
   GetTurnOptionsResponseSchema,
+  HeldRollKind,
   OpportunityAttackSchema,
   OpportunityOfferSchema,
   PendingDamageStatus,
@@ -688,8 +689,7 @@ describe('CombatView sheets: the attack sheet', () => {
     expect(d['targets']).toBe(options.attackTargets[0].targets);
     expect(d['state']).toBe(m.state);
     expect(d['resume']).toBeUndefined();
-    expect(d['inspiration']).toBeUndefined();
-    expect(d['lucky']).toBeUndefined();
+    expect(d['held']).toBeUndefined();
     expect('catchWindowId' in d).toBe(false);
     expect('useExtraAction' in d).toBe(false);
     expect(typeof d['onHeld']).toBe('function');
@@ -800,14 +800,31 @@ describe('CombatView sheets: the attack sheet', () => {
 });
 
 describe('CombatView sheets: the held roll', () => {
+  // The question as the combatant carries it now (`held_roll_offer`), and as the older fields still carry it.
   const offer = (over: object = {}) => ({
+    holdId: 'hold-1',
+    kind: HeldRollKind.WEAPON_ATTACK,
+    attackKey: 'attack:longsword',
+    targetId: 'g',
+    question: { case: 'die', value: { sides: 8, fromName: 'Orla' } },
+    ...over,
+  });
+  const lucky = (over: object = {}) => ({
+    holdId: 'hold-2',
+    kind: HeldRollKind.WEAPON_ATTACK,
+    attackKey: 'attack:longsword',
+    targetId: 'g',
+    question: { case: 'lucky', value: { luckyIndex: 0 } },
+    ...over,
+  });
+  const olderDie = (over: object = {}) => ({
     holdId: 'hold-1',
     attackKey: 'attack:longsword',
     targetId: 'g',
     die: { sides: 8, fromLabel: 'Orla', fromCombatantId: 'o', expiresAtRound: 9 },
     ...over,
   });
-  const lucky = (over: object = {}) => ({
+  const olderLucky = (over: object = {}) => ({
     holdId: 'hold-2',
     attackKey: 'attack:longsword',
     targetId: 'g',
@@ -823,40 +840,42 @@ describe('CombatView sheets: the held roll', () => {
     });
 
   it('reopens the attack sheet by itself at the die question, with the label of the target', async () => {
-    const m = await mount({ inspirationOffer: offer() });
+    const m = await mount({ heldRollOffer: offer() });
     expect(m.opened).toHaveLength(1);
     expect(m.opened[0].component).toBe(AttackSheet);
     const d = data(m);
-    expect(d['inspiration']).toMatchObject({ offer: { holdId: 'hold-1' }, targetLabel: 'Goblin' });
-    expect(d['lucky']).toBeUndefined();
+    expect(d['held']).toMatchObject({ offer: { holdId: 'hold-1' }, targetLabel: 'Goblin' });
     expect(d['asReaction']).toBe(false);
     expect(d['resume']).toBeUndefined();
     expect(d['attackerId']).toBe('t');
     expect(m.view.inspirationHandled.has('hold-1')).toBe(true);
   });
 
-  it('asks the Lucky question first and passes both when the roll holds both', async () => {
-    const m = await mount({ inspirationOffer: offer(), luckyOffer: lucky() });
+  it('reads the older fields when the combatant carries no held_roll_offer: Lucky’s question first', async () => {
+    const m = await mount({ inspirationOffer: olderDie(), luckyOffer: olderLucky() });
     expect(m.opened).toHaveLength(1);
-    const d = data(m);
-    expect(d['lucky']).toMatchObject({ offer: { holdId: 'hold-2' }, targetLabel: 'Goblin' });
-    expect(d['inspiration']).toMatchObject({ offer: { holdId: 'hold-1' }, targetLabel: 'Goblin' });
+    expect(data(m)['held']).toMatchObject({ offer: { holdId: 'hold-2' }, targetLabel: 'Goblin' });
     expect(m.view.inspirationHandled.has('hold-2')).toBe(true);
   });
 
+  it('reads the older die field when there is no Lucky one', async () => {
+    const m = await mount({ inspirationOffer: olderDie() });
+    expect(data(m)['held']).toMatchObject({ offer: { holdId: 'hold-1' } });
+  });
+
   it('leaves the label empty when the target is not in the combat', async () => {
-    const m = await mount({ inspirationOffer: offer({ targetId: 'gone' }) });
-    expect(data(m)['inspiration']).toMatchObject({ targetLabel: '' });
+    const m = await mount({ heldRollOffer: offer({ targetId: 'gone' }) });
+    expect(data(m)['held']).toMatchObject({ targetLabel: '' });
   });
 
   it('registers the hold a roll made by its own sheet through onHeld', async () => {
-    const m = await mount({ inspirationOffer: offer() });
+    const m = await mount({ heldRollOffer: offer() });
     (data(m)['onHeld'] as (id: string) => void)('hold-x');
     expect(m.view.inspirationHandled.has('hold-x')).toBe(true);
   });
 
   it('answers false and opens nothing when the attack of the held roll is not in the options', async () => {
-    const m = await mount({ inspirationOffer: offer({ attackKey: 'attack:gone' }) });
+    const m = await mount({ heldRollOffer: offer({ attackKey: 'attack:gone' }) });
     expect(m.opened).toHaveLength(0);
     expect(m.view.openHeldRoll()).toBe(false);
     expect(m.view.inspirationHandled.has('hold-1')).toBe(false);
@@ -869,11 +888,11 @@ describe('CombatView sheets: the held roll', () => {
   });
 
   it('opens the question again when asked, with the roll that waits', async () => {
-    const m = await mount({ luckyOffer: lucky() });
+    const m = await mount({ heldRollOffer: lucky() });
     expect(m.opened).toHaveLength(1);
     expect(m.view.openHeldRoll()).toBe(true);
     expect(m.opened).toHaveLength(2);
-    expect(data(m, 1)['lucky']).toMatchObject({ offer: { holdId: 'hold-2' } });
+    expect(data(m, 1)['held']).toMatchObject({ offer: { holdId: 'hold-2' } });
   });
 });
 

@@ -12,18 +12,15 @@ import { MatIconModule } from '@angular/material/icon';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import {
-  type DiceRoll,
-  type LuckyOffer,
-  type OutsideInspirationOffer,
-  type ReactionWindow,
-} from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { type ReactionWindow } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import type { AnswerHeldRollResponse } from '../../../../../gen/meurpg/play/v1/resources_pb';
 import type { EffectSaveResult } from '../../../../../gen/meurpg/play/v1/lasting_effects_pb';
 import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { luckyText } from '../../../../core/combat/lucky';
-import { luckyHeldLine, luckyReroll } from '../../../../core/combat/lucky-question';
+import { HeldRollController } from '../../../../core/held-rolls/held-roll-controller';
+import type { HeldAnswer } from '../../../../core/held-rolls/held-roll-offer';
 import { isOpen } from '../../../../core/combat/reactions';
 import { ActionKey } from '../../../../core/connect/idempotency';
 import { type EffectSaveAnswer, EffectsClient } from '../../../../core/effects/effects-client';
@@ -35,19 +32,10 @@ import {
   missingDice,
   saveFormula,
 } from '../../../../core/effects/effects';
-import {
-  ResourceClient,
-  type InspirationRoll,
-  type LuckyRoll,
-} from '../../../../core/resources/resources-client';
-import { classResourceErrorMessage } from '../../../../core/resources/resources-errors';
-import { InspirationOffer } from '../../inspiration/inspiration-offer';
-import {
-  RollAnimator,
-  type RollShow,
-  showOfDie,
-} from '../../../../shared/roll-overlay/roll-animator';
-import { LuckyPrompt } from '../../combat/lucky-prompt/lucky-prompt';
+import { ResourceClient } from '../../../../core/resources/resources-client';
+import { HeldRollPrompt } from '../../../../shared/held-roll-prompt/held-roll-prompt';
+import { rerollShow } from '../../../../shared/held-roll-prompt/held-roll-shows';
+import { RollAnimator, type RollShow } from '../../../../shared/roll-overlay/roll-animator';
 import { MultiRoll, type RollField } from '../../combat/multi-roll/multi-roll';
 import { RollPicker } from '../../../../shared/roll-picker/roll-picker';
 import { SheetFrame } from '../../../../shared/sheet/sheet-frame/sheet-frame';
@@ -85,8 +73,7 @@ const EFFECT_DIE_FACES = 4;
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ExtraDice,
-    InspirationOffer,
-    LuckyPrompt,
+    HeldRollPrompt,
     MatButtonModule,
     MatIconModule,
     MultiRoll,
@@ -114,16 +101,15 @@ export class EffectSaveSheet {
   protected readonly typing = signal(false);
   protected readonly result = signal<EffectSaveResult | null>(null);
   private readonly done = signal(false);
-  /** The d20 was rolled and kept: the character holds a Bardic Inspiration die, and the player decides before the result. */
-  protected readonly offer = signal<OutsideInspirationOffer | null>(null);
-  private readonly dieKey = new ActionKey();
-  /** The d20 was rolled and kept because it shows a 1 and the character is a halfling: the Lucky question ("Tirou 1:
-   * rolar de novo?") comes first, before the die's. */
-  protected readonly luckyOffer = signal<LuckyOffer | null>(null);
-  /** The held d20, above the Lucky question. */
-  protected readonly luckyHeld = computed(() => luckyHeldLine(this.luckyOffer()));
-  /** One key per Lucky answer (roll again this way, or keep the 1): the same answer again is a retry. */
-  private readonly luckyKey = new ActionKey();
+  /** The d20 was rolled and kept and the save waits for a question: the halfling's Lucky ("Tirou 1: rolar de novo?")
+   * first, then the Bardic Inspiration die's; the player decides before the result. */
+  protected readonly held = new HeldRollController({
+    send: (holdId, answer, key) =>
+      this.resources.answerHeldRoll(this.data.campaignId, holdId, answer, key),
+    settle: (res, done) => this.answeredHeld(res, done.answer),
+    busy: this.busy,
+    error: this.error,
+  });
   /** "Sortudo: 1 → 14" under the result: the d20 Lucky rolled again (the faces and the total are the new ones). */
   protected readonly luckyLine = computed(() => luckyText(this.result() ?? undefined));
   protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
@@ -232,10 +218,9 @@ export class EffectSaveSheet {
         this.keys.keyFor({ window: w.id, how }),
       );
       this.data.state.apply(res.encounter);
-      if (res.lucky || res.offer) {
+      if (res.held) {
         // Nothing was written: the d20 alone, and the result after the answer (Lucky's question first).
-        this.luckyOffer.set(res.lucky ?? null);
-        this.offer.set(res.offer ?? null);
+        this.held.ask(res.held);
         this.typing.set(false);
         return;
       }
@@ -256,92 +241,26 @@ export class EffectSaveSheet {
     }
   }
 
-  /** "Rolar de novo" (rolled in the app, or the typed face) or "Ficar com o 1": the save is settled now with the new d20
-   * (or the 1), or, when the character holds a Bardic Inspiration die, the die's question comes next, on the new roll. */
-  protected async answerLucky(reroll: boolean, die: LuckyRoll | null): Promise<void> {
-    const offer = this.luckyOffer();
-    if (!offer || this.busy()) {
+  /** What the answer to the question brought: the save settled now with the new d20 (or the 1), or, when the character
+   * holds a Bardic Inspiration die, the die's question next, on the new roll (the d20 the app rolled again tumbles; a told
+   * result animates its own d20). */
+  private answeredHeld(res: AnswerHeldRollResponse, answer: HeldAnswer): void {
+    const settled = res.result.case === 'effectSave' ? res.result.value : null;
+    if (!settled?.encounter || (!settled.result && !res.next)) {
+      throw new Error('AnswerHeldRoll answered without its saving throw');
+    }
+    this.data.state.apply(settled.encounter);
+    if (res.next) {
+      const show = answer.kind === 'lucky' ? rerollShow(res.next.d20, answer.roll) : null;
+      if (show) {
+        this.animator.play(show);
+      }
       return;
     }
-    this.busy.set(true);
-    this.error.set('');
-    try {
-      const res = await this.resources.answerOutsideLucky(
-        this.data.campaignId,
-        offer.holdId,
-        reroll,
-        die,
-        this.luckyKey.keyFor({ hold: offer.holdId, reroll, die }),
-      );
-      const settled = res.result.case === 'effectSave' ? res.result.value : null;
-      if (!settled?.encounter || (!settled.result && !settled.inspirationOffer)) {
-        throw new Error('AnswerOutsideLucky answered without its saving throw');
-      }
-      this.data.state.apply(settled.encounter);
-      this.luckyKey.renew();
-      this.luckyOffer.set(null);
-      if (settled.inspirationOffer) {
-        this.offer.set(settled.inspirationOffer);
-        this.animateLucky(settled.inspirationOffer.d20, die);
-        return;
-      }
-      this.keys.renew();
-      this.result.set(settled.result!);
-      this.animate(settled.result!);
-      this.done.set(true);
-    } catch (err) {
-      this.error.set(classResourceErrorMessage(err, 'responder ao Sortudo'));
-    } finally {
-      this.busy.set(false);
-    }
-  }
-
-  /** The d20 the app rolled again for Lucky, tumbling, when the die's question comes next (a told result animates its
-   * own d20): the new face alone, "1 → 14". */
-  private animateLucky(roll: DiceRoll | undefined, die: LuckyRoll | null): void {
-    const again = die && 'inApp' in die ? luckyReroll(roll) : undefined;
-    const show = again
-      ? showOfDie('Sortudo', roll?.diceSides ?? 0, again.to, `${again.from} → ${again.to}`)
-      : null;
-    if (show) {
-      this.animator.play(show);
-    }
-  }
-
-  /** The answer about the die: the save is settled now, with the d20 it rolled and the die when it was used. */
-  protected async answerDie(use: boolean, die: InspirationRoll | null): Promise<void> {
-    const offer = this.offer();
-    if (!offer || this.busy()) {
-      return;
-    }
-    this.busy.set(true);
-    this.error.set('');
-    try {
-      const res = await this.resources.answerOutsideInspiration(
-        this.data.campaignId,
-        offer.holdId,
-        use,
-        die,
-        this.dieKey.keyFor({ hold: offer.holdId, use, die }),
-      );
-      if (
-        res.result.case !== 'effectSave' ||
-        !res.result.value.encounter ||
-        !res.result.value.result
-      ) {
-        throw new Error('AnswerOutsideInspiration answered without its saving throw');
-      }
-      this.data.state.apply(res.result.value.encounter);
-      this.offer.set(null);
-      this.keys.renew();
-      this.result.set(res.result.value.result);
-      this.animate(res.result.value.result);
-      this.done.set(true);
-    } catch (err) {
-      this.error.set(classResourceErrorMessage(err, 'responder sobre a Inspiração de Bardo'));
-    } finally {
-      this.busy.set(false);
-    }
+    this.keys.renew();
+    this.result.set(settled.result!);
+    this.animate(settled.result!);
+    this.done.set(true);
   }
 
   /** The d20 the app just rolled, tumbling: the face(s), the total and "Passou" or "Falhou", all of them on this sheet's result. */
