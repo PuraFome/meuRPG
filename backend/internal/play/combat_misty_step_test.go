@@ -157,21 +157,7 @@ func TestRN10_FogMistyStepNeedsASquareTheCasterSees(t *testing.T) {
 	f := newFogCaveWith(t, newMistyCave(t))
 	f.fightInSeparateTurns(t)
 	f.passTo(t, f.get(t, f.master), "Pensantus")
-	from := f.squareOf(t, f.master, "Pensantus")
-	var seen, unseen *playv1.SpellOrigin
-	for dc := int32(-6); dc <= 6; dc++ {
-		for dr := int32(-6); dr <= 6; dr++ {
-			col, row := from[0]+dc, from[1]+dr
-			if col < 0 || row < 0 || col >= 24 || row >= 16 || caveRows[row][col] == '#' || (dc == 0 && dr == 0) {
-				continue
-			}
-			if f.seesSquare(t, f.ana, int(col), int(row)) {
-				seen = at(col, row)
-			} else {
-				unseen = at(col, row)
-			}
-		}
-	}
+	seen, unseen := f.seenAndUnseenNear(t, f.squareOf(t, f.master, "Pensantus"))
 	if seen == nil || unseen == nil {
 		t.Fatalf("the fixture has no seen (%v) and unseen (%v) floor square near Pensantus", seen, unseen)
 	}
@@ -183,4 +169,24 @@ func TestRN10_FogMistyStepNeedsASquareTheCasterSees(t *testing.T) {
 	if got := f.squareOf(t, f.master, "Pensantus"); got != [2]int32{seen.GetCol(), seen.GetRow()} {
 		t.Errorf("Pensantus is at %v, want %v", got, seen)
 	}
+}
+
+// seenAndUnseenNear finds a floor square within the teleport's reach of from that Pensantus's player sees, and
+// one that they do not.
+func (f *fogCave) seenAndUnseenNear(t *testing.T, from [2]int32) (seen, unseen *playv1.SpellOrigin) {
+	t.Helper()
+	for dc := int32(-6); dc <= 6; dc++ {
+		for dr := int32(-6); dr <= 6; dr++ {
+			col, row := from[0]+dc, from[1]+dr
+			if col < 0 || row < 0 || col >= 24 || row >= 16 || caveRows[row][col] == '#' || (dc == 0 && dr == 0) || dc*dc+dr*dr > 36 {
+				continue
+			}
+			if f.seesSquare(t, f.ana, int(col), int(row)) {
+				seen = at(col, row)
+			} else {
+				unseen = at(col, row)
+			}
+		}
+	}
+	return seen, unseen
 }

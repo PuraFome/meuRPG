@@ -195,6 +195,8 @@ type castFlow struct {
 	summon     *summoning
 	// hidden says the cast shows a hidden creature: the caster or a target.
 	hidden bool
+	// landing is the square a teleport puts the caster on (checkTeleport); nil for any other cast.
+	landing *grid.Square
 }
 
 func newCastFlow(s *Service, c *combatTx, m authz.Membership, req *playv1.CastSpellRequest, call castCall, out *castOut) *castFlow {
@@ -236,7 +238,7 @@ func (f *castFlow) run(ctx context.Context) (any, error) {
 func (f *castFlow) prepare(ctx context.Context) error {
 	for _, phase := range []func(context.Context) error{
 		f.findCaster, f.findTargets, f.pickSpell, f.checkEnabled, f.pickSlot, f.checkTargetsAlive,
-		f.applyMetamagic, f.readMap, f.placeArea, f.checkMembers, f.checkTargetList, f.planSummon,
+		f.applyMetamagic, f.readMap, f.checkTeleport, f.placeArea, f.checkMembers, f.checkTargetList, f.planSummon,
 	} {
 		if err := phase(ctx); err != nil {
 			return err
@@ -254,7 +256,7 @@ func (f *castFlow) prepare(ctx context.Context) error {
 // writeCast is what the cast does once it is spent: the concentration, the creatures it summons, what it
 // does to each target and the event's last marks.
 func (f *castFlow) writeCast(ctx context.Context) error {
-	for _, phase := range []func(context.Context) error{f.concentrate, f.markHunters, f.bringSummons, f.affect, f.seal} {
+	for _, phase := range []func(context.Context) error{f.concentrate, f.markHunters, f.bringSummons, f.affect, f.teleport, f.seal} {
 		if err := phase(ctx); err != nil {
 			return err
 		}
@@ -815,6 +817,7 @@ func (s *Service) castResponse(ctx context.Context, m authz.Membership, res comb
 // hidden hit question and the turn a revealed creature joined.
 func (s *Service) castPublisher(m authz.Membership, ev actionEvent, vitals []*playv1.CharacterVitals) func(ctx context.Context, d *encounterData) {
 	return func(ctx context.Context, d *encounterData) {
+		s.publishTeleport(ctx, m.CampaignID, d, ev)
 		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
 		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
 		for _, vit := range vitals {
