@@ -4,12 +4,15 @@ import { endOpenSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus
 import { pickRadio } from './move-support';
 import { secondPlayer, type SecondPlayer } from './puzzles-support';
 import { createCapitaoRPC } from './stage-support';
-import { newSignedInContext } from './support';
+import { callRPC, newSignedInContext } from './support';
 
 // Setup and helpers for the scene's conversation specs (MR-051, RN-36). The table has the master,
 // Pensantus (Jogador Teste) and Toren ("E-mail Não Verificado"): the only two saved player accounts, so
 // "the reader who was not chosen" is always the other of the two. Every read is of the feed
 // ("Mensagens da cena"), never of the screen-reader log that repeats each new line.
+
+/** Toren's account name: set as his display name at the table (the devidp account has none), so an out-of-character line can say it. */
+export const TOREN_ACCOUNT = 'E-mail Não Verificado';
 
 export interface ConversaTable {
   campaignId: string;
@@ -49,6 +52,9 @@ export async function openConversaTable(browser: Browser, name: string, options:
     await Promise.all([master.goto('/'), pensantus.goto('/')]);
     ({ campaignId } = await tableWithPensantus(master, pensantus, name));
     toren = await secondPlayer(browser, master, campaignId, viewport);
+    // A display name comes from the Perfil, not from the sign-in: without one an out-of-character line has no name to show.
+    const named = await callRPC(toren.page, 'meurpg.identity.v1.IdentityService/UpdateProfile', { displayName: TOREN_ACCOUNT });
+    expect(named.ok(), await named.text()).toBeTruthy();
     await createCapitaoRPC(master, campaignId);
     await startSessionRPC(master, campaignId);
     await Promise.all([master, pensantus, toren.page].map((p) => openSessionPage(p, campaignId)));
@@ -77,6 +83,13 @@ export function feedOf(page: Page): Locator {
 /** The line whose text is `text`, as a list item of the feed. */
 export function lineOf(page: Page, text: string): Locator {
   return feedOf(page).getByRole('listitem').filter({ hasText: text });
+}
+
+/** The player's "Só o mestre lê" toggle: pressed, the next line is for the master alone. */
+export async function onlyMaster(page: Page): Promise<void> {
+  const toggle = page.getByRole('button', { name: 'Só o mestre lê' });
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
 }
 
 /** Writes in the message box and presses "Enviar". */

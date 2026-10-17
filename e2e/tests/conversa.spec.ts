@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { chooseReaders, feedOf, lineOf, openConversaTable, say } from './conversa-support';
+import { TOREN_ACCOUNT, chooseReaders, feedOf, lineOf, onlyMaster, openConversaTable, say } from './conversa-support';
 import { pickRadio } from './move-support';
 
 // The scene's conversation (MR-051, RN-36): who reads a line. Each test makes its own campaign with
@@ -9,7 +9,8 @@ import { pickRadio } from './move-support';
 // screen: the stream delivers in order, so by then a line meant for that screen would be there. A
 // reader who was not chosen gets no text, no extra row, no notice.
 
-const toren = 'E-mail Não Verificado';
+// Toren speaks as his character in character, and as his account's display name out of character.
+const toren = 'Toren';
 
 test(
   'o mestre narra para todos e fala como um NPC, e cada jogador vê as duas linhas',
@@ -81,7 +82,7 @@ test(
 
       // Toren writes to the master only.
       const secret = `Mestre, posso falar a sós? ${Date.now()}`;
-      await pickRadio(torenPage.getByRole('radiogroup', { name: 'Para' }), 'Só o mestre');
+      await onlyMaster(torenPage);
       await say(torenPage, secret);
       await expect(lineOf(master, secret)).toContainText(`${toren} · só o mestre lê`);
       await expect(lineOf(torenPage, secret)).toBeVisible();
@@ -114,7 +115,7 @@ test(
       await pickRadio(torenPage.getByRole('radiogroup', { name: 'Como você fala' }), 'Fora do personagem');
       await say(torenPage, aside);
       for (const page of [master, pensantus, torenPage]) {
-        await expect(lineOf(page, aside)).toContainText(`${toren} · fora do personagem`);
+        await expect(lineOf(page, aside)).toContainText(`${TOREN_ACCOUNT} · fora do personagem`);
       }
 
       // In character, the line carries the character's name; to everyone is the default.

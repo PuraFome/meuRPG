@@ -245,6 +245,7 @@ export class ConversationState {
       return false;
     }
     this.lines.update((lines) => union(lines, [message]));
+    this.dropSendingEcho(message);
     // The master's line is the end of "está escrevendo…".
     if (
       message.speakerKind === SessionMessageSpeakerKind.NARRATOR ||
@@ -254,6 +255,22 @@ export class ConversationState {
     }
     this.countUnread([message]);
     return true;
+  }
+
+  /**
+   * The stream can tell the reader's own line before the answer of the send arrives. The row that says "sending"
+   * stands for that same line, so it goes now, or the line would be drawn twice until the answer. Only a row still
+   * sending is taken: a failed one may be a line the server never got.
+   */
+  private dropSendingEcho(message: SessionMessage): void {
+    const self = this.selfUserId();
+    if (self === '' || message.authorUserId !== self) {
+      return;
+    }
+    const echo = this.pending().find((p) => p.status === 'sending' && p.text === message.text);
+    if (echo) {
+      this.discard(echo.key);
+    }
   }
 
   private countUnread(news: readonly SessionMessage[]): void {

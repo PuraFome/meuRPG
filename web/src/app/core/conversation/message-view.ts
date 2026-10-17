@@ -100,7 +100,12 @@ function isMine(message: SessionMessage, viewer: Viewer): boolean {
   return message.authorUserId !== '' && message.authorUserId === viewer.userId;
 }
 
-function baseLabel(message: SessionMessage, look: LineLook, viewer: Viewer): string {
+function baseLabel(
+  message: SessionMessage,
+  look: LineLook,
+  viewer: Viewer,
+  directory: PlayerDirectory,
+): string {
   const name = message.speakerName;
   switch (look) {
     case 'narration':
@@ -110,9 +115,11 @@ function baseLabel(message: SessionMessage, look: LineLook, viewer: Viewer): str
     case 'npc':
       return isMine(message, viewer) ? `${name} · você` : name;
     case 'out-of-character':
-      return message.authorRemoved
+      // Only an erased account has no author id left. The server also flags a present author who never chose a
+      // display name as removed, so that flag is not trusted: the table's name for the account, else "Jogador".
+      return message.authorUserId === ''
         ? 'Jogador removido'
-        : `${name || 'Jogador'} · fora do personagem`;
+        : `${name || directory.get(message.authorUserId) || 'Jogador'} · fora do personagem`;
     default:
       return name;
   }
@@ -129,7 +136,7 @@ function restrictedWords(
   if (byMaster(message) && !viewer.isMaster) {
     return { label: 'Sussurro do mestre · só você lê', audience: null };
   }
-  const base = baseLabel(message, look, viewer);
+  const base = baseLabel(message, look, viewer, directory);
   if (!byMaster(message)) {
     return { label: `${base} · só o mestre lê`, audience: null };
   }
@@ -150,7 +157,7 @@ export function viewLine(
   const look: LineLook = restricted ? 'restricted' : base;
   const words = restricted
     ? restrictedWords(message, viewer, directory, base)
-    : { label: baseLabel(message, base, viewer), audience: null };
+    : { label: baseLabel(message, base, viewer, directory), audience: null };
   const portrait = message.speakerPortrait;
   return {
     id: message.id,
