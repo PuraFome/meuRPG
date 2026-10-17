@@ -115,9 +115,7 @@ func (s *Service) GetSessionSummary(
 		return nil, err
 	}
 	if m.Role != authz.RoleMaster {
-		// A character the master gave back to the reserve is invisible to the players,
-		// in the sessions it played before too (RN-10).
-		st.list = slices.DeleteFunc(st.list, func(t *characterTally) bool { return chars[t.characterID].Reserved })
+		st.list = dropReserved(st.list, chars)
 	}
 
 	sum := &playv1.SessionSummary{
@@ -181,8 +179,22 @@ func (s *Service) tallyCombats(ctx context.Context, sessionID string, st *sessio
 // nameTallies gives a name to the ones who only rolled checks or found treasure,
 // and returns the characters of the tallies (for "mine" and the reserve).
 func (s *Service) nameTallies(ctx context.Context, campaignID string, st *sessionTally) (map[string]link.Character, error) {
-	ids := make([]string, 0, len(st.list))
+	chars, err := s.talliedCharacters(ctx, campaignID, st.list)
+	if err != nil {
+		return nil, err
+	}
 	for _, t := range st.list {
+		if t.name == "" {
+			t.name = chars[t.characterID].Name
+		}
+	}
+	return chars, nil
+}
+
+// talliedCharacters reads the characters of the tallies by id.
+func (s *Service) talliedCharacters(ctx context.Context, campaignID string, list []*characterTally) (map[string]link.Character, error) {
+	ids := make([]string, 0, len(list))
+	for _, t := range list {
 		ids = append(ids, t.characterID)
 	}
 	chars := map[string]link.Character{}
@@ -197,12 +209,15 @@ func (s *Service) nameTallies(ctx context.Context, campaignID string, st *sessio
 			chars[c.ID] = c
 		}
 	}
-	for _, t := range st.list {
-		if t.name == "" {
-			t.name = chars[t.characterID].Name
-		}
-	}
 	return chars, nil
+}
+
+// dropReserved takes out the tallies of the characters the master gave back to the
+// reserve: they are invisible to the players, in the combats and sessions they
+// played before too, to their former player as well (RN-10). Only a non-master
+// reader calls it.
+func dropReserved(list []*characterTally, chars map[string]link.Character) []*characterTally {
+	return slices.DeleteFunc(list, func(t *characterTally) bool { return chars[t.characterID].Reserved })
 }
 
 // fillMasterSummary adds the master's numbers and the table of every character.
