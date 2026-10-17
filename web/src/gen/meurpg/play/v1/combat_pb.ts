@@ -3591,6 +3591,7 @@ export type SpellTargets = Message<"meurpg.play.v1.SpellTargets"> & {
 
   /**
    * Magic Missile: how many darts each slot level makes (3 at the 1st, one more
+   * for each level above). Scorching Ray: how many rays (3 at the 2nd, one more
    * for each level above). Empty for any other spell.
    *
    * @generated from field: repeated meurpg.play.v1.DartsAtSlot darts = 5;
@@ -3655,7 +3656,8 @@ export const SpellTargetsSchema: GenMessage<SpellTargets> = /*@__PURE__*/
   messageDesc(file_meurpg_play_v1_combat, 62);
 
 /**
- * DartsAtSlot is how many darts a slot level makes.
+ * DartsAtSlot is how many darts (Magic Missile) or rays (Scorching Ray) a slot
+ * level makes.
  *
  * @generated from message meurpg.play.v1.DartsAtSlot
  */
@@ -5110,7 +5112,9 @@ export type SpellTarget = Message<"meurpg.play.v1.SpellTarget"> & {
   combatantId: string;
 
   /**
-   * Magic Missile only: the darts that go to this target, at least 1.
+   * Magic Missile: the darts that go to this target, at least 1. Scorching Ray:
+   * the rays that go to this target (0 counts as 1); each ray is its own spell
+   * attack.
    *
    * @generated from field: int32 darts = 2;
    */
@@ -14628,7 +14632,10 @@ export const CombatService: GenService<{
    * master's too (what each target did must fit the cast's session event). Magic
    * Missile is cast with `darts`
    * in each target: 3 darts, and one more for each slot level above the 1st, shared
-   * out as the caster wants, at least one for each target listed.
+   * out as the caster wants, at least one for each target listed. Scorching Ray
+   * shares its rays the same way (3, and one more for each slot level above the
+   * 2nd), but `darts` is the rays of that target (none counts as one), the rays
+   * need not use the whole number, and several may go to one target.
    *
    * What the cast does depends on the spell:
    *   - A spell attack (Guiding Bolt): one d20 for each target (roll_in_app, or
