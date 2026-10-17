@@ -1035,8 +1035,10 @@ export const ExhaustionLowerReasonSchema: GenEnum<ExhaustionLowerReason> = /*@__
  * rounds after the casting (one minute is ten rounds: cast in round 1, it ends in
  * round 11), so "Restam N rodadas" is the difference to that round. What ends "at
  * the start of X's turn" ends exactly there (Esquivando). A concentration ends
- * every effect of its casting together. Outside a combat the app does not count
- * time: an effect lasts until the master ends it or a long rest.
+ * every effect of its casting together. Outside a combat the clock is game time,
+ * which only the master moves on (AdvanceGameTime, a cast that takes time, a
+ * rest): an effect there ends when its seconds run out, when the master ends it
+ * or at a long rest.
  *
  * The order of operations, in one transaction and idempotent under a double
  * EndTurn: at the end of a turn, (1) the saving throws the ending combatant's
