@@ -1025,6 +1025,15 @@ service CombatService {
   //   - `permission_denied`: the caller does not play the caster.
   rpc MoveSpellZone(MoveSpellZoneRequest) returns (MoveSpellZoneResponse);
 
+  // EndSpellZone ends the area a spell keeps on the map, at the master's word (the caster's
+  // concentration ended outside the app). Only the master may call it. The log tells that the
+  // zone ended and the master ended it.
+  //
+  // Errors:
+  //   - `permission_denied`: the caller is not the master.
+  //   - `not_found`: the zone is not in the combat.
+  rpc EndSpellZone(EndSpellZoneRequest) returns (EndSpellZoneResponse);
+
   // ResolveHiddenReveal answers the question a player's area spell opened when it
   // hit hidden creatures and the table rule is "Perguntar a cada vez" (Encounter.
   // pending_hidden_reveals): `reveal` true makes them appear to the players, as
@@ -2070,6 +2079,35 @@ message SpellZone {
   SpellZoneMovement movement = 11;
   // Who reads the zone.
   SpellZoneVisibility visibility = 12;
+  // The caster's label ("Bartolo"), for "Concentração de Bartolo". Always a combatant the
+  // caller sees.
+  string owner_label = 13;
+  // True when the caller reads no numbers of the zone: a player reading the zone of a
+  // caster that is not theirs. The fields from `save_ability` to `moves_per_turn_ft` and
+  // `rounds_left` are then empty (RN-10: the DC, the dice and the time of an NPC's spell are
+  // the master's).
+  bool details_hidden = 14;
+  // The saving throw ("wis") and its Portuguese name; empty for a zone with no saving
+  // throw (the damage just lands).
+  string save_ability = 15;
+  string save_ability_name_pt = 16;
+  // The DC.
+  optional int32 save_dc = 17;
+  // The damage at the slot of the cast ("3d8"), its type key and Portuguese name; empty for
+  // a zone with no damage (Web).
+  string damage_dice = 18;
+  string damage_type_key = 19;
+  string damage_type_name_pt = 20;
+  // True when a passed save halves the damage.
+  bool half_on_save = 21;
+  // How far the area goes by itself at the start of each of the caster's turns, in feet
+  // (Cloudkill 10); 0 for one that stays or is moved by hand.
+  int32 moves_per_turn_ft = 22;
+  // What else the zone does, as keys: "speed_halved" (a creature that starts its turn in
+  // it or comes in moves at half speed that turn), "difficult_terrain" and "restrains".
+  repeated string notes = 23;
+  // The combatants standing in the area now that the caller sees ("Aqui: Tor, Jabuti").
+  repeated string occupant_ids = 24;
 }
 
 // SpellZoneMovement says how a zone changes place while it lasts.
@@ -3968,6 +4006,21 @@ message MoveSpellZoneRequest {
   SpellOrigin origin = 4;
   // Makes a retry harmless.
   string idempotency_key = 5;
+}
+
+// EndSpellZoneRequest ends a zone.
+message EndSpellZoneRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  // The zone (Encounter.zones.id).
+  string zone_id = 3;
+  // Makes a retry harmless.
+  string idempotency_key = 4;
+}
+
+// EndSpellZoneResponse returns the combat after the end.
+message EndSpellZoneResponse {
+  Encounter encounter = 1;
 }
 
 // MoveSpellZoneResponse returns the combat after the move.

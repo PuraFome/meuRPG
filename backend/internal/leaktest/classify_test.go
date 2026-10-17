@@ -180,6 +180,7 @@ var notReads = map[string]classified{
 	playv1connect.CombatServiceEndTurnProcedure:                                 {playerAction, "a player ends their own turn"},
 	playv1connect.CombatServiceMoveCombatantProcedure:                           {playerAction, "a player moves their own combatant"},
 	playv1connect.CombatServiceOfferOpportunityProcedure:                        {masterWrite, masterOnlyWhy},
+	playv1connect.CombatServiceEndSpellZoneProcedure:                            {masterWrite, masterOnlyWhy},
 	playv1connect.CombatServiceMoveSpellZoneProcedure:                           {playerAction, "a player moves the area their own combatant's spell keeps on the map: a zone of a hidden caster is not found for them (zones_hidden_test.go in play)"},
 	playv1connect.CombatServicePreviewSpellAreaProcedure:                        {playerAction, "a player previews the area of their own combatant's spell: only what they see (areaspell_test.go)"},
 	playv1connect.CombatServiceRemoveCombatantProcedure:                         {masterWrite, masterOnlyWhy},
