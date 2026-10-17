@@ -565,6 +565,11 @@ func (s *Service) removeWrite(ctx context.Context, c *combatTx, m authz.Membersh
 		return nil, err
 	}
 	*turnPassed = *turnPassed || inTurn(c.enc, target)
+	// A character keeps what is on it: the effects go back to game time before the row
+	// (and the effects with it) is deleted.
+	if err := s.effectRowsToCharacters(ctx, c, cs, []playdb.Combatant{target}); err != nil {
+		return nil, err
+	}
 	if err := c.q.DeleteCombatant(ctx, target.ID); err != nil {
 		return nil, fmt.Errorf("delete the combatant: %w", err)
 	}
