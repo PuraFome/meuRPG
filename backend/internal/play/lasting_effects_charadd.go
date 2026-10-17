@@ -53,8 +53,18 @@ func parseCharEffectInput(msg *playv1.AddCharacterEffectRequest) (charEffectInpu
 	if err := checkEffectLabel(msg.GetPlayerLabel()); err != nil {
 		return in, err
 	}
-	in.kind, in.seconds, err = charDurationOf(durationKindOf(msg.GetDurationKind()), msg.GetSeconds())
+	in.kind, in.seconds, err = charDurationOf(charKindOf(msg), msg.GetSeconds())
 	return in, err
+}
+
+// charKindOf is the duration kind the request asks for: seconds with no kind at all read as the
+// clock of game time, the only kind that has seconds. A kind the server does not know stays no
+// kind.
+func charKindOf(msg *playv1.AddCharacterEffectRequest) string {
+	if msg.GetDurationKind() == playv1.EffectDurationKind_EFFECT_DURATION_KIND_UNSPECIFIED && msg.GetSeconds() != 0 {
+		return rules.EffectDurationRounds
+	}
+	return durationKindOf(msg.GetDurationKind())
 }
 
 // parseCharacterIDs reads the characters: one to ten, all UUIDs, none twice.
