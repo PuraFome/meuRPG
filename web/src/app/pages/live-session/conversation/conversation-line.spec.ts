@@ -13,12 +13,16 @@ const DIRECTORY: PlayerDirectory = new Map([
 ]);
 
 describe('ConversationLine', () => {
-  function render(message: SessionMessage, opts: { master?: boolean; voice?: boolean } = {}) {
+  function render(
+    message: SessionMessage,
+    opts: { master?: boolean; voice?: boolean; card?: boolean } = {},
+  ) {
     const fixture = TestBed.createComponent(ConversationLine);
     const view = viewLine(message, { userId: 'u-p', isMaster: opts.master ?? false }, DIRECTORY);
     fixture.componentRef.setInput('view', view);
     fixture.componentRef.setInput('listen', new ListenController());
     fixture.componentRef.setInput('voice', opts.voice ?? true);
+    fixture.componentRef.setInput('card', opts.card ?? false);
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     return { el, fixture, label: el.querySelector('.line__label')?.textContent?.trim() };
@@ -41,6 +45,21 @@ describe('ConversationLine', () => {
     expect(el.querySelector('app-listen-button button')?.getAttribute('aria-label')).toBe(
       'Ouvir a narração',
     );
+  });
+
+  it('on the phone the narration is a white card: surface, 1 px line border, 10 px radius, 12 px padding', () => {
+    const { el } = render(narration(), { card: true });
+    expect(el.classList.contains('line--card')).toBe(true);
+    const style = getComputedStyle(el);
+    expect(style.borderTopWidth).toBe('1px');
+    expect(style.borderTopStyle).toBe('solid');
+    expect(style.paddingTop).toBe('12px');
+  });
+
+  it('on a computer the narration stays a borderless block on the page ground', () => {
+    const { el } = render(narration());
+    expect(el.classList.contains('line--card')).toBe(false);
+    expect(getComputedStyle(el).borderTopWidth).not.toBe('1px');
   });
 
   it('shows the image above the text of a narration', () => {
