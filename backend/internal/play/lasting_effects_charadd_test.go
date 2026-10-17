@@ -190,7 +190,8 @@ func TestAddCharacterEffectOutcomes(t *testing.T) { //nolint:tparallel // the ca
 		{name: "a concentration is until dismissed", want: "{\"audience\": \"all\", \"character_id\": \"pens\", \"condition_keys\": [\"condition:prone\"], \"duration_kind\": \"until_dismissed\", \"player_visible\": true, \"source_key\": \"condition:prone\", \"source_kind\": \"master\"}\nseen 1/1/1\nids 1", edit: func(r *playv1.AddCharacterEffectRequest) {
 			r.CatalogKey, r.DurationKind, r.Seconds = "condition:prone", playv1.EffectDurationKind_EFFECT_DURATION_KIND_CONCENTRATION, 5
 		}},
-		{name: "seconds with no kind are dropped (frozen: looks wrong because the master asked for 600 seconds and got none)", want: "{\"audience\": \"all\", \"character_id\": \"pens\", \"condition_keys\": [\"condition:prone\"], \"duration_kind\": \"until_dismissed\", \"player_visible\": true, \"source_key\": \"condition:prone\", \"source_kind\": \"master\"}\nseen 1/1/1\nids 1", edit: func(r *playv1.AddCharacterEffectRequest) {
+		// Finding fix/lasting-effects-outside-combat (b): seconds with no kind read as the clock of game time.
+		{name: "seconds with no kind are a timed effect", want: "{\"audience\": \"all\", \"character_id\": \"pens\", \"condition_keys\": [\"condition:prone\"], \"duration_kind\": \"rounds\", \"player_visible\": true, \"seconds_left\": 600, \"source_key\": \"condition:prone\", \"source_kind\": \"master\"}\nseen 1/1/1\nids 1", edit: func(r *playv1.AddCharacterEffectRequest) {
 			r.CatalogKey, r.Seconds = "condition:prone", 600
 		}},
 		{name: "a kind the server does not know is no kind (frozen: looks wrong because the kind is silently taken for the default)", want: "{\"audience\": \"all\", \"character_id\": \"pens\", \"condition_keys\": [\"condition:prone\"], \"duration_kind\": \"until_dismissed\", \"player_visible\": true, \"source_key\": \"condition:prone\", \"source_kind\": \"master\"}\nseen 1/1/1\nids 1", edit: func(r *playv1.AddCharacterEffectRequest) {
