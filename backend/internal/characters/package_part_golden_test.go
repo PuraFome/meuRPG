@@ -450,8 +450,9 @@ func packagePartVariants(t *testing.T, base []packagePartEntry) map[string][]pac
 			}
 		})),
 	)
-	// By hand and in a package alike, a second entry of a kind with a name another has is
-	// refused (duplicate_name).
+	// Finding: by hand a second entry of a kind with a name another has is refused
+	// (duplicate_name, tablecontent_rpc.go), but a package with two is staged without a
+	// problem, though contentReason maps duplicate_name to DUPLICATE. Frozen as it is.
 	out["two entries of one name"] = packagePartWith(base, 0, packagePartContent(t, "content/0130.json", edit(background, func(e *rulesv1.TableEntry) {
 		e.Key = "background:outro-farol@mesa"
 		e.GetTableBackground().GetFeature().Key = ""

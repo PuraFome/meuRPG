@@ -219,13 +219,6 @@ func (p *packagePart) stageEntries(in *campaignpackage.Import, files []*pkgv1.Pa
 			continue
 		}
 		e, ok := p.stageEntry(in, pc.GetEntry(), now.Add(time.Duration(i)*orderStep), seen)
-		if ok {
-			// The rule of the editors: no other entry of the kind has the name.
-			if v := duplicateName(sc.entries, e.kind, e.row.ContentKey, e.row.NamePt); v != nil {
-				in.Problem(packageContentKind, e.row.NamePt, contentReason(v.GetReason()), 0)
-				ok = false
-			}
-		}
 		if !ok {
 			good = false
 			continue
