@@ -27,6 +27,7 @@ import { ResourceClient } from '../../../../core/resources/resources-client';
 import { AreaList } from '../../../../shared/area-picker/area-list';
 import { AreaMap } from '../../../../shared/area-picker/area-map';
 import { AreaStep } from '../../../../shared/area-picker/area-step';
+import { TeleportMap } from '../../../../shared/area-picker/teleport-map';
 import { HeldRollPrompt } from '../../../../shared/held-roll-prompt/held-roll-prompt';
 import { RollAnimator } from '../../../../shared/roll-overlay/roll-animator';
 import { RollPicker } from '../../../../shared/roll-picker/roll-picker';
@@ -94,6 +95,7 @@ export type { CastMapData, CastSheetData } from './cast-sheet-types';
     SheetFrame,
     SlotPicker,
     SpellHelp,
+    TeleportMap,
   ],
   templateUrl: './cast-sheet.html',
   styleUrl: './cast-sheet.scss',
