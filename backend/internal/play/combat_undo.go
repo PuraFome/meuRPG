@@ -323,7 +323,7 @@ type undoRun struct {
 	made       actionEvent
 	vitals     []*playv1.CharacterVitals // the characters' vitals put back, if any
 	undoneMove *actionEvent              // the move that was taken back, for the fog
-	snapBack   *grid.Square              // where a mover stood before the undo of the 0 hit points rule put it back
+	snapBack   *grid.Square              // where a creature stood before the undo put it back: the mover of the 0 hit points rule, or the creature a move dragged
 	snapped    string                    // and who it is
 	rearmed    *trapFireEvent            // the trap an undone firing armed again
 	alsoUndone []string                  // the older parts of a firing that went with it
@@ -380,8 +380,8 @@ func (s *Service) undoInTx(ctx context.Context, c *combatTx, expected string, ru
 	if err != nil {
 		return nil, err
 	}
-	if ev.ReturnedFrom != nil { // the undo of a damage that took the mover back to where it left the reach
-		if err := run.noteSnapBack(ctx, c, ev); err != nil {
+	if id := creatureToPutBack(ev); id != "" {
+		if err := run.noteSnapBack(ctx, c, id); err != nil {
 			return nil, err
 		}
 	}
@@ -403,16 +403,26 @@ func (s *Service) undoInTx(ctx context.Context, c *combatTx, expected string, ru
 	return run.made, nil
 }
 
-// noteSnapBack remembers where the target of a damage that took the mover back stands
-// now, if it is placed: the fog follows it when the undo puts it back.
-func (u *undoRun) noteSnapBack(ctx context.Context, c *combatTx, ev actionEvent) error {
+// creatureToPutBack is the creature whose square the undo of ev changes behind the mover's
+// back: the target of a damage that took the mover back to where it left the reach, or the
+// creature a move dragged.
+func creatureToPutBack(ev actionEvent) string {
+	if ev.ReturnedFrom != nil {
+		return ev.Target
+	}
+	return ev.Dragged
+}
+
+// noteSnapBack remembers where the creature the undo puts back stands now, if it is
+// placed: the fog follows it when the undo moves it.
+func (u *undoRun) noteSnapBack(ctx context.Context, c *combatTx, id string) error {
 	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 	if err != nil {
 		return fmt.Errorf("list the combatants: %w", err)
 	}
-	if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == ev.Target }); i >= 0 && placed(cs[i]) {
+	if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == id }); i >= 0 && placed(cs[i]) {
 		sq := squareOfCombatant(cs[i])
-		u.snapBack, u.snapped = &sq, ev.Target
+		u.snapBack, u.snapped = &sq, id
 	}
 	return nil
 }

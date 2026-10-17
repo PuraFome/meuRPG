@@ -435,7 +435,7 @@ func (u *undoer) combatantMoved(ctx context.Context, ev actionEvent) error {
 	// The creature the mover dragged along goes back to where it stood (combat_drag.go).
 	if ev.Dragged != "" && ev.DraggedFrom != nil && ev.DraggedFrom.Placed {
 		if err := u.c.q.SetCombatantPlace(ctx, playdb.SetCombatantPlaceParams{
-			ID: ev.Dragged, GridCol: &ev.DraggedFrom.Col, GridRow: &ev.DraggedFrom.Row, CoverMark: "none",
+			ID: ev.Dragged, GridCol: &ev.DraggedFrom.Col, GridRow: &ev.DraggedFrom.Row, CoverMark: coverOrNone(ev.DraggedFrom.Cover),
 		}); err != nil {
 			return fmt.Errorf("put back the dragged creature: %w", err)
 		}
