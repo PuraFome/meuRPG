@@ -629,6 +629,27 @@ type SpellCast struct {
 	EndedAt            *time.Time
 }
 
+type SpellZone struct {
+	ID            string
+	EncounterID   string
+	OwnerID       string
+	SpellKey      string
+	CastID        string
+	SlotLevel     int32
+	OriginCol     int32
+	OriginRow     int32
+	Squares       []byte
+	SaveAbility   string
+	SaveDc        int32
+	DamageDice    string
+	DamageType    string
+	Concentration bool
+	StartedRound  int32
+	EndsRound     *int32
+	HitMarks      []byte
+	CreatedAt     time.Time
+}
+
 type StageNpc struct {
 	ID            string
 	GameSessionID string
