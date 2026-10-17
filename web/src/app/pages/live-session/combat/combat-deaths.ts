@@ -1,6 +1,7 @@
 import { signal } from '@angular/core';
 import { DeathSaveOutcome, type Encounter } from '../../../../gen/meurpg/play/v1/combat_pb';
-import type { AttackDie, CombatClient } from '../../../core/combat/combat-client';
+import type { CombatClient } from '../../../core/combat/combat-client';
+import type { AttackDie } from '../../../core/combat/combat-client-types';
 import type { CombatCalls } from '../../../core/combat/combat-calls';
 import { outcomeText, saveAnnouncement } from '../../../core/combat/death-saves';
 import { ActionKey } from '../../../core/connect/idempotency';
@@ -9,7 +10,7 @@ import { type DeathSaveRoll } from './death-save-due/death-save-due';
 
 /** What `CombatDeaths` reads from the screen it serves. */
 export interface CombatDeathsContext {
-  readonly api: Pick<CombatClient, 'rollDeathSave' | 'confirmDeath'>;
+  readonly api: Pick<CombatClient, 'combatants'>;
   readonly animator: Pick<RollAnimator, 'play'>;
   readonly calls: Pick<CombatCalls, 'run'>;
   readonly campaignId: () => string;
@@ -69,7 +70,13 @@ export class CombatDeaths {
     let text = '';
     await this.ctx.calls.run(async (e) => {
       const key = this.saveKey.keyFor([e.id, id, die]);
-      const res = await this.ctx.api.rollDeathSave(this.ctx.campaignId(), e.id, id, die, key);
+      const res = await this.ctx.api.combatants.rollDeathSave(
+        this.ctx.campaignId(),
+        e.id,
+        id,
+        die,
+        key,
+      );
       this.saveKey.renew();
       text = saveAnnouncement(res.save, label);
       // The death save, as the line under the sheet tells it (hidden saves arrive without a roll: nothing plays).
@@ -98,7 +105,7 @@ export class CombatDeaths {
   /** The master's "Confirmar a morte" (ConfirmDeath): the character is dead for good. */
   async confirm(id: string): Promise<void> {
     await this.ctx.calls.run(async (e) => {
-      const res = await this.ctx.api.confirmDeath(
+      const res = await this.ctx.api.combatants.confirmDeath(
         this.ctx.campaignId(),
         e.id,
         id,

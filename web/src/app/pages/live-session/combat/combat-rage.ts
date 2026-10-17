@@ -6,7 +6,7 @@ import type { CombatState } from '../../../core/combat/combat-state';
 
 /** What `CombatRage` reads from the screen it serves. */
 export interface CombatRageContext {
-  readonly api: Pick<CombatClient, 'answerRageEnd' | 'endTurn' | 'endRage'>;
+  readonly api: Pick<CombatClient, 'turn'>;
   readonly calls: Pick<CombatCalls, 'run'>;
   readonly campaignId: () => string;
   readonly encounter: () => Encounter | null;
@@ -31,17 +31,22 @@ export class CombatRage {
     // "Deixar a fúria acabar" ends the rage and then passes the turn, in one tap, as the
     // question says: the server only ends the rage, so the turn goes in the same call.
     await this.ctx.calls.run(async (e) => {
-      const answered = await this.ctx.api.answerRageEnd(this.ctx.campaignId(), e.id, id, endRage);
+      const answered = await this.ctx.api.turn.answerRageEnd(
+        this.ctx.campaignId(),
+        e.id,
+        id,
+        endRage,
+      );
       if (!endRage) {
         return answered;
       }
       this.ctx.state().apply(answered);
-      return this.ctx.api.endTurn(this.ctx.campaignId(), e.id, id, false, answered.round);
+      return this.ctx.api.turn.endTurn(this.ctx.campaignId(), e.id, id, false, answered.round);
     });
   }
 
   /** "Encerrar fúria": the bonus action. */
   end(id: string): Promise<boolean> {
-    return this.ctx.calls.run((e) => this.ctx.api.endRage(this.ctx.campaignId(), e.id, id));
+    return this.ctx.calls.run((e) => this.ctx.api.turn.endRage(this.ctx.campaignId(), e.id, id));
   }
 }

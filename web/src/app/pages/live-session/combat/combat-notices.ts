@@ -17,7 +17,7 @@ import type { CombatClient } from '../../../core/combat/combat-client';
 
 /** What `CombatNotices` reads from the screen it serves. */
 export interface CombatNoticesContext {
-  readonly api: Pick<CombatClient, 'setConditions'>;
+  readonly api: Pick<CombatClient, 'combatants'>;
   readonly calls: Pick<CombatCalls, 'run'>;
   readonly campaignId: () => string;
   readonly ownId: () => string | undefined;
@@ -78,7 +78,7 @@ export class CombatNotices {
     return ownId
       ? this.ctx.calls
           .run((e: Encounter) =>
-            this.ctx.api.setConditions(this.ctx.campaignId(), e.id, ownId, {
+            this.ctx.api.combatants.setConditions(this.ctx.campaignId(), e.id, ownId, {
               endConcentration: true,
             }),
           )
