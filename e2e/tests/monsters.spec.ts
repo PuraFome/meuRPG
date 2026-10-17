@@ -277,10 +277,10 @@ test(
       await gen.locator('select[name=type]').selectOption('humanoid');
       await humanoidDrawn;
       await expect(gen.locator('section.res')).toHaveAttribute('aria-busy', 'false');
-      await expect(gen.locator('.res__seed')).toContainText('Semente');
+      // The seed shows as a number only once the draw is on screen (before, it is "Trocado à mão" or absent): wait for that exact text.
+      await expect(gen.locator('.res__seed')).toHaveText(/^Semente \d+$/);
       const seed = Number((await gen.locator('.res__seed').innerText()).replace(/\D/g, ''));
       expect(seed).toBeGreaterThan(0);
-      const shown = (await gen.locator('.line__pt').allInnerTexts()).map((t) => t.trim());
       const drawn = async () => {
         const res = await callRPC(master, 'meurpg.play.v1.EncounterService/GenerateEncounter', { campaignId, band: 'ENCOUNTER_BAND_MODERATE', creatureType: 'humanoid', seed });
         expect(res.ok(), await res.text()).toBeTruthy();
@@ -289,11 +289,14 @@ test(
       const first = await drawn();
       const second = await drawn();
       expect(second).toEqual(first);
-      expect(first.evaluation.lines.map((l) => `${l.count} × ${l.creature.namePt}`)).toEqual(shown);
+      // The lines on screen are the API's lines for that seed: asserted with the retrying matcher, not read once.
+      await expect(gen.locator('.line__pt')).toHaveText(first.evaluation.lines.map((l) => `${l.count} × ${l.creature.namePt}`));
 
       // "Gerar outro" draws a new seed.
       await gen.getByRole('button', { name: 'Gerar outro' }).click();
       await expect(gen.locator('.res__seed')).not.toHaveText(`Semente ${seed}`);
+      // The new draw replaces the lines and the seed together; only when the result stops being busy are the lines and the head the final ones.
+      await expect(gen.locator('section.res')).toHaveAttribute('aria-busy', 'false');
 
       // "Trocar criatura": the same count of another creature with the same XP; the total does not move.
       const before = await gen.locator('.head').innerText();

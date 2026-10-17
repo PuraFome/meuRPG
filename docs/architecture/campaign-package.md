@@ -59,7 +59,7 @@ What one part finds for the next (which doors, points and player characters exis
 
 - **Images** go through `images.Process` in the upload's one-at-a-time slot, one file read at a time, and are stored under the new campaign's prefix only when the import is real (a preview writes nothing).
 - **Maps** check the grid against the image's size, decode each layer with the grid, and run points through the same position, name, description and hook checks, the scene-check catalogue and the campaign limits as the app.
-- **Table content** goes through the same shape, feature-key and size checks as `CreateTableEntry`, then the whole content is compiled at once with `Content.With`; an entry the engine refuses is a problem naming the entry.
+- **Table content** goes through the same shape, feature-key, size and name checks as `CreateTableEntry` (an entry whose name, in any case, another entry of its kind has is a `DUPLICATE` problem naming it), then the whole content is compiled at once with `Content.With`; an entry the engine refuses is a problem naming the entry.
   The campaign's content revision starts at 1.
 - **Characters** are checked with `checkNewSheet` against that compiled content, so a sheet that needs a class of the table is judged with it.
   An NPC keeps its link to its SRD creature.

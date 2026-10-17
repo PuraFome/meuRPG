@@ -418,6 +418,9 @@ func packagePartVariants(t *testing.T, base []packagePartEntry) map[string][]pac
 		change(c)
 		return c
 	}
+	// Entries 0104, 0107 and 0108 repeat the name of an entry the package already
+	// has in their kind, so staging refuses them as duplicates (the repeated-name
+	// finding) before the compile that would judge the rest of what they hold.
 	out["every kind of broken table entry"] = packagePartWith(base, 0,
 		packagePartEntry{kind: content, name: "content/0100.json", data: []byte("{")},
 		packagePartContent(t, "content/0101.json", edit(background, func(e *rulesv1.TableEntry) { e.Key = "spell:guarda-de-farol@mesa" })),
@@ -450,9 +453,8 @@ func packagePartVariants(t *testing.T, base []packagePartEntry) map[string][]pac
 			}
 		})),
 	)
-	// Finding: by hand a second entry of a kind with a name another has is refused
-	// (duplicate_name, tablecontent_rpc.go), but a package with two is staged without a
-	// problem, though contentReason maps duplicate_name to DUPLICATE. Frozen as it is.
+	// By hand and in a package alike, a second entry of a kind with a name another has is
+	// refused (duplicate_name).
 	out["two entries of one name"] = packagePartWith(base, 0, packagePartContent(t, "content/0130.json", edit(background, func(e *rulesv1.TableEntry) {
 		e.Key = "background:outro-farol@mesa"
 		e.GetTableBackground().GetFeature().Key = ""

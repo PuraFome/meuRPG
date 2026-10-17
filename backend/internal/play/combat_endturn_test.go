@@ -530,3 +530,34 @@ func TestEndTurnDroppedDamageOfAHiddenTargetIsTheMastersLog(t *testing.T) {
 		t.Errorf("the player's stream: %q, want %q", got, want)
 	}
 }
+
+// Finding fix/endturn-npc-group-line: a group of NPCs alone is the master's (RN-20), so the line
+// of its part ending is the master's too, also when the last part ends and the turn waits for the
+// saving throw of an effect: neither the player's log nor the player's stream says it.
+func TestEndTurnNPCOnlyGroupWaitingOnSavesIsTheMastersLine(t *testing.T) {
+	t.Parallel()
+	a := newCasters(t)
+	e := a.holdTheGoblin(t)
+	e = a.passTo(t, e, "Goblin") // a group of one NPC: no player holds the turn
+	player := a.caio.watch(t, a.campaignID)
+	player.ready(t)
+	if _, err := a.endTurnRaw(t, a.master, e, true); err != nil {
+		t.Fatalf("EndTurn() error = %v", err)
+	}
+	if a.windowOf(t, a.master, playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE) == nil {
+		t.Fatal("the turn does not wait for the Goblin's save: the case is not the one under test")
+	}
+	a.master.markCurrentMap(t, a.campaignID, a.mapID, player)
+	for _, ev := range player.beforeMarker(t) {
+		if ev.GetCombatLogChanged() != nil {
+			t.Errorf("a player was told the log changed by an NPC-only group's part: %v", ev)
+		}
+	}
+	partEnded := func(l string) bool { return strings.Contains(l, "Goblin") && strings.Contains(l, "encerrou a parte") }
+	if slices.ContainsFunc(lines(a.log(t, a.caio, e)), partEnded) {
+		t.Errorf("a player's log has the Goblin's part ending: %v", lines(a.log(t, a.caio, e)))
+	}
+	if !slices.ContainsFunc(lines(a.log(t, a.master, e)), partEnded) {
+		t.Errorf("the master's log has no line for the Goblin's part: %v", lines(a.log(t, a.master, e)))
+	}
+}
