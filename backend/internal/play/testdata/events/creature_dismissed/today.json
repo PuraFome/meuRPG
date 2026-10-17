@@ -243,6 +243,7 @@
   "area_row": 1,
   "dx": 1,
   "dy": 1,
+  "revealed_hits": true,
   "revealed": [
     "x"
   ],
