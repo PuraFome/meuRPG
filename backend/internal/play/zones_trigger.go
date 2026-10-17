@@ -71,6 +71,17 @@ func (s *Service) catchZone(ctx context.Context, c *combatTx, cs []playdb.Combat
 	if err := k.z.markHit(ctx, c, k.who.ID, k.mark); err != nil {
 		return err
 	}
+	if k.z.def.slows {
+		if err := s.slowInZone(ctx, c, cs, k.z, owner, k.who); err != nil {
+			return err
+		}
+	}
+	switch {
+	case k.z.row.SaveAbility == "":
+		return s.catchWithoutSave(ctx, c, k, owner)
+	case k.who.Kind == kindPlayer:
+		return s.askZoneSave(ctx, c, k, owner) // a player's character is asked (zones_save.go)
+	}
 	return s.resolveCatch(ctx, c, cs, k, owner)
 }
 
@@ -246,4 +257,37 @@ func flushZoneLines(ctx context.Context, c *combatTx) error {
 		}
 	}
 	return nil
+}
+
+// spiritGuardiansSlowedKey is the effect that halves the speed of a creature the aura caught, for its turn.
+const spiritGuardiansSlowedKey = "effect:spirit-guardians-slowed"
+
+// slowInZone halves the speed of a creature the zone caught, until the end of its turn (SRD 5.1, Spirit
+// Guardians: the speed is halved in the area; the app holds it for the turn the creature is caught on).
+func (s *Service) slowInZone(ctx context.Context, c *combatTx, cs []playdb.Combatant, z *zone, owner, who playdb.Combatant) error {
+	content, err := s.contentOf(ctx, c)
+	if err != nil {
+		return err
+	}
+	def, ok := content.CombatEffect(spiritGuardiansSlowedKey)
+	if !ok {
+		return nil
+	}
+	rows, err := c.q.ListLastingEffects(ctx, c.enc.ID)
+	if err != nil {
+		return fmt.Errorf("list the effects: %w", err)
+	}
+	if slices.ContainsFunc(rows, func(st playdb.CombatantState) bool {
+		return st.CombatantID == who.ID && conv.OrZero(st.SourceKey) == spiritGuardiansSlowedKey
+	}) {
+		return nil
+	}
+	made, err := s.addEffects(ctx, c, cs, effectSpec{
+		key: spiritGuardiansSlowedKey, sourceKind: "spell", def: def, caster: &owner, group: z.row.CastID, targets: []playdb.Combatant{who},
+		dur: durationSpec{Kind: def.Duration.Kind},
+	})
+	if err != nil {
+		return err
+	}
+	return s.addedEvent(ctx, c, cs, made, spiritGuardiansSlowedKey)
 }

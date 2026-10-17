@@ -196,6 +196,9 @@ func (s *Service) endZonesOutOfTime(ctx context.Context, c *combatTx, zs []*zone
 		if err := c.q.DeleteSpellZone(ctx, z.row.ID); err != nil {
 			return nil, fmt.Errorf("end the spell zone: %w", err)
 		}
+		if err := s.closeZoneWindows(ctx, c, z.row.ID, endDuration); err != nil {
+			return nil, err
+		}
 		c.queueZone(eventLastingEnded, zoneEvent(z, round, ownerHidden(cs, z), "ended", endDuration))
 	}
 	return left, nil

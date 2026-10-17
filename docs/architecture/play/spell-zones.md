@@ -54,6 +54,13 @@ None of the three is undoable (`undoableKinds`), so a move that caught someone c
 - Cloudkill drifts at the start of its caster's turn (`driftZones`): `planPush` from the caster's square, `driftFt` (10) long, so it stops at a wall; a cloud on the caster's own square stays.
 - Moonbeam is moved by `MoveSpellZone` (`zones_move.go`), a keyed `write` of kind `spell_zone_moved`. A player must be the caster's player, on the caster's turn (`mustActNow`), with the action free (it is spent), and within `moveRangeFt` (60) of the zone's origin (`TARGET_OUT_OF_REACH` with `missing_ft`); the square must be on the map and not a wall. The master moves any zone, with none of that. A zone the caller does not read is `not_found`, as one that does not exist. The creatures the new area reaches are caught by `relocate`, the same step that follows and drifts.
 
+## The save question, the end and the other effects
+
+- **The question.** A zone with a save that catches a player's character (`Kind == kindPlayer`) opens an `EFFECT_SAVE` reaction window with `windowTrigger.Zone` (`askZoneSave`, `zones_save.go`); the answer is `RollEffectSave`, which loads the zone in `loadZoneSave` and settles it in `settleZoneSave` (damage halved on a pass, or the web's restraint) through the same `applyZone` an NPC's catch uses. The prompt (`zoneSavePrompt`) carries `zone_id`, `zone_reason`, the damage type and the half, and the DC only for the master and the caster's player. The windows of one creature on one turn share a group (`zoneWindowGroup`), so the existing order rule applies, and `openOne` lists a player the first only. A zone that ends closes its windows (`closeZoneWindows`).
+- **No save.** A zone whose row has no save ability inserts a pending damage awaiting its roll with the caster as attacker (`catchWithoutSave`), rolled and applied by the paths of any damage.
+- **Ending.** `endZonesOf` writes an `ended` line for each zone (reason `concentration` or `concentration_replaced`), the clock writes `duration`, `EndSpellZone` (master only) writes `ended_by_master`. They are written at once, not held, because a concentration also ends outside the changes that flush the zone lines.
+- **Speed and terrain.** A zone with `slows` adds `effect:spirit-guardians-slowed` (speed 50%, until the end of the creature's turn) when it catches a creature. A zone with `difficult` is added to the Difficult layer of `terrainOf` (`withZoneTerrain`, a copy, so the map's own layer is untouched).
+
 ## The view and the privacy
 
 `Encounter.zones` is built by `encounterData.zonesView` from the zones read with the combat (`loadEncounter`).
@@ -61,7 +68,7 @@ A player gets the zones of casters they `sees` (not hidden, not in the dark of a
 `rounds_left` is the round the zone ends at, minus the current round, 0 for a zone with no round count.
 The hint of a zone that moved goes to the master alone when the caster is hidden (`publishZoneMoved`).
 The event of a catch is `Secret` for a hidden caster or a hidden creature, and its actor is the caster and its target the creature, so the log's own rule hides it from a player who does not see either (RN-10); the DC is the master's alone (`effectLogRoll`).
-The squares of a visible caster's zone reach every player, also on a fog map where they have not explored them: the shape of a spell is not a secret the fog keeps.
+A player gets the numbers (`save_*`, damage, `notes`, `moves_per_turn_ft`, `rounds_left`) only for a zone of their own character; for another they get `details_hidden` and the name, shape, squares, concentration and the occupants they see. The squares of a visible caster's zone reach every player, also on a fog map where they have not explored them: the shape of a spell is not a secret the fog keeps.
 
 ## Tests
 

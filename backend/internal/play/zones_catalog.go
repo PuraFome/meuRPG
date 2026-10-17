@@ -56,6 +56,9 @@ type zoneDef struct {
 	// onEnter and onStart say when the zone catches a creature: when it comes in the first time on a turn,
 	// when it starts its turn inside.
 	onEnter, onStart bool
+	// slows says a creature the zone catches moves at half speed for the turn (Spirit Guardians), and
+	// difficult says the squares are difficult terrain (Web).
+	slows, difficult bool
 	// corners says the area spreads around corners: it is the part of the shape the origin reaches.
 	corners bool
 	// keepsCastHits says the cast still hits the creatures inside the area when the spell is cast (the
@@ -80,7 +83,7 @@ const (
 
 var zoneDefs = map[string]zoneDef{
 	"spell:spirit-guardians": {
-		kind: zoneDamage, onEnter: true, onStart: true, shape: grid.ShapeSphere, sizeFt: spiritGuardiansFt, save: "wis", sparesAllies: true,
+		kind: zoneDamage, onEnter: true, onStart: true, shape: grid.ShapeSphere, sizeFt: spiritGuardiansFt, save: "wis", sparesAllies: true, slows: true,
 		placement: playv1.AreaPlacement_AREA_PLACEMENT_CASTER, movement: playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_FOLLOWS_CASTER,
 	},
 	"spell:moonbeam": {
@@ -92,7 +95,7 @@ var zoneDefs = map[string]zoneDef{
 		placement: playv1.AreaPlacement_AREA_PLACEMENT_POINT, movement: playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_DRIFTS,
 	},
 	"spell:web": {
-		kind: zoneRestrain, onEnter: true, onStart: true, shape: grid.ShapeCube, sizeFt: webFt, save: "dex", keepsCastHits: true,
+		kind: zoneRestrain, onEnter: true, onStart: true, shape: grid.ShapeCube, sizeFt: webFt, save: "dex", keepsCastHits: true, difficult: true,
 		placement: playv1.AreaPlacement_AREA_PLACEMENT_POINT, movement: playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_FIXED,
 	},
 }
@@ -105,3 +108,18 @@ func zoneDefOf(spellKey string) (zoneDef, bool) {
 
 // area is the zone's shape and size for the geometry of the map.
 func (d zoneDef) area() grid.Area { return grid.Area{Shape: d.shape, SizeFt: d.sizeFt} }
+
+// notes are the keys of what else the zone does, for the screens.
+func (d zoneDef) notes() []string {
+	var out []string
+	if d.slows {
+		out = append(out, "speed_halved")
+	}
+	if d.difficult {
+		out = append(out, "difficult_terrain")
+	}
+	if d.kind == zoneRestrain {
+		out = append(out, "restrains")
+	}
+	return out
+}

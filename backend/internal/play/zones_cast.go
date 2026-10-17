@@ -42,6 +42,12 @@ func (s *Service) createZone(ctx context.Context, c *combatTx, owner playdb.Comb
 		ends = new(c.enc.Round + conv.Int32(rounds))
 	}
 	dice, dtype := zoneDamageOf(sp)
+	switch {
+	case def.kind == zoneRestrain: // the web's fire is the master's to light
+		dice, dtype = "", ""
+	case dice == "":
+		dice, dtype = def.dice, def.dtype
+	}
 	dc := sp.CasterDC
 	if dc == 0 {
 		dc = sp.SaveDC
@@ -67,10 +73,27 @@ func zoneDamageOf(sp link.Spell) (dice, dtype string) {
 	return fmt.Sprintf("%dd%d", d.Count, d.Sides), d.DamageType
 }
 
-// endZonesOf ends the zones a combatant's concentration holds.
-func (s *Service) endZonesOf(ctx context.Context, c *combatTx, owner playdb.Combatant) error {
-	if _, err := c.q.DeleteConcentrationZonesOf(ctx, owner.ID); err != nil {
+// The reasons a zone's "ended" line gives, besides the duration (endDuration) and the master (endByMaster).
+const (
+	zoneEndConcentration = "concentration"          // the caster lost the concentration
+	zoneEndReplaced      = "concentration_replaced" // the caster began another concentration spell
+)
+
+// endZonesOf ends the zones a combatant's concentration holds, with a line for each: why they ended.
+func (s *Service) endZonesOf(ctx context.Context, c *combatTx, owner playdb.Combatant, reason string) error {
+	rows, err := c.q.DeleteConcentrationZonesOf(ctx, owner.ID)
+	if err != nil {
 		return fmt.Errorf("end the spell zones: %w", err)
+	}
+	for _, z := range zonesOfRows(rows) {
+		if err := s.closeZoneWindows(ctx, c, z.row.ID, endConcentration); err != nil {
+			return err
+		}
+		// Written now, not held for the end of the change: a concentration also ends outside the changes that
+		// flush the lines of the zones (the vitals a character is brought to 0 by).
+		if err := insertEvent(ctx, c, eventLastingEnded, &c.actorUserID, nil, zoneEvent(z, c.enc.Round, owner.Hidden, "ended", reason)); err != nil {
+			return err
+		}
 	}
 	return nil
 }

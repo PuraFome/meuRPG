@@ -84,7 +84,7 @@ func (s *Service) terrainOf(ctx context.Context, tx pgx.Tx, campaignID string, e
 	if !layersFit || t.Grid != open.Grid {
 		return open, nil
 	}
-	return t, nil
+	return s.withZoneTerrain(ctx, tx, enc, t)
 }
 
 // The combatants' sizes and covers as the tables store them

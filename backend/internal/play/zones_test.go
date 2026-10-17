@@ -455,27 +455,6 @@ func TestWebLetsWhoPassesTheSaveWalkThrough(t *testing.T) {
 	}
 }
 
-// A player's character caught by a zone does not lose hit points by itself: the damage waits for the
-// master, as every damage on a character does.
-func TestAZoneHitsAPlayersCharacterAsADamageThatWaitsForTheMaster(t *testing.T) {
-	t.Parallel()
-	c := zoneCave(t)
-	e := c.zoneFight(t)
-	c.mustMove(t, c.master, "Toren", 16, 7)
-	c.passTo(t, e, "Pensantus")
-	c.mustCastArea(t, c.ana, "Pensantus", cloudkillKey, slotOfLevel(5), at(15, 7), nil)
-	c.h.roller.queue(5, 4, 4, 4, 4, 4) // Toren's Constitution save, then 5d8 = 20
-	c.nextTurnOf(t, "Toren")
-	var status string
-	var amount int32
-	if err := c.h.pool.QueryRow(t.Context(), `SELECT status, amount FROM pending_damages WHERE target_id = $1 AND effect_source_key = $2`, c.id(t, "Toren"), cloudkillKey).Scan(&status, &amount); err != nil {
-		t.Fatalf("read the damage of the cloud: %v", err)
-	}
-	if status != "rolled" || amount != 20 {
-		t.Errorf("the pending damage = %s for %d, want rolled for 20: it waits for the master", status, amount)
-	}
-}
-
 // Only the caster's player moves the beam, and the master any; a zone that is not there is not found.
 func TestMoveSpellZoneIsTheCastersAndTheMasters(t *testing.T) {
 	t.Parallel()
@@ -529,9 +508,16 @@ func TestMistyStepIntoAZoneHitsAsAnEntryOnce(t *testing.T) {
 	e := c.zoneFight(t)
 	c.mustCastArea(t, c.caio, "Toren", moonbeamKey, slotOfLevel(2), at(8, 7), nil)
 	c.passTo(t, e, "Pensantus")
-	c.h.roller.queue(5, 5, 5) // Pensantus's Constitution save, then 2d10 = 10
 	if _, err := c.misty(t, c.ana, at(8, 7)); err != nil {
 		t.Fatalf("CastSpell(Misty Step) error = %v", err)
+	}
+	w := c.windowOf(t, c.ana, playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE)
+	if w == nil {
+		t.Fatal("the teleported wizard's player is not asked the save of the beam")
+	}
+	c.h.roller.queue(5, 5)
+	if _, err := c.rollEffectSave(t, c.ana, c.get(t, c.master), w.GetId(), effectSaveFace(3)); err != nil {
+		t.Fatalf("RollEffectSave() error = %v", err)
 	}
 	var n int
 	if err := c.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM pending_damages WHERE target_id = $1 AND effect_source_key = $2`, c.id(t, "Pensantus"), moonbeamKey).Scan(&n); err != nil {

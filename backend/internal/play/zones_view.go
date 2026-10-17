@@ -24,15 +24,34 @@ func (d *encounterData) zonesView(v combatViewer, names func(string) string) []*
 		if !ok || !v.sees(owner) {
 			continue
 		}
-		out = append(out, z.view(owner, d.enc.Round, names))
+		view := z.view(owner, d.enc.Round, names)
+		if v.master || v.owns(owner) {
+			z.addDetails(view, names)
+		} else {
+			view.DetailsHidden, view.RoundsLeft = true, 0
+		}
+		view.OccupantIds = z.occupantsFor(d.cs, v)
+		out = append(out, view)
 	}
 	return out
 }
 
-// view is the zone as the API tells it. The caller has checked the viewer may read it.
+// occupantsFor are the creatures standing in the area now that the viewer sees.
+func (z *zone) occupantsFor(cs []playdb.Combatant, v combatViewer) []string {
+	var out []string
+	for _, o := range cs {
+		if placed(o) && !o.Defeated && v.sees(o) && z.has(squareOfCombatant(o)) {
+			out = append(out, o.ID)
+		}
+	}
+	return out
+}
+
+// view is the zone as the API tells it to anyone who sees its caster: the name, the shape, the squares, the
+// concentration and how it moves.
 func (z *zone) view(owner playdb.Combatant, round int32, names func(string) string) *playv1.SpellZone {
 	out := &playv1.SpellZone{
-		Id: z.row.ID, SpellKey: z.row.SpellKey, OwnerCombatantId: owner.ID,
+		Id: z.row.ID, SpellKey: z.row.SpellKey, OwnerCombatantId: owner.ID, OwnerLabel: owner.Label,
 		Shape: shapeProto(z.def.shape), SizeFt: clamp32(z.def.sizeFt, 0, math.MaxInt32),
 		Origin: originProto(z.origin()), Squares: squaresProto(z.squares),
 		Concentration: z.row.Concentration, RoundsLeft: z.roundsLeft(round), Movement: z.def.movement,
@@ -45,6 +64,27 @@ func (z *zone) view(owner playdb.Combatant, round int32, names func(string) stri
 		out.Visibility = playv1.SpellZoneVisibility_SPELL_ZONE_VISIBILITY_MASTER_ONLY
 	}
 	return out
+}
+
+// addDetails adds the numbers of the spell: the master's, and the caster's own player's.
+func (z *zone) addDetails(out *playv1.SpellZone, names func(string) string) {
+	out.SaveAbility, out.DamageDice, out.DamageTypeKey = z.row.SaveAbility, z.row.DamageDice, z.row.DamageType
+	if z.row.SaveAbility != "" {
+		out.SaveDc = new(z.row.SaveDc)
+		out.HalfOnSave = z.row.DamageDice != ""
+	}
+	if z.def.movement == playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_DRIFTS {
+		out.MovesPerTurnFt = driftFt
+	}
+	out.Notes = z.def.notes()
+	if names != nil {
+		if z.row.SaveAbility != "" {
+			out.SaveAbilityNamePt = names("ability:" + z.row.SaveAbility)
+		}
+		if z.row.DamageType != "" {
+			out.DamageTypeNamePt = names(z.row.DamageType)
+		}
+	}
 }
 
 // shapeProto is the API's name of a grid shape.

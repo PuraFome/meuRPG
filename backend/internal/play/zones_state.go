@@ -8,6 +8,8 @@ import (
 	"slices"
 	"strconv"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
@@ -137,4 +139,42 @@ func (z *zone) roundsLeft(round int32) int32 {
 		return 0
 	}
 	return max(*z.row.EndsRound-round, 0)
+}
+
+// withZoneTerrain adds the difficult terrain the areas spells keep on the map make (Web) to the terrain of the
+// map: the layer is a copy, so the map's own is never changed.
+func (s *Service) withZoneTerrain(ctx context.Context, tx pgx.Tx, enc playdb.Encounter, t grid.Terrain) (grid.Terrain, error) {
+	if enc.ID == "" || enc.Status != statusActive {
+		return t, nil
+	}
+	q := s.queries
+	if tx != nil {
+		q = q.WithTx(tx)
+	}
+	zs, err := readZonesOf(ctx, q, enc.ID)
+	if err != nil {
+		return grid.Terrain{}, err
+	}
+	var squares []grid.Square
+	for _, z := range zs {
+		if z.def.difficult {
+			squares = append(squares, z.squares...)
+		}
+	}
+	if len(squares) == 0 {
+		return t, nil
+	}
+	layer := grid.NewLayer(t.Grid)
+	if t.Difficult != nil {
+		for row := range t.Grid.Rows {
+			for col := range t.Grid.Columns {
+				layer.Set(col, row, t.Difficult.Get(col, row))
+			}
+		}
+	}
+	for _, sq := range squares {
+		layer.Set(sq.Col, sq.Row, true)
+	}
+	t.Difficult = layer
+	return t, nil
 }

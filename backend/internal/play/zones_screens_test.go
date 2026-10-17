@@ -2,6 +2,7 @@ package play
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -120,8 +121,8 @@ func TestAVisibleNPCCastersZoneIsBareForPlayers(t *testing.T) {
 		if !z.GetDetailsHidden() || z.SaveDc != nil || z.GetDamageDice() != "" || z.GetRoundsLeft() != 0 || z.GetOwnerLabel() != "Druida" {
 			t.Errorf("%s reads %v, want the name, shape and squares and no numbers", who, z)
 		}
-		if leaks := zoneLeaks(t, c, u, "2d10"); len(leaks) != 0 && !(len(leaks) == 2 && leaks[0] == moonbeamKey) {
-			t.Logf("%s sees %v (the visible caster's spell and name are theirs)", who, leaks)
+		if text := asJSONAny(t, c.get(t, u)); strings.Contains(text, "2d10") {
+			t.Errorf("%s reads the dice of an NPC caster's zone", who)
 		}
 	}
 }
@@ -136,7 +137,7 @@ func TestAPlayerIsAskedTheZoneSave(t *testing.T) {
 	c.mustMove(t, c.master, "Toren", 16, 7)
 	c.passTo(t, e, "Pensantus")
 	c.mustCastArea(t, c.ana, "Pensantus", cloudkillKey, slotOfLevel(5), at(15, 7), nil)
-	c.nextTurnOf(t, "Toren")
+	c.passRaw(t, "Toren")
 	w := c.windowOf(t, c.caio, playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE)
 	if w == nil {
 		t.Fatal("Toren's player has no question: the zone caught his character at the start of its turn")
@@ -170,7 +171,7 @@ func TestAPlayerWhoPassesTheZoneSaveTakesHalf(t *testing.T) {
 	c.mustMove(t, c.master, "Toren", 16, 7)
 	c.passTo(t, e, "Pensantus")
 	c.mustCastArea(t, c.ana, "Pensantus", cloudkillKey, slotOfLevel(5), at(15, 7), nil)
-	c.nextTurnOf(t, "Toren")
+	c.passRaw(t, "Toren")
 	w := c.windowOf(t, c.caio, playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE)
 	if w == nil {
 		t.Fatal("no question")
@@ -197,20 +198,18 @@ func TestTwoZonesAskOneQuestionAtATimeInTheOrderTheyWereCast(t *testing.T) {
 	c.mustCastArea(t, c.caio, "Toren", moonbeamKey, slotOfLevel(2), at(14, 7), nil)
 	c.passTo(t, e, "Pensantus")
 	c.mustCastArea(t, c.ana, "Pensantus", cloudkillKey, slotOfLevel(5), at(14, 7), nil)
-	c.nextTurnOf(t, "Brisa")
-	first := c.windowOf(t, c.bia, playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE)
-	if first == nil || first.GetEffectSave().GetAbility() != "con" {
-		t.Fatalf("first question = %v, want the Moonbeam's", first)
-	}
-	n := 0
+	moonZone := c.oneZone(t, c.master, moonbeamKey).GetId()
+	c.passRaw(t, "Brisa")
+	var asked []*playv1.ReactionWindow
 	for _, w := range c.windows(t, c.bia) {
 		if w.GetKind() == playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE {
-			n++
+			asked = append(asked, w)
 		}
 	}
-	if n != 1 {
-		t.Fatalf("Brisa's player reads %d questions, want one at a time", n)
+	if len(asked) != 1 || asked[0].GetEffectSave().GetZoneId() != moonZone {
+		t.Fatalf("questions = %v, want the Moonbeam's alone", asked)
 	}
+	first := asked[0]
 	moon := first.GetEffectSave().GetZoneId()
 	c.h.roller.queue(2, 2, 2) // 2d10 of the beam is rolled after the save; the cloud's save then 5d8
 	if _, err := c.rollEffectSave(t, c.bia, c.get(t, c.master), first.GetId(), effectSaveFace(10)); err != nil {
@@ -352,9 +351,24 @@ func TestWebIsDifficultTerrain(t *testing.T) {
 	c.mustCastArea(t, c.ana, "Pensantus", webKey, slotOfLevel(2), at(18, 3), nil)
 	c.nextTurnOf(t, "Pensantus")
 	before := byLabel(t, c.get(t, c.master), "Pensantus").GetMovementUsedDft()
-	c.mustMove(t, c.ana, "Pensantus", 17, 5) // two squares, both of the web: 10 ft costs 20
+	c.mustMove(t, c.ana, "Pensantus", 17, 4) // 5 ft outside, then two squares of the web at 10 ft each
 	got := byLabel(t, c.get(t, c.master), "Pensantus").GetMovementUsedDft() - before
-	if got != 200 {
-		t.Errorf("the walk cost %d tenths of a foot, want 200: 10 ft in difficult terrain", got)
+	if got != 250 {
+		t.Errorf("the walk cost %d tenths of a foot, want 250: 5 ft outside and 10 ft each in difficult terrain", got)
 	}
+}
+
+// passRaw ends turns, as the master, until the combatant is on turn, without skipping the questions the start of a turn
+// opens (endTurn does).
+func (c *cave) passRaw(t *testing.T, label string) {
+	t.Helper()
+	for range 14 {
+		if _, err := c.endTurnRaw(t, c.master, c.get(t, c.master), true); err != nil {
+			t.Fatalf("EndTurn() error = %v", err)
+		}
+		if c.get(t, c.master).GetCurrentCombatantId() == c.id(t, label) {
+			return
+		}
+	}
+	t.Fatalf("%s never came on turn", label)
 }

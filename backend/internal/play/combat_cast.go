@@ -666,6 +666,9 @@ func (f *castFlow) concentrate(ctx context.Context) error {
 	if made.Dismissed, err = f.s.endSummons(ctx, f.c, f.caster); err != nil {
 		return err
 	}
+	if err := f.s.endZonesOf(ctx, f.c, f.caster, zoneEndReplaced); err != nil { // the areas it kept on the map: the line says why
+		return err
+	}
 	if err := f.s.endConcentrationEffects(ctx, f.c, f.caster, endConcentration); err != nil { // its effects end with it (RN-22)
 		return err
 	}
