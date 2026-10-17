@@ -17,6 +17,7 @@ import {
 import { offersToAnswer, reactorIsMasters } from '../../../core/combat/opportunity';
 import { sheetWindow } from '../../../core/combat/reactions';
 import { questions } from '../../../core/combat/hidden-reveal';
+import { heldOfferOf } from '../../../core/held-rolls/held-roll-offer';
 import { COMBAT_VIEW_IMPORTS } from './combat-view-imports';
 import { CombatViewPartsDirective } from './combat-view-parts';
 import { type RiderPick } from './hit-rider/hit-rider-card';
@@ -172,6 +173,21 @@ export class CombatView extends CombatViewPartsDirective {
         });
       }
     });
+    // The master's questions follow the combat: the rolls that wait for their roller sit in the roller's row. The roller reads
+    // their own question the same way, to tell the master answered it when it is gone.
+    effect(() => {
+      const e = this.encounter();
+      const master = this.isMaster();
+      const own = this.own();
+      untracked(() => {
+        const live = !!e && e.status === EncounterStatus.ACTIVE;
+        if (master) {
+          this.held.sync(live ? e.combatants.flatMap((c) => heldOfferOf(c) ?? []) : []);
+        } else if (live) {
+          this.vanish.observe(own ? (heldOfferOf(own) ?? null) : null);
+        }
+      });
+    });
     // The map's layers: read when the combat's map is known, and again when the map's `layers_revision` changes.
     effect(() => {
       const e = this.encounter();
@@ -199,7 +215,10 @@ export class CombatView extends CombatViewPartsDirective {
       const turn = tab ? { key: tab.id, label: tab.label } : null;
       untracked(() => this.turnAlert.observe(turn));
     });
-    inject(DestroyRef).onDestroy(() => this.turnAlert.reset());
+    inject(DestroyRef).onDestroy(() => {
+      this.turnAlert.reset();
+      this.held.dispose();
+    });
     // The tab follows the turn: when it comes to a group of the player's (the character or its creatures), the page shows it.
     let acting = '';
     effect(() => {

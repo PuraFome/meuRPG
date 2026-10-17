@@ -16,10 +16,12 @@ import type {
   AnswerHeldRollResponse,
   GetOutsideInspirationResponse,
 } from '../../../../gen/meurpg/play/v1/resources_pb';
-import { type WithRerolls, luckyText } from '../../../core/combat/lucky';
+import { luckyText } from '../../../core/combat/lucky';
 import { ActionKey } from '../../../core/connect/idempotency';
 import { HeldRollController } from '../../../core/held-rolls/held-roll-controller';
 import { type HeldAnswer, asksLucky, heldOfferOf } from '../../../core/held-rolls/held-roll-offer';
+import { HeldVanishWatch } from '../../../core/held-rolls/held-vanish';
+import { settledRoll } from '../../../core/held-rolls/held-roll-result';
 import { ResourceClient } from '../../../core/resources/resources-client';
 import { classResourceErrorMessage } from '../../../core/resources/resources-errors';
 import { HeldRollPrompt } from '../../../shared/held-roll-prompt/held-roll-prompt';
@@ -44,31 +46,6 @@ export function luckyAnswerText(res: AnswerHeldRollResponse, reroll: boolean): s
   return total === undefined
     ? `${again}. O mestre vê o resultado.`
     : `${again}. Seu total: ${total}.`;
-}
-
-/** The d20 a Lucky answer settled, where its path tells it: on the die's question when the roll waits for it now, else on
- * the roll written. */
-function settledRoll(res: AnswerHeldRollResponse): WithRerolls | undefined {
-  if (res.next) {
-    return res.next.d20;
-  }
-  const r = res.result;
-  switch (r.case) {
-    case 'sceneCheck':
-      return r.value.roll?.roll;
-    case 'trapSearch':
-    case 'hintTry':
-      return r.value.roll;
-    case 'groupCheck':
-      // A player reads only their own member of the check.
-      return r.value.groupCheck?.members.find((m) => m.roll)?.roll;
-    case 'effectSave':
-      return r.value.result;
-    case 'concentrationSave':
-      return r.value.result?.save;
-    default:
-      return undefined;
-  }
 }
 
 /**
@@ -109,6 +86,9 @@ function settledRoll(res: AnswerHeldRollResponse): WithRerolls | undefined {
           <p class="mine" role="status">{{ text }}</p>
         }
       </section>
+    }
+    @if (vanish.notice(); as notice) {
+      <p class="mine" role="status" data-testid="held-vanished">{{ notice }}</p>
     }
     @if (shown()) {
       <section class="block" aria-labelledby="bardic-t">
@@ -204,6 +184,8 @@ export class BardicBlock {
     settle: (res, done) => this.say(res, done.answer),
     busy: this.busy,
   });
+  /** Tells the player their question was answered by the master when it is gone and they did not answer it here. */
+  protected readonly vanish = new HeldVanishWatch();
   protected readonly lucky = computed(() => {
     const asked = this.held.offer();
     return asksLucky(asked) ? asked : null;
@@ -248,10 +230,11 @@ export class BardicBlock {
       this.state.set(state);
       if (!this.held.busy()) {
         // The block lists what the server lists as older fields: the question of the first roll that waits, Lucky's first.
-        this.held.ask(
+        const offer =
           heldOfferOf({ luckyOffer: state.luckyOffers[0] }) ??
-            heldOfferOf({ inspirationOffer: state.offers[0] }),
-        );
+          heldOfferOf({ inspirationOffer: state.offers[0] });
+        this.held.ask(offer);
+        this.vanish.observe(offer);
       }
     } catch {
       // A hint that did not come back: the block keeps what it shows and reads again on the next one.

@@ -3,7 +3,12 @@ import { vi } from 'vitest';
 
 import { HeldQuestions } from '../../../core/held-rolls/held-questions';
 import type { HeldAnswer } from '../../../core/held-rolls/held-roll-offer';
-import { askedAt, heldAnswer, heldDie, heldLucky } from '../../../core/held-rolls/held-roll-testing';
+import {
+  askedAt,
+  heldAnswer,
+  heldDie,
+  heldLucky,
+} from '../../../core/held-rolls/held-roll-testing';
 import { HeldQuestion } from './held-question';
 
 const T0 = 1_700_000_000_000;
@@ -50,7 +55,7 @@ describe('HeldQuestion', () => {
     heldLucky([1], 5, { combatantId: 'c1', ...askedAt(T0 - seconds * SECOND), ...over });
 
   beforeEach(() => {
-    vi.useFakeTimers({ now: T0 });
+    vi.useFakeTimers({ now: T0, toFake: ['Date', 'setInterval', 'clearInterval'] });
     sent = [];
     hang = false;
   });
@@ -103,14 +108,20 @@ describe('HeldQuestion', () => {
     expect(sent).toEqual([{ kind: 'lucky', reroll: true, roll: { inApp: true } }]);
 
     questions.sync([askedAgo(12, { holdId: 'h2' })]);
-    fixture.componentRef.setInput('question', questions.entries().find((q) => q.holdId === 'h2'));
+    fixture.componentRef.setInput(
+      'question',
+      questions.entries().find((q) => q.holdId === 'h2'),
+    );
     fixture.detectChanges();
     button('Ficar com o 1')?.click();
     await flush();
     expect(sent[1]).toEqual({ kind: 'lucky', reroll: false, roll: null });
 
     questions.sync([askedAgo(12, { holdId: 'h3' })]);
-    fixture.componentRef.setInput('question', questions.entries().find((q) => q.holdId === 'h3'));
+    fixture.componentRef.setInput(
+      'question',
+      questions.entries().find((q) => q.holdId === 'h3'),
+    );
     fixture.detectChanges();
     button('Digitar o resultado')?.click();
     fixture.detectChanges();
@@ -156,7 +167,9 @@ describe('HeldQuestion', () => {
     button('Rolar de novo')?.click();
     fixture.detectChanges();
     expect(el.querySelector('section')?.getAttribute('aria-busy')).toBe('true');
-    expect(el.querySelector('p[role="status"]')?.textContent?.trim()).toBe('Rolando o d20 de novo…');
+    expect(el.querySelector('p[role="status"]')?.textContent?.trim()).toBe(
+      'Rolando o d20 de novo…',
+    );
     expect(button('Rolar de novo')?.disabled).toBe(true);
     expect(button('Ficar com o 1')?.disabled).toBe(true);
   });

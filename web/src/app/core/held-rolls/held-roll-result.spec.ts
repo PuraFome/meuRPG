@@ -66,7 +66,12 @@ describe('what the master’s answer came to', () => {
 
   it('says the die was added or kept', () => {
     expect(
-      answeredText('Brisa', { kind: 'die', use: true, roll: { inApp: true } }, heldDie(), heldAnswer()),
+      answeredText(
+        'Brisa',
+        { kind: 'die', use: true, roll: { inApp: true } },
+        heldDie(),
+        heldAnswer(),
+      ),
     ).toBe('Você respondeu por Brisa: somou o d8.');
     expect(
       answeredText('Brisa', { kind: 'die', use: false, roll: null }, heldDie(), heldAnswer()),

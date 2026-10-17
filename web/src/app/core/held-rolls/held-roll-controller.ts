@@ -11,6 +11,32 @@ import type { HeldAnswer } from './held-roll-offer';
 export const MASTER_WAIT_SECONDS = 10;
 const MS_PER_SECOND = 1000;
 
+/** The questions this browser answered, each as the hold and the question it asked (Lucky's and the die's of one roll are
+ * two answers). A place that sees its question vanish tells the master's answer from its own by it. */
+const answeredHere = new Set<string>();
+
+const answeredKey = (offer: HeldRollOffer) => `${offer.holdId}:${offer.question.case}`;
+
+/** Remembers that this browser sends the answer to the question: from the moment it goes, as the stream's hint may come
+ * back before the response does. */
+export function markAnsweredHere(offer: HeldRollOffer): void {
+  answeredHere.add(answeredKey(offer));
+}
+
+/** Whether this browser answered the question. */
+export function wasAnsweredHere(offer: HeldRollOffer): boolean {
+  return answeredHere.has(answeredKey(offer));
+}
+
+/** Forgets one answer (it did not get through), or all of them (the specs). */
+export function forgetAnsweredHere(offer?: HeldRollOffer): void {
+  if (offer) {
+    answeredHere.delete(answeredKey(offer));
+  } else {
+    answeredHere.clear();
+  }
+}
+
 /** What the controller needs from the place that asks. */
 export interface HeldRollHost {
   /** Sends `AnswerHeldRoll` for the hold: a function, so a place that never asks does not build the client. */
@@ -92,6 +118,7 @@ export class HeldRollController {
     this.refusal.set(null);
     this.busy.set(true);
     this.error.set('');
+    markAnsweredHere(asked);
     try {
       const res = await this.host.send(
         asked.holdId,
@@ -102,6 +129,7 @@ export class HeldRollController {
       this.keys.renew();
       this.offer.set(res.next ?? null);
     } catch (err) {
+      forgetAnsweredHere(asked);
       const refusal = heldRollRefusal(err);
       this.refusal.set(refusal);
       this.error.set(

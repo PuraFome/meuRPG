@@ -78,7 +78,7 @@ describe('CombatView: the questions of the held rolls', () => {
     const section = row?.querySelector('section');
     expect(plain(section?.querySelector('h3')?.textContent)).toBe('Tirou 1: rolar de novo?');
     expect(plain(section?.textContent)).toContain('Ataque com arma contra Goblin chefe.');
-    expect(plain(section?.querySelector('[role="status"]')?.textContent)).toMatch(
+    expect(plain(section?.querySelector('.q__status')?.textContent)).toMatch(
       /Brisa responde primeiro.*você em [67] s/,
     );
     const buttons = Array.from(section?.querySelectorAll('button') ?? []);
@@ -105,15 +105,18 @@ describe('CombatView: the questions of the held rolls', () => {
     });
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(plain(el.querySelector('.bar__held')?.textContent)).toBe('2 perguntas pendentes');
+    expect(plain(el.querySelector('.bar__held')?.textContent)).toContain('2 perguntas pendentes');
     expect(
-      plain(el.querySelector('.mr-visually-hidden[aria-live="polite"][data-testid="held-count"]')?.textContent),
+      plain(
+        el.querySelector('.mr-visually-hidden[aria-live="polite"][data-testid="held-count"]')
+          ?.textContent,
+      ),
     ).toBe('2 perguntas pendentes');
     // The one that waited more than ten seconds can be answered already.
     const pens = Array.from(el.querySelectorAll('li.row')).find((li) =>
       li.textContent?.includes('Pensantus'),
     );
-    expect(plain(pens?.querySelector('[role="status"]')?.textContent)).toContain(
+    expect(plain(pens?.querySelector('.q__status')?.textContent)).toContain(
       'Pensantus não respondeu',
     );
     expect(pens?.querySelector<HTMLButtonElement>('section button')?.disabled).toBe(false);

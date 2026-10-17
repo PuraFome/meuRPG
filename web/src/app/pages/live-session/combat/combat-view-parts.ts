@@ -16,6 +16,11 @@ import { resourceFlow } from '../../../core/resources/resource-actions';
 import { openWindows } from '../../../core/combat/reactions';
 import { type RevealAnswer } from './hidden-reveal/hidden-reveal-card';
 import { CombatViewDerivedDirective } from './combat-view-derived';
+import { DiceMode } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import { HeldQuestions } from '../../../core/held-rolls/held-questions';
+import { HeldVanishWatch } from '../../../core/held-rolls/held-vanish';
+import { pendingCountText } from '../../../core/held-rolls/held-text';
+import { ResourceClient } from '../../../core/resources/resources-client';
 
 /** The parts the screen is composed of (`CombatSheets`, `MoveFlow`, `ContestHost`) and the calls of the turn, the
  * actions and the attacks. */
@@ -95,6 +100,16 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
     diceMode: () => this.diceMode(),
     preference: () => this.dicePreference(),
   });
+  /** The master's questions about the rolls that wait for their roller (kept in step with the combat's, in its effects). */
+  protected readonly held = new HeldQuestions({
+    send: (holdId, answer, key) =>
+      this.injector.get(ResourceClient).answerHeldRoll(this.campaignId(), holdId, answer, key),
+  });
+  protected readonly heldCount = computed(() => pendingCountText(this.held.count()));
+  protected readonly heldCanType = computed(() => this.diceMode() !== DiceMode.APP);
+  /** The roller's notice when the master answered the question they were shown. */
+  protected readonly vanish = new HeldVanishWatch();
+
   // ---- calls ----
 
   protected begin(): Promise<boolean> {

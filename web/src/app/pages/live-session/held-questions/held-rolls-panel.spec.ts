@@ -1,11 +1,16 @@
 import { TestBed } from '@angular/core/testing';
 import { create } from '@bufbuild/protobuf';
-import { vi } from 'vitest';
+import { type Mock, vi } from 'vitest';
 
 import { DiceMode } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { ListHeldRollsResponseSchema } from '../../../../gen/meurpg/play/v1/resources_pb';
 import { NOTE_LINGER_MS } from '../../../core/held-rolls/held-questions';
-import { askedAt, heldAnswer, heldDie, heldLucky } from '../../../core/held-rolls/held-roll-testing';
+import {
+  askedAt,
+  heldAnswer,
+  heldDie,
+  heldLucky,
+} from '../../../core/held-rolls/held-roll-testing';
 import { ResourceClient } from '../../../core/resources/resources-client';
 import { HeldRollsPanel } from './held-rolls-panel';
 
@@ -13,13 +18,18 @@ const T0 = 1_700_000_000_000;
 const SECOND = 1000;
 
 const brisa = (over = {}) =>
-  heldLucky([1], 7, { holdId: 'h-brisa', rollerLabel: 'Brisa', ...askedAt(T0 - 6 * SECOND), ...over });
+  heldLucky([1], 7, {
+    holdId: 'h-brisa',
+    rollerLabel: 'Brisa',
+    ...askedAt(T0 - 6 * SECOND),
+    ...over,
+  });
 const toren = () =>
   heldDie(11, 1, 6, { holdId: 'h-toren', rollerLabel: 'Toren', ...askedAt(T0 - 30 * SECOND) });
 
 describe('HeldRollsPanel', () => {
-  let list: ReturnType<typeof vi.fn>;
-  let api: { listHeldRolls: ReturnType<typeof vi.fn>; answerHeldRoll: ReturnType<typeof vi.fn> };
+  let list: Mock<(campaignId: string) => Promise<unknown>>;
+  let api: { listHeldRolls: typeof list; answerHeldRoll: Mock<() => Promise<unknown>> };
 
   function mount(phone = false) {
     vi.stubGlobal('matchMedia', (query: string) => ({
@@ -47,9 +57,12 @@ describe('HeldRollsPanel', () => {
     Promise.resolve(create(ListHeldRollsResponseSchema, { offers }));
 
   beforeEach(() => {
-    vi.useFakeTimers({ now: T0 });
-    list = vi.fn(() => reply(brisa(), toren()));
-    api = { listHeldRolls: list, answerHeldRoll: vi.fn(() => Promise.resolve(heldAnswer())) };
+    vi.useFakeTimers({ now: T0, toFake: ['Date', 'setInterval', 'clearInterval'] });
+    list = vi.fn<(campaignId: string) => Promise<unknown>>(() => reply(brisa(), toren()));
+    api = {
+      listHeldRolls: list,
+      answerHeldRoll: vi.fn<() => Promise<unknown>>(() => Promise.resolve(heldAnswer())),
+    };
   });
 
   afterEach(() => {

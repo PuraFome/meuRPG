@@ -81,7 +81,8 @@
     'token text actions'
     '. cover cover'
     '. death death'
-    '. extra extra';
+    '. extra extra'
+    '. held held';
   column-gap: 10px;
   align-items: center;
   margin: 0 -18px;
@@ -99,7 +100,8 @@
       '. actions actions actions'
       '. cover cover cover'
       '. death death death'
-      '. extra extra extra';
+      '. extra extra extra'
+      '. held held held';
   }
 
   // Wide card: everything in one line.
@@ -109,7 +111,8 @@
       'token text init hp actions'
       '. cover cover cover cover'
       '. death death death death'
-      '. extra extra extra extra';
+      '. extra extra extra extra'
+      '. held held held held';
   }
 }
 
@@ -121,7 +124,8 @@
       '. actions actions'
       '. cover cover'
       '. death death'
-      '. extra extra';
+      '. extra extra'
+      '. held held';
 
     .row__actions {
       justify-content: flex-start;
@@ -137,7 +141,8 @@
       '. actions actions'
       '. cover cover'
       '. death death'
-      '. extra extra';
+      '. extra extra'
+      '. held held';
   }
 
   .row .row__actions {
@@ -419,6 +424,13 @@
 .row__confirm {
   grid-area: extra;
   min-width: 0;
+}
+
+// The master's question about the roll this combatant holds (the roller answers first).
+.row__held {
+  grid-area: held;
+  min-width: 0;
+  padding-top: 8px;
 }
 
 .row__extra {

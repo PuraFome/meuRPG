@@ -222,13 +222,14 @@ export class LiveSessionLoader {
     }
   }
 
-  /** Every panel that reads on a tick reads again: the creatures, the Revivify casts, the spell casts, the group check. */
+  /** Every panel that reads on a tick reads again: the creatures, the Revivify casts, the spell casts, the group check, the held rolls' questions. */
   private bumpTicks(): void {
     const { state } = this;
     state.creaturesTick.update((n) => n + 1);
     state.revivifyTick.update((n) => n + 1);
     state.castsTick.update((n) => n + 1);
     state.groupCheckTick.update((n) => n + 1);
+    state.heldRollsTick.update((n) => n + 1);
   }
 
   /** The player's own character lives again: the notice, with who cast it when the combat's log says (the master's "Reviver" has no caster). */

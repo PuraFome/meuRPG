@@ -48,7 +48,7 @@ describe('HeldQuestions', () => {
   }
 
   beforeEach(() => {
-    vi.useFakeTimers({ now: T0 });
+    vi.useFakeTimers({ now: T0, toFake: ['Date', 'setInterval', 'clearInterval'] });
     sent = [];
     counter = 0;
     reply = () => Promise.resolve(heldAnswer());

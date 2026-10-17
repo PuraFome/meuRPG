@@ -1,4 +1,6 @@
-import { HeldRollKind } from '../../../gen/meurpg/play/v1/combat_pb';
+import { create } from '@bufbuild/protobuf';
+
+import { HeldRollKind, HeldRollOfferSchema } from '../../../gen/meurpg/play/v1/combat_pb';
 import {
   askingText,
   d20Chip,
@@ -52,9 +54,10 @@ describe('the words of the master’s pending questions', () => {
       lead: '',
       text: 'O dado é de Orla e se perde depois de rolado.',
     });
-    expect(
-      questionRule({ ...heldDie(), question: { case: 'die', value: { sides: 8, fromName: '' } } }),
-    ).toEqual({ lead: '', text: 'O dado se perde depois de rolado.' });
+    const ungiven = create(HeldRollOfferSchema, {
+      question: { case: 'die', value: { sides: 8, fromName: '' } },
+    });
+    expect(questionRule(ungiven)).toEqual({ lead: '', text: 'O dado se perde depois de rolado.' });
   });
 
   it('draws the d20 as the chip and the line beside it', () => {
