@@ -3,12 +3,10 @@ import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import { OutsideInspirationOfferSchema } from '../../../../gen/meurpg/play/v1/combat_pb';
-import {
-  AnswerOutsideLuckyResponseSchema,
-  GetOutsideInspirationResponseSchema,
-} from '../../../../gen/meurpg/play/v1/resources_pb';
+import { GetOutsideInspirationResponseSchema } from '../../../../gen/meurpg/play/v1/resources_pb';
 import { RollSceneCheckResponseSchema } from '../../../../gen/meurpg/play/v1/scene_pb';
 import { LUCKY_TRAIT } from '../../../core/combat/lucky';
+import { heldAnswer, heldDie } from '../../../core/held-rolls/held-roll-testing';
 import { luckyOffer, sceneRoll } from '../../../core/play/scene-testing';
 import { ResourceClient } from '../../../core/resources/resources-client';
 import { BardicBlock, luckyAnswerText, minutesText } from './bardic-block';
@@ -20,8 +18,7 @@ describe('BardicBlock', () => {
         .fn()
         .mockResolvedValue(create(GetOutsideInspirationResponseSchema, state)),
       giveBardicInspirationOutside: vi.fn().mockResolvedValue({}),
-      answerOutsideInspiration: vi.fn(),
-      answerOutsideLucky: vi.fn(),
+      answerHeldRoll: vi.fn(),
     };
     TestBed.configureTestingModule({ providers: [{ provide: ResourceClient, useValue: api }] });
     const fixture = TestBed.createComponent(BardicBlock);
@@ -153,8 +150,8 @@ describe('BardicBlock', () => {
 
   it('answers the Lucky question once per answer and reads the state again', async () => {
     const { api, el, button, settle } = setup({ luckyOffers: [luckyOffer([1], 4)] });
-    api.answerOutsideLucky.mockResolvedValue(
-      create(AnswerOutsideLuckyResponseSchema, {
+    api.answerHeldRoll.mockResolvedValue(
+      heldAnswer({
         result: {
           case: 'sceneCheck',
           value: create(RollSceneCheckResponseSchema, {
@@ -175,11 +172,10 @@ describe('BardicBlock', () => {
     await settle();
     button('Rolar de novo')!.click();
     await settle();
-    expect(api.answerOutsideLucky).toHaveBeenCalledWith(
+    expect(api.answerHeldRoll).toHaveBeenCalledWith(
       'c1',
       'h1',
-      true,
-      { inApp: true },
+      { kind: 'lucky', reroll: true, roll: { inApp: true } },
       expect.any(String),
     );
     expect(api.outsideInspiration).toHaveBeenCalledTimes(2);
@@ -190,33 +186,37 @@ describe('BardicBlock', () => {
     const { api, el, button, settle } = setup({
       offers: [create(OutsideInspirationOfferSchema, { holdId: 'h2', sides: 6, fromName: 'Orla' })],
     });
-    api.answerOutsideInspiration.mockResolvedValue({
-      result: {
-        case: 'sceneCheck',
-        value: create(RollSceneCheckResponseSchema, {
-          roll: sceneRoll('r1', 'a1', 'Pipo', 21, {
-            roll: { diceCount: 1, diceSides: 20, faces: [14], modifier: 3, total: 21 },
+    api.answerHeldRoll.mockResolvedValue(
+      heldAnswer({
+        result: {
+          case: 'sceneCheck',
+          value: create(RollSceneCheckResponseSchema, {
+            roll: sceneRoll('r1', 'a1', 'Pipo', 21, {
+              roll: { diceCount: 1, diceSides: 20, faces: [14], modifier: 3, total: 21 },
+            }),
           }),
-        }),
-      },
-    });
+        },
+      }),
+    );
     await settle();
     expect(el.textContent).toContain('Usar a Inspiração de Bardo (d6)?');
     button('Usar e rolar o d6')!.click();
     await settle();
-    expect(api.answerOutsideInspiration).toHaveBeenCalledWith(
+    expect(api.answerHeldRoll).toHaveBeenCalledWith(
       'c1',
       'h2',
-      true,
-      { inApp: true },
+      { kind: 'die', use: true, roll: { inApp: true } },
       expect.any(String),
     );
     expect(api.outsideInspiration).toHaveBeenCalledTimes(2);
     expect(el.textContent).toContain('Dado somado. Seu total: 21.');
     button('Guardar o dado')!.click();
     await settle();
-    expect(api.answerOutsideInspiration.mock.calls[1].slice(1, 4)).toEqual(['h2', false, null]);
-    const keys = api.answerOutsideInspiration.mock.calls.map((c) => c[4] as string);
+    expect(api.answerHeldRoll.mock.calls[1].slice(1, 3)).toEqual([
+      'h2',
+      { kind: 'die', use: false, roll: null },
+    ]);
+    const keys = api.answerHeldRoll.mock.calls.map((c) => c[3] as string);
     expect(keys[0]).not.toBe(keys[1]);
   });
 
@@ -224,7 +224,7 @@ describe('BardicBlock', () => {
     const { api, el, button, settle } = setup({
       offers: [create(OutsideInspirationOfferSchema, { holdId: 'h2', sides: 6 })],
     });
-    api.answerOutsideInspiration.mockRejectedValue(new ConnectError('down', Code.Unavailable));
+    api.answerHeldRoll.mockRejectedValue(new ConnectError('down', Code.Unavailable));
     await settle();
     button('Guardar o dado')!.click();
     await settle();
@@ -233,24 +233,13 @@ describe('BardicBlock', () => {
   });
 
   it('words what a Lucky answer came to: the 1 kept, the die’s question next, or the master sees it', () => {
-    const held = create(AnswerOutsideLuckyResponseSchema, {
-      result: {
-        case: 'trapSearch',
-        value: {
-          inspirationOffer: create(OutsideInspirationOfferSchema, {
-            holdId: 'h1',
-            sides: 8,
-            d20: { faces: [9], rerolled: [{ index: 0, from: 1, to: 9, sourceKey: LUCKY_TRAIT }] },
-          }),
-        },
-      },
+    const next = heldAnswer({
+      result: { case: 'trapSearch', value: { heldRollOffer: heldDie(9, 4, 8, {}, 1) } },
     });
-    expect(luckyAnswerText(held, true)).toBe(
+    expect(luckyAnswerText(next, true)).toBe(
       'Sortudo: 1 → 9. Agora, a pergunta da Inspiração de Bardo.',
     );
-    const kept = create(AnswerOutsideLuckyResponseSchema, {
-      result: { case: 'hintTry', value: { roll: { faces: [1] } } },
-    });
+    const kept = heldAnswer({ result: { case: 'hintTry', value: { roll: { faces: [1] } } } });
     expect(luckyAnswerText(kept, false)).toBe('Você ficou com o 1. O mestre vê o resultado.');
   });
 
