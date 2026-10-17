@@ -62,10 +62,10 @@ func (s *Service) closeCast(ctx context.Context, c *combatTx, r playdb.SpellCast
 	return row, vitals, dismissed, nil
 }
 
-// takeBackCast undoes what a cast that lasted did to its targets. Mage Armor stays on a
-// target while another Mage Armor still does (SRD 5.1, "Combining Magical Effects":
-// the effects of the same spell cast several times don't combine, the most potent one
-// applies while the durations overlap).
+// takeBackCast undoes what a cast that lasted did to its targets: Aid's bonus to the maximum
+// (takeBackMaxHP), down to the strongest Aid still on each target (SRD 5.1, "Combining Magical
+// Effects": the effects of the same spell cast several times don't combine, the most potent
+// one applies while the durations overlap).
 func (s *Service) takeBackCast(ctx context.Context, c *combatTx, r playdb.SpellCast) ([]*playv1.CharacterVitals, error) {
 	return s.takeBackMaxHP(ctx, c, r)
 }

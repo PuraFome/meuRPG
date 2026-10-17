@@ -497,14 +497,14 @@ func (s *Service) publishConcentrationEnded(ctx context.Context, campaignID, com
 
 // stopConcentrating ends the combatant's concentration and the creatures that
 // lasted only while it did (RN-22, MR-037), and notes what an undo puts back in
-// the event.
+// the event: the concentration, the creatures and the Hunter's Mark.
 func (s *Service) stopConcentrating(ctx context.Context, c *combatTx, target playdb.Combatant, ev *actionEvent) error {
 	if err := c.q.SetCombatantConcentration(ctx, playdb.SetCombatantConcentrationParams{ID: target.ID}); err != nil {
 		return fmt.Errorf("end the concentration: %w", err)
 	}
 	ev.ConcBefore, ev.ConcEnded = *target.ConcentrationSpell, *target.ConcentrationSpell
 	if *target.ConcentrationSpell == huntersMark {
-		if err := s.clearHuntersMark(ctx, c, target, nil); err != nil { // only a cast's undo puts a mark back (MarksBefore)
+		if err := s.clearHuntersMark(ctx, c, target, ev); err != nil { // the undo puts the mark back (MarksBefore)
 			return err
 		}
 	}

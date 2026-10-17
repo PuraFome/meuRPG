@@ -1,6 +1,6 @@
 {
   "level 1": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.43+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.44+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -250,6 +250,10 @@
     "ArmorClass": 12,
     "ArmorClassDescription": "Sem armadura",
     "ArmorCategory": "none",
+    "ArmorUntrained": {
+      "Armor": false,
+      "Shield": false
+    },
     "HitPointsMax": 10,
     "HitPointsFromEffects": 0,
     "HitDice": [
@@ -706,7 +710,7 @@
     "Issues": null
   },
   "level 11": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.43+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.44+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -956,6 +960,10 @@
     "ArmorClass": 12,
     "ArmorClassDescription": "Sem armadura",
     "ArmorCategory": "none",
+    "ArmorUntrained": {
+      "Armor": false,
+      "Shield": false
+    },
     "HitPointsMax": 80,
     "HitPointsFromEffects": 0,
     "HitDice": [
@@ -1862,7 +1870,7 @@
     "Issues": null
   },
   "level 5": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.43+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.44+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -2112,6 +2120,10 @@
     "ArmorClass": 12,
     "ArmorClassDescription": "Sem armadura",
     "ArmorCategory": "none",
+    "ArmorUntrained": {
+      "Armor": false,
+      "Shield": false
+    },
     "HitPointsMax": 38,
     "HitPointsFromEffects": 0,
     "HitDice": [

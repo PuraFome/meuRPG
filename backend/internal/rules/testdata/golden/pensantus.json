@@ -1,5 +1,5 @@
 {
-  "ContentVersion": "srd51@a8abc93b235c+fx.43",
+  "ContentVersion": "srd51@a8abc93b235c+fx.44",
   "RaceNamePT": "Gnomo",
   "SubraceNamePT": "Gnomo das Rochas",
   "BackgroundNamePT": "Sábio",
@@ -249,6 +249,10 @@
   "ArmorClass": 13,
   "ArmorClassDescription": "Sem armadura",
   "ArmorCategory": "none",
+  "ArmorUntrained": {
+    "Armor": false,
+    "Shield": false
+  },
   "HitPointsMax": 23,
   "HitPointsFromEffects": 0,
   "HitDice": [

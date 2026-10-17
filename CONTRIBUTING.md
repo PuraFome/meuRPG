@@ -35,6 +35,7 @@ The pinned versions and where each one lives are in [docs/development.md](docs/d
 | `cd web && npm run lint` / `npm run format:check` / `npm run depcruise` | The web linters, as in CI |
 | `make e2e` | Starts the local stack and runs the Playwright tests in `e2e/` |
 | `.github/scripts/go-complexity.sh` | The complexity limits, as CI checks them: no Go function over cyclomatic 15, cognitive 15 or maintainability 20 |
+| `.github/scripts/nolint-cap.sh` | The `//nolint` cap: no more directives in `backend/` than the number in `.github/nolint-cap` (`--lower` writes the cap down after you remove some) |
 
 The Go and web linters are ratchets: they judge what your change adds, and the backlog may only shrink.
 The complexity limits are not a ratchet: every Go function and every web file must meet them.
@@ -47,6 +48,7 @@ The initial web bundle is a build gate (500 kB), see [docs/ci.md](docs/ci.md#the
 - **Migrations only add:** production is live, and the migration runs before the new revision gets traffic. A new table, column, index or row; never a rename, a drop or a new `NOT NULL` without a default on something running code reads. To remove something, release the code that stops using it first and drop it in a later release. Use SQL that both PostgreSQL (sqlc's parser) and CockroachDB accept: an index in its own migration with `CREATE INDEX IF NOT EXISTS`; every migration must run twice without error. A new session event kind is a row in `session_event_kinds`. Details in [docs/data/README.md](docs/data/README.md).
 - **Rules content:** a change under `backend/internal/rules/srd51/effects/` raises the revision in `effects/revision.json`; the SRD snapshot in `data/` is generated, never edited. See [docs/rules-content.md](docs/rules-content.md).
 - **Screens** follow the [design](docs/design/README.md) (the `--mr-*` tokens and the common pieces, never a hand-written colour) and enter `e2e/tests/a11y.spec.ts`. A screen change carries before and after screenshots at 390, 768 and 1280 px, in both themes.
+- **Error reasons:** a new reason the server can send is added to `proto/error-reasons.json` with its Portuguese sentence in the web; two tests fail until both exist. See [API](docs/architecture/api.md#error-reasons).
 - **Secrets** (the OIDC client secret, `GEMINI_API_KEY`, session cookies) never go to the repository, a test, a log or an issue.
 - The app's UI text is in Portuguese; code, comments, commits and docs are in English.
 

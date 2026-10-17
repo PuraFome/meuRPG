@@ -80,6 +80,10 @@ A milestone is **reached** while some `xp_awards` row with its `milestone_id` ha
 The API never removes a milestone that had any award, live or undone, so an award never loses the link.
 Index `(campaign_id, position)`; `create_key`/`create_hash` are the creation idempotency pair.
 
+## `planned_milestone_moves`
+
+The idempotency keys of `MoveMilestone`, which changes positions and creates no row: `move_key` (the campaign's ID, a colon and the app's key) and `move_hash` (the hash of the request minus the key), primary key `(campaign_id, move_key)`; the campaign cascades. A retry with the same key and hash moves nothing again; another hash is refused.
+
 ## `xp_award_treasures`
 
 For a "Voltar à cidade" award (MR-041): the treasure converted (`point_id`) and the value in gp it had then (`value_po`, 0 to 1,000,000); primary key `(award_id, point_id)`; `award_id` cascades.

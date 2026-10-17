@@ -15,6 +15,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/campaignpackage/packagedb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/rpcerr"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/slowclient"
 )
 
@@ -52,7 +53,7 @@ func (s *Service) handlePart(w http.ResponseWriter, r *http.Request) {
 }
 
 func errImagesOffHTTP() *httpError {
-	return &httpError{status: http.StatusServiceUnavailable, code: connect.CodeUnavailable, reason: "IMAGES_OFF", message: "packages are off: the server has no store for files"}
+	return &httpError{status: http.StatusServiceUnavailable, code: connect.CodeUnavailable, reason: rpcerr.ReasonImagesOff, message: "packages are off: the server has no store for files"}
 }
 
 func (s *Service) part(w http.ResponseWriter, r *http.Request) error {
@@ -127,12 +128,12 @@ func (c *countingReader) Read(p []byte) (int, error) {
 }
 
 func wrongLength() *httpError {
-	return &httpError{status: http.StatusBadRequest, code: connect.CodeInvalidArgument, reason: "WRONG_LENGTH", message: "the part is not the length the upload says"}
+	return &httpError{status: http.StatusBadRequest, code: connect.CodeInvalidArgument, reason: rpcerr.ReasonWrongLength, message: "the part is not the length the upload says"}
 }
 
 // rateLimited turns the limiter's Connect error into the route's 429.
 func rateLimited(error) error {
-	return &httpError{status: http.StatusTooManyRequests, code: connect.CodeResourceExhausted, reason: "RATE_LIMITED", message: "too many requests, please wait a moment and try again", retryAfter: 1}
+	return &httpError{status: http.StatusTooManyRequests, code: connect.CodeResourceExhausted, reason: rpcerr.ReasonRateLimited, message: "too many requests, please wait a moment and try again", retryAfter: 1}
 }
 
 // handleDownload serves GET /downloads/campaign-exports/{id}. The id is 128

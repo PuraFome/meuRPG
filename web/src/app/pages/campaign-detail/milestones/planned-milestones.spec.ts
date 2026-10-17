@@ -170,8 +170,28 @@ describe('PlannedMilestones (E8-14)', () => {
     api.moveMilestone.mockResolvedValue({ milestones: [three[1], three[0], three[2]] });
     btn(el, '[data-id="b"][data-act="up"]').click();
     await settle();
-    expect(api.moveMilestone).toHaveBeenCalledWith('c1', 'b', 'up');
+    expect(api.moveMilestone).toHaveBeenCalledWith('c1', 'b', 'up', expect.any(String));
     expect(document.activeElement).toBe(el.querySelector('[data-id="b"][data-act="up"]'));
+  });
+
+  it('sends the same idempotency key when the same move is tried again after a failure, and a new one after it worked', async () => {
+    const { el, settle } = await setup();
+    api.moveMilestone.mockRejectedValueOnce(new Error('down'));
+    api.moveMilestone.mockResolvedValue({ milestones: [three[1], three[0], three[2]] });
+    api.listMilestones.mockResolvedValue({ milestones: three });
+    btn(el, '[data-id="b"][data-act="up"]').click();
+    await settle();
+    btn(el, '[data-id="b"][data-act="up"]').click();
+    await settle();
+    btn(el, '[data-id="b"][data-act="down"]').click();
+    await settle();
+    btn(el, '[data-id="b"][data-act="down"]').click();
+    await settle();
+    const [failed, retry, other, again] = api.moveMilestone.mock.calls.map((c) => c[3] as string);
+    expect(failed).toEqual(expect.any(String));
+    expect(retry).toBe(failed);
+    expect(other).not.toBe(retry);
+    expect(again).not.toBe(other);
   });
 
   it('does nothing at the edges, and keeps them in the tab order', async () => {

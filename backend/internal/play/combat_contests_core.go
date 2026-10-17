@@ -486,7 +486,7 @@ func (s *Service) rollFor(ctx context.Context, c *combatTx, who playdb.Combatant
 	if err := s.consumeCheckHelp(ctx, c, who, skill, cs); err != nil {
 		return contestRoll{}, err
 	}
-	return roll, nil
+	return cutRoll(c, roll), nil
 }
 
 // contestEvent is what a contest or a special action adds to the event it writes: the

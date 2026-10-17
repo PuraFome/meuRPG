@@ -1,6 +1,6 @@
 {
   "after": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.43",
+    "ContentVersion": "srd51@a8abc93b235c+fx.44",
     "RaceNamePT": "Humano",
     "SubraceNamePT": "",
     "BackgroundNamePT": "Acólito",
@@ -256,6 +256,10 @@
     "ArmorClass": 19,
     "ArmorClassDescription": "Cota de malha + escudo",
     "ArmorCategory": "heavy",
+    "ArmorUntrained": {
+      "Armor": false,
+      "Shield": false
+    },
     "HitPointsMax": 50,
     "HitPointsFromEffects": 0,
     "HitDice": [
@@ -949,7 +953,7 @@
     "Issues": null
   },
   "before": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.43",
+    "ContentVersion": "srd51@a8abc93b235c+fx.44",
     "RaceNamePT": "Humano",
     "SubraceNamePT": "",
     "BackgroundNamePT": "Acólito",
@@ -1199,6 +1203,10 @@
     "ArmorClass": 19,
     "ArmorClassDescription": "Cota de malha + escudo",
     "ArmorCategory": "heavy",
+    "ArmorUntrained": {
+      "Armor": false,
+      "Shield": false
+    },
     "HitPointsMax": 44,
     "HitPointsFromEffects": 0,
     "HitDice": [
