@@ -409,7 +409,7 @@ func addedPayload(c *combatTx, rows []playdb.CombatantState, key string) actionE
 		rounds = max(*first.EndsRound-max(c.enc.Round, 1), 0)
 	}
 	ev.Actor, ev.Target = conv.OrZero(first.SourceID), targets[0]
-	ev.Secret = !first.PlayerVisible || first.Audience == "owner"
+	ev.Secret = !first.PlayerVisible || first.Audience != audienceAll
 	ev.Lasting = &lastingEvent{Key: key, Change: "added", Targets: targets, Caster: conv.OrZero(first.SourceID), Rounds: rounds, Effects: ids}
 	return ev
 }
@@ -605,12 +605,16 @@ type visibilityInput struct {
 
 // readVisibilityInput checks the label and reads the audience.
 func readVisibilityInput(msg *playv1.SetLastingEffectVisibilityRequest) (visibilityInput, error) {
-	in := visibilityInput{label: strings.TrimSpace(msg.GetPlayerLabel()), audience: "all"}
+	in := visibilityInput{label: strings.TrimSpace(msg.GetPlayerLabel()), audience: audienceAll}
 	if utf8.RuneCountInString(in.label) > maxEffectLabel {
 		return in, connect.NewError(connect.CodeInvalidArgument, errors.New("player_label must have at most 30 characters"))
 	}
-	if msg.GetAudience() == playv1.EffectAudience_EFFECT_AUDIENCE_OWNER {
-		in.audience = "owner"
+	switch msg.GetAudience() {
+	case playv1.EffectAudience_EFFECT_AUDIENCE_UNSPECIFIED, playv1.EffectAudience_EFFECT_AUDIENCE_ALL:
+	case playv1.EffectAudience_EFFECT_AUDIENCE_OWNER:
+		in.audience = audienceOwner
+	default: // a value the server does not know: the master's alone
+		in.audience = audienceMaster
 	}
 	return in, nil
 }
@@ -656,8 +660,9 @@ func (s *Service) setVisibilityTx(ctx context.Context, c *combatTx, effID string
 	if in.label != "" {
 		lbl = &in.label
 	}
+	masterOnly, stored := storedAudience(in.audience)
 	for _, st := range rows {
-		if _, err := c.q.SetLastingEffectVisibility(ctx, playdb.SetLastingEffectVisibilityParams{ID: st.ID, PlayerVisible: visible, Audience: in.audience, PlayerLabel: lbl}); err != nil {
+		if _, err := c.q.SetLastingEffectVisibility(ctx, playdb.SetLastingEffectVisibilityParams{ID: st.ID, PlayerVisible: visible && !masterOnly, Audience: stored, PlayerLabel: lbl}); err != nil {
 			return nil, fmt.Errorf("set the visibility: %w", err)
 		}
 	}
