@@ -719,7 +719,7 @@ func (u *undoer) castRevealBack(ctx context.Context, _ playdb.Combatant, ev acti
 			return fmt.Errorf("drop the hidden reveal: %w", err)
 		}
 	}
-	for _, id := range ev.Revealed {
+	for _, id := range ev.revealedIDs() {
 		if target, ok := u.find(id); ok {
 			if err := u.c.q.SetCombatantHidden(ctx, playdb.SetCombatantHiddenParams{ID: target.ID, Hidden: true}); err != nil {
 				return fmt.Errorf("hide the combatant again: %w", err)
@@ -733,13 +733,11 @@ func (u *undoer) castRevealBack(ctx context.Context, _ playdb.Combatant, ev acti
 // spell that read hit points changed at once.
 func (u *undoer) castHitsBack(ctx context.Context, _ playdb.Combatant, ev actionEvent) error {
 	for _, h := range ev.Hits {
-		for _, id := range append([]string{h.Pending}, h.More...) {
-			if id == "" {
-				continue
-			}
-			if err := u.c.q.DeletePendingDamage(ctx, id); err != nil {
-				return fmt.Errorf("delete the pending damage: %w", err)
-			}
+		if err := putPushedBack(ctx, u.c, h.Pushed); err != nil {
+			return err
+		}
+		if err := u.deleteHitPendings(ctx, h); err != nil {
+			return err
 		}
 		// A spell that read hit points changed the targets at once: their hit
 		// points, death saves and conditions come back.
@@ -747,6 +745,19 @@ func (u *undoer) castHitsBack(ctx context.Context, _ playdb.Combatant, ev action
 			if err := u.castTargetBack(ctx, target, h); err != nil {
 				return err
 			}
+		}
+	}
+	return nil
+}
+
+// deleteHitPendings deletes the pending damages the cast opened for a target.
+func (u *undoer) deleteHitPendings(ctx context.Context, h castHit) error {
+	for _, id := range append([]string{h.Pending}, h.More...) {
+		if id == "" {
+			continue
+		}
+		if err := u.c.q.DeletePendingDamage(ctx, id); err != nil {
+			return fmt.Errorf("delete the pending damage: %w", err)
 		}
 	}
 	return nil
@@ -924,8 +935,8 @@ func (u *undoer) tempBack(ctx context.Context, ev actionEvent) error {
 	return nil
 }
 
-// endedConcentrationBack puts back the concentration an action ended (stopConcentrating) and the
-// creatures that went with it.
+// endedConcentrationBack puts back the concentration an action ended (stopConcentrating), the
+// creatures that went with it and the Hunter's Mark it took off.
 func (u *undoer) endedConcentrationBack(ctx context.Context, who playdb.Combatant, ev actionEvent) error {
 	if ev.ConcEnded != "" {
 		if err := u.c.q.SetCombatantConcentration(ctx, playdb.SetCombatantConcentrationParams{ID: who.ID, ConcentrationSpell: &ev.ConcEnded}); err != nil {
@@ -933,9 +944,11 @@ func (u *undoer) endedConcentrationBack(ctx context.Context, who playdb.Combatan
 		}
 	}
 	if len(ev.Dismissed) > 0 {
-		return u.s.rejoinCreatures(ctx, u.c, ev.Dismissed)
+		if err := u.s.rejoinCreatures(ctx, u.c, ev.Dismissed); err != nil {
+			return err
+		}
 	}
-	return nil
+	return u.marksBack(ctx, ev.MarksBefore)
 }
 
 func (u *undoer) wildShapeStarted(ctx context.Context, ev actionEvent) error {

@@ -233,6 +233,10 @@
           (pick)="pickCover(c.id, $event)"
         />
 
+      @if (heldQuestions()?.forCombatant(c.id); as q) {
+        <app-held-question class="row__held" layout="row" [question]="q" [canType]="heldCanType()" [target]="heldTarget(q)" />
+      }
+
       @if (live() && dying(c) && deathDismissed().has(c.id)) {
         <div class="row__extra">
           <p class="row__hidden-note">O mestre ainda não confirmou a morte.</p>

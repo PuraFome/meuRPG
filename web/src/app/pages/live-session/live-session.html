@@ -237,6 +237,12 @@
           }
         }
       } @else if (state.isMaster()) {
+        <!-- The rolls that wait for their roller's answer, which the master may answer too after ten seconds: above the stage. -->
+        <app-held-rolls-panel
+          [campaignId]="state.campaignId()"
+          [tick]="state.heldRollsTick()"
+          [diceMode]="state.campaign()?.diceMode ?? 1"
+        />
         <app-combat-launch
           class="launch"
           [campaignId]="state.campaignId()"

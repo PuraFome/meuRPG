@@ -5,18 +5,10 @@ import { Code, ConnectError } from '@connectrpc/connect';
 
 import { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
-  LuckyOfferSchema,
-  OutsideInspirationOfferSchema,
-} from '../../../../gen/meurpg/play/v1/combat_pb';
-import {
   CheckOptionSchema,
   GroupCheckMemberViewSchema,
 } from '../../../../gen/meurpg/play/v1/contest_types_pb';
 import { RollGroupCheckResponseSchema } from '../../../../gen/meurpg/play/v1/contests_pb';
-import {
-  AnswerOutsideInspirationResponseSchema,
-  AnswerOutsideLuckyResponseSchema,
-} from '../../../../gen/meurpg/play/v1/resources_pb';
 import { ContestClient } from '../../../core/combat/contest-client';
 import {
   FakeContestClient,
@@ -26,6 +18,7 @@ import {
 } from '../../../core/combat/contest-testing';
 import { GroupCheckState } from '../../../core/combat/group-check-state';
 import { LUCKY_TRAIT } from '../../../core/combat/lucky';
+import { heldAnswer, heldDie, heldLucky } from '../../../core/held-rolls/held-roll-testing';
 import { ResourceClient } from '../../../core/resources/resources-client';
 import { GroupCheckSheet, type GroupCheckSheetData } from './group-check-sheet';
 
@@ -40,11 +33,7 @@ const asking = () =>
   });
 
 /** The d20 of 1 a halfling rolled, kept for the Lucky question. */
-const lucky = create(LuckyOfferSchema, {
-  holdId: 'h1',
-  luckyIndex: 0,
-  d20: { diceCount: 1, diceSides: 20, faces: [1], modifier: 7, total: 8 },
-});
+const lucky = heldLucky([1], 7);
 
 /** The check after an answer: the player's own roll with the new d20, waiting for the master. */
 const writtenCheck = (to: number) =>
@@ -67,19 +56,15 @@ const writtenCheck = (to: number) =>
   });
 
 const answered = (to: number) =>
-  create(AnswerOutsideLuckyResponseSchema, {
-    result: { case: 'groupCheck', value: writtenCheck(to) },
-  });
+  heldAnswer({ result: { case: 'groupCheck', value: writtenCheck(to) } });
 
 describe('GroupCheckSheet: the halfling’s Lucky question', () => {
   let api: FakeContestClient;
-  const answerOutsideLucky = vi.fn();
-  const answerOutsideInspiration = vi.fn();
+  const answerHeldRoll = vi.fn();
 
   beforeEach(() => {
     Element.prototype.scrollTo = vi.fn() as never;
-    answerOutsideLucky.mockReset();
-    answerOutsideInspiration.mockReset();
+    answerHeldRoll.mockReset();
   });
 
   function setup() {
@@ -96,10 +81,7 @@ describe('GroupCheckSheet: the halfling’s Lucky question', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: ContestClient, useValue: api.as() },
-        {
-          provide: ResourceClient,
-          useValue: { answerOutsideLucky, answerOutsideInspiration },
-        },
+        { provide: ResourceClient, useValue: { answerHeldRoll } },
         { provide: MAT_DIALOG_DATA, useValue: data },
         { provide: MatDialogRef, useValue: { close: vi.fn(), disableClose: false } },
       ],
@@ -133,16 +115,15 @@ describe('GroupCheckSheet: the halfling’s Lucky question', () => {
 
   it('"Rolar de novo" writes the check with the new d20 and says "Sortudo: 1 → 14"', async () => {
     const { button, settle, text, state } = setup();
-    answerOutsideLucky.mockResolvedValue(answered(14));
+    answerHeldRoll.mockResolvedValue(answered(14));
     button('Rolar no app')!.click();
     await settle();
     button('Rolar de novo')!.click();
     await settle();
-    expect(answerOutsideLucky).toHaveBeenCalledWith(
+    expect(answerHeldRoll).toHaveBeenCalledWith(
       'c',
       'h1',
-      true,
-      { inApp: true },
+      { kind: 'lucky', reroll: true, roll: { inApp: true } },
       expect.any(String),
     );
     expect(state.own()?.answered).toBe(true);
@@ -153,33 +134,18 @@ describe('GroupCheckSheet: the halfling’s Lucky question', () => {
 
   it('after the new d20, a Bardic Inspiration die is asked about on the same sheet', async () => {
     const { button, settle, text, state } = setup();
-    answerOutsideLucky.mockResolvedValue(
-      create(AnswerOutsideLuckyResponseSchema, {
-        result: {
-          case: 'groupCheck',
-          value: create(RollGroupCheckResponseSchema, {
-            inspirationOffer: create(OutsideInspirationOfferSchema, {
-              holdId: 'h1',
-              sides: 6,
-              fromName: 'Orla',
-              d20: {
-                diceCount: 1,
-                diceSides: 20,
-                faces: [9],
-                modifier: 7,
-                total: 16,
-                rerolled: [{ index: 0, from: 1, to: 9, sourceKey: LUCKY_TRAIT }],
-              },
-            }),
-          }),
-        },
-      }),
-    );
-    answerOutsideInspiration.mockResolvedValue(
-      create(AnswerOutsideInspirationResponseSchema, {
-        result: { case: 'groupCheck', value: writtenCheck(9) },
-      }),
-    );
+    answerHeldRoll
+      .mockResolvedValueOnce(
+        heldAnswer({
+          result: {
+            case: 'groupCheck',
+            value: { heldRollOffer: heldDie(9, 7, 6, { holdId: 'h1' }, 1) },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        heldAnswer({ result: { case: 'groupCheck', value: writtenCheck(9) } }),
+      );
     button('Rolar no app')!.click();
     await settle();
     button('Rolar de novo')!.click();
@@ -188,11 +154,10 @@ describe('GroupCheckSheet: the halfling’s Lucky question', () => {
     expect(text()).toContain('Sortudo: 1 → 9');
     button('Guardar o dado')!.click();
     await settle();
-    expect(answerOutsideInspiration).toHaveBeenCalledWith(
+    expect(answerHeldRoll).toHaveBeenLastCalledWith(
       'c',
       'h1',
-      false,
-      null,
+      { kind: 'die', use: false, roll: null },
       expect.any(String),
     );
     expect(state.own()?.answered).toBe(true);
@@ -200,14 +165,14 @@ describe('GroupCheckSheet: the halfling’s Lucky question', () => {
 
   it('keeps the key of an answer that failed, so a retry never rolls the d20 twice', async () => {
     const { button, settle, text } = setup();
-    answerOutsideLucky.mockRejectedValue(new ConnectError('down', Code.Unavailable));
+    answerHeldRoll.mockRejectedValue(new ConnectError('down', Code.Unavailable));
     button('Rolar no app')!.click();
     await settle();
     button('Rolar de novo')!.click();
     await settle();
     button('Rolar de novo')!.click();
     await settle();
-    const keys = answerOutsideLucky.mock.calls.map((c) => c[4] as string);
+    const keys = answerHeldRoll.mock.calls.map((c) => c[3] as string);
     expect(keys).toHaveLength(2);
     expect(keys[0]).toBe(keys[1]);
     expect(text()).toContain('Tirou 1: rolar de novo?');

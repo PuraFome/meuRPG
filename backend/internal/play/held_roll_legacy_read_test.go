@@ -192,6 +192,7 @@ func TestAWeaponAttackKeptInRollHoldsIsAnsweredByTheCombatRPCs(t *testing.T) {
 	if _, err := a.answer(t, a.ana, e, hold, keepTheDie); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Errorf("another player's answer = %v, want permission_denied", err)
 	}
+	a.h.afterThePlayersChance()
 	res, err := a.answer(t, a.master, e, hold, keepTheDie)
 	if err != nil {
 		t.Fatalf("the master's answer: error = %v", err)

@@ -60,6 +60,18 @@ It draws what `ConversationState` holds; the server decides who may read a line,
   A player sees it only on a roll whose face they already read.
 - **What a use costs:** a choice that spends something says what, in words, beside the button, with what is left ("Gasta 1 ki · restam N"), never an armor class or an NPC's number (RN-20).
 
+## Pending questions of the held rolls
+
+A roll that waits for its roller's answer (the halfling's "Tirou 1: rolar de novo?", a Bardic Inspiration die) is also on the master's screen: the roller answers first, and after 10 seconds the master may answer for them.
+The question is a `--warning` surface (`app-held-question`, `pages/live-session/held-questions`), never an `accent` frame: it is not on the players' screens.
+
+- **In a combat** the question sits inside the row of the combatant who rolled (the `held` area of `order-list`), titled with the question alone ("Tirou 1: rolar de novo?"). The title row of the combat bar carries a chip "N perguntas pendentes" from 1024 px; a visually hidden polite status says the same count at every width.
+- **Outside a combat** the "Perguntas pendentes" panel (`app-held-rolls-panel`) stands above the stage, with "O jogador responde primeiro; depois de 10 s você também pode responder por ele.". The cards are titled "Brisa · Tirou 1: rolar de novo?" in two columns from 768 px. On a phone one card is open (the one the master can answer, else the first) and each other question is a 48 px row with `aria-expanded` ("Brisa · Tirou 1: rolar de novo? · você em 4 s") that opens it.
+- **The card** reads: the icon (clock while the roller has the time, triangle after), the title, the status at the right, what was rolled ("Ataque com arma contra Goblin chefe." or the kind of the roll), the rule ("Sortudo: Brisa pode rolar esse d20 de novo e ficar com o novo resultado."), the d20 in a 44 px chip with "d20 · bônus +5" (the die's question adds the total), and the answers: "Rolar de novo" / "Digitar o resultado" / "Ficar com o 1", or "Somar o d8 (Inspiração de Orla)" / "Digitar o resultado" / "Guardar o dado". The primary buttons are 44 px, 48 px on a phone.
+- **States:** waiting ("Brisa responde primeiro · você em 7 s", buttons disabled), can answer ("Brisa não respondeu"), answering (`aria-busy`, "Rolando o d20 de novo…"), too early (the server refused: an alert "Ainda é a vez de Brisa responder." and the countdown resumes from when the roll was held), the roller answered first ("Brisa respondeu."), the master's own answer ("Você respondeu por Brisa: rolou de novo e tirou 14 (19 com o bônus)."), and another answer first ("Essa pergunta já foi respondida. O resultado está no registro do combate."). An ended question stays as a polite line for 6 s.
+- **Announcing:** the status line is a `role="status"` whose words change only when the state changes; the seconds are `aria-hidden`, so a countdown is never read out second by second.
+- **The roller** whose question is gone because the master answered reads "O mestre respondeu por você." in the notices of the combat (and in the Bardic block outside it), with "Entendi". Their view has no result of the master's answer, so the line is the short one.
+
 ## Experience and level up
 
 - **Who receives** (`xp-recipients`, `app-check-box`): one row per character with the name, a lower line and "+116 XP" or "Não recebe" in words (the empty box is never the only signal).

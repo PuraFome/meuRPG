@@ -68,6 +68,8 @@ import { SessionMessageSpeakerKind } from '../../../gen/meurpg/play/v1/session_m
 import type { LiveSessionParts } from './live-session-deps';
 import { SceneClient } from '../../core/play/scene-client';
 import { ResourceClient } from '../../core/resources/resources-client';
+import { ListHeldRollsResponseSchema } from '../../../gen/meurpg/play/v1/resources_pb';
+import { askedAt, heldLucky } from '../../core/held-rolls/held-roll-testing';
 import { restPreview, restPreviewResponse } from '../../core/resources/resources-testing';
 import { CharacterVitalsSchema } from '../../../gen/meurpg/play/v1/play_pb';
 import { CombatClient } from '../../core/combat/combat-client';
@@ -240,7 +242,7 @@ describe('LiveSession', () => {
   const summary = vi.fn();
   const signIn = vi.fn();
   /** The master's rests (PM-07b 9). */
-  const resources = { restPreview: vi.fn(), takeRest: vi.fn() };
+  const resources = { restPreview: vi.fn(), takeRest: vi.fn(), listHeldRolls: vi.fn() };
   const liveCampaignIds = signal<ReadonlySet<string>>(new Set());
   const openSessions = {
     liveCampaignIds: liveCampaignIds.asReadonly(),
@@ -269,6 +271,7 @@ describe('LiveSession', () => {
     signIn.mockClear();
     resources.restPreview.mockReset();
     resources.takeRest.mockReset();
+    resources.listHeldRolls.mockReset().mockResolvedValue(create(ListHeldRollsResponseSchema, {}));
     openSessions.dismiss.mockClear();
     liveCampaignIds.set(new Set());
     summary.mockReset().mockRejectedValue(new Error('no summary'));
@@ -422,6 +425,57 @@ describe('LiveSession', () => {
       // The party panel's "Dar XP" reads the characters again.
       await nextTurn();
       expect(xpExperience).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('the pending questions of the held rolls', () => {
+    const asMaster = () => {
+      source.campaign = {
+        name: 'Mirathel',
+        isMaster: true,
+        awaitingApproval: false,
+        diceMode: 1,
+        dicePreference: 1,
+      };
+    };
+    const asked = (hold: string, roller: string) =>
+      heldLucky([1], 5, { holdId: hold, rollerLabel: roller, ...askedAt(Date.now() - 3000) });
+
+    it('lists the questions above the stage when the master opens the page, and again on every hint', async () => {
+      asMaster();
+      resources.listHeldRolls.mockResolvedValue(
+        create(ListHeldRollsResponseSchema, { offers: [asked('h1', 'Brisa')] }),
+      );
+      const el = await render();
+      expect(resources.listHeldRolls).toHaveBeenCalledWith('mirathel');
+      expect(el.querySelector('app-held-rolls-panel')?.textContent).toContain(
+        'Brisa · Tirou 1: rolar de novo?',
+      );
+      const reads = resources.listHeldRolls.mock.calls.length;
+      resources.listHeldRolls.mockResolvedValue(
+        create(ListHeldRollsResponseSchema, { offers: [asked('h2', 'Toren')] }),
+      );
+      source.push({ kind: 'heldRollsChanged' });
+      await nextTurn();
+      await nextTurn();
+      expect(resources.listHeldRolls.mock.calls.length).toBe(reads + 1);
+      expect(el.querySelector('app-held-rolls-panel')?.textContent).toContain('Toren · ');
+    });
+
+    it('reads the questions again after a reconnection', async () => {
+      asMaster();
+      await render();
+      const reads = resources.listHeldRolls.mock.calls.length;
+      source.push({ kind: 'ready' });
+      await nextTurn();
+      await nextTurn();
+      expect(resources.listHeldRolls.mock.calls.length).toBeGreaterThan(reads);
+    });
+
+    it('does not list them for a player', async () => {
+      const el = await render();
+      expect(el.querySelector('app-held-rolls-panel')).toBeNull();
+      expect(resources.listHeldRolls).not.toHaveBeenCalled();
     });
   });
 

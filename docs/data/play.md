@@ -246,7 +246,7 @@ Ids, spell keys and numbers, no personal data; cascades with the campaign, the s
 
 ## `revivify_requests`
 
-A Revivify cast outside a combat waiting for the master (the app does not count time out of combat, so he says whether the creature died less than a minute ago).
+A Revivify cast outside a combat waiting for the master (the app does not record when a creature died out of combat, so he says whether the creature died less than a minute ago).
 It holds the session (`CASCADE`), the caster and the target (`characters`, `CASCADE`), the slot (`slot_level` 3 to 9, `slot_pact`), `status` (`pending`, `confirmed`, `denied`; `answered_at` is set exactly when it is not pending, by `CHECK`) and the keys of the cast (`create_key`, unique per campaign, `create_hash`) and of the answer (`answer_key`, `answer_hash`).
 Nothing is spent while it is pending.
 

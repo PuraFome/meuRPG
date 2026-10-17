@@ -93,7 +93,7 @@ Each says when it waits (`pending`), what it asks (`offer`) and what its answer 
 - **The die** waits while the roller holds one and nothing is answered.
   Its answer is final: it spends the die when the player used it and closes the row under the answer's key.
 
-A later question, such as a master's reroll or Cutting Words on a check, would be one more link with its own columns and rule for who answers.
+A later question, such as a master's reroll, would be one more link with its own columns and rule for who answers. Cutting Words on a check is not a link of this chain: it is a reaction hold of the combat ([Reactions](reactions.md#cutting-words-on-a-check)).
 
 ## The registry and the one answer
 
@@ -107,6 +107,10 @@ It:
 4. rolls the reroll or the die the way the campaign has the player roll (RN-18; the master is exempt);
 5. runs the pinned request again through the registry with the answer in the context (`heldReply`): the path answers with its own response, still held with the next question, or resolved and written under the roll's key. When the master answers a player's roll, the path runs **as the roller** (`heldReply.as`, read by `heldMember` and `heldRole`, which stand in for the authz lookups at the top of the paths a hold runs again): it finds the roller's character and combatant as the first time, and nobody gets a power they did not have. The answer is the roller's view of the result. A weapon attack's path takes the answerer as it is: the master may act for any combatant.
 
+**The player's first chance.** For `heldPlayerFirst` (10 seconds) after a question is asked, measured from the hold's `created_at` on the service clock, `playerFirst` refuses the master's answer with `failed_precondition` and `ResourceBlocked` `PLAYER_FIRST`, whose `wait_seconds` is the time left rounded up; it runs for every answer RPC, after the state of the roll is checked and before anything is rolled. It does not apply to the player's own answer, to the master's answer to a roll no user plays (an NPC's, a player who left: `rollerPlayer`), or to a repeated answer. The Lucky and die questions of one roll share the hold's time.
+
+**The master's own rolls (E4-10).** The master's roll for a player's character asks like the player's: `saveSpec` (an effect's or a concentration save), `spellMayAsk` (a spell attack) and `mayAskMember` (`RollForPlayer`, a group check) let the roll wait whenever a user plays the combatant or the character (`playedBy`); an NPC's, a creature's or an unplayed character's never waits. The hold names the master as its user, the player reads the question by owning the combatant or the character, and either may answer; the path runs again as the user who rolled (`holdRollerRole` says whether that was the player or the master), and `rerunGroupCheck` picks `RollForPlayer` for the master's group check, whose answer rides in the group check's arm of `AnswerHeldRollResponse`.
+
 When the owner and the master answer at once, the first answer wins; the other, whose write meets the first one's, is told the roll was answered already (`lostTheRace`), and the die is spent once.
 
 ## The wire
@@ -114,6 +118,36 @@ When the owner and the master answer at once, the first answer wins; the other, 
 Every roll that waits asks one question in one shape, `HeldRollOffer`: the hold, the kind, who rolls (the combatant, the character of a player, the name as the viewer reads it), the d20 with its bonus, the question that waits (`LuckyQuestion` first, `DieQuestion` after it) and when the roll was held. The eight answers of the paths carry it as `held_roll_offer` beside the older `inspiration_offer` and `lucky_offer`, and so does the `Combatant` of a roll held in a combat, for the master and the roller's player only (`heldOfferOfCombatant`). `ListHeldRolls` lists the questions the caller may answer, oldest first: a player's own, the master's every one of the table, in a combat or out of one, leaving out the stale (`heldList`). `AnswerHeldRoll` answers with the path's own response in a `oneof` and the next question of the same roll in `next`.
 
 The question of any roll held in a combat moves the combat's revision (`inspirationHoldStore.asked`), as the weapon attack's always did, so the master and the roller read the combat again. `HeldRollsChanged` is a content-free hint on the stream for the master and the roller's user: the interceptor `heldHintInterceptor` sends it when a path answers with a question, and `answerHeld` when an answer changed one.
+
+## The web
+
+One class asks every question of a held roll: `HeldRollController` (`web/src/app/core/held-rolls`).
+A place that rolls builds one in its own field, shows a question with `ask`, and the player's answer goes through `answer`; nothing else in the web calls `AnswerHeldRoll`.
+
+- **The question** is a `HeldRollOffer`. `heldOfferOf` reads `held_roll_offer` and falls back on the older `lucky_offer` and `inspiration_offer` of a response that carries only those (Lucky's first), so one answer path serves both.
+- **One key per answer.** The controller sends the answer under an idempotency key that stays while the same answer is repeated (a retry after a lost answer never rolls twice) and is renewed once an answer got through.
+  A second tap while one is on the way does nothing.
+- **The chain.** `AnswerHeldRollResponse.next` becomes the controller's next question (Lucky's, then the die's, on the new roll); no `next` means the roll was written.
+  The place gets the response to finish its own way (`settle`): the attack sheet reads `result.attack`, the cast sheet `result.spell_cast`, and so on. A response that is not the path's own is an error and the question stays.
+- **Refusals.** A `failed_precondition` with no detail of the rules is the lost race ("Essa pergunta já foi respondida"), kept apart from a failure in `refusal`; the master's answer inside the roller's first seconds (`MASTER_TOO_EARLY_REASON`, a `ResourceBlockedReason` name) reads as a wait. Everything else is worded by the place, or by `classResourceErrorMessage`.
+- **Two answerers, one type.** The roller's player and the master answer the same way. With `master` set, `waitSeconds(now)` counts the seconds left from the offer's `created_at` (`MASTER_WAIT_SECONDS`) on an injectable clock.
+
+`<app-held-roll-prompt>` (`web/src/app/shared/held-roll-prompt`) draws the question for every place and emits the answer: Lucky's "Tirou 1: rolar de novo?" with "Rolar de novo", "Digitar o resultado" and "Ficar com o 1"; the die's "Usar a Inspiração de Bardo (d8)?" with "Somar o d8 (Inspiração de Orla)", "Digitar o resultado" and "Guardar o dado".
+The typed face takes 1 to the die's size, and the ways to roll follow the table's dice mode (RN-18).
+Its `look` keeps what each place showed: `attack` (the attack sheet shows the d20 in its own result card), `sheet` (the held d20 in a line above the question) and `card` (the d20 and its bonus over the question).
+
+The places: the attack, cast, reaction (concentration save), effect-save, scene-roll, trap-search and group-check sheets, the hint try of a puzzle, and the session panel's Bardic block.
+
+### The master's pending questions
+
+The master answers for a roller who has not (RN-35 asks the roller first). `HeldQuestions` (`core/held-rolls/held-questions.ts`) keeps one `MasterQuestion` per hold, each with a `HeldRollController` built with `master: true`; the master answers through `AnswerHeldRoll` like the roller, rolling in the app or typing a face when the table's dice mode allows it (RN-18).
+
+- **Where the questions come from.** In a combat, from `Combatant.held_roll_offer` of the combat the master already reads (the combat view feeds `sync` from its encounter, and the question is drawn in the roller's row). Outside a combat, from `ListHeldRolls` (`app-held-rolls-panel`), read on open, after a reconnection (the page bumps `heldRollsTick` with its other ticks) and on each `held_rolls_changed` hint (`onHeldRollsChanged`); a read that comes back after a newer one is dropped. `sync` keeps the questions it knows, adds new ones, replaces a question by the next one of the same roll, and closes the ones the server stopped listing ("Brisa respondeu.").
+- **The wait.** `MASTER_WAIT_SECONDS` (10) counts from the offer's `created_at`, on an injectable clock; `HeldQuestions.now` moves once a second only while a question waits for its time or a closed one is still on screen (`NOTE_LINGER_MS`), and the interval is cleared otherwise. The server refuses an early answer with `MASTER_TOO_EARLY_REASON`: the question reads it as "wait" (`too-early`), shows the countdown again and keeps the buttons off for at least two more seconds when the clocks differ, then lets the master try again. A plain `failed_precondition` is the lost race: the question ends with "Essa pergunta já foi respondida."
+- **What the answer says.** A master's answer that ends the roll is worded from the path's result (`answeredText`, `settledRoll`): "Você respondeu por Brisa: rolou de novo e tirou 14 (19 com o bônus)."; a result with no d20 says only what was chosen.
+- **The roller.** `HeldRollController` records the answers sent from this browser (`markAnsweredHere`, from the moment the answer goes). A place that shows the roller their question (`HeldVanishWatch`: the combat view, the Bardic block) tells "O mestre respondeu por você." when the question is gone, or moved on to the next, without an answer from this browser. The roller's view carries no result of the master's answer, so that is the whole text.
+
+A group check that holds only a Bardic die, with no 1, closes its sheet and leaves the question to the session panel.
 
 ## Lucky (halfling, RN-35)
 

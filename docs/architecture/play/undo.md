@@ -14,7 +14,7 @@ Any later event that is not undoable leaves `NOTHING_TO_UNDO`, because undoing o
 Some events are written just before the change's own event and never close the chain, because the undo acts on the change and takes them along:
 
 - the creatures a cast made or an ended concentration dismissed (`creature_summoned`, `creature_dismissed`);
-- a concentration that ended at 0 HP;
+- a concentration that ended at 0 HP, whether a damage or the master's adjustment of an NPC's HP took the combatant there (the event is grouped by the pending damage or by the combatant, and the undo of the change takes it back);
 - the opportunity offers a move made (an offer the master makes by hand in theatre closes the chain instead);
 - a door a move opened (it stays open after the undo) and a hiding an attack ended;
 - the puzzle events and the clue a solve gave;
@@ -51,9 +51,11 @@ The undone line disappears from the log.
   The wait's clock is the master's screen's, which starts again when it sees the window open.
 - **A Hunter's Mark the cast moved.** The caster has one mark at a time: a new Hunter's Mark on another target, or another concentration spell, takes the old one off.
   The cast's event keeps the marks it took off (`marks_before`, `clearHuntersMark`), and its undo writes them back with their ids (`marksBack`, `RestoreHuntersMark`).
+- **A Hunter's Mark a concentration ended.** A rage, a damage to 0 HP, a failed concentration save and the master's end of the concentration end the Hunter's Mark with `stopConcentrating`, which takes the mark off its target; the event keeps it (`marks_before`) and `endedConcentrationBack` writes it back with the concentration, for every undo that gives a concentration back.
   A mark whose target or caster left the combat stays off.
+- **A creature a cast pushed.** Each hit keeps the forced move of a failed save (`pushed`, with the square it left); the undo puts the creature back there and the fog follows it (see [Movement](movement.md#forced-movement)).
 - **The "revealed" lines of an area spell.** Under the table rule that reveals the hidden creatures an area hits, the cast writes a `combatant_hidden_set` line (`by_area`) for each before its own event (`revealCombatants`).
-  The event keeps their ids (`reveal_lines`), and its undo takes the lines back in `undone_also`: the master's log keeps no "revealed" line for a creature hidden again.
+  The event says it revealed the creatures its hits name (`revealed_hits`, read by `revealedIDs`, so that the ids are not written twice) and keeps the lines' ids (`reveal_lines`), and its undo takes the lines back in `undone_also`: the master's log keeps no "revealed" line for a creature hidden again.
   A player's log never listed them once the creature was hidden again, so nothing appears or disappears for a player (RN-10).
 - **Wild Shape, a trap, a creature.** See [Creatures](creatures.md) and [Traps](traps.md).
 

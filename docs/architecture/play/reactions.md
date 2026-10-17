@@ -15,7 +15,7 @@ The code is `combat_reactions.go` and `combat_reaction_*.go`; the answer is `Ans
 | Deflect Missiles | A ranged weapon hit on the monk | The damage landing, less 1d10 + Dexterity + monk level; at 0 it is caught and, for 1 ki, thrown back with `RollAttack(catch_window_id)`. The server builds the attack from the missile (its dice plus Dexterity, proficiency plus Dexterity to hit, 20/60 ft) and ignores `attack_key`. The second-step prompt (`DeflectMissilesThrowPrompt`) carries the missile's name and bonus; closing that sheet without a roll passes the window (the missile is kept) |
 | Hellish Rebuke | The reactor was damaged by a creature it sees within 60 ft, and survived | Nothing: it happens after. Offers the Infernal Legacy (a 2nd-level cast, once per long rest) and the slots; the NPC aggressor's save is the master's (second step) |
 | Counterspell | A cast by a creature the reactor sees within 60 ft | The whole cast (held with its request and replayed after); the countered cast still spends its slot |
-| Cutting Words | An attack roll, ability check or damage roll of a creature the bard sees within 60 ft | The roll (the bard answers before the die is thrown). A creature that cannot hear or is immune to charm opens no window (`cuttingWindows` skips it) |
+| Cutting Words | An attack roll (a weapon's, a cantrip's or a spell cast from a slot with one target), an ability check in combat or a damage roll of a creature of the other side that the bard sees within 60 ft | The roll (the bard answers before the die is thrown). A creature that cannot hear or is immune to charm opens no window (`cuttingWindows` skips it), and neither does one the bard's player cannot see (`reactorSees`: a hidden NPC, the fog). The sheet setting asks for checks only in "todos". The checks held are the initiator's roll of a contest (`StartContest`), the answer to a contest (`RespondContest`) and a `Hide`; the spell attack joins the Counterspell windows of its cast. See [Cutting Words on a check](#cutting-words-on-a-check) |
 | Feather Fall | A fall of a pit trap (`fall_ft` of the preset) within 60 ft | The fall damage (`AWAITING_REACTION` trap damage); up to 5 creatures saved |
 | Opportunity attack | A creature leaves a reach | The mover's turn (its own offers, shown as a window; see [Movement](movement.md#opportunity-attacks)) |
 | Contest | A grapple, shove or escape that waits for the defender's roll or the shover's choice | Nothing: the contest row itself. Answered with `RespondContest` or `ResolveShove`, never `AnswerReaction`. Opened by `syncContests`, closed by itself when the contest no longer waits (see [Contests](contests.md)) |
@@ -63,6 +63,15 @@ sequenceDiagram
 `RollDamage` and `ApplyPendingDamage` on a blow waiting for the reaction give `REACTION_PENDING`; the attacker's `EndTurn` gives `PENDING_DAMAGE` (only the master passes, discarding).
 The +5 stays in `combatants.ac_bonus` until the start of the character's next turn (`ResetCombatantTurn`): every attack in the meantime uses the sheet's AC plus the bonus, and the bonus never alters the sheet (RN-04).
 The opportunity attack is `RollAttack` with `as_reaction`: a melee attack off turn spending the reaction in place of the action.
+
+## Cutting Words on a check
+
+A check is held as an attack roll is (`combat_cutting_checks.go`): `holdCheck` opens the Cutting Words windows with `Roll: "test"`, keeps the request in a hold of kind `contest`, `contest_answer` or `hide`, and the handler returns before anything is spent or rolled.
+When the windows are answered the replay runs `startContest`, `respondContest` or `hide` again as the original caller, and `rollFor` takes the die off the total (`cutRoll`) and adds a note "Palavras de Interrupção: −N" to the roll, so the contest compares the cut number.
+A spell attack from a slot is held in `holdCast` beside the Counterspell windows (a single target only, because the die cuts one roll) and the replay lowers the spell's attack bonus, as `RollAttack` does for a weapon.
+The window opens before the roll, so it names the roller and never a total; a roller the bard's player does not see opens none, and in "Sempre" a player's check against an enemy waits for the master's check when no bard could cut it.
+The rolls with no window: a check outside a combat (a group check, a scene check, a trap search, a puzzle hint) has no encounter to hold a window in, and a roll the player leaves to the master (`defer_to_master`) is held when the master rolls it.
+The Help action rolls nothing.
 
 ## The settle step and the gate
 

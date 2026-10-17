@@ -1,0 +1,124 @@
+import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+
+import type { MasterQuestion } from '../../../core/held-rolls/held-questions';
+import { asksLucky, dieOf } from '../../../core/held-rolls/held-roll-offer';
+import {
+  d20Chip,
+  d20Line,
+  questionRule,
+  questionTitle,
+  questionWhat,
+} from '../../../core/held-rolls/held-text';
+import { inspirationDieName, useLabel } from '../../../core/resources/bardic-inspiration';
+
+/** Each question's own heading id: the panel and the rows of the order may both show several. */
+let nextId = 0;
+
+const D20_SIDES = 20;
+
+/**
+ * A question the master reads about someone else's roll, drawn as its own card (outside a combat) or inside the row of the
+ * roller (`layout="row"`): the title, the status ("Brisa responde primeiro · você em 7 s"), what was rolled, the d20 and
+ * the answers. The roller answers first; the buttons wait for the master's time and then answer for the roller
+ * ("Rolar de novo" in the app or a face typed, "Ficar com o 1", or the die's). The question that ended is a polite
+ * line. The seconds of the countdown are not announced: the status line changes only when the question changes.
+ */
+@Component({
+  selector: 'app-held-question',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [MatButtonModule, MatIconModule],
+  templateUrl: './held-question.html',
+  styleUrl: './held-question.scss',
+})
+export class HeldQuestion {
+  readonly question = input.required<MasterQuestion>();
+  readonly layout = input<'row' | 'card'>('card');
+  /** "Digitar o resultado" is allowed (the campaign did not force the app dice). */
+  readonly canType = input(true);
+  /** Who the attack was against, when the page knows ("Goblin chefe"). */
+  readonly target = input('');
+
+  protected readonly titleId = `held-q-${nextId++}`;
+  protected readonly typing = signal(false);
+  protected readonly face = signal(Number.NaN);
+  protected readonly offer = computed(() => this.question().controller.offer());
+  protected readonly phase = computed(() => this.question().phase());
+  protected readonly title = computed(() => {
+    const offer = this.offer();
+    return offer ? questionTitle(offer) : '';
+  });
+  protected readonly heading = computed(() =>
+    this.layout() === 'card' ? `${this.question().roller} · ${this.title()}` : this.title(),
+  );
+  protected readonly what = computed(() => {
+    const offer = this.offer();
+    return offer ? questionWhat(offer, this.target()) : '';
+  });
+  protected readonly rule = computed(() => {
+    const offer = this.offer();
+    return offer ? questionRule(offer) : { lead: '', text: '' };
+  });
+  protected readonly chip = computed(() => {
+    const offer = this.offer();
+    return offer ? d20Chip(offer) : '';
+  });
+  protected readonly line = computed(() => {
+    const offer = this.offer();
+    return offer ? d20Line(offer) : '';
+  });
+  protected readonly lucky = computed(() => asksLucky(this.offer()));
+  /** The size of the die the typed face is for: the d20 of Lucky's reroll, or the Bardic Inspiration die. */
+  protected readonly sides = computed(() =>
+    this.lucky() ? D20_SIDES : (dieOf(this.offer())?.sides ?? 0),
+  );
+  protected readonly dieName = computed(() => inspirationDieName(this.sides()));
+  protected readonly useText = computed(() =>
+    useLabel(this.sides(), dieOf(this.offer())?.fromName ?? ''),
+  );
+  protected readonly faceOk = computed(() => {
+    const f = this.face();
+    return Number.isInteger(f) && f >= 1 && f <= this.sides();
+  });
+  protected readonly waiting = computed(() => this.phase() !== 'ready');
+  protected readonly icon = computed(() =>
+    this.phase() === 'waiting' || this.phase() === 'too-early' ? 'schedule' : 'warning',
+  );
+  protected readonly noteIcon = computed(() => (this.phase() === 'done' ? 'check' : 'info'));
+  protected readonly failure = computed(() => {
+    const q = this.question();
+    return q.controller.refusal() ? '' : q.controller.error();
+  });
+
+  protected rollAgain(): void {
+    void this.question().answer(
+      this.lucky()
+        ? { kind: 'lucky', reroll: true, roll: { inApp: true } }
+        : { kind: 'die', use: true, roll: { inApp: true } },
+    );
+  }
+
+  protected keep(): void {
+    void this.question().answer(
+      this.lucky()
+        ? { kind: 'lucky', reroll: false, roll: null }
+        : { kind: 'die', use: false, roll: null },
+    );
+  }
+
+  protected sendTyped(): void {
+    if (!this.faceOk()) {
+      return;
+    }
+    const roll = { face: this.face() };
+    void this.question().answer(
+      this.lucky() ? { kind: 'lucky', reroll: true, roll } : { kind: 'die', use: true, roll },
+    );
+    this.typing.set(false);
+  }
+
+  protected onFace(event: Event): void {
+    this.face.set((event.target as HTMLInputElement).valueAsNumber);
+  }
+}

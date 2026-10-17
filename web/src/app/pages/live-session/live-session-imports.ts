@@ -13,6 +13,7 @@ import { CombatView } from './combat/combat-view';
 import { FoundTreasures } from './treasure/found-treasures/found-treasures';
 import { GroupCheckCard } from './group-check/group-check-card';
 import { GroupCheckMaster } from './group-check/group-check-master';
+import { HeldRollsPanel } from './held-questions/held-rolls-panel';
 import { HighlightsCard } from './combat/combat-highlights/highlights-card';
 import { LiveToast } from '../../shared/live-toast/live-toast';
 import { MasterLive } from './puzzles/master-live/master-live';
@@ -59,6 +60,7 @@ export const LIVE_SESSION_IMPORTS = [
   FoundTreasures,
   GroupCheckCard,
   GroupCheckMaster,
+  HeldRollsPanel,
   HighlightsCard,
   LiveToast,
   MasterLive,

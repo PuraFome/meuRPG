@@ -25,7 +25,7 @@ import { claimRoute, linkRPC, reservedRPC, revokeLinkRPC, rowOf } from './claim-
 import { authStatePath, boxOf, callRPC, layoutSize, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus, showAllPicks, signIn, type TestUser } from './support';
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { tableForCaster, tableForCreatures } from './creatures-support';
-import { grog, rollsTable, vex } from './combat-rolls-support';
+import { grog, pipo, rollsTable, vex } from './combat-rolls-support';
 import { alliedTable, closeSheet, contestRPC, idOf, typeD20 } from './contests-support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
 import { tableForGold, threeTreasuresRPC, treasureFoundRPC } from './gold-support';
@@ -6803,6 +6803,89 @@ test('rolar com vantagem passa no axe e nas conferências de layout no tema clar
 test('rolar com vantagem passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@PM-06a', '@PM-06b'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanRollModeScreens(browser, 'dark', 390);
+});
+
+/** The master's pending questions of the held rolls (RN-35, RN-18): in a combat, the question inside the row of the roller with
+ * the chip that counts them; outside a combat, the panel above the stage. The roller answers first, so each scan waits until
+ * the master's buttons are enabled (the settled state), never for a fixed time. */
+async function scanHeldQuestionScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `(${colorScheme}, ${width}px)`;
+  const { m, p, campaignId, done } = await rollsTable(
+    browser,
+    `Acessibilidade pergunta pendente ${Date.now()}`,
+    pipo,
+    { weaponKeys: ['equipment:battleaxe'] },
+    { Pipo: 20, 'Goblin 1': 15, 'Capitão Goblin': 5, 'Goblin 2': 4 },
+    { colorScheme, playerWidth: width, masterWidth: width },
+  );
+  try {
+    const enc = await getEncounterRPC(m, campaignId);
+    const id = (label: string) => enc.combatants.find((c) => c.label === label)!.id;
+    const swing = await callRPC(p, 'meurpg.play.v1.CombatService/RollAttack', {
+      campaignId, encounterId: enc.id, attackerId: id('Pipo'), attackKey: 'equipment:battleaxe', targetId: id('Goblin 1'), idempotencyKey: crypto.randomUUID(), d20Face: 1,
+    });
+    expect(swing.ok(), await swing.text()).toBeTruthy();
+    await openSessionPage(m, campaignId);
+    const question = m.getByRole('region', { name: 'Tirou 1: rolar de novo?' });
+    await expect(question.getByRole('button', { name: 'Ficar com o 1' })).toBeEnabled({ timeout: 30_000 });
+    await expectScreenPasses(m, `Pergunta pendente na ordem do combate, o mestre pode responder ${where}`);
+    await question.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await expect(question.getByLabel(/Número que saiu no d20/)).toBeVisible();
+    await expectScreenPasses(m, `Pergunta pendente, digitando o resultado ${where}`);
+  } finally {
+    await done().catch(() => undefined);
+  }
+}
+
+test('as perguntas pendentes na ordem do combate passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-014', '@RN-35'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanHeldQuestionScreens(browser, 'light', 1280);
+});
+
+test('as perguntas pendentes na ordem do combate passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014', '@RN-35'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanHeldQuestionScreens(browser, 'dark', 390);
+});
+
+/** The same questions outside a combat: the "Perguntas pendentes" panel above the stage (a grid on a computer, one open card and
+ * a row for each other question on a phone). */
+async function scanHeldPanelScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `(${colorScheme}, ${width}px)`;
+  const options = { colorScheme, viewport: { width, height: 900 } };
+  const master = await browser.newContext({ ...options, storageState: authStatePath('Mestre Teste') });
+  const player = await browser.newContext({ ...options, storageState: authStatePath('Jogador Teste') });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForScenes(m, p, `Acessibilidade perguntas ${Date.now()}`, true, { raceKey: 'race:halfling', subraceKey: 'subrace:lightfoot-halfling' });
+    campaignId = table.campaignId;
+    await openSceneRPC(m, campaignId, table.cartId);
+    const open = await getOpenSceneRPC(p, campaignId);
+    await rollSceneRPC(p, campaignId, open.scene!.actions[0].id, 1);
+    await openSessionPage(m, campaignId);
+    const panel = m.getByRole('region', { name: 'Perguntas pendentes' });
+    await expect(panel.getByRole('button', { name: 'Ficar com o 1' })).toBeEnabled({ timeout: 30_000 });
+    await expectScreenPasses(m, `Perguntas pendentes fora do combate ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('o painel de perguntas pendentes fora do combate passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-014', '@MR-015', '@RN-35'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanHeldPanelScreens(browser, 'light', 1280);
+});
+
+test('o painel de perguntas pendentes fora do combate passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014', '@MR-015', '@RN-35'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanHeldPanelScreens(browser, 'dark', 390);
 });
 
 /** The rage (PM-07): the chip on the order and the sheet, the damage with its resistance step on the

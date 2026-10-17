@@ -220,7 +220,7 @@ Narrator and NPC lines can be heard; players' lines are text only.
 
 1. The stored file `campaigns/<campaign>/voice/<line>` is served (`Cache-Control: private, no-cache`, `Vary: Cookie`, the line's id as ETag; ranges work).
 2. If none exists, one voice is made at a time per line (`singleflight`; a second request waits for the first and does not pay again), under a server-wide gate that counts the day's voices (`audio_made_at`, Brasília days) against `TTS_DAILY_LIMIT` (`429`, reason `DAILY_LIMIT_REACHED`).
-3. `voice.Generator.Speak` calls Gemini (`GEMINI_TTS_MODEL`) with the narrator's voice or the NPC's (`voice.ForNPC`: a hash of the NPC's id over a short list of voices that speak Portuguese well) and answers a WAV; it is stored like an image and served from then on.
+3. `voice.Generator.Speak` calls Gemini (`GEMINI_TTS_MODEL`) with the narrator's voice or the NPC's (`voice.ForNPC`: a hash of the NPC's id over a short list of voices that speak Portuguese well) and answers a WAV; it is stored like an image and served from then on. The older models answer raw 16-bit PCM (`audio/L16;codec=pcm;rate=…`), which gets a WAV header; the newer ones answer a WAV file (`audio/wav`, or bytes that start with `RIFF`), which is kept byte for byte, never wrapped twice. Either is refused above 10 MiB.
 
 Without a key and a model (and without `TTS_GENERATOR=fake`) the route answers `412` with `failed_precondition`, reason `OFF`, after the readers check, and `ListSessionMessages.voice_enabled` is false.
 The file is never autoplayed by the server's answers: the app plays it only when the reader taps.

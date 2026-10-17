@@ -13,19 +13,18 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { DiceMode } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import type {
-  AnswerOutsideLuckyResponse,
+  AnswerHeldRollResponse,
   GetOutsideInspirationResponse,
 } from '../../../../gen/meurpg/play/v1/resources_pb';
-import { type WithRerolls, luckyText } from '../../../core/combat/lucky';
+import { luckyText } from '../../../core/combat/lucky';
 import { ActionKey } from '../../../core/connect/idempotency';
-import {
-  type InspirationRoll,
-  type LuckyRoll,
-  ResourceClient,
-} from '../../../core/resources/resources-client';
+import { HeldRollController } from '../../../core/held-rolls/held-roll-controller';
+import { type HeldAnswer, asksLucky, heldOfferOf } from '../../../core/held-rolls/held-roll-offer';
+import { HeldVanishWatch } from '../../../core/held-rolls/held-vanish';
+import { settledRoll } from '../../../core/held-rolls/held-roll-result';
+import { ResourceClient } from '../../../core/resources/resources-client';
 import { classResourceErrorMessage } from '../../../core/resources/resources-errors';
-import { InspirationOffer } from './inspiration-offer';
-import { LuckyOfferCard } from './lucky-offer';
+import { HeldRollPrompt } from '../../../shared/held-roll-prompt/held-roll-prompt';
 
 const SECONDS_PER_MINUTE = 60;
 
@@ -38,41 +37,15 @@ export function minutesText(seconds: number): string {
 /** What the block says once a Lucky answer got through: the d20 Lucky rolled again ("Sortudo: 1 → 14") or the 1 kept; then
  * the Bardic Inspiration question when the roll waits for it now (the block shows it on the new roll), the scene check's
  * total, or that the master sees the result. */
-export function luckyAnswerText(res: AnswerOutsideLuckyResponse, reroll: boolean): string {
-  const value = res.result.value;
+export function luckyAnswerText(res: AnswerHeldRollResponse, reroll: boolean): string {
   const again = reroll ? luckyText(settledRoll(res)) || 'Rolado de novo' : 'Você ficou com o 1';
-  if (value?.inspirationOffer) {
+  if (res.next) {
     return `${again}. Agora, a pergunta da Inspiração de Bardo.`;
   }
   const total = res.result.case === 'sceneCheck' ? res.result.value.roll?.roll?.total : undefined;
   return total === undefined
     ? `${again}. O mestre vê o resultado.`
     : `${again}. Seu total: ${total}.`;
-}
-
-/** The d20 a Lucky answer settled, where its path tells it: on the die's question when the roll waits for it now, else on
- * the roll written. */
-function settledRoll(res: AnswerOutsideLuckyResponse): WithRerolls | undefined {
-  const r = res.result;
-  if (r.value?.inspirationOffer) {
-    return r.value.inspirationOffer.d20;
-  }
-  switch (r.case) {
-    case 'sceneCheck':
-      return r.value.roll?.roll;
-    case 'trapSearch':
-    case 'hintTry':
-      return r.value.roll;
-    case 'groupCheck':
-      // A player reads only their own member of the check.
-      return r.value.groupCheck?.members.find((m) => m.roll)?.roll;
-    case 'effectSave':
-      return r.value.result;
-    case 'concentrationSave':
-      return r.value.result?.save;
-    default:
-      return undefined;
-  }
 }
 
 /**
@@ -87,26 +60,26 @@ function settledRoll(res: AnswerOutsideLuckyResponse): WithRerolls | undefined {
 @Component({
   selector: 'app-bardic-block',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [InspirationOffer, LuckyOfferCard, MatButtonModule, MatIconModule],
+  imports: [HeldRollPrompt, MatButtonModule, MatIconModule],
   template: `
     @if (luckyShown()) {
       <section class="block" aria-labelledby="lucky-block-t">
         <h2 id="lucky-block-t" class="t"><mat-icon aria-hidden="true">casino</mat-icon>Sortudo</h2>
-        @if (luckyError()) {
-          <div class="mr-notice mr-notice--danger" role="alert">
-            <mat-icon aria-hidden="true">error</mat-icon>
-            <p>{{ luckyError() }}</p>
-          </div>
-        }
-        @for (offer of state()?.luckyOffers ?? []; track offer.holdId) {
-          <app-lucky-offer
-            [offer]="offer"
+        @if (lucky(); as o) {
+          @if (held.error()) {
+            <div class="mr-notice mr-notice--danger" role="alert">
+              <mat-icon aria-hidden="true">error</mat-icon>
+              <p>{{ held.error() }}</p>
+            </div>
+          }
+          <app-held-roll-prompt
+            [offer]="o"
+            look="card"
             [canApp]="canApp()"
             [canType]="canType()"
             [preferApp]="canApp()"
             [busy]="busy()"
-            (reroll)="answerLucky(offer.holdId, true, $event)"
-            (keep)="answerLucky(offer.holdId, false, null)"
+            (answer)="answer($event)"
           />
         }
         @if (luckyAnswered(); as text) {
@@ -114,13 +87,16 @@ function settledRoll(res: AnswerOutsideLuckyResponse): WithRerolls | undefined {
         }
       </section>
     }
+    @if (vanish.notice(); as notice) {
+      <p class="mine" role="status" data-testid="held-vanished">{{ notice }}</p>
+    }
     @if (shown()) {
       <section class="block" aria-labelledby="bardic-t">
         <h2 id="bardic-t" class="t"><mat-icon aria-hidden="true">music_note</mat-icon>Inspiração de Bardo</h2>
-        @if (error()) {
+        @if (error() || dieError()) {
           <div class="mr-notice mr-notice--danger" role="alert">
             <mat-icon aria-hidden="true">error</mat-icon>
-            <p>{{ error() }}</p>
+            <p>{{ error() || dieError() }}</p>
           </div>
         }
         @if (state(); as s) {
@@ -130,14 +106,14 @@ function settledRoll(res: AnswerOutsideLuckyResponse): WithRerolls | undefined {
               {{ minutes(die.secondsLeft) }} de jogo. Você pode somá-la a uma prova de habilidade, a uma jogada de ataque ou a um teste de resistência que você mesmo rola; ao rolar, o app pergunta. Os testes que o app rola por você, como o de uma magia que mira o seu personagem, não perguntam.
             </p>
           }
-          @for (offer of s.offers; track offer.holdId) {
-            <app-inspiration-offer
-              [offer]="offer"
+          @if (die(); as o) {
+            <app-held-roll-prompt
+              [offer]="o"
+              look="card"
               [canApp]="canApp()"
               [canType]="canType()"
               [busy]="busy()"
-              (use)="answer(offer.holdId, true, $event)"
-              (keep)="answer(offer.holdId, false, null)"
+              (answer)="answer($event)"
             />
           }
           @if (answered(); as text) {
@@ -200,9 +176,26 @@ export class BardicBlock {
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly answered = signal('');
-  /** The Lucky section's own error and what its last answer came to. */
-  protected readonly luckyError = signal('');
+  /** What the last Lucky answer came to. */
   protected readonly luckyAnswered = signal('');
+  /** The question that waits for the character, Lucky's or the die's: a character has one at a time. */
+  protected readonly held = new HeldRollController({
+    send: (holdId, answer, key) => this.api.answerHeldRoll(this.campaignId(), holdId, answer, key),
+    settle: (res, done) => this.say(res, done.answer),
+    busy: this.busy,
+  });
+  /** Tells the player their question was answered by the master when it is gone and they did not answer it here. */
+  protected readonly vanish = new HeldVanishWatch();
+  protected readonly lucky = computed(() => {
+    const asked = this.held.offer();
+    return asksLucky(asked) ? asked : null;
+  });
+  protected readonly die = computed(() => {
+    const asked = this.held.offer();
+    return asked && !asksLucky(asked) ? asked : null;
+  });
+  /** The die section's error: the give's, or the answer's when the question is the die's. */
+  protected readonly dieError = computed(() => (this.die() ? this.held.error() : ''));
   protected readonly minutes = minutesText;
   protected readonly canApp = computed(() => this.diceMode() !== DiceMode.PHYSICAL);
   protected readonly canType = computed(() => this.diceMode() !== DiceMode.APP);
@@ -211,18 +204,16 @@ export class BardicBlock {
     return (
       !!s &&
       (!!s.mine ||
-        s.offers.length > 0 ||
+        this.die() !== null ||
         (s.isBard && !s.combatOpen) ||
         s.held.length > 0 ||
         this.answered() !== '')
     );
   });
   private readonly keys = new ActionKey();
-  /** One key per Lucky answer (roll again this way, or keep the 1): a retry of a lost answer never rolls the d20 twice. */
-  private readonly luckyKeys = new ActionKey();
   /** The Lucky section: a roll waits for its question, or the last answer is still said. */
   protected readonly luckyShown = computed(
-    () => (this.state()?.luckyOffers.length ?? 0) > 0 || this.luckyAnswered() !== '',
+    () => this.lucky() !== null || this.luckyAnswered() !== '',
   );
 
   constructor() {
@@ -235,7 +226,16 @@ export class BardicBlock {
 
   private async load(): Promise<void> {
     try {
-      this.state.set(await this.api.outsideInspiration(this.campaignId()));
+      const state = await this.api.outsideInspiration(this.campaignId());
+      this.state.set(state);
+      if (!this.held.busy()) {
+        // The block lists what the server lists as older fields: the question of the first roll that waits, Lucky's first.
+        const offer =
+          heldOfferOf({ luckyOffer: state.luckyOffers[0] }) ??
+          heldOfferOf({ inspirationOffer: state.offers[0] });
+        this.held.ask(offer);
+        this.vanish.observe(offer);
+      }
     } catch {
       // A hint that did not come back: the block keeps what it shows and reads again on the next one.
     }
@@ -263,71 +263,24 @@ export class BardicBlock {
     }
   }
 
-  /** "Rolar de novo" (rolled in the app, or the typed face) or "Ficar com o 1": the roll is written by its own path with the
-   * new d20, or waits for the Bardic Inspiration question on the new roll, which the block then shows. */
-  protected async answerLucky(
-    holdId: string,
-    reroll: boolean,
-    roll: LuckyRoll | null,
-  ): Promise<void> {
-    if (this.busy()) {
-      return;
-    }
-    this.busy.set(true);
-    this.luckyError.set('');
-    try {
-      const res = await this.api.answerOutsideLucky(
-        this.campaignId(),
-        holdId,
-        reroll,
-        roll,
-        this.luckyKeys.keyFor({ holdId, reroll, roll }),
-      );
-      this.luckyKeys.renew();
-      this.luckyAnswered.set(luckyAnswerText(res, reroll));
-      await this.load();
-    } catch (err) {
-      this.luckyError.set(classResourceErrorMessage(err, 'responder ao Sortudo'));
-      await this.load();
-    } finally {
-      this.busy.set(false);
-    }
+  /** The answer to the question: "Rolar de novo" or "Ficar com o 1" (the roll is written by its own path with the new d20,
+   * or waits for the Bardic Inspiration question on the new roll, which the block then shows), or the die used or kept. The
+   * state is read again either way. */
+  protected async answer(answer: HeldAnswer): Promise<void> {
+    await this.held.answer(answer);
+    await this.load();
   }
 
-  protected async answer(
-    holdId: string,
-    use: boolean,
-    roll: InspirationRoll | null,
-  ): Promise<void> {
-    if (this.busy()) {
+  /** What the block says once an answer got through. */
+  private say(res: AnswerHeldRollResponse, answer: HeldAnswer): void {
+    if (answer.kind === 'lucky') {
+      this.luckyAnswered.set(luckyAnswerText(res, answer.reroll));
       return;
     }
-    this.busy.set(true);
-    this.error.set('');
-    try {
-      const res = await this.api.answerOutsideInspiration(
-        this.campaignId(),
-        holdId,
-        use,
-        roll,
-        this.keys.keyFor({ holdId, use, roll }),
-      );
-      this.keys.renew();
-      const total =
-        res.result.case === 'sceneCheck' ? res.result.value.roll?.roll?.total : undefined;
-      this.answered.set(
-        total === undefined
-          ? use
-            ? 'Dado somado. O mestre vê o resultado.'
-            : 'Dado guardado. O mestre vê o resultado.'
-          : `${use ? 'Dado somado' : 'Dado guardado'}. Seu total: ${total}.`,
-      );
-      await this.load();
-    } catch (err) {
-      this.error.set(classResourceErrorMessage(err, 'responder sobre a Inspiração de Bardo'));
-      await this.load();
-    } finally {
-      this.busy.set(false);
-    }
+    const total = res.result.case === 'sceneCheck' ? res.result.value.roll?.roll?.total : undefined;
+    const word = answer.use ? 'Dado somado' : 'Dado guardado';
+    this.answered.set(
+      total === undefined ? `${word}. O mestre vê o resultado.` : `${word}. Seu total: ${total}.`,
+    );
   }
 }

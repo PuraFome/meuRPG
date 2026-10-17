@@ -69,6 +69,8 @@ export interface LiveStreamHandlers {
   onSessionMessage?(message: SessionMessage): void;
   /** `master_typing` (MR-051): show "O mestre está escrevendo…" for this many seconds; it carries no text. */
   onMasterTyping?(expiresInSeconds: number): void;
+  /** `held_rolls_changed`: the questions of the held rolls changed (content-free); read the list again. */
+  onHeldRollsChanged?(): void;
   /** `calling_you`: the master is calling this player; the page alerts (vibration, chime, shake) and says it. */
   onCallingYou?(): void;
   /** `session_ended`, or `NO_OPEN_SESSION` when (re)connecting. */

@@ -208,6 +208,15 @@ describe('LiveSessionSourceLive.watch', () => {
     ).toEqual(['ready', 'groupCheckChanged']);
   });
 
+  it('maps `held_rolls_changed` to its own event, with no content: the questions are read with ListHeldRolls', async () => {
+    expect(
+      await events([
+        create(WatchGameSessionResponseSchema, { event: { case: 'ready', value: {} } }),
+        create(WatchGameSessionResponseSchema, { event: { case: 'heldRollsChanged', value: {} } }),
+      ]),
+    ).toEqual(['ready', 'heldRollsChanged']);
+  });
+
   it("maps `puzzle_changed` to its own event, with the puzzle's ID and nothing else (MR-038)", async () => {
     const out = [];
     const responses = [

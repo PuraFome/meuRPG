@@ -95,6 +95,7 @@ export class LiveSessionEvents {
       onGroupCheckChanged: () => state.groupCheckTick.update((n) => n + 1),
       onSessionMessage: (message) => void parts.conversation.receive(message),
       onMasterTyping: (seconds) => parts.conversation.masterTyping(seconds),
+      onHeldRollsChanged: () => state.heldRollsTick.update((n) => n + 1),
       onEnded: () => loader.ended(),
       onFatal: (kind) => {
         if (kind === 'signed-out') {

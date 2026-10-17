@@ -12,10 +12,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import type {
-  LuckyOffer,
-  OutsideInspirationOffer,
-} from '../../../../../gen/meurpg/play/v1/combat_pb';
+import type { HeldRollOffer } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import { treatedSentence } from '../../../../core/combat/combat-dice';
 import { luckyText } from '../../../../core/combat/lucky';
@@ -23,10 +20,9 @@ import type { ExtraDieField } from '../../../../core/effects/effects';
 import type { HintTry } from '../../../../core/puzzles/puzzle-play';
 import type { HintDie } from '../../../../core/puzzles/puzzles-client';
 import { checkFaces, hasModeInfo } from '../../../../core/play/check-roll';
-import type { InspirationRoll, LuckyRoll } from '../../../../core/resources/resources-client';
+import type { HeldAnswer } from '../../../../core/held-rolls/held-roll-offer';
 import { ExtraDice } from '../../effects/extra-dice/extra-dice';
-import { InspirationOffer } from '../../inspiration/inspiration-offer';
-import { LuckyOfferCard } from '../../inspiration/lucky-offer';
+import { HeldRollPrompt } from '../../../../shared/held-roll-prompt/held-roll-prompt';
 import { MultiRoll, type RollField } from '../../combat/multi-roll/multi-roll';
 import { RollPicker } from '../../../../shared/roll-picker/roll-picker';
 import { CheckMode } from '../../scene/check-mode/check-mode';
@@ -46,8 +42,7 @@ import { CheckMode } from '../../scene/check-mode/check-mode';
   imports: [
     CheckMode,
     ExtraDice,
-    InspirationOffer,
-    LuckyOfferCard,
+    HeldRollPrompt,
     MatButtonModule,
     MatIconModule,
     MultiRoll,
@@ -72,26 +67,16 @@ import { CheckMode } from '../../scene/check-mode/check-mode';
         <app-check-mode [mode]="r.mode" [sources]="r.sources" [faces]="faces(r)" />
       }
     }
-    @if (luckyOffer(); as l) {
-      <!-- The d20 of the try shows a 1 and the character is a halfling: Lucky is asked first (SRD 5.1). -->
-      <app-lucky-offer
-        [offer]="l"
+    @if (held(); as h) {
+      <!-- The d20 of the try is rolled and kept: a halfling's 1 asks Lucky first, then a Bardic Inspiration die; nothing is written until the player answers (SRD 5.1). -->
+      <app-held-roll-prompt
+        [offer]="h"
+        look="card"
         [canApp]="canApp()"
         [canType]="canType()"
         [preferApp]="prefersApp()"
         [busy]="busy()"
-        (reroll)="luckyAnswered.emit({ reroll: true, die: $event })"
-        (keep)="luckyAnswered.emit({ reroll: false, die: null })"
-      />
-    } @else if (offer(); as o) {
-      <!-- The d20 of the try is rolled and kept; nothing is written until the player answers (SRD 5.1, Bardic Inspiration). -->
-      <app-inspiration-offer
-        [offer]="o"
-        [canApp]="canApp()"
-        [canType]="canType()"
-        [busy]="busy()"
-        (use)="answered.emit({ use: true, die: $event })"
-        (keep)="answered.emit({ use: false, die: null })"
+        (answer)="answered.emit($event)"
       />
     } @else if (canTry()) {
       @if (typing() && extraFields().length > 0) {
@@ -189,14 +174,12 @@ export class HintTryControl {
 
   /** A try with the d20 rolled in the app. */
   readonly rolled = output<HintDie>();
-  /** The question about the Bardic Inspiration die the try waits on, when the character holds one. */
-  readonly offer = input<OutsideInspirationOffer | null>(null);
-  /** The player's answer about the die: use it (rolled in the app, or its typed face) or keep it. */
-  readonly answered = output<{ readonly use: boolean; readonly die: InspirationRoll | null }>();
-  /** The Lucky question the try waits on, when a halfling's d20 shows a 1: it comes before the die's. */
-  readonly luckyOffer = input<LuckyOffer | null>(null);
-  /** The player's answer to Lucky: roll the d20 again (in the app, or its typed face) or keep the 1. */
-  readonly luckyAnswered = output<{ readonly reroll: boolean; readonly die: LuckyRoll | null }>();
+  /** The question the try waits on: the halfling's Lucky about a 1 ("Tirou 1: rolar de novo?") first, then the Bardic
+   * Inspiration die the character holds. */
+  readonly held = input<HeldRollOffer | null>(null);
+  /** The player's answer to the question: roll the d20 again or keep the 1, use the die (rolled in the app, or its typed
+   * face) or keep it. */
+  readonly answered = output<HeldAnswer>();
   /** A try with the face of a real die. */
   readonly typed = output<HintDie>();
 

@@ -121,6 +121,9 @@ func (s *Service) adjustHitPointsWrite(ctx context.Context, c *combatTx, m authz
 	if err := c.q.SetCombatantHitPoints(ctx, playdb.SetCombatantHitPointsParams{ID: target.ID, HpCurrent: &after.HP, HpTemp: &after.Temp, Defeated: after.Defeated}); err != nil {
 		return nil, fmt.Errorf("save the hit points: %w", err)
 	}
+	if err := s.endConcentrationOfDownNPC(ctx, c, target, after); err != nil {
+		return nil, err
+	}
 	if err := touch(ctx, c); err != nil {
 		return nil, err
 	}
@@ -131,6 +134,18 @@ func (s *Service) adjustHitPointsWrite(ctx context.Context, c *combatTx, m authz
 		Delta:  after.HP - before.HP,
 		Before: &before, After: &after,
 	}, nil
+}
+
+// endConcentrationOfDownNPC ends the concentration of an NPC the change brought to 0 hit points: it
+// is unconscious and stops concentrating with no save (SRD 5.1, "Duration"), the same end a damage to
+// 0 has (endConcentrationAtZero), with the effects, the creatures and the log line that follow. The
+// event is written before the adjustment's own, grouped by the combatant, and the undo of the
+// adjustment takes it back.
+func (s *Service) endConcentrationOfDownNPC(ctx context.Context, c *combatTx, target playdb.Combatant, after hpState) error {
+	if after.HP > 0 || target.ConcentrationSpell == nil {
+		return nil
+	}
+	return s.endConcentrationAtZero(ctx, c, target, target.ID)
 }
 
 // locateHitPointHolder finds the combatant, which has to keep its hit points in the combat.

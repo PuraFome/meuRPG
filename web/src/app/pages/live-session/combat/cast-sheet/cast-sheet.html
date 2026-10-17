@@ -10,28 +10,17 @@
       </div>
     }
 
-    @if (questions.luckyOffer(); as l) {
-      <!-- The d20 of the spell attack shows a 1 and the caster is a halfling: it is kept, nothing is spent, and Lucky asks first (SRD 5.1). -->
-      <p class="lucky-d20">{{ questions.luckyHeld() }}</p>
-      <app-lucky-prompt
-        [offer]="l"
+    @if (questions.held.offer(); as o) {
+      <!-- The d20 of the spell attack is rolled and kept; nothing is spent until the player answers: the halfling's 1 first, then the Bardic Inspiration die (SRD 5.1). -->
+      <app-held-roll-prompt
+        [offer]="o"
+        look="sheet"
         [canApp]="canApp"
         [canType]="canTypeDamage"
         [preferApp]="preferApp"
         [busy]="s.busy()"
         [(typing)]="s.typing"
-        (reroll)="questions.answerLucky(true, $event)"
-        (keep)="questions.answerLucky(false, null)"
-      />
-    } @else if (questions.offer(); as o) {
-      <!-- The d20 of the spell attack is rolled and kept; nothing is spent until the player answers (SRD 5.1, Bardic Inspiration). -->
-      <app-inspiration-offer
-        [offer]="o"
-        [canApp]="canApp"
-        [canType]="canTypeDamage"
-        [busy]="s.busy()"
-        (use)="questions.answerDie(true, $event)"
-        (keep)="questions.answerDie(false, null)"
+        (answer)="questions.held.answer($event)"
       />
     } @else if (!s.done()) {
       @if (ch.rows().length) {

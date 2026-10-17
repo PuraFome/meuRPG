@@ -17,12 +17,15 @@ import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 import { Code } from '@connectrpc/connect';
 
+import { GameSessionBlockedReason } from '../../../../gen/meurpg/play/v1/play_pb';
+
 import { lockedSheetCountLabel } from '../../../core/characters/character-labels';
 import { describeConnectError } from '../../../core/connect/connect-errors';
 import { ActionKey } from '../../../core/connect/idempotency';
 import { LivePill } from '../../../shared/live-pill/live-pill';
 import { COPIED_FOR_MS, copyText, sessionLink } from '../../../shared/session-link/session-link';
 import { formatSessionStart } from '../../../shared/session-time/session-time';
+import { GAME_SESSION_BLOCKED_TEXT } from '../../../core/play/game-session-blocked';
 import { OpenSessions } from '../../../core/play/open-sessions';
 import { CampaignSessions } from './campaign-sessions';
 import {
@@ -216,7 +219,9 @@ export class GameSessionCard implements OnInit, OnDestroy {
         status: 'error',
         message: describeConnectError(err, {
           ...MASTER_ONLY_MESSAGES,
-          [Code.FailedPrecondition]: 'Já existe uma sessão em andamento nesta campanha.',
+          [Code.FailedPrecondition]: GAME_SESSION_BLOCKED_TEXT.get(
+            GameSessionBlockedReason.SESSION_ALREADY_OPEN,
+          ),
         }),
       });
     }
@@ -247,7 +252,9 @@ export class GameSessionCard implements OnInit, OnDestroy {
         status: 'error',
         message: describeConnectError(err, {
           ...MASTER_ONLY_MESSAGES,
-          [Code.FailedPrecondition]: 'Não há nenhuma sessão em andamento nesta campanha.',
+          [Code.FailedPrecondition]: GAME_SESSION_BLOCKED_TEXT.get(
+            GameSessionBlockedReason.NO_OPEN_SESSION,
+          ),
         }),
       });
     }
