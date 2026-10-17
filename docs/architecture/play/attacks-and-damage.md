@@ -103,6 +103,8 @@ The master sees the damage by part and takes an extra out with a reason (`Remove
 Undoing a damage roll gives back the slot, the once-per-turn marks and the rolls.
 An area spell's damage is one roll for the whole cast: it settles every pending damage of the cast still waiting for a roll with the same damage type, in the combat's order (`sortByCombatOrder`), so `settled` in the event and `cast_pending_damages` in the answer read the same way on every run.
 
+The rays of Scorching Ray are not an area: each hit opens a pending damage with no `cast_id`, so several rays at one creature are several separate rolls, listed in `cast.pending_damages` in the order of the rays (the request's target order, a target's rays together).
+
 ## Roll modes
 
 Every d20 the app rolls for a creature (weapon, spell and creature attacks, spell saves, traps, puzzle hints, scene checks, trap searches) goes through one rule: the server works out the sources of advantage and disadvantage (`rules/combat/advantage.go`), and the mode follows SRD 5.1 "Advantage and Disadvantage": one or more of each cancel to a normal roll, and sources of the same kind never add up.

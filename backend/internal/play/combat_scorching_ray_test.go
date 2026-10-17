@@ -9,7 +9,7 @@ import (
 )
 
 // rayTargets lists a spell's targets with the rays each one is given (the target's darts field).
-func rayTargets(a *armed, t *testing.T, rays map[string]int32, order ...string) []*playv1.SpellTarget {
+func rayTargets(t *testing.T, a *armed, rays map[string]int32, order ...string) []*playv1.SpellTarget {
 	t.Helper()
 	var out []*playv1.SpellTarget
 	for _, label := range order {
@@ -25,8 +25,10 @@ func TestScorchingRayAllRaysAtOneTarget(t *testing.T) {
 	a := newTableCasters(t)
 	e := a.castersFight(t, 2)
 	goblin := a.id(t, "Goblin 1")
-	a.h.roller.queue(20, 2, 10) // against armor class 15 with +6: a critical hit, a miss, a hit
-	cast := a.mustCast(t, a.ana, e, "Pensantus", scorchingRay, slotOfLevel(2), rayTargets(a, t, map[string]int32{"Goblin 1": 3}, "Goblin 1"), poolInApp)
+	// An enemy stands next to the caster, so every ray rolls two d20 and keeps the lower. Against armor class
+	// 15 with +7: a critical hit, a miss, a hit.
+	a.h.roller.queue(20, 20, 2, 2, 10, 10)
+	cast := a.mustCast(t, a.ana, e, "Pensantus", scorchingRay, slotOfLevel(2), rayTargets(t, a, map[string]int32{"Goblin 1": 3}, "Goblin 1"), poolInApp)
 	targets := cast.GetCast().GetTargets()
 	if len(targets) != 3 {
 		t.Fatalf("rays = %d, want 3 attack rolls", len(targets))
@@ -55,9 +57,9 @@ func TestScorchingRayRaysSplitBetweenTargets(t *testing.T) {
 	t.Parallel()
 	a := newTableCasters(t)
 	e := a.castersFight(t, 2)
-	a.h.roller.queue(10, 10, 10, 10)
+	a.h.roller.queue(10, 10, 10, 10, 10, 10, 10, 10) // two d20 for each ray, the caster has an enemy next to it
 	rays := map[string]int32{"Goblin 1": 3, "Goblin 2": 1}
-	cast := a.mustCast(t, a.ana, e, "Pensantus", scorchingRay, slotOfLevel(3), rayTargets(a, t, rays, "Goblin 1", "Goblin 2"), poolInApp)
+	cast := a.mustCast(t, a.ana, e, "Pensantus", scorchingRay, slotOfLevel(3), rayTargets(t, a, rays, "Goblin 1", "Goblin 2"), poolInApp)
 	var got []string
 	for _, tg := range cast.GetCast().GetTargets() {
 		got = append(got, tg.GetCombatantId())
@@ -80,8 +82,8 @@ func TestScorchingRayDamagesLandOneByOne(t *testing.T) {
 	t.Parallel()
 	a := newTableCasters(t)
 	e := a.castersFight(t, 2)
-	a.h.roller.queue(10, 10, 10)
-	cast := a.mustCast(t, a.ana, e, "Pensantus", scorchingRay, slotOfLevel(2), rayTargets(a, t, map[string]int32{"Goblin 1": 3}, "Goblin 1"), poolInApp)
+	a.h.roller.queue(10, 10, 10, 10, 10, 10)
+	cast := a.mustCast(t, a.ana, e, "Pensantus", scorchingRay, slotOfLevel(2), rayTargets(t, a, map[string]int32{"Goblin 1": 3}, "Goblin 1"), poolInApp)
 	first := cast.GetCast().GetPendingDamages()[0]
 	a.h.roller.queue(1, 1)
 	res := a.mustDamage(t, a.ana, e, first.GetId(), inAppDamage)
@@ -99,12 +101,12 @@ func TestScorchingRayRefusals(t *testing.T) {
 		slot    int32
 		targets []*playv1.SpellTarget
 	}{
-		"more rays than the circle gives":      {2, rayTargets(a, t, map[string]int32{"Goblin 1": 4}, "Goblin 1")},
-		"more rays over several targets":       {2, rayTargets(a, t, map[string]int32{"Goblin 1": 2, "Goblin 2": 2}, "Goblin 1", "Goblin 2")},
+		"more rays than the circle gives":      {2, rayTargets(t, a, map[string]int32{"Goblin 1": 4}, "Goblin 1")},
+		"more rays over several targets":       {2, rayTargets(t, a, map[string]int32{"Goblin 1": 2, "Goblin 2": 2}, "Goblin 1", "Goblin 2")},
 		"more targets than rays":               {2, a.at(t, "Goblin 1", "Goblin 2", "Goblin 3", "Goblin 4")},
 		"no target":                            {2, nil},
-		"a negative number of rays":            {2, rayTargets(a, t, map[string]int32{"Goblin 1": -1}, "Goblin 1")},
-		"more rays than the upcast circle has": {3, rayTargets(a, t, map[string]int32{"Goblin 1": 5}, "Goblin 1")},
+		"a negative number of rays":            {2, rayTargets(t, a, map[string]int32{"Goblin 1": -1}, "Goblin 1")},
+		"more rays than the upcast circle has": {3, rayTargets(t, a, map[string]int32{"Goblin 1": 5}, "Goblin 1")},
 	}
 	for name, tc := range tests {
 		_, err := a.cast(t, a.ana, e, "Pensantus", scorchingRay, slotOfLevel(tc.slot), tc.targets, poolInApp)
@@ -122,6 +124,6 @@ func TestScorchingRayTypedD20FitsOneRay(t *testing.T) {
 	t.Parallel()
 	a := newTableCasters(t)
 	e := a.castersFight(t, 2)
-	_, err := a.cast(t, a.ana, e, "Pensantus", scorchingRay, slotOfLevel(2), rayTargets(a, t, map[string]int32{"Goblin 1": 2}, "Goblin 1"), d20Face(12))
+	_, err := a.cast(t, a.ana, e, "Pensantus", scorchingRay, slotOfLevel(2), rayTargets(t, a, map[string]int32{"Goblin 1": 2}, "Goblin 1"), d20Face(12))
 	wantCode(t, "a typed d20 for two rays at one target", err, connect.CodeInvalidArgument)
 }

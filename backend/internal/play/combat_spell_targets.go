@@ -97,7 +97,7 @@ func (sc *spellTargetScene) targetsOf(e spellTargetEntry, sp link.Spell) *playv1
 func dartsOfSlots(sp link.Spell, slots []*rulesv1.SlotChoice) []*playv1.DartsAtSlot {
 	var out []*playv1.DartsAtSlot
 	for _, slot := range slots {
-		if n := dartsOf(sp, int(slot.GetLevel())); n > 0 && !slices.ContainsFunc(out, func(d *playv1.DartsAtSlot) bool { return d.GetSlotLevel() == slot.GetLevel() }) {
+		if n := sharesAt(sp, int(slot.GetLevel())); n > 0 && !slices.ContainsFunc(out, func(d *playv1.DartsAtSlot) bool { return d.GetSlotLevel() == slot.GetLevel() }) {
 			out = append(out, &playv1.DartsAtSlot{SlotLevel: slot.GetLevel(), Darts: clamp32(n, 0, maxDartsAtSlot)})
 		}
 	}

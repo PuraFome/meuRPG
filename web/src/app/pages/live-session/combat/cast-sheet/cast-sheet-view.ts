@@ -134,7 +134,13 @@ export function targetsMissingText(
   canApp: boolean,
 ): string {
   if (rule.kind === 'darts') {
-    return dartsPlaced(have.dealt) === have.darts ? '' : dartsStatus(have.darts, have.dealt);
+    if (dartsPlaced(have.dealt) !== have.darts) {
+      return dartsStatus(have.darts, have.dealt, rule.rays);
+    }
+    // One typed d20 stands for one attack: several rays are rolled in the app.
+    return kind === 'attack' && rule.rays && !canApp && have.darts > 1
+      ? 'Com dados físicos, mande um raio por vez.'
+      : '';
   }
   if ((rule.kind === 'single' || rule.kind === 'multi') && have.chosen < rule.min) {
     return rule.kind === 'single' ? 'Escolha o alvo.' : 'Escolha pelo menos um alvo.';

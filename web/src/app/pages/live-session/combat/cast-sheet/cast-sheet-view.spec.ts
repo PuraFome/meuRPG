@@ -228,6 +228,17 @@ describe('targetsMissingText', () => {
     expect(targetsMissingText(rule('darts'), 'darts', have(0, [['a', 1]]), true)).not.toBe('');
   });
 
+  it('asks for the rays of Raio Ardente, all to one target if wanted, one typed d20 for one ray only', () => {
+    const rays: TargetRule = { kind: 'darts', min: 1, max: 3, rays: true };
+    expect(targetsMissingText(rays, 'attack', have(0, [['a', 1]]), true)).toBe(
+      'Distribua todos os raios: 1 de 3.',
+    );
+    expect(targetsMissingText(rays, 'attack', have(0, [['a', 3]]), true)).toBe('');
+    expect(targetsMissingText(rays, 'attack', have(0, [['a', 3]]), false)).toBe(
+      'Com dados físicos, mande um raio por vez.',
+    );
+  });
+
   it('asks for one target, or at least one of several', () => {
     expect(targetsMissingText(rule('single'), 'save', have(0), true)).toBe('Escolha o alvo.');
     expect(targetsMissingText(rule('multi'), 'save', have(0), true)).toBe(
