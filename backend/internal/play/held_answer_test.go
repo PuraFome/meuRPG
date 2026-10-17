@@ -1,6 +1,7 @@
 package play
 
 import (
+	"slices"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -107,4 +108,26 @@ func TestTheDieOfAnAnswerIsTheRollersOwn(t *testing.T) {
 	}
 	_, err = a.answer(t, a.master, e, first.GetInspirationOffer().GetHoldId(), typed10)
 	wantCode(t, "the first copy's answer with a 10", err, connect.CodeInvalidArgument)
+}
+
+// TestAHeldAttackKeepsTheDieTypedAsAListOfOne: a single d20 typed as `d20_faces` of one face (the request allows it) is
+// kept as such in the request the hold keeps, or the answer would run the attack again with no roll at all.
+func TestAHeldAttackKeepsTheDieTypedAsAListOfOne(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		req   *playv1.RollAttackRequest
+		faces []int
+		want  []int32
+	}{
+		"a list of one":         {&playv1.RollAttackRequest{D20Faces: []int32{14}}, []int{14}, []int32{14}},
+		"a pair":                {&playv1.RollAttackRequest{D20Faces: []int32{14, 3}}, []int{14, 3}, []int32{14, 3}},
+		"a pair rolled in app":  {&playv1.RollAttackRequest{Roll: &playv1.RollAttackRequest_RollInApp{RollInApp: true}}, []int{14, 3}, []int32{14, 3}},
+		"one die rolled in app": {&playv1.RollAttackRequest{Roll: &playv1.RollAttackRequest_RollInApp{RollInApp: true}}, []int{14}, nil},
+		"one die typed":         {&playv1.RollAttackRequest{Roll: &playv1.RollAttackRequest_D20Face{D20Face: 14}}, []int{14}, nil},
+	} {
+		pinAttackFaces(tc.req, tc.faces)
+		if got := tc.req.GetD20Faces(); !slices.Equal(got, tc.want) {
+			t.Errorf("%s: kept d20_faces = %v, want %v", name, got, tc.want)
+		}
+	}
 }

@@ -67,10 +67,31 @@ func (s *Service) answerHeld(ctx context.Context, m authz.Membership, req answer
 		return nil, err
 	}
 	out, err := s.rerunHeld(ctx, h, a, state)
-	if err == nil && state != answerSettled {
+	if err != nil {
+		return nil, s.lostTheRace(ctx, h, req, err)
+	}
+	if state != answerSettled {
 		s.publishHeldRollsChanged(h.CampaignID, s.holdUsers(ctx, h)...)
 	}
-	return out, err
+	return out, nil
+}
+
+// lostTheRace says an answer that failed was too late when the roll was answered by another answer meanwhile (the
+// player and the master answering at once): the first answer wins, and this one is told the roll was answered, not
+// whichever error the path's own write gave on its retry (the key the first one wrote its event under).
+func (s *Service) lostTheRace(ctx context.Context, h heldRoll, req answerRequest, err error) error {
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		return err
+	}
+	now, rerr := newHeldStores(s.queries).byID(ctx, holdRef{Table: h.table, Campaign: h.CampaignID, Encounter: h.EncounterID, ID: h.ID})
+	if rerr != nil {
+		return err
+	}
+	answeredBy := func(key *string) bool { return key != nil && *key != req.key }
+	if answeredBy(now.AnswerKey) || (answeredBy(now.LuckyAnswerKey) && now.AnswerKey == nil && req.question == askLucky) {
+		return errAnsweredAlready()
+	}
+	return err
 }
 
 // holdUsers are the users a change of a hold is for besides the master: who rolled, and the player of its combatant.

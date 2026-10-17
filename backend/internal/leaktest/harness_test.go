@@ -294,6 +294,7 @@ type person struct {
 	treasure   mapsv1connect.TreasureServiceClient
 	xp         progressionv1connect.ProgressionServiceClient
 	notes      notesv1connect.NotesServiceClient
+	resources  playv1connect.ResourceServiceClient
 }
 
 func (s *stack) newPerson(name string) *person {
@@ -333,6 +334,7 @@ func (s *stack) personWith(name, id string) *person {
 		treasure:   mapsv1connect.NewTreasureServiceClient(c, url),
 		xp:         progressionv1connect.NewProgressionServiceClient(c, url),
 		notes:      notesv1connect.NewNotesServiceClient(c, url),
+		resources:  playv1connect.NewResourceServiceClient(c, url),
 	}
 }
 
