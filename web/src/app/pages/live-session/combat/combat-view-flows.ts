@@ -1,19 +1,14 @@
 import { Directive } from '@angular/core';
 import {
   CombatEffect,
-  DeathSaveOutcome,
   CombatantSide,
   CoverDegree,
   type Encounter,
   type OpportunityOffer,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
-import { type AttackDie, newKey } from '../../../core/combat/combat-client';
+import { newKey } from '../../../core/combat/combat-client';
 import { type MineTab, membersToEnd } from '../../../core/combat/mine';
-import { outcomeText, saveAnnouncement } from '../../../core/combat/death-saves';
-import { showOfDice, showOfDie } from '../../../shared/roll-overlay/roll-animator';
 import { currentCombatant } from '../../../core/combat/combat-view';
-import { initiativeLine } from '../../../core/combat/combat-derived';
-import { type DeathSaveRoll } from './death-save-due/death-save-due';
 import { type RiderPick } from './hit-rider/hit-rider-card';
 import { type MasterAnswer } from './opportunity/opportunity-card';
 import {
@@ -22,118 +17,14 @@ import {
 } from '../../../shared/start-combat/start-combat-dialog';
 import { CombatViewPartsDirective } from './combat-view-parts';
 
-/** The d20 the initiative is rolled with. */
-const INITIATIVE_DIE = 20;
-/** The rest of the screen's calls: the death saves, the rage, the form, the initiative, the opportunity attacks and
- * the move. */
+/** The rest of the screen's calls: the form, the opportunity attacks, the sides and the move. */
 @Directive()
 export abstract class CombatViewFlowsDirective extends CombatViewPartsDirective {
-  /** The death save of the player's own turn (RN-03, RN-18 per roll). */
-  protected async rollDeathSave(die: AttackDie): Promise<void> {
-    const own = this.own();
-    if (!own) {
-      return;
-    }
-    const text = await this.rollDeathSaveOf(own.id, own.label, die);
-    if (text) {
-      this.deathResult.set(text);
-    }
-  }
-
-  /** The master rolls the death save of a player who is not there (the server accepts the master, RN-03). */
-  protected async rollMasterDeathSave(roll: DeathSaveRoll): Promise<void> {
-    const who = this.encounter()?.combatants.find((c) => c.id === roll.id);
-    if (!who) {
-      return;
-    }
-    this.passAsking.set(null);
-    const text = await this.rollDeathSaveOf(who.id, who.label, roll.die);
-    if (text) {
-      this.masterDeathResult.set(text);
-    }
-  }
-
-  /** One death save call, with the dice animation; the sentence it announced, or '' when the call failed. */
-  protected async rollDeathSaveOf(id: string, label: string, die: AttackDie): Promise<string> {
-    let text = '';
-    await this.calls.run(async (e) => {
-      const key = this.deathKey.keyFor([e.id, id, die]);
-      const res = await this.api.rollDeathSave(this.campaignId(), e.id, id, die, key);
-      this.deathKey.renew();
-      text = saveAnnouncement(res.save, label);
-      // The death save, as the line under the sheet tells it (hidden saves arrive without a roll: nothing plays).
-      const show = showOfDice('Teste contra a morte', res.save.roll, {
-        withTotal: true,
-        outcome: {
-          word: outcomeText(res.save.outcome),
-          good:
-            res.save.outcome === DeathSaveOutcome.SUCCESS ||
-            res.save.outcome === DeathSaveOutcome.REVIVED,
-        },
-        critical: res.save.outcome === DeathSaveOutcome.REVIVED,
-        fumble: res.save.outcome === DeathSaveOutcome.CRITICAL_FAILURE,
-      });
-      if (show) {
-        this.animator.play(show);
-      }
-      if (res.save.outcome === DeathSaveOutcome.REVIVED && id === this.own()?.id) {
-        this.actionNote.set(text);
-      }
-      return res.encounter;
-    });
-    return text;
-  }
-
-  /** The master's "Confirmar a morte" (ConfirmDeath): the character is dead for good. */
-  protected async confirmDeath(id: string): Promise<void> {
-    await this.calls.run(async (e) => {
-      const res = await this.api.confirmDeath(
-        this.campaignId(),
-        e.id,
-        id,
-        this.confirmDeathKey.keyFor([e.id, id]),
-      );
-      this.confirmDeathKey.renew();
-      return res;
-    });
-  }
-
-  /** "Voltar e atacar" (`endRage` false) or "Deixar a fúria acabar": the answer to the rage question. */
-  protected async answerRage(id: string, endRage: boolean): Promise<void> {
-    // "Deixar a fúria acabar" ends the rage and then passes the turn, in one tap, as the
-    // question says: the server only ends the rage, so the turn goes in the same call.
-    await this.calls.run(async (e) => {
-      const answered = await this.api.answerRageEnd(this.campaignId(), e.id, id, endRage);
-      if (!endRage) {
-        return answered;
-      }
-      this.state().apply(answered);
-      return this.api.endTurn(this.campaignId(), e.id, id, false, answered.round);
-    });
-  }
-
   /** "Técnica da Mão Aberta" and "Golpe Atordoante": the monk's answer to an offer after a hit. */
   protected answerRider(pick: RiderPick): Promise<boolean> {
     return this.calls.run((e) =>
       this.api.useHitRider(this.campaignId(), e.id, pick.id, pick.choice),
     );
-  }
-
-  /** "Encerrar fúria": the bonus action. */
-  protected endRageOf(id: string): Promise<boolean> {
-    return this.calls.run((e) => this.api.endRage(this.campaignId(), e.id, id));
-  }
-
-  protected deathLaterFor(id: string): void {
-    this.deathLater.update((s) => new Set(s).add(id));
-  }
-
-  protected deathAskAgain(id: string): void {
-    this.deathLater.update((s) => {
-      const next = new Set(s);
-      next.delete(id);
-      return next;
-    });
   }
 
   /** "Encerrar a parte dos Lobos" / "Encerrar a vez do Nanquim": the part of every member of the tab that still acts, one call each (a joint turn ends part by part). */
@@ -160,35 +51,6 @@ export abstract class CombatViewFlowsDirective extends CombatViewPartsDirective 
 
   protected endCombat(): Promise<boolean> {
     return this.calls.run((e) => this.api.end(this.campaignId(), e.id));
-  }
-
-  protected submitFace(combatantId: string, face: number): Promise<boolean> {
-    return this.calls.run((e) =>
-      this.api.submitInitiative(this.campaignId(), e.id, combatantId, { face }),
-    );
-  }
-
-  protected async rollInApp(combatantId: string): Promise<boolean> {
-    const done = await this.calls.run((e) =>
-      this.api.submitInitiative(this.campaignId(), e.id, combatantId, { inApp: true }),
-    );
-    if (done) {
-      this.animateInitiative(combatantId);
-    }
-    return done;
-  }
-
-  /** The initiative d20 the app just rolled for the player's own combatant, as the initiative card tells it (d20 + bonus = total). */
-  protected animateInitiative(combatantId: string): void {
-    const shown = initiativeLine(this.encounter()?.combatants.find((x) => x.id === combatantId));
-    const show = shown && showOfDie('Iniciativa', INITIATIVE_DIE, shown.face, shown.line);
-    if (show) {
-      this.animator.play(show);
-    }
-  }
-
-  protected setOrder(ids: string[]): Promise<boolean> {
-    return this.calls.run((e) => this.api.setOrder(this.campaignId(), e.id, ids));
   }
 
   protected reveal(change: { id: string; hidden: boolean }): Promise<boolean> {

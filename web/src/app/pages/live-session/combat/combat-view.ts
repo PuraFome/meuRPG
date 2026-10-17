@@ -56,9 +56,9 @@ export class CombatView extends CombatViewFlowsDirective {
           .map((c) => c.id),
       );
       untracked(() => {
-        const later = this.deathLater();
+        const later = this.deaths.later();
         if ([...later].some((id) => !dying.has(id))) {
-          this.deathLater.set(new Set([...later].filter((id) => dying.has(id))));
+          this.deaths.later.set(new Set([...later].filter((id) => dying.has(id))));
         }
       });
     });
@@ -101,9 +101,9 @@ export class CombatView extends CombatViewFlowsDirective {
         turnOf = id;
         untracked(() => {
           this.actionNote.set('');
-          this.deathResult.set('');
-          this.masterDeathResult.set('');
-          this.passAsking.set(null);
+          this.deaths.result.set('');
+          this.deaths.masterResult.set('');
+          this.deaths.asking.set(null);
           this.moves.moveNote.set('');
         });
       }

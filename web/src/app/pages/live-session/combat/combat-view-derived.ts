@@ -34,7 +34,10 @@ import {
 import { reactionWait } from '../../../core/combat/reactions';
 import type { CombatantInfo } from './combat-info';
 import { heldWait, revealWhy } from '../../../core/combat/hidden-reveal';
+import { CombatDeaths } from './combat-deaths';
+import { CombatInitiative } from './combat-initiative';
 import { CombatNotices } from './combat-notices';
+import { CombatRage } from './combat-rage';
 import { CombatViewStateDirective } from './combat-view-state';
 
 /** What the screen derives from the combat for the template: notes, marks, cards and who waits for what. */
@@ -44,17 +47,34 @@ export abstract class CombatViewDerivedDirective extends CombatViewStateDirectiv
   /** What the last feature said ("Surto de Ação: você tem outra ação"), and the
    * death save just rolled this turn; both are cleared when the turn changes. */
   protected readonly actionNote = signal('');
-  protected readonly deathResult = signal('');
   /** The turn whose damage was just settled: the master's card stays for its note. */
   protected readonly settledTurn = signal('');
-  /** The characters at three failures the master put away with "Ainda não". */
-  protected readonly deathLater = signal<ReadonlySet<string>>(new Set());
-  protected readonly deathKey = new ActionKey();
-  /** The master tapped "Próximo turno" while a death save was due: the question waits for "Rolar agora" or "Passar sem rolar". */
-  protected readonly passAsking = signal<{ readonly discard: boolean } | null>(null);
-  /** The sentence of the death save the master rolled for an absent player, kept after the save is no longer due. */
-  protected readonly masterDeathResult = signal('');
-  protected readonly confirmDeathKey = new ActionKey();
+  /** The death saves, the rage question and the initiative, each a plain class over the shared calls. */
+  protected readonly deaths = new CombatDeaths({
+    api: this.api,
+    animator: this.animator,
+    calls: this.calls,
+    campaignId: () => this.campaignId(),
+    encounter: () => this.encounter(),
+    ownId: () => this.own()?.id,
+    ownLabel: () => this.own()?.label,
+    note: (text) => this.actionNote.set(text),
+  });
+  protected readonly rage = new CombatRage({
+    api: this.api,
+    calls: this.calls,
+    campaignId: () => this.campaignId(),
+    encounter: () => this.encounter(),
+    isMaster: () => this.isMaster(),
+    state: () => this.state(),
+  });
+  protected readonly initiative = new CombatInitiative({
+    api: this.api,
+    animator: this.animator,
+    calls: this.calls,
+    campaignId: () => this.campaignId(),
+    encounter: () => this.encounter(),
+  });
   protected readonly leaveFormKey = new ActionKey();
   /** "Combate atualizado agora." (PM-02c 9c): said once when the page comes up with the turn on hold, that is, after a reload;
    * it goes when the wait is over. Nothing here is kept in the browser: the combat says what waits. */
@@ -324,11 +344,4 @@ export abstract class CombatViewDerivedDirective extends CombatViewStateDirectiv
   protected readonly ownOffer = computed(() => this.own()?.inspirationOffer ?? null);
   /** The attack roll of the player's halfling that waits for the Lucky answer ("Tirou 1: rolar de novo?"), asked first. */
   protected readonly ownLucky = computed(() => this.own()?.luckyOffer ?? null);
-  /** The raging barbarian the turn waits for, when the question is mine to answer: the owner's, or the master's. */
-  protected readonly rageAsked = computed(() => {
-    const e = this.encounter();
-    const id = e?.ragePendingCombatantId;
-    const who = id ? e.combatants.find((c) => c.id === id) : undefined;
-    return who && (this.isMaster() || who.mine) ? who : null;
-  });
 }

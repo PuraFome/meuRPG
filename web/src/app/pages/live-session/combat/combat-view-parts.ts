@@ -101,7 +101,7 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
   protected nextTurn(discard = false): Promise<boolean> {
     // A death save still due: the server lets the master pass it, but he is asked first, in place.
     if (this.deathDue().length > 0) {
-      this.passAsking.set({ discard });
+      this.deaths.asking.set({ discard });
       return Promise.resolve(false);
     }
     return this.endTurn(discard);
@@ -109,8 +109,8 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
 
   /** "Passar sem rolar": the turn ends with the death save unrolled. */
   protected passUnrolled(): Promise<boolean> {
-    const asked = this.passAsking();
-    this.passAsking.set(null);
+    const asked = this.deaths.asking();
+    this.deaths.asking.set(null);
     return this.endTurn(asked?.discard ?? false);
   }
 

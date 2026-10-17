@@ -27,7 +27,7 @@ import { PHONE_QUERY } from '../../../shared/map-view/media-query';
 import { RollAnimator } from '../../../shared/roll-overlay/roll-animator';
 import { nextTurn, settle } from '../../../../test-settle';
 import { StartCombatDialog } from '../../../shared/start-combat/start-combat-dialog';
-import { mountCombatView, type MountOptions } from './combat-view-testing';
+import { mountCombatView, type MountOptions, type ViewApi } from './combat-view-testing';
 import { AttackSheet } from './attack-sheet/attack-sheet';
 import { OpportunitySheet } from './opportunity/opportunity-sheet';
 import { SpendSheet } from './theatre/spend-sheet';
@@ -194,11 +194,18 @@ describe('CombatView calls: run', () => {
 /** One row per simple action: the view method, its arguments, the client method it calls and the arguments that call gets. */
 const OFFER = create(OpportunityOfferSchema, { id: 'o1', moverId: 't', reactorId: 'g' });
 type Row = [string, unknown[], string, unknown[]];
+/** Calls `view.a.b(...args)` for a dotted path, with the right `this`. */
+function callPath(view: ViewApi, path: string, args: unknown[]): Promise<boolean> {
+  const parts = path.split('.');
+  const name = parts.pop() as string;
+  const owner = parts.reduce((o, k) => o[k], view);
+  return owner[name](...args);
+}
 const SIMPLE: Row[] = [
   ['begin', [], 'begin', ['c', 'enc']],
   ['endCombat', [], 'end', ['c', 'enc']],
-  ['submitFace', ['t', 14], 'submitInitiative', ['c', 'enc', 't', { face: 14 }]],
-  ['setOrder', [['g', 't']], 'setOrder', ['c', 'enc', ['g', 't']]],
+  ['initiative.submitFace', ['t', 14], 'submitInitiative', ['c', 'enc', 't', { face: 14 }]],
+  ['initiative.setOrder', [['g', 't']], 'setOrder', ['c', 'enc', ['g', 't']]],
   ['reveal', [{ id: 'g', hidden: false }], 'setHidden', ['c', 'enc', 'g', false]],
   ['loseConcentration', ['g'], 'setConditions', ['c', 'enc', 'g', { endConcentration: true }]],
   ['remove', ['g'], 'remove', ['c', 'enc', 'g']],
@@ -209,7 +216,7 @@ const SIMPLE: Row[] = [
     'useHitRider',
     ['c', 'enc', 't', HitRiderChoice.PRONE],
   ],
-  ['endRageOf', ['t'], 'endRage', ['c', 'enc', 't']],
+  ['rage.end', ['t'], 'endRage', ['c', 'enc', 't']],
   [
     'setSide',
     [{ id: 'g', side: CombatantSide.PARTY }],
@@ -236,7 +243,7 @@ describe('CombatView calls: one client call per action', () => {
       master: true,
       api: answers(next, name),
     });
-    expect(await view[method](...args)).toBe(true);
+    expect(await callPath(view, method, args)).toBe(true);
     expect(calls.filter((c) => c.name === name)).toEqual([{ name, args: sent }]);
     expect(state.encounter()?.round).toBe(4);
   });
@@ -247,7 +254,7 @@ describe('CombatView calls: one client call per action', () => {
       master: true,
       api: { [name]: refuse(Code.PermissionDenied) },
     });
-    expect(await view[method](...args)).toBe(false);
+    expect(await callPath(view, method, args)).toBe(false);
     expect(view.error()).toBe('Você não pode fazer isso agora.');
   });
 
@@ -307,10 +314,10 @@ describe('CombatView calls: the end of the turn', () => {
       api: answers(grid('g', goblin(), brisa), 'endTurn'),
     });
     expect(await view.nextTurn()).toBe(false);
-    expect(view.passAsking()).toEqual({ discard: false });
+    expect(view.deaths.asking()).toEqual({ discard: false });
     expect(callsOf('endTurn')).toEqual([]);
     expect(await view.nextTurn(true)).toBe(false);
-    expect(view.passAsking()).toEqual({ discard: true });
+    expect(view.deaths.asking()).toEqual({ discard: true });
   });
 
   it('"Passar sem rolar" ends the turn with the discard the master asked for, and puts the question away', async () => {
@@ -318,7 +325,7 @@ describe('CombatView calls: the end of the turn', () => {
     const { view, callsOf } = mountCombatView({ enc: e, master: true, api: answers(e, 'endTurn') });
     await view.nextTurn(true);
     expect(await view.passUnrolled()).toBe(true);
-    expect(view.passAsking()).toBeNull();
+    expect(view.deaths.asking()).toBeNull();
     expect(callsOf('endTurn')[0].args).toEqual(['c', 'enc', 'g', true, 2]);
   });
 
@@ -536,14 +543,14 @@ describe('CombatView calls: death saves', () => {
       encounter: grid('t', down(), goblin()),
       save: save(DeathSaveOutcome.SUCCESS),
     }));
-    await view.rollDeathSave({ inApp: true });
+    await view.deaths.roll({ inApp: true });
     expect(callsOf('rollDeathSave')[0].args.slice(0, 4)).toEqual([
       'c',
       'enc',
       't',
       { inApp: true },
     ]);
-    expect(view.deathResult()).toBe('Teste contra a morte: 1d20 (14) = 14. Sucesso.');
+    expect(view.deaths.result()).toBe('Teste contra a morte: 1d20 (14) = 14. Sucesso.');
     expect(play).toHaveBeenCalledTimes(1);
     expect(play.mock.calls[0][0]).toMatchObject({
       label: 'Teste contra a morte',
@@ -559,13 +566,13 @@ describe('CombatView calls: death saves', () => {
       encounter: grid('t', down(), goblin()),
       save: save(DeathSaveOutcome.CRITICAL_FAILURE, 1, { failures: 2 }),
     }));
-    await view.rollDeathSave({ inApp: true });
+    await view.deaths.roll({ inApp: true });
     expect(play.mock.calls[0][0]).toMatchObject({
       outcome: { word: 'Falha crítica', good: false },
       fumble: true,
       critical: false,
     });
-    expect(view.deathResult()).toContain('Falha: um 1 conta duas falhas.');
+    expect(view.deaths.result()).toContain('Falha: um 1 conta duas falhas.');
   });
 
   it('a natural 20 brings the character back: critical, good, and the sentence is also the action note', async () => {
@@ -573,13 +580,13 @@ describe('CombatView calls: death saves', () => {
       encounter: grid('t', toren(), goblin()),
       save: save(DeathSaveOutcome.REVIVED, 20),
     }));
-    await view.rollDeathSave({ inApp: true });
+    await view.deaths.roll({ inApp: true });
     expect(play.mock.calls[0][0]).toMatchObject({
       outcome: { word: 'Volta com 1 PV', good: true },
       critical: true,
     });
     expect(view.actionNote()).toBe('Teste contra a morte: 1d20 (20) = 20. Toren volta com 1 PV.');
-    expect(view.deathResult()).toBe(view.actionNote());
+    expect(view.deaths.result()).toBe(view.actionNote());
   });
 
   it('plays nothing for a save that arrives without a roll (hidden), but still says the outcome', async () => {
@@ -587,9 +594,9 @@ describe('CombatView calls: death saves', () => {
       encounter: grid('t', down(), goblin()),
       save: save(DeathSaveOutcome.FAILURE, null, { failures: 3 }),
     }));
-    await view.rollDeathSave({ inApp: true });
+    await view.deaths.roll({ inApp: true });
     expect(play).not.toHaveBeenCalled();
-    expect(view.deathResult()).toBe('Teste contra a morte. Falha. Três falhas.');
+    expect(view.deaths.result()).toBe('Teste contra a morte. Falha. Três falhas.');
   });
 
   it('keeps the same key for the retry of a refused roll and a new one after a roll that worked', async () => {
@@ -599,11 +606,11 @@ describe('CombatView calls: death saves', () => {
       }
       return { encounter: grid('t', down(), goblin()), save: save(DeathSaveOutcome.SUCCESS) };
     });
-    await view.rollDeathSave({ inApp: true });
-    expect(view.deathResult()).toBe('');
+    await view.deaths.roll({ inApp: true });
+    expect(view.deaths.result()).toBe('');
     expect(view.error()).not.toBe('');
-    await view.rollDeathSave({ inApp: true });
-    await view.rollDeathSave({ inApp: true });
+    await view.deaths.roll({ inApp: true });
+    await view.deaths.roll({ inApp: true });
     expect(keys[1]).toBe(keys[0]);
     expect(keys[2]).not.toBe(keys[1]);
   });
@@ -612,14 +619,14 @@ describe('CombatView calls: death saves', () => {
     const { view, keys } = mountDying(() => {
       throw new ConnectError('lost', Code.PermissionDenied);
     });
-    await view.rollDeathSave({ inApp: true });
-    await view.rollDeathSave({ face: 12 });
+    await view.deaths.roll({ inApp: true });
+    await view.deaths.roll({ face: 12 });
     expect(keys[1]).not.toBe(keys[0]);
   });
 
   it('nothing happens for a player without a character in the combat', async () => {
     const { view, callsOf } = mountCombatView({ enc: grid('g', goblin()) });
-    await view.rollDeathSave({ inApp: true });
+    await view.deaths.roll({ inApp: true });
     expect(callsOf('rollDeathSave')).toEqual([]);
   });
 
@@ -628,30 +635,30 @@ describe('CombatView calls: death saves', () => {
       () => ({ encounter: grid('t', down(), goblin()), save: save(DeathSaveOutcome.SUCCESS) }),
       true,
     );
-    view.passAsking.set({ discard: false });
-    await view.rollMasterDeathSave({ id: 't', die: { face: 9 } });
-    expect(view.passAsking()).toBeNull();
+    view.deaths.asking.set({ discard: false });
+    await view.deaths.rollMaster({ id: 't', die: { face: 9 } });
+    expect(view.deaths.asking()).toBeNull();
     expect(callsOf('rollDeathSave')[0].args.slice(0, 4)).toEqual(['c', 'enc', 't', { face: 9 }]);
-    expect(view.masterDeathResult()).toBe('Teste contra a morte: 1d20 (14) = 14. Sucesso.');
+    expect(view.deaths.masterResult()).toBe('Teste contra a morte: 1d20 (14) = 14. Sucesso.');
     // The master's roll does not touch the player's line.
-    expect(view.deathResult()).toBe('');
+    expect(view.deaths.result()).toBe('');
   });
 
   it("the master's roll for a combatant that is not in the combat sends nothing and keeps the question", async () => {
     const { view, callsOf } = mountDying(() => ({}), true);
-    view.passAsking.set({ discard: true });
-    await view.rollMasterDeathSave({ id: 'nobody', die: { inApp: true } });
+    view.deaths.asking.set({ discard: true });
+    await view.deaths.rollMaster({ id: 'nobody', die: { inApp: true } });
     expect(callsOf('rollDeathSave')).toEqual([]);
-    expect(view.passAsking()).toEqual({ discard: true });
+    expect(view.deaths.asking()).toEqual({ discard: true });
   });
 
   it("leaves the master's sentence alone when his roll was refused", async () => {
     const { view } = mountDying(() => {
       throw new ConnectError('no', Code.PermissionDenied);
     }, true);
-    view.masterDeathResult.set('before');
-    await view.rollMasterDeathSave({ id: 't', die: { inApp: true } });
-    expect(view.masterDeathResult()).toBe('before');
+    view.deaths.masterResult.set('before');
+    await view.deaths.rollMaster({ id: 't', die: { inApp: true } });
+    expect(view.deaths.masterResult()).toBe('before');
   });
 });
 
@@ -674,9 +681,9 @@ describe('CombatView calls: confirming a death and the "Ainda não" memory', () 
         },
       },
     });
-    await view.confirmDeath('t');
-    await view.confirmDeath('t');
-    await view.confirmDeath('t');
+    await view.deaths.confirm('t');
+    await view.deaths.confirm('t');
+    await view.deaths.confirm('t');
     expect(callsOf('confirmDeath')[0].args.slice(0, 3)).toEqual(['c', 'enc', 't']);
     expect(keys[1]).toBe(keys[0]);
     expect(keys[2]).not.toBe(keys[1]);
@@ -684,13 +691,13 @@ describe('CombatView calls: confirming a death and the "Ainda não" memory', () 
 
   it('remembers the characters put away with "Ainda não" until they are asked again', () => {
     const { view } = mountCombatView({ enc: grid('g', goblin()), master: true });
-    view.deathLaterFor('a');
-    view.deathLaterFor('b');
-    expect([...view.deathLater()]).toEqual(['a', 'b']);
-    view.deathAskAgain('a');
-    expect([...view.deathLater()]).toEqual(['b']);
-    view.deathAskAgain('zzz');
-    expect([...view.deathLater()]).toEqual(['b']);
+    view.deaths.postpone('a');
+    view.deaths.postpone('b');
+    expect([...view.deaths.later()]).toEqual(['a', 'b']);
+    view.deaths.askAgain('a');
+    expect([...view.deaths.later()]).toEqual(['b']);
+    view.deaths.askAgain('zzz');
+    expect([...view.deaths.later()]).toEqual(['b']);
   });
 });
 
@@ -848,7 +855,7 @@ describe('CombatView calls: initiative rolled in the app', () => {
 
   it('sends the app\'s roll and shows the d20 with its line "15 + 4 = 19"', async () => {
     const { view, play, callsOf } = mountRoll(rolled({}));
-    expect(await view.rollInApp('t')).toBe(true);
+    expect(await view.initiative.rollInApp('t')).toBe(true);
     expect(callsOf('submitInitiative')[0].args).toEqual(['c', 'enc', 't', { inApp: true }]);
     expect(play).toHaveBeenCalledTimes(1);
     expect(play.mock.calls[0][0]).toEqual({
@@ -860,13 +867,13 @@ describe('CombatView calls: initiative rolled in the app', () => {
 
   it('writes a negative modifier with a minus sign', async () => {
     const { view, play } = mountRoll(rolled({ initiative: 13, initiativeBonus: -2 }));
-    await view.rollInApp('t');
+    await view.initiative.rollInApp('t');
     expect(play.mock.calls[0][0].line).toBe('15 − 2 = 13');
   });
 
   it('writes no modifier at all when it is zero', async () => {
     const { view, play } = mountRoll(rolled({ initiative: 15, initiativeBonus: 0 }));
-    await view.rollInApp('t');
+    await view.initiative.rollInApp('t');
     expect(play.mock.calls[0][0].line).toBe('15 = 15');
   });
 
@@ -876,13 +883,13 @@ describe('CombatView calls: initiative rolled in the app', () => {
     ['the total', { initiative: undefined }],
   ])('plays nothing when %s is missing', async (_n, over) => {
     const { view, play } = mountRoll(rolled(over));
-    expect(await view.rollInApp('t')).toBe(true);
+    expect(await view.initiative.rollInApp('t')).toBe(true);
     expect(play).not.toHaveBeenCalled();
   });
 
   it('plays nothing for a combatant the answer does not know', async () => {
     const { view, play } = mountRoll(rolled({}));
-    await view.rollInApp('nobody');
+    await view.initiative.rollInApp('nobody');
     expect(play).not.toHaveBeenCalled();
   });
 
@@ -892,7 +899,7 @@ describe('CombatView calls: initiative rolled in the app', () => {
       api: { submitInitiative: refuse(Code.PermissionDenied) },
     });
     const play = vi.spyOn(TestBed.inject(RollAnimator), 'play');
-    expect(await mounted.view.rollInApp('t')).toBe(false);
+    expect(await mounted.view.initiative.rollInApp('t')).toBe(false);
     expect(play).not.toHaveBeenCalled();
   });
 });

@@ -28,8 +28,8 @@
               [encounter]="e"
               [info]="info()"
               [busy]="busy()"
-              (submit)="submitFace($event.id, $event.face)"
-              (order)="setOrder($event)"
+              (submit)="initiative.submitFace($event.id, $event.face)"
+              (order)="initiative.setOrder($event)"
             />
             <div class="setup__side">
               <app-surprise-card [encounter]="e" [campaignId]="campaignId()" [state]="state()" />
@@ -211,10 +211,10 @@
           [dicePreference]="dicePreference()"
           [busy]="busy()"
           [error]="error()"
-          (rollInApp)="own() && rollInApp(own()!.id)"
-          (typeFace)="own() && submitFace(own()!.id, $event)"
-          (rollCreatureInApp)="rollInApp($event)"
-          (typeCreatureFace)="submitFace($event.id, $event.face)"
+          (rollInApp)="own() && initiative.rollInApp(own()!.id)"
+          (typeFace)="own() && initiative.submitFace(own()!.id, $event)"
+          (rollCreatureInApp)="initiative.rollInApp($event)"
+          (typeCreatureFace)="initiative.submitFace($event.id, $event.face)"
           (changeDice)="changeDice.emit()"
         />
       }
@@ -267,10 +267,10 @@
               }
             </div>
             <app-rage-question
-              [subject]="rageAsked()"
+              [subject]="rage.asked()"
               [busy]="busy()"
-              (back)="answerRage($event, false)"
-              (letEnd)="answerRage($event, true)"
+              (back)="rage.answer($event, false)"
+              (letEnd)="rage.answer($event, true)"
             />
             <app-hit-rider-card
               [offers]="encounter()?.hitRiders ?? []"
@@ -311,7 +311,7 @@
                   [contest]="contestFacts()"
                   [effectNotes]="options()?.effectNotes ?? []"
                   (endTurn)="nextTurn()"
-                  (endRage)="endRageOf($event)"
+                  (endRage)="rage.end($event)"
                   (opportunity)="openAttack($event, true)"
                   (endConcentration)="notices.endOwnConcentration()"
                 />
@@ -385,8 +385,8 @@
                     [busy]="busy()"
                     [diceMode]="diceMode()"
                     [dicePreference]="dicePreference()"
-                    [result]="deathResult()"
-                    (roll)="rollDeathSave($event)"
+                    [result]="deaths.result()"
+                    (roll)="deaths.roll($event)"
                     (endTurn)="nextTurn()"
                   />
                 </div>
@@ -537,25 +537,25 @@
       [busy]="busy()"
       [diceMode]="diceMode()"
       [dicePreference]="dicePreference()"
-      [result]="masterDeathResult()"
-      [asking]="!!passAsking()"
-      (roll)="rollMasterDeathSave($event)"
-      (rollNow)="passAsking.set(null)"
+      [result]="deaths.masterResult()"
+      [asking]="!!deaths.asking()"
+      (roll)="deaths.rollMaster($event)"
+      (rollNow)="deaths.asking.set(null)"
       (pass)="passUnrolled()"
     />
     <app-death-question
       [dying]="dying()"
-      [dismissed]="deathLater()"
+      [dismissed]="deaths.later()"
       [busy]="busy()"
-      (confirm)="confirmDeath($event)"
-      (later)="deathLaterFor($event)"
+      (confirm)="deaths.confirm($event)"
+      (later)="deaths.postpone($event)"
     />
     <app-rage-question
-      [subject]="rageAsked()"
+      [subject]="rage.asked()"
       [master]="true"
       [busy]="busy()"
-      (back)="answerRage($event, false)"
-      (letEnd)="answerRage($event, true)"
+      (back)="rage.answer($event, false)"
+      (letEnd)="rage.answer($event, true)"
     />
     <app-hit-rider-card
       [offers]="e.hitRiders"
@@ -583,7 +583,7 @@
         (castArea)="sheets.masterArea($event)"
         (offer)="toggleOffer()"
         (next)="nextTurn($event)"
-        (endRage)="endRageOf($event)"
+        (endRage)="rage.end($event)"
         (settledNote)="settled()"
       >
         @if (offering()) {
@@ -627,8 +627,8 @@
       (adjust)="adjustFor($event)"
       (adjustNpc)="sheets.actions.adjustNpc($event)"
       (conditions)="sheets.actions.conditions($event)"
-      [deathDismissed]="deathLater()"
-      (askDeath)="deathAskAgain($event)"
+      [deathDismissed]="deaths.later()"
+      (askDeath)="deaths.askAgain($event)"
       (reveal)="reveal($event)"
       (remove)="remove($event)"
       (endConcentration)="loseConcentration($event)"

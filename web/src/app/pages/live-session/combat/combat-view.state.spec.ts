@@ -648,9 +648,9 @@ describe('CombatView state: the master reach and the moves', () => {
     const enc = player();
     const { view, fixture, state } = mountCombatView({ enc });
     view.actionNote.set('Surto de Ação');
-    view.deathResult.set('x');
-    view.masterDeathResult.set('y');
-    view.passAsking.set({ discard: false });
+    view.deaths.result.set('x');
+    view.deaths.masterResult.set('y');
+    view.deaths.asking.set({ discard: false });
     view.moves.moveNote.set('z');
     await settle(fixture);
     // The same turn read again keeps them.
@@ -661,11 +661,11 @@ describe('CombatView state: the master reach and the moves', () => {
     await settle(fixture);
     expect([
       view.actionNote(),
-      view.deathResult(),
-      view.masterDeathResult(),
+      view.deaths.result(),
+      view.deaths.masterResult(),
       view.moves.moveNote(),
     ]).toEqual(['', '', '', '']);
-    expect(view.passAsking()).toBeNull();
+    expect(view.deaths.asking()).toBeNull();
   });
 
   it('closes the offer form when the turn passes', async () => {
@@ -1806,13 +1806,15 @@ describe('CombatView state: the notes from the combat log about traps and the ra
     encounter({ ragePendingCombatantId: id, currentCombatantId: 't', combatants: [toren, goblin] });
 
   it('asks the owner, or the master, about the raging barbarian the turn waits for', () => {
-    expect(mountCombatView({ enc: raging('t') }).view.rageAsked().id).toBe('t');
-    expect(mountCombatView({ enc: raging('g'), master: true }).view.rageAsked().id).toBe('g');
+    expect(mountCombatView({ enc: raging('t') }).view.rage.asked().id).toBe('t');
+    expect(mountCombatView({ enc: raging('g'), master: true }).view.rage.asked().id).toBe('g');
     // Not a player's own character: the question is not theirs.
-    expect(mountCombatView({ enc: raging('g') }).view.rageAsked()).toBeNull();
+    expect(mountCombatView({ enc: raging('g') }).view.rage.asked()).toBeNull();
     // Nobody waits, or the id is not in the combat.
-    expect(mountCombatView({ enc: raging(''), master: true }).view.rageAsked()).toBeFalsy();
-    expect(mountCombatView({ enc: raging('fantasma'), master: true }).view.rageAsked()).toBeFalsy();
+    expect(mountCombatView({ enc: raging(''), master: true }).view.rage.asked()).toBeFalsy();
+    expect(
+      mountCombatView({ enc: raging('fantasma'), master: true }).view.rage.asked(),
+    ).toBeFalsy();
   });
 });
 
