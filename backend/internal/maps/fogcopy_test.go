@@ -200,7 +200,7 @@ func TestFogCopyPreReadThatFailsRefusesTheCall(t *testing.T) {
 		failTheRead(h)
 		cur := h.revisionOf(fog.GetId())
 		_, err := master.updateMapWith(&mapsv1.UpdateMapRequest{CampaignId: campaign, MapId: fog.GetId(), Revision: cur, ImageId: &shared})
-		wantFailedPreRead(t, h, "UpdateMap", err, fog.GetId(), before, false, files)
+		wantFailedPreRead(t, h, "UpdateMap", err, fog.GetId(), before, true, files) // the map already had fog
 	})
 
 	t.Run("SetMapGrid", func(t *testing.T) {
