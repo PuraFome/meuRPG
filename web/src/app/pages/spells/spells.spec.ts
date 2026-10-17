@@ -19,6 +19,7 @@ import { CONNECT_TRANSPORT } from '../../core/connect/transport';
 import { fakeContentWatcher } from '../../core/content/content-testing';
 import { RosterClient } from '../../core/maps/roster-client';
 import { SpellsClient } from '../../core/spells/spells-client';
+import { nextTurn } from '../../../test-settle';
 import { Spells } from './spells';
 
 const spell = (key: string, namePt: string, extra: Record<string, unknown> = {}) =>
@@ -49,8 +50,8 @@ describe('Spells, the players\' "Magias" page (MR-045, E10-11)', () => {
 
   /** The history answers a step back on its own time: wait for what the page shows. */
   async function untilBack(settle: () => Promise<void>, done: () => boolean): Promise<void> {
-    for (let i = 0; i < 20 && !done(); i++) {
-      await new Promise((resolve) => setTimeout(resolve, 10));
+    for (let i = 0; i < 200 && !done(); i++) {
+      await nextTurn();
       await settle();
     }
   }
@@ -597,7 +598,7 @@ describe('Spells, the open card after a content_changed (real SpellsClient)', ()
       for (let i = 0; i < 6; i++) {
         harness.detectChanges();
         await harness.fixture.whenStable();
-        await new Promise((r) => setTimeout(r, 5));
+        await nextTurn();
       }
     };
     await settle();
