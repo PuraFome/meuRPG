@@ -315,6 +315,23 @@ func TestMonsterXPComesFromTheChallengeRating(t *testing.T) {
 	}
 }
 
+// A feature with subfeature options and invocations offers both: the
+// invocations are added to the options already read.
+func TestFeatureSpecificAccumulatesOptions(t *testing.T) {
+	t.Parallel()
+	fs := map[string]json.RawMessage{
+		"subfeature_options": json.RawMessage(`{"choose": 1, "from": {"options": [{"option_type": "reference", "item": {"index": "a"}}]}}`),
+		"invocations":        json.RawMessage(`[{"index": "b"}, {"index": "c"}]`),
+	}
+	var f srd51.Feature
+	if err := featureSpecific(fs, &f); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := strings.Join(f.Options, ","), "feature:a,feature:b,feature:c"; got != want {
+		t.Errorf("options = %s, want %s", got, want)
+	}
+}
+
 // TestFeatsKeepTheirAbilityScoreMinimums: a feat is read with its text and every
 // ability score minimum it asks for.
 func TestFeatsKeepTheirAbilityScoreMinimums(t *testing.T) {
