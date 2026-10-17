@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -15,6 +16,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/maps/images"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/goldentest"
 )
 
 // storeImage (every way an image is stored or refused, and what is left behind) and
@@ -176,7 +178,7 @@ func TestStoreImageEveryOutcome(t *testing.T) {
 	row, err = store(res, false, "", nil, nil)
 	svc.maxBytes = maxBytes
 	record("an image one byte over the bytes", row, err)
-	checkGolden(t, "image_store.golden.txt", []byte(out.String()))
+	goldentest.Compare(t, filepath.Join("testdata", "image_store.golden.txt"), []byte(out.String()))
 }
 
 func TestServeImageWhoGetsWhichImage(t *testing.T) {
@@ -245,7 +247,7 @@ func TestServeImageWhoGetsWhichImage(t *testing.T) {
 	for _, a := range asks {
 		fmt.Fprintf(&out, "%s: %s\n", a.name, line(a.do()))
 	}
-	checkGolden(t, "image_serve.golden.txt", []byte(out.String()))
+	goldentest.Compare(t, filepath.Join("testdata", "image_serve.golden.txt"), []byte(out.String()))
 }
 
 // headTo is a HEAD for a path of the test server.

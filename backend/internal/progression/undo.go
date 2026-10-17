@@ -13,6 +13,7 @@ import (
 
 	progressionv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/progression/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/progression/progressiondb"
@@ -40,7 +41,7 @@ func (s *Service) UndoLastXPAward(
 	var out undoneAward
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
-		out, err = s.undoInTx(ctx, tx, m, key, expected) // a retry starts over
+		out, err = s.undoTx(ctx, tx, m, key, expected) // a retry starts over
 		return err
 	})
 	if err != nil {
@@ -81,10 +82,10 @@ func checkUndo(msg *progressionv1.UndoLastXPAwardRequest) (key, expected string,
 	return k.String(), expected, nil
 }
 
-// undoInTx is the undo's transaction: a retry of the key answers the award it
+// undoTx is the undo's transaction: a retry of the key answers the award it
 // undid; otherwise the last award comes back off the sheets and the maps, is
 // marked undone, and the session gets the event.
-func (s *Service) undoInTx(ctx context.Context, tx pgx.Tx, m authz.Membership, key, expected string) (undoneAward, error) {
+func (s *Service) undoTx(ctx context.Context, tx pgx.Tx, m authz.Membership, key, expected string) (undoneAward, error) {
 	q := s.queries.WithTx(tx)
 	done, err := q.GetXPAwardByUndoKey(ctx, progressiondb.GetXPAwardByUndoKeyParams{CampaignID: m.CampaignID, UndoKey: key})
 	if err == nil {
@@ -118,7 +119,7 @@ func (s *Service) undoInTx(ctx context.Context, tx pgx.Tx, m authz.Membership, k
 	}
 	payload := eventPayload{
 		AwardID: last.ID, Mode: last.Mode, TotalXP: last.TotalXp, CharacterIDs: ids, Treasures: treasures,
-		EncounterID: deref(last.EncounterID), MilestoneID: deref(last.MilestoneID),
+		EncounterID: conv.OrZero(last.EncounterID), MilestoneID: conv.OrZero(last.MilestoneID),
 	}
 	logged, err := s.appendEvent(ctx, tx, m, eventXPAwardUndone, payload, now)
 	return undoneAward{award: undone, logged: logged, freedMaps: freedMaps}, err

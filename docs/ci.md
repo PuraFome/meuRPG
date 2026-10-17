@@ -24,7 +24,7 @@ How to run the same checks locally is in [CONTRIBUTING.md](../CONTRIBUTING.md); 
 | Job | Checks |
 | --- | --- |
 | `proto` | `buf lint`, `buf format`, `buf breaking` against `main`, and that `buf generate` and `make sqlc` leave the committed generated code unchanged |
-| `go (lint, vulncheck)` | `golangci-lint` as a ratchet, the [complexity totals](#complexity-totals) and `govulncheck` (version pinned). It runs no `go test`: `go-db` runs every package |
+| `go (lint, vulncheck)` | `golangci-lint` as a ratchet, the [complexity limits](#complexity-limits) and `govulncheck` (version pinned). It runs no `go test`: `go-db` runs every package |
 | `go-db <group>` | `go test -race -covermode=atomic -coverpkg=./...` for one group of packages against its own in-memory CockroachDB (the image `COCKROACH_IMAGE`, pinned by digest, the same as `compose.yaml`), with `MEURPG_REQUIRE_DB=1`. Each package has a 25-minute `-timeout` inside the job's 30 |
 | `go (integration tests against CockroachDB)` | Waits for every group; the stable check for a branch protection rule |
 | `go (coverage)` | Merges the groups' profiles and enforces the [coverage floor](#coverage-floors) |
@@ -48,18 +48,15 @@ Fixing old findings is welcome and never required.
 - The linters, their settings and the reason for each one are in `backend/.golangci.yml`. Highlights: `sloglint` (a fixed message per call site, `snake_case` keys; see [Architecture](architecture/logs.md#logs)), `nolintlint` (every `//nolint` names its linter, says why and still suppresses something), `gocyclo` and `gocognit` at 15, `maintidx` at 20, `mnd` (a bare number becomes a named `const` with a comment) and `goconst`.
 - `wrapcheck`, `gochecknoglobals`, `funlen`, `nilnil` and `exhaustive` are off on purpose. `wrapcheck` is off because authorization errors are `*connect.Error` and stay unwrapped for `rpclog`'s type switch.
 
-### Complexity totals
+### Complexity limits
 
-The number of functions over each limit, and each one's score, may only go down.
-The ratchet above never sees a change to the body of an old function, so `.github/scripts/go-complexity.sh` measures every hand-written, non-test Go file of `backend/` (generated files are left out) and compares the lists with `.github/go-complexity-baseline.txt`.
-The three lists use the limits of `backend/.golangci.yml`: cyclomatic complexity above 15 (gocyclo), cognitive complexity above 15 (gocognit) and maintainability index below 20 (golangci-lint's `maintidx`).
+No hand-written Go function of `backend/` may pass a complexity limit: cyclomatic complexity above 15 (gocyclo), cognitive complexity above 15 (gocognit) or a maintainability index below 20 (golangci-lint's `maintidx`).
+The ratchet above judges a function only when its `func` line changes, so `.github/scripts/go-complexity.sh` measures every hand-written, non-test Go file (generated files are left out) and fails on any function over a limit, naming it with its file and line.
 It needs `jq` and runs in seconds.
 
-- **Worse fails:** a function that enters a list, or whose score gets worse even when the count stays the same. The message names it with its file and line.
-- **Better fails too, until the baseline is lowered:** a function that improved or left a list. Run `.github/scripts/go-complexity.sh --update` and commit the smaller baseline in the same PR, so the improvement cannot be given back.
-- A function is named by its package directory and its name (`internal/play (*Service).takeBack`), never by its line, so moving it to another file of the same package changes nothing. A rename leaves the list under the old name and enters under the new one; `--update` records it.
-- Never grow the baseline. If a function really has to get worse, `--update` accepts it, and the PR says why. A `//nolint` hides a function from golangci-lint, not from the totals.
-- A pure move of an old function, or a change to its `func` line, trips the ratchet's `gocyclo`, `gocognit` and `maintidx` on it: split it first, or for a move that changes nothing add `//nolint:gocyclo,gocognit,maintidx // moved unchanged; held by the complexity totals` on its `func` line.
+- A function over a limit is split by what it does: a check, a read, a write, the reply. Freeze its behaviour first with a test that pins its answers, errors and writes (see [Testing](testing.md)), then split it.
+- A `//nolint` does not help: gocyclo and gocognit run outside golangci-lint.
+- The limits are the same as `gocyclo`, `gocognit` and `maintidx` in `backend/.golangci.yml`; change both together.
 
 ### Coverage floors
 
@@ -87,7 +84,8 @@ ESLint's bulk suppressions list the old violations as a count per file and rule 
 - Never grow a suppressions file. Fix the new violation; if it is really unavoidable, write `// eslint-disable-next-line <rule> -- why` on that line and explain it in the PR.
 - When you touch a suppressed spot, fix it, run `npx eslint --prune-suppressions` and commit the smaller file.
 - `eslint --suppress-rule <rule>` is only for turning on a new rule: enable it, record what exists, fix it over time.
-- `web/eslint.config.js`: typescript-eslint with the type-aware promise rules and no `any`; angular-eslint with the template and accessibility rules, OnPush, standalone components and `inject()`; `complexity` 15 and `max-depth` 4; no magic numbers in app code (-1, 0, 1, 2, the radix 10, 100 and 1000, default values, enum members, readonly fields and array indexes are allowed; specs are exempt); a `setTimeout(` in a `*.spec.ts` is forbidden (see [Testing](testing.md#web-unit-tests)); and no `.replace(/ /g, ' ')` (a space replaced by itself: write a non-breaking space as ` `, which CodeQL also flags as `js/identity-replacement`).
+- `complexity` and `max-lines` have no exceptions: the `web` job fails when `web/eslint-suppressions.json` lists either rule or a file disables one inline. Split the function, or split the file by what it does (pure builders next to the component, a plain class for shared state).
+- `web/eslint.config.js`: typescript-eslint with the type-aware promise rules and no `any`; angular-eslint with the template and accessibility rules, OnPush, standalone components and `inject()`; `complexity` 15 and `max-depth` 4; no app file over 400 lines of code (`max-lines`, the Angular style guide's limit; blank lines and comments do not count, specs are exempt); no magic numbers in app code (-1, 0, 1, 2, the radix 10, 100 and 1000, default values, enum members, readonly fields and array indexes are allowed; specs are exempt); a `setTimeout(` in a `*.spec.ts` is forbidden (see [Testing](testing.md#web-unit-tests)); and no `.replace(/ /g, ' ')` (a space replaced by itself: write a non-breaking space as ` `, which CodeQL also flags as `js/identity-replacement`).
 - **Layers and imports (dependency-cruiser).** `cd web && npm run depcruise` applies `web/.dependency-cruiser.cjs` to `web/src/app` (specs and `src/gen` are not cruised): no import cycles; `core/` imports neither `pages/` nor `shell/`; `shared/` does not import `pages/`; a page (a direct child folder of `pages/`) does not import another page (its own sub-folders are fine). Type-only imports count. `web/.dependency-cruiser-known-violations.json` is empty and must stay empty: move what two layers or pages share down to `core/` or `shared/`. dependency-cruiser is a dev dependency used only by this check.
 - **Formatting.** `cd web && npm run format:check` (Prettier, `web/.prettierrc`) checks TypeScript, SCSS and JSON. Angular templates are left out, because Prettier's HTML printer changes whitespace between elements and text, which changes what renders when CSS makes an element inline; format templates by hand. `.git-blame-ignore-revs` lists the one formatting commit (`git config blame.ignoreRevsFile .git-blame-ignore-revs`, once, locally).
 - **e2e.** `cd e2e && npm run lint:install && npm run lint` (see [Testing](testing.md#end-to-end-tests-playwright)). `expect-expect` is off in `e2e/`: the tests assert through helpers.

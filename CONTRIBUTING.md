@@ -34,10 +34,11 @@ The pinned versions and where each one lives are in [docs/development.md](docs/d
 | `make web-install`, `make web-test`, `make web-build` | Install, unit-test and build the Angular app in `web/` |
 | `cd web && npm run lint` / `npm run format:check` / `npm run depcruise` | The web linters, as in CI |
 | `make e2e` | Starts the local stack and runs the Playwright tests in `e2e/` |
-| `.github/scripts/go-complexity.sh` | The complexity gate, as CI runs it (`--update` lowers the baseline) |
+| `.github/scripts/go-complexity.sh` | The complexity limits, as CI checks them: no Go function over cyclomatic 15, cognitive 15 or maintainability 20 |
 
-The Go linters, the web linters and the complexity gate are ratchets: they judge what your change adds, and the backlog may only shrink.
-Read [docs/ci.md](docs/ci.md) before adding a `//nolint`, an ESLint suppression or a baseline entry.
+The Go and web linters are ratchets: they judge what your change adds, and the backlog may only shrink.
+The complexity limits are not a ratchet: every Go function and every web file must meet them.
+Read [docs/ci.md](docs/ci.md) before adding a `//nolint` or an ESLint suppression.
 The initial web bundle is a build gate (500 kB), see [docs/ci.md](docs/ci.md#the-web-bundle-budget).
 
 ## Code rules that bite

@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// The SRD 5.2.1's first rows and the ones the artboard E10-09 uses (levels 3, 4 and 5).
+// The SRD 5.2.1's first rows and the ones the encounter design uses (levels 3, 4 and 5).
 var table = []Budget{
 	{50, 75, 100},
 	{100, 150, 200},

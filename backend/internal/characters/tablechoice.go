@@ -13,6 +13,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -119,7 +120,7 @@ type flag struct {
 }
 
 // flags works out, for a sheet and the issues Derive found on it now, which changed
-// entries it is flagged for (RN-23, question 80): an entry the sheet uses that
+// entries it is flagged for (RN-23): an entry the sheet uses that
 // changed after the sheet was last known to fit it (full.ContentRevision, or the
 // entry's own baseline), and a new issue that depends on that entry (Issue.Keys).
 // Nothing else is blamed on the entry: a text edit that left no issue about it shows
@@ -162,7 +163,7 @@ func issuesTiedTo(content *rules.Content, full *charactersv1.FullSheet, key stri
 	return out
 }
 
-// carryFlags keeps a save from clearing what is still wrong (E10-02 state 8: the
+// carryFlags keeps a save from clearing what is still wrong (state 8: the
 // warning goes away when the numbers match again, never through a save). next is
 // the sheet about to be saved (checkSheet has set its revision and its known
 // issues from everything now); stored is the sheet it replaces. The issues stored
@@ -194,7 +195,7 @@ func carryFlags(content *rules.Content, stored, next *charactersv1.FullSheet) {
 }
 
 // addChangedContent tells the sheet's owner that a table entry it uses changed
-// and no longer fits (RN-23, question 80, E10-02 state 8). The numbers already use
+// and no longer fits (RN-23). The numbers already use
 // the new rules; this is the notice. It is worked out on every read from the
 // sheet's own issues (flags): it shows only for an entry that changed and that has
 // a new issue tied to it, with the sentences of exactly those issues, and goes
@@ -256,7 +257,7 @@ func callerKeys(ctx context.Context, q *charactersdb.Queries, m authz.Membership
 	}
 	out := map[string]bool{}
 	for _, row := range sheets {
-		if deref(row.PlayerUserID) != m.UserID {
+		if conv.OrZero(row.PlayerUserID) != m.UserID {
 			continue
 		}
 		sheet, err := loadSheet(row.ID, row.Sheet)

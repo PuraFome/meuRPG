@@ -2,6 +2,7 @@ package characters
 
 import (
 	"slices"
+	"strings"
 	"testing"
 	"uuid"
 
@@ -71,36 +72,15 @@ func TestGetLevelUpOptionsFrozenSwitchedOffContent(t *testing.T) {
 	}
 	m.setOff(t, tb.campaign, true, "subclass:champion", "class:wizard", "race:dwarf", "class:rogue")
 
-	for _, v := range []struct {
-		name string
-		u    *user
-	}{{"player", tb.other}, {"master", tb.master}} {
-		o, err := tb.options(v.u, toren)
-		if err != nil {
-			t.Fatalf("GetLevelUpOptions(Toren, %s) error = %v", v.name, err)
-		}
-		levelUpGolden(t, "options_toren_switched_off_"+v.name, o, labels)
-	}
-	for _, v := range []struct {
-		name string
-		u    *user
-	}{{"player", liaPlayer}, {"master", tb.master}} {
-		o, err := tb.options(v.u, lia)
-		if err != nil {
-			t.Fatalf("GetLevelUpOptions(Lia, %s) error = %v", v.name, err)
-		}
-		levelUpGolden(t, "options_lia_switched_off_"+v.name, o, labels)
-	}
-	for _, v := range []struct {
-		name string
-		u    *user
-	}{{"owner", tb.owner}, {"master", tb.master}} {
-		o, err := tb.options(v.u, tb.pc)
-		if err != nil {
-			t.Fatalf("GetLevelUpOptions(Pensantus, %s) error = %v", v.name, err)
-		}
-		levelUpGolden(t, "options_pensantus_switched_off_"+v.name, o, labels)
-	}
+	// The master's options are the golden; the player reads the same without what was switched
+	// off or retired: no class that is closed, no list of a switched-off class, and a feat's
+	// race requirement that names no race (RN-10).
+	wantHiddenFromPlayer(t, tb, "toren", toren, tb.other, labels,
+		`-classChoices[class:rogue] -classChoices[class:wizard] -subclasses[<ink-blade>].spellListClassKey -subclasses[subclass:champion]`)
+	wantHiddenFromPlayer(t, tb, "lia", lia, liaPlayer, labels,
+		`-classChoices[class:rogue] -classChoices[class:wizard] -feats[<dwarf-feat>].prerequisite.raceKey -feats[<dwarf-feat>].unmet[race:dwarf] -spellListClassKey feats[<dwarf-feat>].unmet[0].kind="FEAT_UNMET_KIND_RACE"`)
+	wantHiddenFromPlayer(t, tb, "pensantus", tb.pc, tb.owner, labels,
+		`-classChoices[class:rogue] -feats[<dwarf-feat>].prerequisite.raceKey -feats[<dwarf-feat>].unmet[race:dwarf] feats[<dwarf-feat>].unmet[0].kind="FEAT_UNMET_KIND_RACE"`)
 
 	// A new class the table closed: retired for everyone, switched off for a player only.
 	id := tb.pc.GetId()
@@ -126,6 +106,41 @@ func TestGetLevelUpOptionsFrozenSwitchedOffContent(t *testing.T) {
 	wantLevelUpErr(t, "a level of a switched-off class", err, levelUpRefused(&charactersv1.LevelUpRefusal{
 		Field: "class_key", Reason: charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_SWITCHED_OFF_CHOICE, ClassKey: "class:rogue",
 	}))
+}
+
+// wantHiddenFromPlayer reads the character's level-up options as the master and as the
+// player: the master's are the golden, and what the player's lack or change is want (a
+// keyed list element that is gone is -list[key]).
+func wantHiddenFromPlayer(t *testing.T, tb *levelUpTable, name string, character *charactersv1.Character, player *user, labels map[string]string, want string) {
+	t.Helper()
+	master, err := tb.options(tb.master, character)
+	if err != nil {
+		t.Fatalf("GetLevelUpOptions(%s, master) error = %v", name, err)
+	}
+	read, err := tb.options(player, character)
+	if err != nil {
+		t.Fatalf("GetLevelUpOptions(%s, player) error = %v", name, err)
+	}
+	levelUpGolden(t, "options_"+name+"_switched_off_master", master, labels)
+	got := fieldsMoved(relabeled(protoFlatKeyed(t, master), labels), relabeled(protoFlatKeyed(t, read), labels))
+	if got != want {
+		t.Errorf("%s: what the player's options lack:\n got  %s\n want %s", name, got, want)
+	}
+}
+
+// relabeled replaces each id in m's keys and values with its label, before
+// fieldsMoved sorts them: sorted by the random ids, the order would change from
+// run to run.
+func relabeled(m, labels map[string]string) map[string]string {
+	out := make(map[string]string, len(m))
+	for k, v := range m {
+		for id, label := range labels {
+			k = strings.ReplaceAll(k, id, label)
+			v = strings.ReplaceAll(v, id, label)
+		}
+		out[k] = v
+	}
+	return out
 }
 
 // TestPreviewLevelUpFrozenShape: the preview checks the shape of the choices after the

@@ -53,6 +53,15 @@ describe('sessionEndedInterceptor', () => {
     expect(refresh).toHaveBeenCalledTimes(1);
   });
 
+  it('hands the original error back when nothing binds the refresher', async () => {
+    const bare = { get: (_token: unknown, notFound?: unknown) => notFound } as unknown as Injector;
+    const ended = new ConnectError('no session', Code.Unauthenticated);
+    const run = sessionEndedInterceptor(bare)(async () => {
+      throw ended;
+    })({ method: { name: 'ListCampaigns' } } as UnaryRequest) as Promise<UnaryResponse>;
+    await expect(run).rejects.toBe(ended);
+  });
+
   it('never refreshes on GetMe or SignOut, which would loop', async () => {
     const ended = new ConnectError('no session', Code.Unauthenticated);
     await expect(call('GetMe', ended)).rejects.toBe(ended);

@@ -10,7 +10,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/encounter"
 )
 
-// The encounter builder (MR-043, RN-29, Etapa 10, slice 10.9c). The arithmetic is
+// The encounter builder (MR-043, RN-29). The arithmetic is
 // package encounter; this file loads its table (effects/encounter_budget.json, the
 // SRD 5.2.1's "XP Budget per Character") and puts the SRD's creatures in it.
 

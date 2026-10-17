@@ -142,7 +142,7 @@ func TestMR041_VoltarACidadeConvertsTreasuresIntoOneGoldAward(t *testing.T) {
 		t.Errorf("ListTreasuresToConvert() after = %d treasures, want none", len(left))
 	}
 
-	// The history shows it to a player too (question 50), but RN-10: a player
+	// The history shows it to a player too, but RN-10: a player
 	// gets the count and the PO together, never which treasures nor each one's PO.
 	if h := tb.master.history(t, tb.campaign); len(h) != 1 || len(h[0].GetTreasures()) != 3 || h[0].GetTreasureCount() != 3 || h[0].GetGold() != 420 {
 		t.Errorf("the master's history = %v, want the award with its 3 treasures", h)

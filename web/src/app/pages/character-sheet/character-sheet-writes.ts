@@ -6,12 +6,8 @@ import {
   type LivingRefusal,
 } from '../../core/characters/character-errors';
 import { ActionKey } from '../../core/connect/idempotency';
+import { IDLE_SAVING, type SavingState } from '../../core/connect/saving-state';
 import { type CharacterSheetSource, type CharacterSheetVm } from './character-sheet.types';
-
-export type SavingState =
-  { status: 'idle' } | { status: 'saving' } | { status: 'error'; message: string };
-
-const IDLE: SavingState = { status: 'idle' };
 
 /** Who the page calls the player: the display name, or "o jogador". */
 export function playerNameOf(vm: CharacterSheetVm): string {
@@ -39,26 +35,26 @@ export interface SheetWritesHost {
  * the page keeps the sheet itself.
  */
 export class SheetWrites {
-  readonly markDeadState = signal<SavingState>(IDLE);
+  readonly markDeadState = signal<SavingState>(IDLE_SAVING);
   /** A death can't be undone, so it takes a second click ("Confirmar morte") after "Marcar como morto". */
   readonly confirmingDeath = signal(false);
-  readonly storyToggleState = signal<SavingState>(IDLE);
+  readonly storyToggleState = signal<SavingState>(IDLE_SAVING);
   /** "Reviver" (master, a dead player character): the question is open in place of the button. */
   readonly confirmingRevive = signal(false);
-  readonly reviveState = signal<SavingState>(IDLE);
+  readonly reviveState = signal<SavingState>(IDLE_SAVING);
   /** The player's other living character that refused the revival: the card says so, with the way to it. */
   readonly reviveRefused = signal<LivingRefusal | null>(null);
   /** The words a screen reader gets once the character lives again. */
   readonly reviveAnnouncement = signal('');
   /** "Aprovar personagem" / "Recusar personagem" (MR-024). */
-  readonly approvalState = signal<SavingState>(IDLE);
+  readonly approvalState = signal<SavingState>(IDLE_SAVING);
   /** Rejecting deletes the character for good, so it takes a second click ("Confirmar recusa"). */
   readonly confirmingReject = signal(false);
   /** "Pedir ajustes" (master): the form is open in place of the approval notice. */
   readonly requestingChanges = signal(false);
-  readonly requestChangesState = signal<SavingState>(IDLE);
+  readonly requestChangesState = signal<SavingState>(IDLE_SAVING);
   /** "Enviar de novo" (the owning player). */
-  readonly resubmitState = signal<SavingState>(IDLE);
+  readonly resubmitState = signal<SavingState>(IDLE_SAVING);
   /** The player just sent the sheet again: the waiting notice says so, until the page is left. */
   readonly resubmitted = signal(false);
   /** The words a screen reader gets once the master's request went out. */
@@ -74,17 +70,17 @@ export class SheetWrites {
     this.confirmingDeath.set(false);
     this.confirmingReject.set(false);
     this.requestingChanges.set(false);
-    this.requestChangesState.set(IDLE);
-    this.resubmitState.set(IDLE);
+    this.requestChangesState.set(IDLE_SAVING);
+    this.resubmitState.set(IDLE_SAVING);
     this.resubmitted.set(false);
     this.announcement.set('');
-    this.markDeadState.set(IDLE);
+    this.markDeadState.set(IDLE_SAVING);
     this.confirmingRevive.set(false);
-    this.reviveState.set(IDLE);
+    this.reviveState.set(IDLE_SAVING);
     this.reviveRefused.set(null);
     this.reviveAnnouncement.set('');
-    this.storyToggleState.set(IDLE);
-    this.approvalState.set(IDLE);
+    this.storyToggleState.set(IDLE_SAVING);
+    this.approvalState.set(IDLE_SAVING);
   }
 
   readonly askToConfirmDeath = (): void => {
@@ -98,7 +94,7 @@ export class SheetWrites {
   };
 
   readonly askToRevive = (): void => {
-    this.reviveState.set(IDLE);
+    this.reviveState.set(IDLE_SAVING);
     this.reviveRefused.set(null);
     this.confirmingRevive.set(true);
   };
@@ -122,7 +118,7 @@ export class SheetWrites {
   readonly askForChanges = (): void => {
     this.confirmingReject.set(false);
     this.announcement.set('');
-    this.requestChangesState.set(IDLE);
+    this.requestChangesState.set(IDLE_SAVING);
     this.requestingChanges.set(true);
   };
 
@@ -146,7 +142,7 @@ export class SheetWrites {
       }
       this.reviveKey.renew();
       this.confirmingRevive.set(false);
-      this.reviveState.set(IDLE);
+      this.reviveState.set(IDLE_SAVING);
       this.reviveAnnouncement.set(`${name} voltou à vida`);
     } catch (err) {
       this.confirmingRevive.set(false);
@@ -181,7 +177,7 @@ export class SheetWrites {
         return;
       }
       this.requestKey.renew();
-      this.requestChangesState.set(IDLE);
+      this.requestChangesState.set(IDLE_SAVING);
       this.requestingChanges.set(false);
       this.announcement.set(`Pedido de ajustes enviado a ${playerNameOf(vm)}`);
       this.host.focus('.js-ask-changes');
@@ -200,7 +196,7 @@ export class SheetWrites {
         return;
       }
       this.resubmitKey.renew();
-      this.resubmitState.set(IDLE);
+      this.resubmitState.set(IDLE_SAVING);
       this.resubmitted.set(true);
     } catch (err) {
       this.resubmitState.set({ status: 'error', message: describeCharacterError(err) });
@@ -215,7 +211,7 @@ export class SheetWrites {
         return;
       }
       this.confirmingDeath.set(false);
-      this.markDeadState.set(IDLE);
+      this.markDeadState.set(IDLE_SAVING);
     } catch (err) {
       this.confirmingDeath.set(false);
       this.markDeadState.set({ status: 'error', message: describeCharacterError(err) });
@@ -242,7 +238,7 @@ export class SheetWrites {
       if (!this.host.apply(characterId, vm)) {
         return;
       }
-      this.storyToggleState.set(IDLE);
+      this.storyToggleState.set(IDLE_SAVING);
     } catch (err) {
       this.storyToggleState.set({ status: 'error', message: describeCharacterError(err) });
     }
@@ -258,7 +254,7 @@ export class SheetWrites {
       if (!this.host.apply(characterId, vm)) {
         return;
       }
-      this.approvalState.set(IDLE);
+      this.approvalState.set(IDLE_SAVING);
     } catch (err) {
       this.approvalState.set({ status: 'error', message: describeCharacterError(err) });
     }
@@ -273,7 +269,7 @@ export class SheetWrites {
       if (!this.host.stillOn(characterId)) {
         return;
       }
-      this.approvalState.set(IDLE);
+      this.approvalState.set(IDLE_SAVING);
       await this.host.navigate(['/campaigns', campaignId]);
     } catch (err) {
       this.confirmingReject.set(false);

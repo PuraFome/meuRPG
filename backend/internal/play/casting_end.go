@@ -190,9 +190,40 @@ func (s *Service) ConfirmCastTimePassed(
 	if err != nil {
 		return nil, err
 	}
+	in, err := finishInputOf(req.Msg)
+	if err != nil {
+		return nil, err
+	}
+
+	var made castOutcome
+	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventSpellCastFinished}, func(c *combatTx) (any, error) {
+		made = castOutcome{}
+		out, err := s.finishCastTx(ctx, c, m, req.Msg.GetCastId(), in)
+		if err != nil {
+			return nil, err
+		}
+		made = out
+		return out.ev, nil
+	})
+	if err != nil {
+		return nil, s.dbError(ctx, "finish a cast", err)
+	}
+	return s.castAnswerFinish(ctx, m, res, made)
+}
+
+// castFinishInput is what the master's request to finish a cast says: the dice (when the spell rolls any) and the
+// creatures picked for a summoning spell.
+type castFinishInput struct {
+	in     rollInput
+	rolled bool
+	pick   *playv1.SummonChoice
+}
+
+// finishInputOf reads the dice and the summon pick of a request to finish a cast.
+func finishInputOf(msg *playv1.ConfirmCastTimePassedRequest) (castFinishInput, error) {
 	var inApp *bool
 	var poolSum *int32
-	switch roll := req.Msg.GetRoll().(type) {
+	switch roll := msg.GetRoll().(type) {
 	case *playv1.ConfirmCastTimePassedRequest_RollInApp:
 		inApp = &roll.RollInApp
 	case *playv1.ConfirmCastTimePassedRequest_TypedSum:
@@ -200,57 +231,52 @@ func (s *Service) ConfirmCastTimePassed(
 	}
 	in, rolled, err := castRoll(inApp, poolSum)
 	if err != nil {
-		return nil, err
+		return castFinishInput{}, err
 	}
-	pick := req.Msg.GetSummon()
+	return castFinishInput{in: in, rolled: rolled, pick: msg.GetSummon()}, nil
+}
 
-	var made castOutcome
-	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventSpellCastFinished}, func(c *combatTx) (any, error) {
-		made = castOutcome{}
-		row, caster, err := s.castRowFor(ctx, c, m, req.Msg.GetCastId())
-		if err != nil {
-			return nil, err
-		}
-		if m.Role != authz.RoleMaster {
-			// Outside a combat there is no clock: the master says the time has passed.
-			return nil, connect.NewError(connect.CodePermissionDenied, errors.New("only the master completes a cast"))
-		}
-		if row.Status != castCasting {
-			return nil, errCasting(playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_CAST_NOT_GOING, "the spell is not being cast")
-		}
-		// The targets chosen at the start: one that is gone (died, left) is dropped.
-		g, err := s.guardFinish(ctx, c, m, caster, row)
-		if err != nil {
-			return nil, err
-		}
-		if err := s.mayFinishNow(ctx, c, g.caster); err != nil {
-			return nil, err
-		}
-		plan, err := s.planFinish(ctx, c, m, g, row)
-		if err != nil {
-			return nil, err
-		}
-		plan.in, plan.rolled, plan.pick, plan.row = in, rolled, pick, row
-		if err := s.checkCastInput(ctx, c, m, plan); err != nil {
-			return nil, err
-		}
-		// The time the casting took has passed: game time moves on for what had a clock.
-		if err := s.advanceGameTime(ctx, c, clamp32(int(row.CastingMinutes)*60, 0, 1<<30)); err != nil {
-			return nil, err
-		}
-		out, err := s.takeEffect(ctx, c, m, plan)
-		if err != nil {
-			return nil, err
-		}
-		out.guard = g
-		made = out
-		c.characterID = &g.caster.ID
-		return out.ev, nil
-	})
+// finishCastTx is ConfirmCastTimePassed inside the transaction: the cast and who may finish it, the characters it
+// is about, the plan rebuilt from the sheet, the dice, the time that passed and the effect.
+func (s *Service) finishCastTx(ctx context.Context, c *combatTx, m authz.Membership, castID string, input castFinishInput) (castOutcome, error) {
+	row, caster, err := s.castRowFor(ctx, c, m, castID)
 	if err != nil {
-		return nil, s.dbError(ctx, "finish a cast", err)
+		return castOutcome{}, err
 	}
-	return s.castAnswerFinish(ctx, m, res, made)
+	if m.Role != authz.RoleMaster {
+		// Outside a combat there is no clock: the master says the time has passed.
+		return castOutcome{}, connect.NewError(connect.CodePermissionDenied, errors.New("only the master completes a cast"))
+	}
+	if row.Status != castCasting {
+		return castOutcome{}, errCasting(playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_CAST_NOT_GOING, "the spell is not being cast")
+	}
+	// The targets chosen at the start: one that is gone (died, left) is dropped.
+	g, err := s.guardFinish(ctx, c, m, caster, row)
+	if err != nil {
+		return castOutcome{}, err
+	}
+	if err := s.mayFinishNow(ctx, c, g.caster); err != nil {
+		return castOutcome{}, err
+	}
+	plan, err := s.planFinish(ctx, c, m, g, row)
+	if err != nil {
+		return castOutcome{}, err
+	}
+	plan.in, plan.rolled, plan.pick, plan.row = input.in, input.rolled, input.pick, row
+	if err := s.checkCastInput(ctx, c, m, plan); err != nil {
+		return castOutcome{}, err
+	}
+	// The time the casting took has passed: game time moves on for what had a clock.
+	if err := s.advanceGameTime(ctx, c, clamp32(int(row.CastingMinutes)*60, 0, 1<<30)); err != nil {
+		return castOutcome{}, err
+	}
+	out, err := s.takeEffect(ctx, c, m, plan)
+	if err != nil {
+		return castOutcome{}, err
+	}
+	out.guard = g
+	c.characterID = &g.caster.ID
+	return out, nil
 }
 
 // guardFinish reads the characters a started cast is about for FinishCast. The targets
@@ -390,35 +416,7 @@ func (s *Service) EndActiveSpell(
 	var made castOutcome
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventSpellCastEnded}, func(c *combatTx) (any, error) {
 		made = castOutcome{}
-		row, _, err := s.castRowFor(ctx, c, m, req.Msg.GetCastId())
-		if err != nil {
-			return nil, err
-		}
-		made.row = row
-		switch row.Status {
-		case castCasting:
-			return nil, errCasting(playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_CAST_NOT_ACTIVE, "the spell is still being cast: interrupt the casting")
-		case castEnded, castFailed:
-			return nil, nil // over already: nothing changes, and no event
-		}
-		if row.CarriedEncounterID != nil {
-			// The combatant holds the concentration while the combat lasts: it is ended there.
-			fighting, err := s.inCombat(ctx, c.q, c.session.ID, row.CasterID)
-			if err != nil {
-				return nil, err
-			}
-			if fighting {
-				return nil, errCasting(playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_IN_COMBAT, "the concentration is in a combat: end it there")
-			}
-		}
-		ended, vitals, dismissed, err := s.closeCast(ctx, c, row, castEnded, endDismissed)
-		if err != nil {
-			return nil, err
-		}
-		made.row, made.vitals, made.dismissed = ended, vitals, dismissed
-		made.ev = castEvent{CastID: row.ID, Caster: row.CasterID, Key: row.SpellKey, Secret: row.Secret, Dismissed: dismissed, Reason: endDismissed}
-		c.characterID = &row.CasterID
-		return made.ev, nil
+		return s.endSpellTx(ctx, c, m, req.Msg.GetCastId(), &made)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "end a spell", err)
@@ -428,4 +426,47 @@ func (s *Service) EndActiveSpell(
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.EndActiveSpellResponse{Cast: cast, Vitals: filterVitals(m, made.vitals), DismissedCreatureIds: made.dismissed}), nil
+}
+
+// endSpellTx is EndActiveSpell inside the transaction. It fills made and returns the event to write; a cast that is
+// over already changes nothing and writes no event (nil).
+func (s *Service) endSpellTx(ctx context.Context, c *combatTx, m authz.Membership, castID string, made *castOutcome) (any, error) {
+	row, _, err := s.castRowFor(ctx, c, m, castID)
+	if err != nil {
+		return nil, err
+	}
+	made.row = row
+	if over, err := s.mayEndSpell(ctx, c, row); over || err != nil {
+		return nil, err
+	}
+	ended, vitals, dismissed, err := s.closeCast(ctx, c, row, castEnded, endDismissed)
+	if err != nil {
+		return nil, err
+	}
+	made.row, made.vitals, made.dismissed = ended, vitals, dismissed
+	made.ev = castEvent{CastID: row.ID, Caster: row.CasterID, Key: row.SpellKey, Secret: row.Secret, Dismissed: dismissed, Reason: endDismissed}
+	c.characterID = &row.CasterID
+	return made.ev, nil
+}
+
+// mayEndSpell checks the cast can be ended now. over says it is over already: nothing changes, and no event.
+func (s *Service) mayEndSpell(ctx context.Context, c *combatTx, row playdb.SpellCast) (over bool, err error) {
+	switch row.Status {
+	case castCasting:
+		return false, errCasting(playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_CAST_NOT_ACTIVE, "the spell is still being cast: interrupt the casting")
+	case castEnded, castFailed:
+		return true, nil
+	}
+	if row.CarriedEncounterID == nil {
+		return false, nil
+	}
+	// The combatant holds the concentration while the combat lasts: it is ended there.
+	fighting, err := s.inCombat(ctx, c.q, c.session.ID, row.CasterID)
+	if err != nil {
+		return false, err
+	}
+	if fighting {
+		return false, errCasting(playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_IN_COMBAT, "the concentration is in a combat: end it there")
+	}
+	return false, nil
 }

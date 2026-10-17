@@ -75,11 +75,9 @@ linters:
     # line changed, and these three linters report on the line with `func`. So a
     # new function, and an old one whose `func` line changes (its name, receiver
     # or first parameters) or moves in the diff, must meet the limits; a change
-    # to the body of an old function does not trigger them. The bodies are held
-    # by the totals gate instead (.github/scripts/go-complexity.sh, same
-    # limits): no function over a limit may appear or get worse. The functions
-    # over them today are in .github/go-complexity-baseline.txt; `make lint-all`
-    # lists them too.
+    # to the body of an old function does not trigger them. Every body is
+    # judged by .github/scripts/go-complexity.sh instead, with the same
+    # limits: no hand-written function may pass one.
     gocyclo:
       min-complexity: 15
     gocognit:

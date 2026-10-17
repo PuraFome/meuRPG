@@ -9,7 +9,8 @@ import {
   TableFeatSchema,
 } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { TableContentClient } from '../../../core/content/content-client';
-import { catalog, entry, menu } from '../../../core/content/content-testing';
+import { catalog, entry } from '../../../core/content/content-testing';
+import { menu } from '../../../core/content/content-testing-menu';
 import { FeatEditor } from './feat-editor';
 import { settle } from '../../../../test-settle';
 

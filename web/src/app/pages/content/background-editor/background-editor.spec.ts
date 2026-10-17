@@ -9,7 +9,8 @@ import {
   TableContentViolationSchema,
 } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { TableContentClient } from '../../../core/content/content-client';
-import { catalog, entry, feature, menu } from '../../../core/content/content-testing';
+import { catalog, entry, feature } from '../../../core/content/content-testing';
+import { menu } from '../../../core/content/content-testing-menu';
 import { BackgroundEditor } from './background-editor';
 import { settle } from '../../../../test-settle';
 

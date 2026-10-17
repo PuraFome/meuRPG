@@ -17,7 +17,6 @@ on:
       - ".github/scripts/go-db-shard.sh"
       - ".github/scripts/go-coverage.sh"
       - ".github/scripts/go-complexity.sh"
-      - ".github/go-complexity-baseline.txt"
       - ".node-version"
   push:
     branches: [main]
@@ -30,7 +29,6 @@ on:
       - ".github/scripts/go-db-shard.sh"
       - ".github/scripts/go-coverage.sh"
       - ".github/scripts/go-complexity.sh"
-      - ".github/go-complexity-baseline.txt"
       - ".node-version"
   # The nightly run and a manual run test everything, with no path filter
   # (03:00 in São Paulo).
@@ -78,7 +76,7 @@ jobs:
           go=true
           if [ "$EVENT" = pull_request ]; then
             changed=$(git diff --name-only "origin/${BASE_REF}...HEAD")
-            if grep -Eq '^(backend/|proto/|Makefile$|\.github/workflows/backend\.yml$|\.github/scripts/go-(db-shard|coverage|complexity)\.sh$|\.github/go-complexity-baseline\.txt$)' <<<"$changed"; then
+            if grep -Eq '^(backend/|proto/|Makefile$|\.github/workflows/backend\.yml$|\.github/scripts/go-(db-shard|coverage|complexity)\.sh$)' <<<"$changed"; then
               go=true
             else
               go=false
@@ -162,7 +160,7 @@ jobs:
   go:
     # No `go test` here: go-db runs every package (the pure ones too, with
     # -race), so a test run in this job only repeated it. This job is the
-    # fast, database-free check: lint, the complexity totals and known
+    # fast, database-free check: lint, the complexity limits and known
     # vulnerabilities. The image build moved to the e2e workflow, which builds
     # it once and runs it. The module boundaries are a test
     # (internal/archtest), so go-db's "rest" group runs them.
@@ -218,17 +216,13 @@ jobs:
           working-directory: backend
           args: ${{ steps.ratchet.outputs.args }}
 
-      - name: Complexity totals do not grow (cyclomatic > 15, cognitive > 20, maintainability < 20)
+      - name: No function over the complexity limits (cyclomatic > 15, cognitive > 15, maintainability < 20)
         # The ratchet above judges a function only when its `func` line
-        # changes; this judges every body. The functions over each limit are
-        # listed in .github/go-complexity-baseline.txt: a function that enters
-        # a list or gets worse fails, and so does one that gets better until
-        # the baseline is lowered (`go-complexity.sh --update`). It runs even
-        # when golangci-lint found something, so one push shows both. Uses the
-        # golangci-lint the step above put on PATH (for maintidx). Measured on
-        # 16/10/2026 on an Apple M1 Pro: about 2 s with Go's caches warm, 9 s
-        # on the first run; here the first `go run` of gocyclo and gocognit
-        # also downloads and builds them.
+        # changes; this judges every body, so no hand-written function of
+        # backend/ may pass a limit, old or new. It runs even when
+        # golangci-lint found something, so one push shows both. Uses the
+        # golangci-lint the step above put on PATH (for maintidx); the first
+        # `go run` of gocyclo and gocognit downloads and builds them.
         if: ${{ !cancelled() }}
         run: ../.github/scripts/go-complexity.sh
 

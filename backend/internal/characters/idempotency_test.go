@@ -13,7 +13,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
-// The audit of 07/10/2026 (F7): a retried CreateCharacter, GiveCreature or CreateTableEntry must not
+// A retried CreateCharacter, GiveCreature or CreateTableEntry must not
 // make a second character, creature or entry.
 
 func TestCreateCharacterIsIdempotent(t *testing.T) {

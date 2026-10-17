@@ -26,10 +26,12 @@ interface Drag {
   forced: boolean;
 }
 interface Internals {
-  forcedMove: { (): boolean; set(v: boolean): void };
-  forcedNote: () => string;
+  moves: {
+    forcedMove: { (): boolean; set(v: boolean): void };
+    forcedNote: () => string;
+    drop(d: { id: string; col: number; row: number }): Promise<void>;
+  };
   error: () => string;
-  drop(d: { id: string; col: number; row: number }): Promise<void>;
 }
 
 function setup(move: (args: unknown[]) => Promise<void>) {
@@ -119,40 +121,40 @@ function setup(move: (args: unknown[]) => Promise<void>) {
 describe('CombatView: the master\'s "Movimento forçado"', () => {
   it('a plain drag sends forced as false', async () => {
     const { view, sent } = setup(async () => undefined);
-    await view.drop({ id: 'p', col: 5, row: 5 });
+    await view.moves.drop({ id: 'p', col: 5, row: 5 });
     expect(sent).toEqual([{ forced: false }]);
-    expect(view.forcedNote()).toBe('');
+    expect(view.moves.forcedNote()).toBe('');
   });
 
   it('a drag with the box on sends forced, says it in words and switches the box off', async () => {
     const { view, sent } = setup(async () => undefined);
-    view.forcedMove.set(true);
-    await view.drop({ id: 'p', col: 5, row: 5 });
+    view.moves.forcedMove.set(true);
+    await view.moves.drop({ id: 'p', col: 5, row: 5 });
     expect(sent).toEqual([{ forced: true }]);
-    expect(view.forcedMove()).toBe(false);
-    expect(view.forcedNote()).toBe(
+    expect(view.moves.forcedMove()).toBe(false);
+    expect(view.moves.forcedNote()).toBe(
       'Pensantus foi movido à força. Ninguém recebeu oferta de ataque de oportunidade.',
     );
-    await view.drop({ id: 'p', col: 6, row: 6 });
+    await view.moves.drop({ id: 'p', col: 6, row: 6 });
     expect(sent[1]).toEqual({ forced: false });
-    expect(view.forcedNote()).toBe('');
+    expect(view.moves.forcedNote()).toBe('');
   });
 
   it("agrees with the name's gender", async () => {
     const { view } = setup(async () => undefined);
-    view.forcedMove.set(true);
-    await view.drop({ id: 'b', col: 5, row: 5 });
-    expect(view.forcedNote()).toContain('Brisa foi movida à força.');
+    view.moves.forcedMove.set(true);
+    await view.moves.drop({ id: 'b', col: 5, row: 5 });
+    expect(view.moves.forcedNote()).toContain('Brisa foi movida à força.');
   });
 
   it('a refusal keeps the box on for the next try and says nothing of success', async () => {
     const { view } = setup(async () => {
       throw new Error('refused');
     });
-    view.forcedMove.set(true);
-    await view.drop({ id: 'p', col: 5, row: 5 });
-    expect(view.forcedMove()).toBe(true);
-    expect(view.forcedNote()).toBe('');
+    view.moves.forcedMove.set(true);
+    await view.moves.drop({ id: 'p', col: 5, row: 5 });
+    expect(view.moves.forcedMove()).toBe(true);
+    expect(view.moves.forcedNote()).toBe('');
     expect(view.error()).not.toBe('');
   });
 });

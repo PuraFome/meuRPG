@@ -50,9 +50,6 @@ export type ErrorState = {
 
 export type PageState = { status: 'loading'; title: string } | ErrorState | ReadyState;
 
-export type SavingState =
-  { status: 'idle' } | { status: 'saving' } | { status: 'error'; message: string };
-
 /** The page title: known from the route alone, so the loading state shows
  * it too. */
 export function titleFor(mode: CharacterEditorMode, kind: CharacterKind, reserved = false): string {

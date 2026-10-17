@@ -235,8 +235,8 @@ func (c *content) spellDamageTable(name string, corr spellCorrection, s *srd51.S
 // checkSlotDice: the slot is a level the spell can be cast at, the dice are dice.
 func checkSlotDice(name, spell string, spellLevel int, slot, dice string) error {
 	n, err := strconv.Atoi(slot)
-	if err != nil || n < max(spellLevel, 1) || n > maxCorrectedSlot {
-		return fmt.Errorf("%s: %s: slot %q is not %d to %d", name, spell, slot, max(spellLevel, 1), maxCorrectedSlot)
+	if err != nil || n < max(spellLevel, 1) || n > MaxSlotLevel {
+		return fmt.Errorf("%s: %s: slot %q is not %d to %d", name, spell, slot, max(spellLevel, 1), MaxSlotLevel)
 	}
 	if _, ok := ParseDice(dice); !ok {
 		return fmt.Errorf("%s: %s: %q is not dice", name, spell, dice)

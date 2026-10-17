@@ -60,25 +60,26 @@ interface Editor {
   justCreated(): boolean;
   view(): { focusOn: (...a: unknown[]) => void; fit: () => void } | undefined;
   activePanel: () => unknown;
-  addToken(e: { id: string; name: string }): Promise<void>;
+  items: {
+    addToken(e: { id: string; name: string }): Promise<void>;
+    move(m: { kind: string; id: string; xBp: number; yBp: number }): Promise<void>;
+    toggleTokenHidden(): Promise<void>;
+    removeToken(): Promise<void>;
+  };
+  sel: {
+    saveAndContinue(): Promise<void>;
+    discardAndContinue(): void;
+    keepEditing(): void;
+  };
+  pointSaves: { save(): Promise<boolean>; remove(): Promise<void> };
+  dungeonCtl: { outline(room: unknown): void };
+  viewAsCtl: { forgotten(): void; gone(): void; set(id: string | null): void };
   onEmptyClick(at: { xBp: number; yBp: number }): void;
   requestSelect(next: { kind: string; id: string } | null): void;
-  saveAndContinue(): Promise<void>;
-  discardAndContinue(): void;
-  keepEditing(): void;
-  onMoved(m: { kind: string; id: string; xBp: number; yBp: number }): Promise<void>;
-  save(): Promise<boolean>;
   setSceneActions(p: unknown, a: unknown[]): void;
   setShowDc(p: unknown, v: boolean): void;
   setClues(p: unknown, c: unknown[]): void;
   setImages(p: unknown, i: unknown[]): void;
-  remove(): Promise<void>;
-  toggleTokenHidden(): Promise<void>;
-  removeToken(): Promise<void>;
-  onRoomOutline(room: unknown): void;
-  onForgotten(): void;
-  viewAsGone(): void;
-  setViewAs(id: string | null): void;
   setMode(mode: string): void;
 }
 
@@ -137,37 +138,37 @@ describe('MapEditor, flows and refusals', () => {
   describe('tokens', () => {
     it('puts a token on the map and selects it, or says it could not', async () => {
       await setup(undefined, []);
-      await ed().addToken({ id: 'c2', name: 'Toren' });
+      await ed().items.addToken({ id: 'c2', name: 'Toren' });
       expect(api.calls.some((c) => c.startsWith('placeToken map-1 c2'))).toBe(true);
       expect(ed().message()).toBe('Toren está no mapa.');
       expect(ed().selection()).toEqual({ kind: 'token', id: 'c2' });
       api.failWith = new ConnectError('x', Code.Internal);
-      await ed().addToken({ id: 'c1', name: 'Pensantus' });
+      await ed().items.addToken({ id: 'c1', name: 'Pensantus' });
       expect(ed().message()).toContain('falar com o servidor');
     });
 
     it('hides and shows the selected token, and says when it could not', async () => {
       await setup();
-      await ed().toggleTokenHidden();
+      await ed().items.toggleTokenHidden();
       expect(api.calls).toEqual([]);
       ed().selection.set({ kind: 'token', id: 'c1' });
-      await ed().toggleTokenHidden();
+      await ed().items.toggleTokenHidden();
       expect(api.calls).toEqual(['setTokenHidden map-1 c1 true']);
       api.failWith = new ConnectError('x', Code.Internal);
-      await ed().toggleTokenHidden();
+      await ed().items.toggleTokenHidden();
       expect(ed().message()).toContain('falar com o servidor');
     });
 
     it('takes the selected token off the map, or says it could not', async () => {
       await setup();
-      await ed().removeToken();
+      await ed().items.removeToken();
       ed().selection.set({ kind: 'token', id: 'c1' });
       api.failWith = new ConnectError('x', Code.Internal);
-      await ed().removeToken();
+      await ed().items.removeToken();
       expect(ed().message()).toContain('falar com o servidor');
       expect(ed().selection()).not.toBeNull();
       api.failWith = null;
-      await ed().removeToken();
+      await ed().items.removeToken();
       expect(ed().message()).toBe('Pensantus saiu do mapa.');
       expect(ed().selection()).toBeNull();
       expect(state.tokens()).toHaveLength(0);
@@ -177,32 +178,32 @@ describe('MapEditor, flows and refusals', () => {
   describe('moving', () => {
     it('saves the move of a point, and puts it back with a message when the server refuses', async () => {
       await setup();
-      await ed().onMoved({ kind: 'point', id: 'scene', xBp: 100, yBp: 200 });
+      await ed().items.move({ kind: 'point', id: 'scene', xBp: 100, yBp: 200 });
       expect(api.calls).toEqual(['updatePoint map-1 scene {"xBp":100,"yBp":200}']);
       expect(state.points()[0]).toMatchObject({ xBp: 100, yBp: 200 });
       api.failWith = new ConnectError('x', Code.Internal);
-      await ed().onMoved({ kind: 'point', id: 'scene', xBp: 900, yBp: 900 });
+      await ed().items.move({ kind: 'point', id: 'scene', xBp: 900, yBp: 900 });
       expect(state.points()[0]).toMatchObject({ xBp: 100, yBp: 200 });
       expect(ed().message()).toContain('falar com o servidor');
     });
 
     it('ignores the move of what is not on the map', async () => {
       await setup();
-      await ed().onMoved({ kind: 'point', id: 'nope', xBp: 1, yBp: 1 });
-      await ed().onMoved({ kind: 'token', id: 'nope', xBp: 1, yBp: 1 });
+      await ed().items.move({ kind: 'point', id: 'nope', xBp: 1, yBp: 1 });
+      await ed().items.move({ kind: 'token', id: 'nope', xBp: 1, yBp: 1 });
       expect(api.calls).toEqual([]);
     });
 
     it('saves the move of a token, a creature by its creature id, and puts it back when refused', async () => {
       await setup(undefined, [hero]);
-      await ed().onMoved({ kind: 'token', id: 'c1', xBp: 10, yBp: 20 });
+      await ed().items.move({ kind: 'token', id: 'c1', xBp: 10, yBp: 20 });
       expect(api.calls).toEqual(['placeToken map-1 c1 10 20']);
       api.failWith = new ConnectError('x', Code.Internal);
-      await ed().onMoved({ kind: 'token', id: 'c1', xBp: 50, yBp: 60 });
+      await ed().items.move({ kind: 'token', id: 'c1', xBp: 50, yBp: 60 });
       expect(state.tokens()[0]).toMatchObject({ xBp: 10, yBp: 20 });
       expect(ed().message()).toContain('falar com o servidor');
       await setup(undefined, [creature]);
-      await ed().onMoved({ kind: 'token', id: 'cr1', xBp: 30, yBp: 40 });
+      await ed().items.move({ kind: 'token', id: 'cr1', xBp: 30, yBp: 40 });
       expect(api.calls).toEqual(['placeToken map-1 creature:cr1 30 40']);
     });
   });
@@ -286,11 +287,11 @@ describe('MapEditor, flows and refusals', () => {
       ed().dirty.set(true);
       ed().requestSelect(null);
       expect(ed().pending()).toEqual({ kind: 'point', id: '' });
-      ed().keepEditing();
+      ed().sel.keepEditing();
       expect(ed().pending()).toBeNull();
       expect(ed().selection()).toEqual({ kind: 'point', id: 'scene' });
       ed().requestSelect({ kind: 'token', id: 'c1' });
-      ed().discardAndContinue();
+      ed().sel.discardAndContinue();
       expect(discard).toHaveBeenCalled();
       expect(ed().selection()).toEqual({ kind: 'token', id: 'c1' });
     });
@@ -302,7 +303,7 @@ describe('MapEditor, flows and refusals', () => {
       ed().dirty.set(true);
       ed().setMode('paint');
       expect(ed().pendingMode()).toBe('paint');
-      await ed().saveAndContinue();
+      await ed().sel.saveAndContinue();
       expect(ed().pendingMode()).toBeNull();
       expect(ed().selection()).toBeNull();
     });
@@ -314,7 +315,7 @@ describe('MapEditor, flows and refusals', () => {
       ed().dirty.set(true);
       ed().requestSelect(null);
       api.failWith = new ConnectError('x', Code.Internal);
-      await ed().saveAndContinue();
+      await ed().sel.saveAndContinue();
       expect(ed().pending()).not.toBeNull();
     });
   });
@@ -326,10 +327,10 @@ describe('MapEditor, flows and refusals', () => {
 
     it('saves nothing without a point or a panel that answers', async () => {
       await setup();
-      expect(await ed().save()).toBe(false);
+      expect(await ed().pointSaves.save()).toBe(false);
       ed().selection.set({ kind: 'point', id: 'scene' });
       panel(undefined);
-      expect(await ed().save()).toBe(false);
+      expect(await ed().pointSaves.save()).toBe(false);
       expect(api.calls).toEqual([]);
     });
 
@@ -337,9 +338,9 @@ describe('MapEditor, flows and refusals', () => {
       await setup();
       ed().selection.set({ kind: 'point', id: 'scene' });
       panel(null);
-      expect(await ed().save()).toBe(true);
+      expect(await ed().pointSaves.save()).toBe(true);
       ed().dirty.set(true);
-      expect(await ed().save()).toBe(false);
+      expect(await ed().pointSaves.save()).toBe(false);
       expect(api.calls).toEqual([]);
     });
 
@@ -347,11 +348,11 @@ describe('MapEditor, flows and refusals', () => {
       await setup();
       ed().selection.set({ kind: 'point', id: 'scene' });
       panel({ name: 'Novo' });
-      expect(await ed().save()).toBe(true);
+      expect(await ed().pointSaves.save()).toBe(true);
       expect(api.calls).toEqual(['updatePoint map-1 scene {"name":"Novo"}']);
       expect(ed().message()).toBe('Novo salvo.');
       api.failWith = new ConnectError('x', Code.Internal);
-      expect(await ed().save()).toBe(false);
+      expect(await ed().pointSaves.save()).toBe(false);
       expect(ed().panelError()).toContain('falar com o servidor');
     });
 
@@ -375,14 +376,14 @@ describe('MapEditor, flows and refusals', () => {
 
     it('deletes the selected point, or says why it could not', async () => {
       await setup();
-      await ed().remove();
+      await ed().pointSaves.remove();
       expect(api.calls).toEqual([]);
       ed().selection.set({ kind: 'point', id: 'scene' });
       api.failWith = new ConnectError('x', Code.Internal);
-      await ed().remove();
+      await ed().pointSaves.remove();
       expect(ed().panelError()).toContain('falar com o servidor');
       api.failWith = null;
-      await ed().remove();
+      await ed().pointSaves.remove();
       expect(ed().message()).toBe('Taverna foi apagado.');
       expect(state.points()).toHaveLength(0);
       expect(ed().selection()).toBeNull();
@@ -395,12 +396,12 @@ describe('MapEditor, flows and refusals', () => {
       const view = ed().view()!;
       const focusOn = vi.spyOn(view, 'focusOn');
       const fit = vi.spyOn(view, 'fit');
-      ed().onRoomOutline({ x: 2, y: 4, width: 4, height: 2 });
+      ed().dungeonCtl.outline({ x: 2, y: 4, width: 4, height: 2 });
       expect(focusOn).toHaveBeenCalledWith(
         { xBp: (2 * 10000 * (4 / 24)) / 2 + 0, yBp: expect.any(Number) },
         3,
       );
-      ed().onRoomOutline(null);
+      ed().dungeonCtl.outline(null);
       expect(fit).toHaveBeenCalledTimes(1);
       expect(ed().roomOutline()).toBeNull();
     });
@@ -408,8 +409,8 @@ describe('MapEditor, flows and refusals', () => {
     it('zooms no further than 3 and no less than 1.2', async () => {
       await setup();
       const focusOn = vi.spyOn(ed().view()!, 'focusOn');
-      ed().onRoomOutline({ x: 0, y: 0, width: 1, height: 1 });
-      ed().onRoomOutline({ x: 0, y: 0, width: 100, height: 1 });
+      ed().dungeonCtl.outline({ x: 0, y: 0, width: 1, height: 1 });
+      ed().dungeonCtl.outline({ x: 0, y: 0, width: 100, height: 1 });
       expect(focusOn.mock.calls.map((c) => c[1])).toEqual([3, 1.2]);
     });
 
@@ -418,14 +419,14 @@ describe('MapEditor, flows and refusals', () => {
       const view = ed().view()!;
       const fit = vi.spyOn(view, 'fit');
       const focusOn = vi.spyOn(view, 'focusOn');
-      ed().onRoomOutline({ x: 0, y: 0, width: 2, height: 2 });
+      ed().dungeonCtl.outline({ x: 0, y: 0, width: 2, height: 2 });
       expect(fit).toHaveBeenCalled();
       expect(focusOn).not.toHaveBeenCalled();
     });
 
     it('reads the counts of "Ver como" when the fog is forgotten, only with the fog on', async () => {
       await setup({ gridColumns: 24, gridRows: 16, fogEnabled: false });
-      ed().onForgotten();
+      ed().viewAsCtl.forgotten();
       await settle();
       expect(api.calls.filter((c) => c.startsWith('vision'))).toEqual([]);
       state.setMap(
@@ -434,25 +435,25 @@ describe('MapEditor, flows and refusals', () => {
       await vi.advanceTimersByTimeAsync(400);
       await settle();
       api.calls.length = 0;
-      ed().onForgotten();
+      ed().viewAsCtl.forgotten();
       await settle();
       expect(api.calls.filter((c) => c.startsWith('vision')).length).toBeGreaterThan(0);
     });
 
     it('goes back to "Todos" with a word when the character it looked as is gone', async () => {
       await setup();
-      ed().setViewAs('c1');
+      ed().viewAsCtl.set('c1');
       expect(ed().viewAs()).toBe('c1');
-      ed().viewAsGone();
+      ed().viewAsCtl.gone();
       expect(ed().viewAs()).toBeNull();
       expect(ed().viewGone()).toContain('morreu ou saiu da campanha');
-      ed().setViewAs('c2');
+      ed().viewAsCtl.set('c2');
       expect(ed().viewGone()).toBe('');
     });
 
     it('stops looking as someone when the fog goes off', async () => {
       await setup({ gridColumns: 24, gridRows: 16, fogEnabled: true });
-      ed().setViewAs('c1');
+      ed().viewAsCtl.set('c1');
       state.setMap(
         mapMessage('map-1', 'Caverna', { gridColumns: 24, gridRows: 16, fogEnabled: false }),
       );

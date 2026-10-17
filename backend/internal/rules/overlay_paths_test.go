@@ -8,7 +8,7 @@ import (
 )
 
 // entryViolationRows pins the path and the reason of every field refusal of a
-// table spell, race, subrace and background (MR-025, slice 10.11 fix round 1).
+// table spell, race, subrace and background (MR-025).
 // `field` is the path in the request's body, as the API sends it
 // (TableContentViolation.field); the web copies these strings (and reasons) into
 // content-violations.spec.ts: change a row here and there together. `list` and `i`
@@ -148,7 +148,7 @@ func fieldsOf(oe *OverlayError) []string {
 
 // TestAnEntryReportsEveryViolationAtOnce: a spell, a race and a background with
 // several fields wrong come back with all of them, in the order the fields are
-// checked, so the editor marks every one in one answer (state 5 of E10-01).
+// checked, so the editor marks every one in one answer.
 func TestAnEntryReportsEveryViolationAtOnce(t *testing.T) {
 	t.Parallel()
 	srd := loadForTest(t)
@@ -174,7 +174,7 @@ func TestAnEntryReportsEveryViolationAtOnce(t *testing.T) {
 			o.Backgrounds[0].Tools = []string{"proficiency:light-armor"}
 			o.Backgrounds[0].LanguageChoices = 9
 		}, []string{"backgrounds[0].skills[1]", "backgrounds[0].language_choices", "backgrounds[0].tools[0]"}},
-		// A class and a subclass (slice 10.12 fix round 1): three mistakes need one save, not three.
+		// A class and a subclass: three mistakes need one save, not three.
 		{"a class", func(o *Overlay) {
 			o.Classes[1].HitDie = 7
 			o.Classes[1].SavingThrows = []Ability{CON, CON}

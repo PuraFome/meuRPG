@@ -7,7 +7,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/srd51"
 )
 
-// Wild Shape (MR-037, Etapa 9). The druid's Wild Shape features carry a
+// Wild Shape (MR-037). The druid's Wild Shape features carry a
 // wild_shape effect (effects/druid.json): level 2 takes beasts of challenge
 // rating 1/4 or lower with no fly or swim speed, level 4 up to 1/2 with no fly
 // speed, level 8 up to 1. The functions here are pure: the play module keeps the

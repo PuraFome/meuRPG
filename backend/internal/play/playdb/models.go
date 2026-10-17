@@ -351,6 +351,9 @@ type InspirationHold struct {
 	LuckyIndex     *int32
 	LuckyAnswerKey *string
 	LuckyTo        *int32
+	CombatantID    *string
+	EncounterID    *string
+	WindowHold     bool
 }
 
 type OpportunityOffer struct {

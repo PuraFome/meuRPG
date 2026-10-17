@@ -9,6 +9,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -161,7 +162,7 @@ export class LevelUpPage {
 
   constructor() {
     const destroyRef = inject(DestroyRef);
-    this.route.paramMap.pipe().subscribe((params) => {
+    this.route.paramMap.pipe(takeUntilDestroyed(destroyRef)).subscribe((params) => {
       const campaignId = params.get('id');
       const characterId = params.get('characterId');
       if (campaignId && characterId) {

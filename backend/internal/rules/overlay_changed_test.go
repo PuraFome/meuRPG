@@ -55,7 +55,7 @@ func changeOf(t *testing.T, b Build, c *Content, code string) Issue {
 
 // TestChangedClassSentences: the common changes of a table class give the sheet
 // that uses it an issue tied to the entry, with the exact sentence of "A classe
-// mudou" (E10-02 state 8, slice 10.3): the skill count, the cantrips, the known
+// mudou": the skill count, the cantrips, the known
 // and the prepared spells, the level of the subclass, the multiclass
 // prerequisite and an option the class no longer offers.
 func TestChangedClassSentences(t *testing.T) {
@@ -214,7 +214,7 @@ func TestChangedClassSentences(t *testing.T) {
 	})
 }
 
-// TestChangeSentenceNeverNamesTheWrongEntry (review of slice 10.3): the issue's
+// TestChangeSentenceNeverNamesTheWrongEntry: the issue's
 // sentence is about a class or subclass (ChangeSubject) and the notice names it
 // only when it is the entry that changed; an SRD class whose count moved because a
 // table race's trait changed is never named.
@@ -251,7 +251,7 @@ func TestChangeSentenceNeverNamesTheWrongEntry(t *testing.T) {
 	}
 }
 
-// TestLevelUpSubclassOffersAPreparedThirdCaster (review of slice 10.3): a third
+// TestLevelUpSubclassOffersAPreparedThirdCaster: a third
 // caster's subclass that prepares its spells says so in the offer, with how many it
 // may prepare at the new level, and one that knows them does not.
 func TestLevelUpSubclassOffersAPreparedThirdCaster(t *testing.T) {
@@ -278,7 +278,7 @@ func TestLevelUpSubclassOffersAPreparedThirdCaster(t *testing.T) {
 	}
 }
 
-// TestThirdCasterUnderAClassWhoseSubclassComesLater (review of slice 10.3): a third
+// TestThirdCasterUnderAClassWhoseSubclassComesLater: a third
 // caster's subclass of a table class that chooses its subclass at level 5 casts
 // from level 5, and goes from the pick to level 20 without an issue.
 func TestThirdCasterUnderAClassWhoseSubclassComesLater(t *testing.T) {

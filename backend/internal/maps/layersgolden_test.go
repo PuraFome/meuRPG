@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"testing"
@@ -17,6 +18,7 @@ import (
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/goldentest"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -27,7 +29,7 @@ import (
 // revealed to one character, fired, revealed), the treasures (hidden, shown, found)
 // and the submap points that name the parents. Each answer is a golden file
 // (testdata/layers_*.golden.json, ids replaced by names and the times by <time>); run
-// with -update-golden to write them again after a change of behavior that was
+// with -update to write them again after a change of behavior that was
 // meant. The refusals of the calls that write the layers are frozen with their exact
 // words in TestLayers_Refusals.
 
@@ -92,7 +94,7 @@ func (g *layersGolden) check(t *testing.T, viewer string, parts map[string]proto
 		t.Fatal(err)
 	}
 	out.WriteByte('\n')
-	checkGolden(t, "layers_"+g.table+"_"+viewer+".golden.json", out.Bytes())
+	goldentest.Compare(t, filepath.Join("testdata", "layers_"+g.table+"_"+viewer+".golden.json"), out.Bytes())
 }
 
 // layersShapeOf is what a refusal says: the code, the message and the reasons of its details.

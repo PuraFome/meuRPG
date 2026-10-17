@@ -1,0 +1,98 @@
+== a heightened spell read by the caster ==
+cast {"metamagicKeys":["feature:metamagic-heightened-spell"],"pendingDamages":[{"attackKey":"spell:fireball","attackerId":"Nael","castId":"?","damageTypeKey":"damage-type:fire","damageTypePt":"fogo","diceCount":8,"diceSides":6,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin"}],"slot":{"level":3},"sorceryPointsSpent":3,"spellKey":"spell:fireball","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin","cover":"COVER_DEGREE_NONE","pendingDamageId":"?","save":{"dc":14,"outcome":"SAVE_OUTCOME_FAILED"}}]}
+area {"origin":{"col":4,"row":4},"squares":[{"col":4},{"col":2,"row":1},{"col":3,"row":1},{"col":4,"row":1},{"col":5,"row":1},{"col":6,"row":1},{"col":1,"row":2},{"col":2,"row":2},{"col":3,"row":2},{"col":4,"row":2},{"col":5,"row":2},{"col":6,"row":2},{"col":7,"row":2},{"col":1,"row":3},{"col":2,"row":3},{"col":3,"row":3},{"col":4,"row":3},{"col":5,"row":3},{"col":6,"row":3},{"col":7,"row":3},{"row":4},{"col":1,"row":4},{"col":2,"row":4},{"col":3,"row":4},{"col":4,"row":4},{"col":5,"row":4},{"col":6,"row":4},{"col":7,"row":4},{"col":8,"row":4},{"col":1,"row":5},{"col":2,"row":5},{"col":3,"row":5},{"col":4,"row":5},{"col":5,"row":5},{"col":6,"row":5},{"col":7,"row":5},{"col":1,"row":6},{"col":2,"row":6},{"col":3,"row":6},{"col":4,"row":6},{"col":5,"row":6},{"col":6,"row":6},{"col":7,"row":6},{"col":2,"row":7},{"col":3,"row":7},{"col":4,"row":7},{"col":5,"row":7},{"col":6,"row":7},{"col":4,"row":8}]}
+inspiration 
+lucky 
+summoned 0
+hidden hits {}
+pending reveal false
+held false
+event combatant_moved {"col": 9, "combatant_id": "Capitão Goblin", "distance_dft": 292, "distance_ft": 29, "from": {"col": 4, "cover": "none", "placed": true, "row": 6}, "round": 1, "row": 9}
+event combatant_moved {"col": 4, "combatant_id": "Goblin", "from": {"col": 4, "cover": "none", "placed": true, "row": 4}, "round": 1, "row": 4}
+event combatant_moved {"col": 4, "combatant_id": "Nael", "distance_dft": 304, "distance_ft": 30, "from": {"col": 3, "cover": "none", "placed": true, "row": 3}, "on_turn": true, "round": 1, "row": 9}
+event combatant_moved {"col": 10, "combatant_id": "Orla", "distance_dft": 200, "distance_ft": 20, "from": {"col": 6, "cover": "none", "placed": true, "row": 3}, "round": 1, "row": 3}
+event combatant_moved {"col": 9, "combatant_id": "Tavo", "distance_dft": 200, "distance_ft": 20, "from": {"col": 5, "cover": "none", "placed": true, "row": 3}, "round": 1, "row": 3}
+event spell_cast {"area_col": 4, "area_row": 4, "cast_id": "?", "combatant_id": "Nael", "hits": [{"pending_id": "?", "save": {"bonus_unknown": true, "counted": 1, "d20": 2, "d20_b": 18, "dc": 14, "roll_mode": "disadvantage", "total": 2}, "target_id": "Goblin"}], "key": "spell:fireball", "placed": true, "res": {"keys": ["feature:metamagic-heightened-spell"], "kind": "metamagic", "spent": 3}, "round": 1, "slot": {"level": 3}}
+combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Nael | true | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | true | false | false | {} | false | false
+combatant Orla | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Tavo | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+damage Nael | Goblin | spell:fireball | awaiting_roll | false | 8 | 6 | 0 | damage-type:fire | false | false | 0 | 0 | true | 0 | 0
+vitals Nael | <nil> | 0 | {0,0,1,0,0,0,0,0,0} | 0
+== a heightened spell read by the master ==
+cast {"metamagicKeys":["feature:metamagic-heightened-spell"],"pendingDamages":[{"attackKey":"spell:fireball","attackerId":"Nael","castId":"?","damageTypeKey":"damage-type:fire","damageTypePt":"fogo","diceCount":8,"diceSides":6,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin"}],"slot":{"level":3},"sorceryPointsSpent":3,"spellKey":"spell:fireball","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin","cover":"COVER_DEGREE_NONE","pendingDamageId":"?","save":{"dc":14,"mode":"ROLL_MODE_DISADVANTAGE","outcome":"SAVE_OUTCOME_FAILED","roll":{"countedIndex":1,"diceCount":2,"diceSides":20,"faces":[18,2],"total":2}}}]}
+area {"origin":{"col":4,"row":4},"squares":[{"col":4},{"col":2,"row":1},{"col":3,"row":1},{"col":4,"row":1},{"col":5,"row":1},{"col":6,"row":1},{"col":1,"row":2},{"col":2,"row":2},{"col":3,"row":2},{"col":4,"row":2},{"col":5,"row":2},{"col":6,"row":2},{"col":7,"row":2},{"col":1,"row":3},{"col":2,"row":3},{"col":3,"row":3},{"col":4,"row":3},{"col":5,"row":3},{"col":6,"row":3},{"col":7,"row":3},{"row":4},{"col":1,"row":4},{"col":2,"row":4},{"col":3,"row":4},{"col":4,"row":4},{"col":5,"row":4},{"col":6,"row":4},{"col":7,"row":4},{"col":8,"row":4},{"col":1,"row":5},{"col":2,"row":5},{"col":3,"row":5},{"col":4,"row":5},{"col":5,"row":5},{"col":6,"row":5},{"col":7,"row":5},{"col":1,"row":6},{"col":2,"row":6},{"col":3,"row":6},{"col":4,"row":6},{"col":5,"row":6},{"col":6,"row":6},{"col":7,"row":6},{"col":2,"row":7},{"col":3,"row":7},{"col":4,"row":7},{"col":5,"row":7},{"col":6,"row":7},{"col":4,"row":8}]}
+inspiration 
+lucky 
+summoned 0
+hidden hits {}
+pending reveal false
+held false
+event combatant_moved {"col": 9, "combatant_id": "Capitão Goblin", "distance_dft": 292, "distance_ft": 29, "from": {"col": 4, "cover": "none", "placed": true, "row": 6}, "round": 1, "row": 9}
+event combatant_moved {"col": 4, "combatant_id": "Goblin", "from": {"col": 4, "cover": "none", "placed": true, "row": 4}, "round": 1, "row": 4}
+event combatant_moved {"col": 4, "combatant_id": "Nael", "distance_dft": 304, "distance_ft": 30, "from": {"col": 3, "cover": "none", "placed": true, "row": 3}, "on_turn": true, "round": 1, "row": 9}
+event combatant_moved {"col": 10, "combatant_id": "Orla", "distance_dft": 200, "distance_ft": 20, "from": {"col": 6, "cover": "none", "placed": true, "row": 3}, "round": 1, "row": 3}
+event combatant_moved {"col": 9, "combatant_id": "Tavo", "distance_dft": 200, "distance_ft": 20, "from": {"col": 5, "cover": "none", "placed": true, "row": 3}, "round": 1, "row": 3}
+event spell_cast {"area_col": 4, "area_row": 4, "cast_id": "?", "combatant_id": "Nael", "hits": [{"pending_id": "?", "save": {"bonus_unknown": true, "counted": 1, "d20": 2, "d20_b": 18, "dc": 14, "roll_mode": "disadvantage", "total": 2}, "target_id": "Goblin"}], "key": "spell:fireball", "placed": true, "res": {"keys": ["feature:metamagic-heightened-spell"], "kind": "metamagic", "spent": 3}, "round": 1, "slot": {"level": 3}}
+combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Nael | true | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | true | false | false | {} | false | false
+combatant Orla | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Tavo | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+damage Nael | Goblin | spell:fireball | awaiting_roll | false | 8 | 6 | 0 | damage-type:fire | false | false | 0 | 0 | true | 0 | 0
+vitals Nael | <nil> | 0 | {0,0,1,0,0,0,0,0,0} | 0
+== a retry after the pending damage was discarded ==
+cast {"pendingDamages":[{"attackKey":"spell:magic-missile","attackerId":"Pensantus","bonus":3,"damageTypeKey":"damage-type:force","damageTypePt":"energia","diceCount":3,"diceSides":4,"id":"?","status":"PENDING_DAMAGE_STATUS_DISCARDED","targetId":"Goblin"}],"slot":{"level":1},"spellKey":"spell:magic-missile","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin","cover":"COVER_DEGREE_NONE","darts":3,"pendingDamageId":"?"}]}
+area 
+inspiration 
+lucky 
+summoned 0
+hidden hits {}
+pending reveal false
+held false
+event spell_cast {"cast_id": "?", "combatant_id": "Pensantus", "hits": [{"darts": 3, "pending_id": "?", "target_id": "Goblin"}], "key": "spell:magic-missile", "round": 1, "slot": {"level": 1}}
+event damage_discarded {"combatant_id": "Pensantus", "key": "spell:magic-missile", "pending_id": "?", "prev_status": "awaiting_roll", "round": 1, "target_id": "Goblin"}
+combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Pensantus | true | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | true | false | false | {} | false | false
+combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+damage Pensantus | Goblin | spell:magic-missile | discarded | false | 3 | 4 | 3 | damage-type:force | false | false | 0 | 0 | false | 0 | 0
+vitals Pensantus | <nil> | 0 | {1,0,0,0,0,0,0,0,0} | 0
+== two damages read by the caster ==
+cast {"pendingDamages":[{"attackKey":"spell:ice-storm","attackerId":"Pensantus","castId":"?","damageTypeKey":"damage-type:bludgeoning","damageTypePt":"concussão","diceCount":2,"diceSides":8,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin"},{"attackKey":"spell:ice-storm","attackerId":"Pensantus","castId":"?","damageTypeKey":"damage-type:cold","damageTypePt":"frio","diceCount":4,"diceSides":6,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin"}],"slot":{"level":4},"spellKey":"spell:ice-storm","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin","cover":"COVER_DEGREE_NONE","morePendingDamageIds":["?"],"pendingDamageId":"?","save":{"dc":15,"outcome":"SAVE_OUTCOME_FAILED"}}]}
+area {"origin":{"col":7,"row":1},"squares":[{"col":4},{"col":5},{"col":6},{"col":7},{"col":8},{"col":9},{"col":10},{"col":3,"row":1},{"col":4,"row":1},{"col":5,"row":1},{"col":6,"row":1},{"col":7,"row":1},{"col":8,"row":1},{"col":9,"row":1},{"col":10,"row":1},{"col":11,"row":1},{"col":4,"row":2},{"col":5,"row":2},{"col":6,"row":2},{"col":7,"row":2},{"col":8,"row":2},{"col":9,"row":2},{"col":10,"row":2},{"col":4,"row":3},{"col":5,"row":3},{"col":6,"row":3},{"col":7,"row":3},{"col":8,"row":3},{"col":9,"row":3},{"col":10,"row":3},{"col":5,"row":4},{"col":6,"row":4},{"col":7,"row":4},{"col":8,"row":4},{"col":9,"row":4},{"col":7,"row":5}]}
+inspiration 
+lucky 
+summoned 0
+hidden hits {}
+pending reveal false
+held false
+event spell_cast {"area_col": 7, "area_row": 1, "cast_id": "?", "combatant_id": "Pensantus", "hits": [{"more_pending_ids": ["?"], "pending_id": "?", "save": {"bonus_unknown": true, "d20": 1, "dc": 15, "roll_mode": "normal", "total": 1}, "target_id": "Goblin"}], "key": "spell:ice-storm", "placed": true, "round": 1, "slot": {"level": 4}}
+combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Pensantus | true | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | true | false | false | {} | false | false
+combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+damage Pensantus | Goblin | spell:ice-storm | awaiting_roll | false | 2 | 8 | 0 | damage-type:bludgeoning | false | false | 0 | 0 | true | 0 | 0
+damage Pensantus | Goblin | spell:ice-storm | awaiting_roll | false | 4 | 6 | 0 | damage-type:cold | false | false | 0 | 0 | true | 0 | 0
+vitals Pensantus | <nil> | 0 | {0,0,0,1,0,0,0,0,0} | 0
+== two damages read by the master ==
+cast {"pendingDamages":[{"attackKey":"spell:ice-storm","attackerId":"Pensantus","castId":"?","damageTypeKey":"damage-type:bludgeoning","damageTypePt":"concussão","diceCount":2,"diceSides":8,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin"},{"attackKey":"spell:ice-storm","attackerId":"Pensantus","castId":"?","damageTypeKey":"damage-type:cold","damageTypePt":"frio","diceCount":4,"diceSides":6,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin"}],"slot":{"level":4},"spellKey":"spell:ice-storm","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin","cover":"COVER_DEGREE_NONE","morePendingDamageIds":["?"],"pendingDamageId":"?","save":{"dc":15,"mode":"ROLL_MODE_NORMAL","outcome":"SAVE_OUTCOME_FAILED","roll":{"diceCount":1,"diceSides":20,"faces":[1],"total":1}}}]}
+area {"origin":{"col":7,"row":1},"squares":[{"col":4},{"col":5},{"col":6},{"col":7},{"col":8},{"col":9},{"col":10},{"col":3,"row":1},{"col":4,"row":1},{"col":5,"row":1},{"col":6,"row":1},{"col":7,"row":1},{"col":8,"row":1},{"col":9,"row":1},{"col":10,"row":1},{"col":11,"row":1},{"col":4,"row":2},{"col":5,"row":2},{"col":6,"row":2},{"col":7,"row":2},{"col":8,"row":2},{"col":9,"row":2},{"col":10,"row":2},{"col":4,"row":3},{"col":5,"row":3},{"col":6,"row":3},{"col":7,"row":3},{"col":8,"row":3},{"col":9,"row":3},{"col":10,"row":3},{"col":5,"row":4},{"col":6,"row":4},{"col":7,"row":4},{"col":8,"row":4},{"col":9,"row":4},{"col":7,"row":5}]}
+inspiration 
+lucky 
+summoned 0
+hidden hits {}
+pending reveal false
+held false
+event spell_cast {"area_col": 7, "area_row": 1, "cast_id": "?", "combatant_id": "Pensantus", "hits": [{"more_pending_ids": ["?"], "pending_id": "?", "save": {"bonus_unknown": true, "d20": 1, "dc": 15, "roll_mode": "normal", "total": 1}, "target_id": "Goblin"}], "key": "spell:ice-storm", "placed": true, "round": 1, "slot": {"level": 4}}
+combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Pensantus | true | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | true | false | false | {} | false | false
+combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+damage Pensantus | Goblin | spell:ice-storm | awaiting_roll | false | 2 | 8 | 0 | damage-type:bludgeoning | false | false | 0 | 0 | true | 0 | 0
+damage Pensantus | Goblin | spell:ice-storm | awaiting_roll | false | 4 | 6 | 0 | damage-type:cold | false | false | 0 | 0 | true | 0 | 0
+vitals Pensantus | <nil> | 0 | {0,0,0,1,0,0,0,0,0} | 0

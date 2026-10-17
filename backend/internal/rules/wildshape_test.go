@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// salvia is the Etapa 9 designs' druid: Half-elf, Druid 5 (Circle of the Land),
+// salvia is the designs' druid: Half-elf, Druid 5 (Circle of the Land),
 // darkvision 60, Wisdom 16.
 func salvia(level int) Build {
 	return Build{

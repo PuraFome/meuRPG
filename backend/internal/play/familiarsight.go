@@ -11,6 +11,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
@@ -89,12 +90,25 @@ func withinSightRange(a, b [2]int32) bool {
 // session's current map by their tokens. ok is false when either has no square.
 func (s *Service) familiarSquares(ctx context.Context, c *combatTx, who *playdb.Combatant, cs []playdb.Combatant, characterID, creatureID string) (me, it [2]int32, ok bool, err error) {
 	if who != nil {
-		i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return deref(o.CreatureID) == creatureID && !o.Dismissed })
-		if i < 0 || !placed(*who) || !placed(cs[i]) {
-			return me, it, false, nil
-		}
-		return [2]int32{*who.GridCol, *who.GridRow}, [2]int32{*cs[i].GridCol, *cs[i].GridRow}, true, nil
+		me, it, ok = combatantSquares(*who, cs, creatureID)
+		return me, it, ok, nil
 	}
+	return s.familiarMapSquares(ctx, c, characterID, creatureID)
+}
+
+// combatantSquares finds the squares of the character's combatant and of its
+// familiar's, which must be in the combat and placed.
+func combatantSquares(who playdb.Combatant, cs []playdb.Combatant, creatureID string) (me, it [2]int32, ok bool) {
+	i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return deref(o.CreatureID) == creatureID && !o.Dismissed })
+	if i < 0 || !placed(who) || !placed(cs[i]) {
+		return me, it, false
+	}
+	return [2]int32{*who.GridCol, *who.GridRow}, [2]int32{*cs[i].GridCol, *cs[i].GridRow}, true
+}
+
+// familiarMapSquares finds the squares of the character's token and of its familiar's on
+// the session's current map.
+func (s *Service) familiarMapSquares(ctx context.Context, c *combatTx, characterID, creatureID string) (me, it [2]int32, ok bool, err error) {
 	mapID := deref(c.session.CurrentMapID)
 	if mapID == "" {
 		return me, it, false, nil
@@ -110,6 +124,13 @@ func (s *Service) familiarSquares(ctx context.Context, c *combatTx, who *playdb.
 	if err != nil {
 		return me, it, false, err
 	}
+	me, it, ok = squaresOfTokens(g, tokens, characterID, creatureID)
+	return me, it, ok, nil
+}
+
+// squaresOfTokens finds, among a map's tokens, the squares of the character's and
+// of the creature's.
+func squaresOfTokens(g link.Grid, tokens []link.TokenPosition, characterID, creatureID string) (me, it [2]int32, ok bool) {
 	var gotMe, gotIt bool
 	for _, t := range tokens {
 		switch {
@@ -121,7 +142,7 @@ func (s *Service) familiarSquares(ctx context.Context, c *combatTx, who *playdb.
 			it, gotIt = [2]int32{col, row}, true
 		}
 	}
-	return me, it, gotMe && gotIt, nil
+	return me, it, gotMe && gotIt
 }
 
 // withConditions adds the conditions the combatant does not have, and returns the
@@ -149,6 +170,26 @@ func setConditions(ctx context.Context, c *combatTx, who playdb.Combatant, list 
 	return nil
 }
 
+// sightRun is what a StartFamiliarSight or StopFamiliarSight works with inside its
+// transaction, and what the answer reads after it.
+type sightRun struct {
+	m           authz.Membership
+	v           combatViewer
+	characterID string
+	stop        bool
+
+	made   actionEvent
+	vitals *playv1.CharacterVitals
+	mapID  string
+
+	// who and cs are the character's combatant and the combat's, when it is in one;
+	// turns says the combat has begun, so the sight costs the action of a turn.
+	who      *playdb.Combatant
+	cs       []playdb.Combatant
+	inCombat bool
+	turns    bool
+}
+
 // sightChange is StartFamiliarSight (stop false) and StopFamiliarSight (stop true).
 func (s *Service) sightChange(ctx context.Context, campaignID, rawCharacter, rawKey string, stop bool) (*playv1.CharacterVitals, *playv1.Encounter, error) {
 	m, err := authz.RequireCampaignMember(ctx, campaignID)
@@ -163,132 +204,192 @@ func (s *Service) sightChange(ctx context.Context, campaignID, rawCharacter, raw
 	if !ok {
 		return nil, nil, errCharacterNotFound()
 	}
-	v := viewerOf(m)
-
-	var made actionEvent
-	var vitals *playv1.CharacterVitals
-	var mapID string
+	r := &sightRun{m: m, v: viewerOf(m), characterID: characterID, stop: stop}
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: requestHash(campaignID, rawCharacter, strconv.FormatBool(stop)), kind: eventFamiliarSight}, func(c *combatTx) (any, error) {
-		made, vitals, mapID = actionEvent{}, nil, deref(c.session.CurrentMapID)
-		_, who, cs, err := s.playerCharacterOf(ctx, c, m, characterID)
-		if err != nil {
-			return nil, err
-		}
-		inCombat := who != nil
-		turns := inCombat && c.enc.Status == statusActive
-		if inCombat {
-			mapID = deref(c.enc.MapID)
-		}
-		now, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, characterID)
-		if err != nil {
-			return nil, err
-		}
-		sight := now.GetFamiliarSight()
-
-		if stop {
-			if sight == nil {
-				return nil, errSight(playv1.FamiliarSightBlockedReason_FAMILIAR_SIGHT_BLOCKED_REASON_NOT_SEEING, "the player is not looking through the familiar's eyes")
-			}
-			if who != nil {
-				if err := setConditions(ctx, c, *who, withoutConditions(who.Conditions, sight.GetConditionsGiven())); err != nil {
-					return nil, err
-				}
-			}
-			if vitals, err = s.vitals.SetFamiliarSight(ctx, c.tx, c.session.CampaignID, characterID, "", false, nil); err != nil {
-				return nil, err
-			}
-			made = actionEvent{Sight: "stop", Creature: sight.GetCreatureId(), Reason: sightStopped, SightConds: sight.GetConditionsGiven()}
-		} else {
-			if sight != nil {
-				return nil, errSight(playv1.FamiliarSightBlockedReason_FAMILIAR_SIGHT_BLOCKED_REASON_ALREADY_SEEING, "the player is looking through the familiar's eyes already")
-			}
-			fam, ok, err := s.vitals.FamiliarOf(ctx, c.tx, c.session.CampaignID, characterID)
-			if err != nil {
-				return nil, err
-			}
-			if !ok {
-				return nil, errSight(playv1.FamiliarSightBlockedReason_FAMILIAR_SIGHT_BLOCKED_REASON_NO_FAMILIAR, "the character has no familiar")
-			}
-			if inCombat && isTheatre(c.enc) {
-				return nil, errSight(playv1.FamiliarSightBlockedReason_FAMILIAR_SIGHT_BLOCKED_REASON_NO_MAP, "a combat without a map has no vision to look through") // the familiar's eyes are the map's vision: without a map there is nothing to see through them (RN-25)
-			}
-			if inCombat && !turns {
-				// In SETUP nobody has a turn: the sight is an action of a turn, and one
-				// that was on is ended when the combat starts or the character joins it.
-				return nil, errSight(playv1.FamiliarSightBlockedReason_FAMILIAR_SIGHT_BLOCKED_REASON_COMBAT_NOT_BEGUN, "the combat has not begun")
-			}
-			me, it, found, err := s.familiarSquares(ctx, c, who, cs, characterID, fam.ID)
-			if err != nil {
-				return nil, err
-			}
-			if !found {
-				return nil, errSight(playv1.FamiliarSightBlockedReason_FAMILIAR_SIGHT_BLOCKED_REASON_NOT_ON_MAP, "the character and the familiar are not both on the map")
-			}
-			if !withinSightRange(me, it) {
-				return nil, errSight(playv1.FamiliarSightBlockedReason_FAMILIAR_SIGHT_BLOCKED_REASON_TOO_FAR, "the familiar is more than 30 m away")
-			}
-			if turns {
-				if err := s.spendAction(ctx, c, v, *who, false, &made); err != nil {
-					return nil, err
-				}
-			}
-			var added []string
-			if who != nil {
-				var all []string
-				all, added = withConditions(who.Conditions, sightConditions)
-				if err := setConditions(ctx, c, *who, all); err != nil {
-					return nil, err
-				}
-			}
-			if vitals, err = s.vitals.SetFamiliarSight(ctx, c.tx, c.session.CampaignID, characterID, fam.ID, turns, added); err != nil {
-				return nil, err
-			}
-			made.Sight, made.Creature, made.SightConds = "start", fam.ID, added
-		}
-		made.OwnerCharacter = characterID
-		if inCombat {
-			made.EncounterID = c.enc.ID
-			if made.Actor == "" {
-				made.Round, made.Secret, made.Actor = c.enc.Round, who.Hidden, who.ID
-			}
-			if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-				return nil, fmt.Errorf("touch the encounter: %w", err)
-			}
-		}
-		c.characterID = &characterID
-		return made, nil
+		return s.sightTx(ctx, c, r)
 	})
 	if err != nil {
 		return nil, nil, s.dbError(ctx, "change the familiar's sight", err)
 	}
-	ev, err := resultEvent(res, made)
+	ev, err := resultEvent(res, r.made)
 	if err != nil {
 		return nil, nil, s.dbError(ctx, "read the familiar's sight change", err)
 	}
+	vitals, out, err := s.answerFormChange(ctx, m, characterID, res, ev, r.vitals)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !res.repeated {
+		s.publishVitals(m.CampaignID, vitals)
+		s.maps.VisionChanged(ctx, m.CampaignID, r.mapID)
+	}
+	return vitals, out, nil
+}
+
+// answerFormChange is what a change of a form or a sight answers with, after its
+// transaction: a retry of another character's change is refused, a retry answers
+// with the vitals as they are now, and a change made in a combat tells the combat.
+func (s *Service) answerFormChange(ctx context.Context, m authz.Membership, characterID string, res combatResult, ev actionEvent, vitals *playv1.CharacterVitals) (*playv1.CharacterVitals, *playv1.Encounter, error) {
 	if res.repeated && ev.OwnerCharacter != characterID {
 		// The key is another character's change: never answer with that character's vitals.
 		return nil, nil, connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
 	}
 	if res.repeated {
+		var err error
 		if vitals, err = s.vitals.GetVitals(ctx, m.CampaignID, characterID); err != nil {
 			return nil, nil, s.dbError(ctx, "get vitals", err)
 		}
 	}
-	var out *playv1.Encounter
-	if ev.EncounterID != "" {
-		res.encounterID = ev.EncounterID
-		if out, err = s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
-			s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
-			s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
-		}); err != nil {
-			return nil, nil, err
-		}
+	if ev.EncounterID == "" {
+		return vitals, nil, nil
 	}
-	if !res.repeated {
-		s.publishVitals(m.CampaignID, vitals)
-		s.maps.VisionChanged(ctx, m.CampaignID, mapID)
+	res.encounterID = ev.EncounterID
+	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
+		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
+		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
+	})
+	if err != nil {
+		return nil, nil, err
 	}
 	return vitals, out, nil
+}
+
+// sightTx is the sight transaction: where the character stands in the table's
+// play, then the start or the stop, then the event's own fields.
+func (s *Service) sightTx(ctx context.Context, c *combatTx, r *sightRun) (any, error) {
+	r.made, r.vitals, r.mapID = actionEvent{}, nil, deref(c.session.CurrentMapID)
+	_, who, cs, err := s.playerCharacterOf(ctx, c, r.m, r.characterID)
+	if err != nil {
+		return nil, err
+	}
+	r.who, r.cs = who, cs
+	r.inCombat = who != nil
+	r.turns = r.inCombat && c.enc.Status == statusActive
+	if r.inCombat {
+		r.mapID = deref(c.enc.MapID)
+	}
+	now, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, r.characterID)
+	if err != nil {
+		return nil, err
+	}
+	sight := now.GetFamiliarSight()
+	if r.stop {
+		err = s.sightStop(ctx, c, r, sight)
+	} else {
+		err = s.sightStart(ctx, c, r, sight)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return s.sightSeal(ctx, c, r)
+}
+
+// sightStop ends the sight the player has: the conditions it gave leave the
+// combatant and the vitals forget it. The action is not given back.
+func (s *Service) sightStop(ctx context.Context, c *combatTx, r *sightRun, sight *playv1.FamiliarSightState) error {
+	if sight == nil {
+		return errSight(playv1.FamiliarSightBlockedReason_FAMILIAR_SIGHT_BLOCKED_REASON_NOT_SEEING, "the player is not looking through the familiar's eyes")
+	}
+	if r.who != nil {
+		if err := setConditions(ctx, c, *r.who, withoutConditions(r.who.Conditions, sight.GetConditionsGiven())); err != nil {
+			return err
+		}
+	}
+	var err error
+	if r.vitals, err = s.vitals.SetFamiliarSight(ctx, c.tx, c.session.CampaignID, r.characterID, "", false, nil); err != nil {
+		return err
+	}
+	r.made = actionEvent{Sight: "stop", Creature: sight.GetCreatureId(), Reason: sightStopped, SightConds: sight.GetConditionsGiven()}
+	return nil
+}
+
+// sightStart starts the sight: the familiar must be there and within reach, and in
+// a combat it costs the action of the turn and blinds and deafens the combatant.
+func (s *Service) sightStart(ctx context.Context, c *combatTx, r *sightRun, sight *playv1.FamiliarSightState) error {
+	if sight != nil {
+		return errSight(playv1.FamiliarSightBlockedReason_FAMILIAR_SIGHT_BLOCKED_REASON_ALREADY_SEEING, "the player is looking through the familiar's eyes already")
+	}
+	famID, err := s.sightFamiliar(ctx, c, r)
+	if err != nil {
+		return err
+	}
+	if r.turns {
+		if err := s.spendAction(ctx, c, r.v, *r.who, false, &r.made); err != nil {
+			return err
+		}
+	}
+	var added []string
+	if r.who != nil {
+		var all []string
+		all, added = withConditions(r.who.Conditions, sightConditions)
+		if err := setConditions(ctx, c, *r.who, all); err != nil {
+			return err
+		}
+	}
+	if r.vitals, err = s.vitals.SetFamiliarSight(ctx, c.tx, c.session.CampaignID, r.characterID, famID, r.turns, added); err != nil {
+		return err
+	}
+	r.made.Sight, r.made.Creature, r.made.SightConds = "start", famID, added
+	return nil
+}
+
+// sightFamiliar checks that the character has a familiar to look through, that the
+// combat (if any) has a map and has begun, and that the familiar is in reach; it
+// returns the familiar's id.
+func (s *Service) sightFamiliar(ctx context.Context, c *combatTx, r *sightRun) (string, error) {
+	fam, ok, err := s.vitals.FamiliarOf(ctx, c.tx, c.session.CampaignID, r.characterID)
+	if err != nil {
+		return "", err
+	}
+	if !ok {
+		return "", errSight(playv1.FamiliarSightBlockedReason_FAMILIAR_SIGHT_BLOCKED_REASON_NO_FAMILIAR, "the character has no familiar")
+	}
+	if r.inCombat && isTheatre(c.enc) {
+		return "", errSight(playv1.FamiliarSightBlockedReason_FAMILIAR_SIGHT_BLOCKED_REASON_NO_MAP, "a combat without a map has no vision to look through") // the familiar's eyes are the map's vision: without a map there is nothing to see through them (RN-25)
+	}
+	if r.inCombat && !r.turns {
+		// In SETUP nobody has a turn: the sight is an action of a turn, and one
+		// that was on is ended when the combat starts or the character joins it.
+		return "", errSight(playv1.FamiliarSightBlockedReason_FAMILIAR_SIGHT_BLOCKED_REASON_COMBAT_NOT_BEGUN, "the combat has not begun")
+	}
+	if err := s.sightInReach(ctx, c, r, fam.ID); err != nil {
+		return "", err
+	}
+	return fam.ID, nil
+}
+
+// sightInReach checks that the character and the familiar are both on the map and
+// within the range of the sight.
+func (s *Service) sightInReach(ctx context.Context, c *combatTx, r *sightRun, famID string) error {
+	me, it, found, err := s.familiarSquares(ctx, c, r.who, r.cs, r.characterID, famID)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return errSight(playv1.FamiliarSightBlockedReason_FAMILIAR_SIGHT_BLOCKED_REASON_NOT_ON_MAP, "the character and the familiar are not both on the map")
+	}
+	if !withinSightRange(me, it) {
+		return errSight(playv1.FamiliarSightBlockedReason_FAMILIAR_SIGHT_BLOCKED_REASON_TOO_FAR, "the familiar is more than 30 m away")
+	}
+	return nil
+}
+
+// sightSeal fills in the event's owner and, in a combat, its combat, round and
+// actor, and touches the combat.
+func (s *Service) sightSeal(ctx context.Context, c *combatTx, r *sightRun) (any, error) {
+	r.made.OwnerCharacter = r.characterID
+	if r.inCombat {
+		r.made.EncounterID = c.enc.ID
+		if r.made.Actor == "" {
+			r.made.Round, r.made.Secret, r.made.Actor = c.enc.Round, r.who.Hidden, r.who.ID
+		}
+		var err error
+		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
+			return nil, fmt.Errorf("touch the encounter: %w", err)
+		}
+	}
+	c.characterID = &r.characterID
+	return r.made, nil
 }
 
 // endFamiliarSights ends, at the start of a turn, the sight of every character
@@ -354,17 +455,8 @@ func (s *Service) endSight(ctx context.Context, c *combatTx, who playdb.Combatan
 func (s *Service) sightUndo(ctx context.Context, c *combatTx, ev actionEvent, find func(string) (playdb.Combatant, bool), keep func(*playv1.CharacterVitals)) error {
 	who, ok := find(ev.Actor)
 	if ok {
-		if ev.Spent {
-			if err := c.q.SetCombatantEconomy(ctx, playdb.SetCombatantEconomyParams{
-				ID: who.ID, ActionUsed: ev.ActionBefore, BonusActionUsed: ev.BonusBefore, ReactionUsed: ev.ReactionBefore, Dashed: ev.DashedBefore,
-			}); err != nil {
-				return fmt.Errorf("put back the economy: %w", err)
-			}
-			if ev.RunBefore != 0 {
-				if err := c.q.SetCombatantRun(ctx, playdb.SetCombatantRunParams{ID: who.ID, LastMoveDft: ev.RunBefore}); err != nil {
-					return fmt.Errorf("put back the running start: %w", err)
-				}
-			}
+		if err := putBackSpentAction(ctx, c, who, ev); err != nil {
+			return err
 		}
 		if err := setConditions(ctx, c, who, withoutConditions(who.Conditions, ev.SightConds)); err != nil {
 			return err
@@ -376,6 +468,26 @@ func (s *Service) sightUndo(ctx context.Context, c *combatTx, ev actionEvent, fi
 	}
 	keep(after)
 	c.told = append(c.told, after)
+	return nil
+}
+
+// putBackSpentAction gives back what a change spent on its turn: the economy and
+// the running start the event kept. It does nothing for a change that spent
+// nothing (the master's, or one made in SETUP).
+func putBackSpentAction(ctx context.Context, c *combatTx, who playdb.Combatant, ev actionEvent) error {
+	if !ev.Spent {
+		return nil
+	}
+	if err := c.q.SetCombatantEconomy(ctx, playdb.SetCombatantEconomyParams{
+		ID: who.ID, ActionUsed: ev.ActionBefore, BonusActionUsed: ev.BonusBefore, ReactionUsed: ev.ReactionBefore, Dashed: ev.DashedBefore,
+	}); err != nil {
+		return fmt.Errorf("put back the economy: %w", err)
+	}
+	if ev.RunBefore != 0 {
+		if err := c.q.SetCombatantRun(ctx, playdb.SetCombatantRunParams{ID: who.ID, LastMoveDft: ev.RunBefore}); err != nil {
+			return fmt.Errorf("put back the running start: %w", err)
+		}
+	}
 	return nil
 }
 

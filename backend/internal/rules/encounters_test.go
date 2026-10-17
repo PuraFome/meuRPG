@@ -11,8 +11,8 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/encounter"
 )
 
-// The encounter builder (MR-043, RN-29; slice 10.9c) on the real SRD: the table, the
-// numbers of the artboard E10-09, and the generator's promises.
+// The encounter builder (MR-043, RN-29) on the real SRD: the table, the
+// numbers of the encounter design, and the generator's promises.
 
 func TestEncounterBudgetsAreTheSRD521Table(t *testing.T) {
 	t.Parallel()

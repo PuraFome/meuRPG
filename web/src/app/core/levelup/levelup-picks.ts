@@ -2,6 +2,7 @@ import {
   LevelUpHitPointsRule,
   type LevelUpOptions,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
+import { toggledIn } from '../format/sets';
 import type { HpCard, PickSet, Rolled } from './levelup-draft-types';
 
 /** Drops the picks `keep` refuses, leaving the set itself alone when nothing goes (a new set would wake every reader). */
@@ -22,14 +23,10 @@ export function trim(set: PickSet, max: number): void {
 /** Picks or drops `key`: with a single place the pick replaces, otherwise a full list refuses. */
 export function flip(set: PickSet, key: string, max: number): void {
   const now = set();
-  if (now.has(key)) {
-    const next = new Set(now);
-    next.delete(key);
-    set.set(next);
-  } else if (max === 1) {
+  if (!now.has(key) && max === 1) {
     set.set(new Set([key]));
-  } else if (now.size < max) {
-    set.set(new Set([...now, key]));
+  } else if (now.has(key) || now.size < max) {
+    set.set(toggledIn(now, key));
   }
 }
 

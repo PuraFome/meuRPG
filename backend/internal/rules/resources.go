@@ -94,7 +94,7 @@ func (c *Content) CreateSlotCheck(level, points int) (int, error) {
 // Magic): a conversion that would pass the maximum is refused, with the reason
 // ErrSorceryPointsFull when the sorcerer is at the maximum already.
 func ConvertSlotCheck(level, points, maxPoints int) (gain int, err error) {
-	if level < 1 || level > maxSpellLevel {
+	if level < 1 || level > MaxSlotLevel {
 		return 0, fmt.Errorf("%w: no spell slot of level %d", ErrFlexibleCasting, level)
 	}
 	if points >= maxPoints {
@@ -112,8 +112,8 @@ var (
 	ErrSorceryPointsOver = fmt.Errorf("%w: the slot would pass the maximum of sorcery points", ErrFlexibleCasting)
 )
 
-// maxSpellLevel is the highest spell level.
-const maxSpellLevel = 9
+// MaxSlotLevel is the highest spell slot level, and the highest spell level.
+const MaxSlotLevel = 9
 
 // BardicInspirationKey is the resource of the bard's uses.
 const BardicInspirationKey = "bardic_inspiration"

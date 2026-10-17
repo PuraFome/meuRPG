@@ -1,10 +1,20 @@
 import { signal } from '@angular/core';
+import { FormBuilder } from '@angular/forms';
 import { convertToParamMap } from '@angular/router';
 import { Code, ConnectError } from '@connectrpc/connect';
 
-import type { AbilityTableVm, CharacterForEdit, RulesCatalogVm } from './character-editor.types';
+import type {
+  AbilityMethodKey,
+  AbilityTableVm,
+  CharacterForEdit,
+  RulesCatalogVm,
+} from './character-editor.types';
 import { EditorLoader, type EditorLoaderContext } from './editor-loader';
+import { EditorPicks } from './editor-picks';
 import type { PageState, ReadyState } from './editor-state';
+import { createFullForm } from './full-form';
+import { createBasicForm } from './npc-short-form/basic-form';
+import { SpellPicks } from './spell-picks';
 import { nextTurn } from '../../../test-settle';
 
 const lists = (marker = 'a'): RulesCatalogVm =>
@@ -29,8 +39,10 @@ describe('EditorLoader', () => {
   let contentNote = signal('');
   let campaignId = signal('');
   let resets = 0;
-  let createdWith: { ready: ReadyState; table: AbilityTableVm | null }[] = [];
-  let editedWith: { ready: ReadyState; existing: CharacterForEdit }[] = [];
+  let fb = new FormBuilder();
+  let fullForm = createFullForm(fb);
+  let basicForm = createBasicForm(fb);
+  let abilityMethod = signal<AbilityMethodKey>('typed');
   let reserved = false;
   let catalogFn: (campaign: string, character?: string) => Promise<RulesCatalogVm>;
   let editFn: () => Promise<CharacterForEdit>;
@@ -48,20 +60,19 @@ describe('EditorLoader', () => {
         },
       },
       state,
+      fullForm,
+      basicForm,
+      picks: new EditorPicks(() => new Map()),
+      spellPicks: new SpellPicks({ sections: () => [] }),
+      fb,
+      views: { sections: signal([]) },
       abilityTable,
+      abilityMethod,
       lockedOrigin,
       contentNote,
       campaignId,
       reservedRoute: () => reserved,
-      reset: () => resets++,
-      created: (ready, table) => {
-        createdWith.push({ ready, table });
-        state.set(ready);
-      },
-      edited: (ready, e) => {
-        editedWith.push({ ready, existing: e });
-        state.set(ready);
-      },
+      forget: () => resets++,
     });
   }
 
@@ -72,8 +83,10 @@ describe('EditorLoader', () => {
     contentNote = signal('');
     campaignId = signal('');
     resets = 0;
-    createdWith = [];
-    editedWith = [];
+    fb = new FormBuilder();
+    fullForm = createFullForm(fb);
+    basicForm = createBasicForm(fb);
+    abilityMethod = signal<AbilityMethodKey>('typed');
     reserved = false;
     tableCalls = 0;
     catalogFn = () => Promise.resolve(lists());
@@ -92,27 +105,26 @@ describe('EditorLoader', () => {
       loader().resolve(convertToParamMap({ id: 'camp', characterId: 'char' }));
       await nextTurn();
       expect(campaignId()).toBe('camp');
-      expect(editedWith).toHaveLength(1);
-      expect(editedWith[0].ready).toMatchObject({ mode: 'edit', characterId: 'char' });
+      expect(state()).toMatchObject({ status: 'ready', mode: 'edit', characterId: 'char' });
     });
 
     it('opens a new player, or the NPC kind the route names (an enemy for a kind it does not know)', async () => {
       const load = loader();
-      load.resolve(convertToParamMap({ id: 'camp' }));
-      await nextTurn();
-      load.resolve(convertToParamMap({ id: 'camp', kind: 'boss' }));
-      await nextTurn();
-      load.resolve(convertToParamMap({ id: 'camp', kind: 'dragon' }));
-      await nextTurn();
-      expect(createdWith.map((c) => c.ready.kind)).toEqual(['player', 'boss', 'enemy']);
+      const kinds: string[] = [];
+      for (const kind of [undefined, 'boss', 'dragon']) {
+        load.resolve(convertToParamMap(kind ? { id: 'camp', kind } : { id: 'camp' }));
+        await nextTurn();
+        kinds.push((state() as ReadyState).kind);
+      }
+      expect(kinds).toEqual(['player', 'boss', 'enemy']);
     });
 
     it('opens a reserved character where the route says so', async () => {
       reserved = true;
       loader().resolve(convertToParamMap({ id: 'camp' }));
       await nextTurn();
-      expect(createdWith[0].ready.reserved).toBe(true);
-      expect(createdWith[0].table).toBeNull();
+      expect(state()).toMatchObject({ status: 'ready', reserved: true });
+      expect(abilityTable()).toBeNull();
       expect(tableCalls).toBe(0);
     });
   });
@@ -124,15 +136,32 @@ describe('EditorLoader', () => {
       expect(resets).toBe(1);
       expect(state()).toEqual({ status: 'loading', title: 'Criar personagem' });
       await nextTurn();
-      expect(createdWith[0].table).toBe(TABLE);
-      expect(createdWith[0].ready).toMatchObject({ mode: 'create', revision: 1, kind: 'player' });
+      expect(abilityTable()).toBe(TABLE);
+      expect(state()).toMatchObject({ mode: 'create', revision: 1, kind: 'player' });
     });
 
     it('asks no table for an NPC', async () => {
       loader().forCreate('camp', 'enemy', false);
       await nextTurn();
       expect(tableCalls).toBe(0);
-      expect(createdWith[0].table).toBeNull();
+      expect(abilityTable()).toBeNull();
+    });
+
+    it('starts the hit points on the way the table leaves, and a new enemy at ND 0 and 10 XP', async () => {
+      tableFn = () => Promise.resolve({ hitPoints: 'roll' } as AbilityTableVm);
+      loader().forCreate('camp', 'player', false);
+      await nextTurn();
+      expect(fullForm.controls.hitPointsMethod.value).toBe('rolled');
+
+      loader().forCreate('camp', 'enemy', false);
+      await nextTurn();
+      expect(fullForm.getRawValue()).toMatchObject({ challengeRating: '0', xpValue: 10 });
+    });
+
+    it('starts a story NPC with no ND and no XP', async () => {
+      loader().forCreate('camp', 'story', false);
+      await nextTurn();
+      expect(basicForm.getRawValue()).toMatchObject({ challengeRating: '', xpValue: 0 });
     });
 
     it('says the lists could not be read, with a way back', async () => {
@@ -152,7 +181,6 @@ describe('EditorLoader', () => {
       answers[0].ok(lists());
       answers[1].fail(new Error('late'));
       await nextTurn();
-      expect(createdWith).toHaveLength(0);
       expect(state().status).toBe('loading');
     });
   });
@@ -194,7 +222,6 @@ describe('EditorLoader', () => {
       editFn = () => Promise.resolve(existing({ blocked: 'sheet_locked' }));
       loader().forEdit('camp', 'char');
       await nextTurn();
-      expect(editedWith).toEqual([]);
       expect(state()).toMatchObject({ status: 'error', blocked: { title: 'Ficha travada' } });
     });
 
@@ -217,7 +244,7 @@ describe('EditorLoader', () => {
       load.destroy();
       answer(existing({ abilityOrigin: { method: 'typed', rolls: null } }));
       await nextTurn();
-      expect(editedWith).toEqual([]);
+      expect(state().status).toBe('loading');
       expect(abilityTable()).toBeNull();
 
       let fail: (e: unknown) => void = () => undefined;

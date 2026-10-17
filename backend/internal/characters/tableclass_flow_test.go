@@ -17,7 +17,7 @@ import (
 // classFlow is a campaign whose master wrote the guardian, its subclass and a
 // third caster, with Davi's character Ícaro (a Guardião do Vale of level 1 and
 // the XP for level 5) on a locked sheet: the fixture of the creation, level-up and
-// "A classe mudou" tests of slice 10.3.
+// "A classe mudou" tests.
 type classFlow struct {
 	h        *harness
 	master   *user
@@ -173,7 +173,7 @@ func hasSpell(d *rulesv1.DerivedSheet, key string, prepared bool) bool {
 	})
 }
 
-// TestTableClassCreationAndLevelUp (E10-02 states 5 and 7, MR-025, MR-040): Davi
+// TestTableClassCreationAndLevelUp (MR-025, MR-040): Davi
 // creates Ícaro, a Guardião do Vale of the table with the background "Outro", and
 // takes him from level 1 to 5 with the guided level-up: the hit points by the
 // average, a fighting style chosen from the SRD's set at level 2 with the half
@@ -247,7 +247,7 @@ func TestTableClassCreationAndLevelUp(t *testing.T) {
 	}
 }
 
-// thirdCasterSheet is a Fighter 3 with the table's Lâmina de Tinta (E10-02: a third
+// thirdCasterSheet is a Fighter 3 with the table's Lâmina de Tinta (a third
 // caster's subclass): two skills, the fighting style, two cantrips and three spells
 // of the wizard's list.
 func thirdCasterSheet(sub string) *charactersv1.CharacterSheet {
@@ -264,7 +264,7 @@ func thirdCasterSheet(sub string) *charactersv1.CharacterSheet {
 	}}}
 }
 
-// TestTableClassThirdCasterCreationAndLevelUp (MR-025, E10-02 state 7): a Fighter
+// TestTableClassThirdCasterCreationAndLevelUp (MR-025): a Fighter
 // with the table's third caster knows two cantrips and three spells, casts with
 // Intelligence from the wizard's list, has the slots of the third caster's table,
 // and the level-up to 4 and 5 adds the Ability Score Improvement, the 4th spell
@@ -316,7 +316,7 @@ func TestTableClassThirdCasterCreationAndLevelUp(t *testing.T) {
 // TestTableClassSubclassPickedAtLevelUpGivesItsSpells: a Fighter of level 2 who
 // reaches level 3 chooses the third caster's subclass in the guided level-up, and
 // the options say how many cantrips and spells it adds, from which list and up to
-// which circle, so the web draws the step without knowing the table (slice 10.3).
+// which circle, so the web draws the step without knowing the table.
 func TestTableClassSubclassPickedAtLevelUpGivesItsSpells(t *testing.T) {
 	t.Parallel()
 	f := newClassFlow(t)
@@ -390,7 +390,7 @@ func (f *classFlow) notice(t *testing.T, c *charactersv1.Character, key string) 
 	return out
 }
 
-// TestTableClassChangeIsTold (E10-02 state 8, question 80): the master changes a
+// TestTableClassChangeIsTold: the master changes a
 // class the sheet uses and the sheet, locked as it is, recalculates at once and
 // says, in one sentence, what no longer matches, for each common change: the skill
 // count, the spells (cantrips, known and prepared), the level of the subclass, an
@@ -481,7 +481,7 @@ func TestTableClassChangeIsTold(t *testing.T) {
 }
 
 // TestTableClassThirdCasterChangeIsTold: a third caster's subclass that gives fewer
-// cantrips and spells tells the sheet's owner, naming the subclass (E10-02 state 8).
+// cantrips and spells tells the sheet's owner, naming the subclass.
 func TestTableClassThirdCasterChangeIsTold(t *testing.T) {
 	t.Parallel()
 	f := newClassFlow(t)
@@ -502,7 +502,7 @@ func TestTableClassThirdCasterChangeIsTold(t *testing.T) {
 	}
 }
 
-// TestTableContentStrayFieldNeverMakesTheCampaignUnreadable (review of slice 10.3):
+// TestTableContentStrayFieldNeverMakesTheCampaignUnreadable:
 // a field the effect's type does not read is refused when the entry is written, but
 // an entry already stored with one is read as if the field were not there: the
 // campaign's sheets and catalog keep working.

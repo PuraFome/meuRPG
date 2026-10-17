@@ -8,19 +8,20 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
-
-	"github.com/jackc/pgx/v5"
 
 	pkgv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaignpackage/v1"
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/campaignpackage"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/goldentest"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -651,8 +652,8 @@ func stageApplyExportGolden(t *testing.T, s *scenes) string {
 func TestPackageStaging(t *testing.T) {
 	t.Parallel()
 	s := newScenes(t, false)
-	checkGolden(t, "package_stage_point.golden.txt", []byte(stagePointGolden(t, &mapsPart{s: s.h.svc})))
-	checkGolden(t, "package_stage_map.golden.txt", []byte(stageMapGolden(t, &mapsPart{s: s.h.svc})))
-	checkGolden(t, "package_stage_images.golden.txt", []byte(stageImagesGolden(t, &imagesPart{s: s.h.svc})))
-	checkGolden(t, "package_apply_export.golden.txt", []byte(stageApplyExportGolden(t, s)))
+	goldentest.Compare(t, filepath.Join("testdata", "package_stage_point.golden.txt"), []byte(stagePointGolden(t, &mapsPart{s: s.h.svc})))
+	goldentest.Compare(t, filepath.Join("testdata", "package_stage_map.golden.txt"), []byte(stageMapGolden(t, &mapsPart{s: s.h.svc})))
+	goldentest.Compare(t, filepath.Join("testdata", "package_stage_images.golden.txt"), []byte(stageImagesGolden(t, &imagesPart{s: s.h.svc})))
+	goldentest.Compare(t, filepath.Join("testdata", "package_apply_export.golden.txt"), []byte(stageApplyExportGolden(t, s)))
 }

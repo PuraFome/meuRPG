@@ -221,7 +221,7 @@ describe('CombatView sheets: Ver pelos olhos / Forma Selvagem', () => {
 
   it('opens Forma Selvagem with the uses that are left of the resource', async () => {
     const m = await setup({ matches: PHONE, inputs: { vitals: [wildShape(1)] } });
-    m.view.openTransform();
+    m.view.sheets.actions.wildShape();
     expect(m.opened[0].component).toBe(WildShapeSheet);
     expect(m.opened[0].config.ariaLabel).toBe('Forma Selvagem');
     expect(data(m)).toEqual({
@@ -234,7 +234,7 @@ describe('CombatView sheets: Ver pelos olhos / Forma Selvagem', () => {
 
   it('gives the sheet no uses when the character has no Wild Shape resource', async () => {
     const m = await setup({ inputs: { vitals: [vitals()] } });
-    m.view.openTransform();
+    m.view.sheets.actions.wildShape();
     expect(data(m)['uses']).toBeNull();
   });
 
@@ -242,22 +242,22 @@ describe('CombatView sheets: Ver pelos olhos / Forma Selvagem', () => {
     const m = await setup({
       inputs: { vitals: [{ ...wildShape(0), characterId: 'orla-c' }] },
     });
-    m.view.openTransform();
+    m.view.sheets.actions.wildShape();
     expect(data(m)['uses']).toBeNull();
   });
 
   it('gives the sheet no uses when the vitals are not known yet', async () => {
     const m = await setup();
-    m.view.openTransform();
+    m.view.sheets.actions.wildShape();
     expect(data(m)['uses']).toBeNull();
   });
 
   it('applies the combat the transformation answers, and ignores a result without one', async () => {
     const m = await setup({ inputs: { vitals: [wildShape(0)] } });
-    m.view.openTransform();
+    m.view.sheets.actions.wildShape();
     m.opened[0].close({ beastNamePt: 'Lobo' });
     expect(m.view.encounter().round).toBe(3);
-    m.view.openTransform();
+    m.view.sheets.actions.wildShape();
     m.opened[1].close({ beastNamePt: 'Lobo', encounter: theatre({ revision: 9, round: 7 }) });
     expect(m.view.encounter().round).toBe(7);
   });
@@ -269,7 +269,7 @@ describe('CombatView sheets: Ver pelos olhos / Forma Selvagem', () => {
 
   it('opens nothing for the master', async () => {
     const m = await setup({ master: true, enc: masterEnc() });
-    m.view.openTransform();
+    m.view.sheets.actions.wildShape();
     expect(m.opened).toHaveLength(0);
   });
 });
@@ -1331,6 +1331,36 @@ describe('CombatView sheets: the reaction and the effect saving throw', () => {
     expect(m.view.reactionOpen()).toBe(false);
   });
 
+  it('lowers the reaction flag when the sheet fails, so the next window can open', async () => {
+    const m = await setup();
+    let fail: (err: unknown) => void = () => undefined;
+    m.view.dialog.open = () => ({
+      afterClosed: () =>
+        new Observable((subscriber) => {
+          fail = (err) => subscriber.error(err);
+        }),
+    });
+    m.view.sheets.reactions.reaction(shield());
+    expect(m.view.reactionOpen()).toBe(true);
+    fail(new Error('boom'));
+    expect(m.view.reactionOpen()).toBe(false);
+  });
+
+  it('lowers the reaction flag when the effect saving throw sheet fails', async () => {
+    const m = await setup();
+    let fail: (err: unknown) => void = () => undefined;
+    m.view.dialog.open = () => ({
+      afterClosed: () =>
+        new Observable((subscriber) => {
+          fail = (err) => subscriber.error(err);
+        }),
+    });
+    m.view.sheets.reactions.reaction(effectSave());
+    expect(m.view.reactionOpen()).toBe(true);
+    fail(new Error('boom'));
+    expect(m.view.reactionOpen()).toBe(false);
+  });
+
   it('hands over the monk’s throw-back request and marks its window as handled', async () => {
     const m = await setup({
       enc: theatre({
@@ -1385,7 +1415,7 @@ describe('CombatView sheets: the reaction and the effect saving throw', () => {
 
   it('is labelled by its title on a dialog, and not an alert', async () => {
     const m = await setup();
-    m.view.openEffectSave(effectSave());
+    m.view.sheets.reactions.effectSave(effectSave());
     expect(m.opened[0].config.ariaLabelledBy).toBe('sheet-t');
     expect(m.opened[0].config.disableClose).toBeFalsy();
   });
@@ -1393,7 +1423,7 @@ describe('CombatView sheets: the reaction and the effect saving throw', () => {
   it('opens no second sheet over one that is open', async () => {
     const m = await setup();
     m.view.sheets.reactions.reaction(shield());
-    m.view.openEffectSave(effectSave());
+    m.view.sheets.reactions.effectSave(effectSave());
     expect(m.opened.map((o) => o.component)).toEqual([ReactionSheet]);
   });
 });
@@ -1413,7 +1443,7 @@ describe('CombatView sheets: the door, the spell details and the small dialogs',
       threeQuarters: [],
     });
     const door = { col: 3, row: 4, kind: 2 };
-    m.view.openDoor(door);
+    m.view.sheets.actions.door(door);
     expect(m.opened[0].component).toBe(DoorSheet);
     expect(m.opened[0].config.ariaLabel).toBe('Porta');
     expect(data(m)).toMatchObject({
@@ -1440,7 +1470,7 @@ describe('CombatView sheets: the door, the spell details and the small dialogs',
       half: [],
       threeQuarters: [],
     });
-    m.view.openDoor({ col: 3, row: 4, kind: 2 });
+    m.view.sheets.actions.door({ col: 3, row: 4, kind: 2 });
     expect(data(m)['wallSquares']).toEqual([
       { col: 3, row: 4 },
       { col: 2, row: 5 },
@@ -1449,7 +1479,7 @@ describe('CombatView sheets: the door, the spell details and the small dialogs',
 
   it('opens the door sheet with no walls when none is painted', async () => {
     const m = await setup({ master: true });
-    m.view.openDoor({ col: 3, row: 4, kind: 2 });
+    m.view.sheets.actions.door({ col: 3, row: 4, kind: 2 });
     expect(data(m)['wallSquares']).toEqual([]);
     expect(m.opened[0].config.ariaLabelledBy).toBe('door-t');
     expect(m.opened[0].config.width).toBe('440px');
@@ -1461,7 +1491,7 @@ describe('CombatView sheets: the door, the spell details and the small dialogs',
       spell: { key: 'spell:fire-bolt', name: 'Fire Bolt', namePt: 'Raio de Fogo', level: 0 },
     });
     m.view.catalog.details = vi.fn(async () => details);
-    m.view.describeSpell('spell:fire-bolt', 'Raio de Fogo');
+    m.view.sheets.actions.describeSpell('spell:fire-bolt', 'Raio de Fogo');
     expect(m.opened[0].component).toBe(SpellDetails);
     expect(m.opened[0].config.ariaLabel).toBe('Descrição de Raio de Fogo');
     expect(data(m)['namePt']).toBe('Raio de Fogo');
@@ -1472,7 +1502,7 @@ describe('CombatView sheets: the door, the spell details and the small dialogs',
 
   it('fails the description load when the catalog has no such spell', async () => {
     const m = await setup();
-    m.view.describeSpell('spell:nope', 'Nada');
+    m.view.sheets.actions.describeSpell('spell:nope', 'Nada');
     expect(m.opened[0].config.ariaLabelledBy).toBe('spell-title');
     await expect((data(m)['load'] as () => Promise<unknown>)()).rejects.toThrow(
       'spell details unavailable',
@@ -1481,7 +1511,7 @@ describe('CombatView sheets: the door, the spell details and the small dialogs',
 
   it('opens Condições for a combatant of the combat, as the master', async () => {
     const m = await setup({ master: true, matches: PHONE });
-    m.view.openConditions('g');
+    m.view.sheets.actions.conditions('g');
     expect(m.opened[0].component).toBe(ConditionsDialog);
     expect(m.opened[0].config.ariaLabel).toBe('Condições de Goblin');
     expect(data(m)).toMatchObject({ campaignId: 'c', encounterId: 'enc', combatant: { id: 'g' } });
@@ -1490,20 +1520,20 @@ describe('CombatView sheets: the door, the spell details and the small dialogs',
 
   it('is labelled by its title and 600 px wide on a dialog', async () => {
     const m = await setup({ master: true });
-    m.view.openConditions('g');
+    m.view.sheets.actions.conditions('g');
     expect(m.opened[0].config.ariaLabelledBy).toBe('sheet-t');
     expect(m.opened[0].config.width).toBe('600px');
   });
 
   it('opens Condições for nobody who is not in the combat', async () => {
     const m = await setup({ master: true });
-    m.view.openConditions('gone');
+    m.view.sheets.actions.conditions('gone');
     expect(m.opened).toHaveLength(0);
   });
 
   it('opens Dano ou cura for an NPC with its own title and width', async () => {
     const m = await setup({ master: true, matches: PHONE });
-    m.view.adjustNpc('g');
+    m.view.sheets.actions.adjustNpc('g');
     expect(m.opened[0].component).toBe(AdjustNpc);
     expect(m.opened[0].config.ariaLabel).toBe('Dano ou cura em Goblin');
     expect(data(m)).toMatchObject({ campaignId: 'c', encounterId: 'enc', combatant: { id: 'g' } });
@@ -1512,20 +1542,20 @@ describe('CombatView sheets: the door, the spell details and the small dialogs',
 
   it('labels it by its title and makes it 440 px wide on a dialog', async () => {
     const m = await setup({ master: true });
-    m.view.adjustNpc('g');
+    m.view.sheets.actions.adjustNpc('g');
     expect(m.opened[0].config.ariaLabelledBy).toBe('adjust-npc-title');
     expect(m.opened[0].config.width).toBe('440px');
   });
 
   it('opens Dano ou cura for nobody who is not in the combat', async () => {
     const m = await setup({ master: true });
-    m.view.adjustNpc('gone');
+    m.view.sheets.actions.adjustNpc('gone');
     expect(m.opened).toHaveLength(0);
   });
 
   it('asks how far for the character’s own movement', async () => {
     const m = await setup({ matches: PHONE });
-    m.view.openSpend();
+    m.view.sheets.actions.spend();
     expect(m.opened[0].component).toBe(SpendSheet);
     expect(m.opened[0].config.ariaLabel).toBe('Gastar movimento');
     expect(data(m)).toMatchObject({ campaignId: 'c', encounterId: 'enc', combatantId: 't' });
@@ -1534,22 +1564,22 @@ describe('CombatView sheets: the door, the spell details and the small dialogs',
 
   it('asks how far for the creature it is given', async () => {
     const m = await setup();
-    m.view.openSpend('w');
+    m.view.sheets.actions.spend('w');
     expect(data(m)['combatantId']).toBe('w');
     expect(m.opened[0].config.ariaLabelledBy).toBe('sheet-t');
   });
 
   it('clears the movement note when the spend sheet answers', async () => {
     const m = await setup();
-    m.view.moveNote.set('Você parou antes.');
-    m.view.openSpend();
+    m.view.moves.moveNote.set('Você parou antes.');
+    m.view.sheets.actions.spend();
     m.opened[0].close(true);
-    expect(m.view.moveNote()).toBe('');
+    expect(m.view.moves.moveNote()).toBe('');
   });
 
   it('asks about nobody when the player has no character and no creature is given', async () => {
     const m = await setup({ master: true, enc: masterEnc() });
-    m.view.openSpend();
+    m.view.sheets.actions.spend();
     expect(m.opened).toHaveLength(0);
   });
 });
@@ -1923,7 +1953,7 @@ describe('CombatView sheets: casting', () => {
         {},
         { enc: theatre({}, [toren({ concentrationSpellNamePt: 'Bênção' }), goblin()]), creatures },
       );
-      await m.view.openCast('spell:conjure-animals');
+      await m.view.sheets.cast('spell:conjure-animals');
       expect(m.opened[0].component).toBe(SummonSheet);
       expect(m.opened[0].config.ariaLabel).toBe('Conjurar Conjurar Animais');
       expect(data(m)).toMatchObject({
@@ -1948,7 +1978,7 @@ describe('CombatView sheets: casting', () => {
         {},
         { matches: [], creatures: summons(['spell:conjure-animals']) },
       );
-      await m.view.openCast('spell:conjure-animals');
+      await m.view.sheets.cast('spell:conjure-animals');
       expect(m.opened[0].config.ariaLabelledBy).toBe('summon-t');
       expect(m.opened[0].config.width).toBe('560px');
     });
@@ -1966,16 +1996,16 @@ describe('CombatView sheets: casting', () => {
         {},
         { creatures: summons(['spell:conjure-animals']) },
       );
-      await m.view.openCast('spell:conjure-animals');
+      await m.view.sheets.cast('spell:conjure-animals');
       expect(m.opened[0].config.ariaLabel).toBe('Conjurar Conjure Animals');
     });
 
     it('reads the summoning spells once for the character', async () => {
       const creatures = summons(['spell:conjure-animals']);
       const m = await mount({ spells: [conjure, missile()] }, {}, { creatures });
-      await m.view.openCast('spell:conjure-animals');
-      await m.view.openCast('spell:magic-missile');
-      await m.view.openCast('spell:conjure-animals');
+      await m.view.sheets.cast('spell:conjure-animals');
+      await m.view.sheets.cast('spell:magic-missile');
+      await m.view.sheets.cast('spell:conjure-animals');
       expect(creatures.summonOptions).toHaveBeenCalledTimes(1);
       expect(m.opened.map((o) => o.component)).toEqual([SummonSheet, CastSheet, SummonSheet]);
     });
@@ -1986,7 +2016,7 @@ describe('CombatView sheets: casting', () => {
         {},
         { creatures: summons(['spell:conjure-animals']) },
       );
-      await m.view.openCast('spell:magic-missile');
+      await m.view.sheets.cast('spell:magic-missile');
       expect(m.opened[0].component).toBe(CastSheet);
       expect(data(m)['spellKey']).toBe('spell:magic-missile');
     });
@@ -1997,9 +2027,9 @@ describe('CombatView sheets: casting', () => {
         .mockRejectedValueOnce(new Error('offline'))
         .mockResolvedValue({ spells: [{ spellKey: 'spell:conjure-animals' }] });
       const m = await mount({ spells: [conjure] }, {}, { creatures: { summonOptions } });
-      await m.view.openCast('spell:conjure-animals');
+      await m.view.sheets.cast('spell:conjure-animals');
       expect(m.opened.map((o) => o.component)).toEqual([CastSheet]);
-      await m.view.openCast('spell:conjure-animals');
+      await m.view.sheets.cast('spell:conjure-animals');
       expect(m.opened.map((o) => o.component)).toEqual([CastSheet, SummonSheet]);
       expect(summonOptions).toHaveBeenCalledTimes(2);
     });
@@ -2007,14 +2037,14 @@ describe('CombatView sheets: casting', () => {
     it('does not ask the summoning spells for a spell the options do not list', async () => {
       const creatures = summons(['spell:conjure-animals']);
       const m = await mount({ spells: [] }, {}, { creatures });
-      await m.view.openCast('spell:conjure-animals');
+      await m.view.sheets.cast('spell:conjure-animals');
       expect(creatures.summonOptions).not.toHaveBeenCalled();
       expect(m.opened[0].component).toBe(CastSheet);
     });
 
     it('opens Revivificar on its own sheet with the caster and the combat', async () => {
       const m = await mount({}, {}, { inputs: { casterClasses: 'Clérigo 5' } });
-      await m.view.openCast('spell:revivify');
+      await m.view.sheets.cast('spell:revivify');
       expect(m.opened[0].component).toBe(RevivifySheet);
       expect(m.opened[0].config.ariaLabel).toBe('Revivificar');
       expect(data(m)).toMatchObject({
@@ -2087,7 +2117,7 @@ describe("CombatView sheets: the master's area spell", () => {
 
   it('hands the area sheet the caster on turn, the lowest free slot, the targets and the map', async () => {
     const m = await mount();
-    m.view.openMasterArea('spell:fireball');
+    m.view.sheets.masterArea('spell:fireball');
     expect(m.opened).toHaveLength(1);
     expect(m.opened[0].component).toBe(MasterAreaCast);
     expect(m.opened[0].config.ariaLabel).toBe('Goblin conjura Bola de Fogo');
@@ -2114,45 +2144,45 @@ describe("CombatView sheets: the master's area spell", () => {
 
   it('is a tall bottom sheet on the map on a phone', async () => {
     const m = await mount();
-    m.view.openMasterArea('spell:fireball');
+    m.view.sheets.masterArea('spell:fireball');
     expect((m.opened[0].config as { panelClass?: string }).panelClass).toBe('mr-sheet-tall');
     expect(m.opened[0].config.autoFocus).toBe('[role="application"]');
   });
 
   it('is a 1100 px dialog labelled by its title on a computer', async () => {
     const m = await mount(fireball(), AreaPlacement.POINT, { matches: [] });
-    m.view.openMasterArea('spell:fireball');
+    m.view.sheets.masterArea('spell:fireball');
     expect(m.opened[0].config.width).toBe('1100px');
     expect(m.opened[0].config.ariaLabelledBy).toBe('sheet-t');
   });
 
   it('opens on the title for an area centered on the caster', async () => {
     const m = await mount(fireball(), AreaPlacement.CASTER);
-    m.view.openMasterArea('spell:fireball');
+    m.view.sheets.masterArea('spell:fireball');
     expect(m.opened[0].config.autoFocus).toBe('first-heading');
   });
 
   it('opens on the map for an area with no placement said', async () => {
     const m = await mount(fireball(), AreaPlacement.UNSPECIFIED);
-    m.view.openMasterArea('spell:fireball');
+    m.view.sheets.masterArea('spell:fireball');
     expect(m.opened[0].config.autoFocus).toBe('[role="application"]');
   });
 
   it('casts at the pact slot when only the pact offers one', async () => {
     const m = await mount(fireball({ slots: [{ level: 5, pact: true, free: 1 }] }));
-    m.view.openMasterArea('spell:fireball');
+    m.view.sheets.masterArea('spell:fireball');
     expect(data(m)['slot']).toEqual({ level: 5, pact: true });
   });
 
   it("casts at the spell's own level when no slot is free", async () => {
     const m = await mount(fireball({ slots: [{ level: 3, pact: false, free: 0 }] }));
-    m.view.openMasterArea('spell:fireball');
+    m.view.sheets.masterArea('spell:fireball');
     expect(data(m)['slot']).toEqual({ level: 3, pact: false });
   });
 
   it("casts at the spell's own level when the options list no slots", async () => {
     const m = await mount(fireball({ slots: [] }));
-    m.view.openMasterArea('spell:fireball');
+    m.view.sheets.masterArea('spell:fireball');
     expect(data(m)['slot']).toEqual({ level: 3, pact: false });
   });
 
@@ -2162,7 +2192,7 @@ describe("CombatView sheets: the master's area spell", () => {
         spell: { key: 'spell:fireball', name: 'Fireball', namePt: 'Bola de Fogo', level: 0 },
       }),
     );
-    m.view.openMasterArea('spell:fireball');
+    m.view.sheets.masterArea('spell:fireball');
     expect(data(m)['slot']).toBeNull();
     expect(data(m)['level']).toBe(0);
   });
@@ -2171,17 +2201,17 @@ describe("CombatView sheets: the master's area spell", () => {
     const m = await mount(
       fireball({ spell: { key: 'spell:fireball', name: 'Fireball', level: 3 } }),
     );
-    m.view.openMasterArea('spell:fireball');
+    m.view.sheets.masterArea('spell:fireball');
     expect(data(m)['name']).toBe('Fireball');
     expect(m.opened[0].config.ariaLabel).toBe('Goblin conjura Fireball');
   });
 
   it('opens nothing for a spell the options do not list or that has no targets', async () => {
     const unlisted = await mount();
-    unlisted.view.openMasterArea('spell:other');
+    unlisted.view.sheets.masterArea('spell:other');
     expect(unlisted.opened).toHaveLength(0);
     const noTargets = await mount(fireball(), null);
-    noTargets.view.openMasterArea('spell:fireball');
+    noTargets.view.sheets.masterArea('spell:fireball');
     expect(noTargets.opened).toHaveLength(0);
   });
 
@@ -2196,7 +2226,7 @@ describe("CombatView sheets: the master's area spell", () => {
         },
       }),
     });
-    m.view.openMasterArea('spell:fireball');
+    m.view.sheets.masterArea('spell:fireball');
     expect(m.opened).toHaveLength(0);
   });
 
@@ -2204,7 +2234,7 @@ describe("CombatView sheets: the master's area spell", () => {
     const m = await mount(fireball(), AreaPlacement.POINT, {
       enc: onMap({ currentCombatantId: '' }),
     });
-    m.view.openMasterArea('spell:fireball');
+    m.view.sheets.masterArea('spell:fireball');
     expect(m.opened).toHaveLength(0);
   });
 });
@@ -2232,24 +2262,24 @@ describe('CombatView sheets: with no combat on screen', () => {
     });
     m.state.clear();
     const window = reactionWindow({ id: 'w2', forYou: false } as never);
-    m.view.openDoor({ col: 1, row: 1, kind: 2 });
-    m.view.openConditions('g');
-    m.view.adjustNpc('g');
-    m.view.openSpend();
-    m.view.openSpend('w');
+    m.view.sheets.actions.door({ col: 1, row: 1, kind: 2 });
+    m.view.sheets.actions.conditions('g');
+    m.view.sheets.actions.adjustNpc('g');
+    m.view.sheets.actions.spend();
+    m.view.sheets.actions.spend('w');
     m.view.sheets.reactions.reaction(window);
-    m.view.openEffectSave(window);
+    m.view.sheets.reactions.effectSave(window);
     m.view.sheets.reactions.throwBack('w2');
     m.view.sheets.reactions.keepMissile('w2');
     m.view.sheets.revivify();
     m.view.sheets.summon('spell:conjure-animals', 'Conjurar Animais');
-    m.view.openMasterArea('spell:fireball');
+    m.view.sheets.masterArea('spell:fireball');
     m.view.openAttack('attack:longsword');
     m.view.openCreatureAttack('w', 'attack:bite');
     m.view.rollCreatureDamage('w');
     m.view.rollPendingDamage();
     m.view.sheets.castSheet('spell:magic-missile');
-    await m.view.openCast('spell:magic-missile');
+    await m.view.sheets.cast('spell:magic-missile');
     await m.view.useFeature('feature:rage');
     await settle(m.fixture);
     expect(m.view.openHeldRoll()).toBe(false);

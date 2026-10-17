@@ -134,29 +134,13 @@ func (r *contestReader) optionOf(ctx context.Context, who playdb.Combatant, skil
 	return n, notes, err
 }
 
-// contestView is a contest as the caller reads it; nil when it is not theirs to read: the
-// master reads all, a player the contests of their own characters.
-//
-//nolint:gocyclo // one view for each audience, with the facts each may read in one place
-func (r *contestReader) contestView(ctx context.Context, row playdb.CombatContest) (*playv1.ContestView, error) {
-	initiator, okI := combatantByID(r.d.cs, row.InitiatorID)
-	defender, okD := combatantByID(r.d.cs, row.DefenderID)
-	if !okI || !okD || (!r.v.master && !r.v.owns(initiator) && !r.v.owns(defender)) {
-		return nil, nil
-	}
-	iRoll, err := decodeRoll(row.InitiatorRoll)
-	if err != nil {
-		return nil, err
-	}
-	dRoll, err := decodeRoll(row.DefenderRoll)
-	if err != nil {
-		return nil, err
-	}
+// baseContestView is a contest as every reader sees it: its facts, with a creature the
+// player does not see (a hidden NPC) unnamed, as its id is the master's (RN-10).
+func (r *contestReader) baseContestView(row playdb.CombatContest, initiator, defender playdb.Combatant) *playv1.ContestView {
 	out := &playv1.ContestView{
 		Id: row.ID, Kind: kindProto(row.Kind), Purpose: purposeProto(row.Purpose), Status: statusProto(row.Status),
 		InitiatorId: row.InitiatorID, DefenderId: row.DefenderID, Round: row.Round, CreatedAt: timestamppb.New(row.CreatedAt),
 	}
-	// A creature the player does not see (a hidden NPC) is not named: its id is the master's (RN-10).
 	if !r.v.master {
 		if !r.v.sees(initiator) {
 			out.InitiatorId = ""
@@ -171,8 +155,12 @@ func (r *contestReader) contestView(ctx context.Context, row playdb.CombatContes
 	if row.ShoveOutcome != nil {
 		out.ShoveOutcome = shoveProto(*row.ShoveOutcome)
 	}
-	// The rolls are their roller's and the master's (RN-20): a player never reads the other
-	// side's total.
+	return out
+}
+
+// fillContestRolls adds the rolls the caller may read. The rolls are their roller's and the
+// master's (RN-20): a player never reads the other side's total.
+func (r *contestReader) fillContestRolls(out *playv1.ContestView, row playdb.CombatContest, iRoll, dRoll *contestRoll, initiator, defender playdb.Combatant) {
 	if iRoll != nil && (r.v.master || r.v.owns(initiator)) {
 		out.InitiatorRoll = iRoll.proto()
 		if r.v.master {
@@ -187,32 +175,67 @@ func (r *contestReader) contestView(ctx context.Context, row playdb.CombatContes
 	if r.v.master && row.EscapeDc != nil {
 		out.EscapeDc = *row.EscapeDc
 	}
+}
 
+// fillAwaitingDefender says who the contest waits for and, for the one that answers, what
+// each skill would roll.
+func (r *contestReader) fillAwaitingDefender(ctx context.Context, out *playv1.ContestView, row playdb.CombatContest, defender playdb.Combatant) error {
+	out.WaitingFor, out.WaitingCombatantId = playv1.ContestWaitFor_CONTEST_WAIT_FOR_MASTER, ""
+	if defender.UserID != nil && !out.Deferred {
+		out.WaitingFor, out.WaitingCombatantId = playv1.ContestWaitFor_CONTEST_WAIT_FOR_PLAYER, defender.ID
+	}
+	out.YouAnswer = row.Kind == contestKindContest && (r.v.master || (r.v.owns(defender) && !out.Deferred))
+	if !out.YouAnswer {
+		return nil
+	}
+	var err error
+	out.AnswerOptions, err = r.answerOptions(ctx, row, defender, out.Deferred, out.DeferredSkill)
+	return err
+}
+
+// fillAwaitingOutcome says who the won shove waits for and, for the winner, what it may do.
+func (r *contestReader) fillAwaitingOutcome(ctx context.Context, out *playv1.ContestView, initiator, defender playdb.Combatant) error {
+	out.WaitingFor, out.WaitingCombatantId = playv1.ContestWaitFor_CONTEST_WAIT_FOR_MASTER, ""
+	if initiator.UserID != nil {
+		out.WaitingFor, out.WaitingCombatantId = playv1.ContestWaitFor_CONTEST_WAIT_FOR_PLAYER, initiator.ID
+	}
+	if !r.v.master && !r.v.owns(initiator) {
+		return nil
+	}
+	out.YouChoose = true
+	var err error
+	out.ShoveChoice, err = r.shoveChoice(ctx, initiator, defender)
+	return err
+}
+
+// contestView is a contest as the caller reads it; nil when it is not theirs to read: the
+// master reads all, a player the contests of their own characters.
+func (r *contestReader) contestView(ctx context.Context, row playdb.CombatContest) (*playv1.ContestView, error) {
+	initiator, okI := combatantByID(r.d.cs, row.InitiatorID)
+	defender, okD := combatantByID(r.d.cs, row.DefenderID)
+	if !okI || !okD || (!r.v.master && !r.v.owns(initiator) && !r.v.owns(defender)) {
+		return nil, nil
+	}
+	iRoll, err := decodeRoll(row.InitiatorRoll)
+	if err != nil {
+		return nil, err
+	}
+	dRoll, err := decodeRoll(row.DefenderRoll)
+	if err != nil {
+		return nil, err
+	}
+	out := r.baseContestView(row, initiator, defender)
+	r.fillContestRolls(out, row, iRoll, dRoll, initiator, defender)
 	switch row.Status {
 	case contestAwaitingDefender:
-		out.WaitingFor, out.WaitingCombatantId = playv1.ContestWaitFor_CONTEST_WAIT_FOR_MASTER, ""
-		if defender.UserID != nil && !out.Deferred {
-			out.WaitingFor, out.WaitingCombatantId = playv1.ContestWaitFor_CONTEST_WAIT_FOR_PLAYER, defender.ID
-		}
-		out.YouAnswer = row.Kind == contestKindContest && (r.v.master || (r.v.owns(defender) && !out.Deferred))
-		if out.YouAnswer {
-			if out.AnswerOptions, err = r.answerOptions(ctx, row, defender, out.Deferred, out.DeferredSkill); err != nil {
-				return nil, err
-			}
-		}
+		err = r.fillAwaitingDefender(ctx, out, row, defender)
 	case contestAwaitingOutcome:
-		out.WaitingFor, out.WaitingCombatantId = playv1.ContestWaitFor_CONTEST_WAIT_FOR_MASTER, ""
-		if initiator.UserID != nil {
-			out.WaitingFor, out.WaitingCombatantId = playv1.ContestWaitFor_CONTEST_WAIT_FOR_PLAYER, initiator.ID
-		}
-		if r.v.master || r.v.owns(initiator) {
-			out.YouChoose = true
-			if out.ShoveChoice, err = r.shoveChoice(ctx, initiator, defender); err != nil {
-				return nil, err
-			}
-		}
+		err = r.fillAwaitingOutcome(ctx, out, initiator, defender)
 	default:
 		out.WaitingFor = playv1.ContestWaitFor_CONTEST_WAIT_FOR_NONE
+	}
+	if err != nil {
+		return nil, err
 	}
 	return out, nil
 }
@@ -316,35 +339,40 @@ func (r *contestReader) observers(ctx context.Context, a playdb.CombatHideAttemp
 	return out, nil
 }
 
+// helpViewOf is a Help that holds, as the caller reads it; false when the caller does not
+// read it: a Help between creatures a player does not see names a hidden creature.
+func (r *contestReader) helpViewOf(h playdb.CombatHelp) (*playv1.HelpView, bool) {
+	helper, okH := helpHelper(r.d.cs, h)
+	ally, okA := helpAlly(r.d.cs, h)
+	if !okH || !okA || (!r.v.master && (!r.v.sees(helper) || !r.v.sees(ally))) {
+		return nil, false
+	}
+	view := &playv1.HelpView{Id: h.ID, HelperId: helper.ID, AllyId: ally.ID}
+	switch h.Kind {
+	case helpCheck:
+		view.Kind, view.TaskKey = playv1.HelpKind_HELP_KIND_CHECK, deref(h.Task)
+		view.TaskNamePt = r.s.roster.SceneCheckName(view.TaskKey)
+	case helpAttack:
+		target, ok := combatantByID(r.d.cs, deref(h.TargetID))
+		if !ok || (!r.v.master && !r.v.sees(target)) {
+			return nil, false
+		}
+		view.Kind, view.TargetId = playv1.HelpKind_HELP_KIND_ATTACK, target.ID
+	}
+	if h.ExpiresRound != nil {
+		view.ExpiresRound = *h.ExpiresRound
+	}
+	return view, true
+}
+
 // helpViews are the Helps that hold, for the caller: every one, except the ones aimed at a
 // creature a player does not see.
 func (r *contestReader) helpViews() []*playv1.HelpView {
 	var out []*playv1.HelpView
 	for _, h := range r.d.helps {
-		helper, okH := helpHelper(r.d.cs, h)
-		ally, okA := helpAlly(r.d.cs, h)
-		if !okH || !okA {
-			continue
+		if view, ok := r.helpViewOf(h); ok {
+			out = append(out, view)
 		}
-		if !r.v.master && (!r.v.sees(helper) || !r.v.sees(ally)) {
-			continue // a Help between creatures the player does not see names a hidden creature
-		}
-		view := &playv1.HelpView{Id: h.ID, HelperId: helper.ID, AllyId: ally.ID}
-		switch h.Kind {
-		case helpCheck:
-			view.Kind, view.TaskKey = playv1.HelpKind_HELP_KIND_CHECK, deref(h.Task)
-			view.TaskNamePt = r.s.roster.SceneCheckName(view.TaskKey)
-		case helpAttack:
-			target, ok := combatantByID(r.d.cs, deref(h.TargetID))
-			if !ok || (!r.v.master && !r.v.sees(target)) {
-				continue
-			}
-			view.Kind, view.TargetId = playv1.HelpKind_HELP_KIND_ATTACK, target.ID
-		}
-		if h.ExpiresRound != nil {
-			view.ExpiresRound = *h.ExpiresRound
-		}
-		out = append(out, view)
 	}
 	return out
 }
@@ -416,19 +444,25 @@ func (r *contestReader) surpriseView(ctx context.Context) (*playv1.SurpriseView,
 	return out, nil
 }
 
-// state is every contest fact the caller may read.
-func (r *contestReader) state(ctx context.Context) (*playv1.GetContestStateResponse, error) {
-	out := &playv1.GetContestStateResponse{}
+// contestViews are the contests the caller may read, newest first as the table keeps them.
+func (r *contestReader) contestViews(ctx context.Context) ([]*playv1.ContestView, error) {
+	var out []*playv1.ContestView
 	for _, row := range r.d.contests {
 		view, err := r.contestView(ctx, row)
 		if err != nil {
 			return nil, err
 		}
 		if view != nil {
-			out.Contests = append(out.Contests, view)
+			out = append(out, view)
 		}
 	}
-	// The Hide actions: the pending ones and the latest decided of each hider.
+	return out, nil
+}
+
+// hideAttemptViews are the Hide actions the caller may read: the pending ones and the latest
+// decided of each hider.
+func (r *contestReader) hideAttemptViews(ctx context.Context) ([]*playv1.HideAttemptView, error) {
+	var out []*playv1.HideAttemptView
 	seen := map[string]bool{}
 	for _, a := range r.d.attempts { // newest first
 		if a.Status != hidePending && seen[a.HiderID] {
@@ -442,13 +476,25 @@ func (r *contestReader) state(ctx context.Context) (*playv1.GetContestStateRespo
 			return nil, err
 		}
 		if view != nil {
-			out.HideAttempts = append(out.HideAttempts, view)
+			out = append(out, view)
 		}
+	}
+	return out, nil
+}
+
+// state is every contest fact the caller may read.
+func (r *contestReader) state(ctx context.Context) (*playv1.GetContestStateResponse, error) {
+	var err error
+	out := &playv1.GetContestStateResponse{}
+	if out.Contests, err = r.contestViews(ctx); err != nil {
+		return nil, err
+	}
+	if out.HideAttempts, err = r.hideAttemptViews(ctx); err != nil {
+		return nil, err
 	}
 	out.HiddenIds = r.hiddenIDs()
 	out.Helps = r.helpViews()
 	out.Grapples = r.grappleViews()
-	var err error
 	if out.Surprise, err = r.surpriseView(ctx); err != nil {
 		return nil, err
 	}

@@ -3,6 +3,7 @@ package maps
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -13,6 +14,7 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/goldentest"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -20,7 +22,7 @@ import (
 // afterwards (MR-036, RN-10): the live events every viewer of the table receives after
 // each step of a script, on the cave with the fog on and on a map without fog, and the views
 // (GetMapVision) the script leaves each player with, memory included. Each answer is a golden
-// file (testdata/fog_*.golden.*); run with -update-golden to write them again after a
+// file (testdata/fog_*.golden.*); run with -update to write them again after a
 // change of behavior that was meant.
 
 // fogStreamScript runs the steps of a table and writes down, after each one, what every
@@ -100,7 +102,9 @@ func (sc *fogStreamScript) step(name string, do func()) {
 	}
 }
 
-func (sc *fogStreamScript) golden(name string) { checkGolden(sc.t, name, []byte(sc.out.String())) }
+func (sc *fogStreamScript) golden(name string) {
+	goldentest.Compare(sc.t, filepath.Join("testdata", name), []byte(sc.out.String()))
+}
 
 func (u *user) removeToken(campaignID, mapID, characterID string) {
 	u.h.t.Helper()
@@ -209,7 +213,7 @@ func TestFogStreams_WhoIsToldOfEachTokenWriteWithFog(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	checkGolden(t, "fog_views_cave.golden.json", append(fogScrub(raw), '\n'))
+	goldentest.Compare(t, filepath.Join("testdata", "fog_views_cave.golden.json"), append(fogScrub(raw), '\n'))
 }
 
 func firstOf(s []string) string {

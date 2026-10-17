@@ -2,16 +2,9 @@ import { create } from '@bufbuild/protobuf';
 
 import { TableSpellSchema } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { catalog } from './content-testing';
-import {
-  type SpellDraft,
-  damageText,
-  draftToSpell,
-  emptySpell,
-  previewRows,
-  spellFieldPaths,
-  spellToDraft,
-  targetText,
-} from './spell-draft';
+import { draftToSpell, spellToDraft } from './spell-draft';
+import { type SpellDraft, emptySpell } from './spell-types';
+import { damageText, previewRows, spellFieldPaths, targetText } from './spell-preview';
 
 const cat = catalog();
 const nameOf = (k: string) => cat.nameOf(k);

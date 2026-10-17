@@ -15,7 +15,7 @@ import (
 // sweepEvery is how often a running server looks for what expired. A server
 // that scales to zero does not run it between requests, so Sweep also runs
 // when the server starts, and the cloud store's own lifecycle rule (see
-// docs/operations/README.md) is the last word on the exports.
+// docs/operations/reference.md, "Campaign package") is the last word on the exports.
 const (
 	sweepEvery = 10 * time.Minute
 	sweepBatch = 50

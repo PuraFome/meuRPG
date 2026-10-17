@@ -7,7 +7,7 @@ This page says what each layer proves, how to run it and what CI runs; the CI jo
 | Layer | Tool | Proves |
 | --- | --- | --- |
 | Unit | `go test`, case tables | The `rules` maths and each business rule alone, with no database |
-| Characterization (golden) | `go test`, `testdata/golden/*.json` and `*_characterization_test.go` | The numbers the rules engine produces stay as reviewed |
+| Characterization (golden) | `go test`, golden files under `testdata/` | What a function answers, refuses and writes stays as reviewed |
 | Integration | `go test` with `MEURPG_TEST_DATABASE_URL` | Queries, migrations, the retry on error `40001`, who may do what |
 | Architecture | `go test`, `backend/internal/archtest` | Module boundaries (it reads imports with `go/parser`) |
 | Leak (RN-10) | `go test` with a database, `backend/internal/leaktest` | What the master hid never reaches a player |
@@ -23,14 +23,15 @@ The `rules` packages are pure (no database, Docker or network) and are the fast 
 ```bash
 cd backend
 go test ./internal/rules/...                              # the engine, the SRD snapshot, the formulas
-go test ./internal/rules -run Golden -update              # rewrite testdata/golden/pensantus.json after an intentional change; review the diff
-go test ./internal/rules -run TableCharacterGolden -update
-go test ./internal/rules/dungeon -run Golden -update      # changing the generator's output also requires bumping Version in types.go
+go test ./internal/rules -update                          # rewrite every golden of the package (testdata/golden/*.json) after an intentional change; review the diff
+go test ./internal/rules/dungeon -update                  # changing the generator's output also requires bumping Version in types.go
 ```
 
-The golden files of the maps module (`backend/internal/maps/testdata`: the layers each viewer reads, the fog's streams, the package staging, the image store) are rewritten with `go test ./internal/maps -run <test> -update-golden` (database needed); review the diff of each file before committing it.
-
-The `*_characterization_test.go` files in `internal/rules` pin the behaviour of the engine's large functions; a failing one means the output changed, which is not necessarily wrong, so review it.
+Characterization tests pin what a function answers, refuses and writes, so that it can be split without changing it (see [CI](ci.md#complexity-limits)); they sit next to the code in every module, with their golden files under `testdata/` (the sweeps of `rules/grid`, `vision`, `puzzle`, `combat` and `encounter` keep `testdata/*.sha256` hashes instead).
+A failing one means the output changed, which is not necessarily wrong: read the diff, and if the change is intended, refresh the files with the package's `-update` flag.
+Run a new golden test with `-count=5` once before committing it: a Go map's order is random, and a golden that depends on it fails only some of the time.
+Golden files outside `internal/rules` are compared by `backend/internal/platform/goldentest` (`Compare`, `JSON`, `Names` for IDs, `MaskTimes`), and `go test ./internal/<pkg> -update` rewrites them: one flag for every package that uses it; read the diff.
+`dbtest.QueryFaults` fails a sqlc query by name (`Arm`, or `ArmOnce(name, skip)` after skipping runs), so a test reaches a database-error path without a broken database; wrap the service pool's tracer with it.
 Other pure suites: `rules/grid` and `rules/vision` (geometry, movement, cover, sight), `rules/puzzle` (the puzzle maths), `rules/encounter` (the party budget and the generator) and `rules/dungeon` (properties over many options; `DUNGEON_SWEEP=1` adds a sweep of thousands of combinations).
 Fuzz targets exist for the formulas (`FuzzCompileFormula`), the dungeon options (`FuzzOptions`), the encounter generator (`FuzzGenerate`) and the treasure generator (`FuzzGenerateTreasure`).
 CI does not run them, so run them when you touch that code:

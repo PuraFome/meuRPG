@@ -61,6 +61,19 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # The complexity limits have no exceptions: no suppression and no inline
+      # disable of `complexity` or `max-lines` (docs/ci.md, "Web and e2e linters").
+      - name: No exception to complexity or max-lines
+        run: |
+          if jq -e '[.[] | keys[] | select(. == "complexity" or . == "max-lines")] | length > 0' eslint-suppressions.json >/dev/null; then
+            echo "::error file=web/eslint-suppressions.json::complexity and max-lines cannot be suppressed: split the function or the file"
+            exit 1
+          fi
+          if grep -rnE 'eslint-disable.*\b(complexity|max-lines)\b' src; then
+            echo "::error::complexity and max-lines cannot be disabled inline: split the function or the file"
+            exit 1
+          fi
+
       # Prettier formats the TypeScript, SCSS and JSON (not the Angular
       # templates: see web/.prettierignore). `npm run format` fixes it.
       - name: Formatting (Prettier)

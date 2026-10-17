@@ -14,7 +14,7 @@ const allowed connect.Code = 0
 
 // TestAuthorizationMatrix calls every ProgressionService method as each kind
 // of caller (ADR-0011): only the master gives, marks and undoes; any member
-// reads the history and everyone's XP (question 50); a non-member and a
+// reads the history and everyone's XP; a non-member and a
 // pending member (RN-15) get not_found; anonymous, unauthenticated.
 func TestAuthorizationMatrix(t *testing.T) {
 	t.Parallel()

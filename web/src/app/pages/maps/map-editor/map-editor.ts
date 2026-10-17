@@ -39,7 +39,7 @@ import { MapAsk } from '../../../shared/map-ask/map-ask';
 import { MapLayersLegend } from '../../../shared/map-layers/map-layers-legend';
 import { MapPinsLegend } from '../../../shared/map-pins/map-pins-legend';
 import { MapLegend } from '../../../shared/map-view/map-legend/map-legend';
-import { MapMove, MapSelection, MapView } from '../../../shared/map-view/map-view';
+import { MapSelection, MapView } from '../../../shared/map-view/map-view';
 import { CoverDegrees } from '../cover-degrees/cover-degrees';
 import { EditorBar, type EditorMode } from '../editor-bar/editor-bar';
 import { EditorOverlay } from '../../../shared/editor-overlay/editor-overlay';
@@ -49,9 +49,9 @@ import { LayersPanel } from '../layers-panel/layers-panel';
 import { PaintSurface } from '../paint-surface/paint-surface';
 import { DoorPanel } from '../door-panel/door-panel';
 import { DungeonImage } from '../dungeon-image/dungeon-image';
-import { DungeonRooms, type RoomOutline } from '../dungeon-rooms/dungeon-rooms';
+import { DungeonRooms } from '../dungeon-rooms/dungeon-rooms';
 import { EditorDungeon } from './editor-dungeon';
-import { EditorMoves } from './editor-moves';
+import { EditorItems } from './editor-items';
 import { EditorSelection } from './editor-selection';
 import { EditorPointSaves } from './editor-point-saves';
 import { EditorPainting } from './editor-painting';
@@ -64,7 +64,6 @@ import {
   selectedPointOf,
   selectedTokenOf,
 } from './editor-people';
-import { EditorTokens } from './editor-tokens';
 import { EditorViewAs } from './editor-view-as';
 import { LightPointPanel } from '../point-kinds/light-point-panel';
 import { TrapPointPanel } from '../point-kinds/trap-point-panel';
@@ -138,7 +137,7 @@ export class MapEditor {
     mapId: () => this.mapId(),
   };
   private readonly roster = inject(RosterClient);
-  private readonly dungeonCtl = new EditorDungeon({
+  protected readonly dungeonCtl = new EditorDungeon({
     campaignId: () => this.campaignId(),
     map: () => this.map(),
     view: () => this.view(),
@@ -186,10 +185,10 @@ export class MapEditor {
   // ---- the point editor ----
   protected readonly mode = signal<EditorMode>('points');
   protected readonly placing = signal<MapPointKind | null>(null);
-  private readonly sel = new EditorSelection({
+  protected readonly sel = new EditorSelection({
     applyMode: (mode) => this.applyMode(mode),
     discardPanel: () => this.activePanel()?.discard(),
-    save: () => this.save(),
+    save: (): Promise<boolean> => this.pointSaves.save(),
   });
   protected readonly selection = this.sel.selection;
   protected readonly pending = this.sel.pending;
@@ -206,22 +205,8 @@ export class MapEditor {
   protected readonly lightReach = this.sel.lightReach;
   protected readonly lightNames = signal<ReadonlyMap<string, string>>(new Map());
 
-  /** Saves each point's and token's moves one at a time (see `MoveSaves`). */
-  private readonly moves = new EditorMoves({
-    ...this.ctx,
-    message: this.message,
-  });
-  private readonly pointSaves = new EditorPointSaves({
-    ...this.ctx,
-    selectedPoint: () => this.selectedPoint(),
-    panelChanges: () => this.activePanel()?.changes(),
-    movePending: (id) => this.moves.pendingPoint(id),
-    sel: this.sel,
-    placing: this.placing,
-    saving: this.saving,
-    message: this.message,
-  });
-  private readonly tokens = new EditorTokens({
+  /** Moves of points and tokens (saved one at a time, see `MoveSaves`) and the token calls. */
+  protected readonly items = new EditorItems({
     ...this.ctx,
     selectedToken: () => this.selectedToken(),
     centerBp: () => this.view()?.centerBp(),
@@ -229,6 +214,18 @@ export class MapEditor {
     selection: this.selection,
     message: this.message,
   });
+  protected readonly pointSaves = new EditorPointSaves(
+    {
+      ...this.ctx,
+      selectedPoint: () => this.selectedPoint(),
+      panelChanges: () => this.activePanel()?.changes(),
+      movePending: (id) => this.items.pendingPoint(id),
+      placing: this.placing,
+      saving: this.saving,
+      message: this.message,
+    },
+    this.sel,
+  );
 
   // ---- painting ----
   /** The tool, the layers, the queue that saves the strokes and the question on leaving (`EditorPainting`). */
@@ -236,7 +233,7 @@ export class MapEditor {
     this.campaignId,
     this.map,
     this.mode,
-    () => this.refreshFlags(),
+    () => this.staleFlags.emit(),
     computed(() => this.occupants()),
   );
 
@@ -244,7 +241,7 @@ export class MapEditor {
   private readonly occupants = computed(() => occupantsOf(this.map(), this.state().tokens()));
 
   // ---- "Ver como" ----
-  private readonly viewAsCtl = new EditorViewAs({
+  protected readonly viewAsCtl = new EditorViewAs({
     ...this.ctx,
     map: () => this.map(),
     people: () => this.viewAsPeople(),
@@ -333,7 +330,7 @@ export class MapEditor {
       this.placing.set(null);
       this.selection.set(null);
       this.pending.set(null);
-      this.setViewAs(null);
+      this.viewAsCtl.set(null);
     } else {
       this.paint.stop();
     }
@@ -345,10 +342,6 @@ export class MapEditor {
     this.host.nativeElement
       .querySelector<HTMLElement>('app-editor-bar [aria-pressed="true"]')
       ?.focus();
-  }
-
-  protected refreshFlags(): void {
-    this.staleFlags.emit();
   }
 
   /** For the route guard: true when it is fine to leave (see `EditorPainting.confirmLeave`). */
@@ -370,10 +363,6 @@ export class MapEditor {
     this.placing.update((current) => (current === kind ? null : kind));
   }
 
-  protected addToken(entry: RosterEntry): Promise<void> {
-    return this.tokens.add(entry);
-  }
-
   // ---- the map ----
 
   protected onEmptyClick(at: { xBp: number; yBp: number }): void {
@@ -389,32 +378,12 @@ export class MapEditor {
     this.sel.request(next);
   }
 
-  protected saveAndContinue(): Promise<void> {
-    return this.sel.saveAndContinue();
-  }
-
-  protected discardAndContinue(): void {
-    this.sel.discardAndContinue();
-  }
-
-  protected keepEditing(): void {
-    this.sel.keepEditing();
-  }
-
   /** Whichever point panel is open: they all answer `changes()` and `discard()`. */
   private activePanel(): PointPanelApi | undefined {
     return this.pointPanel() ?? this.lightPanel() ?? this.trapPanel() ?? this.treasurePanel();
   }
 
-  protected onMoved(move: MapMove): Promise<void> {
-    return this.moves.move(move);
-  }
-
   // ---- the point panels ----
-
-  protected save(): Promise<boolean> {
-    return this.pointSaves.save();
-  }
 
   /** The scene actions saved on their own: the point carries the new list. */
   protected setSceneActions(point: MapPoint, actions: readonly SceneAction[]): void {
@@ -436,25 +405,6 @@ export class MapEditor {
     this.pointSaves.patch(point, { images: [...images] });
   }
 
-  /** A treasure marked or unmarked found (saved at once): the map carries the point the server answered. */
-  protected setPoint(point: MapPoint): void {
-    this.pointSaves.put(point);
-  }
-
-  protected remove(): Promise<void> {
-    return this.pointSaves.remove();
-  }
-
-  // ---- the token panel ----
-
-  protected toggleTokenHidden(): Promise<void> {
-    return this.tokens.toggleHidden();
-  }
-
-  protected removeToken(): Promise<void> {
-    return this.tokens.remove();
-  }
-
   // ---- the grid and the fog ----
 
   /** The map after a change of the grid or the fog: the page's state takes it, the layers read again by themselves. */
@@ -469,27 +419,4 @@ export class MapEditor {
       ? 'Há traços que o servidor ainda não recebeu. Espere o aviso “Tudo salvo” e tente de novo.'
       : null;
   };
-
-  /** A room chosen in the list is outlined, and the map goes to it (and back to the whole map when it is let go). */
-  protected onRoomOutline(room: RoomOutline | null): void {
-    this.dungeonCtl.outline(room);
-  }
-
-  protected reloadDungeon(): void {
-    this.dungeonCtl.reload();
-  }
-
-  protected onForgotten(): void {
-    this.viewAsCtl.forgotten();
-  }
-
-  // ---- "Ver como" ----
-
-  protected setViewAs(id: string | null): void {
-    this.viewAsCtl.set(id);
-  }
-
-  protected viewAsGone(): void {
-    this.viewAsCtl.gone();
-  }
 }

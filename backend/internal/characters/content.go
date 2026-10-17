@@ -7,6 +7,7 @@ import (
 
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -59,7 +60,7 @@ func (s *Service) ownSheetKeys(ctx context.Context, m authz.Membership, characte
 		return nil, s.dbError(ctx, "read the caller's sheet", err)
 	}
 	for _, row := range sheets {
-		if row.ID != characterID || deref(row.PlayerUserID) != m.UserID {
+		if row.ID != characterID || conv.OrZero(row.PlayerUserID) != m.UserID {
 			continue
 		}
 		sheet, err := loadSheet(row.ID, row.Sheet)

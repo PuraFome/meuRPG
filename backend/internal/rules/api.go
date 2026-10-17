@@ -59,8 +59,7 @@ const (
 	CustomBackgroundFeatureKey = "background-feature:custom"
 	// CustomBackgroundProficiencyCount is how many tools or languages a custom
 	// background grants in total, in any mix: SRD 5.1 "Customizing a Background"
-	// (two skills, two tool proficiencies or languages, a feature, equipment;
-	// question 82, 05/10/2026).
+	// (two skills, two tool proficiencies or languages, a feature, equipment).
 	CustomBackgroundProficiencyCount = 2
 	// MaxCustomFeatureTextLength and MaxCustomEquipmentLength bound the free text
 	// of a custom background's feature and equipment, in characters.
@@ -99,7 +98,7 @@ type Build struct {
 	Subrace string
 	// Classes holds one entry per class, in the order they were taken; the
 	// first one is the starting class (saving throws, level-1 hit points).
-	// The UI offers one class in Etapa 4, but the engine handles more.
+	// The UI offers one class, but the engine handles more.
 	Classes []ClassLevel
 	// Background is an SRD background key. Leave it empty for a custom
 	// background: CustomBackgroundName plus CustomBackgroundSkills (the

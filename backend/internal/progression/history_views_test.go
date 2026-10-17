@@ -11,21 +11,21 @@ import (
 	progressionv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/progression/v1"
 )
 
-// Characterization of viewsOf and milestoneViews (MR-016, MR-041, RN-10,
-// RN-20): what each kind of viewer reads of the history and of the
+// What viewsOf and milestoneViews (MR-016, MR-041, RN-10,
+// RN-20) give: what each kind of viewer reads of the history and of the
 // milestones, over a campaign that held every kind of award (gold with its
 // treasures, enemies with its combat, by hand, undone, given by an account
 // that is gone) and then every state of a milestone (planned, reached, given
 // to more, reached and undone, reached again, off the list, off the list and
 // undone). Each viewer's answers are a golden file
 // (testdata/history_*.golden.json, IDs replaced by labels, times by their
-// rank); run with -update-history-golden to write them again after a change
-// of behavior that was meant. Then each failure of a read, with its log line.
+// rank); run with -update to write them again after a change of behavior
+// that was meant. Then each failure of a read, with its log line.
 
 // historyScene builds the campaign of the goldens and labels its IDs.
-func historyScene(t *testing.T) *historyRig {
+func historyScene(t *testing.T) *faultRig {
 	t.Helper()
-	rig := newHistoryRig(t, gold, 3)
+	rig := newFaultRig(t, gold, 3)
 	ctx := t.Context()
 	pens, toren, brisa := rig.pcs[0].GetId(), rig.pcs[1].GetId(), rig.pcs[2].GetId()
 	award := func(name string, a *progressionv1.XPAward) {
@@ -130,7 +130,7 @@ func historyScene(t *testing.T) *historyRig {
 func historyAnswer[T any, PT interface {
 	*T
 	proto.Message
-}](t *testing.T, rig *historyRig, res *connect.Response[T], err error) any {
+}](t *testing.T, rig *faultRig, res *connect.Response[T], err error) any {
 	t.Helper()
 	if err != nil {
 		return rig.historyRead(t, nil, err)
@@ -139,7 +139,7 @@ func historyAnswer[T any, PT interface {
 }
 
 // historyReads is what u reads of the history and of the milestones.
-func (rig *historyRig) historyReads(t *testing.T, u *user) map[string]any {
+func (rig *faultRig) historyReads(t *testing.T, u *user) map[string]any {
 	t.Helper()
 	client := rig.client(u)
 	hist, err := client.ListXPAwards(t.Context(), connect.NewRequest(&progressionv1.ListXPAwardsRequest{CampaignId: rig.campaign, PageSize: maxPageSize}))
@@ -166,7 +166,7 @@ func TestHistoryAndMilestonesWhatEachViewerReads(t *testing.T) {
 	} {
 		rig.wantHistoryGolden(t, "history_"+name, rig.historyReads(t, u))
 	}
-	wantHistoryLines(t, "the logs of the reads", rig.takeLogs(t), nil)
+	wantLines(t, "the logs of the reads", rig.takeLogs(t), nil)
 
 	// Each failure of a read: the code the app gets and the one log line.
 	listAwards := func(u *user) error {
@@ -203,10 +203,10 @@ func TestHistoryAndMilestonesWhatEachViewerReads(t *testing.T) {
 		{"milestones: the combats' names", func() { rig.faults.arm("encounter_names") }, listMilestones, rig.master, "internal: internal error", []string{"ERROR progression: cannot list milestones code=internal error=read the combats' names: injected failure"}},
 	} {
 		tc.arm()
-		if got := rig.redact(historyRefusal(tc.call(tc.u))); got != tc.want {
+		if got := rig.redact(refusal(tc.call(tc.u))); got != tc.want {
 			t.Errorf("%s: error = %s, want %s", tc.name, got, tc.want)
 		}
-		wantHistoryLines(t, tc.name+": logs", rig.takeLogs(t), tc.lines)
+		wantLines(t, tc.name+": logs", rig.takeLogs(t), tc.lines)
 		rig.wantNoPendingHistoryFault(t, tc.name)
 	}
 }
@@ -216,7 +216,7 @@ func TestHistoryAndMilestonesWhatEachViewerReads(t *testing.T) {
 // award is read at all.
 func TestMilestonesOfACampaignWithNoMark(t *testing.T) {
 	t.Parallel()
-	rig := newHistoryRig(t, milestones, 1)
+	rig := newFaultRig(t, milestones, 1)
 	rig.label(rig.master.plan(t, rig.campaign, "Chegar ao Vale Seco").GetId(), "milestone-a")
 	rig.label(rig.master.plan(t, rig.campaign, "Derrotar a Sombra").GetId(), "milestone-b")
 	// A failing read of the shares would show if the marks were read with none.

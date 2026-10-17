@@ -9,9 +9,9 @@ import type { AdjustVitalsData, AdjustVitalsResult } from './adjust-vitals/adjus
 import { DiceDialog, type DiceDialogData } from './combat/dice-dialog';
 import { openRevivifySheet } from './combat/revivify-sheet/revivify-sheet';
 import type { LiveSessionLoader } from './live-session-loader';
-import type { LiveSessionParts } from './live-session-parts';
-import type { LiveSessionServices } from './live-session-services';
+import type { LiveSessionParts, LiveSessionServices } from './live-session-deps';
 import type { LiveSessionState } from './live-session-state';
+import type { LiveSessionView } from './live-session-view';
 import { openTrapSearch } from './traps/trap-search-sheet/trap-search-sheet';
 
 /** The sheets and dialogs the session page opens: each one answers back into the page's state. */
@@ -20,6 +20,7 @@ export class LiveSessionSheets {
     private readonly services: LiveSessionServices,
     private readonly state: LiveSessionState,
     private readonly parts: LiveSessionParts,
+    private readonly view: LiveSessionView,
     private readonly loader: LiveSessionLoader,
   ) {}
 
@@ -73,7 +74,7 @@ export class LiveSessionSheets {
     const opener = services.document.activeElement as HTMLElement | null;
     openTrapSearch(services.dialog, services.bottomSheet, {
       campaignId: state.campaignId(),
-      skills: state.trapSkills(),
+      skills: this.view.trapSkills(),
       diceMode: campaign.diceMode,
       preference: campaign.dicePreference,
       state: parts.mapState,

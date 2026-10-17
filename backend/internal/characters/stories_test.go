@@ -123,7 +123,7 @@ func TestMR005_MasterCreatesNpcsOfEachKind(t *testing.T) {
 		if b := npc.GetSheet().GetBasic(); b.GetInitiativeBonus() != 2 || len(b.GetAttacks()) != 1 || b.GetAttacks()[0].GetName() != "Cimitarra" {
 			t.Errorf("%v basic sheet = %v, want initiative +2 and the Cimitarra attack back as saved", kind, b)
 		}
-		// A sheet stored before Etapa 6 (a bonus and the damage as text) reads as an attack.
+		// A sheet stored with the old attack shape (a bonus and the damage as text) reads as an attack.
 		if _, err := h.pool.Exec(t.Context(),
 			`UPDATE characters SET sheet = '{"basic":{"hit_points_max":7,"armor_class":15,"attack_bonus":4,"damage":"1d6+2 cortante"}}' WHERE id = $1`,
 			npc.GetId()); err != nil {
