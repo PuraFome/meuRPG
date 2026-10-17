@@ -13,6 +13,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -145,7 +146,7 @@ func (s *Service) endOtherConcentration(ctx context.Context, c *combatTx, caster
 // castRowFor reads the cast a request names and checks the caller may act on it: its
 // caster's player or the master. A cast the caller may not see is not found (RN-10).
 func (s *Service) castRowFor(ctx context.Context, c *combatTx, m authz.Membership, castID string) (playdb.SpellCast, link.Character, error) {
-	id, ok := parseID(castID)
+	id, ok := uid.Canonical(castID)
 	if !ok {
 		return playdb.SpellCast{}, link.Character{}, errCastNotFound()
 	}

@@ -13,6 +13,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -688,7 +689,7 @@ type castRequest struct {
 func readCastRequest(msg *playv1.CastSpellOutsideCombatRequest) (castRequest, error) {
 	var in castRequest
 	var ok bool
-	if in.casterID, ok = parseID(msg.GetCasterCharacterId()); !ok {
+	if in.casterID, ok = uid.Canonical(msg.GetCasterCharacterId()); !ok {
 		return in, errCharacterNotFound()
 	}
 	in.spell = msg.GetSpellKey()
@@ -699,7 +700,7 @@ func readCastRequest(msg *playv1.CastSpellOutsideCombatRequest) (castRequest, er
 		return in, badCast(fmt.Sprintf("target_ids must have at most %d entries", maxSpellTargets))
 	}
 	for i, raw := range msg.GetTargetIds() {
-		id, ok := parseID(raw)
+		id, ok := uid.Canonical(raw)
 		if !ok {
 			return in, errCharacterNotFound()
 		}

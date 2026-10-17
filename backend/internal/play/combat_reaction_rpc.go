@@ -10,6 +10,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
@@ -237,7 +238,7 @@ func (s *Service) answerShield(ctx context.Context, c *combatTx, w playdb.Reacti
 	if err != nil {
 		return fmt.Errorf("list the combatants: %w", err)
 	}
-	attacker, _ := findCombatant(cs, deref(p.AttackerID), combatViewer{master: true})
+	attacker, _ := findCombatant(cs, conv.OrZero(p.AttackerID), combatViewer{master: true})
 	if !use {
 		ev, err := s.passShield(ctx, c, w, p, reactor)
 		got.ev = ev

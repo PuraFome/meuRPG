@@ -11,6 +11,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
@@ -112,7 +113,7 @@ func useModeRequest(ctx context.Context, c *combatTx, attacker, target playdb.Co
 	case "closed":
 		return out, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ROLL_MODE_REQUEST_CLOSED, "the request is closed")
 	}
-	out.Mode, out.Reason, out.RequestID, out.ByMaster = modeOfKey(deref(req.DecidedMode)), req.Reason, req.ID, true
+	out.Mode, out.Reason, out.RequestID, out.ByMaster = modeOfKey(conv.OrZero(req.DecidedMode)), req.Reason, req.ID, true
 	// The master decided: the mode may differ from today's suggestion (a condition
 	// changed meanwhile), and the player rolls what he answered.
 	return out, nil
@@ -380,7 +381,7 @@ func (s *Service) answerRollMode(ctx context.Context, c *combatTx, reqID string,
 	switch {
 	case row.Status == "closed":
 		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ROLL_MODE_REQUEST_CLOSED, "the request is closed")
-	case row.Status == "answered" && modeOfKey(deref(row.DecidedMode)) != decided:
+	case row.Status == "answered" && modeOfKey(conv.OrZero(row.DecidedMode)) != decided:
 		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ROLL_MODE_REQUEST_CLOSED, "the request is answered already")
 	case row.Status == "answered":
 		return nil, nil // the same answer again: nothing differs

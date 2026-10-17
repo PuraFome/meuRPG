@@ -9,6 +9,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -481,18 +482,18 @@ func statesFor(states []playdb.CombatantState, cs []playdb.Combatant, v combatVi
 		if isEffect(st) { // the effects that last have their own cards (lasting_effects_view.go)
 			continue
 		}
-		source, _ := findByID(cs, deref(st.SourceID))
+		source, _ := findByID(cs, conv.OrZero(st.SourceID))
 		if st.Kind == stateMark && !v.master && !v.owns(source) {
 			continue
 		}
 		e := &playv1.CombatantEffect{
-			Id: st.ID, Kind: stateKindProto(st.Kind), SourceId: deref(st.SourceID), LabelPt: stateLabelPT(st.Kind), EffectPt: stateEffectPT(st),
-			EndsCombatantId: deref(st.EndsCombatantID), EndsRound: derefInt32(st.EndsRound),
+			Id: st.ID, Kind: stateKindProto(st.Kind), SourceId: conv.OrZero(st.SourceID), LabelPt: stateLabelPT(st.Kind), EffectPt: stateEffectPT(st),
+			EndsCombatantId: conv.OrZero(st.EndsCombatantID), EndsRound: conv.OrZero(st.EndsRound),
 		}
 		if frenzied(st) {
 			e.SourceId, e.LabelPt, e.Frenzy = "", "Em frenesi", true
 		}
-		switch deref(st.EndsPhase) {
+		switch conv.OrZero(st.EndsPhase) {
 		case "start_of_turn":
 			e.EndsPhase = playv1.StatePhase_STATE_PHASE_START_OF_TURN
 		case "end_of_turn":
@@ -515,12 +516,8 @@ func findByID(cs []playdb.Combatant, id string) (playdb.Combatant, bool) {
 	return cs[i], true
 }
 
-func derefInt32(n *int32) int32 {
-	if n == nil {
-		return 0
-	}
-	return *n
-}
+// derefInt32 is conv.OrZero for the files of the held rolls, which still call it.
+func derefInt32(n *int32) int32 { return conv.OrZero(n) }
 
 // ---- conditions with a source ----
 

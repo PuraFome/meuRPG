@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"slices"
 	"strings"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -284,7 +284,7 @@ func (s *Service) rollCheck(in checkInput, mode combat.CheckMode, modifier int, 
 	}
 	kept := mode.PickD20(faces)
 	out := contestRoll{
-		Skill: skill, Modifier: clamp32(modifier, math.MinInt32, math.MaxInt32), Total: clamp32(kept+modifier, math.MinInt32, math.MaxInt32),
+		Skill: skill, Modifier: conv.Int32(modifier), Total: conv.Int32(kept + modifier),
 		Physical: physical, Mode: checkModeKey(mode), Notes: notes, Unknown: unknown,
 	}
 	for _, f := range faces {
@@ -331,7 +331,7 @@ func (s *Service) numbersOf(ctx context.Context, tx pgx.Tx, campaignID string, c
 	var o link.SceneOption
 	var err error
 	if isCreature(c) {
-		o, err = s.roster.CreatureCheck(ctx, tx, campaignID, deref(c.MonsterKey), key)
+		o, err = s.roster.CreatureCheck(ctx, tx, campaignID, conv.OrZero(c.MonsterKey), key)
 	} else {
 		var opts []link.SceneOption
 		if opts, err = s.roster.SceneOptions(ctx, tx, campaignID, c.CharacterID, []string{key}); err == nil && len(opts) == 1 {
@@ -419,7 +419,7 @@ func (s *Service) checkSources(ctx context.Context, tx pgx.Tx, campaignID string
 		return nil, err
 	}
 	for _, h := range helps {
-		if h.Kind == helpCheck && helpsAlly(h, who) && deref(h.Task) == skill {
+		if h.Kind == helpCheck && helpsAlly(h, who) && conv.OrZero(h.Task) == skill {
 			out = append(out, rollNote{Kind: noteHelp, Label: "Ajuda de " + helperLabel(cs, h), Adv: true})
 		}
 	}
@@ -455,7 +455,7 @@ func (s *Service) consumeCheckHelp(ctx context.Context, c *combatTx, who playdb.
 		return err
 	}
 	for _, h := range helps {
-		if h.Kind == helpCheck && helpsAlly(h, who) && deref(h.Task) == skill {
+		if h.Kind == helpCheck && helpsAlly(h, who) && conv.OrZero(h.Task) == skill {
 			if err := c.q.SetHelpConsumed(ctx, playdb.SetHelpConsumedParams{ID: h.ID, ConsumedAt: &c.now}); err != nil {
 				return fmt.Errorf("use the help: %w", err)
 			}

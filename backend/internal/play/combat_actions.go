@@ -14,6 +14,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
@@ -171,7 +172,7 @@ func (s *Service) mustActNow(ctx context.Context, c *combatTx, who playdb.Combat
 
 func turnOf(c playdb.Combatant) link.Turn {
 	return link.Turn{
-		ActionUsed: c.ActionUsed, BonusActionUsed: c.BonusActionUsed, ReactionUsed: c.ReactionUsed, AttacksMade: int(c.AttacksMade), AttackKey: deref(c.ActionAttackKey), FlurryLeft: int(c.BonusAttacksLeft), ActionSurged: c.ActionSurged, SpellCast: c.SpellCast, BonusSpellCast: c.BonusSpellCast,
+		ActionUsed: c.ActionUsed, BonusActionUsed: c.BonusActionUsed, ReactionUsed: c.ReactionUsed, AttacksMade: int(c.AttacksMade), AttackKey: conv.OrZero(c.ActionAttackKey), FlurryLeft: int(c.BonusAttacksLeft), ActionSurged: c.ActionSurged, SpellCast: c.SpellCast, BonusSpellCast: c.BonusSpellCast,
 		Dashed: c.Dashed, SpeedFt: int(max(c.SpeedFt, c.SpeedFlyFt)), MovementUsedFt: int(c.MovementUsedDft) / 10,
 		MovementUsedDFt: int(c.MovementUsedDft), LastMoveDFt: int(c.LastMoveDft), Disengaged: c.Disengaged,
 		JumpLongDFt: int(c.JumpLongDft), JumpHighDFt: int(c.JumpHighDft),
@@ -318,14 +319,14 @@ func pendingVisible(p playdb.PendingDamage, cs []playdb.Combatant, v combatViewe
 // player get. cs are the combat's combatants, for the target's defeat.
 func pendingProto(p playdb.PendingDamage, cs []playdb.Combatant) *playv1.PendingDamage {
 	out := &playv1.PendingDamage{
-		Id: p.ID, AttackerId: deref(p.AttackerID), TargetId: p.TargetID, AttackKey: p.AttackKey,
+		Id: p.ID, AttackerId: conv.OrZero(p.AttackerID), TargetId: p.TargetID, AttackKey: p.AttackKey,
 		Status: pendingStatusToProto[p.Status], Critical: p.Critical,
 		CriticalRule: pendingCriticalRule(p.Critical, p.CriticalMaxRule), CriticalMax: p.CriticalMax,
 		DiceCount: p.DiceCount, DiceSides: p.DiceSides, Bonus: p.DiceBonus,
 		ExtraDiceCount: p.ExtraDice, ExtraDiceNamePt: extraDiceName(p.ExtraDice, p.SavageDice),
 		DamageTypeKey: p.DamageType, DamageTypePt: damageTypePT[p.DamageType],
-		CastId: deref(p.CastID), Healing: p.Healing, Half: p.Half, AppliedAmount: p.AppliedAmount,
-		TrapPointId: deref(p.TrapPointID), // a trap's damage has no attacker (MR-035)
+		CastId: conv.OrZero(p.CastID), Healing: p.Healing, Half: p.Half, AppliedAmount: p.AppliedAmount,
+		TrapPointId: conv.OrZero(p.TrapPointID), // a trap's damage has no attacker (MR-035)
 	}
 	if p.Amount != nil {
 		out.Amount = *p.Amount
@@ -468,7 +469,7 @@ func (s *Service) afterResistance(ctx context.Context, c *combatTx, target playd
 	if !holdsHP(target) || damageType == "" || amount <= 0 {
 		return amount, nil
 	}
-	mods, err := s.roster.DamageModifiers(ctx, c.tx, c.session.CampaignID, target.CharacterID, deref(target.MonsterKey))
+	mods, err := s.roster.DamageModifiers(ctx, c.tx, c.session.CampaignID, target.CharacterID, conv.OrZero(target.MonsterKey))
 	if err != nil {
 		return 0, err
 	}
@@ -490,7 +491,7 @@ func (s *Service) landDamage(ctx context.Context, c *combatTx, p playdb.PendingD
 		healed.Pending, healed.Half = p.ID, p.Half
 		return healed, vit, err
 	case holdsHP(target): // an NPC and a creature take a damage at once
-		dmg := combat.ApplyDamage(int(num(target.HpCurrent)), int(num(target.HpTemp)), int(amount))
+		dmg := combat.ApplyDamage(int(conv.OrZero(target.HpCurrent)), int(conv.OrZero(target.HpTemp)), int(amount))
 		after := hpState{HP: clamp32(dmg.HP, 0, math.MaxInt32), Temp: clamp32(dmg.TempHP, 0, math.MaxInt32), Defeated: dmg.HP == 0}
 		if err := c.q.SetCombatantHitPoints(ctx, playdb.SetCombatantHitPointsParams{ID: target.ID, HpCurrent: &after.HP, HpTemp: &after.Temp, Defeated: after.Defeated}); err != nil {
 			return hit, nil, fmt.Errorf("apply the damage: %w", err)
@@ -511,7 +512,7 @@ func (s *Service) healCombatant(ctx context.Context, c *combatTx, target playdb.
 	hit := damageHit{Target: target.ID, Applied: true}
 	if holdsHP(target) {
 		before := hpOf(target)
-		r := combat.ApplyHeal(int(before.HP), int(num(target.HpMax)), int(amount))
+		r := combat.ApplyHeal(int(before.HP), int(conv.OrZero(target.HpMax)), int(amount))
 		after := hpState{HP: clamp32(r.HP, 0, math.MaxInt32), Temp: before.Temp, Defeated: r.HP == 0}
 		if err := c.q.SetCombatantHitPoints(ctx, playdb.SetCombatantHitPointsParams{ID: target.ID, HpCurrent: &after.HP, HpTemp: &after.Temp, Defeated: after.Defeated}); err != nil {
 			return hit, nil, fmt.Errorf("apply the heal: %w", err)
@@ -591,7 +592,7 @@ func (s *Service) castConcentrationDC(ctx context.Context, c *combatTx, p playdb
 		}
 		switch o.Status {
 		case pendingApplied:
-			total = clamp32(int(total)+int(num(o.Taken)), 0, math.MaxInt32)
+			total = clamp32(int(total)+int(conv.OrZero(o.Taken)), 0, math.MaxInt32)
 		case pendingDiscarded:
 		default:
 			return 0, nil // another damage type of the cast has still to land on it
@@ -696,7 +697,7 @@ func discardHit(ctx context.Context, c *combatTx, p playdb.PendingDamage) ([]str
 	}
 	var windows []string
 	for _, w := range open {
-		if deref(w.PendingDamageID) == p.ID {
+		if conv.OrZero(w.PendingDamageID) == p.ID {
 			windows = append(windows, w.ID)
 		}
 	}

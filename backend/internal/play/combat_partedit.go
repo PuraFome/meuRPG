@@ -12,6 +12,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -110,7 +111,7 @@ func (s *Service) removePartInTx(ctx context.Context, c *combatTx, r partRemoval
 	if err != nil {
 		return actionEvent{}, err
 	}
-	attacker, _ := findCombatant(cs, deref(p.AttackerID), combatViewer{master: true})
+	attacker, _ := findCombatant(cs, conv.OrZero(p.AttackerID), combatViewer{master: true})
 	target, _ := findCombatant(cs, p.TargetID, combatViewer{master: true})
 	// The master gave a player's character the damage already: it went through the
 	// vitals, and he corrects them by hand.
@@ -157,7 +158,7 @@ func workOutRemoval(ctx context.Context, c *combatTx, p playdb.PendingDamage, at
 	rem := removal{total: amount, amount: amount, land: land}
 	rem.ev = actionEvent{
 		Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Pending: p.ID, Key: partKey,
-		DamageType: p.DamageType, Rolled: num(p.Amount), Total: amount,
+		DamageType: p.DamageType, Rolled: conv.OrZero(p.Amount), Total: amount,
 	}
 	landed := amount
 	if land.changed {
@@ -244,9 +245,9 @@ func giveBackOnce(ctx context.Context, c *combatTx, attacker playdb.Combatant, k
 	turn := turnKey(c.enc)
 	sneak, colossus := attacker.SneakAttackTurn, attacker.ColossusSlayerTurn
 	switch {
-	case key == combat.ExtraSneakAttack && deref(sneak) == turn:
+	case key == combat.ExtraSneakAttack && conv.OrZero(sneak) == turn:
 		sneak = nil
-	case key == combat.ExtraColossusSlayer && deref(colossus) == turn:
+	case key == combat.ExtraColossusSlayer && conv.OrZero(colossus) == turn:
 		colossus = nil
 	default:
 		return nil

@@ -14,6 +14,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -261,8 +262,8 @@ func (s *Service) tallyChecks(ctx context.Context, sessionID string, st *session
 			continue
 		}
 		t := st.of(*r.CharacterID, "")
-		t.checksTried += clampInt32(int(r.Tried))
-		t.checksPassed += clampInt32(int(r.Passed))
+		t.checksTried += conv.Int32(int(r.Tried))
+		t.checksPassed += conv.Int32(int(r.Passed))
 	}
 	return int(opened), nil
 }

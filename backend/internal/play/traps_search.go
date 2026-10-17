@@ -15,6 +15,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
@@ -435,12 +436,12 @@ func (s *Service) writeTrapSearch(ctx context.Context, ts *trapSearch, r *search
 // trapSearchEvent is what the history keeps of the search.
 func trapSearchEvent(ts *trapSearch, r *searchTurn, d searchDice, found maplink.SearchResult) actionEvent {
 	ev := actionEvent{
-		Round: r.c.enc.Round, Actor: ts.place.combatantID, Key: ts.skill, D20: clampInt32(d.face), Modifier: clampInt32(r.opt.Bonus + r.dieFace), Total: clampInt32(d.roll.Total),
-		Physical: d.roll.Physical, Found: found.Found, OnTurn: ts.place.spent, D20B: clampInt32(d.face2), ReliableTalent: r.reliable,
+		Round: r.c.enc.Round, Actor: ts.place.combatantID, Key: ts.skill, D20: conv.Int32(d.face), Modifier: conv.Int32(r.opt.Bonus + r.dieFace), Total: conv.Int32(d.roll.Total),
+		Physical: d.roll.Physical, Found: found.Found, OnTurn: ts.place.spent, D20B: conv.Int32(d.face2), ReliableTalent: r.reliable,
 		Lucky: r.step.Lucky, // the held d20 Lucky rolled again: the first of a Perception search's two
 	}
 	if r.cm.Mode != combat.ModeNormal {
-		ev.RollMode, ev.Counted = modeKey(r.cm.Mode), clampInt32(d.counted)
+		ev.RollMode, ev.Counted = modeKey(r.cm.Mode), conv.Int32(d.counted)
 	}
 	if r.step.Bonus != nil {
 		ev.Res = &resourceEvent{Kind: resBardicUse, Sides: r.step.Bonus.Sides, Face: r.step.Bonus.Face}

@@ -12,6 +12,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -100,7 +101,7 @@ func (s *Service) concentrationDamageTaken(ctx context.Context, c *combatTx, tar
 	taken = 0
 	for _, o := range all {
 		if o.TargetID == target.ID && !o.Healing && o.Status == pendingApplied {
-			taken += num(o.Taken)
+			taken += conv.OrZero(o.Taken)
 		}
 	}
 	return taken, nil
@@ -392,8 +393,8 @@ func recordConcentrationRoll(ev *actionEvent, run *concentrationRun, step concen
 	total := roll.Total + delta
 	kept := total >= int(dc)
 	re := ev.Reaction
-	re.SaveD20, re.SaveBonus, re.Saved, re.Kept = clamp32(roll.Face(), 1, 20), clamp32(step.bonus+delta+bonusFace, math.MinInt32, math.MaxInt32), kept, kept
-	ev.D20, ev.Modifier, ev.Total, ev.Physical = re.SaveD20, re.SaveBonus, clamp32(total, math.MinInt32, math.MaxInt32), roll.Physical
+	re.SaveD20, re.SaveBonus, re.Saved, re.Kept = clamp32(roll.Face(), 1, 20), conv.Int32(step.bonus+delta+bonusFace), kept, kept
+	ev.D20, ev.Modifier, ev.Total, ev.Physical = re.SaveD20, re.SaveBonus, conv.Int32(total), roll.Physical
 	ev.D20B, ev.Counted = clamp32(roll.otherFace(), 0, 20), clamp32(roll.Index, 0, 1)
 	ev.Lucky = step.gate.Lucky // the d20 Lucky rolled again: the log says "Sortudo: 1 → 14"
 	run.result = &playv1.ConcentrationSaveResult{

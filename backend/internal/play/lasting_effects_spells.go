@@ -7,6 +7,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -123,7 +124,7 @@ func (s *Service) markSpellHits(content *rules.Content, def *rules.EffectDef, st
 	var taken []playdb.Combatant
 	for i, t := range targs {
 		hit := &made.Hits[i]
-		key := deref(t.MonsterKey)
+		key := conv.OrZero(t.MonsterKey)
 		if key == "" {
 			key = kinds[t.CharacterID]
 		}

@@ -11,6 +11,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -310,7 +311,7 @@ func (f modeFacts) unseen(observer, subject playdb.Combatant) bool {
 // Help of an ally aimed at that target, not used and not past its helper's next turn.
 func (f modeFacts) helperOf(attacker, target playdb.Combatant) *playdb.Combatant {
 	for _, h := range f.helps {
-		if h.Kind != helpAttack || !helpsAlly(h, attacker) || deref(h.TargetID) != target.ID {
+		if h.Kind != helpAttack || !helpsAlly(h, attacker) || conv.OrZero(h.TargetID) != target.ID {
 			continue
 		}
 		if helper, ok := helpHelper(f.cs, h); ok {

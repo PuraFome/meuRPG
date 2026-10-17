@@ -12,6 +12,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -132,7 +133,7 @@ func (s *Service) startFlow(ctx context.Context, c *combatTx, m authz.Membership
 		Round: c.enc.Round, Secret: who.Hidden, Actor: who.ID, Key: actionKey, RunBefore: run,
 		ActionBefore: who.ActionUsed, BonusBefore: who.BonusActionUsed, ReactionBefore: who.ReactionUsed, DashedBefore: who.Dashed,
 		AttacksBefore: who.AttacksMade, DisengagedBefore: who.Disengaged, SurgedBefore: who.ActionSurged,
-		AttackKeyBefore: deref(who.ActionAttackKey), FlurryBefore: who.BonusAttacksLeft,
+		AttackKeyBefore: conv.OrZero(who.ActionAttackKey), FlurryBefore: who.BonusAttacksLeft,
 	}
 	after := who
 	switch action.GetAction().GetEconomy() {
@@ -215,7 +216,7 @@ func touchReach(c *combatTx, v combatViewer, who, target playdb.Combatant, reach
 
 // creatureTypeOf is the SRD type ("undead") of a monster combatant, "" for anyone else.
 func (s *Service) creatureTypeOf(ctx context.Context, c *combatTx, target playdb.Combatant) (string, error) {
-	key := deref(target.MonsterKey)
+	key := conv.OrZero(target.MonsterKey)
 	if key == "" && target.Kind == kindNPC {
 		// A monster the master added is an NPC made from a creature: its sheet knows which.
 		chars, err := s.roster.CombatCharacters(ctx, c.tx, c.session.CampaignID, []string{target.CharacterID})
@@ -852,7 +853,7 @@ func inspirationDieView(cs []playdb.Combatant, c playdb.Combatant, round int32, 
 	if !holdsDie(c, round) || (!v.master && !v.owns(c)) {
 		return nil
 	}
-	out := &playv1.InspirationDie{Sides: *c.InspirationSides, ExpiresAtRound: *c.InspirationExpiresRound, FromCombatantId: deref(c.InspirationFrom)}
+	out := &playv1.InspirationDie{Sides: *c.InspirationSides, ExpiresAtRound: *c.InspirationExpiresRound, FromCombatantId: conv.OrZero(c.InspirationFrom)}
 	if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == out.FromCombatantId }); i >= 0 {
 		out.FromLabel = cs[i].Label
 	}

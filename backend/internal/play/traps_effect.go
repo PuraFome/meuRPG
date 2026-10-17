@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"slices"
 	"strconv"
 
@@ -356,9 +355,6 @@ func appendOnce(list []string, key string) []string {
 	}
 	return append(list, key)
 }
-
-// clampInt32 is a number as an int32 for the API's and the events' fields.
-func clampInt32(n int) int32 { return clamp32(n, math.MinInt32, math.MaxInt32) }
 
 // rollModed rolls the d20 of a roll with the mode: one die, or two with advantage or
 // disadvantage. It returns the die that counts, the other one (0 when there was one) and

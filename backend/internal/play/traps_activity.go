@@ -12,6 +12,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -132,7 +133,7 @@ func activityLineOf(r playdb.ListTrapEventsOfSessionRow, byID map[string]*activi
 		}
 		return nil
 	}
-	l := &activityLine{id: r.ID, at: r.CreatedAt, character: deref(r.CharacterID), ev: ev}
+	l := &activityLine{id: r.ID, at: r.CreatedAt, character: conv.OrZero(r.CharacterID), ev: ev}
 	switch {
 	case r.Kind == eventTrapNoticed:
 		// The maps module wrote it: the trap and the characters that noticed it.

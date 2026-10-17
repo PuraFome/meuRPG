@@ -13,6 +13,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
@@ -132,7 +133,7 @@ func (s *Service) adjustVitalsTx(ctx context.Context, tx pgx.Tx, call adjustCall
 		return err
 	}
 	run.shapeChanged = (before.GetWildShape() == nil) != (adjusted.GetWildShape() == nil)
-	run.visionMap = deref(session.CurrentMapID)
+	run.visionMap = conv.OrZero(session.CurrentMapID)
 	ownBody, adjusted, err := s.leaveBeastForm(ctx, tx, q, session.ID, call, before, adjusted)
 	if err != nil {
 		return err
@@ -144,7 +145,7 @@ func (s *Service) adjustVitalsTx(ctx context.Context, tx pgx.Tx, call adjustCall
 		return err
 	}
 	if run.touched != nil {
-		run.visionMap = deref(run.touched.MapID)
+		run.visionMap = conv.OrZero(run.touched.MapID)
 	}
 	// Damage outside a combat asks the Constitution save of a spell the character
 	// concentrates on (casting.go).

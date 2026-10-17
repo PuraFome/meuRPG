@@ -13,6 +13,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -125,7 +126,7 @@ func (s *Service) offerOpportunities(ctx context.Context, c *combatTx, cs []play
 		}
 		if err := insertEvent(ctx, c, eventOpportunityOffered, &c.actorUserID, nil, actionEvent{
 			Round: c.enc.Round, Secret: mover.Hidden || p.reactor.Hidden, Actor: mover.ID, Target: p.reactor.ID,
-			OfferID: offer.ID, MoveID: moveID, Col: valueOf(offer.LeftCol), Row: valueOf(offer.LeftRow),
+			OfferID: offer.ID, MoveID: moveID, Col: conv.OrZero(offer.LeftCol), Row: conv.OrZero(offer.LeftRow),
 		}); err != nil {
 			return "", nil, err
 		}

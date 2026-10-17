@@ -15,6 +15,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -102,7 +103,7 @@ func (s *Service) openCombatTrapDamages(ctx context.Context, campaignID string) 
 // ids are the traps and the characters the waiting damages name, in the order of the damages.
 func (w *waitingTrapDamages) ids() (pointIDs, characterIDs []string) {
 	for _, p := range w.inCombat {
-		pointIDs = append(pointIDs, deref(p.TrapPointID))
+		pointIDs = append(pointIDs, conv.OrZero(p.TrapPointID))
 		characterIDs = append(characterIDs, w.combatants[p.TargetID].CharacterID)
 	}
 	for _, d := range w.outside {
@@ -139,10 +140,10 @@ func (w *waitingTrapDamages) protos(trapNames, names map[string]string) []*playv
 	for _, p := range w.inCombat {
 		who := w.combatants[p.TargetID]
 		out = append(out, &playv1.TrapDamage{
-			Id: p.ID, EncounterId: p.EncounterID, TrapPointId: deref(p.TrapPointID), TrapName: trapNames[deref(p.TrapPointID)],
+			Id: p.ID, EncounterId: p.EncounterID, TrapPointId: conv.OrZero(p.TrapPointID), TrapName: trapNames[conv.OrZero(p.TrapPointID)],
 			CharacterId: who.CharacterID, CharacterName: names[who.CharacterID], CombatantId: p.TargetID,
-			Status: pendingStatusToProto[p.Status], Roll: diceRoll(p.DiceCount, p.DiceSides, p.Faces, p.DiceBonus+p.CriticalMax, num(p.RollTotal), false),
-			Amount: num(p.Amount), DamageTypeKey: p.DamageType, DamageTypePt: damageTypePT[p.DamageType], Half: p.Half, Critical: p.Critical,
+			Status: pendingStatusToProto[p.Status], Roll: diceRoll(p.DiceCount, p.DiceSides, p.Faces, p.DiceBonus+p.CriticalMax, conv.OrZero(p.RollTotal), false),
+			Amount: conv.OrZero(p.Amount), DamageTypeKey: p.DamageType, DamageTypePt: damageTypePT[p.DamageType], Half: p.Half, Critical: p.Critical,
 			AppliedAmount: p.AppliedAmount, CreatedAt: timestamppb.New(p.CreatedAt),
 		})
 	}
@@ -415,9 +416,9 @@ func (s *Service) followSettledCombat(ctx context.Context, q *playdb.Queries, st
 		return err
 	}
 	st.touched = touched
-	st.visionMap = deref(session.CurrentMapID)
+	st.visionMap = conv.OrZero(session.CurrentMapID)
 	if touched != nil {
-		st.visionMap = deref(touched.MapID)
+		st.visionMap = conv.OrZero(touched.MapID)
 	}
 	return nil
 }
@@ -511,9 +512,9 @@ func (s *Service) keepTrapDamage(ctx context.Context, c *combatTx, cs []playdb.C
 			continue
 		}
 		if _, err := c.q.InsertTrapDamage(ctx, playdb.InsertTrapDamageParams{
-			GameSessionID: c.session.ID, TrapPointID: deref(p.TrapPointID), FireID: p.ID, CharacterID: cs[i].CharacterID, Critical: p.Critical,
+			GameSessionID: c.session.ID, TrapPointID: conv.OrZero(p.TrapPointID), FireID: p.ID, CharacterID: cs[i].CharacterID, Critical: p.Critical,
 			DiceCount: p.DiceCount, DiceSides: p.DiceSides, DiceBonus: p.DiceBonus, CriticalMax: p.CriticalMax, DamageType: p.DamageType, Faces: p.Faces,
-			RollTotal: num(p.RollTotal), Half: p.Half, Amount: num(p.Amount), CreatedAt: p.CreatedAt,
+			RollTotal: conv.OrZero(p.RollTotal), Half: p.Half, Amount: conv.OrZero(p.Amount), CreatedAt: p.CreatedAt,
 		}); err != nil {
 			return fmt.Errorf("keep the trap damage: %w", err)
 		}

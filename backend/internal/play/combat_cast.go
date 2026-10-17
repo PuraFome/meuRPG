@@ -13,6 +13,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -644,7 +645,7 @@ func (f *castFlow) concentrate(ctx context.Context) error {
 		return nil
 	}
 	made := &f.out.made
-	made.Concentrate, made.ConcBefore = true, deref(f.caster.ConcentrationSpell)
+	made.Concentrate, made.ConcBefore = true, conv.OrZero(f.caster.ConcentrationSpell)
 	made.ConcEnded = made.ConcBefore
 	var err error
 	if made.Dismissed, err = f.s.endSummons(ctx, f.c, f.caster); err != nil {

@@ -18,6 +18,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/tablerules"
@@ -437,7 +438,7 @@ func (s *Service) settleChange(ctx context.Context, c *combatTx) error {
 func (r *changeRun) record(ctx context.Context, c *combatTx, w combatWrite, payload any) error {
 	r.res.encounterID = c.enc.ID
 	r.res.kind = c.kind
-	r.res.characterID = deref(c.characterID)
+	r.res.characterID = conv.OrZero(c.characterID)
 	r.res.event = nil
 	if ev, ok := payload.(actionEvent); ok {
 		r.res.event = &ev
@@ -477,7 +478,7 @@ func (s *Service) tellEnded(ctx context.Context, campaignID string, ended *comba
 		for _, v := range ended.told {
 			s.publishVitals(campaignID, v)
 		}
-		s.maps.VisionChanged(ctx, campaignID, deref(ended.enc.MapID))
+		s.maps.VisionChanged(ctx, campaignID, conv.OrZero(ended.enc.MapID))
 	}
 }
 

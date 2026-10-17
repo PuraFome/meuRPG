@@ -10,6 +10,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -55,7 +56,7 @@ func characterGone(err error) bool { return connect.CodeOf(err) == connect.CodeN
 // checkOptionOf is what a check would roll, as an option reads it: the master reads whether
 // the number is known, a player always reads it.
 func checkOptionOf(n checkNumbers, notes []rollNote, master bool) *playv1.CheckOption {
-	return &playv1.CheckOption{Modifier: clamp32(n.Bonus, math.MinInt32, math.MaxInt32), Known: n.Known || !master, Mode: checkModeProto(notesMode(notes)), Notes: notesProto(notes)}
+	return &playv1.CheckOption{Modifier: conv.Int32(n.Bonus), Known: n.Known || !master, Mode: checkModeProto(notesMode(notes)), Notes: notesProto(notes)}
 }
 
 // escapeAvailability says whether the grappled combatant can escape now, and if not why: the
@@ -83,7 +84,7 @@ func (s *Service) fillGrappled(ctx context.Context, d *encounterData, v combatVi
 			return err
 		}
 		state.EscapeOptions = append(state.EscapeOptions, &playv1.ContestSkillOption{
-			Skill: skillEnum(sk), Modifier: clamp32(n.Bonus, math.MinInt32, math.MaxInt32), Known: n.Known || !v.master,
+			Skill: skillEnum(sk), Modifier: conv.Int32(n.Bonus), Known: n.Known || !v.master,
 			Mode: checkModeProto(notesMode(notes)), Notes: notesProto(notes),
 		})
 	}
@@ -108,7 +109,7 @@ func helpTargetOf(cd *contestData, cs []playdb.Combatant, v combatViewer, who pl
 	var out string
 	for _, h := range cd.helps {
 		if h.Kind == helpAttack && helpsAlly(h, who) {
-			if t, ok := combatantByID(cs, deref(h.TargetID)); ok && (v.master || v.sees(t)) {
+			if t, ok := combatantByID(cs, conv.OrZero(h.TargetID)); ok && (v.master || v.sees(t)) {
 				out = t.ID
 			}
 		}

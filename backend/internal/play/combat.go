@@ -10,6 +10,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -190,7 +191,7 @@ func (s *Service) moveTokensToTheirSquares(ctx context.Context, c *combatTx, cs 
 		// never makes a token for it.
 		if isCreature(cb) && !cb.Dismissed && placed(cb) {
 			x, y := centerOf(grid, *cb.GridCol, *cb.GridRow)
-			positions = append(positions, link.TokenPosition{CreatureID: deref(cb.CreatureID), XBP: x, YBP: y})
+			positions = append(positions, link.TokenPosition{CreatureID: conv.OrZero(cb.CreatureID), XBP: x, YBP: y})
 		}
 	}
 	if err := s.maps.SetTokenPositions(ctx, c.tx, *c.enc.MapID, positions, c.now); err != nil {

@@ -7,6 +7,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
@@ -54,7 +55,7 @@ func (s *Service) offerForViewer(ctx context.Context, m authz.Membership, d *enc
 		offer.ReactorId, offer.ReactorLabel = reactor.ID, reactor.Label
 	}
 	if answers {
-		offer.LeftCol, offer.LeftRow = valueOf(o.LeftCol), valueOf(o.LeftRow)
+		offer.LeftCol, offer.LeftRow = conv.OrZero(o.LeftCol), conv.OrZero(o.LeftRow)
 		offer.ByHand = o.LeftCol == nil
 		offer.Attacks = s.reactorMeleeAttacks(ctx, m.CampaignID, reactor)
 	}

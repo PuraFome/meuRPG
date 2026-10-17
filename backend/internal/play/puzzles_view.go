@@ -11,6 +11,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/puzzle"
@@ -124,7 +125,7 @@ func playerRunProto(d puzzleDef, run playdb.PuzzleRun, names runNames, v playerV
 	out.Mural = d.solution.GetPillars()
 	if run.SolvedAt != nil {
 		out.SolvedAt = timestamppb.New(*run.SolvedAt)
-		out.SolvedMessage = deref(run.SolveMessage)
+		out.SolvedMessage = conv.OrZero(run.SolveMessage)
 		if run.SolvedByCharacterID != nil {
 			out.SolvedByName = names[*run.SolvedByCharacterID]
 		}
@@ -444,7 +445,7 @@ func masterRunProto(d puzzleDef, run *playdb.PuzzleRun, names runNames, shown bo
 		out.Run = players
 	}
 	if run.SolvedAt != nil {
-		out.Outcome = outcomeOf(deref(run.SolveOutcome))
+		out.Outcome = outcomeOf(conv.OrZero(run.SolveOutcome))
 	}
 	if len(run.LastMove) > 0 {
 		if out.LastMove, err = lastMoveOf(*run); err != nil {

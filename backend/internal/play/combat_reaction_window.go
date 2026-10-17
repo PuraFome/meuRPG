@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
@@ -293,7 +294,7 @@ func (s *Service) kindTriggerGone(ctx context.Context, c *combatTx, w playdb.Rea
 		return gone, true, err
 	case reaction.EffectSave:
 		// A defeated creature or NPC owes no saving throw (RN-22): the window closes with it.
-		r, ok := byID[deref(w.ReactorID)]
+		r, ok := byID[conv.OrZero(w.ReactorID)]
 		if ok && r.Defeated && r.Kind != kindPlayer {
 			return true, true, nil
 		}
@@ -311,7 +312,7 @@ func (s *Service) kindTriggerGone(ctx context.Context, c *combatTx, w playdb.Rea
 
 // concentrationGone says the reactor no longer concentrates on the spell the window asked a save for.
 func concentrationGone(w playdb.ReactionWindow, t windowTrigger, byID map[string]playdb.Combatant) bool {
-	r, ok := byID[deref(w.ReactorID)]
+	r, ok := byID[conv.OrZero(w.ReactorID)]
 	return !ok || r.ConcentrationSpell == nil || *r.ConcentrationSpell != t.Spell
 }
 

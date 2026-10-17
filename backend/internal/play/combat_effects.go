@@ -10,6 +10,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -132,7 +133,7 @@ func (s *Service) endAid(ctx context.Context, c *combatTx, target playdb.Combata
 		if bonus == 0 {
 			return nil, nil, nil
 		}
-		before, maxBefore := hpOf(target), num(target.HpMax)
+		before, maxBefore := hpOf(target), conv.OrZero(target.HpMax)
 		maxAfter := max(maxBefore-bonus, 1)
 		hp := before.HP
 		if hp > 0 {

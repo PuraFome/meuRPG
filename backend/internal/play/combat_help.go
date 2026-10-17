@@ -13,6 +13,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -64,7 +65,7 @@ func (s *Service) liveHelps(ctx context.Context, q *playdb.Queries, enc playdb.E
 		if !ok {
 			continue
 		}
-		if combat.HelpLastsThrough(int(num(h.CreatedRound)), int(enc.Round), current, int(helper.OrderIndex)) {
+		if combat.HelpLastsThrough(int(conv.OrZero(h.CreatedRound)), int(enc.Round), current, int(helper.OrderIndex)) {
 			out = append(out, h)
 		}
 	}
