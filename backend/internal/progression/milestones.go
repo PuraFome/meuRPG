@@ -224,10 +224,9 @@ func movePlanned(ctx context.Context, q *progressiondb.Queries, campaignID, id s
 	if err != nil {
 		return fmt.Errorf("list the marks: %w", err)
 	}
+	// changePlanned locked this milestone in the same transaction, so the locked
+	// list of its campaign holds it.
 	i := slices.IndexFunc(list, func(p progressiondb.PlannedMilestone) bool { return p.ID == id })
-	if i < 0 {
-		return errMilestoneNotFound()
-	}
 	j := nearestPlanned(list, live, i, step)
 	if j < 0 || j >= len(list) {
 		return nil // already first or last: nothing changes
