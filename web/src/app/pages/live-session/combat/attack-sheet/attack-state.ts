@@ -59,18 +59,4 @@ export class AttackState {
     );
     this.pending = signal(data.resume?.pending ?? null);
   }
-
-  /** One request in the air: the error of the last is cleared and the sheet is busy until it ends. `fail` words what
-   * went wrong. */
-  async run(work: () => Promise<void>, fail: (err: unknown) => void): Promise<void> {
-    this.busy.set(true);
-    this.error.set('');
-    try {
-      await work();
-    } catch (err) {
-      fail(err);
-    } finally {
-      this.busy.set(false);
-    }
-  }
 }
