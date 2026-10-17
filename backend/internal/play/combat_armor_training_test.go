@@ -46,12 +46,18 @@ func newUntrainedTable(t *testing.T) *armed {
 	})
 }
 
-// untrainedFight starts the combat with the goblin next to Toren.
+// untrainedFight starts the combat with the goblin next to Toren, who acts first.
 func (a *armed) untrainedFight(t *testing.T) *playv1.Encounter {
+	t.Helper()
+	return a.untrainedFightWith(t, map[string]int32{"Toren": 18, "Pensantus": 10, "Brisa": 1})
+}
+
+// untrainedFightWith is untrainedFight with the initiative the players rolled.
+func (a *armed) untrainedFightWith(t *testing.T, initiative map[string]int32) *playv1.Encounter {
 	t.Helper()
 	return a.start(t, plan{
 		npcs: []*playv1.Participant{{CharacterId: a.goblin.GetId()}}, npcRolls: []int{3},
-		players: map[string]int32{"Toren": 18, "Pensantus": 10, "Brisa": 1}, reveal: []string{"Goblin"},
+		players: initiative, reveal: []string{"Goblin"},
 		at: map[string][2]int32{"Toren": {3, 3}, "Goblin": {4, 3}, "Pensantus": {3, 4}, "Brisa": {4, 4}},
 	})
 }
@@ -86,8 +92,8 @@ func TestUntrainedArmorGivesDisadvantageOnStrengthAndDexterityAttacks(t *testing
 		wantArmorSource(t, "spell attack", tg, false)
 	}
 	// The roll itself takes two dice: a single typed d20 is not the mode the server asks for.
-	if _, err := a.attack(t, a.caio, e, "Toren", quarterstaffKey, "Goblin", d20(12)); connect.CodeOf(err) != connect.CodeAborted {
-		t.Fatalf("RollAttack() with one die error = %v, want aborted (disadvantage asks for two)", err)
+	if _, err := a.attack(t, a.caio, e, "Toren", quarterstaffKey, "Goblin", d20(12)); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Fatalf("RollAttack() with one die error = %v, want invalid_argument (disadvantage asks for two)", err)
 	}
 	res := a.mustAttack(t, a.caio, e, "Toren", quarterstaffKey, "Goblin", disadvantage(12))
 	if res.GetRoll().GetMode() != playv1.RollMode_ROLL_MODE_DISADVANTAGE {
@@ -109,10 +115,10 @@ func TestATrainedWearerAttacksNormally(t *testing.T) {
 func TestAShieldAloneBreaksTheProficiency(t *testing.T) {
 	t.Parallel()
 	a := newUntrainedTable(t)
-	e := a.untrainedFight(t)
+	e := a.untrainedFightWith(t, map[string]int32{"Pensantus": 18, "Toren": 10, "Brisa": 1})
 	pens := a.mustOptions(t, a.ana, e, "Pensantus")
 	wantArmorSource(t, "wizard with a shield", targetOf(pens, quarterstaffKey, "Goblin"), true)
-	_, err := a.cast(t, a.ana, e, "Pensantus", magicMissileSpell, slotOfLevel(1), []*playv1.SpellTarget{{CombatantId: a.id(t, "Goblin")}}, noCastRoll)
+	_, err := a.cast(t, a.ana, e, "Pensantus", magicMissileSpell, slotOfLevel(1), []*playv1.SpellTarget{{CombatantId: a.id(t, "Goblin"), Darts: 3}}, noCastRoll)
 	wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ARMOR_NOT_PROFICIENT)
 }
 
@@ -120,7 +126,7 @@ func TestUntrainedArmorGivesDisadvantageOnStrengthAndDexterityChecksAndSaves(t *
 	t.Parallel()
 	a := newUntrainedTable(t)
 	toren, brisa := a.toren.GetId(), a.bri.GetId()
-	armor := []string{"armor_not_proficient/disadvantage"}
+	armor := []string{"armor_untrained/disadvantage"}
 	// Out of a combat.
 	wantCheckMode(t, "STR check", a.checkModeFor(t, toren, "skill:athletics", "str", true), combat.ModeDisadvantage, armor, nil, 0, 0)
 	wantCheckMode(t, "DEX check", a.checkModeFor(t, toren, "skill:acrobatics", "dex", true), combat.ModeDisadvantage, armor, nil, 0, 0)
@@ -142,7 +148,7 @@ func TestUntrainedArmorRefusesEverySpellInACombat(t *testing.T) {
 	t.Parallel()
 	a := newUntrainedTable(t)
 	e := a.untrainedFight(t)
-	goblin := []*playv1.SpellTarget{{CombatantId: a.id(t, "Goblin")}}
+	goblin := []*playv1.SpellTarget{{CombatantId: a.id(t, "Goblin"), Darts: 3}}
 	_, err := a.cast(t, a.caio, e, "Toren", magicMissileSpell, slotOfLevel(1), goblin, noCastRoll)
 	wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ARMOR_NOT_PROFICIENT)
 	// A cantrip with an attack roll is a spell too.

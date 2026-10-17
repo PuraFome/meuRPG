@@ -121,6 +121,7 @@ var sourceKindToProto = map[string]playv1.AdvantageSourceKind{
 	combat.SourceFrightenedCheck:    playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_FRIGHTENED_CHECK,
 	combat.SourcePerceptionDim:      playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_PERCEPTION_DIM,
 	combat.SourceHelp:               playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_HELP,
+	combat.SourceArmorUntrained:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_ARMOR_NOT_PROFICIENT,
 }
 
 // statesOf groups the states of a combat by the combatant that has them.
@@ -152,6 +153,7 @@ func creatureFacts(c playdb.Combatant, states map[string][]playdb.CombatantState
 		// throws an effect gives and the disadvantage one gives the creature's attack rolls.
 		Exhaustion: int(c.ExhaustionLevel), Outlined: hasEffect(states, c.ID, "spell:faerie-fire"), SaveAdvantage: effectSaveAdvantage(states, c.ID), CheckAdvantage: effectCheckAdvantage(states, c.ID),
 		AttackDisadvantage: effectAttackDisadvantage(states, c.ID),
+		ArmorUntrained:     traits.ArmorUntrained,
 	}
 }
 
@@ -174,6 +176,8 @@ type attackShape struct {
 	Weapon bool
 	// UsesStrength says it is made with Strength.
 	UsesStrength bool
+	// Ability is the ability the attack uses ("str", "dex"...), "" for a spell attack.
+	Ability string
 	// RangeFt is the reach or the normal range, LongRangeFt the long range.
 	RangeFt, LongRangeFt int
 	// Thrown says a melee weapon that has a throwing range.
@@ -187,11 +191,14 @@ func (s attackShape) rangedAt(dist int32, known bool) bool {
 	return !s.Melee || (s.Thrown && known && dist > meleeReachFt)
 }
 
+// physical says the attack is made with Strength or Dexterity.
+func (s attackShape) physical() bool { return s.Ability == "str" || s.Ability == "dex" }
+
 // shapeOfAttack reads a sheet's attack. A spell attack with a range beyond touch is
 // a ranged attack; a touch spell is melee.
 func shapeOfAttack(a link.Attack) attackShape {
 	shape := attackShape{
-		Melee: a.Melee, Weapon: a.Weapon || (!a.Spell && !a.Save), UsesStrength: a.Ability == "str",
+		Melee: a.Melee, Weapon: a.Weapon || (!a.Spell && !a.Save), UsesStrength: a.Ability == "str", Ability: a.Ability,
 		RangeFt: a.RangeFt, LongRangeFt: a.LongRangeFt,
 	}
 	switch {
@@ -278,7 +285,8 @@ func (f modeFacts) scene(attacker, target playdb.Combatant, traits link.Traits, 
 		Ranged: ranged, StrengthMelee: shape.Weapon && shape.Melee && !ranged && shape.UsesStrength, OwnTurn: ownTurn,
 		DistanceKnown: known, DistanceFt: int(dist), ReachFt: reach, LongRangeFt: long,
 		// A table feat's ranged_attack effect: the weapon keeps its aim at long range.
-		NoLongRangeDisadvantage: shape.Weapon && traits.RangedWeaponNoLongRangeDisadvantage,
+		NoLongRangeDisadvantage:   shape.Weapon && traits.RangedWeaponNoLongRangeDisadvantage,
+		StrengthOrDexterityWeapon: shape.Weapon && shape.physical(),
 	}
 	s.Helped = f.helperOf(attacker, target) != nil
 	s.AttackerUnseen = f.unseen(target, attacker)
@@ -503,6 +511,8 @@ func (c textContext) otherSentence(src combat.Source) string {
 		return "Exaustão: desvantagem em testes de habilidade"
 	case combat.SourceStealthArmor:
 		return "Armadura: desvantagem em Furtividade"
+	case combat.SourceArmorUntrained:
+		return labelArmorUntrained + ": desvantagem em testes, ataques e testes de resistência de Força e Destreza"
 	case combat.SourceOutlinedTarget:
 		return "Alvo delineado: vantagem se o atacante o vê"
 	case combat.SourceEffectSave:

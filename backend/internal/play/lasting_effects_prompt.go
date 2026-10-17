@@ -55,25 +55,39 @@ func (wv *windowView) effectSavePrompt(w playdb.ReactionWindow, reactor *playdb.
 	def, _ := wv.s.effectDef(content, key)
 	p.TextPt = effectSaveText(def, t.Phase, wv.names, st)
 	if reactor != nil {
-		save, err := wv.s.saveOf(wv.ctx, nil, wv.m.CampaignID, *reactor, ability)
-		if err != nil {
-			return wv.s.dbError(wv.ctx, "read a saving throw", err)
+		if err := wv.effectSaveRoll(p, t, *reactor, ability); err != nil {
+			return err
 		}
-		p.Modifier, p.BonusKnown = conv.Int32(save.Bonus), save.Known
-		states := statesOf(wv.d.states)
-		creature := creatureFacts(*reactor, states, link.Traits{})
-		sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: ability, EffectVisible: true})
-		if t.OnDamage {
-			sources = append(sources, combat.Source{Kind: combat.SourceEffectSave, Effect: combat.ModeAdvantage})
-		}
-		p.Mode = modeKey(combat.Resolve(sources))
-		for _, src := range shownSources(sources, wv.names) {
-			p.ModeSourcesPt = append(p.ModeSourcesPt, src.GetTextPt())
-		}
-		p.AutoFail = combat.AutoFailsSave(creature, ability)
-		p.ExtraDice = extraDiceProto(effectDiceFor(states, reactor.ID, rules.RollAppliesSave), true, wv.names)
 	}
 	out.Prompt = &playv1.ReactionWindow_EffectSave{EffectSave: p}
+	return nil
+}
+
+// effectSaveRoll fills what the saving throw of the reactor shows: its bonus, the mode its circumstances
+// make (its armor included), whether it fails by itself and the dice an effect adds.
+func (wv *windowView) effectSaveRoll(p *playv1.EffectSavePrompt, t windowTrigger, reactor playdb.Combatant, ability string) error {
+	save, err := wv.s.saveOf(wv.ctx, nil, wv.m.CampaignID, reactor, ability)
+	if err != nil {
+		return wv.s.dbError(wv.ctx, "read a saving throw", err)
+	}
+	p.Modifier, p.BonusKnown = conv.Int32(save.Bonus), save.Known
+	states := statesOf(wv.d.states)
+	// Only the armor is read from the sheet: it spoils the saves the roll will spoil.
+	traits := link.Traits{}
+	if !isCreature(reactor) {
+		traits.ArmorUntrained = wv.s.wearsUntrainedArmor(wv.ctx, nil, wv.m.CampaignID, reactor.CharacterID)
+	}
+	creature := creatureFacts(reactor, states, traits)
+	sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: ability, EffectVisible: true})
+	if t.OnDamage {
+		sources = append(sources, combat.Source{Kind: combat.SourceEffectSave, Effect: combat.ModeAdvantage})
+	}
+	p.Mode = modeKey(combat.Resolve(sources))
+	for _, src := range shownSources(sources, wv.names) {
+		p.ModeSourcesPt = append(p.ModeSourcesPt, src.GetTextPt())
+	}
+	p.AutoFail = combat.AutoFailsSave(creature, ability)
+	p.ExtraDice = extraDiceProto(effectDiceFor(states, reactor.ID, rules.RollAppliesSave), true, wv.names)
 	return nil
 }
 

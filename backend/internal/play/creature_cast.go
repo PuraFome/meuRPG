@@ -321,6 +321,9 @@ func (s *Service) summonCaster(ctx context.Context, c *combatTx, r *summonRun) e
 		return connect.NewError(connect.CodePermissionDenied, errors.New("only the character's player or the master may cast for it"))
 	}
 	r.owner = chars[0].PlayerUserID
+	if chars[0].ArmorUntrained {
+		return errArmorNotProficient()
+	}
 	now, err := s.vitals.GetVitalsTx(ctx, c.tx, r.m.CampaignID, characterID)
 	if err != nil {
 		return err

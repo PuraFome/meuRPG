@@ -15,6 +15,8 @@ The spell, the level (`slot`: level or pact, none for a cantrip) and the targets
 - **How many targets.** `SpellDetails.Target` says whether a spell hits an area and how many it takes: what the master wrote on a table spell, the 5e-database's structured area on an SRD one and, for one without a structured area, the SRD text read with two patterns (`rules/spelltarget.go`).
   A spell attack takes one target, so a wrong guess never blocks the master.
   A table spell goes through the same `CombatSpell`, with the campaign's content (see [Architecture](../characters-table-content.md#spell-targets-and-the-magias-page)).
+- **Armor without proficiency.** A character that wears armor or carries a shield it is not proficient with (`rules.ArmorUntrained`, read from the derived sheet) casts nothing: `CombatTurnOptions` disables every spell, and every cantrip with an attack roll, with `ARMOR_NOT_PROFICIENT` and no slot, so `CastSpell`, `CastSummon` and the reaction spells (which read the slots of the options) refuse it, and `RollAttack` refuses a spell attack (`EncounterBlocked`, `ARMOR_NOT_PROFICIENT`, nothing spent).
+  The master is refused too.
 - **At most 10 listed targets**, the master's too: what each target suffered stays in the cast's event, and a `session_events` payload is at most 16 KiB.
   A placed area spell is not listed: it reaches who the server finds inside, up to the 40 combatants a combat holds.
   Past 10 listed is `invalid_argument`.
@@ -86,6 +88,7 @@ A heal appears in the log with the recovered amount only for the master and the 
 The rules are in `rules/casting.go`, `rules/combat/outside.go` and `healing.go`; `play` (`casting*.go`) holds the state, takes the open session's row lock like every write, and publishes after `COMMIT`.
 `characters` reads the sheet for it (`castingoutside.go`: the spells the character can cast and Mage Armor's armor class) and hands the answer over through `link` types.
 One row of `spell_casts` is one casting, from start to end, and the rows of a session are also its log.
+Armor or a shield without proficiency refuses the cast before anything else (`CastingBlocked`, `ARMOR_NOT_PROFICIENT`), at the start and at the end of a long casting, and `GetCastOptions.armor_not_proficient` says it so the screen lists no spell.
 
 ```mermaid
 stateDiagram-v2

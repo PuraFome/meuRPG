@@ -291,6 +291,9 @@ func (s *Service) guardFinish(ctx context.Context, c *combatTx, m authz.Membersh
 
 // mayFinishNow checks the caster is not in a combat and is not in a beast form.
 func (s *Service) mayFinishNow(ctx context.Context, c *combatTx, caster link.Character) error {
+	if caster.ArmorUntrained {
+		return errCastingArmorNotProficient()
+	}
 	if caster.Player {
 		now, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, caster.ID)
 		if err != nil {
