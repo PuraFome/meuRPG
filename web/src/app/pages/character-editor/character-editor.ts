@@ -68,7 +68,6 @@ import { NpcShortForm } from './npc-short-form/npc-short-form';
 import { SkillPicker } from './skill-picker/skill-picker';
 import { SpellPicker } from './spell-picker/spell-picker';
 
-import { EditorOpening } from './editor-opening';
 import { EditorServerDraft } from './editor-server-draft';
 import { EditorSubmit } from './editor-submit';
 import type { EditorCore } from './editor-core';
@@ -250,20 +249,6 @@ export class CharacterEditor {
     element: this.host.nativeElement,
     injector: this.injector,
   });
-  /** What the page does with the lists once they are read (`EditorOpening`). */
-  private readonly opening = new EditorOpening({
-    ...this.core,
-    fb: this.fb,
-    views: this.views,
-    abilityTable: this.abilityTable,
-    abilityMethod: this.abilityMethod,
-    lockedOrigin: this.lockedOrigin,
-    contentNote: this.contentNote,
-    forget: () => {
-      this.server.choices.stop();
-      this.saving.reset();
-    },
-  });
   /** The "?" next to a spell (`EditorSpellDetails`). */
   protected readonly spellDetails = new EditorSpellDetails({
     source: this.source,
@@ -286,18 +271,22 @@ export class CharacterEditor {
       : 'player_chooses';
   });
 
-  /** What the page reads from the server to open, and the routes it drops the answers of (`EditorLoader`). */
+  /** What the page reads from the server to open, what it does with the answer, and the routes it drops the answers of (`EditorLoader`). */
   private readonly loader = new EditorLoader({
+    ...this.core,
     source: this.source,
-    state: this.state,
+    fb: this.fb,
+    views: this.views,
     abilityTable: this.abilityTable,
+    abilityMethod: this.abilityMethod,
     lockedOrigin: this.lockedOrigin,
     contentNote: this.contentNote,
     campaignId: this.campaignIdSignal,
     reservedRoute: () => this.isReservedRoute(),
-    reset: () => this.opening.reset(),
-    created: (ready, table) => this.opening.created(ready, table),
-    edited: (ready, existing, catalog) => this.opening.edited(ready, existing, catalog),
+    forget: () => {
+      this.server.choices.stop();
+      this.saving.reset();
+    },
   });
 
   constructor() {

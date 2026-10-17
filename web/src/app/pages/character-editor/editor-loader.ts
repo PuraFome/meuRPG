@@ -1,17 +1,21 @@
 import type { WritableSignal } from '@angular/core';
+import type { FormBuilder } from '@angular/forms';
 import type { ParamMap } from '@angular/router';
 
 import { CharacterKind } from '../../core/characters/characters.types';
 import { catalogChanged, offersChanged } from './catalog-changes';
 import type {
+  AbilityMethodKey,
   AbilityTableVm,
   CharacterEditorSource,
   CharacterForEdit,
+  CharacterFormValue,
   RulesCatalogVm,
 } from './character-editor.types';
+import type { EditorCatalog } from './editor-catalog';
+import type { EditorCore } from './editor-core';
 import {
   NPC_ROUTE_KINDS,
-  type PageState,
   type ReadyState,
   createFailed,
   editBlocked,
@@ -19,34 +23,36 @@ import {
   loadingState,
   readyForCreate,
   readyForEdit,
+  tableHitPointsMethod,
 } from './editor-state';
+import { fullFormValueOf } from './full-form';
+import { patchBasicForm } from './npc-short-form/basic-form';
 
-/** What `EditorLoader` reads from, and hands back to, the page it loads for. */
-export interface EditorLoaderContext {
+/** What `EditorLoader` reads from, and fills in on, the page it loads for. */
+export interface EditorLoaderContext extends EditorCore {
   readonly source: Pick<
     CharacterEditorSource,
     'loadCatalog' | 'loadCharacterForEdit' | 'loadAbilityTable'
   >;
-  readonly state: WritableSignal<PageState>;
+  readonly fb: FormBuilder;
+  readonly views: Pick<EditorCatalog, 'sections'>;
   readonly abilityTable: WritableSignal<AbilityTableVm | null>;
+  readonly abilityMethod: WritableSignal<AbilityMethodKey>;
   readonly lockedOrigin: WritableSignal<NonNullable<CharacterForEdit['abilityOrigin']> | null>;
   readonly contentNote: WritableSignal<string>;
   readonly campaignId: WritableSignal<string>;
   /** The route is `/campaigns/:id/reserved/new`: the master makes a character for a player to claim. */
   readonly reservedRoute: () => boolean;
-  /** A reused component starts every route from nothing: nothing of the previous character stays. */
-  readonly reset: () => void;
-  /** The lists of a new sheet arrived: the page takes the table, fills the defaults and opens the form. */
-  readonly created: (ready: ReadyState, table: AbilityTableVm | null) => void;
-  /** The lists and the sheet of an edit arrived: the page opens the form with what the sheet has. */
-  readonly edited: (ready: ReadyState, existing: CharacterForEdit, catalog: RulesCatalogVm) => void;
+  /** The sheet's own state that is not a signal here: the save and the server reads of the draft start over. */
+  readonly forget: () => void;
 }
 
 /**
- * What the editor reads from the server to open, and how it drops the answers of a route the person left: the lists
- * of a new sheet, the lists and the sheet of an edit, the table of ways to make scores, and the lists again after a
- * `content_changed`. Plain class the editor builds; it counts the loads, so a late answer for a route the person left
- * is dropped, and a save that outlives its route does not navigate.
+ * What the editor reads from the server to open, and what it does with the answer: the lists of a new sheet (the
+ * defaults of the form), the lists and the sheet of an edit (the form and the picks of what the sheet has), the table
+ * of ways to make scores, and the lists again after a `content_changed`. Plain class the editor builds; it counts the
+ * loads, so a late answer for a route the person left is dropped, and a save that outlives its route does not
+ * navigate.
  */
 export class EditorLoader {
   /** Counts the loads, so a late answer for a route the person left is dropped. */
@@ -90,7 +96,7 @@ export class EditorLoader {
 
   forCreate(campaignId: string, kind: CharacterKind, reserved: boolean): void {
     const seq = ++this.seq;
-    this.host.reset();
+    this.reset();
     this.host.state.set(loadingState('create', kind, reserved));
     // A player (or a pending member) makes the scores the table's rules allow; the master's NPCs, and the characters
     // the master makes for a player to claim, are free.
@@ -103,7 +109,7 @@ export class EditorLoader {
         if (seq !== this.seq) {
           return;
         }
-        this.host.created(readyForCreate(kind, campaignId, catalog, reserved), abilityTable);
+        this.created(readyForCreate(kind, campaignId, catalog, reserved), abilityTable);
       },
       (err: unknown) => {
         if (seq !== this.seq) {
@@ -116,7 +122,7 @@ export class EditorLoader {
 
   forEdit(campaignId: string, characterId: string): void {
     const seq = ++this.seq;
-    this.host.reset();
+    this.reset();
     this.host.state.set(loadingState('edit', 'player'));
     Promise.all([
       // With the sheet: what it has comes back even when the master retired it since.
@@ -147,11 +153,7 @@ export class EditorLoader {
           this.host.state.set(editBlocked(existing.blocked, campaignId, characterId));
           return;
         }
-        this.host.edited(
-          readyForEdit(existing, campaignId, characterId, catalog),
-          existing,
-          catalog,
-        );
+        this.edited(readyForEdit(existing, campaignId, characterId, catalog), existing, catalog);
       })
       .catch((err: unknown) => {
         if (seq !== this.seq) {
@@ -159,6 +161,69 @@ export class EditorLoader {
         }
         this.host.state.set(editFailed(err, campaignId, characterId));
       });
+  }
+
+  /** A reused component starts every route from nothing: nothing of the previous character stays in the form or the pick sets. */
+  private reset(): void {
+    const h = this.host;
+    h.fullForm.reset();
+    h.basicForm.reset();
+    h.picks.reset();
+    h.spellPicks.reset();
+    h.abilityTable.set(null);
+    h.abilityMethod.set('typed');
+    h.lockedOrigin.set(null);
+    h.contentNote.set('');
+    h.forget();
+  }
+
+  /** The lists of a new sheet arrived: the defaults of the form. */
+  private created(ready: ReadyState, table: AbilityTableVm | null): void {
+    const h = this.host;
+    h.abilityTable.set(table);
+    const method = tableHitPointsMethod(table);
+    if (method) {
+      h.fullForm.controls.hitPointsMethod.setValue(method);
+    }
+    h.state.set(ready);
+    // A new enemy, boss or minion starts at ND 0 and 10 XP, so nobody is left without a
+    // number; a story NPC gives none (and never shows the fields).
+    if (ready.kind === 'enemy' || ready.kind === 'boss') {
+      h.fullForm.patchValue({ challengeRating: '0', xpValue: 10 });
+    } else if (ready.kind === 'story') {
+      h.basicForm.patchValue({ challengeRating: '', xpValue: 0 });
+    }
+  }
+
+  /** The lists and the sheet of an edit arrived: the form opens with what the sheet has. */
+  private edited(ready: ReadyState, existing: CharacterForEdit, catalog: RulesCatalogVm): void {
+    this.host.state.set(ready);
+    if (existing.full) {
+      this.openSavedSheet(existing, existing.full, catalog);
+    }
+    if (existing.basic) {
+      patchBasicForm(this.host.fb, this.host.basicForm, existing.basic);
+    }
+  }
+
+  private openSavedSheet(
+    existing: CharacterForEdit,
+    full: CharacterFormValue,
+    catalog: RulesCatalogVm,
+  ): void {
+    const { fullForm, picks, spellPicks, views } = this.host;
+    fullForm.setValue(fullFormValueOf(full));
+    picks.load(full);
+    spellPicks.load(full.cantrips, full.spellsKnown, full.spellsPrepared);
+    picks.preparedMaxByClass.set(existing.preparedMax ?? {});
+    picks.hasCuttingWords.set((existing.featureKeys ?? []).includes('feature:cutting-words'));
+    // What the sheet has from outside the form is told once, as the sheet has it: a spell of the subclass it
+    // has now stays out of this list, and stays out when the subclass is changed (the save drops it with the subclass).
+    const granted = new Set(existing.grantedSpellKeys ?? []);
+    const fromSubclass = new Set(views.sections().flatMap((sec) => sec.alwaysPrepared));
+    picks.grantedSpells.set(
+      catalog.spells.filter((sp) => granted.has(sp.key) && !fromSubclass.has(sp.key)),
+    );
   }
 
   /** The table's rules for the scores changed under the person (the server refused the way of rolling the step
