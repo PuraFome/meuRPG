@@ -156,6 +156,23 @@
           </div>
         }
       }
+      @if (s.teleportFt > 0 && data.map; as m) {
+        <!-- A teleport spell on the map (Passo Nebuloso): the player picks the square they land on. -->
+        <app-teleport-map
+          [image]="m.image"
+          [mapName]="m.mapName"
+          [columns]="m.columns"
+          [rows]="m.rows"
+          [layers]="m.layers"
+          [fog]="m.fog"
+          [combatants]="ar.combatants()"
+          [master]="!!data.master"
+          [casterId]="data.casterId"
+          [reachFt]="s.teleportFt"
+          [picked]="s.destination()"
+          (pick)="ch.pickDestination($event)"
+        />
+      }
       @if (ch.metaRows().length) {
         <app-metamagic-picker
           [rows]="ch.metaRows()"

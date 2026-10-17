@@ -37,6 +37,7 @@ For the engine around it see [Rules module](rules.md).
 | `AdjustForType`, `Adjust` | The damage that lands on a creature after the bonuses and the half of a save: immunity makes it 0, resistance halves it (rounded down), vulnerability doubles it. A damage with no type is not touched. |
 | `DeathSave(d20, successes, failures)` | 10 or more is a success, less a failure, a natural 1 two failures, a natural 20 returns with 1 hit point. Three successes: stable (the three stay as the stable marker and the failures are cleared). Three failures: `dying`, which the master confirms (RN-03); the engine never kills by itself. `DamageWhileDown(critical)` gives 1 failure (2 on a critical) for damage to someone at 0. |
 | `ConcentrationDC(damage)` | `max(10, damage/2)`, the number of the concentration reminder (RN-22). |
+| `HalfSaveShare(creature, ability, saved)` | The share (`ShareFull`, `ShareHalf`, `ShareNone`) of a damage that a save halving it on a success leaves: Evasion makes a passed Dexterity save `ShareNone` and a failed one `ShareHalf`, unless the creature is incapacitated; otherwise a pass is half and a failure all. |
 | `AttacksLeft`, `MissileDarts`, `SaveSucceeded`, `HalfDamage`, `ShieldACBonus` | How many attacks of the Attack action still fit (Extra Attack), Magic Missile's darts (3, plus one per level above 1st), whether a save reaches the DC, half the damage rounded down and Shield's +5. |
 
 ## Reason codes of a disabled option

@@ -439,7 +439,7 @@ O mestre move qualquer um para qualquer lugar, mas não para dentro de uma pared
 | Alcance | O alcance de ataques e magias conta quadrados entre os centros, arredondado para baixo, então um alcance de 1,5 m vale nos oito lados. Uma arma com a propriedade alcance chega a 3 m, também para o ataque de oportunidade |
 | Salto | O salto em distância é igual ao valor de Força em pés com corrida (pelo menos 3 m a pé logo antes, neste turno) e metade parado. O salto em altura é 3 pés mais o modificador de Força com corrida e metade parado. Um salto em distância custa só o comprimento dele e não atravessa uma parede |
 | Colocação | Uma criatura que chega ao mapa sem quadrado é colocada em piso livre a pelo menos 3 quadrados de todo personagem de jogador, o mais perto possível do ponto de batalha do encontro (ou do meio do mapa) |
-| Teletransporte e movimentos forçados | O movimento forçado do mestre nunca provoca |
+| Teletransporte e movimentos forçados | O movimento forçado do mestre nunca provoca. Um teletransporte lançado (Passo Nebuloso) leva o conjurador ao espaço que o jogador escolheu, e também não provoca nada |
 
 - **O navegador não faz conta de movimento.** O servidor envia o alcance (cada quadrado e o custo dele) e a tela o desenha: um círculo tracejado do movimento restante, cada quadrado alcançável tingido, o custo em metros ao lado do quadrado escolhido. Um quadrado recusado dentro do círculo diz por quê (parede, inimigo, ocupado, custo extra) sem nomear o que está no caminho, e um fora dele diz só "Longe demais". O movimento restante passa para a parte seguinte ("Você já andou 3,0 m").
 - **Obstáculos não vistos.** O servidor para um movimento antes de uma parede, antes de uma criatura que não pode ser atravessada, antes do primeiro quadrado que o movimento restante não paga, ou no primeiro quadrado da área de uma armadilha. Se a causa é algo que o jogador não conhece, a tela diz só "Você parou antes: algo bloqueou o caminho." (RN-10).
@@ -460,6 +460,11 @@ Sair do alcance de um inimigo provoca um ataque de oportunidade, que o app ofere
 **Esculpir Magias** (SRD 5.1, Escola de Evocação).
 Um mago de evocação a partir do nível 2, ao conjurar uma magia de evocação que afeta outras criaturas que ele vê, poupa até 1 + o nível da magia delas (o nível em que é conjurada). Uma criatura poupada passa no teste de resistência sem rolar e não sofre dano quando a magia causaria metade; a linha do teste diz "Esculpir Magias".
 O conjurador nunca está entre elas, e só podem ser nomeadas criaturas que a magia alcança e que o conjurador vê.
+
+**Evasão** (SRD 5.1, Monge 7 e Ladino 7; também a escolha Defesa de Caçador Superior do patrulheiro e a característica Evasão de uma criatura).
+Num teste de resistência de Destreza que causa metade do dano em caso de sucesso, uma criatura com Evasão não sofre dano se passa e sofre metade se falha.
+Vale para o teste de uma magia, o de uma armadilha e o do agressor contra Repreensão Infernal, e não enquanto a criatura está incapacitada (Incapacitado, Paralisado, Petrificado, Atordoado ou Inconsciente).
+Outra habilidade, ou um teste que não reduz o dano à metade, não muda.
 
 Veja [Movimento em combate](../../architecture/play/movement.md), [Mapas e a grade](../../architecture/rules-maps.md#grid) e [Desenho do combate](../../design/combat.md).
 
@@ -533,6 +538,17 @@ Num mapa com grade, quem conjura não lista quem a magia atinge: coloca a área,
 - **Quem é atingido.** Todos lá dentro: aliados, quem conjura quando está dentro, criaturas escondidas. O dano é uma só rolagem para todos. A cobertura é medida a partir do ponto de origem e soma +2 (metade) ou +5 (três quartos) apenas a um teste de resistência de Destreza. Uma criatura alcançada só por um canto não ganha cobertura automática; o mestre a marca à mão.
 - **Uma área vazia** ainda é conjurada e gasta o espaço de magia e a ação. O app pergunta antes: "Ninguém que você vê está na área".
 - **Sem grade** (combate sem mapa, RN-25) nada disso existe: quem conjura lista quem é atingido, e o mestre julga quem está dentro e a cobertura.
+
+### Magias de teletransporte na grade
+
+Passo Nebuloso é uma ação bônus que leva quem conjura até 9 m para um espaço livre que essa pessoa enxergue (SRD 5.1, Misty Step).
+Num mapa com grade o jogador precisa escolher o espaço na própria conjuração (o botão de conjurar fica desligado até haver um espaço, com o ponteiro ou pelo teclado), e o servidor confere antes de gastar o espaço de magia ou a ação bônus. Uma conjuração do personagem de um jogador sem espaço é recusada.
+
+- **Alcance.** Até 6 quadrados pela regra de alcance da mesa (quadrados entre os centros, arredondado para baixo). Um espaço mais longe é recusado com "Longe demais".
+- **Livre e visto.** Não dá para escolher uma parede, uma criatura ou um espaço que quem conjura não vê. O jogador só ouve "Esse espaço não está disponível", seja qual for o motivo, então a resposta nunca revela uma criatura escondida (RN-10). O mestre ouve o motivo, não é preso à visão, e pode escolher por um NPC ou por um jogador.
+- **Armadilhas.** Uma armadilha no espaço de chegada dispara para quem conjurou, como uma entrada na sua área. Desfazer anda um passo de cada vez: primeiro o disparo, depois a conjuração, que devolve quem conjurou ao lugar.
+- **Sem andar.** O teletransporte não gasta movimento e não provoca ataque de oportunidade. Ele limpa a marca de cobertura do mestre, mostra o novo espaço a quem o enxerga, e desfazer a conjuração devolve quem conjurou ao lugar.
+- **Sem espaço** o mestre pode deixá-lo de fora (e, para um NPC, costuma deixar): a conjuração só gasta o espaço de magia e a ação bônus, e o mestre move a ficha. Um combate sem mapa (RN-25) não tem espaço para escolher, e a conjuração funciona do mesmo jeito.
 
 ### Criaturas escondidas atingidas por uma área
 
@@ -835,7 +851,7 @@ Sem grade (RN-25) não há zonas: quem conjura lista quem é atingido e o mestre
 - **O que uma zona faz.** Uma criatura que entra na área, ou começa o turno nela, faz o teste de resistência da magia (Sabedoria em Espíritos Guardiões, Constituição em Raio Lunar e Névoa Mortal, Destreza em Teia). As três primeiras causam o dano numa falha e metade dele num sucesso; o dano tem os dados do espaço com que a magia foi conjurada. O teste, o dano e o modo como ele cai são os de uma conjuração: um NPC sofre o dano na hora, o personagem de um jogador espera o mestre (RN-02), e o teste de concentração de quem se feriu vem em seguida (RN-31).
 - **Uma vez por turno.** Uma zona atinge uma criatura no máximo uma vez a cada turno, tenha ela entrado andando ou começado o turno dentro. Sair e entrar de novo, ou andar dentro da área, não a atinge mais naquele turno; o turno seguinte começa uma contagem nova. O "turno" é o turno que está correndo, seja de quem for: uma criatura empurrada para dentro da área no turno de outro é atingida então, e de novo quando o turno dela começa ali.
 - **A conjuração não atinge ninguém.** Uma criatura que está na área quando a magia é conjurada é atingida ao começar o turno dela ali, ou ao entrar de novo. (Teia é a exceção quanto ao efeito próprio: ele continua caindo sobre as criaturas dentro da área na conjuração, como sempre caiu.)
-- **Quando uma zona olha.** A cada mudança de quadrado: uma caminhada, um salto, uma criatura empurrada (Onda Trovejante, o empurrão do monge), derrubada para trás por um empurrão, arrastada ou posta em outro lugar pelo mestre (um movimento forçado, que também faz as vezes de um teletransporte), e no começo de cada turno. Desfazer um movimento não reavalia nada; o dano que uma zona causou é um dano pendente próprio, que o mestre descarta ou desfaz como qualquer outro.
+- **Quando uma zona olha.** A cada mudança de quadrado: uma caminhada, um salto, uma criatura empurrada (Onda Trovejante, o empurrão do monge), derrubada para trás por um empurrão, arrastada ou teletransportada (Passo Nebuloso cai na área como um passo cairia) ou posta em outro lugar pelo mestre (um movimento forçado), e no começo de cada turno. Desfazer um movimento não reavalia nada; o dano que uma zona causou é um dano pendente próprio, que o mestre descarta ou desfaz como qualquer outro.
 - **Quem é poupado.** Espíritos Guardiões deixa em paz quem conjura e os aliados de quem conjura: a magia deixa quem conjura nomear as criaturas que ela não afeta, e a mesa usa a escolha mais comum. Raio Lunar, Névoa Mortal e Teia pegam todos, inclusive quem conjura e os aliados.
 - **Como acaba.** Com a concentração (outra magia de concentração, 0 pontos de vida, o mestre encerrando) e com o tempo, contado até o começo do turno de quem conjura: 1 minuto são 10 rodadas (Raio Lunar), 10 minutos são 100 (Espíritos Guardiões, Névoa Mortal), 1 hora são 600 (Teia). O "Desfazer" do mestre sobre a conjuração leva a zona junto com a concentração.
 - **Como se move.** Espíritos Guardiões é centrado em quem conjura e vai aonde essa pessoa vai; as criaturas que a nova área alcança contam como se tivessem entrado. Raio Lunar fica onde foi posto, e em cada turno seguinte quem conjura pode gastar uma ação para movê-lo até 18 m ("Mover o raio"); o mestre move qualquer zona sem a ação nem a distância. Névoa Mortal anda 3 m (dois quadrados) para longe de quem conjura no começo de cada turno de quem conjura, até onde as paredes deixam; as criaturas que ela alcança contam como se tivessem entrado. Teia fica parada.

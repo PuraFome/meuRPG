@@ -439,7 +439,7 @@ The master moves anyone anywhere, but not into a wall.
 | Range | Attack and spell range counts squares between centres, rounded down, so a 1.5 m reach holds on all eight sides. A weapon with the reach property reaches 3 m, also for the opportunity attack |
 | Jump | Long jump equals the Strength score in feet with a running start (at least 3 m on foot just before, in this turn) and half standing. High jump is 3 ft plus the Strength modifier with a running start and half standing. A long jump costs only its length and does not cross a wall |
 | Placement | A creature that comes to the map without a square is placed on free floor at least 3 squares from every player character, as near as possible to the encounter's battle point (or the middle of the map) |
-| Teleport and forced moves | The master's forced move never provokes |
+| Teleport and forced moves | The master's forced move never provokes. A teleport cast (Misty Step) moves the caster to the square the player picked, and provokes nothing either |
 
 - **The browser does no movement maths.** The server sends the reach (each square and its cost) and the screen draws it: a dashed circle of the remaining movement, each reachable square tinted, the cost in metres beside the chosen square. A square refused inside the circle says why (wall, enemy, occupied, extra cost) without naming what is in the way, and one outside says only "Longe demais". The remaining movement carries over to the next part ("Você já andou 3,0 m").
 - **Unseen obstacles.** The server stops a move before a wall, before a creature that cannot be crossed, before the first square the remaining movement cannot pay, or at the first square of a trap's area. If the cause is something the player does not know, the screen says only "Você parou antes: algo bloqueou o caminho." (RN-10).
@@ -460,6 +460,11 @@ Leaving an enemy's reach provokes an opportunity attack, which the app offers to
 **Sculpt Spells** (SRD 5.1, School of Evocation).
 An evocation wizard from level 2, casting an evocation spell that affects other creatures it can see, spares up to 1 + the spell's level of them (the level it is cast at). A spared creature succeeds on its saving throw with no roll and takes no damage when the spell would deal half; the save line says "Esculpir Magias".
 The caster is never among them, and only creatures the spell reaches and the caster sees can be named.
+
+**Evasion** (SRD 5.1, Monk 7 and Rogue 7; also the ranger's Superior Hunter's Defense choice and a stat block's Evasion trait).
+On a Dexterity saving throw that deals half damage on a success, a creature with Evasion takes no damage when it succeeds and half when it fails.
+It applies to a spell's save, a trap's save and the aggressor's save against Hellish Rebuke, and not while the creature is incapacitated (Incapacitated, Paralyzed, Petrified, Stunned or Unconscious).
+Any other ability, or a save that does not halve, is unchanged.
 
 See [Movement in combat](../architecture/play/movement.md), [Maps and the grid](../architecture/rules-maps.md#grid) and [Combat design](../design/combat.md).
 
@@ -533,6 +538,17 @@ On a map with a grid the caster does not list who an area spell touches: they pl
 - **Who is hit.** Everyone inside: allies, the caster when inside, hidden creatures. The damage is one roll for all. Cover is measured from the point of origin, and adds +2 (half) or +5 (three-quarters) only to a Dexterity saving throw. A creature reached only around a corner gets no automatic cover; the master marks it by hand.
 - **An empty area** is still cast and spends the slot and the action. The app asks first: "Ninguém que você vê está na área".
 - **Without a grid** (combat without a map, RN-25) none of this exists: the caster lists who is hit, and the master judges who is inside and the cover.
+
+### Teleport spells on the grid
+
+Misty Step is a bonus action that takes the caster up to 30 ft to a free space the caster can see (SRD 5.1, Misty Step).
+On a map with a grid the player must pick the square in the cast itself (the cast button stays off until a square is picked, by pointer or by keyboard), and the server checks it before the slot or the bonus action is spent. A cast from a player's character without a square is refused.
+
+- **Reach.** Up to 6 squares by the table's range rule (squares between centres, rounded down). A farther square is refused with "Longe demais".
+- **Free and seen.** A wall, a creature or a square the caster does not see cannot be picked. A player is told only "Esse espaço não está disponível", whatever the reason, so the answer never reveals a hidden creature (RN-10). The master is told which, and is not held to sight, and may pick for an NPC or for a player.
+- **Traps.** A trap on the landing square fires for the caster, as a move into its area does. Undoing goes one step at a time: the firing first, then the cast, which puts the caster back.
+- **No walking.** The teleport spends no movement and provokes no opportunity attack. It clears the master's cover mark, shows the new square to the players who see it, and undoing the cast puts the caster back.
+- **Without a square** the master may leave it out (and for an NPC caster usually does): the cast only spends the slot and the bonus action, and the master moves the token. A combat without a map (RN-25) has no square to pick, and the cast works the same way.
 
 ### Hidden creatures an area hits
 
@@ -835,7 +851,7 @@ Without a grid (RN-25) there are no zones: the caster lists who is hit and the m
 - **What a zone does.** A creature that comes into the area, or begins its turn in it, makes the spell's saving throw (Wisdom for Spirit Guardians, Constitution for Moonbeam and Cloudkill, Dexterity for Web). The first three deal their damage on a failure and half of it on a pass; the damage has the dice of the slot the spell was cast with. The save, the damage and its landing are the ones a cast uses: an NPC takes the damage at once, a player's character waits for the master (RN-02), and the concentration save of the damaged creature follows (RN-31).
 - **Once on a turn.** A zone hits a creature at most once for each turn, whether the creature walked in or began the turn inside. Going out and in again, or moving about inside, hits it no more that turn; its next turn starts a new count. A "turn" is the turn that is running, whoever's it is: a creature pushed into the area on someone else's turn is hit then, and hit again when its own turn starts there.
 - **The cast hits nobody.** A creature that stands in the area when the spell is cast is hit when it begins its turn there, or when it comes back in. (Web is the exception for its own effect: it still goes on the creatures inside at the cast, as it always did.)
-- **When a zone looks.** At every change of square: a walk, a jump, a creature pushed (Thunderwave, the monk's push), shoved, dragged along, or put somewhere by the master (a forced move, which also stands for a teleport), and at the start of every turn. Undoing a move re-evaluates nothing; the damage a zone dealt is a pending damage of its own, which the master discards or undoes like any other.
+- **When a zone looks.** At every change of square: a walk, a jump, a creature pushed (Thunderwave, the monk's push), shoved, dragged along, or teleported (Misty Step lands in the area as a step would), or put somewhere by the master (a forced move), and at the start of every turn. Undoing a move re-evaluates nothing; the damage a zone dealt is a pending damage of its own, which the master discards or undoes like any other.
 - **Who is spared.** Spirit Guardians leaves the caster and the caster's allies alone: the spell lets the caster name creatures it does not affect, and the table uses the usual choice. Moonbeam, Cloudkill and Web catch everyone, the caster and the caster's allies included.
 - **How it ends.** With the concentration (another concentration spell, 0 hit points, the master ending it) and with its time, counted to the start of the caster's turn: 1 minute is 10 rounds (Moonbeam), 10 minutes 100 (Spirit Guardians, Cloudkill), 1 hour 600 (Web). The master's undo of the cast takes the zone away with the concentration.
 - **How it moves.** Spirit Guardians is centred on the caster and goes where the caster goes; the creatures the new area reaches count as having come in. Moonbeam stays where it was put, and on each later turn its caster may use an action to move it up to 60 feet ("Mover o raio"); the master moves any zone without the action or the distance. Cloudkill goes 10 feet (two squares) away from the caster at the start of each of the caster's turns, as far as the walls let it; the creatures it reaches count as having come in. Web stays.

@@ -519,3 +519,28 @@ func TestMoveSpellZoneRetryWithTheSameKeyChangesNothingTwice(t *testing.T) {
 		t.Errorf("zone = %v, want it at column 14", got)
 	}
 }
+
+// A teleport (Misty Step) into the area enters it, once: the landing runs the same check as a walk.
+func TestMistyStepIntoAZoneHitsAsAnEntryOnce(t *testing.T) {
+	t.Parallel()
+	c := newCaveOf(t, 5, []string{mistyStep}, func(a *armed) *charactersv1.Character {
+		return a.caio.caster(t, a.campaignID, "Toren", "class:druid", "race:human", 3, abilities(12, 12, 14, 16, 10), nil, nil, nil, []string{moonbeamKey})
+	})
+	e := c.zoneFight(t)
+	c.mustCastArea(t, c.caio, "Toren", moonbeamKey, slotOfLevel(2), at(8, 7), nil)
+	c.passTo(t, e, "Pensantus")
+	c.h.roller.queue(5, 5, 5) // Pensantus's Constitution save, then 2d10 = 10
+	if _, err := c.misty(t, c.ana, at(8, 7)); err != nil {
+		t.Fatalf("CastSpell(Misty Step) error = %v", err)
+	}
+	var n int
+	if err := c.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM pending_damages WHERE target_id = $1 AND effect_source_key = $2`, c.id(t, "Pensantus"), moonbeamKey).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Errorf("the beam dealt %d damages to the teleported wizard, want 1", n)
+	}
+	if lines := c.zoneLines(t, c.master, moonbeamKey); len(lines) == 0 {
+		t.Error("the master's log has no line for the entry")
+	}
+}

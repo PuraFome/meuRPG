@@ -24,6 +24,7 @@ export function castExtrasBody(extras: CastExtras) {
     ...(extras.revealHidden === undefined ? {} : { revealHidden: extras.revealHidden }),
     ...(extras.abilityKey ? { abilityKey: extras.abilityKey } : {}),
     ...(extras.sculptedIds?.length ? { sculptedIds: [...extras.sculptedIds] } : {}),
+    ...(extras.destination ? { destination: { ...extras.destination } } : {}),
   };
 }
 

@@ -28,7 +28,7 @@ Without a grid (`isTheatre`) a spell is not placed, so there is no zone.
 
 | Where | What it does |
 | --- | --- |
-| `zonesAfterSteps` (`zones_hooks.go`) | Called with the creatures that changed square: `moveInTx` (the mover and the creature it dragged; this also covers the master's move and a placement), `pusher.enterZones` (a push by a cast or by the Open Hand technique) and the shove outcome (`shovePushes`). A step has where the creature stood and the squares it went through (the straight line for a walk, only the end for a jump, a push or a forced move). A zone catches a step that comes into it: one square inside whose predecessor is outside |
+| `zonesAfterSteps` (`zones_hooks.go`) | Called with the creatures that changed square: `moveInTx` (the mover and the creature it dragged; this also covers the master's move and a placement), `castFlow.teleport` (Misty Step's landing, `combat_teleport.go`), `pusher.enterZones` (a push by a cast or by the Open Hand technique) and the shove outcome (`shovePushes`). A step has where the creature stood and the squares it went through (the straight line for a walk, only the end for a jump, a push or a forced move). A zone catches a step that comes into it: one square inside whose predecessor is outside |
 | `zonesAtTurnStart` | Called at the end of `startOfTurnEffects`: ends the zones whose round is out, moves the zones that drift, then catches every creature that starts its turn inside |
 | `followCaster` | Part of `zonesAfterSteps`: when the creature that moved owns a zone centred on it, the zone is placed on its square and the creatures the new area covers and the old one did not are caught as if they had come in |
 
