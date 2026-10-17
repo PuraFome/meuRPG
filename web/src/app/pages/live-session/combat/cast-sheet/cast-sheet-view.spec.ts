@@ -260,6 +260,7 @@ describe('castMissing', () => {
     chosenMeta: [],
     picks: NO_PICKS,
     sorceryPoints: null,
+    destinationMissing: false,
   };
 
   it('waits for the spell to be read, and says when it could not be', () => {
@@ -285,6 +286,30 @@ describe('castMissing', () => {
   it('asks the targets, unless the area is placed on the map', () => {
     expect(castMissing({ ...base, targets: () => 'Escolha o alvo.' })).toBe('Escolha o alvo.');
     expect(castMissing({ ...base, targets: () => 'Escolha o alvo.', placedArea: true })).toBe('');
+  });
+});
+
+describe('castMissing: the square a teleport lands on', () => {
+  const base = {
+    detailsRead: true,
+    detailsFailed: false,
+    level: 2,
+    slotChosen: true,
+    spellKey: 'spell:misty-step',
+    ability: '',
+    placedArea: false,
+    targets: () => '',
+    metaOptions: [],
+    chosenMeta: [],
+    picks: NO_PICKS,
+    sorceryPoints: null,
+  };
+
+  it('asks the player for the square until one is picked', () => {
+    expect(castMissing({ ...base, destinationMissing: true })).toBe(
+      'Escolha no mapa o espaço para onde você vai.',
+    );
+    expect(castMissing({ ...base, destinationMissing: false })).toBe('');
   });
 });
 

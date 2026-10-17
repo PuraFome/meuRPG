@@ -118,6 +118,39 @@ func TestTrapResolveModesAndSaves(t *testing.T) {
 		}
 	})
 
+	t.Run("Evasion takes no damage on a passed save and half on a failed one, but not while incapacitated", func(t *testing.T) {
+		t.Parallel()
+		effect := &rulesv1.TrapEffect{Save: save(caught, rulesv1.TrapPassOutcome_TRAP_PASS_OUTCOME_HALF)}
+		for _, tc := range []struct {
+			name       string
+			conditions []string
+			d20, die   int
+			amount     int
+			half, none bool
+		}{
+			{"passed", nil, 15, 6, 0, false, true},
+			{"failed", nil, 2, 6, 3, true, false},
+			{"passed while incapacitated", []string{"condition:incapacitated"}, 15, 6, 3, true, false},
+			{"failed while incapacitated", []string{"condition:incapacitated"}, 2, 6, 6, false, false},
+		} {
+			s := &scripted{faces: []int{tc.d20, tc.die}}
+			target := trapTarget{id: "a", save: 0, saveKnown: true, facts: combat.Creature{Evasion: true, Conditions: tc.conditions}}
+			out, err := resolveTrap(effect, []trapTarget{target}, combat.CriticalDoubledDice, s.d20, s.dice, nil)
+			if err != nil {
+				t.Fatalf("%s: resolveTrap() error = %v", tc.name, err)
+			}
+			if tc.none {
+				if len(out[0].damages) != 0 {
+					t.Errorf("%s: damages = %+v, want none", tc.name, out[0].damages)
+				}
+				continue
+			}
+			if len(out[0].damages) != 1 || out[0].damages[0].amount != tc.amount || out[0].damages[0].half != tc.half {
+				t.Errorf("%s: damages = %+v, want one of %d (half %v)", tc.name, out[0].damages, tc.amount, tc.half)
+			}
+		}
+	})
+
 	t.Run("a lucky creature rolls its 1 again and the new die stands", func(t *testing.T) {
 		t.Parallel()
 		s := &scripted{faces: []int{1, 13}}
