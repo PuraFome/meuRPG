@@ -1982,9 +1982,6 @@ combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {
 combatant Nael | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Orla | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Tavo | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-== refused a Revivify the caster does not have ==
-refused invalid_argument: Revivify takes one target: the dead creature, as dead_target_id
-state unchanged
 == refused a bonus action spell after a leveled spell ==
 refused failed_precondition: a spell cast with a bonus action leaves no other spell this turn but a cantrip of 1 action
 state unchanged
@@ -1996,9 +1993,6 @@ refused invalid_argument: a cantrip is cast with no slot
 state unchanged
 == refused a caster of another player ==
 refused permission_denied: only the combatant's player or the master may do this
-state unchanged
-== refused a caster that is not a UUID ==
-refused not_found: combatant not found
 state unchanged
 == refused a caster that is not in the combat ==
 refused not_found: combatant not found
@@ -2026,9 +2020,6 @@ refused failed_precondition: the target is dead and regains no hit points
 state unchanged
 == refused a healing out of touch reach ==
 refused failed_precondition: the target is beyond the spell's range
-state unchanged
-== refused a key that is not a UUID ==
-refused invalid_argument: idempotency_key must be a UUID
 state unchanged
 == refused a leveled spell after a bonus action spell ==
 refused failed_precondition: a spell cast with a bonus action leaves no other spell this turn but a cantrip of 1 action
@@ -2095,9 +2086,6 @@ state unchanged
 == refused a spell attack with no roll ==
 refused invalid_argument: set roll_in_app or d20_face for a spell attack
 state unchanged
-== refused a spell key of 101 characters ==
-refused invalid_argument: spell_key must name one of the caster's spells
-state unchanged
 == refused a spell the caster does not know ==
 refused invalid_argument: spell_key is not one of the caster's spells
 state unchanged
@@ -2113,20 +2101,11 @@ state unchanged
 == refused a target out of range ==
 refused failed_precondition: the target is beyond the spell's range
 state unchanged
-== refused a target that is not a UUID ==
-refused not_found: combatant not found
-state unchanged
 == refused a target that is not in the combat ==
 refused not_found: combatant not found
 state unchanged
-== refused a target twice ==
-refused invalid_argument: targets[1] repeats a combatant
-state unchanged
 == refused a target with no dart ==
 refused invalid_argument: every target of Magic Missile needs at least one dart
-state unchanged
-== refused a typed face out of range ==
-refused invalid_argument: d20_faces must be 1 to 20 each
 state unchanged
 == refused advantage asked by a player ==
 refused failed_precondition: a better mode needs the master's approval
@@ -2157,32 +2136,11 @@ combatant Pensantus | true | false | false | false | false | -1 | -1 | 0 | false
 combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 vitals Pensantus | <nil> | 0 | {0,1,0,0,0,0,0,0,0} | 0
 state Goblin | effect | spell:web | true | {} | rounds | 14 | 0
-== refused an empty spell key ==
-refused invalid_argument: spell_key must name one of the caster's spells
-state unchanged
-== refused an encounter that is not a UUID ==
-refused not_found: encounter not found
-state unchanged
-== refused d20_face of 0 ==
-refused invalid_argument: d20_face must be 1 to 20
-state unchanged
-== refused d20_face of 21 ==
-refused invalid_argument: d20_face must be 1 to 20
-state unchanged
 == refused darts for another spell ==
 refused invalid_argument: darts are only for Magic Missile
 state unchanged
 == refused darts that do not add up ==
 refused invalid_argument: the darts of the targets must add up to 3
-state unchanged
-== refused eleven targets ==
-refused invalid_argument: targets must have at most 10 entries
-state unchanged
-== refused eleven targets as the master ==
-refused invalid_argument: targets must have at most 10 entries
-state unchanged
-== refused negative darts ==
-refused invalid_argument: targets[0].darts must be 0 to 20
 state unchanged
 == refused no free slot ==
 cast {"effectConditionKey":"condition:unconscious","effectKind":"SPELL_EFFECT_KIND_POOL","poolRoll":{"diceCount":5,"diceSides":8,"faces":[8,8,8,8,8],"total":40},"slot":{"level":1},"spellKey":"spell:sleep","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Pensantus","cover":"COVER_DEGREE_NONE","effect":{"outcome":"SPELL_EFFECT_OUTCOME_AFFECTED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Toren","cover":"COVER_DEGREE_NONE","effect":{"outcome":"SPELL_EFFECT_OUTCOME_NOT_AFFECTED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Brisa","cover":"COVER_DEGREE_NONE","effect":{"outcome":"SPELL_EFFECT_OUTCOME_NOT_AFFECTED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin","cover":"COVER_DEGREE_NONE","effect":{"outcome":"SPELL_EFFECT_OUTCOME_AFFECTED"}},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Capitão Goblin","cover":"COVER_DEGREE_NONE","effect":{"outcome":"SPELL_EFFECT_OUTCOME_NOT_AFFECTED"}}]}
@@ -2202,21 +2160,6 @@ combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | 
 vitals Pensantus | <nil> | 0 | {1,0,0,0,0,0,0,0,0} | 0
 == refused out of turn ==
 refused failed_precondition: it is not this combatant's turn
-state unchanged
-== refused reveal_hidden from a player ==
-refused permission_denied: only the master decides whether hidden creatures are revealed
-state unchanged
-== refused reveal_hidden from a player before anything else ==
-refused permission_denied: only the master decides whether hidden creatures are revealed
-state unchanged
-== refused roll_in_app false ==
-refused invalid_argument: roll_in_app must be true
-state unchanged
-== refused three typed faces ==
-refused invalid_argument: set roll_in_app, d20_face or d20_faces
-state unchanged
-== refused twenty-one darts ==
-refused invalid_argument: targets[0].darts must be 0 to 20
 state unchanged
 == refused two targets for a single target spell ==
 refused invalid_argument: this spell takes at most 1 targets with this slot

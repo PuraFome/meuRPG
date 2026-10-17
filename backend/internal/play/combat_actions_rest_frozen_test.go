@@ -266,33 +266,19 @@ func actionsRestSettled(apply bool) func(t *testing.T, a *armed, e *playv1.Encou
 // actionsRestSettleRefusals are the refusals of the two calls that settle a hit.
 func actionsRestSettleRefusals() []goldenScenario {
 	stranger := func(a *armed) *user { return a.h.newUser("Zé") }
-	missing := "00000000-0000-4000-8000-000000000001"
 	cases := []actionsRestSettle{
-		{name: "apply refused an idempotency key that is not a UUID", edit: func(r *playv1.ApplyPendingDamageRequest) { r.IdempotencyKey = "not-a-key" }},
-		{name: "apply refused an encounter that is not a UUID", edit: func(r *playv1.ApplyPendingDamageRequest) { r.EncounterId = "nope" }},
-		{name: "apply refused a pending damage that is not a UUID", edit: func(r *playv1.ApplyPendingDamageRequest) { r.PendingDamageId = "nope" }},
-		{name: "apply refused a campaign that is not a UUID", edit: func(r *playv1.ApplyPendingDamageRequest) { r.CampaignId = "nope" }},
-		{name: "apply refused a negative amount", edit: actionsRestAmount(-1)},
-		{name: "apply refused an amount over the limit", edit: actionsRestAmount(10000)},
 		{name: "apply accepted the largest amount", edit: actionsRestAmount(9999)},
-		{name: "apply refused 21 sources to ignore", edit: actionsRestIgnoring(strings.Split(strings.Repeat("feature:rage,", 21), ",")[:21]...)},
 		{name: "apply refused the player of the target", as: asToren},
 		{name: "apply refused another player", as: asDamageAna},
 		{name: "apply refused a user who is not in the campaign", as: stranger},
-		{name: "apply refused a pending damage nobody knows", edit: func(r *playv1.ApplyPendingDamageRequest) { r.PendingDamageId = missing }},
-		{name: "apply refused an encounter nobody knows", edit: func(r *playv1.ApplyPendingDamageRequest) { r.EncounterId = "00000000-0000-4000-8000-000000000002" }},
 		{name: "apply refused a combat that ended", prep: actionsRestEnded},
 		{name: "apply refused a damage that was not rolled", unrolled: true},
 		{name: "apply refused a damage that waits for a reaction", prep: actionsRestSQL(`UPDATE pending_damages SET status = 'awaiting_reaction' WHERE id = $1`)},
 		{name: "apply refused a damage applied already", prep: actionsRestSettled(true)},
 		{name: "apply refused a damage discarded already", prep: actionsRestSettled(false)},
 		{name: "apply refused a damage rolled for an NPC", hit: actionsRestHitOnGoblin, unrolled: true, prep: actionsRestSQL(`UPDATE pending_damages SET status = 'rolled', amount = 3 WHERE id = $1`)},
-		{name: "discard refused an idempotency key that is not a UUID", discard: true, discardEdit: func(r *playv1.DiscardPendingDamageRequest) { r.IdempotencyKey = "not-a-key" }},
-		{name: "discard refused an encounter that is not a UUID", discard: true, discardEdit: func(r *playv1.DiscardPendingDamageRequest) { r.EncounterId = "nope" }},
-		{name: "discard refused a pending damage that is not a UUID", discard: true, discardEdit: func(r *playv1.DiscardPendingDamageRequest) { r.PendingDamageId = "nope" }},
 		{name: "discard refused the player of the target", discard: true, as: asToren},
 		{name: "discard refused a user who is not in the campaign", discard: true, as: stranger},
-		{name: "discard refused a pending damage nobody knows", discard: true, discardEdit: func(r *playv1.DiscardPendingDamageRequest) { r.PendingDamageId = missing }},
 		{name: "discard refused a combat that ended", discard: true, prep: actionsRestEnded},
 		{name: "discard refused a damage applied already", discard: true, prep: actionsRestSettled(true)},
 		{name: "discard refused a damage discarded already", discard: true, prep: actionsRestSettled(false)},

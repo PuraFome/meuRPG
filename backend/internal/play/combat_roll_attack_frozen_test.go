@@ -115,18 +115,6 @@ func (a *armed) rawAttack(t *testing.T, u *user, e *playv1.Encounter, edit func(
 	return res.Msg, nil
 }
 
-// attackRefusal is a scenario that edits Toren's attack on the goblin and reads the refusal and what stayed.
-func attackRefusal(name string, as func(a *armed) *user, edit func(*playv1.RollAttackRequest)) goldenScenario {
-	return goldenScenario{name: "refused " + name, run: func(t *testing.T) string {
-		t.Helper()
-		a := newArmed(t)
-		e := a.threeAndAGoblin(t)
-		before := a.markCall(t)
-		res, err := a.rawAttack(t, as(a), e, edit)
-		return a.attackReport(t, e, before, res, err)
-	}}
-}
-
 func asToren(a *armed) *user  { return a.caio }
 func asMaster(a *armed) *user { return a.master }
 
@@ -259,32 +247,7 @@ func customAttacks() []goldenScenario {
 
 // attackScenarios are the scenarios of the golden, in the order they are listed.
 func attackScenarios() []goldenScenario {
-	long := strings.Repeat("x", 101)
 	return append(customAttacks(), []goldenScenario{
-		attackRefusal("an empty attack key", asToren, func(r *playv1.RollAttackRequest) { r.AttackKey = "" }),
-		attackRefusal("an attack key of 101 characters", asToren, func(r *playv1.RollAttackRequest) { r.AttackKey = long }),
-		attackRefusal("roll_in_app false", asToren, func(r *playv1.RollAttackRequest) {
-			r.Roll = &playv1.RollAttackRequest_RollInApp{RollInApp: false}
-		}),
-		attackRefusal("d20_face with d20_faces", asToren, func(r *playv1.RollAttackRequest) { r.D20Faces = []int32{4, 9} }),
-		attackRefusal("d20_face of 0", asToren, typedD20(0)),
-		attackRefusal("d20_face of 21", asToren, typedD20(21)),
-		attackRefusal("no roll at all", asToren, func(r *playv1.RollAttackRequest) { r.Roll = nil }),
-		attackRefusal("three typed faces", asToren, func(r *playv1.RollAttackRequest) { r.Roll, r.D20Faces = nil, []int32{4, 9, 12} }),
-		attackRefusal("a typed face out of range", asToren, func(r *playv1.RollAttackRequest) { r.Roll, r.D20Faces = nil, []int32{4, 22} }),
-		attackRefusal("a key that is not a UUID", asToren, func(r *playv1.RollAttackRequest) { r.IdempotencyKey = "not-a-key" }),
-		attackRefusal("an encounter that is not a UUID", asToren, func(r *playv1.RollAttackRequest) { r.EncounterId = "nope" }),
-		attackRefusal("an attacker that is not a UUID", asToren, func(r *playv1.RollAttackRequest) { r.AttackerId = "nope" }),
-		attackRefusal("a target that is not a UUID", asToren, func(r *playv1.RollAttackRequest) { r.TargetId = "nope" }),
-		attackRefusal("an offer that is not a UUID", asToren, func(r *playv1.RollAttackRequest) { r.OpportunityOfferId = "nope" }),
-		attackRefusal("an attack the attacker does not have", asToren, func(r *playv1.RollAttackRequest) { r.AttackKey = "equipment:longbow" }),
-		attackRefusal("the extra action for a weapon attack without Haste", asToren, func(r *playv1.RollAttackRequest) { r.UseExtraAction = true }),
-		attackRefusal("an offer that is not there", asToren, func(r *playv1.RollAttackRequest) {
-			r.OpportunityOfferId = "00000000-0000-4000-8000-000000000001"
-		}),
-		attackRefusal("a throw back with no window", asToren, func(r *playv1.RollAttackRequest) {
-			r.CatchWindowId = "00000000-0000-4000-8000-000000000002"
-		}),
 		attackThrough("a hit", asToren, typedD20(15)),
 		attackThrough("a miss", asToren, typedD20(2)),
 		attackThrough("a natural 20", asToren, typedD20(20)),

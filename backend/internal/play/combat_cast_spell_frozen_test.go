@@ -198,18 +198,23 @@ func (f castFight) scenario(name string) goldenScenario {
 		if f.before != nil {
 			e = f.before(t, a, e)
 		}
-		edit := f.edit
-		if edit == nil {
-			edit = noCastRoll
-		}
 		before := a.markCall(t)
-		if f.raw {
-			res, err := a.castRaw(t, f.as(a), e, f.caster, f.spell, f.slot, a.at(t, f.targets...), edit)
-			return a, before, res, err
-		}
-		res, err := a.castCall(t, f.as(a), e, f.caster, f.spell, f.slot, a.at(t, f.targets...), edit)
+		res, err := f.send(t, a, e)
 		return a, before, res, err
 	})
+}
+
+// send casts the spell on the fight.
+func (f castFight) send(t *testing.T, a *armed, e *playv1.Encounter) (*playv1.CastSpellResponse, error) {
+	t.Helper()
+	edit := f.edit
+	if edit == nil {
+		edit = noCastRoll
+	}
+	if f.raw {
+		return a.castRaw(t, f.as(a), e, f.caster, f.spell, f.slot, a.at(t, f.targets...), edit)
+	}
+	return a.castCall(t, f.as(a), e, f.caster, f.spell, f.slot, a.at(t, f.targets...), edit)
 }
 
 // castRefused is a scenario of a cast the checks refuse, on the casters' fight; it names what is refused.
@@ -314,54 +319,9 @@ func d20Faces(faces ...int32) func(*playv1.CastSpellRequest) {
 	return func(r *playv1.CastSpellRequest) { r.Roll, r.D20Faces = nil, faces }
 }
 
-// castRequestScenarios are the refusals of the request's own fields.
+// castRequestScenarios are the casts that need a fight of their own beside the refusals of the request.
 func castRequestScenarios() []goldenScenario {
-	long := strings.Repeat("x", 101)
-	eleven := make([]string, 11)
-	for i := range eleven {
-		eleven[i] = "Goblin"
-	}
 	return []goldenScenario{
-		castRefused("an empty spell key", pensantus("", slotOfLevel(1), nil)),
-		castRefused("a spell key of 101 characters", pensantus(long, slotOfLevel(1), nil)),
-		castRefused("a key that is not a UUID", pensantus(magicMissileSpell, slotOfLevel(1), func(r *playv1.CastSpellRequest) { r.IdempotencyKey = "not-a-key" })),
-		castRefused("an encounter that is not a UUID", pensantus(magicMissileSpell, slotOfLevel(1), func(r *playv1.CastSpellRequest) { r.EncounterId = "nope" })),
-		castRefused("a caster that is not a UUID", pensantus(magicMissileSpell, slotOfLevel(1), func(r *playv1.CastSpellRequest) { r.CasterId = "nope" })),
-		castRefused("eleven targets", pensantus(sleepSpell, slotOfLevel(1), func(r *playv1.CastSpellRequest) {
-			for range 11 {
-				r.Targets = append(r.Targets, &playv1.SpellTarget{CombatantId: r.GetCasterId()})
-			}
-		})),
-		castRefused("a target that is not a UUID", pensantus(magicMissileSpell, slotOfLevel(1), func(r *playv1.CastSpellRequest) {
-			r.Targets = []*playv1.SpellTarget{{CombatantId: "nope"}}
-		})),
-		castRefused("a target twice", pensantus(magicMissileSpell, slotOfLevel(1), func(r *playv1.CastSpellRequest) {
-			r.Targets = append(r.Targets, r.Targets[0])
-		})),
-		castRefused("negative darts", pensantus(magicMissileSpell, slotOfLevel(1), func(r *playv1.CastSpellRequest) { r.Targets[0].Darts = -1 })),
-		castRefused("twenty-one darts", pensantus(magicMissileSpell, slotOfLevel(1), func(r *playv1.CastSpellRequest) { r.Targets[0].Darts = 21 })),
-		castRefused("roll_in_app false", pensantus(sleepSpell, slotOfLevel(1), func(r *playv1.CastSpellRequest) {
-			r.Roll = &playv1.CastSpellRequest_RollInApp{RollInApp: false}
-		})),
-		castRefused("d20_face of 0", pensantus(sleepSpell, slotOfLevel(1), d20Face(0))),
-		castRefused("d20_face of 21", pensantus(sleepSpell, slotOfLevel(1), d20Face(21))),
-		castRefused("a typed face out of range", pensantus(sleepSpell, slotOfLevel(1), d20Faces(4, 22))),
-		castRefused("three typed faces", pensantus(sleepSpell, slotOfLevel(1), d20Faces(4, 9, 12))),
-		castRefused("reveal_hidden from a player", pensantus(burningHands, slotOfLevel(1), func(r *playv1.CastSpellRequest) {
-			reveal := true
-			r.RevealHidden = &reveal
-			aimToward(1, 0)(r)
-		})),
-		castRefused("reveal_hidden from a player before anything else", pensantus("", slotOfLevel(1), func(r *playv1.CastSpellRequest) {
-			reveal := false
-			r.RevealHidden = &reveal
-		})),
-		castRefused("a Revivify the caster does not have", pensantus(revivifyKey, slotOfLevel(3), nil)),
-		castRefused("eleven targets as the master", pensantus(sleepSpell, slotOfLevel(1), func(r *playv1.CastSpellRequest) {
-			for range 11 {
-				r.Targets = append(r.Targets, &playv1.SpellTarget{CombatantId: r.GetCasterId()})
-			}
-		}).by(asMasterOf)),
 		castOn("ten goblins asleep", func(t *testing.T) (*armed, int, *playv1.CastSpellResponse, error) {
 			t.Helper()
 			a := newCasters(t)

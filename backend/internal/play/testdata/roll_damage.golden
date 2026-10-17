@@ -828,15 +828,6 @@ combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | - | - | false | <nil> | <
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | - | - | false | <nil> | <nil> | false | false
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | - | - | false | <nil> | <nil> | false | false
 damage spell:poison-spray | applied | false | 1 | 12 | 0 | damage-type:poison | {} | true | 0 | -1 | 6 | false | false | 0 | 0 | false | 0 | [] | null | [{"before": 6, "damage_type": "damage-type:poison", "mods": [{"DamageTypes": ["damage-type:poison"], "Kind": "immunity", "Source": "monster:skeleton"}]}] | 0 | {"hp": 13} | true
-== refused a key that is not a UUID ==
-refused invalid_argument: idempotency_key must be a UUID
-state unchanged
-== refused a pending damage that is not a UUID ==
-refused not_found: pending damage not found
-state unchanged
-== refused a pending damage that is not there ==
-refused not_found: pending damage not found
-state unchanged
 == refused a selected extra the hit does not offer ==
 pending {"amount":11,"attackKey":"equipment:battleaxe","attackerId":"Toren","bonus":3,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":8,"roll":{"diceCount":1,"diceSides":8,"faces":[8],"modifier":3,"total":11},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetDefeated":true,"targetId":"Goblin"}
 event damage_rolled {"after": {"defeated": true, "hp": 0}, "amount": 11, "applied": true, "before": {"hp": 7}, "combatant_id": "Toren", "damage_type": "damage-type:slashing", "dice_count": 1, "dice_sides": 8, "faces": [8], "key": "equipment:battleaxe", "modifier": 3, "pending_id": "?", "round": 1, "shown": 11, "target_id": "Goblin", "total": 11}
@@ -845,38 +836,8 @@ combatant Goblin | 0 | 0 | true | 0 | 0 | - | false | - | - | false | 4 | 3 | fa
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | - | - | false | 10 | 3 | false | false
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | - | - | false | 3 | 3 | false | false
 damage equipment:battleaxe | applied | false | 1 | 8 | 3 | damage-type:slashing | {8} | false | 11 | -1 | 11 | false | false | -1 | 0 | false | 0 | [] | null | null | -1 | {"hp": 7} | true
-== refused a typed part named twice ==
-refused invalid_argument: typed_parts must name each part once
-state unchanged
-== refused a typed part of another key ==
-refused invalid_argument: typed_sum must be 1 to 8
-state unchanged
-== refused a typed part out of range ==
-refused invalid_argument: typed_sum must be 1 to 8
-state unchanged
-== refused a typed part with no name ==
-refused invalid_argument: typed_parts must name each part once
-state unchanged
-== refused a typed sum of 0 ==
-refused invalid_argument: typed_sum must be 1 to 8
-state unchanged
-== refused a typed sum of 9 for 1d8 ==
-refused invalid_argument: typed_sum must be 1 to 8
-state unchanged
-== refused an encounter that is not a UUID ==
-refused not_found: encounter not found
-state unchanged
-== refused an encounter that is not there ==
-refused not_found: encounter not found
-state unchanged
 == refused another player's attacker ==
 refused permission_denied: only the combatant's player or the master may do this
-state unchanged
-== refused no roll at all ==
-refused invalid_argument: set roll_in_app, typed_sum or typed_parts
-state unchanged
-== refused roll_in_app false ==
-refused invalid_argument: roll_in_app must be true
 state unchanged
 == sneak attack as the master ==
 pending {"amount":17,"attackKey":"equipment:rapier","attackerId":"Toren","bonus":3,"damageTypeKey":"damage-type:piercing","damageTypePt":"perfurante","diceCount":1,"diceSides":8,"partRolls":[{"counted":true,"damageTypeKey":"damage-type:piercing","diceCount":1,"diceSides":8,"faces":[2],"flat":3,"labelPt":"Rapieira","partKey":"weapon","sum":2},{"counted":true,"damageTypeKey":"damage-type:piercing","diceCount":2,"diceSides":6,"faces":[6,6],"labelPt":"Ataque Furtivo","partKey":"sneak-attack","sum":12}],"parts":[{"available":true,"damageTypeKey":"damage-type:piercing","damageTypePt":"perfurante","diceCount":1,"diceSides":8,"flat":3,"key":"weapon","labelPt":"Rapieira"},{"available":true,"choosable":true,"damageTypeKey":"damage-type:piercing","damageTypePt":"perfurante","diceCount":2,"diceSides":6,"key":"sneak-attack","labelPt":"Ataque Furtivo","reasonPt":"Você tem vantagem neste ataque · uma vez por turno","selected":true,"sourceKey":"feature:sneak-attack"}],"roll":{"diceCount":1,"diceSides":8,"faces":[2],"modifier":3,"total":17},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetDefeated":true,"targetId":"Goblin"}

@@ -185,25 +185,6 @@ func typedParts(parts ...*playv1.TypedPart) func(*playv1.RollDamageRequest) {
 // refusedDamages are the requests the damage roll refuses before it writes anything.
 func refusedDamages() []goldenScenario {
 	return []goldenScenario{
-		damageRefusal("a key that is not a UUID", asToren, func(r *playv1.RollDamageRequest) { r.IdempotencyKey = "not-a-key" }),
-		damageRefusal("an encounter that is not a UUID", asToren, func(r *playv1.RollDamageRequest) { r.EncounterId = "nope" }),
-		damageRefusal("a pending damage that is not a UUID", asToren, func(r *playv1.RollDamageRequest) { r.PendingDamageId = "nope" }),
-		damageRefusal("roll_in_app false", asToren, func(r *playv1.RollDamageRequest) {
-			r.Roll = &playv1.RollDamageRequest_RollInApp{RollInApp: false}
-		}),
-		damageRefusal("no roll at all", asToren, func(r *playv1.RollDamageRequest) { r.Roll = nil }),
-		damageRefusal("a typed sum of 0", asToren, typedSum(0)),
-		damageRefusal("a typed sum of 9 for 1d8", asToren, typedSum(9)),
-		damageRefusal("a typed part named twice", asToren, typedParts(&playv1.TypedPart{PartKey: "weapon", Sum: 3}, &playv1.TypedPart{PartKey: "weapon", Sum: 4})),
-		damageRefusal("a typed part with no name", asToren, typedParts(&playv1.TypedPart{Sum: 3})),
-		damageRefusal("a typed part of another key", asToren, typedParts(&playv1.TypedPart{PartKey: "sneak-attack", Sum: 3})),
-		damageRefusal("a typed part out of range", asToren, typedParts(&playv1.TypedPart{PartKey: "weapon", Sum: 99})),
-		damageRefusal("a pending damage that is not there", asToren, func(r *playv1.RollDamageRequest) {
-			r.PendingDamageId = "00000000-0000-4000-8000-000000000001"
-		}),
-		damageRefusal("an encounter that is not there", asToren, func(r *playv1.RollDamageRequest) {
-			r.EncounterId = "00000000-0000-4000-8000-000000000002"
-		}),
 		damageRefusal("another player's attacker", asDamageAna, inAppDamage),
 		damageRefusal("a selected extra the hit does not offer", asToren, func(r *playv1.RollDamageRequest) {
 			r.ExtrasChosen = true

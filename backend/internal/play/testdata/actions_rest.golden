@@ -124,38 +124,8 @@ combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | fa
 combatant Goblin | 7 | 5 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | false | false | false
-== adjust refused a campaign that is not a UUID ==
-refused not_found: campaign not found
-state unchanged
 == adjust refused a combat that ended ==
 refused failed_precondition: the combat has ended [ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ENDED]
-state unchanged
-== adjust refused a combatant nobody knows ==
-refused not_found: combatant not found
-state unchanged
-== adjust refused a combatant that is not a UUID ==
-refused not_found: combatant not found
-state unchanged
-== adjust refused a damage over the limit ==
-refused invalid_argument: damage must be 0 to 9999
-state unchanged
-== adjust refused a heal over the limit ==
-refused invalid_argument: heal must be 0 to 9999
-state unchanged
-== adjust refused a hit point count over the limit ==
-refused invalid_argument: set must be 0 to 9999
-state unchanged
-== adjust refused a hit point count over the maximum ==
-refused invalid_argument: hit_points must be 0 to 7
-state unchanged
-== adjust refused a negative damage ==
-refused invalid_argument: damage must be 0 to 9999
-state unchanged
-== adjust refused a negative heal ==
-refused invalid_argument: heal must be 0 to 9999
-state unchanged
-== adjust refused a negative hit point count ==
-refused invalid_argument: set must be 0 to 9999
 state unchanged
 == adjust refused a player's character ==
 refused invalid_argument: a player's character keeps its hit points in its vitals: use AdjustCharacterVitals
@@ -163,29 +133,8 @@ state unchanged
 == adjust refused a player's character for a heal ==
 refused invalid_argument: a player's character keeps its hit points in its vitals: use AdjustCharacterVitals
 state unchanged
-== adjust refused a request that changes nothing ==
-refused invalid_argument: set damage, heal, hit_points or hit_points_temporary
-state unchanged
 == adjust refused a user who is not in the campaign ==
 refused not_found: campaign not found
-state unchanged
-== adjust refused an encounter nobody knows ==
-refused not_found: encounter not found
-state unchanged
-== adjust refused an encounter that is not a UUID ==
-refused not_found: encounter not found
-state unchanged
-== adjust refused an idempotency key that is not a UUID ==
-refused invalid_argument: idempotency_key must be a UUID
-state unchanged
-== adjust refused negative temporary hit points ==
-refused invalid_argument: hit_points_temporary must be 0 to 999
-state unchanged
-== adjust refused temporary hit points next to a damage over the limit ==
-refused invalid_argument: damage must be 0 to 9999
-state unchanged
-== adjust refused temporary hit points over the limit ==
-refused invalid_argument: hit_points_temporary must be 0 to 999
 state unchanged
 == adjust refused the player of a hero ==
 refused permission_denied: only the campaign's master can do this
@@ -716,12 +665,6 @@ combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 5 | 8 
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 6 | 7 | false | false | true
 vitals Toren | active | 0 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage basic:0 | applied | false | damage-type:slashing | 6 | -1 | false | -1 | [] | -1 | true | false
-== apply refused 21 sources to ignore ==
-refused invalid_argument: ignore_modifiers must have at most 20 sources
-state unchanged
-== apply refused a campaign that is not a UUID ==
-refused not_found: campaign not found
-state unchanged
 == apply refused a combat that ended ==
 refused failed_precondition: the combat has ended [ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ENDED]
 state unchanged
@@ -740,29 +683,8 @@ state unchanged
 == apply refused a damage that was not rolled ==
 refused failed_precondition: the damage was not rolled yet [ENCOUNTER_BLOCKED_REASON_DAMAGE_NOT_ROLLED]
 state unchanged
-== apply refused a negative amount ==
-refused invalid_argument: amount must be 0 to 9999
-state unchanged
-== apply refused a pending damage nobody knows ==
-refused not_found: pending damage not found
-state unchanged
-== apply refused a pending damage that is not a UUID ==
-refused not_found: pending damage not found
-state unchanged
 == apply refused a user who is not in the campaign ==
 refused not_found: campaign not found
-state unchanged
-== apply refused an amount over the limit ==
-refused invalid_argument: amount must be 0 to 9999
-state unchanged
-== apply refused an encounter nobody knows ==
-refused not_found: encounter not found
-state unchanged
-== apply refused an encounter that is not a UUID ==
-refused not_found: encounter not found
-state unchanged
-== apply refused an idempotency key that is not a UUID ==
-refused invalid_argument: idempotency_key must be a UUID
 state unchanged
 == apply refused another player ==
 refused permission_denied: only the campaign's master can do this
@@ -988,20 +910,8 @@ state unchanged
 == discard refused a damage discarded already ==
 refused failed_precondition: the damage was applied or discarded already [ENCOUNTER_BLOCKED_REASON_DAMAGE_RESOLVED]
 state unchanged
-== discard refused a pending damage nobody knows ==
-refused not_found: pending damage not found
-state unchanged
-== discard refused a pending damage that is not a UUID ==
-refused not_found: pending damage not found
-state unchanged
 == discard refused a user who is not in the campaign ==
 refused not_found: campaign not found
-state unchanged
-== discard refused an encounter that is not a UUID ==
-refused not_found: encounter not found
-state unchanged
-== discard refused an idempotency key that is not a UUID ==
-refused invalid_argument: idempotency_key must be a UUID
 state unchanged
 == discard refused the player of the target ==
 refused permission_denied: only the campaign's master can do this
