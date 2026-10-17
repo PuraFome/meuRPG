@@ -164,6 +164,25 @@ describe('ConversationState', () => {
       expect(state.pending()).toEqual([]);
     });
 
+    it('shows one row, not two, while only the stream has told the line (the answer is still on its way)', async () => {
+      state.send(oocDraft);
+      state.receive(line('s1', { at: 5, authorUserId: 'u-me', text: oocDraft.text }));
+      expect(state.entries()).toHaveLength(1);
+      expect(state.entries()[0].kind).toBe('line');
+      api.answerSend(line('s1', { at: 5, authorUserId: 'u-me', text: oocDraft.text }));
+      await flush();
+      expect(state.entries()).toHaveLength(1);
+    });
+
+    it('keeps a failed line when another line with the same words arrives from the stream', async () => {
+      state.send(oocDraft);
+      api.failSend(new ConnectError('x', Code.Unavailable));
+      await flush();
+      state.receive(line('s9', { at: 9, authorUserId: 'u-me', text: oocDraft.text }));
+      expect(state.pending()).toHaveLength(1);
+      expect(state.entries()).toHaveLength(2);
+    });
+
     it('the stream event after the response leaves one copy too', async () => {
       state.send(oocDraft);
       api.answerSend(line('s1', { at: 5, authorUserId: 'u-me' }));
