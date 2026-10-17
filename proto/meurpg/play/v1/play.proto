@@ -1281,6 +1281,10 @@ message WatchGameSessionResponse {
     // The master is calling the player (NudgePlayer): shake, chime and say it. Sent only to
     // the character's player, never stored.
     CallingYou calling_you = 41;
+    // A question of a held roll was asked, answered or dropped: read ResourceService.ListHeldRolls again
+    // (and the combat, for a combatant's roll). A hint with no content (RN-10): the roll, the d20 and the
+    // die never travel on the stream. Only the master and the roller's player get it.
+    HeldRollsChanged held_rolls_changed = 42;
   }
 
   // CallingYou is the master's nudge. It carries nothing: the app writes the line.
@@ -1320,6 +1324,8 @@ message WatchGameSessionResponse {
   // RevivifyChanged is the content-free hint that the casts of Revivify outside a combat
   // changed.
   message RevivifyChanged {}
+  // HeldRollsChanged is the content-free hint that the questions of the held rolls changed.
+  message HeldRollsChanged {}
 
   // CharacterChangesRequested is the hint that the master asked for changes.
   message CharacterChangesRequested {

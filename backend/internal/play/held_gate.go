@@ -187,6 +187,9 @@ type heldReply struct {
 	reroll *luckyReroll
 	// die is the Bardic Inspiration die the player rolled and added, nil when they kept it.
 	die *bonusUse
+	// as is who the path runs as when another than the roller answers (the master): the roller. Nil when the
+	// answerer is the roller. Only answerHeld sets it, after checking that the caller may answer.
+	as *authz.Membership
 }
 
 type heldReplyKey struct{}

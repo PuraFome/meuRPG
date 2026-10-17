@@ -115,8 +115,11 @@ type encounterData struct {
 	requests []playdb.RollModeRequest
 	// holds are the attack rolls that wait for the answer about a Bardic Inspiration die or a Lucky 1,
 	// kept in either table.
-	holds  []heldRoll
-	riders []playdb.HitRider
+	holds []heldRoll
+	// allHolds are the rolls of every kind held in the combat that wait for an answer, for the question each
+	// combatant carries (Combatant.held_roll_offer).
+	allHolds []heldRoll
+	riders   []playdb.HitRider
 }
 
 // loadEncounter reads a combat's combatants, in turn order.
@@ -137,11 +140,15 @@ func loadEncounter(ctx context.Context, q *playdb.Queries, enc playdb.Encounter)
 	if err != nil {
 		return nil, err
 	}
+	allHolds, err := openHoldsOfCombat(ctx, q, enc.ID)
+	if err != nil {
+		return nil, err
+	}
 	riders, err := q.ListHitRiders(ctx, enc.ID)
 	if err != nil {
 		return nil, fmt.Errorf("list the riders: %w", err)
 	}
-	return &encounterData{enc: enc, cs: cs, states: states, requests: requests, holds: holds, riders: riders}, nil
+	return &encounterData{enc: enc, cs: cs, states: states, requests: requests, holds: holds, allHolds: allHolds, riders: riders}, nil
 }
 
 // openAttackHolds are the weapon attacks of a combat that wait for an answer: the ones roll_holds keeps and the ones a
@@ -161,6 +168,27 @@ func openAttackHolds(ctx context.Context, q *playdb.Queries, encounterID string)
 	}
 	for _, row := range inspirations {
 		out = append(out, heldOfInspirationHold(row))
+	}
+	return out, nil
+}
+
+// openHoldsOfCombat are the rolls of every kind held in the combat that wait for an answer, and the weapon attacks
+// the release before left in roll_holds, in the shape of the gate.
+func openHoldsOfCombat(ctx context.Context, q *playdb.Queries, encounterID string) ([]heldRoll, error) {
+	rows, err := q.ListOpenInspirationHoldsOfEncounter(ctx, &encounterID)
+	if err != nil {
+		return nil, fmt.Errorf("list the held rolls of the combat: %w", err)
+	}
+	legacy, err := q.ListOpenRollHolds(ctx, encounterID)
+	if err != nil {
+		return nil, fmt.Errorf("list the held rolls: %w", err)
+	}
+	out := make([]heldRoll, 0, len(rows)+len(legacy))
+	for _, row := range rows {
+		out = append(out, heldOfInspirationHold(row))
+	}
+	for _, row := range legacy {
+		out = append(out, heldOfRollHold(row))
 	}
 	return out, nil
 }
@@ -359,6 +387,7 @@ func (r combatantReader) read(c playdb.Combatant) *playv1.Combatant {
 	p.InspirationDie = inspirationDieView(d.cs, c, e.Round, v)
 	p.InspirationOffer = inspirationOfferView(d, c, v)
 	p.LuckyOffer = luckyOfferView(d, c, v)
+	p.HeldRollOffer = heldOfferOfCombatant(d, c, v)
 	p.TurnPartEnded = r.turn.flags && e.Status == statusActive && c.TurnState == turnEnded
 	p.States = statesFor(r.byCombatant[c.ID], d.cs, v)
 	p.ConditionSources = conditionSourcesFor(c, d.cs, v, r.names)

@@ -791,7 +791,7 @@ func (s *Service) castResponse(ctx context.Context, m authz.Membership, res comb
 		if err != nil {
 			return nil, err
 		}
-		return connect.NewResponse(&playv1.CastSpellResponse{Encounter: enc, InspirationOffer: out.asked.Offer, LuckyOffer: out.asked.Lucky}), nil
+		return connect.NewResponse(&playv1.CastSpellResponse{Encounter: enc, InspirationOffer: out.asked.Offer, LuckyOffer: out.asked.Lucky, HeldRollOffer: out.asked.Held}), nil
 	}
 	var err error
 	if out.v, err = s.viewerAfter(ctx, m, res, out.v); err != nil { // a replay never ran the closure: the fog filter still holds
