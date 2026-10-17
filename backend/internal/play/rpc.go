@@ -249,6 +249,13 @@ func errSessionOpen() error {
 		"the campaign already has an open game session; end it first")
 }
 
+// errKeyReused is the refusal of an idempotency key that was used for another change. The
+// damage a trap settled is the one exception: its key lives in the damage row and is refused by
+// idem.ErrReused, which words it differently.
+func errKeyReused() error {
+	return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
+}
+
 // errNoOpenSession is the live session's failed_precondition: the campaign
 // has no open session.
 func errNoOpenSession() error {

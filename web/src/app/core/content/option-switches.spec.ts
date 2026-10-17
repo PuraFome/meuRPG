@@ -5,6 +5,7 @@ import {
   OptionSwitchEntrySchema,
   TableContentKind,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
+import { nextTurn } from '../../../test-settle';
 import { CONTENT_NAV, navBySlug } from './content-kinds';
 import {
   OptionSwitchesState,
@@ -354,7 +355,7 @@ describe('OptionSwitchesState: every change is saved at once', () => {
     const order: string[] = [];
     setSwitches.mockImplementation(async (_c: string, sw: { key: string }[]) => {
       order.push(`start ${sw[0].key}`);
-      await new Promise((r) => setTimeout(r, 5));
+      await nextTurn();
       order.push(`end ${sw[0].key}`);
       return answer([]);
     });

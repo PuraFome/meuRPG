@@ -6,10 +6,30 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
-// audienceOwner is the audience of an effect only its target's player reads.
-const audienceOwner = "owner"
+// audienceOwner is the audience of an effect only its target's player reads, audienceAll the one
+// every player who sees the target reads, and audienceMaster the master's alone: it is never
+// stored, it stands for an audience the server does not know and is kept as owner with the
+// effect hidden from the players (RN-10).
+const (
+	audienceOwner  = "owner"
+	audienceAll    = "all"
+	audienceMaster = "master"
+)
+
+// storedAudience says how the table keeps an audience: whether the effect is the master's alone
+// and the audience column. Only a known audience is read by anyone else; the rest fails closed.
+func storedAudience(a string) (masterOnly bool, stored string) {
+	switch a {
+	case rules.EffectVisibilityPublic, audienceAll:
+		return false, audienceAll
+	case rules.EffectVisibilityOwner:
+		return false, audienceOwner
+	}
+	return true, audienceOwner
+}
 
 // The lines of the log for effects that last (RN-22). A line the master hides is the master's
 // alone (the event is Secret); one for the owner alone is the owner's and the master's; the roll

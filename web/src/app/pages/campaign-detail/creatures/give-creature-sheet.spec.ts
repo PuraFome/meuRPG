@@ -10,6 +10,7 @@ import {
   flat,
   isOff,
 } from '../../../core/creatures/creatures-testing';
+import { nextTurn } from '../../../../test-settle';
 import { GiveCreatureSheet, type GiveCreatureData } from './give-creature-sheet';
 
 // With --coverage test-setup.ts only hooks the first file of a worker, so the fake clock this file leaves on would
@@ -57,7 +58,8 @@ describe('GiveCreatureSheet: the master gives a creature (E9-10, MR-037)', () =>
       for (let i = 0; i < 4; i++) {
         fixture.detectChanges();
         await fixture.whenStable();
-        await new Promise((r) => setTimeout(r, ms));
+        await nextTurn();
+        if (ms > 0) await vi.advanceTimersByTimeAsync(ms);
       }
       fixture.detectChanges();
     };
@@ -84,6 +86,8 @@ describe('GiveCreatureSheet: the master gives a creature (E9-10, MR-037)', () =>
 
   it('filters by name while typing, by type and by challenge rating, asking the server each time', async () => {
     const { el, settle } = await setup();
+    // The typing pause is crossed by advancing a fake clock turned on once the dialog settled.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     const q = el.querySelector<HTMLInputElement>('input[type=search]')!;
     q.value = 'ma';
     q.dispatchEvent(new Event('input'));

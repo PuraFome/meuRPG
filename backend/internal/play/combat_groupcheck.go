@@ -72,12 +72,9 @@ func (s *Service) groupWrite(ctx context.Context, m authz.Membership, key string
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		ev, repeated = groupCheckEvent{}, false
 		q := s.queries.WithTx(tx)
-		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errNoOpenSession()
-		}
+		session, err := lockOpenSessionOrNone(ctx, q, m.CampaignID)
 		if err != nil {
-			return fmt.Errorf("lock the open session: %w", err)
+			return err
 		}
 		replayed, found, err := groupReplay(ctx, q, session.ID, call)
 		if err != nil {
@@ -104,7 +101,7 @@ func groupReplay(ctx context.Context, q *playdb.Queries, sessionID string, call 
 		return groupCheckEvent{}, false, fmt.Errorf("find the event of this idempotency key: %w", err)
 	}
 	if done.Kind != call.kind || done.ActorUserID == nil || *done.ActorUserID != call.m.UserID || hashDiffers(done.IdempotencyHash, call.hash) {
-		return groupCheckEvent{}, false, connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
+		return groupCheckEvent{}, false, errKeyReused()
 	}
 	// A retry answers what the first call made: the check it names is in the event.
 	if err := json.Unmarshal(done.Payload, &ev); err != nil {

@@ -138,8 +138,7 @@ func TestAddMilestoneStepByStep(t *testing.T) {
 		{"fails: the list", func() { rig.faults.armQuery("ListPlannedMilestonesForUpdate", 0) }, "f3"},
 		{"fails: the key", func() { rig.faults.armQuery("GetPlannedMilestoneByCreateKey", 0) }, "f4"},
 		{"fails: the insert", func() { rig.faults.armQuery("InsertPlannedMilestone", 0) }, "f5"},
-		// Finding: the add committed, but the caller is told it failed
-		// (milestones.go:126); a retry with the same key is answered with it.
+		// The add is committed: the answer carries the written milestone and no list.
 		{"fails: the read after", func() { rig.faults.armQuery("ListPlannedMilestones", 0) }, "f6"},
 	} {
 		tc.arm()
@@ -152,10 +151,8 @@ func TestAddMilestoneStepByStep(t *testing.T) {
 	a := add("first", rig.master, rig.campaign, "  Chegar ao Vale Seco ", "k1")
 	rig.label(a.GetMilestone().GetId(), "milestone-a")
 	add("the same request again", rig.master, rig.campaign, "  Chegar ao Vale Seco ", "k1")
-	// Finding: the key is kept with the hash of the request as it came
-	// (milestones.go:91), before the text is trimmed, so a retry whose text
-	// differs only by the spaces around it is refused as another change, though
-	// it would store the same milestone.
+	// The key is kept with the hash of the trimmed text, so a retry that differs
+	// only by the spaces around it is the same request.
 	add("the same key, the text trimmed the same", rig.master, rig.campaign, "Chegar ao Vale Seco", "k1")
 	add("the same key, another text", rig.master, rig.campaign, "Derrotar a Sombra", "k1")
 	b := add("no key", rig.master, rig.campaign, "Derrotar a Sombra", "")
@@ -241,9 +238,6 @@ func TestMoveMilestoneStepByStep(t *testing.T) {
 	move("unknown milestone, no direction", rig.master, rig.campaign, unknown, 0)
 	move("a direction that does not exist", rig.master, rig.campaign, ids["A"], 7)
 	move("unknown milestone", rig.master, rig.campaign, unknown, up)
-	// Finding: the milestone missing from the list it was just locked in
-	// (milestones.go:190) cannot happen: changePlanned found and locked it in
-	// the same transaction, so that refusal is never reached.
 	if err := rig.master.setXPMode(rig.campaign, campaignsv1.XpMode_XP_MODE_ENEMIES, false); err != nil {
 		t.Fatalf("SetCampaignXpMode(enemies) error = %v", err)
 	}
@@ -287,9 +281,7 @@ func TestMoveMilestoneStepByStep(t *testing.T) {
 	rig.takeLogs(t)
 	move("E up, only reached ones above", rig.master, rig.campaign, ids["E"], up)
 	move("D up, past the reached C, with one off the list", rig.master, rig.campaign, ids["D"], up)
-	// Finding: the move committed, but the caller is told it failed
-	// (milestones.go:217), and a move has no key: the app that retries it moves
-	// the milestone once more.
+	// The move is committed: the answer has no list, and the app reads it again.
 	rig.faults.armQuery("ListPlannedMilestones", 0)
 	move("fails: the read after", rig.master, rig.campaign, ids["D"], down)
 	rig.wantHistoryGolden(t, "milestones_move", steps.steps)

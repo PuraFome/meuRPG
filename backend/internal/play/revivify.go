@@ -341,9 +341,9 @@ func (s *Service) castRevivify(
 // answer, spend the slot and the action, and bring the creature back.
 func (s *Service) revivifyWrite(ctx context.Context, c *combatTx, m authz.Membership, msg *playv1.CastSpellRequest, in revivifyInput, out *revivifyOutcome) (any, error) {
 	out.vitals, out.told = nil, nil
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	out.v = c.viewer(m, cs)
 	caster, slot, err := s.revivifyCaster(ctx, c, m, out.v, cs, in.casterID, msg.GetSlot())
@@ -376,9 +376,8 @@ func (s *Service) revivifyWrite(ctx context.Context, c *combatTx, m authz.Member
 func (s *Service) revivifyCountered(ctx context.Context, c *combatTx, caster playdb.Combatant, slot *slotRef, out *revivifyOutcome) (any, error) {
 	out.made.Secret = caster.Hidden
 	out.made.Reaction = &reactionEvent{Kind: string(reaction.CounterspellKind), Countered: true, Spell: revivifyKey, Level: slot.Level}
-	var err error
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return nil, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return nil, err
 	}
 	c.characterID = &caster.CharacterID
 	return out.made, nil
@@ -665,16 +664,9 @@ func (s *Service) blockCombatant(ctx context.Context, tx pgx.Tx, q *playdb.Queri
 // blockDeadInCombat carries the switch of a dead character to its combatant in the open combat,
 // if it died there. It returns the combat that changed, empty when none did.
 func (s *Service) blockDeadInCombat(ctx context.Context, q *playdb.Queries, sessionID, characterID string, blocked bool) (string, error) {
-	enc, err := q.GetOpenEncounter(ctx, sessionID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return "", nil
-	}
-	if err != nil {
-		return "", fmt.Errorf("find the open encounter: %w", err)
-	}
-	cs, err := q.ListCombatants(ctx, enc.ID)
-	if err != nil {
-		return "", fmt.Errorf("list the combatants: %w", err)
+	enc, cs, found, err := openCombatants(ctx, q, sessionID)
+	if err != nil || !found {
+		return "", err
 	}
 	i := slices.IndexFunc(cs, func(c playdb.Combatant) bool {
 		return c.Kind == kindPlayer && c.CharacterID == characterID && c.Defeated
@@ -695,16 +687,12 @@ func (s *Service) blockDeadInCombat(ctx context.Context, q *playdb.Queries, sess
 // combatantInOpenSession finds a combatant of the combat of the open session that is not ended,
 // or not_found.
 func (s *Service) combatantInOpenSession(ctx context.Context, q *playdb.Queries, sessionID, combatantID string) (playdb.Combatant, error) {
-	enc, err := q.GetOpenEncounter(ctx, sessionID)
-	if errors.Is(err, pgx.ErrNoRows) {
+	_, cs, found, err := openCombatants(ctx, q, sessionID)
+	if err != nil {
+		return playdb.Combatant{}, err
+	}
+	if !found {
 		return playdb.Combatant{}, errCombatantNotFound()
-	}
-	if err != nil {
-		return playdb.Combatant{}, fmt.Errorf("find the open encounter: %w", err)
-	}
-	cs, err := q.ListCombatants(ctx, enc.ID)
-	if err != nil {
-		return playdb.Combatant{}, fmt.Errorf("list the combatants: %w", err)
 	}
 	for _, c := range cs {
 		if c.ID == combatantID {

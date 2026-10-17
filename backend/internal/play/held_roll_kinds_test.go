@@ -342,7 +342,10 @@ func attackRig(t *testing.T, die bool) heldRig {
 			}
 			return attackView(res.GetAttack()), nil
 		},
-		holds: func(t *testing.T) int { t.Helper(); return countRows(t, a.h, countRollHolds, e.GetId()) },
+		holds: func(t *testing.T) int {
+			t.Helper()
+			return countRows(t, a.h, countHeldAttacksInInspirationHolds, e.GetId())
+		},
 	}
 }
 
