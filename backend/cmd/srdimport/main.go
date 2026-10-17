@@ -732,8 +732,8 @@ func convertSubclasses(in *inputs) (output, error) {
 }
 
 // featureSpecific reads the options a feature offers, in this order: its
-// subfeature options, its invocations (which replace the subfeature options
-// when a feature has both) and its expertise picks.
+// subfeature options, its invocations (added to the subfeature options when a
+// feature has both) and its expertise picks.
 func featureSpecific(fs map[string]json.RawMessage, f *srd51.Feature) error {
 	if raw, ok := fs["subfeature_options"]; ok {
 		var o optionSet
@@ -750,7 +750,7 @@ func featureSpecific(fs map[string]json.RawMessage, f *srd51.Feature) error {
 		if err := json.Unmarshal(raw, &refs); err != nil {
 			return err
 		}
-		f.Options = keys("feature:", refs)
+		f.Options = append(f.Options, keys("feature:", refs)...)
 	}
 	if raw, ok := fs["expertise_options"]; ok {
 		var o optionSet
