@@ -17,7 +17,7 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 )
 
-// The undo property (the master's Desfazer, takeBack in combat_undo.go): take a
+// The undo property (the master's Desfazer, takeBack): take a
 // picture of everything the master and the players read and of the rows the combat
 // keeps, do the action, undo it, take the picture again. A put-back that is exact
 // leaves no difference. Where today's undo does not restore something exactly, the

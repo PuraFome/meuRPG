@@ -1,6 +1,7 @@
 package progression
 
 import (
+	"slices"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -197,10 +198,6 @@ func TestHistoryAndMilestonesWhatEachViewerReads(t *testing.T) {
 		{"milestones: the marks' shares", func() { rig.faults.armQuery("ListXPSharesOfAwards", 0) }, listMilestones, player, "canceled: the request was canceled", []string{"DEBUG progression: cannot list milestones code=canceled error=list the shares: timeout: context already done: context canceled"}},
 		{"milestones: the characters' names", func() { rig.faults.arm("names") }, listMilestones, player, "internal: internal error", []string{"ERROR progression: cannot list milestones code=internal error=read the characters' names: injected failure"}},
 		{"milestones: the display names", func() { rig.faults.arm("display_names") }, listMilestones, rig.master, "internal: internal error", []string{"ERROR progression: cannot list milestones code=internal error=read display names: injected failure"}},
-		// Finding: viewsOf asks the combats for names even when no award has a
-		// combat (read.go:209), so the milestones fail when that module does,
-		// though no mark ever has one.
-		{"milestones: the combats' names", func() { rig.faults.arm("encounter_names") }, listMilestones, rig.master, "internal: internal error", []string{"ERROR progression: cannot list milestones code=internal error=read the combats' names: injected failure"}},
 	} {
 		tc.arm()
 		if got := rig.redact(refusal(tc.call(tc.u))); got != tc.want {
@@ -208,6 +205,20 @@ func TestHistoryAndMilestonesWhatEachViewerReads(t *testing.T) {
 		}
 		wantLines(t, tc.name+": logs", rig.takeLogs(t), tc.lines)
 		rig.wantNoPendingHistoryFault(t, tc.name)
+	}
+
+	// The milestones' marks have no combat, so the combats are not asked: a failing
+	// read of their names does not matter, and the fault is still armed afterwards.
+	rig.faults.arm("encounter_names")
+	if got := refusal(listMilestones(rig.master)); got != "ok" {
+		t.Errorf("milestones with no combat award, the combats failing: error = %s, want ok", got)
+	}
+	wantLines(t, "milestones with no combat award: logs", rig.takeLogs(t), nil)
+	if p := rig.faults.pending(); !slices.Equal(p, []string{"encounter_names"}) {
+		t.Errorf("milestones with no combat award: pending faults = %v, want the combats' names untouched", p)
+	}
+	if err := rig.faults.take("encounter_names"); err == nil {
+		t.Error("the combats' names fault was not armed")
 	}
 }
 

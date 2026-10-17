@@ -18,7 +18,7 @@ import (
 
 // More scenarios of the undo property (combat_undo_snapshot_test.go) for the events the
 // master's Desfazer takes back (takeBack in combat_undo.go), one for each branch the
-// first scenarios of combat_undo_kinds_test.go leave out. A scenario that names a
+// overview in combat_undo_test.go leaves out. A scenario that names a
 // difference (undoDelta) freezes what today's undo does not put back.
 
 // heldRollBlob is the request a held roll keeps (roll_holds.request): the bytes of the
@@ -56,21 +56,28 @@ func (w *undoWatch) runWithHolds(t *testing.T, name string, want undoDelta, do f
 	}
 }
 
-// deltaAnsweredHold: the row of a held roll stays after the answer (AnswerRollHold, queries.sql)
-// as the record of the answer's idempotency key, and the undo of the attack does not delete it
-// (the attack case of takeBack, combat_undo.go, puts back the action and the die, not the
-// hold). Nothing reads it: only the unanswered holds are listed, so it is invisible. lucky is
-// the columns of the Lucky answer, for a roll that was asked about its 1.
+// deltaAnsweredHold: the row of a held roll stays after the answer (AnswerInspirationHold, queries.sql)
+// as the record of the answer's idempotency key, and the undo of the attack does not delete it: the attack
+// case of takeBack puts back the action and the die, not the hold. Nothing reads it: only the unanswered
+// holds are listed, so it is invisible. lucky is the columns of the Lucky answer, for a roll that was asked
+// about its 1: the d20 it was rolled again to (15) is the one the row keeps, typed from a real die.
 func deltaAnsweredHold(face, modifier int, lucky bool) undoDelta {
+	physical, counted := "false", "0"
+	if lucky {
+		face, physical = 15, "true"
+	}
 	out := undoDelta{
-		"+ db/roll_holds[#].answer_key=#", "+ db/roll_holds[#].combatant_id=#", "+ db/roll_holds[#].encounter_id=#",
-		"+ db/roll_holds[#].idempotency_key=#", "+ db/roll_holds[#].request=<blob>", "+ db/roll_holds[#].round=1",
-		"+ db/roll_holds[#].face=" + strconv.Itoa(face), "+ db/roll_holds[#].modifier=" + strconv.Itoa(modifier),
+		"+ db/inspiration_holds[#].answer_key=#", "+ db/inspiration_holds[#].campaign_id=#", "+ db/inspiration_holds[#].character_id=#",
+		"+ db/inspiration_holds[#].combatant_id=#", "+ db/inspiration_holds[#].counted=" + counted, "+ db/inspiration_holds[#].encounter_id=#",
+		"+ db/inspiration_holds[#].faces[0]=" + strconv.Itoa(face), "+ db/inspiration_holds[#].idempotency_key=#",
+		"+ db/inspiration_holds[#].kind=weapon_attack", "+ db/inspiration_holds[#].modifier=" + strconv.Itoa(modifier),
+		"+ db/inspiration_holds[#].physical=" + physical, "+ db/inspiration_holds[#].request=<blob>", "+ db/inspiration_holds[#].round=1",
+		"+ db/inspiration_holds[#].total=" + strconv.Itoa(face+modifier), "+ db/inspiration_holds[#].user_id=#", "+ db/inspiration_holds[#].window_hold=false",
 	}
 	if lucky {
-		return append(out, "+ db/roll_holds[#].lucky_answer_key=#", "+ db/roll_holds[#].lucky_index=0", "+ db/roll_holds[#].lucky_to=15")
+		return append(out, "+ db/inspiration_holds[#].lucky_answer_key=#", "+ db/inspiration_holds[#].lucky_index=0", "+ db/inspiration_holds[#].lucky_to=15")
 	}
-	return append(out, "+ db/roll_holds[#].lucky_answer_key=<nil>", "+ db/roll_holds[#].lucky_index=<nil>", "+ db/roll_holds[#].lucky_to=<nil>")
+	return append(out, "+ db/inspiration_holds[#].lucky_answer_key=<nil>", "+ db/inspiration_holds[#].lucky_index=<nil>", "+ db/inspiration_holds[#].lucky_to=<nil>")
 }
 
 // TestUndoKindAttackRolledBardicDie: the attack that used a Bardic Inspiration die
@@ -494,8 +501,8 @@ func TestUndoKindActionTakenDisengagedBefore(t *testing.T) {
 
 // deltaAnsweredInspirationHold: the row of the question about a Bardic Inspiration die
 // stays after the answer (AnswerInspirationHold, queries.sql) as the record of the
-// answer's idempotency key, and the undo of the cast (the spell case of takeBack,
-// combat_undo.go) holds the die again without deleting it. Only the unanswered holds are
+// answer's idempotency key, and the undo of the cast (the spell case of takeBack)
+// holds the die again without deleting it. Only the unanswered holds are
 // listed, so nobody reads it.
 var deltaAnsweredInspirationHold = undoDelta{
 	"+ db/inspiration_holds[#].answer_key=#", "+ db/inspiration_holds[#].campaign_id=#", "+ db/inspiration_holds[#].character_id=#",
@@ -724,9 +731,9 @@ func TestUndoKindSpellCastFromHiding(t *testing.T) {
 	})
 }
 
-// deltaNPCSlotsZero: an NPC's spent slots are a JSON object on the combatant (bumpUsed,
-// combat_reaction_kit.go:190) that starts as {}; the Mage's Escudo writes {"1": 1} and the undo
-// (giveBackNPCSlot, the NPC branch of the reaction case of takeBack, combat_undo.go) writes
+// deltaNPCSlotsZero: an NPC's spent slots are a JSON object on the combatant (bumpUsed in
+// combat_reaction_kit.go) that starts as {}; the Mage's Escudo writes {"1": 1} and the undo
+// (giveBackNPCSlot, the NPC branch of the reaction case of takeBack) writes
 // {"1": 0}: the level stays as a key with no use. Nothing reads a zero as a slot spent, so it is
 // invisible.
 var deltaNPCSlotsZero = undoDelta{"+ db/combatants[#].slots_used.1=0", "- db/combatants[#].slots_used={}"}

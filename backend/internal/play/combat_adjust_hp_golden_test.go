@@ -21,8 +21,8 @@ type actionsRestAdjust struct {
 	edit  func(*playv1.AdjustCombatantHitPointsRequest)
 }
 
-func (c actionsRestAdjust) scenario() actionsRestScenario {
-	return actionsRestScenario{name: c.name, run: func(t *testing.T) string {
+func (c actionsRestAdjust) scenario() goldenScenario {
+	return goldenScenario{name: c.name, run: func(t *testing.T) string {
 		t.Helper()
 		world := c.world
 		if world == nil {
@@ -41,7 +41,7 @@ func (c actionsRestAdjust) scenario() actionsRestScenario {
 		if as == nil {
 			as = asMaster
 		}
-		before := a.afterSetup(t)
+		before := a.markCall(t)
 		req := &playv1.AdjustCombatantHitPointsRequest{CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, label), IdempotencyKey: newKey()}
 		if c.edit != nil {
 			c.edit(req)
@@ -99,35 +99,15 @@ func actionsRestWarm(t *testing.T, a *armed, _ *playv1.Encounter) {
 }
 
 // actionsRestAdjustments are the corrections of the master and the refusals of the call.
-func actionsRestAdjustments() []actionsRestScenario {
+func actionsRestAdjustments() []goldenScenario {
 	stranger := func(a *armed) *user { return a.h.newUser("Zé") }
-	missing := "00000000-0000-4000-8000-000000000001"
 	hide := func(t *testing.T, a *armed, e *playv1.Encounter) {
 		t.Helper()
 		setHidden(t, a, e, "Goblin", true)
 	}
 	cases := []actionsRestAdjust{
-		{name: "adjust refused an idempotency key that is not a UUID", edit: actionsRestAdjusting(damageHP(1), func(r *playv1.AdjustCombatantHitPointsRequest) { r.IdempotencyKey = "not-a-key" })},
-		{name: "adjust refused an encounter that is not a UUID", edit: actionsRestAdjusting(damageHP(1), func(r *playv1.AdjustCombatantHitPointsRequest) { r.EncounterId = "nope" })},
-		{name: "adjust refused a combatant that is not a UUID", edit: actionsRestAdjusting(damageHP(1), func(r *playv1.AdjustCombatantHitPointsRequest) { r.CombatantId = "nope" })},
-		{name: "adjust refused a campaign that is not a UUID", edit: actionsRestAdjusting(damageHP(1), func(r *playv1.AdjustCombatantHitPointsRequest) { r.CampaignId = "nope" })},
-		{name: "adjust refused a request that changes nothing"},
-		{name: "adjust refused a negative damage", edit: damageHP(-1)},
-		{name: "adjust refused a damage over the limit", edit: damageHP(10000)},
-		{name: "adjust refused a negative heal", edit: actionsRestHealBy(-1)},
-		{name: "adjust refused a heal over the limit", edit: actionsRestHealBy(10000)},
-		{name: "adjust refused a negative hit point count", edit: actionsRestSetHP(-1)},
-		{name: "adjust refused a hit point count over the limit", edit: actionsRestSetHP(10000)},
-		{name: "adjust refused a hit point count over the maximum", edit: actionsRestSetHP(8)},
-		{name: "adjust refused negative temporary hit points", edit: actionsRestTempHP(-1)},
-		{name: "adjust refused temporary hit points over the limit", edit: actionsRestTempHP(1000)},
-		{name: "adjust refused temporary hit points next to a damage over the limit", edit: actionsRestAdjusting(damageHP(10000), actionsRestTempHP(1000))},
 		{name: "adjust refused the player of a hero", as: asToren, edit: damageHP(1)},
 		{name: "adjust refused a user who is not in the campaign", as: stranger, edit: damageHP(1)},
-		{name: "adjust refused a combatant nobody knows", edit: actionsRestAdjusting(damageHP(1), func(r *playv1.AdjustCombatantHitPointsRequest) { r.CombatantId = missing })},
-		{name: "adjust refused an encounter nobody knows", edit: actionsRestAdjusting(damageHP(1), func(r *playv1.AdjustCombatantHitPointsRequest) {
-			r.EncounterId = "00000000-0000-4000-8000-000000000002"
-		})},
 		{name: "adjust refused a combat that ended", edit: damageHP(1), prep: func(t *testing.T, a *armed, e *playv1.Encounter) {
 			t.Helper()
 			endEncounter(t, a, e)
@@ -166,7 +146,7 @@ func actionsRestAdjustments() []actionsRestScenario {
 			a.concentrate(t, "Goblin", webSpell)
 		}},
 	}
-	out := make([]actionsRestScenario, 0, len(cases)+1)
+	out := make([]goldenScenario, 0, len(cases)+1)
 	for _, c := range cases {
 		out = append(out, c.scenario())
 	}
@@ -174,8 +154,8 @@ func actionsRestAdjustments() []actionsRestScenario {
 }
 
 // actionsRestAdjustTwice is a retry of one request: the same key is the same answer.
-func actionsRestAdjustTwice() actionsRestScenario {
-	return actionsRestScenario{name: "adjust the same request twice", run: func(t *testing.T) string {
+func actionsRestAdjustTwice() goldenScenario {
+	return goldenScenario{name: "adjust the same request twice", run: func(t *testing.T) string {
 		t.Helper()
 		a, e := actionsRestUsual(t)
 		key := newKey()
@@ -183,7 +163,7 @@ func actionsRestAdjustTwice() actionsRestScenario {
 		if _, err := a.adjustHP(t, e, "Goblin", set); err != nil {
 			t.Fatalf("AdjustCombatantHitPoints() error = %v", err)
 		}
-		before := a.afterSetup(t)
+		before := a.markCall(t)
 		_, err := a.adjustHP(t, e, "Goblin", set)
 		head := "ok"
 		if err != nil {

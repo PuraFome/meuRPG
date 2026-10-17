@@ -9,23 +9,22 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
-// These tests freeze what the rest of combat_actions.go does today, scenario by scenario: ApplyPendingDamage
+// These tests freeze what the settling of a hit, the NPC hit points and the turn options do today, scenario by scenario: ApplyPendingDamage
 // and DiscardPendingDamage (the master settles a hit on a player's character), AdjustCombatantHitPoints (the
 // master's hand on an NPC's hit points) and GetTurnOptions (the read of what a combatant can do, as each viewer
 // sees it). For a write: every refusal with its code, message and blocked reason, and for each one that goes
 // through the answer, the events it writes (in order, the combatants named by label), the combatants, the
-// vitals, the pending damages and the windows it left. For the read: the whole answer, by viewer. They are the
+// vitals, the pending damages and the windows it left. For the read (testdata/turn_options.golden): the whole
+// answer for a hero and a viewer, and for the other scenarios how the answer differs from it. They are the
 // net under the split of those functions into phases. testdata/actions_rest.golden holds what each scenario
-// reads; run with UPDATE_GOLDEN=1 to write the file again, and read the diff.
+// of the writes reads; run with UPDATE_GOLDEN=1 to write the files again, and read the diff.
 
-const actionsRestGolden = "testdata/actions_rest.golden"
+const (
+	actionsRestGolden = "testdata/actions_rest.golden"
+	turnOptionsGolden = "testdata/turn_options.golden"
+)
 
-// actionsRestScenario is one scenario of the golden: run plays it on a fight of its own and reads the outcome.
-type actionsRestScenario struct {
-	name string
-	run  func(t *testing.T) string
-}
-
+// goldenScenario is one scenario of the golden: run plays it on a fight of its own and reads the outcome.
 // actionsRestWorld starts a fight and hands back the campaign and the combat.
 type actionsRestWorld func(t *testing.T) (*armed, *playv1.Encounter)
 
@@ -55,11 +54,13 @@ func (a *armed) actionsRestReport(t *testing.T, after int, head ...string) strin
 		{"window", `SELECT kind, status, COALESCE(closed_reason, '-'), step, trigger::TEXT, COALESCE(outcome::TEXT, '-') FROM reaction_windows`},
 		{"hold", `SELECT kind, state, data::TEXT FROM reaction_holds`},
 	}
+	var state []string
 	for _, tb := range tables {
 		for _, r := range a.rowsOf(t, tb.query) {
-			lines = append(lines, tb.tag+" "+r)
+			state = append(state, tb.tag+" "+r)
 		}
 	}
+	lines = append(lines, a.printedState(t, strings.HasPrefix(head[0], "refused ") || strings.HasPrefix(head[0], "options"), state)...)
 	out := strings.Join(lines, "\n")
 	return uuidPattern.ReplaceAllStringFunc(out, func(id string) string {
 		if l, ok := names[id]; ok {
@@ -150,8 +151,8 @@ type actionsRestSettle struct {
 	discardEdit func(*playv1.DiscardPendingDamageRequest)
 }
 
-func (c actionsRestSettle) scenario() actionsRestScenario {
-	return actionsRestScenario{name: c.name, run: func(t *testing.T) string {
+func (c actionsRestSettle) scenario() goldenScenario {
+	return goldenScenario{name: c.name, run: func(t *testing.T) string {
 		t.Helper()
 		hit := c.hit
 		if hit == nil {
@@ -173,7 +174,7 @@ func (c actionsRestSettle) scenario() actionsRestScenario {
 		if as == nil {
 			as = asMaster
 		}
-		before := a.afterSetup(t)
+		before := a.markCall(t)
 		names := labelsOf(e)
 		if c.discard {
 			res, err := a.actionsRestDiscard(t, as(a), e, id, c.discardEdit)
@@ -263,35 +264,21 @@ func actionsRestSettled(apply bool) func(t *testing.T, a *armed, e *playv1.Encou
 }
 
 // actionsRestSettleRefusals are the refusals of the two calls that settle a hit.
-func actionsRestSettleRefusals() []actionsRestScenario {
+func actionsRestSettleRefusals() []goldenScenario {
 	stranger := func(a *armed) *user { return a.h.newUser("Zé") }
-	missing := "00000000-0000-4000-8000-000000000001"
 	cases := []actionsRestSettle{
-		{name: "apply refused an idempotency key that is not a UUID", edit: func(r *playv1.ApplyPendingDamageRequest) { r.IdempotencyKey = "not-a-key" }},
-		{name: "apply refused an encounter that is not a UUID", edit: func(r *playv1.ApplyPendingDamageRequest) { r.EncounterId = "nope" }},
-		{name: "apply refused a pending damage that is not a UUID", edit: func(r *playv1.ApplyPendingDamageRequest) { r.PendingDamageId = "nope" }},
-		{name: "apply refused a campaign that is not a UUID", edit: func(r *playv1.ApplyPendingDamageRequest) { r.CampaignId = "nope" }},
-		{name: "apply refused a negative amount", edit: actionsRestAmount(-1)},
-		{name: "apply refused an amount over the limit", edit: actionsRestAmount(10000)},
 		{name: "apply accepted the largest amount", edit: actionsRestAmount(9999)},
-		{name: "apply refused 21 sources to ignore", edit: actionsRestIgnoring(strings.Split(strings.Repeat("feature:rage,", 21), ",")[:21]...)},
 		{name: "apply refused the player of the target", as: asToren},
 		{name: "apply refused another player", as: asDamageAna},
 		{name: "apply refused a user who is not in the campaign", as: stranger},
-		{name: "apply refused a pending damage nobody knows", edit: func(r *playv1.ApplyPendingDamageRequest) { r.PendingDamageId = missing }},
-		{name: "apply refused an encounter nobody knows", edit: func(r *playv1.ApplyPendingDamageRequest) { r.EncounterId = "00000000-0000-4000-8000-000000000002" }},
 		{name: "apply refused a combat that ended", prep: actionsRestEnded},
 		{name: "apply refused a damage that was not rolled", unrolled: true},
 		{name: "apply refused a damage that waits for a reaction", prep: actionsRestSQL(`UPDATE pending_damages SET status = 'awaiting_reaction' WHERE id = $1`)},
 		{name: "apply refused a damage applied already", prep: actionsRestSettled(true)},
 		{name: "apply refused a damage discarded already", prep: actionsRestSettled(false)},
 		{name: "apply refused a damage rolled for an NPC", hit: actionsRestHitOnGoblin, unrolled: true, prep: actionsRestSQL(`UPDATE pending_damages SET status = 'rolled', amount = 3 WHERE id = $1`)},
-		{name: "discard refused an idempotency key that is not a UUID", discard: true, discardEdit: func(r *playv1.DiscardPendingDamageRequest) { r.IdempotencyKey = "not-a-key" }},
-		{name: "discard refused an encounter that is not a UUID", discard: true, discardEdit: func(r *playv1.DiscardPendingDamageRequest) { r.EncounterId = "nope" }},
-		{name: "discard refused a pending damage that is not a UUID", discard: true, discardEdit: func(r *playv1.DiscardPendingDamageRequest) { r.PendingDamageId = "nope" }},
 		{name: "discard refused the player of the target", discard: true, as: asToren},
 		{name: "discard refused a user who is not in the campaign", discard: true, as: stranger},
-		{name: "discard refused a pending damage nobody knows", discard: true, discardEdit: func(r *playv1.DiscardPendingDamageRequest) { r.PendingDamageId = missing }},
 		{name: "discard refused a combat that ended", discard: true, prep: actionsRestEnded},
 		{name: "discard refused a damage applied already", discard: true, prep: actionsRestSettled(true)},
 		{name: "discard refused a damage discarded already", discard: true, prep: actionsRestSettled(false)},
@@ -299,8 +286,8 @@ func actionsRestSettleRefusals() []actionsRestScenario {
 	return actionsRestSettleScenarios(cases)
 }
 
-func actionsRestSettleScenarios(cases []actionsRestSettle) []actionsRestScenario {
-	out := make([]actionsRestScenario, 0, len(cases))
+func actionsRestSettleScenarios(cases []actionsRestSettle) []goldenScenario {
+	out := make([]goldenScenario, 0, len(cases))
 	for _, c := range cases {
 		out = append(out, c.scenario())
 	}

@@ -16,7 +16,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
-// "Pôr no combate" (MR-042, RN-29; Etapa 10, slice 10.9b): monsters of an SRD
+// "Pôr no combate" (MR-042, RN-29): monsters of an SRD
 // creature join a combat as NPC combatants. These tests need the database
 // (MEURPG_TEST_DATABASE_URL). The creature is the Bandido (monster:bandit): CA 12,
 // 11 PV (2d8+2), Destreza 12 (+1), ND 1/8 (25 XP), a cimitarra at +3 for 1d6+1.

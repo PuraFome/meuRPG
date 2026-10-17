@@ -25,7 +25,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/encounter"
 )
 
-// The encounter builder (MR-043, RN-29; Etapa 10, slice 10.9c): the master measures a set of
+// The encounter builder (MR-043, RN-29): the master measures a set of
 // SRD creatures against the party, has one drawn from a seed, swaps a creature for another of
 // the same XP, and keeps an encounter on a battle point of a map. The arithmetic is
 // rules/encounter; the XP table is the SRD 5.2.1's "XP Budget per Character". Everything is

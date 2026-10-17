@@ -20,7 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// Opportunity attacks (MR-034, RN-21, question 69; Etapa 9, slice 9.6b). A move
+// Opportunity attacks (MR-034, RN-21, question 69). A move
 // on foot that leaves the reach of a hostile combatant lands at once, and that
 // combatant is offered one attack at the mover (an opportunity_offers row): its
 // controller attacks or declines, or the master skips it (the player is
@@ -182,9 +182,9 @@ func (s *Service) mustNotWaitForOffers(ctx context.Context, c *combatTx, who pla
 		}
 		return nil
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	for _, o := range offers {
 		mover, ok := combatantByID(cs, o.MoverID)
@@ -215,14 +215,11 @@ func (s *Service) pruneOffers(ctx context.Context, c *combatTx) error {
 		}
 		return nil
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
-	byID := make(map[string]playdb.Combatant, len(cs))
-	for _, m := range cs {
-		byID[m.ID] = m
-	}
+	byID := combatantsByID(cs)
 	for _, o := range pending {
 		dead, err := s.nobodyCanAnswer(ctx, c, byID, o)
 		if err != nil {
@@ -332,9 +329,9 @@ func (s *Service) returnToReach(ctx context.Context, c *combatTx, pendingID stri
 	if o.MoverID != mover.ID || !placed(mover) || o.LeftCol == nil || o.LeftRow == nil { // no square: an offer made by hand
 		return nil, false, nil
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, false, fmt.Errorf("list the combatants: %w", err)
+		return nil, false, err
 	}
 	if slices.ContainsFunc(cs, func(m playdb.Combatant) bool {
 		return m.ID != mover.ID && !m.Defeated && placed(m) && *m.GridCol == *o.LeftCol && *m.GridRow == *o.LeftRow

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"os"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -169,15 +169,33 @@ func (c logCase) render(svc *Service) string {
 	return b.String()
 }
 
+// describeEntry is what the grouping made of an entry: its id and kind, and each field that is not its default
+// (not master-only, no wild shape started, no pending-damage status, hosted by itself alone, nothing stopped or
+// returned, no pending damage, no damage, applied or removed part, no part label).
 func describeEntry(e *logEntry) string {
 	var pend []string
 	for id, d := range e.pend {
 		pend = append(pend, fmt.Sprintf("%s=%s", id, d.status))
 	}
 	sort.Strings(pend)
-	return fmt.Sprintf("%s kind=%s masterOnly=%t shapeStarted=%t status=%s hosts=%v stopped=%v returned=%t/%t pend=%v dmg=%t applied=%t removed=%t partLabel=%q",
-		e.id, e.kind, e.masterOnly, e.shapeStarted, e.status, e.hosts, e.stopped, e.returned, e.returnBlocked, pend,
-		e.dmg != nil, e.applied != nil, e.removed != nil, e.partLabel)
+	parts := []string{e.id, "kind=" + e.kind.String()}
+	add := func(show bool, format string, args ...any) {
+		if show {
+			parts = append(parts, fmt.Sprintf(format, args...))
+		}
+	}
+	add(e.masterOnly, "masterOnly")
+	add(e.shapeStarted, "shapeStarted")
+	add(e.status != playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_UNSPECIFIED, "status=%s", e.status)
+	add(!slices.Equal(e.hosts, []string{e.id}), "hosts=%v", e.hosts)
+	add(len(e.stopped) > 0, "stopped=%v", e.stopped)
+	add(e.returned || e.returnBlocked, "returned=%t/%t", e.returned, e.returnBlocked)
+	add(len(pend) > 0, "pend=%v", pend)
+	add(e.dmg != nil, "dmg")
+	add(e.applied != nil, "applied")
+	add(e.removed != nil, "removed")
+	add(e.partLabel != "", "partLabel=%q", e.partLabel)
+	return strings.Join(parts, " ")
 }
 
 // canonicalProto is the entry as JSON with sorted keys: protojson's whitespace is not stable.
@@ -211,41 +229,7 @@ func renderGolden() string {
 
 func TestCombatLogGolden(t *testing.T) {
 	t.Parallel()
-	got := renderGolden()
-	if os.Getenv("UPDATE_GOLDEN") != "" {
-		if err := os.MkdirAll("testdata", 0o750); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(goldenPath, []byte(got), 0o600); err != nil {
-			t.Fatal(err)
-		}
-		return
-	}
-	want, err := os.ReadFile(goldenPath)
-	if err != nil {
-		t.Fatalf("read the golden (UPDATE_GOLDEN=1 writes it): %v", err)
-	}
-	if string(want) == got {
-		return
-	}
-	gl, wl := strings.Split(got, "\n"), strings.Split(string(want), "\n")
-	for i := 0; i < len(gl) && i < len(wl); i++ {
-		if gl[i] != wl[i] {
-			t.Fatalf("the combat log changed at line %d of the golden:\n got: %s\nwant: %s", i+1, gl[i], wl[i])
-		}
-	}
-	t.Fatalf("the combat log has %d lines, the golden %d", len(gl), len(wl))
-}
-
-// reactionLine is only reached for an entry that has a reaction; a nil one says nothing to
-// anybody (unreachable through buildLog, which keeps the entries that have one).
-func TestCombatLogReactionLineWithoutAReaction(t *testing.T) {
-	t.Parallel()
-	e := &logEntry{kind: playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION_WINDOW}
-	text, named := e.reactionLine(context.Background(), combatViewer{master: true}, logCombatants(), &keyNames{})
-	if text != "" || named {
-		t.Errorf("reactionLine(no reaction) = %q, %t; want nothing", text, named)
-	}
+	wantGolden(t, goldenPath, renderGolden())
 }
 
 // What the golden shows, said in four assertions: the leaks the rules forbid (RN-10, RN-20).

@@ -57,7 +57,7 @@ func takeActionConcentrating(t *testing.T, a *armed, _ *playv1.Encounter) {
 }
 
 // takeActionSecondWinds are the fighter's Second Wind and Action Surge.
-func takeActionSecondWinds() []takeActionScenario {
+func takeActionSecondWinds() []goldenScenario {
 	hurt := takeActionHeroHP("Toren", 8)
 	cases := []takeActionCase{
 		{name: "Second Wind rolled in the app", key: "feature:second-wind", edit: takeActionInApp, prep: takeActionSteps(hurt, takeActionDice(6))},
@@ -97,7 +97,7 @@ func takeActionSecondWinds() []takeActionScenario {
 		{name: "Action Surge in the next turn with two uses", key: "feature:action-surge-1-use", fight: takeActionFightOf(takeActionFighter17, takeActionFighter2, false), prep: takeActionSteps(takeActionFirst("Toren", "feature:action-surge-1-use", nil), takeActionPass("Pensantus"), takeActionPass("Toren"))},
 		{name: "Action Surge with the extra action", key: "feature:action-surge-1-use", edit: takeActionExtra},
 	}
-	out := make([]takeActionScenario, 0, len(cases))
+	out := make([]goldenScenario, 0, len(cases))
 	for _, c := range cases {
 		out = append(out, c.scenario())
 	}
@@ -105,7 +105,7 @@ func takeActionSecondWinds() []takeActionScenario {
 }
 
 // takeActionRogueAndMonk are the bonus-action features of the rogue and the monk.
-func takeActionRogueAndMonk() []takeActionScenario {
+func takeActionRogueAndMonk() []goldenScenario {
 	rogue := takeActionFightOf(takeActionRogue3, takeActionFighter2, false)
 	rogueTheatre := takeActionFightOf(takeActionRogue3, takeActionFighter2, true)
 	monk := takeActionFightOf(takeActionMonk4, takeActionFighter2, false)
@@ -155,7 +155,7 @@ func takeActionRogueAndMonk() []takeActionScenario {
 		{name: "Slow Fall by a surprised monk", key: "feature:slow-fall", who: "Brisa", fight: takeActionFightWith(takeActionFighter2, takeActionMonk4, takeActionStart{surprised: "Brisa"})},
 		{name: "Slow Fall by a monk in a combat that did not begin", key: "feature:slow-fall", who: "Brisa", fight: takeActionFightWith(takeActionFighter2, takeActionMonk4, takeActionStart{setup: true})},
 	}
-	out := make([]takeActionScenario, 0, len(cases))
+	out := make([]goldenScenario, 0, len(cases))
 	for _, c := range cases {
 		out = append(out, c.scenario())
 	}
@@ -169,7 +169,7 @@ func takeActionMonkStrike(t *testing.T, a *armed, e *playv1.Encounter) {
 }
 
 // takeActionBarbarians are Rage and Reckless Attack.
-func takeActionBarbarians() []takeActionScenario {
+func takeActionBarbarians() []goldenScenario {
 	barb := takeActionFightOf(takeActionBarb3, takeActionFighter2, false)
 	barbTheatre := takeActionFightOf(takeActionBarb3, takeActionFighter2, true)
 	berserk := takeActionFightOf(takeActionBerserk3, takeActionFighter2, false)
@@ -197,7 +197,7 @@ func takeActionBarbarians() []takeActionScenario {
 		{name: "Reckless Attack twice", key: "feature:reckless-attack", fight: barb, prep: takeActionFirst("Toren", "feature:reckless-attack", nil)},
 		{name: "Reckless Attack after Rage", key: "feature:reckless-attack", fight: barb, prep: takeActionFirst("Toren", "feature:rage", nil)},
 	}
-	out := make([]takeActionScenario, 0, len(cases))
+	out := make([]goldenScenario, 0, len(cases))
 	for _, c := range cases {
 		out = append(out, c.scenario())
 	}
@@ -211,7 +211,7 @@ func takeActionBarbarianAttack(t *testing.T, a *armed, e *playv1.Encounter) {
 }
 
 // takeActionOtherClasses are the flows other classes have and the features of a race.
-func takeActionOtherClasses() []takeActionScenario {
+func takeActionOtherClasses() []goldenScenario {
 	druid := takeActionFightOf(takeActionDruid2, takeActionFighter2, false)
 	paladin := takeActionFightOf(takeActionPaladin2, takeActionFighter2, false)
 	bard := takeActionFightOf(takeActionBard2, takeActionFighter2, false)
@@ -225,7 +225,7 @@ func takeActionOtherClasses() []takeActionScenario {
 		{name: "a paladin's Divine Sense twice", key: "feature:divine-sense", fight: paladin, prep: takeActionFirst("Toren", "feature:divine-sense", nil)},
 		{name: "a bard's Bardic Inspiration key on a fighter's sheet", key: "feature:bardic-inspiration-d6"},
 	}
-	out := make([]takeActionScenario, 0, len(cases))
+	out := make([]goldenScenario, 0, len(cases))
 	for _, c := range cases {
 		out = append(out, c.scenario())
 	}
@@ -233,8 +233,8 @@ func takeActionOtherClasses() []takeActionScenario {
 }
 
 // takeActionNimble are the actions of a race trait: the goblin's Fuga Ágil.
-func takeActionNimble() []takeActionScenario {
-	nimble := func(suffix string, master, twice bool) takeActionScenario {
+func takeActionNimble() []goldenScenario {
+	nimble := func(suffix string, master, twice bool) goldenScenario {
 		name := "Nimble Escape " + suffix
 		if master {
 			name += " as the master"
@@ -242,7 +242,7 @@ func takeActionNimble() []takeActionScenario {
 		if twice {
 			name += " twice"
 		}
-		return takeActionScenario{name: name, run: func(t *testing.T) string {
+		return goldenScenario{name: name, run: func(t *testing.T) string {
 			t.Helper()
 			a, e := nimbleGoblin(t)
 			var key string
@@ -263,12 +263,12 @@ func takeActionNimble() []takeActionScenario {
 			if master {
 				u = a.master
 			}
-			before := a.events(t)
+			before := a.markCall(t)
 			res, err := a.takeActionRaw(t, u, e, "Ragna", key, nil)
 			return a.takeActionReport(t, e, before, res, err)
 		}}
 	}
-	return []takeActionScenario{
+	return []goldenScenario{
 		nimble(":disengage", false, false),
 		nimble(":hide", false, false),
 		nimble(":disengage", true, false),
@@ -278,8 +278,8 @@ func takeActionNimble() []takeActionScenario {
 }
 
 // takeActionFeatureScenarios are the scenarios of the feature actions of the classes and the races.
-func takeActionFeatureScenarios() []takeActionScenario {
-	var all []takeActionScenario
+func takeActionFeatureScenarios() []goldenScenario {
+	var all []goldenScenario
 	all = append(all, takeActionSecondWinds()...)
 	all = append(all, takeActionRogueAndMonk()...)
 	all = append(all, takeActionBarbarians()...)
@@ -290,13 +290,13 @@ func takeActionFeatureScenarios() []takeActionScenario {
 
 // takeActionWorldScenarios are the scenarios that need more of the world than a fight: a window of reaction
 // that holds the turn, an opportunity attack that waits, a fall that waits for a monk's reaction.
-func takeActionWorldScenarios() []takeActionScenario {
-	return []takeActionScenario{
+func takeActionWorldScenarios() []goldenScenario {
+	return []goldenScenario{
 		takeActionOnce("refused while an NPC may react to the player's attack", func(t *testing.T) (*armed, *playv1.Encounter, int, *playv1.TakeActionResponse, error) {
 			t.Helper()
 			a, e := mageFight(t)
 			a.mustAttack(t, a.caio, e, "Toren", battleaxe, "Mago", d20(9))
-			before := a.events(t)
+			before := a.markCall(t)
 			res, err := a.takeActionRaw(t, a.caio, e, "Toren", "standard:dodge", nil)
 			return a, e, before, res, err
 		}),
@@ -304,7 +304,7 @@ func takeActionWorldScenarios() []takeActionScenario {
 			t.Helper()
 			a, e := mageFight(t)
 			a.mustAttack(t, a.caio, e, "Toren", battleaxe, "Mago", d20(9))
-			before := a.events(t)
+			before := a.markCall(t)
 			res, err := a.takeActionRaw(t, a.master, e, "Toren", "standard:dodge", nil)
 			return a, e, before, res, err
 		}),
@@ -313,7 +313,7 @@ func takeActionWorldScenarios() []takeActionScenario {
 			c := newCave(t)
 			e := c.oppFight(t)
 			c.leaveGoblin(t)
-			before := c.events(t)
+			before := c.markCall(t)
 			res, err := c.takeActionRaw(t, c.caio, e, "Toren", "standard:dodge", nil)
 			return c.armed, e, before, res, err
 		}),
@@ -322,14 +322,14 @@ func takeActionWorldScenarios() []takeActionScenario {
 			c := newCave(t)
 			e := c.oppFight(t)
 			c.leaveGoblin(t)
-			before := c.events(t)
+			before := c.markCall(t)
 			res, err := c.takeActionRaw(t, c.master, e, "Toren", "standard:dodge", nil)
 			return c.armed, e, before, res, err
 		}),
 		takeActionOnce("Slow Fall on a fall that waits", func(t *testing.T) (*armed, *playv1.Encounter, int, *playv1.TakeActionResponse, error) {
 			t.Helper()
 			r, e := monkFall(t)
-			before := r.events(t)
+			before := r.markCall(t)
 			res, err := r.takeActionRaw(t, r.caio, e, "Toren", "feature:slow-fall", nil)
 			return r.armed, e, before, res, err
 		}),
@@ -339,7 +339,7 @@ func takeActionWorldScenarios() []takeActionScenario {
 			if _, err := r.takeActionRaw(t, r.caio, e, "Toren", "feature:slow-fall", nil); err != nil {
 				t.Fatalf("TakeAction(Slow Fall) error = %v", err)
 			}
-			before := r.events(t)
+			before := r.markCall(t)
 			res, err := r.takeActionRaw(t, r.caio, e, "Toren", "feature:slow-fall", nil)
 			return r.armed, e, before, res, err
 		}),
@@ -349,7 +349,7 @@ func takeActionWorldScenarios() []takeActionScenario {
 			if _, err := r.takeActionRaw(t, r.caio, e, "Toren", "feature:slow-fall", nil); err != nil {
 				t.Fatalf("TakeAction(Slow Fall) error = %v", err)
 			}
-			before := r.events(t)
+			before := r.markCall(t)
 			res, err := r.takeActionRaw(t, r.master, e, "Toren", "feature:slow-fall", nil)
 			return r.armed, e, before, res, err
 		}),
@@ -357,7 +357,7 @@ func takeActionWorldScenarios() []takeActionScenario {
 			t.Helper()
 			a, e := takeActionFighters(t)
 			takeActionEnd(t, a, e)
-			before := a.events(t)
+			before := a.markCall(t)
 			res, err := a.takeActionRaw(t, a.caio, e, "Toren", "standard:dodge", nil)
 			return a, e, before, res, err
 		}),
@@ -365,7 +365,7 @@ func takeActionWorldScenarios() []takeActionScenario {
 			t.Helper()
 			a, e := takeActionFightOf(takeActionFighter2, takeActionMonk4, false)(t)
 			takeActionEnd(t, a, e)
-			before := a.events(t)
+			before := a.markCall(t)
 			res, err := a.takeActionRaw(t, a.bia, e, "Brisa", "feature:slow-fall", nil)
 			return a, e, before, res, err
 		}),
@@ -373,14 +373,14 @@ func takeActionWorldScenarios() []takeActionScenario {
 			t.Helper()
 			a, e := takeActionFightOf(takeActionFighter2, takeActionMonk4, false)(t)
 			a.execSQL(t, `UPDATE combatants SET defeated = true WHERE label = 'Brisa'`)
-			before := a.events(t)
+			before := a.markCall(t)
 			res, err := a.takeActionRaw(t, a.bia, e, "Brisa", "feature:slow-fall", nil)
 			return a, e, before, res, err
 		}),
 		takeActionOnce("a Dodge while a fall waits for the monk's reaction", func(t *testing.T) (*armed, *playv1.Encounter, int, *playv1.TakeActionResponse, error) {
 			t.Helper()
 			r, e := monkFall(t)
-			before := r.events(t)
+			before := r.markCall(t)
 			res, err := r.takeActionRaw(t, r.caio, e, "Toren", "standard:dodge", nil)
 			return r.armed, e, before, res, err
 		}),

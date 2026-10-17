@@ -45,11 +45,7 @@ func (s *Service) reviveCombatant(ctx context.Context, c *combatTx, who playdb.C
 			return fmt.Errorf("give the creature its hit point: %w", err)
 		}
 	}
-	var err error
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return fmt.Errorf("touch the encounter: %w", err)
-	}
-	return nil
+	return touch(ctx, c)
 }
 
 // ReviveInCombat implements characters.ReviewHost: the character's combatant in the campaign's

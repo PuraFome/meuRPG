@@ -20,7 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/puzzle"
 )
 
-// More puzzles (MR-038, RN-27, RN-10, RN-18, Etapa 10, slice 10.7b): the riddle, the
+// More puzzles (MR-038, RN-27, RN-10, RN-18): the riddle, the
 // sequence and the cipher; the hints won by a skill check; the split information; and the
 // consequences of a wrong move ("Ao errar"). They use the fixture of puzzles_test.go:
 // Toren's player is caio, Pensantus's ana and Brisa's bia. Every answer a player gets is

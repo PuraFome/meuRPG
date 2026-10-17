@@ -3,10 +3,8 @@ package play
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
-	"sync"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -24,74 +22,6 @@ import (
 // UPDATE_GOLDEN=1 to write the file again, and read the diff.
 
 const rollAttackGolden = "testdata/roll_attack.golden"
-
-// goldenBlocks collects what the scenarios of a test read, by name.
-type goldenBlocks struct {
-	mu     sync.Mutex
-	blocks map[string]string
-}
-
-func (g *goldenBlocks) put(name, text string) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	if g.blocks == nil {
-		g.blocks = map[string]string{}
-	}
-	g.blocks[name] = text
-}
-
-// settle compares the blocks with the golden file, or writes it when UPDATE_GOLDEN is set.
-func (g *goldenBlocks) settle(t *testing.T, path string) {
-	t.Helper()
-	names := make([]string, 0, len(g.blocks))
-	for n := range g.blocks {
-		names = append(names, n)
-	}
-	sort.Strings(names)
-	var sb strings.Builder
-	for _, n := range names {
-		sb.WriteString("== " + n + " ==\n" + g.blocks[n] + "\n")
-	}
-	if os.Getenv("UPDATE_GOLDEN") != "" {
-		if err := os.WriteFile(path, []byte(sb.String()), 0o600); err != nil {
-			t.Fatalf("write %s: %v", path, err)
-		}
-		return
-	}
-	want, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("read %s: %v (run with UPDATE_GOLDEN=1)", path, err)
-	}
-	if string(want) == sb.String() {
-		return
-	}
-	wantBlocks := map[string]string{}
-	for _, part := range strings.Split(string(want), "== ")[1:] {
-		head, body, _ := strings.Cut(part, " ==\n")
-		wantBlocks[head] = strings.TrimSuffix(body, "\n")
-	}
-	for _, n := range names {
-		if w, ok := wantBlocks[n]; !ok {
-			t.Errorf("scenario %q is not in %s", n, path)
-		} else if w != g.blocks[n] {
-			t.Errorf("scenario %q reads:\n%s\nwant:\n%s", n, g.blocks[n], w)
-		}
-	}
-	for n := range wantBlocks {
-		if _, ok := g.blocks[n]; !ok {
-			t.Errorf("scenario %q of %s did not run", n, path)
-		}
-	}
-}
-
-// labelsOf names the combatants of the combat by id.
-func labelsOf(e *playv1.Encounter) map[string]string {
-	names := map[string]string{}
-	for _, c := range e.GetCombatants() {
-		names[c.GetId()] = c.GetLabel()
-	}
-	return names
-}
 
 // jsonOfMessage is a message as sorted JSON, with the ids replaced by labels.
 func jsonOfMessage(m proto.Message, names map[string]string, skip ...string) string {
@@ -159,12 +89,14 @@ func (a *armed) attackReport(t *testing.T, e *playv1.Encounter, after int, res *
 	for _, l := range a.eventTrace(t, e, after) {
 		lines = append(lines, "event "+l)
 	}
+	var state []string
 	for _, r := range a.rowsOf(t, `SELECT label, action_used, bonus_action_used, reaction_used, attacks_made, COALESCE(action_attack_key, '-'), hidden FROM combatants ORDER BY label`) {
-		lines = append(lines, "combatant "+r)
+		state = append(state, "combatant "+r)
 	}
 	for _, r := range a.rowsOf(t, `SELECT attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, COALESCE(attack_total, 0), COALESCE(attack_armor_class, 0) FROM pending_damages`) {
-		lines = append(lines, "damage "+r)
+		state = append(state, "damage "+r)
 	}
+	lines = append(lines, a.printedState(t, err != nil, state)...)
 	return strings.Join(lines, "\n")
 }
 
@@ -183,43 +115,16 @@ func (a *armed) rawAttack(t *testing.T, u *user, e *playv1.Encounter, edit func(
 	return res.Msg, nil
 }
 
-type attackScenario struct {
-	name string
-	run  func(t *testing.T) string
-}
-
-// afterSetup is the number of events a fight has written before the first attack.
-func (a *armed) afterSetup(t *testing.T) int {
-	t.Helper()
-	var n int
-	if err := a.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM session_events`).Scan(&n); err != nil {
-		t.Fatalf("count the events: %v", err)
-	}
-	return n
-}
-
-// attackRefusal is a scenario that edits Toren's attack on the goblin and reads the refusal and what stayed.
-func attackRefusal(name string, as func(a *armed) *user, edit func(*playv1.RollAttackRequest)) attackScenario {
-	return attackScenario{name: "refused " + name, run: func(t *testing.T) string {
-		t.Helper()
-		a := newArmed(t)
-		e := a.threeAndAGoblin(t)
-		before := a.afterSetup(t)
-		res, err := a.rawAttack(t, as(a), e, edit)
-		return a.attackReport(t, e, before, res, err)
-	}}
-}
-
 func asToren(a *armed) *user  { return a.caio }
 func asMaster(a *armed) *user { return a.master }
 
 // attackThrough is a scenario of an attack that goes through, on the usual fight: as plays it with edit.
-func attackThrough(name string, as func(a *armed) *user, edit func(*playv1.RollAttackRequest)) attackScenario {
-	return attackScenario{name: name, run: func(t *testing.T) string {
+func attackThrough(name string, as func(a *armed) *user, edit func(*playv1.RollAttackRequest)) goldenScenario {
+	return goldenScenario{name: name, run: func(t *testing.T) string {
 		t.Helper()
 		a := newArmed(t)
 		e := a.threeAndAGoblin(t)
-		before := a.afterSetup(t)
+		before := a.markCall(t)
 		res, err := a.rawAttack(t, as(a), e, edit)
 		return a.attackReport(t, e, before, res, err)
 	}}
@@ -231,8 +136,8 @@ func typedD20(face int32) func(*playv1.RollAttackRequest) {
 
 // attackOn is a scenario that plays its own fight: play returns the combat, what it wrote before the attack
 // and the attack's answer.
-func attackOn(name string, play func(t *testing.T) (*armed, *playv1.Encounter, int, *playv1.RollAttackResponse, error)) attackScenario {
-	return attackScenario{name: name, run: func(t *testing.T) string {
+func attackOn(name string, play func(t *testing.T) (*armed, *playv1.Encounter, int, *playv1.RollAttackResponse, error)) goldenScenario {
+	return goldenScenario{name: name, run: func(t *testing.T) string {
 		t.Helper()
 		a, e, before, res, err := play(t)
 		return a.attackReport(t, e, before, res, err)
@@ -240,14 +145,14 @@ func attackOn(name string, play func(t *testing.T) (*armed, *playv1.Encounter, i
 }
 
 // customAttacks are the scenarios that need more than the usual fight.
-func customAttacks() []attackScenario {
-	return []attackScenario{
+func customAttacks() []goldenScenario {
+	return []goldenScenario{
 		attackOn("an NPC attacks as the master", func(t *testing.T) (*armed, *playv1.Encounter, int, *playv1.RollAttackResponse, error) {
 			t.Helper()
 			a := newArmed(t)
 			e := a.threeAndAGoblin(t)
 			e = a.passTo(t, e, "Goblin")
-			before := a.afterSetup(t)
+			before := a.markCall(t)
 			res, err := a.attack(t, a.master, e, "Goblin", sword, "Toren", d20(14))
 			return a, e, before, res, err
 		}),
@@ -256,7 +161,7 @@ func customAttacks() []attackScenario {
 			a := newArmed(t)
 			e := a.threeAndAGoblin(t)
 			e = a.passTo(t, e, "Pensantus")
-			before := a.afterSetup(t)
+			before := a.markCall(t)
 			res, err := a.attack(t, a.ana, e, "Pensantus", fireBolt, "Goblin", func(r *playv1.RollAttackRequest) { r.Roll, r.D20Faces = nil, []int32{12, 7} })
 			return a, e, before, res, err
 		}),
@@ -265,7 +170,7 @@ func customAttacks() []attackScenario {
 			a := newArmed(t)
 			e := a.threeAndAGoblin(t)
 			e = a.passTo(t, e, "Pensantus")
-			before := a.afterSetup(t)
+			before := a.markCall(t)
 			res, err := a.attack(t, a.ana, e, "Pensantus", fireBolt, "Goblin", func(r *playv1.RollAttackRequest) {
 				r.Roll, r.UseExtraAction = &playv1.RollAttackRequest_D20Face{D20Face: 9}, true
 			})
@@ -275,7 +180,7 @@ func customAttacks() []attackScenario {
 			t.Helper()
 			a := newArmed(t)
 			e := a.threeAndAGoblin(t)
-			before := a.afterSetup(t)
+			before := a.markCall(t)
 			res, err := a.attack(t, a.caio, e, "Toren", battleaxe, "Pensantus", d20(15))
 			return a, e, before, res, err
 		}),
@@ -289,7 +194,7 @@ func customAttacks() []attackScenario {
 				reveal:   []string{"Goblin"},
 				at:       map[string][2]int32{"Goblin": {4, 3}},
 			})
-			before := a.afterSetup(t)
+			before := a.markCall(t)
 			res, err := a.attack(t, a.caio, e, "Toren", battleaxe, "Goblin", d20(15))
 			return a, e, before, res, err
 		}),
@@ -303,7 +208,7 @@ func customAttacks() []attackScenario {
 				reveal:   []string{"Goblin"},
 				theatre:  true,
 			})
-			before := a.afterSetup(t)
+			before := a.markCall(t)
 			res, err := a.attack(t, a.caio, e, "Toren", battleaxe, "Goblin", d20(16))
 			return a, e, before, res, err
 		}),
@@ -312,7 +217,7 @@ func customAttacks() []attackScenario {
 			a := newArmed(t)
 			e := a.threeAndAGoblin(t)
 			a.mustAttack(t, a.caio, e, "Toren", battleaxe, "Goblin", d20(3))
-			before := a.afterSetup(t)
+			before := a.markCall(t)
 			res, err := a.attack(t, a.caio, e, "Toren", battleaxe, "Goblin", d20(15))
 			return a, e, before, res, err
 		}),
@@ -320,7 +225,7 @@ func customAttacks() []attackScenario {
 			t.Helper()
 			a := newArmed(t)
 			e := a.threeAndAGoblin(t)
-			before := a.afterSetup(t)
+			before := a.markCall(t)
 			res, err := a.attack(t, a.bia, e, "Brisa", rapier, "Goblin", d20(15))
 			return a, e, before, res, err
 		}),
@@ -333,7 +238,7 @@ func customAttacks() []attackScenario {
 			}); err != nil {
 				t.Fatalf("AdjustCombatantHitPoints() error = %v", err)
 			}
-			before := a.afterSetup(t)
+			before := a.markCall(t)
 			res, err := a.attack(t, a.caio, e, "Toren", battleaxe, "Goblin", d20(15))
 			return a, e, before, res, err
 		}),
@@ -341,33 +246,8 @@ func customAttacks() []attackScenario {
 }
 
 // attackScenarios are the scenarios of the golden, in the order they are listed.
-func attackScenarios() []attackScenario {
-	long := strings.Repeat("x", 101)
-	return append(customAttacks(), []attackScenario{
-		attackRefusal("an empty attack key", asToren, func(r *playv1.RollAttackRequest) { r.AttackKey = "" }),
-		attackRefusal("an attack key of 101 characters", asToren, func(r *playv1.RollAttackRequest) { r.AttackKey = long }),
-		attackRefusal("roll_in_app false", asToren, func(r *playv1.RollAttackRequest) {
-			r.Roll = &playv1.RollAttackRequest_RollInApp{RollInApp: false}
-		}),
-		attackRefusal("d20_face with d20_faces", asToren, func(r *playv1.RollAttackRequest) { r.D20Faces = []int32{4, 9} }),
-		attackRefusal("d20_face of 0", asToren, typedD20(0)),
-		attackRefusal("d20_face of 21", asToren, typedD20(21)),
-		attackRefusal("no roll at all", asToren, func(r *playv1.RollAttackRequest) { r.Roll = nil }),
-		attackRefusal("three typed faces", asToren, func(r *playv1.RollAttackRequest) { r.Roll, r.D20Faces = nil, []int32{4, 9, 12} }),
-		attackRefusal("a typed face out of range", asToren, func(r *playv1.RollAttackRequest) { r.Roll, r.D20Faces = nil, []int32{4, 22} }),
-		attackRefusal("a key that is not a UUID", asToren, func(r *playv1.RollAttackRequest) { r.IdempotencyKey = "not-a-key" }),
-		attackRefusal("an encounter that is not a UUID", asToren, func(r *playv1.RollAttackRequest) { r.EncounterId = "nope" }),
-		attackRefusal("an attacker that is not a UUID", asToren, func(r *playv1.RollAttackRequest) { r.AttackerId = "nope" }),
-		attackRefusal("a target that is not a UUID", asToren, func(r *playv1.RollAttackRequest) { r.TargetId = "nope" }),
-		attackRefusal("an offer that is not a UUID", asToren, func(r *playv1.RollAttackRequest) { r.OpportunityOfferId = "nope" }),
-		attackRefusal("an attack the attacker does not have", asToren, func(r *playv1.RollAttackRequest) { r.AttackKey = "equipment:longbow" }),
-		attackRefusal("the extra action for a weapon attack without Haste", asToren, func(r *playv1.RollAttackRequest) { r.UseExtraAction = true }),
-		attackRefusal("an offer that is not there", asToren, func(r *playv1.RollAttackRequest) {
-			r.OpportunityOfferId = "00000000-0000-4000-8000-000000000001"
-		}),
-		attackRefusal("a throw back with no window", asToren, func(r *playv1.RollAttackRequest) {
-			r.CatchWindowId = "00000000-0000-4000-8000-000000000002"
-		}),
+func attackScenarios() []goldenScenario {
+	return append(customAttacks(), []goldenScenario{
 		attackThrough("a hit", asToren, typedD20(15)),
 		attackThrough("a miss", asToren, typedD20(2)),
 		attackThrough("a natural 20", asToren, typedD20(20)),
@@ -385,18 +265,7 @@ func attackScenarios() []attackScenario {
 }
 
 // TestRollAttackIsFrozen runs every scenario on a fight of its own and compares what each reads with the golden.
-//
-//nolint:tparallel // the group waits for its parallel scenarios, so that the golden is settled after them.
 func TestRollAttackIsFrozen(t *testing.T) {
 	t.Parallel()
-	g := &goldenBlocks{}
-	t.Run("scenarios", func(t *testing.T) {
-		for _, sc := range attackScenarios() {
-			t.Run(sc.name, func(t *testing.T) {
-				t.Parallel()
-				g.put(sc.name, sc.run(t))
-			})
-		}
-	})
-	g.settle(t, rollAttackGolden)
+	runGolden(t, rollAttackGolden, attackScenarios())
 }

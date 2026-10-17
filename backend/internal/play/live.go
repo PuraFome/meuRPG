@@ -160,6 +160,20 @@ func openSessionWith(ctx context.Context, q *playdb.Queries, campaignID string) 
 	return session, nil
 }
 
+// lockOpenSessionOrNone locks the campaign's open session in the transaction of q, or
+// refuses with NO_OPEN_SESSION when the table has none. Puzzles answer that case with their own
+// reason (lockOpenSession).
+func lockOpenSessionOrNone(ctx context.Context, q *playdb.Queries, campaignID string) (playdb.GameSession, error) {
+	session, err := q.GetOpenGameSessionForUpdate(ctx, campaignID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return playdb.GameSession{}, errNoOpenSession()
+	}
+	if err != nil {
+		return playdb.GameSession{}, fmt.Errorf("lock the open session: %w", err)
+	}
+	return session, nil
+}
+
 // encounterInSessionWith finds an encounter of the open session, or the
 // "encounter not found" error. Like openSessionWith, for a read-only transaction.
 func encounterInSessionWith(ctx context.Context, q *playdb.Queries, sessionID, encounterID string) (playdb.Encounter, error) {
@@ -174,7 +188,7 @@ func encounterInSessionWith(ctx context.Context, q *playdb.Queries, sessionID, e
 }
 
 // readEncounter reads the open session, one of its encounters and the
-// encounter's combatants in one read-only transaction (audit D-03), so a combat
+// encounter's combatants in one read-only transaction, so a combat
 // the master changes while the request runs is seen whole or not at all: never
 // new combatants beside the old revision.
 func (s *Service) readEncounter(ctx context.Context, campaignID, encounterID string) (playdb.GameSession, *encounterData, error) {

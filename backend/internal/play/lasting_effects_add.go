@@ -81,13 +81,16 @@ func masterEffectOfCatalog(content *rules.Content, key string) (*rules.EffectDef
 }
 
 // chosenAudience is who reads the effect once the master has chosen: the choice when there is
-// one, else the effect's own. A value the server does not know reads as the empty audience.
+// one, else the effect's own. A value the server does not know is the master's alone.
 func chosenAudience(choice playv1.EffectAudience, own string) string {
 	if choice == playv1.EffectAudience_EFFECT_AUDIENCE_UNSPECIFIED {
 		return own
 	}
-	return map[playv1.EffectAudience]string{
-		playv1.EffectAudience_EFFECT_AUDIENCE_ALL:   rules.EffectVisibilityPublic,
-		playv1.EffectAudience_EFFECT_AUDIENCE_OWNER: rules.EffectVisibilityOwner,
-	}[choice]
+	switch choice {
+	case playv1.EffectAudience_EFFECT_AUDIENCE_ALL:
+		return rules.EffectVisibilityPublic
+	case playv1.EffectAudience_EFFECT_AUDIENCE_OWNER:
+		return rules.EffectVisibilityOwner
+	}
+	return audienceMaster
 }
