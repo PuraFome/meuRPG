@@ -250,7 +250,7 @@ describe('LiveSession', () => {
 
   let casting: FakeCastingClient;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     xpExperience.mockReset().mockResolvedValue(
       create(GetCampaignExperienceResponseSchema, {
         xpMode: XpMode.ENEMIES,
@@ -333,6 +333,8 @@ describe('LiveSession', () => {
         },
       ],
     });
+    // The page's dependencies include the lazy conversation panel, whose metadata resolves asynchronously.
+    await TestBed.compileComponents();
     source = TestBed.inject(LiveSessionSource) as unknown as FakeLiveSessionSource;
   });
 

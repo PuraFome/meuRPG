@@ -1,6 +1,5 @@
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { ConversationPanel } from './conversation/conversation-panel';
 import { SessionTabs } from './conversation/session-tabs';
 import { ClueNotice } from './clue-notice/clue-notice';
 import { FogMasterPanel } from './fog-tools/fog-master-panel';
@@ -48,7 +47,6 @@ export const LIVE_SESSION_IMPORTS = [
   MatButtonModule,
   MatIconModule,
   ClueNotice,
-  ConversationPanel,
   SessionTabs,
   FogMasterPanel,
   FogPlayerTools,

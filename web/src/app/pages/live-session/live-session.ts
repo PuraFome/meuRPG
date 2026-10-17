@@ -6,6 +6,7 @@ import type { VitalsVm } from '../../core/play/live-session.types';
 import { applyVitals } from '../../core/play/vitals';
 import { setPageSubject } from '../../core/title/page-title';
 import { PHONE_QUERY, mediaQuery } from '../../shared/map-view/media-query';
+import { ConversationPanel } from './conversation/conversation-panel';
 import { ConversationSlot } from './conversation/conversation-slot';
 import { pageVisible } from './conversation/page-visible';
 import { wireLiveSessionEffects } from './live-session-effects';
@@ -40,7 +41,9 @@ export { CALLING_NOTICE_MS };
  */
 @Component({
   selector: 'app-live-session',
-  imports: LIVE_SESSION_IMPORTS,
+  // The conversation panel is named here, not in the shared list, so the compiler can see that only the
+  // `@defer` block uses it and gives it a chunk of its own.
+  imports: [...LIVE_SESSION_IMPORTS, ConversationPanel],
   templateUrl: './live-session.html',
   styleUrl: './live-session.scss',
 })
