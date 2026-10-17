@@ -10,7 +10,13 @@ import {
   ResourceBlockedReason,
   ResourceBlockedSchema,
 } from '../../../gen/meurpg/play/v1/resources_pb';
-import { MASTER_WAIT_SECONDS, type HeldRollHost, HeldRollController } from './held-roll-controller';
+import {
+  MASTER_WAIT_SECONDS,
+  type HeldRollHost,
+  HeldRollController,
+  forgetAnsweredHere,
+  wasAnsweredHere,
+} from './held-roll-controller';
 import { HELD_ROLL_ANSWERED_TEXT, MASTER_TOO_EARLY_REASON } from './held-roll-errors';
 import type { HeldAnswer } from './held-roll-offer';
 import { askedAt, heldAnswer, heldDie, heldLucky } from './held-roll-testing';
@@ -249,6 +255,35 @@ describe('HeldRollController', () => {
       expect(master.waitSeconds(created)).toBe(0);
       master.ask(null);
       expect(master.waitSeconds(created)).toBe(0);
+    });
+  });
+
+  describe('the questions answered in this browser', () => {
+    beforeEach(() => forgetAnsweredHere());
+
+    it('remembers an answer from the moment it is sent, so a hint that comes first is not read as the master’s answer', async () => {
+      const held = build();
+      const question = heldLucky();
+      held.ask(question);
+      let seen = false;
+      reply = () => {
+        seen = wasAnsweredHere(question);
+        return Promise.resolve(heldAnswer());
+      };
+      await held.answer(rerollInApp);
+      expect(seen).toBe(true);
+      expect(wasAnsweredHere(question)).toBe(true);
+      // Another question of the same roll is another answer.
+      expect(wasAnsweredHere(heldDie())).toBe(false);
+    });
+
+    it('forgets an answer that did not get through', async () => {
+      const held = build();
+      const question = heldLucky();
+      held.ask(question);
+      reply = () => Promise.reject(failed(Code.Unavailable));
+      await held.answer(rerollInApp);
+      expect(wasAnsweredHere(question)).toBe(false);
     });
   });
 });

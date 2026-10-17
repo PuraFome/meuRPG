@@ -35,7 +35,7 @@ describe('BardicBlock', () => {
       Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
         b.textContent?.includes(name),
       );
-    return { api, el, button, settle };
+    return { api, el, button, settle, fixture };
   }
 
   it('shows nothing to a character with no die that is not a bard', async () => {
@@ -247,5 +247,22 @@ describe('BardicBlock', () => {
     expect(minutesText(1)).toBe('1 min');
     expect(minutesText(61)).toBe('2 min');
     expect(minutesText(600)).toBe('10 min');
+  });
+
+  it('tells the player the master answered when the question is gone on the next read and they did not answer it here', async () => {
+    const offer = {
+      holdId: 'h-gone',
+      sides: 8,
+      fromName: 'Orla',
+      d20: { faces: [4], countedIndex: 0, modifier: 1, total: 5 },
+    };
+    const { api, el, settle, fixture } = setup({ offers: [offer] });
+    await settle();
+    expect(el.textContent).toContain('Usar a Inspiração de Bardo (d8)?');
+    expect(el.textContent).not.toContain('O mestre respondeu por você.');
+    api.outsideInspiration.mockResolvedValue(create(GetOutsideInspirationResponseSchema, {}));
+    fixture.componentRef.setInput('tick', 1);
+    await settle();
+    expect(el.textContent).toContain('O mestre respondeu por você.');
   });
 });
