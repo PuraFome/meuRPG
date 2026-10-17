@@ -183,17 +183,34 @@ func (s *Service) rollerOf(ctx context.Context, m authz.Membership, h heldRoll) 
 	if h.Kind == heldWeaponAttack || h.UserID == "" || h.UserID == m.UserID {
 		return nil, nil
 	}
-	role := authz.RolePlayer
+	role, err := s.holdRollerRole(ctx, h)
+	if err != nil {
+		return nil, err
+	}
+	return &authz.Membership{CampaignID: h.CampaignID, UserID: h.UserID, Role: role}, nil
+}
+
+// holdRollerRole is the role of the user who rolled the hold: a player when they play the roll's combatant (or its
+// character), the master when they rolled for a player (E4-10) or for a combatant that no player plays.
+func (s *Service) holdRollerRole(ctx context.Context, h heldRoll) (authz.Role, error) {
 	if h.CombatantID != "" {
 		who, found, err := s.holdCombatant(ctx, h)
 		if err != nil {
-			return nil, err
+			return "", err
 		}
-		if found && who.UserID == nil {
-			role = authz.RoleMaster
+		if found && who.UserID != nil && *who.UserID == h.UserID {
+			return authz.RolePlayer, nil
 		}
+		return authz.RoleMaster, nil
 	}
-	return &authz.Membership{CampaignID: h.CampaignID, UserID: h.UserID, Role: role}, nil
+	cs, err := s.roster.CombatCharacters(ctx, nil, h.CampaignID, []string{h.CharacterID})
+	if err != nil {
+		return "", s.dbError(ctx, "find the character", err)
+	}
+	if len(cs) == 1 && cs[0].PlayerUserID == h.UserID {
+		return authz.RolePlayer, nil
+	}
+	return authz.RoleMaster, nil
 }
 
 // holdCombatant is the combatant a weapon attack's hold belongs to, read now.

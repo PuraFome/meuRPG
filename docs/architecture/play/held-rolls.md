@@ -109,6 +109,8 @@ It:
 
 **The player's first chance.** For `heldPlayerFirst` (10 seconds) after a question is asked, measured from the hold's `created_at` on the service clock, `playerFirst` refuses the master's answer with `failed_precondition` and `ResourceBlocked` `PLAYER_FIRST`, whose `wait_seconds` is the time left rounded up; it runs for every answer RPC, after the state of the roll is checked and before anything is rolled. It does not apply to the player's own answer, to the master's answer to a roll no user plays (an NPC's, a player who left: `rollerPlayer`), or to a repeated answer. The Lucky and die questions of one roll share the hold's time.
 
+**The master's own rolls (E4-10).** The master's roll for a player's character asks like the player's: `saveSpec` (an effect's or a concentration save), `spellMayAsk` (a spell attack) and `mayAskMember` (`RollForPlayer`, a group check) let the roll wait whenever a user plays the combatant or the character (`playedBy`); an NPC's, a creature's or an unplayed character's never waits. The hold names the master as its user, the player reads the question by owning the combatant or the character, and either may answer; the path runs again as the user who rolled (`holdRollerRole` says whether that was the player or the master), and `rerunGroupCheck` picks `RollForPlayer` for the master's group check, whose answer rides in the group check's arm of `AnswerHeldRollResponse`.
+
 When the owner and the master answer at once, the first answer wins; the other, whose write meets the first one's, is told the roll was answered already (`lostTheRace`), and the die is spent once.
 
 ## The wire
