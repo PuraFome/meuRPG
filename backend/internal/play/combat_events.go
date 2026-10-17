@@ -623,6 +623,9 @@ type actionEvent struct {
 	// marks of the attacker before the roll (an undo puts them back) and the steps
 	// that resistance took the damage through.
 	Parts []partRoll `json:"parts,omitempty"`
+	// PartsBefore is the list of parts the hit offered, which the roll rewrote with the choice
+	// made: the undo of the roll puts it back, so the damage is offered as it was.
+	PartsBefore json.RawMessage `json:"parts_before,omitempty"`
 	// ManeuverSpent are the resources the parts spent, one use each (a table maneuver); an undo gives them back.
 	ManeuverSpent []string    `json:"maneuver_spent,omitempty"`
 	OnceBefore    *onceMarks  `json:"once_before,omitempty"`

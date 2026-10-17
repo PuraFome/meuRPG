@@ -311,7 +311,26 @@ func (u *undoer) damageRolled(ctx context.Context, ev actionEvent) error {
 			return err
 		}
 	}
+	if err := u.partsOfferedBack(ctx, ev); err != nil {
+		return err
+	}
 	return u.partsSpentBack(ctx, ev)
+}
+
+// emptyJSONList is the value of the columns a roll leaves empty (part_rolls, steps).
+var emptyJSONList = []byte("[]")
+
+// partsOfferedBack puts back the list of parts the hit offered, which the roll rewrote with the
+// choice made (Divine Smite and its slot, a maneuver): the damage that waits to be rolled again is
+// offered as before. A roll that kept the list (no parts of its own) has nothing to put back.
+func (u *undoer) partsOfferedBack(ctx context.Context, ev actionEvent) error {
+	if len(ev.PartsBefore) == 0 || ev.Pending == "" {
+		return nil
+	}
+	if err := u.c.q.SetPendingDamageDetail(ctx, playdb.SetPendingDamageDetailParams{ID: ev.Pending, Parts: ev.PartsBefore, PartRolls: emptyJSONList, Steps: emptyJSONList}); err != nil {
+		return fmt.Errorf("put back the parts the hit offered: %w", err)
+	}
+	return nil
 }
 
 // hitRolledBack makes one pending damage wait for its roll again, and puts back the

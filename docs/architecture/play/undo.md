@@ -34,7 +34,7 @@ The undone line disappears from the log.
 - **The melee hit mark.** A melee weapon hit marks the turn on the attacker (`combatants.melee_hit_turn`, which the grapple maneuver needs), and the attack's event keeps the mark it replaced (`melee_hit`, `melee_hit_before`).
   The undo puts that one back: undoing the second hit of a turn leaves the first one's mark, undoing the only hit takes the maneuver away.
 - **The parts of a damage.** A roll that has no parts of its own leaves `pending_damages.parts` as the hit left it (`ClearPendingDamageRoll` gives back the empty list).
-  A roll with parts rewrites the list with the choice made (Divine Smite and its slot, the maneuver); its undo leaves that list, because an event holds no text.
+  A roll with parts rewrites the list with the choice made (Divine Smite and its slot, the maneuver) and keeps the list the hit offered in the event (`parts_before`); the undo writes it back, so the damage waits to be rolled again offered as it was, nothing chosen.
 - **The "ended" lines of the effects a change ended.** A change that ends lasting effects (the end of a concentration, the master's conditions taking off a condition an effect holds, a damage at 0 HP, a cast that replaces a concentration) writes each effect's `lasting_effect_ended` line before its own event.
   The event keeps the effects (`restore`) and the ids of those lines (`ended_lines`).
   The undo puts the effects back with their ids and clocks and lists the lines in `action_undone.undone_also`, so no log still says the effects ended, and the lines do not stop the chain.

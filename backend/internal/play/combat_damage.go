@@ -493,6 +493,9 @@ func (f *damageFlow) keepRoll(ctx context.Context, g playdb.PendingDamage, tgt p
 	if err := f.s.keepRollDetail(ctx, c, g, f.p, f.pr, steps, *hit); err != nil {
 		return err
 	}
+	if f.pr != nil && g.ID == f.p.ID && rewritesParts(f.p.Parts, f.pr.parts) {
+		f.out.made.PartsBefore = f.p.Parts // the roll rewrote the list: its undo puts this one back
+	}
 	if f.p.CastID == nil || !hit.Applied || g.Healing {
 		return nil
 	}
