@@ -24,7 +24,7 @@ How to run the same checks locally is in [CONTRIBUTING.md](../CONTRIBUTING.md); 
 | Job | Checks |
 | --- | --- |
 | `proto` | `buf lint`, `buf format`, `buf breaking` against `main`, and that `buf generate` and `make sqlc` leave the committed generated code unchanged |
-| `go (lint, vulncheck)` | `golangci-lint` as a ratchet, the [complexity limits](#complexity-limits) and `govulncheck` (version pinned). It runs no `go test`: `go-db` runs every package |
+| `go (lint, vulncheck)` | `golangci-lint` as a ratchet, the [complexity limits](#complexity-limits), the [`//nolint` cap](#the-nolint-cap) and `govulncheck` (version pinned). It runs no `go test`: `go-db` runs every package |
 | `go-db <group>` | `go test -race -covermode=atomic -coverpkg=./...` for one group of packages against its own in-memory CockroachDB (the image `COCKROACH_IMAGE`, pinned by digest, the same as `compose.yaml`), with `MEURPG_REQUIRE_DB=1`. Each package has a 25-minute `-timeout` inside the job's 30 |
 | `go (integration tests against CockroachDB)` | Waits for every group; the stable check for a branch protection rule |
 | `go (coverage)` | Merges the groups' profiles and enforces the [coverage floor](#coverage-floors) |
@@ -57,6 +57,15 @@ It needs `jq` and runs in seconds.
 - A function over a limit is split by what it does: a check, a read, a write, the reply. Freeze its behaviour first with a test that pins its answers, errors and writes (see [Testing](testing.md)), then split it.
 - A `//nolint` does not help: gocyclo and gocognit run outside golangci-lint.
 - The limits are the same as `gocyclo`, `gocognit` and `maintidx` in `backend/.golangci.yml`; change both together.
+
+### The `//nolint` cap
+
+A `//nolint` hides a finding, and `nolintlint` only makes each one name its linter and say why. `.github/scripts/nolint-cap.sh` counts them: every `//nolint` directive in the hand-written Go files of `backend/` (tests included; generated files and `testdata/` left out) may not pass the number in `.github/nolint-cap`, and the `go` job fails when it does.
+It needs only `grep`, and runs in a second.
+
+- A lower count always passes. The step then prints a notice; `.github/scripts/nolint-cap.sh --lower` writes the cap down to the count (it never raises it), so the number follows the work that removes suppressions.
+- To go up, edit `.github/nolint-cap` in the same PR and say in the description why the suppression cannot be avoided: the reviewer sees the number change. Fixing the finding is the default.
+- The count is the whole backend's, so lower the number in the PR that removes suppressions: otherwise the room they leave could be used by a new one.
 
 ### Coverage floors
 
