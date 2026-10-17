@@ -25,6 +25,9 @@
     "spell:sacred-flame": {
       "kind": "ignores_cover"
     },
+    "spell:acid-arrow": {
+      "kind": "half_on_miss"
+    },
     "spell:spare-the-dying": {
       "kind": "zero_hp_target"
     },

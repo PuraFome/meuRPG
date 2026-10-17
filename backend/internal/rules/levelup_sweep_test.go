@@ -62,7 +62,7 @@ func sweepBase(t *testing.T, c *Content, classKey, subKey string) Build {
 	class := c.c.classes[classKey]
 	b := Build{
 		BaseScores: map[Ability]int{STR: 15, DEX: 14, CON: 13, INT: 12, WIS: 10, CHA: 8},
-		Race:       "race:human", Background: "background:acolyte",
+		Race:       "race:human", Background: "background:acolyte", Languages: testLanguages,
 		Classes: []ClassLevel{{Class: classKey, Level: 1}},
 	}
 	if class.SubclassLevel == 1 {

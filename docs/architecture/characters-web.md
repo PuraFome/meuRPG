@@ -102,6 +102,9 @@ The screens of MR-025 and RN-23 use only the server of [Table content](character
   Each violation arrives at the field's exact path, all of an entry's at once.
 - **The drafts** (`spell-draft`, `feature-draft`, `effect-draft`, `feat-draft`, `class-draft`): the form as plain values, with distances in metres (5 ft = 1.5 m; `rangeFeet` and `rangeMeters` are the only arithmetic) and the conversion to the request body.
   The body carries only what the choice uses: a spell's mechanics (`Só texto` has no attack, save, damage or healing), the shape and size only on an area, and for an effect only the fields the server's menu says the type reads (`draftToEffect`).
+- **The damage warning** (`core/content/spell-warnings.ts`, `unappliedDamage`): the spell editor shows "O app não sabe aplicar este dano" under the combat mechanics when a saved spell has damage and no attack, no saving throw, no area and a target other than the caster alone.
+  It is a client-side note beside the form, with no code from the server; it never blocks "Salvar magia", and it goes away when the master picks an attack or a saving throw, or an area target.
+  Dice typed under "Só texto" are not sent, so only a saved body raises it.
 - **What comes from the server and what is screen text.** The effect menu (`GetEffectMenu`: types, fields, closed lists with Portuguese names, SRD options, formula functions, tag prefixes), the abilities, damage types, languages, proficiencies, skills and schools (`ListContent`) and the race bonus limit (-4 to +4) come from the server; the picker (`shared/effect-picker`) and the editors draw what it sends.
   The browser keeps only screen text: labels, hints, the refusals' sentences (`content-violations.ts`) and the shape and mode options (cone, cube, action, minutes), which are screen names of closed `.proto` fields.
 - **From violation to field** (`core/content/content-violations.ts`):

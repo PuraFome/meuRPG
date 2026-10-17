@@ -65,6 +65,7 @@ func TestOpenExpertiseToolAndLanguagePicksWarn(t *testing.T) {
 	t.Run("the languages of a human and a background", func(t *testing.T) {
 		t.Parallel()
 		b := standard("class:fighter", 1) // a human (one language) with the acolyte (two)
+		b.Languages = nil
 		d := Derive(b, c)
 		if got := openOf(d, OpenChoiceLanguages); got != 3 || !hasIssueAt(d, IssueMissing, "full.languages") {
 			t.Fatalf("open languages = %d, issues %v, want 3 and an issue", got, d.Issues)
@@ -100,3 +101,7 @@ func hasIssueAt(d Derived, code, field string) bool {
 	}
 	return false
 }
+
+// testLanguages are the three languages a human with the acolyte background is owed (one of the race, two of the
+// background): the fixtures list them so that a complete sheet has no language pick open.
+var testLanguages = []string{"Anão", "Élfico", "Gnômico"}

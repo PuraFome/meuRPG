@@ -216,14 +216,18 @@ func TestMoveMilestoneStepByStep(t *testing.T) {
 	rig.takeLogs(t)
 	steps := newMilestoneSteps(t, rig)
 	up, down := progressionv1.MilestoneDirection_MILESTONE_DIRECTION_UP, progressionv1.MilestoneDirection_MILESTONE_DIRECTION_DOWN
-	move := func(name string, u *user, campaign, id string, dir progressionv1.MilestoneDirection) {
+	moveKeyed := func(name string, u *user, campaign, id string, dir progressionv1.MilestoneDirection, key string) {
 		t.Helper()
-		res, err := rig.client(u).MoveMilestone(ctx, connect.NewRequest(&progressionv1.MoveMilestoneRequest{CampaignId: campaign, MilestoneId: id, Direction: dir}))
+		res, err := rig.client(u).MoveMilestone(ctx, connect.NewRequest(&progressionv1.MoveMilestoneRequest{CampaignId: campaign, MilestoneId: id, Direction: dir, IdempotencyKey: key}))
 		if err != nil {
 			steps.record(t, name, nil, err)
 			return
 		}
 		steps.record(t, name, steps.summary(res.Msg.GetMilestones()), nil)
+	}
+	move := func(name string, u *user, campaign, id string, dir progressionv1.MilestoneDirection) {
+		t.Helper()
+		moveKeyed(name, u, campaign, id, dir, "")
 	}
 	unknown := newKey()
 	rig.label(unknown, "unknown")
@@ -284,5 +288,22 @@ func TestMoveMilestoneStepByStep(t *testing.T) {
 	// The move is committed: the answer has no list, and the app reads it again.
 	rig.faults.armQuery("ListPlannedMilestones", 0)
 	move("fails: the read after", rig.master, rig.campaign, ids["D"], down)
+
+	// A move with a key (MoveMilestone's idempotency): two more planned milestones give the same
+	// request somewhere to go twice. The retry replays the first answer and moves nothing again;
+	// the key with another direction is refused; a retry whose read after fails is still answered
+	// by the committed path (an empty list).
+	for _, name := range []string{"F", "G"} {
+		ids[name] = rig.master.plan(t, rig.campaign, "Marco "+name).GetId()
+		rig.label(ids[name], "milestone-"+strings.ToLower(name))
+	}
+	rig.takeLogs(t)
+	key := newKey()
+	moveKeyed("key: F up", rig.master, rig.campaign, ids["F"], up, key)
+	moveKeyed("key again, the same move: replayed", rig.master, rig.campaign, ids["F"], up, key)
+	moveKeyed("key again, another direction", rig.master, rig.campaign, ids["F"], down, key)
+	moveKeyed("key again, another milestone", rig.master, rig.campaign, ids["G"], up, key)
+	rig.faults.armQuery("ListPlannedMilestones", 0)
+	moveKeyed("key again, the read after fails", rig.master, rig.campaign, ids["F"], up, key)
 	rig.wantHistoryGolden(t, "milestones_move", steps.steps)
 }

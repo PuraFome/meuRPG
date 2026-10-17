@@ -233,6 +233,7 @@ O que apagar uma conta faz, pelas regras do próprio banco:
 | Identidade, e-mail, nome de exibição, sessões, participações, as anotações particulares da pessoa, cópias de pistas, motivos de revisão e valores de habilidade rolados | Apagados |
 | As campanhas de um mestre, com tudo o que elas têm: membros, convites, personagens da campanha, NPCs, mapas, sessões, histórico, quebra-cabeças, pedidos de imagem | Apagadas |
 | Os personagens de um jogador | Ficam com a campanha e o mestre, sem vínculo com a conta. Um personagem que ficar sem jogador e sem campanha é varrido em até um dia |
+| O que a pessoa digitou num quebra-cabeça (uma resposta de enigma, uma mensagem decifrada), guardado nas jogadas de uma sessão | Fica, anônimo: as respostas digitadas ficam sem a conta, e o mestre continua lendo, até a sessão sumir. Nada no texto é procurado nem apagado |
 | Linhas da conversa da cena (MR-051) | Ficam, com o ID do autor limpo: aparecem como "Jogador removido". Uma linha que era para leitores escolhidos continua para o mestre e para os leitores que restam, nunca para todos |
 | Histórico da sessão, combatentes, prêmios de XP, envios, jogadas de quebra-cabeça | Ficam, com o ID da pessoa limpo. Os IDs dos jogadores que viram um NPC agir, guardados dentro de alguns payloads do histórico, não são limpos |
 | Os arquivos das imagens de uma campanha apagada, no bucket | **Não são apagados pelo banco.** O operador apaga o prefixo `campaigns/<id>/` à mão; isso não é automatizado |

@@ -41,6 +41,7 @@ import {
 } from '../../../core/content/spell-options';
 import { type SpellDraft, emptySpell } from '../../../core/content/spell-types';
 import { spellFieldPaths } from '../../../core/content/spell-preview';
+import { UNAPPLIED_DAMAGE_PT, unappliedDamage } from '../../../core/content/spell-warnings';
 import { CheckRow } from '../../../shared/form-fields/check-row';
 import { SelectField, type SelectOption } from '../../../shared/form-fields/select-field';
 import { SwitchField } from '../../../shared/form-fields/switch-field';
@@ -148,6 +149,15 @@ export class SpellEditor {
   protected readonly sizeText = computed(() => sizeLabel(this.draft().shape));
   protected readonly moreText = computed(() => moreLabel(this.draft().level));
   protected readonly moreNote = computed(() => moreHint(this.draft().level));
+  /**
+   * The saved spell has damage the combat cannot apply (no attack, saving throw or area). Only a saved body raises it: dice typed
+   * under "Só texto" are not sent, so they are not damage. It warns and never blocks "Salvar".
+   */
+  protected readonly unappliedDamage = computed(() => {
+    const e = this.entry();
+    const stored = e?.body.case === 'tableSpell' && e.body.value.damage.length > 0;
+    return stored && unappliedDamage(this.draft()) ? UNAPPLIED_DAMAGE_PT : '';
+  });
   protected readonly schools = computed<SelectOption[]>(() => [...this.catalog().schools]);
   protected readonly classes = computed(() => this.catalog().castingClasses);
   /** "Mais criaturas por nível de espaço" stays folded until asked, or until the spell has a number there. */

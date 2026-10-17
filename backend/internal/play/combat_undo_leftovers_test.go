@@ -3,6 +3,7 @@ package play
 import (
 	"testing"
 
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
@@ -57,6 +58,55 @@ func TestUndoKindSpellCastReplacingHeroismGivesTheTemporaryHitPointsBack(t *test
 		a.mustCast(t, a.ana, e, "Pensantus", "spell:bane", slotOfLevel(1), a.at(t, "Goblin"), noCastRoll)
 		if got := a.vitals(t, a.toren).GetHitPointsTemporary(); got != 0 {
 			t.Fatalf("Toren's temporary hit points after Heroism ended = %d, want 0", got)
+		}
+	})
+}
+
+// markWithHuntersMark has the caster concentrate on Hunter's Mark and mark the target, as the
+// cast leaves them.
+func markWithHuntersMark(t *testing.T, a *armed, e *playv1.Encounter, caster, target string) {
+	t.Helper()
+	a.concentrate(t, caster, huntersMark)
+	if _, err := a.h.pool.Exec(t.Context(),
+		`INSERT INTO combatant_states (encounter_id, combatant_id, kind, source_id, started_round, amount, created_at) VALUES ($1, $2, 'hunters_mark_target', $3, 1, 0, now())`,
+		e.GetId(), a.id(t, target), a.id(t, caster)); err != nil {
+		t.Fatalf("mark %s: %v", target, err)
+	}
+}
+
+// Finding fix/undo-hunters-mark: a rage that ends a Hunter's Mark concentration takes the mark off
+// its target, and the undo of the rage gives the mark back with the concentration.
+func TestUndoKindActionTakenRageEndsHuntersMarkAndTheUndoGivesTheMarkBack(t *testing.T) {
+	t.Parallel()
+	a := newHeroismCasters(t)
+	e := a.passTo(t, a.castersFight(t, 1), "Brisa")
+	markWithHuntersMark(t, a, e, "Brisa", "Goblin")
+	w := newUndoWatch(t, a)
+
+	w.run(t, "a rage while concentrating on Hunter's Mark", nil, func() {
+		if _, err := a.action(t, a.bia, e, "Brisa", "feature:rage"); err != nil {
+			t.Fatalf("TakeAction(Rage) error = %v", err)
+		}
+		if huntersMarkOn(t, a.get(t, a.master), "Goblin") != nil {
+			t.Fatal("the Goblin is still marked after the rage ended the concentration")
+		}
+	})
+}
+
+// Finding fix/undo-hunters-mark: a damage that takes the caster to 0 hit points ends the Hunter's
+// Mark concentration and the mark, and the undo of the damage gives the mark back.
+func TestUndoKindDamageAppliedAtZeroEndsHuntersMarkAndTheUndoGivesTheMarkBack(t *testing.T) {
+	t.Parallel()
+	a, e, id := concentratingDamage(t, 100)
+	markWithHuntersMark(t, a, e, "Pensantus", "Goblin")
+	w := newUndoWatch(t, a)
+
+	w.run(t, "a damage to 0 while concentrating on Hunter's Mark", nil, func() {
+		if _, err := a.settle(t, a.master, e, id, true); err != nil {
+			t.Fatalf("ApplyPendingDamage() error = %v", err)
+		}
+		if huntersMarkOn(t, a.get(t, a.master), "Goblin") != nil {
+			t.Fatal("the Goblin is still marked after the damage ended the concentration")
 		}
 	})
 }

@@ -326,8 +326,12 @@ func (ev *effectViewer) cardSaves(out *playv1.LastingEffect, f playdb.CombatantS
 		out.StartSave = ev.saveProto(*f.StartSaveAbility, combat.PhaseStart, f.SaveDc, ownCaster)
 	}
 	if f.TriggerDice != nil {
+		phase := playv1.EffectPhase_EFFECT_PHASE_START
+		if triggersAtEnd(f) {
+			phase = playv1.EffectPhase_EFFECT_PHASE_END
+		}
 		out.TurnTrigger = &playv1.EffectTrigger{
-			Phase: playv1.EffectPhase_EFFECT_PHASE_START, Dice: *f.TriggerDice, DamageTypeKey: conv.OrZero(f.TriggerDamageType),
+			Phase: phase, Dice: *f.TriggerDice, DamageTypeKey: conv.OrZero(f.TriggerDamageType),
 			DamageTypePt: ev.names(conv.OrZero(f.TriggerDamageType)), MaxTriggers: conv.OrZero(f.TriggerMaxTriggers),
 		}
 	}

@@ -70,7 +70,7 @@ The cast event is a `spell_cast` with `fx_kind = revive`, `material` and the hit
 
 ### Revivify out of combat
 
-The app does not count time without a combat, so `RequestRevivify` (the same checks minus the range and the window) writes a `revivify_requests` row in `pending` and spends nothing; the master and the caster's player get `revivify_changed`.
+The app does not record when a creature died outside a combat (the game clock only runs down effects), so `RequestRevivify` (the same checks minus the range and the window) writes a `revivify_requests` row in `pending` and spends nothing; the master and the caster's player get `revivify_changed`.
 `ConfirmRevivifyTime` (master only; any other caller gets `not_found` for every `pending_id`) answers in one transaction: `within_minute` spends the slot (`spendSlot`), calls `ReviveDead`, appends `character_revived` to the session and marks the request `confirmed`; otherwise it marks it `denied` and spends nothing.
 RN-03 failing rolls the whole answer back and the request keeps waiting.
 The master's switch `SetRevivifyBlocked` writes `combatants.revivify_blocked` and `characters.revivify_blocked`; a blocked character is `not_found` to a player's request.

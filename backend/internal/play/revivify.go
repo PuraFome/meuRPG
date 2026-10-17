@@ -356,7 +356,7 @@ func (s *Service) revivifyWrite(ctx context.Context, c *combatTx, m authz.Member
 	}
 	// A Counterspell can answer this cast like any other: it waits for the windows and
 	// happens when they are answered (PM-04, combat_reaction_hold.go).
-	if held, ok, err := s.holdCast(ctx, c, m, msg, cs, caster, revivifyKey, slot.Level, []playdb.Combatant{target}); err != nil {
+	if held, ok, err := s.holdCast(ctx, c, m, msg, cs, caster, revivifyKey, slot.Level, []playdb.Combatant{target}, false); err != nil {
 		return nil, err
 	} else if ok {
 		out.made = held
