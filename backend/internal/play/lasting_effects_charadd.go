@@ -231,14 +231,12 @@ func (s *Service) planCharEffect(ctx context.Context, c *combatTx, in charEffect
 	if plan.kind, plan.seconds, err = charEffectClock(in, src); err != nil {
 		return plan, err
 	}
-	audience := chosenAudience(msg.GetAudience(), src.audience)
-	plan.audience = "all"
-	if audience == rules.EffectVisibilityOwner {
-		plan.audience = audienceOwner
-	}
+	masterOnly, stored := storedAudience(chosenAudience(msg.GetAudience(), src.audience))
+	plan.audience = stored
 	if v := msg.PlayerVisible; v != nil {
 		plan.visible = *v
 	}
+	plan.visible = plan.visible && !masterOnly
 	if l := msg.GetPlayerLabel(); l != "" {
 		plan.label = &l
 	}

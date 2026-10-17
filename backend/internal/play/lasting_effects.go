@@ -264,10 +264,8 @@ func (spec effectSpec) visibilityOf() (visible bool, audience string) {
 	if spec.visible != nil {
 		visible = *spec.visible
 	}
-	if audience == rules.EffectVisibilityOwner || audience == "owner" {
-		return visible, "owner"
-	}
-	return visible, "all"
+	masterOnly, stored := storedAudience(audience)
+	return visible && !masterOnly, stored
 }
 
 // insertParams is the row of the effect on one target.
@@ -567,7 +565,7 @@ func (s *Service) endCasting(ctx context.Context, c *combatTx, cs []playdb.Comba
 	hidden := s.effectHiddenFrom(first, targetsOf(cs, targets))
 	line, err := insertEventID(ctx, c, eventLastingEnded, &c.actorUserID, nil, actionEvent{
 		Round: c.enc.Round, Secret: hidden, Actor: conv.OrZero(first.SourceID), Target: targets[0],
-		Lasting: &lastingEvent{Key: k.key, Change: "ended", Targets: targets, Reason: reason, Effects: ids, OwnerOnly: first.Audience == audienceOwner},
+		Lasting: &lastingEvent{Key: k.key, Change: "ended", Targets: targets, Reason: reason, Effects: ids, OwnerOnly: first.Audience != audienceAll},
 	})
 	if err != nil {
 		return err
@@ -705,7 +703,7 @@ func (s *Service) addedEventID(ctx context.Context, c *combatTx, cs []playdb.Com
 	}
 	return insertEventID(ctx, c, eventLastingAdded, &c.actorUserID, nil, actionEvent{
 		Round: c.enc.Round, Secret: s.effectHiddenFrom(first, targetsOf(cs, targets)), Actor: conv.OrZero(first.SourceID), Target: targets[0],
-		Lasting: &lastingEvent{Key: key, Change: "added", Targets: targets, Caster: conv.OrZero(first.SourceID), Rounds: rounds, Effects: ids, OwnerOnly: first.Audience == audienceOwner},
+		Lasting: &lastingEvent{Key: key, Change: "added", Targets: targets, Caster: conv.OrZero(first.SourceID), Rounds: rounds, Effects: ids, OwnerOnly: first.Audience != audienceAll},
 	})
 }
 
