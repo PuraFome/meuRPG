@@ -67,6 +67,16 @@ describe('MasterComposer', () => {
     expect(words).toEqual(expect.arrayContaining(['Falar como', 'Para', 'Mensagem']));
   });
 
+  it('insets the chevron like the text: the select is the arrow\'s containing block', async () => {
+    const { el, fixture } = setup();
+    await settle(fixture);
+    const select = el.querySelector('.composer__select') as HTMLElement;
+    const trigger = el.querySelector('.mat-mdc-select-trigger') as HTMLElement;
+    // The arrow is positioned from the field's edge, not from the trigger inside the field's padding.
+    expect(getComputedStyle(select).position).toBe('relative');
+    expect(getComputedStyle(trigger).position).toBe('static');
+  });
+
   it('starts as the narrator, to everyone', async () => {
     const { el, buttonWith, fixture } = setup();
     await settle(fixture);
