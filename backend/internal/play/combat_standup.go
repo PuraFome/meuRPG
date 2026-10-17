@@ -64,7 +64,7 @@ func (s *Service) StandUp(
 	ctx context.Context,
 	req *connect.Request[playv1.StandUpRequest],
 ) (*connect.Response[playv1.StandUpResponse], error) {
-	m, key, encID, err := contestCaller(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
+	m, key, encID, err := memberCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
 	if err != nil {
 		return nil, err
 	}

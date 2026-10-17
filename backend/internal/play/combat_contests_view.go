@@ -3,7 +3,6 @@ package play
 import (
 	"context"
 	"fmt"
-	"math"
 	"slices"
 
 	"connectrpc.com/connect"
@@ -12,6 +11,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
@@ -259,7 +259,7 @@ func (r *contestReader) answerOptions(ctx context.Context, row playdb.CombatCont
 			return nil, err
 		}
 		opt := &playv1.ContestSkillOption{
-			Skill: sk, Modifier: clamp32(n.Bonus, math.MinInt32, math.MaxInt32), Mode: checkModeProto(notesMode(notes)), Notes: notesProto(notes),
+			Skill: sk, Modifier: conv.Int32(n.Bonus), Mode: checkModeProto(notesMode(notes)), Notes: notesProto(notes),
 			Known: n.Known || !r.v.master,
 		}
 		out = append(out, opt)
@@ -334,7 +334,7 @@ func (r *contestReader) observers(ctx context.Context, a playdb.CombatHideAttemp
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, &playv1.HideObserver{CombatantId: o.ID, PassivePerception: clamp32(view.passive, math.MinInt32, math.MaxInt32), Known: view.known, Noticed: view.noticed})
+		out = append(out, &playv1.HideObserver{CombatantId: o.ID, PassivePerception: conv.Int32(view.passive), Known: view.known, Noticed: view.noticed})
 	}
 	return out, nil
 }
@@ -350,10 +350,10 @@ func (r *contestReader) helpViewOf(h playdb.CombatHelp) (*playv1.HelpView, bool)
 	view := &playv1.HelpView{Id: h.ID, HelperId: helper.ID, AllyId: ally.ID}
 	switch h.Kind {
 	case helpCheck:
-		view.Kind, view.TaskKey = playv1.HelpKind_HELP_KIND_CHECK, deref(h.Task)
+		view.Kind, view.TaskKey = playv1.HelpKind_HELP_KIND_CHECK, conv.OrZero(h.Task)
 		view.TaskNamePt = r.s.roster.SceneCheckName(view.TaskKey)
 	case helpAttack:
-		target, ok := combatantByID(r.d.cs, deref(h.TargetID))
+		target, ok := combatantByID(r.d.cs, conv.OrZero(h.TargetID))
 		if !ok || (!r.v.master && !r.v.sees(target)) {
 			return nil, false
 		}

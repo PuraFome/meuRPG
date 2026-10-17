@@ -6,11 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"reflect"
 	"slices"
 
 	"connectrpc.com/connect"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -27,7 +29,7 @@ import (
 // never does) and keeps what each rolled for the log.
 //
 // A pending damage with no parts (a spell's, a trap's, a creature's attack that has
-// no extra) is one roll, as it always was.
+// no extra) is one roll.
 
 // maxIgnoredSources is how many sources of resistance the master may leave out of one damage.
 const maxIgnoredSources = 20
@@ -125,6 +127,12 @@ func readParts(raw []byte) []partRecord {
 	return out
 }
 
+// rewritesParts says a roll stores a list of parts that is not the one the hit offered (the choice of a
+// Divine Smite or a maneuver changes it), which is then kept in the roll's event for the undo.
+func rewritesParts(offered []byte, rolled []partRecord) bool {
+	return len(rolled) > 0 && !reflect.DeepEqual(readParts(offered), rolled)
+}
+
 func readPartRolls(raw []byte) []partRoll {
 	var out []partRoll
 	if len(raw) == 0 || json.Unmarshal(raw, &out) != nil {
@@ -152,7 +160,7 @@ func mustJSON(v any) []byte {
 // turnKey names the turn in progress: Sneak Attack and Colossus Slayer are once per
 // turn, and a turn is a round and the combatant (or joint group) on it.
 func turnKey(e playdb.Encounter) string {
-	return fmt.Sprintf("%d:%s", e.Round, deref(e.CurrentCombatantID))
+	return fmt.Sprintf("%d:%s", e.Round, conv.OrZero(e.CurrentCombatantID))
 }
 
 // stateWordPT is the word the players read for how hurt a combatant is.
@@ -207,11 +215,11 @@ func (h hitFacts) scene() combat.ExtraScene {
 	return combat.ExtraScene{
 		Weapon: a.Weapon, Melee: melee, Finesse: a.Finesse, Ranged: a.Weapon && !melee, UsesStrength: a.Ability == "str",
 		WeaponName: a.Name, Mode: h.mode, WithoutMap: isTheatre(h.enc), EnemyNearTarget: h.enemyNearTarget(), DisadvantageSource: h.disadvantaged,
-		SneakAttackDice: t.SneakAttackDice, SneakUsed: deref(h.attacker.SneakAttackTurn) == key,
+		SneakAttackDice: t.SneakAttackDice, SneakUsed: conv.OrZero(h.attacker.SneakAttackTurn) == key,
 		DivineSmite: t.DivineSmite, SmiteSlotFree: h.freeSlots, ImprovedDivineSmite: t.ImprovedDivineSmite,
-		HuntersMarkKnown: t.HuntersMark, HuntersMarkActive: deref(h.attacker.ConcentrationSpell) == "spell:hunters-mark",
+		HuntersMarkKnown: t.HuntersMark, HuntersMarkActive: conv.OrZero(h.attacker.ConcentrationSpell) == "spell:hunters-mark",
 		TargetMarked:   h.targetMarked(),
-		ColossusSlayer: t.ColossusSlayer, ColossusUsed: deref(h.attacker.ColossusSlayerTurn) == key,
+		ColossusSlayer: t.ColossusSlayer, ColossusUsed: conv.OrZero(h.attacker.ColossusSlayerTurn) == key,
 		TargetHurt: h.targetHurt, TargetState: stateWordPT(h.target), TargetLabel: h.target.Label,
 		Raging: hasState(h.states, h.attacker.ID, stateRage) && !t.HeavyArmor, BarbarianLevel: t.BarbarianLevel,
 	}
@@ -236,7 +244,7 @@ func thrownAtRange(enc playdb.Encounter, attack link.Attack, attacker, target pl
 // targetMarked says the attacker's Hunter's Mark is on the target.
 func (h hitFacts) targetMarked() bool {
 	return slices.ContainsFunc(h.states[h.target.ID], func(s playdb.CombatantState) bool {
-		return s.Kind == stateMark && deref(s.SourceID) == h.attacker.ID
+		return s.Kind == stateMark && conv.OrZero(s.SourceID) == h.attacker.ID
 	})
 }
 
@@ -862,7 +870,7 @@ func usesLeftOf(v *playv1.CharacterVitals) map[string]int32 {
 // isHurt says the combatant is below its hit point maximum.
 func (s *Service) isHurt(ctx context.Context, c *combatTx, campaignID string, who playdb.Combatant) (bool, error) {
 	if holdsHP(who) {
-		return num(who.HpCurrent) < num(who.HpMax), nil
+		return conv.OrZero(who.HpCurrent) < conv.OrZero(who.HpMax), nil
 	}
 	vit, err := s.vitals.GetVitalsTx(ctx, c.tx, campaignID, who.CharacterID)
 	if err != nil {
@@ -906,15 +914,15 @@ func (s *Service) checkExtra(ctx context.Context, e extraCheck, sp partRecord, m
 	}
 	switch sp.Key {
 	case combat.ExtraSneakAttack:
-		if deref(e.attacker.SneakAttackTurn) == e.turn {
+		if conv.OrZero(e.attacker.SneakAttackTurn) == e.turn {
 			return errExtraNotAvailable()
 		}
 	case combat.ExtraColossusSlayer:
-		if deref(e.attacker.ColossusSlayerTurn) == e.turn {
+		if conv.OrZero(e.attacker.ColossusSlayerTurn) == e.turn {
 			return errExtraNotAvailable()
 		}
 	case combat.ExtraHuntersMark:
-		if deref(e.attacker.ConcentrationSpell) != "spell:hunters-mark" {
+		if conv.OrZero(e.attacker.ConcentrationSpell) != "spell:hunters-mark" {
 			return errExtraNotAvailable()
 		}
 	case combat.ExtraDivineSmite:
@@ -986,7 +994,7 @@ func (s *Service) modifiersOf(ctx context.Context, c *combatTx, campaignID strin
 // statBlockModifiers are the immunities, resistances and vulnerabilities of a creature
 // or an NPC, from its stat block.
 func (s *Service) statBlockModifiers(ctx context.Context, c *combatTx, campaignID string, who playdb.Combatant) ([]combat.Modifier, error) {
-	mods, err := s.roster.DamageModifiers(ctx, c.tx, campaignID, who.CharacterID, deref(who.MonsterKey))
+	mods, err := s.roster.DamageModifiers(ctx, c.tx, campaignID, who.CharacterID, conv.OrZero(who.MonsterKey))
 	if err != nil {
 		return nil, err
 	}
@@ -1105,7 +1113,7 @@ func showAsRolled(out *playv1.PendingDamage, p playdb.PendingDamage) {
 // addSlotOptions gives the parts that need a slot (a Divine Smite) the slots the attacker,
 // a player's character, has free.
 func (s *Service) addSlotOptions(ctx context.Context, campaignID string, out *playv1.PendingDamage, p playdb.PendingDamage, cs []playdb.Combatant) {
-	j := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == deref(p.AttackerID) })
+	j := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == conv.OrZero(p.AttackerID) })
 	if j < 0 || cs[j].Kind != kindPlayer {
 		return
 	}
@@ -1215,7 +1223,7 @@ func (s *Service) keepOnceMarks(ctx context.Context, c *combatTx, attacker playd
 	if once.sneak == attacker.SneakAttackTurn && once.colossus == attacker.ColossusSlayerTurn {
 		return nil
 	}
-	ev.OnceBefore = &onceMarks{Sneak: deref(attacker.SneakAttackTurn), Colossus: deref(attacker.ColossusSlayerTurn)}
+	ev.OnceBefore = &onceMarks{Sneak: conv.OrZero(attacker.SneakAttackTurn), Colossus: conv.OrZero(attacker.ColossusSlayerTurn)}
 	if err := c.q.SetCombatantOncePerTurn(ctx, playdb.SetCombatantOncePerTurnParams{ID: attacker.ID, SneakAttackTurn: once.sneak, ColossusSlayerTurn: once.colossus}); err != nil {
 		return fmt.Errorf("mark the once-per-turn damage: %w", err)
 	}

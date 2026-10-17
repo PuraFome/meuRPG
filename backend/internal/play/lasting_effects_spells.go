@@ -7,6 +7,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -15,7 +16,7 @@ import (
 
 // What a spell that lasts leaves on its targets (RN-22): Bênção, Perdição, Velocidade,
 // Imobilizar Pessoa, Riso Histérico, Fogo das Fadas and Teia (SRD 5.1). The cast rolls the
-// saving throw of the spell as it always did; this puts the effect on the targets it took
+// saving throw of the spell; this puts the effect on the targets it took
 // hold of, with the duration of the spell on the clock (one minute is 10 rounds, counted to
 // the start of the caster's turn) and the caster's concentration holding it. The rider of an
 // instantaneous spell (Zombaria Viciosa's disadvantage) has a clock of its own, on its target's
@@ -33,6 +34,7 @@ const (
 	whyNotHumanoid = "alvo não é humanoide"
 	whyImmune      = "o alvo é imune à condição"
 	whyTooSimple   = "a Inteligência do alvo é 4 ou menos"
+	whyWearsArmor  = "o alvo veste armadura"
 )
 
 // applyLastingSpell puts the effect of a spell on the targets it took hold of. targs and
@@ -57,6 +59,9 @@ func (s *Service) applyLastingSpell(
 		return err
 	}
 	taken := s.markSpellHits(content, def, states, kinds, targs, made)
+	if taken, err = s.dropWithoutHold(ctx, c, def, ability, caster, targs, taken, made); err != nil {
+		return err
+	}
 	if len(taken) == 0 {
 		return nil
 	}
@@ -123,7 +128,7 @@ func (s *Service) markSpellHits(content *rules.Content, def *rules.EffectDef, st
 	var taken []playdb.Combatant
 	for i, t := range targs {
 		hit := &made.Hits[i]
-		key := deref(t.MonsterKey)
+		key := conv.OrZero(t.MonsterKey)
 		if key == "" {
 			key = kinds[t.CharacterID]
 		}
@@ -143,6 +148,32 @@ func (s *Service) markSpellHits(content *rules.Content, def *rules.EffectDef, st
 		taken = append(taken, t)
 	}
 	return taken
+}
+
+// dropWithoutHold takes out of the targets an effect that sets a base armor class cannot take hold
+// of (Mage Armor on a creature that wears armor, SRD 5.1) and marks their hits "no effect".
+func (s *Service) dropWithoutHold(ctx context.Context, c *combatTx, def *rules.EffectDef, ability string, caster playdb.Combatant, targs, taken []playdb.Combatant, made *actionEvent) ([]playdb.Combatant, error) {
+	if !hasBaseAC(def) {
+		return taken, nil
+	}
+	opts, err := s.castOptsOf(ctx, c, def, ability, caster.CharacterID)
+	if err != nil {
+		return nil, err
+	}
+	var kept []playdb.Combatant
+	for _, t := range taken {
+		_, ok, err := s.modifiersForTarget(ctx, c, def, t, opts)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			kept = append(kept, t)
+			continue
+		}
+		i := slices.IndexFunc(targs, func(o playdb.Combatant) bool { return o.ID == t.ID })
+		made.Hits[i].Lasting, made.Hits[i].NoEffectWhy = lastingNoEffect, whyWearsArmor
+	}
+	return kept, nil
 }
 
 // spellEffectDuration is how long the effect of a spell lasts.

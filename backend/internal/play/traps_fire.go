@@ -18,6 +18,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
@@ -298,17 +299,17 @@ func (s *Service) fireByHandChange(ctx context.Context, c *combatTx, trap maplin
 	if err != nil {
 		return actionEvent{}, err
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return actionEvent{}, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return actionEvent{}, err
 	}
 	return actionEvent{Round: c.enc.Round, Trap: fired}, nil
 }
 
 // caughtByHand are the combatants the master picked, or, with none picked, the ones in the area.
 func (s *Service) caughtByHand(ctx context.Context, c *combatTx, trap maplink.Trap, targetIDs []string) ([]playdb.Combatant, error) {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	var caught []playdb.Combatant
 	if len(targetIDs) == 0 {
@@ -584,12 +585,9 @@ func charactersCaught(living []link.Character, at map[string]grid.Square, trap m
 func (s *Service) fireOutsideTx(ctx context.Context, tx pgx.Tx, f *outsideFiring) error {
 	q := s.queries.WithTx(tx)
 	f.fired, f.firingID, f.repeated = nil, "", false
-	session, err := q.GetOpenGameSessionForUpdate(ctx, f.campaignID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return errNoOpenSession()
-	}
+	session, err := lockOpenSessionOrNone(ctx, q, f.campaignID)
 	if err != nil {
-		return fmt.Errorf("lock the open session: %w", err)
+		return err
 	}
 	if done, err := f.replay(ctx, q, session.ID); err != nil || done {
 		return err
@@ -621,7 +619,7 @@ func (f *outsideFiring) replay(ctx context.Context, q *playdb.Queries, sessionID
 	switch {
 	case err == nil:
 		if done.Kind != eventTrapTriggered || hashDiffers(done.IdempotencyHash, f.hash) {
-			return false, connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
+			return false, errKeyReused()
 		}
 		var ev actionEvent
 		if err := json.Unmarshal(done.Payload, &ev); err != nil {
@@ -803,7 +801,7 @@ func (s *Service) caughtOutside(ctx context.Context, c *combatTx, pointID, fireI
 // waits for the master as a trap damage; an NPC's, or a creature's, is only the line, applied.
 func (s *Service) damageOutside(ctx context.Context, c *combatTx, pointID, fireID string, ch link.Character, d trapDamageRoll) (trapDamageEvent, error) {
 	de := trapDamageEventOf(d)
-	de.damageHit = damageHit{Target: ch.ID, Amount: clampInt32(d.amount), Half: d.half}
+	de.damageHit = damageHit{Target: ch.ID, Amount: conv.Int32(d.amount), Half: d.half}
 	if !ch.Player {
 		de.Applied = true // an NPC outside a combat has no hit points: the line says what it took
 		return de, nil
@@ -856,7 +854,7 @@ func (s *Service) TokenDropped(ctx context.Context, campaignID, mapID, character
 }
 
 // CreatureDropped implements maps.TrapFirer: the master dropped a creature of a
-// player's character on a square (9.10 left this to the traps slice), and the armed
+// player's character on a square (the maps module hands the drop to the traps), and the armed
 // "Ao entrar na área" traps whose area holds it fire, as for a character's token: the
 // characters standing in the area are caught with it, or only the creature when the
 // trap picks its targets by hand. The creature's part is a line only: no hit points

@@ -626,7 +626,7 @@ func TestAskARollReachesOnlyTheCharacterAsked(t *testing.T) {
 }
 
 // TestAskARollOfSomeCharactersAndTheOldRequestStillAsksEveryone: two named characters are asked
-// and the third is not; a request with no ids asks all three, as it always did.
+// and the third is not; a request with no ids asks all three.
 func TestAskARollOfSomeCharactersAndTheOldRequestStillAsksEveryone(t *testing.T) {
 	t.Parallel()
 	a := newArmed(t)

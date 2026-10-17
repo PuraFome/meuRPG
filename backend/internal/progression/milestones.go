@@ -109,7 +109,10 @@ func (s *Service) AddMilestone(
 // with the cleaned text the milestone is stored with, so a retry that differs
 // only by the whitespace around the text is the same request.
 func addMilestoneHash(req *progressionv1.AddMilestoneRequest, text string) *string {
-	cleaned := proto.Clone(req).(*progressionv1.AddMilestoneRequest)
+	cleaned, ok := proto.Clone(req).(*progressionv1.AddMilestoneRequest)
+	if !ok {
+		return idem.Hash(req)
+	}
 	cleaned.Text = text
 	return idem.Hash(cleaned)
 }
@@ -277,7 +280,8 @@ func movePlanned(ctx context.Context, q *progressiondb.Queries, campaignID, id s
 	if err != nil {
 		return fmt.Errorf("list the marks: %w", err)
 	}
-	// The milestone was found in the same transaction, so the locked list holds it.
+	// changePlanned locked this milestone in the same transaction, so the locked
+	// list of its campaign holds it.
 	i := slices.IndexFunc(list, func(p progressiondb.PlannedMilestone) bool { return p.ID == id })
 	j := nearestPlanned(list, live, i, step)
 	if j < 0 || j >= len(list) {

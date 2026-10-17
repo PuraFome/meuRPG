@@ -11,15 +11,25 @@ Attacks and damage are in [Attacks and damage](attacks-and-damage.md), movement 
 
 | File | Holds |
 | --- | --- |
-| `combat.go` | The lifecycle calls |
+| `combat.go` | `EndTurn` and `EndEncounter` (the thin handlers) |
+| `combat_start.go`, `combat_setup.go`, `combat_join.go` | `StartEncounter`; the initiative, the order of a tie, `BeginCombat` and the roster; who joins and where each one stands |
+| `combat_endturn.go`, `combat_turn.go` | The phases of `EndTurn`; the joint turn |
+| `combat_place.go`, `combat_surprise.go`, `combat_partedit.go` | "Colocar no mapa"; surprise; removing a part of a pending damage |
 | `combat_write.go` | The transaction every change shares (`combatTx`, `write`, `finish`) |
-| `combat_view.go` | Who sees what |
+| `combat_view.go` | Who sees what, and the publishers of the live events (`publishEncounterChanged`, `publishTurnChanged`, `publishCombatantMoved`) |
 | `combat_rules.go` | The arithmetic, pure and tested without a database |
-| `combat_actions.go`, `combat_parts.go` | Options, attacks, damage, standard actions, NPC HP |
-| `combat_turn.go` | The joint turn |
+| `combat_turn_options.go`, `combat_spell_targets.go` | The options of a turn and who each one can target |
+| `combat_attack.go`, `combat_damage.go`, `combat_parts.go` | The attack roll, the damage roll and its parts |
+| `combat_cast.go`, `combat_spells.go` | Casting a spell and what each kind of spell does to its targets |
+| `combat_apply_damage.go`, `combat_hit_points.go`, `combat_take_action.go` | The master settling a hit, NPC hit points, the standard and feature actions |
+| `combat_gate.go` | Why a combatant cannot act now |
+| `combat_landing.go`, `combat_pending_view.go` | Where a damage or heal lands, and the pending damage as the viewer reads it |
 | `combat_events.go`, `combat_log.go` | Event payloads and the log |
 | `combat_vitals.go` | Slots, uses and HP through `character_vitals` |
 | `combat_undo.go`, `combat_undo_kinds.go` | Undo |
+
+`RollAttack`, `CastSpell`, `RollDamage`, `TakeAction`, `ApplyPendingDamage` and `DiscardPendingDamage` share one shape: the handler reads the request into a `*Call`, runs the transaction as a `*Flow` whose phases keep the order of the reads, the dice and the writes, and answers from a `*Out`.
+The frozen characterization tests pin that order.
 
 Pure rules live in `rules/combat`.
 
@@ -130,6 +140,7 @@ stateDiagram-v2
   An NPC-only group reaches the player as the ids they see, with no chosen `current_combatant_id` or total, plus `npc_only_groups` for the plural "os Goblins".
   A player's economy reaches them, the master and the other players of the same group.
 - **Events.** `turn_part_ended` (a part ended, the turn still standing) and `turn_ended` (the turn passed), plus the log line "Brisa encerrou a parte dela".
+  The line of a part is the master's alone when the member is hidden or its group has no player character, also when the turn waits for the saving throws of effects: the player's log and `combat_log_changed` do not carry it.
   No stream event of its own: `encounter_changed` and `turn_changed` suffice.
 - **On the web.** `core/combat/joint-turn.ts` (pure) groups the order; the master's card is `joint-card`, and `end-part` and `joint-others` are the player's.
   `CombatState.applyTurn` keeps the group and ended parts when `turn_changed` moves the current combatant inside the same round.
@@ -161,7 +172,7 @@ Two simultaneous changes wait for each other, so a double tap on "Encerrar turno
 
 ## Combat on screen
 
-The session page (`pages/live-session`) reads the combat (`CombatClient.get`, `core/combat`) at every `ready` and after each `encounter_changed` newer than its copy; `CombatState` compares revisions and sets an older copy aside.
+The session page (`pages/live-session`) reads the combat (`CombatClient.turn.get`, `core/combat`) at every `ready` and after each `encounter_changed` newer than its copy; `CombatState` compares revisions and sets an older copy aside.
 `turn_changed` and `combatant_moved` apply in place; a combatant the screen does not know makes it read.
 A read that began before one of those events, or before an answer to a call was applied, is dropped when it answers, and the page reads again up to 3 times (`CombatState.changedSince`).
 A read that fails is retried once 1.5 s later; after that the next stream event or reconnection reads it.
@@ -171,6 +182,8 @@ Errors become Portuguese through the code and `EncounterBlocked` detail (`combat
 Dragging a token saves one move at a time per combatant (`MoveSaves`); if the server refuses, the token goes back and the screen says why.
 The combat code loads only with the session page.
 The grid has its own page (`/campaigns/:id/maps/:mapId/grid`, `MapService.SetMapGrid`) and printing the map another (`/campaigns/:id/maps/:mapId/print`, MR-033, web only; see [Design](../../design/maps.md#printing-pagesmapsmap-print)).
+
+`CombatClient` (`core/combat/combat-client.ts`) holds five parts built on one `CombatClientBase` (the generated client and the keyed sender): `turn` (setting up, turns, actions, undo, log, highlights), `moves` (movement, sides, cover, opportunities, roster), `attacks` (attacks, damage, roll modes, reactions, concentration), `casts` (spells, hidden reveals) and `combatants` (death saves, conditions, effects, hit points). Screens call `api.attacks.rollAttack(...)`, never a forwarder on the client.
 
 **How `CombatView` is put together.** The component (`combat-view.ts`) holds the effects and the calls of the turn, on top of three abstract classes that hold the inputs, the derived values and the parts (`combat-view-state.ts`, `combat-view-derived.ts`, `combat-view-parts.ts`); the logic is in parts it builds in field initializers, each a plain class that reads the screen through a few getters, so each is tested with the same fake `CombatClient`:
 

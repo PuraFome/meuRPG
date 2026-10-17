@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"slices"
 
 	"connectrpc.com/connect"
@@ -12,6 +11,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
@@ -50,7 +50,7 @@ func (s *Service) openEffectSave(ctx context.Context, c *combatTx, group string,
 	}) {
 		return false, nil
 	}
-	trigger := windowTrigger{Actor: deref(st.SourceID), Target: target.ID, Key: deref(st.SourceKey), Effect: st.ID, Phase: phase, OnDamage: damage}
+	trigger := windowTrigger{Actor: conv.OrZero(st.SourceID), Target: target.ID, Key: conv.OrZero(st.SourceKey), Effect: st.ID, Phase: phase, OnDamage: damage}
 	_, err = s.openWindows(ctx, c, group, nil, []windowSpec{{kind: reaction.EffectSave, reactor: &target, trigger: trigger}})
 	return err == nil, err
 }
@@ -93,7 +93,7 @@ type effectDie struct {
 func effectDiceFor(states map[string][]playdb.CombatantState, id, applies string) []effectDie {
 	var out []effectDie
 	for _, st := range effectsOn(states, id) {
-		for _, d := range combat.EffectDice(deref(st.SourceKey), effectModifiers(st), applies) {
+		for _, d := range combat.EffectDice(conv.OrZero(st.SourceKey), effectModifiers(st), applies) {
 			out = append(out, effectDie{Key: d.Source, Faces: d.Faces, Sign: d.Sign, Hidden: !st.PlayerVisible, Once: d.Once, EffectID: st.ID})
 		}
 	}
@@ -200,13 +200,7 @@ type effectSaveCall struct {
 func readEffectSaveCall(ctx context.Context, msg *playv1.RollEffectSaveRequest) (effectSaveCall, error) {
 	var call effectSaveCall
 	var err error
-	if call.m, err = authz.RequireCampaignMember(ctx, msg.GetCampaignId()); err != nil {
-		return call, err
-	}
-	if call.key, err = parseKey(msg.GetIdempotencyKey()); err != nil {
-		return call, err
-	}
-	if call.encID, err = parseCombatID(msg.GetEncounterId(), "encounter"); err != nil {
+	if call.m, call.key, call.encID, err = memberCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId()); err != nil {
 		return call, err
 	}
 	if call.winID, err = parseCombatID(msg.GetWindowId(), "window"); err != nil {
@@ -280,7 +274,6 @@ type effectSaveStep struct {
 	w       playdb.ReactionWindow
 	reactor playdb.Combatant
 	t       windowTrigger
-	master  bool
 	st      playdb.CombatantState
 	content *rules.Content
 	def     *rules.EffectDef
@@ -307,8 +300,7 @@ func (s *Service) writeEffectSave(ctx context.Context, c *combatTx, call effectS
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("this window is not an effect's saving throw: use AnswerReaction"))
 	}
 	x.t = windowTriggerOf(x.w)
-	x.master = call.m.Role == authz.RoleMaster
-	if err := refuseSaveAnswer(x.t, x.master, call.skip, call.delegate); err != nil {
+	if err := refuseSaveAnswer(x.t, c.master, call.skip, call.delegate); err != nil {
 		return nil, err
 	}
 	if call.delegate {
@@ -338,19 +330,19 @@ func (s *Service) loadEffectSave(ctx context.Context, c *combatTx, x *effectSave
 	if x.content, err = s.contentOf(ctx, c); err != nil {
 		return err
 	}
-	x.def, _ = s.effectDef(x.content, deref(st.SourceKey))
-	x.ability = deref(st.EndSaveAbility)
+	x.def, _ = s.effectDef(x.content, conv.OrZero(st.SourceKey))
+	x.ability = conv.OrZero(st.EndSaveAbility)
 	if x.t.Phase == combat.PhaseStart {
-		x.ability = deref(st.StartSaveAbility)
+		x.ability = conv.OrZero(st.StartSaveAbility)
 	}
-	x.dc = derefInt32(st.SaveDc)
+	x.dc = conv.OrZero(st.SaveDc)
 	if x.dc == 0 {
 		x.dc = defaultEffectDC
 	}
-	x.ev = actionEvent{Round: c.enc.Round, Secret: s.effectHiddenFrom(st, []playdb.Combatant{x.reactor}), Actor: x.reactor.ID, Key: deref(st.SourceKey)}
-	x.le = &lastingEvent{Key: deref(st.SourceKey), Change: "saved", Targets: []string{x.reactor.ID}, Caster: deref(st.SourceID), Ability: x.ability, DC: x.dc, Effects: []string{st.ID}}
-	if x.cs, err = c.q.ListCombatants(ctx, c.enc.ID); err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+	x.ev = actionEvent{Round: c.enc.Round, Secret: s.effectHiddenFrom(st, []playdb.Combatant{x.reactor}), Actor: x.reactor.ID, Key: conv.OrZero(st.SourceKey)}
+	x.le = &lastingEvent{Key: conv.OrZero(st.SourceKey), Change: "saved", Targets: []string{x.reactor.ID}, Caster: conv.OrZero(st.SourceID), Ability: x.ability, DC: x.dc, Effects: []string{st.ID}}
+	if x.cs, err = listCombatants(ctx, c); err != nil {
+		return err
 	}
 	return nil
 }
@@ -380,7 +372,7 @@ type effectSaveFacts struct {
 // rolled with: advantage after damage asks (Riso Histérico, SRD).
 func (s *Service) readEffectSaveFacts(ctx context.Context, c *combatTx, x *effectSaveStep) (effectSaveFacts, error) {
 	var f effectSaveFacts
-	if !x.master {
+	if !c.master {
 		if err := s.mustRollThisWay(ctx, c.tx, x.call.m, x.call.in); err != nil {
 			return f, err
 		}
@@ -408,7 +400,7 @@ func (s *Service) rollEffectSaveD20(ctx context.Context, c *combatTx, x *effectS
 	if err != nil {
 		return false, false, err
 	}
-	x.run.result = &playv1.EffectSaveResult{Modifier: clamp32(f.save.Bonus, math.MinInt32, math.MaxInt32)}
+	x.run.result = &playv1.EffectSaveResult{Modifier: conv.Int32(f.save.Bonus)}
 	if combat.AutoFailsSave(f.creature, x.ability) {
 		x.run.result.AutoFail, x.le.Change = true, "failed"
 		return false, false, nil
@@ -431,12 +423,13 @@ func (s *Service) rollEffectSaveD20(ctx context.Context, c *combatTx, x *effectS
 	if err := s.spendOnceEffects(ctx, c, extra); err != nil {
 		return false, false, err
 	}
-	return s.recordEffectSaveRoll(ctx, c, x, step, extra, delta)
+	saved, err = s.recordEffectSaveRoll(ctx, c, x, step, extra, delta)
+	return saved, false, err
 }
 
 // recordEffectSaveRoll writes what the d20 and the dice showed in the result, the log line and the
 // event, and says whether the target saved.
-func (s *Service) recordEffectSaveRoll(ctx context.Context, c *combatTx, x *effectSaveStep, step gateResult, extra []effectDie, delta int) (saved, held bool, err error) {
+func (s *Service) recordEffectSaveRoll(ctx context.Context, c *combatTx, x *effectSaveStep, step gateResult, extra []effectDie, delta int) (saved bool, err error) {
 	d20, result := step.Roll, x.run.result
 	if step.Bonus != nil {
 		result.InspirationSides, result.InspirationFace = step.Bonus.Sides, step.Bonus.Face
@@ -446,12 +439,12 @@ func (s *Service) recordEffectSaveRoll(ctx context.Context, c *combatTx, x *effe
 	for _, f := range d20.Faces {
 		result.D20Faces = append(result.D20Faces, clamp32(f, 1, 20))
 	}
-	result.D20, result.Total, result.Physical, result.Saved = clamp32(d20.Face(), 1, 20), clamp32(total, math.MinInt32, math.MaxInt32), d20.Physical, saved
+	result.D20, result.Total, result.Physical, result.Saved = clamp32(d20.Face(), 1, 20), conv.Int32(total), d20.Physical, saved
 	nm, err := s.namerFor(ctx, c.tx, c.session.CampaignID)
 	if err != nil {
-		return false, false, err
+		return false, err
 	}
-	result.ExtraDice = extraDiceProto(extra, x.master, nm)
+	result.ExtraDice = extraDiceProto(extra, c.master, nm)
 	x.le.D20, x.le.Total = result.D20, result.Total
 	x.le.Change = "failed"
 	if saved {
@@ -460,27 +453,26 @@ func (s *Service) recordEffectSaveRoll(ctx context.Context, c *combatTx, x *effe
 	x.ev.D20, x.ev.Modifier, x.ev.Total, x.ev.Physical = result.D20, result.Modifier, result.Total, d20.Physical
 	// The d20 Lucky rolled again, as an index into D20Faces: the log says "Sortudo: 1 → 14".
 	x.ev.Lucky, result.Rerolled = step.Lucky, step.Lucky.proto()
-	return saved, false, nil
+	return saved, nil
 }
 
 // settleEffectSave closes the window, does what the answer does to the effect, and writes the
 // event.
 func (s *Service) settleEffectSave(ctx context.Context, c *combatTx, x *effectSaveStep, saved bool) (any, error) {
-	if x.master {
+	if c.master {
 		dc := x.dc
 		x.run.result.Dc = &dc
 	}
 	// The window closes first: a pass ends the effect, which closes the effect's other windows.
-	if _, err := s.closeWindow(ctx, c, x.w, windowAnswered, reaction.ReasonNone, windowOutcome{ByMaster: x.master, Used: true}, ""); err != nil {
+	if _, err := s.closeWindow(ctx, c, x.w, windowAnswered, reaction.ReasonNone, windowOutcome{ByMaster: c.master, Used: true}, ""); err != nil {
 		return nil, err
 	}
 	if err := s.resolveEffectSave(ctx, c, x.cs, x.content, x.def, x.st, x.reactor, x.t.Phase, saved, x.call.skip, &x.run.result); err != nil {
 		return nil, err
 	}
 	x.ev.Lasting = x.le
-	var err error
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return nil, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return nil, err
 	}
 	c.characterID = &x.reactor.CharacterID
 	x.run.made = x.ev
@@ -516,11 +508,11 @@ func (s *Service) resolveEffectSave(ctx context.Context, c *combatTx, cs []playd
 			return nil
 		}
 		var caster *playdb.Combatant
-		if j := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == deref(st.SourceID) }); j >= 0 {
+		if j := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == conv.OrZero(st.SourceID) }); j >= 0 {
 			caster = &cs[j]
 		}
 		made, err := s.addEffects(ctx, c, cs, effectSpec{
-			key: save.OnFail, sourceKind: "spell", def: next, caster: caster, group: deref(st.GroupID), targets: []playdb.Combatant{target},
+			key: save.OnFail, sourceKind: "spell", def: next, caster: caster, group: conv.OrZero(st.GroupID), targets: []playdb.Combatant{target},
 			dur: durationSpec{Kind: next.Duration.Kind}, concentration: st.Concentration, dc: st.SaveDc,
 		})
 		if err != nil {
@@ -542,7 +534,7 @@ func (s *Service) effectDamageSaves(ctx context.Context, c *combatTx, target pla
 	var content *rules.Content
 	group := newGroup()
 	for _, st := range rows {
-		if st.CombatantID != target.ID || st.EndSaveAbility == nil || d.key == deref(st.SourceKey) {
+		if st.CombatantID != target.ID || st.EndSaveAbility == nil || d.key == conv.OrZero(st.SourceKey) {
 			continue
 		}
 		if content == nil {
@@ -550,7 +542,7 @@ func (s *Service) effectDamageSaves(ctx context.Context, c *combatTx, target pla
 				return err
 			}
 		}
-		def, ok := s.effectDef(content, deref(st.SourceKey))
+		def, ok := s.effectDef(content, conv.OrZero(st.SourceKey))
 		if !ok || def.EndSave == nil || !def.EndSave.OnDamage {
 			continue
 		}

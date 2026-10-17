@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
@@ -54,8 +55,8 @@ func (s *Service) CreaturesLeaving(ctx context.Context, tx pgx.Tx, campaignID, a
 	if err := s.dismissLeavers(ctx, c, cs, leaving); err != nil {
 		return "", err
 	}
-	if c.enc, err = q.TouchEncounter(ctx, enc.ID); err != nil {
-		return "", fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return "", err
 	}
 	if len(leaving) > 0 {
 		if err := insertEvent(ctx, c, eventCombatantRemoved, &actorUserID, nil, actionEvent{Round: c.enc.Round, Reason: "creature_dismissed", Created: creatureIDsOf(leaving)}); err != nil {
@@ -85,6 +86,24 @@ func openCombatOf(ctx context.Context, q *playdb.Queries, campaignID string) (pl
 	return session, enc, true, nil
 }
 
+// openCombatants is the session's open combat and all its combatants, dismissed and defeated
+// ones included; false when the session has no combat. Whether such a combatant counts as "in
+// the combat" is each caller's own predicate.
+func openCombatants(ctx context.Context, q *playdb.Queries, sessionID string) (playdb.Encounter, []playdb.Combatant, bool, error) {
+	enc, err := q.GetOpenEncounter(ctx, sessionID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return enc, nil, false, nil
+	}
+	if err != nil {
+		return enc, nil, false, fmt.Errorf("find the open encounter: %w", err)
+	}
+	cs, err := q.ListCombatants(ctx, enc.ID)
+	if err != nil {
+		return enc, nil, false, fmt.Errorf("list the combatants: %w", err)
+	}
+	return enc, cs, true, nil
+}
+
 // endSights ends the sight of the players who look through a creature that leaves and
 // reads the combatants again, as their conditions changed; cs and leaving are returned as
 // they were when none looks through one.
@@ -97,8 +116,8 @@ func (s *Service) endSights(ctx context.Context, c *combatTx, blind []playdb.Com
 	if len(blind) == 0 {
 		return cs, leaving, nil
 	}
-	if cs, err = c.q.ListCombatants(ctx, c.enc.ID); err != nil { // their conditions changed
-		return nil, nil, fmt.Errorf("list the combatants: %w", err)
+	if cs, err = listCombatants(ctx, c); err != nil { // their conditions changed
+		return nil, nil, err
 	}
 	return cs, creatureCombatantsOf(cs, creatureIDs), nil
 }
@@ -181,7 +200,7 @@ func (s *Service) PublishEncounterChanged(ctx context.Context, campaignID, encou
 			s.publishVitals(campaignID, v)
 		}
 	}
-	s.maps.VisionChanged(ctx, campaignID, deref(enc.MapID))
+	s.maps.VisionChanged(ctx, campaignID, conv.OrZero(enc.MapID))
 }
 
 // LockSession takes the open session's row (characters.CreatureHost): the lock

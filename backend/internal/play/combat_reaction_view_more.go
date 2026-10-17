@@ -4,6 +4,7 @@ import (
 	"math"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
@@ -82,7 +83,7 @@ func maneuverPrompt(f promptFacts, out *playv1.ReactionWindow) {
 	p := &playv1.ManeuverReducePrompt{AttackerLabel: f.attacker, AttackNamePt: f.attack, Damage: f.t.Damage}
 	for _, o := range reduceOptionsOf(f.k) {
 		p.Options = append(p.Options, &playv1.ManeuverReduceOption{
-			Key: o.Key, NamePt: o.NamePT, DieSides: clamp32(o.Sides, 0, 100), FlatBonus: clamp32(o.Mod, math.MinInt32, math.MaxInt32), UsesLeft: f.k.resourceLeft(o.Resource),
+			Key: o.Key, NamePt: o.NamePT, DieSides: clamp32(o.Sides, 0, 100), FlatBonus: conv.Int32(o.Mod), UsesLeft: f.k.resourceLeft(o.Resource),
 		})
 	}
 	out.Prompt = &playv1.ReactionWindow_ManeuverReduce{ManeuverReduce: p}
@@ -95,13 +96,13 @@ func deflectPrompt(f promptFacts, out *playv1.ReactionWindow) {
 	if f.w.Step == stepSecond {
 		out.Prompt = &playv1.ReactionWindow_DeflectThrow{DeflectThrow: &playv1.DeflectMissilesThrowPrompt{
 			KiLeft: k.resourceLeft(resKi), NormalRangeFt: reaction.DeflectNormalRangeFt, LongRangeFt: reaction.DeflectLongRangeFt,
-			MissileNamePt: f.attack, AttackBonus: clamp32(k.st.Proficiency+k.st.DexMod, math.MinInt32, math.MaxInt32),
+			MissileNamePt: f.attack, AttackBonus: conv.Int32(k.st.Proficiency + k.st.DexMod),
 		}}
 		return
 	}
 	out.Prompt = &playv1.ReactionWindow_DeflectMissiles{DeflectMissiles: &playv1.DeflectMissilesPrompt{
 		AttackerLabel: f.attacker, AttackNamePt: f.attack, Damage: f.t.Damage, DieSides: reaction.DeflectDie,
-		FlatBonus: clamp32(k.st.DexMod+k.st.MonkLevel, math.MinInt32, math.MaxInt32), DexMod: clamp32(k.st.DexMod, math.MinInt32, math.MaxInt32), MonkLevel: clamp32(k.st.MonkLevel, 0, math.MaxInt32),
+		FlatBonus: conv.Int32(k.st.DexMod + k.st.MonkLevel), DexMod: conv.Int32(k.st.DexMod), MonkLevel: clamp32(k.st.MonkLevel, 0, math.MaxInt32),
 	}}
 }
 
@@ -172,7 +173,7 @@ func (wv *windowView) hellishSavePrompt(f promptFacts, out *playv1.ReactionWindo
 	// reads an NPC's number (RN-20).
 	if a, ok := wv.byID[t.Actor]; ok && wv.v.master {
 		if save, err := wv.s.saveOf(wv.ctx, nil, wv.m.CampaignID, a, "dex"); err == nil {
-			p.SaveBonus, p.BonusKnown = clamp32(save.Bonus, math.MinInt32, math.MaxInt32), save.Known
+			p.SaveBonus, p.BonusKnown = conv.Int32(save.Bonus), save.Known
 		}
 	}
 	out.Prompt = &playv1.ReactionWindow_HellishRebukeSave{HellishRebukeSave: p}

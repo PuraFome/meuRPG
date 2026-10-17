@@ -8,18 +8,19 @@ import (
 	"uuid"
 
 	"connectrpc.com/connect"
-	"github.com/jackc/pgx/v5"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// Casting a summoning spell (MR-037, Etapa 9): Convocar Familiar (1 hour, a
+// Casting a summoning spell (MR-037): Convocar Familiar (1 hour, a
 // ritual: no slot), Animar Mortos (1 minute) and Conjurar Animais (1 action).
 // The long ones are cast outside a combat, here (CastSummon); Conjurar Animais
 // is cast in a combat with CastSpell (combat_spells.go), where its creatures
@@ -78,9 +79,9 @@ func (s *Service) summonRollOK(ctx context.Context, c *combatTx, m authz.Members
 // before anything is spent: a combat holds 40 combatants, and the creatures of the
 // concentration this one ends leave first.
 func (s *Service) summonHasRoom(ctx context.Context, c *combatTx, m authz.Membership, caster playdb.Combatant, concentration bool, bringing int) error {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	leaving := 0
 	if concentration {
@@ -103,7 +104,7 @@ func (s *Service) concentrationLeaving(ctx context.Context, c *combatTx, m authz
 	}
 	leaving := 0
 	for _, o := range old {
-		if slices.ContainsFunc(cs, func(x playdb.Combatant) bool { return deref(x.CreatureID) == o.ID }) {
+		if slices.ContainsFunc(cs, func(x playdb.Combatant) bool { return conv.OrZero(x.CreatureID) == o.ID }) {
 			leaving++
 		}
 	}
@@ -130,9 +131,9 @@ func (s *Service) joinSummon(ctx context.Context, c *combatTx, caster playdb.Com
 		return err
 	}
 	made.SummonRoll = &roll
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	order, _, err := s.joinCreatures(ctx, c, cs, res.Created, map[string]groupRoll{made.CastID: roll})
 	if err != nil {
@@ -160,7 +161,7 @@ func (s *Service) combatantsOfCreatures(ctx context.Context, res combatResult, i
 	}
 	var out []string
 	for _, id := range ids {
-		if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return deref(o.CreatureID) == id }); i >= 0 {
+		if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return conv.OrZero(o.CreatureID) == id }); i >= 0 {
 			out = append(out, cs[i].ID)
 		}
 	}
@@ -212,7 +213,7 @@ func parseSummonCall(msg *playv1.CastSummonRequest) (summonCall, error) {
 	if err != nil {
 		return summonCall{}, err
 	}
-	characterID, ok := parseID(msg.GetCharacterId())
+	characterID, ok := uid.Canonical(msg.GetCharacterId())
 	if !ok {
 		return summonCall{}, errCharacterNotFound()
 	}
@@ -330,16 +331,9 @@ func (s *Service) summonCaster(ctx context.Context, c *combatTx, r *summonRun) e
 // summonNotInCombat refuses the cast of a character that is in a combat: there it
 // is CastSpell's, with the initiative roll.
 func (s *Service) summonNotInCombat(ctx context.Context, c *combatTx, characterID string) error {
-	enc, err := c.q.GetOpenEncounter(ctx, c.session.ID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("find the open encounter: %w", err)
-	}
-	cs, err := c.q.ListCombatants(ctx, enc.ID)
-	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+	_, cs, found, err := openCombatants(ctx, c.q, c.session.ID)
+	if err != nil || !found {
+		return err
 	}
 	if slices.ContainsFunc(cs, func(o playdb.Combatant) bool { return o.Kind == kindPlayer && o.CharacterID == characterID }) {
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_SUMMON_IN_COMBAT,
@@ -425,15 +419,7 @@ func (s *Service) EndConcentration(
 	ctx context.Context,
 	req *connect.Request[playv1.EndConcentrationRequest],
 ) (*connect.Response[playv1.EndConcentrationResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
-	if err != nil {
-		return nil, err
-	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
+	m, key, encID, err := memberCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
 	if err != nil {
 		return nil, err
 	}
@@ -464,9 +450,9 @@ func (s *Service) endConcentrationTx(ctx context.Context, c *combatTx, m authz.M
 	if err := notEnded(c.enc); err != nil {
 		return nil, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	v := c.viewer(m, cs) // the fog: an NPC the player does not see is not found
 	target, err := findCombatant(cs, combID, v)
@@ -486,8 +472,8 @@ func (s *Service) endConcentrationTx(ctx context.Context, c *combatTx, m authz.M
 	if err := s.stopConcentrating(ctx, c, target, &ev); err != nil {
 		return nil, err
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return nil, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return nil, err
 	}
 	c.characterID = &target.CharacterID
 	ev.Round = c.enc.Round

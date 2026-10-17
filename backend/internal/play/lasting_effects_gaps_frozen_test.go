@@ -30,7 +30,7 @@ func TestLastingCoreAConditionTheMasterPutOnEndsWithoutFollowUps(t *testing.T) {
 	a.turnOf(t, "Toren")
 	l.say("after its round:\n%s%s", a.coreEffects(t, e.GetId()), a.coreCombatants(t, e.GetId(), "Goblin", "Toren"))
 	l.say("events:\n%s", a.coreEvents(t, eventLastingAdded, eventLastingEnded))
-	wantLastingGolden(t, "gaps_condition", a.coreNames(t, l.String()))
+	wantLastingGolden(t, "lasting_core", "gaps_condition", a.coreNames(t, l.String()))
 }
 
 // Mage Armor is not made for a target that wears armor, and Heroism asks the caster's
@@ -50,11 +50,13 @@ func TestLastingCoreWhoTakesHoldOfAnEffectThatNeedsTheSheet(t *testing.T) {
 	e := a.closeFight(t)
 	res := a.mustAddEffect(t, e, mageArmorKey, []string{"Brisa", "Pensantus", "Toren"}, nil)
 	l.say("mage armor on Brisa (armored), Pensantus and Toren: %d effects", len(res.GetEffects()))
-	a.mustAddEffect(t, e, mageArmorKey, []string{"Brisa"}, nil)
+	// Finding fix/lasting-effects-outside-combat (d): Mage Armor on the armored one alone is refused.
+	_, err := a.addEffect(t, e, mageArmorKey, []string{"Brisa"}, nil)
+	wantRefusal(t, "Mage Armor on the armored one alone", err, connect.CodeFailedPrecondition, "the effect takes no hold of these targets")
 	a.mustAddEffect(t, e, heroismKey, []string{"Toren"}, withCaster(t, a, "Goblin"))
 	l.say("%s%s", a.coreEffects(t, e.GetId()), a.coreCombatants(t, e.GetId(), "Brisa", "Pensantus", "Toren"))
 	l.say("events:\n%s", a.coreEvents(t, eventLastingAdded))
-	wantLastingGolden(t, "gaps_sheet", a.coreNames(t, l.String()))
+	wantLastingGolden(t, "lasting_core", "gaps_sheet", a.coreNames(t, l.String()))
 }
 
 // An effect the target is immune to takes no hold: the spell reads "no effect" for the master.
@@ -75,7 +77,7 @@ func TestLastingCoreAnImmunityOfAnEffectStopsTheSpell(t *testing.T) {
 		l.say("hold person on the Goblin -> lasting %v why %q save %v", h.GetLastingEffect(), h.GetNoEffectReasonMaster(), h.GetSave().GetOutcome())
 	}
 	l.say("%s%s", a.coreEffects(t, e.GetId()), a.coreCombatants(t, e.GetId(), "Goblin"))
-	wantLastingGolden(t, "gaps_immunity", a.coreNames(t, l.String()))
+	wantLastingGolden(t, "lasting_core", "gaps_immunity", a.coreNames(t, l.String()))
 }
 
 // The functions the calls reach only in states the database does not hold today are called
@@ -115,5 +117,5 @@ func TestLastingCoreTheCoreInOddStates(t *testing.T) {
 	})
 	l.say("%s%s", a.coreEffects(t, e.GetId()), a.coreCombatants(t, e.GetId(), "Goblin", "Toren"))
 	l.say("events:\n%s", a.coreEvents(t, eventLastingAdded, eventLastingEnded, eventLastingTriggered))
-	wantLastingGolden(t, "gaps_odd_states", a.coreNames(t, l.String()))
+	wantLastingGolden(t, "lasting_core", "gaps_odd_states", a.coreNames(t, l.String()))
 }

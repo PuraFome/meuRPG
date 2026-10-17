@@ -25,8 +25,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// Combat on a map with the fog of war on (MR-036, RN-10, RN-20, Etapa 9, slice
-// 9.7). The fixture is the cave of the guard-room fight, with the actual maps
+// Combat on a map with the fog of war on (MR-036, RN-10, RN-20). The fixture is the cave of the guard-room fight, with the actual maps
 // service behind it: the walls painted, Pensantus (gnome, darkvision 18 m), Toren
 // (human, a torch in his hand), Brisa (halfling, nothing) and the NPCs in the
 // dark. Every player's answer is read as the app's JSON (protojson), so a field
@@ -602,7 +601,7 @@ func TestRN10_FogCombatAnUnseenCreatureCutsTheMoveShort(t *testing.T) {
 	}
 	f.noLeak(t, "the cut-short answer", asJSON(t, res), "Capitão Goblin")
 
-	// With the torch lit he sees it, and the refusal names its kind as it always did.
+	// With the torch lit he sees it, and the refusal names its kind.
 	f2 := newFogCave(t)
 	f2.fight(t)
 	f2.mustMove(t, f2.master, "Capitão Goblin", 9, 7)

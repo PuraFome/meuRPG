@@ -10,6 +10,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -105,7 +106,7 @@ func effectsOn(states map[string][]playdb.CombatantState, id string) []playdb.Co
 
 // hasEffect says the combatant has an effect of the source key.
 func hasEffect(states map[string][]playdb.CombatantState, id, key string) bool {
-	return slices.ContainsFunc(states[id], func(st playdb.CombatantState) bool { return isEffect(st) && deref(st.SourceKey) == key })
+	return slices.ContainsFunc(states[id], func(st playdb.CombatantState) bool { return isEffect(st) && conv.OrZero(st.SourceKey) == key })
 }
 
 // durationSpec is how long a new effect lasts.
@@ -189,10 +190,10 @@ func endsAtOf(st playdb.CombatantState) combat.EndsAt {
 		return combat.EndsAt{}
 	}
 	phase := combat.PhaseStart
-	if deref(st.EndsPhase) == phaseEndKey {
+	if conv.OrZero(st.EndsPhase) == phaseEndKey {
 		phase = combat.PhaseEnd
 	}
-	return combat.EndsAt{Round: int(*st.EndsRound), CombatantID: deref(st.EndsCombatantID), Phase: phase}
+	return combat.EndsAt{Round: int(*st.EndsRound), CombatantID: conv.OrZero(st.EndsCombatantID), Phase: phase}
 }
 
 func (s *Service) contentOf(ctx context.Context, c *combatTx) (*rules.Content, error) {
@@ -263,10 +264,8 @@ func (spec effectSpec) visibilityOf() (visible bool, audience string) {
 	if spec.visible != nil {
 		visible = *spec.visible
 	}
-	if audience == rules.EffectVisibilityOwner || audience == "owner" {
-		return visible, "owner"
-	}
-	return visible, "all"
+	masterOnly, stored := storedAudience(audience)
+	return visible && !masterOnly, stored
 }
 
 // insertParams is the row of the effect on one target.
@@ -322,7 +321,7 @@ func (s *Service) dropSameSpell(ctx context.Context, c *combatTx, cs []playdb.Co
 		return fmt.Errorf("list the effects: %w", err)
 	}
 	old := slices.DeleteFunc(rows, func(st playdb.CombatantState) bool {
-		return st.CombatantID != target || deref(st.SourceKey) != key || deref(st.GroupID) == group
+		return st.CombatantID != target || conv.OrZero(st.SourceKey) != key || conv.OrZero(st.GroupID) == group
 	})
 	return s.endEffectRows(ctx, c, cs, old, endReplaced)
 }
@@ -332,9 +331,9 @@ func (s *Service) dropSameSpell(ctx context.Context, c *combatTx, cs []playdb.Co
 // speed, and whether it can act and move; and the exhaustion it carries (a character's is
 // its vitals').
 func (s *Service) refreshCombatants(ctx context.Context, c *combatTx, ids ...string) error {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	rows, err := c.q.ListLastingEffects(ctx, c.enc.ID)
 	if err != nil {
@@ -491,11 +490,7 @@ func (s *Service) dropConcentrationIfIncapacitated(ctx context.Context, c *comba
 	if cb.ConcentrationSpell == nil || !(combat.Creature{Conditions: cb.Conditions}).Incapacitated() {
 		return nil
 	}
-	ev := actionEvent{Round: c.enc.Round, Secret: cb.Hidden, Actor: cb.ID}
-	if err := s.stopConcentrating(ctx, c, cb, &ev); err != nil {
-		return err
-	}
-	return insertEvent(ctx, c, eventConditionsSet, &c.actorUserID, nil, ev)
+	return s.loseConcentration(ctx, c, cb)
 }
 
 // casting is the rows of one casting of an effect: they share a group and a source key.
@@ -508,9 +503,9 @@ type casting struct {
 func castingsOf(rows []playdb.CombatantState) []*casting {
 	var castings []*casting
 	for _, st := range rows {
-		i := slices.IndexFunc(castings, func(k *casting) bool { return k.group == deref(st.GroupID) && k.key == deref(st.SourceKey) })
+		i := slices.IndexFunc(castings, func(k *casting) bool { return k.group == conv.OrZero(st.GroupID) && k.key == conv.OrZero(st.SourceKey) })
 		if i < 0 {
-			castings = append(castings, &casting{key: deref(st.SourceKey), group: deref(st.GroupID)})
+			castings = append(castings, &casting{key: conv.OrZero(st.SourceKey), group: conv.OrZero(st.GroupID)})
 			i = len(castings) - 1
 		}
 		castings[i].rows = append(castings[i].rows, st)
@@ -569,8 +564,8 @@ func (s *Service) endCasting(ctx context.Context, c *combatTx, cs []playdb.Comba
 	first := k.rows[0]
 	hidden := s.effectHiddenFrom(first, targetsOf(cs, targets))
 	line, err := insertEventID(ctx, c, eventLastingEnded, &c.actorUserID, nil, actionEvent{
-		Round: c.enc.Round, Secret: hidden, Actor: deref(first.SourceID), Target: targets[0],
-		Lasting: &lastingEvent{Key: k.key, Change: "ended", Targets: targets, Reason: reason, Effects: ids, OwnerOnly: first.Audience == audienceOwner},
+		Round: c.enc.Round, Secret: hidden, Actor: conv.OrZero(first.SourceID), Target: targets[0],
+		Lasting: &lastingEvent{Key: k.key, Change: "ended", Targets: targets, Reason: reason, Effects: ids, OwnerOnly: first.Audience != audienceAll},
 	})
 	if err != nil {
 		return err
@@ -594,7 +589,7 @@ func targetsOf(cs []playdb.Combatant, ids []string) []playdb.Combatant {
 
 // afterEffectEnded does what follows an effect that ended on its targets.
 func (s *Service) afterEffectEnded(ctx context.Context, c *combatTx, cs []playdb.Combatant, content *rules.Content, rows []playdb.CombatantState, reason string) error {
-	key := deref(rows[0].SourceKey)
+	key := conv.OrZero(rows[0].SourceKey)
 	def, ok := s.effectDef(content, key)
 	if !ok {
 		return nil
@@ -634,7 +629,7 @@ func (s *Service) afterEffectRowEnded(ctx context.Context, c *combatTx, cs []pla
 		return fmt.Errorf("list the effects: %w", err)
 	}
 	burned := slices.DeleteFunc(all, func(o playdb.CombatantState) bool {
-		return o.CombatantID != st.CombatantID || !slices.Contains(def.EndsEffectsOf, deref(o.SourceKey)) || o.ID == st.ID
+		return o.CombatantID != st.CombatantID || !slices.Contains(def.EndsEffectsOf, conv.OrZero(o.SourceKey)) || o.ID == st.ID
 	})
 	return s.endEffectRows(ctx, c, cs, burned, endBurned)
 }
@@ -647,7 +642,7 @@ func (s *Service) leaveOnEnd(ctx context.Context, c *combatTx, cs []playdb.Comba
 		return nil
 	}
 	var caster *playdb.Combatant
-	if j := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == deref(st.SourceID) }); j >= 0 {
+	if j := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == conv.OrZero(st.SourceID) }); j >= 0 {
 		caster = &cs[j]
 	}
 	return s.leaveFollowUp(ctx, c, cs, effectSpec{
@@ -707,8 +702,8 @@ func (s *Service) addedEventID(ctx context.Context, c *combatTx, cs []playdb.Com
 		rounds = max(*first.EndsRound-max(c.enc.Round, 1), 0)
 	}
 	return insertEventID(ctx, c, eventLastingAdded, &c.actorUserID, nil, actionEvent{
-		Round: c.enc.Round, Secret: s.effectHiddenFrom(first, targetsOf(cs, targets)), Actor: deref(first.SourceID), Target: targets[0],
-		Lasting: &lastingEvent{Key: key, Change: "added", Targets: targets, Caster: deref(first.SourceID), Rounds: rounds, Effects: ids, OwnerOnly: first.Audience == audienceOwner},
+		Round: c.enc.Round, Secret: s.effectHiddenFrom(first, targetsOf(cs, targets)), Actor: conv.OrZero(first.SourceID), Target: targets[0],
+		Lasting: &lastingEvent{Key: key, Change: "added", Targets: targets, Caster: conv.OrZero(first.SourceID), Rounds: rounds, Effects: ids, OwnerOnly: first.Audience != audienceAll},
 	})
 }
 
@@ -734,13 +729,13 @@ func (s *Service) endConcentrationEffects(ctx context.Context, c *combatTx, cast
 	if err != nil {
 		return fmt.Errorf("list the effects: %w", err)
 	}
-	held := slices.DeleteFunc(rows, func(st playdb.CombatantState) bool { return !st.Concentration || deref(st.SourceID) != caster.ID })
+	held := slices.DeleteFunc(rows, func(st playdb.CombatantState) bool { return !st.Concentration || conv.OrZero(st.SourceID) != caster.ID })
 	if len(held) == 0 {
 		return nil
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	return s.endEffectRows(ctx, c, cs, held, reason)
 }
@@ -779,7 +774,7 @@ func effectSaveAdvantage(states map[string][]playdb.CombatantState, id string) [
 func effectAttackDisadvantage(states map[string][]playdb.CombatantState, id string) string {
 	for _, st := range effectsOn(states, id) {
 		if st.SpentAt == nil && slices.ContainsFunc(effectModifiers(st), func(m rules.EffectModifier) bool { return m.Kind == rules.ModifierAttackDisadvantage }) {
-			return deref(st.SourceKey)
+			return conv.OrZero(st.SourceKey)
 		}
 	}
 	return ""

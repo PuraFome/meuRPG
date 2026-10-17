@@ -102,7 +102,12 @@ type highlightTally struct {
 // each player's character, in the order of the combatants.
 func tallyHighlights(events []playdb.ListEncounterCombatEventsRow, combatants []playdb.Combatant) []*characterTally {
 	h, out := newHighlightTally(combatants)
-	undone := undoneHighlightIDs(events)
+	undone := map[string]bool{}
+	for _, e := range events {
+		if e.Kind == eventActionUndone {
+			markUndone(undone, e.Payload)
+		}
+	}
 	for _, e := range events {
 		if e.Kind == eventActionUndone || undone[e.ID] {
 			continue
@@ -134,20 +139,6 @@ func newHighlightTally(combatants []playdb.Combatant) (*highlightTally, []*chara
 		out = append(out, t)
 	}
 	return h, out
-}
-
-// undoneHighlightIDs is the ids the undos name: the first pass finds them all.
-func undoneHighlightIDs(events []playdb.ListEncounterCombatEventsRow) map[string]bool {
-	undone := map[string]bool{}
-	for _, e := range events {
-		if e.Kind != eventActionUndone {
-			continue
-		}
-		if ev, err := readEvent(e.Payload); err == nil {
-			undone[ev.Undone] = true
-		}
-	}
-	return undone
 }
 
 // fold adds one event to the numbers.
@@ -268,6 +259,13 @@ func (s *Service) GetCombatHighlights(
 		return nil, s.dbError(ctx, "read the combat's highlights", err)
 	}
 	tallies := tallyHighlights(events, cs)
+	if m.Role != authz.RoleMaster {
+		chars, err := s.talliedCharacters(ctx, m.CampaignID, tallies)
+		if err != nil {
+			return nil, err
+		}
+		tallies = dropReserved(tallies, chars)
+	}
 
 	res := &playv1.GetCombatHighlightsResponse{Categories: highlightCategories(tallies)}
 	for _, t := range tallies {
@@ -284,7 +282,7 @@ func (s *Service) GetCombatHighlights(
 }
 
 // readHighlightInputs reads the events and combatants of an ended combat. The
-// encounter, its events and its combatants are one snapshot (audit D-03).
+// encounter, its events and its combatants are one snapshot.
 func (s *Service) readHighlightInputs(ctx context.Context, campaignID, encID string) ([]playdb.ListEncounterCombatEventsRow, []playdb.Combatant, error) {
 	var (
 		events []playdb.ListEncounterCombatEventsRow

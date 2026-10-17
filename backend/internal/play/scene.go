@@ -18,6 +18,7 @@ import (
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
@@ -26,7 +27,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// The RP scene during a session (MR-015, Etapa 7, D7; questions 51 to 55 of
+// The RP scene during a session (MR-015; questions 51 to 55 of
 // the progress doc, with their defaults).
 //
 //   - The scene is a map point of kind SCENE with the master's actions on it
@@ -131,7 +132,7 @@ func (s *Service) OpenScenePoint(ctx context.Context, campaignID string) (string
 	if err != nil {
 		return "", fmt.Errorf("read the open scene: %w", err)
 	}
-	return deref(point), nil
+	return conv.OrZero(point), nil
 }
 
 // publishSceneChanged tells everyone in the session that the open scene
@@ -170,18 +171,6 @@ func insertSceneEvent(ctx context.Context, c *combatTx, kind string, actor, key 
 // point is no longer a scene).
 func errNoOpenScene() error {
 	return errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_NO_OPEN_SCENE, "no scene is open")
-}
-
-// lockSceneSession locks the campaign's open game session inside the transaction of q.
-func lockSceneSession(ctx context.Context, q *playdb.Queries, campaignID string) (playdb.GameSession, error) {
-	session, err := q.GetOpenGameSessionForUpdate(ctx, campaignID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return playdb.GameSession{}, errNoOpenSession()
-	}
-	if err != nil {
-		return playdb.GameSession{}, fmt.Errorf("lock the open session: %w", err)
-	}
-	return session, nil
 }
 
 // openSceneIn reads the scene the session has open, inside tx like everything else
@@ -267,7 +256,7 @@ func (s *Service) OpenScene(
 // (the rolls so far stay), and empties the stage: another scene is another stage (MR-031).
 func (s *Service) switchSceneOn(ctx context.Context, tx pgx.Tx, m authz.Membership, point string, actions int, sw *sceneSwitch) error {
 	q := s.queries.WithTx(tx)
-	session, err := lockSceneSession(ctx, q, m.CampaignID)
+	session, err := lockOpenSessionOrNone(ctx, q, m.CampaignID)
 	sw.session = session
 	if err != nil {
 		return err
@@ -326,7 +315,7 @@ func (s *Service) CloseScene(
 // stage: no scene, no stage (MR-031).
 func (s *Service) switchSceneOff(ctx context.Context, tx pgx.Tx, m authz.Membership, sw *sceneSwitch) error {
 	q := s.queries.WithTx(tx)
-	session, err := lockSceneSession(ctx, q, m.CampaignID)
+	session, err := lockOpenSessionOrNone(ctx, q, m.CampaignID)
 	if err != nil {
 		return err
 	}
@@ -503,9 +492,9 @@ func (s *Service) sceneActionViews(v *sceneViewing) []*playv1.SceneActionView {
 			view.Dc = clamp32(a.DC, 0, maxSceneDC)
 		}
 		if !v.master && i < len(v.options) && v.options[i].Known {
-			view.Bonus = new(clamp32(v.options[i].Bonus, math.MinInt32, math.MaxInt32))
+			view.Bonus = new(conv.Int32(v.options[i].Bonus))
 			if v.options[i].HasPassive {
-				view.Passive = new(clamp32(v.options[i].Passive, math.MinInt32, math.MaxInt32))
+				view.Passive = new(conv.Int32(v.options[i].Passive))
 			}
 		}
 		if v.hasMine {
@@ -624,11 +613,11 @@ func (s *Service) sceneRollView(ctx context.Context, v *sceneViewing, r playdb.L
 	}
 	// One rule for pass or fail: whether the scene showed its DC when the
 	// roll was made (the same flag the session summary counts).
-	roll := sceneRollToProto(r.ID, deref(r.CharacterID), names[deref(r.CharacterID)], r.CreatedAt, ev, v.master || ev.DCShown)
+	roll := sceneRollToProto(r.ID, conv.OrZero(r.CharacterID), names[conv.OrZero(r.CharacterID)], r.CreatedAt, ev, v.master || ev.DCShown)
 	if v.master {
 		// An action the master removed since has no limit to read.
 		if i := slices.IndexFunc(v.scene.Actions, func(a link.SceneAction) bool { return a.ID == ev.ActionID }); i >= 0 {
-			roll.AttemptsLeft = v.tally.left(v.scene.Actions[i], deref(r.CharacterID))
+			roll.AttemptsLeft = v.tally.left(v.scene.Actions[i], conv.OrZero(r.CharacterID))
 		}
 	}
 	return roll, nil
@@ -690,7 +679,7 @@ func tallyAttempts(ctx context.Context, q *playdb.Queries, sessionID string, aft
 		return t, fmt.Errorf("count the scene's rolls: %w", err)
 	}
 	for _, r := range rolls {
-		t.rolled[attemptKey{deref(r.CharacterID), r.ActionID}] += int(r.Rolls)
+		t.rolled[attemptKey{conv.OrZero(r.CharacterID), r.ActionID}] += int(r.Rolls)
 	}
 	grants, err := q.ListSceneAttemptGrantEvents(ctx, playdb.ListSceneAttemptGrantEventsParams{GameSessionID: sessionID, Seq: after})
 	if err != nil {
@@ -701,7 +690,7 @@ func tallyAttempts(ctx context.Context, q *playdb.Queries, sessionID string, aft
 		if err := json.Unmarshal(g.Payload, &ev); err != nil {
 			return t, fmt.Errorf("decode a granted attempt: %w", err)
 		}
-		t.granted[attemptKey{deref(g.CharacterID), ev.ActionID}]++
+		t.granted[attemptKey{conv.OrZero(g.CharacterID), ev.ActionID}]++
 	}
 	return t, nil
 }
@@ -744,11 +733,6 @@ type sceneRollCall struct {
 	tx       pgx.Tx
 	q        *playdb.Queries
 	out      *sceneRolled
-}
-
-// errBadIdempotencyKey is the refusal of a key that was used for another change.
-func errBadIdempotencyKey() error {
-	return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
 }
 
 // sceneRollInput reads how the player rolls: in the app, or the faces they typed.
@@ -826,7 +810,7 @@ func (s *Service) sceneRollAnswer(ctx context.Context, m authz.Membership, out *
 	characterID, name := out.who.ID, out.who.Name
 	if out.repeated {
 		// Written the first time: the character and the time are the event's.
-		characterID, name = deref(out.doneRow.CharacterID), ""
+		characterID, name = conv.OrZero(out.doneRow.CharacterID), ""
 		if chars, err := s.roster.CombatCharacters(ctx, nil, m.CampaignID, []string{characterID}); err == nil && len(chars) == 1 {
 			name = chars[0].Name
 		}
@@ -852,7 +836,7 @@ func (s *Service) sceneRollAnswer(ctx context.Context, m authz.Membership, out *
 // run is the transaction of a roll: a retry gets its roll back; otherwise the rules and the
 // attempts allow it, the dice are rolled (or held for a question) and the roll is written.
 func (c *sceneRollCall) run(ctx context.Context) error {
-	session, err := lockSceneSession(ctx, c.q, c.m.CampaignID)
+	session, err := lockOpenSessionOrNone(ctx, c.q, c.m.CampaignID)
 	if err != nil {
 		return err
 	}
@@ -906,10 +890,10 @@ func (c *sceneRollCall) replay(ctx context.Context, sessionID string) (bool, err
 	}
 	c.out.doneRow = done
 	if done.Kind != eventSceneCheckRolled {
-		return false, errBadIdempotencyKey()
+		return false, errKeyReused()
 	}
 	if done.ActorUserID == nil || *done.ActorUserID != c.m.UserID || hashDiffers(done.IdempotencyHash, c.hash) {
-		return false, errBadIdempotencyKey()
+		return false, errKeyReused()
 	}
 	c.out.repeated = true
 	c.out.rollID, c.out.at = done.ID, done.CreatedAt
@@ -996,7 +980,7 @@ func (c *sceneRollCall) write(ctx context.Context, session playdb.GameSession, s
 	d20 := step.Roll
 	ev := sceneRollEvent{
 		PointID: scene.PointID, ActionID: action.ID, Key: action.Key,
-		D20: clamp32(d20.Face(), 1, d20Sides), Modifier: clamp32(bonus, math.MinInt32, math.MaxInt32), Total: clamp32(d20.Total, math.MinInt32, math.MaxInt32),
+		D20: clamp32(d20.Face(), 1, d20Sides), Modifier: conv.Int32(bonus), Total: conv.Int32(d20.Total),
 		Physical: d20.Physical, DCShown: scene.ShowDC, D20B: clamp32(d20.otherFace(), 0, d20Sides), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(cm.Mode),
 		Lucky: step.Lucky,
 	}
@@ -1077,7 +1061,7 @@ func (s *Service) GrantSceneAttempt(
 // character must be the open scene's and the party's, and an action with a limit gets an event.
 func (g grantSceneCall) run(ctx context.Context, tx pgx.Tx, granted *bool) error {
 	q := g.s.queries.WithTx(tx)
-	session, err := lockSceneSession(ctx, q, g.m.CampaignID)
+	session, err := lockOpenSessionOrNone(ctx, q, g.m.CampaignID)
 	if err != nil {
 		return err
 	}
@@ -1124,8 +1108,8 @@ func (g grantSceneCall) replay(ctx context.Context, q *playdb.Queries, sessionID
 	}
 	var prev sceneGrantEvent
 	if done.Kind != eventSceneAttemptGranted || json.Unmarshal(done.Payload, &prev) != nil ||
-		prev.ActionID != g.actionID || deref(done.CharacterID) != g.characterID {
-		return false, errBadIdempotencyKey()
+		prev.ActionID != g.actionID || conv.OrZero(done.CharacterID) != g.characterID {
+		return false, errKeyReused()
 	}
 	return true, nil
 }

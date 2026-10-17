@@ -20,7 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
-// The actions of a turn (MR-012, MR-014, Etapa 6, slice 6.4a): the options of a
+// The actions of a turn (MR-012, MR-014): the options of a
 // combatant, the attack in two steps, the damage, the standard actions, the
 // NPCs' hit points, the undo and the combat log. These tests need the
 // database (MEURPG_TEST_DATABASE_URL). The fixture is the party of the
@@ -50,6 +50,8 @@ type armed struct {
 	// placedBy is the area placeFor chose for each idempotency key, so that a retry of the
 	// same cast is the same request.
 	placedBy sync.Map
+	// callState is the state markCall saw before the call a golden scenario makes.
+	callState string
 }
 
 // hero creates a player's character with a full sheet.

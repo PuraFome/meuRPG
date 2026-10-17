@@ -10,6 +10,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
@@ -33,20 +34,14 @@ type endTurnOutcome struct {
 	secret  bool                   // the part that ended is a hidden member's: no line for the players
 }
 
-// readEndTurn reads and checks the request, in the order the answers are given: who may call, the
+// readEndTurnCall reads and checks the request, in the order the answers are given: who may call, the
 // key, the encounter, then the expected member.
-func readEndTurn(ctx context.Context, req *playv1.EndTurnRequest) (authz.Membership, endTurnCall, error) {
-	m, err := authz.RequireCampaignMember(ctx, req.GetCampaignId())
+func readEndTurnCall(ctx context.Context, req *playv1.EndTurnRequest) (authz.Membership, endTurnCall, error) {
+	m, key, encID, err := memberCall(ctx, req.GetCampaignId(), req.GetIdempotencyKey(), req.GetEncounterId())
 	if err != nil {
 		return m, endTurnCall{}, err
 	}
-	call := endTurnCall{round: req.GetExpectedRound(), discard: req.GetDiscardPendingDamage()}
-	if call.key, err = parseKey(req.GetIdempotencyKey()); err != nil {
-		return m, call, err
-	}
-	if call.encounterID, err = parseCombatID(req.GetEncounterId(), "encounter"); err != nil {
-		return m, call, err
-	}
+	call := endTurnCall{key: key, encounterID: encID, round: req.GetExpectedRound(), discard: req.GetDiscardPendingDamage()}
 	if raw := req.GetExpectedCombatantId(); raw != "" {
 		if call.expected, err = parseCombatID(raw, "combatant"); err != nil {
 			return m, call, err
@@ -99,9 +94,9 @@ func (s *Service) readEndTurnState(ctx context.Context, c *combatTx, m authz.Mem
 	if call.round != 0 && call.round != c.enc.Round {
 		return nil, combatViewer{}, errStaleTurnPart()
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, combatViewer{}, fmt.Errorf("list the combatants: %w", err)
+		return nil, combatViewer{}, err
 	}
 	// A combatant the player does not see is not found, before anything else can
 	// answer differently (a stale turn, a part that ended): so it is on every call.
@@ -229,7 +224,7 @@ func (s *Service) dropPendingDamageOnEnd(ctx context.Context, c *combatTx, m aut
 		tgt, _ := findCombatant(cs, p.TargetID, combatViewer{master: true})
 		if err := insertEvent(ctx, c, eventDamageDiscarded, &m.UserID, nil, actionEvent{
 			Round: c.enc.Round, Secret: secretOf(current, tgt), Actor: current.ID, Target: p.TargetID, Pending: p.ID, Key: p.AttackKey,
-			Amount: num(p.Amount), PrevStatus: p.Status,
+			Amount: conv.OrZero(p.Amount), PrevStatus: p.Status,
 		}); err != nil {
 			return dropped, err
 		}
@@ -260,15 +255,19 @@ func (s *Service) closeTurnPart(ctx context.Context, c *combatTx, current playdb
 	return s.openEndSaves(ctx, c, current)
 }
 
+// partIsMasters says the line of current's part ending is the master's alone: a part of a group of
+// NPCs alone is the master's, like the group (RN-20), and so is a hidden member's.
+func partIsMasters(cs []playdb.Combatant, current playdb.Combatant) bool {
+	holdsPlayer := slices.ContainsFunc(cs, func(o playdb.Combatant) bool { return o.TurnState != turnIdle && inParty(o) })
+	return current.Hidden || !holdsPlayer
+}
+
 // passTheTurn says where the turn goes once current's part ended: to the members of its group who
 // still act, nowhere while the saves of the effects wait, or to the next group.
 func (s *Service) passTheTurn(ctx context.Context, c *combatTx, cs []playdb.Combatant, current playdb.Combatant, out *endTurnOutcome) (any, error) {
 	// Who still acts: the turn passes only when the last member ends.
 	if acting := othersActing(cs, current.ID); len(acting) > 0 {
-		// A part of a group of NPCs alone is the master's, like the group (RN-20),
-		// and so is a hidden member's: no line for the players.
-		holdsPlayer := slices.ContainsFunc(cs, func(o playdb.Combatant) bool { return o.TurnState != turnIdle && inParty(o) })
-		out.secret = current.Hidden || !holdsPlayer
+		out.secret = partIsMasters(cs, current)
 		c.kind = eventTurnPartEnded
 		if err := setCurrent(ctx, c, acting[0], c.enc.Round); err != nil {
 			return nil, err
@@ -279,7 +278,7 @@ func (s *Service) passTheTurn(ctx context.Context, c *combatTx, cs []playdb.Comb
 	if held, err := s.endSaveOpen(ctx, c); err != nil {
 		return nil, err
 	} else if held {
-		out.secret = current.Hidden
+		out.secret = partIsMasters(cs, current)
 		c.kind = eventTurnPartEnded
 		return actionEvent{Round: c.enc.Round, Secret: out.secret, Actor: current.ID}, nil
 	}

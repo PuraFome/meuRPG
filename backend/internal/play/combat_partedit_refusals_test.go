@@ -1,7 +1,6 @@
 package play
 
 import (
-	"errors"
 	"strings"
 	"testing"
 
@@ -14,21 +13,6 @@ import (
 // in which order: the request is read field by field (the first bad one is the error),
 // then the combat and the pending damage are checked. They need the database
 // (MEURPG_TEST_DATABASE_URL).
-
-// wantPartsRefusal requires a connect error with the code and the message.
-func wantPartsRefusal(t *testing.T, call string, err error, code connect.Code, msg string) {
-	t.Helper()
-	if err == nil {
-		t.Fatalf("%s succeeded, want %v %q", call, code, msg)
-	}
-	var cerr *connect.Error
-	if !errors.As(err, &cerr) {
-		t.Fatalf("%s error = %v, want a connect error", call, err)
-	}
-	if cerr.Code() != code || cerr.Message() != msg {
-		t.Errorf("%s = %v %q, want %v %q", call, cerr.Code(), cerr.Message(), code, msg)
-	}
-}
 
 // TestUndoLastActionRefusesTheRequestFieldByField: a key, a combat and an expected event
 // that are not UUIDs are refused in that order, the first bad one deciding.
@@ -69,13 +53,13 @@ func TestUndoLastActionRefusesTheRequestFieldByField(t *testing.T) {
 		{"a combat that does not exist", func(r *playv1.UndoLastActionRequest) { r.EncounterId = newKey() }, connect.CodeNotFound, encounter},
 	}
 	for _, tt := range tests {
-		wantPartsRefusal(t, "UndoLastAction("+tt.name+")", call(tt.edit), tt.code, tt.msg)
+		wantRefusal(t, "UndoLastAction("+tt.name+")", call(tt.edit), tt.code, tt.msg)
 	}
 
 	// With a good request, the combat's beginning is no action to undo...
 	err := call(func(*playv1.UndoLastActionRequest) {})
 	b := wantBlockedBy(t, "UndoLastAction(the beginning of the combat)", err, blockedNothingToUndo)
-	wantPartsRefusal(t, "UndoLastAction(the beginning of the combat)", err, connect.CodeFailedPrecondition, "there is no action to undo")
+	wantRefusal(t, "UndoLastAction(the beginning of the combat)", err, connect.CodeFailedPrecondition, "there is no action to undo")
 	if b.GetReason() != blockedNothingToUndo {
 		t.Errorf("reason = %v, want NOTHING_TO_UNDO", b.GetReason())
 	}
@@ -83,7 +67,7 @@ func TestUndoLastActionRefusesTheRequestFieldByField(t *testing.T) {
 	a.endEncounter(t, e)
 	err = call(func(*playv1.UndoLastActionRequest) {})
 	wantBlockedBy(t, "UndoLastAction(an ended combat)", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ENDED)
-	wantPartsRefusal(t, "UndoLastAction(an ended combat)", err, connect.CodeFailedPrecondition, "the combat has ended")
+	wantRefusal(t, "UndoLastAction(an ended combat)", err, connect.CodeFailedPrecondition, "the combat has ended")
 }
 
 // TestUndoLastActionAnswersAnotherAction: a master whose screen is stale is told that
@@ -93,7 +77,7 @@ func TestUndoLastActionAnswersAnotherAction(t *testing.T) {
 	a, e := rollsTable(t)
 	e = a.passTo(t, e, "Toren")
 	a.mustAttack(t, a.caio, a.get(t, a.caio), "Toren", rapier, "Goblin", d20(15))
-	wantPartsRefusal(t, "UndoLastAction(a stale event)", a.undo(t, a.master, e, newKey()), connect.CodeAborted, "another action is the last now")
+	wantRefusal(t, "UndoLastAction(a stale event)", a.undo(t, a.master, e, newKey()), connect.CodeAborted, "another action is the last now")
 }
 
 // partEditTable is a hit of Toren on the restrained goblin, with the damage rolled with
@@ -169,7 +153,7 @@ func TestRemoveDamagePartRefusesTheRequestFieldByField(t *testing.T) {
 		{"a combat that does not exist", func(r *playv1.RemoveDamagePartRequest) { r.EncounterId = newKey() }, connect.CodeNotFound, encounter},
 	}
 	for _, tt := range tests {
-		wantPartsRefusal(t, "RemoveDamagePart("+tt.name+")", call(tt.edit), tt.code, tt.msg)
+		wantRefusal(t, "RemoveDamagePart("+tt.name+")", call(tt.edit), tt.code, tt.msg)
 	}
 	// A part key of exactly 100 characters is read, and then no part of the damage.
 	err := call(func(r *playv1.RemoveDamagePartRequest) { r.PartKey = strings.Repeat("p", 100) })
@@ -191,19 +175,19 @@ func TestRemoveDamagePartRefusesWhatCannotComeOut(t *testing.T) {
 	// The hit is not rolled yet: there is no damage to take an extra out of.
 	err := remove("sneak-attack")
 	wantBlockedBy(t, "RemoveDamagePart(a damage not rolled)", err, blockedNotRolled)
-	wantPartsRefusal(t, "RemoveDamagePart(a damage not rolled)", err, connect.CodeFailedPrecondition, "the damage was not rolled")
+	wantRefusal(t, "RemoveDamagePart(a damage not rolled)", err, connect.CodeFailedPrecondition, "the damage was not rolled")
 
 	a.rollWithSneakAttack(t, pendingID)
 	const notRemovable = "that part cannot be taken out"
 	for _, part := range []string{"weapon", "colossus-slayer", "divine-smite", "divine-smite-extra", "nothing-like-it"} {
 		err := remove(part)
 		wantBlockedBy(t, "RemoveDamagePart("+part+")", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_PART_NOT_REMOVABLE)
-		wantPartsRefusal(t, "RemoveDamagePart("+part+")", err, connect.CodeFailedPrecondition, notRemovable)
+		wantRefusal(t, "RemoveDamagePart("+part+")", err, connect.CodeFailedPrecondition, notRemovable)
 	}
 	if err := remove("sneak-attack"); err != nil {
 		t.Fatalf("RemoveDamagePart(sneak-attack) error = %v", err)
 	}
-	wantPartsRefusal(t, "RemoveDamagePart(the extra twice)", remove("sneak-attack"), connect.CodeFailedPrecondition, notRemovable)
+	wantRefusal(t, "RemoveDamagePart(the extra twice)", remove("sneak-attack"), connect.CodeFailedPrecondition, notRemovable)
 
 	a.endEncounter(t, e)
 	err = remove("sneak-attack")
@@ -226,7 +210,7 @@ func TestRemoveDamagePartRefusesADamageAlreadyAppliedToACharacter(t *testing.T) 
 		CampaignId: a.campaignID, EncounterId: e.GetId(), PendingDamageId: pending.GetId(), PartKey: "sneak-attack", Reason: "motivo", IdempotencyKey: newKey(),
 	}))
 	wantBlockedBy(t, "RemoveDamagePart(a damage applied to a character)", err, blockedDamageResolved)
-	wantPartsRefusal(t, "RemoveDamagePart(a damage applied to a character)", err, connect.CodeFailedPrecondition, "the damage was applied to a character already")
+	wantRefusal(t, "RemoveDamagePart(a damage applied to a character)", err, connect.CodeFailedPrecondition, "the damage was applied to a character already")
 }
 
 // TestRemoveDamagePartGivesTheOncePerTurnUseBack: the Colossus Slayer the master took out

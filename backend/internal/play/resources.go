@@ -209,7 +209,7 @@ func eventByKey(ctx context.Context, q *playdb.Queries, sessionID, key, kind str
 	switch {
 	case err == nil:
 		if done.Kind != kind || hashDiffers(done.IdempotencyHash, hash) {
-			return done, false, connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
+			return done, false, errKeyReused()
 		}
 		return done, true, nil
 	case errors.Is(err, pgx.ErrNoRows):
@@ -243,7 +243,7 @@ type restRun struct {
 	spellVitals  []*playv1.CharacterVitals
 }
 
-// readRestCall reads and checks the request, in the order the refusals have always come.
+// readRestCall reads and checks the request. The refusals come in the order of the checks below.
 func readRestCall(ctx context.Context, msg *playv1.TakeRestRequest) (restCall, error) {
 	m, err := authz.RequireCampaignRole(ctx, msg.GetCampaignId(), authz.RoleMaster)
 	if err != nil {
@@ -438,7 +438,7 @@ type hitDiceRun struct {
 	repeated bool
 }
 
-// readHitDiceCall reads and checks the request, in the order the refusals have always come.
+// readHitDiceCall reads and checks the request. The refusals come in the order of the checks below.
 func readHitDiceCall(ctx context.Context, req *playv1.SpendHitDiceRequest) (hitDiceCall, error) {
 	m, err := authz.RequireCampaignMember(ctx, req.GetCampaignId())
 	if err != nil {
@@ -552,19 +552,6 @@ func (s *Service) spendHitDieRolled(ctx context.Context, tx pgx.Tx, q *playdb.Qu
 	return nil
 }
 
-// lockOpenSessionOrNone locks the campaign's open session in the transaction of q, or
-// refuses with the answer of a table without one.
-func lockOpenSessionOrNone(ctx context.Context, q *playdb.Queries, campaignID string) (playdb.GameSession, error) {
-	session, err := q.GetOpenGameSessionForUpdate(ctx, campaignID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return playdb.GameSession{}, errNoOpenSession()
-	}
-	if err != nil {
-		return playdb.GameSession{}, fmt.Errorf("lock the open session: %w", err)
-	}
-	return session, nil
-}
-
 // requireCharacterOwnerOrMaster refuses a member who is neither the master nor the
 // character's player: another player's character is not theirs.
 func (s *Service) requireCharacterOwnerOrMaster(ctx context.Context, tx pgx.Tx, m authz.Membership, characterID string) error {
@@ -582,7 +569,7 @@ func (s *Service) requireCharacterOwnerOrMaster(ctx context.Context, tx pgx.Tx, 
 // character; what names the event in the error of a payload that cannot be read.
 func replayCharacterEvent(done playdb.GetSessionEventByIdempotencyKeyRow, characterID, what string, into any) error {
 	if done.CharacterID == nil || *done.CharacterID != characterID {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
+		return errKeyReused()
 	}
 	if err := json.Unmarshal(done.Payload, into); err != nil {
 		return fmt.Errorf("read the %s event: %w", what, err)

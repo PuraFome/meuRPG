@@ -10,6 +10,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
@@ -36,18 +37,10 @@ type answerInput struct {
 	choice playv1.ReactionChoice
 }
 
-// parseAnswerInput reads the caller and the request of AnswerReaction, in the order its
-// refusals have always come: the member, the key, the combat, the window, the answer.
+// parseAnswerInput reads the caller and the request of AnswerReaction. The refusals come
+// in this order: the member, the key, the combat, the window, the answer.
 func parseAnswerInput(ctx context.Context, msg *playv1.AnswerReactionRequest) (authz.Membership, answerInput, error) {
-	m, err := authz.RequireCampaignMember(ctx, msg.GetCampaignId())
-	if err != nil {
-		return m, answerInput{}, err
-	}
-	key, err := parseKey(msg.GetIdempotencyKey())
-	if err != nil {
-		return m, answerInput{}, err
-	}
-	encID, err := parseCombatID(msg.GetEncounterId(), "encounter")
+	m, key, encID, err := memberCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
 	if err != nil {
 		return m, answerInput{}, err
 	}
@@ -148,8 +141,8 @@ func (s *Service) answerWindow(ctx context.Context, c *combatTx, m authz.Members
 	if got.kind != "" {
 		c.kind = got.kind
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return nil, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return nil, err
 	}
 	got.ev.Round = c.enc.Round
 	return got.ev, nil
@@ -217,10 +210,7 @@ func (s *Service) markRolling(ctx context.Context, c *combatTx, m authz.Membersh
 	if _, err := c.q.SetReactionWindowStep(ctx, playdb.SetReactionWindowStepParams{ID: w.ID, Step: w.Step, Trigger: body}); err != nil {
 		return fmt.Errorf("mark the window as being rolled: %w", err)
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return fmt.Errorf("touch the encounter: %w", err)
-	}
-	return nil
+	return touch(ctx, c)
 }
 
 // answerShield answers a Shield window: "Usar Escudo Arcano" casts it, "Deixar
@@ -233,11 +223,11 @@ func (s *Service) answerShield(ctx context.Context, c *combatTx, w playdb.Reacti
 	if err != nil {
 		return fmt.Errorf("find the pending damage: %w", err)
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
-	attacker, _ := findCombatant(cs, deref(p.AttackerID), combatViewer{master: true})
+	attacker, _ := findCombatant(cs, conv.OrZero(p.AttackerID), combatViewer{master: true})
 	if !use {
 		ev, err := s.passShield(ctx, c, w, p, reactor)
 		got.ev = ev

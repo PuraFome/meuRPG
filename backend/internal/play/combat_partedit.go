@@ -12,6 +12,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -27,18 +28,10 @@ type partRemoval struct {
 	reason    string
 }
 
-// partRemovalOf checks the request in the order the handler always refused it: the
+// readPartRemovalCall checks the request in the order of the refusals: the
 // master's role, the key, the combat, the pending damage, the part, the reason.
-func partRemovalOf(ctx context.Context, msg *playv1.RemoveDamagePartRequest) (partRemoval, error) {
-	m, err := authz.RequireCampaignRole(ctx, msg.GetCampaignId(), authz.RoleMaster)
-	if err != nil {
-		return partRemoval{}, err
-	}
-	key, err := parseKey(msg.GetIdempotencyKey())
-	if err != nil {
-		return partRemoval{}, err
-	}
-	encID, err := parseCombatID(msg.GetEncounterId(), "encounter")
+func readPartRemovalCall(ctx context.Context, msg *playv1.RemoveDamagePartRequest) (partRemoval, error) {
+	m, key, encID, err := masterCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
 	if err != nil {
 		return partRemoval{}, err
 	}
@@ -70,13 +63,13 @@ func (s *Service) RemoveDamagePart(
 	ctx context.Context,
 	req *connect.Request[playv1.RemoveDamagePartRequest],
 ) (*connect.Response[playv1.RemoveDamagePartResponse], error) {
-	r, err := partRemovalOf(ctx, req.Msg)
+	r, err := readPartRemovalCall(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
 	var made actionEvent
 	res, err := s.write(ctx, combatWrite{m: r.m, key: r.key, hash: idem.Hash(req.Msg), kind: eventDamagePartRemoved, encounterID: r.encID}, func(c *combatTx) (any, error) {
-		ev, err := s.removePartInTx(ctx, c, r)
+		ev, err := s.removePartWrite(ctx, c, r)
 		if err != nil {
 			return nil, err
 		}
@@ -104,9 +97,9 @@ func (s *Service) RemoveDamagePart(
 	return connect.NewResponse(&playv1.RemoveDamagePartResponse{Encounter: out, PendingDamage: pending}), nil
 }
 
-// removePartInTx is the removal inside its transaction: the part comes out of the rolled
+// removePartWrite is the removal inside its transaction: the part comes out of the rolled
 // damage, the damage is worked out again and kept, and the removal's event is returned.
-func (s *Service) removePartInTx(ctx context.Context, c *combatTx, r partRemoval) (actionEvent, error) {
+func (s *Service) removePartWrite(ctx context.Context, c *combatTx, r partRemoval) (actionEvent, error) {
 	if err := notEnded(c.enc); err != nil {
 		return actionEvent{}, err
 	}
@@ -114,11 +107,11 @@ func (s *Service) removePartInTx(ctx context.Context, c *combatTx, r partRemoval
 	if err != nil {
 		return actionEvent{}, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return actionEvent{}, fmt.Errorf("list the combatants: %w", err)
+		return actionEvent{}, err
 	}
-	attacker, _ := findCombatant(cs, deref(p.AttackerID), combatViewer{master: true})
+	attacker, _ := findCombatant(cs, conv.OrZero(p.AttackerID), combatViewer{master: true})
 	target, _ := findCombatant(cs, p.TargetID, combatViewer{master: true})
 	// The master gave a player's character the damage already: it went through the
 	// vitals, and he corrects them by hand.
@@ -140,8 +133,8 @@ func (s *Service) removePartInTx(ctx context.Context, c *combatTx, r partRemoval
 	if err != nil {
 		return actionEvent{}, err
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return actionEvent{}, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return actionEvent{}, err
 	}
 	c.characterID = &attacker.CharacterID
 	return made, nil
@@ -165,7 +158,7 @@ func workOutRemoval(ctx context.Context, c *combatTx, p playdb.PendingDamage, at
 	rem := removal{total: amount, amount: amount, land: land}
 	rem.ev = actionEvent{
 		Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Pending: p.ID, Key: partKey,
-		DamageType: p.DamageType, Rolled: num(p.Amount), Total: amount,
+		DamageType: p.DamageType, Rolled: conv.OrZero(p.Amount), Total: amount,
 	}
 	landed := amount
 	if land.changed {
@@ -252,9 +245,9 @@ func giveBackOnce(ctx context.Context, c *combatTx, attacker playdb.Combatant, k
 	turn := turnKey(c.enc)
 	sneak, colossus := attacker.SneakAttackTurn, attacker.ColossusSlayerTurn
 	switch {
-	case key == combat.ExtraSneakAttack && deref(sneak) == turn:
+	case key == combat.ExtraSneakAttack && conv.OrZero(sneak) == turn:
 		sneak = nil
-	case key == combat.ExtraColossusSlayer && deref(colossus) == turn:
+	case key == combat.ExtraColossusSlayer && conv.OrZero(colossus) == turn:
 		colossus = nil
 	default:
 		return nil

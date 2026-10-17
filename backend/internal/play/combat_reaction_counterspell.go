@@ -12,6 +12,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
@@ -139,8 +140,8 @@ func (s *Service) holdCast(ctx context.Context, c *combatTx, m authz.Membership,
 	if ev, err = s.holdAction(ctx, c, m, "cast", caster, req, holdData{}, specs, ev); err != nil {
 		return ev, false, err
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return ev, false, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return ev, false, err
 	}
 	c.characterID = &caster.CharacterID
 	return ev, true, nil
@@ -181,7 +182,7 @@ func (wv *windowView) counterspellSlots(reactor playdb.Combatant, t windowTrigge
 		for _, sl := range p.SlotOptions {
 			auto, dc := reaction.Counterspell(int(sl.GetLevel()), int(t.Level))
 			out.Trigger.SlotEffects = append(out.Trigger.SlotEffects, &playv1.SlotEffect{
-				Slot: sl, NoCheck: auto, CheckDc: clamp32(dc, 0, math.MaxInt32), CheckBonus: clamp32(k.st.CastingMod, math.MinInt32, math.MaxInt32),
+				Slot: sl, NoCheck: auto, CheckDc: clamp32(dc, 0, math.MaxInt32), CheckBonus: conv.Int32(k.st.CastingMod),
 			})
 		}
 	}
@@ -284,8 +285,8 @@ func (s *Service) counterspellCheck(ctx context.Context, c *combatTx, req *playv
 		return out, err
 	}
 	out.countered = roll.Total >= dc
-	re.Check, re.CheckDC = clamp32(roll.Total, math.MinInt32, math.MaxInt32), clamp32(dc, 0, math.MaxInt32)
-	out.roll = diceRoll(1, 20, []int32{clamp32(face, 1, 20)}, clamp32(k.st.CastingMod, math.MinInt32, math.MaxInt32), re.Check, roll.Physical)
+	re.Check, re.CheckDC = conv.Int32(roll.Total), clamp32(dc, 0, math.MaxInt32)
+	out.roll = diceRoll(1, 20, []int32{clamp32(face, 1, 20)}, conv.Int32(k.st.CastingMod), re.Check, roll.Physical)
 	return out, nil
 }
 

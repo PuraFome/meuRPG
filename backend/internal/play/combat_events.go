@@ -9,6 +9,7 @@ import (
 	"time"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -437,8 +438,11 @@ type actionEvent struct {
 	// FollowUps are the effects the ended ones left behind (Haste's lethargy), and
 	// FollowUpLines the IDs of their "added" lines, written before the action's own event:
 	// its undo, which puts the ended effects back, takes these away, rows and lines.
-	FollowUps     []effectRef `json:"follow_ups,omitempty"`
-	FollowUpLines []string    `json:"follow_up_lines,omitempty"`
+	FollowUps []effectRef `json:"follow_ups,omitempty"`
+	// TempCleared are the temporary hit points the ended effects took off their targets
+	// (Heroism's): the undo gives them back.
+	TempCleared   []tempCleared `json:"temp_cleared,omitempty"`
+	FollowUpLines []string      `json:"follow_up_lines,omitempty"`
 	// ExtraUsed says the action spent the extra action of an effect (Velocidade).
 	ExtraUsed bool `json:"extra_used,omitempty"`
 
@@ -465,7 +469,7 @@ type actionEvent struct {
 
 	// A move: the square, what it cost the combatant and how far it went, in feet
 	// (rounded down) and in tenths of a foot, which is the exact number (RN-21;
-	// events written before Etapa 9 have only the feet).
+	// older events have only the feet).
 	Col         int32 `json:"col,omitempty"`
 	Row         int32 `json:"row,omitempty"`
 	CostFt      int32 `json:"cost_ft,omitempty"`
@@ -622,6 +626,9 @@ type actionEvent struct {
 	// marks of the attacker before the roll (an undo puts them back) and the steps
 	// that resistance took the damage through.
 	Parts []partRoll `json:"parts,omitempty"`
+	// PartsBefore is the list of parts the hit offered, which the roll rewrote with the choice
+	// made: the undo of the roll puts it back, so the damage is offered as it was.
+	PartsBefore json.RawMessage `json:"parts_before,omitempty"`
 	// ManeuverSpent are the resources the parts spent, one use each (a table maneuver); an undo gives them back.
 	ManeuverSpent []string    `json:"maneuver_spent,omitempty"`
 	OnceBefore    *onceMarks  `json:"once_before,omitempty"`
@@ -679,6 +686,12 @@ type markState struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// tempCleared is the temporary hit points an ended effect took off a combatant.
+type tempCleared struct {
+	Combatant string `json:"combatant"`
+	Temp      int32  `json:"temp"`
+}
+
 // effectRef is an effect that lasts (a combatant_states row of the kind 'effect') and
 // the combatant it is on.
 type effectRef struct {
@@ -717,20 +730,12 @@ func touchesHidden(cs []playdb.Combatant, pending []playdb.PendingDamage) bool {
 	for _, c := range cs {
 		hidden[c.ID] = c.Hidden
 	}
-	return slices.ContainsFunc(pending, func(p playdb.PendingDamage) bool { return hidden[deref(p.AttackerID)] || hidden[p.TargetID] })
+	return slices.ContainsFunc(pending, func(p playdb.PendingDamage) bool { return hidden[conv.OrZero(p.AttackerID)] || hidden[p.TargetID] })
 }
 
 // hpOf is a combatant's hit points as the undo stores them.
 func hpOf(c playdb.Combatant) hpState {
-	return hpState{HP: num(c.HpCurrent), Temp: num(c.HpTemp), Defeated: c.Defeated}
-}
-
-// num is the value of an optional number, 0 when unset.
-func num(n *int32) int32 {
-	if n == nil {
-		return 0
-	}
-	return *n
+	return hpState{HP: conv.OrZero(c.HpCurrent), Temp: conv.OrZero(c.HpTemp), Defeated: c.Defeated}
 }
 
 // pendingOf returns the damage the combatant's attacks still hold open:
@@ -740,7 +745,7 @@ func (c *combatTx) pendingOf(ctx context.Context, attackerID string) ([]playdb.P
 	if err != nil {
 		return nil, fmt.Errorf("list the pending damage: %w", err)
 	}
-	return slices.DeleteFunc(open, func(p playdb.PendingDamage) bool { return deref(p.AttackerID) != attackerID }), nil
+	return slices.DeleteFunc(open, func(p playdb.PendingDamage) bool { return conv.OrZero(p.AttackerID) != attackerID }), nil
 }
 
 // linesSeenBy is who may see at least one of the lines a change wrote, on a map with

@@ -2,24 +2,27 @@ package play
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
-// The master settling a hit on a player's character (ApplyPendingDamage and DiscardPendingDamage), in phases.
-// Each call reads the request, runs the transaction as a sequence of phases of a flow, each one of the checks
-// or the writes the call has always made in that order, and answers from what the transaction left in an out.
+// The master settling a hit on a player's character (ApplyPendingDamage and DiscardPendingDamage).
+// Each call reads the request, runs the transaction on a flow, which checks and writes in a fixed order, and
+// answers from what the transaction left in an out.
 // Applying works the amount out of the roll, the target's resistances and the master's last word, and lands
-// it as a character's vitals, a druid's beast form or a character at 0 hit points would take it. The phases
-// keep the order of the reads and the writes: the golden of combat_actions_rest_frozen_test.go reads it.
+// it as a character's vitals, a druid's beast form or a character at 0 hit points would take it. The order
+// of the reads and the writes is pinned by the golden of combat_pending_damage_golden_test.go.
 
 // resolvedDamageError is the refusal of a pending damage that was settled already.
 func resolvedDamageError() error {
@@ -39,10 +42,7 @@ type applyDamageCall struct {
 func readApplyDamageCall(req *playv1.ApplyPendingDamageRequest) (applyDamageCall, error) {
 	var call applyDamageCall
 	var err error
-	if call.key, err = parseKey(req.GetIdempotencyKey()); err != nil {
-		return call, err
-	}
-	if call.encounterID, err = parseCombatID(req.GetEncounterId(), "encounter"); err != nil {
+	if call.key, call.encounterID, err = parseCall(req.GetIdempotencyKey(), req.GetEncounterId()); err != nil {
 		return call, err
 	}
 	if call.pendingID, err = parseCombatID(req.GetPendingDamageId(), "pending damage"); err != nil {
@@ -113,7 +113,7 @@ func (s *Service) applyDamageResponse(ctx context.Context, m authz.Membership, r
 	return connect.NewResponse(&playv1.ApplyPendingDamageResponse{Encounter: enc, PendingDamage: pending}), nil
 }
 
-// applyDamageFlow is one run of the apply's transaction: what each phase reads, and the next one uses.
+// applyDamageFlow is one run of the apply's transaction: what its steps read, and the next ones use.
 type applyDamageFlow struct {
 	s    *Service
 	c    *combatTx
@@ -139,12 +139,32 @@ func newApplyDamageFlow(s *Service, c *combatTx, call applyDamageCall, out *appl
 // write stores.
 func (f *applyDamageFlow) run(ctx context.Context) (any, error) {
 	f.out.vitals = nil
-	phases := []func(context.Context) error{f.locate, f.settleAmount, f.readVitals, f.land, f.afterTaken, f.record, f.castSave, f.afterHit, f.touch}
-	for _, phase := range phases {
-		if err := phase(ctx); err != nil {
-			return nil, err
-		}
+	if err := f.locate(ctx); err != nil {
+		return nil, err
 	}
+	f.settleAmount()
+	if err := f.readVitals(ctx); err != nil {
+		return nil, err
+	}
+	if err := f.land(ctx); err != nil {
+		return nil, err
+	}
+	if err := f.s.afterDamageTaken(ctx, f.c, f.target, f.amount, f.made.Before, f.made.After); err != nil {
+		return nil, err
+	}
+	if err := f.record(ctx); err != nil {
+		return nil, err
+	}
+	if err := f.castSave(ctx); err != nil {
+		return nil, err
+	}
+	if err := f.afterHit(ctx); err != nil {
+		return nil, err
+	}
+	if err := touch(ctx, f.c); err != nil {
+		return nil, err
+	}
+	f.c.characterID = &f.target.CharacterID
 	f.out.made = f.made
 	return f.made, nil
 }
@@ -186,8 +206,8 @@ func settleable(p playdb.PendingDamage) error {
 
 // settleAmount works out what lands: what the target's resistance, vulnerability or immunity leaves of the
 // roll, unless the master leaves a source out or sets another number. It starts the event.
-func (f *applyDamageFlow) settleAmount(context.Context) error {
-	rolled := num(f.p.Amount)
+func (f *applyDamageFlow) settleAmount() {
+	rolled := conv.OrZero(f.p.Amount)
 	groups := readStepGroups(f.p.Steps)
 	expected := rolled
 	if len(groups) > 0 {
@@ -206,7 +226,6 @@ func (f *applyDamageFlow) settleAmount(context.Context) error {
 		Amount: amount, DamageType: f.p.DamageType, Overridden: f.call.override != nil && *f.call.override != expected, Rolled: rolled,
 		Steps: groups, Ignored: f.call.ignored,
 	}
-	return nil
 }
 
 // readVitals reads the target's vitals, which the landing overwrites.
@@ -296,11 +315,6 @@ func (f *applyDamageFlow) returnIfDropped(ctx context.Context) error {
 	return nil
 }
 
-// afterTaken runs what the damage taken does to the target's states.
-func (f *applyDamageFlow) afterTaken(ctx context.Context) error {
-	return f.s.afterDamageTaken(ctx, f.c, f.target, f.amount, f.made.Before, f.made.After)
-}
-
 // record marks the pending damage applied, with the amount the master set when it is not the roll.
 func (f *applyDamageFlow) record(ctx context.Context) error {
 	if _, err := f.c.q.SetPendingDamageApplied(ctx, playdb.SetPendingDamageAppliedParams{ID: f.p.ID, ResolvedAt: &f.c.now, AppliedAmount: f.applied}); err != nil {
@@ -331,16 +345,6 @@ func (f *applyDamageFlow) afterHit(ctx context.Context) error {
 	}})
 }
 
-// touch moves the encounter's revision and names the character the change was about.
-func (f *applyDamageFlow) touch(ctx context.Context) error {
-	var err error
-	if f.c.enc, err = f.c.q.TouchEncounter(ctx, f.c.enc.ID); err != nil {
-		return fmt.Errorf("touch the encounter: %w", err)
-	}
-	f.c.characterID = &f.target.CharacterID
-	return nil
-}
-
 // discardDamageCall is what DiscardPendingDamage reads from its request, checked.
 type discardDamageCall struct {
 	key, encounterID, pendingID string
@@ -350,10 +354,7 @@ type discardDamageCall struct {
 func readDiscardDamageCall(req *playv1.DiscardPendingDamageRequest) (discardDamageCall, error) {
 	var call discardDamageCall
 	var err error
-	if call.key, err = parseKey(req.GetIdempotencyKey()); err != nil {
-		return call, err
-	}
-	if call.encounterID, err = parseCombatID(req.GetEncounterId(), "encounter"); err != nil {
+	if call.key, call.encounterID, err = parseCall(req.GetIdempotencyKey(), req.GetEncounterId()); err != nil {
 		return call, err
 	}
 	call.pendingID, err = parseCombatID(req.GetPendingDamageId(), "pending damage")
@@ -410,7 +411,7 @@ func (s *Service) discardDamageResponse(ctx context.Context, m authz.Membership,
 	return connect.NewResponse(&playv1.DiscardPendingDamageResponse{Encounter: enc, PendingDamage: pending}), nil
 }
 
-// discardDamageFlow is one run of the discard's transaction: what each phase reads, and the next one uses.
+// discardDamageFlow is one run of the discard's transaction: what its steps read, and the next ones use.
 type discardDamageFlow struct {
 	s    *Service
 	c    *combatTx
@@ -419,9 +420,7 @@ type discardDamageFlow struct {
 
 	p                playdb.PendingDamage
 	attacker, target playdb.Combatant
-	// windows are the reaction windows that waited on the hit, closed with it.
-	windows []string
-	made    actionEvent
+	made             actionEvent
 }
 
 func newDiscardDamageFlow(s *Service, c *combatTx, call discardDamageCall, out *discardDamageOut) *discardDamageFlow {
@@ -430,11 +429,20 @@ func newDiscardDamageFlow(s *Service, c *combatTx, call discardDamageCall, out *
 
 // run is the transaction: the checks, the drop and its event. It answers the event the write stores.
 func (f *discardDamageFlow) run(ctx context.Context) (any, error) {
-	phases := []func(context.Context) error{f.locate, f.drop, f.touch, f.describe, f.castSave}
-	for _, phase := range phases {
-		if err := phase(ctx); err != nil {
-			return nil, err
-		}
+	if err := f.locate(ctx); err != nil {
+		return nil, err
+	}
+	windows, err := discardHit(ctx, f.c, f.p) // the windows that waited on the hit close with it
+	if err != nil {
+		return nil, err
+	}
+	if err := touch(ctx, f.c); err != nil {
+		return nil, err
+	}
+	f.c.characterID = &f.attacker.CharacterID
+	f.describe(windows)
+	if err := f.castSave(ctx); err != nil {
+		return nil, err
 	}
 	f.out.made = f.made
 	return f.made, nil
@@ -455,30 +463,12 @@ func (f *discardDamageFlow) locate(ctx context.Context) error {
 	return nil
 }
 
-// drop discards the pending damage and the windows that waited on it.
-func (f *discardDamageFlow) drop(ctx context.Context) error {
-	var err error
-	f.windows, err = discardHit(ctx, f.c, f.p)
-	return err
-}
-
-// touch moves the encounter's revision and names the character the change was about.
-func (f *discardDamageFlow) touch(ctx context.Context) error {
-	var err error
-	if f.c.enc, err = f.c.q.TouchEncounter(ctx, f.c.enc.ID); err != nil {
-		return fmt.Errorf("touch the encounter: %w", err)
-	}
-	f.c.characterID = &f.attacker.CharacterID
-	return nil
-}
-
 // describe starts the event of the discard.
-func (f *discardDamageFlow) describe(context.Context) error {
+func (f *discardDamageFlow) describe(windows []string) {
 	f.made = actionEvent{
 		Round: f.c.enc.Round, Secret: secretOf(f.attacker, f.target), Actor: f.attacker.ID, Target: f.target.ID, Pending: f.p.ID, Key: f.p.AttackKey,
-		Amount: num(f.p.Amount), PrevStatus: f.p.Status, ClosedWindows: f.windows,
+		Amount: conv.OrZero(f.p.Amount), PrevStatus: f.p.Status, ClosedWindows: windows,
 	}
-	return nil
 }
 
 // castSave works out the concentration save a spell's damage still owes: the discard may settle the cast's
@@ -490,4 +480,50 @@ func (f *discardDamageFlow) castSave(ctx context.Context) error {
 	var err error
 	f.made.ConcentrationDC, err = f.s.castConcentrationDC(ctx, f.c, f.p, f.target, 0)
 	return err
+}
+
+// settling finds the pending damage the master settles and the two
+// combatants it is about, all in the change's own transaction.
+func (s *Service) settling(ctx context.Context, c *combatTx, pendingID string) (p playdb.PendingDamage, attacker, target playdb.Combatant, err error) {
+	p, err = c.q.GetPendingDamage(ctx, playdb.GetPendingDamageParams{EncounterID: c.enc.ID, ID: pendingID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return p, attacker, target, connect.NewError(connect.CodeNotFound, errors.New("pending damage not found"))
+	}
+	if err != nil {
+		return p, attacker, target, fmt.Errorf("find the pending damage: %w", err)
+	}
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return p, attacker, target, fmt.Errorf("list the combatants: %w", err)
+	}
+	master := combatViewer{master: true}
+	if target, err = findCombatant(cs, p.TargetID, master); err != nil {
+		return p, attacker, target, err
+	}
+	if p.AttackerID == nil {
+		return p, target, target, nil // a trap's damage (MR-035) has no attacker: the target stands in
+	}
+	attacker, err = findCombatant(cs, *p.AttackerID, master)
+	return p, attacker, target, err
+}
+
+// discardHit drops a pending damage the master discards, and returns the windows that
+// waited on it (a hit's Shield, or the master's check): they close with it
+// (settleReactions finds their trigger gone), and the discard's event keeps them so that
+// its undo opens them again (reopenWindows).
+func discardHit(ctx context.Context, c *combatTx, p playdb.PendingDamage) ([]string, error) {
+	open, err := openWindowsOf(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+	var windows []string
+	for _, w := range open {
+		if conv.OrZero(w.PendingDamageID) == p.ID {
+			windows = append(windows, w.ID)
+		}
+	}
+	if _, err := c.q.SetPendingDamageStatus(ctx, playdb.SetPendingDamageStatusParams{ID: p.ID, Status: pendingDiscarded, ResolvedAt: &c.now}); err != nil {
+		return nil, fmt.Errorf("discard the pending damage: %w", err)
+	}
+	return windows, nil
 }

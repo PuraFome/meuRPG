@@ -12,13 +12,14 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
-// The character's creatures in a combat (MR-037, Etapa 9). A creature is a
+// The character's creatures in a combat (MR-037). A creature is a
 // combatant of kind 'creature': its character_id is its owner's, its user_id
 // the owner's player (so the same "may this player act for it" check works),
 // and its hit points are on the combatant, like an NPC's. It acts on the
@@ -54,7 +55,7 @@ func (s *Service) sheetOf(ctx context.Context, tx pgx.Tx, campaignID string, c p
 		}
 		return sheet, err
 	}
-	sheet, ok, err := s.roster.CreatureSheet(ctx, tx, campaignID, deref(c.MonsterKey), deref(c.SummonAttack))
+	sheet, ok, err := s.roster.CreatureSheet(ctx, tx, campaignID, conv.OrZero(c.MonsterKey), conv.OrZero(c.SummonAttack))
 	if err != nil {
 		return link.Sheet{}, err
 	}
@@ -80,7 +81,7 @@ func (s *Service) optionsOf(ctx context.Context, tx pgx.Tx, campaignID string, c
 	} else {
 		var ok bool
 		var err error
-		opts, ok, err = s.roster.CreatureTurnOptions(ctx, tx, campaignID, deref(c.MonsterKey), deref(c.SummonAttack), turnOf(c))
+		opts, ok, err = s.roster.CreatureTurnOptions(ctx, tx, campaignID, conv.OrZero(c.MonsterKey), conv.OrZero(c.SummonAttack), turnOf(c))
 		if err != nil {
 			return nil, err
 		}
@@ -111,7 +112,7 @@ func (s *Service) saveOf(ctx context.Context, tx pgx.Tx, campaignID string, c pl
 	if !isCreature(c) {
 		return s.roster.CombatSave(ctx, tx, campaignID, c.CharacterID, ability)
 	}
-	return s.roster.CreatureSave(ctx, tx, campaignID, deref(c.MonsterKey), ability)
+	return s.roster.CreatureSave(ctx, tx, campaignID, conv.OrZero(c.MonsterKey), ability)
 }
 
 // mayAttack checks what the spell that brought a creature lets it do: a
@@ -122,7 +123,7 @@ func mayAttack(c playdb.Combatant, asReaction bool) error {
 	if !isCreature(c) {
 		return nil
 	}
-	switch deref(c.SummonAttack) {
+	switch conv.OrZero(c.SummonAttack) {
 	case rules.SummonAttackNone:
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CREATURE_CANNOT_ATTACK, "this creature cannot attack")
 	case rules.SummonAttackReaction:
@@ -235,7 +236,7 @@ func creatureRow(c *combatTx, cr link.Creature, n int, taken map[string]bool, gr
 		HpCurrent: new(clamp32(max(cr.HitPointsCurrent, 1), 1, math.MaxInt32)), HpMax: new(clamp32(max(cr.HitPointsMax, 1), 1, math.MaxInt32)),
 		CreatureID: &cr.ID, MonsterKey: &cr.MonsterKey, SummonAttack: &cr.Attack, SummonGroupID: &cr.GroupID,
 		// A creature fights for the party (D7), with its stat block's size, fly speed and
-		// jump limits, as a character's are copied when it joins (slice 9.6).
+		// jump limits, as a character's are copied when it joins.
 		Size: sizeKey(cr.Size), SpeedFlyFt: clamp32(cr.SpeedFlyFt, 0, 600),
 		JumpLongDft: clamp32(cr.JumpLongDFt, 0, 6000), JumpHighDft: clamp32(cr.JumpHighDFt, 0, 6000),
 	}
@@ -286,7 +287,7 @@ func creatureStates(cs []playdb.Combatant) []link.CreatureState {
 	var out []link.CreatureState
 	for _, cb := range cs {
 		if isCreature(cb) && cb.CreatureID != nil {
-			out = append(out, link.CreatureState{ID: *cb.CreatureID, HP: int(num(cb.HpCurrent)), Defeated: cb.Defeated || num(cb.HpCurrent) <= 0})
+			out = append(out, link.CreatureState{ID: *cb.CreatureID, HP: int(conv.OrZero(cb.HpCurrent)), Defeated: cb.Defeated || conv.OrZero(cb.HpCurrent) <= 0})
 		}
 	}
 	return out
@@ -343,7 +344,7 @@ func (s *Service) dropCombatants(ctx context.Context, c *combatTx, cs []playdb.C
 		}
 		turnPassed = turnPassed || passed || inTurn(c.enc, who)
 		if dismiss {
-			if _, err := c.q.SetCreatureCombatantsDismissed(ctx, playdb.SetCreatureCombatantsDismissedParams{EncounterID: c.enc.ID, CreatureIds: []string{deref(who.CreatureID)}, Dismissed: true}); err != nil {
+			if _, err := c.q.SetCreatureCombatantsDismissed(ctx, playdb.SetCreatureCombatantsDismissedParams{EncounterID: c.enc.ID, CreatureIds: []string{conv.OrZero(who.CreatureID)}, Dismissed: true}); err != nil {
 				return nil, false, fmt.Errorf("dismiss the combatant: %w", err)
 			}
 		} else if err := c.q.DeleteCombatant(ctx, who.ID); err != nil {
@@ -371,17 +372,17 @@ func (s *Service) discardDamageOf(ctx context.Context, c *combatTx, cs, leaving 
 		return slices.ContainsFunc(leaving, func(o playdb.Combatant) bool { return o.ID == id })
 	}
 	for _, p := range open {
-		if !named(p.TargetID) && !named(deref(p.AttackerID)) {
+		if !named(p.TargetID) && !named(conv.OrZero(p.AttackerID)) {
 			continue
 		}
 		if _, err := c.q.SetPendingDamageStatus(ctx, playdb.SetPendingDamageStatusParams{ID: p.ID, Status: pendingDiscarded, ResolvedAt: &c.now}); err != nil {
 			return fmt.Errorf("discard the pending damage: %w", err)
 		}
-		attacker, _ := findCombatant(cs, deref(p.AttackerID), combatViewer{master: true})
+		attacker, _ := findCombatant(cs, conv.OrZero(p.AttackerID), combatViewer{master: true})
 		target, _ := findCombatant(cs, p.TargetID, combatViewer{master: true})
 		if err := insertEvent(ctx, c, eventDamageDiscarded, &c.actorUserID, nil, actionEvent{
 			Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: p.TargetID, Pending: p.ID, Key: p.AttackKey,
-			Amount: num(p.Amount), PrevStatus: p.Status,
+			Amount: conv.OrZero(p.Amount), PrevStatus: p.Status,
 		}); err != nil {
 			return err
 		}
@@ -500,7 +501,7 @@ func (s *Service) rollGroup(in rollInput, bonus int) (groupRoll, error) {
 	if err != nil {
 		return groupRoll{}, err
 	}
-	return groupRoll{Total: clamp32(roll.Total, math.MinInt32, math.MaxInt32), Face: clamp32(face, 1, 20), Bonus: clamp32(bonus, -20, 40)}, nil
+	return groupRoll{Total: conv.Int32(roll.Total), Face: clamp32(face, 1, 20), Bonus: clamp32(bonus, -20, 40)}, nil
 }
 
 // summonErr turns the rules' refusal of a choice into the API's.

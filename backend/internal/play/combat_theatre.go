@@ -64,19 +64,10 @@ func errNeedsAMap() error {
 		"this needs a map: a combat without one has no squares")
 }
 
-// valueOf is what the pointer points to, the zero value for nil.
-func valueOf[T any](p *T) T {
-	var zero T
-	if p == nil {
-		return zero
-	}
-	return *p
-}
-
 // modeOfStart works out the mode a new combat is played in: the one the request
 // chose, or, when it chose none, the table's rule "combate com mapa" (RN-24), read
 // in the caller's transaction (tx). Without the rule's source, every combat is on a
-// map, as it was before the modes.
+// map.
 func (s *Service) modeOfStart(ctx context.Context, tx pgx.Tx, campaignID string, asked playv1.EncounterMode) (string, error) {
 	switch asked {
 	case playv1.EncounterMode_ENCOUNTER_MODE_GRID:
@@ -135,17 +126,9 @@ type spendRun struct {
 	hidden, onTurn bool
 }
 
-// readSpendCall reads and checks the request, in the order the refusals have always come.
+// readSpendCall reads and checks the request. The refusals come in the order of the checks below.
 func readSpendCall(ctx context.Context, req *playv1.SpendMovementRequest) (spendCall, error) {
-	m, err := authz.RequireCampaignMember(ctx, req.GetCampaignId())
-	if err != nil {
-		return spendCall{}, err
-	}
-	key, err := parseKey(req.GetIdempotencyKey())
-	if err != nil {
-		return spendCall{}, err
-	}
-	encID, err := parseCombatID(req.GetEncounterId(), "encounter")
+	m, key, encID, err := memberCall(ctx, req.GetCampaignId(), req.GetIdempotencyKey(), req.GetEncounterId())
 	if err != nil {
 		return spendCall{}, err
 	}
@@ -171,7 +154,7 @@ func (s *Service) SpendMovement(
 	}
 	var run spendRun
 	res, err := s.write(ctx, combatWrite{m: call.m, key: call.key, hash: call.hash, kind: eventCombatantMoved, encounterID: call.encID}, func(c *combatTx) (any, error) {
-		return s.spendMovementIn(ctx, c, call, &run)
+		return s.spendWrite(ctx, c, call, &run)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "spend movement", err)
@@ -185,26 +168,26 @@ func (s *Service) SpendMovement(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&playv1.SpendMovementResponse{Encounter: out, MovementLeftDft: movementLeftIn(out, call.combID)}), nil
+	return connect.NewResponse(&playv1.SpendMovementResponse{Encounter: out, MovementLeftDft: movementLeftFromEncounter(out, call.combID)}), nil
 }
 
-// movementLeftIn is what is left, from the combatant as the caller reads it: a replay answers
+// movementLeftFromEncounter is what is left, from the combatant as the caller reads it: a replay answers
 // with what is left now, as every read does.
-func movementLeftIn(out *playv1.Encounter, combatantID string) int32 {
+func movementLeftFromEncounter(out *playv1.Encounter, combatantID string) int32 {
 	if i := slices.IndexFunc(out.GetCombatants(), func(c *playv1.Combatant) bool { return c.GetId() == combatantID }); i >= 0 {
 		return out.GetCombatants()[i].GetMovementLeftDft()
 	}
 	return 0
 }
 
-// spendMovementIn is the change of SpendMovement: find the combatant, check the turn, spend.
-func (s *Service) spendMovementIn(ctx context.Context, c *combatTx, call spendCall, run *spendRun) (any, error) {
+// spendWrite is the change of SpendMovement: find the combatant, check the turn, spend.
+func (s *Service) spendWrite(ctx context.Context, c *combatTx, call spendCall, run *spendRun) (any, error) {
 	if err := notEnded(c.enc); err != nil {
 		return nil, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	v := c.viewer(call.m, cs)
 	target, err := findCombatant(cs, call.combID, v)
@@ -264,9 +247,8 @@ func (s *Service) spendTheatreFeet(ctx context.Context, c *combatTx, target play
 	}); err != nil {
 		return nil, fmt.Errorf("spend the movement: %w", err)
 	}
-	var err error
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return nil, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return nil, err
 	}
 	c.characterID = &target.CharacterID
 	run.hidden = target.Hidden
@@ -296,17 +278,9 @@ type offerRun struct {
 	mover playdb.Combatant
 }
 
-// readOfferCall reads and checks the request, in the order the refusals have always come.
+// readOfferCall reads and checks the request. The refusals come in the order of the checks below.
 func readOfferCall(ctx context.Context, req *playv1.OfferOpportunityRequest) (offerCall, error) {
-	m, err := authz.RequireCampaignRole(ctx, req.GetCampaignId(), authz.RoleMaster)
-	if err != nil {
-		return offerCall{}, err
-	}
-	key, err := parseKey(req.GetIdempotencyKey())
-	if err != nil {
-		return offerCall{}, err
-	}
-	encID, err := parseCombatID(req.GetEncounterId(), "encounter")
+	m, key, encID, err := masterCall(ctx, req.GetCampaignId(), req.GetIdempotencyKey(), req.GetEncounterId())
 	if err != nil {
 		return offerCall{}, err
 	}
@@ -335,7 +309,7 @@ func (s *Service) OfferOpportunity(
 	}
 	var run offerRun
 	res, err := s.write(ctx, combatWrite{m: call.m, key: call.key, hash: call.hash, kind: eventOpportunityOffered, encounterID: call.encID}, func(c *combatTx) (any, error) {
-		return s.offerIn(ctx, c, call, &run)
+		return s.offerWrite(ctx, c, call, &run)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "offer an opportunity attack", err)
@@ -353,9 +327,9 @@ func (s *Service) OfferOpportunity(
 	return connect.NewResponse(&playv1.OfferOpportunityResponse{Encounter: out, OpportunityOfferId: ev.OfferID}), nil
 }
 
-// offerIn is the change of OfferOpportunity: the combat must be a running one without a
+// offerWrite is the change of OfferOpportunity: the combat must be a running one without a
 // grid, the parties must be fit for the offer, and the offer is written.
-func (s *Service) offerIn(ctx context.Context, c *combatTx, call offerCall, run *offerRun) (any, error) {
+func (s *Service) offerWrite(ctx context.Context, c *combatTx, call offerCall, run *offerRun) (any, error) {
 	if err := notEnded(c.enc); err != nil {
 		return nil, err
 	}
@@ -383,9 +357,9 @@ func (s *Service) offerIn(ctx context.Context, c *combatTx, call offerCall, run 
 // offerParties finds the mover (kept in the run) and the reactor, as the master sees them,
 // and checks that the mover is on turn and the reactor may be offered the attack.
 func (s *Service) offerParties(ctx context.Context, c *combatTx, call offerCall, run *offerRun) (playdb.Combatant, error) {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return playdb.Combatant{}, fmt.Errorf("list the combatants: %w", err)
+		return playdb.Combatant{}, err
 	}
 	master := combatViewer{master: true}
 	if run.mover, err = findCombatant(cs, call.moverID, master); err != nil {
@@ -414,8 +388,8 @@ func (s *Service) insertOffer(ctx context.Context, c *combatTx, mover, reactor p
 	if err != nil {
 		return nil, fmt.Errorf("offer the opportunity attack: %w", err)
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return nil, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return nil, err
 	}
 	c.characterID = &reactor.CharacterID
 	// ByHand: an undo never takes the offer back (it is withdrawn), and it

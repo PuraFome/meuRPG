@@ -38,21 +38,6 @@ import (
 // The contest waits without a timeout; the master may answer for anyone or close it.
 // The wait is a reaction window of kind CONTEST (combat_contests_window.go).
 
-// contestCaller reads what every contest call starts with: the caller, the idempotency
-// key and the combat.
-func contestCaller(ctx context.Context, campaignID, keyRaw, encounterRaw string) (m authz.Membership, key, encID string, err error) {
-	if m, err = authz.RequireCampaignMember(ctx, campaignID); err != nil {
-		return m, "", "", err
-	}
-	if key, err = parseKey(keyRaw); err != nil {
-		return m, "", "", err
-	}
-	if encID, err = parseCombatID(encounterRaw, "encounter"); err != nil {
-		return m, "", "", err
-	}
-	return m, key, encID, nil
-}
-
 // mustBeRunning refuses a contest call when the combat is not running.
 func mustBeRunning(c *combatTx) error {
 	if err := notEnded(c.enc); err != nil {
@@ -245,10 +230,10 @@ func checkContestSkill(st *contestStart) error {
 	return nil
 }
 
-// parseContestStart is the first phase of StartContest: read and validate the request, in
-// the order the refusals have always come.
+// parseContestStart is the first phase of StartContest: read and validate the request, the
+// member first, so a stranger gets permission_denied before any id is parsed.
 func parseContestStart(ctx context.Context, msg *playv1.StartContestRequest) (contestStart, error) {
-	m, key, encID, err := contestCaller(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
+	m, key, encID, err := memberCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
 	if err != nil {
 		return contestStart{}, err
 	}
@@ -304,9 +289,9 @@ func (s *Service) readContestRun(ctx context.Context, c *combatTx, st contestSta
 	if err := mustBeRunning(c); err != nil {
 		return nil, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	v := c.viewer(st.m, cs) // the fog: an NPC the player does not see is not found
 	initiator, err := findCombatant(cs, st.initiatorID, v)
@@ -610,10 +595,10 @@ type contestAnswer struct {
 	in    checkInput
 }
 
-// parseContestAnswer is the first phase of RespondContest: read and validate the request, in
-// the order the refusals have always come.
+// parseContestAnswer is the first phase of RespondContest: read and validate the request, the
+// member first, so a stranger gets permission_denied before any id is parsed.
 func parseContestAnswer(ctx context.Context, msg *playv1.RespondContestRequest) (contestAnswer, error) {
-	m, key, encID, err := contestCaller(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
+	m, key, encID, err := memberCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
 	if err != nil {
 		return contestAnswer{}, err
 	}
@@ -690,9 +675,9 @@ func (s *Service) readAnswerRun(ctx context.Context, c *combatTx, ans contestAns
 	if err := mustBeRunning(c); err != nil {
 		return nil, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	v := c.viewer(ans.m, cs)
 	row, err := c.q.GetContest(ctx, playdb.GetContestParams{EncounterID: c.enc.ID, ID: ans.contestID})
@@ -899,10 +884,10 @@ type shoveChoiceReq struct {
 	outcome   playv1.ShoveOutcome
 }
 
-// parseShoveChoice is the first phase of ResolveShove: read and validate the request, in the
-// order the refusals have always come.
+// parseShoveChoice is the first phase of ResolveShove: read and validate the request, the
+// member first, so a stranger gets permission_denied before any id is parsed.
 func parseShoveChoice(ctx context.Context, msg *playv1.ResolveShoveRequest) (shoveChoiceReq, error) {
-	m, key, encID, err := contestCaller(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
+	m, key, encID, err := memberCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
 	if err != nil {
 		return shoveChoiceReq{}, err
 	}
@@ -935,9 +920,9 @@ func (s *Service) readShoveRun(ctx context.Context, c *combatTx, req shoveChoice
 	if err := mustBeRunning(c); err != nil {
 		return nil, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	v := c.viewer(req.m, cs)
 	row, err := c.q.GetContest(ctx, playdb.GetContestParams{EncounterID: c.enc.ID, ID: req.contestID})
@@ -1071,17 +1056,9 @@ type contestClose struct {
 }
 
 // parseContestClose is the first phase of CloseContest: only the master closes, and the
-// refusals come in the order they always have.
+// member is checked before any id is parsed.
 func parseContestClose(ctx context.Context, msg *playv1.CloseContestRequest) (contestClose, error) {
-	m, err := authz.RequireCampaignRole(ctx, msg.GetCampaignId(), authz.RoleMaster)
-	if err != nil {
-		return contestClose{}, err
-	}
-	key, err := parseKey(msg.GetIdempotencyKey())
-	if err != nil {
-		return contestClose{}, err
-	}
-	encID, err := parseCombatID(msg.GetEncounterId(), "encounter")
+	m, key, encID, err := masterCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
 	if err != nil {
 		return contestClose{}, err
 	}
@@ -1105,9 +1082,9 @@ func (s *Service) closeContestTx(ctx context.Context, c *combatTx, req contestCl
 	if row.Status != contestAwaitingDefender && row.Status != contestAwaitingOutcome {
 		return actionEvent{}, errNotAwaiting()
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return actionEvent{}, fmt.Errorf("list the combatants: %w", err)
+		return actionEvent{}, err
 	}
 	initiator, _ := combatantByID(cs, row.InitiatorID)
 	defender, _ := combatantByID(cs, row.DefenderID)
@@ -1157,9 +1134,9 @@ func (s *Service) releaseTx(ctx context.Context, c *combatTx, m authz.Membership
 	if err := notEnded(c.enc); err != nil {
 		return actionEvent{}, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return actionEvent{}, fmt.Errorf("list the combatants: %w", err)
+		return actionEvent{}, err
 	}
 	v := c.viewer(m, cs)
 	grappled, err := findCombatant(cs, grappledID, v)
@@ -1199,7 +1176,7 @@ func (s *Service) ReleaseGrapple(
 	ctx context.Context,
 	req *connect.Request[playv1.ReleaseGrappleRequest],
 ) (*connect.Response[playv1.ReleaseGrappleResponse], error) {
-	m, key, encID, err := contestCaller(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
+	m, key, encID, err := memberCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
 	if err != nil {
 		return nil, err
 	}
@@ -1291,9 +1268,9 @@ func (s *Service) pruneHolds(ctx context.Context, c *combatTx) error {
 	if err != nil || len(holds) == 0 {
 		return err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	by := combatantsByID(cs)
 	for _, h := range holds {
@@ -1312,7 +1289,7 @@ func (s *Service) pruneHolds(ctx context.Context, c *combatTx) error {
 }
 
 // endHold lets go of a hold that ended: the condition goes when the creature still carries
-// it, and the row always does.
+// it, and the row goes either way.
 func endHold(ctx context.Context, c *combatTx, by map[string]playdb.Combatant, h playdb.CombatHold) error {
 	if grappled, ok := by[h.GrappledID]; ok && isGrappled(grappled) {
 		return releaseHold(ctx, c, grappled)

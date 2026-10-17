@@ -4,11 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
-	"os"
-	"path/filepath"
-	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -27,34 +23,8 @@ import (
 // the big functions are split: what the call answers, what the combatants and the effect rows
 // hold afterwards and the exact payload of every event written. A scenario's state is a text
 // file in testdata/lasting_core (ids replaced by labels); a change here is a change of
-// behavior, not of structure. Run with -update-lasting-core to write the files again after a
+// behavior, not of structure. Run with -update-lasting to write the files again after a
 // change of behavior that was meant, and read the diff.
-
-var updateLastingCore = flag.Bool("update-lasting-core", false, "write the golden files of the core of the lasting effects again")
-
-var coreUUID = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
-
-// wantLastingGolden compares got with the golden file of the scenario.
-func wantLastingGolden(t *testing.T, name, got string) {
-	t.Helper()
-	path := filepath.Join("testdata", "lasting_core", name+".golden")
-	if *updateLastingCore {
-		if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(path, []byte(got), 0o600); err != nil {
-			t.Fatal(err)
-		}
-		return
-	}
-	want, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("read the golden file: %v (write it with -update-lasting-core)", err)
-	}
-	if string(want) != got {
-		t.Errorf("%s differs from its golden file (-update-lasting-core writes it again):\n--- want\n%s\n--- got\n%s", name, want, got)
-	}
-}
 
 // coreNames replaces the ids of the combatants and the users in a text by their labels, and any
 // other id by <uuid>, so that the text is the same in every run.
@@ -87,7 +57,7 @@ func (a *armed) coreNames(t *testing.T, text string) string {
 			text = strings.ReplaceAll(text, c, "<char:"+name+">")
 		}
 	}
-	return coreUUID.ReplaceAllString(text, "<uuid>")
+	return uuidText.ReplaceAllString(text, "<uuid>")
 }
 
 // coreCombatants prints what the database keeps of each combatant of the combat that the

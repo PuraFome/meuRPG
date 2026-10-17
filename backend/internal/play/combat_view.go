@@ -14,6 +14,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -312,7 +313,7 @@ func (d *encounterData) encounterHeader(v combatViewer) *playv1.Encounter {
 		Name:        e.Name,
 		Status:      statusToProto[e.Status],
 		Round:       e.Round,
-		MapId:       deref(e.MapID),
+		MapId:       conv.OrZero(e.MapID),
 		GridColumns: e.GridColumns,
 		GridRows:    e.GridRows,
 		Mode:        modeProto(e.Mode),
@@ -321,7 +322,7 @@ func (d *encounterData) encounterHeader(v combatViewer) *playv1.Encounter {
 		EndedAt:     timestampOrNil(e.EndedAt),
 	}
 	if v.master {
-		out.MapPointId = deref(e.MapPointID)
+		out.MapPointId = conv.OrZero(e.MapPointID)
 	}
 	return out
 }
@@ -430,7 +431,7 @@ func publicCombatant(c playdb.Combatant, v combatViewer, controls bool) *playv1.
 		DeathSuccesses:     c.DeathSuccesses,
 		DeathFailures:      c.DeathFailures,
 		Conditions:         c.Conditions,
-		ConcentrationSpell: deref(c.ConcentrationSpell),
+		ConcentrationSpell: conv.OrZero(c.ConcentrationSpell),
 		Side:               sideProto(c.Side),
 		Size:               sizeProto(c.Size),
 		CoverMark:          coverDegreeProto(markKeyOf(c)),
@@ -451,9 +452,9 @@ func identityFor(out *playv1.Combatant, c playdb.Combatant, v combatViewer, deta
 		// A creature stands for no character of its own: its owner is public (the
 		// party knows whose it is), the rest is its owner's and the master's.
 		out.OwnerCharacterId = c.CharacterID
-		out.MonsterKey, out.MonsterNamePt = deref(c.MonsterKey), names(deref(c.MonsterKey))
+		out.MonsterKey, out.MonsterNamePt = conv.OrZero(c.MonsterKey), names(conv.OrZero(c.MonsterKey))
 		if detail {
-			out.CreatureId, out.CreatureAttack, out.SummonGroupId = deref(c.CreatureID), creatureAttackToProto[deref(c.SummonAttack)], deref(c.SummonGroupID)
+			out.CreatureId, out.CreatureAttack, out.SummonGroupId = conv.OrZero(c.CreatureID), creatureAttackToProto[conv.OrZero(c.SummonAttack)], conv.OrZero(c.SummonGroupID)
 		}
 	case c.Kind == kindPlayer || v.master:
 		out.CharacterId = c.CharacterID // an NPC's character is the master's secret
@@ -700,7 +701,7 @@ func (s *Service) GetEncounter(
 		return nil, err
 	}
 	// The session, the latest encounter and its combatants are one snapshot
-	// (audit D-03): apart, a write between them gave a view of two states. What
+	// (one snapshot): apart, a write between them gave a view of two states. What
 	// the view adds on top (vitals, sheets, the fog) is read after.
 	var d *encounterData
 	err = db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {

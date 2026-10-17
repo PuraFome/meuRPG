@@ -13,7 +13,7 @@ import (
 )
 
 // The passive notice reaches the player (E9-08 G) and a creature's token fires a trap
-// (slice 9.14's two server gaps). These tests need the database
+// (the two gaps of the server). These tests need the database
 // (MEURPG_TEST_DATABASE_URL); the fixture is the trap rig (traps_test.go).
 
 // settle has the master show the current map again, which sends every stream of the

@@ -23,7 +23,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// Wild Shape (MR-037, Etapa 9, slice 9.10): a druid becomes an SRD beast, in a
+// Wild Shape (MR-037): a druid becomes an SRD beast, in a
 // combat or out of one. The fixture is the table of the designs: Toren (a fighter),
 // Pensantus (a wizard with a familiar), Sálvia, a level 5 druid (38 hit points,
 // Wild Shape up to challenge rating 1/2 without a fly speed), and Irmã, a cleric

@@ -21,7 +21,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
 )
 
-// Traps in play (MR-035, RN-10, RN-02, Etapa 9, slice 9.8). These tests need the
+// Traps in play (MR-035, RN-10, RN-02). These tests need the
 // database (MEURPG_TEST_DATABASE_URL). The fixture is the cave of the movement
 // tests, with the real maps service next to the play one: Toren (6, 7), Pensantus
 // (5, 8) and Brisa (4, 7) in the entrance cave, the goblins far away; a square is

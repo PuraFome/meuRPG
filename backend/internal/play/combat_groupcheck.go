@@ -15,6 +15,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
@@ -71,12 +72,9 @@ func (s *Service) groupWrite(ctx context.Context, m authz.Membership, key string
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		ev, repeated = groupCheckEvent{}, false
 		q := s.queries.WithTx(tx)
-		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errNoOpenSession()
-		}
+		session, err := lockOpenSessionOrNone(ctx, q, m.CampaignID)
 		if err != nil {
-			return fmt.Errorf("lock the open session: %w", err)
+			return err
 		}
 		replayed, found, err := groupReplay(ctx, q, session.ID, call)
 		if err != nil {
@@ -103,7 +101,7 @@ func groupReplay(ctx context.Context, q *playdb.Queries, sessionID string, call 
 		return groupCheckEvent{}, false, fmt.Errorf("find the event of this idempotency key: %w", err)
 	}
 	if done.Kind != call.kind || done.ActorUserID == nil || *done.ActorUserID != call.m.UserID || hashDiffers(done.IdempotencyHash, call.hash) {
-		return groupCheckEvent{}, false, connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
+		return groupCheckEvent{}, false, errKeyReused()
 	}
 	// A retry answers what the first call made: the check it names is in the event.
 	if err := json.Unmarshal(done.Payload, &ev); err != nil {
@@ -512,8 +510,8 @@ func (s *Service) gatedMemberRoll(ctx context.Context, q *playdb.Queries, tx pgx
 		return contestRoll{}, false, false, nil
 	}
 	roll = contestRoll{
-		Skill: spec.check.SkillKey, Faces: faces32(step.Roll.Faces), Modifier: clamp32(spec.bonus, math.MinInt32, math.MaxInt32),
-		Total: clamp32(step.Roll.Total, math.MinInt32, math.MaxInt32), Physical: step.Roll.Physical,
+		Skill: spec.check.SkillKey, Faces: faces32(step.Roll.Faces), Modifier: conv.Int32(spec.bonus),
+		Total: conv.Int32(step.Roll.Total), Physical: step.Roll.Physical,
 		Mode: checkModeKey(checkModeOfRoll(spec.mode.Mode)), Unknown: !spec.known, Lucky: step.Lucky,
 	}
 	if step.Bonus != nil {
@@ -880,7 +878,7 @@ func (s *Service) groupYourOption(ctx context.Context, campaignID string, check 
 	if cm, err := s.checkModeOf(ctx, nil, campaignID, check.GameSessionID, characterID, check.SkillKey, ability, isCheck); err == nil {
 		mode = checkModeProto(checkModeOfRoll(cm.Mode))
 	}
-	return &playv1.CheckOption{Modifier: clamp32(options[0].Bonus, math.MinInt32, math.MaxInt32), Known: options[0].Known, Mode: mode}
+	return &playv1.CheckOption{Modifier: conv.Int32(options[0].Bonus), Known: options[0].Known, Mode: mode}
 }
 
 // setGroupVerdict sets the group's count and verdict on the view: none when each roll is judged

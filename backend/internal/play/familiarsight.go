@@ -2,7 +2,6 @@ package play
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"slices"
 	"strconv"
@@ -11,11 +10,13 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// "Ver pelos olhos do familiar" (MR-036, Etapa 9, D6): the player of a character
+// "Ver pelos olhos do familiar" (MR-036): the player of a character
 // with a familiar sees what the familiar sees, with the familiar's senses, while
 // the familiar is on the same map within 30 m. The vision is the maps module's
 // (a viewer of its own for the fog, link.PartyMember.Eyes); what is kept here is
@@ -99,7 +100,7 @@ func (s *Service) familiarSquares(ctx context.Context, c *combatTx, who *playdb.
 // combatantSquares finds the squares of the character's combatant and of its
 // familiar's, which must be in the combat and placed.
 func combatantSquares(who playdb.Combatant, cs []playdb.Combatant, creatureID string) (me, it [2]int32, ok bool) {
-	i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return deref(o.CreatureID) == creatureID && !o.Dismissed })
+	i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return conv.OrZero(o.CreatureID) == creatureID && !o.Dismissed })
 	if i < 0 || !placed(who) || !placed(cs[i]) {
 		return me, it, false
 	}
@@ -109,7 +110,7 @@ func combatantSquares(who playdb.Combatant, cs []playdb.Combatant, creatureID st
 // familiarMapSquares finds the squares of the character's token and of its familiar's on
 // the session's current map.
 func (s *Service) familiarMapSquares(ctx context.Context, c *combatTx, characterID, creatureID string) (me, it [2]int32, ok bool, err error) {
-	mapID := deref(c.session.CurrentMapID)
+	mapID := conv.OrZero(c.session.CurrentMapID)
 	if mapID == "" {
 		return me, it, false, nil
 	}
@@ -200,7 +201,7 @@ func (s *Service) sightChange(ctx context.Context, campaignID, rawCharacter, raw
 	if err != nil {
 		return nil, nil, err
 	}
-	characterID, ok := parseID(rawCharacter)
+	characterID, ok := uid.Canonical(rawCharacter)
 	if !ok {
 		return nil, nil, errCharacterNotFound()
 	}
@@ -226,38 +227,10 @@ func (s *Service) sightChange(ctx context.Context, campaignID, rawCharacter, raw
 	return vitals, out, nil
 }
 
-// answerFormChange is what a change of a form or a sight answers with, after its
-// transaction: a retry of another character's change is refused, a retry answers
-// with the vitals as they are now, and a change made in a combat tells the combat.
-func (s *Service) answerFormChange(ctx context.Context, m authz.Membership, characterID string, res combatResult, ev actionEvent, vitals *playv1.CharacterVitals) (*playv1.CharacterVitals, *playv1.Encounter, error) {
-	if res.repeated && ev.OwnerCharacter != characterID {
-		// The key is another character's change: never answer with that character's vitals.
-		return nil, nil, connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
-	}
-	if res.repeated {
-		var err error
-		if vitals, err = s.vitals.GetVitals(ctx, m.CampaignID, characterID); err != nil {
-			return nil, nil, s.dbError(ctx, "get vitals", err)
-		}
-	}
-	if ev.EncounterID == "" {
-		return vitals, nil, nil
-	}
-	res.encounterID = ev.EncounterID
-	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
-		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
-		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
-	})
-	if err != nil {
-		return nil, nil, err
-	}
-	return vitals, out, nil
-}
-
 // sightTx is the sight transaction: where the character stands in the table's
 // play, then the start or the stop, then the event's own fields.
 func (s *Service) sightTx(ctx context.Context, c *combatTx, r *sightRun) (any, error) {
-	r.made, r.vitals, r.mapID = actionEvent{}, nil, deref(c.session.CurrentMapID)
+	r.made, r.vitals, r.mapID = actionEvent{}, nil, conv.OrZero(c.session.CurrentMapID)
 	_, who, cs, err := s.playerCharacterOf(ctx, c, r.m, r.characterID)
 	if err != nil {
 		return nil, err
@@ -266,7 +239,7 @@ func (s *Service) sightTx(ctx context.Context, c *combatTx, r *sightRun) (any, e
 	r.inCombat = who != nil
 	r.turns = r.inCombat && c.enc.Status == statusActive
 	if r.inCombat {
-		r.mapID = deref(c.enc.MapID)
+		r.mapID = conv.OrZero(c.enc.MapID)
 	}
 	now, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, r.characterID)
 	if err != nil {
@@ -383,9 +356,8 @@ func (s *Service) sightSeal(ctx context.Context, c *combatTx, r *sightRun) (any,
 		if r.made.Actor == "" {
 			r.made.Round, r.made.Secret, r.made.Actor = c.enc.Round, r.who.Hidden, r.who.ID
 		}
-		var err error
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
+		if err := touch(ctx, c); err != nil {
+			return nil, err
 		}
 	}
 	c.characterID = &r.characterID
@@ -397,9 +369,9 @@ func (s *Service) sightSeal(ctx context.Context, c *combatTx, r *sightRun) (any,
 // loses the conditions it gave, and a familiar_sight event says why. It runs inside
 // the transaction that starts the turn; what it changed is told after the commit.
 func (s *Service) endFamiliarSights(ctx context.Context, c *combatTx, ids []string) error {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	for _, id := range ids {
 		if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == id }); i >= 0 {
@@ -468,26 +440,6 @@ func (s *Service) sightUndo(ctx context.Context, c *combatTx, ev actionEvent, fi
 	}
 	keep(after)
 	c.told = append(c.told, after)
-	return nil
-}
-
-// putBackSpentAction gives back what a change spent on its turn: the economy and
-// the running start the event kept. It does nothing for a change that spent
-// nothing (the master's, or one made in SETUP).
-func putBackSpentAction(ctx context.Context, c *combatTx, who playdb.Combatant, ev actionEvent) error {
-	if !ev.Spent {
-		return nil
-	}
-	if err := c.q.SetCombatantEconomy(ctx, playdb.SetCombatantEconomyParams{
-		ID: who.ID, ActionUsed: ev.ActionBefore, BonusActionUsed: ev.BonusBefore, ReactionUsed: ev.ReactionBefore, Dashed: ev.DashedBefore,
-	}); err != nil {
-		return fmt.Errorf("put back the economy: %w", err)
-	}
-	if ev.RunBefore != 0 {
-		if err := c.q.SetCombatantRun(ctx, playdb.SetCombatantRunParams{ID: who.ID, LastMoveDft: ev.RunBefore}); err != nil {
-			return fmt.Errorf("put back the running start: %w", err)
-		}
-	}
 	return nil
 }
 

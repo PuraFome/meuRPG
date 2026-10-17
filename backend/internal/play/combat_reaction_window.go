@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
@@ -293,7 +294,7 @@ func (s *Service) kindTriggerGone(ctx context.Context, c *combatTx, w playdb.Rea
 		return gone, true, err
 	case reaction.EffectSave:
 		// A defeated creature or NPC owes no saving throw (RN-22): the window closes with it.
-		r, ok := byID[deref(w.ReactorID)]
+		r, ok := byID[conv.OrZero(w.ReactorID)]
 		if ok && r.Defeated && r.Kind != kindPlayer {
 			return true, true, nil
 		}
@@ -311,7 +312,7 @@ func (s *Service) kindTriggerGone(ctx context.Context, c *combatTx, w playdb.Rea
 
 // concentrationGone says the reactor no longer concentrates on the spell the window asked a save for.
 func concentrationGone(w playdb.ReactionWindow, t windowTrigger, byID map[string]playdb.Combatant) bool {
-	r, ok := byID[deref(w.ReactorID)]
+	r, ok := byID[conv.OrZero(w.ReactorID)]
 	return !ok || r.ConcentrationSpell == nil || *r.ConcentrationSpell != t.Spell
 }
 
@@ -447,14 +448,11 @@ func (s *Service) loadSettleState(ctx context.Context, c *combatTx) (settleState
 	if len(st.open) == 0 && len(st.holds) == 0 && len(st.waiting) == 0 {
 		return st, false, nil
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return st, false, fmt.Errorf("list the combatants: %w", err)
+		return st, false, err
 	}
-	st.byID = make(map[string]playdb.Combatant, len(cs))
-	for _, x := range cs {
-		st.byID[x.ID] = x
-	}
+	st.byID = combatantsByID(cs)
 	return st, true, nil
 }
 
@@ -523,7 +521,7 @@ func (s *Service) releaseOne(ctx context.Context, c *combatTx, p playdb.PendingD
 	}
 	cur, err := c.q.GetPendingDamage(ctx, playdb.GetPendingDamageParams{EncounterID: c.enc.ID, ID: p.ID})
 	if err != nil || cur.Status != pendingAwaitingReaction {
-		return false, nil //nolint:nilerr // a hit that cannot be read, or that moved on already, is left alone, as the loop always did
+		return false, nil //nolint:nilerr // a hit that cannot be read, or that moved on already, is left alone
 	}
 	if _, err := c.q.SetPendingDamageStatus(ctx, playdb.SetPendingDamageStatusParams{ID: p.ID, Status: pendingAwaitingRoll}); err != nil {
 		return false, fmt.Errorf("let the hit go on: %w", err)
@@ -531,7 +529,7 @@ func (s *Service) releaseOne(ctx context.Context, c *combatTx, p playdb.PendingD
 	return true, nil
 }
 
-// errWindowGone is the not_found of a window that is not in the combat, the same
+// errWindowDenied is the refusal for a window the caller may not answer, the same
 // for a window that never existed: a player never learns which are real (RN-10).
 func errWindowDenied() error {
 	return connect.NewError(connect.CodePermissionDenied, errors.New("you cannot answer this reaction"))

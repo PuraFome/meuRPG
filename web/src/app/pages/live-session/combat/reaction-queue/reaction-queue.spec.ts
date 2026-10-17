@@ -5,7 +5,9 @@ import { CombatClient } from '../../../../core/combat/combat-client';
 import { EffectsClient } from '../../../../core/effects/effects-client';
 import { CombatState } from '../../../../core/combat/combat-state';
 import { combatant, encounter, reactionWindow } from '../../../../core/combat/combat-testing';
+import { nextTurn } from '../../../../../test-settle';
 import { ReactionQueue } from './reaction-queue';
+import { fakeCombatClient } from '../../../../core/combat/combat-client-testing';
 
 const plain = (text: string | null | undefined) =>
   (text ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
@@ -60,7 +62,7 @@ describe("ReactionQueue, the master's side of the reaction windows", () => {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
-        { provide: CombatClient, useValue: api },
+        { provide: CombatClient, useValue: fakeCombatClient(api) },
         { provide: EffectsClient, useValue: effectsApi },
       ],
     });
@@ -154,14 +156,10 @@ describe("ReactionQueue, the master's side of the reaction windows", () => {
       expect(api.answerReaction.mock.calls[0][3]).toEqual({ use: false });
     });
 
-    it('opens the focus on the first button of the first window to answer', () => {
+    it('opens the focus on the first button of the first window to answer', async () => {
       const { el } = setup(windows());
-      return new Promise<void>((resolve) =>
-        setTimeout(() => {
-          expect(document.activeElement).toBe(button(el, 'Usar pelo jogador'));
-          resolve();
-        }),
-      );
+      await nextTurn();
+      expect(document.activeElement).toBe(button(el, 'Usar pelo jogador'));
     });
   });
 
@@ -263,16 +261,12 @@ describe("ReactionQueue, the master's side of the reaction windows", () => {
         } as never,
       });
 
-    it('opens the focus on "Sem reação", the primary answer', () => {
+    it('opens the focus on "Sem reação", the primary answer', async () => {
       const { el } = setup([check()]);
       expect(plain(el.textContent)).toContain('Nenhum inimigo tem uma reação para isto.');
       expect(plain(el.textContent)).toContain('os jogadores veem só “Esperando o mestre”');
-      return new Promise<void>((resolve) =>
-        setTimeout(() => {
-          expect(document.activeElement).toBe(button(el, 'Sem reação'));
-          resolve();
-        }),
-      );
+      await nextTurn();
+      expect(document.activeElement).toBe(button(el, 'Sem reação'));
     });
 
     it('"Sem reação" closes the window (an enemy that can react has a window of its own)', async () => {

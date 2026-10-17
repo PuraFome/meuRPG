@@ -22,10 +22,10 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
 )
 
-// The character's creatures (MR-037, Etapa 9, slice 9.9): the familiar, the
+// The character's creatures (MR-037): the familiar, the
 // summoned animals and undead, the master's gift, and the creatures in a combat.
 // These tests need the database (MEURPG_TEST_DATABASE_URL). The fixture is the
-// party of the Etapa 9 designs: Toren, a level 5 fighter; Pensantus, a wizard
+// party of the designs: Toren, a level 5 fighter; Pensantus, a wizard
 // who knows Convocar Familiar and Animar Mortos (level 9, so he has
 // 5th-circle slots); and Sálvia, a level 5 druid with Conjurar Animais.
 
@@ -608,7 +608,7 @@ func TestMR037_ConcentrationEndingDismissesTheCastingsCreatures(t *testing.T) {
 		t.Errorf("after the undo: wolf = %v, creatures = %d, want the wolves back with their initiative and the concentration", w1, len(a.mustCreatures(t, a.bia, a.bri)))
 	}
 
-	// The same through the condition call that has always ended a concentration.
+	// The same through the condition call, which also ends a concentration.
 	if _, err := a.conditions(t, a.bia, e, "Sálvia", nil, false, true); err != nil {
 		t.Fatalf("SetCombatantConditions(end_concentration) error = %v", err)
 	}
@@ -956,7 +956,7 @@ func TestMR037_ExistingCreaturesJoinACombatAndAGroupSharesOneRoll(t *testing.T) 
 	// A player's character that leaves a combat in SETUP takes its creatures with it.
 }
 
-// TestMR037_TheKindAudit: what each kind of combatant does where the code used to
+// TestMR037_TheKindAudit: what each kind of combatant does where a rule could
 // ask only "player or NPC": a creature takes an attack and a damage like an NPC
 // (its hit points are on the combatant), never makes a death save, never moves
 // the owner's vitals, is not a character's token at the end, and the spell that

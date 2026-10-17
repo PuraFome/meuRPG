@@ -11,7 +11,9 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
@@ -89,7 +91,7 @@ func (s *Service) exhaustionCall(ctx context.Context, campaignID, rawKey, rawEnc
 	}
 	switch {
 	case rawChar != "":
-		id, ok := parseID(rawChar)
+		id, ok := uid.Canonical(rawChar)
 		if !ok {
 			return m, key, exhaustionTarget{}, errCharacterNotFound()
 		}
@@ -121,6 +123,9 @@ type exhaustionChange struct {
 type exhaustionDone struct {
 	level, hpMax int32
 	vitals       *playv1.CharacterVitals
+	// hintLog says the players are told the log changed: false when the line is the owner's and the
+	// master's, or secret.
+	hintLog bool
 }
 
 // changeExhaustion sets the level (a negative number takes that many levels off the one it is
@@ -140,8 +145,7 @@ func (s *Service) changeExhaustion(ctx context.Context, m authz.Membership, key 
 	if res.encounterID != "" {
 		enc, err = s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
 			s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
-			// The stream is told the log changed for everyone; a hidden NPC's line is Secret in the event itself.
-			s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, true)
+			s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, done.hintLog)
 		})
 		if err != nil {
 			return 0, 0, nil, err
@@ -196,8 +200,8 @@ func (s *Service) writeExhaustion(ctx context.Context, c *combatTx, m authz.Memb
 		}
 	}
 	if c.enc.ID != "" {
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
+		if err := touch(ctx, c); err != nil {
+			return nil, err
 		}
 	}
 	// The exhaustion is the owner's and the master's: no line for the other players (RN-10).
@@ -205,6 +209,7 @@ func (s *Service) writeExhaustion(ctx context.Context, c *combatTx, m authz.Memb
 	if who != nil {
 		ev.Lasting.Targets = []string{who.ID}
 	}
+	done.hintLog = !ev.Secret && !ev.Lasting.OwnerOnly
 	return ev, nil
 }
 
@@ -223,9 +228,9 @@ func (s *Service) exhaustionCombat(ctx context.Context, c *combatTx) ([]playdb.C
 	if c.enc.ID == "" {
 		return nil, nil
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	return cs, nil
 }
@@ -333,12 +338,12 @@ func (s *Service) copyExhaustion(ctx context.Context, c *combatTx, who playdb.Co
 // hit points cut to it, and the maximum it had is kept to give it back; level 6 defeats it. It returns
 // the maximum it has now.
 func (s *Service) setNPCExhaustion(ctx context.Context, c *combatTx, who playdb.Combatant, level int32) (int32, error) {
-	base := num(who.HpMax)
+	base := conv.OrZero(who.HpMax)
 	if who.HpMaxBase != nil {
 		base = *who.HpMaxBase
 	}
 	newMax := clamp32(combat.ExhaustedMaxHP(int(base), int(level)), 0, 1<<30)
-	current := num(who.HpCurrent)
+	current := conv.OrZero(who.HpCurrent)
 	var baseKept *int32
 	if combat.ExhaustionAt(int(level)).MaxHPHalved {
 		baseKept = &base
@@ -363,9 +368,9 @@ func (s *Service) setNPCExhaustion(ctx context.Context, c *combatTx, who playdb.
 		return 0, fmt.Errorf("set the exhaustion: %w", err)
 	}
 	if defeated && !who.Defeated && c.enc.Status == statusActive {
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+		cs, err := listCombatants(ctx, c)
 		if err != nil {
-			return 0, fmt.Errorf("list the combatants: %w", err)
+			return 0, err
 		}
 		if _, err := leaveTurn(ctx, c, cs, who); err != nil {
 			return 0, err

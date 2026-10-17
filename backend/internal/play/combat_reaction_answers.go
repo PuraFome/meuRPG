@@ -12,6 +12,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -133,7 +134,7 @@ func (s *Service) answerDeflect(ctx context.Context, c *combatTx, w playdb.React
 	caught := left == 0
 	kiLeft := k.resourceLeft(resKi)
 	throwBack := caught && kiLeft > 0
-	roll := diceRoll(1, reaction.DeflectDie, []int32{clamp32(face, 1, 20)}, clamp32(k.st.DexMod+k.st.MonkLevel, math.MinInt32, math.MaxInt32), clamp32(reduction, 0, math.MaxInt32), r.Physical)
+	roll := diceRoll(1, reaction.DeflectDie, []int32{clamp32(face, 1, 20)}, conv.Int32(k.st.DexMod+k.st.MonkLevel), clamp32(reduction, 0, math.MaxInt32), r.Physical)
 	got.ev = actionEvent{
 		Round: c.enc.Round, Secret: reactor.Hidden, Actor: reactor.ID, Target: t.Actor, ReactionBefore: reactor.ReactionUsed,
 		Reaction: &reactionEvent{Kind: w.Kind, Window: w.ID, Used: true, ByMaster: c.master, Before: t.Damage, After: clamp32(left, 0, math.MaxInt32), Die: clamp32(face, 1, 20), DieSides: reaction.DeflectDie, Caught: caught},
@@ -208,7 +209,7 @@ func (s *Service) answerCuttingWords(ctx context.Context, c *combatTx, w playdb.
 		return err
 	}
 	c.lastAnswered = reaction.CuttingWords
-	cut := &playv1.CuttingWordsResult{Die: diceRoll(1, int32(sides), []int32{clamp32(face, 1, 20)}, 0, clamp32(face, 1, 20), r.Physical), Effective: effective, RollKind: cuttingRollKind(t.Roll)} //nolint:gosec // a die size
+	cut := &playv1.CuttingWordsResult{Die: diceRoll(1, int32(sides), []int32{clamp32(face, 1, 20)}, 0, clamp32(face, 1, 20), r.Physical), Effective: effective, RollKind: rollKindOf(t.Roll)} //nolint:gosec // a die size
 	got.result = &playv1.ReactionResult{Kind: playv1.ReactionKind_REACTION_KIND_CUTTING_WORDS, ByMaster: c.master, Used: true, Result: &playv1.ReactionResult_CuttingWords{CuttingWords: cut}}
 	got.fill = cuttingFill(re, cut)
 	c.characterID = &reactor.CharacterID
@@ -228,17 +229,6 @@ func (s *Service) spendCuttingWords(ctx context.Context, c *combatTx, reactor pl
 	return s.spendReaction(ctx, c, reactor)
 }
 
-// cuttingRollKind is the kind of roll a Cutting Words window was about, as the answer tells it.
-func cuttingRollKind(roll string) playv1.ReactionRollKind {
-	switch roll {
-	case "damage":
-		return playv1.ReactionRollKind_REACTION_ROLL_KIND_DAMAGE
-	case "test":
-		return playv1.ReactionRollKind_REACTION_ROLL_KIND_TEST
-	}
-	return playv1.ReactionRollKind_REACTION_ROLL_KIND_ATTACK
-}
-
 // cuttingFill completes the result with what the roll became, known when the held action is
 // replayed, a moment later.
 func cuttingFill(re *reactionEvent, cut *playv1.CuttingWordsResult) func() {
@@ -255,9 +245,9 @@ func cuttingFill(re *reactionEvent, cut *playv1.CuttingWordsResult) func() {
 // canBeCut says Cutting Words can change the roller's roll: it can hear the bard and is
 // not immune to being charmed (SRD, College of Lore).
 func (s *Service) canBeCut(ctx context.Context, c *combatTx, rollerID string) (bool, error) {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return false, fmt.Errorf("list the combatants: %w", err)
+		return false, err
 	}
 	i := slices.IndexFunc(cs, func(x playdb.Combatant) bool { return x.ID == rollerID })
 	if i < 0 {
@@ -311,9 +301,9 @@ func (s *Service) answerHellishRebuke(ctx context.Context, c *combatTx, m authz.
 	t.CastLevel, t.Racial, t.Dice = level, racial, int32(reaction.HellishRebukeDice(int(level))) //nolint:gosec // 2 to 10 dice
 	c.lastAnswered = reaction.HellishRebukeKind
 	c.characterID = &reactor.CharacterID
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	ai := slices.IndexFunc(cs, func(x playdb.Combatant) bool { return x.ID == t.Actor })
 	if ai >= 0 && cs[ai].Kind != kindPlayer {
@@ -388,9 +378,9 @@ type rebukeSave struct {
 
 // resolveRebuke rolls the aggressor's saving throw and puts the fire on it.
 func (s *Service) resolveRebuke(ctx context.Context, c *combatTx, w playdb.ReactionWindow, reactor playdb.Combatant, t windowTrigger, req *playv1.AnswerReactionRequest, got *answered) error {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	ai := slices.IndexFunc(cs, func(x playdb.Combatant) bool { return x.ID == t.Actor })
 	if ai < 0 {
@@ -427,7 +417,7 @@ func (s *Service) resolveRebuke(ctx context.Context, c *combatTx, w playdb.React
 	got.result = &playv1.ReactionResult{
 		Kind: playv1.ReactionKind_REACTION_KIND_HELLISH_REBUKE, ByMaster: c.master, Used: true,
 		Result: &playv1.ReactionResult_HellishRebuke{HellishRebuke: &playv1.HellishRebukeResult{
-			Save:   rebukeSaveRoll(sv.face, clamp32(sv.bonus, math.MinInt32, math.MaxInt32), sv.roll, sv.reroll),
+			Save:   rebukeSaveRoll(sv.face, conv.Int32(sv.bonus), sv.roll, sv.reroll),
 			SaveDc: clamp32(sv.dc, 0, math.MaxInt32), Saved: sv.saved, Damage: hit.Amount, Level: t.CastLevel, Racial: t.Racial,
 		}},
 	}
@@ -482,7 +472,7 @@ func (s *Service) rebukeEvent(c *combatTx, w playdb.ReactionWindow, reactor, agg
 		re = &reactionEvent{Kind: w.Kind, Window: w.ID, Used: true, ByMaster: c.master, Racial: t.Racial}
 	}
 	re.Slot, re.Racial = got.ev.Slot, t.Racial
-	re.SaveD20, re.SaveBonus, re.SaveDC, re.Saved, re.Fire = clamp32(sv.face, 1, 20), clamp32(sv.bonus, math.MinInt32, math.MaxInt32), clamp32(sv.dc, 0, math.MaxInt32), sv.saved, hit.Amount
+	re.SaveD20, re.SaveBonus, re.SaveDC, re.Saved, re.Fire = clamp32(sv.face, 1, 20), conv.Int32(sv.bonus), clamp32(sv.dc, 0, math.MaxInt32), sv.saved, hit.Amount
 	re.Level = t.CastLevel
 	got.ev.Reaction = re
 	got.ev.Lucky = sv.reroll // the aggressor's save the app rolled again: the master's line says "Sortudo: 1 → 14"
@@ -506,7 +496,7 @@ func (s *Service) rebukeLucky(ctx context.Context, c *combatTx, aggressor playdb
 // rebukeSaveRoll is the aggressor's save against Hellish Rebuke as the answer shows it, with the d20
 // the app rolled again (Lucky).
 func rebukeSaveRoll(face int, bonus int32, roll d20Roll, reroll *luckyReroll) *playv1.DiceRoll {
-	out := diceRoll(1, 20, []int32{clamp32(face, 1, 20)}, bonus, clamp32(roll.Total, math.MinInt32, math.MaxInt32), roll.Physical)
+	out := diceRoll(1, 20, []int32{clamp32(face, 1, 20)}, bonus, conv.Int32(roll.Total), roll.Physical)
 	out.Rerolled = reroll.proto()
 	return out
 }
@@ -538,7 +528,7 @@ func (s *Service) landRolled(ctx context.Context, c *combatTx, p playdb.PendingD
 	}); err != nil {
 		return hit, nil, fmt.Errorf("save the damage roll: %w", err)
 	}
-	return hit, vit, s.afterDamage(ctx, c, target, damageLanded{attacker: deref(p.AttackerID), key: p.AttackKey, pending: p, hit: hit})
+	return hit, vit, s.afterDamage(ctx, c, target, damageLanded{attacker: conv.OrZero(p.AttackerID), key: p.AttackKey, pending: p, hit: hit})
 }
 
 // deflectThrow is the attack a monk makes with the missile it caught (SRD, Monk 3,

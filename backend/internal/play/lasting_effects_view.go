@@ -8,6 +8,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -54,7 +55,7 @@ func groupsOf(rows []playdb.CombatantState) []effectGroup {
 		}
 		i := slices.IndexFunc(out, func(g effectGroup) bool {
 			f := g.rows[0]
-			return deref(f.GroupID) == deref(st.GroupID) && deref(f.SourceKey) == deref(st.SourceKey)
+			return conv.OrZero(f.GroupID) == conv.OrZero(st.GroupID) && conv.OrZero(f.SourceKey) == conv.OrZero(st.SourceKey)
 		})
 		if i < 0 {
 			out = append(out, effectGroup{})
@@ -81,10 +82,7 @@ func (s *Service) effectViewerFor(ctx context.Context, m authz.Membership, d *en
 	if err != nil {
 		return nil, s.dbError(ctx, "read the rules content", err)
 	}
-	ev := &effectViewer{s: s, m: m, v: v, d: d, content: content, names: names, byID: make(map[string]playdb.Combatant, len(d.cs))}
-	for _, c := range d.cs {
-		ev.byID[c.ID] = c
-	}
+	ev := &effectViewer{s: s, m: m, v: v, d: d, content: content, names: names, byID: combatantsByID(d.cs)}
 	return ev, nil
 }
 
@@ -181,7 +179,7 @@ func (ev *effectViewer) labelOf(st playdb.CombatantState) string {
 	if st.PlayerLabel != nil {
 		return *st.PlayerLabel
 	}
-	if def, ok := ev.s.effectDef(ev.content, deref(st.SourceKey)); ok && def.PlayerLabelPT != "" {
+	if def, ok := ev.s.effectDef(ev.content, conv.OrZero(st.SourceKey)); ok && def.PlayerLabelPT != "" {
 		return def.PlayerLabelPT
 	}
 	return ev.conditionsLabel(st, func(string) bool { return false })
@@ -205,7 +203,7 @@ func (ev *effectViewer) labelFor(st playdb.CombatantState) string {
 	if st.PlayerLabel != nil || ev.v.master {
 		return ev.labelOf(st)
 	}
-	if def, ok := ev.s.effectDef(ev.content, deref(st.SourceKey)); ok && def.PlayerLabelPT != "" {
+	if def, ok := ev.s.effectDef(ev.content, conv.OrZero(st.SourceKey)); ok && def.PlayerLabelPT != "" {
 		return def.PlayerLabelPT
 	}
 	target, ok := ev.byID[st.CombatantID]
@@ -220,7 +218,7 @@ func (ev *effectViewer) labelForOthers(st playdb.CombatantState) string {
 	if st.PlayerLabel != nil {
 		return *st.PlayerLabel
 	}
-	if def, ok := ev.s.effectDef(ev.content, deref(st.SourceKey)); ok && def.PlayerLabelPT != "" {
+	if def, ok := ev.s.effectDef(ev.content, conv.OrZero(st.SourceKey)); ok && def.PlayerLabelPT != "" {
 		return def.PlayerLabelPT
 	}
 	return ev.conditionsLabel(st, func(k string) bool { return slices.Contains(ownerOnlyConditions, k) })
@@ -230,11 +228,11 @@ func (ev *effectViewer) labelForOthers(st playdb.CombatantState) string {
 // player's own); empty for the master's table.
 func (ev *effectViewer) card(g effectGroup, onTarget string) *playv1.LastingEffect {
 	f := g.first()
-	key := deref(f.SourceKey)
+	key := conv.OrZero(f.SourceKey)
 	def, _ := ev.s.effectDef(ev.content, key)
 	out := ev.cardHead(f, key, def)
 	ev.cardTargets(out, g, onTarget)
-	caster, casterSeen := ev.byID[deref(f.SourceID)]
+	caster, casterSeen := ev.byID[conv.OrZero(f.SourceID)]
 	casterSeen = casterSeen && ev.v.sees(caster)
 	if casterSeen {
 		out.CasterId = caster.ID
@@ -247,7 +245,7 @@ func (ev *effectViewer) card(g effectGroup, onTarget string) *playv1.LastingEffe
 	ev.cardSaves(out, f, ev.v.master || (casterSeen && ev.v.owns(caster)))
 	ev.cardNotes(out, f, def)
 	if ev.v.master {
-		out.PlayerVisible, out.Audience, out.PlayerLabel = f.PlayerVisible, audienceProto(f.Audience), deref(f.PlayerLabel)
+		out.PlayerVisible, out.Audience, out.PlayerLabel = f.PlayerVisible, audienceProto(f.Audience), conv.OrZero(f.PlayerLabel)
 		out.EndTextPt = ev.endText(f, caster)
 		if f.PlayerVisible {
 			out.PlayersSeePt = ev.labelForOthers(f)
@@ -262,13 +260,13 @@ func (ev *effectViewer) cardHead(f playdb.CombatantState, key string, def *rules
 	// that cast's id (RN-10).
 	group := f.ID
 	if ev.v.master {
-		group = deref(f.GroupID)
+		group = conv.OrZero(f.GroupID)
 	}
 	out := &playv1.LastingEffect{
 		Id: f.ID, GroupId: group, EncounterId: f.EncounterID, SourceKey: key, SourceNamePt: ev.names(key),
 		Concentration: f.Concentration, ConditionKeys: f.ConditionKeys,
 	}
-	out.SourceKind = sourceKindProto(deref(f.SourceKind), len(f.ConditionKeys) > 0 && def == nil)
+	out.SourceKind = sourceKindProto(conv.OrZero(f.SourceKind), len(f.ConditionKeys) > 0 && def == nil)
 	if out.SourceNamePt == "" && len(f.ConditionKeys) > 0 {
 		out.SourceNamePt = ev.names(f.ConditionKeys[0])
 	}
@@ -309,7 +307,7 @@ func (ev *effectViewer) cardTargets(out *playv1.LastingEffect, g effectGroup, on
 
 // cardClock puts the duration of the effect on its card: the kind, where it ends and the text.
 func (ev *effectViewer) cardClock(out *playv1.LastingEffect, f playdb.CombatantState, caster playdb.Combatant, casterSeen bool) {
-	out.DurationKind = durationKindProto(deref(f.DurationKind))
+	out.DurationKind = durationKindProto(conv.OrZero(f.DurationKind))
 	if e := endsAtOf(f); e.Timed() {
 		end := &playv1.EffectEnd{Round: clamp32(e.Round, 0, 1<<20), CombatantId: e.CombatantID, Phase: phaseProto(e.Phase)}
 		round := max(ev.d.enc.Round, 1)
@@ -329,8 +327,8 @@ func (ev *effectViewer) cardSaves(out *playv1.LastingEffect, f playdb.CombatantS
 	}
 	if f.TriggerDice != nil {
 		out.TurnTrigger = &playv1.EffectTrigger{
-			Phase: playv1.EffectPhase_EFFECT_PHASE_START, Dice: *f.TriggerDice, DamageTypeKey: deref(f.TriggerDamageType),
-			DamageTypePt: ev.names(deref(f.TriggerDamageType)), MaxTriggers: derefInt32(f.TriggerMaxTriggers),
+			Phase: playv1.EffectPhase_EFFECT_PHASE_START, Dice: *f.TriggerDice, DamageTypeKey: conv.OrZero(f.TriggerDamageType),
+			DamageTypePt: ev.names(conv.OrZero(f.TriggerDamageType)), MaxTriggers: conv.OrZero(f.TriggerMaxTriggers),
 		}
 	}
 }
@@ -359,7 +357,7 @@ func (ev *effectViewer) originOf(f playdb.CombatantState, caster playdb.Combatan
 		return "O fim de " + name
 	}
 	switch {
-	case deref(f.SourceKind) == "master" || f.SourceID == nil:
+	case conv.OrZero(f.SourceKind) == "master" || f.SourceID == nil:
 		return "Do mestre"
 	case seen:
 		return "De " + caster.Label
@@ -378,9 +376,9 @@ func (ev *effectViewer) clockText(f playdb.CombatantState, caster playdb.Combata
 		}
 		return "o turno de quem a conjurou"
 	}
-	switch deref(f.DurationKind) {
+	switch conv.OrZero(f.DurationKind) {
 	case rules.EffectDurationRounds:
-		if !casterSeen && !ev.v.master && f.SourceID != nil && deref(f.SourceKind) != "master" {
+		if !casterSeen && !ev.v.master && f.SourceID != nil && conv.OrZero(f.SourceKind) != "master" {
 			return fmt.Sprintf("Resta o tempo da magia: acaba no turno de quem a conjurou, na rodada %d.", e.Round)
 		}
 		left := e.RoundsLeft(round)
@@ -412,7 +410,7 @@ func roundsLeftText(n int) string {
 func (ev *effectViewer) endText(f playdb.CombatantState, caster playdb.Combatant) string {
 	e := endsAtOf(f)
 	a := ev.byID[e.CombatantID]
-	switch deref(f.DurationKind) {
+	switch conv.OrZero(f.DurationKind) {
 	case rules.EffectDurationRounds:
 		return fmt.Sprintf("%s: acaba no turno de %s, rodada %d.", roundsLeftText(e.RoundsLeft(int(max(ev.d.enc.Round, 1)))), a.Label, e.Round)
 	case rules.EffectDurationUntilStartOfTurnOf:
@@ -446,10 +444,10 @@ func phaseProto(p string) playv1.EffectPhase {
 }
 
 func audienceProto(a string) playv1.EffectAudience {
-	if a == "owner" {
-		return playv1.EffectAudience_EFFECT_AUDIENCE_OWNER
+	if a == audienceAll {
+		return playv1.EffectAudience_EFFECT_AUDIENCE_ALL
 	}
-	return playv1.EffectAudience_EFFECT_AUDIENCE_ALL
+	return playv1.EffectAudience_EFFECT_AUDIENCE_OWNER
 }
 
 func durationKindProto(k string) playv1.EffectDurationKind {

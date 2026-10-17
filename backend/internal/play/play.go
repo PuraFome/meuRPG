@@ -1,12 +1,11 @@
 // Package play is about playing a campaign at the table: it starts, ends
 // and lists game sessions (PlayService), which is what locks the players'
-// sheets (RN-01, MR-006, MR-011), and runs the live session (Etapa 5,
-// live.go): the in-app notice that a session is open (RN-06), the
+// sheets (RN-01, MR-006, MR-011), and runs the live session (live.go): the in-app notice that a session is open (RN-06), the
 // session's live stream (ADR-0005), the master's correction of the
 // characters' vitals (RN-02), each one recorded in session_events
 // (ADR-0007), and what the session shows at the table: the current map and
-// a gallery image (onscreen.go). Turns and actions come with combat (Etapa
-// 6).
+// a gallery image (onscreen.go). Turns and actions are in the combat files
+// (combat.go).
 //
 // Starting a session locks the sheets in the same transaction that opens
 // it, through a SheetLocker, and the vitals live in the characters module
@@ -234,8 +233,8 @@ type CombatRoster interface {
 	// Every read of this interface takes the caller's transaction (nil: the pool). A
 	// change that holds one must pass it: the read then sees what the change wrote
 	// (the character's vitals or Wild Shape form), and it takes no second connection,
-	// which would wait for the one the transaction keeps (docs/architecture/README.md,
-	// "Dentro de uma transação, nenhuma leitura pelo pool").
+	// which would wait for the one the transaction keeps (docs/architecture/transactions.md,
+	// first paragraph).
 
 	// CombatSheet returns what an attack needs from the sheet of a living
 	// character of the campaign, a player's or an NPC's: its armor class, its
@@ -290,7 +289,7 @@ type CombatRoster interface {
 	// content is read once, when it is asked for, not on every name.
 	ContentNames(ctx context.Context, tx pgx.Tx, campaignID string) (func(key string) string, error)
 
-	// The character's creatures (MR-037, Etapa 9). The ones that write take the
+	// The character's creatures (MR-037). The ones that write take the
 	// change's transaction.
 
 	// CharacterCreatures returns the live creatures of the given characters,
@@ -449,6 +448,10 @@ type LiveConfig struct {
 	// Buffer is how many events a stream may fall behind before it is
 	// dropped (live.DefaultBuffer).
 	Buffer int
+	// HintAfter schedules the send that ends a hint gate's interval (the puzzles'
+	// and the content hint's): after d, run f. Nil is time.AfterFunc. A test uses it
+	// to know when no trailing hint is still waiting.
+	HintAfter func(d time.Duration, f func())
 }
 
 // Config holds what the play service needs.
@@ -469,7 +472,7 @@ type Config struct {
 	// Dice says where a player rolls (RN-18). Required.
 	Dice DiceModes
 	// Defaults gives the mode of a combat started without one (RN-24, RN-25).
-	// Optional: nil means every such combat is on a map, as before the modes.
+	// Optional: nil means every such combat is on a map.
 	Defaults CombatDefaults
 	// Terrain gives a combat the walls, difficult terrain and cover of its map
 	// (RN-21, D2). Optional: cmd/api sets it with SetTerrain once the maps module
@@ -608,6 +611,7 @@ func New(cfg Config) (*Service, error) {
 		s.now = time.Now
 	}
 	s.puzzles.hints.logger = s.logger
+	s.puzzles.hints.after = cfg.Live.HintAfter
 	if s.roller == nil {
 		s.roller = dice.Crypto{}
 	}
@@ -668,8 +672,8 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 
 // queriesIn is the queries on the transaction, or on the pool when tx is nil. A
 // read made while the caller holds a transaction must use the transaction: a
-// read through the pool takes a second connection (see docs/architecture/README.md,
-// "Dentro de uma transação, nenhuma leitura pelo pool").
+// read through the pool takes a second connection (see docs/architecture/transactions.md,
+// first paragraph).
 func (s *Service) queriesIn(tx pgx.Tx) *playdb.Queries {
 	if tx == nil {
 		return s.queries

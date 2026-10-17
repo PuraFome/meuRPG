@@ -15,11 +15,12 @@ import (
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/puzzle"
 )
 
-// More puzzles (MR-038, RN-27, RN-10, RN-18, Etapa 10, slice 10.7b): the riddle, the
+// More puzzles (MR-038, RN-27, RN-10, RN-18): the riddle, the
 // sequence and the cipher; the hints won by a skill check; the split information; and the
 // consequences of a wrong move ("Ao errar"). They use the fixture of puzzles_test.go:
 // Toren's player is caio, Pensantus's ana and Brisa's bia. Every answer a player gets is
@@ -125,7 +126,7 @@ func (p *puzzleTable) trapState(t *testing.T, pointID string) string {
 	if err := p.h.pool.QueryRow(t.Context(), `SELECT trap_state FROM map_points WHERE id = $1`, pointID).Scan(&state); err != nil {
 		t.Fatal(err)
 	}
-	return deref(state)
+	return conv.OrZero(state)
 }
 
 func (p *puzzleTable) eventCount(t *testing.T, kind string) int {

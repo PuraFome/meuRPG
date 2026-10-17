@@ -103,7 +103,7 @@ type logSnapshot struct {
 }
 
 // readLogSnapshot reads the combat's events, its combatants and the master's undo marker
-// as one snapshot (audit D-03): a log line whose actor is missing, or an "undo" that
+// as one snapshot: a log line whose actor is missing, or an "undo" that
 // points at an event the list does not have, would be a torn read.
 func (s *Service) readLogSnapshot(ctx context.Context, m authz.Membership, encID string) (logSnapshot, error) {
 	var snap logSnapshot
@@ -255,12 +255,7 @@ func undoneEvents(events []playdb.ListEncounterEventsRow) map[string]bool {
 		if e.Kind != eventActionUndone {
 			continue
 		}
-		if ev, err := readEvent(e.Payload); err == nil {
-			undone[ev.Undone] = true
-			for _, id := range ev.UndoneAlso {
-				undone[id] = true
-			}
-		}
+		markUndone(undone, e.Payload)
 	}
 	return undone
 }
