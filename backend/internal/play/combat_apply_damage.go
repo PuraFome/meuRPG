@@ -15,12 +15,12 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
-// The master settling a hit on a player's character (ApplyPendingDamage and DiscardPendingDamage), in phases.
-// Each call reads the request, runs the transaction as a sequence of phases of a flow, each one of the checks
-// or the writes the call has always made in that order, and answers from what the transaction left in an out.
+// The master settling a hit on a player's character (ApplyPendingDamage and DiscardPendingDamage).
+// Each call reads the request, runs the transaction on a flow, which checks and writes in a fixed order, and
+// answers from what the transaction left in an out.
 // Applying works the amount out of the roll, the target's resistances and the master's last word, and lands
-// it as a character's vitals, a druid's beast form or a character at 0 hit points would take it. The phases
-// keep the order of the reads and the writes: the golden of combat_actions_rest_frozen_test.go reads it.
+// it as a character's vitals, a druid's beast form or a character at 0 hit points would take it. The order
+// of the reads and the writes is the one the golden of combat_actions_rest_frozen_test.go reads.
 
 // resolvedDamageError is the refusal of a pending damage that was settled already.
 func resolvedDamageError() error {
@@ -111,7 +111,7 @@ func (s *Service) applyDamageResponse(ctx context.Context, m authz.Membership, r
 	return connect.NewResponse(&playv1.ApplyPendingDamageResponse{Encounter: enc, PendingDamage: pending}), nil
 }
 
-// applyDamageFlow is one run of the apply's transaction: what each phase reads, and the next one uses.
+// applyDamageFlow is one run of the apply's transaction: what its steps read, and the next ones use.
 type applyDamageFlow struct {
 	s    *Service
 	c    *combatTx
@@ -137,12 +137,32 @@ func newApplyDamageFlow(s *Service, c *combatTx, call applyDamageCall, out *appl
 // write stores.
 func (f *applyDamageFlow) run(ctx context.Context) (any, error) {
 	f.out.vitals = nil
-	phases := []func(context.Context) error{f.locate, f.settleAmount, f.readVitals, f.land, f.afterTaken, f.record, f.castSave, f.afterHit, f.touch}
-	for _, phase := range phases {
-		if err := phase(ctx); err != nil {
-			return nil, err
-		}
+	if err := f.locate(ctx); err != nil {
+		return nil, err
 	}
+	f.settleAmount()
+	if err := f.readVitals(ctx); err != nil {
+		return nil, err
+	}
+	if err := f.land(ctx); err != nil {
+		return nil, err
+	}
+	if err := f.s.afterDamageTaken(ctx, f.c, f.target, f.amount, f.made.Before, f.made.After); err != nil {
+		return nil, err
+	}
+	if err := f.record(ctx); err != nil {
+		return nil, err
+	}
+	if err := f.castSave(ctx); err != nil {
+		return nil, err
+	}
+	if err := f.afterHit(ctx); err != nil {
+		return nil, err
+	}
+	if err := touch(ctx, f.c); err != nil {
+		return nil, err
+	}
+	f.c.characterID = &f.target.CharacterID
 	f.out.made = f.made
 	return f.made, nil
 }
@@ -184,7 +204,7 @@ func settleable(p playdb.PendingDamage) error {
 
 // settleAmount works out what lands: what the target's resistance, vulnerability or immunity leaves of the
 // roll, unless the master leaves a source out or sets another number. It starts the event.
-func (f *applyDamageFlow) settleAmount(context.Context) error {
+func (f *applyDamageFlow) settleAmount() {
 	rolled := conv.OrZero(f.p.Amount)
 	groups := readStepGroups(f.p.Steps)
 	expected := rolled
@@ -204,7 +224,6 @@ func (f *applyDamageFlow) settleAmount(context.Context) error {
 		Amount: amount, DamageType: f.p.DamageType, Overridden: f.call.override != nil && *f.call.override != expected, Rolled: rolled,
 		Steps: groups, Ignored: f.call.ignored,
 	}
-	return nil
 }
 
 // readVitals reads the target's vitals, which the landing overwrites.
@@ -294,11 +313,6 @@ func (f *applyDamageFlow) returnIfDropped(ctx context.Context) error {
 	return nil
 }
 
-// afterTaken runs what the damage taken does to the target's states.
-func (f *applyDamageFlow) afterTaken(ctx context.Context) error {
-	return f.s.afterDamageTaken(ctx, f.c, f.target, f.amount, f.made.Before, f.made.After)
-}
-
 // record marks the pending damage applied, with the amount the master set when it is not the roll.
 func (f *applyDamageFlow) record(ctx context.Context) error {
 	if _, err := f.c.q.SetPendingDamageApplied(ctx, playdb.SetPendingDamageAppliedParams{ID: f.p.ID, ResolvedAt: &f.c.now, AppliedAmount: f.applied}); err != nil {
@@ -327,15 +341,6 @@ func (f *applyDamageFlow) afterHit(ctx context.Context) error {
 	return f.s.afterDamage(ctx, f.c, f.target, damageLanded{attacker: f.attacker.ID, key: f.p.AttackKey, pending: f.p, hit: damageHit{
 		Pending: f.p.ID, Target: f.target.ID, Amount: f.amount, Applied: true, Before: f.made.Before, After: f.made.After, ConcentrationDC: f.made.ConcentrationDC,
 	}})
-}
-
-// touch moves the encounter's revision and names the character the change was about.
-func (f *applyDamageFlow) touch(ctx context.Context) error {
-	if err := touch(ctx, f.c); err != nil {
-		return err
-	}
-	f.c.characterID = &f.target.CharacterID
-	return nil
 }
 
 // discardDamageCall is what DiscardPendingDamage reads from its request, checked.
@@ -404,7 +409,7 @@ func (s *Service) discardDamageResponse(ctx context.Context, m authz.Membership,
 	return connect.NewResponse(&playv1.DiscardPendingDamageResponse{Encounter: enc, PendingDamage: pending}), nil
 }
 
-// discardDamageFlow is one run of the discard's transaction: what each phase reads, and the next one uses.
+// discardDamageFlow is one run of the discard's transaction: what its steps read, and the next ones use.
 type discardDamageFlow struct {
 	s    *Service
 	c    *combatTx
@@ -413,9 +418,7 @@ type discardDamageFlow struct {
 
 	p                playdb.PendingDamage
 	attacker, target playdb.Combatant
-	// windows are the reaction windows that waited on the hit, closed with it.
-	windows []string
-	made    actionEvent
+	made             actionEvent
 }
 
 func newDiscardDamageFlow(s *Service, c *combatTx, call discardDamageCall, out *discardDamageOut) *discardDamageFlow {
@@ -424,11 +427,20 @@ func newDiscardDamageFlow(s *Service, c *combatTx, call discardDamageCall, out *
 
 // run is the transaction: the checks, the drop and its event. It answers the event the write stores.
 func (f *discardDamageFlow) run(ctx context.Context) (any, error) {
-	phases := []func(context.Context) error{f.locate, f.drop, f.touch, f.describe, f.castSave}
-	for _, phase := range phases {
-		if err := phase(ctx); err != nil {
-			return nil, err
-		}
+	if err := f.locate(ctx); err != nil {
+		return nil, err
+	}
+	windows, err := discardHit(ctx, f.c, f.p) // the windows that waited on the hit close with it
+	if err != nil {
+		return nil, err
+	}
+	if err := touch(ctx, f.c); err != nil {
+		return nil, err
+	}
+	f.c.characterID = &f.attacker.CharacterID
+	f.describe(windows)
+	if err := f.castSave(ctx); err != nil {
+		return nil, err
 	}
 	f.out.made = f.made
 	return f.made, nil
@@ -449,29 +461,12 @@ func (f *discardDamageFlow) locate(ctx context.Context) error {
 	return nil
 }
 
-// drop discards the pending damage and the windows that waited on it.
-func (f *discardDamageFlow) drop(ctx context.Context) error {
-	var err error
-	f.windows, err = discardHit(ctx, f.c, f.p)
-	return err
-}
-
-// touch moves the encounter's revision and names the character the change was about.
-func (f *discardDamageFlow) touch(ctx context.Context) error {
-	if err := touch(ctx, f.c); err != nil {
-		return err
-	}
-	f.c.characterID = &f.attacker.CharacterID
-	return nil
-}
-
 // describe starts the event of the discard.
-func (f *discardDamageFlow) describe(context.Context) error {
+func (f *discardDamageFlow) describe(windows []string) {
 	f.made = actionEvent{
 		Round: f.c.enc.Round, Secret: secretOf(f.attacker, f.target), Actor: f.attacker.ID, Target: f.target.ID, Pending: f.p.ID, Key: f.p.AttackKey,
-		Amount: conv.OrZero(f.p.Amount), PrevStatus: f.p.Status, ClosedWindows: f.windows,
+		Amount: conv.OrZero(f.p.Amount), PrevStatus: f.p.Status, ClosedWindows: windows,
 	}
-	return nil
 }
 
 // castSave works out the concentration save a spell's damage still owes: the discard may settle the cast's

@@ -236,8 +236,13 @@ func (f *castFlow) prepare(ctx context.Context) error {
 	for _, phase := range []func(context.Context) error{
 		f.findCaster, f.findTargets, f.pickSpell, f.checkEnabled, f.pickSlot, f.checkTargetsAlive,
 		f.applyMetamagic, f.readMap, f.placeArea, f.checkMembers, f.checkTargetList, f.planSummon,
-		f.aimAtCaster, f.checkPool, f.readModes, f.checkSpellAttack,
 	} {
+		if err := phase(ctx); err != nil {
+			return err
+		}
+	}
+	f.aimAtCaster()
+	for _, phase := range []func(context.Context) error{f.checkPool, f.readModes, f.checkSpellAttack} {
 		if err := phase(ctx); err != nil {
 			return err
 		}
@@ -478,11 +483,10 @@ func (f *castFlow) planSummon(ctx context.Context) error {
 }
 
 // aimAtCaster makes the caster the target of a spell that reaches the caster alone.
-func (f *castFlow) aimAtCaster(context.Context) error {
+func (f *castFlow) aimAtCaster() {
 	if len(f.targs) == 0 && selfOnly(f.sp) {
 		f.targs, f.targets = []playdb.Combatant{f.caster}, []castAim{{id: f.caster.ID}}
 	}
-	return nil
 }
 
 // checkPool checks the pool of a spell that rolls one was set.

@@ -19,12 +19,11 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
-// The standard and feature actions that only spend the economy and a use (TakeAction), in phases.
-// TakeAction reads the request, runs the transaction as a sequence of phases of a takeActionFlow, each
-// one of the checks or the writes the action has always made in that order, and answers from what the
-// transaction left in a takeActionOut. Each kind of action (a standard action, a feature's, one of the
-// feature kinds with its own effect) is a function behind a dispatch. The phases keep the order of the
-// reads, the dice and the writes: the golden of combat_take_action_frozen_test.go reads it.
+// The standard and feature actions that only spend the economy and a use (TakeAction).
+// TakeAction reads the request, runs the transaction on a takeActionFlow, which checks and writes in the
+// order the golden of combat_take_action_frozen_test.go reads (the reads, the dice, the writes), and
+// answers from what the transaction left in a takeActionOut. Each kind of action (a standard action, a
+// feature's, one of the feature kinds with its own effect) is a function behind a dispatch.
 
 // The standard actions with an effect on the turn of their own.
 const (
@@ -134,7 +133,7 @@ func (s *Service) takeActionResponse(ctx context.Context, m authz.Membership, re
 	return connect.NewResponse(resp), nil
 }
 
-// takeActionFlow is one run of the action's transaction: what each phase reads, and the next one uses.
+// takeActionFlow is one run of the action's transaction: what its steps read, and the next ones use.
 type takeActionFlow struct {
 	s    *Service
 	c    *combatTx
@@ -162,12 +161,28 @@ func newTakeActionFlow(s *Service, c *combatTx, m authz.Membership, call takeAct
 // write stores.
 func (f *takeActionFlow) run(ctx context.Context) (any, error) {
 	f.out.vitals = nil
-	phases := []func(context.Context) error{f.locate, f.choose, f.mayTake, f.begin, f.spend, f.perform, f.touch}
-	for _, phase := range phases {
-		if err := phase(ctx); err != nil {
-			return nil, err
-		}
+	if err := f.locate(ctx); err != nil {
+		return nil, err
 	}
+	if err := f.choose(); err != nil {
+		return nil, err
+	}
+	if err := f.mayTake(ctx); err != nil {
+		return nil, err
+	}
+	if err := f.begin(ctx); err != nil {
+		return nil, err
+	}
+	if err := f.spend(ctx); err != nil {
+		return nil, err
+	}
+	if err := f.perform(ctx); err != nil {
+		return nil, err
+	}
+	if err := touch(ctx, f.c); err != nil {
+		return nil, err
+	}
+	f.c.characterID = &f.who.CharacterID
 	f.out.made = f.made
 	return f.made, nil
 }
@@ -191,7 +206,7 @@ func (f *takeActionFlow) locate(ctx context.Context) error {
 
 // choose finds the action among the standard or feature actions the combatant has, and refuses the ones
 // that have a call of their own.
-func (f *takeActionFlow) choose(context.Context) error {
+func (f *takeActionFlow) choose() error {
 	key := f.call.actionKey
 	if wildShapeFeature(key) {
 		// It needs the beast: AssumeWildShape takes it (MR-037).
@@ -499,14 +514,5 @@ func (f *takeActionFlow) healFighter(ctx context.Context, sheet link.Sheet) erro
 	if vit != nil {
 		f.out.vitals = vit
 	}
-	return nil
-}
-
-// touch marks the encounter as changed and names the character the event belongs to.
-func (f *takeActionFlow) touch(ctx context.Context) error {
-	if err := touch(ctx, f.c); err != nil {
-		return err
-	}
-	f.c.characterID = &f.who.CharacterID
 	return nil
 }
