@@ -204,7 +204,7 @@ export class ConversationPanel {
         wasLoaded = loaded;
         const heard = fresh
           .map((m) => viewLine(m, this.viewer(), this.roster.directory()))
-          .filter((v) => v.look !== 'own')
+          .filter((v) => !v.mine)
           .map((v) => ({ id: v.id, text: `${v.label}. ${v.text}` }));
         if (heard.length > 0) {
           this.announced.update((list) => [...list, ...heard].slice(-ANNOUNCED_KEPT));
