@@ -449,6 +449,10 @@ type LiveConfig struct {
 	// Buffer is how many events a stream may fall behind before it is
 	// dropped (live.DefaultBuffer).
 	Buffer int
+	// HintAfter schedules the send that ends a hint gate's interval (the puzzles'
+	// and the content hint's): after d, run f. Nil is time.AfterFunc. A test uses it
+	// to know when no trailing hint is still waiting.
+	HintAfter func(d time.Duration, f func())
 }
 
 // Config holds what the play service needs.
@@ -608,6 +612,7 @@ func New(cfg Config) (*Service, error) {
 		s.now = time.Now
 	}
 	s.puzzles.hints.logger = s.logger
+	s.puzzles.hints.after = cfg.Live.HintAfter
 	if s.roller == nil {
 		s.roller = dice.Crypto{}
 	}
