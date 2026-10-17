@@ -191,29 +191,41 @@ func TestBrutalCriticalIsPartOfTheWeaponLineOfARagingBarbarian(t *testing.T) {
 	}
 }
 
-// A melee weapon thrown at a target beyond melee reach is a ranged weapon attack (SRD 5.1, "Ranged
-// Attacks"): a half-orc barbarian's critical with a javelin thrown from 30 ft gets neither the Savage
-// Attacks die nor Brutal Critical's; the same javelin used in melee, or in an opportunity attack (a
-// melee attack whatever the distance), gets both.
-func TestTheExtraCriticalDiceSkipAJavelinThrownAtRange(t *testing.T) {
+// A weapon keeps its melee or ranged class when it is thrown (SRD 5.1): a critical hit with a javelin or
+// a handaxe thrown from 30 ft gets the Savage Attacks die and Brutal Critical's, like the same weapon
+// swung in melee or used in an opportunity attack; a dart (a ranged weapon with the thrown property) and a
+// longbow get none.
+func TestTheExtraCriticalDiceFollowTheWeaponClassWhenThrown(t *testing.T) {
 	t.Parallel()
 	at := func(id string, col, row int32) playdb.Combatant {
 		return playdb.Combatant{ID: id, Kind: kindPlayer, GridCol: &col, GridRow: &row}
 	}
 	javelin := link.Attack{Key: "j", Name: "Azagaia", Weapon: true, Melee: true, Ability: "str", RangeFt: 30, LongRangeFt: 120, DiceCount: 1, DiceSides: 6}
+	handaxe := link.Attack{Key: "h", Name: "Machadinha", Weapon: true, Melee: true, Ability: "str", RangeFt: 20, LongRangeFt: 60, DiceCount: 1, DiceSides: 6}
+	dart := link.Attack{Key: "d", Name: "Dardo", Weapon: true, Ability: "dex", Finesse: true, RangeFt: 20, LongRangeFt: 60, DiceCount: 1, DiceSides: 4}
+	longbow := link.Attack{Key: "b", Name: "Arco longo", Weapon: true, Ability: "dex", RangeFt: 150, LongRangeFt: 600, DiceCount: 1, DiceSides: 8}
 	sheet := link.Sheet{SavageAttacks: true, BrutalCriticalDice: 1}
 	attacker := at("a", 0, 0)
-	dice := func(target playdb.Combatant, opportunity bool) (savage, brutal int) {
-		rolled := extraDiceAttack(playdb.Encounter{}, javelin, attacker, target, opportunity)
+	dice := func(a link.Attack, target playdb.Combatant, opportunity bool) (savage, brutal int) {
+		rolled := extraDiceAttack(playdb.Encounter{}, a, attacker, target, opportunity)
 		return savageAttacksDice(attacker, rolled, sheet, true), brutalCriticalDice(attacker, rolled, sheet, true)
 	}
-	if s, b := dice(at("t", 6, 0), false); s != 0 || b != 0 {
-		t.Errorf("a javelin thrown from 30 ft = Savage Attacks %d, Brutal Critical %d; want none", s, b)
-	}
-	if s, b := dice(at("t", 1, 0), false); s != 1 || b != 1 {
-		t.Errorf("a javelin used in melee = Savage Attacks %d, Brutal Critical %d; want 1 and 1", s, b)
-	}
-	if s, b := dice(at("t", 6, 0), true); s != 1 || b != 1 {
-		t.Errorf("an opportunity attack with a javelin = Savage Attacks %d, Brutal Critical %d; want 1 and 1", s, b)
+	for _, c := range []struct {
+		name        string
+		attack      link.Attack
+		target      playdb.Combatant
+		opportunity bool
+		want        int
+	}{
+		{"a javelin thrown from 30 ft", javelin, at("t", 6, 0), false, 1},
+		{"a handaxe thrown from 20 ft", handaxe, at("t", 4, 0), false, 1},
+		{"a javelin used in melee", javelin, at("t", 1, 0), false, 1},
+		{"an opportunity attack with a javelin", javelin, at("t", 6, 0), true, 1},
+		{"a dart thrown from 20 ft", dart, at("t", 4, 0), false, 0},
+		{"a longbow shot from 30 ft", longbow, at("t", 6, 0), false, 0},
+	} {
+		if s, b := dice(c.attack, c.target, c.opportunity); s != c.want || b != c.want {
+			t.Errorf("%s = Savage Attacks %d, Brutal Critical %d; want %d each", c.name, s, b, c.want)
+		}
 	}
 }
