@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/binary"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -131,7 +132,7 @@ func TestGeminiWithoutAModelOrTextAsksNothing(t *testing.T) {
 		if g.ModelName != "" {
 			text = "  "
 		}
-		if _, err := g.Speak(context.Background(), text, "Kore"); err != ErrNoAudio { //nolint:errorlint // the sentinel itself
+		if _, err := g.Speak(context.Background(), text, "Kore"); !errors.Is(err, ErrNoAudio) {
 			t.Errorf("error = %v, want ErrNoAudio", err)
 		}
 	}
@@ -220,11 +221,11 @@ func TestGeminiStillWrapsPCMAndNeverWrapsAWAVTwice(t *testing.T) {
 
 func TestGeminiRefusesAWAVThatIsTooSmallOrTooBig(t *testing.T) {
 	t.Parallel()
-	if _, err := speakWith(t, "audio/wav", []byte("RIFF")); err != ErrNoAudio { //nolint:errorlint // the sentinel itself
+	if _, err := speakWith(t, "audio/wav", []byte("RIFF")); !errors.Is(err, ErrNoAudio) {
 		t.Errorf("a WAV without a header: error = %v, want ErrNoAudio", err)
 	}
 	big := append(riff(24000), make([]byte, maxAudioBytes)...)
-	if _, err := speakWith(t, "audio/wav", big); err != ErrNoAudio { //nolint:errorlint // the sentinel itself
+	if _, err := speakWith(t, "audio/wav", big); !errors.Is(err, ErrNoAudio) {
 		t.Errorf("a WAV over the limit: error = %v, want ErrNoAudio", err)
 	}
 }
