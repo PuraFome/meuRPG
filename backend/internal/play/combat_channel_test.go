@@ -68,6 +68,7 @@ func channelTable(t *testing.T, zombies map[string][2]int32) (*armed, *playv1.En
 }
 
 func preserve(t *testing.T, a *armed, who map[string]int32) func(*playv1.TakeActionRequest) {
+	t.Helper()
 	return func(r *playv1.TakeActionRequest) {
 		for label, hp := range who {
 			r.PreserveLife = append(r.PreserveLife, &playv1.PreserveLifeHeal{CombatantId: a.id(t, label), HitPoints: hp})
