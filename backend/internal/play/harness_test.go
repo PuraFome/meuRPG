@@ -36,9 +36,11 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/characters/contenttest"
 	"github.com/PuraFome/meuRPG/backend/internal/identity"
 	"github.com/PuraFome/meuRPG/backend/internal/maps"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/choicetest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
+	"github.com/PuraFome/meuRPG/backend/internal/play/voice"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -114,6 +116,15 @@ func (fakeSessions) UserID(ctx context.Context) (string, error) {
 	return "", errSignIn()
 }
 
+// AuthenticateRequest finds the caller of a plain HTTP request (the audio route), like identity's.
+func (fakeSessions) AuthenticateRequest(r *http.Request) (context.Context, error) {
+	ctx := withTestUser(r.Context(), r.Header)
+	if _, ok := ctx.Value(testUserKey{}).(string); !ok {
+		return nil, errSignIn()
+	}
+	return ctx, nil
+}
+
 func (f fakeSessions) RecheckSession(ctx context.Context) error {
 	userID, err := f.UserID(ctx)
 	if err != nil {
@@ -165,6 +176,7 @@ type harness struct {
 	chars  *characters.Service
 	camps  *campaigns.Service
 	vision *visionCounter // how many times the fog was told that what the players see changed
+	voice  *voice.Fake    // makes the lines' audio; counts the voices it made
 }
 
 // newHarness serves the play, campaigns and characters services through
@@ -194,7 +206,14 @@ func newHarness(t *testing.T, live ...LiveConfig) *harness {
 	}
 	h.vision = &visionCounter{SessionMaps: maps.NewSessionMaps(pool)}
 	chars.SetGallery(maps.NewSessionMaps(pool)) // an NPC's portrait is an image of the gallery (MR-031)
-	svc, err := New(Config{Pool: pool, Sheets: chars, Vitals: chars, Campaigns: camps, Maps: h.vision, Roster: chars, Dice: testDice{camps}, Defaults: camps, Roller: h.roller, Live: liveConfig, Logger: logger, Now: clock.Now})
+	blobs, err := blob.NewFS(t.TempDir())
+	if err != nil {
+		t.Fatalf("blob.NewFS() error = %v", err)
+	}
+	t.Cleanup(func() { _ = blobs.Close() })
+	h.voice = &voice.Fake{}
+	messages := MessagesConfig{Profiles: h.users, Voice: h.voice, Blobs: blobs}
+	svc, err := New(Config{Messages: messages, Pool: pool, Sheets: chars, Vitals: chars, Campaigns: camps, Maps: h.vision, Roster: chars, Dice: testDice{camps}, Defaults: camps, Roller: h.roller, Live: liveConfig, Logger: logger, Now: clock.Now})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}

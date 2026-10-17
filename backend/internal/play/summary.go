@@ -130,6 +130,9 @@ func (s *Service) GetSessionSummary(
 	} else if m.UserID != "" {
 		sum.Mine = playerResult(st.list, chars, m.UserID)
 	}
+	if sum.Conversation, sum.ConversationTruncated, err = s.conversationOf(ctx, m, session.ID); err != nil {
+		return nil, err
+	}
 	return connect.NewResponse(&playv1.GetSessionSummaryResponse{Summary: sum}), nil
 }
 

@@ -24,6 +24,19 @@ erDiagram
     session_event_kinds {
         text kind PK
     }
+    session_messages {
+        uuid id PK
+        uuid campaign_id FK
+        uuid game_session_id FK
+        uuid author_user_id FK
+        uuid speaker_ref FK
+        uuid speaker_image_id FK
+        uuid image_id FK
+    }
+    session_message_readers {
+        uuid message_id PK
+        uuid user_id PK
+    }
     stage_npcs {
         uuid id PK
         uuid game_session_id FK
@@ -186,6 +199,21 @@ What counts as "scene open again" is the last `scene_opened` event of the sessio
 - Puzzle events (`puzzle_shown`, `puzzle_solved`, `puzzle_reset`, `puzzle_closed`) carry `puzzle_id` and `run_id` only; state, solution and moves stay in `puzzle_moves`.
   A scene check event carries ids, the check key, the d20, the bonus, the total, whether it was a physical die, `dc_shown` and `passed`, never the DC or a name.
 
+## `session_messages` and `session_message_readers`
+
+The conversation of a game session (MR-051, RN-36): the master narrates and speaks as an NPC, the players speak as their character or out of character.
+A line is never edited and has no deletion; it goes with its session and its campaign (`CASCADE`).
+`speaker_kind` is `narrator`, `npc`, `character` or `out_of_character` (a `CHECK` is the backstop; the API checks the combinations).
+`speaker_ref` is the character of `npc` and `character`; `speaker_name` and `speaker_image_id` keep the name and portrait it had when the line was sent, so the line still reads the same if the NPC is renamed or deleted (`SET NULL` on the character and the image).
+`text` is 1 to 2,000 characters.
+`image_id` is the gallery image the master put in the line (`SET NULL` if it is deleted).
+`author_user_id` is `SET NULL` when the account is erased: the line stays and the author reads "Jogador removido" ([Privacy](../privacy.md)).
+`for_everyone` says every member reads the line; when it is false the readers are the rows of `session_message_readers` (`message_id`, `user_id`, both `CASCADE`), plus the master and the author.
+It is a column and not "no rows" so that erasing the account of the last reader never widens a line.
+`create_key`, `create_hash` are the idempotency pair of `SendSessionMessage` (`<campaign>:<author>:<key>`), unique through a partial index.
+`audio_made_at` is when the voice of the line was made (the file is in the blob store); it counts the day's voices against `TTS_DAILY_LIMIT`.
+Indexes: `(game_session_id, created_at, id)` for the page; one on each foreign key the cascades scan; the reader's `user_id`.
+
 ## `stage_npcs`
 
 The NPCs on stage in a session (MR-031): one row per NPC, at most 4 (`maxStage`, checked in the inserting transaction with the session row locked).
@@ -218,7 +246,7 @@ Ids, spell keys and numbers, no personal data; cascades with the campaign, the s
 
 ## `revivify_requests`
 
-A Revivify cast outside a combat waiting for the master (the app does not count time out of combat, so he says whether the creature died less than a minute ago).
+A Revivify cast outside a combat waiting for the master (the app does not record when a creature died out of combat, so he says whether the creature died less than a minute ago).
 It holds the session (`CASCADE`), the caster and the target (`characters`, `CASCADE`), the slot (`slot_level` 3 to 9, `slot_pact`), `status` (`pending`, `confirmed`, `denied`; `answered_at` is set exactly when it is not pending, by `CHECK`) and the keys of the cast (`create_key`, unique per campaign, `create_hash`) and of the answer (`answer_key`, `answer_hash`).
 Nothing is spent while it is pending.
 
@@ -278,6 +306,7 @@ Cascades with the session or the character; the index is by session.
 ## Who reads
 
 - Players read the session row's public parts (the current map if revealed, the shown image, the open scene), the stage through the stage-copy ids, and the history through the player stream, which never receives an event marked `secret` or fogged for them.
+- `session_messages`: the master, the author, the lines `for_everyone`, and the rows of `session_message_readers`; the same rule on every path, and a line the caller may not read is `not_found` ([live session](../architecture/play/live-session.md#the-conversation-of-the-scene)).
 - `battle_encounters`, `revivify_requests` and `trap_damages` are master only (a player sees their own character's applied result in the log).
 - `spell_casts` rows are read by the master and the target's player for the amounts; a `secret` cast is the master's alone (RN-10).
 - `character_effects`: the owner and the master, filtered by `player_visible` and `audience`.

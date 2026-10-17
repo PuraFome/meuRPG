@@ -127,6 +127,7 @@ services:
       # Generated images (MR-039) come from the deterministic fake generator, with
       # no key and no network. The API refuses this value on Cloud Run.
       IMAGE_GENERATOR: fake
+      TTS_GENERATOR: fake
       # The e2e suite sends every account's requests from one address and shares
       # a few accounts across its workers, so it would sit near the per-address
       # and per-user request limits. Ten times the production numbers keep it

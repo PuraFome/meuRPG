@@ -96,7 +96,7 @@ One mechanism serves them all; the shared code is `platform/idem` (`Clean`, `Sco
   Two simultaneous calls with the same key create one: the loser's `INSERT ... ON CONFLICT DO NOTHING` returns no row and it reads the winner's.
 - **Where the key lives** differs by call (a column on the created row, the hash on a session event, on an XP award, on an image request...).
   `grep idempotency_key proto/` lists the calls; the `.proto` comment of each says what a repeat returns.
-- **State changes that are not creates** keep the last key and request hash on the row they change, or take the revision the caller read (`expected_revision`): a call on another revision is refused with `STALE_REVISION` and changes nothing.
+- **State changes that are not creates** keep the last key and request hash on the row they change, or, when no single row changes (`MoveMilestone` reorders several), in a small table of keys (`planned_milestone_moves`), or take the revision the caller read (`expected_revision`): a call on another revision is refused with `STALE_REVISION` and changes nothing.
 - **Exempt on purpose:**
   - Calls that return a secret once (`CreateInvite`, `CreateClaimLink`): only the hash is stored, so a replay could not return the first secret.
     A retry makes a new link, and a new claim link revokes the live one.
@@ -132,13 +132,15 @@ The numbers are in `ratelimit.NewPolicy` and in the constants next to each limit
 
 | Limit | Key | Where | Answer |
 | --- | --- | --- | --- |
-| Every API request (`/meurpg.*`, `/images/`, `/uploads/`) | Client IP | `ratelimit.Middleware`, before any session lookup | `429` with `Retry-After` and JSON `{"code":"resource_exhausted","reason":"RATE_LIMITED"}` |
+| Every API request (`/meurpg.*`, `/images/`, `/uploads/`, `/session-messages/`) | Client IP | `ratelimit.Middleware`, before any session lookup | `429` with `Retry-After` and JSON `{"code":"resource_exhausted","reason":"RATE_LIMITED"}` |
 | Connect calls and stream opens | Signed-in user | Interceptor right after the session one (`limitedSessions` in `cmd/api`) | `resource_exhausted` with `Retry-After` |
 | Images, thumbnails and fog tiles (downloads) | User | `maps.Mount`, after the session | `429`, reason `RATE_LIMITED` |
 | Fog tiles that need rendering | User | `maps/tiles.go`, stricter than the download limit | the same |
 | Image uploads (`POST /uploads/images`) | User | `maps.Mount` | the same |
 | Campaign package: start an export, begin, preview and create an import, download an export | User | `campaignpackage`, in each handler | `resource_exhausted` with `Retry-After` (`429` on the download) |
 | Parts of an import upload | User | `campaignpackage` | `429`, reason `RATE_LIMITED` |
+| Lines of the scene's conversation (`SendSessionMessage`) | User | `play`, first thing in the handler | `resource_exhausted` with `Retry-After` |
+| The audio of a line (`GET /session-messages/{id}/audio`) | User | `play`, after the session | `429`, reason `RATE_LIMITED` |
 | `/auth/login` and `/auth/callback` | Client IP | `identity`, first thing in each handler ([Identity](identity.md#login-attempt-limit)) | `429` with `Retry-After`, plain text |
 | `PreviewClaim` and `ClaimCharacter` | User, and client IP | `characters`, first thing in each handler ([Campaigns](campaigns.md#claim-links)) | `resource_exhausted` with `Retry-After` |
 
@@ -170,6 +172,7 @@ The numbers are in `ratelimit.NewPolicy` and in the constants next to each limit
 | Invites that still work in a campaign | 50 (`campaigns.MaxActiveInvites`): not revoked, not expired, with uses left | `resource_exhausted` |
 | Characters and NPCs in a campaign, living or dead | 1,000 (`characters.DefaultMaxCharactersPerCampaign`) | `resource_exhausted` |
 | Images generated per campaign per month, and per server per Brasília day | `IMAGE_MONTHLY_LIMIT` and `IMAGE_DAILY_LIMIT` ([Operations](../operations/reference.md#generated-images-the-gemini-api)) | `failed_precondition` with reason `DAILY_LIMIT_REACHED` for the daily cap |
+| Voices made for the conversation, per server per Brasília day | `TTS_DAILY_LIMIT` ([Operations](../operations/reference.md)) | `429` on the audio route, reason `DAILY_LIMIT_REACHED` |
 
 Each count runs in the transaction of the create it guards, with `WithTx(tx)`, so under `SERIALIZABLE` two creates racing for the last place conflict and the one that retries counts again.
 The campaign cap reads verified e-mails through `identity` (`PostgresStore.VerifiedEmails`); `campaigns` never reads the users table.

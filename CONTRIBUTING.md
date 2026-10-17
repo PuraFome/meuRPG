@@ -35,6 +35,7 @@ The pinned versions and where each one lives are in [docs/development.md](docs/d
 | `cd web && npm run lint` / `npm run format:check` / `npm run depcruise` | The web linters, as in CI |
 | `make e2e` | Starts the local stack and runs the Playwright tests in `e2e/` |
 | `.github/scripts/go-complexity.sh` | The complexity limits, as CI checks them: no Go function over cyclomatic 15, cognitive 15 or maintainability 20 |
+| `.github/scripts/nolint-cap.sh` | The `//nolint` cap: no more directives in `backend/` than the number in `.github/nolint-cap` (`--lower` writes the cap down after you remove some) |
 
 The Go and web linters are ratchets: they judge what your change adds, and the backlog may only shrink.
 The complexity limits are not a ratchet: every Go function and every web file must meet them.

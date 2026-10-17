@@ -639,6 +639,11 @@ message MoveMilestoneRequest {
   string milestone_id = 2;
   // Required.
   MilestoneDirection direction = 3;
+  // Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+  // same key and the same request moves nothing again and returns the list as it is. The key
+  // is unique in the campaign; the same key with another request is `invalid_argument`.
+  // Empty: the call is not deduplicated.
+  string idempotency_key = 4;
 }
 
 message MoveMilestoneResponse {
