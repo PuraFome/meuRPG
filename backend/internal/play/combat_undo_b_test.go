@@ -56,21 +56,30 @@ func (w *undoWatch) runWithHolds(t *testing.T, name string, want undoDelta, do f
 	}
 }
 
-// deltaAnsweredHold: the row of a held roll stays after the answer (AnswerRollHold, queries.sql)
+// deltaAnsweredHold: the row of a held roll stays after the answer (AnswerInspirationHold, queries.sql)
 // as the record of the answer's idempotency key, and the undo of the attack does not delete it
 // (the attack case of takeBack, combat_undo.go, puts back the action and the die, not the
-// hold). Nothing reads it: only the unanswered holds are listed, so it is invisible. lucky is
-// the columns of the Lucky answer, for a roll that was asked about its 1.
+// hold). Nothing reads it: only the unanswered holds are listed, so it is invisible. The weapon attack
+// waits in inspiration_holds since E4-6 (it waited in roll_holds before). lucky is the columns of the
+// Lucky answer, for a roll that was asked about its 1: the d20 it was rolled again to (15) is the one
+// the row keeps, typed from a real die.
 func deltaAnsweredHold(face, modifier int, lucky bool) undoDelta {
+	physical, counted := "false", "0"
+	if lucky {
+		face, physical = 15, "true"
+	}
 	out := undoDelta{
-		"+ db/roll_holds[#].answer_key=#", "+ db/roll_holds[#].combatant_id=#", "+ db/roll_holds[#].encounter_id=#",
-		"+ db/roll_holds[#].idempotency_key=#", "+ db/roll_holds[#].request=<blob>", "+ db/roll_holds[#].round=1",
-		"+ db/roll_holds[#].face=" + strconv.Itoa(face), "+ db/roll_holds[#].modifier=" + strconv.Itoa(modifier),
+		"+ db/inspiration_holds[#].answer_key=#", "+ db/inspiration_holds[#].campaign_id=#", "+ db/inspiration_holds[#].character_id=#",
+		"+ db/inspiration_holds[#].combatant_id=#", "+ db/inspiration_holds[#].counted=" + counted, "+ db/inspiration_holds[#].encounter_id=#",
+		"+ db/inspiration_holds[#].faces[0]=" + strconv.Itoa(face), "+ db/inspiration_holds[#].idempotency_key=#",
+		"+ db/inspiration_holds[#].kind=weapon_attack", "+ db/inspiration_holds[#].modifier=" + strconv.Itoa(modifier),
+		"+ db/inspiration_holds[#].physical=" + physical, "+ db/inspiration_holds[#].request=<blob>", "+ db/inspiration_holds[#].round=1",
+		"+ db/inspiration_holds[#].total=" + strconv.Itoa(face+modifier), "+ db/inspiration_holds[#].user_id=#", "+ db/inspiration_holds[#].window_hold=false",
 	}
 	if lucky {
-		return append(out, "+ db/roll_holds[#].lucky_answer_key=#", "+ db/roll_holds[#].lucky_index=0", "+ db/roll_holds[#].lucky_to=15")
+		return append(out, "+ db/inspiration_holds[#].lucky_answer_key=#", "+ db/inspiration_holds[#].lucky_index=0", "+ db/inspiration_holds[#].lucky_to=15")
 	}
-	return append(out, "+ db/roll_holds[#].lucky_answer_key=<nil>", "+ db/roll_holds[#].lucky_index=<nil>", "+ db/roll_holds[#].lucky_to=<nil>")
+	return append(out, "+ db/inspiration_holds[#].lucky_answer_key=<nil>", "+ db/inspiration_holds[#].lucky_index=<nil>", "+ db/inspiration_holds[#].lucky_to=<nil>")
 }
 
 // TestUndoKindAttackRolledBardicDie: the attack that used a Bardic Inspiration die

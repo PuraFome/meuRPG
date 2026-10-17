@@ -15,8 +15,8 @@ import (
 )
 
 // A roll can wait for a question before it resolves: the halfling's Lucky about a 1, a Bardic
-// Inspiration die about the roll. Two tables keep such a roll, roll_holds for a weapon attack
-// (combat_inspiration.go) and inspiration_holds for the d20 rolls that are not (inspiration_held.go);
+// Inspiration die about the roll. Two tables keep such a roll: inspiration_holds, for every kind since E4-6, and roll_holds, which
+// the weapon attack was kept in before and is only read now (combat_inspiration.go, inspiration_held.go);
 // the stores of this file give both the one shape the gate (held_gate.go) works on, heldRoll, and
 // write an answer back where the roll lives.
 
@@ -48,15 +48,17 @@ const (
 )
 
 // checksTheAnswer says the table refuses an answer to a roll whose question went stale (its combat
-// round is over) or whose die is gone. Today's behavior: roll_holds leaves it to the attack's own checks
-// of the turn, and E4-6, which moves the attack to the other table, decides it.
+// round is over) or whose die is gone.
 func (t heldTable) checksTheAnswer() bool { return t == inspirationHolds }
 
-// checksTheAnswer is heldTable.checksTheAnswer for a roll as found: a weapon attack kept in inspiration_holds
-// (a later release writes it there) answers as it always did in roll_holds, by the attack's own checks.
-func (h heldRoll) checksTheAnswer() bool {
-	return h.table.checksTheAnswer() && h.Kind != heldWeaponAttack
+// checksTheAnswer says the answer to a roll of the kind in the table is refused when its question went stale. A weapon
+// attack answers as it always did in roll_holds, by the attack's own checks, wherever it is kept.
+func checksTheAnswer(kind heldKind, t heldTable) bool {
+	return t.checksTheAnswer() && kind != heldWeaponAttack
 }
+
+// checksTheAnswer is checksTheAnswer for a roll as found.
+func (h heldRoll) checksTheAnswer() bool { return checksTheAnswer(h.Kind, h.table) }
 
 // heldRoll is one held roll from either table in one shape; table says where its answer is written
 // back.
@@ -142,9 +144,9 @@ type heldStore interface {
 	answer(ctx context.Context, h heldRoll, key string) error
 	// forget deletes a roll nobody will answer.
 	forget(ctx context.Context, h heldRoll) error
-	// asked is called when a question starts to wait, for the stores whose question is part of the
-	// combat the players read.
-	asked(ctx context.Context, env gateEnv) error
+	// asked is called when a question starts to wait, for the questions that are part of the combat the
+	// players read.
+	asked(ctx context.Context, env gateEnv, h heldRoll) error
 }
 
 // heldStores are both tables: they are read together, and written where a kind's registry entry says.
@@ -200,14 +202,20 @@ func (hs heldStores) byIDOf(ctx context.Context, kind heldKind, ref holdRef) (he
 // byKeyOf is byIDOf for the roll the request with a key made.
 func (hs heldStores) byKeyOf(ctx context.Context, kind heldKind, roller heldRoller, key string) (heldRoll, bool, error) {
 	def := heldRegistry[kind]
-	h, found, err := hs.of(def.write).byKey(ctx, roller, key)
+	own := func(t heldTable) (heldRoll, bool, error) {
+		h, found, err := hs.of(t).byKey(ctx, roller, key)
+		// A reaction window's replay keeps its question under the key of the request it replays, which a retry of the
+		// request is not the author of (roll_holds marked it with a suffix the retry never had).
+		if err != nil || !found || h.Kind != kind || h.Window {
+			return heldRoll{}, false, err
+		}
+		return h, true, nil
+	}
+	h, found, err := own(def.write)
 	if err != nil || found || def.alsoRead == 0 {
 		return h, found, err
 	}
-	if h, found, err = hs.of(def.alsoRead).byKey(ctx, roller, key); err != nil || !found || h.Kind != kind {
-		return heldRoll{}, false, err
-	}
-	return h, true, nil
+	return own(def.alsoRead)
 }
 
 // openOf lists the rolls of the roller that wait in the tables, in the order given.
@@ -343,7 +351,7 @@ func (st rollHoldStore) forget(ctx context.Context, h heldRoll) error {
 }
 
 // asked moves the combat's revision: the question is part of the combat the master and the player read.
-func (st rollHoldStore) asked(ctx context.Context, env gateEnv) error {
+func (st rollHoldStore) asked(ctx context.Context, env gateEnv, _ heldRoll) error {
 	if env.c == nil {
 		return nil
 	}
@@ -474,6 +482,12 @@ func (st inspirationHoldStore) forget(ctx context.Context, h heldRoll) error {
 	return st.q.DeleteInspirationHold(ctx, h.ID) //nolint:wrapcheck // the gate wraps it
 }
 
-// asked does nothing: a question in inspiration_holds does not move the combat's revision today
+// asked moves the combat's revision for a weapon attack, whose question is part of the combat the master and the
+// player read; the question of another roll does not today
 // (TestAnOutsideHoldInACombatDoesNotTouchTheEncounterToday); E4-7 changes it for every question.
-func (inspirationHoldStore) asked(context.Context, gateEnv) error { return nil }
+func (inspirationHoldStore) asked(ctx context.Context, env gateEnv, h heldRoll) error {
+	if h.Kind != heldWeaponAttack {
+		return nil
+	}
+	return rollHoldStore{}.asked(ctx, env, h)
+}

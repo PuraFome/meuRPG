@@ -256,7 +256,7 @@ The damage of a strike that hit, from the d20 to the end (MR-012, MR-014).
 
 ## `roll_holds`
 
-An attack roll that waits for its player's answer about a Bardic Inspiration die (SRD 5.1) or about the halfling's Lucky.
+An attack roll that waits for its player's answer about a Bardic Inspiration die (SRD 5.1) or about the halfling's Lucky. **Retired:** since E4-6 these rows are written in `inspiration_holds` (kind `weapon_attack`, [play.md](play.md#character_inspiration-and-inspiration_holds)); the table is still read for the holds the release before left open, and no longer written. It is kept, empty, by the contract; never dropped.
 `request` is the `RollAttackRequest` as it came (protobuf), `face` the d20 and `modifier` the attack's bonus; `idempotency_key` is the request's (with the suffix `#window` when a Cutting Words window held the attack first), unique within the encounter; `answer_key` is set when answered so a retry finds the hold answered.
 `round` is the round it was made in; a hold of an earlier round is forgotten.
 Nothing is resolved, spent or written to the history until the answer.

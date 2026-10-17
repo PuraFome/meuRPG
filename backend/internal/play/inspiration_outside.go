@@ -389,7 +389,7 @@ func bardicTargets(party []link.Character, me link.Character, rows []playdb.Char
 
 // heldRollsOf lists the rolls of a character that wait for an answer, with the die it holds
 // (found): about the die, or the halfling's Lucky question, which needs no die. A stale roll (its
-// combat round is over, or its die is gone) is left out.
+// combat round is over, or its die is gone) is left out, and so is a weapon attack.
 func (s *Service) heldRollsOf(ctx context.Context, campaignID, characterID string) (heldDie, bool, []heldRoll, error) {
 	die, found, err := s.dieOf(ctx, s.queries, campaignID, characterID)
 	if err != nil {
@@ -400,7 +400,8 @@ func (s *Service) heldRollsOf(ctx context.Context, campaignID, characterID strin
 		return heldDie{}, false, nil, err
 	}
 	state := rollerState{Die: die, Holds: found}
-	return die, found, slices.DeleteFunc(all, func(h heldRoll) bool { return h.stale(state) }), nil
+	// A weapon attack's question is on its combatant in the combat view, answered by the combat's RPCs, not by these.
+	return die, found, slices.DeleteFunc(all, func(h heldRoll) bool { return h.Kind == heldWeaponAttack || h.stale(state) }), nil
 }
 
 // openEncounterOf is the open combat of the campaign's open game session, nil when none.
