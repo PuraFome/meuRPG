@@ -183,6 +183,8 @@ type contestStart struct {
 	maneuverKey  string
 	maneuverFace int32
 	in           checkInput
+	// req is the request, kept when a reaction window holds the roll.
+	req *playv1.StartContestRequest
 }
 
 // purposeKeyOf is a contest's purpose as the table stores it.
@@ -230,14 +232,14 @@ func checkContestSkill(st *contestStart) error {
 	return nil
 }
 
-// parseContestStart is the first phase of StartContest: read and validate the request, the
-// member first, so a stranger gets permission_denied before any id is parsed.
-func parseContestStart(ctx context.Context, msg *playv1.StartContestRequest) (contestStart, error) {
-	m, key, encID, err := memberCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
+// parseContestStart is the first phase of StartContest: read and validate the request of a
+// member (the caller of the RPC, or the one a held roll is replayed as).
+func parseContestStart(m authz.Membership, msg *playv1.StartContestRequest) (contestStart, error) {
+	key, encID, err := parseCall(msg.GetIdempotencyKey(), msg.GetEncounterId())
 	if err != nil {
 		return contestStart{}, err
 	}
-	st := contestStart{m: m, key: key, encID: encID, purpose: msg.GetPurpose(), escapeDC: msg.GetEscapeDc(), skill: msg.GetSkill(), maneuverKey: msg.GetManeuverKey(), maneuverFace: msg.GetManeuverFace()}
+	st := contestStart{m: m, key: key, encID: encID, purpose: msg.GetPurpose(), escapeDC: msg.GetEscapeDc(), skill: msg.GetSkill(), maneuverKey: msg.GetManeuverKey(), maneuverFace: msg.GetManeuverFace(), req: msg}
 	if st.initiatorID, err = parseCombatID(msg.GetInitiatorId(), "combatant"); err != nil {
 		return contestStart{}, err
 	}
@@ -335,9 +337,6 @@ func (s *Service) resolveEscape(ctx context.Context, r *contestRun) error {
 		return errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_GRAPPLED, "the combatant is not grappled")
 	}
 	r.defender = grappler
-	if err := spendAction(ctx, r.c, r.initiator, r.v.master); err != nil {
-		return err
-	}
 	if hold.EscapeDc != nil {
 		r.row.Kind, r.row.EscapeDc = contestKindEscapeDC, hold.EscapeDc
 	}
@@ -403,11 +402,20 @@ func (s *Service) resolveAttackContest(ctx context.Context, r *contestRun) error
 	if err := s.mustBeInReach(r.c, r.v, r.initiator, defender); err != nil {
 		return err
 	}
+	return mayAttack(r.initiator, false)
+}
+
+// spendContest spends what the contest costs the initiator, once nothing holds the roll: the
+// action of an escape, the attack of a grapple or a shove (or the maneuver that starts it).
+func (s *Service) spendContest(ctx context.Context, r *contestRun) error {
+	if r.st.purpose == playv1.ContestPurpose_CONTEST_PURPOSE_ESCAPE {
+		return spendAction(ctx, r.c, r.initiator, r.v.master)
+	}
+	if r.st.byAttack {
+		return nil // the attack was rolled already: nothing is spent
+	}
 	sheet, err := s.sheetOf(ctx, r.c.tx, r.st.m.CampaignID, r.initiator)
 	if err != nil {
-		return err
-	}
-	if err := mayAttack(r.initiator, false); err != nil {
 		return err
 	}
 	if err := s.spendContestAttack(ctx, r, sheet); err != nil {
@@ -506,6 +514,14 @@ func (s *Service) startContestTx(ctx context.Context, c *combatTx, st contestSta
 		return actionEvent{}, err
 	}
 	r.row.DefenderID = r.defender.ID
+	// A Cutting Words can take a die off the initiator's roll: the roll waits for the windows, with
+	// nothing spent (combat_cutting_checks.go).
+	if held, ok, err := s.holdContestRoll(ctx, r); err != nil || ok {
+		return held, err
+	}
+	if err := s.spendContest(ctx, r); err != nil {
+		return actionEvent{}, err
+	}
 	if !st.byAttack {
 		if err := s.rollContestInitiator(ctx, r); err != nil {
 			return actionEvent{}, err
@@ -531,12 +547,22 @@ func (s *Service) StartContest(
 	ctx context.Context,
 	req *connect.Request[playv1.StartContestRequest],
 ) (*connect.Response[playv1.StartContestResponse], error) {
-	st, err := parseContestStart(ctx, req.Msg)
+	// The member first, so a stranger gets permission_denied before any id is parsed.
+	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
+	if err != nil {
+		return nil, err
+	}
+	return s.startContest(ctx, m, req.Msg)
+}
+
+// startContest is StartContest as a member: also what the replay of a held roll runs.
+func (s *Service) startContest(ctx context.Context, m authz.Membership, msg *playv1.StartContestRequest) (*connect.Response[playv1.StartContestResponse], error) {
+	st, err := parseContestStart(m, msg)
 	if err != nil {
 		return nil, err
 	}
 	var made actionEvent
-	res, err := s.write(ctx, combatWrite{m: st.m, key: st.key, hash: idem.Hash(req.Msg), kind: eventContestStarted, encounterID: st.encID}, func(c *combatTx) (any, error) {
+	res, err := s.write(ctx, combatWrite{m: st.m, key: st.key, hash: idem.Hash(msg), kind: eventContestStarted, encounterID: st.encID}, func(c *combatTx) (any, error) {
 		made = actionEvent{}
 		var err error
 		if made, err = s.startContestTx(ctx, c, st); err != nil {
@@ -593,12 +619,14 @@ type contestAnswer struct {
 	// leave says the player leaves the roll to the master (no roll is read then).
 	leave bool
 	in    checkInput
+	// req is the request, kept when a reaction window holds the roll.
+	req *playv1.RespondContestRequest
 }
 
-// parseContestAnswer is the first phase of RespondContest: read and validate the request, the
-// member first, so a stranger gets permission_denied before any id is parsed.
-func parseContestAnswer(ctx context.Context, msg *playv1.RespondContestRequest) (contestAnswer, error) {
-	m, key, encID, err := memberCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
+// parseContestAnswer is the first phase of RespondContest: read and validate the request of a
+// member (the caller of the RPC, or the one a held roll is replayed as).
+func parseContestAnswer(m authz.Membership, msg *playv1.RespondContestRequest) (contestAnswer, error) {
+	key, encID, err := parseCall(msg.GetIdempotencyKey(), msg.GetEncounterId())
 	if err != nil {
 		return contestAnswer{}, err
 	}
@@ -606,7 +634,7 @@ func parseContestAnswer(ctx context.Context, msg *playv1.RespondContestRequest) 
 	if err != nil {
 		return contestAnswer{}, err
 	}
-	ans := contestAnswer{m: m, key: key, encID: encID, contestID: contestID, skill: msg.GetSkill(), leave: msg.GetDeferToMaster()}
+	ans := contestAnswer{m: m, key: key, encID: encID, contestID: contestID, skill: msg.GetSkill(), leave: msg.GetDeferToMaster(), req: msg}
 	if ans.skill == playv1.ContestSkill_CONTEST_SKILL_UNSPECIFIED {
 		ans.skill = playv1.ContestSkill_CONTEST_SKILL_ATHLETICS
 	}
@@ -766,6 +794,9 @@ func (s *Service) answerContestTx(ctx context.Context, c *combatTx, ans contestA
 		return actionEvent{}, err
 	}
 	part := &contestEvent{Waiting: true}
+	if held, ok, err := s.holdContestAnswer(ctx, r); err != nil || ok {
+		return held, err
+	}
 	if ans.leave {
 		err = leaveRollToMaster(ctx, r)
 	} else {
@@ -789,7 +820,16 @@ func (s *Service) RespondContest(
 	ctx context.Context,
 	req *connect.Request[playv1.RespondContestRequest],
 ) (*connect.Response[playv1.RespondContestResponse], error) {
-	ans, err := parseContestAnswer(ctx, req.Msg)
+	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
+	if err != nil {
+		return nil, err
+	}
+	return s.respondContest(ctx, m, req.Msg)
+}
+
+// respondContest is RespondContest as a member: also what the replay of a held roll runs.
+func (s *Service) respondContest(ctx context.Context, m authz.Membership, msg *playv1.RespondContestRequest) (*connect.Response[playv1.RespondContestResponse], error) {
+	ans, err := parseContestAnswer(m, msg)
 	if err != nil {
 		return nil, err
 	}
@@ -798,7 +838,7 @@ func (s *Service) RespondContest(
 		kind = eventContestDeferred
 	}
 	var made actionEvent
-	res, err := s.write(ctx, combatWrite{m: ans.m, key: ans.key, hash: idem.Hash(req.Msg), kind: kind, encounterID: ans.encID}, func(c *combatTx) (any, error) {
+	res, err := s.write(ctx, combatWrite{m: ans.m, key: ans.key, hash: idem.Hash(msg), kind: kind, encounterID: ans.encID}, func(c *combatTx) (any, error) {
 		made = actionEvent{}
 		var err error
 		if made, err = s.answerContestTx(ctx, c, ans); err != nil {

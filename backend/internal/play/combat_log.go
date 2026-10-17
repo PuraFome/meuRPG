@@ -1081,6 +1081,7 @@ func (e *logEntry) spellTargetView(v combatViewer, h castHit, caster, target pla
 	coverKey, coverSource := h.coverFor(v, e.ev.CoverUsers)
 	t.Cover, t.CoverSource = coverDegreeProto(coverKey), coverSourceProto(coverSource)
 	t.Hidden = v.master && h.HiddenAtCast
+	t.PushedFt, t.PushNoMap = pushedFt(h.Pushed), pushedNoMap(h.Pushed)
 	if v.master && h.TargetAC > 0 {
 		t.TargetArmorClass, t.CoverBonus = &h.TargetAC, h.CoverBonus
 	}

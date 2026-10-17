@@ -26,7 +26,7 @@ What the casting does depends on what the spell is:
 
 | The spell is | What the casting does | What is left for `RollDamage` |
 | --- | --- | --- |
-| Spell attack (Ray of Frost, with `attack_type`) | One d20 per target (`roll_in_app`, or `d20_face` for a single target, RN-18 on each roll), against the AC as in `RollAttack`; a hit opens the pending damage, and Shield can hold it | Each hit's damage |
+| Spell attack (Ray of Frost, with `attack_type`) | One d20 per target (`roll_in_app`, or `d20_face` for a single target, RN-18 on each roll), against the AC as in `RollAttack`; a hit opens the pending damage, and Shield can hold it; a spell of the `half_on_miss` kind (Acid Arrow) opens half of it on a miss, and its effect (`applies: hit`) takes hold only of the targets the attack hit | Each hit's damage |
 | Save (Burning Hands, Sacred Flame) | The server rolls each target's save: a full-sheet NPC uses `Derived.SavingThrows`, a basic sheet made from a creature uses the stat block's saves; a basic sheet typed by hand has no bonus, rolls d20 + 0, and the master's log says so (`bonus_known` false; for a player it is always false and the app never reads it). A player character is rolled in the app with the sheet's bonus (the master's `amount` has the last word). Whoever passes takes half (rounded down) or nothing, as the spell says | One roll for the whole casting for each damage type: the pending damages of a casting share a `cast_id`, and rolling one settles all of the same type. A spell with two damage types (Ice Storm, Flame Strike, Meteor Swarm) opens one pending damage per type per target (`pending_damage_id`, `more_pending_damage_ids`), each read against the target's resistance to its own type |
 | Magic Missile | The darts (3, plus one per level above) are split among the targets, at least one in each, summing exactly; no attack roll | Each target's damage: 1d4 + 1 per dart |
 | Healing | A pending damage that is a heal | The roll with the casting modifier heals at once, up to the maximum, per NPC and per character (through `character_vitals`); whoever was at 0 HP rises and the death saves reset |
@@ -67,6 +67,7 @@ An `hp_pool` takes plain dice (no bonus, at most 30) of a die that exists at a t
 | `temp_hp` | The targets gain temporary hit points: a die rolled (`dice`, in the app or typed with `pool_sum`) plus `amount`, and `amount_per_level` more for each level above. Not healing; temporary HP do not stack, so a target keeps the larger | False Life (1d4 + 4, +5 per level) |
 | `max_hp` | The targets' maximum and current HP both rise by `amount` (plus `amount_per_level`). The bonus is kept (`character_vitals.hit_points_max_bonus` for a player character, `combatants.hp_max_bonus` for an NPC or creature) until the master ends it (`EndCombatEffect`; for a player's character a long rest also clears it). Two casts keep the stronger bonus; a character at 0 HP gets up with the new current HP and its death saves reset; an NPC or creature at 0 stays down; the undo puts bonus, HP and maximum back. No temporary HP. `SpellEffectResult.gain` says `MAXIMUM` or `CURRENT` to everyone who sees the line; `hit_points_after` and `hit_points_max_after` go to the master and the target's player | Aid (5, +5 per level; up to three creatures) |
 | `ignores_cover` | No effect on HP; the spell's saving throw gets no cover bonus | Sacred Flame |
+| `half_on_miss` | No effect on HP; a spell attack that misses still opens a pending damage of half the first damage (`pending.half`, rounded down when rolled), `openSplash` | Acid Arrow |
 | `revive` | Brings a dead character back (see [Death and revival](death-and-revival.md)) | Revivify |
 | `summon` | Creatures that join the group (see [Creatures](creatures.md#casting-summons)) | Find Familiar, Animate Dead, Conjure Animals |
 
@@ -133,7 +134,7 @@ What the server applies when the spell takes effect:
 | False Life | Temporary hit points; the larger value stays |
 | Mage Armor | Base AC 13 + Dexterity for a target with no armor; a target in armor is refused (`TARGET_WEARS_ARMOR`). Ending the spell takes it back |
 | Summons | The same creatures as `CastSummon`, with the same concentration rule |
-| Aid | Recorded; raising the maximum waits for the stored maximum bonus (not applied outside combat) |
+| Aid | The maximum and the current HP of each player character it reaches rise by the spell's amount for the slot (`maxHPTargets`, through the same `raiseCharacterMaxHP` as in a combat); a character at 0 HP gets up. Casts of Aid do not add: the stronger bonus applies. Ending the cast, a long rest or an interrupted cast gives the bonus back (`takeBackMaxHP`): the maximum falls to the strongest Aid still on the target, and the current HP lose only what is above it, never the last one |
 | Anything else | Recorded in the log; the master narrates |
 
 An NPC has no hit points or slots outside combat, so a cast on an NPC changes nothing about it and an NPC caster spends no slot.
@@ -143,6 +144,7 @@ Reach is measured on the session's current map (touch 5 ft, ranged the spell's d
 Durations are game time, never the wall clock.
 `endSpellsAtRest` is the seam the master's rest calls.
 After damage outside combat, the master's HP correction returns the DC (10 or half the damage) in `AdjustCharacterVitalsResponse.concentration_dc` and `concentration_cast_id`; 0 HP ends the concentration.
+The same correction of a character who is a combatant of the open combat, taken to 0 HP, ends the combatant's concentration with the end a damage to 0 HP has (`stopConcentrating`: the spell's effects and creatures, and the log line); it writes no pending damage and no save, and it is nothing for an undo to take back. The same end follows an NPC the master takes to 0 HP with `AdjustCombatantHitPoints`, and that adjustment's undo gives the concentration back.
 
 **Who sees what (RN-10, RN-20).** The master reads every cast.
 A player names an NPC on the stage by its place on it (`StageNpc.id`), never by the character id, in the targets they send and in everything they read.

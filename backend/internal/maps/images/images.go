@@ -49,7 +49,7 @@ const jpegQuality = 88
 // maxDecodeBytes is the most memory an image may need while it is decoded,
 // turned upright and shrunk into its thumbnail, as estimated by decodeCost.
 // With one image processed at a time (package maps), this keeps an upload
-// well inside the server's 512 MiB (docs/operations/README.md).
+// well inside the server's memory (docs/operations/reference.md#memory-budgets).
 const maxDecodeBytes = 256 << 20
 
 // The media types Process writes.

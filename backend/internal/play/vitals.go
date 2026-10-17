@@ -146,6 +146,9 @@ func (s *Service) adjustWrite(ctx context.Context, tx pgx.Tx, call adjustCall, r
 	}
 	if run.touched != nil {
 		run.visionMap = conv.OrZero(run.touched.MapID)
+		if err := s.endConcentrationOfDownCharacter(ctx, tx, q, session, call, *run.touched, adjusted); err != nil {
+			return err
+		}
 	}
 	// Damage outside a combat asks the Constitution save of a spell the character
 	// concentrates on (casting.go).
@@ -243,6 +246,32 @@ func (s *Service) touchCombatOf(ctx context.Context, q *playdb.Queries, sessionI
 		return nil, fmt.Errorf("touch the encounter: %w", err)
 	}
 	return &touched, nil
+}
+
+// endConcentrationOfDownCharacter ends the concentration of a character the master set to 0 hit
+// points while the character is a combatant of the open combat: it is unconscious and stops
+// concentrating with no save (SRD 5.1, "Duration"), the same end a damage to 0 has. The end is
+// the damage's own (stopConcentrating), so the spell's effects, its creatures and the log line
+// follow; no pending damage is behind it.
+func (s *Service) endConcentrationOfDownCharacter(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, call adjustCall, enc playdb.Encounter, adjusted *playv1.CharacterVitals) error {
+	if adjusted.GetHitPointsCurrent() > 0 {
+		return nil
+	}
+	cs, err := q.ListCombatants(ctx, enc.ID)
+	if err != nil {
+		return fmt.Errorf("list the combatants: %w", err)
+	}
+	i := slices.IndexFunc(cs, func(c playdb.Combatant) bool {
+		return c.Kind == kindPlayer && c.CharacterID == call.charText && c.ConcentrationSpell != nil
+	})
+	if i < 0 {
+		return nil
+	}
+	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, enc: enc, now: s.now(), actorUserID: call.m.UserID, svc: s, master: true})
+	if err != nil {
+		return err
+	}
+	return s.endConcentrationAtZero(ctx, c, cs[i], "")
 }
 
 // vitalsNumbers are the numbers a session event keeps about a character's

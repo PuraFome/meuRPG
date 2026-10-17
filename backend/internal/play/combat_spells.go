@@ -434,7 +434,7 @@ func (s *Service) resolveSpellAttack(ctx context.Context, c *combatTx, m authz.M
 func (s *Service) openSpellAttackHit(ctx context.Context, c *combatTx, sp link.Spell, caster, target playdb.Combatant, hit *castHit, result combat.AttackResult, targetAC int) error {
 	hit.Outcome = outcomeMiss
 	if !result.Hit {
-		return nil
+		return s.openSplash(ctx, c, sp, caster, target, hit)
 	}
 	hit.Outcome = outcomeHit
 	if result.Critical {
@@ -451,6 +451,15 @@ func (s *Service) openSpellAttackHit(ctx context.Context, c *combatTx, sp link.S
 	}
 	hit.Pending = p.ID
 	return nil
+}
+
+// openSplash opens the half damage a spell attack that misses still deals (Acid Arrow), nothing
+// for any other spell.
+func (s *Service) openSplash(ctx context.Context, c *combatTx, sp link.Spell, caster, target playdb.Combatant, hit *castHit) error {
+	if !sp.HalfOnMiss || len(sp.Damages) == 0 {
+		return nil
+	}
+	return s.openSpellPending(ctx, c, sp, sp.Damages[0], caster, target, false, true, hit)
 }
 
 // spellSave has the server roll a target's saving throw against the spell and

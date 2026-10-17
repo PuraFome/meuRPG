@@ -144,6 +144,29 @@ func (q *Queries) GetPlannedMilestoneForUpdate(ctx context.Context, arg GetPlann
 	return i, err
 }
 
+const getPlannedMilestoneMove = `-- name: GetPlannedMilestoneMove :one
+SELECT campaign_id, move_key, move_hash, created_at FROM planned_milestone_moves
+WHERE campaign_id = $1::UUID AND move_key = $2
+`
+
+type GetPlannedMilestoneMoveParams struct {
+	CampaignID string
+	MoveKey    string
+}
+
+// The move a MoveMilestone with this idempotency key made, if any.
+func (q *Queries) GetPlannedMilestoneMove(ctx context.Context, arg GetPlannedMilestoneMoveParams) (PlannedMilestoneMove, error) {
+	row := q.db.QueryRow(ctx, getPlannedMilestoneMove, arg.CampaignID, arg.MoveKey)
+	var i PlannedMilestoneMove
+	err := row.Scan(
+		&i.CampaignID,
+		&i.MoveKey,
+		&i.MoveHash,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getXPAwardByKey = `-- name: GetXPAwardByKey :one
 SELECT id, campaign_id, given_by, created_at, mode, reason, encounter_id, gold, total_xp, idempotency_key, undone_at, undone_by, undo_key, milestone_id, milestone_again, idempotency_hash FROM xp_awards
 WHERE campaign_id = $1::UUID AND idempotency_key = $2::UUID
@@ -293,6 +316,39 @@ func (q *Queries) InsertPlannedMilestone(ctx context.Context, arg InsertPlannedM
 		&i.UpdatedAt,
 		&i.CreateKey,
 		&i.CreateHash,
+	)
+	return i, err
+}
+
+const insertPlannedMilestoneMove = `-- name: InsertPlannedMilestoneMove :one
+INSERT INTO planned_milestone_moves (campaign_id, move_key, move_hash, created_at)
+VALUES ($1::UUID, $2, $3, $4)
+ON CONFLICT (campaign_id, move_key) DO NOTHING
+RETURNING campaign_id, move_key, move_hash, created_at
+`
+
+type InsertPlannedMilestoneMoveParams struct {
+	CampaignID string
+	MoveKey    string
+	MoveHash   string
+	Now        time.Time
+}
+
+// Keeps the idempotency key of a MoveMilestone (00263): move_key carries the campaign's ID and
+// move_hash is the hash of the request. No row back means another call took the key first.
+func (q *Queries) InsertPlannedMilestoneMove(ctx context.Context, arg InsertPlannedMilestoneMoveParams) (PlannedMilestoneMove, error) {
+	row := q.db.QueryRow(ctx, insertPlannedMilestoneMove,
+		arg.CampaignID,
+		arg.MoveKey,
+		arg.MoveHash,
+		arg.Now,
+	)
+	var i PlannedMilestoneMove
+	err := row.Scan(
+		&i.CampaignID,
+		&i.MoveKey,
+		&i.MoveHash,
+		&i.CreatedAt,
 	)
 	return i, err
 }

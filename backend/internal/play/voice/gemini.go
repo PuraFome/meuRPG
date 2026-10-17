@@ -28,6 +28,9 @@ const GeminiBase = "https://generativelanguage.googleapis.com/v1beta/models/"
 // 8 MiB of PCM, 11 MiB in base64.
 const maxResponseBytes = 16 << 20
 
+// maxAudioBytes bounds the audio itself once decoded (base64 makes it a third bigger on the wire).
+const maxAudioBytes = 10 << 20
+
 // defaultRate is the sample rate the model answers with when its mime type names none.
 const defaultRate = 24000
 
@@ -177,15 +180,34 @@ func (g *Gemini) parse(ctx context.Context, status int, r io.Reader) (Audio, err
 			if p.InlineData == nil || p.InlineData.Data == "" {
 				continue
 			}
-			pcm, err := base64.StdEncoding.DecodeString(p.InlineData.Data)
-			if err != nil || len(pcm) < 2 {
-				return Audio{}, ErrNoAudio
-			}
-			return Audio{Data: wav(pcm[:len(pcm)&^1], sampleRate(p.InlineData.MimeType)), ContentType: ContentType}, nil
+			return audioOf(p.InlineData.MimeType, p.InlineData.Data)
 		}
 	}
 	g.log(ctx, "the answer holds no audio")
 	return Audio{}, ErrNoAudio
+}
+
+// audioOf makes the audio of an inline part: a WAV file as it came, or raw PCM in a header.
+func audioOf(mime, encoded string) (Audio, error) {
+	data, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil || len(data) < 2 || len(data) > maxAudioBytes {
+		return Audio{}, ErrNoAudio
+	}
+	if !isWAV(mime, data) {
+		return Audio{Data: wav(data[:len(data)&^1], sampleRate(mime)), ContentType: ContentType}, nil
+	}
+	// The newer models answer with a WAV file: it is served as it came, never wrapped again.
+	if len(data) <= wavHeaderSize {
+		return Audio{}, ErrNoAudio
+	}
+	return Audio{Data: data, ContentType: ContentType}, nil
+}
+
+// isWAV says the answer is a WAV file already: its mime type says so, or the bytes start with a RIFF header
+// (the older models answered raw 16-bit PCM, "audio/L16;codec=pcm;rate=...", which wav() wraps).
+func isWAV(mime string, data []byte) bool {
+	kind, _, _ := strings.Cut(strings.ToLower(strings.TrimSpace(mime)), ";")
+	return kind == "audio/wav" || kind == "audio/x-wav" || kind == "audio/wave" || bytes.HasPrefix(data, []byte("RIFF"))
 }
 
 // sampleRate is the rate a mime type such as "audio/L16;codec=pcm;rate=24000" names, or the default.

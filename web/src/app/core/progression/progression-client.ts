@@ -130,11 +130,13 @@ export class ProgressionClient {
     campaignId: string,
     milestoneId: string,
     direction: 'up' | 'down',
+    idempotencyKey: string,
   ): Promise<MoveMilestoneResponse> {
     return this.client.moveMilestone({
       campaignId,
       milestoneId,
       direction: direction === 'up' ? MilestoneDirection.UP : MilestoneDirection.DOWN,
+      idempotencyKey,
     });
   }
 

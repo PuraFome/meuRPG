@@ -27,7 +27,7 @@ import (
 // target makes a Constitution save or is stunned until the end of the monk's next turn. Both
 // use the ki save DC. A hit that qualifies opens one offer (hit_riders) per rider, open until
 // answered or the round ends. The server rolls the target's save, as it does for a spell.
-// The push is the master's to place: the app does not move the token (forced move).
+// The push moves the target's token away from the monk (combat_forced.go).
 
 const (
 	riderOpenHand = "open_hand"
@@ -55,6 +55,8 @@ type riderEvent struct {
 	D20    int32  `json:"d20,omitempty"`
 	Total  int32  `json:"total,omitempty"`
 	DC     int32  `json:"dc,omitempty"`
+	// Pushed is the forced move of a push that landed (combat_forced.go).
+	Pushed *forcedMove `json:"pushed,omitempty"`
 }
 
 // ridersFor says which riders a hit offers: Open Hand for a Flurry of Blows hit, Stunning
@@ -179,6 +181,9 @@ func (s *Service) UseHitRider(
 	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
 		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
 		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, true)
+		if res.event != nil && res.event.Rider != nil {
+			s.publishPushed(ctx, m.CampaignID, d, []*forcedMove{res.event.Rider.Pushed})
+		}
 	})
 	if err != nil {
 		return nil, err
@@ -320,6 +325,8 @@ func (s *Service) riderConsequence(ctx context.Context, c *combatTx, cs []playdb
 		if !slices.Contains(target.Conditions, condProne) && len(target.Conditions) < maxConditions {
 			return setConditionsOf(ctx, c, target, withCondition(target.Conditions, condProne))
 		}
+	case choicePush:
+		return s.pushByRider(ctx, c, cs, attacker, target, re)
 	case choiceNoReactions:
 		return s.riderEffect(ctx, c, cs, attacker, target, effectNoReactions)
 	case choiceStun:
@@ -333,7 +340,7 @@ func (s *Service) riderConsequence(ctx context.Context, c *combatTx, cs []playdb
 		}
 		return s.riderEffect(ctx, c, cs, attacker, target, effectStunningStrike)
 	}
-	return nil // the push: the master places the token
+	return nil
 }
 
 // riderEffect puts a lasting effect on the target that ends with the monk's next turn.
@@ -410,6 +417,7 @@ func riderLogProto(r *riderEvent, numbers bool) *playv1.CombatLogHitRider {
 	default:
 		out.Result = playv1.HitRiderLogResult_HIT_RIDER_LOG_RESULT_DECLINED
 	}
+	out.PushedFt, out.PushNoMap = pushedFt(r.Pushed), pushedNoMap(r.Pushed)
 	if numbers && r.D20 > 0 {
 		out.Numbers, out.D20, out.SaveTotal, out.Dc = true, r.D20, r.Total, r.DC
 	}

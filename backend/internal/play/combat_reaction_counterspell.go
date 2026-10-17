@@ -121,17 +121,37 @@ func (s *Service) counterspellWindows(ctx context.Context, c *combatTx, cs []pla
 	return specs, nil
 }
 
+// withSpellAttackCuts adds to the windows of a cast the Cutting Words of each bard that sees the
+// caster, for the one spell attack roll of the cast. The master's check of "Sempre" is not needed
+// any more when one of them waits.
+func (s *Service) withSpellAttackCuts(ctx context.Context, c *combatTx, cs []playdb.Combatant, caster playdb.Combatant, spellKey string, target playdb.Combatant, specs []windowSpec) ([]windowSpec, error) {
+	cuts, err := s.cuttingWindows(ctx, c, cs, caster, "attack", windowTrigger{Actor: caster.ID, Target: target.ID, Key: spellKey})
+	if err != nil || len(cuts) == 0 {
+		return specs, err
+	}
+	specs = slices.DeleteFunc(specs, func(w windowSpec) bool { return w.kind == reaction.MasterCheck })
+	return append(specs, cuts...), nil
+}
+
 // holdCast holds a cast that a Counterspell or the master's check can change: the
 // request is kept and the windows opened, and nothing of the cast happens until they
 // are answered (the replay in releaseHold). It returns the event that stands for
 // the held cast, or false when nothing waits.
-func (s *Service) holdCast(ctx context.Context, c *combatTx, m authz.Membership, req *playv1.CastSpellRequest, cs []playdb.Combatant, caster playdb.Combatant, spellKey string, level int32, targs []playdb.Combatant) (actionEvent, bool, error) {
+func (s *Service) holdCast(ctx context.Context, c *combatTx, m authz.Membership, req *playv1.CastSpellRequest, cs []playdb.Combatant, caster playdb.Combatant, spellKey string, level int32, targs []playdb.Combatant, attackRoll bool) (actionEvent, bool, error) {
 	if c.replay != nil {
 		return actionEvent{}, false, nil
 	}
 	specs, err := s.counterspellWindows(ctx, c, cs, caster, spellKey, level, targs)
-	if err != nil || len(specs) == 0 {
+	if err != nil {
 		return actionEvent{}, false, err
+	}
+	if attackRoll && len(targs) == 1 { // a spell attack roll is cut as a weapon attack's is
+		if specs, err = s.withSpellAttackCuts(ctx, c, cs, caster, spellKey, targs[0], specs); err != nil {
+			return actionEvent{}, false, err
+		}
+	}
+	if len(specs) == 0 {
+		return actionEvent{}, false, nil
 	}
 	ev := actionEvent{Round: c.enc.Round, Secret: caster.Hidden, Actor: caster.ID, Key: spellKey}
 	for _, t := range targs {

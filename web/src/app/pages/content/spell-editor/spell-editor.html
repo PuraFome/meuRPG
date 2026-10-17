@@ -126,6 +126,9 @@
           </div>
         }
       }
+      @if (unappliedDamage()) {
+        <p class="inline-issue" role="note" data-warning="unapplied-damage"><mat-icon aria-hidden="true">warning</mat-icon>{{ unappliedDamage() }}</p>
+      }
       @if (d.mechanic === 'save') {
         <p class="hint">Em “Teste de resistência” você escolhe a habilidade e o que acontece ao passar (metade ou nada); em “Cura”, o dado e o que soma.</p>
       }

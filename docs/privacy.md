@@ -233,6 +233,7 @@ What erasing an account does, by the database's own rules:
 | Identity, e-mail, display name, sessions, memberships, the person's private notes, clue copies, review reasons and rolled ability scores | Erased |
 | A master's campaigns, with everything they own: members, invites, characters of the campaign, NPCs, maps, sessions, history, puzzles, requests for images | Erased |
 | A player's characters | Stay with the campaign and its master, with no link to the account. A character left with no player and no campaign is swept within a day |
+| What the person typed in a puzzle (a riddle answer, a deciphered message), kept in the moves of a session | Stays, anonymous: the answers typed stay without the account, and the master still reads them, until the session goes. Nothing in the text is searched or redacted |
 | Lines of the scene's conversation (MR-051) | Stay, with the author's ID cleared: they read "Jogador removido". A line that was for chosen readers stays for the master and the readers still left, never for everyone |
 | Session history, combatants, XP awards, uploads, puzzle moves | Stay, with the person's ID cleared. The IDs of players who saw an NPC act, kept inside some history payloads, are not cleared |
 | The files of a deleted campaign's images in the bucket | **Not erased by the database.** The operator deletes the `campaigns/<id>/` prefix by hand; this is not automated |

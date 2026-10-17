@@ -18,7 +18,7 @@ import (
 type httpError struct {
 	status     int
 	code       connect.Code
-	reason     string
+	reason     rpcerr.Reason
 	message    string
 	retryAfter int
 }
@@ -51,7 +51,7 @@ func (s *Service) writeError(w http.ResponseWriter, r *http.Request, err error) 
 		header.Set("Retry-After", strconv.Itoa(he.retryAfter))
 	}
 	w.WriteHeader(he.status)
-	body, jerr := json.Marshal(map[string]string{"code": he.code.String(), "reason": he.reason, "message": he.message})
+	body, jerr := json.Marshal(map[string]string{"code": he.code.String(), "reason": he.reason.String(), "message": he.message})
 	if jerr != nil {
 		s.logger.LogAttrs(r.Context(), slog.LevelError, "campaignpackage: cannot encode an error", slog.Any("error", jerr))
 		return

@@ -29,7 +29,12 @@ Code in `lasting_effects_clock.go`.
 - **End of a turn.** `EndTurn` ends the combatant's part, opens one `EFFECT_SAVE` reaction window for each effect that asks an end-of-turn save (ordered by effect id), and returns while any is open; `settleReactions` calls `releaseHeldTurn`, which passes the turn once none is open.
   `RollEffectSave` closes its window first and then resolves the effect (a pass ends it), so the window never closes twice.
   A window whose effect ended closes with `EFFECT_ENDED` or `CASTER_LOST_CONCENTRATION`.
+- **Damage at the end of a turn.** An effect with a `turn_trigger` whose clock ends at the end of its target's turn (Acid Arrow, `until_end_of_turn_of`) lands its damage as the clock runs out: `effectsBeforeTurn` calls `dealDamageAtEnd` before it ends the row, on a target that still stands, through the target's resistance (an NPC takes it at once, a player's character's waits for the master).
+  The row shows the trigger with phase `END`.
+  A target that went down, an effect the master ended and an undone cast leave nothing to land.
 - **Start of a turn.** `startTurn` first ends what ends at the start (`effectsBeforeTurn`), then rolls the damage of a turn trigger once for the creature (`effectsAfterTurnStart`) and opens the start saves.
+
+Acid Arrow's effect (`applies: hit`) is made only on a target the spell attack hit, with the catalogue's `turn_trigger` dice (2d4) plus `per_slot_level` (1d4) for each slot level above the spell's own (`defAtSlot`); the cast's undo takes the row back with the cast's other effects.
 
 ## A rider spent by a roll
 
@@ -46,6 +51,7 @@ A Guidance or Resistance die instead ends its effect with the roll (`spendOnceEf
 `castCharacterEffects` writes the rows when a cast that lasts takes effect (`takeEffect`), and `closeCast` deletes the cast's rows with it (`endCharacterEffectsOfCast`).
 `AdvanceGameTime`, a finished long cast and `TakeRest` move game time on (`advanceGameTime`); an effect whose seconds run out is deleted.
 `checkModeOf` (scene checks, puzzle hints, trap searches) reads the character's rows when it is not a combatant (`outsideModeOf`): conditions, exhaustion, the advantage on saves, the dice (Bless, Bane) and the fixed bonuses (Pass without Trace) go in the roll, and `checkMode.shownCheck` writes the sources.
+Aid's bonus to the maximum is not a `character_effects` row: it is `character_vitals.hit_points_max_bonus`, raised when the cast takes effect and lowered by `closeCast` (`takeBackMaxHP`), with the arithmetic of `casting_aid.go` shared with the combat's `raiseMaxHP` and `endAid`.
 A rider that asks a saving throw is not cast outside a combat (`castCharacterEffects` takes no such spell).
 
 ## What a player may read

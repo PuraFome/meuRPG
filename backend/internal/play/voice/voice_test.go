@@ -1,9 +1,11 @@
 package voice
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/binary"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -130,7 +132,7 @@ func TestGeminiWithoutAModelOrTextAsksNothing(t *testing.T) {
 		if g.ModelName != "" {
 			text = "  "
 		}
-		if _, err := g.Speak(context.Background(), text, "Kore"); err != ErrNoAudio { //nolint:errorlint // the sentinel itself
+		if _, err := g.Speak(context.Background(), text, "Kore"); !errors.Is(err, ErrNoAudio) {
 			t.Errorf("error = %v, want ErrNoAudio", err)
 		}
 	}
@@ -155,5 +157,75 @@ func TestSampleRateIsBoundedAndFallsBackToTheDefault(t *testing.T) {
 		if got := sampleRate(mime); got != want {
 			t.Errorf("sampleRate(%q) = %d, want %d", mime, got, want)
 		}
+	}
+}
+
+// riff is a small WAV file as a model that answers with WAV makes it: its own header and its own rate.
+func riff(rate uint32) []byte {
+	return wav([]byte{1, 0, 2, 0, 3, 0}, rate)
+}
+
+func speakWith(t *testing.T, mime string, data []byte) (Audio, error) {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(answerOf(mime, data)))
+	}))
+	t.Cleanup(srv.Close)
+	g := &Gemini{Key: "k", ModelName: "m", URL: srv.URL + "/"}
+	return g.Speak(t.Context(), "Olá", "Puck")
+}
+
+func TestGeminiPassesAWAVAnswerThroughByteForByte(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		mime string
+		data []byte
+	}{
+		"audio/wav":               {"audio/wav", riff(24000)},
+		"audio/x-wav":             {"audio/x-wav", riff(16000)},
+		"a mime type with params": {"audio/wav; codecs=1", riff(24000)},
+		"RIFF bytes, other mime":  {"application/octet-stream", riff(24000)},
+		"RIFF bytes, no mime":     {"", riff(22050)},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			a, err := speakWith(t, tc.mime, tc.data)
+			if err != nil {
+				t.Fatalf("Speak() error = %v", err)
+			}
+			if !bytes.Equal(a.Data, tc.data) || a.ContentType != ContentType {
+				t.Errorf("got %d bytes (%q), want the %d bytes of the answer untouched", len(a.Data), a.ContentType, len(tc.data))
+			}
+		})
+	}
+}
+
+func TestGeminiStillWrapsPCMAndNeverWrapsAWAVTwice(t *testing.T) {
+	t.Parallel()
+	pcm := []byte{1, 0, 2, 0}
+	a, err := speakWith(t, "audio/L16;codec=pcm;rate=24000", pcm)
+	if err != nil {
+		t.Fatalf("Speak() error = %v", err)
+	}
+	if !bytes.Equal(a.Data, wav(pcm, 24000)) || string(a.Data[:4]) != "RIFF" || bytes.Count(a.Data, []byte("RIFF")) != 1 {
+		t.Errorf("PCM answer = % x, want one 44-byte header and the samples", a.Data)
+	}
+	whole, err := speakWith(t, "audio/wav", riff(24000))
+	if err != nil {
+		t.Fatalf("Speak() error = %v", err)
+	}
+	if bytes.Count(whole.Data, []byte("RIFF")) != 1 || len(whole.Data) != 44+6 {
+		t.Errorf("WAV answer has %d bytes and %d RIFF headers, want 50 and one", len(whole.Data), bytes.Count(whole.Data, []byte("RIFF")))
+	}
+}
+
+func TestGeminiRefusesAWAVThatIsTooSmallOrTooBig(t *testing.T) {
+	t.Parallel()
+	if _, err := speakWith(t, "audio/wav", []byte("RIFF")); !errors.Is(err, ErrNoAudio) {
+		t.Errorf("a WAV without a header: error = %v, want ErrNoAudio", err)
+	}
+	big := append(riff(24000), make([]byte, maxAudioBytes)...)
+	if _, err := speakWith(t, "audio/wav", big); !errors.Is(err, ErrNoAudio) {
+		t.Errorf("a WAV over the limit: error = %v, want ErrNoAudio", err)
 	}
 }

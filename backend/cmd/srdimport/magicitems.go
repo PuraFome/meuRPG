@@ -140,7 +140,8 @@ func checkMagicFamily(r magicItemsSource, rarity string) error {
 }
 
 // linkMagicVariants points each variant at its family, refusing a variant
-// that does not exist, is not one, is in two families or has no rarity.
+// that does not exist, is not one or is in two families. A variant has a
+// rarity of its own: checkMagicFamily refuses one that varies.
 func linkMagicVariants(out []srd51.MagicItem, isVariant map[string]bool) error {
 	byKey := map[string]*srd51.MagicItem{}
 	for i := range out {
@@ -157,8 +158,6 @@ func linkMagicVariants(out []srd51.MagicItem, isVariant map[string]bool) error {
 				return fmt.Errorf("magic item %s: %s is listed as a variant but is not one", fam.Key, vk)
 			case v.VariantOf != "":
 				return fmt.Errorf("magic item %s: in two families, %s and %s", vk, v.VariantOf, fam.Key)
-			case v.Rarity == "varies":
-				return fmt.Errorf("magic item %s: a variant must have a rarity", vk)
 			}
 			v.VariantOf = fam.Key
 		}
