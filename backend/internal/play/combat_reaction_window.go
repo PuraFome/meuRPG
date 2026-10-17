@@ -452,10 +452,7 @@ func (s *Service) loadSettleState(ctx context.Context, c *combatTx) (settleState
 	if err != nil {
 		return st, false, err
 	}
-	st.byID = make(map[string]playdb.Combatant, len(cs))
-	for _, x := range cs {
-		st.byID[x.ID] = x
-	}
+	st.byID = combatantsByID(cs)
 	return st, true, nil
 }
 
