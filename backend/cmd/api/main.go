@@ -100,6 +100,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/rpclog"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/slowclient"
 	"github.com/PuraFome/meuRPG/backend/internal/play"
+	"github.com/PuraFome/meuRPG/backend/internal/play/voice"
 	"github.com/PuraFome/meuRPG/backend/internal/progression"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/system"
@@ -191,7 +192,7 @@ func run(logger *slog.Logger, cfg config.Config) error {
 	policy := ratelimit.NewPolicy(cfg.Limits.RateMultiplier)
 
 	identityService, m, err := wireSignIn(ctx, logger, cfg, pool, signInParts{
-		rules: rulesContent, blobs: blobs, images: newImageGenerator(ctx, logger, cfg), policy: policy,
+		rules: rulesContent, blobs: blobs, images: newImageGenerator(ctx, logger, cfg), voice: newVoiceGenerator(ctx, logger, cfg), policy: policy,
 	})
 	if err != nil {
 		return err
@@ -296,11 +297,30 @@ func newImageGenerator(ctx context.Context, logger *slog.Logger, cfg config.Conf
 	}
 }
 
+// newVoiceGenerator is the voice of the conversation's lines (MR-051): it needs a key and a model
+// name, or the fake. It stays a nil interface without them, and the audio route then answers with
+// the typed "off" reason.
+func newVoiceGenerator(ctx context.Context, logger *slog.Logger, cfg config.Config) voice.Generator {
+	switch {
+	case cfg.Voice.Fake:
+		logger.WarnContext(ctx, "TTS_GENERATOR=fake: voices are silent, not made by a model")
+		return &voice.Fake{}
+	case cfg.Images.GeminiAPIKey != "" && cfg.Voice.Model != "":
+		generator := &voice.Gemini{Key: cfg.Images.GeminiAPIKey, ModelName: cfg.Voice.Model, Logger: logger}
+		logger.InfoContext(ctx, "the voice of the conversation is on", "model", generator.Model())
+		return generator
+	default:
+		logger.WarnContext(ctx, "GEMINI_API_KEY or GEMINI_TTS_MODEL is not set; the voice of the conversation is off")
+		return nil
+	}
+}
+
 // signInParts are what the signed-in modules are built from, besides the pool.
 type signInParts struct {
 	rules  *rules.Content
 	blobs  blob.Store
 	images gen.Generator
+	voice  voice.Generator
 	policy ratelimit.Policy
 }
 
@@ -320,6 +340,8 @@ func wireSignIn(ctx context.Context, logger *slog.Logger, cfg config.Config, poo
 	m, err := wireModules(logger, pool, parts.rules, parts.blobs, parts.images, wireOptions{
 		MonthlyImages:       cfg.Images.MonthlyLimit,
 		DailyImages:         cfg.Images.DailyLimit,
+		Voice:               parts.voice,
+		VoiceDailyLimit:     cfg.Voice.DailyLimit,
 		MaxCampaignsPerUser: cfg.Limits.MaxCampaignsPerUser,
 		CampaignCreators:    cfg.Limits.CampaignCreators,
 		Policy:              parts.policy,
@@ -474,8 +496,12 @@ type modules struct {
 // wireOptions are the limits the modules get: zero means each module's own default.
 type wireOptions struct {
 	MonthlyImages, DailyImages int
-	MaxCampaignsPerUser        int
-	CampaignCreators           []string
+	// Voice makes the audio of the conversation's lines (nil: off); VoiceDailyLimit is the server's
+	// cap per day.
+	Voice               voice.Generator
+	VoiceDailyLimit     int
+	MaxCampaignsPerUser int
+	CampaignCreators    []string
 	// Policy holds the limiters some modules apply themselves (the image
 	// routes' per-user limits); the zero value limits nothing.
 	Policy ratelimit.Policy
@@ -559,7 +585,16 @@ func wireModules(
 		Roster:    charactersService,           // who can fight, with which numbers (MR-013)
 		Dice:      diceModes{campaignsService}, // where a player rolls (RN-18)
 		Defaults:  campaignsService,            // the mode of a combat started without one (RN-24, RN-25)
-		Logger:    logger,
+		Messages: play.MessagesConfig{
+			Profiles:        users, // the name shown on an out-of-character line
+			Voice:           opts.Voice,
+			Blobs:           blobs,
+			VoiceDailyLimit: opts.VoiceDailyLimit,
+			Send:            opts.Policy.Message,
+			Audio:           opts.Policy.Audio,
+			Logger:          logger,
+		},
+		Logger: logger,
 	})
 	if err != nil {
 		return nil, err

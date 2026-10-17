@@ -9,6 +9,7 @@ package meurpg.play.v1;
 import "google/protobuf/duration.proto";
 import "google/protobuf/timestamp.proto";
 import "meurpg/play/v1/combat.proto";
+import "meurpg/play/v1/session_messages.proto";
 
 // GetSessionSummaryRequest names the session.
 message GetSessionSummaryRequest {
@@ -74,6 +75,11 @@ message SessionSummary {
   // treasure). The master
   // never gets it.
   SessionCharacterSummary mine = 10;
+  // The conversation of the session (MR-051), only the lines the caller may
+  // read (RN-36), oldest first: the last 500 at most.
+  repeated SessionMessage conversation = 11;
+  // True when older lines the caller may read were left out.
+  bool conversation_truncated = 12;
 }
 
 // GetSessionSummaryResponse returns the summary.

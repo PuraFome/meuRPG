@@ -13,13 +13,15 @@ import type { Duration, Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_duration, file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { CharacterHighlights, HighlightCategory } from "./combat_pb";
 import { file_meurpg_play_v1_combat } from "./combat_pb";
+import type { SessionMessage } from "./session_messages_pb";
+import { file_meurpg_play_v1_session_messages } from "./session_messages_pb";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file meurpg/play/v1/summary.proto.
  */
 export const file_meurpg_play_v1_summary: GenFile = /*@__PURE__*/
-  fileDesc("ChxtZXVycGcvcGxheS92MS9zdW1tYXJ5LnByb3RvEg5tZXVycGcucGxheS52MSJIChhHZXRTZXNzaW9uU3VtbWFyeVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFwoPZ2FtZV9zZXNzaW9uX2lkGAIgASgJIpoBChdTZXNzaW9uQ2hhcmFjdGVyU3VtbWFyeRI3CgpoaWdobGlnaHRzGAEgASgLMiMubWV1cnBnLnBsYXkudjEuQ2hhcmFjdGVySGlnaGxpZ2h0cxIVCg1jaGVja3NfcGFzc2VkGAIgASgFEhQKDGNoZWNrc190cmllZBgDIAEoBRIZChF0cmVhc3VyZV9mb3VuZF9wbxgEIAEoBSKYAwoOU2Vzc2lvblN1bW1hcnkSLgoKc3RhcnRlZF9hdBgBIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLAoIZW5kZWRfYXQYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEisKCGR1cmF0aW9uGAMgASgLMhkuZ29vZ2xlLnByb3RvYnVmLkR1cmF0aW9uEg8KB2NvbWJhdHMYBCABKAUSFQoNc2NlbmVzX29wZW5lZBgFIAEoBRIVCg1jaGVja3NfcGFzc2VkGAYgASgFEhQKDGNoZWNrc190cmllZBgHIAEoBRI1CgpjYXRlZ29yaWVzGAggAygLMiEubWV1cnBnLnBsYXkudjEuSGlnaGxpZ2h0Q2F0ZWdvcnkSOAoHcGxheWVycxgJIAMoCzInLm1ldXJwZy5wbGF5LnYxLlNlc3Npb25DaGFyYWN0ZXJTdW1tYXJ5EjUKBG1pbmUYCiABKAsyJy5tZXVycGcucGxheS52MS5TZXNzaW9uQ2hhcmFjdGVyU3VtbWFyeSJMChlHZXRTZXNzaW9uU3VtbWFyeVJlc3BvbnNlEi8KB3N1bW1hcnkYASABKAsyHi5tZXVycGcucGxheS52MS5TZXNzaW9uU3VtbWFyeUK6AQoSY29tLm1ldXJwZy5wbGF5LnYxQgxTdW1tYXJ5UHJvdG9QAVo8Z2l0aHViLmNvbS9QdXJhRm9tZS9tZXVSUEcvYmFja2VuZC9nZW4vbWV1cnBnL3BsYXkvdjE7cGxheXYxogIDTVBYqgIOTWV1cnBnLlBsYXkuVjHKAg5NZXVycGdcUGxheVxWMeICGk1ldXJwZ1xQbGF5XFYxXEdQQk1ldGFkYXRh6gIQTWV1cnBnOjpQbGF5OjpWMWIGcHJvdG8z", [file_google_protobuf_duration, file_google_protobuf_timestamp, file_meurpg_play_v1_combat]);
+  fileDesc("ChxtZXVycGcvcGxheS92MS9zdW1tYXJ5LnByb3RvEg5tZXVycGcucGxheS52MSJIChhHZXRTZXNzaW9uU3VtbWFyeVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFwoPZ2FtZV9zZXNzaW9uX2lkGAIgASgJIpoBChdTZXNzaW9uQ2hhcmFjdGVyU3VtbWFyeRI3CgpoaWdobGlnaHRzGAEgASgLMiMubWV1cnBnLnBsYXkudjEuQ2hhcmFjdGVySGlnaGxpZ2h0cxIVCg1jaGVja3NfcGFzc2VkGAIgASgFEhQKDGNoZWNrc190cmllZBgDIAEoBRIZChF0cmVhc3VyZV9mb3VuZF9wbxgEIAEoBSLuAwoOU2Vzc2lvblN1bW1hcnkSLgoKc3RhcnRlZF9hdBgBIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLAoIZW5kZWRfYXQYAiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEisKCGR1cmF0aW9uGAMgASgLMhkuZ29vZ2xlLnByb3RvYnVmLkR1cmF0aW9uEg8KB2NvbWJhdHMYBCABKAUSFQoNc2NlbmVzX29wZW5lZBgFIAEoBRIVCg1jaGVja3NfcGFzc2VkGAYgASgFEhQKDGNoZWNrc190cmllZBgHIAEoBRI1CgpjYXRlZ29yaWVzGAggAygLMiEubWV1cnBnLnBsYXkudjEuSGlnaGxpZ2h0Q2F0ZWdvcnkSOAoHcGxheWVycxgJIAMoCzInLm1ldXJwZy5wbGF5LnYxLlNlc3Npb25DaGFyYWN0ZXJTdW1tYXJ5EjUKBG1pbmUYCiABKAsyJy5tZXVycGcucGxheS52MS5TZXNzaW9uQ2hhcmFjdGVyU3VtbWFyeRI0Cgxjb252ZXJzYXRpb24YCyADKAsyHi5tZXVycGcucGxheS52MS5TZXNzaW9uTWVzc2FnZRIeChZjb252ZXJzYXRpb25fdHJ1bmNhdGVkGAwgASgIIkwKGUdldFNlc3Npb25TdW1tYXJ5UmVzcG9uc2USLwoHc3VtbWFyeRgBIAEoCzIeLm1ldXJwZy5wbGF5LnYxLlNlc3Npb25TdW1tYXJ5QroBChJjb20ubWV1cnBnLnBsYXkudjFCDFN1bW1hcnlQcm90b1ABWjxnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvcGxheS92MTtwbGF5djGiAgNNUFiqAg5NZXVycGcuUGxheS5WMcoCDk1ldXJwZ1xQbGF5XFYx4gIaTWV1cnBnXFBsYXlcVjFcR1BCTWV0YWRhdGHqAhBNZXVycGc6OlBsYXk6OlYxYgZwcm90bzM", [file_google_protobuf_duration, file_google_protobuf_timestamp, file_meurpg_play_v1_combat, file_meurpg_play_v1_session_messages]);
 
 /**
  * GetSessionSummaryRequest names the session.
@@ -183,6 +185,21 @@ export type SessionSummary = Message<"meurpg.play.v1.SessionSummary"> & {
    * @generated from field: meurpg.play.v1.SessionCharacterSummary mine = 10;
    */
   mine?: SessionCharacterSummary | undefined;
+
+  /**
+   * The conversation of the session (MR-051), only the lines the caller may
+   * read (RN-36), oldest first: the last 500 at most.
+   *
+   * @generated from field: repeated meurpg.play.v1.SessionMessage conversation = 11;
+   */
+  conversation: SessionMessage[];
+
+  /**
+   * True when older lines the caller may read were left out.
+   *
+   * @generated from field: bool conversation_truncated = 12;
+   */
+  conversationTruncated: boolean;
 };
 
 /**

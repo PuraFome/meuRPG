@@ -142,8 +142,14 @@ Where a spell level could be confused with the character's level, the text says 
 | Ações da cena | Scene action | A check the master puts on a scene: a skill, ability check or saving throw, with an optional name and DC. The player sees their own bonus; the DC only if "Mostrar a CD aos jogadores" is on. |
 | Cena de RP | RP scene | A moment outside combat: a point of interest of the scene kind, opened in the session for everyone to see. |
 | Cena descoberta | Discovered scene | An RP scene the group has already seen. Only a discovered scene can label a note. |
+| Conversa da cena | The scene's conversation | The session's live text feed (MR-051): the master narrates and speaks as NPCs, players speak as their character or out of character. Each line is for the whole table or for chosen readers (RN-36). |
 | Em cena (o palco) | On stage | The NPCs the master puts on the open scene, up to 4 at a time, one speaking. The player sees only the name and portrait (MR-031). |
+| Falar como | Speak as | Who a line is from: the master chooses the narrator or an NPC of the campaign; a player chooses their own character or out of character. |
+| Fora do personagem | Out of character | A player's line that is not the character speaking; it shows the player's display name. |
 | Ganchos, anotações e pistas | Hooks, notes and clues | The master's private text on an RP scene. A clue is a short sentence the master reveals to chosen players, who keep it as "Pista do mestre" (MR-029). |
+| Jogador removido | Removed player | What the feed shows as the author of a line when the author's account was erased. The line stays. |
+| Narrador | Narrator | The master's voice when no NPC is speaking. It has one voice of its own when a line is heard. |
+| Ouvir | Hear | The button that plays a narrator or NPC line with a generated voice. The audio is made the first time a reader asks and kept with the line (RN-36). |
 | Retrato do NPC | NPC portrait | A gallery image on an NPC's sheet, shown on its card (master only) and in the scene while it is on stage. |
 | Rolagem da cena | Scene roll | The d20 of a scene action plus the bonus (RN-18). The player sees only their own totals, and "Passou" or "Não passou" only if the master shows the DC. Rolls stop at the attempt limit ("Sem mais tentativas"). |
 | Tentativas | Attempts | How many times each player can roll a scene action while it is open (1 by default, 1 to 5, or unlimited). Reopening the scene resets the counts (MR-015). |

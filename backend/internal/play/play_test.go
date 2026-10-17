@@ -93,6 +93,28 @@ func TestAuthorizationMatrix(t *testing.T) {
 			_, err := c.NudgePlayer(ctx, connect.NewRequest(&playv1.NudgePlayerRequest{CampaignId: campaign, CharacterId: pc.GetId()}))
 			return err
 		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		// The scene's conversation (MR-051, RN-36): the master speaks as the narrator or an NPC, a player as
+		// themselves; any member reads. The readers' rules are in messages_test.go.
+		{"SendSessionMessage", func(ctx context.Context, c client) error {
+			_, err := c.SendSessionMessage(ctx, connect.NewRequest(&playv1.SendSessionMessageRequest{
+				CampaignId: campaign, SpeakerKind: playv1.SessionMessageSpeakerKind_SESSION_MESSAGE_SPEAKER_KIND_NARRATOR, Text: "A porta range.", IdempotencyKey: newKey(),
+			}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"SendSessionMessage out of character", func(ctx context.Context, c client) error {
+			_, err := c.SendSessionMessage(ctx, connect.NewRequest(&playv1.SendSessionMessageRequest{
+				CampaignId: campaign, SpeakerKind: playv1.SessionMessageSpeakerKind_SESSION_MESSAGE_SPEAKER_KIND_OUT_OF_CHARACTER, Text: "Posso perguntar?", IdempotencyKey: newKey(),
+			}))
+			return err
+		}, [5]connect.Code{connect.CodePermissionDenied, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"ListSessionMessages", func(ctx context.Context, c client) error {
+			_, err := c.ListSessionMessages(ctx, connect.NewRequest(&playv1.ListSessionMessagesRequest{CampaignId: campaign}))
+			return err
+		}, [5]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"SignalMasterTyping", func(ctx context.Context, c client) error {
+			_, err := c.SignalMasterTyping(ctx, connect.NewRequest(&playv1.SignalMasterTypingRequest{CampaignId: campaign}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
 		// Clearing needs no map nor image; setting them is in package maps'
 		// tests, which have maps and images.
 		{"SetCurrentMap", func(ctx context.Context, c client) error {
@@ -786,6 +808,9 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["GetLiveSession"] = c.GetLiveSession(ctx, connect.NewRequest(&playv1.GetLiveSessionRequest{CampaignId: id}))
 	_, calls["AdjustCharacterVitals"] = c.AdjustCharacterVitals(ctx, connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{CampaignId: id, CharacterId: id, IdempotencyKey: id}))
 	_, calls["NudgePlayer"] = c.NudgePlayer(ctx, connect.NewRequest(&playv1.NudgePlayerRequest{CampaignId: id, CharacterId: id}))
+	_, calls["SendSessionMessage"] = c.SendSessionMessage(ctx, connect.NewRequest(&playv1.SendSessionMessageRequest{CampaignId: id, IdempotencyKey: id}))
+	_, calls["ListSessionMessages"] = c.ListSessionMessages(ctx, connect.NewRequest(&playv1.ListSessionMessagesRequest{CampaignId: id}))
+	_, calls["SignalMasterTyping"] = c.SignalMasterTyping(ctx, connect.NewRequest(&playv1.SignalMasterTypingRequest{CampaignId: id}))
 	_, calls["SetCurrentMap"] = c.SetCurrentMap(ctx, connect.NewRequest(&playv1.SetCurrentMapRequest{CampaignId: id, MapId: id}))
 	_, calls["SetShownImage"] = c.SetShownImage(ctx, connect.NewRequest(&playv1.SetShownImageRequest{CampaignId: id, ImageId: id}))
 	_, calls["ListLeftImages"] = c.ListLeftImages(ctx, connect.NewRequest(&playv1.ListLeftImagesRequest{CampaignId: id}))
