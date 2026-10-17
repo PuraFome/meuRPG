@@ -127,7 +127,7 @@ func newAdjustHitPointsFlow(s *Service, c *combatTx, m authz.Membership, call ad
 
 // run is the transaction: the checks, the change and its event. It answers the event the write stores.
 func (f *adjustHitPointsFlow) run(ctx context.Context) (any, error) {
-	phases := []func(context.Context) error{f.locate, f.change, f.save, f.touch}
+	phases := []func(context.Context) error{f.locate, f.change, f.save, f.endConcentration, f.touch}
 	for _, phase := range phases {
 		if err := phase(ctx); err != nil {
 			return nil, err
@@ -183,6 +183,18 @@ func (f *adjustHitPointsFlow) save(ctx context.Context) error {
 		return fmt.Errorf("save the hit points: %w", err)
 	}
 	return nil
+}
+
+// endConcentration ends the concentration of an NPC the change brought to 0 hit points: it is
+// unconscious and stops concentrating with no save (SRD 5.1, "Duration"), the same end a damage to 0
+// has (endConcentrationAtZero), with the effects, the creatures and the log line that follow. The
+// event is written before the adjustment's own, grouped by the combatant, and the undo of the
+// adjustment takes it back.
+func (f *adjustHitPointsFlow) endConcentration(ctx context.Context) error {
+	if f.after.HP > 0 || f.target.ConcentrationSpell == nil {
+		return nil
+	}
+	return f.s.endConcentrationAtZero(ctx, f.c, f.target, f.target.ID)
 }
 
 // touch moves the encounter's revision, names the character the change was about and builds the event.

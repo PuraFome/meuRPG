@@ -271,7 +271,7 @@ func (s *Service) endConcentrationOfDownCharacter(ctx context.Context, tx pgx.Tx
 	if err != nil {
 		return err
 	}
-	return s.endConcentrationAtZero(ctx, c, cs[i], damageLanded{})
+	return s.endConcentrationAtZero(ctx, c, cs[i], "")
 }
 
 // vitalsNumbers are the numbers a session event keeps about a character's

@@ -63,7 +63,7 @@ func (s *Service) afterDamage(ctx context.Context, c *combatTx, target playdb.Co
 // concentration ends at 0 hit points, or the save opens when the damage threatens it.
 func (s *Service) concentrationAfterDamage(ctx context.Context, c *combatTx, target playdb.Combatant, d damageLanded) error {
 	if after := d.hit.After; after != nil && after.HP == 0 {
-		return s.endConcentrationAtZero(ctx, c, target, d)
+		return s.endConcentrationAtZero(ctx, c, target, d.pending.ID)
 	}
 	if d.hit.ConcentrationDC <= 0 {
 		return nil
@@ -78,9 +78,11 @@ func (s *Service) concentrationAfterDamage(ctx context.Context, c *combatTx, tar
 }
 
 // endConcentrationAtZero ends the concentration of a target the damage took to 0 hit points: it
-// is incapacitated and loses the concentration with no save (SRD, Duration).
-func (s *Service) endConcentrationAtZero(ctx context.Context, c *combatTx, target playdb.Combatant, d damageLanded) error {
-	ev := actionEvent{Round: c.enc.Round, Secret: target.Hidden, Actor: target.ID, Reaction: &reactionEvent{Kind: concentrationEnd, Group: d.pending.ID}}
+// is incapacitated and loses the concentration with no save (SRD, Duration). group names the change
+// that took it there (the pending damage, or the combatant the master adjusted), so that the undo of
+// that change finds this event and takes it back with it; a change with no undo passes "".
+func (s *Service) endConcentrationAtZero(ctx context.Context, c *combatTx, target playdb.Combatant, group string) error {
+	ev := actionEvent{Round: c.enc.Round, Secret: target.Hidden, Actor: target.ID, Reaction: &reactionEvent{Kind: concentrationEnd, Group: group}}
 	if err := s.stopConcentrating(ctx, c, target, &ev); err != nil {
 		return err
 	}

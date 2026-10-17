@@ -143,7 +143,7 @@ Reach is measured on the session's current map (touch 5 ft, ranged the spell's d
 Durations are game time, never the wall clock.
 `endSpellsAtRest` is the seam the master's rest calls.
 After damage outside combat, the master's HP correction returns the DC (10 or half the damage) in `AdjustCharacterVitalsResponse.concentration_dc` and `concentration_cast_id`; 0 HP ends the concentration.
-The same correction of a character who is a combatant of the open combat, taken to 0 HP, ends the combatant's concentration with the end a damage to 0 HP has (`stopConcentrating`: the spell's effects and creatures, and the log line); it writes no pending damage and no save, and it is nothing for an undo to take back.
+The same correction of a character who is a combatant of the open combat, taken to 0 HP, ends the combatant's concentration with the end a damage to 0 HP has (`stopConcentrating`: the spell's effects and creatures, and the log line); it writes no pending damage and no save, and it is nothing for an undo to take back. The same end follows an NPC the master takes to 0 HP with `AdjustCombatantHitPoints`, and that adjustment's undo gives the concentration back.
 
 **Who sees what (RN-10, RN-20).** The master reads every cast.
 A player names an NPC on the stage by its place on it (`StageNpc.id`), never by the character id, in the targets they send and in everything they read.
