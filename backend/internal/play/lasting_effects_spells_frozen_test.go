@@ -73,7 +73,7 @@ func TestLastingCoreASpellTakesHoldByWhatTheTargetIs(t *testing.T) {
 	cast(coreLaughter, 1, "Bandido", 1)
 	l.say("%s%s", a.coreEffects(t, e.GetId()), a.coreCombatants(t, e.GetId(), "Bandido", "Lobo", "Ogro", "Mímico", "Goblin", "Pensantus"))
 	l.say("events:\n%s", a.coreEvents(t, eventLastingAdded, eventLastingEnded))
-	wantLastingGolden(t, "spells_take_hold", a.coreNames(t, l.String()))
+	wantLastingGolden(t, "lasting_core", "spells_take_hold", a.coreNames(t, l.String()))
 }
 
 // The duration of the effect of a spell follows the spell: rounds of the minute counted from the
@@ -104,7 +104,7 @@ func TestLastingCoreASpellsEffectKeepsItsClockAndDC(t *testing.T) {
 	cast("Brisa", blessKey, 1, "Toren", "Pensantus", "Brisa")
 	l.say("%s%s", a.coreEffects(t, e.GetId()), a.coreCombatants(t, e.GetId(), "Goblin", "Pensantus", "Toren", "Brisa"))
 	l.say("events:\n%s", a.coreEvents(t, eventLastingAdded, eventLastingEnded))
-	wantLastingGolden(t, "spells_clock", a.coreNames(t, l.String()))
+	wantLastingGolden(t, "lasting_core", "spells_clock", a.coreNames(t, l.String()))
 }
 
 // The mode, the dice, the bonuses and the hidden sources of a roll of a character that is in no
@@ -165,5 +165,5 @@ func TestLastingCoreOutsideModeOfACharacter(t *testing.T) {
 	show("visible effects")
 	a.execSQL(t, `UPDATE character_effects SET player_visible = false WHERE character_id = $1 AND source_key IN ('spell:bless', 'spell:hold-person', 'spell:pass-without-trace', 'spell:haste')`, toren)
 	show("some effects hidden")
-	wantLastingGolden(t, "outside_mode", a.coreNames(t, l.String()))
+	wantLastingGolden(t, "lasting_core", "outside_mode", a.coreNames(t, l.String()))
 }

@@ -48,7 +48,7 @@ func TestLastingCoreARollSpendsAnEffectOutsideACombat(t *testing.T) {
 	a.coreSpend(t, "", effectDie{Once: false, EffectID: other, CharacterID: toren}, effectDie{Once: true}, effectDie{Once: true, EffectID: gift, CharacterID: toren},
 		effectDie{Once: true, EffectID: "00000000-0000-4000-8000-000000000001"})
 	l.say("nothing to spend:\n%s", a.coreCharacterEffects(t, toren))
-	wantLastingGolden(t, "once_outside", a.coreNames(t, l.String()))
+	wantLastingGolden(t, "lasting_core", "once_outside", a.coreNames(t, l.String()))
 }
 
 // In a combat the effect is a state of the character's combatant. The caster stops concentrating
@@ -91,7 +91,7 @@ func TestLastingCoreARollSpendsAnEffectInACombat(t *testing.T) {
 	a.coreSpend(t, "", effectDie{Once: true, EffectID: a.coreEffectID(t, e, "Toren", resistanceKey), CharacterID: toren})
 	snap("spent from outside the combat")
 	l.say("events:\n%s", a.coreEvents(t, eventLastingAdded, eventLastingEnded, eventConditionsSet))
-	wantLastingGolden(t, "once_in_combat", a.coreNames(t, l.String()))
+	wantLastingGolden(t, "lasting_core", "once_in_combat", a.coreNames(t, l.String()))
 }
 
 // The save of an effect that asks one takes the die of Resistance, and the die is spent.
@@ -123,5 +123,5 @@ func TestLastingCoreAnEffectSaveSpendsResistance(t *testing.T) {
 	}
 	l.say("%s%s", a.coreEffects(t, e.GetId()), a.coreCombatants(t, e.GetId(), "Toren"))
 	l.say("events:\n%s", a.coreEvents(t, eventLastingEnded, eventLastingSaved))
-	wantLastingGolden(t, "once_effect_save", a.coreNames(t, l.String()))
+	wantLastingGolden(t, "lasting_core", "once_effect_save", a.coreNames(t, l.String()))
 }
