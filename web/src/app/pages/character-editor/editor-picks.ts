@@ -1,5 +1,6 @@
 import { signal } from '@angular/core';
 
+import { toggledCapped } from '../../core/format/sets';
 import type { ChoiceSelection, ChoiceTextEdit } from '../../shared/choice-groups/choice-groups';
 import { applySelection, withChoiceText } from '../../shared/choice-groups/choice-picks';
 import type { CharacterFormValue, ExtraClassValue, SpellOptionVm } from './character-editor.types';
@@ -7,7 +8,6 @@ import type { ClassBlock } from './class-blocks';
 import {
   CUSTOM_BACKGROUND_PROFICIENCIES,
   CUSTOM_BACKGROUND_SKILLS,
-  toggledCapped,
   toggledExpertise,
   toggledSkill,
 } from './skill-picks';
