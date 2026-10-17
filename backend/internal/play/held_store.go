@@ -15,8 +15,8 @@ import (
 )
 
 // A roll can wait for a question before it resolves: the halfling's Lucky about a 1, a Bardic
-// Inspiration die about the roll. Two tables keep such a roll: inspiration_holds, for every kind since E4-6, and roll_holds, which
-// the weapon attack was kept in before and is only read now (combat_inspiration.go, inspiration_held.go);
+// Inspiration die about the roll. Two tables keep such a roll: inspiration_holds, for every kind, and roll_holds, where an older
+// release kept the weapon attack, which is only read (combat_inspiration.go, inspiration_held.go);
 // the stores of this file give both the one shape the gate (held_gate.go) works on, heldRoll, and
 // write an answer back where the roll lives.
 

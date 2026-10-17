@@ -13,8 +13,8 @@ import (
 type heldKindDef struct {
 	// write is the table the kind's holds are written to.
 	write heldTable
-	// alsoRead is the table the kind was written to before, which is only read: the holds the release before
-	// left open there are answered by the same path (the weapon attacks of roll_holds, until the contract).
+	// alsoRead is the table the kind was written to by an older release, which is only read: the holds left
+	// open there are answered by the same path (the weapon attacks of roll_holds, until the contract).
 	alsoRead heldTable
 	// refusedBy are the tables whose open question refuses a new roll of this kind in the gate, own table
 	// first.

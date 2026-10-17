@@ -17,8 +17,8 @@ import (
 // and keeps it with the request in an inspiration_holds row, writes nothing else, and answers with
 // the offer. AnswerBardicInspiration then asks RollAttack again for the same request with the
 // d20 already rolled, and with the die rolled and added when the player chose to use it.
-// A weapon attack (and the attack cantrips) is held here, in inspiration_holds since E4-6 (in roll_holds
-// before: the holds that release left open are still read). The other d20 rolls of the character wait in
+// A weapon attack (and the attack cantrips) is held here, in inspiration_holds (roll_holds is only
+// read, for the questions an older release left open). The other d20 rolls of the character wait in
 // the same table, as the scene check does (inspiration_held.go): the spell attack against one target, the saving throw of an effect, the concentration save, the trap
 // search and the puzzle hint try. The saving throws the app rolls for a target in a caster's call
 // (a spell's save, a hit rider's) do not wait for the die: the target's player is not rolling.
