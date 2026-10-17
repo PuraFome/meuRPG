@@ -88,6 +88,9 @@ enum AdvantageSourceKind {
   // next attack roll before the end of its next turn, which spends it). The text names the
   // effect; a player reads "Outra fonte" when the master hides it.
   ADVANTAGE_SOURCE_KIND_EFFECT_ATTACK = 108;
+  // The Protection fighting style: a shield-bearer within 5 ft of the target used its
+  // reaction, so the attack roll has disadvantage.
+  ADVANTAGE_SOURCE_KIND_PROTECTION = 109;
 }
 
 // AdvantageSource is one circumstance of a roll, as the caller may read it. A

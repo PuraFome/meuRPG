@@ -3479,7 +3479,12 @@ type DerivedSheet struct {
 	// The damage types the character resists because of its race (the dragonborn's
 	// ancestry, the tiefling's fire, the dwarf's poison). Applying the resistance to
 	// damage is the combat's; the sheet only shows it.
-	Resistances   []*Resistance `protobuf:"bytes,45,rep,name=resistances,proto3" json:"resistances,omitempty"`
+	Resistances []*Resistance `protobuf:"bytes,45,rep,name=resistances,proto3" json:"resistances,omitempty"`
+	// True when the sheet carries a shield that adds nothing to armor_class because a
+	// two-handed weapon is on the sheet too (the sheet lists what is carried, so it
+	// reads a two-handed weapon as the one in hand). The player gets the bonus back by
+	// taking the weapon off the sheet.
+	ShieldIdle    bool `protobuf:"varint,46,opt,name=shield_idle,json=shieldIdle,proto3" json:"shield_idle,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3827,6 +3832,13 @@ func (x *DerivedSheet) GetResistances() []*Resistance {
 		return x.Resistances
 	}
 	return nil
+}
+
+func (x *DerivedSheet) GetShieldIdle() bool {
+	if x != nil {
+		return x.ShieldIdle
+	}
+	return false
 }
 
 // BreathWeapon is the dragonborn's Breath Weapon (SRD 5.1, Dragonborn): the dragon
@@ -11178,7 +11190,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\adesc_pt\x18\v \x03(\tR\x06descPt\x12&\n" +
 	"\x0fdesc_pt_missing\x18\f \x01(\bR\rdescPtMissing\x12 \n" +
 	"\fdesc_pt_only\x18\r \x01(\bR\n" +
-	"descPtOnly\"\xbd\x11\n" +
+	"descPtOnly\"\xde\x11\n" +
 	"\fDerivedSheet\x12'\n" +
 	"\x0fcontent_version\x18\x01 \x01(\tR\x0econtentVersion\x12 \n" +
 	"\frace_name_pt\x18\x02 \x01(\tR\n" +
@@ -11233,7 +11245,9 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x17background_equipment_pt\x18* \x01(\tR\x15backgroundEquipmentPt\x125\n" +
 	"\x17hit_points_from_effects\x18+ \x01(\x05R\x14hitPointsFromEffects\x12B\n" +
 	"\rbreath_weapon\x18, \x01(\v2\x1d.meurpg.rules.v1.BreathWeaponR\fbreathWeapon\x12=\n" +
-	"\vresistances\x18- \x03(\v2\x1b.meurpg.rules.v1.ResistanceR\vresistances\"\xe3\x02\n" +
+	"\vresistances\x18- \x03(\v2\x1b.meurpg.rules.v1.ResistanceR\vresistances\x12\x1f\n" +
+	"\vshield_idle\x18. \x01(\bR\n" +
+	"shieldIdle\"\xe3\x02\n" +
 	"\fBreathWeapon\x12!\n" +
 	"\fancestry_key\x18\x01 \x01(\tR\vancestryKey\x12\x1f\n" +
 	"\vdamage_type\x18\x02 \x01(\tR\n" +
