@@ -21,6 +21,9 @@ type rpcScript struct {
 	t *testing.T
 	a *armed
 	b strings.Builder
+	// rules writes each answer with only the fields of rpcRuleKeys, for the scenarios whose
+	// answers are the same card many times over.
+	rules bool
 }
 
 func (a *armed) rpcScript(t *testing.T) *rpcScript {
@@ -44,6 +47,10 @@ func (s *rpcScript) say(name string, res proto.Message, err error) {
 	clone := proto.Clone(res)
 	if f := clone.ProtoReflect().Descriptor().Fields().ByName("encounter"); f != nil {
 		clone.ProtoReflect().Clear(f)
+	}
+	if s.rules {
+		fmt.Fprintf(&s.b, "%s\n", s.a.rpcRuleJSON(s.t, clone))
+		return
 	}
 	fmt.Fprintf(&s.b, "%s\n", s.a.rpcJSON(s.t, clone))
 }
@@ -151,6 +158,7 @@ func TestLastingRPCChangeTheDuration(t *testing.T) {
 	a := newCasters(t)
 	e := a.rpcFight(t)
 	s := a.rpcScript(t)
+	s.rules = true
 	bless, hold, prone := a.rpcEffectID(t, blessKey, "Toren"), a.rpcEffectID(t, holdPerson, "Goblin"), a.rpcEffectID(t, "condition:prone", "Brisa")
 	rounds := func(n int32) *playv1.EffectDurationChoice { return a.rpcChoice(t, rpcDurRounds, n, "Pensantus") }
 
@@ -241,6 +249,7 @@ func TestLastingRPCSetTheVisibility(t *testing.T) {
 	a := newCasters(t)
 	e := a.rpcFight(t)
 	s := a.rpcScript(t)
+	s.rules = true
 	bless, hold := a.rpcEffectID(t, blessKey, "Toren"), a.rpcEffectID(t, holdPerson, "Goblin")
 	set := func(visible bool, audience playv1.EffectAudience, label string) func(*playv1.SetLastingEffectVisibilityRequest) {
 		return func(r *playv1.SetLastingEffectVisibilityRequest) {

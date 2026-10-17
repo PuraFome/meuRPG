@@ -204,6 +204,54 @@ func (a *armed) rpcJSON(t *testing.T, m proto.Message) string {
 	return a.rpcCanonicalText(t, raw)
 }
 
+// rpcRuleKeys are the fields of an answer that carry the rules of an effect and not the shape of
+// the proto: who it is on, who may read it, whose it is, when it ends and the clock text that says
+// so. rpcRuleJSON keeps only these, so a new field of the proto does not rewrite a golden.
+var rpcRuleKeys = map[string]bool{
+	"effect": true, "effects": true, "concentrations": true, "id": true, "sourceKey": true,
+	"audience": true, "playerVisible": true, "label": true, "playerLabel": true,
+	"casterId": true, "casterLabel": true, "targetLabels": true, "combatantLabel": true,
+	"effectId": true, "effectIds": true, "spellKey": true, "concentration": true,
+	"durationKind": true, "roundsLeft": true, "clockTextPt": true,
+	"endsAt": true, "combatantId": true, "phase": true, "round": true, "currentCombatantId": true,
+	"characterName": true, "durationTextPt": true, "secondsLeft": true,
+}
+
+// rpcRuleJSON writes a message like rpcJSON, with only the fields of rpcRuleKeys.
+func (a *armed) rpcRuleJSON(t *testing.T, m proto.Message) string {
+	t.Helper()
+	raw, err := protojson.Marshal(m)
+	if err != nil {
+		t.Fatalf("encode a message: %v", err)
+	}
+	var v any
+	if err := json.Unmarshal([]byte(a.rpcClean(t, string(raw))), &v); err != nil {
+		t.Fatalf("read a message: %v", err)
+	}
+	return rpcCanonical(rpcKeepKeys(v))
+}
+
+// rpcKeepKeys drops, at every depth, the object fields that are not in rpcRuleKeys.
+func rpcKeepKeys(v any) any {
+	switch x := v.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(x))
+		for k, e := range x {
+			if rpcRuleKeys[k] {
+				out[k] = rpcKeepKeys(e)
+			}
+		}
+		return out
+	case []any:
+		out := make([]any, len(x))
+		for i, e := range x {
+			out[i] = rpcKeepKeys(e)
+		}
+		return out
+	}
+	return v
+}
+
 // rpcCanonicalText replaces the ids of a JSON text by their labels and then writes it indented,
 // with the lists of ids sorted (by label: the order of the ids themselves is random).
 func (a *armed) rpcCanonicalText(t *testing.T, raw []byte) string {

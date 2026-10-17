@@ -106,7 +106,7 @@ func TestLastingRPCListsTheTableAndTheClock(t *testing.T) {
 	res := list(nil)
 	catalog := res.Catalog
 	res.Catalog = nil
-	wantLastingGolden(t, "lasting_rpc", "list_table", a.rpcJSON(t, res))
+	wantLastingGolden(t, "lasting_rpc", "list_table", a.rpcRuleJSON(t, res))
 	var lines []string
 	for _, c := range catalog {
 		lines = append(lines, strings.Join([]string{
@@ -120,7 +120,7 @@ func TestLastingRPCListsTheTableAndTheClock(t *testing.T) {
 	a.turnOf(t, "Pensantus")
 	res = list(nil)
 	res.Catalog = nil
-	wantLastingGolden(t, "lasting_rpc", "list_table_round_two", a.rpcJSON(t, res))
+	wantLastingGolden(t, "lasting_rpc", "list_table_round_two", a.rpcRuleJSON(t, res))
 	// Without a combat only the catalog comes.
 	bare := list(func(r *playv1.ListLastingEffectsRequest) { r.EncounterId = "" })
 	if len(bare.GetEffects()) != 0 || bare.GetRound() != 0 || len(bare.GetCatalog()) != len(catalog) {
