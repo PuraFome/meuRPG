@@ -65,7 +65,7 @@ func (s *rpcScript) state(name string, kinds ...string) {
 	}
 }
 
-func (s *rpcScript) want(name string) { wantRPCGolden(s.t, name, s.b.String()) }
+func (s *rpcScript) want(name string) { wantLastingGolden(s.t, "lasting_rpc", name, s.b.String()) }
 
 func (a *armed) rpcChange(t *testing.T, u *user, e *playv1.Encounter, effect string, dur *playv1.EffectDurationChoice, edit ...func(*playv1.ChangeLastingEffectDurationRequest)) (*playv1.ChangeLastingEffectDurationResponse, error) {
 	t.Helper()

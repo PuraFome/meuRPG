@@ -24,21 +24,20 @@ import (
 // duration, the visibility, end, take a target off), of the card a viewer reads of them and of the
 // way the effects move between a combat and game time. A scenario's text is a file in
 // testdata/lasting_rpc with the ids replaced by labels; a change here is a change of behavior, not
-// of structure. Run with -update-lasting-rpc to write the files again after a change that was
+// of structure. Run with -update-lasting to write the files again after a change that was
 // meant, and read the diff.
 
-var updateLastingRPC = flag.Bool("update-lasting-rpc", false, "write the golden files of the lasting effects' calls again")
+var updateLasting = flag.Bool("update-lasting", false, "write the golden files of the lasting effects (testdata/lasting_core and testdata/lasting_rpc) again")
 
 var (
-	rpcUUID = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`)
 	rpcTime = regexp.MustCompile(`\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z`)
 )
 
-// wantRPCGolden compares got with the golden file of the scenario.
-func wantRPCGolden(t *testing.T, name, got string) {
+// wantLastingGolden compares got with the golden file of the scenario in testdata/<dir>.
+func wantLastingGolden(t *testing.T, dir, name, got string) {
 	t.Helper()
-	path := filepath.Join("testdata", "lasting_rpc", name+".golden")
-	if *updateLastingRPC {
+	path := filepath.Join("testdata", dir, name+".golden")
+	if *updateLasting {
 		if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 			t.Fatal(err)
 		}
@@ -49,10 +48,10 @@ func wantRPCGolden(t *testing.T, name, got string) {
 	}
 	want, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("read the golden file: %v (write it with -update-lasting-rpc)", err)
+		t.Fatalf("read the golden file: %v (write it with -update-lasting)", err)
 	}
 	if string(want) != got {
-		t.Errorf("%s differs from its golden file (-update-lasting-rpc writes it again):\n--- want\n%s\n--- got\n%s", name, want, got)
+		t.Errorf("%s differs from its golden file (-update-lasting writes it again):\n--- want\n%s\n--- got\n%s", name, want, got)
 	}
 }
 
@@ -182,7 +181,7 @@ func (a *armed) rpcClean(t *testing.T, text string) string {
 	t.Helper()
 	labels := a.rpcLabels(t)
 	text = rpcTime.ReplaceAllString(text, "<time>")
-	return rpcUUID.ReplaceAllStringFunc(text, func(id string) string {
+	return uuidText.ReplaceAllStringFunc(text, func(id string) string {
 		if l, ok := labels[id]; ok {
 			return l
 		}

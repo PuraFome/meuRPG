@@ -85,7 +85,7 @@ func TestLastingRPCListsTheEffectsOnTheCharacters(t *testing.T) {
 	a := newCastingParty(t)
 	a.rpcOutsideParty(t)
 	for name, u := range map[string]*user{"master": a.master, "toren": a.caio, "pens": a.ana, "bri": a.bia} {
-		wantRPCGolden(t, "characters_"+name, a.rpcJSON(t, a.rpcSortedCharacterEffects(t, u)))
+		wantLastingGolden(t, "lasting_rpc", "characters_"+name, a.rpcJSON(t, a.rpcSortedCharacterEffects(t, u)))
 	}
 	// A character that is gone from the campaign's table (reserved or deleted) is read by nobody.
 	a.execSQL(t, `INSERT INTO character_effects (campaign_id, character_id, group_id, source_key, source_kind, duration_kind)
