@@ -50,6 +50,12 @@ type zoneDef struct {
 	save string
 	// sparesAllies says the zone does not touch the caster or the caster's allies.
 	sparesAllies bool
+	// dice and dtype are the damage of a zone whose spell does not give it as a table the cast can read (the
+	// zone of a spell with no saving throw: the damage just lands); empty: the cast's own.
+	dice, dtype string
+	// onEnter and onStart say when the zone catches a creature: when it comes in the first time on a turn,
+	// when it starts its turn inside.
+	onEnter, onStart bool
 	// corners says the area spreads around corners: it is the part of the shape the origin reaches.
 	corners bool
 	// keepsCastHits says the cast still hits the creatures inside the area when the spell is cast (the
@@ -74,19 +80,19 @@ const (
 
 var zoneDefs = map[string]zoneDef{
 	"spell:spirit-guardians": {
-		kind: zoneDamage, shape: grid.ShapeSphere, sizeFt: spiritGuardiansFt, save: "wis", sparesAllies: true,
+		kind: zoneDamage, onEnter: true, onStart: true, shape: grid.ShapeSphere, sizeFt: spiritGuardiansFt, save: "wis", sparesAllies: true,
 		placement: playv1.AreaPlacement_AREA_PLACEMENT_CASTER, movement: playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_FOLLOWS_CASTER,
 	},
 	"spell:moonbeam": {
-		kind: zoneDamage, shape: grid.ShapeCylinder, sizeFt: moonbeamFt, save: "con",
+		kind: zoneDamage, onEnter: true, onStart: true, shape: grid.ShapeCylinder, sizeFt: moonbeamFt, save: "con",
 		placement: playv1.AreaPlacement_AREA_PLACEMENT_POINT, movement: playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_ACTION,
 	},
 	"spell:cloudkill": {
-		kind: zoneDamage, shape: grid.ShapeSphere, sizeFt: cloudkillFt, save: "con", corners: true,
+		kind: zoneDamage, onEnter: true, onStart: true, shape: grid.ShapeSphere, sizeFt: cloudkillFt, save: "con", corners: true,
 		placement: playv1.AreaPlacement_AREA_PLACEMENT_POINT, movement: playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_DRIFTS,
 	},
 	"spell:web": {
-		kind: zoneRestrain, shape: grid.ShapeCube, sizeFt: webFt, save: "dex", keepsCastHits: true,
+		kind: zoneRestrain, onEnter: true, onStart: true, shape: grid.ShapeCube, sizeFt: webFt, save: "dex", keepsCastHits: true,
 		placement: playv1.AreaPlacement_AREA_PLACEMENT_POINT, movement: playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_FIXED,
 	},
 }
