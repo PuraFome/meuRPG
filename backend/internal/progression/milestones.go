@@ -88,7 +88,7 @@ func (s *Service) AddMilestone(
 		return nil, err
 	}
 	// The key is unique in the campaign, and kept with a hash of the whole request.
-	scopedKey, requestHash := idem.Scope(m.CampaignID, key), idem.Hash(req.Msg)
+	scopedKey, requestHash := idem.Scope(m.CampaignID, key), addMilestoneHash(req.Msg, text)
 	newMilestone := plannedInsert{campaignID: m.CampaignID, text: text, key: scopedKey, hash: requestHash}
 	var added progressiondb.PlannedMilestone
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
@@ -104,6 +104,11 @@ func (s *Service) AddMilestone(
 		return nil, s.dbError(ctx, "read the milestones", err)
 	}
 	return connect.NewResponse(&progressionv1.AddMilestoneResponse{Milestone: milestoneByID(views, added.ID), Milestones: views}), nil
+}
+
+// addMilestoneHash is the hash AddMilestone keeps with its key.
+func addMilestoneHash(req *progressionv1.AddMilestoneRequest, text string) *string {
+	return idem.Hash(req)
 }
 
 // plannedInsert is the milestone AddMilestone writes: its campaign, its text
