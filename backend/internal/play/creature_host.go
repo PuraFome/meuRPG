@@ -86,6 +86,24 @@ func openCombatOf(ctx context.Context, q *playdb.Queries, campaignID string) (pl
 	return session, enc, true, nil
 }
 
+// openCombatants is the session's open combat and all its combatants, dismissed and defeated
+// ones included; false when the session has no combat. Whether such a combatant counts as "in
+// the combat" is each caller's own predicate.
+func openCombatants(ctx context.Context, q *playdb.Queries, sessionID string) (playdb.Encounter, []playdb.Combatant, bool, error) {
+	enc, err := q.GetOpenEncounter(ctx, sessionID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return enc, nil, false, nil
+	}
+	if err != nil {
+		return enc, nil, false, fmt.Errorf("find the open encounter: %w", err)
+	}
+	cs, err := q.ListCombatants(ctx, enc.ID)
+	if err != nil {
+		return enc, nil, false, fmt.Errorf("list the combatants: %w", err)
+	}
+	return enc, cs, true, nil
+}
+
 // endSights ends the sight of the players who look through a creature that leaves and
 // reads the combatants again, as their conditions changed; cs and leaving are returned as
 // they were when none looks through one.
