@@ -17,13 +17,11 @@ export function newKey(): string {
  *   same text), is a new action with a new key.
  */
 export class ActionKey {
-  private key: string;
+  private key = '';
   private last = '';
 
-  /** `make` mints the keys (a spec passes a counter to see them). */
-  constructor(private readonly make: () => string = newKey) {
-    this.key = make();
-  }
+  /** `make` mints the keys (a spec passes a counter to see them). A key is minted when an action asks for one. */
+  constructor(private readonly make: () => string = newKey) {}
 
   keyFor(what: unknown): string {
     // BigInt values (a seed) have no JSON form of their own.
@@ -38,7 +36,6 @@ export class ActionKey {
   }
 
   renew(): void {
-    this.key = this.make();
     this.last = '';
   }
 }

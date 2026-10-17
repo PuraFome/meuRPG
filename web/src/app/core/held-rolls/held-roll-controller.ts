@@ -35,6 +35,9 @@ export interface HeldRollHost {
   readonly now?: () => number;
   /** Mints the idempotency keys. */
   readonly newKey?: () => string;
+  /** Words a failure in the place's own terms (a puzzle says "Este quebra-cabeça não existe mais"); a lost race and the
+   * master's early answer keep the controller's words. */
+  readonly describeError?: (err: unknown, answer: HeldAnswer) => string;
 }
 
 /**
@@ -99,12 +102,14 @@ export class HeldRollController {
       this.keys.renew();
       this.offer.set(res.next ?? null);
     } catch (err) {
-      this.refusal.set(heldRollRefusal(err));
+      const refusal = heldRollRefusal(err);
+      this.refusal.set(refusal);
       this.error.set(
-        heldRollErrorMessage(err, answer, {
-          roller: asked.rollerLabel,
-          seconds: this.waitSeconds(),
-        }),
+        (!refusal && this.host.describeError?.(err, answer)) ||
+          heldRollErrorMessage(err, answer, {
+            roller: asked.rollerLabel,
+            seconds: this.waitSeconds(),
+          }),
       );
     } finally {
       this.busy.set(false);

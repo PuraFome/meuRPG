@@ -31,9 +31,9 @@ describe('ActionKey', () => {
   it('mints its keys with the factory it is given', () => {
     let n = 0;
     const k = new ActionKey(() => `key-${n++}`);
-    expect(k.keyFor('a')).toBe('key-1');
-    expect(k.keyFor('a')).toBe('key-1');
+    expect(k.keyFor('a')).toBe('key-0');
+    expect(k.keyFor('a')).toBe('key-0');
     k.renew();
-    expect(k.keyFor('a')).toBe('key-3');
+    expect(k.keyFor('a')).toBe('key-1');
   });
 });
