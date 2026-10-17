@@ -156,7 +156,7 @@ const (
 	AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_ATTACK AdvantageSourceKind = 108
 	// The Protection fighting style: a shield-bearer within 5 ft of the target used its
 	// reaction, so the attack roll has disadvantage.
-	AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_PROTECTION AdvantageSourceKind = 109
+	AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_PROTECTION AdvantageSourceKind = 110
 )
 
 // Enum value maps for AdvantageSourceKind.
@@ -202,7 +202,7 @@ var (
 		106: "ADVANTAGE_SOURCE_KIND_EFFECT_DIE",
 		107: "ADVANTAGE_SOURCE_KIND_EFFECT_CHECK",
 		108: "ADVANTAGE_SOURCE_KIND_EFFECT_ATTACK",
-		109: "ADVANTAGE_SOURCE_KIND_PROTECTION",
+		110: "ADVANTAGE_SOURCE_KIND_PROTECTION",
 	}
 	AdvantageSourceKind_value = map[string]int32{
 		"ADVANTAGE_SOURCE_KIND_UNSPECIFIED":         0,
@@ -245,7 +245,7 @@ var (
 		"ADVANTAGE_SOURCE_KIND_EFFECT_DIE":          106,
 		"ADVANTAGE_SOURCE_KIND_EFFECT_CHECK":        107,
 		"ADVANTAGE_SOURCE_KIND_EFFECT_ATTACK":       108,
-		"ADVANTAGE_SOURCE_KIND_PROTECTION":          109,
+		"ADVANTAGE_SOURCE_KIND_PROTECTION":          110,
 	}
 )
 
@@ -1796,7 +1796,7 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	" ADVANTAGE_SOURCE_KIND_EFFECT_DIE\x10j\x12&\n" +
 	"\"ADVANTAGE_SOURCE_KIND_EFFECT_CHECK\x10k\x12'\n" +
 	"#ADVANTAGE_SOURCE_KIND_EFFECT_ATTACK\x10l\x12$\n" +
-	" ADVANTAGE_SOURCE_KIND_PROTECTION\x10m*\xb3\x01\n" +
+	" ADVANTAGE_SOURCE_KIND_PROTECTION\x10n*\xb3\x01\n" +
 	"\x15RollModeRequestStatus\x12(\n" +
 	"$ROLL_MODE_REQUEST_STATUS_UNSPECIFIED\x10\x00\x12$\n" +
 	" ROLL_MODE_REQUEST_STATUS_PENDING\x10\x01\x12%\n" +

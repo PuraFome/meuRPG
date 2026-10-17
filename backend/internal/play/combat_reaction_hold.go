@@ -37,6 +37,8 @@ type replayState struct {
 	// damage), and deflected what Deflect Missiles took off the damage.
 	reduction int32
 	deflected int32
+	// after is the total of a held check once the die came off (cutRoll).
+	after int32
 	// halve: Uncanny Dodge halved the damage.
 	halve bool
 	// protectors are the shield-bearers whose Protection gave the attack roll disadvantage.
@@ -234,7 +236,7 @@ func (s *Service) replayHeld(ctx context.Context, m authz.Membership, h playdb.R
 		_, err := s.rollDamage(ctx, m, connect.NewRequest(&req))
 		return err
 	}
-	return fmt.Errorf("a held action of kind %q", h.Kind)
+	return s.replayHeldCheck(ctx, m, h)
 }
 
 // settleReplay reads how the replay of a held action ended: the event that stands for
@@ -303,6 +305,15 @@ func (s *Service) completeAnswers(c *combatTx, windows []playdb.ReactionWindow, 
 		case "damage":
 			ref.ev.Before = st.rolledTotal()
 			ref.ev.After = done.Amount
+		case "cast":
+			// A spell attack: the one roll the die came off (a Counterspell's answer keeps its own numbers).
+			if len(done.Hits) == 1 && ref.ev.Kind == string(reaction.CuttingWords) {
+				ref.ev.Outcome, ref.ev.AC, ref.ev.After = done.Hits[0].Outcome, done.Hits[0].TargetAC, done.Hits[0].Total
+				ref.ev.Before = done.Hits[0].Total + st.reduction
+			}
+		default: // a check: the total it became
+			ref.ev.After = st.after
+			ref.ev.Before = st.after + st.reduction
 		}
 	}
 }

@@ -712,11 +712,10 @@ func (f *attackFlow) openHitDamage(ctx context.Context) error {
 		f.out.made.Outcome = outcomeCrit
 	}
 	bonus := f.damageBonus()
-	hit := extraDiceAttack(f.c.enc, f.attack, f.attacker, f.coverTarget, f.call.opportunity())
-	savage := savageAttacksDice(f.attacker, hit, f.sheet, f.result.Critical)
+	savage := savageAttacksDice(f.attacker, f.attack, f.sheet, f.result.Critical)
 	p, err := f.s.openHit(ctx, f.c, f.attacker, f.target, f.attackKey,
 		link.Dice{Count: f.attack.DiceCount, Sides: f.attack.DiceSides, Bonus: bonus, DamageType: f.attack.DamageType}, f.result.Critical,
-		brutalCriticalDice(f.attacker, hit, f.sheet, f.result.Critical)+savage, savage, f.result.Total, f.targetAC)
+		brutalCriticalDice(f.attacker, f.attack, f.sheet, f.result.Critical)+savage, savage, f.result.Total, f.targetAC)
 	if err != nil {
 		return err
 	}

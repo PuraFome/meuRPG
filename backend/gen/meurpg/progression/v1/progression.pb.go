@@ -2090,9 +2090,14 @@ type MoveMilestoneRequest struct {
 	CampaignId  string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
 	MilestoneId string                 `protobuf:"bytes,2,opt,name=milestone_id,json=milestoneId,proto3" json:"milestone_id,omitempty"`
 	// Required.
-	Direction     MilestoneDirection `protobuf:"varint,3,opt,name=direction,proto3,enum=meurpg.progression.v1.MilestoneDirection" json:"direction,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Direction MilestoneDirection `protobuf:"varint,3,opt,name=direction,proto3,enum=meurpg.progression.v1.MilestoneDirection" json:"direction,omitempty"`
+	// Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
+	// same key and the same request moves nothing again and returns the list as it is. The key
+	// is unique in the campaign; the same key with another request is `invalid_argument`.
+	// Empty: the call is not deduplicated.
+	IdempotencyKey string `protobuf:"bytes,4,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *MoveMilestoneRequest) Reset() {
@@ -2144,6 +2149,13 @@ func (x *MoveMilestoneRequest) GetDirection() MilestoneDirection {
 		return x.Direction
 	}
 	return MilestoneDirection_MILESTONE_DIRECTION_UNSPECIFIED
+}
+
+func (x *MoveMilestoneRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
 }
 
 type MoveMilestoneResponse struct {
@@ -2688,12 +2700,13 @@ const file_meurpg_progression_v1_progression_proto_rawDesc = "" +
 	"\tmilestone\x18\x01 \x01(\v2 .meurpg.progression.v1.MilestoneR\tmilestone\x12@\n" +
 	"\n" +
 	"milestones\x18\x02 \x03(\v2 .meurpg.progression.v1.MilestoneR\n" +
-	"milestones\"\xa3\x01\n" +
+	"milestones\"\xcc\x01\n" +
 	"\x14MoveMilestoneRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
 	"\fmilestone_id\x18\x02 \x01(\tR\vmilestoneId\x12G\n" +
-	"\tdirection\x18\x03 \x01(\x0e2).meurpg.progression.v1.MilestoneDirectionR\tdirection\"Y\n" +
+	"\tdirection\x18\x03 \x01(\x0e2).meurpg.progression.v1.MilestoneDirectionR\tdirection\x12'\n" +
+	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\"Y\n" +
 	"\x15MoveMilestoneResponse\x12@\n" +
 	"\n" +
 	"milestones\x18\x01 \x03(\v2 .meurpg.progression.v1.MilestoneR\n" +

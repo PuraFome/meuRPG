@@ -122,6 +122,9 @@ type castHit struct {
 	Extra    []effectDie `json:"extra,omitempty"`
 	Physical bool        `json:"physical,omitempty"`
 	Save     *saveRoll   `json:"save,omitempty"`
+	// Pushed is the forced move a failed save made (combat_forced.go): nil when the target
+	// stayed where it was.
+	Pushed *forcedMove `json:"pushed,omitempty"`
 	// BonusSides and BonusFace are the Bardic Inspiration die the player added to the spell
 	// attack after the d20 (the total already holds it).
 	BonusSides int32 `json:"bonus_sides,omitempty"`

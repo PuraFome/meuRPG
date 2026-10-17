@@ -85,6 +85,7 @@ Connect errors become Portuguese messages through a `Code → text` map (`core/c
 `unknown`, which the server answers when a commit is ambiguous, reads "Não deu para confirmar se a alteração foi salva. Confira na tela antes de tentar de novo."
 `AcceptInvite`'s `failed_precondition` carries the `InviteUnusable` detail, which `core/campaigns/invite-errors.ts` reads to say why (expired, revoked, used up).
 `core/characters/character-errors.ts` gives every `CharacterBlockedReason` a sentence of its own, and `character-blocked-reasons.spec.ts` walks the generated enum so a reason added to `characters.proto` fails the spec until its sentence exists.
+Every reason the server can send is in `proto/error-reasons.json`, and `core/errors/error-reasons.spec.ts` fails for a listed reason with no sentence (body reasons are worded in `core/errors/body-reasons.ts`); see [Error reasons](api.md#error-reasons).
 A campaign the user is not a member of and one that does not exist arrive as the same `not_found` (ADR-0011) and show the same screen: the app never tries to tell them apart.
 
 ## Session state

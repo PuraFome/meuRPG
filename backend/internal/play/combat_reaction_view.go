@@ -422,6 +422,8 @@ func (wv *windowView) masterCheckPrompt(w playdb.ReactionWindow, out *playv1.Rea
 		summary = fmt.Sprintf("Conjuração de %s", a.Label)
 	case t.Roll == "damage":
 		summary = fmt.Sprintf("Dano de %s em %s", a.Label, tg.Label)
+	case t.Roll == "test":
+		summary = fmt.Sprintf("Teste de %s", a.Label)
 	case t.AC != 0 || t.Total != 0:
 		summary += " · acertou"
 	}

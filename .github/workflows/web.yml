@@ -10,12 +10,14 @@ on:
   pull_request:
     paths:
       - "web/**"
+      - "proto/error-reasons.json"
       - ".github/workflows/web.yml"
       - ".node-version"
   push:
     branches: [main]
     paths:
       - "web/**"
+      - "proto/error-reasons.json"
       - ".github/workflows/web.yml"
       - ".node-version"
 

@@ -90,7 +90,7 @@ enum AdvantageSourceKind {
   ADVANTAGE_SOURCE_KIND_EFFECT_ATTACK = 108;
   // The Protection fighting style: a shield-bearer within 5 ft of the target used its
   // reaction, so the attack roll has disadvantage.
-  ADVANTAGE_SOURCE_KIND_PROTECTION = 109;
+  ADVANTAGE_SOURCE_KIND_PROTECTION = 110;
 }
 
 // AdvantageSource is one circumstance of a roll, as the caller may read it. A
