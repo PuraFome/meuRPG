@@ -1,19 +1,11 @@
 import { type Signal, computed } from '@angular/core';
 
 import type { LevelUpOptions } from '../../../gen/meurpg/characters/v1/characters_pb';
-import { Ability, type FeatOption } from '../../../gen/meurpg/rules/v1/rules_pb';
+import type { Ability, FeatOption } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { ABILITY_FROM_GEN } from '../characters/ability-gen';
 import type { AbilityKey } from '../characters/characters.types';
 import { abilityName } from '../content/feat-text';
 import type { AsiMode } from './levelup-draft-types';
-
-const WIRE_OF_ABILITY: Readonly<Record<number, AbilityKey>> = {
-  [Ability.STRENGTH]: 'str',
-  [Ability.DEXTERITY]: 'dex',
-  [Ability.CONSTITUTION]: 'con',
-  [Ability.INTELLIGENCE]: 'int',
-  [Ability.WISDOM]: 'wis',
-  [Ability.CHARISMA]: 'cha',
-};
 
 /** The picks the ability step holds, which the abilities of the draft are read from. */
 export interface AbilityPicks {
@@ -80,7 +72,7 @@ export class LevelUpAbilities {
     const raised = this.featFixed()
       ? (this.feat()?.increase?.from ?? [])
       : this.picks.featAbilities();
-    return raised.map((a) => WIRE_OF_ABILITY[a]);
+    return raised.map((a) => ABILITY_FROM_GEN[a]);
   });
   readonly abilityIncrease = computed<Partial<Record<AbilityKey, number>>>(() => {
     if (this.taking()) {
@@ -90,7 +82,7 @@ export class LevelUpAbilities {
       if (!inc || this.featFixed() || picked.length !== this.featAsked()) {
         return {};
       }
-      return Object.fromEntries(picked.map((a) => [WIRE_OF_ABILITY[a], inc.value]));
+      return Object.fromEntries(picked.map((a) => [ABILITY_FROM_GEN[a], inc.value]));
     }
     const keys = this.picks.abilityKeys();
     if (!this.options.abilityScoreImprovement || keys.length !== this.abilityAsked()) {

@@ -24,12 +24,6 @@ import {
   emptySpell,
 } from './spell-types';
 
-// The spell form's pieces live in three files (the draft types, the select options, the preview); this one converts between a
-// stored spell and the form, and keeps the old import path for all of them.
-export * from './spell-options';
-export * from './spell-preview';
-export * from './spell-types';
-
 const TIME_TO_UNIT: Record<TimeChoice, CastingTimeUnit> = {
   action: CastingTimeUnit.ACTION,
   bonus_action: CastingTimeUnit.BONUS_ACTION,

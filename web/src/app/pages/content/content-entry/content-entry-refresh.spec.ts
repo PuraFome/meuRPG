@@ -7,12 +7,8 @@ import { Role } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { ContentSchema } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { CampaignsService } from '../../../core/campaigns/campaigns.service';
 import { TableContentClient } from '../../../core/content/content-client';
-import {
-  classDefaults,
-  fakeContentWatcher,
-  menuResponse,
-  mirathel,
-} from '../../../core/content/content-testing';
+import { classDefaults, fakeContentWatcher, mirathel } from '../../../core/content/content-testing';
+import { menuResponse } from '../../../core/content/content-testing-menu';
 import { ContentEntry } from './content-entry';
 import { nextTurn } from '../../../../test-settle';
 

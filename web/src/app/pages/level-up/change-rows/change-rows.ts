@@ -1,7 +1,7 @@
 import { Component, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import type { ChangeRow } from '../../../core/levelup/levelup-summary';
+import type { ChangeRow } from '../../../core/levelup/levelup-summary-rows';
 
 /**
  * Rows of "before → after" (the summary, "O que muda com Inteligência 20", the right

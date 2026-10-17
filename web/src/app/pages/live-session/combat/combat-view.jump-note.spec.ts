@@ -89,13 +89,12 @@ describe('a jump stopped early keeps its note', () => {
     await fixture.whenStable();
 
     const view = fixture.componentInstance as unknown as {
-      confirmJump(r: unknown): Promise<void>;
-      moveNote(): string;
+      moves: { confirmJump(r: unknown): Promise<void>; moveNote(): string };
     };
-    await view.confirmJump({ kind: 'long', square: { col: 3, row: 3 } });
+    await view.moves.confirmJump({ kind: 'long', square: { col: 3, row: 3 } });
 
-    expect(view.moveNote()).toContain('parou antes');
-    expect(view.moveNote()).not.toContain('saltou');
+    expect(view.moves.moveNote()).toContain('parou antes');
+    expect(view.moves.moveNote()).not.toContain('saltou');
   });
 });
 
@@ -160,10 +159,10 @@ describe("the master's drag that a door stopped", () => {
     fixture.detectChanges();
     await fixture.whenStable();
     const view = fixture.componentInstance as unknown as {
-      drop(d: { id: string; col: number; row: number }): Promise<void>;
+      moves: { drop(d: { id: string; col: number; row: number }): Promise<void> };
       error(): string;
     };
-    await view.drop({ id: 'g', col: 4, row: 4 });
+    await view.moves.drop({ id: 'g', col: 4, row: 4 });
     return view.error();
   }
 

@@ -3119,9 +3119,9 @@ describe('CharacterSheetPage: a write that fails, or lands after the person left
     const el = fixture.nativeElement as HTMLElement;
     click(el, 'Aprovar personagem');
     const component = fixture.componentInstance as unknown as {
-      markDead(c: string, id: string): Promise<void>;
+      writes: { markDead(c: string, id: string): Promise<void> };
     };
-    const dying = component.markDead('camp-1', 'char-A');
+    const dying = component.writes.markDead('camp-1', 'char-A');
 
     params.next(convertToParamMap({ id: 'camp-1', characterId: 'char-B' }));
     await nextTurn();

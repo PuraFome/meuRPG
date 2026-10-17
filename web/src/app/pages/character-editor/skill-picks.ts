@@ -1,4 +1,4 @@
-import { toggledIn } from './spell-picks';
+import { toggledIn } from '../../core/format/sets';
 
 /** The most skills the "Outro" background's feature gives (`CustomBackground.skill_keys`: "at most 2"). */
 export const CUSTOM_BACKGROUND_SKILLS = 2;
@@ -38,16 +38,4 @@ export function toggledExpertise(
     return null;
   }
   return toggledIn(expertise, key);
-}
-
-/** The set after a click when it takes at most `cap`: a third click while two are in does nothing, so the player
- * unticks one first. */
-export function toggledCapped(current: ReadonlySet<string>, key: string, cap: number): Set<string> {
-  const next = new Set(current);
-  if (next.has(key)) {
-    next.delete(key);
-  } else if (next.size < cap) {
-    next.add(key);
-  }
-  return next;
 }

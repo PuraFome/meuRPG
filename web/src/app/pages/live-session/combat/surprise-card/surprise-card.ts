@@ -18,6 +18,7 @@ import type { CombatState } from '../../../../core/combat/combat-state';
 import { ContestClient } from '../../../../core/combat/contest-client';
 import { surpriseRows } from '../../../../core/combat/contest-master';
 import { ActionKey } from '../../../../core/connect/idempotency';
+import { runBusy } from '../../../../shared/sheet/run-busy';
 
 let nextId = 0;
 
@@ -161,14 +162,8 @@ export class SurpriseCard {
     if (this.busy()) {
       return;
     }
-    this.busy.set(true);
-    this.error.set('');
-    try {
-      await call();
-    } catch (err) {
-      this.error.set(combatErrorMessage(err, what));
-    } finally {
-      this.busy.set(false);
-    }
+    await runBusy(this.busy, this.error, call, (err) =>
+      this.error.set(combatErrorMessage(err, what)),
+    );
   }
 }

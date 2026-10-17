@@ -26,6 +26,7 @@ import { openContestAnswerSheet } from './contest-answer-sheet/contest-answer-sh
 import { openContestSheet } from './contest-sheet/contest-sheet';
 import { openHelpSheet } from './help-sheet/help-sheet';
 import { openHideSheet } from './hide-sheet/hide-sheet';
+import { trackOpen } from '../../../shared/sheet/sheet-host';
 
 /** What the host reads from the combat page. */
 export interface ContestHostDeps {
@@ -142,15 +143,12 @@ export class ContestHost {
 
   /** Runs a sheet: no other opens meanwhile, and what it answers is told to `onResult`. */
   private track<R>(sheet: Observable<R | undefined>, onResult: (r: R) => void): void {
-    this.sheetOpen.set(true);
-    sheet.subscribe({
+    trackOpen(this.sheetOpen, sheet, {
       next: (r) => {
         if (r !== undefined) {
           onResult(r);
         }
       },
-      complete: () => this.sheetOpen.set(false),
-      error: () => this.sheetOpen.set(false),
     });
   }
 

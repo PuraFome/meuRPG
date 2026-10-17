@@ -172,11 +172,12 @@ Dragging a token saves one move at a time per combatant (`MoveSaves`); if the se
 The combat code loads only with the session page.
 The grid has its own page (`/campaigns/:id/maps/:mapId/grid`, `MapService.SetMapGrid`) and printing the map another (`/campaigns/:id/maps/:mapId/print`, MR-033, web only; see [Design](../../design/maps.md#printing-pagesmapsmap-print)).
 
-**How `CombatView` is put together.** The component (`combat-view.ts`) is the composition and the inputs the template reads; the logic is in parts it builds in field initializers, each a plain class that reads the screen through a few getters, so each is tested with the same fake `CombatClient`:
+**How `CombatView` is put together.** The component (`combat-view.ts`) holds the effects and the calls of the turn, on top of three abstract classes that hold the inputs, the derived values and the parts (`combat-view-state.ts`, `combat-view-derived.ts`, `combat-view-parts.ts`); the logic is in parts it builds in field initializers, each a plain class that reads the screen through a few getters, so each is tested with the same fake `CombatClient`:
 
 - `CombatCalls` (`core/combat`): the one call at a time with its `busy` and `error`, the answer applied and the combat read again after a stale refusal; every other part shares it.
 - `MoveFlow`: the "Mover" page, the jump, the master's drag and the reach.
 - `CombatSheets`: opens every sheet and dialog and knows which are open.
+- `CombatNotices`, `CombatDeaths`, `CombatRage`, `CombatInitiative` and `CombatOffers`: the notices of a form or a concentration that ended, the death saves, the rage question, the initiative and the master's opportunity offers; the template binds them (and `sheets`, `moves`) directly, as `deaths.roll($event)` or `moves.confirmMove($event)`.
 - `CombatReads`: what the screen reads from the services around the combat (death-save rule, spell details, roster, beast, familiar).
 - `MasterAutoPass` (`core/combat`): the master's reaction clock (see [Reactions](reactions.md)).
 - What a sheet is handed is built by pure functions next to it (`attack-sheet/attack-sheet-data.ts`, `cast-sheet/cast-sheet-data.ts`) and what the screen derives by `core/combat/combat-derived.ts`.

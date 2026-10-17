@@ -19,8 +19,6 @@ export interface EditorPointSavesHost {
   panelChanges(): PointChanges | null | undefined;
   /** Whether a move of this point is still on its way. */
   movePending(pointId: string): boolean;
-  /** What is chosen, and the question that guards it. */
-  readonly sel: EditorSelection;
   /** The kind waiting for a click on the map. */
   readonly placing: WritableSignal<MapPointKind | null>;
   readonly saving: WritableSignal<boolean>;
@@ -29,7 +27,11 @@ export interface EditorPointSavesHost {
 
 /** "Salvar ponto" and "Apagar" of the point panels, and the lists a point saves on their own. */
 export class EditorPointSaves {
-  constructor(private readonly host: EditorPointSavesHost) {}
+  constructor(
+    private readonly host: EditorPointSavesHost,
+    /** What is chosen, and the question that guards it. */
+    private readonly sel: EditorSelection,
+  ) {}
 
   /** Saves the chosen point; `true` when it is saved, or there is nothing to save. */
   async save(): Promise<boolean> {
@@ -42,17 +44,17 @@ export class EditorPointSaves {
     }
     if (changes === null) {
       // Nothing changed, or the draft breaks a rule (the fields say which).
-      return !host.sel.dirty();
+      return !this.sel.dirty();
     }
     host.saving.set(true);
-    host.sel.panelError.set(null);
+    this.sel.setPanelError(null);
     try {
       const saved = await host.api.updatePoint(host.campaignId(), mapId, point.id, changes);
       this.put(saved);
       host.message.set(`${saved.name} salvo.`);
       return true;
     } catch (err) {
-      host.sel.panelError.set(editorErrorMessage(err, 'point', 'salvar o ponto'));
+      this.sel.setPanelError(editorErrorMessage(err, 'point', 'salvar o ponto'));
       return false;
     } finally {
       host.saving.set(false);
@@ -69,11 +71,10 @@ export class EditorPointSaves {
     try {
       await host.api.deletePoint(host.campaignId(), mapId, point.id);
       host.state().removePoint(point.id);
-      host.sel.dirty.set(false);
-      host.sel.move(null);
+      this.sel.removed();
       host.message.set(`${point.name} foi apagado.`);
     } catch (err) {
-      host.sel.panelError.set(editorErrorMessage(err, 'point', 'apagar o ponto'));
+      this.sel.setPanelError(editorErrorMessage(err, 'point', 'apagar o ponto'));
     }
   }
 
@@ -88,7 +89,7 @@ export class EditorPointSaves {
     if (!mapId) {
       return;
     }
-    if (host.sel.dirtyBlocks()) {
+    if (this.sel.dirtyBlocks()) {
       host.message.set('Salve ou descarte as mudanças do ponto escolhido antes de pôr outro.');
       return;
     }
@@ -98,9 +99,7 @@ export class EditorPointSaves {
       const body = await newPointBody(kind, at, host.campaignId(), presets);
       const point = await host.api.createPoint(host.campaignId(), mapId, body, newKey());
       host.state().upsertPoint(point);
-      host.sel.panelError.set(null);
-      host.sel.justCreated.set(true);
-      host.sel.selection.set({ kind: 'point', id: point.id });
+      this.sel.created(point.id);
       host.message.set('Ponto criado, escondido dos jogadores. Dê um nome a ele.');
     } catch (err) {
       host.message.set(editorErrorMessage(err, 'pointNew', 'criar o ponto'));

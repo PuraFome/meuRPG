@@ -11,7 +11,7 @@ import {
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { DerivedSheetSchema } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { FullSheetVm } from './character-sheet.types';
-import { toCharacterSheetVm } from './character-sheet-source.live';
+import { toCharacterSheetVm } from './character-sheet-map';
 
 /** The whole mapping on a sheet that has everything, and on one that has nothing but its required fields:
  * every "?? ''" and "? x : y" of `toCharacterSheetVm` is read on both sides. */

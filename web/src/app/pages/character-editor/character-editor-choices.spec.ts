@@ -282,8 +282,8 @@ describe('CharacterEditor, the Escolhas step (PM-05)', () => {
     expect(tab('Escolhas')?.querySelector('.stepper__pending')?.textContent).toBe('!');
     expect(tab('Escolhas')?.textContent).toContain('Escolha pendente');
 
-    const groups = cmp.choiceGroupsOfDraft();
-    cmp.pickChoice({ choice: groups[0].choices[0], optionKeys: ['dueling'] });
+    const groups = cmp.server.choiceGroups();
+    cmp.picks.pickChoice({ choice: groups[0].choices[0], optionKeys: ['dueling'] });
     await wait(PAUSE);
     await settle(fixture);
 
@@ -332,14 +332,17 @@ describe('CharacterEditor, the Escolhas step (PM-05)', () => {
   it('creates with the picks and the texts once nothing is open, and sends them in order', async () => {
     const { draft, create, cmp, fixture, fake } = await render();
     await draft('race:half-elf', 'class:fighter');
-    const [race, klass] = cmp.choiceGroupsOfDraft();
+    const [race, klass] = cmp.server.choiceGroups();
 
-    cmp.pickChoice({ choice: klass.choices[0], optionKeys: ['archery'] });
-    cmp.pickChoice({ choice: race.choices[0], optionKeys: ['dex'] });
+    cmp.picks.pickChoice({ choice: klass.choices[0], optionKeys: ['archery'] });
+    cmp.picks.pickChoice({ choice: race.choices[0], optionKeys: ['dex'] });
     await wait(PAUSE);
     await settle(fixture);
-    cmp.pickChoice({ choice: cmp.choiceGroupsOfDraft()[0].choices[0], optionKeys: ['dex', 'con'] });
-    cmp.editChoiceText({ choice: klass.choices[0], n: 1, text: 'Orcs' });
+    cmp.picks.pickChoice({
+      choice: cmp.server.choiceGroups()[0].choices[0],
+      optionKeys: ['dex', 'con'],
+    });
+    cmp.picks.editChoiceText({ choice: klass.choices[0], n: 1, text: 'Orcs' });
     await wait(PAUSE);
     await settle(fixture);
 
@@ -390,7 +393,7 @@ describe('CharacterEditor, the Escolhas step (PM-05)', () => {
     const { draft, cmp, fake } = await render();
     await draft('race:human', 'class:warlock');
 
-    cmp.addChoiceCantrip('spell:eldritch-blast');
+    cmp.spellPicks.addCantrip('spell:eldritch-blast');
     await wait(PAUSE);
 
     expect(fake.previews.at(-1)?.full.cantrips).toEqual(['spell:eldritch-blast']);
@@ -399,7 +402,10 @@ describe('CharacterEditor, the Escolhas step (PM-05)', () => {
   it('drops a pick no choice offers any more when the class changes', async () => {
     const { draft, cmp, fixture, fake } = await render();
     await draft('race:human', 'class:fighter');
-    cmp.pickChoice({ choice: cmp.choiceGroupsOfDraft()[0].choices[0], optionKeys: ['defense'] });
+    cmp.picks.pickChoice({
+      choice: cmp.server.choiceGroups()[0].choices[0],
+      optionKeys: ['defense'],
+    });
     await wait(PAUSE);
     await settle(fixture);
     expect(cmp.picks.featureChoiceKeys()).toEqual(['feature:style-defense']);
@@ -427,7 +433,7 @@ describe('CharacterEditor, the Escolhas step (PM-05)', () => {
     // Bola de Fogo comes at the class level 5: not yet.
     expect(extra?.textContent).not.toContain('Bola de Fogo');
 
-    cmp.toggleSpellKnown('spell:burning-hands');
+    cmp.spellPicks.toggleKnown('spell:burning-hands');
     await settle(fixture);
     expect(cmp.draft.build().spellsKnown).toEqual(['spell:burning-hands']);
   });

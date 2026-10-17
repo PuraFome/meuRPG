@@ -173,17 +173,21 @@ describe('MapState', () => {
     /** The first read answers at once; each later one waits for the test to answer it. */
     async function setup() {
       const pending: Array<(r: GetMapResponse) => void> = [];
+      const failures: Array<(err: unknown) => void> = [];
       let first = true;
       const state = new MapState((id) => {
         if (first) {
           first = false;
           return Promise.resolve(response(id, 1000));
         }
-        return new Promise<GetMapResponse>((resolve) => pending.push(resolve));
+        return new Promise<GetMapResponse>((resolve, reject) => {
+          pending.push(resolve);
+          failures.push(reject);
+        });
       });
       await state.open('a');
       const refreshing = state.refresh();
-      return { state, pending, refreshing };
+      return { state, pending, failures, refreshing };
     }
 
     it('lands when nothing was edited meanwhile', async () => {
@@ -204,6 +208,17 @@ describe('MapState', () => {
       pending[1](response('a', 4000));
       await refreshing;
       expect(state.tokens()[0].xBp).toBe(4000);
+    });
+
+    it('notices a map gone when the read that fails was started before an edit', async () => {
+      const { state, pending, failures, refreshing } = await setup();
+      expect(state.moveToken('a', 'c1', 4000, 5000)).toBe(true);
+      failures[0](new ConnectError('gone', Code.NotFound)); // served before the move committed
+      await Promise.resolve();
+      expect(pending).toHaveLength(2);
+      failures[1](new ConnectError('gone', Code.NotFound));
+      await refreshing;
+      expect(state.status()).toBe('gone');
     });
 
     it("does not undo the master's own token or point answer", async () => {

@@ -27,7 +27,7 @@ import { PHONE_QUERY } from '../../../shared/map-view/media-query';
 import { RollAnimator } from '../../../shared/roll-overlay/roll-animator';
 import { nextTurn, settle } from '../../../../test-settle';
 import { StartCombatDialog } from '../../../shared/start-combat/start-combat-dialog';
-import { mountCombatView, type MountOptions } from './combat-view-testing';
+import { mountCombatView, type MountOptions, type ViewApi } from './combat-view-testing';
 import { AttackSheet } from './attack-sheet/attack-sheet';
 import { OpportunitySheet } from './opportunity/opportunity-sheet';
 import { SpendSheet } from './theatre/spend-sheet';
@@ -194,11 +194,18 @@ describe('CombatView calls: run', () => {
 /** One row per simple action: the view method, its arguments, the client method it calls and the arguments that call gets. */
 const OFFER = create(OpportunityOfferSchema, { id: 'o1', moverId: 't', reactorId: 'g' });
 type Row = [string, unknown[], string, unknown[]];
+/** Calls `view.a.b(...args)` for a dotted path, with the right `this`. */
+function callPath(view: ViewApi, path: string, args: unknown[]): Promise<boolean> {
+  const parts = path.split('.');
+  const name = parts.pop() as string;
+  const owner = parts.reduce((o, k) => o[k], view);
+  return owner[name](...args);
+}
 const SIMPLE: Row[] = [
   ['begin', [], 'begin', ['c', 'enc']],
   ['endCombat', [], 'end', ['c', 'enc']],
-  ['submitFace', ['t', 14], 'submitInitiative', ['c', 'enc', 't', { face: 14 }]],
-  ['setOrder', [['g', 't']], 'setOrder', ['c', 'enc', ['g', 't']]],
+  ['initiative.submitFace', ['t', 14], 'submitInitiative', ['c', 'enc', 't', { face: 14 }]],
+  ['initiative.setOrder', [['g', 't']], 'setOrder', ['c', 'enc', ['g', 't']]],
   ['reveal', [{ id: 'g', hidden: false }], 'setHidden', ['c', 'enc', 'g', false]],
   ['loseConcentration', ['g'], 'setConditions', ['c', 'enc', 'g', { endConcentration: true }]],
   ['remove', ['g'], 'remove', ['c', 'enc', 'g']],
@@ -209,7 +216,7 @@ const SIMPLE: Row[] = [
     'useHitRider',
     ['c', 'enc', 't', HitRiderChoice.PRONE],
   ],
-  ['endRageOf', ['t'], 'endRage', ['c', 'enc', 't']],
+  ['rage.end', ['t'], 'endRage', ['c', 'enc', 't']],
   [
     'setSide',
     [{ id: 'g', side: CombatantSide.PARTY }],
@@ -222,8 +229,8 @@ const SIMPLE: Row[] = [
     'setCover',
     ['c', 'enc', 'g', CoverDegree.HALF],
   ],
-  ['skipOpportunity', [OFFER], 'skipOpportunity', ['c', 'enc', 'o1']],
-  ['withdrawOpportunity', [OFFER], 'withdrawOpportunity', ['c', 'enc', 'o1']],
+  ['offers.skip', [OFFER], 'skipOpportunity', ['c', 'enc', 'o1']],
+  ['offers.withdraw', [OFFER], 'withdrawOpportunity', ['c', 'enc', 'o1']],
   ['standUp', ['g'], 'standUp', ['c', 'enc', 'g']],
   ['answerReveal', [{ id: 'q1', reveal: true }], 'resolveHiddenReveal', ['c', 'enc', 'q1', true]],
 ];
@@ -236,7 +243,7 @@ describe('CombatView calls: one client call per action', () => {
       master: true,
       api: answers(next, name),
     });
-    expect(await view[method](...args)).toBe(true);
+    expect(await callPath(view, method, args)).toBe(true);
     expect(calls.filter((c) => c.name === name)).toEqual([{ name, args: sent }]);
     expect(state.encounter()?.round).toBe(4);
   });
@@ -247,7 +254,7 @@ describe('CombatView calls: one client call per action', () => {
       master: true,
       api: { [name]: refuse(Code.PermissionDenied) },
     });
-    expect(await view[method](...args)).toBe(false);
+    expect(await callPath(view, method, args)).toBe(false);
     expect(view.error()).toBe('Você não pode fazer isso agora.');
   });
 
@@ -307,10 +314,10 @@ describe('CombatView calls: the end of the turn', () => {
       api: answers(grid('g', goblin(), brisa), 'endTurn'),
     });
     expect(await view.nextTurn()).toBe(false);
-    expect(view.passAsking()).toEqual({ discard: false });
+    expect(view.deaths.asking()).toEqual({ discard: false });
     expect(callsOf('endTurn')).toEqual([]);
     expect(await view.nextTurn(true)).toBe(false);
-    expect(view.passAsking()).toEqual({ discard: true });
+    expect(view.deaths.asking()).toEqual({ discard: true });
   });
 
   it('"Passar sem rolar" ends the turn with the discard the master asked for, and puts the question away', async () => {
@@ -318,7 +325,7 @@ describe('CombatView calls: the end of the turn', () => {
     const { view, callsOf } = mountCombatView({ enc: e, master: true, api: answers(e, 'endTurn') });
     await view.nextTurn(true);
     expect(await view.passUnrolled()).toBe(true);
-    expect(view.passAsking()).toBeNull();
+    expect(view.deaths.asking()).toBeNull();
     expect(callsOf('endTurn')[0].args).toEqual(['c', 'enc', 'g', true, 2]);
   });
 
@@ -536,14 +543,14 @@ describe('CombatView calls: death saves', () => {
       encounter: grid('t', down(), goblin()),
       save: save(DeathSaveOutcome.SUCCESS),
     }));
-    await view.rollDeathSave({ inApp: true });
+    await view.deaths.roll({ inApp: true });
     expect(callsOf('rollDeathSave')[0].args.slice(0, 4)).toEqual([
       'c',
       'enc',
       't',
       { inApp: true },
     ]);
-    expect(view.deathResult()).toBe('Teste contra a morte: 1d20 (14) = 14. Sucesso.');
+    expect(view.deaths.result()).toBe('Teste contra a morte: 1d20 (14) = 14. Sucesso.');
     expect(play).toHaveBeenCalledTimes(1);
     expect(play.mock.calls[0][0]).toMatchObject({
       label: 'Teste contra a morte',
@@ -559,13 +566,13 @@ describe('CombatView calls: death saves', () => {
       encounter: grid('t', down(), goblin()),
       save: save(DeathSaveOutcome.CRITICAL_FAILURE, 1, { failures: 2 }),
     }));
-    await view.rollDeathSave({ inApp: true });
+    await view.deaths.roll({ inApp: true });
     expect(play.mock.calls[0][0]).toMatchObject({
       outcome: { word: 'Falha crítica', good: false },
       fumble: true,
       critical: false,
     });
-    expect(view.deathResult()).toContain('Falha: um 1 conta duas falhas.');
+    expect(view.deaths.result()).toContain('Falha: um 1 conta duas falhas.');
   });
 
   it('a natural 20 brings the character back: critical, good, and the sentence is also the action note', async () => {
@@ -573,13 +580,13 @@ describe('CombatView calls: death saves', () => {
       encounter: grid('t', toren(), goblin()),
       save: save(DeathSaveOutcome.REVIVED, 20),
     }));
-    await view.rollDeathSave({ inApp: true });
+    await view.deaths.roll({ inApp: true });
     expect(play.mock.calls[0][0]).toMatchObject({
       outcome: { word: 'Volta com 1 PV', good: true },
       critical: true,
     });
     expect(view.actionNote()).toBe('Teste contra a morte: 1d20 (20) = 20. Toren volta com 1 PV.');
-    expect(view.deathResult()).toBe(view.actionNote());
+    expect(view.deaths.result()).toBe(view.actionNote());
   });
 
   it('plays nothing for a save that arrives without a roll (hidden), but still says the outcome', async () => {
@@ -587,9 +594,9 @@ describe('CombatView calls: death saves', () => {
       encounter: grid('t', down(), goblin()),
       save: save(DeathSaveOutcome.FAILURE, null, { failures: 3 }),
     }));
-    await view.rollDeathSave({ inApp: true });
+    await view.deaths.roll({ inApp: true });
     expect(play).not.toHaveBeenCalled();
-    expect(view.deathResult()).toBe('Teste contra a morte. Falha. Três falhas.');
+    expect(view.deaths.result()).toBe('Teste contra a morte. Falha. Três falhas.');
   });
 
   it('keeps the same key for the retry of a refused roll and a new one after a roll that worked', async () => {
@@ -599,11 +606,11 @@ describe('CombatView calls: death saves', () => {
       }
       return { encounter: grid('t', down(), goblin()), save: save(DeathSaveOutcome.SUCCESS) };
     });
-    await view.rollDeathSave({ inApp: true });
-    expect(view.deathResult()).toBe('');
+    await view.deaths.roll({ inApp: true });
+    expect(view.deaths.result()).toBe('');
     expect(view.error()).not.toBe('');
-    await view.rollDeathSave({ inApp: true });
-    await view.rollDeathSave({ inApp: true });
+    await view.deaths.roll({ inApp: true });
+    await view.deaths.roll({ inApp: true });
     expect(keys[1]).toBe(keys[0]);
     expect(keys[2]).not.toBe(keys[1]);
   });
@@ -612,14 +619,14 @@ describe('CombatView calls: death saves', () => {
     const { view, keys } = mountDying(() => {
       throw new ConnectError('lost', Code.PermissionDenied);
     });
-    await view.rollDeathSave({ inApp: true });
-    await view.rollDeathSave({ face: 12 });
+    await view.deaths.roll({ inApp: true });
+    await view.deaths.roll({ face: 12 });
     expect(keys[1]).not.toBe(keys[0]);
   });
 
   it('nothing happens for a player without a character in the combat', async () => {
     const { view, callsOf } = mountCombatView({ enc: grid('g', goblin()) });
-    await view.rollDeathSave({ inApp: true });
+    await view.deaths.roll({ inApp: true });
     expect(callsOf('rollDeathSave')).toEqual([]);
   });
 
@@ -628,30 +635,30 @@ describe('CombatView calls: death saves', () => {
       () => ({ encounter: grid('t', down(), goblin()), save: save(DeathSaveOutcome.SUCCESS) }),
       true,
     );
-    view.passAsking.set({ discard: false });
-    await view.rollMasterDeathSave({ id: 't', die: { face: 9 } });
-    expect(view.passAsking()).toBeNull();
+    view.deaths.asking.set({ discard: false });
+    await view.deaths.rollMaster({ id: 't', die: { face: 9 } });
+    expect(view.deaths.asking()).toBeNull();
     expect(callsOf('rollDeathSave')[0].args.slice(0, 4)).toEqual(['c', 'enc', 't', { face: 9 }]);
-    expect(view.masterDeathResult()).toBe('Teste contra a morte: 1d20 (14) = 14. Sucesso.');
+    expect(view.deaths.masterResult()).toBe('Teste contra a morte: 1d20 (14) = 14. Sucesso.');
     // The master's roll does not touch the player's line.
-    expect(view.deathResult()).toBe('');
+    expect(view.deaths.result()).toBe('');
   });
 
   it("the master's roll for a combatant that is not in the combat sends nothing and keeps the question", async () => {
     const { view, callsOf } = mountDying(() => ({}), true);
-    view.passAsking.set({ discard: true });
-    await view.rollMasterDeathSave({ id: 'nobody', die: { inApp: true } });
+    view.deaths.asking.set({ discard: true });
+    await view.deaths.rollMaster({ id: 'nobody', die: { inApp: true } });
     expect(callsOf('rollDeathSave')).toEqual([]);
-    expect(view.passAsking()).toEqual({ discard: true });
+    expect(view.deaths.asking()).toEqual({ discard: true });
   });
 
   it("leaves the master's sentence alone when his roll was refused", async () => {
     const { view } = mountDying(() => {
       throw new ConnectError('no', Code.PermissionDenied);
     }, true);
-    view.masterDeathResult.set('before');
-    await view.rollMasterDeathSave({ id: 't', die: { inApp: true } });
-    expect(view.masterDeathResult()).toBe('before');
+    view.deaths.masterResult.set('before');
+    await view.deaths.rollMaster({ id: 't', die: { inApp: true } });
+    expect(view.deaths.masterResult()).toBe('before');
   });
 });
 
@@ -674,9 +681,9 @@ describe('CombatView calls: confirming a death and the "Ainda não" memory', () 
         },
       },
     });
-    await view.confirmDeath('t');
-    await view.confirmDeath('t');
-    await view.confirmDeath('t');
+    await view.deaths.confirm('t');
+    await view.deaths.confirm('t');
+    await view.deaths.confirm('t');
     expect(callsOf('confirmDeath')[0].args.slice(0, 3)).toEqual(['c', 'enc', 't']);
     expect(keys[1]).toBe(keys[0]);
     expect(keys[2]).not.toBe(keys[1]);
@@ -684,13 +691,13 @@ describe('CombatView calls: confirming a death and the "Ainda não" memory', () 
 
   it('remembers the characters put away with "Ainda não" until they are asked again', () => {
     const { view } = mountCombatView({ enc: grid('g', goblin()), master: true });
-    view.deathLaterFor('a');
-    view.deathLaterFor('b');
-    expect([...view.deathLater()]).toEqual(['a', 'b']);
-    view.deathAskAgain('a');
-    expect([...view.deathLater()]).toEqual(['b']);
-    view.deathAskAgain('zzz');
-    expect([...view.deathLater()]).toEqual(['b']);
+    view.deaths.postpone('a');
+    view.deaths.postpone('b');
+    expect([...view.deaths.later()]).toEqual(['a', 'b']);
+    view.deaths.askAgain('a');
+    expect([...view.deaths.later()]).toEqual(['b']);
+    view.deaths.askAgain('zzz');
+    expect([...view.deaths.later()]).toEqual(['b']);
   });
 });
 
@@ -700,9 +707,9 @@ describe('CombatView calls: ending the concentration', () => {
       enc: grid('t', toren()),
       api: answers(grid('t', toren()), 'setConditions'),
     });
-    expect(await view.endOwnConcentration()).toBe(true);
+    expect(await view.notices.endOwnConcentration()).toBe(true);
     expect(callsOf('setConditions')[0].args).toEqual(['c', 'enc', 't', { endConcentration: true }]);
-    expect(view.concentration.endedByMe).toBe(true);
+    expect(view.notices.concentration.endedByMe).toBe(true);
   });
 
   it('takes the mark back when the server refuses', async () => {
@@ -710,16 +717,16 @@ describe('CombatView calls: ending the concentration', () => {
       enc: grid('t', toren()),
       api: { setConditions: refuse(Code.PermissionDenied) },
     });
-    expect(await view.endOwnConcentration()).toBe(false);
-    expect(view.concentration.endedByMe).toBe(false);
+    expect(await view.notices.endOwnConcentration()).toBe(false);
+    expect(view.notices.concentration.endedByMe).toBe(false);
   });
 
   it('without a character of the player it sends nothing (the mark is still set)', async () => {
     const { view, callsOf } = mountCombatView({ enc: grid('g', goblin()), master: true });
-    expect(await view.endOwnConcentration()).toBe(false);
+    expect(await view.notices.endOwnConcentration()).toBe(false);
     expect(callsOf('setConditions')).toEqual([]);
     // Pinned as it is today: the mark is set before the character is looked up.
-    expect(view.concentration.endedByMe).toBe(true);
+    expect(view.notices.concentration.endedByMe).toBe(true);
   });
 });
 
@@ -848,7 +855,7 @@ describe('CombatView calls: initiative rolled in the app', () => {
 
   it('sends the app\'s roll and shows the d20 with its line "15 + 4 = 19"', async () => {
     const { view, play, callsOf } = mountRoll(rolled({}));
-    expect(await view.rollInApp('t')).toBe(true);
+    expect(await view.initiative.rollInApp('t')).toBe(true);
     expect(callsOf('submitInitiative')[0].args).toEqual(['c', 'enc', 't', { inApp: true }]);
     expect(play).toHaveBeenCalledTimes(1);
     expect(play.mock.calls[0][0]).toEqual({
@@ -860,13 +867,13 @@ describe('CombatView calls: initiative rolled in the app', () => {
 
   it('writes a negative modifier with a minus sign', async () => {
     const { view, play } = mountRoll(rolled({ initiative: 13, initiativeBonus: -2 }));
-    await view.rollInApp('t');
+    await view.initiative.rollInApp('t');
     expect(play.mock.calls[0][0].line).toBe('15 − 2 = 13');
   });
 
   it('writes no modifier at all when it is zero', async () => {
     const { view, play } = mountRoll(rolled({ initiative: 15, initiativeBonus: 0 }));
-    await view.rollInApp('t');
+    await view.initiative.rollInApp('t');
     expect(play.mock.calls[0][0].line).toBe('15 = 15');
   });
 
@@ -876,13 +883,13 @@ describe('CombatView calls: initiative rolled in the app', () => {
     ['the total', { initiative: undefined }],
   ])('plays nothing when %s is missing', async (_n, over) => {
     const { view, play } = mountRoll(rolled(over));
-    expect(await view.rollInApp('t')).toBe(true);
+    expect(await view.initiative.rollInApp('t')).toBe(true);
     expect(play).not.toHaveBeenCalled();
   });
 
   it('plays nothing for a combatant the answer does not know', async () => {
     const { view, play } = mountRoll(rolled({}));
-    await view.rollInApp('nobody');
+    await view.initiative.rollInApp('nobody');
     expect(play).not.toHaveBeenCalled();
   });
 
@@ -892,7 +899,7 @@ describe('CombatView calls: initiative rolled in the app', () => {
       api: { submitInitiative: refuse(Code.PermissionDenied) },
     });
     const play = vi.spyOn(TestBed.inject(RollAnimator), 'play');
-    expect(await mounted.view.rollInApp('t')).toBe(false);
+    expect(await mounted.view.initiative.rollInApp('t')).toBe(false);
     expect(play).not.toHaveBeenCalled();
   });
 });
@@ -1109,7 +1116,7 @@ describe('CombatView calls: opportunity attacks', () => {
         master: true,
         api: answers(grid('g', goblin()), 'declineOpportunity'),
       });
-      const result = await view.answerOpportunity({ offer: offer(), attack: null });
+      const result = await view.offers.answer({ offer: offer(), attack: null });
       expect(result).toBe(true);
       expect(callsOf('declineOpportunity')[0].args).toEqual(['c', 'enc', 'o1']);
     });
@@ -1119,9 +1126,7 @@ describe('CombatView calls: opportunity attacks', () => {
       // Only the reactor's read has to land: rendering the NPC's card is not needed (and has no stat block here).
       await nextTurn();
       expect(callsOf('turnOptions').some((c) => c.args[2] === 'g')).toBe(true);
-      expect(
-        view.answerOpportunity({ offer: offer(), attack: { key: 'scimitar' } }),
-      ).toBeUndefined();
+      expect(view.offers.answer({ offer: offer(), attack: { key: 'scimitar' } })).toBeUndefined();
       expect(opened).toHaveLength(1);
       expect(opened[0].component).toBe(AttackSheet);
       expect(opened[0].config.data).toMatchObject({
@@ -1133,15 +1138,15 @@ describe('CombatView calls: opportunity attacks', () => {
     it("does not ask again after the attack sheet closes: it is not the master's prompt", async () => {
       const { view, opened } = masterOffer();
       await nextTurn();
-      view.answerOpportunity({ offer: offer(), attack: { key: 'scimitar' } });
+      view.offers.answer({ offer: offer(), attack: { key: 'scimitar' } });
       opened[0].close(true);
       expect(opened).toHaveLength(1);
     });
 
     it("opens nothing while the reactor's options are not in", () => {
       const { view, opened } = mountCombatView({ enc: withOffer(), master: true });
-      view.reactorOptions.set(new Map());
-      view.answerOpportunity({ offer: offer(), attack: { key: 'scimitar' } });
+      view.offers.reactorOptions.set(new Map());
+      view.offers.answer({ offer: offer(), attack: { key: 'scimitar' } });
       expect(opened).toEqual([]);
     });
   });
@@ -1201,28 +1206,28 @@ describe('CombatView calls: offering an opportunity attack by hand', () => {
 
   it("sends the offer of the one on turn leaving the reactor's reach, and closes the form", async () => {
     const { view, callsOf } = mount();
-    view.toggleOffer();
-    expect(view.offering()).toBe(true);
-    await view.makeOffer('g');
+    view.offers.toggle();
+    expect(view.offers.offering()).toBe(true);
+    await view.offers.make('g');
     const args = callsOf('offerOpportunity')[0].args;
     expect(args.slice(0, 4)).toEqual(['c', 'enc', 't', 'g']);
     expect(typeof args[4]).toBe('string');
-    expect(view.offering()).toBe(false);
+    expect(view.offers.offering()).toBe(false);
   });
 
   it('a repeated tap on the same reactor is the same request (same key)', async () => {
     const { view, callsOf } = mount();
-    view.toggleOffer();
-    await view.makeOffer('g');
-    await view.makeOffer('g');
+    view.offers.toggle();
+    await view.offers.make('g');
+    await view.offers.make('g');
     const [first, second] = callsOf('offerOpportunity');
     expect(second.args[4]).toBe(first.args[4]);
   });
 
   it('another reactor is another request (another key)', async () => {
     const { view, callsOf } = mount();
-    await view.makeOffer('g');
-    await view.makeOffer('h');
+    await view.offers.make('g');
+    await view.offers.make('h');
     const [first, second] = callsOf('offerOpportunity');
     expect(second.args[4]).not.toBe(first.args[4]);
   });
@@ -1237,32 +1242,32 @@ describe('CombatView calls: offering an opportunity attack by hand', () => {
         return theatre('t', toren(), goblin());
       },
     });
-    view.toggleOffer();
-    await view.makeOffer('g');
-    expect(view.offerError()).toBe('Você não pode fazer isso agora.');
+    view.offers.toggle();
+    await view.offers.make('g');
+    expect(view.offers.error()).toBe('Você não pode fazer isso agora.');
     expect(view.error()).toBe('');
-    expect(view.offering()).toBe(true);
+    expect(view.offers.offering()).toBe(true);
     refused = false;
-    await view.makeOffer('g');
+    await view.offers.make('g');
     const [first, second] = callsOf('offerOpportunity');
     expect(second.args[4]).not.toBe(first.args[4]);
-    expect(view.offering()).toBe(false);
+    expect(view.offers.offering()).toBe(false);
   });
 
   it('a tap while another call is in flight sends nothing and keeps the key for the next one', async () => {
     const { view, callsOf } = mount();
     view.busy.set(true);
-    await view.makeOffer('g');
+    await view.offers.make('g');
     expect(callsOf('offerOpportunity')).toEqual([]);
-    expect(view.offerError()).toBe('');
-    expect(view.offerKeys.size).toBe(1);
+    expect(view.offers.error()).toBe('');
+    expect(view.offers.keys.size).toBe(1);
   });
 
   it('clears the last refusal when it tries again', async () => {
     const { view } = mount();
-    view.offerError.set('old');
-    await view.makeOffer('g');
-    expect(view.offerError()).toBe('');
+    view.offers.error.set('old');
+    await view.offers.make('g');
+    expect(view.offers.error()).toBe('');
   });
 
   it('does nothing when nobody is on turn', async () => {
@@ -1270,25 +1275,25 @@ describe('CombatView calls: offering an opportunity attack by hand', () => {
       enc: theatre('', toren(), goblin()),
       master: true,
     });
-    await view.makeOffer('g');
+    await view.offers.make('g');
     expect(callsOf('offerOpportunity')).toEqual([]);
   });
 
   it('opening the form starts with new keys and no old refusal; closing it keeps them', async () => {
     const { view } = mount();
     view.busy.set(true);
-    await view.makeOffer('g');
-    expect(view.offerKeys.size).toBe(1);
-    view.offerError.set('old');
-    view.toggleOffer();
-    expect(view.offering()).toBe(true);
-    expect(view.offerKeys.size).toBe(0);
-    expect(view.offerError()).toBe('');
-    await view.makeOffer('g');
-    expect(view.offerKeys.size).toBe(1);
-    view.toggleOffer();
-    expect(view.offering()).toBe(false);
-    expect(view.offerKeys.size).toBe(1);
+    await view.offers.make('g');
+    expect(view.offers.keys.size).toBe(1);
+    view.offers.error.set('old');
+    view.offers.toggle();
+    expect(view.offers.offering()).toBe(true);
+    expect(view.offers.keys.size).toBe(0);
+    expect(view.offers.error()).toBe('');
+    await view.offers.make('g');
+    expect(view.offers.keys.size).toBe(1);
+    view.offers.toggle();
+    expect(view.offers.offering()).toBe(false);
+    expect(view.offers.keys.size).toBe(1);
   });
 });
 
@@ -1310,11 +1315,11 @@ describe("CombatView calls: moving a token (the master's drag and a player's dro
 
   it('a player\'s drop opens the "Mover" page on that square and never moves by itself', async () => {
     const { view, state, callsOf } = mountCombatView({ enc: grid('t', toren(), goblin()) });
-    view.moveError.set('old');
-    await view.drop({ id: 't', col: 4, row: 4 });
-    expect(view.dropStart()).toEqual({ col: 4, row: 4 });
+    view.moves.moveError.set('old');
+    await view.moves.drop({ id: 't', col: 4, row: 4 });
+    expect(view.moves.dropStart()).toEqual({ col: 4, row: 4 });
     expect(state.moving()).toBe(true);
-    expect(view.moveError()).toBe('');
+    expect(view.moves.moveError()).toBe('');
     expect(callsOf('move')).toEqual([]);
   });
 
@@ -1323,8 +1328,8 @@ describe("CombatView calls: moving a token (the master's drag and a player's dro
       enc: grid('g', toren(), goblin()),
       master: true,
     });
-    await view.drop({ id: 'nobody', col: 5, row: 5 });
-    await view.drop({ id: 'g', col: 3, row: 3 });
+    await view.moves.drop({ id: 'nobody', col: 5, row: 5 });
+    await view.moves.drop({ id: 'g', col: 3, row: 3 });
     expect(callsOf('move')).toEqual([]);
     expect(state.moving()).toBe(false);
   });
@@ -1336,7 +1341,7 @@ describe("CombatView calls: moving a token (the master's drag and a player's dro
       master: true,
       api: { move: moveAnswer(e) },
     });
-    await view.drop({ id: 'g', col: 0, row: 0 });
+    await view.moves.drop({ id: 'g', col: 0, row: 0 });
     expect(callsOf('move')[0].args.slice(0, 5)).toEqual(['c', 'enc', 'g', 0, 0]);
   });
 
@@ -1354,7 +1359,7 @@ describe("CombatView calls: moving a token (the master's drag and a player's dro
       },
     });
     view.error.set('old');
-    const dropping = view.drop({ id: 'g', col: 5, row: 5 });
+    const dropping = view.moves.drop({ id: 'g', col: 5, row: 5 });
     expect(spot(view, 'g')).toEqual([5, 5]);
     expect(view.error()).toBe('');
     expect(callsOf('move')[0].args).toEqual(['c', 'enc', 'g', 5, 5, undefined, undefined, false]);
@@ -1375,8 +1380,8 @@ describe("CombatView calls: moving a token (the master's drag and a player's dro
           }),
       },
     });
-    const first = view.drop({ id: 'g', col: 5, row: 5 });
-    const second = view.drop({ id: 'g', col: 6, row: 6 });
+    const first = view.moves.drop({ id: 'g', col: 5, row: 5 });
+    const second = view.moves.drop({ id: 'g', col: 6, row: 6 });
     await second;
     expect(callsOf('move')).toHaveLength(1);
     finish[0]();
@@ -1396,7 +1401,7 @@ describe("CombatView calls: moving a token (the master's drag and a player's dro
       master: true,
       api: { move: moveAnswer(e, { lockedDoor: true }) },
     });
-    await view.drop({ id: 'g', col: 5, row: 3 });
+    await view.moves.drop({ id: 'g', col: 5, row: 3 });
     expect(view.error()).toBe(
       'Uma porta trancada parou o movimento. Destranque a porta (toque nela no mapa) e mova de novo.',
     );
@@ -1409,7 +1414,7 @@ describe("CombatView calls: moving a token (the master's drag and a player's dro
       master: true,
       api: { move: moveAnswer(moved(4, 3), { stoppedEarly: true }) },
     });
-    await view.drop({ id: 'g', col: 5, row: 3 });
+    await view.moves.drop({ id: 'g', col: 5, row: 3 });
     expect(view.error()).toBe(
       'Uma grade levadiça ou uma porta secreta parou o movimento. Abra a porta (toque nela no mapa) e mova de novo.',
     );
@@ -1421,7 +1426,7 @@ describe("CombatView calls: moving a token (the master's drag and a player's dro
       master: true,
       api: { move: moveAnswer(moved(4, 3), { stoppedEarly: true, lockedDoor: true }) },
     });
-    await view.drop({ id: 'g', col: 5, row: 3 });
+    await view.moves.drop({ id: 'g', col: 5, row: 3 });
     expect(view.error()).toContain('Uma porta trancada');
   });
 
@@ -1431,7 +1436,7 @@ describe("CombatView calls: moving a token (the master's drag and a player's dro
       master: true,
       api: { move: refuse(Code.InvalidArgument) },
     });
-    await view.drop({ id: 'g', col: 5, row: 5 });
+    await view.moves.drop({ id: 'g', col: 5, row: 5 });
     expect(spot(view, 'g')).toEqual([3, 3]);
     expect(view.error()).toBe('Não deu para mover o token: confira os campos e tente de novo.');
     expect(callsOf('get')).toEqual([]);
@@ -1446,7 +1451,7 @@ describe("CombatView calls: moving a token (the master's drag and a player's dro
         get: () => encounter({ round: 3, combatants: [toren(), goblin()] }),
       },
     });
-    await view.drop({ id: 'g', col: 5, row: 5 });
+    await view.moves.drop({ id: 'g', col: 5, row: 5 });
     await nextTurn();
     expect(callsOf('get')).toHaveLength(1);
     expect(state.encounter()?.round).toBe(3);
@@ -1471,74 +1476,74 @@ describe('CombatView calls: the "Mover" page', () => {
 
   it('"Mover para cá" sends the square for the character and closes the page', async () => {
     const { view, state, callsOf } = mountMover(result());
-    await view.confirmMove({ col: 4, row: 2 });
+    await view.moves.confirmMove({ col: 4, row: 2 });
     expect(callsOf('move')[0].args).toEqual(['c', 'enc', 't', 4, 2]);
     expect(state.moving()).toBe(false);
-    expect(view.moveError()).toBe('');
+    expect(view.moves.moveError()).toBe('');
   });
 
   it('moves the creature the page was opened for', async () => {
     const wolf = combatant({ id: 'w', label: 'Lobo', controlledByMe: true });
     const e = grid('t', toren(), wolf);
     const { view, callsOf } = mountMover(result({}, e), e);
-    view.moverId.set('w');
-    await view.confirmMove({ col: 6, row: 6 });
+    view.moves.moverId.set('w');
+    await view.moves.confirmMove({ col: 6, row: 6 });
     expect(callsOf('move')[0].args.slice(0, 5)).toEqual(['c', 'enc', 'w', 6, 6]);
   });
 
   it('does nothing when nobody moves (no character of the player)', async () => {
     const { view, callsOf } = mountMover(result(), grid('g', goblin()));
-    await view.confirmMove({ col: 4, row: 2 });
+    await view.moves.confirmMove({ col: 4, row: 2 });
     expect(callsOf('move')).toEqual([]);
   });
 
   it("a refusal keeps the page open with the refusal's words next to the map, not on the page", async () => {
     const { view, state } = mountMover({ move: refuse(Code.InvalidArgument) });
     view.error.set('old');
-    await view.confirmMove({ col: 4, row: 2 });
+    await view.moves.confirmMove({ col: 4, row: 2 });
     expect(state.moving()).toBe(true);
-    expect(view.moveError()).toBe('Não deu para mover: confira os campos e tente de novo.');
+    expect(view.moves.moveError()).toBe('Não deu para mover: confira os campos e tente de novo.');
     expect(view.error()).toBe('');
   });
 
   it('a move that stopped short says so and still closes the page', async () => {
     const { view, state } = mountMover(result({ stoppedEarly: true }));
-    await view.confirmMove({ col: 4, row: 2 });
-    expect(view.moveNote()).toBe('Você parou antes: algo bloqueou o caminho.');
+    await view.moves.confirmMove({ col: 4, row: 2 });
+    expect(view.moves.moveNote()).toBe('Você parou antes: algo bloqueou o caminho.');
     expect(state.moving()).toBe(false);
   });
 
   it('a locked door keeps the page open, with the notice', async () => {
     const { view, state } = mountMover(result({ lockedDoor: true }));
-    await view.confirmMove({ col: 4, row: 2 });
-    expect(view.lockedDoor()).toBe(true);
+    await view.moves.confirmMove({ col: 4, row: 2 });
+    expect(view.moves.lockedDoor()).toBe(true);
     expect(state.moving()).toBe(true);
-    expect(view.moveNote()).toBe('');
+    expect(view.moves.moveNote()).toBe('');
   });
 
   it('a locked door wins over a stop-short in the answer', async () => {
     const { view } = mountMover(result({ lockedDoor: true, stoppedEarly: true }));
-    await view.confirmMove({ col: 4, row: 2 });
-    expect(view.lockedDoor()).toBe(true);
-    expect(view.moveNote()).toBe('');
+    await view.moves.confirmMove({ col: 4, row: 2 });
+    expect(view.moves.lockedDoor()).toBe(true);
+    expect(view.moves.moveNote()).toBe('');
   });
 
   it("forgets the last move's note and locked door when a new move starts", async () => {
     const { view } = mountMover(result());
-    view.moveNote.set('old');
-    view.lockedDoor.set(true);
-    await view.confirmMove({ col: 4, row: 2 });
-    expect(view.moveNote()).toBe('');
-    expect(view.lockedDoor()).toBe(false);
+    view.moves.moveNote.set('old');
+    view.moves.lockedDoor.set(true);
+    await view.moves.confirmMove({ col: 4, row: 2 });
+    expect(view.moves.moveNote()).toBe('');
+    expect(view.moves.lockedDoor()).toBe(false);
   });
 
   it('a move while another call is in flight sends nothing and is read as a refusal with no words', async () => {
     const { view, callsOf, state } = mountMover(result());
     view.busy.set(true);
-    await view.confirmMove({ col: 4, row: 2 });
+    await view.moves.confirmMove({ col: 4, row: 2 });
     expect(callsOf('move')).toEqual([]);
     expect(state.moving()).toBe(true);
-    expect(view.moveError()).toBe('');
+    expect(view.moves.moveError()).toBe('');
   });
 
   it('a stale refusal reads the combat again', async () => {
@@ -1546,32 +1551,32 @@ describe('CombatView calls: the "Mover" page', () => {
       move: refuse(Code.Unavailable),
       get: () => grid('t', toren(), goblin()),
     });
-    await view.confirmMove({ col: 4, row: 2 });
+    await view.moves.confirmMove({ col: 4, row: 2 });
     expect(callsOf('get')).toHaveLength(1);
   });
 
   it('"Desengajar" takes the Disengage action for whoever moves', async () => {
     const { view, callsOf } = mountMover();
-    expect(await view.disengage()).toBe(true);
+    expect(await view.moves.disengage()).toBe(true);
     expect(callsOf('takeAction')[0].args).toEqual(['c', 'enc', 't', 'standard:disengage']);
   });
 
   it('"Desengajar" is nothing without a mover', async () => {
     const { view, callsOf } = mountMover({}, grid('g', goblin()));
-    expect(await view.disengage()).toBe(false);
+    expect(await view.moves.disengage()).toBe(false);
     expect(callsOf('takeAction')).toEqual([]);
   });
 
   it('closeFullPage puts every trace of the page away', () => {
     const { view, state } = mountMover();
-    view.lockedDoor.set(true);
-    view.moverId.set('w');
-    view.dropStart.set({ col: 1, row: 1 });
+    view.moves.lockedDoor.set(true);
+    view.moves.moverId.set('w');
+    view.moves.dropStart.set({ col: 1, row: 1 });
     state.mapOpen.set(true);
-    view.closeFullPage();
-    expect(view.lockedDoor()).toBe(false);
-    expect(view.moverId()).toBe('');
-    expect(view.dropStart()).toBeNull();
+    view.moves.closeFullPage();
+    expect(view.moves.lockedDoor()).toBe(false);
+    expect(view.moves.moverId()).toBe('');
+    expect(view.moves.dropStart()).toBeNull();
     expect(state.moving()).toBe(false);
     expect(state.mapOpen()).toBe(false);
   });
@@ -1592,26 +1597,26 @@ describe("CombatView calls: a jump's note", () => {
   it('says how far a long jump went, in meters', async () => {
     const { view, state } = mountCombatView({ enc: jumper(0), api: answerWith(100) });
     state.moving.set(true);
-    await view.confirmJump({ kind: 'long', square: { col: 9, row: 3 } });
-    expect(view.moveNote()).toBe('Você saltou 3,0 m.');
+    await view.moves.confirmJump({ kind: 'long', square: { col: 9, row: 3 } });
+    expect(view.moves.moveNote()).toBe('Você saltou 3,0 m.');
     expect(state.moving()).toBe(false);
   });
 
   it('says how high a high jump went', async () => {
     const { view } = mountCombatView({ enc: jumper(0), api: answerWith(60) });
-    await view.confirmJump({ kind: 'high', heightDft: 60 });
-    expect(view.moveNote()).toBe('Você saltou 1,8 m para cima.');
+    await view.moves.confirmJump({ kind: 'high', heightDft: 60 });
+    expect(view.moves.moveNote()).toBe('Você saltou 1,8 m para cima.');
   });
 
   it('charges only what the jump added to the movement already used', async () => {
     const { view } = mountCombatView({ enc: jumper(40), api: answerWith(100) });
-    await view.confirmJump({ kind: 'long', square: { col: 9, row: 3 } });
-    expect(view.moveNote()).toBe('Você saltou 1,8 m.');
+    await view.moves.confirmJump({ kind: 'long', square: { col: 9, row: 3 } });
+    expect(view.moves.moveNote()).toBe('Você saltou 1,8 m.');
   });
 
   it("a high jump stays on the character's own square", async () => {
     const { view, callsOf } = mountCombatView({ enc: jumper(0), api: answerWith(60) });
-    await view.confirmJump({ kind: 'high', heightDft: 60 });
+    await view.moves.confirmJump({ kind: 'high', heightDft: 60 });
     const args = callsOf('move')[0].args;
     expect(args.slice(0, 7).slice(0, 5)).toEqual(['c', 'enc', 't', 1, 1]);
     expect(args[5]).toEqual({ kind: 'high', heightDft: 60 });
@@ -1619,15 +1624,15 @@ describe("CombatView calls: a jump's note", () => {
 
   it('a long jump sends the square and its kind', async () => {
     const { view, callsOf } = mountCombatView({ enc: jumper(0), api: answerWith(60) });
-    await view.confirmJump({ kind: 'long', square: { col: 9, row: 3 } });
+    await view.moves.confirmJump({ kind: 'long', square: { col: 9, row: 3 } });
     const args = callsOf('move')[0].args;
     expect(args.slice(0, 6)).toEqual(['c', 'enc', 't', 9, 3, { kind: 'long' }]);
   });
 
   it('a new jump after one that worked takes a new key', async () => {
     const { view, callsOf } = mountCombatView({ enc: jumper(0), api: answerWith(60) });
-    await view.confirmJump({ kind: 'high', heightDft: 60 });
-    await view.confirmJump({ kind: 'high', heightDft: 60 });
+    await view.moves.confirmJump({ kind: 'high', heightDft: 60 });
+    await view.moves.confirmJump({ kind: 'high', heightDft: 60 });
     const [first, second] = callsOf('move');
     expect(second.args[6]).not.toBe(first.args[6]);
   });
@@ -1638,9 +1643,9 @@ describe("CombatView calls: a jump's note", () => {
       api: { move: refuse(Code.InvalidArgument) },
     });
     state.moving.set(true);
-    await view.confirmJump({ kind: 'high', heightDft: 60 });
-    expect(view.moveNote()).toBe('');
-    expect(view.moveError()).toBe('Não deu para mover: confira os campos e tente de novo.');
+    await view.moves.confirmJump({ kind: 'high', heightDft: 60 });
+    expect(view.moves.moveNote()).toBe('');
+    expect(view.moves.moveError()).toBe('Não deu para mover: confira os campos e tente de novo.');
     expect(state.moving()).toBe(true);
   });
 
@@ -1650,9 +1655,9 @@ describe("CombatView calls: a jump's note", () => {
       api: answerWith(60, { lockedDoor: true }),
     });
     state.moving.set(true);
-    await view.confirmJump({ kind: 'long', square: { col: 9, row: 3 } });
-    expect(view.moveNote()).toBe('Você saltou 1,8\u00a0m.');
-    expect(view.lockedDoor()).toBe(true);
+    await view.moves.confirmJump({ kind: 'long', square: { col: 9, row: 3 } });
+    expect(view.moves.moveNote()).toBe('Você saltou 1,8\u00a0m.');
+    expect(view.moves.lockedDoor()).toBe(true);
     expect(state.moving()).toBe(true);
   });
 
@@ -1661,7 +1666,7 @@ describe("CombatView calls: a jump's note", () => {
       enc: theatre('g', goblin()),
       master: true,
     });
-    await view.confirmJump({ kind: 'high', heightDft: 60 });
+    await view.moves.confirmJump({ kind: 'high', heightDft: 60 });
     expect(callsOf('move')).toEqual([]);
   });
 });
@@ -1669,22 +1674,22 @@ describe("CombatView calls: a jump's note", () => {
 describe('CombatView calls: opening the movement', () => {
   it('opens the "Mover" page of the character on a map, clearing the traces of the last one', () => {
     const { view, state, opened } = mountCombatView({ enc: grid('t', toren(), goblin()) });
-    view.lockedDoor.set(true);
-    view.moverId.set('w');
-    view.dropStart.set({ col: 1, row: 1 });
-    view.moveError.set('old');
-    view.openMove();
+    view.moves.lockedDoor.set(true);
+    view.moves.moverId.set('w');
+    view.moves.dropStart.set({ col: 1, row: 1 });
+    view.moves.moveError.set('old');
+    view.moves.open();
     expect(state.moving()).toBe(true);
-    expect(view.lockedDoor()).toBe(false);
-    expect(view.moverId()).toBe('');
-    expect(view.dropStart()).toBeNull();
-    expect(view.moveError()).toBe('');
+    expect(view.moves.lockedDoor()).toBe(false);
+    expect(view.moves.moverId()).toBe('');
+    expect(view.moves.dropStart()).toBeNull();
+    expect(view.moves.moveError()).toBe('');
     expect(opened).toEqual([]);
   });
 
   it('without a map it opens the sheet that asks how far, for the character', () => {
     const { view, state, opened } = mountCombatView({ enc: theatre('t', toren()) });
-    view.openMove();
+    view.moves.open();
     expect(state.moving()).toBe(false);
     expect(opened).toHaveLength(1);
     expect(opened[0].component).toBe(SpendSheet);
@@ -1700,44 +1705,44 @@ describe('CombatView calls: opening the movement', () => {
       enc: theatre('t', toren()),
       matches: [PHONE_QUERY],
     });
-    view.openMove();
+    view.moves.open();
     expect(opened[0].config.ariaLabel).toBe('Gastar movimento');
-    view.moveNote.set('Você parou antes');
+    view.moves.moveNote.set('Você parou antes');
     opened[0].close(true);
-    expect(view.moveNote()).toBe('');
+    expect(view.moves.moveNote()).toBe('');
   });
 
   it('opens no spend sheet without a combatant to spend for', () => {
     const { view, opened } = mountCombatView({ enc: theatre('g', goblin()), master: true });
-    view.openSpend();
+    view.sheets.actions.spend();
     expect(opened).toEqual([]);
   });
 
   it("opens the page of a creature of the player's, with its name kept for the day it leaves", () => {
     const wolf = combatant({ id: 'w', label: 'Lobo atroz 1', controlledByMe: true });
     const { view, state } = mountCombatView({ enc: grid('t', toren(), wolf) });
-    view.lockedDoor.set(true);
-    view.dropStart.set({ col: 1, row: 1 });
-    view.moveError.set('old');
-    view.openCreatureMove('w');
-    expect(view.moverId()).toBe('w');
+    view.moves.lockedDoor.set(true);
+    view.moves.dropStart.set({ col: 1, row: 1 });
+    view.moves.moveError.set('old');
+    view.moves.openCreature('w');
+    expect(view.moves.moverId()).toBe('w');
     expect(view.moves.moverName).toBe('Lobo atroz 1');
     expect(state.moving()).toBe(true);
-    expect(view.lockedDoor()).toBe(false);
-    expect(view.dropStart()).toBeNull();
-    expect(view.moveError()).toBe('');
+    expect(view.moves.lockedDoor()).toBe(false);
+    expect(view.moves.dropStart()).toBeNull();
+    expect(view.moves.moveError()).toBe('');
   });
 
   it('an unknown creature opens the page with no name', () => {
     const { view } = mountCombatView({ enc: grid('t', toren()) });
-    view.openCreatureMove('ghost');
+    view.moves.openCreature('ghost');
     expect(view.moves.moverName).toBe('');
   });
 
   it("without a map the creature's movement is the spend sheet for that creature", () => {
     const wolf = combatant({ id: 'w', label: 'Lobo', controlledByMe: true });
     const { view, state, opened } = mountCombatView({ enc: theatre('t', toren(), wolf) });
-    view.openCreatureMove('w');
+    view.moves.openCreature('w');
     expect(state.moving()).toBe(false);
     expect(opened).toHaveLength(1);
     expect(opened[0].config.data).toMatchObject({ combatantId: 'w' });

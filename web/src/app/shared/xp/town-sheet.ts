@@ -8,6 +8,7 @@ import {
   XPBlockedReason,
 } from '../../../gen/meurpg/progression/v1/progression_pb';
 import { ActionKey } from '../../core/connect/idempotency';
+import { toggledIn } from '../../core/format/sets';
 import { joinDots } from '../../core/format/text';
 import type { ExperienceRow, LoadState } from '../../core/progression/experience-store';
 import { ProgressionClient } from '../../core/progression/progression-client';
@@ -140,11 +141,11 @@ export class TownSheet {
   }
 
   protected toggleTreasure(id: string): void {
-    this.checkedTreasures.update((set) => flip(set, id));
+    this.checkedTreasures.update((set) => toggledIn(set, id));
   }
 
   protected togglePerson(id: string): void {
-    this.checkedPeople.update((set) => flip(set, id));
+    this.checkedPeople.update((set) => toggledIn(set, id));
   }
 
   protected retry(): void {
@@ -222,12 +223,4 @@ export class TownSheet {
   protected cancel(): void {
     this.sheet.close(undefined);
   }
-}
-
-function flip(set: ReadonlySet<string>, id: string): ReadonlySet<string> {
-  const next = new Set(set);
-  if (!next.delete(id)) {
-    next.add(id);
-  }
-  return next;
 }

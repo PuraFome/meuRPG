@@ -374,9 +374,9 @@ describe('CharacterEditor', () => {
       equipmentText: 'Grimório\nAdaga',
     });
     cmp.picks.selectedSkills.set(new Set(['skill:arcana', 'skill:history']));
-    cmp.selectedCantrips.set(new Set(['spell:fire-bolt', 'spell:ray-of-frost']));
+    cmp.spellPicks.cantrips.set(new Set(['spell:fire-bolt', 'spell:ray-of-frost']));
 
-    await cmp.submit();
+    await cmp.submitting.submit();
 
     expect(fake.createCharacterCalls.length).toBe(1);
     const req = fake.createCharacterCalls[0];
@@ -433,19 +433,19 @@ describe('CharacterEditor', () => {
     cmp.fullForm.patchValue({ className: 'class:wizard', level: 5 });
     fixture.detectChanges();
     const offered = () =>
-      cmp
+      cmp.views
         .sectionViews()[0]
         .prepared.all.map((s: { key: string }) => s.key)
         .sort();
 
     expect(offered()).toEqual([]);
-    cmp.toggleSpellKnown('spell:shield');
-    cmp.toggleSpellKnown('spell:magic-missile');
+    cmp.spellPicks.toggleKnown('spell:shield');
+    cmp.spellPicks.toggleKnown('spell:magic-missile');
     expect(offered()).toEqual(['spell:magic-missile', 'spell:shield']);
-    cmp.toggleSpellPrepared('spell:shield');
+    cmp.spellPicks.togglePrepared('spell:shield');
     // Taking a spell out of the book also unprepares it.
-    cmp.toggleSpellKnown('spell:shield');
-    expect(cmp.selectedSpellsPrepared().has('spell:shield')).toBe(false);
+    cmp.spellPicks.toggleKnown('spell:shield');
+    expect(cmp.spellPicks.prepared().has('spell:shield')).toBe(false);
     expect(offered()).toEqual(['spell:magic-missile']);
   });
 
@@ -500,7 +500,7 @@ describe('CharacterEditor', () => {
     cmp.fullForm.patchValue({ className: 'class:wizard' });
     cmp.setSpellFilter(0, 'cantrips', 'gelo');
 
-    expect(cmp.sectionViews()[0].cantrips.shown.map((s: { key: string }) => s.key)).toEqual([
+    expect(cmp.views.sectionViews()[0].cantrips.shown.map((s: { key: string }) => s.key)).toEqual([
       'spell:ray-of-frost',
     ]);
   });
@@ -527,7 +527,7 @@ describe('CharacterEditor', () => {
       cmp.fullForm.patchValue({ level: 1 });
       fixture.detectChanges();
       expect(cmp.fullForm.controls.subclassName.enabled).toBe(true);
-      await cmp.submit();
+      await cmp.submitting.submit();
       expect(fake.createCharacterCalls[0].full?.subclassName).toBe('subclass:evocation');
     });
 
@@ -547,7 +547,7 @@ describe('CharacterEditor', () => {
       });
       // "Nenhuma" is the option whose value is ''.
       cmp.fullForm.patchValue({ subclassName: '' });
-      await cmp.submit();
+      await cmp.submitting.submit();
 
       expect(fake.createCharacterCalls[0].full?.subclassName).toBe('');
     });
@@ -615,23 +615,21 @@ describe('CharacterEditor', () => {
       const cmp = fixture.componentInstance as any;
 
       cmp.fullForm.patchValue({ className: 'class:wizard', level: 1 });
-      expect(keys(cmp.sectionViews()[0].known.shown)).toEqual([
+      expect(keys(cmp.views.sectionViews()[0].known.shown)).toEqual([
         'spell:shield',
         'spell:magic-missile',
       ]);
       // Cantrips are not gated by level, and sort by name.
-      expect(keys(cmp.sectionViews()[0].cantrips.shown)).toEqual([
+      expect(keys(cmp.views.sectionViews()[0].cantrips.shown)).toEqual([
         'spell:fire-bolt',
         'spell:ray-of-frost',
       ]);
 
       cmp.fullForm.patchValue({ level: 5 });
       // The wizard prepares from the spellbook: nothing to prepare until spells are in the book.
-      expect(keys(cmp.sectionViews()[0].prepared.shown)).toEqual([]);
-      cmp.selectedSpellsKnown.set(
-        new Set(['spell:shield', 'spell:magic-missile', 'spell:fireball']),
-      );
-      expect(keys(cmp.sectionViews()[0].prepared.shown)).toEqual([
+      expect(keys(cmp.views.sectionViews()[0].prepared.shown)).toEqual([]);
+      cmp.spellPicks.known.set(new Set(['spell:shield', 'spell:magic-missile', 'spell:fireball']));
+      expect(keys(cmp.views.sectionViews()[0].prepared.shown)).toEqual([
         'spell:shield',
         'spell:magic-missile',
         'spell:fireball',
@@ -645,20 +643,20 @@ describe('CharacterEditor', () => {
       const cmp = fixture.componentInstance as any;
 
       cmp.fullForm.patchValue({ className: 'class:wizard', level: 5 });
-      cmp.selectedSpellsKnown.set(new Set(['spell:fireball']));
+      cmp.spellPicks.known.set(new Set(['spell:fireball']));
       cmp.fullForm.patchValue({ level: 1 });
       fixture.detectChanges();
       await fixture.whenStable();
       fixture.detectChanges();
       await openStep(fixture, 'Magias');
 
-      expect(keys(cmp.sectionViews()[0].known.shown)).toEqual([
+      expect(keys(cmp.views.sectionViews()[0].known.shown)).toEqual([
         'spell:shield',
         'spell:magic-missile',
         'spell:fireball',
       ]);
       // Not selected there, so the prepared list still hides it.
-      expect(keys(cmp.sectionViews()[0].prepared.shown)).not.toContain('spell:fireball');
+      expect(keys(cmp.views.sectionViews()[0].prepared.shown)).not.toContain('spell:fireball');
       expect(el.textContent).toContain('Bola de Fogo (3º nível, acima do nível)');
     });
 
@@ -677,10 +675,10 @@ describe('CharacterEditor', () => {
       expect(el.textContent).not.toContain('Truques');
       // A cantrip already on the sheet (say the class changed) keeps the
       // picker, so the player can still uncheck it.
-      cmp.toggleCantrip('spell:fire-bolt');
+      cmp.spellPicks.toggleCantrip('spell:fire-bolt');
       fixture.detectChanges();
       expect(el.textContent).toContain('Truques');
-      cmp.toggleCantrip('spell:fire-bolt');
+      cmp.spellPicks.toggleCantrip('spell:fire-bolt');
       fixture.detectChanges();
       expect(el.textContent).not.toContain('Truques');
 
@@ -730,8 +728,8 @@ describe('CharacterEditor', () => {
 
       expect(chosenLines(el)).toContain('0 de 4 truques escolhidos');
       expect(chosenLines(el)).toContain('0 de 7 magias escolhidas');
-      cmp.toggleCantrip('spell:fire-bolt');
-      cmp.toggleSpellPrepared('spell:shield');
+      cmp.spellPicks.toggleCantrip('spell:fire-bolt');
+      cmp.spellPicks.togglePrepared('spell:shield');
       fixture.detectChanges();
       expect(chosenLines(el)).toContain('1 de 4 truques escolhidos: Raio de Fogo');
       expect(chosenLines(el)).toContain('1 de 7 magias escolhidas: Escudo Arcano');
@@ -746,8 +744,8 @@ describe('CharacterEditor', () => {
       const warning = () => el.querySelector('.picker__warn')?.textContent?.trim();
 
       expect(warning()).toBe('Prepare até 2');
-      cmp.toggleSpellPrepared('spell:shield');
-      cmp.toggleSpellPrepared('spell:magic-missile');
+      cmp.spellPicks.togglePrepared('spell:shield');
+      cmp.spellPicks.togglePrepared('spell:magic-missile');
       fixture.detectChanges();
       expect(warning()).toBeUndefined();
     });
@@ -759,8 +757,8 @@ describe('CharacterEditor', () => {
         preparedMax: 1,
       });
       cmp.picks.preparedMaxByClass.set({ 'class:wizard': 1 });
-      cmp.toggleSpellPrepared('spell:shield');
-      cmp.toggleSpellPrepared('spell:magic-missile');
+      cmp.spellPicks.togglePrepared('spell:shield');
+      cmp.spellPicks.togglePrepared('spell:magic-missile');
       fixture.detectChanges();
 
       expect(el.querySelector('.group-hint--over')?.textContent?.trim()).toBe('Preparadas 2 de 1');
@@ -825,9 +823,9 @@ describe('CharacterEditor', () => {
     it('does not take a pick on a given skill, and does not send it as a pick', async () => {
       const { cmp } = await openSkills();
 
-      cmp.toggleSkill('skill:arcana');
+      cmp.picks.toggleSkill('skill:arcana');
 
-      expect(cmp.chosenSkills().size).toBe(0);
+      expect(cmp.views.chosenSkills().size).toBe(0);
       expect(cmp.draft.build().skillProficiencies).toEqual([]);
     });
 
@@ -835,7 +833,7 @@ describe('CharacterEditor', () => {
       const { cmp, fixture } = await openSkills();
       cmp.fullForm.patchValue({ race: '' });
       fixture.detectChanges();
-      cmp.toggleSkill('skill:arcana');
+      cmp.picks.toggleSkill('skill:arcana');
       expect(cmp.draft.build().skillProficiencies).toEqual(['skill:arcana']);
 
       cmp.fullForm.patchValue({ race: 'race:gnome' });
@@ -909,11 +907,11 @@ describe('CharacterEditor', () => {
       armor: 'equipment:leather-armor',
       weaponKeys: ['equipment:quarterstaff', 'equipment:dagger'],
     });
-    cmp.toggleCantrip('spell:fire-bolt');
-    cmp.toggleSpellKnown('spell:magic-missile');
-    cmp.toggleSpellPrepared('spell:shield');
+    cmp.spellPicks.toggleCantrip('spell:fire-bolt');
+    cmp.spellPicks.toggleKnown('spell:magic-missile');
+    cmp.spellPicks.togglePrepared('spell:shield');
 
-    await cmp.submit();
+    await cmp.submitting.submit();
 
     const req = fake.createCharacterCalls[0];
     expect(req.full?.armor).toBe('equipment:leather-armor');
@@ -937,7 +935,7 @@ describe('CharacterEditor', () => {
       armor: '',
     });
 
-    await cmp.submit();
+    await cmp.submitting.submit();
 
     expect(fake.createCharacterCalls[0].full?.armor).toBe('');
   });
@@ -956,11 +954,11 @@ describe('CharacterEditor', () => {
     });
     // A spell the catalog knows that the class's list does not have (Bênção is the paladin's) never goes; a key the
     // catalog does not know at all is kept for the server to judge, not dropped quietly (RN-23: a retired entry).
-    cmp.selectedCantrips.set(
+    cmp.spellPicks.cantrips.set(
       new Set(['spell:fire-bolt', 'spell:bless', 'spell:not-in-the-catalog']),
     );
 
-    await cmp.submit();
+    await cmp.submitting.submit();
 
     expect(fake.createCharacterCalls[0].full?.cantrips).toEqual([
       'spell:fire-bolt',
@@ -1048,7 +1046,7 @@ describe('CharacterEditor', () => {
     const { fixture } = await render();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const cmp = fixture.componentInstance as any;
-    await cmp.submit();
+    await cmp.submitting.submit();
 
     expect(fake.updateCharacterCalls.length).toBe(1);
     expect(fake.updateCharacterCalls[0].campaignId).toBe('camp-1');
@@ -1129,10 +1127,10 @@ describe('CharacterEditor', () => {
       background: 'custom',
       customBackgroundName: 'Sábio',
     });
-    cmp.toggleCustomBackgroundSkill('skill:arcana');
-    cmp.toggleCustomBackgroundSkill('skill:history');
+    cmp.picks.toggleCustomBackgroundSkill('skill:arcana');
+    cmp.picks.toggleCustomBackgroundSkill('skill:history');
 
-    await cmp.submit();
+    await cmp.submitting.submit();
 
     const req = fake.createCharacterCalls[0];
     expect(req.full?.background).toBe('custom');
@@ -1146,12 +1144,12 @@ describe('CharacterEditor', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const cmp = fixture.componentInstance as any;
 
-    cmp.toggleCustomBackgroundSkill('skill:arcana');
-    cmp.toggleCustomBackgroundSkill('skill:history');
-    cmp.toggleCustomBackgroundSkill('skill:another'); // ignored: already at 2
+    cmp.picks.toggleCustomBackgroundSkill('skill:arcana');
+    cmp.picks.toggleCustomBackgroundSkill('skill:history');
+    cmp.picks.toggleCustomBackgroundSkill('skill:another'); // ignored: already at 2
 
-    expect(cmp.customBackgroundSkills().size).toBe(2);
-    expect(cmp.customBackgroundSkills().has('skill:another')).toBe(false);
+    expect(cmp.picks.customBackgroundSkills().size).toBe(2);
+    expect(cmp.picks.customBackgroundSkills().has('skill:another')).toBe(false);
   });
 
   it('only lets expertise apply to a proficient skill, and drops it if proficiency is removed', async () => {
@@ -1161,16 +1159,16 @@ describe('CharacterEditor', () => {
     const cmp = fixture.componentInstance as any;
 
     // Not proficient yet: toggling expertise does nothing.
-    cmp.toggleExpertise('skill:arcana');
-    expect(cmp.expertiseSkills().has('skill:arcana')).toBe(false);
+    cmp.picks.toggleExpertise('skill:arcana');
+    expect(cmp.picks.expertiseSkills().has('skill:arcana')).toBe(false);
 
-    cmp.toggleSkill('skill:arcana');
-    cmp.toggleExpertise('skill:arcana');
-    expect(cmp.expertiseSkills().has('skill:arcana')).toBe(true);
+    cmp.picks.toggleSkill('skill:arcana');
+    cmp.picks.toggleExpertise('skill:arcana');
+    expect(cmp.picks.expertiseSkills().has('skill:arcana')).toBe(true);
 
     // Removing proficiency drops the now-invalid expertise too.
-    cmp.toggleSkill('skill:arcana');
-    expect(cmp.expertiseSkills().has('skill:arcana')).toBe(false);
+    cmp.picks.toggleSkill('skill:arcana');
+    expect(cmp.picks.expertiseSkills().has('skill:arcana')).toBe(false);
   });
 
   it('sends expertise, manual ability bonuses, XP, alignment and custom features', async () => {
@@ -1189,10 +1187,10 @@ describe('CharacterEditor', () => {
       customFeaturesText: 'Um truque de cartas que sempre erra.',
       extraAbilityBonuses: { str: 0, dex: 0, con: 1, int: 2, wis: 0, cha: 0 },
     });
-    cmp.toggleSkill('skill:arcana');
-    cmp.toggleExpertise('skill:arcana');
+    cmp.picks.toggleSkill('skill:arcana');
+    cmp.picks.toggleExpertise('skill:arcana');
 
-    await cmp.submit();
+    await cmp.submitting.submit();
 
     const req = fake.createCharacterCalls[0];
     expect(req.full?.expertiseSkillKeys).toEqual(['skill:arcana']);
@@ -1223,9 +1221,9 @@ describe('CharacterEditor', () => {
       level: 3,
       hitPointsMethod: 'rolled',
     });
-    cmp.hitPointsRolls.set([4, 6, 99]); // one extra roll than level 3 needs (2)
+    cmp.picks.hitPointsRolls.set([4, 6, 99]); // one extra roll than level 3 needs (2)
 
-    await cmp.submit();
+    await cmp.submitting.submit();
 
     const req = fake.createCharacterCalls[0];
     expect(req.full?.hitPointsMethod).toBe('rolled');
@@ -1251,31 +1249,31 @@ describe('CharacterEditor', () => {
 
     it('does not send a level that was never rolled, and names it', async () => {
       const cmp = await rolledWizard(4);
-      cmp.hitPointsRolls.set([0, 0, 5]);
-      await cmp.submit();
+      cmp.picks.hitPointsRolls.set([0, 0, 5]);
+      await cmp.submitting.submit();
       expect(fake.createCharacterCalls).toHaveLength(0);
-      expect(cmp.invalidSummary()).toContain('Dado de vida do nível 2');
-      expect(cmp.invalidSummary()).toContain('Dado de vida do nível 3');
-      expect(cmp.invalidSummary()).not.toContain('nível 4');
+      expect(cmp.draft.invalidSummary()).toContain('Dado de vida do nível 2');
+      expect(cmp.draft.invalidSummary()).toContain('Dado de vida do nível 3');
+      expect(cmp.draft.invalidSummary()).not.toContain('nível 4');
     });
 
     it('does not send a roll that does not fit the die of its level', async () => {
       const cmp = await rolledWizard(3);
       // A 20 on a d6, and an 11 (a d12 roll left from another class) on a d6.
-      cmp.hitPointsRolls.set([4, 20]);
-      await cmp.submit();
+      cmp.picks.hitPointsRolls.set([4, 20]);
+      await cmp.submitting.submit();
       expect(fake.createCharacterCalls).toHaveLength(0);
-      expect(cmp.invalidSummary()).toContain('Dado de vida do nível 3');
-      cmp.hitPointsRolls.set([11, 4]);
-      await cmp.submit();
+      expect(cmp.draft.invalidSummary()).toContain('Dado de vida do nível 3');
+      cmp.picks.hitPointsRolls.set([11, 4]);
+      await cmp.submitting.submit();
       expect(fake.createCharacterCalls).toHaveLength(0);
-      expect(cmp.invalidSummary()).toContain('Dado de vida do nível 2');
+      expect(cmp.draft.invalidSummary()).toContain('Dado de vida do nível 2');
     });
 
     it('sends the rolls once every level fits its die', async () => {
       const cmp = await rolledWizard(3);
-      cmp.hitPointsRolls.set([6, 1]);
-      await cmp.submit();
+      cmp.picks.hitPointsRolls.set([6, 1]);
+      await cmp.submitting.submit();
       expect(fake.createCharacterCalls[0]?.full?.hitPointsRolls).toEqual([6, 1]);
     });
   });
@@ -1294,9 +1292,9 @@ describe('CharacterEditor', () => {
       level: 3,
       hitPointsMethod: 'average',
     });
-    cmp.hitPointsRolls.set([4, 6]);
+    cmp.picks.hitPointsRolls.set([4, 6]);
 
-    await cmp.submit();
+    await cmp.submitting.submit();
 
     // The source (`CharacterEditorSourceLive.toFullSheetInit`) is what
     // actually blanks the rolls for "average" on the wire — see
@@ -1333,7 +1331,7 @@ describe('CharacterEditor', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const cmp = fixture.componentInstance as any;
 
-      await cmp.submit();
+      await cmp.submitting.submit();
       fixture.detectChanges();
 
       expect(fake.createCharacterCalls.length).toBe(0);
@@ -1373,7 +1371,7 @@ describe('CharacterEditor', () => {
       fixture.detectChanges();
       expect(cmp.bonusesOpen()).toBe(false);
 
-      await cmp.submit();
+      await cmp.submitting.submit();
       fixture.detectChanges();
 
       expect(fake.createCharacterCalls.length).toBe(0);
@@ -1405,7 +1403,7 @@ describe('CharacterEditor', () => {
         className: 'class:wizard',
         background: 'background:acolyte',
       });
-      await cmp.submit();
+      await cmp.submitting.submit();
       fixture.detectChanges();
 
       const notice = el.querySelector('.mr-notice--danger[role="alert"]');
@@ -1518,7 +1516,7 @@ describe('CharacterEditor', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const cmp = fixture.componentInstance as any;
 
-      await cmp.submit();
+      await cmp.submitting.submit();
       fixture.detectChanges();
 
       expect(fake.createCharacterCalls.length).toBe(0);
@@ -1560,7 +1558,7 @@ describe('CharacterEditor', () => {
       cmp.basicForm.controls.name.setValue('Goblin');
       cmp.basicForm.controls.attacks.push(createAttackGroup(TestBed.inject(FormBuilder)));
 
-      await cmp.submit();
+      await cmp.submitting.submit();
       fixture.detectChanges();
 
       expect(fake.createCharacterCalls.length).toBe(0);
@@ -1599,9 +1597,9 @@ describe('CharacterEditor', () => {
         className: 'class:wizard',
         background: 'background:acolyte',
       });
-      cmp.abilitiesIncomplete.set(true);
+      cmp.draft.abilitiesIncomplete.set(true);
 
-      await cmp.submit();
+      await cmp.submitting.submit();
       fixture.detectChanges();
 
       expect(fake.createCharacterCalls.length).toBe(0);
@@ -1609,8 +1607,8 @@ describe('CharacterEditor', () => {
         'Habilidades: coloque cada resultado numa habilidade.',
       );
 
-      cmp.abilitiesIncomplete.set(false);
-      await cmp.submit();
+      cmp.draft.abilitiesIncomplete.set(false);
+      await cmp.submitting.submit();
       expect(fake.createCharacterCalls.length).toBe(1);
     });
 
@@ -1630,8 +1628,8 @@ describe('CharacterEditor', () => {
       });
       fixture.detectChanges();
       await openStep(fixture, 'Habilidades');
-      expect(cmp.finalConstitution()).toBe(16);
-      expect(cmp.hitDie()).toBe(6);
+      expect(cmp.views.finalConstitution()).toBe(16);
+      expect(cmp.views.hitDie()).toBe(6);
       const labels = Array.from(el.querySelectorAll('app-hit-points-rolls mat-label')).map((l) =>
         l.textContent?.trim(),
       );
@@ -1661,7 +1659,7 @@ describe('CharacterEditor', () => {
         const cmp = view.fixture.componentInstance as any;
         vi.useFakeTimers();
         cmp.fullForm.patchValue(draft);
-        cmp.hitPointsRolls.set([4, 3]);
+        cmp.picks.hitPointsRolls.set([4, 3]);
         view.fixture.detectChanges();
         await openStep(view.fixture, 'Habilidades');
         return { ...view, cmp };
@@ -1706,9 +1704,9 @@ describe('CharacterEditor', () => {
           Promise.resolve({ hitPointsMax: 20, hitPointsFromEffects: 1, spellcasting: [] });
         const { cmp } = await openBox();
         await vi.advanceTimersByTimeAsync(PAUSE - 1);
-        cmp.hitPointsRolls.set([5, 3]);
+        cmp.picks.hitPointsRolls.set([5, 3]);
         await vi.advanceTimersByTimeAsync(PAUSE - 1);
-        cmp.hitPointsRolls.set([5, 4]);
+        cmp.picks.hitPointsRolls.set([5, 4]);
         await vi.advanceTimersByTimeAsync(PAUSE - 1);
         expect(fake.previewCharacterCalls.length).toBe(0);
         await vi.advanceTimersByTimeAsync(1);
@@ -1734,7 +1732,7 @@ describe('CharacterEditor', () => {
         fake.previewCharacterFn = () => new Promise((resolve) => answers.push(resolve));
         const { fixture, el, cmp } = await openBox();
         await vi.advanceTimersByTimeAsync(PAUSE); // call 1, slow
-        cmp.hitPointsRolls.set([4, 4]);
+        cmp.picks.hitPointsRolls.set([4, 4]);
         // The effect that asks again runs with the change detection: flushed here, not left to the scheduler's timer.
         fixture.detectChanges();
         await vi.advanceTimersByTimeAsync(PAUSE); // call 2
@@ -1751,7 +1749,7 @@ describe('CharacterEditor', () => {
         );
 
         // A third draft is on the way: the box keeps the number it has until the answer comes.
-        cmp.hitPointsRolls.set([4, 5]);
+        cmp.picks.hitPointsRolls.set([4, 5]);
         await vi.advanceTimersByTimeAsync(PAUSE);
         fixture.detectChanges();
         expect(answers.length).toBe(3);
@@ -1768,10 +1766,10 @@ describe('CharacterEditor', () => {
 
         cmp.fullForm.patchValue({ race: '' });
         fixture.detectChanges();
-        cmp.hitPointsRolls.set([2, 2]);
+        cmp.picks.hitPointsRolls.set([2, 2]);
         await vi.advanceTimersByTimeAsync(PAUSE * 3);
         expect(fake.previewCharacterCalls.length).toBe(1);
-        expect(cmp.hitPointsFromEffects()).toBeNull();
+        expect(cmp.server.hitPointsFromEffects()).toBeNull();
       });
     });
 
@@ -1875,7 +1873,7 @@ describe('CharacterEditor', () => {
       const cmp = fixture.componentInstance as any;
       fill(cmp);
 
-      await cmp.submit();
+      await cmp.submitting.submit();
 
       expect(fake.createCharacterCalls.length).toBe(1);
       expect(fake.createCharacterCalls[0]).toMatchObject({
@@ -1903,7 +1901,7 @@ describe('CharacterEditor', () => {
           hitPointsMethod: 'rolled',
           abilities: { con: 14 },
         });
-        cmp.hitPointsRolls.set([4, 3]);
+        cmp.picks.hitPointsRolls.set([4, 3]);
         fixture.detectChanges();
         await openStep(fixture, 'Habilidades');
         await vi.advanceTimersByTimeAsync(300);
@@ -1923,7 +1921,7 @@ describe('CharacterEditor', () => {
       const cmp = fixture.componentInstance as any;
       fill(cmp);
 
-      await cmp.submit();
+      await cmp.submitting.submit();
 
       expect(el.querySelector('.editor__reserved')).toBeNull();
       expect(fake.createCharacterCalls[0].forPlayer).toBeUndefined();
@@ -2051,7 +2049,7 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
         challengeRating: '1',
         xpValue: 200,
       });
-      await cmp(fixture).submit();
+      await cmp(fixture).submitting.submit();
 
       const req = fake.createCharacterCalls[0];
       expect(req.kind).toBe('enemy');
@@ -2066,7 +2064,7 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
       expect(cmp(fixture).fullForm.controls.challengeRating.value).toBe('1');
       expect(el.querySelector<HTMLInputElement>('app-defeat-xp input')?.value).toBe('200');
 
-      await cmp(fixture).submit();
+      await cmp(fixture).submitting.submit();
       const req = fake.updateCharacterCalls[0];
       expect(req.full?.challengeRating).toBe('1');
       expect(req.full?.xpValue).toBe(200);
@@ -2076,9 +2074,9 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
       configure({ id: 'camp-1', characterId: 'char-1' });
       fake.loadCharacterForEditFn = () => Promise.resolve(fullNpc({ xpValue: 1_000_001 }));
       const { fixture } = await render();
-      await cmp(fixture).submit();
+      await cmp(fixture).submitting.submit();
       expect(fake.updateCharacterCalls).toHaveLength(0);
-      expect(cmp(fixture).invalidSummary()).toContain('XP ao derrotar');
+      expect(cmp(fixture).draft.invalidSummary()).toContain('XP ao derrotar');
     });
   });
 
@@ -2098,7 +2096,7 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
       configure({ id: 'camp-1', kind: 'minion' });
       const { fixture } = await render();
       cmp(fixture).basicForm.patchValue({ name: 'Goblin', challengeRating: '1/4', xpValue: 50 });
-      await cmp(fixture).submit();
+      await cmp(fixture).submitting.submit();
       expect(fake.createCharacterCalls[0].basic).toMatchObject({
         challengeRating: '1/4',
         xpValue: 50,
@@ -2131,7 +2129,7 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
           },
         });
       const { fixture } = await render();
-      await cmp(fixture).submit();
+      await cmp(fixture).submitting.submit();
       expect(fake.updateCharacterCalls[0].basic).toMatchObject({
         challengeRating: '1/4',
         xpValue: 50,
@@ -2142,9 +2140,9 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
       configure({ id: 'camp-1', kind: 'minion' });
       const { fixture } = await render();
       cmp(fixture).basicForm.patchValue({ name: 'Goblin', xpValue: null });
-      await cmp(fixture).submit();
+      await cmp(fixture).submitting.submit();
       expect(fake.createCharacterCalls).toHaveLength(0);
-      expect(cmp(fixture).invalidSummary()).toContain('XP ao derrotar');
+      expect(cmp(fixture).draft.invalidSummary()).toContain('XP ao derrotar');
     });
   });
 
@@ -2153,7 +2151,7 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
     const { fixture, el } = await render();
     expect(defeat(el)).toBeNull();
     cmp(fixture).basicForm.patchValue({ name: 'Velha Odra' });
-    await cmp(fixture).submit();
+    await cmp(fixture).submitting.submit();
     expect(fake.createCharacterCalls[0].basic).toMatchObject({ challengeRating: '', xpValue: 0 });
   });
 
@@ -2176,7 +2174,7 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
         className: 'class:wizard',
         background: 'background:acolyte',
       });
-      await cmp(fixture).submit();
+      await cmp(fixture).submitting.submit();
       expect(fake.createCharacterCalls[0].full).toMatchObject({ challengeRating: '', xpValue: 0 });
     });
 
@@ -2192,7 +2190,7 @@ describe('CharacterEditor: what an NPC gives when defeated (E7-11, MR-016)', () 
       expect(el.textContent).toContain('Só os prêmios do mestre mudam o XP.');
       expect(el.querySelector('input[formcontrolname="experiencePoints"]')).toBeNull();
 
-      await cmp(fixture).submit();
+      await cmp(fixture).submitting.submit();
       expect(fake.updateCharacterCalls[0].full?.experiencePoints).toBe(2716);
     });
   });
@@ -2276,7 +2274,7 @@ describe('CharacterEditor, the NPC portrait', () => {
     expect(el.querySelector('app-portrait-field img')?.getAttribute('src')).toBe('/images/img-1');
 
     cmp(fixture).basicForm.patchValue({ hitPointsMax: 12 });
-    await cmp(fixture).submit();
+    await cmp(fixture).submitting.submit();
     expect(fake.updateCharacterCalls).toHaveLength(1);
     expect(fake.updateCharacterCalls[0].basic).toMatchObject({
       hitPointsMax: 12,
@@ -2288,7 +2286,7 @@ describe('CharacterEditor, the NPC portrait', () => {
     configure({ id: 'camp-1', kind: 'story' });
     const { fixture } = await render();
     cmp(fixture).basicForm.patchValue({ name: 'Mira', portraitImageId: 'img-2' });
-    await cmp(fixture).submit();
+    await cmp(fixture).submitting.submit();
     expect(fake.createCharacterCalls[0].basic).toMatchObject({ portraitImageId: 'img-2' });
 
     TestBed.resetTestingModule();
@@ -2296,7 +2294,7 @@ describe('CharacterEditor, the NPC portrait', () => {
     fake.loadCharacterForEditFn = () => Promise.resolve(basicNpc('img-1'));
     const second = await render();
     cmp(second.fixture).basicForm.controls.portraitImageId.setValue('img-2');
-    await cmp(second.fixture).submit();
+    await cmp(second.fixture).submitting.submit();
     expect(fake.updateCharacterCalls[0].basic).toMatchObject({ portraitImageId: 'img-2' });
 
     TestBed.resetTestingModule();
@@ -2304,7 +2302,7 @@ describe('CharacterEditor, the NPC portrait', () => {
     fake.loadCharacterForEditFn = () => Promise.resolve(basicNpc('img-1'));
     const third = await render();
     cmp(third.fixture).basicForm.controls.portraitImageId.setValue('');
-    await cmp(third.fixture).submit();
+    await cmp(third.fixture).submitting.submit();
     expect(fake.updateCharacterCalls[0].basic).toMatchObject({ portraitImageId: '' });
   });
 
@@ -2376,11 +2374,11 @@ describe('CharacterEditor, the NPC portrait', () => {
       configure({ id: 'camp-1', characterId: 'char-1' });
       fake.loadCharacterForEditFn = () => Promise.resolve(enemy('img-2'));
       const { fixture } = await render();
-      await cmp(fixture).submit();
+      await cmp(fixture).submitting.submit();
       expect(fake.updateCharacterCalls[0].full).toMatchObject({ portraitImageId: 'img-2' });
 
       cmp(fixture).fullForm.controls.portraitImageId.setValue('img-1');
-      await cmp(fixture).submit();
+      await cmp(fixture).submitting.submit();
       expect(fake.updateCharacterCalls[1].full).toMatchObject({ portraitImageId: 'img-1' });
     });
   });
@@ -2497,10 +2495,10 @@ describe("CharacterEditor, a player making a new sheet by the table's rules (RN-
 
     // The standard array is the first way: nothing is placed yet.
     expect(cmp.abilityMethod()).toBe('standard_array');
-    expect(cmp.abilitiesIncomplete()).toBe(true);
-    await cmp.submit();
+    expect(cmp.draft.abilitiesIncomplete()).toBe(true);
+    await cmp.submitting.submit();
     expect(fake.createCharacterCalls).toHaveLength(0);
-    expect(cmp.invalidSummary()).toContain('coloque cada valor do conjunto numa habilidade');
+    expect(cmp.draft.invalidSummary()).toContain('coloque cada valor do conjunto numa habilidade');
 
     // Typed values: complete, and the method goes with the request.
     const step = fixture.nativeElement.querySelector('app-table-ability-scores') as HTMLElement;
@@ -2514,7 +2512,7 @@ describe("CharacterEditor, a player making a new sheet by the table's rules (RN-
       .get('abilities')
       ?.patchValue({ str: 12, dex: 14, con: 13, int: 8, wis: 16, cha: 10 });
     fixture.detectChanges();
-    await cmp.submit();
+    await cmp.submitting.submit();
     expect(fake.createCharacterCalls).toHaveLength(1);
     expect(fake.createCharacterCalls[0].abilityMethod).toBe('typed');
     expect(fake.createCharacterCalls[0].full?.abilities).toMatchObject({
@@ -2548,9 +2546,9 @@ describe("CharacterEditor, a player making a new sheet by the table's rules (RN-
           },
         ]),
       );
-    await cmp.submit();
+    await cmp.submitting.submit();
     fixture.detectChanges();
-    expect(cmp.saveState()).toEqual({
+    expect(cmp.saving.state()).toEqual({
       status: 'error',
       message: 'O mestre não liberou esse jeito de fazer as habilidades nesta mesa. Escolha outro.',
     });
@@ -2607,8 +2605,8 @@ describe("CharacterEditor, a player making a new sheet by the table's rules (RN-
           },
         ]),
       );
-    await cmp.submit();
-    expect(cmp.saveState().message).toContain(
+    await cmp.submitting.submit();
+    expect(cmp.saving.state().message).toContain(
       'A mesa decidiu como se ganham os pontos de vida dos níveis acima do 1º',
     );
   });
@@ -2776,7 +2774,7 @@ describe("CharacterEditor, the master's switches (RN-23: an option switched off,
     const cmp = fixture.componentInstance as any;
     fill(cmp);
     fake.createCharacterFn = () => Promise.reject(switchedOff('race:gnome'));
-    await cmp.submit();
+    await cmp.submitting.submit();
     await nextTurn();
     fixture.detectChanges();
     await nextTurn();
@@ -2792,8 +2790,8 @@ describe("CharacterEditor, the master's switches (RN-23: an option switched off,
       'A raça “Gnomo” foi desligada pelo mestre para os jogadores. Escolha outra opção.',
     );
     // The step is marked, the notice above the buttons names the field, and the focus is on it.
-    expect(cmp.stepHasError('basico')).toBe(true);
-    expect(cmp.invalidSummary()).toContain('Raça');
+    expect(cmp.draft.stepHasError('basico')).toBe(true);
+    expect(cmp.draft.invalidSummary()).toContain('Raça');
     expect(document.activeElement).toBe(select);
     // Picking something else takes the error away.
     cmp.fullForm.patchValue({ race: 'race:elf' });
@@ -2810,7 +2808,7 @@ describe("CharacterEditor, the master's switches (RN-23: an option switched off,
     fill(cmp);
     fake.createCharacterFn = () => Promise.reject(switchedOff('race:gnome'));
     fake.loadCatalogFn = () => Promise.resolve({ ...catalog(), races: [] });
-    await cmp.submit();
+    await cmp.submitting.submit();
     await nextTurn();
     fixture.detectChanges();
     await nextTurn();
@@ -2957,7 +2955,7 @@ describe('CharacterEditor, leaving the route while a read or a save is in flight
     fake.createCharacterFn = () => pending.promise;
     fillValid(cmp);
 
-    const done = cmp.submit() as Promise<void>;
+    const done = cmp.submitting.submit() as Promise<void>;
     await nextTurn();
     expect(fake.createCharacterCalls.length).toBe(1);
     fixture.destroy();
@@ -2975,7 +2973,7 @@ describe('CharacterEditor, leaving the route while a read or a save is in flight
     const pending = deferred<{ revision: number }>();
     fake.updateCharacterFn = () => pending.promise;
 
-    const done = cmp.submit() as Promise<void>;
+    const done = cmp.submitting.submit() as Promise<void>;
     await nextTurn();
     expect(fake.updateCharacterCalls.length).toBe(1);
     fixture.destroy();
@@ -2991,7 +2989,7 @@ describe('CharacterEditor, leaving the route while a read or a save is in flight
     const { cmp } = await render();
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
 
-    await cmp.submit();
+    await cmp.submitting.submit();
 
     expect(navigate).toHaveBeenCalledWith(['/campaigns', 'camp-1', 'characters', 'char-1']);
   });
@@ -3032,8 +3030,8 @@ describe('CharacterEditor, leaving the route while a read or a save is in flight
     expect(cmp.state().kind).toBe('story');
 
     expect(cmp.picks.selectedSkills().size).toBe(0);
-    expect(cmp.selectedCantrips().size).toBe(0);
-    expect(cmp.hitPointsRolls()).toEqual([]);
+    expect(cmp.spellPicks.cantrips().size).toBe(0);
+    expect(cmp.picks.hitPointsRolls()).toEqual([]);
   });
 });
 
@@ -3044,7 +3042,7 @@ interface EditorProbe {
     patchValue(value: { cuttingWordsAsk: string }): void;
   };
   cuttingWordsOptions: readonly { label: string }[];
-  submit(): Promise<void>;
+  submitting: { submit(): Promise<void> };
 }
 
 describe('CharacterEditor, the bard\'s "Perguntar" setting for Palavras de Interrupção', () => {
@@ -3101,7 +3099,7 @@ describe('CharacterEditor, the bard\'s "Perguntar" setting for Palavras de Inter
     const { cmp } = await render(['feature:cutting-words'], { cuttingWordsAsk: 'all' });
     expect(cmp.fullForm.getRawValue().cuttingWordsAsk).toBe('all');
     cmp.fullForm.patchValue({ cuttingWordsAsk: 'never' });
-    await cmp.submit();
+    await cmp.submitting.submit();
     expect(fake.updateCharacterCalls[0].full?.cuttingWordsAsk).toBe('never');
   });
 });

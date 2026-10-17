@@ -45,7 +45,8 @@ export function sessionEndedInterceptor(injector: Injector): Interceptor {
       const e = ConnectError.from(err);
       const isReader = req.method.name === 'GetMe' || req.method.name === 'SignOut';
       if (e.code === Code.Unauthenticated && !isReader) {
-        void injector.get(SESSION_REFRESHER).refresh();
+        // Optional: an injector without the app's binding (a spec, a second bootstrap) keeps the caller's error.
+        void injector.get(SESSION_REFRESHER, null)?.refresh();
       }
       throw err;
     }

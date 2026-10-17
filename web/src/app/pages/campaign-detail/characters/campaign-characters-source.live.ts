@@ -11,11 +11,8 @@ import {
   CharacterSummary,
   Review as GenReview,
 } from '../../../../gen/meurpg/characters/v1/characters_pb';
-import {
-  CharacterKind,
-  CharacterState,
-  ReviewStatus,
-} from '../../../core/characters/characters.types';
+import { KIND_FROM_GEN } from '../../../core/characters/character-kind-gen';
+import { CharacterState, ReviewStatus } from '../../../core/characters/characters.types';
 import { CONNECT_TRANSPORT } from '../../../core/connect/transport';
 import {
   CampaignCharacterListItemVm,
@@ -24,15 +21,6 @@ import {
   OpenChoicesVm,
   ClaimVm,
 } from './campaign-characters.types';
-
-const KIND_FROM_GEN: Record<GenCharacterKind, CharacterKind> = {
-  [GenCharacterKind.UNSPECIFIED]: 'player',
-  [GenCharacterKind.PLAYER]: 'player',
-  [GenCharacterKind.ENEMY]: 'enemy',
-  [GenCharacterKind.BOSS]: 'boss',
-  [GenCharacterKind.MINION]: 'minion',
-  [GenCharacterKind.STORY]: 'story',
-};
 
 const STATE_FROM_GEN: Record<GenCharacterState, CharacterState> = {
   [GenCharacterState.UNSPECIFIED]: 'draft',

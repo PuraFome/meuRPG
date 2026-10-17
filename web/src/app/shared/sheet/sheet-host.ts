@@ -1,5 +1,5 @@
 import { type ComponentType } from '@angular/cdk/portal';
-import { inject } from '@angular/core';
+import { inject, type WritableSignal } from '@angular/core';
 import {
   MAT_BOTTOM_SHEET_DATA,
   MatBottomSheet,
@@ -7,7 +7,7 @@ import {
   MatBottomSheetRef,
 } from '@angular/material/bottom-sheet';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
-import type { Observable } from 'rxjs';
+import type { Observable, Observer } from 'rxjs';
 
 import { PHONE_QUERY } from '../map-view/media-query';
 
@@ -71,6 +71,29 @@ export function openSheet<C, D, R>(
       role: config.alert ? 'alertdialog' : 'dialog',
     })
     .afterClosed();
+}
+
+/**
+ * Raises `open` while a sheet is up and lowers it when the sheet closes or fails: a flag left up by a failed sheet
+ * would keep every later sheet of its kind from opening. `observer` hears the same events after the flag is lowered.
+ */
+export function trackOpen<R>(
+  open: WritableSignal<boolean>,
+  sheet: Observable<R | undefined>,
+  observer: Partial<Observer<R | undefined>> = {},
+): void {
+  open.set(true);
+  sheet.subscribe({
+    next: (result) => observer.next?.(result),
+    complete: () => {
+      open.set(false);
+      observer.complete?.();
+    },
+    error: (err: unknown) => {
+      open.set(false);
+      observer.error?.(err);
+    },
+  });
 }
 
 export interface SheetHandle<D, R> {
