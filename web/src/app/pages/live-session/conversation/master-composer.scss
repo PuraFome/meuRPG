@@ -45,10 +45,16 @@
 }
 
 .composer__select {
+  position: relative;
   display: flex;
   align-items: center;
 
-  // The select's own arrow sits inside the field, 12 px from the edge.
+  // The arrow is positioned against the field, not against the trigger (which sits inside the field's
+  // padding), so it is 12 px from the edge like the text on the left.
+  ::ng-deep .mat-mdc-select-trigger {
+    position: static;
+  }
+
   ::ng-deep .mat-mdc-select-arrow-wrapper {
     position: absolute;
     right: var(--mr-space-3);

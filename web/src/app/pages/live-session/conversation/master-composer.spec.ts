@@ -67,7 +67,7 @@ describe('MasterComposer', () => {
     expect(words).toEqual(expect.arrayContaining(['Falar como', 'Para', 'Mensagem']));
   });
 
-  it('insets the chevron like the text: the select is the arrow\'s containing block', async () => {
+  it("insets the chevron like the text: the select is the arrow's containing block", async () => {
     const { el, fixture } = setup();
     await settle(fixture);
     const select = el.querySelector('.composer__select') as HTMLElement;
