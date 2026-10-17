@@ -341,7 +341,8 @@ func (s *Service) holdConcentration(ctx context.Context, c *combatTx, spec effec
 }
 
 // putLastingEffects writes the effect on the targets. An effect that sets a base armor class is a
-// record for each target, with the class worked out for it, and none for a target that wears armor.
+// record for each target, with the class worked out for it, and none for a target that wears armor;
+// when it takes no hold of any, the master is told.
 func (s *Service) putLastingEffects(ctx context.Context, c *combatTx, cs []playdb.Combatant, spec effectSpec, opts castOpts) ([]playdb.CombatantState, error) {
 	if !hasBaseAC(spec.def) {
 		return s.addEffects(ctx, c, cs, spec)
@@ -364,6 +365,9 @@ func (s *Service) putLastingEffects(ctx context.Context, c *combatTx, cs []playd
 			return nil, err
 		}
 		rows = append(rows, made...)
+	}
+	if len(rows) == 0 {
+		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the effect takes no hold of these targets"))
 	}
 	return rows, nil
 }
