@@ -566,7 +566,7 @@ func (s *Service) listAfterWrite(ctx context.Context, m authz.Membership, what s
 func (s *Service) committedViews(ctx context.Context, what string, read func() ([]*progressionv1.Milestone, error)) []*progressionv1.Milestone {
 	views, err := read()
 	if err != nil {
-		s.logger.ErrorContext(ctx, "read the milestones after a committed write", "action", what, "error", err)
+		s.logger.ErrorContext(ctx, "progression: cannot read the milestones after a committed write", "action", what, "error", err)
 		return nil
 	}
 	return views

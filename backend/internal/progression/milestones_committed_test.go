@@ -24,7 +24,9 @@ func TestCommittedViewsLogsAFailedReadAndGivesNoList(t *testing.T) {
 	if got != nil {
 		t.Errorf("views = %v, want none", got)
 	}
-	for _, want := range []string{"add a milestone", "connection reset"} {
+	// The module prefix and the level are what the service tests and the
+	// operator's alerts read.
+	for _, want := range []string{`"level":"ERROR"`, `"msg":"progression: cannot read`, "add a milestone", "connection reset"} {
 		if !strings.Contains(logs.String(), want) {
 			t.Errorf("log %q does not name %q", logs.String(), want)
 		}
