@@ -21,8 +21,8 @@ type actionsRestAdjust struct {
 	edit  func(*playv1.AdjustCombatantHitPointsRequest)
 }
 
-func (c actionsRestAdjust) scenario() actionsRestScenario {
-	return actionsRestScenario{name: c.name, run: func(t *testing.T) string {
+func (c actionsRestAdjust) scenario() goldenScenario {
+	return goldenScenario{name: c.name, run: func(t *testing.T) string {
 		t.Helper()
 		world := c.world
 		if world == nil {
@@ -99,7 +99,7 @@ func actionsRestWarm(t *testing.T, a *armed, _ *playv1.Encounter) {
 }
 
 // actionsRestAdjustments are the corrections of the master and the refusals of the call.
-func actionsRestAdjustments() []actionsRestScenario {
+func actionsRestAdjustments() []goldenScenario {
 	stranger := func(a *armed) *user { return a.h.newUser("Zé") }
 	missing := "00000000-0000-4000-8000-000000000001"
 	hide := func(t *testing.T, a *armed, e *playv1.Encounter) {
@@ -166,7 +166,7 @@ func actionsRestAdjustments() []actionsRestScenario {
 			a.concentrate(t, "Goblin", webSpell)
 		}},
 	}
-	out := make([]actionsRestScenario, 0, len(cases)+1)
+	out := make([]goldenScenario, 0, len(cases)+1)
 	for _, c := range cases {
 		out = append(out, c.scenario())
 	}
@@ -174,8 +174,8 @@ func actionsRestAdjustments() []actionsRestScenario {
 }
 
 // actionsRestAdjustTwice is a retry of one request: the same key is the same answer.
-func actionsRestAdjustTwice() actionsRestScenario {
-	return actionsRestScenario{name: "adjust the same request twice", run: func(t *testing.T) string {
+func actionsRestAdjustTwice() goldenScenario {
+	return goldenScenario{name: "adjust the same request twice", run: func(t *testing.T) string {
 		t.Helper()
 		a, e := actionsRestUsual(t)
 		key := newKey()

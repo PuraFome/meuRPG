@@ -20,12 +20,7 @@ import (
 
 const actionsRestGolden = "testdata/actions_rest.golden"
 
-// actionsRestScenario is one scenario of the golden: run plays it on a fight of its own and reads the outcome.
-type actionsRestScenario struct {
-	name string
-	run  func(t *testing.T) string
-}
-
+// goldenScenario is one scenario of the golden: run plays it on a fight of its own and reads the outcome.
 // actionsRestWorld starts a fight and hands back the campaign and the combat.
 type actionsRestWorld func(t *testing.T) (*armed, *playv1.Encounter)
 
@@ -150,8 +145,8 @@ type actionsRestSettle struct {
 	discardEdit func(*playv1.DiscardPendingDamageRequest)
 }
 
-func (c actionsRestSettle) scenario() actionsRestScenario {
-	return actionsRestScenario{name: c.name, run: func(t *testing.T) string {
+func (c actionsRestSettle) scenario() goldenScenario {
+	return goldenScenario{name: c.name, run: func(t *testing.T) string {
 		t.Helper()
 		hit := c.hit
 		if hit == nil {
@@ -263,7 +258,7 @@ func actionsRestSettled(apply bool) func(t *testing.T, a *armed, e *playv1.Encou
 }
 
 // actionsRestSettleRefusals are the refusals of the two calls that settle a hit.
-func actionsRestSettleRefusals() []actionsRestScenario {
+func actionsRestSettleRefusals() []goldenScenario {
 	stranger := func(a *armed) *user { return a.h.newUser("Zé") }
 	missing := "00000000-0000-4000-8000-000000000001"
 	cases := []actionsRestSettle{
@@ -299,8 +294,8 @@ func actionsRestSettleRefusals() []actionsRestScenario {
 	return actionsRestSettleScenarios(cases)
 }
 
-func actionsRestSettleScenarios(cases []actionsRestSettle) []actionsRestScenario {
-	out := make([]actionsRestScenario, 0, len(cases))
+func actionsRestSettleScenarios(cases []actionsRestSettle) []goldenScenario {
+	out := make([]goldenScenario, 0, len(cases))
 	for _, c := range cases {
 		out = append(out, c.scenario())
 	}

@@ -3,11 +3,9 @@ package play
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"regexp"
 	"sort"
 	"strings"
-	"sync"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -28,74 +26,6 @@ import (
 // again, and read the diff.
 
 const castSpellGolden = "testdata/cast_spell.golden"
-
-// castGolden collects what the scenarios of a test read, by name.
-type castGolden struct {
-	mu     sync.Mutex
-	blocks map[string]string
-}
-
-func (g *castGolden) put(name, text string) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	if g.blocks == nil {
-		g.blocks = map[string]string{}
-	}
-	g.blocks[name] = text
-}
-
-// settle compares the blocks with the golden file, or writes it when UPDATE_GOLDEN is set.
-func (g *castGolden) settle(t *testing.T, path string) {
-	t.Helper()
-	names := make([]string, 0, len(g.blocks))
-	for n := range g.blocks {
-		names = append(names, n)
-	}
-	sort.Strings(names)
-	var sb strings.Builder
-	for _, n := range names {
-		sb.WriteString("== " + n + " ==\n" + g.blocks[n] + "\n")
-	}
-	if os.Getenv("UPDATE_GOLDEN") != "" {
-		if err := os.WriteFile(path, []byte(sb.String()), 0o600); err != nil {
-			t.Fatalf("write %s: %v", path, err)
-		}
-		return
-	}
-	want, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("read %s: %v (run with UPDATE_GOLDEN=1)", path, err)
-	}
-	if string(want) == sb.String() {
-		return
-	}
-	wantBlocks := map[string]string{}
-	for _, part := range strings.Split(string(want), "== ")[1:] {
-		head, body, _ := strings.Cut(part, " ==\n")
-		wantBlocks[head] = strings.TrimSuffix(body, "\n")
-	}
-	for _, n := range names {
-		if w, ok := wantBlocks[n]; !ok {
-			t.Errorf("scenario %q is not in %s", n, path)
-		} else if w != g.blocks[n] {
-			t.Errorf("scenario %q reads:\n%s\nwant:\n%s", n, g.blocks[n], w)
-		}
-	}
-	for n := range wantBlocks {
-		if _, ok := g.blocks[n]; !ok {
-			t.Errorf("scenario %q of %s did not run", n, path)
-		}
-	}
-}
-
-// castLabels names the combatants of the combat by id.
-func castLabels(e *playv1.Encounter) map[string]string {
-	names := map[string]string{}
-	for _, c := range e.GetCombatants() {
-		names[c.GetId()] = c.GetLabel()
-	}
-	return names
-}
 
 // spellJSON is a message as sorted JSON, with the ids replaced by labels.
 func spellJSON(m proto.Message, names map[string]string, omit ...string) string {
@@ -179,7 +109,7 @@ var castStateQueries = []struct{ name, query string }{
 func (a *armed) castReport(t *testing.T, after int, res *playv1.CastSpellResponse, err error) string {
 	t.Helper()
 	e := a.get(t, a.master)
-	names := castLabels(e)
+	names := labelsOf(e)
 	var lines []string
 	if err != nil {
 		lines = append(lines, fmt.Sprintf("refused %v: %v", connect.CodeOf(err), err.Error()[strings.Index(err.Error(), ": ")+2:]))
@@ -206,19 +136,14 @@ func (a *armed) castReport(t *testing.T, after int, res *playv1.CastSpellRespons
 	return strings.Join(lines, "\n")
 }
 
-// castScenario is one scenario of the golden: run plays it and reads what it left.
-type castScenario struct {
-	name string
-	run  func(t *testing.T) string
-}
-
+// goldenScenario is one scenario of the golden: run plays it and reads what it left.
 // castPlay is what a scenario does after its setup: the combat it ran on, the number of events written
 // before the cast and the cast's answer.
 type castPlay func(t *testing.T) (a *armed, before int, res *playv1.CastSpellResponse, err error)
 
 // castOn is a scenario that plays its own fight.
-func castOn(name string, play castPlay) castScenario {
-	return castScenario{name: name, run: func(t *testing.T) string {
+func castOn(name string, play castPlay) goldenScenario {
+	return goldenScenario{name: name, run: func(t *testing.T) string {
 		t.Helper()
 		a, before, res, err := play(t)
 		return a.castReport(t, before, res, err)
@@ -294,7 +219,7 @@ func asBia(a *armed) *user { return a.bia }
 func asCaio(a *armed) *user { return a.caio }
 
 // scenario plays the fight and the cast.
-func (f castFight) scenario(name string) castScenario {
+func (f castFight) scenario(name string) goldenScenario {
 	return castOn(name, func(t *testing.T) (*armed, int, *playv1.CastSpellResponse, error) {
 		t.Helper()
 		a := newCasters(t)
@@ -320,7 +245,7 @@ func (f castFight) scenario(name string) castScenario {
 }
 
 // castRefused is a scenario of a cast the checks refuse, on the casters' fight; it names what is refused.
-func castRefused(name string, f castFight) castScenario { return f.scenario("refused " + name) }
+func castRefused(name string, f castFight) goldenScenario { return f.scenario("refused " + name) }
 
 // pensantus is the usual caster of the golden: Pensantus (Ana) casts the spell at the goblin.
 func pensantus(spell string, slot *playv1.SpellSlot, edit func(*playv1.CastSpellRequest)) castFight {
@@ -329,23 +254,14 @@ func pensantus(spell string, slot *playv1.SpellSlot, edit func(*playv1.CastSpell
 
 // TestCastSpellIsFrozen runs every scenario on a fight of its own and compares what each reads with the
 // golden.
-func TestCastSpellIsFrozen(t *testing.T) { //nolint:tparallel // the golden is compared once every scenario of the group has run
+func TestCastSpellIsFrozen(t *testing.T) {
 	t.Parallel()
-	g := &castGolden{}
-	t.Run("scenarios", func(t *testing.T) {
-		for _, sc := range castSpellScenarios() {
-			t.Run(sc.name, func(t *testing.T) {
-				t.Parallel()
-				g.put(sc.name, sc.run(t))
-			})
-		}
-	})
-	g.settle(t, castSpellGolden)
+	runGolden(t, castSpellGolden, castSpellScenarios())
 }
 
 // castSpellScenarios are the scenarios of the golden, in the order they are listed.
-func castSpellScenarios() []castScenario {
-	var out []castScenario
+func castSpellScenarios() []goldenScenario {
+	var out []goldenScenario
 	out = append(out, castRequestScenarios()...)
 	out = append(out, castRefusalScenarios()...)
 	out = append(out, castThroughScenarios()...)
@@ -431,13 +347,13 @@ func d20Faces(faces ...int32) func(*playv1.CastSpellRequest) {
 }
 
 // castRequestScenarios are the refusals of the request's own fields.
-func castRequestScenarios() []castScenario {
+func castRequestScenarios() []goldenScenario {
 	long := strings.Repeat("x", 101)
 	eleven := make([]string, 11)
 	for i := range eleven {
 		eleven[i] = "Goblin"
 	}
-	return []castScenario{
+	return []goldenScenario{
 		castRefused("an empty spell key", pensantus("", slotOfLevel(1), nil)),
 		castRefused("a spell key of 101 characters", pensantus(long, slotOfLevel(1), nil)),
 		castRefused("a key that is not a UUID", pensantus(magicMissileSpell, slotOfLevel(1), func(r *playv1.CastSpellRequest) { r.IdempotencyKey = "not-a-key" })),
@@ -564,9 +480,9 @@ func (f castFight) turnOf(label string) castFight {
 }
 
 // castRefusalScenarios are the refusals the checks of the transaction give.
-func castRefusalScenarios() []castScenario {
+func castRefusalScenarios() []goldenScenario {
 	unknown := "00000000-0000-4000-8000-000000000001"
-	return []castScenario{
+	return []goldenScenario{
 		castRefused("a caster of another player", pensantus(magicMissileSpell, slotOfLevel(1), nil).by(asBia)),
 		castRefused("a caster that is not in the combat", pensantus(magicMissileSpell, slotOfLevel(1), func(r *playv1.CastSpellRequest) { r.CasterId = unknown })),
 		castRefused("a target that is not in the combat", pensantus(magicMissileSpell, slotOfLevel(1), func(r *playv1.CastSpellRequest) {
@@ -667,8 +583,8 @@ func missiles(darts ...int32) func(*playv1.CastSpellRequest) {
 }
 
 // castThroughScenarios are the casts that go through.
-func castThroughScenarios() []castScenario {
-	return []castScenario{
+func castThroughScenarios() []goldenScenario {
+	return []goldenScenario{
 		pensantus(magicMissileSpell, slotOfLevel(1), missiles(3)).scenario("magic missile with three darts"),
 		pensantus(magicMissileSpell, slotOfLevel(2), missiles(2, 2)).to("Goblin", "Capitão Goblin").scenario("magic missile from a second level slot at two targets"),
 		pensantus(magicMissileSpell, slotOfLevel(1), missiles(3)).by(asMasterOf).scenario("magic missile as the master for the player"),

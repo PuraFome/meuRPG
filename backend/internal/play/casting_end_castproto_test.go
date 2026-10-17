@@ -57,9 +57,9 @@ func castEndIceStorm(u func(a *armed) *user) func(t *testing.T, a *armed, e *pla
 func castEndAsMaster(a *armed) *user { return a.master }
 
 // castEndProtoScenarios are the scenarios of the golden.
-func castEndProtoScenarios() []castScenario {
+func castEndProtoScenarios() []goldenScenario {
 	heightened := sorcererTable(rules.MetamagicHeightened, rules.MetamagicSubtle)
-	return []castScenario{
+	return []goldenScenario{
 		castSteps("a heightened spell read by the caster", heightened, castEndHeightened(asAna)),
 		castSteps("a heightened spell read by the master", heightened, castEndHeightened(castEndAsMaster)),
 		castSteps("two damages read by the caster", castEndIceStormTable, castEndIceStorm(asAna)),
@@ -82,16 +82,7 @@ func castEndProtoScenarios() []castScenario {
 
 // TestCastEndProtoIsFrozen runs every scenario on a fight of its own and compares what each viewer reads with
 // the golden.
-func TestCastEndProtoIsFrozen(t *testing.T) { //nolint:tparallel // the golden is compared once every scenario of the group has run
+func TestCastEndProtoIsFrozen(t *testing.T) {
 	t.Parallel()
-	g := &castGolden{}
-	t.Run("scenarios", func(t *testing.T) {
-		for _, sc := range castEndProtoScenarios() {
-			t.Run(sc.name, func(t *testing.T) {
-				t.Parallel()
-				g.put(sc.name, sc.run(t))
-			})
-		}
-	})
-	g.settle(t, castEndProtoGolden)
+	runGolden(t, castEndProtoGolden, castEndProtoScenarios())
 }

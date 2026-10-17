@@ -105,14 +105,9 @@ type damagePlay struct {
 	err    error
 }
 
-type damageScenario struct {
-	name string
-	run  func(t *testing.T) string
-}
-
 // damageOn is a scenario that plays its own fight.
-func damageOn(name string, play func(t *testing.T) damagePlay) damageScenario {
-	return damageScenario{name: name, run: func(t *testing.T) string {
+func damageOn(name string, play func(t *testing.T) damagePlay) goldenScenario {
+	return goldenScenario{name: name, run: func(t *testing.T) string {
 		t.Helper()
 		p := play(t)
 		return p.a.damageReport(t, p.before, p.res, p.err)
@@ -152,7 +147,7 @@ func goblinHitsToren(t *testing.T, a *armed, e *playv1.Encounter, face int32) (*
 }
 
 // damageRefusal is a scenario of a damage roll on Toren's hit that edits the request and reads the refusal.
-func damageRefusal(name string, as func(a *armed) *user, edit func(*playv1.RollDamageRequest)) damageScenario {
+func damageRefusal(name string, as func(a *armed) *user, edit func(*playv1.RollDamageRequest)) goldenScenario {
 	return damageOn("refused "+name, func(t *testing.T) damagePlay {
 		t.Helper()
 		a := newArmed(t)
@@ -163,7 +158,7 @@ func damageRefusal(name string, as func(a *armed) *user, edit func(*playv1.RollD
 }
 
 // damageThrough is a scenario of a damage roll on Toren's hit (a critical one when crit is set).
-func damageThrough(name string, crit bool, as func(a *armed) *user, edit func(*playv1.RollDamageRequest)) damageScenario {
+func damageThrough(name string, crit bool, as func(a *armed) *user, edit func(*playv1.RollDamageRequest)) goldenScenario {
 	return damageOn(name, func(t *testing.T) damagePlay {
 		t.Helper()
 		a := newArmed(t)
@@ -186,8 +181,8 @@ func typedParts(parts ...*playv1.TypedPart) func(*playv1.RollDamageRequest) {
 }
 
 // refusedDamages are the requests the damage roll refuses before it writes anything.
-func refusedDamages() []damageScenario {
-	return []damageScenario{
+func refusedDamages() []goldenScenario {
+	return []goldenScenario{
 		damageRefusal("a key that is not a UUID", asToren, func(r *playv1.RollDamageRequest) { r.IdempotencyKey = "not-a-key" }),
 		damageRefusal("an encounter that is not a UUID", asToren, func(r *playv1.RollDamageRequest) { r.EncounterId = "nope" }),
 		damageRefusal("a pending damage that is not a UUID", asToren, func(r *playv1.RollDamageRequest) { r.PendingDamageId = "nope" }),
@@ -216,7 +211,7 @@ func refusedDamages() []damageScenario {
 }
 
 // damageScenarios are the scenarios of the golden, in the order they are listed.
-func damageScenarios() []damageScenario {
+func damageScenarios() []goldenScenario {
 	out := refusedDamages()
 	out = append(out, plainDamages()...)
 	out = append(out, rogueAndBarbarianDamages()...)
@@ -244,7 +239,7 @@ type usualDamage struct {
 	edit    func(*playv1.RollDamageRequest)
 }
 
-func (u usualDamage) scenario() damageScenario {
+func (u usualDamage) scenario() goldenScenario {
 	return damageOn(u.name, func(t *testing.T) damagePlay {
 		t.Helper()
 		a := newArmed(t)
@@ -288,8 +283,8 @@ func scriptedFaces(fs ...int) func(t *testing.T, a *armed, e *playv1.Encounter) 
 }
 
 // plainDamages are the hits of the usual fight that go through.
-func plainDamages() []damageScenario {
-	var out []damageScenario
+func plainDamages() []goldenScenario {
+	var out []goldenScenario
 	for _, u := range usualDamages() {
 		out = append(out, u.scenario())
 	}
@@ -305,18 +300,7 @@ func plainDamages() []damageScenario {
 }
 
 // TestRollDamageIsFrozen runs every scenario on a fight of its own and compares what each reads with the golden.
-//
-//nolint:tparallel // the group waits for its parallel scenarios, so that the golden is settled after them.
 func TestRollDamageIsFrozen(t *testing.T) {
 	t.Parallel()
-	g := &goldenBlocks{}
-	t.Run("scenarios", func(t *testing.T) {
-		for _, sc := range damageScenarios() {
-			t.Run(sc.name, func(t *testing.T) {
-				t.Parallel()
-				g.put(sc.name, sc.run(t))
-			})
-		}
-	})
-	g.settle(t, rollDamageGolden)
+	runGolden(t, rollDamageGolden, damageScenarios())
 }

@@ -3,10 +3,8 @@ package play
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
-	"sync"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -24,74 +22,6 @@ import (
 // UPDATE_GOLDEN=1 to write the file again, and read the diff.
 
 const rollAttackGolden = "testdata/roll_attack.golden"
-
-// goldenBlocks collects what the scenarios of a test read, by name.
-type goldenBlocks struct {
-	mu     sync.Mutex
-	blocks map[string]string
-}
-
-func (g *goldenBlocks) put(name, text string) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	if g.blocks == nil {
-		g.blocks = map[string]string{}
-	}
-	g.blocks[name] = text
-}
-
-// settle compares the blocks with the golden file, or writes it when UPDATE_GOLDEN is set.
-func (g *goldenBlocks) settle(t *testing.T, path string) {
-	t.Helper()
-	names := make([]string, 0, len(g.blocks))
-	for n := range g.blocks {
-		names = append(names, n)
-	}
-	sort.Strings(names)
-	var sb strings.Builder
-	for _, n := range names {
-		sb.WriteString("== " + n + " ==\n" + g.blocks[n] + "\n")
-	}
-	if os.Getenv("UPDATE_GOLDEN") != "" {
-		if err := os.WriteFile(path, []byte(sb.String()), 0o600); err != nil {
-			t.Fatalf("write %s: %v", path, err)
-		}
-		return
-	}
-	want, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("read %s: %v (run with UPDATE_GOLDEN=1)", path, err)
-	}
-	if string(want) == sb.String() {
-		return
-	}
-	wantBlocks := map[string]string{}
-	for _, part := range strings.Split(string(want), "== ")[1:] {
-		head, body, _ := strings.Cut(part, " ==\n")
-		wantBlocks[head] = strings.TrimSuffix(body, "\n")
-	}
-	for _, n := range names {
-		if w, ok := wantBlocks[n]; !ok {
-			t.Errorf("scenario %q is not in %s", n, path)
-		} else if w != g.blocks[n] {
-			t.Errorf("scenario %q reads:\n%s\nwant:\n%s", n, g.blocks[n], w)
-		}
-	}
-	for n := range wantBlocks {
-		if _, ok := g.blocks[n]; !ok {
-			t.Errorf("scenario %q of %s did not run", n, path)
-		}
-	}
-}
-
-// labelsOf names the combatants of the combat by id.
-func labelsOf(e *playv1.Encounter) map[string]string {
-	names := map[string]string{}
-	for _, c := range e.GetCombatants() {
-		names[c.GetId()] = c.GetLabel()
-	}
-	return names
-}
 
 // jsonOfMessage is a message as sorted JSON, with the ids replaced by labels.
 func jsonOfMessage(m proto.Message, names map[string]string, skip ...string) string {
@@ -183,11 +113,6 @@ func (a *armed) rawAttack(t *testing.T, u *user, e *playv1.Encounter, edit func(
 	return res.Msg, nil
 }
 
-type attackScenario struct {
-	name string
-	run  func(t *testing.T) string
-}
-
 // afterSetup is the number of events a fight has written before the first attack.
 func (a *armed) afterSetup(t *testing.T) int {
 	t.Helper()
@@ -199,8 +124,8 @@ func (a *armed) afterSetup(t *testing.T) int {
 }
 
 // attackRefusal is a scenario that edits Toren's attack on the goblin and reads the refusal and what stayed.
-func attackRefusal(name string, as func(a *armed) *user, edit func(*playv1.RollAttackRequest)) attackScenario {
-	return attackScenario{name: "refused " + name, run: func(t *testing.T) string {
+func attackRefusal(name string, as func(a *armed) *user, edit func(*playv1.RollAttackRequest)) goldenScenario {
+	return goldenScenario{name: "refused " + name, run: func(t *testing.T) string {
 		t.Helper()
 		a := newArmed(t)
 		e := a.threeAndAGoblin(t)
@@ -214,8 +139,8 @@ func asToren(a *armed) *user  { return a.caio }
 func asMaster(a *armed) *user { return a.master }
 
 // attackThrough is a scenario of an attack that goes through, on the usual fight: as plays it with edit.
-func attackThrough(name string, as func(a *armed) *user, edit func(*playv1.RollAttackRequest)) attackScenario {
-	return attackScenario{name: name, run: func(t *testing.T) string {
+func attackThrough(name string, as func(a *armed) *user, edit func(*playv1.RollAttackRequest)) goldenScenario {
+	return goldenScenario{name: name, run: func(t *testing.T) string {
 		t.Helper()
 		a := newArmed(t)
 		e := a.threeAndAGoblin(t)
@@ -231,8 +156,8 @@ func typedD20(face int32) func(*playv1.RollAttackRequest) {
 
 // attackOn is a scenario that plays its own fight: play returns the combat, what it wrote before the attack
 // and the attack's answer.
-func attackOn(name string, play func(t *testing.T) (*armed, *playv1.Encounter, int, *playv1.RollAttackResponse, error)) attackScenario {
-	return attackScenario{name: name, run: func(t *testing.T) string {
+func attackOn(name string, play func(t *testing.T) (*armed, *playv1.Encounter, int, *playv1.RollAttackResponse, error)) goldenScenario {
+	return goldenScenario{name: name, run: func(t *testing.T) string {
 		t.Helper()
 		a, e, before, res, err := play(t)
 		return a.attackReport(t, e, before, res, err)
@@ -240,8 +165,8 @@ func attackOn(name string, play func(t *testing.T) (*armed, *playv1.Encounter, i
 }
 
 // customAttacks are the scenarios that need more than the usual fight.
-func customAttacks() []attackScenario {
-	return []attackScenario{
+func customAttacks() []goldenScenario {
+	return []goldenScenario{
 		attackOn("an NPC attacks as the master", func(t *testing.T) (*armed, *playv1.Encounter, int, *playv1.RollAttackResponse, error) {
 			t.Helper()
 			a := newArmed(t)
@@ -341,9 +266,9 @@ func customAttacks() []attackScenario {
 }
 
 // attackScenarios are the scenarios of the golden, in the order they are listed.
-func attackScenarios() []attackScenario {
+func attackScenarios() []goldenScenario {
 	long := strings.Repeat("x", 101)
-	return append(customAttacks(), []attackScenario{
+	return append(customAttacks(), []goldenScenario{
 		attackRefusal("an empty attack key", asToren, func(r *playv1.RollAttackRequest) { r.AttackKey = "" }),
 		attackRefusal("an attack key of 101 characters", asToren, func(r *playv1.RollAttackRequest) { r.AttackKey = long }),
 		attackRefusal("roll_in_app false", asToren, func(r *playv1.RollAttackRequest) {
@@ -385,18 +310,7 @@ func attackScenarios() []attackScenario {
 }
 
 // TestRollAttackIsFrozen runs every scenario on a fight of its own and compares what each reads with the golden.
-//
-//nolint:tparallel // the group waits for its parallel scenarios, so that the golden is settled after them.
 func TestRollAttackIsFrozen(t *testing.T) {
 	t.Parallel()
-	g := &goldenBlocks{}
-	t.Run("scenarios", func(t *testing.T) {
-		for _, sc := range attackScenarios() {
-			t.Run(sc.name, func(t *testing.T) {
-				t.Parallel()
-				g.put(sc.name, sc.run(t))
-			})
-		}
-	})
-	g.settle(t, rollAttackGolden)
+	runGolden(t, rollAttackGolden, attackScenarios())
 }

@@ -22,8 +22,8 @@ type actionsRestOption struct {
 	edit  func(*playv1.GetTurnOptionsRequest)
 }
 
-func (c actionsRestOption) scenario() actionsRestScenario {
-	return actionsRestScenario{name: c.name, run: func(t *testing.T) string {
+func (c actionsRestOption) scenario() goldenScenario {
+	return goldenScenario{name: c.name, run: func(t *testing.T) string {
 		t.Helper()
 		world := c.world
 		if world == nil {
@@ -365,13 +365,13 @@ func actionsRestPackAt(label string) actionsRestWorld {
 }
 
 // actionsRestOptionScenarios are the options of the golden, in the order they are listed.
-func actionsRestOptionScenarios() []actionsRestScenario {
+func actionsRestOptionScenarios() []goldenScenario {
 	var rows []actionsRestOption
 	rows = append(rows, actionsRestOptionRefusals()...)
 	rows = append(rows, actionsRestOptionViews()...)
 	rows = append(rows, actionsRestOptionBlocks()...)
 	rows = append(rows, actionsRestOptionSpells()...)
-	out := make([]actionsRestScenario, 0, len(rows))
+	out := make([]goldenScenario, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, r.scenario())
 	}

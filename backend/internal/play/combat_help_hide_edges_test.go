@@ -1,7 +1,6 @@
 package play
 
 import (
-	"errors"
 	"strings"
 	"testing"
 
@@ -13,18 +12,6 @@ import (
 // Edges of Help, ClearHelp, Hide and ResolveHide that the tests of combat_help_test.go and
 // combat_hide_test.go leave out: the exact refusal messages, the feature form of Hide, the
 // master's bypasses. They freeze the behavior before the functions are split into phases.
-
-// wantHelpHideMessage fails unless err is a connect error of this code whose message is exactly msg.
-func wantHelpHideMessage(t *testing.T, call string, err error, code connect.Code, msg string) {
-	t.Helper()
-	var ce *connect.Error
-	if !errors.As(err, &ce) {
-		t.Fatalf("%s error = %v, want a connect error", call, err)
-	}
-	if ce.Code() != code || ce.Message() != msg {
-		t.Errorf("%s = %v %q, want %v %q", call, ce.Code(), ce.Message(), code, msg)
-	}
-}
 
 // TestHelpAndClearHelpRefusalMessagesAreFrozen freezes the message of each refusal of the checks
 // before the transaction and of the ones inside it.
@@ -69,17 +56,17 @@ func TestHelpAndClearHelpRefusalMessagesAreFrozen(t *testing.T) {
 		}, connect.CodeFailedPrecondition, "the target is not a creature the ally can attack"},
 	} {
 		_, err := c.help(t, a.bia, "Brisa", tc.edit)
-		wantHelpHideMessage(t, name, err, tc.code, tc.msg)
+		wantRefusal(t, name, err, tc.code, tc.msg)
 	}
 
 	// An unknown Help and a Help already cleared.
-	wantHelpHideMessage(t, "clearing an unknown Help", c.clearHelp(t, a.master, newKey()), connect.CodeNotFound, "help not found")
+	wantRefusal(t, "clearing an unknown Help", c.clearHelp(t, a.master, newKey()), connect.CodeNotFound, "help not found")
 	given := helped(t)(c.helpCheck(t, a.bia, "Brisa", "Toren", "skill:stealth"))
 	if err := c.clearHelp(t, a.master, given.GetId()); err != nil {
 		t.Fatalf("ClearHelp() error = %v", err)
 	}
 	wantContestBlocked(t, "clearing it twice", c.clearHelp(t, a.master, given.GetId()), playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_AWAITING)
-	wantHelpHideMessage(t, "clearing a Help that is no UUID", c.clearHelp(t, a.master, "nope"), connect.CodeNotFound, "help not found")
+	wantRefusal(t, "clearing a Help that is no UUID", c.clearHelp(t, a.master, "nope"), connect.CodeNotFound, "help not found")
 }
 
 // TestHelpOfAHelperWithNoNumberForTheTaskIsRefused: the helper has to be able to attempt the task
@@ -94,7 +81,7 @@ func TestHelpOfAHelperWithNoNumberForTheTaskIsRefused(t *testing.T) {
 
 	_, err := c.helpCheck(t, a.master, "Goblin", c.hob, "skill:stealth")
 	wantContestBlocked(t, "a helper with no number", err, playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_TASK_NOT_AVAILABLE)
-	wantHelpHideMessage(t, "a helper with no number", err, connect.CodeFailedPrecondition, "the helper could not attempt the task alone")
+	wantRefusal(t, "a helper with no number", err, connect.CodeFailedPrecondition, "the helper could not attempt the task alone")
 
 	// The master's Help spends the action but, as the master, is not stopped by a spent action.
 	helped(t)(c.helpAttack(t, a.master, "Goblin", c.hob, "Toren"))
@@ -122,18 +109,18 @@ func TestHideFeatureFormRefusalsAreFrozen(t *testing.T) {
 	c.mustHide(t, a.caio, "Toren", cunningHide, 12)
 	_, err := c.hide(t, a.caio, "Toren", cunningHide, 12)
 	wantBlockedBy(t, "a second Cunning Action", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED)
-	wantHelpHideMessage(t, "a second Cunning Action", err, connect.CodeFailedPrecondition, "the bonus action of this turn is used")
+	wantRefusal(t, "a second Cunning Action", err, connect.CodeFailedPrecondition, "the bonus action of this turn is used")
 
 	_, err = c.hide(t, a.caio, "Toren", "feature:cunning-action:dash", 12)
 	wantContestBlocked(t, "another action of the feature", err, playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_AVAILABLE)
-	wantHelpHideMessage(t, "another action of the feature", err, connect.CodeFailedPrecondition, "the action is not a Hide")
+	wantRefusal(t, "another action of the feature", err, connect.CodeFailedPrecondition, "the action is not a Hide")
 
 	_, err = c.hide(t, a.caio, "Toren", "standard:dash", 12)
-	wantHelpHideMessage(t, "the key of the Dash", err, connect.CodeFailedPrecondition, "the combatant has no such action")
+	wantRefusal(t, "the key of the Dash", err, connect.CodeFailedPrecondition, "the combatant has no such action")
 
 	c.advance(t, "Brisa")
 	_, err = c.hide(t, a.bia, "Brisa", cunningHide, 12)
-	wantHelpHideMessage(t, "Cunning Action of a fighter", err, connect.CodeFailedPrecondition, "the combatant has no such action")
+	wantRefusal(t, "Cunning Action of a fighter", err, connect.CodeFailedPrecondition, "the combatant has no such action")
 	if a.mustOptions(t, a.bia, c.refresh(t), "Brisa").GetOptions().GetEconomy().GetAction().GetUsed() {
 		t.Error("a refused Hide spent the action")
 	}
@@ -157,13 +144,13 @@ func TestResolveHideRefusalMessagesAreFrozen(t *testing.T) {
 	tried := c.mustHide(t, a.caio, "Toren", "", 12)
 
 	_, err := c.resolveHide(t, a.master, tried.GetId(), func(r *playv1.ResolveHideRequest) { r.Refuse, r.Refusal = true, strings.Repeat("x", 121) })
-	wantHelpHideMessage(t, "a refusal of 121 characters", err, connect.CodeInvalidArgument, "the reason must be 1 to 120 characters on one line")
+	wantRefusal(t, "a refusal of 121 characters", err, connect.CodeInvalidArgument, "the reason must be 1 to 120 characters on one line")
 	_, err = c.resolveHide(t, a.master, tried.GetId(), func(r *playv1.ResolveHideRequest) { r.Refuse, r.Refusal = true, "a\nb" })
-	wantHelpHideMessage(t, "a refusal of two lines", err, connect.CodeInvalidArgument, "the reason must be 1 to 120 characters on one line")
+	wantRefusal(t, "a refusal of two lines", err, connect.CodeInvalidArgument, "the reason must be 1 to 120 characters on one line")
 	_, err = c.resolveHide(t, a.master, tried.GetId(), func(r *playv1.ResolveHideRequest) { r.SeesClearlyIds = []string{"nope"} })
 	wantCode(t, "a creature id that is no UUID", err, connect.CodeNotFound)
 	_, err = c.resolveHide(t, a.master, newKey(), nil)
-	wantHelpHideMessage(t, "an unknown attempt", err, connect.CodeNotFound, "hide attempt not found")
+	wantRefusal(t, "an unknown attempt", err, connect.CodeNotFound, "hide attempt not found")
 	_, err = c.resolveHide(t, a.master, "nope", nil)
 	wantCode(t, "an attempt id that is no UUID", err, connect.CodeNotFound)
 	_, err = c.resolveHide(t, a.caio, tried.GetId(), nil)
@@ -180,5 +167,5 @@ func TestResolveHideRefusalMessagesAreFrozen(t *testing.T) {
 	}
 	_, err = c.resolveHide(t, a.master, tried.GetId(), nil)
 	wantContestBlocked(t, "deciding twice", err, playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_HIDE_NOT_PENDING)
-	wantHelpHideMessage(t, "deciding twice", err, connect.CodeFailedPrecondition, "the hide attempt is answered already")
+	wantRefusal(t, "deciding twice", err, connect.CodeFailedPrecondition, "the hide attempt is answered already")
 }

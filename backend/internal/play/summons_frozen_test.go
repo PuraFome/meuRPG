@@ -20,17 +20,6 @@ const (
 	summonsBadKeyMsg = "idempotency_key must be a UUID"
 )
 
-// wantSummonsRefusal fails unless err is a connect error with this code and exactly
-// this message.
-func wantSummonsRefusal(t *testing.T, call string, err error, code connect.Code, msg string) {
-	t.Helper()
-	wantCode(t, call, err, code)
-	var ce *connect.Error
-	if !asConnectError(err, &ce) || ce.Message() != msg {
-		t.Errorf("%s message = %q, want %q", call, err.Error(), msg)
-	}
-}
-
 // wantSummonsBlocked fails unless err is the failed_precondition with this reason
 // and exactly this message.
 func wantSummonsBlocked(t *testing.T, call string, err error, reason playv1.EncounterBlockedReason, msg string) {
@@ -97,7 +86,7 @@ func TestSummonsCastSummonRefusesEachBadRequest(t *testing.T) {
 		req := a.summonRequest(newKey())
 		tc.edit(req)
 		_, err := a.callSummon(a.ana, req)
-		wantSummonsRefusal(t, "CastSummon("+tc.name+")", err, tc.code, tc.msg)
+		wantRefusal(t, "CastSummon("+tc.name+")", err, tc.code, tc.msg)
 	}
 	// A stranger to the campaign is turned away before the request is read.
 	stranger := a.h.newUser("Intruso")
@@ -108,7 +97,7 @@ func TestSummonsCastSummonRefusesEachBadRequest(t *testing.T) {
 	}
 	// The master may cast for the character; another player may not.
 	_, err = a.callSummon(a.caio, a.summonRequest(newKey()))
-	wantSummonsRefusal(t, "CastSummon(another player)", err, connect.CodePermissionDenied, "only the character's player or the master may cast for it")
+	wantRefusal(t, "CastSummon(another player)", err, connect.CodePermissionDenied, "only the character's player or the master may cast for it")
 	if n := a.eventCount(t, "creature_summoned"); n != 0 {
 		t.Errorf("creature_summoned events = %d after refusals, want 0", n)
 	}
@@ -201,14 +190,14 @@ func TestSummonsEndConcentrationRefusals(t *testing.T) {
 	}
 	salvia := a.id(t, "Sálvia")
 	notFound := connect.CodeNotFound
-	wantSummonsRefusal(t, "bad key", a.endConcentrationCall(a.bia, a.campaignID, e.GetId(), salvia, summonsNotAKey), connect.CodeInvalidArgument, summonsBadKeyMsg)
-	wantSummonsRefusal(t, "bad encounter", a.endConcentrationCall(a.bia, a.campaignID, summonsNotAKey, salvia, newKey()), notFound, "encounter not found")
-	wantSummonsRefusal(t, "bad combatant", a.endConcentrationCall(a.bia, a.campaignID, e.GetId(), summonsNotAKey, newKey()), notFound, "combatant not found")
-	wantSummonsRefusal(t, "unknown combatant", a.endConcentrationCall(a.bia, a.campaignID, e.GetId(), summonsNoSuchID, newKey()), notFound, "combatant not found")
+	wantRefusal(t, "bad key", a.endConcentrationCall(a.bia, a.campaignID, e.GetId(), salvia, summonsNotAKey), connect.CodeInvalidArgument, summonsBadKeyMsg)
+	wantRefusal(t, "bad encounter", a.endConcentrationCall(a.bia, a.campaignID, summonsNotAKey, salvia, newKey()), notFound, "encounter not found")
+	wantRefusal(t, "bad combatant", a.endConcentrationCall(a.bia, a.campaignID, e.GetId(), summonsNotAKey, newKey()), notFound, "combatant not found")
+	wantRefusal(t, "unknown combatant", a.endConcentrationCall(a.bia, a.campaignID, e.GetId(), summonsNoSuchID, newKey()), notFound, "combatant not found")
 	if err := a.endConcentrationCall(a.h.newUser("Intruso"), a.campaignID, e.GetId(), salvia, newKey()); err == nil || connect.CodeOf(err) == connect.CodeInvalidArgument {
 		t.Errorf("EndConcentration(stranger) error = %v, want the caller refused", err)
 	}
-	wantSummonsRefusal(t, "another player", a.endConcentrationCall(a.caio, a.campaignID, e.GetId(), salvia, newKey()), connect.CodePermissionDenied, "only the combatant's player or the master may do this")
+	wantRefusal(t, "another player", a.endConcentrationCall(a.caio, a.campaignID, e.GetId(), salvia, newKey()), connect.CodePermissionDenied, "only the combatant's player or the master may do this")
 
 	key := newKey()
 	if err := a.endConcentrationCall(a.bia, a.campaignID, e.GetId(), salvia, key); err != nil {
@@ -269,10 +258,10 @@ func TestSummonsFamiliarSightRefusesEachBadRequest(t *testing.T) {
 	a.h.placeToken(a.mapID, s.pens.GetId(), x, y)
 	a.placeCreatureToken(t, owl, 3, 0)
 	for _, start := range []bool{true, false} {
-		wantSummonsRefusal(t, "bad key", a.sightRaw(s.ana, start, s.pens.GetId(), summonsNotAKey), connect.CodeInvalidArgument, summonsBadKeyMsg)
-		wantSummonsRefusal(t, "bad character", a.sightRaw(s.ana, start, summonsNotAKey, newKey()), connect.CodeNotFound, "character not found")
-		wantSummonsRefusal(t, "an NPC", a.sightRaw(s.ana, start, s.goblin.GetId(), newKey()), connect.CodeNotFound, "character not found")
-		wantSummonsRefusal(t, "another player", a.sightRaw(s.caio, start, s.pens.GetId(), newKey()), connect.CodePermissionDenied, "only the character's player or the master may do this")
+		wantRefusal(t, "bad key", a.sightRaw(s.ana, start, s.pens.GetId(), summonsNotAKey), connect.CodeInvalidArgument, summonsBadKeyMsg)
+		wantRefusal(t, "bad character", a.sightRaw(s.ana, start, summonsNotAKey, newKey()), connect.CodeNotFound, "character not found")
+		wantRefusal(t, "an NPC", a.sightRaw(s.ana, start, s.goblin.GetId(), newKey()), connect.CodeNotFound, "character not found")
+		wantRefusal(t, "another player", a.sightRaw(s.caio, start, s.pens.GetId(), newKey()), connect.CodePermissionDenied, "only the character's player or the master may do this")
 		if err := a.sightRaw(a.h.newUser("Intruso"), start, s.pens.GetId(), newKey()); err == nil || connect.CodeOf(err) == connect.CodeInvalidArgument {
 			t.Errorf("sight (start %v) by a stranger error = %v, want the caller refused", start, err)
 		}
@@ -328,17 +317,17 @@ func TestSummonsWildShapeRefusesEachBadRequest(t *testing.T) {
 	a := s.armed
 	salvia := s.bri.GetId()
 	for _, assume := range []bool{true, false} {
-		wantSummonsRefusal(t, "bad key", a.shapeRaw(s.bia, assume, salvia, wolfKey, summonsNotAKey), connect.CodeInvalidArgument, summonsBadKeyMsg)
-		wantSummonsRefusal(t, "bad character", a.shapeRaw(s.bia, assume, summonsNotAKey, wolfKey, newKey()), connect.CodeNotFound, "character not found")
-		wantSummonsRefusal(t, "an NPC", a.shapeRaw(s.bia, assume, s.goblin.GetId(), wolfKey, newKey()), connect.CodeNotFound, "character not found")
-		wantSummonsRefusal(t, "another player", a.shapeRaw(s.caio, assume, salvia, wolfKey, newKey()), connect.CodePermissionDenied, "only the character's player or the master may do this")
+		wantRefusal(t, "bad key", a.shapeRaw(s.bia, assume, salvia, wolfKey, summonsNotAKey), connect.CodeInvalidArgument, summonsBadKeyMsg)
+		wantRefusal(t, "bad character", a.shapeRaw(s.bia, assume, summonsNotAKey, wolfKey, newKey()), connect.CodeNotFound, "character not found")
+		wantRefusal(t, "an NPC", a.shapeRaw(s.bia, assume, s.goblin.GetId(), wolfKey, newKey()), connect.CodeNotFound, "character not found")
+		wantRefusal(t, "another player", a.shapeRaw(s.caio, assume, salvia, wolfKey, newKey()), connect.CodePermissionDenied, "only the character's player or the master may do this")
 		if err := a.shapeRaw(a.h.newUser("Intruso"), assume, salvia, wolfKey, newKey()); err == nil || connect.CodeOf(err) == connect.CodeInvalidArgument {
 			t.Errorf("shape (assume %v) by a stranger error = %v, want the caller refused", assume, err)
 		}
 	}
-	wantSummonsRefusal(t, "empty beast", a.shapeRaw(s.bia, true, salvia, "", newKey()), connect.CodeInvalidArgument, "beast_key must name an SRD beast")
-	wantSummonsRefusal(t, "long beast", a.shapeRaw(s.bia, true, salvia, strings.Repeat("b", 101), newKey()), connect.CodeInvalidArgument, "beast_key must name an SRD beast")
-	wantSummonsRefusal(t, "leave in its own shape", a.shapeRaw(s.bia, false, salvia, "", newKey()), connect.CodeFailedPrecondition, "the character is in its own shape")
+	wantRefusal(t, "empty beast", a.shapeRaw(s.bia, true, salvia, "", newKey()), connect.CodeInvalidArgument, "beast_key must name an SRD beast")
+	wantRefusal(t, "long beast", a.shapeRaw(s.bia, true, salvia, strings.Repeat("b", 101), newKey()), connect.CodeInvalidArgument, "beast_key must name an SRD beast")
+	wantRefusal(t, "leave in its own shape", a.shapeRaw(s.bia, false, salvia, "", newKey()), connect.CodeFailedPrecondition, "the character is in its own shape")
 
 	err := a.shapeRaw(s.bia, true, salvia, direWolf, newKey())
 	wantSummonsBlocked(t, "Assume(too strong)", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_WILD_SHAPE_BEAST_NOT_ALLOWED, "the beast is not one this character's Wild Shape allows")

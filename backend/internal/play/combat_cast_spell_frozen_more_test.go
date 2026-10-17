@@ -17,7 +17,7 @@ import (
 type castTable func(t *testing.T) (*armed, *playv1.Encounter)
 
 // castSteps is a scenario of a table: steps cast and answer, and return the answer of the last cast.
-func castSteps(name string, table castTable, steps func(t *testing.T, a *armed, e *playv1.Encounter) (*playv1.CastSpellResponse, error)) castScenario {
+func castSteps(name string, table castTable, steps func(t *testing.T, a *armed, e *playv1.Encounter) (*playv1.CastSpellResponse, error)) goldenScenario {
 	return castOn(name, func(t *testing.T) (*armed, int, *playv1.CastSpellResponse, error) {
 		t.Helper()
 		a, e := table(t)
@@ -90,8 +90,8 @@ func rangersTable(t *testing.T) (*armed, *playv1.Encounter) {
 }
 
 // castWindowScenarios are the casts held by a reaction window: a Counterspell of the Mage, or of a player.
-func castWindowScenarios() []castScenario {
-	return []castScenario{
+func castWindowScenarios() []goldenScenario {
+	return []goldenScenario{
 		castSteps("a cast held by the mage's counterspell", mageTable, func(t *testing.T, a *armed, e *playv1.Encounter) (*playv1.CastSpellResponse, error) {
 			t.Helper()
 			return a.castMissile(t, e)
@@ -180,13 +180,13 @@ func castWindowScenarios() []castScenario {
 }
 
 // castSorcererScenarios are the casts with Metamagic.
-func castSorcererScenarios() []castScenario {
+func castSorcererScenarios() []goldenScenario {
 	allMeta := []string{rules.MetamagicTwinned, rules.MetamagicCareful}
 	goblinAndCaptain := func(t *testing.T, a *armed) []*playv1.SpellTarget {
 		t.Helper()
 		return a.at(t, "Goblin", "Capitão Goblin")
 	}
-	return []castScenario{
+	return []goldenScenario{
 		castSteps("a careful fireball", sorcererTable(allMeta...), func(t *testing.T, a *armed, e *playv1.Encounter) (*playv1.CastSpellResponse, error) {
 			t.Helper()
 			a.h.roller.queue(1, 1, 1, 1, 1)
@@ -337,12 +337,12 @@ func castBardTable(race string, inspired bool) castTable {
 }
 
 // castHeldScenarios are the spell attacks that wait for the player's answer.
-func castHeldScenarios() []castScenario {
+func castHeldScenarios() []goldenScenario {
 	bolt := func(t *testing.T, a *armed, e *playv1.Encounter, u *user, roll func(*playv1.CastSpellRequest), targets ...string) (*playv1.CastSpellResponse, error) {
 		t.Helper()
 		return a.cast(t, u, e, "Brisa", guidingBolt, slotOfLevel(1), a.at(t, targets...), roll)
 	}
-	return []castScenario{
+	return []goldenScenario{
 		castSteps("a bardic die holds a typed spell attack", castBardTable("race:human", true), func(t *testing.T, a *armed, e *playv1.Encounter) (*playv1.CastSpellResponse, error) {
 			t.Helper()
 			return bolt(t, a, e, a.ana, d20Face(5), "Goblin")
@@ -443,14 +443,14 @@ func (a *armed) castMasterHides(t *testing.T, e *playv1.Encounter, label string)
 }
 
 // castSummonScenarios are the summoning spells and the concentration that ends them.
-func castSummonScenarios() []castScenario {
+func castSummonScenarios() []goldenScenario {
 	wolves := func(face int32) func(*playv1.CastSpellRequest) {
 		return func(r *playv1.CastSpellRequest) {
 			r.Roll = &playv1.CastSpellRequest_D20Face{D20Face: face}
 			r.Summon = &playv1.SummonChoice{Option: 1, CreatureKeys: []string{direWolf, direWolf}}
 		}
 	}
-	return []castScenario{
+	return []goldenScenario{
 		castSteps("conjure animals", salviaTable, func(t *testing.T, a *armed, e *playv1.Encounter) (*playv1.CastSpellResponse, error) {
 			t.Helper()
 			return a.summonWolves(t, a.bia, e, 11)
@@ -512,8 +512,8 @@ func castSummonScenarios() []castScenario {
 
 // castOtherScenarios are the casts of the other tables: a ranger's mark, the dead raised, the table's
 // spells, the hit point spells, a combat without a map and the hidden.
-func castOtherScenarios() []castScenario {
-	return []castScenario{
+func castOtherScenarios() []goldenScenario {
+	return []goldenScenario{
 		castSteps("hunter's mark", rangersTable, func(t *testing.T, a *armed, e *playv1.Encounter) (*playv1.CastSpellResponse, error) {
 			t.Helper()
 			return a.cast(t, a.bia, e, "Brisa", huntersMark, slotOfLevel(1), a.at(t, "Goblin"), noCastRoll)
@@ -745,8 +745,8 @@ func abilityOf(key string) func(*playv1.CastSpellRequest) {
 }
 
 // castEffectScenarios are the spells that leave an effect on the targets.
-func castEffectScenarios() []castScenario {
-	return []castScenario{
+func castEffectScenarios() []goldenScenario {
+	return []goldenScenario{
 		castSteps("shield of faith", shieldOfFaithTable, func(t *testing.T, a *armed, e *playv1.Encounter) (*playv1.CastSpellResponse, error) {
 			t.Helper()
 			return a.cast(t, a.bia, e, "Brisa", shieldOfFaithKey, slotOfLevel(1), a.at(t, "Toren"), noCastRoll)

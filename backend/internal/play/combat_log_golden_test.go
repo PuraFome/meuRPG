@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"os"
 	"sort"
 	"strings"
 	"testing"
@@ -211,30 +210,7 @@ func renderGolden() string {
 
 func TestCombatLogGolden(t *testing.T) {
 	t.Parallel()
-	got := renderGolden()
-	if os.Getenv("UPDATE_GOLDEN") != "" {
-		if err := os.MkdirAll("testdata", 0o750); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(goldenPath, []byte(got), 0o600); err != nil {
-			t.Fatal(err)
-		}
-		return
-	}
-	want, err := os.ReadFile(goldenPath)
-	if err != nil {
-		t.Fatalf("read the golden (UPDATE_GOLDEN=1 writes it): %v", err)
-	}
-	if string(want) == got {
-		return
-	}
-	gl, wl := strings.Split(got, "\n"), strings.Split(string(want), "\n")
-	for i := 0; i < len(gl) && i < len(wl); i++ {
-		if gl[i] != wl[i] {
-			t.Fatalf("the combat log changed at line %d of the golden:\n got: %s\nwant: %s", i+1, gl[i], wl[i])
-		}
-	}
-	t.Fatalf("the combat log has %d lines, the golden %d", len(gl), len(wl))
+	wantGolden(t, goldenPath, renderGolden())
 }
 
 // reactionLine is only reached for an entry that has a reaction; a nil one says nothing to

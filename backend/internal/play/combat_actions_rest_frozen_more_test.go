@@ -90,7 +90,7 @@ func actionsRestHidden(t *testing.T, a *armed, e *playv1.Encounter, _ string) {
 }
 
 // actionsRestApplies are the hits the master applies.
-func actionsRestApplies() []actionsRestScenario {
+func actionsRestApplies() []goldenScenario {
 	toren := actionsRestToren
 	druidHP := func(hp int32) func(t *testing.T, a *armed, e *playv1.Encounter, id string) {
 		return func(t *testing.T, a *armed, _ *playv1.Encounter, _ string) {
@@ -178,7 +178,7 @@ func actionsRestApplies() []actionsRestScenario {
 }
 
 // actionsRestDiscards are the hits the master discards.
-func actionsRestDiscards() []actionsRestScenario {
+func actionsRestDiscards() []goldenScenario {
 	cases := []actionsRestSettle{
 		{name: "discard a rolled hit", discard: true},
 		{name: "discard a hit not rolled yet", discard: true, unrolled: true},
@@ -206,9 +206,9 @@ func actionsRestHeal(t *testing.T) (*armed, *playv1.Encounter, string) {
 }
 
 // actionsRestSettlesTwice is a retry of one request: the same key is the same answer.
-func actionsRestSettlesTwice() []actionsRestScenario {
-	replay := func(name string, discard bool) actionsRestScenario {
-		return actionsRestScenario{name: name, run: func(t *testing.T) string {
+func actionsRestSettlesTwice() []goldenScenario {
+	replay := func(name string, discard bool) goldenScenario {
+		return goldenScenario{name: name, run: func(t *testing.T) string {
 			t.Helper()
 			a, e, id := actionsRestOnToren(false)(t)
 			actionsRestRolled(t, a, e, id, 4)
@@ -233,15 +233,15 @@ func actionsRestSettlesTwice() []actionsRestScenario {
 			return a.actionsRestReport(t, before, actionsRestHead(res.GetPendingDamage(), names, err))
 		}}
 	}
-	return []actionsRestScenario{
+	return []goldenScenario{
 		replay("apply the same request twice", false),
 		replay("discard the same request twice", true),
 	}
 }
 
 // actionsRestScenarios are the scenarios of the golden, in the order they are listed.
-func actionsRestScenarios() []actionsRestScenario {
-	var all []actionsRestScenario
+func actionsRestScenarios() []goldenScenario {
+	var all []goldenScenario
 	all = append(all, actionsRestSettleRefusals()...)
 	all = append(all, actionsRestApplies()...)
 	all = append(all, actionsRestDiscards()...)
@@ -252,18 +252,7 @@ func actionsRestScenarios() []actionsRestScenario {
 }
 
 // TestActionsRestIsFrozen runs every scenario on a fight of its own and compares what each reads with the golden.
-//
-//nolint:tparallel // the group waits for its parallel scenarios, so that the golden is settled after them.
 func TestActionsRestIsFrozen(t *testing.T) {
 	t.Parallel()
-	g := &goldenBlocks{}
-	t.Run("scenarios", func(t *testing.T) {
-		for _, sc := range actionsRestScenarios() {
-			t.Run(sc.name, func(t *testing.T) {
-				t.Parallel()
-				g.put(sc.name, sc.run(t))
-			})
-		}
-	})
-	g.settle(t, actionsRestGolden)
+	runGolden(t, actionsRestGolden, actionsRestScenarios())
 }

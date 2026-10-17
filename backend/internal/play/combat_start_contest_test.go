@@ -1,7 +1,6 @@
 package play
 
 import (
-	"errors"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -21,18 +20,6 @@ const (
 	purposeEscapeP  = playv1.ContestPurpose_CONTEST_PURPOSE_ESCAPE
 	kindEscapeDC    = playv1.ContestKind_CONTEST_KIND_ESCAPE_DC
 )
-
-// wantRefusal checks the code and the exact message of an error.
-func wantRefusal(t *testing.T, call string, err error, code connect.Code, msg string) {
-	t.Helper()
-	var ce *connect.Error
-	if !errors.As(err, &ce) {
-		t.Fatalf("%s: error = %v, want a connect error %v %q", call, err, code, msg)
-	}
-	if ce.Code() != code || ce.Message() != msg {
-		t.Fatalf("%s: error = %v %q, want %v %q", call, ce.Code(), ce.Message(), code, msg)
-	}
-}
 
 // noContestWritten checks that a refused call left no contest and spent nothing of Toren.
 func (c *cx) noContestWritten(t *testing.T) {

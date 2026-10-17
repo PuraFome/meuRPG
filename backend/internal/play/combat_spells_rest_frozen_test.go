@@ -57,8 +57,8 @@ func spellsRestTableCasters(t *testing.T) (*armed, *playv1.Encounter) {
 }
 
 // spellsRestScenarios are the scenarios of the golden, in the order they are listed.
-func spellsRestScenarios() []castScenario {
-	return []castScenario{
+func spellsRestScenarios() []goldenScenario {
+	return []goldenScenario{
 		castSteps("spells rest, a caster-only spell aimed at another creature", spellsRestTableCasters, func(t *testing.T, a *armed, e *playv1.Encounter) (*playv1.CastSpellResponse, error) {
 			t.Helper()
 			return a.cast(t, a.ana, e, "Pensantus", "spell:detect-magic", slotOfLevel(1), a.at(t, "Goblin"), noCastRoll)
@@ -74,16 +74,7 @@ func spellsRestScenarios() []castScenario {
 
 // TestSpellsRestIsFrozen runs every scenario on a fight of its own and compares what each reads with the
 // golden.
-func TestSpellsRestIsFrozen(t *testing.T) { //nolint:tparallel // the golden is compared once every scenario of the group has run
+func TestSpellsRestIsFrozen(t *testing.T) {
 	t.Parallel()
-	g := &castGolden{}
-	t.Run("scenarios", func(t *testing.T) {
-		for _, sc := range spellsRestScenarios() {
-			t.Run(sc.name, func(t *testing.T) {
-				t.Parallel()
-				g.put(sc.name, sc.run(t))
-			})
-		}
-	})
-	g.settle(t, spellsRestGolden)
+	runGolden(t, spellsRestGolden, spellsRestScenarios())
 }

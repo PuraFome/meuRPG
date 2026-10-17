@@ -7,6 +7,10 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -353,6 +357,20 @@ func (u *user) character(t *testing.T, c *charactersv1.Character) *charactersv1.
 	return res.Msg.GetCharacter()
 }
 
+// wantRefusal fails unless err is a connect error with this code and exactly this message. An empty
+// msg checks the code only.
+func wantRefusal(t *testing.T, call string, err error, code connect.Code, msg string) {
+	t.Helper()
+	ce, ok := errors.AsType[*connect.Error](err)
+	if !ok {
+		t.Errorf("%s: error = %v, want a connect error %v %q", call, err, code, msg)
+		return
+	}
+	if ce.Code() != code || (msg != "" && ce.Message() != msg) {
+		t.Errorf("%s: error = %v %q, want %v %q", call, ce.Code(), ce.Message(), code, msg)
+	}
+}
+
 func wantCode(t *testing.T, call string, err error, want connect.Code) {
 	t.Helper()
 	if got := connect.CodeOf(err); err == nil || got != want {
@@ -409,4 +427,123 @@ type visionCounter struct {
 func (v *visionCounter) VisionChanged(ctx context.Context, campaignID, mapID string) {
 	v.n.Add(1)
 	v.SessionMaps.VisionChanged(ctx, campaignID, mapID)
+}
+
+// goldenBlocks collects what the scenarios of a test read, by name.
+type goldenBlocks struct {
+	mu     sync.Mutex
+	blocks map[string]string
+}
+
+func (g *goldenBlocks) put(name, text string) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.blocks == nil {
+		g.blocks = map[string]string{}
+	}
+	g.blocks[name] = text
+}
+
+// settle compares the blocks with the golden file, or writes it when UPDATE_GOLDEN is set.
+func (g *goldenBlocks) settle(t *testing.T, path string) {
+	t.Helper()
+	names := make([]string, 0, len(g.blocks))
+	for n := range g.blocks {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	var sb strings.Builder
+	for _, n := range names {
+		sb.WriteString("== " + n + " ==\n" + g.blocks[n] + "\n")
+	}
+	if os.Getenv("UPDATE_GOLDEN") != "" {
+		if err := os.WriteFile(path, []byte(sb.String()), 0o600); err != nil {
+			t.Fatalf("write %s: %v", path, err)
+		}
+		return
+	}
+	want, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v (run with UPDATE_GOLDEN=1)", path, err)
+	}
+	if string(want) == sb.String() {
+		return
+	}
+	wantBlocks := map[string]string{}
+	for _, part := range strings.Split(string(want), "== ")[1:] {
+		head, body, _ := strings.Cut(part, " ==\n")
+		wantBlocks[head] = strings.TrimSuffix(body, "\n")
+	}
+	for _, n := range names {
+		if w, ok := wantBlocks[n]; !ok {
+			t.Errorf("scenario %q is not in %s", n, path)
+		} else if w != g.blocks[n] {
+			t.Errorf("scenario %q reads:\n%s\nwant:\n%s", n, g.blocks[n], w)
+		}
+	}
+	for n := range wantBlocks {
+		if _, ok := g.blocks[n]; !ok {
+			t.Errorf("scenario %q of %s did not run", n, path)
+		}
+	}
+}
+
+// labelsOf names the combatants of the combat by id.
+func labelsOf(e *playv1.Encounter) map[string]string {
+	names := map[string]string{}
+	for _, c := range e.GetCombatants() {
+		names[c.GetId()] = c.GetLabel()
+	}
+	return names
+}
+
+// goldenScenario is one scenario of a golden: it plays a fight of its own and returns what it reads.
+type goldenScenario struct {
+	name string
+	run  func(t *testing.T) string
+}
+
+// runGolden runs every scenario on a fight of its own and compares what each reads with the golden file
+// at path, or writes the file when UPDATE_GOLDEN is set.
+func runGolden(t *testing.T, path string, scenarios []goldenScenario) {
+	t.Helper()
+	g := &goldenBlocks{}
+	t.Run("scenarios", func(t *testing.T) {
+		for _, sc := range scenarios {
+			t.Run(sc.name, func(t *testing.T) {
+				t.Parallel()
+				g.put(sc.name, sc.run(t))
+			})
+		}
+	})
+	g.settle(t, path)
+}
+
+// wantGolden compares a whole text with the golden file at path and names the first line that differs,
+// or writes the file when UPDATE_GOLDEN is set.
+func wantGolden(t *testing.T, path, got string) {
+	t.Helper()
+	if os.Getenv("UPDATE_GOLDEN") != "" {
+		if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(got), 0o600); err != nil {
+			t.Fatalf("write %s: %v", path, err)
+		}
+		return
+	}
+	want, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v (run with UPDATE_GOLDEN=1)", path, err)
+	}
+	if string(want) == got {
+		return
+	}
+	gl, wl := strings.Split(got, "\n"), strings.Split(string(want), "\n")
+	for i := 0; i < len(gl) && i < len(wl); i++ {
+		if gl[i] != wl[i] {
+			t.Fatalf("%s differs at line %d:\n got: %s\nwant: %s", path, i+1, gl[i], wl[i])
+		}
+	}
+	t.Fatalf("the text has %d lines, %s has %d", len(gl), path, len(wl))
 }
