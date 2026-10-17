@@ -56,6 +56,8 @@ const REASON_TEXT: Partial<Record<DisabledReasonCode, string>> = {
   [DisabledReasonCode.INCAPACITATED]: 'Você não pode agir.',
   [DisabledReasonCode.EFFECT_LETHARGY]: 'Indisponível por um efeito',
   [DisabledReasonCode.SPEED_ZERO]: 'Indisponível: deslocamento 0',
+  // Armor or a shield without proficiency stops every spell (SRD 5.1, "Armor").
+  [DisabledReasonCode.ARMOR_NOT_PROFICIENT]: 'Armadura ou escudo sem proficiência',
 };
 
 /** Why an option is disabled, in words, by code. `''` when there is none. */
