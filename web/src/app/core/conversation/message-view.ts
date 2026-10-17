@@ -116,8 +116,8 @@ function baseLabel(
       return isMine(message, viewer) ? `${name} · você` : name;
     case 'out-of-character':
       // Only an erased account has no author id left. The server also flags a present author who never chose a
-      // display name as removed, so that flag is not trusted: the table's name for the account, else "Jogador".
-      return message.authorUserId === ''
+      // display name as removed, so the flag alone is not trusted: the table's name for the account, else "Jogador".
+      return message.authorRemoved && message.authorUserId === ''
         ? 'Jogador removido'
         : `${name || directory.get(message.authorUserId) || 'Jogador'} · fora do personagem`;
     default:
