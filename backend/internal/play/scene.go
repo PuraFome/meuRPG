@@ -718,6 +718,7 @@ type sceneRolled struct {
 	doneRow  playdb.GetSessionEventByIdempotencyKeyRow
 	offer    *playv1.OutsideInspirationOffer // the roll waits for the answer about a Bardic Inspiration die
 	lucky    *playv1.LuckyOffer              // the roll waits for the halfling's Lucky answer first
+	held     *playv1.HeldRollOffer           // the same question, in the one shape every held roll has
 }
 
 // sceneRollCall is a roll of a scene check being made: the request, and the transaction
@@ -780,7 +781,7 @@ func (s *Service) RollSceneCheck(
 	ctx context.Context,
 	req *connect.Request[playv1.RollSceneCheckRequest],
 ) (*connect.Response[playv1.RollSceneCheckResponse], error) {
-	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RolePlayer)
+	m, err := heldRole(ctx, req.Msg.GetCampaignId(), authz.RolePlayer)
 	if err != nil {
 		return nil, err
 	}
@@ -800,7 +801,7 @@ func (s *Service) RollSceneCheck(
 	}
 
 	if out.offer != nil || out.lucky != nil {
-		return connect.NewResponse(&playv1.RollSceneCheckResponse{InspirationOffer: out.offer, LuckyOffer: out.lucky}), nil
+		return connect.NewResponse(&playv1.RollSceneCheckResponse{InspirationOffer: out.offer, LuckyOffer: out.lucky, HeldRollOffer: out.held}), nil
 	}
 	return connect.NewResponse(&playv1.RollSceneCheckResponse{Roll: s.sceneRollAnswer(ctx, m, &out)}), nil
 }
@@ -871,7 +872,7 @@ func (c *sceneRollCall) run(ctx context.Context) error {
 		return err
 	}
 	if step.Held != nil {
-		c.out.offer, c.out.lucky = c.s.outsideOffers(ctx, c.tx, step.Held)
+		c.out.offer, c.out.lucky, c.out.held = c.s.outsideOffers(ctx, c.tx, step.Held)
 		return nil
 	}
 	return c.write(ctx, session, scene, action, cm, bonus, step)

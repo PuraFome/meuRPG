@@ -211,6 +211,32 @@ service ResourceService {
   // another answer) or its combat round is over; the path's WRONG_DICE_MODE for a way of rolling
   // the campaign does not allow.
   rpc AnswerOutsideLucky(AnswerOutsideLuckyRequest) returns (AnswerOutsideLuckyResponse);
+
+  // AnswerHeldRoll answers the question of any roll that waits, whichever roll it is (a weapon attack,
+  // a spell attack, a save, a check, a search, a hint try) and whichever question it asks (the
+  // halfling's Lucky, or the Bardic Inspiration die): the one RPC AnswerLucky, AnswerBardicInspiration,
+  // AnswerOutsideLucky and AnswerOutsideInspiration are the older forms of. The roll is run again by the
+  // path that held it, with the d20 already rolled and the answer applied, and the response is that path's
+  // own (`result`), still held with the roll's next question (`next`, copied out of the result so the app
+  // needs no code for each kind), or resolved and written.
+  //
+  // Who may answer: the roller's player, and the master, for every roll that waits, in a combat or out
+  // of it (it unblocks a player who left). Both may try at once; the first answer wins and the other gets
+  // `failed_precondition` (the roll was answered already), the die spent once. Another player gets
+  // `not_found`, never "permission denied", which would say the roll exists.
+  //
+  // Errors: `not_found` for a hold that is gone or one the caller may not answer; `invalid_argument`
+  // for an answer of the wrong question, for a missing roll_in_app or typed_face, or a typed face outside
+  // the die; ResourceBlocked LUCKY_PENDING for the die's answer while the Lucky question of the same
+  // roll waits; `failed_precondition` when the die ran out or the roll was answered already; the path's
+  // WRONG_DICE_MODE for a way of rolling the campaign does not allow (the master rolls either way).
+  rpc AnswerHeldRoll(AnswerHeldRollRequest) returns (AnswerHeldRollResponse);
+
+  // ListHeldRolls lists the questions of the rolls that wait and the caller may answer, oldest first: a
+  // player's own rolls, in a combat and out of one; the master's, every roll of the campaign. A question
+  // whose combat round is over, or whose die ran out, is not listed. Read it again when the stream says
+  // HeldRollsChanged.
+  rpc ListHeldRolls(ListHeldRollsRequest) returns (ListHeldRollsResponse);
 }
 
 // ResourceBlocked is the detail of a refusal that comes from a rule.
@@ -650,4 +676,67 @@ message AnswerOutsideLuckyResponse {
     RollEffectSaveResponse effect_save = 6;
     ResolveConcentrationSaveResponse concentration_save = 7;
   }
+}
+
+message AnswerHeldRollRequest {
+  string campaign_id = 1;
+  // The held roll (a UUID), from the response's `held_roll_offer`, `Combatant.held_roll_offer` or ListHeldRolls.
+  string hold_id = 2;
+  string idempotency_key = 3;
+  // The answer to the question that waits.
+  oneof answer {
+    LuckyAnswer lucky = 4;
+    DieAnswer die = 5;
+  }
+}
+
+// LuckyAnswer answers the halfling's question (SRD 5.1, Halfling, Lucky).
+message LuckyAnswer {
+  // True: roll the die that shows the 1 again, and the new roll stands. False: keep the 1.
+  bool reroll = 1;
+  // How the new d20 comes (RN-18) when `reroll` is true: the app rolls it, or the player typed the face of a
+  // real die (1 to 20). Required then.
+  oneof roll {
+    bool roll_in_app = 2;
+    int32 typed_face = 3;
+  }
+}
+
+// DieAnswer answers the Bardic Inspiration question (SRD 5.1).
+message DieAnswer {
+  // True: roll the die and add it to the roll. False: keep it.
+  bool use = 1;
+  // How the die comes (RN-18) when `use` is true: the app rolls it, or the player typed the face of a real die.
+  // Required then.
+  oneof roll {
+    bool roll_in_app = 2;
+    int32 typed_face = 3;
+  }
+}
+
+message AnswerHeldRollResponse {
+  // The path of the held roll answers as it does: the roll written, or, when the roll waits for its next
+  // question, the response with its offer.
+  oneof result {
+    RollAttackResponse attack = 1;
+    CastSpellResponse spell_cast = 2;
+    RollEffectSaveResponse effect_save = 3;
+    ResolveConcentrationSaveResponse concentration_save = 4;
+    RollSceneCheckResponse scene_check = 5;
+    RollGroupCheckResponse group_check = 6;
+    SearchForTrapsResponse trap_search = 7;
+    TryPuzzleHintResponse hint_try = 8;
+  }
+  // The next question of the same roll, copied out of the result, when the roll still waits: the d20 Lucky
+  // rolled again is asked about the die next. Unset when the roll was written.
+  HeldRollOffer next = 20;
+}
+
+message ListHeldRollsRequest {
+  string campaign_id = 1;
+}
+
+message ListHeldRollsResponse {
+  // The questions that wait and the caller may answer, oldest first.
+  repeated HeldRollOffer offers = 1;
 }

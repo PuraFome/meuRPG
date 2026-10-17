@@ -194,7 +194,7 @@ func (s *Service) CastSpell(
 	ctx context.Context,
 	req *connect.Request[playv1.CastSpellRequest],
 ) (*connect.Response[playv1.CastSpellResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
+	m, err := heldMember(ctx, req.Msg.GetCampaignId())
 	if err != nil {
 		return nil, err
 	}

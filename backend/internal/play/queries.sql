@@ -1680,6 +1680,14 @@ WHERE answer_key IS NULL
     OR (combatant_id IS NULL AND character_id = sqlc.narg(character_id)))
 ORDER BY created_at;
 
+-- name: ListOpenInspirationHoldsOfCampaign :many
+-- Every roll of the campaign that waits for an answer, for the master's list and the players' own.
+SELECT * FROM inspiration_holds WHERE campaign_id = $1 AND answer_key IS NULL ORDER BY created_at, id;
+
+-- name: ListOpenInspirationHoldsOfEncounter :many
+-- Every roll held in the combat that waits for an answer, whichever roll it is, for the combatants' views.
+SELECT * FROM inspiration_holds WHERE encounter_id = $1 AND answer_key IS NULL ORDER BY created_at, id;
+
 -- name: ListOpenAttackHolds :many
 -- The weapon attacks of the combat that wait for an answer and are kept in inspiration_holds, for
 -- the combatants' views. The rolls of the other kinds held in a combat are not part of the view.

@@ -30,6 +30,10 @@ type answerRequest struct {
 	yes bool
 	// in is how the new die comes, when yes: rolled in the app or typed from a real die.
 	in rollInput
+	// concealed says a caller who may not answer is told the hold is not found, never "permission denied", which
+	// would say it exists: the RPC that answers any hold (AnswerHeldRoll). The RPCs that answer one class of hold
+	// have always told the caller of a combat's attack what it is not allowed.
+	concealed bool
 }
 
 // answerState says where the roll stands when the answer comes.
@@ -48,7 +52,7 @@ const (
 func (s *Service) answerHeld(ctx context.Context, m authz.Membership, req answerRequest) (proto.Message, error) {
 	h, err := s.heldToAnswer(ctx, m, req.ref)
 	if err != nil {
-		return nil, err
+		return nil, s.concealed(err, req)
 	}
 	a, state, err := h.replyTo(req)
 	if err != nil {
@@ -59,11 +63,60 @@ func (s *Service) answerHeld(ctx context.Context, m authz.Membership, req answer
 			return nil, err
 		}
 	}
-	return s.rerunHeld(ctx, h, a, state)
+	if a.as, err = s.rollerOf(ctx, m, h); err != nil {
+		return nil, err
+	}
+	out, err := s.rerunHeld(ctx, h, a, state)
+	if err != nil {
+		return nil, s.lostTheRace(ctx, h, req, err)
+	}
+	if state != answerSettled {
+		s.publishHeldRollsChanged(h.CampaignID, s.holdUsers(ctx, h)...)
+	}
+	return out, nil
 }
 
-// heldToAnswer finds the roll the answer is for. The question of a roll that is not a weapon attack is its
-// player's alone: another's is not found.
+// lostTheRace says an answer that failed was too late when the roll was answered by another answer meanwhile (the
+// player and the master answering at once): the first answer wins, and this one is told the roll was answered, not
+// whichever error the path's own write gave on its retry (the key the first one wrote its event under).
+func (s *Service) lostTheRace(ctx context.Context, h heldRoll, req answerRequest, err error) error {
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		return err
+	}
+	now, rerr := newHeldStores(s.queries).byID(ctx, holdRef{Table: h.table, Campaign: h.CampaignID, Encounter: h.EncounterID, ID: h.ID})
+	if rerr != nil {
+		return err
+	}
+	answeredBy := func(key *string) bool { return key != nil && *key != req.key }
+	if answeredBy(now.AnswerKey) || (answeredBy(now.LuckyAnswerKey) && now.AnswerKey == nil && req.question == askLucky) {
+		return errAnsweredAlready()
+	}
+	return err
+}
+
+// holdUsers are the users a change of a hold is for besides the master: who rolled, and the player of its combatant.
+func (s *Service) holdUsers(ctx context.Context, h heldRoll) []string {
+	users := []string{h.UserID}
+	if h.CombatantID != "" {
+		if who, found, err := s.holdCombatant(ctx, h); err == nil && found && who.UserID != nil {
+			users = append(users, *who.UserID)
+		}
+	}
+	return users
+}
+
+// concealed turns the refusal of a caller who may not answer into "not found", for the RPCs that conceal the hold: the
+// one that answers any hold, and the ones that answer the rolls out of the attack's path, which have always.
+func (s *Service) concealed(err error, req answerRequest) error {
+	if (req.concealed || req.ref.Class == outsideHold) && connect.CodeOf(err) == connect.CodePermissionDenied {
+		return errHeldNotFound()
+	}
+	return err
+}
+
+// heldToAnswer finds the roll the answer is for and checks who answers it before anything about its state is
+// said: a caller who may not answer it is refused whatever the state of the roll, so that a hold id tells nothing
+// to whoever it does not belong to.
 func (s *Service) heldToAnswer(ctx context.Context, m authz.Membership, ref holdRef) (heldRoll, error) {
 	h, err := newHeldStores(s.queries).byID(ctx, ref)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -72,10 +125,8 @@ func (s *Service) heldToAnswer(ctx context.Context, m authz.Membership, ref hold
 	if err != nil {
 		return heldRoll{}, s.dbError(ctx, "find the held roll", err)
 	}
-	if h.Kind != heldWeaponAttack {
-		if err := s.mayAnswerHeld(ctx, m, h); err != nil {
-			return heldRoll{}, err
-		}
+	if err := s.mayAnswerHeld(ctx, m, h); err != nil {
+		return heldRoll{}, err
 	}
 	return h, nil
 }
@@ -84,28 +135,62 @@ func errHeldNotFound() error {
 	return connect.NewError(connect.CodeNotFound, errors.New("held roll not found"))
 }
 
-// mayAnswerHeld checks that the caller answers for the roller, as each table has always done: the
-// question of a weapon attack is answered by whoever may act for its combatant (its player or the master);
-// the question of every other roll is its player's alone (the master cannot, TestTheMasterCannotAnswerAnOutsideHoldToday;
-// E4-7 lets the master answer every question).
+// mayAnswerHeld checks that the caller answers for the roller. The roller's player may, and so may the master, for
+// every hold, in a combat or out of it (it unblocks a player who left): in a combat the roller is a combatant, and
+// whoever may act for it may answer; out of a combat it is a character, and its player may. Another player is
+// refused: a combat's hold with "permission denied", as rollAttack always did, and a character's with "not found".
 func (s *Service) mayAnswerHeld(ctx context.Context, m authz.Membership, h heldRoll) error {
-	if h.Kind != heldWeaponAttack {
-		if _, err := authz.RequireCampaignRole(ctx, m.CampaignID, authz.RolePlayer); err != nil {
-			return err //nolint:wrapcheck // the authz refusal, as the RPC gives it
+	if h.CombatantID != "" {
+		who, found, err := s.holdCombatant(ctx, h)
+		if err != nil {
+			return err
 		}
-		if h.UserID != m.UserID {
+		if !found {
 			return errHeldNotFound()
 		}
+		return viewerOf(m).mayAct(who) //nolint:wrapcheck // the refusal, as rollAttack gives it
+	}
+	if m.Role == authz.RoleMaster {
 		return nil
 	}
-	who, found, err := s.holdCombatant(ctx, h)
+	mine, err := s.isMyCharacter(ctx, m, h.CharacterID)
 	if err != nil {
 		return err
 	}
-	if !found {
+	if !mine {
 		return errHeldNotFound()
 	}
-	return viewerOf(m).mayAct(who) //nolint:wrapcheck // the refusal, as rollAttack gives it
+	return nil
+}
+
+// isMyCharacter says the character is a player's character the caller plays.
+func (s *Service) isMyCharacter(ctx context.Context, m authz.Membership, characterID string) (bool, error) {
+	cs, err := s.roster.CombatCharacters(ctx, nil, m.CampaignID, []string{characterID})
+	if err != nil {
+		return false, s.dbError(ctx, "find the character", err)
+	}
+	return len(cs) == 1 && cs[0].PlayerUserID != "" && cs[0].PlayerUserID == m.UserID, nil
+}
+
+// rollerOf is the membership the roll is run again as when another than the roller answers it: the roller's own, so
+// that the path finds the roll's character and combatant as it did the first time, and nobody gets a power they
+// did not have. Nil when the roller answers, and for a weapon attack, whose path takes the answerer (the master may
+// act for any combatant). A combatant that no player plays rolls as the master.
+func (s *Service) rollerOf(ctx context.Context, m authz.Membership, h heldRoll) (*authz.Membership, error) {
+	if h.Kind == heldWeaponAttack || h.UserID == "" || h.UserID == m.UserID {
+		return nil, nil
+	}
+	role := authz.RolePlayer
+	if h.CombatantID != "" {
+		who, found, err := s.holdCombatant(ctx, h)
+		if err != nil {
+			return nil, err
+		}
+		if found && who.UserID == nil {
+			role = authz.RoleMaster
+		}
+	}
+	return &authz.Membership{CampaignID: h.CampaignID, UserID: h.UserID, Role: role}, nil
 }
 
 // holdCombatant is the combatant a weapon attack's hold belongs to, read now.
@@ -168,16 +253,11 @@ func errAnsweredAlready() error {
 	return connect.NewError(connect.CodeFailedPrecondition, errors.New("the roll was answered already"))
 }
 
-// rollAnswer rolls the new die the first answer to a question asks for, after checking that the caller
-// may answer and rolls it the way the campaign has them roll (RN-18; the master is exempt).
+// rollAnswer rolls the new die the first answer to a question asks for, the way the campaign has them roll
+// (RN-18; the master is exempt). Who may answer was checked when the roll was found.
 func (s *Service) rollAnswer(ctx context.Context, m authz.Membership, h heldRoll, req answerRequest, a *heldReply) error {
 	if req.question == askDie {
 		return s.rollDieAnswer(ctx, m, h, req, a)
-	}
-	if h.Kind == heldWeaponAttack {
-		if err := s.mayAnswerHeld(ctx, m, h); err != nil {
-			return err
-		}
 	}
 	if !req.yes {
 		return nil
@@ -198,11 +278,6 @@ func (s *Service) rollDieAnswer(ctx context.Context, m authz.Membership, h heldR
 	st, err := s.dieToUse(ctx, h)
 	if err != nil {
 		return err
-	}
-	if h.table == rollHolds {
-		if err := s.mayAnswerHeld(ctx, m, h); err != nil {
-			return err
-		}
 	}
 	if err := s.mustRollAs(ctx, m, req.in); err != nil {
 		return err
@@ -227,9 +302,10 @@ func (s *Service) mustRollAs(ctx context.Context, m authz.Membership, in rollInp
 }
 
 // dieToUse is the die the roller holds now, which the answer uses. A weapon attack's is its combatant's, in
-// the round the roll was held; every other roll's is wherever its character keeps it.
+// the round the roll was held, whichever table keeps it (a creature or the copy of an NPC shares its character
+// with others, which hold dice of their own); every other roll's is wherever its character keeps it.
 func (s *Service) dieToUse(ctx context.Context, h heldRoll) (rollerState, error) {
-	if h.table == rollHolds {
+	if h.Kind == heldWeaponAttack {
 		who, found, err := s.holdCombatant(ctx, h)
 		if err != nil {
 			return rollerState{}, err
@@ -272,7 +348,7 @@ func (s *Service) rerunHeld(ctx context.Context, h heldRoll, a heldReply, state 
 	if !ok || def.rerun == nil {
 		return nil, errHeldNotFound()
 	}
-	if state != answerSettled || h.table != rollHolds {
+	if state != answerSettled || h.Kind != heldWeaponAttack {
 		ctx = withHeldReply(ctx, a)
 	}
 	return def.rerun(ctx, s, h, a.key)

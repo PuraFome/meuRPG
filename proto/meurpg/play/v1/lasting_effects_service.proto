@@ -282,6 +282,11 @@ message RollEffectSaveResponse {
   // halfling and a d20 shows a 1: the window stays open, and ResourceService.AnswerOutsideLucky
   // rolls it again or keeps the 1 (the die's question, if any, comes after it).
   LuckyOffer lucky_offer = 4;
+
+  // The question the roll asks now, in the one shape every held roll has (HeldRollOffer), set beside
+  // `inspiration_offer` and `lucky_offer` until they are removed: set instead of the result, when the
+  // roll waits for an answer (AnswerHeldRoll). Whoever may answer gets it; nobody else does (RN-10).
+  HeldRollOffer held_roll_offer = 5;
 }
 
 message SetExhaustionRequest {

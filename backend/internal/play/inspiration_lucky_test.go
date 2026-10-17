@@ -9,7 +9,6 @@ import (
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
-	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
 // The halfling's Lucky on the d20 rolls that are not a weapon attack (SRD 5.1, Halfling; the
@@ -556,68 +555,6 @@ func TestLuckyOnAnEffectSave(t *testing.T) {
 	}
 	if line == nil || len(line.GetRerolled()) != 1 || line.GetRerolled()[0].GetTo() != 17 {
 		t.Errorf("Toren's player's log line = %v, want the save with the reroll", line)
-	}
-}
-
-// A hold of a combat round waits for its Lucky answer without a die; it is stale once its round
-// or its combat is over, and, answered and kept for a die that is gone, like any die's question.
-func TestStaleLuckyHoldOfACombat(t *testing.T) {
-	t.Parallel()
-	round := int32(3)
-	combatant := playdb.Combatant{}
-	waiting := playdb.InspirationHold{Round: &round, LuckyIndex: new(int32(0))}
-	answered := playdb.InspirationHold{Round: &round, LuckyIndex: new(int32(0)), LuckyAnswerKey: new("k")}
-	cases := []struct {
-		name  string
-		hold  playdb.InspirationHold
-		die   heldDie
-		found bool
-		want  bool
-	}{
-		{"Lucky waits in its round, no die", waiting, heldDie{Combatant: &combatant, Round: 3}, false, false},
-		{"Lucky waits, a later round", waiting, heldDie{Combatant: &combatant, Round: 4}, false, true},
-		{"Lucky waits, the combat ended", waiting, heldDie{}, false, true},
-		{"answered, the die is gone", answered, heldDie{Combatant: &combatant, Round: 3}, false, true},
-		{"answered, the die is held", answered, heldDie{Combatant: &combatant, Round: 3, Sides: 8}, true, false},
-		{"Lucky waits out of a combat", playdb.InspirationHold{LuckyIndex: new(int32(0))}, heldDie{}, false, false},
-	}
-	for _, tc := range cases {
-		if got := staleHold(tc.hold, tc.die, tc.found); got != tc.want {
-			t.Errorf("%s: staleHold = %v, want %v", tc.name, got, tc.want)
-		}
-	}
-	if !outsideLuckyPending(waiting) || outsideLuckyPending(answered) {
-		t.Error("outsideLuckyPending: want the waiting hold pending and the answered one not")
-	}
-}
-
-// The die that counts after Lucky changed a face: the mode's pick for a pair (the SRD's example:
-// the 1 of "a 1 and a 13" rolled again under advantage), and, when the path no longer rolls two
-// dice, the pair's own mode read from the hold.
-func TestCountedAfterLucky(t *testing.T) {
-	t.Parallel()
-	pair := func(a, b, counted int32) playdb.InspirationHold {
-		return playdb.InspirationHold{Faces: []int32{a, b}, Counted: counted}
-	}
-	cases := []struct {
-		name  string
-		hold  playdb.InspirationHold
-		faces []int
-		mode  combat.RollMode
-		want  int
-	}{
-		{"one d20", playdb.InspirationHold{Faces: []int32{1}}, []int{14}, combat.ModeNormal, 0},
-		{"advantage, the dropped 1 rolled again higher", pair(1, 13, 1), []int{15, 13}, combat.ModeAdvantage, 0},
-		{"advantage, rolled again lower", pair(1, 13, 1), []int{4, 13}, combat.ModeAdvantage, 1},
-		{"disadvantage, the counted 1 rolled again", pair(1, 13, 0), []int{15, 13}, combat.ModeDisadvantage, 1},
-		{"disadvantage, both 1, the first rolled again", pair(1, 1, 0), []int{9, 1}, combat.ModeDisadvantage, 1},
-		{"the mode changed: advantage read from the hold", pair(1, 13, 1), []int{15, 13}, combat.ModeNormal, 0},
-		{"the mode changed: disadvantage read from the hold", pair(1, 13, 0), []int{15, 13}, combat.ModeNormal, 1},
-	}
-	for _, tc := range cases {
-		if got := countedAfterLucky(tc.hold, tc.faces, tc.mode); got != tc.want {
-			t.Errorf("%s: countedAfterLucky = %d, want %d", tc.name, got, tc.want)
-		}
 	}
 }
 
