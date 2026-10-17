@@ -61,7 +61,7 @@ In a milestones campaign the master writes the milestones beforehand and marks t
 
 ## Reading the history and "Pode subir de nível"
 
-- **`ListXPAwards`** pages from newest to oldest (`page_size` 1 to 50, default 20; opaque `page_token`) with who gave (display name), the mode, the reason, the combat's name, the shares (character name and XP), whether undone, and `can_undo` (only for the master, on the last).
+- **`ListXPAwards`** pages from newest to oldest (`page_size` 1 to 50, default 20; opaque `page_token`) with who gave (display name), the mode, the reason, the combat's name, the shares (character name and XP), whether undone, and `can_undo` (only for the master, on the last). `play` is asked for the combats' names only when an award in the page has a combat.
 - **`GetCampaignExperience`** gives each living player character's level, XP, the next level's XP, `can_level_up` and the reason (`XP` or `MILESTONE`).
 - **On the sheet,** `GetCharacter` carries `can_level_up` and `level_up_reason`, only for the master and the owner, of a living player character. The rule is `levelUpReason` in `progression`: in an enemies or gold campaign, the sheet's XP reaching `DerivedSheet.next_level_xp`; in a milestones campaign, a milestone mark whose level has not yet been passed (the read compares; nothing is stored when the master levels up). Nobody levels up from level 20. `characters` asks `progression` through `characters.LevelUps` (wired in `cmd/api` with `SetLevelUps`).
 
