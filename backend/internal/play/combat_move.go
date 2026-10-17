@@ -211,6 +211,12 @@ func moveStop(mv grid.Move, occ grid.Occupants, to grid.Square) error {
 		}
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ENEMY_IN_THE_WAY, "an enemy is in the way")
 	}
+	return errMoveBlocked()
+}
+
+// errMoveBlocked is the generic refusal of a move that cannot go on: it names no
+// creature, so it reveals none.
+func errMoveBlocked() error {
 	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_MOVE_BLOCKED, "a wall, a column or a squeeze is in the way")
 }
 
@@ -745,7 +751,7 @@ func (s *Service) dragAlong(ctx context.Context, a *moveAttempt) error {
 		return nil
 	}
 	from := squareOfCombatant(a.dragged)
-	moved, err := s.dragTo(ctx, a.c, a.cs, a.target, a.dragged, dragSquare(a.terrain, squareOfCombatant(a.target), a.to, moverOf(a.target)))
+	moved, err := s.dragTo(ctx, a.c, a.v, a.cs, a.target, a.dragged, dragSquare(a.terrain, squareOfCombatant(a.target), a.to, moverOf(a.target)))
 	if err != nil {
 		return err
 	}
@@ -1122,8 +1128,8 @@ type masterTargetCall struct {
 	key, encID, combID string
 }
 
-// readMasterTargetCall reads and checks the master's call. The master check comes
-// first, so a stranger learns nothing about the ids (RN-10).
+// readMasterTargetCall reads and checks the master's call. The refusals come in the order of
+// the checks below.
 func readMasterTargetCall(ctx context.Context, campaignID, rawKey, encounterID, combatantID string) (masterTargetCall, error) {
 	m, key, encID, err := masterCall(ctx, campaignID, rawKey, encounterID)
 	if err != nil {

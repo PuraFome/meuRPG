@@ -78,6 +78,15 @@ const BLOCKED_MESSAGES: Partial<Record<CharacterBlockedReason, string>> = {
     'Esse personagem está em um combate. Encerre o combate antes de devolvê-lo à reserva.',
   claim_own_link: 'Este link é para um jogador. Copie e envie para ele.',
   reserved: 'Esse personagem está reservado: ainda não tem jogador.',
+  cannot_level_up:
+    'Este personagem não pode subir de nível agora: falta o mestre marcar um marco ou o XP chegar.',
+  dice_forced_physical: 'Nesta campanha todos rolam os próprios dados: digite o número que saiu.',
+  dice_forced_in_app: 'Nesta campanha todos rolam no app: use a rolagem do app.',
+  creature_in_combat: 'A criatura está num combate. Mude os PV dela pela tela do combate.',
+  creature_limit: 'O personagem já tem 40 criaturas. Dispense uma antes.',
+  hit_points_average_only: 'A mesa usa a média nos pontos de vida: o dado não é rolado.',
+  table_content_stays:
+    'Essa ficha usa opções próprias desta mesa e não pode ir para outra campanha.',
 };
 
 export function characterBlockedMessage(
@@ -157,6 +166,13 @@ const BLOCKED_FROM_GEN: Partial<Record<GenCharacterBlockedReason, CharacterBlock
   [GenCharacterBlockedReason.CHARACTER_IN_COMBAT]: 'character_in_combat',
   [GenCharacterBlockedReason.CLAIM_OWN_LINK]: 'claim_own_link',
   [GenCharacterBlockedReason.RESERVED]: 'reserved',
+  [GenCharacterBlockedReason.CANNOT_LEVEL_UP]: 'cannot_level_up',
+  [GenCharacterBlockedReason.DICE_FORCED_PHYSICAL]: 'dice_forced_physical',
+  [GenCharacterBlockedReason.DICE_FORCED_IN_APP]: 'dice_forced_in_app',
+  [GenCharacterBlockedReason.CREATURE_IN_COMBAT]: 'creature_in_combat',
+  [GenCharacterBlockedReason.CREATURE_LIMIT]: 'creature_limit',
+  [GenCharacterBlockedReason.HIT_POINTS_AVERAGE_ONLY]: 'hit_points_average_only',
+  [GenCharacterBlockedReason.TABLE_CONTENT_STAYS]: 'table_content_stays',
 };
 
 /** Maps the wire `CharacterBlockedReason` enum (characters.proto) onto the

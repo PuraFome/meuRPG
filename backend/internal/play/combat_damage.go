@@ -270,16 +270,16 @@ func (f *damageFlow) openGroup(ctx context.Context) error {
 	})
 	// The pending damages of a cast share their creation time, so the query leaves their order to their
 	// random ids: settle them in the combat's turn order.
-	cs := f.cs
-	slices.SortStableFunc(f.group, func(x, y playdb.PendingDamage) int {
-		return cmp.Compare(combatantIndex(cs, x.TargetID), combatantIndex(cs, y.TargetID))
-	})
+	sortByCombatOrder(f.cs, f.group)
 	return nil
 }
 
-// combatantIndex is where a combatant stands in the turn order of cs, -1 when it is not there.
-func combatantIndex(cs []playdb.Combatant, id string) int {
-	return slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == id })
+// sortByCombatOrder puts pending damages in the order their targets stand in cs, an absent target first.
+func sortByCombatOrder(cs []playdb.Combatant, group []playdb.PendingDamage) {
+	index := func(id string) int { return slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == id }) }
+	slices.SortStableFunc(group, func(x, y playdb.PendingDamage) int {
+		return cmp.Compare(index(x.TargetID), index(y.TargetID))
+	})
 }
 
 // rollDice makes the roll: the parts of a hit with extras, or the one group of dice, then what the roll made

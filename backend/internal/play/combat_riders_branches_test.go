@@ -1,7 +1,6 @@
 package play
 
 import (
-	"errors"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -12,18 +11,6 @@ import (
 // The branches of the monk's riders that the first tests did not reach (UseHitRider): what
 // each choice does after the target's save, and each refusal with its code and message.
 // Frozen as they are; a finding is commented where the behavior looks odd.
-
-// wantRiderRefusal fails unless err is a connect error with this code and message.
-func wantRiderRefusal(t *testing.T, call string, err error, code connect.Code, msg string) {
-	t.Helper()
-	var ce *connect.Error
-	if !errors.As(err, &ce) {
-		t.Fatalf("%s error = %v, want a connect error %v %q", call, err, code, msg)
-	}
-	if ce.Code() != code || ce.Message() != msg {
-		t.Errorf("%s error = %v %q, want %v %q", call, ce.Code(), ce.Message(), code, msg)
-	}
-}
 
 // riderLineOf is the master's log line of the rider answered with this choice.
 func (a *armed) riderLineOf(t *testing.T, choice playv1.HitRiderChoice) *playv1.CombatLogHitRider {
@@ -136,17 +123,17 @@ func TestARiderRefusalsKeepTheirCodesAndMessages(t *testing.T) {
 	_, errFake := a.useRider(t, a.ana, e, fake, playv1.HitRiderChoice_HIT_RIDER_CHOICE_PRONE)
 	// Finding (the refusals of useRider for an open offer and an invented one): both are permission_denied, but the words differ,
 	// so a player can tell a real offer from an invented one by the message. Frozen.
-	wantRiderRefusal(t, "another player answering a real offer", errReal, connect.CodePermissionDenied, "only the combatant's player or the master may do this")
-	wantRiderRefusal(t, "another player answering a missing offer", errFake, connect.CodePermissionDenied, "only the monk's player or the master may answer")
+	wantRefusal(t, "another player answering a real offer", errReal, connect.CodePermissionDenied, "only the combatant's player or the master may do this")
+	wantRefusal(t, "another player answering a missing offer", errFake, connect.CodePermissionDenied, "only the monk's player or the master may answer")
 	// The master learns that the offer is not there.
 	_, err := a.useRider(t, a.master, e, fake, playv1.HitRiderChoice_HIT_RIDER_CHOICE_PRONE)
-	wantRiderRefusal(t, "the master answering a missing offer", err, connect.CodeNotFound, "offer not found")
+	wantRefusal(t, "the master answering a missing offer", err, connect.CodeNotFound, "offer not found")
 
 	// A choice that does not belong to the offer.
 	_, err = a.useRider(t, a.caio, e, stun, playv1.HitRiderChoice_HIT_RIDER_CHOICE_PRONE)
-	wantRiderRefusal(t, "prone on a Stunning Strike offer", err, connect.CodeInvalidArgument, "the choice is not one this offer has")
+	wantRefusal(t, "prone on a Stunning Strike offer", err, connect.CodeInvalidArgument, "the choice is not one this offer has")
 	_, err = a.useRider(t, a.caio, e, open, playv1.HitRiderChoice_HIT_RIDER_CHOICE_UNSPECIFIED)
-	wantRiderRefusal(t, "no choice", err, connect.CodeInvalidArgument, "the choice is not one this offer has")
+	wantRefusal(t, "no choice", err, connect.CodeInvalidArgument, "the choice is not one this offer has")
 
 	// No ki left for the stun: the offer stays open.
 	if _, err := a.h.pool.Exec(t.Context(), `UPDATE character_vitals SET resources_used = jsonb_set(resources_used, '{ki}', '5') WHERE character_id = $1`, a.toren.GetId()); err != nil {
@@ -154,7 +141,7 @@ func TestARiderRefusalsKeepTheirCodesAndMessages(t *testing.T) {
 	}
 	_, err = a.useRider(t, a.caio, e, stun, playv1.HitRiderChoice_HIT_RIDER_CHOICE_STUN)
 	wantBlockedBy(t, "UseHitRider(stun) without ki", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_UNSPECIFIED)
-	wantRiderRefusal(t, "UseHitRider(stun) without ki", err, connect.CodeFailedPrecondition, "no ki point left")
+	wantRefusal(t, "UseHitRider(stun) without ki", err, connect.CodeFailedPrecondition, "no ki point left")
 }
 
 // TestARiderWhoseFeatureTheSheetLacksIsRefused: an Open Hand offer on a monk of no Way (a row
@@ -174,7 +161,7 @@ func TestARiderWhoseFeatureTheSheetLacksIsRefused(t *testing.T) {
 	}
 	_, err := a.useRider(t, a.caio, e, offer.GetId(), playv1.HitRiderChoice_HIT_RIDER_CHOICE_PRONE)
 	wantBlockedBy(t, "UseHitRider() without the feature", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_UNSPECIFIED)
-	wantRiderRefusal(t, "UseHitRider() without the feature", err, connect.CodeFailedPrecondition, "the combatant does not have this feature")
+	wantRefusal(t, "UseHitRider() without the feature", err, connect.CodeFailedPrecondition, "the combatant does not have this feature")
 }
 
 // TestARiderOfAnotherRoundIsOver: an offer is open until the round ends (frozen: the offer's
@@ -187,7 +174,7 @@ func TestARiderOfAnotherRoundIsOver(t *testing.T) {
 	}
 	_, err := a.useRider(t, a.caio, e, offers[playv1.HitRiderKind_HIT_RIDER_KIND_OPEN_HAND], playv1.HitRiderChoice_HIT_RIDER_CHOICE_PRONE)
 	wantBlockedBy(t, "UseHitRider() on an offer of another round", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_UNSPECIFIED)
-	wantRiderRefusal(t, "UseHitRider() on an offer of another round", err, connect.CodeFailedPrecondition, "the offer was answered or its round is over")
+	wantRefusal(t, "UseHitRider() on an offer of another round", err, connect.CodeFailedPrecondition, "the offer was answered or its round is over")
 }
 
 // TestAStunnedTargetFailsADexterityRiderSaveWithoutARoll: a stunned creature fails its

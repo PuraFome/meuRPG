@@ -54,7 +54,7 @@ After `COMMIT`, `play` publishes to each audience what it may see (the hub has a
 | `encounter_changed{encounter_id, revision, mode}` | Any change in the combat | Everyone. A contentless notice: the app reads `GetEncounter` again, already filtered |
 | `turn_changed{round, current_combatant_id, master_turn}` | The combat begins, the turn passes, whoever is on turn disappears or changes state | Each their own copy: the master sees who it is; the player "Vez do mestre" if it is a hidden one |
 | `combatant_moved{combatant_id, col, row}` | A combatant moves | The master always; the player only if they see the combatant |
-| `combat_log_changed{encounter_id}` | A log line appeared, changed or vanished | The master always; the player only if the line has no hidden one. A contentless notice: the app reads `ListCombatLog` again |
+| `combat_log_changed{encounter_id}` | A log line appeared, changed or vanished | The master always; the player only if the line has no hidden one (the end of a hidden combatant's rage, `EndRage` and `AnswerRageEnd`, included). A contentless notice: the app reads `ListCombatLog` again |
 | `reaction_window_opened`, `reaction_window_closed` | A reaction window opens or closes | The reactor and the master |
 
 `finish` publishes after the commit on a context that outlives the call, with a timeout.

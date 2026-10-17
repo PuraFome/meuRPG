@@ -2,7 +2,6 @@ package play
 
 import (
 	"encoding/json"
-	"errors"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -40,19 +39,6 @@ func (r *trapRig) trapSearchCall(t *testing.T, u *user, edit func(*playv1.Search
 		return nil, err
 	}
 	return res.Msg, nil
-}
-
-// wantTrapSearchRefusal checks the code and the exact message of a refusal.
-func wantTrapSearchRefusal(t *testing.T, what string, err error, code connect.Code, message string) {
-	t.Helper()
-	cerr, ok := errors.AsType[*connect.Error](err)
-	if !ok {
-		t.Errorf("%s error = %v, want %v: %q", what, err, code, message)
-		return
-	}
-	if cerr.Code() != code || cerr.Message() != message {
-		t.Errorf("%s error = %v: %q, want %v: %q", what, cerr.Code(), cerr.Message(), code, message)
-	}
 }
 
 // trapSearchEvents are the payloads of the session's trap_searched events, oldest first.
@@ -167,7 +153,7 @@ func TestSearchForTrapsRefusesABadRequestWithItsMessage(t *testing.T) {
 	}
 	for _, c := range cases {
 		_, err := r.trapSearchCall(t, r.ana, c.edit)
-		wantTrapSearchRefusal(t, c.name, err, connect.CodeInvalidArgument, c.msg)
+		wantRefusal(t, c.name, err, connect.CodeInvalidArgument, c.msg)
 	}
 	if n := r.eventCount(t, "trap_searched"); n != 0 {
 		t.Errorf("trap_searched events = %d, want the refusals to leave none", n)
@@ -205,14 +191,14 @@ func TestSearchForTrapsWhoMayCall(t *testing.T) {
 	}
 	wantCode(t, "SearchForTraps(anonymous)", call(r.h.anonymous()), connect.CodeUnauthenticated)
 	wantCode(t, "SearchForTraps(outsider)", call(r.h.newUser("Fora")), connect.CodeNotFound)
-	wantTrapSearchRefusal(t, "SearchForTraps(master)", call(r.master), connect.CodePermissionDenied, "only the campaign's player can do this")
+	wantRefusal(t, "SearchForTraps(master)", call(r.master), connect.CodePermissionDenied, "only the campaign's player can do this")
 	var err error
 	// A player with no character reads the same refusal as the master.
 	late := r.h.newUser("Lia")
 	r.h.join(r.master, r.campaignID, late)
 	err = call(late)
 	wantSceneBlocked(t, err, playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_NO_CHARACTER)
-	wantTrapSearchRefusal(t, "SearchForTraps(a player with no character)", err, connect.CodeFailedPrecondition, searchNoCharMsg)
+	wantRefusal(t, "SearchForTraps(a player with no character)", err, connect.CodeFailedPrecondition, searchNoCharMsg)
 	if n := r.eventCount(t, "trap_searched"); n != 0 {
 		t.Errorf("trap_searched events = %d, want none", n)
 	}
@@ -232,8 +218,8 @@ func TestSearchForTrapsNeedsTrapsASessionAndAPlace(t *testing.T) {
 			_, err := c.ana.play.SearchForTraps(t.Context(), connect.NewRequest(req))
 			return err
 		}
-		wantTrapSearchRefusal(t, "a valid search", search(trapSearchTyped(investigation, 10)), connect.CodeUnavailable, "traps are not available on this server")
-		wantTrapSearchRefusal(t, "a bad request", search(trapSearchTyped(investigation, 0)), connect.CodeInvalidArgument, "d20_face must be 1 to 20")
+		wantRefusal(t, "a valid search", search(trapSearchTyped(investigation, 10)), connect.CodeUnavailable, "traps are not available on this server")
+		wantRefusal(t, "a bad request", search(trapSearchTyped(investigation, 0)), connect.CodeInvalidArgument, "d20_face must be 1 to 20")
 	})
 	t.Run("no open session", func(t *testing.T) {
 		t.Parallel()
@@ -241,14 +227,14 @@ func TestSearchForTrapsNeedsTrapsASessionAndAPlace(t *testing.T) {
 		r.place(t, r.pens.GetId(), 8, 7)
 		r.master.end(t, r.master.liveSession(t, r.campaignID).GetGameSession())
 		_, err := r.trapSearchCall(t, r.ana, trapSearchTyped(investigation, 10))
-		wantTrapSearchRefusal(t, "a search with no session", err, connect.CodeFailedPrecondition, "the campaign has no open game session")
+		wantRefusal(t, "a search with no session", err, connect.CodeFailedPrecondition, "the campaign has no open game session")
 	})
 	t.Run("the character is not on the map", func(t *testing.T) {
 		t.Parallel()
 		r := newTrapRig(t)
 		_, err := r.trapSearchCall(t, r.ana, trapSearchTyped(investigation, 10))
 		wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TRAP_NOT_ON_MAP)
-		wantTrapSearchRefusal(t, "a search off the map", err, connect.CodeFailedPrecondition, searchNotOnMap)
+		wantRefusal(t, "a search off the map", err, connect.CodeFailedPrecondition, searchNotOnMap)
 		if n := r.eventCount(t, "trap_searched"); n != 0 {
 			t.Errorf("trap_searched events = %d, want none", n)
 		}
@@ -262,7 +248,7 @@ func TestSearchForTrapsNeedsTrapsASessionAndAPlace(t *testing.T) {
 		r.place(t, r.pens.GetId(), 8, 7)
 		_, err := r.trapSearchCall(t, r.ana, trapSearchTyped(investigation, 10))
 		wantSceneBlocked(t, err, playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_NO_CHARACTER)
-		wantTrapSearchRefusal(t, "a search of a basic sheet", err, connect.CodeFailedPrecondition, searchNoNumbers)
+		wantRefusal(t, "a search of a basic sheet", err, connect.CodeFailedPrecondition, searchNoNumbers)
 	})
 }
 
@@ -277,7 +263,7 @@ func TestSearchForTrapsInACombat(t *testing.T) {
 		r.setupUnplaced(t)
 		_, err := r.trapSearchCall(t, r.caio, trapSearchTyped(investigation, 10))
 		wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TRAP_SEARCH_NOT_NOW)
-		wantTrapSearchRefusal(t, "a search before the combat begins", err, connect.CodeFailedPrecondition, searchNotNow)
+		wantRefusal(t, "a search before the combat begins", err, connect.CodeFailedPrecondition, searchNotNow)
 		if n := r.eventCount(t, "trap_searched"); n != 0 {
 			t.Errorf("trap_searched events = %d, want none", n)
 		}
@@ -293,7 +279,7 @@ func TestSearchForTrapsInACombat(t *testing.T) {
 		}
 		_, err = r.trapSearchCall(t, r.caio, trapSearchTyped(investigation, 10))
 		wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ACTION_USED)
-		wantTrapSearchRefusal(t, "a second search", err, connect.CodeFailedPrecondition, "the action of this turn is used")
+		wantRefusal(t, "a second search", err, connect.CodeFailedPrecondition, "the action of this turn is used")
 	})
 	t.Run("the search of a combatant", func(t *testing.T) {
 		t.Parallel()
@@ -341,7 +327,7 @@ func TestSearchForTrapsInACombat(t *testing.T) {
 		r.execTrapSearchSQL(t, `UPDATE combatants SET grid_col = NULL, grid_row = NULL WHERE id = $1`, r.id(t, "Toren"))
 		_, err := r.trapSearchCall(t, r.caio, trapSearchTyped(investigation, 10))
 		wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TRAP_NOT_ON_MAP)
-		wantTrapSearchRefusal(t, "a search with no square", err, connect.CodeFailedPrecondition, searchNotOnMap)
+		wantRefusal(t, "a search with no square", err, connect.CodeFailedPrecondition, searchNotOnMap)
 	})
 	t.Run("an ended combat", func(t *testing.T) {
 		t.Parallel()
@@ -474,20 +460,18 @@ func TestSearchForTrapsEffectDiceAndSources(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SearchForTraps() error = %v", err)
 	}
-	// 9 + 4 (Intelligence) + 3 (the d4) = 16 clears DC 14.
-	// Finding: the answer's roll leaves the effect die out of its total (13, not the 16 the search
-	// counted and wrote in the history), and the die is told only in the sources (the search in traps_search.go).
-	if res.GetRoll().GetTotal() != 13 || res.GetRoll().GetModifier() != 4 || len(res.GetFoundPointIds()) != 1 || len(res.GetBonusDice()) != 0 ||
+	// 9 + 4 (Intelligence) + 3 (the d4) = 16 clears DC 14; the modifier of the answer holds the die.
+	if res.GetRoll().GetTotal() != 16 || res.GetRoll().GetModifier() != 7 || len(res.GetFoundPointIds()) != 1 || len(res.GetBonusDice()) != 0 ||
 		len(res.GetSources()) != 1 || res.GetSources()[0].GetKind() != playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_DIE {
-		t.Errorf("the search = %v, want the roll 9 + 4 = 13, the pit found (16 counted) and the die in the sources", res)
+		t.Errorf("the search = %v, want the roll 9 + 7 = 16, the pit found and the die in the sources", res)
 	}
 	var left int
 	if err := r.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM character_effects WHERE character_id = $1`, r.pens.GetId()).Scan(&left); err != nil || left != 0 {
 		t.Errorf("effects left on Pensantus = %d (%v), want the once-die spent", left, err)
 	}
 	ev := r.trapSearchEvents(t)[0]
-	if ev.Modifier != 4 || ev.Total != 16 || ev.D20 != 9 {
-		t.Errorf("the event = %s, want d20 9, modifier 4, total 16", eventSummary(ev))
+	if ev.Modifier != 7 || ev.Total != 16 || ev.D20 != 9 {
+		t.Errorf("the event = %s, want d20 9, modifier 7, total 16", eventSummary(ev))
 	}
 }
 
@@ -529,9 +513,9 @@ func TestSearchForTrapsRetries(t *testing.T) {
 		t.Errorf("trap_searched events = %d, want 1", n)
 	}
 	_, err = call(15, 18, perception)
-	wantTrapSearchRefusal(t, "the key with another skill", err, connect.CodeInvalidArgument, searchKeyReused)
+	wantRefusal(t, "the key with another skill", err, connect.CodeInvalidArgument, searchKeyReused)
 	_, err = call(14, 18, investigation)
-	wantTrapSearchRefusal(t, "the key with another roll", err, connect.CodeInvalidArgument, searchKeyReused)
+	wantRefusal(t, "the key with another roll", err, connect.CodeInvalidArgument, searchKeyReused)
 	if n := r.eventCount(t, "trap_searched"); n != 1 {
 		t.Errorf("trap_searched events = %d, want the refusals to add none", n)
 	}
@@ -552,7 +536,7 @@ func TestSearchForTrapsKeyOfAnotherChange(t *testing.T) {
 		trapSearchTyped(investigation, 10)(q)
 		q.IdempotencyKey = key
 	})
-	wantTrapSearchRefusal(t, "a search with the key of a firing", err, connect.CodeInvalidArgument, searchKeyReused)
+	wantRefusal(t, "a search with the key of a firing", err, connect.CodeInvalidArgument, searchKeyReused)
 }
 
 // TestSearchForTrapsAnswerShapes: what each viewer reads of a search, and what the history keeps (ids and

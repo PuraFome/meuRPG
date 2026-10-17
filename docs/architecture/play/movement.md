@@ -28,7 +28,7 @@ flowchart LR
 | Speed and movement left | `speedDFt` is the only place that works the turn's speed out: the better of walking and flying, doubled after Dash, 0 under a condition that leaves no speed (grappled, restrained) or no movement (paralyzed, petrified, stunned, unconscious). The combatant view (`movement_left_*`), `GetMoveOptions`, the move itself and `GetTurnOptions` all read it, so they never disagree |
 | Crawling | While prone, every foot costs 1 extra foot (SRD 5.1 "Being Prone"): the cost is multiplied by 2 (`crawls`, with the drag's factor) and `GetMoveOptions` offers only the squares half the movement left pays for. A flier on its fly speed does not crawl; the master's free moves are unaffected. On difficult terrain the factor over-charges (4 per foot against the SRD's 3) |
 | Disengage | `standard:disengage` turns on `combatants.disengaged`, reset at the start of the turn and returned by undo |
-| Undo | `combatant_moved` is undoable: the event stores where the combatant came from (`from`: square, distance walked, running start, cover mark) and the undo restores all of it |
+| Undo | `combatant_moved` is undoable: the event stores where the combatant came from (`from`: square, distance walked, running start, cover mark) and the undo restores all of it. A move that dragged a grappled creature also keeps where it stood and its cover mark (`dragged_id`, `dragged_from`): the undo puts the creature back with the mark, and the fog follows it from the square it was dragged to |
 
 **In tenths of a foot.** The server stores and charges movement in tenths of a foot (`movement_used_dft`, `last_move_dft`; `Combatant.movement_*_dft`, `MovementLeft.*_dft`); the fields in feet stay filled, rounded down.
 The app draws what `GetMoveOptions` sends.

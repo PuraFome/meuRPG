@@ -366,8 +366,8 @@ func (s *Service) UseReaction(
 	return connect.NewResponse(resp), nil
 }
 
-// parseReactionCall reads the caller's membership and the ids of a Shield answer, in the order the
-// handlers always checked them.
+// parseReactionCall reads the caller's membership and the ids of a Shield answer. The member comes
+// first, so a stranger gets permission_denied before any id is parsed.
 func parseReactionCall(ctx context.Context, campaignID, keyRaw, encounterRaw, pendingRaw string) (m authz.Membership, key string, encID, pendingID string, err error) {
 	if m, err = authz.RequireCampaignMember(ctx, campaignID); err != nil {
 		return m, key, "", "", err

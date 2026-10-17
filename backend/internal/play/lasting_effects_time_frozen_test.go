@@ -89,5 +89,5 @@ func TestLastingCoreAdvanceGameTime(t *testing.T) {
 	// No session open.
 	a.master.end(t, a.master.liveSession(t, a.campaignID).GetGameSession())
 	try("no session open", a.master, none)
-	wantLastingGolden(t, "time_advance", a.coreNames(t, l.String()))
+	wantLastingGolden(t, "lasting_core", "time_advance", a.coreNames(t, l.String()))
 }

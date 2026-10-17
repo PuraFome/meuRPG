@@ -53,4 +53,11 @@ export type CharacterBlockedReason =
   | 'not_claimed'
   | 'character_in_combat'
   | 'claim_own_link'
-  | 'reserved';
+  | 'reserved'
+  | 'cannot_level_up'
+  | 'dice_forced_physical'
+  | 'dice_forced_in_app'
+  | 'creature_in_combat'
+  | 'creature_limit'
+  | 'hit_points_average_only'
+  | 'table_content_stays';

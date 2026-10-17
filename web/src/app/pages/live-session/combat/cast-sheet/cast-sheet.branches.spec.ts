@@ -1,7 +1,6 @@
-// The branches of `cast-sheet.ts` the other specs of the cast sheet never took (found with the coverage report): the page
-// before the combat is read, what "Conjurar" waits for, the targets and darts that follow the slot, the result's notes,
-// the damage still to roll, and the questions a cast can answer with. They read the sheet through its protected members,
-// as the specs next to this one do, and were written green on the code as it was before it was split.
+// `cast-sheet.ts` off the happy path: the page before the combat is read, what "Conjurar" waits for, the targets and darts
+// that follow the slot, the result's notes, the damage still to roll, and the questions a cast can answer with. It reads
+// the sheet through its protected members, as the specs next to this one do.
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
@@ -40,6 +39,7 @@ import { InspirationQuestion } from '../../../../core/resources/bardic-inspirati
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { CastSheet, type CastSheetData } from './cast-sheet';
 import { resumedCastOf } from './cast-sheet-view';
+import { fakeCombatClient } from '../../../../core/combat/combat-client-testing';
 
 /** The sheet seen from a spec: protected members and all. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -179,7 +179,7 @@ async function open(over: Over = {}) {
       : over.details;
   TestBed.configureTestingModule({
     providers: [
-      { provide: CombatClient, useValue: client },
+      { provide: CombatClient, useValue: fakeCombatClient(client) },
       { provide: ResourceClient, useValue: resources },
       { provide: SpellCatalog, useValue: { details: () => Promise.resolve(details) } },
       { provide: MAT_DIALOG_DATA, useValue: data },

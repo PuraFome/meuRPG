@@ -532,7 +532,7 @@ func (s *Service) releaseOne(ctx context.Context, c *combatTx, p playdb.PendingD
 	return true, nil
 }
 
-// errWindowGone is the not_found of a window that is not in the combat, the same
+// errWindowDenied is the refusal for a window the caller may not answer, the same
 // for a window that never existed: a player never learns which are real (RN-10).
 func errWindowDenied() error {
 	return connect.NewError(connect.CodePermissionDenied, errors.New("you cannot answer this reaction"))

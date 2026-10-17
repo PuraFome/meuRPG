@@ -992,3 +992,33 @@ func TestAGrappleEndsWhenItsGrapplerFallsToZeroHitPoints(t *testing.T) {
 		t.Error("the grapple outlived its grappler falling to 0 hit points")
 	}
 }
+
+// TestADragOntoAnUnseenCreatureIsRefusedLikeAWall (RN-10): a hidden creature of the
+// mover's own side on the square the dragged creature would be left on gets the
+// player the walk's generic refusal, not the one that says someone is there; the
+// master, who sees it, reads the drag's own.
+func TestADragOntoAnUnseenCreatureIsRefusedLikeAWall(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	c := a.arena(t, arenaPlan{})
+	c.grappleWon(t)
+	c.advance(t, c.hob)
+	c.advance(t, "Toren")
+	// The Goblin joins the party, stands on (3,2), where the Hobgoblin would be left when Toren goes to (3,1), and hides.
+	if _, err := c.moveTo(t, a.master, "Goblin", 3, 2); err != nil {
+		t.Fatalf("placing the Goblin: %v", err)
+	}
+	if _, err := a.master.combat.SetCombatantSide(t.Context(), connect.NewRequest(&playv1.SetCombatantSideRequest{
+		CampaignId: a.campaignID, EncounterId: c.e.GetId(), CombatantId: c.id(t, "Goblin"), IdempotencyKey: newKey(), Side: playv1.CombatantSide_COMBATANT_SIDE_PARTY,
+	})); err != nil {
+		t.Fatalf("SetCombatantSide() error = %v", err)
+	}
+	c.hideFromPlayers(t, "Goblin")
+	_, err := c.moveTo(t, a.caio, "Toren", 3, 1)
+	wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_MOVE_BLOCKED)
+	if got := err.Error(); !strings.Contains(got, "a wall, a column or a squeeze is in the way") {
+		t.Errorf("the refusal says %q, want the walk's generic text", got)
+	}
+	_, err = c.moveTo(t, a.master, "Toren", 3, 1)
+	wantContestBlocked(t, "the master dragging onto a hidden creature", err, playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NO_ROOM_TO_DRAG)
+}

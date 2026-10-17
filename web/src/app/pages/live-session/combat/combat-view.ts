@@ -282,7 +282,7 @@ export class CombatView extends CombatViewPartsDirective {
   /** "Técnica da Mão Aberta" and "Golpe Atordoante": the monk's answer to an offer after a hit. */
   protected answerRider(pick: RiderPick): Promise<boolean> {
     return this.calls.run((e) =>
-      this.api.useHitRider(this.campaignId(), e.id, pick.id, pick.choice),
+      this.api.turn.useHitRider(this.campaignId(), e.id, pick.id, pick.choice),
     );
   }
 
@@ -296,7 +296,7 @@ export class CombatView extends CombatViewPartsDirective {
       }
       if (
         !(await this.calls.run((current) =>
-          this.api.endTurn(this.campaignId(), current.id, member.id, false, current.round),
+          this.api.turn.endTurn(this.campaignId(), current.id, member.id, false, current.round),
         ))
       ) {
         return;
@@ -309,31 +309,31 @@ export class CombatView extends CombatViewPartsDirective {
   }
 
   protected endCombat(): Promise<boolean> {
-    return this.calls.run((e) => this.api.end(this.campaignId(), e.id));
+    return this.calls.run((e) => this.api.turn.end(this.campaignId(), e.id));
   }
 
   protected reveal(change: { id: string; hidden: boolean }): Promise<boolean> {
     return this.calls.run((e) =>
-      this.api.setHidden(this.campaignId(), e.id, change.id, change.hidden),
+      this.api.moves.setHidden(this.campaignId(), e.id, change.id, change.hidden),
     );
   }
 
   /** The master: "Perdeu a concentração" (the app does not roll the save; the damage card reminds the DC). */
   protected loseConcentration(id: string): Promise<boolean> {
     return this.calls.run((e) =>
-      this.api.setConditions(this.campaignId(), e.id, id, { endConcentration: true }),
+      this.api.combatants.setConditions(this.campaignId(), e.id, id, { endConcentration: true }),
     );
   }
 
   /** The master: "Encerrar Ajuda": the bonus goes, and the hit points lose only what passes the new maximum. */
   protected endAid(id: string): Promise<boolean> {
     return this.calls.run((e) =>
-      this.api.endCombatEffect(this.campaignId(), e.id, id, CombatEffect.AID),
+      this.api.combatants.endCombatEffect(this.campaignId(), e.id, id, CombatEffect.AID),
     );
   }
 
   protected remove(id: string): Promise<boolean> {
-    return this.calls.run((e) => this.api.remove(this.campaignId(), e.id, id));
+    return this.calls.run((e) => this.api.moves.remove(this.campaignId(), e.id, id));
   }
 
   protected adjustFor(characterId: string): void {
@@ -378,7 +378,7 @@ export class CombatView extends CombatViewPartsDirective {
       return Promise.resolve(false);
     }
     return this.calls.run(async (e) => {
-      const undone = await this.api.undo(this.campaignId(), e.id, entry.id);
+      const undone = await this.api.turn.undo(this.campaignId(), e.id, entry.id);
       this.undone.mark();
       return undone;
     });
@@ -386,13 +386,15 @@ export class CombatView extends CombatViewPartsDirective {
 
   /** The master's "Marcar como aliado" / "Voltar a ser inimigo". */
   protected setSide(change: { id: string; side: CombatantSide }): Promise<boolean> {
-    return this.calls.run((e) => this.api.setSide(this.campaignId(), e.id, change.id, change.side));
+    return this.calls.run((e) =>
+      this.api.moves.setSide(this.campaignId(), e.id, change.id, change.side),
+    );
   }
 
   /** The master's cover mark, applied at once. */
   protected setCover(change: { id: string; cover: CoverDegree }): Promise<boolean> {
     return this.calls.run((e) =>
-      this.api.setCover(this.campaignId(), e.id, change.id, change.cover),
+      this.api.moves.setCover(this.campaignId(), e.id, change.id, change.cover),
     );
   }
 
@@ -402,14 +404,14 @@ export class CombatView extends CombatViewPartsDirective {
   protected standUp(id?: string): Promise<boolean> {
     const who = id ?? this.own()?.id;
     return who
-      ? this.calls.run((e) => this.api.standUp(this.campaignId(), e.id, who))
+      ? this.calls.run((e) => this.api.moves.standUp(this.campaignId(), e.id, who))
       : Promise.resolve(false);
   }
 
   /** "Colocar no mapa": the server picks the square, by the rule that places the
    * NPCs when the combat begins (free floor, away from the players). */
   protected async place(id: string): Promise<void> {
-    await this.calls.run((current) => this.api.place(this.campaignId(), current.id, id));
+    await this.calls.run((current) => this.api.moves.place(this.campaignId(), current.id, id));
   }
 
   // ---- the sheets and moving are bound by the template through `sheets` and `moves` ----

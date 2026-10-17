@@ -857,7 +857,7 @@ func (s *Service) TokenDropped(ctx context.Context, campaignID, mapID, character
 }
 
 // CreatureDropped implements maps.TrapFirer: the master dropped a creature of a
-// player's character on a square (9.10 left this to the traps slice), and the armed
+// player's character on a square (the maps module hands the drop to the traps), and the armed
 // "Ao entrar na área" traps whose area holds it fire, as for a character's token: the
 // characters standing in the area are caught with it, or only the creature when the
 // trap picks its targets by hand. The creature's part is a line only: no hit points

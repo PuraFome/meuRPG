@@ -61,7 +61,7 @@ func TestLastingCoreACastingOnSeveralTargetsEndsTogether(t *testing.T) {
 	}
 	l.say("the master ends the last one:\n%s", a.coreEffects(t, e.GetId()))
 	l.say("events:\n%s", a.coreEvents(t, eventLastingAdded, eventLastingEnded, eventConditionsSet))
-	wantLastingGolden(t, "core_castings", a.coreNames(t, l.String()))
+	wantLastingGolden(t, "lasting_core", "core_castings", a.coreNames(t, l.String()))
 }
 
 // What the effects leave on a combatant is worked out again after every change: the conditions
@@ -102,7 +102,7 @@ func TestLastingCoreWhatTheEffectsLeaveOnTheCombatants(t *testing.T) {
 	snap("the laughter and the armor ended: the hand-set condition stays", "Brisa", "Pensantus")
 	l.say("effects:\n%s", a.coreEffects(t, e.GetId()))
 	l.say("events:\n%s", a.coreEvents(t, eventLastingAdded, eventLastingEnded, eventConditionsSet, eventExhaustion))
-	wantLastingGolden(t, "core_leave", a.coreNames(t, l.String()))
+	wantLastingGolden(t, "lasting_core", "core_leave", a.coreNames(t, l.String()))
 }
 
 // A caster that becomes incapacitated loses its concentration, and the effects it held end with it.
@@ -120,7 +120,7 @@ func TestLastingCoreAnIncapacitatedCasterLosesItsConcentration(t *testing.T) {
 	a.mustAddEffect(t, e, "spell:hideous-laughter", []string{"Pensantus"}, a.rounds(t, 3, "Toren"))
 	l.say("Pensantus laughs:\n%s%s", a.coreEffects(t, e.GetId()), a.coreCombatants(t, e.GetId(), "Pensantus", "Goblin"))
 	l.say("events:\n%s", a.coreEvents(t, eventLastingAdded, eventLastingEnded, eventConditionsSet))
-	wantLastingGolden(t, "core_incapacitated_caster", a.coreNames(t, l.String()))
+	wantLastingGolden(t, "lasting_core", "core_incapacitated_caster", a.coreNames(t, l.String()))
 }
 
 // What an effect leaves when it ends: the lethargy after Haste, the temporary hit points
@@ -158,15 +158,13 @@ func TestLastingCoreWhatFollowsAnEffectThatEnded(t *testing.T) {
 	}
 	l.say("haste ended:\n%s%s", a.coreEffects(t, e.GetId()), a.coreCombatants(t, e.GetId(), "Pensantus"))
 	l.say("events:\n%s", a.coreEvents(t, eventLastingAdded, eventLastingEnded, eventLastingTriggered))
-	wantLastingGolden(t, "core_follow_ups", a.coreNames(t, l.String()))
+	wantLastingGolden(t, "lasting_core", "core_follow_ups", a.coreNames(t, l.String()))
 }
 
-// FINDING, frozen as it is: a creature that starts its turn under an effect with a damage of its
-// own (Teia em Chamas, "effect:web-fire") makes the turn fail with an internal error, because
-// the row of the damage is written with neither an attacker nor a trap point (the CHECK of
-// pending_damage), so the whole EndTurn is rolled back and the combat cannot pass that creature's
-// turn until the effect is taken off.
-func TestLastingCoreAnEffectWithItsOwnDamageStopsTheTurnFromPassing(t *testing.T) {
+// A creature that starts its turn under an effect with a damage of its own (Teia em Chamas,
+// "effect:web-fire") takes the burn and the turn passes to it: the row of that damage has neither an
+// attacker nor a trap point, and the CHECK of pending_damages accepts it by its effect source.
+func TestLastingCoreAnEffectWithItsOwnDamageLetsTheTurnPassAndBurns(t *testing.T) {
 	t.Parallel()
 	a := newCasters(t)
 	e := a.closeFight(t)
@@ -178,12 +176,7 @@ func TestLastingCoreAnEffectWithItsOwnDamageStopsTheTurnFromPassing(t *testing.T
 	l.say("the turn that passes to the goblin -> %s", coreRefusal(err))
 	l.say("current: %q\n%s%s", a.get(t, a.master).GetCurrentCombatantId(), a.coreEffects(t, e.GetId()), a.coreCombatants(t, e.GetId(), "Goblin", "Brisa"))
 	l.say("events:\n%s", a.coreEvents(t, eventLastingTriggered, eventTurnEnded))
-	if err := a.coreEndEffect(t, e, "Goblin", "effect:web-fire", playv1.EffectEndScope_EFFECT_END_SCOPE_THIS); err != nil {
-		t.Fatalf("EndLastingEffect(fire) error = %v", err)
-	}
-	_, err = a.endTurnRaw(t, a.master, a.get(t, a.master), true)
-	l.say("with the fire put out -> %s; current: %q", coreRefusal(err), a.get(t, a.master).GetCurrentCombatantId())
-	wantLastingGolden(t, "core_web_fire_blocks_turn", a.coreNames(t, l.String()))
+	wantLastingGolden(t, "lasting_core", "core_web_fire_burns", a.coreNames(t, l.String()))
 }
 
 // What a request for an effect decides about its rows: the duration kinds, the audience, the
@@ -236,7 +229,7 @@ func TestLastingCoreAddingEffectsKeepsWhatTheRequestSays(t *testing.T) {
 	l.say("effects:\n%s", a.coreEffects(t, e.GetId()))
 	l.say("combatants:\n%s", a.coreCombatants(t, e.GetId()))
 	l.say("events:\n%s", a.coreEvents(t, eventLastingAdded, eventConditionsSet))
-	wantLastingGolden(t, "core_adding", a.coreNames(t, l.String()))
+	wantLastingGolden(t, "lasting_core", "core_adding", a.coreNames(t, l.String()))
 }
 
 // Two effects that ask a saving throw at the end of the same turn open two windows in a fixed

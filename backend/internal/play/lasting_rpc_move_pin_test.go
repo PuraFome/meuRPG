@@ -27,7 +27,7 @@ func (a *armed) rpcMasterTable(t *testing.T, e *playv1.Encounter) string {
 		t.Fatalf("ListLastingEffects() error = %v", err)
 	}
 	res.Msg.Catalog = nil
-	return a.rpcJSON(t, res.Msg)
+	return a.rpcRuleJSON(t, res.Msg)
 }
 
 // TestLastingRPCEffectsMoveIntoACombatAndBack freezes effectsToCombat and effectsToCharacters:

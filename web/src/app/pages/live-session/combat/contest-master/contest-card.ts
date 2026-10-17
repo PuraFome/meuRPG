@@ -45,12 +45,12 @@ import {
   proneWord,
   skillLine,
   skillName,
-  upFirst,
   whoIs,
   checkNaturalMark,
 } from '../../../../core/combat/contest-view';
 import { ActionKey } from '../../../../core/connect/idempotency';
 import { CheckRollForm } from '../check-roll-form/check-roll-form';
+import { upFirst } from '../../../../core/format/text';
 
 let nextId = 0;
 

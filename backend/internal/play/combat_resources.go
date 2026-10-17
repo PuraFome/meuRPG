@@ -266,7 +266,7 @@ type layRun struct {
 	v    combatViewer
 }
 
-// readLayCall reads and checks the request. Who may call comes first, so a stranger learns nothing about the ids (RN-10).
+// readLayCall reads and checks the request. The refusals come in the order of the checks below.
 func (s *Service) readLayCall(ctx context.Context, req *playv1.UseLayOnHandsRequest) (layCall, error) {
 	fr, err := s.flowRequest(ctx, req.GetCampaignId(), req.GetEncounterId(), req.GetActorId(), req.GetTargetId(), req.GetIdempotencyKey())
 	if err != nil {

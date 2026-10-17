@@ -259,6 +259,13 @@ func (s *Service) GetCombatHighlights(
 		return nil, s.dbError(ctx, "read the combat's highlights", err)
 	}
 	tallies := tallyHighlights(events, cs)
+	if m.Role != authz.RoleMaster {
+		chars, err := s.talliedCharacters(ctx, m.CampaignID, tallies)
+		if err != nil {
+			return nil, err
+		}
+		tallies = dropReserved(tallies, chars)
+	}
 
 	res := &playv1.GetCombatHighlightsResponse{Categories: highlightCategories(tallies)}
 	for _, t := range tallies {
