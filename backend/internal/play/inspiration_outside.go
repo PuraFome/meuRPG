@@ -95,12 +95,9 @@ func (s *Service) giveOutsideTx(ctx context.Context, m authz.Membership, key str
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		given = outsideGiven{}
 		q := s.queries.WithTx(tx)
-		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errNoOpenSession()
-		}
+		session, err := lockOpenSessionOrNone(ctx, q, m.CampaignID)
 		if err != nil {
-			return fmt.Errorf("lock the open session: %w", err)
+			return err
 		}
 		done, again, err := eventByKey(ctx, q, session.ID, key, eventInspirationGiven, hash)
 		if err != nil {
@@ -121,7 +118,7 @@ func (s *Service) giveOutsideTx(ctx context.Context, m authz.Membership, key str
 // replayGive answers a key the caller already used: the bard, and nothing written.
 func (s *Service) replayGive(ctx context.Context, tx pgx.Tx, m authz.Membership, done playdb.GetSessionEventByIdempotencyKeyRow, given *outsideGiven) error {
 	if done.ActorUserID == nil || *done.ActorUserID != m.UserID {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
+		return errKeyReused()
 	}
 	bard, _, err := s.myCharacter(ctx, tx, m)
 	given.bard = bard

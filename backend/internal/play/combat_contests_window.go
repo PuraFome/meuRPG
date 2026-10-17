@@ -106,15 +106,11 @@ func contestWindowsByContest(ctx context.Context, c *combatTx) (map[string]playd
 
 // contestCombatantsByID is the combatants of the encounter by id.
 func contestCombatantsByID(ctx context.Context, c *combatTx) (map[string]playdb.Combatant, error) {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
-	byID := make(map[string]playdb.Combatant, len(cs))
-	for _, x := range cs {
-		byID[x.ID] = x
-	}
-	return byID, nil
+	return combatantsByID(cs), nil
 }
 
 // syncContestWindow keeps the window of a waiting contest when its reactor is the same, and

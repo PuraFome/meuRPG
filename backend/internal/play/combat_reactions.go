@@ -121,7 +121,7 @@ func (s *Service) reactionPrompts(ctx context.Context, m authz.Membership, d *en
 	}
 	var out []*playv1.ReactionPrompt
 	for _, w := range open {
-		prompt, ok, err := s.shieldPrompt(ctx, m, d, v, names, w)
+		prompt, ok, err := s.legacyShieldPrompt(ctx, m, d, v, names, w)
 		if err != nil {
 			return nil, err
 		}
@@ -132,8 +132,9 @@ func (s *Service) reactionPrompts(ctx context.Context, m authz.Membership, d *en
 	return out, nil
 }
 
-// shieldPrompt is the prompt of one open window, when it is a Shield window the viewer may read.
-func (s *Service) shieldPrompt(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer, names func(key string) string, w playdb.ReactionWindow) (*playv1.ReactionPrompt, bool, error) {
+// legacyShieldPrompt is the entry of the reaction_prompts list for one open window, when it is a
+// Shield window the viewer may read. The windows' own prompt is windowView.shieldPrompt.
+func (s *Service) legacyShieldPrompt(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer, names func(key string) string, w playdb.ReactionWindow) (*playv1.ReactionPrompt, bool, error) {
 	if w.Kind != string(reaction.Shield) || w.PendingDamageID == nil || w.ReactorID == nil {
 		return nil, false, nil
 	}
@@ -153,13 +154,13 @@ func (s *Service) shieldPrompt(ctx context.Context, m authz.Membership, d *encou
 	if v.master {
 		prompt.AttackerId = t.Actor
 	}
-	s.nameShieldAttacker(ctx, m, d, v, t, prompt)
+	s.legacyShieldAttacker(ctx, m, d, v, t, prompt)
 	return prompt, true, nil
 }
 
-// nameShieldAttacker says who attacked, and with what, only when the viewer sees the attacker
+// legacyShieldAttacker says who attacked, and with what, only when the viewer sees the attacker
 // (RN-20): the screen says "Capitão Goblin · Cimitarra", and a hidden attacker stays hidden.
-func (s *Service) nameShieldAttacker(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer, t windowTrigger, prompt *playv1.ReactionPrompt) {
+func (s *Service) legacyShieldAttacker(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer, t windowTrigger, prompt *playv1.ReactionPrompt) {
 	j := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == t.Actor })
 	if j < 0 || !v.sees(d.cs[j]) {
 		return
@@ -188,9 +189,9 @@ func (s *Service) reactionTarget(ctx context.Context, c *combatTx, v combatViewe
 	} else if err != nil {
 		return w, p, attacker, target, fmt.Errorf("find the pending damage: %w", err)
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return w, p, attacker, target, fmt.Errorf("list the combatants: %w", err)
+		return w, p, attacker, target, err
 	}
 	if target, err = findCombatant(cs, p.TargetID, v); err != nil {
 		return w, p, attacker, target, err
@@ -369,13 +370,7 @@ func (s *Service) UseReaction(
 // parseReactionCall reads the caller's membership and the ids of a Shield answer. The member comes
 // first, so a stranger gets permission_denied before any id is parsed.
 func parseReactionCall(ctx context.Context, campaignID, keyRaw, encounterRaw, pendingRaw string) (m authz.Membership, key string, encID, pendingID string, err error) {
-	if m, err = authz.RequireCampaignMember(ctx, campaignID); err != nil {
-		return m, key, "", "", err
-	}
-	if key, err = parseKey(keyRaw); err != nil {
-		return m, key, "", "", err
-	}
-	if encID, err = parseCombatID(encounterRaw, "encounter"); err != nil {
+	if m, key, encID, err = memberCall(ctx, campaignID, keyRaw, encounterRaw); err != nil {
 		return m, key, "", "", err
 	}
 	if pendingID, err = parseCombatID(pendingRaw, "pending damage"); err != nil {
@@ -398,8 +393,8 @@ func (s *Service) shieldChange(ctx context.Context, c *combatTx, v combatViewer,
 	if err != nil {
 		return made, vitals, err
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return made, vitals, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return made, vitals, err
 	}
 	made.Round = c.enc.Round
 	return made, vitals, nil
@@ -445,19 +440,7 @@ func (s *Service) DeclineReaction(
 	ctx context.Context,
 	req *connect.Request[playv1.DeclineReactionRequest],
 ) (*connect.Response[playv1.DeclineReactionResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
-	if err != nil {
-		return nil, err
-	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
-	if err != nil {
-		return nil, err
-	}
-	pendingID, err := parseCombatID(req.Msg.GetPendingDamageId(), "pending damage")
+	m, key, encID, pendingID, err := parseReactionCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId(), req.Msg.GetPendingDamageId())
 	if err != nil {
 		return nil, err
 	}
@@ -475,8 +458,8 @@ func (s *Service) DeclineReaction(
 		if err != nil {
 			return nil, err
 		}
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
+		if err := touch(ctx, c); err != nil {
+			return nil, err
 		}
 		ev.Round = c.enc.Round
 		return ev, nil

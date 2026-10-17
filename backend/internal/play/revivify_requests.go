@@ -134,12 +134,9 @@ func (s *Service) RequestRevivify(
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		replayed = false
 		q := s.queries.WithTx(tx)
-		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errNoOpenSession()
-		}
+		session, err := lockOpenSessionOrNone(ctx, q, m.CampaignID)
 		if err != nil {
-			return fmt.Errorf("lock the open session: %w", err)
+			return err
 		}
 		get := func(ctx context.Context, k *string) (playdb.RevivifyRequest, error) {
 			return q.GetRevivifyRequestByCreateKey(ctx, playdb.GetRevivifyRequestByCreateKeyParams{CampaignID: m.CampaignID, CreateKey: k})
@@ -191,17 +188,11 @@ func (s *Service) openRevivifyRequest(ctx context.Context, tx pgx.Tx, q *playdb.
 // refuseCasterInCombat stops a cast outside a combat for a caster that is in one: there the
 // minute is counted.
 func (s *Service) refuseCasterInCombat(ctx context.Context, q *playdb.Queries, sessionID string, caster link.Character) error {
-	enc, err := q.GetOpenEncounter(ctx, sessionID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil
+	_, cs, found, err := openCombatants(ctx, q, sessionID)
+	if err != nil || !found {
+		return err
 	}
-	if err != nil {
-		return fmt.Errorf("find the open encounter: %w", err)
-	}
-	cs, err := q.ListCombatants(ctx, enc.ID)
-	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
-	}
+	// A defeated caster is not in the combat for this check (the Revivify request is allowed).
 	if slices.ContainsFunc(cs, func(c playdb.Combatant) bool {
 		return c.Kind == kindPlayer && c.CharacterID == caster.ID && !c.Defeated
 	}) {
@@ -340,12 +331,9 @@ func (s *Service) ConfirmRevivifyTime(
 // "já passou" ends the request at no cost.
 func (s *Service) answerRevivify(ctx context.Context, tx pgx.Tx, m authz.Membership, in revivifyAnswer, out *revivifyAnswered) error {
 	q := s.queries.WithTx(tx)
-	session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return errNoOpenSession()
-	}
+	session, err := lockOpenSessionOrNone(ctx, q, m.CampaignID)
 	if err != nil {
-		return fmt.Errorf("lock the open session: %w", err)
+		return err
 	}
 	row, replayed, err := s.pendingRevivify(ctx, q, session, m, in)
 	if err != nil {
