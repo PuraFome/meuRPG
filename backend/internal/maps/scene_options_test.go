@@ -16,8 +16,8 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
-// The scene options (MR-015, Etapa 8; Samuel's answers to questions 52 and
-// 55) and the session summary's checks (MR-032, question 64): "Mostrar a CD aos
+// The scene options (MR-015; Samuel's answers to questions 52 and
+// 55) and the session summary's checks (MR-032): "Mostrar a CD aos
 // jogadores", the attempts per action, "Dar mais uma tentativa". Pensantus's
 // numbers are the golden file's: Investigação +6; Toren's, a gnome wizard
 // with Intelligence 16 and the gnome bonus: Investigação +4 (no proficiency).

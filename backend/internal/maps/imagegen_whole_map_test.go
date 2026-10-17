@@ -12,7 +12,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// Fix round 1 of slice 10.16 (MR-039, RN-10, RN-28): a textured map is the whole map, so the gallery
+// A textured map (MR-039, RN-10, RN-28) is the whole map, so the gallery
 // says so for it and for every edit of it; an edit of a textured map can be used as the map's image;
 // the picture has a name the players can read; and a hidden NPC's portrait is refused as an object too.
 

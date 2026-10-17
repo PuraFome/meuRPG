@@ -24,7 +24,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/vision"
 )
 
-// Traps in play (MR-035, Etapa 9, D5, slice 9.8): who notices a trap by passing
+// Traps in play (MR-035): who notices a trap by passing
 // near it, who finds it by searching, and the state a firing or a disarm leaves
 // it in. The play module runs the game around it (the moves, the dice, the
 // damage) and asks this one, through play.TrapBook, for everything that is a
@@ -410,7 +410,7 @@ func (s *Service) tellUsers(ctx context.Context, campaignID, mapID string, row m
 }
 
 // tellNoticers sends each player who just noticed a trap the `trap_noticed` hint
-// (E9-08 G: "Você notou uma armadilha."), under the same rule as tellUsers: only when
+// ("Você notou uma armadilha."), under the same rule as tellUsers: only when
 // the map is one the players see, and only to that player (RN-10). The hint names the
 // map and the trap, which that player now knows; nobody else gets it.
 func (s *Service) tellNoticers(ctx context.Context, campaignID, mapID string, row mapsdb.Map, noticed []noticeKey) {
@@ -432,7 +432,7 @@ func (s *Service) tellNoticers(ctx context.Context, campaignID, mapID string, ro
 	}
 }
 
-// SearchTraps is "Procurar armadilhas" (MR-035, D5, question 71) as the maps
+// SearchTraps is "Procurar armadilhas" (MR-035) as the maps
 // module sees it: the observer's roll total, with the skill ("perception",
 // "investigation" or the key of another skill, "skill:arcana"), against every armed
 // trap within 3 m whose square it sees and that its character does not know.
@@ -796,8 +796,9 @@ func (s *Service) DisarmTrap(
 	}
 	var res trapDisarm
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		res.changed = false
-		return s.disarmTrapIn(ctx, tx, m, mapID, pointID, &res)
+		var err error
+		res, err = s.disarmTrapTx(ctx, tx, m, mapID, pointID)
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "disarm a trap", err)
@@ -824,37 +825,37 @@ type trapDisarm struct {
 	changed bool
 }
 
-// disarmTrapIn is the transaction of DisarmTrap: a trap already disarmed changes nothing;
+// disarmTrapTx is the transaction of DisarmTrap: a trap already disarmed changes nothing;
 // otherwise the players who know it are read before the change, it is disarmed (its
 // firing time kept) and the disarm is recorded.
-func (s *Service) disarmTrapIn(ctx context.Context, tx pgx.Tx, m authz.Membership, mapID, pointID string, res *trapDisarm) error {
+func (s *Service) disarmTrapTx(ctx context.Context, tx pgx.Tx, m authz.Membership, mapID, pointID string) (trapDisarm, error) {
 	q := s.queries.WithTx(tx)
 	mapRow, before, err := s.lockPoint(ctx, q, m.CampaignID, mapID, pointID, mapsv1.MapPointKind_MAP_POINT_KIND_TRAP)
 	if err != nil {
-		return err
+		return trapDisarm{}, err
 	}
-	res.mapRow, res.after = mapRow, before
+	res := trapDisarm{mapRow: mapRow, after: before}
 	if before.TrapState != nil && *before.TrapState == "disarmed" {
-		return nil // already disarmed: nothing changes, nothing is recorded
+		return res, nil // already disarmed: nothing changes, nothing is recorded
 	}
 	if res.knowers, err = s.trapKnowers(ctx, tx, q, m.CampaignID, before); err != nil {
-		return err
+		return trapDisarm{}, err
 	}
 	now := s.now()
 	disarmed := "disarmed"
 	if res.after, err = q.SetTrapState(ctx, mapsdb.SetTrapStateParams{MapID: mapID, ID: pointID, TrapState: &disarmed, TrapTriggeredAt: before.TrapTriggeredAt, Now: now}); err != nil {
-		return fmt.Errorf("disarm the trap: %w", err)
+		return trapDisarm{}, fmt.Errorf("disarm the trap: %w", err)
 	}
 	payload, err := json.Marshal(trapDisarmedEvent{PointID: pointID})
 	if err != nil {
-		return fmt.Errorf("encode the event payload: %w", err)
+		return trapDisarm{}, fmt.Errorf("encode the event payload: %w", err)
 	}
 	// With no open session nothing is written here: the trap is still disarmed.
 	if _, err := s.live.AppendEvent(ctx, tx, m.CampaignID, eventTrapDisarmed, m.UserID, payload, now); err != nil {
-		return fmt.Errorf("record the disarm: %w", err)
+		return trapDisarm{}, fmt.Errorf("record the disarm: %w", err)
 	}
 	res.changed = true
-	return nil
+	return res, nil
 }
 
 // TrapFirer is what this package needs from the play module to fire a trap when

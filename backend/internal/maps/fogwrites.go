@@ -161,7 +161,7 @@ func (s *Service) refreshAfterNPCToken(ctx context.Context, campaignID string, m
 		return
 	}
 	// While a combat runs on the map the NPC tokens are out of a player's reads
-	// (the combatants are slice 9.7's), so a token's move is no news to anyone.
+	// (fogcombat.go reads the combatants), so a token's move is no news to anyone.
 	if combat, err := s.combats.CombatPositions(ctx, nil, campaignID, mapRow.ID); err == nil && combat.Running {
 		s.refreshVision(ctx, campaignID, mapRow.ID)
 		return

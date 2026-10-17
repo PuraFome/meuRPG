@@ -26,11 +26,11 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// Characterization of the maps module's share of the campaign package (MR-050):
+// The maps module's share of the campaign package (MR-050):
 // how a package's points, maps and images are checked before they are written
 // (every problem with its kind, name and reason, in the order the checks run)
-// and what is staged from the good ones. Written on the code before it was split
-// into phases; the goldens in testdata must not change in the refactor.
+// and what is staged from the good ones. The goldens in testdata/package_*.golden.txt
+// are the expected problems and rows.
 
 // updatePackageGoldens rewrites the goldens of this file instead of comparing.
 const updatePackageGoldens = "UPDATE_PACKAGE_GOLDENS"
@@ -672,10 +672,10 @@ func stageApplyExportGolden(t *testing.T, s *scenes) string {
 	return b.String()
 }
 
-// TestPackageStagingIsFrozen freezes what the maps module's parts of a campaign
+// TestPackageStaging freezes what the maps module's parts of a campaign
 // package do: every problem of a point, a map and an image with its kind, name
 // and reason, and a package staged, written and exported again.
-func TestPackageStagingIsFrozen(t *testing.T) {
+func TestPackageStaging(t *testing.T) {
 	t.Parallel()
 	s := newScenes(t, false)
 	checkPackageGolden(t, "package_stage_point", stagePointGolden(t, &mapsPart{s: s.h.svc}))

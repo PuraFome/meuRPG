@@ -94,7 +94,9 @@ To keep that rule from cutting another use of the same file, the server **copies
 - **Reuse.** A copy made to show or be a portrait is marked `gallery_images.copy_of_image_id` (deleting the source cuts the link). The next show or portrait of the same image finds it, so showing again or turning "keep" on makes no new copy and sends no event. A copy that has since become the background of a fogged map is not reused.
 - **Races.** Two simultaneous uses prepare a copy each; the row is added in the transaction of the use (`Insert` returns the image to use and whether its own row was made), which finds the copy the other committed first and deletes its own files, so the gallery keeps one. `PrepareShow` copies the files first and leaves the row to the show's transaction, after it locked the open session: a refused show (`NO_OPEN_SESSION`, a full gallery) commits no row and its files are deleted.
 
-Tests: `TestRN10_FogMapImageIsCopiedWhenShared`, `TestRN10_AFogMapsImageIsNeverReusedRaw`, `TestRN10_AFogMapsImageCopyNeedsRoom`.
+- **The read before the transaction.** The calls that give a map an image (`UpdateMap`, `SetMapGrid` with the table's fog rule, `SetMapFog`, "Usar como imagem do mapa") read the map first to know which copy to prepare, and one helper, `imageCopyFor` (`fogimage.go`), prepares it. A read that fails refuses the call, never "no copy needed". `UpdateMap` and the generated image's use also remember the fog the copy was prepared for: if the fog changed before the lock (the revision does not move with it), the call is refused (`aborted`, and `MAP_CHANGED` for the use) and the master repeats it.
+
+Tests: `TestRN10_FogMapImageIsCopiedWhenShared`, `TestRN10_AFogMapsImageIsNeverReusedRaw`, `TestRN10_AFogMapsImageCopyNeedsRoom`, `TestFogCopyRetry`, `TestFogCopyPreReadThatFailsRefusesTheCall`, `TestUpdateMap_AFogSwitchedOnMeanwhileRefusesTheCall`.
 
 ## Per-player image tiles
 

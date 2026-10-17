@@ -422,7 +422,7 @@ func TestMR028_MasterShowsAnImageToThePlayers(t *testing.T) {
 	if got := shownNow(player); got != nil {
 		t.Errorf("after stopping, shown_image = %v, want none", got)
 	}
-	// The player kept the ID, but it opens nothing anymore (question 32).
+	// The player kept the ID, but it opens nothing anymore.
 	if res := player.get(portrait.GetUrl()); res.status != 404 {
 		t.Errorf("the player fetching the image after it stopped being shown: status %d, want 404", res.status)
 	}

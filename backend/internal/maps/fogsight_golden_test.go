@@ -23,7 +23,7 @@ import (
 )
 
 // Characterization of the scene of a fog map and of the work out of what the players see
-// (MR-036, RN-10, D6), called as the services call it: newSight inside and outside a
+// (MR-036, RN-10), called as the services call it: newSight inside and outside a
 // transaction, the lights it lists, the familiar's eyes, and updateVision with the
 // statements that fail one at a time.
 

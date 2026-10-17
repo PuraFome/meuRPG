@@ -74,7 +74,7 @@ func TestValidateAnswersTheFirstBrokenRule(t *testing.T) {
 
 // parseAnswer's errors, word for word: what the log reads and what each error is (errors.Is
 // and As are what the module decides on).
-func TestParseAnswerSentencesAreFrozen(t *testing.T) {
+func TestParseAnswerSentences(t *testing.T) {
 	t.Parallel()
 	b64 := base64.StdEncoding.EncodeToString(onePixel)
 	long := strings.Repeat("é", maxLoggedMessage) // 2 bytes each: cut in the middle of a character
@@ -133,7 +133,7 @@ func TestParseAnswerSentencesAreFrozen(t *testing.T) {
 
 // The picture an answer gives back: the last image of the model's output steps, in the mime type
 // it came with, or JPEG when it came with none (what the request asked for).
-func TestParseAnswerImageIsFrozen(t *testing.T) {
+func TestParseAnswerImage(t *testing.T) {
 	t.Parallel()
 	b64 := base64.StdEncoding.EncodeToString(onePixel)
 	other := base64.StdEncoding.EncodeToString([]byte("other"))

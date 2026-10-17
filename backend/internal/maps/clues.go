@@ -12,7 +12,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
@@ -25,7 +24,7 @@ import (
 )
 
 // The clues of an RP scene, the discoveries and what a player's notes read
-// (MR-029, MR-030, Etapa 8; D5, D6; questions 59 to 61 with their defaults).
+// (MR-029, MR-030).
 //
 //   - The master prepares clues on a SCENE point, one at a time, like the
 //     actions (scene_clues), and reveals each to the players it picks
@@ -43,8 +42,8 @@ import (
 // the clues through SessionMaps.ScenePoint and gives them to the master only.
 
 const (
-	// maxSceneClues is how many clues a scene point may have (question 59's
-	// default; the master's list is short, and so is the dialog that reveals).
+	// maxSceneClues is how many clues a scene point may have (the
+	// master's list is short, and so is the dialog that reveals).
 	maxSceneClues = 30
 	// maxClueText is the longest clue, in characters (scene_clues_text_length).
 	maxClueText = 500
@@ -96,7 +95,7 @@ func (s *Service) AddSceneClue(
 	}
 	call := &addClueCall{pointID: pointID, text: text, scopedKey: scopedKey, requestHash: requestHash}
 	ch, err := s.changeActions(ctx, m, mapID, pointID, func(q *mapsdb.Queries) error {
-		return s.addClueRows(ctx, q, call)
+		return s.appendClue(ctx, q, call)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "add a scene clue", err)
@@ -111,9 +110,9 @@ func (s *Service) AddSceneClue(
 	return connect.NewResponse(&mapsv1.AddSceneClueResponse{Clue: clueByID(clues, call.added.ID), Clues: clues}), nil
 }
 
-// addClueRows reads the point's clues and adds the new one after them, or
+// appendClue reads the point's clues and adds the new one after them, or
 // finds the one an earlier call with the same key added.
-func (s *Service) addClueRows(ctx context.Context, q *mapsdb.Queries, call *addClueCall) error {
+func (s *Service) appendClue(ctx context.Context, q *mapsdb.Queries, call *addClueCall) error {
 	// The point is locked by now, so two calls with the same key take turns.
 	current, err := q.ListSceneClues(ctx, call.pointID)
 	if err != nil {
@@ -203,7 +202,7 @@ func (s *Service) MoveSceneClue(
 	moved := false
 	ch, err := s.changeActions(ctx, m, mapID, pointID, func(q *mapsdb.Queries) error {
 		var err error
-		moved, err = moveClueRows(ctx, q, pointID, clueID, step)
+		moved, err = shiftClue(ctx, q, pointID, clueID, step)
 		return err
 	})
 	if err != nil {
@@ -219,10 +218,10 @@ func (s *Service) MoveSceneClue(
 	return connect.NewResponse(&mapsv1.MoveSceneClueResponse{Clues: clues}), nil
 }
 
-// moveClueRows swaps a clue with its neighbor and renumbers the list from 0,
-// as the actions do. It says whether anything changed: the first clue moved
+// shiftClue swaps a clue with its neighbor and renumbers the list from 0,
+// as shiftAction does. It says whether anything changed: the first clue moved
 // up, or the last moved down, changes nothing.
-func moveClueRows(ctx context.Context, q *mapsdb.Queries, pointID, clueID string, step int) (bool, error) {
+func shiftClue(ctx context.Context, q *mapsdb.Queries, pointID, clueID string, step int) (bool, error) {
 	clues, err := q.ListSceneClues(ctx, pointID)
 	if err != nil {
 		return false, fmt.Errorf("list the clues: %w", err)
@@ -231,21 +230,14 @@ func moveClueRows(ctx context.Context, q *mapsdb.Queries, pointID, clueID string
 	if i < 0 {
 		return false, errClueNotFound()
 	}
-	j := i + step
-	if j < 0 || j >= len(clues) {
-		return false, nil // already first or last: nothing changes
-	}
-	clues[i], clues[j] = clues[j], clues[i]
-	for p := range clues {
-		want := int32(p)
-		if clues[p].Position == want {
-			continue
-		}
-		if err := q.SetSceneCluePosition(ctx, mapsdb.SetSceneCluePositionParams{ID: clues[p].ID, Position: want}); err != nil {
-			return false, fmt.Errorf("set a clue's position: %w", err)
-		}
-	}
-	return true, nil
+	return swapAndRenumber(clues, i, step,
+		func(c *mapsdb.SceneClue) *int32 { return &c.Position },
+		func(c mapsdb.SceneClue) error {
+			if err := q.SetSceneCluePosition(ctx, mapsdb.SetSceneCluePositionParams{ID: c.ID, Position: c.Position}); err != nil {
+				return fmt.Errorf("set a clue's position: %w", err)
+			}
+			return nil
+		})
 }
 
 // RemoveSceneClue implements mapsv1connect.MapServiceHandler. The players who
@@ -283,16 +275,20 @@ func (s *Service) RemoveSceneClue(
 	return connect.NewResponse(&mapsv1.RemoveSceneClueResponse{Clues: clues}), nil
 }
 
-// revealCall is one RevealSceneClue inside its transaction: who gets the clue
-// (character to player), and the clue and the players who did not have it yet
-// out.
+// revealCall is one RevealSceneClue as its transaction sees it: who gets the clue (character
+// to player).
 type revealCall struct {
 	m            authz.Membership
 	clueID       string
 	characterIDs []string
 	userOf       map[string]string
-	clue         mapsdb.SceneClue
-	newUsers     []string
+}
+
+// clueReveal is what the transaction of RevealSceneClue ends with: the clue, and the players
+// who just got it.
+type clueReveal struct {
+	clue     mapsdb.SceneClue
+	newUsers []string
 }
 
 // RevealSceneClue implements mapsv1connect.MapServiceHandler.
@@ -308,136 +304,94 @@ func (s *Service) RevealSceneClue(
 	if !ok {
 		return nil, errClueNotFound()
 	}
-	characterIDs, err := parseRevealIDs(req.Msg.GetCharacterIds())
+	// The clue goes to each character's player, who owns the notes: an NPC, a dead or pending
+	// character, or one with no player is "not found", as a token's.
+	characterIDs, userOf, err := s.playerCharacters(ctx, m.CampaignID, req.Msg.GetCharacterIds(), true)
 	if err != nil {
 		return nil, err
 	}
-	userOf, err := s.revealRecipients(ctx, m.CampaignID, characterIDs)
-	if err != nil {
-		return nil, err
-	}
-	call := &revealCall{m: m, clueID: clueID, characterIDs: characterIDs, userOf: userOf}
+	call := revealCall{m: m, clueID: clueID, characterIDs: characterIDs, userOf: userOf}
+	var res clueReveal
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		return s.revealRows(ctx, tx, call)
+		var err error
+		res, err = s.revealClueTx(ctx, tx, call)
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "reveal a scene clue", err)
 	}
-	s.publishReveal(ctx, call)
-	clues, err := s.cluesOfPoint(ctx, m.CampaignID, call.clue.PointID)
+	s.publishReveal(ctx, m.CampaignID, res)
+	clues, err := s.cluesOfPoint(ctx, m.CampaignID, res.clue.PointID)
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&mapsv1.RevealSceneClueResponse{Clue: clueByID(clues, call.clue.ID)}), nil
+	return connect.NewResponse(&mapsv1.RevealSceneClueResponse{Clue: clueByID(clues, res.clue.ID)}), nil
 }
 
-// parseRevealIDs checks the count of characters of a reveal and returns their
-// IDs without repeats, in the order given.
-func parseRevealIDs(ids []string) ([]string, error) {
-	if len(ids) == 0 || len(ids) > maxRevealCharacters {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("character_ids must have 1 to %d characters", maxRevealCharacters))
-	}
-	characterIDs := make([]string, 0, len(ids))
-	for _, raw := range ids {
-		id, ok := parseID(raw)
-		if !ok {
-			return nil, errCharacterNotFound()
-		}
-		if !slices.Contains(characterIDs, id) {
-			characterIDs = append(characterIDs, id)
-		}
-	}
-	return characterIDs, nil
-}
-
-// revealRecipients maps each character of a reveal to its player. Each must
-// be a living player character with a player: the clue goes to the player,
-// who owns the notes. An NPC, a dead or pending character, or one whose player
-// deleted the account is "not found", as a token's.
-func (s *Service) revealRecipients(ctx context.Context, campaignID string, characterIDs []string) (map[string]string, error) {
-	found, err := s.characters.MapCharacters(ctx, nil, campaignID, characterIDs)
-	if err != nil {
-		return nil, s.dbError(ctx, "find the characters", err)
-	}
-	userOf := make(map[string]string, len(found))
-	for _, c := range found {
-		if c.GetKind() == charactersv1.CharacterKind_CHARACTER_KIND_PLAYER && c.GetPlayerUserId() != "" {
-			userOf[c.GetId()] = c.GetPlayerUserId()
-		}
-	}
-	for _, id := range characterIDs {
-		if _, ok := userOf[id]; !ok {
-			return nil, errCharacterNotFound()
-		}
-	}
-	return userOf, nil
-}
-
-// revealRows finds the clue in the campaign, gives it to the characters who
+// revealClueTx finds the clue in the campaign, gives it to the characters who
 // did not have it yet and records the reveal as a session event.
-func (s *Service) revealRows(ctx context.Context, tx pgx.Tx, call *revealCall) error {
+func (s *Service) revealClueTx(ctx context.Context, tx pgx.Tx, call revealCall) (clueReveal, error) {
 	q := s.queries.WithTx(tx)
-	var err error
-	call.newUsers = call.newUsers[:0]
-	if call.clue, err = q.GetSceneClueInCampaign(ctx, mapsdb.GetSceneClueInCampaignParams{CampaignID: call.m.CampaignID, ID: call.clueID}); errors.Is(err, pgx.ErrNoRows) {
-		return errClueNotFound()
+	clue, err := q.GetSceneClueInCampaign(ctx, mapsdb.GetSceneClueInCampaignParams{CampaignID: call.m.CampaignID, ID: call.clueID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return clueReveal{}, errClueNotFound()
 	} else if err != nil {
-		return fmt.Errorf("find clue: %w", err)
+		return clueReveal{}, fmt.Errorf("find clue: %w", err)
 	}
 	now := s.now()
-	gave, err := s.insertReveals(ctx, q, call, now) // the characters that did not have it yet
+	gave, newUsers, err := s.insertReveals(ctx, q, call, clue, now) // the characters that did not have it yet
 	if err != nil {
-		return err
+		return clueReveal{}, err
 	}
+	res := clueReveal{clue: clue, newUsers: newUsers}
 	if len(gave) == 0 {
-		return nil // everyone had it: nothing changes, nothing is recorded
+		return res, nil // everyone had it: nothing changes, nothing is recorded
 	}
-	payload, err := json.Marshal(clueRevealedEvent{ClueID: call.clue.ID, PointID: call.clue.PointID, CharacterIDs: gave})
+	payload, err := json.Marshal(clueRevealedEvent{ClueID: clue.ID, PointID: clue.PointID, CharacterIDs: gave})
 	if err != nil {
-		return fmt.Errorf("encode the event payload: %w", err)
+		return clueReveal{}, fmt.Errorf("encode the event payload: %w", err)
 	}
 	// With no open session nothing is written here: the reveal is still
 	// made, as an XP award is.
 	if _, err := s.live.AppendEvent(ctx, tx, call.m.CampaignID, eventClueRevealed, call.m.UserID, payload, now); err != nil {
-		return fmt.Errorf("record the reveal: %w", err)
+		return clueReveal{}, fmt.Errorf("record the reveal: %w", err)
 	}
-	return nil
+	return res, nil
 }
 
 // insertReveals writes one reveal per character and returns the characters
 // who did not have the clue yet, noting their players in call.newUsers.
-func (s *Service) insertReveals(ctx context.Context, q *mapsdb.Queries, call *revealCall, now time.Time) ([]string, error) {
-	var gave []string
+func (s *Service) insertReveals(ctx context.Context, q *mapsdb.Queries, call revealCall, clue mapsdb.SceneClue, now time.Time) (gave, newUsers []string, err error) {
 	for _, id := range call.characterIDs {
 		character := id
 		n, err := q.InsertClueReveal(ctx, mapsdb.InsertClueRevealParams{
-			CampaignID: call.m.CampaignID, ClueID: &call.clue.ID, PointID: &call.clue.PointID, UserID: call.userOf[id],
-			CharacterID: &character, Text: call.clue.Text, Now: now,
+			CampaignID: call.m.CampaignID, ClueID: &clue.ID, PointID: &clue.PointID, UserID: call.userOf[id],
+			CharacterID: &character, Text: clue.Text, Now: now,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("reveal the clue: %w", err)
+			return nil, nil, fmt.Errorf("reveal the clue: %w", err)
 		}
 		if n == 1 {
 			gave = append(gave, id)
-			if !slices.Contains(call.newUsers, call.userOf[id]) {
-				call.newUsers = append(call.newUsers, call.userOf[id])
+			if !slices.Contains(newUsers, call.userOf[id]) {
+				newUsers = append(newUsers, call.userOf[id])
 			}
 		}
 	}
-	return gave, nil
+	return gave, newUsers, nil
 }
 
 // publishReveal tells the players who got the clue, and the master's open
 // scene. Only the players who got it hear of it; a player who is offline reads
 // it on their next ListNotes.
-func (s *Service) publishReveal(ctx context.Context, call *revealCall) {
-	if len(call.newUsers) == 0 {
+func (s *Service) publishReveal(ctx context.Context, campaignID string, res clueReveal) {
+	if len(res.newUsers) == 0 {
 		return
 	}
-	s.live.PublishToUsers(call.m.CampaignID, call.newUsers, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_NotesChanged_{
+	s.live.PublishToUsers(campaignID, res.newUsers, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_NotesChanged_{
 		NotesChanged: &playv1.WatchGameSessionResponse_NotesChanged{},
 	}})
-	s.publishSceneChangedToMasterIf(ctx, call.m.CampaignID, call.clue.PointID)
+	s.publishSceneChangedToMasterIf(ctx, campaignID, res.clue.PointID)
 }
 
 // cluesChanged tells the master's watching streams that a point's clues
@@ -601,7 +555,7 @@ func clueByID(clues []*mapsv1.SceneClue, id string) *mapsv1.SceneClue {
 }
 
 // DiscoverScene records, inside tx, that the group discovered a scene: the
-// master opened its point in a session (MR-030, question 61), even while the
+// master opened its point in a session (MR-030), even while the
 // point is hidden on the map. A scene already discovered stays as it is. It
 // implements play.MapKeeper; the caller checked that the point is a SCENE
 // point of the campaign (ScenePoint).

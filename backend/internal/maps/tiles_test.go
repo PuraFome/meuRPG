@@ -29,7 +29,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// The fog's image as tiles per player (MR-036, RN-10, D6; ADR-0016). The cave's
+// The fog's image as tiles per player (MR-036, RN-10; ADR-0016). The cave's
 // image is 240 x 160 pixels for a grid of 24 x 16 squares: 10 pixels a square, so
 // the working copy is the image itself and every pixel is known.
 
@@ -321,7 +321,7 @@ func TestRN10_TileCaching(t *testing.T) {
 	}
 }
 
-// Invalidation (D6): a new image, a new grid and "Esquecer" drop the working copy
+// Invalidation: a new image, a new grid and "Esquecer" drop the working copy
 // and the tiles of the map.
 func TestRN10_TilesAreInvalidated(t *testing.T) {
 	t.Parallel()

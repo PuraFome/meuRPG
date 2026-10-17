@@ -10,9 +10,8 @@ import (
 	pkgv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaignpackage/v1"
 )
 
-// Characterization tests of FileName and of nameImages (the label an image's
-// problem gets from images.json), frozen before both are split. They need no
-// database.
+// Tests of FileName and of nameImages (the label an image's problem gets from
+// images.json). They need no database.
 
 func TestCharacterizeFileNameEdges(t *testing.T) {
 	t.Parallel()

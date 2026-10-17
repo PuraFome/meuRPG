@@ -30,7 +30,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// The image of a fog map, as tiles per player (MR-036, RN-10, Etapa 9, D6, ADR-0016).
+// The image of a fog map, as tiles per player (MR-036, RN-10, ADR-0016).
 //
 // A player on a map with the fog on never receives the image: the server cuts it
 // into tiles of 16 x 16 squares and draws into each one only the squares that
@@ -54,7 +54,7 @@ import (
 //     more of each known square.
 //
 // The server has 512 MiB and one CPU, so the work is bounded (numbers in
-// CONTRIBUTING, "As medidas dos tiles da névoa"):
+// docs/performance.md):
 //   - one working copy of the image per map and grid, decoded once and capped at
 //     workingMaxSide pixels on the long side, in an LRU of workingCopies maps;
 //   - one render at a time (tileRenderer.gate): a request waits renderWait, then
@@ -744,20 +744,23 @@ func (s *Service) loadWorkingCopy(ctx context.Context, src tileSource) (*working
 	return &workingCopy{mapID: src.mapID, imageID: src.imageID, cols: src.g.Columns, rows: src.g.Rows, img: img, srcW: sw, srcH: sh}, nil
 }
 
+// tileBox is a tile's rectangle of working-copy pixels: its corner and its size.
+type tileBox struct{ x0, y0, w, h int }
+
 // tileRect is the rectangle of working-copy pixels of tile (tx, ty), or the
 // refusal for a tile outside the grid, or one with no pixel.
-func tileRect(g grid.Grid, width, height, tx, ty int) (x0, y0, w, h int, err error) {
+func tileRect(g grid.Grid, width, height, tx, ty int) (tileBox, error) {
 	c0, c1 := tx*tileSquares, min((tx+1)*tileSquares, g.Columns)
 	r0, r1 := ty*tileSquares, min((ty+1)*tileSquares, g.Rows)
 	if c0 >= c1 || r0 >= r1 {
-		return 0, 0, 0, 0, errors.New("the tile is outside the grid")
+		return tileBox{}, errors.New("the tile is outside the grid")
 	}
 	x0, x1, y0, y1 := tilePixels(g, width, height, tx, ty)
-	w, h = x1-x0, y1-y0
-	if w == 0 || h == 0 {
-		return 0, 0, 0, 0, errMapNotFound() // the index never lists it
+	b := tileBox{x0: x0, y0: y0, w: x1 - x0, h: y1 - y0}
+	if b.w == 0 || b.h == 0 {
+		return tileBox{}, errMapNotFound() // the index never lists it
 	}
-	return x0, y0, w, h, nil
+	return b, nil
 }
 
 // pixelSquares is the square (of n across size pixels) of each of the count
@@ -771,12 +774,13 @@ func pixelSquares(first, count, size, n int) []int {
 	return out
 }
 
-// showMask says which pixel of the w x h tile at (x0, y0) may be shown: its
-// square is known, and so are the squares one pixel around it (the belt; for a
-// JPEG the blocks of blackenBlocks take over).
-func showMask(nb nbhd, g grid.Grid, width, height, x0, y0, w, h int) []bool {
-	colSq := pixelSquares(x0, w+2, width, g.Columns) // the square of pixel x0-1+i
-	rowSq := pixelSquares(y0, h+2, height, g.Rows)
+// showMask says which pixel of the tile may be shown: its square is known, and so
+// are the squares one pixel around it (the belt; for a JPEG the blocks of
+// blackenBlocks take over).
+func showMask(nb nbhd, g grid.Grid, width, height int, b tileBox) []bool {
+	w, h := b.w, b.h
+	colSq := pixelSquares(b.x0, w+2, width, g.Columns) // the square of pixel x0-1+i
+	rowSq := pixelSquares(b.y0, h+2, height, g.Rows)
 	knownPx := make([]bool, (w+2)*(h+2))
 	for j := range h + 2 {
 		for i := range w + 2 {
@@ -792,14 +796,11 @@ func showMask(nb nbhd, g grid.Grid, width, height, x0, y0, w, h int) []bool {
 	return show
 }
 
-// beltSide is the side, in pixels, of the block a pixel needs known: itself and the one around it.
-const beltSide = 3
-
 // aroundKnown says whether the 3 x 3 pixels centered on (i+1, j+1) of a map of
-// known pixels, width wide, are all known.
+// known pixels, width wide, are all known: the pixel and the ring around it.
 func aroundKnown(knownPx []bool, width, i, j int) bool {
-	for dj := range beltSide {
-		for di := range beltSide {
+	for dj := range 3 {
+		for di := range 3 {
 			if !knownPx[(j+dj)*width+i+di] {
 				return false
 			}
@@ -808,9 +809,10 @@ func aroundKnown(knownPx []bool, width, i, j int) bool {
 	return true
 }
 
-// paintTile draws the w x h tile at (x0, y0): opaque black, then the working
-// copy's pixel wherever show says so.
-func paintTile(src *image.RGBA, show []bool, x0, y0, w, h int) *image.RGBA {
+// paintTile draws the tile: opaque black, then the working copy's pixel wherever
+// show says so.
+func paintTile(src *image.RGBA, show []bool, b tileBox) *image.RGBA {
+	x0, y0, w, h := b.x0, b.y0, b.w, b.h
 	dst := image.NewRGBA(image.Rect(0, 0, w, h))
 	for i := 3; i < len(dst.Pix); i += 4 {
 		dst.Pix[i] = 0xff
@@ -843,15 +845,15 @@ func encodeTile(dst *image.RGBA) ([]byte, error) {
 func renderTile(wc *workingCopy, g grid.Grid, tx, ty int, nb nbhd, jpegImage bool) ([]byte, error) {
 	src := wc.img
 	W, H := src.Bounds().Dx(), src.Bounds().Dy()
-	x0, y0, w, h, err := tileRect(g, W, H, tx, ty)
+	box, err := tileRect(g, W, H, tx, ty)
 	if err != nil {
 		return nil, err
 	}
-	show := showMask(nb, g, W, H, x0, y0, w, h)
+	show := showMask(nb, g, W, H, box)
 	if jpegImage {
-		blackenBlocks(show, wc, g, nb, x0, y0, w, h)
+		blackenBlocks(show, wc, g, nb, box)
 	}
-	return encodeTile(paintTile(src, show, x0, y0, w, h))
+	return encodeTile(paintTile(src, show, box))
 }
 
 // blockMap says, for the 16 x 16 source blocks under a tile, which touch a square
@@ -893,7 +895,8 @@ func touchesUnknown(wc *workingCopy, g grid.Grid, nb nbhd, bx, by int) bool {
 
 // newBlockMap finds the blocks of the tile's source footprint and whether each
 // touches an unknown square.
-func newBlockMap(wc *workingCopy, g grid.Grid, nb nbhd, x0, y0, w, h int) blockMap {
+func newBlockMap(wc *workingCopy, g grid.Grid, nb nbhd, b tileBox) blockMap {
+	x0, y0, w, h := b.x0, b.y0, b.w, b.h
 	W, H := wc.img.Bounds().Dx(), wc.img.Bounds().Dy()
 	var m blockMap
 	m.xlo, m.xhi = blockSpan(x0, w, W, wc.srcW)
@@ -926,12 +929,12 @@ func (m blockMap) reachesBad(i, j int) bool {
 // blackenBlocks clears, in show, every pixel whose source footprint (widened by
 // the shrink's pixel) lies in a 16 x 16 source block that touches a square the
 // viewer does not know.
-func blackenBlocks(show []bool, wc *workingCopy, g grid.Grid, nb nbhd, x0, y0, w, h int) {
-	m := newBlockMap(wc, g, nb, x0, y0, w, h)
-	for j := range h {
-		for i := range w {
-			if show[j*w+i] && m.reachesBad(i, j) {
-				show[j*w+i] = false
+func blackenBlocks(show []bool, wc *workingCopy, g grid.Grid, nb nbhd, b tileBox) {
+	m := newBlockMap(wc, g, nb, b)
+	for j := range b.h {
+		for i := range b.w {
+			if show[j*b.w+i] && m.reachesBad(i, j) {
+				show[j*b.w+i] = false
 			}
 		}
 	}
@@ -966,7 +969,6 @@ func (s *Service) handleTile(w http.ResponseWriter, r *http.Request) {
 // for the master, the character they ask as.
 type tileAccess struct {
 	m      authz.Membership
-	master bool
 	as     string
 	viewer string
 	src    tileSource
@@ -1066,7 +1068,7 @@ func (s *Service) authorizeTile(ctx context.Context, mapID, as string) (tileAcce
 	if master {
 		viewer = "as:" + as
 	}
-	return tileAccess{m: m, master: master, as: as, viewer: viewer, src: src}, nil
+	return tileAccess{m: m, as: as, viewer: viewer, src: src}, nil
 }
 
 // viewTilesOf returns the tiles the viewer has on the map, from memory or built

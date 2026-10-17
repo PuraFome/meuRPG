@@ -22,7 +22,7 @@ func randomPlan(cols, rows int, seed uint64) Floorplan {
 // The pixels of Render, frozen by a hash for plans of several shapes: squares that are not
 // square, a size that is not a multiple of the grid, a one-pixel square and an outline wider
 // than a pixel. Every pixel is floor, ink or wall, and which one is what the hash holds.
-func TestRenderPixelsAreFrozen(t *testing.T) {
+func TestRenderPixels(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		name       string
@@ -54,7 +54,7 @@ func TestRenderPixelsAreFrozen(t *testing.T) {
 }
 
 // Each way a plan does not fit is ErrPlan, whatever else is wrong with it.
-func TestRenderPlanRefusalsAreFrozen(t *testing.T) {
+func TestRenderPlanRefusals(t *testing.T) {
 	t.Parallel()
 	ok := randomPlan(4, 3, 1)
 	short := Floorplan{Cols: 4, Rows: 3, Solid: make([]bool, 11)}

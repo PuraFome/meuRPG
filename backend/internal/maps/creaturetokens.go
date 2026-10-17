@@ -16,7 +16,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 )
 
-// The tokens of a character's creatures (MR-037, Etapa 9, D7). The master places
+// The tokens of a character's creatures (MR-037). The master places
 // one like any token (PlaceMapToken with creature_id); it lives in a table of its
 // own (map_creature_tokens) because a character's creatures are many and map_tokens
 // holds one token for each character.

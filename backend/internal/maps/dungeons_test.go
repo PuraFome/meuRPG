@@ -32,7 +32,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// A generated dungeon becomes a campaign map (MR-010, RN-26, RN-10; slice 10.6d).
+// A generated dungeon becomes a campaign map (MR-010, RN-26, RN-10).
 // The generator itself is tested in package rules/dungeon; these tests prove what
 // the server builds from its answer: the map, its layers, the image, the record,
 // the rooms list, "Redesenhar", and that a player never reads any of it.
@@ -713,7 +713,7 @@ func TestRN10_PlayersReadNothingOfADungeon(t *testing.T) {
 	}
 }
 
-// MR-010: "Pôr uma cena nesta sala" makes the Etapa 8 scene point at the room's
+// MR-010: "Pôr uma cena nesta sala" makes the RP scene point at the room's
 // middle, named "Sala N", through the same path as CreateMapPoint.
 func TestMR010_APlacedSceneIsAnRPSceneInTheRoom(t *testing.T) {
 	t.Parallel()
