@@ -444,10 +444,10 @@ func phaseProto(p string) playv1.EffectPhase {
 }
 
 func audienceProto(a string) playv1.EffectAudience {
-	if a == "owner" {
-		return playv1.EffectAudience_EFFECT_AUDIENCE_OWNER
+	if a == audienceAll {
+		return playv1.EffectAudience_EFFECT_AUDIENCE_ALL
 	}
-	return playv1.EffectAudience_EFFECT_AUDIENCE_ALL
+	return playv1.EffectAudience_EFFECT_AUDIENCE_OWNER
 }
 
 func durationKindProto(k string) playv1.EffectDurationKind {

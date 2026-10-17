@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatDialog } from '@angular/material/dialog';
 
+import { nextTurn } from '../../../test-settle';
 import { openSpellDetails } from './open-spell-details';
 import { SpellDetails } from './spell-details';
 import type { SpellDetailsVm } from './spell-details.types';
@@ -99,8 +100,8 @@ describe('openSpellDetails (the "?" in the session, E8-02)', () => {
     const dialog = TestBed.inject(MatDialog);
     const sheet = TestBed.inject(MatBottomSheet);
     openSpellDetails(dialog, sheet, data);
-    for (let i = 0; i < 20 && !document.querySelector('app-spell-details .spell__prose'); i++) {
-      await new Promise((r) => setTimeout(r, 10));
+    for (let i = 0; i < 500 && !document.querySelector('app-spell-details .spell__prose'); i++) {
+      await nextTurn();
     }
     const el = document.querySelector('app-spell-details')!;
     expect(el.querySelector('#spell-title')!.textContent).toBe('Sono');

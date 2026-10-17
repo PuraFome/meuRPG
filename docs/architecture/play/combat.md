@@ -140,6 +140,7 @@ stateDiagram-v2
   An NPC-only group reaches the player as the ids they see, with no chosen `current_combatant_id` or total, plus `npc_only_groups` for the plural "os Goblins".
   A player's economy reaches them, the master and the other players of the same group.
 - **Events.** `turn_part_ended` (a part ended, the turn still standing) and `turn_ended` (the turn passed), plus the log line "Brisa encerrou a parte dela".
+  The line of a part is the master's alone when the member is hidden or its group has no player character, also when the turn waits for the saving throws of effects: the player's log and `combat_log_changed` do not carry it.
   No stream event of its own: `encounter_changed` and `turn_changed` suffice.
 - **On the web.** `core/combat/joint-turn.ts` (pure) groups the order; the master's card is `joint-card`, and `end-part` and `joint-others` are the player's.
   `CombatState.applyTurn` keeps the group and ended parts when `turn_changed` moves the current combatant inside the same round.
