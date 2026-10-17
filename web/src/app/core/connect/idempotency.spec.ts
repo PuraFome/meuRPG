@@ -27,4 +27,13 @@ describe('ActionKey', () => {
     k.renew();
     expect(k.keyFor('same')).not.toBe(first);
   });
+
+  it('mints its keys with the factory it is given', () => {
+    let n = 0;
+    const k = new ActionKey(() => `key-${n++}`);
+    expect(k.keyFor('a')).toBe('key-1');
+    expect(k.keyFor('a')).toBe('key-1');
+    k.renew();
+    expect(k.keyFor('a')).toBe('key-3');
+  });
 });

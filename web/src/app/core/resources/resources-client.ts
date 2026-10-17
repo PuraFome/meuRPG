@@ -3,6 +3,7 @@ import { createClient } from '@connectrpc/connect';
 
 import type { CharacterVitals } from '../../../gen/meurpg/play/v1/play_pb';
 import {
+  type AnswerHeldRollResponse,
   type AnswerOutsideInspirationResponse,
   type AnswerOutsideLuckyResponse,
   type ConvertSpellSlotResponse,
@@ -13,6 +14,7 @@ import {
   LayOnHandsCure,
   type UseLayOnHandsResponse,
   type GetRestPreviewResponse,
+  type ListHeldRollsResponse,
   type RestKind,
   ResourceService,
   type SpendHitDiceResponse,
@@ -21,6 +23,7 @@ import {
 import { type AttackResult } from '../combat/combat-client-types';
 import { attackResult } from '../combat/combat-client-wire';
 import { CONNECT_TRANSPORT } from '../connect/transport';
+import type { HeldAnswer, HeldRolled } from '../held-rolls/held-roll-offer';
 
 /** How the die of a spent hit die comes (RN-18): the app rolls it, or the player typed the face of a real die. */
 export type HitDieRoll =
@@ -36,6 +39,22 @@ export type InspirationRoll = HitDieRoll;
 
 /** How the new d20 of the halfling's Lucky comes when the player rolls it again: the app rolls it, or the typed face. */
 export type LuckyRoll = { readonly inApp: true } | { readonly face: number };
+
+/** The roll of an answer that says how it comes: the app's or the typed face; nothing when the die is kept. */
+function rollOf(
+  rolled: boolean,
+  roll: HeldRolled | null,
+):
+  | { readonly case: 'rollInApp'; readonly value: true }
+  | { readonly case: 'typedFace'; readonly value: number }
+  | { readonly case: undefined } {
+  if (!rolled || !roll) {
+    return { case: undefined };
+  }
+  return 'inApp' in roll
+    ? { case: 'rollInApp', value: true }
+    : { case: 'typedFace', value: roll.face };
+}
 
 /** How many dice of each size come back to one character on a long rest (`HitDiceChoice`). */
 export interface HitDiceChoiceSpec {
@@ -317,5 +336,33 @@ export class ResourceClient {
             : { case: 'typedFace', value: roll.face }
           : { case: undefined },
     });
+  }
+  /** The answer to the question of any roll that waits (`AnswerHeldRoll`), whichever roll it is and whichever question it
+   * asks: the halfling's Lucky about a 1, or the Bardic Inspiration die. Answers the held path's own response (`result`)
+   * and the roll's next question (`next`); the roller's player and the master both may answer. */
+  answerHeldRoll(
+    campaignId: string,
+    holdId: string,
+    answer: HeldAnswer,
+    idempotencyKey: string,
+  ): Promise<AnswerHeldRollResponse> {
+    return this.client.answerHeldRoll({
+      campaignId,
+      holdId,
+      idempotencyKey,
+      answer:
+        answer.kind === 'lucky'
+          ? {
+              case: 'lucky',
+              value: { reroll: answer.reroll, roll: rollOf(answer.reroll, answer.roll) },
+            }
+          : { case: 'die', value: { use: answer.use, roll: rollOf(answer.use, answer.roll) } },
+    });
+  }
+
+  /** The questions of the rolls that wait and the caller may answer, oldest first: a player's own, the master's every
+   * one of the table. Read it again when the stream says the questions changed. */
+  listHeldRolls(campaignId: string): Promise<ListHeldRollsResponse> {
+    return this.client.listHeldRolls({ campaignId });
   }
 }

@@ -30,6 +30,8 @@ function clientWith(sent: unknown[], answer: unknown = {}): ResourceClient {
     answerLucky: call,
     answerOutsideInspiration: call,
     answerOutsideLucky: call,
+    answerHeldRoll: call,
+    listHeldRolls: call,
   };
   return client;
 }
@@ -142,6 +144,63 @@ describe('ResourceClient: the class resource calls', () => {
       // Keeping the 1 sends no roll at all.
       expect.objectContaining({ reroll: false, roll: { case: undefined } }),
     ]);
+  });
+
+  it('answers any held roll in one call: Lucky rolled again in the app or typed, the 1 kept, the die used or kept', async () => {
+    const sent: unknown[] = [];
+    const answer = { next: undefined };
+    const client = clientWith(sent, answer);
+    expect(
+      await client.answerHeldRoll(
+        'c',
+        'h',
+        { kind: 'lucky', reroll: true, roll: { inApp: true } },
+        'k1',
+      ),
+    ).toBe(answer);
+    await client.answerHeldRoll(
+      'c',
+      'h',
+      { kind: 'lucky', reroll: true, roll: { face: 14 } },
+      'k2',
+    );
+    await client.answerHeldRoll('c', 'h', { kind: 'lucky', reroll: false, roll: null }, 'k3');
+    await client.answerHeldRoll('c', 'h', { kind: 'die', use: true, roll: { inApp: true } }, 'k4');
+    await client.answerHeldRoll('c', 'h', { kind: 'die', use: true, roll: { face: 5 } }, 'k5');
+    await client.answerHeldRoll('c', 'h', { kind: 'die', use: false, roll: null }, 'k6');
+    expect(sent).toEqual([
+      {
+        campaignId: 'c',
+        holdId: 'h',
+        idempotencyKey: 'k1',
+        answer: {
+          case: 'lucky',
+          value: { reroll: true, roll: { case: 'rollInApp', value: true } },
+        },
+      },
+      expect.objectContaining({
+        answer: { case: 'lucky', value: { reroll: true, roll: { case: 'typedFace', value: 14 } } },
+      }),
+      // Keeping sends no roll at all.
+      expect.objectContaining({
+        answer: { case: 'lucky', value: { reroll: false, roll: { case: undefined } } },
+      }),
+      expect.objectContaining({
+        answer: { case: 'die', value: { use: true, roll: { case: 'rollInApp', value: true } } },
+      }),
+      expect.objectContaining({
+        answer: { case: 'die', value: { use: true, roll: { case: 'typedFace', value: 5 } } },
+      }),
+      expect.objectContaining({
+        answer: { case: 'die', value: { use: false, roll: { case: undefined } } },
+      }),
+    ]);
+  });
+
+  it('lists the questions that wait for the campaign', async () => {
+    const sent: unknown[] = [];
+    await clientWith(sent).listHeldRolls('c');
+    expect(sent).toEqual([{ campaignId: 'c' }]);
   });
 
   it('fails when the answer to the Lucky question carries no attack', async () => {

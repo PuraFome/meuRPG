@@ -17,8 +17,13 @@ export function newKey(): string {
  *   same text), is a new action with a new key.
  */
 export class ActionKey {
-  private key = newKey();
+  private key: string;
   private last = '';
+
+  /** `make` mints the keys (a spec passes a counter to see them). */
+  constructor(private readonly make: () => string = newKey) {
+    this.key = make();
+  }
 
   keyFor(what: unknown): string {
     // BigInt values (a seed) have no JSON form of their own.
@@ -26,14 +31,14 @@ export class ActionKey {
       typeof value === 'bigint' ? value.toString() : value,
     );
     if (print !== this.last) {
-      this.key = newKey();
+      this.key = this.make();
       this.last = print;
     }
     return this.key;
   }
 
   renew(): void {
-    this.key = newKey();
+    this.key = this.make();
     this.last = '';
   }
 }

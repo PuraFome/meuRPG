@@ -1,4 +1,4 @@
-import type { LuckyOffer } from '../../../gen/meurpg/play/v1/combat_pb';
+import type { DiceRoll } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { Reroll } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
 
 /**
@@ -22,7 +22,7 @@ export const LUCKY_TITLE = 'Tirou 1: rolar de novo?';
 
 /** The line under the title. With advantage or disadvantage only the die that showed the 1 is rolled again (SRD 5.1,
  * "Advantage and Disadvantage"), so the line names that die. */
-export function luckyWhat(offer: LuckyOffer | null | undefined): string {
+export function luckyWhat(offer: { readonly d20?: DiceRoll } | null | undefined): string {
   const pair = (offer?.d20?.faces.length ?? 0) > 1;
   return pair
     ? 'Sortudo: você pode rolar de novo o dado que deu 1 e fica com o novo resultado.'
