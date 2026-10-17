@@ -48,6 +48,7 @@ The undone line disappears from the log.
   The wait's clock is the master's screen's, which starts again when it sees the window open.
 - **A Hunter's Mark the cast moved.** The caster has one mark at a time: a new Hunter's Mark on another target, or another concentration spell, takes the old one off.
   The cast's event keeps the marks it took off (`marks_before`, `clearHuntersMark`), and its undo writes them back with their ids (`marksBack`, `RestoreHuntersMark`).
+- **A Hunter's Mark a concentration ended.** A rage, a damage to 0 HP, a failed concentration save and the master's end of the concentration end the Hunter's Mark with `stopConcentrating`, which takes the mark off its target; the event keeps it (`marks_before`) and `endedConcentrationBack` writes it back with the concentration, for every undo that gives a concentration back.
   A mark whose target or caster left the combat stays off.
 - **The "revealed" lines of an area spell.** Under the table rule that reveals the hidden creatures an area hits, the cast writes a `combatant_hidden_set` line (`by_area`) for each before its own event (`revealCombatants`).
   The event keeps their ids (`reveal_lines`), and its undo takes the lines back in `undone_also`: the master's log keeps no "revealed" line for a creature hidden again.
