@@ -17,8 +17,8 @@ import (
 )
 
 // More scenarios of the undo property (combat_undo_snapshot_test.go) for the events the
-// master's Desfazer takes back (takeBack), one for each branch the
-// first scenarios of combat_undo_kinds_test.go leave out. A scenario that names a
+// master's Desfazer takes back (takeBack in combat_undo.go), one for each branch the
+// overview in combat_undo_test.go leaves out. A scenario that names a
 // difference (undoDelta) freezes what today's undo does not put back.
 
 // heldRollBlob is the request a held roll keeps (roll_holds.request): the bytes of the

@@ -19,8 +19,8 @@ import (
 // the reason the combatant cannot act, and lists, for each attack and spell, who it can target as the
 // viewer sees them. The order of the reads matters: the fog is read before any option, so that nothing
 // the viewer cannot see reaches an option, a target or a reason; the terrain and the roll modes come
-// before the targets that use them. The frozen characterization tests pin the
-// result by viewer.
+// before the targets that use them. The golden of combat_turn_options_golden_test.go pins the result by
+// viewer.
 
 // turnOptionsCall is what GetTurnOptions reads from its request, checked.
 type turnOptionsCall struct {

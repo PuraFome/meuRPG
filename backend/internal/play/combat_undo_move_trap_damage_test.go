@@ -13,7 +13,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
-// Group A of the undo scenarios (see combat_undo_kinds_test.go): the master's Desfazer
+// The undo scenarios of the move, trap, hide and damage events (see combat_undo_test.go): the master's Desfazer
 // of a move, a trap's firing, the master's reveal of a hider and the events of the
 // damage and the hit points. Each scenario is a branch of takeBack.
 

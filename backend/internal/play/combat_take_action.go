@@ -23,7 +23,7 @@ import (
 
 // The standard and feature actions that only spend the economy and a use (TakeAction).
 // TakeAction reads the request, runs the transaction on a takeActionFlow, which checks and writes in the
-// order the frozen characterization tests pin (the reads, the dice, the writes), and
+// order the golden of combat_take_action_golden_test.go pins (the reads, the dice, the writes), and
 // answers from what the transaction left in a takeActionOut. Each kind of action (a standard action, a
 // feature's, one of the feature kinds with its own effect) is a function behind a dispatch.
 

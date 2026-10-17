@@ -23,8 +23,8 @@ import (
 // The damage roll (RollDamage), in phases. rollDamage reads the request, runs the transaction as a sequence
 // of phases of a damageFlow, each one of the checks or the writes the damage makes, in that order,
 // and answers from what the transaction left in a damageOut. The phases keep the order of the reads, the
-// dice and the writes, because the scripted dice of the tests and the frozen characterization tests
-// depend on it.
+// dice and the writes, because the scripted dice of the tests and the golden of
+// combat_roll_damage_golden_test.go depend on it.
 
 // damageCall is what RollDamage reads from its request, checked.
 type damageCall struct {

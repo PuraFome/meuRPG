@@ -36,11 +36,11 @@ func TestStartGameSession_TheIdempotencyKey(t *testing.T) {
 	player.createCharacter(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Pensantus")
 
 	_, err := master.startKeyed(t, campaign, strings.Repeat("k", 65))
-	rmWant(t, "a key of 65 characters", err, connect.CodeInvalidArgument, "idempotency_key must be 1 to 64 characters")
+	wantRefusal(t, "a key of 65 characters", err, connect.CodeInvalidArgument, "idempotency_key must be 1 to 64 characters")
 	_, err = master.startKeyed(t, campaign, "a\nb")
-	rmWant(t, "a key with a control character", err, connect.CodeInvalidArgument, "idempotency_key must be 1 to 64 characters")
+	wantRefusal(t, "a key with a control character", err, connect.CodeInvalidArgument, "idempotency_key must be 1 to 64 characters")
 	_, err = player.startKeyed(t, campaign, "k1")
-	rmWant(t, "a player", err, connect.CodePermissionDenied, "")
+	wantRefusal(t, "a player", err, connect.CodePermissionDenied, "")
 
 	first, err := master.startKeyed(t, campaign, "  k1  ")
 	if err != nil || first.GetLockedSheetCount() != 1 || first.GetGameSession().GetSessionNumber() != 1 {
@@ -83,7 +83,7 @@ func TestEndGameSession_TheKeptImageLeavesWithThePlayers(t *testing.T) {
 	boom := errors.New("boom")
 	st.maps.leave = func(context.Context, pgx.Tx, string, string, time.Time) error { return boom }
 	_, err := st.master.play.EndGameSession(t.Context(), connect.NewRequest(&playv1.EndGameSessionRequest{CampaignId: st.campaign, GameSessionId: session.GetId()}))
-	rmWant(t, "leave fails", err, connect.CodeInternal, "")
+	wantRefusal(t, "leave fails", err, connect.CodeInternal, "")
 	if id, _ := st.dbShown(t); id != a {
 		t.Errorf("the open session shows %q after the failed end, want A", id)
 	}

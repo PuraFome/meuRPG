@@ -50,6 +50,8 @@ type armed struct {
 	// placedBy is the area placeFor chose for each idempotency key, so that a retry of the
 	// same cast is the same request.
 	placedBy sync.Map
+	// callState is the state markCall saw before the call a golden scenario makes.
+	callState string
 }
 
 // hero creates a player's character with a full sheet.

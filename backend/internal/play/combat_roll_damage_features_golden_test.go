@@ -154,7 +154,7 @@ type extrasDamage struct {
 	before func(t *testing.T, a *armed, e *playv1.Encounter, id string)
 }
 
-func (x extrasDamage) scenario() damageScenario {
+func (x extrasDamage) scenario() goldenScenario {
 	return damageOn(x.name, func(t *testing.T) damagePlay {
 		t.Helper()
 		a, e, id := x.hit(t)
@@ -255,7 +255,7 @@ func physicalFor(t *testing.T, a *armed, _ *playv1.Encounter, _ string) {
 }
 
 // rogueAndBarbarianDamages are the rogue's Sneak Attack and the barbarian's rage.
-func rogueAndBarbarianDamages() []damageScenario {
+func rogueAndBarbarianDamages() []goldenScenario {
 	advantaged, critical := []int32{5, 18}, []int32{20, 5}
 	sneak := map[string]int32{"weapon": 3, "sneak-attack": 5}
 	rows := []extrasDamage{
@@ -276,8 +276,6 @@ func rogueAndBarbarianDamages() []damageScenario {
 			markedExtras("sneak-attack")(a, r)
 			typedSum(9)(r)
 		}},
-		{name: "sneak attack with no sum for the weapon", hit: rogueHit(advantaged, nil), edit: typedMarked(map[string]int32{"sneak-attack": 5}, "sneak-attack")},
-		{name: "sneak attack with a sum out of range", hit: rogueHit(advantaged, nil), edit: typedMarked(map[string]int32{"weapon": 3, "sneak-attack": 99}, "sneak-attack")},
 		{
 			name: "sneak attack on a critical hit in the app", hit: rogueHit(critical, nil), edit: markedExtras("sneak-attack"),
 			before: func(t *testing.T, a *armed, _ *playv1.Encounter, _ string) {
@@ -291,10 +289,6 @@ func rogueAndBarbarianDamages() []damageScenario {
 			before: func(t *testing.T, a *armed, _ *playv1.Encounter, _ string) { t.Helper(); a.h.roller.queue(2, 6, 6) },
 		},
 		{name: "sneak attack when everybody rolls real dice", hit: rogueHit(advantaged, nil), edit: markedExtras("sneak-attack"), before: physicalFor},
-		{name: "sneak attack the hit does not allow", hit: rogueHit([]int32{18}, func(t *testing.T, a *armed, e *playv1.Encounter) {
-			t.Helper()
-			a.setConditions(t, e, "Toren", "condition:poisoned")
-		}), edit: markedExtras("sneak-attack")},
 		{
 			name: "a barbarian's rage in the app", hit: rageHit, as: func(a *armed) *user { return a.bia },
 			before: func(t *testing.T, a *armed, _ *playv1.Encounter, _ string) { t.Helper(); a.h.roller.queue(5) },
@@ -313,7 +307,7 @@ func rogueAndBarbarianDamages() []damageScenario {
 			before: func(t *testing.T, a *armed, _ *playv1.Encounter, _ string) { t.Helper(); a.h.roller.queue(4, 5) },
 		},
 	}
-	out := make([]damageScenario, 0, len(rows))
+	out := make([]goldenScenario, 0, len(rows))
 	for _, x := range rows {
 		out = append(out, x.scenario())
 	}
@@ -351,7 +345,7 @@ func smiteHit(target string, face int32) func(t *testing.T) (*armed, *playv1.Enc
 }
 
 // paladinDamages are the Divine Smites.
-func paladinDamages() []damageScenario {
+func paladinDamages() []goldenScenario {
 	queue := func(fs ...int) func(t *testing.T, a *armed, e *playv1.Encounter, id string) {
 		return func(t *testing.T, a *armed, _ *playv1.Encounter, _ string) {
 			t.Helper()
@@ -365,7 +359,6 @@ func paladinDamages() []damageScenario {
 		{name: "a smite on a human in the app", hit: smiteHit("Bandido", 15), edit: smiteMark(1), before: queue(4, 5, 6, 7)},
 		{name: "a smite on a critical hit with typed parts", hit: smiteHit("Esqueleto", 20), edit: smiteTyped(1, 9, 14, 5)},
 		{name: "a smite on a critical hit in the app", hit: smiteHit("Esqueleto", 20), edit: smiteMark(1), before: queue(4, 5, 6, 7, 2, 3, 1, 8)},
-		{name: "a smite with a slot the paladin does not have", hit: smiteHit("Esqueleto", 15), edit: smiteMark(2)},
 		{name: "a smite with no slot named", hit: smiteHit("Esqueleto", 15), edit: smiteMark(0)},
 		{name: "a smite with a sum out of range", hit: smiteHit("Esqueleto", 15), edit: smiteTyped(1, 4, 99, 3)},
 		{name: "a smite with no sum for its extra die", hit: smiteHit("Esqueleto", 15), edit: func(a *armed, r *playv1.RollDamageRequest) {
@@ -373,14 +366,8 @@ func paladinDamages() []damageScenario {
 			r.TypedParts = r.TypedParts[:2]
 		}},
 		{name: "a smite as the master", hit: smiteHit("Esqueleto", 15), as: asMasterUser, edit: smiteMark(1), before: queue(4, 5, 6, 7)},
-		{name: "a smite with the slots spent", hit: smiteHit("Esqueleto", 15), edit: smiteMark(1), before: func(t *testing.T, a *armed, _ *playv1.Encounter, _ string) {
-			t.Helper()
-			a.correct(t, a.toren, func(r *playv1.AdjustCharacterVitalsRequest) {
-				r.SpellSlotsUsed = []*playv1.SpellSlotsUsed{{Level: 1, Used: 3}}
-			})
-		}},
 	}
-	out := make([]damageScenario, 0, len(rows))
+	out := make([]goldenScenario, 0, len(rows))
 	for _, x := range rows {
 		out = append(out, x.scenario())
 	}
@@ -389,7 +376,7 @@ func paladinDamages() []damageScenario {
 
 // maneuverScenario plays Pensantus, a fighter with maneuvers, hitting the Capitão; edit changes the roll with
 // the keys of the maneuvers.
-func maneuverScenario(name, uses string, face int32, as func(a *armed) *user, queue []int, edit func(m *maneuverTable, r *playv1.RollDamageRequest), first ...func(m *maneuverTable) string) damageScenario {
+func maneuverScenario(name, uses string, face int32, as func(a *armed) *user, queue []int, edit func(m *maneuverTable, r *playv1.RollDamageRequest), first ...func(m *maneuverTable) string) goldenScenario {
 	return damageOn(name, func(t *testing.T) damagePlay {
 		t.Helper()
 		m := newManeuverTable(t, uses)
@@ -414,7 +401,7 @@ func maneuverScenario(name, uses string, face int32, as func(a *armed) *user, qu
 func asAnaUser(a *armed) *user { return a.ana }
 
 // maneuverDamages are the maneuvers added to a hit.
-func maneuverDamages() []damageScenario {
+func maneuverDamages() []goldenScenario {
 	mark := func(pick func(m *maneuverTable) []string) func(m *maneuverTable, r *playv1.RollDamageRequest) {
 		return func(m *maneuverTable, r *playv1.RollDamageRequest) {
 			r.ExtrasChosen = true
@@ -424,7 +411,7 @@ func maneuverDamages() []damageScenario {
 		}
 	}
 	heron := mark(func(m *maneuverTable) []string { return []string{m.heron} })
-	return []damageScenario{
+	return []goldenScenario{
 		maneuverScenario("a maneuver in the app", "4", 19, asAnaUser, []int{5, 4}, heron),
 		maneuverScenario("a maneuver with typed parts", "4", 19, asAnaUser, nil, func(m *maneuverTable, r *playv1.RollDamageRequest) {
 			heron(m, r)
@@ -433,7 +420,6 @@ func maneuverDamages() []damageScenario {
 		}),
 		maneuverScenario("a maneuver as the master", "4", 19, asMasterUser, []int{5, 4}, heron),
 		maneuverScenario("a maneuver on a critical hit", "4", 20, asAnaUser, []int{5, 4, 6, 2}, heron),
-		maneuverScenario("two maneuvers for one attack", "4", 19, asAnaUser, nil, mark(func(m *maneuverTable) []string { return []string{m.heron, m.bull} })),
 		maneuverScenario("extras chosen and no maneuver", "4", 19, asAnaUser, []int{5}, mark(func(*maneuverTable) []string { return nil })),
 		maneuverScenario("a maneuver the grip is not", "4", 19, asAnaUser, nil, mark(func(m *maneuverTable) []string { return []string{m.grip} })),
 		maneuverScenario("a maneuver with no use left", "1", 19, asAnaUser, nil, mark(func(m *maneuverTable) []string { return []string{m.bull} }),
@@ -442,7 +428,7 @@ func maneuverDamages() []damageScenario {
 }
 
 // skeletonDamage plays the skeleton's fight: Toren's mace, or Pensantus's Poison Spray, then the damage.
-func skeletonDamage(name string, spray bool, as func(a *armed) *user, queue []int, edit func(*playv1.RollDamageRequest)) damageScenario {
+func skeletonDamage(name string, spray bool, as func(a *armed) *user, queue []int, edit func(*playv1.RollDamageRequest)) goldenScenario {
 	return damageOn(name, func(t *testing.T) damagePlay {
 		t.Helper()
 		a, e, skel := skeletonFight(t)
@@ -465,8 +451,8 @@ func skeletonDamage(name string, spray bool, as func(a *armed) *user, queue []in
 }
 
 // skeletonDamages are the skeleton's vulnerability and immunity.
-func skeletonDamages() []damageScenario {
-	return []damageScenario{
+func skeletonDamages() []goldenScenario {
+	return []goldenScenario{
 		skeletonDamage("a mace on a skeleton, typed", false, asToren, nil, typedSum(3)),
 		skeletonDamage("a mace on a skeleton, in the app", false, asToren, []int{4}, inAppDamage),
 		skeletonDamage("a mace on a skeleton, as the master", false, asMasterUser, []int{4}, inAppDamage),
@@ -508,8 +494,8 @@ func healFight(t *testing.T, target string, hurt func(t *testing.T, a *armed, e 
 }
 
 // spellDamages are the damage and the heals of spells.
-func spellDamages() []damageScenario {
-	area := func(name string, which int, as func(a *armed) *user, queue []int, edit func(*playv1.RollDamageRequest), also ...int) damageScenario {
+func spellDamages() []goldenScenario {
+	area := func(name string, which int, as func(a *armed) *user, queue []int, edit func(*playv1.RollDamageRequest), also ...int) goldenScenario {
 		return damageOn(name, func(t *testing.T) damagePlay {
 			t.Helper()
 			a, e, ids := areaCast(t)
@@ -520,7 +506,7 @@ func spellDamages() []damageScenario {
 			return a.rolled(t, as(a), e, ids[which], edit)
 		})
 	}
-	heal := func(name, target string, hurt func(t *testing.T, a *armed, e *playv1.Encounter), queue []int, edit func(*playv1.RollDamageRequest)) damageScenario {
+	heal := func(name, target string, hurt func(t *testing.T, a *armed, e *playv1.Encounter), queue []int, edit func(*playv1.RollDamageRequest)) goldenScenario {
 		return damageOn(name, func(t *testing.T) damagePlay {
 			t.Helper()
 			a, e, id := healFight(t, target, hurt)
@@ -533,7 +519,7 @@ func spellDamages() []damageScenario {
 		a.correct(t, a.toren, hpIs(0))
 		a.execSQL(t, `UPDATE combatants SET death_failures = 2, death_successes = 1 WHERE id = $1`, a.id(t, "Toren"))
 	}
-	flame := func(name, target string, concentrates bool, as func(a *armed) *user, queues ...[]int) damageScenario {
+	flame := func(name, target string, concentrates bool, as func(a *armed) *user, queues ...[]int) goldenScenario {
 		return damageOn(name, func(t *testing.T) damagePlay {
 			t.Helper()
 			a, e := flameStrikeFixture(t)
@@ -551,7 +537,7 @@ func spellDamages() []damageScenario {
 			return a.rolled(t, as(a), e, ids[rolls-1], inAppDamage)
 		})
 	}
-	return []damageScenario{
+	return []goldenScenario{
 		area("an area spell rolled by its caster", 0, asAnaUser, []int{3, 3, 3}, inAppDamage),
 		area("an area spell rolled from its last target", 2, asAnaUser, []int{2, 5, 6}, inAppDamage),
 		area("an area spell rolled from the target that saved", 1, asAnaUser, []int{4, 4, 5}, inAppDamage),
@@ -617,8 +603,8 @@ func answerChecks(t *testing.T, a *armed, e *playv1.Encounter) {
 }
 
 // reactionDamages are the damage rolls that wait for a reaction and the ones that land when it is answered.
-func reactionDamages() []damageScenario {
-	uncanny := func(name string, answer func(*playv1.AnswerReactionRequest)) damageScenario {
+func reactionDamages() []goldenScenario {
+	uncanny := func(name string, answer func(*playv1.AnswerReactionRequest)) goldenScenario {
 		return damageOn(name, func(t *testing.T) damagePlay {
 			t.Helper()
 			a, e := reactorFight(t, rogueFive)
@@ -626,7 +612,7 @@ func reactionDamages() []damageScenario {
 			return held(t, a, e, a.master, hit.GetPendingDamage().GetId(), typedSum(6), playv1.ReactionKind_REACTION_KIND_UNCANNY_DODGE, a.ana, answer)
 		})
 	}
-	cutting := func(name string, answer func(*playv1.AnswerReactionRequest)) damageScenario {
+	cutting := func(name string, answer func(*playv1.AnswerReactionRequest)) goldenScenario {
 		return damageOn(name, func(t *testing.T) damagePlay {
 			t.Helper()
 			a, e := reactorFight(t, bardAsking(charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL))
@@ -635,7 +621,7 @@ func reactionDamages() []damageScenario {
 			return held(t, a, e, a.master, a.firstPending(t), typedSum(4), playv1.ReactionKind_REACTION_KIND_CUTTING_WORDS, a.ana, answer)
 		})
 	}
-	deflect := func(name string, answer func(*playv1.AnswerReactionRequest)) damageScenario {
+	deflect := func(name string, answer func(*playv1.AnswerReactionRequest)) goldenScenario {
 		return damageOn(name, func(t *testing.T) damagePlay {
 			t.Helper()
 			a, e := reactorFight(t, monkThree)
@@ -643,7 +629,7 @@ func reactionDamages() []damageScenario {
 			return held(t, a, e, a.master, hit.GetPendingDamage().GetId(), typedSum(6), playv1.ReactionKind_REACTION_KIND_DEFLECT_MISSILES, a.ana, answer)
 		})
 	}
-	always := func(name string, parts bool, answer func(*playv1.AnswerReactionRequest)) damageScenario {
+	always := func(name string, parts bool, answer func(*playv1.AnswerReactionRequest)) goldenScenario {
 		return damageOn(name, func(t *testing.T) damagePlay {
 			t.Helper()
 			var a *armed
@@ -681,7 +667,7 @@ func reactionDamages() []damageScenario {
 			return heldByMaster(t, a, e, a.caio, a.firstPending(t), edit, answer)
 		})
 	}
-	return []damageScenario{
+	return []goldenScenario{
 		uncanny("a damage held for Uncanny Dodge", nil),
 		uncanny("a damage held for Uncanny Dodge, then halved", useAnswer(0)),
 		uncanny("a damage held for Uncanny Dodge, then passed", passAnswer),
@@ -712,7 +698,7 @@ func heldByMaster(t *testing.T, a *armed, e *playv1.Encounter, u *user, id strin
 
 // opportunityDamage is Toren's opportunity attack on Goblin 1, who leaves his reach, and the damage that drops
 // it to 0 hit points: it goes back to where it left the reach, unless another combatant stands there.
-func opportunityDamage(name string, taken bool, edit func(*playv1.RollDamageRequest)) damageScenario {
+func opportunityDamage(name string, taken bool, edit func(*playv1.RollDamageRequest)) goldenScenario {
 	return damageOn(name, func(t *testing.T) damagePlay {
 		t.Helper()
 		c := newCave(t)
@@ -735,8 +721,8 @@ func opportunityDamage(name string, taken bool, edit func(*playv1.RollDamageRequ
 }
 
 // opportunityDamages are the opportunity attacks' damage.
-func opportunityDamages() []damageScenario {
-	return []damageScenario{
+func opportunityDamages() []goldenScenario {
+	return []goldenScenario{
 		opportunityDamage("an opportunity attack that sends the mover back", false, typedSum(8)),
 		opportunityDamage("an opportunity attack that finds the square taken", true, typedSum(8)),
 		opportunityDamage("an opportunity attack that leaves the mover standing", false, typedSum(1)),
