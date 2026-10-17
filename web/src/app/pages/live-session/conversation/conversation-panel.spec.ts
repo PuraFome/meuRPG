@@ -262,6 +262,56 @@ describe('ConversationPanel', () => {
     expect(el.scrollTop).toBe(900);
   });
 
+  it('keeps the newest line in view when a picture loads while the reader is at the bottom', async () => {
+    const { feed, fixture } = await loaded([
+      line('n1', {
+        speakerKind: Kind.NARRATOR,
+        image: {
+          id: 'i1',
+          name: 'Salão',
+          url: '/images/i1',
+          thumbnailUrl: '',
+          width: 10,
+          height: 5,
+        },
+      }),
+    ]);
+    const el = feed();
+    Object.defineProperty(el, 'scrollHeight', { value: 900, configurable: true });
+    Object.defineProperty(el, 'clientHeight', { value: 400, configurable: true });
+    el.scrollTop = 500;
+    el.dispatchEvent(new Event('scroll'));
+    // The picture grows the feed after the reader reached the end.
+    Object.defineProperty(el, 'scrollHeight', { value: 1100, configurable: true });
+    el.querySelector('img')?.dispatchEvent(new Event('load'));
+    await settle(fixture);
+    expect(el.scrollTop).toBe(1100);
+  });
+
+  it('does not yank a reader who scrolled up when a picture loads', async () => {
+    const { feed, fixture } = await loaded([
+      line('n1', {
+        speakerKind: Kind.NARRATOR,
+        image: {
+          id: 'i1',
+          name: 'Salão',
+          url: '/images/i1',
+          thumbnailUrl: '',
+          width: 10,
+          height: 5,
+        },
+      }),
+    ]);
+    const el = feed();
+    Object.defineProperty(el, 'scrollHeight', { value: 900, configurable: true });
+    Object.defineProperty(el, 'clientHeight', { value: 400, configurable: true });
+    el.scrollTop = 100;
+    el.dispatchEvent(new Event('scroll'));
+    el.querySelector('img')?.dispatchEvent(new Event('load'));
+    await settle(fixture);
+    expect(el.scrollTop).toBe(100);
+  });
+
   it('leaves the reader where they are after they scrolled up', async () => {
     const { feed, state, fixture } = await loaded();
     const el = feed();

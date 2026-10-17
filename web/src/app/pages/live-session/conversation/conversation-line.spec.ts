@@ -66,12 +66,37 @@ describe('ConversationLine', () => {
           name: 'Salão cheio',
           url: '/images/i1',
           thumbnailUrl: '/images/i1/thumb',
+          width: 1600,
+          height: 900,
         },
       }),
     );
     const img = el.querySelector('img.line__image') as HTMLImageElement;
     expect(img.getAttribute('src')).toBe('/images/i1');
+    // The picture's box is reserved from its size, so the layout does not jump when it loads.
+    expect(img.getAttribute('width')).toBe('1600');
+    expect(img.getAttribute('height')).toBe('900');
+    expect(img.style.aspectRatio.replace(/\s/g, '')).toBe('1600/900');
     expect(img.getAttribute('alt')).toBe('Salão cheio');
+  });
+
+  it('tells when its picture has loaded, so the feed can keep the newest line in view', () => {
+    const { el, fixture } = render(
+      narration({
+        image: {
+          id: 'i1',
+          name: 'Salão',
+          url: '/images/i1',
+          thumbnailUrl: '',
+          width: 10,
+          height: 5,
+        },
+      }),
+    );
+    const loaded = vi.fn();
+    fixture.componentInstance.imageLoaded.subscribe(loaded);
+    el.querySelector('img.line__image')?.dispatchEvent(new Event('load'));
+    expect(loaded).toHaveBeenCalledTimes(1);
   });
 
   it('hides "Ouvir" when the voice is off or the line cannot be heard', () => {
