@@ -902,7 +902,10 @@ service CombatService {
   // master's too (what each target did must fit the cast's session event). Magic
   // Missile is cast with `darts`
   // in each target: 3 darts, and one more for each slot level above the 1st, shared
-  // out as the caster wants, at least one for each target listed.
+  // out as the caster wants, at least one for each target listed. Scorching Ray
+  // shares its rays the same way (3, and one more for each slot level above the
+  // 2nd), but `darts` is the rays of that target (none counts as one), the rays
+  // need not use the whole number, and several may go to one target.
   //
   // What the cast does depends on the spell:
   //   - A spell attack (Guiding Bolt): one d20 for each target (roll_in_app, or
@@ -3192,6 +3195,7 @@ message SpellTargets {
   // True when the spell takes one more target for each slot level above its own.
   bool extra_target_per_level = 4;
   // Magic Missile: how many darts each slot level makes (3 at the 1st, one more
+  // for each level above). Scorching Ray: how many rays (3 at the 2nd, one more
   // for each level above). Empty for any other spell.
   repeated DartsAtSlot darts = 5;
   // How many more targets the spell takes for each slot level above its own: 1 for
@@ -3235,7 +3239,8 @@ enum AreaPlacement {
   AREA_PLACEMENT_CASTER = 3;
 }
 
-// DartsAtSlot is how many darts a slot level makes.
+// DartsAtSlot is how many darts (Magic Missile) or rays (Scorching Ray) a slot
+// level makes.
 message DartsAtSlot {
   int32 slot_level = 1;
   int32 darts = 2;
@@ -3731,7 +3736,9 @@ message SpellSlot {
 message SpellTarget {
   // The combatant (a UUID).
   string combatant_id = 1;
-  // Magic Missile only: the darts that go to this target, at least 1.
+  // Magic Missile: the darts that go to this target, at least 1. Scorching Ray:
+  // the rays that go to this target (0 counts as 1); each ray is its own spell
+  // attack.
   int32 darts = 2;
   // Revivify only: the dead creature the spell touches, a combatant of the combat
   // (PreviewRevivify offers them). It replaces combatant_id, which stays empty. The

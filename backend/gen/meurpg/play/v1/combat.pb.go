@@ -8907,6 +8907,7 @@ type SpellTargets struct {
 	// True when the spell takes one more target for each slot level above its own.
 	ExtraTargetPerLevel bool `protobuf:"varint,4,opt,name=extra_target_per_level,json=extraTargetPerLevel,proto3" json:"extra_target_per_level,omitempty"`
 	// Magic Missile: how many darts each slot level makes (3 at the 1st, one more
+	// for each level above). Scorching Ray: how many rays (3 at the 2nd, one more
 	// for each level above). Empty for any other spell.
 	Darts []*DartsAtSlot `protobuf:"bytes,5,rep,name=darts,proto3" json:"darts,omitempty"`
 	// How many more targets the spell takes for each slot level above its own: 1 for
@@ -9052,7 +9053,8 @@ func (x *SpellTargets) GetTeleportRangeFt() int32 {
 	return 0
 }
 
-// DartsAtSlot is how many darts a slot level makes.
+// DartsAtSlot is how many darts (Magic Missile) or rays (Scorching Ray) a slot
+// level makes.
 type DartsAtSlot struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	SlotLevel     int32                  `protobuf:"varint,1,opt,name=slot_level,json=slotLevel,proto3" json:"slot_level,omitempty"`
@@ -11587,7 +11589,9 @@ type SpellTarget struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The combatant (a UUID).
 	CombatantId string `protobuf:"bytes,1,opt,name=combatant_id,json=combatantId,proto3" json:"combatant_id,omitempty"`
-	// Magic Missile only: the darts that go to this target, at least 1.
+	// Magic Missile: the darts that go to this target, at least 1. Scorching Ray:
+	// the rays that go to this target (0 counts as 1); each ray is its own spell
+	// attack.
 	Darts int32 `protobuf:"varint,2,opt,name=darts,proto3" json:"darts,omitempty"`
 	// Revivify only: the dead creature the spell touches, a combatant of the combat
 	// (PreviewRevivify offers them). It replaces combatant_id, which stays empty. The
