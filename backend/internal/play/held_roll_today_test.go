@@ -154,6 +154,7 @@ func TestTheMasterAnswersAnOutsideHoldOnlyByAnswerHeldRoll(t *testing.T) {
 	wantCode(t, "the master's answer to the die, by the older RPC", err, connect.CodePermissionDenied)
 	_, err = a.answerHeldRoll(t, a.bia, hold, dieAnswer(false))
 	wantCode(t, "another player's answer", err, connect.CodeNotFound)
+	a.h.afterThePlayersChance()
 	res, err := a.answerHeldRoll(t, a.master, hold, dieAnswer(false))
 	if err != nil || res.GetSceneCheck().GetRoll() == nil || res.GetNext() != nil {
 		t.Fatalf("the master's answer to the die = %v, %v; want the scene check written", res, err)
@@ -169,6 +170,7 @@ func TestTheMasterAnswersAnOutsideHoldOnlyByAnswerHeldRoll(t *testing.T) {
 	luckyHold := lucky.GetLuckyOffer().GetHoldId()
 	_, err = answerOutsideLucky(t, a.master, a.campaignID, luckyHold, outsideRerollTyped(15))
 	wantCode(t, "the master's answer to Lucky, by the older RPC", err, connect.CodePermissionDenied)
+	a.h.afterThePlayersChance()
 	res, err = a.answerHeldRoll(t, a.master, luckyHold, luckyAnswer(15))
 	if err != nil {
 		t.Fatalf("the master's answer to Lucky: error = %v", err)

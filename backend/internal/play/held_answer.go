@@ -59,6 +59,9 @@ func (s *Service) answerHeld(ctx context.Context, m authz.Membership, req answer
 		return nil, err
 	}
 	if state == answerOpen {
+		if err := s.playerFirst(ctx, m, h); err != nil {
+			return nil, err
+		}
 		if err := s.rollAnswer(ctx, m, h, req, &a); err != nil {
 			return nil, err
 		}

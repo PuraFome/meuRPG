@@ -246,6 +246,8 @@ message ResourceBlocked {
   // the ones there are.
   int32 needed = 2;
   int32 available = 3;
+  // PLAYER_FIRST: the whole seconds, rounded up, until the master may answer.
+  int32 wait_seconds = 4;
 }
 
 // ResourceBlockedReason is why a resource call was refused.
@@ -290,6 +292,11 @@ enum ResourceBlockedReason {
   // nothing else that could ask until it is answered, and the Bardic Inspiration question of
   // the same roll waits for it.
   RESOURCE_BLOCKED_REASON_LUCKY_PENDING = 16;
+  // AnswerHeldRoll, AnswerLucky, AnswerBardicInspiration, AnswerOutsideLucky and AnswerOutsideInspiration, by the master:
+  // the question of a player's roll was asked a few seconds ago (10), and the player gets the first chance to answer
+  // it. `wait_seconds` says how long is left; the app disables the master's controls for that time and says "Ainda é
+  // a vez de [nome] responder". It is not refused for the master's own rolls or for a roll whose player has left.
+  RESOURCE_BLOCKED_REASON_PLAYER_FIRST = 17;
 }
 
 // RestKind is the kind of a rest.

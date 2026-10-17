@@ -1449,6 +1449,7 @@ func TestTheHeldRollIsAnsweredOnceByItsOwnerOrTheMaster(t *testing.T) {
 	// The master answers for the player.
 	answerKey := newKey()
 	withKey := func(r *playv1.AnswerBardicInspirationRequest) { r.Use, r.IdempotencyKey = false, answerKey }
+	a.h.afterThePlayersChance()
 	res, err := a.answer(t, a.master, e, holdID, withKey)
 	if err != nil {
 		t.Fatalf("the master's AnswerBardicInspiration() error = %v", err)
