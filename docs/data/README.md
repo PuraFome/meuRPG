@@ -109,6 +109,7 @@ Keys and hashes are opaque values with no personal data.
 | --- | --- | --- |
 | `session_events` | `idempotency_key` (UUID), `idempotency_hash` | `UNIQUE (game_session_id, idempotency_key)`; `NULL` for an event without a key (NULLs do not collide). The hash covers the whole request but its key: the same key and request replays, another request is `invalid_argument`. |
 | `xp_awards` | `idempotency_key` (UUID), `idempotency_hash`, `undo_key`, `milestone_again` | `UNIQUE (campaign_id, idempotency_key)`. The undo has its own key. `milestone_again` lets the server refuse a key reused for another kind of request. |
+| `planned_milestone_moves` | `move_key`, `move_hash` | Primary key `(campaign_id, move_key)`; one row per `MoveMilestone` made with a key, since a move creates no row to hold it. The hash covers the request but its key. |
 | `image_requests` | `idempotency_key`, `idempotency_hash` | Unique per campaign. |
 | `puzzle_moves`, `puzzle_hint_tries` | `idempotency_key` (UUID) | `UNIQUE (run_id, idempotency_key)`: a repeated move returns the round as it is now. |
 | `roll_holds`, `inspiration_holds` | `idempotency_key`, `answer_key` | Unique per encounter (`roll_holds`) or campaign (`inspiration_holds`); the answer key lets a retry find the hold answered. |

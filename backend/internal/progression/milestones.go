@@ -197,13 +197,69 @@ func (s *Service) MoveMilestone(
 	if !ok {
 		return nil, invalidArgument("direction", errors.New("is required"))
 	}
-	err = s.changePlanned(ctx, m, id, func(q *progressiondb.Queries) error {
-		return movePlanned(ctx, q, m.CampaignID, id, step)
-	})
+	key, err := idem.Clean(req.Msg.GetIdempotencyKey())
+	if err != nil {
+		return nil, err
+	}
+	// The key is unique in the campaign, and kept with a hash of the whole request.
+	move := plannedMove{campaignID: m.CampaignID, id: id, step: step, key: idem.Scope(m.CampaignID, key), hash: moveMilestoneHash(req.Msg)}
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error { return s.movePlannedOnce(ctx, tx, move) })
 	if err != nil {
 		return nil, s.dbError(ctx, "move a milestone", err)
 	}
 	return connect.NewResponse(&progressionv1.MoveMilestoneResponse{Milestones: s.listAfterWrite(ctx, m, "move a milestone")}), nil
+}
+
+// moveMilestoneHash is the hash MoveMilestone keeps with its key: the request's
+// minus the key.
+func moveMilestoneHash(req *progressionv1.MoveMilestoneRequest) *string {
+	return idem.Hash(req)
+}
+
+// plannedMove is the move MoveMilestone makes: the milestone, how far, and the
+// request's scoped key and hash (nil for a call with no key).
+type plannedMove struct {
+	campaignID, id string
+	step           int
+	key, hash      *string
+}
+
+// movePlannedOnce is MoveMilestone's transaction: the mode asked again, the
+// list locked, then the move of the key replayed, or the move made and its key
+// kept. A replay writes nothing.
+func (s *Service) movePlannedOnce(ctx context.Context, tx pgx.Tx, mv plannedMove) error {
+	q := s.queries.WithTx(tx)
+	if err := s.requireMilestonesMode(ctx, tx, mv.campaignID); err != nil {
+		return err
+	}
+	// The list is locked first, so two calls with the same key take turns.
+	list, err := q.ListPlannedMilestonesForUpdate(ctx, mv.campaignID)
+	if err != nil {
+		return fmt.Errorf("list the milestones: %w", err)
+	}
+	_, _, err = idem.Create(ctx, mv.key, mv.hash,
+		func(ctx context.Context, key *string) (progressiondb.PlannedMilestoneMove, error) {
+			return q.GetPlannedMilestoneMove(ctx, progressiondb.GetPlannedMilestoneMoveParams{CampaignID: mv.campaignID, MoveKey: *key})
+		},
+		func(row progressiondb.PlannedMilestoneMove) *string { return &row.MoveHash },
+		func() (progressiondb.PlannedMilestoneMove, error) { return s.makeMove(ctx, q, mv, list) })
+	return err
+}
+
+// makeMove keeps the key of the move, if it has one, and makes the move. It
+// passes on pgx.ErrNoRows, the key another call took first, for idem.Create.
+func (s *Service) makeMove(ctx context.Context, q *progressiondb.Queries, mv plannedMove, list []progressiondb.PlannedMilestone) (progressiondb.PlannedMilestoneMove, error) {
+	var kept progressiondb.PlannedMilestoneMove
+	if mv.key != nil {
+		var err error
+		kept, err = q.InsertPlannedMilestoneMove(ctx, progressiondb.InsertPlannedMilestoneMoveParams{CampaignID: mv.campaignID, MoveKey: *mv.key, MoveHash: *mv.hash, Now: s.now()})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return kept, err
+		} else if err != nil {
+			return kept, fmt.Errorf("keep the move's key: %w", err)
+		}
+	}
+	return kept, s.changePlannedIn(ctx, q, mv.campaignID, mv.id, func() error { return movePlanned(ctx, q, mv.campaignID, mv.id, mv.step, list) })
 }
 
 // directionSteps is how far a move goes in the list, by direction: up is
@@ -213,20 +269,15 @@ var directionSteps = map[progressionv1.MilestoneDirection]int{
 	progressionv1.MilestoneDirection_MILESTONE_DIRECTION_DOWN: 1,
 }
 
-// movePlanned is MoveMilestone's change, inside changePlanned's transaction:
-// the milestone swaps places with the nearest planned one in that direction,
+// movePlanned is MoveMilestone's change, inside its transaction, on the locked
+// list of the campaign: the milestone swaps places with the nearest planned one in that direction,
 // and the list is numbered again from 0.
-func movePlanned(ctx context.Context, q *progressiondb.Queries, campaignID, id string, step int) error {
-	list, err := q.ListPlannedMilestonesForUpdate(ctx, campaignID)
-	if err != nil {
-		return fmt.Errorf("list the milestones: %w", err)
-	}
+func movePlanned(ctx context.Context, q *progressiondb.Queries, campaignID, id string, step int, list []progressiondb.PlannedMilestone) error {
 	live, err := q.ListLiveMilestoneAwards(ctx, campaignID)
 	if err != nil {
 		return fmt.Errorf("list the marks: %w", err)
 	}
-	// changePlanned locked this milestone in the same transaction, so the locked
-	// list of its campaign holds it.
+	// The milestone was found in the same transaction, so the locked list holds it.
 	i := slices.IndexFunc(list, func(p progressiondb.PlannedMilestone) bool { return p.ID == id })
 	j := nearestPlanned(list, live, i, step)
 	if j < 0 || j >= len(list) {
@@ -412,20 +463,26 @@ func (s *Service) changePlanned(ctx context.Context, m authz.Membership, id stri
 		if err := s.requireMilestonesMode(ctx, tx, m.CampaignID); err != nil {
 			return err
 		}
-		if _, err := q.GetPlannedMilestoneForUpdate(ctx, progressiondb.GetPlannedMilestoneForUpdateParams{CampaignID: m.CampaignID, ID: id}); errors.Is(err, pgx.ErrNoRows) {
-			return errMilestoneNotFound()
-		} else if err != nil {
-			return fmt.Errorf("find the milestone: %w", err)
-		}
-		live, err := q.ListLiveMilestoneAwardsOf(ctx, progressiondb.ListLiveMilestoneAwardsOfParams{CampaignID: m.CampaignID, MilestoneID: id})
-		if err != nil {
-			return fmt.Errorf("list the milestone's marks: %w", err)
-		}
-		if len(live) > 0 {
-			return errBlocked(progressionv1.XPBlockedReason_XP_BLOCKED_REASON_MILESTONE_ALREADY_REACHED, "", 0)
-		}
-		return change(q)
+		return s.changePlannedIn(ctx, q, m.CampaignID, id, func() error { return change(q) })
 	})
+}
+
+// changePlannedIn runs change once the milestone is known to exist and to be
+// still planned, locking it, inside the caller's transaction (q).
+func (s *Service) changePlannedIn(ctx context.Context, q *progressiondb.Queries, campaignID, id string, change func() error) error {
+	if _, err := q.GetPlannedMilestoneForUpdate(ctx, progressiondb.GetPlannedMilestoneForUpdateParams{CampaignID: campaignID, ID: id}); errors.Is(err, pgx.ErrNoRows) {
+		return errMilestoneNotFound()
+	} else if err != nil {
+		return fmt.Errorf("find the milestone: %w", err)
+	}
+	live, err := q.ListLiveMilestoneAwardsOf(ctx, progressiondb.ListLiveMilestoneAwardsOfParams{CampaignID: campaignID, MilestoneID: id})
+	if err != nil {
+		return fmt.Errorf("list the milestone's marks: %w", err)
+	}
+	if len(live) > 0 {
+		return errBlocked(progressionv1.XPBlockedReason_XP_BLOCKED_REASON_MILESTONE_ALREADY_REACHED, "", 0)
+	}
+	return change()
 }
 
 // requireMilestonesMode refuses, with MODE_NOT_ALLOWED, a campaign that

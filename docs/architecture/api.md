@@ -96,7 +96,7 @@ One mechanism serves them all; the shared code is `platform/idem` (`Clean`, `Sco
   Two simultaneous calls with the same key create one: the loser's `INSERT ... ON CONFLICT DO NOTHING` returns no row and it reads the winner's.
 - **Where the key lives** differs by call (a column on the created row, the hash on a session event, on an XP award, on an image request...).
   `grep idempotency_key proto/` lists the calls; the `.proto` comment of each says what a repeat returns.
-- **State changes that are not creates** keep the last key and request hash on the row they change, or take the revision the caller read (`expected_revision`): a call on another revision is refused with `STALE_REVISION` and changes nothing.
+- **State changes that are not creates** keep the last key and request hash on the row they change, or, when no single row changes (`MoveMilestone` reorders several), in a small table of keys (`planned_milestone_moves`), or take the revision the caller read (`expected_revision`): a call on another revision is refused with `STALE_REVISION` and changes nothing.
 - **Exempt on purpose:**
   - Calls that return a secret once (`CreateInvite`, `CreateClaimLink`): only the hash is stored, so a replay could not return the first secret.
     A retry makes a new link, and a new claim link revokes the live one.
