@@ -40,7 +40,7 @@ const (
 // applyLastingSpell puts the effect of a spell on the targets it took hold of. targs and
 // made.Hits are in the same order. A spell without an effect that lasts does nothing here.
 func (s *Service) applyLastingSpell(
-	ctx context.Context, c *combatTx, cs []playdb.Combatant, sp link.Spell, caster playdb.Combatant, targs []playdb.Combatant, ability string, made *actionEvent,
+	ctx context.Context, c *combatTx, cs []playdb.Combatant, sp link.Spell, slotLevel int, caster playdb.Combatant, targs []playdb.Combatant, ability string, made *actionEvent,
 ) error {
 	content, err := s.contentOf(ctx, c)
 	if err != nil {
@@ -65,6 +65,7 @@ func (s *Service) applyLastingSpell(
 	if len(taken) == 0 {
 		return nil
 	}
+	def = defAtSlot(def, slotLevel-sp.Level)
 	dur := spellEffectDuration(content, def, sp.Key, caster)
 	var dc *int32
 	if sp.CasterDC > 0 {
@@ -97,6 +98,18 @@ func (s *Service) applyLastingSpell(
 		made.Lasting.Effects = append(made.Lasting.Effects, r.ID)
 	}
 	return nil
+}
+
+// defAtSlot is the effect as a cast levelsAbove slot levels above the spell's own makes it: the
+// damage of its trigger grows (Acid Arrow's later damage). The catalogue's entry is not changed.
+func defAtSlot(def *rules.EffectDef, levelsAbove int) *rules.EffectDef {
+	if def.Trigger == nil || def.Trigger.PerSlotLevel == "" || levelsAbove < 1 {
+		return def
+	}
+	cast, trigger := *def, *def.Trigger
+	trigger.Dice = trigger.DiceAt(levelsAbove)
+	cast.Trigger = &trigger
+	return &cast
 }
 
 // creatureKindsOf is the kind of creature an NPC was made from, by character, for the spells
@@ -142,6 +155,10 @@ func (s *Service) markSpellHits(content *rules.Content, def *rules.EffectDef, st
 		}
 		// The spell asks a saving throw and holds the ones that failed it.
 		if def.Applies == "failed_save" && (hit.Save == nil || hit.Save.Saved) {
+			continue
+		}
+		// The spell makes an attack roll and holds the ones it hit.
+		if def.Applies == "hit" && hit.Outcome != outcomeHit && hit.Outcome != outcomeCrit {
 			continue
 		}
 		hit.Lasting = lastingApplied

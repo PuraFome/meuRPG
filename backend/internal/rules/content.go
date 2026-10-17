@@ -59,6 +59,9 @@ type content struct {
 	// coverIgnoring are the spells whose saving throw gets no benefit from cover
 	// (the "ignores_cover" kind of effects/spells.json), by spell key.
 	coverIgnoring map[string]bool
+	// missHalving are the spell attacks that deal half their damage on a miss (the
+	// "half_on_miss" kind of effects/spells.json), by spell key.
+	missHalving map[string]bool
 	// revives are the spells that bring the dead back (the "revive" kind), by spell key.
 	revives map[string]ReviveSpec
 	// summons are the spells that summon a creature (the "summon" kind of

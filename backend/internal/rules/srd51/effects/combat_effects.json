@@ -162,6 +162,14 @@
       "start_save": {"ability": "dex", "on_fail": "effect:web-restrained"},
       "tags_pt": ["Teste de Destreza ao começar o turno nas teias"]
     },
+    "spell:acid-arrow": {
+      "applies": "hit",
+      "visibility": "public",
+      "duration": {"kind": "until_end_of_turn_of"},
+      "turn_trigger": {"dice": "2d4", "damage_type": "damage-type:acid", "max_triggers": 1, "per_slot_level": "1d4"},
+      "player_label_pt": "Corroído por ácido",
+      "tags_pt": ["Mais dano de ácido no fim do próximo turno"]
+    },
     "spell:vicious-mockery": {
       "applies": "failed_save",
       "visibility": "owner",
