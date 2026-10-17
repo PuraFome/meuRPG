@@ -53,8 +53,9 @@ import (
 //     to one block (16 source pixels), and a map with very small squares loses
 //     more of each known square.
 //
-// The server has 512 MiB and one CPU, so the work is bounded (numbers in
-// docs/performance.md):
+// The server is small (its CPU and memory limits are in docs/operations/README.md
+// and docs/operations/reference.md#memory-budgets), so the work is bounded (the
+// numbers are in docs/performance.md):
 //   - one working copy of the image per map and grid, decoded once and capped at
 //     workingMaxSide pixels on the long side, in an LRU of workingCopies maps;
 //   - one render at a time (tileRenderer.gate): a request waits renderWait, then
