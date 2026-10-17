@@ -10,7 +10,6 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
@@ -90,7 +89,7 @@ func (s *Service) AddMilestone(
 		return nil, err
 	}
 	// The key is unique in the campaign, and kept with a hash of the whole request.
-	scopedKey, requestHash := idem.Scope(m.CampaignID, key), addMilestoneHash(req.Msg, text)
+	scopedKey, requestHash := idem.Scope(m.CampaignID, key), idem.Hash(req.Msg)
 	newMilestone := plannedInsert{campaignID: m.CampaignID, text: text, key: scopedKey, hash: requestHash}
 	var added progressiondb.PlannedMilestone
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
@@ -101,20 +100,11 @@ func (s *Service) AddMilestone(
 	if err != nil {
 		return nil, s.dbError(ctx, "add a milestone", err)
 	}
-	views := s.listAfterWrite(ctx, m, "add a milestone")
-	return connect.NewResponse(&progressionv1.AddMilestoneResponse{Milestone: writtenMilestone(views, added), Milestones: views}), nil
-}
-
-// addMilestoneHash is the hash AddMilestone keeps with its key: the request's,
-// with the cleaned text the milestone is stored with, so a retry that differs
-// only by the whitespace around the text is the same request.
-func addMilestoneHash(req *progressionv1.AddMilestoneRequest, text string) *string {
-	cleaned, ok := proto.Clone(req).(*progressionv1.AddMilestoneRequest)
-	if !ok { // proto.Clone keeps the message's type; this never happens
-		return idem.Hash(req)
+	views, err := s.milestoneViews(ctx, m)
+	if err != nil {
+		return nil, s.dbError(ctx, "read the milestones", err)
 	}
-	cleaned.Text = text
-	return idem.Hash(cleaned)
+	return connect.NewResponse(&progressionv1.AddMilestoneResponse{Milestone: milestoneByID(views, added.ID), Milestones: views}), nil
 }
 
 // plannedInsert is the milestone AddMilestone writes: its campaign, its text
@@ -182,9 +172,11 @@ func (s *Service) UpdateMilestone(
 	if err != nil {
 		return nil, s.dbError(ctx, "update a milestone", err)
 	}
-	views := s.listAfterWrite(ctx, m, "update a milestone")
-	written := progressiondb.PlannedMilestone{ID: id, Text: text}
-	return connect.NewResponse(&progressionv1.UpdateMilestoneResponse{Milestone: writtenMilestone(views, written), Milestones: views}), nil
+	views, err := s.milestoneViews(ctx, m)
+	if err != nil {
+		return nil, s.dbError(ctx, "read the milestones", err)
+	}
+	return connect.NewResponse(&progressionv1.UpdateMilestoneResponse{Milestone: milestoneByID(views, id), Milestones: views}), nil
 }
 
 // MoveMilestone implements progressionv1connect.ProgressionServiceHandler.
@@ -206,7 +198,11 @@ func (s *Service) MoveMilestone(
 	if err != nil {
 		return nil, s.dbError(ctx, "move a milestone", err)
 	}
-	return connect.NewResponse(&progressionv1.MoveMilestoneResponse{Milestones: s.listAfterWrite(ctx, m, "move a milestone")}), nil
+	views, err := s.milestoneViews(ctx, m)
+	if err != nil {
+		return nil, s.dbError(ctx, "read the milestones", err)
+	}
+	return connect.NewResponse(&progressionv1.MoveMilestoneResponse{Milestones: views}), nil
 }
 
 // directionSteps is how far a move goes in the list, by direction: up is
@@ -228,9 +224,10 @@ func movePlanned(ctx context.Context, q *progressiondb.Queries, campaignID, id s
 	if err != nil {
 		return fmt.Errorf("list the marks: %w", err)
 	}
-	// changePlanned locked this milestone in the same transaction, so the locked
-	// list of its campaign holds it.
 	i := slices.IndexFunc(list, func(p progressiondb.PlannedMilestone) bool { return p.ID == id })
+	if i < 0 {
+		return errMilestoneNotFound()
+	}
 	j := nearestPlanned(list, live, i, step)
 	if j < 0 || j >= len(list) {
 		return nil // already first or last: nothing changes
@@ -290,7 +287,11 @@ func (s *Service) RemoveMilestone(
 	if err != nil {
 		return nil, s.dbError(ctx, "remove a milestone", err)
 	}
-	return connect.NewResponse(&progressionv1.RemoveMilestoneResponse{Milestones: s.listAfterWrite(ctx, m, "remove a milestone")}), nil
+	views, err := s.milestoneViews(ctx, m)
+	if err != nil {
+		return nil, s.dbError(ctx, "read the milestones", err)
+	}
+	return connect.NewResponse(&progressionv1.RemoveMilestoneResponse{Milestones: views}), nil
 }
 
 // MarkMilestoneReached implements progressionv1connect.ProgressionServiceHandler.
@@ -554,33 +555,4 @@ func milestoneByID(views []*progressionv1.Milestone, id string) *progressionv1.M
 		}
 	}
 	return nil
-}
-
-// listAfterWrite reads the campaign's milestones for the answer of a write
-// that is committed (see committedViews).
-func (s *Service) listAfterWrite(ctx context.Context, m authz.Membership, what string) []*progressionv1.Milestone {
-	return s.committedViews(ctx, what, func() ([]*progressionv1.Milestone, error) { return s.milestoneViews(ctx, m) })
-}
-
-// committedViews reads the milestones for the answer of a write that is
-// committed. When the read fails it logs the failure and gives no list: the
-// write is there, and an error would make the app send it again. The answer
-// then carries an empty list, which the app takes as "read it again".
-func (s *Service) committedViews(ctx context.Context, what string, read func() ([]*progressionv1.Milestone, error)) []*progressionv1.Milestone {
-	views, err := read()
-	if err != nil {
-		s.logger.ErrorContext(ctx, "read the milestones after a committed write", "action", what, "error", err)
-		return nil
-	}
-	return views
-}
-
-// writtenMilestone is the milestone a write made or changed, as the answer
-// shows it: the one in views, or, when the list could not be read, the row the
-// write left, as a planned milestone.
-func writtenMilestone(views []*progressionv1.Milestone, row progressiondb.PlannedMilestone) *progressionv1.Milestone {
-	if v := milestoneByID(views, row.ID); v != nil {
-		return v
-	}
-	return &progressionv1.Milestone{Id: row.ID, Text: row.Text}
 }

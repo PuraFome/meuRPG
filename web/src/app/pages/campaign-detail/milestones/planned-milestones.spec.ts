@@ -115,23 +115,6 @@ describe('PlannedMilestones (E8-14)', () => {
     expect(document.activeElement).toBe(el.querySelector('[data-add]'));
   });
 
-  it('reads the list again when the change is saved but the answer carries no list', async () => {
-    const { el, settle, store } = await setup();
-    api.listMilestones.mockResolvedValue({ milestones: three });
-    await store.load('c1');
-    api.addMilestone.mockResolvedValue({ milestones: [] });
-    api.listMilestones.mockResolvedValue({ milestones: [...three, ms('d', 'Fechar o portal')] });
-    btn(el, '[data-add]').click();
-    await settle();
-    const input = el.querySelector<HTMLInputElement>('app-milestone-name-form input')!;
-    input.value = 'Fechar o portal';
-    input.dispatchEvent(new Event('input'));
-    el.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'));
-    await settle();
-    expect(api.listMilestones).toHaveBeenCalledWith('c1');
-    expect(store.list()).toHaveLength(4);
-  });
-
   it('keeps the field open and says why when the server refuses', async () => {
     const { el, settle } = await setup();
     api.addMilestone.mockRejectedValue(new Error('down'));
