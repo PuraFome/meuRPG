@@ -7,6 +7,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
@@ -120,7 +121,7 @@ func contestCombatantsByID(ctx context.Context, c *combatTx) (map[string]playdb.
 // otherwise closes it (if there is one) and opens the window of the reactor.
 func (s *Service) syncContestWindow(ctx context.Context, c *combatTx, row playdb.CombatContest, reactor *playdb.Combatant, have map[string]playdb.ReactionWindow) error {
 	if w, ok := have[row.ID]; ok {
-		if deref(w.ReactorID) == idOf(reactor) {
+		if conv.OrZero(w.ReactorID) == idOf(reactor) {
 			return nil
 		}
 		if _, err := s.closeWindow(ctx, c, w, windowClosed, reaction.ReasonTriggerGone, windowOutcome{}, ""); err != nil {

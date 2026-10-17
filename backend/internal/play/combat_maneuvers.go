@@ -11,6 +11,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -42,7 +43,7 @@ func markMeleeHit(ctx context.Context, c *combatTx, attacker playdb.Combatant, a
 	if err := c.q.SetCombatantMeleeHitTurn(ctx, playdb.SetCombatantMeleeHitTurnParams{ID: attacker.ID, MeleeHitTurn: &key}); err != nil {
 		return fmt.Errorf("note the melee hit: %w", err)
 	}
-	ev.MeleeHit, ev.MeleeHitBefore = true, deref(attacker.MeleeHitTurn)
+	ev.MeleeHit, ev.MeleeHitBefore = true, conv.OrZero(attacker.MeleeHitTurn)
 	return nil
 }
 
@@ -52,7 +53,7 @@ func (s *Service) grappleManeuverRefusal(c *combatTx, who playdb.Combatant, uses
 	switch {
 	case who.BonusActionUsed && !master:
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED, "the bonus action of this turn is used")
-	case deref(who.MeleeHitTurn) != turnKey(c.enc):
+	case conv.OrZero(who.MeleeHitTurn) != turnKey(c.enc):
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_MELEE_HIT, "no melee weapon hit this turn")
 	case usesLeft <= 0:
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_USES, "no uses left")
@@ -138,7 +139,7 @@ func (s *Service) grappleManeuverOptions(ctx context.Context, campaignID string,
 			opt.Enabled, opt.Reason = false, &rulesv1.DisabledReason{Code: rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_BONUS_ACTION_USED}
 		case left[m.Resource] <= 0:
 			opt.Enabled, opt.Reason = false, &rulesv1.DisabledReason{Code: rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_NO_USES}
-		case deref(who.MeleeHitTurn) != turnKey(enc):
+		case conv.OrZero(who.MeleeHitTurn) != turnKey(enc):
 			opt.Enabled, opt.NoMeleeHit = false, true
 		}
 		out = append(out, opt)
@@ -204,7 +205,7 @@ func (s *Service) answerManeuverReduce(ctx context.Context, c *combatTx, w playd
 	if _, err := s.spendResource(ctx, c, reactor.CharacterID, opt.Resource, 1); err != nil {
 		return err
 	}
-	roll := diceRoll(1, clamp32(opt.Sides, 0, 100), []int32{clamp32(face, 1, 100)}, clamp32(opt.Mod, math.MinInt32, math.MaxInt32), reduction, r.Physical)
+	roll := diceRoll(1, clamp32(opt.Sides, 0, 100), []int32{clamp32(face, 1, 100)}, conv.Int32(opt.Mod), reduction, r.Physical)
 	got.ev = actionEvent{
 		Round: c.enc.Round, Secret: reactor.Hidden, Actor: reactor.ID, Target: t.Actor, ReactionBefore: reactor.ReactionUsed,
 		ManeuverSpent: []string{opt.Resource},

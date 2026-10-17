@@ -64,15 +64,6 @@ func errNeedsAMap() error {
 		"this needs a map: a combat without one has no squares")
 }
 
-// valueOf is what the pointer points to, the zero value for nil.
-func valueOf[T any](p *T) T {
-	var zero T
-	if p == nil {
-		return zero
-	}
-	return *p
-}
-
 // modeOfStart works out the mode a new combat is played in: the one the request
 // chose, or, when it chose none, the table's rule "combate com mapa" (RN-24), read
 // in the caller's transaction (tx). Without the rule's source, every combat is on a

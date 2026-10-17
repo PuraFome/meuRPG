@@ -10,6 +10,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -324,7 +325,7 @@ func rebukeOwed(target playdb.Combatant, d damageLanded) bool {
 // holdDataOf is what a held damage keeps: the roll, and for a damage with extras every part
 // as it rolled (the replay lands those very dice and spends the slot only then).
 func holdDataOf(roll dice.Result, faces []int32, pr *partsRoll) holdData {
-	data := holdData{Rolled: &rolledDamage{Faces: faces, Total: clamp32(roll.Total, math.MinInt32, math.MaxInt32), Physical: roll.Physical}}
+	data := holdData{Rolled: &rolledDamage{Faces: faces, Total: conv.Int32(roll.Total), Physical: roll.Physical}}
 	if pr != nil {
 		data.Parts, data.PartRolls = pr.parts, pr.rolls
 	}

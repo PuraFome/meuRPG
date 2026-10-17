@@ -8,6 +8,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
@@ -196,7 +197,7 @@ func (f *turnOptionsFlow) pending(ctx context.Context) error {
 		return f.s.dbError(ctx, "list the pending damage", err)
 	}
 	for _, p := range open {
-		if deref(p.AttackerID) == f.who.ID && pendingVisible(p, f.d.cs, f.v) {
+		if conv.OrZero(p.AttackerID) == f.who.ID && pendingVisible(p, f.d.cs, f.v) {
 			f.res.PendingDamages = append(f.res.PendingDamages, f.s.pendingView(ctx, f.m.CampaignID, p, f.d.cs, f.v))
 		}
 	}

@@ -13,7 +13,9 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -103,7 +105,7 @@ func (s *Service) concentrationLeaving(ctx context.Context, c *combatTx, m authz
 	}
 	leaving := 0
 	for _, o := range old {
-		if slices.ContainsFunc(cs, func(x playdb.Combatant) bool { return deref(x.CreatureID) == o.ID }) {
+		if slices.ContainsFunc(cs, func(x playdb.Combatant) bool { return conv.OrZero(x.CreatureID) == o.ID }) {
 			leaving++
 		}
 	}
@@ -160,7 +162,7 @@ func (s *Service) combatantsOfCreatures(ctx context.Context, res combatResult, i
 	}
 	var out []string
 	for _, id := range ids {
-		if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return deref(o.CreatureID) == id }); i >= 0 {
+		if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return conv.OrZero(o.CreatureID) == id }); i >= 0 {
 			out = append(out, cs[i].ID)
 		}
 	}
@@ -212,7 +214,7 @@ func parseSummonCall(msg *playv1.CastSummonRequest) (summonCall, error) {
 	if err != nil {
 		return summonCall{}, err
 	}
-	characterID, ok := parseID(msg.GetCharacterId())
+	characterID, ok := uid.Canonical(msg.GetCharacterId())
 	if !ok {
 		return summonCall{}, errCharacterNotFound()
 	}

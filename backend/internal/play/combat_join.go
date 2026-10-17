@@ -11,7 +11,9 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -77,7 +79,7 @@ func participantIDs(in []*playv1.Participant, emptyOK bool) ([]string, error) {
 	}
 	ids := make([]string, 0, len(in))
 	for i, p := range in {
-		id, ok := parseID(p.GetCharacterId())
+		id, ok := uid.Canonical(p.GetCharacterId())
 		if !ok {
 			return nil, errCharacterNotFound()
 		}
@@ -168,11 +170,6 @@ func (s *Service) refuseReserved(ctx context.Context, campaignID, characterID st
 
 func errCharacterNotFound() error {
 	return connect.NewError(connect.CodeNotFound, errors.New("character not found"))
-}
-
-func parseID(raw string) (string, bool) {
-	id, err := parseCombatID(raw, "")
-	return id, err == nil
 }
 
 // joining is a join in progress: the combat's squares and tokens, the labels taken, and the
@@ -292,7 +289,7 @@ func (s *Service) npcRow(row *playdb.InsertCombatantParams, p planned, i int) er
 	if err != nil {
 		return err
 	}
-	row.Initiative, row.InitiativeFace = new(clamp32(total, math.MinInt32, math.MaxInt32)), new(clamp32(face, 1, 20))
+	row.Initiative, row.InitiativeFace = new(conv.Int32(total)), new(clamp32(face, 1, 20))
 	return nil
 }
 
@@ -388,15 +385,8 @@ func (s *Service) rollInitiative(bonus int) (face, total int, err error) {
 	return res.Faces[0], res.Total, nil
 }
 
-// clamp32 converts n to an int32 inside [lo, hi]. The int32 range is checked
-// explicitly, so the conversion is safe whatever lo and hi are.
+// clamp32 converts n to an int32 inside [lo, hi]; the int32 range is checked
+// by conv.Int32, so the conversion is safe whatever lo and hi are.
 func clamp32(n, lo, hi int) int32 {
-	n = min(max(n, lo), hi)
-	switch {
-	case n > math.MaxInt32:
-		return math.MaxInt32
-	case n < math.MinInt32:
-		return math.MinInt32
-	}
-	return int32(n)
+	return conv.Int32(min(max(n, lo), hi))
 }

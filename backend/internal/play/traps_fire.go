@@ -18,6 +18,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
@@ -803,7 +804,7 @@ func (s *Service) caughtOutside(ctx context.Context, c *combatTx, pointID, fireI
 // waits for the master as a trap damage; an NPC's, or a creature's, is only the line, applied.
 func (s *Service) damageOutside(ctx context.Context, c *combatTx, pointID, fireID string, ch link.Character, d trapDamageRoll) (trapDamageEvent, error) {
 	de := trapDamageEventOf(d)
-	de.damageHit = damageHit{Target: ch.ID, Amount: clampInt32(d.amount), Half: d.half}
+	de.damageHit = damageHit{Target: ch.ID, Amount: conv.Int32(d.amount), Half: d.half}
 	if !ch.Player {
 		de.Applied = true // an NPC outside a combat has no hit points: the line says what it took
 		return de, nil

@@ -12,6 +12,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -281,7 +282,7 @@ func (f *takeActionFlow) begin(ctx context.Context) error {
 		Round: f.c.enc.Round, Secret: who.Hidden, Actor: who.ID, Key: f.call.actionKey, RunBefore: run,
 		ActionBefore: who.ActionUsed, BonusBefore: who.BonusActionUsed, ReactionBefore: who.ReactionUsed, DashedBefore: who.Dashed,
 		AttacksBefore: who.AttacksMade, DisengagedBefore: who.Disengaged, SurgedBefore: who.ActionSurged,
-		AttackKeyBefore: deref(who.ActionAttackKey), FlurryBefore: who.BonusAttacksLeft, ExtraUsed: f.call.useExtra,
+		AttackKeyBefore: conv.OrZero(who.ActionAttackKey), FlurryBefore: who.BonusAttacksLeft, ExtraUsed: f.call.useExtra,
 	}
 	return nil
 }

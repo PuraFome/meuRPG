@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"slices"
 
 	"connectrpc.com/connect"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
@@ -112,7 +112,7 @@ func (s *Service) initiativeWrite(ctx context.Context, c *combatTx, call initiat
 	if err != nil {
 		return nil, err
 	}
-	total, f := clamp32(roll.Total, math.MinInt32, math.MaxInt32), clamp32(face, 1, 20)
+	total, f := conv.Int32(roll.Total), clamp32(face, 1, 20)
 	if err := saveInitiative(ctx, c, cs, target, total, f); err != nil {
 		return nil, err
 	}
@@ -184,12 +184,12 @@ func saveInitiative(ctx context.Context, c *combatTx, cs []playdb.Combatant, tar
 // the group takes the roll, with the bonus of the one that rolled, so they take a joint turn.
 func saveGroupInitiative(ctx context.Context, c *combatTx, cs []playdb.Combatant, target playdb.Combatant, total, f int32) error {
 	if err := c.q.SetGroupInitiative(ctx, playdb.SetGroupInitiativeParams{
-		EncounterID: c.enc.ID, SummonGroupID: deref(target.SummonGroupID), Initiative: &total, InitiativeFace: &f, InitiativeBonus: target.InitiativeBonus,
+		EncounterID: c.enc.ID, SummonGroupID: conv.OrZero(target.SummonGroupID), Initiative: &total, InitiativeFace: &f, InitiativeBonus: target.InitiativeBonus,
 	}); err != nil {
 		return fmt.Errorf("save the group's initiative: %w", err)
 	}
 	for i := range cs {
-		if isCreature(cs[i]) && deref(cs[i].SummonGroupID) == deref(target.SummonGroupID) {
+		if isCreature(cs[i]) && conv.OrZero(cs[i].SummonGroupID) == conv.OrZero(target.SummonGroupID) {
 			cs[i].Initiative, cs[i].InitiativeFace, cs[i].InitiativeBonus, cs[i].TieOrdered = &total, &f, target.InitiativeBonus, false
 		}
 	}
@@ -589,7 +589,9 @@ func mayLeave(ctx context.Context, c *combatTx, target playdb.Combatant) error {
 	if err != nil {
 		return fmt.Errorf("list the pending damage: %w", err)
 	}
-	if slices.ContainsFunc(open, func(p playdb.PendingDamage) bool { return p.TargetID == target.ID || deref(p.AttackerID) == target.ID }) {
+	if slices.ContainsFunc(open, func(p playdb.PendingDamage) bool {
+		return p.TargetID == target.ID || conv.OrZero(p.AttackerID) == target.ID
+	}) {
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_PENDING_DAMAGE, "a damage is still to roll or to apply")
 	}
 	return nil

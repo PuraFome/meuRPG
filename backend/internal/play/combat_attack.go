@@ -11,6 +11,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/tablerules"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
@@ -608,13 +609,13 @@ func (f *attackFlow) attackEvent(run int32) actionEvent {
 	made := actionEvent{
 		RunBefore: run, Round: f.c.enc.Round, Secret: secretOf(a, f.target), Actor: a.ID, Target: f.target.ID, Key: f.attackKey,
 		Extra: f.extra, ExtraUsed: f.call.useExtra,
-		D20: clamp32(d20.Face(), 1, 20), Modifier: clamp32(f.attack.ToHit+f.bonusFace, math.MinInt32, math.MaxInt32), Total: clamp32(f.result.Total, math.MinInt32, math.MaxInt32),
+		D20: clamp32(d20.Face(), 1, 20), Modifier: conv.Int32(f.attack.ToHit + f.bonusFace), Total: conv.Int32(f.result.Total),
 		Physical: d20.Physical, Outcome: outcomeMiss, AsReaction: f.call.asReaction, CriticalMaxRule: f.c.rules.CriticalMaxPlusRoll,
 		D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(choice.Mode), SuggestedMode: modeKey(choice.Suggested),
 		ReasonID: choice.ReasonID, RequestID: choice.RequestID, CritOnHit: f.truth.CriticalOnHit && f.result.Hit,
 		ByMaster:     choice.ByMaster && choice.changed(),
 		ActionBefore: a.ActionUsed, BonusBefore: a.BonusActionUsed, ReactionBefore: a.ReactionUsed, AttacksBefore: a.AttacksMade,
-		AsBonus: f.bonusKind != combat.BonusNone, AttackKeyBefore: deref(a.ActionAttackKey), FlurryBefore: a.BonusAttacksLeft,
+		AsBonus: f.bonusKind != combat.BonusNone, AttackKeyBefore: conv.OrZero(a.ActionAttackKey), FlurryBefore: a.BonusAttacksLeft,
 		// The armor class the roll was compared with (an active Escudo's +5 included): the master's answer
 		// shows it, a player's never does.
 		TargetAC: clamp32(f.targetAC, 0, math.MaxInt32),

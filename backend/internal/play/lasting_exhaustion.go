@@ -11,7 +11,9 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
@@ -89,7 +91,7 @@ func (s *Service) exhaustionCall(ctx context.Context, campaignID, rawKey, rawEnc
 	}
 	switch {
 	case rawChar != "":
-		id, ok := parseID(rawChar)
+		id, ok := uid.Canonical(rawChar)
 		if !ok {
 			return m, key, exhaustionTarget{}, errCharacterNotFound()
 		}
@@ -333,12 +335,12 @@ func (s *Service) copyExhaustion(ctx context.Context, c *combatTx, who playdb.Co
 // hit points cut to it, and the maximum it had is kept to give it back; level 6 defeats it. It returns
 // the maximum it has now.
 func (s *Service) setNPCExhaustion(ctx context.Context, c *combatTx, who playdb.Combatant, level int32) (int32, error) {
-	base := num(who.HpMax)
+	base := conv.OrZero(who.HpMax)
 	if who.HpMaxBase != nil {
 		base = *who.HpMaxBase
 	}
 	newMax := clamp32(combat.ExhaustedMaxHP(int(base), int(level)), 0, 1<<30)
-	current := num(who.HpCurrent)
+	current := conv.OrZero(who.HpCurrent)
 	var baseKept *int32
 	if combat.ExhaustionAt(int(level)).MaxHPHalved {
 		baseKept = &base

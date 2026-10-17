@@ -10,6 +10,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
@@ -223,7 +224,7 @@ func (s *Service) dropPendingDamageOnEnd(ctx context.Context, c *combatTx, m aut
 		tgt, _ := findCombatant(cs, p.TargetID, combatViewer{master: true})
 		if err := insertEvent(ctx, c, eventDamageDiscarded, &m.UserID, nil, actionEvent{
 			Round: c.enc.Round, Secret: secretOf(current, tgt), Actor: current.ID, Target: p.TargetID, Pending: p.ID, Key: p.AttackKey,
-			Amount: num(p.Amount), PrevStatus: p.Status,
+			Amount: conv.OrZero(p.Amount), PrevStatus: p.Status,
 		}); err != nil {
 			return dropped, err
 		}

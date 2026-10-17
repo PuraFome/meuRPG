@@ -10,6 +10,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -155,7 +156,7 @@ func (f *adjustHitPointsFlow) locate(ctx context.Context) error {
 
 // change works out the hit points the request leaves.
 func (f *adjustHitPointsFlow) change(context.Context) error {
-	hp, tmp, hpMax := int(num(f.target.HpCurrent)), int(num(f.target.HpTemp)), int(num(f.target.HpMax))
+	hp, tmp, hpMax := int(conv.OrZero(f.target.HpCurrent)), int(conv.OrZero(f.target.HpTemp)), int(conv.OrZero(f.target.HpMax))
 	amount := int(f.call.amount)
 	switch f.call.mode {
 	case adjustDamage:

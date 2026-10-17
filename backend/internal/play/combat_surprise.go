@@ -3,7 +3,6 @@ package play
 import (
 	"context"
 	"fmt"
-	"math"
 	"slices"
 
 	"connectrpc.com/connect"
@@ -12,6 +11,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -293,7 +293,7 @@ func (s *Service) suggestionFor(ctx context.Context, campaignID string, d *conte
 	}
 	passive := passivePerceptionOf(n, notesMode(notes))
 	sg := &playv1.SurpriseSuggestion{
-		CombatantId: c.ID, PassivePerception: clamp32(passive, math.MinInt32, math.MaxInt32), Surprised: surprised,
+		CombatantId: c.ID, PassivePerception: conv.Int32(passive), Surprised: surprised,
 	}
 	hiders, notHiding := hidersAgainst(d, c, totals, passive, sg)
 	switch {
@@ -326,7 +326,7 @@ func hidersAgainst(d *contestData, c playdb.Combatant, totals map[string]int, pa
 		seesClearly := slices.ContainsFunc(d.hiding, func(r playdb.CombatHiding) bool { return r.HiderID == h.ID && r.ObserverID == c.ID && r.Noticed })
 		beats := !combat.NoticesHider(total, passive) && !seesClearly
 		hiders = append(hiders, combat.HideTotals{ID: h.ID, Total: total})
-		sg.Hiders = append(sg.Hiders, &playv1.HiderTotal{CombatantId: h.ID, StealthTotal: clamp32(total, math.MinInt32, math.MaxInt32), Beats: beats})
+		sg.Hiders = append(sg.Hiders, &playv1.HiderTotal{CombatantId: h.ID, StealthTotal: conv.Int32(total), Beats: beats})
 		if seesClearly {
 			hiders[len(hiders)-1].Total = passive // it notices this one
 		}

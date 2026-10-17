@@ -14,6 +14,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -77,7 +78,7 @@ func (s *Service) openPendingWindows(ctx context.Context, c *combatTx, p playdb.
 // to be rolled, or, when a reaction window waits on it (Escudo, or the master's
 // check), to wait for the answers first. attackTotal is kept for the new comparison.
 func (s *Service) openHit(ctx context.Context, c *combatTx, attacker, target playdb.Combatant, key string, dmg link.Dice, critical bool, extraDice, savageDice, attackTotal, attackAC int) (playdb.PendingDamage, error) {
-	total := clamp32(attackTotal, math.MinInt32, math.MaxInt32)
+	total := conv.Int32(attackTotal)
 	specs, err := s.hitWindows(ctx, c, attacker, target, key, critical, false, total, clamp32(attackAC, 0, math.MaxInt32))
 	if err != nil {
 		return playdb.PendingDamage{}, err
@@ -197,13 +198,13 @@ func (s *Service) reactionTarget(ctx context.Context, c *combatTx, v combatViewe
 	if err = v.mayAct(target); err != nil {
 		return w, p, attacker, target, err
 	}
-	attacker, _ = findCombatant(cs, deref(p.AttackerID), combatViewer{master: true})
+	attacker, _ = findCombatant(cs, conv.OrZero(p.AttackerID), combatViewer{master: true})
 	open, err := openWindowsOf(ctx, c)
 	if err != nil {
 		return w, p, attacker, target, err
 	}
 	i := slices.IndexFunc(open, func(o playdb.ReactionWindow) bool {
-		return o.Kind == string(reaction.Shield) && deref(o.PendingDamageID) == pendingID
+		return o.Kind == string(reaction.Shield) && conv.OrZero(o.PendingDamageID) == pendingID
 	})
 	if p.Status != pendingAwaitingReaction || i < 0 {
 		return w, p, attacker, target, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_AWAITING_REACTION, "the hit does not wait for a reaction")
@@ -301,7 +302,7 @@ func (s *Service) shieldStops(ctx context.Context, c *combatTx, w playdb.Reactio
 	if p.AttackArmorClass != nil {
 		base = int(*p.AttackArmorClass) - int(target.AcBonus)
 	}
-	return windowTriggerOf(w).Magic || int(num(p.AttackTotal)) < base+combat.ShieldACBonus, nil
+	return windowTriggerOf(w).Magic || int(conv.OrZero(p.AttackTotal)) < base+combat.ShieldACBonus, nil
 }
 
 // passShield lets the hit go on ("Não usar"): the window is answered and, when it was

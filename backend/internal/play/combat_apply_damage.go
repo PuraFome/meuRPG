@@ -9,6 +9,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -184,7 +185,7 @@ func settleable(p playdb.PendingDamage) error {
 // settleAmount works out what lands: what the target's resistance, vulnerability or immunity leaves of the
 // roll, unless the master leaves a source out or sets another number. It starts the event.
 func (f *applyDamageFlow) settleAmount(context.Context) error {
-	rolled := num(f.p.Amount)
+	rolled := conv.OrZero(f.p.Amount)
 	groups := readStepGroups(f.p.Steps)
 	expected := rolled
 	if len(groups) > 0 {
@@ -468,7 +469,7 @@ func (f *discardDamageFlow) touch(ctx context.Context) error {
 func (f *discardDamageFlow) describe(context.Context) error {
 	f.made = actionEvent{
 		Round: f.c.enc.Round, Secret: secretOf(f.attacker, f.target), Actor: f.attacker.ID, Target: f.target.ID, Pending: f.p.ID, Key: f.p.AttackKey,
-		Amount: num(f.p.Amount), PrevStatus: f.p.Status, ClosedWindows: f.windows,
+		Amount: conv.OrZero(f.p.Amount), PrevStatus: f.p.Status, ClosedWindows: f.windows,
 	}
 	return nil
 }
