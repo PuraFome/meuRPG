@@ -17,7 +17,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { RouterLink } from '@angular/router';
 
-import { type GenerateOutcome } from '../../../shared/image-generate/image-generate-dialog';
+import { type GenerateOutcome } from '../../../shared/image-generate/image-generate.types';
 import { GenerateImageButton } from '../../../shared/image-generate/generate-image-button';
 import type { GenerateOrigin } from '../../../core/images/imagegen-copy';
 import { MapAsk } from '../../../shared/map-ask/map-ask';

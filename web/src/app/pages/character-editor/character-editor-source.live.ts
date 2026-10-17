@@ -55,15 +55,6 @@ import {
   toFullSheetInit,
 } from './character-editor-sheet-map';
 
-// The form <-> wire mappers live next to this file; the specs import them from here.
-export {
-  mergeFullSheetInit,
-  toBasicSheetInit,
-  toFormBasicSheet,
-  toFormFullSheet,
-  toFullSheetInit,
-} from './character-editor-sheet-map';
-
 const KIND_TO_GEN: Record<CharacterKind, GenCharacterKind> = {
   player: GenCharacterKind.PLAYER,
   enemy: GenCharacterKind.ENEMY,

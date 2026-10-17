@@ -47,7 +47,7 @@ import {
   wizardOptions,
 } from '../../core/levelup/levelup-testing';
 import { LevelUpPage } from './level-up';
-import { newSpellsTitle } from './level-up-session';
+import { newSpellsTitle } from './level-up-gives';
 import { QUIET_MS } from './level-up-preview';
 
 // With --coverage test-setup.ts only hooks the first file of a worker, so the fake clock this file leaves on would

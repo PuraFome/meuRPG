@@ -2,7 +2,7 @@ import { create } from '@bufbuild/protobuf';
 
 import { TableFeatSchema } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { draftToFeat, emptyFeat, featPaths, featToDraft } from './feat-draft';
-import { menu } from './content-testing';
+import { menu } from './content-testing-menu';
 
 const stored = () =>
   create(TableFeatSchema, {
