@@ -1,6 +1,8 @@
 package play
 
 import (
+	"strings"
+	"sync"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -20,42 +22,116 @@ type actionsRestOption struct {
 	who   string
 	as    func(a *armed) *user
 	edit  func(*playv1.GetTurnOptionsRequest)
+	// base is the scenario this one is printed against, when it is not the one of the same hero and viewer.
+	base string
+}
+
+// actionsRestOptionBases name, by who and by viewer, the scenario that prints the whole answer: the other
+// scenarios of the same hero and viewer print only how their answer differs from it.
+var actionsRestOptionBases = map[string]string{
+	"Toren/player":     "options of Toren on his turn to his player",
+	"Toren/master":     "options of Toren on his turn to the master",
+	"Pensantus/player": "options of Pensantus to her player",
+	"Pensantus/master": "options of Pensantus to the master",
+	"Brisa/player":     "options of Brisa to her player",
+	"Brisa/master":     "options of Brisa to the master",
+	"Goblin/master":    "options of the goblin to the master on its turn",
+}
+
+// actionsRestBaseKey is the key of actionsRestOptionBases for a read of who by u.
+func actionsRestBaseKey(a *armed, who string, u *user) string {
+	if u == a.master {
+		return who + "/master"
+	}
+	return who + "/player"
+}
+
+// actionsRestOptionRows are every scenario of the options, by name, to play the base ones.
+var actionsRestOptionRows = sync.OnceValue(func() map[string]actionsRestOption {
+	rows := map[string]actionsRestOption{}
+	for _, group := range [][]actionsRestOption{actionsRestOptionViews(), actionsRestOptionBlocks(), actionsRestOptionSpells()} {
+		for _, r := range group {
+			rows[r.name] = r
+		}
+	}
+	return rows
+})
+
+// actionsRestBaseCache keeps the flat answer of each base scenario, read once.
+var actionsRestBaseCache sync.Map
+
+// actionsRestBaseOf is the flat answer of the base scenario with this name.
+func actionsRestBaseOf(t *testing.T, name string) map[string]string {
+	t.Helper()
+	once, _ := actionsRestBaseCache.LoadOrStore(name, sync.OnceValue(func() map[string]string {
+		row := actionsRestOptionRows()[name]
+		a, e := row.fight(t)
+		res, err := row.read(t, a, e)
+		if err != nil {
+			t.Fatalf("the base %q is refused: %v", name, err)
+		}
+		return flatJSON(jsonOfMessage(res.Msg, labelsOf(e)))
+	}))
+	return once.(func() map[string]string)()
 }
 
 func (c actionsRestOption) scenario() goldenScenario {
 	return goldenScenario{name: c.name, run: func(t *testing.T) string {
 		t.Helper()
-		world := c.world
-		if world == nil {
-			world = actionsRestUsual
-		}
-		a, e := world(t)
-		if c.prep != nil {
-			c.prep(t, a, e)
-		}
-		e = a.get(t, a.master)
-		who := c.who
-		if who == "" {
-			who = "Toren"
-		}
-		as := c.as
-		if as == nil {
-			as = asToren
-		}
-		before := a.afterSetup(t)
-		req := &playv1.GetTurnOptionsRequest{CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, who)}
-		if c.edit != nil {
-			c.edit(req)
-		}
-		res, err := as(a).combat.GetTurnOptions(t.Context(), connect.NewRequest(req))
-		head := "options"
+		a, e := c.fight(t)
+		before := a.markCall(t)
+		res, err := c.read(t, a, e)
 		if err != nil {
-			head = "refused " + takeActionRefusalText(err)
-		} else {
-			head += " " + jsonOfMessage(res.Msg, labelsOf(e))
+			return a.actionsRestReport(t, before, "refused "+takeActionRefusalText(err))
 		}
-		return a.actionsRestReport(t, before, head)
+		cur := flatJSON(jsonOfMessage(res.Msg, labelsOf(e)))
+		who, as := c.readers()
+		base := c.base
+		if base == "" {
+			base = actionsRestOptionBases[actionsRestBaseKey(a, who, as(a))]
+		}
+		if base == "" || base == c.name {
+			return a.actionsRestReport(t, before, "options\n"+strings.Join(flatLines(cur), "\n"))
+		}
+		return a.actionsRestReport(t, before, "options as "+base+diffLines(actionsRestBaseOf(t, base), cur))
 	}}
+}
+
+// readers are who the options are of (Toren by default) and the user who reads them (his player by default).
+func (c actionsRestOption) readers() (string, func(a *armed) *user) {
+	who, as := c.who, c.as
+	if who == "" {
+		who = "Toren"
+	}
+	if as == nil {
+		as = asToren
+	}
+	return who, as
+}
+
+// fight plays the world of the scenario and its prepare.
+func (c actionsRestOption) fight(t *testing.T) (*armed, *playv1.Encounter) {
+	t.Helper()
+	world := c.world
+	if world == nil {
+		world = actionsRestUsual
+	}
+	a, e := world(t)
+	if c.prep != nil {
+		c.prep(t, a, e)
+	}
+	return a, a.get(t, a.master)
+}
+
+// read calls GetTurnOptions as the scenario says.
+func (c actionsRestOption) read(t *testing.T, a *armed, e *playv1.Encounter) (*connect.Response[playv1.GetTurnOptionsResponse], error) {
+	t.Helper()
+	who, as := c.readers()
+	req := &playv1.GetTurnOptionsRequest{CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, who)}
+	if c.edit != nil {
+		c.edit(req)
+	}
+	return as(a).combat.GetTurnOptions(t.Context(), connect.NewRequest(req))
 }
 
 // actionsRestCasters is the fight of casters: Pensantus (wizard 3) acts first, with the Capitão and a goblin.
@@ -208,8 +284,8 @@ func actionsRestOptionViews() []actionsRestOption {
 	return []actionsRestOption{
 		{name: "options of Toren on his turn to his player"},
 		{name: "options of Toren on his turn to the master", as: asMaster},
-		{name: "options of Pensantus out of turn to her player", who: "Pensantus", as: asDamageAna},
-		{name: "options of Pensantus out of turn to the master", who: "Pensantus", as: asMaster},
+		{name: "options of Pensantus out of turn to her player", who: "Pensantus", as: asDamageAna, base: "options of Pensantus out of turn to her player"},
+		{name: "options of Pensantus out of turn to the master", who: "Pensantus", as: asMaster, base: "options of Pensantus out of turn to her player"},
 		{name: "options of Brisa out of turn to her player", who: "Brisa", as: func(a *armed) *user { return a.bia }},
 		{name: "options of the goblin to the master out of turn", who: "Goblin", as: asMaster},
 		{name: "options of the goblin to the master on its turn", who: "Goblin", as: asMaster, prep: actionsRestPass("Goblin")},
@@ -320,8 +396,8 @@ func actionsRestOptionSpells() []actionsRestOption {
 		{name: "options of Pensantus in a pack of goblins", world: actionsRestPack},
 		{name: "options of Pensantus in a pack of goblins to the master", world: actionsRestPack, as: asMaster},
 		{name: "options of Pensantus in a combat without a map to her player", world: actionsRestTheatreCasters},
-		{name: "options of Pensantus in the sniper table without the feat", world: actionsRestSniper(false)},
-		{name: "options of Pensantus in the sniper table with the feat", world: actionsRestSniper(true)},
+		{name: "options of Pensantus in the sniper table without the feat", world: actionsRestSniper(false), base: "options of Pensantus in the sniper table without the feat"},
+		{name: "options of Pensantus in the sniper table with the feat", world: actionsRestSniper(true), base: "options of Pensantus in the sniper table without the feat"},
 	}
 	out := make([]actionsRestOption, 0, len(rows)+8)
 	for _, r := range rows {

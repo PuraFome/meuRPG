@@ -263,7 +263,7 @@ func takeActionNimble() []goldenScenario {
 			if master {
 				u = a.master
 			}
-			before := a.events(t)
+			before := a.markCall(t)
 			res, err := a.takeActionRaw(t, u, e, "Ragna", key, nil)
 			return a.takeActionReport(t, e, before, res, err)
 		}}
@@ -296,7 +296,7 @@ func takeActionWorldScenarios() []goldenScenario {
 			t.Helper()
 			a, e := mageFight(t)
 			a.mustAttack(t, a.caio, e, "Toren", battleaxe, "Mago", d20(9))
-			before := a.events(t)
+			before := a.markCall(t)
 			res, err := a.takeActionRaw(t, a.caio, e, "Toren", "standard:dodge", nil)
 			return a, e, before, res, err
 		}),
@@ -304,7 +304,7 @@ func takeActionWorldScenarios() []goldenScenario {
 			t.Helper()
 			a, e := mageFight(t)
 			a.mustAttack(t, a.caio, e, "Toren", battleaxe, "Mago", d20(9))
-			before := a.events(t)
+			before := a.markCall(t)
 			res, err := a.takeActionRaw(t, a.master, e, "Toren", "standard:dodge", nil)
 			return a, e, before, res, err
 		}),
@@ -313,7 +313,7 @@ func takeActionWorldScenarios() []goldenScenario {
 			c := newCave(t)
 			e := c.oppFight(t)
 			c.leaveGoblin(t)
-			before := c.events(t)
+			before := c.markCall(t)
 			res, err := c.takeActionRaw(t, c.caio, e, "Toren", "standard:dodge", nil)
 			return c.armed, e, before, res, err
 		}),
@@ -322,14 +322,14 @@ func takeActionWorldScenarios() []goldenScenario {
 			c := newCave(t)
 			e := c.oppFight(t)
 			c.leaveGoblin(t)
-			before := c.events(t)
+			before := c.markCall(t)
 			res, err := c.takeActionRaw(t, c.master, e, "Toren", "standard:dodge", nil)
 			return c.armed, e, before, res, err
 		}),
 		takeActionOnce("Slow Fall on a fall that waits", func(t *testing.T) (*armed, *playv1.Encounter, int, *playv1.TakeActionResponse, error) {
 			t.Helper()
 			r, e := monkFall(t)
-			before := r.events(t)
+			before := r.markCall(t)
 			res, err := r.takeActionRaw(t, r.caio, e, "Toren", "feature:slow-fall", nil)
 			return r.armed, e, before, res, err
 		}),
@@ -339,7 +339,7 @@ func takeActionWorldScenarios() []goldenScenario {
 			if _, err := r.takeActionRaw(t, r.caio, e, "Toren", "feature:slow-fall", nil); err != nil {
 				t.Fatalf("TakeAction(Slow Fall) error = %v", err)
 			}
-			before := r.events(t)
+			before := r.markCall(t)
 			res, err := r.takeActionRaw(t, r.caio, e, "Toren", "feature:slow-fall", nil)
 			return r.armed, e, before, res, err
 		}),
@@ -349,7 +349,7 @@ func takeActionWorldScenarios() []goldenScenario {
 			if _, err := r.takeActionRaw(t, r.caio, e, "Toren", "feature:slow-fall", nil); err != nil {
 				t.Fatalf("TakeAction(Slow Fall) error = %v", err)
 			}
-			before := r.events(t)
+			before := r.markCall(t)
 			res, err := r.takeActionRaw(t, r.master, e, "Toren", "feature:slow-fall", nil)
 			return r.armed, e, before, res, err
 		}),
@@ -357,7 +357,7 @@ func takeActionWorldScenarios() []goldenScenario {
 			t.Helper()
 			a, e := takeActionFighters(t)
 			takeActionEnd(t, a, e)
-			before := a.events(t)
+			before := a.markCall(t)
 			res, err := a.takeActionRaw(t, a.caio, e, "Toren", "standard:dodge", nil)
 			return a, e, before, res, err
 		}),
@@ -365,7 +365,7 @@ func takeActionWorldScenarios() []goldenScenario {
 			t.Helper()
 			a, e := takeActionFightOf(takeActionFighter2, takeActionMonk4, false)(t)
 			takeActionEnd(t, a, e)
-			before := a.events(t)
+			before := a.markCall(t)
 			res, err := a.takeActionRaw(t, a.bia, e, "Brisa", "feature:slow-fall", nil)
 			return a, e, before, res, err
 		}),
@@ -373,14 +373,14 @@ func takeActionWorldScenarios() []goldenScenario {
 			t.Helper()
 			a, e := takeActionFightOf(takeActionFighter2, takeActionMonk4, false)(t)
 			a.execSQL(t, `UPDATE combatants SET defeated = true WHERE label = 'Brisa'`)
-			before := a.events(t)
+			before := a.markCall(t)
 			res, err := a.takeActionRaw(t, a.bia, e, "Brisa", "feature:slow-fall", nil)
 			return a, e, before, res, err
 		}),
 		takeActionOnce("a Dodge while a fall waits for the monk's reaction", func(t *testing.T) (*armed, *playv1.Encounter, int, *playv1.TakeActionResponse, error) {
 			t.Helper()
 			r, e := monkFall(t)
-			before := r.events(t)
+			before := r.markCall(t)
 			res, err := r.takeActionRaw(t, r.caio, e, "Toren", "standard:dodge", nil)
 			return r.armed, e, before, res, err
 		}),

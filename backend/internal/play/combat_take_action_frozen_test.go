@@ -73,7 +73,7 @@ func (c takeActionCase) scenario() goldenScenario {
 		if c.as != nil {
 			u = c.as(a)
 		}
-		before := a.events(t)
+		before := a.markCall(t)
 		res, err := a.takeActionRaw(t, u, e, who, c.key, c.edit)
 		return a.takeActionReport(t, e, before, res, err)
 	}}
@@ -134,18 +134,20 @@ func (a *armed) takeActionReport(t *testing.T, e *playv1.Encounter, after int, r
 	for _, l := range a.eventTrace(t, e, after) {
 		lines = append(lines, "event "+l)
 	}
+	var state []string
 	for _, r := range a.rowsOf(t, `SELECT label, action_used, bonus_action_used, reaction_used, dashed, disengaged, attacks_made, action_surged, extra_action_used, jump_doubled, bonus_attacks_left, COALESCE(action_attack_key, '-'), hp_current, hp_temp, defeated, hidden, movement_used_dft FROM combatants ORDER BY label`) {
-		lines = append(lines, "combatant "+r)
+		state = append(state, "combatant "+r)
 	}
 	for _, r := range a.rowsOf(t, `SELECT c.label, s.kind, s.amount, COALESCE(s.ends_phase, '-'), COALESCE(s.ends_round::TEXT, '-'), s.started_round, COALESCE(s.ends_combatant_id::TEXT, '-') FROM combatant_states s JOIN combatants c ON c.id = s.combatant_id`) {
-		lines = append(lines, "state "+r)
+		state = append(state, "state "+r)
 	}
 	for _, r := range a.rowsOf(t, `SELECT c.name, v.hit_points_current, v.hit_points_temporary, v.spell_slots_used::TEXT, v.pact_slots_used, v.resources_used::TEXT FROM character_vitals v JOIN characters c ON c.id = v.character_id`) {
-		lines = append(lines, "vitals "+r)
+		state = append(state, "vitals "+r)
 	}
 	for _, r := range a.rowsOf(t, `SELECT attack_key, status, COALESCE(amount, -1), damage_type FROM pending_damages`) {
-		lines = append(lines, "damage "+r)
+		state = append(state, "damage "+r)
 	}
+	lines = append(lines, a.printedState(t, err != nil, state)...)
 	out := strings.Join(lines, "\n")
 	return uuidPattern.ReplaceAllStringFunc(out, func(id string) string {
 		if l, ok := names[id]; ok {
@@ -546,7 +548,7 @@ func takeActionReplays() []goldenScenario {
 			if _, err := a.takeActionRaw(t, a.caio, e, "Toren", "standard:dash", set); err != nil {
 				t.Fatalf("TakeAction() error = %v", err)
 			}
-			before := a.events(t)
+			before := a.markCall(t)
 			res, err := a.takeActionRaw(t, a.caio, e, "Toren", "standard:dash", set)
 			return a, e, before, res, err
 		}),
@@ -558,7 +560,7 @@ func takeActionReplays() []goldenScenario {
 			if _, err := a.takeActionRaw(t, a.caio, e, "Toren", "standard:dash", set); err != nil {
 				t.Fatalf("TakeAction() error = %v", err)
 			}
-			before := a.events(t)
+			before := a.markCall(t)
 			res, err := a.takeActionRaw(t, a.caio, e, "Toren", "standard:dodge", set)
 			return a, e, before, res, err
 		}),
@@ -570,7 +572,7 @@ func takeActionReplays() []goldenScenario {
 			if _, err := a.takeActionRaw(t, a.caio, e, "Toren", "standard:dash", set); err != nil {
 				t.Fatalf("TakeAction() error = %v", err)
 			}
-			before := a.events(t)
+			before := a.markCall(t)
 			res, err := a.takeActionRaw(t, a.master, e, "Toren", "standard:dash", set)
 			return a, e, before, res, err
 		}),
@@ -584,7 +586,7 @@ func takeActionReplays() []goldenScenario {
 			if _, err := a.takeActionRaw(t, a.caio, e, "Toren", "feature:second-wind", set); err != nil {
 				t.Fatalf("TakeAction() error = %v", err)
 			}
-			before := a.events(t)
+			before := a.markCall(t)
 			res, err := a.takeActionRaw(t, a.caio, e, "Toren", "feature:second-wind", set)
 			return a, e, before, res, err
 		}),

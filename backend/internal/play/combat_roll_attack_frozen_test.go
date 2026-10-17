@@ -89,12 +89,14 @@ func (a *armed) attackReport(t *testing.T, e *playv1.Encounter, after int, res *
 	for _, l := range a.eventTrace(t, e, after) {
 		lines = append(lines, "event "+l)
 	}
+	var state []string
 	for _, r := range a.rowsOf(t, `SELECT label, action_used, bonus_action_used, reaction_used, attacks_made, COALESCE(action_attack_key, '-'), hidden FROM combatants ORDER BY label`) {
-		lines = append(lines, "combatant "+r)
+		state = append(state, "combatant "+r)
 	}
 	for _, r := range a.rowsOf(t, `SELECT attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, COALESCE(attack_total, 0), COALESCE(attack_armor_class, 0) FROM pending_damages`) {
-		lines = append(lines, "damage "+r)
+		state = append(state, "damage "+r)
 	}
+	lines = append(lines, a.printedState(t, err != nil, state)...)
 	return strings.Join(lines, "\n")
 }
 
@@ -113,23 +115,13 @@ func (a *armed) rawAttack(t *testing.T, u *user, e *playv1.Encounter, edit func(
 	return res.Msg, nil
 }
 
-// afterSetup is the number of events a fight has written before the first attack.
-func (a *armed) afterSetup(t *testing.T) int {
-	t.Helper()
-	var n int
-	if err := a.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM session_events`).Scan(&n); err != nil {
-		t.Fatalf("count the events: %v", err)
-	}
-	return n
-}
-
 // attackRefusal is a scenario that edits Toren's attack on the goblin and reads the refusal and what stayed.
 func attackRefusal(name string, as func(a *armed) *user, edit func(*playv1.RollAttackRequest)) goldenScenario {
 	return goldenScenario{name: "refused " + name, run: func(t *testing.T) string {
 		t.Helper()
 		a := newArmed(t)
 		e := a.threeAndAGoblin(t)
-		before := a.afterSetup(t)
+		before := a.markCall(t)
 		res, err := a.rawAttack(t, as(a), e, edit)
 		return a.attackReport(t, e, before, res, err)
 	}}
@@ -144,7 +136,7 @@ func attackThrough(name string, as func(a *armed) *user, edit func(*playv1.RollA
 		t.Helper()
 		a := newArmed(t)
 		e := a.threeAndAGoblin(t)
-		before := a.afterSetup(t)
+		before := a.markCall(t)
 		res, err := a.rawAttack(t, as(a), e, edit)
 		return a.attackReport(t, e, before, res, err)
 	}}
@@ -172,7 +164,7 @@ func customAttacks() []goldenScenario {
 			a := newArmed(t)
 			e := a.threeAndAGoblin(t)
 			e = a.passTo(t, e, "Goblin")
-			before := a.afterSetup(t)
+			before := a.markCall(t)
 			res, err := a.attack(t, a.master, e, "Goblin", sword, "Toren", d20(14))
 			return a, e, before, res, err
 		}),
@@ -181,7 +173,7 @@ func customAttacks() []goldenScenario {
 			a := newArmed(t)
 			e := a.threeAndAGoblin(t)
 			e = a.passTo(t, e, "Pensantus")
-			before := a.afterSetup(t)
+			before := a.markCall(t)
 			res, err := a.attack(t, a.ana, e, "Pensantus", fireBolt, "Goblin", func(r *playv1.RollAttackRequest) { r.Roll, r.D20Faces = nil, []int32{12, 7} })
 			return a, e, before, res, err
 		}),
@@ -190,7 +182,7 @@ func customAttacks() []goldenScenario {
 			a := newArmed(t)
 			e := a.threeAndAGoblin(t)
 			e = a.passTo(t, e, "Pensantus")
-			before := a.afterSetup(t)
+			before := a.markCall(t)
 			res, err := a.attack(t, a.ana, e, "Pensantus", fireBolt, "Goblin", func(r *playv1.RollAttackRequest) {
 				r.Roll, r.UseExtraAction = &playv1.RollAttackRequest_D20Face{D20Face: 9}, true
 			})
@@ -200,7 +192,7 @@ func customAttacks() []goldenScenario {
 			t.Helper()
 			a := newArmed(t)
 			e := a.threeAndAGoblin(t)
-			before := a.afterSetup(t)
+			before := a.markCall(t)
 			res, err := a.attack(t, a.caio, e, "Toren", battleaxe, "Pensantus", d20(15))
 			return a, e, before, res, err
 		}),
@@ -214,7 +206,7 @@ func customAttacks() []goldenScenario {
 				reveal:   []string{"Goblin"},
 				at:       map[string][2]int32{"Goblin": {4, 3}},
 			})
-			before := a.afterSetup(t)
+			before := a.markCall(t)
 			res, err := a.attack(t, a.caio, e, "Toren", battleaxe, "Goblin", d20(15))
 			return a, e, before, res, err
 		}),
@@ -228,7 +220,7 @@ func customAttacks() []goldenScenario {
 				reveal:   []string{"Goblin"},
 				theatre:  true,
 			})
-			before := a.afterSetup(t)
+			before := a.markCall(t)
 			res, err := a.attack(t, a.caio, e, "Toren", battleaxe, "Goblin", d20(16))
 			return a, e, before, res, err
 		}),
@@ -237,7 +229,7 @@ func customAttacks() []goldenScenario {
 			a := newArmed(t)
 			e := a.threeAndAGoblin(t)
 			a.mustAttack(t, a.caio, e, "Toren", battleaxe, "Goblin", d20(3))
-			before := a.afterSetup(t)
+			before := a.markCall(t)
 			res, err := a.attack(t, a.caio, e, "Toren", battleaxe, "Goblin", d20(15))
 			return a, e, before, res, err
 		}),
@@ -245,7 +237,7 @@ func customAttacks() []goldenScenario {
 			t.Helper()
 			a := newArmed(t)
 			e := a.threeAndAGoblin(t)
-			before := a.afterSetup(t)
+			before := a.markCall(t)
 			res, err := a.attack(t, a.bia, e, "Brisa", rapier, "Goblin", d20(15))
 			return a, e, before, res, err
 		}),
@@ -258,7 +250,7 @@ func customAttacks() []goldenScenario {
 			}); err != nil {
 				t.Fatalf("AdjustCombatantHitPoints() error = %v", err)
 			}
-			before := a.afterSetup(t)
+			before := a.markCall(t)
 			res, err := a.attack(t, a.caio, e, "Toren", battleaxe, "Goblin", d20(15))
 			return a, e, before, res, err
 		}),

@@ -21,7 +21,7 @@ func castSteps(name string, table castTable, steps func(t *testing.T, a *armed, 
 	return castOn(name, func(t *testing.T) (*armed, int, *playv1.CastSpellResponse, error) {
 		t.Helper()
 		a, e := table(t)
-		before := a.castEvents(t)
+		before := a.markCall(t)
 		res, err := steps(t, a, e)
 		return a, before, res, err
 	})

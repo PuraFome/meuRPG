@@ -223,7 +223,7 @@ func actionsRestSettlesTwice() []goldenScenario {
 			if err != nil {
 				t.Fatalf("settle error = %v", err)
 			}
-			before := a.afterSetup(t)
+			before := a.markCall(t)
 			names := labelsOf(e)
 			if discard {
 				res, err := a.actionsRestDiscard(t, a.master, e, id, func(r *playv1.DiscardPendingDamageRequest) { r.IdempotencyKey = key })
@@ -247,7 +247,6 @@ func actionsRestScenarios() []goldenScenario {
 	all = append(all, actionsRestDiscards()...)
 	all = append(all, actionsRestSettlesTwice()...)
 	all = append(all, actionsRestAdjustments()...)
-	all = append(all, actionsRestOptionScenarios()...)
 	return all
 }
 
@@ -255,4 +254,11 @@ func actionsRestScenarios() []goldenScenario {
 func TestActionsRestIsFrozen(t *testing.T) {
 	t.Parallel()
 	runGolden(t, actionsRestGolden, actionsRestScenarios())
+}
+
+// TestTurnOptionsAreFrozen reads the turn options of every scenario on a fight of its own and compares them
+// with testdata/turn_options.golden.
+func TestTurnOptionsAreFrozen(t *testing.T) {
+	t.Parallel()
+	runGolden(t, turnOptionsGolden, actionsRestOptionScenarios())
 }

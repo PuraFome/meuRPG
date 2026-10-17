@@ -41,7 +41,7 @@ func (c actionsRestAdjust) scenario() goldenScenario {
 		if as == nil {
 			as = asMaster
 		}
-		before := a.afterSetup(t)
+		before := a.markCall(t)
 		req := &playv1.AdjustCombatantHitPointsRequest{CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, label), IdempotencyKey: newKey()}
 		if c.edit != nil {
 			c.edit(req)
@@ -183,7 +183,7 @@ func actionsRestAdjustTwice() goldenScenario {
 		if _, err := a.adjustHP(t, e, "Goblin", set); err != nil {
 			t.Fatalf("AdjustCombatantHitPoints() error = %v", err)
 		}
-		before := a.afterSetup(t)
+		before := a.markCall(t)
 		_, err := a.adjustHP(t, e, "Goblin", set)
 		head := "ok"
 		if err != nil {

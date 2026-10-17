@@ -14,11 +14,15 @@ import (
 // master's hand on an NPC's hit points) and GetTurnOptions (the read of what a combatant can do, as each viewer
 // sees it). For a write: every refusal with its code, message and blocked reason, and for each one that goes
 // through the answer, the events it writes (in order, the combatants named by label), the combatants, the
-// vitals, the pending damages and the windows it left. For the read: the whole answer, by viewer. They are the
+// vitals, the pending damages and the windows it left. For the read (testdata/turn_options.golden): the whole
+// answer for a hero and a viewer, and for the other scenarios how the answer differs from it. They are the
 // net under the split of those functions into phases. testdata/actions_rest.golden holds what each scenario
-// reads; run with UPDATE_GOLDEN=1 to write the file again, and read the diff.
+// of the writes reads; run with UPDATE_GOLDEN=1 to write the files again, and read the diff.
 
-const actionsRestGolden = "testdata/actions_rest.golden"
+const (
+	actionsRestGolden = "testdata/actions_rest.golden"
+	turnOptionsGolden = "testdata/turn_options.golden"
+)
 
 // goldenScenario is one scenario of the golden: run plays it on a fight of its own and reads the outcome.
 // actionsRestWorld starts a fight and hands back the campaign and the combat.
@@ -50,11 +54,13 @@ func (a *armed) actionsRestReport(t *testing.T, after int, head ...string) strin
 		{"window", `SELECT kind, status, COALESCE(closed_reason, '-'), step, trigger::TEXT, COALESCE(outcome::TEXT, '-') FROM reaction_windows`},
 		{"hold", `SELECT kind, state, data::TEXT FROM reaction_holds`},
 	}
+	var state []string
 	for _, tb := range tables {
 		for _, r := range a.rowsOf(t, tb.query) {
-			lines = append(lines, tb.tag+" "+r)
+			state = append(state, tb.tag+" "+r)
 		}
 	}
+	lines = append(lines, a.printedState(t, strings.HasPrefix(head[0], "refused ") || strings.HasPrefix(head[0], "options"), state)...)
 	out := strings.Join(lines, "\n")
 	return uuidPattern.ReplaceAllStringFunc(out, func(id string) string {
 		if l, ok := names[id]; ok {
@@ -168,7 +174,7 @@ func (c actionsRestSettle) scenario() goldenScenario {
 		if as == nil {
 			as = asMaster
 		}
-		before := a.afterSetup(t)
+		before := a.markCall(t)
 		names := labelsOf(e)
 		if c.discard {
 			res, err := a.actionsRestDiscard(t, as(a), e, id, c.discardEdit)

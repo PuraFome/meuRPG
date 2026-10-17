@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -168,15 +169,33 @@ func (c logCase) render(svc *Service) string {
 	return b.String()
 }
 
+// describeEntry is what the grouping made of an entry: its id and kind, and each field that is not its default
+// (not master-only, no wild shape started, no pending-damage status, hosted by itself alone, nothing stopped or
+// returned, no pending damage, no damage, applied or removed part, no part label).
 func describeEntry(e *logEntry) string {
 	var pend []string
 	for id, d := range e.pend {
 		pend = append(pend, fmt.Sprintf("%s=%s", id, d.status))
 	}
 	sort.Strings(pend)
-	return fmt.Sprintf("%s kind=%s masterOnly=%t shapeStarted=%t status=%s hosts=%v stopped=%v returned=%t/%t pend=%v dmg=%t applied=%t removed=%t partLabel=%q",
-		e.id, e.kind, e.masterOnly, e.shapeStarted, e.status, e.hosts, e.stopped, e.returned, e.returnBlocked, pend,
-		e.dmg != nil, e.applied != nil, e.removed != nil, e.partLabel)
+	parts := []string{e.id, "kind=" + e.kind.String()}
+	add := func(show bool, format string, args ...any) {
+		if show {
+			parts = append(parts, fmt.Sprintf(format, args...))
+		}
+	}
+	add(e.masterOnly, "masterOnly")
+	add(e.shapeStarted, "shapeStarted")
+	add(e.status != playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_UNSPECIFIED, "status=%s", e.status)
+	add(!slices.Equal(e.hosts, []string{e.id}), "hosts=%v", e.hosts)
+	add(len(e.stopped) > 0, "stopped=%v", e.stopped)
+	add(e.returned || e.returnBlocked, "returned=%t/%t", e.returned, e.returnBlocked)
+	add(len(pend) > 0, "pend=%v", pend)
+	add(e.dmg != nil, "dmg")
+	add(e.applied != nil, "applied")
+	add(e.removed != nil, "removed")
+	add(e.partLabel != "", "partLabel=%q", e.partLabel)
+	return strings.Join(parts, " ")
 }
 
 // canonicalProto is the entry as JSON with sorted keys: protojson's whitespace is not stable.

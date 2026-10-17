@@ -37,24 +37,26 @@ func (a *armed) damageReport(t *testing.T, after int, res *playv1.RollDamageResp
 	for _, l := range a.eventTrace(t, a.get(t, a.master), after) {
 		lines = append(lines, "event "+l)
 	}
+	var state []string
 	for _, r := range a.rowsOf(t, `SELECT label, hp_current, hp_temp, defeated, death_successes, death_failures, COALESCE(concentration_spell, '-'), took_damage, COALESCE(sneak_attack_turn, '-'), COALESCE(colossus_slayer_turn, '-'), reaction_used, grid_col, grid_row, hidden, rage_end_pending FROM combatants ORDER BY label`) {
-		lines = append(lines, "combatant "+r)
+		state = append(state, "combatant "+r)
 	}
 	for _, r := range a.rowsOf(t, `SELECT c.name, v.hit_points_current, v.hit_points_temporary, v.spell_slots_used::TEXT, v.pact_slots_used, v.resources_used::TEXT FROM character_vitals v JOIN characters c ON c.id = v.character_id`) {
-		lines = append(lines, "vitals "+r)
+		state = append(state, "vitals "+r)
 	}
 	for _, r := range a.rowsOf(t, `SELECT attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces::TEXT, physical, COALESCE(amount, -1), COALESCE(applied_amount, -1), COALESCE(roll_total, -1), half, healing, COALESCE(taken, -1), critical_max, critical_max_rule, savage_dice, parts::TEXT, part_rolls::TEXT, steps::TEXT, COALESCE(after_steps, -1), COALESCE(landed_before::TEXT, '-'), resolved_at IS NOT NULL FROM pending_damages`) {
-		lines = append(lines, "damage "+r)
+		state = append(state, "damage "+r)
 	}
 	for _, r := range a.rowsOf(t, `SELECT kind, status, COALESCE(closed_reason, '-'), step, trigger::TEXT, COALESCE(outcome::TEXT, '-') FROM reaction_windows`) {
-		lines = append(lines, "window "+r)
+		state = append(state, "window "+r)
 	}
 	for _, r := range a.rowsOf(t, `SELECT kind, state, data::TEXT FROM reaction_holds`) {
-		lines = append(lines, "hold "+r)
+		state = append(state, "hold "+r)
 	}
 	for _, r := range a.rowsOf(t, `SELECT kind, used, COALESCE(choice, '-') FROM hit_riders`) {
-		lines = append(lines, "rider "+r)
+		state = append(state, "rider "+r)
 	}
+	lines = append(lines, a.printedState(t, err != nil, state)...)
 	out := strings.Join(lines, "\n")
 	return uuidPattern.ReplaceAllStringFunc(out, func(id string) string {
 		if l, ok := names[id]; ok {
@@ -117,7 +119,7 @@ func damageOn(name string, play func(t *testing.T) damagePlay) goldenScenario {
 // rolled is the damage roll of u on a pending damage, with the events counted just before it.
 func (a *armed) rolled(t *testing.T, u *user, e *playv1.Encounter, pendingID string, edit func(*playv1.RollDamageRequest)) damagePlay {
 	t.Helper()
-	before := a.afterSetup(t)
+	before := a.markCall(t)
 	res, err := a.rawDamage(t, u, e, pendingID, edit)
 	return damagePlay{a: a, before: before, res: res, err: err}
 }

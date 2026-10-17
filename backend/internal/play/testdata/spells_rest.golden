@@ -1,24 +1,12 @@
 == refused spells rest, a spell attack at a target off the map ==
 refused failed_precondition: the caster and the target must be on the map
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == refused spells rest, a spell attack by a caster off the map ==
 refused failed_precondition: the caster and the target must be on the map
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == spells rest, a caster-only spell aimed at another creature ==
 refused invalid_argument: this spell reaches the caster alone: leave the targets out
-combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+state unchanged
 == spells rest, a dexterity save a paralyzed target fails by itself ==
 cast {"pendingDamages":[{"attackKey":"spell:sacred-flame","attackerId":"Brisa","castId":"?","damageTypeKey":"damage-type:radiant","damageTypePt":"radiante","diceCount":1,"diceSides":8,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin"}],"spellKey":"spell:sacred-flame","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin","cover":"COVER_DEGREE_NONE","pendingDamageId":"?","save":{"dc":13,"outcome":"SAVE_OUTCOME_FAILED"}}]}
 area 

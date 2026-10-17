@@ -55,30 +55,6 @@ func spellJSON(m proto.Message, names map[string]string, omit ...string) string 
 	})
 }
 
-// castRows is the rows of a query as text, one line per row, sorted.
-func (a *armed) castRows(t *testing.T, query string, args ...any) []string {
-	t.Helper()
-	rows, err := a.h.pool.Query(t.Context(), query, args...)
-	if err != nil {
-		t.Fatalf("query %q: %v", query, err)
-	}
-	defer rows.Close()
-	var out []string
-	for rows.Next() {
-		vals, err := rows.Values()
-		if err != nil {
-			t.Fatalf("read a row: %v", err)
-		}
-		parts := make([]string, len(vals))
-		for i, v := range vals {
-			parts[i] = fmt.Sprint(v)
-		}
-		out = append(out, strings.Join(parts, " | "))
-	}
-	sort.Strings(out)
-	return out
-}
-
 // castTimePattern finds the instants an event keeps, which differ from one run to the next.
 var castTimePattern = regexp.MustCompile(`\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z`)
 
@@ -128,11 +104,13 @@ func (a *armed) castReport(t *testing.T, after int, res *playv1.CastSpellRespons
 	for _, l := range a.eventTrace(t, e, after) {
 		lines = append(lines, "event "+castTimePattern.ReplaceAllString(l, "<time>"))
 	}
+	var state []string
 	for _, q := range castStateQueries {
-		for _, r := range a.castRows(t, q.query) {
-			lines = append(lines, q.name+" "+r)
+		for _, r := range a.rowsOf(t, q.query) {
+			state = append(state, q.name+" "+r)
 		}
 	}
+	lines = append(lines, a.printedState(t, err != nil, state)...)
 	return strings.Join(lines, "\n")
 }
 
@@ -148,16 +126,6 @@ func castOn(name string, play castPlay) goldenScenario {
 		a, before, res, err := play(t)
 		return a.castReport(t, before, res, err)
 	}}
-}
-
-// castEvents is the number of events a fight has written so far.
-func (a *armed) castEvents(t *testing.T) int {
-	t.Helper()
-	var n int
-	if err := a.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM session_events`).Scan(&n); err != nil {
-		t.Fatalf("count the events: %v", err)
-	}
-	return n
 }
 
 // castCall calls CastSpell as u with a request that edit changes after it is built from the caster, the
@@ -234,7 +202,7 @@ func (f castFight) scenario(name string) goldenScenario {
 		if edit == nil {
 			edit = noCastRoll
 		}
-		before := a.castEvents(t)
+		before := a.markCall(t)
 		if f.raw {
 			res, err := a.castRaw(t, f.as(a), e, f.caster, f.spell, f.slot, a.at(t, f.targets...), edit)
 			return a, before, res, err
@@ -398,7 +366,7 @@ func castRequestScenarios() []goldenScenario {
 			t.Helper()
 			a := newCasters(t)
 			e := a.castersFight(t, 10)
-			before := a.castEvents(t)
+			before := a.markCall(t)
 			res, err := a.castCall(t, a.ana, e, "Pensantus", sleepSpell, slotOfLevel(1), nil, together(poolInApp, aimAt(7, 5)))
 			return a, before, res, err
 		}),

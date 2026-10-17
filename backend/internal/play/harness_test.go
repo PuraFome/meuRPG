@@ -3,13 +3,16 @@ package play
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -546,4 +549,136 @@ func wantGolden(t *testing.T, path, got string) {
 		}
 	}
 	t.Fatalf("the text has %d lines, %s has %d", len(gl), path, len(wl))
+}
+
+// stateTables are the tables a golden prints, which markCall snapshots to tell a call that changed nothing.
+var stateTables = []string{
+	"combatants", "combatant_states", "character_vitals", "character_wild_shapes", "pending_damages",
+	"reaction_windows", "reaction_holds", "hit_riders", "roll_holds", "inspiration_holds", "hidden_reveals", "spell_casts",
+}
+
+// stateSnapshot is the rows of the stateTables and the number of events as one text.
+func (a *armed) stateSnapshot(t *testing.T) string {
+	t.Helper()
+	var sb strings.Builder
+	for _, tb := range stateTables {
+		var rows string
+		if err := a.h.pool.QueryRow(t.Context(), `SELECT COALESCE(string_agg(x::TEXT, E'\n' ORDER BY x::TEXT), '') FROM `+tb+` x`).Scan(&rows); err != nil {
+			t.Fatalf("snapshot %s: %v", tb, err)
+		}
+		sb.WriteString(tb + "\n" + rows + "\n")
+	}
+	fmt.Fprintf(&sb, "events %d", a.events(t))
+	return sb.String()
+}
+
+// markCall is the number of events a fight has written so far. It also keeps the state of the tables a
+// golden prints, so that the report after the call can tell a call that changed nothing.
+func (a *armed) markCall(t *testing.T) int {
+	t.Helper()
+	a.callState = a.stateSnapshot(t)
+	return a.events(t)
+}
+
+// printedState is the state lines a report prints after a call. When collapse is set and the call left
+// every table as markCall found it, it is one line, which keeps the check that the call wrote nothing.
+func (a *armed) printedState(t *testing.T, collapse bool, lines []string) []string {
+	t.Helper()
+	if collapse && a.callState == a.stateSnapshot(t) {
+		return []string{"state unchanged"}
+	}
+	return lines
+}
+
+// flatJSON is a JSON text as one entry per leaf, keyed by its path. The elements of a list are keyed by the
+// first of their key, attackKey, combatantId or kind fields (looking one object down), so that an element
+// inserted in the list does not move the keys of the others.
+func flatJSON(text string) map[string]string {
+	var v any
+	if err := json.Unmarshal([]byte(text), &v); err != nil {
+		return map[string]string{"": text}
+	}
+	out := map[string]string{}
+	flatten(out, "", v)
+	return out
+}
+
+func flatten(out map[string]string, path string, v any) {
+	switch x := v.(type) {
+	case map[string]any:
+		for k, c := range x {
+			flatten(out, path+"."+k, c)
+		}
+	case []any:
+		if len(x) == 0 {
+			out[path] = "[]"
+		}
+		for i, c := range x {
+			key := strconv.Itoa(i)
+			if id := elementID(c); id != "" {
+				key = id
+			}
+			if _, dup := out[path+"["+key+"]"]; dup {
+				key += "#" + strconv.Itoa(i)
+			}
+			flatten(out, path+"["+key+"]", c)
+		}
+	default:
+		raw, _ := json.Marshal(x)
+		out[path] = string(raw)
+	}
+}
+
+// elementID is the identity of a list element, or "" when it has none.
+func elementID(v any) string {
+	m, ok := v.(map[string]any)
+	if !ok {
+		return ""
+	}
+	for _, k := range []string{"key", "attackKey", "combatantId", "kind"} {
+		if s, ok := m[k].(string); ok {
+			return s
+		}
+	}
+	for _, c := range m {
+		if inner, ok := c.(map[string]any); ok {
+			if s, ok := inner["key"].(string); ok {
+				return s
+			}
+		}
+	}
+	return ""
+}
+
+// flatLines are the entries of a flatJSON, sorted, one "path = value" line each.
+func flatLines(flat map[string]string) []string {
+	out := make([]string, 0, len(flat))
+	for k, v := range flat {
+		out = append(out, k+" = "+v)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// diffLines is how cur differs from base, one line each: "+" for a leaf that base lacks, "~" for one that
+// has another value and "-" for one that cur lacks. It is the empty text when they are the same.
+func diffLines(base, cur map[string]string) string {
+	var out []string
+	for k, v := range cur {
+		if bv, ok := base[k]; !ok {
+			out = append(out, "+ "+k+" = "+v)
+		} else if bv != v {
+			out = append(out, "~ "+k+" = "+v)
+		}
+	}
+	for k := range base {
+		if _, ok := cur[k]; !ok {
+			out = append(out, "- "+k)
+		}
+	}
+	sort.Strings(out)
+	if len(out) == 0 {
+		return " (no difference)"
+	}
+	return "\n" + strings.Join(out, "\n")
 }
