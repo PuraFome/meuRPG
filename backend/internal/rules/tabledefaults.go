@@ -1,6 +1,6 @@
 package rules
 
-// The table's 20-level defaults (slice 10.3, MR-025): the numbers the class
+// The table's 20-level defaults (MR-025): the numbers the class
 // editor starts from, so the browser never computes a class table. They come
 // from the SRD's own class tables, read from the content, and the master edits
 // them from there; every default passes the same checks as an edit (the tests

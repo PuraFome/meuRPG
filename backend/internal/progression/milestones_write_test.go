@@ -11,7 +11,7 @@ import (
 	progressionv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/progression/v1"
 )
 
-// What AddMilestone and MoveMilestone (MR-016, question 45) do:
+// What AddMilestone and MoveMilestone (MR-016) do:
 // each refusal with its exact words and in the order the checks run, each
 // failure with its one log line, and what each call writes (the rows of
 // planned_milestones, their positions, no session event). Every step is a

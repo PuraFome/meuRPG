@@ -99,7 +99,7 @@ const (
 type LevelUpError struct {
 	Field  string
 	Reason string
-	// Code is the Issue code, for LevelUpSheetIssue only.
+	// Code is the Issue code, for LevelUpReasonSheetIssue only.
 	Code string
 	// Message is English text for logs and tests, never for the app.
 	Message string
@@ -371,8 +371,8 @@ func levelUpClass(b Build, classKey string, c *content) (int, *LevelUpError) {
 // LevelUpOptions says what the next level of class classKey gives a
 // character built as before. A class the character does not have is a new
 // class at its level 1, if the character meets the prerequisites (the
-// LevelUpMulticlassPrerequisite refusals); it refuses a class the content does
-// not have (LevelUpClass) and a character at level 20 (LevelUpMaxLevel).
+// LevelUpReasonMulticlassPrerequisite refusals); it refuses a class the content does
+// not have (LevelUpReasonClass) and a character at level 20 (LevelUpReasonMaxLevel).
 func LevelUpOptions(before Build, classKey string, c *Content) (LevelUpOffer, error) {
 	o, err := levelUpOptions(before, classKey, c.c)
 	if err != nil {
@@ -756,7 +756,7 @@ func isASILevel(row *srd51.Level) bool {
 
 // masterAdds are the features that ask the player for a choice the guided
 // level-up cannot ask for. It lists them (LevelUpOffer.MasterAdds) and the
-// master adds them in the editor (RN-12). None today: the choice engine asks
+// master adds them in the editor (RN-12). The set is empty: the choice engine asks
 // for them all (choicegroups.go).
 var masterAdds = map[string]bool{}
 
@@ -974,8 +974,8 @@ func rollIndex(b Build, classIdx int) int {
 // class one level higher, or a class the character does not have at level 1
 // (last in the list), and the choices added to it. It never judges the
 // choices (CheckLevelUp does); it only refuses a class the content does not
-// have (LevelUpClass), the prerequisites of a new class and level 20
-// (LevelUpMaxLevel).
+// have (LevelUpReasonClass), the prerequisites of a new class and level 20
+// (LevelUpReasonMaxLevel).
 //
 // The hit points follow the sheet's method. With the fixed average the Build
 // stays as it is; a rolled value switches a fixed sheet to rolled, filling
@@ -1095,7 +1095,7 @@ func applyHitPoints(after, before Build, ch LevelUpChoices, idx int, c *content)
 // Anything else differs is refused: name, race, base scores, equipment,
 // weapons, the other classes... (RN-01: the rest stays locked). A sheet that
 // ends with a problem the old one did not have (a spell off the class list,
-// too many prepared spells) is refused as LevelUpSheetIssue.
+// too many prepared spells) is refused as LevelUpReasonSheetIssue.
 func CheckLevelUp(before, after Build, c *Content) error {
 	if err := checkLevelUp(before, after, c.c); err != nil {
 		return err

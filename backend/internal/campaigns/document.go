@@ -48,7 +48,7 @@ func (s *Service) GetCampaignDocument(
 	ctx context.Context,
 	req *connect.Request[campaignsv1.GetCampaignDocumentRequest],
 ) (*connect.Response[campaignsv1.GetCampaignDocumentResponse], error) {
-	// Only the master (question 27's default): a player gets
+	// Only the master by default: a player gets
 	// permission_denied, anyone else not_found.
 	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
 	if err != nil {

@@ -11,7 +11,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 )
 
-// The NPC's portrait (MR-031, D7, question 62): an image of the campaign's
+// The NPC's portrait (MR-031): an image of the campaign's
 // gallery, kept on the NPC's sheet as `portrait_image_id`. The sheet is JSON,
 // so the field needs no migration.
 //

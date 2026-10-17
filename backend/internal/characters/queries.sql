@@ -508,7 +508,7 @@ WHERE l.campaign_id = sqlc.arg(campaign_id)::UUID
 ORDER BY l.created_at DESC, l.id DESC
 LIMIT sqlc.arg(max_rows);
 
--- A character's creatures (MR-037, Etapa 9). A creature is "live" until it is
+-- A character's creatures (MR-037). A creature is "live" until it is
 -- dismissed; a dismissed one is kept (dismissed_at, dismissed_reason) so an
 -- undo can bring it back.
 

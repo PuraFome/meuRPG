@@ -20,7 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
-// Wild Shape and the familiar's eyes (MR-037, MR-036, Etapa 9). The form is part
+// Wild Shape and the familiar's eyes (MR-037, MR-036). The form is part
 // of the character's vitals for the API (CharacterVitals.wild_shape) and lives in the
 // table character_wild_shapes, and this file is the one place that reads it back into the character's numbers:
 // a druid in a beast form fights, moves and sees as the beast (rules.Content.

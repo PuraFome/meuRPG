@@ -147,7 +147,7 @@ The random generator is ours (xoshiro256\*\* with the seed expanded by SplitMix6
 Each phase has its own stream (SplitMix64 of the seed with a phase constant), so changing `stairs` does not change the rooms and changing `door_mix` moves no door: every door's type and trap mark come from their own stream ("door kinds").
 Draws use unbiased integers (Lemire) and Fisher-Yates shuffles.
 The order of the draws, commented in the code (`DRAW:`), is part of the contract.
-Changing any number that alters the output requires a new `Version` (`types.go`) and the regenerated `testdata/golden.json` (one grid hash per case; `go test ./internal/rules/dungeon -run Golden -update`).
+Changing any number that alters the output requires a new `Version` (`types.go`) and the regenerated goldens in `testdata/` (`go test ./internal/rules/dungeon -update`).
 The list of specification readings the code made is in the package comment (`doc.go`).
 
 **Budgets and tests.**

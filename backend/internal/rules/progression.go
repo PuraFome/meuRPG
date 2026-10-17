@@ -117,7 +117,7 @@ func (c *Content) ChallengeRatings() []ChallengeRating {
 }
 
 // SplitXP is each character's share of total XP among n characters,
-// rounded down like the book does (question 46): 100 among 3 is 33 each.
+// rounded down like the book does: 100 among 3 is 33 each.
 // It is 0 when n or total is not positive.
 func SplitXP(total, n int) int {
 	if total <= 0 || n <= 0 {

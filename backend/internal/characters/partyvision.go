@@ -18,13 +18,13 @@ const basicPassivePerception = 10
 
 // PartyVision returns the campaign's player characters that have a player (the
 // living ones, and the dead ones as Dead), each with what it sees with: its derived darkvision, blindsight and
-// truesight (MR-036, D6). The maps module asks for it to work out what each
+// truesight (MR-036). The maps module asks for it to work out what each
 // player sees on a map with the fog of war on, after its own authorization
 // check, so it takes no caller. It implements maps.CharacterDirectory.
 //
 // The senses come from the derived sheet, so the race and the features count. A
 // druid in Wild Shape sends the beast's senses instead (a wolf has no darkvision),
-// and a player looking through their familiar's eyes sends them as Eyes (MR-037, D6).
+// and a player looking through their familiar's eyes sends them as Eyes (MR-037).
 func (s *Service) PartyVision(ctx context.Context, tx pgx.Tx, campaignID string) ([]link.PartyMember, error) {
 	rows, err := s.queriesIn(tx).ListPartyVision(ctx, campaignID)
 	if err != nil {

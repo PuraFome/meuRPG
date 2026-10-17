@@ -9,7 +9,7 @@
 //	MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:26257/defaultdb?sslmode=disable' make test
 //
 // Migrating a brand-new database for every test took about 25 seconds on
-// CockroachDB (each schema change is a job, and Etapa 6 brought 46
+// CockroachDB (each schema change is a job, and there are many
 // migrations), and the play package alone makes dozens of databases: CI hit
 // its 10-minute limit (PR #59). So the migrations run once per set of
 // migration files, into a template database named after their fingerprint

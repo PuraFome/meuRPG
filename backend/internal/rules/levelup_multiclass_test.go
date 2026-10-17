@@ -25,7 +25,7 @@ func doranFighter5() Build {
 	}
 }
 
-// wizardOne is what Doran picks to enter the Wizard: the cantrips and the
+// wizardOneChoices is what Doran picks to enter the Wizard: the cantrips and the
 // spellbook of a first level, two spells prepared.
 func wizardOneChoices() LevelUpChoices {
 	return LevelUpChoices{

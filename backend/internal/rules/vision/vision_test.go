@@ -97,7 +97,7 @@ func diff(t *testing.T, name string, got, want []string) {
 func TestVisionAgainstTheCave(t *testing.T) {
 	t.Parallel()
 	dark := compile(t, caveScene())
-	// Toren carries a torch in the second scene (E9-04): 6 m + 6 m.
+	// Toren carries a torch in the second scene: 6 m + 6 m.
 	torch := compile(t, caveScene(vision.Source{At: toren, BrightFt: 20, DimFt: 20}))
 	cases := []struct {
 		key    string
@@ -268,7 +268,7 @@ func TestPassivePenalty(t *testing.T) {
 
 func TestNoWalls(t *testing.T) {
 	t.Parallel()
-	// Without walls, sight is limited only by light (Q68).
+	// Without walls, sight is limited only by light.
 	g := grid.Grid{Columns: 12, Rows: 12}
 	lit := compile(t, vision.Scene{Grid: g, Base: grid.Dark, Sources: []vision.Source{{At: grid.Square{Col: 6, Row: 6}, BrightFt: 10, DimFt: 10}}})
 	v := lit.See(vision.Viewer{At: grid.Square{Col: 0, Row: 0}})

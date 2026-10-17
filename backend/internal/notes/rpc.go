@@ -24,7 +24,7 @@ import (
 // requirePlayer is the start of every handler: the caller must be an active
 // player of the campaign. The campaign's master gets `not_found`, as for a
 // note that is not there: the master has no notes, and nothing here tells them
-// anything about the players' (RN-20, question 60).
+// anything about the players' (RN-20).
 func requirePlayer(ctx context.Context, campaignID string) (authz.Membership, error) {
 	m, err := authz.RequireCampaignMember(ctx, campaignID)
 	if err != nil {

@@ -67,7 +67,7 @@ func TestAttackFromLegacyRejectsAnOutOfRangeBonus(t *testing.T) {
 	}
 }
 
-// TestLoadSheetUpgradesALegacyAttack reads sheets as stored before Etapa 6.
+// TestLoadSheetUpgradesALegacyAttack reads sheets as stored with the old attack shape.
 func TestLoadSheetUpgradesALegacyAttack(t *testing.T) {
 	t.Run("readable damage becomes an attack", func(t *testing.T) {
 		sheet, err := loadSheet("c1", []byte(`{"basic":{"hit_points_max":7,"armor_class":15,"speed_ft":30,"attack_bonus":4,"damage":"1d6+2 cortante"}}`))

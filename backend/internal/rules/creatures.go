@@ -12,7 +12,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/srd51"
 )
 
-// The SRD creatures (MR-037, Etapa 9): the 334 stat blocks of
+// The SRD creatures (MR-037): the 334 stat blocks of
 // data/monsters.json, the lists the screens search, and MonsterDerived, which
 // turns a stat block into the Derived that combat already reads. A creature
 // is a familiar, a summoned beast, a Wild Shape form (wildshape.go) or one
@@ -40,8 +40,8 @@ func crEighths(rating string) (int, bool) {
 	return 8 * n, true
 }
 
-// sizeNamePT, creatureTypeNamePT, armorClassNamePT and saveSuccessNamePT are
-// the Portuguese labels of the stat block's fixed words.
+// sizeNamePT, creatureTypeNamePT and armorClassNamePT are the Portuguese
+// labels of the stat block's fixed words.
 var (
 	sizeNamePT = map[string]string{
 		"Tiny": "Miúdo", "Small": "Pequeno", "Medium": "Médio", "Large": "Grande", "Huge": "Enorme", "Gargantuan": "Imenso",

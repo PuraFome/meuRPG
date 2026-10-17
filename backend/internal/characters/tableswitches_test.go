@@ -407,7 +407,7 @@ func TestRN23_ANewChoiceOfAnOffOptionIsRefused(t *testing.T) {
 	if err != nil || pv.Msg.GetRefusal().GetReason() != charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_SWITCHED_OFF_CHOICE || pv.Msg.GetAfter() != nil {
 		t.Errorf("the player's preview of an off subclass: error = %v, refusal = %v, after = %v; want the refusal and no sheet", err, pv.Msg.GetRefusal(), pv.Msg.GetAfter())
 	}
-	// A sheet that already has an off class keeps working (question 80): the subclass
+	// A sheet that already has an off class keeps working: the subclass
 	// that is on is offered and accepted, whatever the class's switch says.
 	master.setOff(t, campaign, false, sub.GetKey())
 	master.setOff(t, campaign, true, "class:fighter")

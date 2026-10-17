@@ -63,7 +63,7 @@ func baseScoreList(full *charactersv1.FullSheet) []int {
 	}
 }
 
-// storedSets is what character_ability_rolls.sets holds: the dice of the six sets.
+// decodeSets reads what character_ability_rolls.sets holds: the dice of the six sets.
 func decodeSets(raw []byte) ([][]int, error) {
 	var sets [][]int
 	if err := json.Unmarshal(raw, &sets); err != nil {

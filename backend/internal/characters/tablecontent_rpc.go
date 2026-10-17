@@ -29,7 +29,7 @@ import (
 // bumps the campaign's content revision (so two writes of a campaign run one
 // after the other, and a sheet written next to one is ordered against it), then
 // checks the WHOLE campaign's overlay with rules.Content.With, and only then
-// writes: a refused overlay changes nothing. Edits are live (question 80): the
+// writes: a refused overlay changes nothing. Edits are live: the
 // next read of any request sees the new revision.
 
 var _ rulesv1connect.TableContentServiceHandler = (*Service)(nil)
@@ -665,7 +665,7 @@ func switchedOff(ctx context.Context, q *charactersdb.Queries, campaignID, key s
 // between cantrip and leveled. The last one is why: a sheet keeps its cantrips and
 // its leveled spells in different lists, and Validate refuses a spell in the wrong
 // one, so such an edit would make an unrelated save of a sheet that uses the spell
-// fail (question 80: a change of an entry never stops another edit).
+// fail (a change of an entry never stops another edit).
 func immutableChange(kind rulesv1.TableContentKind, old, next tableBody) *rulesv1.TableContentViolation {
 	var from, to, field string
 	switch kind {

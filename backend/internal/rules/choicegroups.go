@@ -467,7 +467,7 @@ func optionLabel(name string) string {
 	return name
 }
 
-// effectCount is the count of the first "choice" effect of a kind a key has.
+// effectChoices lists the "choice" effects of a kind that a key has.
 func (c *content) effectChoices(key, kind string) []*Effect {
 	var out []*Effect
 	for _, e := range c.effects[key] {

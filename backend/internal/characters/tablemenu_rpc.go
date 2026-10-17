@@ -10,7 +10,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
-// The class editor's two reads (slice 10.3, MR-025): the defaults of the 20-level
+// The class editor's two reads (MR-025): the defaults of the 20-level
 // table and the closed menu of effects. Both are rules content, so they come from
 // the rules package as it is, and the browser computes and hard-codes nothing of
 // them. Only the master reads them: they are for the editor.

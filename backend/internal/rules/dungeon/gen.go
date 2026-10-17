@@ -67,7 +67,6 @@ type gen struct {
 	anyBlocked bool
 
 	hook func(stage string, g *gen)
-	// onDiscard is a test probe: called for each discarded group.
 	// Test probes: onLater is called when a deferred group links on a later
 	// pass (with the number of groups discarded so far); passes is the number
 	// of passes the connectivity phase ran; onDeadEndDraw sees every chance

@@ -179,7 +179,7 @@ func TestMR002_OnlyTheMasterManagesInvites(t *testing.T) {
 // MR-003, first criterion, the part this module owns: Dado um convite válido
 // para "Mirathel", quando o jogador abre o link e faz login, então vira
 // jogador da campanha, que o mestre já vê na campanha. (Creating the player's
-// character comes with the characters module, in Etapa 4.)
+// character comes with the characters module.)
 func TestMR003_ValidInviteMakesTheUserAPlayerTheMasterSees(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)

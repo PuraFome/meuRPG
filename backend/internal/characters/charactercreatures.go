@@ -26,7 +26,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
-// The character's creatures (MR-037, Etapa 9): the familiar, the animals and
+// The character's creatures (MR-037): the familiar, the animals and
 // undead a spell summoned, the creatures the master gave. A creature belongs
 // to a player's character and lasts, from one session to the next, until the
 // player or the master dismisses it. This file has the CharacterService

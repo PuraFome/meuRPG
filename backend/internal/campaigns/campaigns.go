@@ -87,7 +87,7 @@ type Profiles interface {
 const PendingMemberLifetime = 30 * 24 * time.Hour
 
 // Characters approves a pending member's character when an invite without
-// approval promotes them (RN-15, Q25). The characters module implements it
+// approval promotes them (RN-15). The characters module implements it
 // (characters.Service); cmd/api connects the two with SetCharacters, and
 // neither package imports the other.
 type Characters interface {

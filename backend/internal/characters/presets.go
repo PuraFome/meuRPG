@@ -26,7 +26,7 @@ func (s *Service) ListTrapPresets(
 	if _, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId()); err != nil {
 		return nil, err
 	}
-	content := s.srd // the SRD's presets: no table changes them (plan D1), and maps checks their keys against the SRD
+	content := s.srd // the SRD's presets: no table changes them, and maps checks their keys against the SRD
 	res := &rulesv1.ListTrapPresetsResponse{}
 	for _, p := range content.TrapPresets() {
 		res.Presets = append(res.Presets, trapPresetToProto(content, p))
@@ -55,7 +55,7 @@ func (s *Service) ListLightPresets(
 	if _, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId()); err != nil {
 		return nil, err
 	}
-	content := s.srd // the SRD's presets: no table changes them (plan D1), and maps checks their keys against the SRD
+	content := s.srd // the SRD's presets: no table changes them, and maps checks their keys against the SRD
 	res := &rulesv1.ListLightPresetsResponse{}
 	for _, l := range content.LightPresets() {
 		res.Presets = append(res.Presets, &rulesv1.LightPreset{

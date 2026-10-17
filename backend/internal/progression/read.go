@@ -41,7 +41,7 @@ var modeToProto = map[string]progressionv1.XPAwardMode{
 }
 
 // ListXPAwards implements progressionv1connect.ProgressionServiceHandler. Every
-// member reads the whole history (question 50).
+// member reads the whole history.
 func (s *Service) ListXPAwards(
 	ctx context.Context,
 	req *connect.Request[progressionv1.ListXPAwardsRequest],

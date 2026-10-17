@@ -39,7 +39,7 @@ func (s *Service) SceneOptions(ctx context.Context, tx pgx.Tx, campaignID, chara
 // SceneCheckName implements play.CombatRoster: the Portuguese name of a scene
 // check by its key, "" for any other key.
 func (s *Service) SceneCheckName(key string) string {
-	// The skills are the SRD's: no table content adds one (plan D1).
+	// The skills are the SRD's: no table content adds one.
 	name, _ := s.srd.SceneCheckName(key)
 	return name
 }

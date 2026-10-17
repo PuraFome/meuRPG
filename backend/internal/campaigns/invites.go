@@ -121,8 +121,8 @@ type joinResult struct {
 //  1. Find the invite by the token's hash and lock it (FOR UPDATE).
 //  2. Already a member, or a pending member? Return the campaign; nothing
 //     changes, and no use of the invite is spent. This makes AcceptInvite
-//     idempotent, so a double click or a retry is harmless. One exception
-//     (Q25): a pending member who accepts an invite that works now and does
+//     idempotent, so a double click or a retry is harmless. One exception:
+//     a pending member who accepts an invite that works now and does
 //     NOT require approval is promoted, see promotePending.
 //  3. Otherwise the invite must work: not revoked, not used up, not expired.
 //  4. Spend one use and add the membership: active, or pending when the
@@ -200,7 +200,7 @@ func lockInvite(ctx context.Context, q *campaignsdb.Queries, tokenHash []byte) (
 
 // rejoin answers a caller who is already a member, or a pending member
 // (step 2 of acceptInvite): nothing changes, except the promotion of a
-// pending member by an invite that works and needs no approval (Q25).
+// pending member by an invite that works and needs no approval .
 func (s *Service) rejoin(ctx context.Context, q *campaignsdb.Queries, tx pgx.Tx, invite campaignsdb.CampaignInvite,
 	campaign campaignsdb.Campaign, member campaignsdb.GetMembershipRow, userID string, now time.Time,
 ) (joinResult, error) {
@@ -264,7 +264,7 @@ func addPlayer(ctx context.Context, q *campaignsdb.Queries, invite campaignsdb.C
 }
 
 // promotePending turns userID's pending membership into an active one with
-// an invite that works and needs no approval (Q25), inside the transaction
+// an invite that works and needs no approval , inside the transaction
 // of acceptInvite, where the invite row is already locked. It spends one use
 // like any join, activates the membership (which also drops the 30-day
 // deadline) and approves the character waiting for approval, if they

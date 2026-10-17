@@ -23,13 +23,12 @@ The `rules` packages are pure (no database, Docker or network) and are the fast 
 ```bash
 cd backend
 go test ./internal/rules/...                              # the engine, the SRD snapshot, the formulas
-go test ./internal/rules -run Golden -update              # rewrite testdata/golden/pensantus.json after an intentional change; review the diff
-go test ./internal/rules -run TableCharacterGolden -update
-go test ./internal/rules/dungeon -run Golden -update      # changing the generator's output also requires bumping Version in types.go
+go test ./internal/rules -update                          # rewrite every golden of the package (testdata/golden/*.json) after an intentional change; review the diff
+go test ./internal/rules/dungeon -update                  # changing the generator's output also requires bumping Version in types.go
 ```
 
-Characterization tests pin what a function answers, refuses and writes, so that it can be split without changing it (see [CI](ci.md#complexity-limits)); they sit next to the code in every module, with their golden files under `testdata/`.
-A failing one means the output changed, which is not necessarily wrong: review the diff, and rewrite the golden only for an intended change.
+Characterization tests pin what a function answers, refuses and writes, so that it can be split without changing it (see [CI](ci.md#complexity-limits)); they sit next to the code in every module, with their golden files under `testdata/` (the sweeps of `rules/grid`, `vision`, `puzzle`, `combat` and `encounter` keep `testdata/*.sha256` hashes instead).
+A failing one means the output changed, which is not necessarily wrong: read the diff, and if the change is intended, refresh the files with the package's `-update` flag.
 Run a new golden test with `-count=5` once before committing it: a Go map's order is random, and a golden that depends on it fails only some of the time.
 Golden files outside `internal/rules` are compared by `backend/internal/platform/goldentest` (`Compare`, `JSON`, `Names` for IDs, `MaskTimes`), and `go test ./internal/<pkg> -update` rewrites them: one flag for every package that uses it; read the diff.
 `dbtest.QueryFaults` fails a sqlc query by name (`Arm`, or `ArmOnce(name, skip)` after skipping runs), so a test reaches a database-error path without a broken database; wrap the service pool's tracer with it.

@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// Light presets (MR-036, Etapa 9, D6): the radii of the SRD 5.1's lights, from
+// Light presets (MR-036): the radii of the SRD 5.1's lights, from
 // its equipment and spell texts, in effects/lights.json, written by hand and
 // checked by the loader. They fill the master's form for a light on the map
 // and the light a character carries. The bullseye lantern, which lights a

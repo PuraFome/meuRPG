@@ -13,7 +13,7 @@ import (
 )
 
 // The players' "Magias" page and the spell's target (MR-045, MR-025, RN-23), and the
-// free-text "Outro" background (MR-025, question 82). Each test starts its own
+// free-text "Outro" background (MR-025). Each test starts its own
 // database.
 
 // listSpells calls ListSpells as u, or fails the test.
@@ -359,7 +359,7 @@ func TestMR025_TheSpellDetailsSayWhomItReaches(t *testing.T) {
 }
 
 // TestMR025_TheOutroBackground: the free-text background follows SRD 5.1 "Customizing a
-// Background" (question 82): two skills, two tools or languages, a feature and the
+// Background": two skills, two tools or languages, a feature and the
 // equipment; the sheet calculates with it; what is missing is an issue, and what cannot
 // be is an error naming the field.
 func TestMR025_TheOutroBackground(t *testing.T) {

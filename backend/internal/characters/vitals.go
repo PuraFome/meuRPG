@@ -412,7 +412,7 @@ func (s *Service) saveWildShapeChange(ctx context.Context, q *charactersdb.Queri
 }
 
 // applyVitalsChange sets on v the values req sets, checking each against
-// its maximum. v already has the maximums. Errors are fieldErrors, with the
+// its maximum. v already has the maximums. Errors are fieldErr values, with the
 // request's field names. The checks run in vitalsChanges' order, and the first
 // refusal is the answer.
 func applyVitalsChange(v *playv1.CharacterVitals, req *playv1.AdjustCharacterVitalsRequest) error {

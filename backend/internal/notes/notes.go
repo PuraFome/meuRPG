@@ -1,4 +1,4 @@
-// Package notes is the players' private notes (MR-030, Etapa 8, D6): what a
+// Package notes is the players' private notes (MR-030): what a
 // player writes down during the campaign, tagged with a scene the group
 // discovered, listed next to the clues the master revealed to them
 // (NotesService).
@@ -43,7 +43,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/rpcerr"
 )
 
-// The limits (proposals of the plan, D6).
+// The limits (proposals of the plan).
 const (
 	// MaxNotes is how many notes a player may have in a campaign. The clues
 	// the master revealed do not count.

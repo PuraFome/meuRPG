@@ -434,7 +434,7 @@ func spellEconomy(ct rules.CastingTime) string {
 }
 
 // sortSpells puts the spells in the order "O que você pode fazer" lists them
-// (MR-014, question 57): the ones that can be cast now first, then the rest;
+// (MR-014): the ones that can be cast now first, then the rest;
 // in each group the cantrips first, then by circle, then by Portuguese name.
 // Shield is never castable on the character's own turn (a reaction when hit), so
 // it sorts with the rest. The order is stable, so spells that tie keep the

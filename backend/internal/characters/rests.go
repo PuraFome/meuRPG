@@ -132,14 +132,14 @@ func restEndAid(after *playv1.CharacterVitals) {
 	after.HitPointsCurrent = after.GetHitPointsMax()
 }
 
-// restRows reads the campaign's living, active player characters inside tx, each
-// with its vitals and maximums.
+// restRow is a living, active player character with its vitals and maximums.
 type restRow struct {
 	row  vitalsRow
 	m    vitalsMax
 	view *playv1.CharacterVitals
 }
 
+// restRows reads the campaign's living, active player characters inside tx.
 func (s *Service) restRows(ctx context.Context, tx pgx.Tx, campaignID string) ([]restRow, error) {
 	q := s.queries.WithTx(tx)
 	rows, err := q.ListVitals(ctx, campaignID)
@@ -514,7 +514,7 @@ func (s *Service) CreateSpellSlot(ctx context.Context, tx pgx.Tx, campaignID, ch
 // ConvertSpellSlot expends a free spell slot of the level for as many sorcery points
 // as its level (Flexible Casting), when the points do not pass the maximum. It returns
 // the vitals before and after and the points gained. The refusals are link's:
-// ErrNoResource, ErrNoFreeSlot, ErrPointsFull and ErrPointsOver (PointsErrors with the
+// ErrNoResource, ErrNoFreeSlot, ErrPointsFull and ErrPointsOver (link.PointsError, with the
 // points there are and the maximum). It implements play.RestKeeper.
 func (s *Service) ConvertSpellSlot(ctx context.Context, tx pgx.Tx, campaignID, characterID string, level int) (before, after *playv1.CharacterVitals, gain int, err error) {
 	r, _, err := s.vitalsOfRow(ctx, tx, campaignID, characterID)
