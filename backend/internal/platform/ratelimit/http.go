@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+
+	"github.com/PuraFome/meuRPG/backend/internal/platform/rpcerr"
 )
 
 // RetryAfterSeconds is wait in the whole seconds the Retry-After header
@@ -40,7 +42,7 @@ func IsRateLimited(err error) bool {
 // may carry no valid session. /auth/ has its own, stricter limit
 // (identity/login.go); the static app and /healthz touch none, and /readyz
 // shares one database ping per window (httpserver/health.go).
-var limitedPrefixes = []string{"/meurpg.", "/images/", "/uploads/"}
+var limitedPrefixes = []string{"/meurpg.", "/images/", "/uploads/", "/session-messages/"}
 
 // Middleware limits the API routes by client IP, before anything else
 // reads the session: the cheapest place to stop a script that sends
@@ -85,6 +87,6 @@ func writeTooMany(w http.ResponseWriter, wait time.Duration) {
 	h.Set("Content-Type", "application/json")
 	h.Set("Cache-Control", "no-store")
 	w.WriteHeader(http.StatusTooManyRequests)
-	body := fmt.Sprintf(`{"code":"resource_exhausted","reason":"RATE_LIMITED","message":"too many requests, please wait %d seconds and try again"}`, secs)
+	body := fmt.Sprintf(`{"code":"resource_exhausted","reason":%q,"message":"too many requests, please wait %d seconds and try again"}`, rpcerr.ReasonRateLimited, secs)
 	_, _ = w.Write([]byte(body))
 }

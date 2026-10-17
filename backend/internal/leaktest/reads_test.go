@@ -324,6 +324,12 @@ var reads = []read{
 
 	// ===== PlayService
 	{
+		procedure: playv1connect.PlayServiceListSessionMessagesProcedure, allow: members, why: "each reads the lines meant for them (RN-36): the table's, their own, the ones that name them",
+		req: func(w *world) proto.Message {
+			return &playv1.ListSessionMessagesRequest{CampaignId: w.campaign}
+		},
+	},
+	{
 		procedure: playv1connect.PlayServiceGetLiveSessionProcedure, allow: members,
 		req: func(w *world) proto.Message { return &playv1.GetLiveSessionRequest{CampaignId: w.campaign} },
 	},

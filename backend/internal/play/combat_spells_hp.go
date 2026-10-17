@@ -439,8 +439,7 @@ func (s *Service) raiseMaxHP(ctx context.Context, c *combatTx, t fxTarget, amoun
 // raiseCombatantMaxHP is raiseMaxHP for an NPC or a creature, whose hit points are on the combatant.
 func (s *Service) raiseCombatantMaxHP(ctx context.Context, c *combatTx, t fxTarget, bonus int32, h *castHit) error {
 	bonusBefore := t.c.HpMaxBonus
-	stronger := max(bonus, bonusBefore)
-	rose := stronger - bonusBefore
+	stronger, rose := aidRaise(bonusBefore, bonus)
 	before, maxBefore := hpOf(t.c), conv.OrZero(t.c.HpMax)
 	h.Healed, h.Gain, h.Restore, h.MaxBefore, h.BonusBefore = &rose, gainMaximum, &before, &maxBefore, &bonusBefore
 	now := before
@@ -461,7 +460,8 @@ func (s *Service) raiseCombatantMaxHP(ctx context.Context, c *combatTx, t fxTarg
 
 // raiseCharacterMaxHP is raiseMaxHP for a player's character, whose bonus is kept on its vitals.
 func (s *Service) raiseCharacterMaxHP(ctx context.Context, c *combatTx, t fxTarget, bonus int32, h *castHit) (*playv1.CharacterVitals, error) {
-	b, a, err := s.vitals.SetHitPointsMaxBonus(ctx, c.tx, c.session.CampaignID, t.c.CharacterID, max(bonus, clamp32(t.bonus, 0, math.MaxInt32)))
+	stronger, _ := aidRaise(clamp32(t.bonus, 0, math.MaxInt32), bonus)
+	b, a, err := s.vitals.SetHitPointsMaxBonus(ctx, c.tx, c.session.CampaignID, t.c.CharacterID, stronger)
 	if err != nil {
 		return nil, err
 	}

@@ -36,9 +36,11 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/characters/contenttest"
 	"github.com/PuraFome/meuRPG/backend/internal/identity"
 	"github.com/PuraFome/meuRPG/backend/internal/maps"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/choicetest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
+	"github.com/PuraFome/meuRPG/backend/internal/play/voice"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -114,6 +116,15 @@ func (fakeSessions) UserID(ctx context.Context) (string, error) {
 	return "", errSignIn()
 }
 
+// AuthenticateRequest finds the caller of a plain HTTP request (the audio route), like identity's.
+func (fakeSessions) AuthenticateRequest(r *http.Request) (context.Context, error) {
+	ctx := withTestUser(r.Context(), r.Header)
+	if _, ok := ctx.Value(testUserKey{}).(string); !ok {
+		return nil, errSignIn()
+	}
+	return ctx, nil
+}
+
 func (f fakeSessions) RecheckSession(ctx context.Context) error {
 	userID, err := f.UserID(ctx)
 	if err != nil {
@@ -154,6 +165,13 @@ func (c *fakeClock) Now() time.Time {
 	return c.now
 }
 
+// advance moves the clock on: a test waits by this, never by sleeping.
+func (c *fakeClock) advance(d time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.now = c.now.Add(d)
+}
+
 type harness struct {
 	t      *testing.T
 	pool   *pgxpool.Pool
@@ -165,6 +183,8 @@ type harness struct {
 	chars  *characters.Service
 	camps  *campaigns.Service
 	vision *visionCounter // how many times the fog was told that what the players see changed
+	clock  *fakeClock     // the service's clock, which a test moves on instead of waiting
+	voice  *voice.Fake    // makes the lines' audio; counts the voices it made
 }
 
 // newHarness serves the play, campaigns and characters services through
@@ -175,6 +195,7 @@ func newHarness(t *testing.T, live ...LiveConfig) *harness {
 	pool := dbtest.NewPool(t, "meurpg_play_test")
 	h := &harness{t: t, pool: pool, users: identity.NewPostgresStore(pool), roller: &scriptedRoller{}}
 	clock := &fakeClock{now: time.Now().Truncate(time.Microsecond)}
+	h.clock = clock
 	logger := slog.New(slog.DiscardHandler)
 	var liveConfig LiveConfig
 	if len(live) > 0 {
@@ -194,7 +215,14 @@ func newHarness(t *testing.T, live ...LiveConfig) *harness {
 	}
 	h.vision = &visionCounter{SessionMaps: maps.NewSessionMaps(pool)}
 	chars.SetGallery(maps.NewSessionMaps(pool)) // an NPC's portrait is an image of the gallery (MR-031)
-	svc, err := New(Config{Pool: pool, Sheets: chars, Vitals: chars, Campaigns: camps, Maps: h.vision, Roster: chars, Dice: testDice{camps}, Defaults: camps, Roller: h.roller, Live: liveConfig, Logger: logger, Now: clock.Now})
+	blobs, err := blob.NewFS(t.TempDir())
+	if err != nil {
+		t.Fatalf("blob.NewFS() error = %v", err)
+	}
+	t.Cleanup(func() { _ = blobs.Close() })
+	h.voice = &voice.Fake{}
+	messages := MessagesConfig{Profiles: h.users, Voice: h.voice, Blobs: blobs}
+	svc, err := New(Config{Messages: messages, Pool: pool, Sheets: chars, Vitals: chars, Campaigns: camps, Maps: h.vision, Roster: chars, Dice: testDice{camps}, Defaults: camps, Roller: h.roller, Live: liveConfig, Logger: logger, Now: clock.Now})
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
@@ -431,6 +459,10 @@ func (v *visionCounter) VisionChanged(ctx context.Context, campaignID, mapID str
 	v.n.Add(1)
 	v.SessionMaps.VisionChanged(ctx, campaignID, mapID)
 }
+
+// afterThePlayersChance moves the clock past the time a player has to answer a question before the master may (the
+// test clock: nothing waits).
+func (h *harness) afterThePlayersChance() { h.clock.advance(heldPlayerFirst + time.Second) }
 
 // goldenBlocks collects what the scenarios of a test read, by name.
 type goldenBlocks struct {

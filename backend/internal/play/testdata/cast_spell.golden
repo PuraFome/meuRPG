@@ -1,20 +1,19 @@
 == a bardic die and the master casting ==
-cast {"slot":{"level":1},"spellKey":"spell:guiding-bolt","targets":[{"attackMode":"ROLL_MODE_NORMAL","attackRoll":{"diceCount":1,"diceSides":20,"faces":[5],"modifier":5,"physical":true,"total":10},"combatantId":"Goblin","cover":"COVER_DEGREE_NONE","outcome":"ATTACK_OUTCOME_MISS"}]}
+cast 
 area 
-inspiration 
+inspiration {"d20":{"diceCount":1,"diceSides":20,"faces":[5],"modifier":5,"physical":true,"total":10},"fromName":"Orla","sides":8}
 lucky 
 summoned 0
 hidden hits {}
 pending reveal false
 held false
-event spell_cast {"cast_id": "?", "combatant_id": "Brisa", "hits": [{"d20": 5, "modifier": 5, "outcome": "miss", "physical": true, "roll_mode": "normal", "suggested_mode": "normal", "target_ac": 12, "target_id": "Goblin", "total": 10}], "key": "spell:guiding-bolt", "round": 1, "slot": {"level": 1}}
-combatant Brisa | true | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | true | false | false | {} | false | false
+combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Orla | false | true | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-vitals Brisa | <nil> | 0 | {1,0,0,0,0,0,0,0,0} | 0
 vitals Orla | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0
+inspiration hold spell_attack | {5} | 5 | 10 | 0 | true | -1
 == a bardic die asked for a spell attack with disadvantage ==
 cast 
 area 
@@ -278,7 +277,7 @@ event combatant_moved {"col": 7, "combatant_id": "Capitão Goblin", "distance_df
 event combatant_moved {"col": 7, "combatant_id": "Goblin", "distance_dft": 100, "distance_ft": 10, "from": {"col": 9, "cover": "none", "placed": true, "row": 5}, "round": 1, "row": 5}
 event combatant_moved {"col": 5, "combatant_id": "Toren", "distance_dft": 112, "distance_ft": 11, "from": {"col": 6, "cover": "none", "placed": true, "row": 5}, "round": 1, "row": 3}
 event combatant_hidden_set {"by_area": true, "combatant_id": "Capitão Goblin", "round": 1}
-event spell_cast {"cast_id": "?", "combatant_id": "Pensantus", "dx": 1, "hits": [{"hidden_at_cast": true, "pending_id": "?", "save": {"bonus_unknown": true, "d20": 5, "dc": 14, "roll_mode": "normal", "total": 5}, "target_id": "Capitão Goblin"}, {"pending_id": "?", "save": {"bonus_unknown": true, "d20": 6, "dc": 14, "roll_mode": "normal", "total": 6}, "target_id": "Goblin"}], "key": "spell:burning-hands", "placed": true, "reveal_lines": ["?"], "revealed": ["Capitão Goblin"], "round": 1, "slot": {"level": 1}}
+event spell_cast {"cast_id": "?", "combatant_id": "Pensantus", "dx": 1, "hits": [{"hidden_at_cast": true, "pending_id": "?", "save": {"bonus_unknown": true, "d20": 5, "dc": 14, "roll_mode": "normal", "total": 5}, "target_id": "Capitão Goblin"}, {"pending_id": "?", "save": {"bonus_unknown": true, "d20": 6, "dc": 14, "roll_mode": "normal", "total": 6}, "target_id": "Goblin"}], "key": "spell:burning-hands", "placed": true, "reveal_lines": ["?"], "revealed_hits": true, "round": 1, "slot": {"level": 1}}
 combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
@@ -353,7 +352,7 @@ event combatant_moved {"col": 7, "combatant_id": "Capitão Goblin", "distance_df
 event combatant_moved {"col": 7, "combatant_id": "Goblin", "distance_dft": 100, "distance_ft": 10, "from": {"col": 9, "cover": "none", "placed": true, "row": 5}, "round": 1, "row": 5}
 event combatant_moved {"col": 5, "combatant_id": "Toren", "distance_dft": 112, "distance_ft": 11, "from": {"col": 6, "cover": "none", "placed": true, "row": 5}, "round": 1, "row": 3}
 event combatant_hidden_set {"by_area": true, "combatant_id": "Capitão Goblin", "round": 1}
-event spell_cast {"cast_id": "?", "combatant_id": "Pensantus", "dx": 1, "hits": [{"hidden_at_cast": true, "pending_id": "?", "save": {"bonus_unknown": true, "d20": 5, "dc": 14, "roll_mode": "normal", "total": 5}, "target_id": "Capitão Goblin"}, {"pending_id": "?", "save": {"bonus_unknown": true, "d20": 6, "dc": 14, "roll_mode": "normal", "total": 6}, "target_id": "Goblin"}], "key": "spell:burning-hands", "placed": true, "reveal_lines": ["?"], "revealed": ["Capitão Goblin"], "round": 1, "slot": {"level": 1}}
+event spell_cast {"cast_id": "?", "combatant_id": "Pensantus", "dx": 1, "hits": [{"hidden_at_cast": true, "pending_id": "?", "save": {"bonus_unknown": true, "d20": 5, "dc": 14, "roll_mode": "normal", "total": 5}, "target_id": "Capitão Goblin"}, {"pending_id": "?", "save": {"bonus_unknown": true, "d20": 6, "dc": 14, "roll_mode": "normal", "total": 6}, "target_id": "Goblin"}], "key": "spell:burning-hands", "placed": true, "reveal_lines": ["?"], "revealed_hits": true, "round": 1, "slot": {"level": 1}}
 combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
@@ -376,7 +375,7 @@ event combatant_moved {"col": 7, "combatant_id": "Capitão Goblin", "distance_df
 event combatant_moved {"col": 7, "combatant_id": "Goblin", "distance_dft": 100, "distance_ft": 10, "from": {"col": 9, "cover": "none", "placed": true, "row": 5}, "round": 1, "row": 5}
 event combatant_moved {"col": 5, "combatant_id": "Toren", "distance_dft": 112, "distance_ft": 11, "from": {"col": 6, "cover": "none", "placed": true, "row": 5}, "round": 1, "row": 3}
 event combatant_hidden_set {"by_area": true, "combatant_id": "Capitão Goblin", "round": 1}
-event spell_cast {"cast_id": "?", "combatant_id": "Pensantus", "dx": 1, "hits": [{"hidden_at_cast": true, "pending_id": "?", "save": {"bonus_unknown": true, "d20": 5, "dc": 14, "roll_mode": "normal", "total": 5}, "target_id": "Capitão Goblin"}, {"pending_id": "?", "save": {"bonus_unknown": true, "d20": 6, "dc": 14, "roll_mode": "normal", "total": 6}, "target_id": "Goblin"}], "key": "spell:burning-hands", "placed": true, "reveal_lines": ["?"], "revealed": ["Capitão Goblin"], "round": 1, "slot": {"level": 1}}
+event spell_cast {"cast_id": "?", "combatant_id": "Pensantus", "dx": 1, "hits": [{"hidden_at_cast": true, "pending_id": "?", "save": {"bonus_unknown": true, "d20": 5, "dc": 14, "roll_mode": "normal", "total": 5}, "target_id": "Capitão Goblin"}, {"pending_id": "?", "save": {"bonus_unknown": true, "d20": 6, "dc": 14, "roll_mode": "normal", "total": 6}, "target_id": "Goblin"}], "key": "spell:burning-hands", "placed": true, "reveal_lines": ["?"], "revealed_hits": true, "round": 1, "slot": {"level": 1}}
 combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
@@ -1148,7 +1147,7 @@ pending reveal false
 held false
 event combatant_hidden_set {"by_area": true, "combatant_id": "Goblin 2", "round": 1}
 event combatant_hidden_set {"by_area": true, "combatant_id": "Goblin 3", "round": 1}
-event spell_cast {"area_col": 20, "area_row": 7, "cast_id": "?", "combatant_id": "Pensantus", "hits": [{"pending_id": "?", "save": {"bonus": 2, "d20": 10, "dc": 15, "roll_mode": "normal", "total": 12}, "target_id": "Toren"}, {"cover": "half", "cover_bonus": 2, "cover_source": "map", "pending_id": "?", "save": {"bonus": 2, "bonus_unknown": true, "d20": 10, "dc": 15, "roll_mode": "normal", "total": 12}, "target_id": "Goblin 1"}, {"cover": "half", "cover_bonus": 2, "cover_source": "map", "hidden_at_cast": true, "pending_id": "?", "save": {"bonus": 2, "bonus_unknown": true, "d20": 10, "dc": 15, "roll_mode": "normal", "total": 12}, "target_id": "Goblin 2"}, {"cover": "three_quarters", "cover_bonus": 5, "cover_source": "map", "hidden_at_cast": true, "pending_id": "?", "save": {"bonus": 5, "bonus_unknown": true, "d20": 10, "dc": 15, "roll_mode": "normal", "saved": true, "total": 15}, "target_id": "Goblin 3"}], "key": "spell:fireball", "placed": true, "reveal_lines": ["?", "?"], "revealed": ["Goblin 2", "Goblin 3"], "round": 1, "slot": {"level": 3}}
+event spell_cast {"area_col": 20, "area_row": 7, "cast_id": "?", "combatant_id": "Pensantus", "hits": [{"pending_id": "?", "save": {"bonus": 2, "d20": 10, "dc": 15, "roll_mode": "normal", "total": 12}, "target_id": "Toren"}, {"cover": "half", "cover_bonus": 2, "cover_source": "map", "pending_id": "?", "save": {"bonus": 2, "bonus_unknown": true, "d20": 10, "dc": 15, "roll_mode": "normal", "total": 12}, "target_id": "Goblin 1"}, {"cover": "half", "cover_bonus": 2, "cover_source": "map", "hidden_at_cast": true, "pending_id": "?", "save": {"bonus": 2, "bonus_unknown": true, "d20": 10, "dc": 15, "roll_mode": "normal", "total": 12}, "target_id": "Goblin 2"}, {"cover": "three_quarters", "cover_bonus": 5, "cover_source": "map", "hidden_at_cast": true, "pending_id": "?", "save": {"bonus": 5, "bonus_unknown": true, "d20": 10, "dc": 15, "roll_mode": "normal", "saved": true, "total": 15}, "target_id": "Goblin 3"}], "key": "spell:fireball", "placed": true, "reveal_lines": ["?", "?"], "revealed_hits": true, "round": 1, "slot": {"level": 3}}
 combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Goblin 1 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
@@ -1194,7 +1193,7 @@ pending reveal false
 held false
 event combatant_hidden_set {"by_area": true, "combatant_id": "Goblin 2", "round": 1}
 event combatant_hidden_set {"by_area": true, "combatant_id": "Goblin 3", "round": 1}
-event spell_cast {"area_col": 20, "area_row": 7, "cast_id": "?", "combatant_id": "Pensantus", "hits": [{"pending_id": "?", "save": {"bonus": 2, "d20": 10, "dc": 15, "roll_mode": "normal", "total": 12}, "target_id": "Toren"}, {"cover": "half", "cover_bonus": 2, "cover_source": "map", "pending_id": "?", "save": {"bonus": 2, "bonus_unknown": true, "d20": 10, "dc": 15, "roll_mode": "normal", "total": 12}, "target_id": "Goblin 1"}, {"cover": "half", "cover_bonus": 2, "cover_source": "map", "hidden_at_cast": true, "pending_id": "?", "save": {"bonus": 2, "bonus_unknown": true, "d20": 10, "dc": 15, "roll_mode": "normal", "total": 12}, "target_id": "Goblin 2"}, {"cover": "three_quarters", "cover_bonus": 5, "cover_source": "map", "hidden_at_cast": true, "pending_id": "?", "save": {"bonus": 5, "bonus_unknown": true, "d20": 10, "dc": 15, "roll_mode": "normal", "saved": true, "total": 15}, "target_id": "Goblin 3"}], "key": "spell:fireball", "placed": true, "reveal_lines": ["?", "?"], "revealed": ["Goblin 2", "Goblin 3"], "round": 1, "slot": {"level": 3}}
+event spell_cast {"area_col": 20, "area_row": 7, "cast_id": "?", "combatant_id": "Pensantus", "hits": [{"pending_id": "?", "save": {"bonus": 2, "d20": 10, "dc": 15, "roll_mode": "normal", "total": 12}, "target_id": "Toren"}, {"cover": "half", "cover_bonus": 2, "cover_source": "map", "pending_id": "?", "save": {"bonus": 2, "bonus_unknown": true, "d20": 10, "dc": 15, "roll_mode": "normal", "total": 12}, "target_id": "Goblin 1"}, {"cover": "half", "cover_bonus": 2, "cover_source": "map", "hidden_at_cast": true, "pending_id": "?", "save": {"bonus": 2, "bonus_unknown": true, "d20": 10, "dc": 15, "roll_mode": "normal", "total": 12}, "target_id": "Goblin 2"}, {"cover": "three_quarters", "cover_bonus": 5, "cover_source": "map", "hidden_at_cast": true, "pending_id": "?", "save": {"bonus": 5, "bonus_unknown": true, "d20": 10, "dc": 15, "roll_mode": "normal", "saved": true, "total": 15}, "target_id": "Goblin 3"}], "key": "spell:fireball", "placed": true, "reveal_lines": ["?", "?"], "revealed_hits": true, "round": 1, "slot": {"level": 3}}
 combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Goblin 1 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false

@@ -114,6 +114,7 @@ func TestAnswerHeldRollIsAnsweredByTheOwnerAndTheMasterAndNoOneElse(t *testing.T
 				u := c.owner
 				if who == "master" {
 					u = c.a.master
+					c.a.h.afterThePlayersChance()
 				}
 				res, err := c.a.answerHeldRoll(t, u, c.hold, c.answer)
 				if err != nil {
@@ -146,6 +147,7 @@ func TestTheOwnerAndTheMasterAnsweringAtOnceSettleItOnce(t *testing.T) {
 		t.Fatalf("Pipo's attack = %v, %v; want the die's question", held, err)
 	}
 	hold := held.GetInspirationOffer().GetHoldId()
+	a.h.afterThePlayersChance() // the master's chance has come: both may answer
 	users := []*user{a.caio, a.master}
 	errs := make([]error, len(users))
 	var wg sync.WaitGroup

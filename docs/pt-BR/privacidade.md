@@ -93,6 +93,7 @@ As linhas que guardam só IDs, números e chaves de conteúdo não dizem nada so
 | Documento da campanha, ganchos de uma cena de RP, pistas que o mestre prepara e o encontro guardado num ponto de batalha | Só o mestre | Preparar o jogo | Contrato | Enquanto a campanha existir |
 | Pistas reveladas a um jogador (com uma cópia do texto) e as cenas que o grupo descobriu | O mestre e o jogador que as recebeu | Deixar o jogador reler o que foi dito, mesmo que o mestre edite a pista | Contrato | Enquanto a campanha existir, ou até a conta do jogador ser apagada. Se o mestre apaga a pista, a cópia fica com o jogador |
 | As anotações particulares do jogador (de 1 a 2.000 caracteres, com uma etiqueta de cena opcional) | Só o autor: nem o mestre, nem outro jogador | Deixar o jogador anotar o que acontece | Contrato | Até o autor apagar a anotação, a conta do autor ser apagada ou a campanha ser apagada |
+| A conversa da cena (MR-051, RN-36): o autor de cada linha (ID da conta), o falante (narrador, um NPC, um personagem ou fora do personagem), o texto (de 1 a 2.000 caracteres, texto livre), uma imagem opcional da galeria, a hora, os leitores quando não é para todos, uma chave de idempotência e a voz de uma linha do narrador ou de um NPC depois que alguém pediu para ouvir | O mestre lê todas as linhas. Um jogador lê as linhas para todos, as que o escolheram e as próprias: uma linha para outros leitores nunca é enviada a ele (RN-10) | Deixar a mesa conversar durante a sessão, também com um mestre remoto | Contrato | Enquanto a campanha existir. Quando a conta do autor é apagada, a linha fica e o autor passa a ser "Jogador removido" |
 | Quebra-cabeças: o texto do mestre (nome, pista, dicas, "Ao resolver", "Ao errar", informação dividida) e a solução; por sessão, cada jogada com o ID da conta, o personagem e **o que o jogador digitou** (uma resposta de enigma, uma mensagem decifrada), e cada tentativa de ganhar uma dica | O mestre escreve. Um jogador nunca lê a solução, as dicas ainda não soltas nem o texto de outro jogador; o mestre lê o que cada jogador digitou | Jogar quebra-cabeças ao vivo (MR-038, RN-27) | Contrato | Os quebra-cabeças, enquanto a campanha existir (são arquivados, não apagados). As jogadas e as tentativas, enquanto a sessão existir. Apagar uma conta tira o ID dela das jogadas e das tentativas; o texto digitado fica, anônimo, até a sessão sumir |
 | Motivos e nomes que o mestre ou um jogador escrevem no jogo: o nome de um combate, o motivo de um modo de rolagem ou de um prêmio de XP (até 120 caracteres), marcos planejados, o nome-base de um grupo de NPCs, os nomes que um jogador dá a um familiar ou outra criatura, o conteúdo da mesa (classes, magias, antecedentes e assim por diante) | O mestre (e o jogador dono, para o nome de uma criatura); o motivo de um prêmio de XP é lido por todos os membros | Jogar | Contrato | Enquanto a campanha existir. O histórico de XP registra quem deu o prêmio; o vínculo é limpo se essa conta for apagada |
 | Imagens da galeria (mapas, retratos, ilustrações): os pixels codificados de novo sem metadados, a miniatura, o nome tirado do arquivo (editável) e quem as enviou | O mestre envia e lista; um jogador só baixa uma imagem enquanto ela estiver visível para ele (RN-10) | Jogar (MR-019) | Contrato | Até o mestre apagar a imagem: a linha e os arquivos somem na hora, e o Cloud Storage guarda o arquivo mais 7 dias no soft delete. Quando uma campanha é apagada, as linhas somem; os arquivos, não (ver [Excluir a conta](#excluir-a-conta)) |
@@ -232,6 +233,8 @@ O que apagar uma conta faz, pelas regras do próprio banco:
 | Identidade, e-mail, nome de exibição, sessões, participações, as anotações particulares da pessoa, cópias de pistas, motivos de revisão e valores de habilidade rolados | Apagados |
 | As campanhas de um mestre, com tudo o que elas têm: membros, convites, personagens da campanha, NPCs, mapas, sessões, histórico, quebra-cabeças, pedidos de imagem | Apagadas |
 | Os personagens de um jogador | Ficam com a campanha e o mestre, sem vínculo com a conta. Um personagem que ficar sem jogador e sem campanha é varrido em até um dia |
+| O que a pessoa digitou num quebra-cabeça (uma resposta de enigma, uma mensagem decifrada), guardado nas jogadas de uma sessão | Fica, anônimo: as respostas digitadas ficam sem a conta, e o mestre continua lendo, até a sessão sumir. Nada no texto é procurado nem apagado |
+| Linhas da conversa da cena (MR-051) | Ficam, com o ID do autor limpo: aparecem como "Jogador removido". Uma linha que era para leitores escolhidos continua para o mestre e para os leitores que restam, nunca para todos |
 | Histórico da sessão, combatentes, prêmios de XP, envios, jogadas de quebra-cabeça | Ficam, com o ID da pessoa limpo. Os IDs dos jogadores que viram um NPC agir, guardados dentro de alguns payloads do histórico, não são limpos |
 | Os arquivos das imagens de uma campanha apagada, no bucket | **Não são apagados pelo banco.** O operador apaga o prefixo `campaigns/<id>/` à mão; isso não é automatizado |
 | Backups e logs | Somem em até 30 dias |
@@ -258,7 +261,7 @@ Um fornecedor fora do Brasil que consiga alcançá-los ainda faz uma transferên
 | Google Cloud | Cloud Run, o balanceador de carga e o Cloud Armor na frente dele, Cloud Logging, Cloud Storage, Secret Manager | Tudo, em São Paulo | Adendo de Processamento de Dados com as cláusulas-padrão brasileiras |
 | Cockroach Labs (CockroachDB Cloud) | O banco gerenciado e seus backups, no Google Cloud em São Paulo | O banco de dados | **A definir:** o contrato atual cobre o GDPR |
 | Google (login) | Entrar com o Google | O Google controla a própria conta; o app recebe só o identificador e o e-mail | Não é nosso operador |
-| Google (Gemini API) | Gera as imagens que o mestre pede, pelo servidor | Ver abaixo. O Google pode guardar dados por pouco tempo ou em cache **em qualquer país**: uma transferência internacional | [Termos dos serviços pagos da Gemini API](https://ai.google.dev/gemini-api/terms). **A definir:** o mecanismo de transferência |
+| Google (Gemini API) | Gera as imagens que o mestre pede e a voz das linhas do narrador e dos NPCs, pelo servidor | Ver abaixo. O Google pode guardar dados por pouco tempo ou em cache **em qualquer país**: uma transferência internacional | [Termos dos serviços pagos da Gemini API](https://ai.google.dev/gemini-api/terms). **A definir:** o mecanismo de transferência |
 | ImprovMX | Encaminha o e-mail enviado a `@meurpg.app` para quem responde ([Operação](../operations/runbook.md#dns-certificates-and-e-mail)) | A mensagem em trânsito. O log dele guarda remetente, destinatário e assunto por 7 dias, nunca o texto. Ele não diz onde ficam os servidores: conta como transferência internacional | **A definir:** o contrato e o mecanismo de transferência |
 
 ### O banco do app antigo
@@ -292,6 +295,17 @@ A chamada vai à Gemini API com `store=false`, então nada é guardado na nossa 
 - **A imagem que o Google devolve** é guardada como um envio, codificada de novo, com a mesma retenção.
   Uma referência JPEG de 1024 px derivada dela é guardada ao lado e apagada com ela.
 - **Só o mestre pede,** e o app é para maiores de 18 anos, então dado de menor nunca vai.
+
+### O que a voz envia ao Google (MR-051)
+
+Só as linhas do narrador e dos NPCs podem ser ouvidas, e só os leitores da linha podem pedir.
+O servidor chama o texto para fala da API Gemini (`generateContent`, que não guarda interação na nossa conta; pelos termos dos serviços pagos o Google ainda pode guardar dados por pouco tempo ou em cache, em qualquer país).
+
+- **O que vai:** o texto da linha, como o mestre escreveu, e o nome de uma voz de uma lista curta. O texto é livre: o mestre é avisado no compositor para não escrever nomes de pessoas reais.
+- **O que nunca vai:** a linha de um jogador (as linhas dos jogadores são só texto), um nome, um e-mail, um ID de conta ou de campanha, os leitores ou a imagem.
+- **Uma vez por linha:** o áudio é feito na primeira vez que um leitor toca em "Ouvir" e guardado no armazenamento de arquivos ao lado da linha, então o texto é enviado uma vez. É apagado com a campanha.
+- **Só os leitores ouvem:** a rota do áudio responde `404` a quem não pode ler a linha (RN-36).
+- **A chave e o texto nunca chegam a um log.** Um teto diário para o servidor todo limita a conta do Gemini.
 
 ### Logs no ELK
 

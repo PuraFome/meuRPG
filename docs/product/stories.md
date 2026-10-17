@@ -62,6 +62,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 | [MR-045](#mr-045-look-up-spells) | Rules | MVP |
 | [MR-048](#mr-048-cast-spells-outside-combat) | Combat | MVP |
 | [MR-050](#mr-050-campaign-package-export-and-import) | Campaign | MVP |
+| [MR-051](#mr-051-the-scenes-conversation) | Session | MVP |
 | [MR-049](#mr-049-reserved-characters-and-claim-links) | Character | MVP |
 | [MR-002](#mr-002-generate-an-invite) | Campaign | MVP (prerequisite) |
 | [MR-005](#mr-005-create-npcs) | Character | MVP (prerequisite) |
@@ -334,12 +335,12 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 
 **Halfling Lucky (RN-35)**
 - **Given** a halfling whose attack d20 (a weapon attack or an attack cantrip) shows a 1, typed or rolled in the app, **when** the roll comes back, **then** the sheet asks "Tirou 1: rolar de novo?" before any result: "Rolar de novo" rolls that d20 again (in the app or typed, RN-18) and the new roll stands, even another 1; "Ficar com o 1" keeps the natural 1, a miss; with advantage or disadvantage the question comes for the die that shows the 1, even the one that would not count, and only that die is rolled again; a Bardic Inspiration die the halfling holds is asked about after it, on the new roll; the result and the log say "Sortudo: 1 → 14" (SRD 5.1, Halfling, Lucky).
-- **Given** a halfling whose player rolls a d20 that shows a 1 on a scene check, a group check, a trap search out of a combat or a puzzle hint try, or, in a combat, on a spell attack against one target, an effect's saving throw or a concentration save, **when** the roll comes back, **then** the sheet asks "Tirou 1: rolar de novo?" before any result and nothing is written, spent or closed (the save's window stays open); the answer works as on an attack (the new d20 in the app or typed, or "Ficar com o 1"; one die of a pair; the Bardic Inspiration die after it, on the new roll) **and** Reliable Talent counts the new d20, not the 1; a reload asks again; the character rolls nothing else that could ask until it is answered; a roll the master makes for the halfling there never asks.
+- **Given** a halfling whose player rolls a d20 that shows a 1 on a scene check, a group check, a trap search out of a combat or a puzzle hint try, or, in a combat, on a spell attack against one target, an effect's saving throw or a concentration save, **when** the roll comes back, **then** the sheet asks "Tirou 1: rolar de novo?" before any result and nothing is written, spent or closed (the save's window stays open); the answer works as on an attack (the new d20 in the app or typed, or "Ficar com o 1"; one die of a pair; the Bardic Inspiration die after it, on the new roll) **and** Reliable Talent counts the new d20, not the 1; a reload asks again; the character rolls nothing else that could ask until it is answered; a roll the master makes for the halfling there (a save or a spell attack for a player's character, a group check rolled for the player) asks too: the master is asked in his own sheet, the player reads the same question, and the first answer wins ("Pending questions" below).
 - **Given** a player's halfling whose saving throw the app rolls inside someone else's action (a spell's save, a trap's save, the Dexterity save against Hellish Rebuke), **when** the d20 shows a 1, **then** nobody is asked: the app rolls that die again by itself and the new roll stands, even another 1 (with advantage or disadvantage, only the first die that shows a 1); the result and the log say "Sortudo: 1 → 14" to whoever sees that save's dice; an NPC with a halfling's sheet keeps its 1.
 - Death saves, initiative and contests do not ask about Lucky.
 
 **Pending questions (RN-35)**
-- **Given** a roll that waits for a question (Lucky's "Tirou 1: rolar de novo?" or the Bardic Inspiration die), **when** the master answers it for the player, **then** the roll is settled as if the player had answered (the d20 already rolled, the new die in the app or typed, the character the player's own), the player reads the result in the combat or the scene, and the die is spent once; **when** the player and the master answer at once, **then** the first answer wins and the other is told the roll was answered already.
+- **Given** a roll that waits for a question (Lucky's "Tirou 1: rolar de novo?" or the Bardic Inspiration die), **when** the master answers it for the player, **then** the roll is settled as if the player had answered (the d20 already rolled, the new die in the app or typed, the character the player's own), the player reads the result in the combat or the scene, and the die is spent once; **when** the master tries within 10 seconds of the question being asked, **then** the server refuses it with the seconds left ("Ainda é a vez de Brisa responder. Você pode responder em 3 s.") so that a present player has the first chance, and the player's own answer never waits; **when** the player and the master answer at once after that, **then** the first answer wins and the other is told the roll was answered already.
 - **Given** rolls that wait, **when** the master reads the pending questions, **then** the master reads every one of the table (a player's, in a combat or out of one, and an NPC's), each with the d20, the bonus and who rolled; **and** a player reads only their own; **and** another player is told a roll they may not answer does not exist.
 
 **Turn alerts**
@@ -1297,6 +1298,34 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - The players' characters arrive reserved (MR-049): invisible to the players until one claims it with the master's link.
 
 See [Architecture](../architecture/campaign-package.md).
+
+### MR-051: The scene's conversation
+
+**As a** master, **I want** a live text feed in the session where I narrate, speak as my NPCs and whisper to some players, and where the players answer in character or out of it, **so that** a table with a remote master plays without a call, and nobody reads what was not for them.
+
+- Priority: MVP
+- Rules: RN-10, RN-18, RN-36
+- Modules: play, maps
+
+#### Acceptance criteria
+- **Given** an open session, **when** the master sends a line as the narrator, **then** every member reads it, in the order sent, in the session screen and in the session summary.
+- **Given** the master speaks as an NPC of the campaign, **then** the line shows the NPC's name and its stage portrait when it has one; an id that is not an NPC of the campaign is refused.
+- **Given** a player, **when** they send a line as their own character, **then** it shows the character's name; as another player's character, **then** it is refused (RN-18); out of character, **then** it shows their display name.
+- **Given** the master chooses two players, **when** the line is sent, **then** only those two and the master receive its text, image, existence and notice; the third player gets nothing in the read, the stream, the summary or the voice (RN-36).
+- **Given** a player chooses "só o mestre", **then** only they and the master read the line; a player cannot choose other players.
+- **Given** a line, **when** it is longer than 2,000 characters or empty, **then** it is refused.
+- **Given** the master attaches an image of the gallery, **then** the line's readers can open that image and nobody else can through that line; a player cannot attach an image.
+- **Given** the master is typing, **then** the players see "O mestre está escrevendo…" for a few seconds; the hint carries no text and expires by itself.
+- **Given** a line of the narrator or of an NPC, **when** a reader asks to hear it, **then** the first request makes the voice and keeps it with the line, the next ones are served from the stored file, and a non-reader gets `404`.
+- **Given** the voice is not configured, **then** the audio route answers `failed_precondition` `OFF` and the app hides "Ouvir".
+- **Given** the same send is repeated with its key, **then** one line exists; too many lines in a short time are refused (`resource_exhausted`).
+- **Given** a player is erased, **then** their lines stay and the author reads "Jogador removido".
+
+#### In the app
+- The "Conversa" panel beside the stage and the map, and a tab on the phone; the master's composer has "Falar como", "Para", "Imagem da galeria" and "Enviar"; the player's has "Como <personagem>" and "Fora do personagem".
+
+#### Related
+- [RN-36](rules.md#rn-36-who-reads-a-line-of-the-scenes-conversation), [RN-10](rules.md), [RN-18](rules.md), [MR-028](#mr-028-show-an-image-to-the-players), [MR-039](#mr-039-ai-generated-images-for-dungeons-and-scenes). See [Architecture](../architecture/play/live-session.md#the-conversation-of-the-scene) and [Privacy](../privacy.md#what-the-voice-sends-to-google-mr-051).
 
 ### MR-049: Reserved characters and claim links
 

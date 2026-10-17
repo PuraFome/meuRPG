@@ -18,7 +18,7 @@ The `play` module's tables are split over three pages because there are 35 of th
 | `identity` | [identity.md](identity.md) | `users`, `user_identities`, `auth_sessions`, `oidc_login_states` |
 | `campaigns` | [campaigns.md](campaigns.md) | `campaigns`, `campaign_members`, `campaign_invites`, `campaign_documents`, `campaign_table_rules` |
 | `characters` | [characters.md](characters.md) | `characters`, `character_master_notes`, `character_reviews`, `claim_links`, `claim_sign_ins`, `character_vitals`, `character_wild_shapes`, `character_level_ups`, `character_level_up_rolls`, `character_ability_rolls`, `character_creatures`, `campaign_content`, `campaign_content_state`, `campaign_content_off`, `campaign_content_imports` |
-| `play` | [play.md](play.md) | `game_sessions`, `session_events`, `session_event_kinds`, `stage_npcs`, `spell_casts`, `revivify_requests`, `battle_encounters`, `group_checks`, `group_check_members`, `character_effects`, `character_inspiration`, `inspiration_holds`, `trap_damages` |
+| `play` | [play.md](play.md) | `game_sessions`, `session_events`, `session_event_kinds`, `session_messages`, `session_message_readers`, `stage_npcs`, `spell_casts`, `revivify_requests`, `battle_encounters`, `group_checks`, `group_check_members`, `character_effects`, `character_inspiration`, `inspiration_holds`, `trap_damages` |
 | `play` (combat) | [combat.md](combat.md) | `encounters`, `combatants`, `pending_damages`, `roll_holds`, `reaction_holds`, `reaction_windows`, `opportunity_offers`, `hidden_reveals`, `roll_mode_requests`, `combat_reasons`, `combatant_states`, `hit_riders`, `combat_contests`, `combat_holds`, `combat_hide_attempts`, `combat_hiding`, `combat_helps`, `combat_surprised` |
 | `play` (puzzles) | [puzzles.md](puzzles.md) | `puzzles`, `puzzle_runs`, `puzzle_moves`, `puzzle_hint_tries` |
 | `maps` | [gallery.md](gallery.md) | `gallery_images`, `image_requests`, `campaign_left_images` |
@@ -109,6 +109,7 @@ Keys and hashes are opaque values with no personal data.
 | --- | --- | --- |
 | `session_events` | `idempotency_key` (UUID), `idempotency_hash` | `UNIQUE (game_session_id, idempotency_key)`; `NULL` for an event without a key (NULLs do not collide). The hash covers the whole request but its key: the same key and request replays, another request is `invalid_argument`. |
 | `xp_awards` | `idempotency_key` (UUID), `idempotency_hash`, `undo_key`, `milestone_again` | `UNIQUE (campaign_id, idempotency_key)`. The undo has its own key. `milestone_again` lets the server refuse a key reused for another kind of request. |
+| `planned_milestone_moves` | `move_key`, `move_hash` | Primary key `(campaign_id, move_key)`; one row per `MoveMilestone` made with a key, since a move creates no row to hold it. The hash covers the request but its key. |
 | `image_requests` | `idempotency_key`, `idempotency_hash` | Unique per campaign. |
 | `puzzle_moves`, `puzzle_hint_tries` | `idempotency_key` (UUID) | `UNIQUE (run_id, idempotency_key)`: a repeated move returns the round as it is now. |
 | `roll_holds` (retired), `inspiration_holds` | `idempotency_key`, `answer_key` | Unique per encounter (`roll_holds`) or campaign (`inspiration_holds`); the answer key lets a retry find the hold answered. |
@@ -117,7 +118,7 @@ Keys and hashes are opaque values with no personal data.
 | `campaign_content_imports` | `create_key`, `create_hash`, `response` | Primary key `(campaign_id, create_key)`; a retry returns the stored `response`. |
 | `campaign_exports` | `create_key`, `create_hash` | Unique where set. |
 | `characters`, `map_points` | `create_key`, `create_hash` | `characters`: partial unique `(campaign_id, create_key)`, used by `CreateCharacter` and by "Create NPC" from a creature (one such NPC per campaign and creature). `map_points`: the treasure generator's "Put on the map". |
-| `campaigns`, `maps`, `scene_actions`, `scene_clues`, `player_notes`, `game_sessions`, `puzzles`, `planned_milestones`, `campaign_content`, `character_creatures` | `create_key`, `create_hash` (`TEXT`, optional) | The key of the RPC that creates the row. It stores the owner and the app's key (`<user>:<key>`, `<campaign>:<key>` or `<campaign>:<author>:<key>`), so it is unique per owner. A partial unique index `<table>_create_key_idx` makes it hold under concurrency. `NULL` on rows made without a key. See [Architecture](../architecture/api.md#contracts). |
+| `campaigns`, `maps`, `scene_actions`, `scene_clues`, `player_notes`, `game_sessions`, `session_messages`, `puzzles`, `planned_milestones`, `campaign_content`, `character_creatures` | `create_key`, `create_hash` (`TEXT`, optional) | The key of the RPC that creates the row. It stores the owner and the app's key (`<user>:<key>`, `<campaign>:<key>` or `<campaign>:<author>:<key>`), so it is unique per owner. A partial unique index `<table>_create_key_idx` makes it hold under concurrency. `NULL` on rows made without a key. See [Architecture](../architecture/api.md#contracts). |
 
 ## Reference tables
 

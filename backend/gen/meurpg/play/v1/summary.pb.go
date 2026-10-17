@@ -200,9 +200,14 @@ type SessionSummary struct {
 	// character took part in the session (fought, rolled a check or found
 	// treasure). The master
 	// never gets it.
-	Mine          *SessionCharacterSummary `protobuf:"bytes,10,opt,name=mine,proto3" json:"mine,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Mine *SessionCharacterSummary `protobuf:"bytes,10,opt,name=mine,proto3" json:"mine,omitempty"`
+	// The conversation of the session (MR-051), only the lines the caller may
+	// read (RN-36), oldest first: the last 500 at most.
+	Conversation []*SessionMessage `protobuf:"bytes,11,rep,name=conversation,proto3" json:"conversation,omitempty"`
+	// True when older lines the caller may read were left out.
+	ConversationTruncated bool `protobuf:"varint,12,opt,name=conversation_truncated,json=conversationTruncated,proto3" json:"conversation_truncated,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *SessionSummary) Reset() {
@@ -305,6 +310,20 @@ func (x *SessionSummary) GetMine() *SessionCharacterSummary {
 	return nil
 }
 
+func (x *SessionSummary) GetConversation() []*SessionMessage {
+	if x != nil {
+		return x.Conversation
+	}
+	return nil
+}
+
+func (x *SessionSummary) GetConversationTruncated() bool {
+	if x != nil {
+		return x.ConversationTruncated
+	}
+	return false
+}
+
 // GetSessionSummaryResponse returns the summary.
 type GetSessionSummaryResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -354,7 +373,7 @@ var File_meurpg_play_v1_summary_proto protoreflect.FileDescriptor
 
 const file_meurpg_play_v1_summary_proto_rawDesc = "" +
 	"\n" +
-	"\x1cmeurpg/play/v1/summary.proto\x12\x0emeurpg.play.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bmeurpg/play/v1/combat.proto\"c\n" +
+	"\x1cmeurpg/play/v1/summary.proto\x12\x0emeurpg.play.v1\x1a\x1egoogle/protobuf/duration.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bmeurpg/play/v1/combat.proto\x1a%meurpg/play/v1/session_messages.proto\"c\n" +
 	"\x18GetSessionSummaryRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12&\n" +
@@ -365,7 +384,7 @@ const file_meurpg_play_v1_summary_proto_rawDesc = "" +
 	"highlights\x12#\n" +
 	"\rchecks_passed\x18\x02 \x01(\x05R\fchecksPassed\x12!\n" +
 	"\fchecks_tried\x18\x03 \x01(\x05R\vchecksTried\x12*\n" +
-	"\x11treasure_found_po\x18\x04 \x01(\x05R\x0ftreasureFoundPo\"\x83\x04\n" +
+	"\x11treasure_found_po\x18\x04 \x01(\x05R\x0ftreasureFoundPo\"\xfe\x04\n" +
 	"\x0eSessionSummary\x129\n" +
 	"\n" +
 	"started_at\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x125\n" +
@@ -380,7 +399,9 @@ const file_meurpg_play_v1_summary_proto_rawDesc = "" +
 	"categories\x12A\n" +
 	"\aplayers\x18\t \x03(\v2'.meurpg.play.v1.SessionCharacterSummaryR\aplayers\x12;\n" +
 	"\x04mine\x18\n" +
-	" \x01(\v2'.meurpg.play.v1.SessionCharacterSummaryR\x04mine\"U\n" +
+	" \x01(\v2'.meurpg.play.v1.SessionCharacterSummaryR\x04mine\x12B\n" +
+	"\fconversation\x18\v \x03(\v2\x1e.meurpg.play.v1.SessionMessageR\fconversation\x125\n" +
+	"\x16conversation_truncated\x18\f \x01(\bR\x15conversationTruncated\"U\n" +
 	"\x19GetSessionSummaryResponse\x128\n" +
 	"\asummary\x18\x01 \x01(\v2\x1e.meurpg.play.v1.SessionSummaryR\asummaryB\xba\x01\n" +
 	"\x12com.meurpg.play.v1B\fSummaryProtoP\x01Z<github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1;playv1\xa2\x02\x03MPX\xaa\x02\x0eMeurpg.Play.V1\xca\x02\x0eMeurpg\\Play\\V1\xe2\x02\x1aMeurpg\\Play\\V1\\GPBMetadata\xea\x02\x10Meurpg::Play::V1b\x06proto3"
@@ -407,6 +428,7 @@ var file_meurpg_play_v1_summary_proto_goTypes = []any{
 	(*timestamppb.Timestamp)(nil),     // 5: google.protobuf.Timestamp
 	(*durationpb.Duration)(nil),       // 6: google.protobuf.Duration
 	(*HighlightCategory)(nil),         // 7: meurpg.play.v1.HighlightCategory
+	(*SessionMessage)(nil),            // 8: meurpg.play.v1.SessionMessage
 }
 var file_meurpg_play_v1_summary_proto_depIdxs = []int32{
 	4, // 0: meurpg.play.v1.SessionCharacterSummary.highlights:type_name -> meurpg.play.v1.CharacterHighlights
@@ -416,12 +438,13 @@ var file_meurpg_play_v1_summary_proto_depIdxs = []int32{
 	7, // 4: meurpg.play.v1.SessionSummary.categories:type_name -> meurpg.play.v1.HighlightCategory
 	1, // 5: meurpg.play.v1.SessionSummary.players:type_name -> meurpg.play.v1.SessionCharacterSummary
 	1, // 6: meurpg.play.v1.SessionSummary.mine:type_name -> meurpg.play.v1.SessionCharacterSummary
-	2, // 7: meurpg.play.v1.GetSessionSummaryResponse.summary:type_name -> meurpg.play.v1.SessionSummary
-	8, // [8:8] is the sub-list for method output_type
-	8, // [8:8] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	8, // 7: meurpg.play.v1.SessionSummary.conversation:type_name -> meurpg.play.v1.SessionMessage
+	2, // 8: meurpg.play.v1.GetSessionSummaryResponse.summary:type_name -> meurpg.play.v1.SessionSummary
+	9, // [9:9] is the sub-list for method output_type
+	9, // [9:9] is the sub-list for method input_type
+	9, // [9:9] is the sub-list for extension type_name
+	9, // [9:9] is the sub-list for extension extendee
+	0, // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_summary_proto_init() }
@@ -430,6 +453,7 @@ func file_meurpg_play_v1_summary_proto_init() {
 		return
 	}
 	file_meurpg_play_v1_combat_proto_init()
+	file_meurpg_play_v1_session_messages_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

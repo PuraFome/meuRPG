@@ -765,9 +765,8 @@ vitals Toren | active | 30 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage spell:flame-strike | applied | false | damage-type:fire | 10 | -1 | false | 10 | [] | -1 | true | true
 damage spell:flame-strike | applied | false | damage-type:radiant | 4 | -1 | false | 4 | [] | -1 | true | true
 == apply the radiant of Flame Strike on Toren at 0 hit points after the fire ==
-pending {"amount":4,"attackKey":"spell:flame-strike","attackerId":"Brisa","castId":"?","concentrationDc":10,"damageTypeKey":"damage-type:radiant","damageTypePt":"radiante","deathFailuresAdded":1,"diceCount":4,"diceSides":6,"roll":{"diceCount":4,"diceSides":6,"physical":true,"total":4},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event conditions_set {"combatant_id": "Toren", "conc_before": "spell:web", "conc_ended": "spell:web", "reaction": {"group": "?", "kind": "concentration_end"}, "round": 1}
-event damage_applied {"after": {"hp": 0}, "amount": 4, "before": {"hp": 0}, "combatant_id": "Brisa", "concentration_dc": 10, "damage_type": "damage-type:radiant", "death": {"failures": 1}, "death_before": {}, "failures_added": 1, "key": "spell:flame-strike", "pending_id": "?", "rolled": 4, "round": 1, "target_id": "Toren"}
+pending {"amount":4,"attackKey":"spell:flame-strike","attackerId":"Brisa","castId":"?","damageTypeKey":"damage-type:radiant","damageTypePt":"radiante","deathFailuresAdded":1,"diceCount":4,"diceSides":6,"roll":{"diceCount":4,"diceSides":6,"physical":true,"total":4},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
+event damage_applied {"after": {"hp": 0}, "amount": 4, "before": {"hp": 0}, "combatant_id": "Brisa", "damage_type": "damage-type:radiant", "death": {"failures": 1}, "death_before": {}, "failures_added": 1, "key": "spell:flame-strike", "pending_id": "?", "rolled": 4, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 5 | 6 | false | false | false
 combatant Capitão Goblin | 27 | 0 | false | 0 | 0 | - | false | false | 4 | 4 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 7 | 5 | false | false | false

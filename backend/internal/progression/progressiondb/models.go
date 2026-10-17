@@ -19,6 +19,13 @@ type PlannedMilestone struct {
 	CreateHash *string
 }
 
+type PlannedMilestoneMove struct {
+	CampaignID string
+	MoveKey    string
+	MoveHash   string
+	CreatedAt  time.Time
+}
+
 type XpAward struct {
 	ID              string
 	CampaignID      string

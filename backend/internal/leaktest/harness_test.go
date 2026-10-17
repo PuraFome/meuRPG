@@ -42,6 +42,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/httpserver"
 	"github.com/PuraFome/meuRPG/backend/internal/play"
+	"github.com/PuraFome/meuRPG/backend/internal/play/voice"
 	"github.com/PuraFome/meuRPG/backend/internal/progression"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
@@ -131,6 +132,13 @@ func (c *fakeClock) Now() time.Time {
 	return c.now
 }
 
+// advance moves the clock on: a test waits by this, never by sleeping.
+func (c *fakeClock) advance(d time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.now = c.now.Add(d)
+}
+
 // hintTracker counts the sends the play service's hint gates have scheduled and not yet
 // made, so a test can wait for the state "no trailing hint is pending" instead of sleeping
 // past the gate's interval. The sends still run on the real clock.
@@ -203,6 +211,7 @@ type stack struct {
 	play   *play.Service
 	maps   *maps.Service
 	hints  *hintTracker
+	clock  *fakeClock // the services' clock, which a test moves on instead of waiting
 }
 
 // heartbeat is how often a stream says it is alive. The stream test reads every event
@@ -218,6 +227,7 @@ func newStack(t *testing.T) *stack {
 		logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	}
 	clock := &fakeClock{now: time.Now().Truncate(time.Microsecond)}
+	s.clock = clock
 	srd, err := rules.LoadSRD()
 	if err != nil {
 		t.Fatalf("rules.LoadSRD() error = %v", err)
@@ -245,6 +255,7 @@ func newStack(t *testing.T) *stack {
 	live, err := play.New(play.Config{
 		Pool: pool, Sheets: chars, Vitals: chars, Campaigns: camps, Maps: sessionMaps, Roster: chars,
 		Dice: dice{camps}, Defaults: camps, Live: play.LiveConfig{Heartbeat: heartbeat, HintAfter: s.hints.after}, Logger: logger, Now: clock.Now,
+		Messages: play.MessagesConfig{Profiles: s.users, Voice: &voice.Fake{}, Blobs: blobs},
 	})
 	if err != nil {
 		t.Fatalf("play.New() error = %v", err)
