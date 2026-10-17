@@ -45,6 +45,7 @@ How the code does it lives in the [architecture docs](../architecture/README.md)
 | RN-34 | **Contests and special actions.** Grapple, shove and escape are contests of Strength (Athletics) against Strength (Athletics) or Dexterity (Acrobatics); a tie changes nothing. Dragging a grappled creature halves the speed. Hide compares the Stealth total with each creature's passive Perception (a tie keeps the hider noticed); Help gives advantage; a group check passes when at least half pass; a surprised creature does nothing on its first turn. A player never reads an NPC's numbers, the escape DC, who noticed a hider or another player's total. | [Detail](#rn-34-contests-and-special-actions) |
 | RN-35 | **Race traits and the monk's Slow Fall in combat.** A half-orc dropped to 0 hit points but not killed outright stays at 1 (Relentless Endurance, once per long rest, used by the app by itself); its critical hit with a melee weapon attack rolls one more weapon die (Savage Attacks); a monk's reaction takes 5 times its level off a pit's fall damage (Slow Fall); a goblin's Fuga Ágil is Disengage or Hide as a bonus action; a halfling whose d20 shows a 1 (an attack, or a check or saving throw the player rolls) is asked "Tirou 1: rolar de novo?" before the result, and the new roll stands; on a saving throw the app rolls for a player's halfling in someone else's action, the app rolls the 1 again by itself (Lucky). | [Detail](#rn-35-race-traits-and-the-monks-slow-fall-in-combat) |
 | RN-36 | **Who reads a line of the scene's conversation.** A line is for the whole table or for chosen readers; the master always reads every line, can choose any set of players, and a player chooses everyone or "só o mestre". Whoever is not chosen never receives the line: not its text, its image, its existence, its count or a notice that it was sent, in a read, on the stream, in the summary or in the voice. The master speaks as the narrator or as an NPC of the campaign; a player as their own character (RN-18) or out of character. | [Detail](#rn-36-who-reads-a-line-of-the-scenes-conversation) |
+| RN-37 | **Areas that spells keep on the map.** Spirit Guardians, Moonbeam, Cloudkill and Web leave their area on the map while they last. A creature that comes into it, or begins its turn in it, makes the spell's saving throw, at most once on a turn for each area; the cast itself hits nobody. The area ends with the concentration or its time, and moves where the spell lets it. A hidden caster's area is the master's alone. | [Detail](#rn-37-areas-that-spells-keep-on-the-map) |
 
 ## RN-01: Sheet lock
 
@@ -474,7 +475,7 @@ The master's card reads "Teste de Constituição, CD 10"; nobody else reads the 
 Casting a second concentration spell ends the first, and the log says which one ended.
 A spell or the master that ends concentration on a summoning spell (Conjure Animals) dismisses the creatures of that casting.
 The master's undo gives the concentration and the same creatures back.
-A spell that forces a saving throw later (Flaming Sphere, Web, Sleet Storm, Earthquake) rolls its saves and damage when it is cast; the master calls for the later ones.
+A spell that forces a saving throw later (Flaming Sphere, Sleet Storm, Earthquake) rolls its saves and damage when it is cast; the master calls for the later ones. Spirit Guardians, Moonbeam, Cloudkill and Web are the exception: the app keeps their area and calls for the later saves by itself (RN-37).
 
 Conditions are public or owner-class.
 Public conditions are readable by everyone.
@@ -824,6 +825,26 @@ The conversation of a game session (MR-051) is a text feed. Each line has an aut
 
 How it is built: [Architecture](../architecture/play/live-session.md#the-conversation-of-the-scene).
 Tests: `conversa.spec.ts` (`@RN-36`) and `internal/leaktest`.
+
+## RN-37: Areas that spells keep on the map
+
+Some spells leave an area on the map that goes on working after the cast: Spirit Guardians, Moonbeam, Cloudkill and Web (SRD 5.1).
+On a map with a grid the caster places the area as for any area spell ([Area spells on the grid](#area-spells-on-the-grid)), and the server keeps it as a **zone**: the squares it covers, the spell, its caster and how long it lasts.
+Without a grid (RN-25) there are no zones: the caster lists who is hit and the master judges, as before.
+
+- **What a zone does.** A creature that comes into the area, or begins its turn in it, makes the spell's saving throw (Wisdom for Spirit Guardians, Constitution for Moonbeam and Cloudkill, Dexterity for Web). The first three deal their damage on a failure and half of it on a pass; the damage has the dice of the slot the spell was cast with. The save, the damage and its landing are the ones a cast uses: an NPC takes the damage at once, a player's character waits for the master (RN-02), and the concentration save of the damaged creature follows (RN-31).
+- **Once on a turn.** A zone hits a creature at most once for each turn, whether the creature walked in or began the turn inside. Going out and in again, or moving about inside, hits it no more that turn; its next turn starts a new count. A "turn" is the turn that is running, whoever's it is: a creature pushed into the area on someone else's turn is hit then, and hit again when its own turn starts there.
+- **The cast hits nobody.** A creature that stands in the area when the spell is cast is hit when it begins its turn there, or when it comes back in. (Web is the exception for its own effect: it still goes on the creatures inside at the cast, as it always did.)
+- **When a zone looks.** At every change of square: a walk, a jump, a creature pushed (Thunderwave, the monk's push), shoved, dragged along, or put somewhere by the master (a forced move, which also stands for a teleport), and at the start of every turn. Undoing a move re-evaluates nothing; the damage a zone dealt is a pending damage of its own, which the master discards or undoes like any other.
+- **Who is spared.** Spirit Guardians leaves the caster and the caster's allies alone: the spell lets the caster name creatures it does not affect, and the table uses the usual choice. Moonbeam, Cloudkill and Web catch everyone, the caster and the caster's allies included.
+- **How it ends.** With the concentration (another concentration spell, 0 hit points, the master ending it) and with its time, counted to the start of the caster's turn: 1 minute is 10 rounds (Moonbeam), 10 minutes 100 (Spirit Guardians, Cloudkill), 1 hour 600 (Web). The master's undo of the cast takes the zone away with the concentration.
+- **How it moves.** Spirit Guardians is centred on the caster and goes where the caster goes; the creatures the new area reaches count as having come in. Moonbeam stays where it was put, and on each later turn its caster may use an action to move it up to 60 feet ("Mover o raio"); the master moves any zone without the action or the distance. Cloudkill goes 10 feet (two squares) away from the caster at the start of each of the caster's turns, as far as the walls let it; the creatures it reaches count as having come in. Web stays.
+- **Web.** The cast puts the web's effect on the creatures inside, as it always did, with its Dexterity save at the start of their turns. A creature that comes in later makes the Dexterity save at once, and a failure restrains it with the same effect; a creature the web already holds, or already asks a save of, is not asked twice.
+- **What players read (RN-10).** The map shows a zone to everyone who sees its caster. The zone of a hidden caster is the master's alone, in the combat, the log and the stream hints: the master's copy marks it, a player's has no trace of it. The line that a creature was caught names the creature only to those who see it and the caster; the DC is the master's alone. A creature the players do not see is not named by a zone that hits it.
+
+The zones are in `Encounter.zones` for the map to draw; `MoveSpellZone` moves one.
+How it is built: [Architecture](../architecture/play/spell-zones.md).
+Tests: `zones_test.go` and `zones_hidden_test.go` in `internal/play`, and `internal/leaktest`.
 
 ## Flows and states
 

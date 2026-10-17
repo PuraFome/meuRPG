@@ -45,6 +45,7 @@ Como o código faz isso está nos [docs de arquitetura](../../architecture/READM
 | RN-34 | **Testes de disputa e ações especiais.** Agarrar, empurrar e escapar são disputas de Força (Atletismo) contra Força (Atletismo) ou Destreza (Acrobacia); um empate não muda nada. Arrastar uma criatura agarrada reduz o deslocamento à metade. Esconder-se compara o total de Furtividade com a Percepção passiva de cada criatura (um empate mantém o escondido notado); Ajudar dá vantagem; um teste em grupo passa quando pelo menos metade passa; uma criatura surpresa não faz nada no primeiro turno. O jogador nunca lê os números de um NPC, a CD de escapar, quem notou um escondido nem o total de outro jogador. | [Detalhes](#rn-34-testes-de-disputa-e-ações-especiais) |
 | RN-35 | **Traços de raça e a Queda Lenta do monge em combate.** Um meio-orc levado a 0 PV mas não morto de vez fica com 1 (Relentless Endurance, uma vez por descanso longo, usado pelo app sozinho); o acerto crítico dele com um ataque de arma corpo a corpo rola mais um dado de arma (Savage Attacks); a reação de um monge tira 5 vezes o nível dele do dano de queda de um fosso (Queda Lenta); a Fuga Ágil do goblin é Desengajar ou Esconder-se como ação bônus; um halfling cujo d20 mostra 1 (um ataque, ou um teste de perícia ou de resistência que o jogador rola) recebe "Tirou 1: rolar de novo?" antes do resultado, e a nova rolagem vale; num teste de resistência em que o app rola pelo halfling de um jogador na ação de outra pessoa, o app rola o 1 de novo sozinho (Sortudo). | [Detalhes](#rn-35-traços-de-raça-e-a-queda-lenta-do-monge-em-combate) |
 | RN-36 | **Quem lê uma linha da conversa da cena.** Uma linha é para a mesa toda ou para leitores escolhidos; o mestre sempre lê todas as linhas, pode escolher qualquer conjunto de jogadores, e um jogador escolhe todos ou "só o mestre". Quem não foi escolhido nunca recebe a linha: nem o texto, nem a imagem, nem a existência, nem a contagem, nem um aviso de que foi enviada, numa leitura, no stream, no resumo ou na voz. O mestre fala como narrador ou como um NPC da campanha; um jogador, como o próprio personagem (RN-18) ou fora do personagem. | [Detalhes](#rn-36-quem-lê-uma-linha-da-conversa-da-cena) |
+| RN-37 | **Áreas que as magias mantêm no mapa.** Espíritos Guardiões, Raio Lunar, Névoa Mortal e Teia deixam a área no mapa enquanto duram. Uma criatura que entra nela, ou começa o turno nela, faz o teste de resistência da magia, no máximo uma vez por turno para cada área; a conjuração em si não atinge ninguém. A área acaba com a concentração ou com o tempo, e se move onde a magia permite. A área de um conjurador escondido é só do mestre. | [Detalhes](#rn-37-áreas-que-as-magias-mantêm-no-mapa) |
 
 ## RN-01: Trava da ficha
 
@@ -474,7 +475,7 @@ O cartão do mestre diz "Teste de Constituição, CD 10"; ninguém mais lê a CD
 Conjurar uma segunda magia de concentração encerra a primeira, e o registro diz qual terminou.
 Uma magia, ou o mestre, que encerra a concentração de uma magia de invocação (Conjurar Animais) dispensa as criaturas daquela conjuração.
 O "desfazer" do mestre devolve a concentração e as mesmas criaturas.
-Uma magia que força um teste de resistência mais tarde (Esfera Flamejante, Teia, Nevasca, Terremoto) rola os testes e o dano quando é conjurada; o mestre chama os testes seguintes.
+Uma magia que força um teste de resistência mais tarde (Esfera Flamejante, Nevasca, Terremoto) rola os testes e o dano quando é conjurada; o mestre chama os testes seguintes. Espíritos Guardiões, Raio Lunar, Névoa Mortal e Teia são a exceção: o app mantém a área delas e chama os testes seguintes sozinho (RN-37).
 
 As condições são públicas ou da classe do dono.
 As públicas são legíveis por todos.
@@ -824,6 +825,26 @@ A conversa de uma sessão de jogo (MR-051) é um feed de texto. Cada linha tem u
 
 Como é feito: [Arquitetura](../../architecture/play/live-session.md#the-conversation-of-the-scene).
 Testes: `conversa.spec.ts` (`@RN-36`) e `internal/leaktest`.
+
+## RN-37: Áreas que as magias mantêm no mapa
+
+Algumas magias deixam no mapa uma área que continua valendo depois da conjuração: Espíritos Guardiões, Raio Lunar, Névoa Mortal e Teia (SRD 5.1).
+Num mapa com grade, quem conjura posiciona a área como em qualquer magia de área ([Magias de área na grade](#magias-de-área-na-grade)), e o servidor a mantém como uma **zona**: os quadrados que ela cobre, a magia, quem a conjurou e quanto tempo dura.
+Sem grade (RN-25) não há zonas: quem conjura lista quem é atingido e o mestre julga, como antes.
+
+- **O que uma zona faz.** Uma criatura que entra na área, ou começa o turno nela, faz o teste de resistência da magia (Sabedoria em Espíritos Guardiões, Constituição em Raio Lunar e Névoa Mortal, Destreza em Teia). As três primeiras causam o dano numa falha e metade dele num sucesso; o dano tem os dados do espaço com que a magia foi conjurada. O teste, o dano e o modo como ele cai são os de uma conjuração: um NPC sofre o dano na hora, o personagem de um jogador espera o mestre (RN-02), e o teste de concentração de quem se feriu vem em seguida (RN-31).
+- **Uma vez por turno.** Uma zona atinge uma criatura no máximo uma vez a cada turno, tenha ela entrado andando ou começado o turno dentro. Sair e entrar de novo, ou andar dentro da área, não a atinge mais naquele turno; o turno seguinte começa uma contagem nova. O "turno" é o turno que está correndo, seja de quem for: uma criatura empurrada para dentro da área no turno de outro é atingida então, e de novo quando o turno dela começa ali.
+- **A conjuração não atinge ninguém.** Uma criatura que está na área quando a magia é conjurada é atingida ao começar o turno dela ali, ou ao entrar de novo. (Teia é a exceção quanto ao efeito próprio: ele continua caindo sobre as criaturas dentro da área na conjuração, como sempre caiu.)
+- **Quando uma zona olha.** A cada mudança de quadrado: uma caminhada, um salto, uma criatura empurrada (Onda Trovejante, o empurrão do monge), derrubada para trás por um empurrão, arrastada ou posta em outro lugar pelo mestre (um movimento forçado, que também faz as vezes de um teletransporte), e no começo de cada turno. Desfazer um movimento não reavalia nada; o dano que uma zona causou é um dano pendente próprio, que o mestre descarta ou desfaz como qualquer outro.
+- **Quem é poupado.** Espíritos Guardiões deixa em paz quem conjura e os aliados de quem conjura: a magia deixa quem conjura nomear as criaturas que ela não afeta, e a mesa usa a escolha mais comum. Raio Lunar, Névoa Mortal e Teia pegam todos, inclusive quem conjura e os aliados.
+- **Como acaba.** Com a concentração (outra magia de concentração, 0 pontos de vida, o mestre encerrando) e com o tempo, contado até o começo do turno de quem conjura: 1 minuto são 10 rodadas (Raio Lunar), 10 minutos são 100 (Espíritos Guardiões, Névoa Mortal), 1 hora são 600 (Teia). O "Desfazer" do mestre sobre a conjuração leva a zona junto com a concentração.
+- **Como se move.** Espíritos Guardiões é centrado em quem conjura e vai aonde essa pessoa vai; as criaturas que a nova área alcança contam como se tivessem entrado. Raio Lunar fica onde foi posto, e em cada turno seguinte quem conjura pode gastar uma ação para movê-lo até 18 m ("Mover o raio"); o mestre move qualquer zona sem a ação nem a distância. Névoa Mortal anda 3 m (dois quadrados) para longe de quem conjura no começo de cada turno de quem conjura, até onde as paredes deixam; as criaturas que ela alcança contam como se tivessem entrado. Teia fica parada.
+- **Teia.** A conjuração põe o efeito da teia nas criaturas dentro da área, como sempre pôs, com o teste de Destreza no começo do turno delas. Uma criatura que entra depois faz o teste de Destreza na hora, e uma falha a prende com o mesmo efeito; uma criatura que a teia já segura, ou de quem já pede um teste, não é perguntada duas vezes.
+- **O que os jogadores leem (RN-10).** O mapa mostra uma zona a todos que veem quem a conjurou. A zona de um conjurador escondido é só do mestre, no combate, no registro e nos avisos do stream: a cópia do mestre a marca, a de um jogador não tem rastro dela. A linha de que uma criatura foi atingida nomeia a criatura só para quem a vê e para quem a conjurou; a CD é só do mestre. Uma criatura que os jogadores não veem não é nomeada por uma zona que a atinge.
+
+As zonas estão em `Encounter.zones` para o mapa desenhar; `MoveSpellZone` move uma.
+Como é feito: [Arquitetura](../../architecture/play/spell-zones.md).
+Testes: `zones_test.go` e `zones_hidden_test.go` em `internal/play`, e `internal/leaktest`.
 
 ## Fluxos e estados
 
