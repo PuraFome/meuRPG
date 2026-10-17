@@ -428,8 +428,13 @@ func (s *Service) takeBackCompanions(ctx context.Context, c *combatTx, run *undo
 	if last.Kind == eventCombatantMoved {
 		run.undoneMove = &ev
 	}
-	if last.Kind == eventDamageRolled || last.Kind == eventDamageApplied {
-		if err := s.takeBackEndedConcentration(ctx, c, run, recent, last, ev); err != nil {
+	switch last.Kind {
+	case eventDamageRolled, eventDamageApplied:
+		if err := s.takeBackEndedConcentration(ctx, c, run, recent, last, ev.Pending); err != nil {
+			return err
+		}
+	case eventHitPointsAdjusted:
+		if err := s.takeBackEndedConcentration(ctx, c, run, recent, last, ev.Actor); err != nil {
 			return err
 		}
 	}
@@ -439,12 +444,13 @@ func (s *Service) takeBackCompanions(ctx context.Context, c *combatTx, run *undo
 	return nil
 }
 
-// takeBackEndedConcentration takes back the concentration the damage ended (at 0 hit
-// points), written just before the damage's own event.
-func (s *Service) takeBackEndedConcentration(ctx context.Context, c *combatTx, run *undoRun, recent []playdb.ListRecentSessionEventsRow, last playdb.ListRecentSessionEventsRow, ev actionEvent) error {
+// takeBackEndedConcentration takes back the concentration the change ended (at 0 hit
+// points), written just before the change's own event and grouped by group (the pending damage,
+// or the combatant whose hit points the master adjusted).
+func (s *Service) takeBackEndedConcentration(ctx context.Context, c *combatTx, run *undoRun, recent []playdb.ListRecentSessionEventsRow, last playdb.ListRecentSessionEventsRow, group string) error {
 	at := slices.IndexFunc(recent, func(e playdb.ListRecentSessionEventsRow) bool { return e.ID == last.ID })
 	for _, older := range recent[at+1:] {
-		pe, ok := concentrationEndOf(older, ev.Pending)
+		pe, ok := concentrationEndOf(older, group)
 		if !ok {
 			break
 		}
@@ -456,13 +462,13 @@ func (s *Service) takeBackEndedConcentration(ctx context.Context, c *combatTx, r
 }
 
 // concentrationEndOf reads the event of a concentration that ended at 0 hit points because
-// of the damage with the pending id; ok is false for any other event.
-func concentrationEndOf(row playdb.ListRecentSessionEventsRow, pending string) (ev actionEvent, ok bool) {
+// of the change with the group id; ok is false for any other event.
+func concentrationEndOf(row playdb.ListRecentSessionEventsRow, group string) (ev actionEvent, ok bool) {
 	ev, err := readEvent(row.Payload)
 	if err != nil {
 		return ev, false
 	}
-	return ev, ev.Reaction != nil && ev.Reaction.Kind == concentrationEnd && ev.Reaction.Group == pending
+	return ev, ev.Reaction != nil && ev.Reaction.Kind == concentrationEnd && ev.Reaction.Group == group
 }
 
 // takeBackFiring takes a firing written as several events back whole.

@@ -193,7 +193,9 @@ func TestListTrapActivity_WhatEachViewerReads(t *testing.T) {
 	a.add(t, eventTrapTriggered, "", "skipped-firing-without-a-trap", actionEvent{Round: 1})
 
 	// A firing outside a combat: the character, the character with every status of damage, the
-	// creature of Pensantus, and a hidden Brisa (frozen: the activity does not look at Hidden).
+	// creature of Pensantus, and a hidden Brisa. Finding fix/trap-hidden-outside-combat: what the master hid
+	// never reaches a player, not even the player of the hidden character: Brisa reads the extension's line
+	// (the positive control, not hidden) and never the hidden one, the master reads both.
 	fire := newKey()
 	dRolled := a.damage(t, pitA, fire, toren, "rolled", nil, "damage-rolled")
 	three := int32(3)
