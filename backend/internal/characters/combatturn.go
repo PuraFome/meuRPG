@@ -247,9 +247,6 @@ func (s *Service) CombatTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, 
 		MovementUsedFt: turn.MovementUsedFt, Dashed: turn.Dashed, AttacksMade: turn.AttacksMade, LastAttackKey: turn.AttackKey, FlurryLeft: turn.FlurryLeft, FrenzyReady: turn.FrenzyReady, ActionSurged: turn.ActionSurged, SpellCast: turn.SpellCast, BonusSpellCast: turn.BonusSpellCast,
 	}, usage)
 	out := turnOptionsToProto(opts)
-	if d.ArmorUntrained.Any() {
-		refuseSpellOptions(out)
-	}
 	// The Berserker's Rage asks whether to frenzy (SRD 5.1, Path of the Berserker).
 	if rules.HasFeature(d, "feature:frenzy") {
 		for _, a := range out.GetFeatureActions() {

@@ -299,38 +299,33 @@ const (
 	CastingBlockedReason_CASTING_BLOCKED_REASON_CLASS_CANNOT_RITUAL CastingBlockedReason = 8
 	// as_ritual: the spell does not carry the ritual tag.
 	CastingBlockedReason_CASTING_BLOCKED_REASON_NOT_A_RITUAL CastingBlockedReason = 9
-	// The caster wears armor or a shield it is not proficient with, and cannot cast spells
-	// (SRD 5.1, "Armor").
-	CastingBlockedReason_CASTING_BLOCKED_REASON_ARMOR_NOT_PROFICIENT CastingBlockedReason = 10
 )
 
 // Enum value maps for CastingBlockedReason.
 var (
 	CastingBlockedReason_name = map[int32]string{
-		0:  "CASTING_BLOCKED_REASON_UNSPECIFIED",
-		1:  "CASTING_BLOCKED_REASON_IN_COMBAT",
-		2:  "CASTING_BLOCKED_REASON_CAST_IN_PROGRESS",
-		3:  "CASTING_BLOCKED_REASON_NO_SLOT",
-		4:  "CASTING_BLOCKED_REASON_TARGET_WEARS_ARMOR",
-		5:  "CASTING_BLOCKED_REASON_CAST_NOT_GOING",
-		6:  "CASTING_BLOCKED_REASON_CAST_NOT_ACTIVE",
-		7:  "CASTING_BLOCKED_REASON_TARGET_OUT_OF_REACH",
-		8:  "CASTING_BLOCKED_REASON_CLASS_CANNOT_RITUAL",
-		9:  "CASTING_BLOCKED_REASON_NOT_A_RITUAL",
-		10: "CASTING_BLOCKED_REASON_ARMOR_NOT_PROFICIENT",
+		0: "CASTING_BLOCKED_REASON_UNSPECIFIED",
+		1: "CASTING_BLOCKED_REASON_IN_COMBAT",
+		2: "CASTING_BLOCKED_REASON_CAST_IN_PROGRESS",
+		3: "CASTING_BLOCKED_REASON_NO_SLOT",
+		4: "CASTING_BLOCKED_REASON_TARGET_WEARS_ARMOR",
+		5: "CASTING_BLOCKED_REASON_CAST_NOT_GOING",
+		6: "CASTING_BLOCKED_REASON_CAST_NOT_ACTIVE",
+		7: "CASTING_BLOCKED_REASON_TARGET_OUT_OF_REACH",
+		8: "CASTING_BLOCKED_REASON_CLASS_CANNOT_RITUAL",
+		9: "CASTING_BLOCKED_REASON_NOT_A_RITUAL",
 	}
 	CastingBlockedReason_value = map[string]int32{
-		"CASTING_BLOCKED_REASON_UNSPECIFIED":          0,
-		"CASTING_BLOCKED_REASON_IN_COMBAT":            1,
-		"CASTING_BLOCKED_REASON_CAST_IN_PROGRESS":     2,
-		"CASTING_BLOCKED_REASON_NO_SLOT":              3,
-		"CASTING_BLOCKED_REASON_TARGET_WEARS_ARMOR":   4,
-		"CASTING_BLOCKED_REASON_CAST_NOT_GOING":       5,
-		"CASTING_BLOCKED_REASON_CAST_NOT_ACTIVE":      6,
-		"CASTING_BLOCKED_REASON_TARGET_OUT_OF_REACH":  7,
-		"CASTING_BLOCKED_REASON_CLASS_CANNOT_RITUAL":  8,
-		"CASTING_BLOCKED_REASON_NOT_A_RITUAL":         9,
-		"CASTING_BLOCKED_REASON_ARMOR_NOT_PROFICIENT": 10,
+		"CASTING_BLOCKED_REASON_UNSPECIFIED":         0,
+		"CASTING_BLOCKED_REASON_IN_COMBAT":           1,
+		"CASTING_BLOCKED_REASON_CAST_IN_PROGRESS":    2,
+		"CASTING_BLOCKED_REASON_NO_SLOT":             3,
+		"CASTING_BLOCKED_REASON_TARGET_WEARS_ARMOR":  4,
+		"CASTING_BLOCKED_REASON_CAST_NOT_GOING":      5,
+		"CASTING_BLOCKED_REASON_CAST_NOT_ACTIVE":     6,
+		"CASTING_BLOCKED_REASON_TARGET_OUT_OF_REACH": 7,
+		"CASTING_BLOCKED_REASON_CLASS_CANNOT_RITUAL": 8,
+		"CASTING_BLOCKED_REASON_NOT_A_RITUAL":        9,
 	}
 )
 
@@ -930,10 +925,8 @@ type GetCastOptionsResponse struct {
 	Casting *OutsideCast `protobuf:"bytes,5,opt,name=casting,proto3" json:"casting,omitempty"`
 	// The spell the caster concentrates on, if any.
 	Concentrating *OutsideCast `protobuf:"bytes,6,opt,name=concentrating,proto3" json:"concentrating,omitempty"`
-	// The caster wears armor or a shield it is not proficient with and casts nothing.
-	ArmorNotProficient bool `protobuf:"varint,7,opt,name=armor_not_proficient,json=armorNotProficient,proto3" json:"armor_not_proficient,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetCastOptionsResponse) Reset() {
@@ -1006,13 +999,6 @@ func (x *GetCastOptionsResponse) GetConcentrating() *OutsideCast {
 		return x.Concentrating
 	}
 	return nil
-}
-
-func (x *GetCastOptionsResponse) GetArmorNotProficient() bool {
-	if x != nil {
-		return x.ArmorNotProficient
-	}
-	return false
 }
 
 // CastSpellOutsideCombatRequest casts a spell outside a combat.
@@ -2256,7 +2242,7 @@ const file_meurpg_play_v1_casting_proto_rawDesc = "" +
 	"\x15GetCastOptionsRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
-	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\"\xef\x02\n" +
+	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\"\xbd\x02\n" +
 	"\x16GetCastOptionsResponse\x124\n" +
 	"\x06spells\x18\x01 \x03(\v2\x1c.meurpg.play.v1.CastingSpellR\x06spells\x127\n" +
 	"\atargets\x18\x02 \x03(\v2\x1d.meurpg.play.v1.CastingTargetR\atargets\x12\x1b\n" +
@@ -2264,8 +2250,7 @@ const file_meurpg_play_v1_casting_proto_rawDesc = "" +
 	"\n" +
 	"wild_shape\x18\x04 \x01(\bR\twildShape\x125\n" +
 	"\acasting\x18\x05 \x01(\v2\x1b.meurpg.play.v1.OutsideCastR\acasting\x12A\n" +
-	"\rconcentrating\x18\x06 \x01(\v2\x1b.meurpg.play.v1.OutsideCastR\rconcentrating\x120\n" +
-	"\x14armor_not_proficient\x18\a \x01(\bR\x12armorNotProficient\"\xc1\x03\n" +
+	"\rconcentrating\x18\x06 \x01(\v2\x1b.meurpg.play.v1.OutsideCastR\rconcentrating\"\xc1\x03\n" +
 	"\x1dCastSpellOutsideCombatRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12.\n" +
@@ -2399,7 +2384,7 @@ const file_meurpg_play_v1_casting_proto_rawDesc = "" +
 	"\x10CAST_EFFECT_HEAL\x10\x02\x12$\n" +
 	" CAST_EFFECT_TEMPORARY_HIT_POINTS\x10\x03\x12\x1e\n" +
 	"\x1aCAST_EFFECT_MAX_HIT_POINTS\x10\x04\x12\x1b\n" +
-	"\x17CAST_EFFECT_ARMOR_CLASS\x10\x05*\xf5\x03\n" +
+	"\x17CAST_EFFECT_ARMOR_CLASS\x10\x05*\xc4\x03\n" +
 	"\x14CastingBlockedReason\x12&\n" +
 	"\"CASTING_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12$\n" +
 	" CASTING_BLOCKED_REASON_IN_COMBAT\x10\x01\x12+\n" +
@@ -2410,9 +2395,7 @@ const file_meurpg_play_v1_casting_proto_rawDesc = "" +
 	"&CASTING_BLOCKED_REASON_CAST_NOT_ACTIVE\x10\x06\x12.\n" +
 	"*CASTING_BLOCKED_REASON_TARGET_OUT_OF_REACH\x10\a\x12.\n" +
 	"*CASTING_BLOCKED_REASON_CLASS_CANNOT_RITUAL\x10\b\x12'\n" +
-	"#CASTING_BLOCKED_REASON_NOT_A_RITUAL\x10\t\x12/\n" +
-	"+CASTING_BLOCKED_REASON_ARMOR_NOT_PROFICIENT\x10\n" +
-	"*\x93\x02\n" +
+	"#CASTING_BLOCKED_REASON_NOT_A_RITUAL\x10\t*\x93\x02\n" +
 	"\x11CastingEffectKind\x12#\n" +
 	"\x1fCASTING_EFFECT_KIND_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cCASTING_EFFECT_KIND_NARRATED\x10\x01\x12\x1c\n" +

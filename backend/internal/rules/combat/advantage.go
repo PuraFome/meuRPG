@@ -72,7 +72,6 @@ const (
 	SourceRageStrength    = "rage_strength"
 	SourceRestrainedSave  = "restrained_save"
 	SourceStealthArmor    = "stealth_armor"
-	SourceArmorUntrained  = "armor_untrained"
 	SourcePoisonedCheck   = "poisoned_check"
 	SourceFrightenedCheck = "frightened_check"
 	SourcePerceptionDim   = "perception_dim"
@@ -214,9 +213,6 @@ type Creature struct {
 	// AttackDisadvantage is the key of the effect that lasts that gives its own attack rolls
 	// disadvantage (Vicious Mockery: "spell:vicious-mockery"), "" for none.
 	AttackDisadvantage string
-	// ArmorUntrained says it wears armor or a shield it is not proficient with: disadvantage
-	// on the checks, saves and weapon attacks that use Strength or Dexterity (SRD 5.1, "Armor").
-	ArmorUntrained bool
 }
 
 // Has says whether it carries a condition.
@@ -286,10 +282,6 @@ type AttackScene struct {
 	// feat's ranged_attack effect, for weapon attacks): the caller sets it only for a
 	// weapon attack. Beyond the long range the attack is still refused.
 	NoLongRangeDisadvantage bool
-	// StrengthOrDexterityWeapon says it is a weapon attack made with Strength or Dexterity:
-	// the attacks armor without proficiency spoils. A spell attack is made with the casting
-	// ability, so it is not one.
-	StrengthOrDexterityWeapon bool
 }
 
 // withinFive says the attacker is within 5 ft of the target. Without a map a
@@ -434,7 +426,6 @@ func sceneRules(s AttackScene) []sourceRule {
 		{s.AttackerUnseen && !s.Attacker.Has(conditionInvisible), SourceUnseenAttacker, ModeAdvantage, ""},
 		{s.TargetUnseen && !s.Target.Has(conditionInvisible), SourceUnseenTarget, ModeDisadvantage, ""},
 		{s.Helped, SourceHelp, ModeAdvantage, ""},
-		{s.Attacker.ArmorUntrained && s.StrengthOrDexterityWeapon, SourceArmorUntrained, ModeDisadvantage, ""},
 	}
 }
 
@@ -484,15 +475,9 @@ type SaveScene struct {
 func SaveMode(s SaveScene) []Source {
 	rs := dexSaveRules(s)
 	rs = append(rs, sourceRule{s.Ability == strengthAbility && s.Creature.Raging, SourceRageStrength, ModeAdvantage, ""})
-	rs = append(rs, sourceRule{s.Creature.ArmorUntrained && physicalAbility(s.Ability), SourceArmorUntrained, ModeDisadvantage, ""})
 	rs = append(rs, saveRules(s)...)
 	rs = append(rs, checkRules(s)...)
 	return appendRules(nil, rs)
-}
-
-// physicalAbility says the ability is Strength or Dexterity.
-func physicalAbility(ability string) bool {
-	return ability == strengthAbility || ability == dexterityAbility
 }
 
 // dexSaveRules are the sources of a Dexterity saving throw: Dodge, Danger

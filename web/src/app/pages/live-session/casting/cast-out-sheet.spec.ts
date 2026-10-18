@@ -110,18 +110,6 @@ describe('CastOutSheet (MR-048)', () => {
     expect(plain(el.textContent)).toContain('Quem você toca (uma criatura, até 1,5 m)');
   });
 
-  it('says a character in armor it is not proficient with casts nothing, and lists no spell', async () => {
-    const { el } = await setup((api) => {
-      api.options_ = create(GetCastOptionsResponseSchema, {
-        spells: [cure],
-        targets: people,
-        armorNotProficient: true,
-      });
-    });
-    expect(plain(el.textContent)).toContain('sem proficiência não se conjura');
-    expect(el.querySelectorAll('label.row')).toHaveLength(0);
-  });
-
   it('disables a target out of reach and says why', async () => {
     const { el, click } = await setup(withSpells(cure));
     await click('label.row', 'Curar Ferimentos');

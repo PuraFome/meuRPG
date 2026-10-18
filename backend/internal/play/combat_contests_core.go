@@ -100,9 +100,6 @@ const (
 	defaultHideRefus = "Alguém vê você claramente: não dá para se esconder agora."
 )
 
-// labelArmorUntrained names the armor or shield the character is not proficient with, as a source of a roll.
-const labelArmorUntrained = "Armadura sem proficiência"
-
 // rollNote is one circumstance behind a roll's mode, as a roll keeps it.
 type rollNote struct {
 	Kind  string `json:"kind"`
@@ -366,7 +363,6 @@ var checkSourceNotes = map[string]rollNote{
 	combat.SourceFrightenedCheck: {Kind: "frightened", Label: "Amedrontado"},
 	combat.SourceRageStrength:    {Kind: "rage", Label: "Fúria", Adv: true},
 	combat.SourceStealthArmor:    {Kind: "armor_stealth", Label: "Armadura que atrapalha a furtividade"},
-	combat.SourceArmorUntrained:  {Kind: "armor_untrained", Label: labelArmorUntrained},
 	combat.SourceExhaustionCheck: {Kind: "exhaustion", Label: "Exaustão"},
 	combat.SourceEffectCheck:     {Kind: "effect", Label: "Efeito ativo", Adv: true},
 }

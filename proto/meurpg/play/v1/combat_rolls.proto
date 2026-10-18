@@ -88,9 +88,6 @@ enum AdvantageSourceKind {
   // next attack roll before the end of its next turn, which spends it). The text names the
   // effect; a player reads "Outra fonte" when the master hides it.
   ADVANTAGE_SOURCE_KIND_EFFECT_ATTACK = 108;
-  // Armor or a shield the character is not proficient with: disadvantage on the ability
-  // checks, saving throws and attack rolls that use Strength or Dexterity (SRD 5.1, "Armor").
-  ADVANTAGE_SOURCE_KIND_ARMOR_NOT_PROFICIENT = 109;
   // The Protection fighting style: a shield-bearer within 5 ft of the target used its
   // reaction, so the attack roll has disadvantage.
   ADVANTAGE_SOURCE_KIND_PROTECTION = 110;

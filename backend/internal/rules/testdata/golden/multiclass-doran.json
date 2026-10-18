@@ -257,10 +257,6 @@
     "ArmorClassDescription": "Cota de malha + escudo",
     "ShieldIdle": false,
     "ArmorCategory": "heavy",
-    "ArmorUntrained": {
-      "Armor": false,
-      "Shield": false
-    },
     "HitPointsMax": 50,
     "HitPointsFromEffects": 0,
     "HitDice": [
@@ -1206,10 +1202,6 @@
     "ArmorClassDescription": "Cota de malha + escudo",
     "ShieldIdle": false,
     "ArmorCategory": "heavy",
-    "ArmorUntrained": {
-      "Armor": false,
-      "Shield": false
-    },
     "HitPointsMax": 44,
     "HitPointsFromEffects": 0,
     "HitDice": [

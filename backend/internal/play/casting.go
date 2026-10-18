@@ -477,9 +477,6 @@ func slotOfRow(r playdb.SpellCast) *slotRef {
 // mayCastNow checks the caster is not in a combat (it casts there), is not in a beast
 // form and has no cast going.
 func (s *Service) mayCastNow(ctx context.Context, c *combatTx, caster link.Character) error {
-	if caster.ArmorUntrained {
-		return errCastingArmorNotProficient()
-	}
 	if caster.Player {
 		now, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, caster.ID)
 		if err != nil {

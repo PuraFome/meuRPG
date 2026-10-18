@@ -32,21 +32,13 @@ func (s *Service) outsideModeOf(ctx context.Context, tx pgx.Tx, campaignID, char
 	} else if connect.CodeOf(err) != connect.CodeNotFound {
 		return checkMode{}, err
 	}
-	untrained := s.wearsUntrainedArmor(ctx, tx, campaignID, characterID)
-	if len(rows) == 0 && level == 0 && !untrained {
+	if len(rows) == 0 && level == 0 {
 		return checkMode{}, nil
 	}
 	of := outsideEffectsOf(rows, skillKey, check)
-	of.creature.Exhaustion, of.creature.ArmorUntrained = level, untrained
+	of.creature.Exhaustion = level
 	sources := combat.SaveMode(combat.SaveScene{Creature: of.creature, Ability: ability, Check: check, EffectVisible: true})
 	return checkMode{Mode: combat.Resolve(sources), Sources: sources, Dice: of.dice, Bonuses: of.bonuses, hide: hideFor(of.hiddenConds, of.hiddenAny)}, nil
-}
-
-// wearsUntrainedArmor says the character wears armor or a shield it is not proficient with, which
-// counts in its rolls out of a combat as in one. A sheet that cannot be read adds no circumstance.
-func (s *Service) wearsUntrainedArmor(ctx context.Context, tx pgx.Tx, campaignID, characterID string) bool {
-	sheet, err := s.roster.CombatSheet(ctx, tx, campaignID, characterID)
-	return err == nil && sheet.Traits.ArmorUntrained
 }
 
 // outsideEffects is what the effects on a character out of a combat give to a roll.

@@ -414,7 +414,6 @@ func (s *Service) fillCastOptions(ctx context.Context, m authz.Membership, sessi
 		}
 		out.WildShape = noSpellsIn(v, caster.CastsInBeastForm) != nil
 	}
-	out.ArmorNotProficient = caster.ArmorUntrained
 	if out.Targets, err = s.castTargetsFor(ctx, m, session, id); err != nil {
 		return err
 	}

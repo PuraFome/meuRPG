@@ -300,9 +300,6 @@ enum CastingBlockedReason {
   CASTING_BLOCKED_REASON_CLASS_CANNOT_RITUAL = 8;
   // as_ritual: the spell does not carry the ritual tag.
   CASTING_BLOCKED_REASON_NOT_A_RITUAL = 9;
-  // The caster wears armor or a shield it is not proficient with, and cannot cast spells
-  // (SRD 5.1, "Armor").
-  CASTING_BLOCKED_REASON_ARMOR_NOT_PROFICIENT = 10;
 }
 
 // CastingBlocked is the detail of CastingService's `failed_precondition`.
@@ -419,8 +416,6 @@ message GetCastOptionsResponse {
   OutsideCast casting = 5;
   // The spell the caster concentrates on, if any.
   OutsideCast concentrating = 6;
-  // The caster wears armor or a shield it is not proficient with and casts nothing.
-  bool armor_not_proficient = 7;
 }
 
 // CastSpellOutsideCombatRequest casts a spell outside a combat.

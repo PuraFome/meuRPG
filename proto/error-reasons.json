@@ -392,8 +392,7 @@
             "NOT_PRONE",
             "CANNOT_STAND_UP",
             "FRENZY_UNAVAILABLE",
-            "NO_MELEE_HIT", "DESTINATION_REQUIRED", "DESTINATION_UNAVAILABLE", "TELEPORT_TOO_FAR",
-            "ARMOR_NOT_PROFICIENT"
+            "NO_MELEE_HIT", "DESTINATION_REQUIRED", "DESTINATION_UNAVAILABLE", "TELEPORT_TOO_FAR"
           ],
           "unsent": [
             "RAGE_END_PENDING"
@@ -585,8 +584,7 @@
             "CAST_NOT_ACTIVE",
             "TARGET_OUT_OF_REACH",
             "CLASS_CANNOT_RITUAL",
-            "NOT_A_RITUAL",
-            "ARMOR_NOT_PROFICIENT"
+            "NOT_A_RITUAL"
           ],
           "unsent": []
         }

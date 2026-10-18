@@ -41,14 +41,13 @@ func (x *deriver) armorClass() {
 	ac := base
 	if x.b.Shield {
 		ac, name = x.withShield(ac, name)
-		if x.armorUntrained().Shield {
+		if !x.armorProficient("shield", "equipment:shield") {
 			x.issue(IssueArmorProficiency, "full.shield", "Sem proficiência em escudos.")
 		}
 	}
 	x.d.ArmorClass = x.modifiers("ac", ac)
 	x.d.ArmorClassDescription = name
 	x.d.ArmorCategory = x.armorCategory
-	x.d.ArmorUntrained = x.armorUntrained()
 }
 
 // wornArmor is the base AC of the worn armor (named name on the sheet), with
@@ -65,7 +64,7 @@ func (x *deriver) wornArmor(name string) int {
 		}
 		base += dex
 	}
-	if x.armorUntrained().Armor {
+	if !x.armorProficient(x.armorCategory, x.b.Armor) {
 		x.issue(IssueArmorProficiency, "full.armor_key", "Sem proficiência em %s: desvantagem em testes, ataques e testes de resistência de FOR e DES, e não conjura magias.", strings.ToLower(name))
 	}
 	if a.StealthDisadvantage {

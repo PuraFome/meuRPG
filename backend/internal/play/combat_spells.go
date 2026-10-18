@@ -157,8 +157,6 @@ func castError(r *rulesv1.DisabledReason, ignoreEconomy bool) error {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("a reaction spell is cast when its trigger happens (UseReaction, for Escudo)"))
 	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_CASTING_TIME_TOO_LONG:
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("this spell takes too long to cast in a fight"))
-	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_ARMOR_NOT_PROFICIENT:
-		return errArmorNotProficient()
 	}
 	return connect.NewError(connect.CodeInvalidArgument, errors.New("this spell cannot be cast now"))
 }
