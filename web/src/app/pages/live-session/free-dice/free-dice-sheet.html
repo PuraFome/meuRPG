@@ -198,14 +198,11 @@
         [attr.aria-label]="state.rolling() ? null : name()"
         (click)="roll()"
       >
-        @if (state.rolling()) {
-          <span class="roll__text">Rolando…</span>
-        } @else {
-          @if (secret()) {
-            <mat-icon aria-hidden="true">visibility_off</mat-icon>
-          }
-          <span class="roll__text">{{ label() }}</span>
+        <!-- The icon is the only root of its @if, so Material projects it beside the label (not into it). -->
+        @if (secret() && !state.rolling()) {
+          <mat-icon aria-hidden="true">visibility_off</mat-icon>
         }
+        <span class="roll__text">{{ state.rolling() ? 'Rolando…' : label() }}</span>
       </button>
     }
   </div>
