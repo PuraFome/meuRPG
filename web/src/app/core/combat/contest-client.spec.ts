@@ -63,7 +63,7 @@ describe('ContestClient', () => {
       },
       'key-1',
     );
-    expect(res.contest.id).toBe('ct1');
+    expect(res.contest?.id).toBe('ct1');
     expect(sent[0]).toMatchObject({
       rpc: 'startContest',
       campaignId: 'c',

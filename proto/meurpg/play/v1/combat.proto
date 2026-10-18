@@ -3622,6 +3622,10 @@ enum HeldRollKind {
   // The death saving throw of a character at 0 hit points (RollDeathSave), asked about Lucky's reroll of a 1 and about
   // a Bardic Inspiration die like any other saving throw (SRD 5.1).
   HELD_ROLL_KIND_DEATH_SAVE = 9;
+  // A roll of a contest, an ability check (SRD 5.1): the initiator's (StartContest: a grapple, a shove, an escape) before
+  // the contest is opened, or the defender's (RespondContest) before it is settled. Lucky's reroll of a 1 and a Bardic
+  // Inspiration die are asked about before anything is spent or written.
+  HELD_ROLL_KIND_CONTEST = 11;
   // The initiative of a character in SETUP (SubmitInitiative): a Dexterity check (SRD 5.1), so Lucky's reroll of a 1 and
   // a Bardic Inspiration die the character holds are asked about before the total is set.
   HELD_ROLL_KIND_INITIATIVE = 10;

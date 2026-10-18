@@ -6,12 +6,15 @@ import {
   type ContestView,
   type ManeuverGrappleOption,
   type RollNote,
+  ContestKind,
   ContestPurpose,
+  ContestSkill,
   ContestStatus,
   ContestTargetReason,
   RollModeKind,
 } from '../../../../../gen/meurpg/play/v1/contest_types_pb';
 import { reasonText } from '../../../../core/combat/combat-options';
+import type { CheckDie, StartContestInput } from '../../../../core/combat/contest-client';
 import {
   sheetTitle,
   sheetTitleWith,
@@ -141,4 +144,31 @@ export function subtitleOf(escape: boolean, stage: Stage): string {
     return 'Ação · substitui um ataque';
   }
   return stage === 'choice' ? 'Resultado' : 'Disputa';
+}
+
+/** The request that starts the contest, as the sheet sends it: a plain grapple, shove or escape, or a grapple that a table maneuver starts. */
+export function startInputOf(
+  data: {
+    readonly campaignId: string;
+    readonly encounterId: string;
+    readonly initiatorId: string;
+    readonly purpose: ContestPurpose;
+  },
+  targetId: string,
+  skill: ContestSkill,
+  die: CheckDie,
+  maneuverKey: string,
+  maneuverFace: number,
+): StartContestInput {
+  return {
+    campaignId: data.campaignId,
+    encounterId: data.encounterId,
+    initiatorId: data.initiatorId,
+    targetId,
+    purpose: data.purpose,
+    kind: ContestKind.CONTEST,
+    skill,
+    die,
+    ...(maneuverKey ? { maneuverKey, maneuverFace } : {}),
+  };
 }

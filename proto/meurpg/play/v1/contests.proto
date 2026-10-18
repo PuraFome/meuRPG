@@ -269,8 +269,12 @@ message StartContestRequest {
 // StartContestResponse returns the combat after it and the contest.
 message StartContestResponse {
   Encounter encounter = 1;
-  // The contest as the caller reads it.
+  // The contest as the caller reads it. Unset while the roll waits for a question.
   ContestView contest = 2;
+  // Set instead of `contest` when the initiator's d20 waits for a question: the halfling's Lucky about a 1, or the Bardic
+  // Inspiration die the combatant holds (AnswerHeldRoll answers it). The d20 was rolled and kept, and nothing is spent or
+  // written. The master is asked too when he rolls for the player, and answers after the player's first 10 s.
+  HeldRollOffer held_roll_offer = 3;
 }
 
 // RespondContestRequest is the defender's answer.
@@ -292,6 +296,8 @@ message RespondContestRequest {
 message RespondContestResponse {
   Encounter encounter = 1;
   ContestView contest = 2;
+  // Set instead of `contest` when the defender's d20 waits for a question, as for StartContestResponse.
+  HeldRollOffer held_roll_offer = 3;
 }
 
 // ResolveShoveRequest is the choice of a won shove.
