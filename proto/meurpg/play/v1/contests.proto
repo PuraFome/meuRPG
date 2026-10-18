@@ -505,14 +505,18 @@ message RollGroupCheckResponse {
   GroupCheckView group_check = 1;
   // Set when the character holds a Bardic Inspiration die: the d20 was rolled and the check
   // was not written; AnswerOutsideInspiration settles it.
-  OutsideInspirationOffer inspiration_offer = 2;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  OutsideInspirationOffer inspiration_offer = 2 [deprecated = true];
   // Set when the character is a halfling and a d20 shows a 1 (Lucky): the d20 was rolled and
   // the check was not written; AnswerOutsideLucky rolls it again or keeps the 1. It comes before
   // the die's question. A roll the master makes for a player asks too (RollForPlayer, E4-10).
-  LuckyOffer lucky_offer = 3;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  LuckyOffer lucky_offer = 3 [deprecated = true];
 
   // The question the roll asks now, in the one shape every held roll has (HeldRollOffer), set beside
-  // `inspiration_offer` and `lucky_offer` until they are removed: set instead of the result, when the
+  // the deprecated `inspiration_offer` and `lucky_offer`: set instead of the result, when the
   // roll waits for an answer (AnswerHeldRoll). Whoever may answer gets it; nobody else does (RN-10).
   HeldRollOffer held_roll_offer = 4;
 }
@@ -533,8 +537,12 @@ message RollForPlayerResponse {
   // halfling whose d20 shows a 1: the master's roll for a player asks like the player's own (E4-10). The master is
   // asked in his own sheet, the player reads the same question, and the first answer wins (AnswerHeldRoll); the
   // master's own answer waits for the player's 10 s first chance (PLAYER_FIRST).
-  OutsideInspirationOffer inspiration_offer = 2;
-  LuckyOffer lucky_offer = 3;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  OutsideInspirationOffer inspiration_offer = 2 [deprecated = true];
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  LuckyOffer lucky_offer = 3 [deprecated = true];
   HeldRollOffer held_roll_offer = 4;
 }
 
