@@ -97,8 +97,8 @@ func (s *Service) readersOf(ctx context.Context, rows []playdb.SessionMessage, v
 	return out, nil
 }
 
-// authorNames reads the display names of the authors of out-of-character lines. An erased account has
-// none: the line then says author_removed.
+// authorNames reads the display names of the authors of out-of-character lines. An account that never chose
+// a name has none, and an erased account has no author id at all: only the second says author_removed.
 func (s *Service) authorNames(ctx context.Context, rows []playdb.SessionMessage) (map[string]string, error) {
 	if s.msgs.profiles == nil {
 		return nil, nil
@@ -157,8 +157,9 @@ func messageToProto(r playdb.SessionMessage, image *playv1.SessionMessageImage, 
 		Text: r.Text, Image: image, ForEveryone: r.ForEveryone, ReaderUserIds: readers, CreatedAt: timestamppb.New(r.CreatedAt),
 	}
 	if r.SpeakerKind == speakerOutOfCharacter && r.AuthorUserID != nil {
-		out.SpeakerName = names[*r.AuthorUserID] // an account with no name reads as "Jogador removido" in the app
-		out.AuthorRemoved = out.SpeakerName == ""
+		// A present author who never chose a display name gets an empty name, and is still not "removed": that
+		// flag is for an erased account, which has no author id left.
+		out.SpeakerName = names[*r.AuthorUserID]
 	}
 	if r.SpeakerImageID != nil {
 		out.SpeakerPortrait = &playv1.SessionMessageImage{Id: *r.SpeakerImageID, Url: imagesPath + *r.SpeakerImageID, ThumbnailUrl: imagesPath + *r.SpeakerImageID + "/thumb"}
