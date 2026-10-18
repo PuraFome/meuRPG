@@ -359,7 +359,12 @@ message HideRequest {
 // HideResponse returns the combat and the attempt, which waits for the master.
 message HideResponse {
   Encounter encounter = 1;
+  // Unset while the Stealth roll waits for a question.
   HideAttemptView attempt = 2;
+  // Set instead of `attempt` when the d20 waits for a question: the halfling's Lucky about a 1, or the Bardic Inspiration die
+  // the combatant holds (AnswerHeldRoll answers it). The d20 was rolled and kept, and nothing is spent or written. The master
+  // is asked too when he rolls for the player, and answers after the player's first 10 s.
+  HeldRollOffer held_roll_offer = 3;
 }
 
 // ResolveHideRequest is the master's decision on a Hide.

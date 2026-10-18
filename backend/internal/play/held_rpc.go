@@ -29,6 +29,7 @@ var heldKindProto = map[heldKind]playv1.HeldRollKind{
 	heldEffectSave:        playv1.HeldRollKind_HELD_ROLL_KIND_EFFECT_SAVE,
 	heldConcentrationSave: playv1.HeldRollKind_HELD_ROLL_KIND_CONCENTRATION_SAVE,
 	heldDeathSave:         playv1.HeldRollKind_HELD_ROLL_KIND_DEATH_SAVE,
+	heldHide:              playv1.HeldRollKind_HELD_ROLL_KIND_HIDE,
 	heldContest:           playv1.HeldRollKind_HELD_ROLL_KIND_CONTEST,
 	heldInitiative:        playv1.HeldRollKind_HELD_ROLL_KIND_INITIATIVE,
 	heldSceneCheck:        playv1.HeldRollKind_HELD_ROLL_KIND_SCENE_CHECK,
@@ -206,6 +207,8 @@ func answerHeldResultOf(out proto.Message) *playv1.AnswerHeldRollResponse {
 		res.Result, res.Next = &playv1.AnswerHeldRollResponse_Contest{Contest: o}, o.GetHeldRollOffer()
 	case *playv1.RespondContestResponse:
 		res.Result, res.Next = &playv1.AnswerHeldRollResponse_ContestAnswer{ContestAnswer: o}, o.GetHeldRollOffer()
+	case *playv1.HideResponse:
+		res.Result, res.Next = &playv1.AnswerHeldRollResponse_Hide{Hide: o}, o.GetHeldRollOffer()
 	case *playv1.RollDeathSaveResponse:
 		res.Result, res.Next = &playv1.AnswerHeldRollResponse_DeathSave{DeathSave: o}, o.GetHeldRollOffer()
 	case *playv1.SubmitInitiativeResponse:

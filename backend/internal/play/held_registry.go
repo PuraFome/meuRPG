@@ -58,6 +58,7 @@ func init() {
 		heldTrapSearch:        {rerun: registerRerun((*Service).SearchForTraps), ownRoll: true},
 		heldHintTry:           {rerun: registerRerun((*Service).TryPuzzleHint)},
 		heldDeathSave:         {rerun: registerRerun((*Service).RollDeathSave)},
+		heldHide:              {rerun: registerRerun((*Service).Hide)},
 		heldContest:           {rerun: rerunContest},
 		heldInitiative:        {rerun: registerRerun((*Service).SubmitInitiative)},
 	}
