@@ -34,6 +34,7 @@ function fullSheet(overrides: Partial<FullSheetVm> = {}): FullSheetVm {
     armorClassDescription: 'Sem armadura',
     wearsArmor: false,
     hasShield: false,
+    shieldIdle: false,
     hitPointsMax: 10,
     hitDice: '1d6',
     speedWalkFt: 25,

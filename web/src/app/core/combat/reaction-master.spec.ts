@@ -298,6 +298,9 @@ describe("what the master's held actions say", () => {
     expect(describeRow(reactionWindow({ id: 'x', kind: ReactionKind.DEFLECT_MISSILES }))).toContain(
       'Defletir Projéteis',
     );
+    expect(reactionName(reactionWindow({ id: 'x', kind: ReactionKind.PROTECTION }))).toBe(
+      'Proteção',
+    );
   });
 });
 

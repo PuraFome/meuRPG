@@ -10,6 +10,11 @@
     [aid]="aidVitals()?.hitPointsMaxBonus ?? 0"
     [hitDice]="s.hitDice"
   />
+  @if (s.shieldIdle) {
+    <p class="mr-muted shield-note" role="note">
+      O escudo não soma na CA: a ficha tem uma arma de duas mãos. Tire uma das duas da ficha para usar o escudo.
+    </p>
+  }
 </section>
 
 <!-- The live counters (Recursos, Espaços de magia) of an open session, from the page (PM-07b 7). -->
@@ -168,7 +173,12 @@
   <ul class="gear">
     <li>{{ armorName() ?? 'Sem armadura' }}</li>
     @if (s.hasShield) {
-      <li>Escudo</li>
+      <li>
+        Escudo
+        @if (s.shieldIdle) {
+          <span class="mr-muted">(sem efeito: arma de duas mãos)</span>
+        }
+      </li>
     }
     @for (weapon of weaponNames(); track $index) {
       <li>{{ weapon }}</li>

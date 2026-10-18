@@ -16,6 +16,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
 // The master's "Desfazer" (MR-012, MR-014): one step back, a compensating
@@ -112,6 +113,7 @@ var chainRules = []func(c chainEvent) chainVerdict{
 	chainTrapOutside,
 	chainShapeAndSight,
 	chainHeld,
+	chainProtection,
 	chainHeldFall,
 	chainRevive,
 	chainHideDecision,
@@ -213,6 +215,15 @@ func chainShapeAndSight(c chainEvent) chainVerdict {
 func chainHeld(c chainEvent) chainVerdict {
 	if ev, ok := c.payload(); ok && ev.Reaction != nil && ev.Reaction.Hold {
 		return chainClose
+	}
+	return chainGoOn
+}
+
+// chainProtection: a Protection that was used is written beside the attack roll it released and
+// never closes the chain: the undo acts on the attack and gives the reaction back (ProtectedBy).
+func chainProtection(c chainEvent) chainVerdict {
+	if ev, ok := c.payload(); ok && ev.Reaction != nil && ev.Reaction.Kind == string(reaction.ProtectionKind) && ev.Reaction.Used {
+		return chainSkip
 	}
 	return chainGoOn
 }

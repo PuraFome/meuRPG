@@ -406,6 +406,9 @@
   "closed_windows": [
     "x"
   ],
+  "protected_by": [
+    "x"
+  ],
   "mode": "x",
   "delta": 1,
   "col": 1,
@@ -664,7 +667,11 @@
   ],
   "once_before": {
     "sneak": "x",
-    "colossus": "x"
+    "colossus": "x",
+    "table": {
+      "x": "x"
+    },
+    "table_changed": true
   },
   "steps": [
     {
