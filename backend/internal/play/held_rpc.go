@@ -28,6 +28,7 @@ var heldKindProto = map[heldKind]playv1.HeldRollKind{
 	heldSpellAttack:       playv1.HeldRollKind_HELD_ROLL_KIND_SPELL_ATTACK,
 	heldEffectSave:        playv1.HeldRollKind_HELD_ROLL_KIND_EFFECT_SAVE,
 	heldConcentrationSave: playv1.HeldRollKind_HELD_ROLL_KIND_CONCENTRATION_SAVE,
+	heldDeathSave:         playv1.HeldRollKind_HELD_ROLL_KIND_DEATH_SAVE,
 	heldSceneCheck:        playv1.HeldRollKind_HELD_ROLL_KIND_SCENE_CHECK,
 	heldGroupCheck:        playv1.HeldRollKind_HELD_ROLL_KIND_GROUP_CHECK,
 	heldTrapSearch:        playv1.HeldRollKind_HELD_ROLL_KIND_TRAP_SEARCH,
@@ -130,13 +131,7 @@ func (s *Service) AnswerHeldRoll(
 	if err != nil {
 		return nil, err
 	}
-	ref := holdRef{Campaign: m.CampaignID, ID: holdID}
-	if enc, err := s.openEncounterOf(ctx, m.CampaignID); err != nil { // the weapon attacks the release before left in roll_holds
-		return nil, s.dbError(ctx, "find the open combat", err)
-	} else if enc != nil {
-		ref.Encounter = enc.ID
-	}
-	ans.ref, ans.key, ans.concealed = ref, key, true
+	ans.ref, ans.key, ans.concealed = holdRef{Campaign: m.CampaignID, ID: holdID}, key, true
 	out, err := s.answerHeld(ctx, m, ans)
 	if err != nil {
 		return nil, err
@@ -202,6 +197,8 @@ func answerHeldResultOf(out proto.Message) *playv1.AnswerHeldRollResponse {
 	case *playv1.RollForPlayerResponse: // the master's roll for a player is a group check's, in the same arm
 		g := &playv1.RollGroupCheckResponse{GroupCheck: o.GetGroupCheck(), InspirationOffer: o.GetInspirationOffer(), LuckyOffer: o.GetLuckyOffer(), HeldRollOffer: o.GetHeldRollOffer()}
 		res.Result, res.Next = &playv1.AnswerHeldRollResponse_GroupCheck{GroupCheck: g}, g.GetHeldRollOffer()
+	case *playv1.RollDeathSaveResponse:
+		res.Result, res.Next = &playv1.AnswerHeldRollResponse_DeathSave{DeathSave: o}, o.GetHeldRollOffer()
 	case *playv1.SearchForTrapsResponse:
 		res.Result, res.Next = &playv1.AnswerHeldRollResponse_TrapSearch{TrapSearch: o}, o.GetHeldRollOffer()
 	case *playv1.TryPuzzleHintResponse:
@@ -237,7 +234,7 @@ func (s *Service) ListHeldRolls(
 	return connect.NewResponse(res), nil
 }
 
-// openHeldRolls are the rolls of the campaign that wait for an answer, in both tables, the oldest first.
+// openHeldRolls are the rolls of the campaign that wait for an answer, the oldest first.
 func (s *Service) openHeldRolls(ctx context.Context, campaignID string) ([]heldRoll, error) {
 	rows, err := s.queries.ListOpenInspirationHoldsOfCampaign(ctx, campaignID)
 	if err != nil {
@@ -247,18 +244,6 @@ func (s *Service) openHeldRolls(ctx context.Context, campaignID string) ([]heldR
 	for _, row := range rows {
 		out = append(out, heldOfInspirationHold(row))
 	}
-	enc, err := s.openEncounterOf(ctx, campaignID)
-	if err != nil || enc == nil { // the weapon attacks the release before left in roll_holds
-		return out, err
-	}
-	legacy, err := s.queries.ListOpenRollHolds(ctx, enc.ID)
-	if err != nil {
-		return nil, err //nolint:wrapcheck // the caller wraps
-	}
-	for _, row := range legacy {
-		out = append(out, heldOfRollHold(row))
-	}
-	slices.SortStableFunc(out, func(a, b heldRoll) int { return a.CreatedAt.Compare(b.CreatedAt) })
 	return out, nil
 }
 

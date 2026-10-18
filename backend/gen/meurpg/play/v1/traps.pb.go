@@ -283,15 +283,23 @@ type SearchForTrapsResponse struct {
 	// combat: the d20 is rolled and kept, nothing is written, and
 	// ResourceService.AnswerOutsideInspiration settles the search (SRD 5.1). The Search action
 	// of a combat does not ask. The offer shows the d20 and the bonus, never a DC.
+	// Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+	// tab opened before the one question existed; it will go with the old answer RPCs.
+	//
+	// Deprecated: Marked as deprecated in meurpg/play/v1/traps.proto.
 	InspirationOffer *OutsideInspirationOffer `protobuf:"bytes,7,opt,name=inspiration_offer,json=inspirationOffer,proto3" json:"inspiration_offer,omitempty"`
 	// The Bardic Inspiration die the player added after the d20, already in `roll`'s total.
 	BonusDice []*BonusDie `protobuf:"bytes,8,rep,name=bonus_dice,json=bonusDice,proto3" json:"bonus_dice,omitempty"`
 	// Set instead of the rest, like `inspiration_offer`, when the character is a halfling and the
 	// held d20 shows a 1 (Lucky): ResourceService.AnswerOutsideLucky rolls it again or keeps the 1,
 	// before the die's question. The second d20 of a Perception search is not asked about.
+	// Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+	// tab opened before the one question existed; it will go with the old answer RPCs.
+	//
+	// Deprecated: Marked as deprecated in meurpg/play/v1/traps.proto.
 	LuckyOffer *LuckyOffer `protobuf:"bytes,9,opt,name=lucky_offer,json=luckyOffer,proto3" json:"lucky_offer,omitempty"`
 	// The question the roll asks now, in the one shape every held roll has (HeldRollOffer), set beside
-	// `inspiration_offer` and `lucky_offer` until they are removed: set instead of the result, when the
+	// the deprecated `inspiration_offer` and `lucky_offer`: set instead of the result, when the
 	// roll waits for an answer (AnswerHeldRoll). Whoever may answer gets it; nobody else does (RN-10).
 	HeldRollOffer *HeldRollOffer `protobuf:"bytes,10,opt,name=held_roll_offer,json=heldRollOffer,proto3" json:"held_roll_offer,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -370,6 +378,7 @@ func (x *SearchForTrapsResponse) GetSources() []*AdvantageSource {
 	return nil
 }
 
+// Deprecated: Marked as deprecated in meurpg/play/v1/traps.proto.
 func (x *SearchForTrapsResponse) GetInspirationOffer() *OutsideInspirationOffer {
 	if x != nil {
 		return x.InspirationOffer
@@ -384,6 +393,7 @@ func (x *SearchForTrapsResponse) GetBonusDice() []*BonusDie {
 	return nil
 }
 
+// Deprecated: Marked as deprecated in meurpg/play/v1/traps.proto.
 func (x *SearchForTrapsResponse) GetLuckyOffer() *LuckyOffer {
 	if x != nil {
 		return x.LuckyOffer
@@ -1422,7 +1432,7 @@ const file_meurpg_play_v1_traps_proto_rawDesc = "" +
 	"\td20_faces\x18\b \x03(\x05R\bd20Faces\x12&\n" +
 	"\x0fextra_die_faces\x18\t \x03(\x05R\rextraDieFacesB\x06\n" +
 	"\x04rollB\r\n" +
-	"\v_d20_face_2\"\xc8\x04\n" +
+	"\v_d20_face_2\"\xd0\x04\n" +
 	"\x16SearchForTrapsResponse\x12,\n" +
 	"\x04roll\x18\x01 \x01(\v2\x18.meurpg.play.v1.DiceRollR\x04roll\x12&\n" +
 	"\x0ffound_point_ids\x18\x02 \x03(\tR\rfoundPointIds\x12!\n" +
@@ -1430,11 +1440,11 @@ const file_meurpg_play_v1_traps_proto_rawDesc = "" +
 	"\vsecond_roll\x18\x04 \x01(\v2\x18.meurpg.play.v1.DiceRollR\n" +
 	"secondRoll\x12,\n" +
 	"\x04mode\x18\x05 \x01(\x0e2\x18.meurpg.play.v1.RollModeR\x04mode\x129\n" +
-	"\asources\x18\x06 \x03(\v2\x1f.meurpg.play.v1.AdvantageSourceR\asources\x12T\n" +
-	"\x11inspiration_offer\x18\a \x01(\v2'.meurpg.play.v1.OutsideInspirationOfferR\x10inspirationOffer\x127\n" +
+	"\asources\x18\x06 \x03(\v2\x1f.meurpg.play.v1.AdvantageSourceR\asources\x12X\n" +
+	"\x11inspiration_offer\x18\a \x01(\v2'.meurpg.play.v1.OutsideInspirationOfferB\x02\x18\x01R\x10inspirationOffer\x127\n" +
 	"\n" +
-	"bonus_dice\x18\b \x03(\v2\x18.meurpg.play.v1.BonusDieR\tbonusDice\x12;\n" +
-	"\vlucky_offer\x18\t \x01(\v2\x1a.meurpg.play.v1.LuckyOfferR\n" +
+	"bonus_dice\x18\b \x03(\v2\x18.meurpg.play.v1.BonusDieR\tbonusDice\x12?\n" +
+	"\vlucky_offer\x18\t \x01(\v2\x1a.meurpg.play.v1.LuckyOfferB\x02\x18\x01R\n" +
 	"luckyOffer\x12E\n" +
 	"\x0fheld_roll_offer\x18\n" +
 	" \x01(\v2\x1d.meurpg.play.v1.HeldRollOfferR\rheldRollOffer\"\xd6\x01\n" +

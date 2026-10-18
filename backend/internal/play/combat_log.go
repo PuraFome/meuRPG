@@ -1010,7 +1010,7 @@ func (e *logEntry) fillDeathSave(c *logViewing, out *playv1.CombatLogEntry) bool
 		Stable: after.Successes >= deathSaveCount, Dying: v.master && after.Failures >= deathSaveCount,
 	}
 	if v.master || v.owns(c.actor) {
-		out.DeathSave.Roll = diceRoll(1, 20, []int32{e.ev.D20}, 0, e.ev.D20, e.ev.Physical)
+		out.DeathSave.Roll = deathRoll(e.ev)
 	}
 	return true
 }

@@ -1,7 +1,7 @@
 import { create } from '@bufbuild/protobuf';
 
 import { TableEffectSchema } from '../../../gen/meurpg/rules/v1/table_content_pb';
-import { menu, rangedAttackMenu } from './content-testing-menu';
+import { menu, rangedAttackMenu, resistanceMenu } from './content-testing-menu';
 import {
   draftToEffect,
   effectToDraft,
@@ -260,5 +260,32 @@ describe("ranged_attack: a table feat's switches and spell range multiplier", ()
     const sent = draftToEffect(d, m);
     expect(sent).not.toHaveProperty('ignoreCover');
     expect(sent).not.toHaveProperty('rangeMultiplier');
+  });
+});
+
+describe('resistance: every damage type but one, while a condition holds', () => {
+  const m = resistanceMenu();
+
+  it('sends the excepted type and the condition, and asks for both', () => {
+    const d = { ...emptyEffect('resistance'), except: 'damage-type:psychic', while: 'rage' };
+    expect(draftToEffect(d, m)).toEqual({
+      type: 'resistance',
+      except: 'damage-type:psychic',
+      while: 'rage',
+    });
+    expect(missingRequired(emptyEffect('resistance'), m)).toEqual(['except', 'while']);
+  });
+
+  it('reads a stored one back and sends it unchanged', () => {
+    const stored = create(TableEffectSchema, {
+      type: 'resistance',
+      except: 'damage-type:psychic',
+      while: 'rage',
+    });
+    expect(draftToEffect(effectToDraft(stored), m)).toEqual({
+      type: 'resistance',
+      except: 'damage-type:psychic',
+      while: 'rage',
+    });
   });
 });

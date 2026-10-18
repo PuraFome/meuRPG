@@ -40,13 +40,13 @@ var deathOutcomeToProto = map[string]playv1.DeathSaveOutcome{
 }
 
 // deathOutcomeOf names what a d20 does to a death save.
-func deathOutcomeOf(face int) string {
+func deathOutcomeOf(face, bonus int) string {
 	switch {
 	case face == 20:
 		return deathRevived
 	case face == 1:
 		return deathCritical
-	case face >= 10:
+	case face+bonus >= combat.DeathSaveDC:
 		return deathSuccess
 	}
 	return deathFailure
@@ -59,6 +59,7 @@ type deathSaveCall struct {
 	encounterID string
 	combatantID string
 	in          rollInput
+	msg         *playv1.RollDeathSaveRequest
 }
 
 // deathSaveOutcome is what the write of a death save leaves for the answer and the
@@ -67,6 +68,7 @@ type deathSaveOutcome struct {
 	made   actionEvent
 	vitals *playv1.CharacterVitals // after a natural 20
 	viewer combatViewer
+	held   *playv1.HeldRollOffer // the d20 was kept for a question: nothing is written
 }
 
 // RollDeathSave implements playv1connect.CombatServiceHandler.
@@ -80,11 +82,18 @@ func (s *Service) RollDeathSave(
 	}
 	out := deathSaveOutcome{viewer: viewerOf(call.m)}
 	res, err := s.write(ctx, combatWrite{m: call.m, key: call.key, hash: idem.Hash(req.Msg), kind: eventDeathSaveRolled, encounterID: call.encounterID}, func(c *combatTx) (any, error) {
-		out.vitals = nil
+		out.vitals, out.held = nil, nil
 		return s.deathSaveWrite(ctx, c, call, &out)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "roll a death save", err)
+	}
+	if out.held != nil { // nothing was written: the question is the whole answer
+		enc, err := s.finish(ctx, call.m, res, s.changed(call.m.CampaignID))
+		if err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(&playv1.RollDeathSaveResponse{Encounter: enc, HeldRollOffer: out.held}), nil
 	}
 	ev, err := resultEvent(res, out.made)
 	if err != nil {
@@ -104,11 +113,15 @@ func (s *Service) RollDeathSave(
 // readDeathSaveRequest reads the request in the order the answers are given: who may call,
 // the key, the encounter, the combatant, then the roll.
 func readDeathSaveRequest(ctx context.Context, req *playv1.RollDeathSaveRequest) (deathSaveCall, error) {
-	m, key, encID, err := memberCall(ctx, req.GetCampaignId(), req.GetIdempotencyKey(), req.GetEncounterId())
+	m, err := heldMember(ctx, req.GetCampaignId()) // a held roll's answer runs this again as the roller
 	if err != nil {
 		return deathSaveCall{}, err
 	}
-	call := deathSaveCall{m: m, key: key, encounterID: encID}
+	key, encID, err := parseCall(req.GetIdempotencyKey(), req.GetEncounterId())
+	if err != nil {
+		return deathSaveCall{}, err
+	}
+	call := deathSaveCall{m: m, key: key, encounterID: encID, msg: req}
 	if call.combatantID, err = parseCombatID(req.GetCombatantId(), "combatant"); err != nil {
 		return deathSaveCall{}, err
 	}
@@ -144,14 +157,33 @@ func (s *Service) deathSaveWrite(ctx context.Context, c *combatTx, call deathSav
 	if err := s.deathSaveGates(ctx, c, call, out.viewer, who); err != nil {
 		return nil, err
 	}
-	face, roll, err := s.d20(call.in, 0)
+	sheet, err := s.sheetOf(ctx, c.tx, c.session.CampaignID, who)
 	if err != nil {
 		return nil, err
 	}
-	r := combat.DeathSave(face, int(who.DeathSuccesses), int(who.DeathFailures))
+	// A character that holds a Bardic Inspiration die, or a halfling whose d20 shows a 1, has the d20 kept until the
+	// player answers; the answer brings it back with the die added (SRD 5.1).
+	gate, err := s.heldGate(ctx, s.inspirationGate(c), rollSpec{
+		Kind: heldDeathSave, Key: call.key, Request: call.msg, Roller: attackRoller(call.m, who, c.enc.Round), In: call.in,
+		Mode: combat.ModeNormal, Lucky: sheet.Traits.Lucky, MayAsk: playedBy(who, call.m),
+	})
+	if err != nil {
+		return nil, err
+	}
+	if gate.Held != nil {
+		_, _, out.held = s.outsideOffers(ctx, c.tx, gate.Held)
+		return nil, nil
+	}
+	roll := gate.Roll
+	face, bonus := roll.Face(), roll.Total-roll.Face()
+	r := combat.DeathSaveWith(face, bonus, int(who.DeathSuccesses), int(who.DeathFailures))
 	out.made = actionEvent{
-		Round: c.enc.Round, Actor: who.ID, D20: clamp32(face, 1, 20), Physical: roll.Physical, DeathOutcome: deathOutcomeOf(face),
-		DeathBefore: deathOf(who), DeathHidden: c.rules.DeathSavesHidden,
+		Round: c.enc.Round, Actor: who.ID, D20: clamp32(face, 1, 20), Modifier: clamp32(bonus, 0, math.MaxInt32), Total: clamp32(roll.Total, 0, math.MaxInt32),
+		Physical: roll.Physical, DeathOutcome: deathOutcomeOf(face, bonus), DeathBefore: deathOf(who), DeathHidden: c.rules.DeathSavesHidden,
+		Lucky: gate.Lucky,
+	}
+	if b := gate.Bonus; b != nil { // the die the player added: the log shows it and the undo gives it back
+		out.made.Res = &resourceEvent{Kind: resBardicUse, Sides: b.Sides, Face: b.Face, FromID: deref(who.InspirationFrom), ExpiresRound: derefInt32(who.InspirationExpiresRound)}
 	}
 	after := deathState{Successes: clamp32(r.Successes, 0, 3), Failures: clamp32(r.Failures, 0, 3), Rolled: true}
 	if r.Outcome == combat.DeathSaveRevived {
@@ -217,6 +249,18 @@ func (s *Service) reviveOnNaturalTwenty(ctx context.Context, c *combatTx, who pl
 	return deathState{Rolled: true}, nil
 }
 
+// deathRoll is the d20 of a death save as an event tells it: with the Bardic Inspiration die as the modifier and the
+// d20 the halfling's Lucky rolled again.
+func deathRoll(ev actionEvent) *playv1.DiceRoll {
+	total := ev.Total
+	if total == 0 {
+		total = ev.D20
+	}
+	roll := diceRoll(1, 20, []int32{ev.D20}, ev.Modifier, total, ev.Physical)
+	roll.Rerolled = ev.Lucky.proto()
+	return roll
+}
+
 // deathSaveProto builds the DeathSave an event tells. "Dying" is the master's:
 // a player only sees the counts.
 func deathSaveProto(ev actionEvent, v combatViewer) *playv1.DeathSave {
@@ -225,7 +269,8 @@ func deathSaveProto(ev actionEvent, v combatViewer) *playv1.DeathSave {
 		after = &deathState{}
 	}
 	return &playv1.DeathSave{
-		Roll:      diceRoll(1, 20, []int32{ev.D20}, 0, ev.D20, ev.Physical),
+		Roll:      deathRoll(ev),
+		BonusDice: bonusDiceOf(ev),
 		Outcome:   deathOutcomeToProto[ev.DeathOutcome],
 		Successes: after.Successes, Failures: after.Failures,
 		Stable: after.Successes >= 3, Dying: v.master && after.Failures >= 3,

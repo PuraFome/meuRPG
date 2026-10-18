@@ -2416,12 +2416,16 @@ message Combatant {
   // The attack roll of this combatant that waits for the answer about the die, if any
   // (it is answered with AnswerBardicInspiration). Only the master and the combatant's
   // own player get it, so the question is still there when the screen is read again.
-  InspirationOffer inspiration_offer = 71;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  InspirationOffer inspiration_offer = 71 [deprecated = true];
   // The attack roll of this combatant that waits for the halfling's Lucky answer, if any
   // (it is answered with AnswerLucky). Only the master and the combatant's own player get
   // it, like `inspiration_offer`, which is unset while this question waits (one question at
   // a time: the Lucky question comes first, then the die's, on the new roll).
-  LuckyOffer lucky_offer = 74;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  LuckyOffer lucky_offer = 74 [deprecated = true];
   // The states the combatant is in (a rage, a dodge, Reckless Attack, a Hunter's
   // Mark on it), for everyone who sees it, except the mark, which only the master
   // and the ranger's player get. An NPC's states are the public chips alone.
@@ -2454,8 +2458,8 @@ message Combatant {
   // is (a weapon attack, a spell attack, a save, a check), in the one shape every held roll has
   // (AnswerHeldRoll answers it). Only the master and the combatant's own player get it; the other players read
   // nothing, not even that a roll waits. It carries the d20 and the bonus the player already sees, never a DC,
-  // an armor class or an NPC's number (RN-10, RN-20). `inspiration_offer` and `lucky_offer` say the same for a
-  // weapon attack until they are removed.
+  // an armor class or an NPC's number (RN-10, RN-20). the deprecated `inspiration_offer` and `lucky_offer` say the same for a
+  // weapon attack.
   HeldRollOffer held_roll_offer = 104;
 }
 
@@ -3493,6 +3497,9 @@ enum HeldRollKind {
   HELD_ROLL_KIND_GROUP_CHECK = 6;
   HELD_ROLL_KIND_TRAP_SEARCH = 7;
   HELD_ROLL_KIND_HINT_TRY = 8;
+  // The death saving throw of a character at 0 hit points (RollDeathSave), asked about Lucky's reroll of a 1 and about
+  // a Bardic Inspiration die like any other saving throw (SRD 5.1).
+  HELD_ROLL_KIND_DEATH_SAVE = 9;
 }
 
 // LuckyQuestion is the halfling's "Tirou 1: rolar de novo?" (SRD 5.1, Halfling, Lucky).
@@ -3554,15 +3561,19 @@ message RollAttackResponse {
   // and there is no pending damage) when the attacker holds a Bardic Inspiration
   // die: the d20 is rolled, and the player decides whether to add the die before the
   // result is told (AnswerBardicInspiration). Unset while `lucky_offer` waits.
-  InspirationOffer inspiration_offer = 30;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  InspirationOffer inspiration_offer = 30 [deprecated = true];
   // Set instead of the outcome, like `inspiration_offer`, when the attacker is a
   // halfling and a d20 shows a 1: the player decides whether to roll it again before
   // the result is told (AnswerLucky). The Lucky question comes first; the die's, when
   // the attacker holds one, comes after it, on the new roll.
-  LuckyOffer lucky_offer = 31;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  LuckyOffer lucky_offer = 31 [deprecated = true];
 
   // The question the roll asks now, in the one shape every held roll has (HeldRollOffer), set beside
-  // `inspiration_offer` and `lucky_offer` until they are removed: set instead of the result, when the
+  // the deprecated `inspiration_offer` and `lucky_offer`: set instead of the result, when the
   // roll waits for an answer (AnswerHeldRoll). Whoever may answer gets it; nobody else does (RN-10).
   HeldRollOffer held_roll_offer = 32;
 }
@@ -4198,15 +4209,19 @@ message CastSpellResponse {
   // added after the d20, before the result is told). A cast with several targets, a
   // cantrip's attack (RollAttack holds those) and a cast that waited for a reaction window
   // do not ask.
-  OutsideInspirationOffer inspiration_offer = 7;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  OutsideInspirationOffer inspiration_offer = 7 [deprecated = true];
   // Set instead of `cast`, like `inspiration_offer`, when the caster is the player's own
   // halfling and a d20 of that spell attack shows a 1: the player decides whether to roll it
   // again before the result is told (ResourceService.AnswerOutsideLucky). The Lucky question
   // comes first; the die's, when the caster holds one, comes after it, on the new roll.
-  LuckyOffer lucky_offer = 8;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  LuckyOffer lucky_offer = 8 [deprecated = true];
 
   // The question the roll asks now, in the one shape every held roll has (HeldRollOffer), set beside
-  // `inspiration_offer` and `lucky_offer` until they are removed: set instead of the result, when the
+  // the deprecated `inspiration_offer` and `lucky_offer`: set instead of the result, when the
   // roll waits for an answer (AnswerHeldRoll). Whoever may answer gets it; nobody else does (RN-10).
   HeldRollOffer held_roll_offer = 9;
 }
@@ -4345,7 +4360,8 @@ message RollDeathSaveRequest {
 
 // DeathSave is a death save and where it left the character.
 message DeathSave {
-  // The d20 (no modifier).
+  // The d20, with the Bardic Inspiration die the player added as the modifier (0 without one), and the d20 the
+  // halfling's Lucky rolled again in `rerolled`.
   DiceRoll roll = 1;
   DeathSaveOutcome outcome = 2;
   // The counts after it, 0 to 3 each.
@@ -4356,12 +4372,20 @@ message DeathSave {
   // Three failures: the master confirms the death. Only the master gets it; a
   // player only sees the counts.
   bool dying = 6;
+  // The Bardic Inspiration die the player added to the d20 (SRD 5.1), when one was used: it moves the total, never the
+  // natural 1 (two failures) or the natural 20 (back with 1 hit point).
+  repeated BonusDie bonus_dice = 7;
 }
 
 // RollDeathSaveResponse returns the combat and the save.
 message RollDeathSaveResponse {
   Encounter encounter = 1;
   DeathSave death_save = 2;
+  // Set instead of `death_save` when the roll waits for a question: the halfling's Lucky about a 1, or the Bardic
+  // Inspiration die the combatant holds (AnswerHeldRoll answers it). The d20 was rolled and kept and nothing is
+  // written, the counts included. The master is asked too when he rolls for the player, and answers after the
+  // player's first 10 s.
+  HeldRollOffer held_roll_offer = 3;
 }
 
 // ConfirmDeathRequest confirms a death.
@@ -5709,14 +5733,18 @@ message ResolveConcentrationSaveResponse {
   // d20 is rolled and kept, the window stays open and nothing is written, and
   // ResourceService.AnswerOutsideInspiration settles the save (SRD 5.1). The master's roll
   // never asks.
-  OutsideInspirationOffer inspiration_offer = 3;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  OutsideInspirationOffer inspiration_offer = 3 [deprecated = true];
   // Set instead of `result`, like `inspiration_offer`, when the roller is the player's own
   // halfling and a d20 shows a 1: the window stays open, and ResourceService.AnswerOutsideLucky
   // rolls it again or keeps the 1 (the die's question, if any, comes after it).
-  LuckyOffer lucky_offer = 4;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  LuckyOffer lucky_offer = 4 [deprecated = true];
 
   // The question the roll asks now, in the one shape every held roll has (HeldRollOffer), set beside
-  // `inspiration_offer` and `lucky_offer` until they are removed: set instead of the result, when the
+  // the deprecated `inspiration_offer` and `lucky_offer`: set instead of the result, when the
   // roll waits for an answer (AnswerHeldRoll). Whoever may answer gets it; nobody else does (RN-10).
   HeldRollOffer held_roll_offer = 5;
 }

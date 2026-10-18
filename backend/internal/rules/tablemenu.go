@@ -116,6 +116,9 @@ const (
 	ListIncreaseAmounts    = "ability_increase_amounts"
 	ListRangedAttacks      = "ranged_attack_applies"
 	ListExtraDamageApplies = "extra_damage_applies"
+	ListDamageTypes        = "damage_types"
+	// ListResistanceConditions are when a resistance effect holds.
+	ListResistanceConditions = "resistance_conditions"
 )
 
 // menuTypes is the menu's types, in the picker's order, with the copy in
@@ -189,6 +192,11 @@ var menuTypes = []MenuType{
 		{Name: "range_multiplier", Kind: "number", Min: MinSpellRangeMultiplier, Max: MaxSpellRangeMultiplier, AlwaysShown: true},
 		{Name: "no_long_range_disadvantage", Kind: "yes_no", AlwaysShown: true},
 		{Name: "when", Kind: "condition"},
+		{Name: "text_pt", Kind: "text"},
+	}},
+	{Type: "resistance", NamePT: "Resistência a dano", HintPT: "Resistência a todos os tipos de dano menos um, que a entrada escolhe, enquanto vale a condição (em fúria). A resistência não se acumula: a mesma de outra fonte conta uma vez só.", Fields: []MenuField{
+		{Name: "except", Required: true, Kind: "choice", List: ListDamageTypes},
+		{Name: "while", Required: true, Kind: "choice", List: ListResistanceConditions},
 		{Name: "text_pt", Kind: "text"},
 	}},
 	{Type: "choice", NamePT: "Escolha", HintPT: "Algo que o jogador escolhe: perícias, especialização, truques, magias, idiomas, ferramentas ou uma opção de uma lista (do SRD, como um estilo de luta, ou a lista de opções da própria característica, como manobras).", Fields: []MenuField{
@@ -402,7 +410,19 @@ func (c *content) menuLists() []MenuList {
 		{Name: ListIncreaseAmounts, Values: []MenuValue{{Key: "1", NamePT: "+1"}, {Key: "2", NamePT: "+2"}}},
 		{Name: ListRangedAttacks, Values: rangedAttackValues()},
 		{Name: ListExtraDamageApplies, Values: extraDamageValues()},
+		{Name: ListDamageTypes, Values: c.menuDamageTypes()},
+		{Name: ListResistanceConditions, Values: []MenuValue{{Key: ResistanceWhileRage, NamePT: "Em fúria", HintPT: "Vale enquanto o personagem estiver em fúria (e não usar armadura pesada)."}}},
 	}
+}
+
+// menuDamageTypes are the damage types, by Portuguese name.
+func (c *content) menuDamageTypes() []MenuValue {
+	_, _, types := c.namedEntries()
+	out := make([]MenuValue, 0, len(types))
+	for _, t := range types {
+		out = append(out, MenuValue{Key: t.Key, NamePT: t.NamePT})
+	}
+	return out
 }
 
 // menuOptionSets are the SRD features that offer options, sorted by name. A
