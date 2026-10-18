@@ -183,12 +183,7 @@ func (a *armed) start(t *testing.T, p plan) *playv1.Encounter {
 	}
 	e := res.Msg.GetEncounter()
 	for label, face := range p.players {
-		if _, err := a.master.combat.SubmitInitiative(ctx, connect.NewRequest(&playv1.SubmitInitiativeRequest{
-			CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: byLabel(t, e, label).GetId(), IdempotencyKey: newKey(),
-			Roll: &playv1.SubmitInitiativeRequest_D20Face{D20Face: face},
-		})); err != nil {
-			t.Fatalf("SubmitInitiative(%s) error = %v", label, err)
-		}
+		a.submitFaceKeepingTheD20(t, e, label, face)
 	}
 	for _, label := range p.reveal {
 		if _, err := a.master.combat.SetCombatantHidden(ctx, connect.NewRequest(&playv1.SetCombatantHiddenRequest{

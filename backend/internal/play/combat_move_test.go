@@ -1699,12 +1699,7 @@ func TestBeginCombatPlacesNPCsAroundTheBattlePoint(t *testing.T) {
 	}
 	e := res.Msg.GetEncounter()
 	for label, face := range map[string]int32{"Toren": 18, "Pensantus": 10, "Brisa": 1} {
-		if _, err := c.master.combat.SubmitInitiative(t.Context(), connect.NewRequest(&playv1.SubmitInitiativeRequest{
-			CampaignId: c.campaignID, EncounterId: e.GetId(), CombatantId: byLabel(t, e, label).GetId(), IdempotencyKey: newKey(),
-			Roll: &playv1.SubmitInitiativeRequest_D20Face{D20Face: face},
-		})); err != nil {
-			t.Fatalf("SubmitInitiative(%s) error = %v", label, err)
-		}
+		c.submitFaceKeepingTheD20(t, e, label, face)
 	}
 	c.mustMove(t, c.master, "Toren", 6, 7)
 	c.mustMove(t, c.master, "Pensantus", 5, 8)

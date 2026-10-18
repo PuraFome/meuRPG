@@ -168,3 +168,32 @@ func TestTheQuestionOfAnInitiativeIsOnTheCombatantOfTheOwnerAndTheMasterOnly(t *
 		t.Errorf("the master reads Toren's offer = %v after the answer, want none", offer)
 	}
 }
+
+// submitFaceKeepingTheD20 is a fixture's initiative typed by the master: a halfling's 1, or a character that holds a die,
+// is asked about (the master rolled for a player), so the fixture lets the player's chance pass and keeps the d20 as it
+// came, as the table that does not care would.
+func (a *armed) submitFaceKeepingTheD20(t *testing.T, e *playv1.Encounter, label string, face int32) {
+	t.Helper()
+	res, err := a.submitInitiative(t, a.master, e, label, face)
+	if err != nil {
+		t.Fatalf("SubmitInitiative(%s) error = %v", label, err)
+	}
+	for offer := res.GetHeldRollOffer(); offer != nil; {
+		a.h.afterThePlayersChance()
+		keep := dieAnswer(false)
+		if offer.GetLucky() != nil {
+			keep = func(r *playv1.AnswerHeldRollRequest) {
+				r.Answer = &playv1.AnswerHeldRollRequest_Lucky{Lucky: &playv1.LuckyAnswer{Reroll: false}}
+			}
+		}
+		out, err := a.answerHeldRoll(t, a.master, offer.GetHoldId(), keep)
+		if err != nil {
+			t.Fatalf("AnswerHeldRoll(%s) error = %v", label, err)
+		}
+		offer = out.GetNext()
+	}
+	// The fixture is about what comes after: the answered question is not one of the rows the held-roll tests count.
+	if _, err := a.h.pool.Exec(t.Context(), `DELETE FROM inspiration_holds WHERE campaign_id = $1 AND kind = 'initiative'`, a.campaignID); err != nil {
+		t.Fatalf("forget the answered initiative: %v", err)
+	}
+}
