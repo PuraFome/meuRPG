@@ -768,6 +768,7 @@ message AnswerHeldRollResponse {
     RollDeathSaveResponse death_save = 9;
     StartContestResponse contest = 11;
     RespondContestResponse contest_answer = 12;
+    HideResponse hide = 13;
     AnswerReactionResponse counterspell_check = 14;
     SubmitInitiativeResponse initiative = 10;
   }

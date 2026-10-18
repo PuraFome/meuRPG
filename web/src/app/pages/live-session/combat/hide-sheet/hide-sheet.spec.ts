@@ -4,7 +4,11 @@ import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { CombatantKind, CombatantSide } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  CombatantKind,
+  CombatantSide,
+  HeldRollKind,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
 import {
   CheckOptionSchema,
   ContestBlockedReason,
@@ -22,6 +26,7 @@ import {
   hideAttempt,
   textOf,
 } from '../../../../core/combat/contest-testing';
+import { heldDie } from '../../../../core/held-rolls/held-roll-testing';
 import { HideSheet, type HideSheetData } from './hide-sheet';
 
 function table() {
@@ -125,6 +130,16 @@ describe('HideSheet (board W7-Xc 8)', () => {
     );
     expect(text()).not.toMatch(/Percepção|passiva|notou|vê claramente: /);
     expect(button('Fechar a folha')).toBeTruthy();
+  });
+
+  it('asks the question when the d20 is kept for one and makes no attempt until it is answered', async () => {
+    const { el, button, settle } = setup();
+    api.held = heldDie(11, 7, 8, { kind: HeldRollKind.HIDE });
+    button('Rolar no app')!.click();
+    await settle();
+    expect(api.hides).toHaveLength(1);
+    expect(el.querySelector('app-held-roll-prompt')).not.toBeNull();
+    expect(button('Rolar no app')).toBeUndefined();
   });
 
   it('says only "Você está escondida." once the master applied it, and when it ends', async () => {
