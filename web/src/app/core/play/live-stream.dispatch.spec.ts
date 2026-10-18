@@ -2,7 +2,10 @@
 // `live-stream.spec.ts` leaves out: a tab opened hidden, a closed stream under a timer, a message of an unknown kind and
 // a replaced connection that keeps sending. It uses the same fake call and fake clock as `live-stream.spec.ts`.
 import { LiveStream, LiveStreamHandlers } from './live-stream';
+import { freeRoll } from '../free-dice/free-dice-testing';
 import { LiveEventVm } from './live-session.types';
+
+const FREE_ROLL = freeRoll('r1');
 
 class FakeCall {
   private readonly queue: (IteratorResult<LiveEventVm> | { error: unknown })[] = [];
@@ -88,6 +91,7 @@ describe('LiveStream: what each message hands the page', () => {
       onRevivifyChanged: vi.fn(),
       onPuzzleChanged: vi.fn(),
       onHeldRollsChanged: vi.fn(),
+      onFreeRollRolled: vi.fn(),
       onCallingYou: vi.fn(),
       onEnded: vi.fn(),
       onFatal: vi.fn(),
@@ -213,6 +217,7 @@ describe('LiveStream: what each message hands the page', () => {
     ['callingYou', { kind: 'callingYou' }, 'onCallingYou', []],
     ['heldRollsChanged', { kind: 'heldRollsChanged' }, 'onHeldRollsChanged', []],
     ['puzzleChanged', { kind: 'puzzleChanged', puzzleId: 'pz' }, 'onPuzzleChanged', ['pz']],
+    ['freeRollRolled', { kind: 'freeRollRolled', roll: FREE_ROLL }, 'onFreeRollRolled', [FREE_ROLL]],
   ];
 
   it.each(table)('hands %s to its handler, and only to it', async (_name, event, handler, args) => {

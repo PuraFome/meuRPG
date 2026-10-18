@@ -59,3 +59,58 @@ describe('SessionHeader ending the session', () => {
     await fixture.whenStable();
   });
 });
+
+describe('SessionHeader the "Dados" button', () => {
+  function setup(inputs: Record<string, unknown> = {}) {
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), { provide: LiveSessionSource, useValue: {} }],
+    });
+    const fixture = TestBed.createComponent(SessionHeader);
+    fixture.componentRef.setInput('campaignId', 'c1');
+    fixture.componentRef.setInput('campaignName', 'Torre');
+    fixture.componentRef.setInput('session', {
+      sessionId: 's1',
+      sessionNumber: 6,
+      startedAt: new Date(),
+    });
+    for (const [key, value] of Object.entries(inputs)) {
+      fixture.componentRef.setInput(key, value);
+    }
+    const opened = vi.fn();
+    fixture.componentInstance.openDice.subscribe(opened);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    return { fixture, el, opened, dice: () => el.querySelector<HTMLButtonElement>('.js-dice') };
+  }
+
+  it.each([true, false])('is there for the master and the player alike (master: %s)', (isMaster) => {
+    const { dice } = setup({ isMaster });
+    expect(dice()?.textContent?.trim()).toBe('Dados');
+    expect(dice()?.getAttribute('aria-disabled')).not.toBe('true');
+  });
+
+  it('asks the page to open the dice when tapped', () => {
+    const { dice, opened } = setup();
+    dice()!.click();
+    expect(opened).toHaveBeenCalledTimes(1);
+  });
+
+  it('waits while the server rolls: "Rolando…", and a tap does nothing', () => {
+    const { dice, opened } = setup({ rolling: true });
+    expect(dice()?.textContent?.trim()).toBe('Rolando…');
+    expect(dice()?.getAttribute('aria-disabled')).toBe('true');
+    dice()!.click();
+    expect(opened).not.toHaveBeenCalled();
+  });
+
+  it('is off while the stream reconnects, and the notice says why', () => {
+    const { el, dice, opened } = setup({ connection: 'reconnecting', lastUpdate: null });
+    expect(dice()?.getAttribute('aria-disabled')).toBe('true');
+    const notice = el.querySelector('.head__offline');
+    expect(notice?.textContent).toContain('Reconectando…');
+    expect(notice?.textContent).toContain('Não dá para rolar sem conexão.');
+    expect(dice()?.getAttribute('aria-describedby')).toBe(notice?.querySelector('p')?.id);
+    dice()!.click();
+    expect(opened).not.toHaveBeenCalled();
+  });
+});

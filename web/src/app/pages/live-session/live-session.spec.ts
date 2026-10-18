@@ -87,6 +87,9 @@ import {
   TreasureFinderSchema,
 } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { OpenSessions } from '../../core/play/open-sessions';
+import { FreeDiceClient } from '../../core/free-dice/free-dice-client';
+import { FakeFreeDiceClient, freeRoll } from '../../core/free-dice/free-dice-testing';
+import { RollAnimator } from '../../shared/roll-overlay/roll-animator';
 import { CALLING_NOTICE_MS, LiveSession } from './live-session';
 import { mageArmorClassOf } from './live-session-loader';
 import {
@@ -245,8 +248,10 @@ describe('LiveSession', () => {
   };
 
   let casting: FakeCastingClient;
+  let freeDice: FakeFreeDiceClient;
 
   beforeEach(() => {
+    freeDice = new FakeFreeDiceClient();
     xpExperience.mockReset().mockResolvedValue(
       create(GetCampaignExperienceResponseSchema, {
         xpMode: XpMode.ENEMIES,
@@ -298,6 +303,7 @@ describe('LiveSession', () => {
         { provide: RosterClient, useValue: { list: () => Promise.resolve([]) } },
         { provide: CastingClient, useValue: casting },
         { provide: SceneClient, useValue: scenes },
+        { provide: FreeDiceClient, useValue: freeDice },
         { provide: ContestClient, useValue: contests.as() },
         { provide: RevivifyClient, useValue: { list: revivifyList, confirmTime: vi.fn() } },
         { provide: ResourceClient, useValue: resources },
@@ -402,6 +408,77 @@ describe('LiveSession', () => {
       // The party panel's "Dar XP" reads the characters again.
       await nextTurn();
       expect(xpExperience).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('the free dice roller (MR-052)', () => {
+    const asMaster = () => {
+      source.campaign = {
+        name: 'Mirathel',
+        isMaster: true,
+        awaitingApproval: false,
+        diceMode: 1,
+        dicePreference: 1,
+      };
+    };
+    const diceButton = (el: HTMLElement) => el.querySelector<HTMLButtonElement>('.js-dice');
+
+    it('puts "Dados" in the header for a player and for the master, and "Registro da sessão" under the board', async () => {
+      const player = await render();
+      expect(diceButton(player)?.textContent?.trim()).toBe('Dados');
+      expect(player.querySelector('app-free-roll-log h2')?.textContent).toContain('Registro da sessão');
+    });
+
+    it('has no "Dados" button when there is no live session', async () => {
+      source.events = [];
+      source.failWith = new KindError('no-session');
+      const el = await render();
+      expect(diceButton(el)).toBeNull();
+      expect(el.querySelector('app-free-roll-log')).toBeNull();
+    });
+
+    it('reads the rolls of the session on every `ready`, for the log', async () => {
+      freeDice.lists = { table: [freeRoll('a', { logText: 'Rolagem livre · Tor: 1d20 + 6 = 19 (13)' })], mine: [] };
+      const el = await render();
+      expect(el.querySelector('app-free-roll-log')?.textContent).toContain('Rolagem livre · Tor: 1d20 + 6 = 19 (13)');
+      const reads = freeDice.listCalls;
+      source.push({ kind: 'ready' });
+      await nextTurn();
+      await nextTurn();
+      expect(freeDice.listCalls).toBeGreaterThan(reads);
+    });
+
+    it('adds another person\'s roll to the log and tumbles the dice for the table', async () => {
+      const play = vi.spyOn(TestBed.inject(RollAnimator), 'play');
+      const el = await render();
+      source.push({
+        kind: 'freeRollRolled',
+        roll: freeRoll('o1', { rollerName: 'Tor', logText: 'Rolagem livre · Tor: 2d6 + 3 = 11 (4, 4)' }),
+      });
+      await nextTurn();
+      await nextTurn();
+      expect(el.querySelector('app-free-roll-log')?.textContent).toContain('Rolagem livre · Tor: 2d6 + 3 = 11 (4, 4)');
+      expect(play).toHaveBeenCalledTimes(1);
+      expect(play.mock.calls[0][0]).toMatchObject({
+        label: 'Tor rolou',
+        note: 'Rolagem livre · 2d6 + 3',
+      });
+    });
+
+    it('turns "Dados" off while the stream reconnects', async () => {
+      source.failWith = new Error('down');
+      const el = await render();
+      expect(diceButton(el)?.getAttribute('aria-disabled')).toBe('true');
+      expect(el.textContent).toContain('Não dá para rolar sem conexão.');
+    });
+
+    it('opens the dice dialog from the header', async () => {
+      asMaster();
+      const el = await render();
+      diceButton(el)!.click();
+      await nextTurn();
+      expect(document.body.textContent).toContain('Rolar dados');
+      expect(document.body.textContent).toContain('Quem vê');
     });
   });
 
