@@ -84,6 +84,9 @@ describe('Privacy', () => {
     expect(t).toContain('ImprovMX');
     expect(t).toContain('os escopos openid e email');
     expect(t).toContain('transferência internacional');
+    expect(t).toContain('Conversa da cena');
+    expect(t).toContain('Jogador removido');
+    expect(t).toContain('só quando um leitor da linha toca em "Ouvir"');
     expect(t).toContain('Sem anúncios, sem rastreamento e sem venda de dados');
   });
 
@@ -91,8 +94,8 @@ describe('Privacy', () => {
     const { el } = render(Privacy);
     const table = el.querySelector('table.legal-table')!;
     expect(table.querySelectorAll('thead th[scope="col"]')).toHaveLength(2);
-    expect(table.querySelectorAll('tbody tr')).toHaveLength(10);
-    expect(table.querySelectorAll('tbody th[scope="row"]')).toHaveLength(10);
+    expect(table.querySelectorAll('tbody tr')).toHaveLength(11);
+    expect(table.querySelectorAll('tbody th[scope="row"]')).toHaveLength(11);
     const cookies = Array.from(el.querySelectorAll('code')).map((c) => c.textContent);
     expect(cookies).toEqual(['__Host-meurpg_session', '__Host-meurpg_login']);
   });

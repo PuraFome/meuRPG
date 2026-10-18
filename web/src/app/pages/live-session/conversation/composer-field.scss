@@ -1,0 +1,69 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-1);
+  min-width: 0;
+}
+
+.composer__label {
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--mr-ink-muted);
+
+  // On a phone the placeholder and the send button say it; the label stays for a screen reader.
+  @media (max-width: 767.98px) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+
+.composer__area {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 48px;
+  resize: none;
+  padding: 10px var(--mr-space-3);
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  line-height: 22px;
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 1px;
+  }
+
+  &[aria-invalid='true'] {
+    border-color: var(--mr-danger-ink);
+  }
+}
+
+.composer__area--dashed {
+  border-style: dashed;
+  border-color: var(--mr-accent);
+}
+
+.composer__count,
+.composer__error {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+}
+
+.composer__count {
+  align-self: flex-end;
+  color: var(--mr-ink-muted);
+}
+
+.composer__error {
+  color: var(--mr-danger-ink);
+  font-weight: 700;
+}

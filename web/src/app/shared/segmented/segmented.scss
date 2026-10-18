@@ -46,3 +46,52 @@
   background: var(--mr-accent-soft);
   color: var(--mr-accent-strong);
 }
+
+// A choice that cannot be taken now: quiet, and not a pointer.
+.seg__item--off {
+  border-style: dashed;
+  color: var(--mr-ink-muted);
+  cursor: default;
+}
+
+// The compact switch: one ground-tinted rounded track, the chosen option a raised chip.
+:host(.seg--track) {
+  .seg {
+    gap: var(--mr-space-1);
+    padding: var(--mr-space-1);
+    border-radius: var(--mr-radius-md);
+    background: var(--mr-ground);
+
+    // From a tablet up the track is as wide as its options, not the whole row.
+    @media (min-width: 768px) {
+      display: inline-grid;
+      grid-auto-columns: auto;
+    }
+  }
+
+  .seg__item {
+    min-height: 40px;
+    padding: 0 var(--mr-space-3);
+    border-color: transparent;
+    background: transparent;
+    color: var(--mr-ink-muted);
+    font-weight: 500;
+    line-height: 18px;
+
+    @media (min-width: 768px) {
+      min-height: 36px;
+    }
+  }
+
+  .seg__item--on {
+    border-color: var(--mr-control-line);
+    background: var(--mr-surface);
+    color: var(--mr-ink);
+    font-weight: 700;
+  }
+
+  .seg__item--off {
+    border-style: solid;
+    border-color: transparent;
+  }
+}

@@ -10,6 +10,7 @@ import { SpellCatalog } from '../../core/combat/spell-catalog';
 import { TurnAlert } from '../../core/combat/turn-alert';
 import { FreeDiceClient } from '../../core/free-dice/free-dice-client';
 import { FreeDiceState } from '../../core/free-dice/free-dice-state';
+import { ConversationClient } from '../../core/conversation/conversation-client';
 import { MapsClient } from '../../core/maps/maps-client';
 import { NotesClient } from '../../core/notes/notes-client';
 import { FamiliarEyesClient } from '../../core/play/familiar-eyes';
@@ -25,6 +26,7 @@ import { CombatState } from '../../core/combat/combat-state';
 import { FogView } from '../../core/maps/fog-view';
 import { MapState } from '../../core/maps/map-state';
 import { NotesState } from '../../core/notes/notes-state';
+import { ConversationState } from '../../core/conversation/conversation-state';
 import { SceneState } from '../../core/play/scene-state';
 import { PuzzleSessionState } from '../../core/puzzles/puzzle-session';
 import { ToastQueue } from '../../core/traps/toast-queue';
@@ -48,6 +50,7 @@ export interface LiveSessionServices {
   readonly combatApi: CombatClient;
   readonly castingApi: CastingClient;
   readonly sceneApi: SceneClient;
+  readonly conversationApi: ConversationClient;
   readonly notesApi: NotesClient;
   readonly trapsApi: TrapsClient;
   readonly puzzlesApi: PuzzlesClient;
@@ -80,6 +83,7 @@ export function injectLiveSessionServices(): LiveSessionServices {
     combatApi: inject(CombatClient),
     castingApi: inject(CastingClient),
     sceneApi: inject(SceneClient),
+    conversationApi: inject(ConversationClient),
     notesApi: inject(NotesClient),
     trapsApi: inject(TrapsClient),
     puzzlesApi: inject(PuzzlesClient),
@@ -111,6 +115,9 @@ export class LiveSessionParts {
   /** The RP scene open in the session (MR-015): read on every `ready` and
    * after each `scene_changed` or `scene_check_rolled`. */
   readonly scene: SceneState;
+  /** The conversation of the scene (MR-051, RN-36): read on the first `ready`, its gap read after each reconnection;
+   * `session_message_added` and `master_typing` apply in place. */
+  readonly conversation: ConversationState;
   /** The puzzles of the session (MR-038, E10-06): the master's menu with each one's live state, or what the players are shown.
    * `puzzle_changed` reads one again; `ready` reads the list. */
   readonly puzzles: PuzzleSessionState;
@@ -138,6 +145,14 @@ export class LiveSessionParts {
     this.scene = new SceneState(
       () => services.sceneApi.get(state.campaignId()),
       () => state.isMaster(),
+    );
+    this.conversation = new ConversationState(
+      services.conversationApi,
+      () => state.campaignId(),
+      () => {
+        const me = services.auth.state();
+        return me.status === 'signed-in' ? me.user.id : '';
+      },
     );
     this.puzzles = new PuzzleSessionState(
       services.puzzlesApi,

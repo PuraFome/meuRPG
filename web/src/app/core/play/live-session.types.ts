@@ -12,6 +12,7 @@ import type { FamiliarSightVm } from './familiar-eyes';
 import type { SearchSkills } from '../traps/trap-search';
 import type { HitDieSize } from '../resources/hit-dice-text';
 import type { DiceMode, DicePreference } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import type { SessionMessage } from '../../../gen/meurpg/play/v1/session_messages_pb';
 import type { CombatantMove, TurnChange } from '../combat/combat-state';
 import type {
   PactSlotsVm,
@@ -178,7 +179,11 @@ export type LiveEventVm =
   /** `revivify_changed`: a Revivify cast outside a combat was asked or answered; the master reads the casts again. */
   | { readonly kind: 'revivifyChanged' }
   /** `calling_you`: the master nudged this player ("Chamar a atenção"). Carries nothing; the page alerts and shows the line. */
-  | { readonly kind: 'callingYou' };
+  | { readonly kind: 'callingYou' }
+  /** `session_message_added` (MR-051, RN-36): a line of the conversation this reader may read, with its content. */
+  | { readonly kind: 'sessionMessage'; readonly message: SessionMessage }
+  /** `master_typing` (MR-051): the master is writing. Carries no text, only how long to show the hint. */
+  | { readonly kind: 'masterTyping'; readonly expiresInSeconds: number };
 
 /**
  * What a failed call means for the page, from its Connect code and typed

@@ -231,7 +231,10 @@ describe('LiveSessionSourceLive.watch', () => {
               sides: 6,
               count: 2,
               modifier: 3,
-              dice: [create(FreeRollDieSchema, { face: 4 }), create(FreeRollDieSchema, { face: 4 })],
+              dice: [
+                create(FreeRollDieSchema, { face: 4 }),
+                create(FreeRollDieSchema, { face: 4 }),
+              ],
               total: 11,
               formula: '2d6 + 3',
               logText: 'Rolagem livre · Brisa: 2d6 + 3 = 11 (4, 4)',
@@ -342,6 +345,25 @@ describe('LiveSessionSourceLive.watch', () => {
         create(WatchGameSessionResponseSchema, { event: { case: 'callingYou', value: {} } }),
       ]),
     ).toEqual(['ready', 'callingYou']);
+  });
+
+  it('maps the conversation: a line with its content, and a typing hint with only its seconds', async () => {
+    const got = await eventsOf(
+      {
+        case: 'sessionMessageAdded',
+        value: { message: { id: 'm1', text: 'Oi', forEveryone: true } },
+      },
+      { case: 'sessionMessageAdded', value: {} },
+      { case: 'masterTyping', value: { expiresInSeconds: 6 } },
+    );
+    expect(got).toEqual([
+      expect.objectContaining({
+        kind: 'sessionMessage',
+        message: expect.objectContaining({ id: 'm1', text: 'Oi' }),
+      }),
+      // A line with no body says nothing.
+      { kind: 'masterTyping', expiresInSeconds: 6 },
+    ]);
   });
 
   it('maps `revivify_changed` to its own event, with no content (RN-10)', async () => {
