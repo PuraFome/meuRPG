@@ -113,8 +113,9 @@ export type SessionMessage = Message<"meurpg.play.v1.SessionMessage"> & {
   /**
    * The name to show: the NPC's or the character's name as it was when the
    * line was sent, or the author's display name for an out-of-character
-   * line. Empty for the narrator, and for an out-of-character line whose
-   * author's account was erased (author_removed).
+   * line. Empty for the narrator, for an out-of-character line whose
+   * author's account was erased (author_removed), and for one whose author
+   * never chose a display name (the app then says "Jogador").
    *
    * @generated from field: string speaker_name = 5;
    */
@@ -136,6 +137,10 @@ export type SessionMessage = Message<"meurpg.play.v1.SessionMessage"> & {
   authorUserId: string;
 
   /**
+   * True only when the author's account was erased (author_user_id is empty).
+   * An author who never chose a display name is not removed: speaker_name is
+   * empty and author_user_id is set.
+   *
    * @generated from field: bool author_removed = 8;
    */
   authorRemoved: boolean;
