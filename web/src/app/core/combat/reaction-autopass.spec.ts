@@ -62,6 +62,15 @@ describe("the automatic pass of a player's optional reaction", () => {
     expect(autoPassKey(id.toUpperCase())).toBe(autoPassKey(id));
   });
 
+  it('passes a Proteção window too: using it is a choice', () => {
+    const clock = new AutoPassClock();
+    const w = win('w1', ReactionKind.PROTECTION);
+    clock.sync([w], Date.now());
+    vi.advanceTimersByTime(AUTO_PASS_SECONDS * MS);
+    clock.sync([w], Date.now());
+    expect(clock.due(Date.now())).toEqual(['w1']);
+  });
+
   it('may send a pass again after a failure that was not a refusal', () => {
     const clock = new AutoPassClock();
     const w = win('w1', ReactionKind.SHIELD);

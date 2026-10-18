@@ -13,6 +13,7 @@ export const REACTION_NAMES = {
   cuttingWords: 'Palavras de Interrupção',
   deflectMissiles: 'Defletir Projéteis',
   featherFall: 'Queda Suave',
+  protection: 'Proteção',
 } as const;
 
 /** "Rodada 2" with the words of the round. */

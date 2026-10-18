@@ -248,6 +248,7 @@
   "Initiative": 3,
   "ArmorClass": 13,
   "ArmorClassDescription": "Sem armadura",
+  "ShieldIdle": false,
   "ArmorCategory": "none",
   "HitPointsMax": 23,
   "HitPointsFromEffects": 0,
@@ -862,6 +863,7 @@
     }
   ],
   "Maneuvers": null,
+  "ExtraDamages": null,
   "AttacksPerAction": 1,
   "CriticalRange": 20,
   "BrutalCriticalDice": 0,

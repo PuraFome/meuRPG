@@ -902,7 +902,10 @@ service CombatService {
   // master's too (what each target did must fit the cast's session event). Magic
   // Missile is cast with `darts`
   // in each target: 3 darts, and one more for each slot level above the 1st, shared
-  // out as the caster wants, at least one for each target listed.
+  // out as the caster wants, at least one for each target listed. Scorching Ray
+  // shares its rays the same way (3, and one more for each slot level above the
+  // 2nd), but `darts` is the rays of that target (none counts as one), the rays
+  // need not use the whole number, and several may go to one target.
   //
   // What the cast does depends on the spell:
   //   - A spell attack (Guiding Bolt): one d20 for each target (roll_in_app, or
@@ -2413,12 +2416,16 @@ message Combatant {
   // The attack roll of this combatant that waits for the answer about the die, if any
   // (it is answered with AnswerBardicInspiration). Only the master and the combatant's
   // own player get it, so the question is still there when the screen is read again.
-  InspirationOffer inspiration_offer = 71;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  InspirationOffer inspiration_offer = 71 [deprecated = true];
   // The attack roll of this combatant that waits for the halfling's Lucky answer, if any
   // (it is answered with AnswerLucky). Only the master and the combatant's own player get
   // it, like `inspiration_offer`, which is unset while this question waits (one question at
   // a time: the Lucky question comes first, then the die's, on the new roll).
-  LuckyOffer lucky_offer = 74;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  LuckyOffer lucky_offer = 74 [deprecated = true];
   // The states the combatant is in (a rage, a dodge, Reckless Attack, a Hunter's
   // Mark on it), for everyone who sees it, except the mark, which only the master
   // and the ranger's player get. An NPC's states are the public chips alone.
@@ -2451,8 +2458,8 @@ message Combatant {
   // is (a weapon attack, a spell attack, a save, a check), in the one shape every held roll has
   // (AnswerHeldRoll answers it). Only the master and the combatant's own player get it; the other players read
   // nothing, not even that a roll waits. It carries the d20 and the bonus the player already sees, never a DC,
-  // an armor class or an NPC's number (RN-10, RN-20). `inspiration_offer` and `lucky_offer` say the same for a
-  // weapon attack until they are removed.
+  // an armor class or an NPC's number (RN-10, RN-20). the deprecated `inspiration_offer` and `lucky_offer` say the same for a
+  // weapon attack.
   HeldRollOffer held_roll_offer = 104;
 }
 
@@ -3192,6 +3199,7 @@ message SpellTargets {
   // True when the spell takes one more target for each slot level above its own.
   bool extra_target_per_level = 4;
   // Magic Missile: how many darts each slot level makes (3 at the 1st, one more
+  // for each level above). Scorching Ray: how many rays (3 at the 2nd, one more
   // for each level above). Empty for any other spell.
   repeated DartsAtSlot darts = 5;
   // How many more targets the spell takes for each slot level above its own: 1 for
@@ -3235,7 +3243,8 @@ enum AreaPlacement {
   AREA_PLACEMENT_CASTER = 3;
 }
 
-// DartsAtSlot is how many darts a slot level makes.
+// DartsAtSlot is how many darts (Magic Missile) or rays (Scorching Ray) a slot
+// level makes.
 message DartsAtSlot {
   int32 slot_level = 1;
   int32 darts = 2;
@@ -3549,15 +3558,19 @@ message RollAttackResponse {
   // and there is no pending damage) when the attacker holds a Bardic Inspiration
   // die: the d20 is rolled, and the player decides whether to add the die before the
   // result is told (AnswerBardicInspiration). Unset while `lucky_offer` waits.
-  InspirationOffer inspiration_offer = 30;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  InspirationOffer inspiration_offer = 30 [deprecated = true];
   // Set instead of the outcome, like `inspiration_offer`, when the attacker is a
   // halfling and a d20 shows a 1: the player decides whether to roll it again before
   // the result is told (AnswerLucky). The Lucky question comes first; the die's, when
   // the attacker holds one, comes after it, on the new roll.
-  LuckyOffer lucky_offer = 31;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  LuckyOffer lucky_offer = 31 [deprecated = true];
 
   // The question the roll asks now, in the one shape every held roll has (HeldRollOffer), set beside
-  // `inspiration_offer` and `lucky_offer` until they are removed: set instead of the result, when the
+  // the deprecated `inspiration_offer` and `lucky_offer`: set instead of the result, when the
   // roll waits for an answer (AnswerHeldRoll). Whoever may answer gets it; nobody else does (RN-10).
   HeldRollOffer held_roll_offer = 32;
 }
@@ -3731,7 +3744,9 @@ message SpellSlot {
 message SpellTarget {
   // The combatant (a UUID).
   string combatant_id = 1;
-  // Magic Missile only: the darts that go to this target, at least 1.
+  // Magic Missile: the darts that go to this target, at least 1. Scorching Ray:
+  // the rays that go to this target (0 counts as 1); each ray is its own spell
+  // attack.
   int32 darts = 2;
   // Revivify only: the dead creature the spell touches, a combatant of the combat
   // (PreviewRevivify offers them). It replaces combatant_id, which stays empty. The
@@ -4191,15 +4206,19 @@ message CastSpellResponse {
   // added after the d20, before the result is told). A cast with several targets, a
   // cantrip's attack (RollAttack holds those) and a cast that waited for a reaction window
   // do not ask.
-  OutsideInspirationOffer inspiration_offer = 7;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  OutsideInspirationOffer inspiration_offer = 7 [deprecated = true];
   // Set instead of `cast`, like `inspiration_offer`, when the caster is the player's own
   // halfling and a d20 of that spell attack shows a 1: the player decides whether to roll it
   // again before the result is told (ResourceService.AnswerOutsideLucky). The Lucky question
   // comes first; the die's, when the caster holds one, comes after it, on the new roll.
-  LuckyOffer lucky_offer = 8;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  LuckyOffer lucky_offer = 8 [deprecated = true];
 
   // The question the roll asks now, in the one shape every held roll has (HeldRollOffer), set beside
-  // `inspiration_offer` and `lucky_offer` until they are removed: set instead of the result, when the
+  // the deprecated `inspiration_offer` and `lucky_offer`: set instead of the result, when the
   // roll waits for an answer (AnswerHeldRoll). Whoever may answer gets it; nobody else does (RN-10).
   HeldRollOffer held_roll_offer = 9;
 }
@@ -5191,6 +5210,10 @@ enum ReactionKind {
   // A table maneuver that reduces the damage of a melee hit by a die and an ability
   // modifier (superiority_die, applies reduce_melee_damage).
   REACTION_KIND_MANEUVER_REDUCE = 14;
+  // Protection fighting style: a creature the reactor sees attacks someone else
+  // within 5 ft of the reactor, who wields a shield; the reaction gives the attack
+  // roll disadvantage. It waits before the d20 is rolled.
+  REACTION_KIND_PROTECTION = 15;
 }
 
 enum ReactionWindowStatus {
@@ -5289,6 +5312,7 @@ message ReactionWindow {
     DeflectMissilesThrowPrompt deflect_throw = 30;
     ContestPrompt contest = 31;
     ManeuverReducePrompt maneuver_reduce = 41;
+    ProtectionPrompt protection = 42;
     // The saving throw an effect asks at a turn (RN-22).
     EffectSavePrompt effect_save = 40;
   }
@@ -5430,6 +5454,15 @@ message ManeuverReducePrompt {
   // The damage the attack would do to the reactor.
   int32 damage = 3;
   repeated ManeuverReduceOption options = 4;
+}
+
+// ProtectionPrompt: the Protection fighting style. A creature the reactor sees is about
+// to attack a neighbor of the reactor; using the reaction gives that attack roll
+// disadvantage. The attacker is named only when the reader sees it.
+message ProtectionPrompt {
+  string attacker_label = 1;
+  // The creature the attack is aimed at, one of the reactor's neighbors.
+  string ally_label = 2;
 }
 
 message ManeuverReduceOption {
@@ -5581,6 +5614,7 @@ message ReactionResult {
     DeflectMissilesResult deflect_missiles = 25;
     FeatherFallResult feather_fall = 26;
     ManeuverReduceResult maneuver_reduce = 27;
+    ProtectionResult protection = 28;
   }
   // The window the answer asked one more thing of (a second step), if any.
   string next_window_id = 30;
@@ -5628,6 +5662,10 @@ message CuttingWordsResult {
   AttackOutcome outcome = 3;
   ReactionRollKind roll_kind = 4;
 }
+
+// ProtectionResult: the attack roll that was held now has disadvantage. The result
+// never says what the roll became.
+message ProtectionResult {}
 
 message ManeuverReduceResult {
   string maneuver_key = 1;
@@ -5683,14 +5721,18 @@ message ResolveConcentrationSaveResponse {
   // d20 is rolled and kept, the window stays open and nothing is written, and
   // ResourceService.AnswerOutsideInspiration settles the save (SRD 5.1). The master's roll
   // never asks.
-  OutsideInspirationOffer inspiration_offer = 3;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  OutsideInspirationOffer inspiration_offer = 3 [deprecated = true];
   // Set instead of `result`, like `inspiration_offer`, when the roller is the player's own
   // halfling and a d20 shows a 1: the window stays open, and ResourceService.AnswerOutsideLucky
   // rolls it again or keeps the 1 (the die's question, if any, comes after it).
-  LuckyOffer lucky_offer = 4;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  LuckyOffer lucky_offer = 4 [deprecated = true];
 
   // The question the roll asks now, in the one shape every held roll has (HeldRollOffer), set beside
-  // `inspiration_offer` and `lucky_offer` until they are removed: set instead of the result, when the
+  // the deprecated `inspiration_offer` and `lucky_offer`: set instead of the result, when the
   // roll waits for an answer (AnswerHeldRoll). Whoever may answer gets it; nobody else does (RN-10).
   HeldRollOffer held_roll_offer = 5;
 }

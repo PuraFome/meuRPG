@@ -12,6 +12,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
@@ -40,6 +41,8 @@ type replayState struct {
 	after int32
 	// halve: Uncanny Dodge halved the damage.
 	halve bool
+	// protectors are the shield-bearers whose Protection gave the attack roll disadvantage.
+	protectors []string
 	// rolled is the damage roll made when the hold was written, so that the
 	// reactor decided with the number it would take (Uncanny Dodge, Deflect
 	// Missiles) and the replay lands that very roll.
@@ -199,6 +202,8 @@ func replayStateOf(h playdb.ReactionHold, windows []playdb.ReactionWindow) *repl
 			st.reduction += out.Reduction
 		case reaction.UncannyDodgeKind:
 			st.halve = true
+		case reaction.ProtectionKind:
+			st.protectors = append(st.protectors, conv.OrZero(w.ReactorID))
 		case reaction.DeflectKind, reaction.ManeuverReduceKind:
 			st.deflected += out.Reduction
 		}

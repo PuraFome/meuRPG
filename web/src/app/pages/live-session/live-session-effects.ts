@@ -2,6 +2,7 @@ import { type Signal, type TemplateRef, effect, untracked } from '@angular/core'
 
 import { foundToastTitle } from '../../core/traps/treasure-text';
 import { firstLine } from '../../core/traps/trap-text';
+import type { ConversationSlot } from './conversation/conversation-slot';
 import type { LiveSessionParts, LiveSessionServices } from './live-session-deps';
 import type { LiveSessionState } from './live-session-state';
 import type { LiveSessionView } from './live-session-view';
@@ -13,6 +14,7 @@ export function wireLiveSessionEffects(
   state: LiveSessionState,
   parts: LiveSessionParts,
   view: LiveSessionView,
+  slot: ConversationSlot,
   notesBar: Signal<TemplateRef<unknown> | undefined>,
   load: (campaignId: string) => void,
 ): void {
@@ -25,6 +27,12 @@ export function wireLiveSessionEffects(
     const show = state.phase() === 'live' && !state.isMaster();
     const bar = notesBar();
     untracked(() => services.sessionNotes.bar.set(show ? (bar ?? null) : null));
+  });
+
+  // The conversation counts the lines that come while it is not on the reader's screen, and clears them when it is.
+  effect(() => {
+    const onScreen = slot.onScreen();
+    untracked(() => parts.conversation.setVisible(onScreen));
   });
 
   // A treasure the master marks found while the player looks at the map: a toast (E9-09 4). The first read

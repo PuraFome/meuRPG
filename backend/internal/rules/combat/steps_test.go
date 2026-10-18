@@ -24,6 +24,10 @@ func TestAdjustAppliesResistanceThenVulnerabilityRoundingDown(t *testing.T) {
 		{"two resistances to one type count once", 10, cut, []Modifier{
 			{StepResistance, "feature:rage", []string{cut}}, {StepResistance, "item:ring", []string{cut}},
 		}, nil, 5, []string{StepResistance}},
+		{"an all-but-one resistance and the rage's overlap count once", 10, cut, []Modifier{
+			{StepResistance, "feature:rage", []string{cut, "damage-type:piercing", "damage-type:bludgeoning"}},
+			{StepResistance, "feature:fixture-path", []string{cut, "damage-type:piercing", fire}},
+		}, nil, 5, []string{StepResistance}},
 		{"the same source twice counts once", 10, cut, []Modifier{
 			{StepResistance, "feature:rage", []string{cut}}, {StepResistance, "feature:rage", []string{cut}},
 		}, nil, 5, []string{StepResistance}},

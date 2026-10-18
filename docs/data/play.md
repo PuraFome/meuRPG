@@ -188,7 +188,7 @@ What counts as "scene open again" is the last `scene_opened` event of the sessio
   The hash is kept on the combat's changes; `NULL` on an event made without one.
 - `payload` is a small JSON object (at most 16 KiB, `CHECK`) of ids, keys and numbers, with the values before and after: **no free text, no names**.
   A weapon's name never enters (the log reads it from the sheet); the reason of an XP award stays in `xp_awards`.
-  Account ids inside payloads do not disappear with the account (see [Privacy](../privacy.md)).
+  Erasing an account takes its id out of the who-saw lists of every payload (below), in the same statement.
 - `actor_user_id` (`SET NULL`) is who made the change; `character_id` (`SET NULL`) the character; `encounter_id` (`CASCADE`, optional) the combat the event belongs to, for the log and the undo (`NULL` on HP corrections).
 - Partial indexes serve a combat's events in order and the two `SET NULL` cascades, so deleting a character or account does not scan the history.
 - **The undo is a compensating row**: the undone one stays.
@@ -196,6 +196,11 @@ What counts as "scene open again" is the last `scene_opened` event of the sessio
   The helper lists an undo reads (`ended_lines`, `follow_ups`, `marks_before`, `closed_windows`, `reveal_lines`...) are dropped in a fixed order before the write if the payload would pass 16 KiB, so the `CHECK` never refuses an action because of them (`combat_events.go`).
 - **Fog.** In a map with fog, the payload of action events with an NPC in it carries `fogged` and `seen_by`, the account ids of the players who saw **all** the NPCs of the event when it happened; the combat log gives the row only to those players and never recomputes the list (`combat_fog.go`).
   Cover that only some players would read carries `cover_restricted` and `cover_seen_by` the same way.
+  A spell's `hits` and a trap's `caught` keep such a list for each target, and a cast keeps `cover_users`, the players that the bits of the masks (`seen_mask`, `cover_seen_mask`) count by position.
+- **Erasing an account** (`DELETE FROM users`) runs the `BEFORE DELETE` trigger `users_scrub_session_events` (migration 00266), in the same transaction.
+  For the events of the campaigns the account belongs to, it removes the id from `seen_by`, `cover_seen_by`, `hits[].cover_seen_by` and `trap.caught[].seen_by`, keeping the order of the others and leaving an empty list empty, and replaces it with `""` in `cover_users`, so that no mask changes meaning.
+  The row, its `seq` and the rest of its payload do not change.
+  A new place in a payload that holds account ids needs the same case in `session_event_payload_without_user`, and a test in `play/erasure_seen_by_test.go`.
 - Puzzle events (`puzzle_shown`, `puzzle_solved`, `puzzle_reset`, `puzzle_closed`) carry `puzzle_id` and `run_id` only; state, solution and moves stay in `puzzle_moves`.
   A scene check event carries ids, the check key, the d20, the bonus, the total, whether it was a physical die, `dc_shown` and `passed`, never the DC or a name.
 
@@ -285,8 +290,8 @@ In a combat the die is the combatant's (`combatants.inspiration_*`) and this row
 `request` is the request that made it (protobuf), `faces`, `modifier`, `total`, `counted` and `physical` the d20 it rolled, `answer_key` is set once answered, unique on `(campaign_id, idempotency_key)`.
 `round` is the combat's round for a roll held in a combat and `NULL` out of one.
 `combatant_id` (the roller in a combat, `CASCADE`) and `encounter_id` (the combat the roll was held in, `CASCADE`) are `NULL` out of a combat; when `combatant_id` is set it is the owner of the hold (the copies of an NPC and the creatures of a combat share a `character_id`).
-`window_hold` says the hold is the attack a reaction window kept (`roll_holds` marks it with a `#window` suffix of its key).
-The weapon attack waits here too (kind `weapon_attack`, `window_hold` for the one a reaction window held, whose `idempotency_key` is the request's own); `roll_holds` is no longer written ([held rolls](../architecture/play/held-rolls.md)). Every roll held in a combat names its combatant and its combat; an older one has both `NULL` and belongs to its character.
+`window_hold` says the hold is the attack a reaction window kept.
+The weapon attack waits here too (kind `weapon_attack`, `window_hold` for the one a reaction window held, whose `idempotency_key` is the request's own); `roll_holds` is empty and unused ([held rolls](../architecture/play/held-rolls.md)). Every roll held in a combat names its combatant and its combat; an older one has both `NULL` and belongs to its character.
 The partial index `inspiration_holds_open_combat_idx` on `(encounter_id, combatant_id)` where `answer_key IS NULL` serves the open questions of a combat.
 Lucky: `lucky_index` is the die that shows a 1 (0 for a single d20; 0 or 1 for a pair, in the order rolled; `NULL` with no Lucky question), `lucky_answer_key` the key of the answer and `lucky_to` the new face (1 to 20; `NULL` when the player kept the 1).
 The question waits while `lucky_index` is set and both keys are `NULL`; then `faces`, `counted` and `total` hold the d20 after the answer, which a die question (if the character holds one) is asked about next.

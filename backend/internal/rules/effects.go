@@ -104,7 +104,9 @@ type Effect struct {
 	// Economy what it costs when it costs one (bonus_action or reaction; empty is
 	// free) and Ability, for reduce_melee_damage, the modifier added to the die. The
 	// text_pt is the rider the master reads.
-	// ranged_attack uses Applies too: RangedAttackSpell or RangedAttackWeapon.
+	// ranged_attack uses Applies too: RangedAttackSpell or RangedAttackWeapon. So does
+	// extra_damage (ExtraDamageLargerTarget or ExtraDamageAnyTarget), with Value the damage
+	// added to a weapon hit (an Int formula) and Resource, when set, the uses it spends.
 	Applies string `json:"applies,omitempty"`
 
 	// ranged_attack (rangedattack.go): what the character's attacks at a distance get,
@@ -116,6 +118,13 @@ type Effect struct {
 	IgnoreCover             bool `json:"ignore_cover,omitempty"`
 	RangeMultiplier         int  `json:"range_multiplier,omitempty"`
 	NoLongRangeDisadvantage bool `json:"no_long_range_disadvantage,omitempty"`
+
+	// resistance: resistance to every damage type but Except (a "damage-type:"
+	// key) while the condition in While holds ("rage", ResistanceWhileRage). It
+	// takes no When, because While is its condition. Content.Resistances lists it,
+	// so play applies it with the other resistances (resistance never stacks).
+	Except string `json:"except,omitempty"`
+	While  string `json:"while,omitempty"`
 
 	// wild_shape: the beasts a druid may turn into (wildshape.go). MaxCR is
 	// the highest challenge rating, such as "1/4", and NoFly and NoSwim leave
@@ -161,7 +170,7 @@ var (
 	effectTypes = []string{
 		"modifier", "proficiency", "roll_mode", "sense", "spellcasting",
 		"resource", "choice", "grant_action", "extra_attack", "note", "handler", "wild_shape", "beast_spells", "replaces",
-		"ability_increase", "superiority_die", "song_of_rest", "ranged_attack",
+		"ability_increase", "superiority_die", "song_of_rest", "ranged_attack", "extra_damage", "resistance",
 	}
 	modifierTargets = []string{
 		"ac.base", "ac", "hp.max", "speed.walk", "initiative",
@@ -237,6 +246,7 @@ func (x effectCompiler) takesOnly(strip func(other *Effect)) bool {
 // effect goes through.
 var effectCheckers = map[string]func(x effectCompiler) error{
 	"ranged_attack":    effectCompiler.rangedAttack,
+	"resistance":       effectCompiler.resistance,
 	"replaces":         effectCompiler.replaces,
 	"modifier":         effectCompiler.modifier,
 	"proficiency":      effectCompiler.proficiency,
@@ -248,6 +258,7 @@ var effectCheckers = map[string]func(x effectCompiler) error{
 	"ability_increase": effectCompiler.abilityIncrease,
 	"grant_action":     effectCompiler.grantAction,
 	"superiority_die":  effectCompiler.superiorityDie,
+	"extra_damage":     effectCompiler.extraDamage,
 	"extra_attack":     effectCompiler.extraAttack,
 	"wild_shape":       effectCompiler.wildShape,
 	"song_of_rest":     effectCompiler.songOfRest,
@@ -300,8 +311,19 @@ func (x effectCompiler) strayFields() error {
 	if e.Type != "replaces" && e.Replaces != "" {
 		return x.fail("replaces belongs to the replaces effect")
 	}
+	if err := x.strayResistance(); err != nil {
+		return err
+	}
 	if e.Type != "ranged_attack" && (e.IgnoreCover || e.RangeMultiplier != 0 || e.NoLongRangeDisadvantage) {
 		return x.fail("ignore_cover, range_multiplier and no_long_range_disadvantage belong to ranged_attack")
+	}
+	return nil
+}
+
+// strayResistance refuses except and while on an effect of another type.
+func (x effectCompiler) strayResistance() error {
+	if x.e.Type != "resistance" && (x.e.Except != "" || x.e.While != "") {
+		return x.fail("except and while belong to resistance")
 	}
 	return nil
 }
@@ -309,6 +331,24 @@ func (x effectCompiler) strayFields() error {
 func (x effectCompiler) rangedAttack() error {
 	if _, msg := checkRangedAttack(x.e); msg != "" {
 		return x.fail("%s", msg)
+	}
+	return nil
+}
+
+// resistance checks the damage type a resistance leaves out and when it holds.
+func (x effectCompiler) resistance() error {
+	e := x.e
+	if !x.c.isLiveDamageType(e.Except) {
+		return x.fail("except %q is not a damage type", e.Except)
+	}
+	if e.While != ResistanceWhileRage {
+		return x.fail("while must be %q", ResistanceWhileRage)
+	}
+	if e.When != "" {
+		return x.fail("a resistance has no when: while is its condition")
+	}
+	if len(e.Tags) > 0 {
+		return x.fail("a resistance has no tags: while is its condition")
 	}
 	return nil
 }

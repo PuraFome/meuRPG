@@ -13,7 +13,8 @@ import (
 //     max_dex_bonus); heavy: base;
 //   - "ac.base" effects offer other bases, such as Unarmored Defense
 //     (10 + DEX + CON while wearing no armor), and the best one wins;
-//   - a shield adds its +2, and "ac" effects add on top (Defense style).
+//   - a shield adds its +2 unless a two-handed weapon is on the sheet (see
+//     shieldWielded), and "ac" effects add on top (Defense style).
 //
 // Shield is not counted: it lasts a moment and belongs to the combat. Mage Armor
 // is, when the caller says the character has it (Build.MageArmor): it lasts
@@ -39,8 +40,7 @@ func (x *deriver) armorClass() {
 
 	ac := base
 	if x.b.Shield {
-		ac += 2
-		name += " + escudo"
+		ac, name = x.withShield(ac, name)
 		if !x.armorProficient("shield", "equipment:shield") {
 			x.issue(IssueArmorProficiency, "full.shield", "Sem proficiência em escudos.")
 		}

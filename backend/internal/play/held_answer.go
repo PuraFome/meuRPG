@@ -86,7 +86,7 @@ func (s *Service) lostTheRace(ctx context.Context, h heldRoll, req answerRequest
 	if connect.CodeOf(err) != connect.CodeInvalidArgument {
 		return err
 	}
-	now, rerr := newHeldStores(s.queries).byID(ctx, holdRef{Table: h.table, Campaign: h.CampaignID, Encounter: h.EncounterID, ID: h.ID})
+	now, rerr := newHeldStores(s.queries).byID(ctx, holdRef{Campaign: h.CampaignID, Encounter: h.EncounterID, ID: h.ID})
 	if rerr != nil {
 		return err
 	}

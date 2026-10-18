@@ -145,7 +145,7 @@ export class CastChoices {
     if (this.rule().kind !== 'darts' || this.dartsTotal() === 0) {
       return '';
     }
-    return dartsStatus(this.dartsTotal(), this.s.dealt());
+    return dartsStatus(this.dartsTotal(), this.s.dealt(), this.rule().rays);
   });
 
   constructor(

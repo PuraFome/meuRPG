@@ -250,6 +250,7 @@ function toFullSheetVm(full: GenFullSheet, derived: GenDerivedSheet): FullSheetV
     armorClassDescription: derived.armorClassDescription,
     wearsArmor: full.armorKey !== '',
     hasShield: full.shield,
+    shieldIdle: derived.shieldIdle,
     hitPointsMax: derived.hitPointsMax,
     hitDice: hitDiceWords(derived.hitDice),
     speedWalkFt: derived.speedWalkFt,

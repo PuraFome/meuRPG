@@ -32,6 +32,8 @@ func (x *deriver) effectHint(a activeEffect) {
 		x.taggedModifierHint(a)
 	case e.Type == "note" && e.TextPT != "":
 		x.noteHint(a)
+	case e.Type == "resistance":
+		x.resistanceHint(a)
 	}
 }
 
