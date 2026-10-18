@@ -101,6 +101,22 @@ describe('the slot step: the first free slot, the last-slot warning and the pact
 describe('the target step', () => {
   const st = (over: object) => create(SpellTargetsSchema, { spellKey: 'spell:x', ...over });
 
+  it('hands the rays of Raio Ardente out like darts, several to one target, and says rays', () => {
+    const rays = st({
+      spellKey: 'spell:scorching-ray',
+      maxTargets: 3,
+      darts: [
+        { slotLevel: 2, darts: 3 },
+        { slotLevel: 3, darts: 4 },
+      ],
+    });
+    expect(targetRule(rays, 'me', 2, 3)).toEqual({ kind: 'darts', max: 4, min: 1, rays: true });
+    expect(dealOne(new Map([['g', 2]]), 'g', 1, 3).get('g')).toBe(3);
+    expect(dartTargets(new Map([['g', 3]]))).toEqual([{ combatantId: 'g', darts: 3 }]);
+    expect(dartsStatus(3, new Map([['g', 2]]), true)).toBe('Distribua todos os raios: 2 de 3.');
+    expect(dartsStatus(3, new Map([['g', 3]]), true)).toBe('3 de 3 raios distribuídos.');
+  });
+
   it('adds the number of targets per slot level the server sends, not always one', () => {
     const table = st({ maxTargets: 3, extraTargetPerLevel: true, targetsPerLevel: 2 });
     expect(targetRule(table, 'me', 2, 2).max).toBe(3);

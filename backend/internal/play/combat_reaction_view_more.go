@@ -58,6 +58,8 @@ func (wv *windowView) morePrompt(kind reaction.Kind, w playdb.ReactionWindow, re
 		uncannyPrompt(f, out)
 	case reaction.ManeuverReduceKind:
 		maneuverPrompt(f, out)
+	case reaction.ProtectionKind:
+		wv.protectionPrompt(f, out)
 	case reaction.DeflectKind:
 		deflectPrompt(f, out)
 	case reaction.CuttingWords:
@@ -177,4 +179,14 @@ func (wv *windowView) hellishSavePrompt(f promptFacts, out *playv1.ReactionWindo
 		}
 	}
 	out.Prompt = &playv1.ReactionWindow_HellishRebukeSave{HellishRebukeSave: p}
+}
+
+// protectionPrompt is the prompt of the Protection style: who attacks and who is protected, each named
+// only when the caller sees it (RN-10).
+func (wv *windowView) protectionPrompt(f promptFacts, out *playv1.ReactionWindow) {
+	p := &playv1.ProtectionPrompt{AttackerLabel: f.attacker}
+	if ally, ok := wv.byID[f.t.Target]; ok && (wv.v.master || wv.v.sees(ally)) {
+		p.AllyLabel = ally.Label
+	}
+	out.Prompt = &playv1.ReactionWindow_Protection{Protection: p}
 }

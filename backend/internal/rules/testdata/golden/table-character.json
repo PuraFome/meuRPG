@@ -249,6 +249,7 @@
     "Initiative": 3,
     "ArmorClass": 12,
     "ArmorClassDescription": "Sem armadura",
+    "ShieldIdle": false,
     "ArmorCategory": "none",
     "HitPointsMax": 10,
     "HitPointsFromEffects": 0,
@@ -591,6 +592,7 @@
       }
     ],
     "Maneuvers": null,
+    "ExtraDamages": null,
     "AttacksPerAction": 1,
     "CriticalRange": 20,
     "BrutalCriticalDice": 0,
@@ -955,6 +957,7 @@
     "Initiative": 3,
     "ArmorClass": 12,
     "ArmorClassDescription": "Sem armadura",
+    "ShieldIdle": false,
     "ArmorCategory": "none",
     "HitPointsMax": 80,
     "HitPointsFromEffects": 0,
@@ -1638,6 +1641,7 @@
       }
     ],
     "Maneuvers": null,
+    "ExtraDamages": null,
     "AttacksPerAction": 2,
     "CriticalRange": 20,
     "BrutalCriticalDice": 0,
@@ -2111,6 +2115,7 @@
     "Initiative": 3,
     "ArmorClass": 12,
     "ArmorClassDescription": "Sem armadura",
+    "ShieldIdle": false,
     "ArmorCategory": "none",
     "HitPointsMax": 38,
     "HitPointsFromEffects": 0,
@@ -2618,6 +2623,7 @@
       }
     ],
     "Maneuvers": null,
+    "ExtraDamages": null,
     "AttacksPerAction": 2,
     "CriticalRange": 20,
     "BrutalCriticalDice": 0,

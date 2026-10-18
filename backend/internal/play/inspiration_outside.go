@@ -392,7 +392,7 @@ func (s *Service) heldRollsOf(ctx context.Context, campaignID, characterID strin
 	if err != nil {
 		return heldDie{}, false, nil, err
 	}
-	all, err := newHeldStores(s.queries).of(inspirationHolds).openOf(ctx, heldRoller{CharacterID: characterID, Combatant: die.Combatant, Round: die.Round})
+	all, err := newHeldStores(s.queries).openOf(ctx, heldRoller{CharacterID: characterID, Combatant: die.Combatant, Round: die.Round})
 	if err != nil {
 		return heldDie{}, false, nil, err
 	}
@@ -458,7 +458,7 @@ func (s *Service) AnswerOutsideInspiration(
 		return nil, err
 	}
 	out, err := s.answerHeld(ctx, m, answerRequest{
-		ref: holdRef{Table: inspirationHolds, Class: outsideHold, Campaign: m.CampaignID, ID: holdID}, key: key, question: askDie, yes: req.Msg.GetUse(), in: in,
+		ref: holdRef{Class: outsideHold, Campaign: m.CampaignID, ID: holdID}, key: key, question: askDie, yes: req.Msg.GetUse(), in: in,
 	})
 	if err != nil {
 		return nil, err

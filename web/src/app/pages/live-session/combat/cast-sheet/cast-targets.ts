@@ -14,10 +14,11 @@ let nextId = 0;
 
 /**
  * The target step of the cast sheet (E6-09): who the spell touches. One
- * creature is a radio group, several (an area, "Raio Ardente") a group of
- * checkboxes with the limit said, and Magic Missile hands out its darts with
- * 44px steppers and a live counter ("3 de 3 dardos distribuídos"). A target the
- * spell cannot reach is dashed and disabled, with the reason on its own line.
+ * creature is a radio group, several (an area) a group of checkboxes with the
+ * limit said, and Magic Missile hands out its darts, and Raio Ardente its rays
+ * (several to one target if the caster wants), with 44px steppers and a live
+ * counter ("3 de 3 dardos distribuídos"). A target the spell cannot reach is
+ * dashed and disabled, with the reason on its own line.
  */
 @Component({
   selector: 'app-cast-targets',
@@ -36,11 +37,11 @@ let nextId = 0;
                 <span class="why"><mat-icon aria-hidden="true">block</mat-icon>{{ t.blocked }}</span>
               }
             </span>
-            <span class="step" role="group" [attr.aria-label]="'Dardos em ' + t.label">
+            <span class="step" role="group" [attr.aria-label]="(rays() ? 'Raios em ' : 'Dardos em ') + t.label">
               <button
                 type="button"
                 class="step__btn"
-                [attr.aria-label]="'Tirar um dardo de ' + t.label"
+                [attr.aria-label]="(rays() ? 'Tirar um raio de ' : 'Tirar um dardo de ') + t.label"
                 [disabled]="!!t.blocked || (dealt().get(t.id) ?? 0) === 0"
                 (click)="deal.emit({ id: t.id, delta: -1 })"
               >
@@ -50,7 +51,7 @@ let nextId = 0;
               <button
                 type="button"
                 class="step__btn"
-                [attr.aria-label]="'Pôr um dardo em ' + t.label"
+                [attr.aria-label]="(rays() ? 'Pôr um raio em ' : 'Pôr um dardo em ') + t.label"
                 [disabled]="!!t.blocked || placed() >= total()"
                 (click)="deal.emit({ id: t.id, delta: 1 })"
               >
@@ -125,6 +126,7 @@ export class CastTargets {
   readonly deal = output<{ id: string; delta: 1 | -1 }>();
 
   protected readonly id = `cast-targets-${nextId++}`;
+  protected readonly rays = computed(() => this.rule().rays === true);
   protected readonly placed = computed(() => dartsPlaced(this.dealt()));
   protected readonly full = computed(
     () => this.rule().kind === 'multi' && this.chosen().length >= this.rule().max,
@@ -133,7 +135,7 @@ export class CastTargets {
     const r = this.rule();
     switch (r.kind) {
       case 'darts':
-        return `Divida os ${this.total()} dardos entre os alvos`;
+        return `Divida os ${this.total()} ${r.rays ? 'raios' : 'dardos'} entre os alvos`;
       case 'single':
         return 'Escolha o alvo (só quem você vê)';
       default:

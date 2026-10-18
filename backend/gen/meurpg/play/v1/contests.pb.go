@@ -2249,13 +2249,21 @@ type RollGroupCheckResponse struct {
 	GroupCheck *GroupCheckView        `protobuf:"bytes,1,opt,name=group_check,json=groupCheck,proto3" json:"group_check,omitempty"`
 	// Set when the character holds a Bardic Inspiration die: the d20 was rolled and the check
 	// was not written; AnswerOutsideInspiration settles it.
+	// Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+	// tab opened before the one question existed; it will go with the old answer RPCs.
+	//
+	// Deprecated: Marked as deprecated in meurpg/play/v1/contests.proto.
 	InspirationOffer *OutsideInspirationOffer `protobuf:"bytes,2,opt,name=inspiration_offer,json=inspirationOffer,proto3" json:"inspiration_offer,omitempty"`
 	// Set when the character is a halfling and a d20 shows a 1 (Lucky): the d20 was rolled and
 	// the check was not written; AnswerOutsideLucky rolls it again or keeps the 1. It comes before
 	// the die's question. A roll the master makes for a player asks too (RollForPlayer, E4-10).
+	// Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+	// tab opened before the one question existed; it will go with the old answer RPCs.
+	//
+	// Deprecated: Marked as deprecated in meurpg/play/v1/contests.proto.
 	LuckyOffer *LuckyOffer `protobuf:"bytes,3,opt,name=lucky_offer,json=luckyOffer,proto3" json:"lucky_offer,omitempty"`
 	// The question the roll asks now, in the one shape every held roll has (HeldRollOffer), set beside
-	// `inspiration_offer` and `lucky_offer` until they are removed: set instead of the result, when the
+	// the deprecated `inspiration_offer` and `lucky_offer`: set instead of the result, when the
 	// roll waits for an answer (AnswerHeldRoll). Whoever may answer gets it; nobody else does (RN-10).
 	HeldRollOffer *HeldRollOffer `protobuf:"bytes,4,opt,name=held_roll_offer,json=heldRollOffer,proto3" json:"held_roll_offer,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -2299,6 +2307,7 @@ func (x *RollGroupCheckResponse) GetGroupCheck() *GroupCheckView {
 	return nil
 }
 
+// Deprecated: Marked as deprecated in meurpg/play/v1/contests.proto.
 func (x *RollGroupCheckResponse) GetInspirationOffer() *OutsideInspirationOffer {
 	if x != nil {
 		return x.InspirationOffer
@@ -2306,6 +2315,7 @@ func (x *RollGroupCheckResponse) GetInspirationOffer() *OutsideInspirationOffer 
 	return nil
 }
 
+// Deprecated: Marked as deprecated in meurpg/play/v1/contests.proto.
 func (x *RollGroupCheckResponse) GetLuckyOffer() *LuckyOffer {
 	if x != nil {
 		return x.LuckyOffer
@@ -2405,11 +2415,19 @@ type RollForPlayerResponse struct {
 	// halfling whose d20 shows a 1: the master's roll for a player asks like the player's own (E4-10). The master is
 	// asked in his own sheet, the player reads the same question, and the first answer wins (AnswerHeldRoll); the
 	// master's own answer waits for the player's 10 s first chance (PLAYER_FIRST).
+	// Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+	// tab opened before the one question existed; it will go with the old answer RPCs.
+	//
+	// Deprecated: Marked as deprecated in meurpg/play/v1/contests.proto.
 	InspirationOffer *OutsideInspirationOffer `protobuf:"bytes,2,opt,name=inspiration_offer,json=inspirationOffer,proto3" json:"inspiration_offer,omitempty"`
-	LuckyOffer       *LuckyOffer              `protobuf:"bytes,3,opt,name=lucky_offer,json=luckyOffer,proto3" json:"lucky_offer,omitempty"`
-	HeldRollOffer    *HeldRollOffer           `protobuf:"bytes,4,opt,name=held_roll_offer,json=heldRollOffer,proto3" json:"held_roll_offer,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+	// tab opened before the one question existed; it will go with the old answer RPCs.
+	//
+	// Deprecated: Marked as deprecated in meurpg/play/v1/contests.proto.
+	LuckyOffer    *LuckyOffer    `protobuf:"bytes,3,opt,name=lucky_offer,json=luckyOffer,proto3" json:"lucky_offer,omitempty"`
+	HeldRollOffer *HeldRollOffer `protobuf:"bytes,4,opt,name=held_roll_offer,json=heldRollOffer,proto3" json:"held_roll_offer,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RollForPlayerResponse) Reset() {
@@ -2449,6 +2467,7 @@ func (x *RollForPlayerResponse) GetGroupCheck() *GroupCheckView {
 	return nil
 }
 
+// Deprecated: Marked as deprecated in meurpg/play/v1/contests.proto.
 func (x *RollForPlayerResponse) GetInspirationOffer() *OutsideInspirationOffer {
 	if x != nil {
 		return x.InspirationOffer
@@ -2456,6 +2475,7 @@ func (x *RollForPlayerResponse) GetInspirationOffer() *OutsideInspirationOffer {
 	return nil
 }
 
+// Deprecated: Marked as deprecated in meurpg/play/v1/contests.proto.
 func (x *RollForPlayerResponse) GetLuckyOffer() *LuckyOffer {
 	if x != nil {
 		return x.LuckyOffer
@@ -2753,12 +2773,12 @@ const file_meurpg_play_v1_contests_proto_rawDesc = "" +
 	"campaignId\x12'\n" +
 	"\x0fidempotency_key\x18\x02 \x01(\tR\x0eidempotencyKey\x12$\n" +
 	"\x0egroup_check_id\x18\x03 \x01(\tR\fgroupCheckId\x122\n" +
-	"\x04roll\x18\x04 \x01(\v2\x1e.meurpg.play.v1.CheckRollInputR\x04roll\"\xb3\x02\n" +
+	"\x04roll\x18\x04 \x01(\v2\x1e.meurpg.play.v1.CheckRollInputR\x04roll\"\xbb\x02\n" +
 	"\x16RollGroupCheckResponse\x12?\n" +
 	"\vgroup_check\x18\x01 \x01(\v2\x1e.meurpg.play.v1.GroupCheckViewR\n" +
-	"groupCheck\x12T\n" +
-	"\x11inspiration_offer\x18\x02 \x01(\v2'.meurpg.play.v1.OutsideInspirationOfferR\x10inspirationOffer\x12;\n" +
-	"\vlucky_offer\x18\x03 \x01(\v2\x1a.meurpg.play.v1.LuckyOfferR\n" +
+	"groupCheck\x12X\n" +
+	"\x11inspiration_offer\x18\x02 \x01(\v2'.meurpg.play.v1.OutsideInspirationOfferB\x02\x18\x01R\x10inspirationOffer\x12?\n" +
+	"\vlucky_offer\x18\x03 \x01(\v2\x1a.meurpg.play.v1.LuckyOfferB\x02\x18\x01R\n" +
 	"luckyOffer\x12E\n" +
 	"\x0fheld_roll_offer\x18\x04 \x01(\v2\x1d.meurpg.play.v1.HeldRollOfferR\rheldRollOffer\"\xdd\x01\n" +
 	"\x14RollForPlayerRequest\x12\x1f\n" +
@@ -2767,12 +2787,12 @@ const file_meurpg_play_v1_contests_proto_rawDesc = "" +
 	"\x0fidempotency_key\x18\x02 \x01(\tR\x0eidempotencyKey\x12$\n" +
 	"\x0egroup_check_id\x18\x03 \x01(\tR\fgroupCheckId\x12!\n" +
 	"\fcharacter_id\x18\x04 \x01(\tR\vcharacterId\x122\n" +
-	"\x04roll\x18\x05 \x01(\v2\x1e.meurpg.play.v1.CheckRollInputR\x04roll\"\xb2\x02\n" +
+	"\x04roll\x18\x05 \x01(\v2\x1e.meurpg.play.v1.CheckRollInputR\x04roll\"\xba\x02\n" +
 	"\x15RollForPlayerResponse\x12?\n" +
 	"\vgroup_check\x18\x01 \x01(\v2\x1e.meurpg.play.v1.GroupCheckViewR\n" +
-	"groupCheck\x12T\n" +
-	"\x11inspiration_offer\x18\x02 \x01(\v2'.meurpg.play.v1.OutsideInspirationOfferR\x10inspirationOffer\x12;\n" +
-	"\vlucky_offer\x18\x03 \x01(\v2\x1a.meurpg.play.v1.LuckyOfferR\n" +
+	"groupCheck\x12X\n" +
+	"\x11inspiration_offer\x18\x02 \x01(\v2'.meurpg.play.v1.OutsideInspirationOfferB\x02\x18\x01R\x10inspirationOffer\x12?\n" +
+	"\vlucky_offer\x18\x03 \x01(\v2\x1a.meurpg.play.v1.LuckyOfferB\x02\x18\x01R\n" +
 	"luckyOffer\x12E\n" +
 	"\x0fheld_roll_offer\x18\x04 \x01(\v2\x1d.meurpg.play.v1.HeldRollOfferR\rheldRollOffer\"\x88\x01\n" +
 	"\x16CloseGroupCheckRequest\x12\x1f\n" +

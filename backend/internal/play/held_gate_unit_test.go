@@ -32,52 +32,18 @@ func pinnedAttackRequest(t *testing.T, faces []int32, typed bool) []byte {
 	return body
 }
 
-// A roll_holds row converts on read: the faces come from the pinned request, the die that counts is the
-// pinned mode's pick, the total adds the bonus to that die, and the "#window" leaves the key for Window.
-func TestHeldRollOfARollHoldsRow(t *testing.T) {
-	t.Parallel()
-	row := playdb.RollHold{
-		ID: "hold-1", EncounterID: "enc-1", CombatantID: "cmb-1", IdempotencyKey: "key-1" + windowHoldSuffix,
-		Request: pinnedAttackRequest(t, []int32{4, 13}, false), Face: 13, Modifier: 5, Round: 2,
-	}
-	h := heldOfRollHold(row)
-	if h.table != rollHolds || h.Kind != heldWeaponAttack || h.CampaignID != "campaign-1" || h.EncounterID != "enc-1" || h.CombatantID != "cmb-1" {
-		t.Errorf("heldOfRollHold() = %+v, want a weapon attack of the combatant in the campaign", h)
-	}
-	if h.Key != "key-1" || !h.Window {
-		t.Errorf("key = %q, window = %v, want the key without the suffix and the window set", h.Key, h.Window)
-	}
-	if len(h.Faces) != 2 || h.Faces[0] != 4 || h.Faces[1] != 13 || h.Counted != 1 || h.Modifier != 5 || h.Total != 18 || h.Physical {
-		t.Errorf("faces = %v counted %d modifier %d total %d physical %v, want 4 and 13, the second counting, 5 and 18, rolled in the app",
-			h.Faces, h.Counted, h.Modifier, h.Total, h.Physical)
-	}
-	if h.Round == nil || *h.Round != 2 || h.UserID != "" || h.CharacterID != "" {
-		t.Errorf("round = %v, user = %q, character = %q, want round 2 and neither owner (the row has none)", h.Round, h.UserID, h.CharacterID)
-	}
-	typed := row
-	typed.Request, typed.IdempotencyKey = pinnedAttackRequest(t, []int32{4, 13}, true), "key-2"
-	if got := heldOfRollHold(typed); !got.Physical || got.Window {
-		t.Errorf("a typed pair, no suffix: physical = %v, window = %v, want physical and no window", got.Physical, got.Window)
-	}
-	single := playdb.RollHold{Face: 9, Modifier: 3, Request: pinnedAttackRequest(t, nil, false)}
-	if got := heldOfRollHold(single); len(got.Faces) != 1 || got.Faces[0] != 9 || got.Counted != 0 || got.Total != 12 {
-		t.Errorf("a single d20: faces = %v counted %d total %d, want the face, 0 and 12", got.Faces, got.Counted, got.Total)
-	}
-}
-
-// The same rule of "stale" reads the two tables as they have always been read: a roll_holds row only by
-// its round; an inspiration_holds row also when its die is gone and no Lucky question needs one.
-func TestAHeldRollIsStaleByItsTable(t *testing.T) {
+// A weapon attack is stale only by its round, as it always was; any other roll also when its die is gone and no
+// Lucky question needs one.
+func TestAHeldRollIsStaleByItsKind(t *testing.T) {
 	t.Parallel()
 	round := int32(3)
 	st := func(round int32, holds bool) rollerState {
 		return rollerState{Die: heldDie{Combatant: &playdb.Combatant{}, Round: round}, Holds: holds}
 	}
-	attack := heldRoll{table: rollHolds, Round: &round}
-	movedAttack := heldRoll{table: inspirationHolds, Kind: heldWeaponAttack, Round: &round}
-	spell := heldRoll{table: inspirationHolds, Round: &round}
-	waiting := heldRoll{table: inspirationHolds, Round: &round, LuckyIndex: new(int32(0))}
-	answered := heldRoll{table: inspirationHolds, Round: &round, LuckyIndex: new(int32(0)), LuckyAnswerKey: new("k")}
+	attack := heldRoll{Kind: heldWeaponAttack, Round: &round}
+	spell := heldRoll{Round: &round}
+	waiting := heldRoll{Round: &round, LuckyIndex: new(int32(0))}
+	answered := heldRoll{Round: &round, LuckyIndex: new(int32(0)), LuckyAnswerKey: new("k")}
 	cases := []struct {
 		name string
 		h    heldRoll
@@ -87,12 +53,10 @@ func TestAHeldRollIsStaleByItsTable(t *testing.T) {
 		{"an attack in its round with its die", attack, st(3, true), false},
 		{"an attack in its round whose die ran out", attack, st(3, false), false},
 		{"an attack of an earlier round", attack, st(4, true), true},
-		{"an attack kept in inspiration_holds, in its round whose die ran out", movedAttack, st(3, false), false},
-		{"an attack kept in inspiration_holds, of an earlier round", movedAttack, st(4, true), true},
 		{"a spell attack in its round with its die", spell, st(3, true), false},
 		{"a spell attack in its round whose die ran out", spell, st(3, false), true},
 		{"a spell attack of an earlier round", spell, st(4, true), true},
-		{"a roll out of a combat", heldRoll{table: inspirationHolds}, rollerState{}, false},
+		{"a roll out of a combat", heldRoll{}, rollerState{}, false},
 		{"an attack whose combat is over", attack, rollerState{}, true},
 		{"a spell attack whose combat is over", spell, rollerState{Die: heldDie{Sides: 8}, Holds: true}, true},
 		{"Lucky waits in its round, no die", waiting, st(3, false), false},
@@ -100,7 +64,7 @@ func TestAHeldRollIsStaleByItsTable(t *testing.T) {
 		{"Lucky waits, the combat ended", waiting, rollerState{}, true},
 		{"Lucky answered, the die is gone", answered, st(3, false), true},
 		{"Lucky answered, the die is held", answered, st(3, true), false},
-		{"Lucky waits out of a combat", heldRoll{table: inspirationHolds, LuckyIndex: new(int32(0))}, rollerState{}, false},
+		{"Lucky waits out of a combat", heldRoll{LuckyIndex: new(int32(0))}, rollerState{}, false},
 	}
 	for _, tc := range cases {
 		if got := tc.h.stale(tc.st); got != tc.want {
@@ -235,11 +199,11 @@ func TestAnAnswerIsRefusedAfterAnotherOrAfterTheRound(t *testing.T) {
 		st   rollerState
 		want bool
 	}{
-		{"open", heldRoll{table: inspirationHolds}, rollerState{}, false},
-		{"answered by the same key", heldRoll{table: inspirationHolds, AnswerKey: new("a")}, rollerState{}, false},
-		{"answered by another key", heldRoll{table: inspirationHolds, AnswerKey: new("b")}, rollerState{}, true},
-		{"a spell attack of an earlier round", heldRoll{table: inspirationHolds, Round: &round}, late, true},
-		{"a weapon attack of an earlier round", heldRoll{table: rollHolds, Round: &round}, late, false},
+		{"open", heldRoll{}, rollerState{}, false},
+		{"answered by the same key", heldRoll{AnswerKey: new("a")}, rollerState{}, false},
+		{"answered by another key", heldRoll{AnswerKey: new("b")}, rollerState{}, true},
+		{"a spell attack of an earlier round", heldRoll{Round: &round}, late, true},
+		{"a weapon attack of an earlier round", heldRoll{Kind: heldWeaponAttack, Round: &round}, late, false},
 	}
 	for _, tc := range cases {
 		err := tc.h.answerable(tc.st, "a")

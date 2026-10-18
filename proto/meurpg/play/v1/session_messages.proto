@@ -52,14 +52,18 @@ message SessionMessage {
   string speaker_id = 4;
   // The name to show: the NPC's or the character's name as it was when the
   // line was sent, or the author's display name for an out-of-character
-  // line. Empty for the narrator, and for an out-of-character line whose
-  // author's account was erased (author_removed).
+  // line. Empty for the narrator, for an out-of-character line whose
+  // author's account was erased (author_removed), and for one whose author
+  // never chose a display name (the app then says "Jogador").
   string speaker_name = 5;
   // The portrait of the NPC that speaks, when it has one. Unset otherwise.
   SessionMessageImage speaker_portrait = 6;
   // The account that sent the line (a UUID). Empty when that account was
   // erased: the line stays and the app shows "Jogador removido".
   string author_user_id = 7;
+  // True only when the author's account was erased (author_user_id is empty).
+  // An author who never chose a display name is not removed: speaker_name is
+  // empty and author_user_id is set.
   bool author_removed = 8;
   // The text, 1 to 2,000 characters.
   string text = 9;

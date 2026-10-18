@@ -186,6 +186,11 @@ type ResourceServiceClient interface {
 	//
 	// Errors: `not_found` for a hold that is gone; `invalid_argument` for a typed
 	// face outside the die.
+	//
+	// Deprecated (E4-9): AnswerHeldRoll answers every question of a held roll, whoever asks it. This RPC is still
+	// served, as an adapter over the same answer, for a tab opened before AnswerHeldRoll existed.
+	//
+	// Deprecated: do not use.
 	AnswerBardicInspiration(context.Context, *connect.Request[v1.AnswerBardicInspirationRequest]) (*connect.Response[v1.AnswerBardicInspirationResponse], error)
 	// AnswerLucky answers the question a held attack roll asks when a halfling's d20 shows a 1
 	// (SRD 5.1, Halfling, Lucky: the die may be rolled again, and the new roll stands): roll it
@@ -205,6 +210,11 @@ type ResourceServiceClient interface {
 	// outside 1 to 20; `failed_precondition` when the hold asks no Lucky question or it was
 	// answered already (by another answer); EncounterBlocked WRONG_DICE_MODE for a player's way of
 	// rolling the campaign does not allow.
+	//
+	// Deprecated (E4-9): AnswerHeldRoll answers every question of a held roll, whoever asks it. This RPC is still
+	// served, as an adapter over the same answer, for a tab opened before AnswerHeldRoll existed.
+	//
+	// Deprecated: do not use.
 	AnswerLucky(context.Context, *connect.Request[v1.AnswerLuckyRequest]) (*connect.Response[v1.AnswerLuckyResponse], error)
 	// GetOutsideInspiration reads the Bardic Inspiration of the caller out of a combat: the
 	// die their character holds and, for a bard, the uses left and the party to give it to;
@@ -233,6 +243,11 @@ type ResourceServiceClient interface {
 	// Errors: `not_found` for a hold that is gone; `invalid_argument` for a typed face outside
 	// the die; `failed_precondition` when the die ran out meanwhile; ResourceBlocked
 	// LUCKY_PENDING while the Lucky question of the same roll waits (AnswerOutsideLucky first).
+	//
+	// Deprecated (E4-9): AnswerHeldRoll answers every question of a held roll, whoever asks it. This RPC is still
+	// served, as an adapter over the same answer, for a tab opened before AnswerHeldRoll existed.
+	//
+	// Deprecated: do not use.
 	AnswerOutsideInspiration(context.Context, *connect.Request[v1.AnswerOutsideInspirationRequest]) (*connect.Response[v1.AnswerOutsideInspirationResponse], error)
 	// AnswerOutsideLucky answers the Lucky question of a d20 roll that is not a weapon attack
 	// (AnswerLucky has those): a halfling's d20 showed a 1 (SRD 5.1, Halfling, Lucky: the die may
@@ -258,6 +273,11 @@ type ResourceServiceClient interface {
 	// `failed_precondition` when the hold asks no Lucky question, it was answered already (by
 	// another answer) or its combat round is over; the path's WRONG_DICE_MODE for a way of rolling
 	// the campaign does not allow.
+	//
+	// Deprecated (E4-9): AnswerHeldRoll answers every question of a held roll, whoever asks it. This RPC is still
+	// served, as an adapter over the same answer, for a tab opened before AnswerHeldRoll existed.
+	//
+	// Deprecated: do not use.
 	AnswerOutsideLucky(context.Context, *connect.Request[v1.AnswerOutsideLuckyRequest]) (*connect.Response[v1.AnswerOutsideLuckyResponse], error)
 	// AnswerHeldRoll answers the question of any roll that waits, whichever roll it is (a weapon attack,
 	// a spell attack, a save, a check, a search, a hint try) and whichever question it asks (the
@@ -465,11 +485,15 @@ func (c *resourceServiceClient) GiveBardicInspiration(ctx context.Context, req *
 }
 
 // AnswerBardicInspiration calls meurpg.play.v1.ResourceService.AnswerBardicInspiration.
+//
+// Deprecated: do not use.
 func (c *resourceServiceClient) AnswerBardicInspiration(ctx context.Context, req *connect.Request[v1.AnswerBardicInspirationRequest]) (*connect.Response[v1.AnswerBardicInspirationResponse], error) {
 	return c.answerBardicInspiration.CallUnary(ctx, req)
 }
 
 // AnswerLucky calls meurpg.play.v1.ResourceService.AnswerLucky.
+//
+// Deprecated: do not use.
 func (c *resourceServiceClient) AnswerLucky(ctx context.Context, req *connect.Request[v1.AnswerLuckyRequest]) (*connect.Response[v1.AnswerLuckyResponse], error) {
 	return c.answerLucky.CallUnary(ctx, req)
 }
@@ -485,11 +509,15 @@ func (c *resourceServiceClient) GiveBardicInspirationOutside(ctx context.Context
 }
 
 // AnswerOutsideInspiration calls meurpg.play.v1.ResourceService.AnswerOutsideInspiration.
+//
+// Deprecated: do not use.
 func (c *resourceServiceClient) AnswerOutsideInspiration(ctx context.Context, req *connect.Request[v1.AnswerOutsideInspirationRequest]) (*connect.Response[v1.AnswerOutsideInspirationResponse], error) {
 	return c.answerOutsideInspiration.CallUnary(ctx, req)
 }
 
 // AnswerOutsideLucky calls meurpg.play.v1.ResourceService.AnswerOutsideLucky.
+//
+// Deprecated: do not use.
 func (c *resourceServiceClient) AnswerOutsideLucky(ctx context.Context, req *connect.Request[v1.AnswerOutsideLuckyRequest]) (*connect.Response[v1.AnswerOutsideLuckyResponse], error) {
 	return c.answerOutsideLucky.CallUnary(ctx, req)
 }
@@ -600,6 +628,11 @@ type ResourceServiceHandler interface {
 	//
 	// Errors: `not_found` for a hold that is gone; `invalid_argument` for a typed
 	// face outside the die.
+	//
+	// Deprecated (E4-9): AnswerHeldRoll answers every question of a held roll, whoever asks it. This RPC is still
+	// served, as an adapter over the same answer, for a tab opened before AnswerHeldRoll existed.
+	//
+	// Deprecated: do not use.
 	AnswerBardicInspiration(context.Context, *connect.Request[v1.AnswerBardicInspirationRequest]) (*connect.Response[v1.AnswerBardicInspirationResponse], error)
 	// AnswerLucky answers the question a held attack roll asks when a halfling's d20 shows a 1
 	// (SRD 5.1, Halfling, Lucky: the die may be rolled again, and the new roll stands): roll it
@@ -619,6 +652,11 @@ type ResourceServiceHandler interface {
 	// outside 1 to 20; `failed_precondition` when the hold asks no Lucky question or it was
 	// answered already (by another answer); EncounterBlocked WRONG_DICE_MODE for a player's way of
 	// rolling the campaign does not allow.
+	//
+	// Deprecated (E4-9): AnswerHeldRoll answers every question of a held roll, whoever asks it. This RPC is still
+	// served, as an adapter over the same answer, for a tab opened before AnswerHeldRoll existed.
+	//
+	// Deprecated: do not use.
 	AnswerLucky(context.Context, *connect.Request[v1.AnswerLuckyRequest]) (*connect.Response[v1.AnswerLuckyResponse], error)
 	// GetOutsideInspiration reads the Bardic Inspiration of the caller out of a combat: the
 	// die their character holds and, for a bard, the uses left and the party to give it to;
@@ -647,6 +685,11 @@ type ResourceServiceHandler interface {
 	// Errors: `not_found` for a hold that is gone; `invalid_argument` for a typed face outside
 	// the die; `failed_precondition` when the die ran out meanwhile; ResourceBlocked
 	// LUCKY_PENDING while the Lucky question of the same roll waits (AnswerOutsideLucky first).
+	//
+	// Deprecated (E4-9): AnswerHeldRoll answers every question of a held roll, whoever asks it. This RPC is still
+	// served, as an adapter over the same answer, for a tab opened before AnswerHeldRoll existed.
+	//
+	// Deprecated: do not use.
 	AnswerOutsideInspiration(context.Context, *connect.Request[v1.AnswerOutsideInspirationRequest]) (*connect.Response[v1.AnswerOutsideInspirationResponse], error)
 	// AnswerOutsideLucky answers the Lucky question of a d20 roll that is not a weapon attack
 	// (AnswerLucky has those): a halfling's d20 showed a 1 (SRD 5.1, Halfling, Lucky: the die may
@@ -672,6 +715,11 @@ type ResourceServiceHandler interface {
 	// `failed_precondition` when the hold asks no Lucky question, it was answered already (by
 	// another answer) or its combat round is over; the path's WRONG_DICE_MODE for a way of rolling
 	// the campaign does not allow.
+	//
+	// Deprecated (E4-9): AnswerHeldRoll answers every question of a held roll, whoever asks it. This RPC is still
+	// served, as an adapter over the same answer, for a tab opened before AnswerHeldRoll existed.
+	//
+	// Deprecated: do not use.
 	AnswerOutsideLucky(context.Context, *connect.Request[v1.AnswerOutsideLuckyRequest]) (*connect.Response[v1.AnswerOutsideLuckyResponse], error)
 	// AnswerHeldRoll answers the question of any roll that waits, whichever roll it is (a weapon attack,
 	// a spell attack, a save, a check, a search, a hint try) and whichever question it asks (the

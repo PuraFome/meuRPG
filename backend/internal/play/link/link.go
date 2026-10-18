@@ -180,6 +180,14 @@ type Maneuver struct {
 	Sides                                                    int
 }
 
+// ExtraDamage is damage a table feature adds to a weapon hit once per turn (the engine's extra_damage
+// effect): Applies says what it asks of the target ("any_target" or "larger_target"), Resource the
+// uses it spends ("" for none) and Amount the fixed damage, never doubled by a critical hit.
+type ExtraDamage struct {
+	Key, NamePT, Applies, Resource, TextPT string
+	Amount                                 int
+}
+
 // LuckyTrait is the content key of the halfling's Lucky (SRD 5.1, Halfling): the sheet that
 // has it sets Traits.Lucky, and a d20 it rolled again names it as the source of the reroll.
 const LuckyTrait = "trait:lucky"
@@ -227,6 +235,8 @@ type Traits struct {
 	Resistances []Resistance
 	// Maneuvers are the dice the table's options add to a roll (superiority_die effects).
 	Maneuvers []Maneuver
+	// ExtraDamages are the damage the table's features add to a weapon hit (extra_damage effects).
+	ExtraDamages []ExtraDamage
 	// CreatureType is the SRD type of a monster ("undead", "fiend", "beast"); empty
 	// for a character.
 	CreatureType string
@@ -475,6 +485,9 @@ type ReactionStats struct {
 	Reduce []ReduceManeuver
 	// Proficiency is the proficiency bonus (the Deflect Missiles throw back adds it).
 	Proficiency int
+	// Protection says it has the Protection fighting style and wields a shield (a
+	// two-handed weapon on the sheet takes the shield out of its hand).
+	Protection bool
 	// CuttingWords says it has the bard's feature, with its bard level (the die)
 	// and the bard's "Perguntar" setting: "all", "attacks" (the default) or "never".
 	CuttingWords bool

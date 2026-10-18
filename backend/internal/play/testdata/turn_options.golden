@@ -2324,6 +2324,8 @@ options
 .spellTargets[0].targets[Toren].cover = "COVER_DEGREE_NONE"
 .spellTargets[0].targets[Toren].distanceFt = 50
 .spellTargets[0].targets[Toren].label = "Toren"
+.spellTargets[1].darts[0].darts = 3
+.spellTargets[1].darts[0].slotLevel = 2
 .spellTargets[1].extraTargetPerLevel = true
 .spellTargets[1].maxTargets = 3
 .spellTargets[1].spellKey = "spell:scorching-ray"

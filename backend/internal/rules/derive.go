@@ -756,7 +756,7 @@ func (x *deriver) buildEnv() {
 		Score:      func(a string) int { return x.scores[Ability(a)] },
 		Prof:       func() int { return x.prof },
 		Armor:      func() string { return x.armorCategory },
-		Shield:     func() bool { return x.b.Shield },
+		Shield:     x.shieldWielded,
 	}
 }
 

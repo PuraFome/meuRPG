@@ -43,6 +43,8 @@ const ROUTES: { [K in Exclude<Kind, OwnKind>]: (h: LiveStreamHandlers, e: Event<
   callingYou: (h) => h.onCallingYou?.(),
   heldRollsChanged: (h) => h.onHeldRollsChanged?.(),
   puzzleChanged: (h, e) => h.onPuzzleChanged?.(e.puzzleId),
+  sessionMessage: (h, e) => h.onSessionMessage?.(e.message),
+  masterTyping: (h, e) => h.onMasterTyping?.(e.expiresInSeconds),
 };
 
 /** Hands a message to the handler of its kind; a kind with none (a heartbeat, one this app does not know) does nothing. */
