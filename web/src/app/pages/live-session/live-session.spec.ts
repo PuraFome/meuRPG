@@ -451,11 +451,11 @@ describe('LiveSession', () => {
       expect(diceButton(await render())).not.toBeNull();
     });
 
-    it('puts "Dados" in the header for a player, and "Registro da sessão" under the board', async () => {
+    it('puts "Dados" in the header for a player, and "Rolagens da mesa" under the board', async () => {
       const player = await render();
       expect(diceButton(player)?.querySelector('.js-dice-text')?.textContent?.trim()).toBe('Dados');
       expect(player.querySelector('app-free-roll-log h2')?.textContent).toContain(
-        'Registro da sessão',
+        'Rolagens da mesa',
       );
     });
 

@@ -76,7 +76,7 @@ Any member of the table rolls any dice with the server's dice, outside every gam
 - **Last rolls:** "Suas últimas rolagens nesta sessão" (the caller's newest ten, "há 3 min", the "Só você" badge on the master's secret ones) with "Repetir 2d6 + 3", which rolls the same dice at once.
   It has its own loading, empty ("Você ainda não rolou nesta sessão. As rolagens aparecem aqui.") and failure ("Tentar de novo", the form still works) states.
 - **What the table sees:** the dice overlay above, labelled "Brisa rolou", the dice, the total and "Rolagem livre · 2d6 + 3", for every screen except the roller's own (the roller reads the result card) and never for a secret roll, which no player's stream carries.
-- **"Registro da sessão"** (`app-free-roll-log`): a small card under the board (under the stage, after the master's panels and the player's board, before the phone's section tabs), full width, so no existing screen's layout moves at any width.
+- **"Rolagens da mesa"** (`app-free-roll-log`): a small card under the board (under the stage, after the master's panels and the player's board, before the phone's section tabs), full width, so no existing screen's layout moves at any width.
   It lists the table's free rolls newest first ("**Rolagem livre · Brisa:** 2d6 + 3 = 11 (4, 4)"), the newest ten and "Mostrar as outras N", kept up to date by the stream; the master sees his own secret rolls in it with the "Só você" badge, a player never does.
   Empty: "Ninguém rolou dados nesta sessão ainda. As rolagens da mesa aparecem aqui."; failed: "Não deu para carregar o registro." with "Tentar de novo".
 

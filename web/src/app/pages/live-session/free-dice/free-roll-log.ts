@@ -11,7 +11,7 @@ const SHOWN = 10;
 let nextId = 0;
 
 /**
- * "Registro da sessão" (MR-052, B5-04): the free rolls of the session as the table's log, newest first
+ * "Rolagens da mesa" (MR-052, B5-04): the free rolls of the session as the table's log, newest first
  * ("Rolagem livre · Brisa: 2d6 + 3 = 11 (4, 4)"). The master's own secret rolls are in it with the "Só você" badge;
  * a player's list never holds one. It sits under the stage, so no screen's layout moves for it. It is a small
  * section, not a panel: ten lines, the rest on request.
@@ -22,7 +22,7 @@ let nextId = 0;
   imports: [MatButtonModule, MatIconModule],
   template: `
     <section class="log" [attr.aria-labelledby]="headingId">
-      <h2 class="log__title" [id]="headingId">Registro da sessão</h2>
+      <h2 class="log__title" [id]="headingId">Rolagens da mesa</h2>
       @if (rolls().length > 0) {
         <ul class="log__list">
           @for (r of shown(); track r.id) {

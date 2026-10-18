@@ -18,10 +18,10 @@ function mount(inputs: Record<string, unknown>) {
 }
 
 describe('FreeRollLog', () => {
-  it('is a section named "Registro da sessão"', () => {
+  it('is a section named "Rolagens da mesa"', () => {
     const { el } = mount({});
     const section = el.querySelector('section');
-    expect(text(section?.querySelector('h2'))).toBe('Registro da sessão');
+    expect(text(section?.querySelector('h2'))).toBe('Rolagens da mesa');
     expect(section?.getAttribute('aria-labelledby')).toBe(section?.querySelector('h2')?.id);
   });
 

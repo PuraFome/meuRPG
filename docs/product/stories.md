@@ -1341,7 +1341,7 @@ See [Architecture](../architecture/campaign-package.md).
 - **Given** a roll with another die, with 0 or more than 20 dice, or with a modifier beyond +20 or -20, **then** it is refused and nothing is rolled or written.
 - **Given** one d20, **when** the roller chooses advantage or disadvantage, **then** two d20 are rolled, the higher (or the lower) counts and the other shows "descartado"; with any other dice the choice is refused.
 - **Given** the table plays with physical dice (RN-18), **when** a member rolls here, **then** the app rolls anyway, the log says "Rolagem livre", and the sheet says "Esta é a rolagem do app": the table's dice mode applies to the game's rolls, not to this one.
-- **Given** a player rolls, **then** the roller reads the result card (the total in numbers and in words, the formula, each die), and the whole table reads "Rolagem livre · <name>: 2d6 + 3 = 11 (4, 4)" in "Registro da sessão" and sees the dice on the screen.
+- **Given** a player rolls, **then** the roller reads the result card (the total in numbers and in words, the formula, each die), and the whole table reads "Rolagem livre · <name>: 2d6 + 3 = 11 (4, 4)" in "Rolagens da mesa" and sees the dice on the screen.
 - **Given** the master rolls "Para a mesa", **then** the table reads and sees it as a player's roll.
 - **Given** the master rolls "Só eu", **then** only the master reads it, with the "Só você" badge; no player receives it in a read, on the stream or in the summary, and nothing tells a player that it happened, not even a count (RN-10). A player who asks for "Só eu" is refused.
 - **Given** a natural 20 or a natural 1 on a single d20, **then** the result says it in words ("20 natural", "1 natural"), not only in colour.
@@ -1353,7 +1353,7 @@ See [Architecture](../architecture/campaign-package.md).
 
 #### In the app
 - The "Dados" button in the session's header opens "Rolar dados": a bottom sheet on a phone, a dialog from a tablet up. It has the shortcuts (1d20, 1d6, 2d6, 1d100), the die, "Quantidade (1 a 20)", "Modificador (−20 a +20)", "Como rolar o d20" for a single d20, the master's "Quem vê" ("Para a mesa" or "Só eu"), "Suas últimas rolagens nesta sessão" with "Repetir", and one filled button ("Rolar 2d6 + 3"). The result card has "Mudar dados" and "Rolar … de novo".
-- "Registro da sessão" under the stage lists the session's free rolls, newest first; the dice overlay shows the others' roll as "<name> rolou".
+- "Rolagens da mesa" under the stage lists the session's free rolls, newest first; the dice overlay shows the others' roll as "<name> rolou".
 - Rolling is rate limited per person.
 
 #### Related

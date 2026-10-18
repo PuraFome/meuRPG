@@ -1341,7 +1341,7 @@ Ver [Arquitetura](../../architecture/campaign-package.md).
 - **Dada** uma rolagem com outro dado, com 0 ou mais de 20 dados, ou com um modificador além de +20 ou -20, **então** ela é recusada e nada é rolado nem gravado.
 - **Dado** um d20, **quando** quem rola escolhe vantagem ou desvantagem, **então** dois d20 são rolados, o maior (ou o menor) vale e o outro mostra "descartado"; com quaisquer outros dados a escolha é recusada.
 - **Dado** que a mesa joga com dados físicos (RN-18), **quando** um membro rola aqui, **então** o app rola mesmo assim, o registro diz "Rolagem livre", e a folha diz "Esta é a rolagem do app": o modo de dados da mesa vale para as rolagens do jogo, não para esta.
-- **Dado** que um jogador rola, **então** ele lê o cartão de resultado (o total em números e por extenso, a fórmula, cada dado), e a mesa toda lê "Rolagem livre · <nome>: 2d6 + 3 = 11 (4, 4)" no "Registro da sessão" e vê os dados na tela.
+- **Dado** que um jogador rola, **então** ele lê o cartão de resultado (o total em números e por extenso, a fórmula, cada dado), e a mesa toda lê "Rolagem livre · <nome>: 2d6 + 3 = 11 (4, 4)" no "Rolagens da mesa" e vê os dados na tela.
 - **Dado** que o mestre rola "Para a mesa", **então** a mesa lê e vê como a rolagem de um jogador.
 - **Dado** que o mestre rola "Só eu", **então** só o mestre a lê, com a marca "Só você"; nenhum jogador a recebe na leitura, no stream nem no resumo, e nada avisa um jogador de que aconteceu, nem uma contagem (RN-10). Um jogador que pede "Só eu" é recusado.
 - **Dado** um 20 natural ou um 1 natural num d20 só, **então** o resultado diz isso por extenso ("20 natural", "1 natural"), não só pela cor.
@@ -1353,7 +1353,7 @@ Ver [Arquitetura](../../architecture/campaign-package.md).
 
 #### No app
 - O botão "Dados" no cabeçalho da sessão abre "Rolar dados": uma folha de baixo no celular, uma janela a partir do tablet. Ela tem os atalhos (1d20, 1d6, 2d6, 1d100), o dado, "Quantidade (1 a 20)", "Modificador (−20 a +20)", "Como rolar o d20" para um d20 só, o "Quem vê" do mestre ("Para a mesa" ou "Só eu"), "Suas últimas rolagens nesta sessão" com "Repetir", e um botão preenchido ("Rolar 2d6 + 3"). O cartão de resultado tem "Mudar dados" e "Rolar … de novo".
-- O "Registro da sessão" sob o palco lista as rolagens livres da sessão, da mais nova para a mais antiga; a animação dos dados mostra a rolagem dos outros como "<nome> rolou".
+- O "Rolagens da mesa" sob o palco lista as rolagens livres da sessão, da mais nova para a mais antiga; a animação dos dados mostra a rolagem dos outros como "<nome> rolou".
 - Rolar tem limite de taxa por pessoa.
 
 #### Relacionadas
