@@ -78,7 +78,7 @@ func registerRerun[Req, Res any, PReq interface {
 		}
 		out, err := path(s, ctx, connect.NewRequest((*Req)(orig)))
 		if err != nil {
-			return nil, err //nolint:wrapcheck // the path's own refusal
+			return nil, err
 		}
 		return PRes(out.Msg), nil
 	}
@@ -113,13 +113,13 @@ func rerunContest(ctx context.Context, s *Service, h heldRoll, _ string) (proto.
 	case *playv1.StartContestRequest:
 		out, err := s.StartContest(ctx, connect.NewRequest(r))
 		if err != nil {
-			return nil, err //nolint:wrapcheck // the path's own refusal
+			return nil, err
 		}
 		return out.Msg, nil
 	case *playv1.RespondContestRequest:
 		out, err := s.RespondContest(ctx, connect.NewRequest(r))
 		if err != nil {
-			return nil, err //nolint:wrapcheck // the path's own refusal
+			return nil, err
 		}
 		return out.Msg, nil
 	}
@@ -138,7 +138,7 @@ func rerunAttack(ctx context.Context, s *Service, h heldRoll, key string) (proto
 	}
 	out, err := s.RollAttack(ctx, connect.NewRequest(&orig))
 	if err != nil {
-		return nil, err //nolint:wrapcheck // the path's own refusal
+		return nil, err
 	}
 	return out.Msg, nil
 }
