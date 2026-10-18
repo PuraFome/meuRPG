@@ -188,7 +188,7 @@ What counts as "scene open again" is the last `scene_opened` event of the sessio
   The hash is kept on the combat's changes; `NULL` on an event made without one.
 - `payload` is a small JSON object (at most 16 KiB, `CHECK`) of ids, keys and numbers, with the values before and after: **no free text, no names**.
   A weapon's name never enters (the log reads it from the sheet); the reason of an XP award stays in `xp_awards`.
-  Account ids inside payloads do not disappear with the account (see [Privacy](../privacy.md)).
+  Erasing an account takes its id out of the who-saw lists of every payload (below), in the same statement.
 - `actor_user_id` (`SET NULL`) is who made the change; `character_id` (`SET NULL`) the character; `encounter_id` (`CASCADE`, optional) the combat the event belongs to, for the log and the undo (`NULL` on HP corrections).
 - Partial indexes serve a combat's events in order and the two `SET NULL` cascades, so deleting a character or account does not scan the history.
 - **The undo is a compensating row**: the undone one stays.
@@ -196,6 +196,11 @@ What counts as "scene open again" is the last `scene_opened` event of the sessio
   The helper lists an undo reads (`ended_lines`, `follow_ups`, `marks_before`, `closed_windows`, `reveal_lines`...) are dropped in a fixed order before the write if the payload would pass 16 KiB, so the `CHECK` never refuses an action because of them (`combat_events.go`).
 - **Fog.** In a map with fog, the payload of action events with an NPC in it carries `fogged` and `seen_by`, the account ids of the players who saw **all** the NPCs of the event when it happened; the combat log gives the row only to those players and never recomputes the list (`combat_fog.go`).
   Cover that only some players would read carries `cover_restricted` and `cover_seen_by` the same way.
+  A spell's `hits` and a trap's `caught` keep such a list for each target, and a cast keeps `cover_users`, the players that the bits of the masks (`seen_mask`, `cover_seen_mask`) count by position.
+- **Erasing an account** (`DELETE FROM users`) runs the `BEFORE DELETE` trigger `users_scrub_session_events` (migration 00266), in the same transaction.
+  For the events of the campaigns the account belongs to, it removes the id from `seen_by`, `cover_seen_by`, `hits[].cover_seen_by` and `trap.caught[].seen_by`, keeping the order of the others and leaving an empty list empty, and replaces it with `""` in `cover_users`, so that no mask changes meaning.
+  The row, its `seq` and the rest of its payload do not change.
+  A new place in a payload that holds account ids needs the same case in `session_event_payload_without_user`, and a test in `play/erasure_seen_by_test.go`.
 - Puzzle events (`puzzle_shown`, `puzzle_solved`, `puzzle_reset`, `puzzle_closed`) carry `puzzle_id` and `run_id` only; state, solution and moves stay in `puzzle_moves`.
   A scene check event carries ids, the check key, the d20, the bonus, the total, whether it was a physical die, `dc_shown` and `passed`, never the DC or a name.
 - A free roll (`free_roll_rolled`, [the free dice roller](../architecture/play/free-dice-roller.md)) carries the die's sides, the count, the modifier, the mode (`""`, `advantage` or `disadvantage`), each face with `discarded`, the total, `by_master` and `secret`, never a name.

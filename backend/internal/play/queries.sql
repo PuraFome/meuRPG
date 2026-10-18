@@ -1757,3 +1757,10 @@ SELECT id, actor_user_id, payload, created_at FROM session_events
 WHERE game_session_id = $1 AND kind = 'free_roll_rolled' AND actor_user_id = $2
 ORDER BY seq DESC
 LIMIT $3;
+
+-- name: SetCombatantTableOnceTurns :exec
+-- The turns in which the table's once-per-turn extras last added their damage, by feature key
+-- (JSON); the marks before are put back by an undo.
+UPDATE combatants
+SET table_once_turns = $2
+WHERE id = $1;

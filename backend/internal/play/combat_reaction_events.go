@@ -83,6 +83,7 @@ var reactionNames = map[reaction.Kind]string{
 	reaction.CuttingWords:       "Palavras de Interrupção",
 	reaction.DeflectKind:        "Defletir Projéteis",
 	reaction.ManeuverReduceKind: "Manobra",
+	reaction.ProtectionKind:     "Estilo de Luta: Proteção",
 	reaction.FeatherFall:        "Queda Suave",
 	reaction.Concentration:      "Teste de concentração",
 	reaction.MasterCheck:        "Verificação do mestre",
@@ -97,6 +98,7 @@ var reactionNameKeys = map[reaction.Kind]string{
 	reaction.CuttingWords:      "feature:cutting-words",
 	reaction.DeflectKind:       "feature:deflect-missiles",
 	reaction.FeatherFall:       "spell:feather-fall",
+	reaction.ProtectionKind:    "feature:fighter-fighting-style-protection",
 }
 
 func windowOpenedMessage(encounterID, windowID string) *playv1.WatchGameSessionResponse {
