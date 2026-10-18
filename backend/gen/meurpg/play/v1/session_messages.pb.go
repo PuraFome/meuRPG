@@ -194,15 +194,19 @@ type SessionMessage struct {
 	SpeakerId string `protobuf:"bytes,4,opt,name=speaker_id,json=speakerId,proto3" json:"speaker_id,omitempty"`
 	// The name to show: the NPC's or the character's name as it was when the
 	// line was sent, or the author's display name for an out-of-character
-	// line. Empty for the narrator, and for an out-of-character line whose
-	// author's account was erased (author_removed).
+	// line. Empty for the narrator, for an out-of-character line whose
+	// author's account was erased (author_removed), and for one whose author
+	// never chose a display name (the app then says "Jogador").
 	SpeakerName string `protobuf:"bytes,5,opt,name=speaker_name,json=speakerName,proto3" json:"speaker_name,omitempty"`
 	// The portrait of the NPC that speaks, when it has one. Unset otherwise.
 	SpeakerPortrait *SessionMessageImage `protobuf:"bytes,6,opt,name=speaker_portrait,json=speakerPortrait,proto3" json:"speaker_portrait,omitempty"`
 	// The account that sent the line (a UUID). Empty when that account was
 	// erased: the line stays and the app shows "Jogador removido".
-	AuthorUserId  string `protobuf:"bytes,7,opt,name=author_user_id,json=authorUserId,proto3" json:"author_user_id,omitempty"`
-	AuthorRemoved bool   `protobuf:"varint,8,opt,name=author_removed,json=authorRemoved,proto3" json:"author_removed,omitempty"`
+	AuthorUserId string `protobuf:"bytes,7,opt,name=author_user_id,json=authorUserId,proto3" json:"author_user_id,omitempty"`
+	// True only when the author's account was erased (author_user_id is empty).
+	// An author who never chose a display name is not removed: speaker_name is
+	// empty and author_user_id is set.
+	AuthorRemoved bool `protobuf:"varint,8,opt,name=author_removed,json=authorRemoved,proto3" json:"author_removed,omitempty"`
 	// The text, 1 to 2,000 characters.
 	Text string `protobuf:"bytes,9,opt,name=text,proto3" json:"text,omitempty"`
 	// The gallery image the master put in the line. Unset for none.
