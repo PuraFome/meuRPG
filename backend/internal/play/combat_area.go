@@ -45,6 +45,9 @@ import (
 // with a range of sight or Touch) stays on the caster's list: the SRD gives the
 // shape a point of origin the table does not lay out here.
 func placementOf(sp link.Spell) playv1.AreaPlacement {
+	if z, ok := zoneDefOfSpell(sp); ok && sp.ZoneLaid { // a cast that lays its area on the map as a zone: laid out as the zone says
+		return z.placement
+	}
 	shape := grid.Shape(sp.AreaShape)
 	switch shape {
 	case grid.ShapeSphere, grid.ShapeCylinder:
@@ -64,6 +67,9 @@ func placementOf(sp link.Spell) playv1.AreaPlacement {
 
 // areaOf is the grid shape of a spell's area.
 func areaOf(sp link.Spell) grid.Area {
+	if z, ok := zoneDefOfSpell(sp); ok && sp.ZoneLaid {
+		return z.area()
+	}
 	return grid.Area{Shape: grid.Shape(sp.AreaShape), SizeFt: sp.AreaSizeFt, WidthFt: sp.AreaWidthFt}
 }
 
@@ -373,6 +379,9 @@ func (s *Service) previewSpell(ctx context.Context, m authz.Membership, msg *pla
 	if err != nil {
 		return link.Spell{}, s.dbError(ctx, "read the spell", err)
 	}
+	if _, ok := zoneDefOfSpell(sp); ok && msg.GetOrigin() != nil {
+		sp.ZoneLaid = true // the preview of a cast that would lay the area as a zone
+	}
 	return sp, nil
 }
 
@@ -446,6 +455,9 @@ func (s *Service) areaProto(ctx context.Context, res combatResult, ev actionEven
 	if err != nil {
 		return nil, s.dbError(ctx, "read the spell", err)
 	}
+	if _, ok := zoneDefOfSpell(sp); ok && ev.Placed {
+		sp.ZoneLaid = true // a placed cast of a spell that keeps its area laid it out as the zone says
+	}
 	terrain, err := s.terrainOf(ctx, nil, res.session.CampaignID, enc)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the terrain", err)
@@ -512,30 +524,18 @@ func areaShapeProto(sp link.Spell, theatre bool) rulesv1.SpellAreaShape {
 	if placementFor(sp, theatre) == playv1.AreaPlacement_AREA_PLACEMENT_UNSPECIFIED {
 		return rulesv1.SpellAreaShape_SPELL_AREA_SHAPE_UNSPECIFIED
 	}
-	switch grid.Shape(sp.AreaShape) {
-	case grid.ShapeCone:
-		return rulesv1.SpellAreaShape_SPELL_AREA_SHAPE_CONE
-	case grid.ShapeCube:
-		return rulesv1.SpellAreaShape_SPELL_AREA_SHAPE_CUBE
-	case grid.ShapeCylinder:
-		return rulesv1.SpellAreaShape_SPELL_AREA_SHAPE_CYLINDER
-	case grid.ShapeLine:
-		return rulesv1.SpellAreaShape_SPELL_AREA_SHAPE_LINE
-	case grid.ShapeSphere:
-		return rulesv1.SpellAreaShape_SPELL_AREA_SHAPE_SPHERE
-	}
-	return rulesv1.SpellAreaShape_SPELL_AREA_SHAPE_UNSPECIFIED
+	return shapeProto(areaOf(sp).Shape)
 }
 
 func areaSizeFor(sp link.Spell, theatre bool) int32 {
 	if placementFor(sp, theatre) == playv1.AreaPlacement_AREA_PLACEMENT_UNSPECIFIED {
 		return 0
 	}
-	return clamp32(sp.AreaSizeFt, 0, math.MaxInt32)
+	return clamp32(areaOf(sp).SizeFt, 0, math.MaxInt32)
 }
 
 func areaWidthFor(sp link.Spell, theatre bool) int32 {
-	if placementFor(sp, theatre) == playv1.AreaPlacement_AREA_PLACEMENT_UNSPECIFIED || grid.Shape(sp.AreaShape) != grid.ShapeLine {
+	if placementFor(sp, theatre) == playv1.AreaPlacement_AREA_PLACEMENT_UNSPECIFIED || areaOf(sp).Shape != grid.ShapeLine {
 		return 0
 	}
 	return clamp32(sp.AreaWidthFt, 0, math.MaxInt32)

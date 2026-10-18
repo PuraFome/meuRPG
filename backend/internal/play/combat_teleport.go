@@ -113,7 +113,9 @@ func (f *castFlow) teleport(ctx context.Context) error {
 	moved := f.caster
 	moved.GridCol, moved.GridRow, moved.CoverMark = &col, &row, "none"
 	f.landed = &moved
-	return nil
+	from := squareOfCombatant(f.caster)
+	// The landing comes into the areas spells keep on the map as a step does (zones_hooks.go).
+	return f.s.zonesAfterSteps(ctx, f.c, zoneStep{who: f.caster.ID, from: &from, path: []grid.Square{*f.landing}})
 }
 
 // fireTrapOnLanding fires the trap on the square the caster landed on, as a move into it does: the cast's own

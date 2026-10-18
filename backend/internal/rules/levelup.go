@@ -333,6 +333,7 @@ func (b Build) clone() Build {
 	b.FeatureChoices = slices.Clone(b.FeatureChoices)
 	b.FeatureChoiceText = maps.Clone(b.FeatureChoiceText)
 	b.ToolProficiencies = slices.Clone(b.ToolProficiencies)
+	b.Languages = slices.Clone(b.Languages)
 	b.Feats = slices.Clone(b.Feats)
 	b.FeatSlots = maps.Clone(b.FeatSlots)
 	b.HitPoints.Rolls = slices.Clone(b.HitPoints.Rolls)

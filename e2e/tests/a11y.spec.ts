@@ -7975,12 +7975,12 @@ async function scanEffectsPlayerScreens(browser: Browser, colorScheme: 'light' |
     await expect(save.getByRole('button', { name: 'Rolar no app' })).toBeVisible();
     await expectScreenPasses(p, `Fim do seu turno, as três respostas ${where}`);
     await save.getByRole('button', { name: 'Digitar o resultado' }).click();
-    // The exhaustion of level 4 gives disadvantage on the save (two d20), and Bênção adds its d4.
-    await expect(save.getByLabel('Primeiro d20')).toBeVisible();
+    // The exhaustion of level 4 gives disadvantage on the save, and Pensantus (a Rock Gnome: Gnome Cunning, a Wisdom
+    // save against a spell) has advantage: they cancel (SRD 5.1), so one d20, and Bênção adds its d4.
+    await expect(save.getByLabel(/Resultado do d20/)).toBeVisible();
     await expectScreenPasses(p, `Fim do seu turno, digitando o d20 ${where}`);
     await save.getByLabel('Resultado do d4 (Bênção)').fill('2');
-    await save.getByLabel('Primeiro d20').fill('20');
-    await save.getByLabel('Segundo d20').fill('20');
+    await save.getByLabel(/Resultado do d20/).fill('20');
     await save.getByRole('button', { name: /Confirmar/ }).click();
     await expect(save).toContainText('Passou');
     await expectScreenPasses(p, `Fim do seu turno, o resultado ${where}`);

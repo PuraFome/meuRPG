@@ -125,6 +125,12 @@ const (
 	// CombatServicePreviewSpellAreaProcedure is the fully-qualified name of the CombatService's
 	// PreviewSpellArea RPC.
 	CombatServicePreviewSpellAreaProcedure = "/meurpg.play.v1.CombatService/PreviewSpellArea"
+	// CombatServiceMoveSpellZoneProcedure is the fully-qualified name of the CombatService's
+	// MoveSpellZone RPC.
+	CombatServiceMoveSpellZoneProcedure = "/meurpg.play.v1.CombatService/MoveSpellZone"
+	// CombatServiceEndSpellZoneProcedure is the fully-qualified name of the CombatService's
+	// EndSpellZone RPC.
+	CombatServiceEndSpellZoneProcedure = "/meurpg.play.v1.CombatService/EndSpellZone"
 	// CombatServiceResolveHiddenRevealProcedure is the fully-qualified name of the CombatService's
 	// ResolveHiddenReveal RPC.
 	CombatServiceResolveHiddenRevealProcedure = "/meurpg.play.v1.CombatService/ResolveHiddenReveal"
@@ -1069,6 +1075,28 @@ type CombatServiceClient interface {
 	//     caster has no square), and, for a player, TARGET_OUT_OF_REACH (with
 	//     missing_ft) for an origin beyond the spell's range.
 	PreviewSpellArea(context.Context, *connect.Request[v1.PreviewSpellAreaRequest]) (*connect.Response[v1.PreviewSpellAreaResponse], error)
+	// MoveSpellZone moves the area a spell keeps on the map, for the spells that allow it
+	// (Moonbeam: its caster uses an action on a later turn to move the beam up to 60 feet).
+	// It costs the caster's action, and the creatures the zone now covers and had not
+	// reached before are hit as the spell says. The master moves any zone without the
+	// action or the distance.
+	//
+	// Errors:
+	//   - `invalid_argument`: the zone is not one that moves by an action, or the square
+	//     is off the map or a wall.
+	//   - `not_found`: the zone is not in the combat (also for one a player does not see).
+	//   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN, ACTION_USED
+	//     (the action is spent), TARGET_OUT_OF_REACH (with missing_ft) beyond the 60 feet.
+	//   - `permission_denied`: the caller does not play the caster.
+	MoveSpellZone(context.Context, *connect.Request[v1.MoveSpellZoneRequest]) (*connect.Response[v1.MoveSpellZoneResponse], error)
+	// EndSpellZone ends the area a spell keeps on the map, at the master's word (the caster's
+	// concentration ended outside the app). Only the master may call it. The log tells that the
+	// zone ended and the master ended it.
+	//
+	// Errors:
+	//   - `permission_denied`: the caller is not the master.
+	//   - `not_found`: the zone is not in the combat.
+	EndSpellZone(context.Context, *connect.Request[v1.EndSpellZoneRequest]) (*connect.Response[v1.EndSpellZoneResponse], error)
 	// ResolveHiddenReveal answers the question a player's area spell opened when it
 	// hit hidden creatures and the table rule is "Perguntar a cada vez" (Encounter.
 	// pending_hidden_reveals): `reveal` true makes them appear to the players, as
@@ -1627,6 +1655,18 @@ func NewCombatServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(combatServiceMethods.ByName("PreviewSpellArea")),
 			connect.WithClientOptions(opts...),
 		),
+		moveSpellZone: connect.NewClient[v1.MoveSpellZoneRequest, v1.MoveSpellZoneResponse](
+			httpClient,
+			baseURL+CombatServiceMoveSpellZoneProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("MoveSpellZone")),
+			connect.WithClientOptions(opts...),
+		),
+		endSpellZone: connect.NewClient[v1.EndSpellZoneRequest, v1.EndSpellZoneResponse](
+			httpClient,
+			baseURL+CombatServiceEndSpellZoneProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("EndSpellZone")),
+			connect.WithClientOptions(opts...),
+		),
 		resolveHiddenReveal: connect.NewClient[v1.ResolveHiddenRevealRequest, v1.ResolveHiddenRevealResponse](
 			httpClient,
 			baseURL+CombatServiceResolveHiddenRevealProcedure,
@@ -1795,6 +1835,8 @@ type combatServiceClient struct {
 	undoLastAction           *connect.Client[v1.UndoLastActionRequest, v1.UndoLastActionResponse]
 	castSpell                *connect.Client[v1.CastSpellRequest, v1.CastSpellResponse]
 	previewSpellArea         *connect.Client[v1.PreviewSpellAreaRequest, v1.PreviewSpellAreaResponse]
+	moveSpellZone            *connect.Client[v1.MoveSpellZoneRequest, v1.MoveSpellZoneResponse]
+	endSpellZone             *connect.Client[v1.EndSpellZoneRequest, v1.EndSpellZoneResponse]
 	resolveHiddenReveal      *connect.Client[v1.ResolveHiddenRevealRequest, v1.ResolveHiddenRevealResponse]
 	useReaction              *connect.Client[v1.UseReactionRequest, v1.UseReactionResponse]
 	declineReaction          *connect.Client[v1.DeclineReactionRequest, v1.DeclineReactionResponse]
@@ -1962,6 +2004,16 @@ func (c *combatServiceClient) CastSpell(ctx context.Context, req *connect.Reques
 // PreviewSpellArea calls meurpg.play.v1.CombatService.PreviewSpellArea.
 func (c *combatServiceClient) PreviewSpellArea(ctx context.Context, req *connect.Request[v1.PreviewSpellAreaRequest]) (*connect.Response[v1.PreviewSpellAreaResponse], error) {
 	return c.previewSpellArea.CallUnary(ctx, req)
+}
+
+// MoveSpellZone calls meurpg.play.v1.CombatService.MoveSpellZone.
+func (c *combatServiceClient) MoveSpellZone(ctx context.Context, req *connect.Request[v1.MoveSpellZoneRequest]) (*connect.Response[v1.MoveSpellZoneResponse], error) {
+	return c.moveSpellZone.CallUnary(ctx, req)
+}
+
+// EndSpellZone calls meurpg.play.v1.CombatService.EndSpellZone.
+func (c *combatServiceClient) EndSpellZone(ctx context.Context, req *connect.Request[v1.EndSpellZoneRequest]) (*connect.Response[v1.EndSpellZoneResponse], error) {
+	return c.endSpellZone.CallUnary(ctx, req)
 }
 
 // ResolveHiddenReveal calls meurpg.play.v1.CombatService.ResolveHiddenReveal.
@@ -2951,6 +3003,28 @@ type CombatServiceHandler interface {
 	//     caster has no square), and, for a player, TARGET_OUT_OF_REACH (with
 	//     missing_ft) for an origin beyond the spell's range.
 	PreviewSpellArea(context.Context, *connect.Request[v1.PreviewSpellAreaRequest]) (*connect.Response[v1.PreviewSpellAreaResponse], error)
+	// MoveSpellZone moves the area a spell keeps on the map, for the spells that allow it
+	// (Moonbeam: its caster uses an action on a later turn to move the beam up to 60 feet).
+	// It costs the caster's action, and the creatures the zone now covers and had not
+	// reached before are hit as the spell says. The master moves any zone without the
+	// action or the distance.
+	//
+	// Errors:
+	//   - `invalid_argument`: the zone is not one that moves by an action, or the square
+	//     is off the map or a wall.
+	//   - `not_found`: the zone is not in the combat (also for one a player does not see).
+	//   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN, ACTION_USED
+	//     (the action is spent), TARGET_OUT_OF_REACH (with missing_ft) beyond the 60 feet.
+	//   - `permission_denied`: the caller does not play the caster.
+	MoveSpellZone(context.Context, *connect.Request[v1.MoveSpellZoneRequest]) (*connect.Response[v1.MoveSpellZoneResponse], error)
+	// EndSpellZone ends the area a spell keeps on the map, at the master's word (the caster's
+	// concentration ended outside the app). Only the master may call it. The log tells that the
+	// zone ended and the master ended it.
+	//
+	// Errors:
+	//   - `permission_denied`: the caller is not the master.
+	//   - `not_found`: the zone is not in the combat.
+	EndSpellZone(context.Context, *connect.Request[v1.EndSpellZoneRequest]) (*connect.Response[v1.EndSpellZoneResponse], error)
 	// ResolveHiddenReveal answers the question a player's area spell opened when it
 	// hit hidden creatures and the table rule is "Perguntar a cada vez" (Encounter.
 	// pending_hidden_reveals): `reveal` true makes them appear to the players, as
@@ -3505,6 +3579,18 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(combatServiceMethods.ByName("PreviewSpellArea")),
 		connect.WithHandlerOptions(opts...),
 	)
+	combatServiceMoveSpellZoneHandler := connect.NewUnaryHandler(
+		CombatServiceMoveSpellZoneProcedure,
+		svc.MoveSpellZone,
+		connect.WithSchema(combatServiceMethods.ByName("MoveSpellZone")),
+		connect.WithHandlerOptions(opts...),
+	)
+	combatServiceEndSpellZoneHandler := connect.NewUnaryHandler(
+		CombatServiceEndSpellZoneProcedure,
+		svc.EndSpellZone,
+		connect.WithSchema(combatServiceMethods.ByName("EndSpellZone")),
+		connect.WithHandlerOptions(opts...),
+	)
 	combatServiceResolveHiddenRevealHandler := connect.NewUnaryHandler(
 		CombatServiceResolveHiddenRevealProcedure,
 		svc.ResolveHiddenReveal,
@@ -3699,6 +3785,10 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 			combatServiceCastSpellHandler.ServeHTTP(w, r)
 		case CombatServicePreviewSpellAreaProcedure:
 			combatServicePreviewSpellAreaHandler.ServeHTTP(w, r)
+		case CombatServiceMoveSpellZoneProcedure:
+			combatServiceMoveSpellZoneHandler.ServeHTTP(w, r)
+		case CombatServiceEndSpellZoneProcedure:
+			combatServiceEndSpellZoneHandler.ServeHTTP(w, r)
 		case CombatServiceResolveHiddenRevealProcedure:
 			combatServiceResolveHiddenRevealHandler.ServeHTTP(w, r)
 		case CombatServiceUseReactionProcedure:
@@ -3866,6 +3956,14 @@ func (UnimplementedCombatServiceHandler) CastSpell(context.Context, *connect.Req
 
 func (UnimplementedCombatServiceHandler) PreviewSpellArea(context.Context, *connect.Request[v1.PreviewSpellAreaRequest]) (*connect.Response[v1.PreviewSpellAreaResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.PreviewSpellArea is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) MoveSpellZone(context.Context, *connect.Request[v1.MoveSpellZoneRequest]) (*connect.Response[v1.MoveSpellZoneResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.MoveSpellZone is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) EndSpellZone(context.Context, *connect.Request[v1.EndSpellZoneRequest]) (*connect.Response[v1.EndSpellZoneResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.EndSpellZone is not implemented"))
 }
 
 func (UnimplementedCombatServiceHandler) ResolveHiddenReveal(context.Context, *connect.Request[v1.ResolveHiddenRevealRequest]) (*connect.Response[v1.ResolveHiddenRevealResponse], error) {

@@ -210,6 +210,14 @@
       "break_free": "str",
       "player_label_pt": "Preso numa teia"
     },
+    "effect:spirit-guardians-slowed": {
+      "kind": "spell",
+      "duration": {"kind": "until_end_of_turn_of"},
+      "visibility": "public",
+      "modifiers": [{"kind": "speed_multiplier", "value": 50}],
+      "player_label_pt": "Reduzido pelos espíritos",
+      "tags_pt": ["Deslocamento pela metade neste turno"]
+    },
     "effect:web-fire": {
       "kind": "master",
       "duration": {"kind": "rounds", "rounds": 1},

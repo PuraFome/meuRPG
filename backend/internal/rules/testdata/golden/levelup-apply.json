@@ -52,6 +52,11 @@
     ],
     "FeatureChoiceText": null,
     "ToolProficiencies": null,
+    "Languages": [
+      "Anão",
+      "Élfico",
+      "Gnômico"
+    ],
     "Feats": null,
     "FeatSlots": null
   },
@@ -105,6 +110,11 @@
     ],
     "FeatureChoiceText": null,
     "ToolProficiencies": null,
+    "Languages": [
+      "Anão",
+      "Élfico",
+      "Gnômico"
+    ],
     "Feats": [
       "feat:meio@mesa"
     ],
@@ -166,6 +176,11 @@
     ],
     "FeatureChoiceText": null,
     "ToolProficiencies": null,
+    "Languages": [
+      "Anão",
+      "Élfico",
+      "Gnômico"
+    ],
     "Feats": [
       "feat:robusto@mesa"
     ],
@@ -225,6 +240,11 @@
     ],
     "FeatureChoiceText": null,
     "ToolProficiencies": null,
+    "Languages": [
+      "Anão",
+      "Élfico",
+      "Gnômico"
+    ],
     "Feats": [
       "feat:robusto@mesa"
     ],
@@ -284,6 +304,11 @@
     ],
     "FeatureChoiceText": null,
     "ToolProficiencies": null,
+    "Languages": [
+      "Anão",
+      "Élfico",
+      "Gnômico"
+    ],
     "Feats": [
       "feat:robusto@mesa"
     ],
@@ -343,6 +368,11 @@
     ],
     "FeatureChoiceText": null,
     "ToolProficiencies": null,
+    "Languages": [
+      "Anão",
+      "Élfico",
+      "Gnômico"
+    ],
     "Feats": [
       "feat:meio@mesa"
     ],
@@ -414,6 +444,11 @@
     "ToolProficiencies": [
       "Alaúde"
     ],
+    "Languages": [
+      "Anão",
+      "Élfico",
+      "Gnômico"
+    ],
     "Feats": null,
     "FeatSlots": null
   },
@@ -471,6 +506,11 @@
     ],
     "FeatureChoiceText": null,
     "ToolProficiencies": null,
+    "Languages": [
+      "Anão",
+      "Élfico",
+      "Gnômico"
+    ],
     "Feats": null,
     "FeatSlots": null
   },
@@ -528,6 +568,11 @@
     ],
     "FeatureChoiceText": null,
     "ToolProficiencies": null,
+    "Languages": [
+      "Anão",
+      "Élfico",
+      "Gnômico"
+    ],
     "Feats": null,
     "FeatSlots": null
   },
@@ -594,6 +639,11 @@
     ],
     "FeatureChoiceText": null,
     "ToolProficiencies": null,
+    "Languages": [
+      "Anão",
+      "Élfico",
+      "Gnômico"
+    ],
     "Feats": null,
     "FeatSlots": null
   },
@@ -647,6 +697,11 @@
     ],
     "FeatureChoiceText": null,
     "ToolProficiencies": null,
+    "Languages": [
+      "Anão",
+      "Élfico",
+      "Gnômico"
+    ],
     "Feats": [
       "feat:nada"
     ],
@@ -708,6 +763,11 @@
     ],
     "FeatureChoiceText": null,
     "ToolProficiencies": null,
+    "Languages": [
+      "Anão",
+      "Élfico",
+      "Gnômico"
+    ],
     "Feats": null,
     "FeatSlots": null
   },
@@ -768,6 +828,11 @@
       "feature:x": "texto"
     },
     "ToolProficiencies": null,
+    "Languages": [
+      "Anão",
+      "Élfico",
+      "Gnômico"
+    ],
     "Feats": null,
     "FeatSlots": null
   },
@@ -854,6 +919,7 @@
     "FeatureChoices": null,
     "FeatureChoiceText": null,
     "ToolProficiencies": null,
+    "Languages": null,
     "Feats": null,
     "FeatSlots": null
   },
@@ -910,6 +976,11 @@
       "b": "2"
     },
     "ToolProficiencies": null,
+    "Languages": [
+      "Anão",
+      "Élfico",
+      "Gnômico"
+    ],
     "Feats": null,
     "FeatSlots": null
   },
@@ -967,6 +1038,11 @@
     ],
     "FeatureChoiceText": null,
     "ToolProficiencies": null,
+    "Languages": [
+      "Anão",
+      "Élfico",
+      "Gnômico"
+    ],
     "Feats": null,
     "FeatSlots": null
   }

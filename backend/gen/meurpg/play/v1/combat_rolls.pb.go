@@ -154,6 +154,10 @@ const (
 	// next attack roll before the end of its next turn, which spends it). The text names the
 	// effect; a player reads "Outra fonte" when the master hides it.
 	AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_ATTACK AdvantageSourceKind = 108
+	// A racial advantage on a saving throw against one kind of source (Brave against being frightened, Fey Ancestry
+	// against being charmed, Gnome Cunning against magic, Dwarven Resilience against poison): the sentence names the trait
+	// and what the save is against.
+	AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_TAGGED_SAVE AdvantageSourceKind = 109
 	// The Protection fighting style: a shield-bearer within 5 ft of the target used its
 	// reaction, so the attack roll has disadvantage.
 	AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_PROTECTION AdvantageSourceKind = 110
@@ -202,6 +206,7 @@ var (
 		106: "ADVANTAGE_SOURCE_KIND_EFFECT_DIE",
 		107: "ADVANTAGE_SOURCE_KIND_EFFECT_CHECK",
 		108: "ADVANTAGE_SOURCE_KIND_EFFECT_ATTACK",
+		109: "ADVANTAGE_SOURCE_KIND_TAGGED_SAVE",
 		110: "ADVANTAGE_SOURCE_KIND_PROTECTION",
 	}
 	AdvantageSourceKind_value = map[string]int32{
@@ -245,6 +250,7 @@ var (
 		"ADVANTAGE_SOURCE_KIND_EFFECT_DIE":          106,
 		"ADVANTAGE_SOURCE_KIND_EFFECT_CHECK":        107,
 		"ADVANTAGE_SOURCE_KIND_EFFECT_ATTACK":       108,
+		"ADVANTAGE_SOURCE_KIND_TAGGED_SAVE":         109,
 		"ADVANTAGE_SOURCE_KIND_PROTECTION":          110,
 	}
 )
@@ -1753,7 +1759,7 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"\x15ROLL_MODE_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10ROLL_MODE_NORMAL\x10\x01\x12\x17\n" +
 	"\x13ROLL_MODE_ADVANTAGE\x10\x02\x12\x1a\n" +
-	"\x16ROLL_MODE_DISADVANTAGE\x10\x03*\xd3\r\n" +
+	"\x16ROLL_MODE_DISADVANTAGE\x10\x03*\xfa\r\n" +
 	"\x13AdvantageSourceKind\x12%\n" +
 	"!ADVANTAGE_SOURCE_KIND_UNSPECIFIED\x10\x00\x12&\n" +
 	"\"ADVANTAGE_SOURCE_KIND_PRONE_TARGET\x10\x01\x12(\n" +
@@ -1795,7 +1801,8 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"\"ADVANTAGE_SOURCE_KIND_OTHER_SOURCE\x10i\x12$\n" +
 	" ADVANTAGE_SOURCE_KIND_EFFECT_DIE\x10j\x12&\n" +
 	"\"ADVANTAGE_SOURCE_KIND_EFFECT_CHECK\x10k\x12'\n" +
-	"#ADVANTAGE_SOURCE_KIND_EFFECT_ATTACK\x10l\x12$\n" +
+	"#ADVANTAGE_SOURCE_KIND_EFFECT_ATTACK\x10l\x12%\n" +
+	"!ADVANTAGE_SOURCE_KIND_TAGGED_SAVE\x10m\x12$\n" +
 	" ADVANTAGE_SOURCE_KIND_PROTECTION\x10n*\xb3\x01\n" +
 	"\x15RollModeRequestStatus\x12(\n" +
 	"$ROLL_MODE_REQUEST_STATUS_UNSPECIFIED\x10\x00\x12$\n" +

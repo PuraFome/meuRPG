@@ -105,25 +105,45 @@ func (wv *windowView) openWindows(open []playdb.ReactionWindow, line *waitLine) 
 	}
 	var windows []*playv1.ReactionWindow
 	for _, w := range open {
-		reactor := wv.reactorOf(w)
-		answers := wv.v.master || (reactor != nil && wv.v.owns(*reactor))
-		if answers {
-			pw, err := wv.window(w, reactor, reaction.AnswerNow(order, w.ID))
-			if err != nil {
-				return nil, err
-			}
-			windows = append(windows, pw)
+		pw, err := wv.openOne(w, order, line)
+		if err != nil {
+			return nil, err
 		}
-		wv.waitOf(w, reactor, answers, &line.wait)
-		if !line.holdsSet && !answers {
-			h, err := wv.holdsOf(w)
-			if err != nil {
-				return nil, err
-			}
-			line.holdFirst(h)
+		if pw != nil {
+			windows = append(windows, pw)
 		}
 	}
 	return windows, nil
+}
+
+// openOne is one open window: the window the caller answers (nil when it is not theirs, or not theirs yet) and its
+// part in the line the caller reads.
+func (wv *windowView) openOne(w playdb.ReactionWindow, order []reaction.Window, line *waitLine) (*playv1.ReactionWindow, error) {
+	reactor := wv.reactorOf(w)
+	answers := wv.v.master || (reactor != nil && wv.v.owns(*reactor))
+	now := reaction.AnswerNow(order, w.ID)
+	var pw *playv1.ReactionWindow
+	if answers && wv.shownNow(w, now) {
+		var err error
+		if pw, err = wv.window(w, reactor, now); err != nil {
+			return nil, err
+		}
+	}
+	wv.waitOf(w, reactor, answers, &line.wait)
+	if !line.holdsSet && !answers {
+		h, err := wv.holdsOf(w)
+		if err != nil {
+			return nil, err
+		}
+		line.holdFirst(h)
+	}
+	return pw, nil
+}
+
+// shownNow says the window the caller answers is in their list now: a player is asked the questions of the zones
+// one at a time, the next opening when the one before is answered.
+func (wv *windowView) shownNow(w playdb.ReactionWindow, now bool) bool {
+	return now || wv.v.master || windowTriggerOf(w).Zone == ""
 }
 
 // reactorOf is the combatant that reacts in the window; nil when it has none or it left.

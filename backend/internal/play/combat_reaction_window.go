@@ -64,6 +64,9 @@ type windowTrigger struct {
 	// player), or the spell a concentration window is for.
 	Spell string `json:"spell,omitempty"`
 	Level int32  `json:"level,omitempty"`
+	// Zone is the area a spell keeps on the map that asks the saving throw of an EffectSave window
+	// (zones_save.go); Phase is then "zone_enter" or "zone_start".
+	Zone string `json:"zone,omitempty"`
 	// Roll is what Cutting Words answers: "attack", "test" or "damage".
 	Roll string `json:"roll,omitempty"`
 	// Distance is how far the reactor is from the trigger, in feet (0: no map).
