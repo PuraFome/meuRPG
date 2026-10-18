@@ -70,6 +70,7 @@ func newManeuverTable(t *testing.T, uses string) *maneuverTable {
 			Classes: []*charactersv1.ClassLevel{{
 				ClassKey: "class:fighter", Level: 5, Subclass: &charactersv1.ClassLevel_SubclassKey{SubclassKey: entry.GetKey()},
 			}},
+			Languages:            []string{"Anão", "Élfico", "Gnômico"},
 			SkillProficiencyKeys: []string{"skill:athletics", "skill:perception"},
 			FeatureChoiceKeys:    []string{"feature:fighter-fighting-style-defense", m.heron, m.bull, m.grip, m.guard},
 			WeaponKeys:           []string{longsword},

@@ -88,6 +88,10 @@ enum AdvantageSourceKind {
   // next attack roll before the end of its next turn, which spends it). The text names the
   // effect; a player reads "Outra fonte" when the master hides it.
   ADVANTAGE_SOURCE_KIND_EFFECT_ATTACK = 108;
+  // A racial advantage on a saving throw against one kind of source (Brave against being frightened, Fey Ancestry
+  // against being charmed, Gnome Cunning against magic, Dwarven Resilience against poison): the sentence names the trait
+  // and what the save is against.
+  ADVANTAGE_SOURCE_KIND_TAGGED_SAVE = 109;
   // The Protection fighting style: a shield-bearer within 5 ft of the target used its
   // reaction, so the attack roll has disadvantage.
   ADVANTAGE_SOURCE_KIND_PROTECTION = 110;

@@ -540,6 +540,7 @@ func buildOf(f *charactersv1.FullSheet) rules.Build {
 		FeatureChoices:      f.GetFeatureChoiceKeys(),
 		FeatureChoiceText:   f.GetFeatureChoiceText(),
 		ToolProficiencies:   f.GetToolProficiencies(),
+		Languages:           f.GetLanguages(),
 		Feats:               f.GetFeatKeys(),
 		FeatSlots:           f.GetFeatSlots(),
 	}

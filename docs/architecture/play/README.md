@@ -16,6 +16,7 @@ Every subject has its own page, listed at the end.
 | Combat: lifecycle, order, calls, visibility | MR-012, MR-013, MR-014 | [Combat](combat.md) |
 | Attacks, damage, conditions, states, feature actions | MR-012, MR-014, RN-22, RN-35 | [Attacks and damage](attacks-and-damage.md) |
 | Movement, cover, opportunity attacks, area spells | MR-034, RN-21 | [Movement](movement.md) |
+| The areas spells keep on the map | RN-37 | [Spell zones](spell-zones.md) |
 | Casting in combat and outside it | MR-014, MR-048, RN-32 | [Casting](casting.md) |
 | Reaction windows | PM-04 | [Reactions](reactions.md) |
 | Death saves and bringing the dead back | RN-03 | [Death and revival](death-and-revival.md) |
@@ -126,4 +127,4 @@ What a player may not see stays out of the response, never blank or zero.
 
 ## Pages
 
-[Live session](live-session.md) · [Vitals, rests and class resources](rests-and-resources.md) · [Held rolls](held-rolls.md) · [Scenes and stage](scenes-and-stage.md) · [Combat](combat.md) · [Attacks and damage](attacks-and-damage.md) · [Movement](movement.md) · [Casting](casting.md) · [Reactions](reactions.md) · [Death and revival](death-and-revival.md) · [Contests](contests.md) · [Lasting effects](lasting-effects.md) · [Table rules in combat](table-rules.md) · [Theatre of the mind](theatre.md) · [Undo](undo.md) · [Combat log and events](combat-log.md) · [Highlights and summary](highlights-and-summary.md) · [Combat under fog](fog.md) · [Traps](traps.md) · [Creatures](creatures.md) · [Encounters](encounters.md) · [Puzzles](puzzles.md) · [The free dice roller](free-dice-roller.md)
+[Live session](live-session.md) · [Vitals, rests and class resources](rests-and-resources.md) · [Held rolls](held-rolls.md) · [Scenes and stage](scenes-and-stage.md) · [Combat](combat.md) · [Attacks and damage](attacks-and-damage.md) · [Movement](movement.md) · [Spell zones](spell-zones.md) · [Casting](casting.md) · [Reactions](reactions.md) · [Death and revival](death-and-revival.md) · [Contests](contests.md) · [Lasting effects](lasting-effects.md) · [Table rules in combat](table-rules.md) · [Theatre of the mind](theatre.md) · [Undo](undo.md) · [Combat log and events](combat-log.md) · [Highlights and summary](highlights-and-summary.md) · [Combat under fog](fog.md) · [Traps](traps.md) · [Creatures](creatures.md) · [Encounters](encounters.md) · [Puzzles](puzzles.md) · [The free dice roller](free-dice-roller.md)

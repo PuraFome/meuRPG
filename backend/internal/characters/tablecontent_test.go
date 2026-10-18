@@ -1650,3 +1650,19 @@ func TestTooManyFeaturesAreRefusedBeforeTheyAreKeyed(t *testing.T) {
 		t.Errorf("UpdateTableEntry(5000 traits) code = %v (%v), want invalid_argument", got, err)
 	}
 }
+
+// The area a table spell keeps on the map is read from the message as the master wrote it; an unset trigger stays
+// empty, so the engine refuses it at zone.trigger.
+func TestTableSpellZoneIsReadFromTheMessage(t *testing.T) {
+	t.Parallel()
+	got := tableSpellOf(rules.TableEntry{}, &rulesv1.TableSpell{Zone: &rulesv1.TableSpellZone{Trigger: rulesv1.TableZoneTrigger_TABLE_ZONE_TRIGGER_FIRST_ENTRY, FollowsCaster: true}})
+	if got.Zone == nil || got.Zone.Trigger != rules.ZoneFirstEntry || !got.Zone.FollowsCaster {
+		t.Errorf("Zone = %+v, want first_entry that follows the caster", got.Zone)
+	}
+	if bare := tableSpellOf(rules.TableEntry{}, &rulesv1.TableSpell{Zone: &rulesv1.TableSpellZone{}}); bare.Zone == nil || bare.Zone.Trigger != "" {
+		t.Errorf("Zone = %+v, want an empty trigger for the engine to refuse", bare.Zone)
+	}
+	if none := tableSpellOf(rules.TableEntry{}, &rulesv1.TableSpell{}); none.Zone != nil {
+		t.Errorf("Zone = %+v, want none", none.Zone)
+	}
+}

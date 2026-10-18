@@ -316,6 +316,33 @@ type TableSpell struct {
 	// Damage are the damage parts; Heal the healing, or nil.
 	Damage []TableSpellDamage
 	Heal   *TableSpellHeal
+	// Zone says the spell keeps its area on the map while it lasts (the areas of Moonbeam or Spirit Guardians),
+	// or is nil.
+	Zone *TableSpellZone
+}
+
+// The triggers of a table spell's zone: when it catches a creature.
+const (
+	// ZoneStartOfTurn: the creature begins its turn in the area.
+	ZoneStartOfTurn = "start_of_turn"
+	// ZoneFirstEntry: the creature comes into the area, the first time on a turn.
+	ZoneFirstEntry = "first_entry"
+	// ZoneBoth: either.
+	ZoneBoth = "both"
+)
+
+// TableSpellZone is what a table spell leaves on the map. Its shape and size are the spell's target, the damage
+// and the saving throw are the spell's, its time is the spell's duration. Trigger is one of the Zone* constants.
+// FollowsCaster centers the area on the caster and moves it with them; it needs the range Self.
+type TableSpellZone struct {
+	Trigger       string
+	FollowsCaster bool
+}
+
+// SpellZoneRule is the zone a table spell keeps, as the combat reads it.
+type SpellZoneRule struct {
+	Trigger       string
+	FollowsCaster bool
 }
 
 // TableCastingTime is how long a table spell takes: Unit is one of CastAction,
@@ -1161,6 +1188,7 @@ func (c *content) cloneForOverlay() *content {
 	n.entryRevision = map[string]int{}
 	n.entryChangedAt = map[string]time.Time{}
 	n.spellTargets = map[string]SpellTarget{}
+	n.spellZones = map[string]SpellZoneRule{}
 	n.raceChoice = map[string][]int{}
 	n.bgEquipment = map[string]string{}
 	n.catalog = Catalog{}
