@@ -224,10 +224,20 @@
   gap: var(--mr-space-2);
 }
 
+// "Mudar dados" keeps its text; the long "Rolar ... de novo" label takes the rest of the row, or a row of its own.
 .foot__pair {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--mr-space-2);
+
+  > :first-child {
+    flex: 0 0 auto;
+  }
+
+  .roll {
+    flex: 1 1 15rem;
+    width: auto;
+  }
 }
 
 .roll {

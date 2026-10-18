@@ -48,7 +48,7 @@ export function openFreeDice(
     ariaLabel: 'Rolar dados',
     labelledBy: 'free-dice-t',
     width: '440px',
-    tall: true,
+    panelClass: 'mr-sheet-dice',
   });
 }
 

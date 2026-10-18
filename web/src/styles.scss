@@ -293,6 +293,16 @@ html {
   }
 }
 
+// The free dice sheet (MR-052): 40 px from the top of the screen. Its frame is shortened by the 16 px the container
+// pads, so the container never scrolls: the body scrolls inside the sheet and the footer's "Rolar" stays in view.
+.mr-sheet-dice .mat-bottom-sheet-container {
+  max-height: calc(100dvh - 40px);
+}
+
+.mr-sheet-dice .frame.frame--phone {
+  max-height: calc(100dvh - 56px);
+}
+
 // A dialog laid out like a phone's bottom sheet: the "?" inside the cast sheet
 // opens the spell's details over it (a second bottom sheet would close the
 // first and lose its choices). `panelClass` lands on the overlay pane.
