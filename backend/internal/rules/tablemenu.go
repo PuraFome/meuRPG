@@ -97,24 +97,25 @@ type EffectMenu struct {
 
 // Names of the closed lists of the menu.
 const (
-	ListModifierTargets   = "modifier_targets"
-	ListModifierModes     = "modifier_modes"
-	ListProficiencies     = "proficiency_targets"
-	ListProficiencyLevels = "proficiency_levels"
-	ListRollModes         = "roll_modes"
-	ListRollTargets       = "roll_targets"
-	ListSenses            = "senses"
-	ListRecharges         = "recharges"
-	ListEconomies         = "economies"
-	ListManeuverApplies   = "maneuver_applies"
-	ListChoiceKinds       = "choice_kinds"
-	ListSkills            = "skills"
-	ListLanguages         = "languages"
-	ListTools             = "tools"
-	ListTagPrefixes       = "tag_prefixes"
-	ListAbilities         = "abilities"
-	ListIncreaseAmounts   = "ability_increase_amounts"
-	ListRangedAttacks     = "ranged_attack_applies"
+	ListModifierTargets    = "modifier_targets"
+	ListModifierModes      = "modifier_modes"
+	ListProficiencies      = "proficiency_targets"
+	ListProficiencyLevels  = "proficiency_levels"
+	ListRollModes          = "roll_modes"
+	ListRollTargets        = "roll_targets"
+	ListSenses             = "senses"
+	ListRecharges          = "recharges"
+	ListEconomies          = "economies"
+	ListManeuverApplies    = "maneuver_applies"
+	ListChoiceKinds        = "choice_kinds"
+	ListSkills             = "skills"
+	ListLanguages          = "languages"
+	ListTools              = "tools"
+	ListTagPrefixes        = "tag_prefixes"
+	ListAbilities          = "abilities"
+	ListIncreaseAmounts    = "ability_increase_amounts"
+	ListRangedAttacks      = "ranged_attack_applies"
+	ListExtraDamageApplies = "extra_damage_applies"
 )
 
 // menuTypes is the menu's types, in the picker's order, with the copy in
@@ -175,6 +176,13 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
+	{Type: "extra_damage", NamePT: "Dano extra", HintPT: "Dano somado a um ataque com arma que acertou, no máximo uma vez por turno, quando o alvo é o que o texto pede (qualquer um, ou maior que o personagem). O valor é uma fórmula. Se a entrada define um recurso, cada uso gasta um (por descanso curto ou longo). O jogador escolhe usar na hora de rolar o dano.", Fields: []MenuField{
+		{Name: "applies", Required: true, Kind: "choice", List: ListExtraDamageApplies},
+		{Name: "value", Required: true, Kind: "formula"},
+		{Name: "resource", Kind: "resource_ref"},
+		{Name: "when", Kind: "condition"},
+		{Name: "text_pt", Kind: "text"},
+	}},
 	{Type: "ranged_attack", NamePT: "Ataque à distância", HintPT: "Muda os ataques de longe do personagem: os de magias que pedem jogada de ataque ou os com arma à distância (e a arma arremessada de longe). Pode tirar o bônus de meia cobertura e de três quartos do alvo, multiplicar o alcance dessas magias ou tirar a desvantagem de atirar no alcance longo da arma.", Fields: []MenuField{
 		{Name: "applies", Required: true, Kind: "choice", List: ListRangedAttacks},
 		{Name: "ignore_cover", Kind: "yes_no", AlwaysShown: true},
@@ -221,6 +229,10 @@ var (
 	maneuverNms = map[string]string{
 		ManeuverDamage: "Dano de um ataque com arma que acertou", ManeuverAttack: "Rolagem de ataque", ManeuverGrapple: "Atletismo de uma agarrada (ação bônus)",
 		ManeuverReduceMelee: "Reduz o dano de um ataque corpo a corpo (reação)",
+	}
+	extraDamageNms = map[string][2]string{
+		ExtraDamageAnyTarget:    {"Qualquer alvo", "Vale contra qualquer criatura atingida."},
+		ExtraDamageLargerTarget: {"Alvo maior que o personagem", "Só vale se o alvo for de um tamanho maior que o do personagem."},
 	}
 	rangedAttackNms = map[string][2]string{
 		RangedAttackSpell:  {"Magias com jogada de ataque", "Só as magias que pedem jogada de ataque. O alcance multiplicado vale para as que têm alcance em metros; toque e pessoal não mudam."},
@@ -389,6 +401,7 @@ func (c *content) menuLists() []MenuList {
 		{Name: ListAbilities, Values: abilityValues},
 		{Name: ListIncreaseAmounts, Values: []MenuValue{{Key: "1", NamePT: "+1"}, {Key: "2", NamePT: "+2"}}},
 		{Name: ListRangedAttacks, Values: rangedAttackValues()},
+		{Name: ListExtraDamageApplies, Values: extraDamageValues()},
 	}
 }
 

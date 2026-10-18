@@ -19,7 +19,7 @@ Whichever path rolls the d20 asks the same gate.
 | Trap search | `SearchForTraps` (out of combat; the Search action in combat has spent the action when the d20 is rolled) | `inspiration_holds` |
 | Puzzle hint try | `TryPuzzleHint` | `inspiration_holds` |
 
-**Not held, on purpose:** a cast with several targets (Scorching Ray, Twinned Spell) or one that waited for a reaction window; the attack cantrips (they hold as weapon attacks through `RollAttack`); the master's rolls (the master never waits here); the saving throws the app rolls for a target inside someone else's call (a spell's save, a hit rider's, a trap's: the target's player is not rolling); death saves, initiative, the contests, Hide, the Counterspell check.
+**Not held, on purpose:** a cast with several attacks or targets (Scorching Ray with more than one ray, Twinned Spell) or one that waited for a reaction window; the attack cantrips (they hold as weapon attacks through `RollAttack`); the master's rolls (the master never waits here); the saving throws the app rolls for a target inside someone else's call (a spell's save, a hit rider's, a trap's: the target's player is not rolling); death saves, initiative, the contests, Hide, the Counterspell check.
 For the saves rolled inside someone else's call, a halfling's Lucky is applied automatically: `autoLucky` (`combat_lucky.go`) rolls the first die showing a 1 again in the app, and the reroll is kept in `saveRoll.Lucky` or `actionEvent.Lucky`, shown as `DiceRoll.rerolled`.
 `luckySaver` gives it to a player's character only, never to an NPC.
 

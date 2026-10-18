@@ -91,6 +91,11 @@ func (s *Service) holdAttackRoll(ctx context.Context, c *combatTx, m authz.Membe
 	if err != nil {
 		return actionEvent{}, false, err
 	}
+	protect, err := s.protectionWindows(ctx, c, cs, attacker, target, key)
+	if err != nil {
+		return actionEvent{}, false, err
+	}
+	specs = append(specs, protect...)
 	// "Sempre": a player's attack on an enemy waits for the master's check also when no bard could
 	// cut the roll, so the pause (a miss included) tells the table nothing about a bard.
 	if len(specs) == 0 && c.rules.EnemyReactionsAlways && playerAgainstEnemy(attacker, target) {

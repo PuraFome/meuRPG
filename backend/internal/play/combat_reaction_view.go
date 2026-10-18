@@ -27,6 +27,7 @@ var reactionKindProto = map[reaction.Kind]playv1.ReactionKind{
 	reaction.CuttingWords:       playv1.ReactionKind_REACTION_KIND_CUTTING_WORDS,
 	reaction.DeflectKind:        playv1.ReactionKind_REACTION_KIND_DEFLECT_MISSILES,
 	reaction.ManeuverReduceKind: playv1.ReactionKind_REACTION_KIND_MANEUVER_REDUCE,
+	reaction.ProtectionKind:     playv1.ReactionKind_REACTION_KIND_PROTECTION,
 	reaction.FeatherFall:        playv1.ReactionKind_REACTION_KIND_FEATHER_FALL,
 	reaction.Concentration:      playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE,
 	reaction.MasterCheck:        playv1.ReactionKind_REACTION_KIND_MASTER_CHECK,
