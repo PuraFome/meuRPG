@@ -471,6 +471,9 @@ var openChoiceKinds = map[string]charactersv1.OpenChoiceKind{
 	rules.OpenChoiceCantrips:       charactersv1.OpenChoiceKind_OPEN_CHOICE_KIND_CANTRIPS,
 	rules.OpenChoiceSpellsKnown:    charactersv1.OpenChoiceKind_OPEN_CHOICE_KIND_SPELLS_KNOWN,
 	rules.OpenChoiceSpellsPrepared: charactersv1.OpenChoiceKind_OPEN_CHOICE_KIND_SPELLS_PREPARED,
+	rules.OpenChoiceExpertise:      charactersv1.OpenChoiceKind_OPEN_CHOICE_KIND_EXPERTISE,
+	rules.OpenChoiceTools:          charactersv1.OpenChoiceKind_OPEN_CHOICE_KIND_TOOLS,
+	rules.OpenChoiceLanguages:      charactersv1.OpenChoiceKind_OPEN_CHOICE_KIND_LANGUAGES,
 }
 
 // openChoices are the choices a derived sheet still lacks, for the master's

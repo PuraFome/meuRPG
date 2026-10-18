@@ -11,7 +11,7 @@ import (
 func torenLevelUp() Build {
 	return Build{
 		BaseScores: map[Ability]int{STR: 15, DEX: 12, CON: 14, INT: 8, WIS: 10, CHA: 10},
-		Race:       "race:human", Background: "background:acolyte",
+		Race:       "race:human", Background: "background:acolyte", Languages: testLanguages,
 		Classes:            []ClassLevel{{Class: "class:fighter", Subclass: "subclass:champion", Level: 3}},
 		SkillProficiencies: []string{"skill:acrobatics", "skill:perception"},
 		Armor:              "equipment:chain-mail", Shield: true,
@@ -24,7 +24,7 @@ func torenLevelUp() Build {
 func clericBuild(level int) Build {
 	return Build{
 		BaseScores: map[Ability]int{STR: 12, DEX: 10, CON: 14, INT: 10, WIS: 16, CHA: 10},
-		Race:       "race:human", Background: "background:acolyte",
+		Race:       "race:human", Background: "background:acolyte", Languages: testLanguages,
 		Classes:            []ClassLevel{{Class: "class:cleric", Subclass: "subclass:life", Level: level}},
 		SkillProficiencies: []string{"skill:medicine", "skill:religion"},
 		Cantrips:           []string{"spell:guidance", "spell:light", "spell:sacred-flame"},
@@ -35,7 +35,7 @@ func clericBuild(level int) Build {
 func sorcererBuild(level int) Build {
 	b := Build{
 		BaseScores: map[Ability]int{STR: 8, DEX: 14, CON: 14, INT: 10, WIS: 10, CHA: 16},
-		Race:       "race:human", Background: "background:acolyte",
+		Race:       "race:human", Background: "background:acolyte", Languages: testLanguages,
 		Classes:            []ClassLevel{{Class: "class:sorcerer", Subclass: "subclass:draconic", Level: level}},
 		SkillProficiencies: []string{"skill:arcana", "skill:persuasion"},
 		Cantrips:           []string{"spell:fire-bolt", "spell:light", "spell:mage-hand", "spell:prestidigitation"},

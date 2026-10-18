@@ -260,8 +260,8 @@ func standard(class string, level int) Build {
 	return Build{
 		BaseScores: map[Ability]int{STR: 15, DEX: 14, CON: 13, INT: 12, WIS: 10, CHA: 8},
 		Race:       "race:human",
-		Background: "background:acolyte",
-		Classes:    []ClassLevel{{Class: class, Level: level}},
+		Background: "background:acolyte", Languages: testLanguages,
+		Classes: []ClassLevel{{Class: class, Level: level}},
 	}
 }
 
@@ -377,7 +377,7 @@ func TestDeriveEachRace(t *testing.T) {
 			t.Parallel()
 			b := Build{
 				BaseScores: map[Ability]int{STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10},
-				Race:       tt.race, Subrace: tt.subrace, Background: "background:acolyte",
+				Race:       tt.race, Subrace: tt.subrace, Background: "background:acolyte", Languages: testLanguages,
 				Classes: []ClassLevel{{Class: "class:wizard", Level: 1}},
 			}
 			d := Derive(b, c)

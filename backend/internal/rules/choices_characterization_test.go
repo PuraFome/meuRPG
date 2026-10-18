@@ -33,7 +33,7 @@ func choicesDeriveDump(d Derived) (string, error) {
 func choicesFighter() Build {
 	return Build{
 		BaseScores: map[Ability]int{STR: 15, DEX: 13, CON: 14, INT: 13, WIS: 10, CHA: 13},
-		Race:       "race:human", Background: "background:acolyte",
+		Race:       "race:human", Background: "background:acolyte", Languages: testLanguages,
 		Classes:            []ClassLevel{{Class: "class:fighter", Level: 1}},
 		SkillProficiencies: []string{"skill:athletics", "skill:perception"},
 		FeatureChoices:     []string{"feature:fighter-fighting-style-defense"},
@@ -492,7 +492,7 @@ func TestSpellSourcesCharacterization(t *testing.T) {
 	build := func(classes ...ClassLevel) Build {
 		return Build{
 			BaseScores: map[Ability]int{STR: 10, DEX: 14, CON: 14, INT: 13, WIS: 13, CHA: 16},
-			Race:       "race:human", Background: "background:acolyte", Classes: classes,
+			Race:       "race:human", Background: "background:acolyte", Languages: testLanguages, Classes: classes,
 		}
 	}
 	// A table copy of the bard whose level 2 gives a feature named like Magical

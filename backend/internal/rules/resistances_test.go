@@ -32,35 +32,35 @@ func TestRacialAndRageResistancesComeFromTheSheet(t *testing.T) {
 	}{
 		{
 			"tiefling: fire",
-			Build{BaseScores: scores, Race: "race:tiefling", Background: "background:acolyte", Classes: []ClassLevel{{Class: "class:fighter", Level: 1}}},
+			Build{BaseScores: scores, Race: "race:tiefling", Background: "background:acolyte", Languages: testLanguages, Classes: []ClassLevel{{Class: "class:fighter", Level: 1}}},
 			"trait:hellish-resistance",
 			[]string{"damage-type:fire"},
 			ResistanceAlways,
 		},
 		{
 			"hill dwarf: poison",
-			Build{BaseScores: scores, Race: "race:dwarf", Subrace: "subrace:hill-dwarf", Background: "background:acolyte", Classes: []ClassLevel{{Class: "class:fighter", Level: 1}}},
+			Build{BaseScores: scores, Race: "race:dwarf", Subrace: "subrace:hill-dwarf", Background: "background:acolyte", Languages: testLanguages, Classes: []ClassLevel{{Class: "class:fighter", Level: 1}}},
 			"trait:dwarven-resilience",
 			[]string{"damage-type:poison"},
 			ResistanceAlways,
 		},
 		{
 			"red dragonborn: fire",
-			Build{BaseScores: scores, Race: "race:dragonborn", Background: "background:acolyte", FeatureChoices: []string{"trait:draconic-ancestry-red"}, Classes: []ClassLevel{{Class: "class:fighter", Level: 1}}},
+			Build{BaseScores: scores, Race: "race:dragonborn", Background: "background:acolyte", Languages: testLanguages, FeatureChoices: []string{"trait:draconic-ancestry-red"}, Classes: []ClassLevel{{Class: "class:fighter", Level: 1}}},
 			"trait:draconic-ancestry-red",
 			[]string{"damage-type:fire"},
 			ResistanceAlways,
 		},
 		{
 			"silver dragonborn: cold",
-			Build{BaseScores: scores, Race: "race:dragonborn", Background: "background:acolyte", FeatureChoices: []string{"trait:draconic-ancestry-silver"}, Classes: []ClassLevel{{Class: "class:fighter", Level: 1}}},
+			Build{BaseScores: scores, Race: "race:dragonborn", Background: "background:acolyte", Languages: testLanguages, FeatureChoices: []string{"trait:draconic-ancestry-silver"}, Classes: []ClassLevel{{Class: "class:fighter", Level: 1}}},
 			"trait:draconic-ancestry-silver",
 			[]string{"damage-type:cold"},
 			ResistanceAlways,
 		},
 		{
 			"barbarian: rage",
-			Build{BaseScores: scores, Race: "race:human", Background: "background:acolyte", Classes: []ClassLevel{{Class: "class:barbarian", Level: 1}}},
+			Build{BaseScores: scores, Race: "race:human", Background: "background:acolyte", Languages: testLanguages, Classes: []ClassLevel{{Class: "class:barbarian", Level: 1}}},
 			"feature:rage",
 			[]string{"damage-type:bludgeoning", "damage-type:piercing", "damage-type:slashing"},
 			ResistanceWhileRage,
@@ -80,11 +80,11 @@ func TestRacialAndRageResistancesComeFromTheSheet(t *testing.T) {
 		})
 	}
 	// A human fighter has none, and a dragonborn only the lineage chosen.
-	human := Build{BaseScores: scores, Race: "race:human", Background: "background:acolyte", Classes: []ClassLevel{{Class: "class:fighter", Level: 1}}}
+	human := Build{BaseScores: scores, Race: "race:human", Background: "background:acolyte", Languages: testLanguages, Classes: []ClassLevel{{Class: "class:fighter", Level: 1}}}
 	if rs := c.Resistances(Derive(human, c)); len(rs) != 0 {
 		t.Fatalf("a human fighter resists nothing: %+v", rs)
 	}
-	dragon := Build{BaseScores: scores, Race: "race:dragonborn", Background: "background:acolyte", FeatureChoices: []string{"trait:draconic-ancestry-green"}, Classes: []ClassLevel{{Class: "class:fighter", Level: 1}}}
+	dragon := Build{BaseScores: scores, Race: "race:dragonborn", Background: "background:acolyte", Languages: testLanguages, FeatureChoices: []string{"trait:draconic-ancestry-green"}, Classes: []ClassLevel{{Class: "class:fighter", Level: 1}}}
 	rs := c.Resistances(Derive(dragon, c))
 	if len(rs) != 1 || rs[0].Source != "trait:draconic-ancestry-green" || rs[0].DamageTypes[0] != "damage-type:poison" {
 		t.Fatalf("a green dragonborn resists poison alone: %+v", rs)
@@ -142,7 +142,7 @@ func TestWeaponAndArmorFactsForTheCombat(t *testing.T) {
 	c := loadForTest(t)
 	scores := map[Ability]int{STR: 16, DEX: 14, CON: 12, INT: 10, WIS: 10, CHA: 10}
 	d := Derive(Build{
-		BaseScores: scores, Race: "race:human", Background: "background:acolyte", Armor: "equipment:plate-armor",
+		BaseScores: scores, Race: "race:human", Background: "background:acolyte", Languages: testLanguages, Armor: "equipment:plate-armor",
 		Classes: []ClassLevel{{Class: "class:fighter", Level: 1}},
 		Weapons: []string{"equipment:greataxe", "equipment:shortsword", "equipment:longbow", "equipment:longsword"},
 	}, c)
@@ -162,7 +162,7 @@ func TestWeaponAndArmorFactsForTheCombat(t *testing.T) {
 			t.Errorf("%s finesse/two-handed = %v, want %v", key, flags[key], w)
 		}
 	}
-	if none := Derive(Build{BaseScores: scores, Race: "race:human", Background: "background:acolyte", Classes: []ClassLevel{{Class: "class:fighter", Level: 1}}}, c); none.ArmorCategory != "none" {
+	if none := Derive(Build{BaseScores: scores, Race: "race:human", Background: "background:acolyte", Languages: testLanguages, Classes: []ClassLevel{{Class: "class:fighter", Level: 1}}}, c); none.ArmorCategory != "none" {
 		t.Fatalf("no armor is %q", none.ArmorCategory)
 	}
 }
@@ -171,7 +171,7 @@ func TestLevelInAndHasFeature(t *testing.T) {
 	t.Parallel()
 	c := loadForTest(t)
 	d := Derive(Build{
-		BaseScores: map[Ability]int{STR: 16, DEX: 14, CON: 12, INT: 10, WIS: 10, CHA: 10}, Race: "race:human", Background: "background:acolyte",
+		BaseScores: map[Ability]int{STR: 16, DEX: 14, CON: 12, INT: 10, WIS: 10, CHA: 10}, Race: "race:human", Background: "background:acolyte", Languages: testLanguages,
 		Classes: []ClassLevel{{Class: "class:rogue", Level: 5}},
 	}, c)
 	if LevelIn(d, "class:rogue") != 5 || LevelIn(d, "class:barbarian") != 0 {

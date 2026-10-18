@@ -60,7 +60,7 @@ func postureOverlay() Overlay {
 func postureBuild(level int, picks ...string) Build {
 	return Build{
 		BaseScores: map[Ability]int{STR: 15, DEX: 14, CON: 13, INT: 12, WIS: 10, CHA: 8},
-		Race:       "race:human", Background: "background:acolyte",
+		Race:       "race:human", Background: "background:acolyte", Languages: testLanguages,
 		Classes:        []ClassLevel{{Class: "class:fighter", Level: level, Subclass: postureSubclass}},
 		FeatureChoices: picks,
 	}
