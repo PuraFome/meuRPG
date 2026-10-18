@@ -7,6 +7,7 @@
  * tests only see these.
  */
 
+import type { FreeRollVm } from '../free-dice/free-roll';
 import type { FamiliarSightVm } from './familiar-eyes';
 import type { SearchSkills } from '../traps/trap-search';
 import type { HitDieSize } from '../resources/hit-dice-text';
@@ -103,6 +104,8 @@ export type LiveEventVm =
   | { readonly kind: 'puzzleChanged'; readonly puzzleId: string }
   /** `held_rolls_changed`: a question of a held roll was asked, answered or dropped; read `ListHeldRolls` again. */
   | { readonly kind: 'heldRollsChanged' }
+  /** `free_roll_rolled` (MR-052): someone rolled at the table; the whole roll, to draw and to log. A secret roll never comes. */
+  | { readonly kind: 'freeRollRolled'; readonly roll: FreeRollVm }
   /** `current_map_changed`; `mapId` is `null` when the map was cleared. */
   | { readonly kind: 'currentMap'; readonly mapId: string | null }
   /** `map_changed`: read the map again. */

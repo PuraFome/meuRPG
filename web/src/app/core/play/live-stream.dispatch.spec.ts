@@ -3,7 +3,10 @@
 // a replaced connection that keeps sending. It uses the same fake call and fake clock as `live-stream.spec.ts`.
 import { line } from '../conversation/conversation-testing';
 import { LiveStream, LiveStreamHandlers } from './live-stream';
+import { freeRoll } from '../free-dice/free-dice-testing';
 import { LiveEventVm } from './live-session.types';
+
+const FREE_ROLL = freeRoll('r1');
 
 class FakeCall {
   private readonly queue: (IteratorResult<LiveEventVm> | { error: unknown })[] = [];
@@ -89,6 +92,7 @@ describe('LiveStream: what each message hands the page', () => {
       onRevivifyChanged: vi.fn(),
       onPuzzleChanged: vi.fn(),
       onHeldRollsChanged: vi.fn(),
+      onFreeRollRolled: vi.fn(),
       onCallingYou: vi.fn(),
       onSessionMessage: vi.fn(),
       onMasterTyping: vi.fn(),
@@ -217,6 +221,12 @@ describe('LiveStream: what each message hands the page', () => {
     ['callingYou', { kind: 'callingYou' }, 'onCallingYou', []],
     ['heldRollsChanged', { kind: 'heldRollsChanged' }, 'onHeldRollsChanged', []],
     ['puzzleChanged', { kind: 'puzzleChanged', puzzleId: 'pz' }, 'onPuzzleChanged', ['pz']],
+    [
+      'freeRollRolled',
+      { kind: 'freeRollRolled', roll: FREE_ROLL },
+      'onFreeRollRolled',
+      [FREE_ROLL],
+    ],
     ['sessionMessage', { kind: 'sessionMessage', message: aLine }, 'onSessionMessage', [aLine]],
     ['masterTyping', { kind: 'masterTyping', expiresInSeconds: 6 }, 'onMasterTyping', [6]],
   ];

@@ -119,7 +119,10 @@ type encounterData struct {
 	// allHolds are the rolls of every kind held in the combat that wait for an answer, for the question each
 	// combatant carries (Combatant.held_roll_offer).
 	allHolds []heldRoll
-	riders   []playdb.HitRider
+	// setupOffers are the questions of the initiatives that wait in SETUP, by the character that rolls: that roll is
+	// the character's, not the combatant's, since the die it may use is still the character's own.
+	setupOffers map[string]heldOffer
+	riders      []playdb.HitRider
 	// zones are the areas spells keep on the map.
 	zones []*zone
 }
@@ -150,11 +153,63 @@ func loadEncounter(ctx context.Context, q *playdb.Queries, enc playdb.Encounter)
 	if err != nil {
 		return nil, fmt.Errorf("list the riders: %w", err)
 	}
+	setupOffers, err := openInitiatives(ctx, q, enc, cs)
+	if err != nil {
+		return nil, err
+	}
 	zones, err := readZonesOf(ctx, q, enc.ID)
 	if err != nil {
 		return nil, err
 	}
-	return &encounterData{enc: enc, cs: cs, states: states, requests: requests, holds: holds, allHolds: allHolds, riders: riders, zones: zones}, nil
+	return &encounterData{enc: enc, cs: cs, states: states, requests: requests, holds: holds, allHolds: allHolds, setupOffers: setupOffers, riders: riders, zones: zones}, nil
+}
+
+// openInitiatives are the questions of the initiatives of a combat in SETUP that wait for an answer, by character: the
+// die they ask about is the character's, kept out of the combat until it begins.
+func openInitiatives(ctx context.Context, q *playdb.Queries, enc playdb.Encounter, cs []playdb.Combatant) (map[string]heldOffer, error) {
+	if enc.Status != statusSetup {
+		return nil, nil
+	}
+	var out map[string]heldOffer
+	for _, c := range cs {
+		if c.Kind != kindPlayer || !backedByCharacter(c) {
+			continue
+		}
+		asked, found, err := openInitiativeOf(ctx, q, c.CharacterID)
+		if err != nil {
+			return nil, err
+		}
+		if found {
+			if out == nil {
+				out = map[string]heldOffer{}
+			}
+			out[c.CharacterID] = asked
+		}
+	}
+	return out, nil
+}
+
+// openInitiativeOf is the question of the initiative of a character that waits, if any and if there is still something to
+// ask: Lucky's 1, or a die the character still holds.
+func openInitiativeOf(ctx context.Context, q *playdb.Queries, characterID string) (heldOffer, bool, error) {
+	holds, err := newHeldStores(q).openOf(ctx, heldRoller{CharacterID: characterID})
+	if err != nil {
+		return heldOffer{}, false, err
+	}
+	for _, h := range holds {
+		if h.Kind != heldInitiative {
+			continue
+		}
+		row, err := q.GetCharacterInspiration(ctx, playdb.GetCharacterInspirationParams{CharacterID: h.CharacterID, CampaignID: h.CampaignID})
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return heldOffer{}, false, fmt.Errorf("find the die of the character: %w", err)
+		}
+		st := rollerState{Die: heldDie{Sides: row.Sides, Source: row.SourceCharacterID}, Holds: err == nil}
+		if asked := askedBy(h, st); asked.Asks == askLucky || st.Holds {
+			return asked, true, nil
+		}
+	}
+	return heldOffer{}, false, nil
 }
 
 // openAttackHolds are the weapon attacks of a combat that wait for an answer, in the shape of the gate.

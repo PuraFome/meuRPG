@@ -8,6 +8,8 @@ import { CastingClient } from '../../core/casting/casting-client';
 import { CombatClient } from '../../core/combat/combat-client';
 import { SpellCatalog } from '../../core/combat/spell-catalog';
 import { TurnAlert } from '../../core/combat/turn-alert';
+import { FreeDiceClient } from '../../core/free-dice/free-dice-client';
+import { FreeDiceState } from '../../core/free-dice/free-dice-state';
 import { ConversationClient } from '../../core/conversation/conversation-client';
 import { MapsClient } from '../../core/maps/maps-client';
 import { NotesClient } from '../../core/notes/notes-client';
@@ -18,6 +20,7 @@ import { SceneClient } from '../../core/play/scene-client';
 import { XpChanges } from '../../core/progression/xp-changes';
 import { PuzzlesClient } from '../../core/puzzles/puzzles-client';
 import { TrapsClient } from '../../core/traps/traps-client';
+import { RollAnimator } from '../../shared/roll-overlay/roll-animator';
 import { SessionNotes } from '../../shell/session-notes/session-notes';
 import { CombatState } from '../../core/combat/combat-state';
 import { FogView } from '../../core/maps/fog-view';
@@ -30,6 +33,7 @@ import { ToastQueue } from '../../core/traps/toast-queue';
 import { TrapBoard } from '../../core/traps/trap-board';
 import { TreasureWatch } from '../../core/traps/treasure-text';
 import type { LiveSessionState } from './live-session-state';
+import { freeRollShow } from './free-dice/free-roll-show';
 
 /** What the session page injects, handed to the plain classes it builds (they are not in the injection context). */
 export interface LiveSessionServices {
@@ -50,6 +54,9 @@ export interface LiveSessionServices {
   readonly notesApi: NotesClient;
   readonly trapsApi: TrapsClient;
   readonly puzzlesApi: PuzzlesClient;
+  readonly freeDiceApi: FreeDiceClient;
+  /** The dice overlay of the shell: the table's free rolls tumble on it. */
+  readonly rollAnimator: RollAnimator;
   readonly sessionNotes: SessionNotes;
   readonly openSessions: OpenSessions;
   readonly destroyRef: DestroyRef;
@@ -80,6 +87,8 @@ export function injectLiveSessionServices(): LiveSessionServices {
     notesApi: inject(NotesClient),
     trapsApi: inject(TrapsClient),
     puzzlesApi: inject(PuzzlesClient),
+    freeDiceApi: inject(FreeDiceClient),
+    rollAnimator: inject(RollAnimator),
     sessionNotes: inject(SessionNotes),
     openSessions: inject(OpenSessions),
     destroyRef: inject(DestroyRef),
@@ -115,6 +124,8 @@ export class LiveSessionParts {
   /** The player's notes and the clues the master revealed (MR-030): read after
    * each `ready` and each `notes_changed`. The master has none. */
   readonly notes: NotesState;
+  /** The free dice roller (MR-052): the form, the result, the last rolls and the table's log. */
+  readonly freeDice: FreeDiceState;
 
   constructor(services: LiveSessionServices, state: LiveSessionState) {
     const { mapsApi } = services;
@@ -149,5 +160,15 @@ export class LiveSessionParts {
       () => state.isMaster(),
     );
     this.notes = new NotesState(services.notesApi, () => state.campaignId());
+    this.freeDice = new FreeDiceState(services.freeDiceApi, {
+      campaignId: () => state.campaignId(),
+      isMaster: () => state.isMaster(),
+      show: (roll) => {
+        const show = freeRollShow(roll);
+        if (show) {
+          services.rollAnimator.play(show);
+        }
+      },
+    });
   }
 }

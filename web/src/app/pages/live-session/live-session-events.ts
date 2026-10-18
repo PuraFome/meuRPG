@@ -96,6 +96,8 @@ export class LiveSessionEvents {
       onSessionMessage: (message) => void parts.conversation.receive(message),
       onMasterTyping: (seconds) => parts.conversation.masterTyping(seconds),
       onHeldRollsChanged: () => state.heldRollsTick.update((n) => n + 1),
+      // Someone at the table rolled (never a secret roll): the log gets it and the dice tumble.
+      onFreeRollRolled: (roll) => parts.freeDice.heard(roll),
       onEnded: () => loader.ended(),
       onFatal: (kind) => {
         if (kind === 'signed-out') {

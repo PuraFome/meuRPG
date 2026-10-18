@@ -42,6 +42,7 @@ const ROUTES: { [K in Exclude<Kind, OwnKind>]: (h: LiveStreamHandlers, e: Event<
   revivifyChanged: (h) => h.onRevivifyChanged?.(),
   callingYou: (h) => h.onCallingYou?.(),
   heldRollsChanged: (h) => h.onHeldRollsChanged?.(),
+  freeRollRolled: (h, e) => h.onFreeRollRolled?.(e.roll),
   puzzleChanged: (h, e) => h.onPuzzleChanged?.(e.puzzleId),
   sessionMessage: (h, e) => h.onSessionMessage?.(e.message),
   masterTyping: (h, e) => h.onMasterTyping?.(e.expiresInSeconds),

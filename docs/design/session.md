@@ -50,7 +50,7 @@ It draws what `ConversationState` holds; the server decides who may read a line,
 ## Rolls
 
 - **Dice animation** (`shared/roll-overlay`, mounted once in the shell) plays when this screen rolls in the app: attacks, damage, scene checks, saving throws, initiative, grapples, reactions, hit dice and the like.
-  It never plays for a physical die the player typed, for another person's roll arriving by stream, or outside play (editors, campaign pages).
+  It never plays for a physical die the player typed, for another person's roll arriving by stream (the free dice roller's table roll is the one exception, below), or outside play (editors, campaign pages).
   A word ("Passou", "Falhou") appears only where the same screen tells it to this viewer; the DC and the other side's result are never shown.
   It is a native popover (`popover="manual"`) so it lies above open sheets; it is `aria-hidden` with one polite sentence when the dice land; focus does not move.
   The dice tumble together, land one after another (at most 8 drawn, the rest is a "+N" chip), stay until a tap or Esc or 10 s, and a new roll replaces them.
@@ -59,6 +59,26 @@ It draws what `ConversationState` holds; the server decides who may read a line,
   It is information only: those rolls have no automatic success or failure on a natural die, so the tag never says "crítico" or changes a verdict. Attacks keep their "crítico" wording; an attack that misses on a natural 1 reads "Errou · 1 natural".
   A player sees it only on a roll whose face they already read.
 - **What a use costs:** a choice that spends something says what, in words, beside the button, with what is left ("Gasta 1 ki · restam N"), never an armor class or an NPC's number (RN-20).
+
+## The free dice roller
+
+Any member of the table rolls any dice with the server's dice, outside every game rule (MR-052; [architecture](../architecture/play/free-dice-roller.md)).
+
+- **"Dados" button** (`app-session-header`): at the right of the title, for the master and the players, on a phone and on a desktop; it exists only on the live session, never on the "no session" screen.
+  It is the outlined button with the `casino` icon.
+  While a roll is on its way it reads "Rolando…", and while the stream reconnects it is off (`mr-button--off`, still focusable) and the status line says "Reconectando… Não dá para rolar sem conexão." (the button points at that line with `aria-describedby`).
+- **Sheet and dialog** (`pages/live-session/free-dice`, opened by `openSheet`): a bottom sheet on a phone, a 440 px dialog from a tablet up, titled "Rolar dados".
+  The form is "Atalhos (preenchem o formulário)" (1d20, 1d6, 2d6, 1d100, which keep the modifier), the die chips d4 to d100, "Quantidade (1 a 20)" and "Modificador (−20 a +20)" as typeable steppers ("Digite o número ou use os botões."), "Como rolar o d20" (Normal, Vantagem, Desvantagem) only while one d20 is chosen and otherwise the sentence "Vantagem e desvantagem valem para um d20 só.", and for the master "Quem vê" (Para a mesa, Só eu) with its sentence and a "Só eu" badge in the title bar.
+  The footer holds the one filled button, "Rolar 2d6 + 3" ("para a mesa" or ", só eu" for the master, "com vantagem" in the formula, "Rolar no app" with the note "Esta é a rolagem do app." at a table of physical dice), and the notices: a refusal says "Não deu para rolar." with the wait ("Tente de novo em 3 segundos."), no connection says why.
+  The roll goes to the server with a key per tap; a double tap rolls once.
+- **Result card:** replaces the form: the total as the largest text, the formula with the sum ("1d20 + 5 = 25 · 20 natural", "· 1 natural", in words), one box per die (the d20 left out by advantage is dashed and says "descartado"; 20 dice wrap under the sum), and "Rolagem livre · para a mesa" or the "Só você" badge with "Só você viu esta rolagem. Nenhum jogador a recebeu.".
+  "Mudar dados" goes back to the form with the same dice; "Rolar … de novo" is the filled button.
+- **Last rolls:** "Suas últimas rolagens nesta sessão" (the caller's newest ten, "há 3 min", the "Só você" badge on the master's secret ones) with "Repetir 2d6 + 3", which rolls the same dice at once.
+  It has its own loading, empty ("Você ainda não rolou nesta sessão. As rolagens aparecem aqui.") and failure ("Tentar de novo", the form still works) states.
+- **What the table sees:** the dice overlay above, labelled "Brisa rolou", the dice, the total and "Rolagem livre · 2d6 + 3", for every screen except the roller's own (the roller reads the result card) and never for a secret roll, which no player's stream carries.
+- **"Rolagens da mesa"** (`app-free-roll-log`): a small card under the board (under the stage, after the master's panels and the player's board, before the phone's section tabs), full width, so no existing screen's layout moves at any width.
+  It lists the table's free rolls newest first ("**Rolagem livre · Brisa:** 2d6 + 3 = 11 (4, 4)"), the newest ten and "Mostrar as outras N", kept up to date by the stream; the master sees his own secret rolls in it with the "Só você" badge, a player never does.
+  Empty: "Ninguém rolou dados nesta sessão ainda. As rolagens da mesa aparecem aqui."; failed: "Não deu para carregar o registro." with "Tentar de novo".
 
 ## Pending questions of the held rolls
 

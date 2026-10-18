@@ -2,7 +2,7 @@
 
 # Histórias e critérios de aceite
 
-O MVP tem 40 histórias: 38 histórias mais 2 pré-requisitos (o convite, MR-002, que leva à MR-003, e os NPCs, MR-005, que são os inimigos do combate).
+O MVP tem 42 histórias: 40 histórias mais 2 pré-requisitos (o convite, MR-002, que leva à MR-003, e os NPCs, MR-005, que são os inimigos do combate).
 Outras dez histórias ficam para depois do MVP.
 
 Uma história está pronta quando todos os critérios dela passam.
@@ -63,6 +63,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 | [MR-048](#mr-048-conjurar-magias-fora-do-combate) | Combate | MVP |
 | [MR-050](#mr-050-pacote-da-campanha-exportar-e-importar) | Campanha | MVP |
 | [MR-051](#mr-051-conversa-da-cena) | Sessão | MVP |
+| [MR-052](#mr-052-o-rolador-de-dados-livre) | Sessão | MVP |
 | [MR-049](#mr-049-personagens-reservados-e-links-para-assumir) | Personagem | MVP |
 | [MR-002](#mr-002-gerar-convite) | Campanha | MVP (pré-requisito) |
 | [MR-005](#mr-005-criar-npcs) | Personagem | MVP (pré-requisito) |
@@ -1326,6 +1327,37 @@ Ver [Arquitetura](../../architecture/campaign-package.md).
 
 #### Relacionadas
 - [RN-36](regras.md#rn-36-quem-lê-uma-linha-da-conversa-da-cena), [RN-10](regras.md), [RN-18](regras.md), [MR-028](#mr-028-mostrar-uma-imagem-aos-jogadores), [MR-039](#mr-039-imagens-geradas-para-masmorras-e-cenas). Ver [Arquitetura](../../architecture/play/live-session.md#the-conversation-of-the-scene) e [Privacidade](../privacidade.md#o-que-a-voz-envia-ao-google-mr-051).
+
+### MR-052: O rolador de dados livre
+
+**Como** mestre ou jogador, **quero** rolar quaisquer dados que eu pedir, na sessão, e escolher quem vê a rolagem se eu for o mestre, **para que** a mesa resolva as rolagens fora das regras do jogo (um boato, uma tabela de tesouros, uma aposta) sem um dado físico à mão.
+
+- Prioridade: MVP
+- Regras: RN-10, RN-18
+- Módulos: play
+
+#### Critérios de aceitação
+- **Dada** uma sessão aberta, **quando** um membro da campanha rola um dado entre d4, d6, d8, d10, d12, d20 e d100, de 1 a 20 deles, com um modificador de -20 a +20, **então** o servidor os rola, e o total é a soma dos dados mais o modificador ("2d6 + 3" com 4 e 4 dá 11).
+- **Dada** uma rolagem com outro dado, com 0 ou mais de 20 dados, ou com um modificador além de +20 ou -20, **então** ela é recusada e nada é rolado nem gravado.
+- **Dado** um d20, **quando** quem rola escolhe vantagem ou desvantagem, **então** dois d20 são rolados, o maior (ou o menor) vale e o outro mostra "descartado"; com quaisquer outros dados a escolha é recusada.
+- **Dado** que a mesa joga com dados físicos (RN-18), **quando** um membro rola aqui, **então** o app rola mesmo assim, o registro diz "Rolagem livre", e a folha diz "Esta é a rolagem do app": o modo de dados da mesa vale para as rolagens do jogo, não para esta.
+- **Dado** que um jogador rola, **então** ele lê o cartão de resultado (o total em números e por extenso, a fórmula, cada dado), e a mesa toda lê "Rolagem livre · <nome>: 2d6 + 3 = 11 (4, 4)" no "Rolagens da mesa" e vê os dados na tela.
+- **Dado** que o mestre rola "Para a mesa", **então** a mesa lê e vê como a rolagem de um jogador.
+- **Dado** que o mestre rola "Só eu", **então** só o mestre a lê, com a marca "Só você"; nenhum jogador a recebe na leitura, no stream nem no resumo, e nada avisa um jogador de que aconteceu, nem uma contagem (RN-10). Um jogador que pede "Só eu" é recusado.
+- **Dado** um 20 natural ou um 1 natural num d20 só, **então** o resultado diz isso por extenso ("20 natural", "1 natural"), não só pela cor.
+- **Dado** que o mesmo toque se repete com a chave dele, **então** existe uma rolagem só, e a mesma chave com outro pedido é recusada; um toque duplo no botão rola uma vez.
+- **Dado** que um membro rola 20 vezes seguidas e mais uma, **então** a última é recusada (`resource_exhausted`) e a folha diz "Tente de novo em N segundos".
+- **Dado** que a folha está aberta, **então** ela lista as últimas 10 rolagens do membro na sessão (as secretas do mestre incluídas, com "Só você"), e "Repetir 2d6 + 3" preenche o formulário e rola os mesmos dados de novo.
+- **Dado** que o stream ao vivo está reconectando, **então** "Dados" fica desabilitado e a tela diz por quê; **dado** que nenhuma sessão está aberta, **então** não há botão "Dados", e a chamada é recusada.
+- **Dada** uma pessoa que não é membro ativo da campanha, **então** a chamada é recusada.
+
+#### No app
+- O botão "Dados" no cabeçalho da sessão abre "Rolar dados": uma folha de baixo no celular, uma janela a partir do tablet. Ela tem os atalhos (1d20, 1d6, 2d6, 1d100), o dado, "Quantidade (1 a 20)", "Modificador (−20 a +20)", "Como rolar o d20" para um d20 só, o "Quem vê" do mestre ("Para a mesa" ou "Só eu"), "Suas últimas rolagens nesta sessão" com "Repetir", e um botão preenchido ("Rolar 2d6 + 3"). O cartão de resultado tem "Mudar dados" e "Rolar … de novo".
+- O "Rolagens da mesa" sob o palco lista as rolagens livres da sessão, da mais nova para a mais antiga; a animação dos dados mostra a rolagem dos outros como "<nome> rolou".
+- Rolar tem limite de taxa por pessoa.
+
+#### Relacionadas
+- [RN-10](regras.md), [RN-18](regras.md), [MR-051](#mr-051-conversa-da-cena). Ver [Arquitetura](../../architecture/play/free-dice-roller.md) e [Design](../../design/session.md).
 
 ### MR-049: Personagens reservados e links para assumir
 

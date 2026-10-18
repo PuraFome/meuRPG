@@ -1,0 +1,209 @@
+<app-sheet-frame title="Rolar dados" titleId="free-dice-t" [phone]="inSheet" (closed)="close()">
+  @if (secret()) {
+    <span head-action class="badge badge--mode"><mat-icon aria-hidden="true">visibility_off</mat-icon>Só eu</span>
+  }
+
+  <div class="body">
+    @if (state.rolling()) {
+      <div class="card card--rolling" role="status">
+        <p class="card__title">Você rola {{ form().count }}d{{ form().sides }}…</p>
+        <div class="dice" aria-hidden="true">
+          @for (n of unknownDice(); track n) {
+            <span class="die die--unknown"><span class="die__box">?</span></span>
+          }
+        </div>
+        <p class="card__who">Rolagem livre · {{ form().count }}d{{ form().sides }}</p>
+      </div>
+    } @else if (state.result(); as r) {
+      <app-free-roll-card [roll]="r" />
+      @if (secret() || r.secret) {
+        <div class="mr-notice mr-notice--success" role="status">
+          <mat-icon aria-hidden="true">visibility_off</mat-icon>
+          <p><strong>Só você viu esta rolagem.</strong> Nenhum jogador a recebeu.</p>
+        </div>
+      }
+    } @else {
+      <p class="cap" id="free-shortcuts">Atalhos (preenchem o formulário)</p>
+      <div class="shortcuts" role="group" aria-labelledby="free-shortcuts">
+        @for (s of shortcuts; track s.label) {
+          <button type="button" class="shortcut" (click)="shortcut(s)">{{ s.label }}</button>
+        }
+      </div>
+
+      <p class="cap">Dado</p>
+      <app-free-choice
+        label="Dado"
+        [options]="diceOptions"
+        [value]="'' + form().sides"
+        (choose)="choose($event)"
+      />
+
+      <div class="steppers">
+        <div class="stepper">
+          <label class="cap" for="free-count">Quantidade (1 a {{ maxCount }})</label>
+          <app-number-field
+            inputId="free-count"
+            [value]="form().count"
+            [min]="1"
+            [max]="maxCount"
+            minusLabel="Menos um dado"
+            plusLabel="Mais um dado"
+            describedBy="free-typing"
+            (valueChange)="state.change({ count: $event })"
+          />
+        </div>
+        <div class="stepper">
+          <label class="cap" for="free-mod">Modificador (−{{ maxModifier }} a +{{ maxModifier }})</label>
+          <app-number-field
+            inputId="free-mod"
+            [signed]="true"
+            [value]="form().modifier"
+            [min]="-maxModifier"
+            [max]="maxModifier"
+            minusLabel="Diminuir o modificador"
+            plusLabel="Aumentar o modificador"
+            describedBy="free-typing"
+            (valueChange)="state.change({ modifier: $event })"
+          />
+        </div>
+      </div>
+      <p class="hint" id="free-typing">Digite o número ou use os botões.</p>
+
+      @if (oneD20()) {
+        <p class="cap">Como rolar o d20</p>
+        <app-free-choice
+          label="Como rolar o d20"
+          [options]="modeOptions"
+          [value]="form().mode"
+          (choose)="setMode($event)"
+        />
+      } @else {
+        <p class="hint">Vantagem e desvantagem valem para um d20 só.</p>
+      }
+
+      @if (data.isMaster) {
+        <p class="cap">Quem vê</p>
+        <app-free-choice
+          label="Quem vê"
+          [options]="audienceOptions"
+          [value]="form().secret ? 'me' : 'table'"
+          (choose)="setAudience($event)"
+        />
+        <p class="hint">
+          @if (form().secret) {
+            Só eu: nenhum jogador recebe esta rolagem, nem no registro.
+          } @else {
+            Para a mesa: todos veem a rolagem e o dado na tela.
+          }
+        </p>
+      } @else {
+        <p class="hint hint--table">
+          <mat-icon aria-hidden="true">visibility</mat-icon>A sua rolagem vai para a mesa toda.
+        </p>
+      }
+    }
+
+    <section class="last" aria-labelledby="free-last">
+      <h3 class="cap" id="free-last">Suas últimas rolagens nesta sessão</h3>
+      @if (state.mine().length > 0) {
+        <ul class="last__list">
+          @for (r of state.mine(); track r.id) {
+            <li class="last__row">
+              <div class="last__info">
+                <span class="last__text">{{ summary(r) }}</span>
+                <span class="last__when">
+                  {{ when(r) }}
+                  @if (r.secret) {
+                    · <span class="badge"><mat-icon aria-hidden="true">visibility_off</mat-icon>Só você</span>
+                  }
+                </span>
+              </div>
+              <button
+                type="button"
+                class="last__again"
+                [attr.aria-disabled]="blocked() ? 'true' : null"
+                (click)="repeat(r)"
+              >
+                {{ repeatText(r) }}
+              </button>
+            </li>
+          }
+        </ul>
+      } @else if (state.listState() === 'loading') {
+        <p class="mr-muted" role="status">Carregando as rolagens…</p>
+        <div class="skeleton" aria-hidden="true"><span></span><span></span></div>
+      } @else if (state.listState() === 'failed') {
+        <div class="mr-notice mr-notice--danger" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <p>
+            <strong>Não deu para carregar as suas últimas rolagens.</strong> Você ainda pode rolar.
+          </p>
+        </div>
+        <button mat-button type="button" (click)="state.refresh()">Tentar de novo</button>
+      } @else {
+        <p class="mr-muted">Você ainda não rolou nesta sessão. As rolagens aparecem aqui.</p>
+      }
+    </section>
+  </div>
+
+  <div foot class="foot">
+    @if (state.error()) {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p><strong>Não deu para rolar.</strong> {{ state.error() }}</p>
+      </div>
+    }
+    @if (!data.online()) {
+      <div class="mr-notice mr-notice--neutral" role="status">
+        <mat-icon aria-hidden="true">cloud_off</mat-icon>
+        <p><strong>Reconectando…</strong> Não dá para rolar sem conexão.</p>
+      </div>
+    }
+    @if (data.physical && !state.result()) {
+      <div class="mr-notice mr-notice--neutral">
+        <mat-icon aria-hidden="true">info</mat-icon>
+        <p>
+          <strong>Esta é a rolagem do app.</strong> A sua mesa usa dados físicos nas jogadas do jogo; aqui o app rola e
+          marca “Rolagem livre” no registro.
+        </p>
+      </div>
+    }
+    @if (state.result() && !state.rolling()) {
+      <div class="foot__pair">
+        <button mat-stroked-button type="button" (click)="state.backToForm()">Mudar dados</button>
+        <button
+          mat-flat-button
+          type="button"
+          class="roll"
+          [class.mr-button--off]="blocked()"
+          [disabled]="blocked()"
+          disabledInteractive
+          [attr.aria-label]="againName()"
+          (click)="roll()"
+        >
+          @if (secret()) {
+            <mat-icon aria-hidden="true">visibility_off</mat-icon>
+          }
+          <span class="roll__text">{{ againLabel() }}</span>
+        </button>
+      </div>
+    } @else {
+      <button
+        mat-flat-button
+        type="button"
+        class="roll"
+        [class.mr-button--off]="blocked()"
+        [disabled]="blocked()"
+        disabledInteractive
+        [attr.aria-label]="state.rolling() ? null : name()"
+        (click)="roll()"
+      >
+        <!-- The icon is the only root of its @if, so Material projects it beside the label (not into it). -->
+        @if (secret() && !state.rolling()) {
+          <mat-icon aria-hidden="true">visibility_off</mat-icon>
+        }
+        <span class="roll__text">{{ state.rolling() ? 'Rolando…' : label() }}</span>
+      </button>
+    }
+  </div>
+</app-sheet-frame>

@@ -1,0 +1,139 @@
+:host {
+  display: block;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-4);
+  padding: var(--mr-space-4);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+}
+
+// A roll only the master saw has a frame in the accent colour besides its badge.
+.card--secret {
+  border: 2px solid var(--mr-accent);
+}
+
+.card__total {
+  flex: none;
+  min-width: 56px;
+  text-align: center;
+  font-family: var(--mr-font-display);
+  font-size: 56px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.card__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.card__line {
+  margin: 0 0 var(--mr-space-2);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.dice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: var(--mr-space-2);
+}
+
+.die {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.die__box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 4px;
+  border: 2px solid var(--mr-ink);
+  border-radius: var(--mr-radius-sm);
+  font-weight: 800;
+}
+
+.die--discarded .die__box {
+  border-style: dashed;
+  border-color: var(--mr-ink-muted);
+  color: var(--mr-ink-muted);
+}
+
+.die__note {
+  font-size: 11px;
+  color: var(--mr-ink-muted);
+}
+
+.card__who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-accent-soft);
+  color: var(--mr-accent-strong);
+  font-size: 13px;
+  font-weight: 700;
+
+  .mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+  }
+}
+
+// Many dice: the sum on top, the dice in lines under it, the formula last (B5-06 state 5).
+.card--many {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+
+  .card__total {
+    min-width: 0;
+    font-size: 32px;
+    text-align: left;
+  }
+
+  .card__body {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .card__line {
+    order: 3;
+    margin: var(--mr-space-2) 0 0;
+    font-weight: 400;
+    font-size: 14px;
+  }
+
+  .dice {
+    order: 1;
+  }
+
+  .card__who {
+    order: 2;
+  }
+}

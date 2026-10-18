@@ -330,6 +330,12 @@ var reads = []read{
 		},
 	},
 	{
+		procedure: playv1connect.PlayServiceListFreeRollsProcedure, allow: members, why: "each reads the table's free rolls and their own; the master's secret rolls are the master's alone (RN-10)",
+		req: func(w *world) proto.Message {
+			return &playv1.ListFreeRollsRequest{CampaignId: w.campaign}
+		},
+	},
+	{
 		procedure: playv1connect.PlayServiceGetLiveSessionProcedure, allow: members,
 		req: func(w *world) proto.Message { return &playv1.GetLiveSessionRequest{CampaignId: w.campaign} },
 	},

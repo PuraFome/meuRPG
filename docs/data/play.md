@@ -203,6 +203,9 @@ What counts as "scene open again" is the last `scene_opened` event of the sessio
   A new place in a payload that holds account ids needs the same case in `session_event_payload_without_user`, and a test in `play/erasure_seen_by_test.go`.
 - Puzzle events (`puzzle_shown`, `puzzle_solved`, `puzzle_reset`, `puzzle_closed`) carry `puzzle_id` and `run_id` only; state, solution and moves stay in `puzzle_moves`.
   A scene check event carries ids, the check key, the d20, the bonus, the total, whether it was a physical die, `dc_shown` and `passed`, never the DC or a name.
+- A free roll (`free_roll_rolled`, [the free dice roller](../architecture/play/free-dice-roller.md)) carries the die's sides, the count, the modifier, the mode (`""`, `advantage` or `disadvantage`), each face with `discarded`, the total, `by_master` and `secret`, never a name.
+  `secret` is always written, because the list's SQL keeps a player to rows that say `"secret": false`; the event has no `encounter_id`, so no combat log or undo reads it.
+  Its idempotency key is the UUID the server derives from the member and the key the app sent (1 to 64 characters), so a key belongs to one member.
 
 ## `session_messages` and `session_message_readers`
 
@@ -313,6 +316,7 @@ Cascades with the session or the character; the index is by session.
 - Players read the session row's public parts (the current map if revealed, the shown image, the open scene), the stage through the stage-copy ids, and the history through the player stream, which never receives an event marked `secret` or fogged for them.
 - `session_messages`: the master, the author, the lines `for_everyone`, and the rows of `session_message_readers`; the same rule on every path, and a line the caller may not read is `not_found` ([live session](../architecture/play/live-session.md#the-conversation-of-the-scene)).
 - `battle_encounters`, `revivify_requests` and `trap_damages` are master only (a player sees their own character's applied result in the log).
+- A `free_roll_rolled` event is read by everyone when `secret` is false; a secret one is the master's alone, on every path: the list, the stream, the summary and any count (RN-10).
 - `spell_casts` rows are read by the master and the target's player for the amounts; a `secret` cast is the master's alone (RN-10).
 - `character_effects`: the owner and the master, filtered by `player_visible` and `audience`.
 - `inspiration_holds` and `character_inspiration`: the holder and the master.

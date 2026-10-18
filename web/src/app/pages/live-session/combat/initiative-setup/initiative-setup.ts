@@ -25,7 +25,9 @@ import {
 } from '../../../../core/combat/combat-view';
 import { initiativeMark } from '../../../../core/combat/natural-mark';
 import { isCreature } from '../../../../core/combat/creature-names';
+import type { HeldQuestions } from '../../../../core/held-rolls/held-questions';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
+import { HeldQuestion } from '../../held-questions/held-question';
 import type { CombatantInfo } from '../combat-info';
 
 /** A row of the list: a combatant, or the sentence over a tie group. */
@@ -49,7 +51,7 @@ type Item =
  */
 @Component({
   selector: 'app-initiative-setup',
-  imports: [CombatantToken, MatButtonModule, MatIconModule],
+  imports: [CombatantToken, HeldQuestion, MatButtonModule, MatIconModule],
   templateUrl: './initiative-setup.html',
   styleUrl: './initiative-setup.scss',
 })
@@ -57,6 +59,10 @@ export class InitiativeSetup {
   readonly encounter = input.required<Encounter>();
   readonly info = input<ReadonlyMap<string, CombatantInfo>>(new Map());
   readonly busy = input(false);
+  /** The master's questions about the d20 a player's roll waits on (Lucky's 1, a Bardic Inspiration die). */
+  readonly heldQuestions = input<HeldQuestions | null>(null);
+  /** The master may type the face of a real die (the campaign did not force the app dice). */
+  readonly heldCanType = input(true);
 
   /** The master typed a d20 face for a combatant. */
   readonly submit = output<{ id: string; face: number }>();

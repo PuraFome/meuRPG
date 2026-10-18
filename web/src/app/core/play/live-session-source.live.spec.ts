@@ -7,6 +7,7 @@ import {
   GameSessionBlockedReason,
   GameSessionBlockedSchema,
 } from '../../../gen/meurpg/play/v1/play_pb';
+import { FreeRollDieSchema, FreeRollSchema } from '../../../gen/meurpg/play/v1/free_dice_pb';
 import { Recharge } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { TestBed } from '@angular/core/testing';
 import { GetCharacterResponseSchema } from '../../../gen/meurpg/characters/v1/characters_pb';
@@ -215,6 +216,46 @@ describe('LiveSessionSourceLive.watch', () => {
         create(WatchGameSessionResponseSchema, { event: { case: 'heldRollsChanged', value: {} } }),
       ]),
     ).toEqual(['ready', 'heldRollsChanged']);
+  });
+
+  it('maps `free_roll_rolled` to its own event with the whole roll, ready to draw and to log (MR-052)', async () => {
+    const out = [];
+    const responses = [
+      create(WatchGameSessionResponseSchema, {
+        event: {
+          case: 'freeRollRolled',
+          value: {
+            roll: create(FreeRollSchema, {
+              id: 'r-1',
+              rollerName: 'Brisa',
+              sides: 6,
+              count: 2,
+              modifier: 3,
+              dice: [
+                create(FreeRollDieSchema, { face: 4 }),
+                create(FreeRollDieSchema, { face: 4 }),
+              ],
+              total: 11,
+              formula: '2d6 + 3',
+              logText: 'Rolagem livre · Brisa: 2d6 + 3 = 11 (4, 4)',
+            }),
+          },
+        },
+      }),
+      // A message with no roll tells nothing.
+      create(WatchGameSessionResponseSchema, { event: { case: 'freeRollRolled', value: {} } }),
+    ];
+    for await (const e of sourceAnswering(responses).watch(
+      'camp-1',
+      new AbortController().signal,
+    )) {
+      out.push(e);
+    }
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({
+      kind: 'freeRollRolled',
+      roll: { id: 'r-1', rollerName: 'Brisa', total: 11, formula: '2d6 + 3', mode: 'normal' },
+    });
   });
 
   it("maps `puzzle_changed` to its own event, with the puzzle's ID and nothing else (MR-038)", async () => {

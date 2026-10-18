@@ -59,6 +59,7 @@ export class LiveSession {
   protected readonly scene = this.parts.scene;
   protected readonly puzzles = this.parts.puzzles;
   protected readonly notes = this.parts.notes;
+  protected readonly freeDice = this.parts.freeDice;
   protected readonly conversation = this.parts.conversation;
   protected readonly view = new LiveSessionView(this.state, this.parts);
   /** Where the conversation sits: a column beside the stage, or the phone's "Conversa" tab. */

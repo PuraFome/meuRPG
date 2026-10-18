@@ -15,6 +15,7 @@ package meurpg.play.v1;
 import "google/protobuf/timestamp.proto";
 import "meurpg/campaigns/v1/campaigns.proto";
 import "meurpg/play/v1/combat.proto";
+import "meurpg/play/v1/free_dice.proto";
 import "meurpg/play/v1/scene.proto";
 import "meurpg/play/v1/session_messages.proto";
 import "meurpg/play/v1/summary.proto";
@@ -375,6 +376,45 @@ service PlayService {
   //   - `permission_denied`: the caller is a player.
   //   - `failed_precondition`: no open session.
   rpc SignalMasterTyping(SignalMasterTypingRequest) returns (SignalMasterTypingResponse);
+
+  // RollFreeDice rolls dice for the caller with the server's dice, outside every
+  // game rule (MR-052): 1 to 20 dice of 4, 6, 8, 10, 12, 20 or 100 sides, plus a
+  // modifier from -20 to +20, and advantage or disadvantage on a single d20 only
+  // (two d20, the higher or the lower counts, the other is marked discarded). It
+  // needs an open session and any member of the campaign. The table's dice mode
+  // (RN-18) does not apply: the app always rolls, and the log marks it
+  // "Rolagem livre".
+  //
+  // The roll is stored as a session event (the log line is in `FreeRoll.log_text`)
+  // and `free_roll_rolled` goes to every stream of the campaign. The master may
+  // ask for `secret` ("Só eu"): that roll is stored for the master alone and
+  // reaches no stream, no list, no session summary and no count of any player
+  // (RN-10). At most 20 rolls in a burst and one more every 3 seconds, per user.
+  // The idempotency key is required.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist or the caller is not an active
+  //     member.
+  //   - `failed_precondition`: no open session (GameSessionBlocked,
+  //     NO_OPEN_SESSION).
+  //   - `permission_denied`: a player asked for `secret`.
+  //   - `invalid_argument`: sides, count or modifier out of range, advantage or
+  //     disadvantage on anything but one d20, a missing or over-long key, or a
+  //     key used for another request.
+  //   - `resource_exhausted`: too many rolls in a short time (Retry-After).
+  rpc RollFreeDice(RollFreeDiceRequest) returns (RollFreeDiceResponse);
+
+  // ListFreeRolls reads the free rolls of the open session the caller may read
+  // (MR-052, RN-10): the table's, newest first, and the caller's own. A player
+  // never gets a secret roll, nor a count or a hint of one.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist or the caller is not an active
+  //     member.
+  //   - `failed_precondition`: no open session.
+  rpc ListFreeRolls(ListFreeRollsRequest) returns (ListFreeRollsResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
 
   // SetCurrentMap chooses the map the session shows at the table, or clears
   // it. Only the campaign's master may call it, and only while the campaign
@@ -1344,6 +1384,15 @@ message WatchGameSessionResponse {
     SessionMessageAdded session_message_added = 43;
     // The master is writing (MR-051). Content-free, to the players only.
     MasterTyping master_typing = 44;
+    // Someone rolled with the free dice roller (MR-052): the roll itself, for the
+    // dice on the screen and the log. Every stream of the campaign gets it,
+    // except for a secret roll, which nobody hears of.
+    FreeRollRolled free_roll_rolled = 45;
+  }
+
+  // FreeRollRolled carries a table roll of the free dice roller, whole.
+  message FreeRollRolled {
+    FreeRoll roll = 1;
   }
 
   // SessionMessageAdded carries the line itself to its readers.

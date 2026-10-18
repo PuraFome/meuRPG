@@ -33,6 +33,8 @@ type Policy struct {
 	// Message limits a user's lines in the scene's conversation (MR-051), and Audio their requests
 	// for the voice of a line.
 	Message, Audio *Limiter
+	// FreeRoll limits a user's rolls of the free dice roller (MR-052).
+	FreeRoll *Limiter
 }
 
 // NewPolicy builds the limiters. multiplier is 1 in production; it must be
@@ -90,8 +92,25 @@ func NewPolicy(multiplier float64) Policy {
 			Global:     Rate{Burst: 60, Every: 200 * time.Millisecond}, //nolint:mnd // the policy's numbers
 			MaxClients: 10000,                                          //nolint:mnd // as the other limiters
 		}, multiplier)),
+		// A player taps "Rolar" a few times in a row to see the dice, and twenty in a minute is
+		// more than any table rolls; the board's "limite de rolagens por minuto".
+		FreeRoll: New(scaled(Config{
+			PerClient:  Rate{Burst: freeRollBurst, Every: freeRollEvery},
+			Global:     Rate{Burst: freeRollGlobalBurst, Every: freeRollGlobalEvery},
+			MaxClients: freeRollMaxClients,
+		}, multiplier)),
 	}
 }
+
+// The free roll limiter's numbers: twenty rolls in a row per person, then one every 3 s; ten
+// times that for the whole server; and as many clients as the other limiters track.
+const (
+	freeRollBurst       = 20
+	freeRollEvery       = 3 * time.Second
+	freeRollGlobalBurst = 200
+	freeRollGlobalEvery = 100 * time.Millisecond
+	freeRollMaxClients  = 10000
+)
 
 // scaled makes every rate in c m times as generous: m times the burst, and
 // the same count of events in 1/m of the time.

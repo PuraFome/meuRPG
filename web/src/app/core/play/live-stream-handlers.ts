@@ -1,3 +1,4 @@
+import type { FreeRollVm } from '../free-dice/free-roll';
 import type { SessionMessage } from '../../../gen/meurpg/play/v1/session_messages_pb';
 import type { CombatantMove, TurnChange } from '../combat/combat-state';
 import type { ShownImageVm, VitalsVm } from './live-session.types';
@@ -71,6 +72,8 @@ export interface LiveStreamHandlers {
   onMasterTyping?(expiresInSeconds: number): void;
   /** `held_rolls_changed`: the questions of the held rolls changed (content-free); read the list again. */
   onHeldRollsChanged?(): void;
+  /** `free_roll_rolled` (MR-052): someone rolled at the table (never a secret roll); the log gets it and the dice tumble. */
+  onFreeRollRolled?(roll: FreeRollVm): void;
   /** `calling_you`: the master is calling this player; the page alerts (vibration, chime, shake) and says it. */
   onCallingYou?(): void;
   /** `session_ended`, or `NO_OPEN_SESSION` when (re)connecting. */

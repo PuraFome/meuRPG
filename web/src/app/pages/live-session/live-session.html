@@ -84,7 +84,9 @@
         [isMaster]="state.isMaster()"
         [connection]="state.connection()"
         [lastUpdate]="state.lastUpdate()"
+        [rolling]="freeDice.rolling()"
         (ended)="sessionEndedHere()"
+        (openDice)="sheets.openDice()"
       />
       }
 
@@ -460,6 +462,10 @@
         </div>
         <p class="mr-visually-hidden" role="status" aria-live="polite">{{ state.shownNotice() }}</p>
         <p class="mr-visually-hidden" role="status" aria-live="polite">{{ scene.notice() }}</p>
+      }
+      @if (!combat.fullPage()) {
+        <!-- The free rolls of the session (MR-052): under the board, so no screen's layout moves for it. -->
+        <app-free-roll-log [rolls]="freeDice.table()" [listState]="freeDice.listState()" (retry)="freeDice.refresh()" />
       }
       <!-- Last in the column, so the turn's actions stay right under the title on a phone; the tabs close the page. -->
       @if (slot.phone()) {
