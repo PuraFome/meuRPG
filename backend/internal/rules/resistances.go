@@ -78,16 +78,45 @@ func (c *content) checkResistance(key string, damageTypes []string, while string
 }
 
 // Resistances lists the damage resistances the character's features and traits
-// give, in the order of its features. A resistance that holds only while raging is
-// listed too: the play module applies it while the rage lasts.
+// give, in the order of its features: the ones of effects/damage_resistances.json
+// and the resistance effects of a feature (a table's). A resistance that holds only
+// while raging is listed too: the play module applies it while the rage lasts, and
+// two resistances to one damage type count once there.
 func (c *Content) Resistances(d Derived) []Resistance {
 	var out []Resistance
 	for _, f := range d.Features {
 		if r, ok := c.c.resistances[f.Key]; ok {
 			out = append(out, r)
 		}
+		for _, e := range c.c.effects[f.Key] {
+			if e.Type == "resistance" {
+				out = append(out, Resistance{Source: f.Key, NamePT: c.c.namePT(f.Key), DamageTypes: c.c.damageTypesBut(e.Except), While: e.While})
+			}
+		}
 	}
 	return out
+}
+
+// damageTypesBut is every damage type of the content but the one named, sorted.
+func (c *content) damageTypesBut(except string) []string {
+	var out []string
+	for _, k := range sortedKeys(c.named) {
+		if k != except && c.isLiveDamageType(k) {
+			out = append(out, k)
+		}
+	}
+	return out
+}
+
+// resistanceHint is the sheet's note of a resistance effect: it holds only in a
+// condition, so the sheet lists it and play applies it.
+func (x *deriver) resistanceHint(a activeEffect) {
+	e := a.effect
+	if e.TextPT == "" {
+		e = &Effect{TextPT: fmt.Sprintf("Resistência a todos os tipos de dano, menos %s, enquanto estiver em fúria.", x.c.namePT(e.Except))}
+		a = activeEffect{owner: a.owner, effect: e}
+	}
+	x.hint(a, nil, "note", 0)
 }
 
 // HasFeature says whether the character has a feature or a trait.

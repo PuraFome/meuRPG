@@ -279,14 +279,18 @@ message RollEffectSaveResponse {
   // d20 is rolled and kept, the window stays open and nothing is written, and
   // ResourceService.AnswerOutsideInspiration settles the save (SRD 5.1). The master's roll
   // never asks.
-  OutsideInspirationOffer inspiration_offer = 3;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  OutsideInspirationOffer inspiration_offer = 3 [deprecated = true];
   // Set instead of `result`, like `inspiration_offer`, when the roller is the player's own
   // halfling and a d20 shows a 1: the window stays open, and ResourceService.AnswerOutsideLucky
   // rolls it again or keeps the 1 (the die's question, if any, comes after it).
-  LuckyOffer lucky_offer = 4;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  LuckyOffer lucky_offer = 4 [deprecated = true];
 
   // The question the roll asks now, in the one shape every held roll has (HeldRollOffer), set beside
-  // `inspiration_offer` and `lucky_offer` until they are removed: set instead of the result, when the
+  // the deprecated `inspiration_offer` and `lucky_offer`: set instead of the result, when the
   // roll waits for an answer (AnswerHeldRoll). Whoever may answer gets it; nobody else does (RN-10).
   HeldRollOffer held_roll_offer = 5;
 }

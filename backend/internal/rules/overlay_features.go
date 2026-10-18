@@ -17,7 +17,7 @@ import (
 // the SRD has no effect of that type (a feat from another book brings it).
 var overlayEffectTypes = []string{
 	"modifier", "proficiency", "resource", "sense", "roll_mode", "grant_action",
-	"superiority_die", "extra_attack", "extra_damage", "ranged_attack", "choice", "ability_increase", "note",
+	"superiority_die", "extra_attack", "extra_damage", "ranged_attack", "resistance", "choice", "ability_increase", "note",
 }
 
 // overlayChoiceKinds are the choices a table feature may offer. The subclass and
@@ -454,6 +454,8 @@ var ownFields = map[string][]string{
 	"extra_damage": {"applies", "value", "resource"},
 	// A ranged_attack's switches; which of them its applies allows is checkRangedAttack's.
 	"ranged_attack": {"applies", "ignore_cover", "range_multiplier", "no_long_range_disadvantage"},
+	// A resistance names the damage type it leaves out and when it holds.
+	"resistance": {"except", "while"},
 }
 
 // effectField is a field of an Effect a type may not read: its name in the
@@ -489,6 +491,8 @@ var effectFields = []effectField{
 	{"ignore_cover", func(e *Effect) bool { return e.IgnoreCover }, func(e *Effect) { e.IgnoreCover = false }},
 	{"range_multiplier", func(e *Effect) bool { return e.RangeMultiplier != 0 }, func(e *Effect) { e.RangeMultiplier = 0 }},
 	{"no_long_range_disadvantage", func(e *Effect) bool { return e.NoLongRangeDisadvantage }, func(e *Effect) { e.NoLongRangeDisadvantage = false }},
+	{"except", func(e *Effect) bool { return e.Except != "" }, func(e *Effect) { e.Except = "" }},
+	{"while", func(e *Effect) bool { return e.While != "" }, func(e *Effect) { e.While = "" }},
 	{"progression", func(e *Effect) bool { return e.Progression != "" }, func(e *Effect) { e.Progression = "" }},
 	{"prepares", func(e *Effect) bool { return e.Prepares }, func(e *Effect) { e.Prepares = false }},
 	{"prepared_max", func(e *Effect) bool { return e.PreparedMax != "" }, func(e *Effect) { e.PreparedMax = "" }},
@@ -623,6 +627,10 @@ var effectErrorRules = []effectErrorRule{
 	{[]string{"extra_attack needs"}, fieldAttr(".count"), ReasonValue},
 	{[]string{"empty tag"}, fieldAttr(".tags"), ReasonValue},
 	{[]string{"unknown spell"}, fieldAttr(".spells"), ReasonReference},
+	{[]string{"is not a damage type"}, fieldAttr(".except"), ReasonReference},
+	{[]string{"while must be"}, fieldAttr(".while"), ReasonValue},
+	{[]string{"a resistance has no when"}, fieldAttr(".when"), ReasonValue},
+	{[]string{"a resistance has no tags"}, fieldAttr(".tags"), ReasonValue},
 }
 
 // formulaAttr is the field whose formula a compile error names (".when", ".value"

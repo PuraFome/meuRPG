@@ -1,3 +1,4 @@
+import type { SessionMessage } from '../../../gen/meurpg/play/v1/session_messages_pb';
 import type { CombatantMove, TurnChange } from '../combat/combat-state';
 import type { ShownImageVm, VitalsVm } from './live-session.types';
 
@@ -64,6 +65,10 @@ export interface LiveStreamHandlers {
   onRevivifyChanged?(): void;
   /** `puzzle_changed` (MR-038): a puzzle changed; the page reads it again (the server already throttles the hint). */
   onPuzzleChanged?(puzzleId: string): void;
+  /** `session_message_added` (MR-051): a line of the conversation, to be kept once by id. */
+  onSessionMessage?(message: SessionMessage): void;
+  /** `master_typing` (MR-051): show "O mestre está escrevendo…" for this many seconds; it carries no text. */
+  onMasterTyping?(expiresInSeconds: number): void;
   /** `held_rolls_changed`: the questions of the held rolls changed (content-free); read the list again. */
   onHeldRollsChanged?(): void;
   /** `calling_you`: the master is calling this player; the page alerts (vibration, chime, shake) and says it. */

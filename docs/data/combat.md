@@ -256,7 +256,7 @@ The damage of a strike that hit, from the d20 to the end (MR-012, MR-014).
 
 ## `roll_holds`
 
-An attack roll that waits for its player's answer about a Bardic Inspiration die (SRD 5.1) or about the halfling's Lucky. **Retired:** these rows are written in `inspiration_holds` (kind `weapon_attack`, [play.md](play.md#character_inspiration-and-inspiration_holds)); this table is only read, for the questions an older release left open. The contract keeps it, empty; it is never dropped.
+An attack roll that waits for its player's answer about a Bardic Inspiration die (SRD 5.1) or about the halfling's Lucky. **Unused:** the weapon attack waits in `inspiration_holds` (kind `weapon_attack`, [play.md](play.md#character_inspiration-and-inspiration_holds)); this table is empty and nothing reads or writes it. It stays, and is never dropped.
 `request` is the `RollAttackRequest` as it came (protobuf), `face` the d20 and `modifier` the attack's bonus; `idempotency_key` is the request's (with the suffix `#window` when a Cutting Words window held the attack first), unique within the encounter; `answer_key` is set when answered so a retry finds the hold answered.
 `round` is the round it was made in; a hold of an earlier round is forgotten.
 Nothing is resolved, spent or written to the history until the answer.
@@ -310,7 +310,7 @@ A row belongs to the combat (`encounter_id`) and to its caster (`owner_id`), and
 The cast keeps what a trigger needs, so none reads the caster's sheet: `save_ability`, `save_dc`, `damage_dice` (at the slot level, such as `3d8`) and `damage_type` (the one the caster picked).
 `concentration` says the owner's concentration holds the zone; `started_round` and `ends_round` (the round whose start of the owner's turn ends it; `NULL` for one with no time).
 `hit_marks` is JSON, `{combatant id: "<round>:<first combatant of the turn>"}`: the turn each creature was last caught on, so that a zone catches a creature once on a turn.
-`def` is JSON, `{shape, size_ft, placement, movement, save, on_enter, on_start, corners}`: the definition of a zone the table's own spell keeps, kept at cast time (migration 00268); `NULL` for the SRD's four, whose definition is the code's.
+`def` is JSON, `{shape, size_ft, placement, movement, save, on_enter, on_start, corners}`: the definition of a zone the table's own spell keeps, kept at cast time (migration 00269); `NULL` for the SRD's four, whose definition is the code's.
 A zone is not a lasting effect: it has no single target, it carries squares, and its clock and its end are three places in the code ([Spell zones](../architecture/play/spell-zones.md)).
 
 ## Contest, hold, hide, help, surprise (RN-34)

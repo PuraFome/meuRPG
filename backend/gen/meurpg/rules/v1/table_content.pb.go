@@ -819,8 +819,15 @@ type TableEffect struct {
 	// range, gives the roll no disadvantage. A ranged_attack effect sets at least one of
 	// ignore_cover, range_multiplier and no_long_range_disadvantage.
 	NoLongRangeDisadvantage bool `protobuf:"varint,26,opt,name=no_long_range_disadvantage,json=noLongRangeDisadvantage,proto3" json:"no_long_range_disadvantage,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	// resistance: resistance to every damage type but `except` (a "damage-type:" key
+	// of the SRD, such as "damage-type:psychic") while `while` holds; `while` is "rage"
+	// for as long as the character is raging. Both are required, and the effect has no
+	// `when` and no `tags`. Resistance never stacks: the same type from another source
+	// (the barbarian's own rage resistance) counts once.
+	Except        string `protobuf:"bytes,27,opt,name=except,proto3" json:"except,omitempty"`
+	While         string `protobuf:"bytes,28,opt,name=while,proto3" json:"while,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TableEffect) Reset() {
@@ -1033,6 +1040,20 @@ func (x *TableEffect) GetNoLongRangeDisadvantage() bool {
 		return x.NoLongRangeDisadvantage
 	}
 	return false
+}
+
+func (x *TableEffect) GetExcept() string {
+	if x != nil {
+		return x.Except
+	}
+	return ""
+}
+
+func (x *TableEffect) GetWhile() string {
+	if x != nil {
+		return x.While
+	}
+	return ""
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
@@ -5654,7 +5675,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"tableSpell\x12;\n" +
 	"\n" +
 	"table_feat\x18\x11 \x01(\v2\x1a.meurpg.rules.v1.TableFeatH\x00R\ttableFeatB\x06\n" +
-	"\x04body\"\xb8\x05\n" +
+	"\x04body\"\xe6\x05\n" +
 	"\vTableEffect\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
 	"\x06target\x18\x02 \x01(\tR\x06target\x12\x12\n" +
@@ -5682,7 +5703,9 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\aability\x18\x17 \x01(\tR\aability\x12!\n" +
 	"\fignore_cover\x18\x18 \x01(\bR\vignoreCover\x12)\n" +
 	"\x10range_multiplier\x18\x19 \x01(\x05R\x0frangeMultiplier\x12;\n" +
-	"\x1ano_long_range_disadvantage\x18\x1a \x01(\bR\x17noLongRangeDisadvantage\"\xc3\x01\n" +
+	"\x1ano_long_range_disadvantage\x18\x1a \x01(\bR\x17noLongRangeDisadvantage\x12\x16\n" +
+	"\x06except\x18\x1b \x01(\tR\x06except\x12\x14\n" +
+	"\x05while\x18\x1c \x01(\tR\x05while\"\xc3\x01\n" +
 	"\fTableFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x17\n" +

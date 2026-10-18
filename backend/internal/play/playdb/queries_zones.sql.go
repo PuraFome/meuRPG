@@ -147,7 +147,7 @@ type InsertSpellZoneParams struct {
 	Def           []byte
 }
 
-// The areas spells keep on the map (migration 00267).
+// The areas spells keep on the map (migration 00268).
 func (q *Queries) InsertSpellZone(ctx context.Context, arg InsertSpellZoneParams) (SpellZone, error) {
 	row := q.db.QueryRow(ctx, insertSpellZone,
 		arg.EncounterID,
