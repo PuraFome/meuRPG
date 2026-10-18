@@ -4,7 +4,7 @@ A d20 that may wait for a question is rolled, kept, asked about and settled in o
 The questions are the halfling's Lucky (RN-35) and a Bardic Inspiration die, asked in that order, so the player decides after seeing the d20 and before the result (SRD 5.1).
 The code is `held_gate.go`, `held_store.go`, `held_questions.go`, `held_answer.go`, `held_registry.go`, `held_roller.go`, `combat_lucky.go`, `inspiration_held.go`, `inspiration_lucky.go` and `inspiration_outside.go`.
 
-## The twelve kinds
+## The thirteen kinds
 
 Whichever path rolls the d20 asks the same gate.
 
@@ -21,6 +21,7 @@ Whichever path rolls the d20 asks the same gate.
 | Death save | `RollDeathSave` (a character at 0 hit points, on its turn; the master may roll for an absent player and then waits for the player's first 10 s) | `inspiration_holds` |
 | Contest check | `StartContest` (the initiator's d20) and `RespondContest` (the defender's); one kind, since both are an ability check | `inspiration_holds` |
 | Hide check | `Hide` (the Stealth check) | `inspiration_holds` |
+| Counterspell check | `AnswerReaction` (the ability check of a Counterspell above the slot's level) | `inspiration_holds` |
 | Initiative | `SubmitInitiative` (a player's character in SETUP; the master may roll for it and then waits for the player's first 10 s) | `inspiration_holds` |
 
 **Death saves.** The d20 of a death save is gated like a saving throw with no modifier (`deathSaveWrite`): a Bardic Inspiration die the combatant holds or a halfling's 1 keeps it with the counts untouched until the answer, and the die moves the total across 10 (`combat.DeathSaveWith`) but never a natural 1 (two failures) or a natural 20 (back with 1 hit point). The event keeps the die (`Res`, which the undo gives back) and the Lucky reroll. The player's screen shows the question under the counts (`CombatDeaths.held`, read again from the combatant's `held_roll_offer`).
@@ -28,6 +29,7 @@ Whichever path rolls the d20 asks the same gate.
 **Contests.** The d20 of each side of a contest is an ability check (SRD 5.1), so a Bardic Inspiration die the combatant holds, or a halfling's 1, keeps it until the player answers. Both paths prepare the check first (`prepareCheck`: the number and the circumstances behind the mode, nothing written), put the d20 through the gate (`gateCheck`) before anything is spent, and finish it with the roll the gate gave back (`finishCheck`): a kept d20 spends nothing, opens no contest and writes no event, and the response carries `held_roll_offer` instead of the contest. Only a player's own check, or the master's for a player's character, can wait (the master after the player's first 10 s); a creature's, an NPC's and a grapple that came from an attack roll as they always did. Both paths share the kind `contest_check`, so the hold keeps the request as an `Any` and `rerunContest` runs the one that asked. A Cutting Words window comes first: the die it takes off is part of the modifier the hold keeps (`gateCheck`), and an answer does not open the windows again (`holdCheck`).
 
 **Hide.** The Stealth check of a Hide is an ability check (SRD 5.1) and uses the same three steps as a contest's (`prepareCheck`, `gateCheck`, `finishCheck`). The d20 is kept before the action (or the bonus action of Cunning Action) is spent and before the attempt is written; the response carries `held_roll_offer` instead of the attempt, and the answer settles it with the die added. A Cutting Words window comes first, as for a contest.
+**Counterspell.** The ability check of a Counterspell whose slot is below the spell (`counterspellCheck`) is put through the gate before the reaction or the slot is spent (`counterspellD20`). A kept d20 leaves the window open and writes nothing, and the response of `AnswerReaction` carries `held_roll_offer` instead of the result; the answer runs `AnswerReaction` again with the same request and settles the check with the die added (the line of the check shows it as part of the modifier). A reactor that is not a player's character (an enemy wizard, the master's NPC) rolls at once.
 
 **Initiative.** Initiative is a Dexterity check (SRD 5.1), so `initiativeGate` asks a character that holds a Bardic Inspiration die, or a halfling whose d20 shows a 1, before the total is set. The combat is in SETUP, so the roller is the character alone (no combatant has a die yet) and the die is the one in `character_inspiration`, which carries into the combat when it begins; the hold is the character's, and the combat's read hands the question to the character's combatant (`openInitiatives`, for its player and the master) so a reload finds it. Nothing is written while it waits: the initiative stays unset and the player can still be told "Esperando". The die adds to the total, not to the bonus, so a tie is still told by the same bonus. An NPC's and a creature's initiative, and the master's roll for them, wait for nobody.
 

@@ -769,6 +769,7 @@ message AnswerHeldRollResponse {
     StartContestResponse contest = 11;
     RespondContestResponse contest_answer = 12;
     HideResponse hide = 13;
+    AnswerReactionResponse counterspell_check = 14;
     SubmitInitiativeResponse initiative = 10;
   }
   // The next question of the same roll, copied out of the result, when the roll still waits: the d20 Lucky

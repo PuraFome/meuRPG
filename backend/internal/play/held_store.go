@@ -34,6 +34,7 @@ const (
 	heldHintTry           heldKind = "hint_try"
 	heldDeathSave         heldKind = "death_save"
 	heldHide              heldKind = "hide_check"
+	heldCounterspell      heldKind = "counterspell_check"
 	heldContest           heldKind = "contest_check"
 	heldInitiative        heldKind = "initiative"
 )

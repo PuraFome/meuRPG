@@ -23,6 +23,7 @@ const KIND_TEXT: Readonly<Record<HeldRollKind, string>> = {
   [HeldRollKind.DEATH_SAVE]: 'Teste contra a morte',
   [HeldRollKind.CONTEST]: 'Disputa',
   [HeldRollKind.HIDE]: 'Esconder-se',
+  [HeldRollKind.COUNTERSPELL_CHECK]: 'Teste da Contramágica',
   [HeldRollKind.INITIATIVE]: 'Iniciativa',
 };
 
