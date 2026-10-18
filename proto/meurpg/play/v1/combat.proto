@@ -1013,6 +1013,30 @@ service CombatService {
   //     missing_ft) for an origin beyond the spell's range.
   rpc PreviewSpellArea(PreviewSpellAreaRequest) returns (PreviewSpellAreaResponse);
 
+  // MoveSpellZone moves the area a spell keeps on the map, for the spells that allow it
+  // (Moonbeam: its caster uses an action on a later turn to move the beam up to 60 feet).
+  // It costs the caster's action, and the creatures the zone now covers and had not
+  // reached before are hit as the spell says. The master moves any zone without the
+  // action or the distance.
+  //
+  // Errors:
+  //   - `invalid_argument`: the zone is not one that moves by an action, or the square
+  //     is off the map or a wall.
+  //   - `not_found`: the zone is not in the combat (also for one a player does not see).
+  //   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN, ACTION_USED
+  //     (the action is spent), TARGET_OUT_OF_REACH (with missing_ft) beyond the 60 feet.
+  //   - `permission_denied`: the caller does not play the caster.
+  rpc MoveSpellZone(MoveSpellZoneRequest) returns (MoveSpellZoneResponse);
+
+  // EndSpellZone ends the area a spell keeps on the map, at the master's word (the caster's
+  // concentration ended outside the app). Only the master may call it. The log tells that the
+  // zone ended and the master ended it.
+  //
+  // Errors:
+  //   - `permission_denied`: the caller is not the master.
+  //   - `not_found`: the zone is not in the combat.
+  rpc EndSpellZone(EndSpellZoneRequest) returns (EndSpellZoneResponse);
+
   // ResolveHiddenReveal answers the question a player's area spell opened when it
   // hit hidden creatures and the table rule is "Perguntar a cada vez" (Encounter.
   // pending_hidden_reveals): `reveal` true makes them appear to the players, as
@@ -2027,6 +2051,94 @@ message Encounter {
   // The offers of the monk's riders after a hit (UseHitRider): the master gets all of
   // them, a player the ones of their own character. Open until answered or the round ends.
   repeated HitRiderOffer hit_riders = 30;
+  // The areas that spells keep on the map (SpellZone), as the caller may see them: the
+  // master all of them (the ones of a hidden caster marked MASTER_ONLY), a player only
+  // the ones whose caster they see. Empty in THEATRE mode and when no spell keeps one.
+  repeated SpellZone zones = 31;
+}
+
+// SpellZone is a lingering area a spell keeps on the map for a while (Moonbeam, Spirit
+// Guardians, Cloudkill, Web): a creature that enters it for the first time on a turn,
+// or starts its turn in it, is hit by what the spell says. The server decides who is
+// hit and when; the map only draws the squares.
+message SpellZone {
+  // Stable ID of the zone (a UUID); MoveSpellZone takes it.
+  string id = 1;
+  // The spell that keeps it ("spell:moonbeam").
+  string spell_key = 2;
+  // The spell's name in Portuguese.
+  string spell_name_pt = 3;
+  // The combatant that cast it (a combatant ID the caller sees; see `visibility`).
+  string owner_combatant_id = 4;
+  // The shape and size of the area as the spell gives them: sphere, cylinder or cube.
+  meurpg.rules.v1.SpellAreaShape shape = 5;
+  // The radius of a sphere or a cylinder, the side of a cube, in feet.
+  int32 size_ft = 6;
+  // The point of origin, a square of the grid.
+  SpellOrigin origin = 7;
+  // The squares it covers now, after the walls cut it, from the top left of the grid.
+  repeated SpellOrigin squares = 8;
+  // True when the spell lasts while its caster concentrates.
+  bool concentration = 9;
+  // The rounds the zone still has, counted to the start of the caster's turn; 0 when
+  // no round count applies (it lasts until the concentration ends or it is dismissed).
+  int32 rounds_left = 10;
+  // How the area moves, if it does.
+  SpellZoneMovement movement = 11;
+  // Who reads the zone.
+  SpellZoneVisibility visibility = 12;
+  // The caster's label ("Bartolo"), for "Concentração de Bartolo". Always a combatant the
+  // caller sees.
+  string owner_label = 13;
+  // True when the caller reads no numbers of the zone: a player reading the zone of a
+  // caster that is not theirs. The fields from `save_ability` to `moves_per_turn_ft` and
+  // `rounds_left` are then empty (RN-10: the DC, the dice and the time of an NPC's spell are
+  // the master's).
+  bool details_hidden = 14;
+  // The saving throw ("wis") and its Portuguese name; empty for a zone with no saving
+  // throw (the damage just lands).
+  string save_ability = 15;
+  string save_ability_name_pt = 16;
+  // The DC.
+  optional int32 save_dc = 17;
+  // The damage at the slot of the cast ("3d8"), its type key and Portuguese name; empty for
+  // a zone with no damage (Web).
+  string damage_dice = 18;
+  string damage_type_key = 19;
+  string damage_type_name_pt = 20;
+  // True when a passed save halves the damage.
+  bool half_on_save = 21;
+  // How far the area goes by itself at the start of each of the caster's turns, in feet
+  // (Cloudkill 10); 0 for one that stays or is moved by hand.
+  int32 moves_per_turn_ft = 22;
+  // What else the zone does, as keys: "speed_halved" (a creature that starts its turn in
+  // it or comes in moves at half speed that turn), "difficult_terrain" and "restrains".
+  repeated string notes = 23;
+  // The combatants standing in the area now that the caller sees ("Aqui: Tor, Jabuti").
+  repeated string occupant_ids = 24;
+}
+
+// SpellZoneMovement says how a zone changes place while it lasts.
+enum SpellZoneMovement {
+  SPELL_ZONE_MOVEMENT_UNSPECIFIED = 0;
+  // It stays where the spell put it.
+  SPELL_ZONE_MOVEMENT_FIXED = 1;
+  // The caster moves it with an action on later turns (MoveSpellZone; Moonbeam).
+  SPELL_ZONE_MOVEMENT_ACTION = 2;
+  // It is centered on the caster and goes where the caster goes (Spirit Guardians).
+  SPELL_ZONE_MOVEMENT_FOLLOWS_CASTER = 3;
+  // It moves by itself at the start of each of the caster's turns (Cloudkill).
+  SPELL_ZONE_MOVEMENT_DRIFTS = 4;
+}
+
+// SpellZoneVisibility says who reads a zone (RN-10).
+enum SpellZoneVisibility {
+  SPELL_ZONE_VISIBILITY_UNSPECIFIED = 0;
+  // Everyone at the table who sees the caster.
+  SPELL_ZONE_VISIBILITY_EVERYONE = 1;
+  // The master alone: the caster is hidden from the players. A player never gets such
+  // a zone, so this value only reaches the master.
+  SPELL_ZONE_VISIBILITY_MASTER_ONLY = 2;
 }
 
 // HitRiderKind is which rider a hit offers.
@@ -3502,6 +3614,9 @@ enum HeldRollKind {
   HELD_ROLL_KIND_GROUP_CHECK = 6;
   HELD_ROLL_KIND_TRAP_SEARCH = 7;
   HELD_ROLL_KIND_HINT_TRY = 8;
+  // The death saving throw of a character at 0 hit points (RollDeathSave), asked about Lucky's reroll of a 1 and about
+  // a Bardic Inspiration die like any other saving throw (SRD 5.1).
+  HELD_ROLL_KIND_DEATH_SAVE = 9;
 }
 
 // LuckyQuestion is the halfling's "Tirou 1: rolar de novo?" (SRD 5.1, Halfling, Lucky).
@@ -3953,6 +4068,38 @@ message SpellDirection {
 message SpellArea {
   SpellOrigin origin = 1;
   repeated SpellOrigin squares = 2;
+}
+
+// MoveSpellZoneRequest moves a zone.
+message MoveSpellZoneRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  // The zone (Encounter.zones.id).
+  string zone_id = 3;
+  // The new point of origin.
+  SpellOrigin origin = 4;
+  // Makes a retry harmless.
+  string idempotency_key = 5;
+}
+
+// EndSpellZoneRequest ends a zone.
+message EndSpellZoneRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  // The zone (Encounter.zones.id).
+  string zone_id = 3;
+  // Makes a retry harmless.
+  string idempotency_key = 4;
+}
+
+// EndSpellZoneResponse returns the combat after the end.
+message EndSpellZoneResponse {
+  Encounter encounter = 1;
+}
+
+// MoveSpellZoneResponse returns the combat after the move.
+message MoveSpellZoneResponse {
+  Encounter encounter = 1;
 }
 
 // PreviewSpellAreaRequest places an area spell for the preview.
@@ -4413,7 +4560,8 @@ message RollDeathSaveRequest {
 
 // DeathSave is a death save and where it left the character.
 message DeathSave {
-  // The d20 (no modifier).
+  // The d20, with the Bardic Inspiration die the player added as the modifier (0 without one), and the d20 the
+  // halfling's Lucky rolled again in `rerolled`.
   DiceRoll roll = 1;
   DeathSaveOutcome outcome = 2;
   // The counts after it, 0 to 3 each.
@@ -4424,12 +4572,20 @@ message DeathSave {
   // Three failures: the master confirms the death. Only the master gets it; a
   // player only sees the counts.
   bool dying = 6;
+  // The Bardic Inspiration die the player added to the d20 (SRD 5.1), when one was used: it moves the total, never the
+  // natural 1 (two failures) or the natural 20 (back with 1 hit point).
+  repeated BonusDie bonus_dice = 7;
 }
 
 // RollDeathSaveResponse returns the combat and the save.
 message RollDeathSaveResponse {
   Encounter encounter = 1;
   DeathSave death_save = 2;
+  // Set instead of `death_save` when the roll waits for a question: the halfling's Lucky about a 1, or the Bardic
+  // Inspiration die the combatant holds (AnswerHeldRoll answers it). The d20 was rolled and kept and nothing is
+  // written, the counts included. The master is asked too when he rolls for the player, and answers after the
+  // player's first 10 s.
+  HeldRollOffer held_roll_offer = 3;
 }
 
 // ConfirmDeathRequest confirms a death.
@@ -4888,6 +5044,10 @@ enum CombatLogEffectChange {
   COMBAT_LOG_EFFECT_CHANGE_SAVE_SKIPPED = 7;
   // The effect gave the target temporary hit points (Heroísmo, at the start of its turn); `amount`.
   COMBAT_LOG_EFFECT_CHANGE_TEMP_HP = 8;
+  // A spell's area moved (Moonbeam moved by its caster, Cloudkill drifting). A creature the
+  // area catches (it came in, or began its turn there) is a SAVED or SAVE_FAILED line with
+  // `reason` zone_enter or zone_start, the roll, and the damage in `amount`.
+  COMBAT_LOG_EFFECT_CHANGE_ZONE_MOVED = 9;
 }
 
 // CombatLogMonster is a monster of a MONSTERS_ADDED line, only the master's.

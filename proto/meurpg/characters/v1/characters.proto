@@ -1177,6 +1177,12 @@ enum OpenChoiceKind {
   OPEN_CHOICE_KIND_SPELLS_KNOWN = 3;
   // Spells a caster that prepares spells prepares.
   OPEN_CHOICE_KIND_SPELLS_PREPARED = 4;
+  // Skills still to double with Expertise (the rogue's and the bard's).
+  OPEN_CHOICE_KIND_EXPERTISE = 5;
+  // Tool proficiencies a trait lets the player pick (the dwarf's), not yet listed on the sheet.
+  OPEN_CHOICE_KIND_TOOLS = 6;
+  // Languages the race, a trait or the background let the player pick, not yet listed on the sheet.
+  OPEN_CHOICE_KIND_LANGUAGES = 7;
 }
 
 // OpenChoice is a choice a sheet has not made yet.

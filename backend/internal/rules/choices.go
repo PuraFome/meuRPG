@@ -129,6 +129,7 @@ func (x *deriver) checkChoices() {
 	chosen := x.chosenSkills()
 	x.checkSkillCount(allowed, len(chosen))
 	x.checkExpertiseCount(expertiseAllowed)
+	x.checkProficiencyPicks()
 	x.checkOptionCounts()
 	x.checkCustomBackground()
 	x.checkMulticlass()
@@ -210,9 +211,52 @@ func (x *deriver) checkExpertiseCount(allowed int) {
 			allowed += feat.ExpertiseChoices
 		}
 	}
-	if n := len(x.b.Expertise); n > allowed {
+	switch n := len(x.b.Expertise); {
+	case n > allowed:
 		x.issue(IssueExpertise, "full.expertise_skill_keys", "Há %d perícias com especialização; o personagem tem %d.", n, allowed)
+	case n < allowed:
+		x.openPick(OpenChoiceExpertise, allowed-n, "full.expertise_skill_keys", "especialização", "especializações")
 	}
+}
+
+// checkProficiencyPicks warns of the tool and language picks the sheet has not made: the tools a trait lets the
+// player pick (the dwarf's), and the languages the race, its traits and the background let the player pick. Both
+// are free text on the sheet, so a pick is open when the list is shorter than the picks the character is owed.
+func (x *deriver) checkProficiencyPicks() {
+	if len(x.classes) == 0 {
+		return
+	}
+	tools, languages := 0, 0
+	if x.race != nil {
+		languages += x.race.LanguageChoices
+	}
+	for _, t := range x.ownedTraits() {
+		languages += t.LanguageChoices
+	}
+	if bg, ok := x.c.backgrounds[x.b.Background]; ok {
+		languages += bg.LanguageChoices
+	}
+	for _, a := range x.active {
+		if a.effect.Type == "choice" && a.effect.Choice == "tool" {
+			tools += a.effect.Count
+		}
+	}
+	if n := len(x.b.ToolProficiencies); n < tools {
+		x.openPick(OpenChoiceTools, tools-n, "full.tool_proficiencies", "ferramenta", "ferramentas")
+	}
+	if n := len(x.b.Languages); n < languages {
+		x.openPick(OpenChoiceLanguages, languages-n, "full.languages", "idioma", "idiomas")
+	}
+}
+
+// openPick records a pick the sheet has not made: an open choice, and an issue on the field the player fills.
+func (x *deriver) openPick(kind string, missing int, field, one, many string) {
+	x.d.OpenChoices = append(x.d.OpenChoices, OpenChoice{Kind: kind, Missing: missing})
+	noun := many
+	if missing == 1 {
+		noun = one
+	}
+	x.issue(IssueMissing, field, "Falta escolher %d %s.", missing, noun)
 }
 
 // checkCustomBackground checks a custom background: it grants two skills, like

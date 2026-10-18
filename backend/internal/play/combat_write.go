@@ -213,6 +213,9 @@ type combatTx struct {
 	// tempCleared are the temporary hit points the ended effects took off, kept in the event
 	// with the ended effects.
 	tempCleared []tempCleared
+	// zoneOut are the lines of the areas spells keep on the map (a creature caught, an area that moved or
+	// ended): written after the change's own event, so the log reads the move and then what it brought.
+	zoneOut []zoneLine
 	// hash is the request hash kept with the event that carries the change's key.
 	hash *string
 	// rules are the table's rules (RN-24), read in this transaction when it
@@ -456,7 +459,7 @@ func (r *changeRun) record(ctx context.Context, c *combatTx, w combatWrite, payl
 		return err
 	}
 	r.last = c.stamped
-	return nil
+	return flushZoneLines(ctx, c)
 }
 
 // withEndedEffects keeps the effects the change ended in its event, so that the undo puts
