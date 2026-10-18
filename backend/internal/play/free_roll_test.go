@@ -6,6 +6,7 @@ import (
 	"slices"
 	"testing"
 	"time"
+	"uuid"
 
 	"connectrpc.com/connect"
 
@@ -316,5 +317,22 @@ func TestFreeRollNamesTheRollerWhoseAccountIsGone(t *testing.T) {
 	}
 	if got := freeRollRollerName("Brisa", false); got != "Brisa" {
 		t.Errorf("a named player = %q, want Brisa", got)
+	}
+}
+
+func TestFreeRollKeyIsAUUIDOfTheMemberAndTheKey(t *testing.T) {
+	t.Parallel()
+	one := freeRollKey("11111111-1111-4111-8111-111111111111", "uma chave qualquer, de até 64 caracteres")
+	if _, err := uuid.Parse(one); err != nil {
+		t.Fatalf("freeRollKey() = %q, want a UUID (the column's type): %v", one, err)
+	}
+	if again := freeRollKey("11111111-1111-4111-8111-111111111111", "uma chave qualquer, de até 64 caracteres"); again != one {
+		t.Errorf("the same member and key gave %q and %q, want one UUID", one, again)
+	}
+	if other := freeRollKey("22222222-2222-4222-8222-222222222222", "uma chave qualquer, de até 64 caracteres"); other == one {
+		t.Error("two members with the same key got the same UUID, want each member's own")
+	}
+	if other := freeRollKey("11111111-1111-4111-8111-111111111111", "outra"); other == one {
+		t.Error("two keys of one member got the same UUID")
 	}
 }

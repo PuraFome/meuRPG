@@ -6007,6 +6007,55 @@ func (q *Queries) ListEncounterRollModeRequests(ctx context.Context, encounterID
 	return items, nil
 }
 
+const listFreeRollEvents = `-- name: ListFreeRollEvents :many
+SELECT id, actor_user_id, payload, created_at FROM session_events
+WHERE game_session_id = $1 AND kind = 'free_roll_rolled'
+  AND (NOT $3::BOOL OR payload->>'secret' = 'false')
+ORDER BY seq DESC
+LIMIT $2
+`
+
+type ListFreeRollEventsParams struct {
+	GameSessionID string
+	Limit         int32
+	OnlyTable     bool
+}
+
+type ListFreeRollEventsRow struct {
+	ID          string
+	ActorUserID *string
+	Payload     []byte
+	CreatedAt   time.Time
+}
+
+// The free dice roller's rolls of the session (MR-052), newest first. A player's list asks for
+// only_table: a roll is the table's when its payload says "secret": false, so an event without the
+// key is never shown to a player (the master's secret rolls are the master's alone, RN-10).
+func (q *Queries) ListFreeRollEvents(ctx context.Context, arg ListFreeRollEventsParams) ([]ListFreeRollEventsRow, error) {
+	rows, err := q.db.Query(ctx, listFreeRollEvents, arg.GameSessionID, arg.Limit, arg.OnlyTable)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListFreeRollEventsRow
+	for rows.Next() {
+		var i ListFreeRollEventsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ActorUserID,
+			&i.Payload,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listGameSessions = `-- name: ListGameSessions :many
 SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash FROM game_sessions
 WHERE campaign_id = $1
@@ -7556,6 +7605,53 @@ func (q *Queries) ListTrapEventsOfSession(ctx context.Context, gameSessionID str
 			&i.ID,
 			&i.Kind,
 			&i.CharacterID,
+			&i.Payload,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUserFreeRollEvents = `-- name: ListUserFreeRollEvents :many
+SELECT id, actor_user_id, payload, created_at FROM session_events
+WHERE game_session_id = $1 AND kind = 'free_roll_rolled' AND actor_user_id = $2
+ORDER BY seq DESC
+LIMIT $3
+`
+
+type ListUserFreeRollEventsParams struct {
+	GameSessionID string
+	ActorUserID   *string
+	Limit         int32
+}
+
+type ListUserFreeRollEventsRow struct {
+	ID          string
+	ActorUserID *string
+	Payload     []byte
+	CreatedAt   time.Time
+}
+
+// The rolls one user made in the session, newest first: the master's secret ones included, since
+// only the master makes them.
+func (q *Queries) ListUserFreeRollEvents(ctx context.Context, arg ListUserFreeRollEventsParams) ([]ListUserFreeRollEventsRow, error) {
+	rows, err := q.db.Query(ctx, listUserFreeRollEvents, arg.GameSessionID, arg.ActorUserID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUserFreeRollEventsRow
+	for rows.Next() {
+		var i ListUserFreeRollEventsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ActorUserID,
 			&i.Payload,
 			&i.CreatedAt,
 		); err != nil {

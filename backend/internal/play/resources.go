@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
+	"time"
 	"uuid"
 
 	"connectrpc.com/connect"
@@ -586,21 +587,29 @@ type keyedEvent struct {
 
 // appendKeyedEvent encodes the payload, numbers the event and inserts it.
 func (s *Service) appendKeyedEvent(ctx context.Context, q *playdb.Queries, e keyedEvent, payload any) error {
+	_, _, err := s.insertKeyedEvent(ctx, q, e, payload)
+	return err
+}
+
+// insertKeyedEvent is appendKeyedEvent for a writer that answers with the event's id and time.
+func (s *Service) insertKeyedEvent(ctx context.Context, q *playdb.Queries, e keyedEvent, payload any) (id string, at time.Time, err error) {
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("encode the event payload: %w", err)
+		return "", time.Time{}, fmt.Errorf("encode the event payload: %w", err)
 	}
 	seq, err := q.NextSessionEventSeq(ctx, e.sessionID)
 	if err != nil {
-		return fmt.Errorf("next event number: %w", err)
+		return "", time.Time{}, fmt.Errorf("next event number: %w", err)
 	}
-	if _, err := q.InsertSessionEvent(ctx, playdb.InsertSessionEventParams{
+	at = s.now()
+	row, err := q.InsertSessionEvent(ctx, playdb.InsertSessionEventParams{
 		GameSessionID: e.sessionID, Seq: seq, Kind: e.kind, ActorUserID: &e.userID, CharacterID: e.characterID,
-		Payload: body, IdempotencyKey: &e.key, IdempotencyHash: e.hash, CreatedAt: s.now(),
-	}); err != nil {
-		return fmt.Errorf("insert session event: %w", err)
+		Payload: body, IdempotencyKey: &e.key, IdempotencyHash: e.hash, CreatedAt: at,
+	})
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("insert session event: %w", err)
 	}
-	return nil
+	return row.ID, at, nil
 }
 
 // songOfRestDie says whether a bard's Song of Rest gives the character an extra die with
