@@ -172,6 +172,13 @@ message TableEffect {
   // range, gives the roll no disadvantage. A ranged_attack effect sets at least one of
   // ignore_cover, range_multiplier and no_long_range_disadvantage.
   bool no_long_range_disadvantage = 26;
+  // resistance: resistance to every damage type but `except` (a "damage-type:" key
+  // of the SRD, such as "damage-type:psychic") while `while` holds; `while` is "rage"
+  // for as long as the character is raging. Both are required, and the effect has no
+  // `when` and no `tags`. Resistance never stacks: the same type from another source
+  // (the barbarian's own rage resistance) counts once.
+  string except = 27;
+  string while = 28;
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a

@@ -239,3 +239,31 @@ export function rangedAttackMenu(): EffectMenuVm {
   );
   return new EffectMenuVm(res);
 }
+
+/** The menu with the real one's resistance effect (every damage type but one, while raging), for its own specs. */
+export function resistanceMenu(): EffectMenuVm {
+  const res = menuResponse();
+  res.types.push(
+    create(EffectMenuTypeSchema, {
+      type: 'resistance',
+      namePt: 'Resistência a dano',
+      hintPt: 'Resistência a todos os tipos de dano menos um.',
+      fields: [
+        { name: 'except', kind: 'choice', required: true, list: 'damage_types' },
+        { name: 'while', kind: 'choice', required: true, list: 'resistance_conditions' },
+        { name: 'text_pt', kind: 'text' },
+      ],
+    }),
+  );
+  res.lists.push(
+    create(EffectMenuListSchema, {
+      name: 'damage_types',
+      values: [{ key: 'damage-type:psychic', namePt: 'Psíquico' }],
+    }),
+    create(EffectMenuListSchema, {
+      name: 'resistance_conditions',
+      values: [{ key: 'rage', namePt: 'Em fúria' }],
+    }),
+  );
+  return new EffectMenuVm(res);
+}
