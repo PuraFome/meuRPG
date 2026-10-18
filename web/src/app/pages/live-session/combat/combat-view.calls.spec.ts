@@ -65,7 +65,9 @@ const refuse = (code: Code) => () => {
 };
 /** The client methods `names` answer with the combat `e`, as the ones that return an `Encounter` do. */
 const answers = (e: Encounter, ...names: string[]): NonNullable<MountOptions['api']> =>
-  Object.fromEntries(names.map((n) => [n, () => e]));
+  Object.fromEntries(
+    names.map((n) => [n, () => (n === 'submitInitiative' ? { encounter: e, held: undefined } : e)]),
+  );
 
 describe('CombatView calls: run', () => {
   it('does nothing while another call is in flight (the busy guard)', async () => {

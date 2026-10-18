@@ -279,7 +279,8 @@ type CombatServiceClient interface {
 	// SubmitInitiative sets a combatant's initiative: a d20 plus the
 	// combatant's initiative bonus (RN-19). The combatant's player may roll
 	// for their own character, and the master for anyone. Only while the combat
-	// is in SETUP.
+	// is in SETUP. A character that holds a Bardic Inspiration die, or a halfling whose d20 shows a 1, is asked first
+	// (`held_roll_offer`).
 	//
 	// The roll is either rolled by the app (roll_in_app), or a face typed from
 	// a physical die (d20_face, 1 to 20). With the campaign's dice setting
@@ -2206,7 +2207,8 @@ type CombatServiceHandler interface {
 	// SubmitInitiative sets a combatant's initiative: a d20 plus the
 	// combatant's initiative bonus (RN-19). The combatant's player may roll
 	// for their own character, and the master for anyone. Only while the combat
-	// is in SETUP.
+	// is in SETUP. A character that holds a Bardic Inspiration die, or a halfling whose d20 shows a 1, is asked first
+	// (`held_roll_offer`).
 	//
 	// The roll is either rolled by the app (roll_in_app), or a face typed from
 	// a physical die (d20_face, 1 to 20). With the campaign's dice setting

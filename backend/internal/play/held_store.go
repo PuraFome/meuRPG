@@ -33,6 +33,7 @@ const (
 	heldTrapSearch        heldKind = "trap_search"
 	heldHintTry           heldKind = "hint_try"
 	heldDeathSave         heldKind = "death_save"
+	heldInitiative        heldKind = "initiative"
 )
 
 // checksTheAnswer says the answer to a roll of the kind is refused when its question went stale (its combat round
