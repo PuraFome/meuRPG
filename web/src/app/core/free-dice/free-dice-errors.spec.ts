@@ -8,9 +8,15 @@ function limited(seconds: string): ConnectError {
 
 describe('freeRollError', () => {
   it('says the wait in seconds when the server turned the roll away for asking too often', () => {
-    expect(freeRollError(limited('3'))).toBe('Rolagens demais em pouco tempo. Tente de novo em 3 segundos.');
-    expect(freeRollError(limited('1'))).toBe('Rolagens demais em pouco tempo. Tente de novo em 1 segundo.');
-    expect(freeRollError(limited('2.2'))).toBe('Rolagens demais em pouco tempo. Tente de novo em 3 segundos.');
+    expect(freeRollError(limited('3'))).toBe(
+      'Rolagens demais em pouco tempo. Tente de novo em 3 segundos.',
+    );
+    expect(freeRollError(limited('1'))).toBe(
+      'Rolagens demais em pouco tempo. Tente de novo em 1 segundo.',
+    );
+    expect(freeRollError(limited('2.2'))).toBe(
+      'Rolagens demais em pouco tempo. Tente de novo em 3 segundos.',
+    );
   });
 
   it('gives the wait as a number, and none when the server sent none', () => {

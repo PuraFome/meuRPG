@@ -83,11 +83,14 @@ describe('SessionHeader the "Dados" button', () => {
     return { fixture, el, opened, dice: () => el.querySelector<HTMLButtonElement>('.js-dice') };
   }
 
-  it.each([true, false])('is there for the master and the player alike (master: %s)', (isMaster) => {
-    const { dice } = setup({ isMaster });
-    expect(dice()?.textContent?.trim()).toBe('Dados');
-    expect(dice()?.getAttribute('aria-disabled')).not.toBe('true');
-  });
+  it.each([true, false])(
+    'is there for the master and the player alike (master: %s)',
+    (isMaster) => {
+      const { dice } = setup({ isMaster });
+      expect(dice()?.querySelector('.js-dice-text')?.textContent?.trim()).toBe('Dados');
+      expect(dice()?.getAttribute('aria-disabled')).not.toBe('true');
+    },
+  );
 
   it('asks the page to open the dice when tapped', () => {
     const { dice, opened } = setup();
@@ -97,7 +100,7 @@ describe('SessionHeader the "Dados" button', () => {
 
   it('waits while the server rolls: "Rolando…", and a tap does nothing', () => {
     const { dice, opened } = setup({ rolling: true });
-    expect(dice()?.textContent?.trim()).toBe('Rolando…');
+    expect(dice()?.querySelector('.js-dice-text')?.textContent?.trim()).toBe('Rolando…');
     expect(dice()?.getAttribute('aria-disabled')).toBe('true');
     dice()!.click();
     expect(opened).not.toHaveBeenCalled();

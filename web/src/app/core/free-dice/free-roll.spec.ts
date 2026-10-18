@@ -20,6 +20,7 @@ import {
   repeatLabel,
   resultLine,
   rollButtonLabel,
+  rollButtonName,
   summaryOf,
   toFreeRollVm,
   whenText,
@@ -89,7 +90,13 @@ describe('toFreeRollVm', () => {
 
 describe('the form', () => {
   it('starts at 1d20, no modifier, for the table', () => {
-    expect(DEFAULT_FORM).toEqual({ sides: 20, count: 1, modifier: 0, mode: 'normal', secret: false });
+    expect(DEFAULT_FORM).toEqual({
+      sides: 20,
+      count: 1,
+      modifier: 0,
+      mode: 'normal',
+      secret: false,
+    });
   });
 
   it('keeps the count in 1 to 20 and the modifier in -20 to +20', () => {
@@ -97,7 +104,10 @@ describe('the form', () => {
     expect(normalizeForm(form({ count: 99 })).count).toBe(20);
     expect(normalizeForm(form({ modifier: -50 })).modifier).toBe(-20);
     expect(normalizeForm(form({ modifier: 50 })).modifier).toBe(20);
-    expect(normalizeForm(form({ count: 2.7, modifier: 1.2 }))).toMatchObject({ count: 2, modifier: 1 });
+    expect(normalizeForm(form({ count: 2.7, modifier: 1.2 }))).toMatchObject({
+      count: 2,
+      modifier: 1,
+    });
   });
 
   it('keeps a die the table has, and falls back to d20 for any other', () => {
@@ -123,28 +133,52 @@ describe('the form', () => {
   });
 
   it('is rebuilt from a roll to repeat it, secret included', () => {
-    const again = formFromRoll(roll({ sides: 20, count: 1, modifier: 5, mode: 'advantage', secret: true }));
+    const again = formFromRoll(
+      roll({ sides: 20, count: 1, modifier: 5, mode: 'advantage', secret: true }),
+    );
     expect(again).toEqual({ sides: 20, count: 1, modifier: 5, mode: 'advantage', secret: true });
   });
 });
 
 describe('the big button', () => {
   it('says the formula, and for whom when the master rolls', () => {
-    expect(rollButtonLabel(form({ sides: 6, count: 2, modifier: 3 }), { master: false, physical: false })).toBe('Rolar 2d6 + 3');
-    expect(rollButtonLabel(form({ sides: 6, count: 2, modifier: 3 }), { master: true, physical: false })).toBe('Rolar 2d6 + 3 para a mesa');
+    expect(
+      rollButtonLabel(form({ sides: 6, count: 2, modifier: 3 }), {
+        master: false,
+        physical: false,
+      }),
+    ).toBe('Rolar 2d6 + 3');
+    expect(
+      rollButtonLabel(form({ sides: 6, count: 2, modifier: 3 }), { master: true, physical: false }),
+    ).toBe('Rolar 2d6 + 3 para a mesa');
     expect(
       rollButtonLabel(form({ mode: 'advantage', secret: true }), { master: true, physical: false }),
     ).toBe('Rolar 1d20 com vantagem, só eu');
-    expect(rollButtonLabel(form({ secret: true }), { master: true, physical: false })).toBe('Rolar 1d20, só eu');
+    expect(rollButtonLabel(form({ secret: true }), { master: true, physical: false })).toBe(
+      'Rolar 1d20, só eu',
+    );
   });
 
   it('says "no app" at a table of physical dice', () => {
     expect(rollButtonLabel(form(), { master: false, physical: true })).toBe('Rolar no app');
+    expect(rollButtonName(form(), { master: false, physical: true })).toBe('Rolar no app: 1d20');
+  });
+
+  it('says "de novo" on the result card\'s button, before who sees it', () => {
+    const player = { master: false, physical: false };
+    const master = { master: true, physical: false };
+    expect(rollButtonLabel(form({ sides: 6, count: 2, modifier: 3 }), player, true)).toBe(
+      'Rolar 2d6 + 3 de novo',
+    );
+    expect(rollButtonLabel(form({ secret: true }), master, true)).toBe('Rolar 1d20 de novo, só eu');
+    expect(rollButtonLabel(form(), master, true)).toBe('Rolar 1d20 de novo, para a mesa');
   });
 
   it('names the repeat and the roll again', () => {
     expect(repeatLabel(roll())).toBe('Repetir 2d6 + 3');
-    expect(repeatLabel(roll({ formula: '1d20 + 5 com vantagem' }))).toBe('Repetir 1d20 + 5 com vantagem');
+    expect(repeatLabel(roll({ formula: '1d20 + 5 com vantagem' }))).toBe(
+      'Repetir 1d20 + 5 com vantagem',
+    );
   });
 });
 
@@ -172,7 +206,15 @@ describe('the result', () => {
 
   it('says natural 20 and natural 1 in words, only for one d20', () => {
     const one = (face: number, over: Partial<FreeRollVm> = {}) =>
-      roll({ sides: 20, count: 1, modifier: 5, formula: '1d20 + 5', dice: [{ face, discarded: false }], total: face + 5, ...over });
+      roll({
+        sides: 20,
+        count: 1,
+        modifier: 5,
+        formula: '1d20 + 5',
+        dice: [{ face, discarded: false }],
+        total: face + 5,
+        ...over,
+      });
     expect(naturalWord(one(20))).toBe('20 natural');
     expect(naturalWord(one(1))).toBe('1 natural');
     expect(naturalWord(one(12))).toBeNull();
@@ -180,10 +222,21 @@ describe('the result', () => {
     expect(resultLine(one(1))).toBe('1d20 + 5 = 6 · 1 natural');
     // Two d20 are a sum, not a natural.
     expect(
-      naturalWord(roll({ sides: 20, count: 2, dice: [{ face: 20, discarded: false }, { face: 3, discarded: false }] })),
+      naturalWord(
+        roll({
+          sides: 20,
+          count: 2,
+          dice: [
+            { face: 20, discarded: false },
+            { face: 3, discarded: false },
+          ],
+        }),
+      ),
     ).toBeNull();
     // A d6 that shows 1 is no natural 1.
-    expect(naturalWord(roll({ sides: 6, count: 1, dice: [{ face: 1, discarded: false }] }))).toBeNull();
+    expect(
+      naturalWord(roll({ sides: 6, count: 1, dice: [{ face: 1, discarded: false }] })),
+    ).toBeNull();
   });
 
   it('counts the natural of the die that stayed under advantage', () => {
@@ -207,8 +260,14 @@ describe('the result', () => {
 
 describe('the lists', () => {
   it('splits the log line at the name so the app can set the who in bold', () => {
-    expect(logParts(roll())).toEqual({ who: 'Rolagem livre · Brisa:', rest: '2d6 + 3 = 11 (4, 4)' });
-    expect(logParts(roll({ logText: 'sem dois pontos' }))).toEqual({ who: '', rest: 'sem dois pontos' });
+    expect(logParts(roll())).toEqual({
+      who: 'Rolagem livre · Brisa:',
+      rest: '2d6 + 3 = 11 (4, 4)',
+    });
+    expect(logParts(roll({ logText: 'sem dois pontos' }))).toEqual({
+      who: '',
+      rest: 'sem dois pontos',
+    });
   });
 
   it('says how long ago', () => {

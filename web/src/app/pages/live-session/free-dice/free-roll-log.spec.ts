@@ -25,9 +25,11 @@ describe('FreeRollLog', () => {
     expect(section?.getAttribute('aria-labelledby')).toBe(section?.querySelector('h2')?.id);
   });
 
-  it('says in the app\'s tone that nobody rolled yet', () => {
+  it("says in the app's tone that nobody rolled yet", () => {
     const { el } = mount({});
-    expect(text(el)).toContain('Ninguém rolou dados nesta sessão ainda. As rolagens da mesa aparecem aqui.');
+    expect(text(el)).toContain(
+      'Ninguém rolou dados nesta sessão ainda. As rolagens da mesa aparecem aqui.',
+    );
   });
 
   it('lists the rolls newest first with the roller in bold', () => {
@@ -54,10 +56,14 @@ describe('FreeRollLog', () => {
   });
 
   it('shows the newest ten and the rest on request', () => {
-    const rolls = Array.from({ length: 14 }, (_, i) => freeRoll(`r${i}`, { logText: `Rolagem livre · Brisa: roll ${i}` }));
+    const rolls = Array.from({ length: 14 }, (_, i) =>
+      freeRoll(`r${i}`, { logText: `Rolagem livre · Brisa: roll ${i}` }),
+    );
     const { fixture, el } = mount({ rolls });
     expect(el.querySelectorAll('li')).toHaveLength(10);
-    const more = Array.from(el.querySelectorAll('button')).find((b) => text(b).includes('Mostrar as outras 4'));
+    const more = Array.from(el.querySelectorAll('button')).find((b) =>
+      text(b).includes('Mostrar as outras 4'),
+    );
     expect(more).toBeDefined();
     more!.click();
     fixture.detectChanges();
@@ -69,7 +75,9 @@ describe('FreeRollLog', () => {
     expect(text(failed.el)).toContain('Não deu para carregar o registro.');
     let retried = 0;
     failed.fixture.componentInstance.retry.subscribe(() => retried++);
-    Array.from(failed.el.querySelectorAll('button')).find((b) => text(b) === 'Tentar de novo')!.click();
+    Array.from(failed.el.querySelectorAll('button'))
+      .find((b) => text(b) === 'Tentar de novo')!
+      .click();
     expect(retried).toBe(1);
     const loading = mount({ listState: 'loading' });
     expect(text(loading.el)).toContain('Carregando o registro…');

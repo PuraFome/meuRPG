@@ -53,6 +53,7 @@ export class LiveSession {
   protected readonly scene = this.parts.scene;
   protected readonly puzzles = this.parts.puzzles;
   protected readonly notes = this.parts.notes;
+  protected readonly freeDice = this.parts.freeDice;
   protected readonly view = new LiveSessionView(this.state, this.parts);
   protected readonly ownEffects = this.view.ownEffects;
   protected readonly loader = new LiveSessionLoader(this.services, this.state, this.parts);

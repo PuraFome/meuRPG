@@ -1,4 +1,7 @@
+import { computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+
+import { DiceMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 
 import { focusWithRing } from '../../core/creatures/focus-ring';
 import { applyVitals, partyRowSub } from '../../core/play/vitals';
@@ -12,6 +15,7 @@ import type { LiveSessionLoader } from './live-session-loader';
 import type { LiveSessionParts, LiveSessionServices } from './live-session-deps';
 import type { LiveSessionState } from './live-session-state';
 import type { LiveSessionView } from './live-session-view';
+import { openFreeDice } from './free-dice/free-dice-sheet';
 import { openTrapSearch } from './traps/trap-search-sheet/trap-search-sheet';
 
 /** The sheets and dialogs the session page opens: each one answers back into the page's state. */
@@ -85,6 +89,24 @@ export class LiveSessionSheets {
         focusWithRing(opener);
         void parts.trapBoard.refreshActivity();
       });
+  }
+
+  /** "Dados" in the header: the free dice roller, a bottom sheet on a phone and a dialog from a tablet up (MR-052). */
+  openDice(): void {
+    const { state, services, parts } = this;
+    const opener = services.document.activeElement as HTMLElement | null;
+    openFreeDice(services.dialog, services.bottomSheet, {
+      state: parts.freeDice,
+      isMaster: state.isMaster(),
+      // Without the stream there is no table to roll for: the roll waits for it.
+      online: computed(
+        () => state.connection() !== 'reconnecting' && state.connection() !== 'paused',
+      ),
+      // RN-18 applies to the game's rolls: the sheet only says the app rolls this one.
+      physical: state.campaign()?.diceMode === DiceMode.PHYSICAL,
+    })
+      .pipe(takeUntilDestroyed(services.destroyRef))
+      .subscribe(() => focusWithRing(opener));
   }
 
   /** "Anotações": the bar's button, or the notice's "Abrir anotações". */

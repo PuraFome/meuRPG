@@ -66,6 +66,8 @@ const click = (el: Element | null | undefined) => (el as HTMLElement).click();
 const named = (root: HTMLElement, selector: string, name: string) =>
   Array.from(root.querySelectorAll<HTMLElement>(selector)).find((b) => text(b).includes(name));
 const bigButton = (el: HTMLElement) => el.querySelector<HTMLButtonElement>('.roll');
+/** The words of the big button, without the icon's name. */
+const bigText = (el: HTMLElement) => text(el.querySelector('.roll .roll__text'));
 
 function type(input: HTMLInputElement, value: string): void {
   input.value = value;
@@ -81,7 +83,9 @@ describe('FreeDiceSheet: the form', () => {
     for (const label of ['1d20', '1d6', '2d6', '1d100']) {
       expect(named(el, 'button.shortcut', label), label).toBeDefined();
     }
-    const dice = Array.from(el.querySelectorAll('[role="radiogroup"][aria-label="Dado"] label')).map(text);
+    const dice = Array.from(
+      el.querySelectorAll('[role="radiogroup"][aria-label="Dado"] .fc__text'),
+    ).map(text);
     expect(dice).toEqual(['d4', 'd6', 'd8', 'd10', 'd12', 'd20', 'd100']);
     expect(text(el)).toContain('Quantidade (1 a 20)');
     expect(text(el)).toContain('Modificador (−20 a +20)');
@@ -90,10 +94,10 @@ describe('FreeDiceSheet: the form', () => {
 
   it('fills the form from a shortcut and the big button says the formula', async () => {
     const { fixture, el } = await mount();
-    expect(text(bigButton(el))).toBe('Rolar 1d20');
+    expect(bigText(el)).toBe('Rolar 1d20');
     click(named(el, 'button.shortcut', '2d6'));
     fixture.detectChanges();
-    expect(text(bigButton(el))).toBe('Rolar 2d6');
+    expect(bigText(el)).toBe('Rolar 2d6');
     expect(el.querySelector<HTMLInputElement>('#free-count')?.value).toBe('2');
   });
 
@@ -105,10 +109,10 @@ describe('FreeDiceSheet: the form', () => {
     click(plus);
     fixture.detectChanges();
     expect(el.querySelector<HTMLInputElement>('#free-mod')?.value).toBe('+3');
-    expect(text(bigButton(el))).toBe('Rolar 1d20 + 3');
+    expect(bigText(el)).toBe('Rolar 1d20 + 3');
     click(el.querySelector('[aria-label="Mais um dado"]'));
     fixture.detectChanges();
-    expect(text(bigButton(el))).toBe('Rolar 2d20 + 3');
+    expect(bigText(el)).toBe('Rolar 2d20 + 3');
   });
 
   it('takes a typed number and keeps it in range', async () => {
@@ -119,26 +123,26 @@ describe('FreeDiceSheet: the form', () => {
     type(el.querySelector<HTMLInputElement>('#free-mod')!, '-50');
     fixture.detectChanges();
     expect(el.querySelector<HTMLInputElement>('#free-mod')?.value).toBe('−20');
-    expect(text(bigButton(el))).toBe('Rolar 20d20 - 20');
+    expect(bigText(el)).toBe('Rolar 20d20 - 20');
   });
 
   it('puts the choice of how to roll the d20 only when one d20 is selected', async () => {
     const { fixture, el } = await mount();
     const mode = () => el.querySelector('[role="radiogroup"][aria-label="Como rolar o d20"]');
     expect(mode()).not.toBeNull();
-    expect(Array.from(mode()!.querySelectorAll('label')).map(text)).toEqual([
+    expect(Array.from(mode()!.querySelectorAll('.fc__text')).map(text)).toEqual([
       'Normal',
       'Vantagem',
       'Desvantagem',
     ]);
     click(named(el, 'label', 'Vantagem')!.querySelector('input'));
     fixture.detectChanges();
-    expect(text(bigButton(el))).toBe('Rolar 1d20 com vantagem');
+    expect(bigText(el)).toBe('Rolar 1d20 com vantagem');
     click(named(el, 'button.shortcut', '2d6'));
     fixture.detectChanges();
     expect(mode()).toBeNull();
     expect(text(el)).toContain('Vantagem e desvantagem valem para um d20 só.');
-    expect(text(bigButton(el))).toBe('Rolar 2d6');
+    expect(bigText(el)).toBe('Rolar 2d6');
   });
 
   it('tells the player the roll goes to the whole table, and gives only the master the choice', async () => {
@@ -150,23 +154,25 @@ describe('FreeDiceSheet: the form', () => {
   it('lets the master choose who sees it, and the big button follows', async () => {
     const { fixture, el } = await mount({ master: true });
     expect(text(el)).toContain('Para a mesa: todos veem a rolagem e o dado na tela.');
-    expect(text(bigButton(el))).toBe('Rolar 1d20 para a mesa');
+    expect(bigText(el)).toBe('Rolar 1d20 para a mesa');
     click(named(el, 'label', 'Só eu')!.querySelector('input'));
     fixture.detectChanges();
     expect(text(el)).toContain('Só eu: nenhum jogador recebe esta rolagem, nem no registro.');
-    expect(text(bigButton(el))).toBe('Rolar 1d20, só eu');
+    expect(bigText(el)).toBe('Rolar 1d20, só eu');
     expect(text(el.querySelector('.frame__head'))).toContain('Só eu');
   });
 
   it('has exactly one filled button', async () => {
     const { el } = await mount({ master: true });
-    expect(el.querySelectorAll('.mat-mdc-unelevated-button, [mat-flat-button], .mdc-button--unelevated')).toHaveLength(1);
+    expect(
+      el.querySelectorAll('.mat-mdc-unelevated-button, [mat-flat-button], .mdc-button--unelevated'),
+    ).toHaveLength(1);
   });
 
   it('says "Rolar no app" at a table of physical dice, with the note', async () => {
     const { el } = await mount({ physical: true });
     expect(text(el)).toContain('Esta é a rolagem do app.');
-    expect(text(bigButton(el))).toBe('Rolar no app');
+    expect(bigText(el)).toBe('Rolar no app');
     expect(bigButton(el)?.getAttribute('aria-label')).toBe('Rolar no app: 1d20');
   });
 });
@@ -193,11 +199,13 @@ describe('FreeDiceSheet: rolling', () => {
   it('shows "Rolando…" and a disabled button while the server rolls', async () => {
     let release!: () => void;
     const { fixture, el } = await mount({
-      setup: (a) => (a.hold = new Promise<void>((r) => (release = r))),
+      setup: (a) => {
+        a.hold = new Promise<void>((r) => (release = r));
+      },
     });
     click(bigButton(el));
     fixture.detectChanges();
-    expect(text(bigButton(el))).toBe('Rolando…');
+    expect(bigText(el)).toBe('Rolando…');
     expect(bigButton(el)?.getAttribute('aria-disabled')).toBe('true');
     expect(text(el.querySelector('.card--rolling'))).toContain('Rolagem livre · 1d20');
     expect(el.querySelectorAll('.die--unknown').length).toBe(1);
@@ -254,7 +262,13 @@ describe('FreeDiceSheet: rolling', () => {
     const dice = Array.from({ length: 20 }, (_, i) => ({ face: (i % 6) + 1, discarded: false }));
     const { fixture, el } = await mount({
       setup: (a) =>
-        (a.answer = freeRoll('big', { count: 20, modifier: 3, formula: '20d6 + 3', dice, total: 78 })),
+        (a.answer = freeRoll('big', {
+          count: 20,
+          modifier: 3,
+          formula: '20d6 + 3',
+          dice,
+          total: 78,
+        })),
     });
     click(bigButton(el));
     await settle({ fixture });
@@ -300,10 +314,14 @@ describe('FreeDiceSheet: rolling', () => {
     expect(text(el.querySelector('.foot'))).toContain('Rolar 1d20 de novo, só eu');
   });
 
-  it('shows the server\'s refusal with the wait, and the form still works', async () => {
+  it("shows the server's refusal with the wait, and the form still works", async () => {
     const { fixture, el, api } = await mount({
       setup: (a) =>
-        (a.rollError = new ConnectError('slow', Code.ResourceExhausted, new Headers({ 'Retry-After': '3' }))),
+        (a.rollError = new ConnectError(
+          'slow',
+          Code.ResourceExhausted,
+          new Headers({ 'Retry-After': '3' }),
+        )),
     });
     click(bigButton(el));
     await settle({ fixture });
@@ -341,7 +359,21 @@ describe('FreeDiceSheet: the last rolls', () => {
     const api = new FakeFreeDiceClient();
     api.lists = {
       table: [],
-      mine: [freeRoll('a', {}, 28), freeRoll('b', { sides: 20, count: 1, modifier: 5, formula: '1d20 + 5', total: 17, dice: [{ face: 12, discarded: false }] }, 24)],
+      mine: [
+        freeRoll('a', {}, 28),
+        freeRoll(
+          'b',
+          {
+            sides: 20,
+            count: 1,
+            modifier: 5,
+            formula: '1d20 + 5',
+            total: 17,
+            dice: [{ face: 12, discarded: false }],
+          },
+          24,
+        ),
+      ],
     };
     const { el } = await mount({ setup: (a) => (a.lists = api.lists) });
     const rows = Array.from(el.querySelectorAll('.last__row'));
@@ -365,7 +397,9 @@ describe('FreeDiceSheet: the last rolls', () => {
     const { fixture, el, api } = await mount({
       setup: (a) => (a.listError = new ConnectError('down', Code.Unavailable)),
     });
-    expect(text(el)).toContain('Não deu para carregar as suas últimas rolagens. Você ainda pode rolar.');
+    expect(text(el)).toContain(
+      'Não deu para carregar as suas últimas rolagens. Você ainda pode rolar.',
+    );
     api.listError = null;
     api.lists = { table: [], mine: [freeRoll('a')] };
     click(named(el, 'button', 'Tentar de novo'));

@@ -26,7 +26,7 @@ describe('FreeDiceState', () => {
   });
 
   describe('the lists', () => {
-    it('starts loading and reads the table and the caller\'s own rolls', async () => {
+    it("starts loading and reads the table and the caller's own rolls", async () => {
       expect(state.listState()).toBe('loading');
       api.lists = { table: [freeRoll('a', {}, 5)], mine: [freeRoll('b', {}, 4)] };
       await state.refresh();
@@ -177,7 +177,7 @@ describe('FreeDiceState', () => {
       expect(state.table()[0].secret).toBe(true);
     });
 
-    it('does not show the roller\'s own roll on the table\'s dice', async () => {
+    it("does not show the roller's own roll on the table's dice", async () => {
       await state.roll();
       expect(shown).toEqual([]);
     });
@@ -186,7 +186,13 @@ describe('FreeDiceState', () => {
   describe('the form', () => {
     it('keeps every value in range and advantage only for one d20', () => {
       state.change({ count: 50, modifier: -99, sides: 6, mode: 'advantage' });
-      expect(state.form()).toEqual({ sides: 6, count: 20, modifier: -20, mode: 'normal', secret: false });
+      expect(state.form()).toEqual({
+        sides: 6,
+        count: 20,
+        modifier: -20,
+        mode: 'normal',
+        secret: false,
+      });
       state.change({ sides: 20, count: 1, mode: 'advantage' });
       expect(state.form().mode).toBe('advantage');
       state.change({ count: 2 });
@@ -216,14 +222,22 @@ describe('FreeDiceState', () => {
 
     it('"Repetir" fills the form with that roll\'s dice and rolls at once', async () => {
       master = true;
-      await state.repeat(freeRoll('x', { sides: 20, count: 1, modifier: 5, mode: 'advantage', secret: true }));
-      expect(api.rolls[0]).toMatchObject({ sides: 20, count: 1, modifier: 5, mode: 'advantage', secret: true });
+      await state.repeat(
+        freeRoll('x', { sides: 20, count: 1, modifier: 5, mode: 'advantage', secret: true }),
+      );
+      expect(api.rolls[0]).toMatchObject({
+        sides: 20,
+        count: 1,
+        modifier: 5,
+        mode: 'advantage',
+        secret: true,
+      });
       expect(state.form()).toMatchObject({ sides: 20, modifier: 5, mode: 'advantage' });
     });
   });
 
   describe('what the stream says', () => {
-    it('shows another person\'s table roll on the dice and adds it to the table', () => {
+    it("shows another person's table roll on the dice and adds it to the table", () => {
       state.heard(freeRoll('o1', { rollerName: 'Tor' }, 3));
       expect(shown.map((r) => r.id)).toEqual(['o1']);
       expect(state.table().map((r) => r.id)).toEqual(['o1']);
@@ -237,7 +251,7 @@ describe('FreeDiceState', () => {
       expect(state.table()).toHaveLength(1);
     });
 
-    it('holds a roll heard while its own is on the way, and does not show the roller\'s own twice', async () => {
+    it("holds a roll heard while its own is on the way, and does not show the roller's own twice", async () => {
       let release!: () => void;
       api.hold = new Promise<void>((r) => (release = r));
       const rolling = state.roll();
@@ -247,7 +261,12 @@ describe('FreeDiceState', () => {
       release();
       await rolling;
       expect(shown.map((r) => r.id)).toEqual(['other']);
-      expect(state.table().map((r) => r.id).sort()).toEqual(['answer', 'other']);
+      expect(
+        state
+          .table()
+          .map((r) => r.id)
+          .sort(),
+      ).toEqual(['answer', 'other']);
     });
 
     it('still reads the table when the answer failed, after the roll that was held', async () => {

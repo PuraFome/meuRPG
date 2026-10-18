@@ -1,5 +1,8 @@
 import type { FreeRollVm } from './free-roll';
 
+const EVENING = new Date('2026-10-18T20:00:00').getTime();
+const MINUTE_MS = 60_000;
+
 /** A table roll of Brisa's, 2d6 + 3 = 11, for specs; `at` is minutes into the evening. */
 export function freeRoll(id: string, over: Partial<FreeRollVm> = {}, at = 0): FreeRollVm {
   return {
@@ -18,7 +21,7 @@ export function freeRoll(id: string, over: Partial<FreeRollVm> = {}, at = 0): Fr
     total: 11,
     formula: '2d6 + 3',
     logText: 'Rolagem livre · Brisa: 2d6 + 3 = 11 (4, 4)',
-    createdAt: new Date(2026, 9, 18, 20, at),
+    createdAt: new Date(EVENING + at * MINUTE_MS),
     ...over,
   };
 }

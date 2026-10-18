@@ -1,0 +1,236 @@
+:host {
+  display: block;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.cap {
+  margin: var(--mr-space-2) 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--mr-ink-muted);
+}
+
+.hint {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: var(--mr-space-1) 0;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.shortcuts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.shortcut {
+  min-height: 44px;
+  padding: 0 4px;
+  border: 1.5px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 3px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.steppers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mr-space-3);
+  margin-top: var(--mr-space-2);
+}
+
+.stepper .cap {
+  display: block;
+  margin: 0 0 var(--mr-space-1);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-accent-soft);
+  color: var(--mr-accent-strong);
+  font-size: 13px;
+  font-weight: 700;
+
+  .mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+  }
+}
+
+.badge--mode {
+  margin-right: var(--mr-space-2);
+}
+
+// The roll in the air (B5-06 state 1): question marks where the dice will land.
+.card--rolling {
+  padding: var(--mr-space-4);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+
+  .card__title {
+    margin: 0 0 var(--mr-space-3);
+    font-weight: 700;
+  }
+
+  .card__who {
+    margin: var(--mr-space-3) 0 0;
+    font-weight: 700;
+  }
+}
+
+.dice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.die__box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 44px;
+  height: 44px;
+  border: 2px solid var(--mr-ink);
+  border-radius: var(--mr-radius-md);
+  font-family: var(--mr-font-display);
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.last {
+  margin-top: var(--mr-space-3);
+
+  .cap {
+    margin: 0 0 var(--mr-space-1);
+  }
+}
+
+.last__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.last__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-2) 0;
+  border-top: 1px solid var(--mr-line);
+
+  &:last-child {
+    border-bottom: 1px solid var(--mr-line);
+  }
+}
+
+.last__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.last__text {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.last__when {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.last__again {
+  flex: none;
+  min-height: 44px;
+  padding: 0 var(--mr-space-2);
+  border: 0;
+  background: none;
+  color: var(--mr-accent-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+
+  &[aria-disabled='true'] {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  span {
+    display: block;
+    height: 10px;
+    border-radius: var(--mr-radius-pill);
+    background: var(--mr-line);
+
+    &:first-child {
+      width: 70%;
+    }
+
+    &:last-child {
+      width: 45%;
+    }
+  }
+}
+
+// The footer never scrolls away: the notices and the one filled button.
+.foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.foot__pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: var(--mr-space-2);
+}
+
+.roll {
+  width: 100%;
+  min-height: 48px;
+}

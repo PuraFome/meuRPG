@@ -423,10 +423,17 @@ describe('LiveSession', () => {
     };
     const diceButton = (el: HTMLElement) => el.querySelector<HTMLButtonElement>('.js-dice');
 
-    it('puts "Dados" in the header for a player and for the master, and "Registro da sessão" under the board', async () => {
+    it('puts "Dados" in the header of the master too', async () => {
+      asMaster();
+      expect(diceButton(await render())).not.toBeNull();
+    });
+
+    it('puts "Dados" in the header for a player, and "Registro da sessão" under the board', async () => {
       const player = await render();
-      expect(diceButton(player)?.textContent?.trim()).toBe('Dados');
-      expect(player.querySelector('app-free-roll-log h2')?.textContent).toContain('Registro da sessão');
+      expect(diceButton(player)?.querySelector('.js-dice-text')?.textContent?.trim()).toBe('Dados');
+      expect(player.querySelector('app-free-roll-log h2')?.textContent).toContain(
+        'Registro da sessão',
+      );
     });
 
     it('has no "Dados" button when there is no live session', async () => {
@@ -438,9 +445,14 @@ describe('LiveSession', () => {
     });
 
     it('reads the rolls of the session on every `ready`, for the log', async () => {
-      freeDice.lists = { table: [freeRoll('a', { logText: 'Rolagem livre · Tor: 1d20 + 6 = 19 (13)' })], mine: [] };
+      freeDice.lists = {
+        table: [freeRoll('a', { logText: 'Rolagem livre · Tor: 1d20 + 6 = 19 (13)' })],
+        mine: [],
+      };
       const el = await render();
-      expect(el.querySelector('app-free-roll-log')?.textContent).toContain('Rolagem livre · Tor: 1d20 + 6 = 19 (13)');
+      expect(el.querySelector('app-free-roll-log')?.textContent).toContain(
+        'Rolagem livre · Tor: 1d20 + 6 = 19 (13)',
+      );
       const reads = freeDice.listCalls;
       source.push({ kind: 'ready' });
       await nextTurn();
@@ -448,16 +460,21 @@ describe('LiveSession', () => {
       expect(freeDice.listCalls).toBeGreaterThan(reads);
     });
 
-    it('adds another person\'s roll to the log and tumbles the dice for the table', async () => {
+    it("adds another person's roll to the log and tumbles the dice for the table", async () => {
       const play = vi.spyOn(TestBed.inject(RollAnimator), 'play');
       const el = await render();
       source.push({
         kind: 'freeRollRolled',
-        roll: freeRoll('o1', { rollerName: 'Tor', logText: 'Rolagem livre · Tor: 2d6 + 3 = 11 (4, 4)' }),
+        roll: freeRoll('o1', {
+          rollerName: 'Tor',
+          logText: 'Rolagem livre · Tor: 2d6 + 3 = 11 (4, 4)',
+        }),
       });
       await nextTurn();
       await nextTurn();
-      expect(el.querySelector('app-free-roll-log')?.textContent).toContain('Rolagem livre · Tor: 2d6 + 3 = 11 (4, 4)');
+      expect(el.querySelector('app-free-roll-log')?.textContent).toContain(
+        'Rolagem livre · Tor: 2d6 + 3 = 11 (4, 4)',
+      );
       expect(play).toHaveBeenCalledTimes(1);
       expect(play.mock.calls[0][0]).toMatchObject({
         label: 'Tor rolou',
