@@ -70,6 +70,7 @@ func TestDeriveWithTheSageOverlay(t *testing.T) {
 	c := withOverlay(t, sageOverlay())
 	b := pensantus()
 	b.Background = "background:sabio@mesa"
+	b.Languages = testLanguages
 	b.dropCustomBackground()
 	if err := Validate(b, c); err != nil {
 		t.Fatalf("Validate: %v", err)

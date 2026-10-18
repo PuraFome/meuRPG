@@ -16,7 +16,7 @@ import (
 func doranFighter5() Build {
 	return Build{
 		BaseScores: map[Ability]int{STR: 15, DEX: 13, CON: 13, INT: 12, WIS: 10, CHA: 8},
-		Race:       "race:human", Background: "background:acolyte",
+		Race:       "race:human", Background: "background:acolyte", Languages: testLanguages,
 		Classes:            []ClassLevel{{Class: "class:fighter", Subclass: "subclass:champion", Level: 5}},
 		SkillProficiencies: []string{"skill:athletics", "skill:perception"},
 		Armor:              "equipment:chain-mail", Shield: true,
@@ -214,7 +214,7 @@ func wizardWith(scores map[Ability]int) Build {
 		base[a] = scores[a] - 1
 	}
 	return Build{
-		BaseScores: base, Race: "race:human", Background: "background:acolyte",
+		BaseScores: base, Race: "race:human", Background: "background:acolyte", Languages: testLanguages,
 		Classes:            []ClassLevel{{Class: "class:wizard", Level: 1}},
 		SkillProficiencies: []string{"skill:arcana", "skill:history"},
 		Cantrips:           []string{"spell:fire-bolt", "spell:mage-hand", "spell:light"},
@@ -521,7 +521,7 @@ var slotCasters = []slotCaster{
 func slotsBuild(classes ...ClassLevel) Build {
 	return Build{
 		BaseScores: map[Ability]int{STR: 10, DEX: 10, CON: 10, INT: 10, WIS: 10, CHA: 10},
-		Race:       "race:human", Background: "background:acolyte", Classes: classes,
+		Race:       "race:human", Background: "background:acolyte", Languages: testLanguages, Classes: classes,
 	}
 }
 
@@ -1094,7 +1094,7 @@ func TestMulticlassHitPoints(t *testing.T) {
 	// first and the Fighter second, the Fighter's level goes after.
 	wf := Build{
 		BaseScores: map[Ability]int{STR: 14, DEX: 14, CON: 13, INT: 14, WIS: 10, CHA: 10},
-		Race:       "race:human", Background: "background:acolyte",
+		Race:       "race:human", Background: "background:acolyte", Languages: testLanguages,
 		Classes:            []ClassLevel{{Class: "class:wizard", Level: 2}},
 		SkillProficiencies: []string{"skill:arcana", "skill:history"},
 		Cantrips:           []string{"spell:fire-bolt", "spell:mage-hand", "spell:light"},
