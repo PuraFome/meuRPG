@@ -65,16 +65,25 @@ type DeathSaveResult struct {
 	HP int
 }
 
+// DeathSaveDC is the number a death save's roll reaches to be a success (SRD 5.1).
+const DeathSaveDC = 10
+
 // DeathSave applies one death save roll (d20Face, 1 to 20): 10 or more is a
 // success, less than 10 a failure, a natural 1 two failures, a natural 20
 // brings the character back with 1 hit point.
 func DeathSave(d20Face, successes, failures int) DeathSaveResult {
+	return DeathSaveWith(d20Face, 0, successes, failures)
+}
+
+// DeathSaveWith is DeathSave with a number added to the d20, the Bardic Inspiration die (SRD 5.1): the total decides
+// a success or a failure, but a natural 1 is still two failures and a natural 20 still brings the character back.
+func DeathSaveWith(d20Face, bonus, successes, failures int) DeathSaveResult {
 	switch {
 	case d20Face == 20:
 		return DeathSaveResult{Outcome: DeathSaveRevived, HP: 1}
 	case d20Face == 1:
 		return tally(successes, failures+2)
-	case d20Face >= 10:
+	case d20Face+bonus >= DeathSaveDC:
 		return tally(successes+1, failures)
 	}
 	return tally(successes, failures+1)

@@ -29,7 +29,8 @@ export class CombatCombatantCalls {
     });
     return {
       encounter: need(res.encounter, 'RollDeathSave'),
-      save: need(res.deathSave, 'RollDeathSave'),
+      save: res.deathSave,
+      held: res.heldRollOffer,
     };
   }
 
