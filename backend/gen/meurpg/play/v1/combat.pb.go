@@ -1825,21 +1825,26 @@ const (
 	// The death saving throw of a character at 0 hit points (RollDeathSave), asked about Lucky's reroll of a 1 and about
 	// a Bardic Inspiration die like any other saving throw (SRD 5.1).
 	HeldRollKind_HELD_ROLL_KIND_DEATH_SAVE HeldRollKind = 9
+	// A roll of a contest, an ability check (SRD 5.1): the initiator's (StartContest: a grapple, a shove, an escape) before
+	// the contest is opened, or the defender's (RespondContest) before it is settled. Lucky's reroll of a 1 and a Bardic
+	// Inspiration die are asked about before anything is spent or written.
+	HeldRollKind_HELD_ROLL_KIND_CONTEST HeldRollKind = 11
 )
 
 // Enum value maps for HeldRollKind.
 var (
 	HeldRollKind_name = map[int32]string{
-		0: "HELD_ROLL_KIND_UNSPECIFIED",
-		1: "HELD_ROLL_KIND_WEAPON_ATTACK",
-		2: "HELD_ROLL_KIND_SPELL_ATTACK",
-		3: "HELD_ROLL_KIND_EFFECT_SAVE",
-		4: "HELD_ROLL_KIND_CONCENTRATION_SAVE",
-		5: "HELD_ROLL_KIND_SCENE_CHECK",
-		6: "HELD_ROLL_KIND_GROUP_CHECK",
-		7: "HELD_ROLL_KIND_TRAP_SEARCH",
-		8: "HELD_ROLL_KIND_HINT_TRY",
-		9: "HELD_ROLL_KIND_DEATH_SAVE",
+		0:  "HELD_ROLL_KIND_UNSPECIFIED",
+		1:  "HELD_ROLL_KIND_WEAPON_ATTACK",
+		2:  "HELD_ROLL_KIND_SPELL_ATTACK",
+		3:  "HELD_ROLL_KIND_EFFECT_SAVE",
+		4:  "HELD_ROLL_KIND_CONCENTRATION_SAVE",
+		5:  "HELD_ROLL_KIND_SCENE_CHECK",
+		6:  "HELD_ROLL_KIND_GROUP_CHECK",
+		7:  "HELD_ROLL_KIND_TRAP_SEARCH",
+		8:  "HELD_ROLL_KIND_HINT_TRY",
+		9:  "HELD_ROLL_KIND_DEATH_SAVE",
+		11: "HELD_ROLL_KIND_CONTEST",
 	}
 	HeldRollKind_value = map[string]int32{
 		"HELD_ROLL_KIND_UNSPECIFIED":        0,
@@ -1852,6 +1857,7 @@ var (
 		"HELD_ROLL_KIND_TRAP_SEARCH":        7,
 		"HELD_ROLL_KIND_HINT_TRY":           8,
 		"HELD_ROLL_KIND_DEATH_SAVE":         9,
+		"HELD_ROLL_KIND_CONTEST":            11,
 	}
 )
 
@@ -24668,7 +24674,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x1aAREA_PLACEMENT_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14AREA_PLACEMENT_POINT\x10\x01\x12\x1c\n" +
 	"\x18AREA_PLACEMENT_DIRECTION\x10\x02\x12\x19\n" +
-	"\x15AREA_PLACEMENT_CASTER\x10\x03*\xd4\x02\n" +
+	"\x15AREA_PLACEMENT_CASTER\x10\x03*\xf0\x02\n" +
 	"\fHeldRollKind\x12\x1e\n" +
 	"\x1aHELD_ROLL_KIND_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cHELD_ROLL_KIND_WEAPON_ATTACK\x10\x01\x12\x1f\n" +
@@ -24679,7 +24685,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x1aHELD_ROLL_KIND_GROUP_CHECK\x10\x06\x12\x1e\n" +
 	"\x1aHELD_ROLL_KIND_TRAP_SEARCH\x10\a\x12\x1b\n" +
 	"\x17HELD_ROLL_KIND_HINT_TRY\x10\b\x12\x1d\n" +
-	"\x19HELD_ROLL_KIND_DEATH_SAVE\x10\t*\\\n" +
+	"\x19HELD_ROLL_KIND_DEATH_SAVE\x10\t\x12\x1a\n" +
+	"\x16HELD_ROLL_KIND_CONTEST\x10\v*\\\n" +
 	"\vSaveOutcome\x12\x1c\n" +
 	"\x18SAVE_OUTCOME_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12SAVE_OUTCOME_SAVED\x10\x01\x12\x17\n" +

@@ -311,6 +311,11 @@ export class NpcGrappleSheet {
     try {
       const res = await this.api.start(request, this.keys.keyFor(request));
       this.data.state.apply(res.encounter);
+      if (!res.contest) {
+        // A creature's roll waits for nobody, so this is not expected; the combat above is what stands.
+        this.error.set('A disputa não foi aberta.');
+        return;
+      }
       this.data.contests.applyContest(res.contest);
       // The master's d20 for the creature, when the app rolled it (a fixed escape DC rolls nothing).
       const show = showOfCheck('Teste de Atletismo', res.contest.initiatorRoll, {

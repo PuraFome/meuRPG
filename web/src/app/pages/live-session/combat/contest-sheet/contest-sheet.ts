@@ -4,6 +4,7 @@ import {
   ElementRef,
   computed,
   effect,
+  Injector,
   inject,
   signal,
   viewChild,
@@ -15,8 +16,14 @@ import { MatIconModule } from '@angular/material/icon';
 import type { Observable } from 'rxjs';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import type { AnswerHeldRollResponse } from '../../../../../gen/meurpg/play/v1/resources_pb';
+import { effectivePreference } from '../../../../core/campaigns/dice-labels';
+import { HeldRollController } from '../../../../core/held-rolls/held-roll-controller';
+import { ResourceClient } from '../../../../core/resources/resources-client';
+import { HeldRollPrompt } from '../../../../shared/held-roll-prompt/held-roll-prompt';
 import {
   type ContestAttackOption,
+  type ContestView,
   type ContestSkillOption,
   ContestKind,
   ContestPurpose,
@@ -124,7 +131,15 @@ export function openContestSheet(
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-contest-sheet',
-  imports: [AttackSteps, CheckRollForm, ContestRoll, MatButtonModule, MatIconModule, SheetFrame],
+  imports: [
+    AttackSteps,
+    CheckRollForm,
+    ContestRoll,
+    HeldRollPrompt,
+    MatButtonModule,
+    MatIconModule,
+    SheetFrame,
+  ],
   templateUrl: './contest-sheet.html',
   styleUrl: './contest-sheet.scss',
 })
@@ -153,6 +168,23 @@ export class ContestSheet {
   private readonly started = signal(this.data.contestId ?? '');
   /** What a won shove will do. */
   protected readonly outcome = signal<ShoveOutcome | null>(null);
+
+  private readonly injector = inject(Injector);
+  private get resources(): ResourceClient {
+    return this.injector.get(ResourceClient); // built when a question is answered: the sheet needs it for no other call
+  }
+  /** The question of the initiator's roll when the d20 was kept for one: Lucky's 1, then the Bardic Inspiration die. */
+  protected readonly held = new HeldRollController({
+    send: (holdId, answer, key) =>
+      this.resources.answerHeldRoll(this.data.campaignId, holdId, answer, key),
+    settle: (res) => this.answeredHeld(res),
+    busy: this.busy,
+    error: this.error,
+  });
+  protected readonly canApp = this.data.diceMode !== DiceMode.PHYSICAL;
+  protected readonly canType = this.data.diceMode !== DiceMode.APP;
+  protected readonly preferApp =
+    effectivePreference(this.data.diceMode, this.data.preference) === DicePreference.APP;
 
   private readonly startKeys = new ActionKey();
   private readonly shoveKeys = new ActionKey();
@@ -387,24 +419,44 @@ export class ContestSheet {
         }),
       );
       this.data.state.apply(res.encounter);
-      this.data.contests.applyContest(res.contest);
-      // The initiator's own d20, as the sheet shows it; who wins is told when the other side has answered.
-      const show = showOfCheck(
-        `${sheetTitle(this.data.purpose)}: teste de ${skillName(skill)}`,
-        res.contest.initiatorRoll,
-        {
-          withTotal: true,
-        },
-      );
-      if (show) {
-        this.animator.play(show);
+      if (!res.contest) {
+        // The d20 is kept for a question (a halfling's 1, a Bardic Inspiration die): the player decides before the contest opens.
+        this.held.ask(res.held);
+        return;
       }
-      this.started.set(res.contest.id);
+      this.opened(res.contest, skill);
       this.startKeys.renew();
     } catch (err) {
       this.error.set(combatErrorMessage(err, 'rolar a disputa'));
     } finally {
       this.busy.set(false);
+    }
+  }
+
+  /** The contest is open: the initiator's own d20, as the sheet shows it; who wins is told when the other side has answered. */
+  private opened(contest: ContestView, skill: ContestSkill): void {
+    this.data.contests.applyContest(contest);
+    const show = showOfCheck(
+      `${sheetTitle(this.data.purpose)}: teste de ${skillName(skill)}`,
+      contest.initiatorRoll,
+      { withTotal: true },
+    );
+    if (show) {
+      this.animator.play(show);
+    }
+    this.started.set(contest.id);
+  }
+
+  /** The answer to the question settled the roll: the contest it opened, or the next question of the same roll. */
+  private answeredHeld(res: AnswerHeldRollResponse): void {
+    const settled = res.result.case === 'contest' ? res.result.value : null;
+    if (!settled?.encounter || (!settled.contest && !res.next)) {
+      throw new Error('AnswerHeldRoll answered without its contest');
+    }
+    this.data.state.apply(settled.encounter);
+    if (settled.contest) {
+      this.opened(settled.contest, this.escape ? this.skill() : ContestSkill.ATHLETICS);
+      this.startKeys.renew();
     }
   }
 
