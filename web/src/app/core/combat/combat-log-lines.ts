@@ -10,6 +10,7 @@ import { article } from '../format/article';
 import { luckyText } from './lucky';
 import {
   actionText,
+  channelNotes,
   conditionsText,
   deathSaveText,
   hitPointsText,
@@ -81,6 +82,7 @@ const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | nu
         ...base,
         icon: e.key === 'standard:hide' ? 'visibility_off' : 'bolt',
         text: actionText(e),
+        ...(e.channelDivinity ? { notes: channelNotes(e) } : {}),
       };
     },
   ],

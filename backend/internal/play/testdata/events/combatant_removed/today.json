@@ -42,6 +42,49 @@
       "before": 1
     }
   ],
+  "channel": {
+    "heals": [
+      {
+        "target_id": "x",
+        "label": "x",
+        "asked": 1,
+        "healed": 1,
+        "after": 1,
+        "before": {
+          "hp": 1,
+          "temp": 1,
+          "defeated": true,
+          "shape": {
+            "beast": "x",
+            "hp": 1
+          }
+        },
+        "death_before": {
+          "successes": 1,
+          "failures": 1,
+          "rolled": true,
+          "dead": true
+        }
+      }
+    ],
+    "turns": [
+      {
+        "target_id": "x",
+        "label": "x",
+        "d20": 1,
+        "modifier": 1,
+        "total": 1,
+        "turned": true
+      }
+    ],
+    "dc": 1,
+    "effects": [
+      "x"
+    ],
+    "targets": [
+      "x"
+    ]
+  },
   "relentless": true,
   "before": {
     "hp": 1,

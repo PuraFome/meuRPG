@@ -148,6 +148,8 @@
     "FeatureActions": null,
     "FighterLevel": 0,
     "MonkLevel": 0,
+    "ClericLevel": 0,
+    "ChannelDC": 0,
     "Senses": {
       "DarkvisionFt": 60,
       "BlindsightFt": 0,
@@ -292,6 +294,8 @@
     ],
     "FighterLevel": 0,
     "MonkLevel": 0,
+    "ClericLevel": 0,
+    "ChannelDC": 0,
     "Senses": {
       "DarkvisionFt": 0,
       "BlindsightFt": 0,
@@ -426,6 +430,8 @@
     ],
     "FighterLevel": 0,
     "MonkLevel": 0,
+    "ClericLevel": 0,
+    "ChannelDC": 0,
     "Senses": {
       "DarkvisionFt": 0,
       "BlindsightFt": 0,
@@ -554,6 +560,8 @@
     "FeatureActions": null,
     "FighterLevel": 0,
     "MonkLevel": 0,
+    "ClericLevel": 0,
+    "ChannelDC": 0,
     "Senses": {
       "DarkvisionFt": 0,
       "BlindsightFt": 0,
@@ -688,6 +696,8 @@
     ],
     "FighterLevel": 5,
     "MonkLevel": 0,
+    "ClericLevel": 0,
+    "ChannelDC": 0,
     "Senses": {
       "DarkvisionFt": 0,
       "BlindsightFt": 0,
@@ -845,6 +855,8 @@
     ],
     "FighterLevel": 2,
     "MonkLevel": 0,
+    "ClericLevel": 0,
+    "ChannelDC": 0,
     "Senses": {
       "DarkvisionFt": 0,
       "BlindsightFt": 0,
@@ -1011,6 +1023,8 @@
     ],
     "FighterLevel": 0,
     "MonkLevel": 5,
+    "ClericLevel": 0,
+    "ChannelDC": 0,
     "Senses": {
       "DarkvisionFt": 0,
       "BlindsightFt": 0,
@@ -1151,6 +1165,8 @@
     "FeatureActions": null,
     "FighterLevel": 0,
     "MonkLevel": 0,
+    "ClericLevel": 0,
+    "ChannelDC": 0,
     "Senses": {
       "DarkvisionFt": 0,
       "BlindsightFt": 0,
@@ -1285,6 +1301,8 @@
     ],
     "FighterLevel": 0,
     "MonkLevel": 0,
+    "ClericLevel": 0,
+    "ChannelDC": 0,
     "Senses": {
       "DarkvisionFt": 0,
       "BlindsightFt": 0,

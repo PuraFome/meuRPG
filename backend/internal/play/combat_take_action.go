@@ -45,6 +45,8 @@ type takeActionCall struct {
 	useExtra bool
 	// frenzy says the rage is a frenzy (SRD 5.1, Path of the Berserker).
 	frenzy bool
+	// preserveLife is who Preserve Life restores and by how much.
+	preserveLife []preserveHeal
 }
 
 // readTakeActionCall reads the request, in the order the answers are given: the ids, the action, the roll.
@@ -65,7 +67,10 @@ func readTakeActionCall(req *playv1.TakeActionRequest) (takeActionCall, error) {
 		return call, err
 	}
 	call.useExtra, call.frenzy = req.GetUseExtraAction(), req.GetFrenzy()
-	return call, nil
+	if call.actionKey == preserveLifeAction {
+		call.preserveLife, err = readPreserveLife(req)
+	}
+	return call, err
 }
 
 // readTakeActionRoll reads the roll of the request: the app's, a typed sum, or none.
@@ -132,6 +137,7 @@ func (s *Service) takeActionResponse(ctx context.Context, m authz.Membership, re
 		resp.Roll = diceRoll(ev.DiceCount, ev.DiceSides, ev.Faces, ev.Modifier, ev.Total, ev.Physical)
 		resp.Healed = &ev.Amount
 	}
+	resp.ChannelDivinity = channelProto(ev.Channel)
 	return connect.NewResponse(resp), nil
 }
 
@@ -479,6 +485,10 @@ func (f *takeActionFlow) performKind(ctx context.Context, sheet link.Sheet) erro
 		return f.flurry(ctx, sheet)
 	case secondWind:
 		return f.healFighter(ctx, sheet)
+	case preserveLifeAction:
+		return f.preserveLife(ctx, sheet)
+	case turnUndeadAction:
+		return f.turnUndead(ctx, sheet)
 	}
 	return nil
 }

@@ -195,6 +195,13 @@
       "player_label_pt": "Sem reações",
       "tags_pt": ["Não pode usar reações até o fim do próximo turno do monge"]
     },
+    "effect:turned": {
+      "kind": "feature",
+      "duration": {"kind": "rounds", "rounds": 10},
+      "visibility": "public",
+      "player_label_pt": "Expulso",
+      "tags_pt": ["Foge de quem o expulsou, o mais longe que puder, por 1 minuto", "Não se aproxima a menos de 9 m de quem o expulsou", "Não usa reações; só Corre ou escapa de um efeito, ou Esquiva se não tiver para onde ir", "Acaba se sofrer dano"]
+    },
     "effect:lethargy": {
       "kind": "feature",
       "duration": {"kind": "until_end_of_turn_of"},

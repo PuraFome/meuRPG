@@ -944,6 +944,9 @@ func (e *logEntry) fillAction(c *logViewing, out *playv1.CombatLogEntry) bool {
 			Roll: diceRoll(e.ev.DiceCount, e.ev.DiceSides, e.ev.Faces, e.ev.Modifier, e.ev.Total, e.ev.Physical),
 		}
 	}
+	if e.ev.Channel != nil && (c.v.master || c.v.owns(c.actor)) { // Canalizar Divindade: the numbers are the master's and its player's
+		out.ChannelDivinity = channelProto(e.ev.Channel)
+	}
 	return true
 }
 

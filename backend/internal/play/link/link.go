@@ -162,6 +162,9 @@ type Sheet struct {
 	// MonkLevel is the monk's level, 0 for a character with none: Slow Fall takes
 	// five times it off a fall.
 	MonkLevel int
+	// ClericLevel is the cleric's level, 0 for a character with none: Preserve Life restores five times it,
+	// and ChannelDC is the save DC of Turn Undead (8 + proficiency bonus + Wisdom modifier).
+	ClericLevel, ChannelDC int
 	// Senses are the special senses the sheet or stat block gives (darkvision...),
 	// which an NPC sees with on a map with the fog of war (MR-036). The zero value
 	// is plain sight.
