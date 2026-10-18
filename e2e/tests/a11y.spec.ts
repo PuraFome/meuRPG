@@ -8015,7 +8015,8 @@ test('os efeitos que duram, na tela do jogador, passam no axe e nas conferência
 });
 
 // The free dice roller (MR-052): the header's "Dados" button, and the sheet of a phone or the dialog of a desktop for
-// both roles: the form, the master's "Só eu" chosen, the result card, and the button off while the stream reconnects.
+// both roles: the form, the master's "Só eu" chosen and the result card. The button off while the stream reconnects is
+// covered by the header's spec: Playwright's offline mode does not end a stream that is already open.
 async function scanFreeDiceScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   test.setTimeout(240_000);
   const where = `(${colorScheme}, ${width}px)`;
@@ -8048,14 +8049,6 @@ async function scanFreeDiceScreens(browser: Browser, colorScheme: 'light' | 'dar
     await expectScreenPasses(m, `Rolar dados, o resultado secreto do mestre ${where}`);
     await m.keyboard.press('Escape');
     await expect(masterSheet).toBeHidden();
-
-    // No connection: the button is off and the header says why. Offline does not end the open stream by itself: the page
-    // calls it dead after 60 s without a message (DEAD_STREAM_MS, web/src/app/core/play/live-stream.ts), so the wait is longer.
-    await p.context().setOffline(true);
-    await expect(p.getByRole('status').filter({ hasText: 'Não dá para rolar sem conexão.' })).toBeVisible({ timeout: 90_000 });
-    await expect(p.getByRole('button', { name: 'Dados', exact: true })).toBeDisabled();
-    await expectScreenPasses(p, `Sessão sem conexão, o botão Dados desligado ${where}`);
-    await p.context().setOffline(false);
   } finally {
     await done();
   }
