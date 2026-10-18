@@ -8074,6 +8074,8 @@ test('o rolador de dados livre passa no axe e nas conferências de layout no tem
 
 test('o rolador de dados livre passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-052'] }, async ({ browser }) => {
   await scanFreeDiceScreens(browser, 'dark', 390);
+});
+
 // The scene's conversation (MR-051, RN-36): the empty panel, the lines (a narration, a whisper, an NPC), the "Para"
 // chooser open (a dialog on a computer, a bottom sheet on a phone) and, on a phone, the "Conversa" tab with its unread
 // count and the full-screen view. Each scan waits for the state it names: a line, the tab's name, the chooser's line.

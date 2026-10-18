@@ -382,6 +382,7 @@ var sqlPayloadPaths = map[string][]sqlPath{
 	"scene_attempt_granted": {{"ListSceneAttemptGrantEvents", "action_id", "string"}},
 	"rest_taken":            {{"HasLongRestInSession", "kind", "string"}, {"GetLatestRestKindInSession", "kind", "string"}},
 	"hit_dice_spent":        {{"HasSongOfRestSinceLatestRest", "song_sides", "number"}},
+	"free_roll_rolled":      {{"ListFreeRollEvents", "secret", "bool"}},
 }
 
 type sqlPath struct{ query, key, typ string }

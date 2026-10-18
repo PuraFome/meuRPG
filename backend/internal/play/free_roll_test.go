@@ -11,6 +11,7 @@ import (
 	"connectrpc.com/connect"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 )
 
@@ -173,7 +174,7 @@ func TestRollFreeAdvantageCountsTheHigherAndMarksTheOtherDiscarded(t *testing.T)
 func toInt32s(in []int) []int32 {
 	out := make([]int32, len(in))
 	for i, v := range in {
-		out[i] = int32(v)
+		out[i] = conv.Int32(v)
 	}
 	return out
 }
