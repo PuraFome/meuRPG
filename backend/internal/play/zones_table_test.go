@@ -1,6 +1,7 @@
 package play
 
 import (
+	"errors"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -134,16 +135,22 @@ func TestATableSpellZoneIsRefusedAtTheFieldThatIsWrong(t *testing.T) {
 		t.Fatalf("CreateTableEntry() error = %v, want invalid_argument", err)
 	}
 	found := false
-	for _, d := range connect.NewError(connect.CodeOf(err), err).Details() {
+	var ce *connect.Error
+	if !errors.As(err, &ce) {
+		t.Fatalf("error is %T, want a connect error", err)
+	}
+	var fields []string
+	for _, d := range ce.Details() {
 		if v, e := d.Value(); e == nil {
 			if r, ok := v.(*rulesv1.TableContentRefusal); ok {
 				for _, vi := range r.GetViolations() {
+					fields = append(fields, vi.GetField())
 					found = found || vi.GetField() == "table_spell.zone.trigger"
 				}
 			}
 		}
 	}
 	if !found {
-		t.Errorf("no violation at table_spell.zone.trigger: %v", err)
+		t.Errorf("violations at %v, want one at table_spell.zone.trigger", fields)
 	}
 }

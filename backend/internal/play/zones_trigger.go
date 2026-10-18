@@ -49,6 +49,14 @@ func (z *zone) spares(owner, who playdb.Combatant) bool {
 	return z.def.sparesAllies && (who.ID == owner.ID || who.Side == owner.Side)
 }
 
+// asks says the zone catches a creature for this reason: it came in, or began its turn inside.
+func (z *zone) asks(why string) bool {
+	if why == zoneWhyStart {
+		return z.def.onStart
+	}
+	return z.def.onEnter
+}
+
 // catches reports whether the creature is one the zone can catch: on the map, standing, not spared
 // and not yet hit on this turn.
 func (z *zone) catches(owner, who playdb.Combatant, mark string) bool {
@@ -59,7 +67,7 @@ func (z *zone) catches(owner, who playdb.Combatant, mark string) bool {
 // throw and deals what the spell says.
 func (s *Service) catchZone(ctx context.Context, c *combatTx, cs []playdb.Combatant, k zoneCatch) error {
 	owner, ok := combatantByID(cs, k.z.row.OwnerID)
-	if !ok || !k.z.catches(owner, k.who, k.mark) {
+	if !ok || !k.z.asks(k.why) || !k.z.catches(owner, k.who, k.mark) {
 		return nil
 	}
 	if k.z.def.kind == zoneRestrain {

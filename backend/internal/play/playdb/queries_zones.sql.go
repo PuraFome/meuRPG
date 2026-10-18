@@ -13,7 +13,7 @@ import (
 const deleteConcentrationZonesOf = `-- name: DeleteConcentrationZonesOf :many
 DELETE FROM spell_zones
 WHERE owner_id = $1 AND concentration
-RETURNING id, encounter_id, owner_id, spell_key, cast_id, slot_level, origin_col, origin_row, squares, save_ability, save_dc, damage_dice, damage_type, concentration, started_round, ends_round, hit_marks, created_at
+RETURNING id, encounter_id, owner_id, spell_key, cast_id, slot_level, origin_col, origin_row, squares, save_ability, save_dc, damage_dice, damage_type, concentration, started_round, ends_round, hit_marks, created_at, def
 `
 
 // The zones a caster's concentration holds end with it; the rows that went.
@@ -45,6 +45,7 @@ func (q *Queries) DeleteConcentrationZonesOf(ctx context.Context, ownerID string
 			&i.EndsRound,
 			&i.HitMarks,
 			&i.CreatedAt,
+			&i.Def,
 		); err != nil {
 			return nil, err
 		}
@@ -81,7 +82,7 @@ func (q *Queries) DeleteSpellZonesOfCast(ctx context.Context, arg DeleteSpellZon
 }
 
 const getSpellZone = `-- name: GetSpellZone :one
-SELECT id, encounter_id, owner_id, spell_key, cast_id, slot_level, origin_col, origin_row, squares, save_ability, save_dc, damage_dice, damage_type, concentration, started_round, ends_round, hit_marks, created_at FROM spell_zones
+SELECT id, encounter_id, owner_id, spell_key, cast_id, slot_level, origin_col, origin_row, squares, save_ability, save_dc, damage_dice, damage_type, concentration, started_round, ends_round, hit_marks, created_at, def FROM spell_zones
 WHERE id = $1 AND encounter_id = $2
 `
 
@@ -112,6 +113,7 @@ func (q *Queries) GetSpellZone(ctx context.Context, arg GetSpellZoneParams) (Spe
 		&i.EndsRound,
 		&i.HitMarks,
 		&i.CreatedAt,
+		&i.Def,
 	)
 	return i, err
 }
@@ -120,9 +122,9 @@ const insertSpellZone = `-- name: InsertSpellZone :one
 
 INSERT INTO spell_zones (
     encounter_id, owner_id, spell_key, cast_id, slot_level, origin_col, origin_row, squares,
-    save_ability, save_dc, damage_dice, damage_type, concentration, started_round, ends_round, created_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-RETURNING id, encounter_id, owner_id, spell_key, cast_id, slot_level, origin_col, origin_row, squares, save_ability, save_dc, damage_dice, damage_type, concentration, started_round, ends_round, hit_marks, created_at
+    save_ability, save_dc, damage_dice, damage_type, concentration, started_round, ends_round, created_at, def
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+RETURNING id, encounter_id, owner_id, spell_key, cast_id, slot_level, origin_col, origin_row, squares, save_ability, save_dc, damage_dice, damage_type, concentration, started_round, ends_round, hit_marks, created_at, def
 `
 
 type InsertSpellZoneParams struct {
@@ -142,6 +144,7 @@ type InsertSpellZoneParams struct {
 	StartedRound  int32
 	EndsRound     *int32
 	CreatedAt     time.Time
+	Def           []byte
 }
 
 // The areas spells keep on the map (migration 00264).
@@ -163,6 +166,7 @@ func (q *Queries) InsertSpellZone(ctx context.Context, arg InsertSpellZoneParams
 		arg.StartedRound,
 		arg.EndsRound,
 		arg.CreatedAt,
+		arg.Def,
 	)
 	var i SpellZone
 	err := row.Scan(
@@ -184,12 +188,13 @@ func (q *Queries) InsertSpellZone(ctx context.Context, arg InsertSpellZoneParams
 		&i.EndsRound,
 		&i.HitMarks,
 		&i.CreatedAt,
+		&i.Def,
 	)
 	return i, err
 }
 
 const listSpellZones = `-- name: ListSpellZones :many
-SELECT id, encounter_id, owner_id, spell_key, cast_id, slot_level, origin_col, origin_row, squares, save_ability, save_dc, damage_dice, damage_type, concentration, started_round, ends_round, hit_marks, created_at FROM spell_zones
+SELECT id, encounter_id, owner_id, spell_key, cast_id, slot_level, origin_col, origin_row, squares, save_ability, save_dc, damage_dice, damage_type, concentration, started_round, ends_round, hit_marks, created_at, def FROM spell_zones
 WHERE encounter_id = $1
 ORDER BY created_at, id
 `
@@ -223,6 +228,7 @@ func (q *Queries) ListSpellZones(ctx context.Context, encounterID string) ([]Spe
 			&i.EndsRound,
 			&i.HitMarks,
 			&i.CreatedAt,
+			&i.Def,
 		); err != nil {
 			return nil, err
 		}

@@ -1,7 +1,11 @@
 package play
 
 import (
+	"encoding/json"
+
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -100,10 +104,73 @@ var zoneDefs = map[string]zoneDef{
 	},
 }
 
-// zoneDefOf is the zone a spell keeps, if it keeps one.
+// zoneDefOf is the zone one of the SRD's four spells keeps.
 func zoneDefOf(spellKey string) (zoneDef, bool) {
 	d, ok := zoneDefs[spellKey]
 	return d, ok
+}
+
+// zoneDefOfSpell is the zone a spell keeps, if it keeps one: the row of the SRD's four, or the table spell's own
+// area, which the master wrote as the model says. Both are the same value, so the zone is made and worked the
+// same way from either.
+func zoneDefOfSpell(sp link.Spell) (zoneDef, bool) {
+	if d, ok := zoneDefOf(sp.Key); ok {
+		return d, true
+	}
+	if sp.Zone == nil {
+		return zoneDef{}, false
+	}
+	return zoneDefOfRule(sp), true
+}
+
+// zoneDefOfRule is the definition of a table spell's zone: the spell's area, saving throw and damage, and the
+// trigger and the following the master chose.
+func zoneDefOfRule(sp link.Spell) zoneDef {
+	d := zoneDef{
+		kind: zoneDamage, shape: grid.Shape(sp.AreaShape), sizeFt: sp.AreaSizeFt, save: sp.SaveAbility, corners: sp.SpreadsAroundCorners,
+		onStart: sp.Zone.Trigger != rules.ZoneFirstEntry, onEnter: sp.Zone.Trigger != rules.ZoneStartOfTurn,
+		placement: playv1.AreaPlacement_AREA_PLACEMENT_POINT, movement: playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_FIXED,
+	}
+	if sp.Zone.FollowsCaster {
+		d.placement, d.movement = playv1.AreaPlacement_AREA_PLACEMENT_CASTER, playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_FOLLOWS_CASTER
+	}
+	return d
+}
+
+// zoneDefJSON is what a zone row keeps of the definition of a table spell's zone.
+type zoneDefJSON struct {
+	Shape     string `json:"shape"`
+	SizeFt    int    `json:"size_ft"`
+	Placement int32  `json:"placement"`
+	Movement  int32  `json:"movement"`
+	Save      string `json:"save,omitempty"`
+	OnEnter   bool   `json:"on_enter,omitempty"`
+	OnStart   bool   `json:"on_start,omitempty"`
+	Corners   bool   `json:"corners,omitempty"`
+}
+
+// storedDef is the definition as the zone row keeps it, nil for one of the SRD's four (the code's table is its truth).
+func storedDef(spellKey string, d zoneDef) []byte {
+	if _, srd := zoneDefOf(spellKey); srd {
+		return nil
+	}
+	body, _ := json.Marshal(zoneDefJSON{ // plain values: they cannot fail to encode
+		Shape: string(d.shape), SizeFt: d.sizeFt, Placement: int32(d.placement), Movement: int32(d.movement), Save: d.save,
+		OnEnter: d.onEnter, OnStart: d.onStart, Corners: d.corners,
+	})
+	return body
+}
+
+// defOfStored reads the definition a zone row keeps.
+func defOfStored(raw []byte) (zoneDef, bool) {
+	var j zoneDefJSON
+	if json.Unmarshal(raw, &j) != nil || j.Shape == "" {
+		return zoneDef{}, false
+	}
+	return zoneDef{
+		kind: zoneDamage, shape: grid.Shape(j.Shape), sizeFt: j.SizeFt, placement: playv1.AreaPlacement(j.Placement),
+		movement: playv1.SpellZoneMovement(j.Movement), save: j.Save, onEnter: j.OnEnter, onStart: j.OnStart, corners: j.Corners,
+	}, true
 }
 
 // area is the zone's shape and size for the geometry of the map.

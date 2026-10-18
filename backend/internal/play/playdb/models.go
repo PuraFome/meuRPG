@@ -648,6 +648,7 @@ type SpellZone struct {
 	EndsRound     *int32
 	HitMarks      []byte
 	CreatedAt     time.Time
+	Def           []byte
 }
 
 type StageNpc struct {

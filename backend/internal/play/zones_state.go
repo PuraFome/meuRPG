@@ -38,6 +38,9 @@ func (z *zone) has(sq grid.Square) bool { return z.in[sq] }
 func readZone(row playdb.SpellZone) (*zone, bool) {
 	def, ok := zoneDefOf(row.SpellKey)
 	if !ok {
+		def, ok = defOfStored(row.Def) // the table's own spell
+	}
+	if !ok {
 		return nil, false
 	}
 	z := &zone{row: row, def: def, marks: map[string]string{}}

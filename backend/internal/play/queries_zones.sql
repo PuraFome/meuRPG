@@ -3,8 +3,8 @@
 -- name: InsertSpellZone :one
 INSERT INTO spell_zones (
     encounter_id, owner_id, spell_key, cast_id, slot_level, origin_col, origin_row, squares,
-    save_ability, save_dc, damage_dice, damage_type, concentration, started_round, ends_round, created_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+    save_ability, save_dc, damage_dice, damage_type, concentration, started_round, ends_round, created_at, def
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 RETURNING *;
 
 -- name: ListSpellZones :many

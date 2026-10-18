@@ -29,7 +29,7 @@ func (f *castFlow) affectZone(ctx context.Context, def zoneDef) error {
 // createZone puts the area of the cast on the map. It runs after the concentration is set, so the zone
 // the caster held before has already gone with it.
 func (s *Service) createZone(ctx context.Context, c *combatTx, owner playdb.Combatant, sp link.Spell, slotLevel int, castID string, plan areaPlan) error {
-	def, ok := zoneDefOf(sp.Key)
+	def, ok := zoneDefOfSpell(sp)
 	if !ok {
 		return nil
 	}
@@ -56,7 +56,7 @@ func (s *Service) createZone(ctx context.Context, c *combatTx, owner playdb.Comb
 		EncounterID: c.enc.ID, OwnerID: owner.ID, SpellKey: sp.Key, CastID: castID, SlotLevel: clamp32(slotLevel, 0, 9),
 		OriginCol: clamp32(plan.origin.Col, 0, 1<<30), OriginRow: clamp32(plan.origin.Row, 0, 1<<30), Squares: squaresToJSON(plan.squares),
 		SaveAbility: def.save, SaveDc: clamp32(dc, 0, 40), DamageDice: dice, DamageType: dtype,
-		Concentration: sp.Concentration, StartedRound: c.enc.Round, EndsRound: ends, CreatedAt: c.now,
+		Concentration: sp.Concentration, StartedRound: c.enc.Round, EndsRound: ends, CreatedAt: c.now, Def: storedDef(sp.Key, def),
 	}); err != nil {
 		return fmt.Errorf("put the spell zone on the map: %w", err)
 	}

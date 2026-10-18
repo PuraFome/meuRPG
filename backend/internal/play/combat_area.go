@@ -45,7 +45,7 @@ import (
 // with a range of sight or Touch) stays on the caster's list: the SRD gives the
 // shape a point of origin the table does not lay out here.
 func placementOf(sp link.Spell) playv1.AreaPlacement {
-	if z, ok := zoneDefOf(sp.Key); ok { // the area a spell keeps on the map is laid out as its zone says
+	if z, ok := zoneDefOfSpell(sp); ok { // the area a spell keeps on the map is laid out as its zone says
 		return z.placement
 	}
 	shape := grid.Shape(sp.AreaShape)
@@ -67,7 +67,7 @@ func placementOf(sp link.Spell) playv1.AreaPlacement {
 
 // areaOf is the grid shape of a spell's area.
 func areaOf(sp link.Spell) grid.Area {
-	if z, ok := zoneDefOf(sp.Key); ok {
+	if z, ok := zoneDefOfSpell(sp); ok {
 		return z.area()
 	}
 	return grid.Area{Shape: grid.Shape(sp.AreaShape), SizeFt: sp.AreaSizeFt, WidthFt: sp.AreaWidthFt}

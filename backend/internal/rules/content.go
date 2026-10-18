@@ -150,6 +150,8 @@ type content struct {
 	// players ("Opções para os jogadores", RN-23); empty without a table layer.
 	off          map[string]bool
 	spellTargets map[string]SpellTarget
+	// spellZones are the areas the table's spells keep on the map while they last.
+	spellZones map[string]SpellZoneRule
 	// srdTargets are the hand-written targets of some SRD spells
 	// (effects/spell_targets.json), by spell key.
 	srdTargets map[string]SpellTarget
@@ -1420,5 +1422,6 @@ func (c *content) isAttackName(key string) bool {
 
 // SpellZone is the area a table spell keeps on the map while it lasts, and whether the spell has one.
 func (c *Content) SpellZone(key string) (SpellZoneRule, bool) {
-	return SpellZoneRule{}, false
+	z, ok := c.c.spellZones[key]
+	return z, ok
 }

@@ -1188,6 +1188,7 @@ func (c *content) cloneForOverlay() *content {
 	n.entryRevision = map[string]int{}
 	n.entryChangedAt = map[string]time.Time{}
 	n.spellTargets = map[string]SpellTarget{}
+	n.spellZones = map[string]SpellZoneRule{}
 	n.raceChoice = map[string][]int{}
 	n.bgEquipment = map[string]string{}
 	n.catalog = Catalog{}

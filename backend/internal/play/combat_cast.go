@@ -711,7 +711,7 @@ func (f *castFlow) affect(ctx context.Context) error {
 	if f.sp.HP != nil {
 		return f.affectHitPoints(ctx)
 	}
-	if def, ok := zoneDefOf(f.sp.Key); ok && f.placedArea { // the area stays on the map (zones_cast.go)
+	if def, ok := zoneDefOfSpell(f.sp); ok && f.placedArea { // the area stays on the map (zones_cast.go)
 		return f.affectZone(ctx, def)
 	}
 	for i, t := range f.targs {

@@ -193,3 +193,7 @@ ADR-0018 requires that a table class works end to end.
 `TestLevelUpSweepTableMulticlass` repeats it with each of them together with an SRD class, in both orders.
 No step may fail `CheckLevelUp` or `Validate`, leave an `Issue` or panic.
 `TestDeriveTableCharacterGolden` pins a table character's sheet at levels 1, 5 and 11 (`testdata/golden/table-character.json`; rewrite with `go test ./internal/rules -update`).
+
+## The area a spell keeps on the map
+
+`TableSpell.Zone` (`TableSpellZone`: `Trigger` of `ZoneStartOfTurn`, `ZoneFirstEntry` or `ZoneBoth`, and `FollowsCaster`) is checked by `checkSpellZone` and kept in `Content.spellZones` (`Content.SpellZone`). Refused at `.zone.trigger` (not one of the three), `.zone.follows_caster` (needs the range Self if it follows, a distance if it does not) and `.zone` (a cantrip; a target that is not a sphere, a cylinder or a cube; not exactly one damage type; a spell attack or healing; neither a timed duration nor concentration). The combat reads it through `link.Spell.Zone` ([Spell zones](play/spell-zones.md)).
