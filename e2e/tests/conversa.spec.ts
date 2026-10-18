@@ -91,7 +91,8 @@ test(
       await say(master, second);
       await expect(lineOf(pensantus, second)).toBeVisible();
       await expect(pensantus.getByText(secret)).toHaveCount(0);
-      await expect(pensantus.getByText('só o mestre lê')).toHaveCount(0);
+      // In the feed only: Pensantus's own composer has the "Só o mestre lê" toggle.
+      await expect(feedOf(pensantus).getByText('só o mestre lê')).toHaveCount(0);
       await expect(pensantus.getByRole('alert')).toHaveCount(0);
       // Whisper, marker and second marker: nothing more and nothing less.
       await expect(feedOf(pensantus).getByRole('listitem')).toHaveCount(3);
