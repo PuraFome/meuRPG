@@ -75,30 +75,7 @@ const (
 	SourcePoisonedCheck   = "poisoned_check"
 	SourceFrightenedCheck = "frightened_check"
 	SourcePerceptionDim   = "perception_dim"
-	// A racial advantage on saving throws against one kind of source (Brave, Fey Ancestry, Gnome Cunning,
-	// Dwarven Resilience); Source.Condition is the key of the trait.
-	SourceTaggedSave = "tagged_save"
 )
-
-// What a saving throw can be against, for the racial advantages that hold only against one kind of source. A save
-// lists every kind its source is: a spell's save is against magic, and against charm too when it charms.
-const (
-	AgainstMagic      = "magic"
-	AgainstFrightened = "frightened"
-	AgainstCharmed    = "charmed"
-	AgainstPoison     = "poison"
-)
-
-// TaggedSave is a racial advantage on saving throws that holds only against one kind of source (SRD 5.1: the
-// halfling's Brave, the elf's Fey Ancestry, the gnome's Gnome Cunning, the dwarf's Dwarven Resilience).
-type TaggedSave struct {
-	// Source is the key of the trait that gives it ("trait:brave").
-	Source string
-	// Against is the kind of source it holds against (an Against* constant).
-	Against string
-	// Abilities are the abilities of the saves it covers, all of them when empty.
-	Abilities []string
-}
 
 // The condition keys and numbers the rules read.
 const (
@@ -134,8 +111,6 @@ type Source struct {
 	// the sources that are one; for SourceEffectAttack, the key of the effect that
 	// gives it ("spell:vicious-mockery"); "" for the others.
 	Condition string
-	// Against is, for SourceTaggedSave, the kind of source the advantage holds against (an Against* constant).
-	Against string
 }
 
 // Resolve is the mode the sources make together: any number of one side and
@@ -238,9 +213,6 @@ type Creature struct {
 	// AttackDisadvantage is the key of the effect that lasts that gives its own attack rolls
 	// disadvantage (Vicious Mockery: "spell:vicious-mockery"), "" for none.
 	AttackDisadvantage string
-	// TaggedSaves are the racial advantages that hold against one kind of source: they apply to a save that
-	// says what it is against (SaveScene.Against).
-	TaggedSaves []TaggedSave
 }
 
 // Has says whether it carries a condition.
@@ -496,9 +468,6 @@ type SaveScene struct {
 	// StealthArmor says the check is Dexterity (Stealth) in armor that gives disadvantage
 	// on it (SRD 5.1, "Armor").
 	StealthArmor bool
-	// Against lists what the saving throw is against (an Against* constant for each kind its source is), when the
-	// app knows it: the racial advantages on saves against a kind of source apply only then.
-	Against []string
 }
 
 // SaveMode lists the circumstances of a saving throw or an ability check (SRD
@@ -508,7 +477,7 @@ func SaveMode(s SaveScene) []Source {
 	rs = append(rs, sourceRule{s.Ability == strengthAbility && s.Creature.Raging, SourceRageStrength, ModeAdvantage, ""})
 	rs = append(rs, saveRules(s)...)
 	rs = append(rs, checkRules(s)...)
-	return append(appendRules(nil, rs), taggedSaveSources(s)...)
+	return appendRules(nil, rs)
 }
 
 // dexSaveRules are the sources of a Dexterity saving throw: Dodge, Danger
@@ -536,21 +505,6 @@ func saveRules(s SaveScene) []sourceRule {
 		{slices.Contains(c.SaveAdvantage, s.Ability), SourceEffectSave, ModeAdvantage, ""},
 		{c.Exhaustion >= exhaustionAttackLevel, SourceExhaustionSave, ModeDisadvantage, ""},
 	}
-}
-
-// taggedSaveSources are the racial advantages a saving throw gets from what it is against: one source for each
-// trait that holds, in the order of the sheet. An ability check has none.
-func taggedSaveSources(s SaveScene) []Source {
-	if s.Check {
-		return nil
-	}
-	var out []Source
-	for _, t := range s.Creature.TaggedSaves {
-		if slices.Contains(s.Against, t.Against) && (len(t.Abilities) == 0 || slices.Contains(t.Abilities, s.Ability)) {
-			out = append(out, Source{Kind: SourceTaggedSave, Effect: ModeAdvantage, Condition: t.Source, Against: t.Against})
-		}
-	}
-	return out
 }
 
 // dangerSenseHolds says Danger Sense gives its advantage: the creature sees

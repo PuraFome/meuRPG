@@ -189,14 +189,6 @@ type ExtraDamage struct {
 // has it sets Traits.Lucky, and a d20 it rolled again names it as the source of the reroll.
 const LuckyTrait = "trait:lucky"
 
-// TaggedSave is an advantage on saving throws against one kind of source ("magic", "frightened", "charmed",
-// "poison"), as the sheet's trait gives it: Source is the key of the trait, Abilities the saves it covers (all when
-// empty).
-type TaggedSave struct {
-	Source, Against string
-	Abilities       []string
-}
-
 // Traits are what a sheet has that changes how its owner rolls and what its
 // damage carries: the barbarian's Rage, Reckless Attack and Danger Sense, the
 // rogue's Sneak Attack, the paladin's Divine Smite, the ranger's Hunter's Mark and
@@ -232,9 +224,6 @@ type Traits struct {
 	// Lucky is the halfling's trait (LuckyTrait): a 1 on the d20 of an attack roll or a saving
 	// throw may be rolled again, and the new roll stands. The player is asked before the result.
 	Lucky bool
-	// TaggedSaves are the racial advantages on saving throws that hold against one kind of source (Brave, Fey
-	// Ancestry, Gnome Cunning, Dwarven Resilience).
-	TaggedSaves []TaggedSave
 	// HeavyArmor says the armor worn is heavy: Rage gives none of its benefits then.
 	HeavyArmor bool
 	// StealthDisadvantage says the armor worn gives disadvantage on Dexterity (Stealth).

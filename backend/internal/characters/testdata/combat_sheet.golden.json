@@ -173,17 +173,6 @@
       "PackTactics": false,
       "Evasion": false,
       "Lucky": false,
-      "TaggedSaves": [
-        {
-          "Source": "trait:gnome-cunning",
-          "Against": "magic",
-          "Abilities": [
-            "int",
-            "wis",
-            "cha"
-          ]
-        }
-      ],
       "HeavyArmor": false,
       "StealthDisadvantage": false,
       "Resistances": null,
@@ -317,7 +306,6 @@
       "PackTactics": false,
       "Evasion": false,
       "Lucky": false,
-      "TaggedSaves": null,
       "HeavyArmor": false,
       "StealthDisadvantage": false,
       "Resistances": null,
@@ -451,7 +439,6 @@
       "PackTactics": false,
       "Evasion": false,
       "Lucky": false,
-      "TaggedSaves": null,
       "HeavyArmor": false,
       "StealthDisadvantage": false,
       "Resistances": [
@@ -579,7 +566,6 @@
       "PackTactics": false,
       "Evasion": false,
       "Lucky": false,
-      "TaggedSaves": null,
       "HeavyArmor": false,
       "StealthDisadvantage": false,
       "Resistances": null,
@@ -713,7 +699,6 @@
       "PackTactics": false,
       "Evasion": false,
       "Lucky": false,
-      "TaggedSaves": null,
       "HeavyArmor": false,
       "StealthDisadvantage": false,
       "Resistances": null,
@@ -870,7 +855,6 @@
       "PackTactics": false,
       "Evasion": false,
       "Lucky": false,
-      "TaggedSaves": null,
       "HeavyArmor": true,
       "StealthDisadvantage": true,
       "Resistances": null,
@@ -1036,7 +1020,6 @@
       "PackTactics": false,
       "Evasion": false,
       "Lucky": false,
-      "TaggedSaves": null,
       "HeavyArmor": false,
       "StealthDisadvantage": false,
       "Resistances": null,
@@ -1176,7 +1159,6 @@
       "PackTactics": false,
       "Evasion": false,
       "Lucky": false,
-      "TaggedSaves": null,
       "HeavyArmor": false,
       "StealthDisadvantage": false,
       "Resistances": null,
@@ -1310,7 +1292,6 @@
       "PackTactics": false,
       "Evasion": false,
       "Lucky": false,
-      "TaggedSaves": null,
       "HeavyArmor": false,
       "StealthDisadvantage": false,
       "Resistances": null,
