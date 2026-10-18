@@ -33,7 +33,8 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
-    "Zone": null
+    "Zone": null,
+    "ZoneLaid": false
   },
   "cleric spell:cure-wounds@1": {
     "Key": "spell:cure-wounds",
@@ -74,7 +75,8 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
-    "Zone": null
+    "Zone": null,
+    "ZoneLaid": false
   },
   "cleric spell:cure-wounds@3": {
     "Key": "spell:cure-wounds",
@@ -115,7 +117,8 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
-    "Zone": null
+    "Zone": null,
+    "ZoneLaid": false
   },
   "cleric spell:flame-strike@5": {
     "Key": "spell:flame-strike",
@@ -167,7 +170,8 @@
     "AreaSizeFt": 10,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
-    "Zone": null
+    "Zone": null,
+    "ZoneLaid": false
   },
   "cleric spell:flame-strike@6 radiant": {
     "Key": "spell:flame-strike",
@@ -219,7 +223,8 @@
     "AreaSizeFt": 10,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
-    "Zone": null
+    "Zone": null,
+    "ZoneLaid": false
   },
   "cleric spell:guiding-bolt@1": {
     "Key": "spell:guiding-bolt",
@@ -262,7 +267,8 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
-    "Zone": null
+    "Zone": null,
+    "ZoneLaid": false
   },
   "cleric spell:healing-word@1": {
     "Key": "spell:healing-word",
@@ -303,7 +309,8 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
-    "Zone": null
+    "Zone": null,
+    "ZoneLaid": false
   },
   "cleric spell:hold-person@2": {
     "Key": "spell:hold-person",
@@ -339,7 +346,8 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
-    "Zone": null
+    "Zone": null,
+    "ZoneLaid": false
   },
   "cleric spell:mass-cure-wounds@5": {
     "Key": "spell:mass-cure-wounds",
@@ -380,7 +388,8 @@
     "AreaSizeFt": 30,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
-    "Zone": null
+    "Zone": null,
+    "ZoneLaid": false
   },
   "cleric spell:sacred-flame@0": {
     "Key": "spell:sacred-flame",
@@ -423,7 +432,8 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
-    "Zone": null
+    "Zone": null,
+    "ZoneLaid": false
   },
   "cleric spell:spirit-guardians@3": {
     "Key": "spell:spirit-guardians",
@@ -469,7 +479,8 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
-    "Zone": null
+    "Zone": null,
+    "ZoneLaid": false
   },
   "cleric spell:spiritual-weapon@2": {
     "Key": "spell:spiritual-weapon",
@@ -512,7 +523,8 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
-    "Zone": null
+    "Zone": null,
+    "ZoneLaid": false
   },
   "fighter casting spell:cure-wounds (no spellcasting)": {
     "Key": "spell:cure-wounds",
@@ -553,7 +565,8 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
-    "Zone": null
+    "Zone": null,
+    "ZoneLaid": false
   },
   "fighter casting spell:fire-bolt (no spellcasting)": {
     "Key": "spell:fire-bolt",
@@ -596,7 +609,8 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
-    "Zone": null
+    "Zone": null,
+    "ZoneLaid": false
   },
   "refused: a character that is not there": {
     "code": "not_found",
@@ -648,7 +662,8 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
-    "Zone": null
+    "Zone": null,
+    "ZoneLaid": false
   },
   "wizard spell:cone-of-cold@5": {
     "Key": "spell:cone-of-cold",
@@ -691,7 +706,8 @@
     "AreaSizeFt": 60,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
-    "Zone": null
+    "Zone": null,
+    "ZoneLaid": false
   },
   "wizard spell:contact-other-plane@5": {
     "Key": "spell:contact-other-plane",
@@ -727,7 +743,8 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
-    "Zone": null
+    "Zone": null,
+    "ZoneLaid": false
   },
   "wizard spell:false-life@1": {
     "Key": "spell:false-life",
@@ -777,7 +794,8 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
-    "Zone": null
+    "Zone": null,
+    "ZoneLaid": false
   },
   "wizard spell:find-familiar@1": {
     "Key": "spell:find-familiar",
@@ -813,7 +831,8 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
-    "Zone": null
+    "Zone": null,
+    "ZoneLaid": false
   },
   "wizard spell:fire-bolt@0": {
     "Key": "spell:fire-bolt",
@@ -856,7 +875,8 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
-    "Zone": null
+    "Zone": null,
+    "ZoneLaid": false
   },
   "wizard spell:fireball@3": {
     "Key": "spell:fireball",
@@ -899,7 +919,8 @@
     "AreaSizeFt": 20,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": true,
-    "Zone": null
+    "Zone": null,
+    "ZoneLaid": false
   },
   "wizard spell:fireball@5": {
     "Key": "spell:fireball",
@@ -942,7 +963,8 @@
     "AreaSizeFt": 20,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": true,
-    "Zone": null
+    "Zone": null,
+    "ZoneLaid": false
   },
   "wizard spell:hold-person@3": {
     "Key": "spell:hold-person",
@@ -978,7 +1000,8 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
-    "Zone": null
+    "Zone": null,
+    "ZoneLaid": false
   },
   "wizard spell:magic-missile@1": {
     "Key": "spell:magic-missile",
@@ -1021,7 +1044,8 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
-    "Zone": null
+    "Zone": null,
+    "ZoneLaid": false
   },
   "wizard spell:magic-missile@3": {
     "Key": "spell:magic-missile",
@@ -1064,7 +1088,8 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
-    "Zone": null
+    "Zone": null,
+    "ZoneLaid": false
   },
   "wizard spell:ray-of-frost@0": {
     "Key": "spell:ray-of-frost",
@@ -1107,7 +1132,8 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
-    "Zone": null
+    "Zone": null,
+    "ZoneLaid": false
   },
   "wizard spell:shield@1": {
     "Key": "spell:shield",
@@ -1143,7 +1169,8 @@
     "AreaSizeFt": 0,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
-    "Zone": null
+    "Zone": null,
+    "ZoneLaid": false
   },
   "wizard spell:sleep@1": {
     "Key": "spell:sleep",
@@ -1193,6 +1220,7 @@
     "AreaSizeFt": 20,
     "AreaWidthFt": 0,
     "SpreadsAroundCorners": false,
-    "Zone": null
+    "Zone": null,
+    "ZoneLaid": false
   }
 }
