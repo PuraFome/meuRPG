@@ -139,9 +139,9 @@
         <app-held-roll-prompt
           [offer]="o"
           look="sheet"
-          [canApp]="canApp"
-          [canType]="canType"
-          [preferApp]="preferApp"
+          [canApp]="ways.canApp"
+          [canType]="ways.canType"
+          [preferApp]="ways.preferApp"
           [busy]="busy()"
           (answer)="held.answer($event)"
         />

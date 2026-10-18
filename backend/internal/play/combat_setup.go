@@ -11,10 +11,10 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
-	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
 // The handlers that set a combat up and keep its roster: the initiative, the order of a tie,
@@ -30,8 +30,8 @@ type initiativeCall struct {
 	key         string
 	encounterID string
 	combatantID string
-	inApp       bool // the app rolls the d20; otherwise face is the physical die
-	face        int
+	in          rollInput // the app rolls the d20, or the physical die the player typed
+	msg         *playv1.SubmitInitiativeRequest
 }
 
 // SubmitInitiative implements playv1connect.CombatServiceHandler.
@@ -52,8 +52,10 @@ func (s *Service) SubmitInitiative(
 		}
 	}
 
+	var held *playv1.HeldRollOffer
 	res, err := s.write(ctx, combatWrite{m: call.m, key: call.key, hash: idem.Hash(req.Msg), kind: eventInitiativeSubmitted, encounterID: call.encounterID}, func(c *combatTx) (any, error) {
-		return s.initiativeWrite(ctx, c, call, force)
+		held = nil
+		return s.initiativeWrite(ctx, c, call, force, &held)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "submit an initiative", err)
@@ -62,17 +64,21 @@ func (s *Service) SubmitInitiative(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&playv1.SubmitInitiativeResponse{Encounter: out}), nil
+	return connect.NewResponse(&playv1.SubmitInitiativeResponse{Encounter: out, HeldRollOffer: held}), nil
 }
 
 // readInitiativeCall reads the request in the order the answers are given: who may call,
 // the key, the encounter, the combatant, then the roll.
 func readInitiativeCall(ctx context.Context, req *playv1.SubmitInitiativeRequest) (initiativeCall, error) {
-	m, key, encID, err := memberCall(ctx, req.GetCampaignId(), req.GetIdempotencyKey(), req.GetEncounterId())
+	m, err := heldMember(ctx, req.GetCampaignId()) // a held roll's answer runs this again as the roller
 	if err != nil {
 		return initiativeCall{}, err
 	}
-	call := initiativeCall{m: m, key: key, encounterID: encID}
+	key, encID, err := parseCall(req.GetIdempotencyKey(), req.GetEncounterId())
+	if err != nil {
+		return initiativeCall{}, err
+	}
+	call := initiativeCall{m: m, key: key, encounterID: encID, msg: req}
 	if call.combatantID, err = parseCombatID(req.GetCombatantId(), "combatant"); err != nil {
 		return initiativeCall{}, err
 	}
@@ -81,9 +87,9 @@ func readInitiativeCall(ctx context.Context, req *playv1.SubmitInitiativeRequest
 		if !roll.RollInApp {
 			return initiativeCall{}, connect.NewError(connect.CodeInvalidArgument, errors.New("roll_in_app must be true"))
 		}
-		call.inApp = true
+		call.in.inApp = true
 	case *playv1.SubmitInitiativeRequest_D20Face:
-		call.face = int(roll.D20Face)
+		call.in.typed = int(roll.D20Face)
 	default:
 		return initiativeCall{}, connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or d20_face"))
 	}
@@ -92,7 +98,7 @@ func readInitiativeCall(ctx context.Context, req *playv1.SubmitInitiativeRequest
 
 // initiativeWrite is the transaction of SubmitInitiative: who rolls, the roll, where it is
 // stored, and the new order.
-func (s *Service) initiativeWrite(ctx context.Context, c *combatTx, call initiativeCall, force DiceForce) (any, error) {
+func (s *Service) initiativeWrite(ctx context.Context, c *combatTx, call initiativeCall, force DiceForce, held **playv1.HeldRollOffer) (any, error) {
 	cs, err := listCombatants(ctx, c)
 	if err != nil {
 		return nil, err
@@ -105,14 +111,18 @@ func (s *Service) initiativeWrite(ctx context.Context, c *combatTx, call initiat
 	if err := v.mayAct(target); err != nil {
 		return nil, err
 	}
-	if err := mayRollInitiative(c.enc, v, target, force, call.inApp); err != nil {
+	if err := mayRollInitiative(c.enc, v, target, force, call.in.inApp); err != nil {
 		return nil, err
 	}
-	roll, face, err := s.initiativeRoll(target, call)
+	gate, err := s.initiativeGate(ctx, c, call, target)
 	if err != nil {
 		return nil, err
 	}
-	total, f := conv.Int32(roll.Total), clamp32(face, 1, 20)
+	if gate.Held != nil {
+		_, _, *held = s.outsideOffers(ctx, c.tx, gate.Held)
+		return nil, nil
+	}
+	total, f := conv.Int32(gate.Roll.Total), clamp32(gate.Roll.Face(), 1, 20)
 	if err := saveInitiative(ctx, c, cs, target, total, f); err != nil {
 		return nil, err
 	}
@@ -123,7 +133,7 @@ func (s *Service) initiativeWrite(ctx context.Context, c *combatTx, call initiat
 		return nil, err
 	}
 	c.characterID = &target.CharacterID
-	return map[string]any{"combatant_id": target.ID, "face": f, "total": total, "physical": !call.inApp}, nil
+	return map[string]any{"combatant_id": target.ID, "face": f, "total": total, "physical": gate.Roll.Physical}, nil
 }
 
 // mayRollInitiative checks that the combat is in SETUP and, for a player, that the initiative
@@ -147,20 +157,23 @@ func mayRollInitiative(enc playdb.Encounter, v combatViewer, target playdb.Comba
 	return nil
 }
 
-// initiativeRoll rolls the d20 in the app, or takes the physical die the player typed, and
-// adds the target's bonus. It returns the roll and the face.
-func (s *Service) initiativeRoll(target playdb.Combatant, call initiativeCall) (roll dice.Result, face int, err error) {
-	expr := dice.Expr{Count: 1, Sides: d20Sides, Modifier: int(target.InitiativeBonus)}
-	if call.inApp {
-		if roll, err = dice.Roll(s.roller, expr); err != nil {
-			return roll, 0, fmt.Errorf("roll the initiative: %w", err)
+// initiativeGate rolls the d20 of an initiative, or keeps it for a question: initiative is a Dexterity check (SRD 5.1), so
+// a character that holds a Bardic Inspiration die, or a halfling whose d20 shows a 1, is asked before the total is set.
+// The combat is in SETUP, so the die is the character's own (it carries into the combat when it begins). A creature, an
+// NPC and the master's roll for them wait for nobody.
+func (s *Service) initiativeGate(ctx context.Context, c *combatTx, call initiativeCall, target playdb.Combatant) (gateResult, error) {
+	spec := rollSpec{
+		Kind: heldInitiative, Key: call.key, Request: call.msg, In: call.in, Modifier: int(target.InitiativeBonus), Mode: combat.ModeNormal,
+		Roller: heldRoller{CampaignID: call.m.CampaignID, CharacterID: target.CharacterID, UserID: call.m.UserID},
+	}
+	if target.Kind == kindPlayer && backedByCharacter(target) {
+		sheet, err := s.sheetOf(ctx, c.tx, c.session.CampaignID, target)
+		if err != nil {
+			return gateResult{}, err
 		}
-		return roll, roll.Faces[0], nil
+		spec.Lucky, spec.MayAsk = sheet.Traits.Lucky, playedBy(target, call.m)
 	}
-	if roll, err = dice.Physical(expr, call.face); err != nil {
-		return roll, 0, connect.NewError(connect.CodeInvalidArgument, errors.New("d20_face must be 1 to 20"))
-	}
-	return roll, call.face, nil
+	return s.heldGate(ctx, s.inspirationGate(c), spec)
 }
 
 // saveInitiative stores the roll on the combatant, or on the group of creatures it rolled

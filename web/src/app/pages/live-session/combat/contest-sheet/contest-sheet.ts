@@ -16,9 +16,7 @@ import { MatIconModule } from '@angular/material/icon';
 import type { Observable } from 'rxjs';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import type { AnswerHeldRollResponse } from '../../../../../gen/meurpg/play/v1/resources_pb';
-import { effectivePreference } from '../../../../core/campaigns/dice-labels';
-import { HeldRollController } from '../../../../core/held-rolls/held-roll-controller';
+import { contestHeld, waysOf } from '../contest-held';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { HeldRollPrompt } from '../../../../shared/held-roll-prompt/held-roll-prompt';
 import {
@@ -64,6 +62,7 @@ import {
   GRAPPLE_STEPS,
   type Stage,
   checkOf,
+  startInputOf,
   limitTextOf,
   maneuverWhy,
   stageOf,
@@ -174,17 +173,20 @@ export class ContestSheet {
     return this.injector.get(ResourceClient); // built when a question is answered: the sheet needs it for no other call
   }
   /** The question of the initiator's roll when the d20 was kept for one: Lucky's 1, then the Bardic Inspiration die. */
-  protected readonly held = new HeldRollController({
-    send: (holdId, answer, key) =>
-      this.resources.answerHeldRoll(this.data.campaignId, holdId, answer, key),
-    settle: (res) => this.answeredHeld(res),
+  protected readonly held = contestHeld({
+    resources: () => this.resources,
+    campaignId: this.data.campaignId,
     busy: this.busy,
     error: this.error,
+    side: 'contest',
+    settled: (encounter, contest) => {
+      this.data.state.apply(encounter);
+      this.opened(contest, this.escape ? this.skill() : ContestSkill.ATHLETICS);
+      this.startKeys.renew();
+    },
+    asked: (encounter) => this.data.state.apply(encounter),
   });
-  protected readonly canApp = this.data.diceMode !== DiceMode.PHYSICAL;
-  protected readonly canType = this.data.diceMode !== DiceMode.APP;
-  protected readonly preferApp =
-    effectivePreference(this.data.diceMode, this.data.preference) === DicePreference.APP;
+  protected readonly ways = waysOf(this.data);
 
   private readonly startKeys = new ActionKey();
   private readonly shoveKeys = new ActionKey();
@@ -394,30 +396,15 @@ export class ContestSheet {
     this.error.set('');
     try {
       const skill = this.escape ? this.skill() : ContestSkill.ATHLETICS;
-      const res = await this.api.start(
-        {
-          campaignId: this.data.campaignId,
-          encounterId: this.data.encounterId,
-          initiatorId: this.data.initiatorId,
-          targetId: target,
-          purpose: this.data.purpose,
-          kind: ContestKind.CONTEST,
-          skill,
-          die,
-          ...(this.maneuverKey()
-            ? { maneuverKey: this.maneuverKey(), maneuverFace: this.maneuverFace() }
-            : {}),
-        },
-        this.startKeys.keyFor({
-          initiator: this.data.initiatorId,
-          target,
-          purpose: this.data.purpose,
-          skill,
-          die,
-          maneuver: this.maneuverKey(),
-          face: this.maneuverFace(),
-        }),
+      const input = startInputOf(
+        this.data,
+        target,
+        skill,
+        die,
+        this.maneuverKey(),
+        this.maneuverFace(),
       );
+      const res = await this.api.start(input, this.startKeys.keyFor(input));
       this.data.state.apply(res.encounter);
       if (!res.contest) {
         // The d20 is kept for a question (a halfling's 1, a Bardic Inspiration die): the player decides before the contest opens.
@@ -445,19 +432,6 @@ export class ContestSheet {
       this.animator.play(show);
     }
     this.started.set(contest.id);
-  }
-
-  /** The answer to the question settled the roll: the contest it opened, or the next question of the same roll. */
-  private answeredHeld(res: AnswerHeldRollResponse): void {
-    const settled = res.result.case === 'contest' ? res.result.value : null;
-    if (!settled?.encounter || (!settled.contest && !res.next)) {
-      throw new Error('AnswerHeldRoll answered without its contest');
-    }
-    this.data.state.apply(settled.encounter);
-    if (settled.contest) {
-      this.opened(settled.contest, this.escape ? this.skill() : ContestSkill.ATHLETICS);
-      this.startKeys.renew();
-    }
   }
 
   protected setOutcome(outcome: ShoveOutcome): void {

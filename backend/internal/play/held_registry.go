@@ -59,6 +59,7 @@ func init() {
 		heldHintTry:           {rerun: registerRerun((*Service).TryPuzzleHint)},
 		heldDeathSave:         {rerun: registerRerun((*Service).RollDeathSave)},
 		heldContest:           {rerun: rerunContest},
+		heldInitiative:        {rerun: registerRerun((*Service).SubmitInitiative)},
 	}
 }
 

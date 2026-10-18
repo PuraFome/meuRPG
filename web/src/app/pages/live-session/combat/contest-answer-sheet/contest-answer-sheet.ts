@@ -24,10 +24,8 @@ import {
   ContestStatus,
   RollModeKind,
 } from '../../../../../gen/meurpg/play/v1/contest_types_pb';
-import type { AnswerHeldRollResponse } from '../../../../../gen/meurpg/play/v1/resources_pb';
-import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import { ActionKey } from '../../../../core/connect/idempotency';
-import { HeldRollController } from '../../../../core/held-rolls/held-roll-controller';
+import { contestHeld, waysOf } from '../contest-held';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { HeldRollPrompt } from '../../../../shared/held-roll-prompt/held-roll-prompt';
 import { article } from '../../../../core/combat/combat-log';
@@ -127,17 +125,20 @@ export class ContestAnswerSheet {
     return this.injector.get(ResourceClient); // built when a question is answered: the sheet needs it for no other call
   }
   /** The question of the defender's roll when the d20 was kept for one: Lucky's 1, then the Bardic Inspiration die. */
-  protected readonly held = new HeldRollController({
-    send: (holdId, answer, key) =>
-      this.resources.answerHeldRoll(this.data.campaignId, holdId, answer, key),
-    settle: (res) => this.answeredHeld(res),
+  protected readonly held = contestHeld({
+    resources: () => this.resources,
+    campaignId: this.data.campaignId,
     busy: this.busy,
     error: this.error,
+    side: 'contestAnswer',
+    settled: (encounter, contest) => {
+      this.data.state.apply(encounter);
+      this.keys.renew();
+      this.settled(contest, true, this.chosenSkill());
+    },
+    asked: (encounter) => this.data.state.apply(encounter),
   });
-  protected readonly canApp = this.data.diceMode !== DiceMode.PHYSICAL;
-  protected readonly canType = this.data.diceMode !== DiceMode.APP;
-  protected readonly preferApp =
-    effectivePreference(this.data.diceMode, this.data.preference) === DicePreference.APP;
+  protected readonly ways = waysOf(this.data);
   private readonly keys = new ActionKey();
   private readonly frame = viewChild(SheetFrame);
   private readonly done = viewChild('done', { read: ElementRef<HTMLButtonElement> });
@@ -273,19 +274,6 @@ export class ContestAnswerSheet {
       : null;
     if (show) {
       this.animator.play(show);
-    }
-  }
-
-  /** The answer to the question settled the roll: the contest it answered, or the next question of the same roll. */
-  private answeredHeld(res: AnswerHeldRollResponse): void {
-    const settled = res.result.case === 'contestAnswer' ? res.result.value : null;
-    if (!settled?.encounter || (!settled.contest && !res.next)) {
-      throw new Error('AnswerHeldRoll answered without its contest');
-    }
-    this.data.state.apply(settled.encounter);
-    if (settled.contest) {
-      this.keys.renew();
-      this.settled(settled.contest, true, this.chosenSkill());
     }
   }
 

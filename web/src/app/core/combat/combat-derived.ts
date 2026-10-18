@@ -14,7 +14,7 @@ import {
 import { type FallNote, fallNote } from '../traps/trap-log';
 import type { Square } from './combat-grid';
 import { ownCreatures } from './mine';
-import { isDead, isDown } from './combat-view';
+import { initiativeDie, isDead, isDown } from './combat-view';
 import { reachingAttacks } from './opportunity';
 
 /** What the combat screen derives from the combat, the options and the log, as pure functions: each of the screen's
@@ -184,7 +184,11 @@ export function initiativeLine(c: Combatant | undefined): { face: number; line: 
     c.initiativeBonus === 0
       ? ''
       : ` ${c.initiativeBonus < 0 ? '\u2212' : '+'} ${Math.abs(c.initiativeBonus)}`;
-  return { face: c.initiativeFace, line: `${c.initiativeFace}${mod} = ${c.initiative}` };
+  const die = initiativeDie(c);
+  return {
+    face: c.initiativeFace,
+    line: `${c.initiativeFace}${mod}${die ? ` + ${die}` : ''} = ${c.initiative}`,
+  };
 }
 
 /** What the player reads after a feature spent the action: Action Surge gives the action back, frenzy says so, any other is "Usou X.". */

@@ -30,6 +30,7 @@ var heldKindProto = map[heldKind]playv1.HeldRollKind{
 	heldConcentrationSave: playv1.HeldRollKind_HELD_ROLL_KIND_CONCENTRATION_SAVE,
 	heldDeathSave:         playv1.HeldRollKind_HELD_ROLL_KIND_DEATH_SAVE,
 	heldContest:           playv1.HeldRollKind_HELD_ROLL_KIND_CONTEST,
+	heldInitiative:        playv1.HeldRollKind_HELD_ROLL_KIND_INITIATIVE,
 	heldSceneCheck:        playv1.HeldRollKind_HELD_ROLL_KIND_SCENE_CHECK,
 	heldGroupCheck:        playv1.HeldRollKind_HELD_ROLL_KIND_GROUP_CHECK,
 	heldTrapSearch:        playv1.HeldRollKind_HELD_ROLL_KIND_TRAP_SEARCH,
@@ -100,6 +101,9 @@ func giverLabel(c playdb.Combatant, cs []playdb.Combatant) string {
 func heldOfferOfCombatant(d *encounterData, c playdb.Combatant, v combatViewer) *playv1.HeldRollOffer {
 	if !v.master && !v.owns(c) {
 		return nil
+	}
+	if asked, ok := d.setupOffers[c.CharacterID]; ok && backedByCharacter(c) {
+		return combatantOffer(asked, c, d.cs)
 	}
 	st := stateOfCombatant(c, d.enc.Round)
 	for _, h := range d.allHolds {
@@ -204,6 +208,8 @@ func answerHeldResultOf(out proto.Message) *playv1.AnswerHeldRollResponse {
 		res.Result, res.Next = &playv1.AnswerHeldRollResponse_ContestAnswer{ContestAnswer: o}, o.GetHeldRollOffer()
 	case *playv1.RollDeathSaveResponse:
 		res.Result, res.Next = &playv1.AnswerHeldRollResponse_DeathSave{DeathSave: o}, o.GetHeldRollOffer()
+	case *playv1.SubmitInitiativeResponse:
+		res.Result, res.Next = &playv1.AnswerHeldRollResponse_Initiative{Initiative: o}, o.GetHeldRollOffer()
 	case *playv1.SearchForTrapsResponse:
 		res.Result, res.Next = &playv1.AnswerHeldRollResponse_TrapSearch{TrapSearch: o}, o.GetHeldRollOffer()
 	case *playv1.TryPuzzleHintResponse:

@@ -187,7 +187,8 @@ service CombatService {
   // SubmitInitiative sets a combatant's initiative: a d20 plus the
   // combatant's initiative bonus (RN-19). The combatant's player may roll
   // for their own character, and the master for anyone. Only while the combat
-  // is in SETUP.
+  // is in SETUP. A character that holds a Bardic Inspiration die, or a halfling whose d20 shows a 1, is asked first
+  // (`held_roll_offer`).
   //
   // The roll is either rolled by the app (roll_in_app), or a face typed from
   // a physical die (d20_face, 1 to 20). With the campaign's dice setting
@@ -2662,6 +2663,10 @@ message SubmitInitiativeRequest {
 // SubmitInitiativeResponse returns the combat after the roll.
 message SubmitInitiativeResponse {
   Encounter encounter = 1;
+  // Set when the roll waits for a question (the halfling's Lucky about a 1, or the Bardic Inspiration die the character
+  // holds; AnswerHeldRoll answers it): the d20 was rolled and kept, and the initiative stays unset. `encounter` is the
+  // combat as it is. The master is asked too when he rolls for the player, and answers after the player's first 10 s.
+  HeldRollOffer held_roll_offer = 2;
 }
 
 // SetInitiativeOrderRequest orders a tie.
@@ -3616,6 +3621,9 @@ enum HeldRollKind {
   // the contest is opened, or the defender's (RespondContest) before it is settled. Lucky's reroll of a 1 and a Bardic
   // Inspiration die are asked about before anything is spent or written.
   HELD_ROLL_KIND_CONTEST = 11;
+  // The initiative of a character in SETUP (SubmitInitiative): a Dexterity check (SRD 5.1), so Lucky's reroll of a 1 and
+  // a Bardic Inspiration die the character holds are asked about before the total is set.
+  HELD_ROLL_KIND_INITIATIVE = 10;
 }
 
 // LuckyQuestion is the halfling's "Tirou 1: rolar de novo?" (SRD 5.1, Halfling, Lucky).

@@ -37,6 +37,8 @@
               [encounter]="e"
               [info]="info()"
               [busy]="busy()"
+              [heldQuestions]="held"
+              [heldCanType]="heldCanType()"
               (submit)="initiative.submitFace($event.id, $event.face)"
               (order)="initiative.setOrder($event)"
             />
@@ -221,6 +223,8 @@
           [dicePreference]="dicePreference()"
           [busy]="busy()"
           [error]="error()"
+          [held]="initiative.held.offer()"
+          (answer)="initiative.held.answer($event)"
           (rollInApp)="own() && initiative.rollInApp(own()!.id)"
           (typeFace)="own() && initiative.submitFace(own()!.id, $event)"
           (rollCreatureInApp)="initiative.rollInApp($event)"

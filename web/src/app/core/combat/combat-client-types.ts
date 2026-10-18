@@ -180,6 +180,13 @@ export interface SummonRequest {
   readonly names?: readonly string[];
 }
 
+/** What an initiative answers: the combat, and the question when the d20 was kept for one (the halfling's Lucky about a 1, a Bardic
+ * Inspiration die the character holds); the initiative stays unset until it is answered. */
+export interface InitiativeResult {
+  readonly encounter: Encounter;
+  readonly held: HeldRollOffer | undefined;
+}
+
 /** What a death save answers: the combat and the save, or, when the d20 was kept for a question (the halfling's Lucky about a
  * 1, a Bardic Inspiration die), the question and no save yet. */
 export interface DeathSaveResult {
