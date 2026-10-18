@@ -897,6 +897,8 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, combat["RemoveDamagePart"] = cc.RemoveDamagePart(ctx, connect.NewRequest(&playv1.RemoveDamagePartRequest{CampaignId: id}))
 	_, combat["AnswerRageEnd"] = cc.AnswerRageEnd(ctx, connect.NewRequest(&playv1.AnswerRageEndRequest{CampaignId: id}))
 	_, combat["EndRage"] = cc.EndRage(ctx, connect.NewRequest(&playv1.EndRageRequest{CampaignId: id}))
+	_, combat["MoveSpellZone"] = cc.MoveSpellZone(ctx, connect.NewRequest(&playv1.MoveSpellZoneRequest{CampaignId: id}))
+	_, combat["EndSpellZone"] = cc.EndSpellZone(ctx, connect.NewRequest(&playv1.EndSpellZoneRequest{CampaignId: id}))
 	_, combat["UseHitRider"] = cc.UseHitRider(ctx, connect.NewRequest(&playv1.UseHitRiderRequest{CampaignId: id}))
 	combatMethods := playv1.File_meurpg_play_v1_combat_proto.Services().ByName("CombatService").Methods()
 	if len(combat) != combatMethods.Len() {

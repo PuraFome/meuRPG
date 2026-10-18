@@ -120,6 +120,8 @@ type encounterData struct {
 	// combatant carries (Combatant.held_roll_offer).
 	allHolds []heldRoll
 	riders   []playdb.HitRider
+	// zones are the areas spells keep on the map.
+	zones []*zone
 }
 
 // loadEncounter reads a combat's combatants, in turn order.
@@ -148,7 +150,11 @@ func loadEncounter(ctx context.Context, q *playdb.Queries, enc playdb.Encounter)
 	if err != nil {
 		return nil, fmt.Errorf("list the riders: %w", err)
 	}
-	return &encounterData{enc: enc, cs: cs, states: states, requests: requests, holds: holds, allHolds: allHolds, riders: riders}, nil
+	zones, err := readZonesOf(ctx, q, enc.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &encounterData{enc: enc, cs: cs, states: states, requests: requests, holds: holds, allHolds: allHolds, riders: riders, zones: zones}, nil
 }
 
 // openAttackHolds are the weapon attacks of a combat that wait for an answer, in the shape of the gate.
@@ -298,6 +304,7 @@ func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.Character
 	out.CurrentCombatantId, out.MasterTurn, out.TurnGroupIds = turn.currentID, turn.masterTurn, turn.groupIDs
 	out.NpcOnlyGroups = d.npcOnlyGroups(v)
 	out.HitRiders = d.hitRidersView(v, vitals)
+	out.Zones = d.zonesView(v, names)
 	rd := combatantReader{
 		d: d, v: v, turn: turn, vitals: vitals, armorClass: armorClass, npcs: npcs, names: names,
 		ties:        unresolvedTies(d.cs),

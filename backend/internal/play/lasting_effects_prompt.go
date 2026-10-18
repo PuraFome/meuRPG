@@ -27,6 +27,9 @@ func (wv *windowView) effectOf(t windowTrigger) (playdb.CombatantState, bool) {
 
 func (wv *windowView) effectSavePrompt(w playdb.ReactionWindow, reactor *playdb.Combatant, out *playv1.ReactionWindow) error {
 	t := windowTriggerOf(w)
+	if t.Zone != "" {
+		return wv.zoneSavePrompt(w, reactor, out)
+	}
 	st, ok := wv.effectOf(t)
 	p := &playv1.EffectSavePrompt{EffectId: t.Effect, HandedToMaster: t.Handed, Skippable: wv.v.master, Phase: phaseProto(t.Phase)}
 	if !ok {
@@ -120,8 +123,13 @@ func (wv *windowView) effectSaveWait(w playdb.ReactionWindow, reactor *playdb.Co
 	if answers {
 		return
 	}
-	st, ok := wv.effectOf(windowTriggerOf(w))
+	t := windowTriggerOf(w)
+	st, ok := wv.effectOf(t)
 	readable := ok && st.PlayerVisible && st.Audience == "all"
+	if t.Zone != "" { // a zone is read by who sees its caster
+		owner, found := wv.byID[t.Actor]
+		readable = found && wv.v.sees(owner)
+	}
 	if reactor != nil && reactor.Kind == kindPlayer && wv.v.sees(*reactor) && readable {
 		wait.EffectSavers = append(wait.EffectSavers, reactor.Label)
 		return

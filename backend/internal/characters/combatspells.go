@@ -46,6 +46,9 @@ func (s *Service) CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, charac
 	spellHitPointEffect(&out, content, spellKey, slotLevel)
 	spellKinds(&out, content, d, det, spellKey)
 	spellTargets(&out, det)
+	if z, ok := content.SpellZone(spellKey); ok {
+		out.Zone = &link.ZoneRule{Trigger: z.Trigger, FollowsCaster: z.FollowsCaster}
+	}
 	return out, nil
 }
 

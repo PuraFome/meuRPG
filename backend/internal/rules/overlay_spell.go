@@ -68,6 +68,7 @@ func (b *overlayBuilder) addSpell(ts *TableSpell, path string) error {
 	checkSpellReach(&c, key, path, ts, target.Kind)
 	checkSpellAttack(&c, key, path, ts, sp)
 	b.spellDamageAndHeal(&c, key, path, ts, sp)
+	zone := checkSpellZone(&c, key, path, ts, target)
 	if err := c.err(); err != nil {
 		return err
 	}
@@ -75,7 +76,44 @@ func (b *overlayBuilder) addSpell(ts *TableSpell, path string) error {
 	b.register(ts.TableEntry)
 	b.n.spells[key] = sp
 	b.n.spellTargets[key] = target
+	if zone != nil {
+		b.n.spellZones[key] = *zone
+	}
 	return nil
+}
+
+// checkSpellZone checks the area a table spell keeps on the map and returns it, nil when the spell has none. Every
+// field that is wrong is reported at the zone, one sentence for each.
+func checkSpellZone(c *entryErrors, key, path string, ts *TableSpell, target SpellTarget) *SpellZoneRule {
+	z := ts.Zone
+	if z == nil {
+		return nil
+	}
+	if !slices.Contains([]string{ZoneStartOfTurn, ZoneFirstEntry, ZoneBoth}, z.Trigger) {
+		c.at(key, path, ".zone.trigger", ReasonValue, "the area catches a creature at the start of its turn, on its first entry, or both")
+	}
+	if ts.Level == 0 {
+		c.at(key, path, ".zone", ReasonValue, "a cantrip does not keep an area on the map")
+	}
+	if target.Kind != TargetArea || !slices.Contains([]string{ShapeSphere, ShapeCylinder, ShapeCube}, target.Shape) {
+		c.at(key, path, ".zone", ReasonValue, "an area that stays on the map is a sphere, a cylinder or a cube")
+	}
+	if len(ts.Damage) != 1 {
+		c.at(key, path, ".zone", ReasonValue, "an area that stays on the map deals exactly one damage type")
+	}
+	if ts.Attack != "" || ts.Heal != nil {
+		c.at(key, path, ".zone", ReasonValue, "an area that stays on the map has no spell attack and no healing")
+	}
+	if !ts.Concentration && ts.Duration.Kind != DurationTimed {
+		c.at(key, path, ".zone", ReasonValue, "an area that stays on the map needs a timed duration or concentration")
+	}
+	switch {
+	case z.FollowsCaster && ts.Range.Kind != RangeSelf:
+		c.at(key, path, ".zone.follows_caster", ReasonValue, "an area that follows the caster needs the range Self (Pessoal)")
+	case !z.FollowsCaster && ts.Range.Kind != RangeRanged:
+		c.at(key, path, ".zone.follows_caster", ReasonValue, "an area placed at a point needs a distance; one with the range Self follows the caster")
+	}
+	return &SpellZoneRule{Trigger: z.Trigger, FollowsCaster: z.FollowsCaster}
 }
 
 // spellHead checks a spell's level, school, casting time, range, duration,

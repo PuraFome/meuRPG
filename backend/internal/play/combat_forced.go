@@ -140,6 +140,8 @@ type pusher struct {
 	source  playdb.Combatant
 	// noMap is a combat with no map: push answers with the note and moves nobody.
 	noMap bool
+	// moved are the squares the pushes went through, for the areas spells keep on the map.
+	moved []zoneStep
 }
 
 // pusherFor sets up the push of a rider key, or nil when the key pushes nobody. A combat with
@@ -176,7 +178,13 @@ func (p *pusher) push(ctx context.Context, target playdb.Combatant) (*forcedMove
 		DistanceFt: clamp32(grid.LengthDFt(from, plan.to)/10, 0, math.MaxInt32), Short: plan.short,
 	}
 	p.remember(target.ID, col, row)
+	p.moved = append(p.moved, zoneStep{who: target.ID, from: &from, path: []grid.Square{plan.to}})
 	return &moved, nil
+}
+
+// enterZones looks at the areas spells keep on the map for the creatures the pushes moved.
+func (p *pusher) enterZones(ctx context.Context) error {
+	return p.s.zonesAfterSteps(ctx, p.c, p.moved...)
 }
 
 // remember puts the new square in the copy of the combatants.
@@ -223,7 +231,7 @@ func (f *castFlow) pushFailedSaves(ctx context.Context) error {
 		}
 		hits[i].Pushed = moved
 	}
-	return nil
+	return p.enterZones(ctx)
 }
 
 // pushByRider pushes the target of a hit rider (the Open Hand technique) away from the monk.
@@ -236,8 +244,10 @@ func (s *Service) pushByRider(ctx context.Context, c *combatTx, cs []playdb.Comb
 	if p == nil {
 		return nil
 	}
-	re.Pushed, err = p.push(ctx, target)
-	return err
+	if re.Pushed, err = p.push(ctx, target); err != nil {
+		return err
+	}
+	return p.enterZones(ctx)
 }
 
 // putPushedBack puts a creature back on the square a push took it from: the undo.

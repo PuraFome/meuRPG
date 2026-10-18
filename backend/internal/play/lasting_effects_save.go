@@ -286,6 +286,8 @@ type effectSaveStep struct {
 	cs      []playdb.Combatant
 	ev      actionEvent
 	le      *lastingEvent
+	// zone is set when the save is the one an area a spell keeps on the map asks (zones_save.go).
+	zone *zoneSaveStep
 }
 
 // writeEffectSave is the change of an effect's saving throw, in the transaction: the window and
@@ -323,6 +325,9 @@ func (s *Service) writeEffectSave(ctx context.Context, c *combatTx, call effectS
 // loadEffectSave reads what the save is about: the effect, its definition, the ability and the DC
 // it asks, the combatants, and starts the event and the log line.
 func (s *Service) loadEffectSave(ctx context.Context, c *combatTx, x *effectSaveStep) error {
+	if x.t.Zone != "" {
+		return s.loadZoneSave(ctx, c, x)
+	}
 	st, err := c.q.GetLastingEffect(ctx, playdb.GetLastingEffectParams{ID: x.t.Effect, EncounterID: c.enc.ID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return errNotYourTurnToAnswer() // the window closes with its effect: never reached
@@ -471,7 +476,7 @@ func (s *Service) settleEffectSave(ctx context.Context, c *combatTx, x *effectSa
 	if _, err := s.closeWindow(ctx, c, x.w, windowAnswered, reaction.ReasonNone, windowOutcome{ByMaster: c.master, Used: true}, ""); err != nil {
 		return nil, err
 	}
-	if err := s.resolveEffectSave(ctx, c, x.cs, x.content, x.def, x.st, x.reactor, x.t.Phase, saved, x.call.skip, &x.run.result); err != nil {
+	if err := s.resolveSave(ctx, c, x, saved); err != nil {
 		return nil, err
 	}
 	x.ev.Lasting = x.le
@@ -481,6 +486,14 @@ func (s *Service) settleEffectSave(ctx context.Context, c *combatTx, x *effectSa
 	c.characterID = &x.reactor.CharacterID
 	x.run.made = x.ev
 	return x.ev, nil
+}
+
+// resolveSave does what the answered save does: to the effect it is for, or to the creature a zone caught.
+func (s *Service) resolveSave(ctx context.Context, c *combatTx, x *effectSaveStep, saved bool) error {
+	if x.zone != nil {
+		return s.settleZoneSave(ctx, c, x, saved)
+	}
+	return s.resolveEffectSave(ctx, c, x.cs, x.content, x.def, x.st, x.reactor, x.t.Phase, saved, x.call.skip, &x.run.result)
 }
 
 // resolveEffectSave does what an answered saving throw does to its effect: a pass ends it on
