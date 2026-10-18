@@ -1846,6 +1846,10 @@ enum EncounterBlockedReason {
   // CastSpell (a teleport on a map with a grid), for a player's character: the cast came
   // without `destination`. The player picks the square; only the master may leave it out.
   ENCOUNTER_BLOCKED_REASON_DESTINATION_REQUIRED = 108;
+  // CastSpell, CastSummon, RollAttack (a spell attack): the character wears armor or a
+  // shield it is not proficient with, and cannot cast spells (SRD 5.1, "Armor"). Nothing
+  // is spent.
+  ENCOUNTER_BLOCKED_REASON_ARMOR_NOT_PROFICIENT = 109;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused

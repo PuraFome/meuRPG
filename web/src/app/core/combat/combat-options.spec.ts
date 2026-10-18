@@ -43,6 +43,7 @@ describe('the reasons an option is disabled', () => {
       [DisabledReasonCode.COMBATANT_DEFEATED, 'Derrotado: fora do combate'],
       // W7-X: a surprised combatant's options are all off for this reason.
       [DisabledReasonCode.SURPRISED, 'Surpresa'],
+      [DisabledReasonCode.ARMOR_NOT_PROFICIENT, 'Armadura ou escudo sem proficiência'],
     ];
     for (const [code, text] of cases) {
       expect(reasonText(reason(code))).toBe(text);

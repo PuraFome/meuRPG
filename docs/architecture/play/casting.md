@@ -15,6 +15,8 @@ The spell, the level (`slot`: level or pact, none for a cantrip) and the targets
 - **How many targets.** `SpellDetails.Target` says whether a spell hits an area and how many it takes: what the master wrote on a table spell, the 5e-database's structured area on an SRD one and, for one without a structured area, the SRD text read with two patterns (`rules/spelltarget.go`).
   A spell attack takes one target, so a wrong guess never blocks the master.
   A table spell goes through the same `CombatSpell`, with the campaign's content (see [Architecture](../characters-table-content.md#spell-targets-and-the-magias-page)).
+- **Armor without proficiency.** A character that wears armor or carries a shield it is not proficient with (`rules.ArmorUntrained`, read from the derived sheet) casts nothing: `CombatTurnOptions` disables every spell, and every cantrip with an attack roll, with `ARMOR_NOT_PROFICIENT` and no slot, so `CastSpell`, `CastSummon` and the reaction spells (which read the slots of the options) refuse it, and `RollAttack` refuses a spell attack (`EncounterBlocked`, `ARMOR_NOT_PROFICIENT`, nothing spent).
+  The master is refused too.
 - **Scorching Ray's rays.** The rays (3 at the spell's level, one more per level above) go to the targets as the caster shares them out, all at one creature if they want: each target's `darts` is the rays it gets (none counts as one), and the rays together are at most what the slot makes (the master's at most 10).
   `GetTurnOptions` lists the rays of each slot level in `darts` (`DartsAtSlot`), beside Magic Missile's darts; unlike Magic Missile's, the rays need not add up exactly, and a listed target with no `darts` gets one ray.
   Each ray is its own spell attack with its own d20 and its own hit, miss or critical, an entry of its own in the cast's `targets` (the same combatant can appear more than once, in the order of the request and the rays of one target together; `darts` is 0 on each), and a hit opens its own pending damage, 2d6 fire (doubled dice on a critical), with no `cast_id`: each ray's damage is rolled and lands by itself, so concentration saves and damage steps run once per ray.
@@ -102,6 +104,7 @@ A heal appears in the log with the recovered amount only for the master and the 
 The rules are in `rules/casting.go`, `rules/combat/outside.go` and `healing.go`; `play` (`casting*.go`) holds the state, takes the open session's row lock like every write, and publishes after `COMMIT`.
 `characters` reads the sheet for it (`castingoutside.go`: the spells the character can cast and Mage Armor's armor class) and hands the answer over through `link` types.
 One row of `spell_casts` is one casting, from start to end, and the rows of a session are also its log.
+Armor or a shield without proficiency refuses the cast before anything else (`CastingBlocked`, `ARMOR_NOT_PROFICIENT`), at the start and at the end of a long casting, and `GetCastOptions.armor_not_proficient` says it so the screen lists no spell.
 
 ```mermaid
 stateDiagram-v2

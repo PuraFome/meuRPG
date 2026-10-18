@@ -251,6 +251,10 @@
     "ArmorClassDescription": "Sem armadura",
     "ShieldIdle": false,
     "ArmorCategory": "none",
+    "ArmorUntrained": {
+      "Armor": false,
+      "Shield": false
+    },
     "HitPointsMax": 10,
     "HitPointsFromEffects": 0,
     "HitDice": [
@@ -959,6 +963,10 @@
     "ArmorClassDescription": "Sem armadura",
     "ShieldIdle": false,
     "ArmorCategory": "none",
+    "ArmorUntrained": {
+      "Armor": false,
+      "Shield": false
+    },
     "HitPointsMax": 80,
     "HitPointsFromEffects": 0,
     "HitDice": [
@@ -2117,6 +2125,10 @@
     "ArmorClassDescription": "Sem armadura",
     "ShieldIdle": false,
     "ArmorCategory": "none",
+    "ArmorUntrained": {
+      "Armor": false,
+      "Shield": false
+    },
     "HitPointsMax": 38,
     "HitPointsFromEffects": 0,
     "HitDice": [

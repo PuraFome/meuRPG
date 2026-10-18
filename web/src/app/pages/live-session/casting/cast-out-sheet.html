@@ -53,6 +53,11 @@
         <mat-icon aria-hidden="true">pets</mat-icon>
         <p>Em forma de fera não se conjura. Encerre a forma antes.</p>
       </div>
+    } @else if (options()!.armorNotProficient) {
+      <div class="mr-notice mr-notice--neutral" role="status">
+        <mat-icon aria-hidden="true">shield</mat-icon>
+        <p>Com armadura ou escudo sem proficiência não se conjura. Tire a peça para conjurar.</p>
+      </div>
     } @else if (!spell()) {
       @if (spellRows().length) {
         <app-choice-cards label="Magia" [rows]="spellRows()" [chosen]="[]" (choose)="pickSpell($event)" />

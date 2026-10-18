@@ -24,7 +24,7 @@ The service is `play/combat_contests*.go` (start, answer, shove choice, close, r
   The player of an NPC's contest reads "Esperando o mestre", of a player's "Esperando <nome>", with no timeout.
   `Hide` and `Help` go through `mustActNow`, and so through the reaction gate (see [Reactions](reactions.md)).
 - **Advantage** comes from `combat_advantage.go`: `modeFacts` carries the hiding and the Helps; a hidden attacker is `AttackerUnseen`; the Help is the source `help`.
-  The ability checks of the contests and the group check read the advantage rules' `SaveMode` (Poisoned, Frightened, exhaustion, an effect's advantage, the Rage on Strength, armor that gives disadvantage on Stealth) and the Helps with the check: `checkModeOf` serves the scene checks, the trap search, the puzzle hints and the group check, and `spendCheckHelps` uses the Help up on the roll.
+  The ability checks of the contests and the group check read the advantage rules' `SaveMode` (Poisoned, Frightened, exhaustion, an effect's advantage, the Rage on Strength, armor that gives disadvantage on Stealth, armor or a shield without proficiency on Strength and Dexterity) and the Helps with the check: `checkModeOf` serves the scene checks, the trap search, the puzzle hints and the group check, and `spendCheckHelps` uses the Help up on the roll.
   Grappled, Prone and Restrained are the conditions the advantage rules already know.
 - **After an attack roll**, `afterAttack` uses the Help and ends the hiding for every creature (`hide_ended`; the attack's undo gives them back).
   A cast with a verbal component ends the hiding too.

@@ -66,6 +66,7 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 	t.StealthDisadvantage = slices.ContainsFunc(d.Hints, func(h rules.Hint) bool {
 		return h.Target == "skill:stealth" && h.Mode == "disadvantage"
 	})
+	t.ArmorUntrained = d.ArmorUntrained.Any()
 	t.ImprovedDivineSmite = rules.HasFeature(d, "feature:improved-divine-smite")
 	t.OpenHand = rules.HasFeature(d, "feature:open-hand-technique")
 	t.StunningStrike = rules.HasFeature(d, "feature:stunning-strike")
