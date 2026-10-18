@@ -96,6 +96,14 @@ describe('combat view helpers', () => {
     expect(initiativeFormula(low)).toBe('1d20 (15) − 1 = 14');
     const waiting = combatant({ id: 'c', label: 'Toren', initiativeBonus: 2 });
     expect(initiativeFormula(waiting)).toBeNull();
+    const inspired = combatant({
+      id: 'd',
+      label: 'Toren',
+      initiative: 13,
+      initiativeFace: 7,
+      initiativeBonus: 2,
+    });
+    expect(initiativeFormula(inspired)).toBe('1d20 (7) + 2 + 4 (dado) = 13');
     expect(pendingFormula(waiting)).toBe('1d20 + 2 = —');
   });
 

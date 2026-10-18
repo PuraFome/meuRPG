@@ -3,7 +3,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import type { Combatant, Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import type { Combatant, Encounter, HeldRollOffer } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { effectivePreference, preferenceLabel } from '../../../../core/campaigns/dice-labels';
 import {
   combatantInitial,
@@ -15,7 +15,9 @@ import {
 import { initiativeMark } from '../../../../core/combat/natural-mark';
 import { groupName } from '../../../../core/combat/creature-names';
 import { ownCreatures } from '../../../../core/combat/mine';
+import type { HeldAnswer } from '../../../../core/held-rolls/held-roll-offer';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
+import { HeldRollPrompt } from '../../../../shared/held-roll-prompt/held-roll-prompt';
 
 /** One initiative to roll for the player's creatures: a casting rolls once for its group (RN-18). */
 export interface CreatureInitiative {
@@ -44,7 +46,7 @@ export interface CreatureInitiative {
  */
 @Component({
   selector: 'app-player-initiative',
-  imports: [CombatantToken, MatButtonModule, MatIconModule],
+  imports: [CombatantToken, HeldRollPrompt, MatButtonModule, MatIconModule],
   templateUrl: './player-initiative.html',
   styleUrl: './player-initiative.scss',
 })
@@ -55,6 +57,11 @@ export class PlayerInitiative {
   readonly busy = input(false);
   /** A refused roll's message (the page maps the typed error). */
   readonly error = input('');
+
+  /** The question the d20 kept for the player's own roll asks (Lucky's 1, a Bardic Inspiration die), while it waits. */
+  readonly held = input<HeldRollOffer | null>(null);
+  /** The answer to that question. */
+  readonly answer = output<HeldAnswer>();
 
   /** "Rolar no app". */
   readonly rollInApp = output<void>();

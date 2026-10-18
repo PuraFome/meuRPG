@@ -181,8 +181,10 @@ export class CombatView extends CombatViewPartsDirective {
       const own = this.own();
       untracked(() => {
         const live = !!e && e.status === EncounterStatus.ACTIVE;
+        // The initiative of a player waits in SETUP for the die it may use, so the master's questions run there too.
+        const asks = live || (!!e && e.status === EncounterStatus.SETUP);
         if (master) {
-          this.held.sync(live ? e.combatants.flatMap((c) => heldOfferOf(c) ?? []) : []);
+          this.held.sync(asks ? e.combatants.flatMap((c) => heldOfferOf(c) ?? []) : []);
         } else if (live) {
           this.vanish.observe(own ? (heldOfferOf(own) ?? null) : null);
         }
