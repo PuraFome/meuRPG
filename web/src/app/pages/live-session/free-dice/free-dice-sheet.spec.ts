@@ -162,6 +162,17 @@ describe('FreeDiceSheet: the form', () => {
     expect(text(el.querySelector('.frame__head'))).toContain('Só eu');
   });
 
+  it('puts the lock of "Só eu" straight in the big button, where Material lines it up with the words', async () => {
+    const { fixture, el } = await mount({ master: true });
+    expect(bigButton(el)!.querySelector('mat-icon')).toBeNull();
+    click(named(el, 'label', 'Só eu')!.querySelector('input'));
+    fixture.detectChanges();
+    // Inside the label (a projection lost to nested @if blocks) the icon sits on the baseline, 3 px above the middle.
+    const icon = bigButton(el)!.querySelector('mat-icon')!;
+    expect(icon.parentElement).toBe(bigButton(el));
+    expect(icon.parentElement!.classList.contains('mdc-button__label')).toBe(false);
+  });
+
   it('has exactly one filled button', async () => {
     const { el } = await mount({ master: true });
     expect(
