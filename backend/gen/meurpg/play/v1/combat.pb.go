@@ -1841,6 +1841,9 @@ const (
 	// The initiative of a character in SETUP (SubmitInitiative): a Dexterity check (SRD 5.1), so Lucky's reroll of a 1 and
 	// a Bardic Inspiration die the character holds are asked about before the total is set.
 	HeldRollKind_HELD_ROLL_KIND_INITIATIVE HeldRollKind = 10
+	// The Stealth check of a Hide (SRD 5.1): Lucky's reroll of a 1 and a Bardic Inspiration die are asked about before the
+	// attempt is kept for the master.
+	HeldRollKind_HELD_ROLL_KIND_HIDE HeldRollKind = 12
 )
 
 // Enum value maps for HeldRollKind.
@@ -1858,6 +1861,7 @@ var (
 		9:  "HELD_ROLL_KIND_DEATH_SAVE",
 		11: "HELD_ROLL_KIND_CONTEST",
 		10: "HELD_ROLL_KIND_INITIATIVE",
+		12: "HELD_ROLL_KIND_HIDE",
 	}
 	HeldRollKind_value = map[string]int32{
 		"HELD_ROLL_KIND_UNSPECIFIED":        0,
@@ -1872,6 +1876,7 @@ var (
 		"HELD_ROLL_KIND_DEATH_SAVE":         9,
 		"HELD_ROLL_KIND_CONTEST":            11,
 		"HELD_ROLL_KIND_INITIATIVE":         10,
+		"HELD_ROLL_KIND_HIDE":               12,
 	}
 )
 
@@ -25044,7 +25049,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x1aAREA_PLACEMENT_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14AREA_PLACEMENT_POINT\x10\x01\x12\x1c\n" +
 	"\x18AREA_PLACEMENT_DIRECTION\x10\x02\x12\x19\n" +
-	"\x15AREA_PLACEMENT_CASTER\x10\x03*\x8f\x03\n" +
+	"\x15AREA_PLACEMENT_CASTER\x10\x03*\xa8\x03\n" +
 	"\fHeldRollKind\x12\x1e\n" +
 	"\x1aHELD_ROLL_KIND_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cHELD_ROLL_KIND_WEAPON_ATTACK\x10\x01\x12\x1f\n" +
@@ -25058,7 +25063,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x19HELD_ROLL_KIND_DEATH_SAVE\x10\t\x12\x1a\n" +
 	"\x16HELD_ROLL_KIND_CONTEST\x10\v\x12\x1d\n" +
 	"\x19HELD_ROLL_KIND_INITIATIVE\x10\n" +
-	"*\\\n" +
+	"\x12\x17\n" +
+	"\x13HELD_ROLL_KIND_HIDE\x10\f*\\\n" +
 	"\vSaveOutcome\x12\x1c\n" +
 	"\x18SAVE_OUTCOME_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12SAVE_OUTCOME_SAVED\x10\x01\x12\x17\n" +

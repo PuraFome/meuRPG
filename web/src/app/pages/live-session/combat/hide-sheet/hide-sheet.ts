@@ -4,6 +4,7 @@ import {
   ElementRef,
   computed,
   effect,
+  Injector,
   inject,
   signal,
   viewChild,
@@ -16,11 +17,16 @@ import type { Observable } from 'rxjs';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
+  type HideAttemptView,
   type CheckOption,
   HideAttemptStatus,
   RollModeKind,
 } from '../../../../../gen/meurpg/play/v1/contest_types_pb';
 import { ActionKey } from '../../../../core/connect/idempotency';
+import { HeldRollController } from '../../../../core/held-rolls/held-roll-controller';
+import { ResourceClient } from '../../../../core/resources/resources-client';
+import { HeldRollPrompt } from '../../../../shared/held-roll-prompt/held-roll-prompt';
+import { waysOf } from '../contest-held';
 import { article } from '../../../../core/combat/combat-log';
 import { RollAnimator, showOfCheck } from '../../../../shared/roll-overlay/roll-animator';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
@@ -89,7 +95,15 @@ export function openHideSheet(
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-hide-sheet',
-  imports: [AttackSteps, CheckRollForm, ContestRoll, MatButtonModule, MatIconModule, SheetFrame],
+  imports: [
+    AttackSteps,
+    CheckRollForm,
+    ContestRoll,
+    HeldRollPrompt,
+    MatButtonModule,
+    MatIconModule,
+    SheetFrame,
+  ],
   templateUrl: './hide-sheet.html',
   styleUrl: '../contest-sheet/contest-sheet.scss',
 })
@@ -102,6 +116,26 @@ export class HideSheet {
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   private readonly started = signal(this.data.attemptId ?? '');
+  private readonly injector = inject(Injector);
+  /** The question of the Stealth roll when the d20 was kept for one: Lucky's 1, then the Bardic Inspiration die. */
+  protected readonly held = new HeldRollController({
+    send: (holdId, answer, key) =>
+      this.injector.get(ResourceClient).answerHeldRoll(this.data.campaignId, holdId, answer, key),
+    settle: (res) => {
+      const done = res.result.case === 'hide' ? res.result.value : null;
+      if (!done?.encounter || (!done.attempt && !res.next)) {
+        throw new Error('AnswerHeldRoll answered without its Hide');
+      }
+      this.data.state.apply(done.encounter);
+      if (done.attempt) {
+        this.keys.renew();
+        this.attempted(done.attempt);
+      }
+    },
+    busy: this.busy,
+    error: this.error,
+  });
+  protected readonly ways = waysOf(this.data);
   private readonly keys = new ActionKey();
   private readonly frame = viewChild(SheetFrame);
   private readonly done = viewChild('done', { read: ElementRef<HTMLButtonElement> });
@@ -154,18 +188,27 @@ export class HideSheet {
         this.keys.keyFor({ who: this.data.combatantId, action: this.data.actionKey, die }),
       );
       this.data.state.apply(res.encounter);
-      this.data.contests.applyAttempt(res.attempt);
-      // The Dexterity (Stealth) d20; whether it worked waits for the master, so no word is told.
-      const show = showOfCheck('Teste de Furtividade', res.attempt.roll, { withTotal: true });
-      if (show) {
-        this.animator.play(show);
+      if (!res.attempt) {
+        // The d20 is kept for a question (a halfling's 1, a Bardic Inspiration die): the player decides before the attempt is made.
+        this.held.ask(res.held);
+        return;
       }
-      this.started.set(res.attempt.id);
+      this.attempted(res.attempt);
     } catch (err) {
       this.error.set(combatErrorMessage(err, 'se esconder'));
     } finally {
       this.busy.set(false);
     }
+  }
+
+  /** The attempt is made: the Dexterity (Stealth) d20; whether it worked waits for the master, so no word is told. */
+  private attempted(attempt: HideAttemptView): void {
+    this.data.contests.applyAttempt(attempt);
+    const show = showOfCheck('Teste de Furtividade', attempt.roll, { withTotal: true });
+    if (show) {
+      this.animator.play(show);
+    }
+    this.started.set(attempt.id);
   }
 
   protected close(): void {

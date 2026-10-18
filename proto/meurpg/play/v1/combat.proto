@@ -3629,6 +3629,9 @@ enum HeldRollKind {
   // The initiative of a character in SETUP (SubmitInitiative): a Dexterity check (SRD 5.1), so Lucky's reroll of a 1 and
   // a Bardic Inspiration die the character holds are asked about before the total is set.
   HELD_ROLL_KIND_INITIATIVE = 10;
+  // The Stealth check of a Hide (SRD 5.1): Lucky's reroll of a 1 and a Bardic Inspiration die are asked about before the
+  // attempt is kept for the master.
+  HELD_ROLL_KIND_HIDE = 12;
 }
 
 // LuckyQuestion is the halfling's "Tirou 1: rolar de novo?" (SRD 5.1, Halfling, Lucky).
