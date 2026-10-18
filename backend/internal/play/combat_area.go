@@ -45,7 +45,7 @@ import (
 // with a range of sight or Touch) stays on the caster's list: the SRD gives the
 // shape a point of origin the table does not lay out here.
 func placementOf(sp link.Spell) playv1.AreaPlacement {
-	if z, ok := zoneDefOfSpell(sp); ok { // the area a spell keeps on the map is laid out as its zone says
+	if z, ok := zoneDefOfSpell(sp); ok && sp.ZoneLaid { // a cast that lays its area on the map as a zone: laid out as the zone says
 		return z.placement
 	}
 	shape := grid.Shape(sp.AreaShape)
@@ -67,7 +67,7 @@ func placementOf(sp link.Spell) playv1.AreaPlacement {
 
 // areaOf is the grid shape of a spell's area.
 func areaOf(sp link.Spell) grid.Area {
-	if z, ok := zoneDefOfSpell(sp); ok {
+	if z, ok := zoneDefOfSpell(sp); ok && sp.ZoneLaid {
 		return z.area()
 	}
 	return grid.Area{Shape: grid.Shape(sp.AreaShape), SizeFt: sp.AreaSizeFt, WidthFt: sp.AreaWidthFt}
@@ -379,6 +379,9 @@ func (s *Service) previewSpell(ctx context.Context, m authz.Membership, msg *pla
 	if err != nil {
 		return link.Spell{}, s.dbError(ctx, "read the spell", err)
 	}
+	if _, ok := zoneDefOfSpell(sp); ok && msg.GetOrigin() != nil {
+		sp.ZoneLaid = true // the preview of a cast that would lay the area as a zone
+	}
 	return sp, nil
 }
 
@@ -451,6 +454,9 @@ func (s *Service) areaProto(ctx context.Context, res combatResult, ev actionEven
 	sp, err := s.roster.CombatSpell(ctx, nil, res.session.CampaignID, caster.CharacterID, ev.Key, slotLevelOf(ev), "")
 	if err != nil {
 		return nil, s.dbError(ctx, "read the spell", err)
+	}
+	if _, ok := zoneDefOfSpell(sp); ok && ev.Placed {
+		sp.ZoneLaid = true // a placed cast of a spell that keeps its area laid it out as the zone says
 	}
 	terrain, err := s.terrainOf(ctx, nil, res.session.CampaignID, enc)
 	if err != nil {

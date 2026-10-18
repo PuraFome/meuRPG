@@ -867,7 +867,6 @@ summoned 0
 hidden hits {}
 pending reveal false
 held false
-event lasting_effect_ended {"combatant_id": "Pensantus", "key": "spell:web", "lasting": {"caster": "Pensantus", "change": "ended", "key": "spell:web", "reason": "concentration_replaced", "targets": ["Pensantus"]}, "round": 2}
 event lasting_effect_ended {"combatant_id": "Pensantus", "lasting": {"change": "ended", "effects": ["?"], "key": "spell:web", "owner_only": true, "reason": "concentration", "targets": ["Goblin"]}, "round": 2, "secret": true, "target_id": "Goblin"}
 event spell_cast {"cast_id": "?", "combatant_id": "Pensantus", "conc_before": "spell:web", "conc_ended": "spell:web", "concentrate": true, "ended_lines": ["?"], "hits": [{"lasting": "applied", "save": {"bonus_unknown": true, "d20": 10, "dc": 14, "roll_mode": "normal", "total": 10}, "target_id": "Goblin"}], "key": "spell:hold-person", "lasting": {"change": "added", "effects": ["?"], "key": "spell:hold-person", "targets": ["Goblin"]}, "restore": [{"Amount": 0, "Audience": "owner", "CombatantID": "Goblin", "Concentration": true, "ConditionKeys": [], "CreatedAt": "<time>", "DurationKind": "rounds", "EncounterID": "?", "EndSaveAbility": null, "EndsCombatantID": "Pensantus", "EndsPhase": "start_of_turn", "EndsRound": 601, "FollowsKey": null, "GroupID": "?", "ID": "?", "Kind": "effect", "Modifiers": "W10=", "OnFailEffect": "effect:web-restrained", "PlayerLabel": null, "PlayerVisible": true, "SaveDc": 14, "SourceID": "Pensantus", "SourceKey": "spell:web", "SourceKind": "spell", "SpentAt": null, "StartSaveAbility": "dex", "StartedRound": 1, "TriggerDamageType": null, "TriggerDice": null, "TriggerMaxTriggers": null, "TriggersFired": 0}], "round": 2, "slot": {"level": 2}}
 combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
@@ -2120,8 +2119,22 @@ state unchanged
 refused invalid_argument: the direction must be one of the eight: dx and dy from -1 to 1, not both 0
 state unchanged
 == refused an area with no origin or direction ==
-refused invalid_argument: this spell is placed at a point: set origin
-state unchanged
+cast {"concentrating":true,"slot":{"level":2},"spellKey":"spell:web","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin","cover":"COVER_DEGREE_NONE","lastingEffect":"LASTING_EFFECT_OUTCOME_APPLIED"}]}
+area 
+inspiration 
+lucky 
+summoned 0
+hidden hits {}
+pending reveal false
+held false
+event spell_cast {"cast_id": "?", "combatant_id": "Pensantus", "concentrate": true, "hits": [{"lasting": "applied", "target_id": "Goblin"}], "key": "spell:web", "lasting": {"change": "added", "effects": ["?"], "key": "spell:web", "targets": ["Goblin"]}, "round": 1, "slot": {"level": 2}}
+combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Pensantus | true | false | false | false | false | -1 | -1 | 0 | false | {} | {} | spell:web | true | false | false | {} | false | false
+combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+vitals Pensantus | <nil> | 0 | {0,1,0,0,0,0,0,0,0} | 0
+state Goblin | effect | spell:web | true | {} | rounds | 14 | 0
 == refused darts for another spell ==
 refused invalid_argument: darts are only for Magic Missile
 state unchanged
@@ -2564,22 +2577,23 @@ combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {
 combatant Orla | true | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-== web at a goblin ==
-cast {"concentrating":true,"slot":{"level":2},"spellKey":"spell:web","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin","cover":"COVER_DEGREE_NONE","lastingEffect":"LASTING_EFFECT_OUTCOME_APPLIED"}]}
-area {"origin":{"col":8,"row":3},"squares":[{"col":7,"row":2},{"col":8,"row":2},{"col":9,"row":2},{"col":10,"row":2},{"col":7,"row":3},{"col":8,"row":3},{"col":9,"row":3},{"col":10,"row":3},{"col":7,"row":4},{"col":8,"row":4},{"col":9,"row":4},{"col":10,"row":4},{"col":7,"row":5},{"col":8,"row":5},{"col":9,"row":5},{"col":10,"row":5}]}
+== web at two creatures ==
+cast {"concentrating":true,"slot":{"level":2},"spellKey":"spell:web","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin","cover":"COVER_DEGREE_NONE","lastingEffect":"LASTING_EFFECT_OUTCOME_APPLIED"},{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Capitão Goblin","cover":"COVER_DEGREE_NONE","lastingEffect":"LASTING_EFFECT_OUTCOME_APPLIED"}]}
+area 
 inspiration 
 lucky 
 summoned 0
 hidden hits {}
 pending reveal false
 held false
-event spell_cast {"area_col": 8, "area_row": 3, "cast_id": "?", "combatant_id": "Pensantus", "concentrate": true, "hits": [{"lasting": "applied", "target_id": "Goblin"}], "key": "spell:web", "lasting": {"change": "added", "effects": ["?"], "key": "spell:web", "targets": ["Goblin"]}, "placed": true, "round": 1, "slot": {"level": 2}}
+event spell_cast {"cast_id": "?", "combatant_id": "Pensantus", "concentrate": true, "hits": [{"lasting": "applied", "target_id": "Goblin"}, {"lasting": "applied", "target_id": "Capitão Goblin"}], "key": "spell:web", "lasting": {"change": "added", "effects": ["?", "?"], "key": "spell:web", "targets": ["Goblin", "Capitão Goblin"]}, "round": 1, "slot": {"level": 2}}
 combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Pensantus | true | false | false | false | false | -1 | -1 | 0 | false | {} | {} | spell:web | true | false | false | {} | false | false
 combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 vitals Pensantus | <nil> | 0 | {0,1,0,0,0,0,0,0,0} | 0
+state Capitão Goblin | effect | spell:web | true | {} | rounds | 14 | 0
 state Goblin | effect | spell:web | true | {} | rounds | 14 | 0
 == word power kill on a creature ==
 cast {"effectKind":"SPELL_EFFECT_KIND_THRESHOLD","slot":{"level":9},"spellKey":"spell:power-word-kill","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin","cover":"COVER_DEGREE_NONE","effect":{"outcome":"SPELL_EFFECT_OUTCOME_AFFECTED"}}]}

@@ -848,7 +848,7 @@ Tests: `conversa.spec.ts` (`@RN-36`) and `internal/leaktest`.
 ## RN-37: Areas that spells keep on the map
 
 Some spells leave an area on the map that goes on working after the cast: Spirit Guardians, Moonbeam, Cloudkill and Web (SRD 5.1).
-On a map with a grid the caster places the area as for any area spell ([Area spells on the grid](#area-spells-on-the-grid)), and the server keeps it as a **zone**: the squares it covers, the spell, its caster and how long it lasts.
+On a map with a grid the caster places the area as for any area spell ([Area spells on the grid](#area-spells-on-the-grid)) by choosing a point (`origin`), and the server keeps it as a **zone**. A cast without a point lays no zone: it is the spell as it was before the zones, with its targets and its effects (Moonbeam and Cloudkill were always placed at a point, so without one they are refused, as before): the squares it covers, the spell, its caster and how long it lasts.
 A spell the master wrote for the table can keep its area the same way ([RN-23](#rn-23-table-content)). Without a grid (RN-25) there are no zones: the caster lists who is hit and the master judges, as before.
 
 - **What a zone does.** A creature that comes into the area, or begins its turn in it, makes the spell's saving throw (Wisdom for Spirit Guardians, Constitution for Moonbeam and Cloudkill, Dexterity for Web). The first three deal their damage on a failure and half of it on a pass; the damage has the dice of the slot the spell was cast with. The save, the damage and its landing are the ones a cast uses: an NPC takes the damage at once, a player's character waits for the master (RN-02), and the concentration save of the damaged creature follows (RN-31).

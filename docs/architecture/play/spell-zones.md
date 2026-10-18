@@ -22,6 +22,8 @@ A table spell with `TableSpell.zone` (`rules/v1/table_content.proto`: a trigger 
 
 ## The cast
 
+A zone is laid only when the request chooses a point (`origin`): `placeArea` then sets `Spell.ZoneLaid`, which makes `placementOf` and `areaOf` read the zone's own layout (a cube at a distance, Spirit Guardians around the caster, whose point only says the cast lays the zone). Without a point the cast is the spell as it was before the zones (its targets and effects, no zone). Moonbeam and Cloudkill are placed at a point by their own data, so without one they are refused as they always were. `PreviewSpellArea` and the drawing of the cast read the same flag.
+
 `castFlow.affect` hands a placed cast of a zone spell to `affectZone`.
 Moonbeam, Spirit Guardians and Cloudkill hit nobody at the cast; Web still runs `hitTarget` and `applyLastingSpell`, so the creatures inside get the effect they always got.
 `createZone` keeps `plan.origin` and `plan.squares` (what `planArea` worked out, walls included), the caster's DC, the damage at the cast's slot level and the end round (`SpellEffectRounds`).

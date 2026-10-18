@@ -848,7 +848,7 @@ Testes: `conversa.spec.ts` (`@RN-36`) e `internal/leaktest`.
 ## RN-37: Áreas que as magias mantêm no mapa
 
 Algumas magias deixam no mapa uma área que continua valendo depois da conjuração: Espíritos Guardiões, Raio Lunar, Névoa Mortal e Teia (SRD 5.1).
-Num mapa com grade, quem conjura posiciona a área como em qualquer magia de área ([Magias de área na grade](#magias-de-área-na-grade)), e o servidor a mantém como uma **zona**: os quadrados que ela cobre, a magia, quem a conjurou e quanto tempo dura.
+Num mapa com grade, quem conjura posiciona a área como em qualquer magia de área ([Magias de área na grade](#magias-de-área-na-grade)) escolhendo um ponto (`origin`), e o servidor a mantém como uma **zona**. Uma conjuração sem ponto não põe zona: é a magia como era antes das zonas, com os alvos e os efeitos dela (Raio Lunar e Névoa Mortal sempre foram postos num ponto, então sem um são recusados, como antes): os quadrados que ela cobre, a magia, quem a conjurou e quanto tempo dura.
 Uma magia que o mestre escreveu para a mesa pode manter a área do mesmo jeito ([RN-23](#rn-23-conteúdo-da-mesa)). Sem grade (RN-25) não há zonas: quem conjura lista quem é atingido e o mestre julga, como antes.
 
 - **O que uma zona faz.** Uma criatura que entra na área, ou começa o turno nela, faz o teste de resistência da magia (Sabedoria em Espíritos Guardiões, Constituição em Raio Lunar e Névoa Mortal, Destreza em Teia). As três primeiras causam o dano numa falha e metade dele num sucesso; o dano tem os dados do espaço com que a magia foi conjurada. O teste, o dano e o modo como ele cai são os de uma conjuração: um NPC sofre o dano na hora, o personagem de um jogador espera o mestre (RN-02), e o teste de concentração de quem se feriu vem em seguida (RN-31).

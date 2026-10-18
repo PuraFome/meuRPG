@@ -83,7 +83,7 @@ func (c *cave) oneZone(t *testing.T, u *user, spell string) *playv1.SpellZone {
 // castSpiritGuardians has Toren cast the aura at the given slot level.
 func (c *cave) castSpiritGuardians(t *testing.T, slot int32) {
 	t.Helper()
-	c.mustCastArea(t, c.caio, "Toren", spiritGuardiansKey, slotOfLevel(slot), nil, nil)
+	c.mustCastArea(t, c.caio, "Toren", spiritGuardiansKey, slotOfLevel(slot), at(5, 7), nil)
 }
 
 // zoneLines are the lines of the log u reads that tell what a creature met in the area of a spell.

@@ -419,6 +419,9 @@ type Spell struct {
 	// Zone is the area a table spell keeps on the map while it lasts: nil for an SRD spell (the combat knows
 	// the SRD's four) and for a table spell that keeps none.
 	Zone *ZoneRule
+	// ZoneLaid says this cast lays the area of the spell on the map as a zone (the request chose a point): the
+	// area is then laid out as the zone says. Set by the cast, never by the roster.
+	ZoneLaid bool
 }
 
 // HPEffect is what a spell that reads hit points does at the slot level, from

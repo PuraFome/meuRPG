@@ -126,3 +126,18 @@ func TestATableZoneSpellWithoutAnOriginIsTheSpellAsBeforeAndWithOneLaysTheZone(t
 		t.Error("no zone after a cast with an origin")
 	}
 }
+
+// The request the e2e specs send: Web with an empty list of targets and no point.
+func TestWebCastWithNoTargetsAndNoOriginConcentrates(t *testing.T) {
+	t.Parallel()
+	c := zoneCave(t)
+	e := c.zoneFight(t)
+	c.passTo(t, e, "Pensantus")
+	if _, err := c.castAt(t, c.ana, "Pensantus", webKey, 2, nil); err != nil {
+		t.Fatalf("CastSpell(Web) with no targets and no origin error = %v", err)
+	}
+	enc := c.get(t, c.master)
+	if len(enc.GetZones()) != 0 || !strings.Contains(asJSONAny(t, byLabel(t, enc, "Pensantus")), webKey) {
+		t.Errorf("zones = %v; want none, and Pensantus concentrating on Web", enc.GetZones())
+	}
+}

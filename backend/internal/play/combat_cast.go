@@ -419,6 +419,11 @@ func (f *castFlow) readMap(ctx context.Context) error {
 // placeArea works out who an area spell on a map touches: the caster places it and the server says who is
 // inside (planArea); without a map the caster lists them and the master judges.
 func (f *castFlow) placeArea(ctx context.Context) error {
+	// A spell that keeps its area on the map lays it only when the request chooses a point: a cast without one is the
+	// spell as it was before the zones (its targets, its effects), and lays nothing.
+	if _, ok := zoneDefOfSpell(f.sp); ok && f.req.GetOrigin() != nil && !isTheatre(f.c.enc) {
+		f.sp.ZoneLaid = true
+	}
 	f.placedArea = placementOf(f.sp) != playv1.AreaPlacement_AREA_PLACEMENT_UNSPECIFIED && !isTheatre(f.c.enc)
 	switch {
 	case f.placedArea:
@@ -434,6 +439,9 @@ func (f *castFlow) planPlacedArea(ctx context.Context) error {
 	choice, err := areaChoiceOf(f.req.GetOrigin(), f.req.GetDirection(), grid.Grid{Columns: int(f.c.enc.GridColumns), Rows: int(f.c.enc.GridRows)})
 	if err != nil {
 		return err
+	}
+	if f.sp.ZoneLaid && placementOf(f.sp) == playv1.AreaPlacement_AREA_PLACEMENT_CASTER {
+		choice = areaChoice{} // centered on the caster: the point only says the cast lays the zone
 	}
 	if f.plan, err = planArea(areaInput{
 		v: f.v, terrain: f.terrain, cs: f.cs, caster: f.caster, sp: f.sp, choice: choice,
@@ -711,7 +719,7 @@ func (f *castFlow) affect(ctx context.Context) error {
 	if f.sp.HP != nil {
 		return f.affectHitPoints(ctx)
 	}
-	if def, ok := zoneDefOfSpell(f.sp); ok && f.placedArea { // the area stays on the map (zones_cast.go)
+	if def, ok := zoneDefOfSpell(f.sp); ok && f.sp.ZoneLaid { // the area stays on the map (zones_cast.go)
 		return f.affectZone(ctx, def)
 	}
 	for _, i := range raysAt(f.sp, f.targets) { // a ray of Scorching Ray is an attack of its own

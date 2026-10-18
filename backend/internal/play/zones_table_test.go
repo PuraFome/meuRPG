@@ -118,7 +118,7 @@ func TestATableZoneCanFollowItsCaster(t *testing.T) {
 	c := tableZoneCave(t)
 	e := c.zoneFight(t)
 	c.passTo(t, e, "Pensantus")
-	c.mustCastArea(t, c.ana, "Pensantus", tableFollowing, slotOfLevel(2), nil, nil)
+	c.mustCastArea(t, c.ana, "Pensantus", tableFollowing, slotOfLevel(2), at(12, 7), nil)
 	c.mustMove(t, c.ana, "Pensantus", 10, 7)
 	if z := c.oneZone(t, c.master, tableFollowing); z.GetOrigin().GetCol() != 10 || z.GetMovement() != playv1.SpellZoneMovement_SPELL_ZONE_MOVEMENT_FOLLOWS_CASTER {
 		t.Errorf("zone = %v, want one centered on (10,7) that follows the caster", z)
