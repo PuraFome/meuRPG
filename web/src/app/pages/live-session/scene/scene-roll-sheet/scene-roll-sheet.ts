@@ -6,30 +6,21 @@ import { MatIconModule } from '@angular/material/icon';
 import type { Observable } from 'rxjs';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import type {
-  LuckyOffer,
-  OutsideInspirationOffer,
-} from '../../../../../gen/meurpg/play/v1/combat_pb';
-import type {
-  RollSceneCheckResponse,
-  SceneActionView,
-  SceneRoll,
-} from '../../../../../gen/meurpg/play/v1/scene_pb';
+import type { HeldRollOffer } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import type { AnswerHeldRollResponse } from '../../../../../gen/meurpg/play/v1/resources_pb';
+import type { SceneActionView, SceneRoll } from '../../../../../gen/meurpg/play/v1/scene_pb';
 import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import { ActionKey } from '../../../../core/connect/idempotency';
 import { ExtraDiceState } from '../../../../core/effects/extra-dice-state';
 import { checkFaces, hasModeInfo, needsTwoD20 } from '../../../../core/play/check-roll';
-import {
-  ResourceClient,
-  type InspirationRoll,
-  type LuckyRoll,
-} from '../../../../core/resources/resources-client';
-import { classResourceErrorMessage } from '../../../../core/resources/resources-errors';
+import { HeldRollController } from '../../../../core/held-rolls/held-roll-controller';
+import type { HeldAnswer } from '../../../../core/held-rolls/held-roll-offer';
+import { ResourceClient } from '../../../../core/resources/resources-client';
 import { SceneClient, type SceneDie } from '../../../../core/play/scene-client';
 import { sceneBlocked, sceneErrorMessage } from '../../../../core/play/scene-errors';
 import type { SceneState } from '../../../../core/play/scene-state';
 import { treatedPreview } from '../../../../core/combat/combat-dice';
-import { LUCKY_TRAIT, luckyText } from '../../../../core/combat/lucky';
+import { luckyText } from '../../../../core/combat/lucky';
 import {
   passText,
   sceneRollFormula,
@@ -40,7 +31,9 @@ import {
 } from '../../../../core/play/scene-view';
 import { actionSubtitle, actionTitle } from '../../../../core/maps/scene-actions';
 import { joinDots } from '../../../../core/format/text';
-import { RollAnimator, showOfDice, showOfDie } from '../../../../shared/roll-overlay/roll-animator';
+import { HeldRollPrompt } from '../../../../shared/held-roll-prompt/held-roll-prompt';
+import { rerollShow } from '../../../../shared/held-roll-prompt/held-roll-shows';
+import { RollAnimator, showOfDice } from '../../../../shared/roll-overlay/roll-animator';
 import { mediaQuery } from '../../../../shared/map-view/media-query';
 import { ExtraDice } from '../../effects/extra-dice/extra-dice';
 import { MultiRoll, type RollField } from '../../combat/multi-roll/multi-roll';
@@ -48,8 +41,6 @@ import { RollPicker } from '../../../../shared/roll-picker/roll-picker';
 import { SheetFrame } from '../../../../shared/sheet/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../../../../shared/sheet/sheet-host';
 import { CheckMode } from '../check-mode/check-mode';
-import { InspirationOffer } from '../../inspiration/inspiration-offer';
-import { LuckyOfferCard } from '../../inspiration/lucky-offer';
 
 /** What the player's block hands the roll sheet. */
 export interface SceneRollSheetData {
@@ -96,8 +87,7 @@ export function openSceneRollSheet(
   imports: [
     CheckMode,
     ExtraDice,
-    InspirationOffer,
-    LuckyOfferCard,
+    HeldRollPrompt,
     MatButtonModule,
     MatIconModule,
     MultiRoll,
@@ -125,10 +115,15 @@ export class SceneRollSheet {
   protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
   protected readonly error = signal('');
   protected readonly roll = signal<SceneRoll | null>(null);
-  /** The d20 was rolled and kept: the character holds a Bardic Inspiration die, and the player decides before the result. */
-  protected readonly offer = signal<OutsideInspirationOffer | null>(null);
-  /** The d20 was rolled and kept because a halfling's d20 shows a 1 ("Tirou 1: rolar de novo?"): asked before the die's. */
-  protected readonly luckyOffer = signal<LuckyOffer | null>(null);
+  /** The d20 was rolled and kept and the roll waits for a question: the halfling's Lucky about a 1 ("Tirou 1: rolar de
+   * novo?") first, then the Bardic Inspiration die's; the player decides before the result. */
+  protected readonly held = new HeldRollController({
+    send: (holdId, answer, key) =>
+      this.resources.answerHeldRoll(this.data.campaignId, holdId, answer, key),
+    settle: (res, done) => this.answeredHeld(res, done.answer),
+    busy: this.busy,
+    error: this.error,
+  });
   /** The server said the roll takes two d20 (advantage or disadvantage with a real die): the form shows two fields. */
   protected readonly pair = signal(false);
   /** The d4 an effect adds (Orientação, Bênção) with physical dice: asked when the server says the roll takes them. */
@@ -144,9 +139,6 @@ export class SceneRollSheet {
   });
 
   private readonly key = new ActionKey();
-  private readonly answerKey = new ActionKey();
-  /** One key per Lucky answer (roll again this way, or keep the 1): the same answer again is a retry. */
-  private readonly luckyKey = new ActionKey();
   private readonly back = viewChild('back', { read: ElementRef<HTMLButtonElement> });
   private readonly frame = viewChild(SheetFrame);
 
@@ -266,14 +258,8 @@ export class SceneRollSheet {
 
   /** The d20 is held for a question, the halfling's Lucky about a 1 (first) or the Bardic Inspiration die: its face alone
    * tumbles, no total and no word. */
-  private hold(question: OutsideInspirationOffer | LuckyOffer): void {
-    if (question.$typeName === 'meurpg.play.v1.LuckyOffer') {
-      this.luckyOffer.set(question);
-      this.offer.set(null);
-    } else {
-      this.offer.set(question);
-      this.luckyOffer.set(null);
-    }
+  private hold(question: HeldRollOffer): void {
+    this.held.ask(question);
     this.typing.set(false);
     const held = showOfDice(this.name, question.d20);
     if (held) {
@@ -285,8 +271,7 @@ export class SceneRollSheet {
    * again); "Passou"/"Falhou" only when the sheet shows it (the master shows the DC). */
   private finish(made: SceneRoll): void {
     this.roll.set(made);
-    this.offer.set(null);
-    this.luckyOffer.set(null);
+    this.held.ask(null);
     this.typing.set(false);
     const show = showOfDice(this.name, made.roll, {
       withTotal: true,
@@ -302,86 +287,26 @@ export class SceneRollSheet {
     void this.data.state.refresh();
   }
 
-  /** The answer about the die: the roll is written now, with the die when it was used. */
-  protected async answer(use: boolean, die: InspirationRoll | null): Promise<void> {
-    const offer = this.offer();
-    if (!offer || this.busy()) {
-      return;
+  /** What the answer to the question brought: the roll written now (with the die when it was used, or the new d20), or,
+   * when the character holds a Bardic Inspiration die, the die's question next, on the new roll (the d20 the app rolled
+   * again tumbles, "1 → 14"). */
+  private answeredHeld(res: AnswerHeldRollResponse, answer: HeldAnswer): void {
+    const settled = res.result.case === 'sceneCheck' ? res.result.value : null;
+    if (!settled || (!settled.roll && !res.next)) {
+      throw new Error('AnswerHeldRoll answered without its scene check');
     }
-    this.busy.set(true);
-    this.error.set('');
-    try {
-      const res = await this.resources.answerOutsideInspiration(
-        this.data.campaignId,
-        offer.holdId,
-        use,
-        die,
-        this.answerKey.keyFor({ hold: offer.holdId, use, die }),
-      );
-      if (res.result.case !== 'sceneCheck' || !res.result.value.roll) {
-        throw new Error('AnswerOutsideInspiration answered without its scene check');
-      }
-      this.finish(res.result.value.roll);
-    } catch (err) {
-      this.error.set(classResourceErrorMessage(err, 'responder sobre a Inspiração de Bardo'));
-    } finally {
-      this.busy.set(false);
-    }
-  }
-
-  /** "Rolar de novo" (rolled in the app, or the typed face) or "Ficar com o 1": the roll is written now with the new d20,
-   * or, when the character holds a Bardic Inspiration die, the die's question comes next, on the new roll. */
-  protected async answerLucky(reroll: boolean, die: LuckyRoll | null): Promise<void> {
-    const offer = this.luckyOffer();
-    if (!offer || this.busy()) {
-      return;
-    }
-    this.busy.set(true);
-    this.error.set('');
-    try {
-      const res = await this.resources.answerOutsideLucky(
-        this.data.campaignId,
-        offer.holdId,
-        reroll,
-        die,
-        this.luckyKey.keyFor({ hold: offer.holdId, reroll, die }),
-      );
-      if (res.result.case !== 'sceneCheck') {
-        throw new Error('AnswerOutsideLucky answered without its scene check');
-      }
-      this.luckyKey.renew();
-      this.afterLucky(res.result.value);
-    } catch (err) {
-      this.error.set(classResourceErrorMessage(err, 'responder ao Sortudo'));
-    } finally {
-      this.busy.set(false);
-    }
-  }
-
-  /** What the Lucky answer came to: the Bardic Inspiration question on the new d20 (the d20 Lucky rolled again tumbles,
-   * "1 → 14"), or the roll written. */
-  private afterLucky(res: RollSceneCheckResponse): void {
-    const next = res.inspirationOffer;
-    if (next) {
-      this.luckyOffer.set(null);
-      this.offer.set(next);
+    if (res.next) {
       this.typing.set(false);
-      const again = next.d20?.rerolled.find((r) => r.sourceKey === LUCKY_TRAIT);
-      const show = again
-        ? showOfDie('Sortudo', next.d20?.diceSides ?? 0, again.to, `${again.from} → ${again.to}`)
-        : null;
+      const show = answer.kind === 'lucky' ? rerollShow(res.next.d20, answer.roll) : null;
       if (show) {
         this.animator.play(show);
       }
       return;
     }
-    if (!res.roll) {
-      throw new Error('AnswerOutsideLucky answered without its scene check');
-    }
-    this.finish(res.roll);
+    this.finish(settled.roll!);
   }
 
   protected close(): void {
-    this.sheet.close(this.roll() !== null || this.offer() !== null || this.luckyOffer() !== null);
+    this.sheet.close(this.roll() !== null || this.held.offer() !== null);
   }
 }

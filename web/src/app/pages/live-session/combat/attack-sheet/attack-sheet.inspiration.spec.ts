@@ -10,8 +10,8 @@ import {
   CombatantKind,
   CombatantSide,
   DiceRollSchema,
-  InspirationDieSchema,
-  InspirationOfferSchema,
+  HeldRollKind,
+  HeldRollOfferSchema,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import {
   ResourceBlockedReason,
@@ -22,6 +22,7 @@ import { CombatClient } from '../../../../core/combat/combat-client';
 import { type AttackResult } from '../../../../core/combat/combat-client-types';
 import { CombatState } from '../../../../core/combat/combat-state';
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
+import { heldAttackAnswer } from '../../../../core/held-rolls/held-roll-testing';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { AttackSheet, type AttackSheetData } from './attack-sheet';
 import { fakeCombatClient } from '../../../../core/combat/combat-client-testing';
@@ -51,12 +52,6 @@ const toren = combatant({
 });
 const cap = combatant({ id: 'cap', label: 'Capitão Goblin' });
 
-const die = create(InspirationDieSchema, {
-  sides: 8,
-  fromLabel: 'Orla',
-  fromCombatantId: 'o',
-  expiresAtRound: 90,
-});
 const d20 = (face: number, total = face + 5) =>
   create(DiceRollSchema, {
     diceCount: 1,
@@ -65,9 +60,10 @@ const d20 = (face: number, total = face + 5) =>
     modifier: 5,
     total,
   });
-const offer = create(InspirationOfferSchema, {
+const offer = create(HeldRollOfferSchema, {
   holdId: 'hold-1',
-  die,
+  kind: HeldRollKind.WEAPON_ATTACK,
+  question: { case: 'die', value: { sides: 8, fromName: 'Orla' } },
   d20: d20(9),
   attackKey: longsword.key,
   targetId: 'cap',
@@ -78,7 +74,7 @@ const held = (state: CombatState): AttackResult => ({
   encounter: state.encounter()!,
   roll: create(AttackRollSchema, { attackKey: longsword.key, d20: offer.d20 }),
   pending: undefined,
-  offer,
+  held: offer,
 });
 
 /** What the answer resolves to: a hit, with the die in the total when it was used. */
@@ -97,10 +93,10 @@ const resolved = (state: CombatState, used: boolean): AttackResult => ({
 
 describe('AttackSheet: the Bardic Inspiration question of a held roll (PM-07c 12)', () => {
   const rollAttack = vi.fn();
-  const answerBardicInspiration = vi.fn();
+  const answerHeldRoll = vi.fn();
   const onHeld = vi.fn();
 
-  function open(over: { diceMode?: DiceMode; inspiration?: AttackSheetData['inspiration'] } = {}) {
+  function open(over: { diceMode?: DiceMode; held?: AttackSheetData['held'] } = {}) {
     const state = new CombatState();
     state.apply(encounter({ currentCombatantId: 't', combatants: [toren, cap] }));
     const data: AttackSheetData = {
@@ -114,17 +110,17 @@ describe('AttackSheet: the Bardic Inspiration question of a held roll (PM-07c 12
       preference: DicePreference.APP,
       state,
       // The target is the mover of an opportunity, so the sheet opens at "Rolar".
-      opportunity: over.inspiration
+      opportunity: over.held
         ? undefined
         : { offerId: 'o', targetId: 'cap', targetLabel: 'Capitão Goblin', byMaster: false },
-      inspiration: over.inspiration,
+      held: over.held,
       onHeld,
     };
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
         { provide: CombatClient, useValue: fakeCombatClient({ rollAttack }) },
-        { provide: ResourceClient, useValue: { answerBardicInspiration } },
+        { provide: ResourceClient, useValue: { answerHeldRoll } },
         { provide: MAT_DIALOG_DATA, useValue: data },
         { provide: MatDialogRef, useValue: { close: vi.fn(), disableClose: false } },
       ],
@@ -146,7 +142,7 @@ describe('AttackSheet: the Bardic Inspiration question of a held roll (PM-07c 12
     // The sheet scrolls its error into view; the test DOM has no scroll.
     Element.prototype.scrollTo = vi.fn();
     rollAttack.mockReset();
-    answerBardicInspiration.mockReset();
+    answerHeldRoll.mockReset();
     onHeld.mockReset();
   });
 
@@ -179,17 +175,17 @@ describe('AttackSheet: the Bardic Inspiration question of a held roll (PM-07c 12
   it('"Somar o d8" answers with use and the die rolled in the app, then shows the result with the die in it', async () => {
     const { el, state, settle, button } = open();
     rollAttack.mockImplementation(() => Promise.resolve(held(state)));
-    answerBardicInspiration.mockImplementation(() => Promise.resolve(resolved(state, true)));
+    answerHeldRoll.mockImplementation(() =>
+      Promise.resolve(heldAttackAnswer(resolved(state, true))),
+    );
     button('Rolar no app')!.click();
     await settle();
     button('Somar o d8 (Inspiração de Orla)')!.click();
     await settle();
-    expect(answerBardicInspiration).toHaveBeenCalledWith(
+    expect(answerHeldRoll).toHaveBeenCalledWith(
       'camp',
-      'enc',
       'hold-1',
-      true,
-      { inApp: true },
+      { kind: 'die', use: true, roll: { inApp: true } },
       expect.any(String),
     );
     const text = flat(el);
@@ -202,17 +198,17 @@ describe('AttackSheet: the Bardic Inspiration question of a held roll (PM-07c 12
   it('"Guardar o dado" answers without using it and shows the result', async () => {
     const { el, state, settle, button } = open();
     rollAttack.mockImplementation(() => Promise.resolve(held(state)));
-    answerBardicInspiration.mockImplementation(() => Promise.resolve(resolved(state, false)));
+    answerHeldRoll.mockImplementation(() =>
+      Promise.resolve(heldAttackAnswer(resolved(state, false))),
+    );
     button('Rolar no app')!.click();
     await settle();
     button('Guardar o dado')!.click();
     await settle();
-    expect(answerBardicInspiration).toHaveBeenCalledWith(
+    expect(answerHeldRoll).toHaveBeenCalledWith(
       'camp',
-      'enc',
       'hold-1',
-      false,
-      null,
+      { kind: 'die', use: false, roll: null },
       expect.any(String),
     );
     expect(flat(el)).toContain('Acertou');
@@ -223,7 +219,9 @@ describe('AttackSheet: the Bardic Inspiration question of a held roll (PM-07c 12
     const { fixture, el, state, settle, button } = open({ diceMode: DiceMode.PHYSICAL });
     // A physical d20 is typed too.
     rollAttack.mockImplementation(() => Promise.resolve(held(state)));
-    answerBardicInspiration.mockImplementation(() => Promise.resolve(resolved(state, true)));
+    answerHeldRoll.mockImplementation(() =>
+      Promise.resolve(heldAttackAnswer(resolved(state, true))),
+    );
     const d20Field = el.querySelector('input.type__field') as HTMLInputElement;
     d20Field.value = '9';
     d20Field.dispatchEvent(new Event('input'));
@@ -238,18 +236,16 @@ describe('AttackSheet: the Bardic Inspiration question of a held roll (PM-07c 12
     fixture.detectChanges();
     button('Confirmar 6')!.click();
     await settle();
-    expect(answerBardicInspiration).toHaveBeenCalledWith(
+    expect(answerHeldRoll).toHaveBeenCalledWith(
       'camp',
-      'enc',
       'hold-1',
-      true,
-      { face: 6 },
+      { kind: 'die', use: true, roll: { face: 6 } },
       expect.any(String),
     );
   });
 
   it('opens at the question when the screen is read again (the offer is on the combatant), with the d20 that was rolled', () => {
-    const { el, button } = open({ inspiration: { offer, targetLabel: 'Capitão Goblin' } });
+    const { el, button } = open({ held: { offer, targetLabel: 'Capitão Goblin' } });
     const text = flat(el);
     expect(text).toContain('Usar a Inspiração de Bardo (d8)?');
     expect(text).toContain('Capitão Goblin');
@@ -274,7 +270,7 @@ describe('AttackSheet: the Bardic Inspiration question of a held roll (PM-07c 12
     state.apply(
       encounter({
         currentCombatantId: 't',
-        combatants: [{ ...toren, inspirationOffer: offer } as typeof toren, cap],
+        combatants: [{ ...toren, heldRollOffer: offer } as typeof toren, cap],
       }),
     );
     await settle();
@@ -283,20 +279,20 @@ describe('AttackSheet: the Bardic Inspiration question of a held roll (PM-07c 12
   });
 
   it('keeps the key of an answer that failed, so a retry never rolls the die twice', async () => {
-    const { el, settle, button } = open({ inspiration: { offer, targetLabel: 'Capitão Goblin' } });
-    answerBardicInspiration.mockRejectedValue(new ConnectError('down', Code.Unavailable));
+    const { el, settle, button } = open({ held: { offer, targetLabel: 'Capitão Goblin' } });
+    answerHeldRoll.mockRejectedValue(new ConnectError('down', Code.Unavailable));
     button('Somar o d8')!.click();
     await settle();
     button('Somar o d8')!.click();
     await settle();
     expect(flat(el.querySelector('[role=alert] p'))).toContain('o servidor não respondeu');
-    const keys = answerBardicInspiration.mock.calls.map((c) => c[5] as string);
+    const keys = answerHeldRoll.mock.calls.map((c) => c[3] as string);
     expect(keys[0]).toBe(keys[1]);
   });
 
   it('says the held roll is gone in words, and stays at the question', async () => {
-    const { el, settle, button } = open({ inspiration: { offer, targetLabel: 'Capitão Goblin' } });
-    answerBardicInspiration.mockRejectedValue(new ConnectError('gone', Code.NotFound));
+    const { el, settle, button } = open({ held: { offer, targetLabel: 'Capitão Goblin' } });
+    answerHeldRoll.mockRejectedValue(new ConnectError('gone', Code.NotFound));
     button('Guardar o dado')!.click();
     await settle();
     expect(flat(el.querySelector('[role=alert] p'))).toContain('Esse combate não existe mais');

@@ -4,7 +4,7 @@ import { Code, ConnectError } from '@connectrpc/connect';
 
 import type { PuzzleMoveSchema, PuzzleRun } from '../../../gen/meurpg/play/v1/puzzles_pb';
 import { newKey } from '../connect/idempotency';
-import type { InspirationRoll, LuckyRoll } from '../resources/resources-client';
+import type { HeldAnswer } from '../held-rolls/held-roll-offer';
 import { puzzleBlocked, puzzleErrorMessage } from './puzzle-errors';
 import { PuzzleHints } from './puzzle-hints';
 import {
@@ -58,10 +58,9 @@ export class PuzzlePlay {
   readonly hintBusy: PuzzleHints['busy'];
   /** The last try for a hint, until the next one or the next change of the puzzle. */
   readonly hintTry: PuzzleHints['last'];
-  /** The try's d20 was rolled and kept: the character holds a Bardic Inspiration die, and the player decides before the result. */
-  readonly hintOffer: PuzzleHints['offer'];
-  /** The try's d20 was rolled and kept because a halfling's d20 shows a 1: the Lucky question, asked before the die's. */
-  readonly hintLucky: PuzzleHints['lucky'];
+  /** The try's d20 was rolled and kept and the try waits for a question: the halfling's Lucky about a 1 first, then the
+   * Bardic Inspiration die's. */
+  readonly hintHeld: PuzzleHints['held']['offer'];
   /** The next try with a real die takes two d20: the server said so, or the last result had advantage or disadvantage. */
   readonly hintPair: PuzzleHints['pair'];
   /** The d4 an effect adds to a try with a real die (Orientação): asked when the server says the roll takes them. */
@@ -93,8 +92,7 @@ export class PuzzlePlay {
     });
     this.hintBusy = this.hints.busy;
     this.hintTry = this.hints.last;
-    this.hintOffer = this.hints.offer;
-    this.hintLucky = this.hints.lucky;
+    this.hintHeld = this.hints.held.offer;
     this.hintPair = this.hints.pair;
     this.extraDice = this.hints.extraDice;
     this.diceModeStale = this.hints.diceModeStale;
@@ -299,14 +297,9 @@ export class PuzzlePlay {
     return this.hints.try(die);
   }
 
-  /** The answer about the Bardic Inspiration die the try waits on. */
-  answerHintDie(use: boolean, die: InspirationRoll | null): Promise<void> {
-    return this.hints.answerDie(use, die);
-  }
-
-  /** The answer to the Lucky question the try waits on. */
-  answerHintLucky(reroll: boolean, die: LuckyRoll | null): Promise<void> {
-    return this.hints.answerLucky(reroll, die);
+  /** The answer to the question the try waits on (the halfling's Lucky, the Bardic Inspiration die): see `PuzzleHints.answer`. */
+  answerHint(answer: HeldAnswer): Promise<void> {
+    return this.hints.answer(answer);
   }
 
   private sendWithRetry(

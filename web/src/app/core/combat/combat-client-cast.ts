@@ -2,7 +2,6 @@ import {
   type Encounter,
   type PreviewSpellAreaResponse,
 } from '../../../gen/meurpg/play/v1/combat_pb';
-import { InspirationQuestion } from '../resources/bardic-inspiration';
 import { type CombatClientBase } from './combat-client-base';
 import {
   type AttackDie,
@@ -18,7 +17,7 @@ import {
   type SummonRequest,
 } from './combat-client-types';
 import { castExtrasBody, castRollOneof, areaOneof, need } from './combat-client-wire';
-import { LuckyQuestion } from './lucky-question';
+import { HeldRollAsked, heldOfferOf } from '../held-rolls/held-roll-offer';
 
 /** The calls of spells: casting, previewing an area and the hidden creatures an area reached. */
 export class CombatCastCalls {
@@ -70,13 +69,11 @@ export class CombatCastCalls {
       area: areaOneof(extras.area),
       ...castExtrasBody(extras),
     });
-    if (res.luckyOffer) {
-      // A spell attack of a halfling whose d20 shows a 1: the d20 is kept, nothing was spent, and Lucky asks first.
-      throw new LuckyQuestion(res.luckyOffer, need(res.encounter, 'CastSpell'));
-    }
-    if (res.inspirationOffer) {
-      // A spell attack of a character that holds a die: the d20 is kept, nothing was spent.
-      throw new InspirationQuestion(res.inspirationOffer, need(res.encounter, 'CastSpell'));
+    const asked = heldOfferOf(res);
+    if (asked) {
+      // A spell attack whose d20 waits for a question (a halfling's 1, a Bardic Inspiration die): the d20 is kept and
+      // nothing was spent.
+      throw new HeldRollAsked(asked, need(res.encounter, 'CastSpell'));
     }
     return {
       encounter: need(res.encounter, 'CastSpell'),

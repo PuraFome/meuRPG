@@ -84,6 +84,7 @@ export class CastCaller {
           ? this.area.key.keyFor([slot, area, roll, this.choices.damageType(), sculpted])
           : this.castKey;
         const picked = this.s.picked();
+        const destination = this.s.teleportFt > 0 ? this.s.destination() : null;
         const res = await this.host.api.casts.castSpell(
           data.campaignId,
           data.encounterId,
@@ -109,6 +110,7 @@ export class CastCaller {
             ...(flow ? { area } : {}),
             ...(this.choices.asksAbility ? { abilityKey: this.s.ability() } : {}),
             ...(sculpted.length ? { sculptedIds: sculpted } : {}),
+            ...(destination ? { destination } : {}),
           },
         );
         this.show(res.encounter, res.cast);

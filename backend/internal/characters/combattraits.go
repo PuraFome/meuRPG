@@ -24,6 +24,13 @@ var greatWeaponFighting = []string{
 // ("monster:wolf#pack-tactics").
 const packTacticsSuffix = "#pack-tactics"
 
+// evasionFeatures are the keys of Evasion for a character (the monk's and the rogue's, and the
+// ranger's Superior Hunter's Defense choice); evasionSuffix ends a monster's trait
+// ("monster:adult-blue-dragon#evasion").
+var evasionFeatures = []string{"feature:monk-evasion", "feature:rogue-evasion", "feature:superior-hunters-defense-evasion"}
+
+const evasionSuffix = "#evasion"
+
 // creatureTypePrefix starts the key of the pseudo feature that carries a monster's
 // type ("creature-type:undead"): a combat reads it with Traits.CreatureType (Divine
 // Smite does extra damage to an undead or a fiend).
@@ -73,6 +80,9 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 	if rules.HasFeature(d, "feature:sneak-attack") {
 		t.SneakAttackDice = combat.SneakAttackDice(t.RogueLevel)
 	}
+	t.Evasion = slices.ContainsFunc(d.Features, func(f rules.Feature) bool {
+		return slices.Contains(evasionFeatures, f.Key) || strings.HasSuffix(f.Key, evasionSuffix)
+	})
 	t.GreatWeaponFighting = slices.ContainsFunc(greatWeaponFighting, func(k string) bool { return rules.HasFeature(d, k) })
 	t.PackTactics = slices.ContainsFunc(d.Features, func(f rules.Feature) bool { return strings.HasSuffix(f.Key, packTacticsSuffix) })
 	// The halfling's Lucky is a race trait, so every halfling has it, whichever its subrace.
@@ -91,6 +101,11 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 		t.Maneuvers = append(t.Maneuvers, link.Maneuver{
 			Key: m.Key, NamePT: m.NamePT, Resource: m.Resource, Applies: m.Applies, Economy: m.Economy,
 			Ability: m.Ability, TextPT: m.TextPT, Sides: m.Sides,
+		})
+	}
+	for _, x := range d.ExtraDamages {
+		t.ExtraDamages = append(t.ExtraDamages, link.ExtraDamage{
+			Key: x.Key, NamePT: x.NamePT, Applies: x.Applies, Resource: x.Resource, TextPT: x.TextPT, Amount: x.Amount,
 		})
 	}
 	return t

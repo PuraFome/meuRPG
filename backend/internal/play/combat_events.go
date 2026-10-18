@@ -470,6 +470,9 @@ type actionEvent struct {
 	// their answer as it did. A discard written before this keeps none, and its undo lets
 	// the hit go on to its roll.
 	ClosedWindows []string `json:"closed_windows,omitempty"`
+	// ProtectedBy are the shield-bearers whose Protection gave an attack roll disadvantage:
+	// the undo of the attack gives their reaction back.
+	ProtectedBy []string `json:"protected_by,omitempty"`
 	// Mode is how the master changed an NPC's hit points ("damage", "heal",
 	// "set"), and Delta the change.
 	Mode  string `json:"mode,omitempty"`
@@ -668,6 +671,8 @@ type actionEvent struct {
 	// move's undo puts it back).
 	Dragged     string     `json:"dragged_id,omitempty"`
 	DraggedFrom *moveState `json:"dragged_from,omitempty"`
+	// Teleport is where a teleport spell put the caster, and where it stood: the undo puts it back.
+	Teleport *teleportEvent `json:"teleport,omitempty"`
 	// Contest is what a contest or a special action says of the event: grapple, shove,
 	// escape, Hide, Help, surprise (combat_contests_core.go).
 	Contest *contestEvent `json:"contest,omitempty"`

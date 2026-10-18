@@ -81,9 +81,8 @@ const TRANSLATORS: Translators = {
   characterResubmitted: (v) => ({ kind: 'characterChanged', characterId: v.characterId }),
   characterRevived: (v) => ({ kind: 'characterRevived', characterId: v.characterId }),
   revivifyChanged: () => ({ kind: 'revivifyChanged' }),
-  // The held rolls' questions are read from each roll's answer for now; the held-roll controller reads this hint.
-  heldRollsChanged: () => null,
   callingYou: () => ({ kind: 'callingYou' }),
+  heldRollsChanged: () => ({ kind: 'heldRollsChanged' }),
   puzzleChanged: (v) => ({ kind: 'puzzleChanged', puzzleId: v.puzzleId }),
   // The Conversa panel (MR-051) reads these two; until it exists the shared stream has nothing to do with them.
   sessionMessageAdded: () => null,

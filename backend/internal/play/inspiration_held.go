@@ -84,10 +84,11 @@ func (s *Service) holdSpellAttack(
 }
 
 // spellMayAsk says the cast has a spell attack that may wait: one against a single target, by a player's
-// character (the master and the NPCs roll without a die), and not a cast that waited for a reaction window.
+// character (the NPCs roll without a die; the master's cast for a player's character asks, E4-10), and not a cast
+// that waited for a reaction window.
 func spellMayAsk(c *combatTx, m authz.Membership, caster playdb.Combatant, sp link.Spell, targs []playdb.Combatant) bool {
 	return sp.AttackType != "" && len(targs) == 1 && c.replay == nil &&
-		m.Role != authz.RoleMaster && caster.Kind == kindPlayer && backedByCharacter(caster)
+		caster.Kind == kindPlayer && backedByCharacter(caster) && playedBy(caster, m)
 }
 
 // spellDieBefore is the die the caster holds before the answer uses it, for the undo of the cast. An answer

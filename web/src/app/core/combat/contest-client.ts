@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { type MessageInitShape } from '@bufbuild/protobuf';
 import { createClient } from '@connectrpc/connect';
 
-import type { Encounter, LuckyOffer } from '../../../gen/meurpg/play/v1/combat_pb';
+import type { Encounter, HeldRollOffer } from '../../../gen/meurpg/play/v1/combat_pb';
 import {
   type CheckRollInputSchema,
   ContestService,
@@ -22,6 +22,7 @@ import {
   type SurpriseView,
 } from '../../../gen/meurpg/play/v1/contest_types_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
+import { asksLucky, heldOfferOf } from '../held-rolls/held-roll-offer';
 
 /** How a check's d20 comes: the app rolls it, or the faces typed from the physical dice (one face, or the pair for a roll with
  * advantage or disadvantage). */
@@ -238,17 +239,18 @@ export class ContestClient {
     groupCheckId: string,
     die: CheckDie,
     key: string,
-  ): Promise<GroupCheckView | LuckyOffer> {
+  ): Promise<GroupCheckView | HeldRollOffer> {
     const res = await this.client.rollGroupCheck({
       campaignId,
       idempotencyKey: key,
       groupCheckId,
       roll: rollInput(die),
     });
-    if (res.luckyOffer) {
-      return res.luckyOffer;
-    }
-    if (res.inspirationOffer) {
+    const asked = heldOfferOf(res);
+    if (asked) {
+      if (asksLucky(asked)) {
+        return asked;
+      }
       // The roll waits for the answer about a Bardic Inspiration die: the session panel asks it.
       throw new InspirationAsked();
     }

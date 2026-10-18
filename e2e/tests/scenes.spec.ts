@@ -599,6 +599,55 @@ test(
 );
 
 test(
+  'o mestre responde a pergunta pendente de um teste de cena do jogador que saiu: o painel "Perguntas pendentes" libera o botão e ele fica com o 1',
+  { tag: ['@MR-014', '@MR-015', '@RN-35', '@RN-18'] },
+  async ({ browser }) => {
+    test.setTimeout(120_000);
+    const masterContext = await newSignedInContext(browser, 'Mestre Teste');
+    const playerContext = await newSignedInContext(browser, 'Jogador Teste');
+    const master = await masterContext.newPage();
+    const player = await playerContext.newPage();
+    try {
+      await master.goto('/');
+      const { campaignId } = await tableForScenes(master, player, `Sortudo ausente ${Date.now()}`, true, {
+        raceKey: 'race:halfling',
+        subraceKey: 'subrace:lightfoot-halfling',
+      });
+      try {
+        await openSessionPage(master, campaignId);
+        await openScene(master, 'A carroça tombada');
+        await openSessionPage(player, campaignId);
+        const scene = player.getByRole('region', { name: 'Cena: A carroça tombada' });
+        await scene.getByRole('button', { name: 'Rolar Procurar pistas na carroça' }).click();
+        const sheet = player.getByRole('dialog', { name: 'Rolar Procurar pistas na carroça' });
+        await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+        await sheet.getByLabel(/Role 1d20 para Investigação/).fill('1');
+        await sheet.getByRole('button', { name: 'Confirmar 1' }).click();
+        await expect(sheet.getByRole('heading', { name: 'Tirou 1: rolar de novo?' })).toBeVisible();
+        // The player leaves with the question unanswered.
+        await player.close();
+
+        // The master reads it above the stage; the roller answers first, so the button waits for the master's time.
+        await openSessionPage(master, campaignId);
+        const panel = master.getByRole('region', { name: 'Perguntas pendentes' });
+        await expect(panel.getByText('O jogador responde primeiro; depois de 10 s você também pode responder por ele.')).toBeVisible();
+        const question = panel.getByRole('region', { name: /· Tirou 1: rolar de novo\?$/ });
+        const keep = question.getByRole('button', { name: 'Ficar com o 1' });
+        await expect(keep).toBeEnabled({ timeout: 30_000 });
+        await keep.click();
+        await expect(master.getByText(/Você respondeu por .+: ficou com o 1\./)).toBeVisible();
+        await expect(question).toBeHidden();
+      } finally {
+        await endOpenSessionRPC(master, campaignId);
+      }
+    } finally {
+      await masterContext.close();
+      await playerContext.close();
+    }
+  },
+);
+
+test(
   'o dado de Inspiração de Bardo num teste de cena: a pergunta vem depois do d20 e antes do total, o dado digitado entra na soma e o dado some',
   { tag: ['@MR-014', '@MR-015', '@RN-18'] },
   async ({ browser }) => {

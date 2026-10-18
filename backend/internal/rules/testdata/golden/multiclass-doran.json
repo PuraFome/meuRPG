@@ -255,6 +255,7 @@
     "Initiative": 2,
     "ArmorClass": 19,
     "ArmorClassDescription": "Cota de malha + escudo",
+    "ShieldIdle": false,
     "ArmorCategory": "heavy",
     "ArmorUntrained": {
       "Armor": false,
@@ -771,6 +772,7 @@
       }
     ],
     "Maneuvers": null,
+    "ExtraDamages": null,
     "AttacksPerAction": 2,
     "CriticalRange": 19,
     "BrutalCriticalDice": 0,
@@ -1202,6 +1204,7 @@
     "Initiative": 2,
     "ArmorClass": 19,
     "ArmorClassDescription": "Cota de malha + escudo",
+    "ShieldIdle": false,
     "ArmorCategory": "heavy",
     "ArmorUntrained": {
       "Armor": false,
@@ -1434,6 +1437,7 @@
       }
     ],
     "Maneuvers": null,
+    "ExtraDamages": null,
     "AttacksPerAction": 2,
     "CriticalRange": 19,
     "BrutalCriticalDice": 0,

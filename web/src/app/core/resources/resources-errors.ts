@@ -22,6 +22,22 @@ export function resourceBlocked(err: unknown): ResourceBlocked | null {
   return connectErr.findDetails(ResourceBlockedSchema)[0] ?? null;
 }
 
+/** The refusals of a rule whose sentence takes no numbers. */
+const FIXED_TEXT: Partial<Record<ResourceBlockedReason, string>> = {
+  [ResourceBlockedReason.COMBAT_OPEN]:
+    'Há um combate em andamento: termine o combate antes de descansar.',
+  [ResourceBlockedReason.NO_HIT_DICE_LEFT]: 'Não há dado de vida desse tipo.',
+  [ResourceBlockedReason.SLOT_LEVEL_TOO_HIGH]:
+    'A Conjuração Flexível cria espaços de 1º a 5º nível.',
+  [ResourceBlockedReason.NO_FREE_SLOT]: 'Você não tem espaço livre desse nível.',
+  [ResourceBlockedReason.NO_USES_LEFT]:
+    'Sem usos da Inspiração de Bardo: eles voltam num descanso longo.',
+  [ResourceBlockedReason.TARGET_REFUSED]: 'Essa criatura não pode receber o dado.',
+  [ResourceBlockedReason.NOT_AVAILABLE]: 'Você não tem essa habilidade.',
+  [ResourceBlockedReason.PLAYER_FIRST]:
+    'O jogador responde primeiro: tente de novo em alguns segundos.',
+};
+
 /** What a refusal that comes from a rule says. Only the reasons of the rests and the hit dice are worded here: the
  * resource flows that come with their own dialogs word theirs. */
 export function resourceBlockedMessage(
@@ -30,31 +46,17 @@ export function resourceBlockedMessage(
   available = 0,
 ): string {
   // A roll that waits for its question (Lucky, the Bardic Inspiration die): the same words as in every call that rolls.
-  const pending = pendingQuestionReasonText(reason);
-  if (pending) {
-    return pending;
+  const fixed = pendingQuestionReasonText(reason) || FIXED_TEXT[reason];
+  if (fixed) {
+    return fixed;
   }
   switch (reason) {
-    case ResourceBlockedReason.COMBAT_OPEN:
-      return 'Há um combate em andamento: termine o combate antes de descansar.';
-    case ResourceBlockedReason.NO_HIT_DICE_LEFT:
-      return 'Não há dado de vida desse tipo.';
     case ResourceBlockedReason.NOT_ENOUGH_POINTS:
       return `Não há pontos suficientes: precisa de ${needed}, restam ${available}.`;
-    case ResourceBlockedReason.SLOT_LEVEL_TOO_HIGH:
-      return 'A Conjuração Flexível cria espaços de 1º a 5º nível.';
-    case ResourceBlockedReason.NO_FREE_SLOT:
-      return 'Você não tem espaço livre desse nível.';
     case ResourceBlockedReason.SORCERY_POINTS_FULL:
       return `Você já tem o máximo de pontos de feitiçaria. O máximo é o seu nível (${needed}): converter um espaço agora perderia os pontos.`;
     case ResourceBlockedReason.SORCERY_POINTS_OVER:
       return `Converter esse espaço passaria do máximo de pontos de feitiçaria (${needed}): você tem ${available}.`;
-    case ResourceBlockedReason.NO_USES_LEFT:
-      return 'Sem usos da Inspiração de Bardo: eles voltam num descanso longo.';
-    case ResourceBlockedReason.TARGET_REFUSED:
-      return 'Essa criatura não pode receber o dado.';
-    case ResourceBlockedReason.NOT_AVAILABLE:
-      return 'Você não tem essa habilidade.';
     case ResourceBlockedReason.SONG_OF_REST_FACE_NEEDED:
       return `Um bardo toca a Canção de Descanso: digite também o número do dado extra (d${needed}).`;
     default:

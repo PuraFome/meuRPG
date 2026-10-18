@@ -35,10 +35,63 @@ import (
 // divided by the number of darts at the spell's level (1d4 + 1).
 const magicMissile = "spell:magic-missile"
 
-// scorchingRay: a ray for each target, three at the 2nd level and one more for
-// each level above (the SRD lets several rays go to one target; the table keeps
-// it to one ray per target here, and the master the rest).
+// scorchingRay makes three rays at the 2nd level and one more for each level
+// above. The caster shares them out as they like, all at one creature if they
+// want: a target's darts field is how many rays it gets (none counts as one),
+// and each ray is its own spell attack with its own damage.
 const scorchingRay = "spell:scorching-ray"
+
+// scorchingBaseRays is the rays Scorching Ray makes at its own level.
+const scorchingBaseRays = 3
+
+// scorchingRays is how many rays Scorching Ray makes at a slot level.
+func scorchingRays(sp link.Spell, slotLevel int) int {
+	return scorchingBaseRays + max(slotLevel-sp.Level, 0)
+}
+
+// sharesAt is how many darts or rays a slot level gives the caster to share out among the targets: 0 for a
+// spell that shares none.
+func sharesAt(sp link.Spell, slotLevel int) int {
+	if sp.Key == scorchingRay {
+		return scorchingRays(sp, slotLevel)
+	}
+	return dartsOf(sp, slotLevel)
+}
+
+// raysAt lists the target (an index of targets) each attack of a cast is made at, in the order the targets
+// were given and the rays of each target together: one attack for a target, but for Scorching Ray as many as
+// rays the target is given.
+func raysAt(sp link.Spell, targets []castAim) []int {
+	var out []int
+	for i, t := range targets {
+		n := 1
+		if sp.Key == scorchingRay {
+			n = max(t.darts, 1)
+		}
+		for range n {
+			out = append(out, i)
+		}
+	}
+	return out
+}
+
+// rayCombatants lists the combatant each attack of a cast is made at, once for every ray.
+func rayCombatants(sp link.Spell, targets []castAim, targs []playdb.Combatant) []playdb.Combatant {
+	var out []playdb.Combatant
+	for _, i := range raysAt(sp, targets) {
+		out = append(out, targs[i])
+	}
+	return out
+}
+
+// shownDarts is the darts a target of the request shows in the cast's event: a ray of Scorching Ray is an
+// entry of its own and shows none.
+func shownDarts(sp link.Spell, t castAim) int32 {
+	if sp.Key == scorchingRay {
+		return 0
+	}
+	return clamp32(t.darts, 0, maxShownDarts)
+}
 
 // maxSpellTargets is the most targets one cast takes, the master's too: the
 // cast's event and the damage roll that settles it hold what each target did,
@@ -166,7 +219,7 @@ func maxTargetsOf(sp link.Spell, slotLevel int) int {
 	case sp.Key == magicMissile:
 		return dartsOf(sp, slotLevel) // a dart each, at most
 	case sp.Key == scorchingRay:
-		return 3 + max(slotLevel-sp.Level, 0)
+		return scorchingRays(sp, slotLevel)
 	case sp.Area:
 		return 0
 	case sp.TargetCount > 0:
@@ -251,6 +304,8 @@ func checkTargetCount(v combatViewer, sp link.Spell, caster playdb.Combatant, ta
 		if slices.ContainsFunc(targs, func(t playdb.Combatant) bool { return t.ID != caster.ID }) {
 			return badTargets("this spell reaches the caster alone: leave the targets out")
 		}
+	case sp.Key == scorchingRay:
+		return checkRays(v, sp, targs, darts, slotLevel)
 	case dartsTotal > 0:
 		return checkDarts(targs, darts, dartsTotal)
 	default:
@@ -263,6 +318,26 @@ func checkTargetCount(v combatViewer, sp link.Spell, caster playdb.Combatant, ta
 		if limit := maxTargetsOf(sp, slotLevel); limit > 0 && len(targs) > limit && !v.master {
 			return badTargets(fmt.Sprintf("this spell takes at most %d targets with this slot", limit))
 		}
+	}
+	return nil
+}
+
+// checkRays checks the rays of Scorching Ray: a target to aim at, and no more rays than the slot makes. The
+// master is held to the most targets a cast takes instead, which keeps the cast's event small.
+func checkRays(v combatViewer, sp link.Spell, targs []playdb.Combatant, rays []int, slotLevel int) error {
+	if len(targs) == 0 {
+		return badTargets("this spell needs a target")
+	}
+	total := 0
+	for _, n := range rays {
+		total += max(n, 1)
+	}
+	limit := scorchingRays(sp, slotLevel)
+	if v.master {
+		limit = maxSpellTargets
+	}
+	if total > limit {
+		return badTargets(fmt.Sprintf("this spell takes at most %d rays with this slot", limit))
 	}
 	return nil
 }
@@ -499,9 +574,17 @@ func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership
 	if len(sp.Damages) == 0 || (saved && sp.SaveOnSuccess != "half" && sp.SaveOnSuccess != "other") {
 		return nil
 	}
+	share := combat.ShareFull
+	if sp.SaveOnSuccess == "half" {
+		// Evasion: a Dexterity save that passes takes none, one that fails takes half.
+		share = combat.HalfSaveShare(creature, sp.SaveAbility, saved)
+	}
+	if share == combat.ShareNone {
+		return nil
+	}
 	// One pending damage for each damage type, all of the cast: each is its own
 	// roll, and the resistance of the target is read for its type when it lands.
-	return s.openSavePendings(ctx, c, sp, caster, target, saved && sp.SaveOnSuccess == "half", hit)
+	return s.openSavePendings(ctx, c, sp, caster, target, share == combat.ShareHalf, hit)
 }
 
 // sculptedSave is the save of a creature Sculpt Spells (SRD 5.1) spares: it succeeds on its own, with no

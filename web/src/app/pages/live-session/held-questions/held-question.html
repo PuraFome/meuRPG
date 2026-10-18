@@ -1,0 +1,79 @@
+@if (question().ended()) {
+  <p class="note" [class.note--done]="phase() === 'done'" role="status" data-testid="held-note">
+    <mat-icon aria-hidden="true">{{ noteIcon() }}</mat-icon>
+    <span>{{ question().note() }}</span>
+  </p>
+} @else if (offer()) {
+  <section
+    class="q"
+    [class.q--row]="layout() === 'row'"
+    [attr.aria-labelledby]="titleId"
+    [attr.aria-busy]="phase() === 'answering' ? 'true' : null"
+  >
+    <div class="q__head">
+      <mat-icon class="q__icon" aria-hidden="true">{{ icon() }}</mat-icon>
+      <h3 class="q__title" [id]="titleId">{{ heading() }}</h3>
+      <span class="q__status" role="status">
+        <span [class.mr-visually-hidden]="layout() === 'card'">{{ question().lead() }}</span>
+        @if (question().countdown()) {
+          <span aria-hidden="true">{{ layout() === 'row' ? ' · ' : '' }}{{ question().countdown() }}</span>
+        }
+      </span>
+    </div>
+    <p class="q__what">
+      {{ what() }}
+      @if (rule().lead) {
+        <b>{{ rule().lead }}</b>
+      }
+      {{ rule().text }}
+    </p>
+    <div class="q__d20">
+      <span class="q__face">{{ chip() }}</span>
+      <span class="q__line">{{ line() }}</span>
+    </div>
+    @if (question().asking()) {
+      <p class="q__busy" role="status">{{ question().asking() }}</p>
+    }
+    @if (phase() === 'too-early') {
+      <div class="q__early" role="alert">
+        <mat-icon aria-hidden="true">error_outline</mat-icon>
+        <span>
+          <b>{{ question().alertLead() }}</b>
+          <span aria-hidden="true"> {{ question().alertCountdown() }}</span>
+        </span>
+      </div>
+    }
+    @if (failure()) {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ failure() }}</p>
+      </div>
+    }
+    @if (typing()) {
+      <label class="q__typed">
+        <span>Número que saiu no {{ lucky() ? 'd20' : dieName() }} (1 a {{ sides() }})</span>
+        <input type="number" inputmode="numeric" [min]="1" [max]="sides()" [value]="face()" (input)="onFace($event)" />
+      </label>
+      <div class="q__buttons">
+        <button matButton="outlined" type="button" class="q__btn q__btn--primary" [disabled]="waiting() || !faceOk()" (click)="sendTyped()">
+          Confirmar
+        </button>
+        <button matButton type="button" class="q__btn" (click)="typing.set(false)">Voltar</button>
+      </div>
+    } @else {
+      <div class="q__buttons">
+        <button matButton="outlined" type="button" class="q__btn q__btn--primary" [disabled]="waiting()" (click)="rollAgain()">
+          {{ lucky() ? 'Rolar de novo' : useText() }}
+        </button>
+        @if (canType()) {
+          <button matButton type="button" class="q__btn" [disabled]="waiting()" (click)="typing.set(true)">
+            Digitar o resultado
+          </button>
+        }
+        <button matButton="outlined" type="button" class="q__btn q__btn--primary" [disabled]="waiting()" (click)="keep()">
+          {{ lucky() ? 'Ficar com o 1' : 'Guardar o dado' }}
+        </button>
+      </div>
+    }
+  </section>
+}

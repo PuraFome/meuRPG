@@ -9,7 +9,7 @@ type ArmorUntrained struct {
 	// Armor is set when the worn body armor is one the character is not trained
 	// in (its category or the armor itself); false without armor.
 	Armor bool
-	// Shield is set when a shield is carried without the training.
+	// Shield is set when a shield in use (no two-handed weapon beside it) is carried without the training.
 	Shield bool
 }
 
@@ -21,6 +21,6 @@ func (u ArmorUntrained) Any() bool { return u.Armor || u.Shield }
 func (x *deriver) armorUntrained() ArmorUntrained {
 	return ArmorUntrained{
 		Armor:  x.armor != nil && !x.armorProficient(x.armorCategory, x.b.Armor),
-		Shield: x.b.Shield && !x.armorProficient("shield", "equipment:shield"),
+		Shield: x.shieldWielded() && !x.armorProficient("shield", "equipment:shield"),
 	}
 }

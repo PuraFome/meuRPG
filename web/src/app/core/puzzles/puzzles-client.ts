@@ -15,11 +15,9 @@ import {
   type TryPuzzleHintResponse,
 } from '../../../gen/meurpg/play/v1/puzzles_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
-import {
-  type InspirationRoll,
-  type LuckyRoll,
-  ResourceClient,
-} from '../resources/resources-client';
+import type { HeldAnswer } from '../held-rolls/held-roll-offer';
+import { ResourceClient } from '../resources/resources-client';
+import type { AnswerHeldRollResponse } from '../../../gen/meurpg/play/v1/resources_pb';
 
 /** What the master writes about a puzzle, as `CreatePuzzle` takes it (`UpdatePuzzle` takes the same, with the ID). */
 export type PuzzleInit = Omit<
@@ -228,49 +226,15 @@ export class PuzzlesClient {
     });
   }
 
-  /** The answer about the Bardic Inspiration die a try waits on: the try is made now, with the d20 it rolled and the die
-   * when it was used. */
-  async answerHintDie(
+  /** The answer to the question a try waits on (a halfling's d20 of 1, then a Bardic Inspiration die): `AnswerHeldRoll`,
+   * through the resource client this one builds when the first question comes. */
+  answerHeldRoll(
     campaignId: string,
     holdId: string,
-    use: boolean,
-    die: InspirationRoll | null,
+    answer: HeldAnswer,
     idempotencyKey: string,
-  ): Promise<TryPuzzleHintResponse> {
-    const res = await this.resources.answerOutsideInspiration(
-      campaignId,
-      holdId,
-      use,
-      die,
-      idempotencyKey,
-    );
-    if (res.result.case !== 'hintTry') {
-      throw new Error('AnswerOutsideInspiration answered without its hint try');
-    }
-    return res.result.value;
-  }
-
-  /** The answer to the Lucky question a try waits on (a halfling's d20 showed a 1): roll it again (in the app, or the typed
-   * face) or keep the 1. The try is made now with the new d20, or, when the character holds a Bardic Inspiration die, the
-   * answer carries the die's question on the new roll. */
-  async answerHintLucky(
-    campaignId: string,
-    holdId: string,
-    reroll: boolean,
-    die: LuckyRoll | null,
-    idempotencyKey: string,
-  ): Promise<TryPuzzleHintResponse> {
-    const res = await this.resources.answerOutsideLucky(
-      campaignId,
-      holdId,
-      reroll,
-      die,
-      idempotencyKey,
-    );
-    if (res.result.case !== 'hintTry') {
-      throw new Error('AnswerOutsideLucky answered without its hint try');
-    }
-    return res.result.value;
+  ): Promise<AnswerHeldRollResponse> {
+    return this.resources.answerHeldRoll(campaignId, holdId, answer, idempotencyKey);
   }
 }
 

@@ -13,7 +13,8 @@
 // migrations), and the play package alone makes dozens of databases: CI hit
 // its 10-minute limit (PR #59). So the migrations run once per set of
 // migration files, into a template database named after their fingerprint
-// (meurpg_tpl_<hash>), and a test database copies the template's tables.
+// (meurpg_tpl_<hash>), and a test database copies the template's tables, functions
+// and triggers.
 // Even that copy took about 5 seconds, and dropping the database 1.5 more
 // (04/10/2026, 32 tables), for each of some 400 tests; so a package makes
 // only as many databases as it runs tests at once and reuses them: emptying
@@ -530,6 +531,11 @@ func buildTemplate(rawURL string) (templateDB, error) {
 	if err != nil {
 		return templateDB{}, err
 	}
+	routines, err := routineDDL(ctx, tpl)
+	if err != nil {
+		return templateDB{}, err
+	}
+	ddl = append(ddl, routines...)
 	reference, err := seededTables(ctx, tpl, tables)
 	if err != nil {
 		return templateDB{}, err
@@ -670,6 +676,75 @@ func schemaDDL(ctx context.Context, tpl *sql.DB) ([]string, []string, error) {
 		ddl = append(ddl, create[table])
 	}
 	return ddl, order, nil
+}
+
+// routineDDL returns the statements that recreate the template's functions, in the
+// order they were made (a function may call one made before it), and then its triggers,
+// which call them. CockroachDB writes the template's own name into a trigger's table
+// (SHOW CREATE), which the copy drops, so the statements read the database they run in.
+// They run after the tables: a trigger needs its table.
+func routineDDL(ctx context.Context, tpl *sql.DB) ([]string, error) {
+	var database string
+	if err := tpl.QueryRowContext(ctx, `SELECT current_database()`).Scan(&database); err != nil {
+		return nil, fmt.Errorf("name the template: %w", err)
+	}
+	functions, err := names(ctx, tpl, `
+		SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+		WHERE n.nspname = 'public' ORDER BY p.oid`)
+	if err != nil {
+		return nil, err
+	}
+	var ddl []string
+	for _, f := range functions {
+		stmt, err := showCreateRoutine(ctx, tpl, "FUNCTION", pgx.Identifier{"public", f}.Sanitize(), database)
+		if err != nil {
+			return nil, err
+		}
+		ddl = append(ddl, stmt)
+	}
+	triggers, err := triggerTargets(ctx, tpl)
+	if err != nil {
+		return nil, err
+	}
+	for _, target := range triggers {
+		stmt, err := showCreateRoutine(ctx, tpl, "TRIGGER", target, database)
+		if err != nil {
+			return nil, err
+		}
+		ddl = append(ddl, stmt)
+	}
+	return ddl, nil
+}
+
+// triggerTargets lists the template's triggers as SHOW CREATE TRIGGER wants them:
+// "name ON table", quoted.
+func triggerTargets(ctx context.Context, tpl *sql.DB) ([]string, error) {
+	rows, err := tpl.QueryContext(ctx, `
+		SELECT t.tgname, c.relname FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
+		WHERE NOT t.tgisinternal ORDER BY t.tgname`)
+	if err != nil {
+		return nil, fmt.Errorf("list the template's triggers: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	var out []string
+	for rows.Next() {
+		var name, table string
+		if err := rows.Scan(&name, &table); err != nil {
+			return nil, err
+		}
+		out = append(out, pgx.Identifier{name}.Sanitize()+" ON "+pgx.Identifier{"public", table}.Sanitize())
+	}
+	return out, rows.Err()
+}
+
+// showCreateRoutine asks CockroachDB how to create a function or trigger (target is
+// its quoted name, and for a trigger also the table), without the template's name.
+func showCreateRoutine(ctx context.Context, conn *sql.DB, kind, target, database string) (string, error) {
+	var object, stmt string
+	if err := conn.QueryRowContext(ctx, "SHOW CREATE "+kind+" "+target).Scan(&object, &stmt); err != nil {
+		return "", fmt.Errorf("show create %s %s: %w", kind, target, err)
+	}
+	return strings.ReplaceAll(stmt, database+".public.", "public."), nil
 }
 
 // orderByReferences orders tables so that each comes after the tables its

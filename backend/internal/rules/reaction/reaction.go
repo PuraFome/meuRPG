@@ -24,6 +24,9 @@ const (
 	// InfernalLegacyLevel is the level the tiefling's trait casts Hellish Rebuke at
 	// (SRD, Infernal Legacy): 2nd.
 	InfernalLegacyLevel = 2
+	// ProtectionReachFt is how close the target of an attack must be to the shield-bearer
+	// for the Protection fighting style (SRD, Fighter): 5 ft.
+	ProtectionReachFt = 5
 	// ShieldACBonus is the armor class Shield adds until the start of the caster's
 	// next turn (SRD, Shield).
 	ShieldACBonus = 5
@@ -114,9 +117,12 @@ const (
 	// ManeuverReduceKind is a table maneuver that reduces the damage of a melee hit by a die
 	// and an ability modifier (the superiority_die effect, applies reduce_melee_damage).
 	ManeuverReduceKind Kind = "maneuver_reduce"
-	FeatherFall        Kind = "feather_fall"
-	Concentration      Kind = "concentration_save"
-	MasterCheck        Kind = "master_check"
+	// ProtectionKind is the Protection fighting style: disadvantage on an attack roll
+	// against a neighbor of the shield-bearer.
+	ProtectionKind Kind = "protection"
+	FeatherFall    Kind = "feather_fall"
+	Concentration  Kind = "concentration_save"
+	MasterCheck    Kind = "master_check"
 	// Contest is a grapple, a shove or an escape that waits for a roll or a choice.
 	Contest Kind = "contest"
 	// EffectSave is the saving throw an effect that lasts asks at a turn (RN-22).

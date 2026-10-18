@@ -14,8 +14,8 @@ import {
   CombatantSide,
   DiceRollSchema,
   EncounterMode,
-  InspirationOfferSchema,
-  LuckyOfferSchema,
+  HeldRollKind,
+  HeldRollOfferSchema,
   PendingDamageStatus,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { RollMode, RollModeRequestStatus } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
@@ -28,6 +28,8 @@ import { CombatClient } from '../../../../core/combat/combat-client';
 import { CombatState } from '../../../../core/combat/combat-state';
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
 import { LUCKY_TRAIT } from '../../../../core/combat/lucky';
+import { asksLucky } from '../../../../core/held-rolls/held-roll-offer';
+import { heldAttackAnswer } from '../../../../core/held-rolls/held-roll-testing';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { AttackSheet, type AttackSheetData } from './attack-sheet';
 import { nextTurn } from '../../../../../test-settle';
@@ -51,7 +53,7 @@ const MOVED: Record<string, string> = {
   modeChoice: 'mode.choice',
   followReaction: 'rolls.followReaction',
 };
-const PARTS = ['s', 'mode', 'dmg', 'questions', 'modes', 'rolls'];
+const PARTS = ['s', 'mode', 'dmg', 'question', 'modes', 'rolls'];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function seen(cmp: any): Sheet {
@@ -140,6 +142,26 @@ const d20 = (face: number, over: Record<string, unknown> = {}) =>
     ...over,
   });
 
+/** The weapon attack's question about a 1 (Lucky) or about the die, as the server sends it. */
+const luckyHeld = (over: { holdId?: string; targetId?: string } = {}) =>
+  create(HeldRollOfferSchema, {
+    holdId: 'h',
+    kind: HeldRollKind.WEAPON_ATTACK,
+    targetId: 'g',
+    d20: d20(1),
+    question: { case: 'lucky', value: { luckyIndex: 0 } },
+    ...over,
+  });
+const dieHeld = (over: { holdId?: string } = {}) =>
+  create(HeldRollOfferSchema, {
+    holdId: 'h2',
+    kind: HeldRollKind.WEAPON_ATTACK,
+    targetId: 'g',
+    d20: d20(5),
+    question: { case: 'die', value: { sides: 8, fromName: 'Orla' } },
+    ...over,
+  });
+
 const pendingDamage = (over: Record<string, unknown> = {}) =>
   ({
     id: 'p1',
@@ -190,8 +212,7 @@ async function open(over: Over = {}) {
   const close = vi.fn();
   const api = { rollAttack: vi.fn(), rollDamage: vi.fn(), ...over.api };
   const resources = {
-    answerLucky: vi.fn(),
-    answerBardicInspiration: vi.fn(),
+    answerHeldRoll: vi.fn(),
     ...over.resources,
   };
   TestBed.configureTestingModule({
@@ -318,8 +339,8 @@ describe('AttackSheet: the title of the target', () => {
     expect(resumed.sheet.targetLabel()).toBe('Capitão');
     const reopened = await open({
       data: {
-        lucky: {
-          offer: create(LuckyOfferSchema, { holdId: 'h', targetId: 'ghost', d20: d20(1) }),
+        held: {
+          offer: luckyHeld({ targetId: 'ghost' }),
           targetLabel: 'Goblin guardado',
         },
       },
@@ -618,18 +639,18 @@ describe('AttackSheet: rolling', () => {
   });
 
   it('answers a roll held for a question with the d20 and no word', async () => {
-    const luckyOffer = create(LuckyOfferSchema, { holdId: 'h', targetId: 'g', d20: d20(1) });
+    const luckyOffer = luckyHeld();
     const rollAttack = vi.fn().mockResolvedValue({
       encounter: encounter({ combatants: [toren] }),
       roll: create(AttackRollSchema, { outcome: AttackOutcome.UNSPECIFIED, d20: d20(1) }),
       pending: undefined,
-      lucky: luckyOffer,
+      held: luckyOffer,
     });
     const onHeld = vi.fn();
     const { sheet } = await open({ api: { rollAttack }, data: { onHeld } });
     sheet.pick('g');
     await sheet.rollAttackTyped(1);
-    expect(sheet.luckyOffer()).toBe(luckyOffer);
+    expect(sheet.offer()).toBe(luckyOffer);
     expect(sheet.asking()).toBe(true);
     expect(sheet.outcome()).toBeNull();
     expect(onHeld).toHaveBeenCalledWith('h');
@@ -735,7 +756,7 @@ describe('AttackSheet: the roll a reaction window held', () => {
   });
 
   it("shows the question the combat now carries for the attacker, Lucky first and then the die's", async () => {
-    const lucky = create(LuckyOfferSchema, { holdId: 'h1', targetId: 'g', d20: d20(1) });
+    const lucky = luckyHeld({ holdId: 'h1' });
     const onHeld = vi.fn();
     const { sheet, state, settle } = await open({ data: { onHeld } });
     sheet.roll.set(held);
@@ -743,7 +764,7 @@ describe('AttackSheet: the roll a reaction window held', () => {
     state.apply(
       encounter({
         mode: EncounterMode.THEATRE,
-        combatants: [{ ...toren, luckyOffer: lucky } as typeof toren, brisa, goblin],
+        combatants: [{ ...toren, heldRollOffer: lucky } as typeof toren, brisa, goblin],
         revision: 3,
       }),
     );
@@ -753,7 +774,7 @@ describe('AttackSheet: the roll a reaction window held', () => {
   });
 
   it("shows the die's question when there is no Lucky one, and nothing when the combat carries none", async () => {
-    const offer = create(InspirationOfferSchema, { holdId: 'h2', targetId: 'g', d20: d20(5) });
+    const offer = dieHeld({ holdId: 'h2' });
     const { sheet, state, settle } = await open();
     sheet.roll.set(held);
     sheet.stage.set('done');
@@ -765,13 +786,13 @@ describe('AttackSheet: the roll a reaction window held', () => {
     state.apply(
       encounter({
         mode: EncounterMode.THEATRE,
-        combatants: [{ ...toren, inspirationOffer: offer } as typeof toren, brisa, goblin],
+        combatants: [{ ...toren, heldRollOffer: offer } as typeof toren, brisa, goblin],
         revision: 4,
       }),
     );
     await settle();
     expect(sheet.stage()).toBe('inspire');
-    expect(sheet.luckyOffer()).toBeNull();
+    expect(asksLucky(sheet.offer())).toBe(false);
   });
 
   it('says what the combat waits for while a reaction holds the result', async () => {
@@ -792,95 +813,98 @@ describe('AttackSheet: the roll a reaction window held', () => {
 });
 
 describe('AttackSheet: answering the questions', () => {
-  const luckyOffer = create(LuckyOfferSchema, { holdId: 'h', targetId: 'g', d20: d20(1) });
-  const dieOffer = create(InspirationOfferSchema, { holdId: 'h2', targetId: 'g', d20: d20(5) });
-  const answered = (over: Record<string, unknown> = {}) => ({
-    encounter: encounter({ combatants: [toren] }),
-    roll: create(AttackRollSchema, {
-      outcome: AttackOutcome.HIT,
-      d20: d20(14, {
-        rerolled: [{ index: 0, from: 1, to: 14, sourceKey: LUCKY_TRAIT }],
+  const luckyOffer = luckyHeld({ holdId: 'h' });
+  const dieOffer = dieHeld({ holdId: 'h2' });
+  const answered = (over: Record<string, unknown> = {}) =>
+    heldAttackAnswer({
+      encounter: encounter({ combatants: [toren] }),
+      roll: create(AttackRollSchema, {
+        outcome: AttackOutcome.HIT,
+        d20: d20(14, {
+          rerolled: [{ index: 0, from: 1, to: 14, sourceKey: LUCKY_TRAIT }],
+        }),
+        bonusDice: [{ sides: 8, face: 5, used: true }],
       }),
-      bonusDice: [{ sides: 8, face: 5, used: true }],
-    }),
-    pending: undefined,
-    ...over,
-  });
+      pending: undefined,
+      ...over,
+    });
+  const rerollAnswer = (roll: { inApp: true } | { face: number } | null, reroll = true) =>
+    ({ kind: 'lucky', reroll, roll }) as const;
+  const dieAnswer = (use: boolean, roll: { inApp: true } | { face: number } | null) =>
+    ({ kind: 'die', use, roll }) as const;
 
   it('ignores a Lucky answer without a question, or while busy', async () => {
-    const answerLucky = vi.fn();
-    const { sheet } = await open({ resources: { answerLucky } });
-    await sheet.answerLucky(true, null);
-    sheet.luckyOffer.set(luckyOffer);
+    const answerHeldRoll = vi.fn();
+    const { sheet } = await open({ resources: { answerHeldRoll } });
+    await sheet.answer(rerollAnswer(null));
+    sheet.offer.set(luckyOffer);
     sheet.busy.set(true);
-    await sheet.answerLucky(true, null);
-    expect(answerLucky).not.toHaveBeenCalled();
+    await sheet.answer(rerollAnswer(null));
+    expect(answerHeldRoll).not.toHaveBeenCalled();
   });
 
   it('tumbles the new face when the app rolled again, and nothing for a typed one or none', async () => {
-    const answerLucky = vi.fn().mockResolvedValue(answered());
-    const { sheet } = await open({ resources: { answerLucky } });
+    const answerHeldRoll = vi.fn().mockResolvedValue(answered());
+    const { sheet } = await open({ resources: { answerHeldRoll } });
     const play = vi.spyOn(sheet.animator, 'play');
-    sheet.luckyOffer.set(luckyOffer);
-    await sheet.answerLucky(true, { inApp: true });
+    sheet.offer.set(luckyOffer);
+    await sheet.answer(rerollAnswer({ inApp: true }));
     expect(play).toHaveBeenCalledTimes(1);
-    sheet.luckyOffer.set(luckyOffer);
-    await sheet.answerLucky(true, { face: 14 });
+    sheet.offer.set(luckyOffer);
+    await sheet.answer(rerollAnswer({ face: 14 }));
     expect(play).toHaveBeenCalledTimes(1);
   });
 
   it('tumbles nothing when the roll shows no Lucky reroll, or has no d20', async () => {
-    const answerLucky = vi
+    const answerHeldRoll = vi
       .fn()
       .mockResolvedValue(
         answered({ roll: create(AttackRollSchema, { outcome: AttackOutcome.MISS }) }),
       );
-    const { sheet } = await open({ resources: { answerLucky } });
+    const { sheet } = await open({ resources: { answerHeldRoll } });
     const play = vi.spyOn(sheet.animator, 'play');
-    sheet.luckyOffer.set(luckyOffer);
-    await sheet.answerLucky(true, { inApp: true });
+    sheet.offer.set(luckyOffer);
+    await sheet.answer(rerollAnswer({ inApp: true }));
     expect(play).not.toHaveBeenCalled();
   });
 
   it("says when Lucky's answer fails", async () => {
-    const answerLucky = vi.fn().mockRejectedValue(new ConnectError('x', Code.Unavailable));
-    const { sheet } = await open({ resources: { answerLucky } });
-    sheet.luckyOffer.set(luckyOffer);
-    await sheet.answerLucky(false, null);
+    const answerHeldRoll = vi.fn().mockRejectedValue(new ConnectError('x', Code.Unavailable));
+    const { sheet } = await open({ resources: { answerHeldRoll } });
+    sheet.offer.set(luckyOffer);
+    await sheet.answer(rerollAnswer(null, false));
     expect(sheet.error()).not.toBe('');
   });
 
   it('ignores a die answer without a question, or while busy', async () => {
-    const answerBardicInspiration = vi.fn();
-    const { sheet } = await open({ resources: { answerBardicInspiration } });
-    await sheet.answerInspiration(true, null);
+    const answerHeldRoll = vi.fn();
+    const { sheet } = await open({ resources: { answerHeldRoll } });
+    await sheet.answer(dieAnswer(true, null));
     sheet.offer.set(dieOffer);
     sheet.busy.set(true);
-    await sheet.answerInspiration(true, null);
-    expect(answerBardicInspiration).not.toHaveBeenCalled();
+    await sheet.answer(dieAnswer(true, null));
+    expect(answerHeldRoll).not.toHaveBeenCalled();
   });
 
   it('tumbles the die the player added in the app, and not one typed or kept', async () => {
-    const answerBardicInspiration = vi.fn().mockResolvedValue(answered());
-    const { sheet } = await open({ resources: { answerBardicInspiration } });
+    const answerHeldRoll = vi.fn().mockResolvedValue(answered());
+    const { sheet } = await open({ resources: { answerHeldRoll } });
     const play = vi.spyOn(sheet.animator, 'play');
     sheet.offer.set(dieOffer);
-    await sheet.answerInspiration(true, { inApp: true });
+    await sheet.answer(dieAnswer(true, { inApp: true }));
     expect(play).toHaveBeenCalledTimes(1);
     sheet.offer.set(dieOffer);
-    await sheet.answerInspiration(false, null);
+    await sheet.answer(dieAnswer(false, null));
     sheet.offer.set(dieOffer);
-    await sheet.answerInspiration(true, { face: 3 });
+    await sheet.answer(dieAnswer(true, { face: 3 }));
     expect(play).toHaveBeenCalledTimes(1);
   });
 
   it("says when the die's answer fails", async () => {
-    const answerBardicInspiration = vi
-      .fn()
-      .mockRejectedValue(new ConnectError('x', Code.Unavailable));
-    const { sheet } = await open({ resources: { answerBardicInspiration } });
+    const answerHeldRoll = vi.fn().mockRejectedValue(new ConnectError('x', Code.Unavailable));
+    const { sheet } = await open({ resources: { answerHeldRoll } });
     sheet.offer.set(dieOffer);
-    await sheet.answerInspiration(true, null);
+    await sheet.answer(dieAnswer(true, null));
     expect(sheet.error()).not.toBe('');
   });
 });

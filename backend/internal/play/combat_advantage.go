@@ -122,6 +122,7 @@ var sourceKindToProto = map[string]playv1.AdvantageSourceKind{
 	combat.SourcePerceptionDim:      playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_PERCEPTION_DIM,
 	combat.SourceHelp:               playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_HELP,
 	combat.SourceArmorUntrained:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_ARMOR_NOT_PROFICIENT,
+	combat.SourceProtection:         playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_PROTECTION,
 }
 
 // statesOf groups the states of a combat by the combatant that has them.
@@ -147,6 +148,7 @@ func creatureFacts(c playdb.Combatant, states map[string][]playdb.CombatantState
 		Dodging:     hasState(states, c.ID, stateDodging),
 		Reckless:    hasState(states, c.ID, stateReckless),
 		PackTactics: traits.PackTactics,
+		Evasion:     traits.Evasion,
 		DangerSense: traits.DangerSense,
 		Raging:      hasState(states, c.ID, stateRage) && !traits.HeavyArmor,
 		// The effects that last (RN-22): exhaustion, Faerie Fire's outline, the advantage on saving

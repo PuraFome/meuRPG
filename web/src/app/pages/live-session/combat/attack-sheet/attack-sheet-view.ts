@@ -6,7 +6,7 @@ import {
   type Combatant,
   CombatantSide,
   type Encounter,
-  type InspirationOffer,
+  type HeldRollOffer,
   type PendingDamage,
   PendingDamageStatus,
   type TargetInReach,
@@ -35,12 +35,11 @@ import {
 } from '../../../../core/combat/critical';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import { isPlayer, stateWord } from '../../../../core/combat/combat-view';
-import { LUCKY_TRAIT } from '../../../../core/combat/lucky';
 import { reactionWait } from '../../../../core/combat/reactions';
 import { liveRequest } from '../../../../core/combat/roll-mode';
 import { type ExtraDieField, missingDice } from '../../../../core/effects/effects';
 import { joinDots, tight } from '../../../../core/format/text';
-import type { InspirationRoll, LuckyRoll } from '../../../../core/resources/resources-client';
+import type { HeldRolled } from '../../../../core/held-rolls/held-roll-offer';
 import {
   type RollShow,
   showOfDice,
@@ -324,10 +323,10 @@ export function afterDamageText(
  */
 export function attackShow(
   name: string,
-  res: { readonly roll: AttackRoll; readonly offer?: InspirationOffer },
+  res: { readonly roll: AttackRoll; readonly held?: HeldRollOffer },
 ): RollShow | null {
   const r = res.roll;
-  const told = !res.offer && !r.heldForReaction && r.outcome !== AttackOutcome.UNSPECIFIED;
+  const told = !res.held && !r.heldForReaction && r.outcome !== AttackOutcome.UNSPECIFIED;
   const hit = isHit(r.outcome);
   return showOfDice(`Ataque com ${name}`, r.d20, {
     withTotal: !r.heldForReaction,
@@ -345,22 +344,11 @@ export function damageShow(p: PendingDamage | undefined): RollShow | null {
   return showOfDice('Dano', p.roll, { withTotal: true, note: p.damageTypePt || undefined });
 }
 
-/** The d20 the app rolled again for Lucky, tumbling: the new face alone, "1 → 14" (the sheet tells the result). */
-export function luckyRerollShow(roll: AttackRoll, die: LuckyRoll | null): RollShow | null {
-  if (!die || !('inApp' in die)) {
-    return null;
-  }
-  const again = roll.d20?.rerolled.find((r) => r.sourceKey === LUCKY_TRAIT);
-  return again
-    ? showOfDie('Sortudo', roll.d20?.diceSides ?? 0, again.to, `${again.from} → ${again.to}`)
-    : null;
-}
-
 /** The die the player added after the d20, rolled in the app (the sheet's "Com o d8 da Inspiração de Bardo (+5)" line). */
 export function inspirationShow(
   roll: AttackRoll,
   use: boolean,
-  die: InspirationRoll | null,
+  die: HeldRolled | null,
 ): RollShow | null {
   const bonus = use && die && 'inApp' in die ? roll.bonusDice.find((b) => b.used) : undefined;
   return bonus ? showOfDie('Inspiração de Bardo', bonus.sides, bonus.face, `+${bonus.face}`) : null;

@@ -141,6 +141,7 @@ function minimalDerivedSheet(): DerivedSheet {
     backgroundEquipmentPt: '',
     hitPointsFromEffects: 0,
     resistances: [],
+    shieldIdle: false,
   };
 }
 

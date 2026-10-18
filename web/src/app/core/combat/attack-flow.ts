@@ -1,10 +1,12 @@
 import {
   AttackOutcome,
   type AttackRoll,
+  type HeldRollOffer,
   type PendingDamage,
   PendingDamageStatus,
   type TargetInReach,
 } from '../../../gen/meurpg/play/v1/combat_pb';
+import { asksLucky } from '../held-rolls/held-roll-offer';
 import { metersFixed, metersText } from '../units';
 import { joinDots, tight } from '../format/text';
 import { listing } from './cover';
@@ -60,14 +62,10 @@ export function stageAfterRoll(
 export function stageOfAnswer(res: {
   readonly roll: AttackRoll;
   readonly pending?: PendingDamage;
-  readonly offer?: unknown;
-  readonly lucky?: unknown;
+  readonly held?: HeldRollOffer;
 }): AttackStage {
-  if (res.lucky) {
-    return 'lucky';
-  }
-  if (res.offer) {
-    return 'inspire';
+  if (res.held) {
+    return asksLucky(res.held) ? 'lucky' : 'inspire';
   }
   return res.roll.heldForReaction ? 'done' : stageAfterRoll(res.roll.outcome, res.pending);
 }

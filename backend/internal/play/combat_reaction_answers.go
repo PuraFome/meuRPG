@@ -391,6 +391,12 @@ func (s *Service) resolveRebuke(ctx context.Context, c *combatTx, w playdb.React
 	if err != nil {
 		return err
 	}
+	sheet, err := s.sheetOf(ctx, c.tx, c.session.CampaignID, aggressor)
+	if err != nil {
+		return err
+	}
+	// Evasion: the aggressor's Dexterity save that passes takes none of the fire, one that fails takes half.
+	share := combat.HalfSaveShare(combat.Creature{Conditions: aggressor.Conditions, Evasion: sheet.Traits.Evasion}, "dex", sv.saved)
 	// The fire: the server rolls it in the app (2d10 and a d10 for each slot level above the 1st).
 	fire, err := dice.Roll(s.roller, dice.Expr{Count: int(t.Dice), Sides: hellishDieSides})
 	if err != nil {
@@ -398,12 +404,12 @@ func (s *Service) resolveRebuke(ctx context.Context, c *combatTx, w playdb.React
 	}
 	p, err := c.q.InsertPendingDamage(ctx, playdb.InsertPendingDamageParams{
 		EncounterID: c.enc.ID, AttackerID: &reactor.ID, TargetID: aggressor.ID, AttackKey: spellHellishRebuke, Status: pendingAwaitingRoll,
-		DiceCount: t.Dice, DiceSides: hellishDieSides, DamageType: "damage-type:fire", CreatedAt: c.now, Half: sv.saved,
+		DiceCount: t.Dice, DiceSides: hellishDieSides, DamageType: "damage-type:fire", CreatedAt: c.now, Half: share == combat.ShareHalf,
 	})
 	if err != nil {
 		return fmt.Errorf("open the fire's damage: %w", err)
 	}
-	hit, vit, err := s.landRolled(ctx, c, p, aggressor, fire)
+	hit, vit, err := s.landRolled(ctx, c, p, aggressor, fire, share)
 	if err != nil {
 		return err
 	}
@@ -503,12 +509,16 @@ func rebukeSaveRoll(face int, bonus int32, roll d20Roll, reroll *luckyReroll) *p
 
 // landRolled lands the roll of a pending damage the server made itself (the fire of a
 // Hellish Rebuke): the resistances of its target, the hit points or, for a player's
-// character, the master's apply (RN-02), as RollDamage does for its own.
-func (s *Service) landRolled(ctx context.Context, c *combatTx, p playdb.PendingDamage, target playdb.Combatant, roll dice.Result) (damageHit, *playv1.CharacterVitals, error) {
+// character, the master's apply (RN-02), as RollDamage does for its own. share is how much of
+// the roll the target takes.
+func (s *Service) landRolled(ctx context.Context, c *combatTx, p playdb.PendingDamage, target playdb.Combatant, roll dice.Result, share combat.SaveShare) (damageHit, *playv1.CharacterVitals, error) {
 	total := max(roll.Total, 0)
 	amount := clamp32(total, 0, math.MaxInt32)
-	if p.Half {
+	switch share {
+	case combat.ShareHalf:
 		amount = clamp32(combat.HalfDamage(total), 0, math.MaxInt32)
+	case combat.ShareNone:
+		amount = 0
 	}
 	amount, err := s.afterResistance(ctx, c, target, p.DamageType, amount)
 	if err != nil {

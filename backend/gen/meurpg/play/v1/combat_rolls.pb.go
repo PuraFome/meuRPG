@@ -157,6 +157,9 @@ const (
 	// Armor or a shield the character is not proficient with: disadvantage on the ability
 	// checks, saving throws and attack rolls that use Strength or Dexterity (SRD 5.1, "Armor").
 	AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_ARMOR_NOT_PROFICIENT AdvantageSourceKind = 109
+	// The Protection fighting style: a shield-bearer within 5 ft of the target used its
+	// reaction, so the attack roll has disadvantage.
+	AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_PROTECTION AdvantageSourceKind = 110
 )
 
 // Enum value maps for AdvantageSourceKind.
@@ -203,6 +206,7 @@ var (
 		107: "ADVANTAGE_SOURCE_KIND_EFFECT_CHECK",
 		108: "ADVANTAGE_SOURCE_KIND_EFFECT_ATTACK",
 		109: "ADVANTAGE_SOURCE_KIND_ARMOR_NOT_PROFICIENT",
+		110: "ADVANTAGE_SOURCE_KIND_PROTECTION",
 	}
 	AdvantageSourceKind_value = map[string]int32{
 		"ADVANTAGE_SOURCE_KIND_UNSPECIFIED":          0,
@@ -246,6 +250,7 @@ var (
 		"ADVANTAGE_SOURCE_KIND_EFFECT_CHECK":         107,
 		"ADVANTAGE_SOURCE_KIND_EFFECT_ATTACK":        108,
 		"ADVANTAGE_SOURCE_KIND_ARMOR_NOT_PROFICIENT": 109,
+		"ADVANTAGE_SOURCE_KIND_PROTECTION":           110,
 	}
 )
 
@@ -1753,7 +1758,7 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"\x15ROLL_MODE_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10ROLL_MODE_NORMAL\x10\x01\x12\x17\n" +
 	"\x13ROLL_MODE_ADVANTAGE\x10\x02\x12\x1a\n" +
-	"\x16ROLL_MODE_DISADVANTAGE\x10\x03*\xdd\r\n" +
+	"\x16ROLL_MODE_DISADVANTAGE\x10\x03*\x83\x0e\n" +
 	"\x13AdvantageSourceKind\x12%\n" +
 	"!ADVANTAGE_SOURCE_KIND_UNSPECIFIED\x10\x00\x12&\n" +
 	"\"ADVANTAGE_SOURCE_KIND_PRONE_TARGET\x10\x01\x12(\n" +
@@ -1796,7 +1801,8 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	" ADVANTAGE_SOURCE_KIND_EFFECT_DIE\x10j\x12&\n" +
 	"\"ADVANTAGE_SOURCE_KIND_EFFECT_CHECK\x10k\x12'\n" +
 	"#ADVANTAGE_SOURCE_KIND_EFFECT_ATTACK\x10l\x12.\n" +
-	"*ADVANTAGE_SOURCE_KIND_ARMOR_NOT_PROFICIENT\x10m*\xb3\x01\n" +
+	"*ADVANTAGE_SOURCE_KIND_ARMOR_NOT_PROFICIENT\x10m\x12$\n" +
+	" ADVANTAGE_SOURCE_KIND_PROTECTION\x10n*\xb3\x01\n" +
 	"\x15RollModeRequestStatus\x12(\n" +
 	"$ROLL_MODE_REQUEST_STATUS_UNSPECIFIED\x10\x00\x12$\n" +
 	" ROLL_MODE_REQUEST_STATUS_PENDING\x10\x01\x12%\n" +

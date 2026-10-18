@@ -702,6 +702,11 @@ message DerivedSheet {
   // ancestry, the tiefling's fire, the dwarf's poison). Applying the resistance to
   // damage is the combat's; the sheet only shows it.
   repeated Resistance resistances = 45;
+  // True when the sheet carries a shield that adds nothing to armor_class because a
+  // two-handed weapon is on the sheet too (the sheet lists what is carried, so it
+  // reads a two-handed weapon as the one in hand). The player gets the bonus back by
+  // taking the weapon off the sheet.
+  bool shield_idle = 46;
 }
 
 // BreathWeapon is the dragonborn's Breath Weapon (SRD 5.1, Dragonborn): the dragon

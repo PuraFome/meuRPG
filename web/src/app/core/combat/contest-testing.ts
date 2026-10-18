@@ -1,6 +1,6 @@
 import { type MessageInitShape, create } from '@bufbuild/protobuf';
 
-import type { Encounter, LuckyOffer } from '../../../gen/meurpg/play/v1/combat_pb';
+import type { Encounter, HeldRollOffer } from '../../../gen/meurpg/play/v1/combat_pb';
 import {
   type CheckRoll,
   CheckRollSchema,
@@ -120,7 +120,7 @@ export class FakeContestClient {
   attempt: HideAttemptView = hideAttempt();
   group: GroupCheckView | null = groupCheck();
   /** The Lucky question `rollGroupCheck` answers with instead, when a halfling's d20 shows a 1. */
-  lucky: LuckyOffer | null = null;
+  lucky: HeldRollOffer | null = null;
   stateResponse: GetContestStateResponse = contestState();
   encounterAnswer: Encounter = encounter();
   error: Error | null = null;
