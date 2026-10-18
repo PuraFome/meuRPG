@@ -20,10 +20,15 @@ const quarterstaffKey = "equipment:quarterstaff"
 // armorHero creates a player's character wearing armor and, maybe, a shield.
 func (u *user) armorHero(t *testing.T, campaignID, name, class string, level int32, armor string, shield bool) *charactersv1.Character {
 	t.Helper()
+	// The bow needs both hands, which idles a shield (and its training): only a hero without one carries it.
+	weapons := []string{quarterstaffKey}
+	if !shield {
+		weapons = append(weapons, shortbowKey)
+	}
 	sheet := &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
 		BaseScores: &rulesv1.AbilityScores{Strength: 14, Dexterity: 14, Constitution: 12, Intelligence: 14, Wisdom: 10, Charisma: 8},
 		RaceKey:    "race:human", Classes: []*charactersv1.ClassLevel{{ClassKey: class, Level: level}},
-		WeaponKeys: []string{quarterstaffKey, shortbowKey}, ArmorKey: armor, Shield: shield,
+		WeaponKeys: weapons, ArmorKey: armor, Shield: shield,
 		CantripKeys: []string{fireBolt}, KnownSpellKeys: []string{magicMissileSpell}, PreparedSpellKeys: []string{magicMissileSpell},
 	}}}
 	res, err := u.characters.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{
