@@ -50,6 +50,9 @@ export interface EffectDraft {
   ignoreCover: boolean;
   rangeMultiplier: number;
   noLongRangeDisadvantage: boolean;
+  /** resistance: the damage type it leaves out, and when it holds ("rage"). */
+  except: string;
+  while: string;
 }
 
 let nextId = 0;
@@ -88,6 +91,8 @@ export function emptyEffect(type = ''): EffectDraft {
     ignoreCover: false,
     rangeMultiplier: 0,
     noLongRangeDisadvantage: false,
+    except: '',
+    while: '',
   };
 }
 
@@ -121,6 +126,8 @@ export function effectToDraft(e: TableEffect): EffectDraft {
     ignoreCover: e.ignoreCover,
     rangeMultiplier: e.rangeMultiplier,
     noLongRangeDisadvantage: e.noLongRangeDisadvantage,
+    except: e.except,
+    while: e.while,
   };
 }
 
@@ -159,7 +166,9 @@ const pickedText =
       | 'choice'
       | 'economy'
       | 'applies'
-      | 'ability',
+      | 'ability'
+      | 'except'
+      | 'while',
   ): EffectWriter =>
   (d) =>
     d[key] ? ({ [key]: d[key] } as EffectInit) : {};
@@ -201,6 +210,8 @@ const EFFECT_WRITERS: ReadonlyMap<string, EffectWriter> = new Map<string, Effect
   ['ability', pickedText('ability')],
   ['spells', pickedList('spells')],
   ['text_pt', trimmedText('textPt')],
+  ['except', pickedText('except')],
+  ['while', pickedText('while')],
   ['ignore_cover', (d) => (d.ignoreCover ? { ignoreCover: true } : {})],
   [
     'range_multiplier',
@@ -246,6 +257,8 @@ export const EFFECT_FIELD_LABELS: Readonly<Record<string, string>> = {
   ability: 'Habilidade somada',
   spells: 'Magias',
   text_pt: 'Texto na ficha',
+  except: 'Menos o dano de tipo',
+  while: 'Enquanto',
   ignore_cover: 'Ignora meia cobertura e três quartos',
   range_multiplier: 'Multiplica o alcance da magia por',
   no_long_range_disadvantage: 'Sem desvantagem no alcance longo',
@@ -390,9 +403,14 @@ export function strictRangeFeet(text: string): number {
   return unreadableRange(text) ? Number.NaN : rangeFeet(text);
 }
 
-/** Whether a required closed-list field of the action and maneuver types is still empty. */
+/** Whether a required closed-list field of the action, maneuver and resistance types is still empty. */
 function choiceEmpty(d: EffectDraft, name: string): boolean {
-  return (name === 'economy' && d.economy === '') || (name === 'applies' && d.applies === '');
+  return (
+    (name === 'economy' && d.economy === '') ||
+    (name === 'applies' && d.applies === '') ||
+    (name === 'except' && d.except === '') ||
+    (name === 'while' && d.while === '')
+  );
 }
 
 /** A required field of the type that still has nothing: the editor says so before the server does. */
