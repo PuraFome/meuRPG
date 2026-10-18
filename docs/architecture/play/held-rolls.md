@@ -16,7 +16,7 @@ Whichever path rolls the d20 asks the same gate.
 | The concentration save | `ResolveConcentrationSave` | `inspiration_holds` |
 | Scene check | `RollSceneCheck` | `inspiration_holds` |
 | Group check | `RollGroupCheck` | `inspiration_holds` |
-| Trap search | `SearchForTraps` (out of combat; the Search action in combat has spent the action when the d20 is rolled) | `inspiration_holds` |
+| Trap search | `SearchForTraps` (out of a combat, and the Search action of a combat: its roll is the combatant's, in the round, and the action is spent once the d20 waits for nobody) | `inspiration_holds` |
 | Puzzle hint try | `TryPuzzleHint` | `inspiration_holds` |
 | Death save | `RollDeathSave` (a character at 0 hit points, on its turn; the master may roll for an absent player and then waits for the player's first 10 s) | `inspiration_holds` |
 | Contest check | `StartContest` (the initiator's d20) and `RespondContest` (the defender's); one kind, since both are an ability check | `inspiration_holds` |
