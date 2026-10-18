@@ -1,0 +1,9 @@
+{
+  "round": 1,
+  "combatant_id": "11111111-1111-4111-8111-111111111111",
+  "key": "dash",
+  "action_before": true,
+  "bonus_before": false,
+  "reaction_before": false,
+  "dashed_before": false
+}

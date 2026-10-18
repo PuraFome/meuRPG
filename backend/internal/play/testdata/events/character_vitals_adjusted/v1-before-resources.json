@@ -1,0 +1,18 @@
+{
+  "before": {
+    "hit_points_current": 20,
+    "hit_points_temporary": 0,
+    "spell_slots_used": [
+      1
+    ],
+    "hit_dice_used": 1
+  },
+  "after": {
+    "hit_points_current": 14,
+    "hit_points_temporary": 0,
+    "spell_slots_used": [
+      1
+    ],
+    "hit_dice_used": 1
+  }
+}
