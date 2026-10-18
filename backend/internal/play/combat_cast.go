@@ -529,7 +529,7 @@ func (f *castFlow) checkSpellAttack(ctx context.Context) error {
 	if !f.call.rolled {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or d20_face for a spell attack"))
 	}
-	if !in.inApp && len(f.targs) != 1 {
+	if !in.inApp && len(raysAt(f.sp, f.targets)) != 1 {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("d20_face fits a single target: use roll_in_app for several"))
 	}
 	if f.v.master {
@@ -558,7 +558,7 @@ func (f *castFlow) holdForWindow(ctx context.Context) (bool, error) {
 // asked.
 func (f *castFlow) holdForDie(ctx context.Context) error {
 	var err error
-	f.out.asked, err = f.s.holdSpellAttack(ctx, f.c, f.m, f.req, f.call.key, f.caster, f.targs, f.sp, f.call.in, f.out.modes)
+	f.out.asked, err = f.s.holdSpellAttack(ctx, f.c, f.m, f.req, f.call.key, f.caster, rayCombatants(f.sp, f.targets, f.targs), f.sp, f.call.in, f.out.modes)
 	return err
 }
 
@@ -714,8 +714,8 @@ func (f *castFlow) affect(ctx context.Context) error {
 	if def, ok := zoneDefOf(f.sp.Key); ok && f.placedArea { // the area stays on the map (zones_cast.go)
 		return f.affectZone(ctx, def)
 	}
-	for i, t := range f.targs {
-		if err := f.hitTarget(ctx, i, t); err != nil {
+	for _, i := range raysAt(f.sp, f.targets) { // a ray of Scorching Ray is an attack of its own
+		if err := f.hitTarget(ctx, i, f.targs[i]); err != nil {
 			return err
 		}
 	}
@@ -742,7 +742,7 @@ func (f *castFlow) affectHitPoints(ctx context.Context) error {
 
 // hitTarget is the spell on one target: its cover, and the attack or the save it asks.
 func (f *castFlow) hitTarget(ctx context.Context, i int, t playdb.Combatant) error {
-	hit := castHit{Target: t.ID, Darts: clamp32(f.targets[i].darts, 0, maxShownDarts)}
+	hit := castHit{Target: t.ID, Darts: shownDarts(f.sp, f.targets[i])}
 	var cp coverPair
 	if f.placedArea {
 		cp = f.plan.targets[i].cp // measured from the point of origin

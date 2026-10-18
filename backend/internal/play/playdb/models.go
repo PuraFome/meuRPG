@@ -216,6 +216,7 @@ type Combatant struct {
 	EffectNoReaction        bool
 	JumpLongBonusDft        int32
 	JumpDoubled             bool
+	TableOnceTurns          []byte
 }
 
 type CombatantState struct {

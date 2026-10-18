@@ -1,4 +1,4 @@
--- The areas spells keep on the map (migration 00264).
+-- The areas spells keep on the map (migration 00267).
 
 -- name: InsertSpellZone :one
 INSERT INTO spell_zones (

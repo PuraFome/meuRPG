@@ -72,6 +72,13 @@ A browser has one login cookie, so a second sign-in started in it (another tab) 
   The ID token's `auth_time` is recorded in `auth_sessions.auth_time` and never used to decide.
   What forces re-authentication every 30 days is the server session, not `max_age`.
 
+## Erasing an account
+
+An account is erased with `DELETE FROM users`, by the operator on a request ([Privacy](../privacy.md#delete-the-account)); the app has no code for it.
+The foreign keys do most of the work (cascades for sessions, memberships and the person's own rows, `SET NULL` for the author of what stays), and nothing in the database reaches an ID inside a JSON document.
+For the who-saw lists in `session_events` payloads, a `BEFORE DELETE` trigger on `users` removes the ID in the same statement, so the account and its ID in the history go together or not at all ([Play data](../data/play.md#session_events-and-session_event_kinds)).
+The trigger reads only the events of the campaigns the account belongs to, through the indexes of `game_sessions` and `session_events`.
+
 ## Who is calling
 
 The session enters a request's context only through `identity`, after the cookie is checked in the database: the interceptor on Connect calls, and `AuthenticateRequest`, the same step for the ordinary HTTP routes (image upload and download, campaign package).

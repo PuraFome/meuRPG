@@ -210,6 +210,23 @@ function maneuverReduceResult(
   };
 }
 
+function protectionResult(
+  _v: ResultOf<'protection'>,
+  _asked: ReactionWindow,
+  ctx: ResultContext,
+): ResultView {
+  return {
+    title: `${REACTION_NAMES.protection} usada`,
+    subtitle: base(ctx).subtitle,
+    icon: 'shield',
+    pill: null,
+    text: ['O ataque é rolado com desvantagem.'],
+    chips: base(ctx).used,
+    note: '',
+    throwBack: false,
+  };
+}
+
 function featherFallResult(
   v: ResultOf<'featherFall'>,
   asked: ReactionWindow,
@@ -245,6 +262,7 @@ const RESULTS: {
   cuttingWords: cuttingWordsResult,
   deflectMissiles: deflectMissilesResult,
   maneuverReduce: maneuverReduceResult,
+  protection: protectionResult,
   featherFall: featherFallResult,
 };
 

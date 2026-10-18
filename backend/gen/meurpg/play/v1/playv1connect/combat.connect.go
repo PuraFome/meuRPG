@@ -965,7 +965,10 @@ type CombatServiceClient interface {
 	// master's too (what each target did must fit the cast's session event). Magic
 	// Missile is cast with `darts`
 	// in each target: 3 darts, and one more for each slot level above the 1st, shared
-	// out as the caster wants, at least one for each target listed.
+	// out as the caster wants, at least one for each target listed. Scorching Ray
+	// shares its rays the same way (3, and one more for each slot level above the
+	// 2nd), but `darts` is the rays of that target (none counts as one), the rays
+	// need not use the whole number, and several may go to one target.
 	//
 	// What the cast does depends on the spell:
 	//   - A spell attack (Guiding Bolt): one d20 for each target (roll_in_app, or
@@ -2889,7 +2892,10 @@ type CombatServiceHandler interface {
 	// master's too (what each target did must fit the cast's session event). Magic
 	// Missile is cast with `darts`
 	// in each target: 3 darts, and one more for each slot level above the 1st, shared
-	// out as the caster wants, at least one for each target listed.
+	// out as the caster wants, at least one for each target listed. Scorching Ray
+	// shares its rays the same way (3, and one more for each slot level above the
+	// 2nd), but `darts` is the rays of that target (none counts as one), the rays
+	// need not use the whole number, and several may go to one target.
 	//
 	// What the cast does depends on the spell:
 	//   - A spell attack (Guiding Bolt): one d20 for each target (roll_in_app, or
