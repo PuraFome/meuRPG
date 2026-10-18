@@ -4576,11 +4576,19 @@ type Combatant struct {
 	// The attack roll of this combatant that waits for the answer about the die, if any
 	// (it is answered with AnswerBardicInspiration). Only the master and the combatant's
 	// own player get it, so the question is still there when the screen is read again.
+	// Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+	// tab opened before the one question existed; it will go with the old answer RPCs.
+	//
+	// Deprecated: Marked as deprecated in meurpg/play/v1/combat.proto.
 	InspirationOffer *InspirationOffer `protobuf:"bytes,71,opt,name=inspiration_offer,json=inspirationOffer,proto3" json:"inspiration_offer,omitempty"`
 	// The attack roll of this combatant that waits for the halfling's Lucky answer, if any
 	// (it is answered with AnswerLucky). Only the master and the combatant's own player get
 	// it, like `inspiration_offer`, which is unset while this question waits (one question at
 	// a time: the Lucky question comes first, then the die's, on the new roll).
+	// Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+	// tab opened before the one question existed; it will go with the old answer RPCs.
+	//
+	// Deprecated: Marked as deprecated in meurpg/play/v1/combat.proto.
 	LuckyOffer *LuckyOffer `protobuf:"bytes,74,opt,name=lucky_offer,json=luckyOffer,proto3" json:"lucky_offer,omitempty"`
 	// The states the combatant is in (a rage, a dodge, Reckless Attack, a Hunter's
 	// Mark on it), for everyone who sees it, except the mark, which only the master
@@ -4613,8 +4621,8 @@ type Combatant struct {
 	// is (a weapon attack, a spell attack, a save, a check), in the one shape every held roll has
 	// (AnswerHeldRoll answers it). Only the master and the combatant's own player get it; the other players read
 	// nothing, not even that a roll waits. It carries the d20 and the bonus the player already sees, never a DC,
-	// an armor class or an NPC's number (RN-10, RN-20). `inspiration_offer` and `lucky_offer` say the same for a
-	// weapon attack until they are removed.
+	// an armor class or an NPC's number (RN-10, RN-20). the deprecated `inspiration_offer` and `lucky_offer` say the same for a
+	// weapon attack.
 	HeldRollOffer *HeldRollOffer `protobuf:"bytes,104,opt,name=held_roll_offer,json=heldRollOffer,proto3" json:"held_roll_offer,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -5077,6 +5085,7 @@ func (x *Combatant) GetInspirationDie() *InspirationDie {
 	return nil
 }
 
+// Deprecated: Marked as deprecated in meurpg/play/v1/combat.proto.
 func (x *Combatant) GetInspirationOffer() *InspirationOffer {
 	if x != nil {
 		return x.InspirationOffer
@@ -5084,6 +5093,7 @@ func (x *Combatant) GetInspirationOffer() *InspirationOffer {
 	return nil
 }
 
+// Deprecated: Marked as deprecated in meurpg/play/v1/combat.proto.
 func (x *Combatant) GetLuckyOffer() *LuckyOffer {
 	if x != nil {
 		return x.LuckyOffer
@@ -10437,14 +10447,22 @@ type RollAttackResponse struct {
 	// and there is no pending damage) when the attacker holds a Bardic Inspiration
 	// die: the d20 is rolled, and the player decides whether to add the die before the
 	// result is told (AnswerBardicInspiration). Unset while `lucky_offer` waits.
+	// Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+	// tab opened before the one question existed; it will go with the old answer RPCs.
+	//
+	// Deprecated: Marked as deprecated in meurpg/play/v1/combat.proto.
 	InspirationOffer *InspirationOffer `protobuf:"bytes,30,opt,name=inspiration_offer,json=inspirationOffer,proto3" json:"inspiration_offer,omitempty"`
 	// Set instead of the outcome, like `inspiration_offer`, when the attacker is a
 	// halfling and a d20 shows a 1: the player decides whether to roll it again before
 	// the result is told (AnswerLucky). The Lucky question comes first; the die's, when
 	// the attacker holds one, comes after it, on the new roll.
+	// Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+	// tab opened before the one question existed; it will go with the old answer RPCs.
+	//
+	// Deprecated: Marked as deprecated in meurpg/play/v1/combat.proto.
 	LuckyOffer *LuckyOffer `protobuf:"bytes,31,opt,name=lucky_offer,json=luckyOffer,proto3" json:"lucky_offer,omitempty"`
 	// The question the roll asks now, in the one shape every held roll has (HeldRollOffer), set beside
-	// `inspiration_offer` and `lucky_offer` until they are removed: set instead of the result, when the
+	// the deprecated `inspiration_offer` and `lucky_offer`: set instead of the result, when the
 	// roll waits for an answer (AnswerHeldRoll). Whoever may answer gets it; nobody else does (RN-10).
 	HeldRollOffer *HeldRollOffer `protobuf:"bytes,32,opt,name=held_roll_offer,json=heldRollOffer,proto3" json:"held_roll_offer,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -10502,6 +10520,7 @@ func (x *RollAttackResponse) GetPendingDamage() *PendingDamage {
 	return nil
 }
 
+// Deprecated: Marked as deprecated in meurpg/play/v1/combat.proto.
 func (x *RollAttackResponse) GetInspirationOffer() *InspirationOffer {
 	if x != nil {
 		return x.InspirationOffer
@@ -10509,6 +10528,7 @@ func (x *RollAttackResponse) GetInspirationOffer() *InspirationOffer {
 	return nil
 }
 
+// Deprecated: Marked as deprecated in meurpg/play/v1/combat.proto.
 func (x *RollAttackResponse) GetLuckyOffer() *LuckyOffer {
 	if x != nil {
 		return x.LuckyOffer
@@ -13277,14 +13297,22 @@ type CastSpellResponse struct {
 	// added after the d20, before the result is told). A cast with several targets, a
 	// cantrip's attack (RollAttack holds those) and a cast that waited for a reaction window
 	// do not ask.
+	// Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+	// tab opened before the one question existed; it will go with the old answer RPCs.
+	//
+	// Deprecated: Marked as deprecated in meurpg/play/v1/combat.proto.
 	InspirationOffer *OutsideInspirationOffer `protobuf:"bytes,7,opt,name=inspiration_offer,json=inspirationOffer,proto3" json:"inspiration_offer,omitempty"`
 	// Set instead of `cast`, like `inspiration_offer`, when the caster is the player's own
 	// halfling and a d20 of that spell attack shows a 1: the player decides whether to roll it
 	// again before the result is told (ResourceService.AnswerOutsideLucky). The Lucky question
 	// comes first; the die's, when the caster holds one, comes after it, on the new roll.
+	// Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+	// tab opened before the one question existed; it will go with the old answer RPCs.
+	//
+	// Deprecated: Marked as deprecated in meurpg/play/v1/combat.proto.
 	LuckyOffer *LuckyOffer `protobuf:"bytes,8,opt,name=lucky_offer,json=luckyOffer,proto3" json:"lucky_offer,omitempty"`
 	// The question the roll asks now, in the one shape every held roll has (HeldRollOffer), set beside
-	// `inspiration_offer` and `lucky_offer` until they are removed: set instead of the result, when the
+	// the deprecated `inspiration_offer` and `lucky_offer`: set instead of the result, when the
 	// roll waits for an answer (AnswerHeldRoll). Whoever may answer gets it; nobody else does (RN-10).
 	HeldRollOffer *HeldRollOffer `protobuf:"bytes,9,opt,name=held_roll_offer,json=heldRollOffer,proto3" json:"held_roll_offer,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -13363,6 +13391,7 @@ func (x *CastSpellResponse) GetPendingRevealId() string {
 	return ""
 }
 
+// Deprecated: Marked as deprecated in meurpg/play/v1/combat.proto.
 func (x *CastSpellResponse) GetInspirationOffer() *OutsideInspirationOffer {
 	if x != nil {
 		return x.InspirationOffer
@@ -13370,6 +13399,7 @@ func (x *CastSpellResponse) GetInspirationOffer() *OutsideInspirationOffer {
 	return nil
 }
 
+// Deprecated: Marked as deprecated in meurpg/play/v1/combat.proto.
 func (x *CastSpellResponse) GetLuckyOffer() *LuckyOffer {
 	if x != nil {
 		return x.LuckyOffer
@@ -21079,13 +21109,21 @@ type ResolveConcentrationSaveResponse struct {
 	// d20 is rolled and kept, the window stays open and nothing is written, and
 	// ResourceService.AnswerOutsideInspiration settles the save (SRD 5.1). The master's roll
 	// never asks.
+	// Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+	// tab opened before the one question existed; it will go with the old answer RPCs.
+	//
+	// Deprecated: Marked as deprecated in meurpg/play/v1/combat.proto.
 	InspirationOffer *OutsideInspirationOffer `protobuf:"bytes,3,opt,name=inspiration_offer,json=inspirationOffer,proto3" json:"inspiration_offer,omitempty"`
 	// Set instead of `result`, like `inspiration_offer`, when the roller is the player's own
 	// halfling and a d20 shows a 1: the window stays open, and ResourceService.AnswerOutsideLucky
 	// rolls it again or keeps the 1 (the die's question, if any, comes after it).
+	// Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+	// tab opened before the one question existed; it will go with the old answer RPCs.
+	//
+	// Deprecated: Marked as deprecated in meurpg/play/v1/combat.proto.
 	LuckyOffer *LuckyOffer `protobuf:"bytes,4,opt,name=lucky_offer,json=luckyOffer,proto3" json:"lucky_offer,omitempty"`
 	// The question the roll asks now, in the one shape every held roll has (HeldRollOffer), set beside
-	// `inspiration_offer` and `lucky_offer` until they are removed: set instead of the result, when the
+	// the deprecated `inspiration_offer` and `lucky_offer`: set instead of the result, when the
 	// roll waits for an answer (AnswerHeldRoll). Whoever may answer gets it; nobody else does (RN-10).
 	HeldRollOffer *HeldRollOffer `protobuf:"bytes,5,opt,name=held_roll_offer,json=heldRollOffer,proto3" json:"held_roll_offer,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -21136,6 +21174,7 @@ func (x *ResolveConcentrationSaveResponse) GetResult() *ConcentrationSaveResult 
 	return nil
 }
 
+// Deprecated: Marked as deprecated in meurpg/play/v1/combat.proto.
 func (x *ResolveConcentrationSaveResponse) GetInspirationOffer() *OutsideInspirationOffer {
 	if x != nil {
 		return x.InspirationOffer
@@ -21143,6 +21182,7 @@ func (x *ResolveConcentrationSaveResponse) GetInspirationOffer() *OutsideInspira
 	return nil
 }
 
+// Deprecated: Marked as deprecated in meurpg/play/v1/combat.proto.
 func (x *ResolveConcentrationSaveResponse) GetLuckyOffer() *LuckyOffer {
 	if x != nil {
 		return x.LuckyOffer
@@ -22141,7 +22181,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x05slots\x18\x05 \x03(\v2\x1b.meurpg.rules.v1.SlotChoiceR\x05slots\x12%\n" +
 	"\x0eattacker_label\x18\x06 \x01(\tR\rattackerLabel\x12$\n" +
 	"\x0eattack_name_pt\x18\a \x01(\tR\fattackNamePt\x12\"\n" +
-	"\rspell_name_pt\x18\b \x01(\tR\vspellNamePt\"\xf2\x1a\n" +
+	"\rspell_name_pt\x18\b \x01(\tR\vspellNamePt\"\xfa\x1a\n" +
 	"\tCombatant\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x121\n" +
@@ -22216,9 +22256,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x15bestiary_creature_key\x18A \x01(\tR\x13bestiaryCreatureKey\x12)\n" +
 	"\x10challenge_rating\x18B \x01(\tR\x0fchallengeRating\x12/\n" +
 	"\x14hit_points_max_bonus\x18C \x01(\x05R\x11hitPointsMaxBonus\x12G\n" +
-	"\x0finspiration_die\x18F \x01(\v2\x1e.meurpg.play.v1.InspirationDieR\x0einspirationDie\x12M\n" +
-	"\x11inspiration_offer\x18G \x01(\v2 .meurpg.play.v1.InspirationOfferR\x10inspirationOffer\x12;\n" +
-	"\vlucky_offer\x18J \x01(\v2\x1a.meurpg.play.v1.LuckyOfferR\n" +
+	"\x0finspiration_die\x18F \x01(\v2\x1e.meurpg.play.v1.InspirationDieR\x0einspirationDie\x12Q\n" +
+	"\x11inspiration_offer\x18G \x01(\v2 .meurpg.play.v1.InspirationOfferB\x02\x18\x01R\x10inspirationOffer\x12?\n" +
+	"\vlucky_offer\x18J \x01(\v2\x1a.meurpg.play.v1.LuckyOfferB\x02\x18\x01R\n" +
 	"luckyOffer\x127\n" +
 	"\x06states\x18I \x03(\v2\x1f.meurpg.play.v1.CombatantEffectR\x06states\x12L\n" +
 	"\x11condition_sources\x18D \x03(\v2\x1f.meurpg.play.v1.ConditionSourceR\x10conditionSources\x12F\n" +
@@ -22684,13 +22724,13 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAtB\n" +
 	"\n" +
-	"\bquestion\"\x96\x03\n" +
+	"\bquestion\"\x9e\x03\n" +
 	"\x12RollAttackResponse\x127\n" +
 	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\x12.\n" +
 	"\x04roll\x18\x02 \x01(\v2\x1a.meurpg.play.v1.AttackRollR\x04roll\x12D\n" +
-	"\x0epending_damage\x18\x03 \x01(\v2\x1d.meurpg.play.v1.PendingDamageR\rpendingDamage\x12M\n" +
-	"\x11inspiration_offer\x18\x1e \x01(\v2 .meurpg.play.v1.InspirationOfferR\x10inspirationOffer\x12;\n" +
-	"\vlucky_offer\x18\x1f \x01(\v2\x1a.meurpg.play.v1.LuckyOfferR\n" +
+	"\x0epending_damage\x18\x03 \x01(\v2\x1d.meurpg.play.v1.PendingDamageR\rpendingDamage\x12Q\n" +
+	"\x11inspiration_offer\x18\x1e \x01(\v2 .meurpg.play.v1.InspirationOfferB\x02\x18\x01R\x10inspirationOffer\x12?\n" +
+	"\vlucky_offer\x18\x1f \x01(\v2\x1a.meurpg.play.v1.LuckyOfferB\x02\x18\x01R\n" +
 	"luckyOffer\x12E\n" +
 	"\x0fheld_roll_offer\x18  \x01(\v2\x1d.meurpg.play.v1.HeldRollOfferR\rheldRollOffer\"\x9e\x03\n" +
 	"\x11RollDamageRequest\x12\x1f\n" +
@@ -22920,7 +22960,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\v_pool_orderB\t\n" +
 	"\a_healedB\x13\n" +
 	"\x11_hit_points_afterB\x17\n" +
-	"\x15_hit_points_max_after\"\x87\x04\n" +
+	"\x15_hit_points_max_after\"\x8f\x04\n" +
 	"\x11CastSpellResponse\x127\n" +
 	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\x12-\n" +
 	"\x04cast\x18\x02 \x01(\v2\x19.meurpg.play.v1.SpellCastR\x04cast\x124\n" +
@@ -22928,9 +22968,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x04area\x18\x04 \x01(\v2\x19.meurpg.play.v1.SpellAreaR\x04area\x12\x1f\n" +
 	"\vhidden_hits\x18\x05 \x03(\tR\n" +
 	"hiddenHits\x12*\n" +
-	"\x11pending_reveal_id\x18\x06 \x01(\tR\x0fpendingRevealId\x12T\n" +
-	"\x11inspiration_offer\x18\a \x01(\v2'.meurpg.play.v1.OutsideInspirationOfferR\x10inspirationOffer\x12;\n" +
-	"\vlucky_offer\x18\b \x01(\v2\x1a.meurpg.play.v1.LuckyOfferR\n" +
+	"\x11pending_reveal_id\x18\x06 \x01(\tR\x0fpendingRevealId\x12X\n" +
+	"\x11inspiration_offer\x18\a \x01(\v2'.meurpg.play.v1.OutsideInspirationOfferB\x02\x18\x01R\x10inspirationOffer\x12?\n" +
+	"\vlucky_offer\x18\b \x01(\v2\x1a.meurpg.play.v1.LuckyOfferB\x02\x18\x01R\n" +
 	"luckyOffer\x12E\n" +
 	"\x0fheld_roll_offer\x18\t \x01(\v2\x1d.meurpg.play.v1.HeldRollOfferR\rheldRollOffer\"\xa7\x05\n" +
 	"\tSpellCast\x12\x17\n" +
@@ -23629,12 +23669,12 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x0fextra_die_faces\x18d \x03(\x05R\rextraDieFaces\x12+\n" +
 	"\x0fsecond_d20_face\x18e \x01(\x05H\x01R\rsecondD20Face\x88\x01\x01B\x06\n" +
 	"\x04rollB\x12\n" +
-	"\x10_second_d20_face\"\xf6\x02\n" +
+	"\x10_second_d20_face\"\xfe\x02\n" +
 	" ResolveConcentrationSaveResponse\x127\n" +
 	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\x12?\n" +
-	"\x06result\x18\x02 \x01(\v2'.meurpg.play.v1.ConcentrationSaveResultR\x06result\x12T\n" +
-	"\x11inspiration_offer\x18\x03 \x01(\v2'.meurpg.play.v1.OutsideInspirationOfferR\x10inspirationOffer\x12;\n" +
-	"\vlucky_offer\x18\x04 \x01(\v2\x1a.meurpg.play.v1.LuckyOfferR\n" +
+	"\x06result\x18\x02 \x01(\v2'.meurpg.play.v1.ConcentrationSaveResultR\x06result\x12X\n" +
+	"\x11inspiration_offer\x18\x03 \x01(\v2'.meurpg.play.v1.OutsideInspirationOfferB\x02\x18\x01R\x10inspirationOffer\x12?\n" +
+	"\vlucky_offer\x18\x04 \x01(\v2\x1a.meurpg.play.v1.LuckyOfferB\x02\x18\x01R\n" +
 	"luckyOffer\x12E\n" +
 	"\x0fheld_roll_offer\x18\x05 \x01(\v2\x1d.meurpg.play.v1.HeldRollOfferR\rheldRollOffer\"\xe5\x01\n" +
 	"\x17ConcentrationSaveResult\x12,\n" +
