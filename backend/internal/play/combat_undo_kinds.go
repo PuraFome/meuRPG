@@ -245,14 +245,23 @@ func (u *undoer) attackRolled(ctx context.Context, ev actionEvent) error {
 	return nil
 }
 
+// dieHeldAgain gives the combatant the Bardic Inspiration die the roll used.
+func (u *undoer) dieHeldAgain(ctx context.Context, who playdb.Combatant, ev actionEvent) error {
+	if ev.Res == nil || ev.Res.Kind != resBardicUse {
+		return nil
+	}
+	sides, expires := ev.Res.Sides, ev.Res.ExpiresRound
+	if err := u.c.q.SetCombatantInspirationDie(ctx, playdb.SetCombatantInspirationDieParams{ID: who.ID, Sides: &sides, FromID: nilIfEmpty(ev.Res.FromID), ExpiresRound: &expires}); err != nil {
+		return fmt.Errorf("hold the die again: %w", err)
+	}
+	return nil
+}
+
 // attackerBack gives the attacker what the roll spent: the die, the extra action,
 // the action or the reaction.
 func (u *undoer) attackerBack(ctx context.Context, who playdb.Combatant, ev actionEvent) error {
-	if ev.Res != nil && ev.Res.Kind == resBardicUse {
-		sides, expires, from := ev.Res.Sides, ev.Res.ExpiresRound, ev.Res.FromID
-		if err := u.c.q.SetCombatantInspirationDie(ctx, playdb.SetCombatantInspirationDieParams{ID: who.ID, Sides: &sides, FromID: &from, ExpiresRound: &expires}); err != nil {
-			return fmt.Errorf("hold the die again: %w", err)
-		}
+	if err := u.dieHeldAgain(ctx, who, ev); err != nil {
+		return err
 	}
 	if ev.ExtraUsed {
 		if err := u.giveExtraActionBack(ctx, who); err != nil {
@@ -897,6 +906,9 @@ func (u *undoer) deathSaveRolled(ctx context.Context, ev actionEvent) error {
 	who, ok := u.find(ev.Actor)
 	if !ok {
 		return nil
+	}
+	if err := u.dieHeldAgain(ctx, who, ev); err != nil {
+		return err
 	}
 	if ev.Before != nil { // a natural 20 brought it back with 1 hit point
 		after, err := u.putVitals(ctx, who, *ev.Before)

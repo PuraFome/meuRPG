@@ -28,6 +28,7 @@ var heldKindProto = map[heldKind]playv1.HeldRollKind{
 	heldSpellAttack:       playv1.HeldRollKind_HELD_ROLL_KIND_SPELL_ATTACK,
 	heldEffectSave:        playv1.HeldRollKind_HELD_ROLL_KIND_EFFECT_SAVE,
 	heldConcentrationSave: playv1.HeldRollKind_HELD_ROLL_KIND_CONCENTRATION_SAVE,
+	heldDeathSave:         playv1.HeldRollKind_HELD_ROLL_KIND_DEATH_SAVE,
 	heldSceneCheck:        playv1.HeldRollKind_HELD_ROLL_KIND_SCENE_CHECK,
 	heldGroupCheck:        playv1.HeldRollKind_HELD_ROLL_KIND_GROUP_CHECK,
 	heldTrapSearch:        playv1.HeldRollKind_HELD_ROLL_KIND_TRAP_SEARCH,
@@ -196,6 +197,8 @@ func answerHeldResultOf(out proto.Message) *playv1.AnswerHeldRollResponse {
 	case *playv1.RollForPlayerResponse: // the master's roll for a player is a group check's, in the same arm
 		g := &playv1.RollGroupCheckResponse{GroupCheck: o.GetGroupCheck(), InspirationOffer: o.GetInspirationOffer(), LuckyOffer: o.GetLuckyOffer(), HeldRollOffer: o.GetHeldRollOffer()}
 		res.Result, res.Next = &playv1.AnswerHeldRollResponse_GroupCheck{GroupCheck: g}, g.GetHeldRollOffer()
+	case *playv1.RollDeathSaveResponse:
+		res.Result, res.Next = &playv1.AnswerHeldRollResponse_DeathSave{DeathSave: o}, o.GetHeldRollOffer()
 	case *playv1.SearchForTrapsResponse:
 		res.Result, res.Next = &playv1.AnswerHeldRollResponse_TrapSearch{TrapSearch: o}, o.GetHeldRollOffer()
 	case *playv1.TryPuzzleHintResponse:

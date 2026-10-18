@@ -145,6 +145,29 @@ func TestApplyHeal(t *testing.T) {
 	}
 }
 
+// The Bardic Inspiration die added to a death save moves the total across 10, never a natural 1 or a natural 20.
+func TestDeathSaveWithADie(t *testing.T) {
+	tests := []struct {
+		name         string
+		face, bonus  int
+		wantSuccess  int
+		wantFailures int
+		revived      bool
+	}{
+		{"a 7 with a 4 passes", 7, 4, 1, 0, false},
+		{"a 7 with a 2 fails", 7, 2, 0, 1, false},
+		{"a 9 with a 1 passes", 9, 1, 1, 0, false},
+		{"a natural 1 stays two failures", 1, 8, 0, 2, false},
+		{"a natural 20 revives", 20, 0, 0, 0, true},
+	}
+	for _, tt := range tests {
+		got := DeathSaveWith(tt.face, tt.bonus, 0, 0)
+		if got.Successes != tt.wantSuccess || got.Failures != tt.wantFailures || (got.Outcome == DeathSaveRevived) != tt.revived {
+			t.Errorf("%s: DeathSaveWith(%d, %d) = %+v", tt.name, tt.face, tt.bonus, got)
+		}
+	}
+}
+
 func TestDeathSave(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

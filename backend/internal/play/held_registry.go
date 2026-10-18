@@ -55,6 +55,7 @@ func init() {
 		heldGroupCheck:        {rerun: rerunGroupCheck, ownRoll: true},
 		heldTrapSearch:        {rerun: registerRerun((*Service).SearchForTraps), ownRoll: true},
 		heldHintTry:           {rerun: registerRerun((*Service).TryPuzzleHint)},
+		heldDeathSave:         {rerun: registerRerun((*Service).RollDeathSave)},
 	}
 }
 
