@@ -18,7 +18,7 @@ func TestTheSearchActionOfACombatWithADieIsHeldWithTheActionUnspent(t *testing.T
 	e := r.fight(t)
 	r.giveCombatantDie(t, "Toren", e)
 
-	held, err := r.trapSearchCall(t, r.caio, trapSearchTyped(perception, 12)) // Perception +4: 16, a 20 needs the die
+	held, err := r.trapSearchCall(t, r.caio, trapSearchTyped(perception, 16)) // Toren has no Perception bonus: 16 alone misses the DC 20
 	if err != nil || held.GetRoll() != nil || held.GetHeldRollOffer().GetDie() == nil {
 		t.Fatalf("SearchForTraps() = %v, %v; want the die's question alone", held, err)
 	}
@@ -32,7 +32,7 @@ func TestTheSearchActionOfACombatWithADieIsHeldWithTheActionUnspent(t *testing.T
 		t.Errorf("trap_searched events = %d while the d20 waits, want none", n)
 	}
 
-	r.h.roller.queue(4) // the die: 12 + 4 + 4 = 20 finds the pit
+	r.h.roller.queue(4) // the die: 16 + 4 = 20 finds the pit
 	out, err := r.answerHeldRoll(t, r.caio, held.GetHeldRollOffer().GetHoldId(), dieAnswer(true))
 	if err != nil {
 		t.Fatalf("AnswerHeldRoll() error = %v", err)
