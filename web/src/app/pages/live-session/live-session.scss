@@ -10,6 +10,56 @@
   margin-top: var(--mr-space-4);
 }
 
+// The conversation of the scene (MR-051): under the board below 1600px; from 1600px a column of 380 to 420px
+// beside it, which stays in view while the board scrolls. The board keeps its own widths at every width, so no
+// screen changes below 1600px. On a phone it is the "Conversa" tab: the column is gone until the tab opens it,
+// then it covers the page (the page behind is inert).
+.split__main,
+.split__chat {
+  min-width: 0;
+}
+
+.split__chat {
+  margin-top: var(--mr-space-6);
+}
+
+@media (min-width: 1600px) {
+  .split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(380px, 420px);
+    gap: var(--mr-space-6);
+    align-items: start;
+  }
+
+  .split__chat {
+    position: sticky;
+    top: var(--mr-space-4);
+  }
+}
+
+@media (max-width: 767.98px) {
+  .split__chat--away {
+    display: none;
+  }
+
+  .split__chat--full {
+    position: fixed;
+    inset: 0;
+    z-index: 900;
+    margin: 0;
+    background: var(--mr-surface);
+
+    app-conversation {
+      height: 100%;
+    }
+  }
+
+  .split__tabs {
+    display: block;
+    margin-top: var(--mr-space-6);
+  }
+}
+
 // One column on a phone and a tablet (the map, then the vitals; for the
 // master, the party first). From 1024px: the map takes the room on the
 // left and the vitals or the party a column on the right (E5-03, E5-04).

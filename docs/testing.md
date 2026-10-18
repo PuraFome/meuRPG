@@ -4,16 +4,16 @@ Every acceptance criterion of a story becomes an automatic test, and a story is 
 Tests run in layers, and none depends on an outside identity provider.
 This page says what each layer proves, how to run it and what CI runs; the CI jobs themselves are in [CI](ci.md).
 
-| Layer | Tool | Proves |
-| --- | --- | --- |
-| Unit | `go test`, case tables | The `rules` maths and each business rule alone, with no database |
-| Characterization (golden) | `go test`, golden files under `testdata/` | What a function answers, refuses and writes stays as reviewed |
-| Integration | `go test` with `MEURPG_TEST_DATABASE_URL` | Queries, migrations, the retry on error `40001`, who may do what |
-| Architecture | `go test`, `backend/internal/archtest` | Module boundaries (it reads imports with `go/parser`) |
-| Leak (RN-10) | `go test` with a database, `backend/internal/leaktest` | What the master hid never reaches a player |
-| Web unit | Vitest through `ng test` | Components and services |
-| End to end | Playwright in `e2e/`, against the local stack | Acceptance criteria through the screen |
-| Accessibility | axe in Playwright | No serious or critical WCAG 2.1 A/AA violation on each main screen |
+| Layer                     | Tool                                                   | Proves                                                             |
+| ------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------ |
+| Unit                      | `go test`, case tables                                 | The `rules` maths and each business rule alone, with no database   |
+| Characterization (golden) | `go test`, golden files under `testdata/`              | What a function answers, refuses and writes stays as reviewed      |
+| Integration               | `go test` with `MEURPG_TEST_DATABASE_URL`              | Queries, migrations, the retry on error `40001`, who may do what   |
+| Architecture              | `go test`, `backend/internal/archtest`                 | Module boundaries (it reads imports with `go/parser`)              |
+| Leak (RN-10)              | `go test` with a database, `backend/internal/leaktest` | What the master hid never reaches a player                         |
+| Web unit                  | Vitest through `ng test`                               | Components and services                                            |
+| End to end                | Playwright in `e2e/`, against the local stack          | Acceptance criteria through the screen                             |
+| Accessibility             | axe in Playwright                                      | No serious or critical WCAG 2.1 A/AA violation on each main screen |
 
 ## Go unit and characterization tests
 
@@ -149,6 +149,7 @@ Tests then use `newSignedInContext(browser, 'Jogador Teste')` or `test.use({ sto
 
 - A test that signs out never reuses a session: it ends the real session on the server and would break every other test sharing it.
 - `browser.newContext()` without an explicit `storageState` inherits the one a file set through `test.use()`; a context that must start signed out lives in a file with no `test.use()` at all.
+- Only two player accounts have a saved state, so a table has the master and at most two players: `conversa.spec.ts` (RN-36) proves "a reader who was not chosen" with Pensantus and Toren, one chosen and the other not, and waits on a later line for everyone before it asserts that something is absent.
 - No test sets the display name of the shared accounts: `ui.spec.ts` expects "Minha conta", the default text with no name set.
 
 **Accessibility.** `a11y.spec.ts` runs axe (`@axe-core/playwright`) on the main screens in the light and dark themes, on desktop and mobile, and fails on any serious or critical violation of WCAG 2.1 A and AA.
@@ -192,12 +193,12 @@ Safari does not accept it, so local sign-in is in Chrome or Firefox.
 
 ## What CI runs
 
-| Layer | Job |
-| --- | --- |
+| Layer                                                  | Job                              |
+| ------------------------------------------------------ | -------------------------------- |
 | Go tests (all packages, with `-race` and the database) | `go-db`, nine groups in parallel |
-| Web unit tests, lint, format, import rules, build | `web / test and build` |
-| Web coverage | `web / coverage` |
-| Playwright tests and the accessibility checks | `e2e`, in shards |
-| Playwright lint and type-check | `e2e / lint and typecheck` |
+| Web unit tests, lint, format, import rules, build      | `web / test and build`           |
+| Web coverage                                           | `web / coverage`                 |
+| Playwright tests and the accessibility checks          | `e2e`, in shards                 |
+| Playwright lint and type-check                         | `e2e / lint and typecheck`       |
 
 Details, triggers and gates are in [CI](ci.md).

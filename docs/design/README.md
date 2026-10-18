@@ -9,7 +9,7 @@ This folder is the reference for anyone who touches a screen in `web/`.
 | [tokens.md](tokens.md) | Every `--mr-*` token, the fonts, the Material mapping |
 | [components.md](components.md) | The shared classes and components, and when to use each |
 | [sheet.md](sheet.md) | The character sheet and the editors |
-| [session.md](session.md) | The live session: shown image, scenes, rolls, resources, puzzles |
+| [session.md](session.md) | The live session: shown image, scenes, the conversation, rolls, resources, puzzles |
 | [combat.md](combat.md) | The combat screens |
 | [maps.md](maps.md) | Maps, layers, fog of war, the map editor and printing |
 
