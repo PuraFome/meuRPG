@@ -157,44 +157,28 @@ func loadEncounter(ctx context.Context, q *playdb.Queries, enc playdb.Encounter)
 	return &encounterData{enc: enc, cs: cs, states: states, requests: requests, holds: holds, allHolds: allHolds, riders: riders, zones: zones}, nil
 }
 
-// openAttackHolds are the weapon attacks of a combat that wait for an answer: the ones roll_holds keeps and the ones a
-// later release keeps in inspiration_holds, in the shape of the gate.
+// openAttackHolds are the weapon attacks of a combat that wait for an answer, in the shape of the gate.
 func openAttackHolds(ctx context.Context, q *playdb.Queries, encounterID string) ([]heldRoll, error) {
-	rolls, err := q.ListOpenRollHolds(ctx, encounterID) // the rolls that wait for the answer about a die
-	if err != nil {
-		return nil, fmt.Errorf("list the held rolls: %w", err)
-	}
-	inspirations, err := q.ListOpenAttackHolds(ctx, &encounterID)
+	rows, err := q.ListOpenAttackHolds(ctx, &encounterID)
 	if err != nil {
 		return nil, fmt.Errorf("list the held attacks: %w", err)
 	}
-	out := make([]heldRoll, 0, len(rolls)+len(inspirations))
-	for _, row := range rolls {
-		out = append(out, heldOfRollHold(row))
-	}
-	for _, row := range inspirations {
+	out := make([]heldRoll, 0, len(rows))
+	for _, row := range rows {
 		out = append(out, heldOfInspirationHold(row))
 	}
 	return out, nil
 }
 
-// openHoldsOfCombat are the rolls of every kind held in the combat that wait for an answer, and the weapon attacks
-// the release before left in roll_holds, in the shape of the gate.
+// openHoldsOfCombat are the rolls of every kind held in the combat that wait for an answer, in the shape of the gate.
 func openHoldsOfCombat(ctx context.Context, q *playdb.Queries, encounterID string) ([]heldRoll, error) {
 	rows, err := q.ListOpenInspirationHoldsOfEncounter(ctx, &encounterID)
 	if err != nil {
 		return nil, fmt.Errorf("list the held rolls of the combat: %w", err)
 	}
-	legacy, err := q.ListOpenRollHolds(ctx, encounterID)
-	if err != nil {
-		return nil, fmt.Errorf("list the held rolls: %w", err)
-	}
-	out := make([]heldRoll, 0, len(rows)+len(legacy))
+	out := make([]heldRoll, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, heldOfInspirationHold(row))
-	}
-	for _, row := range legacy {
-		out = append(out, heldOfRollHold(row))
 	}
 	return out, nil
 }

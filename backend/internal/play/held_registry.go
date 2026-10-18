@@ -12,16 +12,8 @@ import (
 
 // heldKindDef is what a kind of held roll does that the gate cannot know.
 type heldKindDef struct {
-	// write is the table the kind's holds are written to.
-	write heldTable
-	// alsoRead is the table the kind was written to by an older release, which is only read: the holds left
-	// open there are answered by the same path (the weapon attacks of roll_holds, until the contract).
-	alsoRead heldTable
-	// refusedBy are the tables whose open question refuses a new roll of this kind in the gate, own table
-	// first.
-	refusedBy []heldTable
 	// ownKindOnly says only the holds of this very kind refuse it, and are forgotten when stale: the weapon attack
-	// shares its table with the combatant's other rolls, which heldBlocked, called first by its path, refuses it
+	// shares the table with the combatant's other rolls, which heldBlocked, called first by its path, refuses it
 	// for (and does not when a reaction window replays the attack, a case the gate keeps as it was).
 	ownKindOnly bool
 	// rerun runs the request the hold kept again, with the answer in the context, by the very path that
@@ -51,19 +43,18 @@ func (d heldKindDef) pinned(req proto.Message, faces []int) ([]byte, error) {
 var heldRegistry map[heldKind]heldKindDef
 
 func init() {
-	outside := []heldTable{inspirationHolds, rollHolds}
 	heldRegistry = map[heldKind]heldKindDef{
 		heldWeaponAttack: {
-			write: inspirationHolds, alsoRead: rollHolds, refusedBy: outside, ownKindOnly: true,
-			rerun: rerunAttack, offerOf: attackOfRequest, withFaces: pinAttackFaces,
+			ownKindOnly: true,
+			rerun:       rerunAttack, offerOf: attackOfRequest, withFaces: pinAttackFaces,
 		},
-		heldSpellAttack:       {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).CastSpell)},
-		heldEffectSave:        {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).RollEffectSave)},
-		heldConcentrationSave: {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).ResolveConcentrationSave)},
-		heldSceneCheck:        {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).RollSceneCheck)},
-		heldGroupCheck:        {write: inspirationHolds, refusedBy: outside, rerun: rerunGroupCheck, ownRoll: true},
-		heldTrapSearch:        {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).SearchForTraps), ownRoll: true},
-		heldHintTry:           {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).TryPuzzleHint)},
+		heldSpellAttack:       {rerun: registerRerun((*Service).CastSpell)},
+		heldEffectSave:        {rerun: registerRerun((*Service).RollEffectSave)},
+		heldConcentrationSave: {rerun: registerRerun((*Service).ResolveConcentrationSave)},
+		heldSceneCheck:        {rerun: registerRerun((*Service).RollSceneCheck)},
+		heldGroupCheck:        {rerun: rerunGroupCheck, ownRoll: true},
+		heldTrapSearch:        {rerun: registerRerun((*Service).SearchForTraps), ownRoll: true},
+		heldHintTry:           {rerun: registerRerun((*Service).TryPuzzleHint)},
 	}
 }
 

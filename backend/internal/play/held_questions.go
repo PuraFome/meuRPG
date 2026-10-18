@@ -92,7 +92,7 @@ func (q luckyQuestion) apply(ctx context.Context, ae answering, h heldRoll, a he
 		return h, connect.NewError(connect.CodeFailedPrecondition, errors.New("the Lucky question was answered already"))
 	}
 	after := h.afterLucky(a, ae.spec)
-	if err := newHeldStores(ae.q).of(h.table).answerLucky(ctx, h, after, ae.st.Holds); err != nil {
+	if err := newHeldStores(ae.q).answerLucky(ctx, h, after, ae.st.Holds); err != nil {
 		return h, fmt.Errorf("answer the Lucky question: %w", err)
 	}
 	return after, nil
@@ -154,17 +154,17 @@ func (dieQuestion) apply(ctx context.Context, ae answering, h heldRoll, a heldRe
 			return h, err
 		}
 	}
-	if err := newHeldStores(ae.q).of(h.table).answer(ctx, h, a.key); err != nil {
+	if err := newHeldStores(ae.q).answer(ctx, h, a.key); err != nil {
 		return h, fmt.Errorf("answer the held roll: %w", err)
 	}
 	h.AnswerKey = &a.key
 	return h, nil
 }
 
-// spendDie uses up the die the roll settled on. A table that checks its answers (checksTheAnswer) also
+// spendDie uses up the die the roll settled on. A roll that checks its answer (checksTheAnswer) also
 // wants the face to be one of the die.
 func (ae answering) spendDie(ctx context.Context, h heldRoll, die *bonusUse) error {
-	if h.table.checksTheAnswer() && (die.Face < 1 || die.Face > ae.st.Die.Sides) {
+	if h.checksTheAnswer() && (die.Face < 1 || die.Face > ae.st.Die.Sides) {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("typed_face must be a face of the die"))
 	}
 	return spendDie(ctx, ae.q, ae.spec.Roller.CharacterID, ae.st.Die)

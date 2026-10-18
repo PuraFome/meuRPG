@@ -546,22 +546,6 @@ type RevivifyRequest struct {
 	AnswerHash        *string
 }
 
-type RollHold struct {
-	ID             string
-	EncounterID    string
-	CombatantID    string
-	IdempotencyKey string
-	Request        []byte
-	Face           int32
-	Modifier       int32
-	Round          int32
-	AnswerKey      *string
-	CreatedAt      time.Time
-	LuckyIndex     *int32
-	LuckyAnswerKey *string
-	LuckyTo        *int32
-}
-
 type RollModeRequest struct {
 	ID            string
 	EncounterID   string

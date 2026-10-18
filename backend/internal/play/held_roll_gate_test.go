@@ -89,8 +89,8 @@ func TestOneQuestionAtATimeAcrossBothHoldTables(t *testing.T) {
 			a.h.roller.drain()
 			rolls := countRows(t, a.h, countRollHolds, e.GetId())
 			outside := countRows(t, a.h, countInspirationHold, a.campaignID)
-			if rolls+outside != 1 {
-				t.Errorf("held rolls = %d in roll_holds and %d in inspiration_holds, want exactly one", rolls, outside)
+			if rolls != 0 || outside != 1 {
+				t.Errorf("held rolls = %d in roll_holds and %d in inspiration_holds, want none and exactly one", rolls, outside)
 			}
 		})
 	}

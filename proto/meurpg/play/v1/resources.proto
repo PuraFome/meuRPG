@@ -133,7 +133,12 @@ service ResourceService {
   //
   // Errors: `not_found` for a hold that is gone; `invalid_argument` for a typed
   // face outside the die.
-  rpc AnswerBardicInspiration(AnswerBardicInspirationRequest) returns (AnswerBardicInspirationResponse);
+  //
+  // Deprecated (E4-9): AnswerHeldRoll answers every question of a held roll, whoever asks it. This RPC is still
+  // served, as an adapter over the same answer, for a tab opened before AnswerHeldRoll existed.
+  rpc AnswerBardicInspiration(AnswerBardicInspirationRequest) returns (AnswerBardicInspirationResponse) {
+    option deprecated = true;
+  }
 
   // AnswerLucky answers the question a held attack roll asks when a halfling's d20 shows a 1
   // (SRD 5.1, Halfling, Lucky: the die may be rolled again, and the new roll stands): roll it
@@ -153,7 +158,12 @@ service ResourceService {
   // outside 1 to 20; `failed_precondition` when the hold asks no Lucky question or it was
   // answered already (by another answer); EncounterBlocked WRONG_DICE_MODE for a player's way of
   // rolling the campaign does not allow.
-  rpc AnswerLucky(AnswerLuckyRequest) returns (AnswerLuckyResponse);
+  //
+  // Deprecated (E4-9): AnswerHeldRoll answers every question of a held roll, whoever asks it. This RPC is still
+  // served, as an adapter over the same answer, for a tab opened before AnswerHeldRoll existed.
+  rpc AnswerLucky(AnswerLuckyRequest) returns (AnswerLuckyResponse) {
+    option deprecated = true;
+  }
 
   // GetOutsideInspiration reads the Bardic Inspiration of the caller out of a combat: the
   // die their character holds and, for a bard, the uses left and the party to give it to;
@@ -184,7 +194,12 @@ service ResourceService {
   // Errors: `not_found` for a hold that is gone; `invalid_argument` for a typed face outside
   // the die; `failed_precondition` when the die ran out meanwhile; ResourceBlocked
   // LUCKY_PENDING while the Lucky question of the same roll waits (AnswerOutsideLucky first).
-  rpc AnswerOutsideInspiration(AnswerOutsideInspirationRequest) returns (AnswerOutsideInspirationResponse);
+  //
+  // Deprecated (E4-9): AnswerHeldRoll answers every question of a held roll, whoever asks it. This RPC is still
+  // served, as an adapter over the same answer, for a tab opened before AnswerHeldRoll existed.
+  rpc AnswerOutsideInspiration(AnswerOutsideInspirationRequest) returns (AnswerOutsideInspirationResponse) {
+    option deprecated = true;
+  }
 
   // AnswerOutsideLucky answers the Lucky question of a d20 roll that is not a weapon attack
   // (AnswerLucky has those): a halfling's d20 showed a 1 (SRD 5.1, Halfling, Lucky: the die may
@@ -210,7 +225,12 @@ service ResourceService {
   // `failed_precondition` when the hold asks no Lucky question, it was answered already (by
   // another answer) or its combat round is over; the path's WRONG_DICE_MODE for a way of rolling
   // the campaign does not allow.
-  rpc AnswerOutsideLucky(AnswerOutsideLuckyRequest) returns (AnswerOutsideLuckyResponse);
+  //
+  // Deprecated (E4-9): AnswerHeldRoll answers every question of a held roll, whoever asks it. This RPC is still
+  // served, as an adapter over the same answer, for a tab opened before AnswerHeldRoll existed.
+  rpc AnswerOutsideLucky(AnswerOutsideLuckyRequest) returns (AnswerOutsideLuckyResponse) {
+    option deprecated = true;
+  }
 
   // AnswerHeldRoll answers the question of any roll that waits, whichever roll it is (a weapon attack,
   // a spell attack, a save, a check, a search, a hint try) and whichever question it asks (the
@@ -611,13 +631,17 @@ message GetOutsideInspirationResponse {
   // The caller's rolls that wait for an answer about the die, in a combat too (the die is
   // then on the combatant and `mine` is unset). A roll whose Lucky question waits is in
   // `lucky_offers` instead, until it is answered.
-  repeated OutsideInspirationOffer offers = 8;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  repeated OutsideInspirationOffer offers = 8 [deprecated = true];
   // A combat is open: the bard gives in it.
   bool combat_open = 9;
   // The caller's rolls that wait for the halfling's Lucky question ("Tirou 1: rolar de novo?",
   // AnswerOutsideLucky), in a combat too, whether or not the character holds a die: a reload
   // asks again. `attack_key` and `target_id` are empty (they are a weapon attack's).
-  repeated LuckyOffer lucky_offers = 10;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  repeated LuckyOffer lucky_offers = 10 [deprecated = true];
 }
 
 message GiveBardicInspirationOutsideRequest {
