@@ -157,6 +157,26 @@ function maneuverReducePrompt(d: PromptOf<'maneuverReduce'>, rodada: string): Pr
   };
 }
 
+function protectionPrompt(p: PromptOf<'protection'>, rodada: string): PromptView {
+  const name = REACTION_NAMES.protection;
+  const who = p.attackerLabel ? theName(p.attackerLabel) : 'uma criatura que você vê';
+  const ally = p.allyLabel ? theName(p.allyLabel) : 'um aliado ao seu lado';
+  return {
+    title: `${upFirst(who)} vai atacar`,
+    subtitle: joinDots([
+      p.attackerLabel ? `${p.attackerLabel} ataca ${ally}` : `Ataque contra ${ally}`,
+      rodada,
+    ]),
+    icon: 'shield',
+    name,
+    question: `Usar ${name}? A jogada de ataque contra ${ally} tem desvantagem. Você precisa estar com o escudo em mãos. ${REACTION_SPENT}`,
+    costs: ['Reação', 'Sem espaço de magia'],
+    note: 'O ataque ainda não foi rolado. Vale para uma criatura que você vê atacando alguém a até 1,5 m de você.',
+    useLabel: `Usar ${name}`,
+    ariaLabel: `${upFirst(who)} vai atacar: usar ${name}?`,
+  };
+}
+
 function featherFallPrompt(f: PromptOf<'featherFall'>, rodada: string): PromptView {
   const name = REACTION_NAMES.featherFall;
   const one = f.falling.length === 1 ? f.falling[0] : undefined;
@@ -201,6 +221,7 @@ const PROMPTS: { [K in PromptCase]?: (value: PromptOf<K>, rodada: string) => Pro
   cuttingWords: cuttingWordsPrompt,
   deflectMissiles: deflectMissilesPrompt,
   maneuverReduce: maneuverReducePrompt,
+  protection: protectionPrompt,
   featherFall: featherFallPrompt,
   concentrationSave: concentrationSavePrompt,
 };

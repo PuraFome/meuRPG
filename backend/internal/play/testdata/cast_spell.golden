@@ -2298,8 +2298,55 @@ combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | 
 damage Pensantus | Goblin 2 | spell:scorching-ray | awaiting_roll | false | 2 | 6 | 0 | damage-type:fire | false | false | 17 | 12 | false | 0 | 0
 vitals Pensantus | <nil> | 0 | {0,1,0,0,0,0,0,0,0} | 0
 == scorching ray at too many creatures ==
-refused invalid_argument: this spell takes at most 4 targets with this slot
+refused invalid_argument: this spell takes at most 4 rays with this slot
 state unchanged
+== scorching ray with all rays at one creature ==
+cast {"pendingDamages":[{"attackKey":"spell:scorching-ray","attackerId":"Pensantus","critical":true,"criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","damageTypeKey":"damage-type:fire","damageTypePt":"fogo","diceCount":4,"diceSides":6,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin 1"},{"attackKey":"spell:scorching-ray","attackerId":"Pensantus","damageTypeKey":"damage-type:fire","damageTypePt":"fogo","diceCount":2,"diceSides":6,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin 1"}],"slot":{"level":2},"spellKey":"spell:scorching-ray","targets":[{"attackMode":"ROLL_MODE_DISADVANTAGE","attackRoll":{"diceCount":2,"diceSides":20,"faces":[20,20],"modifier":7,"total":27},"attackSources":[{"effect":"ROLL_MODE_DISADVANTAGE","kind":"ADVANTAGE_SOURCE_KIND_HOSTILE_NEARBY","textPt":"Um inimigo a 1,5 m de quem ataca à distância: desvantagem"}],"combatantId":"Goblin 1","cover":"COVER_DEGREE_NONE","outcome":"ATTACK_OUTCOME_CRITICAL_HIT","pendingDamageId":"?"},{"attackMode":"ROLL_MODE_DISADVANTAGE","attackRoll":{"diceCount":2,"diceSides":20,"faces":[2,2],"modifier":7,"total":9},"attackSources":[{"effect":"ROLL_MODE_DISADVANTAGE","kind":"ADVANTAGE_SOURCE_KIND_HOSTILE_NEARBY","textPt":"Um inimigo a 1,5 m de quem ataca à distância: desvantagem"}],"combatantId":"Goblin 1","cover":"COVER_DEGREE_NONE","outcome":"ATTACK_OUTCOME_MISS"},{"attackMode":"ROLL_MODE_DISADVANTAGE","attackRoll":{"diceCount":2,"diceSides":20,"faces":[10,10],"modifier":7,"total":17},"attackSources":[{"effect":"ROLL_MODE_DISADVANTAGE","kind":"ADVANTAGE_SOURCE_KIND_HOSTILE_NEARBY","textPt":"Um inimigo a 1,5 m de quem ataca à distância: desvantagem"}],"combatantId":"Goblin 1","cover":"COVER_DEGREE_NONE","outcome":"ATTACK_OUTCOME_HIT","pendingDamageId":"?"}]}
+area 
+inspiration 
+lucky 
+summoned 0
+hidden hits {}
+pending reveal false
+held false
+event spell_cast {"cast_id": "?", "combatant_id": "Pensantus", "hits": [{"d20": 20, "d20_b": 20, "modifier": 7, "outcome": "critical", "pending_id": "?", "roll_mode": "disadvantage", "suggested_mode": "disadvantage", "target_ac": 12, "target_id": "Goblin 1", "total": 27}, {"d20": 2, "d20_b": 2, "modifier": 7, "outcome": "miss", "roll_mode": "disadvantage", "suggested_mode": "disadvantage", "target_ac": 12, "target_id": "Goblin 1", "total": 9}, {"d20": 10, "d20_b": 10, "modifier": 7, "outcome": "hit", "pending_id": "?", "roll_mode": "disadvantage", "suggested_mode": "disadvantage", "target_ac": 12, "target_id": "Goblin 1", "total": 17}], "key": "spell:scorching-ray", "round": 1, "slot": {"level": 2}}
+combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Goblin 1 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Goblin 2 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Goblin 3 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Goblin 4 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Pensantus | true | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | true | false | false | {} | false | false
+combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+damage Pensantus | Goblin 1 | spell:scorching-ray | awaiting_roll | false | 2 | 6 | 0 | damage-type:fire | false | false | 17 | 12 | false | 0 | 0
+damage Pensantus | Goblin 1 | spell:scorching-ray | awaiting_roll | true | 4 | 6 | 0 | damage-type:fire | false | false | 27 | 12 | false | 0 | 0
+vitals Pensantus | <nil> | 0 | {0,1,0,0,0,0,0,0,0} | 0
+== scorching ray with more rays than the slot makes ==
+refused invalid_argument: this spell takes at most 3 rays with this slot
+state unchanged
+== scorching ray with the rays shared between two creatures ==
+cast {"pendingDamages":[{"attackKey":"spell:scorching-ray","attackerId":"Pensantus","damageTypeKey":"damage-type:fire","damageTypePt":"fogo","diceCount":2,"diceSides":6,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin 1"},{"attackKey":"spell:scorching-ray","attackerId":"Pensantus","damageTypeKey":"damage-type:fire","damageTypePt":"fogo","diceCount":2,"diceSides":6,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin 1"},{"attackKey":"spell:scorching-ray","attackerId":"Pensantus","damageTypeKey":"damage-type:fire","damageTypePt":"fogo","diceCount":2,"diceSides":6,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin 1"},{"attackKey":"spell:scorching-ray","attackerId":"Pensantus","damageTypeKey":"damage-type:fire","damageTypePt":"fogo","diceCount":2,"diceSides":6,"id":"?","status":"PENDING_DAMAGE_STATUS_AWAITING_ROLL","targetId":"Goblin 2"}],"slot":{"level":3},"spellKey":"spell:scorching-ray","targets":[{"attackMode":"ROLL_MODE_DISADVANTAGE","attackRoll":{"diceCount":2,"diceSides":20,"faces":[10,10],"modifier":7,"total":17},"attackSources":[{"effect":"ROLL_MODE_DISADVANTAGE","kind":"ADVANTAGE_SOURCE_KIND_HOSTILE_NEARBY","textPt":"Um inimigo a 1,5 m de quem ataca à distância: desvantagem"}],"combatantId":"Goblin 1","cover":"COVER_DEGREE_NONE","outcome":"ATTACK_OUTCOME_HIT","pendingDamageId":"?"},{"attackMode":"ROLL_MODE_DISADVANTAGE","attackRoll":{"diceCount":2,"diceSides":20,"faces":[10,10],"modifier":7,"total":17},"attackSources":[{"effect":"ROLL_MODE_DISADVANTAGE","kind":"ADVANTAGE_SOURCE_KIND_HOSTILE_NEARBY","textPt":"Um inimigo a 1,5 m de quem ataca à distância: desvantagem"}],"combatantId":"Goblin 1","cover":"COVER_DEGREE_NONE","outcome":"ATTACK_OUTCOME_HIT","pendingDamageId":"?"},{"attackMode":"ROLL_MODE_DISADVANTAGE","attackRoll":{"diceCount":2,"diceSides":20,"faces":[10,10],"modifier":7,"total":17},"attackSources":[{"effect":"ROLL_MODE_DISADVANTAGE","kind":"ADVANTAGE_SOURCE_KIND_HOSTILE_NEARBY","textPt":"Um inimigo a 1,5 m de quem ataca à distância: desvantagem"}],"combatantId":"Goblin 1","cover":"COVER_DEGREE_NONE","outcome":"ATTACK_OUTCOME_HIT","pendingDamageId":"?"},{"attackMode":"ROLL_MODE_DISADVANTAGE","attackRoll":{"diceCount":2,"diceSides":20,"faces":[10,10],"modifier":7,"total":17},"attackSources":[{"effect":"ROLL_MODE_DISADVANTAGE","kind":"ADVANTAGE_SOURCE_KIND_HOSTILE_NEARBY","textPt":"Um inimigo a 1,5 m de quem ataca à distância: desvantagem"}],"combatantId":"Goblin 2","cover":"COVER_DEGREE_NONE","outcome":"ATTACK_OUTCOME_HIT","pendingDamageId":"?"}]}
+area 
+inspiration 
+lucky 
+summoned 0
+hidden hits {}
+pending reveal false
+held false
+event spell_cast {"cast_id": "?", "combatant_id": "Pensantus", "hits": [{"d20": 10, "d20_b": 10, "modifier": 7, "outcome": "hit", "pending_id": "?", "roll_mode": "disadvantage", "suggested_mode": "disadvantage", "target_ac": 12, "target_id": "Goblin 1", "total": 17}, {"d20": 10, "d20_b": 10, "modifier": 7, "outcome": "hit", "pending_id": "?", "roll_mode": "disadvantage", "suggested_mode": "disadvantage", "target_ac": 12, "target_id": "Goblin 1", "total": 17}, {"d20": 10, "d20_b": 10, "modifier": 7, "outcome": "hit", "pending_id": "?", "roll_mode": "disadvantage", "suggested_mode": "disadvantage", "target_ac": 12, "target_id": "Goblin 1", "total": 17}, {"d20": 10, "d20_b": 10, "modifier": 7, "outcome": "hit", "pending_id": "?", "roll_mode": "disadvantage", "suggested_mode": "disadvantage", "target_ac": 12, "target_id": "Goblin 2", "total": 17}], "key": "spell:scorching-ray", "round": 1, "slot": {"level": 3}}
+combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Capitão Goblin | false | false | false | false | false | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Goblin 1 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Goblin 2 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Goblin 3 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Goblin 4 | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+combatant Pensantus | true | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | true | false | false | {} | false | false
+combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
+damage Pensantus | Goblin 1 | spell:scorching-ray | awaiting_roll | false | 2 | 6 | 0 | damage-type:fire | false | false | 17 | 12 | false | 0 | 0
+damage Pensantus | Goblin 1 | spell:scorching-ray | awaiting_roll | false | 2 | 6 | 0 | damage-type:fire | false | false | 17 | 12 | false | 0 | 0
+damage Pensantus | Goblin 1 | spell:scorching-ray | awaiting_roll | false | 2 | 6 | 0 | damage-type:fire | false | false | 17 | 12 | false | 0 | 0
+damage Pensantus | Goblin 2 | spell:scorching-ray | awaiting_roll | false | 2 | 6 | 0 | damage-type:fire | false | false | 17 | 12 | false | 0 | 0
+vitals Pensantus | <nil> | 0 | {0,0,1,0,0,0,0,0,0} | 0
 == shield of faith ==
 cast {"concentrating":true,"slot":{"level":1},"spellKey":"spell:shield-of-faith","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Toren","cover":"COVER_DEGREE_NONE","lastingEffect":"LASTING_EFFECT_OUTCOME_APPLIED"}]}
 area 

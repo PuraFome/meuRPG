@@ -221,6 +221,9 @@ func (u *undoer) spendResourceBack(ctx context.Context, who playdb.Combatant, ke
 // opened goes away. A Bardic Inspiration die the roll used is held again, and the
 // turn's melee hit mark is the one before the hit.
 func (u *undoer) attackRolled(ctx context.Context, ev actionEvent) error {
+	if err := u.protectionBack(ctx, ev); err != nil {
+		return err
+	}
 	if who, ok := u.find(ev.Actor); ok {
 		if err := u.attackerBack(ctx, who, ev); err != nil {
 			return err
@@ -366,13 +369,25 @@ func (u *undoer) partsSpentBack(ctx context.Context, ev actionEvent) error {
 			}
 		}
 	}
-	if ev.OnceBefore == nil {
+	return u.onceMarksBack(ctx, who, ev.OnceBefore)
+}
+
+// onceMarksBack puts the once-per-turn marks of the roll's attacker back: Sneak Attack's and Colossus
+// Slayer's, and the table's when the roll changed them.
+func (u *undoer) onceMarksBack(ctx context.Context, who playdb.Combatant, before *onceMarks) error {
+	if before == nil {
 		return nil
 	}
 	if err := u.c.q.SetCombatantOncePerTurn(ctx, playdb.SetCombatantOncePerTurnParams{
-		ID: who.ID, SneakAttackTurn: nilIfEmpty(ev.OnceBefore.Sneak), ColossusSlayerTurn: nilIfEmpty(ev.OnceBefore.Colossus),
+		ID: who.ID, SneakAttackTurn: nilIfEmpty(before.Sneak), ColossusSlayerTurn: nilIfEmpty(before.Colossus),
 	}); err != nil {
 		return fmt.Errorf("put back the once-per-turn marks: %w", err)
+	}
+	if !before.TableChanged {
+		return nil
+	}
+	if err := u.c.q.SetCombatantTableOnceTurns(ctx, playdb.SetCombatantTableOnceTurnsParams{ID: who.ID, TableOnceTurns: writeTableOnce(before.Table)}); err != nil {
+		return fmt.Errorf("put back the table's once-per-turn marks: %w", err)
 	}
 	return nil
 }
