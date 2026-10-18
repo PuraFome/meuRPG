@@ -2,11 +2,17 @@ import { Component, computed, input, output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { type Combatant, CombatantState } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  type Combatant,
+  CombatantState,
+  type HeldRollOffer,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import type { AttackDie } from '../../../../core/combat/combat-client-types';
 import { article } from '../../../../core/combat/combat-log';
 import { countText } from '../../../../core/combat/death-saves';
+import type { HeldAnswer } from '../../../../core/held-rolls/held-roll-offer';
+import { HeldRollPrompt } from '../../../../shared/held-roll-prompt/held-roll-prompt';
 import { EndTurn } from '../turn-panel/end-turn';
 import { RollPicker } from '../../../../shared/roll-picker/roll-picker';
 import { DeathMarks } from './death-marks';
@@ -25,7 +31,7 @@ import { DeathMarks } from './death-marks';
  */
 @Component({
   selector: 'app-death-saves',
-  imports: [DeathMarks, EndTurn, MatIconModule, RollPicker],
+  imports: [DeathMarks, EndTurn, HeldRollPrompt, MatIconModule, RollPicker],
   template: `
     <section class="card" aria-labelledby="ds-title">
       <h3 class="card__title" id="ds-title">Testes contra a morte</h3>
@@ -42,7 +48,18 @@ import { DeathMarks } from './death-marks';
         <app-death-marks kind="failure" [count]="own().deathFailures" />
       </div>
 
-      @if (own().deathSaveDue) {
+      @if (held(); as question) {
+        <!-- The d20 is rolled and kept: a halfling's 1 asks Lucky first, then a Bardic Inspiration die; nothing is written until the player answers (SRD 5.1). -->
+        <app-held-roll-prompt
+          [offer]="question"
+          look="card"
+          [canApp]="canApp()"
+          [canType]="canType()"
+          [preferApp]="preferApp()"
+          [busy]="busy()"
+          (answer)="answer.emit($event)"
+        />
+      } @else if (own().deathSaveDue) {
         <app-roll-picker
           [compact]="true"
           [canApp]="canApp()"
@@ -102,8 +119,12 @@ export class DeathSaves {
   readonly result = input('');
   /** The table hides the death saves from the other players (RN-24): the card says who sees them. */
   readonly ownerOnly = input(false);
+  /** The question the death save of this turn waits for, when its d20 was kept for one. */
+  readonly held = input<HeldRollOffer | null>(null);
 
   readonly roll = output<AttackDie>();
+  /** The player's answer to the question that waits. */
+  readonly answer = output<HeldAnswer>();
   readonly endTurn = output<void>();
 
   /** Nothing left to do while down: "Encerrar turno" is the one filled button and never asks. */

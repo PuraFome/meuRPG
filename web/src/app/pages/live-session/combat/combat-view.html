@@ -396,7 +396,9 @@
                     [diceMode]="diceMode()"
                     [dicePreference]="dicePreference()"
                     [result]="deaths.result()"
+                    [held]="deaths.held.offer()"
                     (roll)="deaths.roll($event)"
+                    (answer)="deaths.held.answer($event)"
                     (endTurn)="nextTurn()"
                   />
                 </div>

@@ -3497,6 +3497,9 @@ enum HeldRollKind {
   HELD_ROLL_KIND_GROUP_CHECK = 6;
   HELD_ROLL_KIND_TRAP_SEARCH = 7;
   HELD_ROLL_KIND_HINT_TRY = 8;
+  // The death saving throw of a character at 0 hit points (RollDeathSave), asked about Lucky's reroll of a 1 and about
+  // a Bardic Inspiration die like any other saving throw (SRD 5.1).
+  HELD_ROLL_KIND_DEATH_SAVE = 9;
 }
 
 // LuckyQuestion is the halfling's "Tirou 1: rolar de novo?" (SRD 5.1, Halfling, Lucky).
@@ -4357,7 +4360,8 @@ message RollDeathSaveRequest {
 
 // DeathSave is a death save and where it left the character.
 message DeathSave {
-  // The d20 (no modifier).
+  // The d20, with the Bardic Inspiration die the player added as the modifier (0 without one), and the d20 the
+  // halfling's Lucky rolled again in `rerolled`.
   DiceRoll roll = 1;
   DeathSaveOutcome outcome = 2;
   // The counts after it, 0 to 3 each.
@@ -4368,12 +4372,20 @@ message DeathSave {
   // Three failures: the master confirms the death. Only the master gets it; a
   // player only sees the counts.
   bool dying = 6;
+  // The Bardic Inspiration die the player added to the d20 (SRD 5.1), when one was used: it moves the total, never the
+  // natural 1 (two failures) or the natural 20 (back with 1 hit point).
+  repeated BonusDie bonus_dice = 7;
 }
 
 // RollDeathSaveResponse returns the combat and the save.
 message RollDeathSaveResponse {
   Encounter encounter = 1;
   DeathSave death_save = 2;
+  // Set instead of `death_save` when the roll waits for a question: the halfling's Lucky about a 1, or the Bardic
+  // Inspiration die the combatant holds (AnswerHeldRoll answers it). The d20 was rolled and kept and nothing is
+  // written, the counts included. The master is asked too when he rolls for the player, and answers after the
+  // player's first 10 s.
+  HeldRollOffer held_roll_offer = 3;
 }
 
 // ConfirmDeathRequest confirms a death.

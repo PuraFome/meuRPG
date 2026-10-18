@@ -180,10 +180,12 @@ export interface SummonRequest {
   readonly names?: readonly string[];
 }
 
-/** What a death save answers: the combat and the save. */
+/** What a death save answers: the combat and the save, or, when the d20 was kept for a question (the halfling's Lucky about a
+ * 1, a Bardic Inspiration die), the question and no save yet. */
 export interface DeathSaveResult {
   readonly encounter: Encounter;
-  readonly save: DeathSave;
+  readonly save: DeathSave | undefined;
+  readonly held: HeldRollOffer | undefined;
 }
 
 /** What a standard or feature action answers: the combat, the roll of an
