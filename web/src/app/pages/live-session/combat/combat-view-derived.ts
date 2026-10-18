@@ -63,7 +63,9 @@ export abstract class CombatViewDerivedDirective extends CombatViewStateDirectiv
     const offer = this.own()?.heldRollOffer;
     return offer?.kind === HeldRollKind.DEATH_SAVE ? offer : undefined;
   });
-  protected readonly resumeDeathQuestion = effect(() => this.deaths.resume(this.ownDeathQuestion()));
+  protected readonly resumeDeathQuestion = effect(() =>
+    this.deaths.resume(this.ownDeathQuestion()),
+  );
   protected readonly rage = new CombatRage({
     api: this.api,
     calls: this.calls,
