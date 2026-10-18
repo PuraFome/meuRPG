@@ -52,6 +52,7 @@ A table feature has effects of these types only; anything else is `forbidden_eff
 | `resource` | With uses and recharge. The resource may not have the name of an SRD one. |
 | `grant_action` | May carry `resource`: the name of a `resource` effect of the same entry, its class, or an SRD resource. Each use spends one and the action is off with none left. Refused as `bad_reference` when nothing defines it. |
 | `ranged_attack` | Checked at its fields: `applies` is `spell` or `weapon`; `range_multiplier` is 2 or 3 and only on `spell`; `no_long_range_disadvantage` only on `weapon`; an effect that sets none of the three switches is refused at `.type`; `tags` at `.tags`; the switches on any other type are stray fields. |
+| `extra_damage` | See [Extra damage](#extra-damage). |
 | `choice` | Picks among SRD options (a key the SRD has) or, for kind `feature`, among the option list of a table feature. Kinds: `skill`, `expertise`, `cantrip`, `spell`, `language`, `tool`, `feature`, `feat`. A `feature` choice never asks for more than the options it lists. |
 | `ability_increase` | Feats only. `count` different abilities from `from`, `value` 1 or 2; at most one per feat. The sheet keeps the result in `ExtraAbilityBonuses`. |
 | `superiority_die` | See [Maneuvers](#maneuvers). |
@@ -81,6 +82,19 @@ Checked at its fields:
 `Derive` fills `Derived.Maneuvers` from the effects of what the character has (picked options included), with the die's sides worked out for the level, and only when the resource exists at that level; a `value` that gives fewer than 2 or more than 100 sides is ignored with a notice.
 An option with a `superiority_die` does not list its `grant_action`, so the resource is not spent twice.
 How combat spends the die (damage, grapple, reduction) is in the [play module](play/README.md).
+
+### Extra damage
+
+`extra_damage` (menu name "Dano extra"; fields `applies`, `value`, `resource`, `when`, `text_pt`; `rules/extradamage.go`) is fixed damage a feature adds to a weapon hit, once per turn, when the target is what `applies` asks.
+Checked at its fields:
+
+- `applies` is `any_target` or `larger_target` (`.applies`, `bad_value`);
+- `value` is required and compiles (`.value`, `bad_value`, `bad_formula`);
+- `resource`, when set, is one the entry or its class defines (`.resource`, `bad_reference`);
+- any field the type does not read is refused for the entry being written (`economy`, `ability`...), and a feature has at most one (`.type`, `forbidden_effect`).
+
+`Derive` fills `Derived.ExtraDamages` with the amount worked out; a resource the character does not have at that level leaves the effect out.
+The attack card offers it after a hit as a choosable part ([Attacks and damage](play/attacks-and-damage.md)).
 
 ## The class
 

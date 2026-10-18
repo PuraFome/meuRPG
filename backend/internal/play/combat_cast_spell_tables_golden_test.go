@@ -615,6 +615,21 @@ func castOtherScenarios() []goldenScenario {
 			a.h.roller.queue(10, 10, 10, 10)
 			return a.cast(t, a.ana, e, "Pensantus", scorchingRay, slotOfLevel(3), a.at(t, "Goblin 1", "Goblin 2", "Goblin 3", "Goblin 4"), poolInApp)
 		}),
+		// The refusal counts rays, not targets, since several rays may go to one creature.
+		castSteps("scorching ray with all rays at one creature", tableTarget4, func(t *testing.T, a *armed, e *playv1.Encounter) (*playv1.CastSpellResponse, error) {
+			t.Helper()
+			a.h.roller.queue(20, 20, 2, 2, 10, 10) // each ray rolls two d20 with an enemy beside the caster: a critical hit, a miss, a hit
+			return a.cast(t, a.ana, e, "Pensantus", scorchingRay, slotOfLevel(2), []*playv1.SpellTarget{darts(a, t, "Goblin 1", 3)}, poolInApp)
+		}),
+		castSteps("scorching ray with the rays shared between two creatures", tableTarget4, func(t *testing.T, a *armed, e *playv1.Encounter) (*playv1.CastSpellResponse, error) {
+			t.Helper()
+			a.h.roller.queue(10, 10, 10, 10, 10, 10, 10, 10)
+			return a.cast(t, a.ana, e, "Pensantus", scorchingRay, slotOfLevel(3), []*playv1.SpellTarget{darts(a, t, "Goblin 1", 3), darts(a, t, "Goblin 2", 1)}, poolInApp)
+		}),
+		castSteps("scorching ray with more rays than the slot makes", tableTarget4, func(t *testing.T, a *armed, e *playv1.Encounter) (*playv1.CastSpellResponse, error) {
+			t.Helper()
+			return a.cast(t, a.ana, e, "Pensantus", scorchingRay, slotOfLevel(2), []*playv1.SpellTarget{darts(a, t, "Goblin 1", 4)}, poolInApp)
+		}),
 		castSteps("scorching ray at too many creatures", tableTarget4, func(t *testing.T, a *armed, e *playv1.Encounter) (*playv1.CastSpellResponse, error) {
 			t.Helper()
 			return a.cast(t, a.ana, e, "Pensantus", scorchingRay, slotOfLevel(3), a.at(t, "Goblin 1", "Goblin 2", "Goblin 3", "Goblin 4", "Capitão Goblin"), poolInApp)

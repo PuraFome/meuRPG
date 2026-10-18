@@ -37,6 +37,8 @@ export function reactionName(w: ReactionWindow): string {
       return REACTION_NAMES.deflectMissiles;
     case ReactionKind.MANEUVER_REDUCE:
       return 'Manobra';
+    case ReactionKind.PROTECTION:
+      return REACTION_NAMES.protection;
     case ReactionKind.FEATHER_FALL:
       return REACTION_NAMES.featherFall;
     case ReactionKind.CONCENTRATION_SAVE:
@@ -131,6 +133,10 @@ const ROW_FACTS: {
   [ReactionKind.SHIELD]: (w) => [`o ataque atingiu ${w.reactorLabel}`],
   [ReactionKind.DEFLECT_MISSILES]: () => ['ataque à distância que acertou'],
   [ReactionKind.MANEUVER_REDUCE]: () => ['ataque corpo a corpo que acertou'],
+  [ReactionKind.PROTECTION]: (_w, t) => [
+    ...(t?.targetLabel ? [`${t.targetLabel} é o alvo`] : []),
+    ...(t ? [`vê ${theName(t.actorLabel)}`] : []),
+  ],
   [ReactionKind.HELLISH_REBUKE]: (_w, t) => (t ? [`o dano veio ${ofThe([t.actorLabel])}`] : []),
   [ReactionKind.FEATHER_FALL]: (_w, t) => (t?.actorLabel ? [`${t.actorLabel} cai`] : []),
   [ReactionKind.CUTTING_WORDS]: (_w, t, far) => [
@@ -177,6 +183,11 @@ function groupSubtitle(first: ReactionWindow): string {
       return joinDots([
         `Ataque ${ofThe([t.actorLabel])}${t.targetLabel ? ` contra ${t.targetLabel}` : ''}`,
         'acertou',
+      ]);
+    case ReactionKind.PROTECTION:
+      return joinDots([
+        `Ataque ${ofThe([t.actorLabel])}${t.targetLabel ? ` contra ${t.targetLabel}` : ''}`,
+        'ainda não rolado',
       ]);
     default:
       return joinDots([

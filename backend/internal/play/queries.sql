@@ -1705,3 +1705,10 @@ UPDATE hit_riders SET used = true, choice = $3 WHERE encounter_id = $1 AND id = 
 -- name: DeleteOpenHitRidersOf :exec
 -- The offers of an attacker's earlier hits go when it attacks again.
 DELETE FROM hit_riders WHERE attacker_id = $1 AND NOT used;
+
+-- name: SetCombatantTableOnceTurns :exec
+-- The turns in which the table's once-per-turn extras last added their damage, by feature key
+-- (JSON); the marks before are put back by an undo.
+UPDATE combatants
+SET table_once_turns = $2
+WHERE id = $1;
