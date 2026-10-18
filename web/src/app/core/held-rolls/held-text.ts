@@ -22,6 +22,7 @@ const KIND_TEXT: Readonly<Record<HeldRollKind, string>> = {
   [HeldRollKind.HINT_TRY]: 'Tentativa de dica do quebra-cabeça',
   [HeldRollKind.DEATH_SAVE]: 'Teste contra a morte',
   [HeldRollKind.CONTEST]: 'Disputa',
+  [HeldRollKind.COUNTERSPELL_CHECK]: 'Teste da Contramágica',
   [HeldRollKind.INITIATIVE]: 'Iniciativa',
 };
 

@@ -33,6 +33,7 @@ const (
 	heldTrapSearch        heldKind = "trap_search"
 	heldHintTry           heldKind = "hint_try"
 	heldDeathSave         heldKind = "death_save"
+	heldCounterspell      heldKind = "counterspell_check"
 	heldContest           heldKind = "contest_check"
 	heldInitiative        heldKind = "initiative"
 )

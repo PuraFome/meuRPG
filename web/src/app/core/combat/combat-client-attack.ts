@@ -269,7 +269,11 @@ export class CombatAttackCalls {
           : { case: 'typed', value: answer.die.typed },
       idempotencyKey: key,
     });
-    return { encounter: need(res.encounter, 'AnswerReaction'), result: res.result };
+    return {
+      encounter: need(res.encounter, 'AnswerReaction'),
+      result: res.result,
+      held: res.heldRollOffer,
+    };
   }
 
   /**

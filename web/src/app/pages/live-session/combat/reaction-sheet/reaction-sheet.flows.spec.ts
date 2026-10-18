@@ -9,6 +9,7 @@ import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1
 import {
   EncounterBlockedReason,
   EncounterBlockedSchema,
+  HeldRollKind,
   ReactionKind,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { CombatClient } from '../../../../core/combat/combat-client';
@@ -391,6 +392,52 @@ describe('ReactionSheet, the answers and the keys', () => {
       button(s.el, 'Ficar com o 1').click();
       await settle(s.fixture);
       expect(animator.play).not.toHaveBeenCalled();
+    });
+
+    it('asks the question of a Counterspell check kept for it, and settles the reaction with the answer', async () => {
+      const counter = win(
+        'counterspell',
+        {
+          casterLabel: 'Mago 1',
+          distanceFt: 30,
+          slotOptions: [{ level: 3, pact: false, free: 2 }],
+        },
+        { kind: ReactionKind.COUNTERSPELL },
+      );
+      api.answerReaction
+        .mockRejectedValueOnce(blocked(EncounterBlockedReason.REACTION_NEEDS_ROLL))
+        .mockResolvedValueOnce({
+          encounter: encounter({ reactionWindows: [counter] } as never),
+          result: undefined,
+          held: heldDie(9, 4, 8, { kind: HeldRollKind.COUNTERSPELL_CHECK }),
+        });
+      const s = setup(counter);
+      button(s.el, 'Usar Contramágica').click();
+      await settle(s.fixture);
+      button(s.el, 'Rolar no app').click();
+      await settle(s.fixture);
+      expect(s.el.querySelector('app-held-roll-prompt')).not.toBeNull();
+      expect(closed).toEqual([]);
+
+      resources.answerHeldRoll.mockResolvedValue(
+        heldAnswer({
+          result: {
+            case: 'counterspellCheck',
+            value: {
+              encounter: encounter(),
+              result: {
+                used: true,
+                nextWindowId: '',
+                result: { case: 'counterspell', value: { countered: true, checkDc: 14 } },
+              },
+            },
+          },
+        }),
+      );
+      button(s.el, 'Guardar o dado').click();
+      await settle(s.fixture);
+      expect(resources.answerHeldRoll).toHaveBeenCalledTimes(1);
+      expect(s.el.querySelector('app-held-roll-prompt')).toBeNull();
     });
 
     it('says so when the server settles Lucky without the save', async () => {
