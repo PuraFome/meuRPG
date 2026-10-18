@@ -1,0 +1,34 @@
+{
+  "cast_id": "x",
+  "caster": "x",
+  "key": "x",
+  "secret": true,
+  "slot": {
+    "level": 1,
+    "pact": true
+  },
+  "ritual": true,
+  "minutes": 1,
+  "targets": [
+    {
+      "id": "x",
+      "effect": "x",
+      "amount": 1,
+      "before": 1,
+      "after": 1,
+      "extra": 1,
+      "ac": 1,
+      "blessed": true
+    }
+  ],
+  "ended": [
+    "x"
+  ],
+  "created": [
+    "x"
+  ],
+  "dismissed": [
+    "x"
+  ],
+  "reason": "x"
+}
