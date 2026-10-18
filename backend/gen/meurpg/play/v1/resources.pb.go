@@ -2392,12 +2392,20 @@ type GetOutsideInspirationResponse struct {
 	// The caller's rolls that wait for an answer about the die, in a combat too (the die is
 	// then on the combatant and `mine` is unset). A roll whose Lucky question waits is in
 	// `lucky_offers` instead, until it is answered.
+	// Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+	// tab opened before the one question existed; it will go with the old answer RPCs.
+	//
+	// Deprecated: Marked as deprecated in meurpg/play/v1/resources.proto.
 	Offers []*OutsideInspirationOffer `protobuf:"bytes,8,rep,name=offers,proto3" json:"offers,omitempty"`
 	// A combat is open: the bard gives in it.
 	CombatOpen bool `protobuf:"varint,9,opt,name=combat_open,json=combatOpen,proto3" json:"combat_open,omitempty"`
 	// The caller's rolls that wait for the halfling's Lucky question ("Tirou 1: rolar de novo?",
 	// AnswerOutsideLucky), in a combat too, whether or not the character holds a die: a reload
 	// asks again. `attack_key` and `target_id` are empty (they are a weapon attack's).
+	// Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+	// tab opened before the one question existed; it will go with the old answer RPCs.
+	//
+	// Deprecated: Marked as deprecated in meurpg/play/v1/resources.proto.
 	LuckyOffers   []*LuckyOffer `protobuf:"bytes,10,rep,name=lucky_offers,json=luckyOffers,proto3" json:"lucky_offers,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2482,6 +2490,7 @@ func (x *GetOutsideInspirationResponse) GetHeld() []*OutsideInspirationDie {
 	return nil
 }
 
+// Deprecated: Marked as deprecated in meurpg/play/v1/resources.proto.
 func (x *GetOutsideInspirationResponse) GetOffers() []*OutsideInspirationOffer {
 	if x != nil {
 		return x.Offers
@@ -2496,6 +2505,7 @@ func (x *GetOutsideInspirationResponse) GetCombatOpen() bool {
 	return false
 }
 
+// Deprecated: Marked as deprecated in meurpg/play/v1/resources.proto.
 func (x *GetOutsideInspirationResponse) GetLuckyOffers() []*LuckyOffer {
 	if x != nil {
 		return x.LuckyOffers
@@ -3938,7 +3948,7 @@ const file_meurpg_play_v1_resources_proto_rawDesc = "" +
 	"\x17BardicInspirationTarget\x12!\n" +
 	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12,\n" +
-	"\x12disabled_reason_pt\x18\x03 \x01(\tR\x10disabledReasonPt\"\xe0\x03\n" +
+	"\x12disabled_reason_pt\x18\x03 \x01(\tR\x10disabledReasonPt\"\xe8\x03\n" +
 	"\x1dGetOutsideInspirationResponse\x129\n" +
 	"\x04mine\x18\x01 \x01(\v2%.meurpg.play.v1.OutsideInspirationDieR\x04mine\x12\x17\n" +
 	"\ais_bard\x18\x02 \x01(\bR\x06isBard\x12\x14\n" +
@@ -3946,12 +3956,12 @@ const file_meurpg_play_v1_resources_proto_rawDesc = "" +
 	"\tuses_left\x18\x04 \x01(\x05R\busesLeft\x12\x19\n" +
 	"\buses_max\x18\x05 \x01(\x05R\ausesMax\x12A\n" +
 	"\atargets\x18\x06 \x03(\v2'.meurpg.play.v1.BardicInspirationTargetR\atargets\x129\n" +
-	"\x04held\x18\a \x03(\v2%.meurpg.play.v1.OutsideInspirationDieR\x04held\x12?\n" +
-	"\x06offers\x18\b \x03(\v2'.meurpg.play.v1.OutsideInspirationOfferR\x06offers\x12\x1f\n" +
+	"\x04held\x18\a \x03(\v2%.meurpg.play.v1.OutsideInspirationDieR\x04held\x12C\n" +
+	"\x06offers\x18\b \x03(\v2'.meurpg.play.v1.OutsideInspirationOfferB\x02\x18\x01R\x06offers\x12\x1f\n" +
 	"\vcombat_open\x18\t \x01(\bR\n" +
-	"combatOpen\x12=\n" +
+	"combatOpen\x12A\n" +
 	"\flucky_offers\x18\n" +
-	" \x03(\v2\x1a.meurpg.play.v1.LuckyOfferR\vluckyOffers\"\x9f\x01\n" +
+	" \x03(\v2\x1a.meurpg.play.v1.LuckyOfferB\x02\x18\x01R\vluckyOffers\"\x9f\x01\n" +
 	"#GiveBardicInspirationOutsideRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12.\n" +
@@ -4076,7 +4086,7 @@ const file_meurpg_play_v1_resources_proto_rawDesc = "" +
 	"\x0eLayOnHandsCure\x12!\n" +
 	"\x1dLAY_ON_HANDS_CURE_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19LAY_ON_HANDS_CURE_DISEASE\x10\x01\x12\x1c\n" +
-	"\x18LAY_ON_HANDS_CURE_POISON\x10\x022\xab\r\n" +
+	"\x18LAY_ON_HANDS_CURE_POISON\x10\x022\xc0\r\n" +
 	"\x0fResourceService\x12d\n" +
 	"\x0eGetRestPreview\x12%.meurpg.play.v1.GetRestPreviewRequest\x1a&.meurpg.play.v1.GetRestPreviewResponse\"\x03\x90\x02\x02\x12M\n" +
 	"\bTakeRest\x12\x1f.meurpg.play.v1.TakeRestRequest\x1a .meurpg.play.v1.TakeRestResponse\x12Y\n" +
@@ -4085,13 +4095,13 @@ const file_meurpg_play_v1_resources_proto_rawDesc = "" +
 	"\rUseLayOnHands\x12$.meurpg.play.v1.UseLayOnHandsRequest\x1a%.meurpg.play.v1.UseLayOnHandsResponse\x12b\n" +
 	"\x0fCreateSpellSlot\x12&.meurpg.play.v1.CreateSpellSlotRequest\x1a'.meurpg.play.v1.CreateSpellSlotResponse\x12e\n" +
 	"\x10ConvertSpellSlot\x12'.meurpg.play.v1.ConvertSpellSlotRequest\x1a(.meurpg.play.v1.ConvertSpellSlotResponse\x12t\n" +
-	"\x15GiveBardicInspiration\x12,.meurpg.play.v1.GiveBardicInspirationRequest\x1a-.meurpg.play.v1.GiveBardicInspirationResponse\x12z\n" +
-	"\x17AnswerBardicInspiration\x12..meurpg.play.v1.AnswerBardicInspirationRequest\x1a/.meurpg.play.v1.AnswerBardicInspirationResponse\x12V\n" +
-	"\vAnswerLucky\x12\".meurpg.play.v1.AnswerLuckyRequest\x1a#.meurpg.play.v1.AnswerLuckyResponse\x12t\n" +
+	"\x15GiveBardicInspiration\x12,.meurpg.play.v1.GiveBardicInspirationRequest\x1a-.meurpg.play.v1.GiveBardicInspirationResponse\x12\x7f\n" +
+	"\x17AnswerBardicInspiration\x12..meurpg.play.v1.AnswerBardicInspirationRequest\x1a/.meurpg.play.v1.AnswerBardicInspirationResponse\"\x03\x88\x02\x01\x12[\n" +
+	"\vAnswerLucky\x12\".meurpg.play.v1.AnswerLuckyRequest\x1a#.meurpg.play.v1.AnswerLuckyResponse\"\x03\x88\x02\x01\x12t\n" +
 	"\x15GetOutsideInspiration\x12,.meurpg.play.v1.GetOutsideInspirationRequest\x1a-.meurpg.play.v1.GetOutsideInspirationResponse\x12\x89\x01\n" +
-	"\x1cGiveBardicInspirationOutside\x123.meurpg.play.v1.GiveBardicInspirationOutsideRequest\x1a4.meurpg.play.v1.GiveBardicInspirationOutsideResponse\x12}\n" +
-	"\x18AnswerOutsideInspiration\x12/.meurpg.play.v1.AnswerOutsideInspirationRequest\x1a0.meurpg.play.v1.AnswerOutsideInspirationResponse\x12k\n" +
-	"\x12AnswerOutsideLucky\x12).meurpg.play.v1.AnswerOutsideLuckyRequest\x1a*.meurpg.play.v1.AnswerOutsideLuckyResponse\x12_\n" +
+	"\x1cGiveBardicInspirationOutside\x123.meurpg.play.v1.GiveBardicInspirationOutsideRequest\x1a4.meurpg.play.v1.GiveBardicInspirationOutsideResponse\x12\x82\x01\n" +
+	"\x18AnswerOutsideInspiration\x12/.meurpg.play.v1.AnswerOutsideInspirationRequest\x1a0.meurpg.play.v1.AnswerOutsideInspirationResponse\"\x03\x88\x02\x01\x12p\n" +
+	"\x12AnswerOutsideLucky\x12).meurpg.play.v1.AnswerOutsideLuckyRequest\x1a*.meurpg.play.v1.AnswerOutsideLuckyResponse\"\x03\x88\x02\x01\x12_\n" +
 	"\x0eAnswerHeldRoll\x12%.meurpg.play.v1.AnswerHeldRollRequest\x1a&.meurpg.play.v1.AnswerHeldRollResponse\x12\\\n" +
 	"\rListHeldRolls\x12$.meurpg.play.v1.ListHeldRollsRequest\x1a%.meurpg.play.v1.ListHeldRollsResponseB\xbc\x01\n" +
 	"\x12com.meurpg.play.v1B\x0eResourcesProtoP\x01Z<github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1;playv1\xa2\x02\x03MPX\xaa\x02\x0eMeurpg.Play.V1\xca\x02\x0eMeurpg\\Play\\V1\xe2\x02\x1aMeurpg\\Play\\V1\\GPBMetadata\xea\x02\x10Meurpg::Play::V1b\x06proto3"

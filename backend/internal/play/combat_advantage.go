@@ -122,6 +122,7 @@ var sourceKindToProto = map[string]playv1.AdvantageSourceKind{
 	combat.SourceFrightenedCheck:    playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_FRIGHTENED_CHECK,
 	combat.SourcePerceptionDim:      playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_PERCEPTION_DIM,
 	combat.SourceHelp:               playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_HELP,
+	combat.SourceProtection:         playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_PROTECTION,
 }
 
 // statesOf groups the states of a combat by the combatant that has them.

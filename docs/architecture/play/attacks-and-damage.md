@@ -11,6 +11,8 @@ A natural roll in the sheet's critical range or more is a critical hit for a wea
 The response carries the roll in numbers (`1d20 (13) + 6 = 19`) and the result, never the AC for the player; the master's response carries `target_armor_class`, with a Shield's +5 stored in the event so a resend finds the same.
 `TestRN20_PlayersNeverReceiveCAOrHiddenLogEntries` searches the AC in the player's JSON and checks the master's has it.
 A hit opens a `pending_damages` row (stored, so a resend or a reload finds it).
+The AC is the sheet's: a shield beside a two-handed weapon on the sheet adds nothing, in the combat and in the comparison alike.
+A Protection used on the attack gives the roll disadvantage, with its own source in the mode (see [Reactions](reactions.md#protection)).
 A weapon attack held for a Lucky or Bardic Inspiration question is in [Held rolls](held-rolls.md); a hit that waits for a reaction is in [Reactions](reactions.md).
 
 `RollDamage` rolls the damage dice (on a critical as the table rule says; the modifier once; the attack's type) or validates the typed sum (`dice.Physical`, from N to N × faces).
@@ -97,11 +99,15 @@ A hit with more than the weapon opens `PendingDamage.parts[]`:
 A critical doubles the dice of every part (or follows the table's "maximum plus a roll"), never the fixed numbers (SRD 5.1 "Critical Hits").
 In the app the server rolls every part; with physical dice the player types a sum for each part (`typed_parts[]`).
 Divine Smite's extra die against an undead or fiend is rolled as its own part and only counts when the target is one: the player sees "+1d8" and never why, and the damage a player reads on an NPC is the damage as rolled (`damageHit.Shown`), so the total says nothing either.
+The `extra_damage` effect of a table feature ([Rules: table content](../rules-table-content.md#extra-damage)) is one more choosable extra after a weapon hit by a player's character: a flat damage of the weapon's type that a critical hit does not double. It is listed off, with its reason, when the target is not larger (the sizes are public), when it was used this turn or when the resource has no use left; marking it spends a use and the rider is the master's alone. Its once-per-turn mark is kept by feature key in `combatants.table_once_turns`, and the master's undo puts it and the use back. It is not a maneuver: the one-maneuver-per-attack limit does not count it.
+
 Sneak Attack and Colossus Slayer are once per turn (`sneak_attack_turn`, `colossus_slayer_turn`); Hunter's Mark follows the caster's concentration (`combatant_states`).
 Great Weapon Fighting rerolls 1s and 2s once, shown on the part.
 The master sees the damage by part and takes an extra out with a reason (`RemoveDamagePart`); the weapon and automatic lines stay.
 Undoing a damage roll gives back the slot, the once-per-turn marks and the rolls.
 An area spell's damage is one roll for the whole cast: it settles every pending damage of the cast still waiting for a roll with the same damage type, in the combat's order (`sortByCombatOrder`), so `settled` in the event and `cast_pending_damages` in the answer read the same way on every run.
+
+The rays of Scorching Ray are not an area: each hit opens a pending damage with no `cast_id`, so several rays at one creature are several separate rolls, listed in `cast.pending_damages` in the order of the rays (the request's target order, a target's rays together).
 
 ## Roll modes
 

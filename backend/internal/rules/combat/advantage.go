@@ -64,6 +64,8 @@ const (
 	SourceEffectSave       = "effect_save"
 	SourceEffectCheck      = "effect_check"
 	SourceEffectAttack     = "effect_attack"
+	// SourceProtection is the Protection fighting style of a shield-bearer next to the target.
+	SourceProtection = "protection"
 	// Saving throws and ability checks.
 	SourceDodgingSave     = "dodging_save"
 	SourceDangerSense     = "danger_sense"

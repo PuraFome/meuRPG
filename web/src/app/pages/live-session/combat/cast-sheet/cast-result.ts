@@ -37,7 +37,7 @@ export interface SlotAfter {
           <span class="pool__roll">{{ pool() }}</span>
         </p>
       }
-      @for (r of rows(); track r.id) {
+      @for (r of rows(); track $index) {
         <section class="tg" [attr.aria-label]="r.label">
           <div class="tg__head">
             <b class="tg__name">{{ r.label }}</b>

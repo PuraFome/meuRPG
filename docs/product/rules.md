@@ -736,6 +736,7 @@ There is no "Pular": every window is answered with "Usar" or "Deixar passar", or
 | Hellish Rebuke | 2d10 fire (+1d10 per slot level above 1st), Dexterity save for half; the tiefling's Infernal Legacy casts it once per long rest. The aggressor's save is the master's and cannot be passed. |
 | Counterspell | A spell of the slot's level or lower fails; a higher one asks a spellcasting ability check against 10 + the spell's level. The slot is spent. The prompt to a player never names the spell or its level. |
 | Cutting Words (Lore bard 3) | Spends a Bardic Inspiration and takes the die off an attack roll (weapon or spell), ability check or damage roll of a creature of the other side that the bard sees within 60 feet. In a combat the checks it asks are the roll of a contest (grapple, shove, escape), the answer to a contest and a Hide; the roll waits for the bard before it is made. A check outside a combat has no window. A creature that cannot hear the bard or is immune to being charmed opens no window, nor does one the bard's player cannot see. The sheet setting "Perguntar: todos / só em ataques (padrão) / nunca" chooses what it asks: the checks only in "todos". |
+| Protection (Fighting Style) | A creature the reactor sees attacks someone on the reactor's side within 5 ft of it (not the reactor): the attack roll has disadvantage. Only while the reactor wields a shield, has its reaction and sees the attacker. A combat without a map does not offer it. |
 | Feather Fall | Up to five falling creatures within 60 ft take no falling damage. |
 | Opportunity attack | See RN-21. |
 | Concentration save | Damage to a concentrating creature asks Constitution against DC 10 or half the damage; 0 HP ends the concentration with no save (RN-22). |
@@ -745,7 +746,7 @@ The held action waits until the window is answered, and is dropped if it can no 
 The turn waits for open windows.
 A player reads only their own windows, and the numbers of the trigger (an attack total, an armor class, a damage) are the master's.
 
-- **An optional reaction a player does not answer passes after 30 seconds** (Shield, Uncanny Dodge, Hellish Rebuke's cast, Counterspell, Cutting Words, Deflect Missiles, Feather Fall and an opportunity attack offered to a player). The master's screen counts it ("Passa sozinho em N s"), the player's prompt reads "Se você não responder, passa sozinho em N s.". Never a saving throw, a contest or the master's check.
+- **An optional reaction a player does not answer passes after 30 seconds** (Shield, Uncanny Dodge, Hellish Rebuke's cast, Counterspell, Cutting Words, Deflect Missiles, Protection, Feather Fall and an opportunity attack offered to a player). The master's screen counts it ("Passa sozinho em N s"), the player's prompt reads "Se você não responder, passa sozinho em N s.". Never a saving throw, a contest or the master's check.
 - **A player who is rolling gets longer.** While the player rolls a physical die, the window waits up to 2 minutes: "Você está rolando: a mesa espera 2 min", and the master reads "Rolando… passa sozinho em N s". The master can pass it sooner.
 - **Table rule "Reações dos inimigos"** (RN-24): "Só quando um inimigo pode reagir" (default) opens a window only when an enemy can react; "Sempre" opens the master's one-tap check on every attack, cast and damage of a player against an enemy, so the pause tells the players nothing.
 
@@ -781,6 +782,7 @@ The choices cover the SRD 5.1 sections Fighting Style, Draconic Ancestry and Bre
 - **A locked sheet** whose class gained a choice stays playable. The owner and the master read "N escolhas pendentes", and the player completes only the missing picks, changing nothing else on the sheet (RN-01). The master also reads "N escolhas em aberto" on the campaign page; a player never sees another's.
 - **Level up** also asks the choices left behind ("Escolhas que ficaram para trás") and the new ones of the level, and refuses an invocation whose prerequisite is unmet.
 - **What a pick gives** (breath weapon, resistance, Fiend spells, the +1s) appears on the sheet.
+- **A shield and a two-handed weapon.** A shield adds +2 to the armor class only while a hand is free for it. The sheet lists the weapons carried and has no hands, so a two-handed weapon on the sheet takes the shield's bonus away, in the sheet and in the combat; the sheet says why ("O escudo não soma na CA…") and the player gets the bonus back by taking one of the two off the sheet. A versatile weapon counts as one-handed, since the sheet does not say how it is gripped. The Protection fighting style (RN-31) needs the shield to count.
 
 How it is built: [Architecture](../architecture/rules-level-up.md) and [characters](../architecture/characters.md).
 

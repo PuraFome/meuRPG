@@ -216,6 +216,7 @@ type Combatant struct {
 	EffectNoReaction        bool
 	JumpLongBonusDft        int32
 	JumpDoubled             bool
+	TableOnceTurns          []byte
 }
 
 type CombatantState struct {
@@ -543,22 +544,6 @@ type RevivifyRequest struct {
 	CreateHash        *string
 	AnswerKey         *string
 	AnswerHash        *string
-}
-
-type RollHold struct {
-	ID             string
-	EncounterID    string
-	CombatantID    string
-	IdempotencyKey string
-	Request        []byte
-	Face           int32
-	Modifier       int32
-	Round          int32
-	AnswerKey      *string
-	CreatedAt      time.Time
-	LuckyIndex     *int32
-	LuckyAnswerKey *string
-	LuckyTo        *int32
 }
 
 type RollModeRequest struct {

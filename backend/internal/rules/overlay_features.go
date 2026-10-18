@@ -17,7 +17,7 @@ import (
 // the SRD has no effect of that type (a feat from another book brings it).
 var overlayEffectTypes = []string{
 	"modifier", "proficiency", "resource", "sense", "roll_mode", "grant_action",
-	"superiority_die", "extra_attack", "ranged_attack", "choice", "ability_increase", "note",
+	"superiority_die", "extra_attack", "extra_damage", "ranged_attack", "resistance", "choice", "ability_increase", "note",
 }
 
 // overlayChoiceKinds are the choices a table feature may offer. The subclass and
@@ -265,6 +265,8 @@ func (b *overlayBuilder) checkEffect(owner, path string, e *Effect, strict bool)
 		}
 	case "superiority_die":
 		return b.checkSuperiorityDie(site, e)
+	case "extra_damage":
+		return b.checkExtraDamage(site, e)
 	case "resource":
 		return b.checkResourceEffect(site, e)
 	}
@@ -448,8 +450,12 @@ var ownFields = map[string][]string{
 	"superiority_die": {"value", "resource", "economy", "applies", "ability"},
 	// An ability_increase is a feat's alone (checkEffect).
 	"ability_increase": {"value", "count", "from"},
+	// An extra_damage adds its value to a weapon hit, when its applies holds, from a resource if it names one.
+	"extra_damage": {"applies", "value", "resource"},
 	// A ranged_attack's switches; which of them its applies allows is checkRangedAttack's.
 	"ranged_attack": {"applies", "ignore_cover", "range_multiplier", "no_long_range_disadvantage"},
+	// A resistance names the damage type it leaves out and when it holds.
+	"resistance": {"except", "while"},
 }
 
 // effectField is a field of an Effect a type may not read: its name in the
@@ -485,6 +491,8 @@ var effectFields = []effectField{
 	{"ignore_cover", func(e *Effect) bool { return e.IgnoreCover }, func(e *Effect) { e.IgnoreCover = false }},
 	{"range_multiplier", func(e *Effect) bool { return e.RangeMultiplier != 0 }, func(e *Effect) { e.RangeMultiplier = 0 }},
 	{"no_long_range_disadvantage", func(e *Effect) bool { return e.NoLongRangeDisadvantage }, func(e *Effect) { e.NoLongRangeDisadvantage = false }},
+	{"except", func(e *Effect) bool { return e.Except != "" }, func(e *Effect) { e.Except = "" }},
+	{"while", func(e *Effect) bool { return e.While != "" }, func(e *Effect) { e.While = "" }},
 	{"progression", func(e *Effect) bool { return e.Progression != "" }, func(e *Effect) { e.Progression = "" }},
 	{"prepares", func(e *Effect) bool { return e.Prepares }, func(e *Effect) { e.Prepares = false }},
 	{"prepared_max", func(e *Effect) bool { return e.PreparedMax != "" }, func(e *Effect) { e.PreparedMax = "" }},
@@ -619,6 +627,10 @@ var effectErrorRules = []effectErrorRule{
 	{[]string{"extra_attack needs"}, fieldAttr(".count"), ReasonValue},
 	{[]string{"empty tag"}, fieldAttr(".tags"), ReasonValue},
 	{[]string{"unknown spell"}, fieldAttr(".spells"), ReasonReference},
+	{[]string{"is not a damage type"}, fieldAttr(".except"), ReasonReference},
+	{[]string{"while must be"}, fieldAttr(".while"), ReasonValue},
+	{[]string{"a resistance has no when"}, fieldAttr(".when"), ReasonValue},
+	{[]string{"a resistance has no tags"}, fieldAttr(".tags"), ReasonValue},
 }
 
 // formulaAttr is the field whose formula a compile error names (".when", ".value"
@@ -672,9 +684,18 @@ func (b *overlayBuilder) compileEffectsOf(owner string) error {
 // returns the ones that compiled, and whether any did not (those go to c).
 func (b *overlayBuilder) compilePending(c *entryErrors, p pendingEffects) (out []*Effect, failed bool) {
 	out = make([]*Effect, 0, len(p.effects))
+	extraDamages := 0
 	for i := range p.effects {
 		e := p.effects[i]
 		at := fmt.Sprintf("%s.effects[%d]", p.path, i)
+		if e.Type == "extra_damage" {
+			// One for each feature: the extra is chosen, marked and spent by the feature's key.
+			if extraDamages++; extraDamages > 1 {
+				c.add(ovErr(p.owner, "a feature has one extra_damage effect: give the other its own feature").at(at+".type", ReasonEffect))
+				failed = true
+				continue
+			}
+		}
 		e.Tags, e.Targets, e.From, e.Spells = slices.Clone(e.Tags), slices.Clone(e.Targets), slices.Clone(e.From), slices.Clone(e.Spells)
 		if !p.strict {
 			stripUnused(&e)

@@ -92,6 +92,7 @@ func derivedNumbersToProto(d rules.Derived) *rulesv1.DerivedSheet {
 		NextLevelXp:           i32(d.NextLevelXP),
 		ArmorClass:            i32(d.ArmorClass),
 		ArmorClassDescription: d.ArmorClassDescription,
+		ShieldIdle:            d.ShieldIdle,
 		HitPointsMax:          i32(max(d.HitPointsMax, 1)),
 		HitPointsFromEffects:  i32(d.HitPointsFromEffects),
 		SpeedWalkFt:           i32(d.SpeedWalkFt),

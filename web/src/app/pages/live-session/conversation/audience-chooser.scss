@@ -1,0 +1,122 @@
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  margin: 0 0 var(--mr-space-4);
+  padding: 0;
+  border: 0;
+}
+
+.group--people {
+  gap: 0;
+
+  legend {
+    margin-bottom: var(--mr-space-1);
+    padding: 0;
+  }
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: 0 var(--mr-space-3);
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  cursor: pointer;
+
+  &:has(:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.choice--on {
+  border: 2px solid var(--mr-accent);
+  background: var(--mr-accent-soft);
+  font-weight: 700;
+}
+
+.person {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  min-height: 48px;
+  border-bottom: 1px solid var(--mr-rule);
+  cursor: pointer;
+
+  &:last-child {
+    border-bottom: 0;
+  }
+
+  &:has(:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: -2px;
+  }
+}
+
+input[type='radio'],
+input[type='checkbox'] {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--mr-accent);
+}
+
+.person__name {
+  flex: 1;
+  min-width: 0;
+}
+
+.person__sub {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.live {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+}
+
+.foot {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mr-space-2);
+}
+
+.foot__button {
+  min-height: 48px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  @media (min-width: 768px) {
+    min-height: 44px;
+  }
+}
+
+.foot__button--primary {
+  border-color: transparent;
+  background: var(--mr-accent);
+  color: var(--mr-on-accent);
+
+  &[aria-disabled='true'] {
+    border: 1px dashed var(--mr-control-line);
+    background: transparent;
+    color: var(--mr-ink-muted);
+    cursor: default;
+  }
+}
