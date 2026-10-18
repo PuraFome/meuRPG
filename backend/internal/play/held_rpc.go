@@ -29,6 +29,8 @@ var heldKindProto = map[heldKind]playv1.HeldRollKind{
 	heldEffectSave:        playv1.HeldRollKind_HELD_ROLL_KIND_EFFECT_SAVE,
 	heldConcentrationSave: playv1.HeldRollKind_HELD_ROLL_KIND_CONCENTRATION_SAVE,
 	heldDeathSave:         playv1.HeldRollKind_HELD_ROLL_KIND_DEATH_SAVE,
+	heldHide:              playv1.HeldRollKind_HELD_ROLL_KIND_HIDE,
+	heldCounterspell:      playv1.HeldRollKind_HELD_ROLL_KIND_COUNTERSPELL_CHECK,
 	heldContest:           playv1.HeldRollKind_HELD_ROLL_KIND_CONTEST,
 	heldInitiative:        playv1.HeldRollKind_HELD_ROLL_KIND_INITIATIVE,
 	heldSceneCheck:        playv1.HeldRollKind_HELD_ROLL_KIND_SCENE_CHECK,
@@ -202,10 +204,24 @@ func answerHeldResultOf(out proto.Message) *playv1.AnswerHeldRollResponse {
 	case *playv1.RollForPlayerResponse: // the master's roll for a player is a group check's, in the same arm
 		g := &playv1.RollGroupCheckResponse{GroupCheck: o.GetGroupCheck(), InspirationOffer: o.GetInspirationOffer(), LuckyOffer: o.GetLuckyOffer(), HeldRollOffer: o.GetHeldRollOffer()}
 		res.Result, res.Next = &playv1.AnswerHeldRollResponse_GroupCheck{GroupCheck: g}, g.GetHeldRollOffer()
+	default:
+		answerHeldCheckResultOf(out, res)
+	}
+	return res
+}
+
+// answerHeldCheckResultOf fills res for the checks outside the attack and save family: either side of a contest, Hide,
+// the Counterspell check, a death save, an initiative, a trap search and a puzzle hint.
+func answerHeldCheckResultOf(out proto.Message, res *playv1.AnswerHeldRollResponse) {
+	switch o := out.(type) {
 	case *playv1.StartContestResponse:
 		res.Result, res.Next = &playv1.AnswerHeldRollResponse_Contest{Contest: o}, o.GetHeldRollOffer()
 	case *playv1.RespondContestResponse:
 		res.Result, res.Next = &playv1.AnswerHeldRollResponse_ContestAnswer{ContestAnswer: o}, o.GetHeldRollOffer()
+	case *playv1.HideResponse:
+		res.Result, res.Next = &playv1.AnswerHeldRollResponse_Hide{Hide: o}, o.GetHeldRollOffer()
+	case *playv1.AnswerReactionResponse:
+		res.Result, res.Next = &playv1.AnswerHeldRollResponse_CounterspellCheck{CounterspellCheck: o}, o.GetHeldRollOffer()
 	case *playv1.RollDeathSaveResponse:
 		res.Result, res.Next = &playv1.AnswerHeldRollResponse_DeathSave{DeathSave: o}, o.GetHeldRollOffer()
 	case *playv1.SubmitInitiativeResponse:
@@ -215,7 +231,6 @@ func answerHeldResultOf(out proto.Message) *playv1.AnswerHeldRollResponse {
 	case *playv1.TryPuzzleHintResponse:
 		res.Result, res.Next = &playv1.AnswerHeldRollResponse_HintTry{HintTry: o}, o.GetHeldRollOffer()
 	}
-	return res
 }
 
 // ListHeldRolls implements playv1connect.ResourceServiceHandler.

@@ -194,7 +194,8 @@ export class ContestClient {
     };
   }
 
-  /** The Hide action: the Dexterity (Stealth) check; the attempt waits for the master. */
+  /** The Hide action: the Dexterity (Stealth) check; the attempt waits for the master. When the d20 is kept for a question (the halfling's
+   * Lucky about a 1, a Bardic Inspiration die the combatant holds) the question comes back instead of the attempt. */
   async hide(
     campaignId: string,
     encounterId: string,
@@ -202,7 +203,11 @@ export class ContestClient {
     actionKey: string,
     die: CheckDie,
     key: string,
-  ): Promise<{ readonly encounter: Encounter; readonly attempt: HideAttemptView }> {
+  ): Promise<{
+    readonly encounter: Encounter;
+    readonly attempt: HideAttemptView | undefined;
+    readonly held: HeldRollOffer | undefined;
+  }> {
     const res = await this.client.hide({
       campaignId,
       encounterId,
@@ -213,7 +218,8 @@ export class ContestClient {
     });
     return {
       encounter: need(res.encounter, 'Hide'),
-      attempt: need(res.attempt, 'Hide'),
+      attempt: res.attempt,
+      held: res.heldRollOffer,
     };
   }
 

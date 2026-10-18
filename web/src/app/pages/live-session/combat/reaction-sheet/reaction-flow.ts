@@ -68,6 +68,8 @@ export class ReactionFlow {
   /** The concentration save's d20 was rolled and kept and the save waits for a question: the halfling's Lucky ("Tirou 1:
    * rolar de novo?") first, then the Bardic Inspiration die's. The window stays open. */
   readonly held: HeldRollController;
+  /** The answer whose Counterspell check waits on the question, to show its result once the question is answered. */
+  private heldAnswer: ReactionAnswer | null = null;
   /** The d4 an effect adds to the typed saving throw (Bênção, Perdição): asked when the server says the roll takes them. */
   readonly extra = new ExtraDiceState();
   /** What the answer did, once the server told it. */
@@ -140,20 +142,31 @@ export class ReactionFlow {
           this.host.close();
           return;
         }
-        if (res.result) {
-          this.afterSlot.set(slotAfter(answer, this.host.chosen()));
-          this.nextWindowId.set(res.result.nextWindowId);
-          this.answered.set({ kind: 'reaction', result: res.result });
-          // The dice its result sheet shows, tumbling (a physical die is never animated).
-          this.play(() => showOfReaction(res.result));
+        if (res.held) {
+          // The Counterspell's check is kept for a question: the window stays open and nothing is spent (Lucky's first).
+          this.heldAnswer = answer;
+          this.held.ask(res.held);
+          this.step.set('ask');
+          return;
         }
-        this.step.set('result');
-        this.typingSave.set(false);
+        this.showReaction(answer, res.result);
       },
       async (err) => {
         await this.failed(err, answer, 'usar a reação');
       },
     );
+  }
+
+  /** The reaction was answered: what it did, and the dice of its result sheet, tumbling (a physical die is never animated). */
+  private showReaction(answer: ReactionAnswer, result: ReactionResult | undefined): void {
+    if (result) {
+      this.afterSlot.set(slotAfter(answer, this.host.chosen()));
+      this.nextWindowId.set(result.nextWindowId);
+      this.answered.set({ kind: 'reaction', result });
+      this.play(() => showOfReaction(result));
+    }
+    this.step.set('result');
+    this.typingSave.set(false);
   }
 
   async concentrate(how: ConcentrationAnswer): Promise<void> {
@@ -214,9 +227,10 @@ export class ReactionFlow {
   /** What the answer to the question brought: the save settled now with the new d20 (or the 1), or, when the character
    * holds a Bardic Inspiration die, the die's question next, on the new roll (the d20 the app rolled again tumbles). */
   private answeredHeld(res: AnswerHeldRollResponse, answer: HeldAnswer): void {
-    const settled = res.result.case === 'concentrationSave' ? res.result.value : null;
+    const counter = res.result.case === 'counterspellCheck' ? res.result.value : null;
+    const settled = res.result.case === 'concentrationSave' ? res.result.value : counter;
     if (!settled?.encounter || (!settled.result && !res.next)) {
-      throw new Error('AnswerHeldRoll answered without its concentration save');
+      throw new Error('AnswerHeldRoll answered without its result');
     }
     this.host.data.state.apply(settled.encounter);
     if (res.next) {
@@ -226,7 +240,11 @@ export class ReactionFlow {
       }
       return;
     }
-    this.showSave(settled.result!);
+    if (counter?.result && this.heldAnswer) {
+      this.showReaction(this.heldAnswer, counter.result);
+      return;
+    }
+    this.showSave(settled.result as ConcentrationSaveResult);
   }
 
   /** The dice tumble; whatever happens here never turns an answered reaction into an error. */

@@ -229,6 +229,9 @@ export interface ReactionAnswer {
 export interface AnswerResult {
   readonly encounter: Encounter;
   readonly result: GenReactionResult | undefined;
+  /** The question the d20 of a Counterspell's check waits on (the halfling's Lucky about a 1, a Bardic Inspiration die): the
+   * window stays open and nothing is spent until it is answered. */
+  readonly held: HeldRollOffer | undefined;
 }
 
 /** What an effect changes in an attack roll: the faces of the d4 it adds from physical dice, and the extra action it gives. */

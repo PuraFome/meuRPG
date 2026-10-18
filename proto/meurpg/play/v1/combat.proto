@@ -3629,6 +3629,12 @@ enum HeldRollKind {
   // The initiative of a character in SETUP (SubmitInitiative): a Dexterity check (SRD 5.1), so Lucky's reroll of a 1 and
   // a Bardic Inspiration die the character holds are asked about before the total is set.
   HELD_ROLL_KIND_INITIATIVE = 10;
+  // The Stealth check of a Hide (SRD 5.1): Lucky's reroll of a 1 and a Bardic Inspiration die are asked about before the
+  // attempt is kept for the master.
+  HELD_ROLL_KIND_HIDE = 12;
+  // The ability check of a Counterspell above the slot's level (AnswerReaction), made with the spellcasting ability (SRD 5.1):
+  // Lucky's reroll of a 1 and a Bardic Inspiration die are asked about before the spell is countered or not.
+  HELD_ROLL_KIND_COUNTERSPELL_CHECK = 13;
 }
 
 // LuckyQuestion is the halfling's "Tirou 1: rolar de novo?" (SRD 5.1, Halfling, Lucky).
@@ -5823,8 +5829,14 @@ message MarkReactionRollingResponse {
 
 message AnswerReactionResponse {
   Encounter encounter = 1;
-  // What the answer did, for the answerer (the master's `by_master` answer too).
+  // What the answer did, for the answerer (the master's `by_master` answer too). Unset while the Counterspell's check waits
+  // for a question.
   ReactionResult result = 2;
+  // Set instead of `result` when the d20 of a Counterspell's check waits for a question: the halfling's Lucky about a 1, or
+  // the Bardic Inspiration die the reactor holds (AnswerHeldRoll answers it). The d20 was rolled and kept; the window stays
+  // open and no slot or reaction is spent. The master is asked too when he answers for the player, and answers after the
+  // player's first 10 s.
+  HeldRollOffer held_roll_offer = 3;
 }
 
 // ReactionResult is what an answered window did, read by the reactor and the

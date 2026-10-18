@@ -170,7 +170,11 @@ export class FakeContestClient {
     this.calls.push('hide');
     this.hides.push({ actionKey, die, key });
     this.fail();
-    return Promise.resolve({ encounter: this.encounterAnswer, attempt: this.attempt });
+    return Promise.resolve(
+      this.held
+        ? { encounter: this.encounterAnswer, attempt: undefined, held: this.held }
+        : { encounter: this.encounterAnswer, attempt: this.attempt, held: undefined },
+    );
   }
 
   help(input: HelpInput, key: string) {
