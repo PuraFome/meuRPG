@@ -204,6 +204,16 @@ func answerHeldResultOf(out proto.Message) *playv1.AnswerHeldRollResponse {
 	case *playv1.RollForPlayerResponse: // the master's roll for a player is a group check's, in the same arm
 		g := &playv1.RollGroupCheckResponse{GroupCheck: o.GetGroupCheck(), InspirationOffer: o.GetInspirationOffer(), LuckyOffer: o.GetLuckyOffer(), HeldRollOffer: o.GetHeldRollOffer()}
 		res.Result, res.Next = &playv1.AnswerHeldRollResponse_GroupCheck{GroupCheck: g}, g.GetHeldRollOffer()
+	default:
+		answerHeldCheckResultOf(out, res)
+	}
+	return res
+}
+
+// answerHeldCheckResultOf fills res for the checks outside the attack and save family: either side of a contest, Hide,
+// the Counterspell check, a death save, an initiative, a trap search and a puzzle hint.
+func answerHeldCheckResultOf(out proto.Message, res *playv1.AnswerHeldRollResponse) {
+	switch o := out.(type) {
 	case *playv1.StartContestResponse:
 		res.Result, res.Next = &playv1.AnswerHeldRollResponse_Contest{Contest: o}, o.GetHeldRollOffer()
 	case *playv1.RespondContestResponse:
@@ -221,7 +231,6 @@ func answerHeldResultOf(out proto.Message) *playv1.AnswerHeldRollResponse {
 	case *playv1.TryPuzzleHintResponse:
 		res.Result, res.Next = &playv1.AnswerHeldRollResponse_HintTry{HintTry: o}, o.GetHeldRollOffer()
 	}
-	return res
 }
 
 // ListHeldRolls implements playv1connect.ResourceServiceHandler.
