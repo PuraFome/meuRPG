@@ -554,7 +554,7 @@ func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership
 		return err
 	}
 	creature := creatureFacts(target, modes.in.states, targetSheet.Traits)
-	sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: sp.SaveAbility, EffectVisible: true})
+	sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: sp.SaveAbility, EffectVisible: true, Against: spellAgainst(sp)})
 	modes.save[target.ID] = shownSources(sources, modes.names)
 	// Cover adds to a Dexterity save (SRD): half +2, three-quarters +5. The bonus
 	// the save shows already has it.

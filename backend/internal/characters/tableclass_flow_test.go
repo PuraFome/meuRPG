@@ -56,6 +56,7 @@ func (f *classFlow) icaroSheet() *charactersv1.CharacterSheet {
 			FeatureName: "Olho no horizonte", FeatureText: "Você sempre acha o ponto mais alto de um lugar.", Equipment: "Uma luneta, um rolo de corda e 10 PO.",
 		}},
 		Classes:              []*charactersv1.ClassLevel{{ClassKey: f.guardian.GetKey(), Level: 1}},
+		Languages:            []string{"Anão"},
 		SkillProficiencyKeys: []string{"skill:athletics", "skill:nature"},
 		HitPoints:            hitPointsAverage(), ExperiencePoints: 6500,
 	}}}
@@ -254,6 +255,7 @@ func thirdCasterSheet(sub string) *charactersv1.CharacterSheet {
 	return &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
 		BaseScores: &rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 14, Wisdom: 10, Charisma: 8}, RaceKey: "race:human",
 		Background:           &charactersv1.FullSheet_BackgroundKey{BackgroundKey: "background:acolyte"},
+		Languages:            testLanguages,
 		Classes:              []*charactersv1.ClassLevel{ownedSubclass(&charactersv1.ClassLevel{ClassKey: "class:fighter", Level: 3}, sub)},
 		SkillProficiencyKeys: []string{"skill:athletics", "skill:perception"},
 		FeatureChoiceKeys:    []string{"feature:fighter-fighting-style-defense"},

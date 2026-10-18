@@ -176,7 +176,7 @@ func (s *Service) trapTargetsOf(ctx context.Context, tx pgx.Tx, campaignID strin
 	out := make([]trapTarget, len(caught))
 	for i, c := range caught {
 		out[i].id = c.ID
-		if err := s.trapModesOf(ctx, tx, campaignID, trap, c, states, ability, &out[i]); err != nil {
+		if err := s.trapModesOf(ctx, tx, campaignID, trap, c, states, ability, trapAgainst(effect), &out[i]); err != nil {
 			return nil, err
 		}
 		if trapNeedsAC(effect) {
@@ -853,7 +853,7 @@ func (v trapView) statusOf(pendingID string) (playv1.PendingDamageStatus, bool) 
 // throw (SRD 5.1): the combatant's conditions and states count, and so does Danger
 // Sense, but only against a trap the character knew before it fired: a hidden trap
 // is no effect it sees, and the source is not even named (RN-10).
-func (s *Service) trapModesOf(ctx context.Context, tx pgx.Tx, campaignID string, trap maplink.Trap, c playdb.Combatant, states map[string][]playdb.CombatantState, ability string, out *trapTarget) error {
+func (s *Service) trapModesOf(ctx context.Context, tx pgx.Tx, campaignID string, trap maplink.Trap, c playdb.Combatant, states map[string][]playdb.CombatantState, ability string, against []string, out *trapTarget) error {
 	sheet, err := s.sheetOf(ctx, tx, campaignID, c)
 	if err != nil {
 		return err
@@ -864,7 +864,7 @@ func (s *Service) trapModesOf(ctx context.Context, tx pgx.Tx, campaignID string,
 	out.attackSources = attack.Sources
 	out.attackMode = combat.Resolve(attack.Sources)
 	if ability != "" {
-		sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: ability, EffectVisible: trap.Knows(c.CharacterID)})
+		sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: ability, EffectVisible: trap.Knows(c.CharacterID), Against: against})
 		out.saveSources, out.saveMode = sources, combat.Resolve(sources)
 		out.saveAuto = combat.AutoFailsSave(creature, ability)
 		out.lucky = luckySaver(c, sheet.Traits) // a halfling player's 1 is rolled again by the app (combat_lucky.go)

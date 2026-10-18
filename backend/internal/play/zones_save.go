@@ -139,8 +139,11 @@ func (wv *windowView) zoneSavePrompt(w playdb.ReactionWindow, reactor *playdb.Co
 	if z.row.DamageDice != "" {
 		p.DamageTypeNamePt, p.HalfOnSave = wv.names(z.row.DamageType), true
 	}
-	if err := wv.fillSaveRoll(p, reactor, z.row.SaveAbility, false); err != nil {
-		return err
+	if reactor != nil {
+		// A zone is a spell's: its save is against magic and what the spell imposes, as an effect's is.
+		if err := wv.reactorSave(p, *reactor, z.row.SaveAbility, effectAgainst(z.row.SpellKey, nil), false); err != nil {
+			return err
+		}
 	}
 	out.Prompt = &playv1.ReactionWindow_EffectSave{EffectSave: p}
 	return nil

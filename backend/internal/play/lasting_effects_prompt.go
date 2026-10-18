@@ -5,7 +5,6 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
-	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -57,27 +56,30 @@ func (wv *windowView) effectSavePrompt(w playdb.ReactionWindow, reactor *playdb.
 	}
 	def, _ := wv.s.effectDef(content, key)
 	p.TextPt = effectSaveText(def, t.Phase, wv.names, st)
-	if err := wv.fillSaveRoll(p, reactor, ability, t.OnDamage); err != nil {
-		return err
+	if reactor != nil {
+		if err := wv.reactorSave(p, *reactor, ability, effectAgainst(key, def), t.OnDamage); err != nil {
+			return err
+		}
 	}
 	out.Prompt = &playv1.ReactionWindow_EffectSave{EffectSave: p}
 	return nil
 }
 
-// fillSaveRoll adds to the prompt what the roll is made from for the creature that answers: its bonus, the
-// mode of the d20 and the dice effects add.
-func (wv *windowView) fillSaveRoll(p *playv1.EffectSavePrompt, reactor *playdb.Combatant, ability string, onDamage bool) error {
-	if reactor == nil {
-		return nil
-	}
-	save, err := wv.s.saveOf(wv.ctx, nil, wv.m.CampaignID, *reactor, ability)
+// reactorSave fills the part of an effect's save prompt that is the reactor's: the bonus, the mode with the
+// reasons for it (the racial advantages against what the effect is among them), the automatic failure and the dice.
+func (wv *windowView) reactorSave(p *playv1.EffectSavePrompt, reactor playdb.Combatant, ability string, against []string, onDamage bool) error {
+	save, err := wv.s.saveOf(wv.ctx, nil, wv.m.CampaignID, reactor, ability)
 	if err != nil {
 		return wv.s.dbError(wv.ctx, "read a saving throw", err)
 	}
 	p.Modifier, p.BonusKnown = conv.Int32(save.Bonus), save.Known
 	states := statesOf(wv.d.states)
-	creature := creatureFacts(*reactor, states, link.Traits{})
-	sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: ability, EffectVisible: true})
+	sheet, err := wv.s.sheetOf(wv.ctx, nil, wv.m.CampaignID, reactor)
+	if err != nil {
+		return wv.s.dbError(wv.ctx, "read the sheet", err)
+	}
+	creature := creatureFacts(reactor, states, sheet.Traits)
+	sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: ability, EffectVisible: true, Against: against})
 	if onDamage {
 		sources = append(sources, combat.Source{Kind: combat.SourceEffectSave, Effect: combat.ModeAdvantage})
 	}
