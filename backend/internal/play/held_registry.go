@@ -2,9 +2,11 @@ package play
 
 import (
 	"context"
+	"fmt"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
@@ -56,6 +58,7 @@ func init() {
 		heldTrapSearch:        {rerun: registerRerun((*Service).SearchForTraps), ownRoll: true},
 		heldHintTry:           {rerun: registerRerun((*Service).TryPuzzleHint)},
 		heldDeathSave:         {rerun: registerRerun((*Service).RollDeathSave)},
+		heldContest:           {rerun: rerunContest},
 		heldInitiative:        {rerun: registerRerun((*Service).SubmitInitiative)},
 	}
 }
@@ -75,7 +78,7 @@ func registerRerun[Req, Res any, PReq interface {
 		}
 		out, err := path(s, ctx, connect.NewRequest((*Req)(orig)))
 		if err != nil {
-			return nil, err //nolint:wrapcheck // the path's own refusal
+			return nil, err
 		}
 		return PRes(out.Msg), nil
 	}
@@ -95,6 +98,34 @@ func rerunGroupCheck(ctx context.Context, s *Service, h heldRoll, key string) (p
 	return registerRerun((*Service).RollGroupCheck)(ctx, s, h, key)
 }
 
+// rerunContest runs a contest's roll again: the initiator's (StartContest) or the defender's (RespondContest), which the
+// request the hold kept says (it is kept as an Any, since both are the one kind of held roll).
+func rerunContest(ctx context.Context, s *Service, h heldRoll, _ string) (proto.Message, error) {
+	var kept anypb.Any
+	if err := proto.Unmarshal(h.Request, &kept); err != nil {
+		return nil, s.dbError(ctx, "read the held roll", err)
+	}
+	req, err := kept.UnmarshalNew()
+	if err != nil {
+		return nil, s.dbError(ctx, "read the held roll", err)
+	}
+	switch r := req.(type) {
+	case *playv1.StartContestRequest:
+		out, err := s.StartContest(ctx, connect.NewRequest(r))
+		if err != nil {
+			return nil, err
+		}
+		return out.Msg, nil
+	case *playv1.RespondContestRequest:
+		out, err := s.RespondContest(ctx, connect.NewRequest(r))
+		if err != nil {
+			return nil, err
+		}
+		return out.Msg, nil
+	}
+	return nil, s.dbError(ctx, "read the held roll", fmt.Errorf("a held contest of request %T", req))
+}
+
 // rerunAttack runs the weapon attack again. The attack that a reaction window held first has its event
 // under the request's key: the question's answer settles under the answer's own.
 func rerunAttack(ctx context.Context, s *Service, h heldRoll, key string) (proto.Message, error) {
@@ -107,7 +138,7 @@ func rerunAttack(ctx context.Context, s *Service, h heldRoll, key string) (proto
 	}
 	out, err := s.RollAttack(ctx, connect.NewRequest(&orig))
 	if err != nil {
-		return nil, err //nolint:wrapcheck // the path's own refusal
+		return nil, err
 	}
 	return out.Msg, nil
 }

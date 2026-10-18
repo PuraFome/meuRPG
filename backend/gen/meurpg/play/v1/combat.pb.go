@@ -1825,6 +1825,10 @@ const (
 	// The death saving throw of a character at 0 hit points (RollDeathSave), asked about Lucky's reroll of a 1 and about
 	// a Bardic Inspiration die like any other saving throw (SRD 5.1).
 	HeldRollKind_HELD_ROLL_KIND_DEATH_SAVE HeldRollKind = 9
+	// A roll of a contest, an ability check (SRD 5.1): the initiator's (StartContest: a grapple, a shove, an escape) before
+	// the contest is opened, or the defender's (RespondContest) before it is settled. Lucky's reroll of a 1 and a Bardic
+	// Inspiration die are asked about before anything is spent or written.
+	HeldRollKind_HELD_ROLL_KIND_CONTEST HeldRollKind = 11
 	// The initiative of a character in SETUP (SubmitInitiative): a Dexterity check (SRD 5.1), so Lucky's reroll of a 1 and
 	// a Bardic Inspiration die the character holds are asked about before the total is set.
 	HeldRollKind_HELD_ROLL_KIND_INITIATIVE HeldRollKind = 10
@@ -1843,6 +1847,7 @@ var (
 		7:  "HELD_ROLL_KIND_TRAP_SEARCH",
 		8:  "HELD_ROLL_KIND_HINT_TRY",
 		9:  "HELD_ROLL_KIND_DEATH_SAVE",
+		11: "HELD_ROLL_KIND_CONTEST",
 		10: "HELD_ROLL_KIND_INITIATIVE",
 	}
 	HeldRollKind_value = map[string]int32{
@@ -1856,6 +1861,7 @@ var (
 		"HELD_ROLL_KIND_TRAP_SEARCH":        7,
 		"HELD_ROLL_KIND_HINT_TRY":           8,
 		"HELD_ROLL_KIND_DEATH_SAVE":         9,
+		"HELD_ROLL_KIND_CONTEST":            11,
 		"HELD_ROLL_KIND_INITIATIVE":         10,
 	}
 )
@@ -24685,7 +24691,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x1aAREA_PLACEMENT_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14AREA_PLACEMENT_POINT\x10\x01\x12\x1c\n" +
 	"\x18AREA_PLACEMENT_DIRECTION\x10\x02\x12\x19\n" +
-	"\x15AREA_PLACEMENT_CASTER\x10\x03*\xf3\x02\n" +
+	"\x15AREA_PLACEMENT_CASTER\x10\x03*\x8f\x03\n" +
 	"\fHeldRollKind\x12\x1e\n" +
 	"\x1aHELD_ROLL_KIND_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cHELD_ROLL_KIND_WEAPON_ATTACK\x10\x01\x12\x1f\n" +
@@ -24696,7 +24702,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x1aHELD_ROLL_KIND_GROUP_CHECK\x10\x06\x12\x1e\n" +
 	"\x1aHELD_ROLL_KIND_TRAP_SEARCH\x10\a\x12\x1b\n" +
 	"\x17HELD_ROLL_KIND_HINT_TRY\x10\b\x12\x1d\n" +
-	"\x19HELD_ROLL_KIND_DEATH_SAVE\x10\t\x12\x1d\n" +
+	"\x19HELD_ROLL_KIND_DEATH_SAVE\x10\t\x12\x1a\n" +
+	"\x16HELD_ROLL_KIND_CONTEST\x10\v\x12\x1d\n" +
 	"\x19HELD_ROLL_KIND_INITIATIVE\x10\n" +
 	"*\\\n" +
 	"\vSaveOutcome\x12\x1c\n" +

@@ -4,6 +4,7 @@ import {
   ElementRef,
   computed,
   effect,
+  Injector,
   inject,
   signal,
   viewChild,
@@ -15,8 +16,12 @@ import { MatIconModule } from '@angular/material/icon';
 import type { Observable } from 'rxjs';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import { contestHeld, waysOf } from '../contest-held';
+import { ResourceClient } from '../../../../core/resources/resources-client';
+import { HeldRollPrompt } from '../../../../shared/held-roll-prompt/held-roll-prompt';
 import {
   type ContestAttackOption,
+  type ContestView,
   type ContestSkillOption,
   ContestKind,
   ContestPurpose,
@@ -57,6 +62,7 @@ import {
   GRAPPLE_STEPS,
   type Stage,
   checkOf,
+  startInputOf,
   limitTextOf,
   maneuverWhy,
   stageOf,
@@ -124,7 +130,15 @@ export function openContestSheet(
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-contest-sheet',
-  imports: [AttackSteps, CheckRollForm, ContestRoll, MatButtonModule, MatIconModule, SheetFrame],
+  imports: [
+    AttackSteps,
+    CheckRollForm,
+    ContestRoll,
+    HeldRollPrompt,
+    MatButtonModule,
+    MatIconModule,
+    SheetFrame,
+  ],
   templateUrl: './contest-sheet.html',
   styleUrl: './contest-sheet.scss',
 })
@@ -153,6 +167,26 @@ export class ContestSheet {
   private readonly started = signal(this.data.contestId ?? '');
   /** What a won shove will do. */
   protected readonly outcome = signal<ShoveOutcome | null>(null);
+
+  private readonly injector = inject(Injector);
+  private get resources(): ResourceClient {
+    return this.injector.get(ResourceClient); // built when a question is answered: the sheet needs it for no other call
+  }
+  /** The question of the initiator's roll when the d20 was kept for one: Lucky's 1, then the Bardic Inspiration die. */
+  protected readonly held = contestHeld({
+    resources: () => this.resources,
+    campaignId: this.data.campaignId,
+    busy: this.busy,
+    error: this.error,
+    side: 'contest',
+    settled: (encounter, contest) => {
+      this.data.state.apply(encounter);
+      this.opened(contest, this.escape ? this.skill() : ContestSkill.ATHLETICS);
+      this.startKeys.renew();
+    },
+    asked: (encounter) => this.data.state.apply(encounter),
+  });
+  protected readonly ways = waysOf(this.data);
 
   private readonly startKeys = new ActionKey();
   private readonly shoveKeys = new ActionKey();
@@ -362,50 +396,42 @@ export class ContestSheet {
     this.error.set('');
     try {
       const skill = this.escape ? this.skill() : ContestSkill.ATHLETICS;
-      const res = await this.api.start(
-        {
-          campaignId: this.data.campaignId,
-          encounterId: this.data.encounterId,
-          initiatorId: this.data.initiatorId,
-          targetId: target,
-          purpose: this.data.purpose,
-          kind: ContestKind.CONTEST,
-          skill,
-          die,
-          ...(this.maneuverKey()
-            ? { maneuverKey: this.maneuverKey(), maneuverFace: this.maneuverFace() }
-            : {}),
-        },
-        this.startKeys.keyFor({
-          initiator: this.data.initiatorId,
-          target,
-          purpose: this.data.purpose,
-          skill,
-          die,
-          maneuver: this.maneuverKey(),
-          face: this.maneuverFace(),
-        }),
+      const input = startInputOf(
+        this.data,
+        target,
+        skill,
+        die,
+        this.maneuverKey(),
+        this.maneuverFace(),
       );
+      const res = await this.api.start(input, this.startKeys.keyFor(input));
       this.data.state.apply(res.encounter);
-      this.data.contests.applyContest(res.contest);
-      // The initiator's own d20, as the sheet shows it; who wins is told when the other side has answered.
-      const show = showOfCheck(
-        `${sheetTitle(this.data.purpose)}: teste de ${skillName(skill)}`,
-        res.contest.initiatorRoll,
-        {
-          withTotal: true,
-        },
-      );
-      if (show) {
-        this.animator.play(show);
+      if (!res.contest) {
+        // The d20 is kept for a question (a halfling's 1, a Bardic Inspiration die): the player decides before the contest opens.
+        this.held.ask(res.held);
+        return;
       }
-      this.started.set(res.contest.id);
+      this.opened(res.contest, skill);
       this.startKeys.renew();
     } catch (err) {
       this.error.set(combatErrorMessage(err, 'rolar a disputa'));
     } finally {
       this.busy.set(false);
     }
+  }
+
+  /** The contest is open: the initiator's own d20, as the sheet shows it; who wins is told when the other side has answered. */
+  private opened(contest: ContestView, skill: ContestSkill): void {
+    this.data.contests.applyContest(contest);
+    const show = showOfCheck(
+      `${sheetTitle(this.data.purpose)}: teste de ${skillName(skill)}`,
+      contest.initiatorRoll,
+      { withTotal: true },
+    );
+    if (show) {
+      this.animator.play(show);
+    }
+    this.started.set(contest.id);
   }
 
   protected setOutcome(outcome: ShoveOutcome): void {
