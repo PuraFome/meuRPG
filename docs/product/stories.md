@@ -2,7 +2,7 @@
 
 # Stories and acceptance criteria
 
-The MVP has 40 stories: 38 stories plus 2 prerequisites (the invite, MR-002, which leads to MR-003, and the NPCs, MR-005, who are the combat enemies).
+The MVP has 42 stories: 40 stories plus 2 prerequisites (the invite, MR-002, which leads to MR-003, and the NPCs, MR-005, who are the combat enemies).
 Ten more stories are planned for after the MVP.
 
 A story is done when all its criteria pass.
@@ -63,6 +63,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 | [MR-048](#mr-048-cast-spells-outside-combat) | Combat | MVP |
 | [MR-050](#mr-050-campaign-package-export-and-import) | Campaign | MVP |
 | [MR-051](#mr-051-the-scenes-conversation) | Session | MVP |
+| [MR-052](#mr-052-the-free-dice-roller) | Session | MVP |
 | [MR-049](#mr-049-reserved-characters-and-claim-links) | Character | MVP |
 | [MR-002](#mr-002-generate-an-invite) | Campaign | MVP (prerequisite) |
 | [MR-005](#mr-005-create-npcs) | Character | MVP (prerequisite) |
@@ -1326,6 +1327,37 @@ See [Architecture](../architecture/campaign-package.md).
 
 #### Related
 - [RN-36](rules.md#rn-36-who-reads-a-line-of-the-scenes-conversation), [RN-10](rules.md), [RN-18](rules.md), [MR-028](#mr-028-show-an-image-to-the-players), [MR-039](#mr-039-ai-generated-images-for-dungeons-and-scenes). See [Architecture](../architecture/play/live-session.md#the-conversation-of-the-scene) and [Privacy](../privacy.md#what-the-voice-sends-to-google-mr-051).
+
+### MR-052: The free dice roller
+
+**As a** master or a player, **I want** to roll any dice I ask for, in the session, and choose who sees the roll if I am the master, **so that** the table settles the rolls outside the game's rules (a rumour, a table of treasures, a bet) without a physical die at hand.
+
+- Priority: MVP
+- Rules: RN-10, RN-18
+- Modules: play
+
+#### Acceptance criteria
+- **Given** an open session, **when** a member of the campaign rolls one die among d4, d6, d8, d10, d12, d20 and d100, from 1 to 20 of them, with a modifier from -20 to +20, **then** the server rolls them, and the total is the sum of the dice plus the modifier ("2d6 + 3" with 4 and 4 totals 11).
+- **Given** a roll with another die, with 0 or more than 20 dice, or with a modifier beyond +20 or -20, **then** it is refused and nothing is rolled or written.
+- **Given** one d20, **when** the roller chooses advantage or disadvantage, **then** two d20 are rolled, the higher (or the lower) counts and the other shows "descartado"; with any other dice the choice is refused.
+- **Given** the table plays with physical dice (RN-18), **when** a member rolls here, **then** the app rolls anyway, the log says "Rolagem livre", and the sheet says "Esta é a rolagem do app": the table's dice mode applies to the game's rolls, not to this one.
+- **Given** a player rolls, **then** the roller reads the result card (the total in numbers and in words, the formula, each die), and the whole table reads "Rolagem livre · <name>: 2d6 + 3 = 11 (4, 4)" in "Rolagens da mesa" and sees the dice on the screen.
+- **Given** the master rolls "Para a mesa", **then** the table reads and sees it as a player's roll.
+- **Given** the master rolls "Só eu", **then** only the master reads it, with the "Só você" badge; no player receives it in a read, on the stream or in the summary, and nothing tells a player that it happened, not even a count (RN-10). A player who asks for "Só eu" is refused.
+- **Given** a natural 20 or a natural 1 on a single d20, **then** the result says it in words ("20 natural", "1 natural"), not only in colour.
+- **Given** the same tap is repeated with its key, **then** one roll exists, and the same key with another request is refused; a double tap on the button rolls once.
+- **Given** a member rolls 20 times in a row and once more, **then** the last one is refused (`resource_exhausted`) and the sheet says "Tente de novo em N segundos".
+- **Given** the sheet is open, **then** it lists the member's last 10 rolls of the session (the master's secret ones included, with "Só você"), and "Repetir 2d6 + 3" fills the form and rolls the same dice again.
+- **Given** the live stream is reconnecting, **then** "Dados" is disabled and the screen says why; **given** no session is open, **then** there is no "Dados" button, and the call is refused.
+- **Given** a person who is not an active member of the campaign, **then** the call is refused.
+
+#### In the app
+- The "Dados" button in the session's header opens "Rolar dados": a bottom sheet on a phone, a dialog from a tablet up. It has the shortcuts (1d20, 1d6, 2d6, 1d100), the die, "Quantidade (1 a 20)", "Modificador (−20 a +20)", "Como rolar o d20" for a single d20, the master's "Quem vê" ("Para a mesa" or "Só eu"), "Suas últimas rolagens nesta sessão" with "Repetir", and one filled button ("Rolar 2d6 + 3"). The result card has "Mudar dados" and "Rolar … de novo".
+- "Rolagens da mesa" under the stage lists the session's free rolls, newest first; the dice overlay shows the others' roll as "<name> rolou".
+- Rolling is rate limited per person.
+
+#### Related
+- [RN-10](rules.md), [RN-18](rules.md), [MR-051](#mr-051-the-scenes-conversation). See [Architecture](../architecture/play/free-dice-roller.md) and [Design](../design/session.md).
 
 ### MR-049: Reserved characters and claim links
 

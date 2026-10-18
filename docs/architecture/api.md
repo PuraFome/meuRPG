@@ -198,6 +198,7 @@ The numbers are in `ratelimit.NewPolicy` and in the constants next to each limit
 | Campaign package: start an export, begin, preview and create an import, download an export | User | `campaignpackage`, in each handler | `resource_exhausted` with `Retry-After` (`429` on the download) |
 | Parts of an import upload | User | `campaignpackage` | `429`, reason `RATE_LIMITED` |
 | Lines of the scene's conversation (`SendSessionMessage`) | User | `play`, first thing in the handler | `resource_exhausted` with `Retry-After` |
+| Free dice rolls (`RollFreeDice`) | User | `play`, right after the membership check | `resource_exhausted` with `Retry-After` |
 | The audio of a line (`GET /session-messages/{id}/audio`) | User | `play`, after the session | `429`, reason `RATE_LIMITED` |
 | `/auth/login` and `/auth/callback` | Client IP | `identity`, first thing in each handler ([Identity](identity.md#login-attempt-limit)) | `429` with `Retry-After`, plain text |
 | `PreviewClaim` and `ClaimCharacter` | User, and client IP | `characters`, first thing in each handler ([Campaigns](campaigns.md#claim-links)) | `resource_exhausted` with `Retry-After` |

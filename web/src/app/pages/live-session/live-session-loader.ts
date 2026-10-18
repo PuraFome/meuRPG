@@ -124,6 +124,7 @@ export class LiveSessionLoader {
     parts.notes.clear();
     parts.trapBoard.clear();
     parts.puzzles.clear();
+    parts.freeDice.clear();
     parts.toasts.clear();
     this.loadedSheetFor = null;
     this.partyInfoIds = new Set();
@@ -178,7 +179,12 @@ export class LiveSessionLoader {
       if (generation !== this.generation || !campaign) {
         return;
       }
+      // Another session opened while the stream was down: its rolls start empty.
+      if (state.session() && state.session()?.sessionId !== snapshot.session.sessionId) {
+        parts.freeDice.clear();
+      }
       state.session.set(snapshot.session);
+      void parts.freeDice.refresh();
       state.vitals.update((list) => applySnapshot(list, snapshot.vitals));
       // News that came while the snapshot was on its way is newer than it: the snapshot only fills in what no event told.
       const after = news();

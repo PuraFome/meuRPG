@@ -4,13 +4,32 @@
 
 <div class="head" [class.head--master]="isMaster()">
   <div class="head__title">
-    <h1 class="mr-page-title">Sessão {{ session().sessionNumber }}</h1>
-    <p class="mr-page-lead">{{ campaignName() }}</p>
+    <div class="head__row">
+      <div class="head__names">
+        <h1 class="mr-page-title">Sessão {{ session().sessionNumber }}</h1>
+        <p class="mr-page-lead">{{ campaignName() }}</p>
+      </div>
+      <!-- The free dice roller (MR-052), for the master and the players alike: off while a roll is on its way and while the stream reconnects. -->
+      <button
+        matButton="outlined"
+        type="button"
+        class="head__dice js-dice"
+        [class.mr-button--off]="diceOff()"
+        [disabled]="diceOff()"
+        disabledInteractive
+        [attr.aria-describedby]="reconnecting() ? 'dice-off' : null"
+        (click)="openDiceNow()"
+      >
+        <mat-icon aria-hidden="true">casino</mat-icon><span class="js-dice-text">{{ rolling() ? 'Rolando…' : 'Dados' }}</span>
+      </button>
+    </div>
 
     @if (reconnecting()) {
       <div class="mr-notice mr-notice--neutral head__offline" role="status">
         <mat-icon aria-hidden="true">cloud_off</mat-icon>
-        <p><strong>Reconectando…</strong> {{ lastUpdateLabel() }}</p>
+        <p id="dice-off">
+          <strong>Reconectando…</strong> {{ lastUpdateLabel() }} Não dá para rolar sem conexão.
+        </p>
       </div>
     } @else {
       <p class="head__status">

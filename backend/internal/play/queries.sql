@@ -1706,6 +1706,24 @@ UPDATE hit_riders SET used = true, choice = $3 WHERE encounter_id = $1 AND id = 
 -- The offers of an attacker's earlier hits go when it attacks again.
 DELETE FROM hit_riders WHERE attacker_id = $1 AND NOT used;
 
+-- name: ListFreeRollEvents :many
+-- The free dice roller's rolls of the session (MR-052), newest first. A player's list asks for
+-- only_table: a roll is the table's when its payload says "secret": false, so an event without the
+-- key is never shown to a player (the master's secret rolls are the master's alone, RN-10).
+SELECT id, actor_user_id, payload, created_at FROM session_events
+WHERE game_session_id = $1 AND kind = 'free_roll_rolled'
+  AND (NOT sqlc.arg(only_table)::BOOL OR payload->>'secret' = 'false')
+ORDER BY seq DESC
+LIMIT $2;
+
+-- name: ListUserFreeRollEvents :many
+-- The rolls one user made in the session, newest first: the master's secret ones included, since
+-- only the master makes them.
+SELECT id, actor_user_id, payload, created_at FROM session_events
+WHERE game_session_id = $1 AND kind = 'free_roll_rolled' AND actor_user_id = $2
+ORDER BY seq DESC
+LIMIT $3;
+
 -- name: SetCombatantTableOnceTurns :exec
 -- The turns in which the table's once-per-turn extras last added their damage, by feature key
 -- (JSON); the marks before are put back by an undo.

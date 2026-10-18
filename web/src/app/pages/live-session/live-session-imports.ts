@@ -2,6 +2,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { SessionTabs } from './conversation/session-tabs';
 import { ClueNotice } from './clue-notice/clue-notice';
+import { FreeRollLog } from './free-dice/free-roll-log';
 import { FogMasterPanel } from './fog-tools/fog-master-panel';
 import { FogPlayerTools } from './fog-tools/fog-player-tools';
 import { FamiliarBand } from '../../shared/familiar-eyes/familiar-band';
@@ -48,6 +49,7 @@ export const LIVE_SESSION_IMPORTS = [
   MatButtonModule,
   MatIconModule,
   ClueNotice,
+  FreeRollLog,
   SessionTabs,
   FogMasterPanel,
   FogPlayerTools,

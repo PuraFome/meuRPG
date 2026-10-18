@@ -45,10 +45,27 @@
   flex: 1 1 auto;
   flex-direction: column;
   min-width: 0;
+}
+
+.head__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+}
+
+.head__names {
+  flex: 1 1 auto;
+  min-width: 0;
 
   .mr-page-lead {
     margin: 6px 0 0;
   }
+}
+
+.head__dice {
+  flex: none;
+  white-space: nowrap;
 }
 
 .head__status {
