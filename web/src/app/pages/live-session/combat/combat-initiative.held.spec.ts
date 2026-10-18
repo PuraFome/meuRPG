@@ -19,14 +19,23 @@ function build(submit: ReturnType<typeof vi.fn>, ownId = 'toren') {
   const set = encounter({
     id: 'enc',
     combatants: [
-      combatant({ id: 'toren', label: 'Toren', initiativeBonus: 2, initiativeFace: 7, initiative: 13 }),
+      combatant({
+        id: 'toren',
+        label: 'Toren',
+        initiativeBonus: 2,
+        initiativeFace: 7,
+        initiative: 13,
+      }),
     ],
   });
   const ctx = {
     api: { turn: { submitInitiative: submit } },
     answerHeld: vi.fn(async () =>
       heldAnswer({
-        result: { case: 'initiative', value: create(SubmitInitiativeResponseSchema, { encounter: set }) },
+        result: {
+          case: 'initiative',
+          value: create(SubmitInitiativeResponseSchema, { encounter: set }),
+        },
       }),
     ),
     animator: { play: vi.fn() },

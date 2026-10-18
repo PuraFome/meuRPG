@@ -3,7 +3,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import type { Combatant, Encounter, HeldRollOffer } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import type {
+  Combatant,
+  Encounter,
+  HeldRollOffer,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { effectivePreference, preferenceLabel } from '../../../../core/campaigns/dice-labels';
 import {
   combatantInitial,
