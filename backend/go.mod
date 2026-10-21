@@ -1,6 +1,6 @@
 module github.com/PuraFome/meuRPG/backend
 
-go 1.27.2
+go 1.27.3
 
 tool (
 	connectrpc.com/connect/cmd/protoc-gen-connect-go
