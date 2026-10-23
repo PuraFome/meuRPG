@@ -83,6 +83,10 @@ const (
 	ModifierAttackDisadvantage = "attack_disadvantage"
 )
 
+// EffectGoaded is the effect a failed goad puts on the target: disadvantage on its attack rolls against
+// anyone but the attacker, until the end of the attacker's next turn (effects/combat_effects.json).
+const EffectGoaded = "effect:goaded"
+
 // The rolls a ModifierRollDie applies to.
 const (
 	RollAppliesAttack = "attack"
@@ -116,6 +120,9 @@ type EffectModifier struct {
 	Skill string `json:"skill,omitempty"`
 	// Abilities are the ability keys of ModifierSaveAdvantage and ModifierCheckAdvantage.
 	Abilities []string `json:"abilities,omitempty"`
+	// ExceptSource, on ModifierAttackDisadvantage, spares the effect's source: the disadvantage holds
+	// against every target but the creature that put the effect on (a goad).
+	ExceptSource bool `json:"except_source,omitempty"`
 	// Once says the die is spent on the first roll it is added to, and the effect ends with it
 	// (Guidance, Resistance); on ModifierAttackDisadvantage, that the next attack roll spends it
 	// (Vicious Mockery: the effect stays, spent, until its clock ends it).
