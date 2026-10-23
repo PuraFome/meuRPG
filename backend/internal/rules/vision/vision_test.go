@@ -385,3 +385,34 @@ func TestDimOnlyLightSourceLightsItsOwnSquareDim(t *testing.T) {
 		}
 	}
 }
+
+// InTheDark is the master's light warning: the viewer's own square is dark and no sense
+// of its own covers it. It is the same light and the same senses See works with.
+func TestInTheDark(t *testing.T) {
+	t.Parallel()
+	torchAt := func(col int) vision.Source { return vision.Source{At: grid.Square{Col: col, Row: toren.Row}, BrightFt: 20, DimFt: 20} }
+	tests := []struct {
+		name   string
+		scene  func() vision.Scene
+		viewer vision.Viewer
+		want   bool
+	}{
+		{"dark map, no light, no senses", func() vision.Scene { return caveScene() }, vision.Viewer{At: toren}, true},
+		{"darkvision 18 m (60 ft) covers the square", func() vision.Scene { return caveScene() }, vision.Viewer{At: toren, Senses: vision.Senses{DarkvisionFt: 60}}, false},
+		{"blindsight covers it", func() vision.Scene { return caveScene() }, vision.Viewer{At: toren, Senses: vision.Senses{BlindsightFt: 10}}, false},
+		{"truesight covers it", func() vision.Scene { return caveScene() }, vision.Viewer{At: toren, Senses: vision.Senses{TruesightFt: 120}}, false},
+		{"a torch 30 ft away lights the square (dim)", func() vision.Scene { return caveScene(torchAt(toren.Col + 6)) }, vision.Viewer{At: toren}, false},
+		{"a torch 50 ft away does not", func() vision.Scene { return caveScene(torchAt(toren.Col + 10)) }, vision.Viewer{At: toren}, true},
+		{"penumbra: the whole map is dim", func() vision.Scene { s := caveScene(); s.Base = grid.Dim; return s }, vision.Viewer{At: toren}, false},
+		{"claro", func() vision.Scene { s := caveScene(); s.Base = grid.Bright; return s }, vision.Viewer{At: toren}, false},
+		{"a viewer outside the grid is not in the dark of any square", func() vision.Scene { return caveScene() }, vision.Viewer{At: grid.Square{Col: -1, Row: 3}}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if got := compile(t, tt.scene()).InTheDark(tt.viewer); got != tt.want {
+				t.Errorf("InTheDark() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
