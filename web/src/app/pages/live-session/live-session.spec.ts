@@ -2097,7 +2097,10 @@ describe('LiveSession', () => {
       const notice = (el: HTMLElement) => el.querySelector('app-unread-notice');
       const arrive = async (fixture: ComponentFixture<LiveSession>, ids: string[]) => {
         for (const [at, id] of ids.entries()) {
-          source.push({ kind: 'sessionMessage', message: line(id, { authorUserId: 'u-mestre', at }) });
+          source.push({
+            kind: 'sessionMessage',
+            message: line(id, { authorUserId: 'u-mestre', at }),
+          });
           await settle(fixture);
         }
       };

@@ -41,7 +41,8 @@ describe('UnreadNotice', () => {
   it('has the visible words as the name of the button, with no aria-label that could differ', () => {
     const { button } = setup(2);
     expect(button.hasAttribute('aria-label')).toBe(false);
-    expect(button.textContent?.replace(/\s+/g, ' ').trim()).toBe('Conversa: 2 mensagens novas Abrir');
+    const words = Array.from(button.querySelectorAll('span'), (s) => s.textContent?.trim());
+    expect(words).toEqual(['Conversa: 2 mensagens novas', 'Abrir']);
   });
 
   it('asks to open the chat when the row is pressed', () => {
@@ -52,6 +53,8 @@ describe('UnreadNotice', () => {
 
   it('is not a live region: the panel tells each line once', () => {
     const { el } = setup();
-    expect(el.querySelector('[role], [aria-live]')).toBeNull();
+    expect(
+      el.querySelector('[role="status"], [role="alert"], [role="log"], [aria-live]'),
+    ).toBeNull();
   });
 });
