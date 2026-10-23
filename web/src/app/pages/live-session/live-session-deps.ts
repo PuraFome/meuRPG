@@ -23,6 +23,7 @@ import { TrapsClient } from '../../core/traps/traps-client';
 import { RollAnimator } from '../../shared/roll-overlay/roll-animator';
 import { SessionNotes } from '../../shell/session-notes/session-notes';
 import { CombatState } from '../../core/combat/combat-state';
+import { DarkWatch } from '../../core/maps/dark-watch';
 import { FogView } from '../../core/maps/fog-view';
 import { MapState } from '../../core/maps/map-state';
 import { NotesState } from '../../core/notes/notes-state';
@@ -109,6 +110,9 @@ export class LiveSessionParts {
   /** What the viewer sees of the current map when it has the fog of war on (MR-036): the vision with its tiles and
    * the layers, read again on `vision_changed` and `map_changed`. The combat map draws the same one. */
   readonly fog: FogView;
+  /** Who sees nothing where they stand on the current map (B3, master only): read again with the vision hints; a player's
+   * page never reads it (the target is `null`). */
+  readonly dark: DarkWatch;
   /** The session's combat (MR-013): read on every `ready` and after each
    * `encounter_changed`; `turn_changed` and `combatant_moved` apply in place. */
   readonly combat = new CombatState();
@@ -141,6 +145,14 @@ export class LiveSessionParts {
       (mapId, as) => mapsApi.vision(state.campaignId(), mapId, as ?? ''),
       (mapId, as) => mapsApi.layers(state.campaignId(), mapId, as ?? ''),
       () => !state.isMaster(),
+    );
+    this.dark = new DarkWatch(
+      (mapId) => mapsApi.charactersInTheDark(state.campaignId(), mapId),
+      () => {
+        const map = this.mapState.map();
+        return state.isMaster() && map?.fogEnabled ? map.id : null;
+      },
+      () => this.mapState.tokens(),
     );
     this.scene = new SceneState(
       () => services.sceneApi.get(state.campaignId()),

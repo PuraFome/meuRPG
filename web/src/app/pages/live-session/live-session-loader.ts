@@ -70,7 +70,7 @@ export class LiveSessionLoader {
     this.closeStream();
   }
 
-  /** What a player sees may have changed (a hint, a move, a turn): one read of the vision and its layers for a burst of them. The master's "Ver como" reads again too. */
+  /** What a player sees may have changed (a hint, a move, a turn): one read of the vision and its layers for a burst of them. The master's "Ver como" and his light warning read again too. */
   scheduleVision(): void {
     if (this.visionTimer !== undefined) {
       return;
@@ -78,6 +78,7 @@ export class LiveSessionLoader {
     this.visionTimer = setTimeout(() => {
       this.visionTimer = undefined;
       void this.parts.fog.refresh();
+      void this.parts.dark.refresh();
       this.state.visionTick.update((n) => n + 1);
     }, VISION_DEBOUNCE_MS);
   }

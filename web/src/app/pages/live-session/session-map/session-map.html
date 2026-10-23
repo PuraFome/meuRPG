@@ -56,6 +56,10 @@
             (back)="viewAsBack.emit()"
           />
         } @else {
+          @if (isMaster() && dark(); as watch) {
+            <!-- The light warning (B3): over the map, only for the master, and nothing at all when nobody is in the dark. -->
+            <app-session-dark class="map__dark" [campaignId]="campaignId()" [state]="state()" [watch]="watch" (show)="showDark($event)" />
+          }
           <app-fog-map
             [mapName]="map()?.name ?? ''"
             [imageWidth]="map()?.image?.width ?? 1"
@@ -76,6 +80,8 @@
             [senses]="senses()"
             [carried]="carriedName()"
             [familiar]="seeingName()"
+            [dark]="darkIds()"
+            [darkChosen]="darkChosen()"
             (moved)="onMoved($event)"
           />
           @if (isMaster()) {
