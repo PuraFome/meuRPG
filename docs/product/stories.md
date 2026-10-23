@@ -2,7 +2,7 @@
 
 # Stories and acceptance criteria
 
-The MVP has 40 stories: 38 stories plus 2 prerequisites (the invite, MR-002, which leads to MR-003, and the NPCs, MR-005, who are the combat enemies).
+The MVP has 42 stories: 40 stories plus 2 prerequisites (the invite, MR-002, which leads to MR-003, and the NPCs, MR-005, who are the combat enemies).
 Ten more stories are planned for after the MVP.
 
 A story is done when all its criteria pass.
@@ -62,6 +62,8 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 | [MR-045](#mr-045-look-up-spells) | Rules | MVP |
 | [MR-048](#mr-048-cast-spells-outside-combat) | Combat | MVP |
 | [MR-050](#mr-050-campaign-package-export-and-import) | Campaign | MVP |
+| [MR-051](#mr-051-the-scenes-conversation) | Session | MVP |
+| [MR-052](#mr-052-the-free-dice-roller) | Session | MVP |
 | [MR-049](#mr-049-reserved-characters-and-claim-links) | Character | MVP |
 | [MR-002](#mr-002-generate-an-invite) | Campaign | MVP (prerequisite) |
 | [MR-005](#mr-005-create-npcs) | Character | MVP (prerequisite) |
@@ -320,7 +322,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 - **Given** the action or the bonus action is free, **when** the player looks at "Encerrar turno", **then** it is outlined and, with the action free, asks in place; it becomes the filled button when both are spent.
 
 **Advantage and disadvantage**
-- **Given** an attack, a spell attack or save, a trap, a puzzle hint, a scene check or a search for traps, **when** the server finds a circumstance that gives advantage or disadvantage (a condition of either creature, a creature one cannot see, long range or a hostile within 5 ft for a ranged attack, Reckless Attack, Danger Sense, Pack Tactics, Dodge), **then** the roll takes two d20, the higher or the lower counts (they cancel each other out when both apply), the screen lists the reasons the player can see **and** shows both dice, the one that counts marked "vale" and the other "descartado"; with real dice the player types both. A hit within 5 ft of a paralyzed or unconscious target is a critical hit (SRD 5.1, "Advantage and Disadvantage", Conditions).
+- **Given** an attack, a spell attack or save, a trap, a puzzle hint, a scene check or a search for traps, **when** the server finds a circumstance that gives advantage or disadvantage (a condition of either creature, a creature one cannot see, long range or a hostile within 5 ft for a ranged attack, Reckless Attack, Danger Sense, Pack Tactics, Dodge, a racial advantage on a save against the kind of source the save has: Bravura against fear, Ancestral Feérico against charm, Esperteza Gnômica on Intelligence, Wisdom and Charisma saves against magic, Resiliência Anã against poison), **then** the roll takes two d20, the higher or the lower counts (they cancel each other out when both apply), the screen lists the reasons the player can see **and** shows both dice, the one that counts marked "vale" and the other "descartado"; with real dice the player types both. A hit within 5 ft of a paralyzed or unconscious target is a critical hit (SRD 5.1, "Advantage and Disadvantage", Conditions).
 - **Given** the suggested mode, **when** the player takes disadvantage, **then** they give a reason of 1 to 120 characters **and** the roll goes with it; **when** they want advantage the server did not suggest, **then** they ask the master with a reason ("Pedir ao mestre"), and the master approves, refuses or sets another mode in the queue. The master may set any mode on any roll, always with a reason. Every change is a line in the log; the reason is read by the master and the attacker's player only (RN-20).
 
 **Damage**
@@ -334,9 +336,12 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 
 **Halfling Lucky (RN-35)**
 - **Given** a halfling whose attack d20 (a weapon attack or an attack cantrip) shows a 1, typed or rolled in the app, **when** the roll comes back, **then** the sheet asks "Tirou 1: rolar de novo?" before any result: "Rolar de novo" rolls that d20 again (in the app or typed, RN-18) and the new roll stands, even another 1; "Ficar com o 1" keeps the natural 1, a miss; with advantage or disadvantage the question comes for the die that shows the 1, even the one that would not count, and only that die is rolled again; a Bardic Inspiration die the halfling holds is asked about after it, on the new roll; the result and the log say "Sortudo: 1 → 14" (SRD 5.1, Halfling, Lucky).
-- **Given** a halfling whose player rolls a d20 that shows a 1 on a scene check, a group check, a trap search out of a combat or a puzzle hint try, or, in a combat, on a spell attack against one target, an effect's saving throw or a concentration save, **when** the roll comes back, **then** the sheet asks "Tirou 1: rolar de novo?" before any result and nothing is written, spent or closed (the save's window stays open); the answer works as on an attack (the new d20 in the app or typed, or "Ficar com o 1"; one die of a pair; the Bardic Inspiration die after it, on the new roll) **and** Reliable Talent counts the new d20, not the 1; a reload asks again; the character rolls nothing else that could ask until it is answered; a roll the master makes for the halfling there never asks.
+- **Given** a halfling whose player rolls a d20 that shows a 1 on a scene check, a group check, a trap search (out of a combat, or the Search action of a combat), a puzzle hint try, either side's roll of a contest, an initiative before the combat begins, a death save, the Stealth check of a Hide or the ability check of a Counterspell above the slot's level, or, in a combat, on a spell attack against one target, an effect's saving throw or a concentration save, **when** the roll comes back, **then** the sheet asks "Tirou 1: rolar de novo?" before any result and nothing is written, spent or closed (the save's window stays open); the answer works as on an attack (the new d20 in the app or typed, or "Ficar com o 1"; one die of a pair; the Bardic Inspiration die after it, on the new roll) **and** Reliable Talent counts the new d20, not the 1; a reload asks again; the character rolls nothing else that could ask until it is answered; a roll the master makes for the halfling there (a save or a spell attack for a player's character, a group check rolled for the player) asks too: the master is asked in his own sheet, the player reads the same question, and the first answer wins ("Pending questions" below).
 - **Given** a player's halfling whose saving throw the app rolls inside someone else's action (a spell's save, a trap's save, the Dexterity save against Hellish Rebuke), **when** the d20 shows a 1, **then** nobody is asked: the app rolls that die again by itself and the new roll stands, even another 1 (with advantage or disadvantage, only the first die that shows a 1); the result and the log say "Sortudo: 1 → 14" to whoever sees that save's dice; an NPC with a halfling's sheet keeps its 1.
-- Death saves, initiative and contests do not ask about Lucky.
+
+**Pending questions (RN-35)**
+- **Given** a roll that waits for a question (Lucky's "Tirou 1: rolar de novo?" or the Bardic Inspiration die), **when** the master answers it for the player, **then** the roll is settled as if the player had answered (the d20 already rolled, the new die in the app or typed, the character the player's own), the player reads the result in the combat or the scene, and the die is spent once; **when** the master tries within 10 seconds of the question being asked, **then** the server refuses it with the seconds left ("Ainda é a vez de Brisa responder. Você pode responder em 3 s.") so that a present player has the first chance, and the player's own answer never waits; **when** the player and the master answer at once after that, **then** the first answer wins and the other is told the roll was answered already.
+- **Given** rolls that wait, **when** the master reads the pending questions, **then** the master reads every one of the table (a player's, in a combat or out of one, and an NPC's), each with the d20, the bonus and who rolled; **and** a player reads only their own; **and** another player is told a roll they may not answer does not exist.
 
 **Turn alerts**
 - **Given** a combat on the player's screen, **when** the turn passes to a combatant they play (the character or one of its creatures), **then** they are warned once: the phone vibrates where it can, a short chime plays (after any first tap on the page), the turn panel shakes for half a second (a still frame with reduced motion) **and** a hidden tab's title says "● Sua vez"; nothing fires on a page load, on the master's or an NPC's turn, or twice for the same turn, and "Avisar na minha vez (som e vibração)" turns the sound and the vibration off until the page reloads.
@@ -1293,6 +1298,65 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - The players' characters arrive reserved (MR-049): invisible to the players until one claims it with the master's link.
 
 See [Architecture](../architecture/campaign-package.md).
+
+### MR-051: The scene's conversation
+
+**As a** master, **I want** a live text feed in the session where I narrate, speak as my NPCs and whisper to some players, and where the players answer in character or out of it, **so that** a table with a remote master plays without a call, and nobody reads what was not for them.
+
+- Priority: MVP
+- Rules: RN-10, RN-18, RN-36
+- Modules: play, maps
+
+#### Acceptance criteria
+- **Given** an open session, **when** the master sends a line as the narrator, **then** every member reads it, in the order sent, in the session screen and in the session summary.
+- **Given** the master speaks as an NPC of the campaign, **then** the line shows the NPC's name and its stage portrait when it has one; an id that is not an NPC of the campaign is refused.
+- **Given** a player, **when** they send a line as their own character, **then** it shows the character's name; as another player's character, **then** it is refused (RN-18); out of character, **then** it shows their display name.
+- **Given** the master chooses two players, **when** the line is sent, **then** only those two and the master receive its text, image, existence and notice; the third player gets nothing in the read, the stream, the summary or the voice (RN-36).
+- **Given** a player chooses "só o mestre", **then** only they and the master read the line; a player cannot choose other players.
+- **Given** a line, **when** it is longer than 2,000 characters or empty, **then** it is refused.
+- **Given** the master attaches an image of the gallery, **then** the line's readers can open that image and nobody else can through that line; a player cannot attach an image.
+- **Given** the master is typing, **then** the players see "O mestre está escrevendo…" for a few seconds; the hint carries no text and expires by itself.
+- **Given** a line of the narrator or of an NPC, **when** a reader asks to hear it, **then** the first request makes the voice and keeps it with the line, the next ones are served from the stored file, and a non-reader gets `404`.
+- **Given** the voice is not configured, **then** the audio route answers `failed_precondition` `OFF` and the app hides "Ouvir".
+- **Given** the same send is repeated with its key, **then** one line exists; too many lines in a short time are refused (`resource_exhausted`).
+- **Given** a player is erased, **then** their lines stay and the author reads "Jogador removido".
+
+#### In the app
+- The "Conversa" panel beside the stage and the map, and a tab on the phone; the master's composer has "Falar como", "Para", "Imagem da galeria" and "Enviar"; the player's has "Como <personagem>" and "Fora do personagem".
+
+#### Related
+- [RN-36](rules.md#rn-36-who-reads-a-line-of-the-scenes-conversation), [RN-10](rules.md), [RN-18](rules.md), [MR-028](#mr-028-show-an-image-to-the-players), [MR-039](#mr-039-ai-generated-images-for-dungeons-and-scenes). See [Architecture](../architecture/play/live-session.md#the-conversation-of-the-scene) and [Privacy](../privacy.md#what-the-voice-sends-to-google-mr-051).
+
+### MR-052: The free dice roller
+
+**As a** master or a player, **I want** to roll any dice I ask for, in the session, and choose who sees the roll if I am the master, **so that** the table settles the rolls outside the game's rules (a rumour, a table of treasures, a bet) without a physical die at hand.
+
+- Priority: MVP
+- Rules: RN-10, RN-18
+- Modules: play
+
+#### Acceptance criteria
+- **Given** an open session, **when** a member of the campaign rolls one die among d4, d6, d8, d10, d12, d20 and d100, from 1 to 20 of them, with a modifier from -20 to +20, **then** the server rolls them, and the total is the sum of the dice plus the modifier ("2d6 + 3" with 4 and 4 totals 11).
+- **Given** a roll with another die, with 0 or more than 20 dice, or with a modifier beyond +20 or -20, **then** it is refused and nothing is rolled or written.
+- **Given** one d20, **when** the roller chooses advantage or disadvantage, **then** two d20 are rolled, the higher (or the lower) counts and the other shows "descartado"; with any other dice the choice is refused.
+- **Given** the table plays with physical dice (RN-18), **when** a member rolls here, **then** the app rolls anyway, the log says "Rolagem livre", and the sheet says "Esta é a rolagem do app": the table's dice mode applies to the game's rolls, not to this one.
+- **Given** a player rolls, **then** the roller reads the result card (the total in numbers and in words, the formula, each die), and the whole table reads "Rolagem livre · <name>: 2d6 + 3 = 11 (4, 4)" in "Rolagens da mesa" and sees the dice on the screen.
+- **Given** the master rolls "Para a mesa", **then** the table reads and sees it as a player's roll.
+- **Given** the master rolls "Só eu", **then** only the master reads it, with the "Só você" badge; no player receives it in a read, on the stream or in the summary, and nothing tells a player that it happened, not even a count (RN-10). A player who asks for "Só eu" is refused.
+- **Given** a natural 20 or a natural 1 on a single d20, **then** the result says it in words ("20 natural", "1 natural"), not only in colour.
+- **Given** the same tap is repeated with its key, **then** one roll exists, and the same key with another request is refused; a double tap on the button rolls once.
+- **Given** a member rolls 20 times in a row and once more, **then** the last one is refused (`resource_exhausted`) and the sheet says "Tente de novo em N segundos".
+- **Given** the sheet is open, **then** it lists the member's last 10 rolls of the session (the master's secret ones included, with "Só você"), and "Repetir 2d6 + 3" fills the form and rolls the same dice again.
+- **Given** the live stream is reconnecting, **then** "Dados" is disabled and the screen says why; **given** no session is open, **then** there is no "Dados" button, and the call is refused.
+- **Given** a person who is not an active member of the campaign, **then** the call is refused.
+
+#### In the app
+- The "Dados" button in the session's header opens "Rolar dados": a bottom sheet on a phone, a dialog from a tablet up. It has the shortcuts (1d20, 1d6, 2d6, 1d100), the die, "Quantidade (1 a 20)", "Modificador (−20 a +20)", "Como rolar o d20" for a single d20, the master's "Quem vê" ("Para a mesa" or "Só eu"), "Suas últimas rolagens nesta sessão" with "Repetir", and one filled button ("Rolar 2d6 + 3"). The result card has "Mudar dados" and "Rolar … de novo".
+- "Rolagens da mesa" under the stage lists the session's free rolls, newest first; the dice overlay shows the others' roll as "<name> rolou".
+- Rolling is rate limited per person.
+
+#### Related
+- [RN-10](rules.md), [RN-18](rules.md), [MR-051](#mr-051-the-scenes-conversation). See [Architecture](../architecture/play/free-dice-roller.md) and [Design](../design/session.md).
 
 ### MR-049: Reserved characters and claim links
 

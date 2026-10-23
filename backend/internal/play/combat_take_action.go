@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"slices"
 	"strings"
 
@@ -12,18 +13,19 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
-// The standard and feature actions that only spend the economy and a use (TakeAction), in phases.
-// TakeAction reads the request, runs the transaction as a sequence of phases of a takeActionFlow, each
-// one of the checks or the writes the action has always made in that order, and answers from what the
-// transaction left in a takeActionOut. Each kind of action (a standard action, a feature's, one of the
-// feature kinds with its own effect) is a function behind a dispatch. The phases keep the order of the
-// reads, the dice and the writes: the golden of combat_take_action_frozen_test.go reads it.
+// The standard and feature actions that only spend the economy and a use (TakeAction).
+// TakeAction reads the request, runs the transaction on a takeActionFlow, which checks and writes in the
+// order the golden of combat_take_action_golden_test.go pins (the reads, the dice, the writes), and
+// answers from what the transaction left in a takeActionOut. Each kind of action (a standard action, a
+// feature's, one of the feature kinds with its own effect) is a function behind a dispatch.
 
 // The standard actions with an effect on the turn of their own.
 const (
@@ -43,16 +45,15 @@ type takeActionCall struct {
 	useExtra bool
 	// frenzy says the rage is a frenzy (SRD 5.1, Path of the Berserker).
 	frenzy bool
+	// preserveLife is who Preserve Life restores and by how much.
+	preserveLife []preserveHeal
 }
 
 // readTakeActionCall reads the request, in the order the answers are given: the ids, the action, the roll.
 func readTakeActionCall(req *playv1.TakeActionRequest) (takeActionCall, error) {
 	var call takeActionCall
 	var err error
-	if call.key, err = parseKey(req.GetIdempotencyKey()); err != nil {
-		return call, err
-	}
-	if call.encounterID, err = parseCombatID(req.GetEncounterId(), "encounter"); err != nil {
+	if call.key, call.encounterID, err = parseCall(req.GetIdempotencyKey(), req.GetEncounterId()); err != nil {
 		return call, err
 	}
 	if call.combatantID, err = parseCombatID(req.GetCombatantId(), "combatant"); err != nil {
@@ -66,7 +67,10 @@ func readTakeActionCall(req *playv1.TakeActionRequest) (takeActionCall, error) {
 		return call, err
 	}
 	call.useExtra, call.frenzy = req.GetUseExtraAction(), req.GetFrenzy()
-	return call, nil
+	if call.actionKey == preserveLifeAction {
+		call.preserveLife, err = readPreserveLife(req)
+	}
+	return call, err
 }
 
 // readTakeActionRoll reads the roll of the request: the app's, a typed sum, or none.
@@ -133,10 +137,11 @@ func (s *Service) takeActionResponse(ctx context.Context, m authz.Membership, re
 		resp.Roll = diceRoll(ev.DiceCount, ev.DiceSides, ev.Faces, ev.Modifier, ev.Total, ev.Physical)
 		resp.Healed = &ev.Amount
 	}
+	resp.ChannelDivinity = channelProto(ev.Channel)
 	return connect.NewResponse(resp), nil
 }
 
-// takeActionFlow is one run of the action's transaction: what each phase reads, and the next one uses.
+// takeActionFlow is one run of the action's transaction: what its steps read, and the next ones use.
 type takeActionFlow struct {
 	s    *Service
 	c    *combatTx
@@ -164,21 +169,37 @@ func newTakeActionFlow(s *Service, c *combatTx, m authz.Membership, call takeAct
 // write stores.
 func (f *takeActionFlow) run(ctx context.Context) (any, error) {
 	f.out.vitals = nil
-	phases := []func(context.Context) error{f.locate, f.choose, f.mayTake, f.begin, f.spend, f.perform, f.touch}
-	for _, phase := range phases {
-		if err := phase(ctx); err != nil {
-			return nil, err
-		}
+	if err := f.locate(ctx); err != nil {
+		return nil, err
 	}
+	if err := f.choose(); err != nil {
+		return nil, err
+	}
+	if err := f.mayTake(ctx); err != nil {
+		return nil, err
+	}
+	if err := f.begin(ctx); err != nil {
+		return nil, err
+	}
+	if err := f.spend(ctx); err != nil {
+		return nil, err
+	}
+	if err := f.perform(ctx); err != nil {
+		return nil, err
+	}
+	if err := touch(ctx, f.c); err != nil {
+		return nil, err
+	}
+	f.c.characterID = &f.who.CharacterID
 	f.out.made = f.made
 	return f.made, nil
 }
 
 // locate finds the combatant that acts, as the caller sees the fog, and the options it has.
 func (f *takeActionFlow) locate(ctx context.Context) error {
-	cs, err := f.c.q.ListCombatants(ctx, f.c.enc.ID)
+	cs, err := listCombatants(ctx, f.c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	f.v = f.c.viewer(f.m, cs) // the fog: an NPC the player does not see is not found
 	if f.who, err = findCombatant(cs, f.call.combatantID, f.v); err != nil {
@@ -193,7 +214,7 @@ func (f *takeActionFlow) locate(ctx context.Context) error {
 
 // choose finds the action among the standard or feature actions the combatant has, and refuses the ones
 // that have a call of their own.
-func (f *takeActionFlow) choose(context.Context) error {
+func (f *takeActionFlow) choose() error {
 	key := f.call.actionKey
 	if wildShapeFeature(key) {
 		// It needs the beast: AssumeWildShape takes it (MR-037).
@@ -284,7 +305,7 @@ func (f *takeActionFlow) begin(ctx context.Context) error {
 		Round: f.c.enc.Round, Secret: who.Hidden, Actor: who.ID, Key: f.call.actionKey, RunBefore: run,
 		ActionBefore: who.ActionUsed, BonusBefore: who.BonusActionUsed, ReactionBefore: who.ReactionUsed, DashedBefore: who.Dashed,
 		AttacksBefore: who.AttacksMade, DisengagedBefore: who.Disengaged, SurgedBefore: who.ActionSurged,
-		AttackKeyBefore: deref(who.ActionAttackKey), FlurryBefore: who.BonusAttacksLeft, ExtraUsed: f.call.useExtra,
+		AttackKeyBefore: conv.OrZero(who.ActionAttackKey), FlurryBefore: who.BonusAttacksLeft, ExtraUsed: f.call.useExtra,
 	}
 	return nil
 }
@@ -392,8 +413,8 @@ func (f *takeActionFlow) dodge(ctx context.Context) error {
 	return nil
 }
 
-// disengage is the Disengage action: no opportunity attacks for the rest of the turn (slice 9.6b reads
-// the flag).
+// disengage is the Disengage action: no opportunity attacks for the rest of the turn
+// (the opportunity attack reads the flag).
 func (f *takeActionFlow) disengage(ctx context.Context) error {
 	if err := f.c.q.SetCombatantDisengaged(ctx, playdb.SetCombatantDisengagedParams{ID: f.who.ID, Disengaged: true}); err != nil {
 		return fmt.Errorf("mark the disengage: %w", err)
@@ -430,7 +451,7 @@ func (f *takeActionFlow) performFeature(ctx context.Context) (string, error) {
 	if standard == actionHide || standard == actionHelp {
 		return "", errHideOrHelp()
 	}
-	if err := f.spendResource(ctx, fa); err != nil {
+	if err := f.spendFeatureUse(ctx, fa); err != nil {
 		return "", err
 	}
 	if err := f.performKind(ctx, sheet); err != nil {
@@ -439,9 +460,9 @@ func (f *takeActionFlow) performFeature(ctx context.Context) (string, error) {
 	return standard, f.s.beginFeatureState(ctx, f.c, f.v, f.who, key, sheet, f.call.frenzy, &f.made)
 }
 
-// spendResource spends one use of the feature's resource: only a player's character counts them, and a
+// spendFeatureUse spends one use of the feature's resource: only a player's character counts them, and a
 // pool of points (Cura pelas mãos) is the master's.
-func (f *takeActionFlow) spendResource(ctx context.Context, fa link.FeatureAction) error {
+func (f *takeActionFlow) spendFeatureUse(ctx context.Context, fa link.FeatureAction) error {
 	if fa.Resource == "" || fa.Pool || f.who.Kind != kindPlayer {
 		return nil
 	}
@@ -459,17 +480,21 @@ func (f *takeActionFlow) spendResource(ctx context.Context, fa link.FeatureActio
 func (f *takeActionFlow) performKind(ctx context.Context, sheet link.Sheet) error {
 	switch f.call.actionKey {
 	case slowFallAction:
-		return f.slowFall(ctx, sheet)
+		return f.cutFall(ctx, sheet)
 	case flurryOfBlows:
 		return f.flurry(ctx, sheet)
 	case secondWind:
-		return f.secondWind(ctx, sheet)
+		return f.healFighter(ctx, sheet)
+	case preserveLifeAction:
+		return f.preserveLife(ctx, sheet)
+	case turnUndeadAction:
+		return f.turnUndead(ctx, sheet)
 	}
 	return nil
 }
 
-// slowFall is the monk's Slow Fall: it cuts the damage of the last fall.
-func (f *takeActionFlow) slowFall(ctx context.Context, sheet link.Sheet) error {
+// cutFall is the monk's Slow Fall: it cuts the damage of the last fall.
+func (f *takeActionFlow) cutFall(ctx context.Context, sheet link.Sheet) error {
 	cuts, taken, err := f.s.slowFall(ctx, f.c, f.who, sheet.MonkLevel)
 	if err != nil {
 		return err
@@ -492,8 +517,8 @@ func (f *takeActionFlow) flurry(ctx context.Context, sheet link.Sheet) error {
 	return nil
 }
 
-// secondWind is Retomar o fôlego: it heals the fighter and keeps the vitals for the answer.
-func (f *takeActionFlow) secondWind(ctx context.Context, sheet link.Sheet) error {
+// healFighter is Retomar o fôlego: it heals the fighter and keeps the vitals for the answer.
+func (f *takeActionFlow) healFighter(ctx context.Context, sheet link.Sheet) error {
 	vit, err := f.s.secondWind(ctx, f.c, f.m, f.v, f.who, sheet.FighterLevel, f.call.in, f.call.rolled, &f.made)
 	if err != nil {
 		return err
@@ -504,12 +529,84 @@ func (f *takeActionFlow) secondWind(ctx context.Context, sheet link.Sheet) error
 	return nil
 }
 
-// touch marks the encounter as changed and names the character the event belongs to.
-func (f *takeActionFlow) touch(ctx context.Context) error {
-	var err error
-	if f.c.enc, err = f.c.q.TouchEncounter(ctx, f.c.enc.ID); err != nil {
-		return fmt.Errorf("touch the encounter: %w", err)
+// The standard actions that are not taken through TakeAction.
+const (
+	standardAttack = "standard:attack"
+	standardCast   = "standard:cast-a-spell"
+)
+
+// The feature actions with their own effect on the numbers (the others only
+// spend the economy and a use and go to the log). The keys are the SRD feature
+// keys ("feature:second-wind").
+const (
+	secondWind  = "feature:second-wind"
+	actionSurge = "feature:action-surge-1-use"
+)
+
+// featureError is the failed_precondition for a reason a feature action is
+// disabled with. The master has the last word on the economy only: a spent
+// resource stops him too (he corrects the uses).
+func featureError(r *rulesv1.DisabledReason, master bool) error {
+	switch r.GetCode() {
+	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_ACTION_USED:
+		if !master {
+			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ACTION_USED, "the action of this turn is used")
+		}
+	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_BONUS_ACTION_USED:
+		if !master {
+			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_USED, "the bonus action of this turn is used")
+		}
+	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_REACTION_USED:
+		if !master {
+			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_USED, "the reaction is used")
+		}
+	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_ALREADY_USED_THIS_TURN:
+		if !master {
+			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ALREADY_USED_THIS_TURN, "already used in this turn")
+		}
+	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_ATTACK_ACTION_FIRST:
+		if !master {
+			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ATTACK_ACTION_FIRST, "Flurry of Blows comes after the Attack action")
+		}
+	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_NO_USES:
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_USES, "no uses left",
+			func(b *playv1.EncounterBlocked) { b.Recharge = r.GetRecharge() })
 	}
-	f.c.characterID = &f.who.CharacterID
 	return nil
+}
+
+// secondWindDieSides is the die Second Wind rolls: a d10.
+const secondWindDieSides = 10
+
+// secondWind is Retomar o fôlego: 1d10 plus the fighter's level of hit points,
+// rolled like a damage (RN-18) and healed through the vitals (or the NPC's hit
+// points). It fills the event with the roll and what changed, and returns the
+// vitals of a player's character.
+func (s *Service) secondWind(ctx context.Context, c *combatTx, m authz.Membership, v combatViewer, who playdb.Combatant, fighterLevel int, in rollInput, rolled bool, ev *actionEvent) (*playv1.CharacterVitals, error) {
+	if !rolled {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or typed_sum for Retomar o fôlego"))
+	}
+	if !v.master {
+		if err := s.mustRollThisWay(ctx, c.tx, m, in); err != nil {
+			return nil, err
+		}
+	}
+	expr := dice.Expr{Count: 1, Sides: secondWindDieSides, Modifier: fighterLevel}
+	var roll dice.Result
+	var err error
+	if in.inApp {
+		if roll, err = dice.Roll(s.roller, expr); err != nil {
+			return nil, fmt.Errorf("roll the d10: %w", err)
+		}
+	} else if roll, err = dice.Physical(expr, in.typed); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("typed_sum must be 1 to 10"))
+	}
+	hit, vit, err := s.healCombatant(ctx, c, who, clamp32(max(roll.Total, 0), 0, math.MaxInt32))
+	if err != nil {
+		return nil, err
+	}
+	ev.Heal, ev.DiceCount, ev.DiceSides, ev.Faces = true, 1, 10, faces32(roll.Faces)
+	ev.Modifier, ev.Total, ev.Physical = clamp32(fighterLevel, 0, 100), clamp32(roll.Total, 0, math.MaxInt32), roll.Physical
+	ev.Amount, ev.Before, ev.After, ev.DeathBefore = hit.Amount, hit.Before, hit.After, hit.DeathBefore
+	return vit, nil
 }

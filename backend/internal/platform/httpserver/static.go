@@ -216,7 +216,7 @@ func (h *staticHandler) setSecurityHeaders(w http.ResponseWriter) {
 // for something other than the static app: Connect RPCs (every package in
 // proto/ starts with "meurpg."), the identity module's routes, the maps
 // module's image routes (/images/{id}, /uploads/images), the campaign package's
-// part uploads and export downloads (/uploads/campaign-imports, /downloads), and the probes
+// part uploads and export downloads (/uploads/campaign-imports, /downloads), the conversation's audio (/session-messages/{id}/audio), and the probes
 // already registered on the mux in New().
 func isAPIPath(p string) bool {
 	switch {
@@ -227,6 +227,8 @@ func isAPIPath(p string) bool {
 	case p == "/images" || strings.HasPrefix(p, "/images/"):
 		return true
 	case p == "/uploads" || strings.HasPrefix(p, "/uploads/"):
+		return true
+	case p == "/session-messages" || strings.HasPrefix(p, "/session-messages/"):
 		return true
 	case p == "/downloads" || strings.HasPrefix(p, "/downloads/"):
 		return true

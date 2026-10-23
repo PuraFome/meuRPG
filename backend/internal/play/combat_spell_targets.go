@@ -2,6 +2,7 @@ package play
 
 import (
 	"context"
+	"math"
 	"slices"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -80,6 +81,9 @@ func (sc *spellTargetScene) targetsOf(e spellTargetEntry, sp link.Spell) *playv1
 		MaxTargets: clamp32(maxTargetsOf(sp, e.level), 0, maxCombatants), ExtraTargetPerLevel: sp.ExtraTargetPerLevel || sp.Key == magicMissile,
 		TargetsPerLevel: clamp32(sp.TargetPerLevel, 0, maxCombatants),
 	}
+	if reach := teleportReachFt[sp.Key]; reach > 0 && !sc.theatre {
+		st.TeleportRangeFt = clamp32(reach, 0, math.MaxInt32)
+	}
 	if sp.AttackType != "" { // a spell attack roll: the target's mode, as CastSpell settles it (SRD 5.1)
 		shape := shapeOfSpell(sp)
 		sc.modes.annotateShape(&shape, st.Targets)
@@ -97,9 +101,44 @@ func (sc *spellTargetScene) targetsOf(e spellTargetEntry, sp link.Spell) *playv1
 func dartsOfSlots(sp link.Spell, slots []*rulesv1.SlotChoice) []*playv1.DartsAtSlot {
 	var out []*playv1.DartsAtSlot
 	for _, slot := range slots {
-		if n := dartsOf(sp, int(slot.GetLevel())); n > 0 && !slices.ContainsFunc(out, func(d *playv1.DartsAtSlot) bool { return d.GetSlotLevel() == slot.GetLevel() }) {
+		if n := sharesAt(sp, int(slot.GetLevel())); n > 0 && !slices.ContainsFunc(out, func(d *playv1.DartsAtSlot) bool { return d.GetSlotLevel() == slot.GetLevel() }) {
 			out = append(out, &playv1.DartsAtSlot{SlotLevel: slot.GetLevel(), Darts: clamp32(n, 0, maxDartsAtSlot)})
 		}
+	}
+	return out
+}
+
+// spellTargetList lists who a spell can target as the viewer sees them: the
+// caster itself and every combatant that is not defeated (one at 0 hit points
+// can be healed), in turn order, with the distance and whether the spell's range
+// cannot reach it. A spell that stays on the caster lists only the caster. In a
+// combat without a grid (theatre) there is no distance and nothing is too far: the
+// master judges the range (RN-25).
+func spellTargetList(terrain grid.Terrain, cs []playdb.Combatant, caster playdb.Combatant, v combatViewer, sp link.Spell, theatre bool) []*playv1.TargetInReach {
+	reach, limited := reachOf(sp)
+	pool := coverPool(cs, v)
+	var out []*playv1.TargetInReach
+	for _, t := range cs {
+		if t.Defeated || !v.sees(t) || (selfOnly(sp) && t.ID != caster.ID) {
+			continue
+		}
+		cover := coverAgainst(terrain, caster, t, pool)
+		target := withCover(&playv1.TargetInReach{CombatantId: t.ID, Label: t.Label, State: stateOf(t)}, cover)
+		target.Untargetable = cover.total() && !v.master && !sp.Area && t.ID != caster.ID
+		if theatre {
+			out = append(out, target)
+			continue
+		}
+		if dist, ok := distanceFt(caster, t); ok {
+			target.DistanceFt = &dist
+			target.TooFar = limited && t.ID != caster.ID && dist > reach
+		} else if t.ID == caster.ID {
+			dist := int32(0)
+			target.DistanceFt = &dist
+		} else {
+			target.TooFar = limited && !v.master // a player cannot cast at what has no square (CastSpell)
+		}
+		out = append(out, target)
 	}
 	return out
 }

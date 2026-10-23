@@ -118,6 +118,10 @@
               }
             </span>
           }
+          @if (heldQuestions()?.forCombatant(c.id); as q) {
+            <!-- The player's d20 waits for the die it may use (SRD 5.1); the player answers first, then the master may. -->
+            <app-held-question class="row__held" layout="row" [question]="q" [canType]="heldCanType()" />
+          }
         </li>
       }
     }

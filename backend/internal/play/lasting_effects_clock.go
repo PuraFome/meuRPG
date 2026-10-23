@@ -8,6 +8,7 @@ import (
 	"time"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -36,9 +37,9 @@ import (
 // effectsBeforeTurn ends what ends at the end of the turn that is ending: it runs as the next
 // turn starts, once the saving throws that held the turn were answered.
 func (s *Service) effectsBeforeTurn(ctx context.Context, c *combatTx) error {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	members := turnMembers(cs)
 	if len(members) == 0 {
@@ -57,14 +58,51 @@ func (s *Service) effectsBeforeTurn(ctx context.Context, c *combatTx) error {
 			}
 		}
 	}
+	if ending, err = s.dealDamageAtEnd(ctx, c, cs, ending); err != nil {
+		return err
+	}
 	return s.endEffectRows(ctx, c, cs, ending, endDuration)
+}
+
+// triggersAtEnd says an effect deals its damage as its clock runs out at the end of its target's
+// turn (Acid Arrow's later damage), not at the start of the turn.
+func triggersAtEnd(st playdb.CombatantState) bool {
+	return st.TriggerDice != nil && conv.OrZero(st.EndsPhase) == phaseEndKey
+}
+
+// dealDamageAtEnd lands the damage of the effects that end now with a trigger, on a target that
+// still stands, and returns the effects that are still there to end: the damage may take the
+// target down, which ends its effects with it.
+func (s *Service) dealDamageAtEnd(ctx context.Context, c *combatTx, cs []playdb.Combatant, ending []playdb.CombatantState) ([]playdb.CombatantState, error) {
+	dealt := false
+	for _, st := range ending {
+		i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == st.CombatantID })
+		if !triggersAtEnd(st) || st.TriggersFired >= conv.OrZero(st.TriggerMaxTriggers) || i < 0 || cs[i].Defeated {
+			continue
+		}
+		rolled, err := s.dealEffectDamage(ctx, c, cs[i], st, conv.Int32(endsAtOf(st).Round))
+		if err != nil {
+			return nil, err
+		}
+		dealt = dealt || rolled
+	}
+	if !dealt {
+		return ending, nil
+	}
+	rows, err := c.q.ListLastingEffects(ctx, c.enc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the effects: %w", err)
+	}
+	return slices.DeleteFunc(ending, func(st playdb.CombatantState) bool {
+		return !slices.ContainsFunc(rows, func(r playdb.CombatantState) bool { return r.ID == st.ID })
+	}), nil
 }
 
 // effectsAfterTurnStart does what the start of the turn of ids does to the effects.
 func (s *Service) effectsAfterTurnStart(ctx context.Context, c *combatTx, ids []string, round int32) error {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	rows, err := c.q.ListLastingEffects(ctx, c.enc.ID)
 	if err != nil {
@@ -80,8 +118,8 @@ func (s *Service) effectsAfterTurnStart(ctx context.Context, c *combatTx, ids []
 	if rows, err = c.q.ListLastingEffects(ctx, c.enc.ID); err != nil {
 		return fmt.Errorf("list the effects: %w", err)
 	}
-	if cs, err = c.q.ListCombatants(ctx, c.enc.ID); err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+	if cs, err = listCombatants(ctx, c); err != nil {
+		return err
 	}
 	// (1b) The temporary hit points an effect gives at the start of each turn (Heroísmo).
 	if err := s.giveTurnTempHPs(ctx, c, cs, rows, ids, round); err != nil {
@@ -161,7 +199,7 @@ func (s *Service) rollTurnDamages(ctx context.Context, c *combatTx, cs []playdb.
 		if i < 0 {
 			continue
 		}
-		if st.TriggerDice != nil && st.TriggersFired < derefInt32(st.TriggerMaxTriggers) {
+		if st.TriggerDice != nil && !triggersAtEnd(st) && st.TriggersFired < conv.OrZero(st.TriggerMaxTriggers) {
 			if err := s.effectDamage(ctx, c, cs[i], st, round); err != nil {
 				return err
 			}
@@ -189,58 +227,65 @@ func (s *Service) openStartSaves(ctx context.Context, c *combatTx, group string,
 // a player's character's waits for the master (RN-02). When it was the last time it hits, the
 // effect and what it held end.
 func (s *Service) effectDamage(ctx context.Context, c *combatTx, who playdb.Combatant, st playdb.CombatantState, round int32) error {
-	f, ok := rules.ParseDice(deref(st.TriggerDice))
+	if rolled, err := s.dealEffectDamage(ctx, c, who, st, round); err != nil || !rolled {
+		return err
+	}
+	if st.TriggersFired+1 >= conv.OrZero(st.TriggerMaxTriggers) {
+		cs, err := listCombatants(ctx, c)
+		if err != nil {
+			return err
+		}
+		return s.endEffectRows(ctx, c, cs, []playdb.CombatantState{st}, endBurned)
+	}
+	return nil
+}
+
+// dealEffectDamage rolls the damage of an effect's trigger, lands it on who, counts it and writes
+// its event. It says whether it rolled: dice that cannot be rolled deal nothing.
+func (s *Service) dealEffectDamage(ctx context.Context, c *combatTx, who playdb.Combatant, st playdb.CombatantState, round int32) (rolled bool, err error) {
+	f, ok := rules.ParseDice(conv.OrZero(st.TriggerDice))
 	if !ok || f.Count < 1 {
-		return nil
+		return false, nil
 	}
 	roll, err := dice.Roll(s.roller, dice.Expr{Count: f.Count, Sides: f.Sides, Modifier: f.Bonus})
 	if err != nil {
-		return fmt.Errorf("roll an effect's damage: %w", err)
+		return false, fmt.Errorf("roll an effect's damage: %w", err)
 	}
 	status, resolved := pendingRolled, (*time.Time)(nil)
 	if holdsHP(who) {
 		status, resolved = pendingApplied, &c.now
 	}
-	dtype := deref(st.TriggerDamageType)
+	dtype := conv.OrZero(st.TriggerDamageType)
 	amount, err := s.afterResistance(ctx, c, who, dtype, clamp32(roll.Total, 0, math.MaxInt32))
 	if err != nil {
-		return err
+		return false, err
 	}
 	p, err := c.q.InsertEffectPendingDamage(ctx, playdb.InsertEffectPendingDamageParams{
 		EncounterID: c.enc.ID, TargetID: who.ID, Status: status, DiceCount: clamp32(f.Count, 0, 100), DiceSides: clamp32(f.Sides, 0, 100),
-		DiceBonus: clamp32(f.Bonus, -1000, 1000), DamageType: dtype, Faces: faces32(roll.Faces), Amount: &amount, RollTotal: new(clamp32(roll.Total, math.MinInt32, math.MaxInt32)),
+		DiceBonus: clamp32(f.Bonus, -1000, 1000), DamageType: dtype, Faces: faces32(roll.Faces), Amount: &amount, RollTotal: new(conv.Int32(roll.Total)),
 		CreatedAt: c.now, ResolvedAt: resolved, EffectSourceKey: st.SourceKey,
 	})
 	if err != nil {
-		return fmt.Errorf("open the effect's damage: %w", err)
+		return false, fmt.Errorf("open the effect's damage: %w", err)
 	}
 	hit, _, err := s.landDamage(ctx, c, p, who, amount)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if err := c.q.CountLastingEffectTrigger(ctx, st.ID); err != nil {
-		return fmt.Errorf("count the effect's damage: %w", err)
+		return false, fmt.Errorf("count the effect's damage: %w", err)
 	}
 	if err := insertEvent(ctx, c, eventLastingTriggered, &c.actorUserID, nil, actionEvent{
-		Round: round, Secret: s.effectHiddenFrom(st, []playdb.Combatant{who}), Actor: who.ID, Target: who.ID, Pending: p.ID, Key: deref(st.SourceKey),
+		Round: round, Secret: s.effectHiddenFrom(st, []playdb.Combatant{who}), Actor: who.ID, Target: who.ID, Pending: p.ID, Key: conv.OrZero(st.SourceKey),
 		Applied: hit.Applied, Before: hit.Before, After: hit.After,
-		Lasting: &lastingEvent{Key: deref(st.SourceKey), Change: "damage", Targets: []string{who.ID}, Amount: amount, DType: dtype, Effects: []string{st.ID}},
+		Lasting: &lastingEvent{Key: conv.OrZero(st.SourceKey), Change: "damage", Targets: []string{who.ID}, Amount: amount, DType: dtype, Effects: []string{st.ID}},
 	}); err != nil {
-		return err
+		return false, err
 	}
 	if hit.Applied {
-		if err := s.afterDamage(ctx, c, who, damageLanded{key: deref(st.SourceKey), pending: p, hit: hit}); err != nil {
-			return err
-		}
+		return true, s.afterDamage(ctx, c, who, damageLanded{key: conv.OrZero(st.SourceKey), pending: p, hit: hit})
 	}
-	if st.TriggersFired+1 >= derefInt32(st.TriggerMaxTriggers) {
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return fmt.Errorf("list the combatants: %w", err)
-		}
-		return s.endEffectRows(ctx, c, cs, []playdb.CombatantState{st}, endBurned)
-	}
-	return nil
+	return true, nil
 }
 
 // openEndSaves opens the saving throws the effects on a combatant ask at the end of its
@@ -286,9 +331,9 @@ func (s *Service) releaseHeldTurn(ctx context.Context, c *combatTx) error {
 	if c.enc.ID == "" || c.enc.Status != statusActive {
 		return nil
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	if slices.ContainsFunc(cs, func(o playdb.Combatant) bool { return o.TurnState == turnActing }) {
 		return nil
@@ -338,8 +383,8 @@ func (s *Service) turnTempHP(ctx context.Context, c *combatTx, who playdb.Combat
 		c.told = append(c.told, v)
 	}
 	return insertEvent(ctx, c, eventLastingTriggered, &c.actorUserID, nil, actionEvent{
-		Round: round, Secret: s.effectHiddenFrom(st, []playdb.Combatant{who}), Actor: who.ID, Target: who.ID, Key: deref(st.SourceKey),
-		Lasting: &lastingEvent{Key: deref(st.SourceKey), Change: "temp_hp", Targets: []string{who.ID}, Amount: clamp32(amount, 0, 100), Effects: []string{st.ID}},
+		Round: round, Secret: s.effectHiddenFrom(st, []playdb.Combatant{who}), Actor: who.ID, Target: who.ID, Key: conv.OrZero(st.SourceKey),
+		Lasting: &lastingEvent{Key: conv.OrZero(st.SourceKey), Change: "temp_hp", Targets: []string{who.ID}, Amount: clamp32(amount, 0, 100), Effects: []string{st.ID}},
 	})
 }
 
@@ -352,6 +397,7 @@ func (s *Service) clearTempHP(ctx context.Context, c *combatTx, who playdb.Comba
 	if t.temp == 0 {
 		return nil
 	}
+	c.tempCleared = append(c.tempCleared, tempCleared{Combatant: who.ID, Temp: clamp32(t.temp, 0, maxTempHitPoints)})
 	none := int32(0)
 	if holdsHP(who) {
 		before := hpOf(who)

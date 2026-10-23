@@ -16,11 +16,7 @@ import (
 // controller (or the master), or skipped or withdrawn by the master (state). It
 // writes a reaction_declined event that the undo can take back.
 func (s *Service) answerOffer(ctx context.Context, m authz.Membership, rawEncounter, rawOffer, rawKey, state string) (*playv1.Encounter, error) {
-	key, err := parseKey(rawKey)
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(rawEncounter, "encounter")
+	key, encID, err := parseCall(rawKey, rawEncounter)
 	if err != nil {
 		return nil, err
 	}
@@ -50,9 +46,9 @@ func answerInTx(ctx context.Context, c *combatTx, m authz.Membership, offerID, s
 	if err != nil {
 		return nil, fmt.Errorf("find the opportunity offer: %w", err)
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	v := c.viewer(m, cs)                              // the fog: an NPC the player does not see is not found
 	reactor, err := findCombatant(cs, o.ReactorID, v) // not_found for a reactor the player does not see
@@ -90,9 +86,5 @@ func storeAnswer(ctx context.Context, c *combatTx, o playdb.OpportunityOffer, st
 	if _, err := c.q.SetOpportunityOfferState(ctx, playdb.SetOpportunityOfferStateParams{ID: o.ID, State: state, AnsweredAt: &c.now}); err != nil {
 		return fmt.Errorf("answer the opportunity offer: %w", err)
 	}
-	var err error
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return fmt.Errorf("touch the encounter: %w", err)
-	}
-	return nil
+	return touch(ctx, c)
 }

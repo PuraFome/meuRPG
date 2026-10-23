@@ -1,4 +1,5 @@
 import { ReactionChoice, type Encounter } from '../../../gen/meurpg/play/v1/combat_pb';
+import { heldOfferOf } from '../held-rolls/held-roll-offer';
 import { type RollMode, type RollModeRequest } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
 import {
   type AttackDie,
@@ -268,7 +269,11 @@ export class CombatAttackCalls {
           : { case: 'typed', value: answer.die.typed },
       idempotencyKey: key,
     });
-    return { encounter: need(res.encounter, 'AnswerReaction'), result: res.result };
+    return {
+      encounter: need(res.encounter, 'AnswerReaction'),
+      result: res.result,
+      held: res.heldRollOffer,
+    };
   }
 
   /**
@@ -311,8 +316,7 @@ export class CombatAttackCalls {
     return {
       encounter: need(res.encounter, 'ResolveConcentrationSave'),
       result: res.result,
-      ...(res.inspirationOffer ? { offer: res.inspirationOffer } : {}),
-      ...(res.luckyOffer ? { lucky: res.luckyOffer } : {}),
+      held: heldOfferOf(res),
     };
   }
 }

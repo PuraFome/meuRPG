@@ -103,7 +103,7 @@ type logSnapshot struct {
 }
 
 // readLogSnapshot reads the combat's events, its combatants and the master's undo marker
-// as one snapshot (audit D-03): a log line whose actor is missing, or an "undo" that
+// as one snapshot: a log line whose actor is missing, or an "undo" that
 // points at an event the list does not have, would be a torn read.
 func (s *Service) readLogSnapshot(ctx context.Context, m authz.Membership, encID string) (logSnapshot, error) {
 	var snap logSnapshot
@@ -255,12 +255,7 @@ func undoneEvents(events []playdb.ListEncounterEventsRow) map[string]bool {
 		if e.Kind != eventActionUndone {
 			continue
 		}
-		if ev, err := readEvent(e.Payload); err == nil {
-			undone[ev.Undone] = true
-			for _, id := range ev.UndoneAlso {
-				undone[id] = true
-			}
-		}
+		markUndone(undone, e.Payload)
 	}
 	return undone
 }
@@ -308,6 +303,8 @@ var logHandlers = map[string]logHandler{
 	eventLastingEnded:            effectLine,
 	eventLastingSaved:            effectLine,
 	eventLastingTriggered:        effectLine,
+	eventZoneTriggered:           effectLine,
+	eventZoneMoved:               effectLine,
 	eventLastingVisibility:       effectLine,
 	eventExhaustion:              effectLine,
 	eventHitRider:                plainLine(playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_RIDER),
@@ -947,6 +944,9 @@ func (e *logEntry) fillAction(c *logViewing, out *playv1.CombatLogEntry) bool {
 			Roll: diceRoll(e.ev.DiceCount, e.ev.DiceSides, e.ev.Faces, e.ev.Modifier, e.ev.Total, e.ev.Physical),
 		}
 	}
+	if e.ev.Channel != nil && (c.v.master || c.v.owns(c.actor)) { // Canalizar Divindade: the numbers are the master's and its player's
+		out.ChannelDivinity = channelProto(e.ev.Channel)
+	}
 	return true
 }
 
@@ -1015,7 +1015,7 @@ func (e *logEntry) fillDeathSave(c *logViewing, out *playv1.CombatLogEntry) bool
 		Stable: after.Successes >= deathSaveCount, Dying: v.master && after.Failures >= deathSaveCount,
 	}
 	if v.master || v.owns(c.actor) {
-		out.DeathSave.Roll = diceRoll(1, 20, []int32{e.ev.D20}, 0, e.ev.D20, e.ev.Physical)
+		out.DeathSave.Roll = deathRoll(e.ev)
 	}
 	return true
 }
@@ -1086,6 +1086,7 @@ func (e *logEntry) spellTargetView(v combatViewer, h castHit, caster, target pla
 	coverKey, coverSource := h.coverFor(v, e.ev.CoverUsers)
 	t.Cover, t.CoverSource = coverDegreeProto(coverKey), coverSourceProto(coverSource)
 	t.Hidden = v.master && h.HiddenAtCast
+	t.PushedFt, t.PushNoMap = pushedFt(h.Pushed), pushedNoMap(h.Pushed)
 	if v.master && h.TargetAC > 0 {
 		t.TargetArmorClass, t.CoverBonus = &h.TargetAC, h.CoverBonus
 	}

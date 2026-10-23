@@ -92,6 +92,7 @@ func derivedNumbersToProto(d rules.Derived) *rulesv1.DerivedSheet {
 		NextLevelXp:           i32(d.NextLevelXP),
 		ArmorClass:            i32(d.ArmorClass),
 		ArmorClassDescription: d.ArmorClassDescription,
+		ShieldIdle:            d.ShieldIdle,
 		HitPointsMax:          i32(max(d.HitPointsMax, 1)),
 		HitPointsFromEffects:  i32(d.HitPointsFromEffects),
 		SpeedWalkFt:           i32(d.SpeedWalkFt),
@@ -470,6 +471,9 @@ var openChoiceKinds = map[string]charactersv1.OpenChoiceKind{
 	rules.OpenChoiceCantrips:       charactersv1.OpenChoiceKind_OPEN_CHOICE_KIND_CANTRIPS,
 	rules.OpenChoiceSpellsKnown:    charactersv1.OpenChoiceKind_OPEN_CHOICE_KIND_SPELLS_KNOWN,
 	rules.OpenChoiceSpellsPrepared: charactersv1.OpenChoiceKind_OPEN_CHOICE_KIND_SPELLS_PREPARED,
+	rules.OpenChoiceExpertise:      charactersv1.OpenChoiceKind_OPEN_CHOICE_KIND_EXPERTISE,
+	rules.OpenChoiceTools:          charactersv1.OpenChoiceKind_OPEN_CHOICE_KIND_TOOLS,
+	rules.OpenChoiceLanguages:      charactersv1.OpenChoiceKind_OPEN_CHOICE_KIND_LANGUAGES,
 }
 
 // openChoices are the choices a derived sheet still lacks, for the master's

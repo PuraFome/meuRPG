@@ -14,6 +14,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
@@ -23,7 +24,8 @@ import (
 )
 
 // Revivify outside a combat (SRD 5.1, Revivify). The spell reaches back one minute and the app
-// does not count time outside a combat, so the cast waits for the master (REVIVIFY_TIME_PENDING):
+// does not record when a creature died outside a combat (the game clock only runs down
+// effects), so the cast waits for the master (REVIVIFY_TIME_PENDING):
 // nothing is spent, and the target is not touched, until he says whether the creature died less
 // than a minute ago. "Já passou" ends it at no cost, and the caster is told only that the master
 // said it does not work (RN-10). A cast inside a combat is CastSpell.
@@ -133,12 +135,9 @@ func (s *Service) RequestRevivify(
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		replayed = false
 		q := s.queries.WithTx(tx)
-		session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return errNoOpenSession()
-		}
+		session, err := lockOpenSessionOrNone(ctx, q, m.CampaignID)
 		if err != nil {
-			return fmt.Errorf("lock the open session: %w", err)
+			return err
 		}
 		get := func(ctx context.Context, k *string) (playdb.RevivifyRequest, error) {
 			return q.GetRevivifyRequestByCreateKey(ctx, playdb.GetRevivifyRequestByCreateKeyParams{CampaignID: m.CampaignID, CreateKey: k})
@@ -155,7 +154,7 @@ func (s *Service) RequestRevivify(
 	}
 	if !replayed {
 		logging.Event(ctx, s.logger, "revivify.requested", slog.String("request_id", row.ID), slog.String("character_id", row.CasterCharacterID))
-		s.publishRevivifyChanged(m.CampaignID, deref(row.RequestedByUserID))
+		s.publishRevivifyChanged(m.CampaignID, conv.OrZero(row.RequestedByUserID))
 	}
 	out, err := s.revivifyRequestsProto(ctx, m.CampaignID, []playdb.RevivifyRequest{row}, nil)
 	if err != nil {
@@ -190,17 +189,11 @@ func (s *Service) openRevivifyRequest(ctx context.Context, tx pgx.Tx, q *playdb.
 // refuseCasterInCombat stops a cast outside a combat for a caster that is in one: there the
 // minute is counted.
 func (s *Service) refuseCasterInCombat(ctx context.Context, q *playdb.Queries, sessionID string, caster link.Character) error {
-	enc, err := q.GetOpenEncounter(ctx, sessionID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil
+	_, cs, found, err := openCombatants(ctx, q, sessionID)
+	if err != nil || !found {
+		return err
 	}
-	if err != nil {
-		return fmt.Errorf("find the open encounter: %w", err)
-	}
-	cs, err := q.ListCombatants(ctx, enc.ID)
-	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
-	}
+	// A defeated caster is not in the combat for this check (the Revivify request is allowed).
 	if slices.ContainsFunc(cs, func(c playdb.Combatant) bool {
 		return c.Kind == kindPlayer && c.CharacterID == caster.ID && !c.Defeated
 	}) {
@@ -261,7 +254,7 @@ func (s *Service) ListRevivifyRequests(
 		return nil, s.dbError(ctx, "list the Revivify requests", err)
 	}
 	if m.Role != authz.RoleMaster { // a player reads the casts they made
-		rows = slices.DeleteFunc(rows, func(r playdb.RevivifyRequest) bool { return deref(r.RequestedByUserID) != m.UserID })
+		rows = slices.DeleteFunc(rows, func(r playdb.RevivifyRequest) bool { return conv.OrZero(r.RequestedByUserID) != m.UserID })
 	}
 	out, err := s.revivifyRequestsProto(ctx, m.CampaignID, rows, nil)
 	if err != nil {
@@ -339,12 +332,9 @@ func (s *Service) ConfirmRevivifyTime(
 // "já passou" ends the request at no cost.
 func (s *Service) answerRevivify(ctx context.Context, tx pgx.Tx, m authz.Membership, in revivifyAnswer, out *revivifyAnswered) error {
 	q := s.queries.WithTx(tx)
-	session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return errNoOpenSession()
-	}
+	session, err := lockOpenSessionOrNone(ctx, q, m.CampaignID)
 	if err != nil {
-		return fmt.Errorf("lock the open session: %w", err)
+		return err
 	}
 	row, replayed, err := s.pendingRevivify(ctx, q, session, m, in)
 	if err != nil {
@@ -394,7 +384,7 @@ func (s *Service) pendingRevivify(ctx context.Context, q *playdb.Queries, sessio
 func (s *Service) announceAnswer(ctx context.Context, m authz.Membership, out *revivifyAnswered) {
 	row := out.row
 	logging.Event(ctx, s.logger, "revivify.answered", slog.String("request_id", row.ID), slog.String("status", row.Status))
-	s.publishRevivifyChanged(m.CampaignID, deref(row.RequestedByUserID))
+	s.publishRevivifyChanged(m.CampaignID, conv.OrZero(row.RequestedByUserID))
 	for _, v := range out.vitals {
 		s.publishVitals(m.CampaignID, v)
 	}

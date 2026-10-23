@@ -16,6 +16,7 @@ Every subject has its own page, listed at the end.
 | Combat: lifecycle, order, calls, visibility | MR-012, MR-013, MR-014 | [Combat](combat.md) |
 | Attacks, damage, conditions, states, feature actions | MR-012, MR-014, RN-22, RN-35 | [Attacks and damage](attacks-and-damage.md) |
 | Movement, cover, opportunity attacks, area spells | MR-034, RN-21 | [Movement](movement.md) |
+| The areas spells keep on the map | RN-37 | [Spell zones](spell-zones.md) |
 | Casting in combat and outside it | MR-014, MR-048, RN-32 | [Casting](casting.md) |
 | Reaction windows | PM-04 | [Reactions](reactions.md) |
 | Death saves and bringing the dead back | RN-03 | [Death and revival](death-and-revival.md) |
@@ -29,6 +30,7 @@ Every subject has its own page, listed at the end.
 | Character creatures, Wild Shape, the familiar's eyes | MR-037 | [Creatures](creatures.md) |
 | Monsters in combat, the encounter builder | MR-042, MR-043 | [Encounters](encounters.md) |
 | Puzzles | MR-038, RN-27 | [Puzzles](puzzles.md) |
+| The free dice roller | MR-052, RN-10, RN-18 | [The free dice roller](free-dice-roller.md) |
 
 ## Services
 
@@ -56,13 +58,14 @@ A service is separate when its contract grows large enough to deserve its own `.
 | `ListGameSessions` | Campaign members | none |
 | `ListOpenGameSessions` | Anyone signed in; each sees only the campaigns they are an active member of | none |
 | `GetLiveSession`, `WatchGameSession` | Campaign members | `failed_precondition` `NO_OPEN_SESSION` |
-| `AdjustCharacterVitals` | The master, session open | `NO_OPEN_SESSION`; `not_found` unless the character is a living player character of the campaign; `invalid_argument` outside 0 to the maximum. The response carries `concentration_dc` and `concentration_cast_id` when a character concentrating on a spell cast outside combat lost hit points |
+| `AdjustCharacterVitals` | The master, session open | `NO_OPEN_SESSION`; `not_found` unless the character is a living player character of the campaign; `invalid_argument` outside 0 to the maximum. The response carries `concentration_dc` and `concentration_cast_id` when a character concentrating on a spell cast outside combat lost hit points. At 0 HP the concentration of a character in the open combat ends too |
 | `NudgePlayer` | The master, session open | `NO_OPEN_SESSION`; `not_found`; `resource_exhausted` for a second nudge to the same character within 10 s |
 | `SetCurrentMap`, `SetShownImage` | The master, session open | `NO_OPEN_SESSION`; `not_found` for a map or image of another campaign |
 | `OpenScene`, `CloseScene`, `GetOpenScene`, `RollSceneCheck`, `GrantSceneAttempt` | See [Scenes and stage](scenes-and-stage.md) | `SceneBlocked` reasons |
 | `PutOnStage`, `TakeOffStage`, `SetSpeaker` | The master, session open | `SceneBlocked` `NO_OPEN_SCENE`, `STAGE_FULL` |
 | `ListLeftImages`, `TakeBackLeftImage` | Members read; the master takes back | `not_found` |
 | `GetSessionSummary` | Campaign members | `GameSessionBlocked` `SESSION_NOT_ENDED` for an open session |
+| `RollFreeDice`, `ListFreeRolls` | Campaign members; `secret` only the master | See [The free dice roller](free-dice-roller.md) |
 
 A pending member (RN-15) gets `not_found` on everything that names a campaign, like a non-member.
 `TestAuthorizationMatrix` has a column for them.
@@ -124,4 +127,4 @@ What a player may not see stays out of the response, never blank or zero.
 
 ## Pages
 
-[Live session](live-session.md) · [Vitals, rests and class resources](rests-and-resources.md) · [Held rolls](held-rolls.md) · [Scenes and stage](scenes-and-stage.md) · [Combat](combat.md) · [Attacks and damage](attacks-and-damage.md) · [Movement](movement.md) · [Casting](casting.md) · [Reactions](reactions.md) · [Death and revival](death-and-revival.md) · [Contests](contests.md) · [Lasting effects](lasting-effects.md) · [Table rules in combat](table-rules.md) · [Theatre of the mind](theatre.md) · [Undo](undo.md) · [Combat log and events](combat-log.md) · [Highlights and summary](highlights-and-summary.md) · [Combat under fog](fog.md) · [Traps](traps.md) · [Creatures](creatures.md) · [Encounters](encounters.md) · [Puzzles](puzzles.md)
+[Live session](live-session.md) · [Vitals, rests and class resources](rests-and-resources.md) · [Held rolls](held-rolls.md) · [Scenes and stage](scenes-and-stage.md) · [Combat](combat.md) · [Attacks and damage](attacks-and-damage.md) · [Movement](movement.md) · [Spell zones](spell-zones.md) · [Casting](casting.md) · [Reactions](reactions.md) · [Death and revival](death-and-revival.md) · [Contests](contests.md) · [Lasting effects](lasting-effects.md) · [Table rules in combat](table-rules.md) · [Theatre of the mind](theatre.md) · [Undo](undo.md) · [Combat log and events](combat-log.md) · [Highlights and summary](highlights-and-summary.md) · [Combat under fog](fog.md) · [Traps](traps.md) · [Creatures](creatures.md) · [Encounters](encounters.md) · [Puzzles](puzzles.md) · [The free dice roller](free-dice-roller.md)

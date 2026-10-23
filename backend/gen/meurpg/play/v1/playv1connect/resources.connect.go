@@ -82,6 +82,12 @@ const (
 	// ResourceServiceAnswerOutsideLuckyProcedure is the fully-qualified name of the ResourceService's
 	// AnswerOutsideLucky RPC.
 	ResourceServiceAnswerOutsideLuckyProcedure = "/meurpg.play.v1.ResourceService/AnswerOutsideLucky"
+	// ResourceServiceAnswerHeldRollProcedure is the fully-qualified name of the ResourceService's
+	// AnswerHeldRoll RPC.
+	ResourceServiceAnswerHeldRollProcedure = "/meurpg.play.v1.ResourceService/AnswerHeldRoll"
+	// ResourceServiceListHeldRollsProcedure is the fully-qualified name of the ResourceService's
+	// ListHeldRolls RPC.
+	ResourceServiceListHeldRollsProcedure = "/meurpg.play.v1.ResourceService/ListHeldRolls"
 )
 
 // ResourceServiceClient is a client for the meurpg.play.v1.ResourceService service.
@@ -180,6 +186,11 @@ type ResourceServiceClient interface {
 	//
 	// Errors: `not_found` for a hold that is gone; `invalid_argument` for a typed
 	// face outside the die.
+	//
+	// Deprecated (E4-9): AnswerHeldRoll answers every question of a held roll, whoever asks it. This RPC is still
+	// served, as an adapter over the same answer, for a tab opened before AnswerHeldRoll existed.
+	//
+	// Deprecated: do not use.
 	AnswerBardicInspiration(context.Context, *connect.Request[v1.AnswerBardicInspirationRequest]) (*connect.Response[v1.AnswerBardicInspirationResponse], error)
 	// AnswerLucky answers the question a held attack roll asks when a halfling's d20 shows a 1
 	// (SRD 5.1, Halfling, Lucky: the die may be rolled again, and the new roll stands): roll it
@@ -199,6 +210,11 @@ type ResourceServiceClient interface {
 	// outside 1 to 20; `failed_precondition` when the hold asks no Lucky question or it was
 	// answered already (by another answer); EncounterBlocked WRONG_DICE_MODE for a player's way of
 	// rolling the campaign does not allow.
+	//
+	// Deprecated (E4-9): AnswerHeldRoll answers every question of a held roll, whoever asks it. This RPC is still
+	// served, as an adapter over the same answer, for a tab opened before AnswerHeldRoll existed.
+	//
+	// Deprecated: do not use.
 	AnswerLucky(context.Context, *connect.Request[v1.AnswerLuckyRequest]) (*connect.Response[v1.AnswerLuckyResponse], error)
 	// GetOutsideInspiration reads the Bardic Inspiration of the caller out of a combat: the
 	// die their character holds and, for a bard, the uses left and the party to give it to;
@@ -227,6 +243,11 @@ type ResourceServiceClient interface {
 	// Errors: `not_found` for a hold that is gone; `invalid_argument` for a typed face outside
 	// the die; `failed_precondition` when the die ran out meanwhile; ResourceBlocked
 	// LUCKY_PENDING while the Lucky question of the same roll waits (AnswerOutsideLucky first).
+	//
+	// Deprecated (E4-9): AnswerHeldRoll answers every question of a held roll, whoever asks it. This RPC is still
+	// served, as an adapter over the same answer, for a tab opened before AnswerHeldRoll existed.
+	//
+	// Deprecated: do not use.
 	AnswerOutsideInspiration(context.Context, *connect.Request[v1.AnswerOutsideInspirationRequest]) (*connect.Response[v1.AnswerOutsideInspirationResponse], error)
 	// AnswerOutsideLucky answers the Lucky question of a d20 roll that is not a weapon attack
 	// (AnswerLucky has those): a halfling's d20 showed a 1 (SRD 5.1, Halfling, Lucky: the die may
@@ -252,7 +273,44 @@ type ResourceServiceClient interface {
 	// `failed_precondition` when the hold asks no Lucky question, it was answered already (by
 	// another answer) or its combat round is over; the path's WRONG_DICE_MODE for a way of rolling
 	// the campaign does not allow.
+	//
+	// Deprecated (E4-9): AnswerHeldRoll answers every question of a held roll, whoever asks it. This RPC is still
+	// served, as an adapter over the same answer, for a tab opened before AnswerHeldRoll existed.
+	//
+	// Deprecated: do not use.
 	AnswerOutsideLucky(context.Context, *connect.Request[v1.AnswerOutsideLuckyRequest]) (*connect.Response[v1.AnswerOutsideLuckyResponse], error)
+	// AnswerHeldRoll answers the question of any roll that waits, whichever roll it is (a weapon attack,
+	// a spell attack, a save, a check, a search, a hint try) and whichever question it asks (the
+	// halfling's Lucky, or the Bardic Inspiration die): the one RPC AnswerLucky, AnswerBardicInspiration,
+	// AnswerOutsideLucky and AnswerOutsideInspiration are the older forms of. The roll is run again by the
+	// path that held it, with the d20 already rolled and the answer applied, and the response is that path's
+	// own (`result`), still held with the roll's next question (`next`, copied out of the result so the app
+	// needs no code for each kind), or resolved and written.
+	//
+	// Who may answer: the roller's player, and the master, for every roll that waits, in a combat or out
+	// of it (it unblocks a player who left). Both may try at once; the first answer wins and the other gets
+	// `failed_precondition` (the roll was answered already), the die spent once. Another player gets
+	// `not_found`, never "permission denied", which would say the roll exists.
+	//
+	// The master waits for the player's first chance (E4-10): for 10 s after the question was asked
+	// (`HeldRollOffer.created_at`), only the roller's player may answer it, and the master's answer is refused
+	// with `failed_precondition` and ResourceBlocked PLAYER_FIRST (`RESOURCE_BLOCKED_REASON_PLAYER_FIRST`), whose
+	// `wait_seconds` says how long is left. It does not apply when no player plays the roll (an NPC's, or a
+	// player who left). This holds for the master's own rolls for a player's character (a save, a spell attack,
+	// a group check) too: the master is asked in his own sheet, the player reads the same question, and the first
+	// answer after the 10 s wins.
+	//
+	// Errors: `not_found` for a hold that is gone or one the caller may not answer; `invalid_argument`
+	// for an answer of the wrong question, for a missing roll_in_app or typed_face, or a typed face outside
+	// the die; ResourceBlocked LUCKY_PENDING for the die's answer while the Lucky question of the same
+	// roll waits; `failed_precondition` when the die ran out or the roll was answered already; the path's
+	// WRONG_DICE_MODE for a way of rolling the campaign does not allow (the master rolls either way).
+	AnswerHeldRoll(context.Context, *connect.Request[v1.AnswerHeldRollRequest]) (*connect.Response[v1.AnswerHeldRollResponse], error)
+	// ListHeldRolls lists the questions of the rolls that wait and the caller may answer, oldest first: a
+	// player's own rolls, in a combat and out of one; the master's, every roll of the campaign. A question
+	// whose combat round is over, or whose die ran out, is not listed. Read it again when the stream says
+	// HeldRollsChanged.
+	ListHeldRolls(context.Context, *connect.Request[v1.ListHeldRollsRequest]) (*connect.Response[v1.ListHeldRollsResponse], error)
 }
 
 // NewResourceServiceClient constructs a client for the meurpg.play.v1.ResourceService service. By
@@ -351,6 +409,18 @@ func NewResourceServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(resourceServiceMethods.ByName("AnswerOutsideLucky")),
 			connect.WithClientOptions(opts...),
 		),
+		answerHeldRoll: connect.NewClient[v1.AnswerHeldRollRequest, v1.AnswerHeldRollResponse](
+			httpClient,
+			baseURL+ResourceServiceAnswerHeldRollProcedure,
+			connect.WithSchema(resourceServiceMethods.ByName("AnswerHeldRoll")),
+			connect.WithClientOptions(opts...),
+		),
+		listHeldRolls: connect.NewClient[v1.ListHeldRollsRequest, v1.ListHeldRollsResponse](
+			httpClient,
+			baseURL+ResourceServiceListHeldRollsProcedure,
+			connect.WithSchema(resourceServiceMethods.ByName("ListHeldRolls")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -370,6 +440,8 @@ type resourceServiceClient struct {
 	giveBardicInspirationOutside *connect.Client[v1.GiveBardicInspirationOutsideRequest, v1.GiveBardicInspirationOutsideResponse]
 	answerOutsideInspiration     *connect.Client[v1.AnswerOutsideInspirationRequest, v1.AnswerOutsideInspirationResponse]
 	answerOutsideLucky           *connect.Client[v1.AnswerOutsideLuckyRequest, v1.AnswerOutsideLuckyResponse]
+	answerHeldRoll               *connect.Client[v1.AnswerHeldRollRequest, v1.AnswerHeldRollResponse]
+	listHeldRolls                *connect.Client[v1.ListHeldRollsRequest, v1.ListHeldRollsResponse]
 }
 
 // GetRestPreview calls meurpg.play.v1.ResourceService.GetRestPreview.
@@ -413,11 +485,15 @@ func (c *resourceServiceClient) GiveBardicInspiration(ctx context.Context, req *
 }
 
 // AnswerBardicInspiration calls meurpg.play.v1.ResourceService.AnswerBardicInspiration.
+//
+// Deprecated: do not use.
 func (c *resourceServiceClient) AnswerBardicInspiration(ctx context.Context, req *connect.Request[v1.AnswerBardicInspirationRequest]) (*connect.Response[v1.AnswerBardicInspirationResponse], error) {
 	return c.answerBardicInspiration.CallUnary(ctx, req)
 }
 
 // AnswerLucky calls meurpg.play.v1.ResourceService.AnswerLucky.
+//
+// Deprecated: do not use.
 func (c *resourceServiceClient) AnswerLucky(ctx context.Context, req *connect.Request[v1.AnswerLuckyRequest]) (*connect.Response[v1.AnswerLuckyResponse], error) {
 	return c.answerLucky.CallUnary(ctx, req)
 }
@@ -433,13 +509,27 @@ func (c *resourceServiceClient) GiveBardicInspirationOutside(ctx context.Context
 }
 
 // AnswerOutsideInspiration calls meurpg.play.v1.ResourceService.AnswerOutsideInspiration.
+//
+// Deprecated: do not use.
 func (c *resourceServiceClient) AnswerOutsideInspiration(ctx context.Context, req *connect.Request[v1.AnswerOutsideInspirationRequest]) (*connect.Response[v1.AnswerOutsideInspirationResponse], error) {
 	return c.answerOutsideInspiration.CallUnary(ctx, req)
 }
 
 // AnswerOutsideLucky calls meurpg.play.v1.ResourceService.AnswerOutsideLucky.
+//
+// Deprecated: do not use.
 func (c *resourceServiceClient) AnswerOutsideLucky(ctx context.Context, req *connect.Request[v1.AnswerOutsideLuckyRequest]) (*connect.Response[v1.AnswerOutsideLuckyResponse], error) {
 	return c.answerOutsideLucky.CallUnary(ctx, req)
+}
+
+// AnswerHeldRoll calls meurpg.play.v1.ResourceService.AnswerHeldRoll.
+func (c *resourceServiceClient) AnswerHeldRoll(ctx context.Context, req *connect.Request[v1.AnswerHeldRollRequest]) (*connect.Response[v1.AnswerHeldRollResponse], error) {
+	return c.answerHeldRoll.CallUnary(ctx, req)
+}
+
+// ListHeldRolls calls meurpg.play.v1.ResourceService.ListHeldRolls.
+func (c *resourceServiceClient) ListHeldRolls(ctx context.Context, req *connect.Request[v1.ListHeldRollsRequest]) (*connect.Response[v1.ListHeldRollsResponse], error) {
+	return c.listHeldRolls.CallUnary(ctx, req)
 }
 
 // ResourceServiceHandler is an implementation of the meurpg.play.v1.ResourceService service.
@@ -538,6 +628,11 @@ type ResourceServiceHandler interface {
 	//
 	// Errors: `not_found` for a hold that is gone; `invalid_argument` for a typed
 	// face outside the die.
+	//
+	// Deprecated (E4-9): AnswerHeldRoll answers every question of a held roll, whoever asks it. This RPC is still
+	// served, as an adapter over the same answer, for a tab opened before AnswerHeldRoll existed.
+	//
+	// Deprecated: do not use.
 	AnswerBardicInspiration(context.Context, *connect.Request[v1.AnswerBardicInspirationRequest]) (*connect.Response[v1.AnswerBardicInspirationResponse], error)
 	// AnswerLucky answers the question a held attack roll asks when a halfling's d20 shows a 1
 	// (SRD 5.1, Halfling, Lucky: the die may be rolled again, and the new roll stands): roll it
@@ -557,6 +652,11 @@ type ResourceServiceHandler interface {
 	// outside 1 to 20; `failed_precondition` when the hold asks no Lucky question or it was
 	// answered already (by another answer); EncounterBlocked WRONG_DICE_MODE for a player's way of
 	// rolling the campaign does not allow.
+	//
+	// Deprecated (E4-9): AnswerHeldRoll answers every question of a held roll, whoever asks it. This RPC is still
+	// served, as an adapter over the same answer, for a tab opened before AnswerHeldRoll existed.
+	//
+	// Deprecated: do not use.
 	AnswerLucky(context.Context, *connect.Request[v1.AnswerLuckyRequest]) (*connect.Response[v1.AnswerLuckyResponse], error)
 	// GetOutsideInspiration reads the Bardic Inspiration of the caller out of a combat: the
 	// die their character holds and, for a bard, the uses left and the party to give it to;
@@ -585,6 +685,11 @@ type ResourceServiceHandler interface {
 	// Errors: `not_found` for a hold that is gone; `invalid_argument` for a typed face outside
 	// the die; `failed_precondition` when the die ran out meanwhile; ResourceBlocked
 	// LUCKY_PENDING while the Lucky question of the same roll waits (AnswerOutsideLucky first).
+	//
+	// Deprecated (E4-9): AnswerHeldRoll answers every question of a held roll, whoever asks it. This RPC is still
+	// served, as an adapter over the same answer, for a tab opened before AnswerHeldRoll existed.
+	//
+	// Deprecated: do not use.
 	AnswerOutsideInspiration(context.Context, *connect.Request[v1.AnswerOutsideInspirationRequest]) (*connect.Response[v1.AnswerOutsideInspirationResponse], error)
 	// AnswerOutsideLucky answers the Lucky question of a d20 roll that is not a weapon attack
 	// (AnswerLucky has those): a halfling's d20 showed a 1 (SRD 5.1, Halfling, Lucky: the die may
@@ -610,7 +715,44 @@ type ResourceServiceHandler interface {
 	// `failed_precondition` when the hold asks no Lucky question, it was answered already (by
 	// another answer) or its combat round is over; the path's WRONG_DICE_MODE for a way of rolling
 	// the campaign does not allow.
+	//
+	// Deprecated (E4-9): AnswerHeldRoll answers every question of a held roll, whoever asks it. This RPC is still
+	// served, as an adapter over the same answer, for a tab opened before AnswerHeldRoll existed.
+	//
+	// Deprecated: do not use.
 	AnswerOutsideLucky(context.Context, *connect.Request[v1.AnswerOutsideLuckyRequest]) (*connect.Response[v1.AnswerOutsideLuckyResponse], error)
+	// AnswerHeldRoll answers the question of any roll that waits, whichever roll it is (a weapon attack,
+	// a spell attack, a save, a check, a search, a hint try) and whichever question it asks (the
+	// halfling's Lucky, or the Bardic Inspiration die): the one RPC AnswerLucky, AnswerBardicInspiration,
+	// AnswerOutsideLucky and AnswerOutsideInspiration are the older forms of. The roll is run again by the
+	// path that held it, with the d20 already rolled and the answer applied, and the response is that path's
+	// own (`result`), still held with the roll's next question (`next`, copied out of the result so the app
+	// needs no code for each kind), or resolved and written.
+	//
+	// Who may answer: the roller's player, and the master, for every roll that waits, in a combat or out
+	// of it (it unblocks a player who left). Both may try at once; the first answer wins and the other gets
+	// `failed_precondition` (the roll was answered already), the die spent once. Another player gets
+	// `not_found`, never "permission denied", which would say the roll exists.
+	//
+	// The master waits for the player's first chance (E4-10): for 10 s after the question was asked
+	// (`HeldRollOffer.created_at`), only the roller's player may answer it, and the master's answer is refused
+	// with `failed_precondition` and ResourceBlocked PLAYER_FIRST (`RESOURCE_BLOCKED_REASON_PLAYER_FIRST`), whose
+	// `wait_seconds` says how long is left. It does not apply when no player plays the roll (an NPC's, or a
+	// player who left). This holds for the master's own rolls for a player's character (a save, a spell attack,
+	// a group check) too: the master is asked in his own sheet, the player reads the same question, and the first
+	// answer after the 10 s wins.
+	//
+	// Errors: `not_found` for a hold that is gone or one the caller may not answer; `invalid_argument`
+	// for an answer of the wrong question, for a missing roll_in_app or typed_face, or a typed face outside
+	// the die; ResourceBlocked LUCKY_PENDING for the die's answer while the Lucky question of the same
+	// roll waits; `failed_precondition` when the die ran out or the roll was answered already; the path's
+	// WRONG_DICE_MODE for a way of rolling the campaign does not allow (the master rolls either way).
+	AnswerHeldRoll(context.Context, *connect.Request[v1.AnswerHeldRollRequest]) (*connect.Response[v1.AnswerHeldRollResponse], error)
+	// ListHeldRolls lists the questions of the rolls that wait and the caller may answer, oldest first: a
+	// player's own rolls, in a combat and out of one; the master's, every roll of the campaign. A question
+	// whose combat round is over, or whose die ran out, is not listed. Read it again when the stream says
+	// HeldRollsChanged.
+	ListHeldRolls(context.Context, *connect.Request[v1.ListHeldRollsRequest]) (*connect.Response[v1.ListHeldRollsResponse], error)
 }
 
 // NewResourceServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -705,6 +847,18 @@ func NewResourceServiceHandler(svc ResourceServiceHandler, opts ...connect.Handl
 		connect.WithSchema(resourceServiceMethods.ByName("AnswerOutsideLucky")),
 		connect.WithHandlerOptions(opts...),
 	)
+	resourceServiceAnswerHeldRollHandler := connect.NewUnaryHandler(
+		ResourceServiceAnswerHeldRollProcedure,
+		svc.AnswerHeldRoll,
+		connect.WithSchema(resourceServiceMethods.ByName("AnswerHeldRoll")),
+		connect.WithHandlerOptions(opts...),
+	)
+	resourceServiceListHeldRollsHandler := connect.NewUnaryHandler(
+		ResourceServiceListHeldRollsProcedure,
+		svc.ListHeldRolls,
+		connect.WithSchema(resourceServiceMethods.ByName("ListHeldRolls")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.play.v1.ResourceService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ResourceServiceGetRestPreviewProcedure:
@@ -735,6 +889,10 @@ func NewResourceServiceHandler(svc ResourceServiceHandler, opts ...connect.Handl
 			resourceServiceAnswerOutsideInspirationHandler.ServeHTTP(w, r)
 		case ResourceServiceAnswerOutsideLuckyProcedure:
 			resourceServiceAnswerOutsideLuckyHandler.ServeHTTP(w, r)
+		case ResourceServiceAnswerHeldRollProcedure:
+			resourceServiceAnswerHeldRollHandler.ServeHTTP(w, r)
+		case ResourceServiceListHeldRollsProcedure:
+			resourceServiceListHeldRollsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -798,4 +956,12 @@ func (UnimplementedResourceServiceHandler) AnswerOutsideInspiration(context.Cont
 
 func (UnimplementedResourceServiceHandler) AnswerOutsideLucky(context.Context, *connect.Request[v1.AnswerOutsideLuckyRequest]) (*connect.Response[v1.AnswerOutsideLuckyResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.ResourceService.AnswerOutsideLucky is not implemented"))
+}
+
+func (UnimplementedResourceServiceHandler) AnswerHeldRoll(context.Context, *connect.Request[v1.AnswerHeldRollRequest]) (*connect.Response[v1.AnswerHeldRollResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.ResourceService.AnswerHeldRoll is not implemented"))
+}
+
+func (UnimplementedResourceServiceHandler) ListHeldRolls(context.Context, *connect.Request[v1.ListHeldRollsRequest]) (*connect.Response[v1.ListHeldRollsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.ResourceService.ListHeldRolls is not implemented"))
 }

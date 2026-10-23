@@ -13,6 +13,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -20,7 +21,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// A trap fired in a combat (MR-035, Etapa 9, D5, slice 9.8). The maps module owns
+// A trap fired in a combat (MR-035). The maps module owns
 // the trap (where it is, whether it is armed, who knows it); this file is the
 // combat's side of it: who the trap catches, what the dice do to each combatant
 // and how the master takes it back.
@@ -175,7 +176,7 @@ func (s *Service) trapTargetsOf(ctx context.Context, tx pgx.Tx, campaignID strin
 	out := make([]trapTarget, len(caught))
 	for i, c := range caught {
 		out[i].id = c.ID
-		if err := s.trapModesOf(ctx, tx, campaignID, trap, c, states, ability, &out[i]); err != nil {
+		if err := s.trapModesOf(ctx, tx, campaignID, trap, c, states, ability, trapAgainst(effect), &out[i]); err != nil {
 			return nil, err
 		}
 		if trapNeedsAC(effect) {
@@ -285,9 +286,9 @@ func (s *Service) trapFallWindows(ctx context.Context, c *combatTx, prev maplink
 	if fall <= 0 || len(caught) == 0 {
 		return nil, nil
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	return s.fallWindows(ctx, c, cs, caught, pointID, fall)
 }
@@ -353,14 +354,14 @@ func attackOutcome(a trapAttackRoll) string {
 
 // trapAttackEventOf is an attack roll as the event keeps it outside a combat: the dice and the result.
 func trapAttackEventOf(a trapAttackRoll) trapAttackEvent {
-	return trapAttackEvent{D20: clampInt32(a.d20), Modifier: clampInt32(a.bonus), Total: clampInt32(a.total), Outcome: attackOutcome(a), TargetAC: clampInt32(a.armorClass)}
+	return trapAttackEvent{D20: conv.Int32(a.d20), Modifier: conv.Int32(a.bonus), Total: conv.Int32(a.total), Outcome: attackOutcome(a), TargetAC: conv.Int32(a.armorClass)}
 }
 
 // trapAttackEventInCombat is trapAttackEventOf with the other d20 of a roll with advantage or
 // disadvantage, which of the two came first, the mode and the circumstances.
 func trapAttackEventInCombat(a trapAttackRoll, sources []combat.Source) trapAttackEvent {
 	ev := trapAttackEventOf(a)
-	ev.D20B, ev.Counted, ev.Mode, ev.Sources = clampInt32(a.other), clampInt32(a.counted), modeKey(a.mode), sourceRecs(sources)
+	ev.D20B, ev.Counted, ev.Mode, ev.Sources = conv.Int32(a.other), conv.Int32(a.counted), modeKey(a.mode), sourceRecs(sources)
 	return ev
 }
 
@@ -377,8 +378,8 @@ func savesEventOf(rs []trapSaveRoll) []saveRoll {
 	var out []saveRoll
 	for _, r := range rs {
 		out = append(out, saveRoll{
-			D20: clampInt32(r.d20), Bonus: clampInt32(r.bonus), Total: clampInt32(r.total), DC: clampInt32(r.dc), Saved: r.saved, Unknown: !r.known, Extra: r.extra,
-			D20B: clampInt32(r.other), Counted: clampInt32(r.counted), RollMode: modeKey(r.mode), Auto: r.auto, Lucky: r.lucky,
+			D20: conv.Int32(r.d20), Bonus: conv.Int32(r.bonus), Total: conv.Int32(r.total), DC: conv.Int32(r.dc), Saved: r.saved, Unknown: !r.known, Extra: r.extra,
+			D20B: conv.Int32(r.other), Counted: conv.Int32(r.counted), RollMode: modeKey(r.mode), Auto: r.auto, Lucky: r.lucky,
 		})
 	}
 	return out
@@ -396,14 +397,14 @@ func (s *Service) trapDamageInCombat(ctx context.Context, c *combatTx, pointID s
 	} else if holdsHP(*who) {
 		status, resolved = pendingApplied, &c.now
 	}
-	amount, err := s.afterResistance(ctx, c, *who, d.damageType, clampInt32(d.amount))
+	amount, err := s.afterResistance(ctx, c, *who, d.damageType, conv.Int32(d.amount))
 	if err != nil {
 		return trapDamageEvent{}, err
 	}
 	p, err := c.q.InsertTrapPendingDamage(ctx, playdb.InsertTrapPendingDamageParams{
 		EncounterID: c.enc.ID, TargetID: who.ID, Status: status, Critical: d.critical,
 		DiceCount: clamp32(d.count, 0, 100), DiceSides: clamp32(d.sides, 0, 100), DiceBonus: clamp32(d.bonus, -1000, 1000),
-		DamageType: d.damageType, Faces: faces32(d.faces), Amount: &amount, RollTotal: new(clampInt32(d.rollTotal)), Half: d.half,
+		DamageType: d.damageType, Faces: faces32(d.faces), Amount: &amount, RollTotal: new(conv.Int32(d.rollTotal)), Half: d.half,
 		CreatedAt: c.now, ResolvedAt: resolved, TrapPointID: &pointID, CriticalMax: clamp32(d.criticalMax, 0, 10000), CriticalMaxRule: d.maxRule,
 	})
 	if err != nil {
@@ -428,7 +429,7 @@ func (s *Service) trapDamageInCombat(ctx context.Context, c *combatTx, pointID s
 func trapDamageEventOf(d trapDamageRoll) trapDamageEvent {
 	return trapDamageEvent{
 		Type: d.damageType, DiceCount: clamp32(d.count, 0, 100), DiceSides: clamp32(d.sides, 0, 100), Bonus: clamp32(d.bonus, -1000, 1000),
-		Faces: faces32(d.faces), RollTotal: clampInt32(d.rollTotal), Critical: d.critical, CriticalMax: clamp32(d.criticalMax, 0, 10000), MaxRule: d.maxRule,
+		Faces: faces32(d.faces), RollTotal: conv.Int32(d.rollTotal), Critical: d.critical, CriticalMax: clamp32(d.criticalMax, 0, 10000), MaxRule: d.maxRule,
 	}
 }
 
@@ -581,8 +582,27 @@ func (th *trapHook) landed(at grid.Square) {
 // the change's own (so a retry finds it under the idempotency key). cs are the
 // combatants as they stood before the move; moved is the mover after it.
 func (th *trapHook) finish(ctx context.Context, c *combatTx, made actionEvent, cs []playdb.Combatant, moved playdb.Combatant) (any, error) {
-	if th == nil || th.entered == nil {
+	ev, err := th.fire(ctx, c, cs, moved)
+	if err != nil {
+		return nil, err
+	}
+	if ev == nil {
 		return made, nil
+	}
+	// The move comes first in the history, the firing after it (the change's own event).
+	if err := insertEvent(ctx, c, eventCombatantMoved, &c.actorUserID, nil, made); err != nil {
+		return nil, err
+	}
+	th.fired = ev
+	c.kind = eventTrapTriggered
+	return actionEvent{Round: c.enc.Round, Actor: moved.ID, Trap: ev, StoppedEarly: made.StoppedEarly, OnTurn: made.OnTurn, MoveID: made.MoveID}, nil
+}
+
+// fire fires the trap the mover entered, on everyone it catches; nil when it entered none or the trap was fired
+// or disarmed meanwhile (the mover's change stands, the trap does not fire again).
+func (th *trapHook) fire(ctx context.Context, c *combatTx, cs []playdb.Combatant, moved playdb.Combatant) (*trapFireEvent, error) {
+	if th == nil || th.entered == nil {
+		return nil, nil
 	}
 	// Who is caught: the mover, and, when the trap hits the area, everyone in it.
 	after := slices.Clone(cs)
@@ -598,18 +618,9 @@ func (th *trapHook) finish(ctx context.Context, c *combatTx, made actionEvent, c
 	}
 	ev, err := th.s.fireInCombat(ctx, c, *th.entered, caught, false, "")
 	if errors.Is(err, maplink.ErrTrapNotArmed) {
-		return made, nil // fired or disarmed meanwhile: the move stands, the trap does not fire again
+		return nil, nil
 	}
-	if err != nil {
-		return nil, err
-	}
-	// The move comes first in the history, the firing after it (the change's own event).
-	if err := insertEvent(ctx, c, eventCombatantMoved, &c.actorUserID, nil, made); err != nil {
-		return nil, err
-	}
-	th.fired = ev
-	c.kind = eventTrapTriggered
-	return actionEvent{Round: c.enc.Round, Actor: moved.ID, Trap: ev, StoppedEarly: made.StoppedEarly, OnTurn: made.OnTurn, MoveID: made.MoveID}, nil
+	return ev, err
 }
 
 // after tells the streams about the traps the move changed, after the commit: the
@@ -633,7 +644,7 @@ func (s *Service) noticeAfterMove(ctx context.Context, campaignID string, enc pl
 	}
 	ob := maplink.Observer{CharacterID: moved.CharacterID, At: squareOfCombatant(moved)}
 	if isCreature(moved) {
-		eyes, ok, err := s.roster.CreatureEyes(ctx, nil, campaignID, deref(moved.MonsterKey))
+		eyes, ok, err := s.roster.CreatureEyes(ctx, nil, campaignID, conv.OrZero(moved.MonsterKey))
 		if err != nil {
 			s.logger.ErrorContext(ctx, "play: cannot read a creature's senses after a move", "error", err)
 			return
@@ -842,17 +853,18 @@ func (v trapView) statusOf(pendingID string) (playv1.PendingDamageStatus, bool) 
 // throw (SRD 5.1): the combatant's conditions and states count, and so does Danger
 // Sense, but only against a trap the character knew before it fired: a hidden trap
 // is no effect it sees, and the source is not even named (RN-10).
-func (s *Service) trapModesOf(ctx context.Context, tx pgx.Tx, campaignID string, trap maplink.Trap, c playdb.Combatant, states map[string][]playdb.CombatantState, ability string, out *trapTarget) error {
+func (s *Service) trapModesOf(ctx context.Context, tx pgx.Tx, campaignID string, trap maplink.Trap, c playdb.Combatant, states map[string][]playdb.CombatantState, ability string, against []string, out *trapTarget) error {
 	sheet, err := s.sheetOf(ctx, tx, campaignID, c)
 	if err != nil {
 		return err
 	}
 	creature := creatureFacts(c, states, sheet.Traits)
+	out.facts = creature
 	attack := combat.AttackMode(combat.AttackScene{Target: creature, Ranged: true})
 	out.attackSources = attack.Sources
 	out.attackMode = combat.Resolve(attack.Sources)
 	if ability != "" {
-		sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: ability, EffectVisible: trap.Knows(c.CharacterID)})
+		sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: ability, EffectVisible: trap.Knows(c.CharacterID), Against: against})
 		out.saveSources, out.saveMode = sources, combat.Resolve(sources)
 		out.saveAuto = combat.AutoFailsSave(creature, ability)
 		out.lucky = luckySaver(c, sheet.Traits) // a halfling player's 1 is rolled again by the app (combat_lucky.go)

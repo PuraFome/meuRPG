@@ -24,9 +24,9 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// Combat movement, reach and cover (MR-034, RN-21, RN-20, Etapa 9, slice 9.6).
+// Combat movement, reach and cover (MR-034, RN-21, RN-20).
 // These tests need the database (MEURPG_TEST_DATABASE_URL). The fixture is the
-// cave "A caverna do Vale Seco" of the Etapa 9 artboards (24 x 16 squares; the
+// cave "A caverna do Vale Seco" of the design artboards (24 x 16 squares; the
 // numbers come from the artboards' cave.py): the party in the entrance cave,
 // the goblins in the torch-lit guard room, rubble, crates and a column.
 
@@ -249,7 +249,7 @@ func (c *cave) move(t *testing.T, u *user, label string, col, row int32, edit ..
 
 // mustMove is a move that must work. The master's moves here are setup, not
 // play: the master's move of someone on turn that leaves an enemy's reach is a
-// move like any, which offers the enemy an opportunity attack (slice 9.6b), so
+// move like any, which offers the enemy an opportunity attack, so
 // the setup is a forced move, which never provokes. The tests of the offers
 // themselves move with moveOffering.
 func (c *cave) mustMove(t *testing.T, u *user, label string, col, row int32, edit ...func(*playv1.MoveCombatantRequest)) *playv1.Encounter {
@@ -487,7 +487,7 @@ func TestRN21_DifficultTerrainAndOtherCreaturesCostMore(t *testing.T) {
 	wantEncounterBlocked(t, err, reasonOccupied)
 
 	// An enemy of the same size, or one size apart, cannot be passed; the master's
-	// "Aliado" can (Q69). The side is a master's call.
+	// "Aliado" can. The side is a master's call.
 	c.mustMove(t, c.master, "Goblin 1", 8, 7)
 	_, err = c.move(t, c.caio, "Toren", 10, 7)
 	wantEncounterBlocked(t, err, reasonEnemy)
@@ -1073,7 +1073,7 @@ func TestMR034_SidesAndTheMastersMarks(t *testing.T) {
 }
 
 // TestRN21_DisengageSetsAFlagForTheTurn: taking Desengajar marks the combatant
-// for the rest of its turn (slice 9.6b reads it); the undo takes it back and the
+// for the rest of its turn (the opportunity attack reads it); the undo takes it back and the
 // next turn starts without it.
 func TestRN21_DisengageSetsAFlagForTheTurn(t *testing.T) {
 	t.Parallel()
@@ -1321,9 +1321,10 @@ func TestMR034_TheRunningStartAddsUpOnFootAndAnythingBreaksIt(t *testing.T) {
 	}
 }
 
-// TestMR034_NothingMovedKeepsTheMarkAndTheRun: a high jump, a master's move to the
-// square the combatant stands on, and a move of no length change neither the
-// master's cover mark nor (but for the high jump, a jump) the running start.
+// TestMR034_NothingMovedKeepsTheMarkAndTheRun: a high jump and a master's forced move
+// to the square the combatant stands on change neither the master's cover mark nor
+// (but for the high jump, a jump) the running start. A player's walk to that square
+// is refused (Finding play-a-movement-1) and changes nothing either.
 func TestMR034_NothingMovedKeepsTheMarkAndTheRun(t *testing.T) {
 	t.Parallel()
 	c := newCave(t)
@@ -1331,8 +1332,10 @@ func TestMR034_NothingMovedKeepsTheMarkAndTheRun(t *testing.T) {
 	c.aim(t, map[string][2]int32{"Toren": {1, 9}})
 	c.mustMove(t, c.caio, "Toren", 3, 9)
 	c.mark(t, "Toren", playv1.CoverDegree_COVER_DEGREE_HALF)
-	c.mustMove(t, c.master, "Toren", 3, 9) // where he stands
-	c.mustMove(t, c.caio, "Toren", 3, 9)   // no length
+	c.mustMove(t, c.master, "Toren", 3, 9)                      // where he stands
+	if _, err := c.move(t, c.caio, "Toren", 3, 9); err == nil { // no length
+		t.Errorf("a player's move of no length worked, want it refused")
+	}
 	if got := c.who(t, c.caio, "Toren"); got.GetCoverMark() != playv1.CoverDegree_COVER_DEGREE_HALF {
 		t.Errorf("after moves that moved nobody the mark = %v, want it kept", got.GetCoverMark())
 	}
@@ -1696,12 +1699,7 @@ func TestBeginCombatPlacesNPCsAroundTheBattlePoint(t *testing.T) {
 	}
 	e := res.Msg.GetEncounter()
 	for label, face := range map[string]int32{"Toren": 18, "Pensantus": 10, "Brisa": 1} {
-		if _, err := c.master.combat.SubmitInitiative(t.Context(), connect.NewRequest(&playv1.SubmitInitiativeRequest{
-			CampaignId: c.campaignID, EncounterId: e.GetId(), CombatantId: byLabel(t, e, label).GetId(), IdempotencyKey: newKey(),
-			Roll: &playv1.SubmitInitiativeRequest_D20Face{D20Face: face},
-		})); err != nil {
-			t.Fatalf("SubmitInitiative(%s) error = %v", label, err)
-		}
+		c.submitFaceKeepingTheD20(t, e, label, face)
 	}
 	c.mustMove(t, c.master, "Toren", 6, 7)
 	c.mustMove(t, c.master, "Pensantus", 5, 8)

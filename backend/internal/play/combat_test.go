@@ -16,7 +16,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
-// The combat (MR-013, Etapa 6, slice 6.3): the encounter, who fights, the
+// The combat (MR-013): the encounter, who fights, the
 // initiative, the turns, the grid and what each person sees. These tests need
 // the database (MEURPG_TEST_DATABASE_URL).
 
@@ -965,6 +965,14 @@ func TestMR013_CombatAuthorizationMatrix(t *testing.T) {
 			_, err := u.combat.MoveCombatant(ctx, connect.NewRequest(&playv1.MoveCombatantRequest{CampaignId: campaign, EncounterId: enc, CombatantId: pens, IdempotencyKey: newKey(), Col: 1, Row: 1}))
 			return err
 		},
+		"MoveSpellZone": func(u *user, ctx context.Context) error {
+			_, err := u.combat.MoveSpellZone(ctx, connect.NewRequest(&playv1.MoveSpellZoneRequest{CampaignId: campaign, EncounterId: enc, ZoneId: "00000000-0000-4000-8000-000000000001", Origin: &playv1.SpellOrigin{Col: 1, Row: 1}, IdempotencyKey: newKey()}))
+			return err
+		},
+		"EndSpellZone": func(u *user, ctx context.Context) error {
+			_, err := u.combat.EndSpellZone(ctx, connect.NewRequest(&playv1.EndSpellZoneRequest{CampaignId: campaign, EncounterId: enc, ZoneId: "00000000-0000-4000-8000-000000000001", IdempotencyKey: newKey()}))
+			return err
+		},
 		"UseHitRider": func(u *user, ctx context.Context) error {
 			_, err := u.combat.UseHitRider(ctx, connect.NewRequest(&playv1.UseHitRiderRequest{CampaignId: campaign, EncounterId: enc, RiderId: "00000000-0000-4000-8000-000000000001", Choice: playv1.HitRiderChoice_HIT_RIDER_CHOICE_DECLINE, IdempotencyKey: newKey()}))
 			return err
@@ -989,7 +997,7 @@ func TestMR013_CombatAuthorizationMatrix(t *testing.T) {
 	masterOnly := map[string]bool{
 		"StartEncounter": true, "SetInitiativeOrder": true, "BeginCombat": true, "SetCombatantHidden": true,
 		"AddCombatants": true, "AddMonsters": true, "RemoveCombatant": true, "EndEncounter": true, "SetCombatantSide": true, "SetCombatantCover": true,
-		"OfferOpportunity": true, "WithdrawOpportunity": true, "EndCombatEffect": true,
+		"OfferOpportunity": true, "WithdrawOpportunity": true, "EndCombatEffect": true, "EndSpellZone": true,
 	}
 	for name, call := range calls {
 		if err := call(anonymous, t.Context()); connect.CodeOf(err) != connect.CodeUnauthenticated {
@@ -1010,6 +1018,10 @@ func TestMR013_CombatAuthorizationMatrix(t *testing.T) {
 		case name == "GetEncounter":
 			if err != nil {
 				t.Errorf("%s as a player: %v, want ok", name, err)
+			}
+		case name == "MoveSpellZone": // a zone a player cannot read is not found, as one that never was (RN-10)
+			if connect.CodeOf(err) != connect.CodeNotFound {
+				t.Errorf("%s as a player: %v, want not_found", name, err)
 			}
 		default: // another player's combatant
 			if connect.CodeOf(err) != connect.CodePermissionDenied && connect.CodeOf(err) != connect.CodeAborted {
@@ -1102,7 +1114,7 @@ func TestMR013_CombatEventsPerAudience(t *testing.T) {
 
 // TestSessionEventKindsMatchTheTable: session_event_kinds, the table that
 // session_events.kind points at, holds exactly the kinds the module writes. A
-// new kind is an INSERT in a migration (it used to rewrite a CHECK); add it both
+// new kind is an INSERT in a migration (no CHECK to rewrite); add it both
 // here and there. (migrations.TestEveryEventKindOfTheCodeIsInTheTable also scans
 // every package's `event...` constants.)
 func TestSessionEventKindsMatchTheTable(t *testing.T) {
@@ -1132,7 +1144,8 @@ func TestSessionEventKindsMatchTheTable(t *testing.T) {
 		eventRollModeRequested, eventRollModeAnswered, eventDamagePartRemoved, eventStateChanged, eventHitRider,
 		eventRestTaken, eventHitDiceSpent, eventArcaneRecovery, eventInspirationGiven,
 		eventSpellCastOutside, eventSpellCastStarted, eventSpellCastFinished, eventSpellCastInterrupted, eventSpellCastEnded,
-		eventLastingAdded, eventLastingChanged, eventLastingEnded, eventLastingVisibility, eventLastingSaved, eventLastingTriggered, eventExhaustion, eventGameTimeAdvanced,
+		eventLastingAdded, eventLastingChanged, eventLastingEnded, eventLastingVisibility, eventLastingSaved, eventLastingTriggered, eventExhaustion, eventGameTimeAdvanced, eventFreeRoll,
+		eventZoneTriggered, eventZoneMoved,
 	}
 	rows, err := h.pool.Query(t.Context(), `SELECT kind FROM session_event_kinds`)
 	if err != nil {

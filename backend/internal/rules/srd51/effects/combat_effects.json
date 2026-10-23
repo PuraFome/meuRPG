@@ -162,6 +162,14 @@
       "start_save": {"ability": "dex", "on_fail": "effect:web-restrained"},
       "tags_pt": ["Teste de Destreza ao começar o turno nas teias"]
     },
+    "spell:acid-arrow": {
+      "applies": "hit",
+      "visibility": "public",
+      "duration": {"kind": "until_end_of_turn_of"},
+      "turn_trigger": {"dice": "2d4", "damage_type": "damage-type:acid", "max_triggers": 1, "per_slot_level": "1d4"},
+      "player_label_pt": "Corroído por ácido",
+      "tags_pt": ["Mais dano de ácido no fim do próximo turno"]
+    },
     "spell:vicious-mockery": {
       "applies": "failed_save",
       "visibility": "owner",
@@ -187,6 +195,13 @@
       "player_label_pt": "Sem reações",
       "tags_pt": ["Não pode usar reações até o fim do próximo turno do monge"]
     },
+    "effect:turned": {
+      "kind": "feature",
+      "duration": {"kind": "rounds", "rounds": 10},
+      "visibility": "public",
+      "player_label_pt": "Expulso",
+      "tags_pt": ["Foge de quem o expulsou, o mais longe que puder, por 1 minuto", "Não se aproxima a menos de 9 m de quem o expulsou", "Não usa reações; só Corre ou escapa de um efeito, ou Esquiva se não tiver para onde ir", "Acaba se sofrer dano"]
+    },
     "effect:lethargy": {
       "kind": "feature",
       "duration": {"kind": "until_end_of_turn_of"},
@@ -201,6 +216,14 @@
       "conditions": ["condition:restrained"],
       "break_free": "str",
       "player_label_pt": "Preso numa teia"
+    },
+    "effect:spirit-guardians-slowed": {
+      "kind": "spell",
+      "duration": {"kind": "until_end_of_turn_of"},
+      "visibility": "public",
+      "modifiers": [{"kind": "speed_multiplier", "value": 50}],
+      "player_label_pt": "Reduzido pelos espíritos",
+      "tags_pt": ["Deslocamento pela metade neste turno"]
     },
     "effect:web-fire": {
       "kind": "master",

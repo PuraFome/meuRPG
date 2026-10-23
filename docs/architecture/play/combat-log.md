@@ -38,12 +38,13 @@ On a fogged map, each event is also stamped with the users who saw its NPCs (see
 
 Each change is written in the same transaction as the change, with ids and numbers only; the event carries the `encounter_id`, the round and whether a hidden combatant was in it.
 A weapon's or action's name never goes in the event: the log reads it from the sheet, on the spot.
-The kinds include `encounter_started`, `initiative_submitted`, `initiative_order_set`, `combat_begun`, `turn_ended`, `turn_part_ended`, `combatant_moved`, `combatant_hidden_set`, `combatants_added`, `combatant_removed`, `encounter_ended`, `attack_rolled`, `damage_rolled`, `damage_applied`, `damage_discarded`, `action_taken`, `hit_points_adjusted`, `action_undone`, `spell_cast`, `reaction_used`, `reaction_declined`, `death_save_rolled`, `death_confirmed`, `conditions_set`, and the kinds of the features around combat (reactions, contests, traps, wild shape, effects, exhaustion).
+The kinds include `encounter_started`, `initiative_submitted`, `initiative_order_set`, `combat_begun`, `turn_ended`, `turn_part_ended`, `combatant_moved`, `combatant_hidden_set`, `combatants_added`, `combatant_removed`, `encounter_ended`, `attack_rolled`, `damage_rolled`, `damage_applied`, `damage_discarded`, `action_taken`, `hit_points_adjusted`, `action_undone`, `spell_cast`, `reaction_used`, `reaction_declined`, `death_save_rolled`, `death_confirmed`, `conditions_set`, and the kinds of the features around combat (reactions, contests, traps, wild shape, effects, exhaustion, and `spell_zone_triggered` and `spell_zone_moved` for the areas spells keep on the map, which read as effect lines; see [Spell zones](spell-zones.md)).
 A new kind is a row in `session_event_kinds` (a migration) and an `event...` constant in the code; `TestEveryEventKindOfTheCodeIsInTheTable` fails if one is missing.
 
 A payload is at most 16 KiB of the database's text of the JSON (a `CHECK` of `session_events`).
 An event that lists one record per creature is written as several events past 3,500 bytes (`eventPayloadBudget`, `fitPrefix`, `combat_write.go`): the master's lines of a start's monsters (`combatants_added`, each with its dice and faces) and a trap's firing.
 Any other event over `undoHelpersBudget` drops the lists only its undo needs (see [Undo](undo.md)).
+An area cast that reveals the hidden creatures it hit does not list them a second time: the event says `revealed_hits`, and the creatures are the targets of its hits marked `HiddenAtCast` (`revealedIDs`), so a cast on forty hidden creatures stays under the budget. The answer to the master's question (`hidden_reveal_answered`) lists its creatures in `revealed`.
 
 ## Stream events
 
@@ -54,7 +55,7 @@ After `COMMIT`, `play` publishes to each audience what it may see (the hub has a
 | `encounter_changed{encounter_id, revision, mode}` | Any change in the combat | Everyone. A contentless notice: the app reads `GetEncounter` again, already filtered |
 | `turn_changed{round, current_combatant_id, master_turn}` | The combat begins, the turn passes, whoever is on turn disappears or changes state | Each their own copy: the master sees who it is; the player "Vez do mestre" if it is a hidden one |
 | `combatant_moved{combatant_id, col, row}` | A combatant moves | The master always; the player only if they see the combatant |
-| `combat_log_changed{encounter_id}` | A log line appeared, changed or vanished | The master always; the player only if the line has no hidden one. A contentless notice: the app reads `ListCombatLog` again |
+| `combat_log_changed{encounter_id}` | A log line appeared, changed or vanished | The master always; the player only if the line has no hidden one (the end of a hidden combatant's rage, `EndRage` and `AnswerRageEnd`, included). A contentless notice: the app reads `ListCombatLog` again |
 | `reaction_window_opened`, `reaction_window_closed` | A reaction window opens or closes | The reactor and the master |
 
 `finish` publishes after the commit on a context that outlives the call, with a timeout.

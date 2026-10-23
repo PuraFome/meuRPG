@@ -11,6 +11,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -356,7 +357,7 @@ func endArmorEffects(ctx context.Context, q *playdb.Queries, characterID string)
 		if err := q.DeleteLastingEffect(ctx, st.ID); err != nil {
 			return nil, fmt.Errorf("end an effect that needs no armor: %w", err)
 		}
-		casts = append(casts, deref(st.GroupID))
+		casts = append(casts, conv.OrZero(st.GroupID))
 	}
 	return casts, nil
 }

@@ -29,7 +29,12 @@ Code in `lasting_effects_clock.go`.
 - **End of a turn.** `EndTurn` ends the combatant's part, opens one `EFFECT_SAVE` reaction window for each effect that asks an end-of-turn save (ordered by effect id), and returns while any is open; `settleReactions` calls `releaseHeldTurn`, which passes the turn once none is open.
   `RollEffectSave` closes its window first and then resolves the effect (a pass ends it), so the window never closes twice.
   A window whose effect ended closes with `EFFECT_ENDED` or `CASTER_LOST_CONCENTRATION`.
+- **Damage at the end of a turn.** An effect with a `turn_trigger` whose clock ends at the end of its target's turn (Acid Arrow, `until_end_of_turn_of`) lands its damage as the clock runs out: `effectsBeforeTurn` calls `dealDamageAtEnd` before it ends the row, on a target that still stands, through the target's resistance (an NPC takes it at once, a player's character's waits for the master).
+  The row shows the trigger with phase `END`.
+  A target that went down, an effect the master ended and an undone cast leave nothing to land.
 - **Start of a turn.** `startTurn` first ends what ends at the start (`effectsBeforeTurn`), then rolls the damage of a turn trigger once for the creature (`effectsAfterTurnStart`) and opens the start saves.
+
+Acid Arrow's effect (`applies: hit`) is made only on a target the spell attack hit, with the catalogue's `turn_trigger` dice (2d4) plus `per_slot_level` (1d4) for each slot level above the spell's own (`defAtSlot`); the cast's undo takes the row back with the cast's other effects.
 
 ## A rider spent by a roll
 
@@ -46,15 +51,21 @@ A Guidance or Resistance die instead ends its effect with the roll (`spendOnceEf
 `castCharacterEffects` writes the rows when a cast that lasts takes effect (`takeEffect`), and `closeCast` deletes the cast's rows with it (`endCharacterEffectsOfCast`).
 `AdvanceGameTime`, a finished long cast and `TakeRest` move game time on (`advanceGameTime`); an effect whose seconds run out is deleted.
 `checkModeOf` (scene checks, puzzle hints, trap searches) reads the character's rows when it is not a combatant (`outsideModeOf`): conditions, exhaustion, the advantage on saves, the dice (Bless, Bane) and the fixed bonuses (Pass without Trace) go in the roll, and `checkMode.shownCheck` writes the sources.
+Aid's bonus to the maximum is not a `character_effects` row: it is `character_vitals.hit_points_max_bonus`, raised when the cast takes effect and lowered by `closeCast` (`takeBackMaxHP`), with the arithmetic of `casting_aid.go` shared with the combat's `raiseMaxHP` and `endAid`.
 A rider that asks a saving throw is not cast outside a combat (`castCharacterEffects` takes no such spell).
 
 ## What a player may read
+
+The area a spell keeps on the map (Spirit Guardians, Moonbeam, Cloudkill, Web) is not an effect on a creature; it is a zone with its own table and hooks, and the concentration, the clock and the web's effect it shares with the effects are described in [Spell zones](spell-zones.md).
+
+The master's table (`ListLastingEffects`: the rows, the loose conditions, the turn clock, the concentrations and the catalog) is built in `lasting_effects_table.go`; the commands on it are in `lasting_effects_rpc.go`.
 
 `effectViewer` (`lasting_effects_view.go`) decorates the combat the way every viewer may read it (`readsEffect`, `conditionHidden`, `decorate`).
 The master reads everything; a player reads the effects the master leaves visible on the creatures they see, with the owner-class conditions limited to the owner.
 The label of an effect that gives conditions (`labelFor`, `labelForOthers`) and the log's `CONDITIONS_CHANGED` line (`withoutOwnerOnly`) leave out the ones the viewer may not read, and a log line whose readable conditions did not change is not sent.
 An effect the master hides turns, in the sources of a roll, into `OTHER_SOURCE` ("Outra fonte", `hiddenFrom`, `hideFor`).
 The DC of an effect is the master's and the caster's player's.
+The audience of an effect is `all` or `owner` in the table; a value the server does not know (`chosenAudience`, `storedAudience`) is stored as `owner` with the effect hidden from the players, so it is the master's alone, and the card and the log line read any audience but `all` as owner-only.
 Tests: `TestRN10_AnOwnerOnlyConditionIsInNoReadOfAnotherPlayer`, `TestRN10_TheLabelOfAnEffectNamesOnlyTheConditionsTheViewerMayRead`, and the leak tests `TestAnOwnerOnlyConditionReachesNoOtherPlayer` and `TestAnEffectTheMasterHidesReachesNoPlayer` (which plants a canary label on a hidden effect and reads the combat, the log, the turn options and both lists of effects as every player).
 
 ## Exhaustion
@@ -67,6 +78,9 @@ The concentration save reads `combat.SaveMode` like the other saves (exhaustion 
 ## Other details
 
 - A base-AC effect (Mage Armor) is worked out per target (`modifiersForTarget`: the sheet for a character; 13 + the initiative bonus, the Dexterity modifier, for a summoned creature).
+- A base-AC effect takes no hold of a creature that wears armor (or an NPC with a basic sheet) in every path: a cast outside a combat is refused (`TARGET_WEARS_ARMOR`); a cast in a combat reads "no effect" on that hit (`dropWithoutHold`, the reason is the master's) and spends the slot like any other effect the target resists; `AddCharacterEffect` and `AddLastingEffect` leave that target out and answer `failed_precondition` ("the effect takes no hold of ...") when no target is left.
+- `AddCharacterEffect` reads `seconds` with no `duration_kind` as `ROUNDS` (the clock of game time, 1 second to 24 hours); an unknown kind reads as no kind. An effect with conditions and no numeric modifiers (Hold Person, Web, Faerie Fire) is stored with an empty `modifiers` array.
+- A retry of `AddLastingEffect` (same key) answers with the cards of the effects its first answer made, read from the ids in the event it wrote (`addedIDs`).
 - When a caster who concentrates dies or leaves, the effects it held on others end with reason `caster_left` (logged as `left`) and their follow-up runs (Haste's lethargy, Heroism's temporary hit points).
 - An effect whose end gives another (`on_end` in the catalogue) makes it in the same change (`leaveFollowUp`), with a `lasting_effect_added` line before the change's own event (see [Undo](undo.md)).
 - Shield's +5 (`combatants.ac_bonus`) is cleared when the caster's turn starts; `startTurn` writes a `combat_effect_ended` event first (the line "O Escudo Arcano de X acabou", read by the master and the caster).

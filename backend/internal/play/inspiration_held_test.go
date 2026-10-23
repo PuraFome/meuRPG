@@ -6,7 +6,6 @@ import (
 	"connectrpc.com/connect"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
-	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
 // giveCombatantDie puts a d8 on a combatant, as a bard's Bardic Inspiration would, for a few rounds.
@@ -100,42 +99,48 @@ func TestNoQuestionOnAConcentrationSaveWithoutADie(t *testing.T) {
 	}
 }
 
-// The master's own roll for a character never asks, even if the character holds a die.
-func TestTheMastersConcentrationRollNeverAsksForTheDie(t *testing.T) {
+// The master's own roll for a player's character asks, and no longer settles at once (MR-014, decided by Vinicius on
+// 16/10/2026, E4-10): the master is asked in his own sheet, the player reads the same question, the master's answer waits
+// for the player's first 10 s (PLAYER_FIRST), and the first answer wins. Before this the master's roll never asked.
+func TestTheMastersConcentrationRollForAPlayerAsksForTheDie(t *testing.T) {
 	t.Parallel()
 	a, e := concentratingHit(t, 6)
 	a.giveCombatantDie(t, "Pensantus", e)
 	w := a.windowOf(t, a.master, playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE)
 	res, err := a.resolveConcentration(t, a.master, e, w.GetId(), concentrationFace(15))
-	if err != nil || res.GetInspirationOffer() != nil || res.GetResult() == nil {
-		t.Fatalf("ResolveConcentrationSave(master) = %v, %v; want the result and no question", res, err)
+	if err != nil || res.GetInspirationOffer() == nil || res.GetHeldRollOffer() == nil || res.GetResult() != nil {
+		t.Fatalf("ResolveConcentrationSave(master) = %v, %v; want the die's question alone", res, err)
+	}
+	if got := byLabel(t, a.get(t, a.ana), "Pensantus").GetHeldRollOffer(); got.GetHoldId() != res.GetHeldRollOffer().GetHoldId() {
+		t.Errorf("the player reads %v, want the master's question about her roll", got)
+	}
+	hold := res.GetInspirationOffer().GetHoldId()
+	_, err = a.answerHeldRoll(t, a.master, hold, dieAnswer(false))
+	wantResourceBlocked(t, err, playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_PLAYER_FIRST)
+	// The player answers first: the roll is settled as the master's roll, with her answer.
+	out, err := a.answerOutside(t, a.ana, hold, false, false, 0)
+	if err != nil {
+		t.Fatalf("the player's answer: error = %v", err)
+	}
+	if r := out.GetConcentrationSave().GetResult(); !r.GetKept() || r.GetSave().GetFaces()[0] != 15 {
+		t.Errorf("the result = %v, want the master's d20 of 15, kept", r)
 	}
 }
 
-// A hold of a combat round that is over, or whose combatant no longer holds the die, is stale.
-func TestStaleHoldOfACombat(t *testing.T) {
+// After the player's first chance the master's answer settles it, and it is the first answer.
+func TestTheMastersConcentrationRollForAPlayerIsAnsweredByTheMasterAfterTheTime(t *testing.T) {
 	t.Parallel()
-	round := int32(3)
-	combatant := playdb.Combatant{}
-	held := playdb.InspirationHold{Round: &round}
-	out := playdb.InspirationHold{}
-	cases := []struct {
-		name  string
-		hold  playdb.InspirationHold
-		die   heldDie
-		found bool
-		want  bool
-	}{
-		{"same round", held, heldDie{Combatant: &combatant, Round: 3}, true, false},
-		{"later round", held, heldDie{Combatant: &combatant, Round: 4}, true, true},
-		{"die gone", held, heldDie{}, false, true},
-		{"combat over", held, heldDie{Sides: 8}, true, true},
-		{"out of a combat", out, heldDie{Sides: 8}, true, false},
+	a, e := concentratingHit(t, 6)
+	a.giveCombatantDie(t, "Pensantus", e)
+	w := a.windowOf(t, a.master, playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE)
+	res, err := a.resolveConcentration(t, a.master, e, w.GetId(), concentrationFace(15))
+	if err != nil || res.GetInspirationOffer() == nil {
+		t.Fatalf("ResolveConcentrationSave(master) = %v, %v; want the question", res, err)
 	}
-	for _, tc := range cases {
-		if got := staleHold(tc.hold, tc.die, tc.found); got != tc.want {
-			t.Errorf("%s: staleHold = %v, want %v", tc.name, got, tc.want)
-		}
+	a.h.afterThePlayersChance()
+	out, err := a.answerHeldRoll(t, a.master, res.GetInspirationOffer().GetHoldId(), dieAnswer(false))
+	if err != nil || !out.GetConcentrationSave().GetResult().GetKept() {
+		t.Fatalf("the master's answer = %v, %v; want the settled save", out, err)
 	}
 }
 

@@ -7,8 +7,6 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
-	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
-	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
 // The halfling's Lucky (SRD 5.1, Halfling; combat_lucky.go has the rule) on the d20 rolls that are
@@ -24,11 +22,6 @@ import (
 // counts any d20 of the check. As with the die, only the player who rolls for their own character
 // is asked: the master's rolls never wait here (a roll the master makes for a halfling waits for
 // a decision, MR-014).
-
-// countedAfterLucky is countedAfter for the faces a row of inspiration_holds kept.
-func countedAfterLucky(hold playdb.InspirationHold, faces []int, mode combat.RollMode) int {
-	return countedAfter(intsOf(hold.Faces), int(hold.Counted), faces, mode)
-}
 
 // AnswerOutsideLucky implements playv1connect.ResourceServiceHandler: the player of a held roll
 // that is not a weapon attack, whose d20 shows a 1, rolls that die again, or keeps the 1. The roll
@@ -55,7 +48,7 @@ func (s *Service) AnswerOutsideLucky(
 		return nil, err
 	}
 	out, err := s.answerHeld(ctx, m, answerRequest{
-		ref: holdRef{Table: inspirationHolds, Class: outsideHold, Campaign: m.CampaignID, ID: holdID}, key: key, question: askLucky, yes: req.Msg.GetReroll(), in: in,
+		ref: holdRef{Class: outsideHold, Campaign: m.CampaignID, ID: holdID}, key: key, question: askLucky, yes: req.Msg.GetReroll(), in: in,
 	})
 	if err != nil {
 		return nil, err

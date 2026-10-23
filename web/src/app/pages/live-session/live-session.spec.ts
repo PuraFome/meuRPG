@@ -14,6 +14,7 @@ import { FamiliarEyesClient } from '../../core/play/familiar-eyes';
 import { textOf } from '../../core/format/text-testing';
 import { CastingClient } from '../../core/casting/casting-client';
 import { FakeCastingClient } from '../../core/casting/casting-testing';
+import { CampaignsService } from '../../core/campaigns/campaigns.service';
 import { RosterClient } from '../../core/maps/roster-client';
 import { ProgressionClient } from '../../core/progression/progression-client';
 import { XpChanges } from '../../core/progression/xp-changes';
@@ -61,8 +62,14 @@ import {
   mapResponse,
   mapToken,
 } from '../../core/maps/maps-testing';
+import { ConversationClient } from '../../core/conversation/conversation-client';
+import { QuietConversationApi, line } from '../../core/conversation/conversation-testing';
+import { SessionMessageSpeakerKind } from '../../../gen/meurpg/play/v1/session_messages_pb';
+import type { LiveSessionParts } from './live-session-deps';
 import { SceneClient } from '../../core/play/scene-client';
 import { ResourceClient } from '../../core/resources/resources-client';
+import { ListHeldRollsResponseSchema } from '../../../gen/meurpg/play/v1/resources_pb';
+import { askedAt, heldLucky } from '../../core/held-rolls/held-roll-testing';
 import { restPreview, restPreviewResponse } from '../../core/resources/resources-testing';
 import { CharacterVitalsSchema } from '../../../gen/meurpg/play/v1/play_pb';
 import { CombatClient } from '../../core/combat/combat-client';
@@ -85,6 +92,9 @@ import {
   TreasureFinderSchema,
 } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { OpenSessions } from '../../core/play/open-sessions';
+import { FreeDiceClient } from '../../core/free-dice/free-dice-client';
+import { FakeFreeDiceClient, freeRoll } from '../../core/free-dice/free-dice-testing';
+import { RollAnimator } from '../../shared/roll-overlay/roll-animator';
 import { CALLING_NOTICE_MS, LiveSession } from './live-session';
 import { mageArmorClassOf } from './live-session-loader';
 import {
@@ -225,6 +235,7 @@ describe('LiveSession', () => {
   /** What the master's "Dar XP" reads (MR-016): the party's XP and how the campaign levels. */
   const xpExperience = vi.fn();
   let scenes: FakeSceneClient;
+  let conversation: QuietConversationApi;
   let puzzles: FakePuzzlesClient;
   /** The group check of the player's page (W7-X). */
   let contests: FakeContestClient;
@@ -234,7 +245,7 @@ describe('LiveSession', () => {
   const summary = vi.fn();
   const signIn = vi.fn();
   /** The master's rests (PM-07b 9). */
-  const resources = { restPreview: vi.fn(), takeRest: vi.fn() };
+  const resources = { restPreview: vi.fn(), takeRest: vi.fn(), listHeldRolls: vi.fn() };
   const liveCampaignIds = signal<ReadonlySet<string>>(new Set());
   const openSessions = {
     liveCampaignIds: liveCampaignIds.asReadonly(),
@@ -243,8 +254,10 @@ describe('LiveSession', () => {
   };
 
   let casting: FakeCastingClient;
+  let freeDice: FakeFreeDiceClient;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    freeDice = new FakeFreeDiceClient();
     xpExperience.mockReset().mockResolvedValue(
       create(GetCampaignExperienceResponseSchema, {
         xpMode: XpMode.ENEMIES,
@@ -263,10 +276,12 @@ describe('LiveSession', () => {
     signIn.mockClear();
     resources.restPreview.mockReset();
     resources.takeRest.mockReset();
+    resources.listHeldRolls.mockReset().mockResolvedValue(create(ListHeldRollsResponseSchema, {}));
     openSessions.dismiss.mockClear();
     liveCampaignIds.set(new Set());
     summary.mockReset().mockRejectedValue(new Error('no summary'));
     scenes = new FakeSceneClient();
+    conversation = new QuietConversationApi();
     casting = new FakeCastingClient();
     puzzles = new FakePuzzlesClient();
     contests = new FakeContestClient();
@@ -293,15 +308,30 @@ describe('LiveSession', () => {
         },
         { provide: ProgressionClient, useValue: { experience: xpExperience, listAwards: vi.fn() } },
         { provide: RosterClient, useValue: { list: () => Promise.resolve([]) } },
+        {
+          provide: CampaignsService,
+          useValue: { listMembers: () => Promise.resolve({ members: [] }) },
+        },
         { provide: CastingClient, useValue: casting },
         { provide: SceneClient, useValue: scenes },
+        { provide: FreeDiceClient, useValue: freeDice },
+        { provide: ConversationClient, useValue: conversation },
         { provide: ContestClient, useValue: contests.as() },
         { provide: RevivifyClient, useValue: { list: revivifyList, confirmTime: vi.fn() } },
         { provide: ResourceClient, useValue: resources },
         { provide: PuzzlesClient, useValue: puzzles },
         { provide: SceneChecks, useValue: fakeChecks },
         { provide: SessionSummaryClient, useValue: { get: summary } },
-        { provide: AuthService, useValue: { signIn, state: signal({ status: 'signed-in' }) } },
+        {
+          provide: AuthService,
+          useValue: {
+            signIn,
+            state: signal({
+              status: 'signed-in',
+              user: { id: 'u-pensantus', displayName: 'Caio' },
+            }),
+          },
+        },
         { provide: OpenSessions, useValue: openSessions },
         {
           provide: ActivatedRoute,
@@ -312,6 +342,8 @@ describe('LiveSession', () => {
         },
       ],
     });
+    // The page's dependencies include the lazy conversation panel, whose metadata resolves asynchronously.
+    await TestBed.compileComponents();
     source = TestBed.inject(LiveSessionSource) as unknown as FakeLiveSessionSource;
   });
 
@@ -399,6 +431,145 @@ describe('LiveSession', () => {
       // The party panel's "Dar XP" reads the characters again.
       await nextTurn();
       expect(xpExperience).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('the free dice roller (MR-052)', () => {
+    const asMaster = () => {
+      source.campaign = {
+        name: 'Mirathel',
+        isMaster: true,
+        awaitingApproval: false,
+        diceMode: 1,
+        dicePreference: 1,
+      };
+    };
+    const diceButton = (el: HTMLElement) => el.querySelector<HTMLButtonElement>('.js-dice');
+
+    it('puts "Dados" in the header of the master too', async () => {
+      asMaster();
+      expect(diceButton(await render())).not.toBeNull();
+    });
+
+    it('puts "Dados" in the header for a player, and "Rolagens da mesa" under the board', async () => {
+      const player = await render();
+      expect(diceButton(player)?.querySelector('.js-dice-text')?.textContent?.trim()).toBe('Dados');
+      expect(player.querySelector('app-free-roll-log h2')?.textContent).toContain(
+        'Rolagens da mesa',
+      );
+    });
+
+    it('has no "Dados" button when there is no live session', async () => {
+      source.events = [];
+      source.failWith = new KindError('no-session');
+      const el = await render();
+      expect(diceButton(el)).toBeNull();
+      expect(el.querySelector('app-free-roll-log')).toBeNull();
+    });
+
+    it('reads the rolls of the session on every `ready`, for the log', async () => {
+      freeDice.lists = {
+        table: [freeRoll('a', { logText: 'Rolagem livre · Tor: 1d20 + 6 = 19 (13)' })],
+        mine: [],
+      };
+      const el = await render();
+      expect(el.querySelector('app-free-roll-log')?.textContent).toContain(
+        'Rolagem livre · Tor: 1d20 + 6 = 19 (13)',
+      );
+      const reads = freeDice.listCalls;
+      source.push({ kind: 'ready' });
+      await nextTurn();
+      await nextTurn();
+      expect(freeDice.listCalls).toBeGreaterThan(reads);
+    });
+
+    it("adds another person's roll to the log and tumbles the dice for the table", async () => {
+      const play = vi.spyOn(TestBed.inject(RollAnimator), 'play');
+      const el = await render();
+      source.push({
+        kind: 'freeRollRolled',
+        roll: freeRoll('o1', {
+          rollerName: 'Tor',
+          logText: 'Rolagem livre · Tor: 2d6 + 3 = 11 (4, 4)',
+        }),
+      });
+      await nextTurn();
+      await nextTurn();
+      expect(el.querySelector('app-free-roll-log')?.textContent).toContain(
+        'Rolagem livre · Tor: 2d6 + 3 = 11 (4, 4)',
+      );
+      expect(play).toHaveBeenCalledTimes(1);
+      expect(play.mock.calls[0][0]).toMatchObject({
+        label: 'Tor rolou',
+        note: 'Rolagem livre · 2d6 + 3',
+      });
+    });
+
+    it('turns "Dados" off while the stream reconnects', async () => {
+      source.failWith = new Error('down');
+      const el = await render();
+      expect(diceButton(el)?.getAttribute('aria-disabled')).toBe('true');
+      expect(el.textContent).toContain('Não dá para rolar sem conexão.');
+    });
+
+    it('opens the dice dialog from the header', async () => {
+      asMaster();
+      const el = await render();
+      diceButton(el)!.click();
+      await nextTurn();
+      expect(document.body.textContent).toContain('Rolar dados');
+      expect(document.body.textContent).toContain('Quem vê');
+    });
+  });
+
+  describe('the pending questions of the held rolls', () => {
+    const asMaster = () => {
+      source.campaign = {
+        name: 'Mirathel',
+        isMaster: true,
+        awaitingApproval: false,
+        diceMode: 1,
+        dicePreference: 1,
+      };
+    };
+    const asked = (hold: string, roller: string) =>
+      heldLucky([1], 5, { holdId: hold, rollerLabel: roller, ...askedAt(Date.now() - 3000) });
+
+    it('lists the questions above the stage when the master opens the page, and again on every hint', async () => {
+      asMaster();
+      resources.listHeldRolls.mockResolvedValue(
+        create(ListHeldRollsResponseSchema, { offers: [asked('h1', 'Brisa')] }),
+      );
+      const el = await render();
+      expect(resources.listHeldRolls).toHaveBeenCalledWith('mirathel');
+      expect(el.querySelector('app-held-rolls-panel')?.textContent).toContain(
+        'Brisa · Tirou 1: rolar de novo?',
+      );
+      const reads = resources.listHeldRolls.mock.calls.length;
+      resources.listHeldRolls.mockResolvedValue(
+        create(ListHeldRollsResponseSchema, { offers: [asked('h2', 'Toren')] }),
+      );
+      source.push({ kind: 'heldRollsChanged' });
+      await nextTurn();
+      await nextTurn();
+      expect(resources.listHeldRolls.mock.calls.length).toBe(reads + 1);
+      expect(el.querySelector('app-held-rolls-panel')?.textContent).toContain('Toren · ');
+    });
+
+    it('reads the questions again after a reconnection', async () => {
+      asMaster();
+      await render();
+      const reads = resources.listHeldRolls.mock.calls.length;
+      source.push({ kind: 'ready' });
+      await nextTurn();
+      await nextTurn();
+      expect(resources.listHeldRolls.mock.calls.length).toBeGreaterThan(reads);
+    });
+
+    it('does not list them for a player', async () => {
+      const el = await render();
+      expect(el.querySelector('app-held-rolls-panel')).toBeNull();
+      expect(resources.listHeldRolls).not.toHaveBeenCalled();
     });
   });
 
@@ -1808,6 +1979,127 @@ describe('LiveSession', () => {
       await settle();
       expect(nudge).not.toHaveBeenCalled();
       expect(el.querySelector('app-calling-notice')).toBeNull();
+    });
+  });
+
+  describe('the conversation of the scene', () => {
+    function parts(fixture: ComponentFixture<LiveSession>): LiveSessionParts {
+      return (fixture.componentInstance as unknown as { parts: LiveSessionParts }).parts;
+    }
+
+    it('reads the lines on the first ready and the gap on every reconnection', async () => {
+      const list = vi.spyOn(conversation, 'list');
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      expect(list).toHaveBeenCalledTimes(1);
+      source.push({ kind: 'ready' });
+      await settle(fixture);
+      expect(list).toHaveBeenCalledTimes(2);
+      expect(list).toHaveBeenLastCalledWith('mirathel');
+    });
+
+    it('keeps the lines of the stream once, and the typing hint goes away with the master line', async () => {
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      const { conversation: state } = parts(fixture);
+      source.push({ kind: 'masterTyping', expiresInSeconds: 6 });
+      await settle(fixture);
+      expect(state.typing()).toBe(true);
+      const message = line('m1', { speakerKind: SessionMessageSpeakerKind.NARRATOR });
+      source.push({ kind: 'sessionMessage', message });
+      source.push({ kind: 'sessionMessage', message });
+      await settle(fixture);
+      expect(state.lines().map((l) => l.id)).toEqual(['m1']);
+      expect(state.typing()).toBe(false);
+    });
+
+    /** The test browser has no `matchMedia`: say whether the screen is a phone. */
+    const onPhone = (matches: boolean) => {
+      const list = {
+        matches,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      };
+      window.matchMedia = (() => list) as unknown as typeof window.matchMedia;
+    };
+    afterEach(() => {
+      delete (window as unknown as Record<string, unknown>)['matchMedia'];
+    });
+
+    it('puts the panel beside the stage on a computer, with the composer of a player, and no tabs', async () => {
+      onPhone(false);
+      const el = await render();
+      expect(el.querySelector('app-conversation h2')?.textContent?.trim()).toBe('Conversa');
+      expect(el.querySelector('app-player-composer')).not.toBeNull();
+      expect(el.querySelector('app-session-tabs')).toBeNull();
+    });
+
+    it('gives the master the master composer', async () => {
+      onPhone(false);
+      source.campaign = {
+        name: 'Mirathel',
+        isMaster: true,
+        awaitingApproval: false,
+        diceMode: 1,
+        dicePreference: 1,
+      };
+      const el = await render();
+      expect(el.querySelector('app-master-composer')).not.toBeNull();
+    });
+
+    it('on a phone shows Cena, Ficha and Conversa, and loads the panel only when Conversa is opened', async () => {
+      onPhone(true);
+      const fixture = TestBed.createComponent(LiveSession);
+      const el = await settle(fixture);
+      const tabs = Array.from(el.querySelectorAll('app-session-tabs .tab'), (t) =>
+        t.textContent?.trim(),
+      );
+      expect(tabs).toEqual(['Cena', 'Ficha', 'Conversa']);
+      expect(el.querySelector('app-conversation')).toBeNull();
+      expect(el.querySelector('app-session-tabs a.tab')?.getAttribute('href')).toBe(
+        '/campaigns/mirathel/characters/pensantus',
+      );
+
+      (el.querySelectorAll('app-session-tabs button.tab')[1] as HTMLButtonElement).click();
+      await settle(fixture);
+      expect(
+        el.querySelector('app-conversation button[aria-label="Voltar à sessão"]'),
+      ).not.toBeNull();
+      expect(el.querySelector('.split__main')?.hasAttribute('inert')).toBe(true);
+
+      (
+        el.querySelector('app-conversation button[aria-label="Voltar à sessão"]') as HTMLElement
+      ).click();
+      await settle(fixture);
+      expect(el.querySelector('.split__main')?.hasAttribute('inert')).toBe(false);
+    });
+
+    it('counts the lines that come while the Conversa tab is not open, and clears them when it opens', async () => {
+      onPhone(true);
+      const fixture = TestBed.createComponent(LiveSession);
+      const el = await settle(fixture);
+      const chat = () => el.querySelectorAll('app-session-tabs button.tab')[1] as HTMLButtonElement;
+      source.push({ kind: 'sessionMessage', message: line('m1', { authorUserId: 'u-mestre' }) });
+      await settle(fixture);
+      source.push({
+        kind: 'sessionMessage',
+        message: line('m2', { authorUserId: 'u-mestre', at: 1 }),
+      });
+      await settle(fixture);
+      expect(chat().getAttribute('aria-label')).toBe('Conversa, 2 mensagens novas');
+      chat().click();
+      await settle(fixture);
+      expect(chat().getAttribute('aria-label')).toBeNull();
+      expect(parts(fixture).conversation.unread()).toBe(0);
+    });
+
+    it('does not count on a computer, where the column is on screen', async () => {
+      onPhone(false);
+      const fixture = TestBed.createComponent(LiveSession);
+      await settle(fixture);
+      source.push({ kind: 'sessionMessage', message: line('m1', { authorUserId: 'u-mestre' }) });
+      await settle(fixture);
+      expect(parts(fixture).conversation.unread()).toBe(0);
     });
   });
 

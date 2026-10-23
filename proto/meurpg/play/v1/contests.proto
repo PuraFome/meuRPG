@@ -269,8 +269,12 @@ message StartContestRequest {
 // StartContestResponse returns the combat after it and the contest.
 message StartContestResponse {
   Encounter encounter = 1;
-  // The contest as the caller reads it.
+  // The contest as the caller reads it. Unset while the roll waits for a question.
   ContestView contest = 2;
+  // Set instead of `contest` when the initiator's d20 waits for a question: the halfling's Lucky about a 1, or the Bardic
+  // Inspiration die the combatant holds (AnswerHeldRoll answers it). The d20 was rolled and kept, and nothing is spent or
+  // written. The master is asked too when he rolls for the player, and answers after the player's first 10 s.
+  HeldRollOffer held_roll_offer = 3;
 }
 
 // RespondContestRequest is the defender's answer.
@@ -292,6 +296,8 @@ message RespondContestRequest {
 message RespondContestResponse {
   Encounter encounter = 1;
   ContestView contest = 2;
+  // Set instead of `contest` when the defender's d20 waits for a question, as for StartContestResponse.
+  HeldRollOffer held_roll_offer = 3;
 }
 
 // ResolveShoveRequest is the choice of a won shove.
@@ -353,7 +359,12 @@ message HideRequest {
 // HideResponse returns the combat and the attempt, which waits for the master.
 message HideResponse {
   Encounter encounter = 1;
+  // Unset while the Stealth roll waits for a question.
   HideAttemptView attempt = 2;
+  // Set instead of `attempt` when the d20 waits for a question: the halfling's Lucky about a 1, or the Bardic Inspiration die
+  // the combatant holds (AnswerHeldRoll answers it). The d20 was rolled and kept, and nothing is spent or written. The master
+  // is asked too when he rolls for the player, and answers after the player's first 10 s.
+  HeldRollOffer held_roll_offer = 3;
 }
 
 // ResolveHideRequest is the master's decision on a Hide.
@@ -505,11 +516,20 @@ message RollGroupCheckResponse {
   GroupCheckView group_check = 1;
   // Set when the character holds a Bardic Inspiration die: the d20 was rolled and the check
   // was not written; AnswerOutsideInspiration settles it.
-  OutsideInspirationOffer inspiration_offer = 2;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  OutsideInspirationOffer inspiration_offer = 2 [deprecated = true];
   // Set when the character is a halfling and a d20 shows a 1 (Lucky): the d20 was rolled and
   // the check was not written; AnswerOutsideLucky rolls it again or keeps the 1. It comes before
-  // the die's question. A roll the master makes for a player never asks.
-  LuckyOffer lucky_offer = 3;
+  // the die's question. A roll the master makes for a player asks too (RollForPlayer, E4-10).
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  LuckyOffer lucky_offer = 3 [deprecated = true];
+
+  // The question the roll asks now, in the one shape every held roll has (HeldRollOffer), set beside
+  // the deprecated `inspiration_offer` and `lucky_offer`: set instead of the result, when the
+  // roll waits for an answer (AnswerHeldRoll). Whoever may answer gets it; nobody else does (RN-10).
+  HeldRollOffer held_roll_offer = 4;
 }
 
 // RollForPlayerRequest is the master's roll for a character.
@@ -524,6 +544,17 @@ message RollForPlayerRequest {
 // RollForPlayerResponse returns the group check.
 message RollForPlayerResponse {
   GroupCheckView group_check = 1;
+  // Set instead of `group_check` when the character's player has a Bardic Inspiration die or the character is a
+  // halfling whose d20 shows a 1: the master's roll for a player asks like the player's own (E4-10). The master is
+  // asked in his own sheet, the player reads the same question, and the first answer wins (AnswerHeldRoll); the
+  // master's own answer waits for the player's 10 s first chance (PLAYER_FIRST).
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  OutsideInspirationOffer inspiration_offer = 2 [deprecated = true];
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  LuckyOffer lucky_offer = 3 [deprecated = true];
+  HeldRollOffer held_roll_offer = 4;
 }
 
 // CloseGroupCheckRequest ends the check.

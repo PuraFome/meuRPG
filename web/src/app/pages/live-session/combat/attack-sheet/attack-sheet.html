@@ -160,29 +160,16 @@
         [asking]="s.asking()"
       />
 
-      @if (s.stage() === 'lucky') {
-        <app-lucky-prompt
-          [offer]="questions.luckyOffer()"
+      @if (s.asking() && question.offer(); as o) {
+        <app-held-roll-prompt
+          [offer]="o"
+          look="attack"
           [canApp]="canApp"
           [canType]="canType"
           [preferApp]="preferApp"
           [busy]="s.busy()"
           [(typing)]="s.typing"
-          (reroll)="questions.answerLucky(true, $event)"
-          (keep)="questions.answerLucky(false, null)"
-        />
-      }
-
-      @if (s.stage() === 'inspire') {
-        <app-inspiration-prompt
-          [die]="questions.offer()?.die"
-          [canApp]="canApp"
-          [canType]="canType"
-          [preferApp]="preferApp"
-          [busy]="s.busy()"
-          [(typing)]="s.typing"
-          (use)="questions.answerInspiration(true, $event)"
-          (keep)="questions.answerInspiration(false, null)"
+          (answer)="question.answer($event)"
         />
       }
 

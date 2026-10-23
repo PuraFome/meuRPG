@@ -52,8 +52,9 @@ func (s *Service) inspirationGate(c *combatTx) gateEnv {
 	return env
 }
 
-// saveSpec is the saving throw a player rolls for their own combatant (an effect's, a concentration's):
-// the master's roll, an NPC's and a creature's never wait for anybody.
+// saveSpec is the saving throw of a player's combatant (an effect's, a concentration's), rolled by its player or by
+// the master for them (E4-10: the master is asked in his own sheet, the player sees the same question, and the first
+// answer wins). An NPC's and a creature's never wait for anybody.
 func saveSpec(
 	m authz.Membership, kind heldKind, reactor playdb.Combatant, key string, raw proto.Message,
 	in rollInput, bonus int, mode combat.RollMode, lucky bool,
@@ -61,8 +62,13 @@ func saveSpec(
 	return rollSpec{
 		Kind: kind, Key: key, Request: raw, Roller: heldRoller{CampaignID: m.CampaignID, CharacterID: reactor.CharacterID, UserID: m.UserID},
 		In: in, Modifier: bonus, Mode: mode, Lucky: lucky,
-		MayAsk: m.Role != authz.RoleMaster && reactor.Kind == kindPlayer && backedByCharacter(reactor) && reactor.UserID != nil && *reactor.UserID == m.UserID,
+		MayAsk: reactor.Kind == kindPlayer && backedByCharacter(reactor) && playedBy(reactor, m),
 	}
+}
+
+// playedBy says a player plays the combatant, and the caller is that player or the master.
+func playedBy(c playdb.Combatant, m authz.Membership) bool {
+	return c.UserID != nil && (m.Role == authz.RoleMaster || *c.UserID == m.UserID)
 }
 
 // attackRoller is the attacker of a weapon attack as the gate sees it: its combatant, in the round, and its
@@ -187,6 +193,9 @@ type heldReply struct {
 	reroll *luckyReroll
 	// die is the Bardic Inspiration die the player rolled and added, nil when they kept it.
 	die *bonusUse
+	// as is who the path runs as when another than the roller answers (the master): the roller. Nil when the
+	// answerer is the roller. Only answerHeld sets it, after checking that the caller may answer.
+	as *authz.Membership
 }
 
 type heldReplyKey struct{}
@@ -220,7 +229,7 @@ func (s *Service) heldBlocked(ctx context.Context, env gateEnv, spec rollSpec) e
 	if err != nil || (!st.Holds && !spec.Lucky) {
 		return err
 	}
-	open, err := newHeldStores(env.q).openOf(ctx, spec.Roller.in(st), rollHolds, inspirationHolds)
+	open, err := newHeldStores(env.q).openOf(ctx, spec.Roller.in(st))
 	if err != nil {
 		return err
 	}
@@ -249,7 +258,7 @@ func (s *Service) heldMayWait(ctx context.Context, env gateEnv, spec rollSpec) (
 // Cutting Words die already off it.
 func (s *Service) heldModifier(ctx context.Context, env gateEnv, spec rollSpec) (int, error) {
 	a, _ := heldReplyOf(ctx)
-	h, err := newHeldStores(env.q).byIDOf(ctx, spec.Kind, holdRef{Campaign: spec.Roller.CampaignID, Encounter: encounterOf(spec.Roller), ID: a.holdID})
+	h, err := newHeldStores(env.q).byIDOf(ctx, holdRef{Campaign: spec.Roller.CampaignID, Encounter: encounterOf(spec.Roller), ID: a.holdID})
 	if err != nil {
 		return 0, fmt.Errorf("find the held roll: %w", err)
 	}
@@ -339,16 +348,19 @@ func (s *Service) gateAsk(ctx context.Context, ae answering) (gateResult, error)
 // are the kind's refusedBy.
 func (s *Service) gateOpen(ctx context.Context, ae answering, stores heldStores) error {
 	def := heldRegistry[ae.spec.Kind]
-	open, err := stores.openOf(ctx, ae.spec.Roller.in(ae.st), def.refusedBy...)
+	open, err := stores.openOf(ctx, ae.spec.Roller.in(ae.st))
 	if err != nil {
 		return err
+	}
+	if def.ownKindOnly {
+		open = slices.DeleteFunc(open, func(h heldRoll) bool { return h.Kind != ae.spec.Kind })
 	}
 	for _, h := range open {
 		switch {
 		case !h.stale(ae.st):
 			return heldRefusal(h)
-		case h.table == def.write:
-			if err := stores.of(h.table).forget(ctx, h); err != nil {
+		default:
+			if err := stores.forget(ctx, h); err != nil {
 				return fmt.Errorf("forget the old held roll: %w", err)
 			}
 		}
@@ -364,13 +376,12 @@ func (s *Service) gateInsert(ctx context.Context, ae answering, stores heldStore
 	if err != nil {
 		return gateResult{}, fmt.Errorf("keep the request: %w", err)
 	}
-	store := stores.of(def.write)
-	h, err := store.insert(ctx, ae.gateEnv, ae.newRoll(body, roll, luckyAt))
+	h, err := stores.insert(ctx, ae.gateEnv, ae.newRoll(body, roll, luckyAt))
 	if err != nil {
 		return gateResult{}, err
 	}
 	// The question may be part of what the combat's readers see: its revision moves.
-	if err := store.asked(ctx, ae.gateEnv); err != nil {
+	if err := stores.asked(ctx, ae.gateEnv, h); err != nil {
 		return gateResult{}, err
 	}
 	return gateResult{Held: new(askedBy(h, ae.st))}, nil
@@ -386,6 +397,10 @@ func (ae answering) newRoll(body []byte, roll d20Roll, luckyAt *int32) heldRoll 
 	}
 	if r.Combatant != nil {
 		h.CombatantID, h.EncounterID, h.Round = r.Combatant.ID, r.Combatant.EncounterID, &r.Round
+		if h.CharacterID == "" {
+			// A creature or the copy of an NPC is not backed by its character, but carries one, and the row needs it.
+			h.CharacterID = r.Combatant.CharacterID
+		}
 	}
 	return h
 }
@@ -393,12 +408,11 @@ func (ae answering) newRoll(body []byte, roll d20Roll, luckyAt *int32) heldRoll 
 // gateAnswer settles the roll the answer is for: the question being answered is applied, and then the next
 // question's offer, or the settled d20.
 func (s *Service) gateAnswer(ctx context.Context, ae answering, a heldReply) (gateResult, error) {
-	def := heldRegistry[ae.spec.Kind]
-	if a.die != nil && !ae.st.Holds && def.write.checksTheAnswer() {
+	if a.die != nil && !ae.st.Holds && checksTheAnswer(ae.spec.Kind) {
 		return gateResult{}, errDieGone()
 	}
 	stores := newHeldStores(ae.q)
-	h, err := stores.byIDOf(ctx, ae.spec.Kind, holdRef{Campaign: ae.spec.Roller.CampaignID, Encounter: encounterOf(ae.spec.Roller), ID: a.holdID})
+	h, err := stores.byIDOf(ctx, holdRef{Campaign: ae.spec.Roller.CampaignID, Encounter: encounterOf(ae.spec.Roller), ID: a.holdID})
 	if err != nil {
 		return gateResult{}, fmt.Errorf("find the held roll: %w", err)
 	}
@@ -416,7 +430,7 @@ func (s *Service) gateAnswer(ctx context.Context, ae answering, a heldReply) (ga
 	if !(dieQuestion{}).pending(h, ae.st) {
 		return s.gateSettle(ctx, ae, h, a)
 	}
-	if err := stores.of(h.table).asked(ctx, ae.gateEnv); err != nil {
+	if err := stores.asked(ctx, ae.gateEnv, h); err != nil {
 		return gateResult{}, err
 	}
 	return gateResult{Held: new(askedBy(h, ae.st))}, nil

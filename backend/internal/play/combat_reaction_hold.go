@@ -12,6 +12,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
@@ -36,8 +37,12 @@ type replayState struct {
 	// damage), and deflected what Deflect Missiles took off the damage.
 	reduction int32
 	deflected int32
+	// after is the total of a held check once the die came off (cutRoll).
+	after int32
 	// halve: Uncanny Dodge halved the damage.
 	halve bool
+	// protectors are the shield-bearers whose Protection gave the attack roll disadvantage.
+	protectors []string
 	// rolled is the damage roll made when the hold was written, so that the
 	// reactor decided with the number it would take (Uncanny Dodge, Deflect
 	// Missiles) and the replay lands that very roll.
@@ -70,7 +75,7 @@ type holdData struct {
 }
 
 // The ambient write: a replay runs the action's own handler inside the
-// transaction of the answer that released it. The handler calls s.write as always;
+// transaction of the answer that released it. The handler calls s.write as in any other change;
 // write sees the ambient and runs the change in the open transaction instead of
 // opening one, writes the event, and returns errAmbientDone so that the handler
 // stops before it reads and publishes (the answer's handler does that, after the
@@ -197,6 +202,8 @@ func replayStateOf(h playdb.ReactionHold, windows []playdb.ReactionWindow) *repl
 			st.reduction += out.Reduction
 		case reaction.UncannyDodgeKind:
 			st.halve = true
+		case reaction.ProtectionKind:
+			st.protectors = append(st.protectors, conv.OrZero(w.ReactorID))
 		case reaction.DeflectKind, reaction.ManeuverReduceKind:
 			st.deflected += out.Reduction
 		}
@@ -229,7 +236,7 @@ func (s *Service) replayHeld(ctx context.Context, m authz.Membership, h playdb.R
 		_, err := s.rollDamage(ctx, m, connect.NewRequest(&req))
 		return err
 	}
-	return fmt.Errorf("a held action of kind %q", h.Kind)
+	return s.replayHeldCheck(ctx, m, h)
 }
 
 // settleReplay reads how the replay of a held action ended: the event that stands for
@@ -298,6 +305,15 @@ func (s *Service) completeAnswers(c *combatTx, windows []playdb.ReactionWindow, 
 		case "damage":
 			ref.ev.Before = st.rolledTotal()
 			ref.ev.After = done.Amount
+		case "cast":
+			// A spell attack: the one roll the die came off (a Counterspell's answer keeps its own numbers).
+			if len(done.Hits) == 1 && ref.ev.Kind == string(reaction.CuttingWords) {
+				ref.ev.Outcome, ref.ev.AC, ref.ev.After = done.Hits[0].Outcome, done.Hits[0].TargetAC, done.Hits[0].Total
+				ref.ev.Before = done.Hits[0].Total + st.reduction
+			}
+		default: // a check: the total it became
+			ref.ev.After = st.after
+			ref.ev.Before = st.after + st.reduction
 		}
 	}
 }

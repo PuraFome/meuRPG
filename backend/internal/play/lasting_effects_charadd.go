@@ -15,6 +15,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -52,8 +53,18 @@ func parseCharEffectInput(msg *playv1.AddCharacterEffectRequest) (charEffectInpu
 	if err := checkEffectLabel(msg.GetPlayerLabel()); err != nil {
 		return in, err
 	}
-	in.kind, in.seconds, err = charDurationOf(durationKindOf(msg.GetDurationKind()), msg.GetSeconds())
+	in.kind, in.seconds, err = charDurationOf(charKindOf(msg), msg.GetSeconds())
 	return in, err
+}
+
+// charKindOf is the duration kind the request asks for: seconds with no kind at all read as the
+// clock of game time, the only kind that has seconds. A kind the server does not know stays no
+// kind.
+func charKindOf(msg *playv1.AddCharacterEffectRequest) string {
+	if msg.GetDurationKind() == playv1.EffectDurationKind_EFFECT_DURATION_KIND_UNSPECIFIED && msg.GetSeconds() != 0 {
+		return rules.EffectDurationRounds
+	}
+	return durationKindOf(msg.GetDurationKind())
 }
 
 // parseCharacterIDs reads the characters: one to ten, all UUIDs, none twice.
@@ -63,7 +74,7 @@ func parseCharacterIDs(raw []string) ([]string, error) {
 	}
 	var ids []string
 	for _, r := range raw {
-		id, ok := parseID(r)
+		id, ok := uid.Canonical(r)
 		if !ok {
 			return nil, errInvalidEffect("character_ids must be UUIDs")
 		}
@@ -127,12 +138,9 @@ func (s *Service) AddCharacterEffect(
 // answers what was made and the vitals the streams are told after the commit.
 func (s *Service) giveCharacterEffect(ctx context.Context, tx pgx.Tx, m authz.Membership, in charEffectInput, hash *string, msg *playv1.AddCharacterEffectRequest) (charEffectEvent, []*playv1.CharacterVitals, error) {
 	q := s.queries.WithTx(tx)
-	session, err := q.GetOpenGameSessionForUpdate(ctx, m.CampaignID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return charEffectEvent{}, nil, errNoOpenSession()
-	}
+	session, err := lockOpenSessionOrNone(ctx, q, m.CampaignID)
 	if err != nil {
-		return charEffectEvent{}, nil, fmt.Errorf("lock the open session: %w", err)
+		return charEffectEvent{}, nil, err
 	}
 	done, again, err := eventByKey(ctx, q, session.ID, in.key, eventLastingAdded, hash)
 	if err != nil {
@@ -161,7 +169,7 @@ func (s *Service) giveCharacterEffect(ctx context.Context, tx pgx.Tx, m authz.Me
 	if err := s.syncArmorBase(ctx, c, slices.Clone(made.Targets)...); err != nil { // it sorts what it is given: the event keeps the order of the request
 		return charEffectEvent{}, nil, err
 	}
-	if err := s.writeCharEffectEvent(ctx, q, session.ID, m.UserID, in.key, hash, made); err != nil {
+	if err := s.appendKeyedEvent(ctx, q, keyedEvent{sessionID: session.ID, kind: eventLastingAdded, userID: m.UserID, key: in.key, hash: hash}, made); err != nil {
 		return charEffectEvent{}, nil, err
 	}
 	return made, c.told, nil
@@ -179,16 +187,9 @@ func (s *Service) requireOutsideCombat(ctx context.Context, tx pgx.Tx, q *playdb
 			return connect.NewError(connect.CodeNotFound, errors.New("character not found"))
 		}
 	}
-	enc, err := q.GetOpenEncounter(ctx, sessionID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("find the open encounter: %w", err)
-	}
-	cs, err := q.ListCombatants(ctx, enc.ID)
-	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+	_, cs, fighting, err := openCombatants(ctx, q, sessionID)
+	if err != nil || !fighting {
+		return err
 	}
 	if slices.ContainsFunc(cs, func(o playdb.Combatant) bool {
 		return slices.Contains(characterIDs, o.CharacterID) && backedByCharacter(o)
@@ -240,14 +241,12 @@ func (s *Service) planCharEffect(ctx context.Context, c *combatTx, in charEffect
 	if plan.kind, plan.seconds, err = charEffectClock(in, src); err != nil {
 		return plan, err
 	}
-	audience := chosenAudience(msg.GetAudience(), src.audience)
-	plan.audience = "all"
-	if audience == rules.EffectVisibilityOwner {
-		plan.audience = audienceOwner
-	}
+	masterOnly, stored := storedAudience(chosenAudience(msg.GetAudience(), src.audience))
+	plan.audience = stored
 	if v := msg.PlayerVisible; v != nil {
 		plan.visible = *v
 	}
+	plan.visible = plan.visible && !masterOnly
 	if l := msg.GetPlayerLabel(); l != "" {
 		plan.label = &l
 	}
@@ -369,6 +368,9 @@ func (s *Service) charEffectModifiers(ctx context.Context, c *combatTx, plan cha
 // insertCharEffect writes one character's record (replacing the same spell's older one) and
 // answers its id.
 func (s *Service) insertCharEffect(ctx context.Context, c *combatTx, campaignID string, plan charEffectPlan, characterID, group string, mods []rules.EffectModifier) (string, error) {
+	if mods == nil {
+		mods = []rules.EffectModifier{} // the table holds an array: an effect of conditions only writes [], never null
+	}
 	body, err := json.Marshal(mods)
 	if err != nil {
 		return "", fmt.Errorf("encode the modifiers: %w", err)
@@ -409,23 +411,4 @@ func withCharEffectDef(p *playdb.InsertCharacterEffectParams, def *rules.EffectD
 	if t := def.Trigger; t != nil {
 		p.TriggerDice, p.TriggerDamageType, p.TriggerMaxTriggers = &t.Dice, &t.DamageType, new(int32(t.MaxTriggers)) //nolint:gosec // a small number of the file
 	}
-}
-
-// writeCharEffectEvent appends the session event that keeps the key and what was made.
-func (s *Service) writeCharEffectEvent(ctx context.Context, q *playdb.Queries, sessionID, userID, key string, hash *string, made charEffectEvent) error {
-	payload, err := json.Marshal(made)
-	if err != nil {
-		return fmt.Errorf("encode the event payload: %w", err)
-	}
-	seq, err := q.NextSessionEventSeq(ctx, sessionID)
-	if err != nil {
-		return fmt.Errorf("next event number: %w", err)
-	}
-	if _, err := q.InsertSessionEvent(ctx, playdb.InsertSessionEventParams{
-		GameSessionID: sessionID, Seq: seq, Kind: eventLastingAdded, ActorUserID: &userID,
-		Payload: payload, IdempotencyKey: &key, IdempotencyHash: hash, CreatedAt: s.now(),
-	}); err != nil {
-		return fmt.Errorf("insert session event: %w", err)
-	}
-	return nil
 }

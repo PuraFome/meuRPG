@@ -27,7 +27,7 @@ func (a *armed) rpcMasterTable(t *testing.T, e *playv1.Encounter) string {
 		t.Fatalf("ListLastingEffects() error = %v", err)
 	}
 	res.Msg.Catalog = nil
-	return a.rpcJSON(t, res.Msg)
+	return a.rpcRuleJSON(t, res.Msg)
 }
 
 // TestLastingRPCEffectsMoveIntoACombatAndBack freezes effectsToCombat and effectsToCharacters:
@@ -69,12 +69,12 @@ func TestLastingRPCEffectsMoveIntoACombatAndBack(t *testing.T) {
 	s.want("move_combat_round_trip")
 }
 
-// TestLastingRPCAPlayerLeavesACombatInSetupLosesItsEffects freezes what happens to the effects of
-// a character that the master takes out of a combat in setup: they are not given back to game
-// time (RemoveCombatant deletes the row and the effects go with it), though effectsToCharacters
-// can give one leaver's effects back; only a creature drops through that path, and it has none.
-// A finding, not a fix.
-func TestLastingRPCAPlayerLeavesACombatInSetupLosesItsEffects(t *testing.T) {
+// TestLastingRPCAPlayerLeavesACombatInSetupKeepsItsEffects pins what happens to the effects of
+// a character that the master takes out of a combat in setup: they go back to game time, as they
+// do when a combat ends, and the effects on the others stay in the combat.
+// Finding play-a-movement-3: a spell or a condition on a character is not the combat's to
+// destroy, so removing the combatant must not delete it with the row.
+func TestLastingRPCAPlayerLeavesACombatInSetupKeepsItsEffects(t *testing.T) {
 	t.Parallel()
 	a := newCastingParty(t)
 	a.mustCastOut(t, a.bia, a.bri, blessKey, slotOfLevel(1), false, []*charactersv1.Character{a.toren, a.pens})

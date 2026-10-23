@@ -102,7 +102,7 @@ func TestAddCharacterEffectRefusals(t *testing.T) { //nolint:tparallel // the ca
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := a.giveRaw(t, tc.by, tc.edit)
-			wantEffectRefusal(t, tc.name, err, tc.code, tc.msg)
+			wantRefusal(t, tc.name, err, tc.code, tc.msg)
 		})
 	}
 	if rows := a.characterEffectRows(t); len(rows) != 0 {
@@ -123,7 +123,7 @@ func TestAddCharacterEffectNeedsAnOpenSession(t *testing.T) {
 		CampaignId: campaignID, IdempotencyKey: newKey(), CatalogKey: blessKey, CharacterIds: []string{hero.GetId()},
 	}))
 	wantBlocked(t, "AddCharacterEffect with no session", err, playv1.GameSessionBlockedReason_GAME_SESSION_BLOCKED_REASON_NO_OPEN_SESSION)
-	wantEffectRefusal(t, "AddCharacterEffect with no session", err, connect.CodeFailedPrecondition, "the campaign has no open game session")
+	wantRefusal(t, "AddCharacterEffect with no session", err, connect.CodeFailedPrecondition, "the campaign has no open game session")
 }
 
 func TestAddCharacterEffectRefusesACharacterInACombatAndOnlyThatOne(t *testing.T) {
@@ -139,7 +139,7 @@ func TestAddCharacterEffectRefusesACharacterInACombatAndOnlyThatOne(t *testing.T
 	})
 	_ = e
 	_, err := a.giveRaw(t, a.master, onCharacters(a.pens.GetId(), a.toren.GetId()))
-	wantEffectRefusal(t, "a character in the combat", err, connect.CodeFailedPrecondition, "the character is in a combat: add the effect there")
+	wantRefusal(t, "a character in the combat", err, connect.CodeFailedPrecondition, "the character is in a combat: add the effect there")
 	if rows := a.characterEffectRows(t); len(rows) != 0 {
 		t.Errorf("the refusal left effects: %v", rows)
 	}
@@ -169,7 +169,8 @@ func TestAddCharacterEffectOutcomes(t *testing.T) { //nolint:tparallel // the ca
 		{name: "a condition for its owner against its default", want: "{\"audience\": \"owner\", \"character_id\": \"pens\", \"condition_keys\": [\"condition:blinded\"], \"duration_kind\": \"until_dismissed\", \"player_visible\": true, \"source_key\": \"condition:blinded\", \"source_kind\": \"master\"}\nseen 1/1/0\nids 1", edit: func(r *playv1.AddCharacterEffectRequest) {
 			r.CatalogKey, r.Audience = "condition:blinded", playv1.EffectAudience_EFFECT_AUDIENCE_OWNER
 		}},
-		{name: "an audience the server does not know (frozen: looks wrong because the owner-only Poisoned then reads as for everyone)", want: "{\"audience\": \"all\", \"character_id\": \"pens\", \"condition_keys\": [\"condition:poisoned\"], \"duration_kind\": \"until_dismissed\", \"player_visible\": true, \"source_key\": \"condition:poisoned\", \"source_kind\": \"master\"}\nseen 1/1/1\nids 1", edit: func(r *playv1.AddCharacterEffectRequest) {
+		// Finding fix/lasting-effects-audience: an unknown audience fails closed, hidden from the players and kept as owner.
+		{name: "an audience the server does not know is the master's alone", want: "{\"audience\": \"owner\", \"character_id\": \"pens\", \"condition_keys\": [\"condition:poisoned\"], \"duration_kind\": \"until_dismissed\", \"player_visible\": false, \"source_key\": \"condition:poisoned\", \"source_kind\": \"master\"}\nseen 1/0/0\nids 1", edit: func(r *playv1.AddCharacterEffectRequest) {
 			r.CatalogKey, r.Audience = "condition:poisoned", playv1.EffectAudience(99)
 		}},
 		{name: "hidden from the players", want: "{\"audience\": \"all\", \"character_id\": \"pens\", \"condition_keys\": [\"condition:blinded\"], \"duration_kind\": \"until_dismissed\", \"player_visible\": false, \"source_key\": \"condition:blinded\", \"source_kind\": \"master\"}\nseen 1/0/0\nids 1", edit: func(r *playv1.AddCharacterEffectRequest) {
@@ -190,7 +191,8 @@ func TestAddCharacterEffectOutcomes(t *testing.T) { //nolint:tparallel // the ca
 		{name: "a concentration is until dismissed", want: "{\"audience\": \"all\", \"character_id\": \"pens\", \"condition_keys\": [\"condition:prone\"], \"duration_kind\": \"until_dismissed\", \"player_visible\": true, \"source_key\": \"condition:prone\", \"source_kind\": \"master\"}\nseen 1/1/1\nids 1", edit: func(r *playv1.AddCharacterEffectRequest) {
 			r.CatalogKey, r.DurationKind, r.Seconds = "condition:prone", playv1.EffectDurationKind_EFFECT_DURATION_KIND_CONCENTRATION, 5
 		}},
-		{name: "seconds with no kind are dropped (frozen: looks wrong because the master asked for 600 seconds and got none)", want: "{\"audience\": \"all\", \"character_id\": \"pens\", \"condition_keys\": [\"condition:prone\"], \"duration_kind\": \"until_dismissed\", \"player_visible\": true, \"source_key\": \"condition:prone\", \"source_kind\": \"master\"}\nseen 1/1/1\nids 1", edit: func(r *playv1.AddCharacterEffectRequest) {
+		// Finding fix/lasting-effects-outside-combat (b): seconds with no kind read as the clock of game time.
+		{name: "seconds with no kind are a timed effect", want: "{\"audience\": \"all\", \"character_id\": \"pens\", \"condition_keys\": [\"condition:prone\"], \"duration_kind\": \"rounds\", \"player_visible\": true, \"seconds_left\": 600, \"source_key\": \"condition:prone\", \"source_kind\": \"master\"}\nseen 1/1/1\nids 1", edit: func(r *playv1.AddCharacterEffectRequest) {
 			r.CatalogKey, r.Seconds = "condition:prone", 600
 		}},
 		{name: "a kind the server does not know is no kind (frozen: looks wrong because the kind is silently taken for the default)", want: "{\"audience\": \"all\", \"character_id\": \"pens\", \"condition_keys\": [\"condition:prone\"], \"duration_kind\": \"until_dismissed\", \"player_visible\": true, \"source_key\": \"condition:prone\", \"source_kind\": \"master\"}\nseen 1/1/1\nids 1", edit: func(r *playv1.AddCharacterEffectRequest) {
@@ -299,16 +301,16 @@ func TestAddCharacterEffectGroupsReplacesRetriesAndTellsTheStreams(t *testing.T)
 	_, err = a.giveRaw(t, a.master, func(r *playv1.AddCharacterEffectRequest) {
 		r.IdempotencyKey, r.CharacterIds, r.CatalogKey = key, all, "condition:blinded"
 	})
-	wantEffectRefusal(t, "the key of another request", err, connect.CodeInvalidArgument, "idempotency_key was already used for another change")
+	wantRefusal(t, "the key of another request", err, connect.CodeInvalidArgument, "idempotency_key was already used for another change")
 	_, err = a.giveRaw(t, a.master, func(r *playv1.AddCharacterEffectRequest) {
 		r.IdempotencyKey, r.CharacterIds = key, []string{a.pens.GetId()}
 	})
-	wantEffectRefusal(t, "the key of the same kind with other characters", err, connect.CodeInvalidArgument, "idempotency_key was already used for another change")
+	wantRefusal(t, "the key of the same kind with other characters", err, connect.CodeInvalidArgument, "idempotency_key was already used for another change")
 
 	spent := newKey()
 	a.advanceGameTimeKeyed(t, spent, 6)
 	_, err = a.giveRaw(t, a.master, func(r *playv1.AddCharacterEffectRequest) { r.IdempotencyKey = spent })
-	wantEffectRefusal(t, "the key of another kind of change", err, connect.CodeInvalidArgument, "idempotency_key was already used for another change")
+	wantRefusal(t, "the key of another kind of change", err, connect.CodeInvalidArgument, "idempotency_key was already used for another change")
 	step("refusals left", fmt.Sprintf("%d rows, %d events", len(a.characterEffectRows(t)), len(a.effectEvents(t, nil))))
 	step("refusals heard", a.heard(t, h))
 
@@ -360,21 +362,24 @@ var groupsGolden = map[string]string{
 	"mage armor heard":           "master[SpellCastsChanged,VitalsChanged,VitalsChanged] caio[SpellCastsChanged] ana[SpellCastsChanged,VitalsChanged] bia[SpellCastsChanged,VitalsChanged]",
 }
 
-// An effect that has no modifiers (Hold Person, Web, Faerie Fire, the burning web) cannot be
-// given outside a combat. Frozen: looks wrong because the modifiers are written as JSON null
-// (the effect's own list is nil, and the loop keeps that nil), which the table refuses, so the
-// master gets an internal error and nothing is written; the same effects work in a combat.
-func TestAddCharacterEffectOfAnEffectWithNoModifiersFailsInternally(t *testing.T) {
+// An effect that has no numeric modifiers (Hold Person, Web, Faerie Fire, the burning web) is
+// valid outside a combat as it is in one: its conditions alone are the effect.
+// Finding fix/lasting-effects-outside-combat (a): the modifiers were written as JSON null, which
+// the table refuses, so the master got an internal error and nothing was written.
+func TestAddCharacterEffectOfAnEffectWithNoModifiersIsAdded(t *testing.T) {
 	t.Parallel()
 	a := newEffectsParty(t)
-	for _, key := range []string{holdPerson, webSpell, "spell:faerie-fire", "effect:web-fire"} {
-		_, err := a.giveRaw(t, a.master, withKey(key))
-		wantEffectRefusal(t, key, err, connect.CodeInternal, "internal error")
+	keys := []string{holdPerson, webSpell, "spell:faerie-fire", "effect:web-fire"}
+	for _, key := range keys {
+		res, err := a.giveRaw(t, a.master, withKey(key))
+		if err != nil {
+			t.Fatalf("%s: %v", key, err)
+		}
+		if len(res.GetEffectIds()) != 1 {
+			t.Errorf("%s: effect ids = %v, want 1", key, res.GetEffectIds())
+		}
 	}
-	if rows := a.characterEffectRows(t); len(rows) != 0 {
-		t.Errorf("the failures left effects: %v", rows)
-	}
-	if events := a.effectEvents(t, nil); len(events) != 0 {
-		t.Errorf("the failures left events: %v", events)
+	if rows := a.characterEffectRows(t); len(rows) != len(keys) {
+		t.Errorf("rows = %d, want %d: %v", len(rows), len(keys), rows)
 	}
 }

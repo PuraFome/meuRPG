@@ -141,6 +141,48 @@ test(
 );
 
 test(
+  'o mestre responde a pergunta pendente de um jogador que saiu: espera o botão liberar e fica com o 1',
+  { tag: ['@MR-014', '@RN-35', '@RN-18'] },
+  async ({ browser }) => {
+    test.setTimeout(120_000);
+    const { m, p, campaignId, done } = await rollsTable(browser, 'Sortudo ausente', pipo, { weaponKeys: ['equipment:battleaxe'] }, { Pipo: 20, 'Goblin 1': 15, 'Capitão Goblin': 5, 'Goblin 2': 4 });
+    try {
+      // The player's attack rolls a 1 (SRD 5.1, Halfling, Lucky): the roll waits for the question, and the player leaves it unanswered.
+      const enc = await getEncounterRPC(m, campaignId);
+      const id = (label: string) => enc.combatants.find((c) => c.label === label)!.id;
+      const swing = await callRPC(p, 'meurpg.play.v1.CombatService/RollAttack', {
+        campaignId,
+        encounterId: enc.id,
+        attackerId: id('Pipo'),
+        attackKey: 'equipment:battleaxe',
+        targetId: id('Goblin 1'),
+        idempotencyKey: crypto.randomUUID(),
+        d20Face: 1,
+      });
+      expect(swing.ok(), await swing.text()).toBeTruthy();
+      await p.close();
+
+      // The master reads the question in the roller's row. The roller answers first: the buttons wait for the master's time
+      // (ten seconds from when the roll was held), so the test waits for them to be enabled, never for a fixed time.
+      await openSessionPage(m, campaignId);
+      await expect(m.getByRole('region', { name: 'Combate', exact: true }).getByText('1 pergunta pendente')).toBeVisible();
+      const question = m.getByRole('region', { name: 'Tirou 1: rolar de novo?' });
+      await expect(question.getByText(/Pipo (responde primeiro|não respondeu)/)).toBeVisible();
+      const keep = question.getByRole('button', { name: 'Ficar com o 1' });
+      await expect(keep).toBeEnabled({ timeout: 30_000 });
+      await expect(question.getByText('Pipo não respondeu')).toBeVisible();
+      await keep.click();
+
+      // The answer is the master's: a polite line says what was chosen, and the question goes away.
+      await expect(m.getByText('Você respondeu por Pipo: ficou com o 1.')).toBeVisible();
+      await expect(m.getByRole('region', { name: 'Tirou 1: rolar de novo?' })).toBeHidden();
+    } finally {
+      await done().catch(() => undefined);
+    }
+  },
+);
+
+test(
   'o halfling com o dado de Inspiração de Bardo tira 1 no ataque: "Tirou 1: rolar de novo?" primeiro, depois "Usar a Inspiração de Bardo (d6)?" sobre o novo d20, e o dado digitado entra no ataque',
   { tag: ['@MR-014', '@RN-35', '@RN-18'] },
   async ({ browser }) => {

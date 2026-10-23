@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { type MessageInitShape } from '@bufbuild/protobuf';
 import { createClient } from '@connectrpc/connect';
 
-import type { Encounter, LuckyOffer } from '../../../gen/meurpg/play/v1/combat_pb';
+import type { Encounter, HeldRollOffer } from '../../../gen/meurpg/play/v1/combat_pb';
 import {
   type CheckRollInputSchema,
   ContestService,
@@ -22,6 +22,7 @@ import {
   type SurpriseView,
 } from '../../../gen/meurpg/play/v1/contest_types_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
+import { asksLucky, heldOfferOf } from '../held-rolls/held-roll-offer';
 
 /** How a check's d20 comes: the app rolls it, or the faces typed from the physical dice (one face, or the pair for a roll with
  * advantage or disadvantage). */
@@ -94,6 +95,14 @@ export interface ContestResult {
   readonly contest: ContestView;
 }
 
+/** What a contest roll answers: the combat and the contest, or, when the d20 was kept for a question (the halfling's Lucky about
+ * a 1, a Bardic Inspiration die the combatant holds), the question and no contest yet; nothing was spent or written. */
+export interface ContestRollResult {
+  readonly encounter: Encounter;
+  readonly contest: ContestView | undefined;
+  readonly held: HeldRollOffer | undefined;
+}
+
 /** The roll of a check, as the request carries it. */
 export function rollInput(die: CheckDie): MessageInitShape<typeof CheckRollInputSchema> {
   return 'inApp' in die
@@ -124,7 +133,7 @@ export class ContestClient {
   }
 
   /** A grapple, a shove or an escape: it spends the attack (or the action) and opens the contest. */
-  async start(input: StartContestInput, key: string): Promise<ContestResult> {
+  async start(input: StartContestInput, key: string): Promise<ContestRollResult> {
     const res = await this.client.startContest({
       campaignId: input.campaignId,
       encounterId: input.encounterId,
@@ -141,12 +150,13 @@ export class ContestClient {
     });
     return {
       encounter: need(res.encounter, 'StartContest'),
-      contest: need(res.contest, 'StartContest'),
+      contest: res.contest,
+      held: res.heldRollOffer,
     };
   }
 
   /** The defender's roll, or "Deixar o mestre rolar por mim". */
-  async respond(input: RespondContestInput, key: string): Promise<ContestResult> {
+  async respond(input: RespondContestInput, key: string): Promise<ContestRollResult> {
     const res = await this.client.respondContest({
       campaignId: input.campaignId,
       encounterId: input.encounterId,
@@ -158,7 +168,8 @@ export class ContestClient {
     });
     return {
       encounter: need(res.encounter, 'RespondContest'),
-      contest: need(res.contest, 'RespondContest'),
+      contest: res.contest,
+      held: res.heldRollOffer,
     };
   }
 
@@ -183,7 +194,8 @@ export class ContestClient {
     };
   }
 
-  /** The Hide action: the Dexterity (Stealth) check; the attempt waits for the master. */
+  /** The Hide action: the Dexterity (Stealth) check; the attempt waits for the master. When the d20 is kept for a question (the halfling's
+   * Lucky about a 1, a Bardic Inspiration die the combatant holds) the question comes back instead of the attempt. */
   async hide(
     campaignId: string,
     encounterId: string,
@@ -191,7 +203,11 @@ export class ContestClient {
     actionKey: string,
     die: CheckDie,
     key: string,
-  ): Promise<{ readonly encounter: Encounter; readonly attempt: HideAttemptView }> {
+  ): Promise<{
+    readonly encounter: Encounter;
+    readonly attempt: HideAttemptView | undefined;
+    readonly held: HeldRollOffer | undefined;
+  }> {
     const res = await this.client.hide({
       campaignId,
       encounterId,
@@ -202,7 +218,8 @@ export class ContestClient {
     });
     return {
       encounter: need(res.encounter, 'Hide'),
-      attempt: need(res.attempt, 'Hide'),
+      attempt: res.attempt,
+      held: res.heldRollOffer,
     };
   }
 
@@ -238,17 +255,18 @@ export class ContestClient {
     groupCheckId: string,
     die: CheckDie,
     key: string,
-  ): Promise<GroupCheckView | LuckyOffer> {
+  ): Promise<GroupCheckView | HeldRollOffer> {
     const res = await this.client.rollGroupCheck({
       campaignId,
       idempotencyKey: key,
       groupCheckId,
       roll: rollInput(die),
     });
-    if (res.luckyOffer) {
-      return res.luckyOffer;
-    }
-    if (res.inspirationOffer) {
+    const asked = heldOfferOf(res);
+    if (asked) {
+      if (asksLucky(asked)) {
+        return asked;
+      }
       // The roll waits for the answer about a Bardic Inspiration die: the session panel asks it.
       throw new InspirationAsked();
     }

@@ -216,6 +216,7 @@ type Combatant struct {
 	EffectNoReaction        bool
 	JumpLongBonusDft        int32
 	JumpDoubled             bool
+	TableOnceTurns          []byte
 }
 
 type CombatantState struct {
@@ -545,22 +546,6 @@ type RevivifyRequest struct {
 	AnswerHash        *string
 }
 
-type RollHold struct {
-	ID             string
-	EncounterID    string
-	CombatantID    string
-	IdempotencyKey string
-	Request        []byte
-	Face           int32
-	Modifier       int32
-	Round          int32
-	AnswerKey      *string
-	CreatedAt      time.Time
-	LuckyIndex     *int32
-	LuckyAnswerKey *string
-	LuckyTo        *int32
-}
-
 type RollModeRequest struct {
 	ID            string
 	EncounterID   string
@@ -574,6 +559,29 @@ type RollModeRequest struct {
 	Reason        string
 	CreatedAt     time.Time
 	AnsweredAt    *time.Time
+}
+
+type SessionMessage struct {
+	ID             string
+	CampaignID     string
+	GameSessionID  string
+	AuthorUserID   *string
+	SpeakerKind    string
+	SpeakerRef     *string
+	SpeakerName    *string
+	SpeakerImageID *string
+	Text           string
+	ImageID        *string
+	ForEveryone    bool
+	CreateKey      *string
+	CreateHash     *string
+	AudioMadeAt    *time.Time
+	CreatedAt      time.Time
+}
+
+type SessionMessageReader struct {
+	MessageID string
+	UserID    string
 }
 
 type SpellCast struct {
@@ -604,6 +612,28 @@ type SpellCast struct {
 	StartedAt          time.Time
 	CastAt             *time.Time
 	EndedAt            *time.Time
+}
+
+type SpellZone struct {
+	ID            string
+	EncounterID   string
+	OwnerID       string
+	SpellKey      string
+	CastID        string
+	SlotLevel     int32
+	OriginCol     int32
+	OriginRow     int32
+	Squares       []byte
+	SaveAbility   string
+	SaveDc        int32
+	DamageDice    string
+	DamageType    string
+	Concentration bool
+	StartedRound  int32
+	EndsRound     *int32
+	HitMarks      []byte
+	CreatedAt     time.Time
+	Def           []byte
 }
 
 type StageNpc struct {

@@ -14,6 +14,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -114,8 +115,16 @@ type encounterData struct {
 	requests []playdb.RollModeRequest
 	// holds are the attack rolls that wait for the answer about a Bardic Inspiration die or a Lucky 1,
 	// kept in either table.
-	holds  []heldRoll
-	riders []playdb.HitRider
+	holds []heldRoll
+	// allHolds are the rolls of every kind held in the combat that wait for an answer, for the question each
+	// combatant carries (Combatant.held_roll_offer).
+	allHolds []heldRoll
+	// setupOffers are the questions of the initiatives that wait in SETUP, by the character that rolls: that roll is
+	// the character's, not the combatant's, since the die it may use is still the character's own.
+	setupOffers map[string]heldOffer
+	riders      []playdb.HitRider
+	// zones are the areas spells keep on the map.
+	zones []*zone
 }
 
 // loadEncounter reads a combat's combatants, in turn order.
@@ -136,29 +145,94 @@ func loadEncounter(ctx context.Context, q *playdb.Queries, enc playdb.Encounter)
 	if err != nil {
 		return nil, err
 	}
+	allHolds, err := openHoldsOfCombat(ctx, q, enc.ID)
+	if err != nil {
+		return nil, err
+	}
 	riders, err := q.ListHitRiders(ctx, enc.ID)
 	if err != nil {
 		return nil, fmt.Errorf("list the riders: %w", err)
 	}
-	return &encounterData{enc: enc, cs: cs, states: states, requests: requests, holds: holds, riders: riders}, nil
+	setupOffers, err := openInitiatives(ctx, q, enc, cs)
+	if err != nil {
+		return nil, err
+	}
+	zones, err := readZonesOf(ctx, q, enc.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &encounterData{enc: enc, cs: cs, states: states, requests: requests, holds: holds, allHolds: allHolds, setupOffers: setupOffers, riders: riders, zones: zones}, nil
 }
 
-// openAttackHolds are the weapon attacks of a combat that wait for an answer: the ones roll_holds keeps and the ones a
-// later release keeps in inspiration_holds, in the shape of the gate.
-func openAttackHolds(ctx context.Context, q *playdb.Queries, encounterID string) ([]heldRoll, error) {
-	rolls, err := q.ListOpenRollHolds(ctx, encounterID) // the rolls that wait for the answer about a die
-	if err != nil {
-		return nil, fmt.Errorf("list the held rolls: %w", err)
+// openInitiatives are the questions of the initiatives of a combat in SETUP that wait for an answer, by character: the
+// die they ask about is the character's, kept out of the combat until it begins.
+func openInitiatives(ctx context.Context, q *playdb.Queries, enc playdb.Encounter, cs []playdb.Combatant) (map[string]heldOffer, error) {
+	if enc.Status != statusSetup {
+		return nil, nil
 	}
-	inspirations, err := q.ListOpenAttackHolds(ctx, &encounterID)
+	var out map[string]heldOffer
+	for _, c := range cs {
+		if c.Kind != kindPlayer || !backedByCharacter(c) {
+			continue
+		}
+		asked, found, err := openInitiativeOf(ctx, q, c.CharacterID)
+		if err != nil {
+			return nil, err
+		}
+		if found {
+			if out == nil {
+				out = map[string]heldOffer{}
+			}
+			out[c.CharacterID] = asked
+		}
+	}
+	return out, nil
+}
+
+// openInitiativeOf is the question of the initiative of a character that waits, if any and if there is still something to
+// ask: Lucky's 1, or a die the character still holds.
+func openInitiativeOf(ctx context.Context, q *playdb.Queries, characterID string) (heldOffer, bool, error) {
+	holds, err := newHeldStores(q).openOf(ctx, heldRoller{CharacterID: characterID})
+	if err != nil {
+		return heldOffer{}, false, err
+	}
+	for _, h := range holds {
+		if h.Kind != heldInitiative {
+			continue
+		}
+		row, err := q.GetCharacterInspiration(ctx, playdb.GetCharacterInspirationParams{CharacterID: h.CharacterID, CampaignID: h.CampaignID})
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return heldOffer{}, false, fmt.Errorf("find the die of the character: %w", err)
+		}
+		st := rollerState{Die: heldDie{Sides: row.Sides, Source: row.SourceCharacterID}, Holds: err == nil}
+		if asked := askedBy(h, st); asked.Asks == askLucky || st.Holds {
+			return asked, true, nil
+		}
+	}
+	return heldOffer{}, false, nil
+}
+
+// openAttackHolds are the weapon attacks of a combat that wait for an answer, in the shape of the gate.
+func openAttackHolds(ctx context.Context, q *playdb.Queries, encounterID string) ([]heldRoll, error) {
+	rows, err := q.ListOpenAttackHolds(ctx, &encounterID)
 	if err != nil {
 		return nil, fmt.Errorf("list the held attacks: %w", err)
 	}
-	out := make([]heldRoll, 0, len(rolls)+len(inspirations))
-	for _, row := range rolls {
-		out = append(out, heldOfRollHold(row))
+	out := make([]heldRoll, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, heldOfInspirationHold(row))
 	}
-	for _, row := range inspirations {
+	return out, nil
+}
+
+// openHoldsOfCombat are the rolls of every kind held in the combat that wait for an answer, in the shape of the gate.
+func openHoldsOfCombat(ctx context.Context, q *playdb.Queries, encounterID string) ([]heldRoll, error) {
+	rows, err := q.ListOpenInspirationHoldsOfEncounter(ctx, &encounterID)
+	if err != nil {
+		return nil, fmt.Errorf("list the held rolls of the combat: %w", err)
+	}
+	out := make([]heldRoll, 0, len(rows))
+	for _, row := range rows {
 		out = append(out, heldOfInspirationHold(row))
 	}
 	return out, nil
@@ -285,6 +359,7 @@ func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.Character
 	out.CurrentCombatantId, out.MasterTurn, out.TurnGroupIds = turn.currentID, turn.masterTurn, turn.groupIDs
 	out.NpcOnlyGroups = d.npcOnlyGroups(v)
 	out.HitRiders = d.hitRidersView(v, vitals)
+	out.Zones = d.zonesView(v, names)
 	rd := combatantReader{
 		d: d, v: v, turn: turn, vitals: vitals, armorClass: armorClass, npcs: npcs, names: names,
 		ties:        unresolvedTies(d.cs),
@@ -312,7 +387,7 @@ func (d *encounterData) encounterHeader(v combatViewer) *playv1.Encounter {
 		Name:        e.Name,
 		Status:      statusToProto[e.Status],
 		Round:       e.Round,
-		MapId:       deref(e.MapID),
+		MapId:       conv.OrZero(e.MapID),
 		GridColumns: e.GridColumns,
 		GridRows:    e.GridRows,
 		Mode:        modeProto(e.Mode),
@@ -321,7 +396,7 @@ func (d *encounterData) encounterHeader(v combatViewer) *playv1.Encounter {
 		EndedAt:     timestampOrNil(e.EndedAt),
 	}
 	if v.master {
-		out.MapPointId = deref(e.MapPointID)
+		out.MapPointId = conv.OrZero(e.MapPointID)
 	}
 	return out
 }
@@ -358,6 +433,7 @@ func (r combatantReader) read(c playdb.Combatant) *playv1.Combatant {
 	p.InspirationDie = inspirationDieView(d.cs, c, e.Round, v)
 	p.InspirationOffer = inspirationOfferView(d, c, v)
 	p.LuckyOffer = luckyOfferView(d, c, v)
+	p.HeldRollOffer = heldOfferOfCombatant(d, c, v)
 	p.TurnPartEnded = r.turn.flags && e.Status == statusActive && c.TurnState == turnEnded
 	p.States = statesFor(r.byCombatant[c.ID], d.cs, v)
 	p.ConditionSources = conditionSourcesFor(c, d.cs, v, r.names)
@@ -430,7 +506,7 @@ func publicCombatant(c playdb.Combatant, v combatViewer, controls bool) *playv1.
 		DeathSuccesses:     c.DeathSuccesses,
 		DeathFailures:      c.DeathFailures,
 		Conditions:         c.Conditions,
-		ConcentrationSpell: deref(c.ConcentrationSpell),
+		ConcentrationSpell: conv.OrZero(c.ConcentrationSpell),
 		Side:               sideProto(c.Side),
 		Size:               sizeProto(c.Size),
 		CoverMark:          coverDegreeProto(markKeyOf(c)),
@@ -451,9 +527,9 @@ func identityFor(out *playv1.Combatant, c playdb.Combatant, v combatViewer, deta
 		// A creature stands for no character of its own: its owner is public (the
 		// party knows whose it is), the rest is its owner's and the master's.
 		out.OwnerCharacterId = c.CharacterID
-		out.MonsterKey, out.MonsterNamePt = deref(c.MonsterKey), names(deref(c.MonsterKey))
+		out.MonsterKey, out.MonsterNamePt = conv.OrZero(c.MonsterKey), names(conv.OrZero(c.MonsterKey))
 		if detail {
-			out.CreatureId, out.CreatureAttack, out.SummonGroupId = deref(c.CreatureID), creatureAttackToProto[deref(c.SummonAttack)], deref(c.SummonGroupID)
+			out.CreatureId, out.CreatureAttack, out.SummonGroupId = conv.OrZero(c.CreatureID), creatureAttackToProto[conv.OrZero(c.SummonAttack)], conv.OrZero(c.SummonGroupID)
 		}
 	case c.Kind == kindPlayer || v.master:
 		out.CharacterId = c.CharacterID // an NPC's character is the master's secret
@@ -700,7 +776,7 @@ func (s *Service) GetEncounter(
 		return nil, err
 	}
 	// The session, the latest encounter and its combatants are one snapshot
-	// (audit D-03): apart, a write between them gave a view of two states. What
+	// (one snapshot): apart, a write between them gave a view of two states. What
 	// the view adds on top (vitals, sheets, the fog) is read after.
 	var d *encounterData
 	err = db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {

@@ -23,14 +23,12 @@ import type { SlotRow } from '../../../../core/combat/cast-flow';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { SpellCatalog } from '../../../../core/combat/spell-catalog';
 import { castLabel } from '../../../../core/resources/metamagic';
-import {
-  ResourceClient,
-  type InspirationRoll,
-  type LuckyRoll,
-} from '../../../../core/resources/resources-client';
+import { ResourceClient } from '../../../../core/resources/resources-client';
 import { AreaList } from '../../../../shared/area-picker/area-list';
 import { AreaMap } from '../../../../shared/area-picker/area-map';
 import { AreaStep } from '../../../../shared/area-picker/area-step';
+import { TeleportMap } from '../../../../shared/area-picker/teleport-map';
+import { HeldRollPrompt } from '../../../../shared/held-roll-prompt/held-roll-prompt';
 import { RollAnimator } from '../../../../shared/roll-overlay/roll-animator';
 import { RollPicker } from '../../../../shared/roll-picker/roll-picker';
 import { SheetFrame } from '../../../../shared/sheet/sheet-frame/sheet-frame';
@@ -40,8 +38,6 @@ import { openSpellDetails } from '../../../../shared/spell-details/open-spell-de
 import { spellDetailsFromGen } from '../../../../shared/spell-details/spell-details-map';
 import { SpellHelp } from '../../../../shared/spell-details/spell-help';
 import { AbilityPicker } from '../../effects/ability-picker/ability-picker';
-import { InspirationOffer } from '../../inspiration/inspiration-offer';
-import { LuckyPrompt } from '../lucky-prompt/lucky-prompt';
 import { MultiRoll } from '../multi-roll/multi-roll';
 import { RollModePicker } from '../roll-mode/roll-mode-picker';
 import { CastArea } from './cast-area';
@@ -88,8 +84,7 @@ export type { CastMapData, CastSheetData } from './cast-sheet-types';
     CastTargets,
     AbilityPicker,
     DamageTypePicker,
-    InspirationOffer,
-    LuckyPrompt,
+    HeldRollPrompt,
     MatButtonModule,
     MetamagicPicker,
     MatIconModule,
@@ -100,6 +95,7 @@ export type { CastMapData, CastSheetData } from './cast-sheet-types';
     SheetFrame,
     SlotPicker,
     SpellHelp,
+    TeleportMap,
   ],
   templateUrl: './cast-sheet.html',
   styleUrl: './cast-sheet.scss',
@@ -178,8 +174,7 @@ export class CastSheet {
     { api: this.api, animator: this.animator },
   );
   // What the specs next to this one reach by name.
-  protected readonly offer = this.questions.offer;
-  protected readonly luckyOffer = this.questions.luckyOffer;
+  protected readonly offer = this.questions.held.offer;
   protected readonly cast = this.s.cast;
   protected readonly typing = this.s.typing;
   protected readonly error = this.s.error;
@@ -258,16 +253,6 @@ export class CastSheet {
 
   protected pickSlot(row: SlotRow): void {
     this.ch.pickSlot(row);
-  }
-
-  /** "Rolar de novo" or "Ficar com o 1" (`CastQuestions`). */
-  protected answerLucky(reroll: boolean, die: LuckyRoll | null): Promise<void> {
-    return this.questions.answerLucky(reroll, die);
-  }
-
-  /** The answer about the die (`CastQuestions`). */
-  protected answerDie(use: boolean, die: InspirationRoll | null): Promise<void> {
-    return this.questions.answerDie(use, die);
   }
 
   protected async rollTyped(sum: number): Promise<void> {

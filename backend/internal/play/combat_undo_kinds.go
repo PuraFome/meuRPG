@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 
 	"github.com/jackc/pgx/v5"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
@@ -51,13 +51,9 @@ var undoers = map[string]func(*undoer, context.Context, actionEvent) error{
 	eventFamiliarSight:     (*undoer).familiarSight,
 }
 
-// find is the combatant of that ID, as the undo found them.
+// find is the combatant of that ID among the ones the undo found.
 func (u *undoer) find(id string) (playdb.Combatant, bool) {
-	i := slices.IndexFunc(u.cs, func(o playdb.Combatant) bool { return o.ID == id })
-	if i < 0 {
-		return playdb.Combatant{}, false
-	}
-	return u.cs[i], true
+	return combatantByID(u.cs, id)
 }
 
 // keep remembers the vitals of a character the undo restored, to tell the table.
@@ -225,6 +221,9 @@ func (u *undoer) spendResourceBack(ctx context.Context, who playdb.Combatant, ke
 // opened goes away. A Bardic Inspiration die the roll used is held again, and the
 // turn's melee hit mark is the one before the hit.
 func (u *undoer) attackRolled(ctx context.Context, ev actionEvent) error {
+	if err := u.protectionBack(ctx, ev); err != nil {
+		return err
+	}
 	if who, ok := u.find(ev.Actor); ok {
 		if err := u.attackerBack(ctx, who, ev); err != nil {
 			return err
@@ -246,14 +245,23 @@ func (u *undoer) attackRolled(ctx context.Context, ev actionEvent) error {
 	return nil
 }
 
+// dieHeldAgain gives the combatant the Bardic Inspiration die the roll used.
+func (u *undoer) dieHeldAgain(ctx context.Context, who playdb.Combatant, ev actionEvent) error {
+	if ev.Res == nil || ev.Res.Kind != resBardicUse {
+		return nil
+	}
+	sides, expires := ev.Res.Sides, ev.Res.ExpiresRound
+	if err := u.c.q.SetCombatantInspirationDie(ctx, playdb.SetCombatantInspirationDieParams{ID: who.ID, Sides: &sides, FromID: nilIfEmpty(ev.Res.FromID), ExpiresRound: &expires}); err != nil {
+		return fmt.Errorf("hold the die again: %w", err)
+	}
+	return nil
+}
+
 // attackerBack gives the attacker what the roll spent: the die, the extra action,
 // the action or the reaction.
 func (u *undoer) attackerBack(ctx context.Context, who playdb.Combatant, ev actionEvent) error {
-	if ev.Res != nil && ev.Res.Kind == resBardicUse {
-		sides, expires, from := ev.Res.Sides, ev.Res.ExpiresRound, ev.Res.FromID
-		if err := u.c.q.SetCombatantInspirationDie(ctx, playdb.SetCombatantInspirationDieParams{ID: who.ID, Sides: &sides, FromID: &from, ExpiresRound: &expires}); err != nil {
-			return fmt.Errorf("hold the die again: %w", err)
-		}
+	if err := u.dieHeldAgain(ctx, who, ev); err != nil {
+		return err
 	}
 	if ev.ExtraUsed {
 		if err := u.giveExtraActionBack(ctx, who); err != nil {
@@ -315,7 +323,26 @@ func (u *undoer) damageRolled(ctx context.Context, ev actionEvent) error {
 			return err
 		}
 	}
+	if err := u.partsOfferedBack(ctx, ev); err != nil {
+		return err
+	}
 	return u.partsSpentBack(ctx, ev)
+}
+
+// emptyJSONList is the value of the columns a roll leaves empty (part_rolls, steps).
+var emptyJSONList = []byte("[]")
+
+// partsOfferedBack puts back the list of parts the hit offered, which the roll rewrote with the
+// choice made (Divine Smite and its slot, a maneuver): the damage that waits to be rolled again is
+// offered as before. A roll that kept the list (no parts of its own) has nothing to put back.
+func (u *undoer) partsOfferedBack(ctx context.Context, ev actionEvent) error {
+	if len(ev.PartsBefore) == 0 || ev.Pending == "" {
+		return nil
+	}
+	if err := u.c.q.SetPendingDamageDetail(ctx, playdb.SetPendingDamageDetailParams{ID: ev.Pending, Parts: ev.PartsBefore, PartRolls: emptyJSONList, Steps: emptyJSONList}); err != nil {
+		return fmt.Errorf("put back the parts the hit offered: %w", err)
+	}
+	return nil
 }
 
 // hitRolledBack makes one pending damage wait for its roll again, and puts back the
@@ -351,13 +378,25 @@ func (u *undoer) partsSpentBack(ctx context.Context, ev actionEvent) error {
 			}
 		}
 	}
-	if ev.OnceBefore == nil {
+	return u.onceMarksBack(ctx, who, ev.OnceBefore)
+}
+
+// onceMarksBack puts the once-per-turn marks of the roll's attacker back: Sneak Attack's and Colossus
+// Slayer's, and the table's when the roll changed them.
+func (u *undoer) onceMarksBack(ctx context.Context, who playdb.Combatant, before *onceMarks) error {
+	if before == nil {
 		return nil
 	}
 	if err := u.c.q.SetCombatantOncePerTurn(ctx, playdb.SetCombatantOncePerTurnParams{
-		ID: who.ID, SneakAttackTurn: nilIfEmpty(ev.OnceBefore.Sneak), ColossusSlayerTurn: nilIfEmpty(ev.OnceBefore.Colossus),
+		ID: who.ID, SneakAttackTurn: nilIfEmpty(before.Sneak), ColossusSlayerTurn: nilIfEmpty(before.Colossus),
 	}); err != nil {
 		return fmt.Errorf("put back the once-per-turn marks: %w", err)
+	}
+	if !before.TableChanged {
+		return nil
+	}
+	if err := u.c.q.SetCombatantTableOnceTurns(ctx, playdb.SetCombatantTableOnceTurnsParams{ID: who.ID, TableOnceTurns: writeTableOnce(before.Table)}); err != nil {
+		return fmt.Errorf("put back the table's once-per-turn marks: %w", err)
 	}
 	return nil
 }
@@ -435,7 +474,7 @@ func (u *undoer) combatantMoved(ctx context.Context, ev actionEvent) error {
 	// The creature the mover dragged along goes back to where it stood (combat_drag.go).
 	if ev.Dragged != "" && ev.DraggedFrom != nil && ev.DraggedFrom.Placed {
 		if err := u.c.q.SetCombatantPlace(ctx, playdb.SetCombatantPlaceParams{
-			ID: ev.Dragged, GridCol: &ev.DraggedFrom.Col, GridRow: &ev.DraggedFrom.Row, CoverMark: "none",
+			ID: ev.Dragged, GridCol: &ev.DraggedFrom.Col, GridRow: &ev.DraggedFrom.Row, CoverMark: coverOrNone(ev.DraggedFrom.Cover),
 		}); err != nil {
 			return fmt.Errorf("put back the dragged creature: %w", err)
 		}
@@ -479,7 +518,7 @@ func (u *undoer) trapTriggered(ctx context.Context, ev actionEvent) error {
 }
 
 // actionTaken: the economy and every state the action began come back, then what
-// the resource it used spent, and the hit points of a heal.
+// the resource it used spent, the hit points of a heal and the concentration a rage ended.
 func (u *undoer) actionTaken(ctx context.Context, ev actionEvent) error {
 	who, ok := u.find(ev.Actor)
 	if !ok {
@@ -496,7 +535,10 @@ func (u *undoer) actionTaken(ctx context.Context, ev actionEvent) error {
 			return err
 		}
 	}
-	return u.actionSpentBack(ctx, who, ev)
+	if err := u.actionSpentBack(ctx, who, ev); err != nil {
+		return err
+	}
+	return u.endedConcentrationBack(ctx, who, ev) // a rage ends the concentration it begins on
 }
 
 // actionStatesBack gives back the economy of the action, and the states and flags it
@@ -546,7 +588,30 @@ func (u *undoer) actionSpentBack(ctx context.Context, who playdb.Combatant, ev a
 	if ev.Heal && ev.Before != nil {
 		return u.putCreatureOrVitals(ctx, who, *ev.Before, ev.DeathBefore)
 	}
-	return nil
+	return u.channelBack(ctx, ev.Channel)
+}
+
+// channelBack takes back what a Channel Divinity action did: the hit points Preserve Life gave and the effect
+// Turn Undead put on the undead.
+func (u *undoer) channelBack(ctx context.Context, ch *channelEvent) error {
+	if ch == nil {
+		return nil
+	}
+	for _, h := range ch.Heals {
+		target, ok := u.find(h.Target)
+		if !ok || h.Before == nil {
+			continue
+		}
+		if err := u.putCreatureOrVitals(ctx, target, *h.Before, h.DeathBefore); err != nil {
+			return err
+		}
+	}
+	for _, id := range ch.Effects {
+		if err := u.c.q.DeleteLastingEffect(ctx, id); err != nil {
+			return fmt.Errorf("take the turned effect away: %w", err)
+		}
+	}
+	return u.s.refreshCombatants(ctx, u.c, ch.Targets...)
 }
 
 // hitPointsAdjusted: the master's correction of a combatant's hit points.
@@ -565,7 +630,7 @@ func (u *undoer) spellCast(ctx context.Context, ev actionEvent) error {
 		return nil
 	}
 	steps := []func(context.Context, playdb.Combatant, actionEvent) error{
-		u.castCounters, u.castDieBack, u.castEffectsBack, u.castSpentBack, u.castConcentrationBack, u.castCreaturesBack, u.castRevealBack, u.castHitsBack,
+		u.castCounters, u.castDieBack, u.castEffectsBack, u.castTeleportBack, u.castSpentBack, u.castConcentrationBack, u.castCreaturesBack, u.castRevealBack, u.castHitsBack,
 	}
 	for _, step := range steps {
 		if err := step(ctx, who, ev); err != nil {
@@ -608,6 +673,11 @@ func (u *undoer) castDieBack(ctx context.Context, who playdb.Combatant, ev actio
 // castEffectsBack takes away the effects the cast put on its targets and the mark of
 // Hunter's Mark, and puts back the marks the cast took off.
 func (u *undoer) castEffectsBack(ctx context.Context, who playdb.Combatant, ev actionEvent) error {
+	if ev.CastID != "" { // the area the cast kept on the map
+		if err := u.c.q.DeleteSpellZonesOfCast(ctx, playdb.DeleteSpellZonesOfCastParams{EncounterID: u.c.enc.ID, CastID: ev.CastID}); err != nil {
+			return fmt.Errorf("take the spell zone of the cast away: %w", err)
+		}
+	}
 	if ev.Lasting != nil { // the effects the cast put on its targets
 		for _, id := range ev.Lasting.Effects {
 			if err := u.c.q.DeleteLastingEffect(ctx, id); err != nil {
@@ -701,7 +771,7 @@ func (u *undoer) castRevealBack(ctx context.Context, _ playdb.Combatant, ev acti
 			return fmt.Errorf("drop the hidden reveal: %w", err)
 		}
 	}
-	for _, id := range ev.Revealed {
+	for _, id := range ev.revealedIDs() {
 		if target, ok := u.find(id); ok {
 			if err := u.c.q.SetCombatantHidden(ctx, playdb.SetCombatantHiddenParams{ID: target.ID, Hidden: true}); err != nil {
 				return fmt.Errorf("hide the combatant again: %w", err)
@@ -715,13 +785,11 @@ func (u *undoer) castRevealBack(ctx context.Context, _ playdb.Combatant, ev acti
 // spell that read hit points changed at once.
 func (u *undoer) castHitsBack(ctx context.Context, _ playdb.Combatant, ev actionEvent) error {
 	for _, h := range ev.Hits {
-		for _, id := range append([]string{h.Pending}, h.More...) {
-			if id == "" {
-				continue
-			}
-			if err := u.c.q.DeletePendingDamage(ctx, id); err != nil {
-				return fmt.Errorf("delete the pending damage: %w", err)
-			}
+		if err := putPushedBack(ctx, u.c, h.Pushed); err != nil {
+			return err
+		}
+		if err := u.deleteHitPendings(ctx, h); err != nil {
+			return err
 		}
 		// A spell that read hit points changed the targets at once: their hit
 		// points, death saves and conditions come back.
@@ -729,6 +797,19 @@ func (u *undoer) castHitsBack(ctx context.Context, _ playdb.Combatant, ev action
 			if err := u.castTargetBack(ctx, target, h); err != nil {
 				return err
 			}
+		}
+	}
+	return nil
+}
+
+// deleteHitPendings deletes the pending damages the cast opened for a target.
+func (u *undoer) deleteHitPendings(ctx context.Context, h castHit) error {
+	for _, id := range append([]string{h.Pending}, h.More...) {
+		if id == "" {
+			continue
+		}
+		if err := u.c.q.DeletePendingDamage(ctx, id); err != nil {
+			return fmt.Errorf("delete the pending damage: %w", err)
 		}
 	}
 	return nil
@@ -747,7 +828,7 @@ func (u *undoer) castTargetBack(ctx context.Context, target playdb.Combatant, h 
 		}
 	}
 	if h.MaxBefore != nil && holdsHP(target) { // after the hit points, which are the lower ones
-		if err := u.c.q.SetCombatantHitPointsMax(ctx, playdb.SetCombatantHitPointsMaxParams{ID: target.ID, HpMax: h.MaxBefore, HpMaxBonus: num(h.BonusBefore)}); err != nil {
+		if err := u.c.q.SetCombatantHitPointsMax(ctx, playdb.SetCombatantHitPointsMaxParams{ID: target.ID, HpMax: h.MaxBefore, HpMaxBonus: conv.OrZero(h.BonusBefore)}); err != nil {
 			return fmt.Errorf("put back the maximum hit points: %w", err)
 		}
 	}
@@ -849,6 +930,9 @@ func (u *undoer) deathSaveRolled(ctx context.Context, ev actionEvent) error {
 	if !ok {
 		return nil
 	}
+	if err := u.dieHeldAgain(ctx, who, ev); err != nil {
+		return err
+	}
 	if ev.Before != nil { // a natural 20 brought it back with 1 hit point
 		after, err := u.putVitals(ctx, who, *ev.Before)
 		if err != nil {
@@ -871,15 +955,55 @@ func (u *undoer) conditionsSet(ctx context.Context, ev actionEvent) error {
 			return err
 		}
 	}
+	return u.endedConcentrationBack(ctx, who, ev)
+}
+
+// tempBack gives back the temporary hit points the ended effects of the action took off (Heroism's).
+func (u *undoer) tempBack(ctx context.Context, ev actionEvent) error {
+	if len(ev.TempCleared) == 0 {
+		return nil
+	}
+	cs, err := listCombatants(ctx, u.c)
+	if err != nil {
+		return err
+	}
+	for _, tc := range ev.TempCleared {
+		who, ok := combatantByID(cs, tc.Combatant)
+		if !ok {
+			continue
+		}
+		temp := min(tc.Temp, maxTempHitPoints)
+		if holdsHP(who) {
+			hp := hpOf(who)
+			hp.Temp = temp
+			if err := u.setHP(ctx, who, hp); err != nil {
+				return err
+			}
+			continue
+		}
+		_, after, err := u.s.vitalsOf(ctx, u.c, who.CharacterID, &playv1.AdjustCharacterVitalsRequest{HitPointsTemporary: &temp})
+		if err != nil {
+			return err
+		}
+		u.keep(after)
+	}
+	return nil
+}
+
+// endedConcentrationBack puts back the concentration an action ended (stopConcentrating), the
+// creatures that went with it and the Hunter's Mark it took off.
+func (u *undoer) endedConcentrationBack(ctx context.Context, who playdb.Combatant, ev actionEvent) error {
 	if ev.ConcEnded != "" {
 		if err := u.c.q.SetCombatantConcentration(ctx, playdb.SetCombatantConcentrationParams{ID: who.ID, ConcentrationSpell: &ev.ConcEnded}); err != nil {
 			return fmt.Errorf("put back the concentration: %w", err)
 		}
 	}
 	if len(ev.Dismissed) > 0 {
-		return u.s.rejoinCreatures(ctx, u.c, ev.Dismissed)
+		if err := u.s.rejoinCreatures(ctx, u.c, ev.Dismissed); err != nil {
+			return err
+		}
 	}
-	return nil
+	return u.marksBack(ctx, ev.MarksBefore)
 }
 
 func (u *undoer) wildShapeStarted(ctx context.Context, ev actionEvent) error {

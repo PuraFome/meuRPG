@@ -14,8 +14,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// Opportunity attacks on the server (MR-034, RN-21, RN-20, question 69; Etapa 9,
-// slice 9.6b). These tests need the database (MEURPG_TEST_DATABASE_URL). The
+// Opportunity attacks on the server (MR-034, RN-21, RN-20, question 69). These tests need the database (MEURPG_TEST_DATABASE_URL). The
 // fixture is the cave of combat_move_test.go: Toren is on turn at (6, 7) and
 // Goblin 1 is placed by the master next to him, at (7, 8).
 

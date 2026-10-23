@@ -124,6 +124,7 @@ export class LiveSessionLoader {
     parts.notes.clear();
     parts.trapBoard.clear();
     parts.puzzles.clear();
+    parts.freeDice.clear();
     parts.toasts.clear();
     this.loadedSheetFor = null;
     this.partyInfoIds = new Set();
@@ -178,7 +179,12 @@ export class LiveSessionLoader {
       if (generation !== this.generation || !campaign) {
         return;
       }
+      // Another session opened while the stream was down: its rolls start empty.
+      if (state.session() && state.session()?.sessionId !== snapshot.session.sessionId) {
+        parts.freeDice.clear();
+      }
       state.session.set(snapshot.session);
+      void parts.freeDice.refresh();
       state.vitals.update((list) => applySnapshot(list, snapshot.vitals));
       // News that came while the snapshot was on its way is newer than it: the snapshot only fills in what no event told.
       const after = news();
@@ -222,13 +228,14 @@ export class LiveSessionLoader {
     }
   }
 
-  /** Every panel that reads on a tick reads again: the creatures, the Revivify casts, the spell casts, the group check. */
+  /** Every panel that reads on a tick reads again: the creatures, the Revivify casts, the spell casts, the group check, the held rolls' questions. */
   private bumpTicks(): void {
     const { state } = this;
     state.creaturesTick.update((n) => n + 1);
     state.revivifyTick.update((n) => n + 1);
     state.castsTick.update((n) => n + 1);
     state.groupCheckTick.update((n) => n + 1);
+    state.heldRollsTick.update((n) => n + 1);
   }
 
   /** The player's own character lives again: the notice, with who cast it when the combat's log says (the master's "Reviver" has no caster). */

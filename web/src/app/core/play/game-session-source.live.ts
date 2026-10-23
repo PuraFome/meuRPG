@@ -18,6 +18,9 @@ const OPEN_CHOICE_KINDS: Partial<Record<OpenChoiceKind, OpenChoiceKindVm>> = {
   [OpenChoiceKind.CANTRIPS]: 'cantrips',
   [OpenChoiceKind.SPELLS_KNOWN]: 'spellsKnown',
   [OpenChoiceKind.SPELLS_PREPARED]: 'spellsPrepared',
+  [OpenChoiceKind.EXPERTISE]: 'expertise',
+  [OpenChoiceKind.TOOLS]: 'tools',
+  [OpenChoiceKind.LANGUAGES]: 'languages',
 };
 
 function toVm(gameSession: GameSession): GameSessionVm {

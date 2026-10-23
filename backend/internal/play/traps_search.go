@@ -15,6 +15,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
@@ -54,6 +55,7 @@ type trapSearch struct {
 	place    searchPlace
 	offer    *playv1.OutsideInspirationOffer // the d20 was rolled and kept for the Bardic Inspiration question
 	lucky    *playv1.LuckyOffer              // or for the halfling's Lucky question, which comes first
+	held     *playv1.HeldRollOffer           // the same question, in the one shape every held roll has
 }
 
 // searchTurn is what the transaction of a search works out before the dice: the character's numbers
@@ -90,7 +92,10 @@ func (s *Service) SearchForTraps(
 		return nil, s.dbError(ctx, "search for traps", err)
 	}
 	if ts.offer != nil || ts.lucky != nil { // nothing was written: the question is the whole answer
-		return connect.NewResponse(&playv1.SearchForTrapsResponse{InspirationOffer: ts.offer, LuckyOffer: ts.lucky}), nil
+		if ts.place.spent {
+			s.publishEncounterChanged(ctx, ts.m.CampaignID, ts.place.enc) // the question moved the combat's revision
+		}
+		return connect.NewResponse(&playv1.SearchForTrapsResponse{InspirationOffer: ts.offer, LuckyOffer: ts.lucky, HeldRollOffer: ts.held}), nil
 	}
 	if !ts.repeated {
 		s.tellTrapSearch(ctx, ts)
@@ -100,7 +105,7 @@ func (s *Service) SearchForTraps(
 
 // readTrapSearch checks who calls and the request, and finds the caller's character.
 func (s *Service) readTrapSearch(ctx context.Context, msg *playv1.SearchForTrapsRequest) (*trapSearch, error) {
-	m, err := authz.RequireCampaignRole(ctx, msg.GetCampaignId(), authz.RolePlayer)
+	m, err := heldRole(ctx, msg.GetCampaignId(), authz.RolePlayer)
 	if err != nil {
 		return nil, err
 	}
@@ -199,12 +204,9 @@ func searchSecondFace(msg *playv1.SearchForTrapsRequest, in rollInput, skill str
 func (s *Service) searchInTx(ctx context.Context, tx pgx.Tx, ts *trapSearch) error {
 	q := s.queries.WithTx(tx)
 	ts.repeated, ts.told, ts.place, ts.offer, ts.lucky = false, nil, searchPlace{}, nil, nil
-	session, err := q.GetOpenGameSessionForUpdate(ctx, ts.m.CampaignID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return errNoOpenSession()
-	}
+	session, err := lockOpenSessionOrNone(ctx, q, ts.m.CampaignID)
 	if err != nil {
-		return fmt.Errorf("lock the open session: %w", err)
+		return err
 	}
 	if done, err := s.searchRetried(ctx, q, session, ts); done || err != nil {
 		return err
@@ -221,11 +223,20 @@ func (s *Service) searchInTx(ctx context.Context, tx pgx.Tx, ts *trapSearch) err
 		return err
 	}
 	r := &searchTurn{c: c, opt: opt, reliable: opt.ReliableTalent}
-	held, err := s.prepareSearchRoll(ctx, tx, q, ts, r)
+	held, err := s.prepareSearchRoll(ctx, ts, r)
 	if err != nil || held {
 		return err
 	}
-	d, err := s.rollSearch(ts, r)
+	if ts.place.spent { // the Search action of a combat: the action goes once the d20 is no longer kept for a question
+		if err := s.spendSearchAction(ctx, c, ts.place.me); err != nil {
+			return err
+		}
+	}
+	rollSearch := s.rollSearchNormal
+	if r.cm.Mode != combat.ModeNormal {
+		rollSearch = s.rollSearchWithMode
+	}
+	d, err := rollSearch(ts, r)
 	if err != nil {
 		return err
 	}
@@ -239,7 +250,7 @@ func (s *Service) searchRetried(ctx context.Context, q *playdb.Queries, session 
 	switch {
 	case err == nil:
 		if done.Kind != eventTrapSearched || done.ActorUserID == nil || *done.ActorUserID != ts.m.UserID || hashDiffers(done.IdempotencyHash, ts.hash) {
-			return true, connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
+			return true, errKeyReused()
 		}
 		ts.repeated = true
 		return true, json.Unmarshal(done.Payload, &ts.ev)
@@ -278,24 +289,24 @@ func (s *Service) searchGuards(ctx context.Context, tx pgx.Tx, q *playdb.Queries
 // prepareSearchRoll works out the mode and the bonus of the check, asks the held-roll gate and spends
 // what the roll uses up. It says whether the d20 was kept for a question: then nothing else is
 // written.
-func (s *Service) prepareSearchRoll(ctx context.Context, tx pgx.Tx, q *playdb.Queries, ts *trapSearch, r *searchTurn) (bool, error) {
+func (s *Service) prepareSearchRoll(ctx context.Context, ts *trapSearch, r *searchTurn) (bool, error) {
 	ability, isCheck := checkKey(searchCheckKey[ts.skill])
-	cm, err := s.checkModeOf(ctx, tx, ts.m.CampaignID, r.c.session.ID, ts.who.ID, searchCheckKey[ts.skill], ability, isCheck)
+	cm, err := s.checkModeOf(ctx, r.c.tx, ts.m.CampaignID, r.c.session.ID, ts.who.ID, searchCheckKey[ts.skill], ability, isCheck)
 	// Reliable Talent: a d20 of 9 or lower counts as 10 for a skill the character is
 	// proficient in, each die of a search with disadvantage before the lower is
-	// chosen. Not for the light's penalty: that is the second die, as before.
+	// chosen. Not for the light's penalty: that is the second die.
 	if err != nil {
 		return false, err
 	}
 	r.cm = cm
-	if r.names, err = s.namerFor(ctx, tx, ts.m.CampaignID); err != nil {
+	if r.names, err = s.namerFor(ctx, r.c.tx, ts.m.CampaignID); err != nil {
 		return false, err
 	}
 	ts.shown = shownSources(r.cm.Sources, r.names)
 	if r.bonus, err = s.withEffectDice(ts.in, ts.in.extraFaces, &r.cm, r.opt.Bonus); err != nil {
 		return false, err
 	}
-	if held, err := s.askSearchGate(ctx, tx, q, ts, r); held || err != nil {
+	if held, err := s.askSearchGate(ctx, ts, r); held || err != nil {
 		return held, err
 	}
 	if r.step.Bonus != nil {
@@ -315,16 +326,18 @@ func (s *Service) prepareSearchRoll(ctx context.Context, tx pgx.Tx, q *playdb.Qu
 // Bardic Inspiration die, before anything is spent or written (the Search action of a combat has spent
 // the action by now, and rolls as always), and so for a halfling's d20 that shows a 1, for the Lucky
 // question. The answer brings the d20 back. It says whether a question is open.
-func (s *Service) askSearchGate(ctx context.Context, tx pgx.Tx, q *playdb.Queries, ts *trapSearch, r *searchTurn) (bool, error) {
-	if ts.place.spent {
-		return false, nil
-	}
+func (s *Service) askSearchGate(ctx context.Context, ts *trapSearch, r *searchTurn) (bool, error) {
 	held := ts.in
 	if len(ts.in.typedFaces) > 0 && r.cm.Mode == combat.ModeNormal { // the second die of a Perception search is not the held one
 		held.typed, held.typedFaces = ts.in.typedFaces[0], nil
 	}
-	step, err := s.heldGate(ctx, s.outsideGate(tx, q), rollSpec{
-		Kind: heldTrapSearch, Key: ts.key, Request: ts.req, Roller: heldRoller{CampaignID: ts.m.CampaignID, CharacterID: ts.who.ID, UserID: ts.m.UserID},
+	// Out of a combat the roll is the character's; in one it is its combatant's, in the round, like any other roll of a turn.
+	env, roller := s.outsideGate(r.c.tx, r.c.q), heldRoller{CampaignID: ts.m.CampaignID, CharacterID: ts.who.ID, UserID: ts.m.UserID}
+	if ts.place.spent {
+		env, roller = combatGate(r.c), attackRoller(ts.m, ts.place.me, r.c.enc.Round)
+	}
+	step, err := s.heldGate(ctx, env, rollSpec{
+		Kind: heldTrapSearch, Key: ts.key, Request: ts.req, Roller: roller,
 		In: held, Modifier: r.bonus, Mode: r.cm.Mode, Reliable: r.reliable, Lucky: r.opt.Lucky, MayAsk: true,
 	})
 	if err != nil {
@@ -334,16 +347,8 @@ func (s *Service) askSearchGate(ctx context.Context, tx pgx.Tx, q *playdb.Querie
 	if step.Held == nil {
 		return false, nil
 	}
-	ts.offer, ts.lucky = s.outsideOffers(ctx, tx, step.Held)
+	ts.offer, ts.lucky, ts.held = s.outsideOffers(ctx, r.c.tx, step.Held)
 	return true, nil
-}
-
-// rollSearch rolls the d20 of the search, or takes the one the gate decided.
-func (s *Service) rollSearch(ts *trapSearch, r *searchTurn) (searchDice, error) {
-	if r.cm.Mode != combat.ModeNormal {
-		return s.rollSearchWithMode(ts, r)
-	}
-	return s.rollSearchNormal(ts, r)
 }
 
 // rollSearchWithMode is a roll under advantage or disadvantage: two dice, the better or the worse
@@ -424,8 +429,8 @@ func (s *Service) writeTrapSearch(ctx context.Context, ts *trapSearch, r *search
 	ts.told = found.Users
 	ts.ev = trapSearchEvent(ts, r, d, found)
 	if ts.place.spent {
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return fmt.Errorf("touch the encounter: %w", err)
+		if err := touch(ctx, c); err != nil {
+			return err
 		}
 		ts.place.enc = c.enc
 	}
@@ -435,12 +440,12 @@ func (s *Service) writeTrapSearch(ctx context.Context, ts *trapSearch, r *search
 // trapSearchEvent is what the history keeps of the search.
 func trapSearchEvent(ts *trapSearch, r *searchTurn, d searchDice, found maplink.SearchResult) actionEvent {
 	ev := actionEvent{
-		Round: r.c.enc.Round, Actor: ts.place.combatantID, Key: ts.skill, D20: clampInt32(d.face), Modifier: clampInt32(r.opt.Bonus + r.dieFace), Total: clampInt32(d.roll.Total),
-		Physical: d.roll.Physical, Found: found.Found, OnTurn: ts.place.spent, D20B: clampInt32(d.face2), ReliableTalent: r.reliable,
+		Round: r.c.enc.Round, Actor: ts.place.combatantID, Key: ts.skill, D20: conv.Int32(d.face), Modifier: conv.Int32(r.bonus + r.dieFace), Total: conv.Int32(d.roll.Total),
+		Physical: d.roll.Physical, Found: found.Found, OnTurn: ts.place.spent, D20B: conv.Int32(d.face2), ReliableTalent: r.reliable,
 		Lucky: r.step.Lucky, // the held d20 Lucky rolled again: the first of a Perception search's two
 	}
 	if r.cm.Mode != combat.ModeNormal {
-		ev.RollMode, ev.Counted = modeKey(r.cm.Mode), clampInt32(d.counted)
+		ev.RollMode, ev.Counted = modeKey(r.cm.Mode), conv.Int32(d.counted)
 	}
 	if r.step.Bonus != nil {
 		ev.Res = &resourceEvent{Kind: resBardicUse, Sides: r.step.Bonus.Sides, Face: r.step.Bonus.Face}
@@ -495,6 +500,7 @@ type searchPlace struct {
 	// says the search took the action of its turn.
 	enc         playdb.Encounter
 	combatantID string
+	me          playdb.Combatant
 	spent       bool
 }
 
@@ -506,7 +512,7 @@ func errSearchNotOnMap() error {
 // searcherPlace finds where the character searches from, inside the change's
 // transaction. While a combat is running and the character is one of its
 // combatants it is the SRD's Search action: the character's own turn, one action,
-// from its combatant's square on the combat's map; the action is spent here. Any
+// from its combatant's square on the combat's map; the action is spent once the d20 waits for nobody. Any
 // other time it is the session's current map and the character's token on it.
 func (s *Service) searcherPlace(ctx context.Context, c *combatTx, who link.Character) (searchPlace, error) {
 	latest, err := c.q.GetLatestEncounter(ctx, c.session.ID)
@@ -537,15 +543,15 @@ func (s *Service) searchFromCombat(ctx context.Context, c *combatTx, latest play
 		return searchPlace{}, true, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TRAP_SEARCH_NOT_NOW, "the combat has not begun: search when it is your turn")
 	}
 	c.enc = latest
-	if err := s.spendSearchAction(ctx, c, latest, me); err != nil {
+	if err := s.checkSearchAction(ctx, c, latest, me); err != nil {
 		return searchPlace{}, true, err
 	}
-	return searchPlace{mapID: *latest.MapID, at: squareOfCombatant(me), enc: latest, combatantID: me.ID, spent: true}, true, nil
+	return searchPlace{mapID: *latest.MapID, at: squareOfCombatant(me), enc: latest, combatantID: me.ID, me: me, spent: true}, true, nil
 }
 
-// spendSearchAction checks that it is the combatant's turn, with the action free and a square on the
-// combat's map, and spends the action.
-func (s *Service) spendSearchAction(ctx context.Context, c *combatTx, latest playdb.Encounter, me playdb.Combatant) error {
+// checkSearchAction checks that it is the combatant's turn, with the action free and a square on the
+// combat's map. It writes nothing: the d20 may wait for a question before the action is spent.
+func (s *Service) checkSearchAction(ctx context.Context, c *combatTx, latest playdb.Encounter, me playdb.Combatant) error {
 	if err := s.mustActNow(ctx, c, me); err != nil {
 		return err
 	}
@@ -555,6 +561,11 @@ func (s *Service) spendSearchAction(ctx context.Context, c *combatTx, latest pla
 	if latest.MapID == nil || !placed(me) {
 		return errSearchNotOnMap()
 	}
+	return nil
+}
+
+// spendSearchAction spends the action of the Search, once the d20 waits for nobody.
+func (s *Service) spendSearchAction(ctx context.Context, c *combatTx, me playdb.Combatant) error {
 	run, err := breakRun(ctx, c, me)
 	if err != nil {
 		return err

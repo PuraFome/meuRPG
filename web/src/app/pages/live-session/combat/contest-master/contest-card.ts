@@ -320,6 +320,11 @@ export class ContestCard {
         this.keys.keyFor({ contest: this.c().id, skill, die }),
       );
       this.state().apply(res.encounter);
+      if (!res.contest) {
+        // The d20 is kept for the player's question (a halfling's 1, a Bardic Inspiration die): it sits in the player's row.
+        this.said.emit(`O d20 do teste de ${this.defenderLabel()} espera uma resposta.`);
+        return;
+      }
       this.contests().applyContest(res.contest);
       const roll = res.contest.defenderRoll;
       // The master's roll for the defender, as the line under the card tells it.

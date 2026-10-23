@@ -2,172 +2,110 @@
  "effects": [
   {
    "audience": "EFFECT_AUDIENCE_OWNER",
-   "characterId": "\u003cchar:bri\u003e",
    "characterName": "Brisa",
-   "conditionNamesPt": [
-    "Enfeitiçado"
-   ],
    "durationTextPt": "Dura 1 segundo",
    "id": "\u003ccfx:condition:charmed@bri\u003e",
    "playerVisible": true,
    "secondsLeft": 1,
-   "sourceKey": "condition:charmed",
-   "sourceNamePt": "Enfeitiçado"
+   "sourceKey": "condition:charmed"
   },
   {
    "audience": "EFFECT_AUDIENCE_ALL",
-   "characterId": "\u003cchar:bri\u003e",
    "characterName": "Brisa",
-   "conditionNamesPt": [
-    "Derrubado"
-   ],
    "durationTextPt": "Dura 1 hora e 1 minuto e 1 segundo",
    "id": "\u003ccfx:condition:prone@bri\u003e",
    "playerVisible": true,
    "secondsLeft": 3661,
-   "sourceKey": "condition:prone",
-   "sourceNamePt": "Derrubado"
+   "sourceKey": "condition:prone"
   },
   {
    "audience": "EFFECT_AUDIENCE_OWNER",
-   "characterId": "\u003cchar:bri\u003e",
    "characterName": "Brisa",
    "durationTextPt": "Dura 2 minutos",
    "id": "\u003ccfx:spell:heroism@bri\u003e",
    "playerVisible": true,
    "secondsLeft": 120,
-   "sourceKey": "spell:heroism",
-   "sourceNamePt": "Heroísmo",
-   "tagsPt": [
-    "Imune a Amedrontado",
-    "PV temporários a cada turno seu"
-   ]
+   "sourceKey": "spell:heroism"
   },
   {
    "audience": "EFFECT_AUDIENCE_OWNER",
-   "characterId": "\u003cchar:pens\u003e",
    "characterName": "Pensantus",
-   "conditionNamesPt": [
-    "Cego"
-   ],
    "durationTextPt": "Dura 1 minuto e 1 segundo",
    "id": "\u003ccfx:condition:blinded@pens\u003e",
    "playerVisible": true,
    "secondsLeft": 61,
-   "sourceKey": "condition:blinded",
-   "sourceNamePt": "Cego"
+   "sourceKey": "condition:blinded"
   },
   {
    "audience": "EFFECT_AUDIENCE_OWNER",
-   "characterId": "\u003cchar:pens\u003e",
    "characterName": "Pensantus",
-   "conditionNamesPt": [
-    "Surdo"
-   ],
    "durationTextPt": "Dura 2 horas",
    "id": "\u003ccfx:condition:deafened@pens\u003e",
    "playerVisible": true,
    "secondsLeft": 7200,
-   "sourceKey": "condition:deafened",
-   "sourceNamePt": "Surdo"
+   "sourceKey": "condition:deafened"
   },
   {
    "audience": "EFFECT_AUDIENCE_OWNER",
-   "characterId": "\u003cchar:pens\u003e",
    "characterName": "Pensantus",
    "concentration": true,
    "durationTextPt": "Dura 1 minuto",
    "id": "\u003ccfx:spell:bless@pens+toren\u003e",
    "playerVisible": true,
    "secondsLeft": 60,
-   "sourceKey": "spell:bless",
-   "sourceNamePt": "Bênção",
-   "tagsPt": [
-    "+1d4 em ataques e resistências"
-   ]
+   "sourceKey": "spell:bless"
   },
   {
    "audience": "EFFECT_AUDIENCE_OWNER",
-   "characterId": "\u003cchar:pens\u003e",
    "characterName": "Pensantus",
    "durationTextPt": "Dura 1 minuto",
    "id": "\u003ccfx:spell:guidance@pens\u003e",
    "playerVisible": true,
    "secondsLeft": 60,
-   "sourceKey": "spell:guidance",
-   "sourceNamePt": "Orientação",
-   "tagsPt": [
-    "+1d4 em um teste de habilidade, uma vez"
-   ]
+   "sourceKey": "spell:guidance"
   },
   {
    "audience": "EFFECT_AUDIENCE_ALL",
-   "characterId": "\u003cchar:pens\u003e",
    "characterName": "Pensantus",
    "durationTextPt": "Dura 8 horas",
    "id": "\u003ccfx:spell:mage-armor@pens\u003e",
    "playerVisible": true,
    "secondsLeft": 28800,
-   "sourceKey": "spell:mage-armor",
-   "sourceNamePt": "Armadura Arcana",
-   "tagsPt": [
-    "CA base 13 + Destreza, sem armadura"
-   ]
+   "sourceKey": "spell:mage-armor"
   },
   {
    "audience": "EFFECT_AUDIENCE_ALL",
-   "characterId": "\u003cchar:toren\u003e",
    "characterName": "Toren",
-   "conditionNamesPt": [
-    "Envenenado"
-   ],
    "durationTextPt": "Dura até o mestre encerrar",
    "id": "\u003ccfx:condition:poisoned@toren\u003e",
-   "sourceKey": "condition:poisoned",
-   "sourceNamePt": "Envenenado"
+   "sourceKey": "condition:poisoned"
   },
   {
    "audience": "EFFECT_AUDIENCE_OWNER",
-   "characterId": "\u003cchar:toren\u003e",
    "characterName": "Toren",
    "concentration": true,
    "durationTextPt": "Dura 1 minuto",
    "id": "\u003ccfx:spell:bless@pens+toren\u003e",
    "playerVisible": true,
    "secondsLeft": 60,
-   "sourceKey": "spell:bless",
-   "sourceNamePt": "Bênção",
-   "tagsPt": [
-    "+1d4 em ataques e resistências"
-   ]
+   "sourceKey": "spell:bless"
   },
   {
    "audience": "EFFECT_AUDIENCE_OWNER",
-   "characterId": "\u003cchar:toren\u003e",
    "characterName": "Toren",
    "durationTextPt": "Dura 1 hora",
    "id": "\u003ccfx:spell:enhance-ability@toren\u003e",
    "playerVisible": true,
    "secondsLeft": 3600,
-   "sourceKey": "spell:enhance-ability",
-   "sourceNamePt": "Aprimorar Habilidade",
-   "tagsPt": [
-    "Vantagem em testes de Força",
-    "Força do Touro: a capacidade de carga dobra."
-   ]
+   "sourceKey": "spell:enhance-ability"
   },
   {
    "audience": "EFFECT_AUDIENCE_OWNER",
-   "characterId": "\u003cchar:toren\u003e",
    "characterName": "Toren",
    "durationTextPt": "Dura até o mestre encerrar",
    "id": "\u003ccfx:spell:longstrider@toren\u003e",
    "playerVisible": true,
-   "sourceKey": "spell:longstrider",
-   "sourceNamePt": "Passos Longos",
-   "tagsPt": [
-    "Deslocamento +3 m"
-   ]
+   "sourceKey": "spell:longstrider"
   }
  ]
 }

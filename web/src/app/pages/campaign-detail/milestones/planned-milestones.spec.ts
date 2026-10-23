@@ -115,6 +115,23 @@ describe('PlannedMilestones (E8-14)', () => {
     expect(document.activeElement).toBe(el.querySelector('[data-add]'));
   });
 
+  it('reads the list again when the change is saved but the answer carries no list', async () => {
+    const { el, settle, store } = await setup();
+    api.listMilestones.mockResolvedValue({ milestones: three });
+    await store.load('c1');
+    api.addMilestone.mockResolvedValue({ milestones: [] });
+    api.listMilestones.mockResolvedValue({ milestones: [...three, ms('d', 'Fechar o portal')] });
+    btn(el, '[data-add]').click();
+    await settle();
+    const input = el.querySelector<HTMLInputElement>('app-milestone-name-form input')!;
+    input.value = 'Fechar o portal';
+    input.dispatchEvent(new Event('input'));
+    el.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit'));
+    await settle();
+    expect(api.listMilestones).toHaveBeenCalledWith('c1');
+    expect(store.list()).toHaveLength(4);
+  });
+
   it('keeps the field open and says why when the server refuses', async () => {
     const { el, settle } = await setup();
     api.addMilestone.mockRejectedValue(new Error('down'));
@@ -153,8 +170,28 @@ describe('PlannedMilestones (E8-14)', () => {
     api.moveMilestone.mockResolvedValue({ milestones: [three[1], three[0], three[2]] });
     btn(el, '[data-id="b"][data-act="up"]').click();
     await settle();
-    expect(api.moveMilestone).toHaveBeenCalledWith('c1', 'b', 'up');
+    expect(api.moveMilestone).toHaveBeenCalledWith('c1', 'b', 'up', expect.any(String));
     expect(document.activeElement).toBe(el.querySelector('[data-id="b"][data-act="up"]'));
+  });
+
+  it('sends the same idempotency key when the same move is tried again after a failure, and a new one after it worked', async () => {
+    const { el, settle } = await setup();
+    api.moveMilestone.mockRejectedValueOnce(new Error('down'));
+    api.moveMilestone.mockResolvedValue({ milestones: [three[1], three[0], three[2]] });
+    api.listMilestones.mockResolvedValue({ milestones: three });
+    btn(el, '[data-id="b"][data-act="up"]').click();
+    await settle();
+    btn(el, '[data-id="b"][data-act="up"]').click();
+    await settle();
+    btn(el, '[data-id="b"][data-act="down"]').click();
+    await settle();
+    btn(el, '[data-id="b"][data-act="down"]').click();
+    await settle();
+    const [failed, retry, other, again] = api.moveMilestone.mock.calls.map((c) => c[3] as string);
+    expect(failed).toEqual(expect.any(String));
+    expect(retry).toBe(failed);
+    expect(other).not.toBe(retry);
+    expect(again).not.toBe(other);
   });
 
   it('does nothing at the edges, and keeps them in the tab order', async () => {

@@ -30,6 +30,9 @@ type EndState = 'idle' | 'confirming' | 'saving' | 'error';
  * started on another day), for the master and the players alike. While the stream is down it turns into "Reconectando… Última
  * atualização às 21:14." (E5-08), with no spinner, so nothing moves.
  *
+ * The "Dados" button (MR-052) sits at the right of the title for everyone: normal, "Rolando…" while a roll is on its way,
+ * and off while the stream reconnects, with "Não dá para rolar sem conexão." in the status line.
+ *
  * The master also gets the session link in a read-only field, "Copiar link
  * da sessão" (RN-07) and "Encerrar sessão", which confirms in place.
  */
@@ -50,9 +53,13 @@ export class SessionHeader implements OnDestroy {
   readonly isMaster = input(false);
   readonly connection = input<StreamStatus>('live');
   readonly lastUpdate = input<Date | null>(null);
+  /** A free roll is on its way (MR-052): the "Dados" button waits. */
+  readonly rolling = input(false);
 
   /** The master ended the session from here. */
   readonly ended = output<void>();
+  /** "Dados": the person wants the free dice roller. */
+  readonly openDice = output<void>();
 
   protected readonly since = computed(() => sessionSince(this.session().startedAt));
   protected readonly link = computed(() => sessionLink(this.campaignId()));
@@ -60,6 +67,8 @@ export class SessionHeader implements OnDestroy {
     const status = this.connection();
     return status === 'reconnecting' || status === 'paused';
   });
+  /** The dice wait for a roll in the air, and for the stream: with no connection there is no table to roll for. */
+  protected readonly diceOff = computed(() => this.rolling() || this.reconnecting());
   protected readonly lastUpdateLabel = computed(() => {
     const at = this.lastUpdate();
     return at ? `Última atualização às ${formatClock(at)}.` : '';
@@ -93,6 +102,12 @@ export class SessionHeader implements OnDestroy {
     const field = this.field()?.nativeElement;
     field?.focus();
     field?.select();
+  }
+
+  protected openDiceNow(): void {
+    if (!this.diceOff()) {
+      this.openDice.emit();
+    }
   }
 
   protected askToEnd(): void {

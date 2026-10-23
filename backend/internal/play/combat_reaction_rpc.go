@@ -10,6 +10,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
@@ -23,6 +24,8 @@ type answered struct {
 	// kind is the session event kind when it is not reaction_answered (a Shield
 	// that was used keeps reaction_used, which the undo knows).
 	kind string
+	// held is the question a roll of the answer waits on (the Counterspell's check): the answer is not made yet.
+	held *playv1.HeldRollOffer
 	// fill completes the result with what the replay of the held action made (what a
 	// roll became), after the commit.
 	fill func()
@@ -36,18 +39,14 @@ type answerInput struct {
 	choice playv1.ReactionChoice
 }
 
-// parseAnswerInput reads the caller and the request of AnswerReaction, in the order its
-// refusals have always come: the member, the key, the combat, the window, the answer.
+// parseAnswerInput reads the caller and the request of AnswerReaction. The refusals come
+// in this order: the member, the key, the combat, the window, the answer.
 func parseAnswerInput(ctx context.Context, msg *playv1.AnswerReactionRequest) (authz.Membership, answerInput, error) {
-	m, err := authz.RequireCampaignMember(ctx, msg.GetCampaignId())
+	m, err := heldMember(ctx, msg.GetCampaignId()) // a held roll's answer runs this again as the roller
 	if err != nil {
 		return m, answerInput{}, err
 	}
-	key, err := parseKey(msg.GetIdempotencyKey())
-	if err != nil {
-		return m, answerInput{}, err
-	}
-	encID, err := parseCombatID(msg.GetEncounterId(), "encounter")
+	key, encID, err := parseCall(msg.GetIdempotencyKey(), msg.GetEncounterId())
 	if err != nil {
 		return m, answerInput{}, err
 	}
@@ -84,6 +83,13 @@ func (s *Service) AnswerReaction(
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "answer a reaction", err)
+	}
+	if got.held != nil { // the d20 is kept for a question: nothing was written
+		enc, err := s.finish(ctx, m, res, s.changed(m.CampaignID))
+		if err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(&playv1.AnswerReactionResponse{Encounter: enc, HeldRollOffer: got.held}), nil
 	}
 	ev, err := resultEvent(res, got.ev)
 	if err != nil {
@@ -145,11 +151,14 @@ func (s *Service) answerWindow(ctx context.Context, c *combatTx, m authz.Members
 	if err != nil {
 		return nil, err
 	}
+	if got.held != nil {
+		return nil, nil
+	}
 	if got.kind != "" {
 		c.kind = got.kind
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return nil, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return nil, err
 	}
 	got.ev.Round = c.enc.Round
 	return got.ev, nil
@@ -217,10 +226,7 @@ func (s *Service) markRolling(ctx context.Context, c *combatTx, m authz.Membersh
 	if _, err := c.q.SetReactionWindowStep(ctx, playdb.SetReactionWindowStepParams{ID: w.ID, Step: w.Step, Trigger: body}); err != nil {
 		return fmt.Errorf("mark the window as being rolled: %w", err)
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return fmt.Errorf("touch the encounter: %w", err)
-	}
-	return nil
+	return touch(ctx, c)
 }
 
 // answerShield answers a Shield window: "Usar Escudo Arcano" casts it, "Deixar
@@ -233,11 +239,11 @@ func (s *Service) answerShield(ctx context.Context, c *combatTx, w playdb.Reacti
 	if err != nil {
 		return fmt.Errorf("find the pending damage: %w", err)
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
-	attacker, _ := findCombatant(cs, deref(p.AttackerID), combatViewer{master: true})
+	attacker, _ := findCombatant(cs, conv.OrZero(p.AttackerID), combatViewer{master: true})
 	if !use {
 		ev, err := s.passShield(ctx, c, w, p, reactor)
 		got.ev = ev
@@ -301,6 +307,8 @@ func (s *Service) answerMore(ctx context.Context, c *combatTx, m authz.Membershi
 		return s.answerDeflect(ctx, c, w, reactor, use, req, got)
 	case reaction.ManeuverReduceKind:
 		return s.answerManeuverReduce(ctx, c, w, reactor, use, req, got)
+	case reaction.ProtectionKind:
+		return s.answerProtection(ctx, c, w, reactor, use, got)
 	case reaction.CuttingWords:
 		return s.answerCuttingWords(ctx, c, w, reactor, use, req, got)
 	case reaction.HellishRebukeKind:

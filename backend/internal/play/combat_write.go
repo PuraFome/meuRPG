@@ -18,12 +18,20 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/tablerules"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
+
+// Names in the write RPCs of a combat. The body of the transaction a handler runs inside
+// s.write is `<verb>Write` (startWrite, spendWrite, removePartWrite); the reader of the
+// request is `read<Verb>Call` and returns a `<verb>Call` struct (readStartCall,
+// readSpendCall); the scratch state a long write keeps between its steps is `<verb>Run`.
+// Helpers that only look something up in a value carry `Of` or `From` (movementLeftOf), never
+// `In` or `Tx`.
 
 // The kinds of session_events rows a combat writes (session_event_kinds).
 // Their payloads hold IDs and numbers only, never a name (docs/privacy.md).
@@ -38,7 +46,7 @@ const (
 	eventCombatantsAdded     = "combatants_added"
 	eventCombatantRemoved    = "combatant_removed"
 	eventEncounterEnded      = "encounter_ended"
-	// The actions of a turn (combat_actions.go, combat_undo.go).
+	// The actions of a turn (combat_attack.go, combat_damage.go, combat_take_action.go, combat_undo.go).
 	eventAttackRolled      = "attack_rolled"
 	eventDamageRolled      = "damage_rolled"
 	eventDamageApplied     = "damage_applied"
@@ -59,7 +67,7 @@ const (
 	eventCombatEffectEnded = "combat_effect_ended"
 )
 
-// The kinds of Etapa 7: the XP awards (package progression writes them
+// The kinds of the XP awards (package progression writes them
 // through AppendEvent) and the scenes. session_event_kinds lists them
 // all, and TestSessionEventKindsMatchTheTable keeps the two in step.
 const (
@@ -71,26 +79,23 @@ const (
 	eventSceneCheckRolled = "scene_check_rolled"
 )
 
-// The kinds of Etapa 8: a clue revealed to players (package maps writes it
+// The kinds of a clue revealed to players (package maps writes it
 // through AppendEvent) and the stage changing (MR-031).
 const (
 	eventClueRevealed = "clue_revealed"
 	eventStageChanged = "stage_changed"
 )
 
-// The kinds of the second Etapa 8 wave (migration 00083). The master gave a
+// The kinds of migration 00083. The master gave a
 // character one more attempt at a scene action (scene_attempt_granted,
 // MR-015); a member of a joint turn ended their part and the turn goes on
-// (turn_part_ended, MR-013). The last part to end writes turn_ended, as a turn
-// always did.
+// (turn_part_ended, MR-013). The last part to end writes turn_ended.
 const (
 	eventSceneAttemptGranted = "scene_attempt_granted"
 	eventTurnPartEnded       = "turn_part_ended"
 )
 
-// The kinds of Etapa 9 (migration 00090), added in one migration before the
-// slices that write them, so that slices built at the same time never fight
-// over the CHECK. Traps and treasure are written by package maps through
+// The kinds of migration 00090. Traps and treasure are written by package maps through
 // AppendEvent, the rest by this package.
 const (
 	eventTrapNoticed        = "trap_noticed"
@@ -114,7 +119,7 @@ const (
 	eventFamiliarSight        = "familiar_sight"
 )
 
-// The kind of Etapa 10 (migration 00121): a move opened a closed door (MR-010,
+// The kind of migration 00121: a move opened a closed door (MR-010,
 // RN-26). Written by this package, in the move's transaction.
 const eventDoorOpened = "door_opened"
 
@@ -205,6 +210,12 @@ type combatTx struct {
 	endedLines    []string
 	followUps     []effectRef
 	followUpLines []string
+	// tempCleared are the temporary hit points the ended effects took off, kept in the event
+	// with the ended effects.
+	tempCleared []tempCleared
+	// zoneOut are the lines of the areas spells keep on the map (a creature caught, an area that moved or
+	// ended): written after the change's own event, so the log reads the move and then what it brought.
+	zoneOut []zoneLine
 	// hash is the request hash kept with the event that carries the change's key.
 	hash *string
 	// rules are the table's rules (RN-24), read in this transaction when it
@@ -437,7 +448,7 @@ func (s *Service) settleChange(ctx context.Context, c *combatTx) error {
 func (r *changeRun) record(ctx context.Context, c *combatTx, w combatWrite, payload any) error {
 	r.res.encounterID = c.enc.ID
 	r.res.kind = c.kind
-	r.res.characterID = deref(c.characterID)
+	r.res.characterID = conv.OrZero(c.characterID)
 	r.res.event = nil
 	if ev, ok := payload.(actionEvent); ok {
 		r.res.event = &ev
@@ -448,7 +459,7 @@ func (r *changeRun) record(ctx context.Context, c *combatTx, w combatWrite, payl
 		return err
 	}
 	r.last = c.stamped
-	return nil
+	return flushZoneLines(ctx, c)
 }
 
 // withEndedEffects keeps the effects the change ended in its event, so that the undo puts
@@ -459,6 +470,7 @@ func withEndedEffects(c *combatTx, payload any) any {
 		return payload
 	}
 	ev.Restore, ev.EndedLines, ev.FollowUps, ev.FollowUpLines = c.endedEffects, c.endedLines, c.followUps, c.followUpLines
+	ev.TempCleared = c.tempCleared
 	return ev
 }
 
@@ -477,7 +489,7 @@ func (s *Service) tellEnded(ctx context.Context, campaignID string, ended *comba
 		for _, v := range ended.told {
 			s.publishVitals(campaignID, v)
 		}
-		s.maps.VisionChanged(ctx, campaignID, deref(ended.enc.MapID))
+		s.maps.VisionChanged(ctx, campaignID, conv.OrZero(ended.enc.MapID))
 	}
 }
 
@@ -740,6 +752,58 @@ func (s *Service) publishRetried(ctx context.Context, campaignID string, res com
 // changed is the usual publish: a hint that the combat changed.
 func (s *Service) changed(campaignID string) func(ctx context.Context, d *encounterData) {
 	return func(ctx context.Context, d *encounterData) { s.publishEncounterChanged(ctx, campaignID, d.enc) }
+}
+
+// parseCall reads what every combat call carries after the caller is known: the
+// idempotency key, then the combat. The order is the order of the refusals.
+func parseCall(keyRaw, encounterRaw string) (key, encID string, err error) {
+	if key, err = parseKey(keyRaw); err != nil {
+		return "", "", err
+	}
+	if encID, err = parseCombatID(encounterRaw, "encounter"); err != nil {
+		return "", "", err
+	}
+	return key, encID, nil
+}
+
+// memberCall reads the head of a request any member of the campaign may make, in the
+// order the refusals are given: who may call, the key, then the combat.
+func memberCall(ctx context.Context, campaignID, keyRaw, encounterRaw string) (m authz.Membership, key, encID string, err error) {
+	if m, err = authz.RequireCampaignMember(ctx, campaignID); err != nil {
+		return m, "", "", err
+	}
+	key, encID, err = parseCall(keyRaw, encounterRaw)
+	return m, key, encID, err
+}
+
+// masterCall reads the head of a request only the master may make, in the order the
+// refusals are given: who may call, the key, then the combat.
+func masterCall(ctx context.Context, campaignID, keyRaw, encounterRaw string) (m authz.Membership, key, encID string, err error) {
+	if m, err = authz.RequireCampaignRole(ctx, campaignID, authz.RoleMaster); err != nil {
+		return m, "", "", err
+	}
+	key, encID, err = parseCall(keyRaw, encounterRaw)
+	return m, key, encID, err
+}
+
+// listCombatants reads the combatants of the combat c.enc.
+func listCombatants(ctx context.Context, c *combatTx) ([]playdb.Combatant, error) {
+	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the combatants: %w", err)
+	}
+	return cs, nil
+}
+
+// touch bumps the encounter's revision, as every change of a combat does, and keeps
+// the new row in c.enc.
+func touch(ctx context.Context, c *combatTx) error {
+	enc, err := c.q.TouchEncounter(ctx, c.enc.ID)
+	if err != nil {
+		return fmt.Errorf("touch the encounter: %w", err)
+	}
+	c.enc = enc
+	return nil
 }
 
 // parseKey reads an idempotency key.

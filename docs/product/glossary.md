@@ -103,6 +103,7 @@ Where a spell level could be confused with the character's level, the text says 
 | Descanso curto, descanso longo | Short rest, long rest | The master's rests for the table (SRD 5.1). A short rest returns short-rest resources and pact slots; a long rest returns all spell slots and HP, ends temporary HP and returns half the hit dice (at least one). Refused while a combat runs (RN-02). |
 | Forma Selvagem | Wild Shape | The druid's power to take the form of an SRD beast. The beast's sheet applies (AC, separate HP, speeds, attacks) while the druid keeps mental abilities and proficiencies. When the beast drops to 0 HP the druid returns and the leftover damage passes to their HP. |
 | Frenesi | Frenzy | The Berserker's choice, when raging, to make a melee weapon attack as a bonus action each later turn and gain a level of exhaustion when the rage ends. |
+| Pergunta pendente | Pending question | What a roll that waits asks the one who rolled before the result is told: first the halfling's "Tirou 1: rolar de novo?", then the Bardic Inspiration die. The d20 was rolled and kept and nothing is resolved or written. The roller's player answers it, and so does the master, who reads every pending question of the table; the first answer wins (RN-35, MR-014). |
 | PV, espaços e dados de vida | HP, slots and hit dice | The numbers that change during play and last between sessions: current and temporary HP (lost first), spell and pact slots used, hit dice used. The maximums come from the sheet; the master corrects the values (RN-02). |
 | Recuperação Arcana | Arcane Recovery | The wizard's once-per-long-rest feature: after a short rest, spell slots return up to half the wizard level in combined spell level, none of 6th or higher. |
 | Recurso | Resource | An ability with limited uses (Retomar o Fôlego, Chi, Fúria). The sheet states the maximum and when it returns. |
@@ -141,10 +142,17 @@ Where a spell level could be confused with the character's level, the text says 
 | Ações da cena | Scene action | A check the master puts on a scene: a skill, ability check or saving throw, with an optional name and DC. The player sees their own bonus; the DC only if "Mostrar a CD aos jogadores" is on. |
 | Cena de RP | RP scene | A moment outside combat: a point of interest of the scene kind, opened in the session for everyone to see. |
 | Cena descoberta | Discovered scene | An RP scene the group has already seen. Only a discovered scene can label a note. |
+| Conversa da cena | The scene's conversation | The session's live text feed (MR-051): the master narrates and speaks as NPCs, players speak as their character or out of character. Each line is for the whole table or for chosen readers (RN-36). |
 | Em cena (o palco) | On stage | The NPCs the master puts on the open scene, up to 4 at a time, one speaking. The player sees only the name and portrait (MR-031). |
+| Falar como | Speak as | Who a line is from: the master chooses the narrator or an NPC of the campaign; a player chooses their own character or out of character. |
+| Fora do personagem | Out of character | A player's line that is not the character speaking; it shows the player's display name. |
 | Ganchos, anotações e pistas | Hooks, notes and clues | The master's private text on an RP scene. A clue is a short sentence the master reveals to chosen players, who keep it as "Pista do mestre" (MR-029). |
+| Jogador removido | Removed player | What the feed shows as the author of a line when the author's account was erased. The line stays. |
+| Narrador | Narrator | The master's voice when no NPC is speaking. It has one voice of its own when a line is heard. |
+| Ouvir | Hear | The button that plays a narrator or NPC line with a generated voice. The audio is made the first time a reader asks and kept with the line (RN-36). |
 | Retrato do NPC | NPC portrait | A gallery image on an NPC's sheet, shown on its card (master only) and in the scene while it is on stage. |
 | Rolagem da cena | Scene roll | The d20 of a scene action plus the bonus (RN-18). The player sees only their own totals, and "Passou" or "Não passou" only if the master shows the DC. Rolls stop at the attempt limit ("Sem mais tentativas"). |
+| Rolagem livre | Free roll | A roll of any dice (d4 to d100, 1 to 20 of them, a modifier from -20 to +20) that a member makes with "Dados" (MR-052), outside the game's rules. The app always rolls it, whatever the table's dice mode (RN-18). A player's goes to the whole table; the master chooses "Para a mesa" or "Só eu", and a "Só eu" roll reaches no player (RN-10). |
 | Tentativas | Attempts | How many times each player can roll a scene action while it is open (1 by default, 1 to 5, or unlimited). Reopening the scene resets the counts (MR-015). |
 | Mostrar a CD aos jogadores | Show the DC to players | The per-scene switch that decides whether players see DCs and whether their rolls passed. Off by default; the master always sees it (MR-015, RN-20). |
 | Teste em grupo | Group check | One check that two or more characters make; the group passes when at least half pass (RN-34). |

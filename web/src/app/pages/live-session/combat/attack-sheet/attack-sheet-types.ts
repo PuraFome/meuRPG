@@ -1,7 +1,6 @@
 import type { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import type {
-  InspirationOffer,
-  LuckyOffer,
+  HeldRollOffer,
   PendingDamage,
   TargetInReach,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
@@ -52,11 +51,9 @@ export interface AttackSheetData {
   /** A hit whose damage was never rolled (the sheet was closed): the sheet
    * opens at "Dano" with it. */
   readonly resume?: { readonly pending: PendingDamage; readonly targetLabel: string };
-  /** A roll held for the Bardic Inspiration question (the player left the sheet, or read the screen again): the sheet
-   * opens at the question, with the d20 that was rolled. */
-  readonly inspiration?: { readonly offer: InspirationOffer; readonly targetLabel: string };
-  /** The same for a roll held for the halfling's Lucky question ("Tirou 1: rolar de novo?"), which comes first. */
-  readonly lucky?: { readonly offer: LuckyOffer; readonly targetLabel: string };
+  /** A roll held for a question (the player left the sheet, or read the screen again): the sheet opens at the question,
+   * the halfling's Lucky ("Tirou 1: rolar de novo?") or the Bardic Inspiration die, with the d20 that was rolled. */
+  readonly held?: { readonly offer: HeldRollOffer; readonly targetLabel: string };
   /** A roll of this sheet was held for a question (Lucky or Bardic Inspiration): the page learns the hold, so it does not
    * open the question a second time. */
   readonly onHeld?: (holdId: string) => void;

@@ -2,12 +2,13 @@ import type { MessageInitShape } from '@bufbuild/protobuf';
 
 import type { DiceRoll } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { AdvantageSource, RollMode } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
+import type { AnswerHeldRollResponse } from '../../../gen/meurpg/play/v1/resources_pb';
 import type {
   PuzzleMoveSchema,
   PuzzleRun,
   TryPuzzleHintResponse,
 } from '../../../gen/meurpg/play/v1/puzzles_pb';
-import type { InspirationRoll, LuckyRoll } from '../resources/resources-client';
+import type { HeldAnswer } from '../held-rolls/held-roll-offer';
 import type { HintDie, MoveAnswer } from './puzzles-client';
 
 /** What the player's page needs from the client; `PuzzlesClient` is one. */
@@ -26,22 +27,14 @@ export interface PlayApi {
     idempotencyKey: string,
     extraDieFaces?: readonly number[],
   ): Promise<TryPuzzleHintResponse>;
-  /** The answer about the Bardic Inspiration die a try waits on; absent in a client that has no such question. */
-  answerHintDie?(
+  /** The answer to the question a try waits on (a halfling's d20 of 1, a Bardic Inspiration die): `AnswerHeldRoll`; absent
+   * in a client that has no such question. */
+  answerHeldRoll?(
     campaignId: string,
     holdId: string,
-    use: boolean,
-    die: InspirationRoll | null,
+    answer: HeldAnswer,
     idempotencyKey: string,
-  ): Promise<TryPuzzleHintResponse>;
-  /** The answer to the Lucky question a try waits on (a halfling's d20 of 1); absent in a client that has no such question. */
-  answerHintLucky?(
-    campaignId: string,
-    holdId: string,
-    reroll: boolean,
-    die: LuckyRoll | null,
-    idempotencyKey: string,
-  ): Promise<TryPuzzleHintResponse>;
+  ): Promise<AnswerHeldRollResponse>;
 }
 
 /** What a move came to, for the page that sent it: a typed answer or a deciphered message is judged, not applied. */

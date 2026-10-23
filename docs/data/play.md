@@ -24,6 +24,19 @@ erDiagram
     session_event_kinds {
         text kind PK
     }
+    session_messages {
+        uuid id PK
+        uuid campaign_id FK
+        uuid game_session_id FK
+        uuid author_user_id FK
+        uuid speaker_ref FK
+        uuid speaker_image_id FK
+        uuid image_id FK
+    }
+    session_message_readers {
+        uuid message_id PK
+        uuid user_id PK
+    }
     stage_npcs {
         uuid id PK
         uuid game_session_id FK
@@ -175,7 +188,7 @@ What counts as "scene open again" is the last `scene_opened` event of the sessio
   The hash is kept on the combat's changes; `NULL` on an event made without one.
 - `payload` is a small JSON object (at most 16 KiB, `CHECK`) of ids, keys and numbers, with the values before and after: **no free text, no names**.
   A weapon's name never enters (the log reads it from the sheet); the reason of an XP award stays in `xp_awards`.
-  Account ids inside payloads do not disappear with the account (see [Privacy](../privacy.md)).
+  Erasing an account takes its id out of the who-saw lists of every payload (below), in the same statement.
 - `actor_user_id` (`SET NULL`) is who made the change; `character_id` (`SET NULL`) the character; `encounter_id` (`CASCADE`, optional) the combat the event belongs to, for the log and the undo (`NULL` on HP corrections).
 - Partial indexes serve a combat's events in order and the two `SET NULL` cascades, so deleting a character or account does not scan the history.
 - **The undo is a compensating row**: the undone one stays.
@@ -183,8 +196,31 @@ What counts as "scene open again" is the last `scene_opened` event of the sessio
   The helper lists an undo reads (`ended_lines`, `follow_ups`, `marks_before`, `closed_windows`, `reveal_lines`...) are dropped in a fixed order before the write if the payload would pass 16 KiB, so the `CHECK` never refuses an action because of them (`combat_events.go`).
 - **Fog.** In a map with fog, the payload of action events with an NPC in it carries `fogged` and `seen_by`, the account ids of the players who saw **all** the NPCs of the event when it happened; the combat log gives the row only to those players and never recomputes the list (`combat_fog.go`).
   Cover that only some players would read carries `cover_restricted` and `cover_seen_by` the same way.
+  A spell's `hits` and a trap's `caught` keep such a list for each target, and a cast keeps `cover_users`, the players that the bits of the masks (`seen_mask`, `cover_seen_mask`) count by position.
+- **Erasing an account** (`DELETE FROM users`) runs the `BEFORE DELETE` trigger `users_scrub_session_events` (migration 00266), in the same transaction.
+  For the events of the campaigns the account belongs to, it removes the id from `seen_by`, `cover_seen_by`, `hits[].cover_seen_by` and `trap.caught[].seen_by`, keeping the order of the others and leaving an empty list empty, and replaces it with `""` in `cover_users`, so that no mask changes meaning.
+  The row, its `seq` and the rest of its payload do not change.
+  A new place in a payload that holds account ids needs the same case in `session_event_payload_without_user`, and a test in `play/erasure_seen_by_test.go`.
 - Puzzle events (`puzzle_shown`, `puzzle_solved`, `puzzle_reset`, `puzzle_closed`) carry `puzzle_id` and `run_id` only; state, solution and moves stay in `puzzle_moves`.
   A scene check event carries ids, the check key, the d20, the bonus, the total, whether it was a physical die, `dc_shown` and `passed`, never the DC or a name.
+- A free roll (`free_roll_rolled`, [the free dice roller](../architecture/play/free-dice-roller.md)) carries the die's sides, the count, the modifier, the mode (`""`, `advantage` or `disadvantage`), each face with `discarded`, the total, `by_master` and `secret`, never a name.
+  `secret` is always written, because the list's SQL keeps a player to rows that say `"secret": false`; the event has no `encounter_id`, so no combat log or undo reads it.
+  Its idempotency key is the UUID the server derives from the member and the key the app sent (1 to 64 characters), so a key belongs to one member.
+
+## `session_messages` and `session_message_readers`
+
+The conversation of a game session (MR-051, RN-36): the master narrates and speaks as an NPC, the players speak as their character or out of character.
+A line is never edited and has no deletion; it goes with its session and its campaign (`CASCADE`).
+`speaker_kind` is `narrator`, `npc`, `character` or `out_of_character` (a `CHECK` is the backstop; the API checks the combinations).
+`speaker_ref` is the character of `npc` and `character`; `speaker_name` and `speaker_image_id` keep the name and portrait it had when the line was sent, so the line still reads the same if the NPC is renamed or deleted (`SET NULL` on the character and the image).
+`text` is 1 to 2,000 characters.
+`image_id` is the gallery image the master put in the line (`SET NULL` if it is deleted).
+`author_user_id` is `SET NULL` when the account is erased: the line stays and the author reads "Jogador removido" ([Privacy](../privacy.md)).
+`for_everyone` says every member reads the line; when it is false the readers are the rows of `session_message_readers` (`message_id`, `user_id`, both `CASCADE`), plus the master and the author.
+It is a column and not "no rows" so that erasing the account of the last reader never widens a line.
+`create_key`, `create_hash` are the idempotency pair of `SendSessionMessage` (`<campaign>:<author>:<key>`), unique through a partial index.
+`audio_made_at` is when the voice of the line was made (the file is in the blob store); it counts the day's voices against `TTS_DAILY_LIMIT`.
+Indexes: `(game_session_id, created_at, id)` for the page; one on each foreign key the cascades scan; the reader's `user_id`.
 
 ## `stage_npcs`
 
@@ -218,7 +254,7 @@ Ids, spell keys and numbers, no personal data; cascades with the campaign, the s
 
 ## `revivify_requests`
 
-A Revivify cast outside a combat waiting for the master (the app does not count time out of combat, so he says whether the creature died less than a minute ago).
+A Revivify cast outside a combat waiting for the master (the app does not record when a creature died out of combat, so he says whether the creature died less than a minute ago).
 It holds the session (`CASCADE`), the caster and the target (`characters`, `CASCADE`), the slot (`slot_level` 3 to 9, `slot_pact`), `status` (`pending`, `confirmed`, `denied`; `answered_at` is set exactly when it is not pending, by `CHECK`) and the keys of the cast (`create_key`, unique per campaign, `create_hash`) and of the answer (`answer_key`, `answer_hash`).
 Nothing is spent while it is pending.
 
@@ -257,8 +293,8 @@ In a combat the die is the combatant's (`combatants.inspiration_*`) and this row
 `request` is the request that made it (protobuf), `faces`, `modifier`, `total`, `counted` and `physical` the d20 it rolled, `answer_key` is set once answered, unique on `(campaign_id, idempotency_key)`.
 `round` is the combat's round for a roll held in a combat and `NULL` out of one.
 `combatant_id` (the roller in a combat, `CASCADE`) and `encounter_id` (the combat the roll was held in, `CASCADE`) are `NULL` out of a combat; when `combatant_id` is set it is the owner of the hold (the copies of an NPC and the creatures of a combat share a `character_id`).
-`window_hold` says the hold is the attack a reaction window kept (`roll_holds` marks it with a `#window` suffix of its key).
-The weapon attack still waits in `roll_holds`; a `weapon_attack` row here is read and answered like one of `roll_holds`, and a later release writes it here ([held rolls](../architecture/play/held-rolls.md)). Every roll held in a combat now names its combatant and its combat; an older one has both `NULL` and belongs to its character.
+`window_hold` says the hold is the attack a reaction window kept.
+The weapon attack waits here too (kind `weapon_attack`, `window_hold` for the one a reaction window held, whose `idempotency_key` is the request's own); `roll_holds` is empty and unused ([held rolls](../architecture/play/held-rolls.md)). Every roll held in a combat names its combatant and its combat; an older one has both `NULL` and belongs to its character.
 The partial index `inspiration_holds_open_combat_idx` on `(encounter_id, combatant_id)` where `answer_key IS NULL` serves the open questions of a combat.
 Lucky: `lucky_index` is the die that shows a 1 (0 for a single d20; 0 or 1 for a pair, in the order rolled; `NULL` with no Lucky question), `lucky_answer_key` the key of the answer and `lucky_to` the new face (1 to 20; `NULL` when the player kept the 1).
 The question waits while `lucky_index` is set and both keys are `NULL`; then `faces`, `counted` and `total` hold the d20 after the answer, which a die question (if the character holds one) is asked about next.
@@ -278,7 +314,9 @@ Cascades with the session or the character; the index is by session.
 ## Who reads
 
 - Players read the session row's public parts (the current map if revealed, the shown image, the open scene), the stage through the stage-copy ids, and the history through the player stream, which never receives an event marked `secret` or fogged for them.
+- `session_messages`: the master, the author, the lines `for_everyone`, and the rows of `session_message_readers`; the same rule on every path, and a line the caller may not read is `not_found` ([live session](../architecture/play/live-session.md#the-conversation-of-the-scene)).
 - `battle_encounters`, `revivify_requests` and `trap_damages` are master only (a player sees their own character's applied result in the log).
+- A `free_roll_rolled` event is read by everyone when `secret` is false; a secret one is the master's alone, on every path: the list, the stream, the summary and any count (RN-10).
 - `spell_casts` rows are read by the master and the target's player for the amounts; a `secret` cast is the master's alone (RN-10).
 - `character_effects`: the owner and the master, filtered by `player_visible` and `audience`.
 - `inspiration_holds` and `character_inspiration`: the holder and the master.

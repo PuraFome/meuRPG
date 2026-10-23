@@ -11,15 +11,25 @@ Attacks and damage are in [Attacks and damage](attacks-and-damage.md), movement 
 
 | File | Holds |
 | --- | --- |
-| `combat.go` | The lifecycle calls |
+| `combat.go` | `EndTurn` and `EndEncounter` (the thin handlers) |
+| `combat_start.go`, `combat_setup.go`, `combat_join.go` | `StartEncounter`; the initiative, the order of a tie, `BeginCombat` and the roster; who joins and where each one stands |
+| `combat_endturn.go`, `combat_turn.go` | The phases of `EndTurn`; the joint turn |
+| `combat_place.go`, `combat_surprise.go`, `combat_partedit.go` | "Colocar no mapa"; surprise; removing a part of a pending damage |
 | `combat_write.go` | The transaction every change shares (`combatTx`, `write`, `finish`) |
-| `combat_view.go` | Who sees what |
+| `combat_view.go` | Who sees what, and the publishers of the live events (`publishEncounterChanged`, `publishTurnChanged`, `publishCombatantMoved`) |
 | `combat_rules.go` | The arithmetic, pure and tested without a database |
-| `combat_actions.go`, `combat_parts.go` | Options, attacks, damage, standard actions, NPC HP |
-| `combat_turn.go` | The joint turn |
+| `combat_turn_options.go`, `combat_spell_targets.go` | The options of a turn and who each one can target |
+| `combat_attack.go`, `combat_damage.go`, `combat_parts.go` | The attack roll, the damage roll and its parts |
+| `combat_cast.go`, `combat_spells.go` | Casting a spell and what each kind of spell does to its targets |
+| `combat_apply_damage.go`, `combat_hit_points.go`, `combat_take_action.go` | The master settling a hit, NPC hit points, the standard and feature actions |
+| `combat_gate.go` | Why a combatant cannot act now |
+| `combat_landing.go`, `combat_pending_view.go` | Where a damage or heal lands, and the pending damage as the viewer reads it |
 | `combat_events.go`, `combat_log.go` | Event payloads and the log |
 | `combat_vitals.go` | Slots, uses and HP through `character_vitals` |
 | `combat_undo.go`, `combat_undo_kinds.go` | Undo |
+
+`RollAttack`, `CastSpell`, `RollDamage`, `TakeAction`, `ApplyPendingDamage` and `DiscardPendingDamage` share one shape: the handler reads the request into a `*Call`, runs the transaction as a `*Flow` whose phases keep the order of the reads, the dice and the writes, and answers from a `*Out`.
+The frozen characterization tests pin that order.
 
 Pure rules live in `rules/combat`.
 
@@ -49,14 +59,14 @@ The mode (`grid` or `theatre`) is chosen at the start and never changes (see [Th
 | --- | --- | --- |
 | `StartEncounter` | Master, session open | Creates the combat in `setup`, on the current map (which needs a grid), on a battle point's map, or with none in theatre. Puts the group and NPC copies; each NPC rolls initiative at once. With `monsters`, also puts bestiary monsters in the same transaction (see [Encounters](encounters.md)) |
 | `GetEncounter` | Members, filtered | The session's latest combat, including one that just ended, or none |
-| `SubmitInitiative` | The player on their own character; the master on any | d20 rolled in the app (`roll_in_app`) or the typed physical d20 (`d20_face`), under RN-18. Only in `setup`. A character creature's roll sets its whole summon group |
+| `SubmitInitiative` | The player on their own character; the master on any | d20 rolled in the app (`roll_in_app`) or the typed physical d20 (`d20_face`), under RN-18. Only in `setup`. A character creature's roll sets its whole summon group. A player's character that holds a Bardic Inspiration die, or a halfling's 1, gets a question first (`held_roll_offer`, see held-rolls.md) |
 | `SetInitiativeOrder` | Master | Orders a tie (same total and bonus) |
 | `BeginCombat` | Master | `active`, round 1, the first in the order on turn. Without someone's initiative: `INITIATIVE_MISSING` with who is missing |
 | `EndTurn` | The member's player; the master (any) | Ends one member's part of the turn; when the last acting member ends, the turn passes to the next group not defeated and, after the last, the round rises. `aborted` if `expected_combatant_id` is no longer a member who acts. Refused with `PENDING_DAMAGE` (damage to roll, to apply, or a reaction of the combatant on turn pending) unless the master passes anyway (`discard_pending_damage`); `DEATH_SAVE_DUE` for a player with a death save to roll (the master passes anyway); `REACTION_PENDING`, `OPPORTUNITY_PENDING`, `HIDDEN_REVEAL_PENDING` while those wait. If nobody is on turn (the combatant left or its character was deleted) only the master calls, and the turn restarts from the first in the order in the same round |
 | `EndEncounter` | Master | `ended`; the players' tokens go where they stopped. Ending again is not an error |
 | `AddCombatants` | Master | Reinforcements (NPCs), initiative rolled at once |
 | `AddMonsters` | Master | "Pôr no combate" (see [Encounters](encounters.md)) |
-| `RemoveCombatant` | Master | Takes someone out; if it was their turn, the turn passes. Refused (`PENDING_DAMAGE`) while a damage the combatant attacked with or took is still to roll or apply. A creature leaving because its owner or the master dismissed it cannot be refused: the damage waiting on it is written as dropped (`damage_discarded`, before the `combatant_removed`) |
+| `RemoveCombatant` | Master | Takes someone out; if it was their turn, the turn passes. Refused (`PENDING_DAMAGE`) while a damage the combatant attacked with or took is still to roll or apply. A character's effects go back to game time when it leaves in setup (`effectRowsToCharacters`; its inspiration die is not given back). A creature leaving because its owner or the master dismissed it cannot be refused: the damage waiting on it is written as dropped (`damage_discarded`, before the `combatant_removed`) |
 | `SetCombatantSide` | Master | "Aliado" or enemy for an NPC (`side_set`); passes over opportunity offers now between allies |
 | `SetCombatantHidden` | Master | Hides or shows an NPC |
 | `SetCombatantCover` | Master | Cover by hand (none, half, three-quarters, total); cleared when the combatant moves |
@@ -76,7 +86,7 @@ The mode (`grid` or `theatre`) is chosen at the start and never changes (see [Th
 | `OfferOpportunity`, `WithdrawOpportunity`, `DeclineOpportunity`, `SkipOpportunity` | See [Movement](movement.md) | Opportunity attacks |
 | `AnswerReaction`, `MarkReactionRolling`, `ResolveConcentrationSave`, `UseReaction`, `DeclineReaction` | See [Reactions](reactions.md) | Reaction windows |
 | `RollDeathSave`, `ConfirmDeath` | See [Death and revival](death-and-revival.md) | The fallen |
-| `AdjustCombatantHitPoints` | Master | "Dano/Cura" of an NPC: damage, healing or an exact value, and temporary HP |
+| `AdjustCombatantHitPoints` | Master | "Dano/Cura" of an NPC: damage, healing or an exact value, and temporary HP. An NPC taken to 0 HP stops concentrating, with the end a damage to 0 HP has (`endConcentrationAtZero`: the spell's effects, its creatures and the log line); the undo of the adjustment takes that end back with it |
 | `EndCombatEffect` | Master | Ends an effect such as Aid (idempotent by key, not undoable) |
 | `UndoLastAction` | Master | See [Undo](undo.md) |
 | `ListCombatLog`, `GetCombatHighlights` | Members, filtered | See [Combat log and events](combat-log.md), [Highlights](highlights-and-summary.md) |
@@ -130,6 +140,7 @@ stateDiagram-v2
   An NPC-only group reaches the player as the ids they see, with no chosen `current_combatant_id` or total, plus `npc_only_groups` for the plural "os Goblins".
   A player's economy reaches them, the master and the other players of the same group.
 - **Events.** `turn_part_ended` (a part ended, the turn still standing) and `turn_ended` (the turn passed), plus the log line "Brisa encerrou a parte dela".
+  The line of a part is the master's alone when the member is hidden or its group has no player character, also when the turn waits for the saving throws of effects: the player's log and `combat_log_changed` do not carry it.
   No stream event of its own: `encounter_changed` and `turn_changed` suffice.
 - **On the web.** `core/combat/joint-turn.ts` (pure) groups the order; the master's card is `joint-card`, and `end-part` and `joint-others` are the player's.
   `CombatState.applyTurn` keeps the group and ended parts when `turn_changed` moves the current combatant inside the same round.

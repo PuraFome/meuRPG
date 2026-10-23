@@ -4,22 +4,36 @@ A d20 that may wait for a question is rolled, kept, asked about and settled in o
 The questions are the halfling's Lucky (RN-35) and a Bardic Inspiration die, asked in that order, so the player decides after seeing the d20 and before the result (SRD 5.1).
 The code is `held_gate.go`, `held_store.go`, `held_questions.go`, `held_answer.go`, `held_registry.go`, `held_roller.go`, `combat_lucky.go`, `inspiration_held.go`, `inspiration_lucky.go` and `inspiration_outside.go`.
 
-## The eight kinds
+## The thirteen kinds
 
 Whichever path rolls the d20 asks the same gate.
 
 | Kind (`heldKind`) | Path | Where it is held |
 | --- | --- | --- |
-| Weapon attack | `RollAttack` | `roll_holds` |
+| Weapon attack | `RollAttack` | `inspiration_holds` |
 | Spell attack against one target | `CastSpell` (`inspiration_held.go`) | `inspiration_holds` |
 | The effect's saving throw | `RollEffectSave` | `inspiration_holds` |
 | The concentration save | `ResolveConcentrationSave` | `inspiration_holds` |
 | Scene check | `RollSceneCheck` | `inspiration_holds` |
 | Group check | `RollGroupCheck` | `inspiration_holds` |
-| Trap search | `SearchForTraps` (out of combat; the Search action in combat has spent the action when the d20 is rolled) | `inspiration_holds` |
+| Trap search | `SearchForTraps` (out of a combat, and the Search action of a combat: its roll is the combatant's, in the round, and the action is spent once the d20 waits for nobody) | `inspiration_holds` |
 | Puzzle hint try | `TryPuzzleHint` | `inspiration_holds` |
+| Death save | `RollDeathSave` (a character at 0 hit points, on its turn; the master may roll for an absent player and then waits for the player's first 10 s) | `inspiration_holds` |
+| Contest check | `StartContest` (the initiator's d20) and `RespondContest` (the defender's); one kind, since both are an ability check | `inspiration_holds` |
+| Hide check | `Hide` (the Stealth check) | `inspiration_holds` |
+| Counterspell check | `AnswerReaction` (the ability check of a Counterspell above the slot's level) | `inspiration_holds` |
+| Initiative | `SubmitInitiative` (a player's character in SETUP; the master may roll for it and then waits for the player's first 10 s) | `inspiration_holds` |
 
-**Not held, on purpose:** a cast with several targets (Scorching Ray, Twinned Spell) or one that waited for a reaction window; the attack cantrips (they hold in `roll_holds` through `RollAttack`); the master's rolls (the master never waits here); the saving throws the app rolls for a target inside someone else's call (a spell's save, a hit rider's, a trap's: the target's player is not rolling); death saves, initiative, the contests, Hide, the Counterspell check.
+**Death saves.** The d20 of a death save is gated like a saving throw with no modifier (`deathSaveWrite`): a Bardic Inspiration die the combatant holds or a halfling's 1 keeps it with the counts untouched until the answer, and the die moves the total across 10 (`combat.DeathSaveWith`) but never a natural 1 (two failures) or a natural 20 (back with 1 hit point). The event keeps the die (`Res`, which the undo gives back) and the Lucky reroll. The player's screen shows the question under the counts (`CombatDeaths.held`, read again from the combatant's `held_roll_offer`).
+
+**Contests.** The d20 of each side of a contest is an ability check (SRD 5.1), so a Bardic Inspiration die the combatant holds, or a halfling's 1, keeps it until the player answers. Both paths prepare the check first (`prepareCheck`: the number and the circumstances behind the mode, nothing written), put the d20 through the gate (`gateCheck`) before anything is spent, and finish it with the roll the gate gave back (`finishCheck`): a kept d20 spends nothing, opens no contest and writes no event, and the response carries `held_roll_offer` instead of the contest. Only a player's own check, or the master's for a player's character, can wait (the master after the player's first 10 s); a creature's, an NPC's and a grapple that came from an attack roll as they always did. Both paths share the kind `contest_check`, so the hold keeps the request as an `Any` and `rerunContest` runs the one that asked. A Cutting Words window comes first: the die it takes off is part of the modifier the hold keeps (`gateCheck`), and an answer does not open the windows again (`holdCheck`).
+
+**Hide.** The Stealth check of a Hide is an ability check (SRD 5.1) and uses the same three steps as a contest's (`prepareCheck`, `gateCheck`, `finishCheck`). The d20 is kept before the action (or the bonus action of Cunning Action) is spent and before the attempt is written; the response carries `held_roll_offer` instead of the attempt, and the answer settles it with the die added. A Cutting Words window comes first, as for a contest.
+**Counterspell.** The ability check of a Counterspell whose slot is below the spell (`counterspellCheck`) is put through the gate before the reaction or the slot is spent (`counterspellD20`). A kept d20 leaves the window open and writes nothing, and the response of `AnswerReaction` carries `held_roll_offer` instead of the result; the answer runs `AnswerReaction` again with the same request and settles the check with the die added (the line of the check shows it as part of the modifier). A reactor that is not a player's character (an enemy wizard, the master's NPC) rolls at once.
+
+**Initiative.** Initiative is a Dexterity check (SRD 5.1), so `initiativeGate` asks a character that holds a Bardic Inspiration die, or a halfling whose d20 shows a 1, before the total is set. The combat is in SETUP, so the roller is the character alone (no combatant has a die yet) and the die is the one in `character_inspiration`, which carries into the combat when it begins; the hold is the character's, and the combat's read hands the question to the character's combatant (`openInitiatives`, for its player and the master) so a reload finds it. Nothing is written while it waits: the initiative stays unset and the player can still be told "Esperando". The die adds to the total, not to the bonus, so a tie is still told by the same bonus. An NPC's and a creature's initiative, and the master's roll for them, wait for nobody.
+
+**Not held, on purpose:** a cast with several attacks or targets (Scorching Ray with more than one ray, Twinned Spell) or one that waited for a reaction window; the attack cantrips (they hold as weapon attacks through `RollAttack`); the master's rolls (the master never waits here); the saving throws the app rolls for a target inside someone else's call (a spell's save, a hit rider's, a trap's: the target's player is not rolling); initiative, the contests, Hide, the Counterspell check.
 For the saves rolled inside someone else's call, a halfling's Lucky is applied automatically: `autoLucky` (`combat_lucky.go`) rolls the first die showing a 1 again in the app, and the reroll is kept in `saveRoll.Lucky` or `actionEvent.Lucky`, shown as `DiceRoll.rerolled`.
 `luckySaver` gives it to a player's character only, never to an NPC.
 
@@ -62,22 +76,15 @@ flowchart TD
 
 ## The stores
 
-A held roll is a `heldRoll` whichever table keeps it: the faces, the die that counts, the modifier and total, the request to run again, the two answer keys and the Lucky columns.
-Two stores, behind `heldStores`, read and write the rows.
+A held roll is a `heldRoll`: the faces, the die that counts, the modifier and total, the request to run again, the two answer keys and the Lucky columns.
+One store, `inspirationHoldStore` behind `heldStores`, keeps every roll in `inspiration_holds`, the weapon attack included. It is scoped by the campaign and owned by the combatant in a combat and by the character out of one (see below).
+A weapon attack's question moves the combat's revision (the combat view lists it); so does the question of any roll held in a combat. `roll_holds` is empty and unused: nothing reads or writes it, and the table stays.
 
-| Store | Table | Scope and owner | Notes |
-| --- | --- | --- | --- |
-| `rollHoldStore` | `roll_holds` | Scoped by the combat, owned by the combatant | The weapon attack. A row converts on read: the faces from the request pinned with them, the die that counts by the pinned mode, the total as the face and the bonus, physical when the request typed the d20. A reaction window's replay key (`#window`) moves to `Window`. A question moves the combat's revision (`asked`) |
-| `inspirationHoldStore` | `inspiration_holds` | Scoped by the campaign, owned by the combatant in a combat and by the character out of one (see below) | Every other roll. A question does not move the combat's revision |
-
-`inspiration_holds` has the columns that let it hold the weapon attack too (`combatant_id`, `encounter_id`, `window_hold`, and the `weapon_attack` kind, migration 00255; the index of 00256 serves the open questions of a combat). The move takes two releases, so that the second can be rolled back to the first:
-
-- **Read both, write the old (this release).** A `weapon_attack` row found in `inspiration_holds` is read like one of `roll_holds`: by key (`heldStores.byKeyOf`), by id (`byIDOf`, and the either-table `byID` of the combat RPCs, which admit only a weapon attack, of their combat), as the open question of its combatant, and in the combat view (`openAttackHolds`). It is answered by the same path, with the rules of an attack (the question is whoever may act for the combatant's; only its round makes it stale), and the outside RPCs do not find it. Nothing writes one yet.
-- **Write the new (next release).** `heldRegistry[heldWeaponAttack].write` moves to `inspirationHolds`; `roll_holds` is no longer written, and its open rows are answered by the legacy store.
+The row is the character's too (`character_id`, the combatant's own for a creature or the copy of an NPC, which the gate does not name as backed), and it records who rolled (`user_id`, the master for an NPC) and `window_hold`. A reaction window's replay keeps its question under the request's own key with `window_hold` set; a retry of the request never finds it (`byKeyOf` leaves the window's rows out). The gate forgets the stale holds of the weapon attack's own kind only (`ownKindOnly`): the combatant's other rolls refuse it in `heldBlocked`, which a window's replay skips.
 
 **Who owns a hold in `inspiration_holds`.** A combatant owns the holds that name it (`combatant_id` and `encounter_id`) and, when a character backs it, those made before the columns were written (`combatant_id` is `NULL`, found by the character). The creatures and the copies of an NPC share a `character_id` with the one they came from and never own through it. A roller out of a combat owns the holds that name no combatant. One question at a time, the character's list of offers and the deletes when a combat starts or ends all use this rule (`holdOwnerOf`, `ListOpenInspirationHolds`, `DeleteInspirationHoldsOf`). A roll held in a combat now names its combatant and combat, and a hold left by a finished combat is no longer found through its character: it never blocks, and goes with its combat.
 
-Both are read together for the one-question-at-a-time rule: a weapon attack waiting in `roll_holds` and a hold in `inspiration_holds` block each other (`INSPIRATION_PENDING`).
+One question at a time: an open hold of the roller refuses a new roll (`INSPIRATION_PENDING`).
 A weapon attack's Lucky answer keeps the new d20 on the row only when the die's question follows.
 A hold made in a combat records its `round`; one of an earlier round, or whose combatant no longer holds the die, is stale and forgotten by the next roll (`heldRoll.stale`).
 
@@ -91,19 +98,61 @@ Each says when it waits (`pending`), what it asks (`offer`) and what its answer 
 - **The die** waits while the roller holds one and nothing is answered.
   Its answer is final: it spends the die when the player used it and closes the row under the answer's key.
 
-A later question, such as a master's reroll or Cutting Words on a check, would be one more link with its own columns and rule for who answers.
+A later question, such as a master's reroll, would be one more link with its own columns and rule for who answers. Cutting Words on a check is not a link of this chain: it is a reaction hold of the combat ([Reactions](reactions.md#cutting-words-on-a-check)).
 
 ## The registry and the one answer
 
-`heldRegistry` has one `heldKindDef` per kind: the table it writes, the tables whose open question refuses it, how the pinned request runs again (`rerun`, one per path), the attack and target a question names (the weapon attack only) and how the dice of a pair are pinned in the request.
-`answerHeld` is what the four answer RPCs call: `AnswerLucky`, `AnswerBardicInspiration`, `AnswerOutsideLucky` and `AnswerOutsideInspiration`.
+`heldRegistry` has one `heldKindDef` per kind: whether only its own kind's holds refuse it (`ownKindOnly`), how the pinned request runs again (`rerun`, one per path), the attack and target a question names (the weapon attack only) and how the dice of a pair are pinned in the request.
+`answerHeld` is what the five answer RPCs call: `AnswerHeldRoll`, which answers any hold, and `AnswerLucky`, `AnswerBardicInspiration`, `AnswerOutsideLucky` and `AnswerOutsideInspiration`, which are deprecated and still served as adapters, for a tab opened before `AnswerHeldRoll` existed. Each older RPC admits one class of roll (`holdRef.Class`: the attack's or the others'), as it always did, and has its own refusals; `AnswerHeldRoll` conceals any hold the caller may not answer as not found.
 It:
 
-1. finds the hold in either store;
-2. checks who may answer (`mayAnswerHeld`): a weapon attack's by whoever may act for its combatant, its player or the master; every other roll's by its player alone (the master cannot);
+1. finds the hold;
+2. checks who may answer (`mayAnswerHeld`), before anything about the roll's state is said: a combatant's roll by whoever may act for the combatant, its player or the master; a character's roll out of a combat by its player or the master. Another player is refused: `permission_denied` for a combat's roll through the older attack RPCs, `not_found` everywhere else;
 3. checks the answer against the roll as it stands (the question must be open, Lucky's first; an answer already given is answered again, never twice with another key);
 4. rolls the reroll or the die the way the campaign has the player roll (RN-18; the master is exempt);
-5. runs the pinned request again through the registry with the answer in the context (`heldReply`): the path answers with its own response, still held with the next question, or resolved and written under the roll's key.
+5. runs the pinned request again through the registry with the answer in the context (`heldReply`): the path answers with its own response, still held with the next question, or resolved and written under the roll's key. When the master answers a player's roll, the path runs **as the roller** (`heldReply.as`, read by `heldMember` and `heldRole`, which stand in for the authz lookups at the top of the paths a hold runs again): it finds the roller's character and combatant as the first time, and nobody gets a power they did not have. The answer is the roller's view of the result. A weapon attack's path takes the answerer as it is: the master may act for any combatant.
+
+**The player's first chance.** For `heldPlayerFirst` (10 seconds) after a question is asked, measured from the hold's `created_at` on the service clock, `playerFirst` refuses the master's answer with `failed_precondition` and `ResourceBlocked` `PLAYER_FIRST`, whose `wait_seconds` is the time left rounded up; it runs for every answer RPC, after the state of the roll is checked and before anything is rolled. It does not apply to the player's own answer, to the master's answer to a roll no user plays (an NPC's, a player who left: `rollerPlayer`), or to a repeated answer. The Lucky and die questions of one roll share the hold's time.
+
+**The master's own rolls (E4-10).** The master's roll for a player's character asks like the player's: `saveSpec` (an effect's or a concentration save), `spellMayAsk` (a spell attack) and `mayAskMember` (`RollForPlayer`, a group check) let the roll wait whenever a user plays the combatant or the character (`playedBy`); an NPC's, a creature's or an unplayed character's never waits. The hold names the master as its user, the player reads the question by owning the combatant or the character, and either may answer; the path runs again as the user who rolled (`holdRollerRole` says whether that was the player or the master), and `rerunGroupCheck` picks `RollForPlayer` for the master's group check, whose answer rides in the group check's arm of `AnswerHeldRollResponse`.
+
+When the owner and the master answer at once, the first answer wins; the other, whose write meets the first one's, is told the roll was answered already (`lostTheRace`), and the die is spent once.
+
+## The wire
+
+Every roll that waits asks one question in one shape, `HeldRollOffer`: the hold, the kind, who rolls (the combatant, the character of a player, the name as the viewer reads it), the d20 with its bonus, the question that waits (`LuckyQuestion` first, `DieQuestion` after it) and when the roll was held. The nine answers of the paths carry it as `held_roll_offer` beside the deprecated `inspiration_offer` and `lucky_offer` (and the lists `offers` and `lucky_offers` of the state out of a combat), which are still filled for a tab opened before the one question existed, and so does the `Combatant` of a roll held in a combat, for the master and the roller's player only (`heldOfferOfCombatant`). `ListHeldRolls` lists the questions the caller may answer, oldest first: a player's own, the master's every one of the table, in a combat or out of one, leaving out the stale (`heldList`). `AnswerHeldRoll` answers with the path's own response in a `oneof` and the next question of the same roll in `next`.
+
+The question of any roll held in a combat moves the combat's revision (`inspirationHoldStore.asked`), as the weapon attack's always did, so the master and the roller read the combat again. `HeldRollsChanged` is a content-free hint on the stream for the master and the roller's user: the interceptor `heldHintInterceptor` sends it when a path answers with a question, and `answerHeld` when an answer changed one.
+
+## The web
+
+One class asks every question of a held roll: `HeldRollController` (`web/src/app/core/held-rolls`).
+A place that rolls builds one in its own field, shows a question with `ask`, and the player's answer goes through `answer`; nothing else in the web calls `AnswerHeldRoll`.
+
+- **The question** is a `HeldRollOffer`. `heldOfferOf` reads `held_roll_offer` and falls back on the older `lucky_offer` and `inspiration_offer` of a response that carries only those (Lucky's first), so one answer path serves both.
+- **One key per answer.** The controller sends the answer under an idempotency key that stays while the same answer is repeated (a retry after a lost answer never rolls twice) and is renewed once an answer got through.
+  A second tap while one is on the way does nothing.
+- **The chain.** `AnswerHeldRollResponse.next` becomes the controller's next question (Lucky's, then the die's, on the new roll); no `next` means the roll was written.
+  The place gets the response to finish its own way (`settle`): the attack sheet reads `result.attack`, the cast sheet `result.spell_cast`, and so on. A response that is not the path's own is an error and the question stays.
+- **Refusals.** A `failed_precondition` with no detail of the rules is the lost race ("Essa pergunta já foi respondida"), kept apart from a failure in `refusal`; the master's answer inside the roller's first seconds (`MASTER_TOO_EARLY_REASON`, a `ResourceBlockedReason` name) reads as a wait. Everything else is worded by the place, or by `classResourceErrorMessage`.
+- **Two answerers, one type.** The roller's player and the master answer the same way. With `master` set, `waitSeconds(now)` counts the seconds left from the offer's `created_at` (`MASTER_WAIT_SECONDS`) on an injectable clock.
+
+`<app-held-roll-prompt>` (`web/src/app/shared/held-roll-prompt`) draws the question for every place and emits the answer: Lucky's "Tirou 1: rolar de novo?" with "Rolar de novo", "Digitar o resultado" and "Ficar com o 1"; the die's "Usar a Inspiração de Bardo (d8)?" with "Somar o d8 (Inspiração de Orla)", "Digitar o resultado" and "Guardar o dado".
+The typed face takes 1 to the die's size, and the ways to roll follow the table's dice mode (RN-18).
+Its `look` keeps what each place showed: `attack` (the attack sheet shows the d20 in its own result card), `sheet` (the held d20 in a line above the question) and `card` (the d20 and its bonus over the question).
+
+The places: the attack, cast, reaction (concentration save), effect-save, scene-roll, trap-search and group-check sheets, the hint try of a puzzle, and the session panel's Bardic block.
+
+### The master's pending questions
+
+The master answers for a roller who has not (RN-35 asks the roller first). `HeldQuestions` (`core/held-rolls/held-questions.ts`) keeps one `MasterQuestion` per hold, each with a `HeldRollController` built with `master: true`; the master answers through `AnswerHeldRoll` like the roller, rolling in the app or typing a face when the table's dice mode allows it (RN-18).
+
+- **Where the questions come from.** In a combat, from `Combatant.held_roll_offer` of the combat the master already reads (the combat view feeds `sync` from its encounter, and the question is drawn in the roller's row). Outside a combat, from `ListHeldRolls` (`app-held-rolls-panel`), read on open, after a reconnection (the page bumps `heldRollsTick` with its other ticks) and on each `held_rolls_changed` hint (`onHeldRollsChanged`); a read that comes back after a newer one is dropped. `sync` keeps the questions it knows, adds new ones, replaces a question by the next one of the same roll, and closes the ones the server stopped listing ("Brisa respondeu.").
+- **The wait.** `MASTER_WAIT_SECONDS` (10) counts from the offer's `created_at`, on an injectable clock; `HeldQuestions.now` moves once a second only while a question waits for its time or a closed one is still on screen (`NOTE_LINGER_MS`), and the interval is cleared otherwise. The server refuses an early answer with `MASTER_TOO_EARLY_REASON`: the question reads it as "wait" (`too-early`), shows the countdown again and keeps the buttons off for at least two more seconds when the clocks differ, then lets the master try again. A plain `failed_precondition` is the lost race: the question ends with "Essa pergunta já foi respondida."
+- **What the answer says.** A master's answer that ends the roll is worded from the path's result (`answeredText`, `settledRoll`): "Você respondeu por Brisa: rolou de novo e tirou 14 (19 com o bônus)."; a result with no d20 says only what was chosen.
+- **The roller.** `HeldRollController` records the answers sent from this browser (`markAnsweredHere`, from the moment the answer goes). A place that shows the roller their question (`HeldVanishWatch`: the combat view, the Bardic block) tells "O mestre respondeu por você." when the question is gone, or moved on to the next, without an answer from this browser. The roller's view carries no result of the master's answer, so that is the whole text.
+
+A group check that holds only a Bardic die, with no 1, closes its sheet and leaves the question to the session panel.
 
 ## Lucky (halfling, RN-35)
 
@@ -129,7 +178,7 @@ A hold of a combat round that waits for Lucky needs no die: `dieOf` gives the co
 
 ### In combat
 
-`RollAttack` of a combatant that holds a die rolls (or takes) the d20 and keeps it in a `roll_holds` row with the request, resolves nothing, and answers with `inspiration_offer` (the d20, the die, who gave it).
+`RollAttack` of a combatant that holds a die rolls (or takes) the d20 and keeps it in an `inspiration_holds` row with the request, resolves nothing, and answers with `inspiration_offer` (the d20, the die, who gave it).
 The offer is also on the combatant (`Combatant.inspiration_offer`), so it survives a reload.
 `AnswerBardicInspiration(hold, use, roll)` runs `RollAttack` again for the stored request, with the d20 already rolled and, when the player uses the die, the die rolled in the app or typed and added to the total; the attack resolves against the combat as it is then, and the die leaves the combatant.
 A second attack while a question waits is `INSPIRATION_PENDING`; a hold of an earlier round is forgotten; the master may answer for anyone.

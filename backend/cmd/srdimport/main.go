@@ -732,8 +732,8 @@ func convertSubclasses(in *inputs) (output, error) {
 }
 
 // featureSpecific reads the options a feature offers, in this order: its
-// subfeature options, its invocations (which replace the subfeature options
-// when a feature has both) and its expertise picks.
+// subfeature options, its invocations (added to the subfeature options when a
+// feature has both) and its expertise picks.
 func featureSpecific(fs map[string]json.RawMessage, f *srd51.Feature) error {
 	if raw, ok := fs["subfeature_options"]; ok {
 		var o optionSet
@@ -750,7 +750,7 @@ func featureSpecific(fs map[string]json.RawMessage, f *srd51.Feature) error {
 		if err := json.Unmarshal(raw, &refs); err != nil {
 			return err
 		}
-		f.Options = keys("feature:", refs)
+		f.Options = append(f.Options, keys("feature:", refs)...)
 	}
 	if raw, ok := fs["expertise_options"]; ok {
 		var o optionSet
@@ -1330,15 +1330,12 @@ var xpByChallengeRating = map[string]int{
 
 // monsterXP is the XP of a creature of the challenge rating. A challenge rating 0 creature
 // gives 0 by convention (the frog, the sea horse) or 10: the source's value is kept if it is one of these.
-func monsterXP(cr string, source int) (int, error) {
-	xp, ok := xpByChallengeRating[cr]
-	if !ok {
-		return 0, fmt.Errorf("challenge rating %q has no XP", cr)
-	}
+// cr comes from challengeRating, which only gives the table's keys.
+func monsterXP(cr string, source int) int {
 	if cr == "0" && source == 0 {
-		return 0, nil
+		return 0
 	}
-	return xp, nil
+	return xpByChallengeRating[cr]
 }
 
 func monsterUsageText(u *monsterUsage) string {
@@ -1507,10 +1504,7 @@ func convertMonster(r monstersSource) (srd51.Monster, error) {
 	if err != nil {
 		return srd51.Monster{}, err
 	}
-	xp, err := monsterXP(cr, r.XP)
-	if err != nil {
-		return srd51.Monster{}, err
-	}
+	xp := monsterXP(cr, r.XP)
 	m := srd51.Monster{
 		Key: "monster:" + r.Index, Name: r.Name, Size: r.Size, Type: r.Type, Subtype: r.Subtype, Alignment: r.Alignment,
 		HitPoints: r.HitPoints, HitDice: r.HitDice, HitPointsRoll: r.HitPointsRoll,

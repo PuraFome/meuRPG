@@ -162,7 +162,7 @@ func TestListCharactersEditorWhenTheServerFails(t *testing.T) {
 // The goldens, recorded from the code as it was when they were written.
 var (
 	editorListMaster = []string{
-		`CharacterSummary{id="<bruna>" kind=CHARACTER_KIND_PLAYER state=CHARACTER_STATE_DRAFT name="Bruna" player_user_id="<dona>" player_display_name="Dona" class_summary="Guerreiro 1" race_name_pt="Humano" created_at=<time> open_choices=[OpenChoice{kind=OPEN_CHOICE_KIND_SKILLS missing=2}] pending_choice_count=1}`,
+		`CharacterSummary{id="<bruna>" kind=CHARACTER_KIND_PLAYER state=CHARACTER_STATE_DRAFT name="Bruna" player_user_id="<dona>" player_display_name="Dona" class_summary="Guerreiro 1" race_name_pt="Humano" created_at=<time> open_choices=[OpenChoice{kind=OPEN_CHOICE_KIND_SKILLS missing=2}, OpenChoice{kind=OPEN_CHOICE_KIND_LANGUAGES missing=3}] pending_choice_count=1}`,
 		`CharacterSummary{id="<pensantus-caio>" kind=CHARACTER_KIND_PLAYER state=CHARACTER_STATE_DEAD name="Pensantus" player_user_id="<caio>" player_display_name="Caio" class_summary="Mago 3" race_name_pt="Gnomo das Rochas" created_at=<time>}`,
 		`CharacterSummary{id="<pensantus-pia>" kind=CHARACTER_KIND_PLAYER state=CHARACTER_STATE_PENDING name="Pensantus" player_user_id="<pia>" player_display_name="Pia" class_summary="Mago 3" race_name_pt="Gnomo das Rochas" created_at=<time> pending_choice_count=0 review_status=REVIEW_CHANGES_REQUESTED}`,
 		`CharacterSummary{id="<reserva>" kind=CHARACTER_KIND_PLAYER state=CHARACTER_STATE_DRAFT name="Reserva" class_summary="Mago 3" race_name_pt="Gnomo das Rochas" created_at=<time> reserved=true claim_state=CLAIM_STATE_SENT claim_expires_at=<time> pending_choice_count=0}`,

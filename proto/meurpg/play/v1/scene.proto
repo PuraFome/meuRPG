@@ -299,11 +299,20 @@ message RollSceneCheckResponse {
   SceneRoll roll = 1;
   // Set instead of `roll` when the character holds a Bardic Inspiration die: the d20 was
   // rolled and nothing was written; AnswerOutsideInspiration settles the roll.
-  OutsideInspirationOffer inspiration_offer = 2;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  OutsideInspirationOffer inspiration_offer = 2 [deprecated = true];
   // Set instead of `roll` when the character is a halfling and a d20 shows a 1 (Lucky): the
   // d20 was rolled and nothing was written; AnswerOutsideLucky rolls it again or keeps the 1.
   // It comes before the die's question.
-  LuckyOffer lucky_offer = 3;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  LuckyOffer lucky_offer = 3 [deprecated = true];
+
+  // The question the roll asks now, in the one shape every held roll has (HeldRollOffer), set beside
+  // the deprecated `inspiration_offer` and `lucky_offer`: set instead of the result, when the
+  // roll waits for an answer (AnswerHeldRoll). Whoever may answer gets it; nobody else does (RN-10).
+  HeldRollOffer held_roll_offer = 4;
 }
 
 // GrantSceneAttemptRequest gives one character one more attempt at one action.

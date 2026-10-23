@@ -217,8 +217,9 @@ func countRows(t *testing.T, a *harness, query, id string) int {
 }
 
 const (
-	countRollHolds       = `SELECT count(*) FROM roll_holds WHERE encounter_id = $1`
-	countInspirationHold = `SELECT count(*) FROM inspiration_holds WHERE campaign_id = $1`
+	countRollHolds                     = `SELECT count(*) FROM roll_holds WHERE encounter_id = $1`
+	countHeldAttacksInInspirationHolds = `SELECT count(*) FROM inspiration_holds WHERE encounter_id = $1 AND kind = 'weapon_attack'`
+	countInspirationHold               = `SELECT count(*) FROM inspiration_holds WHERE campaign_id = $1`
 )
 
 // outsideRig is the rig of the seven kinds that wait in inspiration_holds: they are answered by
@@ -342,7 +343,10 @@ func attackRig(t *testing.T, die bool) heldRig {
 			}
 			return attackView(res.GetAttack()), nil
 		},
-		holds: func(t *testing.T) int { t.Helper(); return countRows(t, a.h, countRollHolds, e.GetId()) },
+		holds: func(t *testing.T) int {
+			t.Helper()
+			return countRows(t, a.h, countHeldAttacksInInspirationHolds, e.GetId())
+		},
 	}
 }
 

@@ -269,15 +269,89 @@
     ]
   },
   "25 fails: the read after": {
+    "answer": [],
     "logs": [
-      "DEBUG progression: cannot read the milestones code=canceled error=list the milestones: timeout: context already done: context canceled"
+      "ERROR progression: cannot read the milestones after a committed write action=move a milestone error=list the milestones: timeout: context already done: context canceled"
     ],
-    "refusal": "canceled: the request was canceled",
     "rows": [
       "0 Marco A key=false hash=true",
       "1 Marco E key=false hash=true",
       "2 Marco C key=false hash=true",
       "3 Marco D key=false hash=true"
+    ]
+  },
+  "26 key: F up": {
+    "answer": [
+      "<milestone-a> \"Marco A\" reached=true off_list=false has_history=true reached_at=true marks=1",
+      "<milestone-e> \"Marco E\" reached=false off_list=false has_history=false reached_at=false marks=0",
+      "<milestone-c> \"Marco C\" reached=true off_list=false has_history=true reached_at=true marks=1",
+      "<milestone-f> \"Marco F\" reached=false off_list=false has_history=false reached_at=false marks=0",
+      "<milestone-d> \"Marco D\" reached=false off_list=false has_history=false reached_at=false marks=0",
+      "<milestone-g> \"Marco G\" reached=false off_list=false has_history=false reached_at=false marks=0",
+      "<off-list> \"Derrotaram o chefe\" reached=true off_list=true has_history=false reached_at=true marks=1"
+    ],
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "1 Marco E key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco F key=false hash=true",
+      "4 Marco D key=false hash=true",
+      "5 Marco G key=false hash=true"
+    ]
+  },
+  "27 key again, the same move: replayed": {
+    "answer": [
+      "<milestone-a> \"Marco A\" reached=true off_list=false has_history=true reached_at=true marks=1",
+      "<milestone-e> \"Marco E\" reached=false off_list=false has_history=false reached_at=false marks=0",
+      "<milestone-c> \"Marco C\" reached=true off_list=false has_history=true reached_at=true marks=1",
+      "<milestone-f> \"Marco F\" reached=false off_list=false has_history=false reached_at=false marks=0",
+      "<milestone-d> \"Marco D\" reached=false off_list=false has_history=false reached_at=false marks=0",
+      "<milestone-g> \"Marco G\" reached=false off_list=false has_history=false reached_at=false marks=0",
+      "<off-list> \"Derrotaram o chefe\" reached=true off_list=true has_history=false reached_at=true marks=1"
+    ],
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "1 Marco E key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco F key=false hash=true",
+      "4 Marco D key=false hash=true",
+      "5 Marco G key=false hash=true"
+    ]
+  },
+  "28 key again, another direction": {
+    "refusal": "invalid_argument: idempotency_key was used for another change",
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "1 Marco E key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco F key=false hash=true",
+      "4 Marco D key=false hash=true",
+      "5 Marco G key=false hash=true"
+    ]
+  },
+  "29 key again, another milestone": {
+    "refusal": "invalid_argument: idempotency_key was used for another change",
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "1 Marco E key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco F key=false hash=true",
+      "4 Marco D key=false hash=true",
+      "5 Marco G key=false hash=true"
+    ]
+  },
+  "30 key again, the read after fails": {
+    "answer": [],
+    "logs": [
+      "ERROR progression: cannot read the milestones after a committed write action=move a milestone error=list the milestones: timeout: context already done: context canceled"
+    ],
+    "rows": [
+      "0 Marco A key=false hash=true",
+      "1 Marco E key=false hash=true",
+      "2 Marco C key=false hash=true",
+      "3 Marco F key=false hash=true",
+      "4 Marco D key=false hash=true",
+      "5 Marco G key=false hash=true"
     ]
   }
 }

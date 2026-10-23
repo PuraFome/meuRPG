@@ -25,7 +25,7 @@ import { MatIconModule } from '@angular/material/icon';
   imports: [MatIconModule],
   template: `
     <div class="frame" [class.frame--phone]="phone()" [style.height]="height() || null">
-      @if (phone()) {
+      @if (phone() && handle()) {
         <span class="frame__handle" aria-hidden="true"></span>
       }
       <div class="frame__head">
@@ -33,12 +33,12 @@ import { MatIconModule } from '@angular/material/icon';
           <mat-icon class="frame__icon" aria-hidden="true">{{ icon() }}</mat-icon>
         }
         <div class="frame__titles">
-          <h2 class="frame__title" [id]="titleId()" tabindex="-1">{{ title() }}</h2>
+          <h2 class="frame__title" [class.frame__title--small]="small()" [id]="titleId()" tabindex="-1">{{ title() }}</h2>
         </div>
         <!-- An extra icon button before the close one (the cast sheet's "?"). -->
         <ng-content select="[head-action]" />
         @if (closable()) {
-          <button type="button" class="frame__close" aria-label="Fechar" (click)="closed.emit()">
+          <button type="button" class="frame__close" aria-label="Fechar" [attr.title]="small() ? 'Fechar' : null" (click)="closed.emit()">
             <mat-icon aria-hidden="true">close</mat-icon>
           </button>
         }
@@ -61,6 +61,10 @@ export class SheetFrame {
   readonly icon = input('');
   /** The phone's bottom sheet: it draws its grab bar. */
   readonly phone = input(false);
+  /** `false`: the phone's sheet draws no grab bar (the chooser of the conversation, whose board has none). */
+  readonly handle = input(true);
+  /** The title at 21/26 bold (the board's chooser) instead of the sheets' 26/30 display size; the close button then also has a tooltip. */
+  readonly small = input(false);
   /** An alert dialog that must be answered has no close button. */
   readonly closable = input(true);
   /** A fixed height (a CSS length) for a dialog whose list filters: it does not jump as the results change. */

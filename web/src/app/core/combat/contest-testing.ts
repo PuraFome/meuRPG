@@ -1,6 +1,6 @@
 import { type MessageInitShape, create } from '@bufbuild/protobuf';
 
-import type { Encounter, LuckyOffer } from '../../../gen/meurpg/play/v1/combat_pb';
+import type { Encounter, HeldRollOffer } from '../../../gen/meurpg/play/v1/combat_pb';
 import {
   type CheckRoll,
   CheckRollSchema,
@@ -120,10 +120,19 @@ export class FakeContestClient {
   attempt: HideAttemptView = hideAttempt();
   group: GroupCheckView | null = groupCheck();
   /** The Lucky question `rollGroupCheck` answers with instead, when a halfling's d20 shows a 1. */
-  lucky: LuckyOffer | null = null;
+  lucky: HeldRollOffer | null = null;
   stateResponse: GetContestStateResponse = contestState();
   encounterAnswer: Encounter = encounter();
   error: Error | null = null;
+
+  /** The question the next `start` or `respond` answers with instead of the contest, when the d20 is kept for one. */
+  held: HeldRollOffer | null = null;
+
+  private rolled() {
+    return this.held
+      ? { encounter: this.encounterAnswer, contest: undefined, held: this.held }
+      : { encounter: this.encounterAnswer, contest: this.contest, held: undefined };
+  }
 
   private fail(): void {
     if (this.error) {
@@ -140,14 +149,14 @@ export class FakeContestClient {
     this.calls.push('start');
     this.started.push({ input, key });
     this.fail();
-    return Promise.resolve({ encounter: this.encounterAnswer, contest: this.contest });
+    return Promise.resolve(this.rolled());
   }
 
   respond(input: RespondContestInput, key: string) {
     this.calls.push('respond');
     this.responded.push({ input, key });
     this.fail();
-    return Promise.resolve({ encounter: this.encounterAnswer, contest: this.contest });
+    return Promise.resolve(this.rolled());
   }
 
   resolveShove(_c: string, _e: string, contestId: string, outcome: number, key: string) {
@@ -161,7 +170,11 @@ export class FakeContestClient {
     this.calls.push('hide');
     this.hides.push({ actionKey, die, key });
     this.fail();
-    return Promise.resolve({ encounter: this.encounterAnswer, attempt: this.attempt });
+    return Promise.resolve(
+      this.held
+        ? { encounter: this.encounterAnswer, attempt: undefined, held: this.held }
+        : { encounter: this.encounterAnswer, attempt: this.attempt, held: undefined },
+    );
   }
 
   help(input: HelpInput, key: string) {

@@ -59,6 +59,17 @@
   }
 }
 
+.frame__title--small {
+  font-weight: 700;
+  font-size: 21px;
+  line-height: 26px;
+
+  @media (max-width: 359.98px) {
+    font-size: 21px;
+    line-height: 26px;
+  }
+}
+
 .frame__sub {
   margin: -8px 0 0;
   font-size: 14px;

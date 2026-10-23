@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
@@ -194,7 +195,7 @@ func (s *Service) endLongRestEffects(ctx context.Context, c *combatTx) error {
 			return fmt.Errorf("list the effects in the combat: %w", err)
 		}
 		for _, st := range rows {
-			if deref(st.DurationKind) != rules.EffectDurationLongRest {
+			if conv.OrZero(st.DurationKind) != rules.EffectDurationLongRest {
 				continue
 			}
 			if err := c.q.DeleteLastingEffect(ctx, st.ID); err != nil {
@@ -310,6 +311,13 @@ func (s *Service) effectsToCharacters(ctx context.Context, c *combatTx, cs, only
 	if err := s.dieToCharacters(ctx, c, cs, only); err != nil {
 		return err
 	}
+	return s.effectRowsToCharacters(ctx, c, cs, only)
+}
+
+// effectRowsToCharacters is the effects half of effectsToCharacters: the rows of the combatants
+// backed by a character (only limits it to some) go back to game time. A character taken out of
+// a combat in setup takes this path without its die, which stays with the inspiration rules.
+func (s *Service) effectRowsToCharacters(ctx context.Context, c *combatTx, cs, only []playdb.Combatant) error {
 	rows, err := c.q.ListLastingEffects(ctx, c.enc.ID)
 	if err != nil {
 		return fmt.Errorf("list the effects: %w", err)
@@ -330,13 +338,13 @@ func (s *Service) effectsToCharacters(ctx context.Context, c *combatTx, cs, only
 // rounds left as game time; it drops the ones with nothing to give back.
 func (s *Service) giveEffectBack(ctx context.Context, c *combatTx, cs []playdb.Combatant, who playdb.Combatant, st playdb.CombatantState) error {
 	// The casting that held it ended while the fight ran: nothing is left to give back.
-	if cast, err := c.q.GetSpellCast(ctx, playdb.GetSpellCastParams{ID: deref(st.GroupID), CampaignID: c.session.CampaignID}); err == nil && cast.Status != castActive {
+	if cast, err := c.q.GetSpellCast(ctx, playdb.GetSpellCastParams{ID: conv.OrZero(st.GroupID), CampaignID: c.session.CampaignID}); err == nil && cast.Status != castActive {
 		if err := c.q.DeleteLastingEffect(ctx, st.ID); err != nil {
 			return fmt.Errorf("end the effect of an ended cast: %w", err)
 		}
 		return nil
 	}
-	kind := deref(st.DurationKind)
+	kind := conv.OrZero(st.DurationKind)
 	if kind == rules.EffectDurationUntilStartOfTurnOf || kind == rules.EffectDurationUntilEndOfTurnOf {
 		return nil // its turn never comes: it ends with the combat
 	}
@@ -366,8 +374,8 @@ func (s *Service) giveEffectBack(ctx context.Context, c *combatTx, cs []playdb.C
 // characterEffectParamsOf is the record of an effect of a combatant as a row of its character.
 func characterEffectParamsOf(c *combatTx, st playdb.CombatantState, who playdb.Combatant, kind string, seconds *int32) playdb.InsertCharacterEffectParams {
 	return playdb.InsertCharacterEffectParams{
-		ID: &st.ID, CampaignID: c.session.CampaignID, CharacterID: who.CharacterID, GroupID: deref(st.GroupID), SourceKey: deref(st.SourceKey),
-		SourceKind: deref(st.SourceKind), Concentration: st.Concentration, ConditionKeys: st.ConditionKeys, Modifiers: st.Modifiers,
+		ID: &st.ID, CampaignID: c.session.CampaignID, CharacterID: who.CharacterID, GroupID: conv.OrZero(st.GroupID), SourceKey: conv.OrZero(st.SourceKey),
+		SourceKind: conv.OrZero(st.SourceKind), Concentration: st.Concentration, ConditionKeys: st.ConditionKeys, Modifiers: st.Modifiers,
 		DurationKind: kind, SecondsLeft: seconds, EndSaveAbility: st.EndSaveAbility, StartSaveAbility: st.StartSaveAbility, SaveDc: st.SaveDc,
 		OnFailEffect: st.OnFailEffect, FollowsKey: st.FollowsKey, TriggerDice: st.TriggerDice, TriggerDamageType: st.TriggerDamageType,
 		TriggerMaxTriggers: st.TriggerMaxTriggers, TriggersFired: st.TriggersFired, PlayerVisible: st.PlayerVisible, Audience: st.Audience,

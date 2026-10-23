@@ -6,11 +6,9 @@ import {
   type DiceRoll,
   type Encounter,
   EncounterMode,
-  type InspirationOffer,
-  type LuckyOffer,
+  type HeldRollOffer,
   type PendingDamage,
   type SpellCast,
-  type OutsideInspirationOffer,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { type RollMode } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
 import type { Square } from './combat-grid';
@@ -92,12 +90,10 @@ export interface AttackResult {
   readonly encounter: Encounter;
   readonly roll: AttackRoll;
   readonly pending: PendingDamage | undefined;
-  /** The attacker holds a Bardic Inspiration die: the d20 is rolled and the result is held until the player answers
-   * (`AnswerBardicInspiration`). `roll` then carries only the d20, with no outcome. */
-  readonly offer?: InspirationOffer;
-  /** The attacker is a halfling and a d20 shows a 1 (Sortudo): the result is held until the player rolls it again or
-   * keeps the 1 (`AnswerLucky`). It comes before `offer`, which is unset meanwhile. */
-  readonly lucky?: LuckyOffer;
+  /** The roll waits for a question (the halfling's Lucky about a 1, which comes first, or the attacker's Bardic
+   * Inspiration die): the d20 is rolled and the result is held until the player answers (`AnswerHeldRoll`). `roll`
+   * then carries only the d20, with no outcome. */
+  readonly held?: HeldRollOffer;
 }
 
 /** What a move answers: the combat, and whether it stopped short or provoked. */
@@ -173,6 +169,8 @@ export interface CastExtras {
   readonly abilityKey?: string;
   /** Sculpt Spells: the creatures of the area the caster spares. */
   readonly sculptedIds?: readonly string[];
+  /** A teleport spell on a map with a grid (Passo Nebuloso): the square the caster lands on. */
+  readonly destination?: { readonly col: number; readonly row: number };
 }
 
 /** What a summoning spell brings (`SummonChoice`): the option, a content key per creature and, optionally, a name each. */
@@ -182,10 +180,19 @@ export interface SummonRequest {
   readonly names?: readonly string[];
 }
 
-/** What a death save answers: the combat and the save. */
+/** What an initiative answers: the combat, and the question when the d20 was kept for one (the halfling's Lucky about a 1, a Bardic
+ * Inspiration die the character holds); the initiative stays unset until it is answered. */
+export interface InitiativeResult {
+  readonly encounter: Encounter;
+  readonly held: HeldRollOffer | undefined;
+}
+
+/** What a death save answers: the combat and the save, or, when the d20 was kept for a question (the halfling's Lucky about a
+ * 1, a Bardic Inspiration die), the question and no save yet. */
 export interface DeathSaveResult {
   readonly encounter: Encounter;
-  readonly save: DeathSave;
+  readonly save: DeathSave | undefined;
+  readonly held: HeldRollOffer | undefined;
 }
 
 /** What a standard or feature action answers: the combat, the roll of an
@@ -222,6 +229,9 @@ export interface ReactionAnswer {
 export interface AnswerResult {
   readonly encounter: Encounter;
   readonly result: GenReactionResult | undefined;
+  /** The question the d20 of a Counterspell's check waits on (the halfling's Lucky about a 1, a Bardic Inspiration die): the
+   * window stays open and nothing is spent until it is answered. */
+  readonly held: HeldRollOffer | undefined;
 }
 
 /** What an effect changes in an attack roll: the faces of the d4 it adds from physical dice, and the extra action it gives. */
@@ -248,11 +258,9 @@ export type ConcentrationAnswer =
 export interface ConcentrationOutcome {
   readonly encounter: Encounter;
   readonly result: ConcentrationSaveResult | undefined;
-  /** The d20 was rolled and kept: the player holds a Bardic Inspiration die and decides before the result is told. */
-  readonly offer?: OutsideInspirationOffer;
-  /** The d20 was rolled and kept because it shows a 1 and the character is a halfling: the Lucky question ("Tirou 1:
-   * rolar de novo?"), which comes before the die's. */
-  readonly lucky?: LuckyOffer;
+  /** The d20 was rolled and kept and the save waits for a question (the halfling's Lucky about a 1, which comes first,
+   * or the Bardic Inspiration die): the player decides before the result is told (`AnswerHeldRoll`). */
+  readonly held?: HeldRollOffer;
 }
 
 /** One adjustment of an NPC's hit points ("Dano/Cura"): at most one of the

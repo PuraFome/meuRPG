@@ -501,7 +501,7 @@ func TestThirdCasterSlots(t *testing.T) {
 	c := withOverlay(t, genOverlay(t, srd))
 	scores := map[Ability]int{STR: 14, DEX: 14, CON: 14, INT: 16, WIS: 14, CHA: 14}
 	mk := func(classes ...ClassLevel) Build {
-		return Build{BaseScores: scores, Race: "race:human", Background: "background:acolyte", Classes: classes}
+		return Build{BaseScores: scores, Race: "race:human", Background: "background:acolyte", Languages: testLanguages, Classes: classes}
 	}
 	slots := func(b Build) []int { return Derive(b, c).SpellSlots }
 	rowSlots := func(class string, lvl int) []int {
@@ -664,6 +664,7 @@ func TestRaceBonusesToPlace(t *testing.T) {
 	}
 	b.SkillProficiencies = []string{"skill:athletics", "skill:acrobatics"}
 	b.FeatureChoices = []string{"feature:fighter-fighting-style-defense"}
+	b.Languages = testLanguages
 	if err := Validate(b, c); err != nil {
 		t.Fatal(err)
 	}
@@ -815,7 +816,7 @@ func TestMissingTableKeysNeverPanic(t *testing.T) {
 			// A class that exists, with a subclass and a table class's subclass that
 			// belongs to another class.
 			b2 := Build{
-				BaseScores: b.BaseScores, Race: "race:human", Background: "background:acolyte",
+				BaseScores: b.BaseScores, Race: "race:human", Background: "background:acolyte", Languages: testLanguages,
 				Classes: []ClassLevel{{Class: "class:gen-none@mesa", Subclass: "subclass:gen-half-prepared-a@mesa", Level: 4}},
 			}
 			if d := Derive(b2, c); !hasIssue(d, IssueUnknownKey) {
@@ -1218,7 +1219,7 @@ func TestGrantedSpellOnATableRace(t *testing.T) {
 	c := withOverlayOn(t, srd, Overlay{Revision: 1, Races: []TableRace{race}})
 	b := Build{
 		BaseScores: map[Ability]int{STR: 15, DEX: 14, CON: 13, INT: 12, WIS: 10, CHA: 8},
-		Race:       race.Key, Background: "background:acolyte",
+		Race:       race.Key, Background: "background:acolyte", Languages: testLanguages,
 		Classes:            []ClassLevel{{Class: "class:fighter", Level: 1}},
 		SkillProficiencies: []string{"skill:athletics", "skill:acrobatics"},
 		FeatureChoices:     []string{"feature:fighter-fighting-style-defense"},

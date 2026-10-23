@@ -13,6 +13,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -61,36 +62,12 @@ func (s *Service) closeCast(ctx context.Context, c *combatTx, r playdb.SpellCast
 	return row, vitals, dismissed, nil
 }
 
-// takeBackCast undoes what a cast that lasted did to its targets. Mage Armor stays on a
-// target while another Mage Armor still does (SRD 5.1, "Combining Magical Effects":
-// the effects of the same spell cast several times don't combine, the most potent one
-// applies while the durations overlap).
+// takeBackCast undoes what a cast that lasted did to its targets: Aid's bonus to the maximum
+// (takeBackMaxHP), down to the strongest Aid still on each target (SRD 5.1, "Combining Magical
+// Effects": the effects of the same spell cast several times don't combine, the most potent
+// one applies while the durations overlap).
 func (s *Service) takeBackCast(ctx context.Context, c *combatTx, r playdb.SpellCast) ([]*playv1.CharacterVitals, error) {
 	return s.takeBackMaxHP(ctx, c, r)
-}
-
-// armorOf is the armor class a cast gave a character.
-func armorOf(r playdb.SpellCast, characterID string) int32 {
-	for _, t := range castTargetsOf(r) {
-		if t.ID == characterID && t.Effect == castArmor {
-			return t.AC
-		}
-	}
-	return 0
-}
-
-// otherCastsOn lists the casts of the same spell, other than r, that still last and
-// name the character as a target.
-func (s *Service) otherCastsOn(ctx context.Context, c *combatTx, r playdb.SpellCast, characterID, effect string) ([]playdb.SpellCast, error) {
-	probe, err := json.Marshal([]map[string]string{{"id": characterID, "effect": effect}})
-	if err != nil {
-		return nil, fmt.Errorf("encode the target: %w", err)
-	}
-	rows, err := c.q.ListLiveSpellCastsOnTarget(ctx, playdb.ListLiveSpellCastsOnTargetParams{CampaignID: r.CampaignID, Target: probe})
-	if err != nil {
-		return nil, fmt.Errorf("list the casts on a target: %w", err)
-	}
-	return slices.DeleteFunc(rows, func(o playdb.SpellCast) bool { return o.ID == r.ID || o.SpellKey != r.SpellKey }), nil
 }
 
 // dismissConcentrationCreatures sends away the creatures that lasted only while the
@@ -145,7 +122,7 @@ func (s *Service) endOtherConcentration(ctx context.Context, c *combatTx, caster
 // castRowFor reads the cast a request names and checks the caller may act on it: its
 // caster's player or the master. A cast the caller may not see is not found (RN-10).
 func (s *Service) castRowFor(ctx context.Context, c *combatTx, m authz.Membership, castID string) (playdb.SpellCast, link.Character, error) {
-	id, ok := parseID(castID)
+	id, ok := uid.Canonical(castID)
 	if !ok {
 		return playdb.SpellCast{}, link.Character{}, errCastNotFound()
 	}
@@ -279,7 +256,7 @@ func (s *Service) finishCastTx(ctx context.Context, c *combatTx, m authz.Members
 	return out, nil
 }
 
-// guardFinish reads the characters a started cast is about for FinishCast. The targets
+// guardFinish reads the characters a started cast is about for ConfirmCastTimePassed. The targets
 // were checked when the cast started, so one that left the stage meanwhile still
 // counts, and one that is not a living character any more is dropped.
 func (s *Service) guardFinish(ctx context.Context, c *combatTx, m authz.Membership, caster link.Character, row playdb.SpellCast) (castGuard, error) {

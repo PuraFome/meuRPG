@@ -11,21 +11,21 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/tablerules"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
-	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
 // The attack roll (RollAttack), in phases. rollAttack reads the request, runs the transaction as a
-// sequence of phases of an attackFlow, each one of the checks or the writes the attack has always made in
+// sequence of phases of an attackFlow, each one of the checks or the writes the attack makes, in
 // that order, and answers from what the transaction left in an attackOut. The phases keep the order of the
-// reads, the dice and the writes: the scripted dice of the tests and the golden of
-// combat_roll_attack_frozen_test.go read it.
+// reads, the dice and the writes, because the scripted dice of the tests and the golden of
+// combat_roll_attack_golden_test.go depend on it.
 
 // attackCall is what RollAttack reads from its request, checked.
 type attackCall struct {
@@ -69,10 +69,7 @@ func readAttackCall(req *playv1.RollAttackRequest) (attackCall, error) {
 func readAttackIDs(req *playv1.RollAttackRequest) (attackCall, error) {
 	var call attackCall
 	var err error
-	if call.key, err = parseKey(req.GetIdempotencyKey()); err != nil {
-		return call, err
-	}
-	if call.encounterID, err = parseCombatID(req.GetEncounterId(), "encounter"); err != nil {
+	if call.key, call.encounterID, err = parseCall(req.GetIdempotencyKey(), req.GetEncounterId()); err != nil {
 		return call, err
 	}
 	if call.attackerID, err = parseCombatID(req.GetAttackerId(), "combatant"); err != nil {
@@ -172,7 +169,6 @@ type attackFlow struct {
 	caught           playdb.ReactionWindow
 	attack           link.Attack
 	attackKey        string
-	terrain          grid.Terrain
 	bonusKind        combat.BonusKind
 	// coverTarget is the target on the square the mode and the cover are read at: where an opportunity
 	// attack's mover left the reach.
@@ -220,20 +216,24 @@ func (f *attackFlow) run(ctx context.Context) (any, error) {
 // prepare is the part of the attack that checks and reads: who and what, the turn, the attack, the economy
 // and the cover. Nothing is written.
 func (f *attackFlow) prepare(ctx context.Context) error {
-	for _, phase := range []func(context.Context) error{
-		f.findAttacker, f.findTarget, f.checkOffer, f.checkTiming, f.pickAttack, f.checkAttack, f.checkEconomy, f.readCover,
-	} {
+	for _, phase := range []func(context.Context) error{f.findAttacker, f.findTarget, f.checkOffer, f.checkTiming, f.pickAttack} {
 		if err := phase(ctx); err != nil {
 			return err
 		}
 	}
-	return nil
+	if err := f.checkAttack(); err != nil {
+		return err
+	}
+	if err := f.checkEconomy(ctx); err != nil {
+		return err
+	}
+	return f.readCover(ctx)
 }
 
 // writeAttack is what the settled d20 does: the event, the economy, the damage it opens and the offer it answers.
 func (f *attackFlow) writeAttack(ctx context.Context) error {
 	for _, phase := range []func(context.Context) error{
-		f.resolve, f.record, f.spendEconomy, f.closeThrow, f.openHit, f.answerOffer, f.settle,
+		f.resolve, f.record, f.spendEconomy, f.closeThrow, f.openHitDamage, f.answerOffer, f.settle,
 	} {
 		if err := phase(ctx); err != nil {
 			return err
@@ -245,9 +245,9 @@ func (f *attackFlow) writeAttack(ctx context.Context) error {
 // findAttacker reads the combat's combatants as the caller sees them (the fog: an NPC the player does not see
 // is not found) and the attacker, who the caller must be able to act for.
 func (f *attackFlow) findAttacker(ctx context.Context) error {
-	cs, err := f.c.q.ListCombatants(ctx, f.c.enc.ID)
+	cs, err := listCombatants(ctx, f.c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	f.cs = cs
 	f.v = f.c.viewer(f.m, cs)
@@ -372,12 +372,7 @@ func (f *attackFlow) catchMissile(ctx context.Context) error {
 
 // checkAttack checks the attack is a roll to hit: not a saving throw (CastSpell), and a melee weapon for an
 // opportunity attack, thrown or not (a dagger counts), not a bow or a spell.
-func (f *attackFlow) checkAttack(ctx context.Context) error {
-	terrain, err := f.s.terrainOf(ctx, f.c.tx, f.m.CampaignID, f.c.enc)
-	if err != nil {
-		return err
-	}
-	f.terrain = terrain
+func (f *attackFlow) checkAttack() error {
 	if f.attack.Save {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("this attack asks for a saving throw, not an attack roll: use CastSpell"))
 	}
@@ -459,13 +454,17 @@ func (f *attackFlow) readCover(ctx context.Context) error {
 	if f.call.offerID != "" && f.offer.LeftCol != nil && f.offer.LeftRow != nil { // an offer made by hand has no square
 		f.coverTarget.GridCol, f.coverTarget.GridRow = f.offer.LeftCol, f.offer.LeftRow
 	}
+	terrain, err := f.s.terrainOf(ctx, f.c.tx, f.m.CampaignID, f.c.enc)
+	if err != nil {
+		return err
+	}
 	known, err := f.c.sight.knownTerrain(ctx, f.c.tx, f.v)
 	if err != nil {
 		return err
 	}
 	// The real cover sets the armor class; the player is told, and refused, only by what they know of the
 	// map and see of the creatures (RN-10, MR-036).
-	cp, err := f.c.coverOf(ctx, f.v, f.terrain, known, f.attacker, f.coverTarget, f.cs)
+	cp, err := f.c.coverOf(ctx, f.v, terrain, known, f.attacker, f.coverTarget, f.cs)
 	if err != nil {
 		return err
 	}
@@ -534,6 +533,9 @@ func (f *attackFlow) rollD20(ctx context.Context) error {
 	}
 	f.modeIn = modeIn
 	f.truth = modeIn.facts(f.c.enc, f.c.sight).attackMode(f.attacker, f.coverTarget, f.sheet.Traits, f.modeShape(), actsNow(f.c.enc, f.attacker) && !f.call.asReaction, f.v, names)
+	if err := f.applyProtection(); err != nil {
+		return err
+	}
 	f.rolled, err = f.s.rollHeldAttack(ctx, f.c, f.v, f.req, f.spec, f.attacker, f.target, f.attackKey, f.truth.Mode, f.call.in, f.attack.ToHit)
 	if err != nil || f.rolled.Held != nil {
 		return err
@@ -611,13 +613,13 @@ func (f *attackFlow) attackEvent(run int32) actionEvent {
 	made := actionEvent{
 		RunBefore: run, Round: f.c.enc.Round, Secret: secretOf(a, f.target), Actor: a.ID, Target: f.target.ID, Key: f.attackKey,
 		Extra: f.extra, ExtraUsed: f.call.useExtra,
-		D20: clamp32(d20.Face(), 1, 20), Modifier: clamp32(f.attack.ToHit+f.bonusFace, math.MinInt32, math.MaxInt32), Total: clamp32(f.result.Total, math.MinInt32, math.MaxInt32),
+		D20: clamp32(d20.Face(), 1, 20), Modifier: conv.Int32(f.attack.ToHit + f.bonusFace), Total: conv.Int32(f.result.Total),
 		Physical: d20.Physical, Outcome: outcomeMiss, AsReaction: f.call.asReaction, CriticalMaxRule: f.c.rules.CriticalMaxPlusRoll,
 		D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(choice.Mode), SuggestedMode: modeKey(choice.Suggested),
 		ReasonID: choice.ReasonID, RequestID: choice.RequestID, CritOnHit: f.truth.CriticalOnHit && f.result.Hit,
 		ByMaster:     choice.ByMaster && choice.changed(),
 		ActionBefore: a.ActionUsed, BonusBefore: a.BonusActionUsed, ReactionBefore: a.ReactionUsed, AttacksBefore: a.AttacksMade,
-		AsBonus: f.bonusKind != combat.BonusNone, AttackKeyBefore: deref(a.ActionAttackKey), FlurryBefore: a.BonusAttacksLeft,
+		AsBonus: f.bonusKind != combat.BonusNone, AttackKeyBefore: conv.OrZero(a.ActionAttackKey), FlurryBefore: a.BonusAttacksLeft,
 		// The armor class the roll was compared with (an active Escudo's +5 included): the master's answer
 		// shows it, a player's never does.
 		TargetAC: clamp32(f.targetAC, 0, math.MaxInt32),
@@ -628,6 +630,7 @@ func (f *attackFlow) attackEvent(run int32) actionEvent {
 		made.Res = &resourceEvent{Kind: resBardicUse, Sides: b.Sides, Face: b.Face, FromID: b.From, ExpiresRound: b.ExpiresRound}
 	}
 	made.Lucky = f.rolled.Lucky // the d20 Lucky rolled again: the log says "Sortudo: 1 → 14"
+	made.ProtectedBy = f.protectedBy()
 	return made
 }
 
@@ -698,9 +701,9 @@ func (f *attackFlow) closeThrow(ctx context.Context) error {
 	return err
 }
 
-// openHit opens the damage of a hit: the dice of the weapon, what a critical hit adds, the parts of the
+// openHitDamage opens the damage of a hit: the dice of the weapon, what a critical hit adds, the parts of the
 // damage and the riders the hit offers.
-func (f *attackFlow) openHit(ctx context.Context) error {
+func (f *attackFlow) openHitDamage(ctx context.Context) error {
 	if !f.result.Hit {
 		return nil
 	}
@@ -709,15 +712,14 @@ func (f *attackFlow) openHit(ctx context.Context) error {
 		f.out.made.Outcome = outcomeCrit
 	}
 	bonus := f.damageBonus()
-	hit := extraDiceAttack(f.c.enc, f.attack, f.attacker, f.coverTarget, f.call.opportunity())
-	savage := savageAttacksDice(f.attacker, hit, f.sheet, f.result.Critical)
+	savage := savageAttacksDice(f.attacker, f.attack, f.sheet, f.result.Critical)
 	p, err := f.s.openHit(ctx, f.c, f.attacker, f.target, f.attackKey,
 		link.Dice{Count: f.attack.DiceCount, Sides: f.attack.DiceSides, Bonus: bonus, DamageType: f.attack.DamageType}, f.result.Critical,
-		brutalCriticalDice(f.attacker, hit, f.sheet, f.result.Critical)+savage, savage, f.result.Total, f.targetAC)
+		brutalCriticalDice(f.attacker, f.attack, f.sheet, f.result.Critical)+savage, savage, f.result.Total, f.targetAC)
 	if err != nil {
 		return err
 	}
-	if err := f.hitParts(ctx, bonus, p.ID); err != nil {
+	if err := f.writeHitParts(ctx, bonus, p.ID); err != nil {
 		return err
 	}
 	f.out.made.Pending = p.ID
@@ -736,8 +738,8 @@ func (f *attackFlow) damageBonus() int {
 	return f.attack.DiceBonus
 }
 
-// hitParts writes the parts of the damage of a hit.
-func (f *attackFlow) hitParts(ctx context.Context, bonus int, pendingID string) error {
+// writeHitParts writes the parts of the damage of a hit.
+func (f *attackFlow) writeHitParts(ctx context.Context, bonus int, pendingID string) error {
 	disadvantage := slices.ContainsFunc(f.truth.Sources, func(s combat.Source) bool { return s.Effect == combat.ModeDisadvantage })
 	return f.s.hitParts(ctx, f.c, f.m.CampaignID, f.v, f.modeIn, f.attacker, f.coverTarget, f.sheet, f.attack, bonus, f.rolled.Choice.Mode, disadvantage, f.call.opportunity(), pendingID)
 }
@@ -764,9 +766,8 @@ func (f *attackFlow) answerOffer(ctx context.Context) error {
 
 // settle moves the combat's revision and says whose character acted.
 func (f *attackFlow) settle(ctx context.Context) error {
-	var err error
-	if f.c.enc, err = f.c.q.TouchEncounter(ctx, f.c.enc.ID); err != nil {
-		return fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, f.c); err != nil {
+		return err
 	}
 	f.c.characterID = &f.attacker.CharacterID
 	return nil

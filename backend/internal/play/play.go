@@ -1,12 +1,11 @@
 // Package play is about playing a campaign at the table: it starts, ends
 // and lists game sessions (PlayService), which is what locks the players'
-// sheets (RN-01, MR-006, MR-011), and runs the live session (Etapa 5,
-// live.go): the in-app notice that a session is open (RN-06), the
+// sheets (RN-01, MR-006, MR-011), and runs the live session (live.go): the in-app notice that a session is open (RN-06), the
 // session's live stream (ADR-0005), the master's correction of the
 // characters' vitals (RN-02), each one recorded in session_events
 // (ADR-0007), and what the session shows at the table: the current map and
-// a gallery image (onscreen.go). Turns and actions come with combat (Etapa
-// 6).
+// a gallery image (onscreen.go). Turns and actions are in the combat files
+// (combat.go).
 //
 // Starting a session locks the sheets in the same transaction that opens
 // it, through a SheetLocker, and the vitals live in the characters module
@@ -45,6 +44,7 @@ import (
 	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/nostore"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/ratelimit"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/tablerules"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/wiring"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
@@ -234,8 +234,8 @@ type CombatRoster interface {
 	// Every read of this interface takes the caller's transaction (nil: the pool). A
 	// change that holds one must pass it: the read then sees what the change wrote
 	// (the character's vitals or Wild Shape form), and it takes no second connection,
-	// which would wait for the one the transaction keeps (docs/architecture/README.md,
-	// "Dentro de uma transação, nenhuma leitura pelo pool").
+	// which would wait for the one the transaction keeps (docs/architecture/transactions.md,
+	// first paragraph).
 
 	// CombatSheet returns what an attack needs from the sheet of a living
 	// character of the campaign, a player's or an NPC's: its armor class, its
@@ -290,7 +290,7 @@ type CombatRoster interface {
 	// content is read once, when it is asked for, not on every name.
 	ContentNames(ctx context.Context, tx pgx.Tx, campaignID string) (func(key string) string, error)
 
-	// The character's creatures (MR-037, Etapa 9). The ones that write take the
+	// The character's creatures (MR-037). The ones that write take the
 	// change's transaction.
 
 	// CharacterCreatures returns the live creatures of the given characters,
@@ -450,8 +450,9 @@ type LiveConfig struct {
 	// dropped (live.DefaultBuffer).
 	Buffer int
 	// HintAfter schedules the send that ends a hint gate's interval (the puzzles'
-	// and the content hint's): after d, run f. Nil is time.AfterFunc. A test uses it
-	// to know when no trailing hint is still waiting.
+	// and the content hint's): after d, run f. Nil is time.AfterFunc. It exists for
+	// tests, which use it to know when no trailing hint is still waiting; the
+	// server never sets it.
 	HintAfter func(d time.Duration, f func())
 }
 
@@ -473,7 +474,7 @@ type Config struct {
 	// Dice says where a player rolls (RN-18). Required.
 	Dice DiceModes
 	// Defaults gives the mode of a combat started without one (RN-24, RN-25).
-	// Optional: nil means every such combat is on a map, as before the modes.
+	// Optional: nil means every such combat is on a map.
 	Defaults CombatDefaults
 	// Terrain gives a combat the walls, difficult terrain and cover of its map
 	// (RN-21, D2). Optional: cmd/api sets it with SetTerrain once the maps module
@@ -484,6 +485,11 @@ type Config struct {
 	Roller dice.Roller
 	// Live sets the live stream's timing; the zero value is the defaults.
 	Live LiveConfig
+	// Messages configures the scene's conversation (MR-051): its display names,
+	// its voice and its rate limits. The zero value works: no names, no voice, no limit.
+	Messages MessagesConfig
+	// FreeRolls limits a user's rolls of the free dice roller (MR-052). Nil: no limit.
+	FreeRolls *ratelimit.Limiter
 	// Logger receives errors, without personal data. Nil means
 	// slog.Default().
 	Logger *slog.Logger
@@ -524,8 +530,12 @@ type Service struct {
 	// server instance only (docs/operations/README.md).
 	hub  *live.Hub
 	live LiveConfig
+	// free is the free dice roller's rate limit (free_roll_rpc.go).
+	free freeRollDeps
 	// nudges remembers when each character was last nudged (nudge.go), in memory.
 	nudges nudgeBook
+	// msgs is what the scene's conversation needs besides the database (messages.go).
+	msgs *messageDeps
 }
 
 // namerFor is the Portuguese name of a content key the combat shows, bound to one
@@ -601,6 +611,7 @@ func New(cfg Config) (*Service, error) {
 		hub:       live.New(cfg.Live.Buffer),
 		live:      cfg.Live,
 	}
+	s.msgs = newMessageDeps(cfg.Messages)
 	s.conditionNames = map[string]string{}
 	for _, c := range cfg.Roster.Conditions() {
 		s.conditionNames[c.Key] = c.NamePT
@@ -611,6 +622,7 @@ func New(cfg Config) (*Service, error) {
 	if s.now == nil {
 		s.now = time.Now
 	}
+	s.free = freeRollDeps{limit: cfg.FreeRolls, hit: ratelimit.NewNotifier(s.logger, "free dice rolls by user")}
 	s.puzzles.hints.logger = s.logger
 	s.puzzles.hints.after = cfg.Live.HintAfter
 	if s.roller == nil {
@@ -659,6 +671,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 		nostore.Interceptor(),                          // no response is cacheable
 		sessions.Interceptor(),                         // who is calling
 		authz.Interceptor(sessions, members, s.logger), // what they may do, memoized per request
+		heldHintInterceptor(s),                         // a roll that asks tells the master and its roller
 	))
 	handle(playv1connect.NewPlayServiceHandler(s, opts...))
 	handle(playv1connect.NewCombatServiceHandler(s, opts...))
@@ -669,12 +682,13 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 	handle(playv1connect.NewEncounterServiceHandler(s, opts...))
 	handle(playv1connect.NewLastingEffectServiceHandler(s, opts...))
 	handle(playv1connect.NewRevivifyServiceHandler(s, opts...))
+	s.mountVoice(handle, sessions, members)
 }
 
 // queriesIn is the queries on the transaction, or on the pool when tx is nil. A
 // read made while the caller holds a transaction must use the transaction: a
-// read through the pool takes a second connection (see docs/architecture/README.md,
-// "Dentro de uma transação, nenhuma leitura pelo pool").
+// read through the pool takes a second connection (see docs/architecture/transactions.md,
+// first paragraph).
 func (s *Service) queriesIn(tx pgx.Tx) *playdb.Queries {
 	if tx == nil {
 		return s.queries

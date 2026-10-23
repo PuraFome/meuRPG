@@ -2,17 +2,15 @@ package play
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
-	"slices"
 
 	"connectrpc.com/connect"
-	"github.com/jackc/pgx/v5"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -63,7 +61,7 @@ func (s *Service) afterDamage(ctx context.Context, c *combatTx, target playdb.Co
 // concentration ends at 0 hit points, or the save opens when the damage threatens it.
 func (s *Service) concentrationAfterDamage(ctx context.Context, c *combatTx, target playdb.Combatant, d damageLanded) error {
 	if after := d.hit.After; after != nil && after.HP == 0 {
-		return s.endConcentrationAtZero(ctx, c, target, d)
+		return s.endConcentrationAtZero(ctx, c, target, d.pending.ID)
 	}
 	if d.hit.ConcentrationDC <= 0 {
 		return nil
@@ -78,9 +76,11 @@ func (s *Service) concentrationAfterDamage(ctx context.Context, c *combatTx, tar
 }
 
 // endConcentrationAtZero ends the concentration of a target the damage took to 0 hit points: it
-// is incapacitated and loses the concentration with no save (SRD, Duration).
-func (s *Service) endConcentrationAtZero(ctx context.Context, c *combatTx, target playdb.Combatant, d damageLanded) error {
-	ev := actionEvent{Round: c.enc.Round, Secret: target.Hidden, Actor: target.ID, Reaction: &reactionEvent{Kind: concentrationEnd, Group: d.pending.ID}}
+// is incapacitated and loses the concentration with no save (SRD, Duration). group names the change
+// that took it there (the pending damage, or the combatant the master adjusted), so that the undo of
+// that change finds this event and takes it back with it; a change with no undo passes "".
+func (s *Service) endConcentrationAtZero(ctx context.Context, c *combatTx, target playdb.Combatant, group string) error {
+	ev := actionEvent{Round: c.enc.Round, Secret: target.Hidden, Actor: target.ID, Reaction: &reactionEvent{Kind: concentrationEnd, Group: group}}
 	if err := s.stopConcentrating(ctx, c, target, &ev); err != nil {
 		return err
 	}
@@ -101,27 +101,10 @@ func (s *Service) concentrationDamageTaken(ctx context.Context, c *combatTx, tar
 	taken = 0
 	for _, o := range all {
 		if o.TargetID == target.ID && !o.Healing && o.Status == pendingApplied {
-			taken += num(o.Taken)
+			taken += conv.OrZero(o.Taken)
 		}
 	}
 	return taken, nil
-}
-
-// handSaveToMaster marks a concentration save as left to the master: the owner can no longer
-// roll it, and the master's card asks for it.
-func (s *Service) handSaveToMaster(ctx context.Context, c *combatTx, w playdb.ReactionWindow, t windowTrigger) error {
-	t.Handed = true
-	body, err := json.Marshal(t)
-	if err != nil {
-		return fmt.Errorf("encode the window's trigger: %w", err)
-	}
-	if _, err := c.q.SetReactionWindowStep(ctx, playdb.SetReactionWindowStepParams{ID: w.ID, Step: w.Step, Trigger: body}); err != nil {
-		return fmt.Errorf("hand the save to the master: %w", err)
-	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return fmt.Errorf("touch the encounter: %w", err)
-	}
-	return nil
 }
 
 // concentrationRollOf reads how a concentration save is answered: the app's die, a
@@ -174,20 +157,19 @@ type concentrationCall struct {
 	in           rollInput
 	handOver     bool
 	keep         bool
+	// msg is the request, which the held roll keeps to answer again and whose extra die faces the roll reads.
+	msg *playv1.ResolveConcentrationSaveRequest
 }
 
-// readConcentrationCall reads a ResolveConcentrationSave request, refusing in the order the
-// handler always did: the caller, the keys, the ids, the answer.
+// readConcentrationCall reads a ResolveConcentrationSave request, refusing in this order: the
+// caller, the keys, the ids, the answer.
 func readConcentrationCall(ctx context.Context, msg *playv1.ResolveConcentrationSaveRequest) (concentrationCall, error) {
-	var call concentrationCall
+	call := concentrationCall{msg: msg}
 	var err error
-	if call.m, err = authz.RequireCampaignMember(ctx, msg.GetCampaignId()); err != nil {
+	if call.m, err = heldMember(ctx, msg.GetCampaignId()); err != nil {
 		return call, err
 	}
-	if call.key, err = parseKey(msg.GetIdempotencyKey()); err != nil {
-		return call, err
-	}
-	if call.encID, err = parseCombatID(msg.GetEncounterId(), "encounter"); err != nil {
+	if call.key, call.encID, err = parseCall(msg.GetIdempotencyKey(), msg.GetEncounterId()); err != nil {
 		return call, err
 	}
 	if call.winID, err = parseCombatID(msg.GetWindowId(), "window"); err != nil {
@@ -203,6 +185,7 @@ type concentrationRun struct {
 	result *playv1.ConcentrationSaveResult
 	offer  *playv1.OutsideInspirationOffer // the d20 was rolled and kept for the Bardic Inspiration question
 	lucky  *playv1.LuckyOffer              // or for the halfling's Lucky question, which comes first
+	held   *playv1.HeldRollOffer           // the same question, in the one shape every held roll has
 }
 
 // ResolveConcentrationSave implements playv1connect.CombatServiceHandler.
@@ -217,7 +200,7 @@ func (s *Service) ResolveConcentrationSave(
 	var run concentrationRun
 	res, err := s.write(ctx, combatWrite{m: call.m, key: call.key, hash: idem.Hash(req.Msg), kind: eventConcentrationSaveRolled, encounterID: call.encID}, func(c *combatTx) (any, error) {
 		run.result, run.offer, run.lucky = nil, nil, nil
-		return s.writeConcentrationSave(ctx, c, call, req.Msg, &run)
+		return s.writeConcentrationSave(ctx, c, call, &run)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "resolve a concentration save", err)
@@ -233,7 +216,7 @@ func (s *Service) concentrationAnswer(ctx context.Context, m authz.Membership, r
 		if err != nil {
 			return nil, err
 		}
-		return connect.NewResponse(&playv1.ResolveConcentrationSaveResponse{Encounter: out, InspirationOffer: run.offer, LuckyOffer: run.lucky}), nil
+		return connect.NewResponse(&playv1.ResolveConcentrationSaveResponse{Encounter: out, InspirationOffer: run.offer, LuckyOffer: run.lucky, HeldRollOffer: run.held}), nil
 	}
 	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
 		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
@@ -248,25 +231,10 @@ func (s *Service) concentrationAnswer(ctx context.Context, m authz.Membership, r
 	return connect.NewResponse(&playv1.ResolveConcentrationSaveResponse{Encounter: out, Result: run.result}), nil
 }
 
-// refuseSaveAnswer checks who may answer a save window, for the concentration save and the
-// effect's: the master's own options (keep, skip) are refused to a player, "leave it to the
-// master" to the master, and a save already handed over to anybody but the master.
-func refuseSaveAnswer(t windowTrigger, master, masterOnly, handOver bool) error {
-	switch {
-	case masterOnly && !master:
-		return errWindowDenied()
-	case handOver && master:
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("the master rolls it: use roll_in_app or d20_face"))
-	case t.Handed && !master:
-		return errWindowDenied() // the roll was left to the master
-	}
-	return nil
-}
-
 // writeConcentrationSave is the change of a concentration save, in the transaction: the window,
 // the answer (kept, or rolled), the end of the concentration on a failure, the window closed
 // and the event.
-func (s *Service) writeConcentrationSave(ctx context.Context, c *combatTx, call concentrationCall, msg *playv1.ResolveConcentrationSaveRequest, run *concentrationRun) (any, error) {
+func (s *Service) writeConcentrationSave(ctx context.Context, c *combatTx, call concentrationCall, run *concentrationRun) (any, error) {
 	if err := notEnded(c.enc); err != nil {
 		return nil, err
 	}
@@ -293,9 +261,11 @@ func (s *Service) writeConcentrationSave(ctx context.Context, c *combatTx, call 
 		ev.Reaction.Kept = true
 		run.result = &playv1.ConcentrationSaveResult{Dc: dc, Kept: true, SpellKey: t.Spell}
 	} else {
-		var held bool
-		if kept, held, err = s.rollConcentration(ctx, c, call, msg, reactor, t, dc, &ev, run); err != nil || held {
+		if kept, err = s.rollConcentration(ctx, c, call, reactor, t, dc, &ev, run); err != nil {
 			return nil, err
+		}
+		if run.offer != nil || run.lucky != nil { // the d20 is kept for a question: nothing is written
+			return nil, nil
 		}
 	}
 	if !kept {
@@ -306,8 +276,8 @@ func (s *Service) writeConcentrationSave(ctx context.Context, c *combatTx, call 
 	if _, err := s.closeWindow(ctx, c, w, windowAnswered, reaction.ReasonNone, windowOutcome{ByMaster: master, Used: true}, ""); err != nil {
 		return nil, err
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return nil, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return nil, err
 	}
 	c.characterID = &reactor.CharacterID
 	run.made = ev
@@ -325,133 +295,77 @@ func (s *Service) loseConcentration(ctx context.Context, c *combatTx, reactor pl
 	return insertEvent(ctx, c, eventConditionsSet, &c.actorUserID, nil, stop)
 }
 
-// concentrationStep is the d20 of a concentration save as the gate gave it, with the save's bonus
-// and the effects' states the dice come from.
-type concentrationStep struct {
-	gate   gateResult
-	bonus  int
-	states map[string][]playdb.CombatantState
-}
-
-// heldConcentrationRoll checks the way of rolling and takes the save's d20 from the gate: the
-// roll, or the question it waits for (the gate's Held).
-func (s *Service) heldConcentrationRoll(ctx context.Context, c *combatTx, call concentrationCall, msg *playv1.ResolveConcentrationSaveRequest, reactor playdb.Combatant) (concentrationStep, error) {
-	var none concentrationStep
+// rollConcentration checks the way of rolling, takes the save's d20 from the gate and writes what it
+// showed in the event. It answers whether the concentration is kept, unless the gate kept the d20 for a
+// question instead (the offers are in run, and nothing is written).
+func (s *Service) rollConcentration(
+	ctx context.Context, c *combatTx, call concentrationCall,
+	reactor playdb.Combatant, t windowTrigger, dc int32, ev *actionEvent, run *concentrationRun,
+) (bool, error) {
 	if call.m.Role != authz.RoleMaster {
 		if err := s.mustRollThisWay(ctx, c.tx, call.m, call.in); err != nil {
-			return none, err
+			return false, err
 		}
 	}
 	save, err := s.saveOf(ctx, c.tx, c.session.CampaignID, reactor, "con")
 	if err != nil {
-		return none, err
+		return false, err
 	}
 	// The saving throw has a mode like any other (SRD 5.1): exhaustion 3 or more is
 	// disadvantage on saving throws. Haste's advantage is on Dexterity saves only, so it
 	// does not reach this Constitution save.
 	states, err := s.readStates(ctx, c.tx, c.enc.ID)
 	if err != nil {
-		return none, err
+		return false, err
 	}
 	sheet, err := s.sheetOf(ctx, c.tx, c.session.CampaignID, reactor)
 	if err != nil {
-		return none, err
+		return false, err
 	}
 	mode := combat.Resolve(concentrationSources(creatureFacts(reactor, states, sheet.Traits)))
 	// A player's character that holds a Bardic Inspiration die has the d20 kept until the player
 	// answers (nothing has been written yet); the answer brings it back with the die added. So
 	// has a halfling's d20 that shows a 1, for the Lucky question first.
-	gate, err := s.heldGate(ctx, s.inspirationGate(c), saveSpec(call.m, heldConcentrationSave, reactor, call.key, msg, call.in, save.Bonus, mode, sheet.Traits.Lucky))
-	return concentrationStep{gate: gate, bonus: save.Bonus, states: states}, err
-}
-
-// rollConcentration rolls the save of a concentration and writes what it showed in the event. It
-// answers whether the concentration is kept, and whether the d20 was kept for a question instead
-// (the offers are in run, and nothing is written).
-func (s *Service) rollConcentration(
-	ctx context.Context, c *combatTx, call concentrationCall, msg *playv1.ResolveConcentrationSaveRequest,
-	reactor playdb.Combatant, t windowTrigger, dc int32, ev *actionEvent, run *concentrationRun,
-) (kept, held bool, err error) {
-	step, err := s.heldConcentrationRoll(ctx, c, call, msg, reactor)
+	gate, err := s.heldGate(ctx, s.inspirationGate(c), saveSpec(call.m, heldConcentrationSave, reactor, call.key, call.msg, call.in, save.Bonus, mode, sheet.Traits.Lucky))
 	if err != nil {
-		return false, false, err
+		return false, err
 	}
-	if step.gate.Held != nil {
-		run.offer, run.lucky = s.outsideOffers(ctx, c.tx, step.gate.Held)
-		return false, true, nil
+	if gate.Held != nil {
+		run.offer, run.lucky, run.held = s.outsideOffers(ctx, c.tx, gate.Held)
+		return false, nil
 	}
 	// Bênção and Perdição add their die to the saving throw (SRD 5.1).
-	extra, delta, err := s.rollEffectDice(call.in, effectDiceFor(step.states, reactor.ID, rules.RollAppliesSave), msg.GetExtraDieFaces())
+	extra, delta, err := s.rollEffectDice(call.in, effectDiceFor(states, reactor.ID, rules.RollAppliesSave), call.msg.GetExtraDieFaces())
 	if err != nil {
-		return false, false, err
+		return false, err
 	}
 	if err := s.spendOnceEffects(ctx, c, extra); err != nil {
-		return false, false, err
+		return false, err
 	}
-	return recordConcentrationRoll(ev, run, step, delta, dc, t.Spell), false, nil
+	return recordConcentrationRoll(ev, run, gate, save.Bonus, delta, dc, t.Spell), nil
 }
 
 // recordConcentrationRoll writes what the save showed in the event and the result, and answers
 // whether the concentration is kept: the d20 and the dice the effects added reach the DC.
-func recordConcentrationRoll(ev *actionEvent, run *concentrationRun, step concentrationStep, delta int, dc int32, spell string) bool {
-	roll := step.gate.Roll
+func recordConcentrationRoll(ev *actionEvent, run *concentrationRun, gate gateResult, bonus, delta int, dc int32, spell string) bool {
+	roll := gate.Roll
 	bonusFace := 0
-	if step.gate.Bonus != nil {
-		bonusFace = int(step.gate.Bonus.Face) // the die the player added after rolling
+	if gate.Bonus != nil {
+		bonusFace = int(gate.Bonus.Face) // the die the player added after rolling
 	}
 	total := roll.Total + delta
 	kept := total >= int(dc)
 	re := ev.Reaction
-	re.SaveD20, re.SaveBonus, re.Saved, re.Kept = clamp32(roll.Face(), 1, 20), clamp32(step.bonus+delta+bonusFace, math.MinInt32, math.MaxInt32), kept, kept
-	ev.D20, ev.Modifier, ev.Total, ev.Physical = re.SaveD20, re.SaveBonus, clamp32(total, math.MinInt32, math.MaxInt32), roll.Physical
+	re.SaveD20, re.SaveBonus, re.Saved, re.Kept = clamp32(roll.Face(), 1, 20), conv.Int32(bonus+delta+bonusFace), kept, kept
+	ev.D20, ev.Modifier, ev.Total, ev.Physical = re.SaveD20, re.SaveBonus, conv.Int32(total), roll.Physical
 	ev.D20B, ev.Counted = clamp32(roll.otherFace(), 0, 20), clamp32(roll.Index, 0, 1)
-	ev.Lucky = step.gate.Lucky // the d20 Lucky rolled again: the log says "Sortudo: 1 → 14"
+	ev.Lucky = gate.Lucky // the d20 Lucky rolled again: the log says "Sortudo: 1 → 14"
 	run.result = &playv1.ConcentrationSaveResult{
 		Save: diceRoll(clamp32(len(roll.Faces), 1, 2), 20, faces32(roll.Faces), re.SaveBonus, ev.Total, roll.Physical), Dc: dc, Kept: kept, SpellKey: spell,
 	}
-	run.result.Save.Rerolled = step.gate.Lucky.proto()
-	if step.gate.Bonus != nil {
-		run.result.BonusDice = []*playv1.BonusDie{step.gate.Bonus}
+	run.result.Save.Rerolled = gate.Lucky.proto()
+	if gate.Bonus != nil {
+		run.result.BonusDice = []*playv1.BonusDie{gate.Bonus}
 	}
 	return kept
-}
-
-// windowToAnswer finds the window an answer is for, inside the change's transaction,
-// and checks the caller may answer it and that it is its turn: the master answers any
-// window; a player only the ones of their own character, and any other window id, real
-// or not, is refused the same way (RN-10). A window that is gone or already answered
-// is "not your turn to answer".
-func (s *Service) windowToAnswer(ctx context.Context, c *combatTx, m authz.Membership, id string) (playdb.ReactionWindow, playdb.Combatant, error) {
-	var none playdb.ReactionWindow
-	master := m.Role == authz.RoleMaster
-	w, err := c.q.GetReactionWindowForUpdate(ctx, playdb.GetReactionWindowForUpdateParams{EncounterID: c.enc.ID, ID: id})
-	if errors.Is(err, pgx.ErrNoRows) {
-		if master {
-			return none, playdb.Combatant{}, connect.NewError(connect.CodeNotFound, errors.New("reaction window not found"))
-		}
-		return none, playdb.Combatant{}, errWindowDenied()
-	}
-	if err != nil {
-		return none, playdb.Combatant{}, fmt.Errorf("find the reaction window: %w", err)
-	}
-	var reactor playdb.Combatant
-	if w.ReactorID != nil {
-		cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-		if err != nil {
-			return none, reactor, fmt.Errorf("list the combatants: %w", err)
-		}
-		if i := slices.IndexFunc(cs, func(x playdb.Combatant) bool { return x.ID == *w.ReactorID }); i >= 0 {
-			reactor = cs[i]
-		}
-	}
-	if !master && (w.ReactorID == nil || reactor.ID == "" || reactor.UserID == nil || *reactor.UserID != m.UserID || isCreature(reactor)) {
-		return none, reactor, errWindowDenied()
-	}
-	if w.Status != windowOpen {
-		return none, reactor, errNotYourTurnToAnswer()
-	}
-	if err := s.mustBeFirstOfGroup(ctx, c, w); err != nil {
-		return none, reactor, err
-	}
-	return w, reactor, nil
 }

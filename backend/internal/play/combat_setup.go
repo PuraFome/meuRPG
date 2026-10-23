@@ -4,17 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"slices"
 
 	"connectrpc.com/connect"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
-	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
 // The handlers that set a combat up and keep its roster: the initiative, the order of a tie,
@@ -24,38 +24,14 @@ import (
 // minTiedCombatants is how few combatants an order of a tie can name.
 const minTiedCombatants = 2
 
-// masterCaller reads the head of a request only the master may make, in the order the answers
-// are given: who may call, the key, then the encounter.
-func masterCaller(ctx context.Context, campaignID, keyRaw, encounterRaw string) (m authz.Membership, key, encID string, err error) {
-	if m, err = authz.RequireCampaignRole(ctx, campaignID, authz.RoleMaster); err != nil {
-		return m, "", "", err
-	}
-	if key, err = parseKey(keyRaw); err != nil {
-		return m, "", "", err
-	}
-	if encID, err = parseCombatID(encounterRaw, "encounter"); err != nil {
-		return m, "", "", err
-	}
-	return m, key, encID, nil
-}
-
-// listCombatants reads the combatants of the combat c.enc.
-func listCombatants(ctx context.Context, c *combatTx) ([]playdb.Combatant, error) {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
-	}
-	return cs, nil
-}
-
 // initiativeCall is what SubmitInitiative reads from its request, checked.
 type initiativeCall struct {
 	m           authz.Membership
 	key         string
 	encounterID string
 	combatantID string
-	inApp       bool // the app rolls the d20; otherwise face is the physical die
-	face        int
+	in          rollInput // the app rolls the d20, or the physical die the player typed
+	msg         *playv1.SubmitInitiativeRequest
 }
 
 // SubmitInitiative implements playv1connect.CombatServiceHandler.
@@ -63,7 +39,7 @@ func (s *Service) SubmitInitiative(
 	ctx context.Context,
 	req *connect.Request[playv1.SubmitInitiativeRequest],
 ) (*connect.Response[playv1.SubmitInitiativeResponse], error) {
-	call, err := readInitiativeRequest(ctx, req.Msg)
+	call, err := readInitiativeCall(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
@@ -76,8 +52,10 @@ func (s *Service) SubmitInitiative(
 		}
 	}
 
+	var held *playv1.HeldRollOffer
 	res, err := s.write(ctx, combatWrite{m: call.m, key: call.key, hash: idem.Hash(req.Msg), kind: eventInitiativeSubmitted, encounterID: call.encounterID}, func(c *combatTx) (any, error) {
-		return s.initiativeWrite(ctx, c, call, force)
+		held = nil
+		return s.initiativeWrite(ctx, c, call, force, &held)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "submit an initiative", err)
@@ -86,17 +64,21 @@ func (s *Service) SubmitInitiative(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&playv1.SubmitInitiativeResponse{Encounter: out}), nil
+	return connect.NewResponse(&playv1.SubmitInitiativeResponse{Encounter: out, HeldRollOffer: held}), nil
 }
 
-// readInitiativeRequest reads the request in the order the answers are given: who may call,
+// readInitiativeCall reads the request in the order the answers are given: who may call,
 // the key, the encounter, the combatant, then the roll.
-func readInitiativeRequest(ctx context.Context, req *playv1.SubmitInitiativeRequest) (initiativeCall, error) {
-	m, key, encID, err := contestCaller(ctx, req.GetCampaignId(), req.GetIdempotencyKey(), req.GetEncounterId())
+func readInitiativeCall(ctx context.Context, req *playv1.SubmitInitiativeRequest) (initiativeCall, error) {
+	m, err := heldMember(ctx, req.GetCampaignId()) // a held roll's answer runs this again as the roller
 	if err != nil {
 		return initiativeCall{}, err
 	}
-	call := initiativeCall{m: m, key: key, encounterID: encID}
+	key, encID, err := parseCall(req.GetIdempotencyKey(), req.GetEncounterId())
+	if err != nil {
+		return initiativeCall{}, err
+	}
+	call := initiativeCall{m: m, key: key, encounterID: encID, msg: req}
 	if call.combatantID, err = parseCombatID(req.GetCombatantId(), "combatant"); err != nil {
 		return initiativeCall{}, err
 	}
@@ -105,9 +87,9 @@ func readInitiativeRequest(ctx context.Context, req *playv1.SubmitInitiativeRequ
 		if !roll.RollInApp {
 			return initiativeCall{}, connect.NewError(connect.CodeInvalidArgument, errors.New("roll_in_app must be true"))
 		}
-		call.inApp = true
+		call.in.inApp = true
 	case *playv1.SubmitInitiativeRequest_D20Face:
-		call.face = int(roll.D20Face)
+		call.in.typed = int(roll.D20Face)
 	default:
 		return initiativeCall{}, connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or d20_face"))
 	}
@@ -116,7 +98,7 @@ func readInitiativeRequest(ctx context.Context, req *playv1.SubmitInitiativeRequ
 
 // initiativeWrite is the transaction of SubmitInitiative: who rolls, the roll, where it is
 // stored, and the new order.
-func (s *Service) initiativeWrite(ctx context.Context, c *combatTx, call initiativeCall, force DiceForce) (any, error) {
+func (s *Service) initiativeWrite(ctx context.Context, c *combatTx, call initiativeCall, force DiceForce, held **playv1.HeldRollOffer) (any, error) {
 	cs, err := listCombatants(ctx, c)
 	if err != nil {
 		return nil, err
@@ -129,14 +111,18 @@ func (s *Service) initiativeWrite(ctx context.Context, c *combatTx, call initiat
 	if err := v.mayAct(target); err != nil {
 		return nil, err
 	}
-	if err := mayRollInitiative(c.enc, v, target, force, call.inApp); err != nil {
+	if err := mayRollInitiative(c.enc, v, target, force, call.in.inApp); err != nil {
 		return nil, err
 	}
-	roll, face, err := s.initiativeRoll(target, call)
+	gate, err := s.initiativeGate(ctx, c, call, target)
 	if err != nil {
 		return nil, err
 	}
-	total, f := clamp32(roll.Total, math.MinInt32, math.MaxInt32), clamp32(face, 1, 20)
+	if gate.Held != nil {
+		_, _, *held = s.outsideOffers(ctx, c.tx, gate.Held)
+		return nil, nil
+	}
+	total, f := conv.Int32(gate.Roll.Total), clamp32(gate.Roll.Face(), 1, 20)
 	if err := saveInitiative(ctx, c, cs, target, total, f); err != nil {
 		return nil, err
 	}
@@ -147,7 +133,7 @@ func (s *Service) initiativeWrite(ctx context.Context, c *combatTx, call initiat
 		return nil, err
 	}
 	c.characterID = &target.CharacterID
-	return map[string]any{"combatant_id": target.ID, "face": f, "total": total, "physical": !call.inApp}, nil
+	return map[string]any{"combatant_id": target.ID, "face": f, "total": total, "physical": gate.Roll.Physical}, nil
 }
 
 // mayRollInitiative checks that the combat is in SETUP and, for a player, that the initiative
@@ -171,20 +157,23 @@ func mayRollInitiative(enc playdb.Encounter, v combatViewer, target playdb.Comba
 	return nil
 }
 
-// initiativeRoll rolls the d20 in the app, or takes the physical die the player typed, and
-// adds the target's bonus. It returns the roll and the face.
-func (s *Service) initiativeRoll(target playdb.Combatant, call initiativeCall) (roll dice.Result, face int, err error) {
-	expr := dice.Expr{Count: 1, Sides: d20Sides, Modifier: int(target.InitiativeBonus)}
-	if call.inApp {
-		if roll, err = dice.Roll(s.roller, expr); err != nil {
-			return roll, 0, fmt.Errorf("roll the initiative: %w", err)
+// initiativeGate rolls the d20 of an initiative, or keeps it for a question: initiative is a Dexterity check (SRD 5.1), so
+// a character that holds a Bardic Inspiration die, or a halfling whose d20 shows a 1, is asked before the total is set.
+// The combat is in SETUP, so the die is the character's own (it carries into the combat when it begins). A creature, an
+// NPC and the master's roll for them wait for nobody.
+func (s *Service) initiativeGate(ctx context.Context, c *combatTx, call initiativeCall, target playdb.Combatant) (gateResult, error) {
+	spec := rollSpec{
+		Kind: heldInitiative, Key: call.key, Request: call.msg, In: call.in, Modifier: int(target.InitiativeBonus), Mode: combat.ModeNormal,
+		Roller: heldRoller{CampaignID: call.m.CampaignID, CharacterID: target.CharacterID, UserID: call.m.UserID},
+	}
+	if target.Kind == kindPlayer && backedByCharacter(target) {
+		sheet, err := s.sheetOf(ctx, c.tx, c.session.CampaignID, target)
+		if err != nil {
+			return gateResult{}, err
 		}
-		return roll, roll.Faces[0], nil
+		spec.Lucky, spec.MayAsk = sheet.Traits.Lucky, playedBy(target, call.m)
 	}
-	if roll, err = dice.Physical(expr, call.face); err != nil {
-		return roll, 0, connect.NewError(connect.CodeInvalidArgument, errors.New("d20_face must be 1 to 20"))
-	}
-	return roll, call.face, nil
+	return s.heldGate(ctx, s.inspirationGate(c), spec)
 }
 
 // saveInitiative stores the roll on the combatant, or on the group of creatures it rolled
@@ -208,12 +197,12 @@ func saveInitiative(ctx context.Context, c *combatTx, cs []playdb.Combatant, tar
 // the group takes the roll, with the bonus of the one that rolled, so they take a joint turn.
 func saveGroupInitiative(ctx context.Context, c *combatTx, cs []playdb.Combatant, target playdb.Combatant, total, f int32) error {
 	if err := c.q.SetGroupInitiative(ctx, playdb.SetGroupInitiativeParams{
-		EncounterID: c.enc.ID, SummonGroupID: deref(target.SummonGroupID), Initiative: &total, InitiativeFace: &f, InitiativeBonus: target.InitiativeBonus,
+		EncounterID: c.enc.ID, SummonGroupID: conv.OrZero(target.SummonGroupID), Initiative: &total, InitiativeFace: &f, InitiativeBonus: target.InitiativeBonus,
 	}); err != nil {
 		return fmt.Errorf("save the group's initiative: %w", err)
 	}
 	for i := range cs {
-		if isCreature(cs[i]) && deref(cs[i].SummonGroupID) == deref(target.SummonGroupID) {
+		if isCreature(cs[i]) && conv.OrZero(cs[i].SummonGroupID) == conv.OrZero(target.SummonGroupID) {
 			cs[i].Initiative, cs[i].InitiativeFace, cs[i].InitiativeBonus, cs[i].TieOrdered = &total, &f, target.InitiativeBonus, false
 		}
 	}
@@ -233,7 +222,7 @@ func (s *Service) SetInitiativeOrder(
 	ctx context.Context,
 	req *connect.Request[playv1.SetInitiativeOrderRequest],
 ) (*connect.Response[playv1.SetInitiativeOrderResponse], error) {
-	call, err := readOrderRequest(ctx, req.Msg)
+	call, err := readOrderCall(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
@@ -250,10 +239,10 @@ func (s *Service) SetInitiativeOrder(
 	return connect.NewResponse(&playv1.SetInitiativeOrderResponse{Encounter: out}), nil
 }
 
-// readOrderRequest reads the request in the order the answers are given: who may call, the
+// readOrderCall reads the request in the order the answers are given: who may call, the
 // key, the encounter, then the combatants, each once and at least two.
-func readOrderRequest(ctx context.Context, req *playv1.SetInitiativeOrderRequest) (orderCall, error) {
-	m, key, encID, err := masterCaller(ctx, req.GetCampaignId(), req.GetIdempotencyKey(), req.GetEncounterId())
+func readOrderCall(ctx context.Context, req *playv1.SetInitiativeOrderRequest) (orderCall, error) {
+	m, key, encID, err := masterCall(ctx, req.GetCampaignId(), req.GetIdempotencyKey(), req.GetEncounterId())
 	if err != nil {
 		return orderCall{}, err
 	}
@@ -319,7 +308,7 @@ func (s *Service) BeginCombat(
 	ctx context.Context,
 	req *connect.Request[playv1.BeginCombatRequest],
 ) (*connect.Response[playv1.BeginCombatResponse], error) {
-	m, key, encID, err := masterCaller(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
+	m, key, encID, err := masterCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
 	if err != nil {
 		return nil, err
 	}
@@ -400,7 +389,7 @@ func (s *Service) SetCombatantHidden(
 	ctx context.Context,
 	req *connect.Request[playv1.SetCombatantHiddenRequest],
 ) (*connect.Response[playv1.SetCombatantHiddenResponse], error) {
-	m, key, encID, err := masterCaller(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
+	m, key, encID, err := masterCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
 	if err != nil {
 		return nil, err
 	}
@@ -466,7 +455,7 @@ func (s *Service) AddCombatants(
 	ctx context.Context,
 	req *connect.Request[playv1.AddCombatantsRequest],
 ) (*connect.Response[playv1.AddCombatantsResponse], error) {
-	m, key, encID, err := masterCaller(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
+	m, key, encID, err := masterCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
 	if err != nil {
 		return nil, err
 	}
@@ -535,7 +524,7 @@ func (s *Service) RemoveCombatant(
 	ctx context.Context,
 	req *connect.Request[playv1.RemoveCombatantRequest],
 ) (*connect.Response[playv1.RemoveCombatantResponse], error) {
-	m, key, encID, err := masterCaller(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
+	m, key, encID, err := masterCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
 	if err != nil {
 		return nil, err
 	}
@@ -589,6 +578,11 @@ func (s *Service) removeWrite(ctx context.Context, c *combatTx, m authz.Membersh
 		return nil, err
 	}
 	*turnPassed = *turnPassed || inTurn(c.enc, target)
+	// A character keeps what is on it: the effects go back to game time before the row
+	// (and the effects with it) is deleted.
+	if err := s.effectRowsToCharacters(ctx, c, cs, []playdb.Combatant{target}); err != nil {
+		return nil, err
+	}
 	if err := c.q.DeleteCombatant(ctx, target.ID); err != nil {
 		return nil, fmt.Errorf("delete the combatant: %w", err)
 	}
@@ -613,7 +607,9 @@ func mayLeave(ctx context.Context, c *combatTx, target playdb.Combatant) error {
 	if err != nil {
 		return fmt.Errorf("list the pending damage: %w", err)
 	}
-	if slices.ContainsFunc(open, func(p playdb.PendingDamage) bool { return p.TargetID == target.ID || deref(p.AttackerID) == target.ID }) {
+	if slices.ContainsFunc(open, func(p playdb.PendingDamage) bool {
+		return p.TargetID == target.ID || conv.OrZero(p.AttackerID) == target.ID
+	}) {
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_PENDING_DAMAGE, "a damage is still to roll or to apply")
 	}
 	return nil

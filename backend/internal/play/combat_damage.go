@@ -13,6 +13,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -20,10 +21,10 @@ import (
 )
 
 // The damage roll (RollDamage), in phases. rollDamage reads the request, runs the transaction as a sequence
-// of phases of a damageFlow, each one of the checks or the writes the damage has always made in that order,
+// of phases of a damageFlow, each one of the checks or the writes the damage makes, in that order,
 // and answers from what the transaction left in a damageOut. The phases keep the order of the reads, the
-// dice and the writes: the scripted dice of the tests and the golden of combat_roll_damage_frozen_test.go
-// read it.
+// dice and the writes, because the scripted dice of the tests and the golden of
+// combat_roll_damage_golden_test.go depend on it.
 
 // damageCall is what RollDamage reads from its request, checked.
 type damageCall struct {
@@ -36,10 +37,7 @@ type damageCall struct {
 func readDamageCall(req *playv1.RollDamageRequest) (damageCall, error) {
 	var call damageCall
 	var err error
-	if call.key, err = parseKey(req.GetIdempotencyKey()); err != nil {
-		return call, err
-	}
-	if call.encounterID, err = parseCombatID(req.GetEncounterId(), "encounter"); err != nil {
+	if call.key, call.encounterID, err = parseCall(req.GetIdempotencyKey(), req.GetEncounterId()); err != nil {
 		return call, err
 	}
 	if call.pendingID, err = parseCombatID(req.GetPendingDamageId(), "pending damage"); err != nil {
@@ -164,8 +162,8 @@ func (f *damageFlow) run(ctx context.Context) (any, error) {
 			return nil, err
 		}
 	}
-	if f.c.enc, err = f.c.q.TouchEncounter(ctx, f.c.enc.ID); err != nil {
-		return nil, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, f.c); err != nil {
+		return nil, err
 	}
 	f.c.characterID = &f.attacker.CharacterID
 	return f.out.made, nil
@@ -220,14 +218,14 @@ func (f *damageFlow) findPending(ctx context.Context) error {
 // findParties reads the combatants and finds the attacker and the target for the caller: the fog hides an NPC
 // the player does not see.
 func (f *damageFlow) findParties(ctx context.Context) error {
-	cs, err := f.c.q.ListCombatants(ctx, f.c.enc.ID)
+	cs, err := listCombatants(ctx, f.c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	f.cs = cs
 	v := f.c.viewer(f.m, cs) // the fog: an NPC the player does not see is not found
 	f.out.v = v
-	if f.attacker, err = findCombatant(cs, deref(f.p.AttackerID), v); err != nil {
+	if f.attacker, err = findCombatant(cs, conv.OrZero(f.p.AttackerID), v); err != nil {
 		return err
 	}
 	if err := v.mayAct(f.attacker); err != nil {
@@ -272,16 +270,16 @@ func (f *damageFlow) openGroup(ctx context.Context) error {
 	})
 	// The pending damages of a cast share their creation time, so the query leaves their order to their
 	// random ids: settle them in the combat's turn order.
-	cs := f.cs
-	slices.SortStableFunc(f.group, func(x, y playdb.PendingDamage) int {
-		return cmp.Compare(combatantIndex(cs, x.TargetID), combatantIndex(cs, y.TargetID))
-	})
+	sortByCombatOrder(f.cs, f.group)
 	return nil
 }
 
-// combatantIndex is where a combatant stands in the turn order of cs, -1 when it is not there.
-func combatantIndex(cs []playdb.Combatant, id string) int {
-	return slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == id })
+// sortByCombatOrder puts pending damages in the order their targets stand in cs, an absent target first.
+func sortByCombatOrder(cs []playdb.Combatant, group []playdb.PendingDamage) {
+	index := func(id string) int { return slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == id }) }
+	slices.SortStableFunc(group, func(x, y playdb.PendingDamage) int {
+		return cmp.Compare(index(x.TargetID), index(y.TargetID))
+	})
 }
 
 // rollDice makes the roll: the parts of a hit with extras, or the one group of dice, then what the roll made
@@ -296,7 +294,7 @@ func (f *damageFlow) rollDice(ctx context.Context) error {
 	case f.expr.Count == 0:
 		f.roll = dice.Result{Expr: f.expr, Modifier: f.expr.Modifier, Total: f.expr.Modifier}
 	default:
-		if err := f.rollGroup(ctx); err != nil {
+		if err := f.rollPlainDamage(ctx); err != nil {
 			return err
 		}
 	}
@@ -325,8 +323,8 @@ func (f *damageFlow) rollParts(ctx context.Context) error {
 	return err
 }
 
-// rollGroup rolls the one group of dice of a damage with no parts, in the app or from the typed sum.
-func (f *damageFlow) rollGroup(ctx context.Context) error {
+// rollPlainDamage rolls the one group of dice of a damage with no parts, in the app or from the typed sum.
+func (f *damageFlow) rollPlainDamage(ctx context.Context) error {
 	if !f.out.v.master {
 		if err := f.s.mustRollThisWay(ctx, f.c.tx, f.m, f.call.in); err != nil {
 			return err
@@ -377,7 +375,7 @@ func (f *damageFlow) startEvent() {
 	p := f.p
 	f.out.made = actionEvent{
 		Round: f.c.enc.Round, Secret: secretOf(f.attacker, f.target), Actor: f.attacker.ID, Target: p.TargetID, Pending: p.ID, Key: p.AttackKey,
-		DiceCount: p.DiceCount + p.ExtraDice, ExtraDice: p.ExtraDice, SavageDice: p.SavageDice, DiceSides: p.DiceSides, Modifier: clamp32(int(p.DiceBonus)+int(p.CriticalMax), math.MinInt32, math.MaxInt32), CriticalMax: p.CriticalMax, CriticalMaxRule: p.CriticalMaxRule, Faces: f.faces,
+		DiceCount: p.DiceCount + p.ExtraDice, ExtraDice: p.ExtraDice, SavageDice: p.SavageDice, DiceSides: p.DiceSides, Modifier: conv.Int32(int(p.DiceBonus) + int(p.CriticalMax)), CriticalMax: p.CriticalMax, CriticalMaxRule: p.CriticalMaxRule, Faces: f.faces,
 		DamageType: p.DamageType, Critical: p.Critical, Physical: f.roll.Physical, Heal: p.Healing, Total: f.rolledTotal,
 	}
 }
@@ -494,6 +492,9 @@ func (f *damageFlow) keepRoll(ctx context.Context, g playdb.PendingDamage, tgt p
 	}
 	if err := f.s.keepRollDetail(ctx, c, g, f.p, f.pr, steps, *hit); err != nil {
 		return err
+	}
+	if f.pr != nil && g.ID == f.p.ID && rewritesParts(f.p.Parts, f.pr.parts) {
+		f.out.made.PartsBefore = f.p.Parts // the roll rewrote the list: its undo puts this one back
 	}
 	if f.p.CastID == nil || !hit.Applied || g.Healing {
 		return nil

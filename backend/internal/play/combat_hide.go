@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"slices"
 
 	"connectrpc.com/connect"
@@ -13,6 +12,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -67,6 +67,10 @@ type hidePlan struct {
 	combatantID string
 	actionKey   string
 	in          checkInput
+	// req is the request, kept when a reaction window holds the roll.
+	req *playv1.HideRequest
+	// key is the idempotency key of the request, which a question about the d20 keeps its roll under.
+	key string
 }
 
 // Hide implements playv1connect.ContestServiceHandler.
@@ -74,28 +78,49 @@ func (s *Service) Hide(
 	ctx context.Context,
 	req *connect.Request[playv1.HideRequest],
 ) (*connect.Response[playv1.HideResponse], error) {
-	m, key, encID, err := contestCaller(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
+	m, err := heldMember(ctx, req.Msg.GetCampaignId()) // a held roll's answer runs this again as the roller
 	if err != nil {
 		return nil, err
 	}
-	plan, err := parseHidePlan(req.Msg)
+	return s.hide(ctx, m, req.Msg)
+}
+
+// hide is Hide as a member: also what the replay of a held roll runs.
+func (s *Service) hide(ctx context.Context, m authz.Membership, msg *playv1.HideRequest) (*connect.Response[playv1.HideResponse], error) {
+	key, encID, err := parseCall(msg.GetIdempotencyKey(), msg.GetEncounterId())
 	if err != nil {
 		return nil, err
 	}
+	plan, err := parseHidePlan(msg)
+	if err != nil {
+		return nil, err
+	}
+	plan.key = key
 
 	var made actionEvent
 	var vitals *playv1.CharacterVitals // the resource a feature spent
-	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventHideAttempted, encounterID: encID}, func(c *combatTx) (any, error) {
-		made, vitals = actionEvent{}, nil
-		ev, spent, err := s.attemptHide(ctx, c, m, plan)
+	var held *playv1.HeldRollOffer     // the d20 was kept for a question: nothing was spent or written
+	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(msg), kind: eventHideAttempted, encounterID: encID}, func(c *combatTx) (any, error) {
+		made, vitals, held = actionEvent{}, nil, nil
+		ev, spent, err := s.attemptHide(ctx, c, m, plan, &held)
 		if err != nil {
 			return nil, err
+		}
+		if held != nil {
+			return nil, nil
 		}
 		made, vitals = ev, spent
 		return made, nil
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "hide", err)
+	}
+	if held != nil {
+		enc, err := s.finish(ctx, m, res, s.changed(m.CampaignID))
+		if err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(&playv1.HideResponse{Encounter: enc, HeldRollOffer: held}), nil
 	}
 	ev, err := resultEvent(res, made)
 	if err != nil {
@@ -110,6 +135,9 @@ func (s *Service) Hide(
 	})
 	if err != nil {
 		return nil, err
+	}
+	if ev.Reaction != nil && ev.Reaction.Hold { // a reaction window holds the roll: nothing was rolled yet
+		return connect.NewResponse(&playv1.HideResponse{Encounter: out}), nil
 	}
 	attempt, err := s.hideAttemptFor(ctx, m, res.encounterID, ev.Contest.ContestID)
 	if err != nil {
@@ -133,29 +161,47 @@ func parseHidePlan(msg *playv1.HideRequest) (hidePlan, error) {
 	if err != nil {
 		return hidePlan{}, err
 	}
-	return hidePlan{combatantID: combatantID, actionKey: actionKey, in: in}, nil
+	return hidePlan{combatantID: combatantID, actionKey: actionKey, in: in, req: msg}, nil
 }
 
 // attemptHide is the change of a Hide: the cost of the action, the Stealth roll and the pending
 // attempt that waits for the master. It gives what a feature spent, for the vitals to stream.
-func (s *Service) attemptHide(ctx context.Context, c *combatTx, m authz.Membership, p hidePlan) (actionEvent, *playv1.CharacterVitals, error) {
+func (s *Service) attemptHide(ctx context.Context, c *combatTx, m authz.Membership, p hidePlan, held **playv1.HeldRollOffer) (actionEvent, *playv1.CharacterVitals, error) {
 	if err := mustBeRunning(c); err != nil {
 		return actionEvent{}, nil, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return actionEvent{}, nil, fmt.Errorf("list the combatants: %w", err)
+		return actionEvent{}, nil, err
 	}
 	v := c.viewer(m, cs)
 	who, err := s.hider(ctx, c, m, v, cs, p)
 	if err != nil {
 		return actionEvent{}, nil, err
 	}
+	// A Cutting Words can take a die off the Stealth roll: it waits for the windows, with nothing
+	// spent (combat_cutting_checks.go).
+	if held, ok, err := s.holdCheck(ctx, c, m, "hide", p.req, cs, who, nil, p.in); err != nil || ok {
+		return held, nil, err
+	}
+	// The d20 comes before anything is spent: it may wait for a question, with nothing written.
+	prep, err := s.prepareCheck(ctx, c, who, skillStealth, cs)
+	if err != nil {
+		return actionEvent{}, nil, err
+	}
+	gate, err := s.gateCheck(ctx, c, prep, checkHold{kind: heldHide, key: p.key, req: p.req, m: m, who: who, in: p.in})
+	if err != nil {
+		return actionEvent{}, nil, err
+	}
+	if gate.Held != nil {
+		*held = s.heldCheckOffer(ctx, c, gate)
+		return actionEvent{}, nil, nil
+	}
 	vitals, err := s.spendHide(ctx, c, m, v, who, p.actionKey)
 	if err != nil {
 		return actionEvent{}, nil, err
 	}
-	roll, err := s.rollFor(ctx, c, who, skillStealth, p.in, cs)
+	roll, err := s.finishCheck(ctx, c, who, cs, prep, p.in, gate)
 	if err != nil {
 		return actionEvent{}, vitals, err
 	}
@@ -320,15 +366,7 @@ func (s *Service) ResolveHide(
 	ctx context.Context,
 	req *connect.Request[playv1.ResolveHideRequest],
 ) (*connect.Response[playv1.ResolveHideResponse], error) {
-	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
-	if err != nil {
-		return nil, err
-	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
+	m, key, encID, err := masterCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
 	if err != nil {
 		return nil, err
 	}
@@ -378,9 +416,9 @@ func (s *Service) decideHide(ctx context.Context, c *combatTx, m authz.Membershi
 	if err != nil {
 		return actionEvent{}, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return actionEvent{}, fmt.Errorf("list the combatants: %w", err)
+		return actionEvent{}, err
 	}
 	hider, ok := combatantByID(cs, attempt.HiderID)
 	if !ok {
@@ -393,7 +431,7 @@ func (s *Service) decideHide(ctx context.Context, c *combatTx, m authz.Membershi
 	status, line := hideRefused, contestLineHideRefused
 	var reason *string
 	if p.refuse {
-		reason = refusalReason(p.refusal)
+		reason = nilIfEmpty(p.refusal)
 	} else {
 		status, line = hideApplied, contestLineHideApplied
 		if err := s.noteObservers(ctx, c, m, hider, roll, p.clearly, cs); err != nil {
@@ -413,14 +451,6 @@ func (s *Service) decideHide(ctx context.Context, c *combatTx, m authz.Membershi
 		Round: c.enc.Round, Secret: true, Actor: hider.ID,
 		Contest: &contestEvent{ContestID: attempt.ID, Line: line},
 	}, nil
-}
-
-// refusalReason is the master's reason as the row keeps it: none when he gave none.
-func refusalReason(refusal string) *string {
-	if refusal == "" {
-		return nil
-	}
-	return &refusal
 }
 
 // pendingHideAttempt reads the attempt the master decides, which has to be waiting for him.
@@ -455,7 +485,7 @@ func (s *Service) noteObservers(ctx context.Context, c *combatTx, m authz.Member
 		noticed := ob.noticed || slices.Contains(clearly, o.ID)
 		if err := c.q.UpsertHiding(ctx, playdb.UpsertHidingParams{
 			HiderID: hider.ID, ObserverID: o.ID, EncounterID: c.enc.ID, Noticed: noticed,
-			Total: roll.Total, Passive: clamp32(ob.passive, math.MinInt32, math.MaxInt32), CreatedAt: c.now,
+			Total: roll.Total, Passive: conv.Int32(ob.passive), CreatedAt: c.now,
 		}); err != nil {
 			return fmt.Errorf("keep what a creature noticed: %w", err)
 		}
@@ -568,7 +598,7 @@ func (s *Service) consumeHelps(ctx context.Context, c *combatTx, attacker, targe
 	}
 	var used []string
 	for _, h := range helps {
-		if h.Kind == helpAttack && helpsAlly(h, attacker) && deref(h.TargetID) == target.ID {
+		if h.Kind == helpAttack && helpsAlly(h, attacker) && conv.OrZero(h.TargetID) == target.ID {
 			if err := c.q.SetHelpConsumed(ctx, playdb.SetHelpConsumedParams{ID: h.ID, ConsumedAt: &c.now}); err != nil {
 				return nil, fmt.Errorf("use the help: %w", err)
 			}

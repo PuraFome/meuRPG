@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"slices"
 
 	"connectrpc.com/connect"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -27,7 +27,7 @@ import (
 // target makes a Constitution save or is stunned until the end of the monk's next turn. Both
 // use the ki save DC. A hit that qualifies opens one offer (hit_riders) per rider, open until
 // answered or the round ends. The server rolls the target's save, as it does for a spell.
-// The push is the master's to place: the app does not move the token (forced move).
+// The push moves the target's token away from the monk (combat_forced.go).
 
 const (
 	riderOpenHand = "open_hand"
@@ -55,6 +55,8 @@ type riderEvent struct {
 	D20    int32  `json:"d20,omitempty"`
 	Total  int32  `json:"total,omitempty"`
 	DC     int32  `json:"dc,omitempty"`
+	// Pushed is the forced move of a push that landed (combat_forced.go).
+	Pushed *forcedMove `json:"pushed,omitempty"`
 }
 
 // ridersFor says which riders a hit offers: Open Hand for a Flurry of Blows hit, Stunning
@@ -162,15 +164,7 @@ func (s *Service) UseHitRider(
 	ctx context.Context,
 	req *connect.Request[playv1.UseHitRiderRequest],
 ) (*connect.Response[playv1.UseHitRiderResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
-	if err != nil {
-		return nil, err
-	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
+	m, key, encID, err := memberCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
 	if err != nil {
 		return nil, err
 	}
@@ -187,6 +181,9 @@ func (s *Service) UseHitRider(
 	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
 		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
 		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, true)
+		if res.event != nil && res.event.Rider != nil {
+			s.publishPushed(ctx, m.CampaignID, d, []*forcedMove{res.event.Rider.Pushed})
+		}
 	})
 	if err != nil {
 		return nil, err
@@ -197,9 +194,9 @@ func (s *Service) UseHitRider(
 // answerRider answers an offer: the choice is checked, applied (a decline spends nothing) and the
 // offer closed.
 func (s *Service) answerRider(ctx context.Context, c *combatTx, m authz.Membership, riderID string, in playv1.HitRiderChoice) (actionEvent, error) {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return actionEvent{}, fmt.Errorf("list the combatants: %w", err)
+		return actionEvent{}, err
 	}
 	row, attacker, target, err := s.riderOffer(ctx, c, m, cs, riderID)
 	if err != nil {
@@ -265,9 +262,8 @@ func (s *Service) closeRider(ctx context.Context, c *combatTx, row playdb.HitRid
 	if err := c.q.UseHitRider(ctx, playdb.UseHitRiderParams{EncounterID: c.enc.ID, ID: row.ID, Choice: &choice}); err != nil {
 		return actionEvent{}, fmt.Errorf("close the offer: %w", err)
 	}
-	var err error
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return actionEvent{}, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return actionEvent{}, err
 	}
 	c.characterID = &attacker.CharacterID
 	return ev, nil
@@ -329,6 +325,8 @@ func (s *Service) riderConsequence(ctx context.Context, c *combatTx, cs []playdb
 		if !slices.Contains(target.Conditions, condProne) && len(target.Conditions) < maxConditions {
 			return setConditionsOf(ctx, c, target, withCondition(target.Conditions, condProne))
 		}
+	case choicePush:
+		return s.pushByRider(ctx, c, cs, attacker, target, re)
 	case choiceNoReactions:
 		return s.riderEffect(ctx, c, cs, attacker, target, effectNoReactions)
 	case choiceStun:
@@ -342,7 +340,7 @@ func (s *Service) riderConsequence(ctx context.Context, c *combatTx, cs []playdb
 		}
 		return s.riderEffect(ctx, c, cs, attacker, target, effectStunningStrike)
 	}
-	return nil // the push: the master places the token
+	return nil
 }
 
 // riderEffect puts a lasting effect on the target that ends with the monk's next turn.
@@ -388,7 +386,7 @@ func (s *Service) rollRiderSave(ctx context.Context, c *combatTx, m authz.Member
 	if err != nil {
 		return false, err
 	}
-	re.D20, re.Total = clamp32(d20.Face(), 1, 20), clamp32(d20.Total, math.MinInt32, math.MaxInt32)
+	re.D20, re.Total = clamp32(d20.Face(), 1, 20), conv.Int32(d20.Total)
 	return combat.SaveSucceeded(d20.Total, int(dc)), nil
 }
 
@@ -419,6 +417,7 @@ func riderLogProto(r *riderEvent, numbers bool) *playv1.CombatLogHitRider {
 	default:
 		out.Result = playv1.HitRiderLogResult_HIT_RIDER_LOG_RESULT_DECLINED
 	}
+	out.PushedFt, out.PushNoMap = pushedFt(r.Pushed), pushedNoMap(r.Pushed)
 	if numbers && r.D20 > 0 {
 		out.Numbers, out.D20, out.SaveTotal, out.Dc = true, r.D20, r.Total, r.DC
 	}

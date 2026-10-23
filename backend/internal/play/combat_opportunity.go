@@ -13,13 +13,14 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// Opportunity attacks (MR-034, RN-21, question 69; Etapa 9, slice 9.6b). A move
+// Opportunity attacks (MR-034, RN-21, question 69). A move
 // on foot that leaves the reach of a hostile combatant lands at once, and that
 // combatant is offered one attack at the mover (an opportunity_offers row): its
 // controller attacks or declines, or the master skips it (the player is
@@ -125,7 +126,7 @@ func (s *Service) offerOpportunities(ctx context.Context, c *combatTx, cs []play
 		}
 		if err := insertEvent(ctx, c, eventOpportunityOffered, &c.actorUserID, nil, actionEvent{
 			Round: c.enc.Round, Secret: mover.Hidden || p.reactor.Hidden, Actor: mover.ID, Target: p.reactor.ID,
-			OfferID: offer.ID, MoveID: moveID, Col: valueOf(offer.LeftCol), Row: valueOf(offer.LeftRow),
+			OfferID: offer.ID, MoveID: moveID, Col: conv.OrZero(offer.LeftCol), Row: conv.OrZero(offer.LeftRow),
 		}); err != nil {
 			return "", nil, err
 		}
@@ -145,8 +146,8 @@ func (s *Service) publishOffersMade(campaignID string, d *encounterData, mover p
 		users = append(users, *mover.UserID)
 	}
 	for _, id := range reactorIDs {
-		if i := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == id }); i >= 0 && d.cs[i].UserID != nil {
-			users = append(users, *d.cs[i].UserID)
+		if r, ok := combatantByID(d.cs, id); ok && r.UserID != nil {
+			users = append(users, *r.UserID)
 		}
 	}
 	slices.Sort(users)
@@ -181,16 +182,15 @@ func (s *Service) mustNotWaitForOffers(ctx context.Context, c *combatTx, who pla
 		}
 		return nil
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	for _, o := range offers {
-		i := slices.IndexFunc(cs, func(m playdb.Combatant) bool { return m.ID == o.MoverID })
-		if i < 0 {
+		mover, ok := combatantByID(cs, o.MoverID)
+		if !ok {
 			continue
 		}
-		mover := cs[i]
 		mine := mover.ID == who.ID || (inTurn(c.enc, who) && inTurn(c.enc, mover) && who.UserID != nil && mover.UserID != nil && *who.UserID == *mover.UserID)
 		if mine {
 			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_OPPORTUNITY_PENDING, "an opportunity attack waits for its answer")
@@ -215,14 +215,11 @@ func (s *Service) pruneOffers(ctx context.Context, c *combatTx) error {
 		}
 		return nil
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
-	byID := make(map[string]playdb.Combatant, len(cs))
-	for _, m := range cs {
-		byID[m.ID] = m
-	}
+	byID := combatantsByID(cs)
 	for _, o := range pending {
 		dead, err := s.nobodyCanAnswer(ctx, c, byID, o)
 		if err != nil {
@@ -332,9 +329,9 @@ func (s *Service) returnToReach(ctx context.Context, c *combatTx, pendingID stri
 	if o.MoverID != mover.ID || !placed(mover) || o.LeftCol == nil || o.LeftRow == nil { // no square: an offer made by hand
 		return nil, false, nil
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, false, fmt.Errorf("list the combatants: %w", err)
+		return nil, false, err
 	}
 	if slices.ContainsFunc(cs, func(m playdb.Combatant) bool {
 		return m.ID != mover.ID && !m.Defeated && placed(m) && *m.GridCol == *o.LeftCol && *m.GridRow == *o.LeftRow
@@ -356,9 +353,9 @@ func (s *Service) publishReturned(ctx context.Context, campaignID string, d *enc
 	if ev.ReturnedFrom == nil {
 		return
 	}
-	if i := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == ev.Target }); i >= 0 {
-		s.publishCombatantMoved(ctx, campaignID, d.enc, d.cs[i], squareOfState(ev.ReturnedFrom))
-		s.positionChanged(ctx, campaignID, d.enc, d.cs[i], squareOfState(ev.ReturnedFrom))
+	if back, ok := combatantByID(d.cs, ev.Target); ok {
+		s.publishCombatantMoved(ctx, campaignID, d.enc, back, squareOfState(ev.ReturnedFrom))
+		s.positionChanged(ctx, campaignID, d.enc, back, squareOfState(ev.ReturnedFrom))
 	}
 }
 

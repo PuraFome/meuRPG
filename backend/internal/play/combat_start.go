@@ -15,6 +15,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -55,7 +56,7 @@ func (s *Service) StartEncounter(
 	ctx context.Context,
 	req *connect.Request[playv1.StartEncounterRequest],
 ) (*connect.Response[playv1.StartEncounterResponse], error) {
-	call, err := readStartRequest(ctx, req.Msg)
+	call, err := readStartCall(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
@@ -83,9 +84,9 @@ func (s *Service) StartEncounter(
 	return connect.NewResponse(&playv1.StartEncounterResponse{Encounter: enc}), nil
 }
 
-// readStartRequest reads and checks the request in the order the answers are given: who may
+// readStartCall reads and checks the request in the order the answers are given: who may
 // call, the key, the name, the battle point, then the mode.
-func readStartRequest(ctx context.Context, req *playv1.StartEncounterRequest) (startCall, error) {
+func readStartCall(ctx context.Context, req *playv1.StartEncounterRequest) (startCall, error) {
 	m, err := authz.RequireCampaignRole(ctx, req.GetCampaignId(), authz.RoleMaster)
 	if err != nil {
 		return startCall{}, err
@@ -231,7 +232,7 @@ func (s *Service) startOnGrid(ctx context.Context, c *combatTx, p startPlan, out
 
 // startMap says which map the fight is on and reads its grid; it writes nothing.
 func (s *Service) startMap(ctx context.Context, c *combatTx, p startPlan) (string, link.Grid, error) {
-	mapID := deref(c.session.CurrentMapID)
+	mapID := conv.OrZero(c.session.CurrentMapID)
 	if p.point.TargetMapID != "" {
 		mapID = p.point.TargetMapID
 	}
@@ -253,7 +254,7 @@ func (s *Service) startMap(ctx context.Context, c *combatTx, p startPlan) (strin
 // showStartMap makes the fight's map the current one when it is not: as SetCurrentMap, the
 // players see the current map, so it is revealed.
 func (s *Service) showStartMap(ctx context.Context, c *combatTx, campaignID, mapID string, out *startOutcome) error {
-	if mapID == deref(c.session.CurrentMapID) {
+	if mapID == conv.OrZero(c.session.CurrentMapID) {
 		return nil
 	}
 	if err := s.maps.RevealMap(ctx, c.tx, campaignID, mapID, c.now); err != nil {

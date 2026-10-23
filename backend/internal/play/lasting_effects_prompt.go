@@ -1,11 +1,10 @@
 package play
 
 import (
-	"math"
 	"slices"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
-	"github.com/PuraFome/meuRPG/backend/internal/play/link"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -28,21 +27,24 @@ func (wv *windowView) effectOf(t windowTrigger) (playdb.CombatantState, bool) {
 
 func (wv *windowView) effectSavePrompt(w playdb.ReactionWindow, reactor *playdb.Combatant, out *playv1.ReactionWindow) error {
 	t := windowTriggerOf(w)
+	if t.Zone != "" {
+		return wv.zoneSavePrompt(w, reactor, out)
+	}
 	st, ok := wv.effectOf(t)
 	p := &playv1.EffectSavePrompt{EffectId: t.Effect, HandedToMaster: t.Handed, Skippable: wv.v.master, Phase: phaseProto(t.Phase)}
 	if !ok {
 		out.Prompt = &playv1.ReactionWindow_EffectSave{EffectSave: p}
 		return nil
 	}
-	key := deref(st.SourceKey)
-	ability := deref(st.EndSaveAbility)
+	key := conv.OrZero(st.SourceKey)
+	ability := conv.OrZero(st.EndSaveAbility)
 	if t.Phase == combat.PhaseStart {
-		ability = deref(st.StartSaveAbility)
+		ability = conv.OrZero(st.StartSaveAbility)
 	}
 	p.SourceNamePt, p.Ability, p.AbilityNamePt = wv.names(key), ability, wv.names(ability)
-	caster, casterKnown := wv.byID[deref(st.SourceID)]
+	caster, casterKnown := wv.byID[conv.OrZero(st.SourceID)]
 	if wv.v.master || (casterKnown && wv.v.owns(caster)) {
-		dc := derefInt32(st.SaveDc)
+		dc := conv.OrZero(st.SaveDc)
 		if dc == 0 {
 			dc = defaultEffectDC
 		}
@@ -55,34 +57,47 @@ func (wv *windowView) effectSavePrompt(w playdb.ReactionWindow, reactor *playdb.
 	def, _ := wv.s.effectDef(content, key)
 	p.TextPt = effectSaveText(def, t.Phase, wv.names, st)
 	if reactor != nil {
-		save, err := wv.s.saveOf(wv.ctx, nil, wv.m.CampaignID, *reactor, ability)
-		if err != nil {
-			return wv.s.dbError(wv.ctx, "read a saving throw", err)
+		if err := wv.reactorSave(p, *reactor, ability, effectAgainst(key, def), t.OnDamage); err != nil {
+			return err
 		}
-		p.Modifier, p.BonusKnown = clamp32(save.Bonus, math.MinInt32, math.MaxInt32), save.Known
-		states := statesOf(wv.d.states)
-		creature := creatureFacts(*reactor, states, link.Traits{})
-		sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: ability, EffectVisible: true})
-		if t.OnDamage {
-			sources = append(sources, combat.Source{Kind: combat.SourceEffectSave, Effect: combat.ModeAdvantage})
-		}
-		p.Mode = modeKey(combat.Resolve(sources))
-		for _, src := range shownSources(sources, wv.names) {
-			p.ModeSourcesPt = append(p.ModeSourcesPt, src.GetTextPt())
-		}
-		p.AutoFail = combat.AutoFailsSave(creature, ability)
-		p.ExtraDice = extraDiceProto(effectDiceFor(states, reactor.ID, rules.RollAppliesSave), true, wv.names)
 	}
 	out.Prompt = &playv1.ReactionWindow_EffectSave{EffectSave: p}
+	return nil
+}
+
+// reactorSave fills the part of an effect's save prompt that is the reactor's: the bonus, the mode with the
+// reasons for it (the racial advantages against what the effect is among them), the automatic failure and the dice.
+func (wv *windowView) reactorSave(p *playv1.EffectSavePrompt, reactor playdb.Combatant, ability string, against []string, onDamage bool) error {
+	save, err := wv.s.saveOf(wv.ctx, nil, wv.m.CampaignID, reactor, ability)
+	if err != nil {
+		return wv.s.dbError(wv.ctx, "read a saving throw", err)
+	}
+	p.Modifier, p.BonusKnown = conv.Int32(save.Bonus), save.Known
+	states := statesOf(wv.d.states)
+	sheet, err := wv.s.sheetOf(wv.ctx, nil, wv.m.CampaignID, reactor)
+	if err != nil {
+		return wv.s.dbError(wv.ctx, "read the sheet", err)
+	}
+	creature := creatureFacts(reactor, states, sheet.Traits)
+	sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: ability, EffectVisible: true, Against: against})
+	if onDamage {
+		sources = append(sources, combat.Source{Kind: combat.SourceEffectSave, Effect: combat.ModeAdvantage})
+	}
+	p.Mode = modeKey(combat.Resolve(sources))
+	for _, src := range shownSources(sources, wv.names) {
+		p.ModeSourcesPt = append(p.ModeSourcesPt, src.GetTextPt())
+	}
+	p.AutoFail = combat.AutoFailsSave(creature, ability)
+	p.ExtraDice = extraDiceProto(effectDiceFor(states, reactor.ID, rules.RollAppliesSave), true, wv.names)
 	return nil
 }
 
 // effectSaveText is what the sheet says of the saving throw an effect asks: no number, only the
 // ability and what a pass or a failure does.
 func effectSaveText(def *rules.EffectDef, phase string, names func(string) string, st playdb.CombatantState) string {
-	ability := names(deref(st.EndSaveAbility))
+	ability := names(conv.OrZero(st.EndSaveAbility))
 	if phase == combat.PhaseStart {
-		ability = names(deref(st.StartSaveAbility))
+		ability = names(conv.OrZero(st.StartSaveAbility))
 	}
 	switch {
 	case phase == combat.PhaseStart && def != nil && def.StartSave != nil && def.StartSave.OnFail != "":
@@ -108,8 +123,13 @@ func (wv *windowView) effectSaveWait(w playdb.ReactionWindow, reactor *playdb.Co
 	if answers {
 		return
 	}
-	st, ok := wv.effectOf(windowTriggerOf(w))
+	t := windowTriggerOf(w)
+	st, ok := wv.effectOf(t)
 	readable := ok && st.PlayerVisible && st.Audience == "all"
+	if t.Zone != "" { // a zone is read by who sees its caster
+		owner, found := wv.byID[t.Actor]
+		readable = found && wv.v.sees(owner)
+	}
 	if reactor != nil && reactor.Kind == kindPlayer && wv.v.sees(*reactor) && readable {
 		wait.EffectSavers = append(wait.EffectSavers, reactor.Label)
 		return

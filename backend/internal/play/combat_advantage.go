@@ -11,6 +11,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -113,6 +114,7 @@ var sourceKindToProto = map[string]playv1.AdvantageSourceKind{
 	combat.SourceExhaustionCheck:    playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EXHAUSTION_CHECK,
 	combat.SourceOutlinedTarget:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_OUTLINED_TARGET,
 	combat.SourceEffectSave:         playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_SAVE,
+	combat.SourceTaggedSave:         playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_TAGGED_SAVE,
 	combat.SourceEffectCheck:        playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_CHECK,
 	combat.SourceEffectAttack:       playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_ATTACK,
 	combat.SourceRestrainedSave:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_RESTRAINED_SAVE,
@@ -120,6 +122,7 @@ var sourceKindToProto = map[string]playv1.AdvantageSourceKind{
 	combat.SourceFrightenedCheck:    playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_FRIGHTENED_CHECK,
 	combat.SourcePerceptionDim:      playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_PERCEPTION_DIM,
 	combat.SourceHelp:               playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_HELP,
+	combat.SourceProtection:         playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_PROTECTION,
 }
 
 // statesOf groups the states of a combat by the combatant that has them.
@@ -145,13 +148,24 @@ func creatureFacts(c playdb.Combatant, states map[string][]playdb.CombatantState
 		Dodging:     hasState(states, c.ID, stateDodging),
 		Reckless:    hasState(states, c.ID, stateReckless),
 		PackTactics: traits.PackTactics,
+		Evasion:     traits.Evasion,
 		DangerSense: traits.DangerSense,
 		Raging:      hasState(states, c.ID, stateRage) && !traits.HeavyArmor,
 		// The effects that last (RN-22): exhaustion, Faerie Fire's outline, the advantage on saving
 		// throws an effect gives and the disadvantage one gives the creature's attack rolls.
 		Exhaustion: int(c.ExhaustionLevel), Outlined: hasEffect(states, c.ID, "spell:faerie-fire"), SaveAdvantage: effectSaveAdvantage(states, c.ID), CheckAdvantage: effectCheckAdvantage(states, c.ID),
 		AttackDisadvantage: effectAttackDisadvantage(states, c.ID),
+		TaggedSaves:        taggedSavesOf(traits.TaggedSaves),
 	}
+}
+
+// taggedSavesOf are the racial advantages on saves against a kind of source the sheet has.
+func taggedSavesOf(saves []link.TaggedSave) []combat.TaggedSave {
+	out := make([]combat.TaggedSave, 0, len(saves))
+	for _, t := range saves {
+		out = append(out, combat.TaggedSave{Source: t.Source, Against: t.Against, Abilities: t.Abilities})
+	}
+	return out
 }
 
 // incapacitatedKeys are the conditions that make a creature unable to act or to
@@ -310,7 +324,7 @@ func (f modeFacts) unseen(observer, subject playdb.Combatant) bool {
 // Help of an ally aimed at that target, not used and not past its helper's next turn.
 func (f modeFacts) helperOf(attacker, target playdb.Combatant) *playdb.Combatant {
 	for _, h := range f.helps {
-		if h.Kind != helpAttack || !helpsAlly(h, attacker) || deref(h.TargetID) != target.ID {
+		if h.Kind != helpAttack || !helpsAlly(h, attacker) || conv.OrZero(h.TargetID) != target.ID {
 			continue
 		}
 		if helper, ok := helpHelper(f.cs, h); ok {
@@ -504,12 +518,27 @@ func (c textContext) otherSentence(src combat.Source) string {
 		return "Armadura: desvantagem em Furtividade"
 	case combat.SourceOutlinedTarget:
 		return "Alvo delineado: vantagem se o atacante o vê"
+	case combat.SourceTaggedSave:
+		return fmt.Sprintf("%s: vantagem no teste de resistência %s", c.names(src.Condition), againstSentence(src.Against))
 	case combat.SourceEffectSave:
 		return "Efeito ativo: vantagem no teste de resistência"
 	case combat.SourceEffectCheck:
 		return "Efeito ativo: vantagem em testes de habilidade"
 	}
 	return ""
+}
+
+// againstSentence is what a saving throw with a racial advantage is against, in Portuguese.
+func againstSentence(against string) string {
+	switch against {
+	case combat.AgainstFrightened:
+		return "contra ficar amedrontado"
+	case combat.AgainstCharmed:
+		return "contra ficar enfeitiçado"
+	case combat.AgainstPoison:
+		return "contra veneno"
+	}
+	return "contra magia"
 }
 
 // ---- reading the combat ----

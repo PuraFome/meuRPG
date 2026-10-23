@@ -187,7 +187,8 @@ service CombatService {
   // SubmitInitiative sets a combatant's initiative: a d20 plus the
   // combatant's initiative bonus (RN-19). The combatant's player may roll
   // for their own character, and the master for anyone. Only while the combat
-  // is in SETUP.
+  // is in SETUP. A character that holds a Bardic Inspiration die, or a halfling whose d20 shows a 1, is asked first
+  // (`held_roll_offer`).
   //
   // The roll is either rolled by the app (roll_in_app), or a face typed from
   // a physical die (d20_face, 1 to 20). With the campaign's dice setting
@@ -902,7 +903,10 @@ service CombatService {
   // master's too (what each target did must fit the cast's session event). Magic
   // Missile is cast with `darts`
   // in each target: 3 darts, and one more for each slot level above the 1st, shared
-  // out as the caster wants, at least one for each target listed.
+  // out as the caster wants, at least one for each target listed. Scorching Ray
+  // shares its rays the same way (3, and one more for each slot level above the
+  // 2nd), but `darts` is the rays of that target (none counts as one), the rays
+  // need not use the whole number, and several may go to one target.
   //
   // What the cast does depends on the spell:
   //   - A spell attack (Guiding Bolt): one d20 for each target (roll_in_app, or
@@ -1009,6 +1013,30 @@ service CombatService {
   //     caster has no square), and, for a player, TARGET_OUT_OF_REACH (with
   //     missing_ft) for an origin beyond the spell's range.
   rpc PreviewSpellArea(PreviewSpellAreaRequest) returns (PreviewSpellAreaResponse);
+
+  // MoveSpellZone moves the area a spell keeps on the map, for the spells that allow it
+  // (Moonbeam: its caster uses an action on a later turn to move the beam up to 60 feet).
+  // It costs the caster's action, and the creatures the zone now covers and had not
+  // reached before are hit as the spell says. The master moves any zone without the
+  // action or the distance.
+  //
+  // Errors:
+  //   - `invalid_argument`: the zone is not one that moves by an action, or the square
+  //     is off the map or a wall.
+  //   - `not_found`: the zone is not in the combat (also for one a player does not see).
+  //   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN, ACTION_USED
+  //     (the action is spent), TARGET_OUT_OF_REACH (with missing_ft) beyond the 60 feet.
+  //   - `permission_denied`: the caller does not play the caster.
+  rpc MoveSpellZone(MoveSpellZoneRequest) returns (MoveSpellZoneResponse);
+
+  // EndSpellZone ends the area a spell keeps on the map, at the master's word (the caster's
+  // concentration ended outside the app). Only the master may call it. The log tells that the
+  // zone ended and the master ended it.
+  //
+  // Errors:
+  //   - `permission_denied`: the caller is not the master.
+  //   - `not_found`: the zone is not in the combat.
+  rpc EndSpellZone(EndSpellZoneRequest) returns (EndSpellZoneResponse);
 
   // ResolveHiddenReveal answers the question a player's area spell opened when it
   // hit hidden creatures and the table rule is "Perguntar a cada vez" (Encounter.
@@ -1833,6 +1861,21 @@ enum EncounterBlockedReason {
   // A table maneuver that starts a grapple after a hit: the character made no melee
   // weapon hit this turn.
   ENCOUNTER_BLOCKED_REASON_NO_MELEE_HIT = 105;
+  // CastSpell (a teleport with `destination`): the square is farther than the spell
+  // reaches.
+  ENCOUNTER_BLOCKED_REASON_TELEPORT_TOO_FAR = 106;
+  // CastSpell (a teleport with `destination`), for a player: the square cannot be used.
+  // It may be out of the caster's sight, a wall or taken by a creature; the answer
+  // never says which, so it cannot name a creature the player does not see (RN-10).
+  ENCOUNTER_BLOCKED_REASON_DESTINATION_UNAVAILABLE = 107;
+  // CastSpell (a teleport on a map with a grid), for a player's character: the cast came
+  // without `destination`. The player picks the square; only the master may leave it out.
+  ENCOUNTER_BLOCKED_REASON_DESTINATION_REQUIRED = 108;
+  // Preserve Life (TakeActionRequest.preserve_life): a creature that is not in the combat, is more than
+  // 30 ft from the cleric, or is an undead or a construct.
+  ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TARGET = 109;
+  // Preserve Life: the hit points asked add up to more than five times the cleric's level.
+  ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TOO_MUCH = 110;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -2009,6 +2052,94 @@ message Encounter {
   // The offers of the monk's riders after a hit (UseHitRider): the master gets all of
   // them, a player the ones of their own character. Open until answered or the round ends.
   repeated HitRiderOffer hit_riders = 30;
+  // The areas that spells keep on the map (SpellZone), as the caller may see them: the
+  // master all of them (the ones of a hidden caster marked MASTER_ONLY), a player only
+  // the ones whose caster they see. Empty in THEATRE mode and when no spell keeps one.
+  repeated SpellZone zones = 31;
+}
+
+// SpellZone is a lingering area a spell keeps on the map for a while (Moonbeam, Spirit
+// Guardians, Cloudkill, Web): a creature that enters it for the first time on a turn,
+// or starts its turn in it, is hit by what the spell says. The server decides who is
+// hit and when; the map only draws the squares.
+message SpellZone {
+  // Stable ID of the zone (a UUID); MoveSpellZone takes it.
+  string id = 1;
+  // The spell that keeps it ("spell:moonbeam").
+  string spell_key = 2;
+  // The spell's name in Portuguese.
+  string spell_name_pt = 3;
+  // The combatant that cast it (a combatant ID the caller sees; see `visibility`).
+  string owner_combatant_id = 4;
+  // The shape and size of the area as the spell gives them: sphere, cylinder or cube.
+  meurpg.rules.v1.SpellAreaShape shape = 5;
+  // The radius of a sphere or a cylinder, the side of a cube, in feet.
+  int32 size_ft = 6;
+  // The point of origin, a square of the grid.
+  SpellOrigin origin = 7;
+  // The squares it covers now, after the walls cut it, from the top left of the grid.
+  repeated SpellOrigin squares = 8;
+  // True when the spell lasts while its caster concentrates.
+  bool concentration = 9;
+  // The rounds the zone still has, counted to the start of the caster's turn; 0 when
+  // no round count applies (it lasts until the concentration ends or it is dismissed).
+  int32 rounds_left = 10;
+  // How the area moves, if it does.
+  SpellZoneMovement movement = 11;
+  // Who reads the zone.
+  SpellZoneVisibility visibility = 12;
+  // The caster's label ("Bartolo"), for "Concentração de Bartolo". Always a combatant the
+  // caller sees.
+  string owner_label = 13;
+  // True when the caller reads no numbers of the zone: a player reading the zone of a
+  // caster that is not theirs. The fields from `save_ability` to `moves_per_turn_ft` and
+  // `rounds_left` are then empty (RN-10: the DC, the dice and the time of an NPC's spell are
+  // the master's).
+  bool details_hidden = 14;
+  // The saving throw ("wis") and its Portuguese name; empty for a zone with no saving
+  // throw (the damage just lands).
+  string save_ability = 15;
+  string save_ability_name_pt = 16;
+  // The DC.
+  optional int32 save_dc = 17;
+  // The damage at the slot of the cast ("3d8"), its type key and Portuguese name; empty for
+  // a zone with no damage (Web).
+  string damage_dice = 18;
+  string damage_type_key = 19;
+  string damage_type_name_pt = 20;
+  // True when a passed save halves the damage.
+  bool half_on_save = 21;
+  // How far the area goes by itself at the start of each of the caster's turns, in feet
+  // (Cloudkill 10); 0 for one that stays or is moved by hand.
+  int32 moves_per_turn_ft = 22;
+  // What else the zone does, as keys: "speed_halved" (a creature that starts its turn in
+  // it or comes in moves at half speed that turn), "difficult_terrain" and "restrains".
+  repeated string notes = 23;
+  // The combatants standing in the area now that the caller sees ("Aqui: Tor, Jabuti").
+  repeated string occupant_ids = 24;
+}
+
+// SpellZoneMovement says how a zone changes place while it lasts.
+enum SpellZoneMovement {
+  SPELL_ZONE_MOVEMENT_UNSPECIFIED = 0;
+  // It stays where the spell put it.
+  SPELL_ZONE_MOVEMENT_FIXED = 1;
+  // The caster moves it with an action on later turns (MoveSpellZone; Moonbeam).
+  SPELL_ZONE_MOVEMENT_ACTION = 2;
+  // It is centered on the caster and goes where the caster goes (Spirit Guardians).
+  SPELL_ZONE_MOVEMENT_FOLLOWS_CASTER = 3;
+  // It moves by itself at the start of each of the caster's turns (Cloudkill).
+  SPELL_ZONE_MOVEMENT_DRIFTS = 4;
+}
+
+// SpellZoneVisibility says who reads a zone (RN-10).
+enum SpellZoneVisibility {
+  SPELL_ZONE_VISIBILITY_UNSPECIFIED = 0;
+  // Everyone at the table who sees the caster.
+  SPELL_ZONE_VISIBILITY_EVERYONE = 1;
+  // The master alone: the caster is hidden from the players. A player never gets such
+  // a zone, so this value only reaches the master.
+  SPELL_ZONE_VISIBILITY_MASTER_ONLY = 2;
 }
 
 // HitRiderKind is which rider a hit offers.
@@ -2082,6 +2213,12 @@ message CombatLogHitRider {
   int32 save_total = 4;
   int32 dc = 5;
   bool numbers = 6;
+  // A failed Strength save pushed the target this many feet away from the monk. 0 when
+  // it was not pushed, or could not move.
+  int32 pushed_ft = 7;
+  // The save was failed but the combat has no map (theatre of the mind), so the push is
+  // the table's to imagine.
+  bool push_no_map = 8;
 }
 
 // HiddenRevealQuestion is one question the master has to answer: the area spell
@@ -2397,12 +2534,16 @@ message Combatant {
   // The attack roll of this combatant that waits for the answer about the die, if any
   // (it is answered with AnswerBardicInspiration). Only the master and the combatant's
   // own player get it, so the question is still there when the screen is read again.
-  InspirationOffer inspiration_offer = 71;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  InspirationOffer inspiration_offer = 71 [deprecated = true];
   // The attack roll of this combatant that waits for the halfling's Lucky answer, if any
   // (it is answered with AnswerLucky). Only the master and the combatant's own player get
   // it, like `inspiration_offer`, which is unset while this question waits (one question at
   // a time: the Lucky question comes first, then the die's, on the new roll).
-  LuckyOffer lucky_offer = 74;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  LuckyOffer lucky_offer = 74 [deprecated = true];
   // The states the combatant is in (a rage, a dodge, Reckless Attack, a Hunter's
   // Mark on it), for everyone who sees it, except the mark, which only the master
   // and the ranger's player get. An NPC's states are the public chips alone.
@@ -2430,6 +2571,14 @@ message Combatant {
   // speed of the turn without the Dash (SRD 5.1, "Being Prone"), rounded down. 0 when it
   // is not Prone or its speed is 0 (it cannot stand up then). Same audience as `speed_dft`.
   int32 stand_up_cost_dft = 103;
+
+  // The roll of this combatant that waits for an answer, if any: the question it asks now, whichever roll it
+  // is (a weapon attack, a spell attack, a save, a check), in the one shape every held roll has
+  // (AnswerHeldRoll answers it). Only the master and the combatant's own player get it; the other players read
+  // nothing, not even that a roll waits. It carries the d20 and the bonus the player already sees, never a DC,
+  // an armor class or an NPC's number (RN-10, RN-20). the deprecated `inspiration_offer` and `lucky_offer` say the same for a
+  // weapon attack.
+  HeldRollOffer held_roll_offer = 104;
 }
 
 // Participant is who joins a combat: a character of the campaign.
@@ -2519,6 +2668,10 @@ message SubmitInitiativeRequest {
 // SubmitInitiativeResponse returns the combat after the roll.
 message SubmitInitiativeResponse {
   Encounter encounter = 1;
+  // Set when the roll waits for a question (the halfling's Lucky about a 1, or the Bardic Inspiration die the character
+  // holds; AnswerHeldRoll answers it): the d20 was rolled and kept, and the initiative stays unset. `encounter` is the
+  // combat as it is. The master is asked too when he rolls for the player, and answers after the player's first 10 s.
+  HeldRollOffer held_roll_offer = 2;
 }
 
 // SetInitiativeOrderRequest orders a tie.
@@ -3168,6 +3321,7 @@ message SpellTargets {
   // True when the spell takes one more target for each slot level above its own.
   bool extra_target_per_level = 4;
   // Magic Missile: how many darts each slot level makes (3 at the 1st, one more
+  // for each level above). Scorching Ray: how many rays (3 at the 2nd, one more
   // for each level above). Empty for any other spell.
   repeated DartsAtSlot darts = 5;
   // How many more targets the spell takes for each slot level above its own: 1 for
@@ -3191,6 +3345,10 @@ message SpellTargets {
   // How far the point of origin may be from the caster, in feet, for POINT; 0 for
   // the others. The master is not held to it.
   int32 range_ft = 11;
+  // A teleport spell (Passo Nebuloso) on a map with a grid: how far it takes the
+  // caster, in feet. The screen asks the player for the square (CastSpellRequest.
+  // destination) within it. 0 for any other spell, and in a combat without a map.
+  int32 teleport_range_ft = 12;
 }
 
 // AreaPlacement is how a spell's area is set on a map with a grid (SRD 5.1,
@@ -3207,7 +3365,8 @@ enum AreaPlacement {
   AREA_PLACEMENT_CASTER = 3;
 }
 
-// DartsAtSlot is how many darts a slot level makes.
+// DartsAtSlot is how many darts (Magic Missile) or rays (Scorching Ray) a slot
+// level makes.
 message DartsAtSlot {
   int32 slot_level = 1;
   int32 darts = 2;
@@ -3449,6 +3608,82 @@ message OutsideInspirationOffer {
   DiceRoll d20 = 4;
 }
 
+// HeldRollKind is the roll that waits for a question.
+enum HeldRollKind {
+  HELD_ROLL_KIND_UNSPECIFIED = 0;
+  HELD_ROLL_KIND_WEAPON_ATTACK = 1;
+  HELD_ROLL_KIND_SPELL_ATTACK = 2;
+  HELD_ROLL_KIND_EFFECT_SAVE = 3;
+  HELD_ROLL_KIND_CONCENTRATION_SAVE = 4;
+  HELD_ROLL_KIND_SCENE_CHECK = 5;
+  HELD_ROLL_KIND_GROUP_CHECK = 6;
+  HELD_ROLL_KIND_TRAP_SEARCH = 7;
+  HELD_ROLL_KIND_HINT_TRY = 8;
+  // The death saving throw of a character at 0 hit points (RollDeathSave), asked about Lucky's reroll of a 1 and about
+  // a Bardic Inspiration die like any other saving throw (SRD 5.1).
+  HELD_ROLL_KIND_DEATH_SAVE = 9;
+  // A roll of a contest, an ability check (SRD 5.1): the initiator's (StartContest: a grapple, a shove, an escape) before
+  // the contest is opened, or the defender's (RespondContest) before it is settled. Lucky's reroll of a 1 and a Bardic
+  // Inspiration die are asked about before anything is spent or written.
+  HELD_ROLL_KIND_CONTEST = 11;
+  // The initiative of a character in SETUP (SubmitInitiative): a Dexterity check (SRD 5.1), so Lucky's reroll of a 1 and
+  // a Bardic Inspiration die the character holds are asked about before the total is set.
+  HELD_ROLL_KIND_INITIATIVE = 10;
+  // The Stealth check of a Hide (SRD 5.1): Lucky's reroll of a 1 and a Bardic Inspiration die are asked about before the
+  // attempt is kept for the master.
+  HELD_ROLL_KIND_HIDE = 12;
+  // The ability check of a Counterspell above the slot's level (AnswerReaction), made with the spellcasting ability (SRD 5.1):
+  // Lucky's reroll of a 1 and a Bardic Inspiration die are asked about before the spell is countered or not.
+  HELD_ROLL_KIND_COUNTERSPELL_CHECK = 13;
+}
+
+// LuckyQuestion is the halfling's "Tirou 1: rolar de novo?" (SRD 5.1, Halfling, Lucky).
+message LuckyQuestion {
+  // The die that shows the 1, as an index into `HeldRollOffer.d20.faces`: the one the answer rolls
+  // again (0 for a single d20; with both dice on 1, the first).
+  int32 lucky_index = 1;
+}
+
+// DieQuestion is the Bardic Inspiration die the roller may add (SRD 5.1).
+message DieQuestion {
+  // The size of the die the roller holds.
+  int32 sides = 1;
+  // The name of the bard that gave it.
+  string from_name = 2;
+}
+
+// HeldRollOffer is the question a roll that waits asks, whichever roll it is: the d20 was rolled and
+// kept, nothing was resolved or written, and the roller decides before the result is told (SRD 5.1:
+// the creature can wait until after it rolls the d20 and must decide before the GM says whether the roll
+// succeeds). The Lucky question comes first; the die's comes after it, on the new roll. It carries
+// what the roller already sees (the d20, the bonus, the die's size and giver), never a DC, an armor
+// class or an NPC's number. Only whoever may answer it gets it: the roller's player and the master
+// (RN-10, RN-20).
+message HeldRollOffer {
+  // The held roll (a UUID).
+  string hold_id = 1;
+  HeldRollKind kind = 2;
+  // The roller in a combat (a combatant's ID); empty out of a combat.
+  string combatant_id = 3;
+  // The roller's character, for a player's character only; empty for an NPC and a creature.
+  string character_id = 4;
+  // The roller's name as this viewer reads it (the master's list names who rolled).
+  string roller_label = 5;
+  // The d20 (or both, with advantage or disadvantage), with the roll's bonus as the modifier: the
+  // die that counts marked (`counted_index`), and the die Lucky rolled again once it was.
+  DiceRoll d20 = 6;
+  // The question that waits.
+  oneof question {
+    LuckyQuestion lucky = 7;
+    DieQuestion die = 8;
+  }
+  // The attack and its target; empty for a roll that is not a weapon attack.
+  string attack_key = 9;
+  string target_id = 10;
+  // When the roll was held (the master's controls wait for the roller's own answer a while after it).
+  google.protobuf.Timestamp created_at = 11;
+}
+
 // RollAttackResponse returns the roll and the combat after it.
 message RollAttackResponse {
   // The combat as the caller sees it: the action is spent.
@@ -3461,12 +3696,21 @@ message RollAttackResponse {
   // and there is no pending damage) when the attacker holds a Bardic Inspiration
   // die: the d20 is rolled, and the player decides whether to add the die before the
   // result is told (AnswerBardicInspiration). Unset while `lucky_offer` waits.
-  InspirationOffer inspiration_offer = 30;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  InspirationOffer inspiration_offer = 30 [deprecated = true];
   // Set instead of the outcome, like `inspiration_offer`, when the attacker is a
   // halfling and a d20 shows a 1: the player decides whether to roll it again before
   // the result is told (AnswerLucky). The Lucky question comes first; the die's, when
   // the attacker holds one, comes after it, on the new roll.
-  LuckyOffer lucky_offer = 31;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  LuckyOffer lucky_offer = 31 [deprecated = true];
+
+  // The question the roll asks now, in the one shape every held roll has (HeldRollOffer), set beside
+  // the deprecated `inspiration_offer` and `lucky_offer`: set instead of the result, when the
+  // roll waits for an answer (AnswerHeldRoll). Whoever may answer gets it; nobody else does (RN-10).
+  HeldRollOffer held_roll_offer = 32;
 }
 
 // RollDamageRequest rolls the damage of a hit.
@@ -3573,6 +3817,21 @@ message TakeActionRequest {
   // refused with `failed_precondition` (EncounterBlocked FRENZY_UNAVAILABLE). Ignored by an
   // action that is not "feature:rage"; false is a plain rage.
   bool frenzy = 101;
+  // "feature:channel-divinity-preserve-life" (Canalizar Divindade: Preservar a Vida, SRD 5.1, Life Domain): the
+  // hit points to restore to each creature within 30 ft of the cleric. Their total is at most five times the
+  // cleric's level; each creature is restored to no more than half of its hit point maximum (what would pass it is
+  // not spent), and an undead or a construct cannot be restored. A creature more than 30 ft away or an undead or
+  // construct is refused with `failed_precondition` (EncounterBlocked CHANNEL_DIVINITY_TARGET), and so is a total
+  // above the limit (CHANNEL_DIVINITY_TOO_MUCH). With no entry the points go to the cleric's side, the creature
+  // hurt the most in proportion first, each as far as half its maximum. Ignored by any other action.
+  repeated PreserveLifeHeal preserve_life = 102;
+}
+
+// PreserveLifeHeal is the hit points the cleric gives one creature with Preserve Life.
+message PreserveLifeHeal {
+  string combatant_id = 1;
+  // 1 to 9,999 (the total is checked against five times the cleric's level).
+  int32 hit_points = 2;
 }
 
 // TakeActionResponse returns the combat after the action.
@@ -3584,6 +3843,42 @@ message TakeActionResponse {
   // Retomar o fôlego: the hit points healed (up to the maximum). Unset for the
   // others.
   optional int32 healed = 3;
+  // What Canalizar Divindade did, for the master and the combatant's player: the hit points each creature got
+  // (Preserve Life) or each undead's saving throw and whether it was turned (Turn Undead). Unset for any other
+  // action.
+  ChannelDivinityResult channel_divinity = 4;
+}
+
+// ChannelDivinityResult is what a Channel Divinity action did, creature by creature.
+message ChannelDivinityResult {
+  // Preserve Life: the hit points each creature regained (after the half-maximum limit), in the order asked.
+  repeated ChannelDivinityHeal heals = 1;
+  // Turn Undead: each undead that had to save, in the order of the combat.
+  repeated ChannelDivinityTurn turns = 2;
+  // Turn Undead: the cleric's save DC.
+  int32 save_dc = 3;
+}
+
+// ChannelDivinityHeal is what Preserve Life gave one creature.
+message ChannelDivinityHeal {
+  string combatant_id = 1;
+  string label = 2;
+  // Asked is what the cleric asked for; Healed what the creature regained after the limit of half its maximum.
+  int32 asked = 3;
+  int32 healed = 4;
+  int32 hit_points_after = 5;
+}
+
+// ChannelDivinityTurn is the Wisdom saving throw of one undead against Turn Undead.
+message ChannelDivinityTurn {
+  string combatant_id = 1;
+  string label = 2;
+  // The d20 that counted, the bonus, the total and the DC it was compared with.
+  int32 d20 = 3;
+  int32 modifier = 4;
+  int32 total = 5;
+  // True: it failed and is turned for one minute (a lasting effect on it).
+  bool turned = 6;
 }
 
 // AdjustCombatantHitPointsRequest is the master's correction of an NPC.
@@ -3638,7 +3933,9 @@ message SpellSlot {
 message SpellTarget {
   // The combatant (a UUID).
   string combatant_id = 1;
-  // Magic Missile only: the darts that go to this target, at least 1.
+  // Magic Missile: the darts that go to this target, at least 1. Scorching Ray:
+  // the rays that go to this target (0 counts as 1); each ray is its own spell
+  // attack.
   int32 darts = 2;
   // Revivify only: the dead creature the spell touches, a combatant of the combat
   // (PreviewRevivify offers them). It replaces combatant_id, which stays empty. The
@@ -3737,6 +4034,21 @@ message CastSpellRequest {
   // false), a spell that is not of evocation, a creature that is not among the targets
   // or is the caster, a repeated one and too many. Empty is a cast without it.
   repeated string sculpted_ids = 31;
+  // A teleport spell on a map with a grid (Passo Nebuloso): the square the caster
+  // lands on, chosen by the caster's player (or by the master, for an NPC or on a
+  // player's behalf). A player's character must give it (DESTINATION_REQUIRED); without
+  // it, for the master, the spell changes nothing on the map and the master moves the
+  // token. The server checks it before anything is spent: a
+  // square of the grid (otherwise `invalid_argument`), within the spell's reach
+  // (30 ft, 6 squares, by the grid's own distance; otherwise `failed_precondition`
+  // with TELEPORT_TOO_FAR), free of any creature and of walls and, for a player,
+  // seen by the caster (otherwise `failed_precondition` with DESTINATION_UNAVAILABLE,
+  // which never says whether a creature the player does not see is the reason, RN-10).
+  // The master is not held to sight and gets SQUARE_OCCUPIED or WALL_ON_SQUARE. The
+  // teleport provokes no opportunity attack and spends no movement; the undo puts the
+  // caster back. It is `invalid_argument` for any other spell, and in a combat
+  // without a map.
+  SpellOrigin destination = 32;
 }
 
 // MetamagicChoice is one Metamagic option on a casting.
@@ -3774,6 +4086,38 @@ message SpellDirection {
 message SpellArea {
   SpellOrigin origin = 1;
   repeated SpellOrigin squares = 2;
+}
+
+// MoveSpellZoneRequest moves a zone.
+message MoveSpellZoneRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  // The zone (Encounter.zones.id).
+  string zone_id = 3;
+  // The new point of origin.
+  SpellOrigin origin = 4;
+  // Makes a retry harmless.
+  string idempotency_key = 5;
+}
+
+// EndSpellZoneRequest ends a zone.
+message EndSpellZoneRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  // The zone (Encounter.zones.id).
+  string zone_id = 3;
+  // Makes a retry harmless.
+  string idempotency_key = 4;
+}
+
+// EndSpellZoneResponse returns the combat after the end.
+message EndSpellZoneResponse {
+  Encounter encounter = 1;
+}
+
+// MoveSpellZoneResponse returns the combat after the move.
+message MoveSpellZoneResponse {
+  Encounter encounter = 1;
 }
 
 // PreviewSpellAreaRequest places an area spell for the preview.
@@ -4083,12 +4427,21 @@ message CastSpellResponse {
   // added after the d20, before the result is told). A cast with several targets, a
   // cantrip's attack (RollAttack holds those) and a cast that waited for a reaction window
   // do not ask.
-  OutsideInspirationOffer inspiration_offer = 7;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  OutsideInspirationOffer inspiration_offer = 7 [deprecated = true];
   // Set instead of `cast`, like `inspiration_offer`, when the caster is the player's own
   // halfling and a d20 of that spell attack shows a 1: the player decides whether to roll it
   // again before the result is told (ResourceService.AnswerOutsideLucky). The Lucky question
   // comes first; the die's, when the caster holds one, comes after it, on the new roll.
-  LuckyOffer lucky_offer = 8;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  LuckyOffer lucky_offer = 8 [deprecated = true];
+
+  // The question the roll asks now, in the one shape every held roll has (HeldRollOffer), set beside
+  // the deprecated `inspiration_offer` and `lucky_offer`: set instead of the result, when the
+  // roll waits for an answer (AnswerHeldRoll). Whoever may answer gets it; nobody else does (RN-10).
+  HeldRollOffer held_roll_offer = 9;
 }
 
 // SpellCast is a cast, as the caller may see it.
@@ -4225,7 +4578,8 @@ message RollDeathSaveRequest {
 
 // DeathSave is a death save and where it left the character.
 message DeathSave {
-  // The d20 (no modifier).
+  // The d20, with the Bardic Inspiration die the player added as the modifier (0 without one), and the d20 the
+  // halfling's Lucky rolled again in `rerolled`.
   DiceRoll roll = 1;
   DeathSaveOutcome outcome = 2;
   // The counts after it, 0 to 3 each.
@@ -4236,12 +4590,20 @@ message DeathSave {
   // Three failures: the master confirms the death. Only the master gets it; a
   // player only sees the counts.
   bool dying = 6;
+  // The Bardic Inspiration die the player added to the d20 (SRD 5.1), when one was used: it moves the total, never the
+  // natural 1 (two failures) or the natural 20 (back with 1 hit point).
+  repeated BonusDie bonus_dice = 7;
 }
 
 // RollDeathSaveResponse returns the combat and the save.
 message RollDeathSaveResponse {
   Encounter encounter = 1;
   DeathSave death_save = 2;
+  // Set instead of `death_save` when the roll waits for a question: the halfling's Lucky about a 1, or the Bardic
+  // Inspiration die the combatant holds (AnswerHeldRoll answers it). The d20 was rolled and kept and nothing is
+  // written, the counts included. The master is asked too when he rolls for the player, and answers after the
+  // player's first 10 s.
+  HeldRollOffer held_roll_offer = 3;
 }
 
 // ConfirmDeathRequest confirms a death.
@@ -4603,6 +4965,8 @@ message CombatLogEntry {
   CombatLogEffect effect = 100;
   // HIT_RIDER: how the rider ended.
   CombatLogHitRider hit_rider = 110;
+  // What a Channel Divinity action did (Preserve Life, Turn Undead): for the master and the cleric's player.
+  ChannelDivinityResult channel_divinity = 111;
 }
 
 // CombatLogEffectEnd is an effect that ended, in the combat log.
@@ -4698,6 +5062,10 @@ enum CombatLogEffectChange {
   COMBAT_LOG_EFFECT_CHANGE_SAVE_SKIPPED = 7;
   // The effect gave the target temporary hit points (Heroísmo, at the start of its turn); `amount`.
   COMBAT_LOG_EFFECT_CHANGE_TEMP_HP = 8;
+  // A spell's area moved (Moonbeam moved by its caster, Cloudkill drifting). A creature the
+  // area catches (it came in, or began its turn there) is a SAVED or SAVE_FAILED line with
+  // `reason` zone_enter or zone_start, the roll, and the damage in `amount`.
+  COMBAT_LOG_EFFECT_CHANGE_ZONE_MOVED = 9;
 }
 
 // CombatLogMonster is a monster of a MONSTERS_ADDED line, only the master's.
@@ -4778,6 +5146,12 @@ message CombatLogSpellTarget {
   // Only the master: the creature was hidden from the players when the spell hit
   // it. A player's entry never has such a target (RN-10).
   bool hidden = 14;
+  // A failed save pushed the creature this many feet away from the caster (5 ft a
+  // square). 0 when it was not pushed, or could not move.
+  int32 pushed_ft = 15;
+  // The save was failed but the combat has no map (theatre of the mind), so the push is
+  // the table's to imagine.
+  bool push_no_map = 16;
 }
 
 // CombatLogDeathSave is a death save in the log. When the table hides the death
@@ -5072,6 +5446,10 @@ enum ReactionKind {
   // A table maneuver that reduces the damage of a melee hit by a die and an ability
   // modifier (superiority_die, applies reduce_melee_damage).
   REACTION_KIND_MANEUVER_REDUCE = 14;
+  // Protection fighting style: a creature the reactor sees attacks someone else
+  // within 5 ft of the reactor, who wields a shield; the reaction gives the attack
+  // roll disadvantage. It waits before the d20 is rolled.
+  REACTION_KIND_PROTECTION = 15;
 }
 
 enum ReactionWindowStatus {
@@ -5170,6 +5548,7 @@ message ReactionWindow {
     DeflectMissilesThrowPrompt deflect_throw = 30;
     ContestPrompt contest = 31;
     ManeuverReducePrompt maneuver_reduce = 41;
+    ProtectionPrompt protection = 42;
     // The saving throw an effect asks at a turn (RN-22).
     EffectSavePrompt effect_save = 40;
   }
@@ -5313,6 +5692,15 @@ message ManeuverReducePrompt {
   repeated ManeuverReduceOption options = 4;
 }
 
+// ProtectionPrompt: the Protection fighting style. A creature the reactor sees is about
+// to attack a neighbor of the reactor; using the reaction gives that attack roll
+// disadvantage. The attacker is named only when the reader sees it.
+message ProtectionPrompt {
+  string attacker_label = 1;
+  // The creature the attack is aimed at, one of the reactor's neighbors.
+  string ally_label = 2;
+}
+
 message ManeuverReduceOption {
   string key = 1;
   string name_pt = 2;
@@ -5441,8 +5829,14 @@ message MarkReactionRollingResponse {
 
 message AnswerReactionResponse {
   Encounter encounter = 1;
-  // What the answer did, for the answerer (the master's `by_master` answer too).
+  // What the answer did, for the answerer (the master's `by_master` answer too). Unset while the Counterspell's check waits
+  // for a question.
   ReactionResult result = 2;
+  // Set instead of `result` when the d20 of a Counterspell's check waits for a question: the halfling's Lucky about a 1, or
+  // the Bardic Inspiration die the reactor holds (AnswerHeldRoll answers it). The d20 was rolled and kept; the window stays
+  // open and no slot or reaction is spent. The master is asked too when he answers for the player, and answers after the
+  // player's first 10 s.
+  HeldRollOffer held_roll_offer = 3;
 }
 
 // ReactionResult is what an answered window did, read by the reactor and the
@@ -5462,6 +5856,7 @@ message ReactionResult {
     DeflectMissilesResult deflect_missiles = 25;
     FeatherFallResult feather_fall = 26;
     ManeuverReduceResult maneuver_reduce = 27;
+    ProtectionResult protection = 28;
   }
   // The window the answer asked one more thing of (a second step), if any.
   string next_window_id = 30;
@@ -5509,6 +5904,10 @@ message CuttingWordsResult {
   AttackOutcome outcome = 3;
   ReactionRollKind roll_kind = 4;
 }
+
+// ProtectionResult: the attack roll that was held now has disadvantage. The result
+// never says what the roll became.
+message ProtectionResult {}
 
 message ManeuverReduceResult {
   string maneuver_key = 1;
@@ -5564,11 +5963,20 @@ message ResolveConcentrationSaveResponse {
   // d20 is rolled and kept, the window stays open and nothing is written, and
   // ResourceService.AnswerOutsideInspiration settles the save (SRD 5.1). The master's roll
   // never asks.
-  OutsideInspirationOffer inspiration_offer = 3;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  OutsideInspirationOffer inspiration_offer = 3 [deprecated = true];
   // Set instead of `result`, like `inspiration_offer`, when the roller is the player's own
   // halfling and a d20 shows a 1: the window stays open, and ResourceService.AnswerOutsideLucky
   // rolls it again or keeps the 1 (the die's question, if any, comes after it).
-  LuckyOffer lucky_offer = 4;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  LuckyOffer lucky_offer = 4 [deprecated = true];
+
+  // The question the roll asks now, in the one shape every held roll has (HeldRollOffer), set beside
+  // the deprecated `inspiration_offer` and `lucky_offer`: set instead of the result, when the
+  // roll waits for an answer (AnswerHeldRoll). Whoever may answer gets it; nobody else does (RN-10).
+  HeldRollOffer held_roll_offer = 5;
 }
 
 message ConcentrationSaveResult {

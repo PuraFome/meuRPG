@@ -46,6 +46,9 @@ func (s *Service) CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, charac
 	spellHitPointEffect(&out, content, spellKey, slotLevel)
 	spellKinds(&out, content, d, det, spellKey)
 	spellTargets(&out, det)
+	if z, ok := content.SpellZone(spellKey); ok {
+		out.Zone = &link.ZoneRule{Trigger: z.Trigger, FollowsCaster: z.FollowsCaster}
+	}
 	return out, nil
 }
 
@@ -87,7 +90,10 @@ func spellCasterNumbers(out *link.Spell, d rules.Derived, det *rules.SpellDetail
 		out.SaveDC = sc.SaveDC
 		out.CasterDC = sc.SaveDC
 	}
-	if det.Save != nil {
+	// A sheet without a DC (it casts nothing) leaves the saving throw out: the
+	// engine rolls no save for the spell (the master decides) instead of one
+	// against DC 0, which every roll passes.
+	if det.Save != nil && out.SaveDC > 0 {
 		out.SaveAbility, out.SaveOnSuccess = string(det.Save.Ability), det.Save.OnSuccess
 	} else {
 		out.SaveDC = 0
@@ -134,6 +140,7 @@ func spellKinds(out *link.Spell, content *rules.Content, d rules.Derived, det *r
 	_, summonErr := content.SummonOptions(spellKey, det.Spell.Level, rules.Build{})
 	out.Summon = !errors.Is(summonErr, rules.ErrNotSummonSpell)
 	out.IgnoresCover = content.IgnoresCover(spellKey)
+	out.HalfOnMiss = content.HalvesOnMiss(spellKey)
 	out.Evocation = det.Spell.School == "school:evocation"
 	out.Sculpts = rules.HasFeature(d, "feature:sculpt-spells")
 }

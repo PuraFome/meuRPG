@@ -9,6 +9,7 @@ import (
 	"time"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -121,6 +122,9 @@ type castHit struct {
 	Extra    []effectDie `json:"extra,omitempty"`
 	Physical bool        `json:"physical,omitempty"`
 	Save     *saveRoll   `json:"save,omitempty"`
+	// Pushed is the forced move a failed save made (combat_forced.go): nil when the target
+	// stayed where it was.
+	Pushed *forcedMove `json:"pushed,omitempty"`
 	// BonusSides and BonusFace are the Bardic Inspiration die the player added to the spell
 	// attack after the d20 (the total already holds it).
 	BonusSides int32 `json:"bonus_sides,omitempty"`
@@ -317,6 +321,9 @@ type actionEvent struct {
 	// FallCuts are the fall damages a monk's Slow Fall took points off, with their
 	// amounts before: an undo puts them back. Amount is how many points it took off.
 	FallCuts []fallCut `json:"fall_cuts,omitempty"`
+	// Channel is what a Channel Divinity action did: the hit points Preserve Life gave each creature, or the saving
+	// throw of each undead against Turn Undead (combat_channel.go).
+	Channel *channelEvent `json:"channel,omitempty"`
 	// Relentless says the half-orc's Relentless Endurance turned the damage that would
 	// have dropped the target to 0 into 1 hit point, and spent the use: an undo gives
 	// it back.
@@ -350,8 +357,13 @@ type actionEvent struct {
 	AreaRow int32 `json:"area_row,omitempty"`
 	Dx      int32 `json:"dx,omitempty"`
 	Dy      int32 `json:"dy,omitempty"`
-	// Revealed are the hidden creatures the cast made appear, and PendingReveal the
-	// question it opened for the master: what an undo of the cast puts back.
+	// RevealedHits says the cast made appear the hidden creatures its hits name
+	// (HiddenAtCast), without listing them again: a cast of forty hits would carry their ids
+	// twice and pass the table's 16 KiB. Revealed is the list of an answer to the master's
+	// question (ResolveHiddenReveal), which has no hits, and of an event written before
+	// RevealedHits. PendingReveal is the question the cast opened for the master. They are
+	// what an undo of the cast puts back (revealedIDs).
+	RevealedHits  bool     `json:"revealed_hits,omitempty"`
 	Revealed      []string `json:"revealed,omitempty"`
 	PendingReveal string   `json:"pending_reveal,omitempty"`
 	// RevealLines are the IDs of the "revealed" lines (combatant_hidden_set) the cast
@@ -437,8 +449,11 @@ type actionEvent struct {
 	// FollowUps are the effects the ended ones left behind (Haste's lethargy), and
 	// FollowUpLines the IDs of their "added" lines, written before the action's own event:
 	// its undo, which puts the ended effects back, takes these away, rows and lines.
-	FollowUps     []effectRef `json:"follow_ups,omitempty"`
-	FollowUpLines []string    `json:"follow_up_lines,omitempty"`
+	FollowUps []effectRef `json:"follow_ups,omitempty"`
+	// TempCleared are the temporary hit points the ended effects took off their targets
+	// (Heroism's): the undo gives them back.
+	TempCleared   []tempCleared `json:"temp_cleared,omitempty"`
+	FollowUpLines []string      `json:"follow_up_lines,omitempty"`
 	// ExtraUsed says the action spent the extra action of an effect (Velocidade).
 	ExtraUsed bool `json:"extra_used,omitempty"`
 
@@ -458,6 +473,9 @@ type actionEvent struct {
 	// their answer as it did. A discard written before this keeps none, and its undo lets
 	// the hit go on to its roll.
 	ClosedWindows []string `json:"closed_windows,omitempty"`
+	// ProtectedBy are the shield-bearers whose Protection gave an attack roll disadvantage:
+	// the undo of the attack gives their reaction back.
+	ProtectedBy []string `json:"protected_by,omitempty"`
 	// Mode is how the master changed an NPC's hit points ("damage", "heal",
 	// "set"), and Delta the change.
 	Mode  string `json:"mode,omitempty"`
@@ -465,7 +483,7 @@ type actionEvent struct {
 
 	// A move: the square, what it cost the combatant and how far it went, in feet
 	// (rounded down) and in tenths of a foot, which is the exact number (RN-21;
-	// events written before Etapa 9 have only the feet).
+	// older events have only the feet).
 	Col         int32 `json:"col,omitempty"`
 	Row         int32 `json:"row,omitempty"`
 	CostFt      int32 `json:"cost_ft,omitempty"`
@@ -622,6 +640,9 @@ type actionEvent struct {
 	// marks of the attacker before the roll (an undo puts them back) and the steps
 	// that resistance took the damage through.
 	Parts []partRoll `json:"parts,omitempty"`
+	// PartsBefore is the list of parts the hit offered, which the roll rewrote with the choice
+	// made: the undo of the roll puts it back, so the damage is offered as it was.
+	PartsBefore json.RawMessage `json:"parts_before,omitempty"`
 	// ManeuverSpent are the resources the parts spent, one use each (a table maneuver); an undo gives them back.
 	ManeuverSpent []string    `json:"maneuver_spent,omitempty"`
 	OnceBefore    *onceMarks  `json:"once_before,omitempty"`
@@ -653,6 +674,8 @@ type actionEvent struct {
 	// move's undo puts it back).
 	Dragged     string     `json:"dragged_id,omitempty"`
 	DraggedFrom *moveState `json:"dragged_from,omitempty"`
+	// Teleport is where a teleport spell put the caster, and where it stood: the undo puts it back.
+	Teleport *teleportEvent `json:"teleport,omitempty"`
 	// Contest is what a contest or a special action says of the event: grapple, shove,
 	// escape, Hide, Help, surprise (combat_contests_core.go).
 	Contest *contestEvent `json:"contest,omitempty"`
@@ -679,6 +702,12 @@ type markState struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// tempCleared is the temporary hit points an ended effect took off a combatant.
+type tempCleared struct {
+	Combatant string `json:"combatant"`
+	Temp      int32  `json:"temp"`
+}
+
 // effectRef is an effect that lasts (a combatant_states row of the kind 'effect') and
 // the combatant it is on.
 type effectRef struct {
@@ -693,6 +722,21 @@ type effectRef struct {
 // undo chain.
 func (ev actionEvent) linesBefore() []string {
 	return slices.Concat(ev.EndedLines, ev.FollowUpLines, ev.RevealLines)
+}
+
+// revealedIDs are the hidden creatures the event made appear: its list, and the targets of
+// its hits that were hidden when the cast was made when RevealedHits says they were revealed.
+func (ev actionEvent) revealedIDs() []string {
+	ids := slices.Clone(ev.Revealed)
+	if !ev.RevealedHits {
+		return ids
+	}
+	for _, h := range ev.Hits {
+		if h.HiddenAtCast {
+			ids = append(ids, h.Target)
+		}
+	}
+	return ids
 }
 
 // readEvent decodes an event's payload. A payload of this module never fails
@@ -717,20 +761,12 @@ func touchesHidden(cs []playdb.Combatant, pending []playdb.PendingDamage) bool {
 	for _, c := range cs {
 		hidden[c.ID] = c.Hidden
 	}
-	return slices.ContainsFunc(pending, func(p playdb.PendingDamage) bool { return hidden[deref(p.AttackerID)] || hidden[p.TargetID] })
+	return slices.ContainsFunc(pending, func(p playdb.PendingDamage) bool { return hidden[conv.OrZero(p.AttackerID)] || hidden[p.TargetID] })
 }
 
 // hpOf is a combatant's hit points as the undo stores them.
 func hpOf(c playdb.Combatant) hpState {
-	return hpState{HP: num(c.HpCurrent), Temp: num(c.HpTemp), Defeated: c.Defeated}
-}
-
-// num is the value of an optional number, 0 when unset.
-func num(n *int32) int32 {
-	if n == nil {
-		return 0
-	}
-	return *n
+	return hpState{HP: conv.OrZero(c.HpCurrent), Temp: conv.OrZero(c.HpTemp), Defeated: c.Defeated}
 }
 
 // pendingOf returns the damage the combatant's attacks still hold open:
@@ -740,7 +776,7 @@ func (c *combatTx) pendingOf(ctx context.Context, attackerID string) ([]playdb.P
 	if err != nil {
 		return nil, fmt.Errorf("list the pending damage: %w", err)
 	}
-	return slices.DeleteFunc(open, func(p playdb.PendingDamage) bool { return deref(p.AttackerID) != attackerID }), nil
+	return slices.DeleteFunc(open, func(p playdb.PendingDamage) bool { return conv.OrZero(p.AttackerID) != attackerID }), nil
 }
 
 // linesSeenBy is who may see at least one of the lines a change wrote, on a map with

@@ -17,7 +17,7 @@ import (
 )
 
 // The spells, the reactions, the fallen, the conditions and the class features
-// (MR-012, MR-014, RN-02, RN-03, RN-18, RN-20, RN-22, Etapa 6, slice 6.4b).
+// (MR-012, MR-014, RN-02, RN-03, RN-18, RN-20, RN-22).
 // These tests need the database (MEURPG_TEST_DATABASE_URL). The fixture is the
 // party of the canonical fight: Toren, a level 5 fighter (Extra Attack, Retomar
 // o fôlego, Surto de ação); Pensantus, a level 3 wizard with four 1st-level
@@ -2224,7 +2224,7 @@ func TestCombatSpellEventsPerAudience(t *testing.T) {
 
 	// A cast at the visible Capitão, then the master's cast for Pensantus at the hidden goblin.
 	a.mustCast(t, a.ana, e, "Pensantus", holdPerson, slotOfLevel(2), a.at(t, "Capitão Goblin"), noCastRoll)
-	a.mustCast(t, a.master, e, "Pensantus", webSpell, slotOfLevel(2), a.at(t, "Goblin"), noCastRoll)
+	a.mustCast(t, a.master, e, "Pensantus", holdPerson, slotOfLevel(2), a.at(t, "Goblin"), noCastRoll)
 	a.mustEndTurn(t, a.master, e) // the sentinel: Toren's turn
 
 	count := func(who string) (logHints, vitals, encounters int) {

@@ -85,7 +85,16 @@ export function initiativeFormula(c: Combatant): string | null {
   }
   const bonus = c.initiativeBonus ?? 0;
   const sign = bonus < 0 ? '−' : '+';
-  return `1d20 (${c.initiativeFace}) ${sign} ${Math.abs(bonus)} = ${c.initiative}`;
+  const die = initiativeDie(c);
+  return `1d20 (${c.initiativeFace}) ${sign} ${Math.abs(bonus)}${die ? ` + ${die} (dado)` : ''} = ${c.initiative}`;
+}
+
+/** What a Bardic Inspiration die added to the initiative: the total less the d20 and the bonus, 0 when none was used. */
+export function initiativeDie(c: Combatant): number {
+  if (c.initiative === undefined || c.initiativeFace === undefined) {
+    return 0;
+  }
+  return Math.max(0, c.initiative - c.initiativeFace - (c.initiativeBonus ?? 0));
 }
 
 /** The roll still to come: `1d20 + 2 = —`. */

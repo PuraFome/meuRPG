@@ -138,8 +138,7 @@ func TestAddMilestoneStepByStep(t *testing.T) {
 		{"fails: the list", func() { rig.faults.armQuery("ListPlannedMilestonesForUpdate", 0) }, "f3"},
 		{"fails: the key", func() { rig.faults.armQuery("GetPlannedMilestoneByCreateKey", 0) }, "f4"},
 		{"fails: the insert", func() { rig.faults.armQuery("InsertPlannedMilestone", 0) }, "f5"},
-		// Finding: the add committed, but the caller is told it failed
-		// (milestones.go:126); a retry with the same key is answered with it.
+		// The add is committed: the answer carries the written milestone and no list.
 		{"fails: the read after", func() { rig.faults.armQuery("ListPlannedMilestones", 0) }, "f6"},
 	} {
 		tc.arm()
@@ -152,10 +151,8 @@ func TestAddMilestoneStepByStep(t *testing.T) {
 	a := add("first", rig.master, rig.campaign, "  Chegar ao Vale Seco ", "k1")
 	rig.label(a.GetMilestone().GetId(), "milestone-a")
 	add("the same request again", rig.master, rig.campaign, "  Chegar ao Vale Seco ", "k1")
-	// Finding: the key is kept with the hash of the request as it came
-	// (milestones.go:91), before the text is trimmed, so a retry whose text
-	// differs only by the spaces around it is refused as another change, though
-	// it would store the same milestone.
+	// The key is kept with the hash of the trimmed text, so a retry that differs
+	// only by the spaces around it is the same request.
 	add("the same key, the text trimmed the same", rig.master, rig.campaign, "Chegar ao Vale Seco", "k1")
 	add("the same key, another text", rig.master, rig.campaign, "Derrotar a Sombra", "k1")
 	b := add("no key", rig.master, rig.campaign, "Derrotar a Sombra", "")
@@ -219,14 +216,18 @@ func TestMoveMilestoneStepByStep(t *testing.T) {
 	rig.takeLogs(t)
 	steps := newMilestoneSteps(t, rig)
 	up, down := progressionv1.MilestoneDirection_MILESTONE_DIRECTION_UP, progressionv1.MilestoneDirection_MILESTONE_DIRECTION_DOWN
-	move := func(name string, u *user, campaign, id string, dir progressionv1.MilestoneDirection) {
+	moveKeyed := func(name string, u *user, campaign, id string, dir progressionv1.MilestoneDirection, key string) {
 		t.Helper()
-		res, err := rig.client(u).MoveMilestone(ctx, connect.NewRequest(&progressionv1.MoveMilestoneRequest{CampaignId: campaign, MilestoneId: id, Direction: dir}))
+		res, err := rig.client(u).MoveMilestone(ctx, connect.NewRequest(&progressionv1.MoveMilestoneRequest{CampaignId: campaign, MilestoneId: id, Direction: dir, IdempotencyKey: key}))
 		if err != nil {
 			steps.record(t, name, nil, err)
 			return
 		}
 		steps.record(t, name, steps.summary(res.Msg.GetMilestones()), nil)
+	}
+	move := func(name string, u *user, campaign, id string, dir progressionv1.MilestoneDirection) {
+		t.Helper()
+		moveKeyed(name, u, campaign, id, dir, "")
 	}
 	unknown := newKey()
 	rig.label(unknown, "unknown")
@@ -241,9 +242,6 @@ func TestMoveMilestoneStepByStep(t *testing.T) {
 	move("unknown milestone, no direction", rig.master, rig.campaign, unknown, 0)
 	move("a direction that does not exist", rig.master, rig.campaign, ids["A"], 7)
 	move("unknown milestone", rig.master, rig.campaign, unknown, up)
-	// Finding: the milestone missing from the list it was just locked in
-	// (milestones.go:190) cannot happen: changePlanned found and locked it in
-	// the same transaction, so that refusal is never reached.
 	if err := rig.master.setXPMode(rig.campaign, campaignsv1.XpMode_XP_MODE_ENEMIES, false); err != nil {
 		t.Fatalf("SetCampaignXpMode(enemies) error = %v", err)
 	}
@@ -287,10 +285,25 @@ func TestMoveMilestoneStepByStep(t *testing.T) {
 	rig.takeLogs(t)
 	move("E up, only reached ones above", rig.master, rig.campaign, ids["E"], up)
 	move("D up, past the reached C, with one off the list", rig.master, rig.campaign, ids["D"], up)
-	// Finding: the move committed, but the caller is told it failed
-	// (milestones.go:217), and a move has no key: the app that retries it moves
-	// the milestone once more.
+	// The move is committed: the answer has no list, and the app reads it again.
 	rig.faults.armQuery("ListPlannedMilestones", 0)
 	move("fails: the read after", rig.master, rig.campaign, ids["D"], down)
+
+	// A move with a key (MoveMilestone's idempotency): two more planned milestones give the same
+	// request somewhere to go twice. The retry replays the first answer and moves nothing again;
+	// the key with another direction is refused; a retry whose read after fails is still answered
+	// by the committed path (an empty list).
+	for _, name := range []string{"F", "G"} {
+		ids[name] = rig.master.plan(t, rig.campaign, "Marco "+name).GetId()
+		rig.label(ids[name], "milestone-"+strings.ToLower(name))
+	}
+	rig.takeLogs(t)
+	key := newKey()
+	moveKeyed("key: F up", rig.master, rig.campaign, ids["F"], up, key)
+	moveKeyed("key again, the same move: replayed", rig.master, rig.campaign, ids["F"], up, key)
+	moveKeyed("key again, another direction", rig.master, rig.campaign, ids["F"], down, key)
+	moveKeyed("key again, another milestone", rig.master, rig.campaign, ids["G"], up, key)
+	rig.faults.armQuery("ListPlannedMilestones", 0)
+	moveKeyed("key again, the read after fails", rig.master, rig.campaign, ids["F"], up, key)
 	rig.wantHistoryGolden(t, "milestones_move", steps.steps)
 }

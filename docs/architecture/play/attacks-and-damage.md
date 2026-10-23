@@ -11,6 +11,8 @@ A natural roll in the sheet's critical range or more is a critical hit for a wea
 The response carries the roll in numbers (`1d20 (13) + 6 = 19`) and the result, never the AC for the player; the master's response carries `target_armor_class`, with a Shield's +5 stored in the event so a resend finds the same.
 `TestRN20_PlayersNeverReceiveCAOrHiddenLogEntries` searches the AC in the player's JSON and checks the master's has it.
 A hit opens a `pending_damages` row (stored, so a resend or a reload finds it).
+The AC is the sheet's: a shield beside a two-handed weapon on the sheet adds nothing, in the combat and in the comparison alike.
+A Protection used on the attack gives the roll disadvantage, with its own source in the mode (see [Reactions](reactions.md#protection)).
 A weapon attack held for a Lucky or Bardic Inspiration question is in [Held rolls](held-rolls.md); a hit that waits for a reaction is in [Reactions](reactions.md).
 
 `RollDamage` rolls the damage dice (on a critical as the table rule says; the modifier once; the attack's type) or validates the typed sum (`dice.Physical`, from N to N × faces).
@@ -97,10 +99,15 @@ A hit with more than the weapon opens `PendingDamage.parts[]`:
 A critical doubles the dice of every part (or follows the table's "maximum plus a roll"), never the fixed numbers (SRD 5.1 "Critical Hits").
 In the app the server rolls every part; with physical dice the player types a sum for each part (`typed_parts[]`).
 Divine Smite's extra die against an undead or fiend is rolled as its own part and only counts when the target is one: the player sees "+1d8" and never why, and the damage a player reads on an NPC is the damage as rolled (`damageHit.Shown`), so the total says nothing either.
+The `extra_damage` effect of a table feature ([Rules: table content](../rules-table-content.md#extra-damage)) is one more choosable extra after a weapon hit by a player's character: a flat damage of the weapon's type that a critical hit does not double. It is listed off, with its reason, when the target is not larger (the sizes are public), when it was used this turn or when the resource has no use left; marking it spends a use and the rider is the master's alone. Its once-per-turn mark is kept by feature key in `combatants.table_once_turns`, and the master's undo puts it and the use back. It is not a maneuver: the one-maneuver-per-attack limit does not count it.
+
 Sneak Attack and Colossus Slayer are once per turn (`sneak_attack_turn`, `colossus_slayer_turn`); Hunter's Mark follows the caster's concentration (`combatant_states`).
 Great Weapon Fighting rerolls 1s and 2s once, shown on the part.
 The master sees the damage by part and takes an extra out with a reason (`RemoveDamagePart`); the weapon and automatic lines stay.
 Undoing a damage roll gives back the slot, the once-per-turn marks and the rolls.
+An area spell's damage is one roll for the whole cast: it settles every pending damage of the cast still waiting for a roll with the same damage type, in the combat's order (`sortByCombatOrder`), so `settled` in the event and `cast_pending_damages` in the answer read the same way on every run.
+
+The rays of Scorching Ray are not an area: each hit opens a pending damage with no `cast_id`, so several rays at one creature are several separate rolls, listed in `cast.pending_damages` in the order of the rays (the request's target order, a target's rays together).
 
 ## Roll modes
 
@@ -119,10 +126,11 @@ Death saves and initiative are untouched.
 - **Physical dice.** With a real die the player types both faces (`d20_faces`, in the order rolled); the server picks the one that counts (`counted_index`).
   A call with the wrong number of faces is refused with a message saying how many.
   `RollSceneCheck`, `SearchForTraps` and `TryPuzzleHint` take the same field.
-- **What counts as a source.** Conditions of attacker and target (Blinded, Frightened, Invisible, Paralyzed, Poisoned, Prone with the 5 ft rule, Restrained, Stunned, Unconscious, Petrified); an attacker or target the other cannot see (a fog map hides it from the player; the master's own "hidden" mark changes no roll); long range (not for a weapon attack whose attacker has a `ranged_attack` with `no_long_range_disadvantage`) and a hostile within 5 ft for ranged attacks; Reckless Attack; Danger Sense (only against an effect the character sees); Dodge; Pack Tactics; Rage on Strength checks and saves; Frightened and Poisoned on ability checks; the Help; lasting effects (see [Lasting effects](lasting-effects.md)).
+- **What counts as a source.** Conditions of attacker and target (Blinded, Frightened, Invisible, Paralyzed, Poisoned, Prone with the 5 ft rule, Restrained, Stunned, Unconscious, Petrified); an attacker or target the other cannot see (a fog map hides it from the player; the master's own "hidden" mark changes no roll); long range (not for a weapon attack whose attacker has a `ranged_attack` with `no_long_range_disadvantage`) and a hostile within 5 ft for ranged attacks; Reckless Attack; Danger Sense (only against an effect the character sees); Dodge; Pack Tactics; Rage on Strength checks and saves; Frightened and Poisoned on ability checks; the racial advantages on saves against one kind of source (`TaggedSave`: Brave, Fey Ancestry, Gnome Cunning, Dwarven Resilience, read from the sheet's `against:` hints by `taggedSavesOf`), which apply only when the save lists what it is against (`SaveScene.Against`, worked out in `combat_against.go` for a spell's save, an effect's and a trap's; a save with no known source keeps the sheet's reminder) and read "Bravura: vantagem no teste de resistência contra ficar amedrontado" on the roll card; the Help; lasting effects (see [Lasting effects](lasting-effects.md)).
   A hit within 5 ft against a Paralyzed or Unconscious target is a critical hit (`critical_on_hit`).
 - **What the player sees.** Only the sources they can see are listed; the mode counts all of them.
 - **Spell attacks.** `GetTurnOptions` writes the same `roll_mode`, `sources` and `critical_on_hit` on each target of a spell that makes an attack roll (`turnModes.annotateShape` with `shapeOfSpell`), so the cast sheet suggests the mode `CastSpell` will roll and asks for the right number of typed d20.
+  A spell attack of the `half_on_miss` kind (Acid Arrow) that misses opens a pending damage with `half` set: the dice are rolled as usual and the amount is half of the total, rounded down, taken through the target's resistance like any damage.
 
 ## States
 
@@ -171,7 +179,9 @@ Dodge adds the `dodging` state until the start of the dodger's next turn.
 | Cutting Words, Uncanny Dodge, Deflect Missiles (reaction) | Reaction | Spend the reaction; their windows are in [Reactions](reactions.md) |
 | Divine Sense (paladin) | Action | Spends a use |
 | Lay on Hands (paladin) | Action | `UseLayOnHands` (see [Vitals, rests and class resources](rests-and-resources.md)) |
-| Channel Divinity (cleric: Turn Undead, Preserve Life; paladin: Sacred Weapon, Turn the Unholy) | Action | Spends the action and one use of the shared `channel_divinity` pool |
+| Channel Divinity (paladin: Sacred Weapon, Turn the Unholy) | Action | Spends the action and one use of the shared `channel_divinity` pool |
+| Channel Divinity: Preserve Life (Life cleric) | Action | Spends the action and a use, and restores the hit points the request asks (`preserve_life`: a creature and its points; a request that names no one shares the points among the cleric's side, the creature hurt the most in proportion first, `neediest`), at most five times the cleric's level in all, to creatures within 30 ft (`distanceFt`) that are not undead or constructs, each to no more than half its maximum (`healCombatant`, `combat_channel.go`). The event keeps what each creature got (`channel.heals`, with the hit points before for the undo); the master and the cleric's player read it in the log (`channel_divinity`) |
+| Channel Divinity: Turn Undead (cleric) | Action | Spends the action and a use; each undead within 30 ft that is not both blind and deaf makes a Wisdom save against the cleric's DC (`link.Sheet.ChannelDC`: 8 + proficiency + Wisdom), rolled by the app with the creature's own save mode, and the ones that fail get the effect `effect:turned` for 10 rounds (a lasting effect whose texts tell the master what a turned creature does; it does not end by itself on damage). The event keeps each save and the rows of the effect, which the undo deletes |
 | Wild Shape (druid) | Action | Not through `TakeAction` (it needs the beast): `AssumeWildShape` (see [Creatures](creatures.md)) |
 | Flexible Casting (sorcerer) | Bonus action | `CreateSpellSlot`, `ConvertSpellSlot` |
 | Flurry of Blows (monk 2) | Bonus action | Needs the Attack action first (`ATTACK_ACTION_FIRST`); spends 1 ki and gives two unarmed strikes rolled as bonus action attacks |
@@ -182,7 +192,7 @@ Dodge adds the `dodging` state until the start of the dodger's next turn.
 | Hunter's Prey: Giant Killer (ranger); Fighting Style: Protection (fighter, paladin) | Reaction | Spends the reaction and logs; usable off turn |
 | Breath Weapon (dragonborn) | Action | Spends the action and a use and logs |
 
-Only Second Wind and Action Surge change numbers; the rest spend and log, and the effect is the table's.
+Second Wind, Action Surge, Preserve Life and Turn Undead change numbers; the rest spend and log, and the effect is the table's.
 
 ### The monk's riders (RN-35)
 
@@ -191,6 +201,7 @@ The features reach play as `link.Traits.OpenHand`, `StunningStrike` and `KiSaveD
 `Encounter.hit_riders` carries the open offers (the master's all, a player's their own character's).
 `CombatService.UseHitRider` spends the ki, rolls the target's save in the transaction, and applies the failure: Prone as a condition, or a lasting effect from `combat_effects.json` (`effect:stunning-strike`, `effect:open-hand-no-reactions`) anchored to the monk's end of turn.
 The no-reactions effect uses the modifier `no_reaction`, which `refreshCombatants` copies to `combatants.effect_no_reaction`; the opportunity, reaction-window and `kit.canReact` gates read it.
+A failed Strength save on the push moves the target through the forced-movement mechanism (see [Movement](movement.md#forced-movement)); the answer records the move in `rider.pushed`.
 The answer is a `hit_rider` event (`CombatLogKind.HIT_RIDER`) and cannot be undone.
 Its log line carries the target's d20, save total and the DC only for the master, and for the target's player when a player's character made the save; the monk's player reads only the result, since an NPC's roll never reaches a player (`TestOpenHandRidersOnlyOnFlurryHits`).
 

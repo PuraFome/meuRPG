@@ -22,8 +22,10 @@ import "meurpg/play/v1/lasting_effects.proto";
 // rounds after the casting (one minute is ten rounds: cast in round 1, it ends in
 // round 11), so "Restam N rodadas" is the difference to that round. What ends "at
 // the start of X's turn" ends exactly there (Esquivando). A concentration ends
-// every effect of its casting together. Outside a combat the app does not count
-// time: an effect lasts until the master ends it or a long rest.
+// every effect of its casting together. Outside a combat the clock is game time,
+// which only the master moves on (AdvanceGameTime, a cast that takes time, a
+// rest): an effect there ends when its seconds run out, when the master ends it
+// or at a long rest.
 //
 // The order of operations, in one transaction and idempotent under a double
 // EndTurn: at the end of a turn, (1) the saving throws the ending combatant's
@@ -277,11 +279,20 @@ message RollEffectSaveResponse {
   // d20 is rolled and kept, the window stays open and nothing is written, and
   // ResourceService.AnswerOutsideInspiration settles the save (SRD 5.1). The master's roll
   // never asks.
-  OutsideInspirationOffer inspiration_offer = 3;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  OutsideInspirationOffer inspiration_offer = 3 [deprecated = true];
   // Set instead of `result`, like `inspiration_offer`, when the roller is the player's own
   // halfling and a d20 shows a 1: the window stays open, and ResourceService.AnswerOutsideLucky
   // rolls it again or keeps the 1 (the die's question, if any, comes after it).
-  LuckyOffer lucky_offer = 4;
+  // Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+  // tab opened before the one question existed; it will go with the old answer RPCs.
+  LuckyOffer lucky_offer = 4 [deprecated = true];
+
+  // The question the roll asks now, in the one shape every held roll has (HeldRollOffer), set beside
+  // the deprecated `inspiration_offer` and `lucky_offer`: set instead of the result, when the
+  // roll waits for an answer (AnswerHeldRoll). Whoever may answer gets it; nobody else does (RN-10).
+  HeldRollOffer held_roll_offer = 5;
 }
 
 message SetExhaustionRequest {

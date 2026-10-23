@@ -156,7 +156,12 @@ func (s *Service) startOfTurnEffects(ctx context.Context, c *combatTx, ids []str
 	}
 	// The effects that last: what ends now, the damage a turn under them brings and
 	// the saving throws of the start of the turn (RN-22).
-	return s.effectsAfterTurnStart(ctx, c, ids, round)
+	if err := s.effectsAfterTurnStart(ctx, c, ids, round); err != nil {
+		return err
+	}
+	// The areas spells keep on the map: the ones whose time is out end, the ones that drift move, and
+	// who starts the turn in one is caught.
+	return s.zonesAtTurnStart(ctx, c, ids, round)
 }
 
 // setCurrent saves where the combat is: the round and the member that the
@@ -194,15 +199,12 @@ func othersActing(cs []playdb.Combatant, but string) []string {
 // dead) while the combat is ACTIVE. If it was in the turn, the others go on;
 // when nobody who acts is left, the turn passes to the next group. cs is the
 // combatants as they were before the change, in order; the leaver is skipped.
-// It reports whether the turn passed. The caller deletes or defeats the
-// combatant.
+// It reports whether the turn passed. When the leaver was not in the turn it
+// still bumps the revision, so the callers that reach it need no touch of their
+// own. The caller deletes or defeats the combatant.
 func leaveTurn(ctx context.Context, c *combatTx, cs []playdb.Combatant, who playdb.Combatant) (passed bool, err error) {
 	if !inTurn(c.enc, who) {
-		c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID)
-		if err != nil {
-			return false, fmt.Errorf("touch the encounter: %w", err)
-		}
-		return false, nil
+		return false, touch(ctx, c)
 	}
 	if acting := othersActing(cs, who.ID); len(acting) > 0 {
 		// The group's turn goes on without it.

@@ -2,6 +2,7 @@ package play
 
 import (
 	"context"
+	"slices"
 
 	"connectrpc.com/connect"
 
@@ -14,15 +15,15 @@ import (
 // rolls the d20 before deciding to use the Bardic Inspiration die, but must decide before
 // the GM says whether the roll succeeds or fails". A character that holds a die and rolls an
 // attack therefore does not get the result with its roll: RollAttack rolls (or takes) the d20
-// and keeps it with the request in a roll_holds row, writes nothing else, and answers with
+// and keeps it with the request in an inspiration_holds row, writes nothing else, and answers with
 // the offer. AnswerBardicInspiration then asks RollAttack again for the same request with the
 // d20 already rolled, and with the die rolled and added when the player chose to use it.
-// A weapon attack (and the attack cantrips) is held here, in roll_holds. The other d20 rolls of
-// the character wait in inspiration_holds, the table of the scene check (inspiration_held.go): the
-// spell attack against one target, the saving throw of an effect, the concentration save, the trap
+// A weapon attack (and the attack cantrips) is held here, in inspiration_holds (roll_holds is only
+// read, for the questions an older release left open). The other d20 rolls of the character wait in
+// the same table, as the scene check does (inspiration_held.go): the spell attack against one target, the saving throw of an effect, the concentration save, the trap
 // search and the puzzle hint try. The saving throws the app rolls for a target in a caster's call
 // (a spell's save, a hit rider's) do not wait for the die: the target's player is not rolling.
-// The same roll_holds row also asks the halfling's Lucky question about a d20 that shows a 1
+// The same row also asks the halfling's Lucky question about a d20 that shows a 1
 // (combat_lucky.go), before the die's.
 
 // bonusUse is a Bardic Inspiration die rolled and added to an attack roll, with the die as it
@@ -157,7 +158,11 @@ func (s *Service) heldAttackResponse(ctx context.Context, m authz.Membership, re
 	if err != nil {
 		return nil, s.dbError(ctx, "list the combatants", err)
 	}
-	return connect.NewResponse(heldAttackOffer(out, h, req.GetAttackerId(), req.GetTargetId(), req.GetAttackKey(), cs)), nil
+	resp := heldAttackOffer(out, h, req.GetAttackerId(), req.GetTargetId(), req.GetAttackKey(), cs)
+	if i := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == req.GetAttackerId() }); i >= 0 {
+		resp.HeldRollOffer = combatantOffer(*h, cs[i], cs)
+	}
+	return connect.NewResponse(resp), nil
 }
 
 // typedRoll says the d20 of a request came from real dice: a typed face, or typed faces with

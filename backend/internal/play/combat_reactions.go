@@ -14,6 +14,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -22,11 +23,11 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
-// Reactions (MR-014, timeline decision 5, Etapa 6, slice 6.4b). Escudo is the
+// Reactions (MR-014, timeline decision 5). Escudo is the
 // one reaction spell the combat runs: it is cast when an attack hits a player's
 // character, so the hit waits (AWAITING_REACTION) until the target's player, or
 // the master, answers. The opportunity attack is RollAttack's as_reaction
-// (combat_actions.go). Every other reaction spell stays the table's.
+// (combat_attack.go). Every other reaction spell stays the table's.
 
 // shield is the reaction spell the combat knows.
 const shield = "spell:shield"
@@ -77,7 +78,7 @@ func (s *Service) openPendingWindows(ctx context.Context, c *combatTx, p playdb.
 // to be rolled, or, when a reaction window waits on it (Escudo, or the master's
 // check), to wait for the answers first. attackTotal is kept for the new comparison.
 func (s *Service) openHit(ctx context.Context, c *combatTx, attacker, target playdb.Combatant, key string, dmg link.Dice, critical bool, extraDice, savageDice, attackTotal, attackAC int) (playdb.PendingDamage, error) {
-	total := clamp32(attackTotal, math.MinInt32, math.MaxInt32)
+	total := conv.Int32(attackTotal)
 	specs, err := s.hitWindows(ctx, c, attacker, target, key, critical, false, total, clamp32(attackAC, 0, math.MaxInt32))
 	if err != nil {
 		return playdb.PendingDamage{}, err
@@ -120,7 +121,7 @@ func (s *Service) reactionPrompts(ctx context.Context, m authz.Membership, d *en
 	}
 	var out []*playv1.ReactionPrompt
 	for _, w := range open {
-		prompt, ok, err := s.shieldPrompt(ctx, m, d, v, names, w)
+		prompt, ok, err := s.legacyShieldPrompt(ctx, m, d, v, names, w)
 		if err != nil {
 			return nil, err
 		}
@@ -131,8 +132,9 @@ func (s *Service) reactionPrompts(ctx context.Context, m authz.Membership, d *en
 	return out, nil
 }
 
-// shieldPrompt is the prompt of one open window, when it is a Shield window the viewer may read.
-func (s *Service) shieldPrompt(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer, names func(key string) string, w playdb.ReactionWindow) (*playv1.ReactionPrompt, bool, error) {
+// legacyShieldPrompt is the entry of the reaction_prompts list for one open window, when it is a
+// Shield window the viewer may read. The windows' own prompt is windowView.shieldPrompt.
+func (s *Service) legacyShieldPrompt(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer, names func(key string) string, w playdb.ReactionWindow) (*playv1.ReactionPrompt, bool, error) {
 	if w.Kind != string(reaction.Shield) || w.PendingDamageID == nil || w.ReactorID == nil {
 		return nil, false, nil
 	}
@@ -152,13 +154,13 @@ func (s *Service) shieldPrompt(ctx context.Context, m authz.Membership, d *encou
 	if v.master {
 		prompt.AttackerId = t.Actor
 	}
-	s.nameShieldAttacker(ctx, m, d, v, t, prompt)
+	s.legacyShieldAttacker(ctx, m, d, v, t, prompt)
 	return prompt, true, nil
 }
 
-// nameShieldAttacker says who attacked, and with what, only when the viewer sees the attacker
+// legacyShieldAttacker says who attacked, and with what, only when the viewer sees the attacker
 // (RN-20): the screen says "Capitão Goblin · Cimitarra", and a hidden attacker stays hidden.
-func (s *Service) nameShieldAttacker(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer, t windowTrigger, prompt *playv1.ReactionPrompt) {
+func (s *Service) legacyShieldAttacker(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer, t windowTrigger, prompt *playv1.ReactionPrompt) {
 	j := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == t.Actor })
 	if j < 0 || !v.sees(d.cs[j]) {
 		return
@@ -187,9 +189,9 @@ func (s *Service) reactionTarget(ctx context.Context, c *combatTx, v combatViewe
 	} else if err != nil {
 		return w, p, attacker, target, fmt.Errorf("find the pending damage: %w", err)
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return w, p, attacker, target, fmt.Errorf("list the combatants: %w", err)
+		return w, p, attacker, target, err
 	}
 	if target, err = findCombatant(cs, p.TargetID, v); err != nil {
 		return w, p, attacker, target, err
@@ -197,13 +199,13 @@ func (s *Service) reactionTarget(ctx context.Context, c *combatTx, v combatViewe
 	if err = v.mayAct(target); err != nil {
 		return w, p, attacker, target, err
 	}
-	attacker, _ = findCombatant(cs, deref(p.AttackerID), combatViewer{master: true})
+	attacker, _ = findCombatant(cs, conv.OrZero(p.AttackerID), combatViewer{master: true})
 	open, err := openWindowsOf(ctx, c)
 	if err != nil {
 		return w, p, attacker, target, err
 	}
 	i := slices.IndexFunc(open, func(o playdb.ReactionWindow) bool {
-		return o.Kind == string(reaction.Shield) && deref(o.PendingDamageID) == pendingID
+		return o.Kind == string(reaction.Shield) && conv.OrZero(o.PendingDamageID) == pendingID
 	})
 	if p.Status != pendingAwaitingReaction || i < 0 {
 		return w, p, attacker, target, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_AWAITING_REACTION, "the hit does not wait for a reaction")
@@ -301,7 +303,7 @@ func (s *Service) shieldStops(ctx context.Context, c *combatTx, w playdb.Reactio
 	if p.AttackArmorClass != nil {
 		base = int(*p.AttackArmorClass) - int(target.AcBonus)
 	}
-	return windowTriggerOf(w).Magic || int(num(p.AttackTotal)) < base+combat.ShieldACBonus, nil
+	return windowTriggerOf(w).Magic || int(conv.OrZero(p.AttackTotal)) < base+combat.ShieldACBonus, nil
 }
 
 // passShield lets the hit go on ("Não usar"): the window is answered and, when it was
@@ -365,16 +367,10 @@ func (s *Service) UseReaction(
 	return connect.NewResponse(resp), nil
 }
 
-// parseReactionCall reads the caller's membership and the ids of a Shield answer, in the order the
-// handlers always checked them.
+// parseReactionCall reads the caller's membership and the ids of a Shield answer. The member comes
+// first, so a stranger gets permission_denied before any id is parsed.
 func parseReactionCall(ctx context.Context, campaignID, keyRaw, encounterRaw, pendingRaw string) (m authz.Membership, key string, encID, pendingID string, err error) {
-	if m, err = authz.RequireCampaignMember(ctx, campaignID); err != nil {
-		return m, key, "", "", err
-	}
-	if key, err = parseKey(keyRaw); err != nil {
-		return m, key, "", "", err
-	}
-	if encID, err = parseCombatID(encounterRaw, "encounter"); err != nil {
+	if m, key, encID, err = memberCall(ctx, campaignID, keyRaw, encounterRaw); err != nil {
 		return m, key, "", "", err
 	}
 	if pendingID, err = parseCombatID(pendingRaw, "pending damage"); err != nil {
@@ -397,8 +393,8 @@ func (s *Service) shieldChange(ctx context.Context, c *combatTx, v combatViewer,
 	if err != nil {
 		return made, vitals, err
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return made, vitals, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return made, vitals, err
 	}
 	made.Round = c.enc.Round
 	return made, vitals, nil
@@ -444,19 +440,7 @@ func (s *Service) DeclineReaction(
 	ctx context.Context,
 	req *connect.Request[playv1.DeclineReactionRequest],
 ) (*connect.Response[playv1.DeclineReactionResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
-	if err != nil {
-		return nil, err
-	}
-	key, err := parseKey(req.Msg.GetIdempotencyKey())
-	if err != nil {
-		return nil, err
-	}
-	encID, err := parseCombatID(req.Msg.GetEncounterId(), "encounter")
-	if err != nil {
-		return nil, err
-	}
-	pendingID, err := parseCombatID(req.Msg.GetPendingDamageId(), "pending damage")
+	m, key, encID, pendingID, err := parseReactionCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId(), req.Msg.GetPendingDamageId())
 	if err != nil {
 		return nil, err
 	}
@@ -474,8 +458,8 @@ func (s *Service) DeclineReaction(
 		if err != nil {
 			return nil, err
 		}
-		if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
+		if err := touch(ctx, c); err != nil {
+			return nil, err
 		}
 		ev.Round = c.enc.Round
 		return ev, nil

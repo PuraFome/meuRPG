@@ -1,6 +1,8 @@
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { SessionTabs } from './conversation/session-tabs';
 import { ClueNotice } from './clue-notice/clue-notice';
+import { FreeRollLog } from './free-dice/free-roll-log';
 import { FogMasterPanel } from './fog-tools/fog-master-panel';
 import { FogPlayerTools } from './fog-tools/fog-player-tools';
 import { FamiliarBand } from '../../shared/familiar-eyes/familiar-band';
@@ -12,6 +14,7 @@ import { CombatView } from './combat/combat-view';
 import { FoundTreasures } from './treasure/found-treasures/found-treasures';
 import { GroupCheckCard } from './group-check/group-check-card';
 import { GroupCheckMaster } from './group-check/group-check-master';
+import { HeldRollsPanel } from './held-questions/held-rolls-panel';
 import { HighlightsCard } from './combat/combat-highlights/highlights-card';
 import { LiveToast } from '../../shared/live-toast/live-toast';
 import { MasterLive } from './puzzles/master-live/master-live';
@@ -46,6 +49,8 @@ export const LIVE_SESSION_IMPORTS = [
   MatButtonModule,
   MatIconModule,
   ClueNotice,
+  FreeRollLog,
+  SessionTabs,
   FogMasterPanel,
   FogPlayerTools,
   FamiliarBand,
@@ -57,6 +62,7 @@ export const LIVE_SESSION_IMPORTS = [
   FoundTreasures,
   GroupCheckCard,
   GroupCheckMaster,
+  HeldRollsPanel,
   HighlightsCard,
   LiveToast,
   MasterLive,

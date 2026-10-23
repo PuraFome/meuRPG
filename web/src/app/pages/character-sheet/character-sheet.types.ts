@@ -185,6 +185,9 @@ export interface FullSheetVm {
   readonly wearsArmor: boolean;
   /** Whether the stored sheet carries a shield (`FullSheet.shield`). */
   readonly hasShield: boolean;
+  /** Whether the shield adds nothing to `armorClass` because a two-handed weapon is on the
+   * sheet (`DerivedSheet.shield_idle`). */
+  readonly shieldIdle: boolean;
   readonly hitPointsMax: number;
   readonly hitDice: string;
   readonly speedWalkFt: number;

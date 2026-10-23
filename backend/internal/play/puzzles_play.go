@@ -15,6 +15,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
@@ -420,7 +421,7 @@ func (s *Service) savePuzzleMove(ctx context.Context, tx pgx.Tx, q *playdb.Queri
 		return nil, fmt.Errorf("record the move: %w", err)
 	}
 	if st.solved {
-		ev := puzzleEvent{PuzzleID: st.puzzleID, RunID: run.ID, Outcome: deref(saved.SolveOutcome)}
+		ev := puzzleEvent{PuzzleID: st.puzzleID, RunID: run.ID, Outcome: conv.OrZero(saved.SolveOutcome)}
 		if err := puzzleSessionEvent(ctx, q, session, eventPuzzleSolved, m.UserID, &who.ID, ev, now); err != nil {
 			return nil, err
 		}
@@ -509,8 +510,8 @@ func (s *Service) fireAndRecordTrap(ctx context.Context, q *playdb.Queries, c *c
 	}
 	ev := actionEvent{Trap: fired}
 	if inCombat {
-		if c.enc, err = q.TouchEncounter(ctx, c.enc.ID); err != nil {
-			return nil, fmt.Errorf("touch the encounter: %w", err)
+		if err := touch(ctx, c); err != nil {
+			return nil, err
 		}
 		ev.Round = c.enc.Round
 		res.firedEnc = c.enc
@@ -599,7 +600,7 @@ func (s *Service) solveRevealPoint(ctx context.Context, tx pgx.Tx, m authz.Membe
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return 0, "", fmt.Errorf("read what the session shows: %w", err)
 	}
-	changed, name, after, err := maps.PuzzleRevealPoint(ctx, tx, m.CampaignID, t.GetMapId(), t.GetPointId(), deref(onScreen.CurrentMapID))
+	changed, name, after, err := maps.PuzzleRevealPoint(ctx, tx, m.CampaignID, t.GetMapId(), t.GetPointId(), conv.OrZero(onScreen.CurrentMapID))
 	switch {
 	case connect.CodeOf(err) == connect.CodeNotFound:
 		return solveGone, "", nil

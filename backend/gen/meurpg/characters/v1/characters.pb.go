@@ -303,6 +303,12 @@ const (
 	OpenChoiceKind_OPEN_CHOICE_KIND_SPELLS_KNOWN OpenChoiceKind = 3
 	// Spells a caster that prepares spells prepares.
 	OpenChoiceKind_OPEN_CHOICE_KIND_SPELLS_PREPARED OpenChoiceKind = 4
+	// Skills still to double with Expertise (the rogue's and the bard's).
+	OpenChoiceKind_OPEN_CHOICE_KIND_EXPERTISE OpenChoiceKind = 5
+	// Tool proficiencies a trait lets the player pick (the dwarf's), not yet listed on the sheet.
+	OpenChoiceKind_OPEN_CHOICE_KIND_TOOLS OpenChoiceKind = 6
+	// Languages the race, a trait or the background let the player pick, not yet listed on the sheet.
+	OpenChoiceKind_OPEN_CHOICE_KIND_LANGUAGES OpenChoiceKind = 7
 )
 
 // Enum value maps for OpenChoiceKind.
@@ -313,6 +319,9 @@ var (
 		2: "OPEN_CHOICE_KIND_CANTRIPS",
 		3: "OPEN_CHOICE_KIND_SPELLS_KNOWN",
 		4: "OPEN_CHOICE_KIND_SPELLS_PREPARED",
+		5: "OPEN_CHOICE_KIND_EXPERTISE",
+		6: "OPEN_CHOICE_KIND_TOOLS",
+		7: "OPEN_CHOICE_KIND_LANGUAGES",
 	}
 	OpenChoiceKind_value = map[string]int32{
 		"OPEN_CHOICE_KIND_UNSPECIFIED":     0,
@@ -320,6 +329,9 @@ var (
 		"OPEN_CHOICE_KIND_CANTRIPS":        2,
 		"OPEN_CHOICE_KIND_SPELLS_KNOWN":    3,
 		"OPEN_CHOICE_KIND_SPELLS_PREPARED": 4,
+		"OPEN_CHOICE_KIND_EXPERTISE":       5,
+		"OPEN_CHOICE_KIND_TOOLS":           6,
+		"OPEN_CHOICE_KIND_LANGUAGES":       7,
 	}
 )
 
@@ -13459,13 +13471,16 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\rLevelUpReason\x12\x1f\n" +
 	"\x1bLEVEL_UP_REASON_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12LEVEL_UP_REASON_XP\x10\x01\x12\x1d\n" +
-	"\x19LEVEL_UP_REASON_MILESTONE\x10\x02*\xb7\x01\n" +
+	"\x19LEVEL_UP_REASON_MILESTONE\x10\x02*\x93\x02\n" +
 	"\x0eOpenChoiceKind\x12 \n" +
 	"\x1cOPEN_CHOICE_KIND_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17OPEN_CHOICE_KIND_SKILLS\x10\x01\x12\x1d\n" +
 	"\x19OPEN_CHOICE_KIND_CANTRIPS\x10\x02\x12!\n" +
 	"\x1dOPEN_CHOICE_KIND_SPELLS_KNOWN\x10\x03\x12$\n" +
-	" OPEN_CHOICE_KIND_SPELLS_PREPARED\x10\x04*\x9d\x01\n" +
+	" OPEN_CHOICE_KIND_SPELLS_PREPARED\x10\x04\x12\x1e\n" +
+	"\x1aOPEN_CHOICE_KIND_EXPERTISE\x10\x05\x12\x1a\n" +
+	"\x16OPEN_CHOICE_KIND_TOOLS\x10\x06\x12\x1e\n" +
+	"\x1aOPEN_CHOICE_KIND_LANGUAGES\x10\a*\x9d\x01\n" +
 	"\n" +
 	"ClaimState\x12\x1b\n" +
 	"\x17CLAIM_STATE_UNSPECIFIED\x10\x00\x12\x14\n" +

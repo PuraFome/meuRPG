@@ -14,11 +14,12 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// The session summary, "Resumo da sessão" (MR-032, Etapa 8; question 64 of
+// The session summary, "Resumo da sessão" (MR-032; question 64 of
 // the progress doc). Like the combat highlights, it is worked out on every
 // read from the session's events, never stored. It reuses the combat
 // highlights' code (tallyHighlights, categoriesOf) for each combat and sums
@@ -30,7 +31,7 @@ import (
 // anyone: the scene never told the players whether it was a pass or a fail,
 // and the summary must not tell it either (RN-20).
 //
-// "Mais tesouro encontrado" (MR-041, Etapa 9) is the last category: the PO of
+// "Mais tesouro encontrado" (MR-041) is the last category: the PO of
 // the treasures marked found while the session was open, per character, split
 // among a treasure's finders and rounded down (MapKeeper.TreasureFoundIn). It
 // counts in every XP mode, and every member who reads the summary gets it:
@@ -115,9 +116,7 @@ func (s *Service) GetSessionSummary(
 		return nil, err
 	}
 	if m.Role != authz.RoleMaster {
-		// A character the master gave back to the reserve is invisible to the players,
-		// in the sessions it played before too (RN-10).
-		st.list = slices.DeleteFunc(st.list, func(t *characterTally) bool { return chars[t.characterID].Reserved })
+		st.list = dropReserved(st.list, chars)
 	}
 
 	sum := &playv1.SessionSummary{
@@ -130,6 +129,9 @@ func (s *Service) GetSessionSummary(
 		fillMasterSummary(sum, st.list, combats, scenesOpened)
 	} else if m.UserID != "" {
 		sum.Mine = playerResult(st.list, chars, m.UserID)
+	}
+	if sum.Conversation, sum.ConversationTruncated, err = s.conversationOf(ctx, m, session.ID); err != nil {
+		return nil, err
 	}
 	return connect.NewResponse(&playv1.GetSessionSummaryResponse{Summary: sum}), nil
 }
@@ -181,8 +183,22 @@ func (s *Service) tallyCombats(ctx context.Context, sessionID string, st *sessio
 // nameTallies gives a name to the ones who only rolled checks or found treasure,
 // and returns the characters of the tallies (for "mine" and the reserve).
 func (s *Service) nameTallies(ctx context.Context, campaignID string, st *sessionTally) (map[string]link.Character, error) {
-	ids := make([]string, 0, len(st.list))
+	chars, err := s.talliedCharacters(ctx, campaignID, st.list)
+	if err != nil {
+		return nil, err
+	}
 	for _, t := range st.list {
+		if t.name == "" {
+			t.name = chars[t.characterID].Name
+		}
+	}
+	return chars, nil
+}
+
+// talliedCharacters reads the characters of the tallies by id.
+func (s *Service) talliedCharacters(ctx context.Context, campaignID string, list []*characterTally) (map[string]link.Character, error) {
+	ids := make([]string, 0, len(list))
+	for _, t := range list {
 		ids = append(ids, t.characterID)
 	}
 	chars := map[string]link.Character{}
@@ -197,12 +213,15 @@ func (s *Service) nameTallies(ctx context.Context, campaignID string, st *sessio
 			chars[c.ID] = c
 		}
 	}
-	for _, t := range st.list {
-		if t.name == "" {
-			t.name = chars[t.characterID].Name
-		}
-	}
 	return chars, nil
+}
+
+// dropReserved takes out the tallies of the characters the master gave back to the
+// reserve: they are invisible to the players, in the combats and sessions they
+// played before too, to their former player as well (RN-10). Only a non-master
+// reader calls it.
+func dropReserved(list []*characterTally, chars map[string]link.Character) []*characterTally {
+	return slices.DeleteFunc(list, func(t *characterTally) bool { return chars[t.characterID].Reserved })
 }
 
 // fillMasterSummary adds the master's numbers and the table of every character.
@@ -261,8 +280,8 @@ func (s *Service) tallyChecks(ctx context.Context, sessionID string, st *session
 			continue
 		}
 		t := st.of(*r.CharacterID, "")
-		t.checksTried += clampInt32(int(r.Tried))
-		t.checksPassed += clampInt32(int(r.Passed))
+		t.checksTried += conv.Int32(int(r.Tried))
+		t.checksPassed += conv.Int32(int(r.Passed))
 	}
 	return int(opened), nil
 }

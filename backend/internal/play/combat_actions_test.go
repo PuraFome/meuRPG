@@ -20,7 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
-// The actions of a turn (MR-012, MR-014, Etapa 6, slice 6.4a): the options of a
+// The actions of a turn (MR-012, MR-014): the options of a
 // combatant, the attack in two steps, the damage, the standard actions, the
 // NPCs' hit points, the undo and the combat log. These tests need the
 // database (MEURPG_TEST_DATABASE_URL). The fixture is the party of the
@@ -50,6 +50,8 @@ type armed struct {
 	// placedBy is the area placeFor chose for each idempotency key, so that a retry of the
 	// same cast is the same request.
 	placedBy sync.Map
+	// callState is the state markCall saw before the call a golden scenario makes.
+	callState string
 }
 
 // hero creates a player's character with a full sheet.
@@ -181,12 +183,7 @@ func (a *armed) start(t *testing.T, p plan) *playv1.Encounter {
 	}
 	e := res.Msg.GetEncounter()
 	for label, face := range p.players {
-		if _, err := a.master.combat.SubmitInitiative(ctx, connect.NewRequest(&playv1.SubmitInitiativeRequest{
-			CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: byLabel(t, e, label).GetId(), IdempotencyKey: newKey(),
-			Roll: &playv1.SubmitInitiativeRequest_D20Face{D20Face: face},
-		})); err != nil {
-			t.Fatalf("SubmitInitiative(%s) error = %v", label, err)
-		}
+		a.submitFaceKeepingTheD20(t, e, label, face)
 	}
 	for _, label := range p.reveal {
 		if _, err := a.master.combat.SetCombatantHidden(ctx, connect.NewRequest(&playv1.SetCombatantHiddenRequest{

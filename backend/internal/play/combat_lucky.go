@@ -23,7 +23,7 @@ import (
 // one when both show a 1).
 //
 // The table asks the player, "Tirou 1: rolar de novo?", on the roll of a weapon attack or an
-// attack cantrip. The roll waits in the same roll_holds row a Bardic Inspiration die waits in
+// attack cantrip. The roll waits in the same row a Bardic Inspiration die waits in
 // (combat_inspiration.go): RollAttack keeps the d20 of a lucky attacker that shows a 1 with the
 // request (lucky_index), resolves and spends nothing, and answers with the question. AnswerLucky
 // rolls the die again (in the app or typed, RN-18), or keeps the 1, and asks RollAttack again for

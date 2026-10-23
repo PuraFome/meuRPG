@@ -466,8 +466,12 @@ func (x *StartContestRequest) GetManeuverFace() int32 {
 type StartContestResponse struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	Encounter *Encounter             `protobuf:"bytes,1,opt,name=encounter,proto3" json:"encounter,omitempty"`
-	// The contest as the caller reads it.
-	Contest       *ContestView `protobuf:"bytes,2,opt,name=contest,proto3" json:"contest,omitempty"`
+	// The contest as the caller reads it. Unset while the roll waits for a question.
+	Contest *ContestView `protobuf:"bytes,2,opt,name=contest,proto3" json:"contest,omitempty"`
+	// Set instead of `contest` when the initiator's d20 waits for a question: the halfling's Lucky about a 1, or the Bardic
+	// Inspiration die the combatant holds (AnswerHeldRoll answers it). The d20 was rolled and kept, and nothing is spent or
+	// written. The master is asked too when he rolls for the player, and answers after the player's first 10 s.
+	HeldRollOffer *HeldRollOffer `protobuf:"bytes,3,opt,name=held_roll_offer,json=heldRollOffer,proto3" json:"held_roll_offer,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -512,6 +516,13 @@ func (x *StartContestResponse) GetEncounter() *Encounter {
 func (x *StartContestResponse) GetContest() *ContestView {
 	if x != nil {
 		return x.Contest
+	}
+	return nil
+}
+
+func (x *StartContestResponse) GetHeldRollOffer() *HeldRollOffer {
+	if x != nil {
+		return x.HeldRollOffer
 	}
 	return nil
 }
@@ -615,9 +626,11 @@ func (x *RespondContestRequest) GetDeferToMaster() bool {
 
 // RespondContestResponse returns the combat and the contest after the answer.
 type RespondContestResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Encounter     *Encounter             `protobuf:"bytes,1,opt,name=encounter,proto3" json:"encounter,omitempty"`
-	Contest       *ContestView           `protobuf:"bytes,2,opt,name=contest,proto3" json:"contest,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Encounter *Encounter             `protobuf:"bytes,1,opt,name=encounter,proto3" json:"encounter,omitempty"`
+	Contest   *ContestView           `protobuf:"bytes,2,opt,name=contest,proto3" json:"contest,omitempty"`
+	// Set instead of `contest` when the defender's d20 waits for a question, as for StartContestResponse.
+	HeldRollOffer *HeldRollOffer `protobuf:"bytes,3,opt,name=held_roll_offer,json=heldRollOffer,proto3" json:"held_roll_offer,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -662,6 +675,13 @@ func (x *RespondContestResponse) GetEncounter() *Encounter {
 func (x *RespondContestResponse) GetContest() *ContestView {
 	if x != nil {
 		return x.Contest
+	}
+	return nil
+}
+
+func (x *RespondContestResponse) GetHeldRollOffer() *HeldRollOffer {
+	if x != nil {
+		return x.HeldRollOffer
 	}
 	return nil
 }
@@ -1116,9 +1136,14 @@ func (x *HideRequest) GetRoll() *CheckRollInput {
 
 // HideResponse returns the combat and the attempt, which waits for the master.
 type HideResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Encounter     *Encounter             `protobuf:"bytes,1,opt,name=encounter,proto3" json:"encounter,omitempty"`
-	Attempt       *HideAttemptView       `protobuf:"bytes,2,opt,name=attempt,proto3" json:"attempt,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Encounter *Encounter             `protobuf:"bytes,1,opt,name=encounter,proto3" json:"encounter,omitempty"`
+	// Unset while the Stealth roll waits for a question.
+	Attempt *HideAttemptView `protobuf:"bytes,2,opt,name=attempt,proto3" json:"attempt,omitempty"`
+	// Set instead of `attempt` when the d20 waits for a question: the halfling's Lucky about a 1, or the Bardic Inspiration die
+	// the combatant holds (AnswerHeldRoll answers it). The d20 was rolled and kept, and nothing is spent or written. The master
+	// is asked too when he rolls for the player, and answers after the player's first 10 s.
+	HeldRollOffer *HeldRollOffer `protobuf:"bytes,3,opt,name=held_roll_offer,json=heldRollOffer,proto3" json:"held_roll_offer,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1163,6 +1188,13 @@ func (x *HideResponse) GetEncounter() *Encounter {
 func (x *HideResponse) GetAttempt() *HideAttemptView {
 	if x != nil {
 		return x.Attempt
+	}
+	return nil
+}
+
+func (x *HideResponse) GetHeldRollOffer() *HeldRollOffer {
+	if x != nil {
+		return x.HeldRollOffer
 	}
 	return nil
 }
@@ -2249,11 +2281,23 @@ type RollGroupCheckResponse struct {
 	GroupCheck *GroupCheckView        `protobuf:"bytes,1,opt,name=group_check,json=groupCheck,proto3" json:"group_check,omitempty"`
 	// Set when the character holds a Bardic Inspiration die: the d20 was rolled and the check
 	// was not written; AnswerOutsideInspiration settles it.
+	// Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+	// tab opened before the one question existed; it will go with the old answer RPCs.
+	//
+	// Deprecated: Marked as deprecated in meurpg/play/v1/contests.proto.
 	InspirationOffer *OutsideInspirationOffer `protobuf:"bytes,2,opt,name=inspiration_offer,json=inspirationOffer,proto3" json:"inspiration_offer,omitempty"`
 	// Set when the character is a halfling and a d20 shows a 1 (Lucky): the d20 was rolled and
 	// the check was not written; AnswerOutsideLucky rolls it again or keeps the 1. It comes before
-	// the die's question. A roll the master makes for a player never asks.
-	LuckyOffer    *LuckyOffer `protobuf:"bytes,3,opt,name=lucky_offer,json=luckyOffer,proto3" json:"lucky_offer,omitempty"`
+	// the die's question. A roll the master makes for a player asks too (RollForPlayer, E4-10).
+	// Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+	// tab opened before the one question existed; it will go with the old answer RPCs.
+	//
+	// Deprecated: Marked as deprecated in meurpg/play/v1/contests.proto.
+	LuckyOffer *LuckyOffer `protobuf:"bytes,3,opt,name=lucky_offer,json=luckyOffer,proto3" json:"lucky_offer,omitempty"`
+	// The question the roll asks now, in the one shape every held roll has (HeldRollOffer), set beside
+	// the deprecated `inspiration_offer` and `lucky_offer`: set instead of the result, when the
+	// roll waits for an answer (AnswerHeldRoll). Whoever may answer gets it; nobody else does (RN-10).
+	HeldRollOffer *HeldRollOffer `protobuf:"bytes,4,opt,name=held_roll_offer,json=heldRollOffer,proto3" json:"held_roll_offer,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2295,6 +2339,7 @@ func (x *RollGroupCheckResponse) GetGroupCheck() *GroupCheckView {
 	return nil
 }
 
+// Deprecated: Marked as deprecated in meurpg/play/v1/contests.proto.
 func (x *RollGroupCheckResponse) GetInspirationOffer() *OutsideInspirationOffer {
 	if x != nil {
 		return x.InspirationOffer
@@ -2302,9 +2347,17 @@ func (x *RollGroupCheckResponse) GetInspirationOffer() *OutsideInspirationOffer 
 	return nil
 }
 
+// Deprecated: Marked as deprecated in meurpg/play/v1/contests.proto.
 func (x *RollGroupCheckResponse) GetLuckyOffer() *LuckyOffer {
 	if x != nil {
 		return x.LuckyOffer
+	}
+	return nil
+}
+
+func (x *RollGroupCheckResponse) GetHeldRollOffer() *HeldRollOffer {
+	if x != nil {
+		return x.HeldRollOffer
 	}
 	return nil
 }
@@ -2388,8 +2441,23 @@ func (x *RollForPlayerRequest) GetRoll() *CheckRollInput {
 
 // RollForPlayerResponse returns the group check.
 type RollForPlayerResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	GroupCheck    *GroupCheckView        `protobuf:"bytes,1,opt,name=group_check,json=groupCheck,proto3" json:"group_check,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	GroupCheck *GroupCheckView        `protobuf:"bytes,1,opt,name=group_check,json=groupCheck,proto3" json:"group_check,omitempty"`
+	// Set instead of `group_check` when the character's player has a Bardic Inspiration die or the character is a
+	// halfling whose d20 shows a 1: the master's roll for a player asks like the player's own (E4-10). The master is
+	// asked in his own sheet, the player reads the same question, and the first answer wins (AnswerHeldRoll); the
+	// master's own answer waits for the player's 10 s first chance (PLAYER_FIRST).
+	// Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+	// tab opened before the one question existed; it will go with the old answer RPCs.
+	//
+	// Deprecated: Marked as deprecated in meurpg/play/v1/contests.proto.
+	InspirationOffer *OutsideInspirationOffer `protobuf:"bytes,2,opt,name=inspiration_offer,json=inspirationOffer,proto3" json:"inspiration_offer,omitempty"`
+	// Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+	// tab opened before the one question existed; it will go with the old answer RPCs.
+	//
+	// Deprecated: Marked as deprecated in meurpg/play/v1/contests.proto.
+	LuckyOffer    *LuckyOffer    `protobuf:"bytes,3,opt,name=lucky_offer,json=luckyOffer,proto3" json:"lucky_offer,omitempty"`
+	HeldRollOffer *HeldRollOffer `protobuf:"bytes,4,opt,name=held_roll_offer,json=heldRollOffer,proto3" json:"held_roll_offer,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2427,6 +2495,29 @@ func (*RollForPlayerResponse) Descriptor() ([]byte, []int) {
 func (x *RollForPlayerResponse) GetGroupCheck() *GroupCheckView {
 	if x != nil {
 		return x.GroupCheck
+	}
+	return nil
+}
+
+// Deprecated: Marked as deprecated in meurpg/play/v1/contests.proto.
+func (x *RollForPlayerResponse) GetInspirationOffer() *OutsideInspirationOffer {
+	if x != nil {
+		return x.InspirationOffer
+	}
+	return nil
+}
+
+// Deprecated: Marked as deprecated in meurpg/play/v1/contests.proto.
+func (x *RollForPlayerResponse) GetLuckyOffer() *LuckyOffer {
+	if x != nil {
+		return x.LuckyOffer
+	}
+	return nil
+}
+
+func (x *RollForPlayerResponse) GetHeldRollOffer() *HeldRollOffer {
+	if x != nil {
+		return x.HeldRollOffer
 	}
 	return nil
 }
@@ -2574,10 +2665,11 @@ const file_meurpg_play_v1_contests_proto_rawDesc = "" +
 	"\tescape_dc\x18\n" +
 	" \x01(\x05R\bescapeDc\x12!\n" +
 	"\fmaneuver_key\x18\v \x01(\tR\vmaneuverKey\x12#\n" +
-	"\rmaneuver_face\x18\f \x01(\x05R\fmaneuverFace\"\x86\x01\n" +
+	"\rmaneuver_face\x18\f \x01(\x05R\fmaneuverFace\"\xcd\x01\n" +
 	"\x14StartContestResponse\x127\n" +
 	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\x125\n" +
-	"\acontest\x18\x02 \x01(\v2\x1b.meurpg.play.v1.ContestViewR\acontest\"\xb3\x02\n" +
+	"\acontest\x18\x02 \x01(\v2\x1b.meurpg.play.v1.ContestViewR\acontest\x12E\n" +
+	"\x0fheld_roll_offer\x18\x03 \x01(\v2\x1d.meurpg.play.v1.HeldRollOfferR\rheldRollOffer\"\xb3\x02\n" +
 	"\x15RespondContestRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -2587,10 +2679,11 @@ const file_meurpg_play_v1_contests_proto_rawDesc = "" +
 	"contest_id\x18\x04 \x01(\tR\tcontestId\x122\n" +
 	"\x05skill\x18\x05 \x01(\x0e2\x1c.meurpg.play.v1.ContestSkillR\x05skill\x122\n" +
 	"\x04roll\x18\x06 \x01(\v2\x1e.meurpg.play.v1.CheckRollInputR\x04roll\x12&\n" +
-	"\x0fdefer_to_master\x18\a \x01(\bR\rdeferToMaster\"\x88\x01\n" +
+	"\x0fdefer_to_master\x18\a \x01(\bR\rdeferToMaster\"\xcf\x01\n" +
 	"\x16RespondContestResponse\x127\n" +
 	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\x125\n" +
-	"\acontest\x18\x02 \x01(\v2\x1b.meurpg.play.v1.ContestViewR\acontest\"\xd9\x01\n" +
+	"\acontest\x18\x02 \x01(\v2\x1b.meurpg.play.v1.ContestViewR\acontest\x12E\n" +
+	"\x0fheld_roll_offer\x18\x03 \x01(\v2\x1d.meurpg.play.v1.HeldRollOfferR\rheldRollOffer\"\xd9\x01\n" +
 	"\x13ResolveShoveRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -2628,10 +2721,11 @@ const file_meurpg_play_v1_contests_proto_rawDesc = "" +
 	"\fcombatant_id\x18\x04 \x01(\tR\vcombatantId\x12\x1d\n" +
 	"\n" +
 	"action_key\x18\x05 \x01(\tR\tactionKey\x122\n" +
-	"\x04roll\x18\x06 \x01(\v2\x1e.meurpg.play.v1.CheckRollInputR\x04roll\"\x82\x01\n" +
+	"\x04roll\x18\x06 \x01(\v2\x1e.meurpg.play.v1.CheckRollInputR\x04roll\"\xc9\x01\n" +
 	"\fHideResponse\x127\n" +
 	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\x129\n" +
-	"\aattempt\x18\x02 \x01(\v2\x1f.meurpg.play.v1.HideAttemptViewR\aattempt\"\xfc\x01\n" +
+	"\aattempt\x18\x02 \x01(\v2\x1f.meurpg.play.v1.HideAttemptViewR\aattempt\x12E\n" +
+	"\x0fheld_roll_offer\x18\x03 \x01(\v2\x1d.meurpg.play.v1.HeldRollOfferR\rheldRollOffer\"\xfc\x01\n" +
 	"\x12ResolveHideRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -2714,23 +2808,28 @@ const file_meurpg_play_v1_contests_proto_rawDesc = "" +
 	"campaignId\x12'\n" +
 	"\x0fidempotency_key\x18\x02 \x01(\tR\x0eidempotencyKey\x12$\n" +
 	"\x0egroup_check_id\x18\x03 \x01(\tR\fgroupCheckId\x122\n" +
-	"\x04roll\x18\x04 \x01(\v2\x1e.meurpg.play.v1.CheckRollInputR\x04roll\"\xec\x01\n" +
+	"\x04roll\x18\x04 \x01(\v2\x1e.meurpg.play.v1.CheckRollInputR\x04roll\"\xbb\x02\n" +
 	"\x16RollGroupCheckResponse\x12?\n" +
 	"\vgroup_check\x18\x01 \x01(\v2\x1e.meurpg.play.v1.GroupCheckViewR\n" +
-	"groupCheck\x12T\n" +
-	"\x11inspiration_offer\x18\x02 \x01(\v2'.meurpg.play.v1.OutsideInspirationOfferR\x10inspirationOffer\x12;\n" +
-	"\vlucky_offer\x18\x03 \x01(\v2\x1a.meurpg.play.v1.LuckyOfferR\n" +
-	"luckyOffer\"\xdd\x01\n" +
+	"groupCheck\x12X\n" +
+	"\x11inspiration_offer\x18\x02 \x01(\v2'.meurpg.play.v1.OutsideInspirationOfferB\x02\x18\x01R\x10inspirationOffer\x12?\n" +
+	"\vlucky_offer\x18\x03 \x01(\v2\x1a.meurpg.play.v1.LuckyOfferB\x02\x18\x01R\n" +
+	"luckyOffer\x12E\n" +
+	"\x0fheld_roll_offer\x18\x04 \x01(\v2\x1d.meurpg.play.v1.HeldRollOfferR\rheldRollOffer\"\xdd\x01\n" +
 	"\x14RollForPlayerRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12'\n" +
 	"\x0fidempotency_key\x18\x02 \x01(\tR\x0eidempotencyKey\x12$\n" +
 	"\x0egroup_check_id\x18\x03 \x01(\tR\fgroupCheckId\x12!\n" +
 	"\fcharacter_id\x18\x04 \x01(\tR\vcharacterId\x122\n" +
-	"\x04roll\x18\x05 \x01(\v2\x1e.meurpg.play.v1.CheckRollInputR\x04roll\"X\n" +
+	"\x04roll\x18\x05 \x01(\v2\x1e.meurpg.play.v1.CheckRollInputR\x04roll\"\xba\x02\n" +
 	"\x15RollForPlayerResponse\x12?\n" +
 	"\vgroup_check\x18\x01 \x01(\v2\x1e.meurpg.play.v1.GroupCheckViewR\n" +
-	"groupCheck\"\x88\x01\n" +
+	"groupCheck\x12X\n" +
+	"\x11inspiration_offer\x18\x02 \x01(\v2'.meurpg.play.v1.OutsideInspirationOfferB\x02\x18\x01R\x10inspirationOffer\x12?\n" +
+	"\vlucky_offer\x18\x03 \x01(\v2\x1a.meurpg.play.v1.LuckyOfferB\x02\x18\x01R\n" +
+	"luckyOffer\x12E\n" +
+	"\x0fheld_roll_offer\x18\x04 \x01(\v2\x1d.meurpg.play.v1.HeldRollOfferR\rheldRollOffer\"\x88\x01\n" +
 	"\x16CloseGroupCheckRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12'\n" +
@@ -2821,12 +2920,13 @@ var file_meurpg_play_v1_contests_proto_goTypes = []any{
 	(ContestKind)(0),                      // 44: meurpg.play.v1.ContestKind
 	(ContestSkill)(0),                     // 45: meurpg.play.v1.ContestSkill
 	(*Encounter)(nil),                     // 46: meurpg.play.v1.Encounter
-	(ShoveOutcome)(0),                     // 47: meurpg.play.v1.ShoveOutcome
-	(HelpKind)(0),                         // 48: meurpg.play.v1.HelpKind
-	(*SurpriseSuggestion)(nil),            // 49: meurpg.play.v1.SurpriseSuggestion
-	(*GroupCheckView)(nil),                // 50: meurpg.play.v1.GroupCheckView
-	(*OutsideInspirationOffer)(nil),       // 51: meurpg.play.v1.OutsideInspirationOffer
-	(*LuckyOffer)(nil),                    // 52: meurpg.play.v1.LuckyOffer
+	(*HeldRollOffer)(nil),                 // 47: meurpg.play.v1.HeldRollOffer
+	(ShoveOutcome)(0),                     // 48: meurpg.play.v1.ShoveOutcome
+	(HelpKind)(0),                         // 49: meurpg.play.v1.HelpKind
+	(*SurpriseSuggestion)(nil),            // 50: meurpg.play.v1.SurpriseSuggestion
+	(*GroupCheckView)(nil),                // 51: meurpg.play.v1.GroupCheckView
+	(*OutsideInspirationOffer)(nil),       // 52: meurpg.play.v1.OutsideInspirationOffer
+	(*LuckyOffer)(nil),                    // 53: meurpg.play.v1.LuckyOffer
 }
 var file_meurpg_play_v1_contests_proto_depIdxs = []int32{
 	38, // 0: meurpg.play.v1.GetContestStateResponse.contests:type_name -> meurpg.play.v1.ContestView
@@ -2841,78 +2941,85 @@ var file_meurpg_play_v1_contests_proto_depIdxs = []int32{
 	3,  // 9: meurpg.play.v1.StartContestRequest.roll:type_name -> meurpg.play.v1.CheckRollInput
 	46, // 10: meurpg.play.v1.StartContestResponse.encounter:type_name -> meurpg.play.v1.Encounter
 	38, // 11: meurpg.play.v1.StartContestResponse.contest:type_name -> meurpg.play.v1.ContestView
-	45, // 12: meurpg.play.v1.RespondContestRequest.skill:type_name -> meurpg.play.v1.ContestSkill
-	3,  // 13: meurpg.play.v1.RespondContestRequest.roll:type_name -> meurpg.play.v1.CheckRollInput
-	46, // 14: meurpg.play.v1.RespondContestResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	38, // 15: meurpg.play.v1.RespondContestResponse.contest:type_name -> meurpg.play.v1.ContestView
-	47, // 16: meurpg.play.v1.ResolveShoveRequest.outcome:type_name -> meurpg.play.v1.ShoveOutcome
-	46, // 17: meurpg.play.v1.ResolveShoveResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	38, // 18: meurpg.play.v1.ResolveShoveResponse.contest:type_name -> meurpg.play.v1.ContestView
-	46, // 19: meurpg.play.v1.CloseContestResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	46, // 20: meurpg.play.v1.ReleaseGrappleResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	3,  // 21: meurpg.play.v1.HideRequest.roll:type_name -> meurpg.play.v1.CheckRollInput
-	46, // 22: meurpg.play.v1.HideResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	39, // 23: meurpg.play.v1.HideResponse.attempt:type_name -> meurpg.play.v1.HideAttemptView
-	46, // 24: meurpg.play.v1.ResolveHideResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	39, // 25: meurpg.play.v1.ResolveHideResponse.attempt:type_name -> meurpg.play.v1.HideAttemptView
-	46, // 26: meurpg.play.v1.RevealHiderResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	48, // 27: meurpg.play.v1.HelpRequest.kind:type_name -> meurpg.play.v1.HelpKind
-	46, // 28: meurpg.play.v1.HelpResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	40, // 29: meurpg.play.v1.HelpResponse.help:type_name -> meurpg.play.v1.HelpView
-	46, // 30: meurpg.play.v1.ClearHelpResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	46, // 31: meurpg.play.v1.SetSurprisedResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	42, // 32: meurpg.play.v1.SetSurprisedResponse.surprise:type_name -> meurpg.play.v1.SurpriseView
-	49, // 33: meurpg.play.v1.GetSurpriseSuggestionResponse.suggestions:type_name -> meurpg.play.v1.SurpriseSuggestion
-	50, // 34: meurpg.play.v1.GetGroupCheckResponse.group_check:type_name -> meurpg.play.v1.GroupCheckView
-	50, // 35: meurpg.play.v1.RequestGroupCheckResponse.group_check:type_name -> meurpg.play.v1.GroupCheckView
-	3,  // 36: meurpg.play.v1.RollGroupCheckRequest.roll:type_name -> meurpg.play.v1.CheckRollInput
-	50, // 37: meurpg.play.v1.RollGroupCheckResponse.group_check:type_name -> meurpg.play.v1.GroupCheckView
-	51, // 38: meurpg.play.v1.RollGroupCheckResponse.inspiration_offer:type_name -> meurpg.play.v1.OutsideInspirationOffer
-	52, // 39: meurpg.play.v1.RollGroupCheckResponse.lucky_offer:type_name -> meurpg.play.v1.LuckyOffer
-	3,  // 40: meurpg.play.v1.RollForPlayerRequest.roll:type_name -> meurpg.play.v1.CheckRollInput
-	50, // 41: meurpg.play.v1.RollForPlayerResponse.group_check:type_name -> meurpg.play.v1.GroupCheckView
-	50, // 42: meurpg.play.v1.CloseGroupCheckResponse.group_check:type_name -> meurpg.play.v1.GroupCheckView
-	1,  // 43: meurpg.play.v1.ContestService.GetContestState:input_type -> meurpg.play.v1.GetContestStateRequest
-	4,  // 44: meurpg.play.v1.ContestService.StartContest:input_type -> meurpg.play.v1.StartContestRequest
-	6,  // 45: meurpg.play.v1.ContestService.RespondContest:input_type -> meurpg.play.v1.RespondContestRequest
-	8,  // 46: meurpg.play.v1.ContestService.ResolveShove:input_type -> meurpg.play.v1.ResolveShoveRequest
-	10, // 47: meurpg.play.v1.ContestService.CloseContest:input_type -> meurpg.play.v1.CloseContestRequest
-	12, // 48: meurpg.play.v1.ContestService.ReleaseGrapple:input_type -> meurpg.play.v1.ReleaseGrappleRequest
-	14, // 49: meurpg.play.v1.ContestService.Hide:input_type -> meurpg.play.v1.HideRequest
-	16, // 50: meurpg.play.v1.ContestService.ResolveHide:input_type -> meurpg.play.v1.ResolveHideRequest
-	18, // 51: meurpg.play.v1.ContestService.RevealHider:input_type -> meurpg.play.v1.RevealHiderRequest
-	20, // 52: meurpg.play.v1.ContestService.Help:input_type -> meurpg.play.v1.HelpRequest
-	22, // 53: meurpg.play.v1.ContestService.ClearHelp:input_type -> meurpg.play.v1.ClearHelpRequest
-	24, // 54: meurpg.play.v1.ContestService.SetSurprised:input_type -> meurpg.play.v1.SetSurprisedRequest
-	26, // 55: meurpg.play.v1.ContestService.GetSurpriseSuggestion:input_type -> meurpg.play.v1.GetSurpriseSuggestionRequest
-	28, // 56: meurpg.play.v1.ContestService.GetGroupCheck:input_type -> meurpg.play.v1.GetGroupCheckRequest
-	30, // 57: meurpg.play.v1.ContestService.RequestGroupCheck:input_type -> meurpg.play.v1.RequestGroupCheckRequest
-	32, // 58: meurpg.play.v1.ContestService.RollGroupCheck:input_type -> meurpg.play.v1.RollGroupCheckRequest
-	34, // 59: meurpg.play.v1.ContestService.RollForPlayer:input_type -> meurpg.play.v1.RollForPlayerRequest
-	36, // 60: meurpg.play.v1.ContestService.CloseGroupCheck:input_type -> meurpg.play.v1.CloseGroupCheckRequest
-	2,  // 61: meurpg.play.v1.ContestService.GetContestState:output_type -> meurpg.play.v1.GetContestStateResponse
-	5,  // 62: meurpg.play.v1.ContestService.StartContest:output_type -> meurpg.play.v1.StartContestResponse
-	7,  // 63: meurpg.play.v1.ContestService.RespondContest:output_type -> meurpg.play.v1.RespondContestResponse
-	9,  // 64: meurpg.play.v1.ContestService.ResolveShove:output_type -> meurpg.play.v1.ResolveShoveResponse
-	11, // 65: meurpg.play.v1.ContestService.CloseContest:output_type -> meurpg.play.v1.CloseContestResponse
-	13, // 66: meurpg.play.v1.ContestService.ReleaseGrapple:output_type -> meurpg.play.v1.ReleaseGrappleResponse
-	15, // 67: meurpg.play.v1.ContestService.Hide:output_type -> meurpg.play.v1.HideResponse
-	17, // 68: meurpg.play.v1.ContestService.ResolveHide:output_type -> meurpg.play.v1.ResolveHideResponse
-	19, // 69: meurpg.play.v1.ContestService.RevealHider:output_type -> meurpg.play.v1.RevealHiderResponse
-	21, // 70: meurpg.play.v1.ContestService.Help:output_type -> meurpg.play.v1.HelpResponse
-	23, // 71: meurpg.play.v1.ContestService.ClearHelp:output_type -> meurpg.play.v1.ClearHelpResponse
-	25, // 72: meurpg.play.v1.ContestService.SetSurprised:output_type -> meurpg.play.v1.SetSurprisedResponse
-	27, // 73: meurpg.play.v1.ContestService.GetSurpriseSuggestion:output_type -> meurpg.play.v1.GetSurpriseSuggestionResponse
-	29, // 74: meurpg.play.v1.ContestService.GetGroupCheck:output_type -> meurpg.play.v1.GetGroupCheckResponse
-	31, // 75: meurpg.play.v1.ContestService.RequestGroupCheck:output_type -> meurpg.play.v1.RequestGroupCheckResponse
-	33, // 76: meurpg.play.v1.ContestService.RollGroupCheck:output_type -> meurpg.play.v1.RollGroupCheckResponse
-	35, // 77: meurpg.play.v1.ContestService.RollForPlayer:output_type -> meurpg.play.v1.RollForPlayerResponse
-	37, // 78: meurpg.play.v1.ContestService.CloseGroupCheck:output_type -> meurpg.play.v1.CloseGroupCheckResponse
-	61, // [61:79] is the sub-list for method output_type
-	43, // [43:61] is the sub-list for method input_type
-	43, // [43:43] is the sub-list for extension type_name
-	43, // [43:43] is the sub-list for extension extendee
-	0,  // [0:43] is the sub-list for field type_name
+	47, // 12: meurpg.play.v1.StartContestResponse.held_roll_offer:type_name -> meurpg.play.v1.HeldRollOffer
+	45, // 13: meurpg.play.v1.RespondContestRequest.skill:type_name -> meurpg.play.v1.ContestSkill
+	3,  // 14: meurpg.play.v1.RespondContestRequest.roll:type_name -> meurpg.play.v1.CheckRollInput
+	46, // 15: meurpg.play.v1.RespondContestResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	38, // 16: meurpg.play.v1.RespondContestResponse.contest:type_name -> meurpg.play.v1.ContestView
+	47, // 17: meurpg.play.v1.RespondContestResponse.held_roll_offer:type_name -> meurpg.play.v1.HeldRollOffer
+	48, // 18: meurpg.play.v1.ResolveShoveRequest.outcome:type_name -> meurpg.play.v1.ShoveOutcome
+	46, // 19: meurpg.play.v1.ResolveShoveResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	38, // 20: meurpg.play.v1.ResolveShoveResponse.contest:type_name -> meurpg.play.v1.ContestView
+	46, // 21: meurpg.play.v1.CloseContestResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	46, // 22: meurpg.play.v1.ReleaseGrappleResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	3,  // 23: meurpg.play.v1.HideRequest.roll:type_name -> meurpg.play.v1.CheckRollInput
+	46, // 24: meurpg.play.v1.HideResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	39, // 25: meurpg.play.v1.HideResponse.attempt:type_name -> meurpg.play.v1.HideAttemptView
+	47, // 26: meurpg.play.v1.HideResponse.held_roll_offer:type_name -> meurpg.play.v1.HeldRollOffer
+	46, // 27: meurpg.play.v1.ResolveHideResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	39, // 28: meurpg.play.v1.ResolveHideResponse.attempt:type_name -> meurpg.play.v1.HideAttemptView
+	46, // 29: meurpg.play.v1.RevealHiderResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	49, // 30: meurpg.play.v1.HelpRequest.kind:type_name -> meurpg.play.v1.HelpKind
+	46, // 31: meurpg.play.v1.HelpResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	40, // 32: meurpg.play.v1.HelpResponse.help:type_name -> meurpg.play.v1.HelpView
+	46, // 33: meurpg.play.v1.ClearHelpResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	46, // 34: meurpg.play.v1.SetSurprisedResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	42, // 35: meurpg.play.v1.SetSurprisedResponse.surprise:type_name -> meurpg.play.v1.SurpriseView
+	50, // 36: meurpg.play.v1.GetSurpriseSuggestionResponse.suggestions:type_name -> meurpg.play.v1.SurpriseSuggestion
+	51, // 37: meurpg.play.v1.GetGroupCheckResponse.group_check:type_name -> meurpg.play.v1.GroupCheckView
+	51, // 38: meurpg.play.v1.RequestGroupCheckResponse.group_check:type_name -> meurpg.play.v1.GroupCheckView
+	3,  // 39: meurpg.play.v1.RollGroupCheckRequest.roll:type_name -> meurpg.play.v1.CheckRollInput
+	51, // 40: meurpg.play.v1.RollGroupCheckResponse.group_check:type_name -> meurpg.play.v1.GroupCheckView
+	52, // 41: meurpg.play.v1.RollGroupCheckResponse.inspiration_offer:type_name -> meurpg.play.v1.OutsideInspirationOffer
+	53, // 42: meurpg.play.v1.RollGroupCheckResponse.lucky_offer:type_name -> meurpg.play.v1.LuckyOffer
+	47, // 43: meurpg.play.v1.RollGroupCheckResponse.held_roll_offer:type_name -> meurpg.play.v1.HeldRollOffer
+	3,  // 44: meurpg.play.v1.RollForPlayerRequest.roll:type_name -> meurpg.play.v1.CheckRollInput
+	51, // 45: meurpg.play.v1.RollForPlayerResponse.group_check:type_name -> meurpg.play.v1.GroupCheckView
+	52, // 46: meurpg.play.v1.RollForPlayerResponse.inspiration_offer:type_name -> meurpg.play.v1.OutsideInspirationOffer
+	53, // 47: meurpg.play.v1.RollForPlayerResponse.lucky_offer:type_name -> meurpg.play.v1.LuckyOffer
+	47, // 48: meurpg.play.v1.RollForPlayerResponse.held_roll_offer:type_name -> meurpg.play.v1.HeldRollOffer
+	51, // 49: meurpg.play.v1.CloseGroupCheckResponse.group_check:type_name -> meurpg.play.v1.GroupCheckView
+	1,  // 50: meurpg.play.v1.ContestService.GetContestState:input_type -> meurpg.play.v1.GetContestStateRequest
+	4,  // 51: meurpg.play.v1.ContestService.StartContest:input_type -> meurpg.play.v1.StartContestRequest
+	6,  // 52: meurpg.play.v1.ContestService.RespondContest:input_type -> meurpg.play.v1.RespondContestRequest
+	8,  // 53: meurpg.play.v1.ContestService.ResolveShove:input_type -> meurpg.play.v1.ResolveShoveRequest
+	10, // 54: meurpg.play.v1.ContestService.CloseContest:input_type -> meurpg.play.v1.CloseContestRequest
+	12, // 55: meurpg.play.v1.ContestService.ReleaseGrapple:input_type -> meurpg.play.v1.ReleaseGrappleRequest
+	14, // 56: meurpg.play.v1.ContestService.Hide:input_type -> meurpg.play.v1.HideRequest
+	16, // 57: meurpg.play.v1.ContestService.ResolveHide:input_type -> meurpg.play.v1.ResolveHideRequest
+	18, // 58: meurpg.play.v1.ContestService.RevealHider:input_type -> meurpg.play.v1.RevealHiderRequest
+	20, // 59: meurpg.play.v1.ContestService.Help:input_type -> meurpg.play.v1.HelpRequest
+	22, // 60: meurpg.play.v1.ContestService.ClearHelp:input_type -> meurpg.play.v1.ClearHelpRequest
+	24, // 61: meurpg.play.v1.ContestService.SetSurprised:input_type -> meurpg.play.v1.SetSurprisedRequest
+	26, // 62: meurpg.play.v1.ContestService.GetSurpriseSuggestion:input_type -> meurpg.play.v1.GetSurpriseSuggestionRequest
+	28, // 63: meurpg.play.v1.ContestService.GetGroupCheck:input_type -> meurpg.play.v1.GetGroupCheckRequest
+	30, // 64: meurpg.play.v1.ContestService.RequestGroupCheck:input_type -> meurpg.play.v1.RequestGroupCheckRequest
+	32, // 65: meurpg.play.v1.ContestService.RollGroupCheck:input_type -> meurpg.play.v1.RollGroupCheckRequest
+	34, // 66: meurpg.play.v1.ContestService.RollForPlayer:input_type -> meurpg.play.v1.RollForPlayerRequest
+	36, // 67: meurpg.play.v1.ContestService.CloseGroupCheck:input_type -> meurpg.play.v1.CloseGroupCheckRequest
+	2,  // 68: meurpg.play.v1.ContestService.GetContestState:output_type -> meurpg.play.v1.GetContestStateResponse
+	5,  // 69: meurpg.play.v1.ContestService.StartContest:output_type -> meurpg.play.v1.StartContestResponse
+	7,  // 70: meurpg.play.v1.ContestService.RespondContest:output_type -> meurpg.play.v1.RespondContestResponse
+	9,  // 71: meurpg.play.v1.ContestService.ResolveShove:output_type -> meurpg.play.v1.ResolveShoveResponse
+	11, // 72: meurpg.play.v1.ContestService.CloseContest:output_type -> meurpg.play.v1.CloseContestResponse
+	13, // 73: meurpg.play.v1.ContestService.ReleaseGrapple:output_type -> meurpg.play.v1.ReleaseGrappleResponse
+	15, // 74: meurpg.play.v1.ContestService.Hide:output_type -> meurpg.play.v1.HideResponse
+	17, // 75: meurpg.play.v1.ContestService.ResolveHide:output_type -> meurpg.play.v1.ResolveHideResponse
+	19, // 76: meurpg.play.v1.ContestService.RevealHider:output_type -> meurpg.play.v1.RevealHiderResponse
+	21, // 77: meurpg.play.v1.ContestService.Help:output_type -> meurpg.play.v1.HelpResponse
+	23, // 78: meurpg.play.v1.ContestService.ClearHelp:output_type -> meurpg.play.v1.ClearHelpResponse
+	25, // 79: meurpg.play.v1.ContestService.SetSurprised:output_type -> meurpg.play.v1.SetSurprisedResponse
+	27, // 80: meurpg.play.v1.ContestService.GetSurpriseSuggestion:output_type -> meurpg.play.v1.GetSurpriseSuggestionResponse
+	29, // 81: meurpg.play.v1.ContestService.GetGroupCheck:output_type -> meurpg.play.v1.GetGroupCheckResponse
+	31, // 82: meurpg.play.v1.ContestService.RequestGroupCheck:output_type -> meurpg.play.v1.RequestGroupCheckResponse
+	33, // 83: meurpg.play.v1.ContestService.RollGroupCheck:output_type -> meurpg.play.v1.RollGroupCheckResponse
+	35, // 84: meurpg.play.v1.ContestService.RollForPlayer:output_type -> meurpg.play.v1.RollForPlayerResponse
+	37, // 85: meurpg.play.v1.ContestService.CloseGroupCheck:output_type -> meurpg.play.v1.CloseGroupCheckResponse
+	68, // [68:86] is the sub-list for method output_type
+	50, // [50:68] is the sub-list for method input_type
+	50, // [50:50] is the sub-list for extension type_name
+	50, // [50:50] is the sub-list for extension extendee
+	0,  // [0:50] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_contests_proto_init() }

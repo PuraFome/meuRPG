@@ -3,7 +3,6 @@ package play
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"regexp"
@@ -35,19 +34,6 @@ func newEffectsParty(t *testing.T) *armed {
 			&rulesv1.AbilityScores{Strength: 10, Dexterity: 16, Constitution: 14, Intelligence: 10, Wisdom: 16, Charisma: 8}, []string{sacredFlame}, nil,
 			[]string{cureWounds, blessKey}, "")
 	})
-}
-
-// wantEffectRefusal checks that err is the connect error with the code and the exact message.
-func wantEffectRefusal(t *testing.T, call string, err error, code connect.Code, msg string) {
-	t.Helper()
-	ce, ok := errors.AsType[*connect.Error](err)
-	if !ok {
-		t.Errorf("%s: error = %v, want %v %q", call, err, code, msg)
-		return
-	}
-	if ce.Code() != code || ce.Message() != msg {
-		t.Errorf("%s: error = %v %q, want %v %q", call, ce.Code(), ce.Message(), code, msg)
-	}
 }
 
 // atText finds a timestamp field; uuidText is shared with the undo snapshot tests.

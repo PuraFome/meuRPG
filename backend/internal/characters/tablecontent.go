@@ -369,6 +369,7 @@ func tableEffectsOf(in []*rulesv1.TableEffect) []rules.Effect {
 			Choice: e.GetChoice(), Count: int(e.GetCount()), From: e.GetFrom(), Economy: e.GetEconomy(), Applies: e.GetApplies(), Ability: e.GetAbility(),
 			Spells: e.GetSpells(), TextPT: e.GetTextPt(),
 			IgnoreCover: e.GetIgnoreCover(), RangeMultiplier: int(e.GetRangeMultiplier()), NoLongRangeDisadvantage: e.GetNoLongRangeDisadvantage(),
+			Except: e.GetExcept(), While: e.GetWhile(),
 		})
 	}
 	return out
@@ -420,6 +421,11 @@ var (
 		rulesv1.TableSpellTargetKind_TABLE_SPELL_TARGET_KIND_AREA:      rules.TargetArea,
 		rulesv1.TableSpellTargetKind_TABLE_SPELL_TARGET_KIND_SELF:      rules.TargetSelf,
 	}
+	zoneTriggerOf = map[rulesv1.TableZoneTrigger]string{
+		rulesv1.TableZoneTrigger_TABLE_ZONE_TRIGGER_START_OF_TURN: rules.ZoneStartOfTurn,
+		rulesv1.TableZoneTrigger_TABLE_ZONE_TRIGGER_FIRST_ENTRY:   rules.ZoneFirstEntry,
+		rulesv1.TableZoneTrigger_TABLE_ZONE_TRIGGER_BOTH:          rules.ZoneBoth,
+	}
 	shapeOf = map[rulesv1.TableAreaShape]string{
 		rulesv1.TableAreaShape_TABLE_AREA_SHAPE_CONE:     rules.ShapeCone,
 		rulesv1.TableAreaShape_TABLE_AREA_SHAPE_CUBE:     rules.ShapeCube,
@@ -465,6 +471,9 @@ func tableSpellOf(te rules.TableEntry, b *rulesv1.TableSpell) rules.TableSpell {
 		s.Damage = append(s.Damage, rules.TableSpellDamage{
 			Type: d.GetDamageTypeKey(), Dice: d.GetDice(), PerSlotLevel: d.GetPerSlotLevel(), PerTier: d.GetPerTier(),
 		})
+	}
+	if z := b.GetZone(); z != nil {
+		s.Zone = &rules.TableSpellZone{Trigger: zoneTriggerOf[z.GetTrigger()], FollowsCaster: z.GetFollowsCaster()}
 	}
 	if h := b.GetHeal(); h != nil {
 		s.Heal = &rules.TableSpellHeal{Dice: h.GetDice(), PerSlotLevel: h.GetPerSlotLevel(), AddsModifier: h.GetAddsModifier()}

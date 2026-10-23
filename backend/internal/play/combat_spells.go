@@ -12,6 +12,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -20,13 +21,13 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
-// Casting a spell (MR-014, RN-02, RN-18, RN-22, Etapa 6, slice 6.4b). The cast
+// Casting a spell (MR-014, RN-02, RN-18, RN-22). The cast
 // spends the slot and the economy at once; what it does to the targets depends
 // on the spell: a spell attack compares a d20 with the armor class, a saving
 // throw spell has the server roll each target's save, Magic Missile's darts
 // never miss, a healing spell opens a heal, and the rest only spends and logs.
 // The damage and the heals wait as pending damages for RollDamage
-// (combat_actions.go), which is also where an area spell's one damage roll
+// (combat_damage.go), which is also where an area spell's one damage roll
 // settles all its targets.
 
 // Magic Missile is the one spell whose darts the caster shares out: three, and
@@ -34,10 +35,63 @@ import (
 // divided by the number of darts at the spell's level (1d4 + 1).
 const magicMissile = "spell:magic-missile"
 
-// scorchingRay: a ray for each target, three at the 2nd level and one more for
-// each level above (the SRD lets several rays go to one target; the table keeps
-// it to one ray per target here, and the master the rest).
+// scorchingRay makes three rays at the 2nd level and one more for each level
+// above. The caster shares them out as they like, all at one creature if they
+// want: a target's darts field is how many rays it gets (none counts as one),
+// and each ray is its own spell attack with its own damage.
 const scorchingRay = "spell:scorching-ray"
+
+// scorchingBaseRays is the rays Scorching Ray makes at its own level.
+const scorchingBaseRays = 3
+
+// scorchingRays is how many rays Scorching Ray makes at a slot level.
+func scorchingRays(sp link.Spell, slotLevel int) int {
+	return scorchingBaseRays + max(slotLevel-sp.Level, 0)
+}
+
+// sharesAt is how many darts or rays a slot level gives the caster to share out among the targets: 0 for a
+// spell that shares none.
+func sharesAt(sp link.Spell, slotLevel int) int {
+	if sp.Key == scorchingRay {
+		return scorchingRays(sp, slotLevel)
+	}
+	return dartsOf(sp, slotLevel)
+}
+
+// raysAt lists the target (an index of targets) each attack of a cast is made at, in the order the targets
+// were given and the rays of each target together: one attack for a target, but for Scorching Ray as many as
+// rays the target is given.
+func raysAt(sp link.Spell, targets []castAim) []int {
+	var out []int
+	for i, t := range targets {
+		n := 1
+		if sp.Key == scorchingRay {
+			n = max(t.darts, 1)
+		}
+		for range n {
+			out = append(out, i)
+		}
+	}
+	return out
+}
+
+// rayCombatants lists the combatant each attack of a cast is made at, once for every ray.
+func rayCombatants(sp link.Spell, targets []castAim, targs []playdb.Combatant) []playdb.Combatant {
+	var out []playdb.Combatant
+	for _, i := range raysAt(sp, targets) {
+		out = append(out, targs[i])
+	}
+	return out
+}
+
+// shownDarts is the darts a target of the request shows in the cast's event: a ray of Scorching Ray is an
+// entry of its own and shows none.
+func shownDarts(sp link.Spell, t castAim) int32 {
+	if sp.Key == scorchingRay {
+		return 0
+	}
+	return clamp32(t.darts, 0, maxShownDarts)
+}
 
 // maxSpellTargets is the most targets one cast takes, the master's too: the
 // cast's event and the damage roll that settles it hold what each target did,
@@ -163,7 +217,7 @@ func maxTargetsOf(sp link.Spell, slotLevel int) int {
 	case sp.Key == magicMissile:
 		return dartsOf(sp, slotLevel) // a dart each, at most
 	case sp.Key == scorchingRay:
-		return 3 + max(slotLevel-sp.Level, 0)
+		return scorchingRays(sp, slotLevel)
 	case sp.Area:
 		return 0
 	case sp.TargetCount > 0:
@@ -193,7 +247,7 @@ func (s *Service) CastSpell(
 	ctx context.Context,
 	req *connect.Request[playv1.CastSpellRequest],
 ) (*connect.Response[playv1.CastSpellResponse], error) {
-	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
+	m, err := heldMember(ctx, req.Msg.GetCampaignId())
 	if err != nil {
 		return nil, err
 	}
@@ -248,6 +302,8 @@ func checkTargetCount(v combatViewer, sp link.Spell, caster playdb.Combatant, ta
 		if slices.ContainsFunc(targs, func(t playdb.Combatant) bool { return t.ID != caster.ID }) {
 			return badTargets("this spell reaches the caster alone: leave the targets out")
 		}
+	case sp.Key == scorchingRay:
+		return checkRays(v, sp, targs, darts, slotLevel)
 	case dartsTotal > 0:
 		return checkDarts(targs, darts, dartsTotal)
 	default:
@@ -260,6 +316,26 @@ func checkTargetCount(v combatViewer, sp link.Spell, caster playdb.Combatant, ta
 		if limit := maxTargetsOf(sp, slotLevel); limit > 0 && len(targs) > limit && !v.master {
 			return badTargets(fmt.Sprintf("this spell takes at most %d targets with this slot", limit))
 		}
+	}
+	return nil
+}
+
+// checkRays checks the rays of Scorching Ray: a target to aim at, and no more rays than the slot makes. The
+// master is held to the most targets a cast takes instead, which keeps the cast's event small.
+func checkRays(v combatViewer, sp link.Spell, targs []playdb.Combatant, rays []int, slotLevel int) error {
+	if len(targs) == 0 {
+		return badTargets("this spell needs a target")
+	}
+	total := 0
+	for _, n := range rays {
+		total += max(n, 1)
+	}
+	limit := scorchingRays(sp, slotLevel)
+	if v.master {
+		limit = maxSpellTargets
+	}
+	if total > limit {
+		return badTargets(fmt.Sprintf("this spell takes at most %d rays with this slot", limit))
 	}
 	return nil
 }
@@ -425,7 +501,7 @@ func (s *Service) resolveSpellAttack(ctx context.Context, c *combatTx, m authz.M
 		result.Critical = true
 	}
 	hit.TargetAC = clamp32(targetAC, 0, math.MaxInt32)
-	hit.D20, hit.Modifier, hit.Total, hit.Physical = clamp32(face, 1, 20), clamp32(sp.ToHit+bonusFace, math.MinInt32, math.MaxInt32), clamp32(result.Total, math.MinInt32, math.MaxInt32), d20.Physical
+	hit.D20, hit.Modifier, hit.Total, hit.Physical = clamp32(face, 1, 20), conv.Int32(sp.ToHit+bonusFace), conv.Int32(result.Total), d20.Physical
 	return result, targetAC, nil
 }
 
@@ -433,7 +509,7 @@ func (s *Service) resolveSpellAttack(ctx context.Context, c *combatTx, m authz.M
 func (s *Service) openSpellAttackHit(ctx context.Context, c *combatTx, sp link.Spell, caster, target playdb.Combatant, hit *castHit, result combat.AttackResult, targetAC int) error {
 	hit.Outcome = outcomeMiss
 	if !result.Hit {
-		return nil
+		return s.openSplash(ctx, c, sp, caster, target, hit)
 	}
 	hit.Outcome = outcomeHit
 	if result.Critical {
@@ -450,6 +526,15 @@ func (s *Service) openSpellAttackHit(ctx context.Context, c *combatTx, sp link.S
 	}
 	hit.Pending = p.ID
 	return nil
+}
+
+// openSplash opens the half damage a spell attack that misses still deals (Acid Arrow), nothing
+// for any other spell.
+func (s *Service) openSplash(ctx context.Context, c *combatTx, sp link.Spell, caster, target playdb.Combatant, hit *castHit) error {
+	if !sp.HalfOnMiss || len(sp.Damages) == 0 {
+		return nil
+	}
+	return s.openSpellPending(ctx, c, sp, sp.Damages[0], caster, target, false, true, hit)
 }
 
 // spellSave has the server roll a target's saving throw against the spell and
@@ -469,7 +554,7 @@ func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership
 		return err
 	}
 	creature := creatureFacts(target, modes.in.states, targetSheet.Traits)
-	sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: sp.SaveAbility, EffectVisible: true})
+	sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: sp.SaveAbility, EffectVisible: true, Against: spellAgainst(sp)})
 	modes.save[target.ID] = shownSources(sources, modes.names)
 	// Cover adds to a Dexterity save (SRD): half +2, three-quarters +5. The bonus
 	// the save shows already has it.
@@ -487,9 +572,17 @@ func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership
 	if len(sp.Damages) == 0 || (saved && sp.SaveOnSuccess != "half" && sp.SaveOnSuccess != "other") {
 		return nil
 	}
+	share := combat.ShareFull
+	if sp.SaveOnSuccess == "half" {
+		// Evasion: a Dexterity save that passes takes none, one that fails takes half.
+		share = combat.HalfSaveShare(creature, sp.SaveAbility, saved)
+	}
+	if share == combat.ShareNone {
+		return nil
+	}
 	// One pending damage for each damage type, all of the cast: each is its own
 	// roll, and the resistance of the target is read for its type when it lands.
-	return s.openSavePendings(ctx, c, sp, caster, target, saved && sp.SaveOnSuccess == "half", hit)
+	return s.openSavePendings(ctx, c, sp, caster, target, share == combat.ShareHalf, hit)
 }
 
 // sculptedSave is the save of a creature Sculpt Spells (SRD 5.1) spares: it succeeds on its own, with no
@@ -539,7 +632,7 @@ func (s *Service) rollSpellSave(ctx context.Context, c *combatTx, sp link.Spell,
 	saved := combat.SaveSucceeded(d20.Total+extraTotal, sp.SaveDC) || c.meta.passes(target.ID) // Careful Spell: it passes on its own
 	hit.Save = &saveRoll{
 		Extra: extra,
-		D20:   clamp32(d20.Face(), 1, 20), Bonus: clamp32(save.Bonus, math.MinInt32, math.MaxInt32), Total: clamp32(d20.Total+extraTotal, math.MinInt32, math.MaxInt32),
+		D20:   clamp32(d20.Face(), 1, 20), Bonus: conv.Int32(save.Bonus), Total: conv.Int32(d20.Total + extraTotal),
 		DC: clamp32(sp.SaveDC, 0, math.MaxInt32), Saved: saved, Unknown: !save.Known,
 		D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(saveMode), Lucky: lucky,
 	}

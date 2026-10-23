@@ -11,6 +11,8 @@ import {
   type PuzzleRun,
   TryPuzzleHintResponseSchema,
 } from '../../../gen/meurpg/play/v1/puzzles_pb';
+import { asksLucky } from '../held-rolls/held-roll-offer';
+import { heldAnswer, heldDie } from '../held-rolls/held-roll-testing';
 import { PuzzlePlay, RETRY_WAITS_MS } from './puzzle-play';
 import {
   type FakePuzzlesClient as Fake,
@@ -334,17 +336,30 @@ describe('PuzzlePlay (MR-038, RN-27)', () => {
           inspirationOffer: create(OutsideInspirationOfferSchema, { holdId: 'h1', sides: 8 }),
         });
       await play.tryHint({ inApp: true });
-      expect(play.hintOffer()?.holdId).toBe('h1');
+      expect(play.hintHeld()?.holdId).toBe('h1');
       expect(play.hintTry()).toBeNull();
       expect(play.run()?.revision).toBe(1);
       const answered: unknown[][] = [];
-      (fake as { answerHintDie?: unknown }).answerHintDie = async (...args: unknown[]) => {
+      (fake as { answerHeldRoll?: unknown }).answerHeldRoll = async (...args: unknown[]) => {
         answered.push(args);
-        return hintAnswer({ ...base, revision: 2, hints: ['Uma dica.'], sharedHints: 0 }, true, 17);
+        return heldAnswer({
+          result: {
+            case: 'hintTry',
+            value: hintAnswer(
+              { ...base, revision: 2, hints: ['Uma dica.'], sharedHints: 0 },
+              true,
+              17,
+            ),
+          },
+        });
       };
-      await play.answerHintDie(true, { inApp: true });
-      expect(answered[0].slice(0, 4)).toEqual(['camp-1', 'h1', true, { inApp: true }]);
-      expect(play.hintOffer()).toBeNull();
+      await play.answerHint({ kind: 'die', use: true, roll: { inApp: true } });
+      expect(answered[0].slice(0, 3)).toEqual([
+        'camp-1',
+        'h1',
+        { kind: 'die', use: true, roll: { inApp: true } },
+      ]);
+      expect(play.hintHeld()).toBeNull();
       expect(play.hintTry()?.passed).toBe(true);
       expect(play.run()?.hints).toEqual(['Uma dica.']);
     });
@@ -358,25 +373,43 @@ describe('PuzzlePlay (MR-038, RN-27)', () => {
           luckyOffer: create(LuckyOfferSchema, { holdId: 'h1', luckyIndex: 0 }),
         });
       await play.tryHint({ inApp: true });
-      expect(play.hintLucky()?.holdId).toBe('h1');
-      expect(play.hintOffer()).toBeNull();
+      expect(play.hintHeld()?.holdId).toBe('h1');
+      expect(asksLucky(play.hintHeld())).toBe(true);
       expect(play.hintTry()).toBeNull();
       const asked: unknown[][] = [];
-      (fake as { answerHintLucky?: unknown }).answerHintLucky = async (...args: unknown[]) => {
+      (fake as { answerHeldRoll?: unknown }).answerHeldRoll = async (...args: unknown[]) => {
         asked.push(args);
-        return create(TryPuzzleHintResponseSchema, {
-          inspirationOffer: create(OutsideInspirationOfferSchema, { holdId: 'h1', sides: 8 }),
+        return heldAnswer({
+          result: {
+            case: 'hintTry',
+            value: create(TryPuzzleHintResponseSchema, {
+              heldRollOffer: heldDie(14, 5, 8, { holdId: 'h1' }, 1),
+            }),
+          },
         });
       };
-      await play.answerHintLucky(true, { face: 14 });
-      expect(asked[0].slice(0, 4)).toEqual(['camp-1', 'h1', true, { face: 14 }]);
-      expect(play.hintLucky()).toBeNull();
-      expect(play.hintOffer()?.holdId).toBe('h1');
+      await play.answerHint({ kind: 'lucky', reroll: true, roll: { face: 14 } });
+      expect(asked[0].slice(0, 3)).toEqual([
+        'camp-1',
+        'h1',
+        { kind: 'lucky', reroll: true, roll: { face: 14 } },
+      ]);
+      expect(play.hintHeld()?.holdId).toBe('h1');
+      expect(asksLucky(play.hintHeld())).toBe(false);
       expect(play.hintTry()).toBeNull();
-      (fake as { answerHintDie?: unknown }).answerHintDie = async () =>
-        hintAnswer({ ...base, revision: 2, hints: ['Uma dica.'], sharedHints: 0 }, true, 17);
-      await play.answerHintDie(false, null);
-      expect(play.hintOffer()).toBeNull();
+      (fake as { answerHeldRoll?: unknown }).answerHeldRoll = async () =>
+        heldAnswer({
+          result: {
+            case: 'hintTry',
+            value: hintAnswer(
+              { ...base, revision: 2, hints: ['Uma dica.'], sharedHints: 0 },
+              true,
+              17,
+            ),
+          },
+        });
+      await play.answerHint({ kind: 'die', use: false, roll: null });
+      expect(play.hintHeld()).toBeNull();
       expect(play.hintTry()?.passed).toBe(true);
     });
 
@@ -390,15 +423,15 @@ describe('PuzzlePlay (MR-038, RN-27)', () => {
         });
       await play.tryHint({ inApp: true });
       const keys: string[] = [];
-      (fake as { answerHintLucky?: unknown }).answerHintLucky = async (...args: unknown[]) => {
-        keys.push(args[4] as string);
+      (fake as { answerHeldRoll?: unknown }).answerHeldRoll = async (...args: unknown[]) => {
+        keys.push(args[3] as string);
         throw new ConnectError('down', Code.Unavailable);
       };
-      await play.answerHintLucky(true, { inApp: true });
-      await play.answerHintLucky(true, { inApp: true });
+      await play.answerHint({ kind: 'lucky', reroll: true, roll: { inApp: true } });
+      await play.answerHint({ kind: 'lucky', reroll: true, roll: { inApp: true } });
       expect(keys).toHaveLength(2);
       expect(keys[0]).toBe(keys[1]);
-      expect(play.hintLucky()?.holdId).toBe('h1');
+      expect(play.hintHeld()?.holdId).toBe('h1');
       expect(play.message()).toContain('Sortudo');
     });
 

@@ -85,7 +85,7 @@ func (s *Service) settleHidden(ctx context.Context, c *combatTx, m authz.Members
 			return err
 		}
 		// The cast's undo hides them again and takes these lines back with it.
-		made.Revealed, made.RevealLines = hit, lines
+		made.RevealedHits, made.RevealLines = true, lines
 	}
 	return nil
 }
@@ -184,7 +184,7 @@ func (s *Service) ResolveHiddenReveal(
 	ctx context.Context,
 	req *connect.Request[playv1.ResolveHiddenRevealRequest],
 ) (*connect.Response[playv1.ResolveHiddenRevealResponse], error) {
-	call, err := readRevealRequest(ctx, req.Msg)
+	call, err := readRevealCall(ctx, req.Msg)
 	if err != nil {
 		return nil, err
 	}
@@ -205,9 +205,9 @@ func (s *Service) ResolveHiddenReveal(
 	return connect.NewResponse(&playv1.ResolveHiddenRevealResponse{Encounter: out}), nil
 }
 
-// readRevealRequest reads the request in the order the answers are given: who may call, the
+// readRevealCall reads the request in the order the answers are given: who may call, the
 // master only, the key, the encounter, then the question.
-func readRevealRequest(ctx context.Context, req *playv1.ResolveHiddenRevealRequest) (revealCall, error) {
+func readRevealCall(ctx context.Context, req *playv1.ResolveHiddenRevealRequest) (revealCall, error) {
 	m, err := authz.RequireCampaignMember(ctx, req.GetCampaignId())
 	if err != nil {
 		return revealCall{}, err

@@ -154,9 +154,9 @@ func (s *Service) answerFeatherFall(ctx context.Context, c *combatTx, w playdb.R
 
 // checkFallers refuses a creature that is not one of the fall or that the reactor does not see.
 func (s *Service) checkFallers(ctx context.Context, c *combatTx, reactor playdb.Combatant, t windowTrigger, ids []string) error {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	for _, id := range ids {
 		i := slices.IndexFunc(cs, func(x playdb.Combatant) bool { return x.ID == id })

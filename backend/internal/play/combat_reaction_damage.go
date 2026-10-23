@@ -2,7 +2,6 @@ package play
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"slices"
 
@@ -10,6 +9,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -60,7 +60,7 @@ func (s *Service) cuttingWindowOf(ctx context.Context, c *combatTx, cs []playdb.
 		return windowSpec{}, false, err
 	}
 	// A roller that cannot hear the bard or is immune to charm opens no window: the prompt would
-	// tell the bard what the creature is (decisions-batch2-A, item 4).
+	// tell the bard what the creature is.
 	cut, err := s.rollerCanBeCut(ctx, c, roller)
 	if err != nil || !cut {
 		return windowSpec{}, false, err
@@ -91,6 +91,11 @@ func (s *Service) holdAttackRoll(ctx context.Context, c *combatTx, m authz.Membe
 	if err != nil {
 		return actionEvent{}, false, err
 	}
+	protect, err := s.protectionWindows(ctx, c, cs, attacker, target, key)
+	if err != nil {
+		return actionEvent{}, false, err
+	}
+	specs = append(specs, protect...)
 	// "Sempre": a player's attack on an enemy waits for the master's check also when no bard could
 	// cut the roll, so the pause (a miss included) tells the table nothing about a bard.
 	if len(specs) == 0 && c.rules.EnemyReactionsAlways && playerAgainstEnemy(attacker, target) {
@@ -103,8 +108,8 @@ func (s *Service) holdAttackRoll(ctx context.Context, c *combatTx, m authz.Membe
 	if ev, err = s.holdAction(ctx, c, m, "attack", attacker, req, holdData{}, specs, ev); err != nil {
 		return ev, false, err
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return ev, false, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return ev, false, err
 	}
 	c.characterID = &attacker.CharacterID
 	return ev, true, nil
@@ -249,8 +254,8 @@ func (s *Service) holdDamage(ctx context.Context, c *combatTx, m authz.Membershi
 	if err != nil {
 		return ev, false, err
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return ev, false, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return ev, false, err
 	}
 	c.characterID = &attacker.CharacterID
 	return ev, true, nil
@@ -282,9 +287,9 @@ func (s *Service) hellishWindow(ctx context.Context, c *combatTx, target playdb.
 	if !rebukeOwed(target, d) {
 		return nil
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	i := slices.IndexFunc(cs, func(x playdb.Combatant) bool { return x.ID == d.attacker })
 	if i < 0 || cs[i].Defeated || cs[i].Side == target.Side {
@@ -324,7 +329,7 @@ func rebukeOwed(target playdb.Combatant, d damageLanded) bool {
 // holdDataOf is what a held damage keeps: the roll, and for a damage with extras every part
 // as it rolled (the replay lands those very dice and spends the slot only then).
 func holdDataOf(roll dice.Result, faces []int32, pr *partsRoll) holdData {
-	data := holdData{Rolled: &rolledDamage{Faces: faces, Total: clamp32(roll.Total, math.MinInt32, math.MaxInt32), Physical: roll.Physical}}
+	data := holdData{Rolled: &rolledDamage{Faces: faces, Total: conv.Int32(roll.Total), Physical: roll.Physical}}
 	if pr != nil {
 		data.Parts, data.PartRolls = pr.parts, pr.rolls
 	}

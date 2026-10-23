@@ -38,21 +38,6 @@ import (
 // The contest waits without a timeout; the master may answer for anyone or close it.
 // The wait is a reaction window of kind CONTEST (combat_contests_window.go).
 
-// contestCaller reads what every contest call starts with: the caller, the idempotency
-// key and the combat.
-func contestCaller(ctx context.Context, campaignID, keyRaw, encounterRaw string) (m authz.Membership, key, encID string, err error) {
-	if m, err = authz.RequireCampaignMember(ctx, campaignID); err != nil {
-		return m, "", "", err
-	}
-	if key, err = parseKey(keyRaw); err != nil {
-		return m, "", "", err
-	}
-	if encID, err = parseCombatID(encounterRaw, "encounter"); err != nil {
-		return m, "", "", err
-	}
-	return m, key, encID, nil
-}
-
 // mustBeRunning refuses a contest call when the combat is not running.
 func mustBeRunning(c *combatTx) error {
 	if err := notEnded(c.enc); err != nil {
@@ -198,6 +183,8 @@ type contestStart struct {
 	maneuverKey  string
 	maneuverFace int32
 	in           checkInput
+	// req is the request, kept when a reaction window holds the roll.
+	req *playv1.StartContestRequest
 }
 
 // purposeKeyOf is a contest's purpose as the table stores it.
@@ -245,14 +232,14 @@ func checkContestSkill(st *contestStart) error {
 	return nil
 }
 
-// parseContestStart is the first phase of StartContest: read and validate the request, in
-// the order the refusals have always come.
-func parseContestStart(ctx context.Context, msg *playv1.StartContestRequest) (contestStart, error) {
-	m, key, encID, err := contestCaller(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
+// parseContestStart is the first phase of StartContest: read and validate the request of a
+// member (the caller of the RPC, or the one a held roll is replayed as).
+func parseContestStart(m authz.Membership, msg *playv1.StartContestRequest) (contestStart, error) {
+	key, encID, err := parseCall(msg.GetIdempotencyKey(), msg.GetEncounterId())
 	if err != nil {
 		return contestStart{}, err
 	}
-	st := contestStart{m: m, key: key, encID: encID, purpose: msg.GetPurpose(), escapeDC: msg.GetEscapeDc(), skill: msg.GetSkill(), maneuverKey: msg.GetManeuverKey(), maneuverFace: msg.GetManeuverFace()}
+	st := contestStart{m: m, key: key, encID: encID, purpose: msg.GetPurpose(), escapeDC: msg.GetEscapeDc(), skill: msg.GetSkill(), maneuverKey: msg.GetManeuverKey(), maneuverFace: msg.GetManeuverFace(), req: msg}
 	if st.initiatorID, err = parseCombatID(msg.GetInitiatorId(), "combatant"); err != nil {
 		return contestStart{}, err
 	}
@@ -304,9 +291,9 @@ func (s *Service) readContestRun(ctx context.Context, c *combatTx, st contestSta
 	if err := mustBeRunning(c); err != nil {
 		return nil, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	v := c.viewer(st.m, cs) // the fog: an NPC the player does not see is not found
 	initiator, err := findCombatant(cs, st.initiatorID, v)
@@ -350,9 +337,6 @@ func (s *Service) resolveEscape(ctx context.Context, r *contestRun) error {
 		return errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_GRAPPLED, "the combatant is not grappled")
 	}
 	r.defender = grappler
-	if err := spendAction(ctx, r.c, r.initiator, r.v.master); err != nil {
-		return err
-	}
 	if hold.EscapeDc != nil {
 		r.row.Kind, r.row.EscapeDc = contestKindEscapeDC, hold.EscapeDc
 	}
@@ -418,11 +402,20 @@ func (s *Service) resolveAttackContest(ctx context.Context, r *contestRun) error
 	if err := s.mustBeInReach(r.c, r.v, r.initiator, defender); err != nil {
 		return err
 	}
+	return mayAttack(r.initiator, false)
+}
+
+// spendContest spends what the contest costs the initiator, once nothing holds the roll: the
+// action of an escape, the attack of a grapple or a shove (or the maneuver that starts it).
+func (s *Service) spendContest(ctx context.Context, r *contestRun) error {
+	if r.st.purpose == playv1.ContestPurpose_CONTEST_PURPOSE_ESCAPE {
+		return spendAction(ctx, r.c, r.initiator, r.v.master)
+	}
+	if r.st.byAttack {
+		return nil // the attack was rolled already: nothing is spent
+	}
 	sheet, err := s.sheetOf(ctx, r.c.tx, r.st.m.CampaignID, r.initiator)
 	if err != nil {
-		return err
-	}
-	if err := mayAttack(r.initiator, false); err != nil {
 		return err
 	}
 	if err := s.spendContestAttack(ctx, r, sheet); err != nil {
@@ -431,15 +424,26 @@ func (s *Service) resolveAttackContest(ctx context.Context, r *contestRun) error
 	return s.noteContestAttack(ctx, r)
 }
 
-// rollContestInitiator rolls (or reads the typed dice of) the initiator's side, adds the
-// maneuver die when one started the grapple, and keeps the roll on the row.
-func (s *Service) rollContestInitiator(ctx context.Context, r *contestRun) error {
+// gateContestInitiator prepares the initiator's check and puts its d20 through the gate, before anything is spent: a
+// Bardic Inspiration die the initiator holds, or a halfling's 1, keeps the d20 for the player's answer.
+func (s *Service) gateContestInitiator(ctx context.Context, r *contestRun) (preparedCheck, gateResult, error) {
 	if !r.v.master {
 		if err := s.mustRollThisWay(ctx, r.c.tx, r.st.m, r.st.in.rollInput()); err != nil {
-			return err
+			return preparedCheck{}, gateResult{}, err
 		}
 	}
-	roll, err := s.rollFor(ctx, r.c, r.initiator, skillKeyOf(r.st.skill), r.st.in, r.cs)
+	p, err := s.prepareCheck(ctx, r.c, r.initiator, skillKeyOf(r.st.skill), r.cs)
+	if err != nil {
+		return preparedCheck{}, gateResult{}, err
+	}
+	gate, err := s.gateCheck(ctx, r.c, p, checkHold{kind: heldContest, key: r.st.key, req: keptAs(r.st.req), m: r.st.m, who: r.initiator, in: r.st.in})
+	return p, gate, err
+}
+
+// rollContestInitiator rolls (or reads the typed dice of) the initiator's side, adds the
+// maneuver die when one started the grapple, and keeps the roll on the row.
+func (s *Service) rollContestInitiator(ctx context.Context, r *contestRun, p preparedCheck, gate gateResult) error {
+	roll, err := s.finishCheck(ctx, r.c, r.initiator, r.cs, p, r.st.in, gate)
 	if err != nil {
 		return err
 	}
@@ -505,9 +509,34 @@ func (s *Service) writeContest(ctx context.Context, r *contestRun) (contestID, l
 	return inserted.ID, line, winner, nil
 }
 
+// rollContest is the initiator's roll: the d20 comes before anything is spent, since it may wait for a question; it says
+// the question when it does. Otherwise it spends the cost of the contest and rolls.
+func (s *Service) rollContest(ctx context.Context, r *contestRun) (*playv1.HeldRollOffer, error) {
+	var (
+		p    preparedCheck
+		gate gateResult
+		err  error
+	)
+	if !r.st.byAttack {
+		if p, gate, err = s.gateContestInitiator(ctx, r); err != nil {
+			return nil, err
+		}
+		if gate.Held != nil {
+			return s.heldCheckOffer(ctx, r.c, gate), nil
+		}
+	}
+	if err := s.spendContest(ctx, r); err != nil {
+		return nil, err
+	}
+	if r.st.byAttack {
+		return nil, nil
+	}
+	return nil, s.rollContestInitiator(ctx, r, p, gate)
+}
+
 // startContestTx is the whole change of StartContest: read and validate, resolve the
 // sides and what they spend, roll, write.
-func (s *Service) startContestTx(ctx context.Context, c *combatTx, st contestStart) (actionEvent, error) {
+func (s *Service) startContestTx(ctx context.Context, c *combatTx, st contestStart, held **playv1.HeldRollOffer) (actionEvent, error) {
 	r, err := s.readContestRun(ctx, c, st)
 	if err != nil {
 		return actionEvent{}, err
@@ -521,10 +550,18 @@ func (s *Service) startContestTx(ctx context.Context, c *combatTx, st contestSta
 		return actionEvent{}, err
 	}
 	r.row.DefenderID = r.defender.ID
-	if !st.byAttack {
-		if err := s.rollContestInitiator(ctx, r); err != nil {
-			return actionEvent{}, err
-		}
+	// A Cutting Words can take a die off the initiator's roll: the roll waits for the windows, with
+	// nothing spent (combat_cutting_checks.go).
+	if held, ok, err := s.holdContestRoll(ctx, r); err != nil || ok {
+		return held, err
+	}
+	offer, err := s.rollContest(ctx, r)
+	if err != nil {
+		return actionEvent{}, err
+	}
+	if offer != nil { // the d20 is kept for a question: nothing was spent or written
+		*held = offer
+		return actionEvent{}, nil
 	}
 	contestID, line, winner, err := s.writeContest(ctx, r)
 	if err != nil {
@@ -546,21 +583,44 @@ func (s *Service) StartContest(
 	ctx context.Context,
 	req *connect.Request[playv1.StartContestRequest],
 ) (*connect.Response[playv1.StartContestResponse], error) {
-	st, err := parseContestStart(ctx, req.Msg)
+	// The member first, so a stranger gets permission_denied before any id is parsed.
+	m, err := heldMember(ctx, req.Msg.GetCampaignId()) // a held roll's answer runs this again as the roller
 	if err != nil {
 		return nil, err
 	}
-	var made actionEvent
-	res, err := s.write(ctx, combatWrite{m: st.m, key: st.key, hash: idem.Hash(req.Msg), kind: eventContestStarted, encounterID: st.encID}, func(c *combatTx) (any, error) {
-		made = actionEvent{}
+	return s.startContest(ctx, m, req.Msg)
+}
+
+// startContest is StartContest as a member: also what the replay of a held roll runs.
+func (s *Service) startContest(ctx context.Context, m authz.Membership, msg *playv1.StartContestRequest) (*connect.Response[playv1.StartContestResponse], error) {
+	st, err := parseContestStart(m, msg)
+	if err != nil {
+		return nil, err
+	}
+	var (
+		made actionEvent
+		held *playv1.HeldRollOffer
+	)
+	res, err := s.write(ctx, combatWrite{m: st.m, key: st.key, hash: idem.Hash(msg), kind: eventContestStarted, encounterID: st.encID}, func(c *combatTx) (any, error) {
+		made, held = actionEvent{}, nil
 		var err error
-		if made, err = s.startContestTx(ctx, c, st); err != nil {
+		if made, err = s.startContestTx(ctx, c, st, &held); err != nil {
 			return nil, err
+		}
+		if held != nil { // the d20 is kept for a question: nothing is written
+			return nil, nil
 		}
 		return made, nil
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "start a contest", err)
+	}
+	if held != nil {
+		enc, err := s.finish(ctx, st.m, res, s.changed(st.m.CampaignID))
+		if err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(&playv1.StartContestResponse{Encounter: enc, HeldRollOffer: held}), nil
 	}
 	ev, err := resultEvent(res, made)
 	if err != nil {
@@ -608,12 +668,14 @@ type contestAnswer struct {
 	// leave says the player leaves the roll to the master (no roll is read then).
 	leave bool
 	in    checkInput
+	// req is the request, kept when a reaction window holds the roll.
+	req *playv1.RespondContestRequest
 }
 
-// parseContestAnswer is the first phase of RespondContest: read and validate the request, in
-// the order the refusals have always come.
-func parseContestAnswer(ctx context.Context, msg *playv1.RespondContestRequest) (contestAnswer, error) {
-	m, key, encID, err := contestCaller(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
+// parseContestAnswer is the first phase of RespondContest: read and validate the request of a
+// member (the caller of the RPC, or the one a held roll is replayed as).
+func parseContestAnswer(m authz.Membership, msg *playv1.RespondContestRequest) (contestAnswer, error) {
+	key, encID, err := parseCall(msg.GetIdempotencyKey(), msg.GetEncounterId())
 	if err != nil {
 		return contestAnswer{}, err
 	}
@@ -621,7 +683,7 @@ func parseContestAnswer(ctx context.Context, msg *playv1.RespondContestRequest) 
 	if err != nil {
 		return contestAnswer{}, err
 	}
-	ans := contestAnswer{m: m, key: key, encID: encID, contestID: contestID, skill: msg.GetSkill(), leave: msg.GetDeferToMaster()}
+	ans := contestAnswer{m: m, key: key, encID: encID, contestID: contestID, skill: msg.GetSkill(), leave: msg.GetDeferToMaster(), req: msg}
 	if ans.skill == playv1.ContestSkill_CONTEST_SKILL_UNSPECIFIED {
 		ans.skill = playv1.ContestSkill_CONTEST_SKILL_ATHLETICS
 	}
@@ -690,9 +752,9 @@ func (s *Service) readAnswerRun(ctx context.Context, c *combatTx, ans contestAns
 	if err := mustBeRunning(c); err != nil {
 		return nil, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	v := c.viewer(ans.m, cs)
 	row, err := c.q.GetContest(ctx, playdb.GetContestParams{EncounterID: c.enc.ID, ID: ans.contestID})
@@ -734,16 +796,26 @@ func leaveRollToMaster(ctx context.Context, r *answerRun) error {
 	return nil
 }
 
-// rollDefender rolls the defender's side, settles the contest and writes the answer. It
-// returns the contest part of the event.
-func (s *Service) rollDefender(ctx context.Context, r *answerRun) (*contestEvent, error) {
-	c := r.c
+// gateContestDefender prepares the defender's check and puts its d20 through the gate, as the initiator's is.
+func (s *Service) gateContestDefender(ctx context.Context, r *answerRun) (preparedCheck, gateResult, error) {
 	if !r.v.master {
-		if err := s.mustRollThisWay(ctx, c.tx, r.ans.m, r.ans.in.rollInput()); err != nil {
-			return nil, err
+		if err := s.mustRollThisWay(ctx, r.c.tx, r.ans.m, r.ans.in.rollInput()); err != nil {
+			return preparedCheck{}, gateResult{}, err
 		}
 	}
-	roll, err := s.rollFor(ctx, c, r.defender, r.skillKey, r.ans.in, r.cs)
+	p, err := s.prepareCheck(ctx, r.c, r.defender, r.skillKey, r.cs)
+	if err != nil {
+		return preparedCheck{}, gateResult{}, err
+	}
+	gate, err := s.gateCheck(ctx, r.c, p, checkHold{kind: heldContest, key: r.ans.key, req: keptAs(r.ans.req), m: r.ans.m, who: r.defender, in: r.ans.in})
+	return p, gate, err
+}
+
+// rollDefender rolls the defender's side, settles the contest and writes the answer. It
+// returns the contest part of the event.
+func (s *Service) rollDefender(ctx context.Context, r *answerRun, p preparedCheck, gate gateResult) (*contestEvent, error) {
+	c := r.c
+	roll, err := s.finishCheck(ctx, c, r.defender, r.cs, p, r.ans.in, gate)
 	if err != nil {
 		return nil, err
 	}
@@ -775,16 +847,30 @@ func (s *Service) rollDefender(ctx context.Context, r *answerRun) (*contestEvent
 
 // answerContestTx is the whole change of RespondContest: read and validate, then the
 // deferral or the roll, then the event.
-func (s *Service) answerContestTx(ctx context.Context, c *combatTx, ans contestAnswer) (actionEvent, error) {
+func (s *Service) answerContestTx(ctx context.Context, c *combatTx, ans contestAnswer, held **playv1.HeldRollOffer) (actionEvent, error) {
 	r, err := s.readAnswerRun(ctx, c, ans)
 	if err != nil {
 		return actionEvent{}, err
 	}
 	part := &contestEvent{Waiting: true}
+	if held, ok, err := s.holdContestAnswer(ctx, r); err != nil || ok {
+		return held, err
+	}
 	if ans.leave {
 		err = leaveRollToMaster(ctx, r)
 	} else {
-		part, err = s.rollDefender(ctx, r)
+		var (
+			p    preparedCheck
+			gate gateResult
+		)
+		if p, gate, err = s.gateContestDefender(ctx, r); err != nil {
+			return actionEvent{}, err
+		}
+		if gate.Held != nil { // the d20 is kept for a question: nothing is written
+			*held = s.heldCheckOffer(ctx, c, gate)
+			return actionEvent{}, nil
+		}
+		part, err = s.rollDefender(ctx, r, p, gate)
 	}
 	if err != nil {
 		return actionEvent{}, err
@@ -804,7 +890,16 @@ func (s *Service) RespondContest(
 	ctx context.Context,
 	req *connect.Request[playv1.RespondContestRequest],
 ) (*connect.Response[playv1.RespondContestResponse], error) {
-	ans, err := parseContestAnswer(ctx, req.Msg)
+	m, err := heldMember(ctx, req.Msg.GetCampaignId()) // a held roll's answer runs this again as the roller
+	if err != nil {
+		return nil, err
+	}
+	return s.respondContest(ctx, m, req.Msg)
+}
+
+// respondContest is RespondContest as a member: also what the replay of a held roll runs.
+func (s *Service) respondContest(ctx context.Context, m authz.Membership, msg *playv1.RespondContestRequest) (*connect.Response[playv1.RespondContestResponse], error) {
+	ans, err := parseContestAnswer(m, msg)
 	if err != nil {
 		return nil, err
 	}
@@ -812,17 +907,30 @@ func (s *Service) RespondContest(
 	if ans.leave {
 		kind = eventContestDeferred
 	}
-	var made actionEvent
-	res, err := s.write(ctx, combatWrite{m: ans.m, key: ans.key, hash: idem.Hash(req.Msg), kind: kind, encounterID: ans.encID}, func(c *combatTx) (any, error) {
-		made = actionEvent{}
+	var (
+		made actionEvent
+		held *playv1.HeldRollOffer
+	)
+	res, err := s.write(ctx, combatWrite{m: ans.m, key: ans.key, hash: idem.Hash(msg), kind: kind, encounterID: ans.encID}, func(c *combatTx) (any, error) {
+		made, held = actionEvent{}, nil
 		var err error
-		if made, err = s.answerContestTx(ctx, c, ans); err != nil {
+		if made, err = s.answerContestTx(ctx, c, ans, &held); err != nil {
 			return nil, err
+		}
+		if held != nil { // the d20 is kept for a question: nothing is written
+			return nil, nil
 		}
 		return made, nil
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "answer a contest", err)
+	}
+	if held != nil {
+		enc, err := s.finish(ctx, ans.m, res, s.changed(ans.m.CampaignID))
+		if err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(&playv1.RespondContestResponse{Encounter: enc, HeldRollOffer: held}), nil
 	}
 	ev, err := resultEvent(res, made)
 	if err != nil {
@@ -899,10 +1007,10 @@ type shoveChoiceReq struct {
 	outcome   playv1.ShoveOutcome
 }
 
-// parseShoveChoice is the first phase of ResolveShove: read and validate the request, in the
-// order the refusals have always come.
+// parseShoveChoice is the first phase of ResolveShove: read and validate the request, the
+// member first, so a stranger gets permission_denied before any id is parsed.
 func parseShoveChoice(ctx context.Context, msg *playv1.ResolveShoveRequest) (shoveChoiceReq, error) {
-	m, key, encID, err := contestCaller(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
+	m, key, encID, err := memberCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
 	if err != nil {
 		return shoveChoiceReq{}, err
 	}
@@ -935,9 +1043,9 @@ func (s *Service) readShoveRun(ctx context.Context, c *combatTx, req shoveChoice
 	if err := mustBeRunning(c); err != nil {
 		return nil, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	v := c.viewer(req.m, cs)
 	row, err := c.q.GetContest(ctx, playdb.GetContestParams{EncounterID: c.enc.ID, ID: req.contestID})
@@ -986,6 +1094,10 @@ func shovePushes(ctx context.Context, r *shoveRun) (stored, line string, err err
 		ID: r.target.ID, GridCol: new(clamp32(push.to.Col, 0, math.MaxInt32)), GridRow: new(clamp32(push.to.Row, 0, math.MaxInt32)), CoverMark: "none",
 	}); err != nil {
 		return "", "", fmt.Errorf("push the target: %w", err)
+	}
+	from := squareOfCombatant(r.target)
+	if err := r.c.svc.zonesAfterSteps(ctx, r.c, zoneStep{who: r.target.ID, from: &from, path: []grid.Square{push.to}}); err != nil {
+		return "", "", err
 	}
 	return shovePush, contestLineShovePushed, nil
 }
@@ -1071,17 +1183,9 @@ type contestClose struct {
 }
 
 // parseContestClose is the first phase of CloseContest: only the master closes, and the
-// refusals come in the order they always have.
+// member is checked before any id is parsed.
 func parseContestClose(ctx context.Context, msg *playv1.CloseContestRequest) (contestClose, error) {
-	m, err := authz.RequireCampaignRole(ctx, msg.GetCampaignId(), authz.RoleMaster)
-	if err != nil {
-		return contestClose{}, err
-	}
-	key, err := parseKey(msg.GetIdempotencyKey())
-	if err != nil {
-		return contestClose{}, err
-	}
-	encID, err := parseCombatID(msg.GetEncounterId(), "encounter")
+	m, key, encID, err := masterCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
 	if err != nil {
 		return contestClose{}, err
 	}
@@ -1105,9 +1209,9 @@ func (s *Service) closeContestTx(ctx context.Context, c *combatTx, req contestCl
 	if row.Status != contestAwaitingDefender && row.Status != contestAwaitingOutcome {
 		return actionEvent{}, errNotAwaiting()
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return actionEvent{}, fmt.Errorf("list the combatants: %w", err)
+		return actionEvent{}, err
 	}
 	initiator, _ := combatantByID(cs, row.InitiatorID)
 	defender, _ := combatantByID(cs, row.DefenderID)
@@ -1157,9 +1261,9 @@ func (s *Service) releaseTx(ctx context.Context, c *combatTx, m authz.Membership
 	if err := notEnded(c.enc); err != nil {
 		return actionEvent{}, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return actionEvent{}, fmt.Errorf("list the combatants: %w", err)
+		return actionEvent{}, err
 	}
 	v := c.viewer(m, cs)
 	grappled, err := findCombatant(cs, grappledID, v)
@@ -1199,7 +1303,7 @@ func (s *Service) ReleaseGrapple(
 	ctx context.Context,
 	req *connect.Request[playv1.ReleaseGrappleRequest],
 ) (*connect.Response[playv1.ReleaseGrappleResponse], error) {
-	m, key, encID, err := contestCaller(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
+	m, key, encID, err := memberCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
 	if err != nil {
 		return nil, err
 	}
@@ -1291,9 +1395,9 @@ func (s *Service) pruneHolds(ctx context.Context, c *combatTx) error {
 	if err != nil || len(holds) == 0 {
 		return err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return err
 	}
 	by := combatantsByID(cs)
 	for _, h := range holds {
@@ -1312,7 +1416,7 @@ func (s *Service) pruneHolds(ctx context.Context, c *combatTx) error {
 }
 
 // endHold lets go of a hold that ended: the condition goes when the creature still carries
-// it, and the row always does.
+// it, and the row goes either way.
 func endHold(ctx context.Context, c *combatTx, by map[string]playdb.Combatant, h playdb.CombatHold) error {
 	if grappled, ok := by[h.GrappledID]; ok && isGrappled(grappled) {
 		return releaseHold(ctx, c, grappled)

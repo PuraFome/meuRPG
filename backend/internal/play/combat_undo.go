@@ -16,6 +16,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
 // The master's "Desfazer" (MR-012, MR-014): one step back, a compensating
@@ -46,7 +47,7 @@ func lastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string) 
 	undone := map[string]bool{}
 	for _, e := range recent {
 		if e.Kind == eventActionUndone {
-			markUndone(undone, e)
+			markUndone(undone, e.Payload)
 			continue
 		}
 		if undone[e.ID] {
@@ -63,9 +64,10 @@ func lastAction(recent []playdb.ListRecentSessionEventsRow, encounterID string) 
 	return playdb.ListRecentSessionEventsRow{}, false
 }
 
-// markUndone notes the events an undo event took back.
-func markUndone(undone map[string]bool, e playdb.ListRecentSessionEventsRow) {
-	if ev, err := readEvent(e.Payload); err == nil {
+// markUndone notes the events an undo event took back, from its payload: the one it
+// names and the older ones it took back with it (UndoneAlso).
+func markUndone(undone map[string]bool, payload []byte) {
+	if ev, err := readEvent(payload); err == nil {
 		undone[ev.Undone] = true
 		for _, id := range ev.UndoneAlso {
 			undone[id] = true
@@ -111,6 +113,7 @@ var chainRules = []func(c chainEvent) chainVerdict{
 	chainTrapOutside,
 	chainShapeAndSight,
 	chainHeld,
+	chainProtection,
 	chainHeldFall,
 	chainRevive,
 	chainHideDecision,
@@ -216,6 +219,15 @@ func chainHeld(c chainEvent) chainVerdict {
 	return chainGoOn
 }
 
+// chainProtection: a Protection that was used is written beside the attack roll it released and
+// never closes the chain: the undo acts on the attack and gives the reaction back (ProtectedBy).
+func chainProtection(c chainEvent) chainVerdict {
+	if ev, ok := c.payload(); ok && ev.Reaction != nil && ev.Reaction.Kind == string(reaction.ProtectionKind) && ev.Reaction.Used {
+		return chainSkip
+	}
+	return chainGoOn
+}
+
 // chainHeldFall: a fall whose damage waited for a Feather Fall landed by itself: the hit
 // points it took were not written with the firing, so the firing is no longer undoable.
 func chainHeldFall(c chainEvent) chainVerdict {
@@ -296,18 +308,10 @@ type undoRequest struct {
 	expected string // the event the master saw as the last action
 }
 
-// undoRequestOf checks the request in the order the handler always refused it: the
+// undoRequestOf checks the request in the order the handler refuses it: the
 // master's role, the key, the combat, the event the master expects.
 func undoRequestOf(ctx context.Context, msg *playv1.UndoLastActionRequest) (undoRequest, error) {
-	m, err := authz.RequireCampaignRole(ctx, msg.GetCampaignId(), authz.RoleMaster)
-	if err != nil {
-		return undoRequest{}, err
-	}
-	key, err := parseKey(msg.GetIdempotencyKey())
-	if err != nil {
-		return undoRequest{}, err
-	}
-	encID, err := parseCombatID(msg.GetEncounterId(), "encounter")
+	m, key, encID, err := masterCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
 	if err != nil {
 		return undoRequest{}, err
 	}
@@ -323,8 +327,9 @@ type undoRun struct {
 	made       actionEvent
 	vitals     []*playv1.CharacterVitals // the characters' vitals put back, if any
 	undoneMove *actionEvent              // the move that was taken back, for the fog
-	snapBack   *grid.Square              // where a mover stood before the undo of the 0 hit points rule put it back
+	snapBack   *grid.Square              // where a creature stood before the undo put it back: the mover of the 0 hit points rule, or the creature a move dragged
 	snapped    string                    // and who it is
+	unpushed   []*forcedMove             // the creatures a cast pushed that the undo put back
 	rearmed    *trapFireEvent            // the trap an undone firing armed again
 	alsoUndone []string                  // the older parts of a firing that went with it
 }
@@ -380,8 +385,9 @@ func (s *Service) undoInTx(ctx context.Context, c *combatTx, expected string, ru
 	if err != nil {
 		return nil, err
 	}
-	if ev.ReturnedFrom != nil { // the undo of a damage that took the mover back to where it left the reach
-		if err := run.noteSnapBack(ctx, c, ev); err != nil {
+	run.unpushed = pushesOf(ev.Hits)
+	if id := creatureToPutBack(ev); id != "" {
+		if err := run.noteSnapBack(ctx, c, id); err != nil {
 			return nil, err
 		}
 	}
@@ -394,8 +400,8 @@ func (s *Service) undoInTx(ctx context.Context, c *combatTx, expected string, ru
 	if err := s.takeBackCompanions(ctx, c, run, recent, last, ev); err != nil {
 		return nil, err
 	}
-	if c.enc, err = c.q.TouchEncounter(ctx, c.enc.ID); err != nil {
-		return nil, fmt.Errorf("touch the encounter: %w", err)
+	if err := touch(ctx, c); err != nil {
+		return nil, err
 	}
 	// The undo is told to the players who were told of the action it takes back,
 	// and counts for them alone.
@@ -403,16 +409,26 @@ func (s *Service) undoInTx(ctx context.Context, c *combatTx, expected string, ru
 	return run.made, nil
 }
 
-// noteSnapBack remembers where the target of a damage that took the mover back stands
-// now, if it is placed: the fog follows it when the undo puts it back.
-func (u *undoRun) noteSnapBack(ctx context.Context, c *combatTx, ev actionEvent) error {
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
-	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+// creatureToPutBack is the creature whose square the undo of ev changes behind the mover's
+// back: the target of a damage that took the mover back to where it left the reach, or the
+// creature a move dragged.
+func creatureToPutBack(ev actionEvent) string {
+	if ev.ReturnedFrom != nil {
+		return ev.Target
 	}
-	if i := slices.IndexFunc(cs, func(o playdb.Combatant) bool { return o.ID == ev.Target }); i >= 0 && placed(cs[i]) {
-		sq := squareOfCombatant(cs[i])
-		u.snapBack, u.snapped = &sq, ev.Target
+	return ev.Dragged
+}
+
+// noteSnapBack remembers where the creature the undo puts back stands now, if it is
+// placed: the fog follows it when the undo moves it.
+func (u *undoRun) noteSnapBack(ctx context.Context, c *combatTx, id string) error {
+	cs, err := listCombatants(ctx, c)
+	if err != nil {
+		return err
+	}
+	if t, ok := combatantByID(cs, id); ok && placed(t) {
+		sq := squareOfCombatant(t)
+		u.snapBack, u.snapped = &sq, id
 	}
 	return nil
 }
@@ -423,8 +439,16 @@ func (s *Service) takeBackCompanions(ctx context.Context, c *combatTx, run *undo
 	if last.Kind == eventCombatantMoved {
 		run.undoneMove = &ev
 	}
-	if last.Kind == eventDamageRolled || last.Kind == eventDamageApplied {
-		if err := s.takeBackEndedConcentration(ctx, c, run, recent, last, ev); err != nil {
+	if last.Kind == eventSpellCast && ev.Teleport != nil { // the caster is back where it was: the fog follows it
+		run.undoneMove = &actionEvent{Actor: ev.Actor, Col: ev.Teleport.Col, Row: ev.Teleport.Row}
+	}
+	switch last.Kind {
+	case eventDamageRolled, eventDamageApplied:
+		if err := s.takeBackEndedConcentration(ctx, c, run, recent, last, ev.Pending); err != nil {
+			return err
+		}
+	case eventHitPointsAdjusted:
+		if err := s.takeBackEndedConcentration(ctx, c, run, recent, last, ev.Actor); err != nil {
 			return err
 		}
 	}
@@ -434,12 +458,13 @@ func (s *Service) takeBackCompanions(ctx context.Context, c *combatTx, run *undo
 	return nil
 }
 
-// takeBackEndedConcentration takes back the concentration the damage ended (at 0 hit
-// points), written just before the damage's own event.
-func (s *Service) takeBackEndedConcentration(ctx context.Context, c *combatTx, run *undoRun, recent []playdb.ListRecentSessionEventsRow, last playdb.ListRecentSessionEventsRow, ev actionEvent) error {
+// takeBackEndedConcentration takes back the concentration the change ended (at 0 hit
+// points), written just before the change's own event and grouped by group (the pending damage,
+// or the combatant whose hit points the master adjusted).
+func (s *Service) takeBackEndedConcentration(ctx context.Context, c *combatTx, run *undoRun, recent []playdb.ListRecentSessionEventsRow, last playdb.ListRecentSessionEventsRow, group string) error {
 	at := slices.IndexFunc(recent, func(e playdb.ListRecentSessionEventsRow) bool { return e.ID == last.ID })
 	for _, older := range recent[at+1:] {
-		pe, ok := concentrationEndOf(older, ev.Pending)
+		pe, ok := concentrationEndOf(older, group)
 		if !ok {
 			break
 		}
@@ -451,13 +476,13 @@ func (s *Service) takeBackEndedConcentration(ctx context.Context, c *combatTx, r
 }
 
 // concentrationEndOf reads the event of a concentration that ended at 0 hit points because
-// of the damage with the pending id; ok is false for any other event.
-func concentrationEndOf(row playdb.ListRecentSessionEventsRow, pending string) (ev actionEvent, ok bool) {
+// of the change with the group id; ok is false for any other event.
+func concentrationEndOf(row playdb.ListRecentSessionEventsRow, group string) (ev actionEvent, ok bool) {
 	ev, err := readEvent(row.Payload)
 	if err != nil {
 		return ev, false
 	}
-	return ev, ev.Reaction != nil && ev.Reaction.Kind == concentrationEnd && ev.Reaction.Group == pending
+	return ev, ev.Reaction != nil && ev.Reaction.Kind == concentrationEnd && ev.Reaction.Group == group
 }
 
 // takeBackFiring takes a firing written as several events back whole.
@@ -498,6 +523,12 @@ func (s *Service) publishUndoRun(ctx context.Context, campaignID string, d *enco
 	if run.snapped != "" { // the mover is back where it was: the fog follows it
 		s.followToSquare(ctx, campaignID, d, run.snapped, run.snapBack)
 	}
+	for _, m := range run.unpushed { // the pushed creatures are back where they were: the fog follows them
+		if m.NoMap {
+			continue
+		}
+		s.followToSquare(ctx, campaignID, d, m.Target, &grid.Square{Col: int(m.Col), Row: int(m.Row)})
+	}
 	for _, vit := range run.vitals {
 		s.publishVitals(campaignID, vit)
 	}
@@ -508,8 +539,8 @@ func (s *Service) publishUndoRun(ctx context.Context, campaignID string, d *enco
 
 // followToSquare tells the fog that a combatant of the combat is back on a square.
 func (s *Service) followToSquare(ctx context.Context, campaignID string, d *encounterData, combatantID string, sq *grid.Square) {
-	if i := slices.IndexFunc(d.cs, func(c playdb.Combatant) bool { return c.ID == combatantID }); i >= 0 {
-		s.positionChanged(ctx, campaignID, d.enc, d.cs[i], sq)
+	if who, ok := combatantByID(d.cs, combatantID); ok {
+		s.positionChanged(ctx, campaignID, d.enc, who, sq)
 	}
 }
 
@@ -528,8 +559,8 @@ func (s *Service) publishUndone(ctx context.Context, campaignID string, d *encou
 	told := slices.Clone(ev.SeenBy)
 	if !ev.Secret {
 		for _, id := range ev.combatantIDs() {
-			if i := slices.IndexFunc(d.cs, func(o playdb.Combatant) bool { return o.ID == id }); i >= 0 && d.cs[i].Kind != kindNPC && d.cs[i].UserID != nil {
-				told = append(told, *d.cs[i].UserID)
+			if o, ok := combatantByID(d.cs, id); ok && o.Kind != kindNPC && o.UserID != nil {
+				told = append(told, *o.UserID)
 			}
 		}
 	}
@@ -549,9 +580,9 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 	if err := closeDamageWindows(ctx, c, kind, ev); err != nil {
 		return nil, err
 	}
-	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
+	cs, err := listCombatants(ctx, c)
 	if err != nil {
-		return nil, fmt.Errorf("list the combatants: %w", err)
+		return nil, err
 	}
 	// The hiding an attack or a cast gave away, and the Help the attack used, come back.
 	if err := restoreContestState(ctx, c, ev); err != nil {
@@ -567,10 +598,30 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 		return nil, fmt.Errorf("event kind %q cannot be undone", kind)
 	}
 	u := &undoer{s: s, c: c, cs: cs}
-	if err := undo(u, ctx, ev); err != nil {
+	if err := u.undoWithTemp(ctx, kind, undo, ev); err != nil {
 		return nil, err
 	}
 	return u.vitals, nil
+}
+
+// undoWithTemp runs the undo of the kind and gives back the temporary hit points the action's
+// ended effects took off. A damage ends the effects after it landed, so the temporary hit points
+// come back first and the damage's own before overwrites them; any other action ends them before its
+// own changes, so they come back last.
+func (u *undoer) undoWithTemp(ctx context.Context, kind string, undo func(*undoer, context.Context, actionEvent) error, ev actionEvent) error {
+	damage := kind == eventDamageRolled || kind == eventDamageApplied
+	if damage {
+		if err := u.tempBack(ctx, ev); err != nil {
+			return err
+		}
+	}
+	if err := undo(u, ctx, ev); err != nil {
+		return err
+	}
+	if damage {
+		return nil
+	}
+	return u.tempBack(ctx, ev)
 }
 
 // effectsBack puts back the effects the action ended (ev.Restore), then takes away what

@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
@@ -82,6 +83,7 @@ var reactionNames = map[reaction.Kind]string{
 	reaction.CuttingWords:       "Palavras de Interrupção",
 	reaction.DeflectKind:        "Defletir Projéteis",
 	reaction.ManeuverReduceKind: "Manobra",
+	reaction.ProtectionKind:     "Estilo de Luta: Proteção",
 	reaction.FeatherFall:        "Queda Suave",
 	reaction.Concentration:      "Teste de concentração",
 	reaction.MasterCheck:        "Verificação do mestre",
@@ -96,6 +98,7 @@ var reactionNameKeys = map[reaction.Kind]string{
 	reaction.CuttingWords:      "feature:cutting-words",
 	reaction.DeflectKind:       "feature:deflect-missiles",
 	reaction.FeatherFall:       "spell:feather-fall",
+	reaction.ProtectionKind:    "feature:fighter-fighting-style-protection",
 }
 
 func windowOpenedMessage(encounterID, windowID string) *playv1.WatchGameSessionResponse {
@@ -125,10 +128,7 @@ func (s *Service) publishReactions(ctx context.Context, campaignID string, res c
 		s.logger.WarnContext(ctx, "play: cannot read the combatants to tell the reactions", "error", err)
 		return
 	}
-	byID := make(map[string]playdb.Combatant, len(cs))
-	for _, x := range cs {
-		byID[x.ID] = x
-	}
+	byID := combatantsByID(cs)
 	for _, n := range res.notes {
 		s.publishNote(campaignID, res.encounterID, n, byID)
 	}
@@ -145,7 +145,7 @@ func (s *Service) publishReactions(ctx context.Context, campaignID string, res c
 // master.
 func (s *Service) publishNote(campaignID, encounterID string, n reactionNote, byID map[string]playdb.Combatant) {
 	w := n.window
-	reactor, hasReactor := byID[deref(w.ReactorID)]
+	reactor, hasReactor := byID[conv.OrZero(w.ReactorID)]
 	audience := []live.Audience{{Master: true}}
 	if hasReactor && reactor.UserID != nil {
 		audience = append(audience, live.Audience{UserID: *reactor.UserID})

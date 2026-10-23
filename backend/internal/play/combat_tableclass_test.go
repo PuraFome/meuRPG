@@ -11,8 +11,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
-// A table class's third caster in combat, end to end (MR-025, RN-23, Etapa 10, slice
-// 10.3, E10-02 state 7): a Fighter with the table's subclass "Lâmina de Tinta" casts
+// A table class's third caster in combat, end to end (MR-025, RN-23, E10-02 state 7): a Fighter with the table's subclass "Lâmina de Tinta" casts
 // the table's spell "Lâmina de Nanquim", which is on the wizard's list, with the
 // subclass's ability (Intelligence) and its save DC, from the slots of its own table.
 // These tests need the database (MEURPG_TEST_DATABASE_URL).
@@ -79,6 +78,7 @@ func TestMR025_AThirdCasterOfTheTableCastsATableSpell(t *testing.T) {
 		sheet := &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
 			BaseScores: &rulesv1.AbilityScores{Strength: 14, Dexterity: 13, Constitution: 14, Intelligence: 16, Wisdom: 10, Charisma: 8}, RaceKey: "race:human",
 			Background: &charactersv1.FullSheet_BackgroundKey{BackgroundKey: "background:acolyte"},
+			Languages:  []string{"Anão", "Élfico", "Gnômico"},
 			Classes: []*charactersv1.ClassLevel{{
 				ClassKey: "class:fighter", Level: 5, Subclass: &charactersv1.ClassLevel_SubclassKey{SubclassKey: ink.GetKey()},
 			}},

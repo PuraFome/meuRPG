@@ -6,10 +6,30 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
-// audienceOwner is the audience of an effect only its target's player reads.
-const audienceOwner = "owner"
+// audienceOwner is the audience of an effect only its target's player reads, audienceAll the one
+// every player who sees the target reads, and audienceMaster the master's alone: it is never
+// stored, it stands for an audience the server does not know and is kept as owner with the
+// effect hidden from the players (RN-10).
+const (
+	audienceOwner  = "owner"
+	audienceAll    = "all"
+	audienceMaster = "master"
+)
+
+// storedAudience says how the table keeps an audience: whether the effect is the master's alone
+// and the audience column. Only a known audience is read by anyone else; the rest fails closed.
+func storedAudience(a string) (masterOnly bool, stored string) {
+	switch a {
+	case rules.EffectVisibilityPublic, audienceAll:
+		return false, audienceAll
+	case rules.EffectVisibilityOwner:
+		return false, audienceOwner
+	}
+	return true, audienceOwner
+}
 
 // The lines of the log for effects that last (RN-22). A line the master hides is the master's
 // alone (the event is Secret); one for the owner alone is the owner's and the master's; the roll
@@ -22,19 +42,22 @@ var effectLogKinds = map[string]playv1.CombatLogKind{
 	eventLastingEnded:      playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT,
 	eventLastingSaved:      playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT,
 	eventLastingTriggered:  playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT,
+	eventZoneTriggered:     playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT,
+	eventZoneMoved:         playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT,
 	eventLastingVisibility: playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT,
 	eventExhaustion:        playv1.CombatLogKind_COMBAT_LOG_KIND_EXHAUSTION,
 }
 
 var effectChangeToProto = map[string]playv1.CombatLogEffectChange{
-	"added":    playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_ADDED,
-	"ended":    playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_ENDED,
-	"duration": playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_DURATION_CHANGED,
-	"saved":    playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_SAVED,
-	"failed":   playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_SAVE_FAILED,
-	"damage":   playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_DAMAGE,
-	"skipped":  playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_SAVE_SKIPPED,
-	"temp_hp":  playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_TEMP_HP,
+	"added":      playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_ADDED,
+	"ended":      playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_ENDED,
+	"duration":   playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_DURATION_CHANGED,
+	"saved":      playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_SAVED,
+	"failed":     playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_SAVE_FAILED,
+	"damage":     playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_DAMAGE,
+	"skipped":    playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_SAVE_SKIPPED,
+	"temp_hp":    playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_TEMP_HP,
+	"zone_moved": playv1.CombatLogEffectChange_COMBAT_LOG_EFFECT_CHANGE_ZONE_MOVED,
 }
 
 // kindKeyOf is the event kind that makes a line of the kind, "" for a kind that is no effect's.

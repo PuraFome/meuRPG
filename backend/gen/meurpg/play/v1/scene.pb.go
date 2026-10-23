@@ -1405,11 +1405,23 @@ type RollSceneCheckResponse struct {
 	Roll *SceneRoll `protobuf:"bytes,1,opt,name=roll,proto3" json:"roll,omitempty"`
 	// Set instead of `roll` when the character holds a Bardic Inspiration die: the d20 was
 	// rolled and nothing was written; AnswerOutsideInspiration settles the roll.
+	// Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+	// tab opened before the one question existed; it will go with the old answer RPCs.
+	//
+	// Deprecated: Marked as deprecated in meurpg/play/v1/scene.proto.
 	InspirationOffer *OutsideInspirationOffer `protobuf:"bytes,2,opt,name=inspiration_offer,json=inspirationOffer,proto3" json:"inspiration_offer,omitempty"`
 	// Set instead of `roll` when the character is a halfling and a d20 shows a 1 (Lucky): the
 	// d20 was rolled and nothing was written; AnswerOutsideLucky rolls it again or keeps the 1.
 	// It comes before the die's question.
-	LuckyOffer    *LuckyOffer `protobuf:"bytes,3,opt,name=lucky_offer,json=luckyOffer,proto3" json:"lucky_offer,omitempty"`
+	// Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+	// tab opened before the one question existed; it will go with the old answer RPCs.
+	//
+	// Deprecated: Marked as deprecated in meurpg/play/v1/scene.proto.
+	LuckyOffer *LuckyOffer `protobuf:"bytes,3,opt,name=lucky_offer,json=luckyOffer,proto3" json:"lucky_offer,omitempty"`
+	// The question the roll asks now, in the one shape every held roll has (HeldRollOffer), set beside
+	// the deprecated `inspiration_offer` and `lucky_offer`: set instead of the result, when the
+	// roll waits for an answer (AnswerHeldRoll). Whoever may answer gets it; nobody else does (RN-10).
+	HeldRollOffer *HeldRollOffer `protobuf:"bytes,4,opt,name=held_roll_offer,json=heldRollOffer,proto3" json:"held_roll_offer,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1451,6 +1463,7 @@ func (x *RollSceneCheckResponse) GetRoll() *SceneRoll {
 	return nil
 }
 
+// Deprecated: Marked as deprecated in meurpg/play/v1/scene.proto.
 func (x *RollSceneCheckResponse) GetInspirationOffer() *OutsideInspirationOffer {
 	if x != nil {
 		return x.InspirationOffer
@@ -1458,9 +1471,17 @@ func (x *RollSceneCheckResponse) GetInspirationOffer() *OutsideInspirationOffer 
 	return nil
 }
 
+// Deprecated: Marked as deprecated in meurpg/play/v1/scene.proto.
 func (x *RollSceneCheckResponse) GetLuckyOffer() *LuckyOffer {
 	if x != nil {
 		return x.LuckyOffer
+	}
+	return nil
+}
+
+func (x *RollSceneCheckResponse) GetHeldRollOffer() *HeldRollOffer {
+	if x != nil {
+		return x.HeldRollOffer
 	}
 	return nil
 }
@@ -1683,12 +1704,13 @@ const file_meurpg_play_v1_scene_proto_rawDesc = "" +
 	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\x12\x1b\n" +
 	"\td20_faces\x18\x06 \x03(\x05R\bd20Faces\x12&\n" +
 	"\x0fextra_die_faces\x18\a \x03(\x05R\rextraDieFacesB\x06\n" +
-	"\x04roll\"\xda\x01\n" +
+	"\x04roll\"\xa9\x02\n" +
 	"\x16RollSceneCheckResponse\x12-\n" +
-	"\x04roll\x18\x01 \x01(\v2\x19.meurpg.play.v1.SceneRollR\x04roll\x12T\n" +
-	"\x11inspiration_offer\x18\x02 \x01(\v2'.meurpg.play.v1.OutsideInspirationOfferR\x10inspirationOffer\x12;\n" +
-	"\vlucky_offer\x18\x03 \x01(\v2\x1a.meurpg.play.v1.LuckyOfferR\n" +
-	"luckyOffer\"\xa4\x01\n" +
+	"\x04roll\x18\x01 \x01(\v2\x19.meurpg.play.v1.SceneRollR\x04roll\x12X\n" +
+	"\x11inspiration_offer\x18\x02 \x01(\v2'.meurpg.play.v1.OutsideInspirationOfferB\x02\x18\x01R\x10inspirationOffer\x12?\n" +
+	"\vlucky_offer\x18\x03 \x01(\v2\x1a.meurpg.play.v1.LuckyOfferB\x02\x18\x01R\n" +
+	"luckyOffer\x12E\n" +
+	"\x0fheld_roll_offer\x18\x04 \x01(\v2\x1d.meurpg.play.v1.HeldRollOfferR\rheldRollOffer\"\xa4\x01\n" +
 	"\x18GrantSceneAttemptRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x1b\n" +
@@ -1754,6 +1776,7 @@ var file_meurpg_play_v1_scene_proto_goTypes = []any{
 	(*BonusDie)(nil),                  // 28: meurpg.play.v1.BonusDie
 	(*OutsideInspirationOffer)(nil),   // 29: meurpg.play.v1.OutsideInspirationOffer
 	(*LuckyOffer)(nil),                // 30: meurpg.play.v1.LuckyOffer
+	(*HeldRollOffer)(nil),             // 31: meurpg.play.v1.HeldRollOffer
 }
 var file_meurpg_play_v1_scene_proto_depIdxs = []int32{
 	0,  // 0: meurpg.play.v1.SceneBlocked.reason:type_name -> meurpg.play.v1.SceneBlockedReason
@@ -1776,12 +1799,13 @@ var file_meurpg_play_v1_scene_proto_depIdxs = []int32{
 	11, // 17: meurpg.play.v1.RollSceneCheckResponse.roll:type_name -> meurpg.play.v1.SceneRoll
 	29, // 18: meurpg.play.v1.RollSceneCheckResponse.inspiration_offer:type_name -> meurpg.play.v1.OutsideInspirationOffer
 	30, // 19: meurpg.play.v1.RollSceneCheckResponse.lucky_offer:type_name -> meurpg.play.v1.LuckyOffer
-	2,  // 20: meurpg.play.v1.GrantSceneAttemptResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
-	21, // [21:21] is the sub-list for method output_type
-	21, // [21:21] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	31, // 20: meurpg.play.v1.RollSceneCheckResponse.held_roll_offer:type_name -> meurpg.play.v1.HeldRollOffer
+	2,  // 21: meurpg.play.v1.GrantSceneAttemptResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
+	22, // [22:22] is the sub-list for method output_type
+	22, // [22:22] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_scene_proto_init() }
