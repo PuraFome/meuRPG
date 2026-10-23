@@ -67,7 +67,9 @@ describe('DarkWarning', () => {
 
   it('names whom each button is for, to a screen reader', async () => {
     const { el } = await render([brisa, jabuti]);
-    const labels = Array.from(el.querySelectorAll('button')).map((b) => b.getAttribute('aria-label'));
+    const labels = Array.from(el.querySelectorAll('button')).map((b) =>
+      b.getAttribute('aria-label'),
+    );
     expect(labels).toEqual([
       'Ver Brisa no mapa',
       'Acender luz de Brisa',
@@ -101,14 +103,14 @@ describe('DarkWarning', () => {
       'A tocha de bilbo apagou. A luz de bilbo ficou “Nenhuma”.',
     );
     await settle(fixture);
-    expect(flat(el.querySelector('[role="status"]'))).toBe(
+    expect(flat(el.querySelector('[role="status"] span'))).toBe(
       'A tocha de bilbo apagou. A luz de bilbo ficou “Nenhuma”.',
     );
   });
 
   it('keeps the message beside the notice when someone is still in the dark', async () => {
     const { el } = await render([brisa], { announcement: 'A tocha de bilbo apagou.' });
-    expect(flat(el.querySelector('[role="status"]'))).toBe('A tocha de bilbo apagou.');
+    expect(flat(el.querySelector('[role="status"] span'))).toBe('A tocha de bilbo apagou.');
     expect(el.querySelector('.dark')).not.toBeNull();
   });
 });

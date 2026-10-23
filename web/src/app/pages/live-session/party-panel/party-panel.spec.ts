@@ -141,8 +141,11 @@ describe('PartyPanel: the "No escuro" badge (B3)', () => {
     expect(rows[1].querySelector('.member__who .js-dark')).not.toBeNull();
   });
 
-  it('has no badge when nobody is in the dark, or when the page gives no list', () => {
+  it('has no badge when nobody is in the dark', () => {
     expect(render(new Set()).querySelector('.js-dark')).toBeNull();
+  });
+
+  it('has no badge when the page gives no list (a player never has one)', () => {
     expect(render(undefined).querySelector('.js-dark')).toBeNull();
   });
 });

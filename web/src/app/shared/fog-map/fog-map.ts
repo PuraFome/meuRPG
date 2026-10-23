@@ -26,6 +26,7 @@ import { type MapMove, MapView } from '../map-view/map-view';
 import { PHONE_QUERY, mediaQuery } from '../map-view/media-query';
 import { MapPins } from '../map-pins/map-pins';
 import { MapPinsLegend } from '../map-pins/map-pins-legend';
+import { DarkMarks } from './dark-marks';
 import { FogBase, type FogImage } from './fog-base';
 import { fullscreenOfHost } from '../../core/ui/fullscreen';
 
@@ -61,6 +62,7 @@ export interface FogViewer {
   selector: 'app-fog-map',
   imports: [
     CombatantToken,
+    DarkMarks,
     DoorPicks,
     FogBase,
     MapLayersLegend,
@@ -116,6 +118,10 @@ export class FogMap {
   readonly badge = input<string | null>(null);
   /** The notice is above the map; a screen that has its own banner leaves it. */
   readonly notices = input(true);
+  /** The master's light warning: the ids of the characters who see nothing where they stand (a dashed ring each). */
+  readonly dark = input<ReadonlySet<string>>(new Set());
+  /** The one "Ver no mapa" chose: the only one with the label "<Nome> · no escuro". */
+  readonly darkChosen = input<string | null>(null);
 
   readonly pointSelect = output<string>();
   /** The master tapped a door (`doorTaps`). */
@@ -294,6 +300,14 @@ export class FogMap {
 
   protected goTo(t: MapToken): void {
     this.view()?.focusOn({ xBp: t.xBp, yBp: t.yBp });
+  }
+
+  /** "Ver no mapa" (the master's light warning): the map centers on the character. */
+  showCharacter(characterId: string): void {
+    const t = this.tokens().find((x) => !x.creatureId && x.characterId === characterId);
+    if (t) {
+      this.goTo(t);
+    }
   }
 
   zoomIn(): void {

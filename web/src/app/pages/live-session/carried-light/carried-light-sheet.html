@@ -1,4 +1,4 @@
-<app-sheet-frame title="Luz que você carrega" [subtitle]="data.characterName" titleId="sheet-t" [phone]="inSheet" (closed)="close()">
+<app-sheet-frame [title]="data.title ?? 'Luz que você carrega'" [subtitle]="data.title ? '' : data.characterName" titleId="sheet-t" [phone]="inSheet" (closed)="close()">
   @if (error()) {
     <div class="mr-notice mr-notice--danger" role="alert">
       <mat-icon aria-hidden="true">error</mat-icon>
