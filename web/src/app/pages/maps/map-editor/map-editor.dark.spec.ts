@@ -12,12 +12,7 @@ import { FakeDungeonsClient } from '../../../core/maps/dungeons-testing';
 import { LightPresets } from '../../../core/maps/light-presets';
 import { MapState } from '../../../core/maps/map-state';
 import { MapsClient } from '../../../core/maps/maps-client';
-import {
-  FakeMapsClient,
-  mapMessage,
-  mapResponse,
-  mapToken,
-} from '../../../core/maps/maps-testing';
+import { FakeMapsClient, mapMessage, mapResponse, mapToken } from '../../../core/maps/maps-testing';
 import { RosterClient } from '../../../core/maps/roster-client';
 import { TrapPresets } from '../../../core/traps/trap-presets';
 import { MapEditor } from './map-editor';
@@ -30,7 +25,12 @@ describe('MapEditor: the light warning (B3)', () => {
   const dark = (...names: string[]) =>
     create(ListCharactersInTheDarkResponseSchema, {
       characters: names.map((n) =>
-        create(CharacterInTheDarkSchema, { characterId: `c-${n}`, characterName: n, col: 2, row: 2 }),
+        create(CharacterInTheDarkSchema, {
+          characterId: `c-${n}`,
+          characterName: n,
+          col: 2,
+          row: 2,
+        }),
       ),
     });
 
@@ -67,7 +67,11 @@ describe('MapEditor: the light warning (B3)', () => {
     };
     const state = new MapState(async () =>
       mapResponse(
-        mapMessage('map-1', 'A caverna do Vale Seco', { gridColumns: 24, gridRows: 16, fogEnabled }),
+        mapMessage('map-1', 'A caverna do Vale Seco', {
+          gridColumns: 24,
+          gridRows: 16,
+          fogEnabled,
+        }),
         [],
         [mapToken('c-Brisa', 'Brisa'), mapToken('c-Jabuti', 'Jabuti', { xBp: 7000 })],
       ),
@@ -80,7 +84,10 @@ describe('MapEditor: the light warning (B3)', () => {
         { provide: DungeonsClient, useValue: new FakeDungeonsClient() },
         { provide: RosterClient, useValue: { list: () => Promise.resolve([]) } },
         { provide: LightPresets, useValue: { list: () => Promise.resolve([]) } },
-        { provide: TrapPresets, useValue: { list: () => Promise.resolve({ presets: [], severities: [] }) } },
+        {
+          provide: TrapPresets,
+          useValue: { list: () => Promise.resolve({ presets: [], severities: [] }) },
+        },
       ],
     });
     fixture = TestBed.createComponent(MapEditor);
