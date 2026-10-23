@@ -21,6 +21,10 @@ describe('the label and the detail line of a zone', () => {
     expect(zoneView(spellZone({ id: 'z' }), master).label).toBe('Raio Lunar · Bartolo');
   });
 
+  it('carries the spell name alone, for the legend', () => {
+    expect(zoneView(spellZone({ id: 'z' }), master).spellName).toBe('Raio Lunar');
+  });
+
   it('says the shape and size in meters, the save, the damage and the half', () => {
     const v = zoneView(spellZone({ id: 'z' }), master);
     expect(v.pieces).toEqual([
