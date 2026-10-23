@@ -215,6 +215,7 @@ On a map with fog on, the player receives only what their character sees now or 
 - A player character's token always arrives. A token the master hid still lights the map, and the player sees the brightness, not who carries it.
 - What was seen stays, darkened and without creatures, until the master clears it ("Esquecer o que foi visto") or changes the grid or the image.
 - A map in "Claro" (bright base light) shows the whole floor plan to the players, but creatures and points still follow what the characters see, and a secret door reads as a wall. A room that must stay secret uses "Penumbra", which a generated dungeon gets.
+- On a fog map the master is warned, and only the master, of each player character that sees nothing where it stands: its square is dark (the base light is "Escuro" and no painted light or light source reaches it, counting the lights of NPCs the players cannot see) and it has no darkvision, blindsight or truesight. In "Penumbra" and "Claro", and on a map without fog, nobody is in the dark. A carried light that goes out brings the warning back at once.
 - A fog map's image is the master's alone: showing it in the session, leaving it with the players, or using it as a portrait or as another map's background gives a copy.
 - Combat on a fog map is covered in RN-20. The player of a dead character sees what the living party sees. An ended combat has no fog.
 
