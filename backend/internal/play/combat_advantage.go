@@ -157,7 +157,7 @@ func creatureFacts(c playdb.Combatant, states map[string][]playdb.CombatantState
 		// throws an effect gives and the disadvantage one gives the creature's attack rolls.
 		Exhaustion: int(c.ExhaustionLevel), Outlined: hasEffect(states, c.ID, "spell:faerie-fire"), SaveAdvantage: effectSaveAdvantage(states, c.ID), CheckAdvantage: effectCheckAdvantage(states, c.ID),
 		AttackDisadvantage: attackDisadvantage, AttackDisadvantageSpares: spares,
-		TaggedSaves:        taggedSavesOf(traits.TaggedSaves),
+		TaggedSaves: taggedSavesOf(traits.TaggedSaves),
 	}
 }
 
