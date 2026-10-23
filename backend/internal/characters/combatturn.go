@@ -223,6 +223,7 @@ func combatAttack(a rules.Attack) link.Attack {
 		DamageType: a.DamageType, RangeFt: a.RangeFt, LongRangeFt: a.LongRangeFt, Melee: a.Melee,
 		Beams: a.Beams, Light: a.Light, Unarmed: a.Key == rules.UnarmedStrikeKey, MartialArts: a.MartialArts, AbilityMod: a.AbilityMod,
 		Ability: string(a.Ability), Finesse: a.Finesse, TwoHanded: a.TwoHanded, Weapon: a.Kind == "weapon",
+		Magical: a.Magical,
 	}
 }
 

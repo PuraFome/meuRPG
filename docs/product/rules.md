@@ -89,7 +89,7 @@ The master can also correct hit points, temporary hit points, spell slots (and p
 - **Who reads what.** A player reads the numbers of their own character only. The master reads everyone's.
 - **Values last** from one session to the next. The maximums come from the sheet, and a character whose hit points were never set is at full hit points whatever the maximum becomes.
 - **Damage.** Temporary hit points go first, and hit points stop at 0 (RN-03).
-  - On an NPC, a monster or a character's creature the damage lands at once, after resistances, vulnerabilities and immunities of its SRD creature (immunity makes it 0, resistance halves it rounded down, vulnerability doubles it). A stat-block entry with a condition in the SRD's words ("from nonmagical weapons") is not applied, and the master corrects the hit points by hand.
+  - On an NPC, a monster or a character's creature the damage lands at once, after resistances, vulnerabilities and immunities of its SRD creature (immunity makes it 0, resistance halves it rounded down, vulnerability doubles it). A resistance or immunity "from nonmagical attacks" applies to an attack that is not magical, and not to a spell, to an attack of a creature whose weapon attacks are magical, or to damage that is no attack (a trap, a zone, a burning effect). A weapon of a character and an unarmed strike are not magical. An entry that also names a material (silvered, adamantine) is not applied, because an attack carries no material: the master corrects the hit points by hand.
   - On a player character the rolled damage **waits for the master**, who applies it ("Aplicar 5 de dano") or discards it ("Não aplicar"). The master may apply a different amount (a resistance the app does not apply). The log keeps both numbers for the master, and the player sees only what they took.
   - A character's creature has its own hit points. Its damage lands at once, and at 0 it is dismissed.
   - A trap's damage follows the same path. Outside a combat, what waits for the master survives until they apply or discard it.
@@ -368,7 +368,7 @@ The master sees everything.
 
 - A hidden NPC does not come at all: not in the order, not on the map, and its turn shows as "Vez do mestre".
 - The combat log omits any line involving a hidden combatant, an NPC's dice and its hit points.
-- A creature's resistances, vulnerabilities and immunities are the master's. The damage a player reads on an NPC is the damage as rolled, so neither a halved total nor a missing line tells what the target resists.
+- A creature's resistances, vulnerabilities and immunities (the nonmagical ones too, listed as "Resistência a perfurante de ataque não mágico") are the master's. The damage a player reads on an NPC is the damage as rolled, so neither a halved total nor a missing line tells what the target resists.
 - The player's screen lists only the reasons for advantage or disadvantage it can see. Divine Smite's extra die against an undead or fiend appears as "+1d8" with no reason.
 - Cover reaches the player only as a degree and an origin ("Meia cobertura, do mapa"), never as an armor class or "+2 sobre 14". A target the player cannot see is not in the list.
 - **What the design accepts.** Splitting a turn with a visible NPC shows that the two tied. Copies of an NPC are numbered together, so revealing Goblin 2 and hiding Goblin 1 shows another exists. The master avoids the hint by hiding the last copies.

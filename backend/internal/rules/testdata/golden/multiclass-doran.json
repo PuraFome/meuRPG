@@ -1,6 +1,6 @@
 {
   "after": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.47",
+    "ContentVersion": "srd51@a8abc93b235c+fx.48",
     "RaceNamePT": "Humano",
     "SubraceNamePT": "",
     "BackgroundNamePT": "Acólito",
@@ -602,6 +602,7 @@
         "TwoHanded": false,
         "MartialArts": false,
         "AbilityMod": 0,
+        "Magical": true,
         "Notes": ""
       },
       {
@@ -951,7 +952,7 @@
     "Issues": null
   },
   "before": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.47",
+    "ContentVersion": "srd51@a8abc93b235c+fx.48",
     "RaceNamePT": "Humano",
     "SubraceNamePT": "",
     "BackgroundNamePT": "Acólito",

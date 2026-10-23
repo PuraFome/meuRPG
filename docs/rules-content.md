@@ -16,6 +16,7 @@ Everything is under `backend/internal/rules/srd51`.
 | `effects/` | What the engine applies for each feature, trait, spell and item; the Portuguese names and texts; corrections to the snapshot; our own tables | Handwritten |
 
 The importer reads the 5e-database (`packages/5e-database/src/2014/en` of the `5e-bits/5e-srd-api` repository) at a pinned commit (`sourceCommit` in `backend/cmd/srdimport/main.go`, repeated in `NOTICE`), and refuses any input file whose sha256 is not in its `inputHashes` table.
+A creature's vulnerability, resistance or immunity entry in `monsters.json` has `types` (damage type keys), `note` (the rest of the SRD's words, kept for display) and `qualifier`, which the importer reads from the note: `nonmagical`, `nonmagical-unless-silvered` or `nonmagical-unless-adamantine` for the entries limited to nonmagical attacks, empty otherwise. The engine applies `nonmagical` and leaves the two material qualifiers to the master.
 It also refuses totals the SRD fixes (334 creatures, 362 magic items) and malformed shapes, such as a spell area that is not a cone, cube, cylinder, line or sphere or a size that is not a multiple of 5 feet; loading in `rules` checks everything again.
 
 No text from a book outside the SRD enters the repository, which is public.
