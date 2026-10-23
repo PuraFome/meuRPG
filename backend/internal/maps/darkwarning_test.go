@@ -128,16 +128,15 @@ func TestRN10_DarkWarning_ALightThatReachesTheSquareCounts(t *testing.T) {
 func TestRN10_DarkWarning_ACarriedLightThatGoesOutBringsTheWarningBack(t *testing.T) {
 	t.Parallel()
 	c := newCave(t)
+	// Toren's torch lights him and Brisa, two squares away.
 	c.caio.carry(c.campaign, c.mapID, c.toren.GetId(), "light:torch")
-	c.wantInTheDark("Toren carries a torch", "Brisa")
-	// The torch lights Brisa too, two squares away.
+	c.wantInTheDark("Toren carries a torch")
+	c.caio.carry(c.campaign, c.mapID, c.toren.GetId(), "") // "Nenhuma": the torch went out
+	c.wantInTheDark("the torch went out, at once", "Brisa", "Toren")
 	c.bia.carry(c.campaign, c.mapID, c.brisa.GetId(), "light:torch")
-	c.wantInTheDark("both carry one")
-	c.caio.carry(c.campaign, c.mapID, c.toren.GetId(), "") // "Nenhuma"
-	// Brisa's torch still lights Toren, two squares away.
-	c.wantInTheDark("Toren's went out but Brisa's lights him")
+	c.wantInTheDark("Brisa's torch lights both")
 	c.bia.carry(c.campaign, c.mapID, c.brisa.GetId(), "")
-	c.wantInTheDark("both went out", "Brisa", "Toren")
+	c.wantInTheDark("and went out too", "Brisa", "Toren")
 }
 
 func TestRN10_DarkWarning_TheLightOfAHiddenNPCCounts(t *testing.T) {

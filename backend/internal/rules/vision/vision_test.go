@@ -390,7 +390,9 @@ func TestDimOnlyLightSourceLightsItsOwnSquareDim(t *testing.T) {
 // of its own covers it. It is the same light and the same senses See works with.
 func TestInTheDark(t *testing.T) {
 	t.Parallel()
-	torchAt := func(col int) vision.Source { return vision.Source{At: grid.Square{Col: col, Row: toren.Row}, BrightFt: 20, DimFt: 20} }
+	torchAt := func(col int) vision.Source {
+		return vision.Source{At: grid.Square{Col: col, Row: toren.Row}, BrightFt: 20, DimFt: 20}
+	}
 	tests := []struct {
 		name   string
 		scene  func() vision.Scene
