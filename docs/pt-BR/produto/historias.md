@@ -2,7 +2,7 @@
 
 # Histórias e critérios de aceite
 
-O MVP tem 40 histórias: 38 histórias mais 2 pré-requisitos (o convite, MR-002, que leva à MR-003, e os NPCs, MR-005, que são os inimigos do combate).
+O MVP tem 42 histórias: 40 histórias mais 2 pré-requisitos (o convite, MR-002, que leva à MR-003, e os NPCs, MR-005, que são os inimigos do combate).
 Outras dez histórias ficam para depois do MVP.
 
 Uma história está pronta quando todos os critérios dela passam.
@@ -63,6 +63,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 | [MR-048](#mr-048-conjurar-magias-fora-do-combate) | Combate | MVP |
 | [MR-050](#mr-050-pacote-da-campanha-exportar-e-importar) | Campanha | MVP |
 | [MR-051](#mr-051-conversa-da-cena) | Sessão | MVP |
+| [MR-052](#mr-052-o-rolador-de-dados-livre) | Sessão | MVP |
 | [MR-049](#mr-049-personagens-reservados-e-links-para-assumir) | Personagem | MVP |
 | [MR-002](#mr-002-gerar-convite) | Campanha | MVP (pré-requisito) |
 | [MR-005](#mr-005-criar-npcs) | Personagem | MVP (pré-requisito) |
@@ -321,7 +322,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 - **Dado** que a ação ou a ação bônus está livre, **quando** o jogador olha "Encerrar turno", **então** ele fica contornado e, com a ação livre, pergunta ali mesmo; vira o botão preenchido quando as duas estão gastas.
 
 **Vantagem e desvantagem**
-- **Dado** um ataque, um ataque mágico ou teste de resistência, uma armadilha, uma dica de quebra-cabeça, um teste de cena ou uma busca por armadilhas, **quando** o servidor encontra uma circunstância que dá vantagem ou desvantagem (uma condição de qualquer das criaturas, uma criatura que não se vê, alcance longo ou um hostil a 5 ft num ataque à distância, Ataque Descuidado, Sentido de Perigo, Tática de Matilha, Esquiva), **então** a rolagem usa dois d20, o mais alto ou o mais baixo vale (eles se anulam quando as duas valem), a tela lista os motivos que o jogador pode ver **e** mostra os dois dados, o que vale marcado "vale" e o outro "descartado"; com dados reais o jogador digita os dois. Um acerto a 5 ft de um alvo paralisado ou inconsciente é um acerto crítico (SRD 5.1, "Advantage and Disadvantage", Conditions).
+- **Dado** um ataque, um ataque mágico ou teste de resistência, uma armadilha, uma dica de quebra-cabeça, um teste de cena ou uma busca por armadilhas, **quando** o servidor encontra uma circunstância que dá vantagem ou desvantagem (uma condição de qualquer das criaturas, uma criatura que não se vê, alcance longo ou um hostil a 5 ft num ataque à distância, Ataque Descuidado, Sentido de Perigo, Tática de Matilha, Esquiva, uma vantagem racial num teste de resistência contra o tipo de fonte do teste: Bravura contra medo, Ancestral Feérico contra encanto, Esperteza Gnômica em testes de Inteligência, Sabedoria e Carisma contra magia, Resiliência Anã contra veneno), **então** a rolagem usa dois d20, o mais alto ou o mais baixo vale (eles se anulam quando as duas valem), a tela lista os motivos que o jogador pode ver **e** mostra os dois dados, o que vale marcado "vale" e o outro "descartado"; com dados reais o jogador digita os dois. Um acerto a 5 ft de um alvo paralisado ou inconsciente é um acerto crítico (SRD 5.1, "Advantage and Disadvantage", Conditions).
 - **Dado** o modo sugerido, **quando** o jogador assume desvantagem, **então** dá um motivo de 1 a 120 caracteres **e** a rolagem vai com ele; **quando** quer vantagem que o servidor não sugeriu, **então** pede ao mestre com um motivo ("Pedir ao mestre"), e o mestre aprova, recusa ou define outro modo na fila. O mestre pode definir qualquer modo em qualquer rolagem, sempre com um motivo. Cada mudança é uma linha no registro; o motivo é lido só pelo mestre e pelo jogador do atacante (RN-20).
 
 **Dano**
@@ -335,9 +336,8 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 
 **Sortudo do halfling (RN-35)**
 - **Dado** um halfling cujo d20 de ataque (um ataque com arma ou um truque de ataque) mostra um 1, digitado ou rolado no app, **quando** a rolagem volta, **então** a ficha pergunta "Tirou 1: rolar de novo?" antes de qualquer resultado: "Rolar de novo" rola esse d20 outra vez (no app ou digitado, RN-18) e a nova rolagem vale, mesmo que seja outro 1; "Ficar com o 1" mantém o 1 natural, um erro; com vantagem ou desvantagem a pergunta vem para o dado que mostra o 1, mesmo o que não contaria, e só esse dado é rolado de novo; um dado de Inspiração de Bardo que o halfling tem é perguntado depois dela, na nova rolagem; o resultado e o registro dizem "Sortudo: 1 → 14" (SRD 5.1, Halfling, Lucky).
-- **Dado** um halfling cujo jogador rola um d20 que mostra um 1 num teste de cena, num teste em grupo, numa busca por armadilhas fora de um combate ou numa tentativa de dica de quebra-cabeça, ou, num combate, num ataque mágico contra um alvo, num teste de resistência de um efeito ou num teste de concentração, **quando** a rolagem volta, **então** a ficha pergunta "Tirou 1: rolar de novo?" antes de qualquer resultado e nada é escrito, gasto ou fechado (a janela do teste de resistência continua aberta); a resposta funciona como num ataque (o novo d20 no app ou digitado, ou "Ficar com o 1"; um dado de um par; o dado de Inspiração de Bardo depois dela, na nova rolagem) **e** Talento Confiável conta o novo d20, não o 1; um recarregamento pergunta de novo; o personagem não rola mais nada que possa perguntar até ser respondido; uma rolagem que o mestre faz pelo halfling ali (um teste de resistência ou ataque mágico de um personagem de jogador, um teste em grupo rolado pelo jogador) pergunta também: o mestre é perguntado na própria ficha, o jogador lê a mesma pergunta e vale a primeira resposta ("Perguntas pendentes" abaixo).
+- **Dado** um halfling cujo jogador rola um d20 que mostra um 1 num teste de cena, num teste em grupo, numa busca por armadilhas (fora de um combate, ou a ação Procurar de um combate), numa tentativa de dica de quebra-cabeça, na jogada de qualquer lado de uma disputa, numa iniciativa antes de o combate começar, num teste contra a morte, no teste de Furtividade de um Esconder-se ou no teste de habilidade de uma Contramágica acima do nível do espaço, ou, num combate, num ataque mágico contra um alvo, num teste de resistência de um efeito ou num teste de concentração, **quando** a rolagem volta, **então** a ficha pergunta "Tirou 1: rolar de novo?" antes de qualquer resultado e nada é escrito, gasto ou fechado (a janela do teste de resistência continua aberta); a resposta funciona como num ataque (o novo d20 no app ou digitado, ou "Ficar com o 1"; um dado de um par; o dado de Inspiração de Bardo depois dela, na nova rolagem) **e** Talento Confiável conta o novo d20, não o 1; um recarregamento pergunta de novo; o personagem não rola mais nada que possa perguntar até ser respondido; uma rolagem que o mestre faz pelo halfling ali (um teste de resistência ou ataque mágico de um personagem de jogador, um teste em grupo rolado pelo jogador) pergunta também: o mestre é perguntado na própria ficha, o jogador lê a mesma pergunta e vale a primeira resposta ("Perguntas pendentes" abaixo).
 - **Dado** o halfling de um jogador cujo teste de resistência o app rola dentro da ação de outra pessoa (o teste de uma magia, o de uma armadilha, o teste de Destreza contra Repreensão Infernal), **quando** o d20 mostra um 1, **então** ninguém é perguntado: o app rola esse dado de novo sozinho e a nova rolagem vale, mesmo que seja outro 1 (com vantagem ou desvantagem, só o primeiro dado que mostra um 1); o resultado e o registro dizem "Sortudo: 1 → 14" a quem vê os dados desse teste; um NPC com a ficha de um halfling mantém o 1.
-- Testes contra a morte, iniciativa e disputas não perguntam sobre Sortudo.
 
 **Perguntas pendentes (RN-35)**
 - **Dado** uma jogada que espera uma pergunta ("Tirou 1: rolar de novo?" do Sortudo ou o dado de Inspiração de Bardo), **quando** o mestre responde por o jogador, **então** a jogada é resolvida como se o jogador tivesse respondido (o d20 já rolado, o dado novo no app ou digitado, o personagem do próprio jogador), o jogador lê o resultado no combate ou na cena e o dado é gasto uma vez só; **quando** o mestre tenta em menos de 10 segundos depois que a pergunta foi feita, **então** o servidor recusa com os segundos que faltam ("Ainda é a vez de Brisa responder. Você pode responder em 3 s.") para que um jogador presente tenha a primeira chance, e a resposta do próprio jogador nunca espera; **quando** o jogador e o mestre respondem ao mesmo tempo depois disso, **então** vale a primeira resposta e a outra recebe que a jogada já foi respondida.
@@ -1326,6 +1326,37 @@ Ver [Arquitetura](../../architecture/campaign-package.md).
 
 #### Relacionadas
 - [RN-36](regras.md#rn-36-quem-lê-uma-linha-da-conversa-da-cena), [RN-10](regras.md), [RN-18](regras.md), [MR-028](#mr-028-mostrar-uma-imagem-aos-jogadores), [MR-039](#mr-039-imagens-geradas-para-masmorras-e-cenas). Ver [Arquitetura](../../architecture/play/live-session.md#the-conversation-of-the-scene) e [Privacidade](../privacidade.md#o-que-a-voz-envia-ao-google-mr-051).
+
+### MR-052: O rolador de dados livre
+
+**Como** mestre ou jogador, **quero** rolar quaisquer dados que eu pedir, na sessão, e escolher quem vê a rolagem se eu for o mestre, **para que** a mesa resolva as rolagens fora das regras do jogo (um boato, uma tabela de tesouros, uma aposta) sem um dado físico à mão.
+
+- Prioridade: MVP
+- Regras: RN-10, RN-18
+- Módulos: play
+
+#### Critérios de aceitação
+- **Dada** uma sessão aberta, **quando** um membro da campanha rola um dado entre d4, d6, d8, d10, d12, d20 e d100, de 1 a 20 deles, com um modificador de -20 a +20, **então** o servidor os rola, e o total é a soma dos dados mais o modificador ("2d6 + 3" com 4 e 4 dá 11).
+- **Dada** uma rolagem com outro dado, com 0 ou mais de 20 dados, ou com um modificador além de +20 ou -20, **então** ela é recusada e nada é rolado nem gravado.
+- **Dado** um d20, **quando** quem rola escolhe vantagem ou desvantagem, **então** dois d20 são rolados, o maior (ou o menor) vale e o outro mostra "descartado"; com quaisquer outros dados a escolha é recusada.
+- **Dado** que a mesa joga com dados físicos (RN-18), **quando** um membro rola aqui, **então** o app rola mesmo assim, o registro diz "Rolagem livre", e a folha diz "Esta é a rolagem do app": o modo de dados da mesa vale para as rolagens do jogo, não para esta.
+- **Dado** que um jogador rola, **então** ele lê o cartão de resultado (o total em números e por extenso, a fórmula, cada dado), e a mesa toda lê "Rolagem livre · <nome>: 2d6 + 3 = 11 (4, 4)" no "Rolagens da mesa" e vê os dados na tela.
+- **Dado** que o mestre rola "Para a mesa", **então** a mesa lê e vê como a rolagem de um jogador.
+- **Dado** que o mestre rola "Só eu", **então** só o mestre a lê, com a marca "Só você"; nenhum jogador a recebe na leitura, no stream nem no resumo, e nada avisa um jogador de que aconteceu, nem uma contagem (RN-10). Um jogador que pede "Só eu" é recusado.
+- **Dado** um 20 natural ou um 1 natural num d20 só, **então** o resultado diz isso por extenso ("20 natural", "1 natural"), não só pela cor.
+- **Dado** que o mesmo toque se repete com a chave dele, **então** existe uma rolagem só, e a mesma chave com outro pedido é recusada; um toque duplo no botão rola uma vez.
+- **Dado** que um membro rola 20 vezes seguidas e mais uma, **então** a última é recusada (`resource_exhausted`) e a folha diz "Tente de novo em N segundos".
+- **Dado** que a folha está aberta, **então** ela lista as últimas 10 rolagens do membro na sessão (as secretas do mestre incluídas, com "Só você"), e "Repetir 2d6 + 3" preenche o formulário e rola os mesmos dados de novo.
+- **Dado** que o stream ao vivo está reconectando, **então** "Dados" fica desabilitado e a tela diz por quê; **dado** que nenhuma sessão está aberta, **então** não há botão "Dados", e a chamada é recusada.
+- **Dada** uma pessoa que não é membro ativo da campanha, **então** a chamada é recusada.
+
+#### No app
+- O botão "Dados" no cabeçalho da sessão abre "Rolar dados": uma folha de baixo no celular, uma janela a partir do tablet. Ela tem os atalhos (1d20, 1d6, 2d6, 1d100), o dado, "Quantidade (1 a 20)", "Modificador (−20 a +20)", "Como rolar o d20" para um d20 só, o "Quem vê" do mestre ("Para a mesa" ou "Só eu"), "Suas últimas rolagens nesta sessão" com "Repetir", e um botão preenchido ("Rolar 2d6 + 3"). O cartão de resultado tem "Mudar dados" e "Rolar … de novo".
+- O "Rolagens da mesa" sob o palco lista as rolagens livres da sessão, da mais nova para a mais antiga; a animação dos dados mostra a rolagem dos outros como "<nome> rolou".
+- Rolar tem limite de taxa por pessoa.
+
+#### Relacionadas
+- [RN-10](regras.md), [RN-18](regras.md), [MR-051](#mr-051-conversa-da-cena). Ver [Arquitetura](../../architecture/play/free-dice-roller.md) e [Design](../../design/session.md).
 
 ### MR-049: Personagens reservados e links para assumir
 

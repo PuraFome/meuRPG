@@ -331,7 +331,7 @@
             "namePt": "Guerreiro"
           }
         ],
-        "contentVersion": "srd51@a8abc93b235c+fx.45",
+        "contentVersion": "srd51@a8abc93b235c+fx.47",
         "features": [
           {
             "key": "trait:darkvision",
@@ -404,6 +404,11 @@
             "code": "skill_count",
             "field": "full.skill_proficiency_keys",
             "message": "Faltam 4 perícias para escolher."
+          },
+          {
+            "code": "missing",
+            "field": "full.languages",
+            "message": "Falta escolher 3 idiomas."
           }
         ],
         "languages": [
@@ -678,6 +683,7 @@
             "race:half-elf#abilities=ability:dex"
           ],
           "knownIssues": [
+            "missing|full.languages|Falta escolher 3 idiomas.",
             "skill_count|full.skill_proficiency_keys|Faltam 4 perícias para escolher."
           ],
           "raceKey": "race:half-elf"
@@ -786,7 +792,7 @@
             "namePt": "Guerreiro"
           }
         ],
-        "contentVersion": "srd51@a8abc93b235c+fx.45",
+        "contentVersion": "srd51@a8abc93b235c+fx.47",
         "features": [
           {
             "key": "trait:darkvision",
@@ -855,6 +861,11 @@
             "code": "skill_count",
             "field": "full.skill_proficiency_keys",
             "message": "Faltam 4 perícias para escolher."
+          },
+          {
+            "code": "missing",
+            "field": "full.languages",
+            "message": "Falta escolher 3 idiomas."
           }
         ],
         "languages": [
@@ -1130,6 +1141,7 @@
             "race:half-elf#abilities=ability:con"
           ],
           "knownIssues": [
+            "missing|full.languages|Falta escolher 3 idiomas.",
             "skill_count|full.skill_proficiency_keys|Faltam 4 perícias para escolher."
           ],
           "raceKey": "race:half-elf"
@@ -1247,7 +1259,7 @@
             "namePt": "Guerreiro"
           }
         ],
-        "contentVersion": "srd51@a8abc93b235c+fx.45",
+        "contentVersion": "srd51@a8abc93b235c+fx.47",
         "features": [
           {
             "key": "background-feature:shelter-of-the-faithful",
@@ -1294,6 +1306,11 @@
             "code": "skill_count",
             "field": "full.skill_proficiency_keys",
             "message": "Faltam 2 perícias para escolher."
+          },
+          {
+            "code": "missing",
+            "field": "full.languages",
+            "message": "Falta escolher 3 idiomas."
           }
         ],
         "languages": [
@@ -1563,6 +1580,7 @@
             "feature:fighter-fighting-style-archery"
           ],
           "knownIssues": [
+            "missing|full.languages|Falta escolher 3 idiomas.",
             "skill_count|full.skill_proficiency_keys|Faltam 2 perícias para escolher."
           ],
           "raceKey": "race:human"
@@ -1706,7 +1724,7 @@
             "namePt": "Guerreiro"
           }
         ],
-        "contentVersion": "srd51@a8abc93b235c+fx.45",
+        "contentVersion": "srd51@a8abc93b235c+fx.47",
         "features": [
           {
             "key": "feature:fighter-fighting-style",
@@ -1762,6 +1780,11 @@
             "code": "skill_count",
             "field": "full.skill_proficiency_keys",
             "message": "Faltam 2 perícias para escolher."
+          },
+          {
+            "code": "missing",
+            "field": "full.languages",
+            "message": "Falta escolher 1 idioma."
           }
         ],
         "languages": [
@@ -2031,6 +2054,7 @@
           ],
           "knownIssues": [
             "missing|full.background_key|Escolha um antecedente.",
+            "missing|full.languages|Falta escolher 1 idioma.",
             "skill_count|full.skill_proficiency_keys|Faltam 2 perícias para escolher."
           ],
           "raceKey": "race:human",

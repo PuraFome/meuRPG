@@ -165,6 +165,9 @@ type Sheet struct {
 	// MonkLevel is the monk's level, 0 for a character with none: Slow Fall takes
 	// five times it off a fall.
 	MonkLevel int
+	// ClericLevel is the cleric's level, 0 for a character with none: Preserve Life restores five times it,
+	// and ChannelDC is the save DC of Turn Undead (8 + proficiency bonus + Wisdom modifier).
+	ClericLevel, ChannelDC int
 	// Senses are the special senses the sheet or stat block gives (darkvision...),
 	// which an NPC sees with on a map with the fog of war (MR-036). The zero value
 	// is plain sight.
@@ -191,6 +194,14 @@ type ExtraDamage struct {
 // LuckyTrait is the content key of the halfling's Lucky (SRD 5.1, Halfling): the sheet that
 // has it sets Traits.Lucky, and a d20 it rolled again names it as the source of the reroll.
 const LuckyTrait = "trait:lucky"
+
+// TaggedSave is an advantage on saving throws against one kind of source ("magic", "frightened", "charmed",
+// "poison"), as the sheet's trait gives it: Source is the key of the trait, Abilities the saves it covers (all when
+// empty).
+type TaggedSave struct {
+	Source, Against string
+	Abilities       []string
+}
 
 // Traits are what a sheet has that changes how its owner rolls and what its
 // damage carries: the barbarian's Rage, Reckless Attack and Danger Sense, the
@@ -227,6 +238,9 @@ type Traits struct {
 	// Lucky is the halfling's trait (LuckyTrait): a 1 on the d20 of an attack roll or a saving
 	// throw may be rolled again, and the new roll stands. The player is asked before the result.
 	Lucky bool
+	// TaggedSaves are the racial advantages on saving throws that hold against one kind of source (Brave, Fey
+	// Ancestry, Gnome Cunning, Dwarven Resilience).
+	TaggedSaves []TaggedSave
 	// HeavyArmor says the armor worn is heavy: Rage gives none of its benefits then.
 	HeavyArmor bool
 	// StealthDisadvantage says the armor worn gives disadvantage on Dexterity (Stealth).
@@ -421,6 +435,12 @@ type Spell struct {
 	AreaSizeFt           int
 	AreaWidthFt          int
 	SpreadsAroundCorners bool
+	// Zone is the area a table spell keeps on the map while it lasts: nil for an SRD spell (the combat knows
+	// the SRD's four) and for a table spell that keeps none.
+	Zone *ZoneRule
+	// ZoneLaid says this cast lays the area of the spell on the map as a zone (the request chose a point): the
+	// area is then laid out as the zone says. Set by the cast, never by the roster.
+	ZoneLaid bool
 }
 
 // HPEffect is what a spell that reads hit points does at the slot level, from
@@ -753,4 +773,11 @@ type DeadCharacter struct {
 	PlayerUserID string
 	// RevivifyBlocked is the master's switch "Revivificar não funciona nesta morte".
 	RevivifyBlocked bool
+}
+
+// ZoneRule is the area a table spell keeps on the map: Trigger is "start_of_turn", "first_entry" or "both", and
+// FollowsCaster says the area is centered on the caster and goes where they go.
+type ZoneRule struct {
+	Trigger       string
+	FollowsCaster bool
 }

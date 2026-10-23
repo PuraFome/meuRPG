@@ -303,6 +303,8 @@ var logHandlers = map[string]logHandler{
 	eventLastingEnded:            effectLine,
 	eventLastingSaved:            effectLine,
 	eventLastingTriggered:        effectLine,
+	eventZoneTriggered:           effectLine,
+	eventZoneMoved:               effectLine,
 	eventLastingVisibility:       effectLine,
 	eventExhaustion:              effectLine,
 	eventHitRider:                plainLine(playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_RIDER),
@@ -942,6 +944,9 @@ func (e *logEntry) fillAction(c *logViewing, out *playv1.CombatLogEntry) bool {
 			Roll: diceRoll(e.ev.DiceCount, e.ev.DiceSides, e.ev.Faces, e.ev.Modifier, e.ev.Total, e.ev.Physical),
 		}
 	}
+	if e.ev.Channel != nil && (c.v.master || c.v.owns(c.actor)) { // Canalizar Divindade: the numbers are the master's and its player's
+		out.ChannelDivinity = channelProto(e.ev.Channel)
+	}
 	return true
 }
 
@@ -1010,7 +1015,7 @@ func (e *logEntry) fillDeathSave(c *logViewing, out *playv1.CombatLogEntry) bool
 		Stable: after.Successes >= deathSaveCount, Dying: v.master && after.Failures >= deathSaveCount,
 	}
 	if v.master || v.owns(c.actor) {
-		out.DeathSave.Roll = diceRoll(1, 20, []int32{e.ev.D20}, 0, e.ev.D20, e.ev.Physical)
+		out.DeathSave.Roll = deathRoll(e.ev)
 	}
 	return true
 }

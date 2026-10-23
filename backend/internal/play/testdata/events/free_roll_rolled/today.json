@@ -1,0 +1,15 @@
+{
+  "sides": 1,
+  "count": 1,
+  "modifier": 1,
+  "mode": "x",
+  "dice": [
+    {
+      "face": 1,
+      "discarded": true
+    }
+  ],
+  "total": 1,
+  "secret": true,
+  "by_master": true
+}

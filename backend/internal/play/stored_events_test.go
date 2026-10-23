@@ -58,7 +58,7 @@ var actionEventKinds = []string{
 	"wild_shape_started", "wild_shape_ended", "familiar_sight", "door_opened", "hidden_reveal_answered", "combat_effect_ended",
 	"roll_mode_requested", "roll_mode_answered", "damage_part_removed", "state_changed", "reaction_answered",
 	"concentration_save_rolled", "character_revived", "lasting_effect_added", "lasting_effect_changed", "lasting_effect_ended",
-	"lasting_effect_visibility_changed", "lasting_effect_saved", "lasting_effect_triggered", "exhaustion_changed",
+	"lasting_effect_visibility_changed", "lasting_effect_saved", "lasting_effect_triggered", "spell_zone_triggered", "spell_zone_moved", "exhaustion_changed",
 	"contest_started", "contest_resolved", "contest_deferred", "contest_closed", "shove_resolved", "grapple_released",
 	"hide_attempted", "hide_resolved", "hide_ended", "help_given", "help_cleared", "surprise_set", "hit_rider",
 }
@@ -89,6 +89,7 @@ var otherWriters = map[string][]storedShape{
 	"character_vitals_adjusted": {storedShapeOf[vitalsEvent]("today.json")},
 	"inspiration_given":         {storedShapeOf[inspirationGivenEvent]("today.json")},
 	"game_time_advanced":        {storedShapeOf[gameTimeEvent]("today.json")},
+	"free_roll_rolled":          {storedShapeOf[freeRollEvent]("today.json")},
 }
 
 // vitalsEvent is the payload vitalsPayload writes, named so that a test can reflect on it.
@@ -381,6 +382,7 @@ var sqlPayloadPaths = map[string][]sqlPath{
 	"scene_attempt_granted": {{"ListSceneAttemptGrantEvents", "action_id", "string"}},
 	"rest_taken":            {{"HasLongRestInSession", "kind", "string"}, {"GetLatestRestKindInSession", "kind", "string"}},
 	"hit_dice_spent":        {{"HasSongOfRestSinceLatestRest", "song_sides", "number"}},
+	"free_roll_rolled":      {{"ListFreeRollEvents", "secret", "bool"}},
 }
 
 type sqlPath struct{ query, key, typ string }

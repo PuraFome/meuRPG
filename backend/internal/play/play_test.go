@@ -115,6 +115,16 @@ func TestAuthorizationMatrix(t *testing.T) {
 			_, err := c.SignalMasterTyping(ctx, connect.NewRequest(&playv1.SignalMasterTypingRequest{CampaignId: campaign}))
 			return err
 		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		// The free dice roller (MR-052): any member of the table rolls and reads. The secret roll and the audience are in
+		// free_roll_rpc_test.go.
+		{"RollFreeDice", func(ctx context.Context, c client) error {
+			_, err := c.RollFreeDice(ctx, connect.NewRequest(&playv1.RollFreeDiceRequest{CampaignId: campaign, Sides: 6, Count: 2, Modifier: 3, IdempotencyKey: newKey()}))
+			return err
+		}, [5]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"ListFreeRolls", func(ctx context.Context, c client) error {
+			_, err := c.ListFreeRolls(ctx, connect.NewRequest(&playv1.ListFreeRollsRequest{CampaignId: campaign}))
+			return err
+		}, [5]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
 		// Clearing needs no map nor image; setting them is in package maps'
 		// tests, which have maps and images.
 		{"SetCurrentMap", func(ctx context.Context, c client) error {
@@ -811,6 +821,8 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["SendSessionMessage"] = c.SendSessionMessage(ctx, connect.NewRequest(&playv1.SendSessionMessageRequest{CampaignId: id, IdempotencyKey: id}))
 	_, calls["ListSessionMessages"] = c.ListSessionMessages(ctx, connect.NewRequest(&playv1.ListSessionMessagesRequest{CampaignId: id}))
 	_, calls["SignalMasterTyping"] = c.SignalMasterTyping(ctx, connect.NewRequest(&playv1.SignalMasterTypingRequest{CampaignId: id}))
+	_, calls["RollFreeDice"] = c.RollFreeDice(ctx, connect.NewRequest(&playv1.RollFreeDiceRequest{CampaignId: id, Sides: 6, Count: 1, IdempotencyKey: id}))
+	_, calls["ListFreeRolls"] = c.ListFreeRolls(ctx, connect.NewRequest(&playv1.ListFreeRollsRequest{CampaignId: id}))
 	_, calls["SetCurrentMap"] = c.SetCurrentMap(ctx, connect.NewRequest(&playv1.SetCurrentMapRequest{CampaignId: id, MapId: id}))
 	_, calls["SetShownImage"] = c.SetShownImage(ctx, connect.NewRequest(&playv1.SetShownImageRequest{CampaignId: id, ImageId: id}))
 	_, calls["ListLeftImages"] = c.ListLeftImages(ctx, connect.NewRequest(&playv1.ListLeftImagesRequest{CampaignId: id}))
@@ -897,6 +909,8 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, combat["RemoveDamagePart"] = cc.RemoveDamagePart(ctx, connect.NewRequest(&playv1.RemoveDamagePartRequest{CampaignId: id}))
 	_, combat["AnswerRageEnd"] = cc.AnswerRageEnd(ctx, connect.NewRequest(&playv1.AnswerRageEndRequest{CampaignId: id}))
 	_, combat["EndRage"] = cc.EndRage(ctx, connect.NewRequest(&playv1.EndRageRequest{CampaignId: id}))
+	_, combat["MoveSpellZone"] = cc.MoveSpellZone(ctx, connect.NewRequest(&playv1.MoveSpellZoneRequest{CampaignId: id}))
+	_, combat["EndSpellZone"] = cc.EndSpellZone(ctx, connect.NewRequest(&playv1.EndSpellZoneRequest{CampaignId: id}))
 	_, combat["UseHitRider"] = cc.UseHitRider(ctx, connect.NewRequest(&playv1.UseHitRiderRequest{CampaignId: id}))
 	combatMethods := playv1.File_meurpg_play_v1_combat_proto.Services().ByName("CombatService").Methods()
 	if len(combat) != combatMethods.Len() {

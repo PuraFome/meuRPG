@@ -63,7 +63,7 @@ describe('ContestClient', () => {
       },
       'key-1',
     );
-    expect(res.contest.id).toBe('ct1');
+    expect(res.contest?.id).toBe('ct1');
     expect(sent[0]).toMatchObject({
       rpc: 'startContest',
       campaignId: 'c',
@@ -116,7 +116,7 @@ describe('ContestClient', () => {
   it('hides with the action that gives Hide and the roll', async () => {
     const { client, sent } = clientWith();
     const res = await client.hide('c', 'e', 'b', 'standard:hide', { inApp: true }, 'k5');
-    expect(res.attempt.id).toBe('hd1');
+    expect(res.attempt?.id).toBe('hd1');
     expect(sent[0]).toMatchObject({
       rpc: 'hide',
       combatantId: 'b',

@@ -65,7 +65,7 @@ type spellBuild struct {
 func (s spellBuild) build() Build {
 	return Build{
 		BaseScores: map[Ability]int{STR: 10, DEX: 14, CON: 14, INT: 12, WIS: 14, CHA: 16},
-		Race:       cmpOr(s.race, "race:human"), Subrace: s.subrace, Background: "background:acolyte",
+		Race:       cmpOr(s.race, "race:human"), Subrace: s.subrace, Background: "background:acolyte", Languages: testLanguages,
 		Classes: s.classes, Cantrips: s.cantrips, SpellsKnown: s.known, SpellsPrepared: s.prepared, FeatureChoices: s.picks,
 	}
 }

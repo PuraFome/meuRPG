@@ -193,7 +193,7 @@ func TestTableClassEditorStartsFromTheServer(t *testing.T) {
 	// The menu: every type with its name, the lists they point at, the option sets,
 	// the helpers and the classes classLevel takes.
 	menu := master.effectMenu(t, campaign)
-	if len(menu.GetTypes()) != 13 || menu.GetMaxFeaturesPerClass() != 60 || menu.GetMaxEffectsPerFeature() != 20 || menu.GetExtraAttackMin() != 2 || menu.GetExtraAttackMax() != 4 {
+	if len(menu.GetTypes()) != 14 || menu.GetMaxFeaturesPerClass() != 60 || menu.GetMaxEffectsPerFeature() != 20 || menu.GetExtraAttackMin() != 2 || menu.GetExtraAttackMax() != 4 {
 		t.Fatalf("menu = %d types, limits %d/%d, extra attacks %d to %d", len(menu.GetTypes()), menu.GetMaxFeaturesPerClass(), menu.GetMaxEffectsPerFeature(), menu.GetExtraAttackMin(), menu.GetExtraAttackMax())
 	}
 	lists := map[string]*rulesv1.EffectMenuList{}
@@ -397,6 +397,7 @@ func TestTableClassMulticlassAtCreation(t *testing.T) {
 		return &charactersv1.FullSheet{
 			BaseScores: scores, RaceKey: "race:human",
 			Background:           &charactersv1.FullSheet_BackgroundKey{BackgroundKey: "background:acolyte"},
+			Languages:            testLanguages,
 			Classes:              []*charactersv1.ClassLevel{ownedSubclass(&charactersv1.ClassLevel{ClassKey: "class:wizard", Level: 3}, tradition.GetKey()), ownedSubclass(&charactersv1.ClassLevel{ClassKey: "class:cleric", Level: 1}, path.GetKey())},
 			SkillProficiencyKeys: []string{"skill:arcana", "skill:investigation"},
 			CantripKeys:          []string{"spell:fire-bolt", "spell:mage-hand", "spell:sacred-flame"},
@@ -482,6 +483,7 @@ func TestTableClassMulticlassAtCreation(t *testing.T) {
 	mix := &charactersv1.FullSheet{
 		BaseScores: &rulesv1.AbilityScores{Strength: 10, Dexterity: 13, Constitution: 14, Intelligence: 14, Wisdom: 15, Charisma: 8}, RaceKey: "race:human",
 		Background:           &charactersv1.FullSheet_BackgroundKey{BackgroundKey: "background:acolyte"},
+		Languages:            testLanguages,
 		Classes:              []*charactersv1.ClassLevel{{ClassKey: guardian.GetKey(), Level: 2}, {ClassKey: "class:wizard", Level: 2}},
 		SkillProficiencyKeys: []string{"skill:nature", "skill:perception"},
 		FeatureChoiceKeys:    []string{"feature:fighter-fighting-style-defense"},
@@ -502,6 +504,7 @@ func TestTableClassMulticlassAtCreation(t *testing.T) {
 	knight := &charactersv1.FullSheet{
 		BaseScores: &rulesv1.AbilityScores{Strength: 14, Dexterity: 13, Constitution: 14, Intelligence: 14, Wisdom: 10, Charisma: 8}, RaceKey: "race:human",
 		Background:           &charactersv1.FullSheet_BackgroundKey{BackgroundKey: "background:acolyte"},
+		Languages:            testLanguages,
 		Classes:              []*charactersv1.ClassLevel{ownedSubclass(&charactersv1.ClassLevel{ClassKey: "class:fighter", Level: 3}, ink.GetKey()), {ClassKey: "class:wizard", Level: 2}},
 		SkillProficiencyKeys: []string{"skill:athletics", "skill:perception"},
 		FeatureChoiceKeys:    []string{"feature:fighter-fighting-style-defense"},
@@ -536,6 +539,7 @@ func TestTableClassMulticlassHitPointsFollowTheRule(t *testing.T) {
 		return &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
 			BaseScores: &rulesv1.AbilityScores{Strength: 10, Dexterity: 13, Constitution: 14, Intelligence: 14, Wisdom: 15, Charisma: 8}, RaceKey: "race:human",
 			Background:           &charactersv1.FullSheet_BackgroundKey{BackgroundKey: "background:acolyte"},
+			Languages:            testLanguages,
 			Classes:              []*charactersv1.ClassLevel{{ClassKey: guardian.GetKey(), Level: 1}, {ClassKey: "class:wizard", Level: 2}},
 			SkillProficiencyKeys: []string{"skill:nature", "skill:perception"},
 			CantripKeys:          []string{"spell:fire-bolt", "spell:mage-hand"},
@@ -570,3 +574,7 @@ func TestTableClassMulticlassHitPointsFollowTheRule(t *testing.T) {
 		t.Errorf("the average under the average rule: error = %v", err)
 	}
 }
+
+// testLanguages are the three languages a human with the acolyte background is owed (one of the race, two of the
+// background), listed on the sheet so that no language pick is open.
+var testLanguages = []string{"Anão", "Élfico", "Gnômico"}

@@ -78,6 +78,12 @@ const (
 	// PlayServiceSignalMasterTypingProcedure is the fully-qualified name of the PlayService's
 	// SignalMasterTyping RPC.
 	PlayServiceSignalMasterTypingProcedure = "/meurpg.play.v1.PlayService/SignalMasterTyping"
+	// PlayServiceRollFreeDiceProcedure is the fully-qualified name of the PlayService's RollFreeDice
+	// RPC.
+	PlayServiceRollFreeDiceProcedure = "/meurpg.play.v1.PlayService/RollFreeDice"
+	// PlayServiceListFreeRollsProcedure is the fully-qualified name of the PlayService's ListFreeRolls
+	// RPC.
+	PlayServiceListFreeRollsProcedure = "/meurpg.play.v1.PlayService/ListFreeRolls"
 	// PlayServiceSetCurrentMapProcedure is the fully-qualified name of the PlayService's SetCurrentMap
 	// RPC.
 	PlayServiceSetCurrentMapProcedure = "/meurpg.play.v1.PlayService/SetCurrentMap"
@@ -451,6 +457,41 @@ type PlayServiceClient interface {
 	//   - `permission_denied`: the caller is a player.
 	//   - `failed_precondition`: no open session.
 	SignalMasterTyping(context.Context, *connect.Request[v1.SignalMasterTypingRequest]) (*connect.Response[v1.SignalMasterTypingResponse], error)
+	// RollFreeDice rolls dice for the caller with the server's dice, outside every
+	// game rule (MR-052): 1 to 20 dice of 4, 6, 8, 10, 12, 20 or 100 sides, plus a
+	// modifier from -20 to +20, and advantage or disadvantage on a single d20 only
+	// (two d20, the higher or the lower counts, the other is marked discarded). It
+	// needs an open session and any member of the campaign. The table's dice mode
+	// (RN-18) does not apply: the app always rolls, and the log marks it
+	// "Rolagem livre".
+	//
+	// The roll is stored as a session event (the log line is in `FreeRoll.log_text`)
+	// and `free_roll_rolled` goes to every stream of the campaign. The master may
+	// ask for `secret` ("Só eu"): that roll is stored for the master alone and
+	// reaches no stream, no list, no session summary and no count of any player
+	// (RN-10). At most 20 rolls in a burst and one more every 3 seconds, per user.
+	// The idempotency key is required.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist or the caller is not an active
+	//     member.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION).
+	//   - `permission_denied`: a player asked for `secret`.
+	//   - `invalid_argument`: sides, count or modifier out of range, advantage or
+	//     disadvantage on anything but one d20, a missing or over-long key, or a
+	//     key used for another request.
+	//   - `resource_exhausted`: too many rolls in a short time (Retry-After).
+	RollFreeDice(context.Context, *connect.Request[v1.RollFreeDiceRequest]) (*connect.Response[v1.RollFreeDiceResponse], error)
+	// ListFreeRolls reads the free rolls of the open session the caller may read
+	// (MR-052, RN-10): the table's, newest first, and the caller's own. A player
+	// never gets a secret roll, nor a count or a hint of one.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist or the caller is not an active
+	//     member.
+	//   - `failed_precondition`: no open session.
+	ListFreeRolls(context.Context, *connect.Request[v1.ListFreeRollsRequest]) (*connect.Response[v1.ListFreeRollsResponse], error)
 	// SetCurrentMap chooses the map the session shows at the table, or clears
 	// it. Only the campaign's master may call it, and only while the campaign
 	// has an open session. The map must be one of the campaign's
@@ -959,6 +1000,19 @@ func NewPlayServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(playServiceMethods.ByName("SignalMasterTyping")),
 			connect.WithClientOptions(opts...),
 		),
+		rollFreeDice: connect.NewClient[v1.RollFreeDiceRequest, v1.RollFreeDiceResponse](
+			httpClient,
+			baseURL+PlayServiceRollFreeDiceProcedure,
+			connect.WithSchema(playServiceMethods.ByName("RollFreeDice")),
+			connect.WithClientOptions(opts...),
+		),
+		listFreeRolls: connect.NewClient[v1.ListFreeRollsRequest, v1.ListFreeRollsResponse](
+			httpClient,
+			baseURL+PlayServiceListFreeRollsProcedure,
+			connect.WithSchema(playServiceMethods.ByName("ListFreeRolls")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
 		setCurrentMap: connect.NewClient[v1.SetCurrentMapRequest, v1.SetCurrentMapResponse](
 			httpClient,
 			baseURL+PlayServiceSetCurrentMapProcedure,
@@ -1118,6 +1172,8 @@ type playServiceClient struct {
 	sendSessionMessage    *connect.Client[v1.SendSessionMessageRequest, v1.SendSessionMessageResponse]
 	listSessionMessages   *connect.Client[v1.ListSessionMessagesRequest, v1.ListSessionMessagesResponse]
 	signalMasterTyping    *connect.Client[v1.SignalMasterTypingRequest, v1.SignalMasterTypingResponse]
+	rollFreeDice          *connect.Client[v1.RollFreeDiceRequest, v1.RollFreeDiceResponse]
+	listFreeRolls         *connect.Client[v1.ListFreeRollsRequest, v1.ListFreeRollsResponse]
 	setCurrentMap         *connect.Client[v1.SetCurrentMapRequest, v1.SetCurrentMapResponse]
 	setShownImage         *connect.Client[v1.SetShownImageRequest, v1.SetShownImageResponse]
 	listLeftImages        *connect.Client[v1.ListLeftImagesRequest, v1.ListLeftImagesResponse]
@@ -1201,6 +1257,16 @@ func (c *playServiceClient) ListSessionMessages(ctx context.Context, req *connec
 // SignalMasterTyping calls meurpg.play.v1.PlayService.SignalMasterTyping.
 func (c *playServiceClient) SignalMasterTyping(ctx context.Context, req *connect.Request[v1.SignalMasterTypingRequest]) (*connect.Response[v1.SignalMasterTypingResponse], error) {
 	return c.signalMasterTyping.CallUnary(ctx, req)
+}
+
+// RollFreeDice calls meurpg.play.v1.PlayService.RollFreeDice.
+func (c *playServiceClient) RollFreeDice(ctx context.Context, req *connect.Request[v1.RollFreeDiceRequest]) (*connect.Response[v1.RollFreeDiceResponse], error) {
+	return c.rollFreeDice.CallUnary(ctx, req)
+}
+
+// ListFreeRolls calls meurpg.play.v1.PlayService.ListFreeRolls.
+func (c *playServiceClient) ListFreeRolls(ctx context.Context, req *connect.Request[v1.ListFreeRollsRequest]) (*connect.Response[v1.ListFreeRollsResponse], error) {
+	return c.listFreeRolls.CallUnary(ctx, req)
 }
 
 // SetCurrentMap calls meurpg.play.v1.PlayService.SetCurrentMap.
@@ -1626,6 +1692,41 @@ type PlayServiceHandler interface {
 	//   - `permission_denied`: the caller is a player.
 	//   - `failed_precondition`: no open session.
 	SignalMasterTyping(context.Context, *connect.Request[v1.SignalMasterTypingRequest]) (*connect.Response[v1.SignalMasterTypingResponse], error)
+	// RollFreeDice rolls dice for the caller with the server's dice, outside every
+	// game rule (MR-052): 1 to 20 dice of 4, 6, 8, 10, 12, 20 or 100 sides, plus a
+	// modifier from -20 to +20, and advantage or disadvantage on a single d20 only
+	// (two d20, the higher or the lower counts, the other is marked discarded). It
+	// needs an open session and any member of the campaign. The table's dice mode
+	// (RN-18) does not apply: the app always rolls, and the log marks it
+	// "Rolagem livre".
+	//
+	// The roll is stored as a session event (the log line is in `FreeRoll.log_text`)
+	// and `free_roll_rolled` goes to every stream of the campaign. The master may
+	// ask for `secret` ("Só eu"): that roll is stored for the master alone and
+	// reaches no stream, no list, no session summary and no count of any player
+	// (RN-10). At most 20 rolls in a burst and one more every 3 seconds, per user.
+	// The idempotency key is required.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist or the caller is not an active
+	//     member.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION).
+	//   - `permission_denied`: a player asked for `secret`.
+	//   - `invalid_argument`: sides, count or modifier out of range, advantage or
+	//     disadvantage on anything but one d20, a missing or over-long key, or a
+	//     key used for another request.
+	//   - `resource_exhausted`: too many rolls in a short time (Retry-After).
+	RollFreeDice(context.Context, *connect.Request[v1.RollFreeDiceRequest]) (*connect.Response[v1.RollFreeDiceResponse], error)
+	// ListFreeRolls reads the free rolls of the open session the caller may read
+	// (MR-052, RN-10): the table's, newest first, and the caller's own. A player
+	// never gets a secret roll, nor a count or a hint of one.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist or the caller is not an active
+	//     member.
+	//   - `failed_precondition`: no open session.
+	ListFreeRolls(context.Context, *connect.Request[v1.ListFreeRollsRequest]) (*connect.Response[v1.ListFreeRollsResponse], error)
 	// SetCurrentMap chooses the map the session shows at the table, or clears
 	// it. Only the campaign's master may call it, and only while the campaign
 	// has an open session. The map must be one of the campaign's
@@ -2130,6 +2231,19 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(playServiceMethods.ByName("SignalMasterTyping")),
 		connect.WithHandlerOptions(opts...),
 	)
+	playServiceRollFreeDiceHandler := connect.NewUnaryHandler(
+		PlayServiceRollFreeDiceProcedure,
+		svc.RollFreeDice,
+		connect.WithSchema(playServiceMethods.ByName("RollFreeDice")),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceListFreeRollsHandler := connect.NewUnaryHandler(
+		PlayServiceListFreeRollsProcedure,
+		svc.ListFreeRolls,
+		connect.WithSchema(playServiceMethods.ByName("ListFreeRolls")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
 	playServiceSetCurrentMapHandler := connect.NewUnaryHandler(
 		PlayServiceSetCurrentMapProcedure,
 		svc.SetCurrentMap,
@@ -2298,6 +2412,10 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 			playServiceListSessionMessagesHandler.ServeHTTP(w, r)
 		case PlayServiceSignalMasterTypingProcedure:
 			playServiceSignalMasterTypingHandler.ServeHTTP(w, r)
+		case PlayServiceRollFreeDiceProcedure:
+			playServiceRollFreeDiceHandler.ServeHTTP(w, r)
+		case PlayServiceListFreeRollsProcedure:
+			playServiceListFreeRollsHandler.ServeHTTP(w, r)
 		case PlayServiceSetCurrentMapProcedure:
 			playServiceSetCurrentMapHandler.ServeHTTP(w, r)
 		case PlayServiceSetShownImageProcedure:
@@ -2399,6 +2517,14 @@ func (UnimplementedPlayServiceHandler) ListSessionMessages(context.Context, *con
 
 func (UnimplementedPlayServiceHandler) SignalMasterTyping(context.Context, *connect.Request[v1.SignalMasterTypingRequest]) (*connect.Response[v1.SignalMasterTypingResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.SignalMasterTyping is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) RollFreeDice(context.Context, *connect.Request[v1.RollFreeDiceRequest]) (*connect.Response[v1.RollFreeDiceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.RollFreeDice is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) ListFreeRolls(context.Context, *connect.Request[v1.ListFreeRollsRequest]) (*connect.Response[v1.ListFreeRollsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.ListFreeRolls is not implemented"))
 }
 
 func (UnimplementedPlayServiceHandler) SetCurrentMap(context.Context, *connect.Request[v1.SetCurrentMapRequest]) (*connect.Response[v1.SetCurrentMapResponse], error) {

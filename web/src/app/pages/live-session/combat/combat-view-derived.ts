@@ -1,10 +1,12 @@
-import { computed, signal, Directive } from '@angular/core';
+import { computed, effect, signal, Directive } from '@angular/core';
 import {
   CombatLogKind,
   CombatantSide,
   EncounterStatus,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
 import { ActionKey } from '../../../core/connect/idempotency';
+import { ResourceClient } from '../../../core/resources/resources-client';
+import { HeldRollKind } from '../../../../gen/meurpg/play/v1/combat_pb';
 import { asksLucky, heldOfferOf, weaponHold } from '../../../core/held-rolls/held-roll-offer';
 import { combatErrorMessage } from '../../../core/combat/combat-errors';
 import { wildActionLine } from '../../../core/combat/combat-notices';
@@ -48,12 +50,22 @@ export abstract class CombatViewDerivedDirective extends CombatViewStateDirectiv
     api: this.api,
     animator: this.animator,
     calls: this.calls,
+    answerHeld: (holdId, answer, key) =>
+      this.injector.get(ResourceClient).answerHeldRoll(this.campaignId(), holdId, answer, key),
     campaignId: () => this.campaignId(),
     encounter: () => this.encounter(),
     ownId: () => this.own()?.id,
     ownLabel: () => this.own()?.label,
     note: (text) => this.actionNote.set(text),
   });
+  /** The question of the player's own death save that the combat says waits (after a reload, or asked on another screen). */
+  protected readonly ownDeathQuestion = computed(() => {
+    const offer = this.own()?.heldRollOffer;
+    return offer?.kind === HeldRollKind.DEATH_SAVE ? offer : undefined;
+  });
+  protected readonly resumeDeathQuestion = effect(() =>
+    this.deaths.resume(this.ownDeathQuestion()),
+  );
   protected readonly rage = new CombatRage({
     api: this.api,
     calls: this.calls,
@@ -65,10 +77,21 @@ export abstract class CombatViewDerivedDirective extends CombatViewStateDirectiv
   protected readonly initiative = new CombatInitiative({
     api: this.api,
     animator: this.animator,
+    answerHeld: (holdId, answer, key) =>
+      this.injector.get(ResourceClient).answerHeldRoll(this.campaignId(), holdId, answer, key),
     calls: this.calls,
     campaignId: () => this.campaignId(),
     encounter: () => this.encounter(),
+    ownId: () => this.own()?.id,
   });
+  /** The question of the player's own initiative that the combat says waits (after a reload, or asked on another screen). */
+  protected readonly ownInitiativeQuestion = computed(() => {
+    const offer = this.own()?.heldRollOffer;
+    return offer?.kind === HeldRollKind.INITIATIVE ? offer : undefined;
+  });
+  protected readonly resumeInitiativeQuestion = effect(() =>
+    this.initiative.resume(this.ownInitiativeQuestion()),
+  );
   protected readonly leaveFormKey = new ActionKey();
   /** "Combate atualizado agora." (PM-02c 9c): said once when the page comes up with the turn on hold, that is, after a reload;
    * it goes when the wait is over. Nothing here is kept in the browser: the combat says what waits. */

@@ -1,0 +1,71 @@
+import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
+
+import { SessionTabs } from './session-tabs';
+
+describe('SessionTabs', () => {
+  beforeEach(() => TestBed.configureTestingModule({ providers: [provideRouter([])] }));
+
+  function setup(tab: 'scene' | 'chat' = 'scene', unread = 0) {
+    const fixture = TestBed.createComponent(SessionTabs);
+    fixture.componentRef.setInput('tab', tab);
+    fixture.componentRef.setInput('unread', unread);
+    fixture.componentRef.setInput('sheetLink', ['/campaigns', 'c1', 'characters', 'pc1']);
+    const chosen: string[] = [];
+    fixture.componentInstance.choose.subscribe((t) => chosen.push(t));
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    return { fixture, el, chosen };
+  }
+
+  it('is a navigation named "Seções da sessão" with Cena, Ficha and Conversa', () => {
+    const { el } = setup();
+    expect(el.querySelector('nav')?.getAttribute('aria-label')).toBe('Seções da sessão');
+    const items = Array.from(el.querySelectorAll('.tab'), (t) => t.textContent?.trim());
+    expect(items).toEqual(['Cena', 'Ficha', 'Conversa']);
+  });
+
+  it('marks the open section as current', () => {
+    const { el } = setup('chat');
+    const current = Array.from(el.querySelectorAll('.tab')).filter(
+      (t) => t.getAttribute('aria-current') === 'true',
+    );
+    expect(current.map((t) => t.textContent?.trim())).toEqual(['Conversa']);
+  });
+
+  it('links "Ficha" to the given route', () => {
+    const { el } = setup();
+    const link = el.querySelector('a.tab') as HTMLAnchorElement;
+    expect(link.getAttribute('href')).toBe('/campaigns/c1/characters/pc1');
+  });
+
+  it('says which section was chosen', () => {
+    const { el, chosen } = setup('scene');
+    (el.querySelectorAll('button.tab')[1] as HTMLButtonElement).click();
+    (el.querySelectorAll('button.tab')[0] as HTMLButtonElement).click();
+    expect(chosen).toEqual(['chat', 'scene']);
+  });
+
+  it('shows no badge without news', () => {
+    expect(setup().el.querySelector('.tab__badge')).toBeNull();
+  });
+
+  it('shows the unread count on "Conversa", in words for a screen reader', () => {
+    const { el } = setup('scene', 3);
+    const chat = el.querySelectorAll('button.tab')[1];
+    expect(chat.getAttribute('aria-label')).toBe('Conversa, 3 mensagens novas');
+    const badge = chat.querySelector('.tab__badge') as HTMLElement;
+    expect(badge.textContent?.trim()).toBe('3');
+    expect(badge.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('says "1 mensagem nova" in the singular and caps the badge at 99+', () => {
+    const one = setup('scene', 1);
+    expect(one.el.querySelectorAll('button.tab')[1].getAttribute('aria-label')).toBe(
+      'Conversa, 1 mensagem nova',
+    );
+    one.fixture.componentRef.setInput('unread', 120);
+    one.fixture.detectChanges();
+    expect(one.el.querySelector('.tab__badge')?.textContent?.trim()).toBe('99+');
+  });
+});

@@ -8,6 +8,9 @@ import { CastingClient } from '../../core/casting/casting-client';
 import { CombatClient } from '../../core/combat/combat-client';
 import { SpellCatalog } from '../../core/combat/spell-catalog';
 import { TurnAlert } from '../../core/combat/turn-alert';
+import { FreeDiceClient } from '../../core/free-dice/free-dice-client';
+import { FreeDiceState } from '../../core/free-dice/free-dice-state';
+import { ConversationClient } from '../../core/conversation/conversation-client';
 import { MapsClient } from '../../core/maps/maps-client';
 import { NotesClient } from '../../core/notes/notes-client';
 import { FamiliarEyesClient } from '../../core/play/familiar-eyes';
@@ -17,17 +20,20 @@ import { SceneClient } from '../../core/play/scene-client';
 import { XpChanges } from '../../core/progression/xp-changes';
 import { PuzzlesClient } from '../../core/puzzles/puzzles-client';
 import { TrapsClient } from '../../core/traps/traps-client';
+import { RollAnimator } from '../../shared/roll-overlay/roll-animator';
 import { SessionNotes } from '../../shell/session-notes/session-notes';
 import { CombatState } from '../../core/combat/combat-state';
 import { FogView } from '../../core/maps/fog-view';
 import { MapState } from '../../core/maps/map-state';
 import { NotesState } from '../../core/notes/notes-state';
+import { ConversationState } from '../../core/conversation/conversation-state';
 import { SceneState } from '../../core/play/scene-state';
 import { PuzzleSessionState } from '../../core/puzzles/puzzle-session';
 import { ToastQueue } from '../../core/traps/toast-queue';
 import { TrapBoard } from '../../core/traps/trap-board';
 import { TreasureWatch } from '../../core/traps/treasure-text';
 import type { LiveSessionState } from './live-session-state';
+import { freeRollShow } from './free-dice/free-roll-show';
 
 /** What the session page injects, handed to the plain classes it builds (they are not in the injection context). */
 export interface LiveSessionServices {
@@ -44,9 +50,13 @@ export interface LiveSessionServices {
   readonly combatApi: CombatClient;
   readonly castingApi: CastingClient;
   readonly sceneApi: SceneClient;
+  readonly conversationApi: ConversationClient;
   readonly notesApi: NotesClient;
   readonly trapsApi: TrapsClient;
   readonly puzzlesApi: PuzzlesClient;
+  readonly freeDiceApi: FreeDiceClient;
+  /** The dice overlay of the shell: the table's free rolls tumble on it. */
+  readonly rollAnimator: RollAnimator;
   readonly sessionNotes: SessionNotes;
   readonly openSessions: OpenSessions;
   readonly destroyRef: DestroyRef;
@@ -73,9 +83,12 @@ export function injectLiveSessionServices(): LiveSessionServices {
     combatApi: inject(CombatClient),
     castingApi: inject(CastingClient),
     sceneApi: inject(SceneClient),
+    conversationApi: inject(ConversationClient),
     notesApi: inject(NotesClient),
     trapsApi: inject(TrapsClient),
     puzzlesApi: inject(PuzzlesClient),
+    freeDiceApi: inject(FreeDiceClient),
+    rollAnimator: inject(RollAnimator),
     sessionNotes: inject(SessionNotes),
     openSessions: inject(OpenSessions),
     destroyRef: inject(DestroyRef),
@@ -102,12 +115,17 @@ export class LiveSessionParts {
   /** The RP scene open in the session (MR-015): read on every `ready` and
    * after each `scene_changed` or `scene_check_rolled`. */
   readonly scene: SceneState;
+  /** The conversation of the scene (MR-051, RN-36): read on the first `ready`, its gap read after each reconnection;
+   * `session_message_added` and `master_typing` apply in place. */
+  readonly conversation: ConversationState;
   /** The puzzles of the session (MR-038, E10-06): the master's menu with each one's live state, or what the players are shown.
    * `puzzle_changed` reads one again; `ready` reads the list. */
   readonly puzzles: PuzzleSessionState;
   /** The player's notes and the clues the master revealed (MR-030): read after
    * each `ready` and each `notes_changed`. The master has none. */
   readonly notes: NotesState;
+  /** The free dice roller (MR-052): the form, the result, the last rolls and the table's log. */
+  readonly freeDice: FreeDiceState;
 
   constructor(services: LiveSessionServices, state: LiveSessionState) {
     const { mapsApi } = services;
@@ -128,11 +146,29 @@ export class LiveSessionParts {
       () => services.sceneApi.get(state.campaignId()),
       () => state.isMaster(),
     );
+    this.conversation = new ConversationState(
+      services.conversationApi,
+      () => state.campaignId(),
+      () => {
+        const me = services.auth.state();
+        return me.status === 'signed-in' ? me.user.id : '';
+      },
+    );
     this.puzzles = new PuzzleSessionState(
       services.puzzlesApi,
       () => state.campaignId(),
       () => state.isMaster(),
     );
     this.notes = new NotesState(services.notesApi, () => state.campaignId());
+    this.freeDice = new FreeDiceState(services.freeDiceApi, {
+      campaignId: () => state.campaignId(),
+      isMaster: () => state.isMaster(),
+      show: (roll) => {
+        const show = freeRollShow(roll);
+        if (show) {
+          services.rollAnimator.play(show);
+        }
+      },
+    });
   }
 }

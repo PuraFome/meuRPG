@@ -190,6 +190,13 @@ func (s *Service) CombatSheet(ctx context.Context, tx pgx.Tx, campaignID, charac
 	}
 	out.FighterLevel, _ = lastClassLevel(d, "class:fighter")
 	out.MonkLevel, _ = lastClassLevel(d, "class:monk")
+	if out.ClericLevel, _ = lastClassLevel(d, "class:cleric"); out.ClericLevel > 0 {
+		for _, a := range d.Abilities {
+			if a.Ability == rules.WIS {
+				out.ChannelDC = 8 + d.ProficiencyBonus + a.Modifier // the Channel Divinity save DC (SRD 5.1, Cleric)
+			}
+		}
+	}
 	return out, nil
 }
 

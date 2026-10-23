@@ -45,6 +45,38 @@ func withCreatureType(content *rules.Content, monsterKey string, features []rule
 	return append(slices.Clone(features), rules.Feature{Key: creatureTypePrefix + strings.ToLower(c.Type), Name: c.Type, Source: monsterKey})
 }
 
+// taggedSavesOf are the advantages on saving throws the sheet's hints give against one kind of source
+// ("against:frightened"): the racial ones, which a combat applies when it knows what the save is against.
+func taggedSavesOf(hints []rules.Hint) []link.TaggedSave {
+	var out []link.TaggedSave
+	for _, h := range hints {
+		against, ok := againstOf(h.Tags)
+		if h.Mode != "advantage" || !ok {
+			continue
+		}
+		t := link.TaggedSave{Source: h.Source, Against: against}
+		for _, target := range h.Targets {
+			if ability, ok := strings.CutPrefix(target, "save."); ok && ability != "all" {
+				t.Abilities = append(t.Abilities, ability)
+			}
+		}
+		if len(h.Targets) > 0 && slices.ContainsFunc(h.Targets, func(x string) bool { return !strings.HasPrefix(x, "save.") }) {
+			continue // not only saving throws
+		}
+		out = append(out, t)
+	}
+	return out
+}
+
+// againstOf is the kind of source the tags say the advantage holds against, when it is one the combat knows.
+func againstOf(tags []string) (string, bool) {
+	if len(tags) != 1 {
+		return "", false
+	}
+	kind, ok := strings.CutPrefix(tags[0], "against:")
+	return kind, ok && slices.Contains([]string{combat.AgainstMagic, combat.AgainstFrightened, combat.AgainstCharmed, combat.AgainstPoison}, kind)
+}
+
 // traitsOf reads the combat traits of a derived sheet or stat block.
 func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 	t := link.Traits{
@@ -67,6 +99,7 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 		return h.Target == "skill:stealth" && h.Mode == "disadvantage"
 	})
 	t.ArmorUntrained = d.ArmorUntrained.Any()
+	t.TaggedSaves = taggedSavesOf(d.Hints)
 	t.ImprovedDivineSmite = rules.HasFeature(d, "feature:improved-divine-smite")
 	t.OpenHand = rules.HasFeature(d, "feature:open-hand-technique")
 	t.StunningStrike = rules.HasFeature(d, "feature:stunning-strike")

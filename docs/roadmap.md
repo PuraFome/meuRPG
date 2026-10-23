@@ -44,7 +44,6 @@ Ideas the Game Master and the players asked for, with no story yet:
 - A map outside combat.
 - A light warning.
 - The Game Master playing the character of an absent player.
-- A free dice roller.
 - Spell zones on the map.
 - A spectator screen.
 - Bouncing 2D dice.

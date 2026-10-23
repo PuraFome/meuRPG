@@ -256,6 +256,12 @@ describe('initiativeLine', () => {
     ).toBe('15 = 15');
   });
 
+  it('adds what a Bardic Inspiration die gave to the total', () => {
+    expect(initiativeLine(c({ initiativeFace: 7, initiativeBonus: 2, initiative: 13 }))?.line).toBe(
+      '7 + 2 + 4 = 13',
+    );
+  });
+
   it('is null while a number is missing, or there is no combatant', () => {
     expect(initiativeLine(c({ initiativeBonus: 4, initiative: 19 }))).toBeNull();
     expect(initiativeLine(c({ initiativeFace: 15, initiative: 19 }))).toBeNull();

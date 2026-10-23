@@ -114,6 +114,7 @@ var sourceKindToProto = map[string]playv1.AdvantageSourceKind{
 	combat.SourceExhaustionCheck:    playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EXHAUSTION_CHECK,
 	combat.SourceOutlinedTarget:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_OUTLINED_TARGET,
 	combat.SourceEffectSave:         playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_SAVE,
+	combat.SourceTaggedSave:         playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_TAGGED_SAVE,
 	combat.SourceEffectCheck:        playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_CHECK,
 	combat.SourceEffectAttack:       playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_ATTACK,
 	combat.SourceRestrainedSave:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_RESTRAINED_SAVE,
@@ -156,7 +157,17 @@ func creatureFacts(c playdb.Combatant, states map[string][]playdb.CombatantState
 		Exhaustion: int(c.ExhaustionLevel), Outlined: hasEffect(states, c.ID, "spell:faerie-fire"), SaveAdvantage: effectSaveAdvantage(states, c.ID), CheckAdvantage: effectCheckAdvantage(states, c.ID),
 		AttackDisadvantage: effectAttackDisadvantage(states, c.ID),
 		ArmorUntrained:     traits.ArmorUntrained,
+		TaggedSaves:        taggedSavesOf(traits.TaggedSaves),
 	}
+}
+
+// taggedSavesOf are the racial advantages on saves against a kind of source the sheet has.
+func taggedSavesOf(saves []link.TaggedSave) []combat.TaggedSave {
+	out := make([]combat.TaggedSave, 0, len(saves))
+	for _, t := range saves {
+		out = append(out, combat.TaggedSave{Source: t.Source, Against: t.Against, Abilities: t.Abilities})
+	}
+	return out
 }
 
 // incapacitatedKeys are the conditions that make a creature unable to act or to
@@ -517,12 +528,27 @@ func (c textContext) otherSentence(src combat.Source) string {
 		return labelArmorUntrained + ": desvantagem em testes, ataques e testes de resistência de Força e Destreza"
 	case combat.SourceOutlinedTarget:
 		return "Alvo delineado: vantagem se o atacante o vê"
+	case combat.SourceTaggedSave:
+		return fmt.Sprintf("%s: vantagem no teste de resistência %s", c.names(src.Condition), againstSentence(src.Against))
 	case combat.SourceEffectSave:
 		return "Efeito ativo: vantagem no teste de resistência"
 	case combat.SourceEffectCheck:
 		return "Efeito ativo: vantagem em testes de habilidade"
 	}
 	return ""
+}
+
+// againstSentence is what a saving throw with a racial advantage is against, in Portuguese.
+func againstSentence(against string) string {
+	switch against {
+	case combat.AgainstFrightened:
+		return "contra ficar amedrontado"
+	case combat.AgainstCharmed:
+		return "contra ficar enfeitiçado"
+	case combat.AgainstPoison:
+		return "contra veneno"
+	}
+	return "contra magia"
 }
 
 // ---- reading the combat ----

@@ -232,62 +232,6 @@ func (q *Queries) AnswerRevivifyRequest(ctx context.Context, arg AnswerRevivifyR
 	return i, err
 }
 
-const answerRollHold = `-- name: AnswerRollHold :exec
-UPDATE roll_holds SET answer_key = $2 WHERE id = $1
-`
-
-type AnswerRollHoldParams struct {
-	ID        string
-	AnswerKey *string
-}
-
-func (q *Queries) AnswerRollHold(ctx context.Context, arg AnswerRollHoldParams) error {
-	_, err := q.db.Exec(ctx, answerRollHold, arg.ID, arg.AnswerKey)
-	return err
-}
-
-const answerRollHoldLucky = `-- name: AnswerRollHoldLucky :one
-UPDATE roll_holds SET face = $2, request = $3, lucky_answer_key = $4, lucky_to = $5 WHERE id = $1
-RETURNING id, encounter_id, combatant_id, idempotency_key, request, face, modifier, round, answer_key, created_at, lucky_index, lucky_answer_key, lucky_to
-`
-
-type AnswerRollHoldLuckyParams struct {
-	ID             string
-	Face           int32
-	Request        []byte
-	LuckyAnswerKey *string
-	LuckyTo        *int32
-}
-
-// The answer to the Lucky question of a held roll: the d20 that counts and the request with the
-// faces after it, the answer's key and the new face (NULL when the player kept the 1).
-func (q *Queries) AnswerRollHoldLucky(ctx context.Context, arg AnswerRollHoldLuckyParams) (RollHold, error) {
-	row := q.db.QueryRow(ctx, answerRollHoldLucky,
-		arg.ID,
-		arg.Face,
-		arg.Request,
-		arg.LuckyAnswerKey,
-		arg.LuckyTo,
-	)
-	var i RollHold
-	err := row.Scan(
-		&i.ID,
-		&i.EncounterID,
-		&i.CombatantID,
-		&i.IdempotencyKey,
-		&i.Request,
-		&i.Face,
-		&i.Modifier,
-		&i.Round,
-		&i.AnswerKey,
-		&i.CreatedAt,
-		&i.LuckyIndex,
-		&i.LuckyAnswerKey,
-		&i.LuckyTo,
-	)
-	return i, err
-}
-
 const answerRollModeRequest = `-- name: AnswerRollModeRequest :one
 UPDATE roll_mode_requests
 SET status = 'answered', decided_mode = $2, answered_at = $3
@@ -1257,15 +1201,6 @@ func (q *Queries) DeleteReactionWindowsOfEncounter(ctx context.Context, encounte
 	return err
 }
 
-const deleteRollHold = `-- name: DeleteRollHold :exec
-DELETE FROM roll_holds WHERE id = $1
-`
-
-func (q *Queries) DeleteRollHold(ctx context.Context, id string) error {
-	_, err := q.db.Exec(ctx, deleteRollHold, id)
-	return err
-}
-
 const deleteStageNPC = `-- name: DeleteStageNPC :execrows
 DELETE FROM stage_npcs
 WHERE game_session_id = $1 AND character_id = $2
@@ -2081,37 +2016,6 @@ func (q *Queries) GetOpenGameSessionForUpdate(ctx context.Context, campaignID st
 	return i, err
 }
 
-const getOpenRollHoldOf = `-- name: GetOpenRollHoldOf :one
-SELECT id, encounter_id, combatant_id, idempotency_key, request, face, modifier, round, answer_key, created_at, lucky_index, lucky_answer_key, lucky_to FROM roll_holds WHERE encounter_id = $1 AND combatant_id = $2 AND answer_key IS NULL
-`
-
-type GetOpenRollHoldOfParams struct {
-	EncounterID string
-	CombatantID string
-}
-
-// The hold of the combatant that was not answered yet, if any.
-func (q *Queries) GetOpenRollHoldOf(ctx context.Context, arg GetOpenRollHoldOfParams) (RollHold, error) {
-	row := q.db.QueryRow(ctx, getOpenRollHoldOf, arg.EncounterID, arg.CombatantID)
-	var i RollHold
-	err := row.Scan(
-		&i.ID,
-		&i.EncounterID,
-		&i.CombatantID,
-		&i.IdempotencyKey,
-		&i.Request,
-		&i.Face,
-		&i.Modifier,
-		&i.Round,
-		&i.AnswerKey,
-		&i.CreatedAt,
-		&i.LuckyIndex,
-		&i.LuckyAnswerKey,
-		&i.LuckyTo,
-	)
-	return i, err
-}
-
 const getOpenSceneEvent = `-- name: GetOpenSceneEvent :one
 SELECT id, seq, created_at FROM session_events
 WHERE game_session_id = $1 AND kind = 'scene_opened'
@@ -2737,67 +2641,6 @@ func (q *Queries) GetRevivifyRequestForUpdate(ctx context.Context, arg GetRevivi
 		&i.CreateHash,
 		&i.AnswerKey,
 		&i.AnswerHash,
-	)
-	return i, err
-}
-
-const getRollHold = `-- name: GetRollHold :one
-SELECT id, encounter_id, combatant_id, idempotency_key, request, face, modifier, round, answer_key, created_at, lucky_index, lucky_answer_key, lucky_to FROM roll_holds WHERE encounter_id = $1 AND id = $2
-`
-
-type GetRollHoldParams struct {
-	EncounterID string
-	ID          string
-}
-
-func (q *Queries) GetRollHold(ctx context.Context, arg GetRollHoldParams) (RollHold, error) {
-	row := q.db.QueryRow(ctx, getRollHold, arg.EncounterID, arg.ID)
-	var i RollHold
-	err := row.Scan(
-		&i.ID,
-		&i.EncounterID,
-		&i.CombatantID,
-		&i.IdempotencyKey,
-		&i.Request,
-		&i.Face,
-		&i.Modifier,
-		&i.Round,
-		&i.AnswerKey,
-		&i.CreatedAt,
-		&i.LuckyIndex,
-		&i.LuckyAnswerKey,
-		&i.LuckyTo,
-	)
-	return i, err
-}
-
-const getRollHoldByKey = `-- name: GetRollHoldByKey :one
-SELECT id, encounter_id, combatant_id, idempotency_key, request, face, modifier, round, answer_key, created_at, lucky_index, lucky_answer_key, lucky_to FROM roll_holds WHERE encounter_id = $1 AND idempotency_key = $2
-`
-
-type GetRollHoldByKeyParams struct {
-	EncounterID    string
-	IdempotencyKey string
-}
-
-// The hold the request with this key made, if any.
-func (q *Queries) GetRollHoldByKey(ctx context.Context, arg GetRollHoldByKeyParams) (RollHold, error) {
-	row := q.db.QueryRow(ctx, getRollHoldByKey, arg.EncounterID, arg.IdempotencyKey)
-	var i RollHold
-	err := row.Scan(
-		&i.ID,
-		&i.EncounterID,
-		&i.CombatantID,
-		&i.IdempotencyKey,
-		&i.Request,
-		&i.Face,
-		&i.Modifier,
-		&i.Round,
-		&i.AnswerKey,
-		&i.CreatedAt,
-		&i.LuckyIndex,
-		&i.LuckyAnswerKey,
-		&i.LuckyTo,
 	)
 	return i, err
 }
@@ -4587,57 +4430,6 @@ func (q *Queries) InsertRevivifyRequest(ctx context.Context, arg InsertRevivifyR
 	return i, err
 }
 
-const insertRollHold = `-- name: InsertRollHold :one
-INSERT INTO roll_holds (encounter_id, combatant_id, idempotency_key, request, face, modifier, round, created_at, lucky_index)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, encounter_id, combatant_id, idempotency_key, request, face, modifier, round, answer_key, created_at, lucky_index, lucky_answer_key, lucky_to
-`
-
-type InsertRollHoldParams struct {
-	EncounterID    string
-	CombatantID    string
-	IdempotencyKey string
-	Request        []byte
-	Face           int32
-	Modifier       int32
-	Round          int32
-	CreatedAt      time.Time
-	LuckyIndex     *int32
-}
-
-// An attack roll that waits for the answer about a Bardic Inspiration die, or for the Lucky
-// question of a d20 that shows a 1 (lucky_index, NULL without one).
-func (q *Queries) InsertRollHold(ctx context.Context, arg InsertRollHoldParams) (RollHold, error) {
-	row := q.db.QueryRow(ctx, insertRollHold,
-		arg.EncounterID,
-		arg.CombatantID,
-		arg.IdempotencyKey,
-		arg.Request,
-		arg.Face,
-		arg.Modifier,
-		arg.Round,
-		arg.CreatedAt,
-		arg.LuckyIndex,
-	)
-	var i RollHold
-	err := row.Scan(
-		&i.ID,
-		&i.EncounterID,
-		&i.CombatantID,
-		&i.IdempotencyKey,
-		&i.Request,
-		&i.Face,
-		&i.Modifier,
-		&i.Round,
-		&i.AnswerKey,
-		&i.CreatedAt,
-		&i.LuckyIndex,
-		&i.LuckyAnswerKey,
-		&i.LuckyTo,
-	)
-	return i, err
-}
-
 const insertRollModeRequest = `-- name: InsertRollModeRequest :one
 
 INSERT INTO roll_mode_requests (
@@ -6012,6 +5804,55 @@ func (q *Queries) ListEncounterRollModeRequests(ctx context.Context, encounterID
 	return items, nil
 }
 
+const listFreeRollEvents = `-- name: ListFreeRollEvents :many
+SELECT id, actor_user_id, payload, created_at FROM session_events
+WHERE game_session_id = $1 AND kind = 'free_roll_rolled'
+  AND (NOT $3::BOOL OR payload->>'secret' = 'false')
+ORDER BY seq DESC
+LIMIT $2
+`
+
+type ListFreeRollEventsParams struct {
+	GameSessionID string
+	Limit         int32
+	OnlyTable     bool
+}
+
+type ListFreeRollEventsRow struct {
+	ID          string
+	ActorUserID *string
+	Payload     []byte
+	CreatedAt   time.Time
+}
+
+// The free dice roller's rolls of the session (MR-052), newest first. A player's list asks for
+// only_table: a roll is the table's when its payload says "secret": false, so an event without the
+// key is never shown to a player (the master's secret rolls are the master's alone, RN-10).
+func (q *Queries) ListFreeRollEvents(ctx context.Context, arg ListFreeRollEventsParams) ([]ListFreeRollEventsRow, error) {
+	rows, err := q.db.Query(ctx, listFreeRollEvents, arg.GameSessionID, arg.Limit, arg.OnlyTable)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListFreeRollEventsRow
+	for rows.Next() {
+		var i ListFreeRollEventsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ActorUserID,
+			&i.Payload,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listGameSessions = `-- name: ListGameSessions :many
 SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash FROM game_sessions
 WHERE campaign_id = $1
@@ -6636,45 +6477,6 @@ func (q *Queries) ListOpenReactionWindows(ctx context.Context, encounterID strin
 			&i.Outcome,
 			&i.CreatedAt,
 			&i.AnsweredAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listOpenRollHolds = `-- name: ListOpenRollHolds :many
-SELECT id, encounter_id, combatant_id, idempotency_key, request, face, modifier, round, answer_key, created_at, lucky_index, lucky_answer_key, lucky_to FROM roll_holds WHERE encounter_id = $1 AND answer_key IS NULL
-`
-
-// The rolls of the combat that wait for an answer, for the combatants' views.
-func (q *Queries) ListOpenRollHolds(ctx context.Context, encounterID string) ([]RollHold, error) {
-	rows, err := q.db.Query(ctx, listOpenRollHolds, encounterID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []RollHold
-	for rows.Next() {
-		var i RollHold
-		if err := rows.Scan(
-			&i.ID,
-			&i.EncounterID,
-			&i.CombatantID,
-			&i.IdempotencyKey,
-			&i.Request,
-			&i.Face,
-			&i.Modifier,
-			&i.Round,
-			&i.AnswerKey,
-			&i.CreatedAt,
-			&i.LuckyIndex,
-			&i.LuckyAnswerKey,
-			&i.LuckyTo,
 		); err != nil {
 			return nil, err
 		}
@@ -7562,6 +7364,53 @@ func (q *Queries) ListTrapEventsOfSession(ctx context.Context, gameSessionID str
 			&i.ID,
 			&i.Kind,
 			&i.CharacterID,
+			&i.Payload,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUserFreeRollEvents = `-- name: ListUserFreeRollEvents :many
+SELECT id, actor_user_id, payload, created_at FROM session_events
+WHERE game_session_id = $1 AND kind = 'free_roll_rolled' AND actor_user_id = $2
+ORDER BY seq DESC
+LIMIT $3
+`
+
+type ListUserFreeRollEventsParams struct {
+	GameSessionID string
+	ActorUserID   *string
+	Limit         int32
+}
+
+type ListUserFreeRollEventsRow struct {
+	ID          string
+	ActorUserID *string
+	Payload     []byte
+	CreatedAt   time.Time
+}
+
+// The rolls one user made in the session, newest first: the master's secret ones included, since
+// only the master makes them.
+func (q *Queries) ListUserFreeRollEvents(ctx context.Context, arg ListUserFreeRollEventsParams) ([]ListUserFreeRollEventsRow, error) {
+	rows, err := q.db.Query(ctx, listUserFreeRollEvents, arg.GameSessionID, arg.ActorUserID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUserFreeRollEventsRow
+	for rows.Next() {
+		var i ListUserFreeRollEventsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ActorUserID,
 			&i.Payload,
 			&i.CreatedAt,
 		); err != nil {

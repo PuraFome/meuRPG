@@ -52,6 +52,9 @@ const OPEN_CHOICE_WORDS: Record<OpenChoiceKindVm, readonly [string, string]> = {
   cantrips: ['truque', 'truques'],
   spellsKnown: ['magia conhecida', 'magias conhecidas'],
   spellsPrepared: ['magia preparada', 'magias preparadas'],
+  expertise: ['especialização', 'especializações'],
+  tools: ['ferramenta', 'ferramentas'],
+  languages: ['idioma', 'idiomas'],
 };
 
 const MASTER_ONLY_MESSAGES = {

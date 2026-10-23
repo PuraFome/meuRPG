@@ -20,6 +20,11 @@ const KIND_TEXT: Readonly<Record<HeldRollKind, string>> = {
   [HeldRollKind.GROUP_CHECK]: 'Teste em grupo',
   [HeldRollKind.TRAP_SEARCH]: 'Busca por armadilhas',
   [HeldRollKind.HINT_TRY]: 'Tentativa de dica do quebra-cabeça',
+  [HeldRollKind.DEATH_SAVE]: 'Teste contra a morte',
+  [HeldRollKind.CONTEST]: 'Disputa',
+  [HeldRollKind.HIDE]: 'Esconder-se',
+  [HeldRollKind.COUNTERSPELL_CHECK]: 'Teste da Contramágica',
+  [HeldRollKind.INITIATIVE]: 'Iniciativa',
 };
 
 /** What was rolled: "Ataque com arma contra Goblin chefe." when the target is known (an attack only), else the kind of the

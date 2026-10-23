@@ -1,0 +1,168 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+}
+
+.panel__head {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  padding: var(--mr-space-3) var(--mr-space-4);
+  border-bottom: 1px solid var(--mr-rule);
+}
+
+.panel__title {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 21px;
+  line-height: 26px;
+  font-weight: 700;
+}
+
+.panel__count {
+  margin-left: auto;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
+.panel__notice {
+  margin: var(--mr-space-3) var(--mr-space-4) 0;
+  padding: var(--mr-space-3);
+  font-size: 14px;
+  line-height: 19px;
+}
+
+.panel__feed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  max-height: min(520px, 60dvh);
+  margin: 0;
+  padding: var(--mr-space-4);
+  overflow-y: auto;
+  list-style: none;
+  overscroll-behavior: contain;
+}
+
+// Nothing to list: the empty state takes its place.
+.panel__feed--empty {
+  display: none;
+}
+
+.panel__older {
+  align-self: center;
+
+  button {
+    min-height: 44px;
+    padding: 0 var(--mr-space-3);
+    border: 1px solid var(--mr-control-line);
+    border-radius: var(--mr-radius-sm);
+    background: var(--mr-surface);
+    color: var(--mr-ink);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--mr-focus);
+      outline-offset: 2px;
+    }
+  }
+}
+
+.panel__empty {
+  margin: var(--mr-space-4);
+  padding: var(--mr-space-4);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  color: var(--mr-ink-muted);
+}
+
+.panel__typing {
+  margin: 0;
+  padding: 0 var(--mr-space-4);
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+
+  &:empty {
+    display: none;
+  }
+}
+
+.panel__compose {
+  padding: var(--mr-space-3) var(--mr-space-4) var(--mr-space-4);
+  border-top: 1px solid var(--mr-rule);
+}
+
+// The phone's full-screen view: no frame, the feed takes the room between the header and the composer.
+.panel--full {
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+
+  .panel__head {
+    padding: var(--mr-space-2) var(--mr-space-2) var(--mr-space-2) var(--mr-space-1);
+    border-bottom-color: var(--mr-line);
+  }
+
+  .panel__feed {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    background: var(--mr-ground);
+  }
+
+  .panel__empty {
+    flex: 1;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: var(--mr-ground);
+  }
+
+  .panel__compose {
+    border-top-color: var(--mr-line);
+    background: var(--mr-surface);
+  }
+}
+
+.panel__titles {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.panel__scene {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.panel__back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--mr-ink);
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: -2px;
+  }
+}

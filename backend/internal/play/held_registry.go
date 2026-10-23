@@ -2,9 +2,11 @@ package play
 
 import (
 	"context"
+	"fmt"
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
@@ -12,16 +14,8 @@ import (
 
 // heldKindDef is what a kind of held roll does that the gate cannot know.
 type heldKindDef struct {
-	// write is the table the kind's holds are written to.
-	write heldTable
-	// alsoRead is the table the kind was written to by an older release, which is only read: the holds left
-	// open there are answered by the same path (the weapon attacks of roll_holds, until the contract).
-	alsoRead heldTable
-	// refusedBy are the tables whose open question refuses a new roll of this kind in the gate, own table
-	// first.
-	refusedBy []heldTable
 	// ownKindOnly says only the holds of this very kind refuse it, and are forgotten when stale: the weapon attack
-	// shares its table with the combatant's other rolls, which heldBlocked, called first by its path, refuses it
+	// shares the table with the combatant's other rolls, which heldBlocked, called first by its path, refuses it
 	// for (and does not when a reaction window replays the attack, a case the gate keeps as it was).
 	ownKindOnly bool
 	// rerun runs the request the hold kept again, with the answer in the context, by the very path that
@@ -51,19 +45,23 @@ func (d heldKindDef) pinned(req proto.Message, faces []int) ([]byte, error) {
 var heldRegistry map[heldKind]heldKindDef
 
 func init() {
-	outside := []heldTable{inspirationHolds, rollHolds}
 	heldRegistry = map[heldKind]heldKindDef{
 		heldWeaponAttack: {
-			write: inspirationHolds, alsoRead: rollHolds, refusedBy: outside, ownKindOnly: true,
-			rerun: rerunAttack, offerOf: attackOfRequest, withFaces: pinAttackFaces,
+			ownKindOnly: true,
+			rerun:       rerunAttack, offerOf: attackOfRequest, withFaces: pinAttackFaces,
 		},
-		heldSpellAttack:       {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).CastSpell)},
-		heldEffectSave:        {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).RollEffectSave)},
-		heldConcentrationSave: {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).ResolveConcentrationSave)},
-		heldSceneCheck:        {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).RollSceneCheck)},
-		heldGroupCheck:        {write: inspirationHolds, refusedBy: outside, rerun: rerunGroupCheck, ownRoll: true},
-		heldTrapSearch:        {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).SearchForTraps), ownRoll: true},
-		heldHintTry:           {write: inspirationHolds, refusedBy: outside, rerun: registerRerun((*Service).TryPuzzleHint)},
+		heldSpellAttack:       {rerun: registerRerun((*Service).CastSpell)},
+		heldEffectSave:        {rerun: registerRerun((*Service).RollEffectSave)},
+		heldConcentrationSave: {rerun: registerRerun((*Service).ResolveConcentrationSave)},
+		heldSceneCheck:        {rerun: registerRerun((*Service).RollSceneCheck)},
+		heldGroupCheck:        {rerun: rerunGroupCheck, ownRoll: true},
+		heldTrapSearch:        {rerun: registerRerun((*Service).SearchForTraps), ownRoll: true},
+		heldHintTry:           {rerun: registerRerun((*Service).TryPuzzleHint)},
+		heldDeathSave:         {rerun: registerRerun((*Service).RollDeathSave)},
+		heldHide:              {rerun: registerRerun((*Service).Hide)},
+		heldCounterspell:      {rerun: registerRerun((*Service).AnswerReaction)},
+		heldContest:           {rerun: rerunContest},
+		heldInitiative:        {rerun: registerRerun((*Service).SubmitInitiative)},
 	}
 }
 
@@ -82,7 +80,7 @@ func registerRerun[Req, Res any, PReq interface {
 		}
 		out, err := path(s, ctx, connect.NewRequest((*Req)(orig)))
 		if err != nil {
-			return nil, err //nolint:wrapcheck // the path's own refusal
+			return nil, err
 		}
 		return PRes(out.Msg), nil
 	}
@@ -102,6 +100,34 @@ func rerunGroupCheck(ctx context.Context, s *Service, h heldRoll, key string) (p
 	return registerRerun((*Service).RollGroupCheck)(ctx, s, h, key)
 }
 
+// rerunContest runs a contest's roll again: the initiator's (StartContest) or the defender's (RespondContest), which the
+// request the hold kept says (it is kept as an Any, since both are the one kind of held roll).
+func rerunContest(ctx context.Context, s *Service, h heldRoll, _ string) (proto.Message, error) {
+	var kept anypb.Any
+	if err := proto.Unmarshal(h.Request, &kept); err != nil {
+		return nil, s.dbError(ctx, "read the held roll", err)
+	}
+	req, err := kept.UnmarshalNew()
+	if err != nil {
+		return nil, s.dbError(ctx, "read the held roll", err)
+	}
+	switch r := req.(type) {
+	case *playv1.StartContestRequest:
+		out, err := s.StartContest(ctx, connect.NewRequest(r))
+		if err != nil {
+			return nil, err
+		}
+		return out.Msg, nil
+	case *playv1.RespondContestRequest:
+		out, err := s.RespondContest(ctx, connect.NewRequest(r))
+		if err != nil {
+			return nil, err
+		}
+		return out.Msg, nil
+	}
+	return nil, s.dbError(ctx, "read the held roll", fmt.Errorf("a held contest of request %T", req))
+}
+
 // rerunAttack runs the weapon attack again. The attack that a reaction window held first has its event
 // under the request's key: the question's answer settles under the answer's own.
 func rerunAttack(ctx context.Context, s *Service, h heldRoll, key string) (proto.Message, error) {
@@ -114,7 +140,7 @@ func rerunAttack(ctx context.Context, s *Service, h heldRoll, key string) (proto
 	}
 	out, err := s.RollAttack(ctx, connect.NewRequest(&orig))
 	if err != nil {
-		return nil, err //nolint:wrapcheck // the path's own refusal
+		return nil, err
 	}
 	return out.Msg, nil
 }

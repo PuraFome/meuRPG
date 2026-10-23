@@ -29,6 +29,7 @@ export class LiveSessionEvents {
   /** Clears the timer of the "chamando você" line. */
   dispose(): void {
     clearTimeout(this.callingTimer);
+    this.parts.conversation.dispose();
   }
 
   open(campaignId: string, generation: number): void {
@@ -57,6 +58,8 @@ export class LiveSessionEvents {
         // A `content_changed` missed while reconnecting leaves the spells the page read before out of date.
         services.spellCatalog.forget(campaignId);
         void parts.trapBoard.refresh();
+        // The first `ready` reads the conversation; a reconnection reads the lines that came meanwhile.
+        void parts.conversation.sync();
         void loader.readSnapshot(campaignId, generation, () => ({
           map: this.mapEvents,
           image: this.imageEvents,
@@ -90,7 +93,11 @@ export class LiveSessionEvents {
         loader.loadMageArmor(campaignId, generation);
       },
       onGroupCheckChanged: () => state.groupCheckTick.update((n) => n + 1),
+      onSessionMessage: (message) => void parts.conversation.receive(message),
+      onMasterTyping: (seconds) => parts.conversation.masterTyping(seconds),
       onHeldRollsChanged: () => state.heldRollsTick.update((n) => n + 1),
+      // Someone at the table rolled (never a secret roll): the log gets it and the dice tumble.
+      onFreeRollRolled: (roll) => parts.freeDice.heard(roll),
       onEnded: () => loader.ended(),
       onFatal: (kind) => {
         if (kind === 'signed-out') {

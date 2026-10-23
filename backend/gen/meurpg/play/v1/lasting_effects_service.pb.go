@@ -1192,13 +1192,21 @@ type RollEffectSaveResponse struct {
 	// d20 is rolled and kept, the window stays open and nothing is written, and
 	// ResourceService.AnswerOutsideInspiration settles the save (SRD 5.1). The master's roll
 	// never asks.
+	// Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+	// tab opened before the one question existed; it will go with the old answer RPCs.
+	//
+	// Deprecated: Marked as deprecated in meurpg/play/v1/lasting_effects_service.proto.
 	InspirationOffer *OutsideInspirationOffer `protobuf:"bytes,3,opt,name=inspiration_offer,json=inspirationOffer,proto3" json:"inspiration_offer,omitempty"`
 	// Set instead of `result`, like `inspiration_offer`, when the roller is the player's own
 	// halfling and a d20 shows a 1: the window stays open, and ResourceService.AnswerOutsideLucky
 	// rolls it again or keeps the 1 (the die's question, if any, comes after it).
+	// Deprecated (E4-9): the question is `held_roll_offer` (answered with AnswerHeldRoll). This field is still served, for a
+	// tab opened before the one question existed; it will go with the old answer RPCs.
+	//
+	// Deprecated: Marked as deprecated in meurpg/play/v1/lasting_effects_service.proto.
 	LuckyOffer *LuckyOffer `protobuf:"bytes,4,opt,name=lucky_offer,json=luckyOffer,proto3" json:"lucky_offer,omitempty"`
 	// The question the roll asks now, in the one shape every held roll has (HeldRollOffer), set beside
-	// `inspiration_offer` and `lucky_offer` until they are removed: set instead of the result, when the
+	// the deprecated `inspiration_offer` and `lucky_offer`: set instead of the result, when the
 	// roll waits for an answer (AnswerHeldRoll). Whoever may answer gets it; nobody else does (RN-10).
 	HeldRollOffer *HeldRollOffer `protobuf:"bytes,5,opt,name=held_roll_offer,json=heldRollOffer,proto3" json:"held_roll_offer,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1249,6 +1257,7 @@ func (x *RollEffectSaveResponse) GetResult() *EffectSaveResult {
 	return nil
 }
 
+// Deprecated: Marked as deprecated in meurpg/play/v1/lasting_effects_service.proto.
 func (x *RollEffectSaveResponse) GetInspirationOffer() *OutsideInspirationOffer {
 	if x != nil {
 		return x.InspirationOffer
@@ -1256,6 +1265,7 @@ func (x *RollEffectSaveResponse) GetInspirationOffer() *OutsideInspirationOffer 
 	return nil
 }
 
+// Deprecated: Marked as deprecated in meurpg/play/v1/lasting_effects_service.proto.
 func (x *RollEffectSaveResponse) GetLuckyOffer() *LuckyOffer {
 	if x != nil {
 		return x.LuckyOffer
@@ -2128,12 +2138,12 @@ const file_meurpg_play_v1_lasting_effects_service_proto_rawDesc = "" +
 	"\x0fsecond_d20_face\x18\n" +
 	" \x01(\x05H\x01R\rsecondD20Face\x88\x01\x01B\x06\n" +
 	"\x04rollB\x12\n" +
-	"\x10_second_d20_face\"\xe5\x02\n" +
+	"\x10_second_d20_face\"\xed\x02\n" +
 	"\x16RollEffectSaveResponse\x127\n" +
 	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\x128\n" +
-	"\x06result\x18\x02 \x01(\v2 .meurpg.play.v1.EffectSaveResultR\x06result\x12T\n" +
-	"\x11inspiration_offer\x18\x03 \x01(\v2'.meurpg.play.v1.OutsideInspirationOfferR\x10inspirationOffer\x12;\n" +
-	"\vlucky_offer\x18\x04 \x01(\v2\x1a.meurpg.play.v1.LuckyOfferR\n" +
+	"\x06result\x18\x02 \x01(\v2 .meurpg.play.v1.EffectSaveResultR\x06result\x12X\n" +
+	"\x11inspiration_offer\x18\x03 \x01(\v2'.meurpg.play.v1.OutsideInspirationOfferB\x02\x18\x01R\x10inspirationOffer\x12?\n" +
+	"\vlucky_offer\x18\x04 \x01(\v2\x1a.meurpg.play.v1.LuckyOfferB\x02\x18\x01R\n" +
 	"luckyOffer\x12E\n" +
 	"\x0fheld_roll_offer\x18\x05 \x01(\v2\x1d.meurpg.play.v1.HeldRollOfferR\rheldRollOffer\"\xba\x02\n" +
 	"\x14SetExhaustionRequest\x12\x1f\n" +

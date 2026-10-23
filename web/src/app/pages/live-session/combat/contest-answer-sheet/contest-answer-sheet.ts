@@ -4,6 +4,7 @@ import {
   ElementRef,
   computed,
   effect,
+  Injector,
   inject,
   signal,
   viewChild,
@@ -17,12 +18,16 @@ import type { Observable } from 'rxjs';
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
   type ContestSkillOption,
+  type ContestView,
   ContestPurpose,
   ContestSkill,
   ContestStatus,
   RollModeKind,
 } from '../../../../../gen/meurpg/play/v1/contest_types_pb';
 import { ActionKey } from '../../../../core/connect/idempotency';
+import { contestHeld, waysOf } from '../contest-held';
+import { ResourceClient } from '../../../../core/resources/resources-client';
+import { HeldRollPrompt } from '../../../../shared/held-roll-prompt/held-roll-prompt';
 import { article } from '../../../../core/combat/combat-log';
 import { RollAnimator, showOfCheck } from '../../../../shared/roll-overlay/roll-animator';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
@@ -93,7 +98,15 @@ export function openContestAnswerSheet(
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-contest-answer-sheet',
-  imports: [AttackSteps, CheckRollForm, ContestRoll, MatButtonModule, MatIconModule, SheetFrame],
+  imports: [
+    AttackSteps,
+    CheckRollForm,
+    ContestRoll,
+    HeldRollPrompt,
+    MatButtonModule,
+    MatIconModule,
+    SheetFrame,
+  ],
   templateUrl: './contest-answer-sheet.html',
   styleUrl: '../contest-sheet/contest-sheet.scss',
 })
@@ -107,6 +120,25 @@ export class ContestAnswerSheet {
   protected readonly error = signal('');
   protected readonly skill = signal<ContestSkill | null>(null);
 
+  private readonly injector = inject(Injector);
+  private get resources(): ResourceClient {
+    return this.injector.get(ResourceClient); // built when a question is answered: the sheet needs it for no other call
+  }
+  /** The question of the defender's roll when the d20 was kept for one: Lucky's 1, then the Bardic Inspiration die. */
+  protected readonly held = contestHeld({
+    resources: () => this.resources,
+    campaignId: this.data.campaignId,
+    busy: this.busy,
+    error: this.error,
+    side: 'contestAnswer',
+    settled: (encounter, contest) => {
+      this.data.state.apply(encounter);
+      this.keys.renew();
+      this.settled(contest, true, this.chosenSkill());
+    },
+    asked: (encounter) => this.data.state.apply(encounter),
+  });
+  protected readonly ways = waysOf(this.data);
   private readonly keys = new ActionKey();
   private readonly frame = viewChild(SheetFrame);
   private readonly done = viewChild('done', { read: ElementRef<HTMLButtonElement> });
@@ -221,18 +253,27 @@ export class ContestAnswerSheet {
         this.keys.keyFor({ contest: this.data.contestId, skill, die }),
       );
       this.data.state.apply(res.encounter);
-      this.data.contests.applyContest(res.contest);
-      // The defender's own d20 (nothing when the master rolls for the player).
-      const show = die
-        ? showOfCheck(`Teste de ${skillName(skill)}`, res.contest.defenderRoll, { withTotal: true })
-        : null;
-      if (show) {
-        this.animator.play(show);
+      if (!res.contest) {
+        // The d20 is kept for a question (a halfling's 1, a Bardic Inspiration die): the player decides before the contest settles.
+        this.held.ask(res.held);
+        return;
       }
+      this.settled(res.contest, die !== null, skill);
     } catch (err) {
       this.error.set(combatErrorMessage(err, 'responder à disputa'));
     } finally {
       this.busy.set(false);
+    }
+  }
+
+  /** The contest is answered: the defender's own d20 (nothing when the master rolls for the player). */
+  private settled(contest: ContestView, rolled: boolean, skill: ContestSkill): void {
+    this.data.contests.applyContest(contest);
+    const show = rolled
+      ? showOfCheck(`Teste de ${skillName(skill)}`, contest.defenderRoll, { withTotal: true })
+      : null;
+    if (show) {
+      this.animator.play(show);
     }
   }
 

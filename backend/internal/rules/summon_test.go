@@ -13,7 +13,7 @@ import (
 func warlockOfTheChain() Build {
 	return Build{
 		BaseScores: map[Ability]int{STR: 8, DEX: 14, CON: 14, INT: 10, WIS: 10, CHA: 16},
-		Race:       "race:human", Background: "background:acolyte",
+		Race:       "race:human", Background: "background:acolyte", Languages: testLanguages,
 		Classes:        []ClassLevel{{Class: "class:warlock", Level: 3}},
 		FeatureChoices: []string{"feature:pact-of-the-chain"},
 	}
