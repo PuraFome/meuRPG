@@ -31,7 +31,7 @@ describe('the log lines of spell zones', () => {
     );
     expect(
       text(effect({ change: CombatLogEffectChange.ZONE_MOVED, targetLabels: ['Cultista 1'] })),
-    ).toBe('Raio Lunar do Cultista 1 mudou de lugar');
+    ).toBe('Raio Lunar da Cultista 1 mudou de lugar');
   });
 
   it('says a creature began its turn in a zone, and how the save went', () => {

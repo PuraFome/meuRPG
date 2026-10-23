@@ -8,12 +8,9 @@ import {
 import { zoneEndError, zoneMoveError } from './zone-errors';
 
 function blocked(reason: EncounterBlockedReason, missingFt = 0): ConnectError {
-  return new ConnectError(
-    'blocked',
-    Code.FailedPrecondition,
-    undefined,
-    [{ desc: EncounterBlockedSchema, value: create(EncounterBlockedSchema, { reason, missingFt }) }],
-  );
+  return new ConnectError('blocked', Code.FailedPrecondition, undefined, [
+    { desc: EncounterBlockedSchema, value: create(EncounterBlockedSchema, { reason, missingFt }) },
+  ]);
 }
 
 describe('the words of a refused zone move or end', () => {

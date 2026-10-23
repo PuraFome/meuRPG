@@ -1,7 +1,17 @@
 import { SpellAreaShape } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { SpellZoneMovement, SpellZoneVisibility } from '../../../gen/meurpg/play/v1/combat_pb';
 import { combatant, encounter, spellZone } from './combat-testing';
-import { zoneView, zoneViews, type ZoneViewer } from './zones';
+import {
+  zoneView as rawView,
+  zoneViews as rawViews,
+  type ZoneView,
+  type ZoneViewer,
+} from './zones';
+
+// The app keeps a number and its unit (and a dot and its word) together with no-break spaces; the specs read plain spaces.
+const plain = <T>(v: T): T => JSON.parse(JSON.stringify(v).replace(/\u00a0/g, ' ')) as T;
+const zoneView = (...args: Parameters<typeof rawView>): ZoneView => plain(rawView(...args));
+const zoneViews = (...args: Parameters<typeof rawViews>): ZoneView[] => plain(rawViews(...args));
 
 const master: ZoneViewer = { master: true, combatants: [] };
 const player: ZoneViewer = { master: false, combatants: [] };
@@ -13,7 +23,11 @@ describe('the label and the detail line of a zone', () => {
 
   it('says the shape and size in meters, the save, the damage and the half', () => {
     const v = zoneView(spellZone({ id: 'z' }), master);
-    expect(v.pieces).toEqual(['Cilindro de 1,5 m de raio', 'Constituição CD 14', '2d10 radiante, metade se passar']);
+    expect(v.pieces).toEqual([
+      'Cilindro de 1,5 m de raio',
+      'Constituição CD 14',
+      '2d10 radiante, metade se passar',
+    ]);
     expect(v.detail).toBe(
       'Cilindro de 1,5 m de raio · Constituição CD 14 · 2d10 radiante, metade se passar',
     );
@@ -35,11 +49,22 @@ describe('the label and the detail line of a zone', () => {
 
   it('says "sem teste" for damage with no save, and nothing for a zone with neither', () => {
     const noSave = zoneView(
-      spellZone({ id: 'z', saveAbility: '', saveAbilityNamePt: '', saveDc: undefined, halfOnSave: false, damageDice: '4d4', damageTypeNamePt: 'cortante' }),
+      spellZone({
+        id: 'z',
+        saveAbility: '',
+        saveAbilityNamePt: '',
+        saveDc: undefined,
+        halfOnSave: false,
+        damageDice: '4d4',
+        damageTypeNamePt: 'cortante',
+      }),
       master,
     );
     expect(noSave.pieces).toEqual(['Cilindro de 1,5 m de raio', '4d4 cortante, sem teste']);
-    const web = zoneView(spellZone({ id: 'z', damageDice: '', damageTypeNamePt: '', damageTypeKey: '' }), master);
+    const web = zoneView(
+      spellZone({ id: 'z', damageDice: '', damageTypeNamePt: '', damageTypeKey: '' }),
+      master,
+    );
     expect(web.pieces).toEqual(['Cilindro de 1,5 m de raio', 'Constituição CD 14']);
   });
 
@@ -169,14 +194,17 @@ describe('who can move or end a zone', () => {
 describe('the zones of an encounter', () => {
   it('reads encounter.zones in order, and nothing for no combat or no zones', () => {
     const e = encounter({
-      zones: [spellZone({ id: 'a' }), spellZone({ id: 'b', spellNamePt: 'Teia', ownerLabel: 'Pensantus' })],
+      zones: [
+        spellZone({ id: 'a' }),
+        spellZone({ id: 'b', spellNamePt: 'Teia', ownerLabel: 'Pensantus' }),
+      ],
     });
-    expect(zoneViews(e, master).map((z) => z.label)).toEqual([
+    expect(zoneViews(e, true).map((z) => z.label)).toEqual([
       'Raio Lunar · Bartolo',
       'Teia · Pensantus',
     ]);
-    expect(zoneViews(null, master)).toEqual([]);
-    expect(zoneViews(encounter(), master)).toEqual([]);
+    expect(zoneViews(null, true)).toEqual([]);
+    expect(zoneViews(encounter(), true)).toEqual([]);
   });
 
   it('resolves the occupants against the combatants of that encounter', () => {
@@ -184,6 +212,6 @@ describe('the zones of an encounter', () => {
       combatants: [combatant({ id: 'tor', label: 'Tor' })],
       zones: [spellZone({ id: 'a', occupantIds: ['tor'] })],
     });
-    expect(zoneViews(e, player)[0].occupants).toBe('Aqui: Tor');
+    expect(zoneViews(e, false)[0].occupants).toBe('Aqui: Tor');
   });
 });

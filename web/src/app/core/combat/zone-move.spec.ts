@@ -19,7 +19,7 @@ describe('the preview of moving a zone', () => {
   it('measures the distance from the current origin in feet and squares', () => {
     const p = zoneMovePreview(moonbeam, { col: 11, row: 6 }, false);
     expect(p.distanceFt).toBe(15);
-    expect(p.text).toBe('4,5 m · 3 quadrados');
+    expect(p.text.replace(/\u00a0/g, ' ')).toBe('4,5 m · 3 quadrados');
   });
 
   it('is in range up to 60 ft and out of range beyond, for a player', () => {

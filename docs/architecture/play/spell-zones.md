@@ -80,3 +80,11 @@ A player gets the numbers (`save_*`, damage, `notes`, `moves_per_turn_ft`, `roun
 
 `zones_test.go` (Spirit Guardians, Moonbeam, Cloudkill, Web, the push, the forced move, the undo, the player's character, the permissions and the retry) and `zones_hidden_test.go` (the viewer matrix for a hidden caster, a revealed one and a hidden creature, and the stream hint); `internal/leaktest` classifies `MoveSpellZone`.
 The grid cube is in `rules/grid/area_test.go`.
+
+## The web
+
+The zones ride on `Encounter.zones`: a change arrives as the usual `encounter_changed` hint (the master alone when the caster is hidden) and the combat is read again, so a refresh carries them too and nothing else is wired.
+`core/combat/zones.ts` turns each `SpellZone` into a `ZoneView` (label, detail pieces, rounds left, concentration, occupants, the "Só você vê" flag, `canMove`, `canEnd`); a zone with `details_hidden` reads name, area, caster, concentration and occupants only, even if a field slipped through, and the client never fills what the server left out.
+`zone-move.ts` holds the move range copy (`ZONE_MOVE_RANGE_FT`, the server's `moveRangeFt`) and `zoneMovePreview`, which draws the open-floor squares with `sphereSquares`; no wall cuts the preview, the server cuts the area on commit.
+`MoveSpellZone` and `EndSpellZone` are in `CombatCastCalls`, one idempotency key per request kept across retries and renewed after success; `zone-errors.ts` words their refusals.
+The log lines for `ZONE_MOVED`, the `zone_enter` and `zone_start` catches and the end reasons are in `combat-log-effects.ts`.
