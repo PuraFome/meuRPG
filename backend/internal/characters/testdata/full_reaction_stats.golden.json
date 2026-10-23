@@ -24,6 +24,7 @@
     "DexMod": 0,
     "Reduce": null,
     "Proficiency": 0,
+    "Protection": false,
     "CuttingWords": false,
     "BardLevel": 0,
     "CuttingAsk": "attacks",
@@ -66,6 +67,7 @@
       }
     ],
     "Proficiency": 2,
+    "Protection": false,
     "CuttingWords": true,
     "BardLevel": 1,
     "CuttingAsk": "all",
@@ -101,6 +103,7 @@
     "DexMod": 0,
     "Reduce": null,
     "Proficiency": 0,
+    "Protection": false,
     "CuttingWords": false,
     "BardLevel": 0,
     "CuttingAsk": "attacks",

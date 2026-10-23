@@ -221,6 +221,9 @@ func (u *undoer) spendResourceBack(ctx context.Context, who playdb.Combatant, ke
 // opened goes away. A Bardic Inspiration die the roll used is held again, and the
 // turn's melee hit mark is the one before the hit.
 func (u *undoer) attackRolled(ctx context.Context, ev actionEvent) error {
+	if err := u.protectionBack(ctx, ev); err != nil {
+		return err
+	}
 	if who, ok := u.find(ev.Actor); ok {
 		if err := u.attackerBack(ctx, who, ev); err != nil {
 			return err
@@ -242,14 +245,23 @@ func (u *undoer) attackRolled(ctx context.Context, ev actionEvent) error {
 	return nil
 }
 
+// dieHeldAgain gives the combatant the Bardic Inspiration die the roll used.
+func (u *undoer) dieHeldAgain(ctx context.Context, who playdb.Combatant, ev actionEvent) error {
+	if ev.Res == nil || ev.Res.Kind != resBardicUse {
+		return nil
+	}
+	sides, expires := ev.Res.Sides, ev.Res.ExpiresRound
+	if err := u.c.q.SetCombatantInspirationDie(ctx, playdb.SetCombatantInspirationDieParams{ID: who.ID, Sides: &sides, FromID: nilIfEmpty(ev.Res.FromID), ExpiresRound: &expires}); err != nil {
+		return fmt.Errorf("hold the die again: %w", err)
+	}
+	return nil
+}
+
 // attackerBack gives the attacker what the roll spent: the die, the extra action,
 // the action or the reaction.
 func (u *undoer) attackerBack(ctx context.Context, who playdb.Combatant, ev actionEvent) error {
-	if ev.Res != nil && ev.Res.Kind == resBardicUse {
-		sides, expires, from := ev.Res.Sides, ev.Res.ExpiresRound, ev.Res.FromID
-		if err := u.c.q.SetCombatantInspirationDie(ctx, playdb.SetCombatantInspirationDieParams{ID: who.ID, Sides: &sides, FromID: &from, ExpiresRound: &expires}); err != nil {
-			return fmt.Errorf("hold the die again: %w", err)
-		}
+	if err := u.dieHeldAgain(ctx, who, ev); err != nil {
+		return err
 	}
 	if ev.ExtraUsed {
 		if err := u.giveExtraActionBack(ctx, who); err != nil {
@@ -366,13 +378,25 @@ func (u *undoer) partsSpentBack(ctx context.Context, ev actionEvent) error {
 			}
 		}
 	}
-	if ev.OnceBefore == nil {
+	return u.onceMarksBack(ctx, who, ev.OnceBefore)
+}
+
+// onceMarksBack puts the once-per-turn marks of the roll's attacker back: Sneak Attack's and Colossus
+// Slayer's, and the table's when the roll changed them.
+func (u *undoer) onceMarksBack(ctx context.Context, who playdb.Combatant, before *onceMarks) error {
+	if before == nil {
 		return nil
 	}
 	if err := u.c.q.SetCombatantOncePerTurn(ctx, playdb.SetCombatantOncePerTurnParams{
-		ID: who.ID, SneakAttackTurn: nilIfEmpty(ev.OnceBefore.Sneak), ColossusSlayerTurn: nilIfEmpty(ev.OnceBefore.Colossus),
+		ID: who.ID, SneakAttackTurn: nilIfEmpty(before.Sneak), ColossusSlayerTurn: nilIfEmpty(before.Colossus),
 	}); err != nil {
 		return fmt.Errorf("put back the once-per-turn marks: %w", err)
+	}
+	if !before.TableChanged {
+		return nil
+	}
+	if err := u.c.q.SetCombatantTableOnceTurns(ctx, playdb.SetCombatantTableOnceTurnsParams{ID: who.ID, TableOnceTurns: writeTableOnce(before.Table)}); err != nil {
+		return fmt.Errorf("put back the table's once-per-turn marks: %w", err)
 	}
 	return nil
 }
@@ -564,7 +588,30 @@ func (u *undoer) actionSpentBack(ctx context.Context, who playdb.Combatant, ev a
 	if ev.Heal && ev.Before != nil {
 		return u.putCreatureOrVitals(ctx, who, *ev.Before, ev.DeathBefore)
 	}
-	return nil
+	return u.channelBack(ctx, ev.Channel)
+}
+
+// channelBack takes back what a Channel Divinity action did: the hit points Preserve Life gave and the effect
+// Turn Undead put on the undead.
+func (u *undoer) channelBack(ctx context.Context, ch *channelEvent) error {
+	if ch == nil {
+		return nil
+	}
+	for _, h := range ch.Heals {
+		target, ok := u.find(h.Target)
+		if !ok || h.Before == nil {
+			continue
+		}
+		if err := u.putCreatureOrVitals(ctx, target, *h.Before, h.DeathBefore); err != nil {
+			return err
+		}
+	}
+	for _, id := range ch.Effects {
+		if err := u.c.q.DeleteLastingEffect(ctx, id); err != nil {
+			return fmt.Errorf("take the turned effect away: %w", err)
+		}
+	}
+	return u.s.refreshCombatants(ctx, u.c, ch.Targets...)
 }
 
 // hitPointsAdjusted: the master's correction of a combatant's hit points.
@@ -583,7 +630,7 @@ func (u *undoer) spellCast(ctx context.Context, ev actionEvent) error {
 		return nil
 	}
 	steps := []func(context.Context, playdb.Combatant, actionEvent) error{
-		u.castCounters, u.castDieBack, u.castEffectsBack, u.castSpentBack, u.castConcentrationBack, u.castCreaturesBack, u.castRevealBack, u.castHitsBack,
+		u.castCounters, u.castDieBack, u.castEffectsBack, u.castTeleportBack, u.castSpentBack, u.castConcentrationBack, u.castCreaturesBack, u.castRevealBack, u.castHitsBack,
 	}
 	for _, step := range steps {
 		if err := step(ctx, who, ev); err != nil {
@@ -626,6 +673,11 @@ func (u *undoer) castDieBack(ctx context.Context, who playdb.Combatant, ev actio
 // castEffectsBack takes away the effects the cast put on its targets and the mark of
 // Hunter's Mark, and puts back the marks the cast took off.
 func (u *undoer) castEffectsBack(ctx context.Context, who playdb.Combatant, ev actionEvent) error {
+	if ev.CastID != "" { // the area the cast kept on the map
+		if err := u.c.q.DeleteSpellZonesOfCast(ctx, playdb.DeleteSpellZonesOfCastParams{EncounterID: u.c.enc.ID, CastID: ev.CastID}); err != nil {
+			return fmt.Errorf("take the spell zone of the cast away: %w", err)
+		}
+	}
 	if ev.Lasting != nil { // the effects the cast put on its targets
 		for _, id := range ev.Lasting.Effects {
 			if err := u.c.q.DeleteLastingEffect(ctx, id); err != nil {
@@ -877,6 +929,9 @@ func (u *undoer) deathSaveRolled(ctx context.Context, ev actionEvent) error {
 	who, ok := u.find(ev.Actor)
 	if !ok {
 		return nil
+	}
+	if err := u.dieHeldAgain(ctx, who, ev); err != nil {
+		return err
 	}
 	if ev.Before != nil { // a natural 20 brought it back with 1 hit point
 		after, err := u.putVitals(ctx, who, *ev.Before)

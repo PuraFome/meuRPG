@@ -13,6 +13,7 @@ import {
   type InitiativeRoll,
   type DamageDie,
   type ActionResult,
+  type InitiativeResult,
 } from './combat-client-types';
 import { toHitPoints, toParticipant, need } from './combat-client-wire';
 import { type CombatClientBase } from './combat-client-base';
@@ -89,7 +90,7 @@ export class CombatTurnCalls {
     encounterId: string,
     combatantId: string,
     roll: InitiativeRoll,
-  ): Promise<Encounter> {
+  ): Promise<InitiativeResult> {
     const res = await this.base.keyed(
       ['submitInitiative', campaignId, encounterId, combatantId, roll],
       (sent) =>
@@ -104,7 +105,7 @@ export class CombatTurnCalls {
               : { case: 'd20Face', value: roll.face },
         }),
     );
-    return need(res.encounter, 'SubmitInitiative');
+    return { encounter: need(res.encounter, 'SubmitInitiative'), held: res.heldRollOffer };
   }
 
   async setOrder(

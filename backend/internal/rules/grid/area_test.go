@@ -85,6 +85,22 @@ func TestSphereIsCenteredOnItsOriginWithTheExactRadius(t *testing.T) {
 	}
 }
 
+func TestCubeAtAPointIsCenteredOnItWithTheExtraSquareOnTheLargerSide(t *testing.T) {
+	t.Parallel()
+	origin := grid.Square{Col: 6, Row: 6}
+	odd := (grid.Area{Shape: grid.ShapeCube, SizeFt: 15}).FromPoint(origin)
+	if len(odd) != 9 || !slices.Contains(odd, grid.Square{Col: 5, Row: 5}) || !slices.Contains(odd, grid.Square{Col: 7, Row: 7}) {
+		t.Errorf("a 15 ft cube = %v, want the 3 by 3 squares around the origin", odd)
+	}
+	even := (grid.Area{Shape: grid.ShapeCube, SizeFt: 20}).FromPoint(origin)
+	if len(even) != 16 || !slices.Contains(even, grid.Square{Col: 5, Row: 5}) || !slices.Contains(even, grid.Square{Col: 8, Row: 8}) || slices.Contains(even, grid.Square{Col: 4, Row: 6}) {
+		t.Errorf("a 20 ft cube = %v, want 4 by 4 squares from column 5 to 8 and row 5 to 8", even)
+	}
+	if one := (grid.Area{Shape: grid.ShapeCube, SizeFt: 5}).FromPoint(origin); len(one) != 1 || one[0] != origin {
+		t.Errorf("a 5 ft cube = %v, want the origin alone", one)
+	}
+}
+
 func TestConeFromTheCasterIsAsWideAsItIsFarFromTheCaster(t *testing.T) {
 	t.Parallel()
 	g := blank(9, 9)

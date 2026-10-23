@@ -212,7 +212,12 @@ export interface TargetRule {
   readonly max: number;
   /** At least this many: 0 for an area, which may meet nobody. */
   readonly min: number;
+  /** The shares to hand out are rays (Raio Ardente), not darts: the words change, the stepper does not. */
+  readonly rays?: boolean;
 }
+
+/** Raio Ardente: its rays go to the targets as the caster shares them out, all to one if they want. */
+const SCORCHING_RAY_KEY = 'spell:scorching-ray';
 
 export const MAX_CAST_TARGETS = 10;
 
@@ -232,7 +237,12 @@ export function targetRule(
   }
   if (st.darts.length > 0) {
     const n = dartsAt(st.darts, slotLevel);
-    return { kind: 'darts', max: Math.min(n, MAX_CAST_TARGETS), min: 1 };
+    return {
+      kind: 'darts',
+      max: Math.min(n, MAX_CAST_TARGETS),
+      min: 1,
+      ...(st.spellKey === SCORCHING_RAY_KEY ? { rays: true } : {}),
+    };
   }
   // A spell that stays on the caster lists only the caster.
   if (st.maxTargets === 0 && st.targets.every((t) => t.combatantId === casterId)) {
@@ -331,11 +341,14 @@ export function dartsPlaced(dealt: Dealt): number {
 }
 
 /** The counter in the footer next to "Conjurar": what is missing, and when all are placed. */
-export function dartsStatus(total: number, dealt: Dealt): string {
+export function dartsStatus(total: number, dealt: Dealt, rays = false): string {
   const placed = dartsPlaced(dealt);
+  const done = rays
+    ? ['raio distribuído', 'raios distribuídos']
+    : ['dardo distribuído', 'dardos distribuídos'];
   return placed === total
-    ? `${total} de ${total} ${total === 1 ? 'dardo distribuído' : 'dardos distribuídos'}.`
-    : `Distribua todos os dardos: ${placed} de ${total}.`;
+    ? `${total} de ${total} ${total === 1 ? done[0] : done[1]}.`
+    : `Distribua ${rays ? 'todos os raios' : 'todos os dardos'}: ${placed} de ${total}.`;
 }
 
 /** The dealt darts with one more or one less on a target, inside 0 and the total. */

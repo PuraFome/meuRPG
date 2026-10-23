@@ -594,7 +594,8 @@ func wireModules(
 			Audio:           opts.Policy.Audio,
 			Logger:          logger,
 		},
-		Logger: logger,
+		FreeRolls: opts.Policy.FreeRoll, // the free dice roller's limit per user (MR-052)
+		Logger:    logger,
 	})
 	if err != nil {
 		return nil, err

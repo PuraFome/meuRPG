@@ -6,6 +6,8 @@ import { saveDocumentRPC, tableWithDocumentParts } from './document-support';
 import { exportThroughScreen, joinAsPlayer, tableForPackage, zipWithManifest } from './campaign-package-support';
 import { expectAligned } from './layout';
 import { expectLoaded } from './loaded';
+import { diceTable, openDice, stepModifier } from './free-dice-support';
+import { chooseReaders, lineOf, messageBoxOf, openConversaTable, say } from './conversa-support';
 import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
 import { adjustVitalsRPC, beginAttackCombatRPC, setGridRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
@@ -7974,12 +7976,12 @@ async function scanEffectsPlayerScreens(browser: Browser, colorScheme: 'light' |
     await expect(save.getByRole('button', { name: 'Rolar no app' })).toBeVisible();
     await expectScreenPasses(p, `Fim do seu turno, as três respostas ${where}`);
     await save.getByRole('button', { name: 'Digitar o resultado' }).click();
-    // The exhaustion of level 4 gives disadvantage on the save (two d20), and Bênção adds its d4.
-    await expect(save.getByLabel('Primeiro d20')).toBeVisible();
+    // The exhaustion of level 4 gives disadvantage on the save, and Pensantus (a Rock Gnome: Gnome Cunning, a Wisdom
+    // save against a spell) has advantage: they cancel (SRD 5.1), so one d20, and Bênção adds its d4.
+    await expect(save.getByLabel(/Resultado do d20/)).toBeVisible();
     await expectScreenPasses(p, `Fim do seu turno, digitando o d20 ${where}`);
     await save.getByLabel('Resultado do d4 (Bênção)').fill('2');
-    await save.getByLabel('Primeiro d20').fill('20');
-    await save.getByLabel('Segundo d20').fill('20');
+    await save.getByLabel(/Resultado do d20/).fill('20');
     await save.getByRole('button', { name: /Confirmar/ }).click();
     await expect(save).toContainText('Passou');
     await expectScreenPasses(p, `Fim do seu turno, o resultado ${where}`);
@@ -8010,4 +8012,138 @@ test('os efeitos que duram, na tela do jogador, passam no axe e nas conferência
 test('os efeitos que duram, na tela do jogador, passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@W7-E', '@RN-22'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanEffectsPlayerScreens(browser, 'dark', 390);
+});
+
+// The free dice roller (MR-052): the header's "Dados" button, and the sheet of a phone or the dialog of a desktop for
+// both roles: the form, the master's "Só eu" chosen and the result card. The button off while the stream reconnects is
+// covered by the header's spec: Playwright's offline mode does not end a stream that is already open.
+async function scanFreeDiceScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(240_000);
+  const where = `(${colorScheme}, ${width}px)`;
+  const { m, p, done } = await diceTable(browser, `Acessibilidade rolar dados ${Date.now()}`, { master: width, player: width }, colorScheme);
+  try {
+    await expect(m.getByRole('button', { name: 'Dados', exact: true })).toBeEnabled();
+    await expectScreenPasses(m, `Sessão com o botão Dados, mestre ${where}`);
+    await expectScreenPasses(p, `Sessão com o botão Dados, jogador ${where}`);
+
+    // The player: the form, then the result card of 2d6 + 3.
+    const playerSheet = await openDice(p);
+    await expectScreenPasses(p, `Rolar dados, jogador ${where}`);
+    await playerSheet.getByRole('button', { name: '2d6', exact: true }).click();
+    await stepModifier(playerSheet, 0, 3);
+    await playerSheet.getByRole('button', { name: 'Rolar 2d6 + 3', exact: true }).click();
+    await expect(playerSheet.locator('app-free-roll-card .card__line')).toContainText('2d6 + 3 = ');
+    await expect(playerSheet.getByRole('button', { name: 'Rolar 2d6 + 3 de novo' })).toBeEnabled();
+    await expectScreenPasses(p, `Rolar dados, o resultado do jogador ${where}`);
+    await p.keyboard.press('Escape');
+    await expect(playerSheet).toBeHidden();
+
+    // The master: the form with "Para a mesa", with "Só eu" chosen, and the secret result with its badge.
+    const masterSheet = await openDice(m);
+    await expectScreenPasses(m, `Rolar dados, mestre, para a mesa ${where}`);
+    await masterSheet.getByRole('radiogroup', { name: 'Quem vê' }).locator('label', { hasText: 'Só eu' }).click();
+    await expect(masterSheet.getByRole('button', { name: 'Rolar 1d20, só eu', exact: true })).toBeVisible();
+    await expectScreenPasses(m, `Rolar dados, mestre, só eu ${where}`);
+    await masterSheet.getByRole('button', { name: 'Rolar 1d20, só eu', exact: true }).click();
+    await expect(masterSheet.getByText('Só você viu esta rolagem.')).toBeVisible();
+    await expectScreenPasses(m, `Rolar dados, o resultado secreto do mestre ${where}`);
+    await m.keyboard.press('Escape');
+    await expect(masterSheet).toBeHidden();
+  } finally {
+    await done();
+  }
+}
+
+test('o rolador de dados livre passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-052'] }, async ({ browser }) => {
+  await scanFreeDiceScreens(browser, 'light', 1280);
+});
+
+test('o rolador de dados livre passa no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@MR-052'] }, async ({ browser }) => {
+  await scanFreeDiceScreens(browser, 'light', 390);
+});
+
+test('o rolador de dados livre passa no axe e nas conferências de layout no tema escuro, no desktop', { tag: ['@a11y', '@MR-052'] }, async ({ browser }) => {
+  await scanFreeDiceScreens(browser, 'dark', 1280);
+});
+
+test('o rolador de dados livre passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-052'] }, async ({ browser }) => {
+  await scanFreeDiceScreens(browser, 'dark', 390);
+});
+
+// The scene's conversation (MR-051, RN-36): the empty panel, the lines (a narration, a whisper, an NPC), the "Para"
+// chooser open (a dialog on a computer, a bottom sheet on a phone) and, on a phone, the "Conversa" tab with its unread
+// count and the full-screen view. Each scan waits for the state it names: a line, the tab's name, the chooser's line.
+async function scanConversationScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const table = await openConversaTable(browser, `Acessibilidade conversa ${Date.now()}`, { width, colorScheme });
+  const { master: m, pensantus: p } = table;
+  const where = `(${colorScheme}, ${width}px)`;
+  const phone = width < 768;
+  const openChat = async (page: Page) => {
+    if (phone) {
+      await page.getByRole('button', { name: /^Conversa/ }).click();
+    }
+    // The empty feed is not drawn; the panel is there once its message box is.
+    await expect(messageBoxOf(page)).toBeVisible();
+  };
+  try {
+    await openChat(m);
+    await expect(m.getByText('A conversa começa quando o mestre narrar a cena.')).toBeVisible();
+    await expectScreenPasses(m, `Conversa vazia, do mestre ${where}`);
+
+    // The chooser, with two ways to choose and its live line.
+    await m.getByLabel('Para', { exact: true }).click();
+    const chooser = m.getByRole('dialog', { name: 'Quem lê esta mensagem?' });
+    await chooser.locator('label', { hasText: 'Só algumas pessoas' }).click();
+    await chooser.getByRole('checkbox', { name: /^Pensantus/ }).check();
+    await expect(chooser.getByRole('status')).toContainText('Pensantus lê esta mensagem.');
+    await expectScreenPasses(m, `Conversa, quem lê esta mensagem ${where}`);
+    await chooser.getByRole('button', { name: 'Pronto' }).click();
+    await expect(chooser).toBeHidden();
+
+    const whisper = `Um sussurro só para Pensantus ${Date.now()}`;
+    await say(m, whisper);
+    await expect(lineOf(m, whisper)).toContainText('só para Pensantus');
+    await chooseReaders(m, []);
+    const narration = `A taverna fica em silêncio quando você entra ${Date.now()}`;
+    await say(m, narration);
+    await expect(lineOf(m, narration)).toBeVisible();
+    await m.getByRole('combobox', { name: 'Falar como' }).click();
+    await m.getByRole('option', { name: /^Capitão Goblin/ }).click();
+    const npc = `Quem ousa entrar no meu covil? ${Date.now()}`;
+    await say(m, npc);
+    await expect(lineOf(m, npc)).toContainText('Capitão Goblin');
+    await expectScreenPasses(m, `Conversa, do mestre com as linhas ${where}`);
+
+    // The player: on a phone the tab says there is news, then the full-screen view.
+    if (phone) {
+      await expect(p.getByRole('button', { name: /^Conversa, \d+ mensagens? novas?$/ })).toBeVisible();
+      await expectScreenPasses(p, `Aba Conversa com mensagens novas ${where}`);
+    }
+    await openChat(p);
+    await expect(lineOf(p, npc)).toBeVisible();
+    await expect(lineOf(p, whisper)).toContainText('Sussurro do mestre · só você lê');
+    await expectScreenPasses(p, `Conversa, do jogador ${where}`);
+  } finally {
+    await table.close();
+  }
+}
+
+test('a conversa da cena passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-051', '@RN-36'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanConversationScreens(browser, 'light', 1280);
+});
+
+test('a conversa da cena passa no axe e nas conferências de layout no tema escuro, no desktop', { tag: ['@a11y', '@MR-051', '@RN-36'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanConversationScreens(browser, 'dark', 1280);
+});
+
+test('a conversa da cena passa no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@MR-051', '@RN-36'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanConversationScreens(browser, 'light', 390);
+});
+
+test('a conversa da cena passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-051', '@RN-36'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanConversationScreens(browser, 'dark', 390);
 });

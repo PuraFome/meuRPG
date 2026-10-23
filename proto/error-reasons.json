@@ -392,7 +392,8 @@
             "NOT_PRONE",
             "CANNOT_STAND_UP",
             "FRENZY_UNAVAILABLE",
-            "NO_MELEE_HIT"
+            "NO_MELEE_HIT", "DESTINATION_REQUIRED", "DESTINATION_UNAVAILABLE", "TELEPORT_TOO_FAR",
+            "CHANNEL_DIVINITY_TARGET", "CHANNEL_DIVINITY_TOO_MUCH"
           ],
           "unsent": [
             "RAGE_END_PENDING"

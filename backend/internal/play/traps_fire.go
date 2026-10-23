@@ -23,6 +23,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -736,9 +737,11 @@ func (s *Service) outsideCharacterTarget(ctx context.Context, c *combatTx, effec
 	if t.saveDice, err = s.outsideSaveDice(ctx, c.tx, ch.ID); err != nil {
 		return trapTarget{}, err
 	}
-	if t.lucky, err = s.outsideLucky(ctx, c.tx, campaignID, ch); err != nil {
+	traits, err := s.outsideTraits(ctx, c.tx, campaignID, ch)
+	if err != nil {
 		return trapTarget{}, err
 	}
+	t.lucky, t.facts = traits.Lucky, combat.Creature{Evasion: traits.Evasion}
 	return t, nil
 }
 
@@ -818,18 +821,18 @@ func (s *Service) damageOutside(ctx context.Context, c *combatTx, pointID, fireI
 	return de, nil
 }
 
-// outsideLucky says the character a trap caught outside a combat is a halfling player's
-// character: the app rolls a 1 on its saving throw again by itself (combat_lucky.go). An NPC
-// never is, and its sheet is not read.
-func (s *Service) outsideLucky(ctx context.Context, tx pgx.Tx, campaignID string, ch link.Character) (bool, error) {
+// outsideTraits are the traits of the character a trap caught outside a combat: whether it is a
+// halfling player's character, whose 1 on a saving throw the app rolls again by itself
+// (combat_lucky.go), and whether it has Evasion. An NPC has neither, and its sheet is not read.
+func (s *Service) outsideTraits(ctx context.Context, tx pgx.Tx, campaignID string, ch link.Character) (link.Traits, error) {
 	if !ch.Player {
-		return false, nil
+		return link.Traits{}, nil
 	}
 	sheet, err := s.roster.CombatSheet(ctx, tx, campaignID, ch.ID)
 	if err != nil {
-		return false, err
+		return link.Traits{}, err
 	}
-	return sheet.Traits.Lucky, nil
+	return sheet.Traits, nil
 }
 
 // TokenDropped implements maps.TrapFirer: the master dropped a player's

@@ -262,6 +262,15 @@ message EffectSavePrompt {
   bool handed_to_master = 14;
   // Whether the effect is the master's to skip ("Pular o teste", a table option).
   bool skippable = 15;
+  // The save is the one an area a spell keeps on the map asks (Moonbeam, Spirit Guardians, Cloudkill,
+  // Web): `effect_id` is then the zone's id. `zone_reason` is "zone_enter" (the creature came in, the first
+  // time on this turn) or "zone_start" (it began its turn inside).
+  string zone_id = 16;
+  string zone_reason = 17;
+  // What a failure does to who answers: the damage type's Portuguese name ("radiante"; empty
+  // for none) and whether a pass halves it. The dice are not here.
+  string damage_type_name_pt = 18;
+  bool half_on_save = 19;
 }
 
 // ExtraDie is a die an effect adds to (sign 1) or takes from (sign -1) a roll.

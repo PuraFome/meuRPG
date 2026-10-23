@@ -1,6 +1,6 @@
 {
   "level 1": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.46+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.48+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -249,6 +249,7 @@
     "Initiative": 3,
     "ArmorClass": 12,
     "ArmorClassDescription": "Sem armadura",
+    "ShieldIdle": false,
     "ArmorCategory": "none",
     "HitPointsMax": 10,
     "HitPointsFromEffects": 0,
@@ -591,6 +592,7 @@
       }
     ],
     "Maneuvers": null,
+    "ExtraDamages": null,
     "AttacksPerAction": 1,
     "CriticalRange": 20,
     "BrutalCriticalDice": 0,
@@ -706,7 +708,7 @@
     "Issues": null
   },
   "level 11": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.46+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.48+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -955,6 +957,7 @@
     "Initiative": 3,
     "ArmorClass": 12,
     "ArmorClassDescription": "Sem armadura",
+    "ShieldIdle": false,
     "ArmorCategory": "none",
     "HitPointsMax": 80,
     "HitPointsFromEffects": 0,
@@ -1638,6 +1641,7 @@
       }
     ],
     "Maneuvers": null,
+    "ExtraDamages": null,
     "AttacksPerAction": 2,
     "CriticalRange": 20,
     "BrutalCriticalDice": 0,
@@ -1862,7 +1866,7 @@
     "Issues": null
   },
   "level 5": {
-    "ContentVersion": "srd51@a8abc93b235c+fx.46+mesa.7",
+    "ContentVersion": "srd51@a8abc93b235c+fx.48+mesa.7",
     "RaceNamePT": "Anão das Brumas",
     "SubraceNamePT": "Da Colina Nevoenta",
     "BackgroundNamePT": "Guarda de farol",
@@ -2111,6 +2115,7 @@
     "Initiative": 3,
     "ArmorClass": 12,
     "ArmorClassDescription": "Sem armadura",
+    "ShieldIdle": false,
     "ArmorCategory": "none",
     "HitPointsMax": 38,
     "HitPointsFromEffects": 0,
@@ -2618,6 +2623,7 @@
       }
     ],
     "Maneuvers": null,
+    "ExtraDamages": null,
     "AttacksPerAction": 2,
     "CriticalRange": 20,
     "BrutalCriticalDice": 0,

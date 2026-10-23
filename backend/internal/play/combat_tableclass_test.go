@@ -78,6 +78,7 @@ func TestMR025_AThirdCasterOfTheTableCastsATableSpell(t *testing.T) {
 		sheet := &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
 			BaseScores: &rulesv1.AbilityScores{Strength: 14, Dexterity: 13, Constitution: 14, Intelligence: 16, Wisdom: 10, Charisma: 8}, RaceKey: "race:human",
 			Background: &charactersv1.FullSheet_BackgroundKey{BackgroundKey: "background:acolyte"},
+			Languages:  []string{"Anão", "Élfico", "Gnômico"},
 			Classes: []*charactersv1.ClassLevel{{
 				ClassKey: "class:fighter", Level: 5, Subclass: &charactersv1.ClassLevel_SubclassKey{SubclassKey: ink.GetKey()},
 			}},

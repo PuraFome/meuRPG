@@ -152,6 +152,7 @@ Where a spell level could be confused with the character's level, the text says 
 | Ouvir | Hear | The button that plays a narrator or NPC line with a generated voice. The audio is made the first time a reader asks and kept with the line (RN-36). |
 | Retrato do NPC | NPC portrait | A gallery image on an NPC's sheet, shown on its card (master only) and in the scene while it is on stage. |
 | Rolagem da cena | Scene roll | The d20 of a scene action plus the bonus (RN-18). The player sees only their own totals, and "Passou" or "Não passou" only if the master shows the DC. Rolls stop at the attempt limit ("Sem mais tentativas"). |
+| Rolagem livre | Free roll | A roll of any dice (d4 to d100, 1 to 20 of them, a modifier from -20 to +20) that a member makes with "Dados" (MR-052), outside the game's rules. The app always rolls it, whatever the table's dice mode (RN-18). A player's goes to the whole table; the master chooses "Para a mesa" or "Só eu", and a "Só eu" roll reaches no player (RN-10). |
 | Tentativas | Attempts | How many times each player can roll a scene action while it is open (1 by default, 1 to 5, or unlimited). Reopening the scene resets the counts (MR-015). |
 | Mostrar a CD aos jogadores | Show the DC to players | The per-scene switch that decides whether players see DCs and whether their rolls passed. Off by default; the master always sees it (MR-015, RN-20). |
 | Teste em grupo | Group check | One check that two or more characters make; the group passes when at least half pass (RN-34). |

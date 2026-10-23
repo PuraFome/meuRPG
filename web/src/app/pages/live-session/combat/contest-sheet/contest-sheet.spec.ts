@@ -4,7 +4,11 @@ import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { CombatantKind, CombatantSide } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  CombatantKind,
+  CombatantSide,
+  HeldRollKind,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
 import {
   CheckOptionSchema,
   ContestAttackOptionKind,
@@ -27,6 +31,7 @@ import {
 } from '../../../../../gen/meurpg/play/v1/contest_types_pb';
 import { CreatureSize } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
+import { heldDie } from '../../../../core/held-rolls/held-roll-testing';
 import { CombatState } from '../../../../core/combat/combat-state';
 import { ContestClient } from '../../../../core/combat/contest-client';
 import { ContestState } from '../../../../core/combat/contest-state';
@@ -361,6 +366,16 @@ describe('ContestSheet', () => {
       expect(el.textContent).toContain('Vantagem');
       expect(el.textContent).toContain('vale');
       expect(el.textContent).toContain('descartado');
+    });
+
+    it('asks the question when the d20 is kept for one and opens no contest until it is answered', async () => {
+      const { el, button, settle } = await toRoll();
+      api.held = heldDie(15, 5, 8, { kind: HeldRollKind.CONTEST });
+      button('Rolar no app')!.click();
+      await settle();
+      expect(api.started).toHaveLength(1);
+      expect(el.querySelector('app-held-roll-prompt')).not.toBeNull();
+      expect(button('Rolar no app')).toBeUndefined();
     });
 
     it('keeps the key when the same roll is sent again after a lost answer, and a new one for other values', async () => {

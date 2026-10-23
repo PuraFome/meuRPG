@@ -168,9 +168,12 @@ test(
       expect(boxes[2]!.y).toBeGreaterThan(boxes[1]!.y);
       await expectNoSideScroll(t.p);
 
-      // A 20 typed from a physical die passes: the effect ends and the sheet says so.
+      // Pensantus is a Rock Gnome: Gnome Cunning gives advantage on a Wisdom save against magic, and the effect is a
+      // spell's, so the save asks for two d20 (SRD 5.1). A 20 typed from a physical die passes: the effect ends and the
+      // sheet says so.
       await typed.click();
-      await sheet.getByLabel(/Resultado do d20/).fill('20');
+      await sheet.getByLabel('Primeiro d20').fill('20');
+      await sheet.getByLabel('Segundo d20').fill('3');
       await sheet.getByRole('button', { name: /Confirmar/ }).click();
       await expect(sheet).toContainText('Passou');
       await expect(sheet).toContainText('Imobilizar Pessoa acabou.');

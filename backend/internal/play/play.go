@@ -44,6 +44,7 @@ import (
 	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/nostore"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/ratelimit"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/tablerules"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/wiring"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
@@ -486,6 +487,8 @@ type Config struct {
 	// Messages configures the scene's conversation (MR-051): its display names,
 	// its voice and its rate limits. The zero value works: no names, no voice, no limit.
 	Messages MessagesConfig
+	// FreeRolls limits a user's rolls of the free dice roller (MR-052). Nil: no limit.
+	FreeRolls *ratelimit.Limiter
 	// Logger receives errors, without personal data. Nil means
 	// slog.Default().
 	Logger *slog.Logger
@@ -526,6 +529,8 @@ type Service struct {
 	// server instance only (docs/operations/README.md).
 	hub  *live.Hub
 	live LiveConfig
+	// free is the free dice roller's rate limit (free_roll_rpc.go).
+	free freeRollDeps
 	// nudges remembers when each character was last nudged (nudge.go), in memory.
 	nudges nudgeBook
 	// msgs is what the scene's conversation needs besides the database (messages.go).
@@ -616,6 +621,7 @@ func New(cfg Config) (*Service, error) {
 	if s.now == nil {
 		s.now = time.Now
 	}
+	s.free = freeRollDeps{limit: cfg.FreeRolls, hit: ratelimit.NewNotifier(s.logger, "free dice rolls by user")}
 	s.puzzles.hints.logger = s.logger
 	s.puzzles.hints.after = cfg.Live.HintAfter
 	if s.roller == nil {

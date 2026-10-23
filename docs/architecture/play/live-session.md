@@ -68,6 +68,7 @@ Events, after `ready`:
 | `creatures_changed`, `revivify_changed`, `character_changes_requested`, `character_resubmitted`, `character_revived`, `content_changed` | Contentless hints; the app reads again |
 | `puzzle_changed` | A puzzle changed; only its id |
 | `calling_you` | The master's nudge, to one player's streams only |
+| `free_roll_rolled` | A table roll of the free dice roller, carried whole, to everyone; a secret roll is sent to nobody ([The free dice roller](free-dice-roller.md)) |
 | `session_message_added` | A line of the scene's conversation, carried whole, to its readers' streams only ([The conversation](#the-conversation-of-the-scene)) |
 | `master_typing` | The master is typing: content-free, to the players |
 | `session_ended` | The session ended; the event carries the session id |
@@ -108,16 +109,16 @@ sequenceDiagram
 
 ### When the stream ends
 
-| When | How it ends | What the app does |
-| --- | --- | --- |
-| The master ends the session | `session_ended`, then an end without error | Shows "Sessão encerrada" |
-| 10 minutes of stream (`DefaultMaxLifetime`) | End without error | Reconnects and reads the snapshot again |
-| The server is shutting down | End without error: `play.Service.Close` runs when shutdown begins | Reconnects |
-| The app fell 16 events behind (`DefaultBuffer`) | `unavailable` | Reconnects and reads the snapshot again |
-| A message goes 30 s without arriving | `Send` fails; `close_reason` `client_gone` | Reconnects |
+| When                                                                   | How it ends                                                                                | What the app does                                                                                                                                             |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The master ends the session                                            | `session_ended`, then an end without error                                                 | Shows "Sessão encerrada"                                                                                                                                      |
+| 10 minutes of stream (`DefaultMaxLifetime`)                            | End without error                                                                          | Reconnects and reads the snapshot again                                                                                                                       |
+| The server is shutting down                                            | End without error: `play.Service.Close` runs when shutdown begins                          | Reconnects                                                                                                                                                    |
+| The app fell 16 events behind (`DefaultBuffer`)                        | `unavailable`                                                                              | Reconnects and reads the snapshot again                                                                                                                       |
+| A message goes 30 s without arriving                                   | `Send` fails; `close_reason` `client_gone`                                                 | Reconnects                                                                                                                                                    |
 | The person already has 4 streams in the campaign (`DefaultMaxPerUser`) | The new stream is served; the person's oldest ends with `unavailable` (`live.ErrReplaced`) | The old page, if still open, reconnects with backoff. Behind the load balancer the server is not told when a page goes away, so the old ones are usually dead |
-| The login session ended (sign-out, revoked, idle, 30 days) | `unauthenticated` at the next check (every 60 s) | Sends to sign-in |
-| The person left the campaign | `not_found` at the next check | "Peça um convite ao mestre" |
+| The login session ended (sign-out, revoked, idle, 30 days)             | `unauthenticated` at the next check (every 60 s)                                           | Sends to sign-in                                                                                                                                              |
+| The person left the campaign                                           | `not_found` at the next check                                                              | "Peça um convite ao mestre"                                                                                                                                   |
 
 The app reconnects with growing delay (1 s, 2 s, 4 s, up to 30 s, with jitter) and only with the tab visible.
 With the tab hidden for 2 minutes it closes the stream itself and reopens with a fresh snapshot when the tab returns (see [Operations](../../operations/reference.md#live-session-stream)).
@@ -190,6 +191,29 @@ A line the caller may not read is answered exactly like one that does not exist 
   A line of an erased account stays and reads "Jogador removido" (`author_removed`).
 - **The summary** (`GetSessionSummary.conversation`) holds the last 500 lines the caller may read, with `conversation_truncated` when there are more.
 
+### In the app: the conversation
+
+The web side has two layers, split so the rules are tested without a DOM.
+
+- **`core/conversation`** is plain TypeScript, built in field initializers by the session page (`live-session-deps.ts`), not injected.
+  `ConversationClient` wraps `SendSessionMessage`, `ListSessionMessages` and `SignalMasterTyping`; the caller makes the idempotency key.
+  `ConversationState` holds the lines (oldest first, kept once by id wherever they come from: a page, the stream, the answer of the reader's own send), the sends in flight, the unread count and the typing hint.
+  `message-view.ts` has the pure builders: `viewLine` words and classifies one line for its reader, `readersSummary` and `chooserLine` word the "Para" button and the chooser's live line, `buildSendRequest` checks a draft (text trimmed, 1 to 2,000 characters; a player never names readers, the master never says "só o mestre") before a line is shown as sent.
+  `ListenController` plays the voice of one line at a time through a plain audio element created on a tap (see [Design](../../design/session.md#the-conversation-of-the-scene)).
+  `conversation-errors.ts` maps the calls' failures to Portuguese sentences.
+- **`pages/live-session/conversation`** draws it: the panel, the line, the two composers, the audience chooser, the listen button, the phone's tabs and the roster that names speakers and readers. The client never filters or counts a line it was not sent (RN-10), and the typing hint has no text.
+
+The panel is a lazy part of the session page (an `@defer` block opened by `ConversationSlot`), so its code is a chunk of its own and not part of the first download. On a computer it is wanted once the session is live; on a phone, when the "Conversa" tab is first opened. The page-level `ConversationState` listens from the start so the tab can count news before the panel exists.
+
+- **The stream.** The page routes `session_message_added` and `master_typing` from the live stream to the state. The first `ready` reads the newest page (`sync`); "Carregar anteriores" reads older ones with `before_id`.
+- **Unread.** A line of someone else that arrives while the conversation is not on screen (a phone's other tabs, or the browser tab hidden) adds one; showing the conversation clears it. The reader's own lines never count.
+- **Sending.** A line is shown at once as "sending". When the server answers, the line it returns takes its place. If the call fails the line stays with the reason and "Tentar de novo", which sends the same request with the same key, so a line that did reach the server before the connection dropped is stored and published once.
+- **After a reconnect.** The state reads the gap (`readGap`, up to a few pages of `ListSessionMessages`) and joins it to what is on screen by id, so nothing is shown twice and nothing is missed. While reconnecting the panel says so.
+- **Typing.** The master's composer calls `SignalMasterTyping` at most once in two seconds (the server limits it too); the hint on the players' screens expires by itself.
+- **No Web Storage.** Nothing of the conversation, the voice or a draft goes to `localStorage`, `sessionStorage` or IndexedDB (`web/src/no-web-storage.spec.ts` guards it).
+
+The e2e specs are `conversa.spec.ts` (who reads a line, RN-36) and the conversation scans in `a11y.spec.ts`.
+
 ### The voice ("Ouvir")
 
 Narrator and NPC lines can be heard; players' lines are text only.
@@ -208,14 +232,14 @@ The model's text is the line's text, sent to Google as the images' prompts are (
 The open session shows everyone two independent things: the current map and a gallery image the master chooses to show (MR-028), like a portrait or a card.
 Both live on the session's row in `game_sessions`, and only the master changes them, only with the session open.
 
-| | Current map | Shown image |
-| --- | --- | --- |
-| Call | `SetCurrentMap(map_id)`, empty to clear | `SetShownImage(image_id, keep)`, empty to stop |
-| Column | `current_map_id` | `shown_image_id`, `shown_image_keep` |
-| Reveals | The map (RN-10): the player always sees the current map | Only the image itself, while it is shown |
-| Snapshot | `GetLiveSession.current_map_id`; the app reads the map with `MapService.GetMap` | `GetLiveSession.shown_image` (id, caption, size, URLs) |
-| Stream | `current_map_changed`, to everyone | `shown_image_changed`, to everyone |
-| When deleted | `DeleteMap` sets it to null and sends an empty `current_map_changed` | `DeleteGalleryImage` sets it to null and sends an empty `shown_image_changed` |
+|              | Current map                                                                     | Shown image                                                                   |
+| ------------ | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Call         | `SetCurrentMap(map_id)`, empty to clear                                         | `SetShownImage(image_id, keep)`, empty to stop                                |
+| Column       | `current_map_id`                                                                | `shown_image_id`, `shown_image_keep`                                          |
+| Reveals      | The map (RN-10): the player always sees the current map                         | Only the image itself, while it is shown                                      |
+| Snapshot     | `GetLiveSession.current_map_id`; the app reads the map with `MapService.GetMap` | `GetLiveSession.shown_image` (id, caption, size, URLs)                        |
+| Stream       | `current_map_changed`, to everyone                                              | `shown_image_changed`, to everyone                                            |
+| When deleted | `DeleteMap` sets it to null and sends an empty `current_map_changed`            | `DeleteGalleryImage` sets it to null and sends an empty `shown_image_changed` |
 
 - A new session starts with neither.
   An ended session keeps the last ones, only as a record.
@@ -230,12 +254,12 @@ The master can leave the shown image with the players ("Deixar com os jogadores"
 The list belongs to the campaign, so it is the table `campaign_left_images` (`campaign_id`, `image_id`, `left_at`; cascade on the campaign and the image), not a `game_sessions` column.
 The switch of the image currently shown belongs to the session: `game_sessions.shown_image_keep`, off by default and back to off when the shown image changes.
 
-| Call | What it does |
-| --- | --- |
-| `SetShownImage(image_id, keep)` | `keep` is the switch. The master turns it on by calling again with the same image (no event: players do not know about it). With it on, stopping or swapping moves the image to the list, in the transaction that locks the session; `EndGameSession` does the same |
-| `ListLeftImages(campaign_id)` | Any active member, with or without a session: oldest to newest, with the same URLs as the shown image |
-| `TakeBackLeftImage(campaign_id, image_id)` | Master only: removes the image from the list (it stays in the gallery); `not_found` if it is not there |
-| `left_images_changed` | A contentless hint to everyone: an image was left, taken back or deleted |
+| Call                                       | What it does                                                                                                                                                                                                                                                        |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SetShownImage(image_id, keep)`            | `keep` is the switch. The master turns it on by calling again with the same image (no event: players do not know about it). With it on, stopping or swapping moves the image to the list, in the transaction that locks the session; `EndGameSession` does the same |
+| `ListLeftImages(campaign_id)`              | Any active member, with or without a session: oldest to newest, with the same URLs as the shown image                                                                                                                                                               |
+| `TakeBackLeftImage(campaign_id, image_id)` | Master only: removes the image from the list (it stays in the gallery); `not_found` if it is not there                                                                                                                                                              |
+| `left_images_changed`                      | A contentless hint to everyone: an image was left, taken back or deleted                                                                                                                                                                                            |
 
 The table belongs to the `maps` module (the images route reads it); `play` writes it through `MapKeeper` (`LeaveImage` inside its transaction, `ListLeftImages`, `TakeBackImage`).
 `GetLiveSession.shown_image_keep` tells the master whether the switch is on; the player always receives `false`.

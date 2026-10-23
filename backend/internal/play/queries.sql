@@ -1292,40 +1292,6 @@ SELECT EXISTS (
     WHERE game_session_id = $1 AND kind = 'rest_taken' AND payload ->> 'kind' = 'long'
 ) AS taken;
 
--- name: InsertRollHold :one
--- An attack roll that waits for the answer about a Bardic Inspiration die, or for the Lucky
--- question of a d20 that shows a 1 (lucky_index, NULL without one).
-INSERT INTO roll_holds (encounter_id, combatant_id, idempotency_key, request, face, modifier, round, created_at, lucky_index)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING *;
-
--- name: GetRollHold :one
-SELECT * FROM roll_holds WHERE encounter_id = $1 AND id = $2;
-
--- name: GetRollHoldByKey :one
--- The hold the request with this key made, if any.
-SELECT * FROM roll_holds WHERE encounter_id = $1 AND idempotency_key = $2;
-
--- name: GetOpenRollHoldOf :one
--- The hold of the combatant that was not answered yet, if any.
-SELECT * FROM roll_holds WHERE encounter_id = $1 AND combatant_id = $2 AND answer_key IS NULL;
-
--- name: AnswerRollHold :exec
-UPDATE roll_holds SET answer_key = $2 WHERE id = $1;
-
--- name: AnswerRollHoldLucky :one
--- The answer to the Lucky question of a held roll: the d20 that counts and the request with the
--- faces after it, the answer's key and the new face (NULL when the player kept the 1).
-UPDATE roll_holds SET face = $2, request = $3, lucky_answer_key = $4, lucky_to = $5 WHERE id = $1
-RETURNING *;
-
--- name: DeleteRollHold :exec
-DELETE FROM roll_holds WHERE id = $1;
-
--- name: ListOpenRollHolds :many
--- The rolls of the combat that wait for an answer, for the combatants' views.
-SELECT * FROM roll_holds WHERE encounter_id = $1 AND answer_key IS NULL;
-
 -- The campaign package (MR-050).
 
 -- name: ListBattleEncountersOfCampaign :many
@@ -1739,3 +1705,28 @@ UPDATE hit_riders SET used = true, choice = $3 WHERE encounter_id = $1 AND id = 
 -- name: DeleteOpenHitRidersOf :exec
 -- The offers of an attacker's earlier hits go when it attacks again.
 DELETE FROM hit_riders WHERE attacker_id = $1 AND NOT used;
+
+-- name: ListFreeRollEvents :many
+-- The free dice roller's rolls of the session (MR-052), newest first. A player's list asks for
+-- only_table: a roll is the table's when its payload says "secret": false, so an event without the
+-- key is never shown to a player (the master's secret rolls are the master's alone, RN-10).
+SELECT id, actor_user_id, payload, created_at FROM session_events
+WHERE game_session_id = $1 AND kind = 'free_roll_rolled'
+  AND (NOT sqlc.arg(only_table)::BOOL OR payload->>'secret' = 'false')
+ORDER BY seq DESC
+LIMIT $2;
+
+-- name: ListUserFreeRollEvents :many
+-- The rolls one user made in the session, newest first: the master's secret ones included, since
+-- only the master makes them.
+SELECT id, actor_user_id, payload, created_at FROM session_events
+WHERE game_session_id = $1 AND kind = 'free_roll_rolled' AND actor_user_id = $2
+ORDER BY seq DESC
+LIMIT $3;
+
+-- name: SetCombatantTableOnceTurns :exec
+-- The turns in which the table's once-per-turn extras last added their damage, by feature key
+-- (JSON); the marks before are put back by an undo.
+UPDATE combatants
+SET table_once_turns = $2
+WHERE id = $1;

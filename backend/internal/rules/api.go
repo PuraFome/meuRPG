@@ -165,6 +165,9 @@ type Build struct {
 	// Derive does not read them; the guided level-up adds the musical instrument
 	// that taking a Bard level as a later class gives.
 	ToolProficiencies []string
+	// Languages are the languages the player adds, as free text. Derive counts them against the languages the
+	// race, its traits and the background let the player pick, to say how many picks are open.
+	Languages []string
 	// Feats are the feats the character took (an optional rule of the game, MR-025):
 	// "feat:grappler" or a table's "feat:<slug>@mesa". Derive treats each like a
 	// feature: its effects apply and the sheet lists it. The abilities a feat
@@ -618,6 +621,9 @@ type Derived struct {
 	// "Sem armadura" or "Armadura de couro + escudo".
 	ArmorClass            int
 	ArmorClassDescription string
+	// ShieldIdle says the build carries a shield that adds nothing to ArmorClass
+	// because a two-handed weapon is on the sheet.
+	ShieldIdle bool
 	// ArmorCategory is the worn armor's category: "none", "light", "medium" or
 	// "heavy" (a shield is separate). Rage gives its benefits only without heavy armor.
 	ArmorCategory string
@@ -664,6 +670,9 @@ type Derived struct {
 	// Maneuvers are the dice the character's table options add to a roll
 	// (superiority_die effects), with the die's sides worked out for the level.
 	Maneuvers []Maneuver
+	// ExtraDamages are the damage the character's table features add to a weapon hit
+	// once per turn (extra_damage effects), with the amount worked out.
+	ExtraDamages []ExtraDamage
 	// AttacksPerAction is how many attacks the Attack action makes: 1, or
 	// the extra_attack effect's count (Extra Attack: 2 at level 5), or a
 	// creature's Multiattack count.
@@ -981,6 +990,12 @@ const (
 	OpenChoiceCantrips       = "cantrips"
 	OpenChoiceSpellsKnown    = "spells_known"
 	OpenChoiceSpellsPrepared = "spells_prepared"
+	// OpenChoiceExpertise is a skill still to double (the rogue's and the bard's Expertise), OpenChoiceTools a tool
+	// proficiency a trait lets the player pick and the sheet does not list, OpenChoiceLanguages a language the race, a
+	// trait or the background lets the player pick and the sheet does not list.
+	OpenChoiceExpertise = "expertise"
+	OpenChoiceTools     = "tools"
+	OpenChoiceLanguages = "languages"
 )
 
 // OpenChoice is a choice the character's class gives and the sheet has not

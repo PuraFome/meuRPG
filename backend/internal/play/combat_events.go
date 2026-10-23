@@ -321,6 +321,9 @@ type actionEvent struct {
 	// FallCuts are the fall damages a monk's Slow Fall took points off, with their
 	// amounts before: an undo puts them back. Amount is how many points it took off.
 	FallCuts []fallCut `json:"fall_cuts,omitempty"`
+	// Channel is what a Channel Divinity action did: the hit points Preserve Life gave each creature, or the saving
+	// throw of each undead against Turn Undead (combat_channel.go).
+	Channel *channelEvent `json:"channel,omitempty"`
 	// Relentless says the half-orc's Relentless Endurance turned the damage that would
 	// have dropped the target to 0 into 1 hit point, and spent the use: an undo gives
 	// it back.
@@ -470,6 +473,9 @@ type actionEvent struct {
 	// their answer as it did. A discard written before this keeps none, and its undo lets
 	// the hit go on to its roll.
 	ClosedWindows []string `json:"closed_windows,omitempty"`
+	// ProtectedBy are the shield-bearers whose Protection gave an attack roll disadvantage:
+	// the undo of the attack gives their reaction back.
+	ProtectedBy []string `json:"protected_by,omitempty"`
 	// Mode is how the master changed an NPC's hit points ("damage", "heal",
 	// "set"), and Delta the change.
 	Mode  string `json:"mode,omitempty"`
@@ -668,6 +674,8 @@ type actionEvent struct {
 	// move's undo puts it back).
 	Dragged     string     `json:"dragged_id,omitempty"`
 	DraggedFrom *moveState `json:"dragged_from,omitempty"`
+	// Teleport is where a teleport spell put the caster, and where it stood: the undo puts it back.
+	Teleport *teleportEvent `json:"teleport,omitempty"`
 	// Contest is what a contest or a special action says of the event: grapple, shove,
 	// escape, Hide, Help, surprise (combat_contests_core.go).
 	Contest *contestEvent `json:"contest,omitempty"`

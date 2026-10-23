@@ -164,6 +164,17 @@ const BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, string> = new Map([
   [EncounterBlockedReason.ENEMY_IN_THE_WAY, 'Um inimigo está no caminho.'],
   [EncounterBlockedReason.TARGET_COVER_TOTAL, 'O alvo está atrás de cobertura total.'],
   [EncounterBlockedReason.SQUARE_OCCUPIED, 'Ocupado: escolha outro quadrado.'],
+  [EncounterBlockedReason.TELEPORT_TOO_FAR, 'Longe demais'],
+  [EncounterBlockedReason.DESTINATION_UNAVAILABLE, 'Esse espaço não está disponível'],
+  [EncounterBlockedReason.DESTINATION_REQUIRED, 'Escolha no mapa o espaço para onde você vai.'],
+  [
+    EncounterBlockedReason.CHANNEL_DIVINITY_TARGET,
+    'Esse alvo não pode receber o Canalizar Divindade: está longe demais, ou é um morto-vivo ou um constructo.',
+  ],
+  [
+    EncounterBlockedReason.CHANNEL_DIVINITY_TOO_MUCH,
+    'Pontos demais: o total é cinco vezes o nível do clérigo, e cada criatura vai no máximo até a metade dos pontos de vida.',
+  ],
   [EncounterBlockedReason.PLAYER_IN_COMBAT, 'Um jogador só sai do combate antes de ele começar.'],
   [EncounterBlockedReason.ACTION_USED, 'Sua ação já foi usada neste turno.'],
   [EncounterBlockedReason.BONUS_ACTION_USED, 'Sua ação bônus já foi usada neste turno.'],

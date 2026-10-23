@@ -1,8 +1,12 @@
 // What `LiveStream` hands each handler for each kind of message, plus the corners of its lifecycle that
 // `live-stream.spec.ts` leaves out: a tab opened hidden, a closed stream under a timer, a message of an unknown kind and
 // a replaced connection that keeps sending. It uses the same fake call and fake clock as `live-stream.spec.ts`.
+import { line } from '../conversation/conversation-testing';
 import { LiveStream, LiveStreamHandlers } from './live-stream';
+import { freeRoll } from '../free-dice/free-dice-testing';
 import { LiveEventVm } from './live-session.types';
+
+const FREE_ROLL = freeRoll('r1');
 
 class FakeCall {
   private readonly queue: (IteratorResult<LiveEventVm> | { error: unknown })[] = [];
@@ -88,7 +92,10 @@ describe('LiveStream: what each message hands the page', () => {
       onRevivifyChanged: vi.fn(),
       onPuzzleChanged: vi.fn(),
       onHeldRollsChanged: vi.fn(),
+      onFreeRollRolled: vi.fn(),
       onCallingYou: vi.fn(),
+      onSessionMessage: vi.fn(),
+      onMasterTyping: vi.fn(),
       onEnded: vi.fn(),
       onFatal: vi.fn(),
       ...over,
@@ -120,6 +127,7 @@ describe('LiveStream: what each message hands the page', () => {
   });
 
   const image = { id: 'img', url: 'x.png', caption: '' } as never;
+  const aLine = line('m1');
   const turn = { encounterId: 'e', round: 1, currentCombatantId: 'c', masterTurn: false };
   const move = { encounterId: 'e', combatantId: 'c', col: 1, row: 2 };
 
@@ -213,6 +221,14 @@ describe('LiveStream: what each message hands the page', () => {
     ['callingYou', { kind: 'callingYou' }, 'onCallingYou', []],
     ['heldRollsChanged', { kind: 'heldRollsChanged' }, 'onHeldRollsChanged', []],
     ['puzzleChanged', { kind: 'puzzleChanged', puzzleId: 'pz' }, 'onPuzzleChanged', ['pz']],
+    [
+      'freeRollRolled',
+      { kind: 'freeRollRolled', roll: FREE_ROLL },
+      'onFreeRollRolled',
+      [FREE_ROLL],
+    ],
+    ['sessionMessage', { kind: 'sessionMessage', message: aLine }, 'onSessionMessage', [aLine]],
+    ['masterTyping', { kind: 'masterTyping', expiresInSeconds: 6 }, 'onMasterTyping', [6]],
   ];
 
   it.each(table)('hands %s to its handler, and only to it', async (_name, event, handler, args) => {

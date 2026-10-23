@@ -24,6 +24,8 @@ type answered struct {
 	// kind is the session event kind when it is not reaction_answered (a Shield
 	// that was used keeps reaction_used, which the undo knows).
 	kind string
+	// held is the question a roll of the answer waits on (the Counterspell's check): the answer is not made yet.
+	held *playv1.HeldRollOffer
 	// fill completes the result with what the replay of the held action made (what a
 	// roll became), after the commit.
 	fill func()
@@ -40,7 +42,11 @@ type answerInput struct {
 // parseAnswerInput reads the caller and the request of AnswerReaction. The refusals come
 // in this order: the member, the key, the combat, the window, the answer.
 func parseAnswerInput(ctx context.Context, msg *playv1.AnswerReactionRequest) (authz.Membership, answerInput, error) {
-	m, key, encID, err := memberCall(ctx, msg.GetCampaignId(), msg.GetIdempotencyKey(), msg.GetEncounterId())
+	m, err := heldMember(ctx, msg.GetCampaignId()) // a held roll's answer runs this again as the roller
+	if err != nil {
+		return m, answerInput{}, err
+	}
+	key, encID, err := parseCall(msg.GetIdempotencyKey(), msg.GetEncounterId())
 	if err != nil {
 		return m, answerInput{}, err
 	}
@@ -77,6 +83,13 @@ func (s *Service) AnswerReaction(
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "answer a reaction", err)
+	}
+	if got.held != nil { // the d20 is kept for a question: nothing was written
+		enc, err := s.finish(ctx, m, res, s.changed(m.CampaignID))
+		if err != nil {
+			return nil, err
+		}
+		return connect.NewResponse(&playv1.AnswerReactionResponse{Encounter: enc, HeldRollOffer: got.held}), nil
 	}
 	ev, err := resultEvent(res, got.ev)
 	if err != nil {
@@ -137,6 +150,9 @@ func (s *Service) answerWindow(ctx context.Context, c *combatTx, m authz.Members
 	}
 	if err != nil {
 		return nil, err
+	}
+	if got.held != nil {
+		return nil, nil
 	}
 	if got.kind != "" {
 		c.kind = got.kind
@@ -291,6 +307,8 @@ func (s *Service) answerMore(ctx context.Context, c *combatTx, m authz.Membershi
 		return s.answerDeflect(ctx, c, w, reactor, use, req, got)
 	case reaction.ManeuverReduceKind:
 		return s.answerManeuverReduce(ctx, c, w, reactor, use, req, got)
+	case reaction.ProtectionKind:
+		return s.answerProtection(ctx, c, w, reactor, use, got)
 	case reaction.CuttingWords:
 		return s.answerCuttingWords(ctx, c, w, reactor, use, req, got)
 	case reaction.HellishRebukeKind:

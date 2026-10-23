@@ -139,6 +139,9 @@ type castOut struct {
 	// die or for Lucky.
 	asked *outsideAsk
 	v     combatViewer
+	// hook is the trap hook that fired a trap on the square a teleport landed on: it tells the streams after
+	// the commit.
+	hook *trapHook
 }
 
 // castSpell is CastSpell for a member already authorized: the replay of a held action calls it
@@ -155,7 +158,7 @@ func (s *Service) castSpell(ctx context.Context, m authz.Membership, req *connec
 		return nil, err
 	}
 	out := &castOut{v: viewerOf(m)}
-	res, err := s.write(ctx, combatWrite{m: m, key: call.key, hash: idem.Hash(req.Msg), kind: eventSpellCast, encounterID: call.encounterID}, func(c *combatTx) (any, error) {
+	res, err := s.write(ctx, combatWrite{m: m, key: call.key, hash: idem.Hash(req.Msg), kind: eventSpellCast, altKind: eventTrapTriggered, encounterID: call.encounterID}, func(c *combatTx) (any, error) {
 		return newCastFlow(s, c, m, req.Msg, call, out).run(ctx)
 	})
 	if err != nil {
@@ -195,6 +198,10 @@ type castFlow struct {
 	summon     *summoning
 	// hidden says the cast shows a hidden creature: the caster or a target.
 	hidden bool
+	// landing is the square a teleport puts the caster on (checkTeleport); nil for any other cast.
+	landing *grid.Square
+	// landed is the caster on the landing square once the teleport is written.
+	landed *playdb.Combatant
 }
 
 func newCastFlow(s *Service, c *combatTx, m authz.Membership, req *playv1.CastSpellRequest, call castCall, out *castOut) *castFlow {
@@ -205,7 +212,7 @@ func newCastFlow(s *Service, c *combatTx, m authz.Membership, req *playv1.CastSp
 // spends and what it does. It answers the event the write stores, or nil when the d20 waits for the player's
 // answer.
 func (f *castFlow) run(ctx context.Context) (any, error) {
-	f.out.vitals, f.out.asked = nil, nil
+	f.out.vitals, f.out.asked, f.out.hook = nil, nil, nil
 	if err := f.prepare(ctx); err != nil {
 		return nil, err
 	}
@@ -228,7 +235,7 @@ func (f *castFlow) run(ctx context.Context) (any, error) {
 	if err := f.writeCast(ctx); err != nil {
 		return nil, err
 	}
-	return f.out.made, nil
+	return f.fireTrapOnLanding(ctx, f.out.made)
 }
 
 // prepare is the part of the cast that checks and reads: who and what, the turn, the spell and its slot, the
@@ -236,7 +243,7 @@ func (f *castFlow) run(ctx context.Context) (any, error) {
 func (f *castFlow) prepare(ctx context.Context) error {
 	for _, phase := range []func(context.Context) error{
 		f.findCaster, f.findTargets, f.pickSpell, f.checkEnabled, f.pickSlot, f.checkTargetsAlive,
-		f.applyMetamagic, f.readMap, f.placeArea, f.checkMembers, f.checkTargetList, f.planSummon,
+		f.applyMetamagic, f.readMap, f.checkTeleport, f.placeArea, f.checkMembers, f.checkTargetList, f.planSummon,
 	} {
 		if err := phase(ctx); err != nil {
 			return err
@@ -254,7 +261,7 @@ func (f *castFlow) prepare(ctx context.Context) error {
 // writeCast is what the cast does once it is spent: the concentration, the creatures it summons, what it
 // does to each target and the event's last marks.
 func (f *castFlow) writeCast(ctx context.Context) error {
-	for _, phase := range []func(context.Context) error{f.concentrate, f.markHunters, f.bringSummons, f.affect, f.seal} {
+	for _, phase := range []func(context.Context) error{f.concentrate, f.markHunters, f.bringSummons, f.affect, f.teleport, f.seal} {
 		if err := phase(ctx); err != nil {
 			return err
 		}
@@ -412,6 +419,11 @@ func (f *castFlow) readMap(ctx context.Context) error {
 // placeArea works out who an area spell on a map touches: the caster places it and the server says who is
 // inside (planArea); without a map the caster lists them and the master judges.
 func (f *castFlow) placeArea(ctx context.Context) error {
+	// A spell that keeps its area on the map lays it only when the request chooses a point: a cast without one is the
+	// spell as it was before the zones (its targets, its effects), and lays nothing.
+	if _, ok := zoneDefOfSpell(f.sp); ok && f.req.GetOrigin() != nil && !isTheatre(f.c.enc) {
+		f.sp.ZoneLaid = true
+	}
 	f.placedArea = placementOf(f.sp) != playv1.AreaPlacement_AREA_PLACEMENT_UNSPECIFIED && !isTheatre(f.c.enc)
 	switch {
 	case f.placedArea:
@@ -427,6 +439,9 @@ func (f *castFlow) planPlacedArea(ctx context.Context) error {
 	choice, err := areaChoiceOf(f.req.GetOrigin(), f.req.GetDirection(), grid.Grid{Columns: int(f.c.enc.GridColumns), Rows: int(f.c.enc.GridRows)})
 	if err != nil {
 		return err
+	}
+	if f.sp.ZoneLaid && placementOf(f.sp) == playv1.AreaPlacement_AREA_PLACEMENT_CASTER {
+		choice = areaChoice{} // centered on the caster: the point only says the cast lays the zone
 	}
 	if f.plan, err = planArea(areaInput{
 		v: f.v, terrain: f.terrain, cs: f.cs, caster: f.caster, sp: f.sp, choice: choice,
@@ -522,7 +537,7 @@ func (f *castFlow) checkSpellAttack(ctx context.Context) error {
 	if !f.call.rolled {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("set roll_in_app or d20_face for a spell attack"))
 	}
-	if !in.inApp && len(f.targs) != 1 {
+	if !in.inApp && len(raysAt(f.sp, f.targets)) != 1 {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("d20_face fits a single target: use roll_in_app for several"))
 	}
 	if f.v.master {
@@ -551,7 +566,7 @@ func (f *castFlow) holdForWindow(ctx context.Context) (bool, error) {
 // asked.
 func (f *castFlow) holdForDie(ctx context.Context) error {
 	var err error
-	f.out.asked, err = f.s.holdSpellAttack(ctx, f.c, f.m, f.req, f.call.key, f.caster, f.targs, f.sp, f.call.in, f.out.modes)
+	f.out.asked, err = f.s.holdSpellAttack(ctx, f.c, f.m, f.req, f.call.key, f.caster, rayCombatants(f.sp, f.targets, f.targs), f.sp, f.call.in, f.out.modes)
 	return err
 }
 
@@ -659,6 +674,9 @@ func (f *castFlow) concentrate(ctx context.Context) error {
 	if made.Dismissed, err = f.s.endSummons(ctx, f.c, f.caster); err != nil {
 		return err
 	}
+	if err := f.s.endZonesOf(ctx, f.c, f.caster, zoneEndReplaced); err != nil { // the areas it kept on the map: the line says why
+		return err
+	}
 	if err := f.s.endConcentrationEffects(ctx, f.c, f.caster, endConcentration); err != nil { // its effects end with it (RN-22)
 		return err
 	}
@@ -701,8 +719,11 @@ func (f *castFlow) affect(ctx context.Context) error {
 	if f.sp.HP != nil {
 		return f.affectHitPoints(ctx)
 	}
-	for i, t := range f.targs {
-		if err := f.hitTarget(ctx, i, t); err != nil {
+	if def, ok := zoneDefOfSpell(f.sp); ok && f.sp.ZoneLaid { // the area stays on the map (zones_cast.go)
+		return f.affectZone(ctx, def)
+	}
+	for _, i := range raysAt(f.sp, f.targets) { // a ray of Scorching Ray is an attack of its own
+		if err := f.hitTarget(ctx, i, f.targs[i]); err != nil {
 			return err
 		}
 	}
@@ -729,7 +750,7 @@ func (f *castFlow) affectHitPoints(ctx context.Context) error {
 
 // hitTarget is the spell on one target: its cover, and the attack or the save it asks.
 func (f *castFlow) hitTarget(ctx context.Context, i int, t playdb.Combatant) error {
-	hit := castHit{Target: t.ID, Darts: clamp32(f.targets[i].darts, 0, maxShownDarts)}
+	hit := castHit{Target: t.ID, Darts: shownDarts(f.sp, f.targets[i])}
 	var cp coverPair
 	if f.placedArea {
 		cp = f.plan.targets[i].cp // measured from the point of origin
@@ -807,7 +828,7 @@ func (s *Service) castResponse(ctx context.Context, m authz.Membership, res comb
 	if err != nil {
 		return nil, s.dbError(ctx, "read the spell", err)
 	}
-	enc, err := s.finish(ctx, m, res, s.castPublisher(m, ev, out.vitals))
+	enc, err := s.finish(ctx, m, res, s.castPublisher(m, ev, out))
 	if err != nil {
 		return nil, err
 	}
@@ -819,12 +840,14 @@ func (s *Service) castResponse(ctx context.Context, m authz.Membership, res comb
 
 // castPublisher tells the streams what the cast changed: the combat and its log, the vitals it moved, the
 // hidden hit question and the turn a revealed creature joined.
-func (s *Service) castPublisher(m authz.Membership, ev actionEvent, vitals []*playv1.CharacterVitals) func(ctx context.Context, d *encounterData) {
+func (s *Service) castPublisher(m authz.Membership, ev actionEvent, out *castOut) func(ctx context.Context, d *encounterData) {
 	return func(ctx context.Context, d *encounterData) {
+		s.publishTeleport(ctx, m.CampaignID, d, ev)
 		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
 		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
 		s.publishPushed(ctx, m.CampaignID, d, pushesOf(ev.Hits))
-		for _, vit := range vitals {
+		out.hook.after(ctx, m.CampaignID, d.enc) // the trap a teleport landed on
+		for _, vit := range out.vitals {
 			s.publishVitals(m.CampaignID, vit)
 		}
 		if ev.PendingReveal != "" { // the master alone is told a question waits

@@ -169,6 +169,8 @@ export interface CastExtras {
   readonly abilityKey?: string;
   /** Sculpt Spells: the creatures of the area the caster spares. */
   readonly sculptedIds?: readonly string[];
+  /** A teleport spell on a map with a grid (Passo Nebuloso): the square the caster lands on. */
+  readonly destination?: { readonly col: number; readonly row: number };
 }
 
 /** What a summoning spell brings (`SummonChoice`): the option, a content key per creature and, optionally, a name each. */
@@ -178,10 +180,19 @@ export interface SummonRequest {
   readonly names?: readonly string[];
 }
 
-/** What a death save answers: the combat and the save. */
+/** What an initiative answers: the combat, and the question when the d20 was kept for one (the halfling's Lucky about a 1, a Bardic
+ * Inspiration die the character holds); the initiative stays unset until it is answered. */
+export interface InitiativeResult {
+  readonly encounter: Encounter;
+  readonly held: HeldRollOffer | undefined;
+}
+
+/** What a death save answers: the combat and the save, or, when the d20 was kept for a question (the halfling's Lucky about a
+ * 1, a Bardic Inspiration die), the question and no save yet. */
 export interface DeathSaveResult {
   readonly encounter: Encounter;
-  readonly save: DeathSave;
+  readonly save: DeathSave | undefined;
+  readonly held: HeldRollOffer | undefined;
 }
 
 /** What a standard or feature action answers: the combat, the roll of an
@@ -218,6 +229,9 @@ export interface ReactionAnswer {
 export interface AnswerResult {
   readonly encounter: Encounter;
   readonly result: GenReactionResult | undefined;
+  /** The question the d20 of a Counterspell's check waits on (the halfling's Lucky about a 1, a Bardic Inspiration die): the
+   * window stays open and nothing is spent until it is answered. */
+  readonly held: HeldRollOffer | undefined;
 }
 
 /** What an effect changes in an attack roll: the faces of the d4 it adds from physical dice, and the extra action it gives. */

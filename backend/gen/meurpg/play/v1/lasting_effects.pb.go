@@ -1398,9 +1398,18 @@ type EffectSavePrompt struct {
 	// The owner left the roll to the master.
 	HandedToMaster bool `protobuf:"varint,14,opt,name=handed_to_master,json=handedToMaster,proto3" json:"handed_to_master,omitempty"`
 	// Whether the effect is the master's to skip ("Pular o teste", a table option).
-	Skippable     bool `protobuf:"varint,15,opt,name=skippable,proto3" json:"skippable,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Skippable bool `protobuf:"varint,15,opt,name=skippable,proto3" json:"skippable,omitempty"`
+	// The save is the one an area a spell keeps on the map asks (Moonbeam, Spirit Guardians, Cloudkill,
+	// Web): `effect_id` is then the zone's id. `zone_reason` is "zone_enter" (the creature came in, the first
+	// time on this turn) or "zone_start" (it began its turn inside).
+	ZoneId     string `protobuf:"bytes,16,opt,name=zone_id,json=zoneId,proto3" json:"zone_id,omitempty"`
+	ZoneReason string `protobuf:"bytes,17,opt,name=zone_reason,json=zoneReason,proto3" json:"zone_reason,omitempty"`
+	// What a failure does to who answers: the damage type's Portuguese name ("radiante"; empty
+	// for none) and whether a pass halves it. The dice are not here.
+	DamageTypeNamePt string `protobuf:"bytes,18,opt,name=damage_type_name_pt,json=damageTypeNamePt,proto3" json:"damage_type_name_pt,omitempty"`
+	HalfOnSave       bool   `protobuf:"varint,19,opt,name=half_on_save,json=halfOnSave,proto3" json:"half_on_save,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *EffectSavePrompt) Reset() {
@@ -1534,6 +1543,34 @@ func (x *EffectSavePrompt) GetHandedToMaster() bool {
 func (x *EffectSavePrompt) GetSkippable() bool {
 	if x != nil {
 		return x.Skippable
+	}
+	return false
+}
+
+func (x *EffectSavePrompt) GetZoneId() string {
+	if x != nil {
+		return x.ZoneId
+	}
+	return ""
+}
+
+func (x *EffectSavePrompt) GetZoneReason() string {
+	if x != nil {
+		return x.ZoneReason
+	}
+	return ""
+}
+
+func (x *EffectSavePrompt) GetDamageTypeNamePt() string {
+	if x != nil {
+		return x.DamageTypeNamePt
+	}
+	return ""
+}
+
+func (x *EffectSavePrompt) GetHalfOnSave() bool {
+	if x != nil {
+		return x.HalfOnSave
 	}
 	return false
 }
@@ -2222,7 +2259,7 @@ const file_meurpg_play_v1_lasting_effects_proto_rawDesc = "" +
 	"\tspell_key\x18\x03 \x01(\tR\bspellKey\x12\"\n" +
 	"\rspell_name_pt\x18\x04 \x01(\tR\vspellNamePt\x12\x1d\n" +
 	"\n" +
-	"effect_ids\x18\x05 \x03(\tR\teffectIds\"\x96\x04\n" +
+	"effect_ids\x18\x05 \x03(\tR\teffectIds\"\xa1\x05\n" +
 	"\x10EffectSavePrompt\x12\x1b\n" +
 	"\teffect_id\x18\x01 \x01(\tR\beffectId\x12$\n" +
 	"\x0esource_name_pt\x18\x02 \x01(\tR\fsourceNamePt\x12\x18\n" +
@@ -2241,7 +2278,13 @@ const file_meurpg_play_v1_lasting_effects_proto_rawDesc = "" +
 	"\tauto_fail\x18\f \x01(\bR\bautoFail\x12\x17\n" +
 	"\atext_pt\x18\r \x01(\tR\x06textPt\x12(\n" +
 	"\x10handed_to_master\x18\x0e \x01(\bR\x0ehandedToMaster\x12\x1c\n" +
-	"\tskippable\x18\x0f \x01(\bR\tskippableB\x05\n" +
+	"\tskippable\x18\x0f \x01(\bR\tskippable\x12\x17\n" +
+	"\azone_id\x18\x10 \x01(\tR\x06zoneId\x12\x1f\n" +
+	"\vzone_reason\x18\x11 \x01(\tR\n" +
+	"zoneReason\x12-\n" +
+	"\x13damage_type_name_pt\x18\x12 \x01(\tR\x10damageTypeNamePt\x12 \n" +
+	"\fhalf_on_save\x18\x13 \x01(\bR\n" +
+	"halfOnSaveB\x05\n" +
 	"\x03_dc\"\x8d\x01\n" +
 	"\bExtraDie\x12\x1d\n" +
 	"\n" +

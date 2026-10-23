@@ -176,7 +176,7 @@ func (s *Service) trapTargetsOf(ctx context.Context, tx pgx.Tx, campaignID strin
 	out := make([]trapTarget, len(caught))
 	for i, c := range caught {
 		out[i].id = c.ID
-		if err := s.trapModesOf(ctx, tx, campaignID, trap, c, states, ability, &out[i]); err != nil {
+		if err := s.trapModesOf(ctx, tx, campaignID, trap, c, states, ability, trapAgainst(effect), &out[i]); err != nil {
 			return nil, err
 		}
 		if trapNeedsAC(effect) {
@@ -582,8 +582,27 @@ func (th *trapHook) landed(at grid.Square) {
 // the change's own (so a retry finds it under the idempotency key). cs are the
 // combatants as they stood before the move; moved is the mover after it.
 func (th *trapHook) finish(ctx context.Context, c *combatTx, made actionEvent, cs []playdb.Combatant, moved playdb.Combatant) (any, error) {
-	if th == nil || th.entered == nil {
+	ev, err := th.fire(ctx, c, cs, moved)
+	if err != nil {
+		return nil, err
+	}
+	if ev == nil {
 		return made, nil
+	}
+	// The move comes first in the history, the firing after it (the change's own event).
+	if err := insertEvent(ctx, c, eventCombatantMoved, &c.actorUserID, nil, made); err != nil {
+		return nil, err
+	}
+	th.fired = ev
+	c.kind = eventTrapTriggered
+	return actionEvent{Round: c.enc.Round, Actor: moved.ID, Trap: ev, StoppedEarly: made.StoppedEarly, OnTurn: made.OnTurn, MoveID: made.MoveID}, nil
+}
+
+// fire fires the trap the mover entered, on everyone it catches; nil when it entered none or the trap was fired
+// or disarmed meanwhile (the mover's change stands, the trap does not fire again).
+func (th *trapHook) fire(ctx context.Context, c *combatTx, cs []playdb.Combatant, moved playdb.Combatant) (*trapFireEvent, error) {
+	if th == nil || th.entered == nil {
+		return nil, nil
 	}
 	// Who is caught: the mover, and, when the trap hits the area, everyone in it.
 	after := slices.Clone(cs)
@@ -599,18 +618,9 @@ func (th *trapHook) finish(ctx context.Context, c *combatTx, made actionEvent, c
 	}
 	ev, err := th.s.fireInCombat(ctx, c, *th.entered, caught, false, "")
 	if errors.Is(err, maplink.ErrTrapNotArmed) {
-		return made, nil // fired or disarmed meanwhile: the move stands, the trap does not fire again
+		return nil, nil
 	}
-	if err != nil {
-		return nil, err
-	}
-	// The move comes first in the history, the firing after it (the change's own event).
-	if err := insertEvent(ctx, c, eventCombatantMoved, &c.actorUserID, nil, made); err != nil {
-		return nil, err
-	}
-	th.fired = ev
-	c.kind = eventTrapTriggered
-	return actionEvent{Round: c.enc.Round, Actor: moved.ID, Trap: ev, StoppedEarly: made.StoppedEarly, OnTurn: made.OnTurn, MoveID: made.MoveID}, nil
+	return ev, err
 }
 
 // after tells the streams about the traps the move changed, after the commit: the
@@ -843,17 +853,18 @@ func (v trapView) statusOf(pendingID string) (playv1.PendingDamageStatus, bool) 
 // throw (SRD 5.1): the combatant's conditions and states count, and so does Danger
 // Sense, but only against a trap the character knew before it fired: a hidden trap
 // is no effect it sees, and the source is not even named (RN-10).
-func (s *Service) trapModesOf(ctx context.Context, tx pgx.Tx, campaignID string, trap maplink.Trap, c playdb.Combatant, states map[string][]playdb.CombatantState, ability string, out *trapTarget) error {
+func (s *Service) trapModesOf(ctx context.Context, tx pgx.Tx, campaignID string, trap maplink.Trap, c playdb.Combatant, states map[string][]playdb.CombatantState, ability string, against []string, out *trapTarget) error {
 	sheet, err := s.sheetOf(ctx, tx, campaignID, c)
 	if err != nil {
 		return err
 	}
 	creature := creatureFacts(c, states, sheet.Traits)
+	out.facts = creature
 	attack := combat.AttackMode(combat.AttackScene{Target: creature, Ranged: true})
 	out.attackSources = attack.Sources
 	out.attackMode = combat.Resolve(attack.Sources)
 	if ability != "" {
-		sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: ability, EffectVisible: trap.Knows(c.CharacterID)})
+		sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: ability, EffectVisible: trap.Knows(c.CharacterID), Against: against})
 		out.saveSources, out.saveMode = sources, combat.Resolve(sources)
 		out.saveAuto = combat.AutoFailsSave(creature, ability)
 		out.lucky = luckySaver(c, sheet.Traits) // a halfling player's 1 is rolled again by the app (combat_lucky.go)

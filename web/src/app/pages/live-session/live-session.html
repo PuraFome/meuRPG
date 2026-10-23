@@ -84,9 +84,16 @@
         [isMaster]="state.isMaster()"
         [connection]="state.connection()"
         [lastUpdate]="state.lastUpdate()"
+        [rolling]="freeDice.rolling()"
         (ended)="sessionEndedHere()"
+        (openDice)="sheets.openDice()"
       />
       }
+
+      <!-- The conversation of the scene (MR-051): a column beside the stage from 1600px, under it below that; on a phone the
+           "Conversa" tab opens it full screen (the page behind is inert). Its code loads lazily. -->
+      <div class="split">
+      <div class="split__main" [attr.inert]="slot.chatOpen() ? '' : null">
 
       @if (state.isMaster()) {
         <!-- A Revivify cast outside a combat waits for the master to say whether the creature died in the last minute. -->
@@ -456,6 +463,40 @@
         <p class="mr-visually-hidden" role="status" aria-live="polite">{{ state.shownNotice() }}</p>
         <p class="mr-visually-hidden" role="status" aria-live="polite">{{ scene.notice() }}</p>
       }
+      @if (!combat.fullPage()) {
+        <!-- The free rolls of the session (MR-052): under the board, so no screen's layout moves for it. -->
+        <app-free-roll-log [rolls]="freeDice.table()" [listState]="freeDice.listState()" (retry)="freeDice.refresh()" />
+      }
+      <!-- Last in the column, so the turn's actions stay right under the title on a phone; the tabs close the page. -->
+      @if (slot.phone()) {
+        <app-session-tabs
+          class="split__tabs"
+          [tab]="slot.tab()"
+          [unread]="conversation.unread()"
+          [sheetLink]="slot.sheetLink()"
+          (choose)="slot.choose($event)"
+        />
+      }
+      </div>
+      <div class="split__chat" [class.split__chat--full]="slot.chatOpen()" [class.split__chat--away]="slot.phone() && !slot.chatOpen()">
+        @defer (when slot.wanted()) {
+          <app-conversation
+            [state]="conversation"
+            [campaignId]="state.campaignId()"
+            [isMaster]="state.isMaster()"
+            [userId]="slot.userId()"
+            [ownCharacterId]="state.ownCharacterId()"
+            [ownCharacterName]="view.ownCharacterName()"
+            [stageIds]="slot.stageIds()"
+            [sceneName]="scene.scene()?.name ?? ''"
+            [connection]="state.connection()"
+            [phone]="slot.phone()"
+            [active]="slot.shown()"
+            (back)="slot.choose('scene')"
+          />
+        }
+      </div>
+      </div>
       }
     }
   }

@@ -34,7 +34,18 @@
         </div>
       }
 
-      @if (!showTyping()) {
+      @if (held(); as question) {
+        <!-- The d20 is rolled and kept: a halfling's 1 asks Lucky first, then a Bardic Inspiration die; the initiative is set once the player answers (SRD 5.1). -->
+        <app-held-roll-prompt
+          [offer]="question"
+          look="card"
+          [canApp]="canApp()"
+          [canType]="canType()"
+          [preferApp]="inApp()"
+          [busy]="busy()"
+          (answer)="answer.emit($event)"
+        />
+      } @else if (!showTyping()) {
         <div class="roll__buttons">
           <button
             mat-flat-button

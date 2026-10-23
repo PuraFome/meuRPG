@@ -1,4 +1,5 @@
 import type { WatchGameSessionResponse } from '../../../gen/meurpg/play/v1/play_pb';
+import { toFreeRollVm } from '../free-dice/free-roll';
 import type { LiveEventVm } from './live-session.types';
 import { toShownImageVm, toVitalsVm } from './live-vitals-map';
 
@@ -83,10 +84,12 @@ const TRANSLATORS: Translators = {
   revivifyChanged: () => ({ kind: 'revivifyChanged' }),
   callingYou: () => ({ kind: 'callingYou' }),
   heldRollsChanged: () => ({ kind: 'heldRollsChanged' }),
+  // A message with no roll tells nothing, like a `vitals_changed` with no body.
+  freeRollRolled: (v) => (v.roll ? { kind: 'freeRollRolled', roll: toFreeRollVm(v.roll) } : null),
   puzzleChanged: (v) => ({ kind: 'puzzleChanged', puzzleId: v.puzzleId }),
-  // The Conversa panel (MR-051) reads these two; until it exists the shared stream has nothing to do with them.
-  sessionMessageAdded: () => null,
-  masterTyping: () => null,
+  // A line with no body says nothing.
+  sessionMessageAdded: (v) => (v.message ? { kind: 'sessionMessage', message: v.message } : null),
+  masterTyping: (v) => ({ kind: 'masterTyping', expiresInSeconds: v.expiresInSeconds }),
 };
 
 /** The view-model event for a wire event; `null` when it carries nothing to tell. */

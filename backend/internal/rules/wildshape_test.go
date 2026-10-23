@@ -10,7 +10,7 @@ import (
 func salvia(level int) Build {
 	return Build{
 		BaseScores: map[Ability]int{STR: 10, DEX: 14, CON: 14, INT: 10, WIS: 16, CHA: 8},
-		Race:       "race:half-elf", Background: "background:acolyte",
+		Race:       "race:half-elf", Background: "background:acolyte", Languages: testLanguages,
 		Classes:             []ClassLevel{{Class: "class:druid", Level: level}},
 		SkillProficiencies:  []string{"skill:perception", "skill:nature"},
 		ExtraAbilityBonuses: map[Ability]int{CON: 1, DEX: 1},

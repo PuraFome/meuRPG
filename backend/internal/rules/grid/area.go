@@ -101,14 +101,19 @@ type Area struct {
 	WidthFt int
 }
 
-// FromPoint is the squares of a sphere or a cylinder centered on the origin
-// square, the origin included, before the walls are looked at. It is nothing for
-// any other shape.
+// FromPoint is the squares of a sphere, a cylinder or a cube centered on the
+// origin square, the origin included, before the walls are looked at (a cube of an
+// even side has its extra square on the larger side). It is nothing for any other
+// shape.
 func (a Area) FromPoint(origin Square) []Square {
-	if a.Shape != ShapeSphere && a.Shape != ShapeCylinder {
+	n := a.SizeFt / FeetPerSquare
+	switch a.Shape {
+	case ShapeSphere, ShapeCylinder:
+	case ShapeCube:
+		return cube(origin, Direction{}, n)
+	default:
 		return nil
 	}
-	n := a.SizeFt / FeetPerSquare
 	var out []Square
 	for dr := -n; dr <= n; dr++ {
 		for dc := -n; dc <= n; dc++ {

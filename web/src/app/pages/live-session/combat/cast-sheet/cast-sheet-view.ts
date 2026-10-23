@@ -133,7 +133,13 @@ export function targetsMissingText(
   canApp: boolean,
 ): string {
   if (rule.kind === 'darts') {
-    return dartsPlaced(have.dealt) === have.darts ? '' : dartsStatus(have.darts, have.dealt);
+    if (dartsPlaced(have.dealt) !== have.darts) {
+      return dartsStatus(have.darts, have.dealt, rule.rays);
+    }
+    // One typed d20 stands for one attack: several rays are rolled in the app.
+    return kind === 'attack' && rule.rays && !canApp && have.darts > 1
+      ? 'Com dados físicos, mande um raio por vez.'
+      : '';
   }
   if ((rule.kind === 'single' || rule.kind === 'multi') && have.chosen < rule.min) {
     return rule.kind === 'single' ? 'Escolha o alvo.' : 'Escolha pelo menos um alvo.';
@@ -154,6 +160,8 @@ export function castMissing(i: {
   readonly ability: string;
   /** A placed area takes no target: the server works out who is inside from the point. */
   readonly placedArea: boolean;
+  /** A teleport spell on the map, cast by a player, still without the square the caster lands on. */
+  readonly destinationMissing: boolean;
   readonly targets: () => string;
   readonly metaOptions: readonly MetamagicOption[];
   readonly chosenMeta: readonly string[];
@@ -172,6 +180,9 @@ export function castMissing(i: {
   const ability = abilityMissing(i.spellKey, i.ability);
   if (ability) {
     return ability;
+  }
+  if (i.destinationMissing) {
+    return 'Escolha no mapa o espaço para onde você vai.';
   }
   const target = i.placedArea ? '' : i.targets();
   return target || metamagicMissing(i.metaOptions, i.chosenMeta, i.picks, i.sorceryPoints);

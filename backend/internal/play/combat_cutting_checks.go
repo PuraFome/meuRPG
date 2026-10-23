@@ -38,6 +38,10 @@ func (s *Service) holdCheck(ctx context.Context, c *combatTx, m authz.Membership
 	if c.replay != nil {
 		return actionEvent{}, false, nil
 	}
+	// The answer to a question about the d20 comes after the windows: they were answered before the d20 was kept.
+	if _, answering := heldReplyOf(ctx); answering {
+		return actionEvent{}, false, nil
+	}
 	base := windowTrigger{Actor: roller.ID}
 	if target != nil {
 		base.Target = target.ID

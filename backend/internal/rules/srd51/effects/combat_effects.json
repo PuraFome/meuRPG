@@ -203,6 +203,13 @@
       "player_label_pt": "Provocado",
       "tags_pt": ["Desvantagem nos ataques contra quem não o provocou, até o fim do próximo turno de quem o provocou"]
     },
+    "effect:turned": {
+      "kind": "feature",
+      "duration": {"kind": "rounds", "rounds": 10},
+      "visibility": "public",
+      "player_label_pt": "Expulso",
+      "tags_pt": ["Foge de quem o expulsou, o mais longe que puder, por 1 minuto", "Não se aproxima a menos de 9 m de quem o expulsou", "Não usa reações; só Corre ou escapa de um efeito, ou Esquiva se não tiver para onde ir", "Acaba se sofrer dano"]
+    },
     "effect:lethargy": {
       "kind": "feature",
       "duration": {"kind": "until_end_of_turn_of"},
@@ -217,6 +224,14 @@
       "conditions": ["condition:restrained"],
       "break_free": "str",
       "player_label_pt": "Preso numa teia"
+    },
+    "effect:spirit-guardians-slowed": {
+      "kind": "spell",
+      "duration": {"kind": "until_end_of_turn_of"},
+      "visibility": "public",
+      "modifiers": [{"kind": "speed_multiplier", "value": 50}],
+      "player_label_pt": "Reduzido pelos espíritos",
+      "tags_pt": ["Deslocamento pela metade neste turno"]
     },
     "effect:web-fire": {
       "kind": "master",

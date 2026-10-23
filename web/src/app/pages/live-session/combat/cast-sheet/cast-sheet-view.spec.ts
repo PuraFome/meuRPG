@@ -227,6 +227,17 @@ describe('targetsMissingText', () => {
     expect(targetsMissingText(rule('darts'), 'darts', have(0, [['a', 1]]), true)).not.toBe('');
   });
 
+  it('asks for the rays of Raio Ardente, all to one target if wanted, one typed d20 for one ray only', () => {
+    const rays: TargetRule = { kind: 'darts', min: 1, max: 3, rays: true };
+    expect(targetsMissingText(rays, 'attack', have(0, [['a', 1]]), true)).toBe(
+      'Distribua todos os raios: 1 de 3.',
+    );
+    expect(targetsMissingText(rays, 'attack', have(0, [['a', 3]]), true)).toBe('');
+    expect(targetsMissingText(rays, 'attack', have(0, [['a', 3]]), false)).toBe(
+      'Com dados físicos, mande um raio por vez.',
+    );
+  });
+
   it('asks for one target, or at least one of several', () => {
     expect(targetsMissingText(rule('single'), 'save', have(0), true)).toBe('Escolha o alvo.');
     expect(targetsMissingText(rule('multi'), 'save', have(0), true)).toBe(
@@ -260,6 +271,7 @@ describe('castMissing', () => {
     chosenMeta: [],
     picks: NO_PICKS,
     sorceryPoints: null,
+    destinationMissing: false,
   };
 
   it('waits for the spell to be read, and says when it could not be', () => {
@@ -285,6 +297,30 @@ describe('castMissing', () => {
   it('asks the targets, unless the area is placed on the map', () => {
     expect(castMissing({ ...base, targets: () => 'Escolha o alvo.' })).toBe('Escolha o alvo.');
     expect(castMissing({ ...base, targets: () => 'Escolha o alvo.', placedArea: true })).toBe('');
+  });
+});
+
+describe('castMissing: the square a teleport lands on', () => {
+  const base = {
+    detailsRead: true,
+    detailsFailed: false,
+    level: 2,
+    slotChosen: true,
+    spellKey: 'spell:misty-step',
+    ability: '',
+    placedArea: false,
+    targets: () => '',
+    metaOptions: [],
+    chosenMeta: [],
+    picks: NO_PICKS,
+    sorceryPoints: null,
+  };
+
+  it('asks the player for the square until one is picked', () => {
+    expect(castMissing({ ...base, destinationMissing: true })).toBe(
+      'Escolha no mapa o espaço para onde você vai.',
+    );
+    expect(castMissing({ ...base, destinationMissing: false })).toBe('');
   });
 });
 

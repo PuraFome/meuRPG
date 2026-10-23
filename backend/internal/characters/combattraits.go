@@ -24,6 +24,13 @@ var greatWeaponFighting = []string{
 // ("monster:wolf#pack-tactics").
 const packTacticsSuffix = "#pack-tactics"
 
+// evasionFeatures are the keys of Evasion for a character (the monk's and the rogue's, and the
+// ranger's Superior Hunter's Defense choice); evasionSuffix ends a monster's trait
+// ("monster:adult-blue-dragon#evasion").
+var evasionFeatures = []string{"feature:monk-evasion", "feature:rogue-evasion", "feature:superior-hunters-defense-evasion"}
+
+const evasionSuffix = "#evasion"
+
 // creatureTypePrefix starts the key of the pseudo feature that carries a monster's
 // type ("creature-type:undead"): a combat reads it with Traits.CreatureType (Divine
 // Smite does extra damage to an undead or a fiend).
@@ -36,6 +43,38 @@ func withCreatureType(content *rules.Content, monsterKey string, features []rule
 		return features
 	}
 	return append(slices.Clone(features), rules.Feature{Key: creatureTypePrefix + strings.ToLower(c.Type), Name: c.Type, Source: monsterKey})
+}
+
+// taggedSavesOf are the advantages on saving throws the sheet's hints give against one kind of source
+// ("against:frightened"): the racial ones, which a combat applies when it knows what the save is against.
+func taggedSavesOf(hints []rules.Hint) []link.TaggedSave {
+	var out []link.TaggedSave
+	for _, h := range hints {
+		against, ok := againstOf(h.Tags)
+		if h.Mode != "advantage" || !ok {
+			continue
+		}
+		t := link.TaggedSave{Source: h.Source, Against: against}
+		for _, target := range h.Targets {
+			if ability, ok := strings.CutPrefix(target, "save."); ok && ability != "all" {
+				t.Abilities = append(t.Abilities, ability)
+			}
+		}
+		if len(h.Targets) > 0 && slices.ContainsFunc(h.Targets, func(x string) bool { return !strings.HasPrefix(x, "save.") }) {
+			continue // not only saving throws
+		}
+		out = append(out, t)
+	}
+	return out
+}
+
+// againstOf is the kind of source the tags say the advantage holds against, when it is one the combat knows.
+func againstOf(tags []string) (string, bool) {
+	if len(tags) != 1 {
+		return "", false
+	}
+	kind, ok := strings.CutPrefix(tags[0], "against:")
+	return kind, ok && slices.Contains([]string{combat.AgainstMagic, combat.AgainstFrightened, combat.AgainstCharmed, combat.AgainstPoison}, kind)
 }
 
 // traitsOf reads the combat traits of a derived sheet or stat block.
@@ -59,6 +98,7 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 	t.StealthDisadvantage = slices.ContainsFunc(d.Hints, func(h rules.Hint) bool {
 		return h.Target == "skill:stealth" && h.Mode == "disadvantage"
 	})
+	t.TaggedSaves = taggedSavesOf(d.Hints)
 	t.ImprovedDivineSmite = rules.HasFeature(d, "feature:improved-divine-smite")
 	t.OpenHand = rules.HasFeature(d, "feature:open-hand-technique")
 	t.StunningStrike = rules.HasFeature(d, "feature:stunning-strike")
@@ -72,6 +112,9 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 	if rules.HasFeature(d, "feature:sneak-attack") {
 		t.SneakAttackDice = combat.SneakAttackDice(t.RogueLevel)
 	}
+	t.Evasion = slices.ContainsFunc(d.Features, func(f rules.Feature) bool {
+		return slices.Contains(evasionFeatures, f.Key) || strings.HasSuffix(f.Key, evasionSuffix)
+	})
 	t.GreatWeaponFighting = slices.ContainsFunc(greatWeaponFighting, func(k string) bool { return rules.HasFeature(d, k) })
 	t.PackTactics = slices.ContainsFunc(d.Features, func(f rules.Feature) bool { return strings.HasSuffix(f.Key, packTacticsSuffix) })
 	// The halfling's Lucky is a race trait, so every halfling has it, whichever its subrace.
@@ -90,6 +133,11 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 		t.Maneuvers = append(t.Maneuvers, link.Maneuver{
 			Key: m.Key, NamePT: m.NamePT, Resource: m.Resource, Applies: m.Applies, Economy: m.Economy,
 			Ability: m.Ability, TextPT: m.TextPT, Sides: m.Sides, SaveDC: m.SaveDC,
+		})
+	}
+	for _, x := range d.ExtraDamages {
+		t.ExtraDamages = append(t.ExtraDamages, link.ExtraDamage{
+			Key: x.Key, NamePT: x.NamePT, Applies: x.Applies, Resource: x.Resource, TextPT: x.TextPT, Amount: x.Amount,
 		})
 	}
 	return t

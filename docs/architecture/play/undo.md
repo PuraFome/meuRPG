@@ -7,7 +7,7 @@ The code is `combat_undo.go` and `combat_undo_kinds.go`.
 ## What can be undone
 
 The last action is the session's latest `session_events` row that an undo has not yet undone (`lastAction`, looking at the latest 100 events).
-It can be undone if it is one of `undoableKinds`: an attack, a damage, an "Aplicar" or "Não aplicar", a standard or feature action, an NPC's HP adjustment, a cast spell, a Shield used or declined, a death save, the conditions or concentration, a move (including a jump), a trap triggered in the combat, the start of Wild Shape or of the familiar's sight, and the master's reveal of a hider.
+It can be undone if it is one of `undoableKinds`: an attack, a damage, an "Aplicar" or "Não aplicar", a standard or feature action, an NPC's HP adjustment, a cast spell (a teleport puts the caster back on the square it left), a Shield used or declined, a death save, the conditions or concentration, a move (including a jump), a trap triggered in the combat, the start of Wild Shape or of the familiar's sight, and the master's reveal of a hider.
 The death confirmation cannot be undone, and neither can a contest, a hit rider or a turn passing.
 Any later event that is not undoable leaves `NOTHING_TO_UNDO`, because undoing over it would stop being a restoration of what was before.
 
@@ -53,6 +53,7 @@ The undone line disappears from the log.
   The cast's event keeps the marks it took off (`marks_before`, `clearHuntersMark`), and its undo writes them back with their ids (`marksBack`, `RestoreHuntersMark`).
 - **A Hunter's Mark a concentration ended.** A rage, a damage to 0 HP, a failed concentration save and the master's end of the concentration end the Hunter's Mark with `stopConcentrating`, which takes the mark off its target; the event keeps it (`marks_before`) and `endedConcentrationBack` writes it back with the concentration, for every undo that gives a concentration back.
   A mark whose target or caster left the combat stays off.
+- **The zone a cast kept.** A cast of a spell that keeps an area on the map (see [Spell zones](spell-zones.md)) stores the zone with the cast's `cast_id`; the undo of the cast deletes the zone with that id, together with the concentration it gives back. What a zone later did (a creature caught, an area moved) is not undoable as an action, and closes the chain like any other event.
 - **A creature a cast pushed.** Each hit keeps the forced move of a failed save (`pushed`, with the square it left); the undo puts the creature back there and the fog follows it (see [Movement](movement.md#forced-movement)).
 - **The "revealed" lines of an area spell.** Under the table rule that reveals the hidden creatures an area hits, the cast writes a `combatant_hidden_set` line (`by_area`) for each before its own event (`revealCombatants`).
   The event says it revealed the creatures its hits name (`revealed_hits`, read by `revealedIDs`, so that the ids are not written twice) and keeps the lines' ids (`reveal_lines`), and its undo takes the lines back in `undone_also`: the master's log keeps no "revealed" line for a creature hidden again.

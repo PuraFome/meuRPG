@@ -14,6 +14,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
@@ -227,6 +228,10 @@ func (s *Service) answerCounterspell(ctx context.Context, c *combatTx, w playdb.
 	if err != nil {
 		return err
 	}
+	if check.held != nil { // the d20 is kept for a question: the window stays open and nothing is spent or written
+		got.held = check.held
+		return nil
+	}
 	vitals, err := s.spendReactionSlot(ctx, c, reactor, slot)
 	if err != nil {
 		return err
@@ -285,6 +290,8 @@ type counterspellOutcome struct {
 	countered bool
 	dc        int
 	roll      *playv1.DiceRoll
+	// held is the question the d20 waits on (the halfling's Lucky about a 1, a Bardic Inspiration die); nothing else is set.
+	held *playv1.HeldRollOffer
 }
 
 // counterspellCheck decides the counter: a slot at least as high as the spell counters it; above the
@@ -300,14 +307,45 @@ func (s *Service) counterspellCheck(ctx context.Context, c *combatTx, req *playv
 	if err != nil {
 		return out, err
 	}
-	face, roll, err := s.d20(in, k.st.CastingMod)
-	if err != nil {
+	step, err := s.counterspellD20(ctx, c, req, reactor, k, in)
+	if err != nil || step.Held != nil {
+		if step.Held != nil {
+			out.held = s.heldCheckOffer(ctx, c, step)
+		}
 		return out, err
 	}
-	out.countered = roll.Total >= dc
-	re.Check, re.CheckDC = conv.Int32(roll.Total), clamp32(dc, 0, math.MaxInt32)
-	out.roll = diceRoll(1, 20, []int32{clamp32(face, 1, 20)}, conv.Int32(k.st.CastingMod), re.Check, roll.Physical)
+	face, total := step.Roll.Face(), step.Roll.Total
+	out.countered = total >= dc
+	re.Check, re.CheckDC = conv.Int32(total), clamp32(dc, 0, math.MaxInt32)
+	// The Bardic Inspiration die the player added is in the total: the line shows it as part of the modifier.
+	out.roll = diceRoll(1, 20, []int32{clamp32(face, 1, 20)}, conv.Int32(total-face), re.Check, step.Roll.Physical)
+	out.roll.Rerolled = step.Lucky.proto()
 	return out, nil
+}
+
+// counterspellD20 is the d20 of the check, put through the gate when the reactor is a player's character: a Bardic
+// Inspiration die the character holds, or a halfling's 1, keeps it for the player's answer (the check is an ability check,
+// SRD 5.1). Any other rolls at once, as it always did.
+func (s *Service) counterspellD20(ctx context.Context, c *combatTx, req *playv1.AnswerReactionRequest, reactor playdb.Combatant, k kit, in rollInput) (gateResult, error) {
+	m := authz.Membership{CampaignID: c.session.CampaignID, UserID: c.actorUserID, Role: authz.RolePlayer}
+	if c.master {
+		m.Role = authz.RoleMaster
+	}
+	if mayAsk := reactor.Kind == kindPlayer && backedByCharacter(reactor) && playedBy(reactor, m); mayAsk {
+		sheet, err := s.sheetOf(ctx, c.tx, c.session.CampaignID, reactor)
+		if err != nil {
+			return gateResult{}, err
+		}
+		return s.heldGate(ctx, s.inspirationGate(c), rollSpec{
+			Kind: heldCounterspell, Key: req.GetIdempotencyKey(), Request: req, Roller: attackRoller(m, reactor, c.enc.Round),
+			In: in, Modifier: k.st.CastingMod, Mode: combat.ModeNormal, Lucky: sheet.Traits.Lucky, MayAsk: true,
+		})
+	}
+	face, roll, err := s.d20(in, k.st.CastingMod)
+	if err != nil {
+		return gateResult{}, err
+	}
+	return gateResult{Settled: true, Roll: d20Roll{Faces: []int{face}, Total: roll.Total, Physical: roll.Physical}}, nil
 }
 
 // closeGroup closes the other open windows of a window's group by themselves.
