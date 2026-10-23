@@ -2093,6 +2093,77 @@ describe('LiveSession', () => {
       expect(parts(fixture).conversation.unread()).toBe(0);
     });
 
+    describe('the notice of new lines at the top of the page', () => {
+      const notice = (el: HTMLElement) => el.querySelector('app-unread-notice');
+      const arrive = async (fixture: ComponentFixture<LiveSession>, ids: string[]) => {
+        for (const [at, id] of ids.entries()) {
+          source.push({
+            kind: 'sessionMessage',
+            message: line(id, { authorUserId: 'u-mestre', at }),
+          });
+          await settle(fixture);
+        }
+      };
+
+      it('is not drawn without news', async () => {
+        onPhone(true);
+        const el = await settle(TestBed.createComponent(LiveSession));
+        expect(notice(el)).toBeNull();
+      });
+
+      it('is the first thing in the main column once a line arrives, ahead of the board and the tabs', async () => {
+        onPhone(true);
+        const fixture = TestBed.createComponent(LiveSession);
+        const el = await settle(fixture);
+        await arrive(fixture, ['m1']);
+        const main = el.querySelector('.split__main') as HTMLElement;
+        expect(main.firstElementChild?.tagName.toLowerCase()).toBe('app-unread-notice');
+        expect(notice(el)?.textContent).toContain('Conversa: 1 mensagem nova');
+      });
+
+      it('says how many lines are new, and opens the chat when pressed, then goes', async () => {
+        onPhone(true);
+        const fixture = TestBed.createComponent(LiveSession);
+        const el = await settle(fixture);
+        await arrive(fixture, ['m1', 'm2', 'm3']);
+        const button = notice(el)?.querySelector('button') as HTMLButtonElement;
+        expect(button.textContent).toContain('Conversa: 3 mensagens novas');
+        button.click();
+        await settle(fixture);
+        expect(notice(el)).toBeNull();
+        expect(el.querySelector('.split__main')?.hasAttribute('inert')).toBe(true);
+        expect(parts(fixture).conversation.unread()).toBe(0);
+      });
+
+      it('goes when the Conversa tab clears the count, and keeps the badge on the tab while shown', async () => {
+        onPhone(true);
+        const fixture = TestBed.createComponent(LiveSession);
+        const el = await settle(fixture);
+        await arrive(fixture, ['m1', 'm2']);
+        expect(el.querySelector('app-session-tabs .tab__badge')?.textContent?.trim()).toBe('2');
+        (el.querySelectorAll('app-session-tabs button.tab')[1] as HTMLButtonElement).click();
+        await settle(fixture);
+        expect(notice(el)).toBeNull();
+      });
+
+      it('is not a live region of its own: the panel already tells each line', async () => {
+        onPhone(true);
+        const fixture = TestBed.createComponent(LiveSession);
+        const el = await settle(fixture);
+        await arrive(fixture, ['m1']);
+        const host = notice(el) as HTMLElement;
+        expect(host.querySelector('[role="status"], [role="alert"], [aria-live]')).toBeNull();
+      });
+
+      it('is never drawn on a computer', async () => {
+        onPhone(false);
+        const fixture = TestBed.createComponent(LiveSession);
+        const el = await settle(fixture);
+        await arrive(fixture, ['m1']);
+        expect(notice(el)).toBeNull();
+      });
+    });
+
     it('does not count on a computer, where the column is on screen', async () => {
       onPhone(false);
       const fixture = TestBed.createComponent(LiveSession);
