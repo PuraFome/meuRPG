@@ -1,3 +1,4 @@
+import { SpellAreaShape } from '../../../gen/meurpg/rules/v1/rules_pb';
 import {
   type Combatant,
   CombatantKind,
@@ -9,6 +10,9 @@ import {
   ReactionKind,
   type ReactionWindow,
   ReactionWindowStatus,
+  type SpellZone,
+  SpellZoneMovement,
+  SpellZoneVisibility,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 
 /** A combatant for specs: an NPC unless `kind` says otherwise. */
@@ -95,4 +99,34 @@ export function reactionWindow(over: Partial<ReactionWindow> & { id: string }): 
     prompt: { case: undefined, value: undefined },
     ...over,
   } as unknown as ReactionWindow;
+}
+
+/** A spell zone for specs: Moonbeam as its caster's player (or the master) reads it, a 5 ft cylinder moved by an action; `over` changes any field. */
+export function spellZone(over: Partial<SpellZone> & { id: string }): SpellZone {
+  return {
+    spellKey: 'spell:moonbeam',
+    spellNamePt: 'Raio Lunar',
+    ownerCombatantId: 'bartolo',
+    ownerLabel: 'Bartolo',
+    shape: SpellAreaShape.CYLINDER,
+    sizeFt: 5,
+    origin: { col: 8, row: 6 },
+    squares: [],
+    concentration: true,
+    roundsLeft: 9,
+    movement: SpellZoneMovement.ACTION,
+    visibility: SpellZoneVisibility.EVERYONE,
+    detailsHidden: false,
+    saveAbility: 'con',
+    saveAbilityNamePt: 'Constituição',
+    saveDc: 14,
+    damageDice: '2d10',
+    damageTypeKey: 'radiant',
+    damageTypeNamePt: 'radiante',
+    halfOnSave: true,
+    movesPerTurnFt: 0,
+    notes: [],
+    occupantIds: [],
+    ...over,
+  } as unknown as SpellZone;
 }
