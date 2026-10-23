@@ -81,7 +81,9 @@ func (s *Service) fighterOf(ctx context.Context, tx pgx.Tx, campaignID, characte
 	switch {
 	case sheet.GetFull() != nil:
 		// A druid in Wild Shape fights as the beast (MR-037).
-		return rows[0].Kind, derive(content, sheet.GetFull(), rows[0].WildShapeBeast), content, nil
+		d := derive(content, sheet.GetFull(), rows[0].WildShapeBeast)
+		d.ArmorUntrained = armorTrainingOf(d, rows[0].Kind, rows[0].WildShapeBeast)
+		return rows[0].Kind, d, content, nil
 	case sheet.GetBasic() != nil:
 		return rows[0].Kind, basicDerived(content, sheet.GetBasic()), content, nil
 	}

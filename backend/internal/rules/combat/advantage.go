@@ -516,14 +516,16 @@ type SaveScene struct {
 func SaveMode(s SaveScene) []Source {
 	rs := dexSaveRules(s)
 	rs = append(rs, sourceRule{s.Ability == strengthAbility && s.Creature.Raging, SourceRageStrength, ModeAdvantage, ""})
-	rs = append(rs, sourceRule{s.Creature.ArmorUntrained && physicalAbility(s.Ability), SourceArmorUntrained, ModeDisadvantage, ""})
+	rs = append(rs, sourceRule{s.Creature.ArmorUntrained && ArmorSpoilsAbility(s.Ability), SourceArmorUntrained, ModeDisadvantage, ""})
 	rs = append(rs, saveRules(s)...)
 	rs = append(rs, checkRules(s)...)
 	return append(appendRules(nil, rs), taggedSaveSources(s)...)
 }
 
-// physicalAbility says the ability is Strength or Dexterity.
-func physicalAbility(ability string) bool {
+// ArmorSpoilsAbility says armor without proficiency spoils a roll made with the ability: only Strength
+// and Dexterity (SRD 5.1, "Armor"), never Constitution (a concentration save), Wisdom, Intelligence or
+// Charisma. Every roll that reads Creature.ArmorUntrained asks it, checks, saves and weapon attacks alike.
+func ArmorSpoilsAbility(ability string) bool {
 	return ability == strengthAbility || ability == dexterityAbility
 }
 

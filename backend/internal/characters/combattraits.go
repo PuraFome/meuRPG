@@ -143,3 +143,14 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 	}
 	return t
 }
+
+// armorTrainingOf is the armor training that counts for a combatant: the sheet's own for a player's
+// character, and none for anyone else. An NPC or a creature with a stat block is proficient with what
+// it wears (SRD 5.1, "Armor"), and a druid in a beast form fights as the beast. This is the one place
+// that says whose armor can spoil a roll; combat.ArmorSpoilsAbility says which rolls.
+func armorTrainingOf(d rules.Derived, kind string, beast *string) rules.ArmorUntrained {
+	if kind != kindPlayer || (beast != nil && *beast != "") {
+		return rules.ArmorUntrained{}
+	}
+	return d.ArmorUntrained
+}

@@ -205,7 +205,7 @@ func (s attackShape) rangedAt(dist int32, known bool) bool {
 }
 
 // physical says the attack is made with Strength or Dexterity.
-func (s attackShape) physical() bool { return s.Ability == "str" || s.Ability == "dex" }
+func (s attackShape) physical() bool { return combat.ArmorSpoilsAbility(s.Ability) }
 
 // shapeOfAttack reads a sheet's attack. A spell attack with a range beyond touch is
 // a ranged attack; a touch spell is melee.
@@ -500,40 +500,36 @@ func (c textContext) situationSentence(src combat.Source) (string, bool) {
 	return "", false
 }
 
+// staticSentences are the sources of a saving throw, a check or an effect whose sentence names nothing.
+var staticSentences = map[string]string{
+	combat.SourceDodgingSave:      "Esquivando: vantagem em testes de resistência de Destreza",
+	combat.SourceRageStrength:     "Em fúria: vantagem em testes e testes de resistência de Força",
+	combat.SourcePerceptionDim:    "Você vê o chão em penumbra: desvantagem na Percepção",
+	combat.SourceExhaustionAttack: "Exaustão: desvantagem em jogadas de ataque",
+	combat.SourceExhaustionSave:   "Exaustão: desvantagem em testes de resistência",
+	combat.SourceExhaustionCheck:  "Exaustão: desvantagem em testes de habilidade",
+	combat.SourceStealthArmor:     "Armadura: desvantagem em Furtividade",
+	combat.SourceArmorUntrained:   labelArmorUntrained + ": desvantagem em testes, ataques e testes de resistência de Força e Destreza",
+	combat.SourceOutlinedTarget:   "Alvo delineado: vantagem se o atacante o vê",
+	combat.SourceEffectSave:       "Efeito ativo: vantagem no teste de resistência",
+	combat.SourceEffectCheck:      "Efeito ativo: vantagem em testes de habilidade",
+}
+
 // otherSentence writes, in Portuguese, a source of a saving throw or an ability check, or one an
 // effect that lasts gives.
 func (c textContext) otherSentence(src combat.Source) string {
+	if text, ok := staticSentences[src.Kind]; ok {
+		return text
+	}
 	switch src.Kind {
-	case combat.SourceDodgingSave:
-		return "Esquivando: vantagem em testes de resistência de Destreza"
 	case combat.SourceDangerSense:
 		return fmt.Sprintf("%s: vantagem em testes de resistência de Destreza contra efeitos que você vê", c.names("feature:danger-sense"))
-	case combat.SourceRageStrength:
-		return "Em fúria: vantagem em testes e testes de resistência de Força"
 	case combat.SourceRestrainedSave:
 		return fmt.Sprintf("%s: desvantagem em testes de resistência de Destreza", c.cond(src.Condition))
 	case combat.SourcePoisonedCheck, combat.SourceFrightenedCheck:
 		return fmt.Sprintf("%s: desvantagem em testes de habilidade", c.cond(src.Condition))
-	case combat.SourcePerceptionDim:
-		return "Você vê o chão em penumbra: desvantagem na Percepção"
-	case combat.SourceExhaustionAttack:
-		return "Exaustão: desvantagem em jogadas de ataque"
-	case combat.SourceExhaustionSave:
-		return "Exaustão: desvantagem em testes de resistência"
-	case combat.SourceExhaustionCheck:
-		return "Exaustão: desvantagem em testes de habilidade"
-	case combat.SourceStealthArmor:
-		return "Armadura: desvantagem em Furtividade"
-	case combat.SourceArmorUntrained:
-		return labelArmorUntrained + ": desvantagem em testes, ataques e testes de resistência de Força e Destreza"
-	case combat.SourceOutlinedTarget:
-		return "Alvo delineado: vantagem se o atacante o vê"
 	case combat.SourceTaggedSave:
 		return fmt.Sprintf("%s: vantagem no teste de resistência %s", c.names(src.Condition), againstSentence(src.Against))
-	case combat.SourceEffectSave:
-		return "Efeito ativo: vantagem no teste de resistência"
-	case combat.SourceEffectCheck:
-		return "Efeito ativo: vantagem em testes de habilidade"
 	}
 	return ""
 }

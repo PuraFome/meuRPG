@@ -49,8 +49,10 @@ func TestAnNPCInArmorItsSheetDoesNotListIsNeverPenalized(t *testing.T) {
 		what, skill, ability string
 		check                bool
 	}{
-		{"STR check", "skill:athletics", "str", true}, {"DEX check", "skill:acrobatics", "dex", true},
-		{"DEX save", "", "dex", false}, {"STR save", "", "str", false},
+		{"STR check", "skill:athletics", "str", true},
+		{"DEX check", "skill:acrobatics", "dex", true},
+		{"DEX save", "", "dex", false},
+		{"STR save", "", "str", false},
 	} {
 		wantCheckMode(t, "NPC "+c.what, a.checkModeFor(t, id, c.skill, c.ability, c.check), combat.ModeNormal, nil, nil, 0, 0)
 	}
