@@ -248,3 +248,43 @@ func TestCheckAdvantageImmunityAndTurnTempHPOfTheModifiers(t *testing.T) {
 		t.Errorf("a Strength save with Enhance Ability = %v, want a normal roll", got)
 	}
 }
+
+func TestAnAmbusherHasAdvantageOnlyAgainstAnUnactedTarget(t *testing.T) {
+	scene := AttackScene{Attacker: Creature{}, Target: Creature{}, UnactedAdvantage: "feature:golpe-de-emboscada"}
+	got := AttackMode(scene).Sources
+	if len(got) != 1 || got[0].Effect != ModeAdvantage || got[0].Kind != SourceEffectAttack || got[0].Condition != "feature:golpe-de-emboscada" {
+		t.Fatalf("sources = %+v, want one advantage from the feature", got)
+	}
+	if got := AttackMode(AttackScene{}).Sources; len(got) != 0 {
+		t.Errorf("sources = %+v, want none without the feature", got)
+	}
+}
+
+func TestAHitOnASurprisedTargetIsCriticalOnlyForTheAmbusher(t *testing.T) {
+	if !AttackMode(AttackScene{SurprisedCritical: true}).CriticalOnHit {
+		t.Error("a hit by an ambusher on a surprised target is not critical")
+	}
+	if AttackMode(AttackScene{}).CriticalOnHit {
+		t.Error("a hit with no ambush is critical")
+	}
+}
+
+func TestACreatureHasNotActedBeforeItsFirstTurn(t *testing.T) {
+	cases := []struct {
+		name                string
+		running             bool
+		round, current, own int
+		want                bool
+	}{
+		{"before the combat", false, 0, -1, 2, true},
+		{"later in the first round", true, 1, 0, 2, true},
+		{"on its own turn", true, 1, 2, 2, false},
+		{"after its turn", true, 1, 3, 2, false},
+		{"second round", true, 2, 0, 2, false},
+	}
+	for _, tc := range cases {
+		if got := HasNotActed(tc.running, tc.round, tc.current, tc.own); got != tc.want {
+			t.Errorf("%s: HasNotActed = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}

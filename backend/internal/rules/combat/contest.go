@@ -229,6 +229,20 @@ func HelpLastsThrough(made, round, current, helper int) bool {
 	return false
 }
 
+// HasNotActed says whether a creature has not taken a turn in the combat yet: the combat is
+// not running yet, or it is in the first round and the turn that is running comes before the
+// creature's. round is the combat's round, 0 while it is being set up; current and own are
+// the places in the order of the turn that is running and of the creature.
+func HasNotActed(running bool, round, current, own int) bool {
+	switch {
+	case !running:
+		return true
+	case round > 1:
+		return false
+	}
+	return current < own
+}
+
 // SurprisedUntilTurnEnds says whether a surprised creature is still surprised: the
 // combat is not running yet, or its turn of the first round has not ended (SRD 5.1,
 // "Surprise": it cannot move, act or react until that turn ends). round is the combat's

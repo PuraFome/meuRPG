@@ -238,6 +238,9 @@ type modeFacts struct {
 	helps  []playdb.CombatHelp
 	// sight is the fog of the combat's map, nil without one.
 	sight *fogSight
+	// enc and surprised are the combat and who is surprised now, for the ambush effects.
+	enc       playdb.Encounter
+	surprised []string
 }
 
 // modeResult is the mode of one roll: the truth, and what a viewer may read.
@@ -298,7 +301,17 @@ func (f modeFacts) scene(attacker, target playdb.Combatant, traits link.Traits, 
 	s.TargetUnseen = f.unseen(attacker, target)
 	s.AllyNearTarget = known && traits.PackTactics && f.allyNear(attacker, target, view)
 	s.HostileNearAttacker = known && ranged && f.hostileNear(attacker, view)
+	f.ambush(&s, target, traits)
 	return s
+}
+
+// ambush fills what the attacker's ambush effects ask of the target: that it has not had its
+// turn yet (advantage) and that it is surprised (a hit is critical).
+func (f modeFacts) ambush(s *combat.AttackScene, target playdb.Combatant, traits link.Traits) {
+	if traits.UnactedAdvantage != "" && combat.HasNotActed(f.enc.Status == statusActive, int(f.enc.Round), currentOrder(f.enc, f.cs), int(target.OrderIndex)) {
+		s.UnactedAdvantage = traits.UnactedAdvantage
+	}
+	s.SurprisedCritical = traits.SurprisedCritical != "" && slices.Contains(f.surprised, target.ID)
 }
 
 // unseen says the observer cannot see the subject: a fog map hides it from the
@@ -487,6 +500,9 @@ func (c textContext) situationSentence(src combat.Source) (string, bool) {
 	case combat.SourceHostileNearby:
 		return "Um inimigo a 1,5 m de quem ataca à distância: desvantagem", true
 	case combat.SourceEffectAttack:
+		if src.Effect == combat.ModeAdvantage {
+			return fmt.Sprintf("%s: vantagem neste ataque", c.names(src.Condition)), true
+		}
 		return fmt.Sprintf("%s: desvantagem neste ataque", c.names(src.Condition)), true
 	}
 	return "", false
@@ -665,9 +681,13 @@ func (s *Service) turnModes(ctx context.Context, campaignID string, d *encounter
 	if err != nil {
 		return turnModes{}, err
 	}
+	surprised, err := s.surprisedFacts(ctx, s.queries, d.enc, d.cs)
+	if err != nil {
+		return turnModes{}, err
+	}
 	return turnModes{
 		who: who, sheet: sheet, viewer: v, names: s.namesFor(ctx, campaignID), ownTurn: actsNow(d.enc, who),
-		facts: modeFacts{cs: d.cs, states: states, theatre: isTheatre(d.enc), sight: sight, hiding: hiding, helps: helps},
+		facts: modeFacts{cs: d.cs, states: states, theatre: isTheatre(d.enc), sight: sight, hiding: hiding, helps: helps, enc: d.enc, surprised: surprised},
 	}, nil
 }
 

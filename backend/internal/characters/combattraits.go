@@ -129,6 +129,7 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 	}
 	t.SpellAttackIgnoresCover, t.RangedWeaponIgnoresCover = d.SpellAttackIgnoresCover, d.RangedWeaponIgnoresCover
 	t.RangedWeaponNoLongRangeDisadvantage = d.RangedWeaponNoLongRangeDisadvantage
+	t.UnactedAdvantage, t.SurprisedCritical = d.UnactedAdvantage, d.SurprisedCritical
 	for _, m := range d.Maneuvers {
 		t.Maneuvers = append(t.Maneuvers, link.Maneuver{
 			Key: m.Key, NamePT: m.NamePT, Resource: m.Resource, Applies: m.Applies, Economy: m.Economy,
