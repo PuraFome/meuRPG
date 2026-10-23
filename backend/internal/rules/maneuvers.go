@@ -20,9 +20,6 @@ const (
 	ManeuverGoad = "goad"
 )
 
-// goadSaveAbility is the ability of the target's saving throw against a goad.
-const goadSaveAbility = "wis"
-
 // Bounds of a superiority die's sides: a formula that gives anything else is ignored.
 const (
 	minManeuverSides = 2
