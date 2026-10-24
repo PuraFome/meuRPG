@@ -249,7 +249,7 @@ func TestB2_APartyThatDoesNotFitIsRefused(t *testing.T) {
 	var cells [][2]int32
 	for row, line := range caveWalls {
 		for col, ch := range line {
-			if ch != '#' && !(col == 0 && row == 7) {
+			if ch != '#' && (col != 0 || row != 7) {
 				cells = append(cells, [2]int32{conv.Int32(col), conv.Int32(row)})
 			}
 		}

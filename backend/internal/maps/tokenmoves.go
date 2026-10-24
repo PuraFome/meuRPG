@@ -309,7 +309,7 @@ func planFree(tokens []mapsdb.MapToken, ask tokenAsk) movePlan {
 // clampBp keeps a position in the image.
 func clampBp(n int32) int32 { return min(max(n, 0), maxPosition) }
 
-// writeMoves writes the tokens that changed square, each to the centre of the square it reached (to the
+// writeMoves writes the tokens that changed square, each to the center of the square it reached (to the
 // point itself on a map with no grid), and returns the tokens as they are.
 func (s *Service) writeMoves(ctx context.Context, q *mapsdb.Queries, ask tokenAsk, out moveOutcome) ([]mapsdb.MapToken, error) {
 	after := slices.Clone(out.before)
@@ -419,7 +419,7 @@ func (s *Service) squareKnower(ctx context.Context, ask tokenAsk) (func(grid.Squ
 
 // stopOf is the reason a token stopped, as the caller may read it: the square in the way is the next one
 // on the line past where the token ended, and a player who does not know it learns only that it stopped.
-func stopOf(step tokenStep, g grid.Grid, ask tokenAsk, knows func(grid.Square) bool) mapsv1.MapMoveStop {
+func stopOf(step tokenStep, _ grid.Grid, ask tokenAsk, knows func(grid.Square) bool) mapsv1.MapMoveStop {
 	if step.stop == grid.StopNone {
 		return mapsv1.MapMoveStop_MAP_MOVE_STOP_UNSPECIFIED
 	}

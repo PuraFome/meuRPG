@@ -54,8 +54,8 @@ func planMove(t grid.Terrain, starts []grid.Square, anchorTo grid.Square) movePl
 		return plan
 	}
 	for i, dest := range dests {
+		plan.moved = plan.moved || dest != plan.steps[i].reached
 		plan.steps[i].reached, plan.steps[i].moved = dest, plan.steps[i].asked
-		plan.moved = plan.moved || dest != starts[i]
 	}
 	return plan
 }
