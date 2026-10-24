@@ -99,3 +99,20 @@
     min-height: 44px;
   }
 }
+
+// The row inside a scene (C3-01): the switch above, then the two buttons, 44 px high.
+.strip {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.strip__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+
+  button {
+    min-height: 44px;
+  }
+}

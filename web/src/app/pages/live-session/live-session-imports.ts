@@ -1,5 +1,10 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { SessionRail } from '../../shared/session-rail/session-rail';
+import { Fold } from '../../shared/fold/fold';
+import { TabList } from '../../shared/tab-list/tab-list';
+import { MasterPanel } from './master-board/master-panel';
 import { SessionTabs } from './conversation/session-tabs';
 import { UnreadNotice } from './conversation/unread-notice';
 import { ClueNotice } from './clue-notice/clue-notice';
@@ -47,6 +52,11 @@ import { ShownImagePanel } from './shown-image-panel/shown-image-panel';
 
 /** The components and directives the session page's template uses. */
 export const LIVE_SESSION_IMPORTS = [
+  NgTemplateOutlet,
+  SessionRail,
+  Fold,
+  TabList,
+  MasterPanel,
   MatButtonModule,
   MatIconModule,
   ClueNotice,

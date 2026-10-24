@@ -1,3 +1,28 @@
+@if (appearance() === 'row') {
+  <div class="strip" role="group" aria-label="Imagem para os jogadores">
+    @if (shown()) {
+      <app-keep-switch [checked]="keep()" [disabled]="keeping() || stopping()" (toggle)="setKeep($event)" />
+    }
+    <div class="strip__buttons">
+      <button #showButton matButton="outlined" type="button" (click)="open()">
+        <mat-icon aria-hidden="true">image</mat-icon>Da galeria
+      </button>
+      @if (shown()) {
+        <button #stopButton matButton="outlined" type="button" [disabled]="stopping() || keeping()" (click)="stop()">
+          <mat-icon aria-hidden="true">close</mat-icon>Parar de mostrar
+        </button>
+      }
+    </div>
+  </div>
+  <app-left-images-list [images]="left()" (take)="takeBack($event)" />
+  @if (error(); as message) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ message }}</p>
+    </div>
+  }
+  <p class="mr-visually-hidden" role="status" aria-live="polite">{{ status() }}</p>
+} @else {
 <section
   class="mr-panel panel"
   [class.panel--on]="shown()"
@@ -46,3 +71,4 @@
   }
   <p class="mr-visually-hidden" role="status" aria-live="polite">{{ status() }}</p>
 </section>
+}

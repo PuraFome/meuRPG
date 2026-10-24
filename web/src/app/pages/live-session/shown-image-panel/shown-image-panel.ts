@@ -80,6 +80,8 @@ export class ShownImagePanel {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   readonly campaignId = input.required<string>();
+  /** `panel`: the "Imagem para os jogadores" panel; `row`: the same controls folded into a scene's image row (C3-01). */
+  readonly appearance = input<'panel' | 'row'>('panel');
   readonly shown = input<ShownImageVm | null>(null);
   /** The campaign's maps, to tag the images that back a hidden map. */
   readonly maps = input<readonly MapMessage[]>([]);

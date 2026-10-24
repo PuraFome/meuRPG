@@ -194,7 +194,7 @@
         </div>
       }
 
-      @if (isMaster() && (fogOn() || image()) && markerPoints().length > 0) {
+      <ng-template #pointsBlock>
         <div class="map__points">
           <app-map-points-list
             [points]="markerPoints()"
@@ -223,6 +223,38 @@
             {{ reveals.announcement() }}
           </p>
         </div>
+      </ng-template>
+      @if (isMaster() && tools() && (fogOn() || image())) {
+        <!-- The tab set under the master's map (C6-05): the points, the tokens, the fog and the lights, the traps, the treasure, the encounters. -->
+        <div class="map__tools">
+          <app-tab-list label="Ferramentas do mapa" idPrefix="map-tool" [compact]="phone()" [tabs]="toolTabs()" [selected]="toolShown()" (selectedChange)="tool.set($event)" />
+          <div class="map__tool" role="tabpanel" [id]="panelId('pontos')" [attr.aria-labelledby]="tabId('pontos')" [hidden]="toolShown() !== 'pontos'">
+            @if (markerPoints().length > 0) {
+              <ng-container *ngTemplateOutlet="pointsBlock" />
+            } @else {
+              <p class="mr-muted">Este mapa ainda não tem pontos. Crie-os no editor do mapa (“Abrir mapa”).</p>
+            }
+          </div>
+          <div class="map__tool" role="tabpanel" [id]="panelId('tokens')" [attr.aria-labelledby]="tabId('tokens')" [hidden]="toolShown() !== 'tokens'">
+            <ng-content select="[mapTokens]" />
+          </div>
+          @if (fogOn()) {
+            <div class="map__tool" role="tabpanel" [id]="panelId('nevoa')" [attr.aria-labelledby]="tabId('nevoa')" [hidden]="toolShown() !== 'nevoa'">
+              <ng-content select="[mapFog]" />
+            </div>
+          }
+          <div class="map__tool" role="tabpanel" [id]="panelId('armadilhas')" [attr.aria-labelledby]="tabId('armadilhas')" [hidden]="toolShown() !== 'armadilhas'">
+            <ng-content select="[mapTraps]" />
+          </div>
+          <div class="map__tool" role="tabpanel" [id]="panelId('tesouro')" [attr.aria-labelledby]="tabId('tesouro')" [hidden]="toolShown() !== 'tesouro'">
+            <ng-content select="[mapTreasure]" />
+          </div>
+          <div class="map__tool" role="tabpanel" [id]="panelId('encontros')" [attr.aria-labelledby]="tabId('encontros')" [hidden]="toolShown() !== 'encontros'">
+            <ng-content select="[mapEncounters]" />
+          </div>
+        </div>
+      } @else if (isMaster() && (fogOn() || image()) && markerPoints().length > 0) {
+        <ng-container *ngTemplateOutlet="pointsBlock" />
       }
     }
     @case ('error') {

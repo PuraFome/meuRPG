@@ -42,6 +42,11 @@
       (leftChanged)="leftChanged.emit()"
     />
 
+    <!-- The shown image's controls ("Da galeria", "Deixar com os jogadores", "Parar de mostrar") sit under the scene's images. -->
+    <div class="so__tools">
+      <ng-content select="[sceneImageTools]" />
+    </div>
+
     <div class="so__cols">
       @if (!phone()) {
         <div class="so__notes">
@@ -98,6 +103,11 @@
           <ng-container *ngTemplateOutlet="actionList" />
         </section>
       }
+    </div>
+
+    <!-- "Pedir teste em grupo": a button of the scene that opens the asking form here. -->
+    <div class="so__tools">
+      <ng-content select="[sceneTools]" />
     </div>
 
     <p class="mr-visually-hidden so__live" role="status" aria-live="polite">{{ state().notice() }}</p>

@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, input, output, signal, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
@@ -33,12 +34,21 @@ import { MapPinsLegend } from '../../../shared/map-pins/map-pins-legend';
 import { MapLegend } from '../../../shared/map-view/map-legend/map-legend';
 import { MapMove, MapView } from '../../../shared/map-view/map-view';
 import { PHONE_QUERY, mediaQuery } from '../../../shared/map-view/media-query';
+import { type TabItem, TabList, tabId, tabPanelId } from '../../../shared/tab-list/tab-list';
 import { type DoorSheetData, openDoorSheet } from '../door-sheet/door-sheet';
 import { SessionDark } from '../dark-warning/session-dark';
 import { FogPlayerTools } from '../fog-tools/fog-player-tools';
 import { LiveSessionSource } from '../../../core/play/live-session.types';
 
 const NO_IDS: ReadonlySet<string> = new Set();
+
+/** The counts beside the tab names under the master's map. */
+export interface MapToolCounts {
+  readonly tokens: number;
+  readonly traps: number;
+  readonly treasure: number;
+  readonly encounters: number;
+}
 
 /**
  * The map half of the session page (MR-012, E5-02 to E5-06): the session's
@@ -73,7 +83,9 @@ const NO_IDS: ReadonlySet<string> = new Set();
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    NgTemplateOutlet,
     RouterLink,
+    TabList,
     SessionDark,
     ViewAsMapView,
   ],
@@ -121,6 +133,10 @@ export class SessionMap {
   readonly dark = input<DarkWatch | null>(null);
   readonly creaturesTick = input(0);
   /** The master chose another map (or none): the page shows it. */
+  /** The master's "Mapa" tab: the tab set under the map (Pontos, Tokens, Névoa e luz, Armadilhas, Tesouro, Encontros). */
+  readonly tools = input(false);
+  /** How many tokens, traps, treasures and encounters the tab set counts. */
+  readonly counts = input<MapToolCounts>({ tokens: 0, traps: 0, treasure: 0, encounters: 0 });
   readonly currentChanged = output<string | null>();
   /** "Procurar armadilhas": the page opens the search sheet. */
   readonly searchTraps = output<void>();
@@ -170,6 +186,38 @@ export class SessionMap {
 
   // ---- the fog of war (MR-036) ----
   protected readonly fogOn = computed(() => this.map()?.fogEnabled === true);
+  /** The tab under the master's map the master chose. */
+  protected readonly tool = signal('pontos');
+  protected readonly toolTabs = computed<readonly TabItem[]>(() => {
+    const n = this.counts();
+    const tab = (id: string, label: string, icon: string, count = 0): TabItem => ({
+      id,
+      label,
+      icon,
+      ...(count > 0 ? { badge: String(count), words: String(count) } : {}),
+    });
+    return [
+      tab('pontos', 'Pontos', 'place', this.markerPoints().length),
+      tab('tokens', 'Tokens', 'person', n.tokens),
+      ...(this.fogOn() ? [tab('nevoa', 'Névoa e luz', 'lightbulb')] : []),
+      tab('armadilhas', 'Armadilhas', 'warning', n.traps),
+      tab('tesouro', 'Tesouro', 'star', n.treasure),
+      tab('encontros', 'Encontros', 'swords', n.encounters),
+    ];
+  });
+  /** The tab shown: the chosen one, or "Pontos" when it went away (the fog was turned off). */
+  protected readonly toolShown = computed(() => {
+    const tabs = this.toolTabs();
+    return tabs.some((t) => t.id === this.tool()) ? this.tool() : tabs[0].id;
+  });
+
+  protected panelId(id: string): string {
+    return tabPanelId('map-tool', id);
+  }
+
+  protected tabId(id: string): string {
+    return tabId('map-tool', id);
+  }
   /** The player's own token: the carried light is read from it. */
   protected readonly ownToken = computed(
     () =>

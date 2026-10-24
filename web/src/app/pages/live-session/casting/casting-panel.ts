@@ -5,6 +5,7 @@ import {
   effect,
   inject,
   input,
+  output,
   signal,
 } from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
@@ -85,6 +86,11 @@ export class CastingPanel {
       .slice(0, LOG_LINES)
       .map((c) => ({ id: c.id, text: logLine(c), failed: c.status === OutsideCastStatus.FAILED })),
   );
+
+  /** How many casts wait for the master to finish them: the master's "Grupo" tab counts it. */
+  readonly castsWaiting = output<number>();
+
+  protected readonly tell = effect(() => this.castsWaiting.emit(this.going().length));
 
   protected readonly reload = effect(() => {
     this.tick();

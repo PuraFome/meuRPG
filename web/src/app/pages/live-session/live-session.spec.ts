@@ -664,9 +664,9 @@ describe('LiveSession', () => {
       expect(panel.textContent).toContain('Mostrar aos jogadores');
       // The live card is in the main column, not in the rail: one at a time, the shown one chosen.
       expect(panel.querySelector('app-master-run')).toBeNull();
-      expect(el.querySelector('.board__left app-master-live app-master-run h3')?.textContent).toBe(
-        'O selo da Capela',
-      );
+      expect(
+        el.querySelector('#mb-panel-cena app-master-live app-master-run h3')?.textContent,
+      ).toBe('O selo da Capela');
       // A master never gets the player's way in.
       expect(el.querySelector('app-puzzle-notice')).toBeNull();
     });
@@ -1302,17 +1302,43 @@ describe('LiveSession', () => {
         expect(el.querySelector('app-scene-panel h2')?.textContent).toBe('Cena de RP');
         expect(el.textContent).toContain('Nenhuma cena aberta.');
         expect(el.querySelector('app-scene-open')).toBeNull();
-        expect(el.querySelector('.board--scene-open')).toBeNull();
+        expect(el.querySelector('#mb-panel-cena')?.hasAttribute('hidden')).toBe(true);
+      });
+
+      it('has the tabs "Cena", "Mapa" and "Grupo" over panels that stay mounted, opening on "Mapa" with no scene', async () => {
+        const el = await render();
+        const names = Array.from(el.querySelectorAll('.mb__tabs [role="tab"]'), (t) =>
+          t.querySelector('span')?.textContent?.trim(),
+        );
+        expect(names).toEqual(['Cena', 'Mapa', 'Grupo']);
+        expect(el.querySelector('#mb-tab-mapa')?.getAttribute('aria-selected')).toBe('true');
+        const hidden = ['cena', 'mapa', 'grupo'].map((t) =>
+          el.querySelector(`#mb-panel-${t}`)?.hasAttribute('hidden'),
+        );
+        expect(hidden).toEqual([true, false, true]);
+        // Hidden panels keep their parts: the party is in "Grupo" even while "Mapa" shows.
+        expect(el.querySelector('#mb-panel-grupo app-party-panel')).not.toBeNull();
+        // The Conversa is the rail beside the board.
+        expect(el.querySelector('app-session-rail[aria-label="Conversa"]')).not.toBeNull();
+      });
+
+      it('opens on the tab the address names', async () => {
+        query.next(convertToParamMap({ vista: 'grupo' }));
+        const el = await render();
+        expect(el.querySelector('#mb-tab-grupo')?.getAttribute('aria-selected')).toBe('true');
+        expect(el.querySelector('#mb-panel-grupo')?.hasAttribute('hidden')).toBe(false);
       });
 
       it('moves the open scene to the top of the map column and takes "Cena de RP" out of the right one', async () => {
         scenes.scene = masterScene([sceneRoll('r1', 'a2', 'Toren', 7, { passed: false })]);
         const el = await render();
         expect(el.querySelector('app-scene-panel')).toBeNull();
-        expect(el.querySelector('.board--scene-open')).not.toBeNull();
-        const left = el.querySelector('.board__left')!;
-        expect(left.firstElementChild?.tagName.toLowerCase()).toBe('app-scene-open');
-        expect(left.querySelector('app-session-map')).not.toBeNull();
+        // The scene is the first block of "Cena", which is the tab shown while a scene is open; the map is in "Mapa".
+        const cena = el.querySelector('#mb-panel-cena')!;
+        expect(cena.hasAttribute('hidden')).toBe(false);
+        expect(cena.firstElementChild?.tagName.toLowerCase()).toBe('app-scene-open');
+        expect(el.querySelector('#mb-panel-mapa')?.hasAttribute('hidden')).toBe(true);
+        expect(el.querySelector('#mb-panel-mapa app-session-map')).not.toBeNull();
         expect(el.querySelector('#so-title')?.textContent).toBe('Cena: A\u00a0carroça tombada');
         expect(el.textContent).toContain('Não passou');
       });
@@ -1781,8 +1807,8 @@ describe('LiveSession', () => {
           'Pensantus Vinicius 4 quadrados vistos',
           'Brisa Ana 2 quadrados vistos',
         ]);
-        // Next to the map: the panel is the first block of the right column.
-        expect(el.querySelector('.board__fog app-view-as-list')).not.toBeNull();
+        // Under the map: the tab "Névoa e luz".
+        expect(el.querySelector('#map-tool-panel-nevoa app-view-as-list')).not.toBeNull();
       });
 
       it('shows the map as one character sees it, with the band and the badge, and comes back with "Todos"', async () => {

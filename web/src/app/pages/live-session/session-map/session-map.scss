@@ -118,3 +118,15 @@
   text-decoration: underline;
   cursor: pointer;
 }
+
+// The tab set under the master's map (C6-05): the list, then the panel of the chosen tab.
+.map__tools {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  margin-top: var(--mr-space-4);
+}
+
+.map__tool {
+  min-width: 0;
+}

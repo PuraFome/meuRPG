@@ -210,3 +210,14 @@
   gap: 2px var(--mr-space-3);
   margin-top: 2px;
 }
+
+// The shown image's controls and the group check button, projected by the page: nothing is drawn (and no gap) when empty.
+.so__tools {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+
+  &:empty {
+    display: none;
+  }
+}

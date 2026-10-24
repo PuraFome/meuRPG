@@ -64,3 +64,10 @@
   font-size: 12px;
   line-height: 20px;
 }
+
+// Amber: something waits for the master in "Grupo" (the count is in the button's name too).
+.tab__badge--wait {
+  border: 1px solid var(--mr-warning-line);
+  background: var(--mr-warning-surface);
+  color: var(--mr-warning-ink);
+}

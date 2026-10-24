@@ -78,15 +78,12 @@ describe("SceneImagesShow (the master's open scene)", () => {
     );
   });
 
-  it('marks the image on display and offers to stop it', async () => {
+  it("marks the image on display; stopping it is the scene row's button, not the tile's", () => {
     setup([image('i1', 'A carroça'), image('i2', 'A estrada')], vm('i1', 'A carroça'));
     expect(tile('i1').textContent).toContain('À mostra agora');
     expect(tile('i1').classList).toContain('sm__tile--shown');
     expect(tile('i2').textContent).not.toContain('À mostra agora');
-    button('i1', 'Parar de mostrar').click();
-    await settle();
-    expect(source.setShownImage).toHaveBeenCalledWith('c1', null);
-    expect(changed).toEqual([null]);
+    expect(tile('i1').querySelector('button')).toBeNull();
   });
 
   it('with "Deixar com os jogadores" on, replacing the image tells the page to read the left list', async () => {
