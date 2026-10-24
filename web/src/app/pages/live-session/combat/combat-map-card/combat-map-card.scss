@@ -185,3 +185,81 @@
   box-shadow: 0 0 0 1.5px var(--mr-map-accent);
   transform: rotate(45deg);
 }
+
+// The player's compact card (C4-03, C6-07): the map reaches the card's edges and the movement row closes it. On a phone the map's
+// name and "Ver mapa" are chips over the map's top corners; from 768px they are a row above it.
+.card--compact {
+  position: relative;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+
+  .card__crop {
+    border-radius: 0;
+    outline: 0;
+  }
+
+  @media (max-width: 767.98px) {
+    .bar {
+      position: absolute;
+      inset: 8px 8px auto;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .bar__chip,
+    .bar__open {
+      pointer-events: auto;
+    }
+  }
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+
+  @media (min-width: 768px) {
+    padding: 8px 12px;
+  }
+}
+
+.bar__chip {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: 28px;
+  margin: 0;
+  padding: 0 10px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-surface);
+  font-family: var(--mr-font-sans);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+
+  @media (min-width: 768px) {
+    height: auto;
+    padding: 0;
+    border: 0;
+    font-family: var(--mr-font-display);
+    font-size: 21px;
+    line-height: 26px;
+  }
+}
+
+.bar__open {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  cursor: pointer;
+}

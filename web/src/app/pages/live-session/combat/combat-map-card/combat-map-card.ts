@@ -94,6 +94,8 @@ export class CombatMapCard {
   /** On a phone the master gets a zoomed, cropped preview centered on whoever
    * is on turn, and "Abrir mapa" for the whole map (E6-12). */
   readonly cropOnPhone = input(false);
+  /** The player's own turn (C4-03, C6-07): no head and no "Tela cheia"; the map's name is a chip and "Ver mapa" an icon over the map's top on a phone (a row above it from 768px), and what the page projects as `mapFoot` (the movement row) closes the card. */
+  readonly compact = input(false);
 
   /** The master taps a door of the map (E10-05 10): the page opens the door's sheet. Not on the phone's cropped preview. */
   readonly doorPick = output<DoorSquare>();
