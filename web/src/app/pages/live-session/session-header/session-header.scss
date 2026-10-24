@@ -70,6 +70,11 @@
   gap: var(--mr-space-2);
 }
 
+// The menu's three dots are the phone's button; from a tablet it has its word and a chevron.
+.bar__menu .bar__dots {
+  display: none;
+}
+
 .bar__button {
   --mat-button-outlined-container-height: 44px;
   --mat-button-outlined-label-text-color: var(--mr-ink);
@@ -154,9 +159,17 @@
 
   .bar__camp,
   .bar__since,
-  .bar__chevron,
+  .bar__menu .bar__chevron,
   .bar__menu .bar__label {
     display: none;
+  }
+
+  .bar__menu .bar__dots {
+    display: inline-block;
+  }
+
+  .bar__button .mat-icon {
+    margin: 0;
   }
 
   .bar__title {

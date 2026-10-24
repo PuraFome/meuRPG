@@ -53,7 +53,7 @@
         [matMenuTriggerFor]="menu"
         [attr.aria-label]="copied() ? 'Link copiado' : 'Sessão'"
       >
-        <mat-icon aria-hidden="true">{{ copied() ? 'check' : 'more_vert' }}</mat-icon>
+        <mat-icon aria-hidden="true" [class.bar__dots]="!copied()">{{ copied() ? 'check' : 'more_vert' }}</mat-icon>
         <span class="bar__label">{{ copied() ? 'Link copiado' : 'Sessão' }}</span>
         <mat-icon class="bar__chevron" aria-hidden="true">expand_more</mat-icon>
       </button>
