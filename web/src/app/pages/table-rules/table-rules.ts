@@ -42,6 +42,7 @@ import {
 } from '../../core/campaigns/table-rules';
 import { DiceChoice } from '../../shared/dice-choice/dice-choice';
 import { FogSwitch } from './fog-switch/fog-switch';
+import { RuleSwitch } from './rule-switch/rule-switch';
 import { RulesRead } from './rules-read/rules-read';
 import { MethodCards } from '../../shared/method-cards/method-cards';
 import { XpModePanel } from './xp-mode-panel/xp-mode-panel';
@@ -54,6 +55,7 @@ import {
   FEAT_OPTIONS,
   HIDDEN_AREA_OPTIONS,
   HIT_POINT_OPTIONS,
+  SAVE_DC_HINT,
   STYLE_OPTIONS,
 } from './table-rules-options';
 import { type StyleNote, ruleRows, styleNoteFor, wasWords } from './table-rules-words';
@@ -85,6 +87,7 @@ type PageState =
     MatProgressSpinnerModule,
     MethodCards,
     RouterLink,
+    RuleSwitch,
     RulesRead,
     XpModePanel,
   ],
@@ -117,6 +120,7 @@ export class TableRulesPage {
   protected readonly featOptions = FEAT_OPTIONS;
   protected readonly combatOptions = COMBAT_OPTIONS;
   protected readonly inertStyle: readonly TableStyle[] = [TableStyle.PERSONALIZADO];
+  protected readonly saveDcHint = SAVE_DC_HINT;
   protected readonly maxLength = HOUSE_RULE_MAX_LENGTH;
   protected readonly maxCount = HOUSE_RULE_MAX_COUNT;
 

@@ -123,7 +123,7 @@ describe('EffectSaveSheet, the save DC', () => {
     const { fixture, el } = setup(window(14));
     await roll(fixture, el);
     expect(plain(el.querySelector('.res')?.textContent)).toContain('Passou');
-    expect(plain(el.querySelector('.res')?.textContent)).toContain('contra CD 14');
+    expect(plain(el.querySelector('.res')?.textContent)).toContain('Contra CD 14');
   });
 
   it('says no DC in the result when the result has none', async () => {

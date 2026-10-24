@@ -57,6 +57,10 @@ export function ruleRows(d: RulesDraft, xpMode: XpMode): { label: string; value:
     },
     { label: 'Talentos', value: d.featsAllowed ? 'Permitidos' : 'Não usados' },
     { label: 'Reações dos inimigos', value: titleOf(ENEMY_REACTION_OPTIONS, d.enemyReactions) },
+    {
+      label: 'CD dos testes de resistência',
+      value: d.showSaveDc ? 'Os jogadores veem' : 'Só o mestre vê',
+    },
     { label: 'Experiência', value: XP_OPTION_TITLES[xpMode] ?? '' },
   ];
 }

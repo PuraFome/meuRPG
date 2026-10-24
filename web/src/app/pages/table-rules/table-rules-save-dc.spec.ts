@@ -125,7 +125,7 @@ describe('TableRulesPage, the save DC rule', () => {
     expect(sw.getAttribute('aria-checked')).toBe('false');
     const hint = byId(el, sw.getAttribute('aria-describedby'));
     expect(hint).toContain('só o mestre vê a CD');
-    expect(hint).toContain('quem conjurou vê a CD da própria magia');
+    expect(hint).toContain('Quem conjurou vê a CD da própria magia');
     // The fog switch and this one are two controls with their own names.
     const switches = el.querySelectorAll('button[role="switch"]');
     expect(switches).toHaveLength(2);

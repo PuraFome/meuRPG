@@ -137,6 +137,7 @@ describe('table rules', () => {
       hiddenAreaHits: HiddenAreaHitRule.ASK,
       featsAllowed: true,
       enemyReactions: EnemyReactionsRule.ALWAYS,
+      showSaveDc: true,
       houseRules: ['uma'],
     };
     expect(draftFromRules(saved as never)).toEqual({
@@ -153,6 +154,7 @@ describe('table rules', () => {
       hiddenAreaHits: HiddenAreaHitRule.ASK,
       featsAllowed: true,
       enemyReactions: EnemyReactionsRule.ALWAYS,
+      showSaveDc: true,
       houseRules: ['uma'],
     });
   });
