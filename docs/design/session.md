@@ -23,6 +23,7 @@ Other panels use a `line` border. A "burgundy border" is never used for anything
 - **Pinned phone nav** (`app-session-tabs`): under 768 px, "Cena | Ficha | Conversa" is fixed to the bottom of every live screen (64 px plus the safe-area inset), outside the page, so it stays usable while the chat covers it.
   The page keeps `--mr-session-nav` of room under its content, the full-screen chat ends above the nav, and the player's sticky turn bar sits right above it (`bottom: var(--mr-session-nav)`); at 320 x 568 both bars leave the turn usable.
   "Cena" is the page, "Ficha" a link, "Conversa" the chat; the current one is `aria-current`; the count on "Conversa" is in words in the name.
+- **Sticky bars never cover what has the focus** (`keepClear`, `shared/scroll-clearance`): while a bar sticks to the top or the bottom of the screen (the player's turn bar at 1024 px and up, the phone's bar of what is left), the page's `scroll-padding` on that side is the bar's height, its offset and 16 px, followed with a `ResizeObserver`; a bar that flows with the page leaves it clear.
 
 ## Images shown to players
 

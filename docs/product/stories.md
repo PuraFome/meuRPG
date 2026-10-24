@@ -264,6 +264,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 - **Given** the master, **when** they need to fix something, **then** they can edit an NPC's hit points ("Dano/Cura"), undo the last action and read the combat log. The player gets the log only with what they see (RN-20).
 
 #### In the app
+- In a combat the player's screen is the map first, with the movement under it ("Restam 9,0 m · 6 quadrados" and "Mover"), then the turn card with their own hit points, armor class and slots, then the actions in tabs; the other creatures' hit points are words, never numbers (RN-20).
 - See [Architecture](../architecture/play/live-session.md) and [Combat](../architecture/play/combat.md#combat).
 
 #### Related
@@ -295,6 +296,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 - **Given** a joint turn with a hidden member, **when** the player reads the turn, **then** the hidden member is never named.
 
 #### In the app
+- The player's turn: "Sua vez, Pensantus" with "Rodada 3 · depois de você: Toren" and what the turn still has as shapes (a circle for the Ação, a triangle for the Bônus, a square for the Reação, a walker for the metres left; filled while it is there, dashed once spent). The actions are tabs built from the character's own options ("Ataques", "Magias" for a caster, a tab named for the class when it grants actions, "Outras" for the standard actions); a spent group is one folded line ("Ação bônus · Usada") that opens to what it held. "Mover" is the row under the map on a phone and part of the turn bar from 1024 px, with "Encerrar turno" (a bar above the phone's nav says "Ainda tem" and the shapes left). Off turn the screen says whose turn it is and, from 1024 px, "Reação · Disponível".
 - Screens: the master's card has one block per member and "Encerrar a parte da Brisa"; the player reads "Vez de Brisa e Toren", "Vez dos Goblins", "Você encerrou a sua parte" and "O que a Brisa ainda tem".
 - The screen follows the live session without reloading.
 - See [Combat](../architecture/play/combat.md#combat) and [Design](../design/combat.md).
