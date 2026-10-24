@@ -187,7 +187,7 @@
                 [busy]="busy()"
                 [error]="zoneFlow.error()"
                 (end)="zoneFlow.end($event)"
-                (move)="zoneFlow.moving.set($event)"
+                (move)="zoneFlow.move($event)"
               />
               <ng-container *ngTemplateOutlet="masterOrder" />
             </div>

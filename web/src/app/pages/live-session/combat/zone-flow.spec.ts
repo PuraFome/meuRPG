@@ -26,7 +26,11 @@ function setup(endSpellZone: () => Promise<unknown>, master = true) {
 
 describe('ZoneFlow', () => {
   it('reads the zones of the combat for the master or a player', () => {
-    expect(setup(async () => encounter({})).flow.views().map((v) => v.id)).toEqual(['z1']);
+    expect(
+      setup(async () => encounter({}))
+        .flow.views()
+        .map((v) => v.id),
+    ).toEqual(['z1']);
     expect(setup(async () => encounter({}), false).flow.views()[0].canEnd).toBe(false);
   });
 

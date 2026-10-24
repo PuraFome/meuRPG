@@ -1,6 +1,6 @@
 import { SpellAreaShape } from '../../../gen/meurpg/rules/v1/rules_pb';
 import type { SpellZone } from '../../../gen/meurpg/play/v1/combat_pb';
-import { distanceText } from '../units';
+import { distanceText, metersFixed, metersText } from '../units';
 import type { Square } from './combat-grid';
 import { centered, rangeFt, sphereSquares } from './spell-area';
 
@@ -42,4 +42,25 @@ export function zoneMovePreview(zone: SpellZone, to: Square, master: boolean): Z
     missingFt,
     wallCut: false,
   };
+}
+
+/** The refusal of a square past the range, in the words of the server's `TARGET_OUT_OF_REACH`. */
+export function zoneOutOfReach(missingFt: number): string {
+  return `Longe demais: a área anda até ${metersText(ZONE_MOVE_RANGE_FT)} do ponto atual. Faltam ${metersText(missingFt)}.`;
+}
+
+/** What a chosen square says about the range: nothing for the master (no limit), else "Dentro do alcance" or the refusal. */
+export function zoneRangeText(preview: ZoneMovePreview, master: boolean): string {
+  if (master) {
+    return '';
+  }
+  return preview.inRange
+    ? `Dentro do alcance, até ${metersText(ZONE_MOVE_RANGE_FT)}.`
+    : zoneOutOfReach(preview.missingFt);
+}
+
+/** What the live region says of a chosen square: where it is, how far and whether it can be used. */
+export function zoneSquareSpoken(square: Square, preview: ZoneMovePreview): string {
+  const place = `Coluna ${square.col + 1}, linha ${square.row + 1}, a ${metersFixed(preview.distanceFt)}.`;
+  return preview.inRange ? `${place} Escolhido.` : `${place} Longe demais.`;
 }

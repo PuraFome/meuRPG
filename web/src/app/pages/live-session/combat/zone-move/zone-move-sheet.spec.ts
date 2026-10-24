@@ -12,10 +12,7 @@ import { settle } from '../../../../../test-settle';
 import { ZoneMoveSheet, type ZoneMoveSheetData } from './zone-move-sheet';
 
 const plain = (t: string | null | undefined) =>
-  (t ?? '')
-    .replace(/ /g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  (t ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
 
 async function open(moveSpellZone: () => Promise<unknown>, master = true) {
   TestBed.resetTestingModule();
@@ -62,9 +59,7 @@ async function open(moveSpellZone: () => Promise<unknown>, master = true) {
   const buttons = () => Array.from(el.querySelectorAll<HTMLButtonElement>('.foot button'));
   const byText = (t: string) => buttons().find((b) => plain(b.textContent).includes(t))!;
   const pick = async (col: number, row: number) => {
-    fixture.debugElement
-      .query(By.directive(CombatMap))
-      .triggerEventHandler('choose', { col, row });
+    fixture.debugElement.query(By.directive(CombatMap)).triggerEventHandler('choose', { col, row });
     await settle(fixture);
   };
   return { fixture, el, close, apply, move, next, buttons, byText, pick };
@@ -74,16 +69,22 @@ describe('ZoneMoveSheet', () => {
   it('is named for the zone and has exactly one filled button, "Mover a zona", and "Cancelar"', async () => {
     const { el, buttons, byText } = await open(async () => undefined);
     expect(plain(el.querySelector('h2')?.textContent)).toBe('Mover o Raio Lunar');
-    expect(buttons().filter((b) => b.className.includes('mat-mdc-unelevated-button'))).toHaveLength(1);
+    expect(buttons().filter((b) => b.className.includes('mat-mdc-unelevated-button'))).toHaveLength(
+      1,
+    );
     expect(byText('Mover a zona')).toBeTruthy();
     expect(byText('Cancelar')).toBeTruthy();
   });
 
   it('says the master spends no action and a player spends the caster action', async () => {
     const master = await open(async () => undefined, true);
-    expect(plain(master.el.querySelector('.frame__sub')?.textContent)).toContain('Sem limite de alcance');
+    expect(plain(master.el.querySelector('.frame__sub')?.textContent)).toContain(
+      'Sem limite de alcance',
+    );
     const player = await open(async () => undefined, false);
-    expect(plain(player.el.querySelector('.frame__sub')?.textContent)).toContain('Gasta a ação de Bartolo');
+    expect(plain(player.el.querySelector('.frame__sub')?.textContent)).toContain(
+      'Gasta a ação de Bartolo',
+    );
   });
 
   it('keeps the confirm off until a square other than the current one is picked', async () => {
@@ -123,10 +124,10 @@ describe('ZoneMoveSheet', () => {
     expect(close).not.toHaveBeenCalled();
   });
 
-  it('does not refuse a player beyond the range at the button: the words say so and the confirm stays off', async () => {
+  it('keeps the confirm off for a player beyond the range, and says why', async () => {
     const { el, byText, pick, move } = await open(async () => undefined, false);
     await pick(19, 4);
-    expect(plain(el.querySelector('.summary')?.textContent)).toContain('Longe demais');
+    expect(plain(el.querySelector('[role="alert"]')?.textContent)).toContain('Longe demais');
     expect(byText('Mover a zona').classList.contains('mr-button--off')).toBe(true);
     byText('Mover a zona').click();
     expect(move).not.toHaveBeenCalled();

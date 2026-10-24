@@ -84,6 +84,7 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
     encounter: () => this.encounter(),
     state: () => this.state(),
     isMaster: () => this.isMaster(),
+    openMove: (id, onClosed) => this.sheets.moveZone(id, onClosed),
   });
   /** The master's side of the opportunity attacks: the offer form, his answers and the reactors' attacks (`CombatOffers`). */
   protected readonly offers = new CombatOffers({

@@ -19,10 +19,7 @@ const zone = spellZone({
 });
 
 const plain = (t: string | null | undefined) =>
-  (t ?? '')
-    .replace(/ /g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  (t ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
 
 async function setup(over: { master?: boolean; picked?: Square | null } = {}) {
   const fixture = TestBed.createComponent(ZoneMoveMap);
@@ -61,9 +58,9 @@ describe('ZoneMoveMap', () => {
     const { fixture } = await setup({ picked: { col: 8, row: 4 } });
     const overlays = fixture.debugElement.queryAll(By.directive(AreaOverlay));
     expect(overlays).toHaveLength(2);
-    expect(
-      (overlays[1].componentInstance as AreaOverlay).squares().some((s) => s.col === 8),
-    ).toBe(true);
+    expect((overlays[1].componentInstance as AreaOverlay).squares().some((s) => s.col === 8)).toBe(
+      true,
+    );
   });
 
   it('says how to pick: the 18 m range for a player, no limit for the master', async () => {
@@ -83,9 +80,7 @@ describe('ZoneMoveMap', () => {
   it('refuses in words a square past the range for a player, and not for the master', async () => {
     const player = await setup({ picked: { col: 28, row: 4 } });
     await player.choose({ col: 28, row: 4 });
-    expect(plain(player.el.querySelector('[role="alert"]')?.textContent)).toContain(
-      'Longe demais',
-    );
+    expect(plain(player.el.querySelector('[role="alert"]')?.textContent)).toContain('Longe demais');
     const master = await setup({ master: true, picked: { col: 28, row: 4 } });
     await master.choose({ col: 28, row: 4 });
     expect(master.el.querySelector('[role="alert"]')).toBeNull();

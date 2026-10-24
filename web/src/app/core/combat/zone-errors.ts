@@ -1,9 +1,8 @@
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import { EncounterBlockedReason } from '../../../gen/meurpg/play/v1/combat_pb';
-import { metersText } from '../units';
 import { combatErrorMessage, encounterBlocked } from './combat-errors';
-import { ZONE_MOVE_RANGE_FT } from './zone-move';
+import { zoneOutOfReach } from './zone-move';
 
 const ZONE_GONE = 'Essa zona não existe mais, ou você não a vê. A tela foi atualizada.';
 
@@ -15,7 +14,7 @@ function code(err: unknown): Code {
 export function zoneMoveError(err: unknown): string {
   const blocked = encounterBlocked(err);
   if (blocked?.reason === EncounterBlockedReason.TARGET_OUT_OF_REACH) {
-    return `Longe demais: a área anda até ${metersText(ZONE_MOVE_RANGE_FT)} do ponto atual. Faltam ${metersText(blocked.missingFt)}.`;
+    return zoneOutOfReach(blocked.missingFt);
   }
   if (!blocked && code(err) === Code.NotFound) {
     return ZONE_GONE;
