@@ -4,7 +4,7 @@ import { combatRPC, getEncounterRPC, passTurnsTo, tableForCombat, waitTurnLeaves
 import { grog, pipo, rollsTable, vex } from './combat-rolls-support';
 import { endOpenSessionRPC, openSessionPage } from './live-session-support';
 import { beginPlacedCombatRPC, orla, orlaSheet } from './rests-support';
-import { callRPC, newSignedInContext } from './support';
+import { callRPC, newSignedInContext, openActionTab, openCombatLog } from './support';
 import { secondPlayer } from './theatre-support';
 
 // Advantage and disadvantage, the damage extras and the resistance steps on screen
@@ -53,7 +53,7 @@ test(
 
       // The log has the pair and the part.
       await sheet.getByRole('button', { name: /Voltar à sua vez/ }).click();
-      await p.getByRole('button', { name: 'Abrir o registro do combate' }).click();
+      await openCombatLog(p);
       await expect(p.getByRole('log', { name: 'Registro do combate' })).toContainText('Goblin 1');
     } finally {
       await done().catch(() => undefined);
@@ -68,6 +68,7 @@ test('a fúria do bárbaro corta o dano pela metade e o mestre vê o passo da re
     await openSessionPage(p, campaignId);
     await expect(p.getByRole('heading', { name: 'Sua vez, Grog' })).toBeVisible();
     // Grog is a Berserker: Fúria asks about the frenzy first (SRD 5.1, Frenzy); this rage is a plain one.
+    await openActionTab(p, 'Bárbaro');
     await p.getByRole('button', { name: /Fúria/ }).click();
     await p.getByRole('button', { name: 'Só fúria' }).click();
     await expect(p.getByText('Em fúria').first()).toBeVisible();
