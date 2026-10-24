@@ -294,7 +294,7 @@ describe('the master queue for a zone save', () => {
 
   it('titles it with the zone and the DC he reads, and the caster when he has it', () => {
     expect(effectSaveTitle(zoneSave(), 'Pensantus')).toBe(
-      'Teia de Pensantus · Teste de resistência de Sabedoria de Tor · CD 13',
+      'Teia de Pensantus · Teste de resistência de Sabedoria de Tor · CD\u00a013',
     );
     expect(effectSaveTitle(save())).toBe(
       'Teste de resistência de Sabedoria do Goblin · Riso Histérico · CD 13',

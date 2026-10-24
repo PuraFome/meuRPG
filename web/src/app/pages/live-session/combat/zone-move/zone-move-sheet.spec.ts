@@ -81,10 +81,13 @@ describe('ZoneMoveSheet', () => {
     expect(plain(master.el.querySelector('.frame__sub')?.textContent)).toContain(
       'Sem limite de alcance',
     );
+    expect(plain(master.el.querySelector('.frame__sub')?.textContent)).toContain('As setas movem');
     const player = await open(async () => undefined, false);
     expect(plain(player.el.querySelector('.frame__sub')?.textContent)).toContain(
       'Gasta a ação de Bartolo',
     );
+    expect(plain(player.el.querySelector('.frame__sub')?.textContent)).toContain('até 18 m');
+    expect(player.el.querySelector('.hint')).toBeNull();
   });
 
   it('keeps the confirm off until a square other than the current one is picked', async () => {

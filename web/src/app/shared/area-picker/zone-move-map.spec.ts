@@ -63,11 +63,9 @@ describe('ZoneMoveMap', () => {
     );
   });
 
-  it('says how to pick: the 18 m range for a player, no limit for the master', async () => {
-    const player = await setup();
-    expect(plain(player.el.querySelector('.hint')?.textContent)).toContain('até 18 m');
-    const master = await setup({ master: true });
-    expect(plain(master.el.querySelector('.hint')?.textContent)).toContain('Sem limite');
+  it('has no hint line of its own: the sheet subtitle says how to pick', async () => {
+    const { el } = await setup();
+    expect(el.querySelector('.hint')).toBeNull();
   });
 
   it('reports a click and speaks it', async () => {
