@@ -2,13 +2,18 @@
   display: block;
 }
 
+// Pinned to the bottom of every live phone screen, with the safe area under it: 64px of bar (a 48px tab and 8px around it).
+// The page keeps `--mr-session-nav` of room under its content, and the player's turn bar sits right above it.
 .tabs {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 800;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--mr-space-1);
-  padding: var(--mr-space-1);
-  border: 1px solid var(--mr-line);
-  border-radius: var(--mr-radius-lg);
+  box-sizing: border-box;
+  padding: var(--mr-space-2) var(--mr-space-2) calc(var(--mr-space-2) + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--mr-line);
   background: var(--mr-surface);
 }
 
