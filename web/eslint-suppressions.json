@@ -1825,11 +1825,6 @@
       "count": 1
     }
   },
-  "src/app/pages/table-rules/fog-switch/fog-switch.ts": {
-    "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    }
-  },
   "src/app/pages/table-rules/rules-read/rules-read.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1

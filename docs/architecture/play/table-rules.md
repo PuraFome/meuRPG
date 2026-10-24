@@ -1,6 +1,6 @@
 # Table rules in combat
 
-Combat applies two of the "Regras da mesa" page's rules (MR-025, RN-24): the critical hit and who sees the death saves.
+Combat applies three of the "Regras da mesa" page's rules (MR-025, RN-24): the critical hit, who sees the death saves and whether a player reads the DC of the saves their creatures roll.
 A third, "combat with a map", chooses the mode of a new combat (see [Theatre of the mind](theatre.md)), and "Reações dos inimigos" is in [Reactions](reactions.md).
 
 **The rules are read, never kept in memory.**
@@ -50,4 +50,23 @@ Theatre of the mind follows the same rules.
 The screen reads the rule once per combat (and again when someone falls) in `GetTableRules` (`deathSaves`), only to say who else sees the marks: "Só você e o mestre" on the owner's card, "Dono e mestre" in the master's order, and a log notice for the other player.
 The log line that carries only `stable` reads "estabilizou".
 
-Tests (`play`, with database): `TestRN24_TheCriticalFollowsTheTablesRule`, `TestRN24_ACreaturesCriticalFollowsTheRule`, `TestRN24_TheRulesAreReadInTheCallersTransaction`, `TestRN24_HiddenDeathSavesAreTheOwnersAndTheMasters`, `TestRN24_ARevivalAndADeathStayWithTheOwnerAndTheMaster`, `TestRN24_ADeathTheMasterConfirmsIsTheTables`, `TestRN24_VisibleDeathSavesAreUnchanged`, `TestRN24_TheTheatreFollowsTheSameRules`; without a database, `TestCriticalDice` (`rules/combat`).
+## The DC of a saving throw
+
+`show_save_dc` ("Os jogadores veem a CD dos testes de resistência", RN-24) is off by default: the DC of a save is the master's, and a spell's caster's player has their own spell's.
+`combatViewer.showSaveDC` carries the rule beside `hideDeath` (set in `viewerWith`, `combatTx.viewer` and `logViewer`; `activityViewer.showDC` for the trap activity), and `saveDCFor(roller)` says whether the viewer reads the DC of a save that combatant rolls: the master always, a player only when the rule is on and the combatant is theirs.
+Nobody else is ever added: a player who does not roll, a bystander, a player who cannot see the caster.
+
+| Where the DC is | Who gets it with the rule on |
+| --- | --- |
+| `EffectSavePrompt.dc`, a lasting effect's question and a zone's (`effectSavePrompt`, `zoneSavePrompt`) | The question's reactor, besides the master and the caster's player |
+| `EffectSaveResult.dc` (the answer to `RollEffectSave` and its retry, `savedResultOf`) | The roller (the caller who answers the window) |
+| `EffectSave.dc` on the card of an effect (`cardSaves`) | The player of the combatant the card is on |
+| `CombatLogEffect.dc` (`effectLogRoll`) | The player of a target of the line |
+| `SaveResult.dc` of a spell cast by an NPC or another character (`saveView`), in the log and the stream | The player of the target |
+| `TrapSaveRoll.dc` (`trapView.showDC`), in the log and in `ListTrapActivity` | The player of the target |
+| `CombatLogHitRider.dc` (Stunning Strike, Open Hand) | The player of the target (before the rule it was always given with the roll; the DC is now behind the rule) |
+
+Unchanged: `ConcentrationSavePrompt.dc` (10 or half the damage, the owner's own), the Hellish Rebuke and Turn Undead DCs (the master's and the reactor's or cleric's), and every other DC (checks, scenes, contests).
+The held roll (`HeldRollOffer`) never carries a DC.
+
+Tests (`play`, with database): `TestRN24_TheCriticalFollowsTheTablesRule`, `TestRN24_ACreaturesCriticalFollowsTheRule`, `TestRN24_TheRulesAreReadInTheCallersTransaction`, `TestRN24_HiddenDeathSavesAreTheOwnersAndTheMasters`, `TestRN24_ARevivalAndADeathStayWithTheOwnerAndTheMaster`, `TestRN24_ADeathTheMasterConfirmsIsTheTables`, `TestRN24_VisibleDeathSavesAreUnchanged`, `TestRN24_TheTheatreFollowsTheSameRules`; the save DC rule: `TestSaveDC*` (`save_dc_rule_test.go`), and the needle through every answer in `internal/leaktest` (`savedc_test.go`); without a database, `TestCriticalDice` (`rules/combat`).

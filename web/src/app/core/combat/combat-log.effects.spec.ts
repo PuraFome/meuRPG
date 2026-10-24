@@ -58,7 +58,8 @@ describe('the lasting effect lines of the log', () => {
       total: 15,
       dc: 14,
     });
-    expect(text(saved)).toBe('Brisa passou no teste de Destreza contra Teia');
+    // The player reads the DC only (the server sends it when the table shows it), never the dice.
+    expect(text(saved)).toBe('Brisa passou no teste de Destreza contra Teia (CD 14)');
     expect(logLine(saved, '', { master: true, players: new Set(['Brisa']) })?.text).toContain(
       '(d20 12, total 15 contra CD 14)',
     );

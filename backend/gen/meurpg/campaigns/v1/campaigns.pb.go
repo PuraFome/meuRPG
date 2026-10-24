@@ -2511,8 +2511,18 @@ type TableRules struct {
 	// it, only the master changes it, and the combat reads it at each action, so a
 	// change applies from the next action on.
 	EnemyReactions EnemyReactionsRule `protobuf:"varint,11,opt,name=enemy_reactions,json=enemyReactions,proto3,enum=meurpg.campaigns.v1.EnemyReactionsRule" json:"enemy_reactions,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// "Os jogadores veem a CD dos testes de resistência": whether the player who rolls
+	// a saving throw the app asks of them also reads its DC (RN-24, RN-10). False by
+	// default: only the master reads the DC (and, for a spell, its caster's player, who
+	// has it on their sheet). When true, the player of the creature that rolls the
+	// save reads the DC of every save it rolls: a zone, a lasting effect at the start
+	// or end of a turn, a spell cast by an NPC or another character, a trap. Nobody
+	// else gains it: a player who does not roll never reads the DC. Every member reads
+	// it, only the master changes it, and the combat reads it when it builds each
+	// answer, so a change applies from the next one on. Read as sent by SetTableRules.
+	ShowSaveDc    bool `protobuf:"varint,12,opt,name=show_save_dc,json=showSaveDc,proto3" json:"show_save_dc,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TableRules) Reset() {
@@ -2620,6 +2630,13 @@ func (x *TableRules) GetEnemyReactions() EnemyReactionsRule {
 		return x.EnemyReactions
 	}
 	return EnemyReactionsRule_ENEMY_REACTIONS_RULE_UNSPECIFIED
+}
+
+func (x *TableRules) GetShowSaveDc() bool {
+	if x != nil {
+		return x.ShowSaveDc
+	}
+	return false
 }
 
 // TableStylePreset is what one "Estilo da mesa" fills in. The app applies a
@@ -3263,7 +3280,7 @@ const file_meurpg_campaigns_v1_campaigns_proto_rawDesc = "" +
 	"\tpoint_buy\x18\x02 \x01(\bR\bpointBuy\x12\x1d\n" +
 	"\n" +
 	"rolled_4d6\x18\x03 \x01(\bR\trolled4d6\x12\x14\n" +
-	"\x05typed\x18\x04 \x01(\bR\x05typed\"\xa9\x05\n" +
+	"\x05typed\x18\x04 \x01(\bR\x05typed\"\xcb\x05\n" +
 	"\n" +
 	"TableRules\x12:\n" +
 	"\tdice_mode\x18\x01 \x01(\x0e2\x1d.meurpg.campaigns.v1.DiceModeR\bdiceMode\x123\n" +
@@ -3280,7 +3297,9 @@ const file_meurpg_campaigns_v1_campaigns_proto_rawDesc = "" +
 	"\rfeats_allowed\x18\t \x01(\bR\ffeatsAllowed\x12P\n" +
 	"\x10hidden_area_hits\x18\n" +
 	" \x01(\x0e2&.meurpg.campaigns.v1.HiddenAreaHitRuleR\x0ehiddenAreaHits\x12P\n" +
-	"\x0fenemy_reactions\x18\v \x01(\x0e2'.meurpg.campaigns.v1.EnemyReactionsRuleR\x0eenemyReactions\"\xe1\x01\n" +
+	"\x0fenemy_reactions\x18\v \x01(\x0e2'.meurpg.campaigns.v1.EnemyReactionsRuleR\x0eenemyReactions\x12 \n" +
+	"\fshow_save_dc\x18\f \x01(\bR\n" +
+	"showSaveDc\"\xe1\x01\n" +
 	"\x10TableStylePreset\x125\n" +
 	"\x05style\x18\x01 \x01(\x0e2\x1f.meurpg.campaigns.v1.TableStyleR\x05style\x12:\n" +
 	"\tdice_mode\x18\x02 \x01(\x0e2\x1d.meurpg.campaigns.v1.DiceModeR\bdiceMode\x123\n" +

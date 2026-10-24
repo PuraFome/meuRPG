@@ -126,7 +126,7 @@ func exhaustionLogEffect(l *lastingEvent, names func(string) string, byID map[st
 }
 
 // effectLogRoll adds the roll and the DC to the effect: the roll is the master's and the target's
-// player's; the DC the master's alone (RN-10: the DC of an NPC's effect never reaches a player).
+// player's; the DC the master's, and the target's player's when the table shows the DC of a save (RN-10: the DC of an NPC's effect reaches no other player).
 func effectLogRoll(le *playv1.CombatLogEffect, e *logEntry, v combatViewer, byID map[string]playdb.Combatant) {
 	l := e.ev.Lasting
 	if l.D20 != 0 && (v.master || slices.ContainsFunc(l.Targets, func(id string) bool { return v.owns(byID[id]) })) {
@@ -134,7 +134,7 @@ func effectLogRoll(le *playv1.CombatLogEffect, e *logEntry, v combatViewer, byID
 		le.D20, le.Total = &d20, &total
 		le.Rerolled = e.ev.Lucky.proto() // the d20 Lucky rolled again: "Sortudo: 1 → 14"
 	}
-	if v.master && l.DC != 0 {
+	if l.DC != 0 && (v.master || (v.showSaveDC && slices.ContainsFunc(l.Targets, func(id string) bool { return v.owns(byID[id]) }))) {
 		dc := l.DC
 		le.Dc = &dc
 	}
