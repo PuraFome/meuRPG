@@ -144,6 +144,7 @@ Where a spell level could be confused with the character's level, the text says 
 | Cena descoberta | Discovered scene | An RP scene the group has already seen. Only a discovered scene can label a note. |
 | Conversa da cena | The scene's conversation | The session's live text feed (MR-051): the master narrates and speaks as NPCs, players speak as their character or out of character. Each line is for the whole table or for chosen readers (RN-36). |
 | Em cena (o palco) | On stage | The NPCs the master puts on the open scene, up to 4 at a time, one speaking. The player sees only the name and portrait (MR-031). |
+| Escondida dos jogadores | Hidden from the players | What the master keeps from the players on a scene: an NPC on the stage ("Escondida dos jogadores", against "Os jogadores veem") or an action ("Escondida"). No player receives it, in an answer, a live hint or an image; the master reads it marked (MR-031, MR-015, RN-10). |
 | Falar como | Speak as | Who a line is from: the master chooses the narrator or an NPC of the campaign; a player chooses their own character or out of character. |
 | Fora do personagem | Out of character | A player's line that is not the character speaking; it shows the player's display name. |
 | Ganchos, anotações e pistas | Hooks, notes and clues | The master's private text on an RP scene. A clue is a short sentence the master reveals to chosen players, who keep it as "Pista do mestre" (MR-029). |

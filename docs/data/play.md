@@ -228,9 +228,11 @@ The NPCs on stage in a session (MR-031): one row per NPC, at most 4 (`maxStage`,
 `id` is the place on the stage, made when the NPC enters; it is what the player's copy carries instead of the character id, which is the master's secret (RN-20).
 `position` is the order of entry from 0 (a new NPC takes the highest plus one, so a removal leaves a gap that does not change the order).
 `UNIQUE (game_session_id, character_id)` prevents the same NPC twice; the partial unique index `stage_npcs_one_speaker` leaves at most one `speaking`.
+`hidden` (default false) keeps the NPC from the players ("Escondida dos jogadores"): it counts for the limit, and only the master's reads and stream hear of it; a hidden NPC never speaks (`CHECK (NOT (hidden AND speaking))`: hiding clears `speaking`, and giving it the floor clears `hidden`).
+Every read for a player, the portrait route and the casts go through the rows where `hidden` is false.
 Both foreign keys cascade.
 Closing or changing the scene deletes the session's rows.
-Each change is a `stage_changed` event with ids only.
+Each change is a `stage_changed` event with ids only (`change`, the character, `hidden` for an NPC put hidden, `revealed` for a floor that showed one).
 
 ## `spell_casts`
 

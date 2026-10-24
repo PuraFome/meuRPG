@@ -58,7 +58,6 @@ func actionIDsOf(scene *playv1.OpenSceneInfo) []string {
 // the master's and Ana's streams are watched.
 type hiddenActions struct {
 	*scenes
-	hidden                *mapsv1.SceneAction
 	masterWatch, anaWatch *watcher
 	probeMap              string
 }

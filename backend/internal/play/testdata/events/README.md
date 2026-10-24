@@ -18,6 +18,7 @@ The older shapes come from the struct of the commit that first wrote the kind (`
 | `hit_dice_spent/v1-before-song-of-rest`, `rest_taken/v1-original` | `6cd0bef0` |
 | `scene_check_rolled/v1-before-dc-shown` | `28f56579` |
 | `character_vitals_adjusted/v1-before-resources` | `724227f5` |
+| `stage_changed/v1-before-hidden` | `a63181c65` (the stage before the hidden NPCs: no `hidden`, no `revealed`) |
 
 No JSON key of a play payload has been renamed since the first commit; only fields were added.
 A fixture whose key today's type no longer reads fails the test; if that is on purpose, list it in `retiredKeys` with the reason.

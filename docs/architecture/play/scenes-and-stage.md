@@ -8,11 +8,12 @@ The actions, images, clues and hooks live in `maps`; opening the scene in the se
 | `OpenScene(point_id)` | The master, session open (opening another scene empties the stage) | `NO_OPEN_SESSION`; `not_found` unless the point is a scene point of the campaign. Any scene point opens, even without actions; opening discovers the scene |
 | `CloseScene` | The master, session open | With no open scene it changes nothing; closing empties the stage |
 | `GetOpenScene` | Campaign members | `NO_OPEN_SESSION` |
-| `RollSceneCheck` | A player with a living character, session open | `permission_denied` for the master; `SceneBlocked`: `NO_OPEN_SCENE`, `ALREADY_ROLLED` (no attempt left), `WRONG_DICE_MODE`, `NO_CHARACTER`; `not_found` for an action not of the open scene; `invalid_argument` for a d20 outside 1 to 20 |
+| `RollSceneCheck` | A player with a living character, session open | `permission_denied` for the master; `SceneBlocked`: `NO_OPEN_SCENE`, `ALREADY_ROLLED` (no attempt left), `WRONG_DICE_MODE`, `NO_CHARACTER`; `not_found` ("action not found") for an action not of the open scene **and for one the master hid**, the same error; `invalid_argument` for a d20 outside 1 to 20 |
 | `GrantSceneAttempt` | The master, session open | `SceneBlocked` `NO_OPEN_SCENE`; `not_found`; `invalid_argument` for a key that is not a UUID or already used by another change. On an unlimited action it changes nothing |
-| `PutOnStage` | The master, session open | `SceneBlocked` `NO_OPEN_SCENE`, `STAGE_FULL` (4 on stage); `not_found` unless the id is a living NPC of the campaign. An NPC already on stage changes nothing |
+| `PutOnStage(character_id, hidden)` | The master, session open | `SceneBlocked` `NO_OPEN_SCENE`, `STAGE_FULL` (4 on stage, the hidden ones too); `not_found` unless the id is a living NPC of the campaign. An NPC already on stage changes nothing, whatever `hidden` says |
 | `TakeOffStage` | The master, session open | An NPC not on stage changes nothing |
-| `SetSpeaker` | The master, session open | `not_found` if the NPC is not on stage. An empty `character_id` takes the floor from everyone |
+| `SetStageNpcHidden(character_id, hidden)` | The master, session open | `not_found` if the NPC is not on stage. Setting what it already is changes nothing |
+| `SetSpeaker` | The master, session open | `not_found` if the NPC is not on stage. An empty `character_id` takes the floor from everyone. A hidden NPC given the floor is shown in the same call |
 
 `TestAuthorizationMatrix` and `TestSceneAuthorizationMatrix` call each as master, player, outsider, pending and signed out.
 
@@ -23,6 +24,12 @@ The actions, images, clues and hooks live in `maps`; opening the scene in the se
 - **The key** is checked against the rules catalogue (`rules.Content.SceneCheckName`, handed to `maps` in `Config.Rules`): only skills, the six abilities and the six saving throws, so an attack or a spell is `invalid_argument`.
 - **What `MapPoint.scene_actions` carries.** The master receives everything; the player only on the points they see (RN-10), and the DC only when the point has `show_dc` on (RN-20).
   Every member receives `max_attempts`.
+- **Hidden actions.** `scene_actions.hidden` ("Escondida") is set by `AddSceneAction(hidden)` and `UpdateSceneAction(hidden)` (alone or with the other fields) and is the master's alone: `attachActions` leaves a hidden action out of a player's `MapPoint.scene_actions`, and `SessionMaps.ScenePoint` carries `Hidden` to `play`, which takes it out of a player's `GetOpenScene` (`sceneViewing.hideActions`) together with the rolls made on it, and refuses a player's `RollSceneCheck` on it with the very error of an action that does not exist (`visibleSceneActionOf`).
+  Nothing is erased: showing the action again gives the players back their rolls and attempts.
+  The master's copies (`SceneAction.hidden`, `SceneActionView.hidden`) say which are hidden, and `GrantSceneAttempt` accepts a hidden action.
+  A change that touches only hidden actions (adding one hidden, editing, moving or removing one that is and stays hidden) sends `map_changed` and `scene_changed` to the master alone (`actionsChangedFor`); showing or hiding one sends them to everyone, so the players read the scene again.
+  The group check asks a skill of the table, never a scene action, so it does not carry a hidden action.
+  The summary counts the tries and passes of a character without the action, so it stays as the table saw it.
 - **Showing the DC.** `map_points.show_dc` is per scene, off by default; the master changes it with `UpdateMapPoint` or `CreateMapPoint`.
   A point that stops being a scene loses it.
   Every member receives the key (`MapPoint.show_dc`, `OpenSceneInfo.show_dc`).
@@ -93,9 +100,9 @@ sequenceDiagram
 
 | Event | Goes to |
 | --- | --- |
-| `scene_changed` | Everyone, when the scene opens, closes or changes (an action or the point's text). Contentless: the app reads the scene again, already filtered. A change only the master reads (clues, revealing a clue in the open scene) goes to the master alone |
+| `scene_changed` | Everyone, when the scene opens, closes or changes (an action or the point's text). Contentless: the app reads the scene again, already filtered. A change only the master reads (clues, revealing a clue in the open scene, a change to an action that is hidden and stays hidden) goes to the master alone |
 | `scene_check_rolled{action_id}` | The master and whoever rolled. No number |
-| `stage_changed` | Everyone, when the stage changes |
+| `stage_changed` | Everyone, when the stage changes (an NPC the players see comes in or goes out, the speaker changes, an NPC is shown or hidden). Putting a hidden NPC on the stage, or taking one off, goes to the master alone: the players never knew it |
 | `notes_changed` | Only the players who received a clue; contentless (published through `maps.LiveSession.PublishToUsers`) |
 
 ## Hooks, clues and discoveries (MR-029, MR-030)
@@ -119,7 +126,7 @@ sequenceDiagram
 **History** (`session_events`).
 `scene_check_rolled` carries ids and numbers only: the point, the action, the check key, the d20, the bonus, the total, `physical`, `dc_shown` and, if the action had a DC, `passed`; never a name or the DC (see [Privacy](../../privacy.md)).
 `scene_attempt_granted` carries the point and action.
-`stage_changed` carries `change` (`put`, `taken_off`, `speaker`, `cleared`) and the NPC's id, no name.
+`stage_changed` carries `change` (`put`, `taken_off`, `speaker`, `hidden`, `shown`, `cleared`) and the NPC's id, no name; `hidden` marks a `put` that put the NPC on the stage hidden, and `revealed` a `speaker` that showed a hidden NPC.
 
 **In the app.** `MapsClient` (the action calls) and `SceneClient` (`OpenScene`, `CloseScene`, `GetOpenScene`, `RollSceneCheck`) are called only by lazy code.
 `SceneState` keeps the scene as each person sees it and says in a live region what changed; it reads after `ready` (the first read is silent) and on each `scene_changed` or `scene_check_rolled`.
@@ -135,18 +142,23 @@ The stage is the queue of NPCs "on scene" in the open scene, as in a visual nove
   Deleting the gallery image clears the portrait (`DeleteGalleryImage` calls `ClearPortraits` in the same transaction and sends `stage_changed`); the portrait falls back to initials.
   A portrait saved at the instant the image is deleted may outlive it: the URL answers `404` and the next sheet save is refused until it is swapped.
   The NPC's combat card (`Combatant.portrait_url`) carries the URL only in the master's copy.
-- **The stage** is the table `stage_npcs`: per session, in order, at most 4.
-  Each of the three calls locks the session row, changes the table, stores a `stage_changed` event (ids only) in the same transaction and, after `COMMIT`, publishes `stage_changed` to everyone.
+- **The stage** is the table `stage_npcs`: per session, in order, at most 4, the hidden ones included.
+  Each of the four calls locks the session row, changes the table, stores a `stage_changed` event (ids only) in the same transaction and, after `COMMIT`, publishes `stage_changed` to everyone, or to the master alone when only he read the change (`stageDone.master`).
   Any living NPC of the campaign may be put on stage, hidden in combat or not (which does not reveal it there).
   The response is the stage as it ended up.
   Closing the scene, or opening another, empties the stage in the same transaction (`clearStage`).
 - **What each receives (RN-20).** The stage goes in `OpenSceneInfo.stage` (`GetOpenScene` and `OpenScene`): each entry has the NPC's name, the portrait URL (empty without a portrait) and whether it speaks.
-  The master also receives the `character_id`, which the three calls ask for.
+  The master also receives the `character_id`, which the calls ask for, and `hidden`.
   The player never receives the type, HP, AC, XP, sheet, notes or the character's id: the entry's `id` is the place on stage, made when the NPC enters, and names no one.
   `TestMR031_APlayerSeesOnlyNameAndPortrait` reads every response and event as the app's JSON.
-- **Downloading the portrait.** A player downloads an NPC's image (and thumbnail) only while it is on the stage of the open scene of the campaign's open session; at any other time it is `404`, also on `If-None-Match` (never `304`).
+- **Hidden NPCs (RN-10).** `stage_npcs.hidden` ("Escondida dos jogadores") keeps an NPC from the players while it still takes a place of the 4.
+  Everything a player reads of the stage goes through `ListShownStage` (the rows where `hidden` is false): `stageOf` for a player, `ImageOnStage`, and the casts' stage (`stageMapOf`), so a hidden NPC's cast is secret, no player can aim at it, and the casts it made in plain sight leave a player's list while it is hidden (`castLens.hidden`) and come back when it is shown.
+  `PutOnStage(hidden)` and `TakeOffStage` of a hidden NPC reach the master's stream alone; `SetStageNpcHidden` and `SetSpeaker` send `stage_changed` to everyone, so the players read the scene again and the NPC appears or is gone, with nothing that tells hiding from taking off.
+  A hidden NPC does not speak: hiding clears `speaking`, and `SetSpeaker` on it shows it (`stage_npcs_hidden_does_not_speak`).
+  `TestMR031_TheMasterPutsAnNPCOnStageHidden`, `TestMR031_TheMasterShowsAndHidesAnNPCOnStage`, `TestMR031_GivingTheFloorShowsAHiddenNPC` and `TestRN10_AHiddenStageNPCNeverReachesAPlayer` cover it; the leak test (`TestRN10_AHiddenStageNPCIsTheMastersAlone`) holds the needles.
+- **Downloading the portrait.** A player downloads an NPC's image (and thumbnail) only while it is on the stage of the open scene of the campaign's open session and shown; at any other time it is `404`, also on `If-None-Match` (never `304`).
   `maps.playersSeeImage` asks `play` (`LiveSession.ImageOnStage`).
-  The master always downloads (`TestMR031_PortraitsAreVisibleOnlyOnStage`).
+  The master always downloads (`TestMR031_PortraitsAreVisibleOnlyOnStage`, `TestMR031_AHiddenNPCsPortraitIs404ForPlayers`).
 
 ```mermaid
 sequenceDiagram
@@ -155,14 +167,14 @@ sequenceDiagram
     participant C as characters
     participant J as Player's app
     participant K as maps
-    M->>P: PutOnStage(NPC)
+    M->>P: PutOnStage(NPC, hidden)
     P->>C: CombatCharacters: is it a living NPC of the campaign?
     P->>P: locks the session, checks the limit of 4, stores stage_npcs and stage_changed
-    P-->>J: stage_changed (to everyone)
+    P-->>J: stage_changed (to everyone; to the master alone when hidden)
     J->>P: GetOpenScene
     P-->>J: name, portrait and who speaks, no ID or sheet
     J->>K: GET /images/{portrait}
     K->>P: ImageOnStage(image)
-    P-->>K: yes, while the NPC is on stage
+    P-->>K: yes, while the NPC is on stage and shown
     K-->>J: 200 (and 404 after the master takes it off)
 ```

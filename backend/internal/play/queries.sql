@@ -588,6 +588,13 @@ SELECT * FROM stage_npcs
 WHERE game_session_id = $1
 ORDER BY position, id;
 
+-- name: ListShownStage :many
+-- The NPCs of the stage the players see, in the order they came in: a hidden NPC is the master's alone
+-- (RN-10). Everything a player, the casts and the portraits read of the stage goes through this one.
+SELECT * FROM stage_npcs
+WHERE game_session_id = $1 AND NOT hidden
+ORDER BY position, id;
+
 -- name: InsertStageNPC :one
 -- An NPC comes in after the ones already there: the highest position plus one. It comes in hidden from
 -- the players when the master said so.
@@ -599,9 +606,11 @@ VALUES (
 )
 RETURNING *;
 
--- name: DeleteStageNPC :execrows
+-- name: DeleteStageNPC :one
+-- Takes the NPC off the stage and says whether the players saw it. No row: it was not there.
 DELETE FROM stage_npcs
-WHERE game_session_id = $1 AND character_id = $2;
+WHERE game_session_id = $1 AND character_id = $2
+RETURNING hidden;
 
 -- name: ClearStage :execrows
 -- The scene closed or changed: nobody is on the stage.

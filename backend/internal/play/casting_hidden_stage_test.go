@@ -61,7 +61,28 @@ func TestRN10_AHiddenStageNPCCastsInSecretAndIsNoTargetForPlayers(t *testing.T) 
 	if public.GetSecret() {
 		t.Errorf("cast by the NPC once shown = %v, want a public one", public)
 	}
-	if _, err := a.castOut(t, a.ana, a.pens, magicMissileSpell, slotOfLevel(1), false, nil, func(r *playv1.CastSpellOutsideCombatRequest) { r.TargetIds = []string{place} }); err != nil {
-		t.Errorf("aiming at the NPC once shown error = %v", err)
+	aimed, err := a.castOut(t, a.ana, a.pens, magicMissileSpell, slotOfLevel(1), false, nil, func(r *playv1.CastSpellOutsideCombatRequest) { r.TargetIds = []string{place} })
+	if err != nil {
+		t.Fatalf("aiming at the NPC once shown error = %v", err)
+	}
+	if c := a.castByID(t, a.ana, public.GetId()); c == nil || c.GetCasterName() != "Zqvxorth-Kwjl-7731" {
+		t.Errorf("Ana reads %v of the cast by the NPC in plain sight, want it", c)
+	}
+
+	// Hidden again, the casts it made in plain sight are gone from the players' list, and so is its name as a target.
+	setHidden(true)
+	if c := a.castByID(t, a.ana, public.GetId()); c != nil {
+		t.Errorf("Ana reads %v of a cast by the NPC hidden again, want none", c)
+	}
+	own := a.castByID(t, a.ana, aimed.GetCast().GetId())
+	if own == nil || len(own.GetTargets()) != 0 {
+		t.Errorf("Ana's own cast aimed at the hidden NPC = %v, want her cast without the NPC among its targets", own)
+	}
+	if c := a.castByID(t, a.master, public.GetId()); c == nil {
+		t.Error("the master no longer reads the cast by the hidden NPC")
+	}
+	setHidden(false)
+	if c := a.castByID(t, a.ana, public.GetId()); c == nil {
+		t.Error("Ana does not read the cast again once the NPC is shown")
 	}
 }

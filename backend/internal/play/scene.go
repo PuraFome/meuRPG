@@ -186,6 +186,16 @@ func (s *Service) openSceneIn(ctx context.Context, tx pgx.Tx, campaignID string,
 	return scene, err
 }
 
+// visibleSceneActionOf is sceneActionOf for a player: an action the master hid is refused exactly as
+// an action that does not exist (the same error), so the refusal never says it is there (RN-10).
+func visibleSceneActionOf(scene link.Scene, actionID string) (link.SceneAction, error) {
+	a, err := sceneActionOf(scene, actionID)
+	if err == nil && a.Hidden {
+		return link.SceneAction{}, errSceneActionNotFound()
+	}
+	return a, err
+}
+
 // sceneActionOf is the scene's action with the ID, or the not-found refusal.
 func sceneActionOf(scene link.Scene, actionID string) (link.SceneAction, error) {
 	i := slices.IndexFunc(scene.Actions, func(a link.SceneAction) bool { return a.ID == actionID })
@@ -208,7 +218,7 @@ func (s *Service) publishSceneSwitch(campaignID string, sw sceneSwitch) {
 		s.publishSceneChanged(campaignID)
 	}
 	if sw.stageCleared {
-		s.publishStageChanged(campaignID)
+		s.publishStageChanged(campaignID, true)
 	}
 }
 
@@ -402,6 +412,9 @@ func (s *Service) myCharacter(ctx context.Context, tx pgx.Tx, m authz.Membership
 func (s *Service) sceneInfo(ctx context.Context, m authz.Membership, session playdb.GameSession, scene link.Scene) (*playv1.OpenSceneInfo, error) {
 	master := m.Role == authz.RoleMaster
 	v := &sceneViewing{m: m, master: master, sees: master || scene.ShowDC, scene: scene, sessionID: session.ID}
+	if !master {
+		v.hideActions()
+	}
 	info := &playv1.OpenSceneInfo{PointId: scene.PointID, Name: scene.Name, Description: scene.Description, ShowDc: scene.ShowDC}
 
 	if err := s.viewingCharacter(ctx, v); err != nil {
@@ -443,6 +456,19 @@ type sceneViewing struct {
 	options   []link.SceneOption // the character's numbers, one per action
 	after     int32              // the event number the opening began at
 	tally     attemptTally
+	hidden    map[string]bool // the actions the master hid, for a player's view: their rolls are not told
+}
+
+// hideActions takes the actions the master hid out of a player's view of the scene, and remembers
+// them, so their rolls leave it too (RN-10): the player reads the scene as if they did not exist.
+func (v *sceneViewing) hideActions() {
+	v.hidden = map[string]bool{}
+	v.scene.Actions = slices.DeleteFunc(slices.Clone(v.scene.Actions), func(a link.SceneAction) bool {
+		if a.Hidden {
+			v.hidden[a.ID] = true
+		}
+		return a.Hidden
+	})
 }
 
 // viewingCharacter finds the caller's own character and what it adds to each action.
@@ -486,7 +512,7 @@ func (s *Service) sceneActionViews(v *sceneViewing) []*playv1.SceneActionView {
 	for i, a := range v.scene.Actions {
 		view := &playv1.SceneActionView{
 			Id: a.ID, Key: a.Key, Name: a.Name, CheckName: s.roster.SceneCheckName(a.Key),
-			MaxAttempts: clamp32(a.MaxAttempts, 0, maxSceneAttempts),
+			MaxAttempts: clamp32(a.MaxAttempts, 0, maxSceneAttempts), Hidden: a.Hidden,
 		}
 		if v.sees {
 			view.Dc = clamp32(a.DC, 0, maxSceneDC)
@@ -578,7 +604,9 @@ func (s *Service) sceneRolls(ctx context.Context, v *sceneViewing) ([]*playv1.Sc
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, roll)
+		if roll != nil {
+			out = append(out, roll)
+		}
 	}
 	return out, nil
 }
@@ -605,11 +633,15 @@ func (s *Service) rollerNames(ctx context.Context, campaignID string, rows []pla
 	return names, nil
 }
 
-// sceneRollView builds one roll of the list as the viewer sees it.
+// sceneRollView builds one roll of the list as the viewer sees it; nil for a roll on an action the
+// master hid from a player.
 func (s *Service) sceneRollView(ctx context.Context, v *sceneViewing, r playdb.ListSceneRollEventsRow, names map[string]string) (*playv1.SceneRoll, error) {
 	var ev sceneRollEvent
 	if err := json.Unmarshal(r.Payload, &ev); err != nil {
 		return nil, s.dbError(ctx, "read a scene roll", fmt.Errorf("decode the roll of event %s: %w", r.ID, err))
+	}
+	if !v.master && v.hidden[ev.ActionID] {
+		return nil, nil
 	}
 	// One rule for pass or fail: whether the scene showed its DC when the
 	// roll was made (the same flag the session summary counts).
@@ -849,7 +881,7 @@ func (c *sceneRollCall) run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	action, err := sceneActionOf(scene, c.actionID)
+	action, err := visibleSceneActionOf(scene, c.actionID)
 	if err != nil {
 		return err
 	}

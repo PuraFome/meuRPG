@@ -1201,9 +1201,10 @@ func (q *Queries) DeleteReactionWindowsOfEncounter(ctx context.Context, encounte
 	return err
 }
 
-const deleteStageNPC = `-- name: DeleteStageNPC :execrows
+const deleteStageNPC = `-- name: DeleteStageNPC :one
 DELETE FROM stage_npcs
 WHERE game_session_id = $1 AND character_id = $2
+RETURNING hidden
 `
 
 type DeleteStageNPCParams struct {
@@ -1211,12 +1212,12 @@ type DeleteStageNPCParams struct {
 	CharacterID   string
 }
 
-func (q *Queries) DeleteStageNPC(ctx context.Context, arg DeleteStageNPCParams) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteStageNPC, arg.GameSessionID, arg.CharacterID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
+// Takes the NPC off the stage and says whether the players saw it. No row: it was not there.
+func (q *Queries) DeleteStageNPC(ctx context.Context, arg DeleteStageNPCParams) (bool, error) {
+	row := q.db.QueryRow(ctx, deleteStageNPC, arg.GameSessionID, arg.CharacterID)
+	var hidden bool
+	err := row.Scan(&hidden)
+	return hidden, err
 }
 
 const deleteStatesOfCombatant = `-- name: DeleteStatesOfCombatant :many
@@ -7272,6 +7273,42 @@ func (q *Queries) ListShownPuzzleRuns(ctx context.Context, gameSessionID string)
 			&i.PuzzleName,
 			&i.PuzzleKind,
 			&i.PuzzleOnWrong,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listShownStage = `-- name: ListShownStage :many
+SELECT id, game_session_id, character_id, position, speaking, created_at, hidden FROM stage_npcs
+WHERE game_session_id = $1 AND NOT hidden
+ORDER BY position, id
+`
+
+// The NPCs of the stage the players see, in the order they came in: a hidden NPC is the master's alone
+// (RN-10). Everything a player, the casts and the portraits read of the stage goes through this one.
+func (q *Queries) ListShownStage(ctx context.Context, gameSessionID string) ([]StageNpc, error) {
+	rows, err := q.db.Query(ctx, listShownStage, gameSessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []StageNpc
+	for rows.Next() {
+		var i StageNpc
+		if err := rows.Scan(
+			&i.ID,
+			&i.GameSessionID,
+			&i.CharacterID,
+			&i.Position,
+			&i.Speaking,
+			&i.CreatedAt,
+			&i.Hidden,
 		); err != nil {
 			return nil, err
 		}

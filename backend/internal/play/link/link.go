@@ -643,6 +643,9 @@ type SceneAction struct {
 	// MaxAttempts is how many times each player's character may roll it while
 	// the scene is open: 1 to 5, and 0 means unlimited.
 	MaxAttempts int
+	// Hidden says the master hid the action from the players: package play offers it to the master
+	// alone and refuses a player's roll on it as on an action that does not exist (RN-10).
+	Hidden bool
 }
 
 // SceneOption is a scene check with one character's numbers on it (the rules

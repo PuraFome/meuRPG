@@ -356,6 +356,7 @@ type stagedAction struct {
 	key, name   string
 	dc          *int32
 	maxAttempts int32
+	hidden      bool
 }
 
 type stagedClue struct{ id, text string }
@@ -456,7 +457,7 @@ func exportSceneRows(pointID string, actions []mapsdb.SceneAction, clues []mapsd
 		if a.PointID != pointID {
 			continue
 		}
-		act := &pkgv1.PackageAction{Key: a.Key, Name: a.Name, MaxAttempts: a.MaxAttempts}
+		act := &pkgv1.PackageAction{Key: a.Key, Name: a.Name, MaxAttempts: a.MaxAttempts, Hidden: a.Hidden}
 		if a.Dc != nil {
 			act.Dc = *a.Dc
 		}
@@ -842,7 +843,7 @@ func (p *mapsPart) stageScene(in *campaignpackage.Import, pt *stagedPoint, pp *p
 			in.Problem(kind, pt.name, pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID, 0)
 			return false
 		}
-		pt.actions = append(pt.actions, stagedAction{key: a.GetKey(), name: name, dc: dc, maxAttempts: attempts})
+		pt.actions = append(pt.actions, stagedAction{key: a.GetKey(), name: name, dc: dc, maxAttempts: attempts, hidden: a.GetHidden()})
 	}
 	for _, c := range pp.GetClues() {
 		text, err := cleanClueText(c.GetText())
@@ -927,7 +928,7 @@ func (p *mapsPart) applyPoint(ctx context.Context, q *mapsdb.Queries, sm *staged
 	}
 	for i, a := range pt.actions {
 		if _, err := q.InsertSceneAction(ctx, mapsdb.InsertSceneActionParams{
-			PointID: pt.id, Position: int32(i), Key: a.key, Name: a.name, Dc: a.dc, MaxAttempts: a.maxAttempts, Now: pt.createdAt,
+			PointID: pt.id, Position: int32(i), Key: a.key, Name: a.name, Dc: a.dc, MaxAttempts: a.maxAttempts, Hidden: a.hidden, Now: pt.createdAt,
 		}); err != nil {
 			return fmt.Errorf("insert an imported scene action: %w", err)
 		}

@@ -154,9 +154,10 @@ type stageMap struct {
 	byChar, byEntry map[string]string
 }
 
-// stageMapOf reads the stage of the session.
+// stageMapOf reads the stage of the session as the players see it: an NPC hidden from them is not on it
+// (its casts are secret and it is no target a player can pick, RN-10).
 func stageMapOf(ctx context.Context, q *playdb.Queries, sessionID string) (stageMap, error) {
-	rows, err := q.ListStage(ctx, sessionID)
+	rows, err := q.ListShownStage(ctx, sessionID)
 	if err != nil {
 		return stageMap{}, fmt.Errorf("list the stage: %w", err)
 	}
@@ -167,7 +168,22 @@ func stageMapOf(ctx context.Context, q *playdb.Queries, sessionID string) (stage
 	return out, nil
 }
 
-// stageOf reads the NPCs on the stage of the session.
+// hiddenNPCsOf reads the NPCs on the stage the master hid from the players.
+func hiddenNPCsOf(ctx context.Context, q *playdb.Queries, sessionID string) (map[string]bool, error) {
+	rows, err := q.ListStage(ctx, sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("list the stage: %w", err)
+	}
+	out := map[string]bool{}
+	for _, r := range rows {
+		if r.Hidden {
+			out[r.CharacterID] = true
+		}
+	}
+	return out, nil
+}
+
+// stageOf reads the NPCs the players see on the stage of the session.
 func stageOf(ctx context.Context, q *playdb.Queries, sessionID string) (map[string]bool, error) {
 	sm, err := stageMapOf(ctx, q, sessionID)
 	if err != nil {

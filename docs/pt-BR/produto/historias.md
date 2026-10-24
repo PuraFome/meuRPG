@@ -402,6 +402,11 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 - **Dado** o "Dar mais uma tentativa" do mestre, **quando** ele a oferece, **então** o botão aparece só na última rolagem do personagem naquela ação, pergunta ali mesmo com "Voltar" primeiro e, com a CD mostrada, só é oferecido se a rolagem falhou (ou quando a ação não tem CD). A tela do jogador anuncia.
 - **Dado** um ponto de cena de RP, **quando** o mestre anexa a ele imagens da galeria (até 8, na ordem que escolher), **então** só o mestre vê essa lista (RN-10), **e** na sessão ao vivo a cena aberta mostra as imagens com "Mostrar aos jogadores", a ação própria da galeria (MR-019), **e** os jogadores só veem uma imagem depois que o mestre a mostra. Apagar a imagem da galeria ou o ponto remove o vínculo.
 - **Dado** um combate na tela, **quando** uma cena está aberta, **então** os blocos da cena não são desenhados para ninguém; a cena volta à tela quando o combate termina.
+- **Dado** uma ação de cena, **quando** o mestre a marca "Escondida" (ao acrescentá-la, ou depois, também com a cena aberta), **então** nenhum jogador a recebe: nem o nome, a CD, as tentativas ou as rolagens, no mapa, na cena aberta, num aviso ao vivo ou no histórico que ele lê (RN-10); o mestre continua a vê-la, marcada, rola nela pela mesa e dá tentativas nela.
+- **Dado** uma ação escondida, **quando** um jogador tenta rolá-la mesmo assim, **então** a recusa é exatamente a de uma ação que não existe (o mesmo erro, a mesma mensagem), para nunca dizer ao jogador que a ação está lá.
+- **Dado** uma ação escondida na cena aberta, **quando** o mestre a mostra ("Os jogadores veem"), **então** os jogadores da cena a veem na hora e podem rolá-la; **quando** o mestre a esconde de novo, **então** ela sai da tela deles na hora, com as rolagens que fizeram nela. Nada é apagado: mostrá-la outra vez devolve as rolagens e as tentativas.
+- **Dado** que o mestre edita, move ou remove uma ação escondida (e que continua escondida), **quando** os jogadores estão assistindo, **então** só a tela do mestre fica sabendo.
+- **Dado** o teste em grupo ("Teste em grupo"), **quando** o mestre o pede, **então** ele pede à mesa uma perícia, nunca uma ação de cena, e por isso uma ação escondida não é oferecida nem nomeada por ele.
 
 #### No app
 - Editor: "Ações da cena" e "Imagens da cena" do painel do ponto (miniaturas em ordem com ↑ ↓ e "Tirar da cena", que mantém a imagem na galeria; "Escolher da galeria"; "Gerar imagem com IA", cuja imagem entra na lista; "N de 8").
@@ -411,6 +416,10 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 #### Relacionadas
 - Numa cena de RP o mestre escolhe as ações possíveis e o jogador vê o que pode fazer com o próprio bônus; em combate o sistema decide. Ver [Regras de negócio](regras.md) e [ADR-0008](../../adr/0008-rules-content-as-data-pure-engine.md).
 - As cenas têm testes de perícia, testes de habilidade e testes de resistência; magias e habilidades não fazem parte delas.
+
+#### Dúvidas
+- Uma rolagem que um jogador fez numa ação escondida depois sai da lista de rolagens dele, mas continua no resumo da sessão, que conta tentativas e acertos por personagem (nunca a ação): o resumo guarda o número que a mesa já viu. Esconder uma ação deve tirar as rolagens dela também do resumo?
+- Um pacote exportado com uma ação escondida a traz de volta escondida. É isso que o mestre quer quando compartilha uma campanha com outro mestre?
 
 ### MR-016: Dar XP
 
@@ -832,6 +841,11 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 - **Dado** um mestre que quer o retrato de um NPC, **quando** o escolhe na ficha, **então** só vale uma imagem da galeria da campanha, e só num NPC.
 - **Dado** um retrato PNG com fundo transparente, **quando** o NPC entra na cena, **então** a transparência é mantida e o palco o desenha sem caixa atrás, só uma linha de base.
 - **Dado** a cena aberta, **quando** um jogador toca num NPC no palco, **então** ele vê o NPC maior, com o nome e o retrato, e nada mais: a cena pertence inteira ao mestre.
+- **Dado** uma cena aberta, **quando** o mestre põe um NPC no palco escondido ("Escondida dos jogadores"), **então** ele ocupa uma das 4 vagas e o mestre o lê marcado, mas nenhum jogador o recebe: nem o nome, o retrato ou o lugar no palco, nem na cena aberta, nem num aviso ao vivo, nem como alvo ou conjurador de uma conjuração, nem no histórico, no resumo ou nos destaques que lê (RN-10); os jogadores não são avisados quando ele entra ou sai do palco escondido.
+- **Dado** um NPC no palco, **quando** o mestre o alterna entre "Os jogadores veem" e "Escondida dos jogadores", **então** mostrá-lo o faz entrar na imagem dos jogadores ao vivo, e escondê-lo o faz sair, exatamente como tirá-lo: nada diz aos jogadores que ele foi escondido em vez de tirado.
+- **Dado** um NPC escondido, **quando** o mestre toca "Dar a fala", **então** ele é mostrado na mesma chamada e fala: os jogadores o veem entrar e falar na hora. Esconder o NPC que fala tira a fala dele.
+- **Dado** o retrato de um NPC escondido, **quando** um jogador tenta baixá-lo, **então** é `404`, como fora do palco; o mestre sempre consegue.
+- **Dado** um NPC escondido, **quando** o mestre conjura uma magia por ele fora do combate, **então** a conjuração é só do mestre e nenhum jogador pode mirar nele, nem pelo lugar no palco; as conjurações que ele fez à vista saem da lista dos jogadores enquanto ele está escondido e voltam quando é mostrado.
 
 #### No app
 - O palco comporta até 4 NPCs por sessão, em ordem, com quem está falando; fechar ou trocar a cena o esvazia.
@@ -844,6 +858,11 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 
 #### Relacionadas
 - Usa as imagens da [galeria](#mr-019-galeria-de-imagens), como a [MR-028](#mr-028-mostrar-uma-imagem-aos-jogadores).
+
+#### Dúvidas
+- Uma fala que o mestre manda "como" um NPC escondido na conversa da cena (MR-051) chega aos leitores que ele escolheu e não mostra o NPC no palco. Mandar uma fala como NPC escondido deve mostrá-lo também?
+- Pôr no palco um NPC que já está nele, com o valor do outro lado do "escondido", não muda nada: o alternador é o jeito de mostrar ou esconder. Isso está claro, ou o "pôr" deveria alternar?
+- "Dar a fala" sempre mostra o NPC. Deveria haver um jeito de fazer um NPC escondido falar sem mostrá-lo (uma voz fora da tela)?
 
 ### MR-032: Destaques do combate
 

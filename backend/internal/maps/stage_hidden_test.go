@@ -203,7 +203,7 @@ func TestMR031_TheMasterShowsAndHidesAnNPCOnStage(t *testing.T) {
 
 	// The history keeps ids only, and says what changed.
 	events := strings.Join(s.h.stageEvents(), "\n")
-	for _, want := range []string{`"change":"hidden"`, `"change":"shown"`, h.secret.GetId()} {
+	for _, want := range []string{`"change": "hidden"`, `"change": "shown"`, h.secret.GetId()} {
 		if !strings.Contains(events, want) {
 			t.Errorf("the stage events %q lack %s", events, want)
 		}
@@ -232,7 +232,7 @@ func TestMR031_GivingTheFloorShowsAHiddenNPC(t *testing.T) {
 	if len(got) != 1 || got[0].GetName() != hiddenNPCName || !got[0].GetSpeaking() || got[0].GetHidden() {
 		t.Errorf("Ana's stage = %v, want the NPC, speaking", got)
 	}
-	if ev := s.h.stageEvents(); !strings.Contains(ev[len(ev)-1], `"change":"speaker"`) || !strings.Contains(ev[len(ev)-1], `"revealed":true`) {
+	if ev := s.h.stageEvents(); !strings.Contains(ev[len(ev)-1], `"change": "speaker"`) || !strings.Contains(ev[len(ev)-1], `"revealed": true`) {
 		t.Errorf("the last stage event = %s, want the speaker change that revealed the NPC", ev[len(ev)-1])
 	}
 

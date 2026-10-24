@@ -402,6 +402,11 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 - **Given** the master's "Dar mais uma tentativa", **when** they offer it, **then** the button appears only on the character's last roll of that action, asks in place with "Voltar" first and, with the DC shown, is offered only if the roll failed (or when the action has no DC). The player's screen announces it.
 - **Given** an RP scene point, **when** the master attaches gallery images to it (up to 8, in an order they choose), **then** only the master sees that list (RN-10), **and** in the live session the open scene shows the images with "Mostrar aos jogadores", the gallery's own action (MR-019), **and** the players see an image only once the master shows it. Deleting the gallery image or the point removes the link.
 - **Given** a combat on screen, **when** a scene is open, **then** the scene blocks are not drawn for anyone; the scene returns to the screen when the combat ends.
+- **Given** a scene action, **when** the master marks it "Escondida" (adding it, or later, also with the scene open), **then** no player receives it: not its name, DC, attempts or rolls, on the map, in the open scene, in a live hint or in the history they read (RN-10); the master still sees it, marked, rolls on it for the table and gives attempts on it.
+- **Given** a hidden action, **when** a player rolls it anyway, **then** the refusal is exactly the one of an action that does not exist (same error, same message), so it never tells the player that the action is there.
+- **Given** a hidden action in the open scene, **when** the master shows it ("Os jogadores veem"), **then** the scene's players see it at once and can roll it; **when** the master hides it again, **then** it leaves their screen at once, with the rolls they made on it. Nothing is erased: showing it again gives them back their rolls and attempts.
+- **Given** the master edits, moves or removes an action that is hidden (and stays hidden), **when** the players are watching, **then** only the master's screen hears of it.
+- **Given** the group check ("Teste em grupo"), **when** the master asks it, **then** it asks the table for a skill, never for a scene action, so a hidden action is neither offered nor named by it.
 
 #### In the app
 - Editor: the point panel's "Ações da cena" and "Imagens da cena" (thumbnails in order with ↑ ↓ and "Tirar da cena", which keeps the image in the gallery; "Escolher da galeria"; "Gerar imagem com IA", whose picture joins the list; "N de 8").
@@ -411,6 +416,10 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 #### Related
 - In an RP scene the master chooses the possible actions and the player sees what they can do with their own bonus; in combat the system decides. See [Business rules](rules.md) and [ADR-0008](../adr/0008-rules-content-as-data-pure-engine.md).
 - Scenes have skill checks, ability checks and saving throws; spells and abilities are not part of them.
+
+#### Open points
+- A roll a player made on an action that was hidden afterwards leaves the player's list of rolls but stays in the session summary, which counts tries and passes per character (never the action): the summary keeps the number the table already saw. Should hiding an action also take its rolls out of the summary?
+- A package exported with a hidden action brings it back hidden. Is that what the master wants when he shares a campaign with another master?
 
 ### MR-016: Award XP
 
@@ -832,6 +841,11 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - **Given** a game master who wants an NPC's portrait, **when** they pick it on the sheet, **then** only an image from the campaign's gallery is valid, and only on an NPC.
 - **Given** a PNG portrait with a transparent background, **when** the NPC enters the scene, **then** the transparency is kept and the stage draws it with no box behind, only a baseline.
 - **Given** the open scene, **when** a player taps an NPC on the stage, **then** they see the NPC larger, with the name and the portrait, and nothing else: the scene belongs entirely to the game master.
+- **Given** an open scene, **when** the game master puts an NPC on the stage hidden ("Escondida dos jogadores"), **then** it takes a place of the 4 and the game master reads it marked, but no player receives it: not its name, portrait or place on the stage, not in the open scene, not in a live hint, not as a target or caster of a cast, not in the history, summary or highlights they read (RN-10); the players are told nothing when it enters or leaves the stage hidden.
+- **Given** an NPC on the stage, **when** the game master turns it between "Os jogadores veem" and "Escondida dos jogadores", **then** showing it makes it enter the players' picture live, and hiding it makes it leave, exactly as taking it off would: nothing tells the players that it was hidden rather than taken off.
+- **Given** a hidden NPC, **when** the game master taps "Dar a fala", **then** it is shown in the same call and speaks: the players see it enter and speak at once. Hiding the NPC that speaks takes the floor from it.
+- **Given** a hidden NPC's portrait, **when** a player tries to download it, **then** it is `404`, as off the stage; the game master always can.
+- **Given** a hidden NPC, **when** the game master casts a spell for it outside combat, **then** the cast is the game master's alone and no player can aim at it, not even by its place on the stage; the casts it made in plain sight leave the players' list while it is hidden and come back when it is shown.
 
 #### In the app
 - The stage holds up to 4 NPCs per session, in order, with who is speaking; closing or swapping the scene empties it.
@@ -844,6 +858,11 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 
 #### Related
 - Uses the images of the [gallery](#mr-019-image-gallery), like [MR-028](#mr-028-show-an-image-to-the-players).
+
+#### Open points
+- A line the game master sends "as" a hidden NPC in the scene's conversation (MR-051) reaches the readers he chose and does not show the NPC on the stage. Should sending a line as a hidden NPC also show it?
+- Putting an NPC that is on the stage already, with the hidden flag of the other value, changes nothing: the toggle is how to show or hide it. Is that clear enough, or should the put turn it?
+- "Dar a fala" always shows the NPC. Should there be a way to make a hidden NPC speak without showing it (a voice off screen)?
 
 ### MR-032: Combat highlights
 

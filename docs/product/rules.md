@@ -208,6 +208,13 @@ A map and a point are born hidden, and the master reveals and hides each one.
 An NPC's token is born hidden. A player character's token is visible, and so is a creature's (a creature is on the group's side). Choosing the session's current map reveals it.
 The player sees the revealed map and the current map, with the revealed points and visible tokens only; a submap point leads only to a map the player also sees.
 
+**The scene** ([MR-015](stories.md#mr-015-rp-scene-actions), [MR-031](stories.md#mr-031-npcs-in-the-scene)).
+The master may hide an NPC on the stage ("Escondida dos jogadores") and an action of a scene ("Escondida"), when preparing or live.
+A hidden NPC counts for the stage's limit of 4, but no player receives it: not its name, portrait or place on the stage, not in the open scene, not in a live hint, not in a cast list or as a target.
+A hidden action reaches no player: not its name, DC, attempts or rolls, and a player's roll on it is refused exactly as a roll on an action that does not exist.
+Hiding and showing tell the players the same hint as any change of the scene, so what was hidden leaves their screen, or enters it, at once; putting something on the stage hidden, or taking it off, and changing an action that stays hidden, tell only the master.
+"Dar a fala" to a hidden NPC shows it: the master's tap means that it speaks now.
+
 **Fog of war** ([MR-036](stories.md#mr-036-fog-of-war-by-sight)).
 On a map with fog on, the player receives only what their character sees now or has already seen: the walls and light the master painted, the light points and carried lights, and the sheet's darkvision decide.
 
@@ -362,7 +369,7 @@ Players do not see enemy hit points as a number.
 They see one word: "Ileso" (unhurt), "Ferido" (hurt), "Muito ferido" (badly hurt, half the hit points or less) or "Derrotado" (defeated).
 They do not see enemy armor class or the rolls the master makes for NPCs either.
 They see whether they hit or missed ("Acertou", "Errou", "Crítico") and the damage they take.
-The same holds outside combat: a scene action's DC, other players' rolls, hooks, unrevealed clues and other players' notes never reach a player.
+The same holds outside combat: a scene action's DC, other players' rolls, hooks, unrevealed clues, other players' notes, an action of a scene the master hid and an NPC on the stage the master hid never reach a player.
 The master sees everything.
 
 **Combatants and the log.**

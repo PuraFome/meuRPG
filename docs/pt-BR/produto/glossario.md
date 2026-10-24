@@ -144,6 +144,7 @@ Onde um nível da magia puder ser confundido com o nível do personagem, o texto
 | Cena descoberta | Discovered scene | Uma cena de RP que o grupo já viu. Só uma cena descoberta pode etiquetar uma anotação. |
 | Conversa da cena | The scene's conversation | O feed de texto ao vivo da sessão (MR-051): o mestre narra e fala como NPC, os jogadores falam como o personagem ou fora do personagem. Cada linha é para a mesa toda ou para leitores escolhidos (RN-36). |
 | Em cena (o palco) | On stage | Os NPCs que o mestre põe na cena aberta, até 4 por vez, com um falando. O jogador vê só o nome e o retrato (MR-031). |
+| Escondida dos jogadores | Hidden from the players | O que o mestre guarda dos jogadores numa cena: um NPC do palco ("Escondida dos jogadores", contra "Os jogadores veem") ou uma ação ("Escondida"). Nenhum jogador a recebe, nem numa resposta, nem num aviso ao vivo, nem numa imagem; o mestre a lê marcada (MR-031, MR-015, RN-10). |
 | Falar como | Speak as | De quem é a linha: o mestre escolhe o narrador ou um NPC da campanha; um jogador escolhe o próprio personagem ou fora do personagem. |
 | Fora do personagem | Out of character | A linha de um jogador que não é o personagem falando; mostra o nome de exibição do jogador. |
 | Ganchos, anotações e pistas | Hooks, notes and clues | O texto particular do mestre numa cena de RP. Uma pista é uma frase curta que o mestre revela a jogadores escolhidos, que a guardam como "Pista do mestre" (MR-029). |

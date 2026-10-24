@@ -208,6 +208,13 @@ Um mapa e um ponto nascem escondidos, e o mestre revela e esconde cada um.
 O token de um NPC nasce escondido. O token de um personagem de jogador é visível, e o de uma criatura também (a criatura está do lado do grupo). Escolher o mapa atual da sessão o revela.
 O jogador vê o mapa revelado e o mapa atual, só com os pontos revelados e os tokens visíveis; um ponto de submapa leva só a um mapa que o jogador também vê.
 
+**A cena** ([MR-015](historias.md#mr-015-ações-da-cena-de-rp), [MR-031](historias.md#mr-031-npcs-na-cena)).
+O mestre pode esconder um NPC no palco ("Escondida dos jogadores") e uma ação de cena ("Escondida"), ao preparar ou ao vivo.
+Um NPC escondido conta para o limite de 4 do palco, mas nenhum jogador o recebe: nem o nome, o retrato ou o lugar no palco, nem na cena aberta, nem em um aviso ao vivo, nem na lista de conjurações ou como alvo.
+Uma ação escondida não chega a nenhum jogador: nem o nome, a CD, as tentativas ou as rolagens, e a rolagem de um jogador nela é recusada exatamente como a de uma ação que não existe.
+Esconder e mostrar dão aos jogadores o mesmo aviso de qualquer mudança da cena, então o que estava escondido sai da tela deles, ou entra nela, na hora; pôr algo no palco escondido, tirá-lo, ou mudar uma ação que continua escondida avisa só o mestre.
+"Dar a fala" a um NPC escondido o mostra: o toque do mestre quer dizer que ele fala agora.
+
 **Névoa de guerra** ([MR-036](historias.md#mr-036-névoa-de-guerra-pela-visão)).
 Num mapa com a névoa ligada, o jogador recebe só o que o personagem dele vê agora ou já viu: decidem as paredes e a luz que o mestre pintou, os pontos de luz e as luzes carregadas, e a visão no escuro da ficha.
 
@@ -362,7 +369,7 @@ Os jogadores não veem os PV dos inimigos como número.
 Veem uma palavra: "Ileso", "Ferido", "Muito ferido" (metade dos PV ou menos) ou "Derrotado".
 Também não veem a classe de armadura dos inimigos nem as rolagens que o mestre faz pelos NPCs.
 Veem se acertaram ou erraram ("Acertou", "Errou", "Crítico") e o dano que sofrem.
-O mesmo vale fora do combate: a CD de uma ação de cena, as rolagens de outros jogadores, os ganchos, as pistas não reveladas e as notas de outros jogadores nunca chegam a um jogador.
+O mesmo vale fora do combate: a CD de uma ação de cena, as rolagens de outros jogadores, os ganchos, as pistas não reveladas, as notas de outros jogadores, uma ação de cena que o mestre escondeu e um NPC do palco que o mestre escondeu nunca chegam a um jogador.
 O mestre vê tudo.
 
 **Combatentes e o registro.**

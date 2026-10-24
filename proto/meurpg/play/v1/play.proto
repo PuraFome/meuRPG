@@ -550,7 +550,9 @@ service PlayService {
   //     attempts their own living character has left, their bonus and
   //     passive value, and only their own rolls. When the master turned the
   //     scene's `show_dc` on, the actions also carry their DCs and the rolls
-  //     whether they passed; when it is off, neither.
+  //     whether they passed; when it is off, neither. A player never gets an
+  //     action the master hid, nor the rolls made on it, nor a stage NPC the
+  //     master hid (RN-10); the master gets them marked `hidden`.
   // The scene is unset when none is open.
   //
   // Errors:
@@ -580,8 +582,10 @@ service PlayService {
   //   - `invalid_argument`: neither roll_in_app nor d20_face is set;
   //     roll_in_app is false; d20_face is not 1 to 20; the idempotency key
   //     is not a UUID.
-  //   - `not_found`: the action is not one of the open scene's, the campaign
-  //     does not exist, or the caller is not a member of it.
+  //   - `not_found`: the action is not one of the open scene's, or it is one
+  //     the master hid (the very same error: the refusal never says the action
+  //     is there), the campaign does not exist, or the caller is not a member
+  //     of it.
   //   - `permission_denied`: the caller is the master.
   //   - `failed_precondition`: no open session (GameSessionBlocked,
   //     NO_OPEN_SESSION); or SceneBlocked: NO_OPEN_SCENE, ALREADY_ROLLED (no

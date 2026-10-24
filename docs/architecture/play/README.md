@@ -62,7 +62,7 @@ A service is separate when its contract grows large enough to deserve its own `.
 | `NudgePlayer` | The master, session open | `NO_OPEN_SESSION`; `not_found`; `resource_exhausted` for a second nudge to the same character within 10 s |
 | `SetCurrentMap`, `SetShownImage` | The master, session open | `NO_OPEN_SESSION`; `not_found` for a map or image of another campaign |
 | `OpenScene`, `CloseScene`, `GetOpenScene`, `RollSceneCheck`, `GrantSceneAttempt` | See [Scenes and stage](scenes-and-stage.md) | `SceneBlocked` reasons |
-| `PutOnStage`, `TakeOffStage`, `SetSpeaker` | The master, session open | `SceneBlocked` `NO_OPEN_SCENE`, `STAGE_FULL` |
+| `PutOnStage`, `TakeOffStage`, `SetStageNpcHidden`, `SetSpeaker` | The master, session open | `SceneBlocked` `NO_OPEN_SCENE`, `STAGE_FULL` |
 | `ListLeftImages`, `TakeBackLeftImage` | Members read; the master takes back | `not_found` |
 | `GetSessionSummary` | Campaign members | `GameSessionBlocked` `SESSION_NOT_ENDED` for an open session |
 | `RollFreeDice`, `ListFreeRolls` | Campaign members; `secret` only the master | See [The free dice roller](free-dice-roller.md) |
