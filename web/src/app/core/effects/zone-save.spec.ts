@@ -1,6 +1,9 @@
 import { create } from '@bufbuild/protobuf';
 
-import { EffectPhase, EffectSavePromptSchema } from '../../../gen/meurpg/play/v1/lasting_effects_pb';
+import {
+  EffectPhase,
+  EffectSavePromptSchema,
+} from '../../../gen/meurpg/play/v1/lasting_effects_pb';
 import { encounter, spellZone } from '../combat/combat-testing';
 import { effectSaveView } from './effects';
 import {
@@ -23,7 +26,8 @@ const prompt = (over: object = {}) =>
     modifier: 3,
     bonusKnown: true,
     mode: 'normal',
-    textPt: 'Teste de resistência de Constituição. Se falhar, você sofre dano de radiante. Se passar, metade do dano.',
+    textPt:
+      'Teste de resistência de Constituição. Se falhar, você sofre dano de radiante. Se passar, metade do dano.',
     damageTypeNamePt: 'radiante',
     halfOnSave: true,
     ...over,
@@ -32,13 +36,9 @@ const prompt = (over: object = {}) =>
 describe('the save prompt of a spell zone', () => {
   it('says why the creature is asked, for who answers and for the master reading about someone', () => {
     expect(zoneReasonText('zone_enter', '')).toBe('Você entrou na zona.');
-    expect(zoneReasonText('zone_start', '')).toBe(
-      'A zona atingiu você no começo do seu turno.',
-    );
+    expect(zoneReasonText('zone_start', '')).toBe('A zona atingiu você no começo do seu turno.');
     expect(zoneReasonText('zone_enter', 'Tor')).toBe('Tor entrou na zona.');
-    expect(zoneReasonText('zone_start', 'Tor')).toBe(
-      'A zona atingiu Tor no começo do turno de Tor.',
-    );
+    expect(zoneReasonText('zone_start', 'Tor')).toBe('A zona atingiu Tor no começo do turno.');
     expect(zoneReasonText('', '')).toBe('');
   });
 
@@ -92,7 +92,9 @@ describe('the save prompt of a spell zone', () => {
       'Pensantus',
     );
     expect(web.subtitle).toBe('Magia que ficou no mapa. Você entrou na zona.');
-    expect(web.consequence).toBe('Se falhar, você fica contido até se soltar. Soltar-se gasta uma ação.');
+    expect(web.consequence).toBe(
+      'Se falhar, você fica contido até se soltar. Soltar-se gasta uma ação.',
+    );
   });
 
   it('leaves a prompt that is not a zone as it was', () => {

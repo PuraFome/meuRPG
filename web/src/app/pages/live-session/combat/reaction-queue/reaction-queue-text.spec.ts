@@ -272,12 +272,22 @@ describe('reaction-queue-text', () => {
 });
 
 describe('the master queue for a zone save', () => {
-  const zoneSave = (over: object = {}) => save({ zoneId: 'z1', zoneReason: 'zone_enter', sourceNamePt: 'Teia', phase: EffectPhase.UNSPECIFIED, ...over }, { reactorLabel: 'Tor', reactorIsPlayer: true });
+  const zoneSave = (over: object = {}) =>
+    save(
+      {
+        zoneId: 'z1',
+        zoneReason: 'zone_enter',
+        sourceNamePt: 'Teia',
+        phase: EffectPhase.UNSPECIFIED,
+        ...over,
+      },
+      { reactorLabel: 'Tor', reactorIsPlayer: true },
+    );
 
   it('says why the zone asks, not an end or start of the turn', () => {
     expect(effectSaveText(zoneSave())).toContain('Tor entrou na zona.');
     expect(effectSaveText(zoneSave({ zoneReason: 'zone_start' }))).toContain(
-      'A zona atingiu Tor no começo do turno de Tor.',
+      'A zona atingiu Tor no começo do turno.',
     );
     expect(effectSaveText(zoneSave())).not.toContain('no fim da vez');
   });

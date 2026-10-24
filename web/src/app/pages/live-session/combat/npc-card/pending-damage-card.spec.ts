@@ -65,9 +65,19 @@ describe('pending damage card', () => {
   it('labels a damage the zone of a spell owes, in generic words (it carries no reason)', () => {
     const e = encounter({
       combatants: [combatant({ id: 'a', label: 'Bilbo' }), combatant({ id: 't', label: 'Tor' })],
-      zones: [spellZone({ id: 'z', spellKey: 'spell:cloud-of-daggers', spellNamePt: 'Nuvem de Adagas', ownerCombatantId: 'a' })],
+      zones: [
+        spellZone({
+          id: 'z',
+          spellKey: 'spell:cloud-of-daggers',
+          spellNamePt: 'Nuvem de Adagas',
+          ownerCombatantId: 'a',
+        }),
+      ],
     } as never);
-    const zoned = pending({ attackKey: 'spell:cloud-of-daggers', status: PendingDamageStatus.AWAITING_ROLL });
+    const zoned = pending({
+      attackKey: 'spell:cloud-of-daggers',
+      status: PendingDamageStatus.AWAITING_ROLL,
+    });
     expect(pendingCard(zoned, e, [zoned]).zoneLabel).toBe('Zona de magia: Nuvem de Adagas');
     const plainHit = pending({ attackKey: 'spell:cloud-of-daggers', castId: 'c1' });
     expect(pendingCard(plainHit, e, [plainHit]).zoneLabel).toBe('');

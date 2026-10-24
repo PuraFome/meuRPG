@@ -1,0 +1,56 @@
+import type { Encounter } from '../../../gen/meurpg/play/v1/combat_pb';
+import type { EffectSavePrompt } from '../../../gen/meurpg/play/v1/lasting_effects_pb';
+
+/**
+ * The words of the saving throw a spell zone asks (Moonbeam, Web, Spirit Guardians): pure, built from the prompt the server sent.
+ * The server sends the DC only to the master and the caster's own player, so a number is written only when `dc` is there; the
+ * client never fills it.
+ */
+
+/** The HEADER of the sheet: what kind of save this is, before the reason. */
+export const ZONE_SAVE_HEADER = 'Magia que ficou no mapa';
+
+/** Why the creature is asked, for who answers (`who` empty: "você") or for the master reading about `who`. Empty for a reason the client does not know. */
+export function zoneReasonText(reason: string, who: string): string {
+  if (reason === 'zone_enter') {
+    return who ? `${who} entrou na zona.` : 'Você entrou na zona.';
+  }
+  if (reason === 'zone_start') {
+    return who
+      ? `A zona atingiu ${who} no começo do turno.`
+      : 'A zona atingiu você no começo do seu turno.';
+  }
+  return '';
+}
+
+/** "Raio Lunar de Bartolo"; the zone alone when its caster is not among the zones the viewer was sent. */
+export function zoneSaveTitle(prompt: EffectSavePrompt, caster: string): string {
+  return caster ? `${prompt.sourceNamePt} de ${caster}` : prompt.sourceNamePt;
+}
+
+/** The caster of a zone, from the zones the server sent the viewer; empty when the zone is not among them. */
+export function zoneCasterLabel(encounter: Encounter | null, zoneId: string): string {
+  return encounter?.zones.find((z) => z.id === zoneId)?.ownerLabel ?? '';
+}
+
+/** ", CD 14" when the server sent the DC, else nothing: no number and no placeholder. */
+export function zoneDcText(dc: number | undefined): string {
+  return dc === undefined ? '' : `, CD ${dc}`;
+}
+
+/** " contra CD 14" after the roll, again only with the DC. */
+export function zoneResultDc(dc: number | undefined): string {
+  return dc === undefined ? '' : ` contra CD ${dc}`;
+}
+
+/** What a failure and a pass do: the damage type and "metade do dano" from the prompt's fields; a zone with no damage (the web)
+ * says what its text says, and "Soltar-se gasta uma ação" is a static line the server sends nowhere. */
+export function zoneConsequence(prompt: EffectSavePrompt, textAfterAbility: string): string {
+  if (prompt.damageTypeNamePt) {
+    const pass = prompt.halfOnSave ? 'metade do dano.' : 'não sofre o dano.';
+    return `Se falhar: sofre dano ${prompt.damageTypeNamePt}. Se passar: ${pass}`;
+  }
+  return /contid[oa]/.test(textAfterAbility)
+    ? `${textAfterAbility} Soltar-se gasta uma ação.`
+    : textAfterAbility;
+}

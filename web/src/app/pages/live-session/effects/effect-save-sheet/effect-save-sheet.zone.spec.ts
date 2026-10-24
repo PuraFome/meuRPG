@@ -117,7 +117,13 @@ describe('EffectSaveSheet for a spell zone', () => {
     app.click();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(rollEffectSave).toHaveBeenCalledWith('camp', 'enc', 'w1', { kind: 'app' }, expect.any(String));
+    expect(rollEffectSave).toHaveBeenCalledWith(
+      'camp',
+      'enc',
+      'w1',
+      { kind: 'app' },
+      expect.any(String),
+    );
     const text = plain(el.textContent);
     expect(text).toContain('Falhou');
     expect(text).toContain('contra CD 14');

@@ -8,6 +8,13 @@ import {
   EffectRollKind,
 } from '../../../gen/meurpg/play/v1/lasting_effects_pb';
 import { upFirst } from '../format/text';
+import {
+  ZONE_SAVE_HEADER,
+  zoneConsequence,
+  zoneDcText,
+  zoneReasonText,
+  zoneSaveTitle,
+} from './zone-save';
 
 /**
  * The effects that last (RN-22) as the player reads them: the cards of "Seus efeitos", the exhaustion card, the
@@ -195,6 +202,10 @@ export interface EffectSaveView {
   readonly autoFail: boolean;
   readonly handed: boolean;
   readonly dice: readonly ExtraDie[];
+  /** ", CD 14" when the server sent the DC (a zone's save, for the master and the caster's player), else empty. */
+  readonly dcText: string;
+  /** "Raio Lunar, de Bartolo" for a zone's save; empty otherwise. */
+  readonly source: string;
 }
 
 /** "Teste de resistência de Sabedoria." is the first sentence of `text_pt`; the rest is what a pass does. */
@@ -204,7 +215,12 @@ function afterAbility(text: string, ability: string): string {
 }
 
 /** The sheet of the saving throw an effect asks (RN-22), from the window's prompt. */
-export function effectSaveView(prompt: EffectSavePrompt, round: number): EffectSaveView {
+export function effectSaveView(
+  prompt: EffectSavePrompt,
+  round: number,
+  /** The caster of the zone the save is about, from the encounter's zones; empty when not seen. */
+  zoneCaster = '',
+): EffectSaveView {
   const start = prompt.phase === EffectPhase.START;
   const mode =
     prompt.mode === 'advantage' || prompt.mode === 'disadvantage' ? prompt.mode : 'normal';
@@ -215,11 +231,21 @@ export function effectSaveView(prompt: EffectSavePrompt, round: number): EffectS
       : mode === 'disadvantage'
         ? `Você tem desvantagem neste teste${sources}.`
         : 'Você não tem vantagem nem desvantagem neste teste.';
+  const zone = !!prompt.zoneId;
+  const after = afterAbility(prompt.textPt, prompt.abilityNamePt);
   return {
-    title: start ? 'Começo do seu turno' : 'Fim do seu turno',
-    subtitle: prompt.sourceNamePt || `Rodada ${round}`,
+    title: zone
+      ? zoneSaveTitle(prompt, zoneCaster)
+      : start
+        ? 'Começo do seu turno'
+        : 'Fim do seu turno',
+    subtitle: zone
+      ? `${ZONE_SAVE_HEADER}. ${zoneReasonText(prompt.zoneReason, '')}`.trim()
+      : prompt.sourceNamePt || `Rodada ${round}`,
     ability: prompt.abilityNamePt,
-    consequence: afterAbility(prompt.textPt, prompt.abilityNamePt),
+    consequence: zone ? zoneConsequence(prompt, after) : after,
+    dcText: zone ? zoneDcText(prompt.dc) : '',
+    source: zone && zoneCaster ? `${prompt.sourceNamePt}, de ${zoneCaster}` : '',
     modifier: prompt.bonusKnown ? `Seu modificador: ${signed(prompt.modifier)}.` : '',
     modeLine,
     mode,
