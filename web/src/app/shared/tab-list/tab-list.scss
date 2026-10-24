@@ -16,11 +16,11 @@
 }
 
 .tl-wrap--start {
-  --fade-start: 28px;
+  --fade-start: 36px;
 }
 
 .tl-wrap--end {
-  --fade-end: 28px;
+  --fade-end: 36px;
 }
 
 // One row under which the panel sits: a line along the bottom, the chosen tab underlined in the accent.
@@ -30,6 +30,7 @@
   box-sizing: border-box;
   padding: 0 var(--mr-space-2);
   overflow-x: auto;
+  scroll-snap-type: x proximity;
   scrollbar-width: none;
   border-bottom: 1px solid var(--mr-line);
   border-radius: 10px 10px 0 0;
@@ -58,6 +59,7 @@
   font-weight: 500;
   line-height: 20px;
   white-space: nowrap;
+  scroll-snap-align: start;
   cursor: pointer;
 
   .mat-icon {

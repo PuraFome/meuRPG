@@ -93,15 +93,18 @@
   white-space: nowrap;
 }
 
+// The reconnecting notice is a full-width row of the bar, under the title; the failure to end sits there too.
 .bar__offline,
 .bar__error {
   margin-top: var(--mr-space-2);
+}
 
-  // As wide as its sentence, not a band across the page.
-  @media (min-width: 768px) {
-    align-self: flex-start;
-    width: fit-content;
-  }
+// "Dados" while it cannot act: dashed, the boundary and the words kept at 3:1 or more in both themes (Material dims a disabled button).
+.js-dice.mr-button--off {
+  --mat-button-outlined-disabled-outline-color: var(--mr-control-line);
+  --mat-button-outlined-disabled-label-text-color: var(--mr-ink-muted);
+  border: 1px dashed var(--mr-control-line);
+  opacity: 1;
 }
 
 // Under the bar, in place: the question on the warning surface, then the two buttons; Cancelar is the first of them and has the focus.
@@ -124,6 +127,12 @@
 
   .mat-mdc-button-base {
     background: var(--mr-surface);
+  }
+
+  // The safe choice reads as neutral; only the confirm is the red-outlined danger button.
+  .js-cancel-end {
+    --mat-button-outlined-label-text-color: var(--mr-ink);
+    --mat-button-outlined-outline-color: var(--mr-control-line);
   }
 
   .js-cancel-end:focus {
@@ -198,6 +207,26 @@
 
   .bar__menu .mat-icon {
     margin: 0;
+  }
+
+  // On a phone the question has its own line and each button a full-width line, equal and 48 px high.
+  .bar__ask {
+    flex-basis: calc(100% - 40px);
+  }
+
+  .bar__confirm .mat-mdc-button-base {
+    flex: 1 1 100%;
+    min-height: 48px;
+  }
+
+  // The notice stays on one line at this width.
+  .bar__offline {
+    padding-block: 8px;
+
+    p {
+      font-size: 14px;
+      line-height: 19px;
+    }
   }
 
   .bar__title {
