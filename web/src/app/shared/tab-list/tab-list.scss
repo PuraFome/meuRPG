@@ -1,0 +1,63 @@
+:host {
+  display: block;
+}
+
+// One row under which the panel sits: a line along the bottom, the chosen tab underlined in the accent.
+.tl {
+  display: flex;
+  gap: var(--mr-space-1);
+  overflow-x: auto;
+  border-bottom: 1px solid var(--mr-line);
+}
+
+.tl__tab {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  min-height: 48px;
+  margin-bottom: -1px;
+  padding: 0 var(--mr-space-3);
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: none;
+  color: var(--mr-ink-muted);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: -2px;
+  }
+}
+
+// The chosen tab is bold and underlined, so it never reads by colour alone.
+.tl__tab--on {
+  border-bottom-color: var(--mr-accent);
+  color: var(--mr-ink);
+  font-weight: 700;
+}
+
+.tl__badge {
+  box-sizing: border-box;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-accent);
+  color: var(--mr-on-accent);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+}

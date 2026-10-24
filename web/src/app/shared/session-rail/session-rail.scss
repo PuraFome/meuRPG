@@ -1,0 +1,27 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+// The tabs stay at the top of the column; each panel scrolls on its own.
+.rail__panels {
+  display: block;
+  min-height: 0;
+}
+
+@media (min-width: 1024px) {
+  :host {
+    position: sticky;
+    top: var(--mr-rail-top, 120px);
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    height: calc(100dvh - var(--mr-rail-top, 120px));
+    overflow: hidden;
+  }
+
+  .rail__panels {
+    flex: 1 1 auto;
+    overflow-y: auto;
+  }
+}
