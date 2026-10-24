@@ -94,7 +94,9 @@
 
 // The small note beside the words ("Só você vê"): quiet, and gone when empty.
 .mr-fold__note {
+  display: flex;
   flex: none;
+  align-items: center;
   font-family: var(--mr-font-sans);
   font-size: 14px;
   font-weight: 700;

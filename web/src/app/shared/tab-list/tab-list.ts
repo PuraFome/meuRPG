@@ -3,7 +3,9 @@ import {
   Component,
   ElementRef,
   afterRenderEffect,
+  DestroyRef,
   computed,
+  inject,
   input,
   model,
   signal,
@@ -93,6 +95,7 @@ export class TabList {
   protected readonly fadeEnd = signal(false);
   private readonly list = viewChild<ElementRef<HTMLElement>>('list');
 
+  private observer?: ResizeObserver;
   private readonly buttons = viewChildren<ElementRef<HTMLButtonElement>>('tab');
 
   constructor() {
@@ -102,7 +105,9 @@ export class TabList {
       this.current();
       this.reveal();
       this.measure();
+      this.watch();
     });
+    inject(DestroyRef).onDestroy(() => this.observer?.disconnect());
   }
 
   /** The selected tab, or the first when `selected` names none of them. */
@@ -128,20 +133,45 @@ export class TabList {
     this.fadeEnd.set(el.scrollLeft + el.clientWidth < el.scrollWidth - EDGE_SLACK);
   }
 
-  /** Scrolls the list just enough to show the selected tab whole. */
+  /**
+   * Keeps the selected tab in view, and the list cut only between tabs: when the tab is not whole in the room, the list
+   * scrolls to the start of the tab before it (so the person sees where they came from), never to the middle of a tab,
+   * which would leave a bare count at the edge.
+   */
   private reveal(): void {
     const el = this.list()?.nativeElement;
-    const tab = this.buttons().find(
-      (b) => b.nativeElement.id === this.idOf(this.current()),
-    )?.nativeElement;
-    if (!el || !tab) {
+    const buttons = this.buttons().map((b) => b.nativeElement);
+    const at = buttons.findIndex((b) => b.id === this.idOf(this.current()));
+    if (!el || at < 0) {
       return;
     }
-    if (tab.offsetLeft < el.scrollLeft) {
-      el.scrollLeft = tab.offsetLeft;
-    } else if (tab.offsetLeft + tab.offsetWidth > el.scrollLeft + el.clientWidth) {
+    const tab = buttons[at];
+    if (
+      tab.offsetLeft >= el.scrollLeft &&
+      tab.offsetLeft + tab.offsetWidth <= el.scrollLeft + el.clientWidth
+    ) {
+      return;
+    }
+    const before = buttons[at - 1] ?? tab;
+    el.scrollLeft = before.offsetLeft;
+    if (tab.offsetLeft + tab.offsetWidth > el.scrollLeft + el.clientWidth) {
       el.scrollLeft = tab.offsetLeft + tab.offsetWidth - el.clientWidth;
     }
+  }
+
+  /** Fonts and the room change after the first render: the fade and the open tab follow. */
+  private watch(): void {
+    this.observer?.disconnect();
+    const el = this.list()?.nativeElement;
+    if (!el || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    this.observer = new ResizeObserver(() => {
+      this.reveal();
+      this.measure();
+    });
+    this.observer.observe(el);
+    this.buttons().forEach((b) => this.observer?.observe(b.nativeElement));
   }
 
   protected nameOf(tab: TabItem): string | null {

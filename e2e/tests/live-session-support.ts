@@ -79,7 +79,9 @@ export async function endSessionRPC(masterPage: Page, campaignId: string, gameSe
  */
 export async function openSessionPage(page: Page, campaignId: string): Promise<void> {
   await page.goto(`/campaigns/${campaignId}/session`);
-  await expect(page.getByText('Ao vivo', { exact: true }).first()).toBeVisible({ timeout: 30_000 });
+  // The bar's "Ao vivo" pill leaves it under 360 px, so the title "Sessão 3" (there at every width) counts too.
+  const live = page.getByText('Ao vivo', { exact: true }).or(page.getByRole('heading', { level: 1, name: /^Sessão \d+$/ }));
+  await expect(live.first()).toBeVisible({ timeout: 30_000 });
 }
 
 /**
