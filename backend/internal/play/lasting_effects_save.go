@@ -450,6 +450,7 @@ func (s *Service) recordEffectSaveRoll(ctx context.Context, c *combatTx, x *effe
 	d20, result := step.Roll, x.run.result
 	if step.Bonus != nil {
 		result.InspirationSides, result.InspirationFace = step.Bonus.Sides, step.Bonus.Face
+		x.ev.Res = &resourceEvent{Kind: resBardicUse, Sides: step.Bonus.Sides, Face: step.Bonus.Face} // a retry reads the die back from here
 	}
 	total := d20.Total + delta
 	saved = combat.SaveSucceeded(total, int(x.dc))
@@ -586,6 +587,9 @@ func savedResultOf(res combatResult, made actionEvent, showDC bool) *playv1.Effe
 	}
 	le := ev.Lasting
 	out := &playv1.EffectSaveResult{D20: le.D20, Modifier: ev.Modifier, Total: le.Total, Physical: ev.Physical, Saved: le.Change == "saved", Skipped: le.Change == "skipped", EffectEnded: le.Reason == endSaved, Rerolled: ev.Lucky.proto()}
+	if ev.Res != nil && ev.Res.Kind == resBardicUse {
+		out.InspirationSides, out.InspirationFace = ev.Res.Sides, ev.Res.Face
+	}
 	if showDC && le.DC != 0 {
 		dc := le.DC
 		out.Dc = &dc

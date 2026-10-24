@@ -10,14 +10,14 @@ Whichever path rolls the d20 asks the same gate.
 
 | Kind (`heldKind`) | Path | Where it is held |
 | --- | --- | --- |
-| Weapon attack | `RollAttack` | `inspiration_holds` |
+| Weapon attack | `RollAttack` (the attack is written under the request's key from the request the hold kept, with the mode the gate pinned in it, so the stored hash is the pinned request's; the request made again gives the written attack back, `retryOfHeldAttack`, and the same key for another request is refused) | `inspiration_holds` |
 | Spell attack against one target | `CastSpell` (`inspiration_held.go`) | `inspiration_holds` |
-| The effect's saving throw | `RollEffectSave` | `inspiration_holds` |
-| The concentration save | `ResolveConcentrationSave` | `inspiration_holds` |
+| The effect's saving throw | `RollEffectSave` (a retry of a written save answers with its result read back from the event, the Bardic Inspiration die's sides and face included: the event keeps the die in `Res`) | `inspiration_holds` |
+| The concentration save | `ResolveConcentrationSave` (a retry of a written save answers with its result read back from the event: the d20, the Bardic Inspiration die in `Res` and the d20 Lucky rolled again) | `inspiration_holds` |
 | Scene check | `RollSceneCheck` | `inspiration_holds` |
 | Group check | `RollGroupCheck` | `inspiration_holds` |
 | Trap search | `SearchForTraps` (out of a combat, and the Search action of a combat: its roll is the combatant's, in the round, and the action is spent once the d20 waits for nobody) | `inspiration_holds` |
-| Puzzle hint try | `TryPuzzleHint` | `inspiration_holds` |
+| Puzzle hint try | `TryPuzzleHint` (the try row keeps the die in `bonus_sides` and `bonus_face`, so a retry answers with it) | `inspiration_holds` |
 | Death save | `RollDeathSave` (a character at 0 hit points, on its turn; the master may roll for an absent player and then waits for the player's first 10 s) | `inspiration_holds` |
 | Contest check | `StartContest` (the initiator's d20) and `RespondContest` (the defender's); one kind, since both are an ability check | `inspiration_holds` |
 | Hide check | `Hide` (the Stealth check) | `inspiration_holds` |

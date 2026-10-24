@@ -111,7 +111,10 @@ func outsideView(res proto.Message, characterID string) heldView {
 		}
 		roll := memberOf(r.GetGroupCheck(), characterID).GetRoll()
 		v := heldView{resolved: true, face: roll.GetFaces()[0], modifier: roll.GetModifier() + roll.GetBonusDieFace(), total: roll.GetTotal(), bonus: roll.GetBonusDieFace(), rerolled: len(roll.GetRerolled())}
-		v.value = v.face // the member's modifier leaves the die out of it
+		v.value = v.face           // the member's modifier leaves the die out of it
+		if roll.TreatedAs != nil { // Reliable Talent counts a low d20 as 10 on a group check too
+			v.value = roll.GetTreatedAs()
+		}
 		return v
 	case *playv1.SearchForTrapsResponse:
 		if r.GetRoll() != nil {
@@ -201,9 +204,6 @@ type heldRig struct {
 	// the answer that wrote it said; nil when it says the same. Today the replay of some kinds is
 	// poorer than the first answer (each one is marked FINDING in its rig below).
 	replayed func(v heldView) heldView
-	// refusesTheRollReplay says the first request made again after its roll is written is refused,
-	// where the other kinds give the written roll back.
-	refusesTheRollReplay bool
 }
 
 // countRows counts a table's rows for a campaign or an encounter.
@@ -301,10 +301,6 @@ func attackRig(t *testing.T, die bool) heldRig {
 	}
 	return heldRig{
 		roller: a.h.roller,
-		// FINDING: the request that was held, made again once it is answered, is refused with invalid_argument
-		// ("idempotency_key was already used for another change"): the attack is written under the answer's
-		// key, and the key of the request stands for the hold's event alone. The other kinds give the roll back.
-		refusesTheRollReplay: true,
 		roll: func(t *testing.T, key string) (heldView, error) {
 			t.Helper()
 			res, err := a.attack(t, a.caio, e, "Pipo", battleaxe, "Goblin", func(r *playv1.RollAttackRequest) { inAppRoll(r); r.IdempotencyKey = key })
@@ -394,9 +390,6 @@ func concentrationRig(t *testing.T, die bool) heldRig {
 		})
 		return res, err
 	})
-	// FINDING: once the save is written, its replay (the roll or the answer made again) answers the
-	// combat alone: no result, no question.
-	rig.replayed = func(heldView) heldView { return heldView{} }
 	return rig
 }
 
@@ -425,8 +418,6 @@ func effectSaveRig(t *testing.T, die bool) heldRig {
 		})
 		return res, err
 	})
-	// FINDING: the replay of a written save keeps the total but not the die's face (inspiration_face).
-	rig.replayed = func(v heldView) heldView { v.modifier, v.bonus = v.modifier-v.bonus, 0; return v }
 	return rig
 }
 
@@ -515,7 +506,5 @@ func hintTryRig(t *testing.T, die bool) heldRig {
 		res, err := p.tryHintKey(t, dalila, puz.GetId(), 0, key)
 		return res, err
 	})
-	// FINDING: the replay of a written try keeps the total but not the die (bonus_dice is empty).
-	rig.replayed = func(v heldView) heldView { v.bonus = 0; return v }
 	return rig
 }

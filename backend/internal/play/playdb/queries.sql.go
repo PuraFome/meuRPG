@@ -2306,7 +2306,7 @@ func (q *Queries) GetPuzzleHintCursor(ctx context.Context, arg GetPuzzleHintCurs
 }
 
 const getPuzzleHintTryByKey = `-- name: GetPuzzleHintTryByKey :one
-SELECT id, run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at, d20_b, counted, roll_mode, lucky_index FROM puzzle_hint_tries
+SELECT id, run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at, d20_b, counted, roll_mode, lucky_index, bonus_sides, bonus_face FROM puzzle_hint_tries
 WHERE run_id = $1 AND idempotency_key = $2
 `
 
@@ -2337,6 +2337,8 @@ func (q *Queries) GetPuzzleHintTryByKey(ctx context.Context, arg GetPuzzleHintTr
 		&i.Counted,
 		&i.RollMode,
 		&i.LuckyIndex,
+		&i.BonusSides,
+		&i.BonusFace,
 	)
 	return i, err
 }
@@ -4090,9 +4092,9 @@ func (q *Queries) InsertPuzzle(ctx context.Context, arg InsertPuzzleParams) (Puz
 }
 
 const insertPuzzleHintTry = `-- name: InsertPuzzleHintTry :one
-INSERT INTO puzzle_hint_tries (run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at, d20_b, counted, roll_mode, lucky_index)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-RETURNING id, run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at, d20_b, counted, roll_mode, lucky_index
+INSERT INTO puzzle_hint_tries (run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at, d20_b, counted, roll_mode, lucky_index, bonus_sides, bonus_face)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+RETURNING id, run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at, d20_b, counted, roll_mode, lucky_index, bonus_sides, bonus_face
 `
 
 type InsertPuzzleHintTryParams struct {
@@ -4112,9 +4114,12 @@ type InsertPuzzleHintTryParams struct {
 	Counted        int32
 	RollMode       string
 	LuckyIndex     *int32
+	BonusSides     *int32
+	BonusFace      *int32
 }
 
-// lucky_index is the d20 the halfling's Lucky rolled again (NULL when none was).
+// lucky_index is the d20 the halfling's Lucky rolled again (NULL when none was); bonus_sides and
+// bonus_face the Bardic Inspiration die the player added (NULL when none was).
 func (q *Queries) InsertPuzzleHintTry(ctx context.Context, arg InsertPuzzleHintTryParams) (PuzzleHintTry, error) {
 	row := q.db.QueryRow(ctx, insertPuzzleHintTry,
 		arg.RunID,
@@ -4133,6 +4138,8 @@ func (q *Queries) InsertPuzzleHintTry(ctx context.Context, arg InsertPuzzleHintT
 		arg.Counted,
 		arg.RollMode,
 		arg.LuckyIndex,
+		arg.BonusSides,
+		arg.BonusFace,
 	)
 	var i PuzzleHintTry
 	err := row.Scan(
@@ -4153,6 +4160,8 @@ func (q *Queries) InsertPuzzleHintTry(ctx context.Context, arg InsertPuzzleHintT
 		&i.Counted,
 		&i.RollMode,
 		&i.LuckyIndex,
+		&i.BonusSides,
+		&i.BonusFace,
 	)
 	return i, err
 }
@@ -6847,7 +6856,7 @@ func (q *Queries) ListReactionWindowsOfGroup(ctx context.Context, arg ListReacti
 }
 
 const listRecentPuzzleHintTries = `-- name: ListRecentPuzzleHintTries :many
-SELECT id, run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at, d20_b, counted, roll_mode, lucky_index FROM puzzle_hint_tries
+SELECT id, run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at, d20_b, counted, roll_mode, lucky_index, bonus_sides, bonus_face FROM puzzle_hint_tries
 WHERE run_id = $1
 ORDER BY created_at DESC, id DESC
 LIMIT 50
@@ -6881,6 +6890,8 @@ func (q *Queries) ListRecentPuzzleHintTries(ctx context.Context, runID string) (
 			&i.Counted,
 			&i.RollMode,
 			&i.LuckyIndex,
+			&i.BonusSides,
+			&i.BonusFace,
 		); err != nil {
 			return nil, err
 		}

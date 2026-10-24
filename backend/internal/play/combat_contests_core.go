@@ -147,6 +147,9 @@ type contestRoll struct {
 	ManeuverName  string `json:"maneuver_name,omitempty"`
 	ManeuverSides int32  `json:"maneuver_sides,omitempty"`
 	ManeuverFace  int32  `json:"maneuver_face,omitempty"`
+	// CountedAs is what Reliable Talent made the d20 that counts (SRD 5.1: a 9 or lower counts as 10 on a check that adds the
+	// proficiency bonus); 0 when the d20 counted as it came up. Total already uses it.
+	CountedAs int32 `json:"counted_as,omitempty"`
 	// Lucky is the d20 the halfling's Lucky rolled again after it showed a 1 (a group check's,
 	// inspiration_lucky.go): Faces hold the new face, and this the 1 it replaced and where.
 	Lucky *luckyReroll `json:"lucky,omitempty"`
@@ -192,6 +195,9 @@ func (r contestRoll) proto() *playv1.CheckRoll {
 		BonusDieSides: r.BonusSides, BonusDieFace: r.BonusFace,
 		ManeuverKey: r.ManeuverKey, ManeuverNamePt: r.ManeuverName, ManeuverDieSides: r.ManeuverSides, ManeuverDieFace: r.ManeuverFace,
 		Rerolled: r.Lucky.proto(),
+	}
+	if r.CountedAs != 0 {
+		out.TreatedAs, out.TreatedAsSource = new(r.CountedAs), reliableTalentSource
 	}
 	return out
 }
@@ -273,7 +279,7 @@ func (in checkInput) rollInput() rollInput { return rollInput{inApp: in.inApp} }
 // rollCheck rolls a check's d20 (or the pair the mode asks for), or checks the faces typed
 // from physical dice: the dice must match the mode the server worked out, so a stale screen
 // is told to read the options again (aborted).
-func (s *Service) rollCheck(in checkInput, mode combat.CheckMode, modifier int, skill string, notes []rollNote, unknown bool) (contestRoll, error) {
+func (s *Service) rollCheck(in checkInput, mode combat.CheckMode, modifier int, skill string, notes []rollNote, unknown, reliable bool) (contestRoll, error) {
 	faces := in.faces
 	physical := !in.inApp
 	if in.inApp {
@@ -286,9 +292,10 @@ func (s *Service) rollCheck(in checkInput, mode combat.CheckMode, modifier int, 
 		return contestRoll{}, connect.NewError(connect.CodeAborted, errors.New("the roll's mode changed: read the options again"))
 	}
 	kept := mode.PickD20(faces)
+	counted := countedFace(kept, reliable) // Reliable Talent: a low d20 counts as 10 (the pick is the mode's either way)
 	out := contestRoll{
-		Skill: skill, Modifier: conv.Int32(modifier), Total: conv.Int32(kept + modifier),
-		Physical: physical, Mode: checkModeKey(mode), Notes: notes, Unknown: unknown,
+		Skill: skill, Modifier: conv.Int32(modifier), Total: conv.Int32(counted + modifier),
+		Physical: physical, Mode: checkModeKey(mode), Notes: notes, Unknown: unknown, CountedAs: countedAs(kept, counted),
 	}
 	for _, f := range faces {
 		out.Faces = append(out.Faces, clamp32(f, 1, 20))
@@ -321,8 +328,10 @@ type checkNumbers struct {
 	Bonus int
 	// Known is false for a combatant with no number for the check (a basic-sheet NPC made
 	// by hand): it rolls the d20 plus 0 and the master's log says so.
-	Known   bool
-	Passive int
+	Known bool
+	// Reliable says Reliable Talent counts a low d20 of this check as 10 (the check adds the proficiency bonus).
+	Reliable bool
+	Passive  int
 	// HasPassive says Passive is the sheet's or the stat block's; without one a passive
 	// Perception is 10 plus the bonus.
 	HasPassive bool
@@ -344,7 +353,7 @@ func (s *Service) numbersOf(ctx context.Context, tx pgx.Tx, campaignID string, c
 	if err != nil {
 		return checkNumbers{}, err
 	}
-	return checkNumbers{Bonus: o.Bonus, Known: o.Known, Passive: o.Passive, HasPassive: o.HasPassive}, nil
+	return checkNumbers{Bonus: o.Bonus, Known: o.Known, Passive: o.Passive, HasPassive: o.HasPassive, Reliable: o.ReliableTalent}, nil
 }
 
 // passivePerceptionOf is a combatant's passive Wisdom (Perception) with the circumstances
@@ -479,7 +488,7 @@ func (s *Service) rollFor(ctx context.Context, c *combatTx, who playdb.Combatant
 	if err != nil {
 		return contestRoll{}, err
 	}
-	roll, err := s.rollCheck(in, notesMode(notes), n.Bonus, skill, notes, !n.Known)
+	roll, err := s.rollCheck(in, notesMode(notes), n.Bonus, skill, notes, !n.Known, n.Reliable)
 	if err != nil {
 		return contestRoll{}, err
 	}

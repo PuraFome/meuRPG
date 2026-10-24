@@ -74,11 +74,6 @@ func walkHeldFlow(t *testing.T, r heldRig, face int32, answers []heldAnswer) {
 		t.Helper()
 		r.roller.queue(heldSentinel)
 		got, err := r.roll(t, rollKey)
-		if want.resolved && r.refusesTheRollReplay {
-			wantCode(t, what+": the roll again", err, connect.CodeInvalidArgument)
-			wantNothingRolled(t, r, what+": the roll again")
-			return
-		}
 		want = replayOf(want)
 		if err != nil {
 			t.Fatalf("%s: the roll again: error = %v", what, err)

@@ -229,6 +229,9 @@ func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membershi
 	}
 	if replayed {
 		res.try, res.replayed = done, true
+		if done.BonusSides != nil && done.BonusFace != nil { // the die of the first answer
+			res.bonus = &playv1.BonusDie{SourceKey: bardicInspirationFt, Sides: *done.BonusSides, Face: *done.BonusFace, Used: true}
+		}
 		return s.namesOfRuns(ctx, tx, m.CampaignID, h.run)
 	}
 
@@ -373,6 +376,10 @@ func (h *hintTryTx) record(ctx context.Context, plan hintTryPlan, step gateResul
 		g := clamp32(plan.next+1, 1, maxHints)
 		granted = &g
 	}
+	var bonusSides, bonusFace *int32 // the die the try keeps, for a retry to answer with it
+	if step.Bonus != nil {
+		bonusSides, bonusFace = new(clamp32(int(step.Bonus.Sides), 2, 100)), new(clamp32(int(step.Bonus.Face), 1, 100))
+	}
 	var luckyAt *int32 // the d20 Lucky rolled again: the try keeps where, its faces the new one
 	if step.Lucky != nil {
 		luckyAt = new(clamp32(int(step.Lucky.Index), 0, 1))
@@ -382,7 +389,7 @@ func (h *hintTryTx) record(ctx context.Context, plan hintTryPlan, step gateResul
 		Passed: passed, GrantedCount: granted, D20: clamp32(d20.Face(), 1, 20), Modifier: clamp32(plan.bonus+dieFace, -1000, 1000),
 		Total: clamp32(d20.Total, -1000, 1000), Physical: d20.Physical, CreatedAt: now,
 		D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(plan.cm.Mode),
-		LuckyIndex: luckyAt,
+		LuckyIndex: luckyAt, BonusSides: bonusSides, BonusFace: bonusFace,
 	})
 	if err != nil {
 		return playdb.PuzzleHintTry{}, fmt.Errorf("record the try: %w", err)
