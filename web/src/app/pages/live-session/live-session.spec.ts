@@ -63,6 +63,7 @@ import {
   mapToken,
 } from '../../core/maps/maps-testing';
 import { ConversationClient } from '../../core/conversation/conversation-client';
+import type { MessagesPage } from '../../core/conversation/conversation-state';
 import { QuietConversationApi, line } from '../../core/conversation/conversation-testing';
 import { SessionMessageSpeakerKind } from '../../../gen/meurpg/play/v1/session_messages_pb';
 import type { LiveSessionParts } from './live-session-deps';
@@ -2153,6 +2154,55 @@ describe('LiveSession', () => {
         await arrive(fixture, ['m1']);
         const host = notice(el) as HTMLElement;
         expect(host.querySelector('[role="status"], [role="alert"], [aria-live]')).toBeNull();
+      });
+
+      /** What a screen reader (and the e2e's `getByRole('button', { name })`) hears: the text, minus what is aria-hidden. */
+      const accessibleName = (button: HTMLElement) => {
+        const copy = button.cloneNode(true) as HTMLElement;
+        copy.querySelectorAll('[aria-hidden="true"]').forEach((n) => n.remove());
+        return (copy.textContent ?? '').replace(/\s+/g, ' ').trim();
+      };
+
+      it('has the name "Conversa: 1 mensagem nova Abrir" for the line of the stream', async () => {
+        onPhone(true);
+        const fixture = TestBed.createComponent(LiveSession);
+        const el = await settle(fixture);
+        await arrive(fixture, ['m1']);
+        const button = notice(el)?.querySelector('button') as HTMLButtonElement;
+        expect(accessibleName(button)).toMatch(/^Conversa: \d+ mensagens? novas? Abrir$/);
+        expect(accessibleName(button)).toBe('Conversa: 1 mensagem nova Abrir');
+      });
+
+      it('counts a line of the stream that comes while the first history page is still being read', async () => {
+        onPhone(true);
+        let answer!: (page: MessagesPage) => void;
+        vi.spyOn(conversation, 'list').mockReturnValue(
+          new Promise<MessagesPage>((resolve) => (answer = resolve)),
+        );
+        const fixture = TestBed.createComponent(LiveSession);
+        const el = await settle(fixture);
+        expect(parts(fixture).conversation.loaded()).toBe(false);
+        const narration = line('m1', { authorUserId: 'u-mestre' });
+        source.push({ kind: 'sessionMessage', message: narration });
+        await settle(fixture);
+        // The history then holds that same line: it is one line, and it is news.
+        answer({ messages: [narration], hasOlder: false, voiceEnabled: false });
+        await settle(fixture);
+        expect(parts(fixture).conversation.unread()).toBe(1);
+        expect(notice(el)?.textContent).toContain('Conversa: 1 mensagem nova');
+      });
+
+      it('does not count a line the first history page already holds: it came before the page opened', async () => {
+        onPhone(true);
+        vi.spyOn(conversation, 'list').mockResolvedValue({
+          messages: [line('m0', { authorUserId: 'u-mestre' })],
+          hasOlder: false,
+          voiceEnabled: false,
+        });
+        const fixture = TestBed.createComponent(LiveSession);
+        const el = await settle(fixture);
+        expect(parts(fixture).conversation.lines().map((l) => l.id)).toEqual(['m0']);
+        expect(notice(el)).toBeNull();
       });
 
       it('is never drawn on a computer', async () => {
