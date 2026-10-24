@@ -325,6 +325,10 @@ type Attack struct {
 	Ability            string
 	Finesse, TwoHanded bool
 	Weapon             bool
+	// Magical says the attack's damage is magical (a spell; a creature's weapon attack
+	// with the trait "Magic Weapons"; any attack the sheet marks, such as an unarmed
+	// strike): the resistances and immunities to nonmagical attacks do not cover it.
+	Magical bool
 }
 
 // Action is a standard action: its key ("standard:dash") and Portuguese name.

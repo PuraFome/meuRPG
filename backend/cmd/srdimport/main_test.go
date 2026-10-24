@@ -91,18 +91,20 @@ func TestRefusesMissingSource(t *testing.T) {
 }
 
 // TestDamageMod: the SRD writes a resistance as a list of types, sometimes
-// with a rider.
+// with a rider; the riders about nonmagical attacks also come out as a qualifier.
 func TestDamageMod(t *testing.T) {
 	t.Parallel()
 	for in, want := range map[string]string{
-		"acid": "damage-type:acid|",
-		"bludgeoning, piercing, and slashing from nonmagical weapons":          "damage-type:bludgeoning,damage-type:piercing,damage-type:slashing|from nonmagical weapons",
-		"piercing and slashing from nonmagical weapons that aren't adamantine": "damage-type:piercing,damage-type:slashing|from nonmagical weapons that aren't adamantine",
-		"damage from spells": "|damage from spells",
-		"fire":               "damage-type:fire|",
+		"acid": "damage-type:acid||",
+		"bludgeoning, piercing, and slashing from nonmagical weapons":                      "damage-type:bludgeoning,damage-type:piercing,damage-type:slashing|from nonmagical weapons|nonmagical",
+		"piercing and slashing from nonmagical weapons that aren't adamantine":             "damage-type:piercing,damage-type:slashing|from nonmagical weapons that aren't adamantine|nonmagical-unless-adamantine",
+		"bludgeoning, piercing, and slashing from nonmagical weapons that aren't silvered": "damage-type:bludgeoning,damage-type:piercing,damage-type:slashing|from nonmagical weapons that aren't silvered|nonmagical-unless-silvered",
+		"bludgeoning, piercing, and slashing from nonmagical attacks (from stoneskin)":     "damage-type:bludgeoning,damage-type:piercing,damage-type:slashing|from nonmagical attacks (from stoneskin)|nonmagical",
+		"damage from spells": "|damage from spells|",
+		"fire":               "damage-type:fire||",
 	} {
 		m := damageMod(in)
-		if got := strings.Join(m.Types, ",") + "|" + m.Note; got != want {
+		if got := strings.Join(m.Types, ",") + "|" + m.Note + "|" + m.Qualifier; got != want {
 			t.Errorf("damageMod(%q) = %q, want %q", in, got, want)
 		}
 	}
