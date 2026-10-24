@@ -16,10 +16,6 @@ import {
   type TokenDrop,
 } from '../../../../shared/combat-map/combat-map';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
-import { ZoneLayer } from '../../../../shared/combat-map/zone-layer/zone-layer';
-import { ZoneSwatch } from '../../../../shared/combat-map/zone-layer/zone-swatch';
-import { zoneLegend } from '../../../../core/combat/zone-pattern';
-import { zoneViews } from '../../../../core/combat/zones';
 import { AreaOverlay } from '../../../../shared/area-picker/area-overlay';
 import { lastArea } from '../../../../core/combat/hidden-reveal';
 import { MapLayersLegend } from '../../../../shared/map-layers/map-layers-legend';
@@ -56,8 +52,6 @@ const CROP_MAX_SHARE = 0.6;
     MapLayersLegend,
     MatButtonModule,
     MatIconModule,
-    ZoneLayer,
-    ZoneSwatch,
   ],
   templateUrl: './combat-map-card.html',
   styleUrl: './combat-map-card.scss',
@@ -200,9 +194,6 @@ export class CombatMapCard {
   protected readonly lastArea = computed(() =>
     this.isMaster() ? lastArea(this.encounter()) : null,
   );
-  /** The zones the spells keep, as the server sent them for whoever looks (RN-37): drawn under the tokens and named in the legend. */
-  protected readonly zones = computed(() => zoneViews(this.encounter(), this.isMaster()));
-  protected readonly zoneLegend = computed(() => zoneLegend(this.zones()));
   protected readonly emptyLayers = NO_LAYERS;
   protected readonly reachMeters = computed(() => metersFixed((this.reach()?.leftDft ?? 0) / 10));
   protected readonly hasHidden = computed(() => this.encounter().combatants.some((c) => c.hidden));

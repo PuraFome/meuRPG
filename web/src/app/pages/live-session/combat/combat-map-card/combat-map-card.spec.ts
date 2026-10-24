@@ -7,9 +7,8 @@ import {
   CombatantKind,
   CombatantSide,
   HiddenRevealQuestionSchema,
-  SpellZoneVisibility,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { combatant, encounter, spellZone } from '../../../../core/combat/combat-testing';
+import { combatant, encounter } from '../../../../core/combat/combat-testing';
 import { decodeVision } from '../../../../core/maps/vision';
 import { visionResponse } from '../../../../core/maps/vision-testing';
 import { CombatMap } from '../../../../shared/combat-map/combat-map';
@@ -256,52 +255,5 @@ describe('CombatMapCard: "Tela cheia"', () => {
     expect(button(el)!.getAttribute('aria-pressed')).toBe('true');
     button(el)!.click();
     expect(fs.exit).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe('CombatMapCard: the zones the spells keep', () => {
-  const zone = (over: Parameters<typeof spellZone>[0]) =>
-    spellZone({
-      squares: [
-        { col: 1, row: 1 },
-        { col: 2, row: 1 },
-      ],
-      ...over,
-    });
-  function withZones(zones: ReturnType<typeof spellZone>[], isMaster = true) {
-    return mount({
-      isMaster,
-      encounter: encounter({ gridColumns: 10, gridRows: 10, combatants: [], zones }),
-    });
-  }
-
-  it('draws no zone layer and no legend entry when none is on the map', () => {
-    const { el } = mount();
-    expect(el.querySelector('app-zone-layer')).toBeNull();
-    expect(el.querySelector('.legend__zone')).toBeNull();
-  });
-
-  it('draws the layer inside the map and names each spell present in the legend', () => {
-    const { el } = withZones([
-      zone({ id: 'a' }),
-      zone({ id: 'b', spellKey: 'spell:web', spellNamePt: 'Teia' }),
-      zone({ id: 'c' }),
-    ]);
-    expect(el.querySelector('app-combat-map app-zone-layer')).not.toBeNull();
-    const names = [...el.querySelectorAll('.legend__zone')].map((n) => plain(n.textContent));
-    expect(names).toEqual(['Raio Lunar', 'Teia']);
-  });
-
-  it('says "só você vê" in the legend for a hidden caster\'s spell', () => {
-    const { el } = withZones([
-      zone({ id: 'a', visibility: SpellZoneVisibility.MASTER_ONLY, spellNamePt: 'Nuvem Mortal' }),
-    ]);
-    expect(plain(el.querySelector('.legend__zone')?.textContent)).toBe('Nuvem Mortal só você vê');
-  });
-
-  it('gives a player the zones the server sent, and no master-only wording', () => {
-    const { el } = withZones([zone({ id: 'a' })], false);
-    expect(el.querySelector('app-zone-layer')).not.toBeNull();
-    expect(plain(el.querySelector('.legend__zone')?.textContent)).toBe('Raio Lunar');
   });
 });

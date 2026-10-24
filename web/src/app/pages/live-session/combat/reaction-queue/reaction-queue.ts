@@ -40,7 +40,6 @@ import {
   showOfReaction,
 } from '../../../../shared/roll-overlay/roll-animator';
 import { type EffectSaveAnswer, EffectsClient } from '../../../../core/effects/effects-client';
-import { zoneCasterLabel } from '../../../../core/effects/zone-save';
 import { ExtraDiceState } from '../../../../core/effects/extra-dice-state';
 import { ExtraDice } from '../../effects/extra-dice/extra-dice';
 import { MultiRoll, type RollField } from '../multi-roll/multi-roll';
@@ -65,7 +64,6 @@ import {
   effectSaveText,
   effectSaveTitle,
   effectSaveWho,
-  zoneIdOf,
   rebukeAggressor,
   rebukeBonus,
   rebukeModifier,
@@ -326,9 +324,7 @@ export class ReactionQueue {
   protected readonly effectSaveMode = effectSaveMode;
   protected readonly effectSavePairHint = effectSavePairHint;
   protected readonly effectSaveAbility = effectSaveAbility;
-  protected effectSaveTitle(w: ReactionWindow): string {
-    return effectSaveTitle(w, zoneCasterLabel(this.encounter(), zoneIdOf(w)));
-  }
+  protected readonly effectSaveTitle = effectSaveTitle;
   protected readonly effectSaveText = effectSaveText;
   protected readonly effectSaveRule = effectSaveRule;
   protected readonly effectSaveWho = effectSaveWho;

@@ -17,7 +17,6 @@ import {
   masterAreaFocus,
   opensOnMap,
 } from './cast-sheet/cast-sheet-data';
-import { ZoneMoveSheet, type ZoneMoveSheetData } from './zone-move/zone-move-sheet';
 import { openRevivifySheet } from './revivify-sheet/revivify-sheet';
 import { ActionSheets } from './action-sheets';
 import type { AttackOpen, CombatSheetsContext } from './combat-sheets-context';
@@ -209,38 +208,6 @@ export class CombatSheets {
         ...masterAreaFocus(found.targets),
       },
     ).subscribe();
-  }
-
-  /** "Mover" on a zone: the picker of its new place (a sheet on a phone, a dialog from a tablet up). `false` without a battle map. */
-  moveZone(zoneId: string, onClosed: () => void): boolean {
-    const e = this.ctx.encounter();
-    const map = this.castMap();
-    const zone = e?.zones.find((z) => z.id === zoneId);
-    if (!e || !map || !zone) {
-      return false;
-    }
-    const data: ZoneMoveSheetData = {
-      campaignId: this.ctx.campaignId(),
-      encounterId: e.id,
-      zoneId,
-      master: this.ctx.isMaster(),
-      map,
-      state: this.ctx.state(),
-    };
-    openSheet<ZoneMoveSheet, ZoneMoveSheetData, boolean>(
-      this.ctx.dialog,
-      this.ctx.bottomSheet,
-      ZoneMoveSheet,
-      {
-        data,
-        ariaLabel: `Mover ${zone.spellNamePt}`,
-        labelledBy: 'sheet-t',
-        width: '760px',
-        panelClass: 'mr-sheet-zone',
-        focus: '.cm__surface[tabindex]',
-      },
-    ).subscribe({ complete: onClosed });
-    return true;
   }
 
   private isSummon(key: string): Promise<boolean> {

@@ -303,17 +303,6 @@ html {
   max-height: calc(100dvh - 56px);
 }
 
-// The spell zone's move sheet: 40 px from the top of the screen, like the dice sheet. The shared tall rule leaves the container
-// 84 px short while the frame is 40 px short, so "Cancelar" fell below the fold; here the frame is shortened by the container's
-// 16 px padding, the body (the map) scrolls inside and the footer stays in view.
-.mr-sheet-zone .mat-bottom-sheet-container {
-  max-height: calc(100dvh - 40px);
-}
-
-.mr-sheet-zone .frame.frame--phone {
-  max-height: calc(100dvh - 56px);
-}
-
 // A dialog laid out like a phone's bottom sheet: the "?" inside the cast sheet
 // opens the spell's details over it (a second bottom sheet would close the
 // first and lose its choices). `panelClass` lands on the overlay pane.

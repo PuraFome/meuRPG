@@ -41,7 +41,6 @@ import { TurnPanel } from './turn-panel/turn-panel';
 import { CoverPanel } from './theatre/cover-panel';
 import { NoMapPanel, TheatreReaction } from './theatre/no-map-panel';
 import { OfferPanel } from './theatre/offer-panel';
-import { ZonesPanel } from './zones-panel/zones-panel';
 
 /** The components, directives and pipes the combat screen's template uses. */
 export const COMBAT_VIEW_IMPORTS = [
@@ -89,5 +88,4 @@ export const COMBAT_VIEW_IMPORTS = [
   TurnBar,
   TrapDamages,
   TurnPanel,
-  ZonesPanel,
 ];
