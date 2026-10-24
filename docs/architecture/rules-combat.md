@@ -13,7 +13,7 @@ For the engine around it see [Rules module](rules.md).
 | `rolls.go`, `vitals.go` | Attack resolution, critical rules, damage dice, concentration DC, `ApplyDamage`, `ApplyHeal`, death saves, `SpendSlot`, `SpendPactSlot`, `SpendResource`. |
 | `bonusattack.go` | Which rule lets an attack be made with the bonus action (off hand, Martial Arts, Flurry of Blows). |
 | `advantage.go` | Advantage and disadvantage from circumstances; both cancel. The play module works out the facts and writes the sentence of each source. |
-| `damagetype.go`, `steps.go` | Resistance, vulnerability and immunity; the order damage steps apply in (resistance first, then vulnerability, immunity last; several instances of the same count once). |
+| `damagetype.go`, `steps.go` | Resistance, vulnerability and immunity; the order damage steps apply in (resistance first, then vulnerability, immunity last; several instances of the same count once). A resistance or immunity can be limited to nonmagical attacks (`Modifier.Qualifier`); `Origin` says whether a damage is an attack and whether it is magical. |
 | `extras.go` | What is added to a hit: the extras a player chooses (Sneak Attack, Divine Smite, Hunter's Mark, Colossus Slayer) with the condition that makes each valid, and the automatic lines (Rage, Improved Divine Smite, Great Weapon Fighting). |
 | `healing.go` | What the Life Domain features add to a healing spell. |
 | `hpspells.go` | The spells that read hit points (below). |
@@ -34,7 +34,7 @@ For the engine around it see [Rules module](rules.md).
 | `ApplyDamage(hp, temporary, damage)` | Temporary hit points go first; floor at 0; says whether it "dropped to 0" and how much of the damage was left over. |
 | `ApplyHeal(hp, maximum, heal)` | Heals up to the maximum and says how much it healed. |
 | `SpendSlot`, `SpendPactSlot`, `SpendResource` | Spend a spell slot, a pact slot or a resource use; `ErrNoSlot` and `ErrNoUses` when none. They return a new `Usage`. |
-| `AdjustForType`, `Adjust` | The damage that lands on a creature after the bonuses and the half of a save: immunity makes it 0, resistance halves it (rounded down), vulnerability doubles it. A damage with no type is not touched. |
+| `AdjustForType`, `Adjust` | The damage that lands on a creature after the bonuses and the half of a save: immunity makes it 0, resistance halves it (rounded down), vulnerability doubles it. A damage with no type is not touched. `Adjust` also takes the `Origin` of the damage and applies the modifiers limited to nonmagical attacks only to a nonmagical attack; `AdjustForType`, for a damage that is no attack, never applies them. |
 | `DeathSave(d20, successes, failures)` | 10 or more is a success, less a failure, a natural 1 two failures, a natural 20 returns with 1 hit point. Three successes: stable (the three stay as the stable marker and the failures are cleared). Three failures: `dying`, which the master confirms (RN-03); the engine never kills by itself. `DamageWhileDown(critical)` gives 1 failure (2 on a critical) for damage to someone at 0. |
 | `ConcentrationDC(damage)` | `max(10, damage/2)`, the number of the concentration reminder (RN-22). |
 | `HalfSaveShare(creature, ability, saved)` | The share (`ShareFull`, `ShareHalf`, `ShareNone`) of a damage that a save halving it on a success leaves: Evasion makes a passed Dexterity save `ShareNone` and a failed one `ShareHalf`, unless the creature is incapacitated; otherwise a pass is half and a failure all. |
