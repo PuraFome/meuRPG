@@ -60,8 +60,8 @@ A service is separate when its contract grows large enough to deserve its own `.
 | `GetLiveSession`, `WatchGameSession` | Campaign members | `failed_precondition` `NO_OPEN_SESSION` |
 | `AdjustCharacterVitals` | The master, session open | `NO_OPEN_SESSION`; `not_found` unless the character is a living player character of the campaign; `invalid_argument` outside 0 to the maximum. The response carries `concentration_dc` and `concentration_cast_id` when a character concentrating on a spell cast outside combat lost hit points. At 0 HP the concentration of a character in the open combat ends too |
 | `NudgePlayer` | The master, session open | `NO_OPEN_SESSION`; `not_found`; `resource_exhausted` for a second nudge to the same character within 10 s |
-| `SetCurrentMap`, `SetShownImage` | The master, session open | `NO_OPEN_SESSION`; `not_found` for a map or image of another campaign |
-| `OpenScene`, `CloseScene`, `GetOpenScene`, `RollSceneCheck`, `GrantSceneAttempt` | See [Scenes and stage](scenes-and-stage.md) | `SceneBlocked` reasons |
+| `SetCurrentMap`, `SetShownImage`, `SetShownImageAudience` | The master, session open | `NO_OPEN_SESSION`; `not_found` for a map or image of another campaign (or no image shown); `invalid_argument` for an audience that is malformed; `SceneBlocked` `SCENE_NOT_PARTIAL` for the scene's players with no scene open to only some |
+| `OpenScene`, `SetSceneAudience`, `CloseScene`, `GetOpenScene`, `RollSceneCheck`, `GrantSceneAttempt` | See [Scenes and stage](scenes-and-stage.md) | `SceneBlocked` reasons |
 | `PutOnStage`, `TakeOffStage`, `SetStageNpcHidden`, `SetSpeaker` | The master, session open | `SceneBlocked` `NO_OPEN_SCENE`, `STAGE_FULL` |
 | `ListLeftImages`, `TakeBackLeftImage` | Members read; the master takes back | `not_found` |
 | `GetSessionSummary` | Campaign members | `GameSessionBlocked` `SESSION_NOT_ENDED` for an open session |
@@ -88,7 +88,7 @@ The plain types that cross are in `play/link`, a package that imports nothing fr
 | `FogSource` | `maps.Service`, set with `SetFog` | What the players see now of the combat's map |
 | `TrapBook` | `maps.Service`, set with `SetTraps` | The map's traps, noticing, searching, triggering |
 
-The other direction (`maps` calls `play`) goes through interfaces `maps` declares and `play.Service` implements: `LiveSession` (`OnScreen`, `OpenScenePoint`, `ImageOnStage`, `Publish`, `PublishToUsers`, `AppendEvent`) and `TrapFirer`.
+The other direction (`maps` calls `play`) goes through interfaces `maps` declares and `play.Service` implements: `LiveSession` (`OnScreen`, `OpenScenePoint`, `ImageOnStage`, `ImageShownTo`, `Publish`, `PublishToScene`, `PublishToUsers`, `AppendEvent`) and `TrapFirer`.
 Because each side only needs the other's interface, `cmd/api` creates `maps.SessionMaps` first, then `play` with it, then `maps` with `play`.
 `characters` reaches `play` through interfaces it declares and `cmd/api` sets: `SetLive`, `SetCreatureHost` and `SetReviewHost`.
 

@@ -5,9 +5,10 @@ The actions, images, clues and hooks live in `maps`; opening the scene in the se
 
 | Call | Who may | Own errors |
 | --- | --- | --- |
-| `OpenScene(point_id)` | The master, session open (opening another scene empties the stage) | `NO_OPEN_SESSION`; `not_found` unless the point is a scene point of the campaign. Any scene point opens, even without actions; opening discovers the scene |
+| `OpenScene(point_id, audience)` | The master, session open (opening another scene empties the stage) | `NO_OPEN_SESSION`; `not_found` unless the point is a scene point of the campaign; `invalid_argument` for an audience that is empty, both everyone and a list, or names an account that is not a player of the party. Any scene point opens, even without actions; opening discovers the scene when it is open to everyone. No audience: the whole table for a scene newly opened, the audience unchanged for the one open already |
+| `SetSceneAudience(audience)` | The master, session open | `SceneBlocked` `NO_OPEN_SCENE`; `invalid_argument` as for `OpenScene`, and for no audience. The same audience changes nothing |
 | `CloseScene` | The master, session open | With no open scene it changes nothing; closing empties the stage |
-| `GetOpenScene` | Campaign members | `NO_OPEN_SESSION` |
+| `GetOpenScene` | Campaign members | `NO_OPEN_SESSION`. A player out of a scene open to only some players gets no scene, as when none is open |
 | `RollSceneCheck` | A player with a living character, session open | `permission_denied` for the master; `SceneBlocked`: `NO_OPEN_SCENE`, `ALREADY_ROLLED` (no attempt left), `WRONG_DICE_MODE`, `NO_CHARACTER`; `not_found` ("action not found") for an action not of the open scene **and for one the master hid**, the same error; `invalid_argument` for a d20 outside 1 to 20 |
 | `GrantSceneAttempt` | The master, session open | `SceneBlocked` `NO_OPEN_SCENE`; `not_found`; `invalid_argument` for a key that is not a UUID or already used by another change. On an unlimited action it changes nothing |
 | `PutOnStage(character_id, hidden)` | The master, session open | `SceneBlocked` `NO_OPEN_SCENE`, `STAGE_FULL` (4 on stage, the hidden ones too); `not_found` unless the id is a living NPC of the campaign. An NPC already on stage changes nothing, whatever `hidden` says |
@@ -16,6 +17,22 @@ The actions, images, clues and hooks live in `maps`; opening the scene in the se
 | `SetSpeaker` | The master, session open | `not_found` if the NPC is not on stage. An empty `character_id` takes the floor from everyone. A hidden NPC given the floor is shown in the same call |
 
 `TestAuthorizationMatrix` and `TestSceneAuthorizationMatrix` call each as master, player, outsider, pending and signed out.
+
+## Who is in the scene (MR-015, RN-10)
+
+A scene is open to the whole table (`game_sessions.open_scene_everyone`, the default, a later joiner included) or to exactly the players of `game_session_scene_players`; the master is always in.
+`SceneAudience` is `everyone` or `user_ids` (accounts of the party's players, validated as the conversation's readers are, `playersOf`).
+`OpenScene` writes it with the point (`startScene`), `SetSceneAudience` while the scene is open (`applySceneAudience`); closing clears the rows and sets the flag back.
+Opening the scene that is open already with no audience changes nothing, so a second tap never widens it.
+
+- **A player who is out reads no scene.** `openSceneInfo` answers nil before it reads anything (`readsScene`), `RollSceneCheck` is refused with the error of no open scene (`requireInScene`), `GrantSceneAttempt` does not find the character of a player who is out, the casts' stage is empty for them (`stageMapOf`), and the portrait of an NPC on the stage is `404` (`ImageOnStage(user)`).
+  The group check asks the scene's players only, and a player taken out stops reading it and answering it (`partyInScene`, `groupViewerOf`).
+  The master reads `OpenSceneInfo.audience`: who is in and who is out (the characters' names), and `opened_at`.
+- **The stream follows the audience.** Every hint of the scene (`scene_changed`, `stage_changed`, `group_check_changed`) goes to the master and the players in the scene (`PublishToScene`, also what `maps.LiveSession` calls); a change of who is in sends `scene_changed` to the players of the scene before and after, so one reads the scene and the other reads none.
+- **The rolls remember it.** `scene_opened` carries `players`, and `scene_check_rolled` the `audience` of its moment, when the scene was open to only some players; the summary counts a roll for the master and for those players only (`TallySessionSceneChecks`).
+- **Discovery.** The scene is discovered for the group when it is open to everyone, so the list of scenes a note can label never names a scene the others were not in.
+- **The image** the master shows to the scene's players follows who is in (see [the live session](live-session.md#who-sees-the-image)).
+- Tests: `TestSceneAudience_*` (play), `TestRN10_APlayerOutsideAnOpenSceneReadsNoScene` (leak test, with its needles and its stream), `TestAuthorizationMatrix`, `TestSceneAuthorizationMatrix` and `TestEveryMethodNeedsASession` for the two calls.
 
 ## The actions
 
@@ -100,9 +117,9 @@ sequenceDiagram
 
 | Event | Goes to |
 | --- | --- |
-| `scene_changed` | Everyone, when the scene opens, closes or changes (an action or the point's text). Contentless: the app reads the scene again, already filtered. A change only the master reads (clues, revealing a clue in the open scene, a change to an action that is hidden and stays hidden) goes to the master alone |
+| `scene_changed` | The master and the players in the scene (everyone, when it is open to the whole table), when the scene opens, closes or changes (an action or the point's text). Contentless: the app reads the scene again, already filtered. A change only the master reads (clues, revealing a clue in the open scene, a change to an action that is hidden and stays hidden) goes to the master alone |
 | `scene_check_rolled{action_id}` | The master and whoever rolled. No number |
-| `stage_changed` | Everyone, when the stage changes (an NPC the players see comes in or goes out, the speaker changes, an NPC is shown or hidden). Putting a hidden NPC on the stage, or taking one off, goes to the master alone: the players never knew it |
+| `stage_changed` | The master and the players in the scene, when the stage changes (an NPC the players see comes in or goes out, the speaker changes, an NPC is shown or hidden). Putting a hidden NPC on the stage, or taking one off, goes to the master alone: the players never knew it |
 | `notes_changed` | Only the players who received a clue; contentless (published through `maps.LiveSession.PublishToUsers`) |
 
 ## Hooks, clues and discoveries (MR-029, MR-030)

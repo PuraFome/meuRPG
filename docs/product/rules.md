@@ -215,6 +215,19 @@ A hidden action reaches no player: not its name, DC, attempts or rolls, and a pl
 Hiding and showing tell the players the same hint as any change of the scene, so what was hidden leaves their screen, or enters it, at once; putting something on the stage hidden, or taking it off, and changing an action that stays hidden, tell only the master.
 "Dar a fala" to a hidden NPC shows it: the master's tap means that it speaks now.
 
+**Who is in the scene** (["Quem está na cena"](stories.md#mr-015-rp-scene-actions), [MR-015](stories.md#mr-015-rp-scene-actions)).
+A scene is open to the whole table, a player who joins later included, or to exactly the players the master picks, who he may change while it is open.
+A player who is out gets no scene at all, exactly as when none is open: not its name, point, description, actions, rolls, stage or portraits, not the group check asked in it, not a live hint, and a roll of theirs is refused as with no open scene.
+A player who comes in reads the scene at once and a player who goes out loses it at once, each told by the same hint as any change of the scene.
+The checks passed in it count in the summary only for the master and the players who were in; a scene is "discovered" for the group's notes when it is open to everyone.
+
+**Who sees the image** (["Quem vê a imagem"](stories.md#mr-028-show-an-image-to-the-players), [MR-028](stories.md#mr-028-show-an-image-to-the-players)).
+The image the master shows has one audience: the whole table (the only one when no scene is open or the open scene is open to everyone), the scene's players (the default while a scene is open to only some, following who is in while that scene stays open), or chosen players.
+The master changes it while the image is shown: "Mostrar a toda a mesa" widens it, "Mudar quem vê" picks the players.
+A player taken out loses the image at once, in the read, on the live stream and on the image route; one brought in gets it at once.
+When the scene closes, another opens, or it opens to everyone, an image shown to its players stays with those same players and no one else, and an image left with the players ("Deixar com os jogadores") is left only with the players of its audience.
+A player outside the audience never receives the image, its name or its ID, also not in the summary.
+
 **Fog of war** ([MR-036](stories.md#mr-036-fog-of-war-by-sight)).
 On a map with fog on, the player receives only what their character sees now or has already seen: the walls and light the master painted, the light points and carried lights, and the sheet's darkvision decide.
 
@@ -369,7 +382,7 @@ Players do not see enemy hit points as a number.
 They see one word: "Ileso" (unhurt), "Ferido" (hurt), "Muito ferido" (badly hurt, half the hit points or less) or "Derrotado" (defeated).
 They do not see enemy armor class or the rolls the master makes for NPCs either.
 They see whether they hit or missed ("Acertou", "Errou", "Crítico") and the damage they take.
-The same holds outside combat: a scene action's DC, other players' rolls, hooks, unrevealed clues, other players' notes, an action of a scene the master hid and an NPC on the stage the master hid never reach a player.
+The same holds outside combat: a scene action's DC, other players' rolls, hooks, unrevealed clues, other players' notes, an action of a scene the master hid, an NPC on the stage the master hid and a scene open to players other than them never reach a player.
 The master sees everything.
 
 **Combatants and the log.**

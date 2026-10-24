@@ -23,6 +23,12 @@ erDiagram
     campaign_left_images {
         uuid campaign_id PK,FK
         uuid image_id PK,FK
+        bool audience_everyone
+    }
+    campaign_left_image_viewers {
+        uuid campaign_id PK,FK
+        uuid image_id PK,FK
+        uuid user_id PK,FK
     }
     campaigns {
         uuid id PK
@@ -33,6 +39,8 @@ erDiagram
     users {
         uuid id PK
     }
+    campaign_left_images ||--o{ campaign_left_image_viewers : "campaign_id, image_id"
+    users ||--o{ campaign_left_image_viewers : "user_id"
     campaigns ||--o{ campaign_left_images : "campaign_id"
     gallery_images ||--o{ campaign_left_images : "image_id"
     campaigns ||--o{ gallery_images : "campaign_id"
@@ -108,6 +116,9 @@ They belong to the campaign, not the session: they remain after the session ends
 Primary key `(campaign_id, image_id)` lists a campaign's images and prevents leaving one twice; `left_at` gives the order.
 Both foreign keys cascade.
 The switch is `game_sessions.shown_image_keep` ([play.md](play.md#game_sessions)).
+`audience_everyone` (true by default) says the image was left with the whole table; when it is false the image was left only with the players of `campaign_left_image_viewers` (`(campaign_id, image_id, user_id)`, cascading with the left image and the player's account; `user_id` is indexed): the players who were in the audience of the shown image when it stopped being shown (RN-10).
+It is a column, not "no rows", so erasing the last player's account never leaves the image with everyone.
+Leaving an image again takes the audience of the latest leaving.
 
 ## Who reads
 

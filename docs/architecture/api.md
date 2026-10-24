@@ -159,7 +159,7 @@ One mechanism serves them all; the shared code is `platform/idem` (`Clean`, `Sco
   - Calls that return a secret once (`CreateInvite`, `CreateClaimLink`): only the hash is stored, so a replay could not return the first secret.
     A retry makes a new link, and a new claim link revokes the live one.
   - Calls that only compute from a seed and store nothing (`GenerateTreasure`, `GenerateEncounter`).
-  - Calls that are already idempotent by nature: `PlaceMapToken` (put or move), `TakeBackLeftImage`, `TakeOffStage`, `SetStageNpcHidden`, `RollAbilityScores` (a second call returns the same dice).
+  - Calls that are already idempotent by nature: `PlaceMapToken` (put or move), `TakeBackLeftImage`, `TakeOffStage`, `SetStageNpcHidden`, `SetSceneAudience`, `SetShownImageAudience`, `RollAbilityScores` (a second call returns the same dice).
 - **The key is optional** on calls that existed without it; the app always sends one.
   Newer writes require it.
 
