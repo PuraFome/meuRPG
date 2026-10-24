@@ -22,12 +22,12 @@ import (
 // with the move's transaction and writes the door_opened event, and the
 // eventCombatantMoved case of takeBack does not close it. The log line stays for the
 // master and for each player who saw Toren, and the door's cell in the map's layers
-// is the open one (1) where it was closed (2).
+// is the open one (1) where it was closed (2); the row's no_pass layer is empty.
 var deltaDoorOpened = func() undoDelta {
 	line := func(state string) string {
 		return `db/map_layers[.cover=\x000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000004000000000004000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,` +
 			`.difficult_terrain=\x000000000000000000000000000000000000000000000000000000300000300000000000000000000000000000000000,` +
-			`.doors=\x` + strings.Repeat("0", 177) + state + strings.Repeat("0", 206) + `,.light=<nil>,.map_id=<id>,` +
+			`.doors=\x` + strings.Repeat("0", 177) + state + strings.Repeat("0", 206) + `,.light=<nil>,.map_id=<id>,.no_pass=<nil>,` +
 			`.walls=\xffffffffffffffff80ffff80ffff80ffff8081ff8000008000008081fc8081fcff3fc0ff3fc0ff3fc0ff3fc0ffffffff]={}`
 	}
 	out := undoDelta{"+ " + line("1"), "- " + line("2")}

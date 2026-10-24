@@ -1,33 +1,33 @@
 == a good map
-map oldID=11111111-1111-4111-8111-111111111111 idSet=true name="Vila" image=true columns=20 factor=1 revealed=true fog=true onGrid=true group=true light=dim grid={20 15} doors=true createdAt=456 layer0=38 layer1=38 layer2=0 layer3=0 layer4=150
+map oldID=11111111-1111-4111-8111-111111111111 idSet=true name="Vila" image=true columns=20 factor=1 revealed=true fog=true onGrid=true group=true light=dim grid={20 15} doors=true createdAt=456 layer0=38 layer1=38 layer2=0 layer3=0 layer4=150 layer5=0
   point kind=scene name="A ponte" desc="Uma ponte\nde corda." hooks="" showDC=false x=100 y=200 revealed=true createdAt=456 target=false stairs=nil trap=false trapState=nil value=nil light=false/nil/0/0
   point kind=battle name="Emboscada" desc="" hooks="" showDC=false x=5 y=5 revealed=false createdAt=457 target=false stairs=nil trap=false trapState=nil value=nil light=false/nil/0/0
 no problems
 counts scenes=1 battles=1
 
 == a good map whose image was refused
-map oldID=11111111-1111-4111-8111-111111111111 idSet=true name="Vila" image=true columns=20 factor=1 revealed=true fog=true onGrid=true group=true light=dim grid={0 0} doors=false createdAt=456 layer0=38 layer1=38 layer2=75 layer3=75 layer4=150
+map oldID=11111111-1111-4111-8111-111111111111 idSet=true name="Vila" image=true columns=20 factor=1 revealed=true fog=true onGrid=true group=true light=dim grid={0 0} doors=false createdAt=456 layer0=38 layer1=38 layer2=75 layer3=75 layer4=150 layer5=0
   point kind=scene name="A ponte" desc="Uma ponte\nde corda." hooks="" showDC=false x=100 y=200 revealed=true createdAt=456 target=false stairs=nil trap=false trapState=nil value=nil light=false/nil/0/0
   point kind=battle name="Emboscada" desc="" hooks="" showDC=false x=5 y=5 revealed=false createdAt=457 target=false stairs=nil trap=false trapState=nil value=nil light=false/nil/0/0
 no problems
 counts scenes=1 battles=1
 
 == a good map with a wide layers set
-map oldID=11111111-1111-4111-8111-111111111111 idSet=true name="Vila" image=true columns=20 factor=1 revealed=true fog=true onGrid=true group=true light=dim grid={20 15} doors=false createdAt=456 layer0=38 layer1=38 layer2=0 layer3=0 layer4=0
+map oldID=11111111-1111-4111-8111-111111111111 idSet=true name="Vila" image=true columns=20 factor=1 revealed=true fog=true onGrid=true group=true light=dim grid={20 15} doors=false createdAt=456 layer0=38 layer1=38 layer2=0 layer3=0 layer4=0 layer5=0
   point kind=scene name="A ponte" desc="Uma ponte\nde corda." hooks="" showDC=false x=100 y=200 revealed=true createdAt=456 target=false stairs=nil trap=false trapState=nil value=nil light=false/nil/0/0
   point kind=battle name="Emboscada" desc="" hooks="" showDC=false x=5 y=5 revealed=false createdAt=457 target=false stairs=nil trap=false trapState=nil value=nil light=false/nil/0/0
 no problems
 counts scenes=1 battles=1
 
 == a map with no grid
-map oldID=11111111-1111-4111-8111-111111111111 idSet=true name="Vila" image=true columns=nil factor=1 revealed=true fog=false onGrid=true group=true light=dim grid={0 0} doors=false createdAt=456 layer0=0 layer1=0 layer2=0 layer3=0 layer4=0
+map oldID=11111111-1111-4111-8111-111111111111 idSet=true name="Vila" image=true columns=nil factor=1 revealed=true fog=false onGrid=true group=true light=dim grid={0 0} doors=false createdAt=456 layer0=0 layer1=0 layer2=0 layer3=0 layer4=0 layer5=0
   point kind=scene name="A ponte" desc="Uma ponte\nde corda." hooks="" showDC=false x=100 y=200 revealed=true createdAt=456 target=false stairs=nil trap=false trapState=nil value=nil light=false/nil/0/0
   point kind=battle name="Emboscada" desc="" hooks="" showDC=false x=5 y=5 revealed=false createdAt=457 target=false stairs=nil trap=false trapState=nil value=nil light=false/nil/0/0
 no problems
 counts scenes=1 battles=1
 
 == a map with no layers
-map oldID=11111111-1111-4111-8111-111111111111 idSet=true name="Vila" image=true columns=20 factor=1 revealed=true fog=true onGrid=true group=true light=dim grid={20 15} doors=false createdAt=456 layer0=0 layer1=0 layer2=0 layer3=0 layer4=0
+map oldID=11111111-1111-4111-8111-111111111111 idSet=true name="Vila" image=true columns=20 factor=1 revealed=true fog=true onGrid=true group=true light=dim grid={20 15} doors=false createdAt=456 layer0=0 layer1=0 layer2=0 layer3=0 layer4=0 layer5=0
   point kind=scene name="A ponte" desc="Uma ponte\nde corda." hooks="" showDC=false x=100 y=200 revealed=true createdAt=456 target=false stairs=nil trap=false trapState=nil value=nil light=false/nil/0/0
   point kind=battle name="Emboscada" desc="" hooks="" showDC=false x=5 y=5 revealed=false createdAt=457 target=false stairs=nil trap=false trapState=nil value=nil light=false/nil/0/0
 no problems
@@ -64,14 +64,14 @@ problem kind=PACKAGE_PROBLEM_KIND_MAP name="Vila" reason=PACKAGE_PROBLEM_REASON_
 counts scenes=0 battles=0
 
 == bright light
-map oldID=11111111-1111-4111-8111-111111111111 idSet=true name="Vila" image=true columns=20 factor=1 revealed=true fog=true onGrid=true group=true light=bright grid={20 15} doors=true createdAt=456 layer0=38 layer1=38 layer2=0 layer3=0 layer4=150
+map oldID=11111111-1111-4111-8111-111111111111 idSet=true name="Vila" image=true columns=20 factor=1 revealed=true fog=true onGrid=true group=true light=bright grid={20 15} doors=true createdAt=456 layer0=38 layer1=38 layer2=0 layer3=0 layer4=150 layer5=0
   point kind=scene name="A ponte" desc="Uma ponte\nde corda." hooks="" showDC=false x=100 y=200 revealed=true createdAt=456 target=false stairs=nil trap=false trapState=nil value=nil light=false/nil/0/0
   point kind=battle name="Emboscada" desc="" hooks="" showDC=false x=5 y=5 revealed=false createdAt=457 target=false stairs=nil trap=false trapState=nil value=nil light=false/nil/0/0
 no problems
 counts scenes=1 battles=1
 
 == dark light
-map oldID=11111111-1111-4111-8111-111111111111 idSet=true name="Vila" image=true columns=20 factor=1 revealed=true fog=true onGrid=true group=true light=dark grid={20 15} doors=true createdAt=456 layer0=38 layer1=38 layer2=0 layer3=0 layer4=150
+map oldID=11111111-1111-4111-8111-111111111111 idSet=true name="Vila" image=true columns=20 factor=1 revealed=true fog=true onGrid=true group=true light=dark grid={20 15} doors=true createdAt=456 layer0=38 layer1=38 layer2=0 layer3=0 layer4=150 layer5=0
   point kind=scene name="A ponte" desc="Uma ponte\nde corda." hooks="" showDC=false x=100 y=200 revealed=true createdAt=456 target=false stairs=nil trap=false trapState=nil value=nil light=false/nil/0/0
   point kind=battle name="Emboscada" desc="" hooks="" showDC=false x=5 y=5 revealed=false createdAt=457 target=false stairs=nil trap=false trapState=nil value=nil light=false/nil/0/0
 no problems
@@ -98,7 +98,7 @@ problem kind=PACKAGE_PROBLEM_KIND_MAP name="Vila" reason=PACKAGE_PROBLEM_REASON_
 counts scenes=0 battles=0
 
 == no grid with empty layers
-map oldID=11111111-1111-4111-8111-111111111111 idSet=true name="Vila" image=true columns=nil factor=1 revealed=true fog=false onGrid=true group=true light=dim grid={0 0} doors=false createdAt=456 layer0=0 layer1=0 layer2=0 layer3=0 layer4=0
+map oldID=11111111-1111-4111-8111-111111111111 idSet=true name="Vila" image=true columns=nil factor=1 revealed=true fog=false onGrid=true group=true light=dim grid={0 0} doors=false createdAt=456 layer0=0 layer1=0 layer2=0 layer3=0 layer4=0 layer5=0
   point kind=scene name="A ponte" desc="Uma ponte\nde corda." hooks="" showDC=false x=100 y=200 revealed=true createdAt=456 target=false stairs=nil trap=false trapState=nil value=nil light=false/nil/0/0
   point kind=battle name="Emboscada" desc="" hooks="" showDC=false x=5 y=5 revealed=false createdAt=457 target=false stairs=nil trap=false trapState=nil value=nil light=false/nil/0/0
 no problems
@@ -130,7 +130,7 @@ problem kind=PACKAGE_PROBLEM_KIND_MAP name="Vila" reason=PACKAGE_PROBLEM_REASON_
 counts scenes=0 battles=0
 
 == a scaled grid
-map oldID=11111111-1111-4111-8111-111111111111 idSet=true name="Vila" image=true columns=40 factor=2 revealed=true fog=false onGrid=true group=true light=dim grid={40 30} doors=false createdAt=456 layer0=0 layer1=0 layer2=0 layer3=0 layer4=0
+map oldID=11111111-1111-4111-8111-111111111111 idSet=true name="Vila" image=true columns=40 factor=2 revealed=true fog=false onGrid=true group=true light=dim grid={40 30} doors=false createdAt=456 layer0=0 layer1=0 layer2=0 layer3=0 layer4=0 layer5=0
   point kind=scene name="A ponte" desc="Uma ponte\nde corda." hooks="" showDC=false x=100 y=200 revealed=true createdAt=456 target=false stairs=nil trap=false trapState=nil value=nil light=false/nil/0/0
   point kind=battle name="Emboscada" desc="" hooks="" showDC=false x=5 y=5 revealed=false createdAt=457 target=false stairs=nil trap=false trapState=nil value=nil light=false/nil/0/0
 no problems
@@ -183,7 +183,7 @@ problem kind=PACKAGE_PROBLEM_KIND_POINT name="Emboscada" reason=PACKAGE_PROBLEM_
 counts scenes=0 battles=0
 
 == no points
-map oldID=11111111-1111-4111-8111-111111111111 idSet=true name="Vila" image=true columns=20 factor=1 revealed=true fog=true onGrid=true group=true light=dim grid={20 15} doors=true createdAt=456 layer0=38 layer1=38 layer2=0 layer3=0 layer4=150
+map oldID=11111111-1111-4111-8111-111111111111 idSet=true name="Vila" image=true columns=20 factor=1 revealed=true fog=true onGrid=true group=true light=dim grid={20 15} doors=true createdAt=456 layer0=38 layer1=38 layer2=0 layer3=0 layer4=150 layer5=0
 no problems
 counts scenes=0 battles=0
 

@@ -615,7 +615,7 @@ func (s *Service) fillFoggedLayers(ctx context.Context, res *mapsv1.GetMapLayers
 		return s.dbError(ctx, "work out what a player sees", err)
 	}
 	fillLayers(res, filterLayers(set, pv))
-	res.LayersRevision = hashOf(res.DifficultTerrain, res.Wall, res.Cover, res.Doors, res.NoPass)
+	res.LayersRevision = layersHash([][]byte{res.DifficultTerrain, res.Wall, res.Cover, res.Doors}, res.NoPass)
 	res.FogWithheld = true
 	return nil
 }

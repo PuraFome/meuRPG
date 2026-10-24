@@ -891,6 +891,10 @@ func TestMR013_CombatAuthorizationMatrix(t *testing.T) {
 			_, err := u.combat.StartEncounter(ctx, connect.NewRequest(&playv1.StartEncounterRequest{CampaignId: campaign, IdempotencyKey: newKey(), Name: "x", Participants: []*playv1.Participant{{CharacterId: f.goblin.GetId()}}}))
 			return err
 		},
+		"GetStartRoster": func(u *user, ctx context.Context) error {
+			_, err := u.combat.GetStartRoster(ctx, connect.NewRequest(&playv1.GetStartRosterRequest{CampaignId: campaign}))
+			return err
+		},
 		"GetEncounter": func(u *user, ctx context.Context) error {
 			_, err := u.combat.GetEncounter(ctx, connect.NewRequest(&playv1.GetEncounterRequest{CampaignId: campaign}))
 			return err
@@ -995,7 +999,7 @@ func TestMR013_CombatAuthorizationMatrix(t *testing.T) {
 	}
 
 	masterOnly := map[string]bool{
-		"StartEncounter": true, "SetInitiativeOrder": true, "BeginCombat": true, "SetCombatantHidden": true,
+		"StartEncounter": true, "GetStartRoster": true, "SetInitiativeOrder": true, "BeginCombat": true, "SetCombatantHidden": true,
 		"AddCombatants": true, "AddMonsters": true, "RemoveCombatant": true, "EndEncounter": true, "SetCombatantSide": true, "SetCombatantCover": true,
 		"OfferOpportunity": true, "WithdrawOpportunity": true, "EndCombatEffect": true, "EndSpellZone": true,
 	}
