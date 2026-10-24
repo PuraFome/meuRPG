@@ -510,7 +510,5 @@ func hintTryRig(t *testing.T, die bool) heldRig {
 		res, err := p.tryHintKey(t, dalila, puz.GetId(), 0, key)
 		return res, err
 	})
-	// FINDING: the replay of a written try keeps the total but not the die (bonus_dice is empty).
-	rig.replayed = func(v heldView) heldView { v.bonus = 0; return v }
 	return rig
 }

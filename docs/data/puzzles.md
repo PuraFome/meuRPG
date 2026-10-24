@@ -99,6 +99,7 @@ Indexes on `user_id` and `character_id` let account or character deletion null t
 
 One row per attempt by a player to earn the next hint by rolling the skill the master chose: `hint_index` (`UNIQUE (run_id, user_id, hint_index)`: one attempt per player per hint), `passed`, `granted_count` (how many hints the player reads after passing; `NULL` on failure), the d20, `d20_b` (the second d20 when the roll had advantage or disadvantage), `counted` (the one that counted), `roll_mode`, the `modifier`, the `total` and `physical`.
 `lucky_index` is the d20 the halfling's Lucky rolled again, in the order rolled (`NULL` when none: the stored faces are the new ones, and the die it replaced was a 1).
+`bonus_sides` and `bonus_face` are the Bardic Inspiration die the player added after the d20 (`NULL` when none: `modifier` and `total` already hold the face; a retry of the try answers with the die from these two columns, which both are set or both `NULL`).
 The DC is not stored, only whether it was reached.
 The hints a player reads are the larger of those the master released (`released_hints`) and those the player earned (`granted_count`).
 Indexes on `user_id` and `character_id`, like `puzzle_moves`.
