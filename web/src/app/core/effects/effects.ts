@@ -8,13 +8,7 @@ import {
   EffectRollKind,
 } from '../../../gen/meurpg/play/v1/lasting_effects_pb';
 import { upFirst } from '../format/text';
-import {
-  ZONE_SAVE_HEADER,
-  zoneConsequence,
-  zoneDcText,
-  zoneReasonText,
-  zoneSaveTitle,
-} from './zone-save';
+import { zoneSheetWords } from './zone-save';
 
 /**
  * The effects that last (RN-22) as the player reads them: the cards of "Seus efeitos", the exhaustion card, the
@@ -224,35 +218,33 @@ export function effectSaveView(
   const start = prompt.phase === EffectPhase.START;
   const mode =
     prompt.mode === 'advantage' || prompt.mode === 'disadvantage' ? prompt.mode : 'normal';
-  const sources = prompt.modeSourcesPt.length > 0 ? ` (${prompt.modeSourcesPt.join('; ')})` : '';
-  const modeLine =
-    mode === 'advantage'
-      ? `Você tem vantagem neste teste${sources}.`
-      : mode === 'disadvantage'
-        ? `Você tem desvantagem neste teste${sources}.`
-        : 'Você não tem vantagem nem desvantagem neste teste.';
-  const zone = !!prompt.zoneId;
   const after = afterAbility(prompt.textPt, prompt.abilityNamePt);
-  return {
-    title: zone
-      ? zoneSaveTitle(prompt, zoneCaster)
-      : start
-        ? 'Começo do seu turno'
-        : 'Fim do seu turno',
-    subtitle: zone
-      ? `${ZONE_SAVE_HEADER}. ${zoneReasonText(prompt.zoneReason, '')}`.trim()
-      : prompt.sourceNamePt || `Rodada ${round}`,
+  const base: EffectSaveView = {
+    title: start ? 'Começo do seu turno' : 'Fim do seu turno',
+    subtitle: prompt.sourceNamePt || `Rodada ${round}`,
     ability: prompt.abilityNamePt,
-    consequence: zone ? zoneConsequence(prompt, after) : after,
-    dcText: zone ? zoneDcText(prompt.dc) : '',
-    source: zone && zoneCaster ? `${prompt.sourceNamePt}, de ${zoneCaster}` : '',
+    consequence: after,
+    dcText: '',
+    source: '',
     modifier: prompt.bonusKnown ? `Seu modificador: ${signed(prompt.modifier)}.` : '',
-    modeLine,
+    modeLine: modeLineOf(prompt, mode),
     mode,
     autoFail: prompt.autoFail,
     handed: prompt.handedToMaster,
     dice: prompt.extraDice,
   };
+  return prompt.zoneId ? { ...base, ...zoneSheetWords(prompt, zoneCaster, after) } : base;
+}
+
+/** "Você tem vantagem neste teste (Esquivando: vantagem)." and its two siblings. */
+function modeLineOf(prompt: EffectSavePrompt, mode: EffectSaveView['mode']): string {
+  const sources = prompt.modeSourcesPt.length > 0 ? ` (${prompt.modeSourcesPt.join('; ')})` : '';
+  if (mode === 'advantage') {
+    return `Você tem vantagem neste teste${sources}.`;
+  }
+  return mode === 'disadvantage'
+    ? `Você tem desvantagem neste teste${sources}.`
+    : 'Você não tem vantagem nem desvantagem neste teste.';
 }
 
 /** A note of the turn split at its first sentence, which is read in bold ("Você está Paralisada." / "Não age nem se move neste turno."). */

@@ -54,3 +54,14 @@ export function zoneConsequence(prompt: EffectSavePrompt, textAfterAbility: stri
     ? `${textAfterAbility} Soltar-se gasta uma ação.`
     : textAfterAbility;
 }
+
+/** The words a zone's save adds to the sheet in place of an effect's: title, subtitle, what a failure does, the DC and the source line. */
+export function zoneSheetWords(prompt: EffectSavePrompt, caster: string, textAfterAbility: string) {
+  return {
+    title: zoneSaveTitle(prompt, caster),
+    subtitle: `${ZONE_SAVE_HEADER}. ${zoneReasonText(prompt.zoneReason, '')}`.trim(),
+    consequence: zoneConsequence(prompt, textAfterAbility),
+    dcText: zoneDcText(prompt.dc),
+    source: caster ? `${prompt.sourceNamePt}, de ${caster}` : '',
+  };
+}
