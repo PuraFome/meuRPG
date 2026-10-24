@@ -1,5 +1,5 @@
 import { PendingDamageStatus } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { combatant, encounter } from '../../../../core/combat/combat-testing';
+import { combatant, encounter, spellZone } from '../../../../core/combat/combat-testing';
 import { effectLine, pendingCard, trapLabel } from './pending-damage-card';
 
 describe('pending damage card', () => {
@@ -60,5 +60,18 @@ describe('pending damage card', () => {
       effect: '',
       label: 'Role 2d6 para o dano: some os dois',
     });
+  });
+
+  it('labels a damage the zone of a spell owes, in generic words (it carries no reason)', () => {
+    const e = encounter({
+      combatants: [combatant({ id: 'a', label: 'Bilbo' }), combatant({ id: 't', label: 'Tor' })],
+      zones: [spellZone({ id: 'z', spellKey: 'spell:cloud-of-daggers', spellNamePt: 'Nuvem de Adagas', ownerCombatantId: 'a' })],
+    } as never);
+    const zoned = pending({ attackKey: 'spell:cloud-of-daggers', status: PendingDamageStatus.AWAITING_ROLL });
+    expect(pendingCard(zoned, e, [zoned]).zoneLabel).toBe('Zona de magia: Nuvem de Adagas');
+    const plainHit = pending({ attackKey: 'spell:cloud-of-daggers', castId: 'c1' });
+    expect(pendingCard(plainHit, e, [plainHit]).zoneLabel).toBe('');
+    const other = pending({ attackKey: 'dagger' });
+    expect(pendingCard(other, e, [other]).zoneLabel).toBe('');
   });
 });
