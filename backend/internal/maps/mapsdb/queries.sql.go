@@ -127,6 +127,20 @@ func (q *Queries) CancelUnsentImageRequest(ctx context.Context, arg CancelUnsent
 	return result.RowsAffected(), nil
 }
 
+const clearLeftImageViewers = `-- name: ClearLeftImageViewers :exec
+DELETE FROM campaign_left_image_viewers WHERE campaign_id = $1 AND image_id = $2
+`
+
+type ClearLeftImageViewersParams struct {
+	CampaignID string
+	ImageID    string
+}
+
+func (q *Queries) ClearLeftImageViewers(ctx context.Context, arg ClearLeftImageViewersParams) error {
+	_, err := q.db.Exec(ctx, clearLeftImageViewers, arg.CampaignID, arg.ImageID)
+	return err
+}
+
 const clearMapVisionMemory = `-- name: ClearMapVisionMemory :execrows
 UPDATE maps SET vision_epoch = vision_epoch + 1
 WHERE id = $1
@@ -1036,6 +1050,24 @@ func (q *Queries) GetImageRequestForImage(ctx context.Context, arg GetImageReque
 	return i, err
 }
 
+const getLeftImageAudience = `-- name: GetLeftImageAudience :one
+SELECT audience_everyone FROM campaign_left_images
+WHERE campaign_id = $1 AND image_id = $2
+`
+
+type GetLeftImageAudienceParams struct {
+	CampaignID string
+	ImageID    string
+}
+
+// Who the image was left with (no row: it is not left).
+func (q *Queries) GetLeftImageAudience(ctx context.Context, arg GetLeftImageAudienceParams) (bool, error) {
+	row := q.db.QueryRow(ctx, getLeftImageAudience, arg.CampaignID, arg.ImageID)
+	var audience_everyone bool
+	err := row.Scan(&audience_everyone)
+	return audience_everyone, err
+}
+
 const getMap = `-- name: GetMap :one
 SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash, players_move_tokens FROM maps
 WHERE campaign_id = $1 AND id = $2
@@ -1716,13 +1748,41 @@ type ImageIsLeftParams struct {
 	ImageID    string
 }
 
-// Whether the image is left with the players. The image route asks it for a
-// player (RN-10).
+// Whether the image is left with the players, whoever they are (a deletion
+// tells the ones it was left with).
 func (q *Queries) ImageIsLeft(ctx context.Context, arg ImageIsLeftParams) (bool, error) {
 	row := q.db.QueryRow(ctx, imageIsLeft, arg.CampaignID, arg.ImageID)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
+}
+
+const imageIsLeftWith = `-- name: ImageIsLeftWith :one
+SELECT EXISTS (
+    SELECT 1 FROM campaign_left_images AS l
+    WHERE l.campaign_id = $1 AND l.image_id = $2
+      AND (
+          l.audience_everyone
+          OR EXISTS (
+              SELECT 1 FROM campaign_left_image_viewers AS v
+              WHERE v.campaign_id = l.campaign_id AND v.image_id = l.image_id AND v.user_id = $3::UUID)
+      )
+)::BOOL AS left_with
+`
+
+type ImageIsLeftWithParams struct {
+	CampaignID string
+	ImageID    string
+	UserID     string
+}
+
+// Whether the image is left with this player. The image route asks it for a
+// player (RN-10).
+func (q *Queries) ImageIsLeftWith(ctx context.Context, arg ImageIsLeftWithParams) (bool, error) {
+	row := q.db.QueryRow(ctx, imageIsLeftWith, arg.CampaignID, arg.ImageID, arg.UserID)
+	var left_with bool
+	err := row.Scan(&left_with)
+	return left_with, err
 }
 
 const imageIsOnAFogMap = `-- name: ImageIsOnAFogMap :one
@@ -2207,6 +2267,23 @@ func (q *Queries) InsertImportedSceneClue(ctx context.Context, arg InsertImporte
 	return err
 }
 
+const insertLeftImageViewer = `-- name: InsertLeftImageViewer :exec
+INSERT INTO campaign_left_image_viewers (campaign_id, image_id, user_id)
+VALUES ($1, $2, $3)
+ON CONFLICT (campaign_id, image_id, user_id) DO NOTHING
+`
+
+type InsertLeftImageViewerParams struct {
+	CampaignID string
+	ImageID    string
+	UserID     string
+}
+
+func (q *Queries) InsertLeftImageViewer(ctx context.Context, arg InsertLeftImageViewerParams) error {
+	_, err := q.db.Exec(ctx, insertLeftImageViewer, arg.CampaignID, arg.ImageID, arg.UserID)
+	return err
+}
+
 const insertMap = `-- name: InsertMap :one
 INSERT INTO maps (campaign_id, name, image_id, fog_on_first_grid, create_key, create_hash, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
@@ -2635,23 +2712,30 @@ func (q *Queries) InsertTreasurePoint(ctx context.Context, arg InsertTreasurePoi
 }
 
 const leaveImage = `-- name: LeaveImage :execrows
-INSERT INTO campaign_left_images (campaign_id, image_id, left_at)
-SELECT g.campaign_id, g.id, $1::TIMESTAMPTZ FROM gallery_images g
-WHERE g.campaign_id = $2 AND g.id = $3
-ON CONFLICT (campaign_id, image_id) DO NOTHING
+INSERT INTO campaign_left_images (campaign_id, image_id, left_at, audience_everyone)
+SELECT g.campaign_id, g.id, $1::TIMESTAMPTZ, $2::BOOL FROM gallery_images g
+WHERE g.campaign_id = $3 AND g.id = $4
+ON CONFLICT (campaign_id, image_id) DO UPDATE SET audience_everyone = excluded.audience_everyone
 `
 
 type LeaveImageParams struct {
-	Now        time.Time
-	CampaignID string
-	ImageID    string
+	Now              time.Time
+	AudienceEveryone bool
+	CampaignID       string
+	ImageID          string
 }
 
 // Leaves the campaign's gallery image with the players (MR-028). Selecting
 // from gallery_images makes an image deleted meanwhile, or another
-// campaign's, insert nothing; an image already left keeps its left_at.
+// campaign's, insert nothing. An image left already keeps its left_at and takes
+// the audience of this leaving, the master's latest.
 func (q *Queries) LeaveImage(ctx context.Context, arg LeaveImageParams) (int64, error) {
-	result, err := q.db.Exec(ctx, leaveImage, arg.Now, arg.CampaignID, arg.ImageID)
+	result, err := q.db.Exec(ctx, leaveImage,
+		arg.Now,
+		arg.AudienceEveryone,
+		arg.CampaignID,
+		arg.ImageID,
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -2894,17 +2978,92 @@ func (q *Queries) ListImageChain(ctx context.Context, arg ListImageChainParams) 
 	return items, nil
 }
 
+const listLeftImageAudiences = `-- name: ListLeftImageAudiences :many
+SELECT image_id, audience_everyone FROM campaign_left_images WHERE campaign_id = $1
+`
+
+type ListLeftImageAudiencesRow struct {
+	ImageID          string
+	AudienceEveryone bool
+}
+
+// For the master's list: who each left image was left with.
+func (q *Queries) ListLeftImageAudiences(ctx context.Context, campaignID string) ([]ListLeftImageAudiencesRow, error) {
+	rows, err := q.db.Query(ctx, listLeftImageAudiences, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListLeftImageAudiencesRow
+	for rows.Next() {
+		var i ListLeftImageAudiencesRow
+		if err := rows.Scan(&i.ImageID, &i.AudienceEveryone); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLeftImageViewers = `-- name: ListLeftImageViewers :many
+SELECT image_id, user_id FROM campaign_left_image_viewers
+WHERE campaign_id = $1
+ORDER BY image_id, user_id
+`
+
+type ListLeftImageViewersRow struct {
+	ImageID string
+	UserID  string
+}
+
+func (q *Queries) ListLeftImageViewers(ctx context.Context, campaignID string) ([]ListLeftImageViewersRow, error) {
+	rows, err := q.db.Query(ctx, listLeftImageViewers, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListLeftImageViewersRow
+	for rows.Next() {
+		var i ListLeftImageViewersRow
+		if err := rows.Scan(&i.ImageID, &i.UserID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLeftImages = `-- name: ListLeftImages :many
 SELECT g.id, g.campaign_id, g.uploaded_by, g.name, g.content_type, g.width, g.height, g.byte_size, g.created_at, g.generated, g.parent_image_id, g.generated_kind, g.copy_of_image_id FROM campaign_left_images l
 JOIN gallery_images g ON g.id = l.image_id
 WHERE l.campaign_id = $1
+  AND (
+      $2::BOOL
+      OR l.audience_everyone
+      OR EXISTS (
+          SELECT 1 FROM campaign_left_image_viewers v
+          WHERE v.campaign_id = l.campaign_id AND v.image_id = l.image_id AND v.user_id = $3::UUID)
+  )
 ORDER BY l.left_at, g.id
 `
 
+type ListLeftImagesParams struct {
+	CampaignID string
+	Master     bool
+	UserID     string
+}
+
 // The images left with the players, in the order they were left (id breaks
-// ties).
-func (q *Queries) ListLeftImages(ctx context.Context, campaignID string) ([]GalleryImage, error) {
-	rows, err := q.db.Query(ctx, listLeftImages, campaignID)
+// ties), as the viewer sees them: the master every one, a player only the ones
+// left with them (RN-10).
+func (q *Queries) ListLeftImages(ctx context.Context, arg ListLeftImagesParams) ([]GalleryImage, error) {
+	rows, err := q.db.Query(ctx, listLeftImages, arg.CampaignID, arg.Master, arg.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -3883,6 +4042,37 @@ func (q *Queries) ListTreasureFindsOfSession(ctx context.Context, sessionID stri
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listViewersOfLeftImage = `-- name: ListViewersOfLeftImage :many
+SELECT user_id FROM campaign_left_image_viewers
+WHERE campaign_id = $1 AND image_id = $2
+ORDER BY user_id
+`
+
+type ListViewersOfLeftImageParams struct {
+	CampaignID string
+	ImageID    string
+}
+
+func (q *Queries) ListViewersOfLeftImage(ctx context.Context, arg ListViewersOfLeftImageParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, listViewersOfLeftImage, arg.CampaignID, arg.ImageID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var user_id string
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

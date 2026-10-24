@@ -160,7 +160,7 @@ func shownImage(img mapsdb.GalleryImage) *playv1.ShownImage {
 // that is gone has nothing to leave. The caller checked that the caller is
 // the campaign's master.
 func (sm *SessionMaps) LeaveImage(ctx context.Context, tx pgx.Tx, campaignID, imageID string, at time.Time) error {
-	_, err := sm.queries.WithTx(tx).LeaveImage(ctx, mapsdb.LeaveImageParams{CampaignID: campaignID, ImageID: imageID, Now: at})
+	_, err := sm.queries.WithTx(tx).LeaveImage(ctx, mapsdb.LeaveImageParams{CampaignID: campaignID, ImageID: imageID, Now: at, AudienceEveryone: true})
 	if err != nil {
 		return fmt.Errorf("leave the image with the players: %w", err)
 	}
@@ -170,7 +170,7 @@ func (sm *SessionMaps) LeaveImage(ctx context.Context, tx pgx.Tx, campaignID, im
 // ListLeftImages returns the images left with the players, in the order
 // they were left, with their names as captions.
 func (sm *SessionMaps) ListLeftImages(ctx context.Context, campaignID string) ([]*playv1.ShownImage, error) {
-	rows, err := sm.queries.ListLeftImages(ctx, campaignID)
+	rows, err := sm.queries.ListLeftImages(ctx, mapsdb.ListLeftImagesParams{CampaignID: campaignID, UserID: "00000000-0000-0000-0000-000000000000", Master: true}) // every audience is the whole table until the audience is kept
 	if err != nil {
 		return nil, fmt.Errorf("list the left images: %w", err)
 	}

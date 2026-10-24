@@ -272,17 +272,19 @@ type Encounter struct {
 }
 
 type GameSession struct {
-	ID               string
-	CampaignID       string
-	SessionNumber    int32
-	StartedAt        time.Time
-	EndedAt          *time.Time
-	CurrentMapID     *string
-	ShownImageID     *string
-	ShownImageKeep   bool
-	OpenScenePointID *string
-	CreateKey        *string
-	CreateHash       *string
+	ID                 string
+	CampaignID         string
+	SessionNumber      int32
+	StartedAt          time.Time
+	EndedAt            *time.Time
+	CurrentMapID       *string
+	ShownImageID       *string
+	ShownImageKeep     bool
+	OpenScenePointID   *string
+	CreateKey          *string
+	CreateHash         *string
+	OpenSceneEveryone  bool
+	ShownImageAudience string
 }
 
 type GroupCheck struct {

@@ -24,7 +24,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/play/v1/scene.proto.
  */
 export const file_meurpg_play_v1_scene: GenFile = /*@__PURE__*/
-  fileDesc("ChptZXVycGcvcGxheS92MS9zY2VuZS5wcm90bxIObWV1cnBnLnBsYXkudjEiQgoMU2NlbmVCbG9ja2VkEjIKBnJlYXNvbhgBIAEoDjIiLm1ldXJwZy5wbGF5LnYxLlNjZW5lQmxvY2tlZFJlYXNvbiLuAgoNT3BlblNjZW5lSW5mbxIQCghwb2ludF9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEjAKB2FjdGlvbnMYBCADKAsyHy5tZXVycGcucGxheS52MS5TY2VuZUFjdGlvblZpZXcSKAoFcm9sbHMYBSADKAsyGS5tZXVycGcucGxheS52MS5TY2VuZVJvbGwSLQoJb3BlbmVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBINCgVob29rcxgHIAEoCRIoCgVjbHVlcxgIIAMoCzIZLm1ldXJwZy5tYXBzLnYxLlNjZW5lQ2x1ZRInCgVzdGFnZRgKIAMoCzIYLm1ldXJwZy5wbGF5LnYxLlN0YWdlTnBjEg8KB3Nob3dfZGMYCyABKAgSKgoGaW1hZ2VzGAwgAygLMhoubWV1cnBnLm1hcHMudjEuU2NlbmVJbWFnZSJyCghTdGFnZU5wYxIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEhQKDHBvcnRyYWl0X3VybBgDIAEoCRIQCghzcGVha2luZxgEIAEoCBIUCgxjaGFyYWN0ZXJfaWQYBSABKAkSDgoGaGlkZGVuGAYgASgIIk4KEVB1dE9uU3RhZ2VSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCRIOCgZoaWRkZW4YAyABKAgiPQoSUHV0T25TdGFnZVJlc3BvbnNlEicKBXN0YWdlGAEgAygLMhgubWV1cnBnLnBsYXkudjEuU3RhZ2VOcGMiQAoTVGFrZU9mZlN0YWdlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkiPwoUVGFrZU9mZlN0YWdlUmVzcG9uc2USJwoFc3RhZ2UYASADKAsyGC5tZXVycGcucGxheS52MS5TdGFnZU5wYyJVChhTZXRTdGFnZU5wY0hpZGRlblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJEg4KBmhpZGRlbhgDIAEoCCJEChlTZXRTdGFnZU5wY0hpZGRlblJlc3BvbnNlEicKBXN0YWdlGAEgAygLMhgubWV1cnBnLnBsYXkudjEuU3RhZ2VOcGMiPgoRU2V0U3BlYWtlclJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJIj0KElNldFNwZWFrZXJSZXNwb25zZRInCgVzdGFnZRgBIAMoCzIYLm1ldXJwZy5wbGF5LnYxLlN0YWdlTnBjIuwBCg9TY2VuZUFjdGlvblZpZXcSCgoCaWQYASABKAkSCwoDa2V5GAIgASgJEgwKBG5hbWUYAyABKAkSEgoKY2hlY2tfbmFtZRgEIAEoCRIKCgJkYxgFIAEoBRISCgVib251cxgGIAEoBUgAiAEBEhQKB3Bhc3NpdmUYByABKAVIAYgBARIUCgxtYXhfYXR0ZW1wdHMYCCABKAUSGgoNYXR0ZW1wdHNfbGVmdBgJIAEoBUgCiAEBEg4KBmhpZGRlbhgKIAEoCEIICgZfYm9udXNCCgoIX3Bhc3NpdmVCEAoOX2F0dGVtcHRzX2xlZnQihQMKCVNjZW5lUm9sbBIKCgJpZBgBIAEoCRIRCglhY3Rpb25faWQYAiABKAkSFAoMY2hhcmFjdGVyX2lkGAMgASgJEhYKDmNoYXJhY3Rlcl9uYW1lGAQgASgJEiYKBHJvbGwYBSABKAsyGC5tZXVycGcucGxheS52MS5EaWNlUm9sbBITCgZwYXNzZWQYBiABKAhIAIgBARItCglyb2xsZWRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhoKDWF0dGVtcHRzX2xlZnQYCCABKAVIAYgBARImCgRtb2RlGAkgASgOMhgubWV1cnBnLnBsYXkudjEuUm9sbE1vZGUSMAoHc291cmNlcxgKIAMoCzIfLm1ldXJwZy5wbGF5LnYxLkFkdmFudGFnZVNvdXJjZRIsCgpib251c19kaWNlGAsgAygLMhgubWV1cnBnLnBsYXkudjEuQm9udXNEaWVCCQoHX3Bhc3NlZEIQCg5fYXR0ZW1wdHNfbGVmdCI5ChBPcGVuU2NlbmVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhAKCHBvaW50X2lkGAIgASgJIkEKEU9wZW5TY2VuZVJlc3BvbnNlEiwKBXNjZW5lGAEgASgLMh0ubWV1cnBnLnBsYXkudjEuT3BlblNjZW5lSW5mbyIoChFDbG9zZVNjZW5lUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSIUChJDbG9zZVNjZW5lUmVzcG9uc2UiKgoTR2V0T3BlblNjZW5lUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCSJEChRHZXRPcGVuU2NlbmVSZXNwb25zZRIsCgVzY2VuZRgBIAEoCzIdLm1ldXJwZy5wbGF5LnYxLk9wZW5TY2VuZUluZm8itwEKFVJvbGxTY2VuZUNoZWNrUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIRCglhY3Rpb25faWQYAiABKAkSFQoLcm9sbF9pbl9hcHAYAyABKAhIABISCghkMjBfZmFjZRgEIAEoBUgAEhcKD2lkZW1wb3RlbmN5X2tleRgFIAEoCRIRCglkMjBfZmFjZXMYBiADKAUSFwoPZXh0cmFfZGllX2ZhY2VzGAcgAygFQgYKBHJvbGwi9gEKFlJvbGxTY2VuZUNoZWNrUmVzcG9uc2USJwoEcm9sbBgBIAEoCzIZLm1ldXJwZy5wbGF5LnYxLlNjZW5lUm9sbBJGChFpbnNwaXJhdGlvbl9vZmZlchgCIAEoCzInLm1ldXJwZy5wbGF5LnYxLk91dHNpZGVJbnNwaXJhdGlvbk9mZmVyQgIYARIzCgtsdWNreV9vZmZlchgDIAEoCzIaLm1ldXJwZy5wbGF5LnYxLkx1Y2t5T2ZmZXJCAhgBEjYKD2hlbGRfcm9sbF9vZmZlchgEIAEoCzIdLm1ldXJwZy5wbGF5LnYxLkhlbGRSb2xsT2ZmZXIicQoYR3JhbnRTY2VuZUF0dGVtcHRSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhEKCWFjdGlvbl9pZBgCIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAyABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAQgASgJIkkKGUdyYW50U2NlbmVBdHRlbXB0UmVzcG9uc2USLAoFc2NlbmUYASABKAsyHS5tZXVycGcucGxheS52MS5PcGVuU2NlbmVJbmZvKqYCChJTY2VuZUJsb2NrZWRSZWFzb24SJAogU0NFTkVfQkxPQ0tFRF9SRUFTT05fVU5TUEVDSUZJRUQQABIjCh9TQ0VORV9CTE9DS0VEX1JFQVNPTl9OT19BQ1RJT05TEAESJgoiU0NFTkVfQkxPQ0tFRF9SRUFTT05fTk9fT1BFTl9TQ0VORRACEicKI1NDRU5FX0JMT0NLRURfUkVBU09OX0FMUkVBRFlfUk9MTEVEEAMSKAokU0NFTkVfQkxPQ0tFRF9SRUFTT05fV1JPTkdfRElDRV9NT0RFEAQSJQohU0NFTkVfQkxPQ0tFRF9SRUFTT05fTk9fQ0hBUkFDVEVSEAUSIwofU0NFTkVfQkxPQ0tFRF9SRUFTT05fU1RBR0VfRlVMTBAGQrgBChJjb20ubWV1cnBnLnBsYXkudjFCClNjZW5lUHJvdG9QAVo8Z2l0aHViLmNvbS9QdXJhRm9tZS9tZXVSUEcvYmFja2VuZC9nZW4vbWV1cnBnL3BsYXkvdjE7cGxheXYxogIDTVBYqgIOTWV1cnBnLlBsYXkuVjHKAg5NZXVycGdcUGxheVxWMeICGk1ldXJwZ1xQbGF5XFYxXEdQQk1ldGFkYXRh6gIQTWV1cnBnOjpQbGF5OjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp, file_meurpg_maps_v1_maps, file_meurpg_play_v1_combat, file_meurpg_play_v1_combat_rolls]);
+  fileDesc("ChptZXVycGcvcGxheS92MS9zY2VuZS5wcm90bxIObWV1cnBnLnBsYXkudjEiQgoMU2NlbmVCbG9ja2VkEjIKBnJlYXNvbhgBIAEoDjIiLm1ldXJwZy5wbGF5LnYxLlNjZW5lQmxvY2tlZFJlYXNvbiKjAwoNT3BlblNjZW5lSW5mbxIQCghwb2ludF9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEjAKB2FjdGlvbnMYBCADKAsyHy5tZXVycGcucGxheS52MS5TY2VuZUFjdGlvblZpZXcSKAoFcm9sbHMYBSADKAsyGS5tZXVycGcucGxheS52MS5TY2VuZVJvbGwSLQoJb3BlbmVkX2F0GAYgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBINCgVob29rcxgHIAEoCRIoCgVjbHVlcxgIIAMoCzIZLm1ldXJwZy5tYXBzLnYxLlNjZW5lQ2x1ZRInCgVzdGFnZRgKIAMoCzIYLm1ldXJwZy5wbGF5LnYxLlN0YWdlTnBjEg8KB3Nob3dfZGMYCyABKAgSKgoGaW1hZ2VzGAwgAygLMhoubWV1cnBnLm1hcHMudjEuU2NlbmVJbWFnZRIzCghhdWRpZW5jZRgNIAEoCzIhLm1ldXJwZy5wbGF5LnYxLlNjZW5lQXVkaWVuY2VWaWV3IjMKDVNjZW5lQXVkaWVuY2USEAoIZXZlcnlvbmUYASABKAgSEAoIdXNlcl9pZHMYAiADKAkiTAoLU2NlbmVQbGF5ZXISDwoHdXNlcl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSFgoOY2hhcmFjdGVyX25hbWUYAyABKAkigAEKEVNjZW5lQXVkaWVuY2VWaWV3EhAKCGV2ZXJ5b25lGAEgASgIEisKBmluc2lkZRgCIAMoCzIbLm1ldXJwZy5wbGF5LnYxLlNjZW5lUGxheWVyEiwKB291dHNpZGUYAyADKAsyGy5tZXVycGcucGxheS52MS5TY2VuZVBsYXllciJyCghTdGFnZU5wYxIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEhQKDHBvcnRyYWl0X3VybBgDIAEoCRIQCghzcGVha2luZxgEIAEoCBIUCgxjaGFyYWN0ZXJfaWQYBSABKAkSDgoGaGlkZGVuGAYgASgIIk4KEVB1dE9uU3RhZ2VSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCRIOCgZoaWRkZW4YAyABKAgiPQoSUHV0T25TdGFnZVJlc3BvbnNlEicKBXN0YWdlGAEgAygLMhgubWV1cnBnLnBsYXkudjEuU3RhZ2VOcGMiQAoTVGFrZU9mZlN0YWdlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkiPwoUVGFrZU9mZlN0YWdlUmVzcG9uc2USJwoFc3RhZ2UYASADKAsyGC5tZXVycGcucGxheS52MS5TdGFnZU5wYyJVChhTZXRTdGFnZU5wY0hpZGRlblJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJEg4KBmhpZGRlbhgDIAEoCCJEChlTZXRTdGFnZU5wY0hpZGRlblJlc3BvbnNlEicKBXN0YWdlGAEgAygLMhgubWV1cnBnLnBsYXkudjEuU3RhZ2VOcGMiPgoRU2V0U3BlYWtlclJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJIj0KElNldFNwZWFrZXJSZXNwb25zZRInCgVzdGFnZRgBIAMoCzIYLm1ldXJwZy5wbGF5LnYxLlN0YWdlTnBjIuwBCg9TY2VuZUFjdGlvblZpZXcSCgoCaWQYASABKAkSCwoDa2V5GAIgASgJEgwKBG5hbWUYAyABKAkSEgoKY2hlY2tfbmFtZRgEIAEoCRIKCgJkYxgFIAEoBRISCgVib251cxgGIAEoBUgAiAEBEhQKB3Bhc3NpdmUYByABKAVIAYgBARIUCgxtYXhfYXR0ZW1wdHMYCCABKAUSGgoNYXR0ZW1wdHNfbGVmdBgJIAEoBUgCiAEBEg4KBmhpZGRlbhgKIAEoCEIICgZfYm9udXNCCgoIX3Bhc3NpdmVCEAoOX2F0dGVtcHRzX2xlZnQihQMKCVNjZW5lUm9sbBIKCgJpZBgBIAEoCRIRCglhY3Rpb25faWQYAiABKAkSFAoMY2hhcmFjdGVyX2lkGAMgASgJEhYKDmNoYXJhY3Rlcl9uYW1lGAQgASgJEiYKBHJvbGwYBSABKAsyGC5tZXVycGcucGxheS52MS5EaWNlUm9sbBITCgZwYXNzZWQYBiABKAhIAIgBARItCglyb2xsZWRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhoKDWF0dGVtcHRzX2xlZnQYCCABKAVIAYgBARImCgRtb2RlGAkgASgOMhgubWV1cnBnLnBsYXkudjEuUm9sbE1vZGUSMAoHc291cmNlcxgKIAMoCzIfLm1ldXJwZy5wbGF5LnYxLkFkdmFudGFnZVNvdXJjZRIsCgpib251c19kaWNlGAsgAygLMhgubWV1cnBnLnBsYXkudjEuQm9udXNEaWVCCQoHX3Bhc3NlZEIQCg5fYXR0ZW1wdHNfbGVmdCJqChBPcGVuU2NlbmVSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhAKCHBvaW50X2lkGAIgASgJEi8KCGF1ZGllbmNlGAMgASgLMh0ubWV1cnBnLnBsYXkudjEuU2NlbmVBdWRpZW5jZSJBChFPcGVuU2NlbmVSZXNwb25zZRIsCgVzY2VuZRgBIAEoCzIdLm1ldXJwZy5wbGF5LnYxLk9wZW5TY2VuZUluZm8iKAoRQ2xvc2VTY2VuZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiFAoSQ2xvc2VTY2VuZVJlc3BvbnNlIioKE0dldE9wZW5TY2VuZVJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkiRAoUR2V0T3BlblNjZW5lUmVzcG9uc2USLAoFc2NlbmUYASABKAsyHS5tZXVycGcucGxheS52MS5PcGVuU2NlbmVJbmZvIrcBChVSb2xsU2NlbmVDaGVja1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSEQoJYWN0aW9uX2lkGAIgASgJEhUKC3JvbGxfaW5fYXBwGAMgASgISAASEgoIZDIwX2ZhY2UYBCABKAVIABIXCg9pZGVtcG90ZW5jeV9rZXkYBSABKAkSEQoJZDIwX2ZhY2VzGAYgAygFEhcKD2V4dHJhX2RpZV9mYWNlcxgHIAMoBUIGCgRyb2xsIvYBChZSb2xsU2NlbmVDaGVja1Jlc3BvbnNlEicKBHJvbGwYASABKAsyGS5tZXVycGcucGxheS52MS5TY2VuZVJvbGwSRgoRaW5zcGlyYXRpb25fb2ZmZXIYAiABKAsyJy5tZXVycGcucGxheS52MS5PdXRzaWRlSW5zcGlyYXRpb25PZmZlckICGAESMwoLbHVja3lfb2ZmZXIYAyABKAsyGi5tZXVycGcucGxheS52MS5MdWNreU9mZmVyQgIYARI2Cg9oZWxkX3JvbGxfb2ZmZXIYBCABKAsyHS5tZXVycGcucGxheS52MS5IZWxkUm9sbE9mZmVyInEKGEdyYW50U2NlbmVBdHRlbXB0UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIRCglhY3Rpb25faWQYAiABKAkSFAoMY2hhcmFjdGVyX2lkGAMgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgEIAEoCSJJChlHcmFudFNjZW5lQXR0ZW1wdFJlc3BvbnNlEiwKBXNjZW5lGAEgASgLMh0ubWV1cnBnLnBsYXkudjEuT3BlblNjZW5lSW5mbyJfChdTZXRTY2VuZUF1ZGllbmNlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIvCghhdWRpZW5jZRgCIAEoCzIdLm1ldXJwZy5wbGF5LnYxLlNjZW5lQXVkaWVuY2UiSAoYU2V0U2NlbmVBdWRpZW5jZVJlc3BvbnNlEiwKBXNjZW5lGAEgASgLMh0ubWV1cnBnLnBsYXkudjEuT3BlblNjZW5lSW5mbyrSAgoSU2NlbmVCbG9ja2VkUmVhc29uEiQKIFNDRU5FX0JMT0NLRURfUkVBU09OX1VOU1BFQ0lGSUVEEAASIwofU0NFTkVfQkxPQ0tFRF9SRUFTT05fTk9fQUNUSU9OUxABEiYKIlNDRU5FX0JMT0NLRURfUkVBU09OX05PX09QRU5fU0NFTkUQAhInCiNTQ0VORV9CTE9DS0VEX1JFQVNPTl9BTFJFQURZX1JPTExFRBADEigKJFNDRU5FX0JMT0NLRURfUkVBU09OX1dST05HX0RJQ0VfTU9ERRAEEiUKIVNDRU5FX0JMT0NLRURfUkVBU09OX05PX0NIQVJBQ1RFUhAFEiMKH1NDRU5FX0JMT0NLRURfUkVBU09OX1NUQUdFX0ZVTEwQBhIqCiZTQ0VORV9CTE9DS0VEX1JFQVNPTl9TQ0VORV9OT1RfUEFSVElBTBAHQrgBChJjb20ubWV1cnBnLnBsYXkudjFCClNjZW5lUHJvdG9QAVo8Z2l0aHViLmNvbS9QdXJhRm9tZS9tZXVSUEcvYmFja2VuZC9nZW4vbWV1cnBnL3BsYXkvdjE7cGxheXYxogIDTVBYqgIOTWV1cnBnLlBsYXkuVjHKAg5NZXVycGdcUGxheVxWMeICGk1ldXJwZ1xQbGF5XFYxXEdQQk1ldGFkYXRh6gIQTWV1cnBnOjpQbGF5OjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp, file_meurpg_maps_v1_maps, file_meurpg_play_v1_combat, file_meurpg_play_v1_combat_rolls]);
 
 /**
  * SceneBlocked is the error detail of a scene call's `failed_precondition`
@@ -148,6 +148,17 @@ export type OpenSceneInfo = Message<"meurpg.play.v1.OpenSceneInfo"> & {
    * @generated from field: repeated meurpg.maps.v1.SceneImage images = 12;
    */
   images: SceneImage[];
+
+  /**
+   * Who is in the scene and who is out of it ("Aberta desde 20:20 para
+   * Pensantus, Brisa"; "Fora da cena: Sálvia e Jabuti"), with `opened_at`. Only
+   * the master gets it: a player always gets it unset. A player who is out
+   * of the scene does not get the scene at all (GetOpenScene answers them
+   * as it does when none is open), and one who is in does not learn who else is.
+   *
+   * @generated from field: meurpg.play.v1.SceneAudienceView audience = 13;
+   */
+  audience?: SceneAudienceView | undefined;
 };
 
 /**
@@ -156,6 +167,109 @@ export type OpenSceneInfo = Message<"meurpg.play.v1.OpenSceneInfo"> & {
  */
 export const OpenSceneInfoSchema: GenMessage<OpenSceneInfo> = /*@__PURE__*/
   messageDesc(file_meurpg_play_v1_scene, 1);
+
+/**
+ * SceneAudience says which players a scene is open to (MR-015, RN-10).
+ *
+ * @generated from message meurpg.play.v1.SceneAudience
+ */
+export type SceneAudience = Message<"meurpg.play.v1.SceneAudience"> & {
+  /**
+   * True: the whole table, including a player who joins the campaign later
+   * (what a scene open with no audience is). `user_ids` must then be empty.
+   *
+   * @generated from field: bool everyone = 1;
+   */
+  everyone: boolean;
+
+  /**
+   * With `everyone` false: exactly these players, by account (a UUID each; the
+   * account of a player who owns a living character of the party), at least
+   * one, repeats ignored. The master is always in. A player not listed gets no
+   * scene at all, as when none is open, and a player who joins later is out.
+   *
+   * @generated from field: repeated string user_ids = 2;
+   */
+  userIds: string[];
+};
+
+/**
+ * Describes the message meurpg.play.v1.SceneAudience.
+ * Use `create(SceneAudienceSchema)` to create a new message.
+ */
+export const SceneAudienceSchema: GenMessage<SceneAudience> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_scene, 2);
+
+/**
+ * ScenePlayer is a player of the table with the character the master knows
+ * them by.
+ *
+ * @generated from message meurpg.play.v1.ScenePlayer
+ */
+export type ScenePlayer = Message<"meurpg.play.v1.ScenePlayer"> & {
+  /**
+   * The player's account (a UUID).
+   *
+   * @generated from field: string user_id = 1;
+   */
+  userId: string;
+
+  /**
+   * The player's living character in the party (a UUID) and its name.
+   *
+   * @generated from field: string character_id = 2;
+   */
+  characterId: string;
+
+  /**
+   * @generated from field: string character_name = 3;
+   */
+  characterName: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.ScenePlayer.
+ * Use `create(ScenePlayerSchema)` to create a new message.
+ */
+export const ScenePlayerSchema: GenMessage<ScenePlayer> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_scene, 3);
+
+/**
+ * SceneAudienceView is who is in and out of the open scene, for the master.
+ *
+ * @generated from message meurpg.play.v1.SceneAudienceView
+ */
+export type SceneAudienceView = Message<"meurpg.play.v1.SceneAudienceView"> & {
+  /**
+   * True when the scene is open to the whole table: `inside` then lists every
+   * player and `outside` is empty. A player who joins later is in.
+   *
+   * @generated from field: bool everyone = 1;
+   */
+  everyone: boolean;
+
+  /**
+   * The players in the scene, in the party's order.
+   *
+   * @generated from field: repeated meurpg.play.v1.ScenePlayer inside = 2;
+   */
+  inside: ScenePlayer[];
+
+  /**
+   * The players of the party who are not in it, in the party's order. A
+   * player who has no living character is in neither list.
+   *
+   * @generated from field: repeated meurpg.play.v1.ScenePlayer outside = 3;
+   */
+  outside: ScenePlayer[];
+};
+
+/**
+ * Describes the message meurpg.play.v1.SceneAudienceView.
+ * Use `create(SceneAudienceViewSchema)` to create a new message.
+ */
+export const SceneAudienceViewSchema: GenMessage<SceneAudienceView> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_scene, 4);
 
 /**
  * StageNpc is an NPC on the stage of the open scene, as the caller sees it
@@ -224,7 +338,7 @@ export type StageNpc = Message<"meurpg.play.v1.StageNpc"> & {
  * Use `create(StageNpcSchema)` to create a new message.
  */
 export const StageNpcSchema: GenMessage<StageNpc> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_scene, 2);
+  messageDesc(file_meurpg_play_v1_scene, 5);
 
 /**
  * PutOnStageRequest names the NPC.
@@ -259,7 +373,7 @@ export type PutOnStageRequest = Message<"meurpg.play.v1.PutOnStageRequest"> & {
  * Use `create(PutOnStageRequestSchema)` to create a new message.
  */
 export const PutOnStageRequestSchema: GenMessage<PutOnStageRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_scene, 3);
+  messageDesc(file_meurpg_play_v1_scene, 6);
 
 /**
  * PutOnStageResponse returns the stage as it is now.
@@ -278,7 +392,7 @@ export type PutOnStageResponse = Message<"meurpg.play.v1.PutOnStageResponse"> & 
  * Use `create(PutOnStageResponseSchema)` to create a new message.
  */
 export const PutOnStageResponseSchema: GenMessage<PutOnStageResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_scene, 4);
+  messageDesc(file_meurpg_play_v1_scene, 7);
 
 /**
  * TakeOffStageRequest names the NPC.
@@ -304,7 +418,7 @@ export type TakeOffStageRequest = Message<"meurpg.play.v1.TakeOffStageRequest"> 
  * Use `create(TakeOffStageRequestSchema)` to create a new message.
  */
 export const TakeOffStageRequestSchema: GenMessage<TakeOffStageRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_scene, 5);
+  messageDesc(file_meurpg_play_v1_scene, 8);
 
 /**
  * TakeOffStageResponse returns the stage as it is now.
@@ -323,7 +437,7 @@ export type TakeOffStageResponse = Message<"meurpg.play.v1.TakeOffStageResponse"
  * Use `create(TakeOffStageResponseSchema)` to create a new message.
  */
 export const TakeOffStageResponseSchema: GenMessage<TakeOffStageResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_scene, 6);
+  messageDesc(file_meurpg_play_v1_scene, 9);
 
 /**
  * SetStageNpcHiddenRequest names the NPC on the stage and whether the players
@@ -358,7 +472,7 @@ export type SetStageNpcHiddenRequest = Message<"meurpg.play.v1.SetStageNpcHidden
  * Use `create(SetStageNpcHiddenRequestSchema)` to create a new message.
  */
 export const SetStageNpcHiddenRequestSchema: GenMessage<SetStageNpcHiddenRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_scene, 7);
+  messageDesc(file_meurpg_play_v1_scene, 10);
 
 /**
  * SetStageNpcHiddenResponse returns the stage as it is now, as the master
@@ -378,7 +492,7 @@ export type SetStageNpcHiddenResponse = Message<"meurpg.play.v1.SetStageNpcHidde
  * Use `create(SetStageNpcHiddenResponseSchema)` to create a new message.
  */
 export const SetStageNpcHiddenResponseSchema: GenMessage<SetStageNpcHiddenResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_scene, 8);
+  messageDesc(file_meurpg_play_v1_scene, 11);
 
 /**
  * SetSpeakerRequest names the NPC that speaks.
@@ -404,7 +518,7 @@ export type SetSpeakerRequest = Message<"meurpg.play.v1.SetSpeakerRequest"> & {
  * Use `create(SetSpeakerRequestSchema)` to create a new message.
  */
 export const SetSpeakerRequestSchema: GenMessage<SetSpeakerRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_scene, 9);
+  messageDesc(file_meurpg_play_v1_scene, 12);
 
 /**
  * SetSpeakerResponse returns the stage as it is now.
@@ -423,7 +537,7 @@ export type SetSpeakerResponse = Message<"meurpg.play.v1.SetSpeakerResponse"> & 
  * Use `create(SetSpeakerResponseSchema)` to create a new message.
  */
 export const SetSpeakerResponseSchema: GenMessage<SetSpeakerResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_scene, 10);
+  messageDesc(file_meurpg_play_v1_scene, 13);
 
 /**
  * SceneActionView is one action of the open scene, with the caller's numbers.
@@ -527,7 +641,7 @@ export type SceneActionView = Message<"meurpg.play.v1.SceneActionView"> & {
  * Use `create(SceneActionViewSchema)` to create a new message.
  */
 export const SceneActionViewSchema: GenMessage<SceneActionView> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_scene, 11);
+  messageDesc(file_meurpg_play_v1_scene, 14);
 
 /**
  * SceneRoll is one check rolled in the scene.
@@ -629,7 +743,7 @@ export type SceneRoll = Message<"meurpg.play.v1.SceneRoll"> & {
  * Use `create(SceneRollSchema)` to create a new message.
  */
 export const SceneRollSchema: GenMessage<SceneRoll> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_scene, 12);
+  messageDesc(file_meurpg_play_v1_scene, 15);
 
 /**
  * OpenSceneRequest names the campaign and the point.
@@ -651,6 +765,16 @@ export type OpenSceneRequest = Message<"meurpg.play.v1.OpenSceneRequest"> & {
    * @generated from field: string point_id = 2;
    */
   pointId: string;
+
+  /**
+   * The players the scene is open to. Unset: the whole table, for a scene that
+   * was not open yet. For the scene that is open already, unset changes
+   * nothing (opening it again does not widen it), and a value is applied as
+   * SetSceneAudience does.
+   *
+   * @generated from field: meurpg.play.v1.SceneAudience audience = 3;
+   */
+  audience?: SceneAudience | undefined;
 };
 
 /**
@@ -658,7 +782,7 @@ export type OpenSceneRequest = Message<"meurpg.play.v1.OpenSceneRequest"> & {
  * Use `create(OpenSceneRequestSchema)` to create a new message.
  */
 export const OpenSceneRequestSchema: GenMessage<OpenSceneRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_scene, 13);
+  messageDesc(file_meurpg_play_v1_scene, 16);
 
 /**
  * OpenSceneResponse returns the scene as the master sees it.
@@ -677,7 +801,7 @@ export type OpenSceneResponse = Message<"meurpg.play.v1.OpenSceneResponse"> & {
  * Use `create(OpenSceneResponseSchema)` to create a new message.
  */
 export const OpenSceneResponseSchema: GenMessage<OpenSceneResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_scene, 14);
+  messageDesc(file_meurpg_play_v1_scene, 17);
 
 /**
  * CloseSceneRequest names the campaign.
@@ -696,7 +820,7 @@ export type CloseSceneRequest = Message<"meurpg.play.v1.CloseSceneRequest"> & {
  * Use `create(CloseSceneRequestSchema)` to create a new message.
  */
 export const CloseSceneRequestSchema: GenMessage<CloseSceneRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_scene, 15);
+  messageDesc(file_meurpg_play_v1_scene, 18);
 
 /**
  * CloseSceneResponse is empty: no scene is open.
@@ -711,7 +835,7 @@ export type CloseSceneResponse = Message<"meurpg.play.v1.CloseSceneResponse"> & 
  * Use `create(CloseSceneResponseSchema)` to create a new message.
  */
 export const CloseSceneResponseSchema: GenMessage<CloseSceneResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_scene, 16);
+  messageDesc(file_meurpg_play_v1_scene, 19);
 
 /**
  * GetOpenSceneRequest names the campaign.
@@ -730,7 +854,7 @@ export type GetOpenSceneRequest = Message<"meurpg.play.v1.GetOpenSceneRequest"> 
  * Use `create(GetOpenSceneRequestSchema)` to create a new message.
  */
 export const GetOpenSceneRequestSchema: GenMessage<GetOpenSceneRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_scene, 17);
+  messageDesc(file_meurpg_play_v1_scene, 20);
 
 /**
  * GetOpenSceneResponse returns the open scene.
@@ -752,7 +876,7 @@ export type GetOpenSceneResponse = Message<"meurpg.play.v1.GetOpenSceneResponse"
  * Use `create(GetOpenSceneResponseSchema)` to create a new message.
  */
 export const GetOpenSceneResponseSchema: GenMessage<GetOpenSceneResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_scene, 18);
+  messageDesc(file_meurpg_play_v1_scene, 21);
 
 /**
  * RollSceneCheckRequest rolls one action of the open scene.
@@ -828,7 +952,7 @@ export type RollSceneCheckRequest = Message<"meurpg.play.v1.RollSceneCheckReques
  * Use `create(RollSceneCheckRequestSchema)` to create a new message.
  */
 export const RollSceneCheckRequestSchema: GenMessage<RollSceneCheckRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_scene, 19);
+  messageDesc(file_meurpg_play_v1_scene, 22);
 
 /**
  * RollSceneCheckResponse is the roll that was made.
@@ -882,7 +1006,7 @@ export type RollSceneCheckResponse = Message<"meurpg.play.v1.RollSceneCheckRespo
  * Use `create(RollSceneCheckResponseSchema)` to create a new message.
  */
 export const RollSceneCheckResponseSchema: GenMessage<RollSceneCheckResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_scene, 20);
+  messageDesc(file_meurpg_play_v1_scene, 23);
 
 /**
  * GrantSceneAttemptRequest gives one character one more attempt at one action.
@@ -924,7 +1048,7 @@ export type GrantSceneAttemptRequest = Message<"meurpg.play.v1.GrantSceneAttempt
  * Use `create(GrantSceneAttemptRequestSchema)` to create a new message.
  */
 export const GrantSceneAttemptRequestSchema: GenMessage<GrantSceneAttemptRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_scene, 21);
+  messageDesc(file_meurpg_play_v1_scene, 24);
 
 /**
  * GrantSceneAttemptResponse returns the open scene as the master sees it.
@@ -943,7 +1067,52 @@ export type GrantSceneAttemptResponse = Message<"meurpg.play.v1.GrantSceneAttemp
  * Use `create(GrantSceneAttemptResponseSchema)` to create a new message.
  */
 export const GrantSceneAttemptResponseSchema: GenMessage<GrantSceneAttemptResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_scene, 22);
+  messageDesc(file_meurpg_play_v1_scene, 25);
+
+/**
+ * SetSceneAudienceRequest names the players the open scene is open to.
+ *
+ * @generated from message meurpg.play.v1.SetSceneAudienceRequest
+ */
+export type SetSceneAudienceRequest = Message<"meurpg.play.v1.SetSceneAudienceRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * Required: `everyone`, or exactly these players (see SceneAudience).
+   *
+   * @generated from field: meurpg.play.v1.SceneAudience audience = 2;
+   */
+  audience?: SceneAudience | undefined;
+};
+
+/**
+ * Describes the message meurpg.play.v1.SetSceneAudienceRequest.
+ * Use `create(SetSceneAudienceRequestSchema)` to create a new message.
+ */
+export const SetSceneAudienceRequestSchema: GenMessage<SetSceneAudienceRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_scene, 26);
+
+/**
+ * SetSceneAudienceResponse returns the scene as the master sees it.
+ *
+ * @generated from message meurpg.play.v1.SetSceneAudienceResponse
+ */
+export type SetSceneAudienceResponse = Message<"meurpg.play.v1.SetSceneAudienceResponse"> & {
+  /**
+   * @generated from field: meurpg.play.v1.OpenSceneInfo scene = 1;
+   */
+  scene?: OpenSceneInfo | undefined;
+};
+
+/**
+ * Describes the message meurpg.play.v1.SetSceneAudienceResponse.
+ * Use `create(SetSceneAudienceResponseSchema)` to create a new message.
+ */
+export const SetSceneAudienceResponseSchema: GenMessage<SetSceneAudienceResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_scene, 27);
 
 /**
  * SceneBlockedReason says why PlayService refused a scene call with
@@ -1013,6 +1182,15 @@ export enum SceneBlockedReason {
    * @generated from enum value: SCENE_BLOCKED_REASON_STAGE_FULL = 6;
    */
   STAGE_FULL = 6,
+
+  /**
+   * SetShownImage, SetShownImageAudience: the audience asked is "the scene's
+   * players" (IMAGE_AUDIENCE_KIND_SCENE_PLAYERS), and no scene open to only
+   * some players is open, so there are no scene players to show it to.
+   *
+   * @generated from enum value: SCENE_BLOCKED_REASON_SCENE_NOT_PARTIAL = 7;
+   */
+  SCENE_NOT_PARTIAL = 7,
 }
 
 /**

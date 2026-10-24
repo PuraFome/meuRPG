@@ -195,9 +195,14 @@ service PlayService {
   //     Sent only to the players it touches, and not queued again while one
   //     waits in the stream's queue; the master never gets it;
   //   - `shown_image_changed` when the master shows an image, stops showing
-  //     it, or deletes it; sent to everyone;
+  //     it, deletes it, or changes who sees it. A player gets it only when
+  //     what they see changed: the image, for a player who sees it now, and
+  //     no image, for a player who saw one and does not any more; a player
+  //     outside the image's audience, who saw nothing before, gets nothing.
+  //     The master gets every one, with the audience;
   //   - `left_images_changed` when the list of images left with the players
-  //     changed (an image left, taken back or deleted); sent to everyone;
+  //     changed (an image left, taken back or deleted); a hint, sent to the
+  //     master and to the players the image was left with;
   //   - `encounter_changed` when anything changes in the combat; a hint,
   //     sent to everyone, and the app reads the combat again
   //     (CombatService.GetEncounter);
@@ -222,16 +227,21 @@ service PlayService {
   //     sent to everyone, and the app reads ProgressionService again;
   //   - `scene_changed` when the open scene changed (opened, closed, or one
   //     of its actions or its point changed); a hint, and the app reads it
-  //     again (GetOpenScene). Sent to everyone, except a change only the
-  //     master reads (the clues, the hooks, and a hidden action that stays
-  //     hidden), which reaches the master alone;
+  //     again (GetOpenScene). Sent to the master and to the players in the
+  //     scene (everyone, when the scene is open to the whole table), except a
+  //     change only the master reads (the clues, the hooks, and a hidden
+  //     action that stays hidden), which reaches the master alone. When the
+  //     master changes who is in (OpenScene, SetSceneAudience), the players
+  //     who came in and the players who went out get it too, so the first
+  //     read the scene and the second read "no scene";
   //   - `scene_check_rolled` when a character rolled an action of the open
   //     scene; sent only to the master and to the roller, with no number;
   //   - `stage_changed` when the stage changed (an NPC came in or went out,
   //     the speaker changed, an NPC was shown or hidden, or the scene
   //     closed); a hint, sent to everyone, and the app reads the open scene
-  //     again (GetOpenScene). A change only the master reads (a hidden NPC
-  //     put on the stage or taken off it) reaches the master alone;
+  //     again (GetOpenScene). Sent to the master and to the players in the
+  //     scene, as `scene_changed`. A change only the master reads (a hidden
+  //     NPC put on the stage or taken off it) reaches the master alone;
   //   - `notes_changed` when the master revealed a clue to a player; sent
   //     only to the players who got it, and the app reads their notes again
   //     (NotesService.ListNotes);
@@ -446,9 +456,27 @@ service PlayService {
   //
   // It reveals nothing else: a player learns the image's ID only while it
   // is shown (GetLiveSession, `shown_image_changed`), never the gallery.
-  // Every WatchGameSession stream of the campaign gets
-  // `shown_image_changed`. A new session starts showing nothing; deleting
-  // the image (GalleryService.DeleteGalleryImage) stops showing it.
+  // `shown_image_changed` goes to the streams of the audience (below). A new
+  // session starts showing nothing; deleting the image
+  // (GalleryService.DeleteGalleryImage) stops showing it.
+  //
+  // The image has an AUDIENCE (`audience`, ImageAudience; MR-028, RN-10):
+  //   - the whole table: every member. It is the only audience while no scene
+  //     is open, or the open scene is open to everyone: the image behaves as an
+  //     image shown with no scene;
+  //   - the scene's players: the players in the scene open to only some
+  //     players (OpenScene, SetSceneAudience), and the master. It is the
+  //     default while such a scene is open, and it follows who is in the scene
+  //     while that scene stays open. When the scene closes, another is opened,
+  //     or the scene opens to everyone, the image stays with the players who were
+  //     in at that moment (it becomes "chosen players" with them) and nobody
+  //     else receives it;
+  //   - chosen players: the players named, whoever they are.
+  // A player outside the audience gets the image nowhere: not in
+  // GetLiveSession, not in `shown_image_changed`, not through the image route
+  // (GET /images/{id} answers 404), not in the left list, and the summary
+  // never names it. The master changes the audience while the image is shown
+  // with SetShownImageAudience.
   //
   // An image that is the background of a map with the fog of war on is never
   // sent to a player (RN-10): the session then shows a copy of it, a new gallery
@@ -463,7 +491,8 @@ service PlayService {
   // `left_images_changed`. The master sets it by calling again with the
   // same image_id and the new `keep`, which sends no event: the players
   // never learn the switch. It is off for every image newly shown unless
-  // the call says otherwise.
+  // the call says otherwise. The image is left only with the players of its
+  // audience at that moment (a fixed set, or everyone for the whole table).
   //
   // Errors:
   //   - `not_found`: the image is not in the campaign's gallery, the
@@ -473,7 +502,37 @@ service PlayService {
   //     NO_OPEN_SESSION).
   //   - `resource_exhausted`: the image is a fog map's background and the
   //     gallery is full, so it cannot be copied.
+  //   - `invalid_argument`: the audience is malformed (see ImageAudience), or
+  //     names someone who is not a player of the campaign.
+  //   - `failed_precondition` with SceneBlocked SCENE_NOT_PARTIAL: the
+  //     audience asked is the scene's players and no scene open to only some
+  //     players is open.
   rpc SetShownImage(SetShownImageRequest) returns (SetShownImageResponse);
+
+  // SetShownImageAudience changes who sees the image that is shown now,
+  // while it is shown (MR-028): "Mostrar a toda a mesa" is the whole table,
+  // "Mudar quem vê" is a set of chosen players, and the scene's players is the
+  // default of a scene open to only some players. Only the campaign's master
+  // may call it. The kind IMAGE_AUDIENCE_KIND_UNSPECIFIED is refused. The
+  // same audience again changes nothing.
+  //
+  // Narrowing takes the image away at once from the players who are out of
+  // the new audience: GetLiveSession no longer returns it to them, the image
+  // route answers them 404, they get `shown_image_changed` with no image (the
+  // update they get when an image stops being shown), and the players who
+  // stay get nothing. Widening sends `shown_image_changed` with the image to
+  // the players who came in. The audience of an image left with the players
+  // (TakeBackLeftImage) is not changed here.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist, the caller is not a member
+  //     of it, or no image is shown.
+  //   - `permission_denied`: the caller is a player.
+  //   - `invalid_argument`: the audience is malformed, or names someone who is
+  //     not a player of the campaign.
+  //   - `failed_precondition`: no open session (GameSessionBlocked,
+  //     NO_OPEN_SESSION), or SceneBlocked SCENE_NOT_PARTIAL (see SetShownImage).
+  rpc SetShownImageAudience(SetShownImageAudienceRequest) returns (SetShownImageAudienceResponse);
 
   // ListLeftImages returns the images the master left with the players
   // (SetShownImage's `keep`), in the order they were left. Any active
@@ -483,7 +542,9 @@ service PlayService {
   // lives in the campaign (campaign_left_images) and not in the session,
   // which would take the images away from the players when it ends. A
   // player gets their files (GET /images/{id}) while the image is on this
-  // list (RN-10).
+  // list and they are in its audience (RN-10): a player gets only the images
+  // that were left with them, and the master gets every one, each with its
+  // `audience`.
   //
   // Errors:
   //   - `not_found`: the campaign does not exist, or the caller is not a
@@ -495,7 +556,7 @@ service PlayService {
   // TakeBackLeftImage takes an image back from the players ("Tirar"): it
   // leaves the list, and the players can no longer fetch it. The image
   // stays in the gallery. Only the campaign's master may call it, in or out
-  // of a session. Every WatchGameSession stream of the campaign gets
+  // of a session. The master and the players the image was left with get
   // `left_images_changed`. Taking back an image that is not on the list is
   // `not_found`, so a second call (another tab) says so.
   //
@@ -516,16 +577,47 @@ service PlayService {
   // reveals nothing, it stays hidden on the map (RN-10), but the group has
   // now "discovered" the scene (MR-030). Opening the scene that is already
   // open changes nothing; closing it and opening it again starts the rolls
-  // afresh. Every stream gets `scene_changed`, and a `scene_opened` event
-  // goes to the history.
+  // afresh. The master and the scene's players get `scene_changed`, and a
+  // `scene_opened` event goes to the history.
+  //
+  // The scene may be open to only some players (`audience`): the default is
+  // the whole table, a later joiner included. A player outside the audience
+  // gets no scene at all, exactly as when none is open: GetOpenScene answers
+  // them with no scene, RollSceneCheck is refused as with no open scene, and
+  // the stream tells them nothing but, when they were in the scene before
+  // this call, a `scene_changed` so that they read "no scene". The master
+  // changes who is in later with SetSceneAudience.
   //
   // Errors:
   //   - `not_found`: the point is not a SCENE point of the campaign's maps,
   //     the campaign does not exist, or the caller is not a member of it.
+  //   - `invalid_argument`: an account of `audience` is not a player of the
+  //     campaign, or the audience is malformed (see SceneAudience).
   //   - `permission_denied`: the caller is a player.
   //   - `failed_precondition`: no open session (GameSessionBlocked,
   //     NO_OPEN_SESSION).
   rpc OpenScene(OpenSceneRequest) returns (OpenSceneResponse);
+
+  // SetSceneAudience changes the players the open scene is open to, while it
+  // is open (MR-015, RN-10). Only the campaign's master may call it. A player
+  // who comes in reads the scene at once (they get `scene_changed`); a player
+  // who goes out loses it at once: GetOpenScene answers them as if none were
+  // open, RollSceneCheck is refused as with no open scene, and they get
+  // `scene_changed` so that they read it. The players who stay, and the
+  // master, get `scene_changed` too (the master's other screens read who is
+  // in). The rolls already made stay with the opening, and come back to a
+  // player who comes in again. An image shown to the scene's players follows
+  // the change (SetShownImage). With the same audience nothing changes.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist or the caller is not a member
+  //     of it.
+  //   - `permission_denied`: the caller is a player.
+  //   - `invalid_argument`: no audience, or a malformed one (see
+  //     SceneAudience), or an account that is not a player of the campaign.
+  //   - `failed_precondition`: no open session (GameSessionBlocked,
+  //     NO_OPEN_SESSION), or no scene is open (SceneBlocked NO_OPEN_SCENE).
+  rpc SetSceneAudience(SetSceneAudienceRequest) returns (SetSceneAudienceResponse);
 
   // CloseScene closes the open scene, asking nothing. Only the campaign's
   // master may call it. With no scene open it changes nothing. Every stream
@@ -553,7 +645,9 @@ service PlayService {
   //     whether they passed; when it is off, neither. A player never gets an
   //     action the master hid, nor the rolls made on it, nor a stage NPC the
   //     master hid (RN-10); the master gets them marked `hidden`.
-  // The scene is unset when none is open.
+  // The scene is unset when none is open, and for a player who is out of a
+  // scene open to only some players: nothing tells them one is open (RN-10).
+  // The master also gets `audience`, who is in and who is out.
   //
   // Errors:
   //   - `not_found`: the campaign does not exist, or the caller is not a
@@ -1108,7 +1202,8 @@ message GetLiveSessionResponse {
   // chosen one.
   string current_map_id = 3;
   // The image the master shows the players (SetShownImage). Unset while
-  // nothing is shown.
+  // nothing is shown, and for a player outside the image's audience. The
+  // master gets it with its `audience`.
   ShownImage shown_image = 4;
   // Whether the "Deixar com os jogadores" switch is on for the image shown
   // (SetShownImage's `keep`). Set only for the master: it is theirs to
@@ -1134,6 +1229,39 @@ message ShownImage {
   // Where to fetch its thumbnail (480 pixels on the longer side):
   // "/images/{id}/thumb".
   string thumbnail_url = 6;
+  // Who sees the image. Only the master gets it (on the shown image and on
+  // each left image); it is always unset for a player.
+  ImageAudience audience = 7;
+}
+
+// ImageAudienceKind says who sees a shown or left image.
+enum ImageAudienceKind {
+  // In a request: the default. The scene's players while a scene open to only
+  // some players is open, the whole table otherwise. Never in an answer.
+  IMAGE_AUDIENCE_KIND_UNSPECIFIED = 0;
+  // Every member. The only kind while no scene is open or the open scene is
+  // open to everyone ("Mostrar a toda a mesa").
+  IMAGE_AUDIENCE_KIND_WHOLE_TABLE = 1;
+  // The players in the scene open to only some players, and the master. It
+  // follows who is in that scene while it stays open.
+  IMAGE_AUDIENCE_KIND_SCENE_PLAYERS = 2;
+  // The players named in `user_ids`, and the master ("Mudar quem vê"). It is
+  // also what the scene's players become when the scene stops being the
+  // image's: the players who were in at that moment.
+  IMAGE_AUDIENCE_KIND_CHOSEN_PLAYERS = 3;
+}
+
+// ImageAudience is who sees a shown image or an image left with the players
+// (MR-028, RN-10). A player outside it never receives the image: not in a
+// read, not on the stream, not through the image route.
+message ImageAudience {
+  ImageAudienceKind kind = 1;
+  // CHOSEN_PLAYERS in a request: the accounts (a UUID each) of players of the
+  // campaign, at least one, repeats ignored. Empty for the other kinds in a
+  // request. In the master's answers: for CHOSEN_PLAYERS the players chosen,
+  // for SCENE_PLAYERS the players who are in the scene now, for WHOLE_TABLE
+  // empty.
+  repeated string user_ids = 2;
 }
 
 // CharacterVitals are a player character's live numbers (RN-02): hit
@@ -1322,16 +1450,18 @@ message WatchGameSessionResponse {
     // ProgressionService again. Everyone in the session gets it.
     XpChanged xp_changed = 14;
     // The open scene changed: opened, closed, or one of its actions or its
-    // point changed. Read it again (GetOpenScene). Everyone gets it, except
-    // a change only the master reads (the clues and the hooks, MR-029),
-    // which reaches the master alone.
+    // point changed, or who is in it changed. Read it again (GetOpenScene).
+    // The master and the players in the scene get it (everyone, when the scene
+    // is open to the whole table), and the players who just went in or out;
+    // a change only the master reads (the clues and the hooks, MR-029)
+    // reaches the master alone.
     SceneChanged scene_changed = 15;
     // A check was rolled in the open scene. Only the master and the roller
     // get it.
     SceneCheckRolled scene_check_rolled = 16;
     // The stage changed: an NPC came in or went out, or the speaker changed,
     // or the scene closed and emptied it. Read the open scene again
-    // (GetOpenScene). Everyone gets it.
+    // (GetOpenScene). The master and the players in the scene get it.
     StageChanged stage_changed = 17;
     // The master revealed a clue to this player: read their notes again
     // (NotesService.ListNotes). Only the players who got it get it.
@@ -1604,17 +1734,20 @@ message WatchGameSessionResponse {
     string map_id = 1;
   }
 
-  // ShownImageChanged carries the image the master shows now. Everyone
-  // gets it.
+  // ShownImageChanged carries the image the master shows now, as the
+  // receiving member sees it: the master gets it with the audience; a player
+  // who sees it gets the image; a player who has just stopped seeing it
+  // (narrowed out, or the master stopped showing it) gets none; a player who
+  // never saw it gets nothing.
   message ShownImageChanged {
     // The image shown now. Unset when the master stopped showing it, or
-    // deleted it.
+    // deleted it, or the receiver is out of its audience now.
     ShownImage image = 1;
   }
 
   // LeftImagesChanged is a hint, with no content: the list of images left
   // with the players changed, so the app reads it again (ListLeftImages).
-  // Everyone gets it.
+  // The master and the players the image was left with get it.
   message LeftImagesChanged {}
   // EncounterChanged is a hint: the combat changed, so the app reads it again
   // (CombatService.GetEncounter). It carries no content, so a hidden
@@ -1810,6 +1943,11 @@ message SetShownImageRequest {
   // The "Deixar com os jogadores" switch for image_id: see SetShownImage.
   // Ignored when image_id is empty.
   bool keep = 3;
+  // Who sees the image: see SetShownImage. Unset or UNSPECIFIED: the scene's
+  // players while a scene open to only some players is open, the whole table
+  // otherwise; for the image that is shown already, the audience it has.
+  // Ignored when image_id is empty.
+  ImageAudience audience = 4;
 }
 
 // SetShownImageResponse returns what the session shows now.
@@ -1819,6 +1957,18 @@ message SetShownImageResponse {
   // Whether "Deixar com os jogadores" is on for it: false when nothing is
   // shown.
   bool keep = 2;
+}
+
+// SetShownImageAudienceRequest names the new audience of the shown image.
+message SetShownImageAudienceRequest {
+  string campaign_id = 1;
+  // Required, and not UNSPECIFIED: see SetShownImageAudience.
+  ImageAudience audience = 2;
+}
+
+// SetShownImageAudienceResponse returns the image shown, with its audience.
+message SetShownImageAudienceResponse {
+  ShownImage shown_image = 1;
 }
 
 // ListLeftImagesRequest names the campaign.

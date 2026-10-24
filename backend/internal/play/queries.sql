@@ -543,6 +543,63 @@ SET open_scene_point_id = sqlc.narg(open_scene_point_id)
 WHERE id = sqlc.arg(id)
 RETURNING *;
 
+-- name: SetOpenSceneEveryone :one
+-- Whether the open scene is open to the whole table (true) or to the players of
+-- game_session_scene_players only (MR-015, RN-10).
+UPDATE game_sessions
+SET open_scene_everyone = sqlc.arg(open_scene_everyone)
+WHERE id = sqlc.arg(id)
+RETURNING *;
+
+-- name: ListScenePlayers :many
+-- The players the open scene is open to, when it is not open to everyone.
+SELECT user_id FROM game_session_scene_players
+WHERE game_session_id = $1
+ORDER BY user_id;
+
+-- name: InsertScenePlayer :exec
+INSERT INTO game_session_scene_players (game_session_id, user_id)
+VALUES ($1, $2)
+ON CONFLICT (game_session_id, user_id) DO NOTHING;
+
+-- name: ClearScenePlayers :exec
+DELETE FROM game_session_scene_players WHERE game_session_id = $1;
+
+-- name: SetShownImageAudienceKind :exec
+-- The kind of the shown image's audience: 'table', 'scene' or 'chosen' (MR-028).
+UPDATE game_sessions SET shown_image_audience = sqlc.arg(shown_image_audience) WHERE id = sqlc.arg(id);
+
+-- name: ListImageViewers :many
+-- The players of a shown image whose audience is 'chosen'.
+SELECT user_id FROM game_session_image_viewers
+WHERE game_session_id = $1
+ORDER BY user_id;
+
+-- name: InsertImageViewer :exec
+INSERT INTO game_session_image_viewers (game_session_id, user_id)
+VALUES ($1, $2)
+ON CONFLICT (game_session_id, user_id) DO NOTHING;
+
+-- name: ClearImageViewers :exec
+DELETE FROM game_session_image_viewers WHERE game_session_id = $1;
+
+-- name: ShownImageSeenBy :one
+-- Whether the player sees the image the campaign's open session shows now: it is
+-- the shown image and the player is in its audience (RN-10). 'scene' is the
+-- players of the scene open to only some players. The image route asks it for a
+-- player on every request.
+SELECT EXISTS (
+    SELECT 1 FROM game_sessions AS gs
+    WHERE gs.campaign_id = sqlc.arg(campaign_id) AND gs.ended_at IS NULL AND gs.shown_image_id = sqlc.arg(image_id)::UUID
+      AND (
+          gs.shown_image_audience = 'table'
+          OR (gs.shown_image_audience = 'scene' AND EXISTS (
+              SELECT 1 FROM game_session_scene_players AS p WHERE p.game_session_id = gs.id AND p.user_id = sqlc.arg(user_id)::UUID))
+          OR (gs.shown_image_audience = 'chosen' AND EXISTS (
+              SELECT 1 FROM game_session_image_viewers AS v WHERE v.game_session_id = gs.id AND v.user_id = sqlc.arg(user_id)::UUID))
+      )
+)::BOOL AS seen;
+
 -- name: GetOpenSceneEvent :one
 -- The event that opened the scene now open: the session's latest scene_opened.
 -- Rolls after it belong to this opening; closing and opening again starts a new
