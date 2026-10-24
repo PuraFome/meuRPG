@@ -423,3 +423,36 @@ func riderLogProto(r *riderEvent, numbers bool) *playv1.CombatLogHitRider {
 	}
 	return out
 }
+
+// goadTarget is what a goading maneuver does once its die is counted in the damage: the target
+// makes a Wisdom save against the maneuver's DC and, on a failure, has disadvantage against
+// everyone but the attacker until the end of the attacker's next turn (effect:goaded).
+func (s *Service) goadTarget(ctx context.Context, c *combatTx, m authz.Membership, cs []playdb.Combatant, attacker, target playdb.Combatant, pr *partsRoll) error {
+	var goads []string
+	for i, r := range pr.rolls {
+		if r.Counted && pr.parts[i].Kind == partExtra && pr.parts[i].Resource != "" {
+			goads = append(goads, r.Key)
+		}
+	}
+	if len(goads) == 0 {
+		return nil
+	}
+	sheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, attacker)
+	if err != nil {
+		return err
+	}
+	for _, mv := range sheet.Traits.Maneuvers {
+		if mv.Applies != rules.ManeuverGoad || !slices.Contains(goads, mv.Key) {
+			continue
+		}
+		var re riderEvent
+		saved, err := s.rollRiderSave(ctx, c, m, target, goadSaveAbility, conv.Int32(mv.SaveDC), &re)
+		if err != nil || saved {
+			return err
+		}
+		return s.riderEffect(ctx, c, cs, attacker, target, rules.EffectGoaded)
+	}
+	return nil
+}
+
+const goadSaveAbility = "wis"

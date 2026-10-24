@@ -298,7 +298,7 @@ func (h hitFacts) buildParts() []partRecord {
 }
 
 // maneuverParts lists, for a player's character, the table maneuvers whose die goes on the
-// damage of a weapon attack that hit: one extra each, which the player may mark (only one
+// damage of a weapon attack that hit (a goad also makes the target save): one extra each, which the player may mark (only one
 // per attack, checked when the damage is rolled) while the resource has a use.
 func (h hitFacts) maneuverParts() []partRecord {
 	if h.attacker.Kind != kindPlayer || !h.attack.Weapon {
@@ -306,7 +306,7 @@ func (h hitFacts) maneuverParts() []partRecord {
 	}
 	var out []partRecord
 	for _, m := range h.sheet.Traits.Maneuvers {
-		if m.Applies != rules.ManeuverDamage {
+		if m.Applies != rules.ManeuverDamage && m.Applies != rules.ManeuverGoad {
 			continue
 		}
 		left := h.usesLeft[m.Resource]

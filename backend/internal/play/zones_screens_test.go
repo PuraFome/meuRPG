@@ -106,6 +106,10 @@ func TestAPlayerReadsNoNumbersOfAZoneThatIsNotTheirs(t *testing.T) {
 	}
 }
 
+// zoneDiceNeedle is the dice of Moonbeam as a whole JSON string value. Bare 2d10 also matches the middle of an
+// identifier (a UUID holds those characters now and then), a quoted value only the field itself.
+const zoneDiceNeedle = `"2d10"`
+
 // The NPC caster the players see: bare for them, whole for the master.
 func TestAVisibleNPCCastersZoneIsBareForPlayers(t *testing.T) {
 	t.Parallel()
@@ -116,12 +120,16 @@ func TestAVisibleNPCCastersZoneIsBareForPlayers(t *testing.T) {
 	if whole.GetSaveDc() == 0 || whole.GetDamageDice() != "2d10" || whole.GetRoundsLeft() != 10 {
 		t.Errorf("the master reads %v, want the DC, 2d10 and 10 rounds", whole)
 	}
+	// The positive control: the needle is in the master's copy, so a player's copy without it proves something.
+	if !strings.Contains(asJSONAny(t, c.get(t, c.master)), zoneDiceNeedle) {
+		t.Errorf("the master's copy has no %s: the needle finds nothing", zoneDiceNeedle)
+	}
 	for who, u := range map[string]*user{"Toren's player": c.caio, "Pensantus's player": c.ana} {
 		z := c.oneZone(t, u, moonbeamKey)
 		if !z.GetDetailsHidden() || z.SaveDc != nil || z.GetDamageDice() != "" || z.GetRoundsLeft() != 0 || z.GetOwnerLabel() != "Druida" {
 			t.Errorf("%s reads %v, want the name, shape and squares and no numbers", who, z)
 		}
-		if text := asJSONAny(t, c.get(t, u)); strings.Contains(text, "2d10") {
+		if text := asJSONAny(t, c.get(t, u)); strings.Contains(text, zoneDiceNeedle) {
 			t.Errorf("%s reads the dice of an NPC caster's zone", who)
 		}
 	}

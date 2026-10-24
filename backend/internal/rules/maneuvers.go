@@ -13,6 +13,11 @@ const (
 	// ManeuverReduceMelee reduces the damage of a melee attack that hit the character
 	// by the die plus an ability modifier; it costs the reaction.
 	ManeuverReduceMelee = "reduce_melee_damage"
+	// ManeuverGoad adds the die to the damage of a weapon attack that hit, like ManeuverDamage, and
+	// asks the target for a Wisdom saving throw against the maneuver's DC (8 + proficiency + the
+	// modifier of Ability): on a failure it has disadvantage on its attack rolls against creatures
+	// other than the attacker until the end of the attacker's next turn (EffectGoaded).
+	ManeuverGoad = "goad"
 )
 
 // Bounds of a superiority die's sides: a formula that gives anything else is ignored.
@@ -34,8 +39,12 @@ type Maneuver struct {
 	Applies string
 	// Economy is bonus_action or reaction when using it costs one; empty when it does not.
 	Economy string
-	// Ability is, for ManeuverReduceMelee, the ability whose modifier is added.
+	// Ability is, for ManeuverReduceMelee, the ability whose modifier is added, and for ManeuverGoad
+	// the one whose modifier is in SaveDC.
 	Ability string
+	// SaveDC is the DC of the target's saving throw against a goad (8 + proficiency + the modifier of
+	// Ability); 0 for any other maneuver.
+	SaveDC int
 	// TextPT is the rider the master reads ("o alvo faz um teste de Sabedoria...").
 	TextPT string
 }
@@ -58,7 +67,7 @@ func (x *deriver) maneuvers() {
 		}
 		x.d.Maneuvers = append(x.d.Maneuvers, Maneuver{
 			Key: a.owner, NamePT: x.c.namePT(a.owner), Resource: e.Resource, Sides: sides,
-			Applies: e.Applies, Economy: e.Economy, Ability: e.Ability, TextPT: e.TextPT,
+			Applies: e.Applies, Economy: e.Economy, Ability: e.Ability, TextPT: e.TextPT, SaveDC: x.goadDC(e),
 		})
 	}
 }
@@ -71,3 +80,20 @@ func (x *deriver) hasManeuver(owner string) bool {
 		return a.owner == owner && a.effect.Type == "superiority_die" && x.applies(a)
 	})
 }
+
+// goadDC is the DC of a goad: 8 plus the proficiency bonus and the modifier of the effect's ability;
+// 0 for a maneuver that asks no saving throw.
+func (x *deriver) goadDC(e *Effect) int {
+	if e.Applies != ManeuverGoad {
+		return 0
+	}
+	for _, a := range x.d.Abilities {
+		if string(a.Ability) == e.Ability {
+			return goadBaseDC + x.d.ProficiencyBonus + a.Modifier
+		}
+	}
+	return 0
+}
+
+// goadBaseDC is the 8 of a maneuver's save DC.
+const goadBaseDC = 8

@@ -248,3 +248,24 @@ func TestCheckAdvantageImmunityAndTurnTempHPOfTheModifiers(t *testing.T) {
 		t.Errorf("a Strength save with Enhance Ability = %v, want a normal roll", got)
 	}
 }
+
+// A goaded creature (an effect that spares its source): the attack roll has disadvantage against anyone
+// but the creature that goaded it.
+func TestAGoadedAttackerHasDisadvantageAgainstOthersButNotAgainstItsSource(t *testing.T) {
+	t.Parallel()
+	const key = "effect:goaded"
+	attacker := Creature{ID: "goaded", AttackDisadvantage: key, AttackDisadvantageSpares: "tank"}
+	other := AttackMode(AttackScene{Attacker: attacker, Target: Creature{ID: "someone"}, DistanceKnown: true, DistanceFt: 5, ReachFt: 5})
+	if len(other.Sources) != 1 || other.Sources[0] != (Source{Kind: SourceEffectAttack, Effect: ModeDisadvantage, Condition: key}) {
+		t.Errorf("against someone else, sources = %+v, want the goad's disadvantage", other.Sources)
+	}
+	source := AttackMode(AttackScene{Attacker: attacker, Target: Creature{ID: "tank"}, DistanceKnown: true, DistanceFt: 5, ReachFt: 5})
+	if len(source.Sources) != 0 {
+		t.Errorf("against the goader, sources = %+v, want none", source.Sources)
+	}
+	// An effect that spares nobody (Vicious Mockery) still covers every target.
+	plain := AttackMode(AttackScene{Attacker: Creature{AttackDisadvantage: key}, Target: Creature{ID: "tank"}, DistanceKnown: true, DistanceFt: 5, ReachFt: 5})
+	if len(plain.Sources) != 1 {
+		t.Errorf("an effect that spares nobody: sources = %+v, want the disadvantage", plain.Sources)
+	}
+}
