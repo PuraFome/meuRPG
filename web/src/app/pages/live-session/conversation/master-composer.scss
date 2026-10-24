@@ -189,6 +189,13 @@
   }
 }
 
+// While a combat runs the filled button of the screen is "Próximo turno": "Enviar" is outlined.
+.composer__send--quiet {
+  border: 1px solid var(--mr-accent);
+  background: var(--mr-surface);
+  color: var(--mr-accent-text);
+}
+
 // On a phone both are 48 px squares with the icon alone; the words stay for a screen reader.
 @media (max-width: 767.98px) {
   .composer__image,

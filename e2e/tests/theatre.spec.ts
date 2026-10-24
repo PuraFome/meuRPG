@@ -50,9 +50,9 @@ test(
       await beginTheatreRPC(m, table, started, { Toren: 20, 'Goblin': 12, 'Capitão Goblin': 10 });
 
       // The master: the pill, the card of whoever is on turn with the movement he may spend, the cover panel, no map.
-      await expect(m.getByText('Vez do Toren', { exact: true })).toBeVisible();
+      await expect(m.getByText('Vez do Toren', { exact: true }).first()).toBeVisible();
       await expect(m.locator('app-theatre-pill')).toContainText('Teatro da mente');
-      await expect(m.getByRole('heading', { name: 'Ações do Toren' })).toBeVisible();
+      await expect(m.getByRole('heading', { name: 'Vez do Toren' })).toBeVisible();
       await expect(m.getByRole('heading', { name: 'Cobertura dos alvos' })).toBeVisible();
       await expect(m.getByText('Sem mapa: só o número')).toBeVisible();
 
@@ -109,7 +109,7 @@ test(
       // Toren's turn ends; on the Goblin's turn the master offers the opportunity attack to Toren.
       await combatRPC(m, 'EndTurn', { campaignId, encounterId: started.id, expectedCombatantId: (await getEncounterRPC(m, campaignId)).currentCombatantId, discardPendingDamage: true });
       await passTurnsTo(m, campaignId, 'Goblin');
-      await expect(m.getByRole('heading', { name: 'Ações do Goblin' })).toBeVisible();
+      await expect(m.getByRole('heading', { name: 'Vez do Goblin' })).toBeVisible();
       await m.getByRole('button', { name: 'Oferecer ataque de oportunidade' }).click();
       await expect(m.getByRole('heading', { name: 'Oferecer ataque de oportunidade' })).toBeVisible();
       await expect(m.getByText('Saiu do alcance de', { exact: true })).toBeVisible();

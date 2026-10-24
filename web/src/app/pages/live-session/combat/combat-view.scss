@@ -68,6 +68,11 @@
   flex-direction: column;
   gap: var(--mr-space-4);
   min-width: 0;
+
+  // A card with nothing to say draws nothing, and takes no gap.
+  > :empty {
+    display: none;
+  }
 }
 
 // The rail is a card: its tab list on top, the panels inside it, the cards of "Turno" without a frame of their own.
@@ -121,6 +126,8 @@
   align-items: center;
   gap: 8px;
   margin: 0;
+  font-size: 15px;
+  line-height: 20px;
   color: var(--mr-ink-muted);
 
   b {
@@ -133,6 +140,10 @@
   flex-direction: column;
   gap: var(--mr-space-4);
   min-width: 0;
+
+  > :empty {
+    display: none;
+  }
 
   &[hidden] {
     display: none;

@@ -1,7 +1,12 @@
 import { type Signal, computed, signal } from '@angular/core';
 
 import type { TabItem, TabTone } from '../../../shared/tab-list/tab-list';
+import type { Encounter } from '../../../../gen/meurpg/play/v1/combat_pb';
+import { roundLabel, turnBanner } from '../../../core/combat/combat-view';
 import type { MapTab, MapTabId } from './map-tabs/map-tab';
+
+/** The most a tab's count shows before it says "99+". */
+const MAX_BADGE = 99;
 
 /** What a tab of the tabs under the map says: its words and icon (the order the board draws them in). */
 const MAP_TABS: Readonly<Record<'log' | 'effects' | MapTabId, { label: string; icon: string }>> = {
@@ -34,6 +39,8 @@ export interface MasterLayoutDeps {
   /** The panels the page projected under the map. */
   readonly projected: Signal<readonly MapTab[]>;
   readonly combatants: Signal<number>;
+  /** The combat, for the words of the phone's line (the round, who comes next). */
+  readonly encounter: Signal<Encounter | null>;
   /** A combat without a map: no "Mapa" tab on a phone. */
   readonly theatre: Signal<boolean>;
 }
@@ -71,7 +78,7 @@ export class MasterLayout {
         icon: 'chat_bubble_outline',
         ...(unread > 0
           ? {
-              badge: unread > 99 ? '99+' : String(unread),
+              badge: unread > MAX_BADGE ? `${MAX_BADGE}+` : String(unread),
               tone: 'news' as TabTone,
               words: newWords(unread),
             }
@@ -91,7 +98,7 @@ export class MasterLayout {
       const count = this.deps
         .projected()
         .find((t) => t.appMapTab() === id)
-        ?.count();
+        ?.mapTabCount();
       return {
         id,
         ...MAP_TABS[id as keyof typeof MAP_TABS],
@@ -101,6 +108,14 @@ export class MasterLayout {
   );
 
   /** The open tab under the map, the first when the one chosen no longer applies. */
+  /** "Rodada 3", for the phone's line under the bar. */
+  readonly roundText = computed(() => roundLabel(this.deps.encounter()?.round ?? 0));
+  /** Who comes after the one on turn. */
+  readonly nextName = computed(() => {
+    const e = this.deps.encounter();
+    return e ? (turnBanner(e).after?.name ?? '') : '';
+  });
+
   readonly shownMapTab = computed(() =>
     this.mapIds().includes(this.mapTab()) ? this.mapTab() : this.mapIds()[0],
   );

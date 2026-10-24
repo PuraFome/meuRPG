@@ -12,5 +12,5 @@ export type MapTabId = 'fog' | 'traps' | 'treasure' | 'puzzles';
 export class MapTab {
   readonly appMapTab = input.required<MapTabId>();
   /** The count in the tab's name ("Armadilhas · 2"); none when absent. */
-  readonly count = input<number | undefined>(undefined, { alias: 'mapTabCount' });
+  readonly mapTabCount = input<number | undefined>(undefined);
 }

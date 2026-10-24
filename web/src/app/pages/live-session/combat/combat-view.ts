@@ -15,7 +15,6 @@ import {
   CombatantSide,
   CombatantState,
   CoverDegree,
-  type Encounter,
   EncounterStatus,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
 import {
@@ -29,17 +28,14 @@ import { offersToAnswer, reactorIsMasters } from '../../../core/combat/opportuni
 import { sheetWindow } from '../../../core/combat/reactions';
 import { questions } from '../../../core/combat/hidden-reveal';
 import { heldOfferOf } from '../../../core/held-rolls/held-roll-offer';
-import { roundLabel, turnBanner } from '../../../core/combat/combat-view';
 import type { MasterQuestion } from '../../../core/held-rolls/held-questions';
 import { COMBAT_VIEW_IMPORTS } from './combat-view-imports';
 import { CombatViewPartsDirective } from './combat-view-parts';
 import { MapTab } from './map-tabs/map-tab';
 import { MasterLayout } from './master-layout';
+import { keepFocusClear } from './sticky-room';
+import { openAddCombatants } from './add-combatants';
 import { type RiderPick } from './hit-rider/hit-rider-card';
-import {
-  type StartCombatData,
-  StartCombatDialog,
-} from '../../../shared/start-combat/start-combat-dialog';
 
 /**
  * The combat on the session page (MR-013, E6-01 to E6-16): it picks the
@@ -82,16 +78,9 @@ export class CombatView extends CombatViewPartsDirective {
     hasChat: computed(() => this.chat() !== null),
     projected: computed(() => this.projected()),
     combatants: computed(() => this.encounter()?.combatants.length ?? 0),
+    encounter: computed(() => this.encounter() ?? null),
     theatre: computed(() => this.theatre()),
   });
-  /** "Rodada 3", for the phone's line under the bar. */
-  protected readonly roundText = computed(() => roundLabel(this.encounter()?.round ?? 0));
-  /** Who comes after the one on turn. */
-  protected readonly nextName = computed(() => {
-    const e = this.encounter();
-    return e ? (turnBanner(e).after?.name ?? '') : '';
-  });
-
   /** The answer went to the order: on a small screen the order is its own tab, so it opens first. */
   protected override focusOrder(): void {
     if (!this.laptop()) {
@@ -121,6 +110,10 @@ export class CombatView extends CombatViewPartsDirective {
         }
       });
     });
+    keepFocusClear(
+      computed(() => this.isMaster() && this.active()),
+      this.laptop,
+    );
     // The rail's conversation tab is open (and the rail is there): the page counts nothing as unread.
     effect(() => {
       const shown =
@@ -432,28 +425,11 @@ export class CombatView extends CombatViewPartsDirective {
   /** "Adicionar combatente": the start dialog, with the NPCs only. */
   protected addCombatants(): void {
     const e = this.encounter();
-    if (!e) {
-      return;
+    if (e) {
+      openAddCombatants(this.dialog, this.campaignId(), e, this.phone()).subscribe(
+        (added) => added && this.state().apply(added),
+      );
     }
-    const phone = this.phone();
-    this.dialog
-      .open<StartCombatDialog, StartCombatData, Encounter>(StartCombatDialog, {
-        data: {
-          campaignId: this.campaignId(),
-          mode: 'add',
-          map: null,
-          encounterId: e.id,
-          existing: e.combatants.length,
-        },
-        width: phone ? '100vw' : '760px',
-        maxWidth: phone ? '100vw' : 'calc(100vw - 32px)',
-        height: phone ? '100dvh' : undefined,
-        maxHeight: phone ? '100dvh' : '92dvh',
-        ariaLabelledBy: 'start-title',
-        autoFocus: 'first-tabbable',
-      })
-      .afterClosed()
-      .subscribe((added) => added && this.state().apply(added));
   }
   // ---- opportunity attacks (E9-13) ----
 

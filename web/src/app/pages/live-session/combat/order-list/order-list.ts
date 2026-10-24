@@ -42,12 +42,11 @@ import { conditionTags } from '../../../../core/combat/conditions';
 import { labelTags } from '../../../../core/effects/effects';
 import { coverMark, coverText, sideTags } from '../../../../core/combat/cover';
 import { article } from '../../../../core/combat/combat-log';
-import { combatantInitial, isPlayer, stateWord } from '../../../../core/combat/combat-view';
+import { combatantInitial, isPlayer } from '../../../../core/combat/combat-view';
 import {
   groupFeminine,
   groupName,
   isCreature,
-  kindWord,
   ofOwner,
 } from '../../../../core/combat/creature-names';
 import {
@@ -64,6 +63,9 @@ import { EndAidQuestion } from './end-aid-question';
 import { ConcPill, LoseQuestion } from './lose-question';
 import { OrderLegend } from './order-legend';
 import { RowCover } from './row-cover';
+import { downText, isDown, isDying, rowDetail, rowState, stateWordOf } from './row-words';
+import { rowsBelow } from './rows-below';
+import { ShieldWatch } from './shield-watch';
 import { DeathRow } from '../death-saves/death-marks';
 import { OrderGroup } from '../joint-turn/order-group';
 import { PartState } from '../joint-turn/part-state';
@@ -172,8 +174,7 @@ export class OrderList {
   /** "O Escudo Arcano de Pensantus acabou", said in the list for a few seconds after the stream took the bonus away. */
   protected readonly shieldEnded = signal('');
   private endedTimer: ReturnType<typeof setTimeout> | undefined;
-  private shieldSeen = new Map<string, number>();
-  private encounterSeen = '';
+  private readonly shields = new ShieldWatch();
   /** The combatant whose cover mark is open. */
   protected readonly marking = signal<string | null>(null);
   protected readonly Party = CombatantSide.PARTY;
@@ -192,22 +193,11 @@ export class OrderList {
 
   constructor() {
     inject(DestroyRef).onDestroy(() => clearTimeout(this.endedTimer));
-    // A shield that goes from above 0 to 0 on a combatant that is still there ended (it ends by itself when the caster's turn
-    // begins); a combatant that left the combat, or another combat, is not that.
+    // A shield that goes from above 0 to 0 on a combatant that is still there ended (it ends by itself when the caster's turn begins).
     effect(() => {
       const e = this.encounter();
       untracked(() => {
-        const ended: string[] = [];
-        const seen = new Map<string, number>();
-        for (const c of e.combatants) {
-          const before = this.shieldSeen.get(c.id) ?? 0;
-          if (e.id === this.encounterSeen && before > 0 && c.armorClassBonus === 0) {
-            ended.push(shieldEndedForMaster(c.label));
-          }
-          seen.set(c.id, c.armorClassBonus);
-        }
-        this.shieldSeen = seen;
-        this.encounterSeen = e.id;
+        const ended = this.shields.update(e).map(shieldEndedForMaster);
         if (ended.length > 0) {
           this.shieldEnded.set(ended.join('. '));
           clearTimeout(this.endedTimer);
@@ -272,62 +262,27 @@ export class OrderList {
   /** The name of a row's head for a screen reader: who, whether it is their turn, their state and hit points. */
   protected headName(c: Combatant): string {
     const hp = c.hitPointsMax === undefined ? '' : `${c.hitPointsCurrent} de ${c.hitPointsMax} PV`;
-    return [c.label, this.current(c) ? 'é a vez' : '', this.stateOf(c), hp]
-      .filter(Boolean)
-      .join(', ');
-  }
-
-  /** The one state word of a row, or `''`: "Escondido", "Caída", "Morrendo · 3 falhas", "Derrotado". */
-  private stateOf(c: Combatant): string {
-    if (c.defeated) {
-      return isPlayer(c) ? this.word(c) : 'Derrotado';
-    }
-    if (this.down(c)) {
-      return this.downText(c);
-    }
-    return c.hidden ? 'Escondido' : '';
+    return [c.label, this.current(c) ? 'é a vez' : '', rowState(c), hp].filter(Boolean).join(', ');
   }
 
   /** The line under the name of a compact row: "Inic. 14 · CA 15", or the state word first ("Escondido · inic. 7"). */
   protected compactSub(c: Combatant, inGroup: boolean): string {
     const init = c.initiative !== undefined && !inGroup ? c.initiative : null;
-    const state = this.stateOf(c);
+    const state = rowState(c);
     if (state) {
       return joinDots([state, init === null ? '' : `inic. ${init}`].filter(Boolean));
     }
-    return joinDots([init === null ? '' : `Inic. ${init}`, this.detail(c)].filter(Boolean));
-  }
-
-  /** The class, the challenge rating and the armor class of a row, without the kind label of an NPC. */
-  private detail(c: Combatant): string {
-    const info = this.info().get(c.characterId);
-    const ac = c.armorClass === undefined || this.shield(c) > 0 ? '' : `CA ${c.armorClass}`;
-    if (isCreature(c)) {
-      const kind = kindWord(c);
-      return [kind === 'Criatura' ? '' : kind, ac, ofOwner(this.encounter(), c)]
-        .filter(Boolean)
-        .join(' · ');
-    }
-    const first = isPlayer(c) ? (info?.classSummary ?? '') : '';
-    const nd = c.challengeRating ? `ND\u00a0${c.challengeRating}` : '';
-    return [first, nd, ac].filter(Boolean).join(' · ');
+    return joinDots(
+      [
+        init === null ? '' : `Inic. ${init}`,
+        rowDetail(c, this.encounter(), this.info().get(c.characterId), this.shield(c) > 0),
+      ].filter(Boolean),
+    );
   }
 
   /** How many rows lie wholly below the room of the list: "Mais 6 abaixo". */
   protected measure(): void {
-    const el = this.scroller()?.nativeElement;
-    if (!el) {
-      this.below.set(0);
-      return;
-    }
-    const bottom = el.scrollTop + el.clientHeight;
-    const hidden =
-      el.scrollHeight > el.clientHeight + 1
-        ? Array.from(el.querySelectorAll<HTMLElement>('li.row')).filter(
-            (row) => row.offsetTop - el.offsetTop >= bottom,
-          ).length
-        : 0;
-    this.below.set(hidden);
+    this.below.set(rowsBelow(this.scroller()?.nativeElement));
   }
 
   protected scrollDown(): void {
@@ -363,33 +318,11 @@ export class OrderList {
     return c.concentrationSpellNamePt;
   }
 
-  /** A player's character at 0 hit points that is still in the story. */
-  protected down(c: Combatant): boolean {
-    return (
-      c.state === CombatantState.DOWN ||
-      c.state === CombatantState.DYING ||
-      c.state === CombatantState.STABLE
-    );
-  }
-
-  protected dying(c: Combatant): boolean {
-    return c.state === CombatantState.DYING;
-  }
-
-  /** "Caída", "Estável", "Morrendo · 3 falhas". */
-  protected downText(c: Combatant): string {
-    return this.dying(c)
-      ? joinDots(['Morrendo', `${c.deathFailures} falhas`])
-      : stateWord(c.state, c.label);
-  }
-
-  protected player(c: Combatant): boolean {
-    return isPlayer(c);
-  }
-
-  protected word(c: Combatant): string {
-    return stateWord(c.defeated && isPlayer(c) ? CombatantState.DEAD : c.state, c.label);
-  }
+  protected readonly down = isDown;
+  protected readonly dying = isDying;
+  protected readonly downText = downText;
+  protected readonly player = isPlayer;
+  protected readonly word = stateWordOf;
 
   /** The legend of the three shapes, once a player's creature is in the order. */
   protected readonly hasCreatures = computed(() => this.rows().some(isCreature));
@@ -438,24 +371,6 @@ export class OrderList {
     }
     this.endingAid.set(null);
     this.endAid.emit(id);
-  }
-
-  protected sub(c: Combatant): string {
-    const info = this.info().get(c.characterId);
-    // Under the shield the row says the sum in bold after the line ("CA 13 + 5"), so the plain "CA 13" waits out.
-    const ac = c.armorClass === undefined || this.shield(c) > 0 ? '' : `CA ${c.armorClass}`;
-    if (isCreature(c)) {
-      // "CA 14 · da Sálvia": its armor class and whose it is (the round dashed token and the legend say it is a creature); the
-      // book's name only when the table gave it another ("Lobo atroz 1" needs none, "Nanquim" is a "Corvo").
-      const kind = kindWord(c);
-      return [kind === 'Criatura' ? '' : kind, ac, ofOwner(this.encounter(), c)]
-        .filter(Boolean)
-        .join(' · ');
-    }
-    const first = isPlayer(c) ? (info?.classSummary ?? '') : (info?.kindLabel ?? 'NPC');
-    // A monster of the bestiary (RN-29): the master alone is told its challenge rating ("ND 1/8").
-    const nd = c.challengeRating ? `ND\u00a0${c.challengeRating}` : '';
-    return [first, nd, ac].filter(Boolean).join(' · ');
   }
 
   protected readonly article = article;

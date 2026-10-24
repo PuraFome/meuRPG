@@ -91,7 +91,7 @@ test('a fúria do bárbaro corta o dano pela metade e o mestre vê o passo da re
 
     // The goblin's blow lands on the raging barbarian: the master reads the step.
     await openSessionPage(m, campaignId);
-    const card = m.getByRole('region', { name: 'Ações do Goblin 1' });
+    const card = m.getByRole('region', { name: 'Vez do Goblin 1' });
     await card.getByRole('button', { name: 'Digitar o resultado' }).click();
     await card.getByLabel(/Role 1d20/).fill('20');
     await card.getByRole('button', { name: 'Confirmar 20' }).click();

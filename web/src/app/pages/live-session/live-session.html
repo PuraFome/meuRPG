@@ -524,6 +524,7 @@
             [ownCharacterId]="state.ownCharacterId()"
             [ownCharacterName]="view.ownCharacterName()"
             [stageIds]="slot.stageIds()"
+            [combat]="state.isMaster() && view.combatOnScreen()"
             [sceneName]="scene.scene()?.name ?? ''"
             [connection]="state.connection()"
             [phone]="slot.phone()"

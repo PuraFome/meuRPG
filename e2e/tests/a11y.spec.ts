@@ -80,6 +80,7 @@ import {
   icaroSheetBody,
   lockAndMilestone,
 } from './table-sheet-support';
+import { openOrderRow } from './combat-layout';
 
 // docs/design/README.md#how-a-screen-is-made: every screen passes axe with no
 // serious or critical violation of WCAG 2.1 A and AA, in the light and the
@@ -1118,6 +1119,7 @@ async function scanActionScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await expect(m.getByText(/Desfazer o ataque do Capitão Goblin/)).toBeVisible();
     await expectScreenPasses(m, `Desfazer a última ação ${where}`);
     await m.getByRole('button', { name: 'Voltar' }).click();
+    await openOrderRow(m, 'Goblin 1');
     await m.getByRole('button', { name: 'Dano ou cura em Goblin 1' }).click();
     await expect(m.getByRole('heading', { name: 'Dano ou cura em Goblin 1' })).toBeVisible();
     await expectScreenPasses(m, `Dano/Cura de um NPC ${where}`);
@@ -1260,12 +1262,14 @@ async function scanMoveScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     const order = m.getByRole('region', { name: 'Ordem de iniciativa' });
     await expect(order.getByText('Meia cobertura (do mapa) contra o Pensantus').first()).toBeVisible();
     await expectScreenPasses(m, `Ordem do mestre, com a cobertura contra quem tem a vez ${where}`);
+    await openOrderRow(m, 'Capitão Goblin');
     await order.getByRole('button', { name: 'Marcar cobertura de Capitão Goblin' }).click();
     await expect(order.getByRole('radiogroup', { name: 'Cobertura marcada de Capitão Goblin' })).toBeVisible();
     await expectScreenPasses(m, `Marcar cobertura, no lugar ${where}`);
     await pickRadio(order, 'Três quartos');
     await expect(order.getByText('Três quartos (marcada pelo mestre) contra o Pensantus')).toBeVisible();
     await order.getByRole('button', { name: 'Fechar' }).click();
+    await openOrderRow(m, 'Goblin 2');
     await order.getByRole('button', { name: 'Mais ações para Goblin 2' }).click();
     await m.getByRole('menuitem', { name: 'Marcar como aliado' }).click();
     await expect(order.getByText('Aliado')).toBeVisible();
@@ -1368,6 +1372,7 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     await p.getByRole('button', { name: 'Voltar à sua vez' }).click();
 
     // The conditions: the dialog (the master) and the tags on both screens.
+    await openOrderRow(m, 'Goblin 1');
     await m.getByRole('button', { name: 'Mais ações para Goblin 1' }).click();
     await m.getByRole('menuitem', { name: 'Mudar condições' }).click();
     await expect(m.getByRole('dialog', { name: 'Condições de Goblin 1' })).toBeVisible();

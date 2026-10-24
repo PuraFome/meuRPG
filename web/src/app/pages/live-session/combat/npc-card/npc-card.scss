@@ -22,6 +22,10 @@
   overflow-wrap: anywhere;
 }
 
+.card > :empty {
+  display: none;
+}
+
 .card--bare {
   padding: 0;
   border-color: transparent;
@@ -75,8 +79,8 @@
 .stat__val {
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 26px;
-  line-height: 30px;
+  font-size: 24px;
+  line-height: 28px;
 
   small {
     font-family: var(--mr-font-sans);

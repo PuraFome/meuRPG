@@ -4,6 +4,7 @@ import { combatRPC, getEncounterRPC, torenSheet, toren, pensantusCasting } from 
 import { openSessionPage } from './live-session-support';
 import { boxOf, layoutSize } from './support';
 import { movingTable, paintRPC, pickRadio, tapSquare } from './move-support';
+import { openOrderRow } from './combat-layout';
 
 // Movement, jumps, cover, "Aliado" and the opportunity attacks on screen (Etapa 9,
 // slice 9.15, MR-034, RN-21, questions 68 to 70). The table, the layers and the
@@ -125,6 +126,7 @@ test(
       await sheet.getByRole('button', { name: 'Fechar' }).click();
 
       // The master marks the Capitão's cover by hand: three quarters, and Goblin 2 total. Applies at once.
+      await openOrderRow(m, 'Capitão Goblin');
       await order.getByRole('button', { name: 'Marcar cobertura de Capitão Goblin' }).click();
       const mark = order.getByRole('radiogroup', { name: 'Cobertura marcada de Capitão Goblin' });
       await pickRadio(mark, 'Três quartos');
@@ -132,6 +134,7 @@ test(
       await expect(order.getByText('Três quartos (marcada pelo mestre) contra o Pensantus')).toBeVisible();
       await order.getByRole('button', { name: 'Fechar' }).click();
       await expect(order.getByRole('button', { name: 'Marcar cobertura de Capitão Goblin' })).toBeFocused();
+      await openOrderRow(m, 'Goblin 2');
       await order.getByRole('button', { name: 'Mais ações para Goblin 2' }).click();
       await m.getByRole('menuitem', { name: 'Marcar cobertura' }).click();
       await pickRadio(order.getByRole('radiogroup', { name: 'Cobertura marcada de Goblin 2' }), 'Cobertura total');
@@ -175,7 +178,7 @@ test(
     try {
       await openSessionPage(p, campaignId);
       await openSessionPage(m, campaignId);
-      await expect(m.getByText('Vez do Goblin 1')).toBeVisible();
+      await expect(m.getByText('Vez do Goblin 1').first()).toBeVisible();
       // The master drags the goblin on turn out of the reach: a move like any, which provokes.
       const start = await getEncounterRPC(m, campaignId);
       const g1 = start.combatants.find((c) => c.label === 'Goblin 1')!;
@@ -225,7 +228,7 @@ test(
     try {
       await openSessionPage(p, campaignId);
       await openSessionPage(m, campaignId);
-      await expect(m.getByText('Vez do Goblin 1')).toBeVisible();
+      await expect(m.getByText('Vez do Goblin 1').first()).toBeVisible();
       const start = await getEncounterRPC(m, campaignId);
       await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: start.id, combatantId: start.combatants.find((c) => c.label === 'Goblin 1')!.id, col: 9, row: 7 });
       const prompt = p.getByRole('alertdialog', { name: 'Ataque de oportunidade' });
@@ -388,11 +391,13 @@ test(
       await openSessionPage(p, campaignId);
       await openSessionPage(m, campaignId);
       const order = m.getByRole('region', { name: 'Ordem de iniciativa' });
+      await openOrderRow(m, 'Goblin 2');
       await order.getByRole('button', { name: 'Mais ações para Goblin 2' }).click();
       await m.getByRole('menuitem', { name: 'Marcar como aliado' }).click();
       await expect(order.getByText('Aliado')).toBeVisible();
       await expect(order.getByRole('list', { name: 'Condições de Goblin 2' })).toHaveCount(0);
       await expect(p.getByText('Aliado').first()).toBeVisible();
+      await openOrderRow(m, 'Goblin 2');
       await order.getByRole('button', { name: 'Mais ações para Goblin 2' }).click();
       await m.getByRole('menuitem', { name: 'Voltar a ser inimigo' }).click();
       await expect(order.getByText('Aliado')).toHaveCount(0);
@@ -445,7 +450,7 @@ test(
     });
     try {
       await openSessionPage(m, campaignId);
-      await expect(m.getByText('Vez do Goblin 1')).toBeVisible();
+      await expect(m.getByText('Vez do Goblin 1').first()).toBeVisible();
       const forced = m.getByRole('checkbox', { name: /Movimento forçado/ });
       await expect(forced).not.toBeChecked();
       await expect(m.getByText('Arraste um token para movê-lo. O mestre anda sem limite.')).toBeVisible();

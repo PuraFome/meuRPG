@@ -662,7 +662,7 @@
         [subject]="who"
         [options]="options()"
         [state]="state()"
-        [framed]="theatre() && laptop()"
+        [framed]="theatre() || !laptop()"
         [reactionStopped]="reactionStopped()"
         [turnBusy]="busy()"
         [theatre]="theatre()"
@@ -744,7 +744,7 @@
     <div class="phone">
       <p class="phone__line">
         <mat-icon aria-hidden="true">swords</mat-icon>
-        <span><b>{{ roundText() }}</b> · {{ e.name }}@if (nextName(); as next) { · em seguida: {{ next }}}</span>
+        <span><b>{{ layout.roundText() }}</b> · {{ e.name }}@if (layout.nextName(); as next) { · em seguida: {{ next }}}</span>
       </p>
       <app-tab-list label="Combate" idPrefix="ptab" [tabs]="layout.phoneTabs()" [selected]="layout.phoneTab()" (selectedChange)="layout.phoneTab.set($event)" />
       <div class="phone__panel" role="tabpanel" id="ptab-panel-turn" aria-labelledby="ptab-tab-turn" [hidden]="layout.shownPhoneTab() !== 'turn'">

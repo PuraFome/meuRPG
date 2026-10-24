@@ -342,7 +342,7 @@ describe("OrderList with a player's creatures (E9-12)", () => {
 });
 
 describe('OrderList: the monsters of the bestiary (MR-042, RN-29, E10-08 state 5)', () => {
-  it('tells the master the ND of a monster beside its armor class; a combatant with none says nothing of it', () => {
+  it('tells the master the ND of a monster in its opened row, and the armor class under the name; a combatant with none says nothing of it', () => {
     const fixture = TestBed.createComponent(OrderList);
     fixture.componentRef.setInput(
       'encounter',
@@ -386,7 +386,12 @@ describe('OrderList: the monsters of the bestiary (MR-042, RN-29, E10-08 state 5
     const subs = Array.from(
       (fixture.nativeElement as HTMLElement).querySelectorAll('.row__sub'),
     ).map((s) => s.textContent?.replace(/\s+/g, ' ').trim());
-    expect(subs).toEqual(['Inic. 11 · ND 1/8 · CA 12', 'Escondido · inic. 5', 'Inic. 9 · CA 15']);
+    expect(subs).toEqual(['Inic. 11 · CA 12', 'Escondido · inic. 5', 'Inic. 9 · CA 15']);
+    const nds = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('.row__nd'),
+      (n) => n.textContent?.replace(/\s+/g, ' ').trim(),
+    );
+    expect(nds).toEqual(['ND 1/8', 'ND 1/8']);
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Escondido');
   });
 

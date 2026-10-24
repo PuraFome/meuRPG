@@ -26,10 +26,10 @@
     </ol>
   </section>
 } @else {
-<section class="mr-panel order" aria-labelledby="order-title">
+<section class="mr-panel order" aria-label="Ordem de iniciativa">
   <div class="order__head">
     <mat-icon class="order__icon" aria-hidden="true">swords</mat-icon>
-    <h2 class="order__title" id="order-title">Ordem</h2>
+    <h2 class="order__title">Ordem</h2>
     @if (rows().length > crowded) {
       <span class="order__count" [attr.aria-label]="rows().length + ' combatentes'">{{ rows().length }}</span>
     }
@@ -116,9 +116,6 @@
             @if (inTurn(c)) {
               <app-part-state [ended]="c.turnPartEnded" />
             }
-            @if (c.concentrationSpell) {
-              <app-conc-pill class="row__conc" />
-            }
           </span>
           <span class="row__meta">
             <span class="row__sub">{{ compactSub(c, inGroup) }}@if (shield(c) > 0) {{{ compactSub(c, inGroup) ? ' · ' : '' }}<b>CA {{ c.armorClass }} + {{ shield(c) }}</b>}</span>
@@ -172,6 +169,12 @@
             }
             @if (ally(c)) {
               <span class="row__state"><mat-icon aria-hidden="true">handshake</mat-icon>Aliado</span>
+            }
+            @if (c.concentrationSpell) {
+              <app-conc-pill class="row__conc" />
+            }
+            @if (c.challengeRating) {
+              <span class="row__nd">ND&nbsp;{{ c.challengeRating }}</span>
             }
             @if (c.hitPointsMax !== undefined) {
               <span class="row__pv-inline">PV {{ c.hitPointsCurrent }} de {{ c.hitPointsMax }}@if (aid(c) > 0) { · {{ aidTag(aid(c)) }}}@if (c.initiative !== undefined) { · iniciativa&nbsp;<b>{{ c.initiative }}</b>}</span>
