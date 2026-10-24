@@ -110,6 +110,9 @@ const (
 	// MapServiceForgetMapVisionProcedure is the fully-qualified name of the MapService's
 	// ForgetMapVision RPC.
 	MapServiceForgetMapVisionProcedure = "/meurpg.maps.v1.MapService/ForgetMapVision"
+	// MapServiceListCharactersInTheDarkProcedure is the fully-qualified name of the MapService's
+	// ListCharactersInTheDark RPC.
+	MapServiceListCharactersInTheDarkProcedure = "/meurpg.maps.v1.MapService/ListCharactersInTheDark"
 	// MapServiceRevealTrapProcedure is the fully-qualified name of the MapService's RevealTrap RPC.
 	MapServiceRevealTrapProcedure = "/meurpg.maps.v1.MapService/RevealTrap"
 	// MapServiceGetTrapNoticersProcedure is the fully-qualified name of the MapService's
@@ -615,6 +618,23 @@ type MapServiceClient interface {
 	//     exist, or the caller is not a member of it.
 	//   - `permission_denied`: the caller is a player.
 	ForgetMapVision(context.Context, *connect.Request[v1.ForgetMapVisionRequest]) (*connect.Response[v1.ForgetMapVisionResponse], error)
+	// ListCharactersInTheDark tells the master which player characters see
+	// nothing where they stand on a map: the map has the fog of war on, the square
+	// is dark (the base light "Escuro" and no painted light or light source reaches
+	// it, a hidden NPC's light and a carried light included) and the character has
+	// no darkvision, blindsight or truesight to cover it. With "Penumbra" or
+	// "Claro" as the base light, or without the fog, nobody is in the dark and the
+	// list is empty. Only the characters that stand on this map are listed, living
+	// ones that have a player. The answer is the master's alone (RN-10): it is
+	// worked out from lights a player cannot see. The app reads it again when the
+	// master's stream says `map_changed` or `token_moved` (a carried light, a Luz
+	// point, a token or the map's light changed).
+	//
+	// Errors:
+	//   - `not_found`: the map is not in this campaign, the campaign does not
+	//     exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	ListCharactersInTheDark(context.Context, *connect.Request[v1.ListCharactersInTheDarkRequest]) (*connect.Response[v1.ListCharactersInTheDarkResponse], error)
 	// RevealTrap shows a TRAP point to the players the master chose: some
 	// characters (their players get the trap, and nobody else does) or everyone
 	// (the same as revealing the point, SetMapPointRevealed). Only the campaign's
@@ -910,6 +930,13 @@ func NewMapServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(mapServiceMethods.ByName("ForgetMapVision")),
 			connect.WithClientOptions(opts...),
 		),
+		listCharactersInTheDark: connect.NewClient[v1.ListCharactersInTheDarkRequest, v1.ListCharactersInTheDarkResponse](
+			httpClient,
+			baseURL+MapServiceListCharactersInTheDarkProcedure,
+			connect.WithSchema(mapServiceMethods.ByName("ListCharactersInTheDark")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
 		revealTrap: connect.NewClient[v1.RevealTrapRequest, v1.RevealTrapResponse](
 			httpClient,
 			baseURL+MapServiceRevealTrapProcedure,
@@ -952,41 +979,42 @@ func NewMapServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 
 // mapServiceClient implements MapServiceClient.
 type mapServiceClient struct {
-	listMaps            *connect.Client[v1.ListMapsRequest, v1.ListMapsResponse]
-	getMap              *connect.Client[v1.GetMapRequest, v1.GetMapResponse]
-	createMap           *connect.Client[v1.CreateMapRequest, v1.CreateMapResponse]
-	updateMap           *connect.Client[v1.UpdateMapRequest, v1.UpdateMapResponse]
-	deleteMap           *connect.Client[v1.DeleteMapRequest, v1.DeleteMapResponse]
-	setMapRevealed      *connect.Client[v1.SetMapRevealedRequest, v1.SetMapRevealedResponse]
-	setMapGrid          *connect.Client[v1.SetMapGridRequest, v1.SetMapGridResponse]
-	createMapPoint      *connect.Client[v1.CreateMapPointRequest, v1.CreateMapPointResponse]
-	updateMapPoint      *connect.Client[v1.UpdateMapPointRequest, v1.UpdateMapPointResponse]
-	deleteMapPoint      *connect.Client[v1.DeleteMapPointRequest, v1.DeleteMapPointResponse]
-	setMapPointRevealed *connect.Client[v1.SetMapPointRevealedRequest, v1.SetMapPointRevealedResponse]
-	addSceneAction      *connect.Client[v1.AddSceneActionRequest, v1.AddSceneActionResponse]
-	updateSceneAction   *connect.Client[v1.UpdateSceneActionRequest, v1.UpdateSceneActionResponse]
-	moveSceneAction     *connect.Client[v1.MoveSceneActionRequest, v1.MoveSceneActionResponse]
-	removeSceneAction   *connect.Client[v1.RemoveSceneActionRequest, v1.RemoveSceneActionResponse]
-	addSceneClue        *connect.Client[v1.AddSceneClueRequest, v1.AddSceneClueResponse]
-	updateSceneClue     *connect.Client[v1.UpdateSceneClueRequest, v1.UpdateSceneClueResponse]
-	moveSceneClue       *connect.Client[v1.MoveSceneClueRequest, v1.MoveSceneClueResponse]
-	removeSceneClue     *connect.Client[v1.RemoveSceneClueRequest, v1.RemoveSceneClueResponse]
-	revealSceneClue     *connect.Client[v1.RevealSceneClueRequest, v1.RevealSceneClueResponse]
-	setSceneImages      *connect.Client[v1.SetSceneImagesRequest, v1.SetSceneImagesResponse]
-	placeMapToken       *connect.Client[v1.PlaceMapTokenRequest, v1.PlaceMapTokenResponse]
-	setMapTokenHidden   *connect.Client[v1.SetMapTokenHiddenRequest, v1.SetMapTokenHiddenResponse]
-	removeMapToken      *connect.Client[v1.RemoveMapTokenRequest, v1.RemoveMapTokenResponse]
-	paintMapCells       *connect.Client[v1.PaintMapCellsRequest, v1.PaintMapCellsResponse]
-	getMapLayers        *connect.Client[v1.GetMapLayersRequest, v1.GetMapLayersResponse]
-	setMapFog           *connect.Client[v1.SetMapFogRequest, v1.SetMapFogResponse]
-	getMapVision        *connect.Client[v1.GetMapVisionRequest, v1.GetMapVisionResponse]
-	forgetMapVision     *connect.Client[v1.ForgetMapVisionRequest, v1.ForgetMapVisionResponse]
-	revealTrap          *connect.Client[v1.RevealTrapRequest, v1.RevealTrapResponse]
-	getTrapNoticers     *connect.Client[v1.GetTrapNoticersRequest, v1.GetTrapNoticersResponse]
-	disarmTrap          *connect.Client[v1.DisarmTrapRequest, v1.DisarmTrapResponse]
-	markTreasureFound   *connect.Client[v1.MarkTreasureFoundRequest, v1.MarkTreasureFoundResponse]
-	unmarkTreasureFound *connect.Client[v1.UnmarkTreasureFoundRequest, v1.UnmarkTreasureFoundResponse]
-	setCarriedLight     *connect.Client[v1.SetCarriedLightRequest, v1.SetCarriedLightResponse]
+	listMaps                *connect.Client[v1.ListMapsRequest, v1.ListMapsResponse]
+	getMap                  *connect.Client[v1.GetMapRequest, v1.GetMapResponse]
+	createMap               *connect.Client[v1.CreateMapRequest, v1.CreateMapResponse]
+	updateMap               *connect.Client[v1.UpdateMapRequest, v1.UpdateMapResponse]
+	deleteMap               *connect.Client[v1.DeleteMapRequest, v1.DeleteMapResponse]
+	setMapRevealed          *connect.Client[v1.SetMapRevealedRequest, v1.SetMapRevealedResponse]
+	setMapGrid              *connect.Client[v1.SetMapGridRequest, v1.SetMapGridResponse]
+	createMapPoint          *connect.Client[v1.CreateMapPointRequest, v1.CreateMapPointResponse]
+	updateMapPoint          *connect.Client[v1.UpdateMapPointRequest, v1.UpdateMapPointResponse]
+	deleteMapPoint          *connect.Client[v1.DeleteMapPointRequest, v1.DeleteMapPointResponse]
+	setMapPointRevealed     *connect.Client[v1.SetMapPointRevealedRequest, v1.SetMapPointRevealedResponse]
+	addSceneAction          *connect.Client[v1.AddSceneActionRequest, v1.AddSceneActionResponse]
+	updateSceneAction       *connect.Client[v1.UpdateSceneActionRequest, v1.UpdateSceneActionResponse]
+	moveSceneAction         *connect.Client[v1.MoveSceneActionRequest, v1.MoveSceneActionResponse]
+	removeSceneAction       *connect.Client[v1.RemoveSceneActionRequest, v1.RemoveSceneActionResponse]
+	addSceneClue            *connect.Client[v1.AddSceneClueRequest, v1.AddSceneClueResponse]
+	updateSceneClue         *connect.Client[v1.UpdateSceneClueRequest, v1.UpdateSceneClueResponse]
+	moveSceneClue           *connect.Client[v1.MoveSceneClueRequest, v1.MoveSceneClueResponse]
+	removeSceneClue         *connect.Client[v1.RemoveSceneClueRequest, v1.RemoveSceneClueResponse]
+	revealSceneClue         *connect.Client[v1.RevealSceneClueRequest, v1.RevealSceneClueResponse]
+	setSceneImages          *connect.Client[v1.SetSceneImagesRequest, v1.SetSceneImagesResponse]
+	placeMapToken           *connect.Client[v1.PlaceMapTokenRequest, v1.PlaceMapTokenResponse]
+	setMapTokenHidden       *connect.Client[v1.SetMapTokenHiddenRequest, v1.SetMapTokenHiddenResponse]
+	removeMapToken          *connect.Client[v1.RemoveMapTokenRequest, v1.RemoveMapTokenResponse]
+	paintMapCells           *connect.Client[v1.PaintMapCellsRequest, v1.PaintMapCellsResponse]
+	getMapLayers            *connect.Client[v1.GetMapLayersRequest, v1.GetMapLayersResponse]
+	setMapFog               *connect.Client[v1.SetMapFogRequest, v1.SetMapFogResponse]
+	getMapVision            *connect.Client[v1.GetMapVisionRequest, v1.GetMapVisionResponse]
+	forgetMapVision         *connect.Client[v1.ForgetMapVisionRequest, v1.ForgetMapVisionResponse]
+	listCharactersInTheDark *connect.Client[v1.ListCharactersInTheDarkRequest, v1.ListCharactersInTheDarkResponse]
+	revealTrap              *connect.Client[v1.RevealTrapRequest, v1.RevealTrapResponse]
+	getTrapNoticers         *connect.Client[v1.GetTrapNoticersRequest, v1.GetTrapNoticersResponse]
+	disarmTrap              *connect.Client[v1.DisarmTrapRequest, v1.DisarmTrapResponse]
+	markTreasureFound       *connect.Client[v1.MarkTreasureFoundRequest, v1.MarkTreasureFoundResponse]
+	unmarkTreasureFound     *connect.Client[v1.UnmarkTreasureFoundRequest, v1.UnmarkTreasureFoundResponse]
+	setCarriedLight         *connect.Client[v1.SetCarriedLightRequest, v1.SetCarriedLightResponse]
 }
 
 // ListMaps calls meurpg.maps.v1.MapService.ListMaps.
@@ -1132,6 +1160,11 @@ func (c *mapServiceClient) GetMapVision(ctx context.Context, req *connect.Reques
 // ForgetMapVision calls meurpg.maps.v1.MapService.ForgetMapVision.
 func (c *mapServiceClient) ForgetMapVision(ctx context.Context, req *connect.Request[v1.ForgetMapVisionRequest]) (*connect.Response[v1.ForgetMapVisionResponse], error) {
 	return c.forgetMapVision.CallUnary(ctx, req)
+}
+
+// ListCharactersInTheDark calls meurpg.maps.v1.MapService.ListCharactersInTheDark.
+func (c *mapServiceClient) ListCharactersInTheDark(ctx context.Context, req *connect.Request[v1.ListCharactersInTheDarkRequest]) (*connect.Response[v1.ListCharactersInTheDarkResponse], error) {
+	return c.listCharactersInTheDark.CallUnary(ctx, req)
 }
 
 // RevealTrap calls meurpg.maps.v1.MapService.RevealTrap.
@@ -1651,6 +1684,23 @@ type MapServiceHandler interface {
 	//     exist, or the caller is not a member of it.
 	//   - `permission_denied`: the caller is a player.
 	ForgetMapVision(context.Context, *connect.Request[v1.ForgetMapVisionRequest]) (*connect.Response[v1.ForgetMapVisionResponse], error)
+	// ListCharactersInTheDark tells the master which player characters see
+	// nothing where they stand on a map: the map has the fog of war on, the square
+	// is dark (the base light "Escuro" and no painted light or light source reaches
+	// it, a hidden NPC's light and a carried light included) and the character has
+	// no darkvision, blindsight or truesight to cover it. With "Penumbra" or
+	// "Claro" as the base light, or without the fog, nobody is in the dark and the
+	// list is empty. Only the characters that stand on this map are listed, living
+	// ones that have a player. The answer is the master's alone (RN-10): it is
+	// worked out from lights a player cannot see. The app reads it again when the
+	// master's stream says `map_changed` or `token_moved` (a carried light, a Luz
+	// point, a token or the map's light changed).
+	//
+	// Errors:
+	//   - `not_found`: the map is not in this campaign, the campaign does not
+	//     exist, or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	ListCharactersInTheDark(context.Context, *connect.Request[v1.ListCharactersInTheDarkRequest]) (*connect.Response[v1.ListCharactersInTheDarkResponse], error)
 	// RevealTrap shows a TRAP point to the players the master chose: some
 	// characters (their players get the trap, and nobody else does) or everyone
 	// (the same as revealing the point, SetMapPointRevealed). Only the campaign's
@@ -1942,6 +1992,13 @@ func NewMapServiceHandler(svc MapServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(mapServiceMethods.ByName("ForgetMapVision")),
 		connect.WithHandlerOptions(opts...),
 	)
+	mapServiceListCharactersInTheDarkHandler := connect.NewUnaryHandler(
+		MapServiceListCharactersInTheDarkProcedure,
+		svc.ListCharactersInTheDark,
+		connect.WithSchema(mapServiceMethods.ByName("ListCharactersInTheDark")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
 	mapServiceRevealTrapHandler := connect.NewUnaryHandler(
 		MapServiceRevealTrapProcedure,
 		svc.RevealTrap,
@@ -2039,6 +2096,8 @@ func NewMapServiceHandler(svc MapServiceHandler, opts ...connect.HandlerOption) 
 			mapServiceGetMapVisionHandler.ServeHTTP(w, r)
 		case MapServiceForgetMapVisionProcedure:
 			mapServiceForgetMapVisionHandler.ServeHTTP(w, r)
+		case MapServiceListCharactersInTheDarkProcedure:
+			mapServiceListCharactersInTheDarkHandler.ServeHTTP(w, r)
 		case MapServiceRevealTrapProcedure:
 			mapServiceRevealTrapHandler.ServeHTTP(w, r)
 		case MapServiceGetTrapNoticersProcedure:
@@ -2174,6 +2233,10 @@ func (UnimplementedMapServiceHandler) GetMapVision(context.Context, *connect.Req
 
 func (UnimplementedMapServiceHandler) ForgetMapVision(context.Context, *connect.Request[v1.ForgetMapVisionRequest]) (*connect.Response[v1.ForgetMapVisionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.ForgetMapVision is not implemented"))
+}
+
+func (UnimplementedMapServiceHandler) ListCharactersInTheDark(context.Context, *connect.Request[v1.ListCharactersInTheDarkRequest]) (*connect.Response[v1.ListCharactersInTheDarkResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.ListCharactersInTheDark is not implemented"))
 }
 
 func (UnimplementedMapServiceHandler) RevealTrap(context.Context, *connect.Request[v1.RevealTrapRequest]) (*connect.Response[v1.RevealTrapResponse], error) {

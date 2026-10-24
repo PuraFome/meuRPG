@@ -26,6 +26,7 @@ import type {
 } from '../../../../gen/meurpg/maps/v1/maps_pb';
 import { TrapPresets } from '../../../core/traps/trap-presets';
 import { focusWithRing } from '../../../core/creatures/focus-ring';
+import { DarkWatch } from '../../../core/maps/dark-watch';
 import { LightPresets } from '../../../core/maps/light-presets';
 import { MapState } from '../../../core/maps/map-state';
 import { MapsClient } from '../../../core/maps/maps-client';
@@ -34,6 +35,7 @@ import { mapTokenInitial } from '../../../core/maps/token-initial';
 import { RosterClient, RosterEntry } from '../../../core/maps/roster-client';
 
 import { ViewAsList, type ViewAsPerson } from '../../../shared/fog-map/view-as-list';
+import { DarkMarks } from '../../../shared/fog-map/dark-marks';
 import { ViewAsMapView } from '../../../shared/fog-map/view-as-map';
 import { MapAsk } from '../../../shared/map-ask/map-ask';
 import { MapLayersLegend } from '../../../shared/map-layers/map-layers-legend';
@@ -43,6 +45,7 @@ import { MapSelection, MapView } from '../../../shared/map-view/map-view';
 import { CoverDegrees } from '../cover-degrees/cover-degrees';
 import { EditorBar, type EditorMode } from '../editor-bar/editor-bar';
 import { EditorOverlay } from '../../../shared/editor-overlay/editor-overlay';
+import { EditorDark } from './editor-dark';
 import { FogPanel } from '../fog-panel/fog-panel';
 import { GridPanel } from '../grid-panel/grid-panel';
 import { LayersPanel } from '../layers-panel/layers-panel';
@@ -112,6 +115,8 @@ interface PointPanelApi {
     MapLayersLegend,
     MapLegend,
     MapPinsLegend,
+    DarkMarks,
+    EditorDark,
     MapView,
     MatButtonModule,
     MatIconModule,
@@ -177,6 +182,29 @@ export class MapEditor {
   }
 
   protected readonly view = viewChild(MapView);
+  /** Who sees nothing where they stand on this map (the master's light warning, B3): read again with the map and its tokens. */
+  protected readonly dark = new DarkWatch(
+    (mapId) => this.api.charactersInTheDark(this.campaignId(), mapId),
+    () => {
+      const map = this.map();
+      return map?.fogEnabled ? map.id : null;
+    },
+    () => this.state().tokens(),
+  );
+  /** The character "Ver no mapa" chose: the one label "<Nome> · no escuro". */
+  protected readonly darkChosen = signal<string | null>(null);
+
+  /** "Ver no mapa" of the light warning: the map centers on the character. */
+  protected showDark(characterId: string): void {
+    this.darkChosen.set(characterId);
+    const t = this.state()
+      .tokens()
+      .find((x) => !x.creatureId && x.characterId === characterId);
+    if (t) {
+      // Centers on the character at the zoom the map has (the whole map, unless the master zoomed).
+      this.view()?.focusOn({ xBp: t.xBp, yBp: t.yBp }, this.view()?.scale());
+    }
+  }
   private readonly pointPanel = viewChild(PointPanel);
   private readonly lightPanel = viewChild(LightPointPanel);
   private readonly trapPanel = viewChild(TrapPointPanel);

@@ -55,6 +55,7 @@ export class LiveSession {
   protected readonly trapBoard = this.parts.trapBoard;
   protected readonly toasts = this.parts.toasts;
   protected readonly fog = this.parts.fog;
+  protected readonly dark = this.parts.dark;
   protected readonly combat = this.parts.combat;
   protected readonly scene = this.parts.scene;
   protected readonly puzzles = this.parts.puzzles;
@@ -66,6 +67,7 @@ export class LiveSession {
   protected readonly slot = new ConversationSlot({
     live: computed(() => this.state.phase() === 'live' && this.state.session() !== null),
     phone: mediaQuery(PHONE_QUERY),
+    unread: this.conversation.unread,
     pageVisible: pageVisible(this.services.document, this.services.destroyRef),
     isMaster: this.state.isMaster,
     campaignId: this.state.campaignId,

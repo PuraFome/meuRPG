@@ -17,7 +17,7 @@ import (
 // the SRD has no effect of that type (a feat from another book brings it).
 var overlayEffectTypes = []string{
 	"modifier", "proficiency", "resource", "sense", "roll_mode", "grant_action",
-	"superiority_die", "extra_attack", "extra_damage", "ranged_attack", "resistance", "choice", "ability_increase", "note",
+	"superiority_die", "extra_attack", "extra_damage", "ambush", "ranged_attack", "resistance", "choice", "ability_increase", "note",
 }
 
 // overlayChoiceKinds are the choices a table feature may offer. The subclass and
@@ -265,8 +265,8 @@ func (b *overlayBuilder) checkEffect(owner, path string, e *Effect, strict bool)
 		}
 	case "superiority_die":
 		return b.checkSuperiorityDie(site, e)
-	case "extra_damage":
-		return b.checkExtraDamage(site, e)
+	case "extra_damage", "ambush":
+		return b.checkOnTarget(site, e)
 	case "resource":
 		return b.checkResourceEffect(site, e)
 	}
@@ -455,6 +455,8 @@ var ownFields = map[string][]string{
 	"ability_increase": {"value", "count", "from"},
 	// An extra_damage adds its value to a weapon hit, when its applies holds, from a resource if it names one.
 	"extra_damage": {"applies", "value", "resource"},
+	// An ambush gives an edge against a target, by its applies alone.
+	"ambush": {"applies"},
 	// A ranged_attack's switches; which of them its applies allows is checkRangedAttack's.
 	"ranged_attack": {"applies", "ignore_cover", "range_multiplier", "no_long_range_disadvantage"},
 	// A resistance names the damage type it leaves out and when it holds.

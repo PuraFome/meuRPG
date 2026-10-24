@@ -259,6 +259,10 @@ type Traits struct {
 	// (rules.Derived); total cover still blocks. The spell range multiplier is already
 	// in the ranges (Spell.RangeFt, Attack.RangeFt of a cantrip).
 	SpellAttackIgnoresCover, RangedWeaponIgnoresCover, RangedWeaponNoLongRangeDisadvantage bool
+	// UnactedAdvantage and SurprisedCritical are the keys of the table features (ambush effects)
+	// that give advantage against a creature that has not had its turn yet and make a hit on a
+	// surprised creature critical; empty for none.
+	UnactedAdvantage, SurprisedCritical string
 }
 
 // Resistance is a damage resistance of a feature or trait: its key and name, the

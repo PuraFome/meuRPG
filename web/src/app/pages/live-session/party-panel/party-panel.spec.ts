@@ -109,3 +109,43 @@ describe('PartyPanel: Chamar a atenção', () => {
     expect(call).toHaveBeenCalledWith('camp', 'b');
   });
 });
+
+describe('PartyPanel: the "No escuro" badge (B3)', () => {
+  const flat = (n: Element | null | undefined) => n?.textContent?.replace(/\s+/g, ' ').trim();
+
+  function render(dark: ReadonlySet<string> | undefined) {
+    TestBed.configureTestingModule({}).overrideComponent(PartyPanel, {
+      remove: { imports: [SessionXp] },
+      add: { imports: [SessionXpStub] },
+    });
+    const fixture = TestBed.createComponent(PartyPanel);
+    fixture.componentRef.setInput('campaignId', 'camp');
+    fixture.componentRef.setInput('party', [
+      pensantusVitals(),
+      pensantusVitals({ characterId: 'b', name: 'Brisa' }),
+    ]);
+    if (dark) {
+      fixture.componentRef.setInput('dark', dark);
+    }
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  it('puts the amber badge with the moon beside the name of the one in the dark, and only there', () => {
+    const el = render(new Set(['b']));
+    const rows = el.querySelectorAll('.member');
+    expect(rows[0].querySelector('.js-dark')).toBeNull();
+    const badge = rows[1].querySelector('.js-dark');
+    expect(flat(badge)).toContain('No escuro');
+    expect(badge?.querySelector('mat-icon')?.textContent?.trim()).toBe('dark_mode');
+    expect(rows[1].querySelector('.member__who .js-dark')).not.toBeNull();
+  });
+
+  it('has no badge when nobody is in the dark', () => {
+    expect(render(new Set()).querySelector('.js-dark')).toBeNull();
+  });
+
+  it('has no badge when the page gives no list (a player never has one)', () => {
+    expect(render(undefined).querySelector('.js-dark')).toBeNull();
+  });
+});

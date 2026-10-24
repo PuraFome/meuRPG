@@ -640,6 +640,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, mapCalls["GetMapVision"] = mc.GetMapVision(ctx, connect.NewRequest(&mapsv1.GetMapVisionRequest{CampaignId: id, MapId: id}))
 	_, mapCalls["ForgetMapVision"] = mc.ForgetMapVision(ctx, connect.NewRequest(&mapsv1.ForgetMapVisionRequest{CampaignId: id, MapId: id}))
 	_, mapCalls["SetCarriedLight"] = mc.SetCarriedLight(ctx, connect.NewRequest(&mapsv1.SetCarriedLightRequest{CampaignId: id, MapId: id, CharacterId: id, LightKey: "light:torch"}))
+	_, mapCalls["ListCharactersInTheDark"] = mc.ListCharactersInTheDark(ctx, connect.NewRequest(&mapsv1.ListCharactersInTheDarkRequest{CampaignId: id, MapId: id}))
 	mapMethods := mapsv1.File_meurpg_maps_v1_maps_proto.Services().ByName("MapService").Methods()
 	if len(mapCalls) != mapMethods.Len() {
 		t.Errorf("called %d MapService methods, the service has %d", len(mapCalls), mapMethods.Len())
