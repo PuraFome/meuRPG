@@ -32,6 +32,8 @@ describe('CastingPanel (MR-048)', () => {
     fixture.componentRef.setInput('characterName', 'Ilaria');
     fixture.componentRef.setInput('diceMode', diceMode);
     const el = fixture.nativeElement as HTMLElement;
+    const waiting: number[] = [];
+    fixture.componentInstance.castsWaiting.subscribe((n) => waiting.push(n));
     const settle = async () => {
       for (let i = 0; i < 4; i++) {
         await fixture.whenStable();
@@ -49,7 +51,7 @@ describe('CastingPanel (MR-048)', () => {
       b!.click();
       await settle();
     };
-    return { el, api, fixture, settle, press };
+    return { el, api, fixture, settle, press, waiting };
   }
 
   const casting = outsideCast({
@@ -67,6 +69,11 @@ describe('CastingPanel (MR-048)', () => {
     expect(plain(el.textContent)).not.toContain('Concluir conjuração');
     await press('Parar a conjuração');
     expect(api.stopped).toEqual(['long']);
+  });
+
+  it('tells the page how many casts wait, for the count on "Grupo"', async () => {
+    const { waiting } = await setup(true, (a) => (a.active = [casting]));
+    expect(waiting.at(-1)).toBe(1);
   });
 
   it('the master completes the cast, with the dice in the app', async () => {

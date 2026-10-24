@@ -180,6 +180,50 @@ describe('ShownImagePanel, "Deixar com os jogadores" (E6-25)', () => {
   });
 });
 
+describe('ShownImagePanel as a row of the open scene (C3-01)', () => {
+  const carta = {
+    id: 'img-1',
+    name: 'Capitão Goblin',
+    width: 400,
+    height: 500,
+    url: '/images/img-1',
+  };
+
+  async function render(shown: typeof carta | null) {
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: LiveSessionSource,
+          useValue: { setShownImage: vi.fn(), takeBackLeftImage: vi.fn() },
+        },
+        { provide: GalleryClient, useValue: { list: () => Promise.resolve({ images: [] }) } },
+      ],
+    });
+    const fixture = TestBed.createComponent(ShownImagePanel);
+    fixture.componentRef.setInput('campaignId', 'c1');
+    fixture.componentRef.setInput('shown', shown);
+    fixture.componentRef.setInput('appearance', 'row');
+    await fixture.whenStable();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  const words = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll('button'), (b) => b.textContent?.replace(/\s+/g, ' ').trim());
+
+  it('draws no panel: only "Da galeria" while nothing is shown', async () => {
+    const el = await render(null);
+    expect(el.querySelector('.mr-panel')).toBeNull();
+    expect(words(el)).toEqual(['imageDa galeria']);
+    expect(el.querySelector('[role="switch"]')).toBeNull();
+  });
+
+  it('adds the keep switch and "Parar de mostrar" while an image is shown', async () => {
+    const el = await render(carta);
+    expect(el.querySelector('[role="switch"]')).not.toBeNull();
+    expect(words(el).some((w) => w?.includes('Parar de mostrar'))).toBe(true);
+  });
+});
+
 describe('takeBackErrorMessage', () => {
   it('maps the codes of TakeBackLeftImage', () => {
     expect(takeBackErrorMessage(new ConnectError('x', Code.NotFound))).toContain('já não estava');

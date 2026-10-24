@@ -161,3 +161,50 @@ describe('SessionMap: "Ir para <mapa>" on a Submapa point', () => {
     expect(el.textContent).toContain('A sessão acabou: o mapa só muda durante a sessão.');
   });
 });
+
+describe("SessionMap: the master's tool tabs (C6-05)", () => {
+  async function mount(tools: boolean) {
+    const state = new MapState(async () =>
+      mapResponse(mapMessage('map-1', 'Torre', { revealed: true }), [], []),
+    );
+    await state.open('map-1');
+    const fixture = TestBed.createComponent(SessionMap);
+    fixture.componentRef.setInput('campaignId', 'camp-1');
+    fixture.componentRef.setInput('state', state);
+    fixture.componentRef.setInput('mapId', 'map-1');
+    fixture.componentRef.setInput('isMaster', true);
+    fixture.componentRef.setInput('tools', tools);
+    fixture.componentRef.setInput('counts', { tokens: 3, traps: 0, treasure: 2, encounters: 1 });
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        { provide: MapsClient, useValue: {} },
+        { provide: LiveSessionSource, useValue: {} },
+        { provide: SceneClient, useValue: {} },
+      ],
+    });
+  });
+
+  it('draws no tabs unless asked', async () => {
+    expect((await mount(false)).querySelector('[role="tablist"]')).toBeNull();
+  });
+
+  it('names the tools, with their counts, and keeps every panel mounted', async () => {
+    const el = await mount(true);
+    const list = el.querySelector('[role="tablist"]')!;
+    expect(list.getAttribute('aria-label')).toBe('Ferramentas do mapa');
+    const names = Array.from(list.querySelectorAll('[role="tab"]'), (t) =>
+      (t.querySelector('span')?.textContent ?? '').trim(),
+    );
+    expect(names).toEqual(
+      expect.arrayContaining(['Pontos', 'Tokens', 'Armadilhas', 'Tesouro', 'Encontros']),
+    );
+    expect(el.querySelector('#map-tool-panel-pontos')?.hasAttribute('hidden')).toBe(false);
+    expect(el.querySelector('#map-tool-panel-tokens')?.hasAttribute('hidden')).toBe(true);
+  });
+});
