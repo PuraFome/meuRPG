@@ -68,6 +68,9 @@ func TestAudience(t *testing.T) {
 		{"master only", Audience{Master: true}, [4]int{1, 0, 0, 0}},
 		{"master and Ana's character", Audience{Master: true, UserID: ana.UserID}, [4]int{1, 1, 0, 0}},
 		{"only Bruno", Audience{UserID: bruno.UserID}, [4]int{0, 0, 1, 0}},
+		{"the players except Ana", Audience{Players: true, Except: []string{ana.UserID}}, [4]int{0, 0, 1, 0}},
+		{"the master and the players except Bruno", Audience{Master: true, Players: true, Except: []string{bruno.UserID}}, [4]int{1, 1, 0, 0}},
+		{"everyone is not narrowed by except", Audience{Everyone: true, Except: []string{ana.UserID}}, [4]int{1, 1, 1, 0}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

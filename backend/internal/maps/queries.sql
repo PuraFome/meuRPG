@@ -468,31 +468,81 @@ SELECT EXISTS (
 -- name: LeaveImage :execrows
 -- Leaves the campaign's gallery image with the players (MR-028). Selecting
 -- from gallery_images makes an image deleted meanwhile, or another
--- campaign's, insert nothing; an image already left keeps its left_at.
-INSERT INTO campaign_left_images (campaign_id, image_id, left_at)
-SELECT g.campaign_id, g.id, sqlc.arg(now)::TIMESTAMPTZ FROM gallery_images g
+-- campaign's, insert nothing. An image left already keeps its left_at and takes
+-- the audience of this leaving, the master's latest.
+INSERT INTO campaign_left_images (campaign_id, image_id, left_at, audience_everyone)
+SELECT g.campaign_id, g.id, sqlc.arg(now)::TIMESTAMPTZ, sqlc.arg(audience_everyone)::BOOL FROM gallery_images g
 WHERE g.campaign_id = sqlc.arg(campaign_id) AND g.id = sqlc.arg(image_id)
-ON CONFLICT (campaign_id, image_id) DO NOTHING;
+ON CONFLICT (campaign_id, image_id) DO UPDATE SET audience_everyone = excluded.audience_everyone;
+
+-- name: ClearLeftImageViewers :exec
+DELETE FROM campaign_left_image_viewers WHERE campaign_id = $1 AND image_id = $2;
+
+-- name: InsertLeftImageViewer :exec
+INSERT INTO campaign_left_image_viewers (campaign_id, image_id, user_id)
+VALUES ($1, $2, $3)
+ON CONFLICT (campaign_id, image_id, user_id) DO NOTHING;
 
 -- name: ListLeftImages :many
 -- The images left with the players, in the order they were left (id breaks
--- ties).
+-- ties), as the viewer sees them: the master every one, a player only the ones
+-- left with them (RN-10).
 SELECT g.* FROM campaign_left_images l
 JOIN gallery_images g ON g.id = l.image_id
-WHERE l.campaign_id = $1
+WHERE l.campaign_id = sqlc.arg(campaign_id)
+  AND (
+      sqlc.arg(master)::BOOL
+      OR l.audience_everyone
+      OR EXISTS (
+          SELECT 1 FROM campaign_left_image_viewers v
+          WHERE v.campaign_id = l.campaign_id AND v.image_id = l.image_id AND v.user_id = sqlc.arg(user_id)::UUID)
+  )
 ORDER BY l.left_at, g.id;
+
+-- name: ListLeftImageAudiences :many
+-- For the master's list: who each left image was left with.
+SELECT image_id, audience_everyone FROM campaign_left_images WHERE campaign_id = $1;
+
+-- name: ListLeftImageViewers :many
+SELECT image_id, user_id FROM campaign_left_image_viewers
+WHERE campaign_id = $1
+ORDER BY image_id, user_id;
 
 -- name: TakeBackLeftImage :execrows
 DELETE FROM campaign_left_images
 WHERE campaign_id = $1 AND image_id = $2;
 
+-- name: GetLeftImageAudience :one
+-- Who the image was left with (no row: it is not left).
+SELECT audience_everyone FROM campaign_left_images
+WHERE campaign_id = $1 AND image_id = $2;
+
+-- name: ListViewersOfLeftImage :many
+SELECT user_id FROM campaign_left_image_viewers
+WHERE campaign_id = $1 AND image_id = $2
+ORDER BY user_id;
+
 -- name: ImageIsLeft :one
--- Whether the image is left with the players. The image route asks it for a
--- player (RN-10).
+-- Whether the image is left with the players, whoever they are (a deletion
+-- tells the ones it was left with).
 SELECT EXISTS (
     SELECT 1 FROM campaign_left_images
     WHERE campaign_id = $1 AND image_id = $2
 );
+
+-- name: ImageIsLeftWith :one
+-- Whether the image is left with this player. The image route asks it for a
+-- player (RN-10).
+SELECT EXISTS (
+    SELECT 1 FROM campaign_left_images AS l
+    WHERE l.campaign_id = sqlc.arg(campaign_id) AND l.image_id = sqlc.arg(image_id)
+      AND (
+          l.audience_everyone
+          OR EXISTS (
+              SELECT 1 FROM campaign_left_image_viewers AS v
+              WHERE v.campaign_id = l.campaign_id AND v.image_id = l.image_id AND v.user_id = sqlc.arg(user_id)::UUID)
+      )
+)::BOOL AS left_with;
 
 -- The actions of an RP scene (MR-015). A scene point has at most 20; the
 -- handler counts them inside the transaction that inserts one.
@@ -515,8 +565,8 @@ ORDER BY a.point_id, a.position, a.created_at, a.id;
 -- create_key and create_hash are the idempotency key of AddSceneAction and the hash of its request
 -- (NULL when the call sent no key). The point is locked first, so a retry reads the first action
 -- with GetSceneActionByCreateKey and never races it.
-INSERT INTO scene_actions (point_id, position, key, name, dc, max_attempts, create_key, create_hash, created_at, updated_at)
-VALUES (sqlc.arg(point_id), sqlc.arg(position), sqlc.arg(key), sqlc.arg(name), sqlc.narg(dc), sqlc.arg(max_attempts), sqlc.narg(create_key), sqlc.narg(create_hash), sqlc.arg(now), sqlc.arg(now))
+INSERT INTO scene_actions (point_id, position, key, name, dc, max_attempts, hidden, create_key, create_hash, created_at, updated_at)
+VALUES (sqlc.arg(point_id), sqlc.arg(position), sqlc.arg(key), sqlc.arg(name), sqlc.narg(dc), sqlc.arg(max_attempts), sqlc.arg(hidden), sqlc.narg(create_key), sqlc.narg(create_hash), sqlc.arg(now), sqlc.arg(now))
 ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
 RETURNING *;
 
@@ -532,7 +582,7 @@ FOR UPDATE;
 
 -- name: UpdateSceneAction :one
 UPDATE scene_actions
-SET key = sqlc.arg(key), name = sqlc.arg(name), dc = sqlc.narg(dc), max_attempts = sqlc.arg(max_attempts), updated_at = sqlc.arg(now)
+SET key = sqlc.arg(key), name = sqlc.arg(name), dc = sqlc.narg(dc), max_attempts = sqlc.arg(max_attempts), hidden = sqlc.arg(hidden), updated_at = sqlc.arg(now)
 WHERE point_id = sqlc.arg(point_id) AND id = sqlc.arg(id)
 RETURNING *;
 

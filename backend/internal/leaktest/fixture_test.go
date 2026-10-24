@@ -65,9 +65,12 @@ type world struct {
 	offstage     *charactersv1.Character // an NPC with a portrait, not on the stage
 	seenNPC      *charactersv1.Character // an NPC the master left visible, in Ana's sight
 	stage2       *charactersv1.Character // an NPC the stream test puts on the stage
+	// The hidden NPC on the open scene's stage (its portrait is imgHiddenStage), and the hidden action of that scene.
+	hiddenStageNPC *charactersv1.Character
+	hiddenAction   string
 
 	// The gallery.
-	imgSceneA, imgSceneB, imgMap, imgUnshown, imgShown, imgLeft, imgPortrait, imgStage, imgGenerated, generation string
+	imgSceneA, imgSceneB, imgMap, imgUnshown, imgShown, imgLeft, imgPortrait, imgStage, imgHiddenStage, imgGenerated, generation string
 	// The scene's conversation (MR-051, RN-36): a picture on a line for Ana alone, and the lines
 	// the audio test asks for.
 	imgLine string
@@ -97,6 +100,7 @@ const (
 	trapFind     = 29
 	trapSave     = 26
 	sceneDC      = 28
+	hiddenActDC  = 30 // the DC of the scene's hidden action: no other number of the fixture is 30
 	hintDC       = 25
 	escapeDC     = 27 // the fixed escape DC of a grapple by a hidden NPC's attack
 	groupCheckDC = 23

@@ -90,6 +90,9 @@ const (
 	// PlayServiceSetShownImageProcedure is the fully-qualified name of the PlayService's SetShownImage
 	// RPC.
 	PlayServiceSetShownImageProcedure = "/meurpg.play.v1.PlayService/SetShownImage"
+	// PlayServiceSetShownImageAudienceProcedure is the fully-qualified name of the PlayService's
+	// SetShownImageAudience RPC.
+	PlayServiceSetShownImageAudienceProcedure = "/meurpg.play.v1.PlayService/SetShownImageAudience"
 	// PlayServiceListLeftImagesProcedure is the fully-qualified name of the PlayService's
 	// ListLeftImages RPC.
 	PlayServiceListLeftImagesProcedure = "/meurpg.play.v1.PlayService/ListLeftImages"
@@ -98,6 +101,14 @@ const (
 	PlayServiceTakeBackLeftImageProcedure = "/meurpg.play.v1.PlayService/TakeBackLeftImage"
 	// PlayServiceOpenSceneProcedure is the fully-qualified name of the PlayService's OpenScene RPC.
 	PlayServiceOpenSceneProcedure = "/meurpg.play.v1.PlayService/OpenScene"
+	// PlayServiceSetSceneAudienceProcedure is the fully-qualified name of the PlayService's
+	// SetSceneAudience RPC.
+	PlayServiceSetSceneAudienceProcedure = "/meurpg.play.v1.PlayService/SetSceneAudience"
+	// PlayServiceSetScenePlayersMayJoinProcedure is the fully-qualified name of the PlayService's
+	// SetScenePlayersMayJoin RPC.
+	PlayServiceSetScenePlayersMayJoinProcedure = "/meurpg.play.v1.PlayService/SetScenePlayersMayJoin"
+	// PlayServiceJoinSceneProcedure is the fully-qualified name of the PlayService's JoinScene RPC.
+	PlayServiceJoinSceneProcedure = "/meurpg.play.v1.PlayService/JoinScene"
 	// PlayServiceCloseSceneProcedure is the fully-qualified name of the PlayService's CloseScene RPC.
 	PlayServiceCloseSceneProcedure = "/meurpg.play.v1.PlayService/CloseScene"
 	// PlayServiceGetOpenSceneProcedure is the fully-qualified name of the PlayService's GetOpenScene
@@ -131,6 +142,9 @@ const (
 	// PlayServiceTakeOffStageProcedure is the fully-qualified name of the PlayService's TakeOffStage
 	// RPC.
 	PlayServiceTakeOffStageProcedure = "/meurpg.play.v1.PlayService/TakeOffStage"
+	// PlayServiceSetStageNpcHiddenProcedure is the fully-qualified name of the PlayService's
+	// SetStageNpcHidden RPC.
+	PlayServiceSetStageNpcHiddenProcedure = "/meurpg.play.v1.PlayService/SetStageNpcHidden"
 	// PlayServiceSetSpeakerProcedure is the fully-qualified name of the PlayService's SetSpeaker RPC.
 	PlayServiceSetSpeakerProcedure = "/meurpg.play.v1.PlayService/SetSpeaker"
 	// PlayServiceCastSummonProcedure is the fully-qualified name of the PlayService's CastSummon RPC.
@@ -283,9 +297,14 @@ type PlayServiceClient interface {
 	//     Sent only to the players it touches, and not queued again while one
 	//     waits in the stream's queue; the master never gets it;
 	//   - `shown_image_changed` when the master shows an image, stops showing
-	//     it, or deletes it; sent to everyone;
+	//     it, deletes it, or changes who sees it. A player gets it only when
+	//     what they see changed: the image, for a player who sees it now, and
+	//     no image, for a player who saw one and does not any more; a player
+	//     outside the image's audience, who saw nothing before, gets nothing.
+	//     The master gets every one, with the audience;
 	//   - `left_images_changed` when the list of images left with the players
-	//     changed (an image left, taken back or deleted); sent to everyone;
+	//     changed (an image left, taken back or deleted); a hint, sent to the
+	//     master and to the players the image was left with;
 	//   - `encounter_changed` when anything changes in the combat; a hint,
 	//     sent to everyone, and the app reads the combat again
 	//     (CombatService.GetEncounter);
@@ -310,14 +329,21 @@ type PlayServiceClient interface {
 	//     sent to everyone, and the app reads ProgressionService again;
 	//   - `scene_changed` when the open scene changed (opened, closed, or one
 	//     of its actions or its point changed); a hint, and the app reads it
-	//     again (GetOpenScene). Sent to everyone, except a change only the
-	//     master reads (the clues and the hooks), which reaches the master
-	//     alone;
+	//     again (GetOpenScene). Sent to the master and to the players in the
+	//     scene (everyone, when the scene is open to the whole table), except a
+	//     change only the master reads (the clues, the hooks, and a hidden
+	//     action that stays hidden), which reaches the master alone. When the
+	//     master changes who is in (OpenScene, SetSceneAudience), the players
+	//     who came in and the players who went out get it too, so the first
+	//     read the scene and the second read "no scene";
 	//   - `scene_check_rolled` when a character rolled an action of the open
 	//     scene; sent only to the master and to the roller, with no number;
 	//   - `stage_changed` when the stage changed (an NPC came in or went out,
-	//     the speaker changed, or the scene closed); a hint, sent to everyone,
-	//     and the app reads the open scene again (GetOpenScene);
+	//     the speaker changed, an NPC was shown or hidden, or the scene
+	//     closed); a hint, sent to everyone, and the app reads the open scene
+	//     again (GetOpenScene). Sent to the master and to the players in the
+	//     scene, as `scene_changed`. A change only the master reads (a hidden
+	//     NPC put on the stage or taken off it) reaches the master alone;
 	//   - `notes_changed` when the master revealed a clue to a player; sent
 	//     only to the players who got it, and the app reads their notes again
 	//     (NotesService.ListNotes);
@@ -519,9 +545,27 @@ type PlayServiceClient interface {
 	//
 	// It reveals nothing else: a player learns the image's ID only while it
 	// is shown (GetLiveSession, `shown_image_changed`), never the gallery.
-	// Every WatchGameSession stream of the campaign gets
-	// `shown_image_changed`. A new session starts showing nothing; deleting
-	// the image (GalleryService.DeleteGalleryImage) stops showing it.
+	// `shown_image_changed` goes to the streams of the audience (below). A new
+	// session starts showing nothing; deleting the image
+	// (GalleryService.DeleteGalleryImage) stops showing it.
+	//
+	// The image has an AUDIENCE (`audience`, ImageAudience; MR-028, RN-10):
+	//   - the whole table: every member. It is the only audience while no scene
+	//     is open, or the open scene is open to everyone: the image behaves as an
+	//     image shown with no scene;
+	//   - the scene's players: the players in the scene open to only some
+	//     players (OpenScene, SetSceneAudience), and the master. It is the
+	//     default while such a scene is open, and it follows who is in the scene
+	//     while that scene stays open. When the scene closes, another is opened,
+	//     or the scene opens to everyone, the image stays with the players who were
+	//     in at that moment (it becomes "chosen players" with them) and nobody
+	//     else receives it;
+	//   - chosen players: the players named, whoever they are.
+	// A player outside the audience gets the image nowhere: not in
+	// GetLiveSession, not in `shown_image_changed`, not through the image route
+	// (GET /images/{id} answers 404), not in the left list, and the summary
+	// never names it. The master changes the audience while the image is shown
+	// with SetShownImageAudience.
 	//
 	// An image that is the background of a map with the fog of war on is never
 	// sent to a player (RN-10): the session then shows a copy of it, a new gallery
@@ -536,7 +580,8 @@ type PlayServiceClient interface {
 	// `left_images_changed`. The master sets it by calling again with the
 	// same image_id and the new `keep`, which sends no event: the players
 	// never learn the switch. It is off for every image newly shown unless
-	// the call says otherwise.
+	// the call says otherwise. The image is left only with the players of its
+	// audience at that moment (a fixed set, or everyone for the whole table).
 	//
 	// Errors:
 	//   - `not_found`: the image is not in the campaign's gallery, the
@@ -546,7 +591,36 @@ type PlayServiceClient interface {
 	//     NO_OPEN_SESSION).
 	//   - `resource_exhausted`: the image is a fog map's background and the
 	//     gallery is full, so it cannot be copied.
+	//   - `invalid_argument`: the audience is malformed (see ImageAudience), or
+	//     names someone who is not a player of the campaign.
+	//   - `failed_precondition` with SceneBlocked SCENE_NOT_PARTIAL: the
+	//     audience asked is the scene's players and no scene open to only some
+	//     players is open.
 	SetShownImage(context.Context, *connect.Request[v1.SetShownImageRequest]) (*connect.Response[v1.SetShownImageResponse], error)
+	// SetShownImageAudience changes who sees the image that is shown now,
+	// while it is shown (MR-028): "Mostrar a toda a mesa" is the whole table,
+	// "Mudar quem vê" is a set of chosen players, and the scene's players is the
+	// default of a scene open to only some players. Only the campaign's master
+	// may call it. The kind IMAGE_AUDIENCE_KIND_UNSPECIFIED is refused. The
+	// same audience again changes nothing.
+	//
+	// Narrowing takes the image away at once from the players who are out of
+	// the new audience: GetLiveSession no longer returns it to them, the image
+	// route answers them 404, they get `shown_image_changed` with no image (the
+	// update they get when an image stops being shown), and the players who
+	// stay get nothing. Widening sends `shown_image_changed` with the image to
+	// the players who came in. The audience of an image left with the players
+	// (TakeBackLeftImage) is not changed here.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, the caller is not a member
+	//     of it, or no image is shown.
+	//   - `permission_denied`: the caller is a player.
+	//   - `invalid_argument`: the audience is malformed, or names someone who is
+	//     not a player of the campaign.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION), or SceneBlocked SCENE_NOT_PARTIAL (see SetShownImage).
+	SetShownImageAudience(context.Context, *connect.Request[v1.SetShownImageAudienceRequest]) (*connect.Response[v1.SetShownImageAudienceResponse], error)
 	// ListLeftImages returns the images the master left with the players
 	// (SetShownImage's `keep`), in the order they were left. Any active
 	// member may call it, in or out of a session: the left images belong to
@@ -555,7 +629,9 @@ type PlayServiceClient interface {
 	// lives in the campaign (campaign_left_images) and not in the session,
 	// which would take the images away from the players when it ends. A
 	// player gets their files (GET /images/{id}) while the image is on this
-	// list (RN-10).
+	// list and they are in its audience (RN-10): a player gets only the images
+	// that were left with them, and the master gets every one, each with its
+	// `audience`.
 	//
 	// Errors:
 	//   - `not_found`: the campaign does not exist, or the caller is not a
@@ -564,7 +640,7 @@ type PlayServiceClient interface {
 	// TakeBackLeftImage takes an image back from the players ("Tirar"): it
 	// leaves the list, and the players can no longer fetch it. The image
 	// stays in the gallery. Only the campaign's master may call it, in or out
-	// of a session. Every WatchGameSession stream of the campaign gets
+	// of a session. The master and the players the image was left with get
 	// `left_images_changed`. Taking back an image that is not on the list is
 	// `not_found`, so a second call (another tab) says so.
 	//
@@ -584,16 +660,72 @@ type PlayServiceClient interface {
 	// reveals nothing, it stays hidden on the map (RN-10), but the group has
 	// now "discovered" the scene (MR-030). Opening the scene that is already
 	// open changes nothing; closing it and opening it again starts the rolls
-	// afresh. Every stream gets `scene_changed`, and a `scene_opened` event
-	// goes to the history.
+	// afresh. The master and the scene's players get `scene_changed`, and a
+	// `scene_opened` event goes to the history.
+	//
+	// The scene may be open to only some players (`audience`): the default is
+	// the whole table, a later joiner included. A player outside the audience
+	// gets no scene at all, exactly as when none is open: GetOpenScene answers
+	// them with no scene, RollSceneCheck is refused as with no open scene, and
+	// the stream tells them nothing but, when they were in the scene before
+	// this call, a `scene_changed` so that they read "no scene". The master
+	// changes who is in later with SetSceneAudience.
 	//
 	// Errors:
 	//   - `not_found`: the point is not a SCENE point of the campaign's maps,
 	//     the campaign does not exist, or the caller is not a member of it.
+	//   - `invalid_argument`: an account of `audience` is not a player of the
+	//     campaign, or the audience is malformed (see SceneAudience).
 	//   - `permission_denied`: the caller is a player.
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION).
 	OpenScene(context.Context, *connect.Request[v1.OpenSceneRequest]) (*connect.Response[v1.OpenSceneResponse], error)
+	// SetSceneAudience changes the players the open scene is open to, while it
+	// is open (MR-015, RN-10). Only the campaign's master may call it. A player
+	// who comes in reads the scene at once (they get `scene_changed`); a player
+	// who goes out loses it at once: GetOpenScene answers them as if none were
+	// open, RollSceneCheck is refused as with no open scene, and they get
+	// `scene_changed` so that they read it. The players who stay, and the
+	// master, get `scene_changed` too (the master's other screens read who is
+	// in). The rolls already made stay with the opening, and come back to a
+	// player who comes in again. An image shown to the scene's players follows
+	// the change (SetShownImage). With the same audience nothing changes.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist or the caller is not a member
+	//     of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `invalid_argument`: no audience, or a malformed one (see
+	//     SceneAudience), or an account that is not a player of the campaign.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION), or no scene is open (SceneBlocked NO_OPEN_SCENE).
+	SetSceneAudience(context.Context, *connect.Request[v1.SetSceneAudienceRequest]) (*connect.Response[v1.SetSceneAudienceResponse], error)
+	// SetScenePlayersMayJoin turns the switch "Os jogadores podem entrar" of the open scene (MR-015, RN-10), off by
+	// default and set back to off when the scene closes or another opens. Only the master may call it, and only
+	// for a scene open to only some players (a scene open to everyone has nobody to let in:
+	// SceneBlocked SCENE_NOT_PARTIAL). With it on, every player out of the scene reads GetOpenScene as a scene
+	// with only `name` and `joinable` (nothing else of it), and may call JoinScene; with it off they read no
+	// scene. Every player gets `scene_changed` when the switch changes, so the prompt appears or goes. The same
+	// value changes nothing.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session (GameSessionBlocked, NO_OPEN_SESSION), no scene (SceneBlocked
+	//     NO_OPEN_SCENE) or a scene open to everyone (SceneBlocked SCENE_NOT_PARTIAL).
+	SetScenePlayersMayJoin(context.Context, *connect.Request[v1.SetScenePlayersMayJoinRequest]) (*connect.Response[v1.SetScenePlayersMayJoinResponse], error)
+	// JoinScene adds the caller to the players of the open scene, when the master lets players join. The caller
+	// then reads the scene as any member does, and gets `scene_changed`; the master sees who joined and how
+	// (ScenePlayer.joined_by_self), and an image shown to the scene's players reaches them. A player already in
+	// the scene gets the scene and nothing changes. It is refused as when no scene is open (SceneBlocked
+	// NO_OPEN_SCENE) when the switch is off, so a refusal never says a scene exists.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist or the caller is not a member of it.
+	//   - `permission_denied`: the caller is the master.
+	//   - `failed_precondition`: no open session (GameSessionBlocked, NO_OPEN_SESSION), or no scene to join
+	//     (SceneBlocked NO_OPEN_SCENE).
+	JoinScene(context.Context, *connect.Request[v1.JoinSceneRequest]) (*connect.Response[v1.JoinSceneResponse], error)
 	// CloseScene closes the open scene, asking nothing. Only the campaign's
 	// master may call it. With no scene open it changes nothing. Every stream
 	// gets `scene_changed`, and a `scene_closed` event goes to the history.
@@ -616,8 +748,12 @@ type PlayServiceClient interface {
 	//     attempts their own living character has left, their bonus and
 	//     passive value, and only their own rolls. When the master turned the
 	//     scene's `show_dc` on, the actions also carry their DCs and the rolls
-	//     whether they passed; when it is off, neither.
-	// The scene is unset when none is open.
+	//     whether they passed; when it is off, neither. A player never gets an
+	//     action the master hid, nor the rolls made on it, nor a stage NPC the
+	//     master hid (RN-10); the master gets them marked `hidden`.
+	// The scene is unset when none is open, and for a player who is out of a
+	// scene open to only some players: nothing tells them one is open (RN-10).
+	// The master also gets `audience`, who is in and who is out.
 	//
 	// Errors:
 	//   - `not_found`: the campaign does not exist, or the caller is not a
@@ -643,8 +779,10 @@ type PlayServiceClient interface {
 	//   - `invalid_argument`: neither roll_in_app nor d20_face is set;
 	//     roll_in_app is false; d20_face is not 1 to 20; the idempotency key
 	//     is not a UUID.
-	//   - `not_found`: the action is not one of the open scene's, the campaign
-	//     does not exist, or the caller is not a member of it.
+	//   - `not_found`: the action is not one of the open scene's, or it is one
+	//     the master hid (the very same error: the refusal never says the action
+	//     is there), the campaign does not exist, or the caller is not a member
+	//     of it.
 	//   - `permission_denied`: the caller is the master.
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION); or SceneBlocked: NO_OPEN_SCENE, ALREADY_ROLLED (no
@@ -771,8 +909,12 @@ type PlayServiceClient interface {
 	// open. Any living NPC of the campaign will do, hidden in a combat or not
 	// (putting it on stage reveals nothing in the combat). At most 4 NPCs are
 	// on the stage at once. An NPC that is on the stage already changes
-	// nothing. Every stream gets `stage_changed`, and a `stage_changed` event
-	// goes to the history (ids only).
+	// nothing (SetStageNpcHidden changes whether the players see it). With
+	// `hidden` the NPC goes on the stage hidden from the players: it counts for
+	// the limit of 4, the master reads it marked `hidden`, and no player ever
+	// receives it (not in GetOpenScene, not its portrait), nor a `stage_changed`
+	// for it: only the master's stream hears of it. Otherwise every stream gets
+	// `stage_changed`. A `stage_changed` event goes to the history (ids only).
 	//
 	// Errors:
 	//   - `not_found`: the character is not a living NPC of the campaign (or
@@ -784,8 +926,9 @@ type PlayServiceClient interface {
 	PutOnStage(context.Context, *connect.Request[v1.PutOnStageRequest]) (*connect.Response[v1.PutOnStageResponse], error)
 	// TakeOffStage takes an NPC off the stage at once. An NPC that is not on
 	// it changes nothing. Only the campaign's master may call it, and only
-	// while the session is open (the stage is empty without a scene). Every
-	// stream gets `stage_changed`.
+	// while the session is open (the stage is empty without a scene). Taking
+	// off an NPC the players see sends `stage_changed` to every stream; taking
+	// off a hidden one, to the master's alone: the players never knew it.
 	//
 	// Errors:
 	//   - `not_found`: character_id is not a UUID, the campaign does not exist,
@@ -794,10 +937,30 @@ type PlayServiceClient interface {
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION).
 	TakeOffStage(context.Context, *connect.Request[v1.TakeOffStageRequest]) (*connect.Response[v1.TakeOffStageResponse], error)
+	// SetStageNpcHidden turns an NPC on the stage between "Os jogadores veem"
+	// (hidden false) and "Escondida dos jogadores" (hidden true). Hiding the
+	// NPC that speaks takes the floor from it. Only the campaign's master may
+	// call it, and only while the session is open. The answer is the stage as
+	// the master reads it. Showing or hiding sends `stage_changed` to every
+	// stream, so the players read the scene again and the NPC appears or is
+	// gone from their stage: nothing tells them that it was hidden rather than
+	// taken off. Setting what it already is changes nothing, writes nothing
+	// and tells nobody. A `stage_changed` event goes to the history (ids only).
+	//
+	// Errors:
+	//   - `not_found`: the NPC is not on the stage (or character_id is not a
+	//     UUID), the campaign does not exist, or the caller is not a member of
+	//     it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION).
+	SetStageNpcHidden(context.Context, *connect.Request[v1.SetStageNpcHiddenRequest]) (*connect.Response[v1.SetStageNpcHiddenResponse], error)
 	// SetSpeaker marks which NPC on the stage is speaking, or none (an empty
 	// character_id). One at most: marking another takes the mark off the
-	// first. Marking the one that already speaks changes nothing. Only the
-	// campaign's master may call it. Every stream gets `stage_changed`.
+	// first. Marking the one that already speaks changes nothing. Marking a
+	// hidden NPC shows it to the players in the same call ("Dar a fala"): the
+	// master's tap means that it speaks now. Only the campaign's master may
+	// call it. Every stream gets `stage_changed`.
 	//
 	// Errors:
 	//   - `not_found`: the NPC is not on the stage (or character_id is set and
@@ -1025,6 +1188,12 @@ func NewPlayServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(playServiceMethods.ByName("SetShownImage")),
 			connect.WithClientOptions(opts...),
 		),
+		setShownImageAudience: connect.NewClient[v1.SetShownImageAudienceRequest, v1.SetShownImageAudienceResponse](
+			httpClient,
+			baseURL+PlayServiceSetShownImageAudienceProcedure,
+			connect.WithSchema(playServiceMethods.ByName("SetShownImageAudience")),
+			connect.WithClientOptions(opts...),
+		),
 		listLeftImages: connect.NewClient[v1.ListLeftImagesRequest, v1.ListLeftImagesResponse](
 			httpClient,
 			baseURL+PlayServiceListLeftImagesProcedure,
@@ -1042,6 +1211,24 @@ func NewPlayServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+PlayServiceOpenSceneProcedure,
 			connect.WithSchema(playServiceMethods.ByName("OpenScene")),
+			connect.WithClientOptions(opts...),
+		),
+		setSceneAudience: connect.NewClient[v1.SetSceneAudienceRequest, v1.SetSceneAudienceResponse](
+			httpClient,
+			baseURL+PlayServiceSetSceneAudienceProcedure,
+			connect.WithSchema(playServiceMethods.ByName("SetSceneAudience")),
+			connect.WithClientOptions(opts...),
+		),
+		setScenePlayersMayJoin: connect.NewClient[v1.SetScenePlayersMayJoinRequest, v1.SetScenePlayersMayJoinResponse](
+			httpClient,
+			baseURL+PlayServiceSetScenePlayersMayJoinProcedure,
+			connect.WithSchema(playServiceMethods.ByName("SetScenePlayersMayJoin")),
+			connect.WithClientOptions(opts...),
+		),
+		joinScene: connect.NewClient[v1.JoinSceneRequest, v1.JoinSceneResponse](
+			httpClient,
+			baseURL+PlayServiceJoinSceneProcedure,
+			connect.WithSchema(playServiceMethods.ByName("JoinScene")),
 			connect.WithClientOptions(opts...),
 		),
 		closeScene: connect.NewClient[v1.CloseSceneRequest, v1.CloseSceneResponse](
@@ -1119,6 +1306,12 @@ func NewPlayServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(playServiceMethods.ByName("TakeOffStage")),
 			connect.WithClientOptions(opts...),
 		),
+		setStageNpcHidden: connect.NewClient[v1.SetStageNpcHiddenRequest, v1.SetStageNpcHiddenResponse](
+			httpClient,
+			baseURL+PlayServiceSetStageNpcHiddenProcedure,
+			connect.WithSchema(playServiceMethods.ByName("SetStageNpcHidden")),
+			connect.WithClientOptions(opts...),
+		),
 		setSpeaker: connect.NewClient[v1.SetSpeakerRequest, v1.SetSpeakerResponse](
 			httpClient,
 			baseURL+PlayServiceSetSpeakerProcedure,
@@ -1160,43 +1353,48 @@ func NewPlayServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 
 // playServiceClient implements PlayServiceClient.
 type playServiceClient struct {
-	startGameSession      *connect.Client[v1.StartGameSessionRequest, v1.StartGameSessionResponse]
-	endGameSession        *connect.Client[v1.EndGameSessionRequest, v1.EndGameSessionResponse]
-	getSessionSummary     *connect.Client[v1.GetSessionSummaryRequest, v1.GetSessionSummaryResponse]
-	listGameSessions      *connect.Client[v1.ListGameSessionsRequest, v1.ListGameSessionsResponse]
-	listOpenGameSessions  *connect.Client[v1.ListOpenGameSessionsRequest, v1.ListOpenGameSessionsResponse]
-	getLiveSession        *connect.Client[v1.GetLiveSessionRequest, v1.GetLiveSessionResponse]
-	watchGameSession      *connect.Client[v1.WatchGameSessionRequest, v1.WatchGameSessionResponse]
-	adjustCharacterVitals *connect.Client[v1.AdjustCharacterVitalsRequest, v1.AdjustCharacterVitalsResponse]
-	nudgePlayer           *connect.Client[v1.NudgePlayerRequest, v1.NudgePlayerResponse]
-	sendSessionMessage    *connect.Client[v1.SendSessionMessageRequest, v1.SendSessionMessageResponse]
-	listSessionMessages   *connect.Client[v1.ListSessionMessagesRequest, v1.ListSessionMessagesResponse]
-	signalMasterTyping    *connect.Client[v1.SignalMasterTypingRequest, v1.SignalMasterTypingResponse]
-	rollFreeDice          *connect.Client[v1.RollFreeDiceRequest, v1.RollFreeDiceResponse]
-	listFreeRolls         *connect.Client[v1.ListFreeRollsRequest, v1.ListFreeRollsResponse]
-	setCurrentMap         *connect.Client[v1.SetCurrentMapRequest, v1.SetCurrentMapResponse]
-	setShownImage         *connect.Client[v1.SetShownImageRequest, v1.SetShownImageResponse]
-	listLeftImages        *connect.Client[v1.ListLeftImagesRequest, v1.ListLeftImagesResponse]
-	takeBackLeftImage     *connect.Client[v1.TakeBackLeftImageRequest, v1.TakeBackLeftImageResponse]
-	openScene             *connect.Client[v1.OpenSceneRequest, v1.OpenSceneResponse]
-	closeScene            *connect.Client[v1.CloseSceneRequest, v1.CloseSceneResponse]
-	getOpenScene          *connect.Client[v1.GetOpenSceneRequest, v1.GetOpenSceneResponse]
-	rollSceneCheck        *connect.Client[v1.RollSceneCheckRequest, v1.RollSceneCheckResponse]
-	searchForTraps        *connect.Client[v1.SearchForTrapsRequest, v1.SearchForTrapsResponse]
-	fireTrap              *connect.Client[v1.FireTrapRequest, v1.FireTrapResponse]
-	listTrapActivity      *connect.Client[v1.ListTrapActivityRequest, v1.ListTrapActivityResponse]
-	listTrapDamages       *connect.Client[v1.ListTrapDamagesRequest, v1.ListTrapDamagesResponse]
-	applyTrapDamage       *connect.Client[v1.ApplyTrapDamageRequest, v1.ApplyTrapDamageResponse]
-	discardTrapDamage     *connect.Client[v1.DiscardTrapDamageRequest, v1.DiscardTrapDamageResponse]
-	grantSceneAttempt     *connect.Client[v1.GrantSceneAttemptRequest, v1.GrantSceneAttemptResponse]
-	putOnStage            *connect.Client[v1.PutOnStageRequest, v1.PutOnStageResponse]
-	takeOffStage          *connect.Client[v1.TakeOffStageRequest, v1.TakeOffStageResponse]
-	setSpeaker            *connect.Client[v1.SetSpeakerRequest, v1.SetSpeakerResponse]
-	castSummon            *connect.Client[v1.CastSummonRequest, v1.CastSummonResponse]
-	assumeWildShape       *connect.Client[v1.AssumeWildShapeRequest, v1.AssumeWildShapeResponse]
-	leaveWildShape        *connect.Client[v1.LeaveWildShapeRequest, v1.LeaveWildShapeResponse]
-	startFamiliarSight    *connect.Client[v1.StartFamiliarSightRequest, v1.StartFamiliarSightResponse]
-	stopFamiliarSight     *connect.Client[v1.StopFamiliarSightRequest, v1.StopFamiliarSightResponse]
+	startGameSession       *connect.Client[v1.StartGameSessionRequest, v1.StartGameSessionResponse]
+	endGameSession         *connect.Client[v1.EndGameSessionRequest, v1.EndGameSessionResponse]
+	getSessionSummary      *connect.Client[v1.GetSessionSummaryRequest, v1.GetSessionSummaryResponse]
+	listGameSessions       *connect.Client[v1.ListGameSessionsRequest, v1.ListGameSessionsResponse]
+	listOpenGameSessions   *connect.Client[v1.ListOpenGameSessionsRequest, v1.ListOpenGameSessionsResponse]
+	getLiveSession         *connect.Client[v1.GetLiveSessionRequest, v1.GetLiveSessionResponse]
+	watchGameSession       *connect.Client[v1.WatchGameSessionRequest, v1.WatchGameSessionResponse]
+	adjustCharacterVitals  *connect.Client[v1.AdjustCharacterVitalsRequest, v1.AdjustCharacterVitalsResponse]
+	nudgePlayer            *connect.Client[v1.NudgePlayerRequest, v1.NudgePlayerResponse]
+	sendSessionMessage     *connect.Client[v1.SendSessionMessageRequest, v1.SendSessionMessageResponse]
+	listSessionMessages    *connect.Client[v1.ListSessionMessagesRequest, v1.ListSessionMessagesResponse]
+	signalMasterTyping     *connect.Client[v1.SignalMasterTypingRequest, v1.SignalMasterTypingResponse]
+	rollFreeDice           *connect.Client[v1.RollFreeDiceRequest, v1.RollFreeDiceResponse]
+	listFreeRolls          *connect.Client[v1.ListFreeRollsRequest, v1.ListFreeRollsResponse]
+	setCurrentMap          *connect.Client[v1.SetCurrentMapRequest, v1.SetCurrentMapResponse]
+	setShownImage          *connect.Client[v1.SetShownImageRequest, v1.SetShownImageResponse]
+	setShownImageAudience  *connect.Client[v1.SetShownImageAudienceRequest, v1.SetShownImageAudienceResponse]
+	listLeftImages         *connect.Client[v1.ListLeftImagesRequest, v1.ListLeftImagesResponse]
+	takeBackLeftImage      *connect.Client[v1.TakeBackLeftImageRequest, v1.TakeBackLeftImageResponse]
+	openScene              *connect.Client[v1.OpenSceneRequest, v1.OpenSceneResponse]
+	setSceneAudience       *connect.Client[v1.SetSceneAudienceRequest, v1.SetSceneAudienceResponse]
+	setScenePlayersMayJoin *connect.Client[v1.SetScenePlayersMayJoinRequest, v1.SetScenePlayersMayJoinResponse]
+	joinScene              *connect.Client[v1.JoinSceneRequest, v1.JoinSceneResponse]
+	closeScene             *connect.Client[v1.CloseSceneRequest, v1.CloseSceneResponse]
+	getOpenScene           *connect.Client[v1.GetOpenSceneRequest, v1.GetOpenSceneResponse]
+	rollSceneCheck         *connect.Client[v1.RollSceneCheckRequest, v1.RollSceneCheckResponse]
+	searchForTraps         *connect.Client[v1.SearchForTrapsRequest, v1.SearchForTrapsResponse]
+	fireTrap               *connect.Client[v1.FireTrapRequest, v1.FireTrapResponse]
+	listTrapActivity       *connect.Client[v1.ListTrapActivityRequest, v1.ListTrapActivityResponse]
+	listTrapDamages        *connect.Client[v1.ListTrapDamagesRequest, v1.ListTrapDamagesResponse]
+	applyTrapDamage        *connect.Client[v1.ApplyTrapDamageRequest, v1.ApplyTrapDamageResponse]
+	discardTrapDamage      *connect.Client[v1.DiscardTrapDamageRequest, v1.DiscardTrapDamageResponse]
+	grantSceneAttempt      *connect.Client[v1.GrantSceneAttemptRequest, v1.GrantSceneAttemptResponse]
+	putOnStage             *connect.Client[v1.PutOnStageRequest, v1.PutOnStageResponse]
+	takeOffStage           *connect.Client[v1.TakeOffStageRequest, v1.TakeOffStageResponse]
+	setStageNpcHidden      *connect.Client[v1.SetStageNpcHiddenRequest, v1.SetStageNpcHiddenResponse]
+	setSpeaker             *connect.Client[v1.SetSpeakerRequest, v1.SetSpeakerResponse]
+	castSummon             *connect.Client[v1.CastSummonRequest, v1.CastSummonResponse]
+	assumeWildShape        *connect.Client[v1.AssumeWildShapeRequest, v1.AssumeWildShapeResponse]
+	leaveWildShape         *connect.Client[v1.LeaveWildShapeRequest, v1.LeaveWildShapeResponse]
+	startFamiliarSight     *connect.Client[v1.StartFamiliarSightRequest, v1.StartFamiliarSightResponse]
+	stopFamiliarSight      *connect.Client[v1.StopFamiliarSightRequest, v1.StopFamiliarSightResponse]
 }
 
 // StartGameSession calls meurpg.play.v1.PlayService.StartGameSession.
@@ -1279,6 +1477,11 @@ func (c *playServiceClient) SetShownImage(ctx context.Context, req *connect.Requ
 	return c.setShownImage.CallUnary(ctx, req)
 }
 
+// SetShownImageAudience calls meurpg.play.v1.PlayService.SetShownImageAudience.
+func (c *playServiceClient) SetShownImageAudience(ctx context.Context, req *connect.Request[v1.SetShownImageAudienceRequest]) (*connect.Response[v1.SetShownImageAudienceResponse], error) {
+	return c.setShownImageAudience.CallUnary(ctx, req)
+}
+
 // ListLeftImages calls meurpg.play.v1.PlayService.ListLeftImages.
 func (c *playServiceClient) ListLeftImages(ctx context.Context, req *connect.Request[v1.ListLeftImagesRequest]) (*connect.Response[v1.ListLeftImagesResponse], error) {
 	return c.listLeftImages.CallUnary(ctx, req)
@@ -1292,6 +1495,21 @@ func (c *playServiceClient) TakeBackLeftImage(ctx context.Context, req *connect.
 // OpenScene calls meurpg.play.v1.PlayService.OpenScene.
 func (c *playServiceClient) OpenScene(ctx context.Context, req *connect.Request[v1.OpenSceneRequest]) (*connect.Response[v1.OpenSceneResponse], error) {
 	return c.openScene.CallUnary(ctx, req)
+}
+
+// SetSceneAudience calls meurpg.play.v1.PlayService.SetSceneAudience.
+func (c *playServiceClient) SetSceneAudience(ctx context.Context, req *connect.Request[v1.SetSceneAudienceRequest]) (*connect.Response[v1.SetSceneAudienceResponse], error) {
+	return c.setSceneAudience.CallUnary(ctx, req)
+}
+
+// SetScenePlayersMayJoin calls meurpg.play.v1.PlayService.SetScenePlayersMayJoin.
+func (c *playServiceClient) SetScenePlayersMayJoin(ctx context.Context, req *connect.Request[v1.SetScenePlayersMayJoinRequest]) (*connect.Response[v1.SetScenePlayersMayJoinResponse], error) {
+	return c.setScenePlayersMayJoin.CallUnary(ctx, req)
+}
+
+// JoinScene calls meurpg.play.v1.PlayService.JoinScene.
+func (c *playServiceClient) JoinScene(ctx context.Context, req *connect.Request[v1.JoinSceneRequest]) (*connect.Response[v1.JoinSceneResponse], error) {
+	return c.joinScene.CallUnary(ctx, req)
 }
 
 // CloseScene calls meurpg.play.v1.PlayService.CloseScene.
@@ -1352,6 +1570,11 @@ func (c *playServiceClient) PutOnStage(ctx context.Context, req *connect.Request
 // TakeOffStage calls meurpg.play.v1.PlayService.TakeOffStage.
 func (c *playServiceClient) TakeOffStage(ctx context.Context, req *connect.Request[v1.TakeOffStageRequest]) (*connect.Response[v1.TakeOffStageResponse], error) {
 	return c.takeOffStage.CallUnary(ctx, req)
+}
+
+// SetStageNpcHidden calls meurpg.play.v1.PlayService.SetStageNpcHidden.
+func (c *playServiceClient) SetStageNpcHidden(ctx context.Context, req *connect.Request[v1.SetStageNpcHiddenRequest]) (*connect.Response[v1.SetStageNpcHiddenResponse], error) {
+	return c.setStageNpcHidden.CallUnary(ctx, req)
 }
 
 // SetSpeaker calls meurpg.play.v1.PlayService.SetSpeaker.
@@ -1518,9 +1741,14 @@ type PlayServiceHandler interface {
 	//     Sent only to the players it touches, and not queued again while one
 	//     waits in the stream's queue; the master never gets it;
 	//   - `shown_image_changed` when the master shows an image, stops showing
-	//     it, or deletes it; sent to everyone;
+	//     it, deletes it, or changes who sees it. A player gets it only when
+	//     what they see changed: the image, for a player who sees it now, and
+	//     no image, for a player who saw one and does not any more; a player
+	//     outside the image's audience, who saw nothing before, gets nothing.
+	//     The master gets every one, with the audience;
 	//   - `left_images_changed` when the list of images left with the players
-	//     changed (an image left, taken back or deleted); sent to everyone;
+	//     changed (an image left, taken back or deleted); a hint, sent to the
+	//     master and to the players the image was left with;
 	//   - `encounter_changed` when anything changes in the combat; a hint,
 	//     sent to everyone, and the app reads the combat again
 	//     (CombatService.GetEncounter);
@@ -1545,14 +1773,21 @@ type PlayServiceHandler interface {
 	//     sent to everyone, and the app reads ProgressionService again;
 	//   - `scene_changed` when the open scene changed (opened, closed, or one
 	//     of its actions or its point changed); a hint, and the app reads it
-	//     again (GetOpenScene). Sent to everyone, except a change only the
-	//     master reads (the clues and the hooks), which reaches the master
-	//     alone;
+	//     again (GetOpenScene). Sent to the master and to the players in the
+	//     scene (everyone, when the scene is open to the whole table), except a
+	//     change only the master reads (the clues, the hooks, and a hidden
+	//     action that stays hidden), which reaches the master alone. When the
+	//     master changes who is in (OpenScene, SetSceneAudience), the players
+	//     who came in and the players who went out get it too, so the first
+	//     read the scene and the second read "no scene";
 	//   - `scene_check_rolled` when a character rolled an action of the open
 	//     scene; sent only to the master and to the roller, with no number;
 	//   - `stage_changed` when the stage changed (an NPC came in or went out,
-	//     the speaker changed, or the scene closed); a hint, sent to everyone,
-	//     and the app reads the open scene again (GetOpenScene);
+	//     the speaker changed, an NPC was shown or hidden, or the scene
+	//     closed); a hint, sent to everyone, and the app reads the open scene
+	//     again (GetOpenScene). Sent to the master and to the players in the
+	//     scene, as `scene_changed`. A change only the master reads (a hidden
+	//     NPC put on the stage or taken off it) reaches the master alone;
 	//   - `notes_changed` when the master revealed a clue to a player; sent
 	//     only to the players who got it, and the app reads their notes again
 	//     (NotesService.ListNotes);
@@ -1754,9 +1989,27 @@ type PlayServiceHandler interface {
 	//
 	// It reveals nothing else: a player learns the image's ID only while it
 	// is shown (GetLiveSession, `shown_image_changed`), never the gallery.
-	// Every WatchGameSession stream of the campaign gets
-	// `shown_image_changed`. A new session starts showing nothing; deleting
-	// the image (GalleryService.DeleteGalleryImage) stops showing it.
+	// `shown_image_changed` goes to the streams of the audience (below). A new
+	// session starts showing nothing; deleting the image
+	// (GalleryService.DeleteGalleryImage) stops showing it.
+	//
+	// The image has an AUDIENCE (`audience`, ImageAudience; MR-028, RN-10):
+	//   - the whole table: every member. It is the only audience while no scene
+	//     is open, or the open scene is open to everyone: the image behaves as an
+	//     image shown with no scene;
+	//   - the scene's players: the players in the scene open to only some
+	//     players (OpenScene, SetSceneAudience), and the master. It is the
+	//     default while such a scene is open, and it follows who is in the scene
+	//     while that scene stays open. When the scene closes, another is opened,
+	//     or the scene opens to everyone, the image stays with the players who were
+	//     in at that moment (it becomes "chosen players" with them) and nobody
+	//     else receives it;
+	//   - chosen players: the players named, whoever they are.
+	// A player outside the audience gets the image nowhere: not in
+	// GetLiveSession, not in `shown_image_changed`, not through the image route
+	// (GET /images/{id} answers 404), not in the left list, and the summary
+	// never names it. The master changes the audience while the image is shown
+	// with SetShownImageAudience.
 	//
 	// An image that is the background of a map with the fog of war on is never
 	// sent to a player (RN-10): the session then shows a copy of it, a new gallery
@@ -1771,7 +2024,8 @@ type PlayServiceHandler interface {
 	// `left_images_changed`. The master sets it by calling again with the
 	// same image_id and the new `keep`, which sends no event: the players
 	// never learn the switch. It is off for every image newly shown unless
-	// the call says otherwise.
+	// the call says otherwise. The image is left only with the players of its
+	// audience at that moment (a fixed set, or everyone for the whole table).
 	//
 	// Errors:
 	//   - `not_found`: the image is not in the campaign's gallery, the
@@ -1781,7 +2035,36 @@ type PlayServiceHandler interface {
 	//     NO_OPEN_SESSION).
 	//   - `resource_exhausted`: the image is a fog map's background and the
 	//     gallery is full, so it cannot be copied.
+	//   - `invalid_argument`: the audience is malformed (see ImageAudience), or
+	//     names someone who is not a player of the campaign.
+	//   - `failed_precondition` with SceneBlocked SCENE_NOT_PARTIAL: the
+	//     audience asked is the scene's players and no scene open to only some
+	//     players is open.
 	SetShownImage(context.Context, *connect.Request[v1.SetShownImageRequest]) (*connect.Response[v1.SetShownImageResponse], error)
+	// SetShownImageAudience changes who sees the image that is shown now,
+	// while it is shown (MR-028): "Mostrar a toda a mesa" is the whole table,
+	// "Mudar quem vê" is a set of chosen players, and the scene's players is the
+	// default of a scene open to only some players. Only the campaign's master
+	// may call it. The kind IMAGE_AUDIENCE_KIND_UNSPECIFIED is refused. The
+	// same audience again changes nothing.
+	//
+	// Narrowing takes the image away at once from the players who are out of
+	// the new audience: GetLiveSession no longer returns it to them, the image
+	// route answers them 404, they get `shown_image_changed` with no image (the
+	// update they get when an image stops being shown), and the players who
+	// stay get nothing. Widening sends `shown_image_changed` with the image to
+	// the players who came in. The audience of an image left with the players
+	// (TakeBackLeftImage) is not changed here.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, the caller is not a member
+	//     of it, or no image is shown.
+	//   - `permission_denied`: the caller is a player.
+	//   - `invalid_argument`: the audience is malformed, or names someone who is
+	//     not a player of the campaign.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION), or SceneBlocked SCENE_NOT_PARTIAL (see SetShownImage).
+	SetShownImageAudience(context.Context, *connect.Request[v1.SetShownImageAudienceRequest]) (*connect.Response[v1.SetShownImageAudienceResponse], error)
 	// ListLeftImages returns the images the master left with the players
 	// (SetShownImage's `keep`), in the order they were left. Any active
 	// member may call it, in or out of a session: the left images belong to
@@ -1790,7 +2073,9 @@ type PlayServiceHandler interface {
 	// lives in the campaign (campaign_left_images) and not in the session,
 	// which would take the images away from the players when it ends. A
 	// player gets their files (GET /images/{id}) while the image is on this
-	// list (RN-10).
+	// list and they are in its audience (RN-10): a player gets only the images
+	// that were left with them, and the master gets every one, each with its
+	// `audience`.
 	//
 	// Errors:
 	//   - `not_found`: the campaign does not exist, or the caller is not a
@@ -1799,7 +2084,7 @@ type PlayServiceHandler interface {
 	// TakeBackLeftImage takes an image back from the players ("Tirar"): it
 	// leaves the list, and the players can no longer fetch it. The image
 	// stays in the gallery. Only the campaign's master may call it, in or out
-	// of a session. Every WatchGameSession stream of the campaign gets
+	// of a session. The master and the players the image was left with get
 	// `left_images_changed`. Taking back an image that is not on the list is
 	// `not_found`, so a second call (another tab) says so.
 	//
@@ -1819,16 +2104,72 @@ type PlayServiceHandler interface {
 	// reveals nothing, it stays hidden on the map (RN-10), but the group has
 	// now "discovered" the scene (MR-030). Opening the scene that is already
 	// open changes nothing; closing it and opening it again starts the rolls
-	// afresh. Every stream gets `scene_changed`, and a `scene_opened` event
-	// goes to the history.
+	// afresh. The master and the scene's players get `scene_changed`, and a
+	// `scene_opened` event goes to the history.
+	//
+	// The scene may be open to only some players (`audience`): the default is
+	// the whole table, a later joiner included. A player outside the audience
+	// gets no scene at all, exactly as when none is open: GetOpenScene answers
+	// them with no scene, RollSceneCheck is refused as with no open scene, and
+	// the stream tells them nothing but, when they were in the scene before
+	// this call, a `scene_changed` so that they read "no scene". The master
+	// changes who is in later with SetSceneAudience.
 	//
 	// Errors:
 	//   - `not_found`: the point is not a SCENE point of the campaign's maps,
 	//     the campaign does not exist, or the caller is not a member of it.
+	//   - `invalid_argument`: an account of `audience` is not a player of the
+	//     campaign, or the audience is malformed (see SceneAudience).
 	//   - `permission_denied`: the caller is a player.
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION).
 	OpenScene(context.Context, *connect.Request[v1.OpenSceneRequest]) (*connect.Response[v1.OpenSceneResponse], error)
+	// SetSceneAudience changes the players the open scene is open to, while it
+	// is open (MR-015, RN-10). Only the campaign's master may call it. A player
+	// who comes in reads the scene at once (they get `scene_changed`); a player
+	// who goes out loses it at once: GetOpenScene answers them as if none were
+	// open, RollSceneCheck is refused as with no open scene, and they get
+	// `scene_changed` so that they read it. The players who stay, and the
+	// master, get `scene_changed` too (the master's other screens read who is
+	// in). The rolls already made stay with the opening, and come back to a
+	// player who comes in again. An image shown to the scene's players follows
+	// the change (SetShownImage). With the same audience nothing changes.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist or the caller is not a member
+	//     of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `invalid_argument`: no audience, or a malformed one (see
+	//     SceneAudience), or an account that is not a player of the campaign.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION), or no scene is open (SceneBlocked NO_OPEN_SCENE).
+	SetSceneAudience(context.Context, *connect.Request[v1.SetSceneAudienceRequest]) (*connect.Response[v1.SetSceneAudienceResponse], error)
+	// SetScenePlayersMayJoin turns the switch "Os jogadores podem entrar" of the open scene (MR-015, RN-10), off by
+	// default and set back to off when the scene closes or another opens. Only the master may call it, and only
+	// for a scene open to only some players (a scene open to everyone has nobody to let in:
+	// SceneBlocked SCENE_NOT_PARTIAL). With it on, every player out of the scene reads GetOpenScene as a scene
+	// with only `name` and `joinable` (nothing else of it), and may call JoinScene; with it off they read no
+	// scene. Every player gets `scene_changed` when the switch changes, so the prompt appears or goes. The same
+	// value changes nothing.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session (GameSessionBlocked, NO_OPEN_SESSION), no scene (SceneBlocked
+	//     NO_OPEN_SCENE) or a scene open to everyone (SceneBlocked SCENE_NOT_PARTIAL).
+	SetScenePlayersMayJoin(context.Context, *connect.Request[v1.SetScenePlayersMayJoinRequest]) (*connect.Response[v1.SetScenePlayersMayJoinResponse], error)
+	// JoinScene adds the caller to the players of the open scene, when the master lets players join. The caller
+	// then reads the scene as any member does, and gets `scene_changed`; the master sees who joined and how
+	// (ScenePlayer.joined_by_self), and an image shown to the scene's players reaches them. A player already in
+	// the scene gets the scene and nothing changes. It is refused as when no scene is open (SceneBlocked
+	// NO_OPEN_SCENE) when the switch is off, so a refusal never says a scene exists.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist or the caller is not a member of it.
+	//   - `permission_denied`: the caller is the master.
+	//   - `failed_precondition`: no open session (GameSessionBlocked, NO_OPEN_SESSION), or no scene to join
+	//     (SceneBlocked NO_OPEN_SCENE).
+	JoinScene(context.Context, *connect.Request[v1.JoinSceneRequest]) (*connect.Response[v1.JoinSceneResponse], error)
 	// CloseScene closes the open scene, asking nothing. Only the campaign's
 	// master may call it. With no scene open it changes nothing. Every stream
 	// gets `scene_changed`, and a `scene_closed` event goes to the history.
@@ -1851,8 +2192,12 @@ type PlayServiceHandler interface {
 	//     attempts their own living character has left, their bonus and
 	//     passive value, and only their own rolls. When the master turned the
 	//     scene's `show_dc` on, the actions also carry their DCs and the rolls
-	//     whether they passed; when it is off, neither.
-	// The scene is unset when none is open.
+	//     whether they passed; when it is off, neither. A player never gets an
+	//     action the master hid, nor the rolls made on it, nor a stage NPC the
+	//     master hid (RN-10); the master gets them marked `hidden`.
+	// The scene is unset when none is open, and for a player who is out of a
+	// scene open to only some players: nothing tells them one is open (RN-10).
+	// The master also gets `audience`, who is in and who is out.
 	//
 	// Errors:
 	//   - `not_found`: the campaign does not exist, or the caller is not a
@@ -1878,8 +2223,10 @@ type PlayServiceHandler interface {
 	//   - `invalid_argument`: neither roll_in_app nor d20_face is set;
 	//     roll_in_app is false; d20_face is not 1 to 20; the idempotency key
 	//     is not a UUID.
-	//   - `not_found`: the action is not one of the open scene's, the campaign
-	//     does not exist, or the caller is not a member of it.
+	//   - `not_found`: the action is not one of the open scene's, or it is one
+	//     the master hid (the very same error: the refusal never says the action
+	//     is there), the campaign does not exist, or the caller is not a member
+	//     of it.
 	//   - `permission_denied`: the caller is the master.
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION); or SceneBlocked: NO_OPEN_SCENE, ALREADY_ROLLED (no
@@ -2006,8 +2353,12 @@ type PlayServiceHandler interface {
 	// open. Any living NPC of the campaign will do, hidden in a combat or not
 	// (putting it on stage reveals nothing in the combat). At most 4 NPCs are
 	// on the stage at once. An NPC that is on the stage already changes
-	// nothing. Every stream gets `stage_changed`, and a `stage_changed` event
-	// goes to the history (ids only).
+	// nothing (SetStageNpcHidden changes whether the players see it). With
+	// `hidden` the NPC goes on the stage hidden from the players: it counts for
+	// the limit of 4, the master reads it marked `hidden`, and no player ever
+	// receives it (not in GetOpenScene, not its portrait), nor a `stage_changed`
+	// for it: only the master's stream hears of it. Otherwise every stream gets
+	// `stage_changed`. A `stage_changed` event goes to the history (ids only).
 	//
 	// Errors:
 	//   - `not_found`: the character is not a living NPC of the campaign (or
@@ -2019,8 +2370,9 @@ type PlayServiceHandler interface {
 	PutOnStage(context.Context, *connect.Request[v1.PutOnStageRequest]) (*connect.Response[v1.PutOnStageResponse], error)
 	// TakeOffStage takes an NPC off the stage at once. An NPC that is not on
 	// it changes nothing. Only the campaign's master may call it, and only
-	// while the session is open (the stage is empty without a scene). Every
-	// stream gets `stage_changed`.
+	// while the session is open (the stage is empty without a scene). Taking
+	// off an NPC the players see sends `stage_changed` to every stream; taking
+	// off a hidden one, to the master's alone: the players never knew it.
 	//
 	// Errors:
 	//   - `not_found`: character_id is not a UUID, the campaign does not exist,
@@ -2029,10 +2381,30 @@ type PlayServiceHandler interface {
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION).
 	TakeOffStage(context.Context, *connect.Request[v1.TakeOffStageRequest]) (*connect.Response[v1.TakeOffStageResponse], error)
+	// SetStageNpcHidden turns an NPC on the stage between "Os jogadores veem"
+	// (hidden false) and "Escondida dos jogadores" (hidden true). Hiding the
+	// NPC that speaks takes the floor from it. Only the campaign's master may
+	// call it, and only while the session is open. The answer is the stage as
+	// the master reads it. Showing or hiding sends `stage_changed` to every
+	// stream, so the players read the scene again and the NPC appears or is
+	// gone from their stage: nothing tells them that it was hidden rather than
+	// taken off. Setting what it already is changes nothing, writes nothing
+	// and tells nobody. A `stage_changed` event goes to the history (ids only).
+	//
+	// Errors:
+	//   - `not_found`: the NPC is not on the stage (or character_id is not a
+	//     UUID), the campaign does not exist, or the caller is not a member of
+	//     it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session (GameSessionBlocked,
+	//     NO_OPEN_SESSION).
+	SetStageNpcHidden(context.Context, *connect.Request[v1.SetStageNpcHiddenRequest]) (*connect.Response[v1.SetStageNpcHiddenResponse], error)
 	// SetSpeaker marks which NPC on the stage is speaking, or none (an empty
 	// character_id). One at most: marking another takes the mark off the
-	// first. Marking the one that already speaks changes nothing. Only the
-	// campaign's master may call it. Every stream gets `stage_changed`.
+	// first. Marking the one that already speaks changes nothing. Marking a
+	// hidden NPC shows it to the players in the same call ("Dar a fala"): the
+	// master's tap means that it speaks now. Only the campaign's master may
+	// call it. Every stream gets `stage_changed`.
 	//
 	// Errors:
 	//   - `not_found`: the NPC is not on the stage (or character_id is set and
@@ -2256,6 +2628,12 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(playServiceMethods.ByName("SetShownImage")),
 		connect.WithHandlerOptions(opts...),
 	)
+	playServiceSetShownImageAudienceHandler := connect.NewUnaryHandler(
+		PlayServiceSetShownImageAudienceProcedure,
+		svc.SetShownImageAudience,
+		connect.WithSchema(playServiceMethods.ByName("SetShownImageAudience")),
+		connect.WithHandlerOptions(opts...),
+	)
 	playServiceListLeftImagesHandler := connect.NewUnaryHandler(
 		PlayServiceListLeftImagesProcedure,
 		svc.ListLeftImages,
@@ -2273,6 +2651,24 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 		PlayServiceOpenSceneProcedure,
 		svc.OpenScene,
 		connect.WithSchema(playServiceMethods.ByName("OpenScene")),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceSetSceneAudienceHandler := connect.NewUnaryHandler(
+		PlayServiceSetSceneAudienceProcedure,
+		svc.SetSceneAudience,
+		connect.WithSchema(playServiceMethods.ByName("SetSceneAudience")),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceSetScenePlayersMayJoinHandler := connect.NewUnaryHandler(
+		PlayServiceSetScenePlayersMayJoinProcedure,
+		svc.SetScenePlayersMayJoin,
+		connect.WithSchema(playServiceMethods.ByName("SetScenePlayersMayJoin")),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceJoinSceneHandler := connect.NewUnaryHandler(
+		PlayServiceJoinSceneProcedure,
+		svc.JoinScene,
+		connect.WithSchema(playServiceMethods.ByName("JoinScene")),
 		connect.WithHandlerOptions(opts...),
 	)
 	playServiceCloseSceneHandler := connect.NewUnaryHandler(
@@ -2350,6 +2746,12 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(playServiceMethods.ByName("TakeOffStage")),
 		connect.WithHandlerOptions(opts...),
 	)
+	playServiceSetStageNpcHiddenHandler := connect.NewUnaryHandler(
+		PlayServiceSetStageNpcHiddenProcedure,
+		svc.SetStageNpcHidden,
+		connect.WithSchema(playServiceMethods.ByName("SetStageNpcHidden")),
+		connect.WithHandlerOptions(opts...),
+	)
 	playServiceSetSpeakerHandler := connect.NewUnaryHandler(
 		PlayServiceSetSpeakerProcedure,
 		svc.SetSpeaker,
@@ -2420,12 +2822,20 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 			playServiceSetCurrentMapHandler.ServeHTTP(w, r)
 		case PlayServiceSetShownImageProcedure:
 			playServiceSetShownImageHandler.ServeHTTP(w, r)
+		case PlayServiceSetShownImageAudienceProcedure:
+			playServiceSetShownImageAudienceHandler.ServeHTTP(w, r)
 		case PlayServiceListLeftImagesProcedure:
 			playServiceListLeftImagesHandler.ServeHTTP(w, r)
 		case PlayServiceTakeBackLeftImageProcedure:
 			playServiceTakeBackLeftImageHandler.ServeHTTP(w, r)
 		case PlayServiceOpenSceneProcedure:
 			playServiceOpenSceneHandler.ServeHTTP(w, r)
+		case PlayServiceSetSceneAudienceProcedure:
+			playServiceSetSceneAudienceHandler.ServeHTTP(w, r)
+		case PlayServiceSetScenePlayersMayJoinProcedure:
+			playServiceSetScenePlayersMayJoinHandler.ServeHTTP(w, r)
+		case PlayServiceJoinSceneProcedure:
+			playServiceJoinSceneHandler.ServeHTTP(w, r)
 		case PlayServiceCloseSceneProcedure:
 			playServiceCloseSceneHandler.ServeHTTP(w, r)
 		case PlayServiceGetOpenSceneProcedure:
@@ -2450,6 +2860,8 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 			playServicePutOnStageHandler.ServeHTTP(w, r)
 		case PlayServiceTakeOffStageProcedure:
 			playServiceTakeOffStageHandler.ServeHTTP(w, r)
+		case PlayServiceSetStageNpcHiddenProcedure:
+			playServiceSetStageNpcHiddenHandler.ServeHTTP(w, r)
 		case PlayServiceSetSpeakerProcedure:
 			playServiceSetSpeakerHandler.ServeHTTP(w, r)
 		case PlayServiceCastSummonProcedure:
@@ -2535,6 +2947,10 @@ func (UnimplementedPlayServiceHandler) SetShownImage(context.Context, *connect.R
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.SetShownImage is not implemented"))
 }
 
+func (UnimplementedPlayServiceHandler) SetShownImageAudience(context.Context, *connect.Request[v1.SetShownImageAudienceRequest]) (*connect.Response[v1.SetShownImageAudienceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.SetShownImageAudience is not implemented"))
+}
+
 func (UnimplementedPlayServiceHandler) ListLeftImages(context.Context, *connect.Request[v1.ListLeftImagesRequest]) (*connect.Response[v1.ListLeftImagesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.ListLeftImages is not implemented"))
 }
@@ -2545,6 +2961,18 @@ func (UnimplementedPlayServiceHandler) TakeBackLeftImage(context.Context, *conne
 
 func (UnimplementedPlayServiceHandler) OpenScene(context.Context, *connect.Request[v1.OpenSceneRequest]) (*connect.Response[v1.OpenSceneResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.OpenScene is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) SetSceneAudience(context.Context, *connect.Request[v1.SetSceneAudienceRequest]) (*connect.Response[v1.SetSceneAudienceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.SetSceneAudience is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) SetScenePlayersMayJoin(context.Context, *connect.Request[v1.SetScenePlayersMayJoinRequest]) (*connect.Response[v1.SetScenePlayersMayJoinResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.SetScenePlayersMayJoin is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) JoinScene(context.Context, *connect.Request[v1.JoinSceneRequest]) (*connect.Response[v1.JoinSceneResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.JoinScene is not implemented"))
 }
 
 func (UnimplementedPlayServiceHandler) CloseScene(context.Context, *connect.Request[v1.CloseSceneRequest]) (*connect.Response[v1.CloseSceneResponse], error) {
@@ -2593,6 +3021,10 @@ func (UnimplementedPlayServiceHandler) PutOnStage(context.Context, *connect.Requ
 
 func (UnimplementedPlayServiceHandler) TakeOffStage(context.Context, *connect.Request[v1.TakeOffStageRequest]) (*connect.Response[v1.TakeOffStageResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.TakeOffStage is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) SetStageNpcHidden(context.Context, *connect.Request[v1.SetStageNpcHiddenRequest]) (*connect.Response[v1.SetStageNpcHiddenResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.SetStageNpcHidden is not implemented"))
 }
 
 func (UnimplementedPlayServiceHandler) SetSpeaker(context.Context, *connect.Request[v1.SetSpeakerRequest]) (*connect.Response[v1.SetSpeakerResponse], error) {

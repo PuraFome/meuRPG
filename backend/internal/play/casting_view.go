@@ -29,6 +29,9 @@ type castLens struct {
 	chars  map[string]link.Character
 	name   func(key string) string
 	stage  stageMap
+	// hidden are the NPCs on the stage the master hid from the players: a player reads no cast of
+	// theirs, and no cast names them (RN-10).
+	hidden map[string]bool
 }
 
 // lensFor reads the characters and the spell names the rows name.
@@ -54,7 +57,10 @@ func (s *Service) lensFor(ctx context.Context, m authz.Membership, rows []playdb
 	}
 	session, err := s.queries.GetOpenGameSession(ctx, m.CampaignID)
 	if err == nil {
-		if l.stage, err = stageMapOf(ctx, s.queries, session.ID); err != nil {
+		if l.stage, err = stageMapOf(ctx, s.queries, session.ID, stageViewer(m)); err != nil {
+			return l, err
+		}
+		if l.hidden, err = hiddenNPCsOf(ctx, s.queries, session.ID); err != nil {
 			return l, err
 		}
 	}
@@ -77,8 +83,11 @@ func (l castLens) idOf(characterID string) string {
 	return l.stage.byChar[characterID]
 }
 
-// sees says the viewer may read the cast at all.
-func (l castLens) sees(r playdb.SpellCast) bool { return l.master || !r.Secret }
+// sees says the viewer may read the cast at all: a player never reads a secret cast, nor one by an
+// NPC the master hid on the stage.
+func (l castLens) sees(r playdb.SpellCast) bool {
+	return l.master || (!r.Secret && !l.hidden[r.CasterID])
+}
 
 // mine says the viewer's player plays the character.
 func (l castLens) mine(characterID string) bool {
@@ -147,6 +156,9 @@ func (l castLens) view(r playdb.SpellCast) *playv1.OutsideCast {
 		out.CreatureIds = r.CreatureIds
 	}
 	for _, t := range castTargetsOf(r) {
+		if l.hidden[t.ID] && !l.master {
+			continue // the cast was aimed at an NPC the master has hidden since
+		}
 		ch := l.chars[t.ID]
 		ot := &playv1.OutsideCastTarget{CharacterId: l.idOf(t.ID), Name: ch.Name, Npc: !ch.Player}
 		if l.master || l.mine(t.ID) { // RN-20: what the cast did to a target (its effect, hit points, armor class, the Life Domain's extra) is the target's own
@@ -342,7 +354,7 @@ func (l castLens) listing(only string, live, logged []playdb.SpellCast) *playv1.
 // the id is a player character's or the place of an NPC on the stage. Any other is not
 // found, as one that does not exist (RN-10).
 func (s *Service) playerMaySee(ctx context.Context, m authz.Membership, sessionID, id string) (string, error) {
-	sm, err := stageMapOf(ctx, s.queries, sessionID)
+	sm, err := stageMapOf(ctx, s.queries, sessionID, stageViewer(m))
 	if err != nil {
 		return "", s.dbError(ctx, "list the stage", err)
 	}
@@ -468,7 +480,7 @@ func (s *Service) castTargetsFor(ctx context.Context, m authz.Membership, sessio
 	for _, p := range party {
 		out = add(out, p.ID, p)
 	}
-	sm, err := stageMapOf(ctx, s.queries, session.ID)
+	sm, err := stageMapOf(ctx, s.queries, session.ID, stageViewer(m))
 	if err != nil {
 		return nil, s.dbError(ctx, "list the stage", err)
 	}

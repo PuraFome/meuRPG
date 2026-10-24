@@ -14,6 +14,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -101,12 +102,16 @@ func (s *Service) SetShownImage(
 		return nil, err
 	}
 	keep := req.Msg.GetKeep() && imageID != nil
+	ask, err := s.showAudienceAsk(ctx, m.CampaignID, imageID, req.Msg.GetAudience())
+	if err != nil {
+		return nil, err
+	}
 	shown, shownCopy, imageID, err := s.prepareShownImage(ctx, m.CampaignID, imageID)
 	if err != nil {
 		return nil, err
 	}
 
-	out, err := s.swapShownImage(ctx, m.CampaignID, imageID, keep, shownCopy)
+	out, err := s.swapShownImage(ctx, m.CampaignID, imageID, keep, ask, shownCopy)
 	if shownCopy != nil && (err != nil || !out.copyCreated) {
 		shownCopy.Discard(ctx) // no gallery row: the copy's files go
 	}
@@ -123,8 +128,16 @@ func (s *Service) SetShownImage(
 	if err != nil {
 		return nil, s.dbError(ctx, "set the shown image", err)
 	}
-	s.publishShownImage(m.CampaignID, out, shown)
-	return connect.NewResponse(&playv1.SetShownImageResponse{ShownImage: shown, Keep: keep}), nil
+	s.publishShownImage(ctx, m.CampaignID, out, shown)
+	return connect.NewResponse(&playv1.SetShownImageResponse{ShownImage: withAudience(shown, out.move.audience), Keep: keep}), nil
+}
+
+// showAudienceAsk reads the audience of a show; it is ignored when nothing is shown.
+func (s *Service) showAudienceAsk(ctx context.Context, campaignID string, imageID *string, a *playv1.ImageAudience) (audienceAsk, error) {
+	if imageID == nil {
+		return audienceAsk{}, nil
+	}
+	return s.parseImageAudience(ctx, campaignID, a, true)
 }
 
 // prepareShownImage asks the maps module for the image to show (none for nil). The
@@ -144,41 +157,41 @@ func (s *Service) prepareShownImage(ctx context.Context, campaignID string, imag
 	return shown, shownCopy, &shownID, nil
 }
 
-// publishShownImage tells the streams what a change of the shown image did.
-// Only the switch moved when the image is the same: nothing for the players,
-// who never learn the switch, and the master's page already knows.
-func (s *Service) publishShownImage(campaignID string, out shownOutcome, shown *playv1.ShownImage) {
-	if out.changed {
-		s.Publish(campaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_ShownImageChanged_{
-			ShownImageChanged: &playv1.WatchGameSessionResponse_ShownImageChanged{Image: shown},
-		}})
-	}
+// publishShownImage tells the streams what a change of the shown image did: the master and the
+// players who see it now get the image, the ones who saw an image and do not any more get no image,
+// and the players of an image left with the players hear that the list changed. Only the switch
+// moved when the image is the same: nothing for the players, who never learn the switch.
+func (s *Service) publishShownImage(ctx context.Context, campaignID string, out shownOutcome, shown *playv1.ShownImage) {
+	out.move.shown = shown
+	s.publishImageMove(ctx, campaignID, out.move)
 	if out.moved {
-		s.publishLeftImagesChanged(campaignID)
+		s.publishLeftImagesChanged(campaignID, out.leftTo)
 	}
 }
 
 // shownOutcome is what a change of the shown image did.
 type shownOutcome struct {
-	moved       bool   // an image went to the left list
-	changed     bool   // another image (or none) is shown now
-	copyCreated bool   // the shown copy's row is the one this call inserted
-	showing     string // the image shown at the end of the transaction, "" for none
+	moved       bool      // an image went to the left list
+	leftTo      viewers   // the players it was left with
+	changed     bool      // another image (or none) is shown now
+	copyCreated bool      // the shown copy's row is the one this call inserted
+	showing     string    // the image shown at the end of the transaction, "" for none
+	move        imageMove // what the streams are to hear
 }
 
 // swapShownImage shows the image (nil for none) in the open session, inside one
 // transaction.
-func (s *Service) swapShownImage(ctx context.Context, campaignID string, imageID *string, keep bool, shownCopy ShownCopy) (shownOutcome, error) {
+func (s *Service) swapShownImage(ctx context.Context, campaignID string, imageID *string, keep bool, ask audienceAsk, shownCopy ShownCopy) (shownOutcome, error) {
 	var out shownOutcome
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		out.moved, out.copyCreated = false, false
-		return s.swapShownImageIn(ctx, tx, campaignID, imageID, keep, shownCopy, &out)
+		out = shownOutcome{}
+		return s.swapShownImageIn(ctx, tx, campaignID, imageID, keep, ask, shownCopy, &out)
 	})
 	return out, err
 }
 
 // swapShownImageIn is swapShownImage's transaction.
-func (s *Service) swapShownImageIn(ctx context.Context, tx pgx.Tx, campaignID string, imageID *string, keep bool, shownCopy ShownCopy, out *shownOutcome) error {
+func (s *Service) swapShownImageIn(ctx context.Context, tx pgx.Tx, campaignID string, imageID *string, keep bool, ask audienceAsk, shownCopy ShownCopy, out *shownOutcome) error {
 	q := s.queries.WithTx(tx)
 	session, err := lockOpenSessionOrNone(ctx, q, campaignID)
 	if err != nil {
@@ -198,11 +211,16 @@ func (s *Service) swapShownImageIn(ctx context.Context, tx pgx.Tx, campaignID st
 	}
 	out.showing = conv.OrZero(showID)
 	out.changed = !equal(session.ShownImageID, showID)
+	var old viewers
+	if out.move, old, err = s.shownMove(ctx, q, session, showID, ask); err != nil {
+		return err
+	}
 	if session.ShownImageKeep && session.ShownImageID != nil && out.changed {
-		if err := s.maps.LeaveImage(ctx, tx, campaignID, *session.ShownImageID, s.now()); err != nil {
+		// It is left with the players who saw it, no others (RN-10).
+		if err := s.maps.LeaveImage(ctx, tx, campaignID, *session.ShownImageID, s.now(), leftAudience(old)); err != nil {
 			return err
 		}
-		out.moved = true
+		out.moved, out.leftTo = true, old
 	}
 	if _, err := q.SetShownImage(ctx, playdb.SetShownImageParams{ID: session.ID, ShownImageID: showID, ShownImageKeep: keep}); err != nil {
 		return fmt.Errorf("set the shown image: %w", err)
@@ -219,7 +237,7 @@ func (s *Service) ListLeftImages(
 	if err != nil {
 		return nil, err
 	}
-	images, err := s.maps.ListLeftImages(ctx, m.CampaignID)
+	images, err := s.maps.ListLeftImages(ctx, m.CampaignID, m.UserID, m.Role == authz.RoleMaster)
 	if err != nil {
 		return nil, s.dbError(ctx, "list the left images", err)
 	}
@@ -242,19 +260,29 @@ func (s *Service) TakeBackLeftImage(
 	if imageID == nil {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("image not found"))
 	}
-	if err := s.maps.TakeBackImage(ctx, m.CampaignID, *imageID); err != nil {
+	was, err := s.maps.TakeBackImage(ctx, m.CampaignID, *imageID)
+	if err != nil {
 		return nil, s.dbError(ctx, "take a left image back", err)
 	}
-	s.publishLeftImagesChanged(m.CampaignID)
+	s.publishLeftImagesChanged(m.CampaignID, leftViewers(was))
 	return connect.NewResponse(&playv1.TakeBackLeftImageResponse{}), nil
 }
 
-// publishLeftImagesChanged tells every stream of the campaign that the
-// images left with the players changed; the app reads the list again.
-func (s *Service) publishLeftImagesChanged(campaignID string) {
-	s.Publish(campaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_LeftImagesChanged_{
+// publishLeftImagesChanged tells the master and the players an image was left with that the
+// images left with the players changed; the app reads the list again. A player the image was not
+// left with hears nothing (RN-10).
+func (s *Service) publishLeftImagesChanged(campaignID string, to viewers) {
+	s.publishToViewers(campaignID, to, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_LeftImagesChanged_{
 		LeftImagesChanged: &playv1.WatchGameSessionResponse_LeftImagesChanged{},
 	}})
+}
+
+// leftViewers is who an image left with the players was left with.
+func leftViewers(a link.ImageAudience) viewers {
+	if a.Everyone {
+		return allViewers()
+	}
+	return usersViewers(a.UserIDs)
 }
 
 // equal reports whether two optional IDs are the same.

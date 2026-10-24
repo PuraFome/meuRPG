@@ -7,6 +7,9 @@
   "total": 1,
   "physical": true,
   "passed": true,
+  "audience": [
+    "x"
+  ],
   "dc_shown": true,
   "d20_b": 1,
   "counted": 1,

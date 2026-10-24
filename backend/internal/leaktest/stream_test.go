@@ -2,7 +2,9 @@ package leaktest
 
 import (
 	"context"
+	"slices"
 	"sort"
+	"sync"
 	"testing"
 	"time"
 
@@ -28,9 +30,25 @@ import (
 // streamWatcher reads one WatchGameSession stream in the background.
 type streamWatcher struct {
 	p      *person
+	mu     sync.Mutex // guards events while the stream is open
 	events []*playv1.WatchGameSessionResponse
+	more   chan struct{} // gets a signal when an event arrives (see settle)
 	done   chan struct{}
 	err    error
+}
+
+// count is how many events the stream has received so far.
+func (sw *streamWatcher) count() int {
+	sw.mu.Lock()
+	defer sw.mu.Unlock()
+	return len(sw.events)
+}
+
+// since lists the events received after the first n.
+func (sw *streamWatcher) since(n int) []*playv1.WatchGameSessionResponse {
+	sw.mu.Lock()
+	defer sw.mu.Unlock()
+	return slices.Clone(sw.events[min(n, len(sw.events)):])
 }
 
 // watchStream opens the stream as p and waits for its first event (ready), so everything
@@ -42,14 +60,20 @@ func (w *world) watchStream(p *person) *streamWatcher {
 	if err != nil {
 		panic(err)
 	}
-	sw := &streamWatcher{p: p, done: make(chan struct{})}
+	sw := &streamWatcher{p: p, done: make(chan struct{}), more: make(chan struct{}, 1)}
 	first := make(chan struct{})
 	go func() {
 		defer close(sw.done)
 		defer func() { _ = stream.Close() }()
 		opened := false
 		for stream.Receive() {
+			sw.mu.Lock()
 			sw.events = append(sw.events, proto.Clone(stream.Msg()).(*playv1.WatchGameSessionResponse))
+			sw.mu.Unlock()
+			select {
+			case sw.more <- struct{}{}:
+			default:
+			}
 			if !opened {
 				opened = true
 				close(first)
@@ -242,6 +266,9 @@ func (w *world) streamScript() {
 	scene := w.pts["scene-open"]
 	for _, a := range must(m.play.GetOpenScene(ctx, rq(&playv1.GetOpenSceneRequest{CampaignId: w.campaign}))).GetScene().GetActions() {
 		must(m.maps.UpdateSceneAction(ctx, rq(&mapsv1.UpdateSceneActionRequest{CampaignId: w.campaign, MapId: scene.GetMapId(), PointId: scene.GetId(), ActionId: a.GetId(), Dc: proto.Int32(sceneDC)})))
+		if a.GetHidden() {
+			continue // the players cannot roll it: they do not know it (the edit above reached the master's stream alone)
+		}
 		must(w.ana.play.RollSceneCheck(ctx, rq(&playv1.RollSceneCheckRequest{CampaignId: w.campaign, ActionId: a.GetId(), IdempotencyKey: newKey(), Roll: &playv1.RollSceneCheckRequest_D20Face{D20Face: 12}})))
 	}
 	must(m.maps.RevealSceneClue(ctx, rq(&mapsv1.RevealSceneClueRequest{CampaignId: w.campaign, ClueId: w.clueUnrevealed, CharacterIds: []string{w.toren.GetId()}})))
@@ -251,6 +278,14 @@ func (w *world) streamScript() {
 	w.allow("stage2-name", w.ana, w.caio)
 	w.allow("stage2-description")
 	w.secrets.allowNeedle(w.stage2.GetId())
+
+	// -- the hidden stage NPC and the hidden action: shown and hidden again, the players hear a hint with no content
+	// (the NPC and the action are gone from what they read again at the end); the edit of a hidden action reached nobody
+	must(m.play.SetStageNpcHidden(ctx, rq(&playv1.SetStageNpcHiddenRequest{CampaignId: w.campaign, CharacterId: w.hiddenStageNPC.GetId(), Hidden: false})))
+	must(m.play.SetStageNpcHidden(ctx, rq(&playv1.SetStageNpcHiddenRequest{CampaignId: w.campaign, CharacterId: w.hiddenStageNPC.GetId(), Hidden: true})))
+	for _, hidden := range []bool{false, true} {
+		must(m.maps.UpdateSceneAction(ctx, rq(&mapsv1.UpdateSceneActionRequest{CampaignId: w.campaign, MapId: scene.GetMapId(), PointId: scene.GetId(), ActionId: w.hiddenAction, Hidden: proto.Bool(hidden)})))
+	}
 
 	// -- a spell cast outside the combat by an NPC that is not on the stage: the hint is the master's alone
 	must(m.casting.CastSpellOutsideCombat(ctx, rq(&playv1.CastSpellOutsideCombatRequest{

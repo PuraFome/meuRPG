@@ -220,6 +220,7 @@ Combat only moves a token that already exists, at the end of the fight; the mast
   `key` is `skill:<skill>`, `ability:<ability>` or `save:<ability>` (a `CHECK` on the format; the API checks the key in the rules catalog, `rules.Content.SceneCheckName`, and attack, spell and combat ability never enter).
   `name` is the master's label (up to 60 characters, empty for none); `dc` is 1 to 30 or `NULL`.
   `max_attempts` is how many times each player may roll the action while the scene is open: 1 by default, 1 to 5, or 0 for unlimited; the rolls and the attempts given live in `session_events`, so lowering the limit deletes nothing.
+  `hidden` (default false) keeps the action from the players ("Escondida"): the master's reads carry it, a player's never do, and a roll on it is refused as on an action that does not exist.
   At most 20 per point (`maxSceneActions`).
 - **`scene_clues`**: `position` (from 0), `text` (1 to 500 characters).
   At most 30 per point (`maxSceneClues`), checked in the `INSERT` transaction with the point locked.

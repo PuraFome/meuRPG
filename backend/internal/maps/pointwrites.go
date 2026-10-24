@@ -529,7 +529,7 @@ func (s *Service) DeleteMapPoint(
 	s.publishPointsChanged(ctx, m.CampaignID, gone.mapRow, playersSee(mapID, gone.mapRow.RevealedAt, current) && everyoneSees(gone.deleted), gone.deleted)
 	s.tellTrapKnowers(m.CampaignID, mapID, gone.mapRow, current, gone.knowers)
 	if openScene == pointID {
-		s.publishSceneChanged(m.CampaignID)
+		s.publishSceneChanged(ctx, m.CampaignID)
 	}
 	return connect.NewResponse(&mapsv1.DeleteMapPointResponse{}), nil
 }

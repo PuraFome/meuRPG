@@ -171,15 +171,17 @@ type MapKeeper interface {
 	// there is nothing to add.
 	PrepareShow(ctx context.Context, campaignID, imageID string) (*playv1.ShownImage, ShownCopy, error)
 	// LeaveImage adds the campaign's image to the images left with the
-	// players inside tx. An image already left stays as it is, and one that
-	// is not the campaign's anymore is skipped.
-	LeaveImage(ctx context.Context, tx pgx.Tx, campaignID, imageID string, at time.Time) error
-	// ListLeftImages returns the images left with the players, oldest
-	// first.
-	ListLeftImages(ctx context.Context, campaignID string) ([]*playv1.ShownImage, error)
-	// TakeBackImage removes the image from the left list, or returns a
-	// `not_found` Connect error when it is not on it.
-	TakeBackImage(ctx context.Context, campaignID, imageID string) error
+	// players inside tx, with the audience it has (the players it was left
+	// with). An image already left takes the audience of this leaving, and one
+	// that is not the campaign's anymore is skipped.
+	LeaveImage(ctx context.Context, tx pgx.Tx, campaignID, imageID string, at time.Time, who link.ImageAudience) error
+	// ListLeftImages returns the images left with the players that the user
+	// reads, oldest first: every one for the master (each with its audience),
+	// and for a player the ones left with them.
+	ListLeftImages(ctx context.Context, campaignID, userID string, master bool) ([]*playv1.ShownImage, error)
+	// TakeBackImage removes the image from the left list and returns who it was
+	// left with, or returns a `not_found` Connect error when it is not on it.
+	TakeBackImage(ctx context.Context, campaignID, imageID string) (link.ImageAudience, error)
 	// MapGrid, ScenePoint and MapTokens read inside tx when the caller has one
 	// (nil: the pool): a change that holds a transaction must pass it.
 	//

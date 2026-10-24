@@ -927,8 +927,11 @@ type PackageAction struct {
 	Key   string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	Name  string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// 0: no DC.
-	Dc            int32 `protobuf:"varint,3,opt,name=dc,proto3" json:"dc,omitempty"`
-	MaxAttempts   int32 `protobuf:"varint,4,opt,name=max_attempts,json=maxAttempts,proto3" json:"max_attempts,omitempty"`
+	Dc          int32 `protobuf:"varint,3,opt,name=dc,proto3" json:"dc,omitempty"`
+	MaxAttempts int32 `protobuf:"varint,4,opt,name=max_attempts,json=maxAttempts,proto3" json:"max_attempts,omitempty"`
+	// The action is hidden from the players ("Escondida"); absent in a package
+	// made before the flag, which reads as false.
+	Hidden        bool `protobuf:"varint,5,opt,name=hidden,proto3" json:"hidden,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -989,6 +992,13 @@ func (x *PackageAction) GetMaxAttempts() int32 {
 		return x.MaxAttempts
 	}
 	return 0
+}
+
+func (x *PackageAction) GetHidden() bool {
+	if x != nil {
+		return x.Hidden
+	}
+	return false
 }
 
 // PackageClue is a scene's clue, in its order.
@@ -1624,12 +1634,13 @@ const file_meurpg_campaignpackage_v1_format_proto_rawDesc = "" +
 	"\x06stairs\x18\x0e \x01(\tR\x06stairs\x12B\n" +
 	"\aactions\x18\x0f \x03(\v2(.meurpg.campaignpackage.v1.PackageActionR\aactions\x12<\n" +
 	"\x05clues\x18\x10 \x03(\v2&.meurpg.campaignpackage.v1.PackageClueR\x05cluesB\x14\n" +
-	"\x12_treasure_value_po\"h\n" +
+	"\x12_treasure_value_po\"\x80\x01\n" +
 	"\rPackageAction\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x0e\n" +
 	"\x02dc\x18\x03 \x01(\x05R\x02dc\x12!\n" +
-	"\fmax_attempts\x18\x04 \x01(\x05R\vmaxAttempts\"1\n" +
+	"\fmax_attempts\x18\x04 \x01(\x05R\vmaxAttempts\x12\x16\n" +
+	"\x06hidden\x18\x05 \x01(\bR\x06hidden\"1\n" +
 	"\vPackageClue\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\"\x84\x02\n" +

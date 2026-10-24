@@ -12,6 +12,16 @@ erDiagram
         uuid current_map_id FK
         uuid shown_image_id FK
         uuid open_scene_point_id FK
+        bool open_scene_everyone
+        text shown_image_audience
+    }
+    game_session_scene_players {
+        uuid game_session_id PK,FK
+        uuid user_id PK,FK
+    }
+    game_session_image_viewers {
+        uuid game_session_id PK,FK
+        uuid user_id PK,FK
     }
     session_events {
         uuid id PK
@@ -151,6 +161,10 @@ erDiagram
     encounters |o--o{ spell_casts : "carried_encounter_id"
     characters ||--o{ spell_casts : "caster_id"
     game_sessions ||--o{ spell_casts : "game_session_id"
+    game_sessions ||--o{ game_session_scene_players : "game_session_id"
+    game_sessions ||--o{ game_session_image_viewers : "game_session_id"
+    users ||--o{ game_session_scene_players : "user_id"
+    users ||--o{ game_session_image_viewers : "user_id"
     characters ||--o{ stage_npcs : "character_id"
     game_sessions ||--o{ stage_npcs : "game_session_id"
     characters ||--o{ trap_damages : "character_id"
@@ -172,10 +186,22 @@ What the session shows is on the row, all optional and independent, none set in 
 | `shown_image_id` | The image the master shows the players (MR-028). `SET NULL` on deletion. |
 | `shown_image_keep` | When on, stopping the display, swapping or ending the session copies the image into `campaign_left_images` ([gallery.md](gallery.md)), in the same transaction. |
 | `open_scene_point_id` | The `scene` map point the master opened, one at a time. Opening a hidden point does not reveal it (RN-10). `SET NULL` when the point is deleted. |
+| `open_scene_everyone` | True (the default) when the open scene is open to the whole table, a player who joins later included; false when it is open to exactly the players of `game_session_scene_players`. A column, not "no rows", so erasing the last player's account never opens the scene to everyone. Opening, closing or changing the scene sets it and the rows together. |
+| `shown_image_audience` | Who sees the shown image: `table` (every member, the default), `scene` (the players of `game_session_scene_players`, so it follows who is in the scene) or `chosen` (the players of `game_session_image_viewers`). When the scene stops being the image's (it closes, another opens, or it opens to everyone) the server turns `scene` into `chosen` with the players who were in. |
 
 `play` keeps only the ids; the `maps` module owns the targets and `play` reads them through the `MapKeeper` interface (see [Architecture](../architecture/play/live-session.md#what-the-session-shows)).
 There is no index on these columns: only deleting a map or image searches for them, and the table is small.
 What counts as "scene open again" is the last `scene_opened` event of the session: a roll only counts toward `scene_actions.max_attempts` if it comes after it, so closing and reopening a scene resets the counts without deleting history.
+
+## `game_session_scene_players` and `game_session_image_viewers`
+
+The players a scene is open to, and the players a shown image is shown to, when they are not the whole table (MR-015, MR-028, RN-10).
+`(game_session_id, user_id)` is the primary key of both; both foreign keys cascade, so the rows go with the session and with the player's account (`user_id` is indexed for that).
+The rows of `game_session_scene_players` are read only while `open_scene_everyone` is false (and by an image whose audience is `scene`); opening, closing or changing the scene rewrites them.
+The rows of `game_session_image_viewers` are read only while `shown_image_audience` is `chosen`.
+`game_session_scene_players.joined_by_self` marks a player who joined by themselves (`JoinScene`); `game_sessions.scene_players_may_join` is the master's switch "Os jogadores podem entrar".
+They hold ids only.
+The history keeps the accounts of a scene open to only some players too (`scene_opened.players`, `scene_check_rolled.audience`); erasing an account takes its id out of those lists with the other who-saw lists (migration `00278`).
 
 ## `session_events` and `session_event_kinds`
 
@@ -228,9 +254,12 @@ The NPCs on stage in a session (MR-031): one row per NPC, at most 4 (`maxStage`,
 `id` is the place on the stage, made when the NPC enters; it is what the player's copy carries instead of the character id, which is the master's secret (RN-20).
 `position` is the order of entry from 0 (a new NPC takes the highest plus one, so a removal leaves a gap that does not change the order).
 `UNIQUE (game_session_id, character_id)` prevents the same NPC twice; the partial unique index `stage_npcs_one_speaker` leaves at most one `speaking`.
+`hidden` (default false) keeps the NPC from the players ("Escondida dos jogadores"): it counts for the limit, and only the master's reads and stream hear of it; a hidden NPC never speaks (`CHECK (NOT (hidden AND speaking))`: hiding clears `speaking`, and giving it the floor clears `hidden`).
+Every read for a player, the portrait route and the casts go through the rows where `hidden` is false.
 Both foreign keys cascade.
 Closing or changing the scene deletes the session's rows.
-Each change is a `stage_changed` event with ids only.
+Each change is a `stage_changed` event with ids only (`change`, the character, `hidden` for an NPC put hidden, `revealed` for a floor that showed one).
+A player out of a scene open to only some players reads no row of it: the stage is the scene's.
 
 ## `spell_casts`
 
