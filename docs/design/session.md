@@ -23,10 +23,28 @@ Other panels use a `line` border. A "burgundy border" is never used for anything
 - **Pinned phone nav** (`app-session-tabs`): under 768 px, "Cena | Ficha | Conversa" is fixed to the bottom of every live screen (64 px plus the safe-area inset), outside the page, so it stays usable while the chat covers it.
   The page keeps `--mr-session-nav` of room under its content, the full-screen chat ends above the nav, and the player's sticky turn bar sits right above it (`bottom: var(--mr-session-nav)`); at 320 x 568 both bars leave the turn usable.
   "Cena" is the page, "Ficha" a link, "Conversa" the chat; the current one is `aria-current`; the count on "Conversa" is in words in the name.
+  For the master outside a combat it is "Cena | Grupo | Conversa": "Cena" and "Grupo" choose a tab of the board, "Grupo" carries the amber count of casts waiting.
+
+## The master's session outside combat
+
+`pages/live-session/master-board` composes the master's page when no combat is on screen: the tabs "Cena", "Mapa" and "Grupo", with the conversation in a rail.
+Nothing here is drawn for a player, and no panel is rebuilt for it: the existing panels are placed in the tabs.
+
+- **Tabs** (`shared/tab-list`, "Seções da mesa"): the ARIA tabs pattern, one tab stop and arrow keys. The tab is the query parameter `?vista=` (`cena`, `mapa`, `grupo`), so a reload or a shared link comes back to it; nothing is stored on the device.
+  The default is "Cena" while a scene is open and "Mapa" otherwise; "Abrir cena" switches to "Cena". Every panel stays mounted and is `hidden` when its tab is not the shown one, so a half-written draft, a map and a form keep their state.
+  The count sits in the tab's name, as words for a screen reader: "Cena" carries an amber count of new rolls while another tab is shown, "Grupo" the casts waiting.
+- **Above the tabs:** the held rolls ("Perguntas pendentes") and the notice about a map that could not be read stay above the tabs for as long as they apply.
+- **Cena:** the open scene, with "Imagem para os jogadores" folded into the scene's image row ("Da galeria", "Parar de mostrar", the keep switch, the images left) and "Pedir teste em grupo" as a button of the scene (its form opens under it and has "Cancelar").
+  With no scene open the tab holds the scene picker, the full "Imagem para os jogadores" panel and "Pedir teste em grupo". Puzzles and "Rolagens da mesa" close the column.
+  The scene's eye per NPC and per action, "Quem está na cena" and the image's audience have their place in the layout and are not drawn yet.
+- **Mapa:** the map across the main column, with the sub-tabs "Pontos", "Tokens", "Névoa e luz" (only with fog on; "Ver como" and "Luz dos personagens" are in it), "Armadilhas", "Tesouro" and "Encontros" (the battle points' saved encounters). Each sub-tab names its count and is a panel that stays mounted.
+- **Grupo:** the party ("Ajustar", "Dar XP"), "Descanso", "Efeitos em jogo" with "Passar o tempo", and "Magias"; a long cast that waits for the master is the tab's count.
+- **Conversa** is a rail (`shared/session-rail`) from 1024 px: a sticky `complementary` column beside the board as tall as the screen, with its own scroll. Below 1024 px it sits under the board, and on a phone it is the pinned nav's "Conversa". The composer keeps its draft across tab changes because the conversation is one component, not one per tab.
+- **Phone:** there is no "Mapa" tab; the map is a fold of "Cena" ("Mapa · <nome do mapa>"), and the scene's actions, clues and hooks fold too. The page uses the pinned nav (above) instead of the tab list.
 
 ## Images shown to players
 
-- **"Imagem para os jogadores"** (`pages/live-session/shown-image-panel`): empty it says "Nenhuma imagem à mostra." with an outlined "Mostrar imagem"; showing, it has a 1.5 px `accent` frame, the thumbnail, the tag "Mostrando agora" and "Parar de mostrar" / "Trocar imagem".
+- **"Imagem para os jogadores"** (`pages/live-session/shown-image-panel`): with a scene open it is the scene's image row (`appearance="row"`: "Da galeria", "Parar de mostrar", the keep switch); otherwise the panel. Empty it says "Nenhuma imagem à mostra." with an outlined "Mostrar imagem"; showing, it has a 1.5 px `accent` frame, the thumbnail, the tag "Mostrando agora" and "Parar de mostrar" / "Trocar imagem".
   Stopping acts at once (showing again undoes it) and moves focus to "Mostrar imagem"; showing moves focus to "Parar de mostrar".
   Every change is announced in a `role="status"`.
 - **"Deixar com os jogadores"** is a `role="switch"` that only asks: the server decides and the state comes from the response. The master's list "Deixadas com os jogadores" removes an image with "Tirar".
