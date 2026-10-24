@@ -64,7 +64,7 @@ test(
       await m.getByRole('button', { name: 'Pôr Mira em cena' }).click();
       await expect(m.getByText('Mira entrou na cena.').first()).toBeVisible();
       await m.getByRole('button', { name: 'Pôr Capitão Goblin em cena' }).click();
-      await expect(m.getByText('2 de 4 em cena')).toBeVisible();
+      await expect(m.getByText('2 de 4', { exact: true })).toBeVisible();
       await m.getByRole('button', { name: 'Fechar', exact: true }).click();
       await expect(m.getByRole('button', { name: 'Pôr em cena', exact: true })).toBeFocused();
       await m.getByRole('button', { name: 'Dar a fala a Capitão Goblin' }).click();
@@ -95,7 +95,8 @@ test(
       expect((await p.request.get(`/images/${miraImage}`)).status()).toBe(200);
 
       // The master takes Mira off at once: the view closes and her image is a 404.
-      await m.getByRole('button', { name: 'Tirar Mira de cena' }).click();
+      await m.getByRole('button', { name: 'Mais ações de Mira' }).click();
+      await m.getByRole('menuitem', { name: 'Tirar Mira de cena' }).click();
       await expect(big).toBeHidden();
       await expect(stage).toHaveCount(0);
       await expect(p.getByRole('group', { name: 'Em cena: Capitão Goblin' })).toBeVisible();
@@ -147,7 +148,7 @@ test(
       }
       await openSessionPage(m, campaignId);
       await openSessionPage(p, campaignId);
-      await expect(m.getByText('4 de 4 em cena')).toBeVisible();
+      await expect(m.getByText('4 de 4', { exact: true })).toBeVisible();
       await expect(m.getByText('A cena comporta 4 NPCs. Tire um para pôr outro.')).toBeVisible();
       await expect(m.getByRole('button', { name: 'Pôr em cena', exact: true })).toHaveAttribute('aria-disabled', 'true');
       await expect(p.getByRole('group', { name: /^Em cena/ }).getByRole('button')).toHaveCount(4);

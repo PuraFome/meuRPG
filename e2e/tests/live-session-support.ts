@@ -181,3 +181,16 @@ export async function showMapTool(page: Page, tool: MapTool): Promise<void> {
   }
   await expect(tab).toHaveAttribute('aria-selected', 'true');
 }
+
+/**
+ * Opens every roll of the open scene on the master's "Cena" ("Ações e rolagens": each roll is a chip that opens its detail under the
+ * action) and returns the opened rolls, each action's newest first.
+ */
+export async function openRolls(page: Page): Promise<Locator> {
+  await showMasterTab(page, 'cena');
+  const closed = page.locator('app-scene-actions .chip[aria-expanded="false"]');
+  while ((await closed.count()) > 0) {
+    await closed.first().click();
+  }
+  return page.locator('app-scene-actions app-scene-roll-line');
+}

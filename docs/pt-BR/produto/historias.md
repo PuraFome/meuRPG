@@ -409,7 +409,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 
 #### No app
 - Editor: "Ações da cena" e "Imagens da cena" do painel do ponto (miniaturas em ordem com ↑ ↓ e "Tirar da cena", que mantém a imagem na galeria; "Escolher da galeria"; "Gerar imagem com IA", cuja imagem entra na lista; "N de 8").
-- Sessão: o mestre abre a "Cena de RP" na aba "Cena" ("Abrir cena", "Trocar cena", "Fechar cena"; abrir uma cena leva para a aba). A cena aberta traz as rolagens ao vivo com Passou / Não passou, as "Imagens da cena" com "Mostrar aos jogadores" (uma imagem do mapa inteiro pergunta antes) e "À mostra agora", uma linha de imagem com "Da galeria" e "Parar de mostrar", e o botão "Pedir teste em grupo". No celular as partes dobram. O jogador tem o bloco "Cena" com o bônus dele e "Rolar".
+- Sessão: o mestre abre a "Cena de RP" na aba "Cena" ("Abrir cena", "Trocar cena", "Fechar cena"; abrir uma cena leva para a aba). A cena aberta é um cartão só: "Em cena" (uma linha por NPC), "Imagens da cena" (miniaturas; um toque mostra uma, a imagem do mapa inteiro pergunta antes; a que está à mostra leva "À mostra"; o bloco tracejado "Da galeria" e "Parar de mostrar"), "Ações e rolagens" (uma linha por ação, cada rolagem num chip que abre a fórmula e o Passou / Não passou; "Teste em grupo" no cabeçalho), "Pistas" e os "Ganchos e anotações", dobrados. No celular as partes dobram. O jogador tem o bloco "Cena" com o bônus dele e "Rolar".
 - Ver [Cenas e palco](../../architecture/play/scenes-and-stage.md).
 
 #### Relacionadas
@@ -551,7 +551,7 @@ Cada convite escolhe se exige aprovação, e uma recusa apaga o personagem e a p
 - Um jogador baixa a imagem só enquanto ela está sendo mostrada, enquanto está deixada com os jogadores, ou enquanto é o fundo de um mapa que ele vê.
   Fora disso é um `404`, mesmo com o ID guardado.
   Veja [RN-10](regras.md) e [Servir imagens](../../architecture/maps/images.md#serving-images).
-- Tela do mestre: com uma cena aberta, a linha de imagem da cena ("Da galeria", "Parar de mostrar", o interruptor "Deixar com os jogadores" e a lista das imagens deixadas); sem cena aberta, o painel "Imagem para os jogadores" ("Mostrar imagem", o seletor da galeria com "Mostrar aos jogadores", "Trocar imagem", "Parar de mostrar"), o interruptor "Deixar com os jogadores" ("Ligado"/"Desligado", desligado sempre que uma imagem nova é mostrada) e a lista "Deixadas com os jogadores" com "Tirar".
+- Tela do mestre: com uma cena aberta, a linha "Imagens da cena" (o bloco tracejado "Da galeria", o interruptor "Deixar com os jogadores" com a palavra do estado numa linha, "Parar de mostrar" e a lista das imagens deixadas); sem cena aberta, o painel "Imagem para os jogadores" ("Mostrar imagem", o seletor da galeria com "Mostrar aos jogadores", "Trocar imagem", "Parar de mostrar"), o interruptor "Deixar com os jogadores" ("Ligado"/"Desligado", desligado sempre que uma imagem nova é mostrada) e a lista "Deixadas com os jogadores" com "Tirar".
 - Tela do jogador: o bloco "O mestre está mostrando" com a imagem, o nome dela como legenda e "Ver em tela cheia", que aparece e some ao vivo e é anunciado; e a lista "Imagens que o mestre deixou" com "Ver em tela cheia", escondida enquanto vazia.
   A lista fica só na página da sessão, não na página da campanha.
   Veja [Design](../../design/session.md#images-shown-to-players) e [Arquitetura](../../architecture/play/live-session.md#what-the-session-shows).

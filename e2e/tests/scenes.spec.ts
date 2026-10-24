@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { endOpenSessionRPC, openSessionPage, showMapTool } from './live-session-support';
+import { endOpenSessionRPC, openRolls, openSessionPage, showMapTool } from './live-session-support';
 import { addActionRPC, rollTyped, sceneActionIdsRPC, setAttemptsRPC, tableForScenes } from './scene-support';
 import { orla, orlaSheet } from './rests-support';
 import { callRPC, newSignedInContext } from './support';
@@ -153,14 +153,14 @@ test(
       await expect(scene.getByRole('button', { name: 'Rolar Percepção' })).toBeVisible();
 
       // The master sees both, newest first, with the formula and Passou / Não passou.
-      const rolls = master.getByRole('heading', { name: 'Rolagens' }).locator('xpath=ancestor::section[1]');
-      await expect(rolls.getByRole('listitem')).toHaveCount(2);
-      const newest = rolls.getByRole('listitem').nth(0);
+      const rolls = await openRolls(master);
+      await expect(rolls).toHaveCount(2);
+      const newest = rolls.filter({ hasText: 'Resistir ao cheiro de fumaça' });
       await expect(newest).toContainText('Pensantus');
       await expect(newest).toContainText('Resistir ao cheiro de fumaça · dado físico');
       await expect(newest).toContainText('3 + 3 = 6');
       await expect(newest).toContainText('Não passou · CD 10');
-      const oldest = rolls.getByRole('listitem').nth(1);
+      const oldest = rolls.filter({ hasText: 'Procurar pistas na carroça' });
       await expect(oldest).toContainText('Procurar pistas na carroça');
       await expect(oldest).toContainText(/1d20 \(\d+\) \+ 6 = \d+/);
       await expect(oldest).toContainText(/(Passou|Não passou)\s·\sCD\s12/);
@@ -402,13 +402,13 @@ test(
       await expect(clues.getByRole('button')).toHaveCount(0);
 
       // The master reads which attempt each roll was, and "Dar mais uma tentativa" is only on the last, failed, one.
-      const rolls = master.getByRole('heading', { name: 'Rolagens' }).locator('xpath=ancestor::section[1]');
-      await expect(rolls.getByRole('listitem')).toHaveCount(3);
-      await expect(rolls.getByRole('listitem').nth(0)).toContainText('Tentativa 3 de 3');
-      await expect(rolls.getByRole('listitem').nth(2)).toContainText('Tentativa 1 de 3');
+      const rolls = await openRolls(master);
+      await expect(rolls).toHaveCount(3);
+      await expect(rolls.nth(0)).toContainText('Tentativa 3 de 3');
+      await expect(rolls.nth(2)).toContainText('Tentativa 1 de 3');
       const grant = master.getByRole('button', { name: 'Dar mais uma tentativa a Pensantus em Procurar pistas na carroça' });
       await expect(grant).toHaveCount(1);
-      await expect(rolls.getByRole('listitem').nth(0).getByRole('button')).toHaveCount(1);
+      await expect(rolls.nth(0).getByRole('button')).toHaveCount(1);
 
       // It asks in place first: "Voltar" is focused and goes back with no change.
       await grant.click();
@@ -474,10 +474,10 @@ test(
       await expect(scene).not.toContainText(/\bCD\b|passou/i);
 
       // The master sees both results, and with the DC hidden any exhausted roll may be given another try.
-      const rolls = master.getByRole('heading', { name: 'Rolagens' }).locator('xpath=ancestor::section[1]');
-      await expect(rolls.getByRole('listitem')).toHaveCount(2);
-      await expect(rolls.getByRole('listitem').nth(0)).toContainText('Passou · CD 12');
-      await expect(rolls.getByRole('listitem').nth(0)).toContainText('Tentativa 2 de 2');
+      const rolls = await openRolls(master);
+      await expect(rolls).toHaveCount(2);
+      await expect(rolls.nth(0)).toContainText('Passou · CD 12');
+      await expect(rolls.nth(0)).toContainText('Tentativa 2 de 2');
       await expect(master.getByRole('button', { name: /^Dar mais uma tentativa a Pensantus/ })).toHaveCount(1);
     } finally {
       if (campaignId) {

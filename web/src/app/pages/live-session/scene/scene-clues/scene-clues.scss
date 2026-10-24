@@ -102,7 +102,7 @@
   }
 
   @container (min-width: 380px) {
-    grid-template-columns: 22px minmax(0, 1fr) 176px;
+    grid-template-columns: 22px minmax(0, 1fr) auto;
     align-items: start;
   }
 }
@@ -167,6 +167,7 @@
 .sc__reveal {
   grid-column: 2;
   width: 100%;
+  white-space: nowrap;
 
   @media (max-width: 767.98px) {
     --mat-button-outlined-container-height: 48px;
@@ -175,5 +176,6 @@
   @container (min-width: 380px) {
     grid-column: 3;
     grid-row: 1;
+    width: auto;
   }
 }

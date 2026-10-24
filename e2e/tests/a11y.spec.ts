@@ -7865,12 +7865,9 @@ async function scanEffectsOutsideScreens(browser: Browser, colorScheme: 'light' 
     const panel = m.getByRole('region', { name: 'Efeitos em jogo' });
     await expect(panel.getByText('Nenhum efeito nos personagens agora.')).toBeVisible();
     await expectScreenPasses(m, `Efeitos fora do combate, o painel e "Passar o tempo" ${where}`);
-    const time = m.getByRole('region', { name: 'Passar o tempo' });
-    // Each preset keeps its words on one line, inside its button and clear of the field under the row.
-    const fieldBox = await boxOf(time.locator('app-text-field'));
-    for (const preset of await time.getByRole('group', { name: 'Quanto tempo passa' }).getByRole('button').all()) {
-      const box = await boxOf(preset);
-      expect(box.y + box.height, `${await preset.innerText()} over the field`).toBeLessThanOrEqual(fieldBox.y);
+    const time = m.getByRole('group', { name: 'Passar o tempo' });
+    // Each button keeps its words on one line, inside it.
+    for (const preset of await time.getByRole('button').all()) {
       const text = await preset.evaluate((el) => {
         const range = document.createRange();
         range.selectNodeContents(el.querySelector('.mdc-button__label') ?? el);
@@ -7883,9 +7880,10 @@ async function scanEffectsOutsideScreens(browser: Browser, colorScheme: 'light' 
       });
       expect(text, `${await preset.innerText()} on one line, inside its button`).toEqual({ lines: 1, inside: true });
     }
-    await time.getByRole('button', { name: '10 minutos' }).click();
-    await time.getByRole('button', { name: 'Passar o tempo' }).click();
-    await expect(time).toContainText('Passou 10 minutos.');
+    await time.getByRole('button', { name: 'Outro tempo' }).click();
+    await expectScreenPasses(m, `Passar o tempo, "Outro tempo" ${where}`);
+    await time.getByRole('button', { name: 'Passar 10 minutos' }).click();
+    await expect(panel).toContainText('Passou 10 minutos.');
     await expectScreenPasses(m, `Passar o tempo, o resultado ${where}`);
 
     const rest = m.getByRole('region', { name: 'Descanso' });
