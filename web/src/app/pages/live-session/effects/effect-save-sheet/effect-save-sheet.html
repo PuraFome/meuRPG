@@ -53,7 +53,7 @@
       } @else {
         <div class="mr-notice mr-notice--neutral">
           <mat-icon aria-hidden="true">info</mat-icon>
-          <p>Teste de resistência de <b>{{ view().ability }}</b>. {{ view().consequence }}</p>
+          <p>Teste de resistência de <b>{{ view().ability }}</b>@if (view().dc) {, {{ view().dc }}}. {{ view().consequence }}</p>
         </div>
         <p class="what">
           @if (view().modifier) {
@@ -114,6 +114,9 @@
               </span>
             </p>
             <p class="what what--small">{{ formula(r) }}{{ r.physical ? ' · dado físico' : '' }}</p>
+            @if (resultDc()) {
+              <p class="what what--small">Contra {{ resultDc() }}.</p>
+            }
             @if (luckyLine()) {
               <p class="what what--small">{{ luckyLine() }}</p>
             }

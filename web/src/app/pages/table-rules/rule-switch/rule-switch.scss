@@ -2,8 +2,8 @@
   display: block;
 }
 
-// The fog switch: ink track and a check, never the accent.
-.fog__row {
+// A rule switch: ink track and a check, never the accent.
+.rule__row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -11,19 +11,19 @@
   min-height: 52px;
 }
 
-.fog__text {
+.rule__text {
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
 
-.fog__label {
+.rule__label {
   font-size: 17px;
   font-weight: 700;
   line-height: 22px;
 }
 
-.fog__hint {
+.rule__hint {
   font-size: 15px;
   line-height: 20px;
   color: var(--mr-ink-muted);

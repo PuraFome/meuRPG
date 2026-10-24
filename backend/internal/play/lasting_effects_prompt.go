@@ -43,7 +43,7 @@ func (wv *windowView) effectSavePrompt(w playdb.ReactionWindow, reactor *playdb.
 	}
 	p.SourceNamePt, p.Ability, p.AbilityNamePt = wv.names(key), ability, wv.names(ability)
 	caster, casterKnown := wv.byID[conv.OrZero(st.SourceID)]
-	if wv.v.master || (casterKnown && wv.v.owns(caster)) {
+	if wv.v.master || (casterKnown && wv.v.owns(caster)) || (reactor != nil && wv.v.saveDCFor(*reactor)) {
 		dc := conv.OrZero(st.SaveDc)
 		if dc == 0 {
 			dc = defaultEffectDC

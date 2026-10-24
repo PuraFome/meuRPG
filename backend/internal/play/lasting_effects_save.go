@@ -264,7 +264,15 @@ func (s *Service) effectSaveAnswer(ctx context.Context, m authz.Membership, res 
 		return nil, err
 	}
 	if run.result == nil { // a retry the closure never ran for: the first answer is in the event
-		run.result = savedResultOf(res, run.made, m.Role == authz.RoleMaster)
+		showDC := m.Role == authz.RoleMaster
+		if !showDC {
+			rules, err := s.tableRules(ctx, nil, m.CampaignID)
+			if err != nil {
+				return nil, s.dbError(ctx, "read the table's rules", err)
+			}
+			showDC = rules.ShowSaveDC
+		}
+		run.result = savedResultOf(res, run.made, showDC)
 	}
 	return connect.NewResponse(&playv1.RollEffectSaveResponse{Encounter: out, Result: run.result}), nil
 }
@@ -468,7 +476,7 @@ func (s *Service) recordEffectSaveRoll(ctx context.Context, c *combatTx, x *effe
 // settleEffectSave closes the window, does what the answer does to the effect, and writes the
 // event.
 func (s *Service) settleEffectSave(ctx context.Context, c *combatTx, x *effectSaveStep, saved bool) (any, error) {
-	if c.master {
+	if c.master || c.rules.ShowSaveDC { // the roller's player reads it when the table shows the DC of a save
 		dc := x.dc
 		x.run.result.Dc = &dc
 	}
@@ -571,14 +579,14 @@ func (s *Service) effectDamageSaves(ctx context.Context, c *combatTx, target pla
 }
 
 // savedResultOf rebuilds the answer to a saving throw from the event it wrote, for a retry.
-func savedResultOf(res combatResult, made actionEvent, master bool) *playv1.EffectSaveResult {
+func savedResultOf(res combatResult, made actionEvent, showDC bool) *playv1.EffectSaveResult {
 	ev, err := resultEvent(res, made)
 	if err != nil || ev.Lasting == nil {
 		return &playv1.EffectSaveResult{}
 	}
 	le := ev.Lasting
 	out := &playv1.EffectSaveResult{D20: le.D20, Modifier: ev.Modifier, Total: le.Total, Physical: ev.Physical, Saved: le.Change == "saved", Skipped: le.Change == "skipped", EffectEnded: le.Reason == endSaved, Rerolled: ev.Lucky.proto()}
-	if master && le.DC != 0 {
+	if showDC && le.DC != 0 {
 		dc := le.DC
 		out.Dc = &dc
 	}

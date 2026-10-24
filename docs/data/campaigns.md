@@ -90,6 +90,7 @@ The table rules (MR-025, RN-24): one row per campaign.
 | `feats_allowed` | default false | level-up (see [Architecture](../architecture/campaigns.md#table-rules)) |
 | `hidden_area_hits` | `reveal` (default), `keep_hidden`, `ask` | what an area spell does to a hidden creature it hits |
 | `enemy_reactions` | `only_when_possible` (default), `always` | combat reactions |
+| `show_save_dc` | `BOOL NOT NULL`, default false (migration 00270) | `play`: whether the player who rolls a saving throw also reads its DC |
 | `house_rules` | `TEXT[]`, at most 20 (the server also limits each to 200 characters) | displayed only |
 
 The dice mode stays in `campaigns.dice_mode`; the table style writes it there in the same transaction.
