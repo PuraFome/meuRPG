@@ -49,6 +49,16 @@
   color: var(--mr-ink-muted);
 }
 
+.row__econ {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 24px;
+  color: var(--mr-ink-muted);
+}
+
 .row__detail {
   text-wrap: pretty;
   font-size: 15px;

@@ -103,13 +103,16 @@ describe('ActionGroups: the spells (E8-02)', () => {
     expect(described[1]).toEqual({ key: 'spell:web', name: 'Teia' });
   });
 
-  it('puts the circle in a tag on its own line, and "Reação" next to it for Escudo', () => {
+  it('puts the circle in a tag on its own line, and the economy beside it for Escudo', () => {
     const { el } = setup(SERVER_ORDER);
     const tags = (row: HTMLElement) =>
       [...row.querySelectorAll('.row__tags .row__pill')].map((t) => t.textContent!.trim());
     expect(tags(rows(el)[0])).toEqual(['Truque']);
     expect(tags(rows(el)[2])).toEqual(['1º nível']);
-    expect(tags(rows(el)[3])).toEqual(['1º nível', 'Reação']);
+    // The economy is the row's own mark and word, not a tag.
+    expect(tags(rows(el)[3])).toEqual(['1º nível']);
+    expect(rows(el)[3].querySelector('.row__econ')?.textContent?.trim()).toBe('Reação');
+    expect(rows(el)[1].querySelector('.row__econ')?.textContent?.trim()).toBe('Ação');
     expect(el.querySelector('.row__name .row__pill')).toBeNull();
   });
 
@@ -135,14 +138,11 @@ describe('ActionGroups: the spells (E8-02)', () => {
     const web = rows(el)[5];
     expect(web.querySelector('.row__why')!.textContent!.trim()).toContain('Sem espaço');
     expect(web.querySelector('.row__why')!.textContent).not.toContain('nível');
-    const slotRows = [...el.querySelectorAll('.slots__row')].map((r) => [
-      r.querySelector('.slots__title')!.textContent!.trim(),
-      r.querySelector('.slots__text')!.textContent!.trim(),
-    ]);
-    expect(slotRows).toEqual([
-      ['1º\u00a0nível', '0 livres de 4'],
-      ['2º\u00a0nível', '0 livres de 2'],
-    ]);
+    const slotRows = [...el.querySelectorAll('.slots__row')].map((r) =>
+      r.getAttribute('aria-label'),
+    );
+    expect(slotRows).toEqual(['1º\u00a0nível: 0 livres de 4', '2º\u00a0nível: 0 livres de 2']);
+    expect(el.querySelector('.slots__lead')!.textContent).toBe('Espaços:');
   });
 
   it('casts a spell that can be cast, and not one that cannot', () => {
@@ -153,7 +153,7 @@ describe('ActionGroups: the spells (E8-02)', () => {
   });
 });
 
-describe('ActionGroups: a move that waits for an opportunity attack (E9-13)', () => {
+describe('ActionGroups: the movement belongs to the row under the map (E9-13)', () => {
   const plain = (t: string | null | undefined) =>
     (t ?? '')
       .replace(/\u00a0/g, ' ')
@@ -169,33 +169,15 @@ describe('ActionGroups: a move that waits for an opportunity attack (E9-13)', ()
     return fixture.nativeElement as HTMLElement;
   }
 
-  it('says the movement in tenths of a foot, metres with one decimal', () => {
-    const el = setup({
-      speedDft: 300,
-      movementLeftDft: 229,
-      movementLeftFt: 22,
-      movementUsedDft: 71,
-      movementUsedFt: 7,
-    });
-    expect(plain(el.textContent)).toContain('Restam 6,9 m');
-    expect(plain(el.textContent)).toContain(
-      'Você já andou 2,1 m. Dá para andar mais 6,9 m (4 quadrados).',
+  it('has no "Mover": the movement row under the map has the one button', () => {
+    const el = setup({ speedDft: 300, movementLeftDft: 150, movementLeftFt: 15 });
+    expect([...el.querySelectorAll('button')].map((b) => plain(b.textContent))).not.toContain(
+      'Mover',
     );
+    expect(plain(el.textContent)).not.toContain('Restam');
   });
 
-  it('turns "Mover" off with the reason instead of failing on click', () => {
-    const el = setup(
-      { speedDft: 300, movementLeftDft: 150, movementLeftFt: 15 },
-      'Esperando a reação do mestre',
-    );
-    const move = Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find(
-      (b) => plain(b.textContent) === 'Mover',
-    )!;
-    expect(move.getAttribute('aria-disabled') === 'true' || move.disabled).toBe(true);
-    expect(plain(el.textContent)).toContain('Esperando a reação do mestre');
-  });
-
-  it('reads Desengajar as such: a notice, "Desengajado" and the move that does not provoke', () => {
+  it('says Desengajar in a notice, once', () => {
     const el = setup({
       speedDft: 300,
       movementLeftDft: 300,
@@ -203,12 +185,9 @@ describe('ActionGroups: a move that waits for an opportunity attack (E9-13)', ()
       disengaged: true,
       actionUsed: true,
     });
-    const text = plain(el.textContent);
-    expect(text).toContain(
+    expect(plain(el.textContent)).toContain(
       'Você usou Desengajar. Seus movimentos deste turno não provocam ataque de oportunidade.',
     );
-    expect(text).toContain('Desengajado');
-    expect(text).toContain('Dá para andar até 9,0 m (6 quadrados) sem provocar.');
   });
 });
 
@@ -225,6 +204,9 @@ describe('ActionGroups: "Ver pelos olhos do Nanquim" (MR-036, E9-04)', () => {
     fixture.componentInstance.familiarEyes.subscribe(() => asked.push(1));
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
+    // With the Action spent the standard actions (and this row) are one folded line: open it.
+    el.querySelectorAll<HTMLButtonElement>('.mr-fold__button').forEach((b) => b.click());
+    fixture.detectChanges();
     const row = [...el.querySelectorAll('app-action-row')].find((r) =>
       r.textContent?.includes('Ver pelos olhos'),
     );
@@ -236,7 +218,7 @@ describe('ActionGroups: "Ver pelos olhos do Nanquim" (MR-036, E9-04)', () => {
     expect(row?.querySelector('.row__name')?.textContent?.trim()).toBe(
       'Ver pelos olhos do Nanquim',
     );
-    expect(row?.querySelector('.row__pill')?.textContent?.trim()).toBe('Ação');
+    expect(row?.querySelector('.row__econ')?.textContent?.trim()).toBe('Ação');
     expect(row?.querySelector('.row__detail')?.textContent?.trim()).toBe(
       'Dura até o começo da sua próxima vez, ou até você voltar.',
     );
@@ -276,7 +258,10 @@ describe('ActionGroups: Wild Shape (MR-037, E9-11)', () => {
     const fixture = TestBed.createComponent(ActionGroups);
     fixture.componentRef.setInput(
       'options',
-      create(TurnOptionsSchema, { featureActions: [wildFeature() as never] }),
+      create(TurnOptionsSchema, {
+        featureActions: [wildFeature() as never],
+        spells: [spell('spell:sleep', 'Sono', 1)],
+      }),
     );
     fixture.componentRef.setInput(
       'own',
@@ -421,6 +406,9 @@ describe('ActionGroups: the bonus action attacks', () => {
     fixture.componentInstance.attack.subscribe((k) => attacked.push(k));
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
+    // The Action is spent: its attacks are one folded line; open it to read them.
+    el.querySelectorAll<HTMLButtonElement>('.mr-fold__button').forEach((b) => b.click());
+    fixture.detectChanges();
     const row = (name: string) =>
       ([...el.querySelectorAll('app-action-row')] as HTMLElement[]).find(
         (r) => r.querySelector('.row__name')?.textContent?.trim() === name,
@@ -444,7 +432,8 @@ describe('ActionGroups: the bonus action attacks', () => {
       }),
     ]);
     const dagger = row('Adaga');
-    expect(tags(dagger)).toEqual(['Ação bônus']);
+    expect(tags(dagger)).toEqual([]);
+    expect(dagger.querySelector('.row__econ')?.textContent?.trim()).toBe('Bônus');
     expect(note(dagger)).toBe('Ataque com a outra mão, sem o modificador no dano');
     expect(button(dagger).getAttribute('aria-disabled')).not.toBe('true');
     button(dagger).click();
@@ -470,7 +459,7 @@ describe('ActionGroups: the bonus action attacks', () => {
           bonusAttacksLeft: left,
         }),
       ]);
-      expect(tags(flurry.row('Golpe desarmado'))).toEqual(['Ação bônus']);
+      expect(tags(flurry.row('Golpe desarmado'))).toEqual([]);
       expect(note(flurry.row('Golpe desarmado'))).toBe(text);
     }
   });
@@ -490,7 +479,8 @@ describe('ActionGroups: the bonus action attacks', () => {
       }),
     ]);
     const dagger = row('Adaga');
-    expect(tags(dagger)).toEqual(['Ação bônus']);
+    expect(tags(dagger)).toEqual([]);
+    expect(dagger.querySelector('.row__econ')?.textContent?.trim()).toBe('Bônus');
     expect(note(dagger)).toBe('');
     expect(dagger.querySelector('.row__why')!.textContent).toContain('Ação bônus já usada');
     button(dagger).click();

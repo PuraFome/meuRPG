@@ -2,39 +2,51 @@
   display: block;
 }
 
-// From 1024px the groups are one panel (E6-14): a garnet frame, the economy
-// first, then a rule under each group's title.
+// The action tabs (C4-03, C6-07): one card, the tab list on top and the open panel under it. Every panel stays mounted, hidden
+// while another tab is shown. On the rail from 1024px the rail is the column; the card has no frame of its own there.
 .groups {
   display: flex;
   flex-direction: column;
-  gap: var(--mr-space-4);
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
 
   @media (min-width: 1024px) {
-    gap: 12px;
-    box-sizing: border-box;
-    padding: 14px 20px 16px;
-    border: 1px solid var(--mr-accent);
-    border-radius: var(--mr-radius-lg);
-    background: var(--mr-surface);
+    border: 0;
+    border-radius: 0;
   }
 }
 
-// The phone has no heading above the groups (E6-06). Hidden visually, still
-// named for screen readers.
-.groups__title {
-  margin: 0;
-  font-family: var(--mr-font-display);
-  font-weight: 700;
-  font-size: 24px;
-  line-height: 28px;
+.groups > :not(app-tab-list):not(.panel) {
+  margin-inline: 12px;
+}
 
-  @media (max-width: 1023.98px) {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-  }
+.groups > .groups__title {
+  margin-inline: 0;
+}
+
+.tabs {
+  display: block;
+}
+
+.panel {
+  padding: 0 12px 8px;
+}
+
+.panel[hidden] {
+  display: none;
+}
+
+// The phone has no heading above the tabs. Hidden visually, still named for screen readers.
+.groups__title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
 }
 
 .groups__note {
@@ -159,35 +171,41 @@ app-action-row + .group__sub,
   font-weight: 400;
 }
 
-// The slots above the spells: the one explanation of every "Sem espaço" below.
+// The slots above the spells, on one line (C6-07): "Espaços: 1º ○○○● 2º ○○", the one explanation of every "Sem espaço" below.
+// From 1024px only: the phone's turn card has the same line.
 .slots {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin: 8px 0 4px;
-  padding: 0;
-  list-style: none;
-}
-
-.slots__row {
-  display: flex;
+  display: none;
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 12px;
-  font-size: 15px;
+  margin: 0;
+  padding: 10px 0 2px;
+  list-style: none;
+  font-size: 14px;
   line-height: 20px;
+
+  @media (min-width: 1024px) {
+    display: flex;
+  }
 }
 
-.slots__title {
-  min-width: 92px;
-}
-
-.slots__text {
+.slots__lead {
   color: var(--mr-ink-muted);
+}
+
+.slots__row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .slots + app-action-row {
   border-top: 1px solid var(--mr-rule);
+}
+
+// A folded group of spent rows, between the rows of its tab.
+app-fold {
+  margin-top: 8px;
 }
 
 // "Gastar movimento" (a combat without a map, E10-04 state 7): the movement's one button, 48px on a phone and the same outline as the other actions.

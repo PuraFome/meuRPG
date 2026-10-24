@@ -42,7 +42,8 @@ export function economyShapes(c: EconomyFacts, options: EconomyOptions = {}): Ec
   const cannot = cannotAct(c);
   const left = options.attacksLeft ?? 0;
   const partial = c.actionUsed && left > 0 && (options.attacksPerAction ?? 1) > 1 && !cannot;
-  const word = (spent: boolean): string => (cannot ? 'indisponível' : spent ? 'usada' : 'disponível');
+  const word = (spent: boolean): string =>
+    cannot ? 'indisponível' : spent ? 'usada' : 'disponível';
   const shapes: EconomyShape[] = [
     {
       kind: 'action',
@@ -77,38 +78,59 @@ export function economyShapes(c: EconomyFacts, options: EconomyOptions = {}): Ec
 }
 
 /**
+ * One shape, 1em wide: filled while it is there, a dashed outline with a slash once it is spent. Decorative: the words beside it
+ * say the same.
+ */
+@Component({
+  selector: 'app-economy-mark',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <svg viewBox="0 0 24 24" aria-hidden="true" [class.mark--spent]="spent()">
+      @switch (kind()) {
+        @case ('action') {
+          <circle class="mark" cx="12" cy="12" r="8" />
+        }
+        @case ('bonus') {
+          <path class="mark" d="M12 4.2l8.3 14.8H3.7z" />
+        }
+        @case ('reaction') {
+          <rect class="mark" x="4.5" y="4.5" width="15" height="15" rx="2" />
+        }
+        @case ('free') {
+          <path class="mark mark--line" d="M13 3L5 14h6l-1 7 8-11h-6z" />
+        }
+        @default {
+          <g class="walker">
+            <circle cx="13" cy="4.5" r="1.8" />
+            <path d="M10 21l2-6 3 3v3M9 11l3-3 3 3 3 1M12 8l-1 7" />
+          </g>
+        }
+      }
+      @if (spent()) {
+        <path class="slash" d="M4 20L20 4" />
+      }
+    </svg>
+  `,
+  styleUrl: './economy-mark.scss',
+})
+export class EconomyMark {
+  readonly kind = input.required<EconomyKind | 'free'>();
+  readonly spent = input(false);
+}
+
+/**
  * The shapes as chips (`pills`, the turn card) or as one line of plain words (`inline`, the bar above the phone's nav). With
  * `onlyLeft` the spent ones are left out: "Ainda tem ○ Ação ■ Reação".
  */
 @Component({
   selector: 'app-economy-shapes',
+  imports: [EconomyMark],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <ul class="eco" [class.eco--inline]="variant() === 'inline'" [attr.aria-label]="label()">
       @for (s of shown(); track s.kind) {
         <li class="shape" [class.shape--spent]="s.spent" [attr.aria-label]="s.name">
-          <svg class="shape__icon" viewBox="0 0 24 24" aria-hidden="true">
-            @switch (s.kind) {
-              @case ('action') {
-                <circle class="mark" cx="12" cy="12" r="8" />
-              }
-              @case ('bonus') {
-                <path class="mark" d="M12 4.2l8.3 14.8H3.7z" />
-              }
-              @case ('reaction') {
-                <rect class="mark" x="4.5" y="4.5" width="15" height="15" rx="2" />
-              }
-              @default {
-                <g class="walker">
-                  <circle cx="13" cy="4.5" r="1.8" />
-                  <path d="M10 21l2-6 3 3v3M9 11l3-3 3 3 3 1M12 8l-1 7" />
-                </g>
-              }
-            }
-            @if (s.spent) {
-              <path class="slash" d="M4 20L20 4" />
-            }
-          </svg>
+          <app-economy-mark class="shape__icon" [kind]="s.kind" [spent]="s.spent" />
           <span class="shape__text" aria-hidden="true">{{ s.text }}</span>
         </li>
       }

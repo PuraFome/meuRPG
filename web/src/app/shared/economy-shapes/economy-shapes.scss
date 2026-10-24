@@ -36,26 +36,7 @@
 
 .shape__icon {
   flex: none;
-  width: 17px;
-  height: 17px;
-  fill: none;
-  stroke: currentcolor;
-  stroke-width: 2;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-}
-
-.mark {
-  fill: currentcolor;
-}
-
-.shape--spent .mark {
-  fill: none;
-  stroke-dasharray: 3.2 2.6;
-}
-
-.walker {
-  fill: none;
+  font-size: 17px;
 }
 
 // The bar above the phone's nav: no rings, the words and their shapes side by side.
@@ -73,7 +54,6 @@
   }
 
   .shape__icon {
-    width: 14px;
-    height: 14px;
+    font-size: 14px;
   }
 }

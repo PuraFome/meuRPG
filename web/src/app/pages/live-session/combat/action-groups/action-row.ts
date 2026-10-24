@@ -2,7 +2,18 @@ import { Component, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
+import { EconomyMark } from '../../../../shared/economy-shapes/economy-shapes';
 import { SpellHelp } from '../../../../shared/spell-details/spell-help';
+
+/** The economy a row spends, as its mark and word read: the shape of the Action, the Bonus action, the Reaction, or a bolt for what costs nothing. */
+export type RowEconomy = 'action' | 'bonus' | 'reaction' | 'free';
+
+const ECONOMY_WORD: Readonly<Record<RowEconomy, string>> = {
+  action: 'Ação',
+  bonus: 'Bônus',
+  reaction: 'Reação',
+  free: 'Sem custo',
+};
 
 let nextId = 0;
 
@@ -21,15 +32,18 @@ let nextId = 0;
  */
 @Component({
   selector: 'app-action-row',
-  imports: [MatButtonModule, MatIconModule, SpellHelp],
+  imports: [EconomyMark, MatButtonModule, MatIconModule, SpellHelp],
   template: `
     <div class="row__text">
       @if (name()) {
         <span class="row__name">{{ name() }}</span>
-        @if (tags().length) {
+        @if (tags().length || economy()) {
           <span class="row__tags">
             @for (tag of tags(); track tag) {
               <span class="row__pill">{{ tag }}</span>
+            }
+            @if (economy(); as e) {
+              <span class="row__econ"><app-economy-mark [kind]="e" [spent]="off()" />{{ word(e) }}</span>
             }
           </span>
         }
@@ -76,6 +90,8 @@ export class ActionRow {
   readonly tags = input<readonly string[]>([]);
   /** The spell's name, when the row has the "?": it names the button ("Detalhes de Sono"). */
   readonly helpName = input('');
+  /** The economy the row spends (a mark and its word beside the name's tags); `null` for a row that spends none, or says it elsewhere. */
+  readonly economy = input<RowEconomy | null>(null);
   readonly detail = input('');
   /** A short line of why under the detail ("Golpe desarmado das Artes Marciais"). */
   readonly note = input('');
@@ -94,6 +110,10 @@ export class ActionRow {
   readonly help = output<void>();
 
   protected readonly whyId = `row-why-${nextId++}`;
+
+  protected word(e: RowEconomy): string {
+    return ECONOMY_WORD[e];
+  }
 
   /** A disabled option keeps its focus stop but does nothing. */
   protected pressed(): void {
