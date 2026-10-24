@@ -8,6 +8,7 @@ import {
   createCampaign,
   createCharacterRPC,
   createCharacterViaUI,
+  gotoCampaignTab,
   newSignedInContext,
   pensantus,
   pensantusDerived,
@@ -118,9 +119,9 @@ test(
 test('o mestre cria um inimigo com ficha completa e um minion com ficha básica', { tag: '@MR-005' }, async ({ page }) => {
   const campaignId = await createCampaign(page, `NPCs ${Date.now()}`);
 
-  // The "Novo NPC" menu (campaign-characters.html) routes to
+  // The "Novo NPC" menu (campaign-npcs.html, on the "Preparação" tab) routes to
   // /campaigns/:id/npcs/new/:kind, one per NPC kind.
-  await page.goto(`/campaigns/${campaignId}`);
+  await gotoCampaignTab(page, campaignId, 'Preparação');
   await page.getByRole('button', { name: 'Novo NPC' }).click();
   await page.getByRole('menuitem', { name: 'Inimigo' }).click();
   await expect(page).toHaveURL(new RegExp(`/campaigns/${campaignId}/npcs/new/enemy$`));
@@ -129,7 +130,7 @@ test('o mestre cria um inimigo com ficha completa e um minion com ficha básica'
   const enemyId = await createCharacterViaUI(page, campaignId, { ...pensantus, name: 'Goblin Chefe' }, page.url());
   expect(enemyId).toBeTruthy();
 
-  await page.goto(`/campaigns/${campaignId}`);
+  await gotoCampaignTab(page, campaignId, 'Preparação');
   await page.getByRole('button', { name: 'Novo NPC' }).click();
   await page.getByRole('menuitem', { name: 'Minion' }).click();
   await expect(page).toHaveURL(new RegExp(`/campaigns/${campaignId}/npcs/new/minion$`));
@@ -159,9 +160,9 @@ test('o mestre cria um inimigo com ficha completa e um minion com ficha básica'
   await expect(page.locator('dt:text-is("Iniciativa") + dd')).toHaveText('+2');
   await expect(page.getByText('Cimitarra +4 · 1d6 + 2 cortante')).toBeVisible();
 
-  await page.goto(`/campaigns/${campaignId}`);
-  // "NPCs" is an <h3> (campaign-characters.html), not an <h2>.
-  await expect(page.getByRole('heading', { name: 'NPCs', level: 3 })).toBeVisible();
+  await gotoCampaignTab(page, campaignId, 'Preparação');
+  // "NPCs" is the title of a panel of the "Preparação" tab (campaign-npcs.html).
+  await expect(page.getByRole('heading', { name: 'NPCs', level: 2 })).toBeVisible();
   await expect(page.getByText('Goblin Chefe')).toBeVisible();
   await expect(page.getByText('Bandido')).toBeVisible();
 });

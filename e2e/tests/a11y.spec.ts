@@ -23,7 +23,7 @@ import { paintRPC, pickRadio, tapSquare } from './move-support';
 import { beginFogCombat, moveTo, sessionRoute, setCarriedLightRPC, tableForFog } from './fog-support';
 import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
 import { claimRoute, linkRPC, reservedRPC, revokeLinkRPC, rowOf } from './claim-support';
-import { authStatePath, boxOf, callRPC, layoutSize, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus, showAllPicks, signIn, type TestUser } from './support';
+import { authStatePath, boxOf, callRPC, layoutSize, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus, showAllPicks, signIn, type TestUser, openFoldedPanel, openXpHistory } from './support';
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { tableForCaster, tableForCreatures } from './creatures-support';
 import { grog, pipo, rollsTable, vex } from './combat-rolls-support';
@@ -163,7 +163,9 @@ async function scanMasterScreens(browser: Browser, colorScheme: 'light' | 'dark'
     const { campaignId, npcId } = await campaignWithNpc(page);
     const screens: [string, string][] = [
       ['Início', '/'],
-      ['Campanha', `/campaigns/${campaignId}`],
+      ['Campanha, aba Mesa', `/campaigns/${campaignId}`],
+      ['Campanha, aba Preparação', `/campaigns/${campaignId}/prep`],
+      ['Campanha, aba Regras', `/campaigns/${campaignId}/setup`],
       ['Ficha do NPC', `/campaigns/${campaignId}/characters/${npcId}`],
       ['Editar a ficha do NPC', `/campaigns/${campaignId}/characters/${npcId}/edit`],
       ['Novo NPC básico', `/campaigns/${campaignId}/npcs/new/minion`],
@@ -265,8 +267,8 @@ async function scanGallery(browser: Browser, colorScheme: 'light' | 'dark', widt
     await expectScreenPasses(page, `Galeria, imagem aberta ${where}`);
     await page.keyboard.press('Escape');
 
-    await open(page, `/campaigns/${campaignId}`);
-    await expect(page.getByRole('link', { name: 'Abrir galeria' })).toBeVisible();
+    await open(page, `/campaigns/${campaignId}/prep`);
+    await expect(page.getByRole('link', { name: 'Enviar imagem' })).toBeVisible();
     await expectScreenPasses(page, `Campanha com o painel Galeria ${where}`);
   } finally {
     await context.close();
@@ -689,14 +691,14 @@ async function scanDiceScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await playerPage.goto('/');
     const { campaignId } = await tableWithPensantus(masterPage, playerPage, `Acessibilidade dados ${Date.now()}`);
     const suffix = `(${colorScheme}, ${width}px)`;
-    await open(masterPage, `/campaigns/${campaignId}`);
+    await open(masterPage, `/campaigns/${campaignId}/setup`);
     await expectScreenPasses(masterPage, `Campanha com Dados, mestre ${suffix}`);
     await open(playerPage, `/campaigns/${campaignId}`);
     await expectScreenPasses(playerPage, `Campanha com Como você rola os dados, jogador ${suffix}`);
 
     const set = await callRPC(masterPage, 'meurpg.campaigns.v1.CampaignService/SetCampaignDiceMode', { campaignId, mode: 'DICE_MODE_APP' });
     expect(set.ok()).toBeTruthy();
-    await open(masterPage, `/campaigns/${campaignId}`);
+    await open(masterPage, `/campaigns/${campaignId}/setup`);
     await expectScreenPasses(masterPage, `Campanha com Dados, todos no app, mestre ${suffix}`);
     await open(playerPage, `/campaigns/${campaignId}`);
     await expectScreenPasses(playerPage, `Como você rola os dados, decidido pelo mestre ${suffix}`);
@@ -745,6 +747,8 @@ async function scanPendingMembers(browser: Browser, colorScheme: 'light' | 'dark
     expect(accepted.ok()).toBeTruthy();
 
     await open(page, `/campaigns/${campaignId}`);
+    // A phone folds "Membros" to one row.
+    await openFoldedPanel(page, 'Membros');
     await expect(page.getByRole('list', { name: 'Esperando para criar o personagem' })).toBeVisible();
     await expectScreenPasses(page, `Campanha com alguém sem personagem ${where}`);
     await page.getByRole('button', { name: /^Remover .* da campanha$/ }).click();
@@ -1717,7 +1721,9 @@ async function scanXpScreens(browser: Browser, colorScheme: 'light' | 'dark', wi
     // The campaign page of a master with a session open keeps the session's stream (MR-040): not `open`.
     await openLive(m, `/campaigns/${campaignId}`);
     await expect(m.getByRole('region', { name: 'Experiência', exact: true })).toContainText('Pela ajuda ao ferreiro');
-    await expectScreenPasses(m, `Campanha com Experiência, mestre ${where}`);
+    await expectScreenPasses(m, `Campanha com Experiência, o histórico fechado, mestre ${where}`);
+    await openXpHistory(m);
+    await expectScreenPasses(m, `Campanha com Experiência, o histórico aberto, mestre ${where}`);
     await m.getByRole('button', { name: /^Desfazer/ }).click();
     await expect(m.getByRole('alertdialog')).toBeVisible();
     await expectScreenPasses(m, `Experiência, Desfazer a pergunta ${where}`);
@@ -4225,8 +4231,8 @@ async function scanBestiaryScreens(browser: Browser, colorScheme: 'light' | 'dar
     await expect(page.locator('.made')).toContainText('NPC criado: Capitão bandido.');
     await expectScreenPasses(page, `Criar NPC, a confirmação ${where}`);
 
-    await page.goto(`/campaigns/${campaignId}`);
-    const panel = page.getByRole('link', { name: 'Abrir o bestiário' });
+    await page.goto(`/campaigns/${campaignId}/prep`);
+    const panel = page.getByRole('link', { name: /^Bestiário/ });
     await panel.scrollIntoViewIfNeeded();
     await expect(panel).toBeVisible();
     await expectScreenPasses(page, `Campanha com o painel Bestiário ${where}`);
@@ -4279,7 +4285,7 @@ async function scanTableRules(browser: Browser, colorScheme: 'light' | 'dark', w
     await setTableRulesRPC(m, table.campaignId, { houseRules: ['Beber uma poção é uma ação bônus', 'Quem cai fica caído até o fim do turno'] });
     const where = `(${colorScheme}, ${width}px)`;
 
-    await m.goto(`/campaigns/${table.campaignId}`);
+    await m.goto(`/campaigns/${table.campaignId}/setup`);
     await expect(m.getByRole('heading', { level: 1 })).toBeVisible();
     await expectLoaded(m);
     await expectScreenPasses(m, `Campanha com o painel Regras da mesa ${where}`);
@@ -4462,7 +4468,7 @@ async function scanDungeonScreens(browser: Browser, colorScheme: 'light' | 'dark
     const route = `/campaigns/${campaignId}/maps/dungeon`;
     const preview = m.getByRole('img', { name: /^Prévia da masmorra/ });
 
-    await open(m, `/campaigns/${campaignId}`);
+    await open(m, `/campaigns/${campaignId}/prep`);
     await expect(m.getByRole('link', { name: 'Gerar masmorra' })).toBeVisible();
     await expectScreenPasses(m, `Campanha, "Gerar masmorra" ao lado de "Novo mapa" ${where}`);
 
@@ -4579,12 +4585,12 @@ async function scanPuzzleScreens(browser: Browser, colorScheme: 'light' | 'dark'
       // The list with no puzzle at all (state 1, empty): another campaign of the master's.
       const empty = await callRPC(master, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', { name: `Sem quebra-cabeças ${Date.now()}`, xpMode: 'XP_MODE_ENEMIES' });
       expect(empty.ok()).toBeTruthy();
-      await openPage(master, puzzleRoute(((await empty.json()).campaign as { id: string }).id));
+      await openPage(master, `${puzzleRoute(((await empty.json()).campaign as { id: string }).id)}/prep`);
       await expect(master.getByText('Nenhum quebra-cabeça ainda.')).toBeVisible();
       await stepPasses(master, `Lista de quebra-cabeças vazia ${where}`);
 
       // The list (state 1) and the three forms (state 2), the edit form.
-      await openPage(master, puzzleRoute(campaignId));
+      await openPage(master, `${puzzleRoute(campaignId)}/prep`);
       await expect(master.getByRole('region', { name: 'Quebra-cabeças' }).getByText('O selo da Capela')).toBeVisible();
       await stepPasses(master, `Lista de quebra-cabeças ${where}`);
       await master.getByRole('region', { name: 'Quebra-cabeças' }).getByRole('button', { name: 'Arquivar O selo da Capela' }).click();
@@ -5091,7 +5097,7 @@ async function scanSpellsScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await expect(rows.first()).toBeVisible();
 
     // The campaign page with its "Magias" panel.
-    await page.goto(`/campaigns/${table.campaignId}`);
+    await page.goto(`/campaigns/${table.campaignId}/setup`);
     const open = page.getByRole('link', { name: 'Abrir as magias' });
     await open.scrollIntoViewIfNeeded();
     await expect(open).toBeVisible();
@@ -5781,7 +5787,7 @@ async function scanTreasureScreens(browser: Browser, colorScheme: 'light' | 'dar
     const generate = m.getByRole('button', { name: 'Gerar tesouro' });
     const dialogOrSheet = m.locator('mat-dialog-container, mat-bottom-sheet-container').last();
 
-    await open(m, `/campaigns/${campaignId}`);
+    await open(m, `/campaigns/${campaignId}/prep`);
     await expect(m.getByRole('link', { name: 'Gerar tesouro' })).toBeVisible();
     await expectScreenPasses(m, `Campanha, "Gerar tesouro" no painel Mapas ${where}`);
 
@@ -6250,7 +6256,7 @@ async function scanPackage(browser: Browser, colorScheme: 'light' | 'dark', widt
     await page.goto('/');
     const table = await tableForPackage(page, `Acessibilidade pacote ${Date.now()}`);
 
-    await open(page, `/campaigns/${table.campaignId}`);
+    await open(page, `/campaigns/${table.campaignId}/setup`);
     await expect(page.getByRole('link', { name: 'Exportar campanha' })).toBeVisible();
     await expectScreenPasses(page, `Campanha com o painel Pacote da campanha ${where}`);
 
@@ -6465,6 +6471,7 @@ async function scanPastSessions(browser: Browser, colorScheme: 'light' | 'dark',
 
     // Nothing ended yet: the master's empty box, and no panel for the player.
     await open(m, route);
+    await openFoldedPanel(m, 'Sessões anteriores');
     await expect(m.getByRole('region', { name: 'Sessões anteriores' })).toContainText('Nenhuma sessão encerrada ainda');
     await expectScreenPasses(m, `Sessões anteriores, vazio do mestre ${where}`);
     await open(p, route);
@@ -6476,8 +6483,10 @@ async function scanPastSessions(browser: Browser, colorScheme: 'light' | 'dark',
       await endSessionRPC(m, campaignId, await startSessionRPC(m, campaignId));
     }
     await open(m, route);
+    await openFoldedPanel(m, 'Sessões anteriores');
     const panel = (page: Page) => page.getByRole('region', { name: 'Sessões anteriores' });
-    await expect(panel(m)).toContainText('6 encerradas');
+    // A phone says "Sessões anteriores · 6"; a wider screen "6 encerradas".
+    await expect(panel(m)).toContainText(width < 768 ? '· 6' : '6 encerradas');
     await expect(panel(m).getByRole('button', { name: 'Mostrar as outras 1' })).toBeVisible();
     await expectScreenPasses(m, `Sessões anteriores, lista do mestre ${where}`);
     await panel(m).getByRole('button', { name: 'Mostrar as outras 1' }).click();

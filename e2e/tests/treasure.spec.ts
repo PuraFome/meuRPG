@@ -3,7 +3,11 @@ import { expect, test, type Page } from '@playwright/test';
 import { createDungeonRPC, roomsRPC } from './dungeon-support';
 import { tableForGold } from './gold-support';
 import { canvasPng, createMapRPC, revealMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
-import { callRPC, newSignedInContext } from './support';
+import {
+  callRPC,
+  gotoCampaignTab,
+  newSignedInContext,
+} from './support';
 import { generateTreasureRPC, gridRPC, mapPointsRPC, markFoundRPC, treasureRoute } from './treasure-support';
 import { getExperienceRPC } from './xp-support';
 
@@ -29,7 +33,7 @@ test(
       const campaignId = table.campaignId;
 
       // The way in: the campaign page's "Mapas" panel, for the master.
-      await master.goto(`/campaigns/${campaignId}`);
+      await gotoCampaignTab(master, campaignId, 'Preparação');
       await master.getByRole('link', { name: 'Gerar tesouro' }).click();
       await expect(master.getByRole('heading', { name: 'Tesouro', level: 1 })).toBeVisible();
       await expect(master.getByText('Nada gerado ainda.')).toBeVisible();

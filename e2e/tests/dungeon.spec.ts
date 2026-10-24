@@ -4,7 +4,11 @@ import { bitAt, createDungeonRPC, dungeonRoute, layersOfDungeon, previewRPC, roo
 import { editorRoute, getMapRPC } from './editor-support';
 import { canvasPng, revealMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
 import { expectLoaded } from './loaded';
-import { callRPC, newSignedInContext } from './support';
+import {
+  callRPC,
+  gotoCampaignTab,
+  newSignedInContext,
+} from './support';
 
 // "Gerar masmorra", the rooms list and "Redesenhar" (Etapa 10, slice 10.14b: MR-010, RN-26, RN-10; E10-05 1 to 6). The campaign
 // comes through the API; what is under test is the master's page (the options, the server's preview, "Criar o mapa"), the rooms list
@@ -41,7 +45,7 @@ test('o mestre vê a prévia do servidor e a mesma semente dá a mesma prévia, 
     const table = await tableForMaps(master, player, `Masmorra ${Date.now()}`);
 
     // The campaign's maps lead to the page.
-    await master.goto(`/campaigns/${table.campaignId}`);
+    await gotoCampaignTab(master, table.campaignId, 'Preparação');
     await master.getByRole('link', { name: 'Gerar masmorra' }).click();
     await expect(master.getByRole('heading', { level: 1, name: 'Gerar masmorra' })).toBeVisible();
     await expect(drawing(master)).toBeVisible();

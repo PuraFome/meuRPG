@@ -42,8 +42,12 @@ async function campaignWithApprovalInvite(page: Page, name: string): Promise<{ c
  * character named `name` from it. */
 async function openPendingCharacter(page: Page, campaignId: string, name: string): Promise<void> {
   await page.goto(`/campaigns/${campaignId}`);
-  await expect(page.getByRole('heading', { name: 'Esperando aprovação' })).toBeVisible();
-  await page.getByRole('list', { name: 'Esperando aprovação' }).getByRole('link', { name }).click();
+  const waiting = page.getByRole('list', { name: 'Esperando aprovação' });
+  await expect(waiting).toBeVisible();
+  // The tab says it too: "Mesa, 1 esperando aprovação".
+  await expect(page.getByRole('navigation', { name: 'Seções da campanha' }).getByRole('link', { name: /^Mesa/ })).toContainText('esperando aprovação');
+  // "Revisar <name>": the name of each banner's link says whose sheet it opens.
+  await waiting.getByRole('link', { name: `Revisar ${name}` }).click();
   await expect(page).toHaveURL(new RegExp(`/campaigns/${campaignId}/characters/[^/]+$`));
   await expect(page.getByRole('heading', { level: 1 })).toContainText(name);
 }
@@ -127,7 +131,7 @@ test(
       await page.getByRole('button', { name: 'Recusar personagem' }).click();
       await page.getByRole('button', { name: 'Confirmar recusa' }).click();
       await expect(page).toHaveURL(new RegExp(`/campaigns/${campaignId}$`));
-      await expect(page.getByRole('heading', { name: 'Esperando aprovação' })).toHaveCount(0);
+      await expect(page.getByRole('list', { name: 'Esperando aprovação' })).toHaveCount(0);
 
       // The player never became a member: the same not_found as anyone who
       // isn't (ADR-0011), and the same "campanha não encontrada" page.

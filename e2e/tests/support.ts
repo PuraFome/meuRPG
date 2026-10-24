@@ -164,6 +164,47 @@ export async function createCampaign(page: Page, name: string): Promise<string> 
   return page.url().split('/').pop()!;
 }
 
+/** The master's three tabs on the campaign page (`/campaigns/:id`, `/prep`, `/setup`). */
+export type CampaignTab = 'Mesa' | 'Preparação' | 'Regras';
+
+const CAMPAIGN_TAB_PATHS: Record<CampaignTab, string> = { Mesa: '', Preparação: '/prep', Regras: '/setup' };
+
+/** The nav link of a tab: the tab's name, then the count that may follow it ("Mesa, 1 esperando aprovação"). */
+function campaignTabLink(page: Page, tab: CampaignTab): Locator {
+  return page.getByRole('navigation', { name: 'Seções da campanha' }).getByRole('link', { name: new RegExp(`^${tab}`) });
+}
+
+/** Opens a tab of the master's campaign page by its link, as a person does (the helper per tab set the panels moved behind). */
+export async function openCampaignTab(page: Page, tab: CampaignTab): Promise<void> {
+  const link = campaignTabLink(page, tab);
+  await link.click();
+  await expect(link).toHaveAttribute('aria-current', 'page');
+}
+
+/** Goes straight to a tab of the master's campaign page by its URL. */
+export async function gotoCampaignTab(page: Page, campaignId: string, tab: CampaignTab): Promise<void> {
+  await page.goto(`/campaigns/${campaignId}${CAMPAIGN_TAB_PATHS[tab]}`);
+  await expect(campaignTabLink(page, tab)).toHaveAttribute('aria-current', 'page');
+}
+
+/** Opens a panel the master's phone folds to one row ("Membros · 4 na mesa", "Convites · 1 usado", "Sessões anteriores · 3"). On a wider screen the panel is open already and nothing happens. */
+export async function openFoldedPanel(page: Page, name: 'Membros' | 'Convites' | 'Sessões anteriores'): Promise<void> {
+  const fold = page.getByRole('heading', { name: new RegExp(`^${name}`) }).getByRole('button', { expanded: false });
+  if ((await fold.count()) > 0) {
+    await fold.click();
+    await expect(page.getByRole('heading', { name: new RegExp(`^${name}`) }).getByRole('button', { expanded: true })).toBeVisible();
+  }
+}
+
+/** Opens "Histórico de XP (N)" in the master's "Experiência" panel: the history is folded until it is asked for. */
+export async function openXpHistory(page: Page): Promise<void> {
+  const toggle = page.getByRole('region', { name: 'Experiência', exact: true }).getByRole('button', { name: /^Histórico de XP/ });
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') {
+    await toggle.click();
+  }
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+}
+
 // --- Etapa 4: characters, rules and the play stub --------------------------
 //
 // Phase 2 (integrator, 29/09/2026): the real backend, contracts and web
@@ -349,7 +390,7 @@ async function selectMatOption(page: Page, label: string, optionName: string): P
  *
  * `entryPath` defaults to the player's own "criar personagem" route; pass
  * `/campaigns/:id/npcs/new/:kind` (kind: enemy/boss — the full-sheet NPC
- * kinds) to fill the same stepper from the master's "Novo NPC" menu
+ * kinds) to fill the same stepper from the "Novo NPC" menu of the master's "Preparação" tab
  * instead. Either way it lands on, and returns, the same kind of URL.
  *
  * Returns the created character's id, read from the sheet page's URL after

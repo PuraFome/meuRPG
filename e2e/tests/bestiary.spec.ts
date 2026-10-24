@@ -1,7 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import { canvasPng, createMapRPC, placeTokenRPC, revealMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
-import { callRPC, newSignedInContext } from './support';
+import {
+  callRPC,
+  gotoCampaignTab,
+  newSignedInContext,
+} from './support';
 
 // MR-042 (the bestiary and "Criar NPC", slice 10.17a), RN-04 (a player never sees the NPCs) and RN-10
 // (an NPC's token is born hidden). Setup (campaign, player, map) goes through the API; every test makes
@@ -31,9 +35,8 @@ test(
       const campaignId = table.campaignId;
 
       // The way in: the campaign page has the panel, for the master.
-      await master.goto(`/campaigns/${campaignId}`);
-      await expect(master.getByRole('heading', { name: 'Bestiário', level: 2 })).toBeVisible();
-      await master.getByRole('link', { name: 'Abrir o bestiário' }).click();
+      await gotoCampaignTab(master, campaignId, 'Preparação');
+      await master.getByRole('link', { name: /^Bestiário/ }).click();
       await expect(master.getByRole('heading', { name: 'Bestiário', level: 1 })).toBeVisible();
       await expect(master.locator('.mr-page-lead')).toContainText('334 criaturas do SRD 5.1 · Mirathel');
       await expect(master.locator('.list__n')).toHaveText('334 de 334 criaturas');
@@ -131,7 +134,7 @@ test(
       expect((npc.sheet.basic.attacks as { name: string }[]).map((a) => a.name)).toEqual(['Clava grande', 'Azagaia']);
       const block = await callRPC(master, 'meurpg.rules.v1.ContentService/GetCreature', { campaignId, key: 'monster:ogre' });
       expect((await block.json()).creature.npcAttackNames).toEqual(['Clava grande', 'Azagaia']);
-      await master.goto(`/campaigns/${campaignId}`);
+      await gotoCampaignTab(master, campaignId, 'Preparação');
       const npcs = master.getByRole('region', { name: 'NPCs' });
       await expect(npcs.getByText('Capitão bandido')).toBeVisible();
       await expect(npcs.getByText('Minion')).toBeVisible();
