@@ -429,7 +429,8 @@
             "ALREADY_ROLLED",
             "WRONG_DICE_MODE",
             "NO_CHARACTER",
-            "STAGE_FULL"
+            "STAGE_FULL",
+            "SCENE_NOT_PARTIAL"
           ],
           "unsent": [
             "NO_ACTIONS"
