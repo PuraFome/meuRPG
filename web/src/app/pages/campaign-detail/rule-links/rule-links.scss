@@ -1,0 +1,11 @@
+// Three panels, one under the other, in whatever column the page puts them.
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+}
+
+.rules-lead {
+  margin: 0 0 var(--mr-space-3);
+  color: var(--mr-ink-muted);
+}

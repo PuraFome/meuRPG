@@ -4,14 +4,20 @@ import {
   Injector,
   afterNextRender,
   computed,
+  effect,
   inject,
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import {
+  ActivatedRoute,
+  Router,
+  RouterLink,
+  RouterLinkActive,
+  RouterOutlet,
+} from '@angular/router';
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import { Campaign, Member, Role } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
@@ -24,21 +30,20 @@ import { ExperienceStore } from '../../core/progression/experience-store';
 import { LevelUpNotice } from './level-up-notice/level-up-notice';
 import { campaignLead } from '../../core/campaigns/campaign-copy';
 import { memberRows } from './campaign-detail.copy';
-import { BestiaryPanel } from './bestiary-panel/bestiary-panel';
-import { EncountersPanel } from './encounters-panel/encounters-panel';
-import { PuzzlesPanel } from '../../shared/puzzles-panel/puzzles-panel';
 import { CampaignCharacters } from './characters/campaign-characters';
-import { DicePanel } from './dice-panel/dice-panel';
+import { CampaignRoster } from './characters/campaign-roster';
+import { CampaignView } from './campaign-view';
 import { DicePreferencePanel } from '../../shared/dice-preference-panel/dice-preference-panel';
-import { DocumentPanel } from './document-panel/document-panel';
 import { ExperiencePanel } from './experience/experience-panel';
-import { GalleryPanel } from './gallery-panel/gallery-panel';
 import { MapsPanel } from './maps-panel/maps-panel';
 import { CampaignSessions } from './game-session/campaign-sessions';
 import { GameSessionCard } from './game-session/game-session-card';
 import { PastSessionsPanel } from './past-sessions/past-sessions-panel';
-import { CampaignInvites } from './invites/invites';
-import { PendingMembers } from './pending-members/pending-members';
+import { CampaignMembers } from './members/campaign-members';
+import { RuleLinks } from './rule-links/rule-links';
+
+/** A link to an old place on the page lands on its tab: the fragment, and the tab that holds it. */
+const FRAGMENT_TABS: Readonly<Record<string, string>> = { maps: 'prep' };
 
 type PageState =
   | { status: 'loading' }
@@ -51,17 +56,21 @@ type PageState =
 
 /**
  * "/campaigns/:id" (guarded by authGuard): GetCampaign + ListMembers
- * (MR-001, MR-002), the "Personagens" section (MR-003, MR-005; everyone),
- * "Sessão" (MR-006 / RN-01 for the master; for a player, only while a
- * session is open, with "Entrar na sessão", RN-06) and the master-only
- * "Convites". The dice settings (RN-18) sit under "Sessão": "Dados" for the
- * master (E6-17), "Como você rola os dados" for a player (E6-18). The
- * master's "Membros" also lists who has not created a character yet
- * (`PendingMembers`, MR-024).
+ * (MR-001, MR-002) and everything the campaign page holds.
  *
- * From 1024px up the page has two columns: the play on the left (Sessão,
- * then the characters and NPCs) and the table on the right (Membros,
- * Convites). Below that, the same order in one column.
+ * **The master** sees the title, the session strip ("Sessão", MR-006 / RN-01,
+ * always on top) and three tabs that are routes of their own, links in a `nav`
+ * named "Seções da campanha": "Mesa" (`/campaigns/:id`, the default: the
+ * players' characters, "Experiência", "Sessões anteriores", "Membros",
+ * "Convites"), "Preparação" (`/prep`: maps, NPCs, encounters, puzzles, bestiary,
+ * gallery, the campaign document) and "Regras" (`/setup`: "Dados", the rules,
+ * the content, the spells, the package). The tab is drawn by the `router-outlet`
+ * under the nav (see `campaign-detail.routes.ts`); a count on "Mesa" says how
+ * many characters wait for approval. A tab change keeps the focus on the tab link.
+ *
+ * **A player** sees one page, with no tabs: "Sessão" (only while a session is
+ * open, with "Entrar na sessão", RN-06), their characters, the experience, the
+ * dice choice ("Como você rola os dados", E6-18) and the rules links.
  *
  * A pending member (an invite with approval, RN-15 / MR-024) gets only the
  * campaign's name from GetCampaign (`awaitingApproval`): the page shows
@@ -75,30 +84,26 @@ type PageState =
 @Component({
   selector: 'app-campaign-detail',
   imports: [
-    BestiaryPanel,
-    EncountersPanel,
-    PuzzlesPanel,
     CampaignCharacters,
-    CampaignInvites,
-    DicePanel,
+    CampaignMembers,
     DicePreferencePanel,
-    DocumentPanel,
     ExperiencePanel,
-    GalleryPanel,
     MapsPanel,
     GameSessionCard,
     PastSessionsPanel,
     LevelUpNotice,
-    PendingMembers,
-    MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
     RouterLink,
+    RouterLinkActive,
+    RouterOutlet,
+    RuleLinks,
   ],
   // One XP store for the page: the "Experiência" panel and the characters' "Pode subir de nível" tag read it.
   // And one feed of the master's level-ups: the status line and the characters' "O que mudou" read it.
   // And one list of the sessions: "Sessão" and "Sessões anteriores" draw the same answer.
-  providers: [ExperienceStore, LevelUpFeed, CampaignSessions],
+  // And one list of the characters (the "Mesa" count, the players' and the NPCs' panels), and what the tabs read.
+  providers: [ExperienceStore, LevelUpFeed, CampaignSessions, CampaignRoster, CampaignView],
   templateUrl: './campaign-detail.html',
   styleUrl: './campaign-detail.scss',
 })
@@ -108,6 +113,9 @@ export class CampaignDetail {
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly view = inject(CampaignView);
+  private readonly roster = inject(CampaignRoster);
   protected readonly experience = inject(ExperienceStore);
 
   protected readonly state = signal<PageState>({ status: 'loading' });
@@ -126,7 +134,17 @@ export class CampaignDetail {
     return s.status === 'ready' ? memberRows(s.members, this.viewerId()) : [];
   });
 
+  /** How many characters wait for the master's approval: the count on "Mesa". */
+  protected readonly waiting = computed(() => this.roster.awaiting().length);
+
   constructor() {
+    // The tabs read the campaign and its members from here.
+    effect(() => {
+      const s = this.state();
+      this.view.data.set(
+        s.status === 'ready' ? { campaign: s.campaign, members: this.members() } : null,
+      );
+    });
     // The tab's title carries the campaign's name once it is loaded.
     setPageSubject(() => {
       const s = this.state();
@@ -138,6 +156,30 @@ export class CampaignDetail {
         this.load(id);
       }
     });
+  }
+
+  /**
+   * A link with a fragment ("Abrir os mapas", in "Regras da mesa") lands on its section once the page has rendered it.
+   * A master's link to a panel that lives on another tab goes to that tab, fragment kept.
+   */
+  private landOnFragment(campaign: Campaign): void {
+    const fragment = this.route.snapshot?.fragment;
+    if (!fragment) {
+      return;
+    }
+    const tab = FRAGMENT_TABS[fragment];
+    if (tab && campaign.myRole === Role.MASTER && !this.router.url.split(/[?#]/)[0].endsWith(tab)) {
+      void this.router.navigate(['/campaigns', campaign.id, tab], { fragment, replaceUrl: true });
+      return;
+    }
+    afterNextRender(() => document.getElementById(fragment)?.scrollIntoView?.(), {
+      injector: this.injector,
+    });
+  }
+
+  /** A tab link keeps the focus after the click (Safari does not focus a link it was clicked on), so the page does not send it to the title. */
+  protected keepFocus(event: Event): void {
+    (event.currentTarget as HTMLElement).focus();
   }
 
   /** The newest `load`: an answer of an older one (the page was reused for another campaign) is dropped. */
@@ -166,12 +208,9 @@ export class CampaignDetail {
         }
         this.state.set(state);
         if (state.status === 'ready') {
-          // A link with a fragment ("Abrir os mapas", in "Regras da mesa") lands on its section once the page has rendered it.
-          const fragment = this.route.snapshot?.fragment;
-          if (fragment) {
-            afterNextRender(() => document.getElementById(fragment)?.scrollIntoView?.(), {
-              injector: this.injector,
-            });
+          this.landOnFragment(state.campaign);
+          if (state.campaign.myRole === Role.MASTER) {
+            void this.roster.ensureLoaded(campaignId);
           }
           // Every member reads the XP; the history comes with it. Only the master
           // reads the treasures waiting to be converted ("Voltar à cidade").
