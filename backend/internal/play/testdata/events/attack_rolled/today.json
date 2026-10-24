@@ -726,9 +726,14 @@
           "Source": "x",
           "DamageTypes": [
             "x"
-          ]
+          ],
+          "Qualifier": "x"
         }
-      ]
+      ],
+      "origin": {
+        "attack": true,
+        "magical": true
+      }
     }
   ],
   "shown": 1,
