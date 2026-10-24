@@ -153,7 +153,8 @@ type removal struct {
 func workOutRemoval(ctx context.Context, c *combatTx, p playdb.PendingDamage, attacker, target playdb.Combatant, partKey string, rolls []partRoll) (removal, error) {
 	byType, total := countedByType(rolls)
 	// The target's modifiers are the ones the roll used: the stored groups say them.
-	land := settleSteps(byType, modsOfGroups(readStepGroups(p.Steps)), nil)
+	groups := readStepGroups(p.Steps)
+	land := settleSteps(byType, modsOfGroups(groups), nil, originOfGroups(groups))
 	amount := clamp32(total, 0, math.MaxInt32)
 	rem := removal{total: amount, amount: amount, land: land}
 	rem.ev = actionEvent{
@@ -280,4 +281,12 @@ func modsOfGroups(groups []stepGroup) []combat.Modifier {
 		mods = append(mods, g.Mods...)
 	}
 	return mods
+}
+
+// originOfGroups is where the damage of the stored steps came from: the same for every group.
+func originOfGroups(groups []stepGroup) combat.Origin {
+	if len(groups) == 0 {
+		return combat.Origin{}
+	}
+	return groups[0].From
 }

@@ -256,17 +256,12 @@ func (s *Service) writeConcentrationSave(ctx context.Context, c *combatTx, call 
 	dc := clamp32(reaction.ConcentrationDC(int(t.Taken)), 0, math.MaxInt32)
 	ev := actionEvent{Round: c.enc.Round, Secret: reactor.Hidden, Actor: reactor.ID, Target: t.Actor, Key: t.Key, Pending: t.Pending}
 	ev.Reaction = &reactionEvent{Kind: string(reaction.Concentration), Window: w.ID, ByMaster: master, Spell: t.Spell, SaveDC: dc}
-	kept := true
-	if call.keep {
-		ev.Reaction.Kept = true
-		run.result = &playv1.ConcentrationSaveResult{Dc: dc, Kept: true, SpellKey: t.Spell}
-	} else {
-		if kept, err = s.rollConcentration(ctx, c, call, reactor, t, dc, &ev, run); err != nil {
-			return nil, err
-		}
-		if run.offer != nil || run.lucky != nil { // the d20 is kept for a question: nothing is written
-			return nil, nil
-		}
+	kept, err := s.concentrationOutcome(ctx, c, call, reactor, t, &ev, run)
+	if err != nil {
+		return nil, err
+	}
+	if run.offer != nil || run.lucky != nil { // the d20 is kept for a question: nothing is written
+		return nil, nil
 	}
 	if !kept {
 		if err := s.loseConcentration(ctx, c, reactor); err != nil {
@@ -282,6 +277,27 @@ func (s *Service) writeConcentrationSave(ctx context.Context, c *combatTx, call 
 	c.characterID = &reactor.CharacterID
 	run.made = ev
 	return ev, nil
+}
+
+// concentrationOutcome is the save of the window: kept as it is (the master's word) or rolled. It answers
+// whether the concentration is kept, and puts the result in run with the DC only for who reads it: the
+// master, and the roller's player when the table shows the DC of a saving throw.
+func (s *Service) concentrationOutcome(ctx context.Context, c *combatTx, call concentrationCall, reactor playdb.Combatant, t windowTrigger, ev *actionEvent, run *concentrationRun) (bool, error) {
+	dc := ev.Reaction.SaveDC
+	kept := true
+	if call.keep {
+		ev.Reaction.Kept = true
+		run.result = &playv1.ConcentrationSaveResult{Dc: dc, Kept: true, SpellKey: t.Spell}
+	} else {
+		var err error
+		if kept, err = s.rollConcentration(ctx, c, call, reactor, t, dc, ev, run); err != nil {
+			return false, err
+		}
+	}
+	if run.result != nil && !c.master && !c.rules.ShowSaveDC {
+		run.result.Dc = 0
+	}
+	return kept, nil
 }
 
 // loseConcentration ends the concentration, and the spell with it, of a creature that failed its

@@ -82,20 +82,22 @@ func gridOf(columns *int32, factor, width, height int32) grid.Grid {
 	return grid.Grid{Columns: int(*columns), Rows: grid.RowsFor(int(*columns)/f, int(width), int(height)) * f}
 }
 
-// layerSet is a map's five layers, decoded.
+// layerSet is a map's six layers, decoded.
 type layerSet struct {
 	terrain *grid.Layer
 	walls   *grid.Layer
 	cover   *grid.CoverLayer
 	light   *grid.LightLayer
 	doors   *grid.DoorLayer
+	// noPass are the squares nobody walks into, that block no sight.
+	noPass *grid.Layer
 }
 
 // loadLayers decodes the stored layers for the grid. A layer that is NULL or does
 // not fit the grid (bytes of another grid, which clearLayers prevents) reads as
 // nothing painted.
 func loadLayers(row mapsdb.MapLayer, g grid.Grid) layerSet {
-	set := layerSet{terrain: grid.NewLayer(g), walls: grid.NewLayer(g), cover: grid.NewCoverLayer(g), light: grid.NewLightLayer(g), doors: grid.NewDoorLayer(g)}
+	set := layerSet{terrain: grid.NewLayer(g), walls: grid.NewLayer(g), cover: grid.NewCoverLayer(g), light: grid.NewLightLayer(g), doors: grid.NewDoorLayer(g), noPass: grid.NewLayer(g)}
 	if l, err := grid.DecodeLayer(g, row.DifficultTerrain); err == nil {
 		set.terrain = l
 	}
@@ -111,6 +113,9 @@ func loadLayers(row mapsdb.MapLayer, g grid.Grid) layerSet {
 	if l, err := grid.DecodeDoorLayer(g, row.Doors); err == nil {
 		set.doors = l
 	}
+	if l, err := grid.DecodeLayer(g, row.NoPass); err == nil {
+		set.noPass = l
+	}
 	return set
 }
 
@@ -119,7 +124,7 @@ func loadLayers(row mapsdb.MapLayer, g grid.Grid) layerSet {
 // is theirs never, so it stays out too.
 func (set layerSet) forPlayers() layerSet {
 	walls, doors := set.doors.ForPlayers(set.walls)
-	return layerSet{terrain: set.terrain, walls: walls, cover: set.cover, doors: doors}
+	return layerSet{terrain: set.terrain, walls: walls, cover: set.cover, doors: doors, noPass: set.noPass}
 }
 
 // nilIfBlank stores a layer with nothing painted as NULL, so "empty" has one
@@ -266,11 +271,11 @@ func paintSquares(set layerSet, b paintBatch, factor int) int32 {
 	return changed
 }
 
-// storeLayers writes the five layers of a map, a layer with nothing painted as NULL.
+// storeLayers writes the six layers of a map, a layer with nothing painted as NULL.
 func storeLayers(ctx context.Context, q *mapsdb.Queries, mapID string, set layerSet, now time.Time) error {
 	err := q.UpsertMapLayers(ctx, mapsdb.UpsertMapLayersParams{
 		MapID: mapID, DifficultTerrain: nilIfBlank(set.terrain.Encode()), Walls: nilIfBlank(set.walls.Encode()),
-		Cover: nilIfBlank(set.cover.Encode()), Light: nilIfBlank(set.light.Encode()), Doors: nilIfBlank(set.doors.Encode()), Now: now,
+		Cover: nilIfBlank(set.cover.Encode()), Light: nilIfBlank(set.light.Encode()), Doors: nilIfBlank(set.doors.Encode()), NoPass: nilIfBlank(set.noPass.Encode()), Now: now,
 	})
 	if err != nil {
 		return fmt.Errorf("write the layers: %w", err)
@@ -304,14 +309,14 @@ func bumpPaintRevision(ctx context.Context, q *mapsdb.Queries, mapID string, don
 // door is a wall). Two states with the same bytes look the same to every player.
 func playersRead(set layerSet) []byte {
 	p := set.forPlayers()
-	return slices.Concat(p.walls.Encode(), p.doors.Encode())
+	return slices.Concat(p.walls.Encode(), p.doors.Encode(), p.noPass.Encode())
 }
 
 // checkPaint checks that a value is one the layer holds.
 func checkPaint(layer mapsv1.MapLayer, value int32) error {
 	var highest int32
 	switch layer {
-	case mapsv1.MapLayer_MAP_LAYER_DIFFICULT_TERRAIN, mapsv1.MapLayer_MAP_LAYER_WALL:
+	case mapsv1.MapLayer_MAP_LAYER_DIFFICULT_TERRAIN, mapsv1.MapLayer_MAP_LAYER_WALL, mapsv1.MapLayer_MAP_LAYER_NO_PASS:
 		highest = 1
 	case mapsv1.MapLayer_MAP_LAYER_COVER:
 		highest = int32(grid.CoverThreeQuarters)
@@ -335,6 +340,8 @@ func paint(set layerSet, layer mapsv1.MapLayer, col, row int, value int32) bool 
 		return paintBit(set.terrain, col, row, value == 1)
 	case mapsv1.MapLayer_MAP_LAYER_WALL:
 		return paintBit(set.walls, col, row, value == 1)
+	case mapsv1.MapLayer_MAP_LAYER_NO_PASS:
+		return paintBit(set.noPass, col, row, value == 1)
 	case mapsv1.MapLayer_MAP_LAYER_COVER:
 		cover := grid.Cover(value) //nolint:gosec // G115: checkPaint kept it 0 to 2
 		was := set.cover.Get(col, row)
@@ -596,6 +603,7 @@ func (s *Service) readLayersSnapshot(ctx context.Context, campaignID, mapID stri
 // painted is left out.
 func fillLayers(res *mapsv1.GetMapLayersResponse, set layerSet) {
 	res.DifficultTerrain, res.Wall, res.Cover, res.Doors = nilIfBlank(set.terrain.Encode()), nilIfBlank(set.walls.Encode()), nilIfBlank(set.cover.Encode()), nilIfBlank(set.doors.Encode())
+	res.NoPass = nilIfBlank(set.noPass.Encode())
 }
 
 // fillFoggedLayers fills the answer of a player on a fog map: only the squares their
@@ -607,7 +615,7 @@ func (s *Service) fillFoggedLayers(ctx context.Context, res *mapsv1.GetMapLayers
 		return s.dbError(ctx, "work out what a player sees", err)
 	}
 	fillLayers(res, filterLayers(set, pv))
-	res.LayersRevision = hashOf(res.DifficultTerrain, res.Wall, res.Cover, res.Doors)
+	res.LayersRevision = layersHash([][]byte{res.DifficultTerrain, res.Wall, res.Cover, res.Doors}, res.NoPass)
 	res.FogWithheld = true
 	return nil
 }

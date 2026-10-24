@@ -23,7 +23,8 @@
         "Ability": "str",
         "Finesse": false,
         "TwoHanded": false,
-        "Weapon": true
+        "Weapon": true,
+        "Magical": false
       },
       {
         "Key": "spell:fire-bolt",
@@ -46,7 +47,8 @@
         "Ability": "int",
         "Finesse": false,
         "TwoHanded": false,
-        "Weapon": false
+        "Weapon": false,
+        "Magical": true
       },
       {
         "Key": "spell:ray-of-frost",
@@ -69,7 +71,8 @@
         "Ability": "int",
         "Finesse": false,
         "TwoHanded": false,
-        "Weapon": false
+        "Weapon": false,
+        "Magical": true
       },
       {
         "Key": "attack:unarmed-strike",
@@ -92,7 +95,8 @@
         "Ability": "str",
         "Finesse": false,
         "TwoHanded": false,
-        "Weapon": true
+        "Weapon": true,
+        "Magical": false
       }
     ],
     "Actions": [
@@ -224,7 +228,8 @@
         "Ability": "str",
         "Finesse": false,
         "TwoHanded": false,
-        "Weapon": true
+        "Weapon": true,
+        "Magical": false
       }
     ],
     "Actions": [
@@ -363,7 +368,8 @@
         "Ability": "str",
         "Finesse": false,
         "TwoHanded": false,
-        "Weapon": true
+        "Weapon": true,
+        "Magical": false
       }
     ],
     "Actions": [
@@ -513,7 +519,8 @@
         "Ability": "",
         "Finesse": false,
         "TwoHanded": false,
-        "Weapon": true
+        "Weapon": true,
+        "Magical": false
       }
     ],
     "Actions": [
@@ -635,7 +642,8 @@
         "Ability": "str",
         "Finesse": false,
         "TwoHanded": false,
-        "Weapon": true
+        "Weapon": true,
+        "Magical": false
       }
     ],
     "Actions": [
@@ -774,7 +782,8 @@
         "Ability": "str",
         "Finesse": false,
         "TwoHanded": false,
-        "Weapon": true
+        "Weapon": true,
+        "Magical": false
       },
       {
         "Key": "attack:unarmed-strike",
@@ -797,7 +806,8 @@
         "Ability": "str",
         "Finesse": false,
         "TwoHanded": false,
-        "Weapon": true
+        "Weapon": true,
+        "Magical": false
       }
     ],
     "Actions": [
@@ -936,7 +946,8 @@
         "Ability": "dex",
         "Finesse": false,
         "TwoHanded": false,
-        "Weapon": true
+        "Weapon": true,
+        "Magical": false
       }
     ],
     "Actions": [
@@ -1107,7 +1118,8 @@
         "Ability": "",
         "Finesse": false,
         "TwoHanded": false,
-        "Weapon": true
+        "Weapon": true,
+        "Magical": false
       },
       {
         "Key": "basic:1",
@@ -1130,7 +1142,8 @@
         "Ability": "",
         "Finesse": false,
         "TwoHanded": false,
-        "Weapon": true
+        "Weapon": true,
+        "Magical": false
       }
     ],
     "Actions": [
@@ -1252,7 +1265,8 @@
         "Ability": "str",
         "Finesse": false,
         "TwoHanded": false,
-        "Weapon": true
+        "Weapon": true,
+        "Magical": false
       }
     ],
     "Actions": [

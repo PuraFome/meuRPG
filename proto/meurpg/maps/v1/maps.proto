@@ -503,6 +503,62 @@ service MapService {
   //   - `permission_denied`: the caller is a player.
   rpc RemoveMapToken(RemoveMapTokenRequest) returns (RemoveMapTokenResponse);
 
+  // SetMapPlayersMove allows or forbids the players to move their own characters' tokens
+  // on a map outside combat ("Os jogadores movem os próprios personagens"). Only the
+  // campaign's master may call it. Off by default.
+  //
+  // Errors:
+  //   - `not_found`: the map is not in this campaign, the campaign does not exist, or
+  //     the caller is not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  rpc SetMapPlayersMove(SetMapPlayersMoveRequest) returns (SetMapPlayersMoveResponse);
+
+  // MoveMapTokens moves the tokens of one or more characters on a map, outside combat,
+  // with no limit of movement: each token walks the straight line toward its destination
+  // and stops before the first wall, locked door or square marked "Não dá para passar"
+  // (MoveMapTokensResponse says how far it got and why it stopped). Several tokens, the
+  // master's, move together: the first is the anchor and the others keep their offset;
+  // the group moves only when every arrival square is free (a wall, a marked square or
+  // the edge of the map refuses all of them: `moved` is false and nobody moves).
+  //
+  // The master moves any living character's token. A player moves their own
+  // character's token, alone, when the master allowed it on this map
+  // (SetMapPlayersMove) and the token is visible to them; a player's answer names only
+  // that token and, on a map with the fog of war on, says why it stopped only when the
+  // square in the way is one they see or remember (otherwise BLOCKED).
+  //
+  // The token walking into a trap's area fires or is noticed as in PlaceMapToken. The
+  // stream sends the move as `token_moved` (a `map_changed` for a hidden token's).
+  //
+  // Errors:
+  //   - `not_found`: the map is not in this campaign (or a player does not see it), a
+  //     character has no token on it, the campaign does not exist, or the caller is not
+  //     a member of it.
+  //   - `invalid_argument`: no characters, more than 40, a repeat, or a position outside
+  //     0 to 10000.
+  //   - `permission_denied`: a player asked to move another character, several tokens,
+  //     or a move the master did not allow on this map.
+  //   - `failed_precondition`: with the `MapBlocked` detail COMBAT_RUNNING while a
+  //     combat is on the map: the tokens then move through CombatService.
+  rpc MoveMapTokens(MoveMapTokensRequest) returns (MoveMapTokensResponse);
+
+  // PutPartyOnMap puts the tokens of several characters on a map in a formation (a line,
+  // a block or an arc) starting at a square, moving the ones already there. Only the
+  // campaign's master may call it. Each one goes to its place of the shape, or to the
+  // nearest free square that is not a wall, a square marked "Não dá para passar", or a
+  // square another token holds.
+  //
+  // Errors:
+  //   - `not_found`: a character is not a living character of the campaign, the map is
+  //     not in this campaign, the campaign does not exist, or the caller is not a member
+  //     of it.
+  //   - `invalid_argument`: no characters, more than 40, a repeat, or a position outside
+  //     0 to 10000.
+  //   - `permission_denied`: the caller is a player.
+  //   - `failed_precondition`: with the `MapBlocked` detail NO_GRID (the map has no grid),
+  //     COMBAT_RUNNING (a combat is on the map) or NO_ROOM (not enough free squares).
+  rpc PutPartyOnMap(PutPartyOnMapRequest) returns (PutPartyOnMapResponse);
+
   // PaintMapCells paints squares of one layer of a map's grid (MR-034,
   // MR-036): difficult terrain, walls, cover or light, one value for a batch of
   // squares. Only the campaign's master may call it. The last write wins, with
@@ -780,6 +836,11 @@ enum MapLayer {
   // one blocks movement only. A player never receives the layer as painted:
   // see GetMapLayersResponse.doors.
   MAP_LAYER_DOORS = 5;
+  // "Não dá para passar": one bit a square (0 clear, 1 marked). Nobody walks into a
+  // marked square, in or out of combat, but it blocks neither sight nor light (a pit,
+  // a chasm, a column of fire). A player of a map without fog of war receives it as
+  // the master painted it; with fog, only the squares they see now or remember.
+  MAP_LAYER_NO_PASS = 6;
 }
 
 // DoorState is what a square of the doors layer holds (RN-26). The numbers are
@@ -862,6 +923,8 @@ enum MapBlockedReason {
   // or grid does that). A redraw would draw from layers that are not the dungeon's, or
   // change the size the layers are measured by, so it is refused.
   MAP_BLOCKED_REASON_IMAGE_CHANGED = 5;
+  // PutPartyOnMap found fewer free squares on the map than characters to put.
+  MAP_BLOCKED_REASON_NO_ROOM = 6;
 }
 
 // MapBlocked is the error detail of MapService's `failed_precondition`, so the
@@ -953,6 +1016,10 @@ message Map {
   // app may read its rooms (GetDungeonRooms) and offer "Redesenhar". Only the master
   // gets it; always false for a player.
   bool generated_dungeon = 33;
+  // Whether each player may move their own character's token on this map outside
+  // combat (SetMapPlayersMove). Off by default. Every viewer gets it: the screen says
+  // who moves the tokens.
+  bool players_move_tokens = 34;
 }
 
 // MapImage is the image under a map: a gallery image. Any active member of
@@ -1518,6 +1585,113 @@ message SetMapTokenHiddenResponse {
   MapToken token = 1;
 }
 
+// SetMapPlayersMoveRequest says whether the players move their own tokens on a map.
+message SetMapPlayersMoveRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+  // True lets each player move their own character's token (MoveMapTokens) on this
+  // map outside combat; false leaves every move to the master.
+  bool enabled = 3;
+}
+
+// SetMapPlayersMoveResponse returns the map as it is now.
+message SetMapPlayersMoveResponse {
+  Map map = 1;
+}
+
+// MapMoveStop says why a token did not get as far as it was asked to.
+enum MapMoveStop {
+  // It got there.
+  MAP_MOVE_STOP_UNSPECIFIED = 0;
+  // A wall, a closed square of cover or the edge of the map was in the way.
+  MAP_MOVE_STOP_WALL = 1;
+  // The next square is marked "Não dá para passar".
+  MAP_MOVE_STOP_NO_PASS = 2;
+  // The next square is a locked door.
+  MAP_MOVE_STOP_LOCKED = 3;
+  // It stopped early and the caller may not know why: a player's move that ran into
+  // something the player has not seen (on a map with the fog of war on, a marked
+  // square they neither see nor remember). The master always gets the real reason.
+  MAP_MOVE_STOP_BLOCKED = 4;
+}
+
+// MoveMapTokensRequest moves the tokens of living characters on a map, outside combat: the
+// master moves any of them, one or several together; a player moves their own character's
+// token alone, when the master allows it (SetMapPlayersMove).
+message MoveMapTokensRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+  // The characters whose tokens move (UUIDs): 1 to 40, no repeats, each with a token on
+  // the map. Several are the master's. The first is the anchor: it is the one whose
+  // destination is x_bp and y_bp, and the others keep their place around it.
+  repeated string character_ids = 3;
+  // Where the anchor is headed, in basis points (0 to 10000): the square that holds the
+  // point is its destination.
+  int32 x_bp = 4;
+  int32 y_bp = 5;
+}
+
+// MapTokenMove is what happened to one token of a move.
+message MapTokenMove {
+  // The token as it is now.
+  MapToken token = 1;
+  // How many squares it was asked to move (the larger of the column and row distance, as
+  // the grid counts) and how many it really moved. Both 0 on a map without a grid, which
+  // has no squares and no layers to stop a token.
+  int32 squares_asked = 2;
+  int32 squares_moved = 3;
+  // Why it stopped early; unspecified when it got there.
+  MapMoveStop stopped_by = 4;
+}
+
+// MoveMapTokensResponse says what the move did.
+message MoveMapTokensResponse {
+  // False when nobody moved: a group some of whose arrival squares did not fit (a wall,
+  // a marked square, the edge of the map), or a lone token that could not take a step.
+  bool moved = 1;
+  // One entry for each character asked, in the order asked, with the token as it is now.
+  repeated MapTokenMove moves = 2;
+  // For a group that did not move, the first character whose arrival square did not fit
+  // (a UUID); empty otherwise.
+  string blocked_character_id = 3;
+}
+
+// MapFormation is the shape of a group put on a map.
+enum MapFormation {
+  // The default: BLOCK.
+  MAP_FORMATION_UNSPECIFIED = 0;
+  // Side by side, to the right of the anchor.
+  MAP_FORMATION_LINE = 1;
+  // Together, in rows of two.
+  MAP_FORMATION_BLOCK = 2;
+  // On a half circle around the anchor.
+  MAP_FORMATION_ARC = 3;
+}
+
+// PutPartyOnMapRequest puts several characters' tokens on a map in a formation.
+message PutPartyOnMapRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+  // The living characters of the campaign to put (UUIDs): 1 to 40, no repeats. A token
+  // they already have on the map moves; a new one is born visible for a player's
+  // character and hidden for an NPC, as PlaceMapToken does.
+  repeated string character_ids = 3;
+  MapFormation formation = 4;
+  // The square of the first one, in basis points (0 to 10000): the formation's top-left
+  // corner. A character whose place does not fit (a wall, a marked square, another token
+  // there) goes to the nearest free square.
+  int32 x_bp = 5;
+  int32 y_bp = 6;
+}
+
+// PutPartyOnMapResponse returns the tokens put.
+message PutPartyOnMapResponse {
+  // The tokens, in the order asked, as the caller sees them.
+  repeated MapToken tokens = 1;
+  // How many did not fit their own place and went to the nearest free square.
+  int32 moved_for_room = 2;
+}
+
 // RemoveMapTokenRequest names the token to take off the map.
 message RemoveMapTokenRequest {
   string campaign_id = 1;
@@ -1807,6 +1981,10 @@ message GetMapLayersResponse {
   // only the squares they see now or remember. Nothing a player receives says a
   // door is locked or secret before they try it or the master reveals it.
   bytes doors = 9;
+  // The squares marked "Não dá para passar", one bit a square. The master gets it as
+  // painted. A player of a map without fog gets it as painted too; with fog, only the
+  // squares they see now or remember, like the walls.
+  bytes no_pass = 10;
 }
 
 // SetMapFogRequest carries the fog settings to change. Each field set replaces

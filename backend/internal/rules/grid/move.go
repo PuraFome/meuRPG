@@ -89,6 +89,9 @@ type Terrain struct {
 	// and closed, locked and secret ones are walls for cover (and, through
 	// SightWalls, for sight and light).
 	Doors *DoorLayer
+	// NoPass are the squares nobody walks into (the master's "can't pass" layer): they block
+	// movement like a wall, but not sight or light, and are not standable.
+	NoPass *Layer
 }
 
 // ErrBadGrid is returned for a grid a map cannot have, or a layer sized for
@@ -103,7 +106,7 @@ func (t Terrain) Validate() error {
 	if !t.Grid.Valid() {
 		return ErrBadGrid
 	}
-	if (t.Walls != nil && t.Walls.Grid() != t.Grid) || (t.Difficult != nil && t.Difficult.Grid() != t.Grid) || (t.Cover != nil && t.Cover.Grid() != t.Grid) || (t.Doors != nil && t.Doors.Grid() != t.Grid) {
+	if (t.Walls != nil && t.Walls.Grid() != t.Grid) || (t.Difficult != nil && t.Difficult.Grid() != t.Grid) || (t.Cover != nil && t.Cover.Grid() != t.Grid) || (t.Doors != nil && t.Doors.Grid() != t.Grid) || (t.NoPass != nil && t.NoPass.Grid() != t.Grid) {
 		return ErrBadGrid
 	}
 	return nil
@@ -125,7 +128,7 @@ func (t Terrain) wall(sq Square) bool {
 // solidGround says whether a square blocks movement whatever its door: a wall,
 // or a square of three-quarters cover.
 func (t Terrain) solidGround(sq Square) bool {
-	return !t.Grid.Contains(sq) || t.Walls.Has(sq) || t.Cover.Get(sq.Col, sq.Row) == CoverThreeQuarters
+	return !t.Grid.Contains(sq) || t.Walls.Has(sq) || t.NoPass.Has(sq) || t.Cover.Get(sq.Col, sq.Row) == CoverThreeQuarters
 }
 
 // solid says whether a square blocks movement: a wall, a square of
@@ -278,6 +281,9 @@ func (t Terrain) blockedBy(sq Square) StopReason {
 	if t.door(sq) == DoorLocked && !t.solidGround(sq) {
 		return StopLocked
 	}
+	if t.NoPass.Has(sq) && !t.Walls.Has(sq) {
+		return StopNoPass
+	}
 	return StopWall
 }
 
@@ -302,6 +308,8 @@ const (
 	// StopWall: the next square is a wall, a square of three-quarters cover or
 	// a squeeze between two of them.
 	StopWall StopReason = "wall"
+	// StopNoPass: the next square is marked "can't pass" (and is not a wall).
+	StopNoPass StopReason = "no_pass"
 	// StopLocked: the next square is a locked door (RN-26).
 	StopLocked StopReason = "locked"
 	// StopMarked: the mover entered a square of the stop set (a trap's area)

@@ -4,6 +4,7 @@ import {
   ReactionRollKind,
   type ReactionWindow,
 } from '../../../gen/meurpg/play/v1/combat_pb';
+import { dcLabel } from '../format/save-dc';
 import { joinDots, upFirst } from '../format/text';
 import { circleLabel } from './combat-grid';
 import { rollFormula, rollText } from './combat-dice';
@@ -301,7 +302,8 @@ export function concentrationResultView(res: ConcentrationSaveResult, round: num
     icon: 'hourglass_empty',
     pill: { word: res.kept ? 'Concentração mantida' : 'Concentração perdida', good: res.kept },
     text: [
-      `${res.save ? rollText(res.save) : ''} contra CD ${res.dc}. ${
+      // The roller reads the DC only when the table shows it (the master's keep has no roll at all).
+      `${res.save ? rollText(res.save) : ''}${dcLabel(res.dc) ? ` contra ${dcLabel(res.dc)}` : ''}. ${
         res.kept ? `A concentração em ${spell} continua.` : `A concentração em ${spell} acabou.`
       }`,
       // "Sortudo: 1 → 14": the d20 the halfling's Lucky rolled again; the roll above already has the new face.

@@ -122,6 +122,9 @@ type stepGroup struct {
 	// Before is the damage of the type before the modifiers.
 	Before int32             `json:"before"`
 	Mods   []combat.Modifier `json:"mods"`
+	// From says where the damage came from: the steps are worked out with it again when
+	// the master leaves a source out (a modifier can hold for a nonmagical attack only).
+	From combat.Origin `json:"origin,omitzero"`
 }
 
 func readParts(raw []byte) []partRecord {
@@ -485,7 +488,7 @@ func partRollProto(r partRoll, damageTypePT func(string) string) *playv1.DamageP
 func stepsProto(groups []stepGroup, ignored []string, names func(string) string, damageTypePT func(string) string) []*playv1.DamageStep {
 	var out []*playv1.DamageStep
 	for _, g := range groups {
-		_, steps := combat.Adjust(int(g.Before), g.DamageType, g.Mods, ignored)
+		_, steps := combat.Adjust(int(g.Before), g.DamageType, g.Mods, ignored, g.From)
 		for _, st := range steps {
 			out = append(out, &playv1.DamageStep{
 				Kind: stepKindProto(st.Kind), SourceKeys: st.Sources, LabelPt: stepLabel(st, names, damageTypePT),
@@ -495,9 +498,9 @@ func stepsProto(groups []stepGroup, ignored []string, names func(string) string,
 		// A source the master left out is still listed, struck.
 		for _, ig := range ignored {
 			for _, m := range g.Mods {
-				if m.Source == ig && slices.Contains(m.DamageTypes, g.DamageType) {
+				if m.Source == ig && m.Covers(g.DamageType, g.From) {
 					out = append(out, &playv1.DamageStep{
-						Kind: stepKindProto(m.Kind), SourceKeys: []string{m.Source}, LabelPt: stepLabel(combat.Step{Kind: m.Kind, Sources: []string{m.Source}, DamageType: g.DamageType}, names, damageTypePT),
+						Kind: stepKindProto(m.Kind), SourceKeys: []string{m.Source}, LabelPt: stepLabel(combat.Step{Kind: m.Kind, Sources: []string{m.Source}, DamageType: g.DamageType, Qualifier: m.Qualifier}, names, damageTypePT),
 						Before: g.Before, After: g.Before, DamageTypeKey: g.DamageType, Ignored: true,
 					})
 				}
@@ -536,6 +539,9 @@ func stepLabel(st combat.Step, names func(string) string, damageTypePT func(stri
 		sources = append(sources, sourceNamePT(s, names))
 	}
 	out := head + damageTypePT(st.DamageType)
+	if st.Qualifier == combat.QualifierNonmagical {
+		out += " de ataque não mágico"
+	}
 	if len(sources) > 0 {
 		out += " (" + joinPT(sources) + ")"
 	}
@@ -1069,13 +1075,18 @@ func (s *Service) statBlockModifiers(ctx context.Context, c *combatTx, campaignI
 	}
 	var out []combat.Modifier
 	for _, g := range []struct {
-		kind  string
-		types []string
+		kind      string
+		types     []string
+		qualifier string
 	}{
-		{combat.StepImmunity, mods.Immune}, {combat.StepResistance, mods.Resistant}, {combat.StepVulnerability, mods.Vulnerable},
+		{combat.StepImmunity, mods.Immune, ""},
+		{combat.StepResistance, mods.Resistant, ""},
+		{combat.StepVulnerability, mods.Vulnerable, ""},
+		{combat.StepImmunity, mods.ImmuneNonmagical, combat.QualifierNonmagical},
+		{combat.StepResistance, mods.ResistantNonmagical, combat.QualifierNonmagical},
 	} {
 		if len(g.types) > 0 {
-			out = append(out, combat.Modifier{Kind: g.kind, Source: source, DamageTypes: g.types})
+			out = append(out, combat.Modifier{Kind: g.kind, Source: source, DamageTypes: g.types, Qualifier: g.qualifier})
 		}
 	}
 	return out, nil
@@ -1092,7 +1103,7 @@ type landing struct {
 
 // settleSteps takes the damage of each type through the target's modifiers. byType is
 // the damage by type (one entry for a damage of one type).
-func settleSteps(byType map[string]int, mods []combat.Modifier, ignored []string) landing {
+func settleSteps(byType map[string]int, mods []combat.Modifier, ignored []string, from combat.Origin) landing {
 	var out landing
 	types := make([]string, 0, len(byType))
 	for t := range byType {
@@ -1100,12 +1111,12 @@ func settleSteps(byType map[string]int, mods []combat.Modifier, ignored []string
 	}
 	slices.Sort(types)
 	for _, t := range types {
-		final, steps := combat.Adjust(byType[t], t, mods, ignored)
+		final, steps := combat.Adjust(byType[t], t, mods, ignored, from)
 		if len(steps) > 0 {
-			group := stepGroup{DamageType: t, Before: clamp32(byType[t], 0, math.MaxInt32)}
+			group := stepGroup{DamageType: t, Before: clamp32(byType[t], 0, math.MaxInt32), From: from}
 			for _, m := range mods {
-				if slices.Contains(m.DamageTypes, t) {
-					group.Mods = append(group.Mods, combat.Modifier{Kind: m.Kind, Source: m.Source, DamageTypes: []string{t}})
+				if m.Covers(t, from) {
+					group.Mods = append(group.Mods, combat.Modifier{Kind: m.Kind, Source: m.Source, DamageTypes: []string{t}, Qualifier: m.Qualifier})
 				}
 			}
 			out.groups = append(out.groups, group)
@@ -1121,7 +1132,7 @@ func settleSteps(byType map[string]int, mods []combat.Modifier, ignored []string
 func reapply(total int32, groups []stepGroup, ignored []string) int32 {
 	out := total
 	for _, g := range groups {
-		after, _ := combat.Adjust(int(g.Before), g.DamageType, g.Mods, ignored)
+		after, _ := combat.Adjust(int(g.Before), g.DamageType, g.Mods, ignored, g.From)
 		out += clamp32(after, 0, math.MaxInt32) - g.Before
 	}
 	return max(out, 0)
@@ -1197,12 +1208,12 @@ func (s *Service) addSlotOptions(ctx context.Context, campaignID string, out *pl
 // settleLanding is the damage that lands, and the steps that made it, for a target
 // that takes a damage by type: the target's own modifiers apply (an NPC's or a creature's
 // at once, a player's character's as the preview the master applies from).
-func (s *Service) settleLanding(ctx context.Context, c *combatTx, states map[string][]playdb.CombatantState, tgt playdb.Combatant, byType map[string]int) (landing, error) {
+func (s *Service) settleLanding(ctx context.Context, c *combatTx, states map[string][]playdb.CombatantState, tgt playdb.Combatant, byType map[string]int, from combat.Origin) (landing, error) {
 	mods, err := s.modifiersOf(ctx, c, c.session.CampaignID, states, tgt)
 	if err != nil {
 		return landing{}, err
 	}
-	return settleSteps(byType, mods, nil), nil
+	return settleSteps(byType, mods, nil, from), nil
 }
 
 // legacy is the roll as the one-roll damage reads it: the total, the weapon's faces and

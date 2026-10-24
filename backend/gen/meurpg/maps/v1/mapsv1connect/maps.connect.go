@@ -98,6 +98,15 @@ const (
 	// MapServiceRemoveMapTokenProcedure is the fully-qualified name of the MapService's RemoveMapToken
 	// RPC.
 	MapServiceRemoveMapTokenProcedure = "/meurpg.maps.v1.MapService/RemoveMapToken"
+	// MapServiceSetMapPlayersMoveProcedure is the fully-qualified name of the MapService's
+	// SetMapPlayersMove RPC.
+	MapServiceSetMapPlayersMoveProcedure = "/meurpg.maps.v1.MapService/SetMapPlayersMove"
+	// MapServiceMoveMapTokensProcedure is the fully-qualified name of the MapService's MoveMapTokens
+	// RPC.
+	MapServiceMoveMapTokensProcedure = "/meurpg.maps.v1.MapService/MoveMapTokens"
+	// MapServicePutPartyOnMapProcedure is the fully-qualified name of the MapService's PutPartyOnMap
+	// RPC.
+	MapServicePutPartyOnMapProcedure = "/meurpg.maps.v1.MapService/PutPartyOnMap"
 	// MapServicePaintMapCellsProcedure is the fully-qualified name of the MapService's PaintMapCells
 	// RPC.
 	MapServicePaintMapCellsProcedure = "/meurpg.maps.v1.MapService/PaintMapCells"
@@ -525,6 +534,59 @@ type MapServiceClient interface {
 	//     a member of it.
 	//   - `permission_denied`: the caller is a player.
 	RemoveMapToken(context.Context, *connect.Request[v1.RemoveMapTokenRequest]) (*connect.Response[v1.RemoveMapTokenResponse], error)
+	// SetMapPlayersMove allows or forbids the players to move their own characters' tokens
+	// on a map outside combat ("Os jogadores movem os próprios personagens"). Only the
+	// campaign's master may call it. Off by default.
+	//
+	// Errors:
+	//   - `not_found`: the map is not in this campaign, the campaign does not exist, or
+	//     the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	SetMapPlayersMove(context.Context, *connect.Request[v1.SetMapPlayersMoveRequest]) (*connect.Response[v1.SetMapPlayersMoveResponse], error)
+	// MoveMapTokens moves the tokens of one or more characters on a map, outside combat,
+	// with no limit of movement: each token walks the straight line toward its destination
+	// and stops before the first wall, locked door or square marked "Não dá para passar"
+	// (MoveMapTokensResponse says how far it got and why it stopped). Several tokens, the
+	// master's, move together: the first is the anchor and the others keep their offset;
+	// the group moves only when every arrival square is free (a wall, a marked square or
+	// the edge of the map refuses all of them: `moved` is false and nobody moves).
+	//
+	// The master moves any living character's token. A player moves their own
+	// character's token, alone, when the master allowed it on this map
+	// (SetMapPlayersMove) and the token is visible to them; a player's answer names only
+	// that token and, on a map with the fog of war on, says why it stopped only when the
+	// square in the way is one they see or remember (otherwise BLOCKED).
+	//
+	// The token walking into a trap's area fires or is noticed as in PlaceMapToken. The
+	// stream sends the move as `token_moved` (a `map_changed` for a hidden token's).
+	//
+	// Errors:
+	//   - `not_found`: the map is not in this campaign (or a player does not see it), a
+	//     character has no token on it, the campaign does not exist, or the caller is not
+	//     a member of it.
+	//   - `invalid_argument`: no characters, more than 40, a repeat, or a position outside
+	//     0 to 10000.
+	//   - `permission_denied`: a player asked to move another character, several tokens,
+	//     or a move the master did not allow on this map.
+	//   - `failed_precondition`: with the `MapBlocked` detail COMBAT_RUNNING while a
+	//     combat is on the map: the tokens then move through CombatService.
+	MoveMapTokens(context.Context, *connect.Request[v1.MoveMapTokensRequest]) (*connect.Response[v1.MoveMapTokensResponse], error)
+	// PutPartyOnMap puts the tokens of several characters on a map in a formation (a line,
+	// a block or an arc) starting at a square, moving the ones already there. Only the
+	// campaign's master may call it. Each one goes to its place of the shape, or to the
+	// nearest free square that is not a wall, a square marked "Não dá para passar", or a
+	// square another token holds.
+	//
+	// Errors:
+	//   - `not_found`: a character is not a living character of the campaign, the map is
+	//     not in this campaign, the campaign does not exist, or the caller is not a member
+	//     of it.
+	//   - `invalid_argument`: no characters, more than 40, a repeat, or a position outside
+	//     0 to 10000.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: with the `MapBlocked` detail NO_GRID (the map has no grid),
+	//     COMBAT_RUNNING (a combat is on the map) or NO_ROOM (not enough free squares).
+	PutPartyOnMap(context.Context, *connect.Request[v1.PutPartyOnMapRequest]) (*connect.Response[v1.PutPartyOnMapResponse], error)
 	// PaintMapCells paints squares of one layer of a map's grid (MR-034,
 	// MR-036): difficult terrain, walls, cover or light, one value for a batch of
 	// squares. Only the campaign's master may call it. The last write wins, with
@@ -898,6 +960,24 @@ func NewMapServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(mapServiceMethods.ByName("RemoveMapToken")),
 			connect.WithClientOptions(opts...),
 		),
+		setMapPlayersMove: connect.NewClient[v1.SetMapPlayersMoveRequest, v1.SetMapPlayersMoveResponse](
+			httpClient,
+			baseURL+MapServiceSetMapPlayersMoveProcedure,
+			connect.WithSchema(mapServiceMethods.ByName("SetMapPlayersMove")),
+			connect.WithClientOptions(opts...),
+		),
+		moveMapTokens: connect.NewClient[v1.MoveMapTokensRequest, v1.MoveMapTokensResponse](
+			httpClient,
+			baseURL+MapServiceMoveMapTokensProcedure,
+			connect.WithSchema(mapServiceMethods.ByName("MoveMapTokens")),
+			connect.WithClientOptions(opts...),
+		),
+		putPartyOnMap: connect.NewClient[v1.PutPartyOnMapRequest, v1.PutPartyOnMapResponse](
+			httpClient,
+			baseURL+MapServicePutPartyOnMapProcedure,
+			connect.WithSchema(mapServiceMethods.ByName("PutPartyOnMap")),
+			connect.WithClientOptions(opts...),
+		),
 		paintMapCells: connect.NewClient[v1.PaintMapCellsRequest, v1.PaintMapCellsResponse](
 			httpClient,
 			baseURL+MapServicePaintMapCellsProcedure,
@@ -1003,6 +1083,9 @@ type mapServiceClient struct {
 	placeMapToken           *connect.Client[v1.PlaceMapTokenRequest, v1.PlaceMapTokenResponse]
 	setMapTokenHidden       *connect.Client[v1.SetMapTokenHiddenRequest, v1.SetMapTokenHiddenResponse]
 	removeMapToken          *connect.Client[v1.RemoveMapTokenRequest, v1.RemoveMapTokenResponse]
+	setMapPlayersMove       *connect.Client[v1.SetMapPlayersMoveRequest, v1.SetMapPlayersMoveResponse]
+	moveMapTokens           *connect.Client[v1.MoveMapTokensRequest, v1.MoveMapTokensResponse]
+	putPartyOnMap           *connect.Client[v1.PutPartyOnMapRequest, v1.PutPartyOnMapResponse]
 	paintMapCells           *connect.Client[v1.PaintMapCellsRequest, v1.PaintMapCellsResponse]
 	getMapLayers            *connect.Client[v1.GetMapLayersRequest, v1.GetMapLayersResponse]
 	setMapFog               *connect.Client[v1.SetMapFogRequest, v1.SetMapFogResponse]
@@ -1135,6 +1218,21 @@ func (c *mapServiceClient) SetMapTokenHidden(ctx context.Context, req *connect.R
 // RemoveMapToken calls meurpg.maps.v1.MapService.RemoveMapToken.
 func (c *mapServiceClient) RemoveMapToken(ctx context.Context, req *connect.Request[v1.RemoveMapTokenRequest]) (*connect.Response[v1.RemoveMapTokenResponse], error) {
 	return c.removeMapToken.CallUnary(ctx, req)
+}
+
+// SetMapPlayersMove calls meurpg.maps.v1.MapService.SetMapPlayersMove.
+func (c *mapServiceClient) SetMapPlayersMove(ctx context.Context, req *connect.Request[v1.SetMapPlayersMoveRequest]) (*connect.Response[v1.SetMapPlayersMoveResponse], error) {
+	return c.setMapPlayersMove.CallUnary(ctx, req)
+}
+
+// MoveMapTokens calls meurpg.maps.v1.MapService.MoveMapTokens.
+func (c *mapServiceClient) MoveMapTokens(ctx context.Context, req *connect.Request[v1.MoveMapTokensRequest]) (*connect.Response[v1.MoveMapTokensResponse], error) {
+	return c.moveMapTokens.CallUnary(ctx, req)
+}
+
+// PutPartyOnMap calls meurpg.maps.v1.MapService.PutPartyOnMap.
+func (c *mapServiceClient) PutPartyOnMap(ctx context.Context, req *connect.Request[v1.PutPartyOnMapRequest]) (*connect.Response[v1.PutPartyOnMapResponse], error) {
+	return c.putPartyOnMap.CallUnary(ctx, req)
 }
 
 // PaintMapCells calls meurpg.maps.v1.MapService.PaintMapCells.
@@ -1591,6 +1689,59 @@ type MapServiceHandler interface {
 	//     a member of it.
 	//   - `permission_denied`: the caller is a player.
 	RemoveMapToken(context.Context, *connect.Request[v1.RemoveMapTokenRequest]) (*connect.Response[v1.RemoveMapTokenResponse], error)
+	// SetMapPlayersMove allows or forbids the players to move their own characters' tokens
+	// on a map outside combat ("Os jogadores movem os próprios personagens"). Only the
+	// campaign's master may call it. Off by default.
+	//
+	// Errors:
+	//   - `not_found`: the map is not in this campaign, the campaign does not exist, or
+	//     the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	SetMapPlayersMove(context.Context, *connect.Request[v1.SetMapPlayersMoveRequest]) (*connect.Response[v1.SetMapPlayersMoveResponse], error)
+	// MoveMapTokens moves the tokens of one or more characters on a map, outside combat,
+	// with no limit of movement: each token walks the straight line toward its destination
+	// and stops before the first wall, locked door or square marked "Não dá para passar"
+	// (MoveMapTokensResponse says how far it got and why it stopped). Several tokens, the
+	// master's, move together: the first is the anchor and the others keep their offset;
+	// the group moves only when every arrival square is free (a wall, a marked square or
+	// the edge of the map refuses all of them: `moved` is false and nobody moves).
+	//
+	// The master moves any living character's token. A player moves their own
+	// character's token, alone, when the master allowed it on this map
+	// (SetMapPlayersMove) and the token is visible to them; a player's answer names only
+	// that token and, on a map with the fog of war on, says why it stopped only when the
+	// square in the way is one they see or remember (otherwise BLOCKED).
+	//
+	// The token walking into a trap's area fires or is noticed as in PlaceMapToken. The
+	// stream sends the move as `token_moved` (a `map_changed` for a hidden token's).
+	//
+	// Errors:
+	//   - `not_found`: the map is not in this campaign (or a player does not see it), a
+	//     character has no token on it, the campaign does not exist, or the caller is not
+	//     a member of it.
+	//   - `invalid_argument`: no characters, more than 40, a repeat, or a position outside
+	//     0 to 10000.
+	//   - `permission_denied`: a player asked to move another character, several tokens,
+	//     or a move the master did not allow on this map.
+	//   - `failed_precondition`: with the `MapBlocked` detail COMBAT_RUNNING while a
+	//     combat is on the map: the tokens then move through CombatService.
+	MoveMapTokens(context.Context, *connect.Request[v1.MoveMapTokensRequest]) (*connect.Response[v1.MoveMapTokensResponse], error)
+	// PutPartyOnMap puts the tokens of several characters on a map in a formation (a line,
+	// a block or an arc) starting at a square, moving the ones already there. Only the
+	// campaign's master may call it. Each one goes to its place of the shape, or to the
+	// nearest free square that is not a wall, a square marked "Não dá para passar", or a
+	// square another token holds.
+	//
+	// Errors:
+	//   - `not_found`: a character is not a living character of the campaign, the map is
+	//     not in this campaign, the campaign does not exist, or the caller is not a member
+	//     of it.
+	//   - `invalid_argument`: no characters, more than 40, a repeat, or a position outside
+	//     0 to 10000.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: with the `MapBlocked` detail NO_GRID (the map has no grid),
+	//     COMBAT_RUNNING (a combat is on the map) or NO_ROOM (not enough free squares).
+	PutPartyOnMap(context.Context, *connect.Request[v1.PutPartyOnMapRequest]) (*connect.Response[v1.PutPartyOnMapResponse], error)
 	// PaintMapCells paints squares of one layer of a map's grid (MR-034,
 	// MR-036): difficult terrain, walls, cover or light, one value for a batch of
 	// squares. Only the campaign's master may call it. The last write wins, with
@@ -1960,6 +2111,24 @@ func NewMapServiceHandler(svc MapServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(mapServiceMethods.ByName("RemoveMapToken")),
 		connect.WithHandlerOptions(opts...),
 	)
+	mapServiceSetMapPlayersMoveHandler := connect.NewUnaryHandler(
+		MapServiceSetMapPlayersMoveProcedure,
+		svc.SetMapPlayersMove,
+		connect.WithSchema(mapServiceMethods.ByName("SetMapPlayersMove")),
+		connect.WithHandlerOptions(opts...),
+	)
+	mapServiceMoveMapTokensHandler := connect.NewUnaryHandler(
+		MapServiceMoveMapTokensProcedure,
+		svc.MoveMapTokens,
+		connect.WithSchema(mapServiceMethods.ByName("MoveMapTokens")),
+		connect.WithHandlerOptions(opts...),
+	)
+	mapServicePutPartyOnMapHandler := connect.NewUnaryHandler(
+		MapServicePutPartyOnMapProcedure,
+		svc.PutPartyOnMap,
+		connect.WithSchema(mapServiceMethods.ByName("PutPartyOnMap")),
+		connect.WithHandlerOptions(opts...),
+	)
 	mapServicePaintMapCellsHandler := connect.NewUnaryHandler(
 		MapServicePaintMapCellsProcedure,
 		svc.PaintMapCells,
@@ -2086,6 +2255,12 @@ func NewMapServiceHandler(svc MapServiceHandler, opts ...connect.HandlerOption) 
 			mapServiceSetMapTokenHiddenHandler.ServeHTTP(w, r)
 		case MapServiceRemoveMapTokenProcedure:
 			mapServiceRemoveMapTokenHandler.ServeHTTP(w, r)
+		case MapServiceSetMapPlayersMoveProcedure:
+			mapServiceSetMapPlayersMoveHandler.ServeHTTP(w, r)
+		case MapServiceMoveMapTokensProcedure:
+			mapServiceMoveMapTokensHandler.ServeHTTP(w, r)
+		case MapServicePutPartyOnMapProcedure:
+			mapServicePutPartyOnMapHandler.ServeHTTP(w, r)
 		case MapServicePaintMapCellsProcedure:
 			mapServicePaintMapCellsHandler.ServeHTTP(w, r)
 		case MapServiceGetMapLayersProcedure:
@@ -2213,6 +2388,18 @@ func (UnimplementedMapServiceHandler) SetMapTokenHidden(context.Context, *connec
 
 func (UnimplementedMapServiceHandler) RemoveMapToken(context.Context, *connect.Request[v1.RemoveMapTokenRequest]) (*connect.Response[v1.RemoveMapTokenResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.RemoveMapToken is not implemented"))
+}
+
+func (UnimplementedMapServiceHandler) SetMapPlayersMove(context.Context, *connect.Request[v1.SetMapPlayersMoveRequest]) (*connect.Response[v1.SetMapPlayersMoveResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.SetMapPlayersMove is not implemented"))
+}
+
+func (UnimplementedMapServiceHandler) MoveMapTokens(context.Context, *connect.Request[v1.MoveMapTokensRequest]) (*connect.Response[v1.MoveMapTokensResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.MoveMapTokens is not implemented"))
+}
+
+func (UnimplementedMapServiceHandler) PutPartyOnMap(context.Context, *connect.Request[v1.PutPartyOnMapRequest]) (*connect.Response[v1.PutPartyOnMapResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.maps.v1.MapService.PutPartyOnMap is not implemented"))
 }
 
 func (UnimplementedMapServiceHandler) PaintMapCells(context.Context, *connect.Request[v1.PaintMapCellsRequest]) (*connect.Response[v1.PaintMapCellsResponse], error) {

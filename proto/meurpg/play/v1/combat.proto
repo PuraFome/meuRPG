@@ -164,6 +164,21 @@ service CombatService {
   //     outside 1 to 40, a `monster_hit_points` that is not a mode, more than 20 groups.
   rpc StartEncounter(StartEncounterRequest) returns (StartEncounterResponse);
 
+  // GetStartRoster says who would enter a combat started now and where each would
+  // stand, so the master chooses the party before the start (plan B, B2): the map is the
+  // one StartEncounter would fight on (the destination map of the battle point `map_point_id`
+  // names, else the session's current map), and each of the party's living player characters is
+  // listed with whether it has a token on that map and the square that token gives it. It
+  // changes nothing: StartEncounter still puts each combatant on its token's square when nobody
+  // stands there. Only the campaign's master may call it.
+  //
+  // Errors:
+  //   - `not_found`: the campaign or the BATTLE point does not exist, or the caller is not a
+  //     member.
+  //   - `permission_denied`: the caller is a player.
+  //   - `failed_precondition`: no open session (GameSessionBlocked, NO_OPEN_SESSION).
+  rpc GetStartRoster(GetStartRosterRequest) returns (GetStartRosterResponse);
+
   // GetEncounter returns the combat of the campaign's open session as the
   // caller may see it: the latest one, so the app can also show the end of
   // a combat that just ended. It answers with no encounter when the session
@@ -2638,6 +2653,35 @@ message MonsterGroup {
   string name = 3;
 }
 
+// GetStartRosterRequest names the campaign and, optionally, the battle point to start from.
+message GetStartRosterRequest {
+  string campaign_id = 1;
+  // A BATTLE point of the campaign (a UUID), or empty to fight on the current map.
+  string map_point_id = 2;
+}
+
+// StartRosterEntry is one living player character of the party and where a combat started now
+// would put it.
+message StartRosterEntry {
+  string character_id = 1;
+  // Whether the character has a token on the map of the fight.
+  bool on_map = 2;
+  // The square its token is on, from 0, when on_map.
+  int32 col = 3;
+  int32 row = 4;
+  // True when a character earlier in the list stands on the same square: this one would start
+  // with no square, for the master to place.
+  bool shares_square = 5;
+}
+
+// GetStartRosterResponse is the party of a combat about to start.
+message GetStartRosterResponse {
+  // The map of the fight; empty when there is no current map or it has no grid, and then no
+  // entry is on the map.
+  string map_id = 1;
+  repeated StartRosterEntry party = 2;
+}
+
 // StartEncounterResponse returns the new combat in SETUP.
 message StartEncounterResponse {
   Encounter encounter = 1;
@@ -3189,7 +3233,8 @@ message PendingDamage {
   optional int32 applied_amount = 18;
   // APPLIED to a target that is concentrating on a spell: the Constitution save
   // DC to keep it, 10 or half of the damage taken, whichever is higher (RN-22).
-  // The table rolls it. Only the master and the target's own player.
+  // The table rolls it. Only the master, and the target's own player when the
+  // table rule "Os jogadores veem a CD dos testes de resistência" is on.
   optional int32 concentration_dc = 19;
   // APPLIED to a player's character that was already at 0 hit points: the
   // death save failures the damage caused (1, or 2 for a critical hit) instead
@@ -5203,7 +5248,8 @@ message CombatLogDamage {
   // (ApplyPendingDamage.amount): `amount` is what was applied. Only the master.
   optional int32 rolled_amount = 10;
   // The Constitution save DC to keep a concentration the damage threatened
-  // (RN-22). Only the master and the target's own player.
+  // (RN-22). Only the master, and the target's own player when the table rule
+  // "Os jogadores veem a CD dos testes de resistência" is on.
   optional int32 concentration_dc = 11;
   // APPLIED to a character already at 0: the death save failures it caused. When
   // the table hides the death saves (RN-24) only the master and the target's own
@@ -5762,7 +5808,9 @@ message ConcentrationSavePrompt {
   string spell_name_pt = 2;
   // The damage that threatens it, from the source the window is for.
   int32 damage_taken = 3;
-  // 10 or half the damage, whichever is higher (SRD).
+  // 10 or half the damage, whichever is higher (SRD). The master's, and the
+  // roller's when the table rule "Os jogadores veem a CD dos testes de
+  // resistência" is on; 0 (absent) for the roller otherwise.
   int32 dc = 4;
   // What threatens it ("Bola de Fogo do Mago 1"), when the reactor sees the source.
   string source_label = 5;
@@ -5985,6 +6033,8 @@ message ResolveConcentrationSaveResponse {
 
 message ConcentrationSaveResult {
   DiceRoll save = 1;
+  // The save's DC: the master's, and the roller's when the table rule "Os
+  // jogadores veem a CD dos testes de resistência" is on; 0 (absent) otherwise.
   int32 dc = 2;
   bool kept = 3;
   string spell_key = 4;

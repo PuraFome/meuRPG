@@ -48,5 +48,5 @@ The door screens only draw what the server sends and paint through `PaintMapCell
 | Combat | `MoveCombatant` returns `lockedDoor` (`MoveResult`) and the "Mover" page stays open with the notice; the `DOOR_LOCKED` refusal goes through `combatErrorMessage`; the log writes `COMBAT_LOG_KIND_DOOR_OPENED` as "<nome> abriu a porta." |
 
 - **Only what arrives is drawn.** The player's layer has no locked door (it comes as closed) and no secret door (a wall in the wall layer), so no web mark needs to know how to hide anything. The player's legend never says "trancada" or "secreta".
-- **Outside combat a player does not move the token** (`PlaceMapToken` is the master's), so "the player walks to the door" is combat only; in exploration the master opens, closes and locks through the door sheet.
+- **Outside combat** the master moves tokens, and a player moves their own only when the master allowed it (`MoveMapTokens`, [Tokens outside combat](README.md#tokens-outside-combat)): a lone token that walks into a closed door opens it as in combat; the master opens, closes and locks through the door sheet.
 - **Where the master touches a door:** the session map with fog on and the combat map (the session page, not the phone crop). The session map without fog is only the image, without layers, and has no doors on top.

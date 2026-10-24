@@ -168,7 +168,7 @@ func (x *deriver) cantripAttack(key string) {
 	dmg := x.modifiers("damage.spell."+strings.TrimPrefix(key, "spell:"), 0)
 	dice := damageAt(s.Damage[0].AtCharacterLevel, x.d.TotalLevel)
 	a := Attack{
-		Key: key, Name: s.Name, NamePT: c.namePT(key), Kind: "spell", Ability: sc.Ability,
+		Key: key, Name: s.Name, NamePT: c.namePT(key), Kind: "spell", Ability: sc.Ability, Magical: true,
 		Damage: withModifier(dice, dmg), SpellDice: dice,
 		DamageType: s.Damage[0].DamageType, DamageTypeNamePT: c.namePT(s.Damage[0].DamageType),
 		Proficient: true, RangeFt: feet(s.Range), Beams: beamsAt(key, x.d.TotalLevel),
@@ -218,9 +218,13 @@ func (x *deriver) oneMeleeWeaponBonus() (total int, source string) {
 // unarmedReachFt is the reach of an unarmed strike.
 const unarmedReachFt = 5
 
+// kiEmpoweredStrikes is the monk feature (level 6) that makes the unarmed strike magical.
+const kiEmpoweredStrikes = "feature:ki-empowered-strikes"
+
 // unarmedStrike adds the unarmed strike line: STR (DEX too for a monk with
 // Martial Arts), proficient, 1 + modifier bludgeoning, or the monk die plus
-// modifier.
+// modifier. With Ki-Empowered Strikes it counts as magical for the resistances
+// and immunities to nonmagical attacks, and for nothing else.
 func (x *deriver) unarmedStrike(martialArts bool, martialDie int) {
 	ab := STR
 	if martialArts && x.mods[DEX] > x.mods[STR] {
@@ -232,6 +236,7 @@ func (x *deriver) unarmedStrike(martialArts bool, martialDie int) {
 		AttackBonus: mod + x.prof, Proficient: true,
 		DamageType: "damage-type:bludgeoning", DamageTypeNamePT: x.c.namePT("damage-type:bludgeoning"),
 		Melee: true, RangeFt: unarmedReachFt, MartialArts: martialArts, AbilityMod: mod,
+		Magical: HasFeature(*x.d, kiEmpoweredStrikes),
 	}
 	if martialArts && martialDie > 0 {
 		a.Damage = withModifier("1d"+strconv.Itoa(martialDie), mod)

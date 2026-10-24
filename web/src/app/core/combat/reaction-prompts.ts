@@ -4,6 +4,7 @@ import {
   type ReactionWindow,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { SlotChoice } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { dcLabel } from '../format/save-dc';
 import { joinDots, upFirst } from '../format/text';
 import { metersText } from '../units';
 import { circleLabel } from './combat-grid';
@@ -200,16 +201,21 @@ function featherFallPrompt(f: PromptOf<'featherFall'>, rodada: string): PromptVi
 function concentrationSavePrompt(c: PromptOf<'concentrationSave'>, rodada: string): PromptView {
   const spell = c.spellNamePt;
   const source = c.sourceLabel ? `${c.sourceLabel} · ` : '';
+  // The server sends the DC only to the master and, when the table shows it, to the roller: no DC, no "contra CD" and no
+  // "metade dos N de dano" (the way to work it out).
+  const dc = dcLabel(c.dc);
+  const against = dc ? ` contra ${dc}` : '';
+  const half = dc ? ` (metade dos ${c.damageTaken} de dano; o mínimo é 10)` : '';
   return {
     title: 'Concentração em risco',
     subtitle: `${source}você sofreu ${c.damageTaken} de dano · ${rodada}`,
     icon: 'hourglass_empty',
     name: 'Teste de concentração',
-    question: `Você mantém a concentração em ${spell}. Faça um teste de resistência de Constituição contra CD ${c.dc} (metade dos ${c.damageTaken} de dano; o mínimo é 10).`,
+    question: `Você mantém a concentração em ${spell}. Faça um teste de resistência de Constituição${against}${half}.`,
     costs: [],
     note: `Se falhar, a concentração em ${spell} acaba. O ataque que deu o dano espera o seu teste.`,
     useLabel: 'Rolar no app',
-    ariaLabel: `Concentração em risco: teste de resistência de Constituição contra CD ${c.dc}`,
+    ariaLabel: `Concentração em risco: teste de resistência de Constituição${against}`,
   };
 }
 

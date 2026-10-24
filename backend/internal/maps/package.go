@@ -372,7 +372,7 @@ type stagedMap struct {
 	fog, onGrid bool
 	group       bool
 	baseLight   string
-	layers      [5][]byte
+	layers      [6][]byte
 	points      []*stagedPoint
 	createdAt   time.Time
 }
@@ -446,7 +446,7 @@ func exportLayers(ctx context.Context, q *mapsdb.Queries, mapID string) (*pkgv1.
 		return nil, fmt.Errorf("read a map's layers: %w", err)
 	}
 	return &pkgv1.PackageLayers{
-		DifficultTerrain: layers.DifficultTerrain, Walls: layers.Walls, Cover: layers.Cover, Light: layers.Light, Doors: layers.Doors,
+		DifficultTerrain: layers.DifficultTerrain, Walls: layers.Walls, Cover: layers.Cover, Light: layers.Light, Doors: layers.Doors, NoPass: layers.NoPass,
 	}, nil
 }
 
@@ -647,7 +647,7 @@ func (st *stagedImages) find(old string) *stagedImage {
 // is not known (its image was refused, which is a problem of its own) the
 // bytes are only kept.
 func (p *mapsPart) stageLayers(sm *stagedMap, l *pkgv1.PackageLayers, g grid.Grid) bool {
-	raw := [5][]byte{l.GetDifficultTerrain(), l.GetWalls(), l.GetCover(), l.GetLight(), l.GetDoors()}
+	raw := [6][]byte{l.GetDifficultTerrain(), l.GetWalls(), l.GetCover(), l.GetLight(), l.GetDoors(), l.GetNoPass()}
 	if sm.columns == nil {
 		for _, b := range raw {
 			if nilIfBlank(b) != nil {
@@ -660,12 +660,13 @@ func (p *mapsPart) stageLayers(sm *stagedMap, l *pkgv1.PackageLayers, g grid.Gri
 		sm.layers = raw
 		return true
 	}
-	checks := [5]func() error{
+	checks := [6]func() error{
 		func() error { _, err := grid.DecodeLayer(g, raw[0]); return err },
 		func() error { _, err := grid.DecodeLayer(g, raw[1]); return err },
 		func() error { _, err := grid.DecodeCoverLayer(g, raw[2]); return err },
 		func() error { _, err := grid.DecodeLightLayer(g, raw[3]); return err },
 		func() (err error) { sm.doors, err = grid.DecodeDoorLayer(g, raw[4]); return err },
+		func() error { _, err := grid.DecodeLayer(g, raw[5]); return err },
 	}
 	for i, check := range checks {
 		if len(raw[i]) == 0 {
@@ -895,7 +896,7 @@ func insertStagedMap(ctx context.Context, q *mapsdb.Queries, campaignID string, 
 		return nil
 	}
 	if err := q.UpsertMapLayers(ctx, mapsdb.UpsertMapLayersParams{
-		MapID: sm.id, DifficultTerrain: sm.layers[0], Walls: sm.layers[1], Cover: sm.layers[2], Light: sm.layers[3], Doors: sm.layers[4], Now: sm.createdAt,
+		MapID: sm.id, DifficultTerrain: sm.layers[0], Walls: sm.layers[1], Cover: sm.layers[2], Light: sm.layers[3], Doors: sm.layers[4], NoPass: sm.layers[5], Now: sm.createdAt,
 	}); err != nil {
 		return fmt.Errorf("insert an imported map's layers: %w", err)
 	}
