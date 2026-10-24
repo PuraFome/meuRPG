@@ -259,6 +259,7 @@
             [campaignName]="state.campaign()?.name ?? ''"
             [party]="state.vitals()"
             [info]="state.partyInfo()"
+            [dark]="dark.ids()"
             (adjust)="sheets.adjust($event)"
           />
           <!-- The master's short and long rests (PM-07b 9). -->
@@ -334,6 +335,7 @@
               [mapId]="state.currentMapId()"
               [maps]="state.campaignMaps()"
               [fog]="fog"
+              [dark]="dark"
               [people]="view.viewAsPeople()"
               [viewAs]="state.viewAs()"
               [tick]="state.visionTick()"

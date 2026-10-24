@@ -73,6 +73,7 @@
 
   <div class="layout" [class.layout--paint]="mode() === 'paint'">
     <div class="layout__map">
+      <app-editor-dark [state]="state()" [watch]="dark" [compact]="mode() === 'paint'" (show)="showDark($event)" />
       @if (image(); as img) {
         <app-map-view
           [mode]="mode() === 'points' ? 'edit' : 'view'"
@@ -110,6 +111,9 @@
             [selectedId]="selectedPoint()?.id ?? null"
             [highlight]="roomOutline()"
           />
+          @if (dark.ids().size > 0) {
+            <app-dark-marks mapOverlay [tokens]="state().tokens()" [dark]="dark.ids()" [chosen]="darkChosen()" />
+          }
           @if (paint.painting()) {
             <app-paint-surface
               mapOverlay

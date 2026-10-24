@@ -206,6 +206,13 @@
   height: 22px;
 }
 
+// "No escuro" in the legend: the same dashed ring the map draws around a character in the dark.
+.fm__mark--dark {
+  box-sizing: border-box;
+  border: 2px dashed var(--mr-map-accent);
+  border-radius: 50%;
+}
+
 // "Você vê": a card under the legend, a title line and one line for each thing the viewer can use.
 .fm__caption {
   display: flex;

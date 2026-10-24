@@ -65,6 +65,37 @@
   flex-direction: column;
 }
 
+.member__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-1) var(--mr-space-2);
+}
+
+// "No escuro" (B3): the warning's amber, with the moon, so it reads as the same warning as the notice over the map.
+.member__dark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mr-space-1);
+  height: 24px;
+  box-sizing: border-box;
+  padding: 0 10px 0 6px;
+  border: 1px solid var(--mr-warning-line);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-warning-surface);
+  color: var(--mr-warning-ink);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
 .member__name {
   font-size: 18px;
   font-weight: 700;

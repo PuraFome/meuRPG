@@ -6,6 +6,7 @@ import {
   type GetMapResponse,
   type GetTrapNoticersResponse,
   type GetMapVisionResponse,
+  type ListCharactersInTheDarkResponse,
   type LightLevel,
   type MapLayer,
   type MapSquare,
@@ -55,6 +56,11 @@ export class MapsClient {
    * (`decodeVision` unpacks them), and the tiles of the image. */
   vision(campaignId: string, mapId: string, asCharacterId = ''): Promise<GetMapVisionResponse> {
     return this.client.getMapVision({ campaignId, mapId, asCharacterId });
+  }
+
+  /** `ListCharactersInTheDark` (the master only): the player characters that see nothing where they stand. */
+  charactersInTheDark(campaignId: string, mapId: string): Promise<ListCharactersInTheDarkResponse> {
+    return this.client.listCharactersInTheDark({ campaignId, mapId });
   }
 
   /** `SetCarriedLight`: the light a character carries (a preset's key, or '' for none). */

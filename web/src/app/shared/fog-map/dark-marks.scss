@@ -1,0 +1,38 @@
+// Over the map's picture and under its tokens (the tokens are at z-index 3); the map's own marks, in both themes.
+:host {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: block;
+  pointer-events: none;
+}
+
+// The ring: dashed, around the token's disc, never smaller than a touch of the token and never growing with the zoom.
+.ring {
+  position: absolute;
+  box-sizing: border-box;
+  width: calc(var(--tk-d, 26px) + 16px);
+  height: calc(var(--tk-d, 26px) + 16px);
+  border: 3px dashed var(--mr-map-accent);
+  border-radius: 50%;
+  transform: scale(calc(1 / var(--s, 1))) translate(-50%, -50%);
+  transform-origin: 0 0;
+}
+
+// The label of the chosen one: under the token, a pill with the accent's border.
+.label {
+  position: absolute;
+  z-index: 1;
+  box-sizing: border-box;
+  padding: 2px 10px;
+  border: 2px solid var(--mr-map-accent);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-map-token-surface);
+  color: var(--mr-map-token-ink);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 16px;
+  white-space: nowrap;
+  transform: scale(calc(1 / var(--s, 1))) translate(-50%, calc(var(--tk-d, 26px) / 2 + 12px));
+  transform-origin: 0 0;
+}
