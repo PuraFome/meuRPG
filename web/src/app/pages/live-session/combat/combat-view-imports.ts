@@ -39,6 +39,7 @@ import { MineTabs } from './mine-tabs/mine-tabs';
 import { TrapDamages } from '../traps/trap-damages/trap-damages';
 import { OrderColumn } from './turn-panel/order-column';
 import { OrderStrip } from './turn-panel/order-strip';
+import { TargetBar } from './target-mode/target-bar';
 import { TurnBar } from './turn-panel/turn-bar';
 import { TurnPanel } from './turn-panel/turn-panel';
 import { CoverPanel } from './theatre/cover-panel';
@@ -48,6 +49,7 @@ import { ZonesPanel } from './zones-panel/zones-panel';
 
 /** The components, directives and pipes the combat screen's template uses. */
 export const COMBAT_VIEW_IMPORTS = [
+  TargetBar,
   CheckRow,
   EconomyMark,
   ActionGroups,

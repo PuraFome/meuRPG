@@ -326,3 +326,147 @@
   left: auto;
   transform: translateY(-50%);
 }
+
+// ---- choosing a target on the map (C7-04) ----
+
+// A creature the action cannot aim at is dimmed; the tap on it says why.
+.cm__tk--dim {
+  opacity: 0.45;
+}
+
+// The creature offered as a target: a ring in the map's garnet over a pale edge, a button of at least 44 px, over the tokens.
+.cm__pick {
+  position: absolute;
+  z-index: 5;
+  box-sizing: border-box;
+  width: max(44px, calc(var(--cm-tk) * var(--span, 1)));
+  height: max(44px, calc(var(--cm-tk) * var(--span, 1)));
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--mr-map-token-surface);
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+
+  // The ring is drawn around the token itself, not around the whole 44 px area.
+  &::before {
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: calc(var(--cm-tk) * var(--span, 1) + 4px);
+    height: calc(var(--cm-tk) * var(--span, 1) + 4px);
+    border-radius: 50%;
+    box-shadow:
+      0 0 0 2px var(--mr-map-token-surface),
+      0 0 0 5px var(--mr-map-accent);
+    content: '';
+    transform: translate(-50%, -50%);
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.cm__pick--on::before {
+  box-shadow:
+    0 0 0 3px var(--mr-map-token-surface),
+    0 0 0 8px var(--mr-map-accent);
+}
+
+// Dimmed: no ring, only the tap that tells why.
+.cm__pick--off::before {
+  box-shadow: none;
+}
+
+// "Alvo" with its check, or "×2": a garnet pill at the token's right edge.
+.cm__mark-n {
+  position: absolute;
+  top: 0;
+  left: calc(50% + var(--cm-tk) * var(--span, 1) * 0.35);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  box-sizing: border-box;
+  height: 20px;
+  padding: 0 8px;
+  border: 1.5px solid var(--mr-map-token-surface);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-map-accent);
+  color: var(--mr-map-token-surface);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 17px;
+  white-space: nowrap;
+
+  .mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+  }
+}
+
+// "Longe: desvantagem": a valid target, said and not dimmed.
+.cm__far {
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  box-sizing: border-box;
+  height: 20px;
+  padding: 0 8px;
+  border: 1.5px solid var(--mr-map-token-ink);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-map-token-surface);
+  color: var(--mr-map-token-ink);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 17px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+// The chip that says why a creature cannot be chosen, beside its token.
+.cm__whyat {
+  position: absolute;
+  z-index: 6;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.cm__why {
+  position: absolute;
+  top: calc(var(--cm-tk) * 0.6);
+  left: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  padding: 5px 9px;
+  border: 1px solid var(--mr-map-token-ink);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-map-token-surface);
+  color: var(--mr-map-token-ink);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 17px;
+  white-space: nowrap;
+
+  .mat-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.cm__why--right {
+  right: 0;
+  left: auto;
+}
+
+.cm__why--above {
+  top: auto;
+  bottom: calc(var(--cm-tk) * 0.6);
+}

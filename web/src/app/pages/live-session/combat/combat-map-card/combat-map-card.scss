@@ -299,3 +299,24 @@
   color: var(--mr-ink);
   cursor: pointer;
 }
+
+// Choosing a target (C7-04, C7-05): the map is the part of the page that waits for a tap, so it has the accent border.
+.card--pick {
+  border-color: var(--mr-accent);
+  box-shadow: 0 0 0 1px var(--mr-accent);
+}
+
+// "Toque no alvo", beside the map's name from 768px (a phone's bar below says the same).
+.bar__pick {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  margin-inline-start: auto;
+  color: var(--mr-accent-text);
+  font-size: 14px;
+  font-weight: 700;
+
+  @media (min-width: 768px) {
+    display: inline-flex;
+  }
+}

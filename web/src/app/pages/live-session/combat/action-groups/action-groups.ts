@@ -127,6 +127,8 @@ const FRENZY_QUESTION =
 })
 export class ActionGroups {
   readonly options = input.required<TurnOptions>();
+  /** The key of the action whose target the player is choosing on the map (C7-05): its row says "Escolhendo o alvo". */
+  readonly choosing = input('');
   /** The player's own combatant: its economy and movement. */
   readonly own = input.required<Combatant>();
   /** Extra Attack: the attacks of this Attack action that remain, and how many

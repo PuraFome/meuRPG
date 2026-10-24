@@ -124,3 +124,17 @@
 app-spell-help {
   grid-column: 2;
 }
+
+// "Escolhendo o alvo": the action waits for a tap on the map (C7-05); the pill takes the button's place.
+.row__choosing {
+  grid-column: 3;
+  align-self: center;
+  padding: 4px 10px;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-accent-soft);
+  color: var(--mr-accent-text);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}

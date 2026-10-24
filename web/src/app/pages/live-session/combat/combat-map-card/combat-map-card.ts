@@ -12,6 +12,8 @@ import {
   CombatMap,
   type CombatMapImage,
   type OfferMark,
+  type PickMark,
+  type PickNote,
   type Reach,
   type TokenDrop,
 } from '../../../../shared/combat-map/combat-map';
@@ -23,6 +25,7 @@ import { zoneViews } from '../../../../core/combat/zones';
 import { AreaOverlay } from '../../../../shared/area-picker/area-overlay';
 import { lastArea } from '../../../../core/combat/hidden-reveal';
 import { MapLayersLegend } from '../../../../shared/map-layers/map-layers-legend';
+import { pickWindow } from './pick-window';
 import {
   type Vision,
   knownWindow,
@@ -96,6 +99,10 @@ export class CombatMapCard {
   readonly cropOnPhone = input(false);
   /** The player's own turn (C4-03, C6-07): no head and no "Tela cheia"; the map's name is a chip and "Ver mapa" an icon over the map's top on a phone (a row above it from 768px), and what the page projects as `mapFoot` (the movement row) closes the card. */
   readonly compact = input(false);
+  /** The player chooses a target on the map (C7-04, C7-05): the creatures offered are ringed buttons, the card has the accent border and, on a phone, the map is the part of it that holds them. */
+  readonly pick = input<readonly PickMark[] | null>(null);
+  /** Why the creature just tapped cannot be the target. */
+  readonly pickNote = input<PickNote | null>(null);
 
   /** The master taps a door of the map (E10-05 10): the page opens the door's sheet. Not on the phone's cropped preview. */
   readonly doorPick = output<DoorSquare>();
@@ -107,6 +114,8 @@ export class CombatMapCard {
   readonly forcedChange = output<boolean>();
   /** "Ver mapa": the player's full-screen, read-only map. */
   readonly openMap = output<void>();
+  /** A creature offered as a target was tapped. */
+  readonly pickTap = output<string>();
 
   private readonly phone = mediaQuery(PHONE_QUERY);
   private readonly settled = signal<ReadonlySet<string>>(new Set());
@@ -143,33 +152,48 @@ export class CombatMapCard {
    * readable when the explored area is a small part of the grid; "Ver mapa" has the whole map. */
   protected readonly crop = computed(() => {
     const vision = this.fog();
-    if (!vision || this.isMaster()) {
-      return null;
-    }
     const e = this.encounter();
-    const known = knownWindow(
-      vision,
-      e.combatants.filter((c) => c.placed),
-      CROP_MARGIN,
-    );
-    if (!known || known.cols * known.rows >= CROP_MAX_SHARE * vision.columns * vision.rows) {
+    const columns = vision?.columns ?? e.gridColumns;
+    const rows = vision?.rows ?? e.gridRows;
+    const win = this.cropWindow(vision, columns, rows);
+    if (!win) {
       return null;
     }
     const { width, height } = this.image();
     // The window is as wide as it is tall at least (a tall strip of corridor would be a tall card), and never wider than the grid.
-    const cols = Math.min(vision.columns, Math.max(known.cols, known.rows));
-    const col = Math.min(
-      Math.max(0, known.col - Math.floor((cols - known.cols) / 2)),
-      vision.columns - cols,
-    );
-    const rows = known.rows;
+    const cols = Math.min(columns, Math.max(win.cols, win.rows));
+    const col = Math.min(Math.max(0, win.col - Math.floor((cols - win.cols) / 2)), columns - cols);
     return {
       // The inner map is `columns / cols` times the card's width; the shift is a share of the inner map.
-      width: (vision.columns / cols) * 100,
-      shift: `translate(${(-col / vision.columns) * 100}%, ${(-known.row / vision.rows) * 100}%)`,
-      ratio: `${(cols * width) / vision.columns} / ${(rows * height) / vision.rows}`,
+      width: (columns / cols) * 100,
+      shift: `translate(${(-col / columns) * 100}%, ${(-win.row / rows) * 100}%)`,
+      ratio: `${(cols * width) / columns} / ${(win.rows * height) / rows}`,
     };
   });
+
+  /** The squares the card shows: what the fog lets the player know, or, while they choose a target on a phone, the part of the map
+   * that holds them and the creatures offered. */
+  private cropWindow(vision: Vision | null, columns: number, rows: number) {
+    const e = this.encounter();
+    if (vision && !this.isMaster()) {
+      const known = knownWindow(
+        vision,
+        e.combatants.filter((c) => c.placed),
+        CROP_MARGIN,
+      );
+      return known && known.cols * known.rows < CROP_MAX_SHARE * columns * rows ? known : null;
+    }
+    const offered = new Set((this.pick() ?? []).map((m) => m.id));
+    if (!this.phone() || offered.size === 0) {
+      return null;
+    }
+    const mine = this.own()?.id;
+    return pickWindow(
+      e.combatants.filter((c) => c.placed && (offered.has(c.id) || c.id === mine)),
+      columns,
+      rows,
+    );
+  }
 
   protected readonly preview = computed(
     () => this.cropOnPhone() && this.isMaster() && this.phone(),

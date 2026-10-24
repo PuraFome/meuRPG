@@ -410,6 +410,9 @@
                 [offers]="offerMarks()"
                 [compact]="true"
                 [legend]="false"
+                [pick]="targeting.mode.marks()"
+                [pickNote]="targeting.mode.note()"
+                (pickTap)="targeting.mode.tap($event)"
                 [ownMovable]="myTurn() && !!own()?.placed && !phone()"
                 (tokenDrop)="moves.drop($event)"
                 (openMap)="state().mapOpen.set(true)"
@@ -448,7 +451,10 @@
                 <app-theatre-reaction [used]="own()!.reactionUsed" />
               }
             </div>
-            @if (creatureTab(); as ct) {
+            @if (targeting.mode.active() && !laptop()) {
+              <!-- Choosing a target on the map (C7-04): the bar takes the place of the turn's bar until the choice is made or cancelled. -->
+              <app-target-bar class="player__bar" variant="bar" [mode]="targeting.mode" />
+            } @else if (creatureTab(); as ct) {
               <app-creature-bar class="player__bar" [tabs]="tabs()" [tab]="ct" [busy]="busy()" [waiting]="creatureLocked()" (select)="tabId.set($event)" (endPart)="endTab(ct)" />
             } @else if (showTabs() || (myTurn() && own() && !ownDown())) {
               <app-turn-bar
@@ -670,6 +676,7 @@
                   <div class="player__blocks">
                     <app-action-groups
                       [options]="turnOptions"
+                      [choosing]="targeting.mode.session()?.key ?? ''"
                       [own]="me"
                       [attacksLeft]="attacksLeft()"
                       [attacksPerAction]="attacksPerAction()"
@@ -702,7 +709,11 @@
                       (rollDamage)="rollPendingDamage()"
                       (transform)="sheets.actions.wildShape()"
                       (leaveForm)="leaveForm()"
-                    />
+                    >
+                      @if (targeting.mode.active() && laptop()) {
+                        <app-target-bar pending variant="card" [mode]="targeting.mode" />
+                      }
+                    </app-action-groups>
                     @if (beastBlock(); as block) {
                       <app-beast-traits [creature]="block" [beast]="me.wildShapeBeastNamePt" />
                     }

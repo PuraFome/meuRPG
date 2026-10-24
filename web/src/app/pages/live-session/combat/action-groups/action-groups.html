@@ -57,6 +57,8 @@
 
     <!-- The action tabs (C4-03, C4-04, C6-07): built from what the turn's options hold; every panel stays mounted, hidden while another tab is shown. -->
     <app-tab-list class="tabs" label="Tipos de ação" [tabs]="tabItems()" [idPrefix]="prefix" [selected]="current()" (selectedChange)="tab.set($event)" />
+    <!-- The target chosen on the map waits here, under the tabs (C7-05). -->
+    <ng-content select="[pending]" />
 
     <div class="panel" role="tabpanel" [id]="panelId('attacks')" [attr.aria-labelledby]="tabButtonId('attacks')" [hidden]="current() !== 'attacks'">
       @if (grappled()) {
@@ -94,6 +96,7 @@
             [off]="!o.enabled || !!locked()"
             [reason]="locked() || reasonText(o.reason)"
             [busy]="busy()"
+            [choosing]="choosing() === special(o).name"
             (press)="contestAttack.emit(o.kind)"
           />
         }
@@ -248,6 +251,7 @@
       [off]="!a.enabled || !!locked()"
       [reason]="locked() || reasonText(a.reason)"
       [busy]="busy()"
+      [choosing]="choosing() === atk.key"
       (press)="asksSave(atk) ? cast.emit(atk.key) : attack.emit(atk.key)"
       (help)="describe.emit({ key: atk.key, name: attackName(atk) })"
     />
@@ -266,6 +270,7 @@
     [off]="!s.enabled || !!locked()"
     [reason]="locked() || spellReasonText(s)"
     [busy]="busy()"
+    [choosing]="choosing() === s.spell?.key"
     (press)="cast.emit(s.spell?.key ?? '')"
     (help)="describe.emit({ key: s.spell?.key ?? '', name: spellName(s) })"
   />

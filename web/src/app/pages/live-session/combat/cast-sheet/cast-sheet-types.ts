@@ -72,6 +72,11 @@ export interface CastSheetData {
   readonly sorceryPoints?: Pool | null;
   /** The caster has Sculpt Spells and the spell is of evocation (`SpellOption.sculpt_spells`). */
   readonly sculptSpells?: boolean;
+  /** The targets the player tapped on the map (C7-04): who is chosen, or how many darts each one has. */
+  readonly preset?: {
+    readonly chosen: readonly string[];
+    readonly dealt: ReadonlyMap<string, number>;
+  };
   /** The battle map, in a combat with a grid: an area spell is placed on it. Absent without a map (theatre of the mind),
    * where every area spell keeps the list of who it hits. */
   readonly map?: CastMapData | null;

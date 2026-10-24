@@ -64,11 +64,15 @@ let nextId = 0;
     @if (helpName()) {
       <app-spell-help [name]="helpName()" (press)="help.emit()" />
     }
+    @if (choosing()) {
+      <span class="row__choosing">Escolhendo o alvo</span>
+    }
     @if (button()) {
       <button
         mat-stroked-button
         type="button"
         class="row__btn"
+        [style.display]="choosing() ? 'none' : null"
         [class.row__btn--off]="off()"
         [class.mr-button--off]="off()"
         [disabled]="off() || busy()"
@@ -104,6 +108,8 @@ export class ActionRow {
   readonly off = input(false);
   readonly reason = input('');
   readonly busy = input(false);
+  /** The player is choosing this action's target on the map (C7-05): the pill takes the button's place. */
+  readonly choosing = input(false);
 
   readonly press = output<void>();
   /** The "?": open the spell's details. */

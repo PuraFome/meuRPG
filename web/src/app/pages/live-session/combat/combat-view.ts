@@ -81,6 +81,18 @@ export class CombatView extends CombatViewPartsDirective {
         }
       });
     });
+    // The choice of a target on the map belongs to the player's own turn: when it ends, or the character falls, it goes.
+    effect(() => {
+      const stays =
+        this.myTurn() &&
+        !this.ownDown() &&
+        !this.creatureTab() &&
+        !this.theatre() &&
+        !!this.image();
+      if (!stays && this.targeting.mode.active()) {
+        untracked(() => this.targeting.mode.clear());
+      }
+    });
     // The offer's form belongs to a turn: when it passes, or the combat ends, it closes.
     effect(() => {
       void this.turnKey();

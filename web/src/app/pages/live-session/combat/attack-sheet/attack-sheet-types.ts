@@ -38,6 +38,8 @@ export interface AttackSheetData {
   readonly bonusAttacksLeft?: number;
   /** A cantrip with several beams (Eldritch Blast): how many were still to fire before this one. */
   readonly beamsLeft?: number;
+  /** The creature the player tapped on the map (C7-04): the sheet opens at the roll, with it named and "Trocar" to go back to the list. */
+  readonly target?: string;
   /** The answer to an opportunity offer (E9-13): the target is the mover (so the
    * sheet starts at "Rolar"), the reach is not checked (the attack comes right
    * before it leaves), and the roll names the offer. `byMaster` when the master

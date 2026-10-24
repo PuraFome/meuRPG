@@ -19,6 +19,9 @@ import type { Vision } from '../../core/maps/vision';
 import { FogBase } from '../fog-map/fog-base';
 import { DoorPicks } from '../map-layers/door-picks';
 import { MapLayersOverlay } from '../map-layers/map-layers';
+import { type PickMark, type PickNote, PickLayer } from './pick-layer';
+
+export type { PickMark, PickNote } from './pick-layer';
 
 /** The map's picture: its URL and size (the frame is reserved from it). */
 export interface CombatMapImage {
@@ -117,6 +120,10 @@ export class CombatMap {
   readonly forcedDrag = input(false);
   readonly ownMoveId = input<string | null>(null);
   readonly pickSquares = input(false);
+  /** The player chooses a target on the map (C7-04): the creatures offered are ringed buttons, the ones that cannot be chosen dimmed. */
+  readonly pick = input<readonly PickMark[] | null>(null);
+  /** Why the creature the player tapped cannot be the target, as a chip over the map. */
+  readonly pickNote = input<PickNote | null>(null);
   /** Side of one square in pixels; `null` fits the map to its container. */
   readonly cellPx = input<number | null>(null);
   /** The master's map: each door is a button that opens its sheet (E10-05 10), over the layers and under the tokens. */
@@ -124,6 +131,8 @@ export class CombatMap {
   /** The "Vez" word above the one on turn: left out where the page is about one mover (the "Mover" page). */
   readonly showTurn = input(true);
 
+  /** A creature offered as a target was tapped (`pick`). */
+  readonly pickTap = output<string>();
   /** A square was chosen (a click, or an arrow key) in `pickSquares` mode. */
   readonly choose = output<Square>();
   /** Enter on the chosen square in `pickSquares` mode. */
@@ -164,6 +173,12 @@ export class CombatMap {
     }
     return cells;
   });
+  protected readonly layer = new PickLayer(
+    () => this.pick(),
+    () => this.pickNote(),
+    () => this.shown(),
+    () => ({ columns: this.columns(), rows: this.rows() }),
+  );
   protected readonly aspect = computed(() => `${this.image().width} / ${this.image().height}`);
   protected readonly widthPx = computed(() => {
     const cell = this.cellPx();
