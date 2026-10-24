@@ -6,10 +6,12 @@ import type { VitalsVm } from '../../core/play/live-session.types';
 import { applyVitals } from '../../core/play/vitals';
 import { setPageSubject } from '../../core/title/page-title';
 import { PHONE_QUERY, mediaQuery } from '../../shared/map-view/media-query';
+import type { TabItem } from '../../shared/tab-list/tab-list';
 import { CombatLaunch } from './combat/combat-launch';
 import { ConversationPanel } from './conversation/conversation-panel';
 import { ConversationSlot } from './conversation/conversation-slot';
 import { pageVisible } from './conversation/page-visible';
+import { unreadWords } from './conversation/unread-notice';
 import { wireLiveSessionEffects } from './live-session-effects';
 import { CALLING_NOTICE_MS, LiveSessionEvents } from './live-session-events';
 import { LiveSessionParts, injectLiveSessionServices } from './live-session-deps';
@@ -20,6 +22,11 @@ import { LiveSessionState } from './live-session-state';
 import { LiveSessionView } from './live-session-view';
 
 export { CALLING_NOTICE_MS };
+
+/** From here the player's right column is the rail "Conversa · Ficha" (C6-08); under it the conversation sits under the board, and a phone has the pinned nav. */
+const RAIL_QUERY = '(min-width: 1024px)';
+/** The badge on the rail's "Conversa" stops counting here, as the phone's does. */
+const BADGE_MAX = 99;
 
 /**
  * The session page, `/campaigns/:id/session` (MR-011, MR-012, RN-02, RN-06,
@@ -72,12 +79,21 @@ export class LiveSession {
     () => this.mapState,
     (encounter) => this.combatStarted(encounter),
   );
+  /**
+   * The player's rail: "Conversa" and "Ficha" in the right column from 1024px, outside a combat (the combat keeps the whole width
+   * until its own screen is drawn). The master keeps the column of 1600px.
+   */
+  private readonly wide = mediaQuery(RAIL_QUERY);
+  protected readonly railed = computed(
+    () => !this.state.isMaster() && this.wide() && !this.view.combatOnScreen(),
+  );
   /** Where the conversation sits: a column beside the stage, or the phone's "Conversa" tab. */
   protected readonly slot = new ConversationSlot({
     live: computed(() => this.state.phase() === 'live' && this.state.session() !== null),
     phone: mediaQuery(PHONE_QUERY),
     unread: this.conversation.unread,
     pageVisible: pageVisible(this.services.document, this.services.destroyRef),
+    railed: this.railed,
     isMaster: this.state.isMaster,
     campaignId: this.state.campaignId,
     ownCharacterId: this.state.ownCharacterId,
@@ -93,6 +109,25 @@ export class LiveSession {
     ),
   });
   protected readonly ownEffects = this.view.ownEffects;
+  /** The rail's tabs: the unread count on "Conversa" in the accent colour and, in words, in the tab's name. */
+  protected readonly railTabs = computed<readonly TabItem[]>(() => {
+    const n = this.conversation.unread();
+    return [
+      {
+        id: 'chat',
+        label: 'Conversa',
+        icon: 'chat_bubble_outline',
+        ...(n > 0
+          ? {
+              badge: n > BADGE_MAX ? `${BADGE_MAX}+` : String(n),
+              tone: 'news' as const,
+              words: unreadWords(n),
+            }
+          : {}),
+      },
+      { id: 'sheet', label: 'Ficha', icon: 'favorite_border' },
+    ];
+  });
   protected readonly loader = new LiveSessionLoader(this.services, this.state, this.parts);
   protected readonly events: LiveSessionEvents = new LiveSessionEvents(
     this.services,

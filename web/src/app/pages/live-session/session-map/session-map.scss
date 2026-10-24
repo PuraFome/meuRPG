@@ -118,3 +118,47 @@
   text-decoration: underline;
   cursor: pointer;
 }
+
+// The player's map on a phone: one row of 52px, the map's name and "Ver mapa" (C5-01); the search and the lights under it.
+.map-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  min-width: 0;
+}
+
+.map-row__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  min-height: 52px;
+  padding: 0 var(--mr-space-2) 0 14px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+
+  > .mat-icon {
+    flex: none;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.map-row__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-family: var(--mr-font-sans);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-row__open {
+  flex: none;
+  min-height: 44px;
+  color: var(--mr-accent-text);
+}

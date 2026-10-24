@@ -66,6 +66,190 @@
   }
 }
 
+// The player's right column from 1024px: the rail "Conversa · Ficha" (C6-08). It stays in view while the board scrolls; the
+// master's column keeps its 1600px above.
+@media (min-width: 1024px) {
+  .split--rail {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(340px, 400px);
+    gap: var(--mr-space-6);
+    align-items: start;
+  }
+
+  .split__rail {
+    margin-top: var(--mr-space-6);
+  }
+}
+
+// The "Cena" of a phone hides, still mounted, under the player's "Ficha"; for the master the wrapper dissolves.
+.scene-wrap {
+  display: contents;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+// "Ficha" on a phone: a panel of the session (C6-09), above the pinned nav like the page.
+.sheet-view {
+  margin-top: var(--mr-space-6);
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+// The numbers in play, one column: the vitals, the slots, "Magias", the link to the whole sheet.
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  min-width: 0;
+}
+
+.sheet__hint,
+.sheet__lock {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.sheet__lock {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.sheet__full {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-weight: 700;
+  color: var(--mr-accent-text);
+  text-underline-offset: 3px;
+}
+
+// The player's scene (C5-01, C5-02, C6-08). A phone and a tablet: one column in the order the player reads it (a group check, the
+// image shown, the scene, the map, the images left, what was found); `order` puts the images left after the map, since the
+// `.player-top` dissolves into the column. From 1024px, with an image or images left beside an open scene, the top is a grid:
+// the image (and the images left under it, filling the rest of the column) beside the scene, and the map under both.
+.player-board {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  margin-top: var(--mr-space-6);
+
+  > * {
+    min-width: 0;
+  }
+
+  // A block with nothing to say takes no row and no gap.
+  > :empty,
+  .player-top > :empty,
+  > .player-top:not(:has(> :not(:empty))) {
+    display: none;
+  }
+}
+
+.player-board__group {
+  order: 0;
+}
+
+.player-board__image {
+  order: 1;
+}
+
+.player-board__scene {
+  order: 2;
+}
+
+.player-board__map {
+  order: 3;
+}
+
+.player-board__left {
+  order: 4;
+}
+
+.player-board__finds {
+  order: 5;
+}
+
+// The list keeps its own 16px top margin; the column's gap already says it.
+.player-board__activity {
+  order: 6;
+  margin-top: calc(var(--mr-space-4) * -1);
+
+  &:not(:has(section)) {
+    display: none;
+  }
+}
+
+.player-board__side {
+  order: 7;
+}
+
+.player-top {
+  display: contents;
+}
+
+@media (min-width: 1024px) {
+  .player-top {
+    display: flex;
+    flex-direction: column;
+    gap: var(--mr-space-4);
+    order: 1;
+  }
+
+  .player-board__map {
+    order: 3;
+  }
+
+  .player-board--split .player-top {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto;
+    column-gap: var(--mr-space-6);
+    align-items: stretch;
+  }
+
+  .player-board--split.player-board--image.player-board--left .player-top {
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      'image scene'
+      'left scene';
+  }
+
+  .player-board--split.player-board--image:not(.player-board--left) .player-top {
+    grid-template-areas: 'image scene';
+  }
+
+  .player-board--split.player-board--left:not(.player-board--image) .player-top {
+    grid-template-areas: 'left scene';
+  }
+
+  .player-board--split .player-board__image {
+    grid-area: image;
+  }
+
+  .player-board--split .player-board__left {
+    grid-area: left;
+  }
+
+  .player-board--split .player-board__scene {
+    grid-area: scene;
+  }
+}
+
 // One column on a phone and a tablet (the map, then the vitals; for the
 // master, the party first). From 1024px: the map takes the room on the
 // left and the vitals or the party a column on the right (E5-03, E5-04).
@@ -235,10 +419,10 @@
   margin-top: var(--mr-space-4);
 }
 
-// "Revivificar" under the vitals: a 44px outlined button.
+// "Revivificar" inside the "Magias" card (C6-09): a full-width 48px outlined button.
 .revivify {
-  margin-top: var(--mr-space-4);
-  min-height: 44px;
+  width: 100%;
+  min-height: 48px;
 }
 
 // The combat takes the board's place (MR-013); the launch notice (a map that could not be read) sits above

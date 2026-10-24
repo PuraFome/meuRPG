@@ -453,10 +453,19 @@ describe('LiveSession', () => {
       expect(diceButton(await render())).not.toBeNull();
     });
 
-    it('puts "Dados" in the header for a player, and "Rolagens da mesa" under the board', async () => {
+    /** The player's "Rolagens da mesa" is a fold, closed until opened. */
+    function openLog(el: HTMLElement): void {
+      const button = el.querySelector<HTMLButtonElement>('app-free-roll-log .mr-fold__button');
+      if (button?.getAttribute('aria-expanded') === 'false') {
+        button.click();
+        TestBed.inject(ApplicationRef).tick();
+      }
+    }
+
+    it('puts "Dados" in the header for a player, and "Rolagens da mesa" as a fold under the board', async () => {
       const player = await render();
       expect(diceButton(player)?.querySelector('.js-dice-text')?.textContent?.trim()).toBe('Dados');
-      expect(player.querySelector('app-free-roll-log h2')?.textContent).toContain(
+      expect(player.querySelector('app-free-roll-log app-fold')?.textContent).toContain(
         'Rolagens da mesa',
       );
     });
@@ -475,6 +484,7 @@ describe('LiveSession', () => {
         mine: [],
       };
       const el = await render();
+      openLog(el);
       expect(el.querySelector('app-free-roll-log')?.textContent).toContain(
         'Rolagem livre · Tor: 1d20 + 6 = 19 (13)',
       );
@@ -497,6 +507,7 @@ describe('LiveSession', () => {
       });
       await nextTurn();
       await nextTurn();
+      openLog(el);
       expect(el.querySelector('app-free-roll-log')?.textContent).toContain(
         'Rolagem livre · Tor: 2d6 + 3 = 11 (4, 4)',
       );
@@ -1138,21 +1149,20 @@ describe('LiveSession', () => {
       };
       source.left = [tower];
       const el = await render();
-      expect(el.querySelector('#left-title')).not.toBeNull();
-      expect(el.querySelector('.row__name')?.textContent).toContain('Planta da torre');
-      expect(el.querySelector('.row__thumb')?.getAttribute('src')).toBe('/images/img-2/thumb');
+      expect(el.querySelector('app-left-images-block')?.textContent).toContain(
+        'Imagens que o mestre deixou (1)',
+      );
+      expect(el.querySelector('.thumb__name')?.textContent).toContain('Planta da torre');
+      expect(el.querySelector('.thumb__img')?.getAttribute('src')).toBe('/images/img-2/thumb');
       expect(
         el.querySelector('button[aria-label="Ver Planta da torre em tela cheia"]'),
       ).not.toBeNull();
-      expect(el.querySelector('.block__note')?.textContent).toContain(
-        'Ficam aqui até o mestre tirar.',
-      );
 
       source.left = [];
       source.push({ kind: 'leftImages' });
       await nextTurn();
       TestBed.inject(ApplicationRef).tick();
-      expect(el.querySelector('#left-title')).toBeNull();
+      expect(el.querySelector('app-left-images-block app-fold')).toBeNull();
       expect(el.querySelector('[role="status"]:not(.status)')?.textContent?.trim() ?? '').toBe('');
     });
 
@@ -1175,7 +1185,7 @@ describe('LiveSession', () => {
       async function twoReads(newerFirst: boolean) {
         source.left = [tower];
         const el = await render();
-        expect(el.querySelector('#left-title')).not.toBeNull();
+        expect(el.querySelector('app-left-images-block app-fold')).not.toBeNull();
         const older = deferred();
         const newer = deferred();
         source.listLeftImages
@@ -1198,12 +1208,12 @@ describe('LiveSession', () => {
 
       it('leaves a taken-back image hidden when the replies arrive in order', async () => {
         const el = await twoReads(false);
-        expect(el.querySelector('#left-title')).toBeNull();
+        expect(el.querySelector('app-left-images-block app-fold')).toBeNull();
       });
 
       it('keeps a taken-back image hidden when the older reply arrives last', async () => {
         const el = await twoReads(true);
-        expect(el.querySelector('#left-title')).toBeNull();
+        expect(el.querySelector('app-left-images-block app-fold')).toBeNull();
       });
     });
 
@@ -2020,14 +2030,13 @@ describe('LiveSession', () => {
       expect(state.typing()).toBe(false);
     });
 
-    /** The test browser has no `matchMedia`: say whether the screen is a phone. */
-    const onPhone = (matches: boolean) => {
-      const list = {
-        matches,
+    /** The test browser has no `matchMedia`: say whether the screen is a phone, and whether it is wide (from 1024px: the player's rail). */
+    const onPhone = (matches: boolean, wide = false) => {
+      window.matchMedia = ((query: string) => ({
+        matches: query.includes('max-width') ? matches : query.includes('min-width: 1024') && wide,
         addEventListener: () => undefined,
         removeEventListener: () => undefined,
-      };
-      window.matchMedia = (() => list) as unknown as typeof window.matchMedia;
+      })) as unknown as typeof window.matchMedia;
     };
     afterEach(() => {
       delete (window as unknown as Record<string, unknown>)['matchMedia'];
@@ -2063,11 +2072,10 @@ describe('LiveSession', () => {
       );
       expect(tabs).toEqual(['Cena', 'Ficha', 'Conversa']);
       expect(el.querySelector('app-conversation')).toBeNull();
-      expect(el.querySelector('app-session-tabs a.tab')?.getAttribute('href')).toBe(
-        '/campaigns/mirathel/characters/pensantus',
-      );
+      // "Ficha" is a panel of the session for a player with a character, not a link to the sheet page.
+      expect(el.querySelector('app-session-tabs a.tab')).toBeNull();
 
-      (el.querySelectorAll('app-session-tabs button.tab')[1] as HTMLButtonElement).click();
+      (el.querySelectorAll('app-session-tabs button.tab')[2] as HTMLButtonElement).click();
       await settle(fixture);
       expect(
         el.querySelector('app-conversation button[aria-label="Voltar à sessão"]'),
@@ -2081,11 +2089,87 @@ describe('LiveSession', () => {
       expect(el.querySelector('.split__main')?.hasAttribute('inert')).toBe(false);
     });
 
+    it('opens "Ficha" as a panel inside the session on a phone, with the stream and the badge still live', async () => {
+      onPhone(true);
+      const fixture = TestBed.createComponent(LiveSession);
+      const el = await settle(fixture);
+      const tabButtons = () =>
+        el.querySelectorAll<HTMLButtonElement>('app-session-tabs button.tab');
+      expect(el.querySelector('.sheet-view')?.hasAttribute('hidden')).toBe(true);
+      expect(el.querySelector('.scene-wrap')?.hasAttribute('hidden')).toBe(false);
+
+      tabButtons()[1].click();
+      await settle(fixture);
+      expect(tabButtons()[1].getAttribute('aria-current')).toBe('true');
+      expect(el.querySelector('.sheet-view')?.hasAttribute('hidden')).toBe(false);
+      // The scene stays mounted, hidden: nothing of it is lost while the numbers are read.
+      expect(el.querySelector('.scene-wrap')?.hasAttribute('hidden')).toBe(true);
+      expect(el.querySelector('.scene-wrap app-session-map')).not.toBeNull();
+      const panel = el.querySelector('.sheet-view') as HTMLElement;
+      expect(panel.textContent).toContain('Magias');
+      expect(panel.textContent).toContain('Conjurar fora do combate');
+      expect(panel.querySelector('a.sheet__full')?.getAttribute('href')).toBe(
+        '/campaigns/mirathel/characters/pensantus',
+      );
+      expect(panel.querySelector('a.sheet__full')?.textContent).toContain('Abrir a ficha completa');
+
+      // A line that comes while "Ficha" is open counts on "Conversa".
+      source.push({ kind: 'sessionMessage', message: line('m1', { authorUserId: 'u-mestre' }) });
+      await settle(fixture);
+      expect(tabButtons()[2].getAttribute('aria-label')).toBe('Conversa, 1 mensagem nova');
+
+      tabButtons()[0].click();
+      await settle(fixture);
+      expect(el.querySelector('.sheet-view')?.hasAttribute('hidden')).toBe(true);
+      expect(el.querySelector('.scene-wrap')?.hasAttribute('hidden')).toBe(false);
+    });
+
+    it('draws the player\'s right column from 1024px as the rail "Conversa · Ficha", both panels mounted', async () => {
+      onPhone(false, true);
+      const el = await render();
+      const rail = el.querySelector('app-session-rail') as HTMLElement;
+      expect(rail.getAttribute('aria-label')).toBe('Conversa e ficha');
+      expect(
+        Array.from(rail.querySelectorAll('[role="tab"] > span:not(.tl__badge)'), (t) =>
+          t.textContent?.trim(),
+        ),
+      ).toEqual(['Conversa', 'Ficha']);
+      expect(el.querySelector('app-session-tabs')).toBeNull();
+      expect(el.querySelector('.split__chat')).toBeNull();
+      const panels = rail.querySelectorAll('[role="tabpanel"]');
+      expect(Array.from(panels, (p) => p.hasAttribute('hidden'))).toEqual([false, true]);
+      // "Ficha" is mounted though hidden: the numbers are there once.
+      expect(el.querySelectorAll('app-player-vitals').length).toBe(1);
+      expect(rail.querySelector('app-conversation')).not.toBeNull();
+      expect(el.querySelector('.player-board__side')).toBeNull();
+    });
+
+    it("keeps the master's column as it was: no rail, the conversation under the board below 1600px", async () => {
+      source.campaign = {
+        name: 'Mirathel',
+        isMaster: true,
+        awaitingApproval: false,
+        diceMode: 1,
+        dicePreference: 1,
+      };
+      onPhone(false, true);
+      const el = await render();
+      expect(el.querySelector('app-session-rail')).toBeNull();
+      expect(el.querySelector('.split__chat app-conversation')).not.toBeNull();
+    });
+
+    it('draws the numbers once: in the panel on a phone, never also under the scene', async () => {
+      onPhone(true);
+      const el = await settle(TestBed.createComponent(LiveSession));
+      expect(el.querySelectorAll('app-player-vitals').length).toBe(1);
+      expect(el.querySelector('.player-board__side')).toBeNull();
+    });
+
     it('counts the lines that come while the Conversa tab is not open, and clears them when it opens', async () => {
       onPhone(true);
       const fixture = TestBed.createComponent(LiveSession);
       const el = await settle(fixture);
-      const chat = () => el.querySelectorAll('app-session-tabs button.tab')[1] as HTMLButtonElement;
+      const chat = () => el.querySelectorAll('app-session-tabs button.tab')[2] as HTMLButtonElement;
       source.push({ kind: 'sessionMessage', message: line('m1', { authorUserId: 'u-mestre' }) });
       await settle(fixture);
       source.push({
@@ -2148,7 +2232,7 @@ describe('LiveSession', () => {
         const el = await settle(fixture);
         await arrive(fixture, ['m1', 'm2']);
         expect(el.querySelector('app-session-tabs .tab__badge')?.textContent?.trim()).toBe('2');
-        (el.querySelectorAll('app-session-tabs button.tab')[1] as HTMLButtonElement).click();
+        (el.querySelectorAll('app-session-tabs button.tab')[2] as HTMLButtonElement).click();
         await settle(fixture);
         expect(notice(el)).toBeNull();
       });

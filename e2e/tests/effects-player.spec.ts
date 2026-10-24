@@ -1,7 +1,7 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
 
 import { beginAttackCombatRPC, getEncounterRPC, pensantusAttacks, tableForCombat, type CombatTable } from './combat-support';
-import { endOpenSessionRPC, openSessionPage } from './live-session-support';
+import { endOpenSessionRPC, openSessionPage, openSheetTab } from './live-session-support';
 import { callRPC, newSignedInContext } from './support';
 
 // The effects that last, on the player's screens (W7-E, RN-22): "Seus efeitos" and the exhaustion card on the live sheet,
@@ -97,6 +97,7 @@ test(
       });
       expect(set.ok(), await set.text()).toBeTruthy();
       await openSessionPage(t.p, t.campaignId);
+      const sheet = await openSheetTab(t.p);
 
       // The card of the effect: its name, whose it is, the label and the clock.
       await expect(t.p.getByRole('heading', { name: 'Seus efeitos' })).toBeVisible();
@@ -107,7 +108,8 @@ test(
       await expect(t.p.getByText(/\bCD\b/)).toHaveCount(0);
 
       // The exhaustion: the label in the header and a card with the lines up to the level.
-      await expect(t.p.locator('app-effect-pill', { hasText: 'Exaustão 4' })).toBeVisible();
+      // The combat's own compact card (hidden under "Ficha") has the same label: the one in "Ficha" is the one read.
+      await expect(sheet.locator('app-effect-pill', { hasText: 'Exaustão 4' })).toBeVisible();
       const exhaustion = t.p.getByRole('group', { name: 'Nível 4' });
       await expect(exhaustion).toContainText('Definida pelo mestre. Cada nível soma aos de baixo.');
       await expect(exhaustion).toContainText('PV máximos pela metade');

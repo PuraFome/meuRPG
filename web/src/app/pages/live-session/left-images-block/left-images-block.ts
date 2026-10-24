@@ -8,19 +8,18 @@ import {
   input,
   signal,
 } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
-import { MatIconModule } from '@angular/material/icon';
 
 import { PHONE_QUERY, mediaQuery } from '../../../shared/map-view/media-query';
 import type { ShownImageVm } from '../../../core/play/live-session.types';
+import { Fold } from '../../../shared/fold/fold';
 import { ShownImageViewer } from '../shown-image-block/shown-image-viewer';
 
 /**
- * "Imagens que o mestre deixou" (E6-25b, MR-028): the images the master
- * left with the players, on the player's session page under "O mestre está
- * mostrando". A row each: a 96 x 72 thumbnail, the name and "Ver em tela
- * cheia" (the same read-only view as the image on show). The border is a
+ * "Imagens que o mestre deixou (2)" (E6-25b, MR-028, C5-02, C6-08): the images the master
+ * left with the players, on the player's session page. A fold of one row on a phone,
+ * open under "O mestre está mostrando" on a computer; inside it a grid of thumbnails, each one a
+ * button named "Ver <nome> em tela cheia" (the same read-only view as the image on show). The border is a
  * `line`, not the accent frame: the frame is only for what is shown right
  * now. The block is hidden while the list is empty, and it is not announced
  * when it changes: the players asked for no interruptions, and the list is
@@ -28,7 +27,7 @@ import { ShownImageViewer } from '../shown-image-block/shown-image-viewer';
  */
 @Component({
   selector: 'app-left-images-block',
-  imports: [MatButtonModule, MatIconModule],
+  imports: [Fold],
   templateUrl: './left-images-block.html',
   styleUrl: './left-images-block.scss',
 })
@@ -51,6 +50,10 @@ export class LeftImagesBlock {
   constructor() {
     inject(DestroyRef).onDestroy(() => this.viewer?.close());
   }
+
+  protected readonly title = computed(
+    () => `Imagens que o mestre deixou (${this.images().length})`,
+  );
 
   protected thumb(image: ShownImageVm): string {
     return `${image.url}/thumb`;

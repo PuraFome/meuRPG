@@ -94,17 +94,13 @@ describe('StagePlayer', () => {
     },
   );
 
-  it('draws the hint, in a quiet line, when there are portraits to choose among', () => {
+  it('draws the figures as chips, with no hint line (the button says it can be enlarged)', () => {
     const { el } = setup();
-    expect(flat(el.querySelector('.stage__hint'))).toContain('Toque num retrato para ver maior');
-  });
-
-  it('has no hint for a single portrait', () => {
-    const { el } = setup([mira]);
     expect(el.querySelector('.stage__hint')).toBeNull();
+    expect(el.querySelectorAll('.fig--chip').length).toBe(2);
   });
 
-  it('puts the speaker in front: the base line, the bold name and "Fala agora" in words', () => {
+  it('puts the speaker in front: the ink border, the bold name and "Fala agora" in words', () => {
     const { el } = setup([mira, { ...capitao, speaking: true }]);
     const items = Array.from(el.querySelectorAll('.stage__item'));
     expect(items.map((i) => i.classList.contains('stage__item--speaking'))).toEqual([false, true]);

@@ -1,7 +1,7 @@
 @if (figs().length > 0) {
   <div class="stage" role="group" [attr.aria-label]="label()" [class.stage--motion]="motion()" [attr.data-count]="count()">
     <ul class="stage__row">
-      @for (fig of figs(); track fig.npc.id; let i = $index) {
+      @for (fig of figs(); track fig.npc.id) {
         @let npc = fig.npc;
         <li
           class="stage__item"
@@ -10,10 +10,9 @@
           [class.stage__item--out]="fig.leaving"
           [attr.aria-hidden]="fig.leaving ? 'true' : null"
           [attr.inert]="fig.leaving ? '' : null"
-          [attr.data-side]="side(i)"
         >
           <button type="button" class="stage__btn" [attr.data-stage-id]="npc.id" [attr.aria-label]="figureLabel(npc)" (click)="enlarge(npc)">
-            <app-stage-figure [src]="thumb(npc)" [name]="npc.name" [speaking]="npc.speaking" />
+            <app-stage-figure [src]="thumb(npc)" [name]="npc.name" [speaking]="npc.speaking" [chip]="true" />
             <span class="stage__who">
               <span class="stage__name">{{ npc.name }}</span>
               @if (npc.speaking) {
@@ -24,8 +23,5 @@
         </li>
       }
     </ul>
-    @if (count() > 1) {
-      <span class="stage__hint"><mat-icon aria-hidden="true">zoom_in</mat-icon>Toque num retrato para ver maior</span>
-    }
   </div>
 }

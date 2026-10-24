@@ -25,12 +25,11 @@ import { StageViewer, type StageViewerData } from './stage-viewer';
 /**
  * The stage, as everyone but the master sees it (MR-031, E8-10): the first
  * block of the open scene, under its title. The NPCs the master put "em cena"
- * stand side by side as cut-outs (no box behind them), the name under each,
- * and the one who speaks is in front: bigger, with a 4px accent base line, a
- * bold name and the words "Fala agora". With three or four NPCs on a phone the
- * figures are one size on a grid of two columns, so nothing overlaps and every
- * name stays whole. The stage disappears when it is empty: there is no "Ninguém
- * em cena".
+ * stand as chips on a grid (two columns on a phone, three when the host is
+ * wide): a small portrait or the initials, the name beside it, and the one who
+ * speaks has the ink border, a bold name and the words "Fala agora". A long
+ * name is cut with an ellipsis (its button's name says it whole). The stage
+ * disappears when it is empty: there is no "Ninguém em cena".
  *
  * Tapping or clicking a figure (or Enter on it) opens it larger, in a bottom
  * sheet on a phone and a 480px dialog from a tablet up: `StageViewer`, with
@@ -138,10 +137,6 @@ export class StagePlayer {
 
   protected thumb(npc: StageNpc): string {
     return npc.portraitUrl ? `${npc.portraitUrl}/thumb` : '';
-  }
-
-  protected side(index: number): 'left' | 'right' {
-    return index < this.count() / 2 ? 'left' : 'right';
   }
 
   protected enlarge(npc: StageNpc): void {

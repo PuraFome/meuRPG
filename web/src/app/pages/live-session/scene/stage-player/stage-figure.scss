@@ -43,3 +43,33 @@
   line-height: 1;
   user-select: none;
 }
+
+// The stage's chip: a small square tile, the portrait contained in it; the one who speaks has the ink border (and the
+// words "Fala agora" beside it, so it is never said by the border alone).
+.fig--chip {
+  border-bottom: 0;
+
+  &.fig--speaking {
+    border-bottom: 0;
+  }
+
+  .fig__img,
+  .fig__tile {
+    box-sizing: border-box;
+    aspect-ratio: 1;
+    border: 1px solid var(--mr-line);
+    border-radius: var(--mr-radius-sm);
+    background: var(--mr-ground);
+    object-position: center;
+  }
+
+  .fig__tile {
+    font-size: calc(var(--fig-w, 48px) * 0.4);
+    letter-spacing: 0;
+  }
+
+  &.fig--speaking .fig__img,
+  &.fig--speaking .fig__tile {
+    border: 2px solid var(--mr-ink);
+  }
+}

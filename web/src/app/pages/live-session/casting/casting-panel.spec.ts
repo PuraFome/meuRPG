@@ -95,6 +95,35 @@ describe('CastingPanel (MR-048)', () => {
     );
   });
 
+  it('a player reads one line under "Magias" and has one outlined way to cast outside a combat (C6-09)', async () => {
+    const { el } = await setup(false, () => undefined);
+    expect(plain(el.querySelector('.casting__status')?.textContent)).toBe(
+      'Nada sendo conjurado agora. Concentração: nenhuma.',
+    );
+    const cast = el.querySelector('button.casting__cast');
+    expect(plain(cast?.textContent)).toContain('Conjurar fora do combate');
+    expect(el.querySelector('button.mdc-button--unelevated')).toBeNull();
+  });
+
+  it('says the cast going on and the concentration held in that line', async () => {
+    const holding = outsideCast({
+      id: 'b',
+      spellNamePt: 'Bênção',
+      status: OutsideCastStatus.ACTIVE,
+      concentrating: true,
+    });
+    const { el } = await setup(false, (a) => (a.active = [casting, holding]));
+    expect(plain(el.querySelector('.casting__status')?.textContent)).toBe(
+      'Conjurando Oração de Cura. Concentração: Bênção.',
+    );
+  });
+
+  it('the master has no player line and no "Conjurar fora do combate"', async () => {
+    const { el } = await setup(true, () => undefined);
+    expect(el.querySelector('.casting__status')).toBeNull();
+    expect(el.querySelector('.casting__cast')).toBeNull();
+  });
+
   it('the player has no queue note: they only wait for the master', async () => {
     const { el } = await setup(false, (a) => (a.active = [casting]));
     expect(el.querySelector('[role="note"]')).toBeNull();

@@ -296,7 +296,7 @@ describe('PlayerVitals hit dice by size (decisions batch 2 B, 6)', () => {
     const box = Array.from(el.querySelectorAll('.box')).find((b) =>
       flat(b)?.startsWith('Dados de vida'),
     );
-    expect(flat(box?.querySelector('.box__value') ?? null)).toBe('5d10 e 1d6');
+    expect(flat(box?.querySelector('.box__value') ?? null)).toBe('4 de 6 livres');
     expect(flat(box?.querySelector('.box__words') ?? null)).toBe('Restam 3 de 5d10 e 1 de 1d6');
   });
 

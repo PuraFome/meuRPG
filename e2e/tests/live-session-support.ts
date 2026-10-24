@@ -136,3 +136,39 @@ export async function endSessionFromBar(page: Page): Promise<void> {
   await page.getByRole('menuitem', { name: 'Encerrar sessão' }).click();
   await page.getByRole('button', { name: 'Confirmar encerramento' }).click();
 }
+
+/**
+ * The player's "Ficha" (C6-08, C6-09), in whatever shape the width gives it: a tab of the rail "Conversa · Ficha" from 1024 px, the
+ * "Ficha" of the pinned nav on a phone (a panel inside the session), and a block under the scene between the two (nothing to open).
+ * It opens the tab when there is one, and returns the place the numbers are in.
+ */
+export async function openSheetTab(page: Page): Promise<Locator> {
+  const width = page.viewportSize()?.width ?? 1280;
+  if (width < 768) {
+    await page.getByRole('navigation', { name: 'Seções da sessão' }).getByRole('button', { name: 'Ficha' }).click();
+    await expect(page.getByRole('navigation', { name: 'Seções da sessão' }).getByRole('button', { name: 'Ficha' })).toHaveAttribute('aria-current', 'true');
+    return page.getByRole('region', { name: 'Ficha', exact: true });
+  }
+  if (width >= 1024) {
+    const tab = railOf(page).getByRole('tab', { name: 'Ficha' });
+    await tab.click();
+    await expect(tab).toHaveAttribute('aria-selected', 'true');
+    return railOf(page).getByRole('tabpanel', { name: 'Ficha' });
+  }
+  return page.locator('.player-board__side');
+}
+
+/** Back to the scene on a phone ("Cena" of the pinned nav), or to "Conversa" in the rail from 1024 px. */
+export async function openChatTab(page: Page): Promise<void> {
+  const width = page.viewportSize()?.width ?? 1280;
+  if (width >= 1024) {
+    const tab = railOf(page).getByRole('tab', { name: /^Conversa/ });
+    await tab.click();
+    await expect(tab).toHaveAttribute('aria-selected', 'true');
+  }
+}
+
+/** The player's right column from 1024 px: the rail named "Conversa e ficha". */
+export function railOf(page: Page): Locator {
+  return page.getByRole('complementary', { name: 'Conversa e ficha' });
+}

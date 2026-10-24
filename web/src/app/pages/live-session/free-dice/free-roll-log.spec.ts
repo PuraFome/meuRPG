@@ -25,6 +25,29 @@ describe('FreeRollLog', () => {
     expect(section?.getAttribute('aria-labelledby')).toBe(section?.querySelector('h2')?.id);
   });
 
+  describe("as the player's fold", () => {
+    it('is a closed fold named "Rolagens da mesa", and opens on the button', () => {
+      const { fixture, el } = mount({
+        fold: true,
+        rolls: [freeRoll('a', { logText: 'Rolagem livre · Brisa: 2d6 + 3 = 11 (4, 4)' })],
+      });
+      const button = el.querySelector('button.mr-fold__button') as HTMLButtonElement;
+      expect(text(button)).toContain('Rolagens da mesa');
+      expect(button.getAttribute('aria-expanded')).toBe('false');
+      expect(el.querySelector('li')).toBeNull();
+      button.click();
+      fixture.detectChanges();
+      expect(button.getAttribute('aria-expanded')).toBe('true');
+      expect(text(el.querySelector('li'))).toBe('Rolagem livre · Brisa: 2d6 + 3 = 11 (4, 4)');
+    });
+
+    it('is still the section for the master', () => {
+      const { el } = mount({});
+      expect(el.querySelector('button.mr-fold__button')).toBeNull();
+      expect(el.querySelector('section h2')).not.toBeNull();
+    });
+  });
+
   it("says in the app's tone that nobody rolled yet", () => {
     const { el } = mount({});
     expect(text(el)).toContain(

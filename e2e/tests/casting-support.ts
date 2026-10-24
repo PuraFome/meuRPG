@@ -1,6 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
-import { startSessionRPC } from './live-session-support';
+import { openSheetTab, startSessionRPC } from './live-session-support';
 import { tableForMaps, type MapsTable } from './maps-support';
 import { pensantus } from './support';
 
@@ -36,9 +36,10 @@ export function castSheet(page: Page): Locator {
   return page.locator('app-cast-out-sheet');
 }
 
-/** Opens "Conjurar" on the session page, picks the spell and waits for its step. */
+/** Opens "Conjurar fora do combate" in the player's "Ficha" (a tab of the rail, a panel on a phone), picks the spell and waits for its step. */
 export async function openCastOf(page: Page, spell: string): Promise<Locator> {
-  await page.getByRole('button', { name: 'Conjurar', exact: true }).click();
+  await openSheetTab(page);
+  await page.getByRole('button', { name: 'Conjurar fora do combate', exact: true }).click();
   const sheet = castSheet(page);
   await expect(sheet.getByText('Magia', { exact: true }).first()).toBeVisible();
   await choiceCard(sheet, spell).click();

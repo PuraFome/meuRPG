@@ -6,13 +6,19 @@
         <mat-icon aria-hidden="true">auto_fix_high</mat-icon>
         Conjurar como NPC
       </button>
-    } @else if (characterId()) {
-      <button mat-flat-button type="button" (click)="open()">
-        <mat-icon aria-hidden="true">auto_fix_high</mat-icon>
-        Conjurar
-      </button>
     }
   </div>
+  @if (!master()) {
+    <!-- The player's: what is going on in one line, then the one way to cast outside a combat (C6-09). -->
+    <p class="casting__status">{{ status() }}</p>
+    @if (characterId()) {
+      <button matButton="outlined" type="button" class="casting__cast" (click)="open()">
+        <mat-icon aria-hidden="true">auto_fix_high</mat-icon>Conjurar fora do combate
+      </button>
+    }
+    <!-- What the page adds to the player's card ("Revivificar" and its words). -->
+    <ng-content />
+  }
 
   @if (error()) {
     <div class="mr-notice mr-notice--danger" role="alert">

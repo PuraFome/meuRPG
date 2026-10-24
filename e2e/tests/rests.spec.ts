@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { endTurnOf, getEncounterRPC, passTurnsTo, tableForCombat, toren, torenSheet } from './combat-support';
 import { tableForLevelUp } from './levelup-support';
-import { endOpenSessionRPC, openSessionPage } from './live-session-support';
+import { endOpenSessionRPC, openSessionPage, openSheetTab } from './live-session-support';
 import { setDiceModeRPC } from './puzzles-support';
 import {
   aurora,
@@ -68,6 +68,7 @@ test(
       await expect(p.locator('.hp__current')).toHaveText('10');
 
       // The player spends one d10: the face is typed, the line says the roll, the modifier and what came back.
+      await openSheetTab(p);
       await p.getByRole('button', { name: 'Gastar dados de vida' }).click();
       const dice = p.getByRole('dialog', { name: 'Gastar dados de vida' });
       await expect(dice).toContainText('d10');

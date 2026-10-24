@@ -1,3 +1,34 @@
+@if (!isMaster() && phone() && status() === 'ready' && map(); as current) {
+  <!-- The player's map on a phone (C5-01, C5-02): one row; "Ver mapa" opens the whole map, where the zoom and the fog live. What the player
+       does with it here stays: "Procurar armadilhas" and the lights they carry. -->
+  <section class="map-row" aria-labelledby="session-map-heading">
+    <div class="map-row__bar">
+      <mat-icon aria-hidden="true">map</mat-icon>
+      <h2 class="map-row__title" id="session-map-heading" tabindex="-1">Mapa · {{ current.name }}</h2>
+      <a matButton class="map-row__open" [routerLink]="['/campaigns', campaignId(), 'maps', current.id]" [queryParams]="{ from: 'session' }">
+        <mat-icon aria-hidden="true">open_in_full</mat-icon>Ver mapa
+      </a>
+    </div>
+    @if (searchable()) {
+      <button matButton="outlined" type="button" class="map__search" (click)="searchTraps.emit()">
+        <mat-icon aria-hidden="true">search</mat-icon>Procurar armadilhas
+      </button>
+    }
+    @if (fogOn()) {
+      <app-fog-player-tools
+        [campaignId]="campaignId()"
+        [state]="state()"
+        [fog]="fog()"
+        [mapId]="current.id"
+        [own]="ownToken()"
+        [characterId]="ownCharacterId()"
+        [characterName]="characterName()"
+        [seeing]="seeing()"
+        [creaturesTick]="creaturesTick()"
+      />
+    }
+  </section>
+} @else {
 <section class="mr-panel map" aria-labelledby="session-map-heading">
   <div class="map__head">
     <h2 class="mr-panel__title" id="session-map-heading" tabindex="-1">
@@ -252,3 +283,4 @@
     }
   }
 </section>
+}

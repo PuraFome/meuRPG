@@ -3,7 +3,9 @@ import { signal } from '@angular/core';
 import { ConversationSlot } from './conversation-slot';
 
 describe('ConversationSlot', () => {
-  function setup(over: { phone?: boolean; master?: boolean; ownId?: string } = {}) {
+  function setup(
+    over: { phone?: boolean; master?: boolean; ownId?: string; railed?: boolean } = {},
+  ) {
     const live = signal(true);
     const phone = signal(over.phone ?? false);
     const pageVisible = signal(true);
@@ -19,6 +21,7 @@ describe('ConversationSlot', () => {
       userId: signal('u-p'),
       stageCharacterIds: stage,
       unread,
+      railed: signal(over.railed ?? false),
     });
     return { slot, live, phone, pageVisible, stage, unread };
   }
@@ -63,6 +66,35 @@ describe('ConversationSlot', () => {
     expect(setup().slot.sheetLink()).toEqual(['/campaigns', 'c1', 'characters', 'pc1']);
     expect(setup({ ownId: '' }).slot.sheetLink()).toEqual(['/campaigns', 'c1']);
     expect(setup({ master: true }).slot.sheetLink()).toEqual(['/campaigns', 'c1']);
+  });
+
+  it('opens "Ficha" inside the session on a phone: the chat is not on screen and the count goes on', () => {
+    const { slot, unread } = setup({ phone: true });
+    slot.choose('sheet');
+    expect(slot.sheetOpen()).toBe(true);
+    expect(slot.chatOpen()).toBe(false);
+    expect(slot.onScreen()).toBe(false);
+    unread.set(2);
+    expect(slot.news()).toBe(2);
+    slot.choose('chat');
+    expect(slot.sheetOpen()).toBe(false);
+  });
+
+  it('has no open "Ficha" panel when the screen is not a phone', () => {
+    const { slot } = setup();
+    slot.choose('sheet');
+    expect(slot.sheetOpen()).toBe(false);
+  });
+
+  it('counts the lines while the rail shows "Ficha", and not while it shows "Conversa"', () => {
+    const { slot } = setup({ railed: true });
+    expect(slot.onScreen()).toBe(true);
+    expect(slot.shown()).toBe(true);
+    slot.railTab.set('sheet');
+    expect(slot.onScreen()).toBe(false);
+    expect(slot.shown()).toBe(false);
+    slot.railTab.set('chat');
+    expect(slot.onScreen()).toBe(true);
   });
 
   it('hands the stage as a set of character ids', () => {

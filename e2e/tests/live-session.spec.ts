@@ -4,6 +4,7 @@ import {
   endOpenSessionRPC,
   endSessionRPC,
   openSessionPage,
+  openSheetTab,
   startSessionRPC,
   tableWithPensantus,
   waitForNotice,
@@ -53,6 +54,7 @@ test(
       await enter.click();
       await expect(playerPage).toHaveURL(`/campaigns/${campaignId}/session`);
       await expect(playerPage.getByRole('heading', { level: 1, name: 'Sessão 1' })).toBeVisible();
+      await openSheetTab(playerPage);
       await expect(playerPage.getByRole('heading', { level: 2, name: 'Pensantus' })).toBeVisible();
 
       // The master copies the session link: /campaigns/<id>/session, no secret.
@@ -139,6 +141,7 @@ test(
 
       // The player follows the session: Pensantus at full hit points.
       await openSessionPage(playerPage, campaignId);
+      await openSheetTab(playerPage);
       const vitals = playerPage.getByRole('region', { name: 'Pensantus' });
       await expect(vitals.getByText('23', { exact: true })).toBeVisible();
       await expect(vitals.getByText('de 23', { exact: true })).toBeVisible();

@@ -50,14 +50,14 @@ describe('ShownImageBlock', () => {
     expect(el.querySelector('section')).toBeNull();
   });
 
-  it('shows the heading, the image with its name as alt, the caption and the live note', () => {
+  it('shows the heading, the image with its name as alt and the caption', () => {
     show(goblin);
     expect(el.querySelector('h2')?.textContent).toContain('O mestre está mostrando');
     const img = el.querySelector('img') as HTMLImageElement;
     expect(img.alt).toBe('Capitão Goblin');
     expect(img.getAttribute('width')).toBe('400');
     expect(el.querySelector('.block__name')?.textContent).toBe('Capitão Goblin');
-    expect(el.textContent).toContain('Fica aqui enquanto o mestre mostrar.');
+    expect(el.textContent).not.toContain('Fica aqui enquanto o mestre mostrar.');
     expect(
       el.querySelector('button[aria-label="Ver Capitão Goblin em tela cheia"]'),
     ).not.toBeNull();

@@ -8,7 +8,7 @@ import { expectAligned } from './layout';
 import { expectLoaded } from './loaded';
 import { diceTable, openDice, stepModifier } from './free-dice-support';
 import { chooseReaders, lineOf, messageBoxOf, openConversaTable, say } from './conversa-support';
-import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus, openSessionMenu, clickStartCombat, expectStartCombatOffered, endSessionFromBar } from './live-session-support';
+import { openChatTab, openSheetTab, endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus, openSessionMenu, clickStartCombat, expectStartCombatOffered, endSessionFromBar } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
 import { adjustVitalsRPC, beginAttackCombatRPC, setGridRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
 import { addActionRPC, attachTwoImagesRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC, sceneActionIdsRPC, setAttemptsRPC, setShowDcRPC, tableForScenes } from './scene-support';
@@ -459,8 +459,11 @@ async function scanLiveSessionScreens(browser: Browser, colorScheme: 'light' | '
     await masterPage.getByRole('button', { name: 'Cancelar' }).click();
 
     await openSessionPage(playerPage, campaignId);
-    await expect(playerPage.getByRole('region', { name: 'Pensantus' })).toBeVisible();
     await expectScreenPasses(playerPage, `Sessão, jogador ${suffix}`);
+    // The numbers are in "Ficha" (a tab of the rail from 1024 px, a panel on a phone).
+    await openSheetTab(playerPage);
+    await expect(playerPage.getByRole('region', { name: 'Pensantus' })).toBeVisible();
+    await expectScreenPasses(playerPage, `Ficha na sessão, jogador ${suffix}`);
 
     // A campaign Jogador Teste isn't in: the link says to ask for an invite.
     const closed = await callRPC(masterPage, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', {
@@ -563,7 +566,13 @@ async function scanMapScreens(browser: Browser, colorScheme: 'light' | 'dark', w
     await expect(masterPage.getByRole('heading', { name: 'Pontos do mapa' })).toBeVisible();
     await expectScreenPasses(masterPage, `Sessão com mapa, mestre ${suffix}`);
     await openSessionPage(playerPage, campaignId);
-    await expect(playerPage.getByRole('img', { name: 'Prévia do mapa Mirathel e arredores' })).toBeVisible();
+    if (width < 768) {
+      // A phone's map is one row: the name and "Ver mapa" (C5-01).
+      await expect(playerPage.getByRole('link', { name: 'Ver mapa' })).toBeVisible();
+      await expect(playerPage.getByRole('heading', { name: 'Mapa · Mirathel e arredores' })).toBeVisible();
+    } else {
+      await expect(playerPage.getByRole('img', { name: 'Prévia do mapa Mirathel e arredores' })).toBeVisible();
+    }
     await expectScreenPasses(playerPage, `Sessão com mapa, jogador ${suffix}`);
 
     // The picker, then an image on show.
@@ -587,9 +596,16 @@ async function scanMapScreens(browser: Browser, colorScheme: 'light' | 'dark', w
     await masterPage.getByRole('button', { name: 'Parar de mostrar' }).click();
     await expect(masterPage.getByRole('button', { name: 'Tirar Capitão Goblin dos jogadores' })).toBeVisible();
     await expectScreenPasses(masterPage, `Sessão com uma imagem deixada, mestre ${suffix}`);
-    await expect(playerPage.getByRole('region', { name: 'Imagens que o mestre deixou' })).toBeVisible();
+    const left = playerPage.getByRole('region', { name: 'Imagens que o mestre deixou' });
+    await expect(left).toBeVisible();
     await playerPage.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
     await expectScreenPasses(playerPage, `Sessão com uma imagem deixada, jogador ${suffix}`);
+    if (width < 768) {
+      // A phone folds it to one row; opened, the thumbnails are buttons.
+      await left.getByRole('button', { name: /^Imagens que o mestre deixou/ }).click();
+      await expect(left.getByRole('button', { name: 'Ver Capitão Goblin em tela cheia' })).toBeVisible();
+      await expectScreenPasses(playerPage, `Sessão com uma imagem deixada, a dobra aberta, jogador ${suffix}`);
+    }
   } finally {
     await endOpenSessionRPC(masterPage, campaignId);
     await master.close();
@@ -1895,6 +1911,28 @@ async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await sheet.getByRole('button', { name: 'Voltar à cena' }).click();
     await expect(scene.getByText('Rolada')).toBeVisible();
     await expectScreenPasses(p, `Cena do jogador, uma ação rolada ${where}`);
+
+    // The compact scene (C5-01, C6-08, C6-09): the image on show first, "Ficha" inside the session, the folds.
+    await sceneImages.getByRole('button', { name: 'Mostrar Vista da carroça aos jogadores' }).click();
+    await expect(p.getByRole('region', { name: 'O mestre está mostrando' })).toBeVisible();
+    await p.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await expectScreenPasses(p, `Cena do jogador com a imagem à mostra ${where}`);
+    const sheetPanel = await openSheetTab(p);
+    await expect(sheetPanel.getByRole('heading', { name: 'Magias' })).toBeVisible();
+    await expect(sheetPanel.getByRole('button', { name: 'Conjurar fora do combate' })).toBeVisible();
+    await expectScreenPasses(p, `Ficha do jogador, ${width >= 1024 ? 'na coluna' : width >= 768 ? 'sob a cena' : 'no painel'} ${where}`);
+    if (width < 768) {
+      await p.getByRole('navigation', { name: 'Seções da sessão' }).getByRole('button', { name: 'Cena' }).click();
+    } else if (width >= 1024) {
+      await openChatTab(p);
+    }
+    const dice = p.getByRole('region', { name: 'Rolagens da mesa' });
+    await dice.getByRole('button', { name: 'Rolagens da mesa' }).click();
+    await expect(dice.getByRole('button', { name: 'Rolagens da mesa' })).toHaveAttribute('aria-expanded', 'true');
+    await expectScreenPasses(p, `Rolagens da mesa aberta, jogador ${where}`);
+    await dice.getByRole('button', { name: 'Rolagens da mesa' }).click();
+    await sceneImages.getByRole('button', { name: 'Parar de mostrar Vista da carroça' }).click();
+    await expect(p.getByRole('region', { name: 'O mestre está mostrando' })).toHaveCount(0);
 
     // The master with the roll and one more, with and without a DC.
     const open1 = await getOpenSceneRPC(p, campaignId);
@@ -6714,6 +6752,7 @@ async function scanRevivifyScreens(browser: Browser, colorScheme: 'light' | 'dar
     campaigns.push(dead.campaignId);
     await openSessionPage(m, dead.campaignId);
     await openSessionPage(p, dead.campaignId);
+    await openSheetTab(p);
     await p.getByRole('button', { name: 'Revivificar', exact: true }).click();
     sheet = sheetOf(p);
     await expect(sheet).toContainText('O mestre confirma que faz menos de 1 minuto.');
@@ -7010,6 +7049,7 @@ async function scanRestScreens(browser: Browser, colorScheme: 'light' | 'dark', 
 
     // The player's sheet of hit dice: the two ways to roll, the typed number, a die spent, no dice left.
     await openSessionPage(p, campaignId);
+    await openSheetTab(p);
     await p.getByRole('button', { name: 'Gastar dados de vida' }).click();
     const dice = p.getByRole('dialog', { name: 'Gastar dados de vida' });
     await expect(dice.getByRole('button', { name: 'Digitar o resultado' })).toBeVisible();
@@ -7302,7 +7342,8 @@ async function scanOutsideCastingScreens(browser: Browser, colorScheme: 'light' 
     await expectScreenPasses(p, `A sessão com as magias, vazia ${where}`);
 
     // The spell, the slot and the target of Armadura Arcana, then what it did.
-    await p.getByRole('button', { name: 'Conjurar', exact: true }).click();
+    await openSheetTab(p);
+    await p.getByRole('button', { name: 'Conjurar fora do combate', exact: true }).click();
     await expect(castSheet(p).getByText('Magia', { exact: true }).first()).toBeVisible();
     await expectScreenPasses(p, `Conjurar, a lista de magias ${where}`);
     await choiceCard(castSheet(p), 'Armadura Arcana').click();

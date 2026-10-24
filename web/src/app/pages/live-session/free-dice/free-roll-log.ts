@@ -1,9 +1,11 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { ListState } from '../../../core/free-dice/free-dice-state';
 import { type FreeRollVm, logParts } from '../../../core/free-dice/free-roll';
+import { Fold } from '../../../shared/fold/fold';
 
 /** How many rolls the log shows before "Mostrar as outras N". */
 const SHOWN = 10;
@@ -14,15 +16,25 @@ let nextId = 0;
  * "Rolagens da mesa" (MR-052, B5-04): the free rolls of the session as the table's log, newest first
  * ("Rolagem livre · Brisa: 2d6 + 3 = 11 (4, 4)"). The master's own secret rolls are in it with the "Só você" badge;
  * a player's list never holds one. It sits under the stage, so no screen's layout moves for it. It is a small
- * section, not a panel: ten lines, the rest on request.
+ * section, not a panel: ten lines, the rest on request. The player's is a fold (`fold`), the master's a section.
  */
 @Component({
   selector: 'app-free-roll-log',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatButtonModule, MatIconModule],
+  imports: [Fold, MatButtonModule, MatIconModule, NgTemplateOutlet],
   template: `
-    <section class="log" [attr.aria-labelledby]="headingId">
-      <h2 class="log__title" [id]="headingId">Rolagens da mesa</h2>
+    @if (fold()) {
+      <!-- The player's (C6-08): a fold at the end of the scene, closed until opened. -->
+      <app-fold class="log-fold" appearance="row" icon="casino" title="Rolagens da mesa" [level]="2" [region]="true">
+        <ng-container [ngTemplateOutlet]="body" />
+      </app-fold>
+    } @else {
+      <section class="log" [attr.aria-labelledby]="headingId">
+        <h2 class="log__title" [id]="headingId">Rolagens da mesa</h2>
+        <ng-container [ngTemplateOutlet]="body" />
+      </section>
+    }
+    <ng-template #body>
       @if (rolls().length > 0) {
         <ul class="log__list">
           @for (r of shown(); track r.id) {
@@ -54,7 +66,7 @@ let nextId = 0;
       } @else {
         <p class="mr-muted">Ninguém rolou dados nesta sessão ainda. As rolagens da mesa aparecem aqui.</p>
       }
-    </section>
+    </ng-template>
   `,
   styleUrl: './free-roll-log.scss',
 })
@@ -63,6 +75,8 @@ export class FreeRollLog {
   readonly rolls = input.required<readonly FreeRollVm[]>();
   readonly listState = input.required<ListState>();
   readonly retry = output<void>();
+  /** A fold, closed until opened (the player's, at the end of the scene), instead of the always-open section. */
+  readonly fold = input(false);
 
   protected readonly headingId = `free-log-${nextId++}`;
   protected readonly all = signal(false);

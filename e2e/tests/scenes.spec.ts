@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { endOpenSessionRPC, openSessionPage } from './live-session-support';
+import { endOpenSessionRPC, openSessionPage, openSheetTab } from './live-session-support';
 import { addActionRPC, rollTyped, sceneActionIdsRPC, setAttemptsRPC, tableForScenes } from './scene-support';
 import { orla, orlaSheet } from './rests-support';
 import { callRPC, newSignedInContext } from './support';
@@ -673,6 +673,7 @@ test(
         expect(gift.ok(), await gift.text()).toBeTruthy();
         await openScene(master, 'A carroça tombada');
         await openSessionPage(player, campaignId);
+        await openSheetTab(player);
         await expect(player.getByText(/Você tem uma Inspiração de Bardo \(d6\) de Orla/)).toBeVisible();
         const scene = player.getByRole('region', { name: 'Cena: A carroça tombada' });
         await scene.getByRole('button', { name: 'Rolar Procurar pistas na carroça' }).click();

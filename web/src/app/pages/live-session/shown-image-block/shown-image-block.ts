@@ -28,11 +28,10 @@ const LEAVE_MS = 350;
  * live, so nothing may jump:
  *
  * - The frame is reserved from the image's size, before its bytes arrive:
- *   on a phone full width by 160px; on a computer 320px tall, as wide as
- *   the image's shape up to 440px. The image is `contain` on `ground`, so
- *   a portrait and a landscape take the same space.
- * - The caption is the image's name; "Fica aqui enquanto o mestre mostrar."
- *   says it is live and temporary.
+ *   the card's width in the image's proportion, at most 40% of the screen's
+ *   height and 360px. The image is `contain` on `ground`, so a tall one is
+ *   letterboxed and never pushes the scene away.
+ * - The caption is the image's name and "Ver em tela cheia".
  * - "Ver em tela cheia" (named after the image) opens a read-only view that
  *   follows the live state; the whole image is a pointer shortcut to it.
  * - It grows and fades in (200 ms), and fades out then collapses, only as
