@@ -38,6 +38,8 @@ export function sceneBlockedMessage(reason: SceneBlockedReason): string {
       return 'Você não tem um personagem vivo nesta campanha para rolar.';
     case SceneBlockedReason.STAGE_FULL:
       return 'A cena comporta 4 NPCs. Tire um para pôr outro.';
+    case SceneBlockedReason.SCENE_NOT_PARTIAL:
+      return 'A cena está aberta para toda a mesa: não há quem precise entrar.';
     default:
       return 'A cena não está num estado que aceite isso.';
   }
