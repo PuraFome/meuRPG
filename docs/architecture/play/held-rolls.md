@@ -12,7 +12,7 @@ Whichever path rolls the d20 asks the same gate.
 | --- | --- | --- |
 | Weapon attack | `RollAttack` | `inspiration_holds` |
 | Spell attack against one target | `CastSpell` (`inspiration_held.go`) | `inspiration_holds` |
-| The effect's saving throw | `RollEffectSave` | `inspiration_holds` |
+| The effect's saving throw | `RollEffectSave` (a retry of a written save answers with its result read back from the event, the Bardic Inspiration die's sides and face included: the event keeps the die in `Res`) | `inspiration_holds` |
 | The concentration save | `ResolveConcentrationSave` | `inspiration_holds` |
 | Scene check | `RollSceneCheck` | `inspiration_holds` |
 | Group check | `RollGroupCheck` | `inspiration_holds` |
