@@ -4,12 +4,14 @@ import { type MessageInitShape, create } from '@bufbuild/protobuf';
 
 import {
   CombatLogEffectChange,
+  CombatLogDamageSchema,
   CombatLogEffectSchema,
   type CombatLogEntry,
   CombatLogEntrySchema,
   CombatLogKind,
   HitRiderChoice,
   HitRiderLogResult,
+  PendingDamageStatus,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { logLine } from './combat-log';
 
@@ -103,5 +105,27 @@ describe('the DC of a monk rider save in the log', () => {
   it('shows the roll alone, with no "CD 0", when the server sent none', () => {
     expect(line(rider(0))).toContain('falhou no teste (1d20 4 = 7)');
     expect(line(rider(0))).not.toMatch(/CD/);
+  });
+});
+
+describe('the DC of the concentration save a hit threatens, in the log', () => {
+  const hit = (concentrationDc: number | undefined) =>
+    entry({
+      kind: CombatLogKind.ATTACK,
+      actorLabel: 'Capitão Goblin',
+      targetLabel: 'Pensantus',
+      damage: create(CombatLogDamageSchema, {
+        amount: 32,
+        status: PendingDamageStatus.APPLIED,
+        concentrationDc,
+      }),
+    });
+
+  it('says "CD 16" when the server sent it', () => {
+    expect(line(hit(16))).toContain('Teste de Constituição, CD 16, para manter a concentração');
+  });
+
+  it('says nothing of the save when the DC is absent', () => {
+    expect(line(hit(undefined))).not.toMatch(/CD|concentração/);
   });
 });

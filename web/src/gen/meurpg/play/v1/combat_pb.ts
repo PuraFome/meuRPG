@@ -3463,7 +3463,8 @@ export type PendingDamage = Message<"meurpg.play.v1.PendingDamage"> & {
   /**
    * APPLIED to a target that is concentrating on a spell: the Constitution save
    * DC to keep it, 10 or half of the damage taken, whichever is higher (RN-22).
-   * The table rolls it. Only the master and the target's own player.
+   * The table rolls it. Only the master, and the target's own player when the
+   * table rule "Os jogadores veem a CD dos testes de resistência" is on.
    *
    * @generated from field: optional int32 concentration_dc = 19;
    */
@@ -8744,7 +8745,8 @@ export type CombatLogDamage = Message<"meurpg.play.v1.CombatLogDamage"> & {
 
   /**
    * The Constitution save DC to keep a concentration the damage threatened
-   * (RN-22). Only the master and the target's own player.
+   * (RN-22). Only the master, and the target's own player when the table rule
+   * "Os jogadores veem a CD dos testes de resistência" is on.
    *
    * @generated from field: optional int32 concentration_dc = 11;
    */
@@ -10284,7 +10286,9 @@ export type ConcentrationSavePrompt = Message<"meurpg.play.v1.ConcentrationSaveP
   damageTaken: number;
 
   /**
-   * 10 or half the damage, whichever is higher (SRD).
+   * 10 or half the damage, whichever is higher (SRD). The master's, and the
+   * roller's when the table rule "Os jogadores veem a CD dos testes de
+   * resistência" is on; 0 (absent) for the roller otherwise.
    *
    * @generated from field: int32 dc = 4;
    */
@@ -11093,6 +11097,9 @@ export type ConcentrationSaveResult = Message<"meurpg.play.v1.ConcentrationSaveR
   save?: DiceRoll | undefined;
 
   /**
+   * The save's DC: the master's, and the roller's when the table rule "Os
+   * jogadores veem a CD dos testes de resistência" is on; 0 (absent) otherwise.
+   *
    * @generated from field: int32 dc = 2;
    */
   dc: number;

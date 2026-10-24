@@ -279,10 +279,14 @@ func (f *reactionFacts) hellishRebuke() (string, bool) {
 		return fmt.Sprintf("%s usou Repreensão Infernal.%s", f.who, f.by), true
 	}
 	agg := " contra " + f.other.Label
-	if re.Saved {
-		return fmt.Sprintf("%s usou Repreensão Infernal%s: %s passou no teste de resistência e sofreu metade do fogo.%s", f.who, agg, f.other.Label, f.by), true
+	dc := ""
+	if f.v.saveDCFor(f.other) { // the player of the aggressor, whose save the app rolled, when the table shows the DC
+		dc = fmt.Sprintf(" (CD %d)", re.SaveDC)
 	}
-	return fmt.Sprintf("%s usou Repreensão Infernal%s: %s falhou no teste de resistência e sofreu fogo.%s", f.who, agg, f.other.Label, f.by), true
+	if re.Saved {
+		return fmt.Sprintf("%s usou Repreensão Infernal%s: %s passou no teste de resistência%s e sofreu metade do fogo.%s", f.who, agg, f.other.Label, dc, f.by), true
+	}
+	return fmt.Sprintf("%s usou Repreensão Infernal%s: %s falhou no teste de resistência%s e sofreu fogo.%s", f.who, agg, f.other.Label, dc, f.by), true
 }
 
 // hellishRebukeMaster is the master's line, with the aggressor's save.
@@ -316,14 +320,26 @@ func (f *reactionFacts) concentration() (string, bool) {
 	lucky := luckyNote(f.e.ev.Lucky) // the d20 the halfling's Lucky rolled again, with the numbers
 	if re.Kept {
 		if f.numbers && re.SaveD20 > 0 {
-			return fmt.Sprintf("%s manteve a concentração em %s: 1d20 (%d) + %d = %d contra CD %d.%s%s", f.who, spell, re.SaveD20, re.SaveBonus, re.SaveD20+re.SaveBonus, re.SaveDC, lucky, f.by), true
+			return fmt.Sprintf("%s manteve a concentração em %s: %s.%s%s", f.who, spell, f.concentrationRoll(), lucky, f.by), true
 		}
 		return fmt.Sprintf("%s manteve a concentração em %s.%s", f.who, spell, f.by), true
 	}
 	if f.numbers {
-		return fmt.Sprintf("%s falhou no teste de concentração em %s: 1d20 (%d) + %d = %d contra CD %d.%s%s", f.who, spell, re.SaveD20, re.SaveBonus, re.SaveD20+re.SaveBonus, re.SaveDC, lucky, f.by), true
+		return fmt.Sprintf("%s falhou no teste de concentração em %s: %s.%s%s", f.who, spell, f.concentrationRoll(), lucky, f.by), true
 	}
 	return "", false // the line that says the concentration ended is the conditions one
+}
+
+// concentrationRoll is the roller's save of a concentration as the line says it: the d20, the bonus and
+// the total, against the DC when the viewer reads it (the master, and the roller's player when the table
+// shows the DC of a saving throw).
+func (f *reactionFacts) concentrationRoll() string {
+	re := f.re
+	roll := fmt.Sprintf("1d20 (%d) + %d = %d", re.SaveD20, re.SaveBonus, re.SaveD20+re.SaveBonus)
+	if f.v.saveDCFor(f.reactor) {
+		roll += fmt.Sprintf(" contra CD %d", re.SaveDC)
+	}
+	return roll
 }
 
 func slotText(re *reactionEvent) string {

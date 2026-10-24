@@ -1358,8 +1358,8 @@ func TestRN22_ConditionsAndTheConcentrationReminder(t *testing.T) {
 		t.Fatalf("the damage on a concentrating Pensantus = %v, %v; want the DC 10 reminder", applied, err)
 	}
 	// The damage asks the save, and the turn waits for it (SRD, Duration): the master keeps it.
-	if w := a.windowOf(t, a.ana, playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE); w == nil || w.GetConcentrationSave().GetDc() != 10 {
-		t.Fatalf("Pensantus's windows = %v, want a concentration save of DC 10", a.windows(t, a.ana))
+	if w := a.windowOf(t, a.ana, playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE); w == nil || w.GetConcentrationSave().GetDc() != 0 || a.windowOf(t, a.master, playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE).GetConcentrationSave().GetDc() != 10 {
+		t.Fatalf("Pensantus's windows = %v, want a concentration save whose DC 10 is the master's (the rule is off)", a.windows(t, a.ana))
 	}
 	a.keepAllConcentrations(t, e)
 	// His player ends the concentration; the log says which spell ended; the undo puts it back.
@@ -1399,7 +1399,7 @@ func TestRN22_ConditionsAndTheConcentrationReminder(t *testing.T) {
 		t.Fatalf("the damage of 30 on Pensantus = %v, %v; want the DC 15 reminder (half of 30)", res, err)
 	}
 	a.keepAllConcentrations(t, e)
-	// The reminder is in the log for the master and the target's own player, not for others.
+	// The reminder is in the log for the master, and for the target's own player only when the table shows the DC.
 	dcOf := func(u *user) (dc int32, found bool) {
 		for _, r := range a.log(t, u, e).GetRounds() {
 			for _, en := range r.GetEntries() {
@@ -1413,8 +1413,8 @@ func TestRN22_ConditionsAndTheConcentrationReminder(t *testing.T) {
 	if dc, ok := dcOf(a.master); !ok || dc != 15 {
 		t.Errorf("the master's log DC = %d, %v; want 15", dc, ok)
 	}
-	if dc, ok := dcOf(a.ana); !ok || dc != 15 {
-		t.Errorf("Pensantus's player's log DC = %d, %v; want 15", dc, ok)
+	if _, ok := dcOf(a.ana); ok { // the rule is off: the target's player reads the DC only when the table shows it
+		t.Error("Pensantus's player's log has the concentration DC with the rule off")
 	}
 	if _, ok := dcOf(a.caio); ok {
 		t.Error("another player's log has Pensantus's concentration DC")
