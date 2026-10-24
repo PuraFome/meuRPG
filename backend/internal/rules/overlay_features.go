@@ -403,6 +403,9 @@ func (b *overlayBuilder) checkSuperiorityDie(site effectSite, e *Effect) error {
 // which only a reduction of a melee attack's damage and a grapple have.
 func checkManeuverCost(site effectSite, e *Effect) error {
 	reduction := e.Applies == ManeuverReduceMelee
+	if e.Applies == ManeuverGoad {
+		return checkGoadCost(site, e)
+	}
 	if reduction && e.Ability == "" {
 		return site.fail(".ability", ReasonValue, "a reduction names the ability whose modifier is added")
 	}
@@ -943,4 +946,15 @@ func (b *overlayBuilder) checkBackgroundTools(c *entryErrors, tb *TableBackgroun
 			c.at(tb.Key, path, fmt.Sprintf(".tools[%d]", i), ReasonReference, "%q is not a tool proficiency of the SRD", t)
 		}
 	}
+}
+
+// checkGoadCost checks a goad: the ability whose modifier is in the DC, and no action.
+func checkGoadCost(site effectSite, e *Effect) error {
+	if _, ok := abilityIndex[Ability(e.Ability)]; !ok {
+		return site.fail(".ability", ReasonValue, "a goad names the ability whose modifier is in its DC")
+	}
+	if e.Economy != "" {
+		return site.fail(".economy", ReasonValue, "a goad costs no action")
+	}
+	return nil
 }

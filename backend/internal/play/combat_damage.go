@@ -393,7 +393,7 @@ func (f *damageFlow) settlePartsOfRoll(ctx context.Context) error {
 	if vit != nil {
 		f.out.vitals = append(f.out.vitals, vit)
 	}
-	return nil
+	return f.s.goadTarget(ctx, f.c, f.m, f.cs, f.attacker, f.target, f.pr)
 }
 
 // land puts the roll on a target of the group: the damage as the target takes it, the pending damage's new

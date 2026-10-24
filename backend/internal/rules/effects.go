@@ -192,7 +192,7 @@ var (
 	// maneuverApplies is where a superiority die goes: the damage of a weapon attack
 	// after a hit, an attack roll, the Athletics check of a grapple, or a reduction
 	// of the damage of a melee attack that hits the character (a reaction).
-	maneuverApplies = []string{ManeuverDamage, ManeuverAttack, ManeuverGrapple, ManeuverReduceMelee}
+	maneuverApplies = []string{ManeuverDamage, ManeuverAttack, ManeuverGrapple, ManeuverReduceMelee, ManeuverGoad}
 	// handlers are the Go functions an effect may name. Content (and, later,
 	// the table's homebrew) can only point at these; it never brings code.
 	handlers = []string{
@@ -516,6 +516,13 @@ func (x effectCompiler) superiorityDie() error {
 func (x effectCompiler) maneuverRider() error {
 	e := x.e
 	switch e.Applies {
+	case ManeuverGoad:
+		if _, ok := abilityIndex[Ability(e.Ability)]; !ok {
+			return x.fail("goad needs the ability whose modifier is in the DC")
+		}
+		if e.Economy != "" {
+			return x.fail("goad costs no action")
+		}
 	case ManeuverReduceMelee:
 		if _, ok := abilityIndex[Ability(e.Ability)]; !ok {
 			return x.fail("reduce_melee_damage needs the ability whose modifier is added")

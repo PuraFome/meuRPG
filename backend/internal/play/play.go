@@ -450,8 +450,9 @@ type LiveConfig struct {
 	// dropped (live.DefaultBuffer).
 	Buffer int
 	// HintAfter schedules the send that ends a hint gate's interval (the puzzles'
-	// and the content hint's): after d, run f. Nil is time.AfterFunc. A test uses it
-	// to know when no trailing hint is still waiting.
+	// and the content hint's): after d, run f. Nil is time.AfterFunc. It exists for
+	// tests, which use it to know when no trailing hint is still waiting; the
+	// server never sets it.
 	HintAfter func(d time.Duration, f func())
 }
 
