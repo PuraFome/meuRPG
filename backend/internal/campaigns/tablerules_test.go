@@ -195,6 +195,7 @@ func TestRN24_TableRulesRoundTrip(t *testing.T) {
 		HiddenAreaHits:      campaignsv1.HiddenAreaHitRule_HIDDEN_AREA_HIT_RULE_ASK,
 		HouseRules:          []string{"Beber uma poção é uma ação bônus", "Sem ressurreição no primeiro ato"},
 		EnemyReactions:      campaignsv1.EnemyReactionsRule_ENEMY_REACTIONS_RULE_ALWAYS,
+		ShowSaveDc:          true,
 	}
 	res, err := master.setTableRules(id, saved)
 	if err != nil {
