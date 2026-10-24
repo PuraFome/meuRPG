@@ -1,7 +1,8 @@
 <section class="mr-panel card" [class.card--compact]="compact()" aria-labelledby="map-title">
   @if (compact()) {
     <div class="bar">
-      <h2 class="bar__chip" id="map-title">{{ title() }}</h2>
+      <mat-icon class="bar__icon" aria-hidden="true">map</mat-icon>
+      <h2 class="bar__chip" id="map-title"><span class="bar__word">Mapa </span><span class="bar__area">{{ title() }}</span></h2>
       <button type="button" class="bar__open" aria-label="Ver mapa" title="Ver mapa" (click)="openMap.emit()">
         <mat-icon aria-hidden="true">open_in_full</mat-icon>
       </button>

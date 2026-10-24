@@ -117,6 +117,7 @@ import { EndTurn } from './end-turn';
 
     .row__end {
       flex: none;
+      max-width: 100%;
       margin-left: auto;
 
       &:has([role='alertdialog']) {
@@ -181,7 +182,7 @@ export class TurnBar {
     return economyShapes(c, {
       attacksLeft: this.attacksLeft(),
       attacksPerAction: this.attacksPerAction(),
-      moveText: line.canMove && !this.theatre() ? line.left : null,
+      moveText: line.canMove ? line.left : null,
     });
   });
   protected readonly anyLeft = computed(() => this.shapes().some((s) => !s.spent));

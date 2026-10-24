@@ -225,6 +225,40 @@
   }
 }
 
+.bar__icon {
+  display: none;
+  flex: none;
+
+  @media (min-width: 768px) {
+    display: inline-flex;
+  }
+}
+
+.bar__word {
+  display: none;
+
+  @media (min-width: 768px) {
+    display: inline;
+    margin-inline-end: var(--mr-space-2);
+  }
+}
+
+.bar__area {
+  @media (min-width: 768px) {
+    display: inline-flex;
+    align-items: center;
+    height: 28px;
+    padding: 0 10px;
+    border: 1px solid var(--mr-line);
+    border-radius: var(--mr-radius-pill);
+    background: var(--mr-surface);
+    font-family: var(--mr-font-sans);
+    font-size: 13px;
+    font-weight: 700;
+    vertical-align: middle;
+  }
+}
+
 .bar__chip {
   display: inline-flex;
   align-items: center;
@@ -241,9 +275,11 @@
   line-height: 1;
 
   @media (min-width: 768px) {
+    flex: 1;
     height: auto;
     padding: 0;
     border: 0;
+    background: none;
     font-family: var(--mr-font-display);
     font-size: 21px;
     line-height: 26px;

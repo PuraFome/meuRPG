@@ -29,6 +29,10 @@ export interface SlotInputs {
  */
 export class ConversationSlot {
   readonly tab = signal<SessionTab>('scene');
+  /** In a combat from 1024 px the conversation is a tab of the combat's rail, and the rail's chosen tab says whether it is on screen. */
+  readonly inRail = signal(false);
+  readonly railOpen = signal(false);
+  private readonly railHidden = computed(() => this.inRail() && !this.railOpen());
   private readonly opened = signal(false);
 
   /** The phone shows the conversation, full screen. */
@@ -37,7 +41,9 @@ export class ConversationSlot {
   readonly onScreen = computed(
     () =>
       this.inputs.live() &&
-      (this.inputs.phone() ? this.tab() === 'chat' : this.inputs.pageVisible()),
+      (this.inputs.phone()
+        ? this.tab() === 'chat'
+        : this.inputs.pageVisible() && !this.railHidden()),
   );
   /** The count the notice at the top of the page shows: only on a phone, with the chat closed, in a live session; else 0. */
   readonly news = computed(() =>
@@ -52,7 +58,9 @@ export class ConversationSlot {
       : ['/campaigns', campaignId()];
   });
   /** The conversation is what the reader looks at (a phone's open tab, or the column on a computer): the voice stops when not. */
-  readonly shown = computed(() => !this.inputs.phone() || this.tab() === 'chat');
+  readonly shown = computed(
+    () => (!this.inputs.phone() || this.tab() === 'chat') && !this.railHidden(),
+  );
   readonly phone = computed(() => this.inputs.phone());
   readonly userId = computed(() => this.inputs.userId());
   readonly stageIds = computed<ReadonlySet<string>>(() => new Set(this.inputs.stageCharacterIds()));

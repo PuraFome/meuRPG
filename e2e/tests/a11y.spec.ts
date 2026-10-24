@@ -1050,6 +1050,13 @@ async function scanActionScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await openSessionPage(p, campaignId);
     await expect(p.getByRole('button', { name: 'Atacar com Raio de Fogo' })).toBeVisible();
     await expectScreenPasses(p, `Sua vez, com os grupos de ações ${where}`);
+    if (width >= 1024) {
+      // From 1024 px the conversation is the rail's second tab; its panel stays mounted and the Actions tab comes back as it was.
+      await p.getByRole('tab', { name: /^Conversa/ }).click();
+      await expect(p.getByRole('heading', { name: 'Conversa', level: 2 })).toBeVisible();
+      await expectScreenPasses(p, `Sua vez, a aba Conversa da coluna ${where}`);
+      await p.getByRole('tab', { name: /^Ações/ }).first().click();
+    }
     await p.getByRole('button', { name: 'Encerrar turno' }).click();
     await expect(p.getByText('Ainda tem ação disponível. Encerrar mesmo?')).toBeVisible();
     await expectScreenPasses(p, `Encerrar turno com a ação livre ${where}`);
@@ -5288,6 +5295,7 @@ async function scanTheatreScreens(browser: Browser, colorScheme: 'light' | 'dark
       await p.getByRole('button', { name: 'Mais 1,5 m' }).click();
     }
     await p.getByRole('button', { name: /^Gastar 6,0/ }).click();
+    await expect(p.getByRole('listitem', { name: /^Movimento: 3,0\sm$/ }).first()).toBeVisible();
     await expectScreenPasses(p, `Depois de gastar o movimento ${where}`);
     await p.getByRole('button', { name: 'Atacar com Espada longa' }).click();
     await expect(p.getByText('O mestre decide quem está ao alcance.')).toBeVisible();

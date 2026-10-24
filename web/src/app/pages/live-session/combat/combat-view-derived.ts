@@ -1,4 +1,4 @@
-import { computed, effect, signal, Directive } from '@angular/core';
+import { computed, effect, input, output, signal, Directive } from '@angular/core';
 import {
   CombatLogKind,
   CombatantSide,
@@ -36,6 +36,9 @@ import { CombatInitiative } from './combat-initiative';
 import { CombatNotices } from './combat-notices';
 import { CombatRage } from './combat-rage';
 import { CombatViewStateDirective } from './combat-view-state';
+
+/** The most the badge writes before "99+". */
+const MAX_BADGE = 99;
 
 /** What the screen derives from the combat for the template: notes, marks, cards and who waits for what. */
 @Directive()
@@ -159,8 +162,36 @@ export abstract class CombatViewDerivedDirective extends CombatViewStateDirectiv
   protected readonly orderBelow = computed(
     () => !this.laptop() && this.myTurn() && !this.ownDown() && !this.creatureTab(),
   );
-  /** The rail's one tab from 1024px: "Ações" (the conversation joins it on the session page). */
-  protected readonly railTabs: readonly TabItem[] = [{ id: 'actions', label: 'Ações' }];
+  /** The conversation is the rail's second tab (the session page hosts it in the `[railChat]` slot): a player's combat from 1024px. */
+  readonly chatRail = input(false);
+  /** The lines that came while the conversation was not on screen. */
+  readonly chatUnread = input(0);
+  /** Whether the rail's "Conversa" tab is the one shown, for the page's unread count. */
+  readonly chatOpen = output<boolean>();
+  protected readonly railTab = signal('actions');
+  /** "Ações", and "Conversa" with its unread count (grená, and the number in words in the tab's name). */
+  protected readonly railTabItems = computed<readonly TabItem[]>(() => {
+    const n = this.chatUnread();
+    return [
+      { id: 'actions', label: 'Ações', icon: 'swords' },
+      ...(this.chatRail()
+        ? [
+            {
+              id: 'chat',
+              label: 'Conversa',
+              icon: 'chat_bubble_outline',
+              ...(n > 0
+                ? {
+                    badge: n > MAX_BADGE ? `${MAX_BADGE}+` : String(n),
+                    tone: 'news' as const,
+                    words: `${n} ${n === 1 ? 'mensagem nova' : 'mensagens novas'}`,
+                  }
+                : {}),
+            },
+          ]
+        : []),
+    ];
+  });
   /** The player's own character on its turn, with the movement row under the map (a map, no creature's page, not down). */
   protected readonly moveRowOn = computed(() => {
     const own = this.own();
@@ -171,18 +202,17 @@ export abstract class CombatViewDerivedDirective extends CombatViewStateDirectiv
   /** From 1024px, off turn, the rail still has the character's reaction to say (C6-07). */
   protected readonly offRail = computed(() => {
     const own = this.own();
-    return own &&
-      this.laptop() &&
-      !this.myTurn() &&
-      !this.creatureTab() &&
-      !this.ownDown() &&
-      !isDead(own)
+    return own && !this.myTurn() && !this.creatureTab() && !this.ownDown() && !isDead(own)
       ? own
       : null;
   });
-  /** The actions column is a rail: on the player's turn with its options, a creature's page, or off turn with a reaction to say. */
+  /** The actions column is a rail: on the player's turn with its options, a creature's page, or off turn with a reaction to say, and with the conversation in it. */
   protected readonly railOn = computed(
-    () => (this.myTurn() && !!this.options()) || !!this.creatureTab() || !!this.offRail(),
+    () =>
+      (this.myTurn() && !!this.options()) ||
+      !!this.creatureTab() ||
+      !!this.offRail() ||
+      this.chatRail(),
   );
   /** The turn bar sticks under the bars of the page from 1024px, on the player's own turn. */
   protected readonly stickyTurn = computed(

@@ -47,7 +47,7 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
   ],
   template: `
     <section class="panel" aria-labelledby="order-col-title">
-      <h2 class="panel__title" id="order-col-title">Ordem</h2>
+      <h2 class="panel__title" id="order-col-title"><mat-icon aria-hidden="true">format_list_numbered</mat-icon>Ordem</h2>
       <ol class="rows">
         @for (item of items(); track key(item)) {
           @if (item.kind === 'group') {

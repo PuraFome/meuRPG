@@ -28,12 +28,12 @@ describe('TurnBar', () => {
     expect(text(el)).not.toContain('Mover');
   });
 
-  it('leaves the walker out when there is no movement left, or no map', () => {
+  it('leaves the walker out when there is no movement left, and keeps it with no map (the count of the metres)', () => {
     const still = setup({ movementLeftFt: 0, movementLeftDft: 0 });
     expect(still.querySelector('.shape__icon .walker')).toBeNull();
     expect([...still.querySelectorAll('li')]).toHaveLength(3);
     const theatre = setup({ movementLeftFt: 25, movementLeftDft: 250 }, { theatre: true });
-    expect([...theatre.querySelectorAll('li')]).toHaveLength(3);
+    expect([...theatre.querySelectorAll('li')]).toHaveLength(4);
   });
 
   it('says there is nothing more when everything is spent', () => {

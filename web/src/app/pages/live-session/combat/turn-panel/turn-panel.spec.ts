@@ -242,4 +242,21 @@ describe('TurnPanel, the wait line (PM-04)', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[data-testid="reaction-wait"]')).toBeNull();
   });
+
+  it('keeps the condition tags in the card\u2019s second line, and no row of their own when there are none', () => {
+    const fixture = TestBed.createComponent(TurnPanel);
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({
+        combatants: [
+          combatant({ id: 'pen', label: 'Pensantus', kind: CombatantKind.PLAYER, mine: true }),
+        ],
+        currentCombatantId: 'pen',
+      }),
+    );
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.turn__who .turn__states')).not.toBeNull();
+    expect(el.querySelector('.turn > .turn__states')).toBeNull();
+  });
 });

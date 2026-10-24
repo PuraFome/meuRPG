@@ -67,12 +67,16 @@ const options = () => ({
   }),
 });
 
-async function mount(matches: readonly string[], current = 't') {
+async function mount(
+  matches: readonly string[],
+  current = 't',
+  inputs: Record<string, unknown> = {},
+) {
   const mounted = mountCombatView({
     enc: turnOf(current),
     matches,
     turnOptions: options,
-    inputs: { armorClass: 17 },
+    inputs: { armorClass: 17, ...inputs },
   });
   mounted.mapState.setMap({
     id: 'map',
@@ -171,6 +175,43 @@ describe('CombatView: the player’s own turn at 1280', () => {
     expect(rail.textContent?.replace(/\s+/g, ' ')).toContain('Reação · Disponível');
     expect(named('Mover')).toHaveLength(0);
     expect(named('Encerrar turno')).toHaveLength(0);
-    expect(el.querySelector('app-turn-panel')!.textContent).not.toContain('Sua reação');
+  });
+});
+
+describe('CombatView: the rail at 1280 and off turn on a phone', () => {
+  it('keeps the "Ações" tab in the strip off turn, with the reaction under it', async () => {
+    const { el } = await mount(LAPTOP, 'g');
+    const tabs = [...el.querySelectorAll('app-session-rail > app-tab-list [role="tab"]')];
+    expect(tabs.map((t) => t.textContent?.replace(/\s+/g, ' ').trim())).toEqual([
+      expect.stringContaining('Ações'),
+    ]);
+  });
+
+  it('says on a phone, off turn, what the character still has', async () => {
+    const { el } = await mount([PHONE_QUERY], 'g');
+    expect(el.querySelector('app-session-rail')?.textContent?.replace(/\s+/g, ' ')).toContain(
+      'Reação · Disponível',
+    );
+  });
+
+  it('has "Ações" and "Conversa" with the unread count in words, and the chat panel mounted and hidden', async () => {
+    const opened: boolean[] = [];
+    const mounted = await mount(LAPTOP, 't', { chatRail: true, chatUnread: 3 });
+    mounted.view.chatOpen.subscribe((v: boolean) => opened.push(v));
+    const rail = mounted.el.querySelector('app-session-rail')!;
+    const tabs = [
+      ...rail.querySelectorAll<HTMLButtonElement>(':scope > app-tab-list [role="tab"]'),
+    ];
+    expect(
+      tabs.map((t) => t.getAttribute('aria-label') ?? t.textContent?.replace(/\s+/g, ' ').trim()),
+    ).toEqual([expect.stringContaining('Ações'), 'Conversa, 3 mensagens novas']);
+    expect(tabs[1].querySelector('.tl__badge--news')?.textContent).toBe('3');
+    const chat = rail.querySelector<HTMLElement>('#rail-panel-chat')!;
+    expect(chat.hidden).toBe(true);
+    tabs[1].click();
+    mounted.fixture.detectChanges();
+    expect(chat.hidden).toBe(false);
+    await settle(mounted.fixture);
+    expect(opened.at(-1)).toBe(true);
   });
 });

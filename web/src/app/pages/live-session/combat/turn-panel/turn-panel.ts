@@ -222,6 +222,8 @@ export class TurnPanel {
       ? economyShapes(c, {
           attacksLeft: this.attacksLeft(),
           attacksPerAction: this.attacksPerAction(),
+          // With no map the movement is a number the player spends by saying it: the walker keeps the count (MR-025).
+          moveText: this.theatre() && this.line().canMove ? this.line().left : null,
         })
       : [];
   });
@@ -232,7 +234,7 @@ export class TurnPanel {
       ? economyShapes(c, {
           attacksLeft: this.attacksLeft(),
           attacksPerAction: this.attacksPerAction(),
-          moveText: this.theatre() || !this.line().canMove ? null : this.line().left,
+          moveText: this.line().canMove ? this.line().left : null,
         })
       : [];
   });

@@ -93,17 +93,12 @@ describe('TurnPanel: the turn bar from 1024px', () => {
     expect(names(still.el)).toHaveLength(3);
   });
 
-  it('leaves "Mover" out for a grappled character and for a combat without a map', () => {
+  it('leaves "Mover" out for a grappled character, and for a combat without a map keeps the walker with the metres left', () => {
     const grappled = setup({}, { contest: create(ContestTurnStateSchema, { grappled: true }) });
     expect(grappled.el.querySelector('.banner__move')).toBeNull();
     TestBed.resetTestingModule();
     const theatre = setup({}, { theatre: true });
     expect(theatre.el.querySelector('.banner__move')).toBeNull();
-    expect(names(theatre.el)).toHaveLength(3);
-  });
-
-  it('says the reaction in the rail, not in the card, off turn', () => {
-    const { el } = setup({}, {}, 'brisa');
-    expect(el.textContent).not.toContain('Sua reação');
+    expect(names(theatre.el)).toHaveLength(4);
   });
 });

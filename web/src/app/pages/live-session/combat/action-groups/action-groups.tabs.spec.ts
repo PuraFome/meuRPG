@@ -193,4 +193,13 @@ describe('ActionGroups: the action tabs (C4-03, C4-04, C6-07)', () => {
       'Mover',
     );
   });
+
+  it('has an icon beside each tab\u2019s words', () => {
+    const { tabs } = setup(wizard);
+    expect(tabs().map((t) => t.querySelector('mat-icon')?.textContent?.trim())).toEqual([
+      'swords',
+      'auto_fix_high',
+      'more_horiz',
+    ]);
+  });
 });

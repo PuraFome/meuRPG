@@ -316,7 +316,7 @@ describe('CombatMapCard: the player’s compact card (C4-03, C6-07)', () => {
     });
     const opened: number[] = [];
     fixture.componentInstance.openMap.subscribe(() => opened.push(1));
-    expect(el.querySelector('h2')?.textContent?.trim()).toBe('Cripta do Corvo');
+    expect(plain(el.querySelector('h2')?.textContent)).toBe('Mapa Cripta do Corvo');
     const buttons = [...el.querySelectorAll('button')];
     expect(buttons.map((b) => b.getAttribute('aria-label') ?? plain(b.textContent))).toEqual([
       'Ver mapa',

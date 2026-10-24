@@ -177,9 +177,33 @@
           [dicePreference]="state.campaign()?.dicePreference ?? 1"
           [trapSkills]="view.trapSkills()"
           [traps]="state.isMaster() ? trapBoard : null"
+          [chatRail]="railChat()"
+          [chatUnread]="conversation.unread()"
+          (chatOpen)="slot.railOpen.set($event)"
           (adjust)="sheets.adjust($event)"
           (changeDice)="sheets.changeDice()"
         >
+          @if (railChat()) {
+            <!-- The conversation as the combat rail's "Conversa" tab (from 1024 px, the player's combat); the slot under the board leaves it out. -->
+            <div railChat>
+              @defer (when slot.wanted()) {
+                <app-conversation
+                  [state]="conversation"
+                  [campaignId]="state.campaignId()"
+                  [isMaster]="state.isMaster()"
+                  [userId]="slot.userId()"
+                  [ownCharacterId]="state.ownCharacterId()"
+                  [ownCharacterName]="view.ownCharacterName()"
+                  [stageIds]="slot.stageIds()"
+                  [sceneName]="scene.scene()?.name ?? ''"
+                  [connection]="state.connection()"
+                  [phone]="false"
+                  [active]="slot.shown()"
+                  (back)="slot.choose('scene')"
+                />
+              }
+            </div>
+          }
           @if (state.ownVitals(); as v) {
             <app-player-vitals [vitals]="v" [sheet]="state.ownSheet()" [beastAc]="state.beastAc()" [campaignId]="state.campaignId()" [armorClassBonus]="view.ownArmorBonus()" [ownDeathSaves]="view.ownDeathSaves()" [onTurn]="view.ownTurn()" [effectCards]="ownEffects.cards()" [conditionNames]="ownEffects.conditions()" [compact]="true" />
           }
@@ -476,21 +500,23 @@
       }
       </div>
       <div class="split__chat" [class.split__chat--full]="slot.chatOpen()" [class.split__chat--away]="slot.phone() && !slot.chatOpen()">
-        @defer (when slot.wanted()) {
-          <app-conversation
-            [state]="conversation"
-            [campaignId]="state.campaignId()"
-            [isMaster]="state.isMaster()"
-            [userId]="slot.userId()"
-            [ownCharacterId]="state.ownCharacterId()"
-            [ownCharacterName]="view.ownCharacterName()"
-            [stageIds]="slot.stageIds()"
-            [sceneName]="scene.scene()?.name ?? ''"
-            [connection]="state.connection()"
-            [phone]="slot.phone()"
-            [active]="slot.shown()"
-            (back)="slot.choose('scene')"
-          />
+        @if (!railChat()) {
+          @defer (when slot.wanted()) {
+            <app-conversation
+              [state]="conversation"
+              [campaignId]="state.campaignId()"
+              [isMaster]="state.isMaster()"
+              [userId]="slot.userId()"
+              [ownCharacterId]="state.ownCharacterId()"
+              [ownCharacterName]="view.ownCharacterName()"
+              [stageIds]="slot.stageIds()"
+              [sceneName]="scene.scene()?.name ?? ''"
+              [connection]="state.connection()"
+              [phone]="slot.phone()"
+              [active]="slot.shown()"
+              (back)="slot.choose('scene')"
+            />
+          }
         }
       </div>
       <!-- The phone's nav, pinned to the bottom of the screen and outside the page behind it, so it stays usable while the chat covers the page. -->

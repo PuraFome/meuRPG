@@ -86,6 +86,11 @@ export class CombatView extends CombatViewPartsDirective {
       void this.turnKey();
       untracked(() => this.offers.offering.set(false));
     });
+    // The page's unread count follows the rail's tab: the conversation is on screen only while "Conversa" is the tab shown.
+    effect(() => {
+      const open = this.chatRail() && this.railTab() === 'chat';
+      untracked(() => this.chatOpen.emit(open));
+    });
     // The options are asked for again whenever the combat changes (every
     // call and every event bumps its revision) and whoever is in the
     // spotlight changes. A turn that ends leaves nothing to show.

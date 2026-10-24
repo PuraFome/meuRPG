@@ -41,8 +41,8 @@
 
 // The bar above the phone's nav: no rings, the words and their shapes side by side.
 .eco--inline {
-  flex-wrap: nowrap;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 2px 10px;
 
   .shape {
     gap: 3px;

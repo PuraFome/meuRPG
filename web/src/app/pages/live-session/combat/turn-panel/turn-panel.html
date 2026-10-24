@@ -37,7 +37,7 @@
       @if (banner().joint) {
         <app-end-part [note]="footerNote()" [left]="partLeft()" [busy]="busy()" (endPart)="endTurn.emit()" />
       } @else {
-        <app-end-turn [own]="me" [attacksLeft]="attacksLeft()" [settling]="optionsSettling()" [busy]="busy()" [waiting]="waiting()?.title ?? ''" [label]="endLabel()" [surprised]="surprised()" (endTurn)="endTurn.emit()" />
+        <app-end-turn class="banner__endturn" [block]="true" [own]="me" [attacksLeft]="attacksLeft()" [settling]="optionsSettling()" [busy]="busy()" [waiting]="waiting()?.title ?? ''" [label]="endLabel()" [surprised]="surprised()" (endTurn)="endTurn.emit()" />
       }
     </div>
   </section>
@@ -97,6 +97,9 @@
           }
         </p>
       }
+      @if (banner().mine && own(); as me) {
+        <app-combatant-tags class="turn__states" [names]="conditions(me)" [label]="me.label" [states]="me.states" [sources]="me.conditionSources" [people]="encounter().combatants" />
+      }
     </div>
   </div>
   @if (pill(); as text) {
@@ -104,7 +107,6 @@
   }
 
   @if (banner().mine && own(); as me) {
-    <app-combatant-tags class="turn__states" [names]="conditions(me)" [label]="me.label" [states]="me.states" [sources]="me.conditionSources" [people]="encounter().combatants" />
     @if (down()) {
       <p class="turn__next">{{ downText() }}</p>
     } @else {
@@ -155,7 +157,7 @@
           <span>{{ offTurnDown() }}</span>
         </p>
       } @else {
-        @if (!banner().ownEnded && !desktop()) {
+        @if (!banner().ownEnded) {
           <p class="turn__react">
             <mat-icon aria-hidden="true">{{ me.reactionUsed ? 'cancel' : 'radio_button_unchecked' }}</mat-icon>
             Sua reação: {{ me.reactionUsed ? 'Usada até o começo do seu próximo turno' : 'Disponível' }}.

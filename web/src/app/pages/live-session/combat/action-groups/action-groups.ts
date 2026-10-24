@@ -95,6 +95,14 @@ const EXTRA_NAMES: Readonly<Record<string, string>> = {
  * attacks stay enabled. Disabled options keep their place with the reason, by
  * code (`reasonText`).
  */
+/** The icon beside each tab's words (C4-03, C4-04). */
+const TAB_ICONS: Readonly<Record<ActionTabId, string>> = {
+  attacks: 'swords',
+  spells: 'auto_fix_high',
+  class: 'shield',
+  other: 'more_horiz',
+};
+
 /** "1º": the circle as the slots line writes it. */
 const shortCircle = (level: number): string => `${level}º`;
 
@@ -282,7 +290,13 @@ export class ActionGroups {
       }),
       classTabName(this.classFeatures()),
       { beast: !!this.beast() },
-    ).map((t) => ({ id: t.id, label: t.label, badge: t.badge, words: t.words })),
+    ).map((t) => ({
+      id: t.id,
+      label: t.label,
+      icon: TAB_ICONS[t.id],
+      badge: t.badge,
+      words: t.words,
+    })),
   );
   /** The tab shown: the person's choice while it is still there, else the first. */
   protected readonly current = computed<ActionTabId>(() => {

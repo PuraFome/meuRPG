@@ -343,8 +343,6 @@
             }
           </div>
             <div class="player__notes">
-              <!-- The per-device switch of the turn alert: sound and vibration only; the shake and the title stay. -->
-              <app-check-row class="turn-alert-switch" label="Avisar na minha vez (som e vibração)" [checked]="turnAlert.enabled()" (toggled)="turnAlert.setEnabled($event)" />
               @if (contest.pending().length > 0 && !contest.sheetOpen()) {
                 <!-- A contest asks something of this player (W7-X) and its sheet was closed: the way back to it. -->
                 <div class="mr-notice mr-notice--warning notice" data-testid="contest-pending">
@@ -382,102 +380,17 @@
             @if (wideLayout()) {
               <app-order-column class="player__order" [encounter]="e" />
             }
-            @if (creatureTab(); as ct) {
-              <div class="player__actions player__blocks">
-                @for (m of ct.members; track m.id) {
-                  <app-creature-block
-                    [campaignId]="campaignId()"
-                    [creature]="m"
-                    [options]="creatureOptions.data().get(m.id) ?? null"
-                    [acting]="ct.acting.includes(m)"
-                    [joint]="ct.members.length > 1"
-                    [busy]="busy()"
-                    [locked]="creatureLocked()"
-                    [pending]="creaturePending(m.id)"
-                    [trapNote]="creatureTrapNotes().get(m.id) ?? null"
-                    (rollDamage)="rollCreatureDamage(m.id)"
-                    (attack)="openCreatureAttack(m.id, $event)"
-                    (reactionAttack)="openCreatureAttack(m.id, $event, true)"
-                    (action)="creatureAction(m.id, $event)"
-                    (move)="moves.openCreature(m.id)"
-                    (standUp)="standUp(m.id)"
-                  />
-                }
-              </div>
-            } @else if (myTurn() && own(); as me) {
-              @if (ownDown()) {
-                <div class="player__actions">
-                  <app-death-saves
-                    [ownerOnly]="deathsHidden()"
-                    [own]="me"
-                    [busy]="busy()"
-                    [diceMode]="diceMode()"
-                    [dicePreference]="dicePreference()"
-                    [result]="deaths.result()"
-                    [held]="deaths.held.offer()"
-                    (roll)="deaths.roll($event)"
-                    (answer)="deaths.held.answer($event)"
-                    (endTurn)="nextTurn()"
-                  />
+            @if (railOn()) {
+              <!-- The actions column (from 1024px a sticky rail): "Ações", and in a player's combat "Conversa" beside it (C6-07). -->
+              <app-session-rail class="player__actions" label="Ações" [tabs]="railTabItems()" [showSingle]="laptop() || !!offRail()" [(selected)]="railTab">
+                <div appRailPanel="actions">
+                  <ng-container *ngTemplateOutlet="actionsBody" />
                 </div>
-              } @else if (options(); as opts) {
-                @if (opts.options; as turnOptions) {
-                  <app-session-rail class="player__actions" label="Ações" [tabs]="railTabs">
-                  <div appRailPanel="actions" class="player__blocks">
-                    <app-action-groups
-                      [options]="turnOptions"
-                      [own]="me"
-                      [attacksLeft]="attacksLeft()"
-                      [attacksPerAction]="attacksPerAction()"
-                      [slots]="ownSlots()"
-                      [details]="spellDetails()"
-                      [note]="actionNote()"
-                      [pendingRoll]="ownPendingRoll()"
-                      [locked]="waiting()?.title ?? ''"
-                      [busy]="busy()"
-                      [familiar]="theatre() ? null : familiar()"
-                      [wild]="wild()"
-                      [beast]="me.wildShapeBeastNamePt"
-                      [theatre]="theatre()"
-                      [contestAttacks]="contestAttacks()"
-                      [contest]="contestFacts()"
-                      (contestAttack)="contest.openAttack($event)"
-                      (escape)="contest.openEscape()"
-                      [extraAction]="opts.extraAction ?? null"
-                      (extraAttack)="openAttack($event, false, true)"
-                      (extraStandard)="takeExtra($event)"
-                      (familiarEyes)="askFamiliarEyes()"
-                      (attack)="openAttack($event)"
-                      (cast)="sheets.cast($event)"
-                      (describe)="sheets.actions.describeSpell($event.key, $event.name)"
-                      (feature)="useFeature($event)"
-                      (rage)="useFeature($event.key, $event.frenzy)"
-                      (action)="standardAction($event)"
-                      (move)="moves.open()"
-                      (standUp)="standUp()"
-                      (rollDamage)="rollPendingDamage()"
-                      (transform)="sheets.actions.wildShape()"
-                      (leaveForm)="leaveForm()"
-                    />
-                    @if (beastBlock(); as block) {
-                      <app-beast-traits [creature]="block" [beast]="me.wildShapeBeastNamePt" />
-                    }
+                @if (chatRail()) {
+                  <div appRailPanel="chat">
+                    <ng-content select="[railChat]" />
                   </div>
-                  </app-session-rail>
                 }
-              }
-            } @else if (offRail(); as me) {
-              <!-- Off turn, from 1024px: the rail says what the player still has (C6-07). -->
-              <app-session-rail class="player__actions" label="Ações" [tabs]="railTabs">
-                <div appRailPanel="actions" class="player__blocks">
-                  <p class="offturn">
-                    <app-economy-mark kind="reaction" [spent]="me.reactionUsed" />
-                    Reação · {{ me.reactionUsed ? 'Usada' : 'Disponível' }}
-                  </p>
-                  <p class="offturn__note">
-                    {{ me.reactionUsed ? 'Volta no começo da sua próxima vez.' : 'Se algo acontecer, você escolhe se reage.' }}
-                  </p>
-                </div>
               </app-session-rail>
             }
             @if (orderBelow()) {
@@ -528,6 +441,8 @@
             />
             <div class="player__side">
               <ng-content />
+              <!-- The per-device switch of the turn alert: sound and vibration only; the shake and the title stay. -->
+              <app-check-row class="turn-alert-switch" label="Avisar na minha vez (som e vibração)" [checked]="turnAlert.enabled()" (toggled)="turnAlert.setEnabled($event)" />
               <app-zones-panel [zones]="zoneFlow.views()" />
               @if (theatre() && own() && !ownDown(); as me) {
                 <app-theatre-reaction [used]="own()!.reactionUsed" />
@@ -706,5 +621,105 @@
       (cover)="setCover($event)"
     />
     <app-deaths-block [campaignId]="campaignId()" [encounter]="e" [info]="info()" />
+  }
+</ng-template>
+
+<!-- What the actions rail holds: a creature's blocks, the death saves, the action tabs, or off turn the reaction. -->
+<ng-template #actionsBody>
+  @if (encounter(); as e) {
+            @if (creatureTab(); as ct) {
+              <div class="player__blocks">
+                @for (m of ct.members; track m.id) {
+                  <app-creature-block
+                    [campaignId]="campaignId()"
+                    [creature]="m"
+                    [options]="creatureOptions.data().get(m.id) ?? null"
+                    [acting]="ct.acting.includes(m)"
+                    [joint]="ct.members.length > 1"
+                    [busy]="busy()"
+                    [locked]="creatureLocked()"
+                    [pending]="creaturePending(m.id)"
+                    [trapNote]="creatureTrapNotes().get(m.id) ?? null"
+                    (rollDamage)="rollCreatureDamage(m.id)"
+                    (attack)="openCreatureAttack(m.id, $event)"
+                    (reactionAttack)="openCreatureAttack(m.id, $event, true)"
+                    (action)="creatureAction(m.id, $event)"
+                    (move)="moves.openCreature(m.id)"
+                    (standUp)="standUp(m.id)"
+                  />
+                }
+              </div>
+            } @else if (myTurn() && own(); as me) {
+              @if (ownDown()) {
+                <div>
+                  <app-death-saves
+                    [ownerOnly]="deathsHidden()"
+                    [own]="me"
+                    [busy]="busy()"
+                    [diceMode]="diceMode()"
+                    [dicePreference]="dicePreference()"
+                    [result]="deaths.result()"
+                    [held]="deaths.held.offer()"
+                    (roll)="deaths.roll($event)"
+                    (answer)="deaths.held.answer($event)"
+                    (endTurn)="nextTurn()"
+                  />
+                </div>
+              } @else if (options(); as opts) {
+                @if (opts.options; as turnOptions) {
+                  <div class="player__blocks">
+                    <app-action-groups
+                      [options]="turnOptions"
+                      [own]="me"
+                      [attacksLeft]="attacksLeft()"
+                      [attacksPerAction]="attacksPerAction()"
+                      [slots]="ownSlots()"
+                      [details]="spellDetails()"
+                      [note]="actionNote()"
+                      [pendingRoll]="ownPendingRoll()"
+                      [locked]="waiting()?.title ?? ''"
+                      [busy]="busy()"
+                      [familiar]="theatre() ? null : familiar()"
+                      [wild]="wild()"
+                      [beast]="me.wildShapeBeastNamePt"
+                      [theatre]="theatre()"
+                      [contestAttacks]="contestAttacks()"
+                      [contest]="contestFacts()"
+                      (contestAttack)="contest.openAttack($event)"
+                      (escape)="contest.openEscape()"
+                      [extraAction]="opts.extraAction ?? null"
+                      (extraAttack)="openAttack($event, false, true)"
+                      (extraStandard)="takeExtra($event)"
+                      (familiarEyes)="askFamiliarEyes()"
+                      (attack)="openAttack($event)"
+                      (cast)="sheets.cast($event)"
+                      (describe)="sheets.actions.describeSpell($event.key, $event.name)"
+                      (feature)="useFeature($event)"
+                      (rage)="useFeature($event.key, $event.frenzy)"
+                      (action)="standardAction($event)"
+                      (move)="moves.open()"
+                      (standUp)="standUp()"
+                      (rollDamage)="rollPendingDamage()"
+                      (transform)="sheets.actions.wildShape()"
+                      (leaveForm)="leaveForm()"
+                    />
+                    @if (beastBlock(); as block) {
+                      <app-beast-traits [creature]="block" [beast]="me.wildShapeBeastNamePt" />
+                    }
+                  </div>
+                }
+              }
+            } @else if (offRail(); as me) {
+              <!-- Off turn, from 1024px: the rail says what the player still has (C6-07). -->
+              <div class="player__blocks">
+                  <p class="offturn">
+                    <app-economy-mark kind="reaction" [spent]="me.reactionUsed" />
+                    Reação · {{ me.reactionUsed ? 'Usada' : 'Disponível' }}
+                  </p>
+                  <p class="offturn__note">
+                    {{ me.reactionUsed ? 'Volta no começo da sua próxima vez.' : 'Se algo acontecer, você escolhe se reage.' }}
+                  </p>
+              </div>
+            }
   }
 </ng-template>
