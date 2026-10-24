@@ -86,7 +86,7 @@ describe('ZoneMoveSheet', () => {
     expect(plain(player.el.querySelector('.frame__sub')?.textContent)).toContain(
       'Gasta a ação de Bartolo',
     );
-    expect(plain(player.el.querySelector('.frame__sub')?.textContent)).toContain('até 18 m');
+    expect(plain(player.el.querySelector('.frame__sub')?.textContent)).toContain('Até 18 m');
     expect(player.el.querySelector('.hint')).toBeNull();
   });
 

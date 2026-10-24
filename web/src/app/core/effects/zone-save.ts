@@ -35,12 +35,12 @@ export function zoneCasterLabel(encounter: Encounter | null, zoneId: string): st
 
 /** ", CD 14" when the server sent the DC, else nothing: no number and no placeholder. */
 export function zoneDcText(dc: number | undefined): string {
-  return dc === undefined ? '' : `, CD ${dc}`;
+  return dc === undefined ? '' : `, CD\u00a0${dc}`;
 }
 
 /** " contra CD 14" after the roll, again only with the DC. */
 export function zoneResultDc(dc: number | undefined): string {
-  return dc === undefined ? '' : ` contra CD ${dc}`;
+  return dc === undefined ? '' : ` contra CD\u00a0${dc}`;
 }
 
 /** What a failure and a pass do: the damage type and "metade do dano" from the prompt's fields; a zone with no damage (the web)

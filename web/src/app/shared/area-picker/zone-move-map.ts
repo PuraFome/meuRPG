@@ -12,7 +12,7 @@ import {
 } from '../../core/combat/zone-move';
 import type { MapLayers } from '../../core/maps/layers';
 import type { Vision } from '../../core/maps/vision';
-import { metersFixed, metersText } from '../../core/units';
+import { metersFixed } from '../../core/units';
 import { CombatMap, type Chosen, type CombatMapImage, type Reach } from '../combat-map/combat-map';
 import { AreaOverlay } from './area-overlay';
 
@@ -33,7 +33,6 @@ import { AreaOverlay } from './area-overlay';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [AreaOverlay, CombatMap, MatIconModule],
   template: `
-    <p class="hint">{{ hint() }}</p>
     <app-combat-map
       [image]="image()"
       [mapName]="mapName()"
@@ -86,12 +85,6 @@ import { AreaOverlay } from './area-overlay';
       min-width: 0;
     }
 
-    .hint {
-      margin: 0;
-      font-size: 15px;
-      line-height: 20px;
-    }
-
     .zm__now {
       opacity: 0.5;
     }
@@ -141,11 +134,6 @@ export class ZoneMoveMap {
     const at = this.picked();
     return at ? zoneMovePreview(this.zone(), at, this.master()) : null;
   });
-  protected readonly hint = computed(() =>
-    this.master()
-      ? 'Escolha no mapa para onde a zona vai. Sem limite de alcance para o mestre. As setas movem o quadrado a partir do ponto atual.'
-      : `Escolha no mapa para onde a zona vai, até ${metersText(ZONE_MOVE_RANGE_FT)} do ponto atual. As setas movem o quadrado a partir dele.`,
-  );
   /** The ring of a player's reach around the zone's origin; the master has none (zero radius draws nothing). */
   protected readonly reach = computed<Reach | null>(() => {
     const origin = this.zone().origin;

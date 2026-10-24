@@ -60,7 +60,7 @@ export function effectSaveTitle(w: ReactionWindow, zoneCaster = ''): string {
   const test = `Teste de resistência de ${p?.abilityNamePt ?? ''} ${whose}`;
   const parts = [
     ...(zone ? [zoneSaveTitle(p, zoneCaster), test] : [test, p?.sourceNamePt ?? '']),
-    p?.dc !== undefined ? `CD ${p.dc}` : '',
+    p?.dc !== undefined ? `CD${zone ? '\u00a0' : ' '}${p.dc}` : '',
   ];
   return parts.filter((x) => x !== '').join(' · ');
 }

@@ -236,7 +236,7 @@ export class CombatSheets {
         ariaLabel: `Mover ${zone.spellNamePt}`,
         labelledBy: 'sheet-t',
         width: '760px',
-        tall: true,
+        panelClass: 'mr-sheet-zone',
         focus: '[role="application"]',
       },
     ).subscribe({ complete: onClosed });

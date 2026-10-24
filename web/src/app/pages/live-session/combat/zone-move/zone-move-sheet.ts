@@ -70,8 +70,8 @@ export class ZoneMoveSheet {
   protected readonly subtitle = computed(() => {
     const caster = this.zone()?.ownerLabel ?? '';
     return this.data.master
-      ? `Para onde? Sem limite de alcance e sem gastar a ação${caster ? ` de ${caster}` : ''}.`
-      : `Para onde? Até ${metersText(ZONE_MOVE_RANGE_FT)} do ponto atual. Gasta a ação${caster ? ` de ${caster}` : ''}.`;
+      ? `Para onde? Sem limite de alcance e sem gastar a ação${caster ? ` de ${caster}` : ''}. As setas movem o quadrado.`
+      : `Para onde? Até ${metersText(ZONE_MOVE_RANGE_FT)} do ponto atual. Gasta a ação${caster ? ` de ${caster}` : ''}. As setas movem o quadrado.`;
   });
   private readonly preview = computed(() => {
     const zone = this.zone();
