@@ -2409,4 +2409,17 @@ describe('CombatView sheets: moving a spell zone', () => {
     const config = m.opened[0].config as { panelClass?: string; tall?: boolean };
     expect(config.panelClass).toBe('mr-sheet-zone');
   });
+
+  it('puts the focus of the zone move sheet on the map surface, the one stop the arrows work from', async () => {
+    const m = await setup({
+      enc: onMap({
+        currentCombatantId: 't',
+        combatants: [toren({ placed: true })],
+        zones: [spellZone({ id: 'z1' })],
+      }),
+      mapState: mapWithImage(),
+    });
+    expect(m.view.sheets.moveZone('z1', () => undefined)).toBe(true);
+    expect(m.opened[0].config.autoFocus).toBe('.cm__surface[tabindex]');
+  });
 });
