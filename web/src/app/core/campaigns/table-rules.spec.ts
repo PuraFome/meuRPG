@@ -60,6 +60,7 @@ const base: RulesDraft = {
   hiddenAreaHits: HiddenAreaHitRule.REVEAL,
   featsAllowed: false,
   enemyReactions: EnemyReactionsRule.ONLY_WHEN_POSSIBLE,
+  showSaveDc: false,
   houseRules: [],
 };
 
@@ -198,6 +199,28 @@ describe('table rules', () => {
     const res = await client.set('c', { ...base, hiddenAreaHits: HiddenAreaHitRule.ASK });
     expect(sent[0].rules['hiddenAreaHits']).toBe(HiddenAreaHitRule.ASK);
     expect(res.saved.hiddenAreaHits).toBe(HiddenAreaHitRule.ASK);
+  });
+
+  it('keeps the rule that shows players the save DC: off by default, counted, sent with every save', async () => {
+    expect(draftFromRules(undefined).showSaveDc).toBe(false);
+    expect(draftFromRules({} as never).showSaveDc).toBe(false);
+    expect(draftFromRules({ showSaveDc: true } as never).showSaveDc).toBe(true);
+    expect(changeCount({ ...base, showSaveDc: true }, base)).toBe(1);
+    TestBed.configureTestingModule({
+      providers: [TableRulesClient, { provide: CONNECT_TRANSPORT, useValue: {} }],
+    });
+    const client = TestBed.inject(TableRulesClient);
+    const sent: { rules: Record<string, unknown> }[] = [];
+    (client as unknown as { client: unknown }).client = {
+      setTableRules: (req: { rules: Record<string, unknown> }) => {
+        sent.push(req);
+        return Promise.resolve({ rules: req.rules, style: TableStyle.PERSONALIZADO });
+      },
+    };
+    const res = await client.set('c', { ...base, showSaveDc: true });
+    expect(sent[0].rules['showSaveDc']).toBe(true);
+    expect(sent[0].rules['featsAllowed']).toBe(false);
+    expect(res.saved.showSaveDc).toBe(true);
   });
 
   it('counts the rule "Talentos" as a choice, off by default', () => {
