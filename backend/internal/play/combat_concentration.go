@@ -2,6 +2,7 @@ package play
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -225,10 +226,45 @@ func (s *Service) concentrationAnswer(ctx context.Context, m authz.Membership, r
 	if err != nil {
 		return nil, err
 	}
-	if run.result != nil {
-		run.result.SpellNamePt = s.namesFor(ctx, m.CampaignID)(run.result.SpellKey)
+	result := run.result
+	if result == nil && res.repeated {
+		result = concentrationResultOfRetry(res.payload)
 	}
-	return connect.NewResponse(&playv1.ResolveConcentrationSaveResponse{Encounter: out, Result: run.result}), nil
+	if result != nil {
+		result.SpellNamePt = s.namesFor(ctx, m.CampaignID)(result.SpellKey)
+	}
+	return connect.NewResponse(&playv1.ResolveConcentrationSaveResponse{Encounter: out, Result: result}), nil
+}
+
+// concentrationResultOfRetry is the result of a save that a retry of the same request asks for again: read back from the
+// event the first time wrote, with the same numbers (nil when the event is not a save's).
+func concentrationResultOfRetry(payload []byte) *playv1.ConcentrationSaveResult {
+	var ev actionEvent
+	if err := json.Unmarshal(payload, &ev); err != nil || ev.Reaction == nil {
+		return nil
+	}
+	return concentrationResultOf(ev)
+}
+
+// concentrationResultOf is the result a written save's event tells: the DC, whether the concentration was kept and, when
+// the d20 was rolled, the dice with the Bardic Inspiration die and the d20 Lucky rolled again.
+func concentrationResultOf(ev actionEvent) *playv1.ConcentrationSaveResult {
+	re := ev.Reaction
+	out := &playv1.ConcentrationSaveResult{Dc: re.SaveDC, Kept: re.Kept, SpellKey: re.Spell}
+	if ev.D20 == 0 { // kept with no roll
+		return out
+	}
+	faces := []int32{ev.D20}
+	if ev.D20B != 0 { // two d20, in the order they were rolled: the one that counted is Counted
+		faces = []int32{ev.D20, ev.D20B}
+		if ev.Counted == 1 {
+			faces = []int32{ev.D20B, ev.D20}
+		}
+	}
+	out.Save = diceRoll(clamp32(len(faces), 1, 2), 20, faces, re.SaveBonus, ev.Total, ev.Physical)
+	out.Save.Rerolled = ev.Lucky.proto()
+	out.BonusDice = bonusDiceOf(ev)
+	return out
 }
 
 // writeConcentrationSave is the change of a concentration save, in the transaction: the window,
@@ -366,6 +402,7 @@ func recordConcentrationRoll(ev *actionEvent, run *concentrationRun, gate gateRe
 	run.result.Save.Rerolled = gate.Lucky.proto()
 	if gate.Bonus != nil {
 		run.result.BonusDice = []*playv1.BonusDie{gate.Bonus}
+		ev.Res = &resourceEvent{Kind: resBardicUse, Sides: gate.Bonus.Sides, Face: gate.Bonus.Face} // a retry reads the die back from here
 	}
 	return kept
 }
