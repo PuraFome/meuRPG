@@ -27,6 +27,14 @@ describe('ContestRoll', () => {
     expect(el.querySelector('.why')).toBeNull();
   });
 
+  it('says when Reliable Talent counted the d20 as 10, and says nothing when it did not', () => {
+    const treated = show(checkRoll({ faces: [4], total: 17, treatedAs: 10 }));
+    expect(textOf(treated.querySelector('[data-testid="treated"]')!)).toBe(
+      'O d20 de 4 contou como 10: Talento Confiável.',
+    );
+    expect(show(checkRoll()).querySelector('[data-testid="treated"]')).toBeNull();
+  });
+
   it('says the dice were physical', () => {
     const el = show(checkRoll({ physical: true }));
     expect(textOf(el.querySelector('.roll__formula')!)).toBe('1d20 (15) + 5 · dado físico');

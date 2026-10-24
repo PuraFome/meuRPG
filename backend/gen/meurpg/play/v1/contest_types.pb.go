@@ -1135,9 +1135,14 @@ type CheckRoll struct {
 	// The d20 the halfling's Lucky rolled again after it showed a 1 (`source_key`
 	// "trait:lucky"), as an index into `faces`; `faces` holds the new face. Empty when nothing
 	// was rolled again.
-	Rerolled      []*Reroll `protobuf:"bytes,17,rep,name=rerolled,proto3" json:"rerolled,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Rerolled []*Reroll `protobuf:"bytes,17,rep,name=rerolled,proto3" json:"rerolled,omitempty"`
+	// What the d20 that counts was counted as, when Reliable Talent (SRD 5.1, Rogue level 11: a d20 of 9 or lower counts as 10
+	// on an ability check that adds the proficiency bonus) changed it; `total` already uses it. Unset when the d20 counted
+	// as it came up. `treated_as_source` names the feature ("feature:reliable-talent").
+	TreatedAs       *int32 `protobuf:"varint,18,opt,name=treated_as,json=treatedAs,proto3,oneof" json:"treated_as,omitempty"`
+	TreatedAsSource string `protobuf:"bytes,19,opt,name=treated_as_source,json=treatedAsSource,proto3" json:"treated_as_source,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *CheckRoll) Reset() {
@@ -1287,6 +1292,20 @@ func (x *CheckRoll) GetRerolled() []*Reroll {
 		return x.Rerolled
 	}
 	return nil
+}
+
+func (x *CheckRoll) GetTreatedAs() int32 {
+	if x != nil && x.TreatedAs != nil {
+		return *x.TreatedAs
+	}
+	return 0
+}
+
+func (x *CheckRoll) GetTreatedAsSource() string {
+	if x != nil {
+		return x.TreatedAsSource
+	}
+	return ""
 }
 
 // CheckOption is what a d20 check would roll for the caller: the modifier and the
@@ -3176,7 +3195,7 @@ const file_meurpg_play_v1_contest_types_proto_rawDesc = "" +
 	"\bRollNote\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x19\n" +
 	"\blabel_pt\x18\x02 \x01(\tR\alabelPt\x12\x1c\n" +
-	"\tadvantage\x18\x03 \x01(\bR\tadvantage\"\x96\x05\n" +
+	"\tadvantage\x18\x03 \x01(\bR\tadvantage\"\xf5\x05\n" +
 	"\tCheckRoll\x122\n" +
 	"\x05skill\x18\x01 \x01(\x0e2\x1c.meurpg.play.v1.ContestSkillR\x05skill\x12\x1b\n" +
 	"\tskill_key\x18\x02 \x01(\tR\bskillKey\x12\x14\n" +
@@ -3196,7 +3215,11 @@ const file_meurpg_play_v1_contest_types_proto_rawDesc = "" +
 	"\x10maneuver_name_pt\x18\x0e \x01(\tR\x0emaneuverNamePt\x12,\n" +
 	"\x12maneuver_die_sides\x18\x0f \x01(\x05R\x10maneuverDieSides\x12*\n" +
 	"\x11maneuver_die_face\x18\x10 \x01(\x05R\x0fmaneuverDieFace\x122\n" +
-	"\brerolled\x18\x11 \x03(\v2\x16.meurpg.play.v1.RerollR\brerolled\"\xa1\x01\n" +
+	"\brerolled\x18\x11 \x03(\v2\x16.meurpg.play.v1.RerollR\brerolled\x12\"\n" +
+	"\n" +
+	"treated_as\x18\x12 \x01(\x05H\x00R\ttreatedAs\x88\x01\x01\x12*\n" +
+	"\x11treated_as_source\x18\x13 \x01(\tR\x0ftreatedAsSourceB\r\n" +
+	"\v_treated_as\"\xa1\x01\n" +
 	"\vCheckOption\x12\x1a\n" +
 	"\bmodifier\x18\x01 \x01(\x05R\bmodifier\x12\x14\n" +
 	"\x05known\x18\x02 \x01(\bR\x05known\x120\n" +
@@ -3600,6 +3623,7 @@ func file_meurpg_play_v1_contest_types_proto_init() {
 		return
 	}
 	file_meurpg_play_v1_combat_rolls_proto_init()
+	file_meurpg_play_v1_contest_types_proto_msgTypes[1].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

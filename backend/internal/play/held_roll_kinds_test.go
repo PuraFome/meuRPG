@@ -111,7 +111,10 @@ func outsideView(res proto.Message, characterID string) heldView {
 		}
 		roll := memberOf(r.GetGroupCheck(), characterID).GetRoll()
 		v := heldView{resolved: true, face: roll.GetFaces()[0], modifier: roll.GetModifier() + roll.GetBonusDieFace(), total: roll.GetTotal(), bonus: roll.GetBonusDieFace(), rerolled: len(roll.GetRerolled())}
-		v.value = v.face // the member's modifier leaves the die out of it
+		v.value = v.face           // the member's modifier leaves the die out of it
+		if roll.TreatedAs != nil { // Reliable Talent counts a low d20 as 10 on a group check too
+			v.value = roll.GetTreatedAs()
+		}
 		return v
 	case *playv1.SearchForTrapsResponse:
 		if r.GetRoll() != nil {

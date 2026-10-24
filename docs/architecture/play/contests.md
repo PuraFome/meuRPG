@@ -49,3 +49,7 @@ The group check is also how the master asks one, some or all living player chara
 - A player who was not asked gets no view (`GetGroupCheck` answers none) and cannot roll (`NOT_IN_GROUP_CHECK`).
   The `group_check_changed` hint stays content-free for everyone (RN-10, RN-20).
 - The master's `RollForPlayer` waits for no one.
+
+## Reliable Talent
+
+The d20 of a group check (`memberRollOf`), of either side of a contest and of a Hide counts Reliable Talent as the scene check does: the roster says per check whether the character has it (`SceneOption.ReliableTalent`, read by `numbersOf` into `checkNumbers.Reliable`), `rollCheck` and the held-roll gate (`rollSpec.Reliable`) count a face of 9 or lower as 10, and the stored roll keeps the number it counted as in `counted_as`. `CheckRoll.treated_as` (and `treated_as_source`, `feature:reliable-talent`) is set only when the number changed; `total` already uses it. A creature has none.
