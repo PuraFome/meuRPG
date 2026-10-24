@@ -95,14 +95,19 @@ export function openMilestone(
 @Component({
   selector: 'app-xp-give-button',
   imports: [MatButtonModule, MatIconModule],
-  host: { '[class.block]': 'blockOn()' },
+  host: { '[class.block]': 'blockOn()', '[class.neutral]': 'neutral()' },
   template: `
     @if (milestones()) {
       <button #mark mat-stroked-button type="button" class="give" [class.give--block]="blockOn()" (click)="openMark()">
         <mat-icon aria-hidden="true">flag</mat-icon>Registrar marco
       </button>
     } @else if (xpMode() !== Mode.UNSPECIFIED) {
-      <button #give mat-stroked-button type="button" class="give" [class.give--block]="blockOn()" (click)="openXp()">Dar XP</button>
+      <button #give mat-stroked-button type="button" class="give" [class.give--block]="blockOn()" (click)="openXp()">
+        @if (neutral()) {
+          <mat-icon aria-hidden="true">star</mat-icon>
+        }
+        Dar XP
+      </button>
       @if (pair()) {
         <button #town mat-stroked-button type="button" class="give give--block" (click)="openTownSheet()">
           <mat-icon aria-hidden="true">currency_exchange</mat-icon>Voltar à cidade
@@ -153,6 +158,15 @@ export function openMilestone(
         min-width: 176px;
       }
     }
+
+    // The campaign page's own look (boards C2-01, C6-04): an ink label, the star before "Dar XP", only as wide as its words.
+    :host(.neutral) .give {
+      --mat-button-outlined-label-text-color: var(--mr-ink);
+
+      @media (min-width: 768px) {
+        min-width: 0;
+      }
+    }
   `,
 })
 export class XpGiveButton {
@@ -171,6 +185,8 @@ export class XpGiveButton {
   readonly showTown = input(false);
   /** The buttons are the full width, 48 px high, on a phone (the campaign's panel). */
   readonly block = input(false);
+  /** The look of the campaign page: an ink label and a star before "Dar XP". The session's "Grupo" keeps the accent label. */
+  readonly neutral = input(false);
 
   /** The master gave XP or marked a milestone. */
   readonly given = output<GiveResult>();

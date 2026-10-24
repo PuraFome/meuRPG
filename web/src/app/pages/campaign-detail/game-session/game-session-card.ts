@@ -27,7 +27,7 @@ import { ActionKey } from '../../../core/connect/idempotency';
 import { LivePill } from '../../../shared/live-pill/live-pill';
 import { PHONE_QUERY, mediaQuery } from '../../../shared/map-view/media-query';
 import { COPIED_FOR_MS, copyText, sessionLink } from '../../../shared/session-link/session-link';
-import { formatSessionStart } from '../../../shared/session-time/session-time';
+import { sessionStartText } from '../campaign-detail.copy';
 import { GAME_SESSION_BLOCKED_TEXT } from '../../../core/play/game-session-blocked';
 import { OpenSessions } from '../../../core/play/open-sessions';
 import { CampaignSessions } from './campaign-sessions';
@@ -126,7 +126,7 @@ export class GameSessionCard implements OnInit, OnDestroy {
    * follow-up: "1 ficha travada." not "1 fichas travadas."). */
   protected readonly lastLockedSheetCount = signal<number | null>(null);
   protected readonly lockedSheetCountLabel = lockedSheetCountLabel;
-  protected readonly formatSessionStart = formatSessionStart;
+  protected readonly sessionStartText = sessionStartText;
   protected readonly sessionLink = sessionLink;
 
   private copiedTimer: ReturnType<typeof setTimeout> | null = null;

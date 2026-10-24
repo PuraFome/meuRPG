@@ -84,17 +84,52 @@
 
 .card {
   min-width: 0;
-  padding: 0 10px 0 12px;
+  padding: 0 4px 0 12px;
   border: 1px solid var(--mr-line);
   border-radius: 10px;
 }
 
-.card__link {
+// The row of the board: the link to the sheet (avatar, words, lock, chevron) and the "⋮" menu at its end.
+.card__top {
   display: flex;
   align-items: center;
+  gap: 2px;
+}
+
+// The "⋮" button: the character's own actions ("Dar uma criatura a …"), a 44 px target.
+.card__more {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--mr-radius-sm);
+  background: none;
+  color: var(--mr-ink-muted);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--mr-ink);
+  }
+
+  .mat-icon {
+    width: 22px;
+    height: 22px;
+    font-size: 22px;
+  }
+}
+
+.card__link {
+  display: flex;
+  flex: 1;
+  align-items: center;
   gap: 10px;
+  min-width: 0;
   min-height: 60px;
-  padding: 8px 0;
+  padding: 8px 6px 8px 0;
   color: var(--mr-ink);
   text-decoration: none;
 
@@ -128,21 +163,18 @@
 }
 
 .card__name {
-  overflow: hidden;
   font-size: 16px;
   font-weight: 700;
   line-height: 21px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
+// The words shrink and wrap; the lock and the chevron keep their width (a narrow phone never clips or overlaps).
 .card__sub {
-  overflow: hidden;
   color: var(--mr-ink-muted);
   font-size: 13px;
   line-height: 18px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 // What needs a word on a card (choices open, a level-up), under its class line.

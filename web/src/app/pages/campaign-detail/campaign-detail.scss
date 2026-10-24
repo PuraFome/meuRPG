@@ -84,6 +84,13 @@ app-level-up-notice {
   margin-bottom: var(--mr-space-2);
   border-bottom: 1px solid var(--mr-line);
   overflow-x: auto;
+  // Wider than the screen (a narrow phone): the row scrolls, and its edge fades where there are more tabs (board C6-10).
+  // The two top layers follow the scroll and hide the fades at the ends.
+  background:
+    linear-gradient(to right, var(--mr-ground), transparent) left center / 24px 100% no-repeat local,
+    linear-gradient(to left, var(--mr-ground), transparent) right center / 24px 100% no-repeat local,
+    linear-gradient(to right, var(--mr-line), transparent) left center / 12px 100% no-repeat scroll,
+    linear-gradient(to left, var(--mr-line), transparent) right center / 12px 100% no-repeat scroll;
 
   @media (min-width: 600px) {
     gap: var(--mr-space-2);

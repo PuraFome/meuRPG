@@ -15,7 +15,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 
 import { formatDuration } from '../../../core/play/session-summary';
-import { formatSessionSpan } from '../../../shared/session-time/session-time';
+import { dayAndMonth } from '../campaign-detail.copy';
 import { CampaignSessions } from '../game-session/campaign-sessions';
 import { PHONE_QUERY, mediaQuery } from '../../../shared/map-view/media-query';
 import { PanelHead } from '../panel-head/panel-head';
@@ -72,7 +72,7 @@ export class PastSessionsPanel implements OnInit {
       return {
         id: s.id,
         number: s.sessionNumber,
-        span: formatSessionSpan(s.startedAt, end),
+        span: dayAndMonth(s.startedAt),
         duration: formatDuration(Math.max(0, (end.getTime() - s.startedAt.getTime()) / 1000)),
       };
     }),

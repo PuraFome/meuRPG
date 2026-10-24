@@ -284,3 +284,12 @@ export async function secondPlayer(browser: Browser, master: Page, campaignId: s
 export async function releaseHintRPC(master: Page, campaignId: string, puzzleId: string): Promise<void> {
   await expectOk(await callRPC(master, `${service}/ReleaseNextPuzzleHint`, { campaignId, puzzleId }));
 }
+
+/**
+ * "Arquivar" or "Desarquivar" on a row of the master's "Quebra-cabeças" list (the "Preparação" tab): the row's "⋮" menu
+ * ("Mais ações de <nome>") holds it, and the item names the puzzle.
+ */
+export async function pickPuzzleAction(page: Page, puzzle: string, action: 'Arquivar' | 'Desarquivar'): Promise<void> {
+  await page.getByRole('region', { name: 'Quebra-cabeças' }).getByRole('button', { name: `Mais ações de ${puzzle}` }).click();
+  await page.getByRole('menuitem', { name: `${action} ${puzzle}` }).click();
+}

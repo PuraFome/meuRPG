@@ -85,57 +85,94 @@
   color: var(--mr-accent-text);
 }
 
+// A row (board C6-02): the kind's icon, the name over its second line, a chevron when the row opens the editor, and the
+// row's "⋮" menu with "Arquivar" or "Desarquivar".
+.row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 52px;
+}
+
+.row__main {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--mr-space-3);
+  min-width: 0;
+  min-height: 52px;
+  color: inherit;
+  text-decoration: none;
+}
+
+a.row__main:hover .row__name {
+  text-decoration: underline;
+}
+
+.row__icon,
+.row__chevron {
+  flex: none;
+}
+
+.row__icon {
+  width: 22px;
+  height: 22px;
+  font-size: 22px;
+}
+
+.row__chevron {
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.row__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.row__name {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 21px;
+  overflow-wrap: anywhere;
+}
+
 .item--archived .row__name {
   color: var(--mr-ink-muted);
 }
 
-// One row: the kind's icon in a box, the name and its line, the state, the actions. On a phone the state and the actions drop under the words.
-.row {
-  flex-wrap: wrap;
-  padding: 8px 0;
+.row__sub {
+  color: var(--mr-ink-muted);
+  font-size: 13px;
+  line-height: 18px;
 }
 
-.row__icon {
-  flex: none;
+.row__more {
   display: inline-flex;
+  flex: none;
   align-items: center;
   justify-content: center;
-  box-sizing: border-box;
   width: 44px;
   height: 44px;
-  border: 1.5px solid var(--mr-control-line);
-  border-radius: var(--mr-radius-md);
-  color: var(--mr-ink);
-}
+  padding: 0;
+  border: 0;
+  border-radius: var(--mr-radius-sm);
+  background: none;
+  color: var(--mr-ink-muted);
+  cursor: pointer;
 
-.row__name {
-  font-family: var(--mr-font-display);
-}
-
-.row__actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.row__link {
-  color: var(--mr-accent-text);
-  font-weight: 700;
-}
-
-@media (max-width: 767.98px) {
-  .row .mr-list__text {
-    flex: 1 1 calc(100% - 60px);
+  &:hover {
+    color: var(--mr-ink);
   }
 
-  .row__actions {
-    flex-basis: 100%;
-    padding-left: 44px; // the words line up with the name above (icon 44 + gap 12, minus the button's own 12)
-    margin-top: -4px;
-  }
-
-  .row__link {
-    min-height: 48px;
+  .mat-icon {
+    width: 22px;
+    height: 22px;
+    font-size: 22px;
   }
 }
 
@@ -153,14 +190,4 @@
 // "quebra-cabeça" never breaks at its hyphen.
 .nw {
   white-space: nowrap;
-}
-
-// The row's words keep a share of the line next to the icon, so the tag and the actions drop under them on a narrow phone.
-.row .mr-list__text {
-  flex: 1 1 10rem;
-  min-width: 0;
-}
-
-.row .mr-tag {
-  flex-shrink: 0;
 }

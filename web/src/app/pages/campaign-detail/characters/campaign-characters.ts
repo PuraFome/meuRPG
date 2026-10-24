@@ -10,11 +10,14 @@ import {
   input,
   signal,
   untracked,
+  viewChildren,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { RouterLink } from '@angular/router';
 
+import { focusWithRing } from '../../../core/creatures/focus-ring';
 import { characterStateLabel } from '../../../core/characters/character-labels';
 import { LevelUpFeed } from '../../../core/levelup/levelup-feed';
 import { ExperienceStore } from '../../../core/progression/experience-store';
@@ -60,6 +63,7 @@ import { PanelHead } from '../panel-head/panel-head';
     PanelHead,
     ReservedCharacters,
     MatIconModule,
+    MatMenuModule,
     RouterLink,
   ],
   templateUrl: './campaign-characters.html',
@@ -141,6 +145,24 @@ export class CampaignCharacters implements OnInit {
         );
       });
     });
+  }
+
+  private readonly creatureRows = viewChildren(CharacterCreatures);
+
+  /** "Dar uma criatura a …", from the character's "⋮" menu: opens the SRD search of that character's creatures. */
+  protected giveCreature(characterId: string): void {
+    this.creatureRows()
+      .find((row) => row.characterId() === characterId)
+      ?.give();
+  }
+
+  /** A sheet or a dismissal is done: the focus is back on the character's "⋮" button, with the app's ring. */
+  protected focusMore(characterId: string): void {
+    afterNextRender(
+      () =>
+        focusWithRing(this.host.nativeElement.querySelector<HTMLElement>(`#more-${characterId}`)),
+      { injector: this.injector },
+    );
   }
 
   /** The master gave a creature (E9-10, quadro 6). */

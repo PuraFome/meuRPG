@@ -517,7 +517,7 @@ describe('CampaignDetail', () => {
       ]);
       expect(
         Array.from(el.querySelectorAll('app-experience-panel button')).some(
-          (b) => b.textContent?.trim() === 'Dar XP',
+          (b) => b.textContent?.replace('star', '').trim() === 'Dar XP',
         ),
       ).toBe(true);
     });

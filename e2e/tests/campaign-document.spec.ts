@@ -101,7 +101,8 @@ test(
     await page.getByRole('link', { name: 'Voltar para a campanha' }).click();
     await openCampaignTab(page, 'Preparação');
     await expect(page.getByRole('link', { name: /^Documento da campanha/ }).getByText(/^Editado hoje às \d\d:\d\d · só você lê$/)).toBeVisible();
-    await page.goBack();
+    // Back to the document: the tab click made its own history entry, so "back" would land on "Mesa".
+    await page.goto(`/campaigns/${table.campaignId}/document`);
 
     // The map link opens a dialog over the document (E5-29): the map with
     // every point (a hidden one marked "Escondido"), whether it is revealed

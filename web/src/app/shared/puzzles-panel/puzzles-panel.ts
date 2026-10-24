@@ -12,6 +12,7 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { RouterLink } from '@angular/router';
 
 import type { Puzzle } from '../../../gen/meurpg/play/v1/puzzles_pb';
@@ -37,7 +38,7 @@ type State =
 @Component({
   selector: 'app-puzzles-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MapAsk, MatButtonModule, MatIconModule, RouterLink],
+  imports: [MapAsk, MatButtonModule, MatIconModule, MatMenuModule, RouterLink],
   templateUrl: './puzzles-panel.html',
   styleUrl: './puzzles-panel.scss',
 })
@@ -56,7 +57,11 @@ export class PuzzlesPanel implements OnInit {
   protected readonly busy = signal(false);
   protected readonly notice = signal('');
   protected readonly icon = kindIcon;
-  protected readonly summary = puzzleSummary;
+  /** The second line of a row, as the board draws it ("Sequência · Cripta do Corvo"); what shows of the puzzle's state is said after it ("Não mostrado", "Já mostrado", "Arquivado"). */
+  protected line(puzzle: Puzzle): string {
+    const state = puzzle.archived ? 'Arquivado' : puzzle.shown ? 'Já mostrado' : 'Não mostrado';
+    return `${puzzleSummary(puzzle)} · ${state}`;
+  }
   /** What the list shows: the archived ones only when asked (they are read with the rest, so "Mostrar os arquivados" costs no call). */
   protected readonly visible = computed(() =>
     this.withArchived() ? this.puzzles() : this.puzzles().filter((p) => !p.archived),
