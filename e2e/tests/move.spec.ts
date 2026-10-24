@@ -114,6 +114,7 @@ test(
       const order = m.getByRole('region', { name: 'Ordem de iniciativa' });
       // The lines of cover are in the opened rows.
       await openOrderRow(m, 'Capitão Goblin');
+      await openOrderRow(m, 'Goblin 1');
       await openOrderRow(m, 'Goblin 2');
       await expect(order.getByText('Meia cobertura (do mapa) contra o Pensantus')).toBeVisible();
       await expect(order.getByText('Cobertura total (do mapa) contra o Pensantus')).toBeVisible();
@@ -459,7 +460,7 @@ test(
       await forced.check();
       await expect(m.getByText('Ligado para o próximo arrasto')).toBeVisible();
       // The words of the box (it ends the opportunity attacks of one drag) are its description.
-      await expect(forced).toHaveAccessibleDescription(/não provocar ataque de oportunidade/);
+      await expect(forced).toHaveAccessibleDescription(/sem provocar ataque de oportunidade/);
 
       // The goblin on turn leaves Pensantus's reach: a plain drag would provoke (the test above); a forced one does not.
       const start = await getEncounterRPC(m, campaignId);

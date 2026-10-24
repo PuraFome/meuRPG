@@ -1413,6 +1413,8 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expect(shieldChip).toBeVisible();
     expect((await layoutSize(shieldChip)).height).toBeLessThan(30);
     await prompt.getByRole('button', { name: 'Fechar' }).click();
+    // The opened row took the phone to "Ordem"; the captain's card is in "Turno".
+    await openTurn(m);
     // The captain's turn goes on: a second hit (a critical one) is damage to roll and discard; then Pensantus's turn.
     await card.getByRole('button', { name: 'Digitar o resultado' }).click();
     await card.getByLabel(/Role 1d20 para Cimitarra/).fill('20');

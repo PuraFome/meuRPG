@@ -37,12 +37,14 @@ export async function masterLog(page: Page): Promise<Locator> {
 
 /** Opens the row of a combatant in the master's order, in place: its "Dano/Cura", "Condições" and "Mais" are in it. On a phone the order is its own tab. */
 export async function openOrderRow(page: Page, label: string): Promise<void> {
-  const orderTab = page.getByRole('tab', { name: /^Ordem/ });
-  if ((await orderTab.count()) > 0 && (await orderTab.isVisible())) {
-    await orderTab.click();
-  }
   const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const head = page.locator('app-order-list').getByRole('button', { name: new RegExp(`^${escaped}(,|$)`) });
+  const orderTab = page.getByRole('tab', { name: /^Ordem/ });
+  // On a phone the order is its own tab and the row is hidden until it is open: wait for whichever shows first.
+  await head.or(orderTab).first().waitFor();
+  if (!(await head.isVisible())) {
+    await orderTab.click();
+  }
   if ((await head.getAttribute('aria-expanded')) === 'false') {
     await head.click();
   }

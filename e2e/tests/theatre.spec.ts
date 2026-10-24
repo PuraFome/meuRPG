@@ -4,7 +4,7 @@ import { adjustVitalsRPC, brisa, brisaSheet, combatRPC, getEncounterRPC, passTur
 import { openSessionPage } from './live-session-support';
 import { setTableRulesRPC } from './table-rules-support';
 import { beginTheatreRPC, secondPlayer, startTheatreRPC, theatreTable } from './theatre-support';
-import { masterLog } from './combat-layout';
+import { masterLog, openOrderRow } from './combat-layout';
 
 // Combat without a map on screen (Etapa 10, slice 10.13b, MR-025, RN-25, RN-24, RN-20, ADR-0017): the start dialog's mode, the
 // master's and the player's screens with no grid, movement by number, the opportunity attack the master offers, the critical
@@ -168,6 +168,7 @@ test(
       // The owner: the marks and the words that say who sees them.
       await expect(lia.page.getByTestId('death-private')).toContainText('Só você e o mestre');
       // The master: the same marks, with who else sees them.
+      await openOrderRow(m, 'Brisa');
       await expect(m.getByText('Dono e mestre').first()).toBeVisible();
       // The other player: the state in words, no marks, no counts, and the reason in the log.
       await expect(p.getByText('Caída').first()).toBeVisible();
