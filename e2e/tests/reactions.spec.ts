@@ -154,9 +154,7 @@ for (const showDC of [false, true]) {
       test.setTimeout(240_000);
       const { m, p, campaignId, done } = await reactionTable(browser, 'Concentração');
       try {
-        if (showDC) {
-          await setTableRulesRPC(m, campaignId, { showSaveDc: true });
-        }
+        await setTableRulesRPC(m, campaignId, { showSaveDc: showDC });
         await openSessionPage(m, campaignId);
         await openSessionPage(p, campaignId);
         let enc = await getEncounterRPC(m, campaignId);
