@@ -1,0 +1,76 @@
+<p class="mr-visually-hidden" role="status" aria-live="polite" aria-atomic="true">{{ notice() }}</p>
+@if (zones().length) {
+  <section class="zp mr-panel" aria-labelledby="zp-title">
+    <h2 class="mr-panel__title" id="zp-title">Zonas ativas ({{ zones().length }})</h2>
+    <ul class="zp__list">
+      @for (z of zones(); track z.id) {
+        <li class="zp__card" [attr.data-zone]="z.id">
+          <app-zone-swatch class="zp__swatch" [pattern]="pattern(z.spellKey)" [dashed]="z.dashed" />
+          <div class="zp__body">
+            <h3 class="zp__name">
+              {{ z.label }}
+              @if (z.masterOnly) {
+                <span class="zp__chip"><mat-icon aria-hidden="true">visibility_off</mat-icon>{{ z.masterOnly }}</span>
+              }
+            </h3>
+            <p class="zp__detail">{{ z.detail }}</p>
+            @if (!z.detailsHidden) {
+              <p class="zp__chips">
+                @if (z.roundsLeft) {
+                  <span class="zp__chip"><mat-icon aria-hidden="true">schedule</mat-icon>{{ z.roundsLeft }}</span>
+                }
+                @if (z.concentration) {
+                  <span class="zp__chip">{{ z.concentration }}</span>
+                }
+                @if (z.occupants) {
+                  <span class="zp__chip zp__chip--here">{{ z.occupants }}</span>
+                }
+              </p>
+            }
+            @if (z.canMove || z.canEnd) {
+              <div class="zp__actions">
+                @if (z.canMove) {
+                  <button mat-stroked-button type="button" class="zp__btn" [disabled]="busy()" (click)="move.emit(z.id)">
+                    <mat-icon aria-hidden="true">open_with</mat-icon>Mover
+                  </button>
+                }
+                @if (z.canEnd) {
+                  <button mat-stroked-button type="button" class="zp__btn zp__end" [disabled]="busy()" (click)="ask(z.id)">
+                    <mat-icon aria-hidden="true">close</mat-icon>Encerrar zona
+                  </button>
+                }
+              </div>
+            }
+            @if (confirming() === z.id) {
+              <div class="zp__confirm" role="group" aria-label="Encerrar a zona?">
+                <p>
+                  <strong>Encerrar a zona?</strong>
+                  {{ z.label }} some do mapa e da lista de todo mundo.
+                  @if (z.concentration) {
+                    Só use se a concentração acabou fora do app.
+                  }
+                </p>
+                @if (error()) {
+                  <p class="mr-notice mr-notice--danger" role="alert">{{ error() }}</p>
+                }
+                <div class="zp__actions">
+                  <button mat-stroked-button type="button" class="zp__btn zp__no" (click)="cancel(z.id)">Não</button>
+                  <button mat-flat-button type="button" class="zp__btn zp__yes" [disabled]="busy()" (click)="end.emit(z.id)">
+                    Sim, encerrar
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        </li>
+      }
+    </ul>
+    <p class="zp__foot">
+      @if (master()) {
+        Uma zona acaba quando a concentração acaba, quando o tempo passa ou quando você a encerra.
+      } @else {
+        Só aparecem as zonas que o seu personagem vê.
+      }
+    </p>
+  </section>
+}

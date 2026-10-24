@@ -19,13 +19,13 @@ const card = (phase: EffectPhase, dc?: number) =>
 describe('the save DC on the cards of "Seus efeitos"', () => {
   it('adds the DC to the end-of-turn save when the server sent it', () => {
     expect(combatCards([card(EffectPhase.END, 14)])[0].save).toBe(
-      'No fim de cada turno seu: teste de resistência de Sabedoria (CD 14).',
+      'No fim de cada turno seu: teste de resistência de Sabedoria (CD\u00a014).',
     );
   });
 
   it('adds the DC to the start-of-turn save when the server sent it', () => {
     expect(combatCards([card(EffectPhase.START, 17)])[0].save).toBe(
-      'No começo de cada turno seu: teste de resistência de Destreza (CD 17).',
+      'No começo de cada turno seu: teste de resistência de Destreza (CD\u00a017).',
     );
   });
 
@@ -50,8 +50,8 @@ describe('the save DC on the question of an effect save', () => {
       dc,
     });
 
-  it('carries "CD 14" when the prompt has the DC', () => {
-    expect(effectSaveView(prompt(14), 3).dc).toBe('CD 14');
+  it('carries "CD\u00a014" when the prompt has the DC', () => {
+    expect(effectSaveView(prompt(14), 3).dc).toBe('CD\u00a014');
   });
 
   it('carries nothing when the prompt has none, or 0', () => {

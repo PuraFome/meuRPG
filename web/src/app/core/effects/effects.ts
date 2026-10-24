@@ -10,6 +10,8 @@ import {
 } from '../../../gen/meurpg/play/v1/lasting_effects_pb';
 import { dcLabel } from '../format/save-dc';
 import { upFirst } from '../format/text';
+import { abilityName } from './ability-choice';
+import { zoneSheetWords } from './zone-save';
 
 /**
  * The effects that last (RN-22) as the player reads them: the cards of "Seus efeitos", the exhaustion card, the
@@ -205,39 +207,55 @@ export interface EffectSaveView {
   /** "CD 14" when the server sent the DC to this player, else empty. */
   readonly dc: string;
   readonly dice: readonly ExtraDie[];
+  /** "Raio Lunar, de Bartolo" for a zone's save; empty otherwise. */
+  readonly source: string;
 }
 
 /** "Teste de resistência de Sabedoria." is the first sentence of `text_pt`; the rest is what a pass does. */
-function afterAbility(text: string, ability: string): string {
-  const lead = `Teste de resistência de ${ability}.`;
-  return text.startsWith(lead) ? text.slice(lead.length).trim() : '';
+function afterAbility(text: string): string {
+  // The ability may be named or empty in the server's sentence ("de ."): either way the lead is its first sentence.
+  const lead = /^Teste de resistência de [^.]*\.\s*/.exec(text);
+  return lead ? text.slice(lead[0].length).trim() : '';
 }
 
 /** The sheet of the saving throw an effect asks (RN-22), from the window's prompt. */
-export function effectSaveView(prompt: EffectSavePrompt, round: number): EffectSaveView {
+export function effectSaveView(
+  prompt: EffectSavePrompt,
+  round: number,
+  /** The caster of the zone the save is about, from the encounter's zones; empty when not seen. */
+  zoneCaster = '',
+): EffectSaveView {
   const start = prompt.phase === EffectPhase.START;
   const mode =
     prompt.mode === 'advantage' || prompt.mode === 'disadvantage' ? prompt.mode : 'normal';
-  const sources = prompt.modeSourcesPt.length > 0 ? ` (${prompt.modeSourcesPt.join('; ')})` : '';
-  const modeLine =
-    mode === 'advantage'
-      ? `Você tem vantagem neste teste${sources}.`
-      : mode === 'disadvantage'
-        ? `Você tem desvantagem neste teste${sources}.`
-        : 'Você não tem vantagem nem desvantagem neste teste.';
-  return {
+  const after = afterAbility(prompt.textPt);
+  const ability = abilityName(prompt.ability, prompt.abilityNamePt);
+  const base: EffectSaveView = {
     title: start ? 'Começo do seu turno' : 'Fim do seu turno',
     subtitle: prompt.sourceNamePt || `Rodada ${round}`,
-    ability: prompt.abilityNamePt,
-    consequence: afterAbility(prompt.textPt, prompt.abilityNamePt),
+    ability,
+    consequence: after,
+    source: '',
     modifier: prompt.bonusKnown ? `Seu modificador: ${signed(prompt.modifier)}.` : '',
-    modeLine,
+    modeLine: modeLineOf(prompt, mode),
     mode,
     autoFail: prompt.autoFail,
     handed: prompt.handedToMaster,
     dc: dcLabel(prompt.dc),
     dice: prompt.extraDice,
   };
+  return prompt.zoneId ? { ...base, ...zoneSheetWords(prompt, zoneCaster, after) } : base;
+}
+
+/** "Você tem vantagem neste teste (Esquivando: vantagem)." and its two siblings. */
+function modeLineOf(prompt: EffectSavePrompt, mode: EffectSaveView['mode']): string {
+  const sources = prompt.modeSourcesPt.length > 0 ? ` (${prompt.modeSourcesPt.join('; ')})` : '';
+  if (mode === 'advantage') {
+    return `Você tem vantagem neste teste${sources}.`;
+  }
+  return mode === 'disadvantage'
+    ? `Você tem desvantagem neste teste${sources}.`
+    : 'Você não tem vantagem nem desvantagem neste teste.';
 }
 
 /** A note of the turn split at its first sentence, which is read in bold ("Você está Paralisada." / "Não age nem se move neste turno."). */

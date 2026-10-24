@@ -14,7 +14,9 @@ import {
   concentrationMode as modeOfSave,
   concentrationModeLine as modeLineOfSave,
 } from '../../../../core/combat/reactions';
+import { abilityName } from '../../../../core/effects/ability-choice';
 import type { EffectSaveAnswer } from '../../../../core/effects/effects-client';
+import { zoneReasonText, zoneSaveTitle } from '../../../../core/effects/zone-save';
 import { dcLabel } from '../../../../core/format/save-dc';
 
 // What the master's cards say about a window and about the answer just given. Pure: the component only picks the window.
@@ -28,6 +30,11 @@ export function signed(n: number): string {
 
 function effectSavePrompt(w: ReactionWindow) {
   return w.prompt.case === 'effectSave' ? w.prompt.value : null;
+}
+
+/** The zone an effect-save window is about; empty for any other save. */
+export function zoneIdOf(w: ReactionWindow): string {
+  return effectSavePrompt(w)?.zoneId ?? '';
 }
 
 export function effectSaveMode(w: ReactionWindow): 'normal' | 'advantage' | 'disadvantage' {
@@ -44,16 +51,18 @@ export function effectSavePairHint(w: ReactionWindow): string {
 }
 
 export function effectSaveAbility(w: ReactionWindow): string {
-  return effectSavePrompt(w)?.abilityNamePt ?? '';
+  const p = effectSavePrompt(w);
+  return p ? abilityName(p.ability, p.abilityNamePt) : '';
 }
 
 /** "Teste de resistência de Sabedoria do Goblin 1 · Riso Histérico · CD 13". */
-export function effectSaveTitle(w: ReactionWindow): string {
+export function effectSaveTitle(w: ReactionWindow, zoneCaster = ''): string {
   const p = effectSavePrompt(w);
   const whose = w.reactorIsPlayer ? `de ${w.reactorLabel}` : ofThe([w.reactorLabel]);
+  const zone = !!p?.zoneId;
+  const test = `Teste de resistência de ${effectSaveAbility(w)} ${whose}`;
   const parts = [
-    `Teste de resistência de ${p?.abilityNamePt ?? ''} ${whose}`,
-    p?.sourceNamePt ?? '',
+    ...(zone ? [zoneSaveTitle(p, zoneCaster), test] : [test, p?.sourceNamePt ?? '']),
     dcLabel(p?.dc),
   ];
   return parts.filter((x) => x !== '').join(' · ');
@@ -61,6 +70,9 @@ export function effectSaveTitle(w: ReactionWindow): string {
 
 export function effectSaveText(w: ReactionWindow): string {
   const p = effectSavePrompt(w);
+  if (p?.zoneId) {
+    return `${zoneReasonText(p.zoneReason, w.reactorLabel)} ${p.textPt}`.trim();
+  }
   const when = p?.phase === EffectPhase.START ? 'no começo' : 'no fim';
   return `${p?.sourceNamePt ?? 'Um efeito'} pede este teste ${when} da vez ${ofThe([w.reactorLabel])}. ${p?.textPt ?? ''}`.trim();
 }
@@ -70,7 +82,9 @@ export function effectSaveRule(w: ReactionWindow): string {
   if (!p) {
     return '';
   }
-  const bonus = p.bonusKnown ? `${p.abilityNamePt}: ${signed(p.modifier)}` : 'Bônus desconhecido';
+  const bonus = p.bonusKnown
+    ? `${effectSaveAbility(w)}: ${signed(p.modifier)}`
+    : 'Bônus desconhecido';
   return [bonus, p.mode].filter((x) => x !== '').join(' · ');
 }
 

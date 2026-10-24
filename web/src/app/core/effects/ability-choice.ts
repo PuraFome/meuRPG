@@ -17,6 +17,15 @@ export const ABILITY_CHOICES: readonly AbilityChoice[] = [
   { key: 'cha', name: 'Carisma', hint: 'Águia' },
 ];
 
+/**
+ * The Portuguese name of an ability: the server's when it sent one, else the name of its key ("con"), else the key itself.
+ * The server's zone fields (`save_ability`, `EffectSavePrompt.ability`) carry the key and may leave the name empty, so the
+ * client names it from the one table of the six abilities.
+ */
+export function abilityName(key: string, namePt: string): string {
+  return namePt || ABILITY_CHOICES.find((a) => a.key === key)?.name || key;
+}
+
 /** Whether casting this spell asks which ability it is for. */
 export function needsAbility(spellKey: string): boolean {
   return spellKey === ENHANCE_ABILITY_KEY;
