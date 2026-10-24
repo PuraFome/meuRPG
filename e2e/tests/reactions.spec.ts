@@ -2,7 +2,7 @@ import { expect, test, type Browser, type BrowserContext, type Page } from '@pla
 
 import { beginAttackCombatRPC, combatRPC, getEncounterRPC, pensantusCasting, tableForCombat, type CombatTable } from './combat-support';
 import { endOpenSessionRPC, openSessionPage } from './live-session-support';
-import { callRPC, newSignedInContext } from './support';
+import { callRPC, newSignedInContext, viaTargetList } from './support';
 import { setTableRulesRPC } from './table-rules-support';
 
 // The reaction window (PM-04): an NPC's Escudo holds a player's turn and the player reads only "Esperando o mestre",
@@ -56,6 +56,7 @@ async function addMage(m: Page, campaignId: string): Promise<string> {
 async function attackTheMage(p: Page, mage: string): Promise<ReturnType<Page['getByRole']>> {
   await p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
   const sheet = p.getByRole('dialog', { name: 'Atacar com Raio de Fogo' });
+  await viaTargetList(p, sheet);
   await sheet.locator('label', { hasText: mage }).click();
   await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
   await sheet.getByLabel(/Role 1d20 para Raio de Fogo/).fill('10');

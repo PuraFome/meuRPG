@@ -4,7 +4,7 @@ import { combatRPC, getEncounterRPC, passTurnsTo, tableForCombat, waitTurnLeaves
 import { grog, pipo, rollsTable, vex } from './combat-rolls-support';
 import { endOpenSessionRPC, openSessionPage } from './live-session-support';
 import { beginPlacedCombatRPC, orla, orlaSheet } from './rests-support';
-import { callRPC, newSignedInContext, openActionTab, openCombatLog } from './support';
+import { callRPC, newSignedInContext, openActionTab, openCombatLog, viaTargetList } from './support';
 import { secondPlayer } from './theatre-support';
 
 // Advantage and disadvantage, the damage extras and the resistance steps on screen
@@ -27,6 +27,7 @@ test(
 
       await p.getByRole('button', { name: /^Atacar com Rapieira/ }).click();
       const sheet = p.getByRole('dialog', { name: /Atacar com Rapieira/ });
+      await viaTargetList(p, sheet);
       await sheet.locator('label', { hasText: 'Goblin 1' }).click();
       // The mode is the server's: advantage, with the reason in words.
       const modes = sheet.getByRole('radiogroup', { name: 'Como rolar o d20' });
@@ -118,6 +119,7 @@ test(
       await expect(p.getByRole('heading', { name: 'Sua vez, Pipo' })).toBeVisible();
       await p.getByRole('button', { name: /^Atacar com Machado de batalha/ }).click();
       const sheet = p.getByRole('dialog', { name: /Atacar com Machado de batalha/ });
+      await viaTargetList(p, sheet);
       await sheet.locator('label', { hasText: 'Goblin 1' }).click();
       await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
       await sheet.getByLabel(/Role 1d20 para/).fill('1');
@@ -223,6 +225,7 @@ test(
 
       await p.getByRole('button', { name: /^Atacar com Machado de batalha/ }).click();
       const sheet = p.getByRole('dialog', { name: /Atacar com Machado de batalha/ });
+      await viaTargetList(p, sheet);
       await sheet.locator('label', { hasText: 'Capitão Goblin' }).click();
       await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
       await sheet.getByLabel(/Role 1d20 para/).fill('1');

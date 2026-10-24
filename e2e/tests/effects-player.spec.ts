@@ -2,7 +2,7 @@ import { expect, test, type Browser, type BrowserContext, type Page } from '@pla
 
 import { beginAttackCombatRPC, getEncounterRPC, pensantusAttacks, tableForCombat, type CombatTable } from './combat-support';
 import { endOpenSessionRPC, openSessionPage } from './live-session-support';
-import { callRPC, newSignedInContext } from './support';
+import { callRPC, newSignedInContext, viaTargetList } from './support';
 
 // The effects that last, on the player's screens (W7-E, RN-22): "Seus efeitos" and the exhaustion card on the live sheet,
 // what a paralysing effect takes from the turn, the saving throw of the end of the turn, and the d4 of Bênção typed from a
@@ -197,6 +197,7 @@ test(
       await openSessionPage(t.p, t.campaignId);
       await t.p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
       const sheet = t.p.getByRole('dialog', { name: 'Atacar com Raio de Fogo' });
+      await viaTargetList(t.p, sheet);
       await sheet.locator('label', { hasText: 'Capitão Goblin' }).click();
       await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
 

@@ -23,7 +23,7 @@ import { paintRPC, pickRadio, tapSquare } from './move-support';
 import { beginFogCombat, moveTo, sessionRoute, setCarriedLightRPC, tableForFog } from './fog-support';
 import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
 import { claimRoute, linkRPC, reservedRPC, revokeLinkRPC, rowOf } from './claim-support';
-import { authStatePath, boxOf, callRPC, layoutSize, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus, showAllPicks, signIn, type TestUser, openActionTab, openCombatLog, openFoldedPanel, openSpentGroup, openXpHistory } from './support';
+import { authStatePath, boxOf, callRPC, layoutSize, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus, showAllPicks, signIn, type TestUser, openActionTab, openCombatLog, openFoldedPanel, openSpentGroup, openXpHistory, viaTargetList } from './support';
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { tableForCaster, tableForCreatures } from './creatures-support';
 import { grog, pipo, rollsTable, vex } from './combat-rolls-support';
@@ -1063,6 +1063,10 @@ async function scanActionScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await p.getByRole('button', { name: 'Voltar' }).click();
 
     await p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
+    // The target is tapped on the map first (C7-04, C7-05): the map with its rings and the bar (a card in the rail from 1024 px), then the list.
+    await expect(p.getByRole('region', { name: 'Escolha do alvo' })).toBeVisible();
+    await expectScreenPasses(p, `Atacar, escolher o alvo no mapa ${where}`);
+    await p.getByRole('region', { name: 'Escolha do alvo' }).getByRole('button', { name: 'Escolher na lista' }).click();
     await expect(p.getByRole('heading', { name: 'Atacar com Raio de Fogo' })).toBeVisible();
     await expectScreenPasses(p, `Atacar, escolher o alvo ${where}`);
     await p.locator('label', { hasText: 'Goblin 1' }).click();
@@ -1335,6 +1339,7 @@ async function scanMoveScreens(browser: Browser, colorScheme: 'light' | 'dark', 
 
     // Cover: the target list, and the master's order with the mark in place.
     await p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
+    await viaTargetList(p, p.getByRole('dialog'));
     await expect(p.locator('label', { hasText: 'Capitão Goblin' })).toContainText('Meia cobertura (do mapa)');
     await expectScreenPasses(p, `Atacar, alvos com cobertura ${where}`);
     await p.getByRole('button', { name: 'Fechar' }).click();
@@ -1423,6 +1428,12 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     // The cast sheet: the slot and the darts, then the result and the damage to roll.
     await openActionTab(p, 'Magias');
     await p.getByRole('button', { name: 'Conjurar Mísseis Mágicos' }).click();
+    // The darts are tapped on the map first (C7-04): two on one creature, the third on another.
+    await expect(p.getByRole('region', { name: 'Escolha do alvo' })).toBeVisible();
+    await p.getByRole('button', { name: /^Escolher Capitão Goblin/ }).click();
+    await p.getByRole('button', { name: /^Pôr outro dardo em Capitão Goblin/ }).click();
+    await expectScreenPasses(p, `Conjurar, os dardos no mapa ${where}`);
+    await p.getByRole('region', { name: 'Escolha do alvo' }).getByRole('button', { name: 'Escolher na lista' }).click();
     await expect(p.getByText('É o seu último espaço de 1º nível: depois dele, o Escudo Arcano fica sem espaço.')).toBeVisible();
     await expectScreenPasses(p, `Conjurar, o espaço e os dardos ${where}`);
     const more = (who: string) => p.getByRole('button', { name: `Pôr um dardo em ${who}` });
@@ -1630,6 +1641,7 @@ async function scanReactionScreens(browser: Browser, colorScheme: 'light' | 'dar
     // Escudo of the Mago: the player's wait, then the master's card.
     await p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
     const sheet = p.getByRole('dialog', { name: 'Atacar com Raio de Fogo' });
+    await viaTargetList(p, sheet);
     await sheet.locator('label', { hasText: mage.label }).click();
     await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
     await p.getByLabel(/Role 1d20 para Raio de Fogo/).fill('10');

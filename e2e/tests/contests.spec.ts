@@ -4,7 +4,7 @@ import { combatRPC, endTurnOf, passTurnsTo, startEncounterRPC, tableForCombat } 
 import { grog, rollsTable, vex } from './combat-rolls-support';
 import { alliedTable, closeSheet, contestRPC, idOf, typeD20 } from './contests-support';
 import { endOpenSessionRPC, openSessionPage } from './live-session-support';
-import { newSignedInContext, openActionTab } from './support';
+import { newSignedInContext, openActionTab, viaTargetList } from './support';
 
 test('o jogador agarra o goblin (o mestre responde), é agarrado por ele e escapa: nunca lê o total do NPC', { tag: ['@RN-34', '@RN-10', '@RN-20'] }, async ({ browser }) => {
   test.setTimeout(180_000);
@@ -15,6 +15,7 @@ test('o jogador agarra o goblin (o mestre responde), é agarrado por ele e escap
     await openActionTab(p, 'Ataques');
     await p.getByRole('button', { name: /Agarrar: escolher o alvo/ }).click();
     const sheet = p.getByRole('dialog');
+    await viaTargetList(p, sheet);
     await sheet.getByText('Tenho uma mão livre').click();
     await sheet.locator('label', { hasText: 'Goblin 1' }).click();
     await sheet.getByRole('button', { name: 'Rolar a disputa' }).click();
@@ -89,6 +90,7 @@ test('o jogador derruba o goblin com um empurrão e escapa de um agarrão de CD 
     await openActionTab(p, 'Ataques');
     await p.getByRole('button', { name: /Empurrar: escolher o alvo/ }).click();
     const sheet = p.getByRole('dialog');
+    await viaTargetList(p, sheet);
     // A shove needs no free hand (SRD 5.1): the sheet does not ask for one.
     await expect(sheet.getByText('Tenho uma mão livre')).toHaveCount(0);
     await sheet.locator('label', { hasText: 'Goblin 1' }).click();

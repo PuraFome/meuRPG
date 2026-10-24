@@ -22,7 +22,7 @@ import {
 } from './combat-support';
 import type { CharacterBuild } from './support';
 import { endOpenSessionRPC, openSessionPage, clickStartCombat, expectStartCombatOffered } from './live-session-support';
-import { boxOf, callRPC, layoutSize, newSignedInContext, openActionTab, openSpentGroup, pensantus } from './support';
+import { boxOf, callRPC, layoutSize, newSignedInContext, openActionTab, openSpentGroup, pensantus, viaTargetList } from './support';
 import { placeTokenRPC } from './maps-support';
 import { setTableRulesRPC } from './table-rules-support';
 import { sq20, thirdPlayer, trapTable } from './trap-support';
@@ -292,6 +292,7 @@ test('o jogador ataca com dados físicos: digita o d20 e a soma do dano, e o gob
 
     await p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
     const sheet = p.getByRole('dialog', { name: 'Atacar com Raio de Fogo' });
+    await viaTargetList(p, sheet);
     await expect(sheet).toBeVisible();
     await expect(sheet.getByRole('heading', { name: 'Atacar com Raio de Fogo' })).toBeFocused();
     await expect(sheet.getByText('Ferido')).toHaveCount(0);
@@ -340,6 +341,7 @@ test('o jogador rola o ataque no app: o resultado mostra a conta e nunca a CA', 
     await openSessionPage(p, campaignId);
     await p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
     const sheet = p.getByRole('dialog', { name: 'Atacar com Raio de Fogo' });
+    await viaTargetList(p, sheet);
     await expect(sheet.getByRole('radio', { name: /Capitão Goblin/ })).toBeEnabled();
     await sheet.locator('label', { hasText: 'Capitão Goblin' }).click();
     await sheet.getByRole('button', { name: 'Rolar no app' }).click();
@@ -571,6 +573,7 @@ test('numa tela de 320 × 568: a pergunta de encerrar cabe numa linha por botão
 
     // The physical roll's error is in view, above the sticky footer, not under it.
     await p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
+    await viaTargetList(p, p.getByRole('dialog'));
     await p.locator('label', { hasText: 'Goblin 1' }).click();
     await p.getByRole('button', { name: 'Digitar o resultado' }).click();
     await p.getByLabel(/Role 1d20/).fill('27');
@@ -612,6 +615,7 @@ test('o jogador conjura Mísseis Mágicos repartindo os dardos: o espaço some, 
     await openActionTab(p, 'Magias');
     await p.getByRole('button', { name: 'Conjurar Mísseis Mágicos' }).click();
     const sheet = p.getByRole('dialog', { name: 'Conjurar Mísseis Mágicos' });
+    await viaTargetList(p, sheet);
     await expect(sheet.getByRole('heading', { name: 'Conjurar Mísseis Mágicos' })).toBeFocused();
     await expect(sheet.getByRole('radio', { name: /1º nível/ })).toBeChecked();
     await expect(sheet.getByText('1 livre de 4')).toBeVisible();
@@ -958,6 +962,7 @@ test('guerreiro 5: o Ataque Extra deixa dois ataques por ação, Retomar o Fôle
       await openActionTab(p, 'Ataques');
       await groups.getByRole('button', { name: /^Atacar com Espada/ }).click();
       const sheet = p.getByRole('dialog', { name: /Atacar com Espada/ });
+      await viaTargetList(p, sheet);
       await sheet.locator('label', { hasText: 'Goblin 1' }).click();
       await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
       await sheet.getByLabel(/Role 1d20/).fill('1');
@@ -1049,6 +1054,7 @@ test('a clériga conjura Curar Ferimentos em si mesma: a cura rola e vale na hor
     await openActionTab(p, 'Magias');
     await p.getByRole('button', { name: 'Conjurar Curar Ferimentos' }).click();
     const sheet = p.getByRole('dialog', { name: 'Conjurar Curar Ferimentos' });
+    await viaTargetList(p, sheet);
     // A heal may be aimed at oneself, and only a heal.
     await sheet.locator('label', { hasText: 'Brisa (você)' }).click();
     await sheet.getByRole('button', { name: 'Conjurar Curar Ferimentos' }).click();
@@ -1272,6 +1278,7 @@ test('monge 3: o golpe das Artes Marciais e a Rajada de Golpes aparecem como ata
       await openActionTab(p, 'Ataques');
       await groups.getByRole('button', { name: /^Atacar com Golpe desarmado/ }).click();
       const sheet = p.getByRole('dialog', { name: /Atacar com Golpe desarmado/ });
+      await viaTargetList(p, sheet);
       await sheet.locator('label', { hasText: 'Goblin 1' }).click();
       // Each attack sheet opens fresh, with the app's dice offered first (as the Raio de Fogo test above).
       await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
@@ -1488,6 +1495,7 @@ test('Crítico Brutal com dados no app: a conta antes de rolar, a linha do resul
     await openSessionPage(p, campaignId);
     await p.getByRole('button', { name: 'Atacar com Machado grande' }).click();
     const sheet = p.getByRole('dialog', { name: 'Atacar com Machado grande' });
+    await viaTargetList(p, sheet);
     await sheet.locator('label', { hasText: 'Goblin 1' }).click();
     await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
     await sheet.getByLabel(/Role 1d20 para Machado grande/).fill('20');
@@ -1516,6 +1524,7 @@ test('Crítico Brutal com dados físicos: o jogador rola três dados, o botão l
     await openSessionPage(p, campaignId);
     await p.getByRole('button', { name: 'Atacar com Machado grande' }).click();
     const sheet = p.getByRole('dialog', { name: 'Atacar com Machado grande' });
+    await viaTargetList(p, sheet);
     await sheet.locator('label', { hasText: 'Goblin 1' }).click();
     await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
     await sheet.getByLabel(/Role 1d20 para Machado grande/).fill('20');

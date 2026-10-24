@@ -717,6 +717,19 @@ export async function openActionTab(page: Page, label: string): Promise<Locator>
 }
 
 /**
+ * "Atacar com X", "Conjurar X", "Agarrar" and "Empurrar" ask for the target on the map first when the combat has one (C7-04, C7-05); the
+ * specs that go on through the sheet's own list press "Escolher na lista" there. Without a map (or with nobody on it to tap) the sheet is
+ * already open, and nothing is pressed. `sheet` is the dialog the action opens.
+ */
+export async function viaTargetList(page: Page, sheet: Locator): Promise<void> {
+  const list = page.getByRole('button', { name: 'Escolher na lista' });
+  await expect(list.or(sheet).first()).toBeVisible();
+  if (await list.isVisible()) {
+    await list.click();
+  }
+}
+
+/**
  * Opens the folded line of a group that is spent in the tab shown ("Ação · Usada", "Ação bônus · Usada", "Reação · Usada";
  * `word` is "Indisponível" for a character that cannot act) and returns the line's own region, the rows it holds.
  */

@@ -31,7 +31,7 @@ import type { TargetMode } from './target-mode';
   imports: [MatButtonModule, MatIconModule],
   template: `
     @if (mode().session(); as s) {
-      <section class="box" [class.box--card]="variant() === 'card'" aria-label="Escolha do alvo">
+      <section class="box" [class.box--card]="variant() === 'card'" aria-label="Escolha do alvo" (keydown.escape)="mode().cancel()">
         <div class="head">
           <mat-icon class="head__icon" aria-hidden="true">{{ s.rule.kind === 'darts' ? 'auto_fix_high' : 'my_location' }}</mat-icon>
           <div class="head__text">

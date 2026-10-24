@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { combatRPC, getEncounterRPC, torenSheet, toren, pensantusCasting } from './combat-support';
 import { openSessionPage } from './live-session-support';
-import { boxOf, layoutSize } from './support';
+import { boxOf, layoutSize, viaTargetList } from './support';
 import { movingTable, paintRPC, pickRadio, tapSquare } from './move-support';
 
 // Movement, jumps, cover, "Aliado" and the opportunity attacks on screen (Etapa 9,
@@ -117,6 +117,7 @@ test(
       // The player's target list: the cover with its source, the walled goblin left out.
       await p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
       const sheet = p.getByRole('dialog', { name: 'Atacar com Raio de Fogo' });
+      await viaTargetList(p, sheet);
       const capitao = sheet.locator('label', { hasText: 'Capitão Goblin' });
       await expect(capitao).toContainText('Meia cobertura (do mapa)');
       await expect(sheet.locator('label', { hasText: 'Goblin 2' })).not.toContainText('cobertura');
@@ -146,6 +147,7 @@ test(
         }
         await p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
         const open = p.getByRole('dialog');
+        await viaTargetList(p, open);
         await expect(open.locator('label', { hasText: 'Goblin 2' })).toContainText('Cobertura total (marcada pelo mestre): não pode ser alvo', { timeout: 2_000 });
       }).toPass({ timeout: 30_000 });
       const again = p.getByRole('dialog');
