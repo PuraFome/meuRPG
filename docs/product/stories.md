@@ -295,6 +295,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 - **Given** a joint turn with a hidden member, **when** the player reads the turn, **then** the hidden member is never named.
 
 #### In the app
+- The master's combat is the combat bar (round, whose turn, "Em seguida", what waits, "Próximo turno"), the order, the map with its tabs and the rail "Turno / Conversa" in three columns on a computer, and the tabs "Turno · Ordem · Mapa" with a fixed bar on a phone (see [Design](../design/combat.md#the-masters-combat)).
 - Screens: the master's card has one block per member and "Encerrar a parte da Brisa"; the player reads "Vez de Brisa e Toren", "Vez dos Goblins", "Você encerrou a sua parte" and "O que a Brisa ainda tem".
 - The screen follows the live session without reloading.
 - See [Combat](../architecture/play/combat.md#combat) and [Design](../design/combat.md).
