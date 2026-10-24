@@ -143,7 +143,7 @@ func (s *Service) rollAttack(ctx context.Context, m authz.Membership, req *conne
 		return nil, err
 	}
 	out := &attackOut{v: viewerOf(m)}
-	res, err := s.write(ctx, combatWrite{m: m, key: call.key, hash: idem.Hash(req.Msg), kind: eventAttackRolled, encounterID: call.encounterID}, func(c *combatTx) (any, error) {
+	res, err := s.write(ctx, combatWrite{m: m, key: call.key, hash: idem.Hash(req.Msg), kind: eventAttackRolled, encounterID: call.encounterID, sameHeld: retryOfHeldAttack(req.Msg)}, func(c *combatTx) (any, error) {
 		return newAttackFlow(s, c, m, req.Msg, call, out).run(ctx)
 	})
 	if err != nil {

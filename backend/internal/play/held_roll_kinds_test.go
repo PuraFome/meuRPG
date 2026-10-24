@@ -201,9 +201,6 @@ type heldRig struct {
 	// the answer that wrote it said; nil when it says the same. Today the replay of some kinds is
 	// poorer than the first answer (each one is marked FINDING in its rig below).
 	replayed func(v heldView) heldView
-	// refusesTheRollReplay says the first request made again after its roll is written is refused,
-	// where the other kinds give the written roll back.
-	refusesTheRollReplay bool
 }
 
 // countRows counts a table's rows for a campaign or an encounter.
@@ -301,10 +298,6 @@ func attackRig(t *testing.T, die bool) heldRig {
 	}
 	return heldRig{
 		roller: a.h.roller,
-		// FINDING: the request that was held, made again once it is answered, is refused with invalid_argument
-		// ("idempotency_key was already used for another change"): the attack is written under the answer's
-		// key, and the key of the request stands for the hold's event alone. The other kinds give the roll back.
-		refusesTheRollReplay: true,
 		roll: func(t *testing.T, key string) (heldView, error) {
 			t.Helper()
 			res, err := a.attack(t, a.caio, e, "Pipo", battleaxe, "Goblin", func(r *playv1.RollAttackRequest) { inAppRoll(r); r.IdempotencyKey = key })
