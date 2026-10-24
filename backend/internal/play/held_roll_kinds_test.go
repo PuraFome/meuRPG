@@ -422,8 +422,6 @@ func effectSaveRig(t *testing.T, die bool) heldRig {
 		})
 		return res, err
 	})
-	// FINDING: the replay of a written save keeps the total but not the die's face (inspiration_face).
-	rig.replayed = func(v heldView) heldView { v.modifier, v.bonus = v.modifier-v.bonus, 0; return v }
 	return rig
 }
 
