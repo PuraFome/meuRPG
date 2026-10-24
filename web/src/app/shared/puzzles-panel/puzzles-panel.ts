@@ -61,6 +61,11 @@ export class PuzzlesPanel implements OnInit {
   protected readonly visible = computed(() =>
     this.withArchived() ? this.puzzles() : this.puzzles().filter((p) => !p.archived),
   );
+  /** "2 quebra-cabeças": the ones the list holds, archived ones included. */
+  protected readonly count = computed(() => {
+    const n = this.puzzles().length;
+    return `${n} ${n === 1 ? 'quebra-cabeça' : 'quebra-cabeças'}`;
+  });
   protected readonly archivedCount = computed(
     () => this.puzzles().filter((p) => p.archived).length,
   );

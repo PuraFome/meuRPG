@@ -1,11 +1,11 @@
 import { Component, computed, input } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { RouterLink } from '@angular/router';
 
 import { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { DICE_MODE_OPTIONS, preferenceLabel } from '../../../core/campaigns/dice-labels';
 import type { MemberRowVm } from '../campaign-detail.copy';
+import { PanelAction } from '../panel-action/panel-action';
+import { PanelHead } from '../panel-head/panel-head';
 
 /**
  * The master's "Dados" summary on `/campaigns/:id` (E6-17, RN-18): how the campaign's players roll dice, and, while the
@@ -14,7 +14,7 @@ import type { MemberRowVm } from '../campaign-detail.copy';
  */
 @Component({
   selector: 'app-dice-panel',
-  imports: [MatButtonModule, MatIconModule, RouterLink],
+  imports: [MatIconModule, PanelAction, PanelHead],
   templateUrl: './dice-panel.html',
   styleUrl: './dice-panel.scss',
 })
@@ -32,5 +32,9 @@ export class DicePanel {
     DICE_MODE_OPTIONS.find((o) => o.value === this.savedMode()),
   );
   protected readonly showChoices = computed(() => this.savedMode() === DiceMode.PLAYERS_CHOOSE);
+  protected initial(m: MemberRowVm): string {
+    return m.name.charAt(0).toUpperCase();
+  }
+
   protected readonly players = computed(() => this.members().filter((m) => m.role === 'jogador'));
 }

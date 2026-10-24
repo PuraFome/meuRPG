@@ -1,29 +1,26 @@
-<section class="mr-panel doc" aria-labelledby="document-panel-heading">
-  <h2 class="mr-panel__title" id="document-panel-heading">Documento da campanha</h2>
-
-  @let s = state();
-  @switch (s.status) {
-    @case ('loading') {
-      <p class="mr-muted doc__status" role="status">Carregando o documento...</p>
-    }
-    @case ('error') {
-      <div class="mr-notice mr-notice--danger" role="alert">
-        <mat-icon aria-hidden="true">error</mat-icon>
-        <p>{{ s.message }}</p>
-      </div>
-    }
-    @case ('ready') {
-      <p class="doc__row">
-        <mat-icon aria-hidden="true">description</mat-icon>
-        <span class="mr-list__text">
-          <span class="mr-list__name">{{ title() }}</span>
-          <span class="mr-list__sub">{{ line() }}</span>
-        </span>
-      </p>
-    }
-  }
-
-  <div>
-    <a matButton="outlined" [routerLink]="['/campaigns', campaignId(), 'document']">Abrir documento</a>
-  </div>
-</section>
+@let s = state();
+@if (s.status === 'error') {
+  <section class="mr-panel doc" aria-labelledby="document-panel-heading">
+    <h2 class="mr-panel__title" id="document-panel-heading">Documento da campanha</h2>
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ s.message }}</p>
+    </div>
+    <div class="doc__link">
+      <a [routerLink]="['/campaigns', campaignId(), 'document']">Abrir documento</a>
+    </div>
+  </section>
+} @else {
+  <a class="mr-panel row" [routerLink]="['/campaigns', campaignId(), 'document']">
+    <mat-icon class="row__icon" aria-hidden="true">edit</mat-icon>
+    <span class="row__text">
+      <span class="row__title">Documento da campanha</span>
+      @if (s.status === 'loading') {
+        <span class="row__sub" role="status">Carregando o documento...</span>
+      } @else {
+        <span class="row__sub">{{ line() }}</span>
+      }
+    </span>
+    <mat-icon class="row__chevron" aria-hidden="true">chevron_right</mat-icon>
+  </a>
+}
