@@ -26,7 +26,7 @@ import { boxOf, callRPC, layoutSize, newSignedInContext, pensantus } from './sup
 import { placeTokenRPC } from './maps-support';
 import { setTableRulesRPC } from './table-rules-support';
 import { sq20, thirdPlayer, trapTable } from './trap-support';
-import { openOrderRow } from './combat-layout';
+import { masterLog, openCombatPanel, openOrderRow } from './combat-layout';
 
 // The combat on screen (Etapa 6, slice 6.5a, MR-013, RN-18 to RN-22): the
 // master sets the grid and starts a combat, everybody rolls initiative, the
@@ -427,7 +427,7 @@ test('o goblin do mestre ataca: ele vê a CA, aplica o dano (os PV do jogador mu
     // Applying changes the player's hit points, and the log says so.
     await card.getByRole('button', { name: /Aplicar \d+ de dano/ }).click();
     await expect.poll(async () => (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === 'Pensantus')?.hitPointsCurrent).toBeLessThan(23);
-    await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Capitão Goblin ataca');
+    await expect(await masterLog(m)).toContainText('Capitão Goblin ataca');
 
     // A second attack of the same turn (the master may attack again): the damage is discarded, after a question.
     await card.getByRole('button', { name: 'Digitar o resultado' }).click();
@@ -442,6 +442,7 @@ test('o goblin do mestre ataca: ele vê a CA, aplica o dano (os PV do jogador mu
     expect(hp).toBeLessThan(23);
 
     // Undo takes back the last action only, named in the question; the damage discarded comes back to be decided.
+    await openCombatPanel(m, 'Registro');
     await m.getByRole('button', { name: 'Desfazer última ação' }).first().click();
     await expect(m.getByText(/Desfazer o ataque do Capitão Goblin ao Pensantus/).or(m.getByText(/Desfazer o ataque do Capitão Goblin à Pensantus/))).toBeVisible();
     await expect(m.getByRole('button', { name: 'Voltar' }).last()).toBeFocused();
@@ -471,8 +472,8 @@ test('o mestre ajusta os PV de um NPC em "Dano/Cura", e o jogador não vê um go
       targetId: enc.combatants.find((c) => c.label === 'Pensantus')!.id,
       d20Face: 3,
     });
-    await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Goblin 1');
-    await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Só o mestre vê');
+    await expect(await masterLog(m)).toContainText('Goblin 1');
+    await expect(await masterLog(m)).toContainText('Só o mestre vê');
     await p.getByRole('button', { name: 'Abrir o registro do combate' }).click();
     await expect(p.getByRole('log', { name: 'Registro do combate' })).toBeVisible();
     await expect(p.getByRole('log', { name: 'Registro do combate' })).not.toContainText('Goblin 1');
@@ -490,7 +491,7 @@ test('o mestre ajusta os PV de um NPC em "Dano/Cura", e o jogador não vê um go
     await dialog.getByRole('button', { name: 'Salvar ajuste' }).click();
     await expect(dialog).toHaveCount(0);
     await expect.poll(async () => (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.id === goblin2.id)?.hitPointsCurrent).toBe(4);
-    await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Goblin 2 perdeu 3 PV, por ajuste do mestre, agora com 4 PV');
+    await expect(await masterLog(m)).toContainText('Goblin 2 perdeu 3 PV, por ajuste do mestre, agora com 4 PV');
     // The player sees only the state word of the NPC, never the numbers.
     await expect(p.getByText('4 de 7')).toHaveCount(0);
 
@@ -547,7 +548,7 @@ test('o jogador pode conjurar Escudo: o mestre responde por ele, o acerto vira e
     await queue.getByRole('button', { name: 'Usar pelo jogador' }).click();
     await expect(card.locator('.pill', { hasText: 'Errou: o Escudo Arcano segurou' })).toBeVisible();
     await expect(card.getByRole('button', { name: /Rolar dano|Aplicar/ })).toHaveCount(0);
-    await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('o Escudo Arcano segurou');
+    await expect(await masterLog(m)).toContainText('o Escudo Arcano segurou');
     const pens = (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === 'Pensantus');
     expect(pens?.hitPointsCurrent).toBe(23);
   } finally {
@@ -716,7 +717,7 @@ test('caído: o teste contra a morte (sucesso), e com três falhas só o mestre 
     // The save is done: the one filled button is "Encerrar turno".
     await endTurnOf(p, m, campaignId, 'Pensantus');
     // The master's log has the roll; the other players would read only the outcome.
-    await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Pensantus rola o teste contra a morte: 14 · dado físico, sucesso (1 sucesso, 0 falhas)');
+    await expect(await masterLog(m)).toContainText('Pensantus rola o teste contra a morte: 14 · dado físico, sucesso (1 sucesso, 0 falhas)');
 
     // Round 3: a natural 1 counts two failures; round 4: a 5 is the third.
     enc = await passTurnsTo(m, campaignId, 'Pensantus');
@@ -749,7 +750,7 @@ test('caído: o teste contra a morte (sucesso), e com três falhas só o mestre 
     await row.first().getByRole('button', { name: 'Confirmar a morte' }).click();
     await m.getByRole('alertdialog').getByRole('button', { name: 'Confirmar a morte' }).click();
     await expect(m.getByText('Morto').first()).toBeVisible();
-    await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Pensantus morreu');
+    await expect(await masterLog(m)).toContainText('Pensantus morreu');
     enc = await getEncounterRPC(m, campaignId);
     expect(enc.combatants.find((c) => c.label === 'Pensantus')?.defeated).toBe(true);
   } finally {
@@ -931,8 +932,8 @@ test('o mestre aplica outro valor de dano, e o lembrete da concentração mostra
     await expect(card.getByText('Pensantus está concentrado em Teia. Teste de Constituição, CD 10.')).toBeVisible();
     expect((await vitalsOf(m, campaignId, 'Pensantus')).hitPointsCurrent).toBe(22);
     // The log keeps both numbers for the master, and the reminder.
-    await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('1 de dano (o dado deu');
-    await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Teste de Constituição, CD 10, para manter a concentração');
+    await expect(await masterLog(m)).toContainText('1 de dano (o dado deu');
+    await expect(await masterLog(m)).toContainText('Teste de Constituição, CD 10, para manter a concentração');
   } finally {
     await done();
   }
@@ -1020,7 +1021,7 @@ test('fora da vez: o ataque de oportunidade gasta a reação, só com ataques co
     // The reaction is spent: the line says so, and the action is gone.
     await expect(p.getByText('Sua reação: Usada até o começo do seu próximo turno.')).toBeVisible();
     await expect(p.getByRole('button', { name: /Ataque de oportunidade/ })).toHaveCount(0);
-    await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Pensantus ataca o Goblin 1 com a Adaga (ataque de oportunidade): errou');
+    await expect(await masterLog(m)).toContainText('Pensantus ataca o Goblin 1 com a Adaga (ataque de oportunidade): errou');
   } finally {
     await done();
   }
@@ -1204,8 +1205,8 @@ test('Sono em dois goblins e no Capitão: o mestre vê o total e os PV, o jogado
     await expect(playerLog).not.toContainText('PV');
 
     // The master: the pool, each creature from the lowest hit points up with the total that is left.
-    const masterLog = m.getByRole('log', { name: 'Registro do combate' });
-    await expect(masterLog).toContainText('Pensantus conjura Sono (1º nível)');
+    const log = await masterLog(m);
+    await expect(log).toContainText('Pensantus conjura Sono (1º nível)');
     const card = m.locator('app-pool-card');
     await expect(card).toContainText('5d8 = 20');
     await expect(card.locator('.row', { hasText: 'Goblin 1' })).toContainText('7 PV');

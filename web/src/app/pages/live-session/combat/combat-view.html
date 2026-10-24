@@ -447,8 +447,8 @@
   }
 }
 
-<!-- What the master's side of a running combat is made of (alternative B, "Três colunas"): the order on the left, the map with its tabs in the
-     middle, and the rail on the right with "Turno" (the answers that wait, the card of whoever is on turn, the deaths) and "Conversa".
+<!-- What the master's side of a running combat is made of (alternative B, "Três colunas"): the order on the left, the map in the
+     middle, and the rail on the right with "Turno" (the answers that wait, the card of whoever is on turn, the deaths, then "Mais do combate") and "Conversa".
      From 1024 px the rail is there and the order is in its "Turno" until 1280 px; below it the screen is the tabs "Turno · Ordem · Mapa". -->
 <ng-template #columns>
   <div class="tri" [class.tri--wide]="wideLayout()" [class.tri--folded]="wideLayout() && layout.orderFolded()">
@@ -464,7 +464,10 @@
       [selected]="layout.railTab()"
       (selectedChange)="layout.railTab.set($event)"
     >
-      <div appRailPanel="turn" class="tri__turn"><ng-container *ngTemplateOutlet="turnBlock" /></div>
+      <div appRailPanel="turn" class="tri__turn">
+        <ng-container *ngTemplateOutlet="turnBlock" />
+        <ng-container *ngTemplateOutlet="morePanels; context: { heading: true }" />
+      </div>
       @if (chat(); as chatTemplate) {
         <div appRailPanel="chat" class="tri__chat"><ng-container *ngTemplateOutlet="chatTemplate" /></div>
       }
@@ -479,7 +482,6 @@
   } @else {
     <ng-container *ngTemplateOutlet="mapBlock" />
   }
-  <ng-container *ngTemplateOutlet="mapTabsTpl" />
 </ng-template>
 
 <ng-template #mapBlock>
@@ -524,45 +526,59 @@
   }
 </ng-template>
 
-<!-- One tab set under the map: "Registro", "Efeitos" and whatever the page projects (fog, traps, treasure, puzzles: a tab shows only when it applies). -->
-<ng-template #mapTabsTpl>
+<!-- "Mais do combate": one fold per panel in the rail, under the "Turno" content: "Registro", "Efeitos" and whatever the page projects (fog, traps,
+     treasure, puzzles: a row shows only when it applies). Each row opens in place. -->
+<ng-template #morePanels let-heading="heading">
   @if (encounter(); as e) {
-    <section class="mtabs mr-panel" aria-label="Mais do combate">
-      <app-tab-list label="Painéis do combate" idPrefix="mtab" [compact]="true" [tabs]="layout.mapTabItems()" [selected]="layout.mapTab()" (selectedChange)="layout.mapTab.set($event)" />
-      <div class="mtabs__panel" role="tabpanel" id="mtab-panel-log" aria-labelledby="mtab-tab-log" [hidden]="layout.shownMapTab() !== 'log'">
-        <app-combat-log-panel
-          [log]="log"
-          [encounter]="e"
-          [campaignId]="campaignId()"
-          [state]="state()"
-          [master]="true"
-          [inTab]="true"
-          (conditions)="sheets.actions.conditions($event)"
-        />
-      </div>
-      <div class="mtabs__panel" role="tabpanel" id="mtab-panel-effects" aria-labelledby="mtab-tab-effects" [hidden]="layout.shownMapTab() !== 'effects'">
-        <!-- The effects that last and the clock of the turns (W7-E board 4): the master only. -->
-        <app-effects-panel [campaignId]="campaignId()" [state]="state()" />
-      </div>
-      @if (layout.hasMapTab('fog')) {
-        <div class="mtabs__panel" role="tabpanel" id="mtab-panel-fog" aria-labelledby="mtab-tab-fog" [hidden]="layout.shownMapTab() !== 'fog'">
-          <ng-content select="[appMapTab=fog]" />
-        </div>
+    <section class="more" aria-label="Mais do combate">
+      @if (heading) {
+        <h3 class="more__title"><mat-icon aria-hidden="true">more_horiz</mat-icon>Mais do combate</h3>
       }
-      @if (layout.hasMapTab('traps')) {
-        <div class="mtabs__panel" role="tabpanel" id="mtab-panel-traps" aria-labelledby="mtab-tab-traps" [hidden]="layout.shownMapTab() !== 'traps'">
-          <ng-content select="[appMapTab=traps]" />
-        </div>
-      }
-      @if (layout.hasMapTab('treasure')) {
-        <div class="mtabs__panel" role="tabpanel" id="mtab-panel-treasure" aria-labelledby="mtab-tab-treasure" [hidden]="layout.shownMapTab() !== 'treasure'">
-          <ng-content select="[appMapTab=treasure]" />
-        </div>
-      }
-      @if (layout.hasMapTab('puzzles')) {
-        <div class="mtabs__panel" role="tabpanel" id="mtab-panel-puzzles" aria-labelledby="mtab-tab-puzzles" [hidden]="layout.shownMapTab() !== 'puzzles'">
-          <ng-content select="[appMapTab=puzzles]" />
-        </div>
+      @for (p of layout.panels(); track p.id) {
+        <app-fold
+          class="more__row"
+          appearance="row"
+          [title]="p.label"
+          [icon]="p.icon"
+          [level]="4"
+          [open]="layout.isRowOpen(p.id)"
+          (openChange)="layout.setRowOpen(p.id, $event)"
+        >
+          @if (p.count) {
+            <span foldNote class="more__count">{{ p.count }}</span>
+          }
+          <div class="more__body">
+            @switch (p.id) {
+              @case ('log') {
+                <app-combat-log-panel
+                  [log]="log"
+                  [encounter]="e"
+                  [campaignId]="campaignId()"
+                  [state]="state()"
+                  [master]="true"
+                  [inTab]="true"
+                  (conditions)="sheets.actions.conditions($event)"
+                />
+              }
+              @case ('effects') {
+                <!-- The effects that last and the clock of the turns (W7-E board 4): the master only. -->
+                <app-effects-panel [campaignId]="campaignId()" [state]="state()" />
+              }
+              @case ('fog') {
+                <ng-content select="[appMapTab=fog]" />
+              }
+              @case ('traps') {
+                <ng-content select="[appMapTab=traps]" />
+              }
+              @case ('treasure') {
+                <ng-content select="[appMapTab=treasure]" />
+              }
+              @case ('puzzles') {
+                <ng-content select="[appMapTab=puzzles]" />
+              }
+            }
+          </div>
+        </app-fold>
       }
     </section>
   }
@@ -753,8 +769,8 @@
           <app-cover-panel [targets]="coverTargets()" [everyone]="everyone()" [request]="coverRequest()" [busy]="busy()" (cover)="setCover($event)" />
         }
         <app-fold title="Mais" appearance="row" icon="more_horiz">
-          <span foldNote class="phone__more">{{ layout.mapTabItems().length }} painéis</span>
-          <ng-container *ngTemplateOutlet="mapTabsTpl" />
+          <span foldNote class="phone__more">{{ layout.panels().length }} painéis</span>
+          <ng-container *ngTemplateOutlet="morePanels; context: { heading: false }" />
         </app-fold>
         <app-combat-bar [encounter]="e" [endOnly]="true" [theatre]="theatre()" (end)="endCombat()" />
       </div>

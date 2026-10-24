@@ -101,20 +101,31 @@ describe("CombatView, the master's three columns (alternative B)", () => {
     expect(shown).toHaveBeenLastCalledWith(true);
   });
 
-  it('has one tab set under the map, "Registro" open, a tab shown only when it applies', async () => {
+  const rowButtons = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll<HTMLButtonElement>('.more .mr-fold__button'));
+  const rowName = (b: HTMLButtonElement) => b.querySelector('.mr-fold__title')!.textContent!.trim();
+
+  it('has no tab set under the map: "Mais do combate" is in the rail, under the content of "Turno"', async () => {
     const { el } = await mount(WIDE);
-    expect(tabNames(el, '.mtabs')).toEqual(['Registro', 'Efeitos']);
-    expect(el.querySelector<HTMLElement>('#mtab-panel-log')!.hidden).toBe(false);
-    expect(el.querySelector<HTMLElement>('#mtab-panel-effects')!.hidden).toBe(true);
-    expect(el.querySelector('#mtab-panel-effects app-effects-panel')).not.toBeNull();
+    expect(el.querySelector('.mtabs')).toBeNull();
+    const more = el.querySelector('.tri__rail .more')!;
+    expect(more.getAttribute('aria-label')).toBe('Mais do combate');
+    expect(more.querySelector('.more__title')!.textContent).toContain('Mais do combate');
+    expect(rowButtons(el).map(rowName)).toEqual(['Registro', 'Efeitos']);
+    expect(rowButtons(el).every((b) => b.getAttribute('aria-expanded') === 'false')).toBe(true);
   });
 
-  it('opens the effects from their tab', async () => {
+  it('opens a row in place, and each row by itself', async () => {
     const { fixture, el } = await mount(WIDE);
-    el.querySelectorAll<HTMLButtonElement>('.mtabs [role="tab"]')[1].click();
+    rowButtons(el)[1].click();
     await settle(fixture);
-    expect(el.querySelector<HTMLElement>('#mtab-panel-effects')!.hidden).toBe(false);
-    expect(el.querySelector<HTMLElement>('#mtab-panel-log')!.hidden).toBe(true);
+    expect(rowButtons(el)[1].getAttribute('aria-expanded')).toBe('true');
+    expect(el.querySelector('.more app-effects-panel')).not.toBeNull();
+    expect(rowButtons(el)[0].getAttribute('aria-expanded')).toBe('false');
+    rowButtons(el)[0].click();
+    await settle(fixture);
+    expect(el.querySelector('.more app-combat-log-panel')).not.toBeNull();
+    expect(rowButtons(el)[1].getAttribute('aria-expanded')).toBe('true');
   });
 
   it('folds the order to a strip of tokens, and the map takes the width back', async () => {
@@ -207,11 +218,12 @@ describe("CombatView, the master's phone (C6-01)", () => {
       b.textContent?.includes('Mais'),
     )!;
     expect(more.getAttribute('aria-expanded')).toBe('false');
-    expect(el.querySelector('.mtabs')).toBeNull();
+    expect(el.querySelector('.more')).toBeNull();
     more.click();
     await settle(fixture);
     expect(more.getAttribute('aria-expanded')).toBe('true');
-    expect(el.querySelector('.mtabs')).not.toBeNull();
+    expect(el.querySelector('.more')).not.toBeNull();
+    expect(el.querySelector('.more__title')).toBeNull();
   });
 
   it('opens the order tab when the master answers a question that points at it', async () => {

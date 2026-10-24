@@ -80,7 +80,7 @@ import {
   icaroSheetBody,
   lockAndMilestone,
 } from './table-sheet-support';
-import { openOrderRow } from './combat-layout';
+import { openCombatPanel, openOrderRow } from './combat-layout';
 
 // docs/design/README.md#how-a-screen-is-made: every screen passes axe with no
 // serious or critical violation of WCAG 2.1 A and AA, in the light and the
@@ -1115,6 +1115,11 @@ async function scanActionScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await m.getByRole('button', { name: 'Voltar' }).click();
     await m.getByRole('button', { name: /Aplicar \d+ de dano/ }).click();
     await expect(m.getByText(/Dano de \d+ aplicado\./).first()).toBeVisible();
+    // "Mais do combate": the rows open in place in the rail.
+    await openCombatPanel(m, 'Efeitos');
+    await expectScreenPasses(m, `Mais do combate, Efeitos aberto ${where}`);
+    await openCombatPanel(m, 'Registro');
+    await expectScreenPasses(m, `Mais do combate, Registro aberto ${where}`);
     await m.getByRole('button', { name: 'Desfazer última ação' }).first().click();
     await expect(m.getByText(/Desfazer o ataque do Capitão Goblin/)).toBeVisible();
     await expectScreenPasses(m, `Desfazer a última ação ${where}`);
@@ -2589,10 +2594,8 @@ async function scanCombatDetailsScreens(browser: Browser, colorScheme: 'light' |
     await expectScreenPasses(p, `Sono conjurado, o resultado do jogador ${where}`);
     await p.getByRole('button', { name: 'Voltar à sua vez' }).click();
 
-    if (phone) {
-      // The master's log is folded on a phone.
-      await m.getByRole('button', { name: 'Registro do combate' }).click();
-    }
+    // The master's log is a row of "Mais do combate", folded.
+    await openCombatPanel(m, 'Registro');
     await expect(m.locator('app-pool-card')).toBeVisible({ timeout: 20_000 });
     await expectScreenPasses(m, `O cartão do Sono no registro do mestre ${where}`);
   } finally {
@@ -2664,9 +2667,7 @@ async function scanHiddenAreaScreens(browser: Browser, colorScheme: 'light' | 'd
     await expect(p.getByText('Esperando o mestre').first()).toBeVisible();
     await expectScreenPasses(p, `Esperando o mestre, a vez parada ${where}`);
 
-    if (width < 768) {
-      await m.getByRole('button', { name: 'Registro do combate' }).click().catch(() => undefined);
-    }
+    await openCombatPanel(m, 'Registro');
     const card = m.getByRole('group', { name: hiddenInArea ? /atingiu 1 criatura escondida/ : /nenhuma criatura escondida na área/ });
     await expect(card).toBeVisible({ timeout: 20_000 });
     await expect(m.locator('app-area-overlay')).toBeVisible();

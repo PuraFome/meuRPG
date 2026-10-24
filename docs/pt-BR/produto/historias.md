@@ -295,7 +295,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 - **Dado** um turno conjunto com um membro escondido, **quando** o jogador lê o turno, **então** o membro escondido nunca é nomeado.
 
 #### No app
-- O combate do mestre é a barra do combate (rodada, de quem é a vez, "Em seguida", o que espera, "Próximo turno"), a ordem, o mapa com as suas abas e a coluna "Turno / Conversa", em três colunas no computador, e as abas "Turno · Ordem · Mapa" com uma barra fixa no celular (ver [Design](../../design/combat.md#the-masters-combat)).
+- O combate do mestre é a barra do combate (rodada, de quem é a vez, "Em seguida", o que espera, "Próximo turno"), a ordem, o mapa e a coluna "Turno / Conversa" (com "Mais do combate", uma dobra por painel), em três colunas no computador, e as abas "Turno · Ordem · Mapa" com uma barra fixa no celular (ver [Design](../../design/combat.md#the-masters-combat)).
 - Telas: o cartão do mestre tem um bloco por membro e "Encerrar a parte da Brisa"; o jogador lê "Vez de Brisa e Toren", "Vez dos Goblins", "Você encerrou a sua parte" e "O que a Brisa ainda tem".
 - A tela acompanha a sessão ao vivo sem recarregar.
 - Ver [Combate](../../architecture/play/combat.md#combat) e [Design](../../design/combat.md).

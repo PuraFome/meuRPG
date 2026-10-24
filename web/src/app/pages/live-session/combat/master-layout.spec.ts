@@ -61,30 +61,32 @@ describe('MasterLayout', () => {
     expect(layout.railTabs()[1].badge).toBe('99+');
   });
 
-  it('shows "Registro" and "Efeitos" always, and the projected panels in the board order, only when they apply', () => {
+  it('has the rows "Registro" and "Efeitos" always, and the projected panels in the board order, only when they apply', () => {
     const { layout, projected } = setup();
-    expect(layout.mapTabItems().map((t) => t.label)).toEqual(['Registro', 'Efeitos']);
+    expect(layout.panels().map((p) => p.label)).toEqual(['Registro', 'Efeitos']);
     projected.set([tab('treasure', 1), tab('fog'), tab('traps', 2)]);
-    expect(layout.mapTabItems().map((t) => t.label)).toEqual([
+    expect(layout.panels().map((p) => p.label)).toEqual([
       'Registro',
       'Efeitos',
       'Névoa e luz',
       'Armadilhas',
       'Tesouro',
     ]);
-    expect(layout.mapTabItems().find((t) => t.id === 'traps')?.badge).toBe('2');
-    expect(layout.mapTabItems().find((t) => t.id === 'fog')?.badge).toBeUndefined();
-    expect(layout.hasMapTab('fog')).toBe(true);
-    expect(layout.hasMapTab('puzzles')).toBe(false);
+    expect(layout.panels().find((p) => p.id === 'traps')?.count).toBe(2);
+    expect(layout.panels().find((p) => p.id === 'fog')?.count).toBeUndefined();
+    expect(layout.hasPanel('fog')).toBe(true);
+    expect(layout.hasPanel('puzzles')).toBe(false);
   });
 
-  it('falls back to the first tab when the one chosen no longer applies', () => {
-    const { layout, projected } = setup();
-    projected.set([tab('fog')]);
-    layout.mapTab.set('fog');
-    expect(layout.shownMapTab()).toBe('fog');
-    projected.set([]);
-    expect(layout.shownMapTab()).toBe('log');
+  it('keeps each row open or folded by itself', () => {
+    const { layout } = setup();
+    expect(layout.isRowOpen('effects')).toBe(false);
+    layout.setRowOpen('effects', true);
+    layout.setRowOpen('fog', true);
+    expect(layout.isRowOpen('effects') && layout.isRowOpen('fog')).toBe(true);
+    layout.setRowOpen('effects', false);
+    expect(layout.isRowOpen('effects')).toBe(false);
+    expect(layout.isRowOpen('fog')).toBe(true);
   });
 
   it('has the phone tabs "Turno · Ordem · Mapa", and no "Mapa" without a map', () => {

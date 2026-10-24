@@ -4,7 +4,7 @@ import { combatRPC, getEncounterRPC, torenSheet, toren, pensantusCasting } from 
 import { openSessionPage } from './live-session-support';
 import { boxOf, layoutSize } from './support';
 import { movingTable, paintRPC, pickRadio, tapSquare } from './move-support';
-import { openOrderRow } from './combat-layout';
+import { masterLog, openOrderRow } from './combat-layout';
 
 // Movement, jumps, cover, "Aliado" and the opportunity attacks on screen (Etapa 9,
 // slice 9.15, MR-034, RN-21, questions 68 to 70). The table, the layers and the
@@ -82,7 +82,7 @@ test(
       await expect(p.getByRole('heading', { name: 'Sua vez, Toren' })).toBeVisible();
       await expect.poll(async () => (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === 'Toren')?.col).toBe(9);
       await expect(p.getByText('Você saltou 3,0 m.')).toBeVisible();
-      await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Toren');
+      await expect(await masterLog(m)).toContainText('Toren');
       void table;
     } finally {
       await done();
@@ -210,7 +210,7 @@ test(
       await sheet.getByRole('button', { name: 'Confirmar 1' }).click();
       await expect(sheet.getByText('Sua reação foi usada.')).toBeVisible();
       await sheet.getByRole('button', { name: 'Fechar' }).last().click();
-      await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Pensantus ataca o Goblin 1 com a Adaga (ataque de oportunidade): errou');
+      await expect(await masterLog(m)).toContainText('Pensantus ataca o Goblin 1 com a Adaga (ataque de oportunidade): errou');
       await expect(card).toHaveCount(0);
     } finally {
       await done();
@@ -290,7 +290,7 @@ test(
       await expect(card).toHaveCount(0);
       await expect(p.getByText('Esperando o mestre.')).toHaveCount(0);
       await expect(p.getByRole('button', { name: 'Mover', exact: true })).not.toHaveAttribute('aria-disabled', 'true');
-      await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Goblin 1 ataca o Pensantus com a Cimitarra (ataque de oportunidade): errou');
+      await expect(await masterLog(m)).toContainText('Goblin 1 ataca o Pensantus com a Cimitarra (ataque de oportunidade): errou');
     } finally {
       await done();
     }

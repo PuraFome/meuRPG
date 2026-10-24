@@ -4,6 +4,7 @@ import { adjustVitalsRPC, brisa, brisaSheet, combatRPC, getEncounterRPC, passTur
 import { openSessionPage } from './live-session-support';
 import { setTableRulesRPC } from './table-rules-support';
 import { beginTheatreRPC, secondPlayer, startTheatreRPC, theatreTable } from './theatre-support';
+import { masterLog } from './combat-layout';
 
 // Combat without a map on screen (Etapa 10, slice 10.13b, MR-025, RN-25, RN-24, RN-20, ADR-0017): the start dialog's mode, the
 // master's and the player's screens with no grid, movement by number, the opportunity attack the master offers, the critical
@@ -82,8 +83,8 @@ test(
       expect(toren.movementUsedDft).toBe(200);
       expect(toren.movementLeftDft).toBe(100);
       expect(toren.placed ?? false).toBe(false);
-      await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Toren gastou 6,0 m de movimento');
-      await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('sem mapa (teatro da mente)');
+      await expect(await masterLog(m)).toContainText('Toren gastou 6,0 m de movimento');
+      await expect(await masterLog(m)).toContainText('sem mapa (teatro da mente)');
 
       // The attack: every enemy in sight is a target, with no distance and no "Longe demais".
       await p.getByRole('button', { name: 'Atacar com Espada longa' }).click();
@@ -119,7 +120,7 @@ test(
       await expect(prompt).toBeVisible();
       await expect(prompt).toContainText('O Goblin está saindo do seu alcance. Ataque de oportunidade?');
       await expect(m.getByRole('status').filter({ hasText: 'Esperando a resposta do' })).toBeVisible();
-      await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Goblin saiu do alcance de Toren');
+      await expect(await masterLog(m)).toContainText('Goblin saiu do alcance de Toren');
       // Withdrawn by mistake: the question leaves the phone, and nobody lost a reaction.
       await m.getByRole('button', { name: 'Retirar a oferta' }).click();
       await expect(prompt.getByText('retirou a oferta')).toBeVisible();

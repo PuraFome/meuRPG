@@ -8,8 +8,16 @@ import type { MapTab, MapTabId } from './map-tabs/map-tab';
 /** The most a tab's count shows before it says "99+". */
 const MAX_BADGE = 99;
 
-/** What a tab of the tabs under the map says: its words and icon (the order the board draws them in). */
-const MAP_TABS: Readonly<Record<'log' | 'effects' | MapTabId, { label: string; icon: string }>> = {
+/** One row of "Mais do combate". */
+export interface MorePanel {
+  readonly id: 'log' | 'effects' | MapTabId;
+  readonly label: string;
+  readonly icon: string;
+  readonly count?: number;
+}
+
+/** What a row of "Mais do combate" says: its words and icon (the order the board draws them in). */
+const PANELS: Readonly<Record<'log' | 'effects' | MapTabId, { label: string; icon: string }>> = {
   log: { label: 'Registro', icon: 'history' },
   effects: { label: 'Efeitos', icon: 'hourglass_empty' },
   fog: { label: 'Névoa e luz', icon: 'lightbulb' },
@@ -17,7 +25,7 @@ const MAP_TABS: Readonly<Record<'log' | 'effects' | MapTabId, { label: string; i
   treasure: { label: 'Tesouro', icon: 'star_outline' },
   puzzles: { label: 'Quebra-cabeças', icon: 'extension' },
 };
-const MAP_ORDER = ['log', 'effects', 'fog', 'traps', 'treasure', 'puzzles'] as const;
+const PANEL_ORDER = ['log', 'effects', 'fog', 'traps', 'treasure', 'puzzles'] as const;
 
 /** "1 espera você", "2 esperam você". */
 function waitingWords(n: number): string {
@@ -36,7 +44,7 @@ export interface MasterLayoutDeps {
   readonly unread: Signal<number>;
   /** The page gave the combat the conversation to draw in the rail. */
   readonly hasChat: Signal<boolean>;
-  /** The panels the page projected under the map. */
+  /** The panels the page projected into "Mais do combate". */
   readonly projected: Signal<readonly MapTab[]>;
   readonly combatants: Signal<number>;
   /** The combat, for the words of the phone's line (the round, who comes next). */
@@ -47,11 +55,12 @@ export interface MasterLayoutDeps {
 
 /**
  * The tabs of the master's running combat and which one is open (all in memory, nothing on the device): the rail's "Turno · Conversa",
- * the set under the map and the phone's "Turno · Ordem · Mapa". The order's fold lives here too.
+ * the phone's "Turno · Ordem · Mapa" and the rows of "Mais do combate" that are open. The order's fold lives here too.
  */
 export class MasterLayout {
   readonly railTab = signal('turn');
-  readonly mapTab = signal('log');
+  /** The rows of "Mais do combate" that are open. */
+  private readonly rowsOpen = signal<ReadonlySet<string>>(new Set());
   readonly phoneTab = signal('turn');
   /** The order column is folded to a strip of tokens (C1-02). */
   readonly orderFolded = signal(false);
@@ -87,27 +96,38 @@ export class MasterLayout {
     ];
   });
 
-  /** The ids of the tabs under the map that apply now, in the board's order. */
-  private readonly mapIds = computed<readonly string[]>(() => {
-    const present = new Set(this.deps.projected().map((t) => t.appMapTab()));
-    return MAP_ORDER.filter((id) => id === 'log' || id === 'effects' || present.has(id));
-  });
-
-  readonly mapTabItems = computed<readonly TabItem[]>(() =>
-    this.mapIds().map((id) => {
+  /** The rows of "Mais do combate" that apply now, in the board's order: "Registro" and "Efeitos" always, the projected ones while they exist. */
+  readonly panels = computed<readonly MorePanel[]>(() =>
+    PANEL_ORDER.filter(
+      (id) =>
+        id === 'log' || id === 'effects' || this.deps.projected().some((t) => t.appMapTab() === id),
+    ).map((id) => {
       const count = this.deps
         .projected()
         .find((t) => t.appMapTab() === id)
         ?.mapTabCount();
-      return {
-        id,
-        ...MAP_TABS[id as keyof typeof MAP_TABS],
-        ...(count ? { badge: String(count), tone: 'count' as TabTone } : {}),
-      };
+      return { id, ...PANELS[id], ...(count ? { count } : {}) };
     }),
   );
 
-  /** The open tab under the map, the first when the one chosen no longer applies. */
+  isRowOpen(id: string): boolean {
+    return this.rowsOpen().has(id);
+  }
+
+  setRowOpen(id: string, open: boolean): void {
+    const next = new Set(this.rowsOpen());
+    if (open) {
+      next.add(id);
+    } else {
+      next.delete(id);
+    }
+    this.rowsOpen.set(next);
+  }
+
+  hasPanel(id: MapTabId): boolean {
+    return this.panels().some((p) => p.id === id);
+  }
+
   /** "Rodada 3", for the phone's line under the bar. */
   readonly roundText = computed(() => roundLabel(this.deps.encounter()?.round ?? 0));
   /** Who comes after the one on turn. */
@@ -115,14 +135,6 @@ export class MasterLayout {
     const e = this.deps.encounter();
     return e ? (turnBanner(e).after?.name ?? '') : '';
   });
-
-  readonly shownMapTab = computed(() =>
-    this.mapIds().includes(this.mapTab()) ? this.mapTab() : this.mapIds()[0],
-  );
-
-  hasMapTab(id: MapTabId): boolean {
-    return this.mapIds().includes(id);
-  }
 
   readonly phoneTabs = computed<readonly TabItem[]>(() => {
     const waiting = this.deps.waiting();

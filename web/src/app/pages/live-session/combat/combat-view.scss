@@ -62,6 +62,14 @@
   min-width: 0;
 }
 
+// The map's column keeps its place while the rail scrolls: the page never has to move for the map.
+.tri__main {
+  position: sticky;
+  top: var(--tri-top);
+  max-height: var(--order-max);
+  overflow-y: auto;
+}
+
 .tri__main,
 .tri__turn {
   display: flex;
@@ -90,26 +98,54 @@
   min-height: 100%;
 }
 
-// The tabs under the map: the tab list, then the panel that is open (the others stay mounted, hidden).
-.mtabs {
+// "Mais do combate": under the content of "Turno", one fold per panel (the rail scrolls inside itself, so a row that opens never moves the map).
+.more {
   display: flex;
   flex-direction: column;
-  gap: var(--mr-space-3);
   min-width: 0;
-  padding: 0;
-  border: 0;
+}
+
+.more__title {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: var(--mr-space-2) 0 0;
+  font: 700 22px/28px var(--mr-font-display);
+
+  .mat-icon {
+    color: var(--mr-ink-muted);
+  }
+}
+
+.more__row {
+  border-width: 0 0 1px;
+  border-radius: 0;
   background: none;
 }
 
-.mtabs__panel {
+.more__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-ground);
+  color: var(--mr-ink-muted);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.more__body {
   display: flex;
   flex-direction: column;
   gap: var(--mr-space-4);
   min-width: 0;
-
-  &[hidden] {
-    display: none;
-  }
+  padding: 0 0 var(--mr-space-4);
 }
 
 // Under 1024px: "Turno · Ordem · Mapa", and a fixed bar (above the pinned nav) with what the turn owes and "Próximo turno".
