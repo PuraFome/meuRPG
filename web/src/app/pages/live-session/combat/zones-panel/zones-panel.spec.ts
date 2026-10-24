@@ -1,6 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 
-import { SpellZoneMovement, SpellZoneVisibility } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  SpellZoneMovement,
+  SpellZoneVisibility,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { SpellAreaShape } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { combatant, spellZone } from '../../../../core/combat/combat-testing';
 import { zoneViews } from '../../../../core/combat/zones';
@@ -13,7 +16,10 @@ function mount(zones: ReturnType<typeof spellZone>[], over: { master?: boolean }
   const master = over.master ?? true;
   const views = zoneViews(
     encounter({
-      combatants: [combatant({ id: 'tor', label: 'Tor' }), combatant({ id: 'jabuti', label: 'Jabuti' })],
+      combatants: [
+        combatant({ id: 'tor', label: 'Tor' }),
+        combatant({ id: 'jabuti', label: 'Jabuti' }),
+      ],
       zones,
     }),
     master,
@@ -60,7 +66,9 @@ describe('ZonesPanel', () => {
     const { el } = mount([spellZone({ id: 'a', occupantIds: ['tor', 'jabuti'] })]);
     const card = plain(el.querySelector('li')!.textContent);
     expect(card).toContain('Raio Lunar · Bartolo');
-    expect(card).toContain('Cilindro de 1,5 m de raio · Constituição CD 14 · 2d10 radiante, metade se passar');
+    expect(card).toContain(
+      'Cilindro de 1,5 m de raio · Constituição CD 14 · 2d10 radiante, metade se passar',
+    );
     expect(card).toContain('restam 9 rodadas');
     expect(card).toContain('Concentração de Bartolo');
     expect(card).toContain('Aqui: Tor, Jabuti');
@@ -118,7 +126,9 @@ describe('ZonesPanel', () => {
       spellZone({ id: 'a' }),
       spellZone({ id: 'b', spellNamePt: 'Teia', movement: SpellZoneMovement.FIXED }),
     ]);
-    const moves = [...el.querySelectorAll('button')].filter((b) => plain(b.textContent) === 'Mover');
+    const moves = [...el.querySelectorAll('button')].filter((b) =>
+      plain(b.textContent).endsWith('Mover'),
+    );
     expect(moves.length).toBe(1);
     const seen: string[] = [];
     fixture.componentInstance.move.subscribe((id: string) => seen.push(id));
@@ -126,7 +136,7 @@ describe('ZonesPanel', () => {
     expect(seen).toEqual(['a']);
   });
 
-  it('keeps the buttons of the master out of a player\'s panel', () => {
+  it("keeps the buttons of the master out of a player's panel", () => {
     const { el } = mount([spellZone({ id: 'a' })], { master: false });
     expect(button(el, 'Encerrar')).toBeNull();
     expect(button(el, 'Mover')).toBeNull();
@@ -144,7 +154,10 @@ describe('ZonesPanel', () => {
   });
 
   it('ends the zone only on "Sim, encerrar"', () => {
-    const { fixture, el } = mount([spellZone({ id: 'a' }), spellZone({ id: 'b', spellNamePt: 'Teia' })]);
+    const { fixture, el } = mount([
+      spellZone({ id: 'a' }),
+      spellZone({ id: 'b', spellNamePt: 'Teia' }),
+    ]);
     const ended: string[] = [];
     fixture.componentInstance.end.subscribe((id: string) => ended.push(id));
     click(el.querySelectorAll('li')[1].querySelector('button.zp__end'), fixture);
@@ -191,7 +204,7 @@ describe('ZonesPanel', () => {
     setZones([]);
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(plain(live.textContent)).toContain('Zona encerrada:');
+    expect(plain(live.textContent)).toContain('Zonas encerradas:');
   });
 
   it('keeps the live region when the list is empty, so the first zone is announced', async () => {

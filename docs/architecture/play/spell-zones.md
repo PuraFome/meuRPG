@@ -88,3 +88,10 @@ The zones ride on `Encounter.zones`: a change arrives as the usual `encounter_ch
 `zone-move.ts` holds the move range copy (`ZONE_MOVE_RANGE_FT`, the server's `moveRangeFt`) and `zoneMovePreview`, which draws the open-floor squares with `sphereSquares`; no wall cuts the preview, the server cuts the area on commit.
 `MoveSpellZone` and `EndSpellZone` are in `CombatCastCalls`, one idempotency key per request kept across retries and renewed after success; `zone-errors.ts` words their refusals.
 The log lines for `ZONE_MOVED`, the `zone_enter` and `zone_start` catches and the end reasons are in `combat-log-effects.ts`.
+
+### The map, the panel and the end
+
+- **Map layer.** `shared/combat-map/zone-layer` (`app-zone-layer`) is projected into `app-combat-map` by `app-combat-map-card`, the way the area overlay is, so it follows the map's zoom and crop and sits under the tokens. It draws each `ZoneView.squares` with `cellsPath` and `outlinePath`; `core/combat/zone-pattern.ts` gives each `spell_key` a pattern (the four catalog spells a fixed one, a table spell a hash of its key) and `zoneLegend` the entries the card lists. The layer and its labels are `aria-hidden`; the panel is the accessible version. The move page's map does not draw zones.
+- **Panel.** `pages/live-session/combat/zones-panel` (`app-zones-panel`) lists the zones: the master's column and the player's side column. Its live region (`zoneNotice`) compares the ids of the list with the last one it read. `details_hidden` cards render the name, the area and the caster only.
+- **End.** The panel asks in place and emits `end`; `ZoneFlow` (`zone-flow.ts`, built in `combat-view-parts.ts`) calls `endSpellZone` under the screen's one-call-at-a-time rule (`calls.busy`) and words a refusal with `zoneEndError`. "Mover" emits `move`, which sets `ZoneFlow.moving`; nothing consumes it yet, so the button records the zone and opens nothing.
+

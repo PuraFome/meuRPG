@@ -1,0 +1,113 @@
+:host {
+  display: block;
+}
+
+.zp__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.zp__card {
+  display: flex;
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-3) 0;
+  border-top: 1px solid var(--mr-rule);
+}
+
+.zp__card:first-child {
+  border-top: 0;
+}
+
+.zp__swatch {
+  margin-top: 2px;
+}
+
+.zp__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.zp__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.zp__detail {
+  margin: 2px 0 0;
+  color: var(--mr-ink-muted);
+  font-size: 15px;
+}
+
+.zp__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: var(--mr-space-2) 0 0;
+}
+
+.zp__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-ground);
+  color: var(--mr-ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.zp__chip .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+}
+
+.zp__chip--here {
+  border-color: var(--mr-warning-line);
+  background: var(--mr-warning-surface);
+  color: var(--mr-warning-ink);
+}
+
+.zp__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+  margin-top: var(--mr-space-2);
+}
+
+.zp__btn {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+// The question to end a zone, in place under its card: danger colours with words, never colour alone.
+.zp__confirm {
+  margin-top: var(--mr-space-2);
+  padding: var(--mr-space-3);
+  border: 1px solid var(--mr-danger-ink);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-danger-surface);
+  color: var(--mr-danger-ink);
+}
+
+.zp__confirm p {
+  margin: 0 0 var(--mr-space-2);
+}
+
+.zp__foot {
+  margin: var(--mr-space-2) 0 0;
+  padding-top: var(--mr-space-2);
+  border-top: 1px solid var(--mr-rule);
+  color: var(--mr-ink-muted);
+  font-size: 14px;
+}

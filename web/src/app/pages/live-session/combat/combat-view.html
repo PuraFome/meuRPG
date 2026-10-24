@@ -181,6 +181,14 @@
             </div>
             <div class="active__side">
               <ng-container *ngTemplateOutlet="masterCards" />
+              <app-zones-panel
+                [zones]="zoneFlow.views()"
+                [master]="true"
+                [busy]="busy()"
+                [error]="zoneFlow.error()"
+                (end)="zoneFlow.end($event)"
+                (move)="zoneFlow.moving.set($event)"
+              />
               <ng-container *ngTemplateOutlet="masterOrder" />
             </div>
             <app-combat-log-panel
@@ -483,6 +491,7 @@
             />
             <div class="player__side">
               <ng-content />
+              <app-zones-panel [zones]="zoneFlow.views()" />
               @if (theatre() && own() && !ownDown(); as me) {
                 <app-theatre-reaction [used]="own()!.reactionUsed" />
               }

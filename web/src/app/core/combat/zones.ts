@@ -25,6 +25,8 @@ export interface ZoneViewer {
 export interface ZoneView {
   readonly id: string;
   readonly spellKey: string;
+  /** "Raio Lunar": the spell alone, for the map's legend. */
+  readonly spellName: string;
   /** "Raio Lunar · Bartolo". */
   readonly label: string;
   /** The pieces of the detail line, in the order the board reads them. */
@@ -121,6 +123,7 @@ export function zoneView(zone: SpellZone, viewer: ZoneViewer): ZoneView {
   return {
     id: zone.id,
     spellKey: zone.spellKey,
+    spellName: zone.spellNamePt,
     label: joinDots([zone.spellNamePt, zone.ownerLabel]),
     pieces: parts,
     detail: joinDots(parts),

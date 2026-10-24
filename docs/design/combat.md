@@ -47,6 +47,15 @@ The chosen square has a 3 px frame with a check (refused: dashed, `danger-ink`, 
 The "Mover", "Saltar" and "Ver mapa" page (`move-page`) draws the server's reach, the cost beside the chosen square (always one decimal) and the legend. A move that can provoke shows a `warning` notice and "Desengajar (gasta a ação)"; a move into a known trap asks in place.
 Fog, layers and doors are in [maps.md](maps.md).
 
+### Spell zones
+
+The areas Spirit Guardians, Moonbeam, Cloudkill and Web keep on the map (RN-37) are a layer of `app-combat-map-card` (`app-zone-layer`), drawn from the squares the server sent, under the tokens and over the fog drawing; it takes no pointer and is `aria-hidden`, because the list is its accessible twin.
+Each spell has a line pattern (vertical lines, dots, slanted lines, waves, triangles, horizontal lines) in one of the map's two inks, a 2.5 px outline with a white halo and a pill label "Raio Lunar · Bartolo" over the top edge (under the bottom edge at the top of the map), with a concentration icon. A zone of a hidden caster has a dashed outline and a crossed-eye icon on its label; only the master receives it.
+The legend names each spell that has a zone, with the pattern's swatch ("Nuvem Mortal só você vê" when every zone of the spell is the master's alone).
+
+"Zonas ativas (N)" (`app-zones-panel`) sits in the side column under the answers and the turn card, a `section` named by its heading, one `li` card per zone: the pattern swatch, "Raio Lunar · Bartolo", the area in meters, the save and damage ("Constituição CD 14 · 2d10 radiante, metade se passar", "4d4 cortante, sem teste"), "anda 3 m por turno", the notes, and chips "restam 9 rodadas" (from ten rounds, minutes; no chip with no count), "Concentração de Bartolo", "Aqui: Tor, Jabuti". A zone with hidden details (another caster's zone, for a player) shows the name, the area and the caster only. An empty list draws no card.
+The master's buttons are 44 px: "Mover" (a zone that moves by an action) and "Encerrar zona", which asks in place ("Encerrar a zona?", "Não" holding the focus, "Sim, encerrar") and says a refusal under the question. A polite live region says "Zona criada: …" and "Zona encerrada: …" when the list changes, never on the first read.
+
 ## Gridless combat ("teatro da mente")
 
 What depends on place does not exist without a map: no button is disabled "for lack of a map", and the mode's reason is written once ("Sem mapa, o app não sabe onde ninguém está.").

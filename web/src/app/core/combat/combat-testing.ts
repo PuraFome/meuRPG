@@ -103,7 +103,13 @@ export function reactionWindow(over: Partial<ReactionWindow> & { id: string }): 
 }
 
 /** A spell zone for specs: Moonbeam as its caster's player (or the master) reads it, a 5 ft cylinder moved by an action; `over` changes any field. */
-export function spellZone(over: Partial<SpellZone> & { id: string }): SpellZone {
+export function spellZone(
+  over: Partial<Omit<SpellZone, 'squares' | 'origin'>> & {
+    id: string;
+    squares?: { col: number; row: number }[];
+    origin?: { col: number; row: number };
+  },
+): SpellZone {
   return {
     spellKey: 'spell:moonbeam',
     spellNamePt: 'Raio Lunar',

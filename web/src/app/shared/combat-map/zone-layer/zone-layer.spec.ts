@@ -34,7 +34,10 @@ describe('ZoneLayer', () => {
   });
 
   it('draws the footprint of each zone from its squares, with a pattern and an outline', () => {
-    const el = mount([view({ id: 'a' }), view({ id: 'b', spellKey: 'spell:web', spellNamePt: 'Teia' })]);
+    const el = mount([
+      view({ id: 'a' }),
+      view({ id: 'b', spellKey: 'spell:web', spellNamePt: 'Teia' }),
+    ]);
     const zones = el.querySelectorAll('g.zl__zone');
     expect(zones.length).toBe(2);
     const first = zones[0];
@@ -49,7 +52,9 @@ describe('ZoneLayer', () => {
 
   it('names each zone with its spell and caster', () => {
     const el = mount([view({ id: 'a' })]);
-    expect(el.querySelector('.zl__label')?.textContent).toContain('Raio Lunar · Bartolo');
+    expect((el.querySelector('.zl__label')?.textContent ?? '').replace(/\s+/g, ' ')).toContain(
+      'Raio Lunar · Bartolo',
+    );
   });
 
   it('draws the zone of a hidden caster dashed, with its label marked', () => {
@@ -65,7 +70,7 @@ describe('ZoneLayer', () => {
     ).toBeNull();
   });
 
-  it('puts the label over the zone\'s top edge, centered, in percent of the map', () => {
+  it("puts the label over the zone's top edge, centered, in percent of the map", () => {
     const label = mount([view({ id: 'a' })]).querySelector<HTMLElement>('.zl__label')!;
     expect(label.style.left).toBe('25%'); // (4 + 6) / 2 over 20
     expect(label.style.top).toBe('30%'); // row 3 over 10
