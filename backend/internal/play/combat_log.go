@@ -876,7 +876,7 @@ func (e *logEntry) fillHitRider(c *logViewing, out *playv1.CombatLogEntry) bool 
 	if r := e.ev.Rider; r != nil {
 		// The target's roll is the master's (an NPC's roll never reaches a player, RN-20), or the
 		// target's own player's when a player's character made the save.
-		out.HitRider = riderLogProto(r, c.v.master || c.v.owns(c.byID[e.ev.Target]))
+		out.HitRider = riderLogProto(r, c.v.master || c.v.owns(c.byID[e.ev.Target]), c.v.saveDCFor(c.byID[e.ev.Target]))
 	}
 	return true
 }

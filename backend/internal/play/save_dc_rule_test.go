@@ -440,3 +440,19 @@ func TestSaveDCTheCastersPlayerKeepsTheDCWithTheRuleOff(t *testing.T) {
 		t.Errorf("the caster's player reads the DC %d of her own spell, want %d", got, want)
 	}
 }
+
+// The line of a rider's save (Open Hand, Stunning Strike) names the roll to a target's player, and the DC only
+// when the table shows the DC of a save.
+func TestSaveDCTheLineOfARidersSave(t *testing.T) {
+	t.Parallel()
+	r := &riderEvent{Choice: choiceStun, Result: riderFailed, D20: 4, Total: 6, DC: 17}
+	if got := riderLogProto(r, true, false); !got.GetNumbers() || got.GetD20() != 4 || got.GetDc() != 0 {
+		t.Errorf("the target's player reads %v with the rule off, want the roll and no DC", got)
+	}
+	if got := riderLogProto(r, true, true); got.GetDc() != 17 {
+		t.Errorf("the target's player reads the DC %d with the rule on, want 17", got.GetDc())
+	}
+	if got := riderLogProto(r, false, false); got.GetNumbers() || got.GetDc() != 0 {
+		t.Errorf("another player reads %v, want no numbers", got)
+	}
+}

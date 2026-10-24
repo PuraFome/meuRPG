@@ -390,10 +390,11 @@ func (s *Service) rollRiderSave(ctx context.Context, c *combatTx, m authz.Member
 	return combat.SaveSucceeded(d20.Total, int(dc)), nil
 }
 
-// riderLogProto is the line of an answered rider: the target's roll and the DC only for the
-// master and, when the target is a player's character, its player (RN-20: the monk's player
-// reads how the save ended, never an NPC's roll).
-func riderLogProto(r *riderEvent, numbers bool) *playv1.CombatLogHitRider {
+// riderLogProto is the line of an answered rider: the target's roll for the master and, when
+// the target is a player's character, its player (RN-20: the monk's player reads how the save
+// ended, never an NPC's roll); the DC for the master, and for that player when the table shows
+// the DC of a save (showDC).
+func riderLogProto(r *riderEvent, numbers, showDC bool) *playv1.CombatLogHitRider {
 	out := &playv1.CombatLogHitRider{}
 	switch r.Choice {
 	case choiceProne:
@@ -419,7 +420,10 @@ func riderLogProto(r *riderEvent, numbers bool) *playv1.CombatLogHitRider {
 	}
 	out.PushedFt, out.PushNoMap = pushedFt(r.Pushed), pushedNoMap(r.Pushed)
 	if numbers && r.D20 > 0 {
-		out.Numbers, out.D20, out.SaveTotal, out.Dc = true, r.D20, r.Total, r.DC
+		out.Numbers, out.D20, out.SaveTotal = true, r.D20, r.Total
+		if showDC { // the DC is the master's, and the target's player's when the table shows it
+			out.Dc = r.DC
+		}
 	}
 	return out
 }
