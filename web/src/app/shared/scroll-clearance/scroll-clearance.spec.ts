@@ -49,6 +49,18 @@ describe('keepClear', () => {
     document.documentElement.style.scrollPaddingTop = '';
   });
 
+  it('keeps the room of a bar that stays when another bar goes away', async () => {
+    const stays = TestBed.createComponent(Host);
+    stays.detectChanges();
+    const goes = TestBed.createComponent(Host);
+    goes.detectChanges();
+    await goes.whenStable();
+    goes.destroy();
+    expect(document.documentElement.style.scrollPaddingBottom).toBe('76px');
+    stays.destroy();
+    expect(document.documentElement.style.scrollPaddingBottom).toBe('');
+  });
+
   it('sets the page’s scroll padding to the bar, its offset and a gap while it sticks, and clears it after', async () => {
     const fixture = TestBed.createComponent(Host);
     fixture.detectChanges();

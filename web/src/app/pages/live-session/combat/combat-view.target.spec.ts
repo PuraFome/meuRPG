@@ -141,7 +141,7 @@ describe('CombatView: choosing the target on the map, on a phone', () => {
       [...m.el.querySelectorAll('.cm__pick')].map((b) => b.getAttribute('aria-label')),
     ).toEqual([
       'Escolher Goblin 1 como alvo',
-      'Escolher Goblin 2 como alvo',
+      'Escolher Goblin 2 como alvo. Longe: desvantagem',
       'Goblin 3: fora de alcance',
     ]);
     expect(m.el.querySelector('.cm__far')?.textContent).toBe('Longe: desvantagem');

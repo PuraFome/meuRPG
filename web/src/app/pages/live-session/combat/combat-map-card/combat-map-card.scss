@@ -168,6 +168,12 @@
   outline: 1px solid var(--mr-line);
 }
 
+// Choosing a target on a cropped map: the window has a gutter of its own, so the ring of a creature on the map's edge is whole.
+.card__crop--pick {
+  --cm-gutter: 0px;
+  padding: 8px;
+}
+
 // The legend's samples of "Área da última magia" and "Ponto de origem" (the same as the picker's).
 .sw-area {
   border-color: var(--mr-map-accent);

@@ -89,6 +89,24 @@ describe('CombatMap: choosing a target (C7-04)', () => {
     expect(el.querySelector('.cm--pick')).not.toBeNull();
   });
 
+  it('shortens two catch chips to "Longe" and never puts them in one zone', () => {
+    const { fixture, el } = map({
+      pick: [
+        mark('g1', 'Goblin 1', { note: 'Longe: desvantagem' }),
+        mark('g4', 'Goblin 4', { note: 'Longe: desvantagem' }),
+      ],
+    });
+    fixture.componentRef.setInput('combatants', [
+      combatant({ id: 'g1', label: 'Goblin 1', col: 8, row: 7 }),
+      combatant({ id: 'g4', label: 'Goblin 4', col: 9, row: 7 }),
+    ]);
+    fixture.detectChanges();
+    const chips = [...el.querySelectorAll('.cm__far')];
+    expect(chips.map((c) => c.textContent)).toEqual(['Longe', 'Longe']);
+    expect(chips.filter((c) => c.className.includes('cm__far--above'))).toHaveLength(1);
+    expect(el.querySelector('.cm__pick')?.getAttribute('aria-label')).toContain('desvantagem');
+  });
+
   it('shows why a creature cannot be chosen, as a chip and in a polite status', () => {
     const { el } = map({
       pick: [mark('g3', 'Goblin 3', { reason: 'cobertura total' })],

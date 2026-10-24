@@ -155,7 +155,7 @@
         [style.--span]="span(c)"
       >
         @if (c.id === currentId() && showTurn()) {
-          <span class="cm__turn" [class]="'cm__turn cm__turn--' + turnSide(c)">Vez</span>
+          <span class="cm__turn" [class]="'cm__turn cm__turn--' + turnSide(c) + layer.turnLean(c)">Vez</span>
         }
         <app-combatant-token
           [initial]="initial(c)"
@@ -197,7 +197,7 @@
               </span>
             }
             @if (m.note) {
-              <span [class]="layer.farSide(c)" aria-hidden="true">{{ m.note }}</span>
+              <span [class]="layer.farSide(c)" aria-hidden="true">{{ layer.far(m) }}</span>
             }
           </button>
         }

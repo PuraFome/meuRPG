@@ -324,6 +324,18 @@
   bottom: auto;
 }
 
+// At a side edge the word starts at the token's edge (or ends at it), so the map never cuts it.
+.cm__turn--lean-left:not(.cm__turn--right):not(.cm__turn--left) {
+  left: 0;
+  transform: none;
+}
+
+.cm__turn--lean-right:not(.cm__turn--right):not(.cm__turn--left) {
+  right: 0;
+  left: auto;
+  transform: none;
+}
+
 .cm__turn--right {
   top: 50%;
   bottom: auto;
@@ -455,7 +467,13 @@
   transform: none;
 }
 
-// The chip that says why a creature cannot be chosen, beside its token.
+// The chip that says why a creature cannot be chosen, beside its token; in a narrow map the bar's hint says it instead.
+@container (max-width: 599px) {
+  .cm__whyat {
+    display: none;
+  }
+}
+
 .cm__whyat {
   position: absolute;
   z-index: 6;

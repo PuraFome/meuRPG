@@ -22,10 +22,10 @@
   line-height: 19px;
 }
 
+// The line wraps to a second line in a narrow phone (320px) instead of being cut.
 .row__line {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 
 .row__bar {

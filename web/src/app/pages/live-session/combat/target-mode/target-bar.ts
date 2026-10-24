@@ -217,6 +217,11 @@ export class TargetBar {
     const m = this.mode();
     const words = m.words();
     const single = m.session()?.rule.kind === 'single';
+    // Why a tapped creature cannot be the target: in the bar's own line, since a chip over a narrow map would cover a token.
+    const why = this.variant() === 'bar' ? m.note()?.text : undefined;
+    if (why) {
+      return why;
+    }
     if (this.variant() === 'card' && single && m.picks().length === 0 && words) {
       return `${m.session()?.name} · ${words.hint.charAt(0).toLowerCase()}${words.hint.slice(1)}`;
     }

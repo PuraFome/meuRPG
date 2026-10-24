@@ -1,4 +1,5 @@
 import { Component, computed, input } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
 
 import type { Combatant } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import type {
@@ -14,8 +15,8 @@ let nextId = 0;
  * pill with its name written out (the concentration is a pill of its own beside the name, in the order lists). They are
  * labels the master marked (RN-22); the app applies no effect. A condition that
  * comes from someone (a monk's Stunning Strike) says by whom and until when. The
- * states the server sends (a rage, a mark, a dodge) come first, as labels
- * with a heavier line: what the state does is its tooltip and the description
+ * states the server sends (a rage, a mark, a dodge) come first,
+ * as plain text with an icon: what the state does is its tooltip and the description
  * a screen reader reads. In the strip of chips (`compact`) there
  * is room for one: the first and "+2" for the rest, so a chip keeps its height.
  * A list with a name for screen readers; nothing is drawn for a combatant with
@@ -23,13 +24,14 @@ let nextId = 0;
  */
 @Component({
   selector: 'app-combatant-tags',
+  imports: [MatIconModule],
   template: `
     @if (shown().length) {
       <ul class="tags" [attr.aria-label]="'Condições de ' + label()">
         @for (t of shown(); track t.key) {
           @if (t.state; as chip) {
             <li class="tag tag--state" [attr.title]="chip.description" [attr.aria-describedby]="uid + chip.id">
-              <span class="tag__text">{{ chip.text }}</span>
+              <mat-icon aria-hidden="true">bolt</mat-icon><span class="tag__text">{{ chip.text }}</span>
               <span class="sr" [id]="uid + chip.id">{{ chip.description }}</span>
             </li>
           } @else {
@@ -83,10 +85,22 @@ let nextId = 0;
       font-weight: 400;
     }
 
-    // A state the server sends (a rage, a dodge): a label with a heavier line, never a button; its text is the tooltip and the screen reader's description.
+    // A state the server sends (a rage, a dodge): plain text with its icon, no border and never a button; its text is the tooltip and the screen reader's description.
     .tag--state {
-      position: relative;
-      border-width: 2px;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      color: var(--mr-ink);
+
+      .mat-icon {
+        flex: none;
+        width: 14px;
+        height: 14px;
+        font-size: 14px;
+      }
     }
 
     .sr {

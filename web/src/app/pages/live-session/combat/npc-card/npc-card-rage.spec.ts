@@ -47,7 +47,7 @@ describe("NpcCard: the NPC's states and rage", () => {
     const { fixture, el } = setup(raging);
     const ended: string[] = [];
     fixture.componentInstance.endRage.subscribe((id) => ended.push(id));
-    expect(el.querySelector('.card__states li.tag--state')?.firstChild?.textContent?.trim()).toBe(
+    expect(el.querySelector('.card__states li.tag--state .tag__text')?.textContent?.trim()).toBe(
       'Em fúria',
     );
     expect(el.querySelector('.card__rage')?.textContent).toContain('Atacou um hostil: sim');

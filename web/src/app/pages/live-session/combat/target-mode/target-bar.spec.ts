@@ -32,6 +32,13 @@ function mount(variant: 'bar' | 'card', darts = false) {
 }
 
 describe('TargetBar on a phone', () => {
+  it('says why a tapped creature cannot be the target in its hint line', async () => {
+    const { fixture, el, mode } = mount('bar');
+    mode.note.set({ id: 'g2', text: 'Goblin 2: fora de alcance' });
+    fixture.detectChanges();
+    expect(el.querySelector('.head__hint')?.textContent).toContain('Goblin 2: fora de alcance');
+  });
+
   it('is a region that asks, offers the list, and has an equal pair with Confirmar off', async () => {
     const { fixture, el, button } = mount('bar');
     await settle(fixture);
