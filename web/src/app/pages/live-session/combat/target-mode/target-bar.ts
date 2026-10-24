@@ -14,7 +14,7 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import { keepClear } from '../../../../shared/scroll-clearance/scroll-clearance';
+import { clearBelowBar, keepClear } from '../../../../shared/scroll-clearance/scroll-clearance';
 import type { TargetMode } from './target-mode';
 
 /**
@@ -194,7 +194,10 @@ import type { TargetMode } from './target-mode';
       cursor: default;
     }
   `,
-  host: { '[class.bar]': "variant() === 'bar'" },
+  host: {
+    '[class.bar]': "variant() === 'bar'",
+    '(document:focusin)': 'keepFocusClear($event)',
+  },
 })
 export class TargetBar {
   readonly mode = input.required<TargetMode>();
@@ -227,6 +230,13 @@ export class TargetBar {
     }
     return words?.hint ?? '';
   });
+
+  /** Keyboard focus on a row under the open bar moves the page up to it (the bar's measured top, plus a gap). */
+  protected keepFocusClear(event: FocusEvent): void {
+    if (this.variant() === 'bar' && this.mode().session() && event.target instanceof Element) {
+      clearBelowBar(this.host.nativeElement, event.target);
+    }
+  }
 
   constructor() {
     // The bar covers the foot of the page: what is focused or scrolled into view stops above it.

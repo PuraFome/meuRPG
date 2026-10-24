@@ -197,7 +197,7 @@
               </span>
             }
             @if (m.note) {
-              <span [class]="layer.farSide(c)" aria-hidden="true">{{ layer.far(m) }}</span>
+              <span [class]="layer.farSide(c)" aria-hidden="true">{{ layer.far(m) }}<span class="cm__far-rest">{{ layer.farRest(m) }}</span></span>
             }
           </button>
         }

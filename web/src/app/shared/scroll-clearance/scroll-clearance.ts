@@ -45,3 +45,19 @@ export function keepClear(bar: () => HTMLElement | undefined, side: 'top' | 'bot
     });
   });
 }
+
+/**
+ * Moves the page just far enough that a focused element ends above a bar stuck to the foot of the screen (the browser's own focus
+ * scroll can leave it under the bar when the page cannot scroll further or the padding was set late): the bar's top is measured at
+ * the moment of the focus, so it is its real height and offset, with the gap of `keepClear` above it.
+ */
+export function clearBelowBar(bar: HTMLElement, focused: Element | null): void {
+  if (!focused || bar.contains(focused) || getComputedStyle(bar).position !== 'sticky') {
+    return;
+  }
+  const hidden =
+    focused.getBoundingClientRect().bottom - (bar.getBoundingClientRect().top - CLEARANCE_GAP);
+  if (hidden > 0) {
+    window.scrollBy({ top: hidden, behavior: 'auto' });
+  }
+}

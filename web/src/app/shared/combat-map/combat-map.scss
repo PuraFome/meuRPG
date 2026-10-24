@@ -18,7 +18,7 @@
 
 // Choosing a target: a gutter around the map, and the map does not clip, so the ring of a creature on the edge is whole.
 .cm--pick {
-  padding: var(--cm-gutter, 8px);
+  padding: var(--cm-gutter, 12px);
   box-sizing: border-box;
 
   .cm__surface {
@@ -470,6 +470,11 @@
 // The chip that says why a creature cannot be chosen, beside its token; in a narrow map the bar's hint says it instead.
 @container (max-width: 599px) {
   .cm__whyat {
+    display: none;
+  }
+
+  // The catch chip is "Longe" alone on a narrow map; the button's name has the whole.
+  .cm__far-rest {
     display: none;
   }
 }

@@ -22,6 +22,10 @@ export function pickWindow(
   if (tokens.length === 0) {
     return null;
   }
+  // A creature on the map's edge keeps the whole map: the gutter around the full map holds its ring, which a crop cannot give.
+  if (tokens.some((t) => t.col <= 0 || t.row <= 0 || t.col >= columns - 1 || t.row >= rows - 1)) {
+    return null;
+  }
   const c0 = Math.min(...tokens.map((t) => t.col)) - MARGIN;
   const c1 = Math.max(...tokens.map((t) => t.col)) + MARGIN;
   const r0 = Math.min(...tokens.map((t) => t.row)) - MARGIN;

@@ -1,7 +1,9 @@
 import { ChangeDetectionStrategy, Component, ElementRef, viewChild } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
-import { keepClear } from './scroll-clearance';
+import { vi } from 'vitest';
+
+import { clearBelowBar, keepClear } from './scroll-clearance';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -24,6 +26,27 @@ class Plain {
     keepClear(() => this.bar()?.nativeElement, 'top');
   }
 }
+
+describe('clearBelowBar', () => {
+  it('scrolls the page by what a focused element has under the bar, plus the gap', () => {
+    const bar = document.createElement('div');
+    bar.style.position = 'sticky';
+    bar.getBoundingClientRect = () => ({ top: 623 }) as DOMRect;
+    const row = document.createElement('button');
+    row.getBoundingClientRect = () => ({ bottom: 629 }) as DOMRect;
+    document.body.append(bar, row);
+    const by = vi.spyOn(window, 'scrollBy').mockImplementation(() => undefined);
+    clearBelowBar(bar, row);
+    expect(by).toHaveBeenCalledWith({ top: 22, behavior: 'auto' });
+    by.mockClear();
+    row.getBoundingClientRect = () => ({ bottom: 500 }) as DOMRect;
+    clearBelowBar(bar, row);
+    expect(by).not.toHaveBeenCalled();
+    by.mockRestore();
+    bar.remove();
+    row.remove();
+  });
+});
 
 describe('keepClear', () => {
   const realResize = globalThis.ResizeObserver;

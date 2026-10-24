@@ -25,6 +25,20 @@ describe('pickWindow', () => {
     expect(w.row + w.rows).toBeLessThanOrEqual(16);
   });
 
+  it('shows the whole map, with its gutter, when a creature stands on the map edge', () => {
+    expect(
+      pickWindow(
+        [
+          { col: 0, row: 7 },
+          { col: 12, row: 7 },
+        ],
+        40,
+        30,
+      ),
+    ).toBeNull();
+    expect(pickWindow([{ col: 10, row: 29 }], 40, 30)).toBeNull();
+  });
+
   it('shows the whole map when the creatures are spread over it', () => {
     expect(
       pickWindow(

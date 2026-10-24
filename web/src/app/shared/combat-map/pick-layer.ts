@@ -106,7 +106,12 @@ export class PickLayer {
 
   /** The chip's words: whole when it is the only one, "Longe" when several share the map (the button's name has the whole). */
   far(m: PickMark): string {
-    return this.noted() > 1 ? m.note.split(':')[0] : m.note;
+    return m.note.split(':')[0];
+  }
+
+  /** The rest of a lone chip (": desvantagem"); a narrow map hides it by its width, and several chips never have it. */
+  farRest(m: PickMark): string {
+    return this.noted() > 1 ? '' : m.note.slice(this.far(m).length);
   }
 
   /** The "Longe" chip's place: below its token, above when something is there or at the foot, leaning away from a side edge. */
