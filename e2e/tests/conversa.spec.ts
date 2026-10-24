@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { TOREN_ACCOUNT, chooseReaders, feedOf, lineOf, messageBoxOf, onlyMaster, openConversaTable, say } from './conversa-support';
+import { TOREN_ACCOUNT, chooseReaders, feedOf, lineOf, onlyMaster, openConversaTable, say } from './conversa-support';
 import { pickRadio } from './move-support';
 
 // The scene's conversation (MR-051, RN-36): who reads a line. Each test makes its own campaign with
@@ -125,37 +125,6 @@ test(
       await say(torenPage, inCharacter);
       await expect(lineOf(pensantus, inCharacter)).toContainText('Toren');
       await expect(lineOf(torenPage, inCharacter)).toContainText('Toren · você');
-    } finally {
-      await table.close();
-    }
-  },
-);
-
-test(
-  'no celular, uma linha do mestre mostra o aviso de mensagem nova no topo, à vista, para quem está na cena',
-  { tag: ['@MR-051', '@RN-36'] },
-  async ({ browser }) => {
-    test.setTimeout(120_000);
-    const table = await openConversaTable(browser, `Conversa aviso ${Date.now()}`, { width: 390 });
-    const { master, pensantus } = table;
-    try {
-      const notice = pensantus.getByRole('button', { name: /^Conversa: \d+ mensagens? novas? Abrir$/ });
-      // Without news there is no notice, and the master's own line is not news for the master.
-      await expect(notice).toHaveCount(0);
-      await master.getByRole('button', { name: /^Conversa$/ }).click();
-      const narration = `A tocha se apaga sozinha ${Date.now()}`;
-      await expect(messageBoxOf(master)).toBeVisible();
-      await say(master, narration);
-      await expect(lineOf(master, narration)).toBeVisible();
-
-      // Pensantus stays on the scene, at the top of the page: the notice is in the first screen, no scroll.
-      await expect(notice).toBeVisible();
-      await expect(notice).toBeInViewport();
-      await expect(notice).toContainText('Conversa: 1 mensagem nova');
-
-      await notice.click();
-      await expect(lineOf(pensantus, narration)).toBeVisible();
-      await expect(notice).toHaveCount(0);
     } finally {
       await table.close();
     }

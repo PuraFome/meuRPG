@@ -66,7 +66,6 @@ export class LiveSession {
   protected readonly slot = new ConversationSlot({
     live: computed(() => this.state.phase() === 'live' && this.state.session() !== null),
     phone: mediaQuery(PHONE_QUERY),
-    unread: this.conversation.unread,
     pageVisible: pageVisible(this.services.document, this.services.destroyRef),
     isMaster: this.state.isMaster,
     campaignId: this.state.campaignId,

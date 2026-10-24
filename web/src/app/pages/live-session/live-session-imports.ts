@@ -1,7 +1,6 @@
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { SessionTabs } from './conversation/session-tabs';
-import { UnreadNotice } from './conversation/unread-notice';
 import { ClueNotice } from './clue-notice/clue-notice';
 import { FreeRollLog } from './free-dice/free-roll-log';
 import { FogMasterPanel } from './fog-tools/fog-master-panel';
@@ -52,7 +51,6 @@ export const LIVE_SESSION_IMPORTS = [
   ClueNotice,
   FreeRollLog,
   SessionTabs,
-  UnreadNotice,
   FogMasterPanel,
   FogPlayerTools,
   FamiliarBand,

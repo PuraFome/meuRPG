@@ -95,11 +95,6 @@
       <div class="split">
       <div class="split__main" [attr.inert]="slot.chatOpen() ? '' : null">
 
-      <!-- New lines while the phone's chat is closed: one quiet row on top, because the tabs close the page, out of sight. -->
-      @if (slot.news(); as news) {
-        <app-unread-notice class="split__news" [unread]="news" (open)="slot.choose('chat')" />
-      }
-
       @if (state.isMaster()) {
         <!-- A Revivify cast outside a combat waits for the master to say whether the creature died in the last minute. -->
         <app-revivify-ask [campaignId]="state.campaignId()" [reload]="state.revivifyTick()" />

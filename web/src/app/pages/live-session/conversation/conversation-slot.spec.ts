@@ -8,7 +8,6 @@ describe('ConversationSlot', () => {
     const phone = signal(over.phone ?? false);
     const pageVisible = signal(true);
     const stage = signal<readonly string[]>(['n1']);
-    const unread = signal(0);
     const slot = new ConversationSlot({
       live,
       phone,
@@ -18,9 +17,8 @@ describe('ConversationSlot', () => {
       ownCharacterId: signal(over.ownId ?? 'pc1'),
       userId: signal('u-p'),
       stageCharacterIds: stage,
-      unread,
     });
-    return { slot, live, phone, pageVisible, stage, unread };
+    return { slot, live, phone, pageVisible, stage };
   }
 
   it('is on screen on the desktop while the session is live and the page is visible', () => {
@@ -74,34 +72,5 @@ describe('ConversationSlot', () => {
     slot.choose('chat');
     phone.set(false);
     expect(slot.chatOpen()).toBe(false);
-  });
-
-  describe('the news notice at the top of the page', () => {
-    it('counts the unread lines on a phone while the chat is closed', () => {
-      const { slot, unread } = setup({ phone: true });
-      expect(slot.news()).toBe(0);
-      unread.set(3);
-      expect(slot.news()).toBe(3);
-    });
-
-    it('is 0 while the chat is open, and back when it closes with news', () => {
-      const { slot, unread } = setup({ phone: true });
-      unread.set(2);
-      slot.choose('chat');
-      expect(slot.news()).toBe(0);
-      slot.choose('scene');
-      unread.set(1);
-      expect(slot.news()).toBe(1);
-    });
-
-    it('is 0 on a computer, where the column is on screen, and while the session is not live', () => {
-      const desktop = setup();
-      desktop.unread.set(4);
-      expect(desktop.slot.news()).toBe(0);
-      const { slot, unread, live } = setup({ phone: true });
-      unread.set(4);
-      live.set(false);
-      expect(slot.news()).toBe(0);
-    });
   });
 });
