@@ -233,6 +233,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 #### No app
 - O aviso "A sessão 4 de Mirathel começou." fica sob a barra do app com "Entrar na sessão", para quem joga na campanha, fora das páginas da campanha e da sessão. Fechá-lo vale só para a aba. O app verifica as sessões abertas a cada 30 segundos enquanto a aba está visível. O aviso na tela basta: não há notificação push do navegador (RN-06).
 - Outras entradas: o link "Ao vivo" na barra, a etiqueta "Sessão ao vivo" em "Minhas campanhas" e o painel "Sessão" da campanha com "Entrar na sessão" e "Copiar link da sessão".
+- Na página da sessão, uma barra de uma linha no alto reúne a volta para a campanha, "Sessão 3", "Ao vivo desde 20:12" e "Dados" para todos. O mestre também tem "Iniciar combate" (fora de um combate) e o menu "Sessão" com "Copiar link da sessão" e "Encerrar sessão", que pergunta no lugar ("Encerrar a sessão 3? Ela não reabre depois.", "Cancelar" primeiro). No celular, a navegação "Cena · Ficha · Conversa" fica fixa no pé da tela.
 - Ver [Arquitetura](../../architecture/play/live-session.md).
 
 #### Relacionadas

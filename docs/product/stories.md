@@ -233,6 +233,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 #### In the app
 - The notice "A sessão 4 de Mirathel começou." sits under the app bar with "Entrar na sessão", for people who play in the campaign, outside the campaign and session pages. Closing it lasts only for the tab. The app checks for open sessions every 30 seconds while the tab is visible. The on-screen notice is enough: there is no browser push notification (RN-06).
 - Other entry points: the "Ao vivo" link in the bar, the "Sessão ao vivo" tag in "Minhas campanhas", and the campaign's "Sessão" panel with "Entrar na sessão" and "Copiar link da sessão".
+- On the session page, a bar of one row at the top holds the way back to the campaign, "Sessão 3", "Ao vivo desde 20:12" and "Dados" for everyone. The master also has "Iniciar combate" (outside a combat) and the "Sessão" menu with "Copiar link da sessão" and "Encerrar sessão", which asks in place ("Encerrar a sessão 3? Ela não reabre depois.", "Cancelar" first). On a phone the nav "Cena · Ficha · Conversa" is pinned to the bottom of the screen.
 - See [Architecture](../architecture/play/live-session.md).
 
 #### Related

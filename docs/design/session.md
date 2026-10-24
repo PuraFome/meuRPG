@@ -9,6 +9,21 @@ A 1 to 2 px `accent` frame means "this is on the players' screens now" or "this 
 It always comes with a sentence and an icon beside it.
 Other panels use a `line` border. A "burgundy border" is never used for anything else, including in-place questions.
 
+## The session bar and the phone nav
+
+- **Session bar** (`pages/live-session/session-header`, `app-session-header`): one row of 56 px at the top of every live screen, for the master and the players alike.
+  It holds, left to right: the back link to the campaign (the campaign's name beside the arrow from 768 px, the arrow alone on a phone; its name is "Voltar para a campanha <nome>"), the title "Sessão 3" (the page's `h1`), the "Ao vivo" pill with "desde 20:12" ("desde 30/09 às 20:05" when it started on another day; "desde" goes on a phone), and at the right "Dados" (the free dice roller, below).
+  The master also has "Iniciar combate" while no combat is on, and the "Sessão" menu.
+  The master's "Iniciar combate" is an outlined button from 768 px and the menu's first item on a phone, where the bar has room for the icons only: "Dados" and "Sessão" (three dots) lose their words for the master, and under 360 px "Dados" is an icon for everyone and the live status leaves the bar.
+  "Iniciar combate" opens the dialog of the same name (a full-screen dialog on a phone) with the session's current map; it waits while the map is read, and a map that could not be read puts a warning notice with "Tentar de novo" under the bar and starts nothing.
+  The dialog's lead says what the old "Combate" strip said: "Escolha quem luta e o app pede a iniciativa de todos." (the theatre of the mind explains itself in the dialog).
+- **"Sessão" menu** (a Material menu, `aria-haspopup="menu"`): "Copiar link da sessão" (RN-07), which turns the button into "Link copiado" for two seconds and, if the clipboard refuses, shows the link in a selected read-only field under the bar; and "Encerrar sessão".
+- **Ending the session** asks in place under the bar, in a `role="group"` marked `data-confirm` (clicks are ignored for the first 500 ms): "Encerrar a sessão 3? Ela não reabre depois.", "Cancelar" (focused) and "Confirmar encerramento" in the danger ink. Cancelling returns focus to the "Sessão" button; a failure says "Não foi possível encerrar a sessão." under the bar.
+- **Reconnecting:** the pill and "desde" give way to the neutral notice under the bar, "Reconectando… Última atualização às 21:14. Não dá para rolar sem conexão.", and "Dados" is off (still focusable, `aria-describedby` points at the notice).
+- **Pinned phone nav** (`app-session-tabs`): under 768 px, "Cena | Ficha | Conversa" is fixed to the bottom of every live screen (64 px plus the safe-area inset), outside the page, so it stays usable while the chat covers it.
+  The page keeps `--mr-session-nav` of room under its content, the full-screen chat ends above the nav, and the player's sticky turn bar sits right above it (`bottom: var(--mr-session-nav)`); at 320 x 568 both bars leave the turn usable.
+  "Cena" is the page, "Ficha" a link, "Conversa" the chat; the current one is `aria-current`; the count on "Conversa" is in words in the name.
+
 ## Images shown to players
 
 - **"Imagem para os jogadores"** (`pages/live-session/shown-image-panel`): empty it says "Nenhuma imagem à mostra." with an outlined "Mostrar imagem"; showing, it has a 1.5 px `accent` frame, the thumbnail, the tag "Mostrando agora" and "Parar de mostrar" / "Trocar imagem".
@@ -34,10 +49,10 @@ Other panels use a `line` border. A "burgundy border" is never used for anything
 `pages/live-session/conversation` draws the table's chat (RN-36). `app-conversation` is a lazy part of the session page (an `@defer` block), so its code is not in the first download.
 It draws what `ConversationState` holds; the server decides who may read a line, so the screen never filters or counts a line it was not sent, and the typing hint carries no text.
 
-- **Placement:** from 1600 px a column of 380 to 420 px beside the stage and map, with the header "Conversa" and "<n> na mesa", sticky while the board scrolls; below 1600 px it sits under the board, so every screen of the session keeps its own widths at 1280 px. On a phone the section tabs close the page, under the board, so the turn's actions stay right under the title.
+- **Placement:** from 1600 px a column of 380 to 420 px beside the stage and map, with the header "Conversa" and "<n> na mesa", sticky while the board scrolls; below 1600 px it sits under the board, so every screen of the session keeps its own widths at 1280 px. On a phone the pinned nav (above) opens it.
   On a phone (under 768 px) `app-session-tabs` is a three-part nav "Cena | Ficha | Conversa": "Cena" is the page, "Ficha" links to the player's own character sheet (the master's goes to the campaign page, where the party is), and "Conversa" opens the full-screen view over the page (the page behind is `inert`).
   The unread count is a 20 px pill in `--mr-accent` on "Conversa", capped at "99+"; the button's name says it in words ("Conversa, 3 mensagens novas"). The full-screen view has a back arrow "Voltar à sessão" and the scene's name under the title ("Você é o mestre" for the master). The count is of lines that arrived while the conversation was not on screen (the phone's other tabs, or the browser tab hidden) and clears when it is shown.
-  The tabs are the last thing in the column, so while the count is above 0 and the chat is closed a phone also draws one `mr-notice--neutral` row at the very top of the column, above the board: the message icon, "Conversa: 3 mensagens novas" ("1 mensagem nova") and "Abrir", all one 44 px button that opens the chat.
+  While the count is above 0 and the chat is closed a phone also draws one `mr-notice--neutral` row at the very top of the column, above the board: the message icon, "Conversa: 3 mensagens novas" ("1 mensagem nova") and "Abrir", all one 44 px button that opens the chat.
   The row is in the flow (never fixed or sticky, so it covers no icon) and is not drawn at 0, so the turn's actions stay right under the title in the normal case; with news they sit one row lower.
   It is not a live region: the open panel's log already announces each line once.
   The row goes when the count clears, and the tab keeps its pill.
@@ -69,9 +84,9 @@ It draws what `ConversationState` holds; the server decides who may read a line,
 
 Any member of the table rolls any dice with the server's dice, outside every game rule (MR-052; [architecture](../architecture/play/free-dice-roller.md)).
 
-- **"Dados" button** (`app-session-header`): at the right of the title, for the master and the players, on a phone and on a desktop; it exists only on the live session, never on the "no session" screen.
+- **"Dados" button** (`app-session-header`): in the session bar, for the master and the players, on a phone and on a desktop; it exists only on the live session, never on the "no session" screen.
   It is the outlined button with the `casino` icon.
-  While a roll is on its way it reads "Rolando…", and while the stream reconnects it is off (`mr-button--off`, still focusable) and the status line says "Reconectando… Não dá para rolar sem conexão." (the button points at that line with `aria-describedby`).
+  While a roll is on its way it reads "Rolando…", and while the stream reconnects it is off (`mr-button--off`, still focusable) and the notice under the bar says "Reconectando… Não dá para rolar sem conexão." (the button points at that line with `aria-describedby`).
 - **Sheet and dialog** (`pages/live-session/free-dice`, opened by `openSheet`): a bottom sheet on a phone, a 440 px dialog from a tablet up, titled "Rolar dados".
   The form is "Atalhos (preenchem o formulário)" (1d20, 1d6, 2d6, 1d100, which keep the modifier), the die chips d4 to d100, "Quantidade (1 a 20)" and "Modificador (−20 a +20)" as typeable steppers ("Digite o número ou use os botões."), "Como rolar o d20" (Normal, Vantagem, Desvantagem) only while one d20 is chosen and otherwise the sentence "Vantagem e desvantagem valem para um d20 só.", and for the master "Quem vê" (Para a mesa, Só eu) with its sentence and a "Só eu" badge in the title bar.
   The footer holds the one filled button, "Rolar 2d6 + 3" ("para a mesa" or ", só eu" for the master, "com vantagem" in the formula, "Rolar no app" with the note "Esta é a rolagem do app." at a table of physical dice), and the notices: a refusal says "Não deu para rolar." with the wait ("Tente de novo em 3 segundos."), no connection says why.

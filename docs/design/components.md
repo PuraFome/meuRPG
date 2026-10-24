@@ -29,7 +29,16 @@ Defined in `web/src/styles/_ui.scss`.
 | `<app-footer>` (`shell/app-footer`) | The strip with the d20, the year and the legal links, after every page |
 | `<app-user-menu>` (`shell/user-menu`) | The account menu in the app bar ("Minha conta" until a name is set) |
 | `<app-live-notice>` (`shell/live-notice`) | "A sessão 4 de Mirathel começou." for people who play in the campaign, under the app bar, outside that campaign's pages. A notice on `surface` with a 1.5 px `accent` border (a burgundy frame means "session"), `role="status"`, an outlined "Entrar na sessão" and a 44 px "Fechar aviso"; closing holds for the tab. One notice per open session, oldest on top; a new one enters below, so nothing moves under a finger |
+| `<app-session-header>` (`pages/live-session/session-header`) | The session bar: one 56 px row with the back link, "Sessão 3", "Ao vivo desde 20:12" and "Dados"; the master's "Iniciar combate" and "Sessão" menu. See [session.md](session.md) |
 | `<app-live-pill>` (`shared/live-pill`) | "Ao vivo": an 8 px `accent` dot and the word in a bordered pill; it does not blink. In the app bar it links to the newest open session (hidden on session pages); in "Minhas campanhas" it becomes the tag "Sessão ao vivo" |
+
+## Tabs, rail and folds
+
+| Component | Use |
+| --- | --- |
+| `<app-tab-list>` (`shared/tab-list`) | The ARIA tabs pattern as an underlined row: one tab stop (the selected tab), Left and Right (wrapping), Home and End move and select, 48 px tabs, an optional icon and a count pill. The count is also in the tab's name in words ("Conversa, 3 mensagens novas"); the pill is `aria-hidden`. Tabs and panels are wired by `tabId(prefix, id)` and `tabPanelId(prefix, id)`; the panels belong to the caller and stay mounted, `hidden` when inactive. Route tabs are a `nav` with `aria-current="page"`, and a radio choice is `app-segmented`; this is for tabs that swap panels on the same page |
+| `<app-session-rail>` and `[appRailPanel]` (`shared/session-rail`) | The right column of a live screen: an `aside` (`complementary`) named by its user, a tab list with counts in words (none for a single tab) and the panels, each an element marked `appRailPanel="<tab id>"` that is mounted always and `hidden` while another tab is shown, so a draft in a composer and the place in a feed survive a change of tab. From 1024 px it is sticky under the bars (`top: var(--mr-rail-top, 120px)`: the app bar and the session bar), as tall as the screen, and the panels scroll inside it; below that it is a plain block and the screen decides where it goes |
+| `<app-fold>` and `.mr-panel--fold` (`shared/fold`, `styles/_ui.scss`) | The disclosure: a bordered panel whose header is one 48 px button (`aria-expanded`, `aria-controls`, the words left, a chevron right) with an optional note beside the words (`foldNote`, "Só você vê"); the heading level is `aria-level` (3 by default) and `region` makes the panel a named landmark. The open state is the component's own, in memory (`[(open)]` lets the screen open it). With `foldable` off the header is a plain title and the body always shows. Used by "Ações da cena" and "Ganchos e anotações" in the open scene and by the master's "Registro do combate" on a phone |
 
 ## Sheets, dialogs and in-place questions
 
