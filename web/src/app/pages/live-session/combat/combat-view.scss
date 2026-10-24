@@ -13,13 +13,13 @@
 }
 
 // The initiative: the list, and on the right what is missing and where
-// everyone starts (E6-04). One column below 1024px.
+// everyone starts (E6-04). One column below 1280px: the list's five columns need more room than 1024px leaves beside the side.
 .setup {
   display: flex;
   flex-direction: column;
   gap: var(--mr-space-5);
 
-  @media (min-width: 1024px) {
+  @media (min-width: 1280px) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 400px;
     align-items: start;

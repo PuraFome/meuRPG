@@ -753,7 +753,7 @@
           <app-cover-panel [targets]="coverTargets()" [everyone]="everyone()" [request]="coverRequest()" [busy]="busy()" (cover)="setCover($event)" />
         }
         <app-fold title="Mais" appearance="row" icon="more_horiz">
-          <span foldNote class="phone__more">Efeitos · Névoa e luz · Armadilhas · Tesouro · Registro</span>
+          <span foldNote class="phone__more">{{ layout.mapTabItems().length }} painéis</span>
           <ng-container *ngTemplateOutlet="mapTabsTpl" />
         </app-fold>
         <app-combat-bar [encounter]="e" [endOnly]="true" [theatre]="theatre()" (end)="endCombat()" />
