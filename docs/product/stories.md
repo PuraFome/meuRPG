@@ -265,6 +265,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 
 #### In the app
 - In a combat the player's screen is the map first, with the movement under it ("Restam 9,0 m · 6 quadrados" and "Mover"), then the turn card with their own hit points, armor class and slots, then the actions in tabs; the other creatures' hit points are words, never numbers (RN-20).
+- The target of an attack, a spell or "Agarrar"/"Empurrar" is tapped on that map: the page brings it into view with the accent border, the creatures the server offers have a ring, the ones out of reach or behind total cover are dimmed and say why when tapped ("Goblin 3: cobertura total"), and a bar above the nav (a card in the rail from 1024 px) reads "Escolha o alvo · Raio de Fogo" with "Escolher na lista", "Cancelar" and "Confirmar". Magic Missile and Scorching Ray take one tap for each dart or ray ("2 de 3 dardos", "Desfazer"). "Escolher na lista" opens the sheet's own list, the way for the keyboard and the screen reader.
 - See [Architecture](../architecture/play/live-session.md) and [Combat](../architecture/play/combat.md#combat).
 
 #### Related
@@ -382,6 +383,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 #### In the app
 - The server calculates the economy, the options and each disabled option's reason; the app only draws them. See [Combat](../architecture/play/combat.md#combat), [Rules and combat](../architecture/rules-combat.md#spell-details), [Attacks and damage](../architecture/play/attacks-and-damage.md), [Casting](../architecture/play/casting.md), [Reactions](../architecture/play/reactions.md) and [Design](../design/combat.md).
 - On a phone the attack and cast sheets are bottom sheets; on desktop, dialogs. From 1024 px the turn is a compact strip with "Encerrar turno" on the right.
+- "Atacar" and "Conjurar" on a combat with a map ask for the target on the map first (the same targets, reach, cover and disadvantage the sheet's list has: "Longe: desvantagem" is said on the token, not dimmed); "Confirmar" opens the sheet at the roll with the target named ("Adaga em Goblin 1"), and "Escolher na lista" opens it at its list of targets. A spell on an area, on the caster or with no target keeps its own sheet; so do the master's sheets and an opportunity attack.
 
 #### Related
 - RN-02: the master can correct hit points and spell slots by hand (see [Business rules](rules.md)).
