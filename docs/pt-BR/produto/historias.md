@@ -647,6 +647,8 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
   Com dados físicos, o jogador os digita uma vez e vale a regra de dados da campanha.
 - **Dado** a regra do acerto crítico ("dados dobrados" ou "máximo mais uma rolagem"), **então** ela vale para todo acerto crítico: arma, magia, criatura e NPC, com mapa ou no teatro da mente.
   Com dados físicos, o passo do dano diz o que rolar ("role os dados duas vezes" ou "o máximo mais uma rolagem"), e o total mostrado antes de confirmar é o que o servidor guarda.
+- **Dado** a regra "Os jogadores veem a CD dos testes de resistência" (desligada por padrão), **quando** está desligada, **então** o jogador cuja criatura faz um teste de resistência (uma zona, um efeito no início ou no fim de um turno, uma magia conjurada por um NPC ou por outro personagem, uma armadilha) lê a rolagem e se passou, nunca a CD; só o mestre a lê, e o jogador do conjurador a CD da própria magia.
+  **Quando** o mestre a liga, **então** esse jogador lê a CD dos testes que as criaturas dele fazem, na pergunta, na resposta, no cartão do efeito e no registro, a partir do próximo ("CD 14"); outro jogador, que não faz o teste, continua sem lê-la, e um conjurador ou uma armadilha escondidos continuam escondidos.
 - **Dado** que os testes contra a morte são escondidos, **então** os outros jogadores leem só "Caído", "Estável" ou "Morto", sem marcas nem contagens, e o registro diz "Esta mesa só deixa o dono e o mestre verem os testes contra a morte".
   O dono e o mestre veem as marcas, com os rótulos "Só você e o mestre" e "Dono e mestre".
 - **Dado** o modo de XP, **quando** o mestre o muda, **então** ele muda na hora se nenhum XP foi dado; senão o app pede confirmação com o número de prêmios e de XP, e nada é convertido.
@@ -690,7 +692,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 - **"Importar pacote"** (escolher um arquivo `.json`; a prévia com contagens por tipo e o motivo de cada recusa; "Importar N entradas", desligado enquanto uma entrada é recusada) e **"Exportar"**.
 - **"Opções para os jogadores"** (`/campaigns/:id/content/options`): um grupo por tipo com um contador ("Raças: 9 de 10 ligadas"), busca, "Ligar todas" e "Desligar todas", o interruptor de cada opção com quantas fichas a usam e a nota de um pai desligado, tudo salvo de uma vez.
   Os editores têm um interruptor "Disponível para os jogadores".
-- **"Regras da mesa"** (`/campaigns/:id/rules`, a partir do painel "Regras da mesa" da campanha; o mestre edita, o jogador lê): o estilo, os pontos de vida, os métodos de habilidade (ao menos um), o acerto crítico, os testes contra a morte, os lembretes, o modo de XP, "Talentos" ("Não usados" por padrão, "Permitidos") e os links para a grade dos mapas e para o conteúdo da mesa.
+- **"Regras da mesa"** (`/campaigns/:id/rules`, a partir do painel "Regras da mesa" da campanha; o mestre edita, o jogador lê): o estilo, os pontos de vida, os métodos de habilidade (ao menos um), o acerto crítico, os testes contra a morte, "Os jogadores veem a CD dos testes de resistência" (desligada por padrão), os lembretes, o modo de XP, "Talentos" ("Não usados" por padrão, "Permitidos") e os links para a grade dos mapas e para o conteúdo da mesa.
   O modo de dados é editado só aqui.
   Veja [Design](../../design/maps.md#rules).
 - **O editor de personagem e a subida de nível** mostram as classes, subclasses, raças, sub-raças e antecedentes da mesa entre os do SRD, com o rótulo "Da mesa".
