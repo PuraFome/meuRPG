@@ -376,6 +376,9 @@ func (f *attackFlow) checkAttack() error {
 	if f.attack.Save {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("this attack asks for a saving throw, not an attack roll: use CastSpell"))
 	}
+	if f.attack.Spell && f.sheet.Traits.ArmorUntrained { // no spells in armor without proficiency
+		return errArmorNotProficient()
+	}
 	if f.call.opportunity() && !f.attack.Melee {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("an opportunity attack is a melee attack"))
 	}

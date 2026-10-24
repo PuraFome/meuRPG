@@ -18,6 +18,10 @@ describe('the refusals of the creatures and Wild Shape, by reason (MR-037)', () 
       EncounterBlockedReason.WILD_SHAPE_NO_SPELLS,
       'Na forma de fera não dá para conjurar. Volte à forma normal e tente de novo.',
     ],
+    [
+      EncounterBlockedReason.ARMOR_NOT_PROFICIENT,
+      'Com armadura ou escudo sem proficiência não dá para conjurar.',
+    ],
     [EncounterBlockedReason.ALREADY_IN_WILD_SHAPE, 'Você já está na forma de uma fera.'],
     [
       EncounterBlockedReason.TOO_MANY_COMBATANTS,

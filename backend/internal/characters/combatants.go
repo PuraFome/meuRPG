@@ -162,6 +162,7 @@ func combatCharacter(content *rules.Content, id, kind, name string, playerUserID
 			c.Size = beastSize(content, *beast)
 		}
 		c.CastsInBeastForm = content.CastsInBeastForm(d)
+		c.ArmorUntrained = armorTrainingOf(d, kind, beast).Any()
 		jumps := combat.JumpLimits(d)
 		c.JumpLongDFt, c.JumpHighDFt, c.JumpLongBonusDFt = jumps.LongRunning, jumps.HighRunning, jumps.LongRunningBonus
 		if !c.Player {
