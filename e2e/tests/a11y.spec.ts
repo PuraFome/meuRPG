@@ -67,6 +67,7 @@ import { treasureRoute } from './treasure-support';
 import { classBody, createClassRPC, createSubclassRPC, halfCasterBody } from './classes-support';
 import { setSwitchesRPC } from './content-options-support';
 import { effectRow, effectsTable, openPanel, setExhaustionRPC } from './effects-support';
+import { enterZoneRPC, zoneCard, zoneLayer, zoneOf, zoneTable, zonesPanel } from './zones-support';
 import {
   changeGuardianSkillsRPC,
   createGuardianRPC,
@@ -8146,4 +8147,85 @@ test('a conversa da cena passa no axe e nas conferências de layout no tema clar
 test('a conversa da cena passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-051', '@RN-36'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanConversationScreens(browser, 'dark', 390);
+});
+
+/**
+ * The spell zones (RN-37): the combat screen with a zone on the map and "Zonas ativas" for the master and for a player
+ * (a zone of another caster with its details hidden), the question that ends a zone, the move picker and the saving throw
+ * a zone asks of the player's character. Each scan waits for the state it judges: the label on the map, the heading's count
+ * and the dialog, so axe never reads the screen before the zone arrived.
+ */
+async function scanZoneScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `(${colorScheme}, ${width}px)`;
+  const t = await zoneTable(browser, `Acessibilidade zonas ${Date.now()}`, width, colorScheme);
+  const { m, p, campaignId } = t;
+  try {
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+
+    const masterTitle = zonesPanel(m).getByRole('heading', { level: 2 });
+    await expect(masterTitle).toHaveText('Zonas ativas (3)');
+    await expect(zoneLayer(m)).toContainText('Teia · Pensantus');
+    await expect(zoneCard(m, 'Raio Lunar · Sombra')).toContainText('Só você vê');
+    await expectScreenPasses(m, `Zonas no mapa e a lista, o mestre ${where}`);
+
+    // The player: Teia is the last cast, so the list is whole once it shows; the details of another caster's zone are not there.
+    await expect(zonesPanel(p).getByRole('heading', { level: 2 })).toHaveText('Zonas ativas (2)');
+    await expect(zoneCard(p, 'Teia · Pensantus')).toBeVisible();
+    await expect(zoneCard(p, 'Raio Lunar · Druida')).not.toContainText('Constituição');
+    await expectScreenPasses(p, `Zonas no mapa e a lista, o jogador com detalhes ocultos ${where}`);
+
+    // The end: the question in place, under the zone's card.
+    const web = zoneCard(m, 'Teia · Pensantus');
+    await web.getByRole('button', { name: 'Encerrar zona' }).click();
+    const ask = web.getByRole('group', { name: 'Encerrar a zona?' });
+    await expect(ask).toBeVisible();
+    await expectScreenPasses(m, `Encerrar a zona, a pergunta no lugar ${where}`);
+    await ask.getByRole('button', { name: 'Não' }).click();
+    await expect(ask).toHaveCount(0);
+
+    // The move sheet: the map picker with a square picked and its preview.
+    await zoneCard(m, 'Raio Lunar · Druida').getByRole('button', { name: 'Mover', exact: true }).click();
+    const sheet = m.getByRole('dialog', { name: 'Mover o Raio Lunar' });
+    await expect(sheet).toBeVisible();
+    const map = sheet.getByRole('group', { name: /Mapa de batalha/ });
+    await expect(map).toBeVisible();
+    await expectScreenPasses(m, `Mover a zona, o mapa antes de escolher ${where}`);
+    await map.focus();
+    await map.press('ArrowRight');
+    await map.press('ArrowRight');
+    await expect(sheet.getByRole('button', { name: 'Mover a zona' })).not.toHaveAttribute('aria-disabled', 'true');
+    await expectScreenPasses(m, `Mover a zona, o quadrado escolhido ${where}`);
+    await sheet.getByRole('button', { name: 'Cancelar' }).click();
+    await expect(sheet).toHaveCount(0);
+
+    // The player's saving throw, for stepping into the zone: no DC.
+    await enterZoneRPC(t, await zoneOf(m, campaignId, 'spell:moonbeam', 'Druida'));
+    const save = p.getByRole('dialog', { name: 'Raio Lunar de Druida' });
+    await expect(save).toBeVisible();
+    await expect(save).toContainText('Você entrou na zona.');
+    await expectScreenPasses(p, `O teste de resistência de uma zona, o jogador ${where}`);
+  } finally {
+    await t.done();
+  }
+}
+
+test('as zonas de magia passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@RN-37'] }, async ({ browser }) => {
+  test.setTimeout(400_000);
+  await scanZoneScreens(browser, 'light', 1280);
+});
+
+test('as zonas de magia passam no axe e nas conferências de layout no tema escuro, no desktop', { tag: ['@a11y', '@RN-37'] }, async ({ browser }) => {
+  test.setTimeout(400_000);
+  await scanZoneScreens(browser, 'dark', 1280);
+});
+
+test('as zonas de magia passam no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@RN-37'] }, async ({ browser }) => {
+  test.setTimeout(400_000);
+  await scanZoneScreens(browser, 'light', 390);
+});
+
+test('as zonas de magia passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@RN-37'] }, async ({ browser }) => {
+  test.setTimeout(400_000);
+  await scanZoneScreens(browser, 'dark', 390);
 });
