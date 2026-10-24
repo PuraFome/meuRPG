@@ -11,6 +11,7 @@ import { luckyText } from './lucky';
 import { LogContext, LogLine } from './combat-log-types';
 import { ofSubject, subject } from './combat-log-words';
 import { upFirst } from '../format/text';
+import { abilityName } from '../effects/ability-choice';
 
 /** Who an effect line is about, after the preposition ("em"/"a") or alone: "em Brisa e no Goblin 2", "Brisa e o Goblin 2". */
 function effectTargets(fx: CombatLogEffect, ctx: LogContext, prep: '' | 'em' | 'a' = ''): string {
@@ -44,7 +45,8 @@ function effectSaveNumbers(fx: CombatLogEffect, ctx: LogContext): string {
 }
 
 function effectSaveWords(fx: CombatLogEffect): string {
-  return fx.abilityNamePt ? ` de ${fx.abilityNamePt}` : '';
+  const name = abilityName(fx.ability, fx.abilityNamePt);
+  return name ? ` de ${name}` : '';
 }
 
 /** "entrou no Raio Lunar" or "começou o turno na Teia": how a creature met a zone (`reason` zone_enter, zone_start), or `''`. */

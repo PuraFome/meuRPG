@@ -14,6 +14,7 @@ import {
   concentrationMode as modeOfSave,
   concentrationModeLine as modeLineOfSave,
 } from '../../../../core/combat/reactions';
+import { abilityName } from '../../../../core/effects/ability-choice';
 import type { EffectSaveAnswer } from '../../../../core/effects/effects-client';
 import { zoneReasonText, zoneSaveTitle } from '../../../../core/effects/zone-save';
 
@@ -49,7 +50,8 @@ export function effectSavePairHint(w: ReactionWindow): string {
 }
 
 export function effectSaveAbility(w: ReactionWindow): string {
-  return effectSavePrompt(w)?.abilityNamePt ?? '';
+  const p = effectSavePrompt(w);
+  return p ? abilityName(p.ability, p.abilityNamePt) : '';
 }
 
 /** "Teste de resistência de Sabedoria do Goblin 1 · Riso Histérico · CD 13". */
@@ -57,7 +59,7 @@ export function effectSaveTitle(w: ReactionWindow, zoneCaster = ''): string {
   const p = effectSavePrompt(w);
   const whose = w.reactorIsPlayer ? `de ${w.reactorLabel}` : ofThe([w.reactorLabel]);
   const zone = !!p?.zoneId;
-  const test = `Teste de resistência de ${p?.abilityNamePt ?? ''} ${whose}`;
+  const test = `Teste de resistência de ${effectSaveAbility(w)} ${whose}`;
   const parts = [
     ...(zone ? [zoneSaveTitle(p, zoneCaster), test] : [test, p?.sourceNamePt ?? '']),
     p?.dc !== undefined ? `CD${zone ? '\u00a0' : ' '}${p.dc}` : '',
@@ -79,7 +81,9 @@ export function effectSaveRule(w: ReactionWindow): string {
   if (!p) {
     return '';
   }
-  const bonus = p.bonusKnown ? `${p.abilityNamePt}: ${signed(p.modifier)}` : 'Bônus desconhecido';
+  const bonus = p.bonusKnown
+    ? `${effectSaveAbility(w)}: ${signed(p.modifier)}`
+    : 'Bônus desconhecido';
   return [bonus, p.mode].filter((x) => x !== '').join(' · ');
 }
 

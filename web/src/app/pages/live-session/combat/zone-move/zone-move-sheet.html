@@ -36,7 +36,7 @@
   }
 
   <div foot class="foot">
-    <button mat-flat-button type="button" class="btn" [class.mr-button--off]="!ready() || busy()" [disabled]="busy()" disabledInteractive (click)="move()">
+    <button mat-flat-button type="button" class="btn" [class.mr-button--off]="!ready() || busy()" [disabled]="!ready() || busy()" disabledInteractive (click)="move()">
       Mover a zona
     </button>
     <button mat-stroked-button type="button" class="btn" [disabled]="busy()" (click)="close()">Cancelar</button>

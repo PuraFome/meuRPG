@@ -6,6 +6,7 @@ import {
   SpellZoneVisibility,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { joinDots, upFirst } from '../format/text';
+import { abilityName } from '../effects/ability-choice';
 import { metersText } from '../units';
 import { shapeText } from './area-text';
 import type { Square } from './combat-grid';
@@ -83,7 +84,7 @@ function saveText(zone: SpellZone): string {
   if (zone.saveAbility === '') {
     return '';
   }
-  const name = zone.saveAbilityNamePt || zone.saveAbility;
+  const name = abilityName(zone.saveAbility, zone.saveAbilityNamePt);
   return zone.saveDc === undefined ? name : `${name} CD ${zone.saveDc}`;
 }
 

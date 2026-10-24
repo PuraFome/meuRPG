@@ -8,6 +8,7 @@ import {
   EffectRollKind,
 } from '../../../gen/meurpg/play/v1/lasting_effects_pb';
 import { upFirst } from '../format/text';
+import { abilityName } from './ability-choice';
 import { zoneSheetWords } from './zone-save';
 
 /**
@@ -203,9 +204,10 @@ export interface EffectSaveView {
 }
 
 /** "Teste de resistência de Sabedoria." is the first sentence of `text_pt`; the rest is what a pass does. */
-function afterAbility(text: string, ability: string): string {
-  const lead = `Teste de resistência de ${ability}.`;
-  return text.startsWith(lead) ? text.slice(lead.length).trim() : '';
+function afterAbility(text: string): string {
+  // The ability may be named or empty in the server's sentence ("de ."): either way the lead is its first sentence.
+  const lead = /^Teste de resistência de [^.]*\.\s*/.exec(text);
+  return lead ? text.slice(lead[0].length).trim() : '';
 }
 
 /** The sheet of the saving throw an effect asks (RN-22), from the window's prompt. */
@@ -218,11 +220,12 @@ export function effectSaveView(
   const start = prompt.phase === EffectPhase.START;
   const mode =
     prompt.mode === 'advantage' || prompt.mode === 'disadvantage' ? prompt.mode : 'normal';
-  const after = afterAbility(prompt.textPt, prompt.abilityNamePt);
+  const after = afterAbility(prompt.textPt);
+  const ability = abilityName(prompt.ability, prompt.abilityNamePt);
   const base: EffectSaveView = {
     title: start ? 'Começo do seu turno' : 'Fim do seu turno',
     subtitle: prompt.sourceNamePt || `Rodada ${round}`,
-    ability: prompt.abilityNamePt,
+    ability,
     consequence: after,
     dcText: '',
     source: '',

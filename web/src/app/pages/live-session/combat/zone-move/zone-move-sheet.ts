@@ -35,6 +35,11 @@ export interface ZoneMoveSheetData {
   readonly state: CombatState;
 }
 
+/** "Mover o Raio Lunar": the sheet's title, and the label of the phone's bottom sheet, which has no title to be named by. */
+export function zoneMoveTitle(spellName: string): string {
+  return spellName ? `Mover ${article(spellName)} ${spellName}` : 'Mover a zona';
+}
+
 /**
  * "Mover o Raio Lunar" (B6-04): the picker of where a zone that moves by an action goes, a bottom sheet on a phone and a
  * dialog from a tablet up. The map shows the current footprint dimmed and the new one; the words under it give the distance
@@ -64,8 +69,7 @@ export class ZoneMoveSheet {
   );
   protected readonly combatants = computed(() => this.data.state.encounter()?.combatants ?? []);
   protected readonly title = computed(() => {
-    const name = this.zone()?.spellNamePt;
-    return name ? `Mover ${article(name)} ${name}` : 'Mover a zona';
+    return zoneMoveTitle(this.zone()?.spellNamePt ?? '');
   });
   protected readonly subtitle = computed(() => {
     const caster = this.zone()?.ownerLabel ?? '';

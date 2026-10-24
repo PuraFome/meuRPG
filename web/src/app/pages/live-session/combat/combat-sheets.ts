@@ -17,7 +17,7 @@ import {
   masterAreaFocus,
   opensOnMap,
 } from './cast-sheet/cast-sheet-data';
-import { ZoneMoveSheet, type ZoneMoveSheetData } from './zone-move/zone-move-sheet';
+import { ZoneMoveSheet, zoneMoveTitle, type ZoneMoveSheetData } from './zone-move/zone-move-sheet';
 import { openRevivifySheet } from './revivify-sheet/revivify-sheet';
 import { ActionSheets } from './action-sheets';
 import type { AttackOpen, CombatSheetsContext } from './combat-sheets-context';
@@ -233,7 +233,8 @@ export class CombatSheets {
       ZoneMoveSheet,
       {
         data,
-        ariaLabel: `Mover ${zone.spellNamePt}`,
+        // The phone's bottom sheet is named by this label, a dialog by its title ("Mover o Raio Lunar"): one name for both.
+        ariaLabel: zoneMoveTitle(zone.spellNamePt),
         labelledBy: 'sheet-t',
         width: '760px',
         panelClass: 'mr-sheet-zone',
