@@ -119,6 +119,15 @@ describe('reaction-queue-text', () => {
       expect(effectSaveTitle(bare())).toBe('Teste de resistência de  do Goblin');
     });
 
+    it('names the ability from its key when the server sends the key and an empty name (a zone)', () => {
+      const zone = save({ zoneId: 'z1', ability: 'con', abilityNamePt: '', dc: 14 });
+      expect(effectSaveAbility(zone)).toBe('Constituição');
+      expect(effectSaveTitle(zone, 'Bartolo')).toBe(
+        'Riso Histérico de Bartolo · Teste de resistência de Constituição do Goblin · CD\u00a014',
+      );
+      expect(effectSaveRule(save({ ability: 'con', abilityNamePt: '' }))).toBe('Constituição: −1');
+    });
+
     it('says when the effect asks for it', () => {
       expect(effectSaveText(save())).toBe(
         'Riso Histérico pede este teste no fim da vez do Goblin. Role.',

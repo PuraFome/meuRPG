@@ -125,7 +125,7 @@ export function spellZone(
     visibility: SpellZoneVisibility.EVERYONE,
     detailsHidden: false,
     saveAbility: 'con',
-    saveAbilityNamePt: 'Constituição',
+    saveAbilityNamePt: '',
     saveDc: 14,
     damageDice: '2d10',
     damageTypeKey: 'radiant',

@@ -92,11 +92,13 @@ describe('ZoneMoveSheet', () => {
 
   it('keeps the confirm off until a square other than the current one is picked', async () => {
     const { byText, pick, move } = await open(async () => undefined);
-    expect(byText('Mover a zona').getAttribute('aria-disabled') ?? 'true').toBe('true');
+    expect(byText('Mover a zona').getAttribute('aria-disabled')).toBe('true');
     await pick(4, 4);
     expect(byText('Mover a zona').classList.contains('mr-button--off')).toBe(true);
+    expect(byText('Mover a zona').getAttribute('aria-disabled')).toBe('true');
     await pick(8, 4);
     expect(byText('Mover a zona').classList.contains('mr-button--off')).toBe(false);
+    expect(byText('Mover a zona').getAttribute('aria-disabled')).toBeNull();
     expect(move).not.toHaveBeenCalled();
   });
 

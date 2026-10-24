@@ -46,6 +46,14 @@ describe('the label and the detail line of a zone', () => {
     expect(v.pieces[2]).toBe('2d10 radiante');
   });
 
+  it('names the ability from its key when the server sends the key and an empty name', () => {
+    const v = zoneView(spellZone({ id: 'z', saveAbility: 'con', saveAbilityNamePt: '' }), master);
+    expect(v.pieces[1]).toBe('Constituição CD 14');
+    expect(v.detail).toBe(
+      'Cilindro de 1,5 m de raio · Constituição CD 14 · 2d10 radiante, metade se passar',
+    );
+  });
+
   it('shows the save without a number when the server sent no DC', () => {
     const v = zoneView(spellZone({ id: 'z', saveDc: undefined }), master);
     expect(v.pieces[1]).toBe('Constituição');

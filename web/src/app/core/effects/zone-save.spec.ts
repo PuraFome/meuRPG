@@ -72,6 +72,35 @@ describe('the save prompt of a spell zone', () => {
     expect(v.source).toBe('Raio Lunar, de Bartolo');
   });
 
+  it('reads the ability from its key when the name is empty, as the server sends it', () => {
+    const real = prompt({
+      ability: 'con',
+      abilityNamePt: '',
+      textPt:
+        'Teste de resistência de . Se falhar, você sofre dano de radiante. Se passar, metade do dano.',
+    });
+    const v = effectSaveView(real, 3, 'Bartolo');
+    expect(v.ability).toBe('Constituição');
+    expect(v.consequence).toBe('Se falhar: sofre dano radiante. Se passar: metade do dano.');
+    const web = effectSaveView(
+      prompt({
+        zoneReason: 'zone_enter',
+        sourceNamePt: 'Teia',
+        ability: 'dex',
+        abilityNamePt: '',
+        damageTypeNamePt: '',
+        halfOnSave: false,
+        textPt: 'Teste de resistência de . Se falhar, você fica contido até se soltar.',
+      }),
+      3,
+      'Pensantus',
+    );
+    expect(web.ability).toBe('Destreza');
+    expect(web.consequence).toBe(
+      'Se falhar, você fica contido até se soltar. Soltar-se gasta uma ação.',
+    );
+  });
+
   it('shows the DC for the master or the caster own player', () => {
     expect(effectSaveView(prompt({ dc: 14 }), 3, 'Bartolo').dcText).toBe(', CD\u00a014');
   });

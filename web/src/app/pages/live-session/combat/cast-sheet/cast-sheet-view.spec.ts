@@ -412,7 +412,7 @@ describe('coverNoteOf', () => {
         targets: Array.from({ length: n }, (_, i) => ({ combatantId: `g${i}`, label: 'G' })),
       });
     expect(coverNoteOf(area(true, 1), 'Bola de Fogo')).toContain('como o da Bola de Fogo');
-    expect(coverNoteOf(area(true, 1), 'Nuvem')).toContain('como o do Nuvem');
+    expect(coverNoteOf(area(true, 1), 'Nuvem')).toContain('como o da Nuvem');
     expect(coverNoteOf(area(false, 1), 'Bola de Fogo')).toBe('');
     expect(coverNoteOf(area(true, 0), 'Bola de Fogo')).toBe('');
     expect(coverNoteOf(null, 'Bola de Fogo')).toBe('');
