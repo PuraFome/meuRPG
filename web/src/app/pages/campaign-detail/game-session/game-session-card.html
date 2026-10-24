@@ -20,10 +20,10 @@
               <p class="session__text">
                 @if (phone()) {
                   <strong>Sessão {{ session.sessionNumber }}</strong> desde
-                  {{ formatSessionStart(session.startedAt) }}
+                  {{ sessionStartText(session.startedAt) }}
                 } @else {
                   <strong>Sessão {{ session.sessionNumber }} em andamento</strong>, desde
-                  {{ formatSessionStart(session.startedAt) }}.
+                  {{ sessionStartText(session.startedAt) }}.
                 }
               </p>
               <div class="session__actions">

@@ -179,7 +179,10 @@ export class CampaignDetail {
 
   /** A tab link keeps the focus after the click (Safari does not focus a link it was clicked on), so the page does not send it to the title. */
   protected keepFocus(event: Event): void {
-    (event.currentTarget as HTMLElement).focus();
+    const link = event.currentTarget as HTMLElement;
+    link.focus();
+    // A row of tabs wider than the screen (a narrow phone) scrolls to the one that was chosen (board C6-10).
+    link.scrollIntoView?.({ inline: 'nearest', block: 'nearest' });
   }
 
   /** The newest `load`: an answer of an older one (the page was reused for another campaign) is dropped. */
@@ -209,6 +212,14 @@ export class CampaignDetail {
         this.state.set(state);
         if (state.status === 'ready') {
           this.landOnFragment(state.campaign);
+          // A page opened at "Preparação" or "Regras" on a narrow phone shows that tab in the row.
+          afterNextRender(
+            () =>
+              document
+                .querySelector('.tabs .is-active')
+                ?.scrollIntoView?.({ inline: 'nearest', block: 'nearest' }),
+            { injector: this.injector },
+          );
           if (state.campaign.myRole === Role.MASTER) {
             void this.roster.ensureLoaded(campaignId);
           }

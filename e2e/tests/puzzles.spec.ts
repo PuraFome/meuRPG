@@ -2,14 +2,15 @@ import { expect, test } from '@playwright/test';
 
 import { openSessionPage } from './live-session-support';
 import {
-  DOOR_OPEN,
   createLightsRPC,
   createLockRPC,
   createPillarsRPC,
+  DOOR_OPEN,
   doorState,
   endTable,
   masterRunJson,
   moveRPC,
+  pickPuzzleAction,
   playerRunJson,
   playerRunText,
   puzzleRoute,
@@ -184,24 +185,28 @@ test('o mestre faz "Apagar as luzes" no formulário, edita, e arquiva e desarqui
     await expect(panel.getByText('Não mostrado')).toBeVisible();
 
     // Edit before it is shown.
-    await panel.getByRole('link', { name: 'Editar O selo da Capela' }).click();
+    // The row is the link to the editor ("Editar" is not a button of the row: the board's row has a chevron).
+    await panel.getByRole('link', { name: /^O selo da Capela/ }).click();
     await expect(master.getByRole('heading', { level: 1, name: 'Editar quebra-cabeça' })).toBeVisible();
     await expect(master.getByLabel('Nome')).toHaveValue('O selo da Capela');
     await master.getByLabel('Nome').fill('O selo da Cripta');
     await master.getByRole('button', { name: 'Salvar quebra-cabeça' }).click();
+    // Saving goes back to the campaign page ("Mesa"); the list is on "Preparação".
+    await expect(master).toHaveURL(puzzleRoute(table.campaignId));
+    await openCampaignTab(master, 'Preparação');
     await expect(panel.getByText('O selo da Cripta')).toBeVisible();
 
     // Archive asks in place, and nothing is archived before the second tap.
-    await panel.getByRole('button', { name: 'Arquivar O selo da Cripta' }).click();
+    await pickPuzzleAction(master, 'O selo da Cripta', 'Arquivar');
     await expect(panel.getByRole('heading', { name: 'Arquivar “O selo da Cripta”?' })).toBeFocused();
     await panel.getByRole('button', { name: 'Voltar' }).click();
-    await expect(panel.getByRole('button', { name: 'Arquivar O selo da Cripta' })).toBeFocused();
-    await panel.getByRole('button', { name: 'Arquivar O selo da Cripta' }).click();
+    await expect(panel.getByRole('button', { name: 'Mais ações de O selo da Cripta' })).toBeFocused();
+    await pickPuzzleAction(master, 'O selo da Cripta', 'Arquivar');
     await panel.getByRole('button', { name: 'Arquivar', exact: true }).click();
     await expect(panel.getByText('“O selo da Cripta” foi arquivado.')).toBeVisible();
     await expect(panel.getByText('Todos os quebra-cabeças estão arquivados.')).toBeVisible();
     await panel.getByRole('button', { name: 'Mostrar os arquivados' }).click();
-    await panel.getByRole('button', { name: 'Desarquivar O selo da Cripta' }).click();
+    await pickPuzzleAction(master, 'O selo da Cripta', 'Desarquivar');
     await expect(panel.getByText('“O selo da Cripta” voltou para a lista.')).toBeVisible();
 
     // Once shown, it cannot be edited: the list has no "Editar" and the page says why.

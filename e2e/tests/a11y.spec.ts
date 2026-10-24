@@ -46,6 +46,7 @@ import {
   endTable,
   moveRPC,
   playSequenceRPC,
+  pickPuzzleAction,
   puzzleRoute,
   releaseHintRPC,
   revealClueRPC,
@@ -3155,6 +3156,8 @@ async function scanGoldScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await expectScreenPasses(m, `Voltar à cidade, o erro no lugar ${where}`);
     await m.getByRole('dialog', { name: 'Voltar à cidade' }).getByRole('button', { name: /^Dar 170 XP/ }).click();
     await expect(panel(m).getByRole('status').filter({ hasText: 'foram convertidos' })).toContainText('Os 2 tesouros foram convertidos.');
+    // The master's history is folded under "Histórico de XP (N)": the line of the award is in it.
+    await openXpHistory(m);
     await expect(panel(m).getByText('Voltar à cidade · 170 PO em 2 tesouros')).toBeVisible();
     await expectScreenPasses(m, `Experiência, depois de converter ${where}`);
     await panel(m).getByRole('button', { name: /^Desfazer/ }).click();
@@ -3307,7 +3310,10 @@ async function scanCreatureScreens(browser: Browser, colorScheme: 'light' | 'dar
     await expect(row.locator('.item__name', { hasText: 'Nanquim' })).toBeVisible();
     await expectScreenPasses(m, `O mestre, a lista de personagens com a criatura ${where}`);
     if (width >= 768) {
-      await row.getByRole('button', { name: 'Dar uma criatura a Pensantus' }).click();
+      // "Dar uma criatura a Pensantus" is an item of the character's "⋮" menu.
+      await m.getByRole('button', { name: 'Mais ações de Pensantus' }).click();
+      await expectScreenPasses(m, `O mestre, o menu do personagem ${where}`);
+      await m.getByRole('menuitem', { name: 'Dar uma criatura a Pensantus' }).click();
       const dialog = m.getByRole('dialog', { name: 'Dar uma criatura a Pensantus' });
       await expect(dialog.getByText(/de 334 · em ordem de nome/)).toBeVisible();
       await expectScreenPasses(m, `Dar uma criatura, aberta ${where}`);
@@ -4591,7 +4597,7 @@ async function scanPuzzleScreens(browser: Browser, colorScheme: 'light' | 'dark'
       await openPage(master, `${puzzleRoute(campaignId)}/prep`);
       await expect(master.getByRole('region', { name: 'Quebra-cabeças' }).getByText('O selo da Capela')).toBeVisible();
       await stepPasses(master, `Lista de quebra-cabeças ${where}`);
-      await master.getByRole('region', { name: 'Quebra-cabeças' }).getByRole('button', { name: 'Arquivar O selo da Capela' }).click();
+      await pickPuzzleAction(master, 'O selo da Capela', 'Arquivar');
       await expect(master.getByRole('heading', { name: 'Arquivar “O selo da Capela”?' })).toBeFocused();
       await stepPasses(master, `Arquivar na lista ${where}`);
       await master.getByRole('button', { name: 'Voltar' }).click();

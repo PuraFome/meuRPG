@@ -363,6 +363,16 @@ describe('GameSessionCard', () => {
     expect(retry).toBe(first);
   });
 
+  it('says when the session started as the boards do: "20:12" for today, on one line on a phone', async () => {
+    const startedAt = new Date();
+    startedAt.setHours(20, 12, 0, 0);
+    fake.getCurrentSessionResult = Promise.resolve({ ...session(4), startedAt });
+    const desktop = await render();
+    expect(
+      desktop.el.querySelector('.session__text')?.textContent?.replace(/\s+/g, ' ').trim(),
+    ).toBe('Sessão 4 em andamento, desde 20:12.');
+  });
+
   it('lays the master\'s three actions out as the board draws them: "Encerrar sessão", "Copiar link da sessão", "Entrar na sessão"', async () => {
     fake.getCurrentSessionResult = Promise.resolve(session(4));
     const { el } = await render();
@@ -378,6 +388,16 @@ describe('GameSessionCard', () => {
   describe('on a phone', () => {
     beforeEach(() => startPhone());
     afterEach(() => endPhone());
+
+    it('says "Sessão 4 desde 20:12", with no "em andamento" and no full stop', async () => {
+      const startedAt = new Date();
+      startedAt.setHours(20, 12, 0, 0);
+      fake.getCurrentSessionResult = Promise.resolve({ ...session(4), startedAt });
+      const { el } = await render();
+      expect(el.querySelector('.session__text')?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+        'Sessão 4 desde 20:12',
+      );
+    });
 
     it('keeps "Entrar na sessão" and a "Mais ações da sessão" menu with the other two', async () => {
       fake.getCurrentSessionResult = Promise.resolve(session(4));

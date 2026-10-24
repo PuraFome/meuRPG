@@ -1,5 +1,6 @@
 import { DicePreference, Member } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { roleLabel } from '../../core/campaigns/campaign-labels';
+import { formatClock, formatDayAt } from '../../shared/session-time/session-time';
 
 /** One row of the "Membros" panel. */
 export interface MemberRowVm {
@@ -43,4 +44,20 @@ export function formatDateAt(date: Date): string {
     `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}` +
     `\u00a0às\u00a0${pad(date.getHours())}:${pad(date.getMinutes())}`
   );
+}
+
+/**
+ * When an open session started, as the session strip says it (boards C2-01 and C6-04): "20:12" for a
+ * session that started today, "17/10 às 20:12" for one that started on another day.
+ */
+export function sessionStartText(startedAt: Date, now: Date = new Date()): string {
+  return startedAt.toDateString() === now.toDateString()
+    ? formatClock(startedAt)
+    : formatDayAt(startedAt);
+}
+
+/** "18/10": the day and the month, for the rows of "Sessões anteriores" (board C2-01). */
+export function dayAndMonth(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}`;
 }

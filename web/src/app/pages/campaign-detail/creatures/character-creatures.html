@@ -1,6 +1,6 @@
-<div class="cr">
-  <div class="cr__list">
-    @if (creatures(); as list) {
+@if (creatures(); as list) {
+  @if (list.length > 0) {
+    <div class="cr__list">
       @for (c of list; track c.id) {
         <div class="item">
           <div class="item__row">
@@ -23,22 +23,9 @@
             </button>
           }
         </div>
-      } @empty {
-        <span class="none">Nenhuma criatura</span>
       }
-    } @else if (failed()) {
-      <span class="none">Não deu para ler as criaturas.</span>
-    } @else {
-      <span class="none" role="status">Lendo as criaturas…</span>
-    }
-  </div>
-  <button
-    type="button"
-    matButton="outlined"
-    class="give"
-    [attr.aria-label]="'Dar uma criatura a ' + characterName()"
-    (click)="give()"
-  >
-    <mat-icon aria-hidden="true">add</mat-icon>Dar uma criatura
-  </button>
-</div>
+    </div>
+  }
+} @else if (failed()) {
+  <p class="none">Não deu para ler as criaturas.</p>
+}

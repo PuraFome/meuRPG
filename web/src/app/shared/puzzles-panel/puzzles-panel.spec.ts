@@ -47,6 +47,18 @@ describe('PuzzlesPanel (MR-038, E10-06 state 1)', () => {
   ];
   const named = (el: HTMLElement, name: string) =>
     el.querySelector<HTMLElement>(`[aria-label="${name}"]`)!;
+  /** The row's "⋮" button, named for the puzzle. */
+  const more = (el: HTMLElement, puzzle: string) => named(el, `Mais ações de ${puzzle}`);
+  /** Opens a row's menu and picks its item ("Arquivar O selo", "Desarquivar O selo"). */
+  async function pick(el: HTMLElement, puzzle: string, item: string, settle: () => Promise<void>) {
+    more(el, puzzle).click();
+    await settle();
+    const entry = Array.from(document.querySelectorAll<HTMLElement>('[role="menuitem"]')).find(
+      (i) => i.textContent?.includes(`${item} ${puzzle}`),
+    )!;
+    entry.click();
+    await settle();
+  }
 
   afterEach(() => {
     document.body.replaceChildren();
@@ -57,9 +69,10 @@ describe('PuzzlesPanel (MR-038, E10-06 state 1)', () => {
     expect(el.querySelector('h2')?.textContent).toBe('Quebra-cabeças');
     const rows = Array.from(el.querySelectorAll('.mr-list li'));
     expect(rows).toHaveLength(4);
-    expect(textOf(rows[0])).toContain(
-      'O selo da Capela Apagar as luzes · 5 × 5 Não mostrado Editar Arquivar',
-    );
+    // The board's row: the name over "kind · detail", the state in that line, a chevron to the editor.
+    expect(textOf(rows[0])).toContain('O selo da Capela Apagar as luzes · 5 × 5 · Não mostrado');
+    expect(rows[0].querySelector('.row__chevron')).not.toBeNull();
+    expect(rows[0].querySelector('.mr-tag')).toBeNull();
     expect(textOf(rows[1])).toContain('Fechadura de combinação · 4 rodas de runas');
     expect(textOf(rows[2])).toContain('Símbolos giratórios · 4 pilares, girando juntos');
     expect(textOf(rows[3])).toContain('Apagar as luzes · 7 × 7');
@@ -68,9 +81,11 @@ describe('PuzzlesPanel (MR-038, E10-06 state 1)', () => {
     )!;
     expect(add.getAttribute('href')).toBe('/campaigns/camp-1/puzzles/new');
     expect(el.textContent).toContain('Só você vê estes quebra-cabeças.');
-    expect(named(el, 'Editar O selo da Capela').getAttribute('href')).toBe(
+    // The row is the link to the editor; "Editar" and "Arquivar" are not buttons of the row any more.
+    expect(el.querySelector('a.row__main')?.getAttribute('href')).toBe(
       '/campaigns/camp-1/puzzles/a/edit',
     );
+    expect(more(el, 'O selo da Capela').getAttribute('aria-haspopup')).toBe('menu');
   });
 
   it('invites the first puzzle when there is none', async () => {
@@ -87,20 +102,20 @@ describe('PuzzlesPanel (MR-038, E10-06 state 1)', () => {
       (a) => (a.listResult = [lightsPuzzle('a', 'O selo', { shown: true })]),
     );
     expect(textOf(el.querySelector('.mr-list li'))).toContain('Já mostrado');
-    expect(el.querySelector('[aria-label="Editar O selo"]')).toBeNull();
-    expect(named(el, 'Arquivar O selo')).toBeTruthy();
+    expect(el.querySelector('a.row__main')).toBeNull();
+    expect(el.querySelector('.row__chevron')).toBeNull();
+    expect(more(el, 'O selo')).toBeTruthy();
   });
 
   it('asks in place before archiving: the question takes the row, nothing is archived before the second tap', async () => {
     const { el, settle } = await render((a) => (a.listResult = four()));
-    named(el, 'Arquivar O selo da Capela').click();
-    await settle();
+    await pick(el, 'O selo da Capela', 'Arquivar', settle);
     const ask = el.querySelector('app-map-ask')!;
     expect(ask.querySelector('h3')?.textContent).toBe('Arquivar “O selo da Capela”?');
     expect(document.activeElement).toBe(ask.querySelector('h3'));
     expect(ask.textContent).toContain('dá para desarquivar');
     expect(api.calls.some((c) => c[0] === 'archive')).toBe(false);
-    expect(el.querySelector('[aria-label="Editar O selo da Capela"]')).toBeNull();
+    expect(el.querySelector('a.row__main[href$="/a/edit"]')).toBeNull();
     // "Voltar" brings the row back and the focus to the button that asked.
     (
       Array.from(ask.querySelectorAll('button')).find(
@@ -109,13 +124,12 @@ describe('PuzzlesPanel (MR-038, E10-06 state 1)', () => {
     ).click();
     await settle();
     expect(el.querySelector('app-map-ask')).toBeNull();
-    expect(document.activeElement).toBe(named(el, 'Arquivar O selo da Capela'));
+    expect(document.activeElement).toBe(more(el, 'O selo da Capela'));
   });
 
   it('archives on the second tap, says so and reads the list again', async () => {
     const { el, settle } = await render((a) => (a.listResult = four()));
-    named(el, 'Arquivar O selo da Capela').click();
-    await settle();
+    await pick(el, 'O selo da Capela', 'Arquivar', settle);
     api.listResult = four().slice(1);
     (
       Array.from(el.querySelectorAll('app-map-ask button')).find(
@@ -149,10 +163,9 @@ describe('PuzzlesPanel (MR-038, E10-06 state 1)', () => {
     expect(toggle.textContent).toContain('Mostrar os arquivados'); // one label, whatever its state
     const row = Array.from(el.querySelectorAll('.mr-list li')).at(-1)!;
     expect(textOf(row)).toContain('Arquivado');
-    expect(textOf(row)).not.toContain('Editar');
+    expect(row.querySelector('a.row__main')).toBeNull();
     api.listResult = four().slice(1);
-    (row.querySelector('[aria-label="Desarquivar O velho selo"]') as HTMLElement).click();
-    await settle();
+    await pick(el, 'O velho selo', 'Desarquivar', settle);
     expect(api.calls.find((c) => c[0] === 'unarchive')).toEqual(['unarchive', 'camp-1', 'z']);
     expect(el.textContent).toContain('“O velho selo” voltou para a lista.');
   });
@@ -172,8 +185,7 @@ describe('PuzzlesPanel (MR-038, E10-06 state 1)', () => {
 
   it("moves the focus to the row that took the archived one's place", async () => {
     const { el, settle } = await render((a) => (a.listResult = four()));
-    named(el, 'Arquivar O selo da Capela').click();
-    await settle();
+    await pick(el, 'O selo da Capela', 'Arquivar', settle);
     api.listResult = four().slice(1);
     (
       Array.from(el.querySelectorAll('app-map-ask button')).find(
@@ -181,7 +193,7 @@ describe('PuzzlesPanel (MR-038, E10-06 state 1)', () => {
       ) as HTMLElement
     ).click();
     await settle();
-    expect(document.activeElement).toBe(named(el, 'Arquivar O cofre do Refeitório'));
+    expect(document.activeElement).toBe(more(el, 'O cofre do Refeitório'));
   });
 
   it('says what went wrong, by code, and offers to try again', async () => {

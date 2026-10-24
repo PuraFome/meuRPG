@@ -184,7 +184,7 @@ describe('ExperiencePanel (E7-09, E7-08)', () => {
     respond(XpMode.ENEMIES);
     expect(
       Array.from((await setup(true)).el.querySelectorAll('button')).some(
-        (b) => b.textContent?.trim() === 'Dar XP',
+        (b) => b.textContent?.replace('star', '').trim() === 'Dar XP',
       ),
     ).toBe(true);
     TestBed.resetTestingModule();
@@ -286,7 +286,7 @@ describe('ExperiencePanel (E7-09, E7-08)', () => {
     ];
     const buttons = (el: HTMLElement) =>
       Array.from(el.querySelectorAll('app-panel-head button'), (b) =>
-        b.textContent?.replace('currency_exchange', '').trim(),
+        b.textContent?.replace('currency_exchange', '').replace('star', '').trim(),
       );
 
     it('puts "Voltar à cidade" beside "Dar XP" in a campaign by gold, and the strip with what waits', async () => {
@@ -434,6 +434,9 @@ describe('ExperiencePanel (E7-09, E7-08)', () => {
       const give = el.querySelector('app-panel-head app-xp-give-button');
       expect(give).not.toBeNull();
       expect(give?.classList.contains('block')).toBe(false);
+      // The campaign page's look: the star before the words, an ink label (the session's "Grupo" keeps the accent one).
+      expect(give?.classList.contains('neutral')).toBe(true);
+      expect(give?.querySelector('button mat-icon')?.textContent).toBe('star');
     });
   });
 });

@@ -45,23 +45,45 @@
                   <p class="item__ask-text">Ele sai desta lista e do menu da sessão. O que aconteceu em sessões passadas fica, e dá para desarquivar.</p>
                 </app-map-ask>
               } @else {
-                <div class="mr-list__row row">
-                  <span class="row__icon" aria-hidden="true"><mat-icon>{{ icon(p.kind) }}</mat-icon></span>
-                  <span class="mr-list__text">
-                    <span class="mr-list__name row__name">{{ p.name }}</span>
-                    <span class="mr-list__sub">{{ summary(p) }}</span>
-                  </span>
-                  <span class="mr-tag">{{ p.archived ? 'Arquivado' : p.shown ? 'Já mostrado' : 'Não mostrado' }}</span>
-                  <span class="row__actions">
-                    @if (canEdit(p)) {
-                      <a matButton class="row__link" [routerLink]="['/campaigns', campaignId(), 'puzzles', p.id, 'edit']" [attr.aria-label]="'Editar ' + p.name">Editar</a>
-                    }
+                <div class="row">
+                  @if (canEdit(p)) {
+                    <a class="row__main" [routerLink]="['/campaigns', campaignId(), 'puzzles', p.id, 'edit']">
+                      <mat-icon class="row__icon" aria-hidden="true">{{ icon(p.kind) }}</mat-icon>
+                      <span class="row__text">
+                        <span class="row__name">{{ p.name }}</span>
+                        <span class="row__sub">{{ line(p) }}</span>
+                      </span>
+                      <mat-icon class="row__chevron" aria-hidden="true">chevron_right</mat-icon>
+                    </a>
+                  } @else {
+                    <div class="row__main">
+                      <mat-icon class="row__icon" aria-hidden="true">{{ icon(p.kind) }}</mat-icon>
+                      <span class="row__text">
+                        <span class="row__name">{{ p.name }}</span>
+                        <span class="row__sub">{{ line(p) }}</span>
+                      </span>
+                    </div>
+                  }
+                  <button
+                    type="button"
+                    class="row__more"
+                    [attr.aria-label]="'Mais ações de ' + p.name"
+                    [attr.data-archive]="p.archived ? null : p.id"
+                    [matMenuTriggerFor]="rowMenu"
+                  >
+                    <mat-icon aria-hidden="true">more_vert</mat-icon>
+                  </button>
+                  <mat-menu #rowMenu="matMenu">
                     @if (p.archived) {
-                      <button matButton type="button" class="row__link" [attr.aria-label]="'Desarquivar ' + p.name" (click)="unarchive(p)">Desarquivar</button>
+                      <button mat-menu-item type="button" (click)="unarchive(p)">
+                        <mat-icon aria-hidden="true">unarchive</mat-icon>Desarquivar {{ p.name }}
+                      </button>
                     } @else {
-                      <button matButton type="button" class="row__link" [attr.data-archive]="p.id" [attr.aria-label]="'Arquivar ' + p.name" (click)="ask(p)">Arquivar</button>
+                      <button mat-menu-item type="button" (click)="ask(p)">
+                        <mat-icon aria-hidden="true">archive</mat-icon>Arquivar {{ p.name }}
+                      </button>
                     }
-                  </span>
+                  </mat-menu>
                 </div>
               }
             </li>

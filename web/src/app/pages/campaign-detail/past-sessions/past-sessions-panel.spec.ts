@@ -71,7 +71,7 @@ describe('PastSessionsPanel', () => {
       label: r.querySelector('a')?.getAttribute('aria-label'),
     }));
 
-  it('lists the ended sessions with their number, hours, duration and a link to the summary', async () => {
+  it('lists the ended sessions with their number, day and duration ("03/09 · 3 h 42 min") and a link to the summary', async () => {
     listSessions.mockResolvedValue([open(4), ended(3), ended(2)]);
     const { el } = await render(true);
     expect(plain(el.querySelector('h2')?.textContent)).toBe('Sessões anteriores');
@@ -79,14 +79,14 @@ describe('PastSessionsPanel', () => {
     expect(rows(el)).toEqual([
       {
         name: 'Sessão 3',
-        when: 'qui., 3 de set., 19h05 às 22h47',
+        when: '03/09',
         duration: '3 h 42 min',
         link: '/campaigns/c1/sessions/3',
         label: 'Ver resumo da Sessão 3',
       },
       {
         name: 'Sessão 2',
-        when: 'qua., 2 de set., 19h05 às 22h47',
+        when: '02/09',
         duration: '3 h 42 min',
         link: '/campaigns/c1/sessions/2',
         label: 'Ver resumo da Sessão 2',
@@ -182,7 +182,7 @@ describe('PastSessionsPanel', () => {
     expect(listSessions).toHaveBeenCalledTimes(2);
   });
 
-  it('writes the year and the day of the end when the session asks for them', async () => {
+  it('says the day and the month the session started, with how long it lasted, even when it crossed midnight', async () => {
     listSessions.mockResolvedValue([
       {
         id: 'x',
@@ -192,7 +192,7 @@ describe('PastSessionsPanel', () => {
       },
     ]);
     const { el } = await render(true);
-    expect(rows(el)[0].when).toBe('sex., 3 de out. de 2025, 22h30 às 1h12 (sáb.)');
+    expect(rows(el)[0].when).toBe('03/10');
     expect(rows(el)[0].duration).toBe('2 h 42 min');
   });
 
