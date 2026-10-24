@@ -14,28 +14,188 @@
   color: var(--mr-ink-muted);
 }
 
-// The design's pending mark: a 10px dot before the name, next to the word
-// "Revisar" (never the colour alone).
-.pending-dot {
-  flex-shrink: 0;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--mr-warning-ink);
+// The master's panel (boards C2-01 and C2-02): the head, the amber banners, the cards, the note.
+.players {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 20px 20px;
+
+  .panel-hint {
+    margin: 0;
+  }
 }
 
-.row-action {
+// One banner for each character that waits for the master: the words, then "Revisar <name>".
+.waiting {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.waiting__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 12px;
+  border: 1px solid var(--mr-warning-line);
+  border-radius: 10px;
+  background: var(--mr-warning-surface);
+  color: var(--mr-warning-ink);
+
+  > .mat-icon {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+
+  @media (max-width: 599.98px) {
+    flex-wrap: wrap;
+  }
+}
+
+.waiting__text {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.waiting__review {
   flex-shrink: 0;
+
+  @media (max-width: 599.98px) {
+    width: 100%;
+  }
+}
+
+// The players' cards: two to a row where there is room (auto-fit, 280 px at the least), one on a phone.
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: var(--mr-space-2);
+  align-items: start;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  min-width: 0;
+  padding: 0 10px 0 12px;
+  border: 1px solid var(--mr-line);
+  border-radius: 10px;
+}
+
+.card__link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 60px;
+  padding: 8px 0;
+  color: var(--mr-ink);
+  text-decoration: none;
+
+  &:hover .card__name {
+    color: var(--mr-accent-text);
+  }
+}
+
+.avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: var(--mr-ink);
+  color: var(--mr-surface);
+  font-family: var(--mr-font-display);
+  font-size: 16px;
   font-weight: 700;
-  color: var(--mr-accent-text);
+  line-height: 1;
+}
+
+.card__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.card__name {
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 21px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card__sub {
+  overflow: hidden;
+  color: var(--mr-ink-muted);
+  font-size: 13px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// What needs a word on a card (choices open, a level-up), under its class line.
+.card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-1);
+  margin-top: var(--mr-space-1);
+}
+
+.card__lock,
+.card__chevron {
+  flex: none;
+  color: var(--mr-ink-muted);
+}
+
+.card__lock {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+}
+
+.card__chevron {
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+}
+
+// The note under the cards: an icon and one line of words.
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  color: var(--mr-ink-muted);
+  font-size: 14px;
+  line-height: 19px;
+
+  .mat-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    margin-top: 1.5px;
+    font-size: 16px;
+  }
 }
 
 .mr-list__row {
   padding: var(--mr-space-1) 0;
 }
 
-// A panel's own action ("Novo NPC", "Criar meu personagem") goes at its
-// end: full width on a phone, as wide as its words from a tablet up.
+// A panel's own action ("Criar meu personagem") goes at its end: full width
+// on a phone, as wide as its words from a tablet up.
 .panel-action {
   width: 100%;
   margin-top: var(--mr-space-2);
@@ -56,7 +216,7 @@
   flex-shrink: 0;
 }
 
-// "O que mudou" under a character's row (MR-040): a text button that opens the choices in place.
+// "O que mudou" under a character's card (MR-040): a text button that opens the choices in place.
 .changes-toggle {
   display: inline-flex;
   align-items: center;
