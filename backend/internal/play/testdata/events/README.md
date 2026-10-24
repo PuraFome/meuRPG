@@ -19,6 +19,7 @@ The older shapes come from the struct of the commit that first wrote the kind (`
 | `scene_check_rolled/v1-before-dc-shown` | `28f56579` |
 | `character_vitals_adjusted/v1-before-resources` | `724227f5` |
 | `stage_changed/v1-before-hidden` | `a63181c65` (the stage before the hidden NPCs: no `hidden`, no `revealed`) |
+| `scene_opened/v1-before-audience`, `scene_closed/v1-before-audience`, `scene_check_rolled/v2-before-audience` | `4cb338c77` (the scene before it could be open to only some players: no `players`, no `audience`) |
 
 No JSON key of a play payload has been renamed since the first commit; only fields were added.
 A fixture whose key today's type no longer reads fails the test; if that is on purpose, list it in `retiredKeys` with the reason.

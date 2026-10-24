@@ -278,7 +278,7 @@ func (s *Service) guardFinish(ctx context.Context, c *combatTx, m authz.Membersh
 		return g, errCastNotFound() // the caster died or left meanwhile; InterruptCast closes it
 	}
 	g.caster = living
-	if g.stage, err = stageOf(ctx, c.q, c.session.ID); err != nil {
+	if g.stage, err = stageOf(ctx, c.q, c.session.ID, stageViewer(m)); err != nil {
 		return g, err
 	}
 	for _, id := range ids {

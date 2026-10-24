@@ -26,7 +26,7 @@ func imageAudience(kind playv1.ImageAudienceKind, us ...*user) *playv1.ImageAudi
 }
 
 // image makes a gallery image of the campaign.
-func (at *audienceTable) image(t *testing.T) string {
+func (at *sceneTable) image(t *testing.T) string {
 	t.Helper()
 	id := newKey()
 	if _, err := at.h.pool.Exec(t.Context(),
@@ -37,7 +37,7 @@ func (at *audienceTable) image(t *testing.T) string {
 	return id
 }
 
-func (at *audienceTable) show(image string, keep bool, aud *playv1.ImageAudience) (*playv1.SetShownImageResponse, error) {
+func (at *sceneTable) show(image string, keep bool, aud *playv1.ImageAudience) (*playv1.SetShownImageResponse, error) {
 	res, err := at.master.play.SetShownImage(at.h.t.Context(), connect.NewRequest(&playv1.SetShownImageRequest{CampaignId: at.campaignID, ImageId: image, Keep: keep, Audience: aud}))
 	if err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func (at *audienceTable) show(image string, keep bool, aud *playv1.ImageAudience
 	return res.Msg, nil
 }
 
-func (at *audienceTable) mustShow(t *testing.T, image string, keep bool, aud *playv1.ImageAudience) *playv1.ShownImage {
+func (at *sceneTable) mustShow(t *testing.T, image string, keep bool, aud *playv1.ImageAudience) *playv1.ShownImage {
 	t.Helper()
 	res, err := at.show(image, keep, aud)
 	if err != nil {
@@ -54,7 +54,7 @@ func (at *audienceTable) mustShow(t *testing.T, image string, keep bool, aud *pl
 	return res.GetShownImage()
 }
 
-func (at *audienceTable) setImageAudience(u *user, aud *playv1.ImageAudience) (*playv1.ShownImage, error) {
+func (at *sceneTable) setImageAudience(u *user, aud *playv1.ImageAudience) (*playv1.ShownImage, error) {
 	res, err := u.play.SetShownImageAudience(at.h.t.Context(), connect.NewRequest(&playv1.SetShownImageAudienceRequest{CampaignId: at.campaignID, Audience: aud}))
 	if err != nil {
 		return nil, err
@@ -62,7 +62,7 @@ func (at *audienceTable) setImageAudience(u *user, aud *playv1.ImageAudience) (*
 	return res.Msg.GetShownImage(), nil
 }
 
-func (at *audienceTable) mustSetImageAudience(t *testing.T, aud *playv1.ImageAudience) *playv1.ShownImage {
+func (at *sceneTable) mustSetImageAudience(t *testing.T, aud *playv1.ImageAudience) *playv1.ShownImage {
 	t.Helper()
 	img, err := at.setImageAudience(at.master, aud)
 	if err != nil {
@@ -72,7 +72,7 @@ func (at *audienceTable) mustSetImageAudience(t *testing.T, aud *playv1.ImageAud
 }
 
 // live is the image the user reads in GetLiveSession.
-func (at *audienceTable) live(t *testing.T, u *user) *playv1.ShownImage {
+func (at *sceneTable) live(t *testing.T, u *user) *playv1.ShownImage {
 	t.Helper()
 	res, err := u.play.GetLiveSession(t.Context(), connect.NewRequest(&playv1.GetLiveSessionRequest{CampaignId: at.campaignID}))
 	if err != nil {
@@ -82,7 +82,7 @@ func (at *audienceTable) live(t *testing.T, u *user) *playv1.ShownImage {
 }
 
 // leftFor lists the images left with the players that the user reads.
-func (at *audienceTable) leftFor(t *testing.T, u *user) []string {
+func (at *sceneTable) leftFor(t *testing.T, u *user) []string {
 	t.Helper()
 	res, err := u.play.ListLeftImages(t.Context(), connect.NewRequest(&playv1.ListLeftImagesRequest{CampaignId: at.campaignID}))
 	if err != nil {
@@ -96,7 +96,7 @@ func (at *audienceTable) leftFor(t *testing.T, u *user) []string {
 }
 
 // fetches says whether the image route would give the user the image: the service's answer to the maps module.
-func (at *audienceTable) fetches(t *testing.T, u *user, image string) bool {
+func (at *sceneTable) fetches(t *testing.T, u *user, image string) bool {
 	t.Helper()
 	ok, err := at.h.svc.ImageShownTo(t.Context(), at.campaignID, u.id, image)
 	if err != nil {
@@ -106,7 +106,7 @@ func (at *audienceTable) fetches(t *testing.T, u *user, image string) bool {
 }
 
 // wantSeen checks, for each of Ana, Caio and Bia, whether they read the image in GetLiveSession and may fetch it.
-func (at *audienceTable) wantSeen(t *testing.T, what, image string, ana, caio, bia bool) {
+func (at *sceneTable) wantSeen(t *testing.T, what, image string, ana, caio, bia bool) {
 	t.Helper()
 	for u, want := range map[*user]bool{at.ana: ana, at.caio: caio, at.bia: bia} {
 		got := at.live(t, u).GetId() == image
@@ -136,7 +136,7 @@ func sortedIDs(us ...*user) []string {
 
 func TestImageAudience_TheDefaultFollowsTheScene(t *testing.T) {
 	t.Parallel()
-	at := newAudienceTable(t)
+	at := newSceneTable(t)
 	a, b, c := at.image(t), at.image(t), at.image(t)
 
 	// No scene is open: the whole table, whatever the default.
@@ -194,7 +194,7 @@ func TestImageAudience_TheDefaultFollowsTheScene(t *testing.T) {
 
 func TestImageAudience_TheSameImageAgainKeepsItsAudience(t *testing.T) {
 	t.Parallel()
-	at := newAudienceTable(t)
+	at := newSceneTable(t)
 	a := at.image(t)
 	at.mustShow(t, a, false, imageAudience(kindChosen, at.ana))
 	at.hints(t)
@@ -213,7 +213,7 @@ func TestImageAudience_TheSameImageAgainKeepsItsAudience(t *testing.T) {
 
 func TestImageAudience_NarrowingTakesTheImageAwayAtOnce(t *testing.T) {
 	t.Parallel()
-	at := newAudienceTable(t)
+	at := newSceneTable(t)
 	a := at.image(t)
 	at.mustShow(t, a, false, nil)
 	at.wantSeen(t, "shown", a, true, true, true)
@@ -249,7 +249,7 @@ func TestImageAudience_NarrowingTakesTheImageAwayAtOnce(t *testing.T) {
 
 func TestImageAudience_SetShownImageAudienceRefusals(t *testing.T) {
 	t.Parallel()
-	at := newAudienceTable(t)
+	at := newSceneTable(t)
 	stranger := at.h.newUser("Estranha")
 	// Nothing is shown.
 	_, err := at.setImageAudience(at.master, imageAudience(kindTable))
@@ -287,7 +287,7 @@ func TestImageAudience_SetShownImageAudienceRefusals(t *testing.T) {
 
 func TestImageAudience_TheScenesPlayersFollowTheScene(t *testing.T) {
 	t.Parallel()
-	at := newAudienceTable(t)
+	at := newSceneTable(t)
 	a := at.image(t)
 	at.openFor(t, at.point, at.ana, at.caio)
 	at.mustShow(t, a, false, nil)
@@ -313,23 +313,27 @@ func TestImageAudience_WhenTheSceneStopsBeingTheImagesItStaysWithTheSamePlayers(
 	ctx := t.Context()
 	cases := []struct {
 		name string
-		stop func(t *testing.T, at *audienceTable)
+		stop func(t *testing.T, at *sceneTable)
 	}{
-		{"the scene closes", func(t *testing.T, at *audienceTable) {
+		{"the scene closes", func(t *testing.T, at *sceneTable) {
+			t.Helper()
 			if _, err := at.master.play.CloseScene(ctx, connect.NewRequest(&playv1.CloseSceneRequest{CampaignId: at.campaignID})); err != nil {
 				t.Fatalf("CloseScene() error = %v", err)
 			}
 		}},
-		{"the scene opens to everyone", func(t *testing.T, at *audienceTable) {
+		{"the scene opens to everyone", func(t *testing.T, at *sceneTable) {
+			t.Helper()
 			if _, err := at.setAudience(at.master, &playv1.SceneAudience{Everyone: true}); err != nil {
 				t.Fatalf("SetSceneAudience(everyone) error = %v", err)
 			}
 		}},
-		{"another scene opens to other players", func(t *testing.T, at *audienceTable) {
+		{"another scene opens to other players", func(t *testing.T, at *sceneTable) {
+			t.Helper()
 			other, _ := at.h.newScene(at.mapID, "A ponte", false, 1)
 			at.openFor(t, other, at.bia)
 		}},
-		{"another scene opens to everyone", func(t *testing.T, at *audienceTable) {
+		{"another scene opens to everyone", func(t *testing.T, at *sceneTable) {
+			t.Helper()
 			other, _ := at.h.newScene(at.mapID, "A ponte", false, 1)
 			at.openScene(t, other)
 		}},
@@ -337,7 +341,7 @@ func TestImageAudience_WhenTheSceneStopsBeingTheImagesItStaysWithTheSamePlayers(
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			at := newAudienceTable(t)
+			at := newSceneTable(t)
 			a := at.image(t)
 			at.openFor(t, at.point, at.ana, at.caio)
 			at.mustShow(t, a, false, nil)
@@ -365,7 +369,7 @@ func TestImageAudience_WhenTheSceneStopsBeingTheImagesItStaysWithTheSamePlayers(
 
 func TestImageAudience_AnImageLeftWithThePlayersKeepsTheAudienceItHad(t *testing.T) {
 	t.Parallel()
-	at := newAudienceTable(t)
+	at := newSceneTable(t)
 	a, b, c := at.image(t), at.image(t), at.image(t)
 	at.openFor(t, at.point, at.ana, at.caio)
 	at.mustShow(t, a, true, nil) // kept, for the scene's players
@@ -428,7 +432,7 @@ func TestImageAudience_AnImageLeftWithThePlayersKeepsTheAudienceItHad(t *testing
 
 func TestImageAudience_AWholeTableImageIsLeftWithTheWholeTable(t *testing.T) {
 	t.Parallel()
-	at := newAudienceTable(t)
+	at := newSceneTable(t)
 	a := at.image(t)
 	at.mustShow(t, a, true, nil)
 	at.mustShow(t, "", false, nil)

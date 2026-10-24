@@ -24,6 +24,7 @@ package live
 
 import (
 	"errors"
+	"slices"
 	"sync"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -79,13 +80,13 @@ type Audience struct {
 	// One more user, such as the player of the character the event is
 	// about. Empty for none.
 	UserID string
-	// Except lists players Players does not reach: "the players but these".
+	// Except lists players Players does not reach: "the players but these". It narrows Players only.
 	Except []string
 }
 
 // includes reports whether s may receive an event for this audience.
 func (a Audience) includes(s Subscriber) bool {
-	return a.Everyone || (a.Master && s.Master) || (a.Players && !s.Master) || (a.UserID != "" && a.UserID == s.UserID)
+	return a.Everyone || (a.Master && s.Master) || (a.Players && !s.Master && !slices.Contains(a.Except, s.UserID)) || (a.UserID != "" && a.UserID == s.UserID)
 }
 
 // Event is one live change, and who may receive it.

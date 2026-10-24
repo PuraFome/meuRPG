@@ -155,22 +155,40 @@ func shownImage(img mapsdb.GalleryImage) *playv1.ShownImage {
 }
 
 // LeaveImage leaves the campaign's gallery image with the players inside
-// tx; an image already left stays as it is, and one that is not the
-// campaign's anymore (deleted meanwhile) is skipped, since a left image
-// that is gone has nothing to leave. The caller checked that the caller is
+// tx, with the audience given: the whole table, or exactly some players (MR-028,
+// RN-10). An image already left takes the audience of this leaving; one that
+// is not the campaign's anymore (deleted meanwhile) is skipped, since a left
+// image that is gone has nothing to leave. The caller checked that the caller is
 // the campaign's master.
-func (sm *SessionMaps) LeaveImage(ctx context.Context, tx pgx.Tx, campaignID, imageID string, at time.Time) error {
-	_, err := sm.queries.WithTx(tx).LeaveImage(ctx, mapsdb.LeaveImageParams{CampaignID: campaignID, ImageID: imageID, Now: at, AudienceEveryone: true})
+func (sm *SessionMaps) LeaveImage(ctx context.Context, tx pgx.Tx, campaignID, imageID string, at time.Time, who link.ImageAudience) error {
+	q := sm.queries.WithTx(tx)
+	n, err := q.LeaveImage(ctx, mapsdb.LeaveImageParams{CampaignID: campaignID, ImageID: imageID, Now: at, AudienceEveryone: who.Everyone})
 	if err != nil {
 		return fmt.Errorf("leave the image with the players: %w", err)
+	}
+	if n == 0 {
+		return nil
+	}
+	if err := q.ClearLeftImageViewers(ctx, mapsdb.ClearLeftImageViewersParams{CampaignID: campaignID, ImageID: imageID}); err != nil {
+		return fmt.Errorf("forget who the image was left with: %w", err)
+	}
+	if who.Everyone {
+		return nil
+	}
+	for _, user := range who.UserIDs {
+		if err := q.InsertLeftImageViewer(ctx, mapsdb.InsertLeftImageViewerParams{CampaignID: campaignID, ImageID: imageID, UserID: user}); err != nil {
+			return fmt.Errorf("leave the image with a player: %w", err)
+		}
 	}
 	return nil
 }
 
-// ListLeftImages returns the images left with the players, in the order
-// they were left, with their names as captions.
-func (sm *SessionMaps) ListLeftImages(ctx context.Context, campaignID string) ([]*playv1.ShownImage, error) {
-	rows, err := sm.queries.ListLeftImages(ctx, mapsdb.ListLeftImagesParams{CampaignID: campaignID, UserID: "00000000-0000-0000-0000-000000000000", Master: true}) // every audience is the whole table until the audience is kept
+// ListLeftImages returns the images left with the players that the user
+// reads, in the order they were left, with their names as captions: the master
+// reads every one, each with who it was left with; a player only the ones left
+// with them.
+func (sm *SessionMaps) ListLeftImages(ctx context.Context, campaignID, userID string, master bool) ([]*playv1.ShownImage, error) {
+	rows, err := sm.queries.ListLeftImages(ctx, mapsdb.ListLeftImagesParams{CampaignID: campaignID, UserID: userID, Master: master})
 	if err != nil {
 		return nil, fmt.Errorf("list the left images: %w", err)
 	}
@@ -178,21 +196,85 @@ func (sm *SessionMaps) ListLeftImages(ctx context.Context, campaignID string) ([
 	for _, r := range rows {
 		out = append(out, shownImage(r))
 	}
+	if !master {
+		return out, nil
+	}
+	audiences, err := sm.leftAudiences(ctx, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	for _, img := range out {
+		img.Audience = audiences[img.GetId()]
+	}
 	return out, nil
 }
 
-// TakeBackImage takes the image off the left list, or returns a
-// `not_found` Connect error when it is not on it. The caller checked that
-// the caller is the campaign's master.
-func (sm *SessionMaps) TakeBackImage(ctx context.Context, campaignID, imageID string) error {
+// leftAudiences reads who each left image was left with, as the master reads it.
+func (sm *SessionMaps) leftAudiences(ctx context.Context, campaignID string) (map[string]*playv1.ImageAudience, error) {
+	rows, err := sm.queries.ListLeftImageAudiences(ctx, campaignID)
+	if err != nil {
+		return nil, fmt.Errorf("read who the images were left with: %w", err)
+	}
+	viewers, err := sm.queries.ListLeftImageViewers(ctx, campaignID)
+	if err != nil {
+		return nil, fmt.Errorf("read the players the images were left with: %w", err)
+	}
+	out := make(map[string]*playv1.ImageAudience, len(rows))
+	for _, r := range rows {
+		kind := playv1.ImageAudienceKind_IMAGE_AUDIENCE_KIND_CHOSEN_PLAYERS
+		if r.AudienceEveryone {
+			kind = playv1.ImageAudienceKind_IMAGE_AUDIENCE_KIND_WHOLE_TABLE
+		}
+		out[r.ImageID] = &playv1.ImageAudience{Kind: kind}
+	}
+	for _, v := range viewers {
+		if a := out[v.ImageID]; a != nil && a.GetKind() == playv1.ImageAudienceKind_IMAGE_AUDIENCE_KIND_CHOSEN_PLAYERS {
+			a.UserIds = append(a.UserIds, v.UserID)
+		}
+	}
+	return out, nil
+}
+
+// TakeBackImage takes the image off the left list and returns who it was left
+// with, or returns a `not_found` Connect error when it is not on it. The caller
+// checked that the caller is the campaign's master.
+func (sm *SessionMaps) TakeBackImage(ctx context.Context, campaignID, imageID string) (link.ImageAudience, error) {
+	who, err := sm.leftWith(ctx, campaignID, imageID)
+	if err != nil {
+		return who, err
+	}
 	n, err := sm.queries.TakeBackLeftImage(ctx, mapsdb.TakeBackLeftImageParams{CampaignID: campaignID, ImageID: imageID})
 	if err != nil {
-		return fmt.Errorf("take the left image back: %w", err)
+		return who, fmt.Errorf("take the left image back: %w", err)
 	}
 	if n == 0 {
-		return errImageNotFound()
+		return who, errImageNotFound()
 	}
-	return nil
+	return who, nil
+}
+
+// leftWith is who the image was left with; a `not_found` error when it is not left.
+func (sm *SessionMaps) leftWith(ctx context.Context, campaignID, imageID string) (link.ImageAudience, error) {
+	return leftWith(ctx, sm.queries, campaignID, imageID)
+}
+
+// leftWith reads who the image was left with, through q.
+func leftWith(ctx context.Context, q *mapsdb.Queries, campaignID, imageID string) (link.ImageAudience, error) {
+	everyone, err := q.GetLeftImageAudience(ctx, mapsdb.GetLeftImageAudienceParams{CampaignID: campaignID, ImageID: imageID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return link.ImageAudience{}, errImageNotFound()
+	}
+	if err != nil {
+		return link.ImageAudience{}, fmt.Errorf("read who the image was left with: %w", err)
+	}
+	if everyone {
+		return link.ImageAudience{Everyone: true}, nil
+	}
+	users, err := q.ListViewersOfLeftImage(ctx, mapsdb.ListViewersOfLeftImageParams{CampaignID: campaignID, ImageID: imageID})
+	if err != nil {
+		return link.ImageAudience{}, fmt.Errorf("read the players the image was left with: %w", err)
+	}
+	return link.ImageAudience{UserIDs: users}, nil
 }
 
 // gridRows is how many rows of squares a grid of columns across has on an

@@ -539,14 +539,14 @@ func (s *Service) publishSceneChangedIf(ctx context.Context, campaignID, pointID
 		return
 	}
 	if open != "" && open == pointID {
-		s.publishSceneChanged(campaignID)
+		s.publishSceneChanged(ctx, campaignID)
 	}
 }
 
-// publishSceneChanged tells everyone in the session that the open scene
-// changed.
-func (s *Service) publishSceneChanged(campaignID string) {
-	s.live.Publish(campaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_SceneChanged_{
+// publishSceneChanged tells the master and the players in the open scene that it
+// changed (everyone, when it is open to the whole table).
+func (s *Service) publishSceneChanged(ctx context.Context, campaignID string) {
+	s.live.PublishToScene(ctx, campaignID, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_SceneChanged_{
 		SceneChanged: &playv1.WatchGameSessionResponse_SceneChanged{},
 	}})
 }

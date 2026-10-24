@@ -114,18 +114,18 @@ func scenePlayerNames(list []*playv1.ScenePlayer) []string {
 	return out
 }
 
-// audienceTable is a table with the master's, Ana's, Caio's and Bia's streams open, and a scene with one action.
-type audienceTable struct {
+// sceneTable is a table with the master's, Ana's, Caio's and Bia's streams open, and a scene with one action.
+type sceneTable struct {
 	*armed
 	point, action  string
 	wm, wa, wc, wb *watcher
 }
 
-func newAudienceTable(t *testing.T) *audienceTable {
+func newSceneTable(t *testing.T) *sceneTable {
 	t.Helper()
 	a := newArmed(t)
 	pt, actions := a.h.newScene(a.mapID, "A carroça", true, 3, sceneSpec{"skill:investigation", new(int32(12))})
-	at := &audienceTable{armed: a, point: pt, action: actions[0]}
+	at := &sceneTable{armed: a, point: pt, action: actions[0]}
 	at.wm, at.wa, at.wc, at.wb = a.master.watch(t, a.campaignID), a.ana.watch(t, a.campaignID), a.caio.watch(t, a.campaignID), a.bia.watch(t, a.campaignID)
 	for _, w := range []*watcher{at.wm, at.wa, at.wc, at.wb} {
 		w.ready(t)
@@ -134,14 +134,14 @@ func newAudienceTable(t *testing.T) *audienceTable {
 }
 
 // hints are what the four streams got since the last call, in the order master, Ana, Caio, Bia.
-func (at *audienceTable) hints(t *testing.T) []string {
+func (at *sceneTable) hints(t *testing.T) []string {
 	t.Helper()
 	return hintWords(t, at.armed, at.wm, at.wa, at.wc, at.wb)
 }
 
 func TestSceneAudience_OpenToSomePlayersHidesItFromTheOthers(t *testing.T) {
 	t.Parallel()
-	at := newAudienceTable(t)
+	at := newSceneTable(t)
 	info := at.openFor(t, at.point, at.ana, at.caio)
 
 	// The master's answer says who is in and who is out, and since when.
@@ -184,7 +184,7 @@ func TestSceneAudience_OpenToSomePlayersHidesItFromTheOthers(t *testing.T) {
 
 func TestSceneAudience_TheDefaultIsEveryone(t *testing.T) {
 	t.Parallel()
-	at := newAudienceTable(t)
+	at := newSceneTable(t)
 	at.openScene(t, at.point)
 	aud := at.readScene(t, at.master).GetAudience()
 	if aud == nil || !aud.GetEveryone() || len(aud.GetOutside()) != 0 || len(aud.GetInside()) != 3 {
@@ -207,7 +207,7 @@ func TestSceneAudience_TheDefaultIsEveryone(t *testing.T) {
 
 func TestSceneAudience_APlayerWhoJoinsLaterIsOutOfAChosenScene(t *testing.T) {
 	t.Parallel()
-	at := newAudienceTable(t)
+	at := newSceneTable(t)
 	at.openFor(t, at.point, at.ana)
 	late := at.h.newUser("Duda")
 	at.h.join(at.master, at.campaignID, late)
@@ -218,7 +218,7 @@ func TestSceneAudience_APlayerWhoJoinsLaterIsOutOfAChosenScene(t *testing.T) {
 
 func TestSceneAudience_OpenRefusals(t *testing.T) {
 	t.Parallel()
-	at := newAudienceTable(t)
+	at := newSceneTable(t)
 	ctx := t.Context()
 	stranger := at.h.newUser("Estranha")
 	open := func(aud *playv1.SceneAudience) error {
@@ -254,7 +254,7 @@ func TestSceneAudience_OpenRefusals(t *testing.T) {
 
 func TestSceneAudience_SetSceneAudienceRefusals(t *testing.T) {
 	t.Parallel()
-	at := newAudienceTable(t)
+	at := newSceneTable(t)
 	ctx := t.Context()
 	// No scene is open.
 	_, err := at.setAudience(at.master, audienceOf(at.ana))
@@ -273,13 +273,13 @@ func TestSceneAudience_SetSceneAudienceRefusals(t *testing.T) {
 	wantRefusal(t, "a stranger", err, connect.CodeNotFound, "")
 	// No session at all.
 	campaign := at.h.newCampaign(at.master, "Sem sessão", at.ana)
-	_, err = at.master.play.SetSceneAudience(ctx, connect.NewRequest(&playv1.SetSceneAudienceRequest{CampaignId: campaign, Audience: audienceOf(at.ana)}))
+	_, err = at.master.play.SetSceneAudience(ctx, connect.NewRequest(&playv1.SetSceneAudienceRequest{CampaignId: campaign, Audience: &playv1.SceneAudience{Everyone: true}}))
 	wantSceneNoSession(t, "SetSceneAudience(no session)", err)
 }
 
 func TestSceneAudience_ChangingWhoIsInIsLiveForTheOnesAffected(t *testing.T) {
 	t.Parallel()
-	at := newAudienceTable(t)
+	at := newSceneTable(t)
 	at.openFor(t, at.point, at.ana, at.caio)
 	at.hints(t)
 
@@ -329,7 +329,7 @@ func TestSceneAudience_ChangingWhoIsInIsLiveForTheOnesAffected(t *testing.T) {
 
 func TestSceneAudience_RollsFollowTheAudience(t *testing.T) {
 	t.Parallel()
-	at := newAudienceTable(t)
+	at := newSceneTable(t)
 	at.openFor(t, at.point, at.ana)
 	roll := func(u *user) error {
 		_, err := sceneInApp(at.armed, u, at.action, newKey(), 14)
@@ -353,8 +353,9 @@ func TestSceneAudience_RollsFollowTheAudience(t *testing.T) {
 
 func TestSceneAudience_GrantingAnAttemptToAnOutsiderIsRefused(t *testing.T) {
 	t.Parallel()
-	at := newAudienceTable(t)
+	at := newSceneTable(t)
 	at.openFor(t, at.point, at.ana)
+	at.hints(t)
 	_, err := sceneGrant(at.armed, at.master, at.action, at.toren.GetId(), newKey())
 	wantRefusal(t, "a grant to a character out of the scene", err, connect.CodeNotFound, "character not found")
 	if _, err := sceneGrant(at.armed, at.master, at.action, at.pens.GetId(), newKey()); err != nil {
@@ -365,7 +366,7 @@ func TestSceneAudience_GrantingAnAttemptToAnOutsiderIsRefused(t *testing.T) {
 
 func TestSceneAudience_TheStageAndItsHintsGoToTheSceneOnly(t *testing.T) {
 	t.Parallel()
-	at := newAudienceTable(t)
+	at := newSceneTable(t)
 	at.openFor(t, at.point, at.ana, at.caio)
 	at.hints(t)
 	ctx := t.Context()
@@ -387,7 +388,7 @@ func TestSceneAudience_TheStageAndItsHintsGoToTheSceneOnly(t *testing.T) {
 
 func TestSceneAudience_OpeningTheOpenSceneAgainKeepsItsAudienceUnlessTheMasterSaysOne(t *testing.T) {
 	t.Parallel()
-	at := newAudienceTable(t)
+	at := newSceneTable(t)
 	at.openFor(t, at.point, at.ana)
 	at.hints(t)
 	// With no audience, it changes nothing (a second tap must not widen the scene).
@@ -413,7 +414,7 @@ func TestSceneAudience_OpeningTheOpenSceneAgainKeepsItsAudienceUnlessTheMasterSa
 
 func TestSceneAudience_TheGroupCheckGoesToTheScenesPlayersOnly(t *testing.T) {
 	t.Parallel()
-	at := newAudienceTable(t)
+	at := newSceneTable(t)
 	ctx := t.Context()
 	at.openFor(t, at.point, at.ana, at.caio)
 	at.hints(t)
@@ -466,7 +467,7 @@ func TestSceneAudience_TheGroupCheckGoesToTheScenesPlayersOnly(t *testing.T) {
 // players who were in the scene, and for no other.
 func TestSceneAudience_TheSummaryDoesNotCountAScenesRollsForThoseOutside(t *testing.T) {
 	t.Parallel()
-	at := newAudienceTable(t)
+	at := newSceneTable(t)
 	at.openFor(t, at.point, at.ana, at.bia)
 	at.checkRoll(t, at.ana, at.action, 18) // DC 12: passed, in a scene that shows its DC
 	var session string

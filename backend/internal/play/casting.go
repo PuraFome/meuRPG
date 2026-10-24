@@ -154,9 +154,27 @@ type stageMap struct {
 	byChar, byEntry map[string]string
 }
 
+// stageViewer is the user whose sight of the stage counts: a player's, "" for the master.
+func stageViewer(m authz.Membership) string {
+	if m.Role == authz.RoleMaster {
+		return ""
+	}
+	return m.UserID
+}
+
 // stageMapOf reads the stage of the session as the players see it: an NPC hidden from them is not on it
-// (its casts are secret and it is no target a player can pick, RN-10).
-func stageMapOf(ctx context.Context, q *playdb.Queries, sessionID string) (stageMap, error) {
+// (its casts are secret and it is no target a player can pick, RN-10). A player out of a scene open to only
+// some players (userID) sees no stage at all; an empty userID is the master's.
+func stageMapOf(ctx context.Context, q *playdb.Queries, sessionID, userID string) (stageMap, error) {
+	if userID != "" {
+		reads, err := q.PlayerReadsScene(ctx, playdb.PlayerReadsSceneParams{SessionID: sessionID, UserID: userID})
+		if err != nil {
+			return stageMap{}, fmt.Errorf("read who is in the scene: %w", err)
+		}
+		if !reads {
+			return stageMap{byChar: map[string]string{}, byEntry: map[string]string{}}, nil
+		}
+	}
 	rows, err := q.ListShownStage(ctx, sessionID)
 	if err != nil {
 		return stageMap{}, fmt.Errorf("list the stage: %w", err)
@@ -184,8 +202,8 @@ func hiddenNPCsOf(ctx context.Context, q *playdb.Queries, sessionID string) (map
 }
 
 // stageOf reads the NPCs the players see on the stage of the session.
-func stageOf(ctx context.Context, q *playdb.Queries, sessionID string) (map[string]bool, error) {
-	sm, err := stageMapOf(ctx, q, sessionID)
+func stageOf(ctx context.Context, q *playdb.Queries, sessionID, userID string) (map[string]bool, error) {
+	sm, err := stageMapOf(ctx, q, sessionID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +231,7 @@ func (s *Service) inCombat(ctx context.Context, q *playdb.Queries, sessionID, ch
 // A character the caller may not pick is not found, as one that does not exist.
 func (s *Service) guardCast(ctx context.Context, c *combatTx, m authz.Membership, casterID string, targetIDs []string) (castGuard, error) {
 	g := castGuard{}
-	sm, err := stageMapOf(ctx, c.q, c.session.ID)
+	sm, err := stageMapOf(ctx, c.q, c.session.ID, stageViewer(m))
 	if err != nil {
 		return g, err
 	}

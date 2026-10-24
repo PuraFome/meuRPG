@@ -160,14 +160,12 @@ func groupHoldOf(ctx context.Context) *groupHold {
 }
 
 // publishGroupCheckChanged tells the table that the group check changed: a hint with no
-// content, read again by each as their own role.
-func (s *Service) publishGroupCheckChanged(campaignID string) {
-	s.hub.Publish(campaignID, live.Event{
-		Audience: live.Audience{Everyone: true},
-		Message: &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_GroupCheckChanged_{
-			GroupCheckChanged: &playv1.WatchGameSessionResponse_GroupCheckChanged{},
-		}},
-	})
+// content, read again by each as their own role. While a scene open to only some players is
+// open, only its players hear it (RN-10).
+func (s *Service) publishGroupCheckChanged(ctx context.Context, campaignID string) {
+	s.PublishToScene(ctx, campaignID, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_GroupCheckChanged_{
+		GroupCheckChanged: &playv1.WatchGameSessionResponse_GroupCheckChanged{},
+	}})
 }
 
 // maxGroupCheckDC is the highest DC a group check can ask (0 asks none).
@@ -233,7 +231,7 @@ func (s *Service) RequestGroupCheck(
 		return nil, s.dbError(ctx, "ask a group check", err)
 	}
 	if !repeated {
-		s.publishGroupCheckChanged(m.CampaignID)
+		s.publishGroupCheckChanged(ctx, m.CampaignID)
 	}
 	view, err := s.groupCheckView(ctx, m, ev.GroupCheckID)
 	if err != nil {
@@ -252,6 +250,10 @@ func (s *Service) askGroupCheck(ctx context.Context, q *playdb.Queries, tx pgx.T
 	}
 	party, err := s.roster.CombatParty(ctx, tx, m.CampaignID)
 	if err != nil {
+		return groupCheckEvent{}, err
+	}
+	// While a scene is open to only some players the check goes to its players alone (RN-10).
+	if party, err = s.partyInScene(ctx, q, session, party); err != nil {
 		return groupCheckEvent{}, err
 	}
 	if len(party) == 0 {
@@ -381,6 +383,12 @@ func (s *Service) rollOwnGroupCheck(ctx context.Context, q *playdb.Queries, tx p
 		return groupCheckEvent{}, "", err
 	}
 	if !has {
+		return groupCheckEvent{}, "", errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_IN_GROUP_CHECK, "you have no living character in this check")
+	}
+	if outside, err := outsideOpenScene(ctx, q, session, m.UserID); err != nil || outside {
+		if err != nil {
+			return groupCheckEvent{}, "", err
+		}
 		return groupCheckEvent{}, "", errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_IN_GROUP_CHECK, "you have no living character in this check")
 	}
 	force, err := s.dice.ForcedDice(ctx, tx, m.CampaignID, m.UserID)
@@ -604,7 +612,7 @@ func (s *Service) RollForPlayer(
 		return connect.NewResponse(&playv1.RollForPlayerResponse{InspirationOffer: hold.offer, LuckyOffer: hold.lucky, HeldRollOffer: hold.held}), nil
 	}
 	if !repeated {
-		s.publishGroupCheckChanged(m.CampaignID)
+		s.publishGroupCheckChanged(ctx, m.CampaignID)
 	}
 	view, err := s.groupCheckView(ctx, m, checkID)
 	if err != nil {
@@ -638,7 +646,7 @@ func (s *Service) CloseGroupCheck(
 		return nil, s.dbError(ctx, "close a group check", err)
 	}
 	if !repeated {
-		s.publishGroupCheckChanged(m.CampaignID)
+		s.publishGroupCheckChanged(ctx, m.CampaignID)
 	}
 	view, err := s.groupCheckView(ctx, m, checkID)
 	if err != nil {
@@ -836,7 +844,19 @@ func (s *Service) groupViewerOf(ctx context.Context, m authz.Membership, members
 		return groupViewer{}, false, err
 	}
 	asked = viewer.hasMine && slices.ContainsFunc(members, func(mb playdb.GroupCheckMember) bool { return mb.CharacterID == viewer.mine.ID })
-	return viewer, asked, nil
+	if !asked {
+		return viewer, false, nil
+	}
+	// A player out of the scene open to only some players reads no group check (RN-10).
+	session, err := s.queries.GetOpenGameSession(ctx, m.CampaignID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return viewer, asked, nil
+	}
+	if err != nil {
+		return groupViewer{}, false, fmt.Errorf("find the open session: %w", err)
+	}
+	outside, err := outsideOpenScene(ctx, s.queries, session, m.UserID)
+	return viewer, asked && !outside, err
 }
 
 // groupCheckHeader is the part of the view that does not depend on the rolls: the master alone

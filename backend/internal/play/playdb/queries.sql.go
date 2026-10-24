@@ -7727,6 +7727,29 @@ func (q *Queries) NextSessionNumber(ctx context.Context, campaignID string) (int
 	return next, err
 }
 
+const playerReadsScene = `-- name: PlayerReadsScene :one
+SELECT (gs.open_scene_point_id IS NULL OR gs.open_scene_everyone OR EXISTS (
+    SELECT 1 FROM game_session_scene_players AS p
+    WHERE p.game_session_id = gs.id AND p.user_id = $1::UUID
+))::BOOL AS reads
+FROM game_sessions AS gs
+WHERE gs.id = $2
+`
+
+type PlayerReadsSceneParams struct {
+	UserID    string
+	SessionID string
+}
+
+// Whether the player reads the scene open in the session: none is open, or it is
+// open to everyone, or to them (RN-10). The stage of the scene follows.
+func (q *Queries) PlayerReadsScene(ctx context.Context, arg PlayerReadsSceneParams) (bool, error) {
+	row := q.db.QueryRow(ctx, playerReadsScene, arg.UserID, arg.SessionID)
+	var reads bool
+	err := row.Scan(&reads)
+	return reads, err
+}
+
 const reopenReactionWindow = `-- name: ReopenReactionWindow :exec
 UPDATE reaction_windows
 SET status = 'open', closed_reason = NULL, outcome = NULL, answered_at = NULL
@@ -9746,8 +9769,15 @@ FROM session_events
 WHERE game_session_id = $1 AND kind = 'scene_check_rolled'
   AND character_id IS NOT NULL
   AND payload->>'dc_shown' = 'true' AND payload ? 'passed'
+  AND ($2::BOOL OR NOT (payload ? 'audience') OR (payload->'audience') ? $3::TEXT)
 GROUP BY character_id
 `
+
+type TallySessionSceneChecksParams struct {
+	GameSessionID string
+	Master        bool
+	UserID        string
+}
 
 type TallySessionSceneChecksRow struct {
 	CharacterID *string
@@ -9757,10 +9787,12 @@ type TallySessionSceneChecksRow struct {
 
 // The checks rolled outside combat, per character: tried and passed, counting
 // only a roll the players could see the DC of, on an action that had one
-// (RN-20). Done in SQL, so a session with any number of rolls costs one row
+// (RN-20). A roll made in a scene open to only some players carries their
+// accounts (payload audience) and counts for them and for the master only
+// (RN-10). Done in SQL, so a session with any number of rolls costs one row
 // per character.
-func (q *Queries) TallySessionSceneChecks(ctx context.Context, gameSessionID string) ([]TallySessionSceneChecksRow, error) {
-	rows, err := q.db.Query(ctx, tallySessionSceneChecks, gameSessionID)
+func (q *Queries) TallySessionSceneChecks(ctx context.Context, arg TallySessionSceneChecksParams) ([]TallySessionSceneChecksRow, error) {
+	rows, err := q.db.Query(ctx, tallySessionSceneChecks, arg.GameSessionID, arg.Master, arg.UserID)
 	if err != nil {
 		return nil, err
 	}

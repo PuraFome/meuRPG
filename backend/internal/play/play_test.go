@@ -584,16 +584,16 @@ func (noMaps) ShownImage(context.Context, string, string) (*playv1.ShownImage, e
 	return nil, errors.New("not in this test")
 }
 
-func (noMaps) LeaveImage(context.Context, pgx.Tx, string, string, time.Time) error {
+func (noMaps) LeaveImage(context.Context, pgx.Tx, string, string, time.Time, link.ImageAudience) error {
 	return errors.New("not in this test")
 }
 
-func (noMaps) ListLeftImages(context.Context, string) ([]*playv1.ShownImage, error) {
+func (noMaps) ListLeftImages(context.Context, string, string, bool) ([]*playv1.ShownImage, error) {
 	return nil, errors.New("not in this test")
 }
 
-func (noMaps) TakeBackImage(context.Context, string, string) error {
-	return errors.New("not in this test")
+func (noMaps) TakeBackImage(context.Context, string, string) (link.ImageAudience, error) {
+	return link.ImageAudience{}, errors.New("not in this test")
 }
 
 func (noMaps) MapGrid(context.Context, pgx.Tx, string, string) (link.Grid, error) {

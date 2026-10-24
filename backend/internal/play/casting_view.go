@@ -57,7 +57,7 @@ func (s *Service) lensFor(ctx context.Context, m authz.Membership, rows []playdb
 	}
 	session, err := s.queries.GetOpenGameSession(ctx, m.CampaignID)
 	if err == nil {
-		if l.stage, err = stageMapOf(ctx, s.queries, session.ID); err != nil {
+		if l.stage, err = stageMapOf(ctx, s.queries, session.ID, stageViewer(m)); err != nil {
 			return l, err
 		}
 		if l.hidden, err = hiddenNPCsOf(ctx, s.queries, session.ID); err != nil {
@@ -354,7 +354,7 @@ func (l castLens) listing(only string, live, logged []playdb.SpellCast) *playv1.
 // the id is a player character's or the place of an NPC on the stage. Any other is not
 // found, as one that does not exist (RN-10).
 func (s *Service) playerMaySee(ctx context.Context, m authz.Membership, sessionID, id string) (string, error) {
-	sm, err := stageMapOf(ctx, s.queries, sessionID)
+	sm, err := stageMapOf(ctx, s.queries, sessionID, stageViewer(m))
 	if err != nil {
 		return "", s.dbError(ctx, "list the stage", err)
 	}
@@ -480,7 +480,7 @@ func (s *Service) castTargetsFor(ctx context.Context, m authz.Membership, sessio
 	for _, p := range party {
 		out = add(out, p.ID, p)
 	}
-	sm, err := stageMapOf(ctx, s.queries, session.ID)
+	sm, err := stageMapOf(ctx, s.queries, session.ID, stageViewer(m))
 	if err != nil {
 		return nil, s.dbError(ctx, "list the stage", err)
 	}

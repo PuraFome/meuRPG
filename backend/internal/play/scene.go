@@ -63,6 +63,9 @@ type sceneEvent struct {
 	PointID string `json:"point_id"`
 	// Actions is how many actions the scene had when it opened.
 	Actions int `json:"actions,omitempty"`
+	// Players are the accounts the scene was open to, when it was open to only some players (scene_opened);
+	// absent for a scene open to the whole table.
+	Players []string `json:"players,omitempty"`
 }
 
 // sceneRollEvent is the payload of scene_check_rolled. Numbers and ids only:
@@ -78,6 +81,9 @@ type sceneRollEvent struct {
 	Physical bool   `json:"physical,omitempty"`
 	// Passed is set only when the action had a DC.
 	Passed *bool `json:"passed,omitempty"`
+	// Audience are the accounts of the players in the scene when the roll was made, when the scene was
+	// open to only some players: the session summary counts the roll for them and for the master only.
+	Audience []string `json:"audience,omitempty"`
 	// DCShown says the scene showed its DC to the players when the roll was
 	// made. The session summary counts a roll only when it is true, so a
 	// scene that hid its DC never gives a pass or a fail to anyone (RN-20).
@@ -135,13 +141,11 @@ func (s *Service) OpenScenePoint(ctx context.Context, campaignID string) (string
 	return conv.OrZero(point), nil
 }
 
-// publishSceneChanged tells everyone in the session that the open scene
-// changed. The hint names nothing: each app reads the scene again, filtered
-// for it.
-func (s *Service) publishSceneChanged(campaignID string) {
-	s.Publish(campaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_SceneChanged_{
-		SceneChanged: &playv1.WatchGameSessionResponse_SceneChanged{},
-	}})
+// publishSceneChanged tells the master and the players in the open scene that it changed (everyone,
+// when it is open to the whole table). The hint names nothing: each app reads the scene again,
+// filtered for it.
+func (s *Service) publishSceneChanged(ctx context.Context, campaignID string) {
+	s.PublishToScene(ctx, campaignID, sceneChangedEvent())
 }
 
 // insertSceneEvent appends a session event inside tx, and returns its id.
@@ -210,16 +214,21 @@ type sceneSwitch struct {
 	session      playdb.GameSession
 	changed      bool // another scene (or none) is open now
 	stageCleared bool
+	// audience is what the switch did to who is in the scene: the players of the scene before and after
+	// hear it, and the image shown to the scene's players follows.
+	audience audienceChange
 }
 
-// publishSceneSwitch tells the streams what a switch changed.
-func (s *Service) publishSceneSwitch(campaignID string, sw sceneSwitch) {
+// publishSceneSwitch tells the streams what a switch changed: the master and the players of the scene
+// that closed or opened, to each the hint that makes them read it again.
+func (s *Service) publishSceneSwitch(ctx context.Context, campaignID string, sw sceneSwitch) {
 	if sw.changed {
-		s.publishSceneChanged(campaignID)
+		s.publishToViewers(campaignID, sw.audience.notify(), sceneChangedEvent())
 	}
 	if sw.stageCleared {
-		s.publishStageChanged(campaignID, true)
+		s.publishToViewers(campaignID, sw.audience.notify(), stageChangedEvent())
 	}
+	s.publishImageMove(ctx, campaignID, sw.audience.image)
 }
 
 // OpenScene implements playv1connect.PlayServiceHandler.
@@ -242,11 +251,16 @@ func (s *Service) OpenScene(
 	}
 	// Any SCENE point opens, even one with no actions (question 63): the
 	// description, the clues and the stage are enough to run a scene.
+	audience, given, err := s.parseSceneAudience(ctx, m.CampaignID, req.Msg.GetAudience())
+	if err != nil {
+		return nil, err
+	}
+	opening := sceneOpening{point: pointID.String(), actions: len(scene.Actions), audience: audience, given: given}
 
 	var sw sceneSwitch
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		sw = sceneSwitch{}
-		return s.switchSceneOn(ctx, tx, m, pointID.String(), len(scene.Actions), &sw)
+		return s.switchSceneOn(ctx, tx, m, opening, &sw)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "open a scene", err)
@@ -254,7 +268,7 @@ func (s *Service) OpenScene(
 	if sw.changed {
 		logging.Event(ctx, s.logger, "scene.opened", slog.String("session_id", sw.session.ID), slog.String("point_id", pointID.String()))
 	}
-	s.publishSceneSwitch(m.CampaignID, sw)
+	s.publishSceneSwitch(ctx, m.CampaignID, sw)
 	info, err := s.sceneInfo(ctx, m, sw.session, scene)
 	if err != nil {
 		return nil, err
@@ -262,32 +276,64 @@ func (s *Service) OpenScene(
 	return connect.NewResponse(&playv1.OpenSceneResponse{Scene: info}), nil
 }
 
+// sceneOpening is the scene OpenScene opens: the point, how many actions it has, and the players it is open
+// to when the master said (given), the whole table otherwise.
+type sceneOpening struct {
+	point    string
+	actions  int
+	audience viewers
+	given    bool
+}
+
+// who is the players the scene is open to.
+func (o sceneOpening) who() viewers {
+	if o.given {
+		return o.audience
+	}
+	return allViewers()
+}
+
+// openedBefore is who read the scene that was open in the session before a switch: nobody when none was.
+func openedBefore(ctx context.Context, q *playdb.Queries, session playdb.GameSession) (viewers, error) {
+	if session.OpenScenePointID == nil && session.OpenSceneEveryone {
+		return viewers{}, nil
+	}
+	return sceneViewersOf(ctx, q, session)
+}
+
 // switchSceneOn opens the point in the locked session, unless it is the open one already
-// (the rolls so far stay), and empties the stage: another scene is another stage (MR-031).
-func (s *Service) switchSceneOn(ctx context.Context, tx pgx.Tx, m authz.Membership, point string, actions int, sw *sceneSwitch) error {
+// (the rolls so far stay, and so does who is in unless the master named the players), and empties
+// the stage: another scene is another stage (MR-031).
+func (s *Service) switchSceneOn(ctx context.Context, tx pgx.Tx, m authz.Membership, op sceneOpening, sw *sceneSwitch) error {
 	q := s.queries.WithTx(tx)
 	session, err := lockOpenSessionOrNone(ctx, q, m.CampaignID)
 	sw.session = session
 	if err != nil {
 		return err
 	}
-	if equal(session.OpenScenePointID, &point) {
-		return nil // already open
+	if equal(session.OpenScenePointID, &op.point) {
+		return s.reopenScene(ctx, tx, q, m, session, op, sw)
 	}
-	if sw.session, err = q.SetOpenScene(ctx, playdb.SetOpenSceneParams{ID: session.ID, OpenScenePointID: &point}); err != nil {
-		return fmt.Errorf("open the scene: %w", err)
+	if sw.audience, err = s.startScene(ctx, q, session, op, &sw.session); err != nil {
+		return err
 	}
 	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: sw.session, now: s.now()})
 	if err != nil {
 		return err
 	}
-	// Opening a scene, even a hidden point's, makes it "discovered": the
-	// players see its name in the open scene, so they may tag notes with
-	// it (MR-030, question 61).
-	if err := s.maps.DiscoverScene(ctx, tx, m.CampaignID, point, c.now); err != nil {
-		return err
+	// Opening a scene, even a hidden point's, makes it "discovered" for the group: the players see its
+	// name in the open scene, so they may tag notes with it (MR-030, question 61). A scene open to only
+	// some players is discovered when it opens to everyone: the group's list would tell the others its name.
+	if op.who().all {
+		if err := s.maps.DiscoverScene(ctx, tx, m.CampaignID, op.point, c.now); err != nil {
+			return err
+		}
 	}
-	if _, err := insertSceneEvent(ctx, c, eventSceneOpened, &m.UserID, nil, sceneEvent{PointID: point, Actions: actions}); err != nil {
+	ev := sceneEvent{PointID: op.point, Actions: op.actions}
+	if who := op.who(); !who.all {
+		ev.Players = who.users
+	}
+	if _, err := insertSceneEvent(ctx, c, eventSceneOpened, &m.UserID, nil, ev); err != nil {
 		return err
 	}
 	if sw.stageCleared, err = clearStage(ctx, c, m.UserID); err != nil {
@@ -295,6 +341,50 @@ func (s *Service) switchSceneOn(ctx context.Context, tx pgx.Tx, m authz.Membersh
 	}
 	sw.changed = true
 	return nil
+}
+
+// reopenScene is OpenScene for the scene that is open already: nothing changes unless the master named
+// the players, which then apply as SetSceneAudience does.
+func (s *Service) reopenScene(ctx context.Context, tx pgx.Tx, q *playdb.Queries, m authz.Membership, session playdb.GameSession, op sceneOpening, sw *sceneSwitch) (err error) {
+	if !op.given {
+		return nil
+	}
+	if sw.session, sw.audience, err = s.applySceneAudience(ctx, q, session, op.audience); err != nil {
+		return err
+	}
+	sw.changed = sw.audience.changed
+	if sw.changed && op.audience.all {
+		return s.maps.DiscoverScene(ctx, tx, m.CampaignID, op.point, s.now())
+	}
+	return nil
+}
+
+// startScene opens the point and sets who it is open to, in the locked session. The image shown to the
+// players of the scene that was open stays with them. It leaves the session as it is now in updated.
+func (s *Service) startScene(ctx context.Context, q *playdb.Queries, session playdb.GameSession, op sceneOpening, updated *playdb.GameSession) (audienceChange, error) {
+	before, err := openedBefore(ctx, q, session)
+	if err != nil {
+		return audienceChange{}, err
+	}
+	ch := audienceChange{before: before, after: op.who(), changed: true}
+	if ch.image, err = s.settleShownImage(ctx, q, session); err != nil {
+		return ch, err
+	}
+	if err := q.ClearScenePlayers(ctx, session.ID); err != nil {
+		return ch, fmt.Errorf("clear the players of the scene: %w", err)
+	}
+	for _, u := range ch.after.users {
+		if err := q.InsertScenePlayer(ctx, playdb.InsertScenePlayerParams{GameSessionID: session.ID, UserID: u}); err != nil {
+			return ch, fmt.Errorf("put a player in the scene: %w", err)
+		}
+	}
+	if _, err := q.SetOpenSceneEveryone(ctx, playdb.SetOpenSceneEveryoneParams{ID: session.ID, OpenSceneEveryone: ch.after.all}); err != nil {
+		return ch, fmt.Errorf("set who the scene is open to: %w", err)
+	}
+	if *updated, err = q.SetOpenScene(ctx, playdb.SetOpenSceneParams{ID: session.ID, OpenScenePointID: &op.point}); err != nil {
+		return ch, fmt.Errorf("open the scene: %w", err)
+	}
+	return ch, nil
 }
 
 // CloseScene implements playv1connect.PlayServiceHandler.
@@ -317,7 +407,7 @@ func (s *Service) CloseScene(
 	if sw.changed {
 		logging.Event(ctx, s.logger, "scene.closed")
 	}
-	s.publishSceneSwitch(m.CampaignID, sw)
+	s.publishSceneSwitch(ctx, m.CampaignID, sw)
 	return connect.NewResponse(&playv1.CloseSceneResponse{}), nil
 }
 
@@ -331,6 +421,21 @@ func (s *Service) switchSceneOff(ctx context.Context, tx pgx.Tx, m authz.Members
 	}
 	if session.OpenScenePointID == nil {
 		return nil // none open: nothing to close
+	}
+	before, err := sceneViewersOf(ctx, q, session)
+	if err != nil {
+		return err
+	}
+	// The image shown to the scene's players stays with them, and who was in goes with the scene.
+	sw.audience = audienceChange{before: before, changed: true}
+	if sw.audience.image, err = s.settleShownImage(ctx, q, session); err != nil {
+		return err
+	}
+	if err := q.ClearScenePlayers(ctx, session.ID); err != nil {
+		return fmt.Errorf("clear the players of the scene: %w", err)
+	}
+	if _, err := q.SetOpenSceneEveryone(ctx, playdb.SetOpenSceneEveryoneParams{ID: session.ID, OpenSceneEveryone: true}); err != nil {
+		return fmt.Errorf("reset who the scene is open to: %w", err)
 	}
 	if _, err := q.SetOpenScene(ctx, playdb.SetOpenSceneParams{ID: session.ID}); err != nil {
 		return fmt.Errorf("close the scene: %w", err)
@@ -373,6 +478,14 @@ func (s *Service) openSceneInfo(ctx context.Context, m authz.Membership) (*playv
 		return nil, err
 	}
 	if session.OpenScenePointID == nil {
+		return nil, nil
+	}
+	// A player out of a scene open to only some players reads no scene at all, as when none is open (RN-10).
+	in, err := readsScene(ctx, s.queries, session, m)
+	if err != nil {
+		return nil, s.dbError(ctx, "read who is in the scene", err)
+	}
+	if !in {
 		return nil, nil
 	}
 	scene, err := s.maps.ScenePoint(ctx, nil, m.CampaignID, *session.OpenScenePointID)
@@ -431,6 +544,9 @@ func (s *Service) sceneInfo(ctx context.Context, m authz.Membership, session pla
 	info.Actions = s.sceneActionViews(v)
 	if master {
 		if err := s.addMasterSceneParts(ctx, info, v); err != nil {
+			return nil, err
+		}
+		if info.Audience, err = s.sceneAudienceView(ctx, session); err != nil {
 			return nil, err
 		}
 	}
@@ -881,6 +997,10 @@ func (c *sceneRollCall) run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	// A player out of a scene open to only some players is refused as when no scene is open (RN-10).
+	if err := requireInScene(ctx, c.q, session, c.m); err != nil {
+		return err
+	}
 	action, err := visibleSceneActionOf(scene, c.actionID)
 	if err != nil {
 		return err
@@ -1023,6 +1143,13 @@ func (c *sceneRollCall) write(ctx context.Context, session playdb.GameSession, s
 	if action.DC > 0 {
 		ev.Passed = new(d20.Total >= action.DC)
 	}
+	in, err := sceneViewersOf(ctx, c.q, session)
+	if err != nil {
+		return err
+	}
+	if !in.all {
+		ev.Audience = in.users // the roll counts for them, and for the master, in the summary
+	}
 	c.out.ev = ev
 	tc, err := c.s.openTx(ctx, combatTx{tx: c.tx, q: c.q, session: session, now: c.s.now(), characterID: &c.out.who.ID, hash: c.hash})
 	if err != nil {
@@ -1081,7 +1208,7 @@ func (s *Service) GrantSceneAttempt(
 	}
 	if granted {
 		// The hint names nothing: the player reads the scene again.
-		s.publishSceneChanged(m.CampaignID)
+		s.publishSceneChanged(ctx, m.CampaignID)
 	}
 	info, err := s.openSceneInfo(ctx, m)
 	if err != nil {
@@ -1114,8 +1241,8 @@ func (g grantSceneCall) run(ctx context.Context, tx pgx.Tx, granted *bool) error
 	if err != nil {
 		return err
 	}
-	if !slices.ContainsFunc(party, func(c link.Character) bool { return c.ID == g.characterID }) {
-		return errSceneCharacterNotFound()
+	if err := g.inTheScene(ctx, q, session, party); err != nil {
+		return err
 	}
 	if action.MaxAttempts == 0 {
 		return nil // unlimited: there is nothing to add
@@ -1127,6 +1254,23 @@ func (g grantSceneCall) run(ctx context.Context, tx pgx.Tx, granted *bool) error
 	*granted = true
 	_, err = insertSceneEvent(ctx, c, eventSceneAttemptGranted, &g.m.UserID, &g.key, sceneGrantEvent{PointID: scene.PointID, ActionID: action.ID})
 	return err
+}
+
+// inTheScene checks the character is a living character of the party whose player is in the scene: a
+// character out of a scene open to only some players is not found, as one that does not exist.
+func (g grantSceneCall) inTheScene(ctx context.Context, q *playdb.Queries, session playdb.GameSession, party []link.Character) error {
+	player, ok := partyPlayerOf(party, g.characterID)
+	if !ok {
+		return errSceneCharacterNotFound()
+	}
+	in, err := sceneViewersOf(ctx, q, session)
+	if err != nil {
+		return err
+	}
+	if !in.has(player) {
+		return errSceneCharacterNotFound()
+	}
+	return nil
 }
 
 // replay says whether the key was used by this very grant already, and refuses a key that

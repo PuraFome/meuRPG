@@ -68,13 +68,23 @@ const (
 	stageShown    = "shown"
 )
 
-// publishStageChanged tells the session that the stage changed: everyone when the players saw the
-// change, the master alone when only he did (a hidden NPC put on the stage or taken off it). The
-// hint names no NPC: each app reads the scene again, filtered for it.
-func (s *Service) publishStageChanged(campaignID string, players bool) {
-	s.Publish(campaignID, players, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_StageChanged_{
+// stageChangedEvent is the hint that the stage changed. It names no NPC: each app reads the scene
+// again, filtered for it.
+func stageChangedEvent() *playv1.WatchGameSessionResponse {
+	return &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_StageChanged_{
 		StageChanged: &playv1.WatchGameSessionResponse_StageChanged{},
-	}})
+	}}
+}
+
+// publishStageChanged tells the session that the stage changed: the master and the players in the scene
+// when the players saw the change, the master alone when only he did (a hidden NPC put on the stage or
+// taken off it).
+func (s *Service) publishStageChanged(ctx context.Context, campaignID string, players bool) {
+	if players {
+		s.PublishToScene(ctx, campaignID, stageChangedEvent())
+		return
+	}
+	s.Publish(campaignID, false, stageChangedEvent())
 }
 
 // stageOf builds the stage as the caller sees it: the master gets the
@@ -138,13 +148,18 @@ func (s *Service) stageCharacters(ctx context.Context, campaignID string, rows [
 // maps.LiveSession: the image route lets a player fetch a portrait only then
 // (RN-10, RN-20), so a portrait is 404 for them the moment the NPC leaves the
 // stage or the scene closes.
-func (s *Service) ImageOnStage(ctx context.Context, campaignID, imageID string) (bool, error) {
+func (s *Service) ImageOnStage(ctx context.Context, campaignID, userID, imageID string) (bool, error) {
 	session, err := s.queries.GetOpenGameSession(ctx, campaignID)
 	if errors.Is(err, pgx.ErrNoRows) || (err == nil && session.OpenScenePointID == nil) {
 		return false, nil // no session, or no scene: no stage
 	}
 	if err != nil {
 		return false, fmt.Errorf("find the open session: %w", err)
+	}
+	// A player out of a scene open to only some players sees no stage (an empty userID is nobody in
+	// particular: any NPC counts).
+	if out, err := outsideOpenScene(ctx, s.queries, session, userID); err != nil || out {
+		return false, err
 	}
 	// A point the master turned into another kind is no open scene (GetOpenScene
 	// says so too), and its stage is not on show.
@@ -216,7 +231,7 @@ func (s *Service) changeStage(ctx context.Context, m authz.Membership, what stri
 		return nil, s.dbError(ctx, what, err)
 	}
 	if done.change != "" {
-		s.publishStageChanged(m.CampaignID, !done.master)
+		s.publishStageChanged(ctx, m.CampaignID, !done.master)
 	}
 	return s.stageOf(ctx, m, sessionID)
 }

@@ -551,6 +551,16 @@ SET open_scene_everyone = sqlc.arg(open_scene_everyone)
 WHERE id = sqlc.arg(id)
 RETURNING *;
 
+-- name: PlayerReadsScene :one
+-- Whether the player reads the scene open in the session: none is open, or it is
+-- open to everyone, or to them (RN-10). The stage of the scene follows.
+SELECT (gs.open_scene_point_id IS NULL OR gs.open_scene_everyone OR EXISTS (
+    SELECT 1 FROM game_session_scene_players AS p
+    WHERE p.game_session_id = gs.id AND p.user_id = sqlc.arg(user_id)::UUID
+))::BOOL AS reads
+FROM game_sessions AS gs
+WHERE gs.id = sqlc.arg(session_id);
+
 -- name: ListScenePlayers :many
 -- The players the open scene is open to, when it is not open to everyone.
 SELECT user_id FROM game_session_scene_players
@@ -721,15 +731,18 @@ WHERE game_session_id = $1 AND kind = 'scene_opened';
 -- name: TallySessionSceneChecks :many
 -- The checks rolled outside combat, per character: tried and passed, counting
 -- only a roll the players could see the DC of, on an action that had one
--- (RN-20). Done in SQL, so a session with any number of rolls costs one row
+-- (RN-20). A roll made in a scene open to only some players carries their
+-- accounts (payload audience) and counts for them and for the master only
+-- (RN-10). Done in SQL, so a session with any number of rolls costs one row
 -- per character.
 SELECT character_id,
        count(*)::INT8 AS tried,
        (count(*) FILTER (WHERE payload->>'passed' = 'true'))::INT8 AS passed
 FROM session_events
-WHERE game_session_id = $1 AND kind = 'scene_check_rolled'
+WHERE game_session_id = sqlc.arg(game_session_id) AND kind = 'scene_check_rolled'
   AND character_id IS NOT NULL
   AND payload->>'dc_shown' = 'true' AND payload ? 'passed'
+  AND (sqlc.arg(master)::BOOL OR NOT (payload ? 'audience') OR (payload->'audience') ? sqlc.arg(user_id)::TEXT)
 GROUP BY character_id;
 
 -- Progression (MR-016): what the XP awards read from the combats and the log.

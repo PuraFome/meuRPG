@@ -611,6 +611,13 @@ type Scene struct {
 	ShowDC bool
 }
 
+// ImageAudience is who an image left with the players was left with (MR-028, RN-10): the whole
+// table, or exactly the players UserIDs. The master always sees every image.
+type ImageAudience struct {
+	Everyone bool
+	UserIDs  []string
+}
+
 // SceneImage is a gallery image attached to a scene.
 type SceneImage struct {
 	ID, Name string
