@@ -13,7 +13,7 @@ Whichever path rolls the d20 asks the same gate.
 | Weapon attack | `RollAttack` | `inspiration_holds` |
 | Spell attack against one target | `CastSpell` (`inspiration_held.go`) | `inspiration_holds` |
 | The effect's saving throw | `RollEffectSave` | `inspiration_holds` |
-| The concentration save | `ResolveConcentrationSave` | `inspiration_holds` |
+| The concentration save | `ResolveConcentrationSave` (a retry of a written save answers with its result read back from the event: the d20, the Bardic Inspiration die in `Res` and the d20 Lucky rolled again) | `inspiration_holds` |
 | Scene check | `RollSceneCheck` | `inspiration_holds` |
 | Group check | `RollGroupCheck` | `inspiration_holds` |
 | Trap search | `SearchForTraps` (out of a combat, and the Search action of a combat: its roll is the combatant's, in the round, and the action is spent once the d20 waits for nobody) | `inspiration_holds` |

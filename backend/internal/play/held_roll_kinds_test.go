@@ -394,9 +394,6 @@ func concentrationRig(t *testing.T, die bool) heldRig {
 		})
 		return res, err
 	})
-	// FINDING: once the save is written, its replay (the roll or the answer made again) answers the
-	// combat alone: no result, no question.
-	rig.replayed = func(heldView) heldView { return heldView{} }
 	return rig
 }
 
