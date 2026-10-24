@@ -95,7 +95,7 @@ describe('Privacy', () => {
     const table = el.querySelector('table.legal-table')!;
     expect(table.querySelectorAll('thead th[scope="col"]')).toHaveLength(2);
     expect(table.querySelectorAll('tbody tr')).toHaveLength(12);
-    expect(table.querySelectorAll('tbody th[scope="row"]')).toHaveLength(11);
+    expect(table.querySelectorAll('tbody th[scope="row"]')).toHaveLength(12);
     const cookies = Array.from(el.querySelectorAll('code')).map((c) => c.textContent);
     expect(cookies).toEqual(['__Host-meurpg_session', '__Host-meurpg_login']);
   });
