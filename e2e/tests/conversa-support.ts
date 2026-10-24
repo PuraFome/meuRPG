@@ -57,7 +57,15 @@ export async function openConversaTable(browser: Browser, name: string, options:
     expect(named.ok(), await named.text()).toBeTruthy();
     await createCapitaoRPC(master, campaignId);
     await startSessionRPC(master, campaignId);
-    await Promise.all([master, pensantus, toren.page].map((p) => openSessionPage(p, campaignId)));
+    // The page reads the lines on the stream's first `ready`; a line sent before that is history, not news. On a phone
+    // nothing else on the page tells the stream is up, so wait for that read before anybody speaks.
+    const streamUp = (p: Page) =>
+      p.waitForResponse((res) => res.url().includes('PlayService/ListSessionMessages'), { timeout: 30_000 });
+    const pages = [master, pensantus, toren.page];
+    const reads = width < 768 ? pages.map(streamUp) : [];
+    reads.forEach((read) => void read.catch(() => undefined)); // an early failure below must not leave these unhandled
+    await Promise.all(pages.map((p) => openSessionPage(p, campaignId)));
+    await Promise.all(reads);
     if (width >= 768) {
       // On a phone the panel is not drawn until the "Conversa" tab is opened.
       // The empty feed is not drawn (the empty sentence stands in its place), so the panel is awaited by its message box.

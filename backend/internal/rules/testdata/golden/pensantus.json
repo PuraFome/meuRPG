@@ -250,6 +250,10 @@
   "ArmorClassDescription": "Sem armadura",
   "ShieldIdle": false,
   "ArmorCategory": "none",
+  "ArmorUntrained": {
+    "Armor": false,
+    "Shield": false
+  },
   "HitPointsMax": 23,
   "HitPointsFromEffects": 0,
   "HitDice": [

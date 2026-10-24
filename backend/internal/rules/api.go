@@ -627,7 +627,9 @@ type Derived struct {
 	// ArmorCategory is the worn armor's category: "none", "light", "medium" or
 	// "heavy" (a shield is separate). Rage gives its benefits only without heavy armor.
 	ArmorCategory string
-	HitPointsMax  int
+	// ArmorUntrained says which worn piece the character is not proficient with.
+	ArmorUntrained ArmorUntrained
+	HitPointsMax   int
 	// HitPointsFromEffects is HitPointsMax minus what the hit dice and the
 	// Constitution modifier give (with the floor of one per level): what the
 	// "hp.max" effects add. It is negative for an effect that subtracts and 0
@@ -673,6 +675,10 @@ type Derived struct {
 	// ExtraDamages are the damage the character's table features add to a weapon hit
 	// once per turn (extra_damage effects), with the amount worked out.
 	ExtraDamages []ExtraDamage
+	// UnactedAdvantage and SurprisedCritical are the keys of the features whose ambush effects
+	// give advantage against a creature that has not had its turn yet, and make a hit on a surprised
+	// creature a critical hit; empty for none.
+	UnactedAdvantage, SurprisedCritical string `json:",omitempty"`
 	// AttacksPerAction is how many attacks the Attack action makes: 1, or
 	// the extra_attack effect's count (Extra Attack: 2 at level 5), or a
 	// creature's Multiattack count.

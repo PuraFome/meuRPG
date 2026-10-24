@@ -10,6 +10,9 @@ import { sessionClosed, encounterBlocked } from '../combat/combat-errors';
 import { describeConnectError } from '../connect/connect-errors';
 import { metersText } from '../units';
 
+/** The refusal of a cast by armor or a shield the character is not proficient with. */
+const ARMOR_NOT_PROFICIENT_TEXT = 'Com armadura ou escudo sem proficiência não dá para conjurar.';
+
 /** The typed detail of a `failed_precondition` from `CastingService`, or `null`. Never read from the message. */
 export function castingBlocked(err: unknown): CastingBlocked | null {
   const connectErr = ConnectError.from(err, Code.Unavailable);
@@ -31,6 +34,9 @@ export function castingErrorText(err: unknown): string {
   const encounter = encounterBlocked(err);
   if (encounter?.reason === EncounterBlockedReason.WILD_SHAPE_NO_SPELLS) {
     return 'Em forma de fera, o druida não conjura magias.';
+  }
+  if (encounter?.reason === EncounterBlockedReason.ARMOR_NOT_PROFICIENT) {
+    return ARMOR_NOT_PROFICIENT_TEXT;
   }
   if (encounter?.reason === EncounterBlockedReason.WRONG_DICE_MODE) {
     return 'A campanha mudou a forma de rolar os dados. Recarregue a página.';
@@ -67,6 +73,8 @@ function blockedText(b: CastingBlocked): string {
       return 'A classe do personagem não conjura essa magia como ritual.';
     case CastingBlockedReason.NOT_A_RITUAL:
       return 'Só magias com a etiqueta "Ritual" podem ser conjuradas assim.';
+    case CastingBlockedReason.ARMOR_NOT_PROFICIENT:
+      return ARMOR_NOT_PROFICIENT_TEXT;
     default:
       return 'Esta magia não pode ser conjurada agora.';
   }

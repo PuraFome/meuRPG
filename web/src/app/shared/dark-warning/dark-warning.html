@@ -1,0 +1,63 @@
+<div class="said" role="status" aria-live="polite">
+  @if (announcement(); as said) {
+    <p class="said__box">
+      <mat-icon aria-hidden="true">lightbulb</mat-icon>
+      <span>{{ said }}</span>
+    </p>
+  }
+</div>
+
+@if (notice(); as n) {
+  @if (compact()) {
+    <div class="dark dark--line">
+      <mat-icon class="dark__icon" aria-hidden="true">dark_mode</mat-icon>
+      <p class="dark__text">
+        <strong>{{ n.lead }}</strong> {{ names() }}
+      </p>
+      @if (first(); as one) {
+        <button matButton="outlined" type="button" [attr.aria-label]="'Ver ' + one.name + ' no mapa'" (click)="show.emit(one.characterId)">
+          <mat-icon aria-hidden="true">my_location</mat-icon>Ver no mapa
+        </button>
+      }
+    </div>
+  } @else {
+    <div class="dark" [class.dark--many]="n.many">
+      <mat-icon class="dark__icon" aria-hidden="true">dark_mode</mat-icon>
+      <div class="dark__body">
+        @if (n.many) {
+          <p class="dark__title"><strong>{{ n.lead }}</strong> {{ n.text }}</p>
+          <p class="dark__cause">{{ n.detail }}</p>
+          <ul class="dark__list">
+            @for (c of characters(); track c.characterId) {
+              <li class="dark__row">
+                <span class="dark__name">{{ c.name }}</span>
+                <span class="dark__buttons">
+                  <button matButton="outlined" type="button" [attr.aria-label]="'Ver ' + c.name + ' no mapa'" (click)="show.emit(c.characterId)">
+                    <mat-icon aria-hidden="true">my_location</mat-icon>Ver no mapa
+                  </button>
+                  @if (canLight()) {
+                    <button matButton="outlined" type="button" [attr.aria-label]="'Acender luz de ' + c.name" (click)="light.emit(c.characterId)">
+                      <mat-icon aria-hidden="true">lightbulb</mat-icon>Acender luz
+                    </button>
+                  }
+                </span>
+              </li>
+            }
+          </ul>
+        } @else if (first(); as one) {
+          <p class="dark__title"><strong>{{ n.lead }}</strong> {{ n.text }}</p>
+          <span class="dark__buttons">
+            <button matButton="outlined" type="button" [attr.aria-label]="'Ver ' + one.name + ' no mapa'" (click)="show.emit(one.characterId)">
+              <mat-icon aria-hidden="true">my_location</mat-icon>Ver no mapa
+            </button>
+            @if (canLight()) {
+              <button matButton="outlined" type="button" [attr.aria-label]="'Acender luz de ' + one.name" (click)="light.emit(one.characterId)">
+                <mat-icon aria-hidden="true">lightbulb</mat-icon>Acender luz
+              </button>
+            }
+          </span>
+        }
+      </div>
+    </div>
+  }
+}

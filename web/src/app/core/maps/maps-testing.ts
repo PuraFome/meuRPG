@@ -8,6 +8,8 @@ import {
   type GetMapLayersResponse,
   type GetMapResponse,
   type GetMapVisionResponse,
+  type ListCharactersInTheDarkResponse,
+  ListCharactersInTheDarkResponseSchema,
   type GetTrapNoticersResponse,
   type LightLevel,
   type MapLayer,
@@ -183,6 +185,14 @@ export class FakeMapsClient {
     creatureId = '',
   ): Promise<void> {
     this.record('removeToken', mapId, creatureId ? `creature:${creatureId}` : characterId);
+  }
+
+  /** What `ListCharactersInTheDark` answers (set by the spec). */
+  inTheDark: ListCharactersInTheDarkResponse | null = null;
+
+  async charactersInTheDark(_c: string, mapId: string): Promise<ListCharactersInTheDarkResponse> {
+    this.record('inTheDark', mapId);
+    return this.inTheDark ?? create(ListCharactersInTheDarkResponseSchema, {});
   }
 
   async setCarriedLight(

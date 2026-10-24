@@ -349,3 +349,80 @@ func TestSaveModeCancelsLikeAnyOtherRoll(t *testing.T) {
 		t.Fatalf("danger sense against a restraint is a normal roll, got %v", got)
 	}
 }
+
+// TestArmorUntrainedSpoilsOnlyStrengthAndDexterity: armor without proficiency gives disadvantage on
+// the checks, saves and weapon attacks that use Strength or Dexterity, and on nothing else.
+func TestArmorUntrainedSpoilsOnlyStrengthAndDexterity(t *testing.T) {
+	t.Parallel()
+	untrained := Creature{ArmorUntrained: true}
+	for _, tt := range []struct {
+		ability string
+		check   bool
+		want    RollMode
+	}{
+		{"str", true, ModeDisadvantage},
+		{"dex", true, ModeDisadvantage},
+		{"str", false, ModeDisadvantage},
+		{"dex", false, ModeDisadvantage},
+		{"con", true, ModeNormal},
+		{"wis", false, ModeNormal},
+		{"int", true, ModeNormal},
+		{"cha", false, ModeNormal},
+	} {
+		if got := Resolve(SaveMode(SaveScene{Creature: untrained, Ability: tt.ability, Check: tt.check})); got != tt.want {
+			t.Errorf("%s (check %v) = %v, want %v", tt.ability, tt.check, got, tt.want)
+		}
+		if got := Resolve(SaveMode(SaveScene{Creature: Creature{}, Ability: tt.ability, Check: tt.check})); got != ModeNormal {
+			t.Errorf("trained %s (check %v) = %v, want normal", tt.ability, tt.check, got)
+		}
+	}
+	// Advantage from another source cancels it.
+	raging := Creature{ArmorUntrained: true, Raging: true}
+	if got := Resolve(SaveMode(SaveScene{Creature: raging, Ability: "str", Check: true})); got != ModeNormal {
+		t.Errorf("Strength check raging in untrained armor = %v, want normal", got)
+	}
+}
+
+func TestArmorUntrainedSpoilsWeaponAttacksOfStrengthOrDexterity(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name  string
+		scene AttackScene
+		want  RollMode
+	}{
+		{"weapon attack with Strength or Dexterity", AttackScene{Attacker: Creature{ArmorUntrained: true}, StrengthOrDexterityWeapon: true}, ModeDisadvantage},
+		{"spell attack", AttackScene{Attacker: Creature{ArmorUntrained: true}}, ModeNormal},
+		{"trained wearer", AttackScene{StrengthOrDexterityWeapon: true}, ModeNormal},
+		{"untrained target is no matter", AttackScene{Target: Creature{ArmorUntrained: true}, StrengthOrDexterityWeapon: true}, ModeNormal},
+	} {
+		if got := Resolve(AttackMode(tt.scene).Sources); got != tt.want {
+			t.Errorf("%s = %v, want %v", tt.name, got, tt.want)
+		}
+	}
+}
+
+// The goad spares its source from the disadvantage of the effect, not from the armor: a goaded attacker in
+// untrained armor still has the armor's disadvantage on a weapon attack against the one it is spared.
+func TestAGoadSparedTargetStillSeesTheArmorDisadvantage(t *testing.T) {
+	t.Parallel()
+	attacker := Creature{AttackDisadvantage: "effect:goaded", AttackDisadvantageSpares: "goader", ArmorUntrained: true}
+	for _, tt := range []struct {
+		name   string
+		target string
+		want   []string
+	}{
+		{"the spared target", "goader", []string{SourceArmorUntrained}},
+		{"another target", "other", []string{SourceEffectAttack, SourceArmorUntrained}},
+	} {
+		got := []string{}
+		for _, s := range AttackMode(AttackScene{Attacker: attacker, Target: Creature{ID: tt.target}, StrengthOrDexterityWeapon: true}).Sources {
+			got = append(got, s.Kind)
+		}
+		slices.Sort(got)
+		want := slices.Clone(tt.want)
+		slices.Sort(want)
+		if !slices.Equal(got, want) {
+			t.Errorf("%s: sources = %v, want %v", tt.name, got, want)
+		}
+	}
+}

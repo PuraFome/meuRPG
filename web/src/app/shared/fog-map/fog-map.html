@@ -96,6 +96,9 @@
           @if (doorTaps() && layers(); as l) {
             <app-door-picks mapOverlay [layers]="l" [columns]="v.columns" [rows]="v.rows" (pick)="doorPick.emit($event)" />
           }
+          @if (isMaster() && dark().size > 0) {
+            <app-dark-marks mapOverlay [tokens]="tokens()" [dark]="dark()" [chosen]="darkChosen()" />
+          }
           @if (pins()) {
             <app-map-pins mapOverlay [points]="points()" [columns]="v.columns" [rows]="v.rows" [isMaster]="isMaster()" />
           }
@@ -153,6 +156,9 @@
           }
           @if (hiddenTokens().length > 0) {
             <li><span class="fm__mark"><app-combatant-token initial="G" [npc]="true" [hidden]="true" [onMap]="true" [size]="20" /></span>Escondido (só você vê)</li>
+          }
+          @if (dark().size > 0) {
+            <li><span class="fm__mark fm__mark--dark" aria-hidden="true"></span>No escuro</li>
           }
         } @else {
           @if (mine(); as me) {

@@ -634,6 +634,13 @@ var reads = []read{
 		},
 	},
 
+	{
+		procedure: mapsv1connect.MapServiceListCharactersInTheDarkProcedure, allow: masterOnlyRead, why: "who sees nothing where they stand is worked out from every light on the map, a hidden NPC's included: the master's warning, never a player's (RN-10)",
+		req: func(w *world) proto.Message {
+			return &mapsv1.ListCharactersInTheDarkRequest{CampaignId: w.campaign, MapId: w.fogMap}
+		},
+	},
+
 	// ===== GalleryService, ImageGenerationService, DungeonService, TreasureService (the master's tools)
 	{
 		procedure: mapsv1connect.GalleryServiceListGalleryImagesProcedure, allow: masterOnlyRead,

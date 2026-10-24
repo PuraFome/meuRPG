@@ -585,6 +585,54 @@ func (SceneActionDirection) EnumDescriptor() ([]byte, []int) {
 	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{8}
 }
 
+// DarknessCause says why a character is in the dark.
+type DarknessCause int32
+
+const (
+	DarknessCause_DARKNESS_CAUSE_UNSPECIFIED DarknessCause = 0
+	// The square has no light and the character has no sense that sees in the dark.
+	DarknessCause_DARKNESS_CAUSE_NO_LIGHT_NO_DARKVISION DarknessCause = 1
+)
+
+// Enum value maps for DarknessCause.
+var (
+	DarknessCause_name = map[int32]string{
+		0: "DARKNESS_CAUSE_UNSPECIFIED",
+		1: "DARKNESS_CAUSE_NO_LIGHT_NO_DARKVISION",
+	}
+	DarknessCause_value = map[string]int32{
+		"DARKNESS_CAUSE_UNSPECIFIED":            0,
+		"DARKNESS_CAUSE_NO_LIGHT_NO_DARKVISION": 1,
+	}
+)
+
+func (x DarknessCause) Enum() *DarknessCause {
+	p := new(DarknessCause)
+	*p = x
+	return p
+}
+
+func (x DarknessCause) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (DarknessCause) Descriptor() protoreflect.EnumDescriptor {
+	return file_meurpg_maps_v1_maps_proto_enumTypes[9].Descriptor()
+}
+
+func (DarknessCause) Type() protoreflect.EnumType {
+	return &file_meurpg_maps_v1_maps_proto_enumTypes[9]
+}
+
+func (x DarknessCause) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use DarknessCause.Descriptor instead.
+func (DarknessCause) EnumDescriptor() ([]byte, []int) {
+	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{9}
+}
+
 // MapBlocked is the error detail of MapService's `failed_precondition`, so the
 // app can say why.
 type MapBlocked struct {
@@ -6938,6 +6986,184 @@ func (*ForgetMapVisionResponse) Descriptor() ([]byte, []int) {
 	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{86}
 }
 
+// ListCharactersInTheDarkRequest names a map of a campaign.
+type ListCharactersInTheDarkRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId    string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	MapId         string                 `protobuf:"bytes,2,opt,name=map_id,json=mapId,proto3" json:"map_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListCharactersInTheDarkRequest) Reset() {
+	*x = ListCharactersInTheDarkRequest{}
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[87]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListCharactersInTheDarkRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListCharactersInTheDarkRequest) ProtoMessage() {}
+
+func (x *ListCharactersInTheDarkRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[87]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListCharactersInTheDarkRequest.ProtoReflect.Descriptor instead.
+func (*ListCharactersInTheDarkRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{87}
+}
+
+func (x *ListCharactersInTheDarkRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *ListCharactersInTheDarkRequest) GetMapId() string {
+	if x != nil {
+		return x.MapId
+	}
+	return ""
+}
+
+// ListCharactersInTheDarkResponse lists the player characters that see nothing
+// where they stand, in the order the characters module lists the party. Empty
+// when nobody is in the dark.
+type ListCharactersInTheDarkResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Characters    []*CharacterInTheDark  `protobuf:"bytes,1,rep,name=characters,proto3" json:"characters,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListCharactersInTheDarkResponse) Reset() {
+	*x = ListCharactersInTheDarkResponse{}
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[88]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListCharactersInTheDarkResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListCharactersInTheDarkResponse) ProtoMessage() {}
+
+func (x *ListCharactersInTheDarkResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[88]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListCharactersInTheDarkResponse.ProtoReflect.Descriptor instead.
+func (*ListCharactersInTheDarkResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{88}
+}
+
+func (x *ListCharactersInTheDarkResponse) GetCharacters() []*CharacterInTheDark {
+	if x != nil {
+		return x.Characters
+	}
+	return nil
+}
+
+// CharacterInTheDark is one player character that sees nothing where it stands.
+type CharacterInTheDark struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CharacterId   string                 `protobuf:"bytes,1,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	CharacterName string                 `protobuf:"bytes,2,opt,name=character_name,json=characterName,proto3" json:"character_name,omitempty"`
+	// The square it stands on (0-based, as MapSquare).
+	Col           int32         `protobuf:"varint,3,opt,name=col,proto3" json:"col,omitempty"`
+	Row           int32         `protobuf:"varint,4,opt,name=row,proto3" json:"row,omitempty"`
+	Cause         DarknessCause `protobuf:"varint,5,opt,name=cause,proto3,enum=meurpg.maps.v1.DarknessCause" json:"cause,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CharacterInTheDark) Reset() {
+	*x = CharacterInTheDark{}
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[89]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CharacterInTheDark) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CharacterInTheDark) ProtoMessage() {}
+
+func (x *CharacterInTheDark) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_maps_v1_maps_proto_msgTypes[89]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CharacterInTheDark.ProtoReflect.Descriptor instead.
+func (*CharacterInTheDark) Descriptor() ([]byte, []int) {
+	return file_meurpg_maps_v1_maps_proto_rawDescGZIP(), []int{89}
+}
+
+func (x *CharacterInTheDark) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *CharacterInTheDark) GetCharacterName() string {
+	if x != nil {
+		return x.CharacterName
+	}
+	return ""
+}
+
+func (x *CharacterInTheDark) GetCol() int32 {
+	if x != nil {
+		return x.Col
+	}
+	return 0
+}
+
+func (x *CharacterInTheDark) GetRow() int32 {
+	if x != nil {
+		return x.Row
+	}
+	return 0
+}
+
+func (x *CharacterInTheDark) GetCause() DarknessCause {
+	if x != nil {
+		return x.Cause
+	}
+	return DarknessCause_DARKNESS_CAUSE_UNSPECIFIED
+}
+
 var File_meurpg_maps_v1_maps_proto protoreflect.FileDescriptor
 
 const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
@@ -7458,7 +7684,21 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x15\n" +
 	"\x06map_id\x18\x02 \x01(\tR\x05mapId\"\x19\n" +
-	"\x17ForgetMapVisionResponse*\xce\x01\n" +
+	"\x17ForgetMapVisionResponse\"X\n" +
+	"\x1eListCharactersInTheDarkRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12\x15\n" +
+	"\x06map_id\x18\x02 \x01(\tR\x05mapId\"e\n" +
+	"\x1fListCharactersInTheDarkResponse\x12B\n" +
+	"\n" +
+	"characters\x18\x01 \x03(\v2\".meurpg.maps.v1.CharacterInTheDarkR\n" +
+	"characters\"\xb7\x01\n" +
+	"\x12CharacterInTheDark\x12!\n" +
+	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12%\n" +
+	"\x0echaracter_name\x18\x02 \x01(\tR\rcharacterName\x12\x10\n" +
+	"\x03col\x18\x03 \x01(\x05R\x03col\x12\x10\n" +
+	"\x03row\x18\x04 \x01(\x05R\x03row\x123\n" +
+	"\x05cause\x18\x05 \x01(\x0e2\x1d.meurpg.maps.v1.DarknessCauseR\x05cause*\xce\x01\n" +
 	"\fMapPointKind\x12\x1e\n" +
 	"\x1aMAP_POINT_KIND_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15MAP_POINT_KIND_BATTLE\x10\x01\x12\x19\n" +
@@ -7511,7 +7751,10 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\x14SceneActionDirection\x12&\n" +
 	"\"SCENE_ACTION_DIRECTION_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19SCENE_ACTION_DIRECTION_UP\x10\x01\x12\x1f\n" +
-	"\x1bSCENE_ACTION_DIRECTION_DOWN\x10\x022\x9a\x1a\n" +
+	"\x1bSCENE_ACTION_DIRECTION_DOWN\x10\x02*Z\n" +
+	"\rDarknessCause\x12\x1e\n" +
+	"\x1aDARKNESS_CAUSE_UNSPECIFIED\x10\x00\x12)\n" +
+	"%DARKNESS_CAUSE_NO_LIGHT_NO_DARKVISION\x10\x012\x9b\x1b\n" +
 	"\n" +
 	"MapService\x12R\n" +
 	"\bListMaps\x12\x1f.meurpg.maps.v1.ListMapsRequest\x1a .meurpg.maps.v1.ListMapsResponse\"\x03\x90\x02\x02\x12L\n" +
@@ -7543,7 +7786,8 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\fGetMapLayers\x12#.meurpg.maps.v1.GetMapLayersRequest\x1a$.meurpg.maps.v1.GetMapLayersResponse\"\x03\x90\x02\x02\x12P\n" +
 	"\tSetMapFog\x12 .meurpg.maps.v1.SetMapFogRequest\x1a!.meurpg.maps.v1.SetMapFogResponse\x12^\n" +
 	"\fGetMapVision\x12#.meurpg.maps.v1.GetMapVisionRequest\x1a$.meurpg.maps.v1.GetMapVisionResponse\"\x03\x90\x02\x02\x12b\n" +
-	"\x0fForgetMapVision\x12&.meurpg.maps.v1.ForgetMapVisionRequest\x1a'.meurpg.maps.v1.ForgetMapVisionResponse\x12S\n" +
+	"\x0fForgetMapVision\x12&.meurpg.maps.v1.ForgetMapVisionRequest\x1a'.meurpg.maps.v1.ForgetMapVisionResponse\x12\x7f\n" +
+	"\x17ListCharactersInTheDark\x12..meurpg.maps.v1.ListCharactersInTheDarkRequest\x1a/.meurpg.maps.v1.ListCharactersInTheDarkResponse\"\x03\x90\x02\x02\x12S\n" +
 	"\n" +
 	"RevealTrap\x12!.meurpg.maps.v1.RevealTrapRequest\x1a\".meurpg.maps.v1.RevealTrapResponse\x12g\n" +
 	"\x0fGetTrapNoticers\x12&.meurpg.maps.v1.GetTrapNoticersRequest\x1a'.meurpg.maps.v1.GetTrapNoticersResponse\"\x03\x90\x02\x02\x12S\n" +
@@ -7566,260 +7810,268 @@ func file_meurpg_maps_v1_maps_proto_rawDescGZIP() []byte {
 	return file_meurpg_maps_v1_maps_proto_rawDescData
 }
 
-var file_meurpg_maps_v1_maps_proto_enumTypes = make([]protoimpl.EnumInfo, 9)
-var file_meurpg_maps_v1_maps_proto_msgTypes = make([]protoimpl.MessageInfo, 87)
+var file_meurpg_maps_v1_maps_proto_enumTypes = make([]protoimpl.EnumInfo, 10)
+var file_meurpg_maps_v1_maps_proto_msgTypes = make([]protoimpl.MessageInfo, 90)
 var file_meurpg_maps_v1_maps_proto_goTypes = []any{
-	(MapPointKind)(0),                   // 0: meurpg.maps.v1.MapPointKind
-	(MapLayer)(0),                       // 1: meurpg.maps.v1.MapLayer
-	(DoorState)(0),                      // 2: meurpg.maps.v1.DoorState
-	(LightLevel)(0),                     // 3: meurpg.maps.v1.LightLevel
-	(TrapState)(0),                      // 4: meurpg.maps.v1.TrapState
-	(TrapRevealHow)(0),                  // 5: meurpg.maps.v1.TrapRevealHow
-	(MapBlockedReason)(0),               // 6: meurpg.maps.v1.MapBlockedReason
-	(StairDirection)(0),                 // 7: meurpg.maps.v1.StairDirection
-	(SceneActionDirection)(0),           // 8: meurpg.maps.v1.SceneActionDirection
-	(*MapBlocked)(nil),                  // 9: meurpg.maps.v1.MapBlocked
-	(*Map)(nil),                         // 10: meurpg.maps.v1.Map
-	(*MapImage)(nil),                    // 11: meurpg.maps.v1.MapImage
-	(*MapRef)(nil),                      // 12: meurpg.maps.v1.MapRef
-	(*MapPoint)(nil),                    // 13: meurpg.maps.v1.MapPoint
-	(*SceneImage)(nil),                  // 14: meurpg.maps.v1.SceneImage
-	(*TrapSpec)(nil),                    // 15: meurpg.maps.v1.TrapSpec
-	(*LightSpec)(nil),                   // 16: meurpg.maps.v1.LightSpec
-	(*TreasureFinder)(nil),              // 17: meurpg.maps.v1.TreasureFinder
-	(*TrapReveal)(nil),                  // 18: meurpg.maps.v1.TrapReveal
-	(*SceneClue)(nil),                   // 19: meurpg.maps.v1.SceneClue
-	(*ClueRecipient)(nil),               // 20: meurpg.maps.v1.ClueRecipient
-	(*SceneAction)(nil),                 // 21: meurpg.maps.v1.SceneAction
-	(*MapToken)(nil),                    // 22: meurpg.maps.v1.MapToken
-	(*ListMapsRequest)(nil),             // 23: meurpg.maps.v1.ListMapsRequest
-	(*ListMapsResponse)(nil),            // 24: meurpg.maps.v1.ListMapsResponse
-	(*GetMapRequest)(nil),               // 25: meurpg.maps.v1.GetMapRequest
-	(*GetMapResponse)(nil),              // 26: meurpg.maps.v1.GetMapResponse
-	(*CreateMapRequest)(nil),            // 27: meurpg.maps.v1.CreateMapRequest
-	(*CreateMapResponse)(nil),           // 28: meurpg.maps.v1.CreateMapResponse
-	(*UpdateMapRequest)(nil),            // 29: meurpg.maps.v1.UpdateMapRequest
-	(*UpdateMapResponse)(nil),           // 30: meurpg.maps.v1.UpdateMapResponse
-	(*DeleteMapRequest)(nil),            // 31: meurpg.maps.v1.DeleteMapRequest
-	(*DeleteMapResponse)(nil),           // 32: meurpg.maps.v1.DeleteMapResponse
-	(*SetMapRevealedRequest)(nil),       // 33: meurpg.maps.v1.SetMapRevealedRequest
-	(*SetMapRevealedResponse)(nil),      // 34: meurpg.maps.v1.SetMapRevealedResponse
-	(*SetMapGridRequest)(nil),           // 35: meurpg.maps.v1.SetMapGridRequest
-	(*SetMapGridResponse)(nil),          // 36: meurpg.maps.v1.SetMapGridResponse
-	(*CreateMapPointRequest)(nil),       // 37: meurpg.maps.v1.CreateMapPointRequest
-	(*CreateMapPointResponse)(nil),      // 38: meurpg.maps.v1.CreateMapPointResponse
-	(*UpdateMapPointRequest)(nil),       // 39: meurpg.maps.v1.UpdateMapPointRequest
-	(*UpdateMapPointResponse)(nil),      // 40: meurpg.maps.v1.UpdateMapPointResponse
-	(*DeleteMapPointRequest)(nil),       // 41: meurpg.maps.v1.DeleteMapPointRequest
-	(*DeleteMapPointResponse)(nil),      // 42: meurpg.maps.v1.DeleteMapPointResponse
-	(*SetMapPointRevealedRequest)(nil),  // 43: meurpg.maps.v1.SetMapPointRevealedRequest
-	(*SetMapPointRevealedResponse)(nil), // 44: meurpg.maps.v1.SetMapPointRevealedResponse
-	(*PlaceMapTokenRequest)(nil),        // 45: meurpg.maps.v1.PlaceMapTokenRequest
-	(*PlaceMapTokenResponse)(nil),       // 46: meurpg.maps.v1.PlaceMapTokenResponse
-	(*SetMapTokenHiddenRequest)(nil),    // 47: meurpg.maps.v1.SetMapTokenHiddenRequest
-	(*SetMapTokenHiddenResponse)(nil),   // 48: meurpg.maps.v1.SetMapTokenHiddenResponse
-	(*RemoveMapTokenRequest)(nil),       // 49: meurpg.maps.v1.RemoveMapTokenRequest
-	(*RemoveMapTokenResponse)(nil),      // 50: meurpg.maps.v1.RemoveMapTokenResponse
-	(*AddSceneActionRequest)(nil),       // 51: meurpg.maps.v1.AddSceneActionRequest
-	(*AddSceneActionResponse)(nil),      // 52: meurpg.maps.v1.AddSceneActionResponse
-	(*UpdateSceneActionRequest)(nil),    // 53: meurpg.maps.v1.UpdateSceneActionRequest
-	(*UpdateSceneActionResponse)(nil),   // 54: meurpg.maps.v1.UpdateSceneActionResponse
-	(*MoveSceneActionRequest)(nil),      // 55: meurpg.maps.v1.MoveSceneActionRequest
-	(*MoveSceneActionResponse)(nil),     // 56: meurpg.maps.v1.MoveSceneActionResponse
-	(*RemoveSceneActionRequest)(nil),    // 57: meurpg.maps.v1.RemoveSceneActionRequest
-	(*RemoveSceneActionResponse)(nil),   // 58: meurpg.maps.v1.RemoveSceneActionResponse
-	(*AddSceneClueRequest)(nil),         // 59: meurpg.maps.v1.AddSceneClueRequest
-	(*AddSceneClueResponse)(nil),        // 60: meurpg.maps.v1.AddSceneClueResponse
-	(*UpdateSceneClueRequest)(nil),      // 61: meurpg.maps.v1.UpdateSceneClueRequest
-	(*UpdateSceneClueResponse)(nil),     // 62: meurpg.maps.v1.UpdateSceneClueResponse
-	(*MoveSceneClueRequest)(nil),        // 63: meurpg.maps.v1.MoveSceneClueRequest
-	(*MoveSceneClueResponse)(nil),       // 64: meurpg.maps.v1.MoveSceneClueResponse
-	(*RemoveSceneClueRequest)(nil),      // 65: meurpg.maps.v1.RemoveSceneClueRequest
-	(*RemoveSceneClueResponse)(nil),     // 66: meurpg.maps.v1.RemoveSceneClueResponse
-	(*SetSceneImagesRequest)(nil),       // 67: meurpg.maps.v1.SetSceneImagesRequest
-	(*SetSceneImagesResponse)(nil),      // 68: meurpg.maps.v1.SetSceneImagesResponse
-	(*RevealSceneClueRequest)(nil),      // 69: meurpg.maps.v1.RevealSceneClueRequest
-	(*RevealSceneClueResponse)(nil),     // 70: meurpg.maps.v1.RevealSceneClueResponse
-	(*MapSquare)(nil),                   // 71: meurpg.maps.v1.MapSquare
-	(*PaintMapCellsRequest)(nil),        // 72: meurpg.maps.v1.PaintMapCellsRequest
-	(*PaintMapCellsResponse)(nil),       // 73: meurpg.maps.v1.PaintMapCellsResponse
-	(*GetMapLayersRequest)(nil),         // 74: meurpg.maps.v1.GetMapLayersRequest
-	(*GetMapLayersResponse)(nil),        // 75: meurpg.maps.v1.GetMapLayersResponse
-	(*SetMapFogRequest)(nil),            // 76: meurpg.maps.v1.SetMapFogRequest
-	(*SetMapFogResponse)(nil),           // 77: meurpg.maps.v1.SetMapFogResponse
-	(*RevealTrapRequest)(nil),           // 78: meurpg.maps.v1.RevealTrapRequest
-	(*RevealTrapResponse)(nil),          // 79: meurpg.maps.v1.RevealTrapResponse
-	(*GetTrapNoticersRequest)(nil),      // 80: meurpg.maps.v1.GetTrapNoticersRequest
-	(*GetTrapNoticersResponse)(nil),     // 81: meurpg.maps.v1.GetTrapNoticersResponse
-	(*TrapNoticer)(nil),                 // 82: meurpg.maps.v1.TrapNoticer
-	(*DisarmTrapRequest)(nil),           // 83: meurpg.maps.v1.DisarmTrapRequest
-	(*DisarmTrapResponse)(nil),          // 84: meurpg.maps.v1.DisarmTrapResponse
-	(*MarkTreasureFoundRequest)(nil),    // 85: meurpg.maps.v1.MarkTreasureFoundRequest
-	(*MarkTreasureFoundResponse)(nil),   // 86: meurpg.maps.v1.MarkTreasureFoundResponse
-	(*UnmarkTreasureFoundRequest)(nil),  // 87: meurpg.maps.v1.UnmarkTreasureFoundRequest
-	(*UnmarkTreasureFoundResponse)(nil), // 88: meurpg.maps.v1.UnmarkTreasureFoundResponse
-	(*SetCarriedLightRequest)(nil),      // 89: meurpg.maps.v1.SetCarriedLightRequest
-	(*SetCarriedLightResponse)(nil),     // 90: meurpg.maps.v1.SetCarriedLightResponse
-	(*GetMapVisionRequest)(nil),         // 91: meurpg.maps.v1.GetMapVisionRequest
-	(*GetMapVisionResponse)(nil),        // 92: meurpg.maps.v1.GetMapVisionResponse
-	(*MapTile)(nil),                     // 93: meurpg.maps.v1.MapTile
-	(*ForgetMapVisionRequest)(nil),      // 94: meurpg.maps.v1.ForgetMapVisionRequest
-	(*ForgetMapVisionResponse)(nil),     // 95: meurpg.maps.v1.ForgetMapVisionResponse
-	(*timestamppb.Timestamp)(nil),       // 96: google.protobuf.Timestamp
-	(v1.TrapTrigger)(0),                 // 97: meurpg.rules.v1.TrapTrigger
-	(*v1.TrapEffect)(nil),               // 98: meurpg.rules.v1.TrapEffect
-	(v11.CharacterKind)(0),              // 99: meurpg.characters.v1.CharacterKind
+	(MapPointKind)(0),                       // 0: meurpg.maps.v1.MapPointKind
+	(MapLayer)(0),                           // 1: meurpg.maps.v1.MapLayer
+	(DoorState)(0),                          // 2: meurpg.maps.v1.DoorState
+	(LightLevel)(0),                         // 3: meurpg.maps.v1.LightLevel
+	(TrapState)(0),                          // 4: meurpg.maps.v1.TrapState
+	(TrapRevealHow)(0),                      // 5: meurpg.maps.v1.TrapRevealHow
+	(MapBlockedReason)(0),                   // 6: meurpg.maps.v1.MapBlockedReason
+	(StairDirection)(0),                     // 7: meurpg.maps.v1.StairDirection
+	(SceneActionDirection)(0),               // 8: meurpg.maps.v1.SceneActionDirection
+	(DarknessCause)(0),                      // 9: meurpg.maps.v1.DarknessCause
+	(*MapBlocked)(nil),                      // 10: meurpg.maps.v1.MapBlocked
+	(*Map)(nil),                             // 11: meurpg.maps.v1.Map
+	(*MapImage)(nil),                        // 12: meurpg.maps.v1.MapImage
+	(*MapRef)(nil),                          // 13: meurpg.maps.v1.MapRef
+	(*MapPoint)(nil),                        // 14: meurpg.maps.v1.MapPoint
+	(*SceneImage)(nil),                      // 15: meurpg.maps.v1.SceneImage
+	(*TrapSpec)(nil),                        // 16: meurpg.maps.v1.TrapSpec
+	(*LightSpec)(nil),                       // 17: meurpg.maps.v1.LightSpec
+	(*TreasureFinder)(nil),                  // 18: meurpg.maps.v1.TreasureFinder
+	(*TrapReveal)(nil),                      // 19: meurpg.maps.v1.TrapReveal
+	(*SceneClue)(nil),                       // 20: meurpg.maps.v1.SceneClue
+	(*ClueRecipient)(nil),                   // 21: meurpg.maps.v1.ClueRecipient
+	(*SceneAction)(nil),                     // 22: meurpg.maps.v1.SceneAction
+	(*MapToken)(nil),                        // 23: meurpg.maps.v1.MapToken
+	(*ListMapsRequest)(nil),                 // 24: meurpg.maps.v1.ListMapsRequest
+	(*ListMapsResponse)(nil),                // 25: meurpg.maps.v1.ListMapsResponse
+	(*GetMapRequest)(nil),                   // 26: meurpg.maps.v1.GetMapRequest
+	(*GetMapResponse)(nil),                  // 27: meurpg.maps.v1.GetMapResponse
+	(*CreateMapRequest)(nil),                // 28: meurpg.maps.v1.CreateMapRequest
+	(*CreateMapResponse)(nil),               // 29: meurpg.maps.v1.CreateMapResponse
+	(*UpdateMapRequest)(nil),                // 30: meurpg.maps.v1.UpdateMapRequest
+	(*UpdateMapResponse)(nil),               // 31: meurpg.maps.v1.UpdateMapResponse
+	(*DeleteMapRequest)(nil),                // 32: meurpg.maps.v1.DeleteMapRequest
+	(*DeleteMapResponse)(nil),               // 33: meurpg.maps.v1.DeleteMapResponse
+	(*SetMapRevealedRequest)(nil),           // 34: meurpg.maps.v1.SetMapRevealedRequest
+	(*SetMapRevealedResponse)(nil),          // 35: meurpg.maps.v1.SetMapRevealedResponse
+	(*SetMapGridRequest)(nil),               // 36: meurpg.maps.v1.SetMapGridRequest
+	(*SetMapGridResponse)(nil),              // 37: meurpg.maps.v1.SetMapGridResponse
+	(*CreateMapPointRequest)(nil),           // 38: meurpg.maps.v1.CreateMapPointRequest
+	(*CreateMapPointResponse)(nil),          // 39: meurpg.maps.v1.CreateMapPointResponse
+	(*UpdateMapPointRequest)(nil),           // 40: meurpg.maps.v1.UpdateMapPointRequest
+	(*UpdateMapPointResponse)(nil),          // 41: meurpg.maps.v1.UpdateMapPointResponse
+	(*DeleteMapPointRequest)(nil),           // 42: meurpg.maps.v1.DeleteMapPointRequest
+	(*DeleteMapPointResponse)(nil),          // 43: meurpg.maps.v1.DeleteMapPointResponse
+	(*SetMapPointRevealedRequest)(nil),      // 44: meurpg.maps.v1.SetMapPointRevealedRequest
+	(*SetMapPointRevealedResponse)(nil),     // 45: meurpg.maps.v1.SetMapPointRevealedResponse
+	(*PlaceMapTokenRequest)(nil),            // 46: meurpg.maps.v1.PlaceMapTokenRequest
+	(*PlaceMapTokenResponse)(nil),           // 47: meurpg.maps.v1.PlaceMapTokenResponse
+	(*SetMapTokenHiddenRequest)(nil),        // 48: meurpg.maps.v1.SetMapTokenHiddenRequest
+	(*SetMapTokenHiddenResponse)(nil),       // 49: meurpg.maps.v1.SetMapTokenHiddenResponse
+	(*RemoveMapTokenRequest)(nil),           // 50: meurpg.maps.v1.RemoveMapTokenRequest
+	(*RemoveMapTokenResponse)(nil),          // 51: meurpg.maps.v1.RemoveMapTokenResponse
+	(*AddSceneActionRequest)(nil),           // 52: meurpg.maps.v1.AddSceneActionRequest
+	(*AddSceneActionResponse)(nil),          // 53: meurpg.maps.v1.AddSceneActionResponse
+	(*UpdateSceneActionRequest)(nil),        // 54: meurpg.maps.v1.UpdateSceneActionRequest
+	(*UpdateSceneActionResponse)(nil),       // 55: meurpg.maps.v1.UpdateSceneActionResponse
+	(*MoveSceneActionRequest)(nil),          // 56: meurpg.maps.v1.MoveSceneActionRequest
+	(*MoveSceneActionResponse)(nil),         // 57: meurpg.maps.v1.MoveSceneActionResponse
+	(*RemoveSceneActionRequest)(nil),        // 58: meurpg.maps.v1.RemoveSceneActionRequest
+	(*RemoveSceneActionResponse)(nil),       // 59: meurpg.maps.v1.RemoveSceneActionResponse
+	(*AddSceneClueRequest)(nil),             // 60: meurpg.maps.v1.AddSceneClueRequest
+	(*AddSceneClueResponse)(nil),            // 61: meurpg.maps.v1.AddSceneClueResponse
+	(*UpdateSceneClueRequest)(nil),          // 62: meurpg.maps.v1.UpdateSceneClueRequest
+	(*UpdateSceneClueResponse)(nil),         // 63: meurpg.maps.v1.UpdateSceneClueResponse
+	(*MoveSceneClueRequest)(nil),            // 64: meurpg.maps.v1.MoveSceneClueRequest
+	(*MoveSceneClueResponse)(nil),           // 65: meurpg.maps.v1.MoveSceneClueResponse
+	(*RemoveSceneClueRequest)(nil),          // 66: meurpg.maps.v1.RemoveSceneClueRequest
+	(*RemoveSceneClueResponse)(nil),         // 67: meurpg.maps.v1.RemoveSceneClueResponse
+	(*SetSceneImagesRequest)(nil),           // 68: meurpg.maps.v1.SetSceneImagesRequest
+	(*SetSceneImagesResponse)(nil),          // 69: meurpg.maps.v1.SetSceneImagesResponse
+	(*RevealSceneClueRequest)(nil),          // 70: meurpg.maps.v1.RevealSceneClueRequest
+	(*RevealSceneClueResponse)(nil),         // 71: meurpg.maps.v1.RevealSceneClueResponse
+	(*MapSquare)(nil),                       // 72: meurpg.maps.v1.MapSquare
+	(*PaintMapCellsRequest)(nil),            // 73: meurpg.maps.v1.PaintMapCellsRequest
+	(*PaintMapCellsResponse)(nil),           // 74: meurpg.maps.v1.PaintMapCellsResponse
+	(*GetMapLayersRequest)(nil),             // 75: meurpg.maps.v1.GetMapLayersRequest
+	(*GetMapLayersResponse)(nil),            // 76: meurpg.maps.v1.GetMapLayersResponse
+	(*SetMapFogRequest)(nil),                // 77: meurpg.maps.v1.SetMapFogRequest
+	(*SetMapFogResponse)(nil),               // 78: meurpg.maps.v1.SetMapFogResponse
+	(*RevealTrapRequest)(nil),               // 79: meurpg.maps.v1.RevealTrapRequest
+	(*RevealTrapResponse)(nil),              // 80: meurpg.maps.v1.RevealTrapResponse
+	(*GetTrapNoticersRequest)(nil),          // 81: meurpg.maps.v1.GetTrapNoticersRequest
+	(*GetTrapNoticersResponse)(nil),         // 82: meurpg.maps.v1.GetTrapNoticersResponse
+	(*TrapNoticer)(nil),                     // 83: meurpg.maps.v1.TrapNoticer
+	(*DisarmTrapRequest)(nil),               // 84: meurpg.maps.v1.DisarmTrapRequest
+	(*DisarmTrapResponse)(nil),              // 85: meurpg.maps.v1.DisarmTrapResponse
+	(*MarkTreasureFoundRequest)(nil),        // 86: meurpg.maps.v1.MarkTreasureFoundRequest
+	(*MarkTreasureFoundResponse)(nil),       // 87: meurpg.maps.v1.MarkTreasureFoundResponse
+	(*UnmarkTreasureFoundRequest)(nil),      // 88: meurpg.maps.v1.UnmarkTreasureFoundRequest
+	(*UnmarkTreasureFoundResponse)(nil),     // 89: meurpg.maps.v1.UnmarkTreasureFoundResponse
+	(*SetCarriedLightRequest)(nil),          // 90: meurpg.maps.v1.SetCarriedLightRequest
+	(*SetCarriedLightResponse)(nil),         // 91: meurpg.maps.v1.SetCarriedLightResponse
+	(*GetMapVisionRequest)(nil),             // 92: meurpg.maps.v1.GetMapVisionRequest
+	(*GetMapVisionResponse)(nil),            // 93: meurpg.maps.v1.GetMapVisionResponse
+	(*MapTile)(nil),                         // 94: meurpg.maps.v1.MapTile
+	(*ForgetMapVisionRequest)(nil),          // 95: meurpg.maps.v1.ForgetMapVisionRequest
+	(*ForgetMapVisionResponse)(nil),         // 96: meurpg.maps.v1.ForgetMapVisionResponse
+	(*ListCharactersInTheDarkRequest)(nil),  // 97: meurpg.maps.v1.ListCharactersInTheDarkRequest
+	(*ListCharactersInTheDarkResponse)(nil), // 98: meurpg.maps.v1.ListCharactersInTheDarkResponse
+	(*CharacterInTheDark)(nil),              // 99: meurpg.maps.v1.CharacterInTheDark
+	(*timestamppb.Timestamp)(nil),           // 100: google.protobuf.Timestamp
+	(v1.TrapTrigger)(0),                     // 101: meurpg.rules.v1.TrapTrigger
+	(*v1.TrapEffect)(nil),                   // 102: meurpg.rules.v1.TrapEffect
+	(v11.CharacterKind)(0),                  // 103: meurpg.characters.v1.CharacterKind
 }
 var file_meurpg_maps_v1_maps_proto_depIdxs = []int32{
 	6,   // 0: meurpg.maps.v1.MapBlocked.reason:type_name -> meurpg.maps.v1.MapBlockedReason
-	11,  // 1: meurpg.maps.v1.Map.image:type_name -> meurpg.maps.v1.MapImage
-	12,  // 2: meurpg.maps.v1.Map.parent_maps:type_name -> meurpg.maps.v1.MapRef
-	96,  // 3: meurpg.maps.v1.Map.created_at:type_name -> google.protobuf.Timestamp
-	96,  // 4: meurpg.maps.v1.Map.updated_at:type_name -> google.protobuf.Timestamp
+	12,  // 1: meurpg.maps.v1.Map.image:type_name -> meurpg.maps.v1.MapImage
+	13,  // 2: meurpg.maps.v1.Map.parent_maps:type_name -> meurpg.maps.v1.MapRef
+	100, // 3: meurpg.maps.v1.Map.created_at:type_name -> google.protobuf.Timestamp
+	100, // 4: meurpg.maps.v1.Map.updated_at:type_name -> google.protobuf.Timestamp
 	3,   // 5: meurpg.maps.v1.Map.base_light:type_name -> meurpg.maps.v1.LightLevel
 	0,   // 6: meurpg.maps.v1.MapPoint.kind:type_name -> meurpg.maps.v1.MapPointKind
-	12,  // 7: meurpg.maps.v1.MapPoint.target_map:type_name -> meurpg.maps.v1.MapRef
-	96,  // 8: meurpg.maps.v1.MapPoint.created_at:type_name -> google.protobuf.Timestamp
-	96,  // 9: meurpg.maps.v1.MapPoint.updated_at:type_name -> google.protobuf.Timestamp
-	21,  // 10: meurpg.maps.v1.MapPoint.scene_actions:type_name -> meurpg.maps.v1.SceneAction
-	19,  // 11: meurpg.maps.v1.MapPoint.clues:type_name -> meurpg.maps.v1.SceneClue
-	15,  // 12: meurpg.maps.v1.MapPoint.trap:type_name -> meurpg.maps.v1.TrapSpec
-	16,  // 13: meurpg.maps.v1.MapPoint.light:type_name -> meurpg.maps.v1.LightSpec
-	96,  // 14: meurpg.maps.v1.MapPoint.treasure_found_at:type_name -> google.protobuf.Timestamp
-	17,  // 15: meurpg.maps.v1.MapPoint.treasure_found_by:type_name -> meurpg.maps.v1.TreasureFinder
-	18,  // 16: meurpg.maps.v1.MapPoint.trap_revealed_to:type_name -> meurpg.maps.v1.TrapReveal
+	13,  // 7: meurpg.maps.v1.MapPoint.target_map:type_name -> meurpg.maps.v1.MapRef
+	100, // 8: meurpg.maps.v1.MapPoint.created_at:type_name -> google.protobuf.Timestamp
+	100, // 9: meurpg.maps.v1.MapPoint.updated_at:type_name -> google.protobuf.Timestamp
+	22,  // 10: meurpg.maps.v1.MapPoint.scene_actions:type_name -> meurpg.maps.v1.SceneAction
+	20,  // 11: meurpg.maps.v1.MapPoint.clues:type_name -> meurpg.maps.v1.SceneClue
+	16,  // 12: meurpg.maps.v1.MapPoint.trap:type_name -> meurpg.maps.v1.TrapSpec
+	17,  // 13: meurpg.maps.v1.MapPoint.light:type_name -> meurpg.maps.v1.LightSpec
+	100, // 14: meurpg.maps.v1.MapPoint.treasure_found_at:type_name -> google.protobuf.Timestamp
+	18,  // 15: meurpg.maps.v1.MapPoint.treasure_found_by:type_name -> meurpg.maps.v1.TreasureFinder
+	19,  // 16: meurpg.maps.v1.MapPoint.trap_revealed_to:type_name -> meurpg.maps.v1.TrapReveal
 	7,   // 17: meurpg.maps.v1.MapPoint.stairs:type_name -> meurpg.maps.v1.StairDirection
-	14,  // 18: meurpg.maps.v1.MapPoint.images:type_name -> meurpg.maps.v1.SceneImage
-	97,  // 19: meurpg.maps.v1.TrapSpec.trigger:type_name -> meurpg.rules.v1.TrapTrigger
-	98,  // 20: meurpg.maps.v1.TrapSpec.effect:type_name -> meurpg.rules.v1.TrapEffect
+	15,  // 18: meurpg.maps.v1.MapPoint.images:type_name -> meurpg.maps.v1.SceneImage
+	101, // 19: meurpg.maps.v1.TrapSpec.trigger:type_name -> meurpg.rules.v1.TrapTrigger
+	102, // 20: meurpg.maps.v1.TrapSpec.effect:type_name -> meurpg.rules.v1.TrapEffect
 	4,   // 21: meurpg.maps.v1.TrapSpec.state:type_name -> meurpg.maps.v1.TrapState
 	5,   // 22: meurpg.maps.v1.TrapReveal.how:type_name -> meurpg.maps.v1.TrapRevealHow
-	96,  // 23: meurpg.maps.v1.TrapReveal.at:type_name -> google.protobuf.Timestamp
-	20,  // 24: meurpg.maps.v1.SceneClue.revealed_to:type_name -> meurpg.maps.v1.ClueRecipient
-	96,  // 25: meurpg.maps.v1.ClueRecipient.revealed_at:type_name -> google.protobuf.Timestamp
-	99,  // 26: meurpg.maps.v1.MapToken.kind:type_name -> meurpg.characters.v1.CharacterKind
-	96,  // 27: meurpg.maps.v1.MapToken.updated_at:type_name -> google.protobuf.Timestamp
-	10,  // 28: meurpg.maps.v1.ListMapsResponse.maps:type_name -> meurpg.maps.v1.Map
-	10,  // 29: meurpg.maps.v1.GetMapResponse.map:type_name -> meurpg.maps.v1.Map
-	13,  // 30: meurpg.maps.v1.GetMapResponse.points:type_name -> meurpg.maps.v1.MapPoint
-	22,  // 31: meurpg.maps.v1.GetMapResponse.tokens:type_name -> meurpg.maps.v1.MapToken
-	10,  // 32: meurpg.maps.v1.CreateMapResponse.map:type_name -> meurpg.maps.v1.Map
-	10,  // 33: meurpg.maps.v1.UpdateMapResponse.map:type_name -> meurpg.maps.v1.Map
-	10,  // 34: meurpg.maps.v1.SetMapRevealedResponse.map:type_name -> meurpg.maps.v1.Map
-	10,  // 35: meurpg.maps.v1.SetMapGridResponse.map:type_name -> meurpg.maps.v1.Map
+	100, // 23: meurpg.maps.v1.TrapReveal.at:type_name -> google.protobuf.Timestamp
+	21,  // 24: meurpg.maps.v1.SceneClue.revealed_to:type_name -> meurpg.maps.v1.ClueRecipient
+	100, // 25: meurpg.maps.v1.ClueRecipient.revealed_at:type_name -> google.protobuf.Timestamp
+	103, // 26: meurpg.maps.v1.MapToken.kind:type_name -> meurpg.characters.v1.CharacterKind
+	100, // 27: meurpg.maps.v1.MapToken.updated_at:type_name -> google.protobuf.Timestamp
+	11,  // 28: meurpg.maps.v1.ListMapsResponse.maps:type_name -> meurpg.maps.v1.Map
+	11,  // 29: meurpg.maps.v1.GetMapResponse.map:type_name -> meurpg.maps.v1.Map
+	14,  // 30: meurpg.maps.v1.GetMapResponse.points:type_name -> meurpg.maps.v1.MapPoint
+	23,  // 31: meurpg.maps.v1.GetMapResponse.tokens:type_name -> meurpg.maps.v1.MapToken
+	11,  // 32: meurpg.maps.v1.CreateMapResponse.map:type_name -> meurpg.maps.v1.Map
+	11,  // 33: meurpg.maps.v1.UpdateMapResponse.map:type_name -> meurpg.maps.v1.Map
+	11,  // 34: meurpg.maps.v1.SetMapRevealedResponse.map:type_name -> meurpg.maps.v1.Map
+	11,  // 35: meurpg.maps.v1.SetMapGridResponse.map:type_name -> meurpg.maps.v1.Map
 	0,   // 36: meurpg.maps.v1.CreateMapPointRequest.kind:type_name -> meurpg.maps.v1.MapPointKind
-	15,  // 37: meurpg.maps.v1.CreateMapPointRequest.trap:type_name -> meurpg.maps.v1.TrapSpec
-	16,  // 38: meurpg.maps.v1.CreateMapPointRequest.light:type_name -> meurpg.maps.v1.LightSpec
-	13,  // 39: meurpg.maps.v1.CreateMapPointResponse.point:type_name -> meurpg.maps.v1.MapPoint
+	16,  // 37: meurpg.maps.v1.CreateMapPointRequest.trap:type_name -> meurpg.maps.v1.TrapSpec
+	17,  // 38: meurpg.maps.v1.CreateMapPointRequest.light:type_name -> meurpg.maps.v1.LightSpec
+	14,  // 39: meurpg.maps.v1.CreateMapPointResponse.point:type_name -> meurpg.maps.v1.MapPoint
 	0,   // 40: meurpg.maps.v1.UpdateMapPointRequest.kind:type_name -> meurpg.maps.v1.MapPointKind
-	15,  // 41: meurpg.maps.v1.UpdateMapPointRequest.trap:type_name -> meurpg.maps.v1.TrapSpec
-	16,  // 42: meurpg.maps.v1.UpdateMapPointRequest.light:type_name -> meurpg.maps.v1.LightSpec
-	13,  // 43: meurpg.maps.v1.UpdateMapPointResponse.point:type_name -> meurpg.maps.v1.MapPoint
-	13,  // 44: meurpg.maps.v1.SetMapPointRevealedResponse.point:type_name -> meurpg.maps.v1.MapPoint
-	22,  // 45: meurpg.maps.v1.PlaceMapTokenResponse.token:type_name -> meurpg.maps.v1.MapToken
-	22,  // 46: meurpg.maps.v1.SetMapTokenHiddenResponse.token:type_name -> meurpg.maps.v1.MapToken
-	21,  // 47: meurpg.maps.v1.AddSceneActionResponse.action:type_name -> meurpg.maps.v1.SceneAction
-	21,  // 48: meurpg.maps.v1.AddSceneActionResponse.actions:type_name -> meurpg.maps.v1.SceneAction
-	21,  // 49: meurpg.maps.v1.UpdateSceneActionResponse.action:type_name -> meurpg.maps.v1.SceneAction
-	21,  // 50: meurpg.maps.v1.UpdateSceneActionResponse.actions:type_name -> meurpg.maps.v1.SceneAction
+	16,  // 41: meurpg.maps.v1.UpdateMapPointRequest.trap:type_name -> meurpg.maps.v1.TrapSpec
+	17,  // 42: meurpg.maps.v1.UpdateMapPointRequest.light:type_name -> meurpg.maps.v1.LightSpec
+	14,  // 43: meurpg.maps.v1.UpdateMapPointResponse.point:type_name -> meurpg.maps.v1.MapPoint
+	14,  // 44: meurpg.maps.v1.SetMapPointRevealedResponse.point:type_name -> meurpg.maps.v1.MapPoint
+	23,  // 45: meurpg.maps.v1.PlaceMapTokenResponse.token:type_name -> meurpg.maps.v1.MapToken
+	23,  // 46: meurpg.maps.v1.SetMapTokenHiddenResponse.token:type_name -> meurpg.maps.v1.MapToken
+	22,  // 47: meurpg.maps.v1.AddSceneActionResponse.action:type_name -> meurpg.maps.v1.SceneAction
+	22,  // 48: meurpg.maps.v1.AddSceneActionResponse.actions:type_name -> meurpg.maps.v1.SceneAction
+	22,  // 49: meurpg.maps.v1.UpdateSceneActionResponse.action:type_name -> meurpg.maps.v1.SceneAction
+	22,  // 50: meurpg.maps.v1.UpdateSceneActionResponse.actions:type_name -> meurpg.maps.v1.SceneAction
 	8,   // 51: meurpg.maps.v1.MoveSceneActionRequest.direction:type_name -> meurpg.maps.v1.SceneActionDirection
-	21,  // 52: meurpg.maps.v1.MoveSceneActionResponse.actions:type_name -> meurpg.maps.v1.SceneAction
-	21,  // 53: meurpg.maps.v1.RemoveSceneActionResponse.actions:type_name -> meurpg.maps.v1.SceneAction
-	19,  // 54: meurpg.maps.v1.AddSceneClueResponse.clue:type_name -> meurpg.maps.v1.SceneClue
-	19,  // 55: meurpg.maps.v1.AddSceneClueResponse.clues:type_name -> meurpg.maps.v1.SceneClue
-	19,  // 56: meurpg.maps.v1.UpdateSceneClueResponse.clue:type_name -> meurpg.maps.v1.SceneClue
-	19,  // 57: meurpg.maps.v1.UpdateSceneClueResponse.clues:type_name -> meurpg.maps.v1.SceneClue
+	22,  // 52: meurpg.maps.v1.MoveSceneActionResponse.actions:type_name -> meurpg.maps.v1.SceneAction
+	22,  // 53: meurpg.maps.v1.RemoveSceneActionResponse.actions:type_name -> meurpg.maps.v1.SceneAction
+	20,  // 54: meurpg.maps.v1.AddSceneClueResponse.clue:type_name -> meurpg.maps.v1.SceneClue
+	20,  // 55: meurpg.maps.v1.AddSceneClueResponse.clues:type_name -> meurpg.maps.v1.SceneClue
+	20,  // 56: meurpg.maps.v1.UpdateSceneClueResponse.clue:type_name -> meurpg.maps.v1.SceneClue
+	20,  // 57: meurpg.maps.v1.UpdateSceneClueResponse.clues:type_name -> meurpg.maps.v1.SceneClue
 	8,   // 58: meurpg.maps.v1.MoveSceneClueRequest.direction:type_name -> meurpg.maps.v1.SceneActionDirection
-	19,  // 59: meurpg.maps.v1.MoveSceneClueResponse.clues:type_name -> meurpg.maps.v1.SceneClue
-	19,  // 60: meurpg.maps.v1.RemoveSceneClueResponse.clues:type_name -> meurpg.maps.v1.SceneClue
-	14,  // 61: meurpg.maps.v1.SetSceneImagesResponse.images:type_name -> meurpg.maps.v1.SceneImage
-	19,  // 62: meurpg.maps.v1.RevealSceneClueResponse.clue:type_name -> meurpg.maps.v1.SceneClue
+	20,  // 59: meurpg.maps.v1.MoveSceneClueResponse.clues:type_name -> meurpg.maps.v1.SceneClue
+	20,  // 60: meurpg.maps.v1.RemoveSceneClueResponse.clues:type_name -> meurpg.maps.v1.SceneClue
+	15,  // 61: meurpg.maps.v1.SetSceneImagesResponse.images:type_name -> meurpg.maps.v1.SceneImage
+	20,  // 62: meurpg.maps.v1.RevealSceneClueResponse.clue:type_name -> meurpg.maps.v1.SceneClue
 	1,   // 63: meurpg.maps.v1.PaintMapCellsRequest.layer:type_name -> meurpg.maps.v1.MapLayer
-	71,  // 64: meurpg.maps.v1.PaintMapCellsRequest.squares:type_name -> meurpg.maps.v1.MapSquare
+	72,  // 64: meurpg.maps.v1.PaintMapCellsRequest.squares:type_name -> meurpg.maps.v1.MapSquare
 	3,   // 65: meurpg.maps.v1.SetMapFogRequest.base_light:type_name -> meurpg.maps.v1.LightLevel
-	10,  // 66: meurpg.maps.v1.SetMapFogResponse.map:type_name -> meurpg.maps.v1.Map
-	13,  // 67: meurpg.maps.v1.RevealTrapResponse.point:type_name -> meurpg.maps.v1.MapPoint
-	82,  // 68: meurpg.maps.v1.GetTrapNoticersResponse.noticers:type_name -> meurpg.maps.v1.TrapNoticer
-	13,  // 69: meurpg.maps.v1.DisarmTrapResponse.point:type_name -> meurpg.maps.v1.MapPoint
-	13,  // 70: meurpg.maps.v1.MarkTreasureFoundResponse.point:type_name -> meurpg.maps.v1.MapPoint
-	13,  // 71: meurpg.maps.v1.UnmarkTreasureFoundResponse.point:type_name -> meurpg.maps.v1.MapPoint
-	22,  // 72: meurpg.maps.v1.SetCarriedLightResponse.token:type_name -> meurpg.maps.v1.MapToken
-	93,  // 73: meurpg.maps.v1.GetMapVisionResponse.tiles:type_name -> meurpg.maps.v1.MapTile
-	23,  // 74: meurpg.maps.v1.MapService.ListMaps:input_type -> meurpg.maps.v1.ListMapsRequest
-	25,  // 75: meurpg.maps.v1.MapService.GetMap:input_type -> meurpg.maps.v1.GetMapRequest
-	27,  // 76: meurpg.maps.v1.MapService.CreateMap:input_type -> meurpg.maps.v1.CreateMapRequest
-	29,  // 77: meurpg.maps.v1.MapService.UpdateMap:input_type -> meurpg.maps.v1.UpdateMapRequest
-	31,  // 78: meurpg.maps.v1.MapService.DeleteMap:input_type -> meurpg.maps.v1.DeleteMapRequest
-	33,  // 79: meurpg.maps.v1.MapService.SetMapRevealed:input_type -> meurpg.maps.v1.SetMapRevealedRequest
-	35,  // 80: meurpg.maps.v1.MapService.SetMapGrid:input_type -> meurpg.maps.v1.SetMapGridRequest
-	37,  // 81: meurpg.maps.v1.MapService.CreateMapPoint:input_type -> meurpg.maps.v1.CreateMapPointRequest
-	39,  // 82: meurpg.maps.v1.MapService.UpdateMapPoint:input_type -> meurpg.maps.v1.UpdateMapPointRequest
-	41,  // 83: meurpg.maps.v1.MapService.DeleteMapPoint:input_type -> meurpg.maps.v1.DeleteMapPointRequest
-	43,  // 84: meurpg.maps.v1.MapService.SetMapPointRevealed:input_type -> meurpg.maps.v1.SetMapPointRevealedRequest
-	51,  // 85: meurpg.maps.v1.MapService.AddSceneAction:input_type -> meurpg.maps.v1.AddSceneActionRequest
-	53,  // 86: meurpg.maps.v1.MapService.UpdateSceneAction:input_type -> meurpg.maps.v1.UpdateSceneActionRequest
-	55,  // 87: meurpg.maps.v1.MapService.MoveSceneAction:input_type -> meurpg.maps.v1.MoveSceneActionRequest
-	57,  // 88: meurpg.maps.v1.MapService.RemoveSceneAction:input_type -> meurpg.maps.v1.RemoveSceneActionRequest
-	59,  // 89: meurpg.maps.v1.MapService.AddSceneClue:input_type -> meurpg.maps.v1.AddSceneClueRequest
-	61,  // 90: meurpg.maps.v1.MapService.UpdateSceneClue:input_type -> meurpg.maps.v1.UpdateSceneClueRequest
-	63,  // 91: meurpg.maps.v1.MapService.MoveSceneClue:input_type -> meurpg.maps.v1.MoveSceneClueRequest
-	65,  // 92: meurpg.maps.v1.MapService.RemoveSceneClue:input_type -> meurpg.maps.v1.RemoveSceneClueRequest
-	69,  // 93: meurpg.maps.v1.MapService.RevealSceneClue:input_type -> meurpg.maps.v1.RevealSceneClueRequest
-	67,  // 94: meurpg.maps.v1.MapService.SetSceneImages:input_type -> meurpg.maps.v1.SetSceneImagesRequest
-	45,  // 95: meurpg.maps.v1.MapService.PlaceMapToken:input_type -> meurpg.maps.v1.PlaceMapTokenRequest
-	47,  // 96: meurpg.maps.v1.MapService.SetMapTokenHidden:input_type -> meurpg.maps.v1.SetMapTokenHiddenRequest
-	49,  // 97: meurpg.maps.v1.MapService.RemoveMapToken:input_type -> meurpg.maps.v1.RemoveMapTokenRequest
-	72,  // 98: meurpg.maps.v1.MapService.PaintMapCells:input_type -> meurpg.maps.v1.PaintMapCellsRequest
-	74,  // 99: meurpg.maps.v1.MapService.GetMapLayers:input_type -> meurpg.maps.v1.GetMapLayersRequest
-	76,  // 100: meurpg.maps.v1.MapService.SetMapFog:input_type -> meurpg.maps.v1.SetMapFogRequest
-	91,  // 101: meurpg.maps.v1.MapService.GetMapVision:input_type -> meurpg.maps.v1.GetMapVisionRequest
-	94,  // 102: meurpg.maps.v1.MapService.ForgetMapVision:input_type -> meurpg.maps.v1.ForgetMapVisionRequest
-	78,  // 103: meurpg.maps.v1.MapService.RevealTrap:input_type -> meurpg.maps.v1.RevealTrapRequest
-	80,  // 104: meurpg.maps.v1.MapService.GetTrapNoticers:input_type -> meurpg.maps.v1.GetTrapNoticersRequest
-	83,  // 105: meurpg.maps.v1.MapService.DisarmTrap:input_type -> meurpg.maps.v1.DisarmTrapRequest
-	85,  // 106: meurpg.maps.v1.MapService.MarkTreasureFound:input_type -> meurpg.maps.v1.MarkTreasureFoundRequest
-	87,  // 107: meurpg.maps.v1.MapService.UnmarkTreasureFound:input_type -> meurpg.maps.v1.UnmarkTreasureFoundRequest
-	89,  // 108: meurpg.maps.v1.MapService.SetCarriedLight:input_type -> meurpg.maps.v1.SetCarriedLightRequest
-	24,  // 109: meurpg.maps.v1.MapService.ListMaps:output_type -> meurpg.maps.v1.ListMapsResponse
-	26,  // 110: meurpg.maps.v1.MapService.GetMap:output_type -> meurpg.maps.v1.GetMapResponse
-	28,  // 111: meurpg.maps.v1.MapService.CreateMap:output_type -> meurpg.maps.v1.CreateMapResponse
-	30,  // 112: meurpg.maps.v1.MapService.UpdateMap:output_type -> meurpg.maps.v1.UpdateMapResponse
-	32,  // 113: meurpg.maps.v1.MapService.DeleteMap:output_type -> meurpg.maps.v1.DeleteMapResponse
-	34,  // 114: meurpg.maps.v1.MapService.SetMapRevealed:output_type -> meurpg.maps.v1.SetMapRevealedResponse
-	36,  // 115: meurpg.maps.v1.MapService.SetMapGrid:output_type -> meurpg.maps.v1.SetMapGridResponse
-	38,  // 116: meurpg.maps.v1.MapService.CreateMapPoint:output_type -> meurpg.maps.v1.CreateMapPointResponse
-	40,  // 117: meurpg.maps.v1.MapService.UpdateMapPoint:output_type -> meurpg.maps.v1.UpdateMapPointResponse
-	42,  // 118: meurpg.maps.v1.MapService.DeleteMapPoint:output_type -> meurpg.maps.v1.DeleteMapPointResponse
-	44,  // 119: meurpg.maps.v1.MapService.SetMapPointRevealed:output_type -> meurpg.maps.v1.SetMapPointRevealedResponse
-	52,  // 120: meurpg.maps.v1.MapService.AddSceneAction:output_type -> meurpg.maps.v1.AddSceneActionResponse
-	54,  // 121: meurpg.maps.v1.MapService.UpdateSceneAction:output_type -> meurpg.maps.v1.UpdateSceneActionResponse
-	56,  // 122: meurpg.maps.v1.MapService.MoveSceneAction:output_type -> meurpg.maps.v1.MoveSceneActionResponse
-	58,  // 123: meurpg.maps.v1.MapService.RemoveSceneAction:output_type -> meurpg.maps.v1.RemoveSceneActionResponse
-	60,  // 124: meurpg.maps.v1.MapService.AddSceneClue:output_type -> meurpg.maps.v1.AddSceneClueResponse
-	62,  // 125: meurpg.maps.v1.MapService.UpdateSceneClue:output_type -> meurpg.maps.v1.UpdateSceneClueResponse
-	64,  // 126: meurpg.maps.v1.MapService.MoveSceneClue:output_type -> meurpg.maps.v1.MoveSceneClueResponse
-	66,  // 127: meurpg.maps.v1.MapService.RemoveSceneClue:output_type -> meurpg.maps.v1.RemoveSceneClueResponse
-	70,  // 128: meurpg.maps.v1.MapService.RevealSceneClue:output_type -> meurpg.maps.v1.RevealSceneClueResponse
-	68,  // 129: meurpg.maps.v1.MapService.SetSceneImages:output_type -> meurpg.maps.v1.SetSceneImagesResponse
-	46,  // 130: meurpg.maps.v1.MapService.PlaceMapToken:output_type -> meurpg.maps.v1.PlaceMapTokenResponse
-	48,  // 131: meurpg.maps.v1.MapService.SetMapTokenHidden:output_type -> meurpg.maps.v1.SetMapTokenHiddenResponse
-	50,  // 132: meurpg.maps.v1.MapService.RemoveMapToken:output_type -> meurpg.maps.v1.RemoveMapTokenResponse
-	73,  // 133: meurpg.maps.v1.MapService.PaintMapCells:output_type -> meurpg.maps.v1.PaintMapCellsResponse
-	75,  // 134: meurpg.maps.v1.MapService.GetMapLayers:output_type -> meurpg.maps.v1.GetMapLayersResponse
-	77,  // 135: meurpg.maps.v1.MapService.SetMapFog:output_type -> meurpg.maps.v1.SetMapFogResponse
-	92,  // 136: meurpg.maps.v1.MapService.GetMapVision:output_type -> meurpg.maps.v1.GetMapVisionResponse
-	95,  // 137: meurpg.maps.v1.MapService.ForgetMapVision:output_type -> meurpg.maps.v1.ForgetMapVisionResponse
-	79,  // 138: meurpg.maps.v1.MapService.RevealTrap:output_type -> meurpg.maps.v1.RevealTrapResponse
-	81,  // 139: meurpg.maps.v1.MapService.GetTrapNoticers:output_type -> meurpg.maps.v1.GetTrapNoticersResponse
-	84,  // 140: meurpg.maps.v1.MapService.DisarmTrap:output_type -> meurpg.maps.v1.DisarmTrapResponse
-	86,  // 141: meurpg.maps.v1.MapService.MarkTreasureFound:output_type -> meurpg.maps.v1.MarkTreasureFoundResponse
-	88,  // 142: meurpg.maps.v1.MapService.UnmarkTreasureFound:output_type -> meurpg.maps.v1.UnmarkTreasureFoundResponse
-	90,  // 143: meurpg.maps.v1.MapService.SetCarriedLight:output_type -> meurpg.maps.v1.SetCarriedLightResponse
-	109, // [109:144] is the sub-list for method output_type
-	74,  // [74:109] is the sub-list for method input_type
-	74,  // [74:74] is the sub-list for extension type_name
-	74,  // [74:74] is the sub-list for extension extendee
-	0,   // [0:74] is the sub-list for field type_name
+	11,  // 66: meurpg.maps.v1.SetMapFogResponse.map:type_name -> meurpg.maps.v1.Map
+	14,  // 67: meurpg.maps.v1.RevealTrapResponse.point:type_name -> meurpg.maps.v1.MapPoint
+	83,  // 68: meurpg.maps.v1.GetTrapNoticersResponse.noticers:type_name -> meurpg.maps.v1.TrapNoticer
+	14,  // 69: meurpg.maps.v1.DisarmTrapResponse.point:type_name -> meurpg.maps.v1.MapPoint
+	14,  // 70: meurpg.maps.v1.MarkTreasureFoundResponse.point:type_name -> meurpg.maps.v1.MapPoint
+	14,  // 71: meurpg.maps.v1.UnmarkTreasureFoundResponse.point:type_name -> meurpg.maps.v1.MapPoint
+	23,  // 72: meurpg.maps.v1.SetCarriedLightResponse.token:type_name -> meurpg.maps.v1.MapToken
+	94,  // 73: meurpg.maps.v1.GetMapVisionResponse.tiles:type_name -> meurpg.maps.v1.MapTile
+	99,  // 74: meurpg.maps.v1.ListCharactersInTheDarkResponse.characters:type_name -> meurpg.maps.v1.CharacterInTheDark
+	9,   // 75: meurpg.maps.v1.CharacterInTheDark.cause:type_name -> meurpg.maps.v1.DarknessCause
+	24,  // 76: meurpg.maps.v1.MapService.ListMaps:input_type -> meurpg.maps.v1.ListMapsRequest
+	26,  // 77: meurpg.maps.v1.MapService.GetMap:input_type -> meurpg.maps.v1.GetMapRequest
+	28,  // 78: meurpg.maps.v1.MapService.CreateMap:input_type -> meurpg.maps.v1.CreateMapRequest
+	30,  // 79: meurpg.maps.v1.MapService.UpdateMap:input_type -> meurpg.maps.v1.UpdateMapRequest
+	32,  // 80: meurpg.maps.v1.MapService.DeleteMap:input_type -> meurpg.maps.v1.DeleteMapRequest
+	34,  // 81: meurpg.maps.v1.MapService.SetMapRevealed:input_type -> meurpg.maps.v1.SetMapRevealedRequest
+	36,  // 82: meurpg.maps.v1.MapService.SetMapGrid:input_type -> meurpg.maps.v1.SetMapGridRequest
+	38,  // 83: meurpg.maps.v1.MapService.CreateMapPoint:input_type -> meurpg.maps.v1.CreateMapPointRequest
+	40,  // 84: meurpg.maps.v1.MapService.UpdateMapPoint:input_type -> meurpg.maps.v1.UpdateMapPointRequest
+	42,  // 85: meurpg.maps.v1.MapService.DeleteMapPoint:input_type -> meurpg.maps.v1.DeleteMapPointRequest
+	44,  // 86: meurpg.maps.v1.MapService.SetMapPointRevealed:input_type -> meurpg.maps.v1.SetMapPointRevealedRequest
+	52,  // 87: meurpg.maps.v1.MapService.AddSceneAction:input_type -> meurpg.maps.v1.AddSceneActionRequest
+	54,  // 88: meurpg.maps.v1.MapService.UpdateSceneAction:input_type -> meurpg.maps.v1.UpdateSceneActionRequest
+	56,  // 89: meurpg.maps.v1.MapService.MoveSceneAction:input_type -> meurpg.maps.v1.MoveSceneActionRequest
+	58,  // 90: meurpg.maps.v1.MapService.RemoveSceneAction:input_type -> meurpg.maps.v1.RemoveSceneActionRequest
+	60,  // 91: meurpg.maps.v1.MapService.AddSceneClue:input_type -> meurpg.maps.v1.AddSceneClueRequest
+	62,  // 92: meurpg.maps.v1.MapService.UpdateSceneClue:input_type -> meurpg.maps.v1.UpdateSceneClueRequest
+	64,  // 93: meurpg.maps.v1.MapService.MoveSceneClue:input_type -> meurpg.maps.v1.MoveSceneClueRequest
+	66,  // 94: meurpg.maps.v1.MapService.RemoveSceneClue:input_type -> meurpg.maps.v1.RemoveSceneClueRequest
+	70,  // 95: meurpg.maps.v1.MapService.RevealSceneClue:input_type -> meurpg.maps.v1.RevealSceneClueRequest
+	68,  // 96: meurpg.maps.v1.MapService.SetSceneImages:input_type -> meurpg.maps.v1.SetSceneImagesRequest
+	46,  // 97: meurpg.maps.v1.MapService.PlaceMapToken:input_type -> meurpg.maps.v1.PlaceMapTokenRequest
+	48,  // 98: meurpg.maps.v1.MapService.SetMapTokenHidden:input_type -> meurpg.maps.v1.SetMapTokenHiddenRequest
+	50,  // 99: meurpg.maps.v1.MapService.RemoveMapToken:input_type -> meurpg.maps.v1.RemoveMapTokenRequest
+	73,  // 100: meurpg.maps.v1.MapService.PaintMapCells:input_type -> meurpg.maps.v1.PaintMapCellsRequest
+	75,  // 101: meurpg.maps.v1.MapService.GetMapLayers:input_type -> meurpg.maps.v1.GetMapLayersRequest
+	77,  // 102: meurpg.maps.v1.MapService.SetMapFog:input_type -> meurpg.maps.v1.SetMapFogRequest
+	92,  // 103: meurpg.maps.v1.MapService.GetMapVision:input_type -> meurpg.maps.v1.GetMapVisionRequest
+	95,  // 104: meurpg.maps.v1.MapService.ForgetMapVision:input_type -> meurpg.maps.v1.ForgetMapVisionRequest
+	97,  // 105: meurpg.maps.v1.MapService.ListCharactersInTheDark:input_type -> meurpg.maps.v1.ListCharactersInTheDarkRequest
+	79,  // 106: meurpg.maps.v1.MapService.RevealTrap:input_type -> meurpg.maps.v1.RevealTrapRequest
+	81,  // 107: meurpg.maps.v1.MapService.GetTrapNoticers:input_type -> meurpg.maps.v1.GetTrapNoticersRequest
+	84,  // 108: meurpg.maps.v1.MapService.DisarmTrap:input_type -> meurpg.maps.v1.DisarmTrapRequest
+	86,  // 109: meurpg.maps.v1.MapService.MarkTreasureFound:input_type -> meurpg.maps.v1.MarkTreasureFoundRequest
+	88,  // 110: meurpg.maps.v1.MapService.UnmarkTreasureFound:input_type -> meurpg.maps.v1.UnmarkTreasureFoundRequest
+	90,  // 111: meurpg.maps.v1.MapService.SetCarriedLight:input_type -> meurpg.maps.v1.SetCarriedLightRequest
+	25,  // 112: meurpg.maps.v1.MapService.ListMaps:output_type -> meurpg.maps.v1.ListMapsResponse
+	27,  // 113: meurpg.maps.v1.MapService.GetMap:output_type -> meurpg.maps.v1.GetMapResponse
+	29,  // 114: meurpg.maps.v1.MapService.CreateMap:output_type -> meurpg.maps.v1.CreateMapResponse
+	31,  // 115: meurpg.maps.v1.MapService.UpdateMap:output_type -> meurpg.maps.v1.UpdateMapResponse
+	33,  // 116: meurpg.maps.v1.MapService.DeleteMap:output_type -> meurpg.maps.v1.DeleteMapResponse
+	35,  // 117: meurpg.maps.v1.MapService.SetMapRevealed:output_type -> meurpg.maps.v1.SetMapRevealedResponse
+	37,  // 118: meurpg.maps.v1.MapService.SetMapGrid:output_type -> meurpg.maps.v1.SetMapGridResponse
+	39,  // 119: meurpg.maps.v1.MapService.CreateMapPoint:output_type -> meurpg.maps.v1.CreateMapPointResponse
+	41,  // 120: meurpg.maps.v1.MapService.UpdateMapPoint:output_type -> meurpg.maps.v1.UpdateMapPointResponse
+	43,  // 121: meurpg.maps.v1.MapService.DeleteMapPoint:output_type -> meurpg.maps.v1.DeleteMapPointResponse
+	45,  // 122: meurpg.maps.v1.MapService.SetMapPointRevealed:output_type -> meurpg.maps.v1.SetMapPointRevealedResponse
+	53,  // 123: meurpg.maps.v1.MapService.AddSceneAction:output_type -> meurpg.maps.v1.AddSceneActionResponse
+	55,  // 124: meurpg.maps.v1.MapService.UpdateSceneAction:output_type -> meurpg.maps.v1.UpdateSceneActionResponse
+	57,  // 125: meurpg.maps.v1.MapService.MoveSceneAction:output_type -> meurpg.maps.v1.MoveSceneActionResponse
+	59,  // 126: meurpg.maps.v1.MapService.RemoveSceneAction:output_type -> meurpg.maps.v1.RemoveSceneActionResponse
+	61,  // 127: meurpg.maps.v1.MapService.AddSceneClue:output_type -> meurpg.maps.v1.AddSceneClueResponse
+	63,  // 128: meurpg.maps.v1.MapService.UpdateSceneClue:output_type -> meurpg.maps.v1.UpdateSceneClueResponse
+	65,  // 129: meurpg.maps.v1.MapService.MoveSceneClue:output_type -> meurpg.maps.v1.MoveSceneClueResponse
+	67,  // 130: meurpg.maps.v1.MapService.RemoveSceneClue:output_type -> meurpg.maps.v1.RemoveSceneClueResponse
+	71,  // 131: meurpg.maps.v1.MapService.RevealSceneClue:output_type -> meurpg.maps.v1.RevealSceneClueResponse
+	69,  // 132: meurpg.maps.v1.MapService.SetSceneImages:output_type -> meurpg.maps.v1.SetSceneImagesResponse
+	47,  // 133: meurpg.maps.v1.MapService.PlaceMapToken:output_type -> meurpg.maps.v1.PlaceMapTokenResponse
+	49,  // 134: meurpg.maps.v1.MapService.SetMapTokenHidden:output_type -> meurpg.maps.v1.SetMapTokenHiddenResponse
+	51,  // 135: meurpg.maps.v1.MapService.RemoveMapToken:output_type -> meurpg.maps.v1.RemoveMapTokenResponse
+	74,  // 136: meurpg.maps.v1.MapService.PaintMapCells:output_type -> meurpg.maps.v1.PaintMapCellsResponse
+	76,  // 137: meurpg.maps.v1.MapService.GetMapLayers:output_type -> meurpg.maps.v1.GetMapLayersResponse
+	78,  // 138: meurpg.maps.v1.MapService.SetMapFog:output_type -> meurpg.maps.v1.SetMapFogResponse
+	93,  // 139: meurpg.maps.v1.MapService.GetMapVision:output_type -> meurpg.maps.v1.GetMapVisionResponse
+	96,  // 140: meurpg.maps.v1.MapService.ForgetMapVision:output_type -> meurpg.maps.v1.ForgetMapVisionResponse
+	98,  // 141: meurpg.maps.v1.MapService.ListCharactersInTheDark:output_type -> meurpg.maps.v1.ListCharactersInTheDarkResponse
+	80,  // 142: meurpg.maps.v1.MapService.RevealTrap:output_type -> meurpg.maps.v1.RevealTrapResponse
+	82,  // 143: meurpg.maps.v1.MapService.GetTrapNoticers:output_type -> meurpg.maps.v1.GetTrapNoticersResponse
+	85,  // 144: meurpg.maps.v1.MapService.DisarmTrap:output_type -> meurpg.maps.v1.DisarmTrapResponse
+	87,  // 145: meurpg.maps.v1.MapService.MarkTreasureFound:output_type -> meurpg.maps.v1.MarkTreasureFoundResponse
+	89,  // 146: meurpg.maps.v1.MapService.UnmarkTreasureFound:output_type -> meurpg.maps.v1.UnmarkTreasureFoundResponse
+	91,  // 147: meurpg.maps.v1.MapService.SetCarriedLight:output_type -> meurpg.maps.v1.SetCarriedLightResponse
+	112, // [112:148] is the sub-list for method output_type
+	76,  // [76:112] is the sub-list for method input_type
+	76,  // [76:76] is the sub-list for extension type_name
+	76,  // [76:76] is the sub-list for extension extendee
+	0,   // [0:76] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_maps_v1_maps_proto_init() }
@@ -7838,8 +8090,8 @@ func file_meurpg_maps_v1_maps_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_maps_v1_maps_proto_rawDesc), len(file_meurpg_maps_v1_maps_proto_rawDesc)),
-			NumEnums:      9,
-			NumMessages:   87,
+			NumEnums:      10,
+			NumMessages:   90,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
