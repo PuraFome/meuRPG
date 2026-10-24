@@ -76,6 +76,7 @@ The result covers the 12 SRD classes and 9 SRD races from level 1 to 20 (and the
 - **Proficiency bonus**, the six saving throws (from the first class), the 18 skills (none, half, proficient, expertise), the three passives and initiative.
 - **Armor class** with armor, shield and unarmored defenses, and a description of how it got there; a shield adds its +2 only while no two-handed weapon is on the sheet (the sheet lists the weapons carried, not the hands: a two-handed weapon is read as the one in hand, a versatile weapon as one-handed), and `Derived.ShieldIdle` and a hint say why when it does not; **maximum hit points** (fixed or rolled) and hit dice, one pool per die size; speed and senses.
   Heavy armor whose Strength requirement is not met cuts walking speed by 10 ft (dwarves keep theirs).
+  `Derived.ArmorUntrained` says which of the worn armor and the shield the character is not proficient with (`rules/armor_training.go`); the sheet's warning and the play rules (disadvantage on Strength and Dexterity rolls, no spells) read the same answer.
   An `hp.max` modifier never takes the maximum below one hit point per level.
 - **Spellcasting** per class (DC, attack, cantrips, spells known or prepared), spell slots with the multiclass table, and the warlock's pact magic.
 - **Attacks**: the sheet's weapons, the unarmed strike and damage cantrips.

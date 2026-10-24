@@ -254,6 +254,10 @@ const BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, string> = new Map([
     EncounterBlockedReason.SUMMON_CHOICE_INVALID,
     'Essa escolha não vale para o espaço que você usou. Mude a quantidade, a criatura ou o espaço e tente de novo.',
   ],
+  [
+    EncounterBlockedReason.ARMOR_NOT_PROFICIENT,
+    'Com armadura ou escudo sem proficiência não dá para atacar nem conjurar.',
+  ],
   [EncounterBlockedReason.SUMMON_NEEDS_INITIATIVE, 'Falta o d20 da iniciativa das criaturas.'],
   [
     EncounterBlockedReason.CREATURE_CANNOT_ATTACK,
@@ -279,6 +283,10 @@ const BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, string> = new Map([
   [
     EncounterBlockedReason.WILD_SHAPE_NO_SPELLS,
     'Na forma de fera não dá para conjurar. Volte à forma normal e tente de novo.',
+  ],
+  [
+    EncounterBlockedReason.ARMOR_NOT_PROFICIENT,
+    'Com armadura ou escudo sem proficiência não dá para conjurar.',
   ],
   [EncounterBlockedReason.DOOR_LOCKED, LOCKED_DOOR_FIRST_STEP_TEXT],
   // Combat without a map (RN-25): what each side of the line refuses.
