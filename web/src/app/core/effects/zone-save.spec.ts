@@ -49,7 +49,7 @@ describe('the save prompt of a spell zone', () => {
   });
 
   it('writes the DC only when the server sent it: no number and no placeholder otherwise', () => {
-    expect(effectSaveView(prompt({ dc: 14 }), 3, 'Bartolo').dc).toBe('CD 14');
+    expect(effectSaveView(prompt({ dc: 14 }), 3, 'Bartolo').dc).toBe('CD\u00a014');
     expect(effectSaveView(prompt({ dc: undefined }), 3, 'Bartolo').dc).toBe('');
   });
 
@@ -94,7 +94,7 @@ describe('the save prompt of a spell zone', () => {
   });
 
   it('shows the DC for the master or the caster own player', () => {
-    expect(effectSaveView(prompt({ dc: 14 }), 3, 'Bartolo').dc).toBe('CD 14');
+    expect(effectSaveView(prompt({ dc: 14 }), 3, 'Bartolo').dc).toBe('CD\u00a014');
   });
 
   it('says a pass with no half takes the damage away, and a restraint with its static line', () => {

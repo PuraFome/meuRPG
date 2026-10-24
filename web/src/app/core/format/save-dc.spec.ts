@@ -2,8 +2,8 @@ import { dcLabel } from './save-dc';
 
 describe('dcLabel', () => {
   it('says "CD 14" for a DC the server sent', () => {
-    expect(dcLabel(14)).toBe('CD 14');
-    expect(dcLabel(23)).toBe('CD 23');
+    expect(dcLabel(14)).toBe('CD\u00a014');
+    expect(dcLabel(23)).toBe('CD\u00a023');
   });
 
   it('says nothing when there is no DC: absent or 0 (the server sends none to a player who may not read it)', () => {

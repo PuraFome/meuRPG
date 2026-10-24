@@ -197,7 +197,7 @@ describe('trap log', () => {
         ],
       });
     expect(trapLogText(save(true), true)).toContain(
-      'Brisa caiu (passou no teste (1d20 (14) + 4 = 18 contra CD 12; Sortudo: 1 → 14))',
+      'Brisa caiu (passou no teste (1d20 (14) + 4 = 18 contra CD\u00a012; Sortudo: 1 → 14))',
     );
     expect(trapLogText(save(false), false)).not.toContain('Sortudo');
   });

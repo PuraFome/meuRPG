@@ -23,12 +23,12 @@ const firing = (dc: number | undefined) =>
   });
 
 describe('the DC of a trap save in the log', () => {
-  it('shows "CD 12" to the rolling player when the server sent it', () => {
-    expect(trapLogText(firing(12), false)).toContain('contra CD 12');
+  it('shows "CD\u00a012" to the rolling player when the server sent it', () => {
+    expect(trapLogText(firing(12), false)).toContain('contra CD\u00a012');
   });
 
   it('shows it to the master', () => {
-    expect(trapLogText(firing(12), true)).toContain('contra CD 12');
+    expect(trapLogText(firing(12), true)).toContain('contra CD\u00a012');
   });
 
   it('shows no DC when the server sent none or 0, whoever reads', () => {
@@ -43,7 +43,7 @@ describe('the DC of a trap save in the log', () => {
       activityLines(create(TrapActivitySchema, { id: 'a', firing: firing(dc) }), false)
         .map((l) => l.text)
         .join(' ');
-    expect(line(12)).toContain('contra CD 12');
+    expect(line(12)).toContain('contra CD\u00a012');
     expect(line(undefined)).not.toMatch(/CD/);
   });
 });

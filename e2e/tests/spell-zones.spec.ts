@@ -27,13 +27,13 @@ test(
       }
       const beam = zoneCard(t.m, 'Raio Lunar · Druida');
       await expect(beam).toContainText('Cilindro de 1,5 m de raio');
-      await expect(beam).toContainText(/Constituição CD \d+/);
+      await expect(beam).toContainText(/Constituição CD\s\d+/);
       await expect(beam).toContainText(/2d10 .*metade se passar/);
       await expect(beam).toContainText(/restam \d+ min/);
       await expect(beam).toContainText('Concentração de Druida');
       const web = zoneCard(t.m, 'Teia · Pensantus');
       await expect(web).toContainText('Cubo de 6 m');
-      await expect(web).toContainText(/CD \d+/);
+      await expect(web).toContainText(/CD\s\d+/);
       await expect(web).toContainText('contido');
       // The hidden caster's zone is the master's alone, and the card says so.
       await expect(zoneCard(t.m, 'Raio Lunar · Sombra')).toContainText('Só você vê');
@@ -41,7 +41,7 @@ test(
       // The player: Teia (his own, with its numbers) has come, so the list already read everything cast before it.
       await expect(title(t.p)).toHaveText('Zonas ativas (2)');
       await expect(zoneLayer(t.p)).toContainText('Teia · Pensantus');
-      await expect(zoneCard(t.p, 'Teia · Pensantus')).toContainText(/CD \d+/);
+      await expect(zoneCard(t.p, 'Teia · Pensantus')).toContainText(/CD\s\d+/);
       // Another caster's zone: the name, the area and the caster, with no save, damage, time or buttons (`details_hidden`).
       const bare = zoneCard(t.p, 'Raio Lunar · Druida');
       await expect(bare).toContainText('Cilindro de 1,5 m de raio');
