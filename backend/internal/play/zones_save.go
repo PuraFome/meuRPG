@@ -132,7 +132,7 @@ func (wv *windowView) zoneSavePrompt(w playdb.ReactionWindow, reactor *playdb.Co
 	}
 	z := wv.d.zones[i]
 	p.SourceNamePt, p.Ability, p.AbilityNamePt = wv.names(z.row.SpellKey), z.row.SaveAbility, wv.names("ability:"+z.row.SaveAbility)
-	if owner, ok := wv.byID[z.row.OwnerID]; ok && (wv.v.master || wv.v.owns(owner)) {
+	if owner, ok := wv.byID[z.row.OwnerID]; (ok && (wv.v.master || wv.v.owns(owner))) || (reactor != nil && wv.v.saveDCFor(*reactor)) {
 		p.Dc = new(z.row.SaveDc)
 	}
 	p.TextPt = zoneSaveText(z, wv.names)

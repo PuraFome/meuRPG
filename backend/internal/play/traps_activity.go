@@ -160,6 +160,11 @@ func (s *Service) activityViewer(ctx context.Context, m authz.Membership) (activ
 	if v.master {
 		return v, nil
 	}
+	rules, err := s.tableRules(ctx, nil, m.CampaignID)
+	if err != nil {
+		return v, s.dbError(ctx, "read the table's rules", err)
+	}
+	v.showDC = rules.ShowSaveDC
 	party, err := s.roster.CombatParty(ctx, nil, m.CampaignID)
 	if err != nil {
 		return v, s.dbError(ctx, "read the party", err)
@@ -176,6 +181,8 @@ func (s *Service) activityViewer(ctx context.Context, m authz.Membership) (activ
 type activityViewer struct {
 	master bool
 	owned  map[string]bool
+	// showDC is the table's rule that shows the player the DC of the saves of their characters.
+	showDC bool
 }
 
 // activityFacts is what the lines name by ID and the activity reads at the time of the call.
@@ -372,6 +379,7 @@ func (s *Service) firingActivity(ctx context.Context, l *activityLine, v activit
 	}
 	return firingProto(&shown, l.id, f.trapNames[tr.PointID], trapView{
 		master: v.master,
+		showDC: v.showDC,
 		names:  s.namesFor(ctx, f.campaignID),
 		owns:   func(id string) bool { return v.owned[id] || ownedCreatures[id] },
 		label: func(id string) string {

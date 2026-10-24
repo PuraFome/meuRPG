@@ -208,7 +208,7 @@ func (s *Service) logViewer(ctx context.Context, m authz.Membership) (combatView
 		if err != nil {
 			return v, s.dbError(ctx, "read the table's rules", err)
 		}
-		v.hideDeath = rules.DeathSavesHidden
+		v.hideDeath, v.showSaveDC = rules.DeathSavesHidden, rules.ShowSaveDC
 	}
 	return v, nil
 }
@@ -1237,6 +1237,7 @@ func (e *logEntry) trapEntry(ctx context.Context, v combatViewer, byID map[strin
 	}
 	tv := trapView{
 		master: v.master,
+		showDC: v.showSaveDC,
 		owns:   func(id string) bool { return v.owns(byID[id]) },
 		hidden: func(id string) bool {
 			if byID[id].Hidden {
