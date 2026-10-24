@@ -1325,6 +1325,7 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     await p.goto('/');
     const table = await tableForCombat(m, p, `Acessibilidade conjurar ${Date.now()}`, true, true, { sheet: pensantusCasting });
     campaignId = table.campaignId;
+    await setTableRulesRPC(m, campaignId, { showSaveDc: true }); // the concentration question below says the DC
     await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
     await adjustVitalsRPC(m, campaignId, table.characterId, { spellSlotsUsed: [{ level: 1, used: 3 }, { level: 2, used: 2 }] });
     // Pensantus stands next to Goblin 1, so the dagger reaches it for an opportunity attack.

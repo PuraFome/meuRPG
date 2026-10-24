@@ -413,8 +413,12 @@ func TestADamageOnAConcentratingCharacterAsksItsOwnerForTheSave(t *testing.T) {
 		t.Fatalf("Pensantus's windows = %v, want a concentration save", a.windows(t, a.ana))
 	}
 	p := w.GetConcentrationSave()
-	if p.GetSpellKey() != webSpell || p.GetDc() != 10 || p.GetDamageTaken() < 1 || !p.GetBonusKnown() || p.GetSpellNamePt() == "" {
-		t.Errorf("the prompt = %v, want Teia, DC 10 and the damage she took", p)
+	// The rule "Os jogadores veem a CD dos testes de resistência" is off: the DC 10 is the master's alone.
+	if p.GetSpellKey() != webSpell || p.GetDc() != 0 || p.GetDamageTaken() < 1 || !p.GetBonusKnown() || p.GetSpellNamePt() == "" {
+		t.Errorf("the prompt = %v, want Teia, no DC and the damage she took", p)
+	}
+	if mw := a.windowOf(t, a.master, playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE); mw.GetConcentrationSave().GetDc() != 10 {
+		t.Errorf("the master's prompt = %v, want DC 10", mw.GetConcentrationSave())
 	}
 	if got := a.get(t, a.caio).GetReactionWait().GetTitlePt(); got != "Esperando o teste de Constituição de Pensantus" {
 		t.Errorf("another player reads %q, want the save named", got)
@@ -435,8 +439,8 @@ func TestADamageOnAConcentratingCharacterAsksItsOwnerForTheSave(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveConcentrationSave() error = %v", err)
 	}
-	if r := res.GetResult(); r.GetKept() || r.GetDc() != 10 || r.GetSave().GetTotal() != 4 {
-		t.Errorf("the result = %v, want a save of 4 against 10 that failed", r)
+	if r := res.GetResult(); r.GetKept() || r.GetDc() != 0 || r.GetSave().GetTotal() != 4 {
+		t.Errorf("the result = %v, want a save of 4 that failed, with no DC (the rule is off)", r)
 	}
 	if got := byLabel(t, res.GetEncounter(), "Pensantus").GetConcentrationSpell(); got != "" {
 		t.Errorf("Pensantus still concentrates on %q after a failed save", got)
