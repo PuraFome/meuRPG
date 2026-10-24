@@ -13,6 +13,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
+import { NgTemplateOutlet } from '@angular/common';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -27,6 +28,7 @@ import { sceneErrorMessage } from '../../../../core/play/scene-errors';
 import type { ShownImageVm } from '../../../../core/play/live-session.types';
 import type { SceneState } from '../../../../core/play/scene-state';
 import { actionCount, masterAttempts, rollCount } from '../../../../core/play/scene-view';
+import { Fold } from '../../../../shared/fold/fold';
 import { formatClock } from '../../../../shared/session-time/session-time';
 import { PHONE_QUERY, mediaQuery } from '../../../../shared/map-view/media-query';
 import { SceneClues } from '../scene-clues/scene-clues';
@@ -57,7 +59,9 @@ import { openScenePicker } from '../scene-picker/scene-picker';
 @Component({
   selector: 'app-scene-open',
   imports: [
+    Fold,
     MatButtonModule,
+    NgTemplateOutlet,
     MatIconModule,
     SceneClues,
     SceneHooks,

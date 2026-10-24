@@ -65,49 +65,39 @@
         }
       </section>
 
-      <section class="so__actions" aria-labelledby="so-actions">
-        @if (phone()) {
-          <h3 class="so__h">
-            <button
-              type="button"
-              class="so__toggle"
-              id="so-actions"
-              aria-controls="so-actions-list"
-              [attr.aria-expanded]="actionsOpen()"
-              (click)="actionsOpen.set(!actionsOpen())"
-            >
-              <span>Ações da cena</span>
-              <mat-icon aria-hidden="true">{{ actionsOpen() ? 'expand_less' : 'expand_more' }}</mat-icon>
-            </button>
-          </h3>
-        } @else {
+      <ng-template #actionList>
+        <ul class="so__list" id="so-actions-list">
+          @for (a of s.actions; track a.id) {
+            <li class="so__action">
+              <span class="so__aname">{{ title(a) }}</span>
+              <span class="so__acheck">{{ subtitle(a) }}</span>
+              @if (a.dc > 0) {
+                <span class="so__dcline">
+                  <span class="mr-tag so__dc">CD&nbsp;{{ a.dc }}</span>
+                  <span class="so__acheck">{{ attempts(a) }}</span>
+                </span>
+              } @else {
+                <span class="so__acheck">{{ attempts(a) }}</span>
+              }
+            </li>
+          }
+        </ul>
+      </ng-template>
+
+      @if (phone()) {
+        <app-fold class="so__actions" title="Ações da cena" [(open)]="actionsOpen">
+          <p class="so__hint so__dcnote"><mat-icon aria-hidden="true">{{ s.showDc ? 'visibility' : 'visibility_off' }}</mat-icon>{{ dcNote() }}</p>
+          <ng-container *ngTemplateOutlet="actionList" />
+        </app-fold>
+      } @else {
+        <section class="so__actions" aria-labelledby="so-actions">
           <div class="so__sub">
             <h3 class="so__h" id="so-actions">Ações</h3>
             <span class="so__hint so__dcnote"><mat-icon aria-hidden="true">{{ s.showDc ? 'visibility' : 'visibility_off' }}</mat-icon>{{ dcNote() }}</span>
           </div>
-        }
-        @if (!phone() || actionsOpen()) {
-          @if (phone()) {
-            <p class="so__hint so__dcnote"><mat-icon aria-hidden="true">{{ s.showDc ? 'visibility' : 'visibility_off' }}</mat-icon>{{ dcNote() }}</p>
-          }
-          <ul class="so__list" id="so-actions-list">
-            @for (a of s.actions; track a.id) {
-              <li class="so__action">
-                <span class="so__aname">{{ title(a) }}</span>
-                <span class="so__acheck">{{ subtitle(a) }}</span>
-                @if (a.dc > 0) {
-                  <span class="so__dcline">
-                    <span class="mr-tag so__dc">CD&nbsp;{{ a.dc }}</span>
-                    <span class="so__acheck">{{ attempts(a) }}</span>
-                  </span>
-                } @else {
-                  <span class="so__acheck">{{ attempts(a) }}</span>
-                }
-              </li>
-            }
-          </ul>
-        }
-      </section>
+          <ng-container *ngTemplateOutlet="actionList" />
+        </section>
+      }
     </div>
 
     <p class="mr-visually-hidden so__live" role="status" aria-live="polite">{{ state().notice() }}</p>
