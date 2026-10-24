@@ -56,6 +56,7 @@ A table feature has effects of these types only; anything else is `forbidden_eff
 | `extra_damage` | See [Extra damage](#extra-damage). |
 | `choice` | Picks among SRD options (a key the SRD has) or, for kind `feature`, among the option list of a table feature. Kinds: `skill`, `expertise`, `cantrip`, `spell`, `language`, `tool`, `feature`, `feat`. A `feature` choice never asks for more than the options it lists. |
 | `ability_increase` | Feats only. `count` different abilities from `from`, `value` 1 or 2; at most one per feat. The sheet keeps the result in `ExtraAbilityBonuses`. |
+| `ambush` | See [Ambush](#ambush). |
 | `superiority_die` | See [Maneuvers](#maneuvers). |
 | Granted spell | A `note` with `spells` (like the SRD's Infernal Legacy): the character knows the cantrip, or a spell once per day when the same feature has a `resource`. A granted spell is on the sheet's list, does not count in the class numbers and needs no slot. Only a `note` grants spells. |
 
@@ -97,6 +98,15 @@ Checked at its fields:
 
 `Derive` fills `Derived.ExtraDamages` with the amount worked out; a resource the character does not have at that level leaves the effect out.
 The attack card offers it after a hit as a choosable part ([Attacks and damage](play/attacks-and-damage.md)).
+
+### Ambush
+
+`ambush` (menu name "Emboscada"; fields `applies`, `when`, `text_pt`; `rules/ambush.go`) is an edge against a target caught unprepared.
+`applies` is `unacted_advantage` (advantage on attack rolls against a creature that has not taken a turn in the combat yet) or `surprised_critical` (a hit against a surprised creature is a critical hit).
+Checked at its fields: `applies` is one of the two (`.applies`, `bad_value`); any field the type does not read (`value`, `resource`, `economy`...) is refused for the entry being written.
+`Derive` sets `Derived.UnactedAdvantage` and `Derived.SurprisedCritical` to the key of the feature that gives each.
+Surprise is the master's mark at the start of the combat, which the app already keeps ([Play](play/README.md)); "has not taken a turn" is the combat before it runs, or the first round before the creature's place in the order (`combat.HasNotActed`).
+The advantage is a source of the attack roll ("Name: vantagem neste ataque") and the critical hit is the roll's `critical_on_hit`.
 
 ## The class
 
