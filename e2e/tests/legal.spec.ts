@@ -16,7 +16,7 @@ test('os termos e a privacidade abrem sem entrar, com a data e o aviso de que n�
   await page.goto('/privacy');
   await expect(page).toHaveTitle('Política de privacidade · MeuRPG');
   await expect(page.getByRole('heading', { level: 1, name: 'Política de privacidade' })).toBeVisible();
-  await expect(page.getByText('Última atualização: 09/10/2026')).toBeVisible();
+  await expect(page.getByText('Última atualização: 24/10/2026')).toBeVisible();
   await expect(page.getByText('Ainda não foi revisado por um advogado.')).toBeVisible();
   await expect(page.getByRole('heading', { level: 2, name: '3. Os dados da sua conta Google' })).toBeVisible();
   await expect(page).toHaveURL(/\/privacy$/);

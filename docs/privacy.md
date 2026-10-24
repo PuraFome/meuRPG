@@ -75,7 +75,7 @@ Tables are described in [Data model](data/README.md).
 | The claim link a person signed in with (hash only) | Show the character card after sign-in without the secret in the address | Contract | 10 minutes; erased when the character is claimed |
 | Invite: token hash, uses, expiry, whether it needs approval, who created it | Join a campaign (RN-07, RN-15) | Contract | Valid for at most 30 days; the row is swept 30 days after it expires, or at once with the campaign or the creator's account |
 | Claim link of a reserved character (MR-049): token hash, who made it, when, validity, when it was used or revoked and by whom | Hand a master-made character to the player who takes it | Contract | Swept 30 days after it ended (used, revoked or expired), or at once with the campaign, the character or the master's account. "Used by" is cleared if that player's account is erased |
-| Contact e-mail: a message sent to `privacidade@meurpg.app` or another `@meurpg.app` address (sender address and name, subject, text) | Answer a data request or a contact | Legal obligation (art. 18) for a data request; legitimate interest otherwise | ImprovMX, which forwards it, logs sender, recipient and subject for 7 days, never the text. In the mailboxes of the people who answer: **to be defined** |
+| Contact e-mail: a message sent to `privacidade@meurpg.app` or another `@meurpg.app` address (sender address and name, subject, text) | Answer a data request or a contact | Legal obligation (art. 18) for a data request; legitimate interest otherwise | ImprovMX, which forwards it, logs sender, recipient and subject for 7 days, never the text. In the mailboxes of the people who answer: 1 year after the answer, then deleted |
 
 ### What the table writes and plays
 
@@ -351,11 +351,11 @@ Two "yes" answers need a data protection impact report (RIPD) before the merge.
 
 ## To be defined
 
-- ImprovMX: the contract, the transfer mechanism, and how long the messages stay in the mailboxes of the people who answer.
+- ImprovMX: the contract and the transfer mechanism, or its replacement by e-mail on the organization's Google account.
 - The LGPD contract with Cockroach Labs.
 - Whether the CockroachDB Cloud backups stay in São Paulo and are kept for at most 30 days (check in the console); the plan is under evaluation ([Operations](operations/reference.md)).
 - The transfer mechanism for Google's Gemini API (Resolution CD/ANPD no. 19/2024).
-- Lawyer review of the privacy notice, the terms and the treatment of free text left with the master.
+- Lawyer review of the privacy notice, the terms and the treatment of free text left with the master, before the app opens to other tables.
 - Self-service export and account deletion, and deleting a campaign's image files when it is erased (the `campaigns/<id>/` prefix). Until they exist, the operator does it on request.
 - Before reading rule PDFs with AI (MR-027, after the MVP): the processor, what leaves the server, and the copyright of official books.
   The PDF would be kept only while processed and deleted right after.
