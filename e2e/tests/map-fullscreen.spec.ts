@@ -9,7 +9,7 @@ test('o mestre põe o mapa do combate em tela cheia e sai pelo mesmo botão', as
   test.setTimeout(180_000);
   const { m, campaignId, done } = await rollsTable(browser, 'Tela cheia', grog, {}, { Grog: 20, 'Goblin 1': 5, 'Capitão Goblin': 4, 'Goblin 2': 3 });
   try {
-    await openSessionPage(m, campaignId);
+    await openSessionPage(m, campaignId, 'mapa');
     await m.getByRole('button', { name: 'Tela cheia' }).first().click();
     await expect.poll(() => m.evaluate(() => document.fullscreenElement?.tagName.toLowerCase() ?? '')).toBe('app-combat-map-card');
     const exit = m.getByRole('button', { name: 'Sair da tela cheia' });

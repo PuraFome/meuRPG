@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { endOpenSessionRPC, openSessionPage } from './live-session-support';
+import { endOpenSessionRPC, openSessionPage, showMapTool } from './live-session-support';
 import { addActionRPC, rollTyped, sceneActionIdsRPC, setAttemptsRPC, tableForScenes } from './scene-support';
 import { orla, orlaSheet } from './rests-support';
 import { callRPC, newSignedInContext } from './support';
@@ -294,10 +294,10 @@ test(
       await master.goto('/');
       const table = await tableForScenes(master, player, `Cena pelo ponto ${Date.now()}`);
       campaignId = table.campaignId;
-      await openSessionPage(master, campaignId);
+      await openSessionPage(master, campaignId, 'mapa');
       await openSessionPage(player, campaignId);
 
-      // The list of points: every scene opens, even the one with no actions (question 63).
+      // The list of points ("Pontos" under the map): every scene opens, even the one with no actions (question 63).
       const points = master.getByRole('list', { name: 'Pontos do mapa' });
       await expect(points.getByText('Sem ações')).toHaveCount(0);
       await expect(points.getByRole('button', { name: 'Abrir cena Vau do riacho' })).toBeVisible();
@@ -305,13 +305,15 @@ test(
       await expect(master.getByRole('heading', { name: 'Cena: A carroça tombada' })).toBeFocused();
       await expect(player.getByRole('region', { name: 'Cena: A carroça tombada' })).toBeVisible();
 
-      // The point that is open says so; the other offers to swap.
+      // The point that is open says so; the other offers to swap. Opening a scene took the board to "Cena": the points are under "Mapa".
+      await showMapTool(master, 'Pontos');
       await expect(points.getByText('Cena aberta agora')).toHaveCount(1);
       await points.getByRole('button', { name: 'Trocar para a cena Posto da guarda' }).click();
       await expect(master.getByRole('heading', { name: 'Cena: Posto da guarda' })).toBeFocused();
       await expect(player.getByRole('region', { name: 'Cena: Posto da guarda' })).toBeVisible();
       await expect(player.getByRole('region', { name: 'Cena: A carroça tombada' })).toHaveCount(0);
       // The hidden point opened this way is still hidden on the player's map.
+      await showMapTool(master, 'Pontos');
       await expect(points.getByText('Escondido').first()).toBeVisible();
     } finally {
       if (campaignId) {

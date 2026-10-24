@@ -235,7 +235,7 @@ test(
       await startSessionRPC(master, table.campaignId);
       await setCurrentMapRPC(master, table.campaignId, mapId);
       try {
-        await openSessionPage(master, table.campaignId);
+        await openSessionPage(master, table.campaignId, 'mapa');
         await expect(master.getByLabel('Mapa atual')).toHaveValue(mapId);
         await master.getByRole('button', { name: 'Levar a sessão para Interior da torre' }).click();
         await expect(master.getByLabel('Mapa atual')).toHaveValue(towerId);
@@ -270,7 +270,7 @@ test(
 
       await openSessionPage(player, campaignId);
       await expect(player.getByText('O mestre ainda não escolheu um mapa.')).toBeVisible();
-      await openSessionPage(master, campaignId);
+      await openSessionPage(master, campaignId, 'mapa');
 
       // The master chooses the current map (which also reveals it).
       await master.getByLabel('Mapa atual').selectOption({ label: 'Mirathel e arredores (escondido)' });

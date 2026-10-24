@@ -8,7 +8,7 @@ import { expectAligned } from './layout';
 import { expectLoaded } from './loaded';
 import { diceTable, openDice, stepModifier } from './free-dice-support';
 import { chooseReaders, lineOf, messageBoxOf, openConversaTable, say } from './conversa-support';
-import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus, openSessionMenu, clickStartCombat, expectStartCombatOffered, endSessionFromBar } from './live-session-support';
+import { endOpenSessionRPC, endSessionRPC, openSessionPage, showMapTool, showMasterTab, startSessionRPC, tableWithPensantus, openSessionMenu, clickStartCombat, expectStartCombatOffered, endSessionFromBar } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
 import { adjustVitalsRPC, beginAttackCombatRPC, setGridRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
 import { addActionRPC, attachTwoImagesRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC, sceneActionIdsRPC, setAttemptsRPC, setShowDcRPC, tableForScenes } from './scene-support';
@@ -447,7 +447,7 @@ async function scanLiveSessionScreens(browser: Browser, colorScheme: 'light' | '
     const { campaignId } = await tableWithPensantus(masterPage, playerPage, `Acessibilidade ao vivo ${Date.now()}`);
     const sessionId = await startSessionRPC(masterPage, campaignId);
 
-    await openSessionPage(masterPage, campaignId);
+    await openSessionPage(masterPage, campaignId, 'grupo');
     await expectScreenPasses(masterPage, `Sessão, mestre ${suffix}`);
 
     await masterPage.getByRole('button', { name: 'Ajustar Pensantus' }).click();
@@ -559,13 +559,14 @@ async function scanMapScreens(browser: Browser, colorScheme: 'light' | 'dark', w
 
     await startSessionRPC(masterPage, campaignId);
     await setCurrentMapRPC(masterPage, campaignId, world);
-    await openSessionPage(masterPage, campaignId);
+    await openSessionPage(masterPage, campaignId, 'mapa');
     await expect(masterPage.getByRole('heading', { name: 'Pontos do mapa' })).toBeVisible();
     await expectScreenPasses(masterPage, `Sessão com mapa, mestre ${suffix}`);
     await openSessionPage(playerPage, campaignId);
     await expect(playerPage.getByRole('img', { name: 'Prévia do mapa Mirathel e arredores' })).toBeVisible();
     await expectScreenPasses(playerPage, `Sessão com mapa, jogador ${suffix}`);
 
+    await showMasterTab(masterPage, 'cena');
     // The picker, then an image on show.
     await masterPage.getByRole('button', { name: 'Mostrar imagem' }).click();
     const dialog = masterPage.getByRole('dialog', { name: 'Mostrar uma imagem aos jogadores' });
@@ -1867,7 +1868,7 @@ async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await sceneImages.getByRole('button', { name: 'Mostrar Vista da carroça aos jogadores' }).click();
     await expect(sceneImages.getByText('À mostra agora')).toBeVisible();
     await expectScreenPasses(m, `Cena aberta com uma imagem à mostra ${where}`);
-    await sceneImages.getByRole('button', { name: 'Parar de mostrar Vista da carroça' }).click();
+    await m.getByRole('button', { name: 'Parar de mostrar', exact: true }).click();
     await expect(sceneImages.getByText('À mostra agora')).toHaveCount(0);
 
     // The player: the block, the roll sheet in each state, the rolled row.
@@ -1911,9 +1912,11 @@ async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark',
       await m.getByRole('button', { name: 'Ações da cena' }).click();
     }
     // With a scene open, the points of the map say what they do with it.
+    await showMapTool(m, 'Pontos');
     await expect(m.getByText('Cena aberta agora')).toBeVisible();
     await expect(m.getByRole('button', { name: 'Trocar para a cena Posto da guarda' })).toBeVisible();
     await expectScreenPasses(m, `Pontos do mapa com a cena aberta ${where}`);
+    await showMasterTab(m, 'cena');
     await m.getByRole('button', { name: 'Trocar cena' }).click();
     await expect(m.getByRole('dialog', { name: 'Abrir uma cena' })).toBeVisible();
     await m.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
@@ -3195,7 +3198,7 @@ async function scanGoldScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     campaigns.push(live.campaignId);
     await threeTreasuresRPC(m, live);
     await startSessionRPC(m, live.campaignId);
-    await openSessionPage(m, live.campaignId);
+    await openSessionPage(m, live.campaignId, 'grupo');
     await m.getByRole('button', { name: 'Dar XP', exact: true }).click();
     const liveGive = m.getByRole('dialog', { name: 'Dar XP' });
     await expect(liveGive).toContainText('3 tesouros · 420 PO');
@@ -5719,9 +5722,10 @@ async function scanMonsterScreens(browser: Browser, colorScheme: 'light' | 'dark
     await m.unroute('**/meurpg.play.v1.EncounterService/EvaluateEncounter');
 
     // The session: the card of the point and "Iniciar combate" filled from it.
-    await openSessionPage(m, campaignId);
+    await openSessionPage(m, campaignId, 'mapa');
     // The ended combat is still on the page: back to the session, where the launch and the saved encounter are.
     await m.getByRole('button', { name: 'Voltar à sessão' }).click();
+    await showMapTool(m, 'Encontros');
     const card = m.locator('.enc', { hasText: 'Emboscada na ponte' });
     await expect(card).toBeVisible();
     await expectScreenPasses(m, `Sessão, o encontro guardado ${where}`);
@@ -6994,7 +6998,7 @@ async function scanRestScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await spendForRestRPC(m, campaignId, table.characterId);
 
     // The master's card: idle, then the two questions, each with the focus on the button that was tapped.
-    await openSessionPage(m, campaignId);
+    await openSessionPage(m, campaignId, 'grupo');
     const card = m.getByRole('region', { name: 'Descanso' });
     await expect(card.getByRole('button', { name: 'Descanso curto' })).toBeVisible();
     await expectScreenPasses(m, `Descanso, o cartão do mestre ${where}`);
@@ -7297,7 +7301,7 @@ async function scanOutsideCastingScreens(browser: Browser, colorScheme: 'light' 
     const table = await tableForCasting(m, p, `Acessibilidade conjuração ${Date.now()}`);
     campaignId = table.campaignId;
     await openSessionPage(p, campaignId);
-    await openSessionPage(m, campaignId);
+    await openSessionPage(m, campaignId, 'grupo');
     await expect(p.locator('app-casting-panel').getByText('Nada foi conjurado nesta sessão ainda.')).toBeVisible();
     await expectScreenPasses(p, `A sessão com as magias, vazia ${where}`);
 
@@ -7714,6 +7718,7 @@ async function scanGroupCheckScreens(browser: Browser, colorScheme: 'light' | 'd
     await openSessionPage(m, campaignId);
     await openSessionPage(p, campaignId);
 
+    await m.getByRole('button', { name: 'Pedir teste em grupo' }).click();
     const ask = m.getByTestId('group-ask');
     await expect(ask).toBeVisible();
     await expectScreenPasses(m, `O pedido do teste em grupo ${where}`);
@@ -7849,7 +7854,7 @@ async function scanEffectsOutsideScreens(browser: Browser, colorScheme: 'light' 
     campaignId = table.campaignId;
     await startSessionRPC(m, campaignId);
     await setExhaustionRPC(m, campaignId, table.characterId, 2, 0);
-    await openSessionPage(m, campaignId);
+    await openSessionPage(m, campaignId, 'grupo');
     const panel = m.getByRole('region', { name: 'Efeitos em jogo' });
     await expect(panel.getByText('Nenhum efeito nos personagens agora.')).toBeVisible();
     await expectScreenPasses(m, `Efeitos fora do combate, o painel e "Passar o tempo" ${where}`);

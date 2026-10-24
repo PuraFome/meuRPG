@@ -67,7 +67,7 @@ test(
       campaignId = table.campaignId;
 
       await openSessionPage(player, campaignId);
-      await openSessionPage(master, campaignId);
+      await openSessionPage(master, campaignId, 'grupo');
       const sheet = await openCastOf(player, 'Alarme');
       await pickChoice(sheet, 'Como ritual');
       await expect(sheet.getByText('1 minuto + 10 = 11 minutos')).toBeVisible();

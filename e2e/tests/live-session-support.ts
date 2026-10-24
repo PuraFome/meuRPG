@@ -77,8 +77,9 @@ export async function endSessionRPC(masterPage: Page, campaignId: string, gameSe
  * going live takes a few calls in a row (the sign-in check, the stream's
  * `ready`, the snapshot), and on a busy shared stack each can take seconds.
  */
-export async function openSessionPage(page: Page, campaignId: string): Promise<void> {
-  await page.goto(`/campaigns/${campaignId}/session`);
+export async function openSessionPage(page: Page, campaignId: string, tab: MasterTab = 'cena'): Promise<void> {
+  // The master's board has the tabs "Cena", "Mapa" and "Grupo" (`?vista=`); the address picks the one the test works in. A player's page ignores it.
+  await page.goto(`/campaigns/${campaignId}/session?vista=${tab}`);
   // The bar's "Ao vivo" pill leaves it under 360 px, so the title "Sessão 3" (there at every width) counts too.
   const live = page.getByText('Ao vivo', { exact: true }).or(page.getByRole('heading', { level: 1, name: /^Sessão \d+$/ }));
   await expect(live.first()).toBeVisible({ timeout: 30_000 });
@@ -135,4 +136,48 @@ export async function endSessionFromBar(page: Page): Promise<void> {
   await openSessionMenu(page);
   await page.getByRole('menuitem', { name: 'Encerrar sessão' }).click();
   await page.getByRole('button', { name: 'Confirmar encerramento' }).click();
+}
+
+/** The tabs of the master's board outside a combat (C3, C6-05, C6-06). */
+export type MasterTab = 'cena' | 'mapa' | 'grupo';
+
+const TAB_NAMES: Record<MasterTab, RegExp> = { cena: /^Cena\b/, mapa: /^Mapa\b/, grupo: /^Grupo\b/ };
+
+/**
+ * Shows a tab of the master's board: the tab list on a computer; on a phone the pinned nav ("Cena" and "Grupo") and, for the map, the fold
+ * of the scene's page. The panels of the other tabs stay mounted but hidden, so what a test reaches must be on the tab it shows.
+ */
+export async function showMasterTab(page: Page, tab: MasterTab): Promise<void> {
+  if (onPhone(page)) {
+    if (tab === 'mapa') {
+      await showMasterTab(page, 'cena');
+      const fold = page.getByRole('button', { name: /^Mapa ·/ });
+      if ((await fold.getAttribute('aria-expanded')) !== 'true') {
+        await fold.click();
+      }
+      return;
+    }
+    const nav = page.getByRole('navigation', { name: 'Seções da sessão' });
+    const button = nav.getByRole('button', { name: TAB_NAMES[tab] });
+    await button.click();
+    await expect(button).toHaveAttribute('aria-current', 'true');
+    return;
+  }
+  const button = page.getByRole('tab', { name: TAB_NAMES[tab] });
+  if ((await button.getAttribute('aria-selected')) !== 'true') {
+    await button.click();
+  }
+  await expect(button).toHaveAttribute('aria-selected', 'true');
+}
+
+/** The tools under the master's map: "Pontos", "Tokens", "Névoa e luz", "Armadilhas", "Tesouro" and "Encontros". Shows the "Mapa" tab first. */
+export type MapTool = 'Pontos' | 'Tokens' | 'Névoa e luz' | 'Armadilhas' | 'Tesouro' | 'Encontros';
+
+export async function showMapTool(page: Page, tool: MapTool): Promise<void> {
+  await showMasterTab(page, 'mapa');
+  const tab = page.getByRole('tablist', { name: 'Ferramentas do mapa' }).getByRole('tab', { name: new RegExp(`^${tool}\\b`) });
+  if ((await tab.getAttribute('aria-selected')) !== 'true') {
+    await tab.click();
+  }
+  await expect(tab).toHaveAttribute('aria-selected', 'true');
 }

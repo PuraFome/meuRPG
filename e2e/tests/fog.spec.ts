@@ -2,7 +2,7 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 
 import { getEncounterRPC } from './combat-support';
 import { beginFogCombat, moveTo, sessionRoute, tableForFog, visionOf, type FogOptions, type FogTable } from './fog-support';
-import { endOpenSessionRPC } from './live-session-support';
+import { endOpenSessionRPC, showMapTool } from './live-session-support';
 import { callRPC, newSignedInContext } from './support';
 
 // The fog of war on screen (Etapa 9, MR-036, RN-10, RN-20; E9-03 and E9-04). The tests read the shading
@@ -206,9 +206,10 @@ test('o mestre vê o mapa como o Toren vê, ao lado do mapa, e volta com "Todos"
     await loaded(mp);
     expect((await shading(mp)).unseen).toBe(0);
     expect(asked.some(wholeImage)).toBe(true);
-    // "Ver como" is next to the map, in the right column, not under everything.
+    // "Ver como" is in the tab "Névoa e luz" under the map, with the lights.
+    await showMapTool(mp, 'Névoa e luz');
     const list = mp.getByRole('radiogroup', { name: 'Ver como' });
-    await expect(mp.locator('.board__fog')).toContainText('Luz dos personagens');
+    await expect(mp.locator('#map-tool-panel-nevoa')).toContainText('Luz dos personagens');
     await expect(list.getByRole('radio')).toHaveCount(3);
     await expect(list.getByRole('radio', { name: /Todos/ })).toHaveAttribute('aria-checked', 'true');
     await expect(list.getByRole('radio', { name: /Pensantus/ })).toContainText(/\d+\s+quadrados vistos/);
@@ -246,6 +247,7 @@ test('o mestre vê o mapa como o Toren vê, ao lado do mapa, e volta com "Todos"
 test('"Ver como" um personagem que morreu volta para "Todos" e diz por quê @MR-036', async ({ browser }) => {
   await atTable(browser, {}, 'Ver como morto', async ({ table, mp }) => {
     await mp.goto(sessionRoute(table.campaignId));
+    await showMapTool(mp, 'Névoa e luz');
     const list = mp.getByRole('radiogroup', { name: 'Ver como' });
     await list.getByRole('radio', { name: /Toren/ }).click();
     await expect(mp.getByText('Você está vendo o mapa como Toren.', { exact: false })).toBeVisible();

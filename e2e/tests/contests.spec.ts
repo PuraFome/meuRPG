@@ -184,6 +184,7 @@ test('o teste em grupo é encerrado pelo mestre sem mostrar a CD, e a surpresa m
     await openSessionPage(p, campaignId);
 
     // The master asks for a Stealth check with a DC he keeps to himself; the player rolls and waits.
+    await m.getByRole('button', { name: 'Pedir teste em grupo' }).click();
     const ask = m.getByTestId('group-ask');
     await ask.getByLabel('Teste', { exact: true }).selectOption({ label: 'Furtividade' });
     await ask.getByLabel(/^CD \(/).fill('13');

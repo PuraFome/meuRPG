@@ -253,7 +253,7 @@ test('fora do combate: o painel lista os efeitos dos personagens, "Passar o temp
     campaignId = table.campaignId;
     await startSessionRPC(m, campaignId);
     await setExhaustionRPC(m, campaignId, table.characterId, 2, 0);
-    await openSessionPage(m, campaignId);
+    await openSessionPage(m, campaignId, 'grupo');
 
     const panel = m.getByRole('region', { name: 'Efeitos em jogo' });
     await expect(panel.getByText('Nenhum efeito nos personagens agora.')).toBeVisible();
@@ -279,7 +279,7 @@ test('fora do combate: o painel lista os efeitos dos personagens, "Passar o temp
     await expect(question).toContainText('Com comida e bebida, o descanso longo baixa 1 nível de exaustão de cada personagem.');
     await question.getByRole('button', { name: 'Descansar' }).click();
     await expect(rest.getByText('Descanso longo feito.').first()).toBeVisible();
-    await openSessionPage(m, campaignId);
+    await openSessionPage(m, campaignId, 'grupo');
     await panel.getByRole('button', { name: 'Exaustão' }).click();
     let dialog = sheet(m, /^Exaustão/);
     await expect(dialog.getByRole('radio', { name: /^Nível 1/ })).toBeChecked();
@@ -291,7 +291,7 @@ test('fora do combate: o painel lista os efeitos dos personagens, "Passar o temp
     await expect(question.getByRole('switch', { name: 'Sem comida ou bebida' })).toHaveAttribute('aria-checked', 'true');
     await question.getByRole('button', { name: 'Descansar' }).click();
     await expect(rest.getByText('Descanso longo feito.').first()).toBeVisible();
-    await openSessionPage(m, campaignId);
+    await openSessionPage(m, campaignId, 'grupo');
     await panel.getByRole('button', { name: 'Exaustão' }).click();
     dialog = sheet(m, /^Exaustão/);
     await expect(dialog.getByRole('radio', { name: /^Nível 1/ })).toBeChecked();
@@ -315,7 +315,7 @@ test('fora do combate: "Dar efeito" põe um efeito do catálogo no personagem, c
     const table = await tableWithPensantus(m, p, `Dar efeito ${Date.now()}`);
     campaignId = table.campaignId;
     await startSessionRPC(m, campaignId);
-    await openSessionPage(m, campaignId);
+    await openSessionPage(m, campaignId, 'grupo');
 
     const panel = m.getByRole('region', { name: 'Efeitos em jogo' });
     await expect(panel.getByText('Nenhum efeito nos personagens agora.')).toBeVisible();

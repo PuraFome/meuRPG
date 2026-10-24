@@ -50,7 +50,7 @@ test(
       await expect(p.locator('.hp__current')).toHaveText('10');
 
       // The master opens the rest card and reads what a short rest gives back before taking it.
-      await openSessionPage(m, campaignId);
+      await openSessionPage(m, campaignId, 'grupo');
       const card = m.getByRole('region', { name: 'Descanso' });
       await card.getByRole('button', { name: 'Descanso curto' }).click();
       const question = card.getByRole('alertdialog', { name: 'Começar o descanso curto?' });
@@ -108,7 +108,7 @@ test(
       await damageCombatantRPC(m, campaignId, 'Esqueleto', 3);
       expect(await hitPoints('Brisa')).toBe(8);
 
-      await openSessionPage(m, campaignId);
+      await openSessionPage(m, campaignId, 'grupo');
       await openSessionPage(p, campaignId);
       await expect(p.getByRole('heading', { name: 'Sua vez, Aurora' })).toBeVisible();
       const groups = p.getByRole('region', { name: 'O que você pode fazer' });

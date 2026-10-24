@@ -83,7 +83,8 @@ test(
       // "Mostrar aos jogadores": the gallery's own action; the shown one is marked.
       await images.getByRole('button', { name: 'Mostrar Rastros na lama aos jogadores' }).click();
       await expect(images.locator('.sm__tile').first()).toContainText('À mostra agora');
-      await expect(images.getByRole('button', { name: 'Parar de mostrar Rastros na lama' })).toBeVisible();
+      // The scene's image row keeps the one "Parar de mostrar" (the tile only says "À mostra agora").
+      await expect(master.getByRole('button', { name: 'Parar de mostrar', exact: true })).toBeVisible();
       const shown = player.getByRole('region', { name: 'O mestre está mostrando' });
       await expect(shown).toBeVisible();
       await expect(shown.getByRole('img', { name: 'Rastros na lama' })).toBeVisible();

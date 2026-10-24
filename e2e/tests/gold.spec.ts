@@ -332,7 +332,7 @@ test(
       campaignId = table.campaignId;
       await threeTreasuresRPC(m, table);
       await startSessionRPC(m, campaignId);
-      await openSessionPage(m, campaignId);
+      await openSessionPage(m, campaignId, 'grupo');
 
       await m.getByRole('button', { name: 'Dar XP', exact: true }).click();
       const give = m.getByRole('dialog', { name: 'Dar XP' });
