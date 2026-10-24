@@ -261,7 +261,13 @@ describe('CombatMapCard: "Tela cheia"', () => {
 
 describe('CombatMapCard: the zones the spells keep', () => {
   const zone = (over: Parameters<typeof spellZone>[0]) =>
-    spellZone({ squares: [{ col: 1, row: 1 }, { col: 2, row: 1 }], ...over });
+    spellZone({
+      squares: [
+        { col: 1, row: 1 },
+        { col: 2, row: 1 },
+      ],
+      ...over,
+    });
   function withZones(zones: ReturnType<typeof spellZone>[], isMaster = true) {
     return mount({
       isMaster,
