@@ -39,21 +39,22 @@
   font-size: 17px;
 }
 
-// The bar above the phone's nav: no rings, the words and their shapes side by side.
+// The bar above the phone's nav: no rings, the words and their shapes side by side; tight enough that the Action, the Bonus action,
+// the Reaction and the walker share one line beside "Encerrar turno" at 390px.
 .eco--inline {
   flex-wrap: wrap;
-  gap: 2px 10px;
+  gap: 2px 6px;
 
   .shape {
-    gap: 3px;
+    gap: 2px;
     height: auto;
     padding: 0;
     border: 0;
-    font-size: 13px;
+    font-size: 12px;
     line-height: 16px;
   }
 
   .shape__icon {
-    font-size: 14px;
+    font-size: 13px;
   }
 }

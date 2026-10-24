@@ -66,6 +66,24 @@ describe('OrderColumn', () => {
     expect(rows[1]).not.toMatch(/PV|\d+ de \d+/);
   });
 
+  it("takes the person's numbers from its vitals when the combatant carries none", () => {
+    const fixture = TestBed.createComponent(OrderColumn);
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({
+        currentCombatantId: 'pen',
+        combatants: [
+          combatant({ id: 'pen', label: 'Pensantus', kind: CombatantKind.PLAYER, mine: true }),
+        ],
+      }),
+    );
+    fixture.componentRef.setInput('hitPoints', { current: 19, max: 23 });
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).querySelector('.row')?.textContent).toContain(
+      'Você · 19 de 23 PV',
+    );
+  });
+
   it('says a creature of another player with only its owner and a state word, and the concentration to everyone', () => {
     const fixture = TestBed.createComponent(OrderColumn);
     fixture.componentRef.setInput(

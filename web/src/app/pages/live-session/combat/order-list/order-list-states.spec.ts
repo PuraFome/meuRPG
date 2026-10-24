@@ -40,8 +40,8 @@ describe('OrderList: states', () => {
     );
     fixture.detectChanges();
     const chips = Array.from(
-      (fixture.nativeElement as HTMLElement).querySelectorAll('.row button.tag__btn'),
-      (b) => b.textContent?.trim(),
+      (fixture.nativeElement as HTMLElement).querySelectorAll('.row li.tag--state'),
+      (b) => b.querySelector('.tag__text')?.textContent?.trim(),
     );
     expect(chips).toEqual(['Marcado por Brisa', 'Esquivando']);
   });

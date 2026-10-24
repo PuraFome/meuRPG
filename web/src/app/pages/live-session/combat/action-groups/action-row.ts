@@ -36,17 +36,19 @@ let nextId = 0;
   template: `
     <div class="row__text">
       @if (name()) {
-        <span class="row__name">{{ name() }}</span>
-        @if (tags().length || economy()) {
-          <span class="row__tags">
-            @for (tag of tags(); track tag) {
-              <span class="row__pill">{{ tag }}</span>
-            }
-            @if (economy(); as e) {
-              <span class="row__econ"><app-economy-mark [kind]="e" [spent]="off()" />{{ word(e) }}</span>
-            }
-          </span>
-        }
+        <span class="row__head">
+          <span class="row__name">{{ name() }}</span>
+          @if (tags().length || economy()) {
+            <span class="row__tags">
+              @for (tag of tags(); track tag) {
+                <span class="row__pill">{{ tag }}</span>
+              }
+              @if (economy(); as e) {
+                <span class="row__econ"><app-economy-mark [kind]="e" [spent]="off()" />{{ word(e) }}</span>
+              }
+            </span>
+          }
+        </span>
       }
       @if (detail()) {
         <span class="row__detail">{{ detail() }}</span>
@@ -81,12 +83,19 @@ let nextId = 0;
         [attr.aria-describedby]="off() && reason() ? whyId : null"
         (click)="pressed()"
       >
+        @if (icon()) {
+          <mat-icon aria-hidden="true">{{ icon() }}</mat-icon>
+        }
         {{ button() }}
       </button>
     }
   `,
   styleUrl: './action-row.scss',
-  host: { '[class.row--off]': 'off()', '[class.row--help]': '!!helpName()' },
+  host: {
+    '[class.row--off]': 'off()',
+    '[class.row--help]': '!!helpName()',
+    '[class.row--choose]': 'choosing()',
+  },
 })
 export class ActionRow {
   readonly name = input.required<string>();
@@ -103,6 +112,8 @@ export class ActionRow {
   readonly rider = input('');
   /** "Atacar", "Conjurar"; empty for a row with no button. */
   readonly button = input('');
+  /** The icon beside the button's word (a wand for "Conjurar", swords for "Atacar"); none for a button without one. */
+  readonly icon = input('');
   /** The button's accessible name: "Atacar com Raio de Fogo". */
   readonly buttonLabel = input<string | null>(null);
   readonly off = input(false);

@@ -1,4 +1,4 @@
-import { Component, computed, input, signal } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 
 import type { Combatant } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import type {
@@ -14,9 +14,9 @@ let nextId = 0;
  * pill with its name written out (the concentration is a pill of its own beside the name, in the order lists). They are
  * labels the master marked (RN-22); the app applies no effect. A condition that
  * comes from someone (a monk's Stunning Strike) says by whom and until when. The
- * states the server sends (a rage, a mark, a dodge) come first, as chips that
- * are buttons: focus or a tap shows what the state does, and the same text is
- * read as the description of the chip. In the strip of chips (`compact`) there
+ * states the server sends (a rage, a mark, a dodge) come first, as labels
+ * with a heavier line: what the state does is its tooltip and the description
+ * a screen reader reads. In the strip of chips (`compact`) there
  * is room for one: the first and "+2" for the rest, so a chip keeps its height.
  * A list with a name for screen readers; nothing is drawn for a combatant with
  * no condition and no state.
@@ -28,22 +28,9 @@ let nextId = 0;
       <ul class="tags" [attr.aria-label]="'Condições de ' + label()">
         @for (t of shown(); track t.key) {
           @if (t.state; as chip) {
-            <li class="tag tag--state">
-              <button
-                type="button"
-                class="tag__btn"
-                [attr.aria-expanded]="open() === chip.id"
-                [attr.title]="chip.description"
-                [attr.aria-describedby]="uid + chip.id"
-                (click)="toggle(chip.id)"
-                (keydown.escape)="open.set('')"
-              >
-                {{ chip.text }}
-              </button>
+            <li class="tag tag--state" [attr.title]="chip.description" [attr.aria-describedby]="uid + chip.id">
+              <span class="tag__text">{{ chip.text }}</span>
               <span class="sr" [id]="uid + chip.id">{{ chip.description }}</span>
-              @if (open() === chip.id) {
-                <span class="tag__note" role="note">{{ chip.description }}</span>
-              }
             </li>
           } @else {
             <li class="tag">
@@ -96,33 +83,10 @@ let nextId = 0;
       font-weight: 400;
     }
 
+    // A state the server sends (a rage, a dodge): a label with a heavier line, never a button; its text is the tooltip and the screen reader's description.
     .tag--state {
-      padding: 0;
-      border-style: double;
-      border-width: 3px;
-    }
-
-    .tag__btn {
-      box-sizing: border-box;
-      min-height: 24px;
-      padding: 0 9px;
-      border: 0;
-      border-radius: 9px;
-      background: none;
-      color: var(--mr-ink);
-      font: inherit;
-      cursor: pointer;
-
-      &:focus-visible {
-        outline: 2px solid var(--mr-ink);
-        outline-offset: 2px;
-      }
-    }
-
-    .tag__note {
-      display: block;
-      padding: 2px 9px 4px;
-      font-weight: 400;
+      position: relative;
+      border-width: 2px;
     }
 
     .sr {
@@ -148,7 +112,6 @@ export class CombatantTags {
   readonly people = input<readonly Pick<Combatant, 'id' | 'label'>[]>([]);
 
   protected readonly uid = `state-${nextId++}-`;
-  protected readonly open = signal('');
 
   private readonly all = computed(() => [
     ...this.states().map((s) => {
@@ -166,8 +129,4 @@ export class CombatantTags {
   protected readonly more = computed(() =>
     this.compact() ? Math.max(0, this.all().length - 1) : 0,
   );
-
-  protected toggle(id: string): void {
-    this.open.update((current) => (current === id ? '' : id));
-  }
 }

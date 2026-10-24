@@ -16,6 +16,16 @@
   max-width: none;
 }
 
+// Choosing a target: a gutter around the map, and the map does not clip, so the ring of a creature on the edge is whole.
+.cm--pick {
+  padding: var(--cm-gutter, 8px);
+  box-sizing: border-box;
+
+  .cm__surface {
+    overflow: visible;
+  }
+}
+
 .cm__surface {
   // Sized from the container (`.cm`), so they live on a child of it.
   --cm-sq: calc(100cqw / var(--cols));
@@ -287,10 +297,12 @@
 
 // The "Vez" word above the token whose turn it is.
 .cm__turn {
+  // The ring of the token on turn reaches 5px past it: the word starts past the ring, so it never touches the token's face.
+  --cm-turn-gap: 11px;
   // The "Vez" tag never catches a tap: a door under it (the master's sheet) stays reachable.
   pointer-events: none;
   position: absolute;
-  bottom: calc(100% + 7px);
+  bottom: calc(100% + var(--cm-turn-gap));
   left: 50%;
   box-sizing: border-box;
   height: 18px;
@@ -308,20 +320,20 @@
 
 // The word goes where it covers no token: below, or beside, when above is taken.
 .cm__turn--below {
-  top: calc(100% + 7px);
+  top: calc(100% + var(--cm-turn-gap));
   bottom: auto;
 }
 
 .cm__turn--right {
   top: 50%;
   bottom: auto;
-  left: calc(100% + 6px);
+  left: calc(100% + var(--cm-turn-gap));
   transform: translateY(-50%);
 }
 
 .cm__turn--left {
   top: 50%;
-  right: calc(100% + 6px);
+  right: calc(100% + var(--cm-turn-gap));
   bottom: auto;
   left: auto;
   transform: translateY(-50%);
@@ -407,10 +419,11 @@
   }
 }
 
-// "Longe: desvantagem": a valid target, said and not dimmed.
+// "Longe: desvantagem": a valid target, said and not dimmed. It sits below its token (the "Alvo" mark is at the token's top, so a
+// neighbour's chip never covers it), above at the foot of the map, and leans away from a side edge so it is not cut.
 .cm__far {
   position: absolute;
-  bottom: calc(100% + 2px);
+  top: calc(50% + var(--cm-tk) * var(--span, 1) * 0.5 + 4px);
   left: 50%;
   box-sizing: border-box;
   height: 20px;
@@ -424,6 +437,22 @@
   line-height: 17px;
   white-space: nowrap;
   transform: translateX(-50%);
+}
+
+.cm__far--above {
+  top: auto;
+  bottom: calc(50% + var(--cm-tk) * var(--span, 1) * 0.5 + 4px);
+}
+
+.cm__far--left {
+  left: calc(50% - var(--cm-tk) * var(--span, 1) * 0.5);
+  transform: none;
+}
+
+.cm__far--right {
+  right: calc(50% - var(--cm-tk) * var(--span, 1) * 0.5);
+  left: auto;
+  transform: none;
 }
 
 // The chip that says why a creature cannot be chosen, beside its token.

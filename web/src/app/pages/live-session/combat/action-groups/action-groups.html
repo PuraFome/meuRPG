@@ -33,7 +33,7 @@
   } @else {
     @if (theatre()) {
       <!-- E10-04 state 7: no map, no "Mover" page and no movement row under it: one phrase and one button, dashed with its reason once the movement is spent. -->
-      <section class="group" aria-labelledby="g-move">
+      <section class="group group--flat" aria-labelledby="g-move">
         <header class="group__head">
           <h3 class="group__name" id="g-move">Movimento</h3>
         </header>
@@ -205,6 +205,7 @@
                 [name]="attackName(atk)"
                 [detail]="attackDetail(atk)"
                 button="Atacar"
+                icon="swords"
                 [buttonLabel]="'Atacar com ' + attackName(atk) + ' (' + extra.labelPt + ')'"
                 [off]="!extra.available || !!locked()"
                 [reason]="locked() || extra.reasonPt"
@@ -241,12 +242,12 @@
     <app-action-row
       [name]="attackName(atk)"
       [economy]="isBonusAttack(a) ? 'bonus' : 'action'"
-      [tags]="attackTags(a)"
-      [helpName]="isCantrip(atk) ? attackName(atk) : ''"
-      [detail]="attackDetail(atk)"
+      [helpName]="isCantrip(atk) && !asksSave(atk) ? attackName(atk) : ''"
+      [detail]="withTags(attackTags(a), attackDetail(atk))"
       [note]="attackNote(a)"
       [rider]="rider(atk)"
       [button]="asksSave(atk) ? 'Conjurar' : 'Atacar'"
+      [icon]="asksSave(atk) ? 'auto_fix_high' : 'swords'"
       [buttonLabel]="(asksSave(atk) ? 'Conjurar ' : 'Atacar com ') + attackName(atk)"
       [off]="!a.enabled || !!locked()"
       [reason]="locked() || reasonText(a.reason)"
@@ -262,10 +263,9 @@
   <app-action-row
     [name]="spellName(s)"
     [economy]="economyOf(s.economy)"
-    [tags]="spellTags(s)"
-    [helpName]="spellName(s)"
-    [detail]="spellLine(s)"
+    [detail]="withTags(spellTags(s), spellLine(s))"
     [button]="spellButton()"
+    icon="auto_fix_high"
     [buttonLabel]="'Conjurar ' + spellName(s)"
     [off]="!s.enabled || !!locked()"
     [reason]="locked() || spellReasonText(s)"

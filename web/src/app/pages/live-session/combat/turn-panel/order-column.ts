@@ -25,6 +25,7 @@ import { CombatantTags } from '../combatant-tags/combatant-tags';
 import { FormTag } from '../combatant-tags/form-tag';
 import { OrderGroup } from '../joint-turn/order-group';
 import { PartState } from '../joint-turn/part-state';
+import type { OwnHitPoints } from './own-numbers';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 
 /**
@@ -91,6 +92,8 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
 })
 export class OrderColumn {
   readonly encounter = input.required<Encounter>();
+  /** The player's hit points from its vitals, for "Você · 23 de 23 PV" when the combatant has none of its own (the server gives a player's character's numbers through its vitals). */
+  readonly hitPoints = input<OwnHitPoints | null>(null);
 
   protected initial(c: Combatant): string {
     return combatantInitial(c.label);
@@ -141,6 +144,13 @@ export class OrderColumn {
       : '';
   }
 
+  /** " · 23 de 23 PV": the combatant's own numbers, or the player's vitals when the server sent none with it; empty when neither is there. */
+  private ownNumbers(c: Combatant): string {
+    const now = c.hitPointsCurrent ?? this.hitPoints()?.current;
+    const max = c.hitPointsMax ?? this.hitPoints()?.max;
+    return now !== undefined && max !== undefined ? ` · ${now} de ${max} PV` : '';
+  }
+
   protected word(c: Combatant): string {
     if (c.defeated) {
       return isPlayer(c) ? stateWord(CombatantState.DEAD, c.label) : 'Derrotado';
@@ -149,10 +159,7 @@ export class OrderColumn {
     const down = isPlayer(c) && isDown(c) ? stateWord(c.state, c.label) : '';
     if (c.mine) {
       // The person's own numbers are theirs to read: "Você · 23 de 23 PV" (C6-07); every other creature has a word, never a number (RN-20).
-      const own =
-        c.hitPointsCurrent !== undefined && c.hitPointsMax !== undefined
-          ? ` · ${c.hitPointsCurrent} de ${c.hitPointsMax} PV`
-          : '';
+      const own = this.ownNumbers(c);
       return down ? `Você, ${down.toLowerCase()}${own}` : `Você${own}`;
     }
     const word = isPlayer(c) ? playerWord(c) : stateWord(c.state);

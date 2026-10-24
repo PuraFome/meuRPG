@@ -48,7 +48,7 @@ import { JointPill } from '../joint-turn/joint-pill';
 import { CombatantTags } from '../combatant-tags/combatant-tags';
 import { RageStatus } from '../rage-end/rage-status';
 import { EndTurn } from './end-turn';
-import { OwnNumbers, type OwnSlots } from './own-numbers';
+import { type OwnHitPoints, OwnNumbers, type OwnSlots } from './own-numbers';
 import { OrderStrip } from './order-strip';
 import { ConcentrationLine, TurnReaction } from './turn-extras';
 
@@ -122,6 +122,8 @@ export class TurnPanel {
   /** The player's armor class and slots: the line of numbers under the title (C4-03). */
   readonly armorClass = input<number | null>(null);
   readonly slots = input<OwnSlots>({ usage: [], pact: null });
+  /** The player's hit points from its vitals, for the card's "PV 23 de 23" when the combatant has none of its own. */
+  readonly hitPoints = input<OwnHitPoints | null>(null);
 
   readonly endTurn = output<void>();
   /** "Mover" of the turn bar (from 1024px): the page opens the move page. */

@@ -4,6 +4,7 @@
   [style.--rows]="rows()"
   [style.width.px]="widthPx()"
   [class.cm--scroll]="cellPx() !== null"
+  [class.cm--pick]="!!pick()"
 >
   <div
     #surface
@@ -196,7 +197,7 @@
               </span>
             }
             @if (m.note) {
-              <span class="cm__far" aria-hidden="true">{{ m.note }}</span>
+              <span [class]="layer.farSide(c)" aria-hidden="true">{{ m.note }}</span>
             }
           </button>
         }

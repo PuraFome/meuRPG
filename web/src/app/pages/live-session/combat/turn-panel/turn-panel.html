@@ -116,7 +116,7 @@
       <app-wild-band [beast]="f.name" [detail]="formDetail()" />
     }
     <app-economy-shapes [shapes]="cardShapes()" />
-    <app-own-numbers class="turn__numbers" [own]="me" [armorClass]="armorClass()" [slots]="slots()" />
+    <app-own-numbers class="turn__numbers" [own]="me" [armorClass]="armorClass()" [slots]="slots()" [hitPoints]="hitPoints()" />
     @if (banner().joint) {
       <div class="turn__end">
         <app-end-part [note]="footerNote()" [left]="partLeft()" [busy]="busy()" (endPart)="endTurn.emit()" />

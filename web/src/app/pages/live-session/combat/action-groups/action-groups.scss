@@ -84,6 +84,13 @@
   }
 }
 
+// The movement of a combat with no map sits in the actions card as a part of it, not as a card inside the card.
+.group--flat {
+  padding: 8px 0;
+  border: 0;
+  background: none;
+}
+
 .group__head {
   display: flex;
   align-items: center;

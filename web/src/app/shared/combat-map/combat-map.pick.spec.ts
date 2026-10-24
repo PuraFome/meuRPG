@@ -83,6 +83,12 @@ describe('CombatMap: choosing a target (C7-04)', () => {
     );
   });
 
+  it('puts the catch chip below its token, above at the foot of the map, and a gutter around the map', () => {
+    const { el } = map({ pick: [mark('g1', 'Goblin 1', { note: 'Longe: desvantagem' })] });
+    expect(el.querySelector('.cm__far')?.className).not.toContain('cm__far--above');
+    expect(el.querySelector('.cm--pick')).not.toBeNull();
+  });
+
   it('shows why a creature cannot be chosen, as a chip and in a polite status', () => {
     const { el } = map({
       pick: [mark('g3', 'Goblin 3', { reason: 'cobertura total' })],

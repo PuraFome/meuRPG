@@ -32,6 +32,14 @@ describe('OwnNumbers', () => {
     expect(el.querySelector('.slot')).toBeNull();
   });
 
+  it("reads the player's hit points from its vitals when the combatant has none", () => {
+    const { text } = render(
+      { hitPoints: { current: 23, max: 23 } },
+      { hitPointsCurrent: undefined, hitPointsMax: undefined },
+    );
+    expect(text).toContain('PV 23 de 23');
+  });
+
   it('draws each circle of slots with its words', () => {
     const { el } = render({
       slots: {

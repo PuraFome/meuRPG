@@ -199,17 +199,22 @@
     outline: 0;
   }
 
+  // Choosing a target: the bar is a row above the map, so the expand button never sits over a ring at the corner.
   @media (max-width: 767.98px) {
-    .bar {
+    &:not(.card--pick) .bar {
       position: absolute;
       inset: 8px 8px auto;
       z-index: 1;
       pointer-events: none;
     }
 
-    .bar__chip,
-    .bar__open {
+    &:not(.card--pick) .bar__chip,
+    &:not(.card--pick) .bar__open {
       pointer-events: auto;
+    }
+
+    &.card--pick .bar {
+      padding: 4px 8px;
     }
   }
 }

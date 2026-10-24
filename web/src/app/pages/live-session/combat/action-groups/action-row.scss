@@ -2,7 +2,7 @@
   display: grid;
   // Text | "?" | button: the same columns on every row, so the "?" and the buttons
   // line up down the list (E8-02). A row without a "?" or a button leaves its cell empty.
-  grid-template-columns: minmax(0, 1fr) 44px 92px;
+  grid-template-columns: minmax(0, 1fr) 44px 112px;
   align-items: center;
   column-gap: 8px;
   padding: 12px 0;
@@ -14,6 +14,14 @@
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+}
+
+// The name and its tags share a line, and the tags wrap under the name only when the name leaves no room.
+.row__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
 }
 
 .row__name {
@@ -31,7 +39,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 4px 8px;
-  margin: 2px 0;
+  margin: 0;
 }
 
 .row__pill {
@@ -103,9 +111,17 @@
   --mat-button-outlined-label-text-color: var(--mr-accent-text);
   --mat-button-outlined-outline-color: var(--mr-control-line);
   flex: none;
-  width: 92px;
+  width: 112px;
   min-width: 0;
   padding: 0;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin: 0 4px 0 0;
+    font-size: 18px;
+  }
 }
 
 .row__btn--off {
@@ -128,6 +144,7 @@ app-spell-help {
 // "Escolhendo o alvo": the action waits for a tap on the map (C7-05); the pill takes the button's place.
 .row__choosing {
   grid-column: 3;
+  white-space: nowrap;
   align-self: center;
   padding: 4px 10px;
   border-radius: var(--mr-radius-pill);
@@ -137,4 +154,16 @@ app-spell-help {
   font-weight: 700;
   line-height: 18px;
   text-align: center;
+}
+
+// With no "?" the pill borrows its cell, so "Escolhendo o alvo" stays on one line; the text keeps to the first column.
+:host(.row--choose:not(.row--help)) {
+  .row__text {
+    grid-column: 1;
+  }
+
+  .row__choosing {
+    grid-column: 2 / 4;
+    justify-self: end;
+  }
 }

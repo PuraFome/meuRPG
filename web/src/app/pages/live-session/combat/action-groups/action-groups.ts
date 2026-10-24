@@ -445,6 +445,11 @@ export class ActionGroups {
     return spellTags(s).filter((t) => t !== 'Ação bônus' && t !== 'Reação');
   }
 
+  /** The tags ("1º nível", "Concentração", "Truque") as the first words of the line under the name: the row shows the name, its economy and one line. */
+  protected withTags(tags: readonly string[], line: string): string {
+    return [...tags, line].filter(Boolean).join(' · ');
+  }
+
   /** The line under a spell's name. */
   protected spellLine(s: SpellOption): string {
     return spellLine(s, spellSummary(this.details().get(s.spell?.key ?? '')));

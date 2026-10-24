@@ -2,6 +2,12 @@ import { computed } from '@angular/core';
 
 import type { Combatant } from '../../../gen/meurpg/play/v1/combat_pb';
 
+/** How near a side edge (a share of the map's width) a chip leans away from it. */
+const EDGE_LEAN = 0.2;
+
+/** The middle of a square. */
+const HALF = 0.5;
+
 /** A creature of the map while the player chooses a target (C7-04): ringed and tappable, or dimmed with the reason a tap tells. */
 export interface PickMark {
   readonly id: string;
@@ -63,5 +69,13 @@ export class PickLayer {
     const { columns, rows } = this.grid();
     const right = c.col * 2 > columns ? ' cm__why--right' : '';
     return `cm__why${right}${c.row + 2 >= rows ? ' cm__why--above' : ''}`;
+  }
+
+  /** The "Longe" chip's place: below its token, above at the foot, leaning away from a side edge. */
+  farSide(c: Combatant): string {
+    const { columns, rows } = this.grid();
+    const x = (c.col + HALF) / columns;
+    const lean = x < EDGE_LEAN ? ' cm__far--left' : x > 1 - EDGE_LEAN ? ' cm__far--right' : '';
+    return `cm__far${lean}${c.row + 2 >= rows ? ' cm__far--above' : ''}`;
   }
 }

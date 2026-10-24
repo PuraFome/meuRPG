@@ -12,6 +12,12 @@ export interface OwnSlots {
   readonly pact: PactSlotsVm | null;
 }
 
+/** The player's hit points as the vitals hold them. */
+export interface OwnHitPoints {
+  readonly current: number;
+  readonly max: number;
+}
+
 /**
  * "PV 23 de 23 · CA 12 · 1º ○○○● 2º ○○" (C4-03): the character's own numbers under the turn's title, so the hit points, the armor
  * class and the slots are on the first screen. Only the player's own numbers are here (RN-20); an open ring is a free slot, a
@@ -22,7 +28,7 @@ export interface OwnSlots {
   imports: [MatIconModule, SlotDots],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    @if (hitPoints(); as pv) {
+    @if (pvText(); as pv) {
       <span class="num"><mat-icon aria-hidden="true">favorite_border</mat-icon><b>PV {{ pv }}</b></span>
     }
     @if (armorClass() !== null) {
@@ -46,12 +52,16 @@ export class OwnNumbers {
   readonly own = input.required<Combatant>();
   readonly armorClass = input<number | null>(null);
   readonly slots = input<OwnSlots>({ usage: [], pact: null });
+  /** Where the numbers come from when the combatant has none: the player's vitals. */
+  readonly hitPoints = input<OwnHitPoints | null>(null);
 
-  protected readonly hitPoints = computed(() => {
+  protected readonly pvText = computed(() => {
     const c = this.own();
-    return c.hitPointsCurrent !== undefined && c.hitPointsMax !== undefined
-      ? `${c.hitPointsCurrent} de ${c.hitPointsMax}`
-      : '';
+    if (c.hitPointsCurrent !== undefined && c.hitPointsMax !== undefined) {
+      return `${c.hitPointsCurrent} de ${c.hitPointsMax}`;
+    }
+    const v = this.hitPoints();
+    return v ? `${v.current} de ${v.max}` : '';
   });
 
   protected readonly rows = computed(() => {

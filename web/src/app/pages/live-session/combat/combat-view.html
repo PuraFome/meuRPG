@@ -333,6 +333,7 @@
                 [contest]="contestFacts()"
                 [armorClass]="armorClass()"
                 [slots]="ownSlots()"
+                [hitPoints]="ownHitPoints()"
                 [effectNotes]="options()?.effectNotes ?? []"
                 (endTurn)="nextTurn()"
                 (move)="moves.open()"
@@ -378,7 +379,7 @@
             </div>
           <div class="player" [class.player--mine]="railOn()">
             @if (wideLayout()) {
-              <app-order-column class="player__order" [encounter]="e" />
+              <app-order-column class="player__order" [encounter]="e" [hitPoints]="ownHitPoints()" />
             }
             @if (railOn()) {
               <!-- The actions column (from 1024px a sticky rail): "Ações", and in a player's combat "Conversa" beside it (C6-07). -->

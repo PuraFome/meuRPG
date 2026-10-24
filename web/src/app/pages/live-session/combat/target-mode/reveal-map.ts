@@ -10,13 +10,28 @@ export function revealMap(host: HTMLElement, injector: Injector, laptop: boolean
     () => {
       const reduce =
         typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-      host.querySelector('app-combat-map-card')?.scrollIntoView?.({
+      const card = host.querySelector('app-combat-map-card');
+      if (card instanceof HTMLElement && !laptop) {
+        // The app bar sticks to the top of a phone's screen: the map's top (and the chips above its tokens) stop below it.
+        card.style.scrollMarginTop = `${stuckTop()}px`;
+      }
+      card?.scrollIntoView?.({
         block: laptop ? 'nearest' : 'start',
         behavior: reduce ? 'auto' : 'smooth',
       });
     },
     { injector },
   );
+}
+
+/** The room the page's bar keeps at the top of the screen, and a gap under it, in px. */
+const TOP_GAP = 8;
+
+function stuckTop(): number {
+  const bar = document.querySelector('.app-bar');
+  return bar instanceof HTMLElement && getComputedStyle(bar).position === 'sticky'
+    ? bar.offsetHeight + TOP_GAP
+    : 0;
 }
 
 /** The button the player pressed to start the choice, where the focus goes back to; `null` when nothing in the page has it. */

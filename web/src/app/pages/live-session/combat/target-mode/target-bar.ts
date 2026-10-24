@@ -31,7 +31,7 @@ import type { TargetMode } from './target-mode';
   imports: [MatButtonModule, MatIconModule],
   template: `
     @if (mode().session(); as s) {
-      <section class="box" [class.box--card]="variant() === 'card'" aria-label="Escolha do alvo" (keydown.escape)="mode().cancel()">
+      <section class="box" [class.box--card]="variant() === 'card'" aria-label="Escolha do alvo" tabindex="-1" (keydown.escape)="mode().cancel()">
         <div class="head">
           <mat-icon class="head__icon" aria-hidden="true">{{ s.rule.kind === 'darts' ? 'auto_fix_high' : 'my_location' }}</mat-icon>
           <div class="head__text">
@@ -131,7 +131,12 @@ import type { TargetMode } from './target-mode';
       outline-offset: 2px;
     }
 
+    // Two lines at most: the bar leaves the map card its room above it.
     .head__hint {
+      display: -webkit-box;
+      overflow: hidden;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
       font-size: 13px;
       line-height: 18px;
       color: var(--mr-ink-muted);

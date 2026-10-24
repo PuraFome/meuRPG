@@ -2635,16 +2635,8 @@ async function scanCombatDetailsScreens(browser: Browser, colorScheme: 'light' |
     await openSessionPage(p, campaignId);
 
     await openActionTab(p, 'Magias');
-    await expect(p.getByRole('button', { name: 'Detalhes de Sono' })).toBeVisible();
-    await expectScreenPasses(p, `Magias com o "?" e os espaços ${where}`);
-    await p.getByRole('button', { name: 'Detalhes de Sono' }).click();
-    const details = p.getByRole('dialog', { name: phone ? 'Descrição de Sono' : 'Sono', exact: true });
-    await expect(details.getByRole('button', { name: 'Ver em inglês' })).toBeVisible();
-    await expectScreenPasses(p, `Detalhes de Sono na sessão ${where}`);
-    await details.getByRole('button', { name: 'Ver em inglês' }).click();
-    await expect(details.getByText('This spell sends creatures into a magical slumber.')).toBeVisible();
-    await expectScreenPasses(p, `Detalhes de Sono na sessão, em inglês ${where}`);
-    await details.getByRole('button', { name: 'Fechar' }).last().click();
+    await expect(p.getByRole('button', { name: 'Conjurar Sono' })).toBeVisible();
+    await expectScreenPasses(p, `Magias e os espaços ${where}`);
 
     await openActionTab(p, 'Magias');
     await p.getByRole('button', { name: 'Conjurar Sono' }).click();

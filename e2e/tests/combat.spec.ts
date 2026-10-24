@@ -1138,28 +1138,19 @@ test('as magias vêm na ordem do servidor, cada uma com o "?", e o Escudo na sua
     await openSessionPage(p, campaignId);
     const groups = p.getByRole('region', { name: 'O que você pode fazer' });
     // What can be cast now first, then by circle and by name; Escudo Arcano, a reaction, with the ones that can't.
-    // The cantrip that attacks is in "Ataques", with its "?"; the spells are in "Magias".
+    // The cantrip that attacks is in "Ataques", with its "?"; the spells are in "Magias" (their description is the cast sheet's "?", below).
     const attacks = await openActionTab(p, 'Ataques');
     await expect(attacks.locator('app-action-row:has(app-spell-help) .row__name')).toHaveText(['Raio de Fogo']);
     const spells = await openActionTab(p, 'Magias');
-    const names = spells.locator('app-action-row:has(app-spell-help) .row__name');
+    const names = spells.locator('app-action-row .row__name');
     await expect(names).toHaveText(['Mísseis Mágicos', 'Sono', 'Passo Nebuloso', 'Teia', 'Escudo Arcano']);
     const shield = groups.locator('app-action-row', { hasText: 'Escudo Arcano' });
     await expect(shield.getByText('Só fora da sua vez')).toBeVisible();
     await expect(shield.getByRole('button', { name: 'Conjurar Escudo Arcano' })).toHaveAttribute('aria-disabled', 'true');
     await expect(shield.getByText('Reação', { exact: true })).toBeVisible();
 
-    // The "?" opens the spell's description in the session, and "Fechar" gives the focus back to it.
-    const help = groups.getByRole('button', { name: 'Detalhes de Sono' });
-    await help.click();
-    const details = p.getByRole('dialog', { name: 'Descrição de Sono' });
-    await expect(details.getByRole('heading', { name: 'Sono' })).toBeVisible();
-    await expect(details.getByText('Tempo de conjuração')).toBeVisible();
-    await expect(details.getByText('Esta magia coloca criaturas em um sono mágico.')).toBeVisible();
-    await expect(details.getByRole('button', { name: 'Fechar' }).last()).toBeInViewport({ ratio: 1 });
-    await details.getByRole('button', { name: 'Fechar' }).last().click();
-    await expect(details).toHaveCount(0);
-    await expect(help).toBeFocused();
+    // A spell row has no "?": the description opens from the cast sheet.
+    await expect(spells.locator('app-spell-help')).toHaveCount(0);
 
     // With no free slot the 1st and 2nd circles say "Sem espaço", and the slot rows above are the explanation.
     await adjustVitalsRPC(m, campaignId, table.characterId, { spellSlotsUsed: [{ level: 1, used: 4 }, { level: 2, used: 2 }] });

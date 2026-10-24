@@ -85,35 +85,24 @@ describe('ActionGroups: the spells (E8-02)', () => {
     ]);
   });
 
-  it('gives each spell the "?" with its name, 44 px, whether or not it can be cast', () => {
+  it('gives a spell row no "?": the details are the cast sheet\'s own "?"', () => {
     const { el } = setup(SERVER_ORDER);
-    for (const row of rows(el)) {
-      const help = row.querySelector<HTMLButtonElement>('app-spell-help button')!;
-      expect(help.getAttribute('aria-label')).toBe(`Detalhes de ${name(row)}`);
-      expect(help.disabled).toBe(false);
-    }
+    expect(el.querySelector('app-spell-help')).toBeNull();
   });
 
-  it('opens the details with the spell key and name', () => {
-    const { el, described } = setup(SERVER_ORDER);
-    rows(el)[2].querySelector<HTMLButtonElement>('app-spell-help button')!.click();
-    expect(described).toEqual([{ key: 'spell:sleep', name: 'Sono' }]);
-    // A spell that is off has its "?" too.
-    rows(el)[5].querySelector<HTMLButtonElement>('app-spell-help button')!.click();
-    expect(described[1]).toEqual({ key: 'spell:web', name: 'Teia' });
-  });
-
-  it('puts the circle in a tag on its own line, and the economy beside it for Escudo', () => {
+  it('puts the circle first in the detail line, and the economy beside the name for Escudo', () => {
     const { el } = setup(SERVER_ORDER);
-    const tags = (row: HTMLElement) =>
-      [...row.querySelectorAll('.row__tags .row__pill')].map((t) => t.textContent!.trim());
-    expect(tags(rows(el)[0])).toEqual(['Truque']);
-    expect(tags(rows(el)[2])).toEqual(['1º nível']);
+    const detail = (row: HTMLElement) => row.querySelector('.row__detail')!.textContent!.trim();
+    expect(detail(rows(el)[0])).toMatch(/^Truque\s·\s./);
+    expect(detail(rows(el)[2])).toMatch(/^1º\snível\s·\s./);
     // The economy is the row's own mark and word, not a tag.
-    expect(tags(rows(el)[3])).toEqual(['1º nível']);
+    expect(detail(rows(el)[3])).toMatch(/^1º\snível\s·\s./);
     expect(rows(el)[3].querySelector('.row__econ')?.textContent?.trim()).toBe('Reação');
     expect(rows(el)[1].querySelector('.row__econ')?.textContent?.trim()).toBe('Ação');
-    expect(el.querySelector('.row__name .row__pill')).toBeNull();
+    expect(el.querySelector('.row__pill')).toBeNull();
+    expect(rows(el)[2].querySelector('.row__btn mat-icon')?.textContent?.trim()).toBe(
+      'auto_fix_high',
+    );
   });
 
   it('Escudo Arcano on the own turn keeps a dashed, disabled "Conjurar" and says "Só fora da sua vez"', () => {
