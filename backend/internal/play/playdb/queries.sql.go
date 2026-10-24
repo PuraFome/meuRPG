@@ -4535,24 +4535,31 @@ func (q *Queries) InsertSessionEvent(ctx context.Context, arg InsertSessionEvent
 }
 
 const insertStageNPC = `-- name: InsertStageNPC :one
-INSERT INTO stage_npcs (game_session_id, character_id, position, created_at)
+INSERT INTO stage_npcs (game_session_id, character_id, position, hidden, created_at)
 VALUES (
     $1, $2,
     (SELECT COALESCE(max(position) + 1, 0)::INT4 FROM stage_npcs WHERE game_session_id = $1),
-    $3
+    $3, $4
 )
-RETURNING id, game_session_id, character_id, position, speaking, created_at
+RETURNING id, game_session_id, character_id, position, speaking, created_at, hidden
 `
 
 type InsertStageNPCParams struct {
 	GameSessionID string
 	CharacterID   string
+	Hidden        bool
 	CreatedAt     time.Time
 }
 
-// An NPC comes in after the ones already there: the highest position plus one.
+// An NPC comes in after the ones already there: the highest position plus one. It comes in hidden from
+// the players when the master said so.
 func (q *Queries) InsertStageNPC(ctx context.Context, arg InsertStageNPCParams) (StageNpc, error) {
-	row := q.db.QueryRow(ctx, insertStageNPC, arg.GameSessionID, arg.CharacterID, arg.CreatedAt)
+	row := q.db.QueryRow(ctx, insertStageNPC,
+		arg.GameSessionID,
+		arg.CharacterID,
+		arg.Hidden,
+		arg.CreatedAt,
+	)
 	var i StageNpc
 	err := row.Scan(
 		&i.ID,
@@ -4561,6 +4568,7 @@ func (q *Queries) InsertStageNPC(ctx context.Context, arg InsertStageNPCParams) 
 		&i.Position,
 		&i.Speaking,
 		&i.CreatedAt,
+		&i.Hidden,
 	)
 	return i, err
 }
@@ -7277,7 +7285,7 @@ func (q *Queries) ListShownPuzzleRuns(ctx context.Context, gameSessionID string)
 
 const listStage = `-- name: ListStage :many
 
-SELECT id, game_session_id, character_id, position, speaking, created_at FROM stage_npcs
+SELECT id, game_session_id, character_id, position, speaking, created_at, hidden FROM stage_npcs
 WHERE game_session_id = $1
 ORDER BY position, id
 `
@@ -7301,6 +7309,7 @@ func (q *Queries) ListStage(ctx context.Context, gameSessionID string) ([]StageN
 			&i.Position,
 			&i.Speaking,
 			&i.CreatedAt,
+			&i.Hidden,
 		); err != nil {
 			return nil, err
 		}
@@ -9344,8 +9353,28 @@ func (q *Queries) SetShownImage(ctx context.Context, arg SetShownImageParams) (G
 	return i, err
 }
 
+const setStageNPCHidden = `-- name: SetStageNPCHidden :execrows
+UPDATE stage_npcs SET hidden = $1, speaking = speaking AND NOT $1::BOOL
+WHERE game_session_id = $2 AND character_id = $3
+`
+
+type SetStageNPCHiddenParams struct {
+	Hidden        bool
+	GameSessionID string
+	CharacterID   string
+}
+
+// Hides or shows the NPC to the players. A hidden NPC does not speak.
+func (q *Queries) SetStageNPCHidden(ctx context.Context, arg SetStageNPCHiddenParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setStageNPCHidden, arg.Hidden, arg.GameSessionID, arg.CharacterID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const setStageSpeaker = `-- name: SetStageSpeaker :execrows
-UPDATE stage_npcs SET speaking = true
+UPDATE stage_npcs SET speaking = true, hidden = false
 WHERE game_session_id = $1 AND character_id = $2
 `
 
@@ -9354,6 +9383,7 @@ type SetStageSpeakerParams struct {
 	CharacterID   string
 }
 
+// The NPC speaks, and a hidden one is shown by it: giving the floor is showing.
 func (q *Queries) SetStageSpeaker(ctx context.Context, arg SetStageSpeakerParams) (int64, error) {
 	result, err := q.db.Exec(ctx, setStageSpeaker, arg.GameSessionID, arg.CharacterID)
 	if err != nil {

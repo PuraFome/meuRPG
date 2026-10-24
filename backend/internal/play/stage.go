@@ -296,6 +296,14 @@ func (s *Service) TakeOffStage(
 	return connect.NewResponse(&playv1.TakeOffStageResponse{Stage: stage}), nil
 }
 
+// SetStageNpcHidden implements playv1connect.PlayServiceHandler.
+func (s *Service) SetStageNpcHidden(
+	_ context.Context,
+	_ *connect.Request[playv1.SetStageNpcHiddenRequest],
+) (*connect.Response[playv1.SetStageNpcHiddenResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not built yet"))
+}
+
 // SetSpeaker implements playv1connect.PlayServiceHandler.
 func (s *Service) SetSpeaker(
 	ctx context.Context,

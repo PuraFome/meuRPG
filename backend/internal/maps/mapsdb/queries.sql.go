@@ -1501,7 +1501,7 @@ func (q *Queries) GetMapVisionMemory(ctx context.Context, arg GetMapVisionMemory
 }
 
 const getSceneActionByCreateKey = `-- name: GetSceneActionByCreateKey :one
-SELECT id, point_id, position, key, name, dc, created_at, updated_at, max_attempts, create_key, create_hash FROM scene_actions WHERE create_key = $1
+SELECT id, point_id, position, key, name, dc, created_at, updated_at, max_attempts, create_key, create_hash, hidden FROM scene_actions WHERE create_key = $1
 `
 
 // The action an AddSceneAction with this idempotency key made, if any (the key carries the
@@ -1521,12 +1521,13 @@ func (q *Queries) GetSceneActionByCreateKey(ctx context.Context, createKey *stri
 		&i.MaxAttempts,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.Hidden,
 	)
 	return i, err
 }
 
 const getSceneActionForUpdate = `-- name: GetSceneActionForUpdate :one
-SELECT id, point_id, position, key, name, dc, created_at, updated_at, max_attempts, create_key, create_hash FROM scene_actions
+SELECT id, point_id, position, key, name, dc, created_at, updated_at, max_attempts, create_key, create_hash, hidden FROM scene_actions
 WHERE point_id = $1 AND id = $2
 FOR UPDATE
 `
@@ -1551,6 +1552,7 @@ func (q *Queries) GetSceneActionForUpdate(ctx context.Context, arg GetSceneActio
 		&i.MaxAttempts,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.Hidden,
 	)
 	return i, err
 }
@@ -2451,10 +2453,10 @@ func (q *Queries) InsertPointReveal(ctx context.Context, arg InsertPointRevealPa
 }
 
 const insertSceneAction = `-- name: InsertSceneAction :one
-INSERT INTO scene_actions (point_id, position, key, name, dc, max_attempts, create_key, create_hash, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9)
+INSERT INTO scene_actions (point_id, position, key, name, dc, max_attempts, hidden, create_key, create_hash, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10)
 ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
-RETURNING id, point_id, position, key, name, dc, created_at, updated_at, max_attempts, create_key, create_hash
+RETURNING id, point_id, position, key, name, dc, created_at, updated_at, max_attempts, create_key, create_hash, hidden
 `
 
 type InsertSceneActionParams struct {
@@ -2464,6 +2466,7 @@ type InsertSceneActionParams struct {
 	Name        string
 	Dc          *int32
 	MaxAttempts int32
+	Hidden      bool
 	CreateKey   *string
 	CreateHash  *string
 	Now         time.Time
@@ -2480,6 +2483,7 @@ func (q *Queries) InsertSceneAction(ctx context.Context, arg InsertSceneActionPa
 		arg.Name,
 		arg.Dc,
 		arg.MaxAttempts,
+		arg.Hidden,
 		arg.CreateKey,
 		arg.CreateHash,
 		arg.Now,
@@ -2497,6 +2501,7 @@ func (q *Queries) InsertSceneAction(ctx context.Context, arg InsertSceneActionPa
 		&i.MaxAttempts,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.Hidden,
 	)
 	return i, err
 }
@@ -3580,7 +3585,7 @@ func (q *Queries) ListReceivedClues(ctx context.Context, arg ListReceivedCluesPa
 
 const listSceneActions = `-- name: ListSceneActions :many
 
-SELECT id, point_id, position, key, name, dc, created_at, updated_at, max_attempts, create_key, create_hash FROM scene_actions
+SELECT id, point_id, position, key, name, dc, created_at, updated_at, max_attempts, create_key, create_hash, hidden FROM scene_actions
 WHERE point_id = $1
 ORDER BY position, created_at, id
 `
@@ -3609,6 +3614,7 @@ func (q *Queries) ListSceneActions(ctx context.Context, pointID string) ([]Scene
 			&i.MaxAttempts,
 			&i.CreateKey,
 			&i.CreateHash,
+			&i.Hidden,
 		); err != nil {
 			return nil, err
 		}
@@ -3621,7 +3627,7 @@ func (q *Queries) ListSceneActions(ctx context.Context, pointID string) ([]Scene
 }
 
 const listSceneActionsOfMap = `-- name: ListSceneActionsOfMap :many
-SELECT a.id, a.point_id, a.position, a.key, a.name, a.dc, a.created_at, a.updated_at, a.max_attempts, a.create_key, a.create_hash FROM scene_actions AS a
+SELECT a.id, a.point_id, a.position, a.key, a.name, a.dc, a.created_at, a.updated_at, a.max_attempts, a.create_key, a.create_hash, a.hidden FROM scene_actions AS a
 JOIN map_points AS p ON p.id = a.point_id
 WHERE p.map_id = $1
 ORDER BY a.point_id, a.position, a.created_at, a.id
@@ -3650,6 +3656,7 @@ func (q *Queries) ListSceneActionsOfMap(ctx context.Context, mapID string) ([]Sc
 			&i.MaxAttempts,
 			&i.CreateKey,
 			&i.CreateHash,
+			&i.Hidden,
 		); err != nil {
 			return nil, err
 		}
@@ -4741,9 +4748,9 @@ func (q *Queries) UpdateMapPoint(ctx context.Context, arg UpdateMapPointParams) 
 
 const updateSceneAction = `-- name: UpdateSceneAction :one
 UPDATE scene_actions
-SET key = $1, name = $2, dc = $3, max_attempts = $4, updated_at = $5
-WHERE point_id = $6 AND id = $7
-RETURNING id, point_id, position, key, name, dc, created_at, updated_at, max_attempts, create_key, create_hash
+SET key = $1, name = $2, dc = $3, max_attempts = $4, hidden = $5, updated_at = $6
+WHERE point_id = $7 AND id = $8
+RETURNING id, point_id, position, key, name, dc, created_at, updated_at, max_attempts, create_key, create_hash, hidden
 `
 
 type UpdateSceneActionParams struct {
@@ -4751,6 +4758,7 @@ type UpdateSceneActionParams struct {
 	Name        string
 	Dc          *int32
 	MaxAttempts int32
+	Hidden      bool
 	Now         time.Time
 	PointID     string
 	ID          string
@@ -4762,6 +4770,7 @@ func (q *Queries) UpdateSceneAction(ctx context.Context, arg UpdateSceneActionPa
 		arg.Name,
 		arg.Dc,
 		arg.MaxAttempts,
+		arg.Hidden,
 		arg.Now,
 		arg.PointID,
 		arg.ID,
@@ -4779,6 +4788,7 @@ func (q *Queries) UpdateSceneAction(ctx context.Context, arg UpdateSceneActionPa
 		&i.MaxAttempts,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.Hidden,
 	)
 	return i, err
 }

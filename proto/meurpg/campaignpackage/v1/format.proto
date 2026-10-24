@@ -202,6 +202,9 @@ message PackageAction {
   // 0: no DC.
   int32 dc = 3;
   int32 max_attempts = 4;
+  // The action is hidden from the players ("Escondida"); absent in a package
+  // made before the flag, which reads as false.
+  bool hidden = 5;
 }
 
 // PackageClue is a scene's clue, in its order.

@@ -589,12 +589,13 @@ WHERE game_session_id = $1
 ORDER BY position, id;
 
 -- name: InsertStageNPC :one
--- An NPC comes in after the ones already there: the highest position plus one.
-INSERT INTO stage_npcs (game_session_id, character_id, position, created_at)
+-- An NPC comes in after the ones already there: the highest position plus one. It comes in hidden from
+-- the players when the master said so.
+INSERT INTO stage_npcs (game_session_id, character_id, position, hidden, created_at)
 VALUES (
     sqlc.arg(game_session_id), sqlc.arg(character_id),
     (SELECT COALESCE(max(position) + 1, 0)::INT4 FROM stage_npcs WHERE game_session_id = sqlc.arg(game_session_id)),
-    sqlc.arg(created_at)
+    sqlc.arg(hidden), sqlc.arg(created_at)
 )
 RETURNING *;
 
@@ -612,8 +613,14 @@ UPDATE stage_npcs SET speaking = false
 WHERE game_session_id = $1 AND speaking;
 
 -- name: SetStageSpeaker :execrows
-UPDATE stage_npcs SET speaking = true
+-- The NPC speaks, and a hidden one is shown by it: giving the floor is showing.
+UPDATE stage_npcs SET speaking = true, hidden = false
 WHERE game_session_id = $1 AND character_id = $2;
+
+-- name: SetStageNPCHidden :execrows
+-- Hides or shows the NPC to the players. A hidden NPC does not speak.
+UPDATE stage_npcs SET hidden = sqlc.arg(hidden), speaking = speaking AND NOT sqlc.arg(hidden)::BOOL
+WHERE game_session_id = sqlc.arg(game_session_id) AND character_id = sqlc.arg(character_id);
 
 -- name: ListEncounterCombatEvents :many
 -- The events that count in the combat highlights (MR-032), oldest first, with

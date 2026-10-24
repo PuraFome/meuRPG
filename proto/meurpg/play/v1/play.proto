@@ -223,13 +223,15 @@ service PlayService {
   //   - `scene_changed` when the open scene changed (opened, closed, or one
   //     of its actions or its point changed); a hint, and the app reads it
   //     again (GetOpenScene). Sent to everyone, except a change only the
-  //     master reads (the clues and the hooks), which reaches the master
-  //     alone;
+  //     master reads (the clues, the hooks, and a hidden action that stays
+  //     hidden), which reaches the master alone;
   //   - `scene_check_rolled` when a character rolled an action of the open
   //     scene; sent only to the master and to the roller, with no number;
   //   - `stage_changed` when the stage changed (an NPC came in or went out,
-  //     the speaker changed, or the scene closed); a hint, sent to everyone,
-  //     and the app reads the open scene again (GetOpenScene);
+  //     the speaker changed, an NPC was shown or hidden, or the scene
+  //     closed); a hint, sent to everyone, and the app reads the open scene
+  //     again (GetOpenScene). A change only the master reads (a hidden NPC
+  //     put on the stage or taken off it) reaches the master alone;
   //   - `notes_changed` when the master revealed a clue to a player; sent
   //     only to the players who got it, and the app reads their notes again
   //     (NotesService.ListNotes);
@@ -718,8 +720,12 @@ service PlayService {
   // open. Any living NPC of the campaign will do, hidden in a combat or not
   // (putting it on stage reveals nothing in the combat). At most 4 NPCs are
   // on the stage at once. An NPC that is on the stage already changes
-  // nothing. Every stream gets `stage_changed`, and a `stage_changed` event
-  // goes to the history (ids only).
+  // nothing (SetStageNpcHidden changes whether the players see it). With
+  // `hidden` the NPC goes on the stage hidden from the players: it counts for
+  // the limit of 4, the master reads it marked `hidden`, and no player ever
+  // receives it (not in GetOpenScene, not its portrait), nor a `stage_changed`
+  // for it: only the master's stream hears of it. Otherwise every stream gets
+  // `stage_changed`. A `stage_changed` event goes to the history (ids only).
   //
   // Errors:
   //   - `not_found`: the character is not a living NPC of the campaign (or
@@ -732,8 +738,9 @@ service PlayService {
 
   // TakeOffStage takes an NPC off the stage at once. An NPC that is not on
   // it changes nothing. Only the campaign's master may call it, and only
-  // while the session is open (the stage is empty without a scene). Every
-  // stream gets `stage_changed`.
+  // while the session is open (the stage is empty without a scene). Taking
+  // off an NPC the players see sends `stage_changed` to every stream; taking
+  // off a hidden one, to the master's alone: the players never knew it.
   //
   // Errors:
   //   - `not_found`: character_id is not a UUID, the campaign does not exist,
@@ -743,10 +750,31 @@ service PlayService {
   //     NO_OPEN_SESSION).
   rpc TakeOffStage(TakeOffStageRequest) returns (TakeOffStageResponse);
 
+  // SetStageNpcHidden turns an NPC on the stage between "Os jogadores veem"
+  // (hidden false) and "Escondida dos jogadores" (hidden true). Hiding the
+  // NPC that speaks takes the floor from it. Only the campaign's master may
+  // call it, and only while the session is open. The answer is the stage as
+  // the master reads it. Showing or hiding sends `stage_changed` to every
+  // stream, so the players read the scene again and the NPC appears or is
+  // gone from their stage: nothing tells them that it was hidden rather than
+  // taken off. Setting what it already is changes nothing, writes nothing
+  // and tells nobody. A `stage_changed` event goes to the history (ids only).
+  //
+  // Errors:
+  //   - `not_found`: the NPC is not on the stage (or character_id is not a
+  //     UUID), the campaign does not exist, or the caller is not a member of
+  //     it.
+  //   - `permission_denied`: the caller is a player.
+  //   - `failed_precondition`: no open session (GameSessionBlocked,
+  //     NO_OPEN_SESSION).
+  rpc SetStageNpcHidden(SetStageNpcHiddenRequest) returns (SetStageNpcHiddenResponse);
+
   // SetSpeaker marks which NPC on the stage is speaking, or none (an empty
   // character_id). One at most: marking another takes the mark off the
-  // first. Marking the one that already speaks changes nothing. Only the
-  // campaign's master may call it. Every stream gets `stage_changed`.
+  // first. Marking the one that already speaks changes nothing. Marking a
+  // hidden NPC shows it to the players in the same call ("Dar a fala"): the
+  // master's tap means that it speaks now. Only the campaign's master may
+  // call it. Every stream gets `stage_changed`.
   //
   // Errors:
   //   - `not_found`: the NPC is not on the stage (or character_id is set and

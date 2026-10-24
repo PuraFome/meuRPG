@@ -289,7 +289,7 @@ func (s *Service) editAction(ctx context.Context, q *mapsdb.Queries, pointID, ac
 	if err != nil {
 		return mapsdb.SceneAction{}, nil, fmt.Errorf("find action: %w", err)
 	}
-	params := mapsdb.UpdateSceneActionParams{PointID: pointID, ID: actionID, Key: a.Key, Name: a.Name, Dc: a.Dc, MaxAttempts: a.MaxAttempts, Now: s.now()}
+	params := mapsdb.UpdateSceneActionParams{PointID: pointID, ID: actionID, Key: a.Key, Name: a.Name, Dc: a.Dc, MaxAttempts: a.MaxAttempts, Hidden: a.Hidden, Now: s.now()}
 	edit.applyTo(&params)
 	changed, err := q.UpdateSceneAction(ctx, params)
 	if err != nil {

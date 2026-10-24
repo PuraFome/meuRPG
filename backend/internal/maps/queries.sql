@@ -515,8 +515,8 @@ ORDER BY a.point_id, a.position, a.created_at, a.id;
 -- create_key and create_hash are the idempotency key of AddSceneAction and the hash of its request
 -- (NULL when the call sent no key). The point is locked first, so a retry reads the first action
 -- with GetSceneActionByCreateKey and never races it.
-INSERT INTO scene_actions (point_id, position, key, name, dc, max_attempts, create_key, create_hash, created_at, updated_at)
-VALUES (sqlc.arg(point_id), sqlc.arg(position), sqlc.arg(key), sqlc.arg(name), sqlc.narg(dc), sqlc.arg(max_attempts), sqlc.narg(create_key), sqlc.narg(create_hash), sqlc.arg(now), sqlc.arg(now))
+INSERT INTO scene_actions (point_id, position, key, name, dc, max_attempts, hidden, create_key, create_hash, created_at, updated_at)
+VALUES (sqlc.arg(point_id), sqlc.arg(position), sqlc.arg(key), sqlc.arg(name), sqlc.narg(dc), sqlc.arg(max_attempts), sqlc.arg(hidden), sqlc.narg(create_key), sqlc.narg(create_hash), sqlc.arg(now), sqlc.arg(now))
 ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
 RETURNING *;
 
@@ -532,7 +532,7 @@ FOR UPDATE;
 
 -- name: UpdateSceneAction :one
 UPDATE scene_actions
-SET key = sqlc.arg(key), name = sqlc.arg(name), dc = sqlc.narg(dc), max_attempts = sqlc.arg(max_attempts), updated_at = sqlc.arg(now)
+SET key = sqlc.arg(key), name = sqlc.arg(name), dc = sqlc.narg(dc), max_attempts = sqlc.arg(max_attempts), hidden = sqlc.arg(hidden), updated_at = sqlc.arg(now)
 WHERE point_id = sqlc.arg(point_id) AND id = sqlc.arg(id)
 RETURNING *;
 

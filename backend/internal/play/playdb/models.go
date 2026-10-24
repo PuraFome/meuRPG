@@ -645,6 +645,7 @@ type StageNpc struct {
 	Position      int32
 	Speaking      bool
 	CreatedAt     time.Time
+	Hidden        bool
 }
 
 type TrapDamage struct {

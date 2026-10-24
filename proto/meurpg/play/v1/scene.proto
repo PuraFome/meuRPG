@@ -62,7 +62,9 @@ message OpenSceneInfo {
   // The point's description, which every member reads in the open scene
   // (up to 2,000 characters, with line breaks).
   string description = 3;
-  // The scene's actions, in the order the master put them.
+  // The scene's actions, in the order the master put them. A player never
+  // gets an action the master hid ("Escondida"): not its name, DC, limit or
+  // rolls, as if it did not exist (RN-10). The master gets them all.
   repeated SceneActionView actions = 4;
   // The rolls made since the scene was opened, newest first. The master
   // gets everyone's; a player only their own character's.
@@ -77,9 +79,10 @@ message OpenSceneInfo {
   // Only the master gets them: a player never gets a clue here, revealed or
   // not (the revealed ones are in their notes, NotesService.ListNotes).
   repeated meurpg.maps.v1.SceneClue clues = 8;
-  // The NPCs "em cena", in the order they came in, at most 4 (MR-031). Every
-  // member gets the same list, each entry with only what a player may see
-  // (StageNpc). Empty when nobody is on the stage.
+  // The NPCs "em cena", in the order they came in, at most 4 (MR-031). Each
+  // entry carries only what a player may see (StageNpc). The master gets
+  // every NPC, the hidden ones marked `hidden`; a player gets only the ones
+  // the players see, never a hidden one. Empty when nobody is on the stage.
   repeated StageNpc stage = 10;
   // Whether this scene shows its DCs to the players ("Mostrar a CD aos
   // jogadores", MR-015, question 52). Every member gets it. On: a player's
@@ -109,11 +112,18 @@ message StageNpc {
   // thumbnail), or empty when the NPC has none and the app draws its
   // initials. A player may fetch it only while the NPC is on the stage.
   string portrait_url = 3;
-  // Whether the NPC is the one speaking now. At most one entry is.
+  // Whether the NPC is the one speaking now. At most one entry is. A hidden
+  // NPC never speaks.
   bool speaking = 4;
   // The character's ID (a UUID). Only the master gets it; a player's is
   // always empty (RN-20).
   string character_id = 5;
+  // Whether the NPC is hidden from the players ("Escondida dos jogadores"):
+  // true on the master's copy for an NPC the players do not see, and false
+  // for "Os jogadores veem". A player never gets a hidden NPC at all (not in
+  // the open scene, not in the stream, not its portrait), so a player's
+  // entries always carry false (RN-10).
+  bool hidden = 6;
 }
 
 // PutOnStageRequest names the NPC.
@@ -121,6 +131,10 @@ message PutOnStageRequest {
   string campaign_id = 1;
   // A living NPC of the campaign (a UUID).
   string character_id = 2;
+  // Put the NPC on the stage hidden from the players (it still counts for
+  // the limit of 4). False puts it where the players see it. Ignored for an
+  // NPC that is on the stage already: SetStageNpcHidden changes that.
+  bool hidden = 3;
 }
 
 // PutOnStageResponse returns the stage as it is now.
@@ -137,6 +151,23 @@ message TakeOffStageRequest {
 
 // TakeOffStageResponse returns the stage as it is now.
 message TakeOffStageResponse {
+  repeated StageNpc stage = 1;
+}
+
+// SetStageNpcHiddenRequest names the NPC on the stage and whether the players
+// see it.
+message SetStageNpcHiddenRequest {
+  string campaign_id = 1;
+  // An NPC on the stage (a UUID).
+  string character_id = 2;
+  // True hides the NPC from the players ("Escondida dos jogadores"); false
+  // shows it ("Os jogadores veem").
+  bool hidden = 3;
+}
+
+// SetStageNpcHiddenResponse returns the stage as it is now, as the master
+// sees it.
+message SetStageNpcHiddenResponse {
   repeated StageNpc stage = 1;
 }
 
@@ -190,6 +221,10 @@ message SceneActionView {
   // purpose may push it above `max_attempts` ("6 de 5"): when it is above,
   // write "Restam N tentativas" without the "de M".
   optional int32 attempts_left = 9;
+  // Whether the master hid this action from the players ("Escondida"). Set
+  // only on the master's copy: a player never gets a hidden action, so a
+  // player's actions always carry false (RN-10).
+  bool hidden = 10;
 }
 
 // SceneRoll is one check rolled in the scene.
