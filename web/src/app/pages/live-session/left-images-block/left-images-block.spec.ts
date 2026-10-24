@@ -26,7 +26,7 @@ describe('LeftImagesBlock (C5-02, C6-08)', () => {
     delete (window as unknown as Record<string, unknown>)['matchMedia'];
   });
 
-  function mount(images: readonly ShownImageVm[], phone: boolean) {
+  function mount(images: readonly ShownImageVm[], phone: boolean, embedded = false) {
     asPhone(phone);
     const open = vi
       .fn()
@@ -34,6 +34,7 @@ describe('LeftImagesBlock (C5-02, C6-08)', () => {
     TestBed.configureTestingModule({ providers: [{ provide: MatDialog, useValue: { open } }] });
     const fixture = TestBed.createComponent(LeftImagesBlock);
     fixture.componentRef.setInput('images', images);
+    fixture.componentRef.setInput('embedded', embedded);
     fixture.detectChanges();
     return { fixture, el: fixture.nativeElement as HTMLElement, open };
   }
@@ -67,5 +68,14 @@ describe('LeftImagesBlock (C5-02, C6-08)', () => {
     expect(thumb.textContent).toContain('Planta da torre');
     thumb.click();
     expect(open).toHaveBeenCalledTimes(1);
+  });
+
+  it("inside the image's card it is a titled section with the thumbnails, open, with no fold and no frame of its own", () => {
+    const { el } = mount([tower, hall], false, true);
+    expect(el.querySelector('app-fold')).toBeNull();
+    const section = el.querySelector('section.emb') as HTMLElement;
+    expect(section.querySelector('h3')?.textContent).toContain('Imagens que o mestre deixou (2)');
+    expect(section.getAttribute('aria-labelledby')).toBe(section.querySelector('h3')?.id);
+    expect(el.querySelectorAll('button.thumb').length).toBe(2);
   });
 });

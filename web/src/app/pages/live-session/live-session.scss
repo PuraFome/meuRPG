@@ -219,14 +219,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-rows: auto;
     column-gap: var(--mr-space-6);
-    align-items: stretch;
-  }
-
-  .player-board--split.player-board--image.player-board--left .player-top {
-    grid-template-rows: auto 1fr;
-    grid-template-areas:
-      'image scene'
-      'left scene';
+    align-items: start;
   }
 
   .player-board--split.player-board--image:not(.player-board--left) .player-top {

@@ -43,6 +43,71 @@ describe('ScenePlayer', () => {
     return flat(copy);
   };
 
+  describe('in tabs, on a phone (C7-07)', () => {
+    function tabbed(inputs: Record<string, unknown> = {}) {
+      const made = setup();
+      made.fixture.componentRef.setInput('tabs', true);
+      for (const [k, v] of Object.entries(inputs)) {
+        made.fixture.componentRef.setInput(k, v);
+      }
+      made.fixture.detectChanges();
+      return made;
+    }
+    const tabs = (el: HTMLElement) => Array.from(el.querySelectorAll<HTMLElement>('[role="tab"]'));
+    const panels = (el: HTMLElement) =>
+      Array.from(el.querySelectorAll<HTMLElement>('[role="tabpanel"]'));
+
+    it('has "Ações", "Mapa" and "Imagens" with the count, under the title, and no eyebrow', () => {
+      const { el } = tabbed({ imagesCount: 2 });
+      expect(tabs(el).map((t) => flat(t))).toEqual(['casinoAções', 'mapMapa', 'imageImagens2']);
+      expect(el.querySelector('.sc__eyebrow')).toBeNull();
+      expect(el.querySelector('[role="tablist"]')?.getAttribute('aria-label')).toBe(
+        'Seções da cena',
+      );
+    });
+
+    it('has no "Imagens" tab while the master left none', () => {
+      const { el } = tabbed({ imagesCount: 0 });
+      expect(tabs(el).map((t) => words(t))).toEqual(['Ações', 'Mapa']);
+    });
+
+    it('opens on "Ações" (the stage and the rolls), the other panels mounted and hidden', () => {
+      const { el } = tabbed({ imagesCount: 1 });
+      expect(panels(el).map((p) => p.hasAttribute('hidden'))).toEqual([false, true, true]);
+      expect(panels(el)[0].querySelectorAll('.sc__row')).toHaveLength(5);
+    });
+
+    it('shows the map panel when "Mapa" is chosen, and the rolls hide but stay', () => {
+      const { fixture, el } = tabbed({ imagesCount: 1 });
+      tabs(el)[1].click();
+      fixture.detectChanges();
+      expect(panels(el).map((p) => p.hasAttribute('hidden'))).toEqual([true, false, true]);
+      expect(panels(el)[0].querySelectorAll('.sc__row')).toHaveLength(5);
+    });
+
+    it('lights "Ações" amber with "1" when a group check waits, in words in its name', () => {
+      const { el } = tabbed({ waiting: true });
+      const actions = tabs(el)[0];
+      expect(actions.querySelector('.tl__badge--wait')?.textContent?.trim()).toBe('1');
+      expect(actions.getAttribute('aria-label')).toBe('Ações, um teste em grupo espera você');
+    });
+
+    it('falls back to "Ações" when the open tab goes (the last image is taken back)', () => {
+      const { fixture, el } = tabbed({ imagesCount: 1 });
+      tabs(el)[2].click();
+      fixture.detectChanges();
+      fixture.componentRef.setInput('imagesCount', 0);
+      fixture.detectChanges();
+      expect(panels(el)[0].hasAttribute('hidden')).toBe(false);
+    });
+
+    it('is the plain block (no tabs) when `tabs` is off', () => {
+      const { el } = setup();
+      expect(el.querySelector('[role="tablist"]')).toBeNull();
+      expect(el.querySelector('.sc__eyebrow')).not.toBeNull();
+    });
+  });
+
   it('shows nothing while no scene is open', () => {
     const state = new SceneState(
       () => Promise.resolve(null),
@@ -91,15 +156,10 @@ describe('ScenePlayer', () => {
     );
   });
 
-  it('shows the passive value only where the server sent one, in small print', () => {
+  it('draws no passive line, though the server sends the value (it is not on the board)', () => {
     const { el } = setup();
-    expect(rows(el).map((r) => flat(r.querySelector('.sc__passive')) ?? null)).toEqual([
-      'Investigação passiva 16',
-      null,
-      null,
-      'Percepção passiva 11',
-      null,
-    ]);
+    expect(el.querySelector('.sc__passive')).toBeNull();
+    expect(el.textContent).not.toContain('passiva');
   });
 
   it('never shows a DC, "passou" or the word "CD"', () => {

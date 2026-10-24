@@ -97,6 +97,16 @@ describe('ConversationPanel', () => {
     expect(el.querySelector('.panel__count')?.textContent?.trim()).toBe('2 na mesa');
   });
 
+  it('has no header of its own inside the rail (its tab says "Conversa"), and stays a section named "Conversa"', async () => {
+    const { el, fixture, set } = setup();
+    set('bare', true);
+    await settle(fixture);
+    expect(el.querySelector('h2')).toBeNull();
+    expect(el.querySelector('.panel__count')).toBeNull();
+    expect(el.querySelector('section')?.getAttribute('aria-label')).toBe('Conversa');
+    expect(el.querySelector('section')?.hasAttribute('aria-labelledby')).toBe(false);
+  });
+
   it('names the feed "Mensagens da cena" and draws one line per message', async () => {
     const { feed } = await loaded([
       line('n1', { speakerKind: Kind.NARRATOR }),

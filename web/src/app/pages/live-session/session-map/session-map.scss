@@ -162,3 +162,52 @@
   min-height: 44px;
   color: var(--mr-accent-text);
 }
+
+// The player's title: the map icon, "Mapa" and, muted, the map's name (C6-08); the full-screen button is a 44px icon at the right.
+.map__title {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  min-width: 0;
+
+  .mat-icon {
+    flex: none;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.map__sub {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--mr-font-sans);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--mr-ink-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map__full {
+  flex: none;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+}
+
+// The player's map inside the scene's "Mapa" tab (C7-07): no frame of its own (the scene's card is the frame); the caption and "Ver mapa" under it.
+.map--tab {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.map__caption {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.map__tabopen {
+  min-height: 44px;
+  color: var(--mr-accent-text);
+}

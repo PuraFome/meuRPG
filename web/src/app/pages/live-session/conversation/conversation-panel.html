@@ -1,4 +1,5 @@
-<section class="panel" [class.panel--full]="phone()" [attr.aria-labelledby]="titleId">
+<section class="panel" [class.panel--full]="phone()" [class.panel--bare]="bare()" [attr.aria-labelledby]="bare() ? null : titleId" [attr.aria-label]="bare() ? 'Conversa' : null">
+  @if (!bare()) {
   <header class="panel__head">
     @if (phone()) {
       <button type="button" class="panel__back" aria-label="Voltar à sessão" (click)="back.emit()">
@@ -15,6 +16,7 @@
       }
     }
   </header>
+  }
 
   @if (connection() === 'reconnecting') {
     <div class="mr-notice mr-notice--warning panel__notice" role="status">

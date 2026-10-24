@@ -29,6 +29,14 @@ export function wireLiveSessionEffects(
     untracked(() => services.sessionNotes.bar.set(show ? (bar ?? null) : null));
   });
 
+  // The pinned phone nav covers the bottom of the screen: while it is there the footer's links are not drawn (they could never be
+  // reached under it), so nothing sits beneath the nav (`body.mr-live-phone`, styles.scss).
+  effect(() => {
+    const phoneNav =
+      slot.phone() && state.phase() === 'live' && (state.isMaster() || !state.openPuzzle());
+    untracked(() => services.document.body.classList.toggle('mr-live-phone', phoneNav));
+  });
+
   // The conversation counts the lines that come while it is not on the reader's screen, and clears them when it is.
   effect(() => {
     const onScreen = slot.onScreen();

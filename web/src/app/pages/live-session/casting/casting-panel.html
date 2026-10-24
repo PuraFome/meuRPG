@@ -1,6 +1,11 @@
 <section class="casting" aria-labelledby="casting-h">
   <div class="casting__head">
-    <h2 class="casting__title" id="casting-h">Magias</h2>
+    <h2 class="casting__title" id="casting-h">
+      @if (!master()) {
+        <mat-icon aria-hidden="true">auto_fix_high</mat-icon>
+      }
+      Magias
+    </h2>
     @if (master()) {
       <button mat-stroked-button type="button" (click)="open(true)">
         <mat-icon aria-hidden="true">auto_fix_high</mat-icon>

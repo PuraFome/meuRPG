@@ -63,6 +63,8 @@ export class LiveSessionState {
   readonly castsTick = signal(0);
   /** Counts the `group_check_changed` hints (and each `ready`): the group check's card reads again when it moves (W7-X). */
   readonly groupCheckTick = signal(0);
+  /** A group check waits for this player's roll (the card says "Rolar"): the scene's "Ações" tab lights with it. */
+  readonly groupWaiting = signal(false);
   /** Counts the `held_rolls_changed` hints (and each `ready`): the master's pending questions read again when it moves. */
   readonly heldRollsTick = signal(0);
   /** Goes up when a rest was taken: the effects on the characters are read again with the spell casts. */

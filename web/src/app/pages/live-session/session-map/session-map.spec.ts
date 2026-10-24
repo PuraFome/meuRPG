@@ -220,7 +220,13 @@ describe('SessionMap, the player on a phone (C5-01)', () => {
     asPhone(false);
     const el = await mount(false);
     expect(el.querySelector('.map-row')).toBeNull();
-    expect(el.querySelector('#session-map-heading')?.textContent?.trim()).toBe('Cripta do Corvo');
-    expect(el.querySelector('a.map__open')?.textContent).toContain('Ver mapa');
+    // "Mapa" and, muted, the map's name and that it is the current one; "Ver mapa" is an icon button at the right (C6-08).
+    expect(el.querySelector('#session-map-heading')?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      'mapMapa · Cripta do Corvo · mapa atual',
+    );
+    const full = el.querySelector('a.map__full') as HTMLAnchorElement;
+    expect(full.getAttribute('aria-label')).toBe('Ver mapa');
+    expect(full.getAttribute('href')).toBe('/campaigns/camp-1/maps/map-1?from=session');
+    expect(el.querySelector('a.map__open')).toBeNull();
   });
 });

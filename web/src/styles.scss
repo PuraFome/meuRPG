@@ -432,3 +432,8 @@ a:hover {
     transition-duration: 0.01ms !important;
   }
 }
+
+// A live phone screen has the session's nav pinned over the bottom of the page, so the footer's links stay out of it.
+body.mr-live-phone app-footer {
+  display: none;
+}

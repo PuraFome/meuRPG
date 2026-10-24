@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import {
   Component,
   ElementRef,
@@ -7,6 +8,7 @@ import {
   computed,
   inject,
   input,
+  signal,
 } from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
@@ -26,7 +28,8 @@ import {
   sceneRollMark,
   signedBonus,
 } from '../../../../core/play/scene-view';
-import { tieShortWords, tight } from '../../../../core/format/text';
+import { tieShortWords } from '../../../../core/format/text';
+import { type TabItem, TabList, tabId, tabPanelId } from '../../../../shared/tab-list/tab-list';
 import { StagePlayer } from '../stage-player/stage-player';
 import { SceneRollSheet, openSceneRollSheet } from '../scene-roll-sheet/scene-roll-sheet';
 
@@ -34,8 +37,7 @@ import { SceneRollSheet, openSceneRollSheet } from '../scene-roll-sheet/scene-ro
  * "Cena" on the player's page (E7-03, MR-015, RN-20): the block under the
  * header, in the same accent frame as "O mestre está mostrando". It shows the
  * point's description and each action as a row: its name (or the check's), the
- * check, the passive value where the server sends one ("Investigação passiva
- * 16"), the player's own bonus and "Rolar" (48px). After rolling, the row is
+ * check, the player's own bonus and "Rolar" (a dice icon, 44px). After rolling, the row is
  * the result; an action rolls as many times as the master allows (1 by
  * default; MR-015, question 55) and says how many attempts are left ("Restam 2
  * de 3 tentativas", "Sem mais tentativas"). When the master shows the DC
@@ -51,7 +53,7 @@ import { SceneRollSheet, openSceneRollSheet } from '../scene-roll-sheet/scene-ro
  */
 @Component({
   selector: 'app-scene-player',
-  imports: [MatButtonModule, MatIconModule, StagePlayer],
+  imports: [MatButtonModule, MatIconModule, NgTemplateOutlet, StagePlayer, TabList],
   templateUrl: './scene-player.html',
   styleUrl: './scene-player.scss',
 })
@@ -87,6 +89,46 @@ export class ScenePlayer {
   readonly dicePreference = input.required<DicePreference>();
   /** The skills Talento Confiável raises for the character (the sheet's), for the typed die's preview. */
   readonly reliableTalent = input<readonly string[]>([]);
+  /** A phone (C7-07): the scene is in tabs, "Ações · Mapa · Imagens"; the map and the images come projected (`sceneMap`, `sceneImages`). */
+  readonly tabs = input(false);
+  /** How many images the master left (the count on "Imagens"; the tab is not drawn at 0). */
+  readonly imagesCount = input(0);
+  /** A group check waits for this player: "Ações" lights amber with "1", whichever tab is open. */
+  readonly waiting = input(false);
+
+  protected readonly tab = signal('actions');
+  protected readonly tabItems = computed<readonly TabItem[]>(() => {
+    const n = this.imagesCount();
+    return [
+      {
+        id: 'actions',
+        label: 'Ações',
+        icon: 'casino',
+        ...(this.waiting()
+          ? { badge: '1', tone: 'wait' as const, words: 'um teste em grupo espera você' }
+          : {}),
+      },
+      { id: 'map', label: 'Mapa', icon: 'map' },
+      ...(n > 0
+        ? [
+            {
+              id: 'images',
+              label: 'Imagens',
+              icon: 'image',
+              badge: String(n),
+              tone: 'count' as const,
+              words: n === 1 ? '1 imagem' : `${n} imagens`,
+            },
+          ]
+        : []),
+    ];
+  });
+  /** The open tab (the first when the chosen one is gone, as the images leave). */
+  protected readonly current = computed(() =>
+    this.tabItems().some((t) => t.id === this.tab()) ? this.tab() : 'actions',
+  );
+  protected readonly panelId = (id: string) => tabPanelId('scene', id);
+  protected readonly tabId = (id: string) => tabId('scene', id);
 
   protected readonly scene = computed(() => this.state().scene());
   /** The scene's name with "A" tied to the next word (no break after it). */
@@ -109,7 +151,6 @@ export class ScenePlayer {
         action,
         title: actionTitle(action),
         check: actionSubtitle(action),
-        passive: passiveLine(action),
         own,
         attempts,
         // The DC comes only when the master shows it; "Passou · CD 12" replaces the pill after a roll.
@@ -148,9 +189,4 @@ export class ScenePlayer {
       { injector: this.injector },
     );
   }
-}
-
-/** "Investigação passiva 16", only where the server sent a passive value. */
-function passiveLine(action: SceneActionView): string {
-  return action.passive === undefined ? '' : tight(`${action.checkName} passiva ${action.passive}`);
 }

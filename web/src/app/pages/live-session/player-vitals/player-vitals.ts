@@ -202,6 +202,9 @@ export class PlayerVitals {
       : 'Classe de Armadura';
   });
 
+  /** The tile's word: "CA", or "CA do Lobo" while a beast. */
+  protected readonly acShort = computed(() => (this.vitals().wildShape ? this.acLabel() : 'CA'));
+
   /** "3 de 5d10 e 1 de 1d6": the dice left by size. */
   protected readonly diceLeft = computed(() => hitDiceLeftWords(this.vitals().hitDiceSizes));
   /** The dice not yet spent, of every size. */
@@ -256,6 +259,11 @@ export class PlayerVitals {
   });
 
   protected readonly slotRowLabel = slotRowLabel;
+
+  /** "1º nível" as the card reads it: "1º" (the row's name for a screen reader keeps the whole). */
+  protected levelShort(label: string): string {
+    return label.replace(' nível', '');
+  }
 
   /** Said once by screen readers when the master changes a number: the
    * screen changes under the player's eyes, and this says what changed. */

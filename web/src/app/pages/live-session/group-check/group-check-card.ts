@@ -5,6 +5,7 @@ import {
   effect,
   inject,
   input,
+  output,
   signal,
   untracked,
 } from '@angular/core';
@@ -49,6 +50,9 @@ export class GroupCheckCard {
   private readonly dismissed = signal('');
   private readonly sheetOpen = signal(false);
 
+  /** The player has a group check to roll (the card says "Rolar"): the page lights the scene's "Ações" tab with it. */
+  readonly needsRoll = output<boolean>();
+
   protected readonly check = this.state.view;
   protected readonly own = this.state.own;
   protected readonly mode = computed(() => {
@@ -82,6 +86,10 @@ export class GroupCheckCard {
       const campaignId = this.campaignId();
       this.tick();
       untracked(() => void this.state.load(this.api, campaignId));
+    });
+    effect(() => {
+      const waits = this.mode() === 'roll';
+      untracked(() => this.needsRoll.emit(waits));
     });
     // A new check that waits for this player's roll opens its sheet, once.
     effect(() => {

@@ -43,6 +43,14 @@ describe('PlayerComposer', () => {
     expect(el.querySelector('button[type="submit"]')?.textContent).toContain('Enviar');
   });
 
+  it('keeps the "Mensagem" label for a screen reader only, and shows the words of the two buttons (C6-08)', () => {
+    const { el } = setup();
+    expect(el.querySelector('.composer__label--hidden')?.textContent?.trim()).toBe('Mensagem');
+    expect(el.querySelector('.composer__private')?.textContent).toContain('Só o mestre lê');
+    expect(el.querySelector('.composer__private mat-icon')?.textContent).toContain('lock');
+    expect(el.querySelector('.composer__send mat-icon')?.textContent).toContain('send');
+  });
+
   it('offers "Como <personagem>" and "Fora do personagem" as one radio group', () => {
     const { el } = setup();
     const group = el.querySelector('[role="radiogroup"]');

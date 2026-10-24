@@ -393,16 +393,22 @@
         />
         <!-- The player's scene (C5-01, C5-02, C6-08): on a phone one column (the image shown, the scene, the map row, the images left);
              from 1024px the image (and the images left under it) beside the scene, the map under them, and the rail on the right. -->
-        <div class="player-board" [class.board--scene]="scene.scene()" [class.player-board--split]="scene.scene() && (state.shownImage() || state.leftImages().length > 0)" [class.player-board--image]="state.shownImage()" [class.player-board--left]="state.leftImages().length > 0">
+        <div class="player-board" [class.board--scene]="scene.scene()" [class.player-board--split]="scene.scene() && (state.shownImage() || state.leftImages().length > 0)" [class.player-board--image]="state.shownImage()" [class.player-board--left]="state.leftImages().length > 0 && (slot.phone() || !state.shownImage())">
           <app-group-check-card
             class="player-board__group"
+            (needsRoll)="state.groupWaiting.set($event)"
             [campaignId]="state.campaignId()"
             [tick]="state.groupCheckTick()"
             [diceMode]="state.campaign()?.diceMode ?? 1"
             [preference]="state.campaign()?.dicePreference ?? 1"
           />
           <div class="player-top">
-            <app-shown-image-block class="player-board__image" [image]="state.shownImage()" [animate]="state.phase() === 'live'" />
+            <app-shown-image-block class="player-board__image" [image]="state.shownImage()" [animate]="state.phase() === 'live'">
+              @if (!slot.phone() && state.shownImage()) {
+                <!-- Beside the scene the images left are inside the image's card, under a divider (C6-08). -->
+                <ng-container [ngTemplateOutlet]="leftImages" [ngTemplateOutletContext]="{ $implicit: true }" />
+              }
+            </app-shown-image-block>
             <app-scene-player
               class="player-board__scene"
               [campaignId]="state.campaignId()"
@@ -410,24 +416,25 @@
               [diceMode]="state.campaign()?.diceMode ?? 1"
               [dicePreference]="state.campaign()?.dicePreference ?? 1"
               [reliableTalent]="state.playerSheet()?.skills?.reliableTalent ?? []"
-            />
-            <app-left-images-block class="player-board__left" [images]="state.leftImages()" />
+              [tabs]="sceneTabs()"
+              [imagesCount]="state.leftImages().length"
+              [waiting]="state.groupWaiting()"
+            >
+              <!-- On a phone the map and the images left are tabs of the scene's card (C7-07); one element per @if so each is projected by its selector. -->
+              @if (sceneTabs()) {
+                <div sceneMap><ng-container [ngTemplateOutlet]="mapBlock" [ngTemplateOutletContext]="{ $implicit: true }" /></div>
+              }
+              @if (sceneTabs()) {
+                <div sceneImages><app-left-images-block [images]="state.leftImages()" [bare]="true" /></div>
+              }
+            </app-scene-player>
+            @if ((slot.phone() || !state.shownImage()) && !sceneTabs()) {
+              <ng-container [ngTemplateOutlet]="leftImages" [ngTemplateOutletContext]="{ $implicit: false }" />
+            }
           </div>
-          <app-session-map
-            class="player-board__map"
-            [campaignId]="state.campaignId()"
-            [state]="mapState"
-            [mapId]="state.currentMapId()"
-            [searchable]="view.searchable()"
-            (searchTraps)="sheets.searchTraps()"
-            [fog]="fog"
-            [characterName]="view.ownCharacterName()"
-            [ownCharacterId]="state.ownCharacterId()"
-            [senses]="state.playerSheet()?.senses ?? []"
-            [seeing]="state.seeingFamiliar()"
-            [seeingFamiliar]="state.familiarNameNow()"
-            [creaturesTick]="state.creaturesTick()"
-          />
+          @if (!sceneTabs()) {
+            <ng-container [ngTemplateOutlet]="mapBlock" [ngTemplateOutletContext]="{ $implicit: false }" />
+          }
           <app-found-treasures class="player-board__finds" [points]="mapState.points()" [mapName]="mapState.map()?.name ?? ''" />
           <div class="player-board__activity"><app-trap-activity [activity]="trapBoard.activity()" /></div>
           @if (!slot.phone() && !railed()) {
@@ -503,6 +510,7 @@
       [sceneName]="scene.scene()?.name ?? ''"
       [connection]="state.connection()"
       [phone]="slot.phone()"
+      [bare]="railed()"
       [active]="slot.shown()"
       (back)="slot.choose('scene')"
     />
@@ -563,4 +571,29 @@
       </p>
     </div>
   }
+</ng-template>
+
+<!-- The images the master left with the players: a fold of one row on a phone, and inside the shown image's card (or alone, open) beside the scene. -->
+<ng-template #leftImages let-embedded>
+  <app-left-images-block class="player-board__left" [images]="state.leftImages()" [embedded]="embedded" />
+</ng-template>
+
+<!-- The player's map: a block of the board, or the "Mapa" tab of the scene's card on a phone. -->
+<ng-template #mapBlock let-inTab>
+  <app-session-map
+            class="player-board__map"
+            [inTab]="inTab"
+            [campaignId]="state.campaignId()"
+            [state]="mapState"
+            [mapId]="state.currentMapId()"
+            [searchable]="view.searchable()"
+            (searchTraps)="sheets.searchTraps()"
+            [fog]="fog"
+            [characterName]="view.ownCharacterName()"
+            [ownCharacterId]="state.ownCharacterId()"
+            [senses]="state.playerSheet()?.senses ?? []"
+            [seeing]="state.seeingFamiliar()"
+            [seeingFamiliar]="state.familiarNameNow()"
+            [creaturesTick]="state.creaturesTick()"
+          />
 </ng-template>

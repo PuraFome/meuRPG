@@ -108,6 +108,10 @@ export class LiveSession {
         .filter((id) => id !== ''),
     ),
   });
+  /** A phone with a scene open: the scene is in tabs ("Ações · Mapa · Imagens"), C7-07. */
+  protected readonly sceneTabs = computed(
+    () => this.slot.phone() && this.scene.scene() !== null && !this.state.isMaster(),
+  );
   protected readonly ownEffects = this.view.ownEffects;
   /** The rail's tabs: the unread count on "Conversa" in the accent colour and, in words, in the tab's name. */
   protected readonly railTabs = computed<readonly TabItem[]>(() => {
@@ -165,6 +169,7 @@ export class LiveSession {
       this.events.dispose();
       this.loader.dispose();
       this.services.sessionNotes.bar.set(null);
+      this.services.document.body.classList.remove('mr-live-phone');
     });
     wireLiveSessionEffects(
       this.services,

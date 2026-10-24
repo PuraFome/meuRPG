@@ -22,6 +22,7 @@ type As = 'character' | 'out-of-character';
       <div class="composer__row">
         <app-composer-field
           class="composer__field"
+          [labelled]="false"
           [(value)]="text"
           [error]="error()"
           [placeholder]="placeholder()"

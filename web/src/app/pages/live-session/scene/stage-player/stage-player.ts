@@ -28,7 +28,7 @@ import { StageViewer, type StageViewerData } from './stage-viewer';
  * stand as chips on a grid (two columns on a phone, three when the host is
  * wide): a small portrait or the initials, the name beside it, and the one who
  * speaks has the ink border, a bold name and the words "Fala agora". A long
- * name is cut with an ellipsis (its button's name says it whole). The stage
+ * name wraps, the chip growing in height. The stage
  * disappears when it is empty: there is no "Ninguém em cena".
  *
  * Tapping or clicking a figure (or Enter on it) opens it larger, in a bottom

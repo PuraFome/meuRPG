@@ -1926,6 +1926,15 @@ async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark',
     } else if (width >= 1024) {
       await openChatTab(p);
     }
+    if (width < 768) {
+      // The scene's tabs (C7-07): "Ações" is open; "Mapa" shows the map card, "Ações" again for the rest of the scan.
+      const sceneTabs = p.getByRole('tablist', { name: 'Seções da cena' });
+      await expect(sceneTabs.getByRole('tab', { name: 'Ações' })).toHaveAttribute('aria-selected', 'true');
+      await sceneTabs.getByRole('tab', { name: 'Mapa' }).click();
+      await expect(p.getByRole('tabpanel', { name: 'Mapa' }).getByRole('link', { name: 'Ver mapa' })).toBeVisible();
+      await expectScreenPasses(p, `Cena do jogador, aba Mapa ${where}`);
+      await sceneTabs.getByRole('tab', { name: 'Ações' }).click();
+    }
     const dice = p.getByRole('region', { name: 'Rolagens da mesa' });
     await dice.getByRole('button', { name: 'Rolagens da mesa' }).click();
     await expect(dice.getByRole('button', { name: 'Rolagens da mesa' })).toHaveAttribute('aria-expanded', 'true');
@@ -8411,6 +8420,10 @@ async function scanSessionBar(browser: Browser, colorScheme: 'light' | 'dark', w
         await expect(nav).toBeVisible();
         const navBox = await nav.boundingBox();
         expect(Math.round((navBox?.y ?? 0) + (navBox?.height ?? 0))).toBe(viewport.height);
+        // The open section is a 48 px pill, and nothing sits under the nav: the footer's links are not drawn on a live phone screen.
+        const pill = await nav.locator('[aria-current="true"]').boundingBox();
+        expect(Math.round(pill?.height ?? 0)).toBe(48);
+        await expect(page.getByRole('link', { name: 'Termos de uso' })).toBeHidden();
       }
     }
 

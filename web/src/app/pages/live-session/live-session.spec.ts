@@ -1064,7 +1064,7 @@ describe('LiveSession', () => {
       ).not.toBeNull();
       expect(el.textContent).toContain('Pensantus');
       expect(el.textContent).toContain('(você)');
-      expect(el.textContent).toContain('Ver mapa');
+      expect(el.querySelector('a.map__full[aria-label="Ver mapa"]')).not.toBeNull();
       expect(el.textContent).not.toContain('O mestre ainda não escolheu um mapa.');
     });
 
@@ -1241,6 +1241,48 @@ describe('LiveSession', () => {
       expect(el.textContent).not.toContain('O mestre abriu uma cena: A carroça tombada.');
       expect(document.activeElement).not.toBe(el.querySelector('#sc-title'));
       expect(scenes.calls).toContain('get');
+    });
+
+    describe('on a phone, in tabs (C7-07)', () => {
+      const phone = () => {
+        window.matchMedia = ((query: string) => ({
+          matches: query.includes('max-width'),
+          addEventListener: () => undefined,
+          removeEventListener: () => undefined,
+        })) as unknown as typeof window.matchMedia;
+      };
+      afterEach(() => {
+        delete (window as unknown as Record<string, unknown>)['matchMedia'];
+      });
+
+      it("puts the map and the images left in the scene's tabs, once each, and the image shown above the scene", async () => {
+        phone();
+        scenes.scene = playerScene();
+        source.left = [
+          { id: 'img-2', name: 'Planta da torre', width: 800, height: 600, url: '/images/img-2' },
+        ];
+        const el = await render();
+        const card = el.querySelector('app-scene-player') as HTMLElement;
+        expect(card.querySelectorAll('[role="tab"]').length).toBe(3);
+        expect(card.querySelector('[role="tabpanel"] app-session-map')).not.toBeNull();
+        expect(card.querySelector('[role="tabpanel"] button.thumb')).not.toBeNull();
+        expect(el.querySelectorAll('app-session-map').length).toBe(1);
+        expect(el.querySelectorAll('app-left-images-block').length).toBe(1);
+        // Outside the scene's card there is neither the one-row map nor the fold of the images.
+        expect(el.querySelector('.map-row')).toBeNull();
+        expect(el.querySelector('app-left-images-block app-fold')).toBeNull();
+      });
+
+      it('keeps the one-row map and the fold of images when no scene is open', async () => {
+        phone();
+        source.left = [
+          { id: 'img-2', name: 'Planta da torre', width: 800, height: 600, url: '/images/img-2' },
+        ];
+        const el = await render();
+        expect(el.querySelector('[role="tab"]')).toBeNull();
+        expect(el.querySelector('app-left-images-block app-fold')).not.toBeNull();
+        expect(el.querySelector('[role="tabpanel"]')).toBeNull();
+      });
     });
 
     it('shows nothing extra while no scene is open', async () => {

@@ -129,6 +129,8 @@ export class SessionMap {
   readonly viewAsGone = output<void>();
   readonly viewAsBack = output<void>();
 
+  /** The player's map inside the scene's "Mapa" tab on a phone (C7-07): the preview or the fog map, with its caption and "Ver mapa", not the one-row block. */
+  readonly inTab = input(false);
   protected readonly phone = mediaQuery(PHONE_QUERY);
   protected readonly error = signal<string | null>(null);
   protected readonly busy = signal(false);

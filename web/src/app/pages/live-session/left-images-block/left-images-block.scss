@@ -2,11 +2,35 @@
   display: block;
 }
 
-// At 1280 the block fills the rest of the image's column, so there is no gap under the image (C6-08).
 .left {
   display: block;
-  height: 100%;
   box-sizing: border-box;
+}
+
+// Inside the image's card: a divider, the title with its icon and the thumbnails; the card ends after them (C6-08).
+.emb {
+  margin-top: var(--mr-space-3);
+  padding-top: var(--mr-space-3);
+  border-top: 1px solid var(--mr-rule);
+}
+
+.emb__title {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0 0 var(--mr-space-3);
+  font-family: var(--mr-font-sans);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 20px;
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+    color: var(--mr-ink-muted);
+  }
 }
 
 .left__grid {
