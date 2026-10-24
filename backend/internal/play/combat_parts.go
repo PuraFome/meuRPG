@@ -1079,8 +1079,11 @@ func (s *Service) statBlockModifiers(ctx context.Context, c *combatTx, campaignI
 		types     []string
 		qualifier string
 	}{
-		{combat.StepImmunity, mods.Immune, ""}, {combat.StepResistance, mods.Resistant, ""}, {combat.StepVulnerability, mods.Vulnerable, ""},
-		{combat.StepImmunity, mods.ImmuneNonmagical, combat.QualifierNonmagical}, {combat.StepResistance, mods.ResistantNonmagical, combat.QualifierNonmagical},
+		{combat.StepImmunity, mods.Immune, ""},
+		{combat.StepResistance, mods.Resistant, ""},
+		{combat.StepVulnerability, mods.Vulnerable, ""},
+		{combat.StepImmunity, mods.ImmuneNonmagical, combat.QualifierNonmagical},
+		{combat.StepResistance, mods.ResistantNonmagical, combat.QualifierNonmagical},
 	} {
 		if len(g.types) > 0 {
 			out = append(out, combat.Modifier{Kind: g.kind, Source: source, DamageTypes: g.types, Qualifier: g.qualifier})

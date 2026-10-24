@@ -60,8 +60,8 @@ func TestCreatureDamageModsCarryTheQualifier(t *testing.T) {
 		}
 	}
 	// An entry with no damage type of its own, and a plain one, carry none.
-	spectre, _ := c.CreatureByKey("monster:specter")
-	for _, m := range spectre.Resistances {
+	specter, _ := c.CreatureByKey("monster:specter")
+	for _, m := range specter.Resistances {
 		if m.Note == "" && m.Qualifier != "" {
 			t.Errorf("a plain resistance carries qualifier %q", m.Qualifier)
 		}
