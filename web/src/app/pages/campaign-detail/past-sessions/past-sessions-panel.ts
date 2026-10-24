@@ -17,6 +17,8 @@ import { RouterLink } from '@angular/router';
 import { formatDuration } from '../../../core/play/session-summary';
 import { formatSessionSpan } from '../../../shared/session-time/session-time';
 import { CampaignSessions } from '../game-session/campaign-sessions';
+import { PHONE_QUERY, mediaQuery } from '../../../shared/map-view/media-query';
+import { PanelHead } from '../panel-head/panel-head';
 
 /** How many ended sessions show before "Mostrar as outras N". */
 const SHOWN = 5;
@@ -31,7 +33,7 @@ interface PastSession {
 /**
  * "Sessões anteriores" on `/campaigns/:id` (PM-01): the campaign's ended
  * sessions, newest first, each with its number, the day and hours it ran, how
- * long it lasted and "Ver resumo", which opens `/campaigns/:id/sessions/:n`.
+ * long it lasted and "Resumo" (named "Ver resumo da Sessão N"), which opens `/campaigns/:id/sessions/:n`.
  *
  * It reads the page's list of sessions (`CampaignSessions`, the same answer
  * the "Sessão" panel uses), so it makes no call of its own. The open session
@@ -43,7 +45,7 @@ interface PastSession {
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-past-sessions-panel',
-  imports: [MatButtonModule, MatIconModule, RouterLink],
+  imports: [MatButtonModule, MatIconModule, PanelHead, RouterLink],
   templateUrl: './past-sessions-panel.html',
   styleUrl: './past-sessions-panel.scss',
   host: { '[class.is-empty]': '!visible()' },
@@ -58,6 +60,11 @@ export class PastSessionsPanel implements OnInit {
   readonly isMaster = input(true);
 
   protected readonly expanded = signal(false);
+  /** A phone folds the panel to one row ("Sessões anteriores · 3"); it opens in place. */
+  private readonly phone = mediaQuery(PHONE_QUERY);
+  /** Only the master's phone folds it: a player's page keeps its panels as they are. */
+  protected readonly foldable = computed(() => this.phone() && this.isMaster());
+  protected readonly open = signal(false);
 
   private readonly all = computed<PastSession[]>(() =>
     this.sessions.ended().map((s) => {
@@ -77,7 +84,7 @@ export class PastSessionsPanel implements OnInit {
   protected readonly hidden = computed(() => this.all().length - this.rows().length);
   protected readonly count = computed(() => {
     const n = this.all().length;
-    return `${n} ${n === 1 ? 'encerrada' : 'encerradas'}`;
+    return this.foldable() ? `${n}` : `${n} ${n === 1 ? 'encerrada' : 'encerradas'}`;
   });
 
   protected readonly visible = computed(

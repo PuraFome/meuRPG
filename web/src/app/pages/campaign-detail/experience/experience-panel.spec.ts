@@ -140,19 +140,21 @@ describe('ExperiencePanel (E7-09, E7-08)', () => {
 
     expect(text(el)).toContain(`XP por inimigos derrotados. O nível 4 pede 2.700${nbsp}XP.`);
     expect(rows(el)).toHaveLength(3);
-    expect(rows(el)[0].textContent).toContain(`2.716 de${nbsp}2.700${nbsp}XP`);
+    // On a line: "nível 3", the bar and "2.716 XP"; a screen reader hears "2.716 de 2.700 XP".
+    expect(rows(el)[0].textContent).toContain('nível 3');
+    expect(rows(el)[0].textContent).toMatch(/2\.716\s+de 2\.700\s+XP/);
     expect(rows(el)[0].textContent).toContain('Pode subir de nível');
     expect(rows(el)[1].textContent).toContain(`Faltam${nbsp}334${nbsp}XP`);
     expect(rows(el)[1].querySelector('app-level-up-tag')).toBeNull();
     // Nothing is only a bar: the numbers are written.
-    expect(rows(el)[2].textContent).toContain(`0 de${nbsp}2.700${nbsp}XP`);
+    expect(rows(el)[2].textContent).toMatch(/0\s+de 2\.700\s+XP/);
     expect(rows(el)[0].querySelector('.bar')?.getAttribute('aria-hidden')).toBe('true');
   });
 
   it('never goes away: with no award it invites the first one', async () => {
     respond(XpMode.ENEMIES, [character('p', 'Pensantus', 0)]);
     const { el } = await setup(true);
-    expect(el.querySelector('h2')?.textContent).toBe('Experiência');
+    expect(el.querySelector('h2')?.textContent?.trim()).toBe('Experiência');
     expect(text(el)).toContain(
       'Ninguém recebeu XP ainda. Dê XP depois de um combate ou quando quiser.',
     );
@@ -193,12 +195,25 @@ describe('ExperiencePanel (E7-09, E7-08)', () => {
   it('shows the history under the rows, with the footer for who reads it', async () => {
     respond(XpMode.ENEMIES, undefined, [award('a1', { canUndo: true })]);
     const master = await setup(true);
-    expect(master.el.querySelector('h3')?.textContent).toBe('Histórico');
+    // The history is one row, "Histórico de XP (1)", that opens in place.
+    const toggle = master.el.querySelector<HTMLButtonElement>('.exp__toggle')!;
+    expect(text(toggle)).toContain('Histórico de XP (1)');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(master.el.querySelector('#history-body')?.hasAttribute('hidden')).toBe(true);
+    toggle.click();
+    master.fixture.detectChanges();
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(master.el.querySelector('#history-body')?.hasAttribute('hidden')).toBe(false);
     expect(master.el.querySelectorAll('app-award-history li')).toHaveLength(1);
     expect(text(master.el)).toContain('Só o último prêmio pode ser desfeito.');
+    expect(master.el.querySelector('h3')).toBeNull();
     TestBed.resetTestingModule();
     respond(XpMode.ENEMIES, undefined, [award('a1')]);
     const player = await setup(false);
+    // A player's history is not folded: a title and the list.
+    expect(player.el.querySelector('h3')?.textContent).toBe('Histórico');
+    expect(player.el.querySelector('.exp__toggle')).toBeNull();
+    expect(player.el.querySelector('#history-body')?.hasAttribute('hidden')).toBe(false);
     expect(text(player.el)).toContain('Todos da campanha veem este histórico.');
     expect(player.el.querySelectorAll('app-award-history button')).toHaveLength(0);
   });
@@ -270,7 +285,7 @@ describe('ExperiencePanel (E7-09, E7-08)', () => {
       treasure('i', 'Ídolo de prata', 50, 'Pensantus'),
     ];
     const buttons = (el: HTMLElement) =>
-      Array.from(el.querySelectorAll('.exp__head button'), (b) =>
+      Array.from(el.querySelectorAll('app-panel-head button'), (b) =>
         b.textContent?.replace('currency_exchange', '').trim(),
       );
 
@@ -293,7 +308,7 @@ describe('ExperiencePanel (E7-09, E7-08)', () => {
         create(ListTreasuresToConvertResponseSchema, { treasures: THREE, total: 3 }),
       );
       const { el } = await setup(true);
-      Array.from(el.querySelectorAll<HTMLButtonElement>('.exp__head button'))
+      Array.from(el.querySelectorAll<HTMLButtonElement>('app-panel-head button'))
         .find((b) => b.textContent?.includes('Voltar à cidade'))!
         .click();
       expect(dialogOpen).toHaveBeenCalledTimes(1);
@@ -334,7 +349,7 @@ describe('ExperiencePanel (E7-09, E7-08)', () => {
       respond(XpMode.GOLD);
       const { el } = await setup(false);
       expect(el.querySelector('app-treasure-strip')).toBeNull();
-      expect(el.querySelector('.exp__head button')).toBeNull();
+      expect(el.querySelector('app-panel-head button')).toBeNull();
       expect(listTreasures).not.toHaveBeenCalled();
     });
 
@@ -384,7 +399,7 @@ describe('ExperiencePanel (E7-09, E7-08)', () => {
         });
       await fixture.whenStable();
       fixture.detectChanges();
-      const gains = Array.from(el.querySelectorAll('.num__gain'), (g) => g.textContent);
+      const gains = Array.from(el.querySelectorAll('.extra__gain'), (g) => g.textContent);
       // Pensantus can level up (the tag stays); Toren shows what he got; Brisa, who got nothing, keeps "Faltam…".
       expect(gains).toEqual([`+105${nbsp}XP`]);
       expect(rows(el)[2].textContent).toContain('Faltam');
@@ -393,7 +408,7 @@ describe('ExperiencePanel (E7-09, E7-08)', () => {
         .query((d) => d.name === 'app-award-history')
         ?.triggerEventHandler('undone', undefined);
       fixture.detectChanges();
-      expect(el.querySelectorAll('.num__gain')).toHaveLength(0);
+      expect(el.querySelectorAll('.extra__gain')).toHaveLength(0);
       expect(el.querySelector('.exp__status')?.textContent?.trim()).toBe('');
     });
 
@@ -413,10 +428,12 @@ describe('ExperiencePanel (E7-09, E7-08)', () => {
       expect(el.querySelector('.exp__status')?.textContent).toContain('Voltar à cidade');
     });
 
-    it('asks for the full-width buttons on a phone, for every mode', async () => {
+    it('keeps "Dar XP" in the title row, beside the icon and the title, not on a line of its own', async () => {
       respond(XpMode.ENEMIES);
       const { el } = await setup(true);
-      expect(el.querySelector('app-xp-give-button')?.classList.contains('block')).toBe(true);
+      const give = el.querySelector('app-panel-head app-xp-give-button');
+      expect(give).not.toBeNull();
+      expect(give?.classList.contains('block')).toBe(false);
     });
   });
 });

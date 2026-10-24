@@ -1,0 +1,46 @@
+<section class="mr-panel members" [class.is-folded]="foldable() && !open()" aria-labelledby="members-heading">
+  <app-panel-head
+    icon="person"
+    title="Membros"
+    titleId="members-heading"
+    [count]="count()"
+    [foldable]="foldable()"
+    [(open)]="open"
+  >
+    @if (foldable() && !open() && waiting() > 0) {
+      <span class="mr-tag mr-tag--pending">
+        <mat-icon aria-hidden="true">schedule</mat-icon>{{ waiting() }} pendente{{ waiting() === 1 ? '' : 's' }}
+      </span>
+    }
+  </app-panel-head>
+  @if (!foldable() || open()) {
+  <ul class="mr-list">
+    @for (m of members(); track m.userId) {
+      <li class="member">
+        <span class="member__avatar" aria-hidden="true">{{ initial(m) }}</span>
+        <span class="member__text">
+          <span class="member__name" [class.mr-muted]="!m.hasName">
+            {{ m.name }}
+            @if (m.isViewer) {
+              <span class="mr-muted member__you">(você)</span>
+            }
+          </span>
+          @if (m.isViewer && !m.hasName) {
+            <a class="member__profile" routerLink="/profile">Escolher o nome que a mesa vê</a>
+          }
+        </span>
+        @if (isWaiting(m)) {
+          <span class="mr-tag mr-tag--pending">
+            <mat-icon aria-hidden="true">schedule</mat-icon>Pendente
+            <span class="mr-visually-hidden">: o personagem espera a aprovação do mestre</span>
+          </span>
+        }
+        <span class="member__role">{{ m.role }}</span>
+      </li>
+    }
+  </ul>
+  @if (isMaster()) {
+    <app-pending-members [campaignId]="campaignId()" [campaignName]="campaignName()" />
+  }
+  }
+</section>

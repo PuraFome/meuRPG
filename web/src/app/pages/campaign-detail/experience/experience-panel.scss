@@ -2,23 +2,22 @@
   display: block;
 }
 
-.exp__head {
+// The panel of the boards: padding 16 20 20, the head with the icon, the "Dar XP" button at its end.
+.exp {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--mr-space-3);
-  margin-bottom: var(--mr-space-2);
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 20px 20px;
 
-  .mr-panel__title {
-    margin: 0;
+  &[hidden] {
+    display: none;
   }
 }
 
 .exp__lead {
-  margin: 0 0 var(--mr-space-2);
-  font-size: 15px;
-  line-height: 20px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
   color: var(--mr-ink-muted);
 }
 
@@ -35,12 +34,46 @@
   margin: 0 0 var(--mr-space-3);
 }
 
+// A player reads the history under its own small title.
 .exp__sub {
-  margin: var(--mr-space-4) 0 var(--mr-space-1);
+  margin: var(--mr-space-2) 0 0;
   font-family: var(--mr-font-display);
   font-weight: 700;
   font-size: 19px;
   line-height: 24px;
+}
+
+// "Histórico de XP (5)": a full-width row under a rule, the accent ink, opens the history in place.
+.exp__toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-top: 1px solid var(--mr-rule);
+  background: none;
+  color: var(--mr-accent-text);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+
+  .exp__chevron {
+    margin-left: auto;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+    color: var(--mr-ink-muted);
+  }
 }
 
 .exp__foot {
@@ -60,7 +93,7 @@
 
 // The treasure strip (master): under the lead, nothing at all when it has nothing to say.
 .exp__strip {
-  margin: var(--mr-space-3) 0 var(--mr-space-2);
+  margin: 0;
 
   &:empty {
     display: none;

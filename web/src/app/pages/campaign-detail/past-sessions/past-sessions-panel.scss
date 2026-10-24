@@ -10,23 +10,13 @@
 .past {
   display: flex;
   flex-direction: column;
-  gap: var(--mr-space-2);
+  gap: 12px;
+  padding: 16px 20px 20px;
 
-  .mr-panel__title {
-    margin: 0;
+  // Folded to one row on a phone (board C6-04).
+  &.is-folded {
+    padding: 4px 16px;
   }
-}
-
-.past__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--mr-space-3);
-}
-
-.past__count {
-  font-size: 14px;
-  color: var(--mr-ink-muted);
 }
 
 .past__text {
@@ -46,30 +36,21 @@
   margin: 0;
 }
 
-// One row never wraps. Name, date and duration stack in the left column (on a phone the duration sits under the
-// date); the link takes the right column, centred on the whole row. From 600 px the duration moves beside the link.
+// One row never wraps: the name over the day, hours and duration on the left, the link on the right.
 .row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas:
     'name link'
-    'when link'
-    'duration link';
+    'sub link';
   align-items: center;
   column-gap: var(--mr-space-3);
-  padding: 4px 0;
+  min-height: 56px;
+  padding: 6px 0;
   border-top: 1px solid var(--mr-rule);
 
   &:first-child {
     border-top: 0;
-  }
-
-  @media (min-width: 600px) {
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    grid-template-areas:
-      'name duration link'
-      'when duration link';
-    column-gap: var(--mr-space-4);
   }
 }
 
@@ -77,26 +58,23 @@
   grid-area: name;
   min-width: 0;
   overflow-wrap: anywhere;
-  font-family: var(--mr-font-display);
-  font-size: 19px;
+  font-size: 16px;
   font-weight: 700;
-  line-height: 26px;
+  line-height: 21px;
 }
 
-.row__when {
-  grid-area: when;
+// The day and hours, then the duration, as one line of muted words (it wraps on a phone, never inside a part).
+.row__sub {
+  grid-area: sub;
   min-width: 0;
   font-size: 14px;
-  line-height: 20px;
+  line-height: 19px;
   color: var(--mr-ink-muted);
 }
 
+.row__when,
 .row__duration {
-  grid-area: duration;
-  font-size: 14px;
-  line-height: 20px;
-  color: var(--mr-ink-muted);
-  white-space: nowrap;
+  display: inline-block;
 }
 
 .row__link {
@@ -114,10 +92,20 @@
     text-decoration: underline;
   }
 
+  gap: 6px;
+
   .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+
+  .row__chevron {
     width: 20px;
     height: 20px;
     font-size: 20px;
+    margin-left: 4px;
+    color: var(--mr-ink-muted);
   }
 }
 

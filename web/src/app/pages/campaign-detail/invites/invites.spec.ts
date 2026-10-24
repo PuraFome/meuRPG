@@ -5,6 +5,8 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import { Invite, InviteState } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { CampaignsService } from '../../../core/campaigns/campaigns.service';
 import { CampaignInvites } from './invites';
+import { settle } from '../../../../test-settle';
+import { endPhone, startPhone } from '../phone-testing';
 
 @Injectable()
 class FakeCampaignsService {
@@ -211,5 +213,54 @@ describe('CampaignInvites', () => {
         delete (navigator as { clipboard?: unknown }).clipboard;
       }
     }
+  });
+
+  describe('on a phone (board C6-04)', () => {
+    beforeEach(() => startPhone());
+    afterEach(() => endPhone());
+
+    it('folds to "Convites · 1 usado" with "Gerar convite", and opens in place to make one', async () => {
+      fake.listInvitesResult = Promise.resolve({
+        invites: [invite('i1', InviteState.USED_UP, 1, 1)],
+      });
+      const { el, fixture } = await render();
+      const toggle = el.querySelector<HTMLButtonElement>('h2 button')!;
+      expect(toggle.textContent?.replace(/\s+/g, ' ').trim()).toBe('Convites · 1 usado');
+      expect(toggle.getAttribute('aria-expanded')).toBe('false');
+      expect(el.querySelector('form')).toBeNull();
+
+      const create = Array.from(el.querySelectorAll('button')).find((b) =>
+        b.textContent?.includes('Gerar convite'),
+      )!;
+      create.click();
+      await settle(fixture);
+      expect(toggle.getAttribute('aria-expanded')).toBe('true');
+      expect(el.querySelector('form')).not.toBeNull();
+      expect(document.activeElement?.getAttribute('formcontrolname')).toBe('maxUses');
+      // One "Gerar convite" button: the one of the form.
+      expect(
+        Array.from(el.querySelectorAll('button')).filter((b) =>
+          b.textContent?.includes('Gerar convite'),
+        ),
+      ).toHaveLength(1);
+    });
+
+    it('says "2 ativos" while invites work, and "nenhum ativo" when none does', async () => {
+      fake.listInvitesResult = Promise.resolve({
+        invites: [invite('i1', InviteState.ACTIVE), invite('i2', InviteState.ACTIVE)],
+      });
+      const first = await render();
+      expect(first.el.querySelector('h2 button')?.textContent).toContain('2 ativos');
+
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        imports: [CampaignInvites],
+        providers: [{ provide: CampaignsService, useClass: FakeCampaignsService }],
+      });
+      fake = TestBed.inject(CampaignsService) as unknown as FakeCampaignsService;
+      fake.listInvitesResult = Promise.resolve({ invites: [invite('i3', InviteState.REVOKED)] });
+      const second = await render();
+      expect(second.el.querySelector('h2 button')?.textContent).toContain('nenhum ativo');
+    });
   });
 });

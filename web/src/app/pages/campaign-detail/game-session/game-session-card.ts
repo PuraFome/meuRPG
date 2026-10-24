@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import {
   Component,
   ElementRef,
@@ -14,6 +15,7 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { RouterLink } from '@angular/router';
 import { Code } from '@connectrpc/connect';
 
@@ -23,6 +25,7 @@ import { lockedSheetCountLabel } from '../../../core/characters/character-labels
 import { describeConnectError } from '../../../core/connect/connect-errors';
 import { ActionKey } from '../../../core/connect/idempotency';
 import { LivePill } from '../../../shared/live-pill/live-pill';
+import { PHONE_QUERY, mediaQuery } from '../../../shared/map-view/media-query';
 import { COPIED_FOR_MS, copyText, sessionLink } from '../../../shared/session-link/session-link';
 import { formatSessionStart } from '../../../shared/session-time/session-time';
 import { GAME_SESSION_BLOCKED_TEXT } from '../../../core/play/game-session-blocked';
@@ -67,9 +70,10 @@ const MASTER_ONLY_MESSAGES = {
  *
  * For the master: "Iniciar sessão" (RN-01: starting locks every player's
  * sheet; ending never unlocks them) or, while one is open, "Sessão 4 em
- * andamento, desde qui., 8 de out., 19h05." with "Entrar na sessão" (the page's one
- * filled button), "Copiar link da sessão" (RN-07) and "Encerrar sessão",
- * which confirms in place (docs/design/README.md: what can't be undone confirms on
+ * andamento, desde qui., 8 de out., 19h05." with "Encerrar sessão", "Copiar link da sessão" (RN-07)
+ * and "Entrar na sessão" (the page's one filled button), in that order (boards C2-01, C6-04):
+ * on a phone "Entrar na sessão" and a "Mais ações da sessão" menu with the other two.
+ * "Encerrar sessão" confirms in place (docs/design/README.md: what can't be undone confirms on
  * the screen itself).
  *
  * For a player: only while a session is open, the same sentence with
@@ -79,7 +83,7 @@ const MASTER_ONLY_MESSAGES = {
  */
 @Component({
   selector: 'app-game-session-card',
-  imports: [LivePill, MatButtonModule, MatIconModule, RouterLink],
+  imports: [LivePill, MatButtonModule, MatIconModule, MatMenuModule, NgTemplateOutlet, RouterLink],
   templateUrl: './game-session-card.html',
   styleUrl: './game-session-card.scss',
   host: { '[class.is-empty]': 'isEmpty()' },
@@ -108,6 +112,8 @@ export class GameSessionCard implements OnInit, OnDestroy {
         return { status: 'ready', session: this.sessions.open() };
     }
   });
+  /** A phone (under 768 px) keeps "Entrar na sessão" and puts the other two actions in a menu. */
+  protected readonly phone = mediaQuery(PHONE_QUERY);
   protected readonly actionState = signal<ActionState>({ status: 'idle' });
   protected readonly confirmingEnd = signal(false);
   /** The characters with choices open, asked about before the session starts; `null` while nothing is asked. */
