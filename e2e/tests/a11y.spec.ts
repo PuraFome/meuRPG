@@ -8,7 +8,7 @@ import { expectAligned } from './layout';
 import { expectLoaded } from './loaded';
 import { diceTable, openDice, stepModifier } from './free-dice-support';
 import { chooseReaders, lineOf, messageBoxOf, openConversaTable, say } from './conversa-support';
-import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus } from './live-session-support';
+import { endOpenSessionRPC, endSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus, openSessionMenu, clickStartCombat, expectStartCombatOffered, endSessionFromBar } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
 import { adjustVitalsRPC, beginAttackCombatRPC, setGridRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
 import { addActionRPC, attachTwoImagesRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC, sceneActionIdsRPC, setAttemptsRPC, setShowDcRPC, tableForScenes } from './scene-support';
@@ -925,9 +925,9 @@ async function scanCombatScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await m.getByRole('button', { name: 'Salvar grade' }).click();
     await expect(m).toHaveURL(/\/session$/);
 
-    await expect(m.getByRole('button', { name: 'Iniciar combate' })).toBeVisible();
+    await expectStartCombatOffered(m);
     await expectScreenPasses(m, `Sessão com o convite ao combate ${where}`);
-    await m.getByRole('button', { name: 'Iniciar combate' }).click();
+    await clickStartCombat(m);
     await expect(m.getByRole('dialog', { name: 'Iniciar combate' })).toBeVisible();
     for (let i = 0; i < 3; i++) {
       await m.getByRole('button', { name: 'Mais um Goblin', exact: true }).click();
@@ -2126,7 +2126,7 @@ async function scanNotesScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await expect(m.getByRole('heading', { name: 'Cena: A carroça tombada' })).toBeFocused();
     await expectScreenPasses(m, `Cena aberta com pistas e ganchos ${where}`);
     if (width < 768) {
-      await m.getByRole('button', { name: 'Abrir os ganchos e anotações' }).click();
+      await m.getByRole('button', { name: 'Ganchos e anotações' }).click();
       await expect(m.getByText(cartHooks)).toBeVisible();
       await expectScreenPasses(m, `Cena aberta, ganchos abertos ${where}`);
     }
@@ -2579,7 +2579,7 @@ async function scanCombatDetailsScreens(browser: Browser, colorScheme: 'light' |
 
     if (phone) {
       // The master's log is folded on a phone.
-      await m.getByRole('button', { name: 'Abrir o registro' }).click();
+      await m.getByRole('button', { name: 'Registro do combate' }).click();
     }
     await expect(m.locator('app-pool-card')).toBeVisible({ timeout: 20_000 });
     await expectScreenPasses(m, `O cartão do Sono no registro do mestre ${where}`);
@@ -2653,7 +2653,7 @@ async function scanHiddenAreaScreens(browser: Browser, colorScheme: 'light' | 'd
     await expectScreenPasses(p, `Esperando o mestre, a vez parada ${where}`);
 
     if (width < 768) {
-      await m.getByRole('button', { name: 'Abrir o registro' }).click().catch(() => undefined);
+      await m.getByRole('button', { name: 'Registro do combate' }).click().catch(() => undefined);
     }
     const card = m.getByRole('group', { name: hiddenInArea ? /atingiu 1 criatura escondida/ : /nenhuma criatura escondida na área/ });
     await expect(card).toBeVisible({ timeout: 20_000 });
@@ -2827,8 +2827,7 @@ async function scanSessionSummaryScreens(browser: Browser, colorScheme: 'light' 
     await openSessionPage(m, campaignId);
     await expect(m.getByText('Passou · CD 12')).toBeVisible();
 
-    await m.getByRole('button', { name: 'Encerrar sessão' }).click();
-    await m.getByRole('button', { name: 'Confirmar encerramento' }).click();
+    await endSessionFromBar(m);
     await expect(m.getByRole('heading', { name: 'Sessão encerrada' })).toBeVisible();
     await expect(m.getByRole('table', { name: 'Testes passados fora do combate' })).toBeVisible();
     await expectScreenPasses(m, `Resumo da sessão do mestre ${where}`);
@@ -3205,8 +3204,7 @@ async function scanGoldScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await threeTreasuresRPC(m, summary);
     await openSessionPage(p, summary.campaignId);
     await openSessionPage(m, summary.campaignId);
-    await m.getByRole('button', { name: 'Encerrar sessão' }).click();
-    await m.getByRole('button', { name: 'Confirmar encerramento' }).click();
+    await endSessionFromBar(m);
     await expect(m.getByRole('heading', { name: 'Sessão encerrada' })).toBeVisible();
     await expect(m.getByRole('table', { name: 'Mais tesouro encontrado' })).toBeVisible();
     await expectScreenPasses(m, `Resumo da sessão com Mais tesouro encontrado, mestre ${where}`);
@@ -5151,7 +5149,7 @@ async function scanTheatreScreens(browser: Browser, colorScheme: 'light' | 'dark
 
     // The dialog: "Sem mapa" with its one line, and "Com mapa" with the map.
     await openSessionPage(m, campaignId);
-    await m.getByRole('button', { name: 'Iniciar combate' }).click();
+    await clickStartCombat(m);
     const dialog = m.getByRole('dialog', { name: 'Iniciar combate' });
     await expect(dialog.getByTestId('theatre-why')).toBeVisible();
     await expectScreenPasses(m, `Iniciar combate, sem mapa ${where}`);
@@ -8317,4 +8315,78 @@ test('as zonas de magia passam no axe e nas conferências de layout no tema clar
 test('as zonas de magia passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@RN-37'] }, async ({ browser }) => {
   test.setTimeout(400_000);
   await scanZoneScreens(browser, 'dark', 390);
+});
+
+/**
+ * The session bar and the pinned nav (compact screens): the bar is one row of 56 px for the master and the player, the
+ * master's "Sessão" menu and the end asked in place under it pass the scans, and on a phone the nav sits at the bottom of the screen.
+ */
+async function scanSessionBar(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const phone = width < 768;
+  const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableWithPensantus(m, p, `Acessibilidade barra ${Date.now()}`);
+    campaignId = table.campaignId;
+    await startSessionRPC(m, campaignId);
+    await openSessionPage(p, campaignId);
+    await openSessionPage(m, campaignId);
+
+    for (const [who, page] of [['mestre', m], ['jogador', p]] as const) {
+      const bar = page.locator('app-session-header .bar');
+      await expect(bar).toBeVisible();
+      const box = await bar.boundingBox();
+      expect(box?.height).toBeGreaterThanOrEqual(55);
+      expect(box?.height).toBeLessThanOrEqual(57);
+      await expect(page.getByRole('link', { name: /^Voltar para a campanha/ })).toBeVisible();
+      await expect(page.getByRole('button', { name: /^Dados|^Rolando/ })).toBeVisible();
+      await expectScreenPasses(page, `Barra da sessão, ${who} ${where}`);
+      if (phone) {
+        const nav = page.getByRole('navigation', { name: 'Seções da sessão' });
+        await expect(nav).toBeVisible();
+        const navBox = await nav.boundingBox();
+        expect(Math.round((navBox?.y ?? 0) + (navBox?.height ?? 0))).toBe(viewport.height);
+      }
+    }
+
+    // The master's menu, then the end asked in place with "Cancelar" focused.
+    await openSessionMenu(m);
+    await expect(m.getByRole('menuitem', { name: 'Copiar link da sessão' })).toBeVisible();
+    await expectScreenPasses(m, `Menu Sessão aberto ${where}`);
+    await m.getByRole('menuitem', { name: 'Encerrar sessão' }).click();
+    const ask = m.getByRole('group', { name: /Encerrar a sessão \d+\? Ela não reabre depois\./ });
+    await expect(ask).toBeVisible();
+    await expect(ask.getByRole('button', { name: 'Cancelar' })).toBeFocused();
+    await expectScreenPasses(m, `Encerrar a sessão perguntado no lugar ${where}`);
+    await ask.getByRole('button', { name: 'Cancelar' }).click();
+    await expect(ask).toHaveCount(0);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('a barra da sessão, o menu "Sessão" e a navegação fixa passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-011', '@MR-032'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanSessionBar(browser, 'light', 1280);
+});
+
+test('a barra da sessão, o menu "Sessão" e a navegação fixa passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-011', '@MR-032'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanSessionBar(browser, 'dark', 390);
+});
+
+test('a barra da sessão, o menu "Sessão" e a navegação fixa passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-011', '@MR-032'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanSessionBar(browser, 'light', 320);
 });

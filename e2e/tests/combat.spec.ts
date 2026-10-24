@@ -21,7 +21,7 @@ import {
   type Encounter,
 } from './combat-support';
 import type { CharacterBuild } from './support';
-import { endOpenSessionRPC, openSessionPage } from './live-session-support';
+import { endOpenSessionRPC, openSessionPage, clickStartCombat, expectStartCombatOffered } from './live-session-support';
 import { boxOf, callRPC, layoutSize, newSignedInContext, pensantus } from './support';
 import { placeTokenRPC } from './maps-support';
 import { setTableRulesRPC } from './table-rules-support';
@@ -51,7 +51,7 @@ test(
 
       // A map without a grid: "Iniciar combate" sends the master to the grid page.
       await m.goto(`/campaigns/${campaignId}/session`);
-      await m.getByRole('button', { name: 'Iniciar combate' }).click();
+      await clickStartCombat(m);
       await expect(m.getByText('Esse mapa ainda não tem grade.')).toBeVisible();
       // A map without a grid is no map for "Com mapa" (RN-25): that choice waits with its reason, and "Sem mapa" is the one chosen.
       await expect(m.getByRole('radio', { name: /^Com mapa/ })).toBeDisabled();
@@ -69,7 +69,7 @@ test(
       await expect(m).toHaveURL(/\/session$/);
 
       // Start with the party and three hidden goblins (and the captain).
-      await m.getByRole('button', { name: 'Iniciar combate' }).click();
+      await clickStartCombat(m);
       await expect(m.getByRole('dialog', { name: 'Iniciar combate' })).toBeVisible();
       await expect(m.getByText('20 × 14 quadrados de 1,5 m')).toBeVisible();
       await expect(m.getByText('30 m × 21 m').first()).toBeVisible();
@@ -166,7 +166,7 @@ test(
       await expect(m.getByRole('heading', { name: 'Combate encerrado' })).toBeVisible();
       await expect(p.getByRole('heading', { name: 'O combate acabou' })).toBeVisible(); // the player's one end-of-combat card
       await m.getByRole('button', { name: 'Voltar à sessão' }).click();
-      await expect(m.getByRole('button', { name: 'Iniciar combate' })).toBeVisible();
+      await expectStartCombatOffered(m);
     } finally {
       if (campaignId) {
         await endOpenSessionRPC(m, campaignId);

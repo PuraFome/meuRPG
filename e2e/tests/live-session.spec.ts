@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 import {
   endOpenSessionRPC,
   endSessionRPC,
+  openSessionMenu,
   openSessionPage,
   startSessionRPC,
   tableWithPensantus,
@@ -59,7 +60,8 @@ test(
       // The clipboard only works in the focused page: in CI's headless
       // Chromium, reading it from a page in the background never resolves.
       await masterPage.bringToFront();
-      await masterPage.getByRole('button', { name: 'Copiar link da sessão' }).click();
+      await openSessionMenu(masterPage);
+      await masterPage.getByRole('menuitem', { name: 'Copiar link da sessão' }).click();
       await expect(masterPage.getByRole('button', { name: 'Link copiado' })).toBeVisible();
       const copied = await masterPage.evaluate(() =>
         Promise.race([

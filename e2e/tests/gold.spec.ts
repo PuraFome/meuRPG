@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { endOpenSessionRPC, openSessionPage, startSessionRPC } from './live-session-support';
+import { endOpenSessionRPC, openSessionPage, startSessionRPC, endSessionFromBar } from './live-session-support';
 import { callRPC, newSignedInContext } from './support';
 import { tableForGold, threeTreasuresRPC, treasureFoundRPC } from './gold-support';
 import { getExperienceRPC } from './xp-support';
@@ -282,8 +282,7 @@ test(
 
       await openSessionPage(p, campaignId);
       await openSessionPage(m, campaignId);
-      await m.getByRole('button', { name: 'Encerrar sessão' }).click();
-      await m.getByRole('button', { name: 'Confirmar encerramento' }).click();
+      await endSessionFromBar(m);
       await expect(m.getByRole('heading', { name: 'Sessão encerrada' })).toBeVisible();
 
       // The master: one row for everyone who found something, with the PO (the find before the session is out).

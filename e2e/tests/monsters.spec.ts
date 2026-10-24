@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { combatRPC, getEncounterRPC, startEncounterRPC, tableForCombat, type CombatTable, type Encounter } from './combat-support';
 import { createPointRPC } from './maps-support';
 import { callRPC, createCharacterRPC, newSignedInContext } from './support';
-import { openSessionPage } from './live-session-support';
+import { openSessionPage, clickStartCombat } from './live-session-support';
 
 // MR-042 (monsters in the combat, "Pôr no combate"), MR-043 (the encounter builder: "Gerar encontro", "Trocar", the battle point,
 // "Começar este combate"), RN-29 (the monsters of the bestiary), RN-20 (what a player never receives of a monster) and RN-10 (the builder
@@ -532,7 +532,7 @@ test(
       // From "Iniciar combate": the creature is searched and counted inside the dialog, which stays open.
       await openSessionPage(master, campaignId);
       await master.getByRole('button', { name: 'Voltar à sessão' }).click();
-      await master.getByRole('button', { name: 'Iniciar combate' }).click();
+      await clickStartCombat(master);
       const dialog = master.getByRole('dialog', { name: 'Iniciar combate' });
       await expect(dialog.getByRole('link', { name: /bestiário/i })).toHaveCount(0);
       const pickBox = dialog.getByRole('combobox', { name: 'Adicionar criatura' });
