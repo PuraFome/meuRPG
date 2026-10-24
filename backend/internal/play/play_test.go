@@ -226,6 +226,11 @@ func TestAuthorizationMatrix(t *testing.T) {
 			_, err := c.StopFamiliarSight(ctx, connect.NewRequest(&playv1.StopFamiliarSightRequest{CampaignId: campaign, CharacterId: pc.GetId(), IdempotencyKey: newKey()}))
 			return err
 		}, [5]connect.Code{connect.CodeFailedPrecondition, connect.CodeFailedPrecondition, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		// No NPC is on the stage here, so the master's call finds none (not_found).
+		{"SetStageNpcHidden", func(ctx context.Context, c client) error {
+			_, err := c.SetStageNpcHidden(ctx, connect.NewRequest(&playv1.SetStageNpcHiddenRequest{CampaignId: campaign, CharacterId: pc.GetId(), Hidden: true}))
+			return err
+		}, [5]connect.Code{connect.CodeNotFound, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
 		{"SetSpeaker", func(ctx context.Context, c client) error {
 			_, err := c.SetSpeaker(ctx, connect.NewRequest(&playv1.SetSpeakerRequest{CampaignId: campaign}))
 			return err
@@ -837,6 +842,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["GetSessionSummary"] = c.GetSessionSummary(ctx, connect.NewRequest(&playv1.GetSessionSummaryRequest{CampaignId: id, GameSessionId: id}))
 	_, calls["PutOnStage"] = c.PutOnStage(ctx, connect.NewRequest(&playv1.PutOnStageRequest{CampaignId: id, CharacterId: id}))
 	_, calls["TakeOffStage"] = c.TakeOffStage(ctx, connect.NewRequest(&playv1.TakeOffStageRequest{CampaignId: id, CharacterId: id}))
+	_, calls["SetStageNpcHidden"] = c.SetStageNpcHidden(ctx, connect.NewRequest(&playv1.SetStageNpcHiddenRequest{CampaignId: id, CharacterId: id}))
 	_, calls["SetSpeaker"] = c.SetSpeaker(ctx, connect.NewRequest(&playv1.SetSpeakerRequest{CampaignId: id}))
 	_, calls["SearchForTraps"] = c.SearchForTraps(ctx, connect.NewRequest(&playv1.SearchForTrapsRequest{
 		CampaignId: id, IdempotencyKey: id, Skill: playv1.TrapSearchSkill_TRAP_SEARCH_SKILL_PERCEPTION, Roll: &playv1.SearchForTrapsRequest_RollInApp{RollInApp: true},

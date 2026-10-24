@@ -244,6 +244,7 @@ var notReads = map[string]classified{
 	playv1connect.PlayServiceSetCurrentMapProcedure:                             {masterWrite, masterOnlyWhy},
 	playv1connect.PlayServiceSetShownImageProcedure:                             {masterWrite, masterOnlyWhy},
 	playv1connect.PlayServiceSetSpeakerProcedure:                                {masterWrite, masterOnlyWhy},
+	playv1connect.PlayServiceSetStageNpcHiddenProcedure:                         {masterWrite, masterOnlyWhy},
 	playv1connect.PlayServiceStartFamiliarSightProcedure:                        {playerAction, "a player looks through their own familiar"},
 	playv1connect.PlayServiceStartGameSessionProcedure:                          {masterWrite, masterOnlyWhy},
 	playv1connect.PlayServiceStopFamiliarSightProcedure:                         {playerAction, "a player stops looking through their own familiar"},
