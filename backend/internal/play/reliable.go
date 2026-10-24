@@ -30,6 +30,14 @@ func countedFace(face int, reliable bool) int {
 	return counted
 }
 
+// countedAs is the number to tell when Reliable Talent changed the d20 that counts, 0 when it counted as it came up.
+func countedAs(face, counted int) int32 {
+	if counted == face {
+		return 0
+	}
+	return clamp32(counted, 0, 20)
+}
+
 // checkD20 rolls (or takes, from a physical die) the d20 of an ability check, as d20
 // does, and counts it by Reliable Talent when reliable says the check gets it: the
 // returned roll's total uses the counted number, the face is what came up.

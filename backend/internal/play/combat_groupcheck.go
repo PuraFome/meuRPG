@@ -412,7 +412,7 @@ func (s *Service) rollMember(ctx context.Context, q *playdb.Queries, tx pgx.Tx, 
 	}
 	spec := memberRoll{check: check, characterID: characterID, in: in, byMaster: byMaster}
 	if len(options) == 1 && options[0].Known {
-		spec.bonus, spec.known, spec.lucky = options[0].Bonus, true, options[0].Lucky
+		spec.bonus, spec.known, spec.lucky, spec.reliable = options[0].Bonus, true, options[0].Lucky, options[0].ReliableTalent
 	}
 	// The same circumstances as any ability check: Poisoned, Frightened, exhaustion, the
 	// Rage on Strength, armor on Stealth and a Help (SRD 5.1, "Group Checks" are ability checks).
@@ -470,6 +470,7 @@ type memberRoll struct {
 	bonus       int
 	known       bool
 	lucky       bool
+	reliable    bool // Reliable Talent counts a low d20 of this check as 10
 	mode        checkMode
 }
 
@@ -490,7 +491,7 @@ func (s *Service) memberRollOf(ctx context.Context, q *playdb.Queries, tx pgx.Tx
 			return roll, false, nil
 		}
 	}
-	roll, err = s.rollCheck(spec.in, checkModeOfRoll(spec.mode.Mode), spec.bonus, spec.check.SkillKey, nil, !spec.known)
+	roll, err = s.rollCheck(spec.in, checkModeOfRoll(spec.mode.Mode), spec.bonus, spec.check.SkillKey, nil, !spec.known, spec.reliable)
 	return roll, false, err
 }
 
@@ -509,7 +510,7 @@ func (s *Service) mayAskMember(ctx context.Context, tx pgx.Tx, gh *groupHold, sp
 func (s *Service) gatedMemberRoll(ctx context.Context, q *playdb.Queries, tx pgx.Tx, gh *groupHold, spec memberRoll) (roll contestRoll, settled, held bool, err error) {
 	step, err := s.heldGate(ctx, s.outsideGate(tx, q), rollSpec{
 		Kind: heldGroupCheck, Key: gh.key, Request: gh.raw, Roller: heldRoller{CampaignID: gh.m.CampaignID, CharacterID: spec.characterID, UserID: gh.m.UserID},
-		In: rollInput{inApp: spec.in.inApp, typedFaces: spec.in.faces}, Modifier: spec.bonus, Mode: spec.mode.Mode, Lucky: spec.lucky, MayAsk: true,
+		In: rollInput{inApp: spec.in.inApp, typedFaces: spec.in.faces}, Modifier: spec.bonus, Mode: spec.mode.Mode, Reliable: spec.reliable, Lucky: spec.lucky, MayAsk: true,
 	})
 	if err != nil {
 		return contestRoll{}, false, false, err
@@ -525,6 +526,7 @@ func (s *Service) gatedMemberRoll(ctx context.Context, q *playdb.Queries, tx pgx
 		Skill: spec.check.SkillKey, Faces: faces32(step.Roll.Faces), Modifier: conv.Int32(spec.bonus),
 		Total: conv.Int32(step.Roll.Total), Physical: step.Roll.Physical,
 		Mode: checkModeKey(checkModeOfRoll(spec.mode.Mode)), Unknown: !spec.known, Lucky: step.Lucky,
+		CountedAs: countedAs(step.Roll.Face(), countedFace(step.Roll.Face(), spec.reliable)),
 	}
 	if step.Bonus != nil {
 		roll.BonusSides, roll.BonusFace = step.Bonus.Sides, step.Bonus.Face

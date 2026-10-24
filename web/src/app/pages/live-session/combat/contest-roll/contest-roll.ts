@@ -57,6 +57,9 @@ import {
         }
       </ul>
     }
+    @if (treated()) {
+      <p class="by" data-testid="treated">{{ treated() }}</p>
+    }
     @if (roll().maneuverDieSides > 0) {
       <p class="by" data-testid="maneuver-die">
         {{ roll().maneuverNamePt }}: d{{ roll().maneuverDieSides }} ({{ roll().maneuverDieFace }}) já está no total.
@@ -83,6 +86,13 @@ export class ContestRoll {
   protected readonly natural = computed(() => checkNaturalMark(this.roll()));
   /** "Sortudo: 1 → 14": the d20 the halfling's Lucky rolled again (a group check's); the faces are already the new ones. */
   protected readonly lucky = computed(() => luckyText(this.roll()));
+  /** "O d20 de 4 contou como 10: Talento Confiável": Reliable Talent changed the d20 that counts (the total already uses it). */
+  protected readonly treated = computed(() => {
+    const counted = this.roll().treatedAs;
+    return counted === undefined
+      ? ''
+      : `O d20 de ${this.face()} contou como ${counted}: Talento Confiável.`;
+  });
   protected readonly mode = computed(() => modeLabel(this.roll().mode));
   protected readonly pair = computed(() => pairOf(this.roll()));
   protected readonly notes = computed(() => noteLines(this.roll()));

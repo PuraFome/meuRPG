@@ -137,6 +137,11 @@ message CheckRoll {
   // "trait:lucky"), as an index into `faces`; `faces` holds the new face. Empty when nothing
   // was rolled again.
   repeated Reroll rerolled = 17;
+  // What the d20 that counts was counted as, when Reliable Talent (SRD 5.1, Rogue level 11: a d20 of 9 or lower counts as 10
+  // on an ability check that adds the proficiency bonus) changed it; `total` already uses it. Unset when the d20 counted
+  // as it came up. `treated_as_source` names the feature ("feature:reliable-talent").
+  optional int32 treated_as = 18;
+  string treated_as_source = 19;
 }
 
 // CheckOption is what a d20 check would roll for the caller: the modifier and the
