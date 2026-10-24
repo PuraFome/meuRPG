@@ -124,7 +124,8 @@ test(
 
       // The master ends it from the campaign page: the session moves to "Sessões anteriores" without a reload.
       await master.goto(`/campaigns/${campaignId}`);
-      await endSessionFromBar(master);
+      await master.getByRole('button', { name: 'Encerrar sessão' }).click();
+      await master.getByRole('button', { name: 'Confirmar encerramento' }).click();
       const panel = master.getByRole('region', { name: 'Sessões anteriores' });
       await expect(panel.getByText('1 encerrada')).toBeVisible();
 
