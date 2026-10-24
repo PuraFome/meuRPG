@@ -992,7 +992,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 
 #### In the app
 - **Master's editor.** "Névoa de guerra" has "Ligar a névoa" (needs the grid), "Luz de base", "Visão do grupo" and "Esquecer o que foi visto", which asks in place; each change goes at once. "Luz" is a point kind with the SRD sources and "Personalizada". The map draws two rings (bright light solid, dim light dashed) and says walls cut light only with fog on, which "Ver como" shows ("Você está vendo o mapa como Toren", "Voltar à sua vista").
-- **Player and master screens.** The fog map shows "Carregando o mapa" while it builds, "Seu personagem não está neste mapa", "Luz que você carrega"; the master has "Luz dos personagens". The browser draws what the server sends and counts only squares ("76 quadrados vistos").
+- **Player and master screens.** The fog map shows "Carregando o mapa" while it builds, "Seu personagem não está neste mapa", "Luz que você carrega"; the master has "Luz dos personagens". The browser draws what the server sends and counts only squares ("76 quadrados vistos"). The master also sees "No escuro: ..." over the map, and a "No escuro" badge in "Grupo", for characters who see nothing where they stand (no light, no darkvision), with "Ver no mapa" and "Acender luz"; players never see it.
 - **The image.** The player receives the picture in pieces made on the server with only the squares seen or remembered; two images that differ only in unknown squares give identical pieces. At the fog edges the picture is slightly darkened. See [Architecture](../architecture/maps/fog.md#per-player-image-tiles).
 - See [Architecture](../architecture/maps/editor.md#layers) and [Architecture](../architecture/play/creatures.md#wild-shape).
 
