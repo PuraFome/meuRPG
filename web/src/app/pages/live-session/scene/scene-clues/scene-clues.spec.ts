@@ -87,22 +87,22 @@ describe('SceneClues (the open scene)', () => {
     expect(flat(el.querySelector('.sc__count'))).toBe('3 pistas');
     const rows = Array.from(el.querySelectorAll('.sc__row'));
     expect(rows.map((r) => flat(r.querySelector('.sc__who')))).toEqual([
-      'groupsRevelada para todos às 21:20',
-      'visibility_offNinguém ainda',
-      'personRevelada só para Brisa às 21:26',
+      'groupsCom todos',
+      'visibility_offNinguém tem esta pista ainda.',
+      'personCom Brisa',
     ]);
   });
 
-  it('offers "Revelar" on a clue nobody has, "Revelar aos outros" on a partly revealed one and nothing on one given to everyone', () => {
+  it('offers "Revelar" on a clue nobody has, "Revelar a mais alguém" on a partly revealed one and nothing on one given to everyone', () => {
     const { el } = setup();
     expect(el.querySelector('[data-reveal="k1"]')).toBeNull();
     expect(el.querySelector('[data-reveal="k2"]')?.textContent).toContain('Revelar');
     expect(el.querySelector('[data-reveal="k2"]')?.getAttribute('aria-label')).toBe(
       'Revelar a pista 2',
     );
-    expect(el.querySelector('[data-reveal="k3"]')?.textContent).toContain('Revelar aos outros');
+    expect(el.querySelector('[data-reveal="k3"]')?.textContent).toContain('Revelar a mais alguém');
     expect(el.querySelector('[data-reveal="k3"]')?.getAttribute('aria-label')).toBe(
-      'Revelar a pista 3 aos outros',
+      'Revelar a pista 3 a mais alguém',
     );
     // There is no way to take a clue back.
     expect(el.textContent).not.toContain('Esconder');
@@ -115,7 +115,7 @@ describe('SceneClues (the open scene)', () => {
 
   it("says on a computer that the clue goes to the person's notes", () => {
     const { el, flat } = setup(false);
-    expect(flat(el.querySelector('.sc__hint'))).toContain('vai para as anotações da pessoa');
+    expect(flat(el.querySelector('.sc__hint'))).toContain('vai para as anotações de quem a recebe');
   });
 
   it('opens the dialog for the clue with its place in the list and the players', () => {
@@ -141,8 +141,8 @@ describe('SceneClues (the open scene)', () => {
     expect(flat(el.querySelector('[role="status"]'))).toContain(
       'Pista revelada só para Brisa às 21:31.',
     );
-    expect(flat(el.querySelectorAll('.sc__who')[1])).toContain('Revelada só para Brisa às 21:31');
-    expect(el.querySelector('[data-reveal="k2"]')?.textContent).toContain('Revelar aos outros');
+    expect(flat(el.querySelectorAll('.sc__who')[1])).toContain('Com Brisa');
+    expect(el.querySelector('[data-reveal="k2"]')?.textContent).toContain('Revelar a mais alguém');
     expect(document.activeElement).toBe(el.querySelector('[data-reveal="k2"]'));
   });
 
@@ -163,7 +163,7 @@ describe('SceneClues (the open scene)', () => {
     el.querySelector<HTMLButtonElement>('[data-reveal="k2"]')!.click();
     await settle();
     expect(el.querySelector('.sc__done')).toBeNull();
-    expect(flat(el.querySelectorAll('.sc__who')[1])).toContain('Ninguém ainda');
+    expect(flat(el.querySelectorAll('.sc__who')[1])).toContain('Ninguém tem esta pista ainda.');
   });
 
   it('invites the master to write clues when the scene has none', () => {

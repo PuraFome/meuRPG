@@ -19,6 +19,8 @@ export interface SlotInputs {
   readonly stageCharacterIds: Signal<readonly string[]>;
   /** The lines that came while the conversation was not on screen. */
   readonly unread: Signal<number>;
+  /** The conversation is a tab of the board and another tab is shown (a tablet's master): it is not on screen. */
+  readonly behind?: Signal<boolean>;
 }
 
 /**
@@ -37,6 +39,7 @@ export class ConversationSlot {
   readonly onScreen = computed(
     () =>
       this.inputs.live() &&
+      !this.inputs.behind?.() &&
       (this.inputs.phone() ? this.tab() === 'chat' : this.inputs.pageVisible()),
   );
   /** The count the notice at the top of the page shows: only on a phone, with the chat closed, in a live session; else 0. */
@@ -52,7 +55,9 @@ export class ConversationSlot {
       : ['/campaigns', campaignId()];
   });
   /** The conversation is what the reader looks at (a phone's open tab, or the column on a computer): the voice stops when not. */
-  readonly shown = computed(() => !this.inputs.phone() || this.tab() === 'chat');
+  readonly shown = computed(
+    () => !this.inputs.behind?.() && (!this.inputs.phone() || this.tab() === 'chat'),
+  );
   readonly phone = computed(() => this.inputs.phone());
   readonly userId = computed(() => this.inputs.userId());
   readonly stageIds = computed<ReadonlySet<string>>(() => new Set(this.inputs.stageCharacterIds()));

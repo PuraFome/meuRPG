@@ -230,7 +230,7 @@
 
   // Cannot act: the dashed border and the muted ink, never see-through (the map shows behind it on a tablet).
   &:disabled {
-    border-style: dashed;
+    border-style: var(--mv-idle-border, dashed);
     background: var(--mr-surface);
     color: var(--mr-ink-muted);
     cursor: default;

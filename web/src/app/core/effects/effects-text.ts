@@ -18,15 +18,21 @@ export const MAX_DC = 40;
 export const MAX_TARGETS = 10;
 export const MAX_SECONDS = 86400;
 export const SECONDS_PER_ROUND = 6;
+/** The hours of a night: the longest button of "Passar o tempo". */
+const LONG_REST_HOURS = 8;
 const SECONDS_PER_MINUTE = 60;
 const SECONDS_PER_HOUR = 3600;
 
-/** "Passar o tempo": what a tap puts in the field, in seconds. */
-export const TIME_PRESETS: readonly { readonly label: string; readonly seconds: number }[] = [
-  { label: '1 rodada (6 s)', seconds: SECONDS_PER_ROUND },
-  { label: '1 minuto', seconds: SECONDS_PER_MINUTE },
-  { label: '10 minutos', seconds: 600 },
-  { label: '1 hora', seconds: SECONDS_PER_HOUR },
+/** "Passar o tempo": the buttons of the master's board (C6-06); a tap passes that much time. `label` is for the name. */
+export const TIME_PRESETS: readonly {
+  readonly short: string;
+  readonly label: string;
+  readonly seconds: number;
+}[] = [
+  { short: '1 min', label: '1 minuto', seconds: SECONDS_PER_MINUTE },
+  { short: '10 min', label: '10 minutos', seconds: 600 },
+  { short: '1 hora', label: '1 hora', seconds: SECONDS_PER_HOUR },
+  { short: '8 horas', label: '8 horas', seconds: LONG_REST_HOURS * SECONDS_PER_HOUR },
 ];
 
 /** The six levels of exhaustion (SRD 5.1, Conditions): each one adds to the ones under it. */

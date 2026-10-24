@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatDialog } from '@angular/material/dialog';
+import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 
 import { SceneClient } from '../../../../core/play/scene-client';
@@ -68,6 +69,7 @@ describe('StageMaster', () => {
       .mockReturnValue({ afterClosed: () => of(undefined), afterDismissed: () => of(undefined) });
     TestBed.configureTestingModule({
       providers: [
+        provideRouter([]),
         { provide: SceneClient, useValue: api },
         { provide: StageRoster, useValue: { list: () => Promise.resolve(roster) } },
         { provide: MatDialog, useValue: { open: dialogOpen } },
@@ -94,28 +96,38 @@ describe('StageMaster', () => {
     Array.from(el.querySelectorAll<HTMLElement>('[data-stage-card]'));
   const button = (el: HTMLElement, label: string) =>
     el.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!;
+  /** "Tirar de cena" lives in the row's menu: opens it, then presses the item (the menu is in the overlay). */
+  async function takeOff(
+    fixture: { detectChanges(): void; whenStable(): Promise<unknown> },
+    el: HTMLElement,
+    name: string,
+  ) {
+    button(el, `Mais ações de ${name}`).click();
+    await settle(fixture);
+    document
+      .querySelector<HTMLButtonElement>(`button[aria-label="Tirar ${name} de cena"]`)!
+      .click();
+    await settle(fixture);
+  }
   const putButton = (el: HTMLElement) => el.querySelector<HTMLButtonElement>('.st__put')!;
 
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
-  it('shows one card per NPC on the stage, with the portrait, the name, the kind and how many of 4', async () => {
+  it('shows one row per NPC on the stage, with the portrait, the name, "Os jogadores veem" and how many of 4', async () => {
     const { el } = await setup();
-    expect(el.querySelector('h3')?.textContent).toBe('Em cena');
-    expect(flat(el.querySelector('.st__count'))).toBe('2 de 4 em cena');
-    expect(cards(el).map((c) => flat(c.querySelector('.card__name')))).toEqual([
+    expect(flat(el.querySelector('h3'))).toBe('Em cena');
+    expect(flat(el.querySelector('.st__count'))).toBe('2 de 4');
+    expect(cards(el).map((c) => flat(c.querySelector('.row__name')))).toEqual([
       'Mira',
       'Capitão Goblin',
     ]);
-    expect(cards(el).map((c) => flat(c.querySelector('.card__kind')))).toEqual([
-      'NPC de história',
-      'Inimigo',
+    expect(cards(el).map((c) => flat(c.querySelector('.row__sees')))).toEqual([
+      'Os jogadores veem',
+      'Os jogadores veem',
     ]);
     expect(cards(el)[0].querySelector('app-portrait')).not.toBeNull();
-    expect(flat(el.querySelector('.st__lead'))).toBe(
-      'Os jogadores veem os retratos e o nome de quem está aqui, e quem fala fica na frente.',
-    );
   });
 
   it('marks the speaker on the card: "Fala agora", pressed, with the 2px border', async () => {
@@ -123,11 +135,11 @@ describe('StageMaster', () => {
     const speaker = button(el, 'Capitão Goblin está com a fala. Tirar a fala');
     expect(flat(speaker)).toContain('Fala agora');
     expect(speaker.getAttribute('aria-pressed')).toBe('true');
-    expect(cards(el)[1].classList.contains('card--speaking')).toBe(true);
+    expect(cards(el)[1].classList.contains('row--speaking')).toBe(true);
     const other = button(el, 'Dar a fala a Mira');
     expect(flat(other)).toContain('Dar a fala');
     expect(other.getAttribute('aria-pressed')).toBe('false');
-    expect(cards(el)[0].classList.contains('card--speaking')).toBe(false);
+    expect(cards(el)[0].classList.contains('row--speaking')).toBe(false);
   });
 
   it('gives the speech to another NPC, and takes it back from the speaker', async () => {
@@ -149,12 +161,11 @@ describe('StageMaster', () => {
   it('takes an NPC off at once, with no question, and moves focus to the next card', async () => {
     const { el, api, fixture, state } = await setup();
     document.body.append(el);
-    button(el, 'Tirar Mira de cena').click();
-    await settle(fixture);
+    await takeOff(fixture, el, 'Mira');
     expect(api.calls).toEqual(['take mira']);
     expect(state.stage().map((n) => n.name)).toEqual(['Capitão Goblin']);
     expect(el.querySelector('[role="alertdialog"]')).toBeNull();
-    expect(flat(el.querySelector('.st__count'))).toBe('1 de 4 em cena');
+    expect(flat(el.querySelector('.st__count'))).toBe('1 de 4');
     expect(document.activeElement).toBe(cards(el)[0].querySelector('button'));
     el.remove();
   });
@@ -164,7 +175,7 @@ describe('StageMaster', () => {
     expect(cards(el)).toHaveLength(0);
     expect(flat(el.querySelector('.st__empty'))).toContain('Ninguém em cena');
     expect(flat(putButton(el))).toContain('Pôr em cena');
-    expect(flat(el.querySelector('.st__count'))).toBe('0 de 4 em cena');
+    expect(flat(el.querySelector('.st__count'))).toBe('0 de 4');
   });
 
   describe('"Pôr em cena" on a desktop: the list in place', () => {
@@ -207,7 +218,7 @@ describe('StageMaster', () => {
       expect(el.querySelector('.pick')).not.toBeNull();
       expect(flat(el.querySelector('.st__entered'))).toContain('Aldo entrou na cena.');
       expect(flat(el.querySelector('[role="status"]'))).toBe('Aldo entrou na cena.');
-      expect(flat(el.querySelector('.st__count'))).toBe('3 de 4 em cena');
+      expect(flat(el.querySelector('.st__count'))).toBe('3 de 4');
       // The button became the "Em cena" tag, and focus went to the next one that still has a button.
       expect(el.querySelector('button[aria-label="Pôr Aldo em cena"]')).toBeNull();
     });
@@ -235,7 +246,7 @@ describe('StageMaster', () => {
 
     it('says "4 de 4" and why, before a dashed, off "Pôr em cena" that stays reachable', async () => {
       const { el, api, fixture } = await setup(four);
-      expect(flat(el.querySelector('.st__count'))).toBe('4 de 4 em cena');
+      expect(flat(el.querySelector('.st__count'))).toBe('4 de 4');
       expect(flat(el.querySelector('.st__reason'))).toBe(
         'A cena comporta 4 NPCs. Tire um para pôr outro.',
       );
@@ -251,8 +262,7 @@ describe('StageMaster', () => {
 
     it('takes one off and the button comes back', async () => {
       const { el, fixture } = await setup(four);
-      button(el, 'Tirar Aldo de cena').click();
-      await settle(fixture);
+      await takeOff(fixture, el, 'Aldo');
       expect(putButton(el).getAttribute('aria-disabled')).toBe('false');
       expect(el.querySelector('.st__reason')).toBeNull();
     });
@@ -323,6 +333,6 @@ describe('StageMaster', () => {
 
   it('keeps `nbsp` between a count and its words', async () => {
     const { el } = await setup();
-    expect(el.querySelector('.st__count')?.textContent).toBe(`2${nbsp}de${nbsp}4 em cena`);
+    expect(el.querySelector('.st__count')?.textContent).toBe(`2${nbsp}de${nbsp}4`);
   });
 });

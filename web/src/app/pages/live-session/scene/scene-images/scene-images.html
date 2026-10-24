@@ -1,58 +1,60 @@
-@if (images().length > 0) {
-  <section class="sm" aria-labelledby="sm-title">
-    <div class="sm__head">
-      <h3 class="sm__title" id="sm-title">Imagens da cena</h3>
-      <span class="sm__count">{{ count() }}</span>
-    </div>
-    <p class="sm__lead">Só você vê esta lista. Os jogadores veem a imagem que você mostrar.</p>
+<section class="sm" aria-labelledby="sm-title">
+  <div class="sm__head">
+    <h3 class="sm__title" id="sm-title"><mat-icon aria-hidden="true">image</mat-icon>Imagens da cena</h3>
+    <span class="sm__count">{{ count() }}</span>
+  </div>
 
-    @if (error()) {
-      <div class="mr-notice mr-notice--danger" role="alert">
-        <mat-icon aria-hidden="true">error</mat-icon>
-        <p>{{ error() }}</p>
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+
+  <ul class="sm__list">
+    @for (img of images(); track img.id; let i = $index) {
+      <li class="sm__tile" [class.sm__tile--shown]="isShown(img)" [attr.data-image]="img.id">
+        @if (isShown(img)) {
+          <span class="sm__pic">
+            <img class="sm__thumb" [src]="thumb(img)" alt="" appRetryImage />
+            <span class="sm__badge"><mat-icon aria-hidden="true">cast</mat-icon>À mostra<span class="mr-visually-hidden"> agora</span></span>
+          </span>
+        } @else {
+          <button
+            type="button"
+            class="sm__pic sm__pic--button"
+            [attr.aria-label]="'Mostrar ' + img.name + ' aos jogadores'"
+            [disabled]="busyId() !== null"
+            (click)="show(img)"
+          >
+            <img class="sm__thumb" [src]="thumb(img)" alt="" appRetryImage />
+          </button>
+        }
+        <p class="sm__name"><span class="mr-visually-hidden">Imagem {{ i + 1 }}: </span>{{ img.name }}</p>
+      </li>
+    }
+    <li class="sm__tile sm__tile--add"><ng-content select="[galleryTile]" /></li>
+  </ul>
+
+  @for (img of images(); track img.id) {
+    @if (askingId() === img.id) {
+      <div class="sm__ask" role="group" [attr.aria-labelledby]="'sm-ask-' + img.id">
+        <p class="sm__ask-text" [id]="'sm-ask-' + img.id">
+          <mat-icon aria-hidden="true">warning</mat-icon>Esta imagem mostra o mapa inteiro, também o que os jogadores ainda não descobriram.
+        </p>
+        <button matButton="outlined" type="button" class="sm__btn" (click)="cancelAsk()">Voltar</button>
+        <button
+          matButton="outlined"
+          type="button"
+          class="sm__btn"
+          [disabled]="busyId() !== null"
+          disabledInteractive
+          (click)="show(img, true)"
+        >
+          Mostrar mesmo assim
+        </button>
       </div>
     }
-
-    <ul class="sm__list">
-      @for (img of images(); track img.id; let i = $index) {
-        <li class="sm__tile" [class.sm__tile--shown]="isShown(img)" [attr.data-image]="img.id">
-          <img class="sm__thumb" [src]="thumb(img)" alt="" appRetryImage />
-          <p class="sm__name"><span class="mr-visually-hidden">Imagem {{ i + 1 }}: </span>{{ img.name }}</p>
-          @if (isShown(img)) {
-            <p class="sm__tag"><mat-icon aria-hidden="true">cast</mat-icon>À mostra agora</p>
-          } @else if (askingId() === img.id) {
-            <div class="sm__ask" role="group" [attr.aria-labelledby]="'sm-ask-' + img.id">
-              <p class="sm__ask-text" [id]="'sm-ask-' + img.id">
-                <mat-icon aria-hidden="true">warning</mat-icon>Esta imagem mostra o mapa inteiro, também o que os jogadores ainda não descobriram.
-              </p>
-              <button matButton="outlined" type="button" class="sm__btn" (click)="cancelAsk()">Voltar</button>
-              <button
-                matButton="filled"
-                type="button"
-                class="sm__btn"
-                [disabled]="busyId() !== null"
-                disabledInteractive
-                (click)="show(img, true)"
-              >
-                Mostrar mesmo assim
-              </button>
-            </div>
-          } @else {
-            <button
-              matButton="outlined"
-              type="button"
-              class="sm__btn"
-              [attr.aria-label]="'Mostrar ' + img.name + ' aos jogadores'"
-              [disabled]="busyId() !== null"
-              disabledInteractive
-              (click)="show(img)"
-            >
-              <mat-icon aria-hidden="true">cast</mat-icon>Mostrar aos jogadores
-            </button>
-          }
-        </li>
-      }
-    </ul>
-    <p class="mr-visually-hidden" role="status" aria-live="polite">{{ status() }}</p>
-  </section>
-}
+  }
+  <p class="mr-visually-hidden" role="status" aria-live="polite">{{ status() }}</p>
+</section>

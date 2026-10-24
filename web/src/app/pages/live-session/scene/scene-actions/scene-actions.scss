@@ -1,0 +1,183 @@
+:host {
+  display: block;
+}
+
+.sa {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.sa__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-1) var(--mr-space-3);
+}
+
+.sa__title {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0 auto 0 0;
+  font-family: var(--mr-font-display);
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 700;
+
+  .mat-icon {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    font-size: 22px;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.sa__dc {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.sa__group {
+  min-height: 44px;
+}
+
+// The amber "N rolagens novas", on the header and on the action it belongs to.
+.sa__fresh,
+.sa__new {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-warning-surface);
+  color: var(--mr-warning-ink);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sa__none {
+  margin: 0;
+  color: var(--mr-ink-muted);
+}
+
+.sa__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sa__item {
+  padding: var(--mr-space-3) 0;
+  border-top: 1px solid var(--mr-rule);
+}
+
+.sa__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-2) var(--mr-space-3);
+}
+
+.sa__what {
+  display: flex;
+  flex: 1 1 240px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--mr-space-2);
+  min-width: 0;
+}
+
+.sa__name {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+.sa__line {
+  flex: 1 1 100%;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.sa__sep {
+  margin: 0 6px;
+}
+
+.sa__cd {
+  color: var(--mr-ink);
+}
+
+.sa__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// "Brisa 16 ✓" / "Toren 7 ✗": the verdict in an icon and in words for a screen reader, never colour alone.
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 0 12px 0 6px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+
+  &--passed {
+    border-color: var(--mr-success-ink);
+    color: var(--mr-success-ink);
+  }
+
+  &--failed {
+    border-color: var(--mr-danger-ink);
+    color: var(--mr-danger-ink);
+  }
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.chip__init {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-ink);
+  color: var(--mr-surface);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.sa__detail {
+  display: flex;
+  margin-top: var(--mr-space-2);
+}

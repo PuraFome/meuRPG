@@ -1,11 +1,14 @@
 <section class="mr-panel rest" aria-labelledby="rest-heading">
-  <h2 class="mr-panel__title" id="rest-heading">Descanso</h2>
+  <h2 class="mr-panel__title" id="rest-heading"><mat-icon aria-hidden="true">bedtime</mat-icon>Descanso</h2>
+  <p class="rest__lead">Você vê o que volta para cada um e confirma antes.</p>
 
   <div class="rest__buttons">
     @for (k of kinds; track k.kind) {
       <button
-        [matButton]="pressed(k.kind) ? 'filled' : 'outlined'"
+        matButton="outlined"
         type="button"
+        class="rest__button"
+        [class.rest__button--on]="pressed(k.kind)"
         [attr.data-rest]="k.key"
         [attr.aria-expanded]="pressed(k.kind)"
         [attr.aria-controls]="pressed(k.kind) ? 'rest-question' : null"
@@ -110,7 +113,7 @@
       }
 
       <div class="question__buttons">
-        <button matButton="filled" type="button" [attr.aria-busy]="saving()" (click)="rest()">
+        <button matButton="outlined" type="button" class="question__go" [attr.aria-busy]="saving()" (click)="rest()">
           <mat-icon aria-hidden="true">check</mat-icon>Descansar
         </button>
         <button matButton="outlined" type="button" (click)="cancel()">Cancelar</button>

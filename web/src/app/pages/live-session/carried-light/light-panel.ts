@@ -10,6 +10,8 @@ import { type LightOption, LightPresets } from '../../../core/maps/light-presets
 import type { MapState } from '../../../core/maps/map-state';
 import { MapsClient } from '../../../core/maps/maps-client';
 import type { PartyMemberInfoVm } from '../../../core/play/live-session.types';
+import { initialOf } from '../../../core/play/scene-view';
+import { CombatantToken } from '../../../shared/combatant-token/combatant-token';
 
 /**
  * "Luz dos personagens" (MR-036, E9-04 state 2): the master's panel on the session
@@ -21,7 +23,7 @@ import type { PartyMemberInfoVm } from '../../../core/play/live-session.types';
  */
 @Component({
   selector: 'app-light-panel',
-  imports: [MatFormFieldModule, MatIconModule, MatInputModule],
+  imports: [CombatantToken, MatFormFieldModule, MatIconModule, MatInputModule],
   templateUrl: './light-panel.html',
   styleUrl: './light-panel.scss',
 })
@@ -32,8 +34,11 @@ export class LightPanel {
   readonly campaignId = input.required<string>();
   readonly state = input.required<MapState>();
   readonly info = input<ReadonlyMap<string, PartyMemberInfoVm>>(new Map());
+  /** Inside a tab of the master's map: no frame of its own. */
+  readonly flat = input(false);
 
   private readonly all = signal<readonly LightOption[]>([]);
+  protected readonly initial = initialOf;
   protected readonly busyId = signal<string | null>(null);
   protected readonly error = signal('');
   protected readonly line = signal('');

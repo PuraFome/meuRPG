@@ -210,17 +210,37 @@ describe('ShownImagePanel as a row of the open scene (C3-01)', () => {
   const words = (el: HTMLElement) =>
     Array.from(el.querySelectorAll('button'), (b) => b.textContent?.replace(/\s+/g, ' ').trim());
 
-  it('draws no panel: only "Da galeria" while nothing is shown', async () => {
+  it('draws no panel: only the switch (off) while nothing is shown', async () => {
     const el = await render(null);
     expect(el.querySelector('.mr-panel')).toBeNull();
-    expect(words(el)).toEqual(['imageDa galeria']);
-    expect(el.querySelector('[role="switch"]')).toBeNull();
+    expect(words(el)).toHaveLength(1);
+    expect(el.querySelector('[role="switch"]')?.hasAttribute('disabled')).toBe(true);
   });
 
-  it('adds the keep switch and "Parar de mostrar" while an image is shown', async () => {
+  it('adds "Parar de mostrar" and enables the switch while an image is shown', async () => {
     const el = await render(carta);
-    expect(el.querySelector('[role="switch"]')).not.toBeNull();
+    expect(el.querySelector('[role="switch"]')?.hasAttribute('disabled')).toBe(false);
     expect(words(el).some((w) => w?.includes('Parar de mostrar'))).toBe(true);
+  });
+
+  it('is only the dashed "Da galeria" tile as a tile', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: LiveSessionSource,
+          useValue: { setShownImage: vi.fn(), takeBackLeftImage: vi.fn() },
+        },
+        { provide: GalleryClient, useValue: { list: () => Promise.resolve({ images: [] }) } },
+      ],
+    });
+    const fixture = TestBed.createComponent(ShownImagePanel);
+    fixture.componentRef.setInput('campaignId', 'c1');
+    fixture.componentRef.setInput('shown', carta);
+    fixture.componentRef.setInput('appearance', 'tile');
+    await fixture.whenStable();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(words(el)).toEqual(['imageDa galeria']);
+    expect(el.querySelector('[role="switch"]')).toBeNull();
   });
 });
 

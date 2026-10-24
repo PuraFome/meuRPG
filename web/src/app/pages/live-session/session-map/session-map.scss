@@ -29,6 +29,72 @@
   max-width: 20rem;
 }
 
+// The master's header (C6-05): "Mapa atual" beside its select, "24 × 16 · 1,5 m", and the text actions at the right.
+.map__head--master {
+  justify-content: flex-start;
+  gap: var(--mr-space-2) var(--mr-space-3);
+
+  .map__select {
+    flex: 0 1 15rem;
+  }
+}
+
+.map__label,
+.map__grid {
+  font-size: 15px;
+  color: var(--mr-ink-muted);
+}
+
+.map__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-1) var(--mr-space-2);
+  margin-left: auto;
+}
+
+// The map and its controls fill the screen when it goes full screen ("Abrir mapa").
+.map__stage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+
+  &:fullscreen {
+    padding: var(--mr-space-4);
+    overflow: auto;
+    background: var(--mr-ground);
+  }
+}
+
+// The zoom buttons that cannot act keep a solid border here: a dashed one on the first look reads as a fault (C6-05).
+.map {
+  --mv-idle-border: solid;
+}
+
+// The token shapes under the master's map: Personagem, NPC, Escondido (só você vê), Vez.
+.map__tokens {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2) var(--mr-space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 15px;
+
+  li {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--mr-space-2);
+  }
+}
+
+.map__shapes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  margin-top: var(--mr-space-3);
+}
+
 .map__note,
 .map__hint {
   display: flex;

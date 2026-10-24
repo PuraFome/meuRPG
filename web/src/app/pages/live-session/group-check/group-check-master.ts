@@ -5,6 +5,7 @@ import {
   effect,
   inject,
   input,
+  model,
   signal,
   untracked,
 } from '@angular/core';
@@ -131,11 +132,11 @@ export interface AskPerson {
           </div>
         </section>
       }
-      @if (collapsible() && !asking()) {
+      @if (collapsible() && !asking() && askButton()) {
         <button mat-stroked-button type="button" class="btn btn--ask" (click)="asking.set(true)">
           <mat-icon aria-hidden="true">groups</mat-icon>Pedir teste em grupo
         </button>
-      } @else {
+      } @else if (!collapsible() || asking()) {
       <section class="card" [attr.aria-labelledby]="uid + 'a'" data-testid="group-ask">
         <h2 class="card__title" [id]="uid + 'a'">Pedir um teste</h2>
         <p class="card__sub">
@@ -276,7 +277,9 @@ export class GroupCheckMaster {
   protected readonly everyone = computed(() => this.picked().size === 0);
   protected readonly wantGroup = signal(true);
   /** The asking form is open (only when `collapsible`). */
-  protected readonly asking = signal(false);
+  readonly asking = model(false);
+  /** The scene draws its own "Teste em grupo" button: with this off, idle draws nothing. */
+  readonly askButton = input(true);
   /** How many characters would roll; "Teste em grupo" needs two or more. */
   protected readonly askedCount = computed(() =>
     this.picked().size > 0 ? this.picked().size : this.people().length,

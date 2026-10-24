@@ -93,8 +93,8 @@ describe('ConversationPanel', () => {
   it('has the header "Conversa" and how many are at the table', async () => {
     const { el, fixture } = setup();
     await settle(fixture);
-    expect(el.querySelector('h2')?.textContent?.trim()).toBe('Conversa');
-    expect(el.querySelector('.panel__count')?.textContent?.trim()).toBe('2 na mesa');
+    expect(el.querySelector('h2')?.textContent).toContain('Conversa');
+    expect(el.querySelector('.panel__count')?.textContent).toContain('2 na mesa');
   });
 
   it('names the feed "Mensagens da cena" and draws one line per message', async () => {

@@ -11,17 +11,32 @@
 
 .sc__head {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--mr-space-3);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-1) var(--mr-space-3);
 }
 
 .sc__title {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 21px;
+  font-size: 22px;
   font-weight: 700;
-  line-height: 26px;
+  line-height: 28px;
+
+  .mat-icon {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    font-size: 22px;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.sc__head .sc__hint {
+  margin-left: auto;
 }
 
 .sc__count {

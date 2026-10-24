@@ -12,6 +12,8 @@ describe('MasterBoard', () => {
   const rolls = signal(0);
   const openedHere = signal(false);
   const phone = signal(false);
+  const narrow = signal(false);
+  const unread = signal(0);
 
   function make(): MasterBoard {
     return TestBed.runInInjectionContext(
@@ -23,6 +25,8 @@ describe('MasterBoard', () => {
           rolls,
           openedHere,
           phone,
+          narrow,
+          unread,
         }),
     );
   }
@@ -34,6 +38,8 @@ describe('MasterBoard', () => {
     rolls.set(0);
     openedHere.set(false);
     phone.set(false);
+    narrow.set(false);
+    unread.set(0);
   });
 
   it('opens on "Mapa" with no scene, on "Cena" with one, and on what the address names', () => {
@@ -94,5 +100,24 @@ describe('MasterBoard', () => {
     phone.set(true);
     query.next(convertToParamMap({ vista: 'mapa' }));
     expect(make().tab()).toBe('cena');
+  });
+
+  it('has the Conversa as a tab only on a tablet, with the lines that came while another tab showed', () => {
+    sceneOpen.set(true);
+    const board = make();
+    query.next(convertToParamMap({ vista: 'conversa' }));
+    // A computer has the rail: the name is no tab.
+    expect(board.tab()).toBe('cena');
+    expect(board.tabs().map((t) => t.label)).toEqual(['Cena', 'Mapa', 'Grupo']);
+    narrow.set(true);
+    expect(board.tab()).toBe('conversa');
+    expect(board.tabs().map((t) => t.label)).toEqual(['Cena', 'Mapa', 'Grupo', 'Conversa']);
+    expect(board.counts().unread).toBe(0);
+    query.next(convertToParamMap({ vista: 'grupo' }));
+    unread.set(2);
+    expect(board.tabs()[3]).toMatchObject({ badge: '2', words: '2 mensagens novas' });
+    // A phone has the pinned nav instead.
+    phone.set(true);
+    expect(board.chatTab()).toBe(false);
   });
 });

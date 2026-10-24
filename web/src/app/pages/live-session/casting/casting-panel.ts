@@ -9,6 +9,7 @@ import {
   signal,
 } from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
+import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -29,6 +30,8 @@ import {
   queueLine,
   queueTitle,
 } from '../../../core/casting/cast-out-flow';
+import { Fold } from '../../../shared/fold/fold';
+import { formatClock } from '../../../shared/session-time/session-time';
 import { RosterClient } from '../../../core/maps/roster-client';
 import { CastingClient } from '../../../core/casting/casting-client';
 import { castingErrorText } from '../../../core/casting/casting-errors';
@@ -49,7 +52,7 @@ const LOG_LINES = 8;
 @Component({
   selector: 'app-casting-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatButtonModule, MatIconModule],
+  imports: [Fold, MatButtonModule, MatIconModule],
   templateUrl: './casting-panel.html',
   styleUrl: './casting-panel.scss',
 })
@@ -100,6 +103,17 @@ export class CastingPanel {
   protected chip = activeChip;
   protected minutesWords = minutesWords;
   protected queueTitle = queueTitle;
+
+  /** "Pensantus conjura Identificar como ritual." (C6-06): who casts what, in bold. */
+  protected waitTitle(c: OutsideCast): string {
+    return `${c.casterName} conjura ${c.spellNamePt}${c.ritual ? ' como ritual' : ''}.`;
+  }
+
+  /** "10 minutos, desde 20:31. Um ritual não gasta espaço de magia." */
+  protected waitLine(c: OutsideCast): string {
+    const since = c.startedAt ? `, desde ${formatClock(timestampDate(c.startedAt))}` : '';
+    return `${minutesWords(c.castingMinutes)}${since}.${c.ritual ? ' Um ritual não gasta espaço de magia.' : ''}`;
+  }
   protected queueLine = queueLine;
   protected readonly noteBefore = QUEUE_NOTE_BEFORE;
   protected readonly noteStrong = QUEUE_NOTE_STRONG;

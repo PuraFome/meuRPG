@@ -1,5 +1,14 @@
-import { NgTemplateOutlet } from '@angular/common';
-import { Component, computed, inject, input, output, signal, viewChild } from '@angular/core';
+import { DOCUMENT, NgTemplateOutlet } from '@angular/common';
+import {
+  Component,
+  ElementRef,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatDialog } from '@angular/material/dialog';
@@ -32,6 +41,9 @@ import { MapPointsList } from '../../../shared/map-lists/map-points-list';
 import { MapPins } from '../../../shared/map-pins/map-pins';
 import { MapPinsLegend } from '../../../shared/map-pins/map-pins-legend';
 import { MapLegend } from '../../../shared/map-view/map-legend/map-legend';
+import { MapToken } from '../../../shared/map-view/map-token/map-token';
+import { FullscreenOverlay } from '../../../core/ui/fullscreen-overlay';
+import { TOKEN_SAMPLES, gridText } from './map-header';
 import { MapMove, MapView } from '../../../shared/map-view/map-view';
 import { PHONE_QUERY, mediaQuery } from '../../../shared/map-view/media-query';
 import { type TabItem, TabList, tabId, tabPanelId } from '../../../shared/tab-list/tab-list';
@@ -77,6 +89,7 @@ export interface MapToolCounts {
     MapLegend,
     MapPins,
     MapPinsLegend,
+    MapToken,
     MapPointsList,
     MapView,
     MatButtonModule,
@@ -156,6 +169,21 @@ export class SessionMap {
   );
 
   protected readonly map = computed(() => this.state().map());
+  protected readonly tokenSamples = TOKEN_SAMPLES;
+  protected readonly gridText = computed(() =>
+    gridText(this.map()?.gridColumns ?? 0, this.map()?.gridRows ?? 0),
+  );
+  private readonly doc = inject(DOCUMENT);
+  protected readonly fullscreenOverlay = inject(FullscreenOverlay);
+  private readonly stage = viewChild<ElementRef<HTMLElement>>('stage');
+  /** "Abrir mapa": the map and its controls on the browser's full screen (a phone's iPhone has none: the button is left out). */
+  protected readonly fullAvailable = this.doc.fullscreenEnabled === true;
+
+  protected openFull(): void {
+    const el = this.stage()?.nativeElement;
+    // A refusal (a policy, a lost gesture) leaves the page as it was.
+    void el?.requestFullscreen?.()?.catch(() => undefined);
+  }
   protected readonly status = computed(() => this.state().status());
   /** The points the old markers draw: traps, treasures and lights have their own marks, panels and legend. */
   protected readonly markerPoints = computed(() =>

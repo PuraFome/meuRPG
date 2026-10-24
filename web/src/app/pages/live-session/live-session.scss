@@ -21,6 +21,11 @@
 
 .split__chat {
   margin-top: var(--mr-space-6);
+
+  // The tablet's conversation is a tab of the board: nothing is left in this column.
+  &:empty {
+    display: none;
+  }
 }
 
 @media (min-width: 1600px) {

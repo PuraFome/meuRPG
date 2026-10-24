@@ -5,8 +5,9 @@
 // One row of 56px: the back link, the title, the live status and, at the right, the buttons.
 .bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 14px;
+  gap: 6px 14px;
   box-sizing: border-box;
   min-height: 60px;
 }
@@ -259,5 +260,17 @@
   .js-dice {
     min-width: 44px;
     padding-inline: 0;
+  }
+}
+
+// A tablet (C6-10, the narrow bar): "Iniciar combate" keeps its icon and gives the room back; its name stays for a screen reader.
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  .bar__start {
+    min-width: 44px;
+    padding-inline: 10px;
+  }
+
+  .bar__start-text {
+    display: none;
   }
 }

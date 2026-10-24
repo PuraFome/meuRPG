@@ -1,9 +1,25 @@
 <section class="st" aria-labelledby="st-title">
   <div class="st__head">
-    <h3 class="st__title" id="st-title">Em cena</h3>
-    <span class="st__count">{{ count() }}</span>
+    <h3 class="st__title" id="st-title"><mat-icon aria-hidden="true">person</mat-icon>Em cena</h3>
+    <span class="st__count">{{ stage().length }}&nbsp;de&nbsp;4</span>
+    @if (!listOpen()) {
+      <button
+        #putButton
+        matButton
+        type="button"
+        class="st__put"
+        [class.st__put--off]="full()"
+        [aria-disabled]="full()"
+        [attr.aria-describedby]="full() ? 'st-reason' : null"
+        (click)="openList()"
+      >
+        <mat-icon aria-hidden="true">{{ full() ? 'block' : 'add' }}</mat-icon>Pôr em cena
+      </button>
+    }
   </div>
-  <p class="st__lead">Os jogadores veem os retratos e o nome de quem está aqui, e quem fala fica na frente.</p>
+  @if (full() && !listOpen()) {
+    <p class="st__reason" id="st-reason">{{ reason }}</p>
+  }
 
   @if (ctl().error(); as message) {
     <div class="mr-notice mr-notice--danger" role="alert">
@@ -18,65 +34,49 @@
   @if (cards().length === 0) {
     <p class="st__empty">Ninguém em cena. Ponha um NPC para os jogadores o verem.</p>
   } @else {
-    <ul class="st__cards">
+    <ul class="st__rows">
       @for (card of cards(); track card.npc.id; let i = $index) {
-        <li class="card" [class.card--speaking]="card.npc.speaking" data-stage-card>
-          <div class="card__who">
-            <app-portrait [src]="card.npc.portraitUrl" [name]="card.npc.name" [size]="64" fit="cover" />
-            <div class="card__text">
-              <span class="card__name">{{ card.npc.name }}</span>
-              @if (card.kind) {
-                <span class="card__kind">{{ card.kind }}</span>
-              }
-            </div>
+        <li class="row" [class.row--speaking]="card.npc.speaking" data-stage-card>
+          <app-portrait [src]="card.npc.portraitUrl" [name]="card.npc.name" [size]="48" fit="cover" />
+          <div class="row__text">
+            <span class="row__name">{{ card.npc.name }}</span>
+            <span class="row__sees"><mat-icon aria-hidden="true">visibility</mat-icon>Os jogadores veem</span>
           </div>
-          <div class="card__buttons">
-            <button
-              matButton="outlined"
-              type="button"
-              class="card__btn"
-              [class.card__btn--on]="card.npc.speaking"
-              [attr.aria-pressed]="card.npc.speaking"
-              [aria-disabled]="ctl().busy(card.npc.characterId)"
-              [attr.aria-label]="card.npc.speaking ? card.npc.name + ' está com a fala. Tirar a fala' : 'Dar a fala a ' + card.npc.name"
-              (click)="speak(card)"
-            >
-              <mat-icon aria-hidden="true">{{ card.npc.speaking ? 'check' : 'chat_bubble_outline' }}</mat-icon>
-              {{ card.npc.speaking ? 'Fala agora' : 'Dar a fala' }}
-            </button>
-            <button
-              matButton="outlined"
-              type="button"
-              class="card__btn"
-              [aria-disabled]="ctl().busy(card.npc.characterId)"
-              [attr.aria-label]="'Tirar ' + card.npc.name + ' de cena'"
-              (click)="take(card, i)"
-            >
+          <button
+            matButton="outlined"
+            type="button"
+            class="row__speak"
+            [class.row__speak--on]="card.npc.speaking"
+            [attr.aria-pressed]="card.npc.speaking"
+            [aria-disabled]="ctl().busy(card.npc.characterId)"
+            [attr.aria-label]="card.npc.speaking ? card.npc.name + ' está com a fala. Tirar a fala' : 'Dar a fala a ' + card.npc.name"
+            (click)="speak(card)"
+          >
+            <mat-icon aria-hidden="true">{{ card.npc.speaking ? 'check' : 'chat_bubble_outline' }}</mat-icon>
+            {{ card.npc.speaking ? 'Fala agora' : 'Dar a fala' }}
+          </button>
+          <button
+            type="button"
+            class="row__more"
+            [matMenuTriggerFor]="menu"
+            [attr.aria-label]="'Mais ações de ' + card.npc.name"
+          >
+            <mat-icon aria-hidden="true">more_vert</mat-icon>
+          </button>
+          <mat-menu #menu="matMenu">
+            <button mat-menu-item type="button" [attr.aria-label]="'Tirar ' + card.npc.name + ' de cena'" (click)="take(card, i)">
               <mat-icon aria-hidden="true">logout</mat-icon>Tirar de cena
             </button>
-          </div>
+            <a mat-menu-item [routerLink]="['/campaigns', campaignId(), 'characters', card.npc.characterId]">
+              <mat-icon aria-hidden="true">menu_book</mat-icon>Abrir a ficha do NPC
+            </a>
+          </mat-menu>
         </li>
       }
     </ul>
   }
 
-  @if (!listOpen()) {
-    @if (full()) {
-      <p class="st__reason" id="st-reason">{{ reason }}</p>
-    }
-    <button
-      #putButton
-      matButton="outlined"
-      type="button"
-      class="st__put"
-      [class.st__put--off]="full()"
-      [aria-disabled]="full()"
-      [attr.aria-describedby]="full() ? 'st-reason' : null"
-      (click)="openList()"
-    >
-      <mat-icon aria-hidden="true">{{ full() ? 'block' : 'login' }}</mat-icon>Pôr em cena
-    </button>
-  } @else {
+  @if (listOpen()) {
     <div class="pick">
       <div class="pick__head">
         <h4 #listTitle class="pick__title" tabindex="-1">Pôr em cena</h4>

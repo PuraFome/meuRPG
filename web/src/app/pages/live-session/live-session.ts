@@ -1,4 +1,4 @@
-import { Component, TemplateRef, computed, signal, viewChild } from '@angular/core';
+import { Component, TemplateRef, computed, effect, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { MapPointKind } from '../../../gen/meurpg/maps/v1/maps_pb';
@@ -25,6 +25,9 @@ import { LiveSessionState } from './live-session-state';
 import { LiveSessionView } from './live-session-view';
 
 export { CALLING_NOTICE_MS };
+
+/** A tablet: the master's Conversa is a tab of the board, with no rail (under 1024 px) and no pinned nav (from 768 px). */
+const NARROW_QUERY = '(min-width: 768px) and (max-width: 1023.98px)';
 
 /**
  * The session page, `/campaigns/:id/session` (MR-011, MR-012, RN-02, RN-06,
@@ -77,12 +80,15 @@ export class LiveSession {
     () => this.mapState,
     (encounter) => this.combatStarted(encounter),
   );
+  /** The conversation is a tab of the board and another one is shown (the board tells it, after the slot is made). */
+  private readonly chatBehind = signal(false);
   /** Where the conversation sits: a column beside the stage, or the phone's "Conversa" tab. */
   protected readonly slot = new ConversationSlot({
     live: computed(() => this.state.phase() === 'live' && this.state.session() !== null),
     phone: mediaQuery(PHONE_QUERY),
     unread: this.conversation.unread,
     pageVisible: pageVisible(this.services.document, this.services.destroyRef),
+    behind: this.chatBehind,
     isMaster: this.state.isMaster,
     campaignId: this.state.campaignId,
     ownCharacterId: this.state.ownCharacterId,
@@ -106,11 +112,20 @@ export class LiveSession {
     rolls: computed(() => this.scene.scene()?.rolls.length ?? 0),
     openedHere: computed(() => this.scene.focusNext() === 'title'),
     phone: computed(() => this.slot.phone()),
+    narrow: mediaQuery(NARROW_QUERY),
+    unread: this.conversation.unread,
   });
+  protected readonly behindFollows = effect(() =>
+    this.chatBehind.set(this.board.chatTab() && this.board.tab() !== 'conversa'),
+  );
   /** The master's board puts the conversation in a rail from 1024px (C3-01): the master's page outside a combat. */
   protected readonly railed = computed(() => this.state.isMaster() && !this.view.combatOnScreen());
   /** The rail's one tab: the tab list draws nothing for it. */
   protected readonly railTabs: readonly TabItem[] = [{ id: 'conversa', label: 'Conversa' }];
+  /** The conditions the effects in play put on each character, for the party's rows. */
+  protected readonly partyConditions = signal<ReadonlyMap<string, readonly string[]>>(new Map());
+  /** "Teste em grupo" of the open scene was pressed: the group check's form is open. */
+  protected readonly askingGroup = signal(false);
   /** The map's fold on a phone, open or folded. */
   protected readonly mapFoldOpen = signal(false);
   /** How many encounters the map's battle points keep (the "Encontros" tab counts them). */

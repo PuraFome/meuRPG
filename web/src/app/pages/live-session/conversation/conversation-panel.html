@@ -9,9 +9,9 @@
         <span class="panel__scene">{{ subtitle() }}</span>
       </div>
     } @else {
-      <h2 class="panel__title" [id]="titleId">Conversa</h2>
+      <h2 class="panel__title panel__title--icon" [id]="titleId"><mat-icon aria-hidden="true">chat_bubble_outline</mat-icon>Conversa</h2>
       @if (roster.tableSize(); as size) {
-        <span class="panel__count">{{ size }} na mesa</span>
+        <span class="panel__count"><mat-icon aria-hidden="true">groups</mat-icon>{{ size }} na mesa</span>
       }
     }
   </header>

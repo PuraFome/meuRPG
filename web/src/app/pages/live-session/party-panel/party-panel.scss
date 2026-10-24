@@ -6,7 +6,20 @@
   padding-bottom: var(--mr-space-1);
 
   .mr-panel__title {
+    display: flex;
+    align-items: center;
+    gap: var(--mr-space-3);
     margin: 0;
+    font-size: 22px;
+    line-height: 28px;
+
+    .mat-icon {
+      flex: none;
+      width: 22px;
+      height: 22px;
+      font-size: 22px;
+      color: var(--mr-ink-muted);
+    }
   }
 }
 
@@ -33,33 +46,65 @@
   list-style: none;
 }
 
+// One row a character (C6-06): the token, who, the hit points, the slots, the actions. On a phone the row wraps in two lines.
 .member {
-  display: flex;
-  flex-direction: column;
-  gap: var(--mr-space-2);
-  padding: 14px 0;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--mr-space-2) var(--mr-space-3);
+  padding: var(--mr-space-3) 0;
 
   & + & {
     border-top: 1px solid var(--mr-rule);
   }
-}
 
-.member__head {
-  display: flex;
-  align-items: center;
-  gap: var(--mr-space-3);
+  .member__hp,
+  .member__slots {
+    grid-column: 2 / -1;
+  }
+
+  .member__buttons {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  @media (min-width: 1024px) {
+    grid-template-columns: 48px minmax(110px, 0.9fr) minmax(130px, 170px) minmax(230px, 1.5fr) auto;
+
+    .member__hp,
+    .member__slots,
+    .member__buttons {
+      grid-column: auto;
+      grid-row: auto;
+    }
+  }
 }
 
 .member__buttons {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
   justify-content: flex-end;
-  gap: var(--mr-space-2);
+  gap: var(--mr-space-1);
+
+  button {
+    min-height: 44px;
+  }
+}
+
+.member__more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--mr-radius-sm);
+  background: none;
+  color: var(--mr-ink);
+  cursor: pointer;
 }
 
 .member__who {
-  flex-grow: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -104,16 +149,40 @@
 }
 
 .member__sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 6px;
   font-size: 14px;
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
 
+// A condition on the subtitle ("Envenenada"): the danger ink with its icon, never colour alone.
+.member__condition {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--mr-danger-ink);
+  font-weight: 700;
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.member__said {
+  font-size: 14px;
+  color: var(--mr-ink-muted);
+}
+
 .member__hp {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--mr-space-2);
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
 }
 
 .member__numbers {
@@ -125,25 +194,17 @@
 .member__current {
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 30px;
-  line-height: 30px;
+  font-size: 20px;
+  line-height: 24px;
 }
 
 .member__max {
-  font-family: var(--mr-font-display);
-  font-weight: 700;
-  font-size: 18px;
-  color: var(--mr-ink-muted);
-}
-
-.member__unit {
-  margin-left: 2px;
-  font-size: 14px;
+  font-size: 15px;
   color: var(--mr-ink-muted);
 }
 
 .member__bar {
-  height: 6px;
+  height: 4px;
   overflow: hidden;
   border-radius: var(--mr-radius-pill);
   background: var(--mr-line);
@@ -155,22 +216,19 @@
   background: var(--mr-ink);
 }
 
+.member__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-1);
+}
+
 .member__slots {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px var(--mr-space-4);
+  gap: 4px var(--mr-space-3);
   font-size: 14px;
   line-height: 19px;
-}
-
-.member__slots-label {
-  color: var(--mr-ink-muted);
-
-  // On a phone the label takes its own line, as in the artboard.
-  @media (max-width: 767.98px) {
-    flex-basis: 100%;
-  }
 }
 
 .member__slot {
@@ -179,6 +237,7 @@
   gap: 6px;
 }
 
-.member__slot-count {
+.member__slot-count,
+.member__none {
   color: var(--mr-ink-muted);
 }

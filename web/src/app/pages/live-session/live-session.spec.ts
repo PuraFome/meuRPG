@@ -713,7 +713,7 @@ describe('LiveSession', () => {
     expect(el.textContent).toContain('desde 30/09 às 20:05');
     expect(el.querySelector('[aria-label="Ajustar Pensantus"]')).not.toBeNull();
     expect(el.querySelector('[aria-label="Ajustar Brisa"]')).not.toBeNull();
-    expect(el.textContent).toContain('Ladina 3, de Ana');
+    expect(el.textContent).toContain('Ladina 3');
     expect(el.textContent).toContain('+5 temporários');
     expect(el.textContent).toContain('Abaixo da metade');
     // The link and the end are in the "Sessão" menu.
@@ -744,7 +744,7 @@ describe('LiveSession', () => {
     it('gives the master the "Descanso" card with the two rests', async () => {
       asMaster();
       const el = await render();
-      expect(el.querySelector('app-rest-card h2')?.textContent).toBe('Descanso');
+      expect(el.querySelector('app-rest-card h2')?.textContent).toContain('Descanso');
       expect(button(el, 'Descanso curto')).toBeTruthy();
       expect(button(el, 'Descanso longo')).toBeTruthy();
     });
@@ -1346,13 +1346,16 @@ describe('LiveSession', () => {
       it('reads the rolls again on scene_check_rolled and reads the new one aloud', async () => {
         scenes.scene = masterScene();
         const el = await render();
-        expect(el.textContent).toContain('Ninguém rolou ainda.');
+        expect(el.querySelectorAll('#mb-panel-cena .chip')).toHaveLength(0);
         scenes.scene = masterScene([sceneRoll('r1', 'a2', 'Toren', 7, { passed: false })]);
         source.push({ kind: 'sceneCheckRolled' });
         await tick();
         await tick();
         expect(el.textContent).toContain('Toren: Seguir os rastros dos goblins, 7, não passou');
-        expect(el.querySelectorAll('app-scene-roll-line')).toHaveLength(1);
+        expect(el.querySelectorAll('#mb-panel-cena .chip')).toHaveLength(1);
+        expect(el.querySelector('#mb-panel-cena .sa__fresh')?.textContent).toContain(
+          '1 rolagem nova',
+        );
       });
 
       it('opens a scene from its point in "Pontos do mapa", and the list says it is the open one', async () => {
@@ -2062,7 +2065,7 @@ describe('LiveSession', () => {
     it('puts the panel beside the stage on a computer, with the composer of a player, and no tabs', async () => {
       onPhone(false);
       const el = await render();
-      expect(el.querySelector('app-conversation h2')?.textContent?.trim()).toBe('Conversa');
+      expect(el.querySelector('app-conversation h2')?.textContent).toContain('Conversa');
       expect(el.querySelector('app-player-composer')).not.toBeNull();
       expect(el.querySelector('app-session-tabs')).toBeNull();
     });

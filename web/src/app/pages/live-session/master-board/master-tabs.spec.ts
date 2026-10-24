@@ -26,4 +26,16 @@ describe('the master tabs', () => {
     expect(some[1].badge).toBeUndefined();
     expect(some[2]).toMatchObject({ badge: '1', tone: 'wait', words: '1 conjuração esperando' });
   });
+
+  it('adds "Conversa" only where it is a tab (a tablet), with the unread lines in words', () => {
+    expect(masterTabItems({ newRolls: 0, castsWaiting: 0 }, true).map((t) => t.label)).toEqual([
+      'Cena',
+      'Mapa',
+      'Grupo',
+      'Conversa',
+    ]);
+    const chat = masterTabItems({ newRolls: 0, castsWaiting: 0, unread: 3 }, true)[3];
+    expect(chat).toMatchObject({ badge: '3', tone: 'news', words: '3 mensagens novas' });
+    expect(resolveTab('conversa', true)).toBe('conversa');
+  });
 });

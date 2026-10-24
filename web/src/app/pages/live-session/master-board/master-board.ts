@@ -15,6 +15,10 @@ export interface MasterBoardInputs {
   readonly openedHere: Signal<boolean>;
   /** A phone: the map is a fold of "Cena" and the tabs are the pinned nav's. */
   readonly phone: Signal<boolean>;
+  /** A tablet (768 to 1023 px): the Conversa is a tab of the board, not a rail. */
+  readonly narrow?: Signal<boolean>;
+  /** The lines that came while the conversation was not on screen. */
+  readonly unread?: Signal<number>;
 }
 
 /**
@@ -32,15 +36,22 @@ export class MasterBoard {
   readonly tab = computed<MasterTab>(() => {
     const tab = resolveTab(this.param(), this.inputs.sceneOpen());
     // On a phone the map is a fold of the scene's page: there is no tab for it.
-    return this.inputs.phone() && tab === 'mapa' ? 'cena' : tab;
+    if (this.inputs.phone() && (tab === 'mapa' || tab === 'conversa')) {
+      return 'cena';
+    }
+    // The conversation is a tab only where it has no rail and no pinned nav.
+    return tab === 'conversa' && !this.chatTab() ? 'cena' : tab;
   });
   /** The new scene rolls, counted from when the master last had "Cena" on screen. */
   readonly newRolls = computed(() => Math.max(this.inputs.rolls() - this.seenRolls(), 0));
+  /** The Conversa is a tab of the board (a tablet). */
+  readonly chatTab = computed(() => !!this.inputs.narrow?.() && !this.inputs.phone());
   readonly counts = computed<TabCounts>(() => ({
     newRolls: this.tab() === 'cena' ? 0 : this.newRolls(),
     castsWaiting: this.castsWaiting(),
+    unread: this.tab() === 'conversa' ? 0 : (this.inputs.unread?.() ?? 0),
   }));
-  readonly tabs = masterTabs(this.counts);
+  readonly tabs = masterTabs(this.counts, this.chatTab);
   /** A phone: no tab list, the pinned nav chooses. */
   readonly phone = computed(() => this.inputs.phone());
 

@@ -271,7 +271,19 @@
                 [keep]="state.shownKeep()"
                 (shownChange)="state.shownImage.set($event); state.shownKeep.set(false)"
                 (leftChanged)="loader.reloadLeftImages()"
+                [(groupAsk)]="askingGroup"
               >
+                <app-shown-image-panel
+                  galleryTile
+                  appearance="tile"
+                  [campaignId]="state.campaignId()"
+                  [shown]="state.shownImage()"
+                  [maps]="state.campaignMaps()"
+                  [keep]="state.shownKeep()"
+                  [left]="state.leftImages()"
+                  (changed)="state.shownImage.set($event); state.shownKeep.set(false)"
+                  (leftChanged)="loader.reloadLeftImages()"
+                />
                 <app-shown-image-panel
                   sceneImageTools
                   appearance="row"
@@ -289,6 +301,8 @@
                 <app-group-check-master
                   sceneTools
                   [collapsible]="true"
+                  [askButton]="false"
+                  [(asking)]="askingGroup"
                   [campaignId]="state.campaignId()"
                   [tick]="state.groupCheckTick()"
                   [diceMode]="state.campaign()?.diceMode ?? 1"
@@ -339,7 +353,7 @@
               </app-fold>
             }
             <!-- "Rolagens da mesa" closes the column (MR-052). -->
-            <app-free-roll-log [rolls]="freeDice.table()" [listState]="freeDice.listState()" (retry)="freeDice.refresh()" />
+            <app-free-roll-log [folded]="true" [rolls]="freeDice.table()" [listState]="freeDice.listState()" (retry)="freeDice.refresh()" />
           </div>
 
           <div appMasterPanel="mapa" [board]="board">
@@ -348,6 +362,12 @@
             }
           </div>
 
+          @if (board.chatTab()) {
+            <!-- A tablet has no rail and no pinned nav: the Conversa is the board's fourth tab, with its draft kept while the others show. -->
+            <div appMasterPanel="conversa" [board]="board">
+              <ng-container *ngTemplateOutlet="chat" />
+            </div>
+          }
           <div appMasterPanel="grupo" [board]="board">
             <app-party-panel
               [campaignId]="state.campaignId()"
@@ -355,6 +375,7 @@
               [party]="state.vitals()"
               [info]="state.partyInfo()"
               [dark]="dark.ids()"
+              [conditions]="partyConditions()"
               (adjust)="sheets.adjust($event)"
             />
             <!-- The master's short and long rests (PM-07b 9). -->
@@ -368,6 +389,7 @@
               [campaignId]="state.campaignId()"
               [party]="state.vitals()"
               [tick]="state.effectsTick()"
+              (conditions)="partyConditions.set($event)"
             />
             <app-casting-panel
               [campaignId]="state.campaignId()"
@@ -411,6 +433,7 @@
             @if (view.fogMaster()) {
               <app-fog-master-panel
                 mapFog
+                [flat]="true"
                 [campaignId]="state.campaignId()"
                 [state]="mapState"
                 [map]="mapState.map()"
@@ -562,7 +585,9 @@
           />
         }
         </ng-template>
-        @if (railed() && !slot.phone()) {
+        @if (railed() && board.chatTab()) {
+          <!-- On a tablet the conversation is the board's "Conversa" tab. -->
+        } @else if (railed() && !slot.phone()) {
           <!-- From 1024px the master's Conversa is the rail: an aside, sticky under the bars, as tall as the screen (C3-01). -->
           <app-session-rail label="Conversa" [tabs]="railTabs">
             <ng-container *ngTemplateOutlet="chat" />

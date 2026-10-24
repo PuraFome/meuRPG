@@ -18,25 +18,36 @@
 .cx__head {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--mr-space-3);
+  align-items: center;
+  gap: var(--mr-space-1) var(--mr-space-3);
 }
 
 .cx__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--mr-space-2);
-}
+  gap: var(--mr-space-1) var(--mr-space-2);
+  margin-left: auto;
 
-.cx__titles {
-  min-width: 0;
+  button {
+    min-height: 44px;
+  }
 }
 
 .cx__title {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
   margin: 0;
-  font-size: 26px;
-  line-height: 30px;
+  font-size: 22px;
+  line-height: 28px;
+
+  .mat-icon {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    font-size: 22px;
+    color: var(--mr-ink-muted);
+  }
 
   &:focus-visible {
     outline: 2px solid var(--mr-focus);
@@ -45,7 +56,7 @@
 }
 
 .cx__count {
-  margin: 2px 0 0;
+  margin: 0;
   font-size: 14px;
   color: var(--mr-ink-muted);
 }
@@ -55,48 +66,49 @@
   color: var(--mr-ink-muted);
 }
 
+// One row per effect (C6-06): the glass, "Armadura Arcana · Pensantus" with its line, and "Encerrar" as a text action.
 .cx__list {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--mr-space-3);
   margin: 0;
   padding: 0;
   list-style: none;
-
-  @media (min-width: 768px) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
-.cx__card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--mr-space-2);
-  padding: var(--mr-space-4);
-  border: 1px solid var(--mr-line);
-  border-radius: var(--mr-radius-lg);
-  background: var(--mr-surface);
-}
-
-.cx__name {
-  display: flex;
-  flex-wrap: wrap;
+.cx__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--mr-space-2);
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-3) 0;
+  border-top: 1px solid var(--mr-rule);
+}
+
+.cx__glass {
+  width: 22px;
+  height: 22px;
+  font-size: 22px;
+}
+
+.cx__text {
+  min-width: 0;
 }
 
 .cx__nametext {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-1) var(--mr-space-2);
   margin: 0;
-  font-family: var(--mr-font-display);
-  font-size: 21px;
-  line-height: 26px;
+  font-family: var(--mr-font-sans);
+  font-size: 17px;
+  line-height: 22px;
   font-weight: 700;
   overflow-wrap: anywhere;
 }
 
 .cx__sub {
   margin: 0;
-  font-size: 15px;
+  font-size: 14px;
+  line-height: 19px;
   color: var(--mr-ink-muted);
   overflow-wrap: anywhere;
 }
@@ -122,33 +134,12 @@
   }
 }
 
-.cx__line {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--mr-space-2);
-  margin: 0;
-  font-size: 15px;
-  line-height: 20px;
-
-  .mat-icon {
-    flex: none;
-    width: 18px;
-    height: 18px;
-    margin-top: 1px;
-    font-size: 18px;
-    color: var(--mr-ink-muted);
-  }
-}
-
-.cx__tags {
-  margin: 0;
-  font-size: 14px;
-  color: var(--mr-ink-muted);
+.cx__end {
+  min-height: 44px;
 }
 
 .cx__btn {
   --mat-button-outlined-container-height: 48px;
-  --mat-button-filled-container-height: 48px;
   --mat-button-outlined-label-text-color: var(--mr-ink);
   width: 100%;
 
@@ -159,7 +150,6 @@
 
   @media (min-width: 768px) {
     --mat-button-outlined-container-height: 44px;
-    --mat-button-filled-container-height: 44px;
   }
 }
 
@@ -169,6 +159,7 @@
 }
 
 .cx__ask {
+  grid-column: 1 / -1;
   display: flex;
   align-items: flex-start;
   gap: var(--mr-space-3);
@@ -212,45 +203,67 @@
   }
 }
 
-// "Passar o tempo": the presets, the seconds and the button.
+// "Passar o tempo" (C6-06): the label and four equal outlined buttons, under a rule.
+.cx__time {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2) var(--mr-space-3);
+  padding-top: var(--mr-space-3);
+  border-top: 1px solid var(--mr-rule);
+}
+
+.cx__timelabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  font-size: 17px;
+  font-weight: 700;
+
+  .mat-icon {
+    width: 22px;
+    height: 22px;
+    font-size: 22px;
+    color: var(--mr-ink-muted);
+  }
+}
+
 .cx__presets {
-  display: grid;
-  // As many columns as fit with the longest label ("1 rodada (6 s)") on one line.
-  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: var(--mr-space-2);
 }
 
 .cx__preset {
-  white-space: nowrap;
+  flex: none;
+  width: 96px;
   --mat-button-outlined-container-height: 48px;
   --mat-button-outlined-label-text-color: var(--mr-ink);
-
-  &.cx__preset--on {
-    --mat-button-outlined-outline-color: var(--mr-accent);
-    border-width: 2px;
-    background: var(--mr-accent-soft);
-  }
+  white-space: nowrap;
 
   @media (min-width: 768px) {
     --mat-button-outlined-container-height: 44px;
   }
 }
 
-.cx__go {
-  display: flex;
-  flex-direction: column;
-  gap: var(--mr-space-2);
-
-  @media (min-width: 768px) {
-    flex-direction: row;
-    align-items: center;
-    gap: var(--mr-space-4);
-  }
+.cx__other {
+  min-height: 44px;
 }
 
-.cx__btn--go {
-  @media (min-width: 768px) {
-    width: auto;
+.cx__custom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--mr-space-2) var(--mr-space-3);
+
+  app-text-field {
+    flex: 1 1 220px;
+  }
+
+  .cx__go {
+    min-height: 44px;
+    margin-top: var(--mr-space-5);
   }
 }
 
