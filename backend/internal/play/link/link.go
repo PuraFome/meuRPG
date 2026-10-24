@@ -73,6 +73,9 @@ type Character struct {
 	// CastsInBeastForm says the character keeps its spells in a beast shape
 	// (a druid of level 18, Beast Spells); every other character has none there.
 	CastsInBeastForm bool
+	// ArmorUntrained says the character wears armor or a shield it is not proficient with,
+	// and so cannot cast spells (rules.ArmorUntrained).
+	ArmorUntrained bool
 	// MonsterKey and ChallengeRating are the SRD creature an NPC was made from
 	// ("monster:bandit") and its ND ("1/8"), "" for an NPC the master typed: the
 	// master's view of a monster.
@@ -242,6 +245,8 @@ type Traits struct {
 	HeavyArmor bool
 	// StealthDisadvantage says the armor worn gives disadvantage on Dexterity (Stealth).
 	StealthDisadvantage bool
+	// ArmorUntrained says the character wears armor or a shield it is not proficient with.
+	ArmorUntrained bool
 	// Resistances are the damage resistances the features and traits give.
 	Resistances []Resistance
 	// Maneuvers are the dice the table's options add to a roll (superiority_die effects).
@@ -259,6 +264,10 @@ type Traits struct {
 	// (rules.Derived); total cover still blocks. The spell range multiplier is already
 	// in the ranges (Spell.RangeFt, Attack.RangeFt of a cantrip).
 	SpellAttackIgnoresCover, RangedWeaponIgnoresCover, RangedWeaponNoLongRangeDisadvantage bool
+	// UnactedAdvantage and SurprisedCritical are the keys of the table features (ambush effects)
+	// that give advantage against a creature that has not had its turn yet and make a hit on a
+	// surprised creature critical; empty for none.
+	UnactedAdvantage, SurprisedCritical string
 }
 
 // Resistance is a damage resistance of a feature or trait: its key and name, the

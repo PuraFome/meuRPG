@@ -69,6 +69,16 @@ With the fog on and `base_light = 'bright'` ("Claro"), a player receives the ter
 - "Penumbra" and "Escuro" keep the terrain by sight and memory. The image generated from a map (MR-039) stays by sight on every base light.
 - Changing only the base light notifies the players of nothing (it is the master's); only the fog switch and "Visão do grupo" do. `Map` carries `fog_enabled` and `group_vision` to everyone and `base_light` only to the master.
 
+## The master's light warning
+
+`ListCharactersInTheDark(campaign_id, map_id)` (`maps/darkwarning.go`) tells the master which player characters see nothing where they stand. It is the master's alone: a player gets `permission_denied`, a non-member `not_found` (RN-10), because the answer is worked out from lights a player cannot see.
+
+- **One light model.** It builds the same scene as the players' views (`newSight`: the base light, the painted light, the Luz points and the carried lights, hidden NPCs' included, the walls and doors) and asks `vision.Lit.InTheDark` of each living player character that stands on the map (its token's square, or its combatant's while a combat runs). A character is in the dark when its own square is `grid.Dark` and none of its darkvision, blindsight or truesight covers it. `See` always marks the viewer's own square as known (grey in the dark), so this is a separate question over the same light and the same senses.
+- **What it lists.** Per character: id, name, square (`col`, `row`) and the cause (`DARKNESS_CAUSE_NO_LIGHT_NO_DARKVISION`), in the order the characters module lists the party. An empty list means nobody is in the dark. Fog off, a map without a grid, "Penumbra" and "Claro" (the whole map is at least dim, so every square is lit), a character without a token on this map and a dead character list nobody. The map's base light name is the master's `Map.base_light`, already in `GetMap`.
+- **When to ask again.** The read has no stream of its own. Every change that moves a light or a character already reaches the master as `map_changed` (a carried light, set or put out, by the master or the owner; a Luz point; a token placed, hidden or shown; painting; the fog and base light) or as `token_moved` (a character's move). The master's screen reads again on those two, and a failed read shows no warning.
+
+Tests: `TestRN10_DarkWarning_*` (`maps`), `TestInTheDark` (`rules/vision`), and in `leaktest` the row of the reads table and `TestTheDarkWarningIsTheMastersAlone`.
+
 ## The stream
 
 The notice is `vision_changed{map_id}`, contentless: the app reads `GetMapVision` and the map again.

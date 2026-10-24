@@ -1,6 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import { unreadWords } from './unread-notice';
+
 export type SessionTab = 'scene' | 'chat';
 
 /** The badge stops counting here: "99+" is as much as a glance can use. */
@@ -51,6 +53,6 @@ export class SessionTabs {
     if (n === 0) {
       return null;
     }
-    return `Conversa, ${n} ${n === 1 ? 'mensagem nova' : 'mensagens novas'}`;
+    return `Conversa, ${unreadWords(n)}`;
   });
 }

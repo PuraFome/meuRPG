@@ -1,0 +1,140 @@
+:host {
+  display: block;
+}
+
+// The status message: a calm line, in the light's own colour (a light was lit or went out).
+.said__box {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-3);
+  margin: 0 0 var(--mr-space-3);
+  padding: 12px 18px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font-size: 16px;
+  line-height: 22px;
+
+  .mat-icon {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    margin-top: 1px;
+    font-size: 20px;
+  }
+}
+
+// The amber notice: the warning's own tokens, in both themes.
+.dark {
+  margin-bottom: var(--mr-space-3);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-3);
+  padding: 12px 18px;
+  border: 1px solid var(--mr-warning-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-warning-surface);
+  color: var(--mr-warning-ink);
+  font-size: 16px;
+  line-height: 22px;
+
+  p {
+    margin: 0;
+  }
+
+  // The buttons keep the page's own look (outlined, ink) so the warning does not shout twice.
+  .mat-mdc-button {
+    --mat-button-outlined-label-text-color: var(--mr-ink);
+    --mat-button-outlined-outline-color: var(--mr-control-line);
+    background: var(--mr-surface);
+  }
+}
+
+.dark__icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  font-size: 20px;
+}
+
+.dark__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.dark__cause {
+  margin-top: calc(-1 * var(--mr-space-2));
+  font-size: 14px;
+  line-height: 19px;
+}
+
+.dark__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-3);
+}
+
+.dark__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dark__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  padding: var(--mr-space-3) 0;
+  border-top: 1px solid var(--mr-warning-line);
+
+  &:last-child {
+    border-bottom: 1px solid var(--mr-warning-line);
+  }
+}
+
+.dark__name {
+  font-weight: 700;
+}
+
+// The painting mode: one line, the names and one button.
+.dark--line {
+  align-items: center;
+
+  .dark__text {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .dark__icon {
+    margin-top: 0;
+  }
+}
+
+// From a tablet up, a pair of buttons shares a row with the name and fills the width of the notice.
+@media (min-width: 768px) {
+  .dark--many .dark__buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+
+    .mat-mdc-button {
+      width: 100%;
+    }
+  }
+}
+
+// On a phone, the buttons of the one notice are full width, one over the other.
+@media (max-width: 767px) {
+  .dark__buttons {
+    flex-direction: column;
+
+    .mat-mdc-button {
+      width: 100%;
+    }
+  }
+}

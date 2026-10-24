@@ -192,13 +192,16 @@
       ],
       "HeavyArmor": false,
       "StealthDisadvantage": false,
+      "ArmorUntrained": false,
       "Resistances": null,
       "Maneuvers": null,
       "ExtraDamages": null,
       "CreatureType": "",
       "SpellAttackIgnoresCover": false,
       "RangedWeaponIgnoresCover": false,
-      "RangedWeaponNoLongRangeDisadvantage": false
+      "RangedWeaponNoLongRangeDisadvantage": false,
+      "UnactedAdvantage": "",
+      "SurprisedCritical": ""
     }
   },
   "bardo do conhecimento 3": {
@@ -329,13 +332,16 @@
       "TaggedSaves": null,
       "HeavyArmor": false,
       "StealthDisadvantage": false,
+      "ArmorUntrained": false,
       "Resistances": null,
       "Maneuvers": null,
       "ExtraDamages": null,
       "CreatureType": "",
       "SpellAttackIgnoresCover": false,
       "RangedWeaponIgnoresCover": false,
-      "RangedWeaponNoLongRangeDisadvantage": false
+      "RangedWeaponNoLongRangeDisadvantage": false,
+      "UnactedAdvantage": "",
+      "SurprisedCritical": ""
     }
   },
   "bárbaro berserker 9": {
@@ -466,6 +472,7 @@
       "TaggedSaves": null,
       "HeavyArmor": false,
       "StealthDisadvantage": false,
+      "ArmorUntrained": false,
       "Resistances": [
         {
           "Source": "feature:rage",
@@ -483,7 +490,9 @@
       "CreatureType": "",
       "SpellAttackIgnoresCover": false,
       "RangedWeaponIgnoresCover": false,
-      "RangedWeaponNoLongRangeDisadvantage": false
+      "RangedWeaponNoLongRangeDisadvantage": false,
+      "UnactedAdvantage": "",
+      "SurprisedCritical": ""
     }
   },
   "goblin de ficha básica": {
@@ -597,13 +606,16 @@
       "TaggedSaves": null,
       "HeavyArmor": false,
       "StealthDisadvantage": false,
+      "ArmorUntrained": false,
       "Resistances": null,
       "Maneuvers": null,
       "ExtraDamages": null,
       "CreatureType": "",
       "SpellAttackIgnoresCover": false,
       "RangedWeaponIgnoresCover": false,
-      "RangedWeaponNoLongRangeDisadvantage": false
+      "RangedWeaponNoLongRangeDisadvantage": false,
+      "UnactedAdvantage": "",
+      "SurprisedCritical": ""
     }
   },
   "guerreiro campeão 5": {
@@ -734,13 +746,16 @@
       "TaggedSaves": null,
       "HeavyArmor": false,
       "StealthDisadvantage": false,
+      "ArmorUntrained": false,
       "Resistances": null,
       "Maneuvers": null,
       "ExtraDamages": null,
       "CreatureType": "",
       "SpellAttackIgnoresCover": false,
       "RangedWeaponIgnoresCover": false,
-      "RangedWeaponNoLongRangeDisadvantage": false
+      "RangedWeaponNoLongRangeDisadvantage": false,
+      "UnactedAdvantage": "",
+      "SurprisedCritical": ""
     }
   },
   "guerreiro de cota de malha": {
@@ -895,13 +910,16 @@
       "TaggedSaves": null,
       "HeavyArmor": true,
       "StealthDisadvantage": true,
+      "ArmorUntrained": false,
       "Resistances": null,
       "Maneuvers": null,
       "ExtraDamages": null,
       "CreatureType": "",
       "SpellAttackIgnoresCover": false,
       "RangedWeaponIgnoresCover": false,
-      "RangedWeaponNoLongRangeDisadvantage": false
+      "RangedWeaponNoLongRangeDisadvantage": false,
+      "UnactedAdvantage": "",
+      "SurprisedCritical": ""
     }
   },
   "monge da mão aberta 5": {
@@ -1064,13 +1082,16 @@
       "TaggedSaves": null,
       "HeavyArmor": false,
       "StealthDisadvantage": false,
+      "ArmorUntrained": false,
       "Resistances": null,
       "Maneuvers": null,
       "ExtraDamages": null,
       "CreatureType": "",
       "SpellAttackIgnoresCover": false,
       "RangedWeaponIgnoresCover": false,
-      "RangedWeaponNoLongRangeDisadvantage": false
+      "RangedWeaponNoLongRangeDisadvantage": false,
+      "UnactedAdvantage": "",
+      "SurprisedCritical": ""
     }
   },
   "ogro do bestiário": {
@@ -1208,13 +1229,16 @@
       "TaggedSaves": null,
       "HeavyArmor": false,
       "StealthDisadvantage": false,
+      "ArmorUntrained": false,
       "Resistances": null,
       "Maneuvers": null,
       "ExtraDamages": null,
       "CreatureType": "giant",
       "SpellAttackIgnoresCover": false,
       "RangedWeaponIgnoresCover": false,
-      "RangedWeaponNoLongRangeDisadvantage": false
+      "RangedWeaponNoLongRangeDisadvantage": false,
+      "UnactedAdvantage": "",
+      "SurprisedCritical": ""
     }
   },
   "paladino 2": {
@@ -1345,13 +1369,16 @@
       "TaggedSaves": null,
       "HeavyArmor": false,
       "StealthDisadvantage": false,
+      "ArmorUntrained": false,
       "Resistances": null,
       "Maneuvers": null,
       "ExtraDamages": null,
       "CreatureType": "",
       "SpellAttackIgnoresCover": false,
       "RangedWeaponIgnoresCover": false,
-      "RangedWeaponNoLongRangeDisadvantage": false
+      "RangedWeaponNoLongRangeDisadvantage": false,
+      "UnactedAdvantage": "",
+      "SurprisedCritical": ""
     }
   },
   "refused: a character that is not there": {

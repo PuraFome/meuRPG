@@ -14,7 +14,15 @@
         <li class="member">
           <div class="member__head">
             <div class="member__who">
-              <span class="member__name">{{ v.name }}</span>
+              <span class="member__line">
+                <span class="member__name">{{ v.name }}</span>
+                @if (dark().has(v.characterId)) {
+                  <!-- The master's light warning (B3): only the master's panel has it, so a player's screen never does (RN-10). -->
+                  <span class="js-dark member__dark">
+                    <mat-icon aria-hidden="true">dark_mode</mat-icon>No escuro
+                  </span>
+                }
+              </span>
               @if (sub(info().get(v.characterId)); as line) {
                 <span class="member__sub">{{ line }}</span>
               }

@@ -17,6 +17,8 @@ export interface CarriedLightData {
   readonly mapId: string;
   readonly characterId: string;
   readonly characterName: string;
+  /** The sheet's title, when it is not "Luz que você carrega" ("Acender luz: Brisa", from the master's light warning). */
+  readonly title?: string;
   readonly current: string;
   readonly options: readonly LightOption[];
   /** The light was set: the new token, and the option (`null` for none). */

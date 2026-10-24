@@ -98,6 +98,7 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 	t.StealthDisadvantage = slices.ContainsFunc(d.Hints, func(h rules.Hint) bool {
 		return h.Target == "skill:stealth" && h.Mode == "disadvantage"
 	})
+	t.ArmorUntrained = d.ArmorUntrained.Any()
 	t.TaggedSaves = taggedSavesOf(d.Hints)
 	t.ImprovedDivineSmite = rules.HasFeature(d, "feature:improved-divine-smite")
 	t.OpenHand = rules.HasFeature(d, "feature:open-hand-technique")
@@ -129,6 +130,7 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 	}
 	t.SpellAttackIgnoresCover, t.RangedWeaponIgnoresCover = d.SpellAttackIgnoresCover, d.RangedWeaponIgnoresCover
 	t.RangedWeaponNoLongRangeDisadvantage = d.RangedWeaponNoLongRangeDisadvantage
+	t.UnactedAdvantage, t.SurprisedCritical = d.UnactedAdvantage, d.SurprisedCritical
 	for _, m := range d.Maneuvers {
 		t.Maneuvers = append(t.Maneuvers, link.Maneuver{
 			Key: m.Key, NamePT: m.NamePT, Resource: m.Resource, Applies: m.Applies, Economy: m.Economy,
@@ -141,4 +143,15 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 		})
 	}
 	return t
+}
+
+// armorTrainingOf is the armor training that counts for a combatant: the sheet's own for a player's
+// character, and none for anyone else. An NPC or a creature with a stat block is proficient with what
+// it wears (SRD 5.1, "Armor"), and a druid in a beast form fights as the beast. This is the one place
+// that says whose armor can spoil a roll; combat.ArmorSpoilsAbility says which rolls.
+func armorTrainingOf(d rules.Derived, kind string, beast *string) rules.ArmorUntrained {
+	if kind != kindPlayer || (beast != nil && *beast != "") {
+		return rules.ArmorUntrained{}
+	}
+	return d.ArmorUntrained
 }

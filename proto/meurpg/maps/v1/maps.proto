@@ -605,6 +605,26 @@ service MapService {
   //   - `permission_denied`: the caller is a player.
   rpc ForgetMapVision(ForgetMapVisionRequest) returns (ForgetMapVisionResponse);
 
+  // ListCharactersInTheDark tells the master which player characters see
+  // nothing where they stand on a map: the map has the fog of war on, the square
+  // is dark (the base light "Escuro" and no painted light or light source reaches
+  // it, a hidden NPC's light and a carried light included) and the character has
+  // no darkvision, blindsight or truesight to cover it. With "Penumbra" or
+  // "Claro" as the base light, or without the fog, nobody is in the dark and the
+  // list is empty. Only the characters that stand on this map are listed, living
+  // ones that have a player. The answer is the master's alone (RN-10): it is
+  // worked out from lights a player cannot see. The app reads it again when the
+  // master's stream says `map_changed` or `token_moved` (a carried light, a Luz
+  // point, a token or the map's light changed).
+  //
+  // Errors:
+  //   - `not_found`: the map is not in this campaign, the campaign does not
+  //     exist, or the caller is not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  rpc ListCharactersInTheDark(ListCharactersInTheDarkRequest) returns (ListCharactersInTheDarkResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
   // RevealTrap shows a TRAP point to the players the master chose: some
   // characters (their players get the trap, and nobody else does) or everyone
   // (the same as revealing the point, SetMapPointRevealed). Only the campaign's
@@ -2006,3 +2026,33 @@ message ForgetMapVisionRequest {
 
 // ForgetMapVisionResponse is empty.
 message ForgetMapVisionResponse {}
+
+// ListCharactersInTheDarkRequest names a map of a campaign.
+message ListCharactersInTheDarkRequest {
+  string campaign_id = 1;
+  string map_id = 2;
+}
+
+// ListCharactersInTheDarkResponse lists the player characters that see nothing
+// where they stand, in the order the characters module lists the party. Empty
+// when nobody is in the dark.
+message ListCharactersInTheDarkResponse {
+  repeated CharacterInTheDark characters = 1;
+}
+
+// CharacterInTheDark is one player character that sees nothing where it stands.
+message CharacterInTheDark {
+  string character_id = 1;
+  string character_name = 2;
+  // The square it stands on (0-based, as MapSquare).
+  int32 col = 3;
+  int32 row = 4;
+  DarknessCause cause = 5;
+}
+
+// DarknessCause says why a character is in the dark.
+enum DarknessCause {
+  DARKNESS_CAUSE_UNSPECIFIED = 0;
+  // The square has no light and the character has no sense that sees in the dark.
+  DARKNESS_CAUSE_NO_LIGHT_NO_DARKVISION = 1;
+}
