@@ -8,6 +8,7 @@ import (
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/vision"
 )
@@ -74,7 +75,7 @@ func (s *Service) ListCharactersInTheDark(
 	for _, id := range order { // the party in the order the characters module lists it
 		sq := dark[id]
 		out.Characters = append(out.Characters, &mapsv1.CharacterInTheDark{
-			CharacterId: id, CharacterName: names[id], Col: int32(sq.Col), Row: int32(sq.Row), //nolint:gosec // G115: a grid is at most 200 x 400
+			CharacterId: id, CharacterName: names[id], Col: conv.Int32(sq.Col), Row: conv.Int32(sq.Row),
 			Cause: mapsv1.DarknessCause_DARKNESS_CAUSE_NO_LIGHT_NO_DARKVISION,
 		})
 	}
