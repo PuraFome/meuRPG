@@ -59,7 +59,7 @@ test(
       await p.getByRole('button', { name: 'Mover para cá' }).click();
       await expect(p.getByRole('heading', { name: 'Sua vez, Toren' })).toBeVisible();
       await expect.poll(async () => (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === 'Toren')?.col).toBe(7);
-      await expect(p.getByText('4,5 m de 9,0 m').first()).toBeVisible();
+      await expect(p.getByText('Restam 4,5 m')).toBeVisible(); // the movement row under the map
 
       // Saltar: the limits come from Força 17 (a human's +1), and the 10 ft on foot just before give the running start.
       await p.getByRole('button', { name: 'Mover', exact: true }).click();
@@ -338,7 +338,7 @@ test(
       await p.getByRole('button', { name: 'Mover para cá' }).click();
       await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
       await expect(p.getByText('Você usou Desengajar. Seus movimentos deste turno não provocam ataque de oportunidade.')).toBeVisible();
-      await expect(p.getByText('Desengajado').first()).toBeVisible();
+      await expect(p.getByRole('status').filter({ hasText: 'sem provocar' })).toContainText('Restam 4,5 m'); // the movement row says the squares do not provoke
       // No offer, no waiting: the master has no prompt, and the player's turn goes on.
       await expect(m.getByRole('group', { name: /Ataque de oportunidade/ })).toHaveCount(0);
       await expect(p.getByText('Esperando a reação')).toHaveCount(0);

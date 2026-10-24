@@ -189,7 +189,9 @@ test('Toren anda até uma porta fechada em combate e ela se abre; o registro diz
     expect((await layers(m, campaignId, table.mapId)).door(8, 7)).toBe(OPEN);
     await expect(p.getByText('abriu a porta').first()).toBeVisible();
     await expect(m.getByText('abriu a porta').first()).toBeVisible();
-    // The map says so too: the legend of the player's map now names an open door.
+    // The map says so too: the legend of the "Mover" page now names an open door (the combat's own map card has no legend).
+    await p.getByRole('button', { name: 'Mover', exact: true }).click();
+    await expect(p.getByRole('heading', { name: 'Mover Toren' })).toBeVisible();
     await expect(legend(p).getByText('Porta aberta')).toBeVisible();
   } finally {
     await done();
