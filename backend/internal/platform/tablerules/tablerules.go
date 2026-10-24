@@ -42,6 +42,10 @@ type Rules struct {
 	// for the master's one-tap check ("Reações dos inimigos: Sempre"), instead of
 	// waiting only when an enemy has a reaction.
 	EnemyReactionsAlways bool
+	// ShowSaveDC lets the player who rolls a saving throw the app asks of them read its
+	// DC too ("Os jogadores veem a CD dos testes de resistência"), instead of the SRD's
+	// table where only the master knows it. Nobody who does not roll the save gains it.
+	ShowSaveDC bool
 	// Reminders are the table's house rules: short texts shown on "Regras da
 	// mesa" and never enforced; none by default.
 	Reminders []string

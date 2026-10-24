@@ -179,7 +179,7 @@ func TestRN24_TableRulesRoundTrip(t *testing.T) {
 		t.Errorf("Tudo no app preset = %v", p)
 	}
 	if rules, err := h.service.StoredTableRules(t.Context(), nil, id); err != nil || rules.HitPoints != "" || rules.CriticalMaxPlusRoll || rules.DeathSavesHidden ||
-		rules.CombatWithoutMap || rules.FogOnNewMaps || rules.HiddenAreaHits != tablerules.HiddenAreaHitsReveal || rules.EnemyReactionsAlways || rules.AbilityMethodsOff != (tablerules.AbilityMethods{}) || rules.Reminders != nil {
+		rules.CombatWithoutMap || rules.FogOnNewMaps || rules.HiddenAreaHits != tablerules.HiddenAreaHitsReveal || rules.EnemyReactionsAlways || rules.ShowSaveDC || rules.AbilityMethodsOff != (tablerules.AbilityMethods{}) || rules.Reminders != nil {
 		t.Errorf("StoredTableRules() of a campaign with no row = %+v, %v; want the zero value", rules, err)
 	}
 
@@ -216,7 +216,7 @@ func TestRN24_TableRulesRoundTrip(t *testing.T) {
 	}
 	stored, err := h.service.StoredTableRules(t.Context(), nil, id)
 	if err != nil || stored.HitPoints != "roll" || !stored.CriticalMaxPlusRoll || !stored.DeathSavesHidden || !stored.CombatWithoutMap || !stored.FogOnNewMaps || stored.HiddenAreaHits != tablerules.HiddenAreaHitsAsk ||
-		!stored.AbilityMethodsOff.StandardArray || stored.AbilityMethodsOff.PointBuy || !stored.AbilityMethodsOff.Roll || stored.AbilityMethodsOff.Typed || len(stored.Reminders) != 2 || !stored.EnemyReactionsAlways {
+		!stored.AbilityMethodsOff.StandardArray || stored.AbilityMethodsOff.PointBuy || !stored.AbilityMethodsOff.Roll || stored.AbilityMethodsOff.Typed || len(stored.Reminders) != 2 || !stored.EnemyReactionsAlways || !stored.ShowSaveDC {
 		t.Errorf("StoredTableRules() = %+v, %v", stored, err)
 	}
 	if on, err := h.service.FogOnNewMaps(t.Context(), nil, id); err != nil || !on {
