@@ -61,6 +61,7 @@ func rulesFromRow(r campaignsdb.CampaignTableRule) tablerules.Rules {
 		Reminders:           r.HouseRules,
 
 		EnemyReactionsAlways: r.EnemyReactions == enemyReactionsAlways,
+		ShowSaveDC:           r.ShowSaveDc,
 	}
 }
 
@@ -241,6 +242,7 @@ func tableRulesToProto(r campaignsdb.CampaignTableRule, dice string) *campaignsv
 		HiddenAreaHits: hiddenAreaHitsFromDBEnum[r.HiddenAreaHits],
 		FeatsAllowed:   r.FeatsAllowed,
 		EnemyReactions: enemyReactionsFromDB[r.EnemyReactions],
+		ShowSaveDc:     r.ShowSaveDc,
 	}
 }
 
@@ -356,7 +358,7 @@ func tableRulesParams(msg *campaignsv1.TableRules) (campaignsdb.UpsertTableRules
 		AbilityRoll4d6: am.GetRolled_4D6(), AbilityTyped: am.GetTyped(),
 		CriticalRule: crit, DeathSaves: deaths,
 		CombatStartsWithMap: msg.GetCombatStartsWithMap(), FogOnNewMaps: msg.GetFogOnNewMaps(),
-		HouseRules: houseRules, HiddenAreaHits: hidden, FeatsAllowed: msg.GetFeatsAllowed(), EnemyReactions: enemy,
+		HouseRules: houseRules, HiddenAreaHits: hidden, FeatsAllowed: msg.GetFeatsAllowed(), EnemyReactions: enemy, ShowSaveDc: msg.GetShowSaveDc(),
 	}, dice, nil
 }
 

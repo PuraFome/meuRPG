@@ -53,6 +53,17 @@ type combatViewer struct {
 	// character that is not theirs are not theirs to see. Never set for the
 	// master, and false when the table leaves them visible (the default).
 	hideDeath bool
+	// showSaveDC is the table's rule "os jogadores veem a CD dos testes de resistência"
+	// (RN-24) as it applies to this viewer: the player of the creature that rolls a saving
+	// throw reads its DC too. Never set for the master (who reads every DC anyway); see saveDCFor.
+	showSaveDC bool
+}
+
+// saveDCFor says whether the viewer reads the DC of a saving throw the combatant rolls: the
+// master always, and the roller's own player when the table shows them the DC. A spell's
+// caster's player has a rule of their own (their spell's DC is on their sheet).
+func (v combatViewer) saveDCFor(roller playdb.Combatant) bool {
+	return v.master || (v.showSaveDC && v.owns(roller))
 }
 
 // deathHiddenFrom says whether the table hides this character's death saves
