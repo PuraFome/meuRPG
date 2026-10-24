@@ -7,6 +7,7 @@ import { fakeCombatClient } from '../../../core/combat/combat-client-testing';
 import { ZoneFlow } from './zone-flow';
 
 function setup(endSpellZone: () => Promise<unknown>, master = true) {
+  const openMove = vi.fn(() => true);
   const state = new CombatState();
   state.apply(encounter({ id: 'e1', zones: [spellZone({ id: 'z1' })] }));
   const busy = signal(false);
@@ -18,8 +19,9 @@ function setup(endSpellZone: () => Promise<unknown>, master = true) {
     encounter: () => state.shown(),
     state: () => state,
     isMaster: () => master,
+    openMove,
   });
-  return { flow, state, busy, refreshAfter };
+  return { flow, state, busy, refreshAfter, openMove };
 }
 
 describe('ZoneFlow', () => {
@@ -61,10 +63,31 @@ describe('ZoneFlow', () => {
     expect(call).not.toHaveBeenCalled();
   });
 
-  it('keeps the zone the master asked to move, for the picker that reads it', () => {
-    const { flow } = setup(async () => encounter({}));
+  it('opens the move picker for a zone that moves by an action, and says it is moving until it closes', () => {
+    const { flow, openMove } = setup(async () => encounter({}));
     expect(flow.moving()).toBeNull();
-    flow.moving.set('z1');
+    flow.move('z1');
+    expect(openMove).toHaveBeenCalledWith('z1', expect.any(Function));
     expect(flow.moving()).toBe('z1');
+    (openMove.mock.calls[0] as unknown as [string, () => void])[1]();
+    expect(flow.moving()).toBeNull();
+  });
+
+  it('opens nothing for a viewer who may not move it, nor for a zone that is not there', () => {
+    const player = setup(async () => encounter({}), false);
+    player.flow.move('z1');
+    const gone = setup(async () => encounter({}));
+    gone.flow.move('nope');
+    expect(player.openMove).not.toHaveBeenCalled();
+    expect(gone.openMove).not.toHaveBeenCalled();
+    expect(player.flow.moving()).toBeNull();
+  });
+
+  it('says so when the scene has no map to pick on', () => {
+    const { flow, openMove } = setup(async () => encounter({}));
+    openMove.mockReturnValueOnce(false);
+    flow.move('z1');
+    expect(flow.moving()).toBeNull();
+    expect(flow.error()).toContain('mapa');
   });
 });

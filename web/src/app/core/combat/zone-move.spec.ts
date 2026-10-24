@@ -1,6 +1,6 @@
 import { SpellAreaShape } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { spellZone } from './combat-testing';
-import { ZONE_MOVE_RANGE_FT, zoneMovePreview } from './zone-move';
+import { ZONE_MOVE_RANGE_FT, zoneMovePreview, zoneRangeText, zoneSquareSpoken } from './zone-move';
 
 describe('the preview of moving a zone', () => {
   const moonbeam = spellZone({ id: 'z', sizeFt: 5, origin: { col: 8, row: 6 } } as never);
@@ -44,5 +44,32 @@ describe('the preview of moving a zone', () => {
 
   it('says it does not cut the area at walls (the server does on commit)', () => {
     expect(zoneMovePreview(moonbeam, { col: 9, row: 6 }, true).wallCut).toBe(false);
+  });
+});
+
+describe('the words of a zone move', () => {
+  const zone = spellZone({ id: 'z', sizeFt: 5, origin: { col: 8, row: 6 } } as never);
+  const plain = (t: string) => t.replace(/\u00a0/g, ' ');
+
+  it('says "dentro do alcance" for a player in range and the refusal wording beyond it', () => {
+    const near = zoneMovePreview(zone, { col: 10, row: 6 }, false);
+    expect(plain(zoneRangeText(near, false))).toBe('Dentro do alcance, até 18 m.');
+    const far = zoneMovePreview(zone, { col: 23, row: 6 }, false);
+    expect(plain(zoneRangeText(far, false))).toBe(
+      'Longe demais: a área anda até 18 m do ponto atual. Faltam 4,5 m.',
+    );
+  });
+
+  it('has no range sentence for the master', () => {
+    expect(zoneRangeText(zoneMovePreview(zone, { col: 40, row: 6 }, true), true)).toBe('');
+  });
+
+  it('speaks the square, the distance and whether it can be used', () => {
+    const near = zoneMovePreview(zone, { col: 10, row: 6 }, false);
+    expect(plain(zoneSquareSpoken({ col: 10, row: 6 }, near))).toBe(
+      'Coluna 11, linha 7, a 3,0 m. Escolhido.',
+    );
+    const far = zoneMovePreview(zone, { col: 23, row: 6 }, false);
+    expect(plain(zoneSquareSpoken({ col: 23, row: 6 }, far))).toContain('Longe demais');
   });
 });
