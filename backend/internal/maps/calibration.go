@@ -49,7 +49,7 @@ func scaleLayers(ctx context.Context, q *mapsdb.Queries, mapID string, epoch int
 		err = q.UpsertMapLayers(ctx, mapsdb.UpsertMapLayersParams{
 			MapID: mapID, DifficultTerrain: nilIfBlank(set.terrain.Scaled(step).Encode()), Walls: nilIfBlank(set.walls.Scaled(step).Encode()),
 			Cover: nilIfBlank(set.cover.Scaled(step).Encode()), Light: nilIfBlank(set.light.Scaled(step).Encode()),
-			Doors: nilIfBlank(set.doors.Scaled(step).Encode()), Now: now,
+			Doors: nilIfBlank(set.doors.Scaled(step).Encode()), NoPass: nilIfBlank(set.noPass.Scaled(step).Encode()), Now: now,
 		})
 		if err != nil {
 			return fmt.Errorf("write the scaled layers: %w", err)

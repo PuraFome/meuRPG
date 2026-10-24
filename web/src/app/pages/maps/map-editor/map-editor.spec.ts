@@ -128,6 +128,7 @@ describe('MapEditor', () => {
       light: new Uint8Array(),
       doors: new Uint8Array(),
       fogWithheld: false,
+      noPass: new Uint8Array(),
       ...layers,
     };
     state = new MapState(async () =>

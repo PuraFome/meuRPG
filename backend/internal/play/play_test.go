@@ -859,6 +859,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 
 	// CombatService (MR-013) is mounted with the same checks.
 	combat := map[string]error{}
+	_, combat["GetStartRoster"] = cc.GetStartRoster(ctx, connect.NewRequest(&playv1.GetStartRosterRequest{CampaignId: id}))
 	_, combat["StartEncounter"] = cc.StartEncounter(ctx, connect.NewRequest(&playv1.StartEncounterRequest{CampaignId: id}))
 	_, combat["GetEncounter"] = cc.GetEncounter(ctx, connect.NewRequest(&playv1.GetEncounterRequest{CampaignId: id}))
 	_, combat["SubmitInitiative"] = cc.SubmitInitiative(ctx, connect.NewRequest(&playv1.SubmitInitiativeRequest{CampaignId: id}))

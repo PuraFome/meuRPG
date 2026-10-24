@@ -96,7 +96,7 @@ func (c *combatSight) KnownTerrain(ctx context.Context, tx pgx.Tx, userID string
 	}
 	pv := c.sg.newView(userID, memory)
 	set := filterLayers(*pv.layers, pv)
-	t = grid.Terrain{Grid: c.in.g, Walls: set.walls, Difficult: set.terrain, Cover: set.cover, Doors: set.doors}
+	t = grid.Terrain{Grid: c.in.g, Walls: set.walls, Difficult: set.terrain, Cover: set.cover, Doors: set.doors, NoPass: set.noPass}
 	c.mu.Lock()
 	c.known[userID] = t
 	c.mu.Unlock()

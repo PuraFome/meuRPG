@@ -165,6 +165,9 @@ message PackageLayers {
   bytes cover = 3;
   bytes light = 4;
   bytes doors = 5;
+  // The squares marked "can't pass", one bit a square. Packages made before the layer
+  // existed do not have it: empty.
+  bytes no_pass = 6;
 }
 
 // PackagePoint is a point of interest of a map: a battle point, a submap, a

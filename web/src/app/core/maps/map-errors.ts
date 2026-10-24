@@ -101,6 +101,7 @@ const BLOCKED_TEXT: Readonly<Record<number, string>> = {
   [MapBlockedReason.TREASURE_CONVERTED]:
     'Esse tesouro já virou XP. Para mexer nele, desfaça esse XP na página da campanha.',
   [MapBlockedReason.TREASURE_FOUND]: 'Esse tesouro foi encontrado. Desmarque antes de apagar.',
+  [MapBlockedReason.NO_ROOM]: 'O mapa não tem quadrados livres para todos. Escolha outro lugar.',
 };
 
 /** What each reason of `DeleteMap` says, in the map header before the click and in its question after a refusal; one text for both. */

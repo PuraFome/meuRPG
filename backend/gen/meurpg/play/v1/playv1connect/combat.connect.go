@@ -44,6 +44,9 @@ const (
 	// CombatServiceStartEncounterProcedure is the fully-qualified name of the CombatService's
 	// StartEncounter RPC.
 	CombatServiceStartEncounterProcedure = "/meurpg.play.v1.CombatService/StartEncounter"
+	// CombatServiceGetStartRosterProcedure is the fully-qualified name of the CombatService's
+	// GetStartRoster RPC.
+	CombatServiceGetStartRosterProcedure = "/meurpg.play.v1.CombatService/GetStartRoster"
 	// CombatServiceGetEncounterProcedure is the fully-qualified name of the CombatService's
 	// GetEncounter RPC.
 	CombatServiceGetEncounterProcedure = "/meurpg.play.v1.CombatService/GetEncounter"
@@ -259,6 +262,20 @@ type CombatServiceClient interface {
 	//     a monster group that is not an SRD creature, listed twice or with a count
 	//     outside 1 to 40, a `monster_hit_points` that is not a mode, more than 20 groups.
 	StartEncounter(context.Context, *connect.Request[v1.StartEncounterRequest]) (*connect.Response[v1.StartEncounterResponse], error)
+	// GetStartRoster says who would enter a combat started now and where each would
+	// stand, so the master chooses the party before the start (plan B, B2): the map is the
+	// one StartEncounter would fight on (the destination map of the battle point `map_point_id`
+	// names, else the session's current map), and each of the party's living player characters is
+	// listed with whether it has a token on that map and the square that token gives it. It
+	// changes nothing: StartEncounter still puts each combatant on its token's square when nobody
+	// stands there. Only the campaign's master may call it.
+	//
+	// Errors:
+	//   - `not_found`: the campaign or the BATTLE point does not exist, or the caller is not a
+	//     member.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session (GameSessionBlocked, NO_OPEN_SESSION).
+	GetStartRoster(context.Context, *connect.Request[v1.GetStartRosterRequest]) (*connect.Response[v1.GetStartRosterResponse], error)
 	// GetEncounter returns the combat of the campaign's open session as the
 	// caller may see it: the latest one, so the app can also show the end of
 	// a combat that just ended. It answers with no encounter when the session
@@ -1484,6 +1501,12 @@ func NewCombatServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(combatServiceMethods.ByName("StartEncounter")),
 			connect.WithClientOptions(opts...),
 		),
+		getStartRoster: connect.NewClient[v1.GetStartRosterRequest, v1.GetStartRosterResponse](
+			httpClient,
+			baseURL+CombatServiceGetStartRosterProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("GetStartRoster")),
+			connect.WithClientOptions(opts...),
+		),
 		getEncounter: connect.NewClient[v1.GetEncounterRequest, v1.GetEncounterResponse](
 			httpClient,
 			baseURL+CombatServiceGetEncounterProcedure,
@@ -1807,6 +1830,7 @@ func NewCombatServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 // combatServiceClient implements CombatServiceClient.
 type combatServiceClient struct {
 	startEncounter           *connect.Client[v1.StartEncounterRequest, v1.StartEncounterResponse]
+	getStartRoster           *connect.Client[v1.GetStartRosterRequest, v1.GetStartRosterResponse]
 	getEncounter             *connect.Client[v1.GetEncounterRequest, v1.GetEncounterResponse]
 	submitInitiative         *connect.Client[v1.SubmitInitiativeRequest, v1.SubmitInitiativeResponse]
 	setInitiativeOrder       *connect.Client[v1.SetInitiativeOrderRequest, v1.SetInitiativeOrderResponse]
@@ -1864,6 +1888,11 @@ type combatServiceClient struct {
 // StartEncounter calls meurpg.play.v1.CombatService.StartEncounter.
 func (c *combatServiceClient) StartEncounter(ctx context.Context, req *connect.Request[v1.StartEncounterRequest]) (*connect.Response[v1.StartEncounterResponse], error) {
 	return c.startEncounter.CallUnary(ctx, req)
+}
+
+// GetStartRoster calls meurpg.play.v1.CombatService.GetStartRoster.
+func (c *combatServiceClient) GetStartRoster(ctx context.Context, req *connect.Request[v1.GetStartRosterRequest]) (*connect.Response[v1.GetStartRosterResponse], error) {
+	return c.getStartRoster.CallUnary(ctx, req)
 }
 
 // GetEncounter calls meurpg.play.v1.CombatService.GetEncounter.
@@ -2187,6 +2216,20 @@ type CombatServiceHandler interface {
 	//     a monster group that is not an SRD creature, listed twice or with a count
 	//     outside 1 to 40, a `monster_hit_points` that is not a mode, more than 20 groups.
 	StartEncounter(context.Context, *connect.Request[v1.StartEncounterRequest]) (*connect.Response[v1.StartEncounterResponse], error)
+	// GetStartRoster says who would enter a combat started now and where each would
+	// stand, so the master chooses the party before the start (plan B, B2): the map is the
+	// one StartEncounter would fight on (the destination map of the battle point `map_point_id`
+	// names, else the session's current map), and each of the party's living player characters is
+	// listed with whether it has a token on that map and the square that token gives it. It
+	// changes nothing: StartEncounter still puts each combatant on its token's square when nobody
+	// stands there. Only the campaign's master may call it.
+	//
+	// Errors:
+	//   - `not_found`: the campaign or the BATTLE point does not exist, or the caller is not a
+	//     member.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session (GameSessionBlocked, NO_OPEN_SESSION).
+	GetStartRoster(context.Context, *connect.Request[v1.GetStartRosterRequest]) (*connect.Response[v1.GetStartRosterResponse], error)
 	// GetEncounter returns the combat of the campaign's open session as the
 	// caller may see it: the latest one, so the app can also show the end of
 	// a combat that just ended. It answers with no encounter when the session
@@ -3408,6 +3451,12 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(combatServiceMethods.ByName("StartEncounter")),
 		connect.WithHandlerOptions(opts...),
 	)
+	combatServiceGetStartRosterHandler := connect.NewUnaryHandler(
+		CombatServiceGetStartRosterProcedure,
+		svc.GetStartRoster,
+		connect.WithSchema(combatServiceMethods.ByName("GetStartRoster")),
+		connect.WithHandlerOptions(opts...),
+	)
 	combatServiceGetEncounterHandler := connect.NewUnaryHandler(
 		CombatServiceGetEncounterProcedure,
 		svc.GetEncounter,
@@ -3729,6 +3778,8 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 		switch r.URL.Path {
 		case CombatServiceStartEncounterProcedure:
 			combatServiceStartEncounterHandler.ServeHTTP(w, r)
+		case CombatServiceGetStartRosterProcedure:
+			combatServiceGetStartRosterHandler.ServeHTTP(w, r)
 		case CombatServiceGetEncounterProcedure:
 			combatServiceGetEncounterHandler.ServeHTTP(w, r)
 		case CombatServiceSubmitInitiativeProcedure:
@@ -3844,6 +3895,10 @@ type UnimplementedCombatServiceHandler struct{}
 
 func (UnimplementedCombatServiceHandler) StartEncounter(context.Context, *connect.Request[v1.StartEncounterRequest]) (*connect.Response[v1.StartEncounterResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.StartEncounter is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) GetStartRoster(context.Context, *connect.Request[v1.GetStartRosterRequest]) (*connect.Response[v1.GetStartRosterResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.GetStartRoster is not implemented"))
 }
 
 func (UnimplementedCombatServiceHandler) GetEncounter(context.Context, *connect.Request[v1.GetEncounterRequest]) (*connect.Response[v1.GetEncounterResponse], error) {

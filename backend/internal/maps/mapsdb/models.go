@@ -76,25 +76,26 @@ type ImageRequest struct {
 }
 
 type Map struct {
-	ID             string
-	CampaignID     string
-	Name           string
-	ImageID        string
-	RevealedAt     *time.Time
-	Revision       int32
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	GridColumns    *int32
-	FogEnabled     bool
-	BaseLight      string
-	GroupVision    bool
-	LayersRevision int32
-	LightRevision  int32
-	VisionEpoch    int32
-	FogOnFirstGrid bool
-	GridFactor     int32
-	CreateKey      *string
-	CreateHash     *string
+	ID                string
+	CampaignID        string
+	Name              string
+	ImageID           string
+	RevealedAt        *time.Time
+	Revision          int32
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	GridColumns       *int32
+	FogEnabled        bool
+	BaseLight         string
+	GroupVision       bool
+	LayersRevision    int32
+	LightRevision     int32
+	VisionEpoch       int32
+	FogOnFirstGrid    bool
+	GridFactor        int32
+	CreateKey         *string
+	CreateHash        *string
+	PlayersMoveTokens bool
 }
 
 type MapCreatureToken struct {
@@ -113,6 +114,7 @@ type MapLayer struct {
 	Light            []byte
 	UpdatedAt        time.Time
 	Doors            []byte
+	NoPass           []byte
 }
 
 type MapPoint struct {

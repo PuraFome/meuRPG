@@ -672,8 +672,11 @@ type PackageLayers struct {
 	Cover            []byte                 `protobuf:"bytes,3,opt,name=cover,proto3" json:"cover,omitempty"`
 	Light            []byte                 `protobuf:"bytes,4,opt,name=light,proto3" json:"light,omitempty"`
 	Doors            []byte                 `protobuf:"bytes,5,opt,name=doors,proto3" json:"doors,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The squares marked "can't pass", one bit a square. Packages made before the layer
+	// existed do not have it: empty.
+	NoPass        []byte `protobuf:"bytes,6,opt,name=no_pass,json=noPass,proto3" json:"no_pass,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PackageLayers) Reset() {
@@ -737,6 +740,13 @@ func (x *PackageLayers) GetLight() []byte {
 func (x *PackageLayers) GetDoors() []byte {
 	if x != nil {
 		return x.Doors
+	}
+	return nil
+}
+
+func (x *PackageLayers) GetNoPass() []byte {
+	if x != nil {
+		return x.NoPass
 	}
 	return nil
 }
@@ -1588,13 +1598,14 @@ const file_meurpg_campaignpackage_v1_format_proto_rawDesc = "" +
 	"base_light\x18\n" +
 	" \x01(\tR\tbaseLight\x12@\n" +
 	"\x06layers\x18\v \x01(\v2(.meurpg.campaignpackage.v1.PackageLayersR\x06layers\x12?\n" +
-	"\x06points\x18\f \x03(\v2'.meurpg.campaignpackage.v1.PackagePointR\x06points\"\x94\x01\n" +
+	"\x06points\x18\f \x03(\v2'.meurpg.campaignpackage.v1.PackagePointR\x06points\"\xad\x01\n" +
 	"\rPackageLayers\x12+\n" +
 	"\x11difficult_terrain\x18\x01 \x01(\fR\x10difficultTerrain\x12\x14\n" +
 	"\x05walls\x18\x02 \x01(\fR\x05walls\x12\x14\n" +
 	"\x05cover\x18\x03 \x01(\fR\x05cover\x12\x14\n" +
 	"\x05light\x18\x04 \x01(\fR\x05light\x12\x14\n" +
-	"\x05doors\x18\x05 \x01(\fR\x05doors\"\xdb\x04\n" +
+	"\x05doors\x18\x05 \x01(\fR\x05doors\x12\x17\n" +
+	"\ano_pass\x18\x06 \x01(\fR\x06noPass\"\xdb\x04\n" +
 	"\fPackagePoint\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x120\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x1c.meurpg.maps.v1.MapPointKindR\x04kind\x12\x12\n" +

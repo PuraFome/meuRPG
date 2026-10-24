@@ -38,6 +38,9 @@ RP scenes (a scene point's actions, clues and opening in the session) are `maps`
 | `CreateMapPoint`, `UpdateMapPoint`, `DeleteMapPoint`, `SetMapPointRevealed` | Master | Points of interest. `CreateMapPoint` puts a point at a position, born hidden (`resource_exhausted` beyond 200 per map). `UpdateMapPoint` changes only what the request carries: kind, name, description, the hooks (scene point only, up to 4,000 characters), `show_dc` (scene point only), position (moving is this), sub-map destination, revealed, and the data of the trap, treasure or light. Revealing a scene point discovers the scene (MR-030) |
 | `AddSceneAction`, `UpdateSceneAction`, `MoveSceneAction`, `RemoveSceneAction` | Master | An RP scene's actions (MR-015), one change per call, each returning the point's list. At most 20 actions; a key must be a skill, ability or saving throw, a name up to 60 characters, a DC from 1 to 30 |
 | `AddSceneClue`, `UpdateSceneClue`, `MoveSceneClue`, `RemoveSceneClue`, `RevealSceneClue` | Master | An RP scene's clues (MR-029). At most 30 clues of up to 500 characters; `RevealSceneClue` gives a clue to chosen player characters (1 to 50), once each, with no undo |
+| `SetMapPlayersMove` | Master | Allows or forbids the players to move their own characters' tokens on the map outside combat (`maps.players_move_tokens`, off by default; every viewer reads it in `Map.players_move_tokens`) |
+| `MoveMapTokens` | Master; a player for their own token, when allowed | Moves one or several living characters' tokens outside combat, with no movement limit; see [Tokens outside combat](#tokens-outside-combat) |
+| `PutPartyOnMap` | Master | Puts several characters' tokens on the map in a formation (line, block or arc), each on its place or the nearest free square; see [Tokens outside combat](#tokens-outside-combat) |
 | `PlaceMapToken`, `SetMapTokenHidden`, `RemoveMapToken` | Master | Puts a living campaign character's token or moves it, hides or shows it, removes it. A player's token is born visible, an NPC's hidden. With `creature_id` in place of `character_id` it is a character creature's group token (MR-037), never hidden |
 
 Other `maps` services: `GalleryService` ([Images](images.md)), `ImageGenerationService` ([Image generation](image-generation.md)), `DungeonService` ([Dungeons](dungeons.md)) and `TreasureService` ([Treasure](treasure.md)).
@@ -56,6 +59,19 @@ A non-active member (and a pending member) gets `not_found` on everything, as in
 - **Limits.** 200 maps per campaign and 200 points per map (`DefaultMaxMaps`, `DefaultMaxPointsPerMap`), because the lists are not paged.
 - **A map's image cannot be deleted** from the gallery: `DeleteGalleryImage` answers `failed_precondition` with the `ImageInUse` detail, which names the maps; the gallery shows on each image the maps that use it (`GalleryImage.used_in_maps`).
 
+## Tokens outside combat
+
+Outside combat the master moves tokens freely (plan B, B2); the code is `tokenmoves.go`, `tokenplan.go` and `putparty.go`.
+While a combat runs on the map every one of these calls is refused with `MapBlocked COMBAT_RUNNING`: the tokens move through `CombatService`, whose squares are the combatants'.
+
+- **`MoveMapTokens`** takes 1 to 40 characters (each with a token on the map, no repeats) and a destination point in base points for the first one, the anchor. A lone token walks the straight line toward the destination square, with no limit of movement, and stops before the first wall, locked door or square marked "can't pass" (`grid.Terrain.MoveUntil`, no occupants: tokens do not block each other). The answer has a `MapTokenMove` for each character with the token as it is now, the squares asked and moved, and `stopped_by` (`WALL`, `NO_PASS`, `LOCKED`, or `BLOCKED` for a player who does not know the square in the way). A token that reaches a new square lands on its centre; a token that stays in its square keeps its point. On a map with no grid there are no squares and nothing stops a token: it goes to the point.
+- **A group** keeps its offsets from the anchor and moves only when every arrival square is on the map and standable (`planMove`); otherwise nobody moves, `moved` is false and `blocked_character_id` names the first one that did not fit. The line between is not walked for a group: what the master sees on the screen is where each one arrives.
+- **Closed doors** a lone token walks through open, as in combat (`openClosedDoors`), and the layers' revision rises.
+- **A player** may call it for their own character alone (several tokens, another character, an NPC or a character that does not exist all answer `permission_denied`, so the answer says nothing about what exists), when the map's `players_move_tokens` is on (`SetMapPlayersMove`), on a map they see and with a token they see. The answer names only that token.
+- **Traps and the stream.** After the commit each token that moved goes through the same `tokenLanded` as `PlaceMapToken` (a trap may fire or be noticed, MR-035) and the stream sends `token_moved` for each ([Maps in the live session](live-session.md)); opened doors send the usual layers notice.
+- **`PutPartyOnMap`** takes 1 to 40 living characters, a formation and an anchor point. `grid.Arrange` chooses the squares: the formation's own (`LINE` to the right of the anchor, `BLOCK` in rows of two, `ARC` around the anchor), and for a place that is a wall, a "can't pass" square, or held by a token that is not part of the group, the nearest free standable square (rings of growing distance, ties in row-major order). `moved_for_room` says how many did not get their own place; fewer free squares than characters is `MapBlocked NO_ROOM`, and a map with no grid `NO_GRID`. Each token is written as `PlaceMapToken` writes it (a player's born visible, an NPC's hidden).
+- **Creature tokens** (a familiar, a summoned animal) are still the master's through `PlaceMapToken`; the new calls take characters only.
+
 ## Who sees what on the map
 
 The filter runs on the server, in `visibility.go`.
@@ -69,7 +85,8 @@ What the player does not see stays out of the response, never blank: neither the
 | Trap | All, with DCs, trigger, effect and who knows it | Only if revealed to one of their characters, triggered, or revealed to all; then only name, description, position, area and state (armed, triggered or disarmed), never the DCs, trigger, effect or preset |
 | Treasure | All, with the value and who found it | The revealed (name and position only) or the found (with description, value and finders, even if nobody revealed it) |
 | Light (point) | All | Never: they see the light, not the point |
-| Painted layers | All five | Wall, terrain, cover and doors of a map they see, never light; on a fogged map, only the squares the character sees or remembers |
+| Painted layers | All six | Wall, terrain, cover, doors and the "can't pass" squares of a map they see, never light; on a fogged map, only the squares the character sees or remembers |
+| Why a move stopped | The real reason | Only for their own token (a player moves one alone), and the square in the way (a wall, a locked door, a "can't pass" square) only when they see or remember it; otherwise `BLOCKED` |
 | The light a character carries | All | Their own character's; the others' arrive only through the fog (what it lights) |
 | Token | All, with the state | Only the visible ones, on a map they see; their own is marked `mine`. On a fogged map: every player character's, always; an NPC's only on a square seen now. A character creature's group token is always received |
 | Sub-map point's destination | Always | Only if they also see the destination map; otherwise the point has no destination |

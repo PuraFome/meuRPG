@@ -541,6 +541,14 @@ var reads = []read{
 		},
 	},
 
+	// ===== CombatService: who would enter a combat started now
+	{
+		procedure: playv1connect.CombatServiceGetStartRosterProcedure, allow: masterOnlyRead, why: "it lists the party with the squares of their tokens before the master starts the fight",
+		req: func(w *world) proto.Message {
+			return &playv1.GetStartRosterRequest{CampaignId: w.campaign}
+		},
+	},
+
 	// ===== EncounterService (the encounter planner: all of it is the master's)
 	{
 		procedure: playv1connect.EncounterServiceGetBattleEncounterProcedure, allow: masterOnlyRead,
