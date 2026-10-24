@@ -400,3 +400,29 @@ func TestArmorUntrainedSpoilsWeaponAttacksOfStrengthOrDexterity(t *testing.T) {
 		}
 	}
 }
+
+// The goad spares its source from the disadvantage of the effect, not from the armor: a goaded attacker in
+// untrained armor still has the armor's disadvantage on a weapon attack against the one it is spared.
+func TestAGoadSparedTargetStillSeesTheArmorDisadvantage(t *testing.T) {
+	t.Parallel()
+	attacker := Creature{AttackDisadvantage: "effect:goaded", AttackDisadvantageSpares: "goader", ArmorUntrained: true}
+	for _, tt := range []struct {
+		name   string
+		target string
+		want   []string
+	}{
+		{"the spared target", "goader", []string{SourceArmorUntrained}},
+		{"another target", "other", []string{SourceEffectAttack, SourceArmorUntrained}},
+	} {
+		got := []string{}
+		for _, s := range AttackMode(AttackScene{Attacker: attacker, Target: Creature{ID: tt.target}, StrengthOrDexterityWeapon: true}).Sources {
+			got = append(got, s.Kind)
+		}
+		slices.Sort(got)
+		want := slices.Clone(tt.want)
+		slices.Sort(want)
+		if !slices.Equal(got, want) {
+			t.Errorf("%s: sources = %v, want %v", tt.name, got, want)
+		}
+	}
+}

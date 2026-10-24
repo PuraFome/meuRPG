@@ -180,7 +180,7 @@ type Sheet struct {
 // engine's superiority_die effect). Applies, Economy and Ability are the effect's.
 type Maneuver struct {
 	Key, NamePT, Resource, Applies, Economy, Ability, TextPT string
-	Sides                                                    int
+	Sides, SaveDC                                            int
 }
 
 // ExtraDamage is damage a table feature adds to a weapon hit once per turn (the engine's extra_damage
