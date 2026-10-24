@@ -562,6 +562,13 @@ async function scanMapScreens(browser: Browser, colorScheme: 'light' | 'dark', w
     await openSessionPage(masterPage, campaignId, 'mapa');
     await expect(masterPage.getByRole('heading', { name: 'Pontos do mapa' })).toBeVisible();
     await expectScreenPasses(masterPage, `Sessão com mapa, mestre ${suffix}`);
+    // The map's tools, then "Grupo" and "Cena": every tab of the master's board is scanned.
+    for (const tool of ['Pontos', 'Tokens', 'Armadilhas', 'Tesouro', 'Encontros'] as const) {
+      await showMapTool(masterPage, tool);
+      await expectScreenPasses(masterPage, `Mapa, ${tool}, mestre ${suffix}`);
+    }
+    await showMasterTab(masterPage, 'grupo');
+    await expectScreenPasses(masterPage, `Grupo, mestre ${suffix}`);
     await openSessionPage(playerPage, campaignId);
     await expect(playerPage.getByRole('img', { name: 'Prévia do mapa Mirathel e arredores' })).toBeVisible();
     await expectScreenPasses(playerPage, `Sessão com mapa, jogador ${suffix}`);
