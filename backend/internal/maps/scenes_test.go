@@ -948,6 +948,11 @@ func TestSceneAuthorizationMatrix(t *testing.T) {
 			_, err := u.grantAttempt(s.campaign, s.master.getScene(s.campaign).GetActions()[0].GetId(), s.pens.GetId(), newKey())
 			return err
 		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		// The scene is open here: the master changes who is in (everyone, as it was).
+		{"SetSceneAudience", func(ctx context.Context, u *user) error {
+			_, err := u.play.SetSceneAudience(ctx, connect.NewRequest(&playv1.SetSceneAudienceRequest{CampaignId: s.campaign, Audience: &playv1.SceneAudience{Everyone: true}}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 		{"CloseScene", func(ctx context.Context, u *user) error {
 			_, err := u.play.CloseScene(ctx, connect.NewRequest(&playv1.CloseSceneRequest{CampaignId: s.campaign}))
 			return err

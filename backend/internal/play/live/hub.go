@@ -79,6 +79,8 @@ type Audience struct {
 	// One more user, such as the player of the character the event is
 	// about. Empty for none.
 	UserID string
+	// Except lists players Players does not reach: "the players but these".
+	Except []string
 }
 
 // includes reports whether s may receive an event for this audience.

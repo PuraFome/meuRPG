@@ -2,7 +2,9 @@ package leaktest
 
 import (
 	"context"
+	"slices"
 	"sort"
+	"sync"
 	"testing"
 	"time"
 
@@ -28,9 +30,25 @@ import (
 // streamWatcher reads one WatchGameSession stream in the background.
 type streamWatcher struct {
 	p      *person
+	mu     sync.Mutex // guards events while the stream is open
 	events []*playv1.WatchGameSessionResponse
+	more   chan struct{} // gets a signal when an event arrives (see settle)
 	done   chan struct{}
 	err    error
+}
+
+// count is how many events the stream has received so far.
+func (sw *streamWatcher) count() int {
+	sw.mu.Lock()
+	defer sw.mu.Unlock()
+	return len(sw.events)
+}
+
+// since lists the events received after the first n.
+func (sw *streamWatcher) since(n int) []*playv1.WatchGameSessionResponse {
+	sw.mu.Lock()
+	defer sw.mu.Unlock()
+	return slices.Clone(sw.events[min(n, len(sw.events)):])
 }
 
 // watchStream opens the stream as p and waits for its first event (ready), so everything
@@ -42,14 +60,20 @@ func (w *world) watchStream(p *person) *streamWatcher {
 	if err != nil {
 		panic(err)
 	}
-	sw := &streamWatcher{p: p, done: make(chan struct{})}
+	sw := &streamWatcher{p: p, done: make(chan struct{}), more: make(chan struct{}, 1)}
 	first := make(chan struct{})
 	go func() {
 		defer close(sw.done)
 		defer func() { _ = stream.Close() }()
 		opened := false
 		for stream.Receive() {
+			sw.mu.Lock()
 			sw.events = append(sw.events, proto.Clone(stream.Msg()).(*playv1.WatchGameSessionResponse))
+			sw.mu.Unlock()
+			select {
+			case sw.more <- struct{}{}:
+			default:
+			}
 			if !opened {
 				opened = true
 				close(first)
