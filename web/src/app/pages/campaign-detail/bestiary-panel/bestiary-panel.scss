@@ -1,0 +1,56 @@
+:host {
+  display: block;
+}
+
+// A panel that is one row, and the whole row a link (boards C6-02): the icon, the title over a line, a chevron.
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  min-height: 60px;
+  padding: 12px 20px;
+  color: inherit;
+  text-decoration: none;
+
+  &:hover .row__title {
+    text-decoration: underline;
+  }
+}
+
+.row__icon,
+.row__chevron {
+  flex: none;
+  color: var(--mr-ink-muted);
+}
+
+.row__icon {
+  width: 22px;
+  height: 22px;
+  font-size: 22px;
+}
+
+.row__chevron {
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+}
+
+.row__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.row__title {
+  font-family: var(--mr-font-display);
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 26px;
+}
+
+.row__sub {
+  color: var(--mr-ink-muted);
+  font-size: 14px;
+  line-height: 19px;
+}

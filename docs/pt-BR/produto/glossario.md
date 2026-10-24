@@ -156,7 +156,7 @@ Onde um nível da magia puder ser confundido com o nível do personagem, o texto
 | Tentativas | Attempts | Quantas vezes cada jogador pode rolar uma ação da cena enquanto ela está aberta (1 por padrão, de 1 a 5, ou sem limite). Reabrir a cena zera as contas (MR-015). |
 | Mostrar a CD aos jogadores | Show the DC to players | O interruptor, por cena, que decide se os jogadores veem as CDs e se as rolagens deles passaram. Desligado por padrão; o mestre sempre vê (MR-015, RN-20). |
 | Teste em grupo | Group check | Um teste que dois ou mais personagens fazem; o grupo passa quando pelo menos metade passa (RN-34). |
-| Regras da mesa | Table rules | A página da campanha com as escolhas do mestre (PV ao subir de nível, modos de fazer valores de habilidade, o acerto crítico, quem vê os testes contra a morte, modo de XP, dados, grade) e os "Lembretes da mesa" (RN-24). |
+| Regras da mesa | Table rules | A página (`/campaigns/:id/rules`) com as escolhas do mestre (PV ao subir de nível, modos de fazer valores de habilidade, o acerto crítico, quem vê os testes contra a morte, modo de XP, dados, grade) e os "Lembretes da mesa" (RN-24). |
 | Estilo da mesa | Table style | "Tudo no app", "Mesa física", "Teatro da mente" ou "Personalizado". Um estilo só preenche padrões, que continuam editáveis (RN-24). |
 | Lembrete da mesa | House rule reminder | Uma nota curta que o mestre escreve para a mesa (até 20, de 200 caracteres cada). O app a mostra e nunca a impõe (RN-24). |
 | 4d6 guardado | Stored 4d6 | Seis rolagens de 4d6 (descartando o menor dado) feitas uma vez para a próxima ficha de um jogador e guardadas até a ficha usá-las (RN-24). |

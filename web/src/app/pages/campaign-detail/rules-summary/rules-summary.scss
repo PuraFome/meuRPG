@@ -1,0 +1,45 @@
+:host {
+  display: block;
+}
+
+.rules {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 20px 20px;
+}
+
+.rules__lead {
+  margin: 0;
+  color: var(--mr-ink-muted);
+  font-size: 15px;
+  line-height: 20px;
+}
+
+// Each rule on a line: its name on the left, what it is on the right (board C6-03).
+.rules__list {
+  margin: 0;
+}
+
+.rules__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+  min-height: 52px;
+  border-top: 1px solid var(--mr-rule);
+
+  &:first-child {
+    border-top: 0;
+  }
+
+  dt {
+    color: var(--mr-ink-muted);
+  }
+
+  dd {
+    margin: 0;
+    font-weight: 700;
+    text-align: right;
+  }
+}

@@ -410,7 +410,7 @@ test(
       await m.goto(`/campaigns/${campaignId}/rules`);
       await expect(m.getByRole('link', { name: 'Abrir o conteúdo da mesa' })).toHaveCount(0);
       await m.getByRole('link', { name: 'Abrir os mapas' }).click();
-      await expect(m).toHaveURL(new RegExp(`/campaigns/${campaignId}#maps$`));
+      await expect(m).toHaveURL(new RegExp(`/campaigns/${campaignId}/prep#maps$`));
       await expect(m.getByRole('region', { name: 'Mapas' })).toBeInViewport();
     } finally {
       await master.close();

@@ -16,7 +16,7 @@ import {
   showPuzzleRPC,
   tableForPuzzles,
 } from './puzzles-support';
-import { newSignedInContext } from './support';
+import { gotoCampaignTab, newSignedInContext, openCampaignTab } from './support';
 
 // Puzzles on screen (Etapa 10, slice 10.15a: MR-038, RN-27, RN-10; E10-06): "Apagar as luzes", the combination lock and the turning
 // symbols, for the master (the list, the form, the live view, "Recomeçar" and "Fechar" asked in place) and for the players (the boards).
@@ -56,6 +56,7 @@ test('o mestre faz uma fechadura que abre uma porta e a mostra; o jogador a reso
     await master.getByLabel('Mensagem para os jogadores (opcional)').fill('A porta da Capela se abriu.');
     await master.getByRole('button', { name: 'Criar quebra-cabeça' }).click();
     await expect(master).toHaveURL(puzzleRoute(table.campaignId));
+    await openCampaignTab(master, 'Preparação');
     await expect(master.getByRole('region', { name: 'Quebra-cabeças' }).getByText('O cofre do Refeitório')).toBeVisible();
 
     // The session: "Mostrar aos jogadores" and the live card.
@@ -176,6 +177,7 @@ test('o mestre faz "Apagar as luzes" no formulário, edita, e arquiva e desarqui
     await expect(master.locator('app-lights-board button')).toHaveCount(0);
     await master.getByRole('button', { name: 'Criar quebra-cabeça' }).click();
     await expect(master).toHaveURL(puzzleRoute(table.campaignId));
+    await openCampaignTab(master, 'Preparação');
     const panel = master.getByRole('region', { name: 'Quebra-cabeças' });
     await expect(panel.getByText('O selo da Capela')).toBeVisible();
     await expect(panel.getByText('Apagar as luzes · 5 × 5')).toBeVisible();
@@ -205,7 +207,7 @@ test('o mestre faz "Apagar as luzes" no formulário, edita, e arquiva e desarqui
     // Once shown, it cannot be edited: the list has no "Editar" and the page says why.
     const id = (await (await master.request.post('/meurpg.play.v1.PuzzleService/ListPuzzles', { data: { campaignId: table.campaignId }, headers: { 'Connect-Protocol-Version': '1' } })).json()).puzzles[0].id as string;
     await showPuzzleRPC(master, table.campaignId, id);
-    await master.reload();
+    await gotoCampaignTab(master, table.campaignId, 'Preparação');
     await expect(master.getByRole('region', { name: 'Quebra-cabeças' }).getByText('Já mostrado')).toBeVisible();
     await expect(master.getByRole('link', { name: 'Editar O selo da Cripta' })).toHaveCount(0);
     await master.goto(puzzleRoute(table.campaignId, 'puzzles', id, 'edit'));

@@ -1,12 +1,15 @@
 @if (visible()) {
   @let s = sessions.state();
-  <section class="mr-panel past" aria-labelledby="past-sessions-heading">
-    <div class="past__head">
-      <h2 class="mr-panel__title" id="past-sessions-heading">Sessões anteriores</h2>
-      @if (s.status === 'ready' && rows().length > 0) {
-        <span class="past__count">{{ count() }}</span>
-      }
-    </div>
+  <section class="mr-panel past" [class.is-folded]="foldable() && !open()" aria-labelledby="past-sessions-heading">
+    <app-panel-head
+      icon="history"
+      title="Sessões anteriores"
+      titleId="past-sessions-heading"
+      [count]="s.status === 'ready' && rows().length > 0 ? count() : ''"
+      [foldable]="foldable()"
+      [(open)]="open"
+    />
+    @if (!foldable() || open()) {
 
     @switch (s.status) {
       @case ('loading') {
@@ -31,15 +34,18 @@
             @for (r of rows(); track r.id; let i = $index) {
               <li class="row">
                 <span class="row__name">Sessão {{ r.number }}</span>
-                <span class="row__when">{{ r.span }}</span>
-                <span class="row__duration">{{ r.duration }}</span>
+                <span class="row__sub">
+                  <span class="row__when">{{ r.span }}</span>
+                  <span aria-hidden="true"> · </span>
+                  <span class="row__duration">{{ r.duration }}</span>
+                </span>
                 <a
                   class="row__link"
                   [class.js-first-extra]="i === shown"
                   [routerLink]="['/campaigns', campaignId(), 'sessions', r.number]"
                   [attr.aria-label]="'Ver resumo da Sessão ' + r.number"
                 >
-                  Ver resumo<mat-icon aria-hidden="true">chevron_right</mat-icon>
+                  <mat-icon aria-hidden="true">menu_book</mat-icon>Resumo<mat-icon class="row__chevron" aria-hidden="true">chevron_right</mat-icon>
                 </a>
               </li>
             }
@@ -53,6 +59,7 @@
           }
         }
       }
+    }
     }
   </section>
 }

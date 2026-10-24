@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import { endOpenSessionRPC, openSessionPage, startSessionRPC, endSessionFromBar } from './live-session-support';
-import { callRPC, newSignedInContext } from './support';
+import { callRPC, newSignedInContext, openXpHistory } from './support';
 import { tableForGold, threeTreasuresRPC, treasureFoundRPC } from './gold-support';
 import { getExperienceRPC } from './xp-support';
 
@@ -86,7 +86,9 @@ test(
       const tryList = await callRPC(p, 'meurpg.progression.v1.ProgressionService/ListTreasuresToConvert', { campaignId: table.campaignId });
       expect(tryList.status()).toBe(403);
 
-      // "Desfazer" asks in place and says where the treasures go; the answer frees them.
+      // "Desfazer" asks in place and says where the treasures go; the answer frees them. The history is folded
+      // in the master's panel: "Histórico de XP (1)" opens it.
+      await openXpHistory(m);
       await panel(m).getByRole('button', { name: /^Desfazer/ }).click();
       const question = panel(m).getByRole('alertdialog');
       await expect(question).toContainText('Desfazer o XP de “Voltar à cidade”?');

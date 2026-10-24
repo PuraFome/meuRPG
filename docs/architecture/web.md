@@ -124,7 +124,7 @@ These screens live in `web/src/app/pages/`, all lazy, on the generated `Campaign
 | Route | Screen | Guard |
 | --- | --- | --- |
 | `/campaigns` | `ListMyCampaigns` with each one's role, or "Esperando a aprovação do mestre" for a pending member (RN-15); a "Criar campanha" form (name 1 to 80 characters, XP mode) | `authGuard` |
-| `/campaigns/:id` | `GetCampaign` and `ListMembers`. The master also sees "Convites" (create, with "Exigir aprovação do mestre", list with status, revoke) and, under "Membros", whoever joined and has no character yet ("Sem personagem", "Remover"). A pending member gets only `GetCampaign`: the waiting notice and their own character. | `authGuard` |
+| `/campaigns/:id`, `/campaigns/:id/prep`, `/campaigns/:id/setup` | The campaign page: `GetCampaign` and `ListMembers`. The master's page has three lazy child routes, "Mesa" (the default), "Preparação" and "Regras", under a session strip and a nav of three links ([Design: the campaign page](../design/campaign.md)). A player's page is one page with no child route. A pending member gets only `GetCampaign`: the waiting notice and their own character. | `authGuard` |
 | `/invite` | Accepts an invite by the token in the URL fragment | public (signed in or out) |
 | `/invite/error` | A message by `reason`, after the invite sign-in flow | public |
 | `/claim` | Takes a reserved character with the master's link `/claim#t=<token>` | public (signed in or out) |
@@ -132,6 +132,13 @@ These screens live in `web/src/app/pages/`, all lazy, on the generated `Campaign
 | `/profile` | "Meu perfil": the display name (1 to 40 characters, `UpdateProfile`) and, under "Sessões", counts the other signed-in devices and signs them out (`CountOtherSessions`, `SignOutOtherSessions`) | `authGuard` |
 
 Other routes (the sheet, session, maps, gallery, export and import, rules...) are in `app.routes.ts`; they belong to their modules' pages.
+
+### The campaign page's tabs
+
+`CampaignDetail` (`pages/campaign-detail`) reads the campaign and its members once and keeps them in `CampaignView`; the three tabs are child routes drawn by its `router-outlet`, so a tab change makes no call.
+Three services are provided by the page and shared by what it draws: `CampaignSessions` (`ListGameSessions`, for the strip and "Sessões anteriores"), `CampaignRoster` (`ListCharacters`, for the players' panel, the NPCs' panel and the count on "Mesa") and `ExperienceStore`.
+The tab nav marks the open tab with `aria-current="page"` (`routerLinkActive`) and keeps the focus on the link that was used, so the shell does not move it to the `h1`.
+A link to `/campaigns/:id#maps` ("Abrir os mapas", in "Regras da mesa") lands on `/campaigns/:id/prep#maps` for the master.
 
 ### The invite page
 

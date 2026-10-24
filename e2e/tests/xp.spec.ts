@@ -1,7 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import { endOpenSessionRPC, startSessionRPC } from './live-session-support';
-import { callRPC, newSignedInContext } from './support';
+import {
+  callRPC,
+  newSignedInContext,
+  openXpHistory,
+} from './support';
 import { awardXpRPC, createEnemyRPC, getExperienceRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
 
 // MR-016 (XP: by defeated enemies, by gold, by milestones, whenever the master
@@ -298,6 +302,9 @@ test('desfazer o último prêmio: a pergunta fica no lugar, o foco vai para "Vol
     await awardXpRPC(m, table.campaignId, { mode: 'MANUAL', reason: 'Pelo resgate do mercador', characterIds: [table.characterId], amount: 40 });
     await awardXpRPC(m, table.campaignId, { mode: 'MANUAL', reason: 'Pela ajuda ao ferreiro', characterIds: [table.characterId], amount: 150 });
     await m.goto(`/campaigns/${table.campaignId}`);
+
+    // The history is folded in the master's panel: "Histórico de XP (2)" opens it.
+    await openXpHistory(m);
 
     // Only the last award has "Desfazer".
     await expect(panel(m).getByRole('button', { name: /^Desfazer/ })).toHaveCount(1);

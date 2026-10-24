@@ -5,10 +5,60 @@
 .panel {
   display: flex;
   flex-direction: column;
-  gap: var(--mr-space-3);
+  gap: 12px;
+  padding: 16px 20px 20px;
 
   .mr-panel__title {
     margin: 0;
+  }
+}
+
+// The title row of the campaign page's panels (board C6-02): the icon, the title, the count, the text action.
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+}
+
+.head__icon {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  font-size: 22px;
+  color: var(--mr-ink-muted);
+}
+
+.head__title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.head__count {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.head__new {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 4px;
+  color: var(--mr-accent-text);
+  font-weight: 700;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  .mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
   }
 }
 
@@ -19,24 +69,8 @@
   color: var(--mr-ink-muted);
 }
 
-.panel__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--mr-space-3);
-
-  .panel__text {
-    flex: 1 1 18rem;
-  }
-}
-
 .panel__new {
   align-self: flex-start;
-
-  @media (max-width: 767.98px) {
-    align-self: stretch;
-  }
 }
 
 .panel__notice {
@@ -90,10 +124,6 @@
 }
 
 @media (max-width: 767.98px) {
-  .panel__head .panel__new {
-    flex: 1 1 100%;
-  }
-
   .row .mr-list__text {
     flex: 1 1 calc(100% - 60px);
   }

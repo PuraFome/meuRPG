@@ -8,7 +8,13 @@ import {
   uploadThroughPicker,
   withExifGps,
 } from './gallery-support';
-import { acceptInvite, authStatePath, callRPC, newSignedInContext } from './support';
+import {
+  acceptInvite,
+  authStatePath,
+  callRPC,
+  gotoCampaignTab,
+  newSignedInContext,
+} from './support';
 
 // MR-019, the gallery (web/src/app/pages/gallery, the Galeria panel of the
 // campaign page), against the real upload route and GalleryService.
@@ -104,9 +110,9 @@ test(
     const token = (await invite.json()).token as string;
 
     // The master sees the panel on the campaign page.
-    await page.goto(`/campaigns/${campaignId}`);
+    await gotoCampaignTab(page, campaignId, 'Preparação');
     await expect(page.getByRole('heading', { name: 'Galeria', exact: true, level: 2 })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Abrir galeria' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Enviar imagem' })).toBeVisible();
 
     const playerContext = await newSignedInContext(browser, 'Jogador Teste');
     try {
@@ -115,7 +121,7 @@ test(
       await expect(player.getByRole('heading', { level: 1 })).toBeVisible();
       await expect(player.getByRole('heading', { name: 'Membros' })).toBeVisible();
       await expect(player.getByRole('heading', { name: 'Galeria', exact: true })).toHaveCount(0);
-      await expect(player.getByRole('link', { name: 'Abrir galeria' })).toHaveCount(0);
+      await expect(player.getByRole('link', { name: 'Enviar imagem' })).toHaveCount(0);
 
       await player.goto(`/campaigns/${campaignId}/gallery`);
       await expect(player.getByText('Só o mestre vê a galeria da campanha.')).toBeVisible();

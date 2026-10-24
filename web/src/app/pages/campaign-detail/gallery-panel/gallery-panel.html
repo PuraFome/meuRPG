@@ -1,5 +1,7 @@
 <section class="mr-panel gallery" aria-labelledby="gallery-panel-heading">
-  <h2 class="mr-panel__title" id="gallery-panel-heading">Galeria</h2>
+  <app-panel-head icon="image" title="Galeria" titleId="gallery-panel-heading" [count]="count()">
+    <app-panel-action icon="add" label="Enviar imagem" [link]="['/campaigns', campaignId(), 'gallery']" />
+  </app-panel-head>
 
   @let s = state();
   @switch (s.status) {
@@ -27,10 +29,16 @@
                   decoding="async"
                 />
               </span>
-              <span class="thumbs__name" aria-hidden="true">{{ image.name }}</span>
             </li>
           }
         </ul>
+        <div>
+          <app-panel-action
+            [underline]="true"
+            [label]="'Ver todas as ' + total() + ' imagens'"
+            [link]="['/campaigns', campaignId(), 'gallery']"
+          />
+        </div>
       } @else {
         <p class="gallery__empty">
           Nenhuma imagem ainda. Envie mapas, plantas de lugares e retratos de NPCs para usar na
@@ -39,17 +47,4 @@
       }
     }
   }
-
-  <div class="gallery__foot" [class.gallery__foot--start]="preview().length === 0">
-    @if (preview().length > 0) {
-      <span class="gallery__usage">{{ usageText() }}</span>
-    }
-    <a
-      matButton="outlined"
-      class="gallery__open"
-      [routerLink]="['/campaigns', campaignId(), 'gallery']"
-    >
-      <mat-icon aria-hidden="true">photo_library</mat-icon>Abrir galeria
-    </a>
-  </div>
 </section>

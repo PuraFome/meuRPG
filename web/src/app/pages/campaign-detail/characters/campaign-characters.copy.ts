@@ -23,6 +23,11 @@ export function characterRowSub(c: CampaignCharacterListItemVm, isMaster: boolea
   return parts.join(', ');
 }
 
+/** "1 personagem", "7 personagens": the count in the players' panel head. */
+export function playerCountLabel(n: number): string {
+  return `${n} ${n === 1 ? 'personagem' : 'personagens'}`;
+}
+
 /** The tag's tone for a character's state (docs/design/tokens.md#colour): pending in
  * the warning colour, dead in the danger colour, draft and locked neutral. */
 export function stateTagClass(state: CharacterState): string {

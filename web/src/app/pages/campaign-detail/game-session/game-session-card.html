@@ -1,12 +1,7 @@
 @if (state(); as s) {
   @if (isMaster() || (s.status === 'ready' && s.session)) {
-    <section class="mr-panel session" aria-labelledby="session-heading">
-      <div class="session__head">
-        <h2 class="mr-panel__title" id="session-heading">Sessão</h2>
-        @if (s.status === 'ready' && s.session) {
-          <app-live-pill />
-        }
-      </div>
+    <section class="session" aria-labelledby="session-heading">
+      <h2 class="mr-visually-hidden" id="session-heading">Sessão</h2>
 
       @switch (s.status) {
         @case ('loading') {
@@ -20,59 +15,95 @@
         }
         @case ('ready') {
           @if (s.session; as session) {
-            <p class="session__text">
-              <strong>Sessão {{ session.sessionNumber }} em andamento</strong>, desde
-              {{ formatSessionStart(session.startedAt) }}.
-            </p>
+            <div class="session__row">
+              <app-live-pill />
+              <p class="session__text">
+                @if (phone()) {
+                  <strong>Sessão {{ session.sessionNumber }}</strong> desde
+                  {{ formatSessionStart(session.startedAt) }}
+                } @else {
+                  <strong>Sessão {{ session.sessionNumber }} em andamento</strong>, desde
+                  {{ formatSessionStart(session.startedAt) }}.
+                }
+              </p>
+              <div class="session__actions">
+                <ng-template #enter>
+                  <a mat-flat-button class="session__enter" [routerLink]="['/campaigns', campaignId(), 'session']">
+                    Entrar na sessão
+                  </a>
+                </ng-template>
+                @if (!isMaster()) {
+                  <ng-container [ngTemplateOutlet]="enter" />
+                } @else if (phone()) {
+                  <!-- A phone: "Entrar na sessão" and a menu with the two rarer actions. -->
+                  <ng-container [ngTemplateOutlet]="enter" />
+                  <button
+                    mat-stroked-button
+                    class="session__more js-end"
+                    type="button"
+                    aria-label="Mais ações da sessão"
+                    [matMenuTriggerFor]="more"
+                  >
+                    <mat-icon aria-hidden="true">more_vert</mat-icon>
+                  </button>
+                  <mat-menu #more="matMenu">
+                    <button mat-menu-item type="button" (click)="copyLink()">
+                      <mat-icon aria-hidden="true">content_copy</mat-icon>Copiar link da sessão
+                    </button>
+                    <button mat-menu-item type="button" (click)="askToEnd()">
+                      <mat-icon aria-hidden="true">flag</mat-icon>Encerrar sessão
+                    </button>
+                  </mat-menu>
+                } @else {
+                  @if (!confirmingEnd()) {
+                    <button
+                      mat-stroked-button
+                      class="session__end js-end"
+                      type="button"
+                      (click)="askToEnd()"
+                    >
+                      Encerrar sessão
+                    </button>
+                    <span class="session__rule" aria-hidden="true"></span>
+                  }
+                  <button mat-stroked-button class="session__copy" type="button" (click)="copyLink()">
+                    <mat-icon aria-hidden="true">{{
+                      copyState() === 'copied' ? 'check' : 'content_copy'
+                    }}</mat-icon>
+                    {{ copyState() === 'copied' ? 'Link copiado' : 'Copiar link da sessão' }}
+                  </button>
+                  <ng-container [ngTemplateOutlet]="enter" />
+                }
+              </div>
+            </div>
+            @if (phone() && copyState() === 'copied') {
+              <p class="session__locked">
+                <mat-icon aria-hidden="true">check</mat-icon>Link copiado
+              </p>
+            }
             @if (lastLockedSheetCount() !== null) {
               <p class="session__locked" role="status">
                 <mat-icon aria-hidden="true">lock</mat-icon>
                 {{ lockedSheetCountLabel(lastLockedSheetCount()!) }}
               </p>
             }
-            <div class="session__actions">
-              @if (isMaster()) {
-                <a mat-flat-button [routerLink]="['/campaigns', campaignId(), 'session']">
-                  Entrar na sessão
-                </a>
-                <button mat-stroked-button class="session__copy" type="button" (click)="copyLink()">
-                  <mat-icon aria-hidden="true">{{
-                    copyState() === 'copied' ? 'check' : 'content_copy'
-                  }}</mat-icon>
-                  {{ copyState() === 'copied' ? 'Link copiado' : 'Copiar link da sessão' }}
+            @if (confirmingEnd()) {
+              <div class="session__confirm" role="group" aria-labelledby="confirm-end-text">
+                <p id="confirm-end-text" class="session__confirm-text">
+                  Encerrar a sessão {{ session.sessionNumber }}? Ela não reabre depois.
+                </p>
+                <button
+                  mat-stroked-button
+                  class="session__end session__end--confirm js-confirm-end"
+                  type="button"
+                  [disabled]="actionState().status === 'saving'"
+                  (click)="endSession(session.id)"
+                >
+                  Confirmar encerramento
                 </button>
-                @if (confirmingEnd()) {
-                  <div class="session__confirm" role="group" aria-labelledby="confirm-end-text">
-                    <p id="confirm-end-text" class="session__confirm-text">
-                      Encerrar a sessão {{ session.sessionNumber }}? Ela não reabre depois.
-                    </p>
-                    <button
-                      mat-stroked-button
-                      class="session__end session__end--confirm js-confirm-end"
-                      type="button"
-                      [disabled]="actionState().status === 'saving'"
-                      (click)="endSession(session.id)"
-                    >
-                      Confirmar encerramento
-                    </button>
-                    <button mat-button type="button" (click)="cancelEnd()">Cancelar</button>
-                  </div>
-                } @else {
-                  <button
-                    mat-stroked-button
-                    class="session__end js-end"
-                    type="button"
-                    (click)="askToEnd()"
-                  >
-                    Encerrar sessão
-                  </button>
-                }
-              } @else {
-                <a mat-flat-button [routerLink]="['/campaigns', campaignId(), 'session']">
-                  Entrar na sessão
-                </a>
-              }
-            </div>
+                <button mat-button type="button" (click)="cancelEnd()">Cancelar</button>
+              </div>
+            }
             @if (copyState() === 'manual') {
               <div class="session__manual">
                 <label class="mr-label" for="session-link-field">Link da sessão</label>
@@ -92,9 +123,24 @@
               {{ copyState() === 'copied' ? 'Link copiado' : '' }}
             </p>
           } @else {
-            <p class="session__text">
-              Nenhuma sessão em andamento. Ao iniciar, a ficha dos jogadores trava.
-            </p>
+            <div class="session__row">
+              <p class="session__text">
+                Nenhuma sessão em andamento. Ao iniciar, a ficha dos jogadores trava.
+              </p>
+              @if (!confirmingStart()) {
+                <div class="session__actions">
+                  <button
+                    mat-flat-button
+                    class="session__action js-start"
+                    type="button"
+                    [disabled]="actionState().status === 'saving'"
+                    (click)="requestStart()"
+                  >
+                    Iniciar sessão
+                  </button>
+                </div>
+              }
+            </div>
             @if (confirmingStart(); as open) {
               <div class="session__confirm" role="group" aria-labelledby="confirm-start-text">
                 <p id="confirm-start-text" class="session__confirm-text">
@@ -117,16 +163,6 @@
                 </button>
                 <button mat-button type="button" (click)="cancelStart()">Cancelar</button>
               </div>
-            } @else {
-              <button
-                mat-flat-button
-                class="session__action js-start"
-                type="button"
-                [disabled]="actionState().status === 'saving'"
-                (click)="requestStart()"
-              >
-                Iniciar sessão
-              </button>
             }
           }
         }

@@ -1,5 +1,14 @@
 <section class="mr-panel panel" aria-labelledby="puzzles-heading">
-  <h2 class="mr-panel__title" id="puzzles-heading" tabindex="-1"><span class="nw">Quebra-cabeças</span></h2>
+  <div class="head">
+    <mat-icon class="head__icon" aria-hidden="true">key</mat-icon>
+    <h2 class="mr-panel__title head__title" id="puzzles-heading" tabindex="-1"><span class="nw">Quebra-cabeças</span></h2>
+    @if (state().status === 'ready' && puzzles().length > 0) {
+      <span class="head__count">{{ count() }}</span>
+    }
+    <a class="head__new" [routerLink]="['/campaigns', campaignId(), 'puzzles', 'new']">
+      <mat-icon aria-hidden="true">add</mat-icon><span class="nw">Novo quebra-cabeça</span>
+    </a>
+  </div>
 
   @let s = state();
   @switch (s.status) {
@@ -18,16 +27,8 @@
         <p class="panel__text">
           {{ archivedCount() > 0 && !withArchived() ? 'Todos os quebra-cabeças estão arquivados. Mostre os arquivados para desarquivar um, ou crie outro.' : 'Nenhum quebra-cabeça ainda. Crie o primeiro para mostrar aos jogadores numa sessão.' }}
         </p>
-        <a matButton="outlined" class="panel__new" [routerLink]="['/campaigns', campaignId(), 'puzzles', 'new']">
-          <mat-icon aria-hidden="true">add</mat-icon><span class="nw">Novo quebra-cabeça</span>
-        </a>
       } @else {
-        <div class="panel__head">
-          <p class="panel__text">Só você vê estes quebra-cabeças. Você mostra um aos jogadores dentro da sessão.</p>
-          <a matButton="outlined" class="panel__new" [routerLink]="['/campaigns', campaignId(), 'puzzles', 'new']">
-            <mat-icon aria-hidden="true">add</mat-icon><span class="nw">Novo quebra-cabeça</span>
-          </a>
-        </div>
+        <p class="panel__text">Só você vê estes quebra-cabeças. Você mostra um aos jogadores dentro da sessão.</p>
         <ul class="mr-list">
           @for (p of visible(); track p.id) {
             <li class="item" [class.item--archived]="p.archived">

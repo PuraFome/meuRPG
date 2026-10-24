@@ -14,6 +14,10 @@ import { GameSessionSourceLive } from '../../core/play/game-session-source.live'
  * master) `<app-game-session-card>` directly in its template, and both
  * resolve their source through this route's environment injector, same as
  * `CampaignDetail` itself.
+ *
+ * The master's three tabs are routes under it, each lazy: "Mesa" (`''`, the
+ * default), "Preparação" (`prep`) and "Regras" (`setup`; `/rules` is the "Regras da mesa" page).
+ * `CampaignDetail` draws them in its `router-outlet`, below the session strip and the tab links.
  */
 export const CAMPAIGN_DETAIL_ROUTES: Routes = [
   {
@@ -26,5 +30,20 @@ export const CAMPAIGN_DETAIL_ROUTES: Routes = [
       XpWatcher,
     ],
     loadComponent: () => import('./campaign-detail').then((m) => m.CampaignDetail),
+    children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        loadComponent: () => import('./tabs/mesa-tab').then((m) => m.MesaTab),
+      },
+      {
+        path: 'prep',
+        loadComponent: () => import('./tabs/prep-tab').then((m) => m.PrepTab),
+      },
+      {
+        path: 'setup',
+        loadComponent: () => import('./tabs/setup-tab').then((m) => m.SetupTab),
+      },
+    ],
   },
 ];

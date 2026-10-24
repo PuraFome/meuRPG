@@ -1,5 +1,7 @@
-<section aria-labelledby="characters-heading" class="characters">
-  <h2 id="characters-heading" class="mr-visually-hidden">Personagens</h2>
+<section [attr.aria-labelledby]="isMaster() ? null : 'characters-heading'" class="characters">
+  @if (!isMaster()) {
+    <h2 id="characters-heading" class="mr-visually-hidden">Personagens</h2>
+  }
 
   @if (state(); as s) {
     @switch (s.status) {
@@ -15,182 +17,190 @@
         </div>
       }
       @case ('ready') {
+        @let listed = listedPlayerCharacters(s.vm);
         @if (isMaster()) {
           @let waiting = awaitingApproval(s.vm);
-          @if (waiting.length > 0) {
-            <section class="mr-panel" aria-labelledby="awaiting-approval-heading">
-              <h3 class="mr-panel__title" id="awaiting-approval-heading">Esperando aprovação</h3>
-              <p class="panel-hint">Abra a ficha para aprovar ou recusar o personagem.</p>
-              <ul class="mr-list" aria-labelledby="awaiting-approval-heading">
+          <section class="mr-panel players" aria-labelledby="players-heading">
+            <app-panel-head
+              icon="group"
+              [title]="phone() ? 'Personagens' : 'Personagens dos jogadores'"
+              titleId="players-heading"
+              [count]="phone() ? '' + listed.length : playerCountLabel(listed.length)"
+            />
+
+            @if (waiting.length > 0) {
+              <ul class="waiting" aria-label="Esperando aprovação">
                 @for (c of waiting; track c.id) {
-                  <li>
-                    <a class="mr-list__row" [routerLink]="['/campaigns', campaignId(), 'characters', c.id]">
-                      <span class="pending-dot" aria-hidden="true"></span>
-                      <span class="mr-list__text">
-                        <span class="mr-list__name">{{ c.name }}</span>
-                        @if (characterRowSub(c, true); as sub) {
-                          <span class="mr-list__sub">{{ sub }}</span>
-                        }
-                      </span>
+                  <li class="waiting__item">
+                    <mat-icon aria-hidden="true">warning</mat-icon>
+                    <span class="waiting__text">
+                      <strong>{{ c.name }} espera a sua aprovação.</strong>
+                      @if (characterRowSub(c, true); as sub) {
+                        {{ sub }}.
+                      }
                       @if (c.reviewStatus === 'changes_requested') {
                         <span class="mr-tag mr-tag--pending">
                           <mat-icon aria-hidden="true">edit</mat-icon>Ajustes pedidos
                         </span>
                       }
-                      <span class="row-action">Revisar</span>
-                    </a>
-                  </li>
-                }
-              </ul>
-            </section>
-          }
-        }
-
-        @let listed = listedPlayerCharacters(s.vm);
-        <section class="mr-panel" aria-labelledby="players-heading">
-          <h3 class="mr-panel__title" id="players-heading">
-            {{ isMaster() ? 'Personagens dos jogadores' : 'Meus personagens' }}
-          </h3>
-          @if (listed.length === 0) {
-            <p class="panel-hint">
-              @if (isMaster()) {
-                Nenhum personagem ainda. Cada jogador cria o seu ao entrar pelo convite.
-              } @else {
-                Você ainda não tem personagem nesta campanha.
-              }
-            </p>
-          } @else {
-            <!-- The live region is in the DOM before it has anything to say, so the notice is read out. -->
-            <div class="gift" role="status" aria-live="polite">
-              @if (giftNotice()) {
-                <div class="mr-notice mr-notice--success">
-                  <mat-icon aria-hidden="true">check</mat-icon>
-                  <p>{{ giftNotice() }}</p>
-                </div>
-              }
-            </div>
-            <ul class="mr-list">
-              @for (c of listed; track c.id) {
-                <li>
-                  <a class="mr-list__row" [routerLink]="['/campaigns', campaignId(), 'characters', c.id]">
-                    <span class="mr-list__text">
-                      <span class="mr-list__name">{{ c.name }}</span>
-                      @if (characterRowSub(c, isMaster()); as sub) {
-                        <span class="mr-list__sub">{{ sub }}</span>
-                      }
                     </span>
-                    <span class="tags">
-                      @if (isMaster() && openChoicesText(c.id); as open) {
-                        <span class="mr-tag mr-tag--pending">
-                          <mat-icon aria-hidden="true">pending_actions</mat-icon>{{ open }}
-                          <span class="mr-visually-hidden">. {{ openChoicesLabels(c.id) }}</span>
-                        </span>
-                      }
-                      @if (canLevelUp(c.id)) {
-                        <app-level-up-tag />
-                      }
-                      @if (levelUpOf(c.id); as lu) {
-                        @if (isFresh(lu)) {
-                          <span class="mr-tag mr-tag--success">
-                            <mat-icon aria-hidden="true">arrow_upward</mat-icon>Subiu para o nível {{ lu.toLevel }}
-                          </span>
-                        }
-                      }
-                      <span class="mr-tag" [class]="stateTagClass(c.state)">
-                        @if (c.state === 'locked') {
-                          <mat-icon aria-hidden="true">lock</mat-icon>
-                        }
-                        {{ characterStateLabel(c.state) }}
-                      </span>
-                    </span>
-                  </a>
-                  @if (isMaster() && c.state !== 'dead') {
-                    <app-character-creatures
-                      [campaignId]="campaignId()"
-                      [characterId]="c.id"
-                      [characterName]="c.name"
-                      [reload]="creaturesTick()"
-                      (given)="gave(c.name, $event)"
-                    />
-                  }
-                  @if (levelUpOf(c.id); as lu) {
-                    <button
-                      type="button"
-                      class="changes-toggle"
-                      [id]="'changes-toggle-' + c.id"
-                      [attr.aria-expanded]="openChanges() === c.id"
-                      [attr.aria-controls]="'changes-' + c.id"
-                      [attr.aria-label]="'O que mudou: ' + c.name"
-                      (click)="toggleChanges(c.id)"
+                    <a
+                      mat-stroked-button
+                      class="waiting__review"
+                      [routerLink]="['/campaigns', campaignId(), 'characters', c.id]"
                     >
-                      O que mudou
-                      <mat-icon aria-hidden="true">{{ openChanges() === c.id ? 'expand_less' : 'expand_more' }}</mat-icon>
-                    </button>
-                    @if (openChanges() === c.id) {
-                      <div [id]="'changes-' + c.id">
-                        <app-level-up-changes [levelUp]="lu" [campaignId]="campaignId()" />
-                      </div>
-                    }
-                  }
-                </li>
-              }
-            </ul>
-          }
-
-          @if (!isMaster() && !s.vm.hasLivingCharacter) {
-            <a
-              mat-flat-button
-              class="panel-action panel-action--primary"
-              [routerLink]="['/campaigns', campaignId(), 'characters', 'new']"
-            >
-              Criar meu personagem
-            </a>
-          }
-        </section>
-
-        @if (isMaster()) {
-          <app-reserved-characters
-            [campaignId]="campaignId()"
-            [rows]="reservedRows(s.vm)"
-            (changed)="refresh()"
-          />
-
-          <section class="mr-panel" aria-labelledby="npcs-heading">
-            <h3 class="mr-panel__title" id="npcs-heading">NPCs</h3>
-            @if (s.vm.npcs.length === 0) {
-              <p class="panel-hint">Nenhum NPC ainda. Crie o primeiro para usar nas sessões.</p>
-            } @else {
-              <ul class="mr-list">
-                @for (c of s.vm.npcs; track c.id) {
-                  <li>
-                    <a class="mr-list__row" [routerLink]="['/campaigns', campaignId(), 'characters', c.id]">
-                      <span class="mr-list__text">
-                        <span class="mr-list__name">{{ c.name }}</span>
-                        @if (characterRowSub(c, true); as sub) {
-                          <span class="mr-list__sub">{{ sub }}</span>
-                        }
-                      </span>
-                      @if (c.state === 'dead') {
-                        <span class="mr-tag mr-tag--danger">{{ characterStateLabel(c.state) }}</span>
-                      }
-                      <span class="mr-tag">{{ characterKindLabel(c.kind) }}</span>
+                      <mat-icon aria-hidden="true">visibility</mat-icon>Revisar {{ c.name }}
                     </a>
                   </li>
                 }
               </ul>
             }
 
-            <button mat-stroked-button class="panel-action" type="button" [matMenuTriggerFor]="npcMenu">
-              <mat-icon aria-hidden="true">add</mat-icon>
-              Novo NPC
-            </button>
-            <mat-menu #npcMenu="matMenu">
-              @for (option of npcKinds; track option.segment) {
-                <a mat-menu-item [routerLink]="['/campaigns', campaignId(), 'npcs', 'new', option.segment]">
-                  {{ characterKindLabel(option.kind) }}
-                </a>
-              }
-            </mat-menu>
+            @if (listed.length === 0) {
+              <p class="panel-hint">
+                @if (waiting.length === 0) {
+                  Nenhum personagem ainda. Cada jogador cria o seu ao entrar pelo convite.
+                } @else {
+                  Nenhum personagem aprovado ainda.
+                }
+              </p>
+            } @else {
+              <!-- The live region is in the DOM before it has anything to say, so the notice is read out. -->
+              <div class="gift" role="status" aria-live="polite">
+                @if (giftNotice()) {
+                  <div class="mr-notice mr-notice--success">
+                    <mat-icon aria-hidden="true">check</mat-icon>
+                    <p>{{ giftNotice() }}</p>
+                  </div>
+                }
+              </div>
+              <ul class="cards">
+                @for (c of listed; track c.id) {
+                  <li class="card">
+                    <a class="card__link" [routerLink]="['/campaigns', campaignId(), 'characters', c.id]">
+                      <span class="avatar" aria-hidden="true">{{ c.name.charAt(0).toUpperCase() }}</span>
+                      <span class="card__text">
+                        <span class="card__name" [title]="c.name">{{ c.name }}</span>
+                        @if (characterRowSub(c, true); as sub) {
+                          <span class="card__sub">{{ sub }}</span>
+                        }
+                        @if (openChoicesText(c.id) || canLevelUp(c.id) || freshLevelUp(c.id)) {
+                          <span class="card__tags">
+                            @if (openChoicesText(c.id); as open) {
+                              <span class="mr-tag mr-tag--pending">
+                                <mat-icon aria-hidden="true">pending_actions</mat-icon>{{ open }}
+                                <span class="mr-visually-hidden">. {{ openChoicesLabels(c.id) }}</span>
+                              </span>
+                            }
+                            @if (canLevelUp(c.id)) {
+                              <app-level-up-tag />
+                            }
+                            @if (freshLevelUp(c.id); as lu) {
+                              <span class="mr-tag mr-tag--success">
+                                <mat-icon aria-hidden="true">arrow_upward</mat-icon>Subiu para o nível {{ lu.toLevel }}
+                              </span>
+                            }
+                          </span>
+                        }
+                      </span>
+                      @if (c.state === 'locked') {
+                        <mat-icon class="card__lock" role="img" aria-label="Ficha travada" title="Travada">lock</mat-icon>
+                      } @else {
+                        <span class="mr-tag" [class]="stateTagClass(c.state)">{{ characterStateLabel(c.state) }}</span>
+                      }
+                      <mat-icon class="card__chevron" aria-hidden="true">chevron_right</mat-icon>
+                    </a>
+                    @if (c.state !== 'dead') {
+                      <app-character-creatures
+                        [campaignId]="campaignId()"
+                        [characterId]="c.id"
+                        [characterName]="c.name"
+                        [reload]="creaturesTick()"
+                        (given)="gave(c.name, $event)"
+                      />
+                    }
+                    @if (levelUpOf(c.id); as lu) {
+                      <button
+                        type="button"
+                        class="changes-toggle"
+                        [id]="'changes-toggle-' + c.id"
+                        [attr.aria-expanded]="openChanges() === c.id"
+                        [attr.aria-controls]="'changes-' + c.id"
+                        [attr.aria-label]="'O que mudou: ' + c.name"
+                        (click)="toggleChanges(c.id)"
+                      >
+                        O que mudou
+                        <mat-icon aria-hidden="true">{{ openChanges() === c.id ? 'expand_less' : 'expand_more' }}</mat-icon>
+                      </button>
+                      @if (openChanges() === c.id) {
+                        <div [id]="'changes-' + c.id">
+                          <app-level-up-changes [levelUp]="lu" [campaignId]="campaignId()" />
+                        </div>
+                      }
+                    }
+                  </li>
+                }
+              </ul>
+            }
+
+            <p class="note">
+              <mat-icon aria-hidden="true">info</mat-icon>
+              <span>
+                @if (allLocked(listed)) {
+                  Todas as fichas estão travadas desde a primeira sessão.
+                }
+                Os NPCs ficam na aba Preparação.
+              </span>
+            </p>
+          </section>
+
+          <app-reserved-characters
+            [campaignId]="campaignId()"
+            [rows]="reservedRows(s.vm)"
+            (changed)="refresh()"
+          />
+        } @else {
+          <section class="mr-panel" aria-labelledby="players-heading">
+            <h3 class="mr-panel__title" id="players-heading">Meus personagens</h3>
+            @if (listed.length === 0) {
+              <p class="panel-hint">Você ainda não tem personagem nesta campanha.</p>
+            } @else {
+              <ul class="mr-list">
+                @for (c of listed; track c.id) {
+                  <li>
+                    <a class="mr-list__row" [routerLink]="['/campaigns', campaignId(), 'characters', c.id]">
+                      <span class="mr-list__text">
+                        <span class="mr-list__name">{{ c.name }}</span>
+                        @if (characterRowSub(c, false); as sub) {
+                          <span class="mr-list__sub">{{ sub }}</span>
+                        }
+                      </span>
+                      <span class="tags">
+                        @if (canLevelUp(c.id)) {
+                          <app-level-up-tag />
+                        }
+                        <span class="mr-tag" [class]="stateTagClass(c.state)">
+                          @if (c.state === 'locked') {
+                            <mat-icon aria-hidden="true">lock</mat-icon>
+                          }
+                          {{ characterStateLabel(c.state) }}
+                        </span>
+                      </span>
+                    </a>
+                  </li>
+                }
+              </ul>
+            }
+
+            @if (!s.vm.hasLivingCharacter) {
+              <a
+                mat-flat-button
+                class="panel-action panel-action--primary"
+                [routerLink]="['/campaigns', campaignId(), 'characters', 'new']"
+              >
+                Criar meu personagem
+              </a>
+            }
           </section>
         }
       }

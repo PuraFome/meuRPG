@@ -232,7 +232,10 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 
 #### No app
 - O aviso "A sessão 4 de Mirathel começou." fica sob a barra do app com "Entrar na sessão", para quem joga na campanha, fora das páginas da campanha e da sessão. Fechá-lo vale só para a aba. O app verifica as sessões abertas a cada 30 segundos enquanto a aba está visível. O aviso na tela basta: não há notificação push do navegador (RN-06).
-- Outras entradas: o link "Ao vivo" na barra, a etiqueta "Sessão ao vivo" em "Minhas campanhas" e o painel "Sessão" da campanha com "Entrar na sessão" e "Copiar link da sessão".
+- Outras entradas: o link "Ao vivo" na barra, a etiqueta "Sessão ao vivo" em "Minhas campanhas" e a faixa da sessão na página da campanha.
+  A faixa do mestre fica acima das três abas, então está em todas: "Encerrar sessão", "Copiar link da sessão" e "Entrar na sessão" (o único botão preenchido da página), ou "Iniciar sessão" enquanto não há nenhuma aberta. A lista das fichas com escolhas em aberto ("Iniciar mesmo assim?") abre embaixo dela.
+  No celular a faixa mantém "Entrar na sessão" e um menu "Mais ações da sessão" com "Copiar link da sessão" e "Encerrar sessão".
+  A página da campanha de um jogador mostra a faixa só enquanto há sessão aberta, com "Entrar na sessão".
 - Na página da sessão, uma barra de uma linha no alto reúne a volta para a campanha, "Sessão 3", "Ao vivo desde 20:12" e "Dados" para todos. O mestre também tem "Iniciar combate" (fora de um combate) e o menu "Sessão" com "Copiar link da sessão" e "Encerrar sessão", que pergunta no lugar ("Encerrar a sessão 3? Ela não reabre depois.", "Cancelar" primeiro). No celular, a navegação "Cena · Ficha · Conversa" fica fixa no pé da tela.
 - Ver [Arquitetura](../../architecture/play/live-session.md).
 
@@ -380,7 +383,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 
 #### Relacionadas
 - RN-02: o mestre pode corrigir pontos de vida e espaços de magia à mão (ver [Regras de negócio](regras.md)).
-- Dados (RN-18): o mestre escolhe como a campanha rola (cada jogador escolhe, todos no app, ou todos com os próprios dados) e cada jogador mantém a própria preferência, na página da campanha. Com um dado físico o jogador digita a soma dos dados e o app soma o modificador. As rolagens de combate seguem essa regra.
+- Dados (RN-18): o mestre escolhe como a campanha rola (cada jogador escolhe, todos no app, ou todos com os próprios dados) em "Regras da mesa" e vê o resultado em "Dados", na aba "Regras"; cada jogador mantém a própria preferência, na página da campanha. Com um dado físico o jogador digita a soma dos dados e o app soma o modificador. As rolagens de combate seguem essa regra.
 - O jogador vê se acertou ou errou e o dano, não a classe de armadura nem a rolagem do NPC (RN-20).
 - Quais ações, reações e recursos o sistema conhece vêm do motor de regras (regras como dados). Ver [ADR-0008](../../adr/0008-rules-content-as-data-pure-engine.md).
 
@@ -465,7 +468,7 @@ Só o mestre do jogo vê o documento.
 
 #### No app
 - Links: `[texto](map:<id>)`, `[texto](character:<id>)` e `![legenda](image:<id>)`. O servidor guarda o texto como enviado; o app resolve cada link com a autorização de sempre.
-- Telas: `/campaigns/:id/document` e o painel "Documento da campanha" na página da campanha. Ver [Design](../../design/session.md#campaign-document-and-gallery) e [Arquitetura](../../architecture/campaigns.md#campaign-document).
+- Telas: `/campaigns/:id/document` e a linha "Documento da campanha" na aba "Preparação" da página da campanha. Ver [Design](../../design/session.md#campaign-document-and-gallery) e [Arquitetura](../../architecture/campaigns.md#campaign-document).
 
 ### MR-019: Galeria de imagens
 
@@ -486,7 +489,7 @@ Limites: JPEG, PNG ou WebP, até 10 MB por imagem, 300 imagens e 500 MB por camp
 - **Dado** um formulário que precisa de uma imagem ("Novo mapa", o editor de documento, "Mostrar imagem"), **quando** o mestre abre o seletor, **então** ele escolhe uma imagem ou envia uma nova e a escolhe na hora.
 
 #### No app
-- `/campaigns/:id/gallery` e o painel "Galeria" na página da campanha (as 5 imagens mais novas, a cota e "Abrir galeria"), só para o mestre. Veja [Design](../../design/session.md#campaign-document-and-gallery) e [Arquitetura](../../architecture/maps/images.md).
+- `/campaigns/:id/gallery` e o painel "Galeria" na aba "Preparação" da página da campanha ("12 de 200 imagens", as 6 imagens mais novas, "Enviar imagem" e "Ver todas as 12 imagens"), só para o mestre. Veja [Design](../../design/session.md#campaign-document-and-gallery) e [Arquitetura](../../architecture/maps/images.md).
 
 ### MR-024: Aprovar o personagem do convite
 
@@ -1057,7 +1060,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 - **Dado** um jogador, **quando** o servidor responde sobre um quebra-cabeça, **então** a resposta nunca traz as respostas aceitas, o próximo passo da sequência, a mensagem sem cifra, a chave, uma CD nem a parte de outro jogador (RN-10).
 
 #### No app
-- **Mestre, lista e editor.** "Quebra-cabeças" na página da campanha lista os quebra-cabeças com seus estados, "Editar", "Arquivar" (perguntado na linha; o que foi mostrado fica como histórico da sessão) e "Mostrar os arquivados". "Novo quebra-cabeça" e "Editar quebra-cabeça" têm o formulário de cada tipo, a pista, as dicas, "Dica por teste de perícia", "Informação dividida", "Ao errar" (um jeito por vez) e "Ao resolver". Cada recusa aparece no campo a que se refere.
+- **Mestre, lista e editor.** "Quebra-cabeças" na aba "Preparação" da página da campanha lista os quebra-cabeças com seus estados, "Editar", "Arquivar" (perguntado na linha; o que foi mostrado fica como histórico da sessão) e "Mostrar os arquivados". "Novo quebra-cabeça" e "Editar quebra-cabeça" têm o formulário de cada tipo, a pista, as dicas, "Dica por teste de perícia", "Informação dividida", "Ao errar" (um jeito por vez) e "Ao resolver". Cada recusa aparece no campo a que se refere.
 - **Mestre, na sessão.** "Mostrar aos jogadores" e "Ver ao vivo" mostram o quebra-cabeça como os jogadores o têm, a última jogada e quem a fez, as dicas ("Mostrar a próxima dica"), "Gerar outro começo", "Recomeçar" e "Fechar", perguntados na própria tela. Só o mestre lê, com "Só você vê", as respostas aceitas, os passos da sequência, a mensagem às claras, as tentativas que sobram, os contadores e quem ganhou uma dica por perícia.
 - **Jogador.** O aviso "O mestre mostrou um quebra-cabeça" abre o quebra-cabeça na página da sessão. O enigma responde "Não é isso." com "Tentativas restantes 2 de 3"; a sequência diz "Errou o passo 4. A tentativa recomeçou; a Lia errou."; os contadores dizem "Jogadas 7 de 10" e "Tempo 4:48 de 5:00"; "Tentar uma dica · Investigação" dá "Você conseguiu. Esta dica é só sua" ou "Não deu desta vez." O painel 7 × 7 cabe numa tela de 320 × 568 px.
 - Ver [Arquitetura](../../architecture/play/puzzles.md), [RN-27](regras.md) e [Design](../../design/session.md#puzzles).
@@ -1148,7 +1151,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 
 #### No app
 - Editor: "Tesouro" na barra de pontos, com "Descrição para os jogadores", "Valor em ouro", "Marcar como encontrado" e "Desmarcar".
-- Página da campanha por ouro: a faixa "Encontrado, ainda não convertido" e "Voltar à cidade" ao lado de "Dar XP".
+- Campanha por ouro: em "Experiência", na aba "Mesa", a faixa "Encontrado, ainda não convertido" e "Voltar à cidade" ao lado de "Dar XP".
 - O diálogo "Voltar à cidade" lista os tesouros encontrados (no máximo 100 por vez) e mostra a conta antes de o mestre confirmar.
 - O mestre ainda pode digitar as PO em "Dar XP por ouro" ([MR-016](#mr-016-dar-xp)).
 
@@ -1174,7 +1177,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 - **Dado** que sou jogador, **quando** procuro o bestiário, **então** não acho nenhuma entrada, e nunca descubro qual criatura é um monstro, o ND dela nem os PV rolados.
 
 #### No app
-- O painel "Bestiário" da página da campanha (só o mestre), uma lista com busca e filtros, e uma página por criatura com "Criar NPC" e "Pôr no combate" (a ficha pergunta "Quantos", o nome base, PV "Média" ou "Rolar" e "Escondidos no início").
+- A linha "Bestiário" da aba "Preparação" da página da campanha (só o mestre), uma lista com busca e filtros, e uma página por criatura com "Criar NPC" e "Pôr no combate" (a ficha pergunta "Quantos", o nome base, PV "Média" ou "Rolar" e "Escondidos no início").
 - Na sessão, a ordem do mestre mostra o ND do monstro e o cartão do turno leva a "Ficha da criatura".
 
 #### Relacionadas
@@ -1198,7 +1201,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 - **Dado** que sou jogador, **quando** abro o montador ou um ponto de batalha, **então** leio "Só o mestre monta encontros." e nunca recebo o encontro nem o que ele guarda (RN-10).
 
 #### No app
-- O painel "Encontros" da página da campanha (só o mestre) leva ao montador: o grupo em chips ("Pôr um NPC no grupo", nível 1 a 20), uma barra com as três faixas, a lista de criaturas com busca, e os botões de gerar, trocar e guardar.
+- O painel "Encontros" da aba "Preparação" da página da campanha (só o mestre), com "Montar encontro", leva ao montador: o grupo em chips ("Pôr um NPC no grupo", nível 1 a 20), uma barra com as três faixas, a lista de criaturas com busca, e os botões de gerar, trocar e guardar.
 - Os números vêm da tabela "XP Budget per Character" do SRD 5.2.1 (CC BY 4.0), creditada na página "Créditos". O SRD 5.1 não tem tabela de dificuldade; se ela serve para os monstros de 2014, cabe à mesa julgar depois de jogar.
 - Na sessão, um ponto de batalha que guarda um encontro mostra a dificuldade de hoje e "Começar este combate"; a partir de um ponto de batalha num mapa com grade, o diálogo abre em "Com mapa".
 
@@ -1223,7 +1226,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 - **Dado** que sou jogador, **quando** procuro a página de tesouro, **então** leio "Só o mestre gera o tesouro da campanha." e nunca vejo um tesouro posto até ele ser marcado como encontrado.
 
 #### No app
-- "Gerar tesouro" no painel "Mapas" da página da campanha. O resultado também diz o que a campanha faz com o ouro (por inimigos e por marcos ele não é XP; por ouro, converte em "Voltar à cidade").
+- "Gerar tesouro" no painel "Mapas" da aba "Preparação" da página da campanha. O resultado também diz o que a campanha faz com o ouro (por inimigos e por marcos ele não é XP; por ouro, converte em "Voltar à cidade").
 - O SRD 5.1 não tem valores de itens nem tabelas de tesouro aleatório: os valores vêm do SRD 5.2.1 e as tabelas de moedas, gemas e objetos de arte são nossas. Ver [Arquitetura](../../architecture/maps/treasure.md#treasure-generator-mr-044) e [Conteúdo de regras](../../rules-content.md).
 
 #### Relacionadas
@@ -1247,7 +1250,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 - **Dado** a busca, os filtros e uma magia aberta, **quando** compartilho ou recarrego a página, **então** eles estão no link, e Voltar fecha a magia e traz a mesma lista de volta.
 
 #### No app
-- `/campaigns/:id/spells`, a partir do painel "Magias" da página da campanha, para todo membro ativo, o mestre também. Três colunas a partir de 1100 px; abaixo disso, uma coluna, com "Filtros (n)".
+- `/campaigns/:id/spells`, a partir do painel "Magias" da aba "Regras" do mestre (e da página da campanha de um jogador), para todo membro ativo, o mestre também. Três colunas a partir de 1100 px; abaixo disso, uma coluna, com "Filtros (n)".
 
 #### Relacionadas
 - Uma parte da [MR-020](#mr-020-consultar-o-livro-de-regras), só com as magias. Deixar o mestre aceitar uma magia fora da lista da classe fica para depois do MVP ([MR-046](#mr-046-o-estilo-da-mesa-recurso-por-recurso)). Conteúdo da mesa: [MR-025](#mr-025-cadastrar-conteúdo-da-mesa).
@@ -1287,7 +1290,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 - Regras: RN-10, RN-30
 - Módulos: campaignpackage, campaigns, characters, maps, play
 
-**Exportar** (a página da campanha, "Exportar campanha"):
+**Exportar** (o painel "Pacote da campanha" da aba "Regras", "Exportar campanha"):
 - Só o mestre. A página mostra o progresso e pode ser fechada. O arquivo (`<campanha>.meurpg.zip`) fica 24 horas ("Baixar de novo") e depois é apagado; ele também é apagado com a campanha ou a conta.
 - Ele leva o documento da campanha, as regras da mesa, a galeria (os arquivos de imagem), os mapas (imagem, grade, camadas, portas, luzes, armadilhas, pontos), os NPCs e as criaturas com as anotações do mestre, as cenas com suas ações, pistas e ganchos, os quebra-cabeças, os pontos de batalha com seus encontros, os pontos de tesouro, o conteúdo da mesa e as opções desligadas, e os personagens dos jogadores (como reservados, sem dono).
 - Ele nunca leva as anotações privadas dos jogadores, o histórico e os registros das sessões, as contas (ids, e-mails, nomes), os donos e membros, os convites e links para assumir, nem o que cada jogador lembra da névoa. Um mapa volta como preparado: armadilhas armadas, tesouros não encontrados.
@@ -1384,7 +1387,7 @@ Ver [Arquitetura](../../architecture/campaign-package.md).
 - **Dado** um personagem reservado, **quando** uma sessão começa, **então** ele não é travado com os outros; trava com as sessões que começam depois que ele é assumido.
 
 #### No app
-- O painel "Personagens reservados" da página da campanha: cada linha diz em que pé está o link dela e oferece "Gerar link para o jogador" / "Gerar novo link", "Editar", "Revogar o link", "Excluir" e, para um personagem assumido, "Ver ficha" e "Devolver à reserva".
+- O painel "Personagens reservados" da aba "Mesa" da página da campanha, abaixo dos personagens dos jogadores: cada linha diz em que pé está o link dela e oferece "Gerar link para o jogador" / "Gerar novo link", "Editar", "Revogar o link", "Excluir" e, para um personagem assumido, "Ver ficha" e "Devolver à reserva".
 - O mestre faz a ficha no editor de sempre, no modo do mestre (o método de valores de habilidade e a regra de pontos de vida da mesa não se aplicam), e salva com "Salvar como reservado".
 - O cartão em `/claim` oferece "Assumir este personagem", "Voltar para minhas campanhas" e "Não é você? Entrar com outra conta".
 - Assumir tem limite de taxa por pessoa e por endereço.

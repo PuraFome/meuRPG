@@ -129,6 +129,7 @@ These pages are what a table needs to know about the app.
 | [design/sheet.md](design/sheet.md) | The character sheet and its editors. |
 | [design/session.md](design/session.md) | The live session page. |
 | [design/combat.md](design/combat.md) | The combat screens. |
+| [design/campaign.md](design/campaign.md) | The campaign page: the session strip and the three tabs. |
 | [design/maps.md](design/maps.md) | The map components. |
 
 ### Archive and decisions

@@ -1,0 +1,28 @@
+<section class="mr-panel content" aria-labelledby="content-heading">
+  <app-panel-head icon="menu_book" title="Conteúdo da mesa" titleId="content-heading" />
+
+  @let s = state();
+  @switch (s.status) {
+    @case ('loading') {
+      <p class="content__text" role="status">Carregando o conteúdo...</p>
+    }
+    @case ('error') {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ s.message }}</p>
+      </div>
+    }
+    @case ('ready') {
+      <p class="content__text">
+        {{ counts() || 'Nada criado ainda.' }} O SRD continua valendo.
+      </p>
+    }
+  }
+  <div>
+    <app-panel-action
+      label="Abrir o conteúdo"
+      [underline]="true"
+      [link]="['/campaigns', campaignId(), 'content']"
+    />
+  </div>
+</section>

@@ -21,6 +21,7 @@ import { TreasureStrip } from '../../../shared/xp/treasure-strip';
 import { type GiveResult, XpGiveButton } from '../../../shared/xp/xp-give-button';
 import { MilestonesPanel } from '../milestones/milestones-panel';
 import { AwardHistory } from './award-history';
+import { PanelHead } from '../panel-head/panel-head';
 import { XpRows } from './xp-rows';
 
 /**
@@ -39,6 +40,7 @@ import { XpRows } from './xp-rows';
     MatButtonModule,
     MatIconModule,
     MilestonesPanel,
+    PanelHead,
     TreasureStrip,
     XpGiveButton,
     XpRows,
@@ -52,6 +54,13 @@ export class ExperiencePanel {
   readonly campaignId = input.required<string>();
   readonly campaignName = input('');
   readonly isMaster = input(false);
+
+  /** The history opens in place under "Histórico de XP (N)"; it is closed when the page opens. */
+  protected readonly historyOpen = signal(false);
+  /** "5", or "20+" while the server has older awards to send. */
+  protected readonly historyCount = computed(
+    () => `${this.store.awards().length}${this.store.nextPageToken() ? '+' : ''}`,
+  );
 
   /** What the master just gave, said once in a polite status. */
   protected readonly confirmation = signal('');

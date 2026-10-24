@@ -7,8 +7,7 @@
     }
   </div>
 
-  <div class="exp__head">
-    <h2 class="mr-panel__title" id="exp-title">Experiência</h2>
+  <app-panel-head icon="star" title="Experiência" titleId="exp-title">
     @if (isMaster() && store.rowsState() === 'ready' && !milestones()) {
       <app-xp-give-button
         [campaignId]="campaignId()"
@@ -19,11 +18,10 @@
         [treasuresTotal]="store.treasuresTotal()"
         [treasuresState]="store.treasuresState()"
         [showTown]="true"
-        [block]="true"
         (given)="given($event)"
       />
     }
-  </div>
+  </app-panel-head>
 
   @switch (store.rowsState()) {
     @case ('loading') {
@@ -64,7 +62,6 @@
           <app-xp-rows [rows]="store.rows()" [gained]="gained()" />
         }
 
-        <h3 class="exp__sub" id="history-title">Histórico</h3>
         @switch (store.awardsState()) {
           @case ('loading') {
             <p class="mr-muted" role="status">Carregando o histórico...</p>
@@ -76,15 +73,32 @@
             @if (store.awards().length === 0) {
               <p class="mr-muted">{{ emptyHistory() }}</p>
             } @else {
-              <app-award-history
-                [campaignId]="campaignId()"
-                [isMaster]="isMaster()"
-                [hideNotice]="confirmation() !== ''"
-                (undone)="undone()"
-              />
-              <p class="exp__foot">
-                {{ isMaster() ? 'Só o último prêmio pode ser desfeito.' : 'Todos da campanha veem este histórico.' }}
-              </p>
+              @if (isMaster()) {
+                <button
+                  type="button"
+                  class="exp__toggle"
+                  [attr.aria-expanded]="historyOpen()"
+                  aria-controls="history-body"
+                  (click)="historyOpen.set(!historyOpen())"
+                >
+                  <mat-icon aria-hidden="true">history</mat-icon>
+                  Histórico de XP ({{ historyCount() }})
+                  <mat-icon class="exp__chevron" aria-hidden="true">{{ historyOpen() ? 'expand_less' : 'chevron_right' }}</mat-icon>
+                </button>
+              } @else {
+                <h3 class="exp__sub">Histórico</h3>
+              }
+              <div id="history-body" [hidden]="isMaster() && !historyOpen()">
+                <app-award-history
+                  [campaignId]="campaignId()"
+                  [isMaster]="isMaster()"
+                  [hideNotice]="confirmation() !== ''"
+                  (undone)="undone()"
+                />
+                <p class="exp__foot">
+                  {{ isMaster() ? 'Só o último prêmio pode ser desfeito.' : 'Todos da campanha veem este histórico.' }}
+                </p>
+              </div>
             }
           }
         }

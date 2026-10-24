@@ -41,19 +41,19 @@ describe('MapsPanel', () => {
     ];
     const el = await render(true, maps);
     const rows = el.querySelectorAll('li');
-    expect(rows[0].textContent).toContain('Mapa principal, 5 pontos');
+    expect(rows[0].textContent).toContain('5 pontos');
     expect(rows[0].textContent).toContain('Mapa atual');
     expect(rows[0].textContent).toContain('Revelado');
-    expect(rows[1].textContent).toContain('Submapa de Mirathel e arredores, 1 ponto');
+    expect(rows[1].textContent).toContain('Submapa de Mirathel e arredores · 1 ponto');
     expect(rows[1].textContent).toContain('Escondido');
   });
 
   it('gives the master "Gerar masmorra" and "Gerar tesouro", next to "Novo mapa", on the maps list (MR-010, MR-044)', async () => {
     const el = await render(true, new FakeMapsClient());
-    const links = Array.from(el.querySelectorAll('.maps__actions a'));
+    const links = Array.from(el.querySelectorAll('app-panel-head a'));
     expect(
       links.map((a) =>
-        a.textContent?.replace('add', '').replace('castle', '').replace('paid', '').trim(),
+        a.textContent?.replace(a.querySelector('mat-icon')?.textContent ?? '', '').trim(),
       ),
     ).toEqual(['Novo mapa', 'Gerar masmorra', 'Gerar tesouro']);
     expect(links[1]!.getAttribute('href')).toBe('/campaigns/camp-1/maps/dungeon');
@@ -76,9 +76,33 @@ describe('MapsPanel', () => {
     expect(el.textContent).not.toContain('Gerar masmorra');
   });
 
-  it('describes a map by where it sits', () => {
-    expect(mapRowSub(mapMessage('a', 'A', { pointCount: 0 }), true)).toBe(
-      'Mapa principal, 0 pontos',
-    );
+  it('describes a map by where it sits, its squares and its points', () => {
+    expect(mapRowSub(mapMessage('a', 'A', { pointCount: 0 }), true)).toBe('0 pontos');
+    expect(
+      mapRowSub(
+        mapMessage('b', 'B', {
+          pointCount: 3,
+          gridColumns: 24,
+          gridRows: 16,
+          parentMaps: [{ id: 'a', name: 'A' } as never],
+        }),
+        true,
+      ),
+    ).toBe('Submapa de A · 24 × 16 quadrados · 3 pontos');
+    expect(mapRowSub(mapMessage('a', 'A', {}), false)).toBe('Mapa principal');
+  });
+
+  it('counts the maps in the title row, shows five and "Ver todos os 7 mapas", which shows the rest', async () => {
+    const maps = new FakeMapsClient();
+    maps.maps = Array.from({ length: 7 }, (_, i) => mapMessage(`m${i}`, `Mapa ${i}`, {}));
+    const el = await render(true, maps);
+    expect(el.querySelector('app-panel-head')?.textContent).toContain('7 mapas');
+    expect(el.querySelectorAll('li')).toHaveLength(5);
+    const more = Array.from(el.querySelectorAll('button')).find((b) =>
+      b.textContent?.includes('Ver todos os 7 mapas'),
+    )!;
+    more.click();
+    await nextTurn();
+    expect(el.querySelectorAll('li')).toHaveLength(7);
   });
 });

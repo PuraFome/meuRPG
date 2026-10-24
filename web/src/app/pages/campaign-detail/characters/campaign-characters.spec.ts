@@ -4,6 +4,7 @@ import { provideRouter } from '@angular/router';
 
 import { ExperienceStore, type ExperienceRow } from '../../../core/progression/experience-store';
 import { CampaignCharacters } from './campaign-characters';
+import { CampaignRoster } from './campaign-roster';
 import {
   CampaignCharactersSource,
   CampaignCharactersVm,
@@ -39,6 +40,7 @@ describe('CampaignCharacters', () => {
       imports: [CampaignCharacters],
       providers: [
         provideRouter([]),
+        CampaignRoster,
         { provide: CampaignCharactersSource, useClass: FakeCampaignCharactersSource },
       ],
     });
@@ -58,7 +60,7 @@ describe('CampaignCharacters', () => {
     return { el: fixture.nativeElement as HTMLElement, fixture };
   }
 
-  it('shows the master\'s two lists and the "Novo NPC" menu trigger', async () => {
+  it('shows the master the players\' panel, with the way to the NPCs on "Preparação" and none of them', async () => {
     fake.listCharactersResult = Promise.resolve({
       playerCharacters: [
         {
@@ -88,9 +90,9 @@ describe('CampaignCharacters', () => {
     expect(el.textContent).toContain('Personagens dos jogadores');
     expect(el.textContent).toContain('Pensantus');
     expect(el.textContent).toContain('Vinicius');
-    expect(el.textContent).toContain('NPCs');
-    expect(el.textContent).toContain('Goblin');
-    expect(el.textContent).toContain('Novo NPC');
+    expect(el.textContent).toContain('Os NPCs ficam na aba Preparação');
+    expect(el.textContent).not.toContain('Goblin');
+    expect(el.textContent).not.toContain('Novo NPC');
     expect(el.textContent).not.toContain('Criar meu personagem');
   });
 
@@ -120,17 +122,17 @@ describe('CampaignCharacters', () => {
 
     const { el } = await render(true);
 
-    const heading = Array.from(el.querySelectorAll('h3')).find((h) =>
-      h.textContent?.includes('Esperando aprovação'),
-    );
-    expect(heading).toBeTruthy();
-    const queue = el.querySelector(
-      'ul[aria-labelledby="awaiting-approval-heading"]',
-    ) as HTMLElement;
-    expect(queue.textContent).toContain('Novata');
+    const queue = el.querySelector('ul[aria-label="Esperando aprovação"]') as HTMLElement;
+    expect(queue.textContent).toContain('Novata espera a sua aprovação.');
     expect(queue.textContent).toContain('Samuel');
     expect(queue.textContent).not.toContain('Pensantus');
-    expect(queue.querySelector('a')?.getAttribute('href')).toBe('/campaigns/camp-1/characters/c2');
+    const review = queue.querySelector('a')!;
+    expect(review.getAttribute('href')).toBe('/campaigns/camp-1/characters/c2');
+    // One name for each: the banner says whose sheet it opens.
+    expect(review.textContent).toContain('Revisar Novata');
+    // The waiting one is not among the players' cards, and the count leaves it out.
+    expect(el.querySelectorAll('.card')).toHaveLength(1);
+    expect(el.textContent).toContain('1 personagem');
   });
 
   it('tags the waiting row "Ajustes pedidos" once the master asked for changes, and no other row', async () => {
@@ -151,9 +153,7 @@ describe('CampaignCharacters', () => {
 
     const { el } = await render(true);
 
-    const rows = Array.from(
-      el.querySelectorAll('ul[aria-labelledby="awaiting-approval-heading"] li'),
-    );
+    const rows = Array.from(el.querySelectorAll('ul[aria-label="Esperando aprovação"] li'));
     expect(rows[0].textContent).toContain('Ajustes pedidos');
     expect(rows[1].textContent).not.toContain('Ajustes pedidos');
   });
@@ -277,6 +277,7 @@ describe('CampaignCharacters', () => {
         imports: [CampaignCharacters],
         providers: [
           provideRouter([]),
+          CampaignRoster,
           ExperienceStore,
           { provide: CampaignCharactersSource, useClass: FakeCampaignCharactersSource },
         ],
@@ -290,11 +291,12 @@ describe('CampaignCharacters', () => {
       fake.listCharactersResult = list();
       const { el } = await render(true);
 
-      const rows = Array.from(el.querySelectorAll('li'));
+      const rows = Array.from(el.querySelectorAll('li.card'));
       expect(rows[0].querySelector('app-level-up-tag')?.textContent).toContain(
         'Pode subir de nível',
       );
-      expect(rows[0].textContent).toContain('Travada');
+      // A locked sheet is a lock, named for a screen reader.
+      expect(rows[0].querySelector('[aria-label="Ficha travada"]')).not.toBeNull();
       expect(rows[1].querySelector('app-level-up-tag')).toBeNull();
     });
 

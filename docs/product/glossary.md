@@ -156,7 +156,7 @@ Where a spell level could be confused with the character's level, the text says 
 | Tentativas | Attempts | How many times each player can roll a scene action while it is open (1 by default, 1 to 5, or unlimited). Reopening the scene resets the counts (MR-015). |
 | Mostrar a CD aos jogadores | Show the DC to players | The per-scene switch that decides whether players see DCs and whether their rolls passed. Off by default; the master always sees it (MR-015, RN-20). |
 | Teste em grupo | Group check | One check that two or more characters make; the group passes when at least half pass (RN-34). |
-| Regras da mesa | Table rules | The campaign page with the master's choices (HP on level-up, ways of making ability scores, the critical hit, who sees death saves, XP mode, dice, grid) and "Lembretes da mesa" (RN-24). |
+| Regras da mesa | Table rules | The page (`/campaigns/:id/rules`) with the master's choices (HP on level-up, ways of making ability scores, the critical hit, who sees death saves, XP mode, dice, grid) and "Lembretes da mesa" (RN-24). |
 | Estilo da mesa | Table style | "Tudo no app", "Mesa física", "Teatro da mente" or "Personalizado". A style only fills in defaults, which stay editable (RN-24). |
 | Lembrete da mesa | House rule reminder | A short note the master writes for the table (up to 20, 200 characters each). The app shows it and never enforces it (RN-24). |
 | 4d6 guardado | Stored 4d6 | Six 4d6 rolls (drop the lowest die) made once for a player's next sheet and kept until the sheet uses them (RN-24). |

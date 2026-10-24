@@ -1,0 +1,24 @@
+// The two columns of a campaign tab: one column on a phone and a tablet; from 1024px, 3fr and 2fr
+// (boards C2-01 and C2-02: the table on the left, the people on the right).
+:host {
+  display: block;
+}
+
+.tab-layout {
+  display: grid;
+  gap: var(--mr-space-4);
+  margin-top: var(--mr-space-2);
+
+  @media (min-width: 1024px) {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    gap: var(--mr-space-6);
+    align-items: start;
+  }
+}
+
+.tab-layout__column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  min-width: 0;
+}

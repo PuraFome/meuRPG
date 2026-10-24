@@ -5,6 +5,7 @@ import { CampaignSessions } from '../game-session/campaign-sessions';
 import { GameSessionSource, GameSessionVm } from '../../../core/play/game-session-card.types';
 import { PastSessionsPanel } from './past-sessions-panel';
 import { nextTurn } from '../../../../test-settle';
+import { endPhone, startPhone } from '../phone-testing';
 
 const plain = (text: string | null | undefined) =>
   (text ?? '').replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
@@ -74,7 +75,7 @@ describe('PastSessionsPanel', () => {
     listSessions.mockResolvedValue([open(4), ended(3), ended(2)]);
     const { el } = await render(true);
     expect(plain(el.querySelector('h2')?.textContent)).toBe('Sessões anteriores');
-    expect(plain(el.querySelector('.past__count')?.textContent)).toBe('2 encerradas');
+    expect(plain(el.querySelector('.head__count')?.textContent)).toBe('2 encerradas');
     expect(rows(el)).toEqual([
       {
         name: 'Sessão 3',
@@ -93,14 +94,13 @@ describe('PastSessionsPanel', () => {
     ]);
   });
 
-  it("keeps name, date, duration and link as the row's own children, so one grid lays them out without wrapping", async () => {
+  it("keeps name, the line of date and duration, and link as the row's own children, so one grid lays them out without wrapping", async () => {
     listSessions.mockResolvedValue([ended(3)]);
     const { el } = await render(true);
     const row = el.querySelector('li.row')!;
     expect(Array.from(row.children, (c) => c.className.split(' ')[0])).toEqual([
       'row__name',
-      'row__when',
-      'row__duration',
+      'row__sub',
       'row__link',
     ]);
   });
@@ -114,7 +114,7 @@ describe('PastSessionsPanel', () => {
   it('says "1 encerrada" for one', async () => {
     listSessions.mockResolvedValue([ended(1)]);
     const { el } = await render(false);
-    expect(plain(el.querySelector('.past__count')?.textContent)).toBe('1 encerrada');
+    expect(plain(el.querySelector('.head__count')?.textContent)).toBe('1 encerrada');
   });
 
   it('shows the master the empty box, without a button', async () => {
@@ -136,7 +136,7 @@ describe('PastSessionsPanel', () => {
   it('shows the five newest and "Mostrar as outras N", which shows the rest and moves the focus to the first of them', async () => {
     listSessions.mockResolvedValue(Array.from({ length: 12 }, (_, i) => ended(12 - i)));
     const { el, fixture } = await render(false);
-    expect(plain(el.querySelector('.past__count')?.textContent)).toBe('12 encerradas');
+    expect(plain(el.querySelector('.head__count')?.textContent)).toBe('12 encerradas');
     expect(rows(el).map((r) => r.name)).toEqual([
       'Sessão 12',
       'Sessão 11',
@@ -194,5 +194,24 @@ describe('PastSessionsPanel', () => {
     const { el } = await render(true);
     expect(rows(el)[0].when).toBe('sex., 3 de out. de 2025, 22h30 às 1h12 (sáb.)');
     expect(rows(el)[0].duration).toBe('2 h 42 min');
+  });
+
+  describe('on a phone', () => {
+    afterEach(() => endPhone());
+
+    it('folds to one row, "Sessões anteriores · 2", that opens the list in place', async () => {
+      startPhone();
+      listSessions.mockResolvedValue([ended(3), ended(2)]);
+      const { el, fixture } = await render(true);
+      const toggle = el.querySelector<HTMLButtonElement>('h2 button')!;
+      expect(plain(toggle.textContent)).toBe('Sessões anteriores · 2');
+      expect(toggle.getAttribute('aria-expanded')).toBe('false');
+      expect(rows(el)).toHaveLength(0);
+
+      toggle.click();
+      await settle(fixture);
+      expect(toggle.getAttribute('aria-expanded')).toBe('true');
+      expect(rows(el).map((r) => r.name)).toEqual(['Sessão 3', 'Sessão 2']);
+    });
   });
 });

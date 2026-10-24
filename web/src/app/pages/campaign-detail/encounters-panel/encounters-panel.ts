@@ -1,23 +1,34 @@
 import { Component, input } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { RouterLink } from '@angular/router';
+
+import { PanelAction } from '../panel-action/panel-action';
+import { PanelHead } from '../panel-head/panel-head';
 
 /**
- * The master's "Encontros" panel on `/campaigns/:id` (MR-043): the way in to the encounter builder, where he measures an encounter
- * against the party, draws one, and keeps it on a battle point. `CampaignDetail` renders it for the master alone: the builder
- * and what it keeps are his secret (RN-10).
+ * The master's "Encontros" panel on "Preparação" (MR-043; board C6-02): the way in to the
+ * encounter builder, "Montar encontro", in the title row, where he measures an encounter against
+ * the party, draws one, and keeps it on a battle point. `CampaignDetail` renders it for the master
+ * alone: the builder and what it keeps are his secret (RN-10).
+ *
+ * The board also lists the saved encounters with their difficulty. The server keeps an encounter
+ * on a battle point of a map and has no list of them for the whole campaign, so the panel says
+ * what the builder does instead.
  */
 @Component({
   selector: 'app-encounters-panel',
-  imports: [MatButtonModule, MatIconModule, RouterLink],
+  imports: [PanelAction, PanelHead],
   template: `
     <section class="mr-panel enc" aria-labelledby="encounters-panel-heading">
-      <h2 class="mr-panel__title" id="encounters-panel-heading">Encontros</h2>
-      <p class="enc__text">Monte um encontro com as criaturas do bestiário, veja se ele é baixo, moderado ou alto para o grupo e guarde-o num ponto de batalha.</p>
-      <a matButton="outlined" class="enc__open" [routerLink]="['/campaigns', campaignId(), 'encounters']">
-        <mat-icon aria-hidden="true">swords</mat-icon>Montar um encontro
-      </a>
+      <app-panel-head icon="swords" title="Encontros" titleId="encounters-panel-heading">
+        <app-panel-action
+          icon="add"
+          label="Montar encontro"
+          [link]="['/campaigns', campaignId(), 'encounters']"
+        />
+      </app-panel-head>
+      <p class="enc__text">
+        Monte um encontro com as criaturas do bestiário, veja se ele é baixo, moderado ou alto para o
+        grupo e guarde-o num ponto de batalha.
+      </p>
     </section>
   `,
   styles: `
@@ -28,11 +39,8 @@ import { RouterLink } from '@angular/router';
     .enc {
       display: flex;
       flex-direction: column;
-      gap: var(--mr-space-2);
-
-      .mr-panel__title {
-        margin: 0;
-      }
+      gap: 12px;
+      padding: 16px 20px 20px;
     }
 
     .enc__text {
@@ -40,16 +48,6 @@ import { RouterLink } from '@angular/router';
       font-size: 16px;
       line-height: 22px;
       color: var(--mr-ink-muted);
-    }
-
-    .enc__open {
-      align-self: flex-start;
-    }
-
-    @media (max-width: 767.98px) {
-      .enc__open {
-        align-self: stretch;
-      }
     }
   `,
 })

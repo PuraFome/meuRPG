@@ -1,5 +1,22 @@
-<section aria-labelledby="invites-heading" class="mr-panel invites">
-  <h2 class="mr-panel__title" id="invites-heading">Convites</h2>
+<section
+  aria-labelledby="invites-heading"
+  class="mr-panel invites"
+  [class.is-folded]="phone() && !open()"
+>
+  <app-panel-head
+    icon="mail"
+    title="Convites"
+    titleId="invites-heading"
+    [count]="phone() ? summary() : ''"
+    [foldable]="phone()"
+    [chevron]="open()"
+    [(open)]="open"
+  >
+    @if (phone() && !open()) {
+      <app-panel-action icon="add" label="Gerar convite" (pressed)="openToCreate()" />
+    }
+  </app-panel-head>
+  @if (!phone() || open()) {
 
   @if (listState(); as l) {
     @switch (l.status) {
@@ -105,8 +122,9 @@
         type="submit"
         [disabled]="createState().status === 'saving'"
       >
-        Gerar convite
+        <mat-icon aria-hidden="true">mail</mat-icon>Gerar convite
       </button>
     </form>
   </div>
+  }
 </section>

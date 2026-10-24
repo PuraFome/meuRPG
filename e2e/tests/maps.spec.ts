@@ -11,7 +11,12 @@ import {
   tableForMaps,
   uploadImageRPC,
 } from './maps-support';
-import { boxOf, callRPC, newSignedInContext } from './support';
+import {
+  boxOf,
+  callRPC,
+  gotoCampaignTab,
+  newSignedInContext,
+} from './support';
 
 import { movingTable } from './move-support';
 
@@ -47,7 +52,7 @@ test(
       await revealMapRPC(master, table.campaignId, towerId);
 
       // The new map form: a name and a tile of the gallery.
-      await master.goto(`/campaigns/${table.campaignId}`);
+      await gotoCampaignTab(master, table.campaignId, 'Preparação');
       await master.getByRole('link', { name: 'Novo mapa' }).click();
       await expect(master.getByRole('heading', { name: 'Novo mapa', level: 1 })).toBeVisible();
       await master.getByRole('button', { name: 'Criar mapa' }).click();

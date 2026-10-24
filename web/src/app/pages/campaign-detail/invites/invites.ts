@@ -1,4 +1,14 @@
-import { Component, OnInit, inject, input, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  OnInit,
+  afterNextRender,
+  computed,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -17,6 +27,9 @@ import {
   inviteStateTag,
   inviteUsesLabel,
 } from './invite-copy';
+import { PHONE_QUERY, mediaQuery } from '../../../shared/map-view/media-query';
+import { PanelAction } from '../panel-action/panel-action';
+import { PanelHead } from '../panel-head/panel-head';
 import { CopyStatus, InviteReveal } from './invite-reveal';
 
 type ListState =
@@ -53,6 +66,8 @@ const MASTER_ONLY_MESSAGES = {
     MatCheckboxModule,
     MatFormFieldModule,
     MatIconModule,
+    PanelAction,
+    PanelHead,
     MatInputModule,
     MatSelectModule,
     ReactiveFormsModule,
@@ -72,7 +87,28 @@ export class CampaignInvites implements OnInit {
   protected readonly inviteApprovalLabel = inviteApprovalLabel;
   protected readonly inviteStateTag = inviteStateTag;
 
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
+
+  /** A phone folds the panel to one row ("Convites · 1 usado", with "Gerar convite"); it opens in place. */
+  protected readonly phone = mediaQuery(PHONE_QUERY);
+  protected readonly open = signal(false);
+
   protected readonly listState = signal<ListState>({ status: 'loading' });
+  /** What the folded row says of the invites: "2 ativos", "1 usado", "nenhum"; empty until the list is here. */
+  protected readonly summary = computed(() => {
+    const l = this.listState();
+    if (l.status !== 'ready') {
+      return '';
+    }
+    const count = (state: InviteState) => l.invites.filter((i) => i.state === state).length;
+    const active = count(InviteState.ACTIVE);
+    const used = count(InviteState.USED_UP);
+    if (active > 0) {
+      return `${active} ${active === 1 ? 'ativo' : 'ativos'}`;
+    }
+    return used > 0 ? `${used} ${used === 1 ? 'usado' : 'usados'}` : 'nenhum ativo';
+  });
   /** Why a "Revogar" failed; the list stays on screen. */
   protected readonly revokeError = signal('');
   /** The invite whose "Revogar" is running. */
@@ -101,6 +137,15 @@ export class CampaignInvites implements OnInit {
     // ngOnInit is guaranteed to run after that — reading `campaignId()`
     // any earlier would throw for a value that has not been set yet.
     this.load();
+  }
+
+  /** "Gerar convite" on the folded row: the panel opens and the first field of the new invite takes the focus. */
+  protected openToCreate(): void {
+    this.open.set(true);
+    afterNextRender(
+      () => this.host.nativeElement.querySelector<HTMLElement>('input[type="number"]')?.focus(),
+      { injector: this.injector },
+    );
   }
 
   private load(): void {

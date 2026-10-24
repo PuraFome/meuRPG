@@ -85,7 +85,7 @@ The page side adds `LevelUpSession` (what the steps share), `LevelUpReader` (eve
 ## Bestiary
 
 The bestiary is `ListCreatures`; there is no second list, and the Wild Shape and summon callers send the same fields and receive the same rows.
-Two lazy routes (`campaigns/:id/bestiary` and `campaigns/:id/bestiary/:slug`, the sheet with "Criar NPC") and the campaign page's "Bestiário" panel; only the master sees them.
+Two lazy routes (`campaigns/:id/bestiary` and `campaigns/:id/bestiary/:slug`, the sheet with "Criar NPC") and the "Bestiário" row of the campaign page's "Preparação" tab; only the master sees them.
 The server lets any member read the SRD, so the page asks the campaign for the role (`BestiaryAccessCheck`) and tells a player it is the master's.
 The list asks for all creatures in one call (`page_size` 400) and filters on the server (name, type, size, `min_cr`/`max_cr`); the search lives in the address parameters.
 The sheet reuses `StatBlock`.

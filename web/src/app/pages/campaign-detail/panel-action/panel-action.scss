@@ -1,0 +1,38 @@
+:host {
+  display: inline-flex;
+  // Above a folded head's row-wide hit area.
+  position: relative;
+  z-index: 1;
+}
+
+.act {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--mr-accent-text);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+}
+
+.act--underline {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
