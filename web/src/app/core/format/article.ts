@@ -3,5 +3,5 @@
 export function article(name: string): 'o' | 'a' {
   // "Aranha-lobo gigante" is read by "Aranha", the word the article agrees with.
   const first = name.trim().split(/\s+/)[0].split('-')[0].toLowerCase();
-  return /a$/.test(first) || /^(foice|rede|clava|mace)$/.test(first) ? 'a' : 'o';
+  return /a$/.test(first) || /^(foice|rede|clava|mace|nuvem)$/.test(first) ? 'a' : 'o';
 }

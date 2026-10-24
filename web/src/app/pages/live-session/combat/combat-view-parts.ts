@@ -11,6 +11,7 @@ import { CombatSheets } from './combat-sheets';
 import { CombatOffers } from './combat-offers';
 import { MoveFlow } from './move-flow';
 import { ContestHost } from './contest-host';
+import { ZoneFlow } from './zone-flow';
 import { ContestClient } from '../../../core/combat/contest-client';
 import { resourceFlow } from '../../../core/resources/resource-actions';
 import { openWindows } from '../../../core/combat/reactions';
@@ -74,6 +75,16 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
     creatureOptions: () => this.creatureOptions.data(),
     takeAction: (id, key) => this.takeActionFor(id, key),
     openSpend: (id) => this.sheets.actions.spend(id),
+  });
+  /** The spell zones: the list the map and the panel read, the master's end and the zone he asked to move (`ZoneFlow`). */
+  protected readonly zoneFlow = new ZoneFlow({
+    api: this.api,
+    calls: this.calls,
+    campaignId: () => this.campaignId(),
+    encounter: () => this.encounter(),
+    state: () => this.state(),
+    isMaster: () => this.isMaster(),
+    openMove: (id, onClosed) => this.sheets.moveZone(id, onClosed),
   });
   /** The master's side of the opportunity attacks: the offer form, his answers and the reactors' attacks (`CombatOffers`). */
   protected readonly offers = new CombatOffers({

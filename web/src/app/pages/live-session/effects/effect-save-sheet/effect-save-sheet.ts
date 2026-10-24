@@ -32,6 +32,7 @@ import {
   missingDice,
   saveFormula,
 } from '../../../../core/effects/effects';
+import { zoneCasterLabel } from '../../../../core/effects/zone-save';
 import { dcLabel } from '../../../../core/format/save-dc';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { HeldRollPrompt } from '../../../../shared/held-roll-prompt/held-roll-prompt';
@@ -138,7 +139,13 @@ export class EffectSaveSheet {
     }
     return p.value;
   });
-  protected readonly view = computed(() => effectSaveView(this.prompt(), this.data.round));
+  protected readonly view = computed(() =>
+    effectSaveView(
+      this.prompt(),
+      this.data.round,
+      zoneCasterLabel(this.data.state.encounter(), this.prompt().zoneId),
+    ),
+  );
   /** The fields of the d4 the prompt lists (or the ones a refusal asked for). */
   protected readonly fields = computed<readonly ExtraDieField[]>(() => {
     const listed = dieFields(

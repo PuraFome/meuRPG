@@ -6,6 +6,7 @@ import type {
 } from '../../../../gen/meurpg/play/v1/combat_pb';
 import { reactorAttacks } from '../../../core/combat/opportunity';
 import { openWindows, promptView } from '../../../core/combat/reactions';
+import { zoneCasterLabel, zoneSaveTitle } from '../../../core/effects/zone-save';
 import { openSheet, trackOpen } from '../../../shared/sheet/sheet-host';
 import {
   EffectSaveSheet,
@@ -104,13 +105,18 @@ export class ReactionSheets {
       diceMode: this.ctx.diceMode(),
       preference: this.ctx.preference(),
     };
+    // A dialog is named by its title; the phone's bottom sheet by this label, so a zone's save reads the same on both.
+    const prompt = window.prompt.case === 'effectSave' ? window.prompt.value : null;
+    const ariaLabel = prompt?.zoneId
+      ? zoneSaveTitle(prompt, zoneCasterLabel(e, prompt.zoneId))
+      : 'Teste de resistência do fim do turno';
     trackOpen(
       this.reactionOpen,
       openSheet<EffectSaveSheet, EffectSaveSheetData, void>(
         this.ctx.dialog,
         this.ctx.bottomSheet,
         EffectSaveSheet,
-        { data, ariaLabel: 'Teste de resistência do fim do turno', labelledBy: 'sheet-t' },
+        { data, ariaLabel, labelledBy: 'sheet-t' },
       ),
     );
   }

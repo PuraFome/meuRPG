@@ -56,6 +56,9 @@
           <p>Teste de resistência de <b>{{ view().ability }}</b>@if (view().dc) {, {{ view().dc }}}. {{ view().consequence }}</p>
         </div>
         <p class="what">
+          @if (view().source) {
+            {{ view().source }} ·
+          }
           @if (view().modifier) {
             {{ view().modifier }}
           }

@@ -27,7 +27,12 @@ import {
   SpellDetailsSchema,
   TurnOptionsSchema,
 } from '../../../../gen/meurpg/rules/v1/rules_pb';
-import { combatant, encounter, reactionWindow } from '../../../core/combat/combat-testing';
+import {
+  combatant,
+  encounter,
+  reactionWindow,
+  spellZone,
+} from '../../../core/combat/combat-testing';
 import { settle } from '../../../../test-settle';
 import { PHONE_QUERY } from '../../../shared/map-view/media-query';
 import { spellDetailsFromGen } from '../../../shared/spell-details/spell-details-map';
@@ -55,6 +60,7 @@ import { LayOnHandsSheet } from './lay-on-hands-sheet/lay-on-hands-sheet';
 import { ReactionSheet } from './reaction-sheet/reaction-sheet';
 import { RevivifySheet } from './revivify-sheet/revivify-sheet';
 import { SpendSheet } from './theatre/spend-sheet';
+import { ZoneMoveSheet } from './zone-move/zone-move-sheet';
 
 // The data each sheet and dialog of the combat page is handed, field by field, and the calls the page makes before or instead
 // of opening one: the contract the page's sheet builders keep.
@@ -1436,6 +1442,29 @@ describe('CombatView sheets: the reaction and the effect saving throw', () => {
     expect(m.view.reactionOpen()).toBe(false);
   });
 
+  it('labels the phone sheet of a zone saving throw with the title the dialog is named by', async () => {
+    const m = await setup({
+      matches: PHONE,
+      enc: onMap({
+        currentCombatantId: 't',
+        zones: [spellZone({ id: 'z1', ownerLabel: 'Druida' })],
+      }),
+    });
+    m.view.sheets.reactions.effectSave(
+      reactionWindow({
+        id: 'w6',
+        kind: ReactionKind.EFFECT_SAVE,
+        reactorId: 't',
+        reactorIsPlayer: true,
+        prompt: {
+          case: 'effectSave',
+          value: { effectId: 'z1', zoneId: 'z1', sourceNamePt: 'Raio Lunar' },
+        } as never,
+      } as never),
+    );
+    expect(m.opened[0].config.ariaLabel).toBe('Raio Lunar de Druida');
+  });
+
   it('is labelled by its title on a dialog, and not an alert', async () => {
     const m = await setup();
     m.view.sheets.reactions.effectSave(effectSave());
@@ -2389,5 +2418,50 @@ describe('CombatView sheets: the edges (an answer that is nothing, a combat that
     });
     view.sheets.actions.familiarEyes('Nanquim');
     expect(opened).toEqual([]);
+  });
+});
+
+describe('CombatView sheets: moving a spell zone', () => {
+  it('opens the move sheet with its own panel class, so its header and footer stay inside the screen', async () => {
+    const m = await setup({
+      matches: PHONE,
+      enc: onMap({
+        currentCombatantId: 't',
+        combatants: [toren({ placed: true })],
+        zones: [spellZone({ id: 'z1' })],
+      }),
+      mapState: mapWithImage(),
+    });
+    expect(m.view.sheets.moveZone('z1', () => undefined)).toBe(true);
+    expect(m.opened[0].component).toBe(ZoneMoveSheet);
+    const config = m.opened[0].config as { panelClass?: string; tall?: boolean };
+    expect(config.panelClass).toBe('mr-sheet-zone');
+  });
+
+  it('labels the phone bottom sheet with the title the dialog is named by, so both read "Mover o Raio Lunar"', async () => {
+    const m = await setup({
+      matches: PHONE,
+      enc: onMap({
+        currentCombatantId: 't',
+        combatants: [toren({ placed: true })],
+        zones: [spellZone({ id: 'z1' })],
+      }),
+      mapState: mapWithImage(),
+    });
+    expect(m.view.sheets.moveZone('z1', () => undefined)).toBe(true);
+    expect(m.opened[0].config.ariaLabel).toBe('Mover o Raio Lunar');
+  });
+
+  it('puts the focus of the zone move sheet on the map surface, the one stop the arrows work from', async () => {
+    const m = await setup({
+      enc: onMap({
+        currentCombatantId: 't',
+        combatants: [toren({ placed: true })],
+        zones: [spellZone({ id: 'z1' })],
+      }),
+      mapState: mapWithImage(),
+    });
+    expect(m.view.sheets.moveZone('z1', () => undefined)).toBe(true);
+    expect(m.opened[0].config.autoFocus).toBe('.cm__surface[tabindex]');
   });
 });

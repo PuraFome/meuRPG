@@ -1,4 +1,4 @@
-import { ABILITY_CHOICES, abilityMissing, needsAbility } from './ability-choice';
+import { ABILITY_CHOICES, abilityMissing, abilityName, needsAbility } from './ability-choice';
 
 describe('ability choice', () => {
   it('lists the six abilities with the animal of the spell', () => {
@@ -10,6 +10,15 @@ describe('ability choice', () => {
       'wis Sabedoria Coruja',
       'cha Carisma Águia',
     ]);
+  });
+
+  it('names an ability by the server name when it sent one, else by its key, else by the key itself', () => {
+    expect(abilityName('con', 'Constituição')).toBe('Constituição');
+    // The server's zone fields carry the key ("con") and, for now, an empty name.
+    expect(abilityName('con', '')).toBe('Constituição');
+    expect(abilityName('wis', '')).toBe('Sabedoria');
+    expect(abilityName('luck', '')).toBe('luck');
+    expect(abilityName('', '')).toBe('');
   });
 
   it('asks only for Aprimorar Habilidade, and until an ability is chosen', () => {
