@@ -41,6 +41,8 @@
   }
 
   .mr-tag {
+    flex-shrink: 1;
+    max-width: 100%;
     white-space: normal;
     height: auto;
     min-height: 26px;

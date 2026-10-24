@@ -38,6 +38,113 @@
   border-radius: var(--mr-radius-lg);
 }
 
+// A rail panel that is not shown stays mounted, and nothing a panel's own display says may bring it back.
+.rail__panel[hidden] {
+  display: none !important;
+}
+
+// A panel that folds: the header is one 48px button with the words left and the chevron right (`app-fold`); the
+// vertical padding lives in the header and the body, so a folded panel is as tall as its button.
+.mr-panel--fold {
+  display: block;
+  padding-block: 0;
+}
+
+.mr-fold__head {
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 26px;
+}
+
+.mr-fold__button,
+.mr-fold__head > .mr-fold__title {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 48px;
+  gap: var(--mr-space-3);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+}
+
+.mr-fold__button {
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  .mat-icon {
+    flex: none;
+  }
+}
+
+.mr-fold__title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+// The small note beside the words ("Só você vê"): quiet, and gone when empty.
+.mr-fold__note {
+  display: flex;
+  flex: none;
+  align-items: center;
+  font-family: var(--mr-font-sans);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 19px;
+
+  &:empty {
+    display: none;
+  }
+}
+
+.mr-fold__body {
+  padding-block-end: var(--mr-space-4);
+}
+
+// The group row (C6-10, "Ação bônus · Usada"): a 12px radius, a 52px header in sans bold with its icon at the left, and a rule between the header and the body.
+.mr-panel--fold-row {
+  padding-inline: 12px;
+  border-radius: var(--mr-radius-lg);
+
+  .mr-fold__head {
+    font-family: var(--mr-font-sans);
+    font-size: 16px;
+    line-height: 21px;
+  }
+
+  .mr-fold__button,
+  .mr-fold__head > .mr-fold__title {
+    min-height: 52px;
+    gap: 8px;
+  }
+
+  .mr-fold__icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+
+  .mr-fold__body {
+    padding-block-end: 6px;
+    border-top: 1px solid var(--mr-rule);
+  }
+}
+
+.mr-fold--muted .mr-fold__head {
+  color: var(--mr-ink-muted);
+}
+
 .mr-panel__title {
   margin: 0 0 var(--mr-space-2);
   font-family: var(--mr-font-display);

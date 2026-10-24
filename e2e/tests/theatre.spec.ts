@@ -228,7 +228,8 @@ test(
       // Physical dice: the d20 is typed; a natural 20 is a critical hit.
       await p.getByLabel(/Role 1d20 para Espada longa/).fill('20');
       await p.getByRole('button', { name: /^Confirmar/ }).click();
-      await expect(p.getByText('Crítico').first()).toBeVisible();
+      // This table is called "Crítico" too, and the session bar's back link says so (not on a phone): the first one shown is the roll's.
+      await expect(p.getByText('Crítico').filter({ visible: true }).first()).toBeVisible();
       // The hint says what to roll under the table's rule, with the maximum as the fixed part (1d8: 8), and the browser does no dice math.
       await expect(p.getByText(/Acerto crítico: o máximo mais uma rolagem\. O máximo dos dados \(8\) já vale sem rolar; role 1d8 uma vez\./)).toBeVisible();
       await expect(p.getByText('Role 1d8 e digite só o que saiu, de 1 a 8. O app soma o resto.')).toBeVisible();

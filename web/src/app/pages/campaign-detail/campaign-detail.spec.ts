@@ -1,12 +1,14 @@
 import { Injectable, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
 import { Code, ConnectError } from '@connectrpc/connect';
-import { BehaviorSubject, of } from 'rxjs';
 
 import { Campaign, Member, Role, XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { AuthService, AuthState } from '../../core/auth/auth.service';
 import { CampaignsService } from '../../core/campaigns/campaigns.service';
+import { TableRulesClient, draftFromRules } from '../../core/campaigns/table-rules';
+import { TableContentClient } from '../../core/content/content-client';
 import { GalleryClient } from '../../core/images/gallery-client';
 import { RosterClient } from '../../core/maps/roster-client';
 import { PuzzlesClient } from '../../core/puzzles/puzzles-client';
@@ -20,16 +22,19 @@ import {
 } from '../../../gen/meurpg/progression/v1/progression_pb';
 import { FakeGalleryClient } from '../../core/images/gallery-testing';
 import { CampaignDetail } from './campaign-detail';
+import { MesaTab } from './tabs/mesa-tab';
+import { PrepTab } from './tabs/prep-tab';
+import { SetupTab } from './tabs/setup-tab';
 import {
   CampaignCharactersSource,
   CampaignCharactersVm,
 } from './characters/campaign-characters.types';
 import { GameSessionSource, GameSessionVm } from '../../core/play/game-session-card.types';
 import { nextTurn } from '../../../test-settle';
+import { endPhone, startPhone } from './phone-testing';
 
-/** `CampaignCharacters` (the "Personagens" section) and `GameSessionCard`
- * (the master's "Sessão" card) are children of this page too — see
- * `campaign-detail.html`. Both need a provider or Angular DI throws. */
+/** `CampaignCharacters` and `CampaignNpcs` (through the page's `CampaignRoster`) and `GameSessionCard`
+ * (the master's "Sessão" strip) are children of this page and of its tabs: they need a provider or Angular DI throws. */
 @Injectable()
 class FakeCampaignCharactersSource {
   listCharactersResult: Promise<CampaignCharactersVm> = Promise.resolve({
@@ -94,10 +99,6 @@ function member(userId: string, displayName: string, role: Role): Member {
   return { userId, displayName, role, joinedAt: undefined } as Member;
 }
 
-function activatedRouteFor(id: string) {
-  return { paramMap: of(convertToParamMap({ id })) };
-}
-
 function deferred<T>() {
   let resolve!: (v: T) => void;
   const promise = new Promise<T>((r) => (resolve = r));
@@ -115,7 +116,20 @@ describe('CampaignDetail', () => {
   const listAwards = vi.fn();
   let puzzles: FakePuzzlesClient;
 
-  function configure(id = 'camp-1', route: unknown = activatedRouteFor(id)): void {
+  /** The page and its three tabs, as `campaign-detail.routes.ts` lays them out (without the lazy loading). */
+  const routes = [
+    {
+      path: 'campaigns/:id',
+      component: CampaignDetail,
+      children: [
+        { path: '', pathMatch: 'full' as const, component: MesaTab },
+        { path: 'prep', component: PrepTab },
+        { path: 'setup', component: SetupTab },
+      ],
+    },
+  ];
+
+  function configure(): void {
     experience.mockReset().mockResolvedValue(
       create(GetCampaignExperienceResponseSchema, {
         xpMode: XpMode.ENEMIES,
@@ -134,10 +148,9 @@ describe('CampaignDetail', () => {
     listAwards.mockReset().mockResolvedValue(create(ListXPAwardsResponseSchema, {}));
     puzzles = new FakePuzzlesClient();
     TestBed.configureTestingModule({
-      imports: [CampaignDetail],
       providers: [
+        provideRouter(routes),
         { provide: CampaignsService, useClass: FakeCampaignsService },
-        { provide: ActivatedRoute, useValue: route },
         { provide: CampaignCharactersSource, useClass: FakeCampaignCharactersSource },
         { provide: GameSessionSource, useClass: FakeGameSessionSource },
         { provide: GalleryClient, useClass: FakeGalleryClient },
@@ -145,18 +158,35 @@ describe('CampaignDetail', () => {
         { provide: ProgressionClient, useValue: { experience, listAwards } },
         { provide: RosterClient, useValue: { list: () => Promise.resolve([]) } },
         { provide: PuzzlesClient, useValue: puzzles },
+        {
+          provide: TableRulesClient,
+          useValue: { get: () => Promise.resolve({ saved: draftFromRules(undefined) }) },
+        },
+        {
+          provide: TableContentClient,
+          useValue: { list: () => Promise.resolve({ entries: [], tableRevision: 0 }) },
+        },
       ],
     });
     fake = TestBed.inject(CampaignsService) as unknown as FakeCampaignsService;
   }
 
-  async function render(): Promise<HTMLElement> {
-    const fixture = TestBed.createComponent(CampaignDetail);
-    fixture.detectChanges();
+  let harness: RouterTestingHarness;
+
+  /** Opens the campaign page at a tab (`''` is "Mesa", then `/prep` and `/setup`) and lets what it asks for arrive. */
+  async function render(tab = '', id = 'camp-1'): Promise<HTMLElement> {
+    harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl(`/campaigns/${id}${tab}`, CampaignDetail);
+    await settleAll();
+    return harness.routeNativeElement as HTMLElement;
+  }
+
+  async function settleAll(): Promise<void> {
     await nextTurn();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    return fixture.nativeElement as HTMLElement;
+    await harness.fixture.whenStable();
+    harness.fixture.detectChanges();
+    await nextTurn();
+    harness.fixture.detectChanges();
   }
 
   it('shows the campaign name as the only h1, and members with display names', async () => {
@@ -260,9 +290,9 @@ describe('CampaignDetail', () => {
       campaign: campaign('camp-1', 'Mirathel', Role.MASTER),
     });
     fake.listMembersResult = Promise.resolve({ members: [] });
-    const master = await render();
+    const master = await render('/prep');
     const link = Array.from(master.querySelectorAll('a')).find((a) =>
-      a.textContent?.includes('Abrir o bestiário'),
+      a.textContent?.includes('Bestiário'),
     );
     expect(link?.getAttribute('href')).toBe('/campaigns/camp-1/bestiary');
 
@@ -283,9 +313,9 @@ describe('CampaignDetail', () => {
       campaign: campaign('camp-1', 'Mirathel', Role.MASTER),
     });
     fake.listMembersResult = Promise.resolve({ members: [] });
-    const master = await render();
+    const master = await render('/prep');
     const link = Array.from(master.querySelectorAll('a')).find((a) =>
-      a.textContent?.includes('Montar um encontro'),
+      a.textContent?.includes('Montar encontro'),
     );
     expect(link?.getAttribute('href')).toBe('/campaigns/camp-1/encounters');
 
@@ -307,7 +337,7 @@ describe('CampaignDetail', () => {
       campaign: campaign('camp-1', 'Mirathel', Role.MASTER),
     });
     fake.listMembersResult = Promise.resolve({ members: [] });
-    const master = await render();
+    const master = await render('/prep');
     expect(master.textContent).toContain('O selo da Capela');
     expect(master.querySelector('a[href="/campaigns/camp-1/puzzles/new"]')).not.toBeNull();
 
@@ -328,7 +358,7 @@ describe('CampaignDetail', () => {
       campaign: campaign('camp-1', 'Mirathel', Role.MASTER),
     });
     fake.listMembersResult = Promise.resolve({ members: [] });
-    expect((await render()).textContent).toContain('Abrir galeria');
+    expect((await render('/prep')).textContent).toContain('Enviar imagem');
 
     TestBed.resetTestingModule();
     configure();
@@ -347,7 +377,7 @@ describe('CampaignDetail', () => {
       campaign: campaign('camp-1', 'Mirathel', Role.MASTER),
     });
     fake.listMembersResult = Promise.resolve({ members: [] });
-    const master = await render();
+    const master = await render('/setup');
     expect(master.textContent).toContain('Regras da mesa');
     expect(
       Array.from(master.querySelectorAll('a[href="/campaigns/camp-1/rules"]')).map((a) =>
@@ -375,10 +405,10 @@ describe('CampaignDetail', () => {
       campaign: campaign('camp-1', 'Mirathel', Role.MASTER),
     });
     fake.listMembersResult = Promise.resolve({ members: [] });
-    const master = await render();
+    const master = await render('/setup');
     expect(
       Array.from(master.querySelectorAll('a[href="/campaigns/camp-1/export"]')).map((a) =>
-        a.textContent?.trim(),
+        a.textContent?.replace('download', '').trim(),
       ),
     ).toEqual(['Exportar campanha']);
 
@@ -415,27 +445,25 @@ describe('CampaignDetail', () => {
 
   it('shows the campaign it was reused for when the answer of the one it left lands last', async () => {
     const pending = new Map<string, ReturnType<typeof deferred<{ campaign: Campaign }>>>();
-    const params$ = new BehaviorSubject(convertToParamMap({ id: 'camp-a' }));
-    configure('camp-a', { paramMap: params$ });
+    configure();
     fake.getCampaign = ((id: string) => {
       const d = deferred<{ campaign: Campaign }>();
       pending.set(id, d);
       return d.promise;
     }) as unknown as typeof fake.getCampaign;
 
-    const fixture = TestBed.createComponent(CampaignDetail);
-    fixture.detectChanges();
+    harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/campaigns/camp-a', CampaignDetail);
     await nextTurn();
     // Navigate to B before A answers; B answers first (a player there), then the slow A (the master there).
-    params$.next(convertToParamMap({ id: 'camp-b' }));
+    await harness.navigateByUrl('/campaigns/camp-b', CampaignDetail);
     await nextTurn();
     pending.get('camp-b')!.resolve({ campaign: campaign('camp-b', 'Campanha B', Role.PLAYER) });
     await nextTurn();
     pending.get('camp-a')!.resolve({ campaign: campaign('camp-a', 'Campanha A', Role.MASTER) });
-    await nextTurn();
-    fixture.detectChanges();
+    await settleAll();
 
-    const h1 = (fixture.nativeElement as HTMLElement).querySelector('h1')?.textContent ?? '';
+    const h1 = harness.routeNativeElement?.querySelector('h1')?.textContent ?? '';
     expect(h1).toContain('Campanha B');
     expect(h1).not.toContain('Campanha A');
     expect(experience).toHaveBeenCalledWith('camp-b');
@@ -472,26 +500,24 @@ describe('CampaignDetail', () => {
       asRole(Role.PLAYER);
       const el = await render();
       await nextTurn();
-      expect(el.querySelector('app-experience-panel h2')?.textContent).toBe('Experiência');
+      expect(el.querySelector('app-experience-panel h2')?.textContent?.trim()).toBe('Experiência');
       expect(experience).toHaveBeenCalledTimes(1);
       expect(listAwards).toHaveBeenCalledTimes(1);
     });
 
-    it('puts it after "Sessão" and "Sessões anteriores", and gives only the master "Dar XP"', async () => {
+    it('puts it between the players and "Sessões anteriores" on "Mesa", and gives only the master "Dar XP"', async () => {
       asRole(Role.MASTER);
       const el = await render();
       await nextTurn();
-      const column = el.querySelector('.campaign-layout__column')!;
-      const order = Array.from(column.children).map((c) => c.tagName.toLowerCase());
-      expect(order.indexOf('app-past-sessions-panel')).toBe(
-        order.indexOf('app-game-session-card') + 1,
-      );
-      expect(order.indexOf('app-experience-panel')).toBe(
-        order.indexOf('app-past-sessions-panel') + 1,
-      );
+      const column = el.querySelector('.tab-layout__column')!;
+      expect(Array.from(column.children, (c) => c.tagName.toLowerCase())).toEqual([
+        'app-campaign-characters',
+        'app-experience-panel',
+        'app-past-sessions-panel',
+      ]);
       expect(
         Array.from(el.querySelectorAll('app-experience-panel button')).some(
-          (b) => b.textContent?.trim() === 'Dar XP',
+          (b) => b.textContent?.replace('star', '').trim() === 'Dar XP',
         ),
       ).toBe(true);
     });
@@ -512,13 +538,6 @@ describe('CampaignDetail', () => {
       expect(order.indexOf('app-campaign-characters')).toBeLessThan(
         order.indexOf('app-experience-panel'),
       );
-    });
-
-    it("keeps the master's characters at the end of the column", async () => {
-      asRole(Role.MASTER);
-      const el = await render();
-      await nextTurn();
-      expect(columnOrder(el).at(-1)).toBe('app-campaign-characters');
     });
 
     it('tags who can level up in the group list too (RN-12)', async () => {
@@ -560,6 +579,214 @@ describe('CampaignDetail', () => {
       });
       await render();
       expect(experience).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("the master's tabs: Mesa, Preparação, Regras", () => {
+    const asMaster = (pending = 0, role = Role.MASTER) => {
+      configure();
+      fake.getCampaignResult = Promise.resolve({ campaign: campaign('camp-1', 'Mirathel', role) });
+      fake.listMembersResult = Promise.resolve({ members: [member('u1', 'Samuel', role)] });
+      const source = TestBed.inject(
+        CampaignCharactersSource,
+      ) as unknown as FakeCampaignCharactersSource;
+      const player = (id: string, name: string, state: 'locked' | 'pending') => ({
+        id,
+        name,
+        kind: 'player' as const,
+        state,
+        classSummary: 'Mago 3',
+        playerDisplayName: 'Ana',
+      });
+      source.listCharactersResult = Promise.resolve({
+        playerCharacters: [
+          player('c1', 'Pensantus', 'locked'),
+          ...Array.from({ length: pending }, (_, i) => player(`p${i}`, `Brisa ${i}`, 'pending')),
+        ],
+        npcs: [
+          {
+            id: 'n1',
+            name: 'Bartolo',
+            kind: 'story' as const,
+            state: 'draft' as const,
+            classSummary: '',
+            playerDisplayName: null,
+          },
+        ],
+        hasLivingCharacter: true,
+      });
+    };
+
+    const tabs = (el: HTMLElement) =>
+      Array.from(el.querySelectorAll<HTMLAnchorElement>('nav[aria-label="Seções da campanha"] a'));
+
+    it('has the three tabs as links in a nav named "Seções da campanha", each with an icon', async () => {
+      asMaster();
+      const el = await render();
+      expect(tabs(el).map((a) => a.getAttribute('href'))).toEqual([
+        '/campaigns/camp-1',
+        '/campaigns/camp-1/prep',
+        '/campaigns/camp-1/setup',
+      ]);
+      expect(tabs(el).map((a) => a.querySelector('mat-icon')?.textContent)).toEqual([
+        'group',
+        'map',
+        'checklist',
+      ]);
+      expect(
+        tabs(el).map((a) => a.textContent?.replace(/[a-z_]+(?=Mesa|Prep|Regras)/, '').trim()),
+      ).toEqual(['Mesa', 'Preparação', 'Regras']);
+    });
+
+    it('marks the open tab with aria-current="page", and only that one', async () => {
+      asMaster();
+      for (const [path, index] of [
+        ['', 0],
+        ['/prep', 1],
+        ['/setup', 2],
+      ] as const) {
+        TestBed.resetTestingModule();
+        asMaster();
+        const el = await render(path);
+        expect(tabs(el).map((a) => a.getAttribute('aria-current'))).toEqual(
+          [0, 1, 2].map((i) => (i === index ? 'page' : null)),
+        );
+      }
+    });
+
+    it('counts the characters that wait on "Mesa", in words for a screen reader, and shows no count at 0', async () => {
+      asMaster(1);
+      const el = await render();
+      const badge = tabs(el)[0].querySelector('.tab__count')!;
+      expect(badge.textContent).toContain('1');
+      expect(badge.textContent).toContain('esperando aprovação');
+      expect(badge.querySelectorAll('.mr-visually-hidden').length).toBeGreaterThan(0);
+      expect(tabs(el)[1].querySelector('.tab__count')).toBeNull();
+
+      TestBed.resetTestingModule();
+      asMaster(0);
+      const none = await render();
+      expect(tabs(none)[0].querySelector('.tab__count')).toBeNull();
+    });
+
+    it('keeps the count on the other tabs: it comes from the page, not from "Mesa"', async () => {
+      asMaster(2);
+      const el = await render('/prep');
+      expect(tabs(el)[0].querySelector('.tab__count')?.textContent).toContain('2');
+    });
+
+    it('keeps the focus on the tab link after a tab change, and draws the other tab', async () => {
+      asMaster();
+      const el = await render();
+      expect(el.textContent).toContain('Personagens dos jogadores');
+      const prep = tabs(el)[1];
+      prep.click();
+      await settleAll();
+      expect(TestBed.inject(Router).url).toBe('/campaigns/camp-1/prep');
+      expect(document.activeElement).toBe(prep);
+      expect(el.textContent).toContain('Mapas');
+      expect(el.textContent).not.toContain('Personagens dos jogadores');
+    });
+
+    it('draws the session strip above the tabs on every tab', async () => {
+      for (const path of ['', '/prep', '/setup']) {
+        TestBed.resetTestingModule();
+        asMaster();
+        const el = await render(path);
+        const strip = el.querySelector('app-game-session-card')!;
+        const nav = el.querySelector('nav[aria-label="Seções da campanha"]')!;
+        expect(strip.textContent).toContain('Iniciar sessão');
+        expect(strip.compareDocumentPosition(nav) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      }
+    });
+
+    it('splits the characters: the players on "Mesa", the NPCs and "Novo NPC" on "Preparação"', async () => {
+      asMaster();
+      const mesa = await render();
+      expect(mesa.querySelector('app-campaign-characters')?.textContent).toContain('Pensantus');
+      expect(mesa.querySelector('app-campaign-npcs')).toBeNull();
+      expect(mesa.textContent).not.toContain('Bartolo');
+      expect(mesa.textContent).not.toContain('Novo NPC');
+
+      TestBed.resetTestingModule();
+      asMaster();
+      const prep = await render('/prep');
+      expect(prep.querySelector('app-campaign-characters')).toBeNull();
+      expect(prep.querySelector('app-campaign-npcs')?.textContent).toContain('Bartolo');
+      expect(prep.querySelector('app-campaign-npcs')?.textContent).toContain('Novo NPC');
+      expect(prep.textContent).not.toContain('Pensantus');
+    });
+
+    it('puts on each tab what the brief names for it', async () => {
+      const titles = async (path: string) => {
+        TestBed.resetTestingModule();
+        asMaster();
+        const el = await render(path);
+        return Array.from(
+          el.querySelectorAll('app-mesa-tab h2, app-prep-tab h2, app-setup-tab h2'),
+          (h) => h.textContent?.trim(),
+        );
+      };
+      expect(await titles('')).toEqual(
+        expect.arrayContaining(['Experiência', 'Sessões anteriores', 'Membros', 'Convites']),
+      );
+      expect(await titles('/prep')).toEqual(
+        expect.arrayContaining([
+          'Mapas',
+          'NPCs',
+          'Encontros',
+          'Quebra-cabeças',
+          'Galeria',
+          'Documento da campanha',
+        ]),
+      );
+      // The bestiary is one row that is a link.
+      TestBed.resetTestingModule();
+      asMaster();
+      const prep = await render('/prep');
+      expect(prep.querySelector('app-bestiary-panel a')?.textContent).toContain('Bestiário');
+      expect(await titles('/setup')).toEqual(
+        expect.arrayContaining([
+          'Dados',
+          'Regras da mesa',
+          'Conteúdo da mesa',
+          'Magias',
+          'Pacote da campanha',
+        ]),
+      );
+    });
+
+    it('puts the three folded rows last on a phone, in the order of the board: Membros, Convites, Sessões anteriores', async () => {
+      startPhone();
+      try {
+        asMaster();
+        const el = await render();
+        const column = el.querySelector('.tab-layout__column')!;
+        const order = Array.from(column.children, (c) => c.tagName.toLowerCase());
+        expect(order.slice(-3)).toEqual([
+          'app-campaign-members',
+          'app-campaign-invites',
+          'app-past-sessions-panel',
+        ]);
+        expect(el.querySelectorAll('.tab-layout__column')).toHaveLength(1);
+      } finally {
+        endPhone();
+      }
+    });
+
+    it('gives a player one page, with no tabs', async () => {
+      asMaster(0, Role.PLAYER);
+      const el = await render();
+      expect(el.querySelector('nav[aria-label="Seções da campanha"]')).toBeNull();
+      expect(el.querySelector('router-outlet')).toBeNull();
+    });
+
+    it('sends an old link to the maps ("#maps") to "Preparação"', async () => {
+      asMaster();
+      harness = await RouterTestingHarness.create();
+      await harness.navigateByUrl('/campaigns/camp-1#maps', CampaignDetail);
+      await settleAll();
+      expect(TestBed.inject(Router).url).toBe('/campaigns/camp-1/prep#maps');
     });
   });
 });

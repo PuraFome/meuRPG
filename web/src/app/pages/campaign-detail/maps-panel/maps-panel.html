@@ -1,6 +1,24 @@
 @if (visible()) {
   <section class="mr-panel maps" id="maps" aria-labelledby="maps-panel-heading">
-    <h2 class="mr-panel__title" id="maps-panel-heading">Mapas</h2>
+    <app-panel-head icon="map" title="Mapas" titleId="maps-panel-heading" [count]="count()">
+      @if (isMaster()) {
+        <app-panel-action
+          icon="add"
+          label="Novo mapa"
+          [link]="['/campaigns', campaignId(), 'maps', 'new']"
+        />
+        <app-panel-action
+          icon="layers"
+          label="Gerar masmorra"
+          [link]="['/campaigns', campaignId(), 'maps', 'dungeon']"
+        />
+        <app-panel-action
+          icon="star"
+          label="Gerar tesouro"
+          [link]="['/campaigns', campaignId(), 'treasure']"
+        />
+      }
+    </app-panel-head>
 
     @let s = state();
     @switch (s.status) {
@@ -18,49 +36,45 @@
           <p class="maps__text">Nenhum mapa ainda. Crie o primeiro a partir de uma imagem da galeria.</p>
         } @else {
           <ul class="mr-list">
-            @for (m of s.maps; track m.id) {
+            @for (m of rows(); track m.id; let i = $index) {
               <li>
-                <a class="row" [routerLink]="['/campaigns', campaignId(), 'maps', m.id]">
+                <a
+                  class="row"
+                  [class.js-first-extra]="i === shown"
+                  [routerLink]="['/campaigns', campaignId(), 'maps', m.id]"
+                >
+                  <mat-icon class="row__icon" aria-hidden="true">map</mat-icon>
                   <span class="row__text">
-                    <span class="row__name">{{ m.name }}</span>
+                    <span class="row__name">
+                      {{ m.name }}
+                      @if (m.current) {
+                        <span class="row__current">Mapa atual</span>
+                      }
+                    </span>
                     <span class="row__sub">{{ sub(m, isMaster()) }}</span>
                   </span>
-                  <span class="row__tags">
-                    @if (m.current) {
-                      <span class="mr-tag"><mat-icon aria-hidden="true">push_pin</mat-icon>Mapa atual</span>
-                    }
-                    @if (isMaster()) {
-                      @if (m.revealed) {
-                        <span class="mr-tag">
-                          <mat-icon aria-hidden="true">visibility</mat-icon>Revelado
-                        </span>
-                      } @else {
-                        <span class="mr-tag mr-tag--hidden">
-                          <mat-icon aria-hidden="true">visibility_off</mat-icon>Escondido
-                        </span>
-                      }
-                    }
-                  </span>
+                  @if (isMaster()) {
+                    <span class="row__vis">
+                      <mat-icon aria-hidden="true">{{ m.revealed ? 'visibility' : 'visibility_off' }}</mat-icon>
+                      {{ m.revealed ? 'Revelado' : 'Escondido' }}
+                    </span>
+                  }
+                  <mat-icon class="row__chevron" aria-hidden="true">chevron_right</mat-icon>
                 </a>
               </li>
             }
           </ul>
+          @if (maps().length > rows().length) {
+            <div>
+              <app-panel-action
+                [underline]="true"
+                [label]="'Ver todos os ' + maps().length + ' mapas'"
+                (pressed)="showAll()"
+              />
+            </div>
+          }
         }
       }
-    }
-
-    @if (isMaster()) {
-      <div class="maps__actions">
-        <a matButton="outlined" [routerLink]="['/campaigns', campaignId(), 'maps', 'new']">
-          <mat-icon aria-hidden="true">add</mat-icon>Novo mapa
-        </a>
-        <a matButton="outlined" [routerLink]="['/campaigns', campaignId(), 'maps', 'dungeon']">
-          <mat-icon aria-hidden="true">castle</mat-icon>Gerar masmorra
-        </a>
-        <a matButton="outlined" [routerLink]="['/campaigns', campaignId(), 'treasure']">
-          <mat-icon aria-hidden="true">paid</mat-icon>Gerar tesouro
-        </a>
-      </div>
     }
   </section>
 }

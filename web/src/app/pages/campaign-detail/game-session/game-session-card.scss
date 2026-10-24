@@ -7,29 +7,31 @@
   display: none;
 }
 
-// The one panel with an accent outline: the session is what the master
-// comes to this page to run (the design's campaign artboard, E5-09). The
-// session notice uses the same frame: accent means "session".
+// The session strip (boards C2-01 and C2-02), above the tabs: the one frame with an accent outline.
+// The session is what the master comes to this page to run; the session notice uses the same
+// frame: accent means "session".
 .session {
   display: flex;
   flex-direction: column;
   gap: var(--mr-space-3);
+  box-sizing: border-box;
+  padding: 14px 20px;
   border: 1.5px solid var(--mr-accent);
-  padding: var(--mr-space-4) 18px 18px;
-
-  .mr-panel__title {
-    margin: 0;
-  }
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
 }
 
-.session__head {
+// The pill and the sentence on the left, the buttons at the end; one column on a phone.
+.session__row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--mr-space-3);
+  gap: var(--mr-space-3) var(--mr-space-4);
 }
 
 .session__text {
+  flex: 1 1 12rem;
+  min-width: 0;
   margin: 0;
   font-size: 17px;
   line-height: 24px;
@@ -49,28 +51,57 @@
   }
 }
 
-// "Entrar na sessão" (filled), "Copiar link da sessão", then "Encerrar
-// sessão" pushed to the far edge. One column on a phone.
+// "Encerrar sessão", a rule, "Copiar link da sessão", then "Entrar na sessão" (filled), as the
+// board draws them. On a phone "Entrar na sessão" takes the row, beside the "⋮" menu that holds the other two.
 .session__actions {
   display: flex;
-  flex-direction: column;
-  gap: var(--mr-space-3);
-  padding-top: 2px;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
 
   @media (min-width: 768px) {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
+    width: auto;
+    margin-left: auto;
   }
 }
 
-// The rare, final action: stroked with an ink label, set apart.
-.session__end {
+.session__enter,
+.session__action {
+  @media (max-width: 767.98px) {
+    flex: 1;
+    --mat-button-filled-container-height: 48px;
+  }
+}
+
+// The "⋮" button: a square as high as the filled button beside it.
+.session__more {
+  flex: none;
+  min-width: 48px;
+  height: 48px;
+  padding: 0;
+  --mat-button-outlined-container-height: 48px;
   --mat-button-outlined-label-text-color: var(--mr-ink);
 
-  @media (min-width: 768px) {
-    margin-left: auto;
+  .mat-icon {
+    margin: 0;
   }
+}
+
+// A hairline between the rare action and the two that open the session.
+.session__rule {
+  display: none;
+
+  @media (min-width: 768px) {
+    display: block;
+    width: 1px;
+    height: 28px;
+    background: var(--mr-line);
+  }
+}
+
+// The rare, final action: stroked with an ink label.
+.session__end {
+  --mat-button-outlined-label-text-color: var(--mr-ink);
 }
 
 // The in-place confirmation (docs/design/README.md): the question, the confirm
@@ -81,10 +112,6 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--mr-space-2) var(--mr-space-3);
-
-  @media (min-width: 768px) {
-    flex-basis: 100%;
-  }
 }
 
 .session__confirm-text {
@@ -104,7 +131,6 @@
 .session__end--confirm {
   --mat-button-outlined-label-text-color: var(--mr-danger-ink);
   --mat-button-outlined-outline-color: var(--mr-danger-ink);
-  margin-left: 0;
 }
 
 .session__manual {
@@ -131,11 +157,9 @@
   font-size: 14px;
 }
 
-// The primary action when no session is open: full width on a phone, as
-// wide as its words from a tablet up (the theme sets its height).
+// "Iniciar sessão": full width on a phone, as wide as its words from a tablet up (the theme sets its height).
 .session__action {
   @media (min-width: 768px) {
-    align-self: flex-start;
     min-width: 12rem;
   }
 }

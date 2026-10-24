@@ -10,21 +10,22 @@ import {
   input,
   signal,
   untracked,
+  viewChildren,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { RouterLink } from '@angular/router';
 
-import { describeCharacterError } from '../../../core/characters/character-errors';
-import { characterKindLabel, characterStateLabel } from '../../../core/characters/character-labels';
-import { CharacterKind } from '../../../core/characters/characters.types';
+import { focusWithRing } from '../../../core/creatures/focus-ring';
+import { characterStateLabel } from '../../../core/characters/character-labels';
 import { LevelUpFeed } from '../../../core/levelup/levelup-feed';
 import { ExperienceStore } from '../../../core/progression/experience-store';
 import { OpenSessions } from '../../../core/play/open-sessions';
 import { XpWatcher } from '../../../core/play/xp-watcher';
 import { LevelUpTag } from '../../../shared/xp/level-up-tag';
-import { characterRowSub, stateTagClass } from './campaign-characters.copy';
+import { characterRowSub, playerCountLabel, stateTagClass } from './campaign-characters.copy';
+import { CampaignRoster } from './campaign-roster';
 import { LevelUpChanges } from './level-up-changes';
 import { CharacterCreatures } from '../creatures/character-creatures';
 import { ReservedCharacters } from './reserved/reserved-characters';
@@ -34,35 +35,23 @@ import {
   CampaignCharactersVm,
   OpenChoicesVm,
 } from './campaign-characters.types';
-
-type ListState =
-  | { status: 'loading' }
-  | { status: 'ready'; vm: CampaignCharactersVm }
-  | { status: 'error'; message: string };
-
-/** The four NPC kinds a master can create, and the `:kind` route segment
- * each maps to (plan §5: `/campaigns/:id/npcs/new/:kind`). */
-const NPC_KINDS: ReadonlyArray<{ kind: CharacterKind; segment: string }> = [
-  { kind: 'enemy', segment: 'enemy' },
-  { kind: 'boss', segment: 'boss' },
-  { kind: 'minion', segment: 'minion' },
-  { kind: 'story', segment: 'story' },
-];
+import { PHONE_QUERY, mediaQuery } from '../../../shared/map-view/media-query';
+import { PanelHead } from '../panel-head/panel-head';
 
 /**
- * The "Personagens" section on `/campaigns/:id` (MR-003, MR-005, MR-024).
+ * The players' characters on `/campaigns/:id` (MR-003, MR-005, MR-024). The
+ * NPCs are `CampaignNpcs`, on "Preparação"; both read `CampaignRoster`.
  *
- * Each list is a panel of its own, titled with an h3 under this section's
- * (visually hidden) "Personagens" h2, and every row links to the sheet.
- *
- * - **Master:** "Esperando aprovação" (characters created through an invite
- *   that requires approval, RN-15 — a warning dot and "Revisar"; the sheet
- *   is where the master approves or rejects it), "Personagens dos
- *   jogadores" (name, class and player, state tag) and "NPCs" (name, kind
- *   tag), with the "Novo NPC" menu at the end of its panel.
- * - **Player:** their own characters (a pending one shows "Pendente de
- *   aprovação"), and a "Criar meu personagem" call to action shown only
- *   when they have no living character (RN-03; a pending one counts).
+ * - **Master ("Mesa"):** the panel "Personagens dos jogadores", a card for
+ *   each (the name, class and player, a lock when the sheet is locked, and what
+ *   needs a word: choices open, a level-up), led by the amber banner of each
+ *   character that waits for approval (characters created through an invite
+ *   that requires approval, RN-15: "Revisar <name>" opens the sheet, where the
+ *   master approves or rejects it), then the reserved characters.
+ * - **Player:** their own characters under "Meus personagens" (a pending one
+ *   shows "Pendente de aprovação"), and a "Criar meu personagem" call to
+ *   action shown only when they have no living character (RN-03; a pending
+ *   one counts).
  */
 @Component({
   selector: 'app-campaign-characters',
@@ -71,6 +60,7 @@ const NPC_KINDS: ReadonlyArray<{ kind: CharacterKind; segment: string }> = [
     LevelUpChanges,
     LevelUpTag,
     MatButtonModule,
+    PanelHead,
     ReservedCharacters,
     MatIconModule,
     MatMenuModule,
@@ -81,6 +71,7 @@ const NPC_KINDS: ReadonlyArray<{ kind: CharacterKind; segment: string }> = [
 })
 export class CampaignCharacters implements OnInit {
   private readonly source = inject(CampaignCharactersSource);
+  private readonly roster = inject(CampaignRoster);
   // The page's XP store (RN-12, D4): which characters "can level up". Optional:
   // the list also works on its own, without the tag.
   private readonly experience = inject(ExperienceStore, { optional: true });
@@ -94,11 +85,12 @@ export class CampaignCharacters implements OnInit {
   readonly campaignId = input.required<string>();
   readonly isMaster = input.required<boolean>();
 
-  protected readonly state = signal<ListState>({ status: 'loading' });
-  protected readonly characterKindLabel = characterKindLabel;
+  protected readonly state = this.roster.state;
   protected readonly characterStateLabel = characterStateLabel;
-  protected readonly npcKinds = NPC_KINDS;
   protected readonly characterRowSub = characterRowSub;
+  /** A phone says "Personagens · 2" where the desktop says "Personagens dos jogadores · 2 personagens" (board C6-04). */
+  protected readonly phone = mediaQuery(PHONE_QUERY);
+  protected readonly playerCountLabel = playerCountLabel;
   protected readonly stateTagClass = stateTagClass;
 
   /** Bumped when the stream says a character's creatures changed (the master's lines read again). */
@@ -155,6 +147,24 @@ export class CampaignCharacters implements OnInit {
     });
   }
 
+  private readonly creatureRows = viewChildren(CharacterCreatures);
+
+  /** "Dar uma criatura a …", from the character's "⋮" menu: opens the SRD search of that character's creatures. */
+  protected giveCreature(characterId: string): void {
+    this.creatureRows()
+      .find((row) => row.characterId() === characterId)
+      ?.give();
+  }
+
+  /** A sheet or a dismissal is done: the focus is back on the character's "⋮" button, with the app's ring. */
+  protected focusMore(characterId: string): void {
+    afterNextRender(
+      () =>
+        focusWithRing(this.host.nativeElement.querySelector<HTMLElement>(`#more-${characterId}`)),
+      { injector: this.injector },
+    );
+  }
+
   /** The master gave a creature (E9-10, quadro 6). */
   protected gave(character: string, creature: string): void {
     this.giftNotice.set(
@@ -167,8 +177,10 @@ export class CampaignCharacters implements OnInit {
     return this.isMaster() ? this.levelUps?.latestOf(characterId) : undefined;
   }
 
-  protected isFresh(levelUp: NonNullable<ReturnType<CampaignCharacters['levelUpOf']>>): boolean {
-    return this.levelUps?.isFresh(levelUp) ?? false;
+  /** The newest level-up of a character while it is news ("Subiu para o nível N"), else nothing. */
+  protected freshLevelUp(characterId: string) {
+    const levelUp = this.levelUpOf(characterId);
+    return levelUp && (this.levelUps?.isFresh(levelUp) ?? false) ? levelUp : undefined;
   }
 
   protected toggleChanges(characterId: string): void {
@@ -200,19 +212,21 @@ export class CampaignCharacters implements OnInit {
     return vm.playerCharacters.filter((c) => c.reserved === true || c.claim?.state === 'used');
   }
 
+  /** Whether every listed sheet is locked: the board's note says so ("Todas as fichas estão travadas…"). */
+  protected allLocked(listed: readonly CampaignCharacterListItemVm[]): boolean {
+    return listed.length > 0 && listed.every((c) => c.state === 'locked');
+  }
+
   /** The list changed under a write of the reserved characters: read it again, keeping what is on screen meanwhile. */
   protected refresh(): void {
-    this.source.listCharacters(this.campaignId()).then(
-      (vm) => this.state.set({ status: 'ready', vm }),
-      (err: unknown) => this.state.set({ status: 'error', message: describeCharacterError(err) }),
-    );
+    void this.roster.reload(this.campaignId(), true);
   }
 
   ngOnInit(): void {
     // Not the constructor — see CampaignInvites's doc comment on the same
     // pattern: a required signal input is only set before the first
     // change-detection pass, and ngOnInit is guaranteed to run after that.
-    this.load();
+    void this.roster.ensureLoaded(this.campaignId());
     if (this.isMaster()) {
       void this.levelUps?.load(this.campaignId());
       this.loadOpenChoices();
@@ -236,14 +250,6 @@ export class CampaignCharacters implements OnInit {
     this.source.openChoices(this.campaignId()).then(
       (list) => this.openChoices.set(new Map(list.map((o) => [o.characterId, o]))),
       () => this.openChoices.set(new Map()),
-    );
-  }
-
-  private load(): void {
-    this.state.set({ status: 'loading' });
-    this.source.listCharacters(this.campaignId()).then(
-      (vm) => this.state.set({ status: 'ready', vm }),
-      (err: unknown) => this.state.set({ status: 'error', message: describeCharacterError(err) }),
     );
   }
 }

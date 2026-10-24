@@ -8,7 +8,7 @@ import { FogMasterPanel } from './fog-tools/fog-master-panel';
 import { FogPlayerTools } from './fog-tools/fog-player-tools';
 import { FamiliarBand } from '../../shared/familiar-eyes/familiar-band';
 import { BattleEncounters } from './battle-encounters/battle-encounters';
-import { CombatLaunch } from './combat/combat-launch';
+import { CombatLaunchNotice } from './combat/combat-launch';
 import { CastingPanel } from './casting/casting-panel';
 import { BardicBlock } from './inspiration/bardic-block';
 import { CombatView } from './combat/combat-view';
@@ -57,7 +57,7 @@ export const LIVE_SESSION_IMPORTS = [
   FogPlayerTools,
   FamiliarBand,
   BattleEncounters,
-  CombatLaunch,
+  CombatLaunchNotice,
   CastingPanel,
   BardicBlock,
   CombatView,

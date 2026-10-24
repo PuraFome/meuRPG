@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { endOpenSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus } from './live-session-support';
+import { endOpenSessionRPC, openSessionPage, startSessionRPC, tableWithPensantus, endSessionFromBar } from './live-session-support';
 import { addActionRPC, openSceneRPC, rollTyped, sceneActionIdsRPC, setAttemptsRPC, setShowDcRPC, tableForScenes } from './scene-support';
 import { newSignedInContext } from './support';
 
@@ -51,8 +51,7 @@ test(
 
       // The master ends the session (asking first, as before) and lands on the summary.
       await openSessionPage(master, campaignId);
-      await master.getByRole('button', { name: 'Encerrar sessão' }).click();
-      await master.getByRole('button', { name: 'Confirmar encerramento' }).click();
+      await endSessionFromBar(master);
       await expect(master.getByRole('heading', { name: 'Sessão encerrada' })).toBeVisible();
       const stat = (label: string) => master.locator('.stat').filter({ hasText: label });
       await expect(stat('Combates')).toContainText('0');

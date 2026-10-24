@@ -1,26 +1,27 @@
 <ul class="list">
   @for (l of lines(); track l.row.id) {
     <li class="row" [class.row--marks]="milestones()">
-      <span class="who">
-        <span class="who__name">{{ l.row.name }}</span>
-        <span class="who__sub">{{ l.row.sub }}</span>
-      </span>
+      <span class="who" [title]="l.row.sub">{{ l.row.name }}</span>
+      <span class="level">nível {{ l.row.level }}</span>
       @if (!milestones()) {
         <span class="bar" aria-hidden="true">
           <span class="bar__fill" [style.width.%]="l.progress.percent"></span>
         </span>
-        <span class="num">
-          <span class="num__of">{{ l.progress.of }}</span>
-          @if (l.row.canLevelUp) {
-            <app-level-up-tag class="tag" />
-          } @else if (l.gain) {
-            <span class="num__gain">{{ l.gain }}</span>
-          } @else if (l.progress.missing) {
-            <span class="num__missing">{{ l.progress.missing }}</span>
-          }
-        </span>
+        <span class="num">{{ l.xp }}@if (l.next) {<span class="mr-visually-hidden"> de {{ l.next }}</span>} XP</span>
+        @if (l.row.canLevelUp || l.gain) {
+          <span class="extra">
+            @if (l.row.canLevelUp) {
+              <app-level-up-tag />
+            } @else {
+              <span class="extra__gain">{{ l.gain }}</span>
+            }
+          </span>
+        } @else if (l.progress.missing) {
+          <!-- What is missing is in the number and the bar, and the lead says what the next level asks: a screen reader still hears it. -->
+          <span class="mr-visually-hidden">{{ l.progress.missing }}</span>
+        }
       } @else if (l.row.canLevelUp) {
-        <app-level-up-tag class="tag" />
+        <span class="extra"><app-level-up-tag /></span>
       }
     </li>
   }

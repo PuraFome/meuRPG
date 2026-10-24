@@ -1,0 +1,56 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-sizing: border-box;
+  min-height: 120px;
+  padding: 24px 16px;
+  text-align: center;
+}
+
+.rs__text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+// A ring of three quarters; it turns only when the person has not asked for less motion.
+.rs__ring {
+  width: 28px;
+  height: 28px;
+  box-sizing: border-box;
+  border: 3px solid var(--mr-rule);
+  border-top-color: var(--mr-accent);
+  border-radius: 50%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .rs__ring {
+    animation: rs-turn 0.9s linear infinite;
+  }
+}
+
+@keyframes rs-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.rs__icon {
+  width: 28px;
+  height: 28px;
+  font-size: 28px;
+  color: var(--mr-ink);
+}
+
+.rs__notice {
+  text-align: left;
+}
+
+.rs__retry {
+  --mat-button-text-label-text-color: var(--mr-accent-text);
+  min-height: 44px;
+}

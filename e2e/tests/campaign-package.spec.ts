@@ -4,7 +4,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { exportThroughScreen, joinAsPlayer, tableForPackage, zipWithManifest } from './campaign-package-support';
 import { expectLoaded } from './loaded';
-import { authStatePath, callRPC, newSignedInContext, waitForCampaignList } from './support';
+import { authStatePath, callRPC, gotoCampaignTab, newSignedInContext, waitForCampaignList, openCampaignTab } from './support';
 
 // MR-050, the campaign package (web/src/app/pages/campaign-export and
 // campaigns/campaign-import), against the real CampaignPackageService. Every
@@ -69,7 +69,7 @@ test.describe('importar um pacote', () => {
       const table = await tableForPackage(page, `Pacote ${Date.now()}`);
 
       // The campaign page links to the export.
-      await page.goto(`/campaigns/${table.campaignId}`);
+      await gotoCampaignTab(page, table.campaignId, 'Regras');
       const panel = page.getByRole('region', { name: 'Pacote da campanha' });
       await panel.getByRole('link', { name: 'Exportar campanha' }).click();
       await expect(page).toHaveURL(`/campaigns/${table.campaignId}/export`);
@@ -112,7 +112,9 @@ test.describe('importar um pacote', () => {
       await expect(page).toHaveURL(/\/campaigns\/[^/]+$/);
       expect(page.url()).not.toContain(table.campaignId);
       await expect(page.getByRole('heading', { level: 1 })).toContainText(table.campaignName);
-      await expect(page.getByText(table.mapName).first()).toBeVisible();
+      // The imported campaign opens on "Mesa"; its maps are on "Preparação".
+      await openCampaignTab(page, 'Preparação');
+      await expect(page.getByRole('region', { name: 'Mapas' }).getByText(table.mapName).first()).toBeVisible();
     },
   );
 

@@ -14,11 +14,11 @@ function render<T>(page: new () => T) {
 }
 
 /** What both pages must have, whatever their words. */
-function commonChecks(page: new () => unknown, title: string) {
+function commonChecks(page: new () => unknown, title: string, updated: string) {
   it('has the title, the date and the no-legal-review line before anything else', () => {
     const { el } = render(page);
     expect(el.querySelector('h1')?.textContent).toBe(title);
-    expect(el.querySelector('.legal__updated')?.textContent).toBe('Última atualização: 09/10/2026');
+    expect(el.querySelector('.legal__updated')?.textContent).toBe(`Última atualização: ${updated}`);
     expect(el.querySelector('.legal__review')?.textContent).toMatch(
       /Ainda não (foi|foram) revisad[oa]s? por um advogado\./,
     );
@@ -47,7 +47,7 @@ function commonChecks(page: new () => unknown, title: string) {
 }
 
 describe('Terms', () => {
-  commonChecks(Terms, 'Termos de uso');
+  commonChecks(Terms, 'Termos de uso', '09/10/2026');
 
   it('has the twelve sections and links to the privacy policy and the credits', () => {
     const { el } = render(Terms);
@@ -68,7 +68,7 @@ describe('Terms', () => {
 });
 
 describe('Privacy', () => {
-  commonChecks(Privacy, 'Política de privacidade');
+  commonChecks(Privacy, 'Política de privacidade', '24/10/2026');
 
   it('has the fourteen sections of the LGPD notice', () => {
     const { el } = render(Privacy);
@@ -94,8 +94,8 @@ describe('Privacy', () => {
     const { el } = render(Privacy);
     const table = el.querySelector('table.legal-table')!;
     expect(table.querySelectorAll('thead th[scope="col"]')).toHaveLength(2);
-    expect(table.querySelectorAll('tbody tr')).toHaveLength(11);
-    expect(table.querySelectorAll('tbody th[scope="row"]')).toHaveLength(11);
+    expect(table.querySelectorAll('tbody tr')).toHaveLength(12);
+    expect(table.querySelectorAll('tbody th[scope="row"]')).toHaveLength(12);
     const cookies = Array.from(el.querySelectorAll('code')).map((c) => c.textContent);
     expect(cookies).toEqual(['__Host-meurpg_session', '__Host-meurpg_login']);
   });

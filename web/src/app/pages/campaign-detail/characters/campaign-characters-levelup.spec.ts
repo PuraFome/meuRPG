@@ -13,6 +13,7 @@ import { LevelUpFeed } from '../../../core/levelup/levelup-feed';
 import { OpenSessions } from '../../../core/play/open-sessions';
 import { XpWatcher } from '../../../core/play/xp-watcher';
 import { CampaignCharacters } from './campaign-characters';
+import { CampaignRoster } from './campaign-roster';
 import { CampaignCharactersSource, type CampaignCharactersVm } from './campaign-characters.types';
 
 @Injectable()
@@ -60,6 +61,7 @@ describe("the master's characters list and the stream (MR-040)", () => {
       providers: [
         provideRouter([]),
         LevelUpFeed,
+        CampaignRoster,
         { provide: CampaignCharactersSource, useClass: Source },
         { provide: LevelUpClient, useValue: { list } },
         // The campaign has an open session, so the page follows its stream.

@@ -75,7 +75,7 @@ As tabelas estão descritas no [Modelo de dados](../data/README.md).
 | O link de personagem com que a pessoa entrou (só o hash) | Mostrar o cartão do personagem depois do login, sem o segredo no endereço | Contrato | 10 minutos; apagado quando o personagem é assumido |
 | Convite: hash do token, usos, validade, se exige aprovação, quem criou | Entrar numa campanha (RN-07, RN-15) | Contrato | Vale no máximo 30 dias; a linha é varrida 30 dias depois de vencer, ou na hora com a campanha ou com a conta de quem o criou |
 | Link para assumir um personagem reservado (MR-049): hash do token, quem fez e quando, validade, quando foi usado ou revogado e por quem | Entregar um personagem que o mestre fez ao jogador que o assume | Contrato | Varrido 30 dias depois que acabou (usado, revogado ou expirado), ou na hora com a campanha, o personagem ou a conta do mestre. O "usado por" é limpo se a conta desse jogador for apagada |
-| E-mail de contato: uma mensagem enviada a `privacidade@meurpg.app` ou a outro endereço `@meurpg.app` (endereço e nome de quem envia, assunto, texto) | Responder a um pedido sobre dados ou a um contato | Obrigação legal (art. 18) para um pedido sobre dados; legítimo interesse nos outros casos | O ImprovMX, que a encaminha, registra remetente, destinatário e assunto por 7 dias, nunca o texto. Nas caixas de e-mail de quem responde: **a definir** |
+| E-mail de contato: uma mensagem enviada a `privacidade@meurpg.app` ou a outro endereço `@meurpg.app` (endereço e nome de quem envia, assunto, texto) | Responder a um pedido sobre dados ou a um contato | Obrigação legal (art. 18) para um pedido sobre dados; legítimo interesse nos outros casos | O ImprovMX, que a encaminha, registra remetente, destinatário e assunto por 7 dias, nunca o texto. Nas caixas de e-mail de quem responde: 1 ano depois da resposta, e então é apagada |
 
 ### O que a mesa escreve e joga
 
@@ -351,11 +351,11 @@ Dois "sim" pedem um relatório de impacto à proteção de dados (RIPD) antes do
 
 ## A definir
 
-- ImprovMX: o contrato, o mecanismo de transferência e por quanto tempo as mensagens ficam nas caixas de e-mail de quem responde.
+- ImprovMX: o contrato e o mecanismo de transferência, ou a troca dele por e-mail na conta Google da organização.
 - O contrato da LGPD com a Cockroach Labs.
 - Se os backups do CockroachDB Cloud ficam em São Paulo e são guardados por no máximo 30 dias (conferir no console); o plano está em avaliação ([Operação](../operations/reference.md)).
 - O mecanismo de transferência para a Gemini API do Google (Resolução CD/ANPD nº 19/2024).
-- Revisão de um advogado do aviso de privacidade, dos termos e do tratamento do texto livre que fica com o mestre.
+- Revisão de um advogado do aviso de privacidade, dos termos e do tratamento do texto livre que fica com o mestre, antes de o app abrir para outras mesas.
 - Exportação e exclusão de conta em autoatendimento, e apagar os arquivos de imagem de uma campanha quando ela é apagada (o prefixo `campaigns/<id>/`). Até existirem, o operador faz a pedido.
 - Antes de ler PDFs de regras com IA (MR-027, depois do MVP): o operador, o que sai do servidor e os direitos autorais dos livros oficiais.
   O PDF seria guardado só enquanto fosse processado e apagado logo depois.

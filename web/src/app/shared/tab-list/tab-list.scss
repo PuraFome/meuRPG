@@ -1,0 +1,132 @@
+:host {
+  display: block;
+}
+
+// A list wider than its room scrolls sideways (no scrollbar) and fades where more tabs lie beyond the edge.
+.tl-wrap {
+  --fade-start: 0px;
+  --fade-end: 0px;
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 var(--fade-start),
+    #000 calc(100% - var(--fade-end)),
+    transparent 100%
+  );
+}
+
+.tl-wrap--start {
+  --fade-start: 36px;
+}
+
+.tl-wrap--end {
+  --fade-end: 36px;
+}
+
+// One row under which the panel sits: a line along the bottom, the chosen tab underlined in the accent.
+.tl {
+  display: flex;
+  gap: var(--mr-space-1);
+  box-sizing: border-box;
+  padding: 0 var(--mr-space-2);
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--mr-line);
+  border-radius: 10px 10px 0 0;
+  background: var(--mr-surface);
+}
+
+.tl::-webkit-scrollbar {
+  display: none;
+}
+
+.tl__tab {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--mr-space-2);
+  box-sizing: border-box;
+  height: 48px;
+  margin-bottom: -1px;
+  padding: 0 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--mr-ink-muted);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 20px;
+  white-space: nowrap;
+  scroll-snap-align: start;
+  cursor: pointer;
+
+  .mat-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: -2px;
+  }
+}
+
+// The chosen tab is bold and underlined, so it never reads by colour alone.
+.tl__tab--on {
+  border-bottom-color: var(--mr-accent);
+  color: var(--mr-ink);
+  font-weight: 700;
+}
+
+.tl__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-ground);
+  color: var(--mr-ink-muted);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+// Amber: something waits for the person. Grená: new messages. The count is also in the tab's name, in words.
+.tl__badge--wait {
+  border-color: var(--mr-warning-line);
+  background: var(--mr-warning-surface);
+  color: var(--mr-warning-ink);
+}
+
+.tl__badge--news {
+  border: 0;
+  background: var(--mr-accent);
+  color: var(--mr-on-accent);
+}
+
+// A phone's list that does not fit: smaller type and padding, so more of it shows.
+.tl--compact {
+  gap: 0;
+  padding: 0 var(--mr-space-1);
+
+  .tl__tab {
+    gap: 5px;
+    padding: 0 10px;
+    font-size: 15px;
+  }
+
+  .tl__badge {
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    font-size: 12px;
+  }
+}

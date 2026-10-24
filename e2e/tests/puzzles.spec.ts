@@ -2,21 +2,22 @@ import { expect, test } from '@playwright/test';
 
 import { openSessionPage } from './live-session-support';
 import {
-  DOOR_OPEN,
   createLightsRPC,
   createLockRPC,
   createPillarsRPC,
+  DOOR_OPEN,
   doorState,
   endTable,
   masterRunJson,
   moveRPC,
+  pickPuzzleAction,
   playerRunJson,
   playerRunText,
   puzzleRoute,
   showPuzzleRPC,
   tableForPuzzles,
 } from './puzzles-support';
-import { newSignedInContext } from './support';
+import { gotoCampaignTab, newSignedInContext, openCampaignTab } from './support';
 
 // Puzzles on screen (Etapa 10, slice 10.15a: MR-038, RN-27, RN-10; E10-06): "Apagar as luzes", the combination lock and the turning
 // symbols, for the master (the list, the form, the live view, "Recomeçar" and "Fechar" asked in place) and for the players (the boards).
@@ -56,6 +57,7 @@ test('o mestre faz uma fechadura que abre uma porta e a mostra; o jogador a reso
     await master.getByLabel('Mensagem para os jogadores (opcional)').fill('A porta da Capela se abriu.');
     await master.getByRole('button', { name: 'Criar quebra-cabeça' }).click();
     await expect(master).toHaveURL(puzzleRoute(table.campaignId));
+    await openCampaignTab(master, 'Preparação');
     await expect(master.getByRole('region', { name: 'Quebra-cabeças' }).getByText('O cofre do Refeitório')).toBeVisible();
 
     // The session: "Mostrar aos jogadores" and the live card.
@@ -176,36 +178,41 @@ test('o mestre faz "Apagar as luzes" no formulário, edita, e arquiva e desarqui
     await expect(master.locator('app-lights-board button')).toHaveCount(0);
     await master.getByRole('button', { name: 'Criar quebra-cabeça' }).click();
     await expect(master).toHaveURL(puzzleRoute(table.campaignId));
+    await openCampaignTab(master, 'Preparação');
     const panel = master.getByRole('region', { name: 'Quebra-cabeças' });
     await expect(panel.getByText('O selo da Capela')).toBeVisible();
     await expect(panel.getByText('Apagar as luzes · 5 × 5')).toBeVisible();
     await expect(panel.getByText('Não mostrado')).toBeVisible();
 
     // Edit before it is shown.
-    await panel.getByRole('link', { name: 'Editar O selo da Capela' }).click();
+    // The row is the link to the editor ("Editar" is not a button of the row: the board's row has a chevron).
+    await panel.getByRole('link', { name: /^O selo da Capela/ }).click();
     await expect(master.getByRole('heading', { level: 1, name: 'Editar quebra-cabeça' })).toBeVisible();
     await expect(master.getByLabel('Nome')).toHaveValue('O selo da Capela');
     await master.getByLabel('Nome').fill('O selo da Cripta');
     await master.getByRole('button', { name: 'Salvar quebra-cabeça' }).click();
+    // Saving goes back to the campaign page ("Mesa"); the list is on "Preparação".
+    await expect(master).toHaveURL(puzzleRoute(table.campaignId));
+    await openCampaignTab(master, 'Preparação');
     await expect(panel.getByText('O selo da Cripta')).toBeVisible();
 
     // Archive asks in place, and nothing is archived before the second tap.
-    await panel.getByRole('button', { name: 'Arquivar O selo da Cripta' }).click();
+    await pickPuzzleAction(master, 'O selo da Cripta', 'Arquivar');
     await expect(panel.getByRole('heading', { name: 'Arquivar “O selo da Cripta”?' })).toBeFocused();
     await panel.getByRole('button', { name: 'Voltar' }).click();
-    await expect(panel.getByRole('button', { name: 'Arquivar O selo da Cripta' })).toBeFocused();
-    await panel.getByRole('button', { name: 'Arquivar O selo da Cripta' }).click();
+    await expect(panel.getByRole('button', { name: 'Mais ações de O selo da Cripta' })).toBeFocused();
+    await pickPuzzleAction(master, 'O selo da Cripta', 'Arquivar');
     await panel.getByRole('button', { name: 'Arquivar', exact: true }).click();
     await expect(panel.getByText('“O selo da Cripta” foi arquivado.')).toBeVisible();
     await expect(panel.getByText('Todos os quebra-cabeças estão arquivados.')).toBeVisible();
     await panel.getByRole('button', { name: 'Mostrar os arquivados' }).click();
-    await panel.getByRole('button', { name: 'Desarquivar O selo da Cripta' }).click();
+    await pickPuzzleAction(master, 'O selo da Cripta', 'Desarquivar');
     await expect(panel.getByText('“O selo da Cripta” voltou para a lista.')).toBeVisible();
 
     // Once shown, it cannot be edited: the list has no "Editar" and the page says why.
     const id = (await (await master.request.post('/meurpg.play.v1.PuzzleService/ListPuzzles', { data: { campaignId: table.campaignId }, headers: { 'Connect-Protocol-Version': '1' } })).json()).puzzles[0].id as string;
     await showPuzzleRPC(master, table.campaignId, id);
-    await master.reload();
+    await gotoCampaignTab(master, table.campaignId, 'Preparação');
     await expect(master.getByRole('region', { name: 'Quebra-cabeças' }).getByText('Já mostrado')).toBeVisible();
     await expect(master.getByRole('link', { name: 'Editar O selo da Cripta' })).toHaveCount(0);
     await master.goto(puzzleRoute(table.campaignId, 'puzzles', id, 'edit'));

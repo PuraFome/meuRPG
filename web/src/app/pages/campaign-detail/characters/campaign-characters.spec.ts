@@ -3,7 +3,11 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
 import { ExperienceStore, type ExperienceRow } from '../../../core/progression/experience-store';
+import { CreaturesClient } from '../../../core/creatures/creatures-client';
+import { settle } from '../../../../test-settle';
+import { endPhone, startPhone } from '../phone-testing';
 import { CampaignCharacters } from './campaign-characters';
+import { CampaignRoster } from './campaign-roster';
 import {
   CampaignCharactersSource,
   CampaignCharactersVm,
@@ -31,6 +35,11 @@ class FakeCampaignCharactersSource {
   }
 }
 
+/** The creatures of each character, as the master's list reads them (none unless a test says). */
+const creaturesApi = {
+  list: vi.fn((_campaign: string, _character: string): Promise<unknown[]> => Promise.resolve([])),
+};
+
 describe('CampaignCharacters', () => {
   let fake: FakeCampaignCharactersSource;
 
@@ -39,9 +48,12 @@ describe('CampaignCharacters', () => {
       imports: [CampaignCharacters],
       providers: [
         provideRouter([]),
+        CampaignRoster,
+        { provide: CreaturesClient, useValue: creaturesApi },
         { provide: CampaignCharactersSource, useClass: FakeCampaignCharactersSource },
       ],
     });
+    creaturesApi.list.mockReset().mockResolvedValue([]);
     fake = TestBed.inject(CampaignCharactersSource) as unknown as FakeCampaignCharactersSource;
   });
 
@@ -58,7 +70,7 @@ describe('CampaignCharacters', () => {
     return { el: fixture.nativeElement as HTMLElement, fixture };
   }
 
-  it('shows the master\'s two lists and the "Novo NPC" menu trigger', async () => {
+  it('shows the master the players\' panel, with the way to the NPCs on "Preparação" and none of them', async () => {
     fake.listCharactersResult = Promise.resolve({
       playerCharacters: [
         {
@@ -88,9 +100,9 @@ describe('CampaignCharacters', () => {
     expect(el.textContent).toContain('Personagens dos jogadores');
     expect(el.textContent).toContain('Pensantus');
     expect(el.textContent).toContain('Vinicius');
-    expect(el.textContent).toContain('NPCs');
-    expect(el.textContent).toContain('Goblin');
-    expect(el.textContent).toContain('Novo NPC');
+    expect(el.textContent).toContain('Os NPCs ficam na aba Preparação');
+    expect(el.textContent).not.toContain('Goblin');
+    expect(el.textContent).not.toContain('Novo NPC');
     expect(el.textContent).not.toContain('Criar meu personagem');
   });
 
@@ -120,17 +132,17 @@ describe('CampaignCharacters', () => {
 
     const { el } = await render(true);
 
-    const heading = Array.from(el.querySelectorAll('h3')).find((h) =>
-      h.textContent?.includes('Esperando aprovação'),
-    );
-    expect(heading).toBeTruthy();
-    const queue = el.querySelector(
-      'ul[aria-labelledby="awaiting-approval-heading"]',
-    ) as HTMLElement;
-    expect(queue.textContent).toContain('Novata');
+    const queue = el.querySelector('ul[aria-label="Esperando aprovação"]') as HTMLElement;
+    expect(queue.textContent).toContain('Novata espera a sua aprovação.');
     expect(queue.textContent).toContain('Samuel');
     expect(queue.textContent).not.toContain('Pensantus');
-    expect(queue.querySelector('a')?.getAttribute('href')).toBe('/campaigns/camp-1/characters/c2');
+    const review = queue.querySelector('a')!;
+    expect(review.getAttribute('href')).toBe('/campaigns/camp-1/characters/c2');
+    // One name for each: the banner says whose sheet it opens.
+    expect(review.textContent).toContain('Revisar Novata');
+    // The waiting one is not among the players' cards, and the count leaves it out.
+    expect(el.querySelectorAll('.card')).toHaveLength(1);
+    expect(el.textContent).toContain('1 personagem');
   });
 
   it('tags the waiting row "Ajustes pedidos" once the master asked for changes, and no other row', async () => {
@@ -151,9 +163,7 @@ describe('CampaignCharacters', () => {
 
     const { el } = await render(true);
 
-    const rows = Array.from(
-      el.querySelectorAll('ul[aria-labelledby="awaiting-approval-heading"] li'),
-    );
+    const rows = Array.from(el.querySelectorAll('ul[aria-label="Esperando aprovação"] li'));
     expect(rows[0].textContent).toContain('Ajustes pedidos');
     expect(rows[1].textContent).not.toContain('Ajustes pedidos');
   });
@@ -277,6 +287,7 @@ describe('CampaignCharacters', () => {
         imports: [CampaignCharacters],
         providers: [
           provideRouter([]),
+          CampaignRoster,
           ExperienceStore,
           { provide: CampaignCharactersSource, useClass: FakeCampaignCharactersSource },
         ],
@@ -290,11 +301,12 @@ describe('CampaignCharacters', () => {
       fake.listCharactersResult = list();
       const { el } = await render(true);
 
-      const rows = Array.from(el.querySelectorAll('li'));
+      const rows = Array.from(el.querySelectorAll('li.card'));
       expect(rows[0].querySelector('app-level-up-tag')?.textContent).toContain(
         'Pode subir de nível',
       );
-      expect(rows[0].textContent).toContain('Travada');
+      // A locked sheet is a lock, named for a screen reader.
+      expect(rows[0].querySelector('[aria-label="Ficha travada"]')).not.toBeNull();
       expect(rows[1].querySelector('app-level-up-tag')).toBeNull();
     });
 
@@ -467,6 +479,92 @@ describe('CampaignCharacters', () => {
       expect(el.querySelector('app-reserved-characters')).toBeNull();
       expect(el.textContent).not.toContain('Personagens reservados');
       expect(el.textContent).toContain('Criar meu personagem');
+    });
+  });
+
+  describe("the master's creatures of a character (E9-10, board C2-01)", () => {
+    const list = () =>
+      Promise.resolve({
+        playerCharacters: [
+          {
+            id: 'c1',
+            name: 'Pensantus',
+            kind: 'player' as const,
+            state: 'locked' as const,
+            classSummary: 'Mago 3',
+            playerDisplayName: 'Ana',
+          },
+          {
+            id: 'c2',
+            name: 'Toren',
+            kind: 'player' as const,
+            state: 'locked' as const,
+            classSummary: 'Guerreiro 3',
+            playerDisplayName: 'Rafa',
+          },
+        ],
+        npcs: [],
+        hasLivingCharacter: true,
+      });
+    const mastim = {
+      id: 'k1',
+      name: 'Mastim',
+      monsterKey: 'monster:mastiff',
+      monsterNamePt: 'Mastim',
+      source: 1,
+    };
+
+    function withCreatures(byCharacter: Record<string, unknown[]>) {
+      creaturesApi.list.mockImplementation((_campaign, character) =>
+        Promise.resolve(byCharacter[character] ?? []),
+      );
+      fake.listCharactersResult = list();
+    }
+
+    it('draws a creature line only for the character that has one, and no "Nenhuma criatura" anywhere', async () => {
+      withCreatures({ c1: [mastim] });
+      const { el, fixture } = await render(true);
+      await settle(fixture, 2);
+      const cards = Array.from(el.querySelectorAll('li.card'));
+      expect(cards[0].textContent).toContain('Mastim');
+      expect(cards[0].textContent).toContain('Dispensar Mastim');
+      expect(cards[1].querySelector('app-character-creatures')?.children.length).toBe(0);
+      expect(el.textContent).not.toContain('Nenhuma criatura');
+      expect(
+        Array.from(el.querySelectorAll('button')).some((b) =>
+          b.textContent?.includes('Dar uma criatura'),
+        ),
+      ).toBe(false);
+    });
+
+    it('has "Dar uma criatura a <nome>" as an item of the character\'s "⋮" menu, one for each character', async () => {
+      withCreatures({});
+      const { el, fixture } = await render(true);
+      const more = Array.from(el.querySelectorAll<HTMLButtonElement>('.card__more'));
+      expect(more.map((b) => b.getAttribute('aria-label'))).toEqual([
+        'Mais ações de Pensantus',
+        'Mais ações de Toren',
+      ]);
+      more[1].click();
+      await settle(fixture);
+      const items = Array.from(document.querySelectorAll('[role="menuitem"]'), (i) =>
+        i.textContent?.replace('add', '').trim(),
+      );
+      expect(items).toEqual(['Dar uma criatura a Toren']);
+      expect(more[1].getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('offers no such menu on a phone, where the master reads the creatures and gives none', async () => {
+      startPhone();
+      try {
+        withCreatures({ c1: [mastim] });
+        const { el, fixture } = await render(true);
+        await settle(fixture, 2);
+        expect(el.querySelector('.card__more')).toBeNull();
+        expect(el.textContent).toContain('Mastim');
+      } finally {
+        endPhone();
+      }
     });
   });
 });

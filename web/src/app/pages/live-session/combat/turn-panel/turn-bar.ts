@@ -15,7 +15,7 @@ import { EndTurn } from './end-turn';
  * (then it is the filled button). What else is available this turn is in the
  * tiles above, so the bar does not repeat it and leaves the initiative cards
  * visible. It sits at the end of the page's column so that it sticks to the
- * bottom of the screen while the page scrolls. From 1024px the button is in
+ * bottom of the screen while the page scrolls, right above the phone's pinned nav (`--mr-session-nav`). From 1024px the button is in
  * the turn card instead.
  */
 @Component({
@@ -46,7 +46,7 @@ import { EndTurn } from './end-turn';
   styles: `
     :host {
       position: sticky;
-      bottom: 0;
+      bottom: var(--mr-session-nav, 0px);
       z-index: 5;
       display: flex;
       flex-direction: column;

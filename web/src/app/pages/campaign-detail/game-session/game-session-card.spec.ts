@@ -13,7 +13,8 @@ import {
   OpenChoicesVm,
   StartGameSessionResultVm,
 } from '../../../core/play/game-session-card.types';
-import { nextTurn } from '../../../../test-settle';
+import { nextTurn, settle } from '../../../../test-settle';
+import { endPhone, startPhone } from '../phone-testing';
 
 @Injectable()
 class FakeGameSessionSource {
@@ -360,6 +361,96 @@ describe('GameSessionCard', () => {
 
     const [first, retry] = fake.startGameSession.mock.calls.map((c) => c[1] as string);
     expect(retry).toBe(first);
+  });
+
+  it('says when the session started as the boards do: "20:12" for today, on one line on a phone', async () => {
+    const startedAt = new Date();
+    startedAt.setHours(20, 12, 0, 0);
+    fake.getCurrentSessionResult = Promise.resolve({ ...session(4), startedAt });
+    const desktop = await render();
+    expect(
+      desktop.el.querySelector('.session__text')?.textContent?.replace(/\s+/g, ' ').trim(),
+    ).toBe('Sessão 4 em andamento, desde 20:12.');
+  });
+
+  it('lays the master\'s three actions out as the board draws them: "Encerrar sessão", "Copiar link da sessão", "Entrar na sessão"', async () => {
+    fake.getCurrentSessionResult = Promise.resolve(session(4));
+    const { el } = await render();
+    const actions = Array.from(
+      el.querySelectorAll('.session__actions > a, .session__actions > button'),
+      (a) => a.textContent?.replace(/content_copy/, '').trim(),
+    );
+    expect(actions).toEqual(['Encerrar sessão', 'Copiar link da sessão', 'Entrar na sessão']);
+    // One filled button: "Entrar na sessão".
+    expect(el.querySelectorAll('.mat-mdc-unelevated-button')).toHaveLength(1);
+  });
+
+  describe('on a phone', () => {
+    beforeEach(() => startPhone());
+    afterEach(() => endPhone());
+
+    it('says "Sessão 4 desde 20:12", with no "em andamento" and no full stop', async () => {
+      const startedAt = new Date();
+      startedAt.setHours(20, 12, 0, 0);
+      fake.getCurrentSessionResult = Promise.resolve({ ...session(4), startedAt });
+      const { el } = await render();
+      expect(el.querySelector('.session__text')?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+        'Sessão 4 desde 20:12',
+      );
+    });
+
+    it('keeps "Entrar na sessão" and a "Mais ações da sessão" menu with the other two', async () => {
+      fake.getCurrentSessionResult = Promise.resolve(session(4));
+      const { el, fixture } = await render();
+      expect(el.textContent).toContain('Sessão 4');
+      expect(el.textContent).not.toContain('em andamento');
+      expect(el.textContent).not.toContain('Encerrar sessão');
+      expect(el.textContent).toContain('Entrar na sessão');
+
+      const more = el.querySelector<HTMLButtonElement>(
+        'button[aria-label="Mais ações da sessão"]',
+      )!;
+      more.click();
+      await settle(fixture);
+      expect(more.getAttribute('aria-haspopup')).toBe('menu');
+      expect(more.getAttribute('aria-expanded')).toBe('true');
+      const items = Array.from(document.querySelectorAll('[role="menuitem"]'), (i) =>
+        i.textContent?.replace(/content_copy|flag/, '').trim(),
+      );
+      expect(items).toEqual(['Copiar link da sessão', 'Encerrar sessão']);
+    });
+
+    it('closes the menu with Escape and gives the focus back to its button', async () => {
+      fake.getCurrentSessionResult = Promise.resolve(session(4));
+      const { el, fixture } = await render();
+      const more = el.querySelector<HTMLButtonElement>(
+        'button[aria-label="Mais ações da sessão"]',
+      )!;
+      more.focus();
+      more.click();
+      await settle(fixture);
+      const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
+      // The menu reads the key code, as the CDK does.
+      Object.defineProperty(escape, 'keyCode', { value: 27 });
+      document.querySelector('[role="menu"]')!.dispatchEvent(escape);
+      await settle(fixture);
+      expect(document.querySelector('[role="menu"]')).toBeNull();
+      expect(document.activeElement).toBe(more);
+    });
+
+    it('asks to end the session in place when "Encerrar sessão" is picked from the menu', async () => {
+      fake.getCurrentSessionResult = Promise.resolve(session(4));
+      const { el, fixture } = await render();
+      el.querySelector<HTMLButtonElement>('button[aria-label="Mais ações da sessão"]')!.click();
+      await settle(fixture);
+      const end = Array.from(document.querySelectorAll<HTMLElement>('[role="menuitem"]')).find(
+        (i) => i.textContent?.includes('Encerrar sessão'),
+      )!;
+      end.click();
+      await settle(fixture);
+      expect(el.textContent).toContain('Encerrar a sessão 4? Ela não reabre depois.');
+      expect(document.activeElement?.textContent).toContain('Confirmar encerramento');
+    });
   });
 });
 

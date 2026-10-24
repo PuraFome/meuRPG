@@ -6,6 +6,7 @@ import type { VitalsVm } from '../../core/play/live-session.types';
 import { applyVitals } from '../../core/play/vitals';
 import { setPageSubject } from '../../core/title/page-title';
 import { PHONE_QUERY, mediaQuery } from '../../shared/map-view/media-query';
+import { CombatLaunch } from './combat/combat-launch';
 import { ConversationPanel } from './conversation/conversation-panel';
 import { ConversationSlot } from './conversation/conversation-slot';
 import { pageVisible } from './conversation/page-visible';
@@ -63,6 +64,14 @@ export class LiveSession {
   protected readonly freeDice = this.parts.freeDice;
   protected readonly conversation = this.parts.conversation;
   protected readonly view = new LiveSessionView(this.state, this.parts);
+  /** "Iniciar combate", from the session bar (the master, outside a combat). */
+  protected readonly launch = new CombatLaunch(
+    this.services.dialog,
+    mediaQuery(PHONE_QUERY),
+    () => this.state.campaignId(),
+    () => this.mapState,
+    (encounter) => this.combatStarted(encounter),
+  );
   /** Where the conversation sits: a column beside the stage, or the phone's "Conversa" tab. */
   protected readonly slot = new ConversationSlot({
     live: computed(() => this.state.phase() === 'live' && this.state.session() !== null),

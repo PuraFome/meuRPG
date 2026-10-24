@@ -1,0 +1,35 @@
+<section class="mr-panel rules" aria-labelledby="rules-heading">
+  <app-panel-head icon="checklist" title="Regras da mesa" titleId="rules-heading">
+    <app-panel-action
+      label="Abrir as regras"
+      [underline]="true"
+      [link]="['/campaigns', campaignId(), 'rules']"
+    />
+  </app-panel-head>
+  <p class="rules__lead">
+    O que vale nesta mesa. Mude na página das regras; a mudança vale na hora para todos.
+  </p>
+
+  @let s = state();
+  @switch (s.status) {
+    @case ('loading') {
+      <p class="rules__lead" role="status">Carregando as regras...</p>
+    }
+    @case ('error') {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ s.message }}</p>
+      </div>
+    }
+    @case ('ready') {
+      <dl class="rules__list">
+        @for (r of rows(); track r.label) {
+          <div class="rules__row">
+            <dt>{{ r.label }}</dt>
+            <dd>{{ r.value }}</dd>
+          </div>
+        }
+      </dl>
+    }
+  }
+</section>

@@ -173,8 +173,11 @@ test(
 
       await master.goto(`/campaigns/${campaignId}`);
       const row = master.locator('app-character-creatures');
-      await expect(row.getByText('Nenhuma criatura')).toBeVisible();
-      await row.getByRole('button', { name: 'Dar uma criatura a Pensantus' }).click();
+      // A character with no creature has no line for it: "Dar uma criatura a Pensantus" is an item of its "⋮" menu.
+      await expect(master.getByText('Nenhuma criatura')).toHaveCount(0);
+      const more = master.getByRole('button', { name: 'Mais ações de Pensantus' });
+      await more.click();
+      await master.getByRole('menuitem', { name: 'Dar uma criatura a Pensantus' }).click();
       const dialog = master.getByRole('dialog', { name: 'Dar uma criatura a Pensantus' });
       await expect(dialog.getByLabel('Nome, em português ou inglês')).toBeFocused();
       await expect(dialog.getByText(/de 334 · em ordem de nome/)).toBeVisible();
@@ -188,7 +191,7 @@ test(
       await expect(dialog).toBeHidden();
       await expect(master.getByText('Mastim dado a Pensantus.')).toBeVisible();
       await expect(row.getByText('Mastim · dado pelo mestre')).toBeVisible();
-      await expect(row.getByRole('button', { name: 'Dar uma criatura a Pensantus' })).toBeFocused();
+      await expect(more).toBeFocused();
 
       // The player is told and the panel appears with the card: CA, PV and the speed.
       const panel = player.locator('app-creatures-panel');
@@ -213,7 +216,8 @@ test(
       await row.getByRole('button', { name: 'Dispensar Mastim' }).click();
       await expect(row.getByRole('alertdialog', { name: 'Dispensar Mastim?' })).toBeVisible();
       await row.getByRole('button', { name: 'Dispensar Mastim' }).click();
-      await expect(row.getByText('Nenhuma criatura')).toBeVisible();
+      await expect(row.getByText('Mastim')).toHaveCount(0);
+      await expect(more).toBeFocused();
       expect(await listCreaturesRPC(master, campaignId, table.characterId)).toEqual([]);
     } finally {
       if (campaignId) {

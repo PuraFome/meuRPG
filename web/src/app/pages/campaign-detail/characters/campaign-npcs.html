@@ -1,0 +1,63 @@
+@let s = roster.state();
+<section class="mr-panel npcs" aria-labelledby="npcs-heading">
+  <app-panel-head icon="person" title="NPCs" titleId="npcs-heading" [count]="count()">
+    <button type="button" class="npcs__new" [matMenuTriggerFor]="npcMenu">
+      <mat-icon aria-hidden="true">add</mat-icon>Novo NPC
+    </button>
+  </app-panel-head>
+  <mat-menu #npcMenu="matMenu">
+    @for (option of npcKinds; track option.segment) {
+      <a mat-menu-item [routerLink]="['/campaigns', campaignId(), 'npcs', 'new', option.segment]">
+        {{ characterKindLabel(option.kind) }}
+      </a>
+    }
+  </mat-menu>
+
+  @switch (s.status) {
+    @case ('loading') {
+      <p class="mr-muted npcs__hint" role="status">Carregando os NPCs...</p>
+    }
+    @case ('error') {
+      <div class="mr-notice mr-notice--danger" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ s.message }}</p>
+      </div>
+    }
+    @case ('ready') {
+      @if (npcs().length === 0) {
+        <p class="npcs__hint">Nenhum NPC ainda. Crie o primeiro para usar nas sessões.</p>
+      } @else {
+        <ul class="mr-list">
+          @for (c of rows(); track c.id; let i = $index) {
+            <li>
+              <a
+                class="row"
+                [class.js-first-extra]="i === shown"
+                [routerLink]="['/campaigns', campaignId(), 'characters', c.id]"
+              >
+                <span class="row__initials" aria-hidden="true">{{ initials(c.name) }}</span>
+                <span class="row__text">
+                  <span class="row__name">{{ c.name }}</span>
+                  <span class="row__sub">{{ sub(c) }}</span>
+                </span>
+                @if (c.state === 'dead') {
+                  <span class="mr-tag mr-tag--danger">{{ characterStateLabel(c.state) }}</span>
+                }
+                <mat-icon class="row__chevron" aria-hidden="true">chevron_right</mat-icon>
+              </a>
+            </li>
+          }
+        </ul>
+        @if (npcs().length > rows().length) {
+          <div>
+            <app-panel-action
+              [underline]="true"
+              [label]="'Ver todos os ' + npcs().length + ' NPCs'"
+              (pressed)="showAll()"
+            />
+          </div>
+        }
+      }
+    }
+  }
+</section>

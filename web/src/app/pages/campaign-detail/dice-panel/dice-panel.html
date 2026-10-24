@@ -1,5 +1,11 @@
 <section class="mr-panel dice" aria-labelledby="dice-panel-heading">
-  <h2 class="mr-panel__title" id="dice-panel-heading">Dados</h2>
+  <app-panel-head icon="casino" title="Dados" titleId="dice-panel-heading">
+    <app-panel-action
+      label="Mudar em Regras da mesa"
+      [underline]="true"
+      [link]="['/campaigns', campaignId(), 'rules']"
+    />
+  </app-panel-head>
   <p class="dice__lead">
     Como os jogadores rolam os dados no combate. Os NPCs sempre rolam no app, e você pode digitar o valor.
   </p>
@@ -10,27 +16,21 @@
   </p>
 
   @if (showChoices()) {
-    <div class="dice__choices">
-      <h3 class="dice__subtitle" id="dice-choices-heading">Escolha de cada jogador</h3>
-      @if (players().length === 0) {
-        <p class="mr-muted dice__empty">Ninguém entrou na campanha ainda. Convide os jogadores para ver a escolha de cada um.</p>
-      } @else {
-        <ul class="mr-list" aria-labelledby="dice-choices-heading">
-          @for (p of players(); track p.userId) {
-            <li class="mr-list__row">
-              <span class="mr-list__name">{{ p.name }}</span>
-              <span class="mr-tag">
-                <mat-icon aria-hidden="true">{{ p.dicePreference === DicePreference.PHYSICAL ? 'person' : 'casino' }}</mat-icon>
-                {{ preferenceLabel(p.dicePreference) }}
-              </span>
-            </li>
-          }
-        </ul>
-      }
-    </div>
+    @if (players().length === 0) {
+      <p class="mr-muted dice__empty">Ninguém entrou na campanha ainda. Convide os jogadores para ver a escolha de cada um.</p>
+    } @else {
+      <ul class="mr-list" aria-label="Escolha de cada jogador">
+        @for (p of players(); track p.userId) {
+          <li class="player">
+            <span class="player__avatar" aria-hidden="true">{{ initial(p) }}</span>
+            <span class="player__name">{{ p.name }}</span>
+            <span class="player__choice">
+              <mat-icon aria-hidden="true">{{ p.dicePreference === DicePreference.PHYSICAL ? 'person' : 'casino' }}</mat-icon>
+              {{ preferenceLabel(p.dicePreference) }}
+            </span>
+          </li>
+        }
+      </ul>
+    }
   }
-
-  <div class="dice__actions">
-    <a matButton="outlined" [routerLink]="['/campaigns', campaignId(), 'rules']">Mudar em Regras da mesa</a>
-  </div>
 </section>

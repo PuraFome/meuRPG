@@ -152,7 +152,7 @@ When the master starts the session, the members get a notice in the app, for who
 The session link requires the person to be signed in (with Google; RN-17 is not built) and opens the session only for members.
 
 - The notice appears under the app bar, with an "Ao vivo" link in the bar. The app looks for open sessions every 30 seconds while the tab is visible. There is no push notification with the app closed.
-- On the campaign page there is no notice: the "Sessão" card is the announcement. A player's card shows "Entrar na sessão" when a session starts and drops it when it ends, without a reload.
+- On the campaign page there is no notice: the session strip is the announcement. A player's strip shows "Entrar na sessão" when a session starts and drops it when it ends, without a reload.
 - A non-member, including a pending member, cannot open the session page. They see "peça um convite ao mestre".
 
 ## RN-07: An invite is not the session link

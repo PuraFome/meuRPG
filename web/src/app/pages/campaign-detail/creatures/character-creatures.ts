@@ -11,7 +11,6 @@ import {
   untracked,
 } from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
-import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -29,21 +28,20 @@ import {
 } from './give-creature-sheet';
 
 /**
- * The master's "Criaturas" of one character in the campaign's list (E9-10,
- * quadros 4 and 6): a line for each creature (the small picture, the name, "Corvo
- * · familiar", and "Dispensar Nanquim", a text action that asks in place), or
- * "Nenhuma criatura", and "Dar uma criatura" (44 px, outlined, the character's
- * name in its `aria-label`), which opens the SRD search. A character can have
- * several creatures, so the button stays. On a phone the master reads the list
- * and gives none (the button is hidden there: the dialog is a computer's).
+ * The master's creatures of one character in the campaign's list (E9-10, quadros 4 and 6; board
+ * C2-01): a line for each creature (the small picture, the name, "Corvo · familiar", and "Dispensar
+ * Nanquim", a text action that asks in place), and nothing at all while the character has none.
+ * "Dar uma criatura" is not here: it is an item of the character's "⋮" menu on the list, which calls
+ * `give()` (it opens the SRD search; a character can have several creatures). On a phone the master
+ * reads the list and gives none (the menu has no such item there: the dialog is a computer's).
  *
- * It reads the character's list itself (the master reads any), and again when
- * the page says so (`reload`, the stream's `creatures_changed`), after a gift
- * and after a dismissal. Only the master gets this block.
+ * It reads the character's list itself (the master reads any), and again when the page says so
+ * (`reload`, the stream's `creatures_changed`), after a gift and after a dismissal. Only the master
+ * gets this block.
  */
 @Component({
   selector: 'app-character-creatures',
-  imports: [CreatureArt, CreatureEdit, MatButtonModule, MatIconModule],
+  imports: [CreatureArt, CreatureEdit, MatIconModule],
   templateUrl: './character-creatures.html',
   styleUrl: './character-creatures.scss',
 })
@@ -60,6 +58,8 @@ export class CharacterCreatures {
   readonly reload = input(0);
   /** A creature was given: the list says it in its live region. */
   readonly given = output<string>();
+  /** The sheet closed or a line was dismissed: the page puts the focus back on the character's "⋮" button. */
+  readonly settled = output();
 
   protected readonly creatures = signal<readonly CharacterCreature[] | null>(null);
   /** The read failed and nothing was ever read: say so instead of "Nenhuma criatura". */
@@ -95,7 +95,7 @@ export class CharacterCreatures {
     }
   }
 
-  protected give(): void {
+  give(): void {
     openSheet<GiveCreatureSheet, GiveCreatureData, GiveCreatureResult>(
       this.dialog,
       this.bottomSheet,
@@ -112,11 +112,8 @@ export class CharacterCreatures {
         focus: 'input[type=search]',
       },
     ).subscribe((result) => {
-      // The dialog gives the focus back to the button that opened it; the ring is drawn here.
-      afterNextRender(
-        () => focusWithRing(this.host.nativeElement.querySelector<HTMLElement>('.give')),
-        { injector: this.injector },
-      );
+      // The dialog gives the focus back to the button that opened it; the page draws the ring.
+      this.settled.emit();
       if (result) {
         void this.load(this.campaignId(), this.characterId());
         this.given.emit(result.name);
@@ -131,13 +128,8 @@ export class CharacterCreatures {
   protected closed(changed: boolean, id: string): void {
     this.asking.set(null);
     if (changed) {
-      // The dismissed line is gone: the focus goes to "Dar uma criatura", which is always there.
-      void this.load(this.campaignId(), this.characterId()).then(() =>
-        afterNextRender(
-          () => focusWithRing(this.host.nativeElement.querySelector<HTMLElement>('.give')),
-          { injector: this.injector },
-        ),
-      );
+      // The dismissed line is gone: the focus goes to the character's "⋮" button, which is always there.
+      void this.load(this.campaignId(), this.characterId()).then(() => this.settled.emit());
       return;
     }
     afterNextRender(

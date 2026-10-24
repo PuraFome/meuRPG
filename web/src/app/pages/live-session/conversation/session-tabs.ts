@@ -9,7 +9,8 @@ export type SessionTab = 'scene' | 'chat';
 const BADGE_MAX = 99;
 
 /**
- * The phone's section nav, "Cena | Ficha | Conversa" (MR-051): "Cena" is the session page, "Ficha"
+ * The phone's section nav, "Cena | Ficha | Conversa" (MR-051), pinned to the bottom of every live phone screen (the board's
+ * "Cena · Ficha · Conversa"): "Cena" is the session page, "Ficha"
  * goes to the character (the master's to the campaign, where the party is), and "Conversa" opens
  * the full-screen conversation. The unread count sits on "Conversa" in the accent colour and is
  * spoken in words in the button's name ("Conversa, 3 mensagens novas").

@@ -2,32 +2,73 @@
   display: block;
 }
 
+// The error state is a panel with a plain link; the usual state is one row, the whole row a link (board C6-02).
 .doc {
   display: flex;
   flex-direction: column;
   gap: var(--mr-space-2);
+  padding: 16px 20px 20px;
 
   .mr-panel__title {
     margin: 0;
   }
 }
 
-.doc__status {
-  margin: 0;
+.doc__link a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-weight: 700;
 }
 
-.doc__row {
+.row {
   display: flex;
   align-items: center;
   gap: var(--mr-space-3);
-  min-height: 56px;
-  margin: 0;
+  min-height: 60px;
+  padding: 12px 20px;
+  color: inherit;
+  text-decoration: none;
 
-  .mat-icon {
-    flex: none;
-    width: 24px;
-    height: 24px;
-    font-size: 24px;
-    color: var(--mr-ink-muted);
+  &:hover .row__title {
+    text-decoration: underline;
   }
+}
+
+.row__icon,
+.row__chevron {
+  flex: none;
+  color: var(--mr-ink-muted);
+}
+
+.row__icon {
+  width: 22px;
+  height: 22px;
+  font-size: 22px;
+}
+
+.row__chevron {
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+}
+
+.row__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.row__title {
+  font-family: var(--mr-font-display);
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 26px;
+}
+
+.row__sub {
+  color: var(--mr-ink-muted);
+  font-size: 14px;
+  line-height: 19px;
 }

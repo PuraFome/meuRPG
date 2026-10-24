@@ -1,7 +1,10 @@
 import { expect, test } from '@playwright/test';
 
 import { tableWithPensantus } from './live-session-support';
-import { newSignedInContext } from './support';
+import {
+  gotoCampaignTab,
+  newSignedInContext,
+} from './support';
 
 // RN-18 (MR-013, MR-014): how the campaign's players roll dice. The master
 // sets it in "Dados" (E6-17); a player sees "Como você rola os dados"
@@ -19,7 +22,7 @@ test(
       await masterPage.goto('/');
       await playerPage.goto('/');
       const { campaignId } = await tableWithPensantus(masterPage, playerPage, `Dados ${Date.now()}`);
-      await masterPage.goto(`/campaigns/${campaignId}`);
+      await gotoCampaignTab(masterPage, campaignId, 'Regras');
       await playerPage.goto(`/campaigns/${campaignId}`);
 
       // The default: players choose, and the player may pick. The master's panel only says it: the mode is edited in
@@ -36,7 +39,7 @@ test(
       await masterPage.getByRole('radiogroup', { name: 'Como os jogadores rolam' }).locator('label', { hasText: 'Todos rolam no app' }).click();
       await masterPage.getByRole('button', { name: 'Salvar regras' }).click();
       await expect(masterPage.getByText(/Regras salvas\./)).toBeVisible();
-      await masterPage.goto(`/campaigns/${campaignId}`);
+      await gotoCampaignTab(masterPage, campaignId, 'Regras');
       await expect(dados.getByText('Todos rolam no app')).toBeVisible();
       await playerPage.reload();
       await expect(como.getByText('O mestre decidiu: todos rolam no app.')).toBeVisible();
@@ -54,7 +57,7 @@ test(
       await como.getByRole('button', { name: 'Salvar escolha' }).click();
       await expect(como.getByText('Salvo.')).toBeVisible();
 
-      await masterPage.goto(`/campaigns/${campaignId}`);
+      await gotoCampaignTab(masterPage, campaignId, 'Regras');
       await expect(dados.getByRole('listitem').filter({ hasText: 'Sem nome no perfil' })).toContainText('Meus próprios dados');
     } finally {
       await master.close();

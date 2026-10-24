@@ -2,7 +2,14 @@ import { expect, test } from '@playwright/test';
 
 import { createMapRPC, saveDocumentRPC, tableWithDocumentParts } from './document-support';
 import { createPointRPC, setCurrentMapRPC } from './maps-support';
-import { authStatePath, callRPC, newSignedInContext, startGameSession } from './support';
+import {
+  authStatePath,
+  callRPC,
+  gotoCampaignTab,
+  newSignedInContext,
+  openCampaignTab,
+  startGameSession,
+} from './support';
 
 // MR-018, the campaign document (web/src/app/pages/campaign-document and the
 // "Documento da campanha" panel of the campaign page), against the real
@@ -19,10 +26,10 @@ test(
     await page.goto('/');
     const table = await tableWithDocumentParts(page, `Documento ${Date.now()}`);
 
-    await page.goto(`/campaigns/${table.campaignId}`);
-    const panel = page.getByRole('region', { name: 'Documento da campanha' });
-    await expect(panel.getByText('Ainda sem texto. Só você vê este documento.')).toBeVisible();
-    await panel.getByRole('link', { name: 'Abrir documento' }).click();
+    await gotoCampaignTab(page, table.campaignId, 'Preparação');
+    const row = page.getByRole('link', { name: /^Documento da campanha/ });
+    await expect(row.getByText('Ainda sem texto · só você lê')).toBeVisible();
+    await row.click();
 
     await expect(page.getByRole('heading', { level: 1, name: `${table.campaignName} — preparação` })).toBeVisible();
     await expect(page.getByText('Só o mestre vê este documento.')).toBeVisible();
@@ -92,8 +99,10 @@ test(
     await page.reload();
     await check();
     await page.getByRole('link', { name: 'Voltar para a campanha' }).click();
-    await expect(page.getByRole('region', { name: 'Documento da campanha' }).getByText(/^Editado hoje às \d\d:\d\d\. Só você vê este documento\.$/)).toBeVisible();
-    await page.goBack();
+    await openCampaignTab(page, 'Preparação');
+    await expect(page.getByRole('link', { name: /^Documento da campanha/ }).getByText(/^Editado hoje às \d\d:\d\d · só você lê$/)).toBeVisible();
+    // Back to the document: the tab click made its own history entry, so "back" would land on "Mesa".
+    await page.goto(`/campaigns/${table.campaignId}/document`);
 
     // The map link opens a dialog over the document (E5-29): the map with
     // every point (a hidden one marked "Escondido"), whether it is revealed

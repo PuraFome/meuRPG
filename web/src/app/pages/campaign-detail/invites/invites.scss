@@ -2,6 +2,15 @@
   display: block;
 }
 
+.invites {
+  padding: 16px 20px 20px;
+
+  // Folded to one row on a phone (board C6-04).
+  &.is-folded {
+    padding: 4px 16px;
+  }
+}
+
 .invites__hint {
   margin: 0 0 var(--mr-space-2);
   font-size: 15px;

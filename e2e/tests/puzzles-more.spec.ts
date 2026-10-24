@@ -23,7 +23,7 @@ import {
   trapPointRPC,
 } from './puzzles-support';
 import { setCurrentMapRPC } from './maps-support';
-import { boxOf, newSignedInContext } from './support';
+import { boxOf, newSignedInContext, openCampaignTab } from './support';
 
 // More puzzles on screen (Etapa 10, slice 10.15b: MR-038, RN-27, RN-10, RN-18; E10-12): the riddle, the sequence and the cipher, the
 // skill check that wins a hint, the split information and "Ao errar". The puzzles come through the API where the screen is not what is
@@ -84,6 +84,7 @@ test('o enigma: o mestre o faz no formulário, o jogador erra e depois acerta, e
     await master.getByRole('button', { name: 'Menos tentativa' }).click();
     await master.getByRole('button', { name: 'Criar quebra-cabeça' }).click();
     await expect(master).toHaveURL(puzzleRoute(table.campaignId));
+    await openCampaignTab(master, 'Preparação');
     await expect(master.getByRole('region', { name: 'Quebra-cabeças' }).getByText('Enigma · 2 respostas aceitas')).toBeVisible();
 
     await openSessionPage(master, table.campaignId);

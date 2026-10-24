@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import {
   Component,
   ElementRef,
@@ -32,6 +33,7 @@ import {
 import { isPlayer } from '../../../../core/combat/combat-view';
 import { isTheatre } from '../../../../core/combat/theatre';
 import { PHONE_QUERY, mediaQuery } from '../../../../shared/map-view/media-query';
+import { Fold } from '../../../../shared/fold/fold';
 import { openSheet } from '../../../../shared/sheet/sheet-host';
 import { LogList } from './log-list';
 import { LogSheet, type LogSheetData } from './log-sheet';
@@ -48,7 +50,7 @@ import { LogSheet, type LogSheetData } from './log-sheet';
  */
 @Component({
   selector: 'app-combat-log-panel',
-  imports: [LogList, MatButtonModule, MatIconModule],
+  imports: [Fold, LogList, MatButtonModule, MatIconModule, NgTemplateOutlet],
   templateUrl: './combat-log-panel.html',
   styleUrl: './combat-log-panel.scss',
 })
@@ -104,10 +106,6 @@ export class CombatLogPanel {
   });
   /** The list is drawn: always on a laptop, on a phone only the master's, open. */
   protected readonly showList = computed(() => !this.phone() || (this.master() && this.open()));
-
-  protected toggle(): void {
-    this.open.update((v) => !v);
-  }
 
   /** The player's tall sheet, with the whole log. */
   protected openSheet(): void {
