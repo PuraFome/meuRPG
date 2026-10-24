@@ -461,27 +461,10 @@ type MonsterSpeed struct {
 // list. Types are the damage type keys it names ("damage-type:acid"); Note is
 // the rest of the SRD's text ("from nonmagical weapons"), or the whole text
 // when it names no damage type ("damage from spells").
-//
-// Qualifier says, for the entries the SRD limits to nonmagical attacks, how: one of
-// the Qualifier* constants. It is empty for an entry with no such limit, and for
-// one whose limit the engine does not read ("damage from spells").
 type MonsterDamageMod struct {
-	Types     []string `json:"types,omitempty"`
-	Note      string   `json:"note,omitempty"`
-	Qualifier string   `json:"qualifier,omitempty"`
+	Types []string `json:"types,omitempty"`
+	Note  string   `json:"note,omitempty"`
 }
-
-// The qualifiers of a MonsterDamageMod.
-const (
-	// QualifierNonmagical limits the entry to attacks that are not magical.
-	QualifierNonmagical = "nonmagical"
-	// QualifierNonmagicalUnlessSilvered limits it to nonmagical attacks made with
-	// a weapon that is not silvered.
-	QualifierNonmagicalUnlessSilvered = "nonmagical-unless-silvered"
-	// QualifierNonmagicalUnlessAdamantine limits it to nonmagical attacks made with
-	// a weapon that is not adamantine.
-	QualifierNonmagicalUnlessAdamantine = "nonmagical-unless-adamantine"
-)
 
 // MonsterAbility is a trait, a reaction or a legendary action: a name and
 // its text. Usage is the SRD's limit, such as "3/day" or "Recharge 5-6".

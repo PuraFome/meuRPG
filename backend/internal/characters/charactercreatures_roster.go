@@ -545,7 +545,7 @@ func (s *Service) CreatureSheet(ctx context.Context, tx pgx.Tx, campaignID, mons
 			Key: a.Key, Name: name, Spell: a.Kind == "spell", ToHit: a.AttackBonus,
 			DiceCount: a.DamageDice.Count, DiceSides: a.DamageDice.Sides, DiceBonus: a.DamageDice.Bonus,
 			DamageType: a.DamageType, RangeFt: a.RangeFt, LongRangeFt: a.LongRangeFt, Melee: a.Melee,
-			Ability: string(a.Ability), Weapon: a.Kind == "weapon", Magical: a.Magical,
+			Ability: string(a.Ability), Weapon: a.Kind == "weapon",
 		})
 	}
 	for _, a := range d.StandardActions {
@@ -627,8 +627,8 @@ func (s *Service) CreatureCheck(ctx context.Context, tx pgx.Tx, campaignID, mons
 // takes double, half or none of, from its stat block. A creature's key is given;
 // an NPC made from a creature has it on its basic sheet; anyone else (a player's
 // character, an NPC typed by hand) has none. Only the plain entries count: one
-// with a condition other than "from nonmagical attacks" (silvered, adamantine) is left
-// to the master, who changes the amount that lands.
+// with a condition in the SRD's words ("from nonmagical weapons") is left to the
+// master, who changes the amount that lands.
 func (s *Service) DamageModifiers(ctx context.Context, tx pgx.Tx, campaignID, characterID, monsterKey string) (combat.TypeModifiers, error) {
 	if monsterKey == "" {
 		id, ok := uid.Canonical(characterID)
@@ -658,27 +658,14 @@ func (s *Service) DamageModifiers(ctx context.Context, tx pgx.Tx, campaignID, ch
 	if !ok {
 		return combat.TypeModifiers{}, nil
 	}
-	return typeModifiersOf(c, monsterKey), nil
+	return combat.TypeModifiers{Vulnerable: plainTypes(c.Vulnerabilities), Resistant: plainTypes(c.Resistances), Immune: plainTypes(c.Immunities), Source: monsterKey}, nil
 }
 
-// typeModifiersOf reads the damage lists of a stat block: the plain entries, and the
-// resistances and immunities the SRD limits to nonmagical attacks, kept apart. An
-// entry with any other condition (a material such as silver or adamantine, "damage
-// from spells") is left to the master.
-func typeModifiersOf(c rules.Creature, monsterKey string) combat.TypeModifiers {
-	return combat.TypeModifiers{
-		Vulnerable: damageTypesOf(c.Vulnerabilities, ""), Resistant: damageTypesOf(c.Resistances, ""), Immune: damageTypesOf(c.Immunities, ""),
-		ResistantNonmagical: damageTypesOf(c.Resistances, rules.QualifierNonmagical), ImmuneNonmagical: damageTypesOf(c.Immunities, rules.QualifierNonmagical),
-		Source: monsterKey,
-	}
-}
-
-// damageTypesOf lists the damage types of the entries with this qualifier: "" for the
-// entries that carry no condition at all.
-func damageTypesOf(mods []rules.CreatureDamageMod, qualifier string) []string {
+// plainTypes lists the damage types of the entries that carry no condition.
+func plainTypes(mods []rules.CreatureDamageMod) []string {
 	var out []string
 	for _, m := range mods {
-		if m.Qualifier != qualifier || (qualifier == "" && m.Note != "") {
+		if m.Note != "" {
 			continue
 		}
 		for _, t := range m.Types {

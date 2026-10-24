@@ -913,11 +913,6 @@ type Attack struct {
 	// AbilityMod is the ability modifier inside Damage, which the bonus action
 	// attack of Two-Weapon Fighting leaves out when it is positive.
 	AbilityMod int
-	// Magical says the attack's damage is magical, for the resistances and
-	// immunities to nonmagical attacks: true for a spell, and for a creature's
-	// weapon attack when its stat block has the trait "Magic Weapons". A weapon
-	// of a character is not, nor is the unarmed strike.
-	Magical bool `json:",omitempty"`
 	// Notes is the rest of a creature's action, as the SRD wrote it (in
 	// English): the damage parts after the first, a saving throw, a rider.
 	// The engine rolls the to-hit and the first damage part; the master reads

@@ -16,7 +16,6 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
-	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
@@ -454,11 +453,7 @@ func (f *damageFlow) settleSteps(ctx context.Context, g playdb.PendingDamage, tg
 	if own {
 		byType = f.pr.byType
 	}
-	from, err := f.originOf(ctx, g)
-	if err != nil {
-		return steps, amount, err
-	}
-	steps, err = f.s.settleLanding(ctx, f.c, f.states, tgt, byType, from)
+	steps, err := f.s.settleLanding(ctx, f.c, f.states, tgt, byType)
 	if err != nil {
 		return steps, amount, err
 	}
@@ -466,29 +461,6 @@ func (f *damageFlow) settleSteps(ctx context.Context, g playdb.PendingDamage, tg
 		amount = steps.amount
 	}
 	return steps, amount, nil
-}
-
-// originOf says where a pending damage comes from, for the resistances that hold for
-// nonmagical attacks only: the damage of a spell is that of a magical attack; an attack
-// of the sheet or the stat block is magical when the sheet says so (a cantrip, a creature
-// with the trait "Magic Weapons"); a damage with no attack of the attacker behind it (a
-// trap, a hazard, an ongoing effect) is no attack, and those resistances do not cover it.
-func (f *damageFlow) originOf(ctx context.Context, g playdb.PendingDamage) (combat.Origin, error) {
-	switch {
-	case g.CastID != nil:
-		return combat.Origin{Attack: true, Magical: true}, nil
-	case g.AttackerID == nil || g.AttackKey == "":
-		return combat.Origin{}, nil
-	}
-	sheet, err := f.s.sheetOf(ctx, f.c.tx, f.c.session.CampaignID, f.attacker)
-	if err != nil {
-		return combat.Origin{}, err
-	}
-	i := slices.IndexFunc(sheet.Attacks, func(a link.Attack) bool { return a.Key == g.AttackKey })
-	if i < 0 {
-		return combat.Origin{}, nil
-	}
-	return combat.Origin{Attack: true, Magical: sheet.Attacks[i].Magical}, nil
 }
 
 // landHit puts the damage or the heal on the target and notes the vitals it touched.

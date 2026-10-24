@@ -1880,8 +1880,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "immunities": [
@@ -3684,8 +3683,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "condition_immunities": [
@@ -4062,8 +4060,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical attacks (from stoneskin)",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical attacks (from stoneskin)"
    }
   ],
   "passive_perception": 12,
@@ -4595,8 +4592,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "immunities": [
@@ -4896,8 +4892,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't silvered",
-    "qualifier": "nonmagical-unless-silvered"
+    "note": "from nonmagical weapons that aren't silvered"
    }
   ],
   "immunities": [
@@ -5137,8 +5132,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't silvered",
-    "qualifier": "nonmagical-unless-silvered"
+    "note": "from nonmagical weapons that aren't silvered"
    }
   ],
   "immunities": [
@@ -5938,8 +5932,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't silvered",
-    "qualifier": "nonmagical-unless-silvered"
+    "note": "from nonmagical weapons that aren't silvered"
    }
   ],
   "immunities": [
@@ -6654,8 +6647,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't silvered",
-    "qualifier": "nonmagical-unless-silvered"
+    "note": "from nonmagical weapons that aren't silvered"
    }
   ],
   "immunities": [
@@ -7011,8 +7003,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't adamantine",
-    "qualifier": "nonmagical-unless-adamantine"
+    "note": "from nonmagical weapons that aren't adamantine"
    }
   ],
   "condition_immunities": [
@@ -7553,8 +7544,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "truesight": 120,
@@ -8125,8 +8115,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "condition_immunities": [
@@ -9323,8 +9312,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "immunities": [
@@ -9643,8 +9631,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't silvered",
-    "qualifier": "nonmagical-unless-silvered"
+    "note": "from nonmagical weapons that aren't silvered"
    }
   ],
   "immunities": [
@@ -9985,8 +9972,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "immunities": [
@@ -10180,8 +10166,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't adamantine",
-    "qualifier": "nonmagical-unless-adamantine"
+    "note": "from nonmagical weapons that aren't adamantine"
    }
   ],
   "condition_immunities": [
@@ -10530,8 +10515,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't adamantine",
-    "qualifier": "nonmagical-unless-adamantine"
+    "note": "from nonmagical weapons that aren't adamantine"
    }
   ],
   "immunities": [
@@ -10811,8 +10795,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "immunities": [
@@ -12796,8 +12779,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "immunities": [
@@ -13659,8 +13641,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "darkvision": 60,
@@ -14034,8 +14015,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "immunities": [
@@ -14480,8 +14460,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "immunities": [
@@ -14870,8 +14849,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't silvered",
-    "qualifier": "nonmagical-unless-silvered"
+    "note": "from nonmagical weapons that aren't silvered"
    }
   ],
   "immunities": [
@@ -15207,8 +15185,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't silvered",
-    "qualifier": "nonmagical-unless-silvered"
+    "note": "from nonmagical weapons that aren't silvered"
    }
   ],
   "immunities": [
@@ -15473,8 +15450,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't silvered",
-    "qualifier": "nonmagical-unless-silvered"
+    "note": "from nonmagical weapons that aren't silvered"
    }
   ],
   "immunities": [
@@ -15569,8 +15545,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "immunities": [
@@ -15676,8 +15651,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't adamantine",
-    "qualifier": "nonmagical-unless-adamantine"
+    "note": "from nonmagical weapons that aren't adamantine"
    }
   ],
   "condition_immunities": [
@@ -16091,8 +16065,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "condition_immunities": [
@@ -16469,8 +16442,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "condition_immunities": [
@@ -17015,8 +16987,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "immunities": [
@@ -17259,8 +17230,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "immunities": [
@@ -17997,8 +17967,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "immunities": [
@@ -18131,8 +18100,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "condition_immunities": [
@@ -18285,8 +18253,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "immunities": [
@@ -18418,8 +18385,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't silvered",
-    "qualifier": "nonmagical-unless-silvered"
+    "note": "from nonmagical weapons that aren't silvered"
    }
   ],
   "condition_immunities": [
@@ -19496,8 +19462,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't silvered",
-    "qualifier": "nonmagical-unless-silvered"
+    "note": "from nonmagical weapons that aren't silvered"
    }
   ],
   "immunities": [
@@ -19664,8 +19629,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "condition_immunities": [
@@ -20223,8 +20187,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "immunities": [
@@ -20376,8 +20339,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "darkvision": 60,
@@ -21327,8 +21289,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "immunities": [
@@ -21776,8 +21737,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "immunities": [
@@ -22271,8 +22231,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "immunities": [
@@ -22446,8 +22405,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "immunities": [
@@ -23064,8 +23022,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't adamantine",
-    "qualifier": "nonmagical-unless-adamantine"
+    "note": "from nonmagical weapons that aren't adamantine"
    }
   ],
   "condition_immunities": [
@@ -23316,8 +23273,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "darkvision": 60,
@@ -24195,8 +24151,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "condition_immunities": [
@@ -25051,8 +25006,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "darkvision": 120,
@@ -25177,8 +25131,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "darkvision": 120,
@@ -25269,8 +25222,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "darkvision": 60,
@@ -25391,8 +25343,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "darkvision": 120,
@@ -25716,8 +25667,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "immunities": [
@@ -25997,8 +25947,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "immunities": [
@@ -26159,8 +26108,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't silvered",
-    "qualifier": "nonmagical-unless-silvered"
+    "note": "from nonmagical weapons that aren't silvered"
    }
   ],
   "passive_perception": 17,
@@ -26253,8 +26201,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't silvered",
-    "qualifier": "nonmagical-unless-silvered"
+    "note": "from nonmagical weapons that aren't silvered"
    }
   ],
   "passive_perception": 17,
@@ -26332,8 +26279,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't silvered",
-    "qualifier": "nonmagical-unless-silvered"
+    "note": "from nonmagical weapons that aren't silvered"
    }
   ],
   "passive_perception": 17,
@@ -26458,8 +26404,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't silvered",
-    "qualifier": "nonmagical-unless-silvered"
+    "note": "from nonmagical weapons that aren't silvered"
    }
   ],
   "passive_perception": 12,
@@ -26532,8 +26477,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't silvered",
-    "qualifier": "nonmagical-unless-silvered"
+    "note": "from nonmagical weapons that aren't silvered"
    }
   ],
   "passive_perception": 12,
@@ -26611,8 +26555,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't silvered",
-    "qualifier": "nonmagical-unless-silvered"
+    "note": "from nonmagical weapons that aren't silvered"
    }
   ],
   "passive_perception": 12,
@@ -26724,8 +26667,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't silvered",
-    "qualifier": "nonmagical-unless-silvered"
+    "note": "from nonmagical weapons that aren't silvered"
    }
   ],
   "passive_perception": 12,
@@ -26834,8 +26776,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't silvered",
-    "qualifier": "nonmagical-unless-silvered"
+    "note": "from nonmagical weapons that aren't silvered"
    }
   ],
   "passive_perception": 12,
@@ -26985,8 +26926,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't silvered",
-    "qualifier": "nonmagical-unless-silvered"
+    "note": "from nonmagical weapons that aren't silvered"
    }
   ],
   "darkvision": 60,
@@ -27056,8 +26996,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't silvered",
-    "qualifier": "nonmagical-unless-silvered"
+    "note": "from nonmagical weapons that aren't silvered"
    }
   ],
   "darkvision": 60,
@@ -27155,8 +27094,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't silvered",
-    "qualifier": "nonmagical-unless-silvered"
+    "note": "from nonmagical weapons that aren't silvered"
    }
   ],
   "darkvision": 60,
@@ -27294,8 +27232,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't silvered",
-    "qualifier": "nonmagical-unless-silvered"
+    "note": "from nonmagical weapons that aren't silvered"
    }
   ],
   "darkvision": 60,
@@ -27380,8 +27317,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't silvered",
-    "qualifier": "nonmagical-unless-silvered"
+    "note": "from nonmagical weapons that aren't silvered"
    }
   ],
   "passive_perception": 14,
@@ -27458,8 +27394,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't silvered",
-    "qualifier": "nonmagical-unless-silvered"
+    "note": "from nonmagical weapons that aren't silvered"
    }
   ],
   "passive_perception": 14,
@@ -27558,8 +27493,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't silvered",
-    "qualifier": "nonmagical-unless-silvered"
+    "note": "from nonmagical weapons that aren't silvered"
    }
   ],
   "passive_perception": 14,
@@ -27717,8 +27651,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't silvered",
-    "qualifier": "nonmagical-unless-silvered"
+    "note": "from nonmagical weapons that aren't silvered"
    }
   ],
   "immunities": [
@@ -27873,8 +27806,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons",
-    "qualifier": "nonmagical"
+    "note": "from nonmagical weapons"
    }
   ],
   "immunities": [
@@ -28193,8 +28125,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't silvered",
-    "qualifier": "nonmagical-unless-silvered"
+    "note": "from nonmagical weapons that aren't silvered"
    }
   ],
   "immunities": [
@@ -28405,8 +28336,7 @@
      "damage-type:piercing",
      "damage-type:slashing"
     ],
-    "note": "from nonmagical weapons that aren't adamantine",
-    "qualifier": "nonmagical-unless-adamantine"
+    "note": "from nonmagical weapons that aren't adamantine"
    }
   ],
   "darkvision": 60,

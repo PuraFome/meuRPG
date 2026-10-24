@@ -1288,24 +1288,7 @@ func damageMod(s string) srd51.MonsterDamageMod {
 		rest = rest[len(m[0]):]
 	}
 	out.Note = strings.TrimSpace(rest)
-	out.Qualifier = damageQualifier(out.Note)
 	return out
-}
-
-// damageQualifier reads the limit to nonmagical attacks out of the rest of an
-// entry's text ("from nonmagical weapons that aren't silvered"). An entry with
-// another rider ("damage from spells") has none.
-func damageQualifier(note string) string {
-	if !strings.Contains(note, "nonmagical") {
-		return ""
-	}
-	switch {
-	case strings.Contains(note, "aren't silvered"):
-		return srd51.QualifierNonmagicalUnlessSilvered
-	case strings.Contains(note, "aren't adamantine"):
-		return srd51.QualifierNonmagicalUnlessAdamantine
-	}
-	return srd51.QualifierNonmagical
 }
 
 func damageMods(list []string) []srd51.MonsterDamageMod {

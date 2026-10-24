@@ -7,11 +7,6 @@ import "slices"
 // "damage-type:fire".
 type TypeModifiers struct {
 	Vulnerable, Resistant, Immune []string
-	// ResistantNonmagical and ImmuneNonmagical are the types the creature resists or is
-	// immune to only when the damage is that of a nonmagical attack (the SRD's "from
-	// nonmagical attacks"). AdjustForType, which adjusts a damage that is no attack,
-	// does not read them; Adjust does.
-	ResistantNonmagical, ImmuneNonmagical []string
 	// Source is the key of the stat block they come from ("monster:skeleton"), "" when
 	// it is not known.
 	Source string

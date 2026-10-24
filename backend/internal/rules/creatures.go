@@ -372,11 +372,6 @@ type Creature struct {
 	LegendaryActions []CreatureAbility
 }
 
-// QualifierNonmagical is the qualifier of a CreatureDamageMod limited to attacks
-// that are not magical (the SRD's "from nonmagical weapons"). The ones limited by a
-// material too (silvered, adamantine) have their own values in srd51.
-const QualifierNonmagical = srd51.QualifierNonmagical
-
 // CreatureDamageMod is a vulnerability, resistance or immunity entry.
 type CreatureDamageMod struct {
 	// Types are the damage types it names ("damage-type:fire", "Fogo").
@@ -384,9 +379,6 @@ type CreatureDamageMod struct {
 	// Note is the rest of the SRD's text, in English ("from nonmagical
 	// weapons"), or the whole text when it names no damage type.
 	Note string
-	// Qualifier is how the SRD limits the entry to nonmagical attacks (a
-	// srd51.Qualifier* value), "" when it does not.
-	Qualifier string
 }
 
 // CreatureAbility is a trait, reaction or legendary action: a name and the
@@ -510,7 +502,7 @@ func (c *content) creatureSkills(m *srd51.Monster) []Skill {
 func (c *content) creatureDamageMods(list []srd51.MonsterDamageMod) []CreatureDamageMod {
 	var res []CreatureDamageMod
 	for _, d := range list {
-		e := CreatureDamageMod{Note: d.Note, Qualifier: d.Qualifier}
+		e := CreatureDamageMod{Note: d.Note}
 		for _, t := range d.Types {
 			e.Types = append(e.Types, NamedKey{Key: t, NamePT: c.namePT(t)})
 		}
@@ -729,15 +721,6 @@ func slugOf(name string) string {
 	return strings.Trim(slugRe.ReplaceAllString(strings.ToLower(name), "-"), "-")
 }
 
-// magicWeaponsTrait is the name of the SRD trait that makes a creature's weapon
-// attacks magical.
-const magicWeaponsTrait = "Magic Weapons"
-
-// hasMagicWeapons says the stat block has the trait "Magic Weapons".
-func hasMagicWeapons(m *srd51.Monster) bool {
-	return slices.ContainsFunc(m.SpecialAbilities, func(a srd51.MonsterAbility) bool { return a.Name == magicWeaponsTrait })
-}
-
 // monsterAttack reads an action with an attack bonus as an Attack: the to-hit,
 // the first damage part, the reach or range from the text, and whether it is a
 // melee attack. The rest of the action is in Notes.
@@ -750,8 +733,6 @@ func (c *content) monsterAttack(m *srd51.Monster, a srd51.MonsterAction, key str
 	if strings.Contains(a.Desc, "Spell Attack") {
 		at.Kind = "spell"
 	}
-	// A spell attack is magic; a weapon attack is only with the trait that says so.
-	at.Magical = at.Kind == "spell" || hasMagicWeapons(m)
 	// The ability is the one whose modifier plus the proficiency bonus is the
 	// to-hit; otherwise the usual one for the attack.
 	at.Ability = STR

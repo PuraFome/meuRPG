@@ -1,5 +1,5 @@
 {
-  "ContentVersion": "srd51@a8abc93b235c+fx.49",
+  "ContentVersion": "srd51@a8abc93b235c+fx.48",
   "RaceNamePT": "Gnomo",
   "SubraceNamePT": "Gnomo das Rochas",
   "BackgroundNamePT": "Sábio",
@@ -693,7 +693,6 @@
       "TwoHanded": false,
       "MartialArts": false,
       "AbilityMod": 0,
-      "Magical": true,
       "Notes": ""
     },
     {
@@ -733,7 +732,6 @@
       "TwoHanded": false,
       "MartialArts": false,
       "AbilityMod": 0,
-      "Magical": true,
       "Notes": ""
     },
     {
