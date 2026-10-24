@@ -1,5 +1,6 @@
 import { Component, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 
 import { aidTagForMaster } from '../../../core/combat/combat-effects';
 import { NudgeButton } from '../nudge-button/nudge-button';
@@ -24,7 +25,7 @@ import {
  */
 @Component({
   selector: 'app-party-panel',
-  imports: [MatButtonModule, NudgeButton, SessionXp, SlotDots],
+  imports: [MatButtonModule, MatIconModule, NudgeButton, SessionXp, SlotDots],
   templateUrl: './party-panel.html',
   styleUrl: './party-panel.scss',
 })
@@ -33,6 +34,9 @@ export class PartyPanel {
   readonly campaignName = input('');
   readonly party = input.required<readonly VitalsVm[]>();
   readonly info = input<ReadonlyMap<string, PartyMemberInfoVm>>(new Map());
+
+  /** The characters who see nothing where they stand (the master's light warning): a "No escuro" badge beside their names. */
+  readonly dark = input<ReadonlySet<string>>(new Set());
 
   /** "Ajustar" on a row. */
   readonly adjust = output<VitalsVm>();

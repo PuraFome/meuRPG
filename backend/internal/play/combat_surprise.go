@@ -64,6 +64,15 @@ func (s *Service) surprisedIDs(_ context.Context, enc playdb.Encounter, cs []pla
 	return out, nil
 }
 
+// surprisedFacts reads who is surprised now, for the attack modes.
+func (s *Service) surprisedFacts(ctx context.Context, q *playdb.Queries, enc playdb.Encounter, cs []playdb.Combatant) ([]string, error) {
+	rows, err := q.ListSurprised(ctx, enc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the surprised: %w", err)
+	}
+	return s.surprisedIDs(ctx, enc, cs, rows)
+}
+
 // surprisedNow says whether one combatant is surprised now. tx is the open transaction, or
 // nil for a read.
 func (s *Service) surprisedNow(ctx context.Context, tx pgx.Tx, enc playdb.Encounter, c playdb.Combatant) (bool, error) {

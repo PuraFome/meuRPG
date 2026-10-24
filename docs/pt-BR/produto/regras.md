@@ -215,6 +215,7 @@ Num mapa com a névoa ligada, o jogador recebe só o que o personagem dele vê a
 - O token de um personagem de jogador sempre chega. Um token que o mestre escondeu ainda ilumina o mapa, e o jogador vê a claridade, não quem a carrega.
 - O que foi visto fica, escurecido e sem criaturas, até o mestre limpar ("Esquecer o que foi visto") ou mudar a grade ou a imagem.
 - Um mapa em "Claro" (luz base clara) mostra a planta toda aos jogadores, mas as criaturas e os pontos ainda seguem o que os personagens veem, e uma porta secreta aparece como parede. Uma sala que deve ficar secreta usa "Penumbra", que um calabouço gerado recebe.
+- Num mapa com névoa o mestre é avisado, e só o mestre, de cada personagem de jogador que não enxerga onde está: a casa dele está escura (a luz de base é "Escuro" e nenhuma luz pintada ou fonte de luz a alcança, contando as luzes de NPCs que os jogadores não veem) e ele não tem visão no escuro, visão às cegas nem visão verdadeira. Em "Penumbra" e "Claro", e num mapa sem névoa, ninguém está no escuro. Uma luz carregada que se apaga faz o aviso voltar na hora.
 - A imagem de um mapa com névoa é só do mestre: mostrá-la na sessão, deixá-la com os jogadores, ou usá-la como retrato ou como fundo de outro mapa gera uma cópia.
 - O combate num mapa com névoa está na RN-20. O jogador de um personagem morto vê o que o grupo vivo vê. Um combate encerrado não tem névoa.
 

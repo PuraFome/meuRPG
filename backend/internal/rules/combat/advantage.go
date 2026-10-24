@@ -314,6 +314,12 @@ type AttackScene struct {
 	// feat's ranged_attack effect, for weapon attacks): the caller sets it only for a
 	// weapon attack. Beyond the long range the attack is still refused.
 	NoLongRangeDisadvantage bool
+	// UnactedAdvantage is the key of the attacker's feature that gives it advantage against a
+	// creature that has not had its turn yet, set by the caller only when the target is one
+	// (HasNotActed), "" for none. SurprisedCritical says the attacker has the feature that makes a
+	// hit on a surprised creature critical and the target is surprised.
+	UnactedAdvantage  string
+	SurprisedCritical bool
 }
 
 // withinFive says the attacker is within 5 ft of the target. Without a map a
@@ -376,10 +382,13 @@ func AttackMode(s AttackScene) AttackModeResult {
 	var out AttackModeResult
 	out.Sources = conditionSources(s)
 	out.Sources = append(out.Sources, proneTargetSources(s, within, known)...)
-	out.CriticalOnHit = known && within && (s.Target.Has(conditionParalyzed) || s.Target.Has(conditionUnconscious))
+	out.CriticalOnHit = s.SurprisedCritical || (known && within && (s.Target.Has(conditionParalyzed) || s.Target.Has(conditionUnconscious)))
 	out.Sources = appendRules(out.Sources, sceneRules(s))
 	out.Sources = append(out.Sources, rangedSources(s)...)
 	out.Sources = append(out.Sources, attackerEffectSources(s)...)
+	if s.UnactedAdvantage != "" {
+		out.Sources = append(out.Sources, Source{Kind: SourceEffectAttack, Effect: ModeAdvantage, Condition: s.UnactedAdvantage})
+	}
 	return out
 }
 

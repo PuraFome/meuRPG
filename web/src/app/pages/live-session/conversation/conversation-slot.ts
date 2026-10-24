@@ -17,6 +17,8 @@ export interface SlotInputs {
   readonly userId: Signal<string>;
   /** The character ids of the NPCs on the stage (the master gets them). */
   readonly stageCharacterIds: Signal<readonly string[]>;
+  /** The lines that came while the conversation was not on screen. */
+  readonly unread: Signal<number>;
 }
 
 /**
@@ -36,6 +38,10 @@ export class ConversationSlot {
     () =>
       this.inputs.live() &&
       (this.inputs.phone() ? this.tab() === 'chat' : this.inputs.pageVisible()),
+  );
+  /** The count the notice at the top of the page shows: only on a phone, with the chat closed, in a live session; else 0. */
+  readonly news = computed(() =>
+    this.inputs.live() && this.inputs.phone() && this.tab() !== 'chat' ? this.inputs.unread() : 0,
   );
   /** The panel's code is loaded: the lazy block opens on it. */
   readonly wanted = computed(() => this.inputs.live() && (!this.inputs.phone() || this.opened()));

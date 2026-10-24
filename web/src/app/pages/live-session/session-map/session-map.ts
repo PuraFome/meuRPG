@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, output, signal } from '@angular/core';
+import { Component, computed, inject, input, output, signal, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatDialog } from '@angular/material/dialog';
@@ -13,6 +13,7 @@ import { describeConnectError } from '../../../core/connect/connect-errors';
 import type { DoorSquare } from '../../../core/maps/layers';
 import { wallUnderDoor } from '../../../core/maps/door-paint';
 import { lightKeyName } from '../../../core/maps/carried-light';
+import type { DarkWatch } from '../../../core/maps/dark-watch';
 import type { FogView } from '../../../core/maps/fog-view';
 import { mapErrorMessage } from '../../../core/maps/map-errors';
 import { MapReveals } from '../../../core/maps/map-reveals';
@@ -33,8 +34,11 @@ import { MapLegend } from '../../../shared/map-view/map-legend/map-legend';
 import { MapMove, MapView } from '../../../shared/map-view/map-view';
 import { PHONE_QUERY, mediaQuery } from '../../../shared/map-view/media-query';
 import { type DoorSheetData, openDoorSheet } from '../door-sheet/door-sheet';
+import { SessionDark } from '../dark-warning/session-dark';
 import { FogPlayerTools } from '../fog-tools/fog-player-tools';
 import { LiveSessionSource } from '../../../core/play/live-session.types';
+
+const NO_IDS: ReadonlySet<string> = new Set();
 
 /**
  * The map half of the session page (MR-012, E5-02 to E5-06): the session's
@@ -70,6 +74,7 @@ import { LiveSessionSource } from '../../../core/play/live-session.types';
     MatIconModule,
     MatInputModule,
     RouterLink,
+    SessionDark,
     ViewAsMapView,
   ],
   templateUrl: './session-map.html',
@@ -112,6 +117,8 @@ export class SessionMap {
   /** The player looks through their familiar's eyes ("Nanquim"): the card says whose view it is. */
   readonly seeingFamiliar = input<string | null>(null);
   readonly seeing = input(false);
+  /** The master's light warning (B3): who sees nothing where they stand. Only the master's copy uses it; a player's never reads it (RN-10). */
+  readonly dark = input<DarkWatch | null>(null);
   readonly creaturesTick = input(0);
   /** The master chose another map (or none): the page shows it. */
   readonly currentChanged = output<string | null>();
@@ -148,6 +155,14 @@ export class SessionMap {
     const chosen = this.maps().find((m) => m.id === this.mapId());
     return chosen !== undefined && !chosen.revealed;
   });
+
+  /** The fog map, for "Ver no mapa" of the light warning. */
+  private readonly fogMap = viewChild(FogMap);
+  /** The character "Ver no mapa" chose: the one label "<Nome> · no escuro". */
+  protected readonly darkChosen = signal<string | null>(null);
+  protected readonly darkIds = computed<ReadonlySet<string>>(
+    () => (this.isMaster() ? this.dark()?.ids() : undefined) ?? NO_IDS,
+  );
 
   protected readonly pendingScene = signal<string | null>(null);
   /** The map "Ir para <mapa>" is moving the session to. */
@@ -286,6 +301,12 @@ export class SessionMap {
         },
       },
     );
+  }
+
+  /** "Ver no mapa": the map centers on the character and only that one gets the label. */
+  protected showDark(characterId: string): void {
+    this.darkChosen.set(characterId);
+    this.fogMap()?.showCharacter(characterId);
   }
 
   protected retry(): void {

@@ -116,6 +116,7 @@ const (
 	ListIncreaseAmounts    = "ability_increase_amounts"
 	ListRangedAttacks      = "ranged_attack_applies"
 	ListExtraDamageApplies = "extra_damage_applies"
+	ListAmbushApplies      = "ambush_applies"
 	ListDamageTypes        = "damage_types"
 	// ListResistanceConditions are when a resistance effect holds.
 	ListResistanceConditions = "resistance_conditions"
@@ -186,6 +187,11 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
+	{Type: "ambush", NamePT: "Emboscada", HintPT: "Uma vantagem do personagem contra alvos pegos de surpresa: vantagem nas jogadas de ataque contra uma criatura que ainda não teve o seu turno no combate, ou acerto crítico em uma criatura surpresa (a marca de surpresa é a do mestre, no início do combate).", Fields: []MenuField{
+		{Name: "applies", Required: true, Kind: "choice", List: ListAmbushApplies},
+		{Name: "when", Kind: "condition"},
+		{Name: "text_pt", Kind: "text"},
+	}},
 	{Type: "ranged_attack", NamePT: "Ataque à distância", HintPT: "Muda os ataques de longe do personagem: os de magias que pedem jogada de ataque ou os com arma à distância (e a arma arremessada de longe). Pode tirar o bônus de meia cobertura e de três quartos do alvo, multiplicar o alcance dessas magias ou tirar a desvantagem de atirar no alcance longo da arma.", Fields: []MenuField{
 		{Name: "applies", Required: true, Kind: "choice", List: ListRangedAttacks},
 		{Name: "ignore_cover", Kind: "yes_no", AlwaysShown: true},
@@ -238,6 +244,10 @@ var (
 		ManeuverDamage: "Dano de um ataque com arma que acertou", ManeuverAttack: "Rolagem de ataque", ManeuverGrapple: "Atletismo de uma agarrada (ação bônus)",
 		ManeuverReduceMelee: "Reduz o dano de um ataque corpo a corpo (reação)",
 		ManeuverGoad:        "Dano de um ataque com arma que acertou e provocação (teste de Sabedoria)",
+	}
+	ambushNms = map[string][2]string{
+		AmbushUnactedAdvantage:  {"Vantagem contra quem não agiu", "Vantagem nas jogadas de ataque contra uma criatura que ainda não teve um turno no combate."},
+		AmbushSurprisedCritical: {"Crítico contra surpreso", "Um acerto contra uma criatura surpresa é um acerto crítico."},
 	}
 	extraDamageNms = map[string][2]string{
 		ExtraDamageAnyTarget:    {"Qualquer alvo", "Vale contra qualquer criatura atingida."},
@@ -411,6 +421,7 @@ func (c *content) menuLists() []MenuList {
 		{Name: ListIncreaseAmounts, Values: []MenuValue{{Key: "1", NamePT: "+1"}, {Key: "2", NamePT: "+2"}}},
 		{Name: ListRangedAttacks, Values: rangedAttackValues()},
 		{Name: ListExtraDamageApplies, Values: extraDamageValues()},
+		{Name: ListAmbushApplies, Values: ambushValues()},
 		{Name: ListDamageTypes, Values: c.menuDamageTypes()},
 		{Name: ListResistanceConditions, Values: []MenuValue{{Key: ResistanceWhileRage, NamePT: "Em fúria", HintPT: "Vale enquanto o personagem estiver em fúria (e não usar armadura pesada)."}}},
 	}

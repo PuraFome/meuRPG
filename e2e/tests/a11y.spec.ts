@@ -20,7 +20,7 @@ import { classCard, passClassStep, tableForLevelUp } from './levelup-support';
 import { aurora, auroraSheet, beginPlacedCombatRPC, nael, naelSheet, orla, orlaSheet, spendForRestRPC } from './rests-support';
 import { castSheet, choiceCard, openCastOf, pickChoice, pickSlotRadio, pickTargetOf, tableForCasting } from './casting-support';
 import { paintRPC, pickRadio, tapSquare } from './move-support';
-import { beginFogCombat, moveTo, sessionRoute, tableForFog } from './fog-support';
+import { beginFogCombat, moveTo, sessionRoute, setCarriedLightRPC, tableForFog } from './fog-support';
 import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
 import { claimRoute, linkRPC, reservedRPC, revokeLinkRPC, rowOf } from './claim-support';
 import { authStatePath, boxOf, callRPC, layoutSize, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus, showAllPicks, signIn, type TestUser } from './support';
@@ -8071,6 +8071,90 @@ test('o rolador de dados livre passa no axe e nas conferências de layout no tem
   await scanFreeDiceScreens(browser, 'dark', 390);
 });
 
+// The master's light warning (B3): on a dark map Toren (a human, no darkvision) has no light, so the session map card shows
+// "No escuro: Toren ...", the badge sits beside his name in "Grupo", "Ver no mapa" marks him on the map, "Acender luz" opens the
+// carried-light sheet and, once he carries a torch, the notice leaves and the status message says so. The player's own screen
+// never gets any of it (RN-10). On a computer the map page shows the same warning, as one line in "Pintar".
+async function scanDarkWarningScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(300_000);
+  const viewport = { width, height: width < 700 ? 800 : 900 };
+  const contexts = await Promise.all(
+    (['Mestre Teste', 'Jogador Teste', 'E-mail Não Verificado'] as const).map((user) =>
+      browser.newContext({ storageState: authStatePath(user), colorScheme, viewport }),
+    ),
+  );
+  const [m, p, t] = await Promise.all(contexts.map((c) => c.newPage()));
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    await Promise.all([m.goto('/'), p.goto('/'), t.goto('/')]);
+    const table = await tableForFog(m, p, t, `Acessibilidade no escuro ${Date.now()}`, {});
+
+    // The notice, the badge and the ring: Toren is the only one in the dark (Pensantus has darkvision).
+    await m.goto(sessionRoute(table.campaignId));
+    const notice = m.locator('app-session-dark .dark');
+    await expect(notice).toContainText('No escuro: Toren não enxerga onde está (sem luz e sem visão no escuro).');
+    await expect(m.locator('.js-dark')).toContainText('No escuro');
+    await expectScreenPasses(m, `No escuro, o aviso do mestre ${where}`);
+
+    // "Ver no mapa": the map centers and only Toren is labelled.
+    await notice.getByRole('button', { name: 'Ver Toren no mapa' }).click();
+    await expect(m.locator('app-dark-marks .label')).toHaveText('Toren · no escuro');
+    await expectScreenPasses(m, `No escuro, Ver no mapa ${where}`);
+
+    // The player's screen never changes (RN-10).
+    await t.goto(sessionRoute(table.campaignId));
+    await expect(t.locator('app-fog-base')).toBeVisible();
+    await expect(t.locator('app-session-dark, app-dark-marks, .js-dark')).toHaveCount(0);
+
+    // "Acender luz": the existing carried-light sheet, then the notice leaves and the status message says why.
+    await notice.getByRole('button', { name: 'Acender luz de Toren' }).click();
+    // A dialog named by its title on a computer, a bottom sheet named "Luz que você carrega" on a phone.
+    const sheet = m.getByRole('dialog', { name: /Acender luz: Toren|Luz que você carrega/ });
+    await expect(sheet.getByRole('heading', { name: 'Acender luz: Toren' })).toBeVisible();
+    await expectScreenPasses(m, `No escuro, Acender luz ${where}`);
+    await sheet.getByText('Tocha', { exact: true }).click();
+    await expect(sheet.getByRole('radio', { name: /Tocha/ })).toBeChecked();
+    await sheet.getByRole('button', { name: 'Pronto' }).click();
+    await expect(m.getByRole('status').filter({ hasText: 'Toren acendeu a tocha. Não está mais no escuro.' })).toBeVisible();
+    await expect(m.locator('app-session-dark .dark')).toHaveCount(0);
+    await expectScreenPasses(m, `No escuro, a luz acesa ${where}`);
+
+    // The torch goes out: the notice returns at once, with the message about the light.
+    await setCarriedLightRPC(m, table.campaignId, table.mapId, table.torenId, '');
+    await expect(m.getByRole('status').filter({ hasText: 'A tocha de Toren apagou. A luz de Toren ficou “Nenhuma”.' })).toBeVisible();
+    await expect(notice).toBeVisible();
+    await expectScreenPasses(m, `No escuro, a luz apagou ${where}`);
+
+    // The map page (a computer): the notice over the map, one line in "Pintar".
+    if (width >= 768) {
+      await m.goto(`/campaigns/${table.campaignId}/maps/${table.mapId}`);
+      await expect(m.locator('app-editor-dark .dark')).toContainText('No escuro: Toren não enxerga onde está');
+      await expectScreenPasses(m, `No escuro, a página do mapa ${where}`);
+      await m.getByRole('radio', { name: 'Pintar' }).click();
+      await expect(m.locator('app-editor-dark .dark--line')).toContainText('No escuro: Toren.');
+      await expectScreenPasses(m, `No escuro, a página do mapa pintando ${where}`);
+    }
+  } finally {
+    await Promise.all(contexts.map((c) => c.close()));
+  }
+}
+
+test('o aviso de luz do mestre passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@B3'] }, async ({ browser }) => {
+  await scanDarkWarningScreens(browser, 'light', 1280);
+});
+
+test('o aviso de luz do mestre passa no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@B3'] }, async ({ browser }) => {
+  await scanDarkWarningScreens(browser, 'light', 390);
+});
+
+test('o aviso de luz do mestre passa no axe e nas conferências de layout no tema escuro, no desktop', { tag: ['@a11y', '@B3'] }, async ({ browser }) => {
+  await scanDarkWarningScreens(browser, 'dark', 1280);
+});
+
+test('o aviso de luz do mestre passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@B3'] }, async ({ browser }) => {
+  await scanDarkWarningScreens(browser, 'dark', 390);
+});
+
 // The scene's conversation (MR-051, RN-36): the empty panel, the lines (a narration, a whisper, an NPC), the "Para"
 // chooser open (a dialog on a computer, a bottom sheet on a phone) and, on a phone, the "Conversa" tab with its unread
 // count and the full-screen view. Each scan waits for the state it names: a line, the tab's name, the chooser's line.
@@ -8081,7 +8165,7 @@ async function scanConversationScreens(browser: Browser, colorScheme: 'light' | 
   const phone = width < 768;
   const openChat = async (page: Page) => {
     if (phone) {
-      await page.getByRole('button', { name: /^Conversa/ }).click();
+      await page.getByRole('button', { name: /^Conversa(, \d+ mensage(?:m|ns) novas?)?$/ }).click();
     }
     // The empty feed is not drawn; the panel is there once its message box is.
     await expect(messageBoxOf(page)).toBeVisible();
@@ -8117,8 +8201,12 @@ async function scanConversationScreens(browser: Browser, colorScheme: 'light' | 
 
     // The player: on a phone the tab says there is news, then the full-screen view.
     if (phone) {
-      await expect(p.getByRole('button', { name: /^Conversa, \d+ mensagens? novas?$/ })).toBeVisible();
-      await expectScreenPasses(p, `Aba Conversa com mensagens novas ${where}`);
+      await expect(p.getByRole('button', { name: /^Conversa, \d+ mensage(?:m|ns) novas?$/ })).toBeVisible();
+      // The notice at the top of the page says the same, in view without scrolling; it is awaited by its words.
+      const notice = p.getByRole('button', { name: /^Conversa: \d+ mensage(?:m|ns) novas? Abrir$/ });
+      await expect(notice).toBeVisible();
+      await expect(notice).toBeInViewport();
+      await expectScreenPasses(p, `Aviso de mensagens novas no topo e aba Conversa com mensagens novas ${where}`);
     }
     await openChat(p);
     await expect(lineOf(p, npc)).toBeVisible();

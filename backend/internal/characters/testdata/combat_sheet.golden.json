@@ -194,7 +194,9 @@
       "CreatureType": "",
       "SpellAttackIgnoresCover": false,
       "RangedWeaponIgnoresCover": false,
-      "RangedWeaponNoLongRangeDisadvantage": false
+      "RangedWeaponNoLongRangeDisadvantage": false,
+      "UnactedAdvantage": "",
+      "SurprisedCritical": ""
     }
   },
   "bardo do conhecimento 3": {
@@ -330,7 +332,9 @@
       "CreatureType": "",
       "SpellAttackIgnoresCover": false,
       "RangedWeaponIgnoresCover": false,
-      "RangedWeaponNoLongRangeDisadvantage": false
+      "RangedWeaponNoLongRangeDisadvantage": false,
+      "UnactedAdvantage": "",
+      "SurprisedCritical": ""
     }
   },
   "bárbaro berserker 9": {
@@ -477,7 +481,9 @@
       "CreatureType": "",
       "SpellAttackIgnoresCover": false,
       "RangedWeaponIgnoresCover": false,
-      "RangedWeaponNoLongRangeDisadvantage": false
+      "RangedWeaponNoLongRangeDisadvantage": false,
+      "UnactedAdvantage": "",
+      "SurprisedCritical": ""
     }
   },
   "goblin de ficha básica": {
@@ -596,7 +602,9 @@
       "CreatureType": "",
       "SpellAttackIgnoresCover": false,
       "RangedWeaponIgnoresCover": false,
-      "RangedWeaponNoLongRangeDisadvantage": false
+      "RangedWeaponNoLongRangeDisadvantage": false,
+      "UnactedAdvantage": "",
+      "SurprisedCritical": ""
     }
   },
   "guerreiro campeão 5": {
@@ -732,7 +740,9 @@
       "CreatureType": "",
       "SpellAttackIgnoresCover": false,
       "RangedWeaponIgnoresCover": false,
-      "RangedWeaponNoLongRangeDisadvantage": false
+      "RangedWeaponNoLongRangeDisadvantage": false,
+      "UnactedAdvantage": "",
+      "SurprisedCritical": ""
     }
   },
   "guerreiro de cota de malha": {
@@ -891,7 +901,9 @@
       "CreatureType": "",
       "SpellAttackIgnoresCover": false,
       "RangedWeaponIgnoresCover": false,
-      "RangedWeaponNoLongRangeDisadvantage": false
+      "RangedWeaponNoLongRangeDisadvantage": false,
+      "UnactedAdvantage": "",
+      "SurprisedCritical": ""
     }
   },
   "monge da mão aberta 5": {
@@ -1059,7 +1071,9 @@
       "CreatureType": "",
       "SpellAttackIgnoresCover": false,
       "RangedWeaponIgnoresCover": false,
-      "RangedWeaponNoLongRangeDisadvantage": false
+      "RangedWeaponNoLongRangeDisadvantage": false,
+      "UnactedAdvantage": "",
+      "SurprisedCritical": ""
     }
   },
   "ogro do bestiário": {
@@ -1201,7 +1215,9 @@
       "CreatureType": "giant",
       "SpellAttackIgnoresCover": false,
       "RangedWeaponIgnoresCover": false,
-      "RangedWeaponNoLongRangeDisadvantage": false
+      "RangedWeaponNoLongRangeDisadvantage": false,
+      "UnactedAdvantage": "",
+      "SurprisedCritical": ""
     }
   },
   "paladino 2": {
@@ -1337,7 +1353,9 @@
       "CreatureType": "",
       "SpellAttackIgnoresCover": false,
       "RangedWeaponIgnoresCover": false,
-      "RangedWeaponNoLongRangeDisadvantage": false
+      "RangedWeaponNoLongRangeDisadvantage": false,
+      "UnactedAdvantage": "",
+      "SurprisedCritical": ""
     }
   },
   "refused: a character that is not there": {
