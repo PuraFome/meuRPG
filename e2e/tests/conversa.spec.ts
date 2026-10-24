@@ -139,7 +139,7 @@ test(
     const table = await openConversaTable(browser, `Conversa aviso ${Date.now()}`, { width: 390 });
     const { master, pensantus } = table;
     try {
-      const notice = pensantus.getByRole('button', { name: /^Conversa: \d+ mensagens? novas? Abrir$/ });
+      const notice = pensantus.getByRole('button', { name: /^Conversa: \d+ mensage(?:m|ns) novas? Abrir$/ });
       // Without news there is no notice, and the master's own line is not news for the master.
       await expect(notice).toHaveCount(0);
       await master.getByRole('button', { name: /^Conversa$/ }).click();

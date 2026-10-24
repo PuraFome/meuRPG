@@ -2169,7 +2169,7 @@ describe('LiveSession', () => {
         const el = await settle(fixture);
         await arrive(fixture, ['m1']);
         const button = notice(el)?.querySelector('button') as HTMLButtonElement;
-        expect(accessibleName(button)).toMatch(/^Conversa: \d+ mensagens? novas? Abrir$/);
+        expect(accessibleName(button)).toMatch(/^Conversa: \d+ mensage(?:m|ns) novas? Abrir$/);
         expect(accessibleName(button)).toBe('Conversa: 1 mensagem nova Abrir');
       });
 
@@ -2201,7 +2201,11 @@ describe('LiveSession', () => {
         });
         const fixture = TestBed.createComponent(LiveSession);
         const el = await settle(fixture);
-        expect(parts(fixture).conversation.lines().map((l) => l.id)).toEqual(['m0']);
+        expect(
+          parts(fixture)
+            .conversation.lines()
+            .map((l) => l.id),
+        ).toEqual(['m0']);
         expect(notice(el)).toBeNull();
       });
 
