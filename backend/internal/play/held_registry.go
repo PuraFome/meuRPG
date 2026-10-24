@@ -10,6 +10,8 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
 // heldKindDef is what a kind of held roll does that the gate cannot know.
@@ -143,6 +145,34 @@ func rerunAttack(ctx context.Context, s *Service, h heldRoll, key string) (proto
 		return nil, err
 	}
 	return out.Msg, nil
+}
+
+// retryOfHeldAttack says the request is the retry of a weapon attack that was held and answered: the attack was written under
+// the request's key from the request the hold kept, which the gate pinned (the mode and its reason, both d20 of a pair), so
+// the stored hash is that one's. The retry is the same request when pinning it as the hold did gives that hash.
+func retryOfHeldAttack(msg *playv1.RollAttackRequest) func(ctx context.Context, q *playdb.Queries, stored *string) bool {
+	return func(ctx context.Context, q *playdb.Queries, stored *string) bool {
+		row, err := q.GetInspirationHoldByKey(ctx, playdb.GetInspirationHoldByKeyParams{CampaignID: msg.GetCampaignId(), IdempotencyKey: msg.GetIdempotencyKey()})
+		if err != nil {
+			return false
+		}
+		h := heldOfInspirationHold(row)
+		var pinned playv1.RollAttackRequest
+		if h.Kind != heldWeaponAttack || h.Window || proto.Unmarshal(h.Request, &pinned) != nil {
+			return false
+		}
+		return !hashDiffers(stored, idem.Hash(&pinned)) && sameApartFromPins(msg, &pinned)
+	}
+}
+
+// sameApartFromPins says two attack requests are the same but for what the gate pins in a held one.
+func sameApartFromPins(a, b *playv1.RollAttackRequest) bool {
+	unpin := func(r *playv1.RollAttackRequest) *playv1.RollAttackRequest {
+		c, _ := proto.Clone(r).(*playv1.RollAttackRequest)
+		c.RollMode, c.ModeReason, c.D20Faces = 0, "", nil
+		return c
+	}
+	return proto.Equal(unpin(a), unpin(b))
 }
 
 // attackOfRequest is the attack and the target of the request a weapon attack's hold kept.

@@ -158,6 +158,10 @@ type combatWrite struct {
 	// writes turn_part_ended when the turn does not pass yet): a retry of the
 	// change under the same key may find either.
 	altKind string
+	// sameHeld says a request whose hash differs from the stored one is still a retry of the one that made the event:
+	// the held attack was written by its answer from the request the hold kept, with the mode and the dice the gate
+	// pinned in it, so its hash is the pinned request's. Optional.
+	sameHeld func(ctx context.Context, q *playdb.Queries, stored *string) bool
 }
 
 // combatTx is what a change works with inside its transaction: the open
@@ -384,7 +388,7 @@ func (s *Service) replayOfKey(ctx context.Context, q *playdb.Queries, session pl
 	}
 	// The key was used for another request of the same kind: a retry has the very same
 	// one. An event from before the hash was kept has none, and is replayed as it was.
-	if hashDiffers(done.IdempotencyHash, w.hash) {
+	if hashDiffers(done.IdempotencyHash, w.hash) && (w.sameHeld == nil || !w.sameHeld(ctx, q, done.IdempotencyHash)) {
 		return false, errKeyReused()
 	}
 	// A key is its author's: another member replaying it would be handed the
