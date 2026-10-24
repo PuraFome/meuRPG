@@ -305,8 +305,12 @@ export class FogMap {
   /** "Ver no mapa" (the master's light warning): the map centers on the character. */
   showCharacter(characterId: string): void {
     const t = this.tokens().find((x) => !x.creatureId && x.characterId === characterId);
+    // On a phone the map zooms in on the character; on a computer it keeps the zoom it has (the whole map, unless the master zoomed).
     if (t) {
-      this.goTo(t);
+      this.view()?.focusOn(
+        { xBp: t.xBp, yBp: t.yBp },
+        this.phone() ? undefined : this.view()?.scale(),
+      );
     }
   }
 

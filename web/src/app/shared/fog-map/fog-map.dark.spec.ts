@@ -41,13 +41,13 @@ describe('FogMap: characters in the dark (B3)', () => {
     expect(el.textContent).toContain('No escuro');
   });
 
-  it('centers the map on the character', async () => {
+  it('centers the map on the character, keeping a computer’s zoom', async () => {
     const { fixture, el } = await create(new Set(['c-brisa']));
     const view = fixture.debugElement.query((d) => d.componentInstance instanceof MapView)
       .componentInstance as MapView;
     const focus = vi.spyOn(view, 'focusOn');
     fixture.componentInstance.showCharacter('c-brisa');
-    expect(focus).toHaveBeenCalledWith({ xBp: 2000, yBp: 2000 });
+    expect(focus).toHaveBeenCalledWith({ xBp: 2000, yBp: 2000 }, 1);
     expect(el).toBeTruthy();
   });
 });

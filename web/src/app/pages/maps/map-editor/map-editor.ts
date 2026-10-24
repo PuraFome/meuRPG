@@ -201,7 +201,8 @@ export class MapEditor {
       .tokens()
       .find((x) => !x.creatureId && x.characterId === characterId);
     if (t) {
-      this.view()?.focusOn({ xBp: t.xBp, yBp: t.yBp });
+      // Centers on the character at the zoom the map has (the whole map, unless the master zoomed).
+      this.view()?.focusOn({ xBp: t.xBp, yBp: t.yBp }, this.view()?.scale());
     }
   }
   private readonly pointPanel = viewChild(PointPanel);
