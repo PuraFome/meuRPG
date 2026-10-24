@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
@@ -51,7 +52,7 @@ func (s *Service) GetStartRoster(
 	ctx context.Context,
 	req *connect.Request[playv1.GetStartRosterRequest],
 ) (*connect.Response[playv1.GetStartRosterResponse], error) {
-	m, err := requireBuilder(ctx, req.Msg.GetCampaignId())
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
 	if err != nil {
 		return nil, err
 	}
