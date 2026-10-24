@@ -31,6 +31,7 @@ import {
 } from './characters/campaign-characters.types';
 import { GameSessionSource, GameSessionVm } from '../../core/play/game-session-card.types';
 import { nextTurn } from '../../../test-settle';
+import { endPhone, startPhone } from './phone-testing';
 
 /** `CampaignCharacters` and `CampaignNpcs` (through the page's `CampaignRoster`) and `GameSessionCard`
  * (the master's "Sessão" strip) are children of this page and of its tabs: they need a provider or Angular DI throws. */
@@ -628,7 +629,7 @@ describe('CampaignDetail', () => {
         '/campaigns/camp-1/setup',
       ]);
       expect(tabs(el).map((a) => a.querySelector('mat-icon')?.textContent)).toEqual([
-        'groups',
+        'group',
         'map',
         'checklist',
       ]);
@@ -753,6 +754,24 @@ describe('CampaignDetail', () => {
           'Pacote da campanha',
         ]),
       );
+    });
+
+    it('puts the three folded rows last on a phone, in the order of the board: Membros, Convites, Sessões anteriores', async () => {
+      startPhone();
+      try {
+        asMaster();
+        const el = await render();
+        const column = el.querySelector('.tab-layout__column')!;
+        const order = Array.from(column.children, (c) => c.tagName.toLowerCase());
+        expect(order.slice(-3)).toEqual([
+          'app-campaign-members',
+          'app-campaign-invites',
+          'app-past-sessions-panel',
+        ]);
+        expect(el.querySelectorAll('.tab-layout__column')).toHaveLength(1);
+      } finally {
+        endPhone();
+      }
     });
 
     it('gives a player one page, with no tabs', async () => {

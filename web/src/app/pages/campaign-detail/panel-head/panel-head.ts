@@ -16,7 +16,9 @@ import { MatIconModule } from '@angular/material/icon';
   selector: 'app-panel-head',
   imports: [MatIconModule],
   template: `
-    <mat-icon class="head__icon" aria-hidden="true">{{ icon() }}</mat-icon>
+    <mat-icon class="head__icon" [class.head__icon--folded]="foldable()" aria-hidden="true">{{
+      icon()
+    }}</mat-icon>
     <h2 class="mr-panel__title head__title" [id]="titleId()">
       @if (foldable()) {
         <button
@@ -35,7 +37,7 @@ import { MatIconModule } from '@angular/material/icon';
       <span class="head__count">{{ count() }}</span>
     }
     <ng-content />
-    @if (foldable()) {
+    @if (foldable() && chevron()) {
       <mat-icon class="head__chevron" aria-hidden="true">{{
         open() ? 'expand_less' : 'chevron_right'
       }}</mat-icon>
@@ -53,6 +55,8 @@ export class PanelHead {
   readonly count = input('');
   /** The head is a button that folds the panel (a phone's rows). */
   readonly foldable = input(false);
+  /** Whether a folded row ends with its chevron (a row with its own action says its way without one). */
+  readonly chevron = input(true);
   /** Whether a foldable panel is open. */
   readonly open = model(true);
 }

@@ -1,5 +1,9 @@
 :host {
   display: block;
+  // The boards draw this page's outlined buttons with an ink label and the control line, not the accent:
+  // the accent is for the one filled button ("Entrar na sessão") and the text actions of the panels.
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
 }
 
 // "‹ Minhas campanhas", quiet, above the title (the artboard's back link).

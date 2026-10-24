@@ -9,6 +9,7 @@
     titleId="invites-heading"
     [count]="phone() ? summary() : ''"
     [foldable]="phone()"
+    [chevron]="open()"
     [(open)]="open"
   >
     @if (phone() && !open()) {

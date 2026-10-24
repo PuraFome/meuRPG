@@ -15,6 +15,13 @@
   color: var(--mr-ink-muted);
 }
 
+// A folded row's words are the sans at 17 px, whose capitals sit lower in their line: the icon follows them.
+.head__icon--folded,
+.head__chevron {
+  position: relative;
+  top: 1.5px;
+}
+
 .head__title {
   flex: 1 1 auto;
   min-width: 0;
@@ -31,10 +38,13 @@
 // actions sit above it).
 .head__fold {
   padding: 0;
+  font-family: var(--mr-font-sans);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 22px;
   border: 0;
   background: none;
   color: inherit;
-  font: inherit;
   text-align: left;
   cursor: pointer;
 
