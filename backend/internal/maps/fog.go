@@ -800,7 +800,7 @@ func (p *playerView) revision() int32 {
 		return hashOf(p.codes, p.pack())
 	}
 	f := filterLayers(*p.layers, p)
-	return hashOf(p.codes, p.pack(), f.terrain.Encode(), f.walls.Encode(), f.cover.Encode(), f.doors.Encode())
+	return hashOf(p.codes, p.pack(), f.terrain.Encode(), f.walls.Encode(), f.cover.Encode(), f.doors.Encode(), f.noPass.Encode())
 }
 
 // hashOf is a 31-bit hash of bytes, for the revisions the app compares.

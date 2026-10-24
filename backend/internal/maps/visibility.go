@@ -181,6 +181,7 @@ func (cm campaignMaps) mapToProto(r mapsdb.ListMapDetailsRow, v viewer) *mapsv1.
 	}
 	setMapGrid(out, r)
 	out.FogEnabled, out.GroupVision, out.LayersRevision = r.FogEnabled, r.GroupVision, r.LayersRevision
+	out.PlayersMoveTokens = r.PlayersMoveTokens
 	if v.master {
 		setMasterMapFields(out, r)
 	} else {

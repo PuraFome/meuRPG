@@ -43,5 +43,5 @@ func (s *Service) Terrain(ctx context.Context, tx pgx.Tx, campaignID, mapID stri
 		return grid.Terrain{}, fmt.Errorf("read the layers: %w", err)
 	}
 	set := loadLayers(stored, g)
-	return grid.Terrain{Grid: g, Walls: set.walls, Difficult: set.terrain, Cover: set.cover, Doors: set.doors}, nil
+	return grid.Terrain{Grid: g, Walls: set.walls, Difficult: set.terrain, Cover: set.cover, Doors: set.doors, NoPass: set.noPass}, nil
 }

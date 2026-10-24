@@ -13,7 +13,7 @@ import (
 const applyFogRule = `-- name: ApplyFogRule :one
 UPDATE maps SET fog_enabled = true, fog_on_first_grid = false, updated_at = $1
 WHERE campaign_id = $2 AND id = $3
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash, players_move_tokens
 `
 
 type ApplyFogRuleParams struct {
@@ -47,6 +47,7 @@ func (q *Queries) ApplyFogRule(ctx context.Context, arg ApplyFogRuleParams) (Map
 		&i.GridFactor,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.PlayersMoveTokens,
 	)
 	return i, err
 }
@@ -329,7 +330,7 @@ func (q *Queries) DeleteGalleryImage(ctx context.Context, arg DeleteGalleryImage
 const deleteMap = `-- name: DeleteMap :one
 DELETE FROM maps
 WHERE campaign_id = $1 AND id = $2
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash, players_move_tokens
 `
 
 type DeleteMapParams struct {
@@ -362,6 +363,7 @@ func (q *Queries) DeleteMap(ctx context.Context, arg DeleteMapParams) (Map, erro
 		&i.GridFactor,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.PlayersMoveTokens,
 	)
 	return i, err
 }
@@ -1035,7 +1037,7 @@ func (q *Queries) GetImageRequestForImage(ctx context.Context, arg GetImageReque
 }
 
 const getMap = `-- name: GetMap :one
-SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash FROM maps
+SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash, players_move_tokens FROM maps
 WHERE campaign_id = $1 AND id = $2
 `
 
@@ -1067,12 +1069,13 @@ func (q *Queries) GetMap(ctx context.Context, arg GetMapParams) (Map, error) {
 		&i.GridFactor,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.PlayersMoveTokens,
 	)
 	return i, err
 }
 
 const getMapByCreateKey = `-- name: GetMapByCreateKey :one
-SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash FROM maps WHERE create_key = $1
+SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash, players_move_tokens FROM maps WHERE create_key = $1
 `
 
 // The map a CreateMap or CreateDungeonMap with this idempotency key made, if any (the key
@@ -1100,12 +1103,13 @@ func (q *Queries) GetMapByCreateKey(ctx context.Context, createKey *string) (Map
 		&i.GridFactor,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.PlayersMoveTokens,
 	)
 	return i, err
 }
 
 const getMapForUpdate = `-- name: GetMapForUpdate :one
-SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash FROM maps
+SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash, players_move_tokens FROM maps
 WHERE campaign_id = $1 AND id = $2
 FOR UPDATE
 `
@@ -1141,6 +1145,7 @@ func (q *Queries) GetMapForUpdate(ctx context.Context, arg GetMapForUpdateParams
 		&i.GridFactor,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.PlayersMoveTokens,
 	)
 	return i, err
 }
@@ -1179,7 +1184,7 @@ func (q *Queries) GetMapGrid(ctx context.Context, arg GetMapGridParams) (GetMapG
 }
 
 const getMapLayers = `-- name: GetMapLayers :one
-SELECT map_id, difficult_terrain, walls, cover, light, updated_at, doors FROM map_layers
+SELECT map_id, difficult_terrain, walls, cover, light, updated_at, doors, no_pass FROM map_layers
 WHERE map_id = $1
 `
 
@@ -1195,6 +1200,7 @@ func (q *Queries) GetMapLayers(ctx context.Context, mapID string) (MapLayer, err
 		&i.Light,
 		&i.UpdatedAt,
 		&i.Doors,
+		&i.NoPass,
 	)
 	return i, err
 }
@@ -2203,7 +2209,7 @@ const insertMap = `-- name: InsertMap :one
 INSERT INTO maps (campaign_id, name, image_id, fog_on_first_grid, create_key, create_hash, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
 ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash, players_move_tokens
 `
 
 type InsertMapParams struct {
@@ -2252,6 +2258,7 @@ func (q *Queries) InsertMap(ctx context.Context, arg InsertMapParams) (Map, erro
 		&i.GridFactor,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.PlayersMoveTokens,
 	)
 	return i, err
 }
@@ -2960,7 +2967,7 @@ func (q *Queries) ListMapCreatureTokens(ctx context.Context, mapID string) ([]Ma
 
 const listMapDetails = `-- name: ListMapDetails :many
 SELECT m.id, m.campaign_id, m.name, m.image_id, m.revealed_at, m.revision, m.created_at, m.updated_at, m.grid_columns, m.grid_factor,
-       m.fog_enabled, m.base_light, m.group_vision, m.layers_revision, m.light_revision, m.vision_epoch,
+       m.fog_enabled, m.base_light, m.group_vision, m.players_move_tokens, m.layers_revision, m.light_revision, m.vision_epoch,
        g.name AS image_name, g.width AS image_width, g.height AS image_height, g.content_type AS image_content_type,
        EXISTS (SELECT 1 FROM generated_dungeons AS gd WHERE gd.map_id = m.id) AS generated_dungeon,
        (SELECT count(*) FROM map_points AS p WHERE p.map_id = m.id)::INT4 AS point_count,
@@ -2987,6 +2994,7 @@ type ListMapDetailsRow struct {
 	FogEnabled         bool
 	BaseLight          string
 	GroupVision        bool
+	PlayersMoveTokens  bool
 	LayersRevision     int32
 	LightRevision      int32
 	VisionEpoch        int32
@@ -3030,6 +3038,7 @@ func (q *Queries) ListMapDetails(ctx context.Context, campaignID string) ([]List
 			&i.FogEnabled,
 			&i.BaseLight,
 			&i.GroupVision,
+			&i.PlayersMoveTokens,
 			&i.LayersRevision,
 			&i.LightRevision,
 			&i.VisionEpoch,
@@ -3208,7 +3217,7 @@ func (q *Queries) ListMapVisionMemory(ctx context.Context, mapID string) ([]List
 
 const listMapsOfCampaign = `-- name: ListMapsOfCampaign :many
 
-SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash FROM maps
+SELECT id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash, players_move_tokens FROM maps
 WHERE campaign_id = $1
 ORDER BY created_at, id
 `
@@ -3246,6 +3255,7 @@ func (q *Queries) ListMapsOfCampaign(ctx context.Context, campaignID string) ([]
 			&i.GridFactor,
 			&i.CreateKey,
 			&i.CreateHash,
+			&i.PlayersMoveTokens,
 		); err != nil {
 			return nil, err
 		}
@@ -4070,7 +4080,7 @@ SET fog_enabled = COALESCE($1::BOOL, fog_enabled),
                         OR COALESCE($3::BOOL, group_vision) <> group_vision
                       THEN $4::TIMESTAMPTZ ELSE updated_at END
 WHERE campaign_id = $5 AND id = $6
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash, players_move_tokens
 `
 
 type SetMapFogParams struct {
@@ -4116,6 +4126,7 @@ func (q *Queries) SetMapFog(ctx context.Context, arg SetMapFogParams) (Map, erro
 		&i.GridFactor,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.PlayersMoveTokens,
 	)
 	return i, err
 }
@@ -4125,7 +4136,7 @@ UPDATE maps
 SET grid_columns = $1, grid_factor = $2, fog_enabled = fog_enabled AND $1::INT4 IS NOT NULL,
     updated_at = $3
 WHERE campaign_id = $4 AND id = $5
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash, players_move_tokens
 `
 
 type SetMapGridParams struct {
@@ -4169,6 +4180,7 @@ func (q *Queries) SetMapGrid(ctx context.Context, arg SetMapGridParams) (Map, er
 		&i.GridFactor,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.PlayersMoveTokens,
 	)
 	return i, err
 }
@@ -4177,7 +4189,7 @@ const setMapImageOnly = `-- name: SetMapImageOnly :one
 UPDATE maps
 SET image_id = $1, revision = revision + 1, updated_at = $2
 WHERE campaign_id = $3 AND id = $4
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash, players_move_tokens
 `
 
 type SetMapImageOnlyParams struct {
@@ -4217,6 +4229,50 @@ func (q *Queries) SetMapImageOnly(ctx context.Context, arg SetMapImageOnlyParams
 		&i.GridFactor,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.PlayersMoveTokens,
+	)
+	return i, err
+}
+
+const setMapPlayersMove = `-- name: SetMapPlayersMove :one
+UPDATE maps
+SET players_move_tokens = $1::BOOL
+WHERE campaign_id = $2 AND id = $3
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash, players_move_tokens
+`
+
+type SetMapPlayersMoveParams struct {
+	Enabled    bool
+	CampaignID string
+	ID         string
+}
+
+// Whether the players move their own tokens on the map. It touches nothing else
+// (not updated_at: the name, image and grid did not change).
+func (q *Queries) SetMapPlayersMove(ctx context.Context, arg SetMapPlayersMoveParams) (Map, error) {
+	row := q.db.QueryRow(ctx, setMapPlayersMove, arg.Enabled, arg.CampaignID, arg.ID)
+	var i Map
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.Name,
+		&i.ImageID,
+		&i.RevealedAt,
+		&i.Revision,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.GridColumns,
+		&i.FogEnabled,
+		&i.BaseLight,
+		&i.GroupVision,
+		&i.LayersRevision,
+		&i.LightRevision,
+		&i.VisionEpoch,
+		&i.FogOnFirstGrid,
+		&i.GridFactor,
+		&i.CreateKey,
+		&i.CreateHash,
+		&i.PlayersMoveTokens,
 	)
 	return i, err
 }
@@ -4226,7 +4282,7 @@ UPDATE maps
 SET revealed_at = CASE WHEN $1::BOOL THEN COALESCE(revealed_at, $2::TIMESTAMPTZ) ELSE NULL END,
     updated_at = CASE WHEN (revealed_at IS NOT NULL) = $1::BOOL THEN updated_at ELSE $2::TIMESTAMPTZ END
 WHERE campaign_id = $3 AND id = $4
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash, players_move_tokens
 `
 
 type SetMapRevealedParams struct {
@@ -4267,6 +4323,7 @@ func (q *Queries) SetMapRevealed(ctx context.Context, arg SetMapRevealedParams) 
 		&i.GridFactor,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.PlayersMoveTokens,
 	)
 	return i, err
 }
@@ -4539,7 +4596,7 @@ const updateMap = `-- name: UpdateMap :one
 UPDATE maps
 SET name = $1, image_id = $2, revision = revision + 1, updated_at = $3
 WHERE campaign_id = $4 AND id = $5 AND revision = $6
-RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash
+RETURNING id, campaign_id, name, image_id, revealed_at, revision, created_at, updated_at, grid_columns, fog_enabled, base_light, group_vision, layers_revision, light_revision, vision_epoch, fog_on_first_grid, grid_factor, create_key, create_hash, players_move_tokens
 `
 
 type UpdateMapParams struct {
@@ -4583,6 +4640,7 @@ func (q *Queries) UpdateMap(ctx context.Context, arg UpdateMapParams) (Map, erro
 		&i.GridFactor,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.PlayersMoveTokens,
 	)
 	return i, err
 }
@@ -4797,11 +4855,11 @@ func (q *Queries) UpsertMapCreatureToken(ctx context.Context, arg UpsertMapCreat
 }
 
 const upsertMapLayers = `-- name: UpsertMapLayers :exec
-INSERT INTO map_layers (map_id, difficult_terrain, walls, cover, light, doors, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO map_layers (map_id, difficult_terrain, walls, cover, light, doors, no_pass, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 ON CONFLICT (map_id) DO UPDATE
 SET difficult_terrain = excluded.difficult_terrain, walls = excluded.walls, cover = excluded.cover,
-    light = excluded.light, doors = excluded.doors, updated_at = excluded.updated_at
+    light = excluded.light, doors = excluded.doors, no_pass = excluded.no_pass, updated_at = excluded.updated_at
 `
 
 type UpsertMapLayersParams struct {
@@ -4811,10 +4869,11 @@ type UpsertMapLayersParams struct {
 	Cover            []byte
 	Light            []byte
 	Doors            []byte
+	NoPass           []byte
 	Now              time.Time
 }
 
-// Writes the five layers of a map (NULL for a layer with nothing painted). The
+// Writes the six layers of a map (NULL for a layer with nothing painted). The
 // handler holds the map's row lock (GetMapForUpdate), so two batches of paint
 // take turns.
 func (q *Queries) UpsertMapLayers(ctx context.Context, arg UpsertMapLayersParams) error {
@@ -4825,6 +4884,7 @@ func (q *Queries) UpsertMapLayers(ctx context.Context, arg UpsertMapLayersParams
 		arg.Cover,
 		arg.Light,
 		arg.Doors,
+		arg.NoPass,
 		arg.Now,
 	)
 	return err

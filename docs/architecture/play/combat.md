@@ -57,6 +57,7 @@ The mode (`grid` or `theatre`) is chosen at the start and never changes (see [Th
 
 | Call | Who may | What it does |
 | --- | --- | --- |
+| `GetStartRoster` | Master, session open | Who would enter a combat started now: the party's living player characters, each with whether it has a token on the fight's map (the battle point's destination or the current map) and the square that token gives it, and whether another character's token holds that square (`shares_square`: it would start with no square). Changes nothing; `StartEncounter` still puts each combatant on its token's square when nobody stands there, and a combat that ends puts each token on its combatant's square (`combat_roster.go`) |
 | `StartEncounter` | Master, session open | Creates the combat in `setup`, on the current map (which needs a grid), on a battle point's map, or with none in theatre. Puts the group and NPC copies; each NPC rolls initiative at once. With `monsters`, also puts bestiary monsters in the same transaction (see [Encounters](encounters.md)) |
 | `GetEncounter` | Members, filtered | The session's latest combat, including one that just ended, or none |
 | `SubmitInitiative` | The player on their own character; the master on any | d20 rolled in the app (`roll_in_app`) or the typed physical d20 (`d20_face`), under RN-18. Only in `setup`. A character creature's roll sets its whole summon group. A player's character that holds a Bardic Inspiration die, or a halfling's 1, gets a question first (`held_roll_offer`, see held-rolls.md) |

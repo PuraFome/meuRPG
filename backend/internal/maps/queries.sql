@@ -106,7 +106,7 @@ SELECT * FROM maps WHERE create_key = $1;
 -- no player ever receives, and either revealed, a triggered trap or a found
 -- treasure (a trap revealed to some characters only is the handler's to add).
 SELECT m.id, m.campaign_id, m.name, m.image_id, m.revealed_at, m.revision, m.created_at, m.updated_at, m.grid_columns, m.grid_factor,
-       m.fog_enabled, m.base_light, m.group_vision, m.layers_revision, m.light_revision, m.vision_epoch,
+       m.fog_enabled, m.base_light, m.group_vision, m.players_move_tokens, m.layers_revision, m.light_revision, m.vision_epoch,
        g.name AS image_name, g.width AS image_width, g.height AS image_height, g.content_type AS image_content_type,
        EXISTS (SELECT 1 FROM generated_dungeons AS gd WHERE gd.map_id = m.id) AS generated_dungeon,
        (SELECT count(*) FROM map_points AS p WHERE p.map_id = m.id)::INT4 AS point_count,
@@ -198,14 +198,22 @@ SELECT * FROM map_layers
 WHERE map_id = $1;
 
 -- name: UpsertMapLayers :exec
--- Writes the five layers of a map (NULL for a layer with nothing painted). The
+-- Writes the six layers of a map (NULL for a layer with nothing painted). The
 -- handler holds the map's row lock (GetMapForUpdate), so two batches of paint
 -- take turns.
-INSERT INTO map_layers (map_id, difficult_terrain, walls, cover, light, doors, updated_at)
-VALUES (sqlc.arg(map_id), sqlc.narg(difficult_terrain), sqlc.narg(walls), sqlc.narg(cover), sqlc.narg(light), sqlc.narg(doors), sqlc.arg(now))
+INSERT INTO map_layers (map_id, difficult_terrain, walls, cover, light, doors, no_pass, updated_at)
+VALUES (sqlc.arg(map_id), sqlc.narg(difficult_terrain), sqlc.narg(walls), sqlc.narg(cover), sqlc.narg(light), sqlc.narg(doors), sqlc.narg(no_pass), sqlc.arg(now))
 ON CONFLICT (map_id) DO UPDATE
 SET difficult_terrain = excluded.difficult_terrain, walls = excluded.walls, cover = excluded.cover,
-    light = excluded.light, doors = excluded.doors, updated_at = excluded.updated_at;
+    light = excluded.light, doors = excluded.doors, no_pass = excluded.no_pass, updated_at = excluded.updated_at;
+
+-- name: SetMapPlayersMove :one
+-- Whether the players move their own tokens on the map. It touches nothing else
+-- (not updated_at: the name, image and grid did not change).
+UPDATE maps
+SET players_move_tokens = sqlc.arg(enabled)::BOOL
+WHERE campaign_id = sqlc.arg(campaign_id) AND id = sqlc.arg(id)
+RETURNING *;
 
 -- name: DeleteMapLayers :execrows
 -- Clears every layer of the map: the grid's columns or the image changed.

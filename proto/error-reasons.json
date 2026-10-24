@@ -242,7 +242,8 @@
             "COMBAT_RUNNING",
             "TREASURE_CONVERTED",
             "TREASURE_FOUND",
-            "IMAGE_CHANGED"
+            "IMAGE_CHANGED",
+            "NO_ROOM"
           ],
           "unsent": []
         }

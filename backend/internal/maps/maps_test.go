@@ -420,6 +420,21 @@ func TestMapServiceAuthorizationMatrix(t *testing.T) {
 			_, err := u.maps.SetMapTokenHidden(ctx, connect.NewRequest(&mapsv1.SetMapTokenHiddenRequest{CampaignId: campaign, MapId: shown.GetId(), CharacterId: pc.GetId(), Hidden: false}))
 			return err
 		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"SetMapPlayersMove", func(ctx context.Context, u *user) error {
+			_, err := u.maps.SetMapPlayersMove(ctx, connect.NewRequest(&mapsv1.SetMapPlayersMoveRequest{CampaignId: campaign, MapId: gridMap.GetId(), Enabled: false}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		// MoveMapTokens is the master's, and a player's only for their own token when the master
+		// allowed it: the permission is off here, so the player is refused.
+		{"MoveMapTokens", func(ctx context.Context, u *user) error {
+			master.placeToken(campaign, gridMap.GetId(), pc.GetId(), 100, 100)
+			_, err := u.maps.MoveMapTokens(ctx, connect.NewRequest(&mapsv1.MoveMapTokensRequest{CampaignId: campaign, MapId: gridMap.GetId(), CharacterIds: []string{pc.GetId()}, XBp: 200, YBp: 200}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		{"PutPartyOnMap", func(ctx context.Context, u *user) error {
+			_, err := u.maps.PutPartyOnMap(ctx, connect.NewRequest(&mapsv1.PutPartyOnMapRequest{CampaignId: campaign, MapId: gridMap.GetId(), CharacterIds: []string{pc.GetId()}, XBp: 5000, YBp: 5000}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 		{"RemoveMapToken", func(ctx context.Context, u *user) error {
 			master.placeToken(campaign, shown.GetId(), npc.GetId(), 100, 100)
 			_, err := u.maps.RemoveMapToken(ctx, connect.NewRequest(&mapsv1.RemoveMapTokenRequest{CampaignId: campaign, MapId: shown.GetId(), CharacterId: npc.GetId()}))

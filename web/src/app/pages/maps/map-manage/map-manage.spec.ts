@@ -26,6 +26,7 @@ describe("MapManage: the master's map on a phone (E9-01 7)", () => {
       cover: new Uint8Array(),
       light: new Uint8Array(),
       fogWithheld: false,
+      noPass: new Uint8Array(),
     } as never;
     const state = new MapState(async () =>
       mapResponse(
