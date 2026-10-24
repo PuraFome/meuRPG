@@ -79,22 +79,17 @@ describe('TurnPanel', () => {
     expect(el.textContent).not.toContain('Você é o próximo');
   });
 
-  it('is the hero on the player\'s own turn, with the movement and "Encerrar turno"', () => {
+  it("is the card of the player's own turn: whose it is, who is next, the shapes of what is left, no movement tile", () => {
     const el = text({ currentCombatantId: 'pen' });
     expect(el.querySelector('h2')?.textContent).toBe('Sua vez, Pensantus');
-    expect(el.textContent).toContain('7,5\u00a0m de 7,5\u00a0m');
-    expect(el.textContent).toContain('5\u00a0quadrados livres');
+    expect(el.textContent).toContain('depois de você: Brisa');
+    // The movement is the row under the map, and "Mover" is not in the card (a phone has it in that row).
     const buttons = Array.from(el.querySelectorAll('button'), (b) => b.textContent?.trim());
-    // "Mover" lives in the Movimento group now.
     expect(buttons.some((b) => b?.endsWith('Mover'))).toBe(false);
     expect(buttons.some((b) => b?.endsWith('Encerrar turno'))).toBe(true);
-    expect(el.textContent).toContain('Depois de você: Goblin 1'.replace('Goblin 1', 'Brisa'));
-    expect(Array.from(el.querySelectorAll('.tile__name'), (n) => n.textContent)).toEqual([
-      'Ação',
-      'Ação bônus',
-      'Reação',
-      'Movimento',
-    ]);
+    expect(
+      Array.from(el.querySelectorAll('.eco > li'), (li) => li.getAttribute('aria-label')),
+    ).toEqual(['Ação disponível', 'Ação bônus disponível', 'Reação disponível']);
   });
 
   it('keeps the order strip in the card, unless the page draws it under the actions on the own turn', () => {
@@ -109,8 +104,8 @@ describe('TurnPanel', () => {
     fixture.componentRef.setInput('orderBelow', true);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('app-order-strip')).toBeNull();
-    // The four chips are still there, one row of them.
-    expect(fixture.nativeElement.querySelectorAll('.eco > li')).toHaveLength(4);
+    // The three shapes are still there, one row of them.
+    expect(fixture.nativeElement.querySelectorAll('.eco > li')).toHaveLength(3);
 
     // Off turn there are no actions under the card, so the strip stays in it.
     fixture.componentRef.setInput(

@@ -15,22 +15,37 @@ describe('TurnBar', () => {
   }
   const text = (el: Element | null) => (el?.textContent ?? '').replace(/\s+/g, ' ').trim();
 
-  it('is one slim row: the movement left and "Encerrar turno", without the tiles above repeated', () => {
-    const el = setup({ movementLeftFt: 25, movementLeftDft: 250 });
+  it('says what the turn still has with its shapes, and "Encerrar turno"', () => {
+    const el = setup({ movementLeftFt: 30, movementLeftDft: 300, bonusActionUsed: true });
     const row = el.querySelector('.row');
-    expect(text(row)).toContain('Mover 7,5 m · 5 quadrados');
+    expect(text(row)).toContain('Ainda tem');
+    expect(
+      [...el.querySelectorAll('li')].map((li) =>
+        li.getAttribute('aria-label')?.replace(/\u00a0/g, ' '),
+      ),
+    ).toEqual(['Ação disponível', 'Reação disponível', 'Movimento: 9,0 m']);
     expect(text(row)).toContain('Encerrar turno');
-    expect(el.querySelector('ul')).toBeNull();
-    expect(text(el)).not.toContain('Ainda disponível');
-    expect(text(el)).not.toContain('Ação bônus');
+    expect(text(el)).not.toContain('Mover');
   });
 
-  it('keeps only the button when there is no movement left, or no map', () => {
+  it('leaves the walker out when there is no movement left, or no map', () => {
     const still = setup({ movementLeftFt: 0, movementLeftDft: 0 });
-    expect(still.querySelector('.what')).toBeNull();
-    expect(text(still.querySelector('.row'))).toContain('Encerrar turno');
+    expect(still.querySelector('.shape__icon .walker')).toBeNull();
+    expect([...still.querySelectorAll('li')]).toHaveLength(3);
     const theatre = setup({ movementLeftFt: 25, movementLeftDft: 250 }, { theatre: true });
-    expect(theatre.querySelector('.what')).toBeNull();
+    expect([...theatre.querySelectorAll('li')]).toHaveLength(3);
+  });
+
+  it('says there is nothing more when everything is spent', () => {
+    const el = setup({
+      actionUsed: true,
+      bonusActionUsed: true,
+      reactionUsed: true,
+      movementLeftFt: 0,
+      movementLeftDft: 0,
+    });
+    expect(el.querySelector('ul')).toBeNull();
+    expect(text(el.querySelector('.left'))).toContain('Nada mais neste turno');
   });
 
   it('says why the turn cannot end while an opportunity attack waits', () => {

@@ -14,7 +14,8 @@ import { coverTargets, everyoneStanding } from '../../../core/combat/theatre';
 import { offersHolding, waitingText } from '../../../core/combat/opportunity';
 import type { OfferMark } from '../../../shared/combat-map/combat-map';
 import { openDamages, pendingNote } from '../../../core/combat/attack-flow';
-import { isDown, isPlayer } from '../../../core/combat/combat-view';
+import { isDead, isDown, isPlayer } from '../../../core/combat/combat-view';
+import type { TabItem } from '../../../shared/tab-list/tab-list';
 import { masterWaitNote } from '../../../core/combat/auto-pass';
 import {
   coverAgainst,
@@ -157,6 +158,35 @@ export abstract class CombatViewDerivedDirective extends CombatViewStateDirectiv
   /** On a phone, on the player's own turn, the order strip goes under the actions instead of between the title and them. */
   protected readonly orderBelow = computed(
     () => !this.laptop() && this.myTurn() && !this.ownDown() && !this.creatureTab(),
+  );
+  /** The rail's one tab from 1024px: "Ações" (the conversation joins it on the session page). */
+  protected readonly railTabs: readonly TabItem[] = [{ id: 'actions', label: 'Ações' }];
+  /** The player's own character on its turn, with the movement row under the map (a map, no creature's page, not down). */
+  protected readonly moveRowOn = computed(() => {
+    const own = this.own();
+    return own && this.myTurn() && !this.ownDown() && !this.creatureTab() && !this.theatre()
+      ? own
+      : null;
+  });
+  /** From 1024px, off turn, the rail still has the character's reaction to say (C6-07). */
+  protected readonly offRail = computed(() => {
+    const own = this.own();
+    return own &&
+      this.laptop() &&
+      !this.myTurn() &&
+      !this.creatureTab() &&
+      !this.ownDown() &&
+      !isDead(own)
+      ? own
+      : null;
+  });
+  /** The actions column is a rail: on the player's turn with its options, a creature's page, or off turn with a reaction to say. */
+  protected readonly railOn = computed(
+    () => (this.myTurn() && !!this.options()) || !!this.creatureTab() || !!this.offRail(),
+  );
+  /** The turn bar sticks under the bars of the page from 1024px, on the player's own turn. */
+  protected readonly stickyTurn = computed(
+    () => this.laptop() && this.myTurn() && !this.ownDown() && !this.creatureTab(),
   );
   /** What it waits for ("Esperando a reação do mestre") on the page of a creature's turn. */
   protected readonly creatureLocked = computed(() => this.waiting()?.title ?? '');

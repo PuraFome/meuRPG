@@ -1,26 +1,25 @@
-import { Component, computed, input, output, signal } from '@angular/core';
+import { Component, ElementRef, computed, inject, input, output, signal } from '@angular/core';
 import type { Combatant } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { metersFixed, reachSquares, squaresText } from '../../../../core/units';
-import { joinDots, tight } from '../../../../core/format/text';
+import { moveLine } from '../../../../core/combat/move-line';
 import { leftSentence, passNote } from '../../../../core/combat/joint-turn';
 import type { MineTab } from '../../../../core/combat/mine';
+import { keepClear } from '../../../../shared/scroll-clearance/scroll-clearance';
+import { EconomyShapes, economyShapes } from '../../../../shared/economy-shapes/economy-shapes';
 import { EndPart } from '../joint-turn/end-part';
 import { MineTabs } from '../mine-tabs/mine-tabs';
 import { EndTurn } from './end-turn';
 
 /**
- * The bar pinned to the bottom of a player's own turn on a phone and a
- * tablet (E6-06): one slim row with the movement still left and "Encerrar
- * turno", which is an outline until the action and the bonus action are spent
- * (then it is the filled button). What else is available this turn is in the
- * tiles above, so the bar does not repeat it and leaves the initiative cards
- * visible. It sits at the end of the page's column so that it sticks to the
- * bottom of the screen while the page scrolls, right above the phone's pinned nav (`--mr-session-nav`). From 1024px the button is in
- * the turn card instead.
+ * The bar pinned to the bottom of a player's own turn on a phone and a tablet (C4-03, C4-04): "Ainda tem" and the shapes of
+ * what the turn still has (a circle for the Ação, a triangle for the Bônus, a square for the Reação, the walker with the metres
+ * left), and "Encerrar turno", which is an outline until the Ação and the Bônus are spent (then it is the filled button). It sits
+ * at the end of the page's column so that it sticks to the bottom of the screen while the page scrolls, right above the phone's
+ * pinned nav (`--mr-session-nav`). "Mover" is the row under the map; from 1024px the shapes, "Mover" and "Encerrar turno" are
+ * the turn bar at the top.
  */
 @Component({
   selector: 'app-turn-bar',
-  imports: [EndPart, EndTurn, MineTabs],
+  imports: [EconomyShapes, EndPart, EndTurn, MineTabs],
   template: `
     @if (tabs().length > 1) {
       <app-mine-tabs [tabs]="tabs()" [selected]="selected()" (select)="select.emit($event)" />
@@ -35,8 +34,15 @@ import { EndTurn } from './end-turn';
         <div class="row">
           @if (waiting()) {
             <p class="what">{{ waiting() }}: a vez continua quando responderem.</p>
-          } @else if (move(); as amount) {
-            <p class="what">Mover&nbsp;<b>{{ amount }}</b></p>
+          } @else {
+            <div class="left">
+              <span class="left__lead">Ainda tem</span>
+              @if (anyLeft()) {
+                <app-economy-shapes variant="inline" [onlyLeft]="true" [shapes]="shapes()" label="Ainda tem" />
+              } @else {
+                <span class="left__none">Nada mais neste turno</span>
+              }
+            </div>
           }
           <app-end-turn class="row__end" [own]="me" [attacksLeft]="attacksLeft()" [settling]="optionsSettling()" [busy]="busy()" [waiting]="waiting()" [label]="surprised() ? 'Passar o turno' : 'Encerrar turno'" [surprised]="surprised()" (endTurn)="endTurn.emit()" />
         </div>
@@ -69,6 +75,26 @@ import { EndTurn } from './end-turn';
       b {
         color: var(--mr-ink);
       }
+    }
+
+    .left {
+      display: flex;
+      flex: 1 1 0;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .left__lead {
+      font-size: 12px;
+      line-height: 14px;
+      color: var(--mr-ink-muted);
+    }
+
+    .left__none {
+      font-size: 13px;
+      line-height: 16px;
+      font-weight: 700;
     }
 
     // One slim row: the movement left, when there is one, and "Encerrar turno" at the end. The
@@ -108,6 +134,7 @@ export class TurnBar {
   readonly busy = input(false);
   /** Extra Attack: the attacks that remain once the action is spent. */
   readonly attacksLeft = input(0);
+  readonly attacksPerAction = input(1);
   /** The turn's options are being read again after a change: "Encerrar turno" waits for them (`EndTurn.settling`). */
   readonly optionsSettling = input(false);
   /** An opportunity attack waits for an answer: the list of what is left and the end button say so instead. */
@@ -123,6 +150,13 @@ export class TurnBar {
   readonly endTurn = output<void>();
   readonly select = output<string>();
 
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+
+  constructor() {
+    // The bar covers the foot of the page: what is focused or scrolled into view stops above it.
+    keepClear(() => this.host.nativeElement, 'bottom');
+  }
+
   protected readonly asking = signal(false);
   protected readonly partLeft = computed(() => {
     const c = this.own();
@@ -137,14 +171,18 @@ export class TurnBar {
     );
   }
 
-  /** "7,5 m · 5 quadrados": the movement still left; empty without a map (the Movimento tile says it) or when none is left. */
-  protected readonly move = computed(() => {
+  /** The shapes of what the turn still has: the Action, the Bonus action, the Reaction and, on a map, the metres left (C4-03). */
+  protected readonly shapes = computed(() => {
     const c = this.own();
-    if (!c || c.movementLeftFt <= 0 || this.theatre()) {
-      return '';
+    if (!c) {
+      return [];
     }
-    return tight(
-      joinDots([metersFixed(c.movementLeftDft / 10), squaresText(reachSquares(c.movementLeftFt))]),
-    );
+    const line = moveLine(c, false);
+    return economyShapes(c, {
+      attacksLeft: this.attacksLeft(),
+      attacksPerAction: this.attacksPerAction(),
+      moveText: line.canMove && !this.theatre() ? line.left : null,
+    });
   });
+  protected readonly anyLeft = computed(() => this.shapes().some((s) => !s.spent));
 }

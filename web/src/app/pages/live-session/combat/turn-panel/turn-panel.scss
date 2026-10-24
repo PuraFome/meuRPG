@@ -1,5 +1,10 @@
 :host {
   display: block;
+
+  // The turn bar's room is the page's column, not the card's own height.
+  @media (min-width: 1024px) {
+    display: contents;
+  }
 }
 
 .turn {
@@ -39,12 +44,18 @@
   margin-left: 5px;
 }
 
+.turn__who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
 .turn__title {
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 28px;
-  line-height: 32px;
+  font-size: 22px;
+  line-height: 26px;
   overflow-wrap: anywhere;
 
   &:focus-visible {
@@ -52,9 +63,25 @@
   }
 
   @media (min-width: 768px) {
-    font-size: 34px;
-    line-height: 38px;
+    font-size: 28px;
+    line-height: 32px;
   }
+}
+
+// "Rodada 3 · depois de você: Toren" under the title.
+.turn__sub {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--mr-ink-muted);
+
+  b {
+    font-weight: 500;
+  }
+}
+
+.turn__numbers {
+  margin-top: -2px;
 }
 
 .turn__next,
@@ -81,192 +108,6 @@
     height: 18px;
     font-size: 18px;
   }
-}
-
-// What the player has this turn (E6-06): one tile each for the action, the
-// bonus action and the reaction ("Disponível" is an open circle and the
-// word, never a check; "Usada" is a struck, dashed tile with a filled
-// circle and a cross), and the movement with a bar.
-// On a phone the four are one row of compact chips, so the attacks and spells
-// under the title are on the first screen; from 768px they are the tiles.
-.eco {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 4px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-
-  // A 320px phone has 62px for each chip: two by two there, so no word breaks in the middle.
-  @media (max-width: 359.98px) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  @media (min-width: 768px) {
-    gap: 10px;
-  }
-}
-
-.tile {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  box-sizing: border-box;
-  min-height: 56px;
-  padding: 6px 5px;
-  border: 1.5px solid var(--mr-ink);
-  border-radius: var(--mr-radius-md);
-  background: var(--mr-surface);
-
-  @media (min-width: 768px) {
-    gap: 6px;
-    min-height: 88px;
-    padding: 10px 12px;
-  }
-}
-
-.tile--used {
-  border: 1.5px dashed var(--mr-control-line);
-  color: var(--mr-ink-muted);
-
-  .tile__name {
-    text-decoration: line-through;
-  }
-}
-
-.tile__name {
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 16px;
-
-  @media (min-width: 768px) {
-    padding-right: 30px;
-    font-size: 16px;
-    line-height: 20px;
-  }
-}
-
-.tile__word {
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 15px;
-
-  @media (min-width: 768px) {
-    font-size: 14px;
-    line-height: 18px;
-  }
-}
-
-// On a phone the circle sits in front of the word, on the line under the name.
-.tile__state {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0 4px;
-
-  @media (min-width: 768px) {
-    display: contents;
-  }
-}
-
-.tile--move .tile__word {
-  font-weight: 400;
-  color: var(--mr-ink-muted);
-}
-
-.dot {
-  display: flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  width: 14px;
-  height: 14px;
-  border: 1.5px solid var(--mr-ink);
-  border-radius: 50%;
-
-  .mat-icon {
-    width: 10px;
-    height: 10px;
-    font-size: 10px;
-  }
-
-  @media (min-width: 768px) {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    width: 22px;
-    height: 22px;
-    border-width: 2px;
-
-    .mat-icon {
-      width: 14px;
-      height: 14px;
-      font-size: 14px;
-    }
-  }
-}
-
-.tile--used .dot {
-  border-color: var(--mr-control-line);
-  background: var(--mr-control-line);
-  color: var(--mr-surface);
-}
-
-.tile__meters {
-  font-family: var(--mr-font-display);
-  font-weight: 700;
-  font-size: 16px;
-  line-height: 18px;
-
-  small {
-    display: block;
-    font-family: var(--mr-font-sans);
-    font-size: 12px;
-    font-weight: 400;
-    line-height: 14px;
-    color: var(--mr-ink-muted);
-  }
-
-  @media (min-width: 768px) {
-    font-size: 26px;
-    line-height: 28px;
-
-    small {
-      display: inline;
-      font-size: 14px;
-      line-height: inherit;
-    }
-  }
-}
-
-// The movement's free squares and the spent distance are for the tile: on a
-// phone the chip keeps the distance left and the bar, and the words stay for a
-// screen reader.
-.tile--move .tile__word {
-  @media (max-width: 767.98px) {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-}
-
-.bar {
-  display: block;
-  height: 6px;
-  overflow: hidden;
-  border-radius: var(--mr-radius-pill);
-  background: var(--mr-line);
-}
-
-.bar__fill {
-  display: block;
-  height: 100%;
-  background: var(--mr-ink);
 }
 
 // On a phone and a tablet "Encerrar turno" lives in the pinned bar at the
@@ -299,9 +140,14 @@
 // From 1024px the player's own turn is a banner (E6-14): the token, "Sua vez,
 // Pensantus", the round and who is next, and "Encerrar turno" at the right.
 .banner {
+  // The turn bar (C6-07) sticks under the page's bars while the page scrolls; the host is `display: contents` so the page's column is its room.
+  position: sticky;
+  top: var(--mr-turn-top, 124px);
+  z-index: 4;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 16px;
+  gap: 8px 16px;
   box-sizing: border-box;
   padding: 10px 20px;
   border: 2px solid var(--mr-accent);
@@ -310,7 +156,7 @@
 }
 
 .banner__main {
-  flex: 1;
+  flex: 1 1 220px;
   min-width: 0;
 }
 
@@ -318,8 +164,8 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 38px;
-  line-height: 42px;
+  font-size: 28px;
+  line-height: 32px;
 
   &:focus-visible {
     outline-offset: 4px;
@@ -328,8 +174,8 @@
 
 .banner__sub {
   margin: 0;
-  font-size: 16px;
-  line-height: 22px;
+  font-size: 14px;
+  line-height: 20px;
   color: var(--mr-ink-muted);
 
   b {
@@ -337,9 +183,32 @@
   }
 }
 
-.banner__end {
+// The shapes, "Mover" and "Encerrar turno" on one row with the title (C6-07).
+.banner__shapes {
   flex: none;
-  max-width: 360px;
+}
+
+.banner__end {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+  max-width: 420px;
+}
+
+.banner__move {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  flex: none;
+  font-weight: 700;
+
+  &.mr-button--off {
+    --mat-button-outlined-label-text-color: var(--mr-ink-muted);
+    --mat-button-outlined-disabled-label-text-color: var(--mr-ink-muted);
+    --mat-button-outlined-disabled-outline-color: var(--mr-control-line);
+    border-style: dashed;
+  }
 }
 
 .banner__strip {
