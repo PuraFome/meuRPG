@@ -34,7 +34,7 @@
   }
 </ng-template>
 
-@if (phone() && master()) {
+@if (phone() && master() && !inTab()) {
   <!-- The master's log on a phone: a fold with the entries' count; the undo and its question stay under it, folded or not. -->
   <div class="stack">
     <app-fold title="Registro do combate" [level]="2" [region]="true" [(open)]="open">
@@ -48,7 +48,7 @@
   <section class="panel" aria-labelledby="log-title">
     <div class="head">
       <h2 class="title" id="log-title">Registro do combate</h2>
-      @if (phone()) {
+      @if (phone() && !inTab()) {
         <button type="button" class="chev" aria-haspopup="dialog" aria-label="Abrir o registro do combate" (click)="openSheet()">
           <mat-icon aria-hidden="true">expand_less</mat-icon>
         </button>
@@ -59,7 +59,7 @@
       }
     </div>
 
-    @if (phone() && latest(); as l) {
+    @if (phone() && !inTab() && latest(); as l) {
       <p class="latest">@if (l.actor) {<b>{{ l.actor }}</b>}{{ l.text }}</p>
     }
 

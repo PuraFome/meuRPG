@@ -97,6 +97,11 @@ describe('the panel of effects in the combat page', () => {
     const fixture = render(true, EncounterStatus.ACTIVE);
     await settle(fixture);
     const el = fixture.nativeElement as HTMLElement;
+    // On a small screen the effects are in "Mais", at the end of "Turno".
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.includes('Mais'))!
+      .click();
+    await settle(fixture);
     expect(el.querySelector('app-effects-panel [data-testid="effects-panel"]')).toBeTruthy();
     expect(list).toHaveBeenCalledWith('c', 'enc');
   });

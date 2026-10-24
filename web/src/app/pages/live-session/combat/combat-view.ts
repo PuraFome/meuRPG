@@ -1,4 +1,15 @@
-import { Component, DestroyRef, effect, inject, untracked } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  type TemplateRef,
+  computed,
+  contentChildren,
+  effect,
+  inject,
+  input,
+  output,
+  untracked,
+} from '@angular/core';
 import {
   CombatEffect,
   CombatantSide,
@@ -18,8 +29,12 @@ import { offersToAnswer, reactorIsMasters } from '../../../core/combat/opportuni
 import { sheetWindow } from '../../../core/combat/reactions';
 import { questions } from '../../../core/combat/hidden-reveal';
 import { heldOfferOf } from '../../../core/held-rolls/held-roll-offer';
+import { roundLabel, turnBanner } from '../../../core/combat/combat-view';
+import type { MasterQuestion } from '../../../core/held-rolls/held-questions';
 import { COMBAT_VIEW_IMPORTS } from './combat-view-imports';
 import { CombatViewPartsDirective } from './combat-view-parts';
+import { MapTab } from './map-tabs/map-tab';
+import { MasterLayout } from './master-layout';
 import { type RiderPick } from './hit-rider/hit-rider-card';
 import {
   type StartCombatData,
@@ -51,6 +66,46 @@ export class CombatView extends CombatViewPartsDirective {
   /** Set the first time the combat is read: "Combate atualizado agora." only follows a reload. */
   private refreshChecked = false;
 
+  /** The conversation the page draws in the master's rail ("Turno · Conversa"), or `null` where the page keeps it elsewhere. */
+  readonly chat = input<TemplateRef<unknown> | null>(null);
+  /** The conversation's lines that came while it was not shown: the count of its tab. */
+  readonly chatUnread = input(0);
+  /** The conversation is what the rail shows now (its tab is open): the page counts nothing as unread meanwhile. */
+  readonly chatShown = output<boolean>();
+  /** The panels the page projects under the map (fog, traps, treasure, puzzles). */
+  protected readonly projected = contentChildren(MapTab);
+
+  /** The tabs of the master's combat and which one is open. */
+  protected readonly layout = new MasterLayout({
+    waiting: computed(() => this.held.count() + (this.owed() ? 1 : 0) + (this.waitNote() ? 1 : 0)),
+    unread: computed(() => this.chatUnread()),
+    hasChat: computed(() => this.chat() !== null),
+    projected: computed(() => this.projected()),
+    combatants: computed(() => this.encounter()?.combatants.length ?? 0),
+    theatre: computed(() => this.theatre()),
+  });
+  /** "Rodada 3", for the phone's line under the bar. */
+  protected readonly roundText = computed(() => roundLabel(this.encounter()?.round ?? 0));
+  /** Who comes after the one on turn. */
+  protected readonly nextName = computed(() => {
+    const e = this.encounter();
+    return e ? (turnBanner(e).after?.name ?? '') : '';
+  });
+
+  /** The answer went to the order: on a small screen the order is its own tab, so it opens first. */
+  protected override focusOrder(): void {
+    if (!this.laptop()) {
+      this.layout.phoneTab.set('order');
+    }
+    super.focusOrder();
+  }
+
+  /** Who the held attack was against, for the question's words. */
+  protected heldTarget(q: MasterQuestion): string {
+    const target = q.controller.offer()?.targetId;
+    return (target && this.encounter()?.combatants.find((c) => c.id === target)?.label) || '';
+  }
+
   constructor() {
     super();
     effect(() => {
@@ -65,6 +120,16 @@ export class CombatView extends CombatViewPartsDirective {
           this.refreshed.set('');
         }
       });
+    });
+    // The rail's conversation tab is open (and the rail is there): the page counts nothing as unread.
+    effect(() => {
+      const shown =
+        this.isMaster() &&
+        this.laptop() &&
+        this.chat() !== null &&
+        this.layout.railTab() === 'chat' &&
+        this.active();
+      untracked(() => this.chatShown.emit(shown));
     });
     // "Ainda não" holds while the character stays dying: when they leave DYING the question is
     // new the next time they fall.

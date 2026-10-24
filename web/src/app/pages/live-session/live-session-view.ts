@@ -9,6 +9,7 @@ import { acts } from '../../core/combat/joint-turn';
 import { mineTabs } from '../../core/combat/mine';
 import { isTheatre } from '../../core/combat/theatre';
 import type { CluePlayer } from '../../core/maps/scene-clues';
+import { trapPoints, treasurePoints } from '../../core/traps/trap-text';
 import { returnPlace } from '../../core/revivify/revivify-flow';
 import type { ViewAsPerson } from '../../shared/fog-map/view-as-list';
 import type { PickRow } from '../../shared/person-pick/person-pick';
@@ -92,6 +93,9 @@ export class LiveSessionView {
   readonly highlightsSub = computed(() => highlightsSubOf(this.highlightsFor()));
   /** The combat view (the order, the log, the summary) is on screen: always for the master; for a player, not once the combat ended and
    * the "O combate acabou" card carries what it came to, so the scene, the map and the rest of the page stay under that one card. */
+  /** The traps and the treasures of the current map: the counts of their tabs under the combat's map. */
+  readonly trapCount = computed(() => trapPoints(this.parts.mapState.points()).length);
+  readonly treasureCount = computed(() => treasurePoints(this.parts.mapState.points()).length);
   readonly combatOnScreen = computed(() => {
     const e = this.parts.combat.shown();
     return e !== null && (this.state.isMaster() || e.status !== EncounterStatus.ENDED);

@@ -1,5 +1,7 @@
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { NgTemplateOutlet } from '@angular/common';
+import { MapTab } from './combat/map-tabs/map-tab';
 import { SessionTabs } from './conversation/session-tabs';
 import { UnreadNotice } from './conversation/unread-notice';
 import { ClueNotice } from './clue-notice/clue-notice';
@@ -52,6 +54,8 @@ export const LIVE_SESSION_IMPORTS = [
   ClueNotice,
   FreeRollLog,
   SessionTabs,
+  NgTemplateOutlet,
+  MapTab,
   UnreadNotice,
   FogMasterPanel,
   FogPlayerTools,

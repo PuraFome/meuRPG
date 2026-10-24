@@ -15,6 +15,7 @@ import { ReactionQueue } from './reaction-queue/reaction-queue';
 import { SurpriseCard } from './surprise-card/surprise-card';
 import { CombatLogPanel } from './combat-log/combat-log-panel';
 import { CombatBar } from './combat-bar/combat-bar';
+import { NextTurn } from './combat-bar/next-turn';
 import { CombatMapCard } from './combat-map-card/combat-map-card';
 import { CombatSummary } from './combat-summary/combat-summary';
 import { JointCard } from './joint-turn/joint-card';
@@ -42,9 +43,20 @@ import { CoverPanel } from './theatre/cover-panel';
 import { NoMapPanel, TheatreReaction } from './theatre/no-map-panel';
 import { OfferPanel } from './theatre/offer-panel';
 import { ZonesPanel } from './zones-panel/zones-panel';
+import { HeldQuestion } from '../held-questions/held-question';
+import { Fold } from '../../../shared/fold/fold';
+import { RailPanel, SessionRail } from '../../../shared/session-rail/session-rail';
+import { TabList } from '../../../shared/tab-list/tab-list';
+import { MapTab } from './map-tabs/map-tab';
 
 /** The components, directives and pipes the combat screen's template uses. */
 export const COMBAT_VIEW_IMPORTS = [
+  Fold,
+  HeldQuestion,
+  MapTab,
+  RailPanel,
+  SessionRail,
+  TabList,
   CheckRow,
   ActionGroups,
   BeastTraits,
@@ -71,6 +83,7 @@ export const COMBAT_VIEW_IMPORTS = [
   MatIconModule,
   MineTabs,
   MovePage,
+  NextTurn,
   NgTemplateOutlet,
   NoMapPanel,
   NpcCard,

@@ -10,6 +10,7 @@ import {
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
 import { Nudger } from '../../../../core/combat/nudger';
 import { OrderList } from './order-list';
+import { openAllRows } from './order-list-testing';
 
 describe('OrderList', () => {
   const rows = [
@@ -56,6 +57,7 @@ describe('OrderList', () => {
     fixture.componentInstance.adjustNpc.subscribe((id) => npcAdjusted.push(id));
     fixture.componentInstance.reveal.subscribe((r) => revealed.push(r));
     fixture.detectChanges();
+    openAllRows(fixture);
     return { el: fixture.nativeElement as HTMLElement, adjusted, npcAdjusted, revealed };
   }
 
@@ -125,6 +127,7 @@ describe('OrderList', () => {
       fixture.componentInstance.cover.subscribe((c) => picked.push(c));
       fixture.componentInstance.side.subscribe((c) => sides.push(c));
       fixture.detectChanges();
+      openAllRows(fixture);
       return { fixture, el: fixture.nativeElement as HTMLElement, picked, sides };
     }
 
@@ -170,7 +173,7 @@ describe('OrderList', () => {
       const row = Array.from(el.querySelectorAll('li.row')).find((r) =>
         r.textContent?.includes('Goblin 2'),
       )!;
-      expect(plain(row.querySelector('.row__meta')?.textContent)).toContain('Aliado');
+      expect(plain(row.querySelector('.row__state-line')?.textContent)).toContain('Aliado');
       // Not inside "Condições de Goblin 2", and the master's list has no mark pill: the line says it.
       expect(Array.from(row.querySelectorAll('.tag'), (t) => plain(t.textContent))).toEqual([]);
     });
@@ -218,6 +221,7 @@ describe("OrderList with a player's creatures (E9-12)", () => {
     const ended: string[] = [];
     fixture.componentInstance.endConcentration.subscribe((id) => ended.push(id));
     fixture.detectChanges();
+    openAllRows(fixture);
     return { el: fixture.nativeElement as HTMLElement, ended, fixture };
   }
   const text = (n: Element | null | undefined) => n?.textContent?.replace(/\s+/g, ' ').trim();
@@ -270,6 +274,7 @@ describe("OrderList with a player's creatures (E9-12)", () => {
       encounter({ combatants: [web, salvia, wolf(1)], currentCombatantId: 'cap' }),
     );
     fixture.detectChanges();
+    openAllRows(fixture);
     const el = fixture.nativeElement as HTMLElement;
     const row = (name: string) =>
       Array.from(el.querySelectorAll('li.row')).find((r) => r.textContent?.includes(name))!;
@@ -297,9 +302,10 @@ describe("OrderList with a player's creatures (E9-12)", () => {
       encounter({ combatants: [wolfForm], currentCombatantId: 's' }),
     );
     fixture.detectChanges();
+    openAllRows(fixture);
     const el = fixture.nativeElement as HTMLElement;
     expect(text(el.querySelector('app-form-tag'))).toContain('Na forma de Lobo');
-    const hp = text(el.querySelector('.row__hp'));
+    const hp = text(el.querySelector('.row__open'));
     expect(hp).toContain('Lobo 11 de 11');
     expect(hp).toContain('38 de 38');
     expect(hp!.indexOf('11 de 11')).toBeLessThan(hp!.indexOf('38 de 38'));
@@ -321,6 +327,7 @@ describe("OrderList with a player's creatures (E9-12)", () => {
       }),
     );
     fixture.detectChanges();
+    openAllRows(fixture);
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('app-beast-pool')).toBeNull();
     const plain = TestBed.createComponent(OrderList);
@@ -329,6 +336,7 @@ describe("OrderList with a player's creatures (E9-12)", () => {
       encounter({ combatants: [salvia], currentCombatantId: 's' }),
     );
     plain.detectChanges();
+    openAllRows(plain);
     expect(plain.nativeElement.querySelector('app-form-tag')).toBeNull();
   });
 });
@@ -374,10 +382,11 @@ describe('OrderList: the monsters of the bestiary (MR-042, RN-29, E10-08 state 5
       }),
     );
     fixture.detectChanges();
+    openAllRows(fixture);
     const subs = Array.from(
       (fixture.nativeElement as HTMLElement).querySelectorAll('.row__sub'),
     ).map((s) => s.textContent?.replace(/\s+/g, ' ').trim());
-    expect(subs).toEqual(['NPC · ND 1/8 · CA 12', 'NPC · ND 1/8 · CA 12', 'NPC · CA 15']);
+    expect(subs).toEqual(['Inic. 11 · ND 1/8 · CA 12', 'Escondido · inic. 5', 'Inic. 9 · CA 15']);
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('Escondido');
   });
 
@@ -396,6 +405,7 @@ describe('OrderList: the monsters of the bestiary (MR-042, RN-29, E10-08 state 5
     const removed: string[] = [];
     fixture.componentInstance.remove.subscribe((id) => removed.push(id));
     fixture.detectChanges();
+    openAllRows(fixture);
     const cmp = fixture.componentInstance as unknown as {
       ask(id: string): void;
       confirmRemove(id: string): void;
@@ -459,6 +469,7 @@ describe('OrderList under Escudo Arcano and Ajuda (PM-03a)', () => {
     );
     fixture.componentRef.setInput('adjustable', new Set(['pen-c', 'sal-c']));
     fixture.detectChanges();
+    openAllRows(fixture);
     return fixture;
   }
   const rowOf = (fixture: ReturnType<typeof mount>, name: string) =>
@@ -482,7 +493,7 @@ describe('OrderList under Escudo Arcano and Ajuda (PM-03a)', () => {
 
   it('says "31 de 43" with "+5 Ajuda" by the maximum, a striped bar piece and "Ajuda +5 PV" on the row', () => {
     const row = rowOf(mount([salvia(), hobgoblin]), 'Sálvia');
-    expect(flat(row.querySelector('.row__hp-n'))).toBe('31 de 43+5 Ajuda');
+    expect(flat(row.querySelector('.row__hp-n'))).toBe('31/43+5 Ajuda');
     expect(flat(row.querySelector('.row__effect--aid'))).toContain('Ajuda +5 PV');
     const own = row.querySelector<HTMLElement>('.row__fill--own')!;
     const striped = row.querySelector<HTMLElement>('.row__fill--aid')!;
@@ -661,6 +672,7 @@ describe('OrderList under Escudo Arcano and Ajuda (PM-03a)', () => {
       );
       fixture.componentRef.setInput('campaignId', campaignId);
       fixture.detectChanges();
+      openAllRows(fixture);
       return fixture.nativeElement as HTMLElement;
     }
 

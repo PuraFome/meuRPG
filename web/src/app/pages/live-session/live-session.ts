@@ -1,7 +1,7 @@
 import { Component, TemplateRef, computed, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
-import type { Encounter } from '../../../gen/meurpg/play/v1/combat_pb';
+import { type Encounter, EncounterStatus } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { VitalsVm } from '../../core/play/live-session.types';
 import { applyVitals } from '../../core/play/vitals';
 import { setPageSubject } from '../../core/title/page-title';
@@ -72,11 +72,21 @@ export class LiveSession {
     () => this.mapState,
     (encounter) => this.combatStarted(encounter),
   );
+  /** The master's running combat draws the conversation in its rail ("Turno · Conversa") from 1024px; the page keeps it elsewhere otherwise. */
+  private readonly laptop = mediaQuery('(min-width: 1024px)');
+  protected readonly railChat = computed(
+    () =>
+      this.state.isMaster() &&
+      this.laptop() &&
+      this.combat.encounter()?.status === EncounterStatus.ACTIVE &&
+      !this.combat.fullPage(),
+  );
   /** Where the conversation sits: a column beside the stage, or the phone's "Conversa" tab. */
   protected readonly slot = new ConversationSlot({
     live: computed(() => this.state.phase() === 'live' && this.state.session() !== null),
     phone: mediaQuery(PHONE_QUERY),
     unread: this.conversation.unread,
+    railMode: this.railChat,
     pageVisible: pageVisible(this.services.document, this.services.destroyRef),
     isMaster: this.state.isMaster,
     campaignId: this.state.campaignId,

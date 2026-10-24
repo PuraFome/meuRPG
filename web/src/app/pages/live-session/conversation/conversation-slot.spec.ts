@@ -9,6 +9,7 @@ describe('ConversationSlot', () => {
     const pageVisible = signal(true);
     const stage = signal<readonly string[]>(['n1']);
     const unread = signal(0);
+    const railMode = signal(false);
     const slot = new ConversationSlot({
       live,
       phone,
@@ -19,8 +20,9 @@ describe('ConversationSlot', () => {
       userId: signal('u-p'),
       stageCharacterIds: stage,
       unread,
+      railMode,
     });
-    return { slot, live, phone, pageVisible, stage, unread };
+    return { slot, live, phone, pageVisible, stage, unread, railMode };
   }
 
   it('is on screen on the desktop while the session is live and the page is visible', () => {
@@ -31,6 +33,20 @@ describe('ConversationSlot', () => {
     pageVisible.set(true);
     live.set(false);
     expect(slot.onScreen()).toBe(false);
+  });
+
+  it("is on screen in the master's combat rail only while its Conversa tab is open", () => {
+    const { slot, railMode } = setup({ master: true });
+    railMode.set(true);
+    expect(slot.onScreen()).toBe(false);
+    expect(slot.shown()).toBe(false);
+    slot.railShown.set(true);
+    expect(slot.onScreen()).toBe(true);
+    expect(slot.shown()).toBe(true);
+    railMode.set(false);
+    slot.railShown.set(false);
+    expect(slot.onScreen()).toBe(true);
+    expect(slot.shown()).toBe(true);
   });
 
   it('is on screen on a phone only in the Conversa tab', () => {

@@ -7,6 +7,7 @@ import {
 } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
 import { OrderList } from './order-list';
+import { openAllRows } from './order-list-testing';
 
 describe('OrderList: states', () => {
   it('shows the state chips of a row, with who marked the target', () => {
@@ -39,6 +40,7 @@ describe('OrderList: states', () => {
       }),
     );
     fixture.detectChanges();
+    openAllRows(fixture);
     const chips = Array.from(
       (fixture.nativeElement as HTMLElement).querySelectorAll('.row button.tag__btn'),
       (b) => b.textContent?.trim(),

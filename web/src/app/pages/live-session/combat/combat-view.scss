@@ -27,59 +27,139 @@
   }
 }
 
-.setup__side,
-.active__map {
+.setup__side {
   display: flex;
   flex-direction: column;
   gap: var(--mr-space-5);
   min-width: 0;
 }
 
-// The running combat: the master's card and the order first on a phone, where
-// they are read all the time (E6-12); on the left from 1024px the map and the
-// log, on the right the card and the order (E6-11).
-.active {
+// The master's running combat, alternative B (C1-02, Main): the order on the left, the map with its tabs in the middle, the rail on the
+// right. The order and the rail stick under the app bar and the combat bar and scroll inside themselves; the middle column scrolls
+// with the page. From 1024px the order is inside the rail's "Turno" and the map has the rest; from 1280px it is a column of 288px (a
+// strip of 64px when folded). Below 1024px see `.phone`.
+.tri {
+  --tri-top: 164px;
+  --mr-rail-top: var(--tri-top);
+  --order-max: calc(100dvh - var(--tri-top) - var(--mr-space-4));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  align-items: start;
+  gap: var(--mr-space-6);
+}
+
+.tri--wide {
+  grid-template-columns: 288px minmax(0, 1fr) 368px;
+}
+
+.tri--folded {
+  grid-template-columns: 64px minmax(0, 1fr) 368px;
+}
+
+.tri__order {
+  position: sticky;
+  top: var(--tri-top);
+  min-width: 0;
+}
+
+.tri__main,
+.tri__turn {
   display: flex;
   flex-direction: column;
-  gap: var(--mr-space-5);
+  gap: var(--mr-space-4);
+  min-width: 0;
+}
 
-  // One column until 1280px: the master's order needs the width for the cover lines (E9-07).
-  @media (min-width: 1280px) {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 500px;
-    grid-template-areas:
-      'map side'
-      'log side';
-    grid-template-rows: auto 1fr;
-    align-items: start;
-    gap: var(--mr-space-6);
+// The rail is a card: its tab list on top, the panels inside it, the cards of "Turno" without a frame of their own.
+.tri__rail {
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+}
+
+.tri__turn {
+  padding: var(--mr-space-4);
+}
+
+.tri__chat {
+  min-height: 100%;
+}
+
+// The tabs under the map: the tab list, then the panel that is open (the others stay mounted, hidden).
+.mtabs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.mtabs__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  min-width: 0;
+
+  &[hidden] {
+    display: none;
   }
 }
 
-.active__map {
-  grid-area: map;
-}
-
-.active__side {
+// Under 1024px: "Turno · Ordem · Mapa", and a fixed bar (above the pinned nav) with what the turn owes and "Próximo turno".
+.phone {
   display: flex;
   flex-direction: column;
-  gap: var(--mr-space-5);
-  grid-area: side;
-  min-width: 0;
-  order: -1;
+  gap: var(--mr-space-3);
+  // Room for the fixed bar.
+  padding-bottom: 88px;
+}
 
-  @media (min-width: 1024px) {
-    order: 0;
+.phone__line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--mr-ink-muted);
+
+  b {
+    color: var(--mr-ink);
   }
 }
 
-.active__end {
-  display: block;
+.phone__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  min-width: 0;
+
+  &[hidden] {
+    display: none;
+  }
 }
 
-.active__log {
-  grid-area: log;
-  min-width: 0;
+.phone__more {
+  font-weight: 400;
+  color: var(--mr-ink-muted);
+}
+
+.phone__bar {
+  position: fixed;
+  inset: auto 0 var(--mr-session-nav, 0px);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  padding: var(--mr-space-2) var(--mr-gutter);
+  border-top: 1px solid var(--mr-line);
+  background: var(--mr-surface);
+}
+
+.phone__next {
+  margin-inline-start: auto;
 }
 
 // The player's turn: the card first, then what they can do (E6-06), the map
@@ -217,60 +297,6 @@
     flex: 1 1 100%;
     margin: 0;
   }
-}
-
-// A combat without a map, the master's screen (E10-04 state 2): the card, its movement and the offer on the left, the order on the right;
-// below 1280px one column, the card first and the order right after it, then the cover and the log.
-.theatre {
-  display: flex;
-  flex-direction: column;
-  gap: var(--mr-space-5);
-
-  @media (min-width: 1280px) {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 500px;
-    grid-template-areas:
-      'top order'
-      'rest order';
-    grid-template-rows: auto 1fr;
-    align-items: start;
-    gap: var(--mr-space-6);
-  }
-}
-
-.theatre__top,
-.theatre__rest,
-.theatre__order {
-  display: flex;
-  flex-direction: column;
-  gap: var(--mr-space-5);
-  min-width: 0;
-}
-
-.theatre__top {
-  grid-area: top;
-
-  // Nothing above the card: an empty column takes no gap, and neither does a host with nothing in it (no offer, no death question).
-  &:empty,
-  &:not(:has(> :not(:empty))) {
-    display: none;
-  }
-
-  > :empty {
-    display: none;
-  }
-}
-
-.theatre__rest {
-  grid-area: rest;
-}
-
-.theatre__order {
-  grid-area: order;
-}
-
-.theatre__end {
-  display: block;
 }
 
 // The Bardic Inspiration die card under the turn bar.

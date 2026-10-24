@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { CombatantKind } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
 import { OrderList } from './order-list';
+import { openAllRows } from './order-list-testing';
 
 describe('lose-concentration question ends with the concentration', () => {
   const salvia = combatant({
@@ -40,6 +41,7 @@ describe('lose-concentration question ends with the concentration', () => {
     const ended: string[] = [];
     fixture.componentInstance.endConcentration.subscribe((id) => ended.push(id));
     fixture.detectChanges();
+    openAllRows(fixture);
     const el = fixture.nativeElement as HTMLElement;
     Array.from(el.querySelectorAll<HTMLButtonElement>('button'))
       .find((b) => b.textContent?.includes('Perdeu a concentração'))!

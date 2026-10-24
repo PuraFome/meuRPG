@@ -44,7 +44,6 @@ import { CoverMark } from './cover-mark';
   `,
   styles: `
     :host {
-      grid-area: cover;
       min-width: 0;
       display: flex;
       flex-direction: column;

@@ -95,7 +95,7 @@
 
       <!-- The conversation of the scene (MR-051): a column beside the stage from 1600px, under it below that; on a phone the
            "Conversa" tab opens it full screen (the page behind is inert). Its code loads lazily. -->
-      <div class="split">
+      <div class="split" [class.split--rail]="railChat()">
       <div class="split__main" [attr.inert]="slot.chatOpen() ? '' : null">
 
       <!-- New lines while the phone's chat is closed: one quiet row on top, because the tabs close the page, out of sight. -->
@@ -177,34 +177,59 @@
           [dicePreference]="state.campaign()?.dicePreference ?? 1"
           [trapSkills]="view.trapSkills()"
           [traps]="state.isMaster() ? trapBoard : null"
+          [chat]="railChat() ? chatPanel : null"
+          [chatUnread]="conversation.unread()"
           (adjust)="sheets.adjust($event)"
           (changeDice)="sheets.changeDice()"
+          (chatShown)="slot.railShown.set($event)"
         >
           @if (state.ownVitals(); as v) {
             <app-player-vitals [vitals]="v" [sheet]="state.ownSheet()" [beastAc]="state.beastAc()" [campaignId]="state.campaignId()" [armorClassBonus]="view.ownArmorBonus()" [ownDeathSaves]="view.ownDeathSaves()" [onTurn]="view.ownTurn()" [effectCards]="ownEffects.cards()" [conditionNames]="ownEffects.conditions()" [compact]="true" />
           }
+          @if (state.isMaster() && !view.inTheatre() && view.fogMaster()) {
+            <app-fog-master-panel
+              appMapTab="fog"
+              [campaignId]="state.campaignId()"
+              [state]="mapState"
+              [map]="mapState.map()"
+              [people]="view.viewAsPeople()"
+              [info]="state.partyInfo()"
+              [tick]="state.visionTick()"
+              [viewAs]="state.viewAs()"
+              [note]="state.viewNote()"
+              [goneNote]="state.viewGone()"
+              [inCombat]="true"
+              (viewAsChange)="setViewAs($event)"
+              (noteChange)="state.viewNote.set($event)"
+              (gone)="viewAsGone()"
+            />
+          }
+          <!-- In a combat the master still reveals, fires and disarms (E9-08) and marks treasure (E9-09): one tab each, under the map. -->
+          @if (state.isMaster() && !view.inTheatre()) {
+            <app-trap-panel
+              appMapTab="traps"
+              [mapTabCount]="view.trapCount()"
+              [campaignId]="state.campaignId()"
+              [state]="mapState"
+              [board]="trapBoard"
+              [players]="view.cluePlayers()"
+              [vitals]="state.vitals()"
+              [combat]="combat"
+              [withDamages]="false"
+            />
+          }
+          @if (state.isMaster() && !view.inTheatre()) {
+            <app-treasure-panel appMapTab="treasure" [mapTabCount]="view.treasureCount()" [campaignId]="state.campaignId()" [state]="mapState" [people]="view.finderRows()" />
+          }
+          @if (state.isMaster() && view.puzzlesShown()) {
+            <div appMapTab="puzzles" class="puzzles-tab">
+              <app-master-puzzles [campaignId]="state.campaignId()" [state]="puzzles" />
+              <app-master-live [campaignId]="state.campaignId()" [state]="puzzles" />
+            </div>
+          }
         </app-combat-view>
-        <!-- The fog's tools stay during a combat (MR-036): the master's "Ver como" and the lights, the player's light. A combat without a map has no fog (RN-25). -->
-        @if (view.inTheatre()) {
-          <!-- Nothing that depends on place exists here. -->
-        } @else if (view.fogMaster()) {
-          <app-fog-master-panel
-            class="fog-panel"
-            [campaignId]="state.campaignId()"
-            [state]="mapState"
-            [map]="mapState.map()"
-            [people]="view.viewAsPeople()"
-            [info]="state.partyInfo()"
-            [tick]="state.visionTick()"
-            [viewAs]="state.viewAs()"
-            [note]="state.viewNote()"
-            [goneNote]="state.viewGone()"
-            [inCombat]="true"
-            (viewAsChange)="setViewAs($event)"
-            (noteChange)="state.viewNote.set($event)"
-            (gone)="viewAsGone()"
-          />
-        } @else if (view.fogPlayer() && view.ownToken(); as me) {
+        <!-- The player's light stays during a combat (MR-036); the master's fog, traps, treasure and puzzles are tabs under the map. A combat without a map has no fog (RN-25). -->
+        @if (!state.isMaster() && !view.inTheatre() && view.fogPlayer() && view.ownToken(); as me) {
           <app-fog-player-tools
             class="fog-panel"
             [campaignId]="state.campaignId()"
@@ -217,25 +242,6 @@
             [showFamiliar]="false"
             [seeing]="state.seeingFamiliar()"
           />
-        }
-        @if (state.isMaster() && !view.inTheatre()) {
-          <!-- In a combat the master still reveals, fires and disarms (E9-08) and marks treasure (E9-09). -->
-          <div class="board__traps">
-            <app-trap-panel
-              [campaignId]="state.campaignId()"
-              [state]="mapState"
-              [board]="trapBoard"
-              [players]="view.cluePlayers()"
-              [vitals]="state.vitals()"
-              [combat]="combat"
-              [withDamages]="false"
-            />
-            <app-treasure-panel [campaignId]="state.campaignId()" [state]="mapState" [people]="view.finderRows()" />
-          </div>
-          @if (view.puzzlesShown()) {
-            <app-master-puzzles class="board__traps" [campaignId]="state.campaignId()" [state]="puzzles" />
-            <app-master-live class="board__traps" [campaignId]="state.campaignId()" [state]="puzzles" />
-          }
         }
       } @else if (state.isMaster()) {
         <!-- The rolls that wait for their roller's answer, which the master may answer too after ten seconds: above the stage. -->
@@ -475,30 +481,19 @@
         <app-free-roll-log [rolls]="freeDice.table()" [listState]="freeDice.listState()" (retry)="freeDice.refresh()" />
       }
       </div>
-      <div class="split__chat" [class.split__chat--full]="slot.chatOpen()" [class.split__chat--away]="slot.phone() && !slot.chatOpen()">
-        @defer (when slot.wanted()) {
-          <app-conversation
-            [state]="conversation"
-            [campaignId]="state.campaignId()"
-            [isMaster]="state.isMaster()"
-            [userId]="slot.userId()"
-            [ownCharacterId]="state.ownCharacterId()"
-            [ownCharacterName]="view.ownCharacterName()"
-            [stageIds]="slot.stageIds()"
-            [sceneName]="scene.scene()?.name ?? ''"
-            [connection]="state.connection()"
-            [phone]="slot.phone()"
-            [active]="slot.shown()"
-            (back)="slot.choose('scene')"
-          />
-        }
-      </div>
+      @if (!railChat()) {
+        <div class="split__chat" [class.split__chat--full]="slot.chatOpen()" [class.split__chat--away]="slot.phone() && !slot.chatOpen()">
+          <ng-container *ngTemplateOutlet="chatPanel" />
+        </div>
+      }
       <!-- The phone's nav, pinned to the bottom of the screen and outside the page behind it, so it stays usable while the chat covers the page. -->
       @if (slot.phone()) {
         <app-session-tabs
           [tab]="slot.tab()"
           [unread]="conversation.unread()"
           [sheetLink]="slot.sheetLink()"
+          [sceneLabel]="state.isMaster() && view.combatOnScreen() ? 'Combate' : 'Cena'"
+          [sheetLabel]="state.isMaster() ? 'Grupo' : 'Ficha'"
           (choose)="slot.choose($event)"
         />
       }
@@ -516,4 +511,24 @@
       · {{ view.freshCount() }}<span class="notes-bar__more">&nbsp;{{ view.freshCount() === 1 ? 'nova' : 'novas' }}</span>
     }</span>
   </button>
+</ng-template>
+
+<!-- The conversation: in the column beside the stage, under the board, or (the master's running combat) in the rail. Its code loads lazily. -->
+<ng-template #chatPanel>
+  @defer (when slot.wanted()) {
+          <app-conversation
+            [state]="conversation"
+            [campaignId]="state.campaignId()"
+            [isMaster]="state.isMaster()"
+            [userId]="slot.userId()"
+            [ownCharacterId]="state.ownCharacterId()"
+            [ownCharacterName]="view.ownCharacterName()"
+            [stageIds]="slot.stageIds()"
+            [sceneName]="scene.scene()?.name ?? ''"
+            [connection]="state.connection()"
+            [phone]="slot.phone()"
+            [active]="slot.shown()"
+            (back)="slot.choose('scene')"
+          />
+        }
 </ng-template>

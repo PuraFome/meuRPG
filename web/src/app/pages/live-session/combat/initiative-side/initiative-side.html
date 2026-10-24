@@ -28,35 +28,7 @@
     }
   </ul>
 
-  <button
-    mat-flat-button
-    type="button"
-    class="side__begin"
-    [class.side__begin--blocked]="!ready()"
-    [disabled]="!ready()"
-        disabledInteractive
-    [attr.aria-describedby]="ready() ? null : 'begin-reason'"
-    (click)="start()"
-  >
-    Começar o combate
-  </button>
   @if (!ready()) {
     <p id="begin-reason" class="side__reason">{{ reason() }}</p>
-  }
-
-  @if (confirming()) {
-    <div class="side__confirm" role="alertdialog" aria-labelledby="cancel-title">
-      <p id="cancel-title">Cancelar o combate? Ele acaba sem ter começado.</p>
-      <div>
-        <button #back mat-stroked-button type="button" (click)="confirming.set(false)">Voltar</button>
-        <button mat-stroked-button type="button" class="danger" (click)="confirmCancel()">
-          Cancelar combate
-        </button>
-      </div>
-    </div>
-  } @else {
-    <button mat-button type="button" class="side__cancel" (click)="confirming.set(true)">
-      Cancelar combate
-    </button>
   }
 </section>

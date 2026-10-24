@@ -1,5 +1,12 @@
 :host {
   display: block;
+
+  // From 1024px the bar sticks under the app bar (64px), over the columns that scroll under it (the app bar is 10).
+  @media (min-width: 1024px) {
+    position: sticky;
+    top: 64px;
+    z-index: 9;
+  }
 }
 
 // A garnet frame means "the combat" (like the session panel's: a frame in
@@ -171,6 +178,17 @@
 
 .end {
   --mat-button-outlined-label-text-color: var(--mr-ink);
+}
+
+// "Começar o combate" while someone has not rolled: a dashed outline and quiet words, never a greyed-out fill (the reason is under the
+// initiative card, and the button stays focusable).
+.begin--blocked {
+  --mat-button-filled-disabled-container-color: var(--mr-surface);
+  --mat-button-filled-disabled-label-text-color: var(--mr-ink-muted);
+  --mat-button-filled-container-color: transparent;
+  --mat-button-filled-label-text-color: var(--mr-ink-muted);
+  border: 1px dashed var(--mr-control-line);
+  cursor: default;
 }
 
 .confirm {
