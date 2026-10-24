@@ -47,20 +47,65 @@ function effectSaveWords(fx: CombatLogEffect): string {
   return fx.abilityNamePt ? ` de ${fx.abilityNamePt}` : '';
 }
 
+/** "entrou no Raio Lunar" or "começou o turno na Teia": how a creature met a zone (`reason` zone_enter, zone_start), or `''`. */
+function zoneMeeting(fx: CombatLogEffect): string {
+  const inSpell = `${article(fx.sourceNamePt) === 'a' ? 'na' : 'no'} ${fx.sourceNamePt}`;
+  switch (fx.reason) {
+    case 'zone_enter':
+      return `entrou ${inSpell}`;
+    case 'zone_start':
+      return `começou o turno ${inSpell}`;
+    default:
+      return '';
+  }
+}
+
+/** "Tor começou o turno na Teia e passou no teste de Destreza (…)", or `null` when the line is no zone catch. */
+function zoneCatch(fx: CombatLogEffect, ctx: LogContext, then: string): string | null {
+  const met = zoneMeeting(fx);
+  return met ? `${upFirst(effectTargets(fx, ctx))} ${met} e ${then}` : null;
+}
+
+/** Why a zone (or an effect) ended, as the end of the line: "a concentração acabou". */
+const ENDED_WHY: Readonly<Record<string, string>> = {
+  concentration: 'a concentração acabou',
+  duration: 'o tempo da magia passou',
+  ended_by_master: 'o mestre a encerrou',
+};
+
+function endedLine(fx: CombatLogEffect, ctx: LogContext): string {
+  if (fx.reason === 'concentration_replaced') {
+    // A zone's caster is its only target (the server writes the caster as the label).
+    const caster = fx.targetLabels[0] ?? 'alguém';
+    return `${fx.sourceNamePt} ${ofSubject(caster, ctx)} acabou: ${caster} começou outra magia de concentração`;
+  }
+  const base = `${fx.sourceNamePt} acabou ${effectTargets(fx, ctx, 'em')}`;
+  const why = ENDED_WHY[fx.reason];
+  return why ? `${base}: ${why}` : base;
+}
+
 const EFFECT_LINES: Partial<Record<CombatLogEffectChange, EffectLine>> = {
   [CombatLogEffectChange.ADDED]: (fx, ctx) =>
     `${fx.sourceNamePt} foi aplicado ${effectTargets(fx, ctx, 'em')}`,
-  [CombatLogEffectChange.ENDED]: (fx, ctx) =>
-    `${fx.sourceNamePt} acabou ${effectTargets(fx, ctx, 'em')}`,
+  [CombatLogEffectChange.ENDED]: endedLine,
+  [CombatLogEffectChange.ZONE_MOVED]: (fx, ctx) =>
+    `${fx.sourceNamePt} ${ofSubject(fx.targetLabels[0] ?? 'alguém', ctx)} mudou de lugar`,
   [CombatLogEffectChange.DURATION_CHANGED]: (fx, ctx) =>
     `A duração de ${fx.sourceNamePt} ${effectTargets(fx, ctx, 'em')} mudou`,
   [CombatLogEffectChange.SAVED]: (fx, ctx) =>
+    zoneCatch(fx, ctx, `passou no teste${effectSaveWords(fx)}${effectSaveNumbers(fx, ctx)}`) ??
     `${upFirst(effectTargets(fx, ctx))} passou no teste${effectSaveWords(fx)} contra ${fx.sourceNamePt}${effectSaveNumbers(fx, ctx)}`,
   [CombatLogEffectChange.SAVE_FAILED]: (fx, ctx) =>
+    zoneCatch(fx, ctx, `falhou no teste${effectSaveWords(fx)}${effectSaveNumbers(fx, ctx)}`) ??
     `${upFirst(effectTargets(fx, ctx))} falhou no teste${effectSaveWords(fx)} contra ${fx.sourceNamePt}${effectSaveNumbers(fx, ctx)}`,
   [CombatLogEffectChange.SAVE_SKIPPED]: (fx, ctx) =>
     `${upFirst(effectTargets(fx, ctx))} não fez o teste${effectSaveWords(fx)} contra ${fx.sourceNamePt}`,
   [CombatLogEffectChange.DAMAGE]: (fx, ctx) =>
+    zoneCatch(
+      fx,
+      ctx,
+      `sofreu ${fx.amount} de dano${fx.damageTypePt ? ` ${fx.damageTypePt}` : ''}`,
+    ) ??
     `${fx.sourceNamePt} causou ${fx.amount} de dano${fx.damageTypePt ? ` ${fx.damageTypePt}` : ''} ${effectTargets(fx, ctx, 'a')}`,
   [CombatLogEffectChange.TEMP_HP]: (fx, ctx) =>
     `${fx.sourceNamePt} deu ${fx.amount} PV temporários ${effectTargets(fx, ctx, 'a')}`,

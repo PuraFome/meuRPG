@@ -101,6 +101,19 @@ function rollForm(p: PendingDamage) {
   };
 }
 
+/** "Zona de magia: Nuvem de Adagas" for a damage a spell zone owes: the server marks no zone and no reason on it, so the
+ * card matches the zone the caster has for that spell (the cast's own damage has a cast id, a trap's a trap point). Generic
+ * words: whether the creature came in or began its turn there is in the log only. */
+export function zoneLabel(p: PendingDamage, e: Encounter): string {
+  if (p.castId || p.trapPointId) {
+    return '';
+  }
+  const zone = e.zones.find(
+    (z) => z.spellKey === p.attackKey && z.ownerCombatantId === p.attackerId,
+  );
+  return zone ? `Zona de magia: ${zone.spellNamePt}` : '';
+}
+
 /** One pending damage as its card shows it. */
 export function pendingCard(p: PendingDamage, e: Encounter, all: readonly PendingDamage[]) {
   const attacker = e.combatants.find((c) => c.id === p.attackerId);
@@ -121,6 +134,7 @@ export function pendingCard(p: PendingDamage, e: Encounter, all: readonly Pendin
     // A player rolls the damage of their own attack; the master waits.
     waitsForPlayer: !rolled && !!attacker && isPlayer(attacker),
     trapLabel: trapLabel(p, all),
+    zoneLabel: zoneLabel(p, e),
     attacker: attacker?.label ?? '',
     target: target?.label ?? '',
     ...rollForm(p),

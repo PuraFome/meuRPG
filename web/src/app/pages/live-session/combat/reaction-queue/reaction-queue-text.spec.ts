@@ -270,3 +270,34 @@ describe('reaction-queue-text', () => {
     });
   });
 });
+
+describe('the master queue for a zone save', () => {
+  const zoneSave = (over: object = {}) =>
+    save(
+      {
+        zoneId: 'z1',
+        zoneReason: 'zone_enter',
+        sourceNamePt: 'Teia',
+        phase: EffectPhase.UNSPECIFIED,
+        ...over,
+      },
+      { reactorLabel: 'Tor', reactorIsPlayer: true },
+    );
+
+  it('says why the zone asks, not an end or start of the turn', () => {
+    expect(effectSaveText(zoneSave())).toContain('Tor entrou na zona.');
+    expect(effectSaveText(zoneSave({ zoneReason: 'zone_start' }))).toContain(
+      'A zona atingiu Tor no começo do turno.',
+    );
+    expect(effectSaveText(zoneSave())).not.toContain('no fim da vez');
+  });
+
+  it('titles it with the zone and the DC he reads, and the caster when he has it', () => {
+    expect(effectSaveTitle(zoneSave(), 'Pensantus')).toBe(
+      'Teia de Pensantus · Teste de resistência de Sabedoria de Tor · CD\u00a013',
+    );
+    expect(effectSaveTitle(save())).toBe(
+      'Teste de resistência de Sabedoria do Goblin · Riso Histérico · CD 13',
+    );
+  });
+});

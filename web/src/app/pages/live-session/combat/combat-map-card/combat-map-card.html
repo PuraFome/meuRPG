@@ -31,6 +31,9 @@
           [layers]="layers()"
           [offers]="offers()"
         >
+          @if (zones().length) {
+            <app-zone-layer [columns]="encounter().gridColumns" [rows]="encounter().gridRows" [zones]="zones()" />
+          }
           @if (lastArea(); as area) {
             <app-area-overlay [columns]="encounter().gridColumns" [rows]="encounter().gridRows" [squares]="area.squares" [origin]="area.origin" />
           }
@@ -73,6 +76,9 @@
         (doorPick)="doorPick.emit($event)"
         (tokenDrop)="tokenDrop.emit($event)"
       >
+        @if (zones().length) {
+          <app-zone-layer [columns]="encounter().gridColumns" [rows]="encounter().gridRows" [zones]="zones()" />
+        }
         @if (lastArea(); as area) {
           <app-area-overlay [columns]="encounter().gridColumns" [rows]="encounter().gridRows" [squares]="area.squares" [origin]="area.origin" />
         }
@@ -161,6 +167,9 @@
     @if (lastArea()) {
       <li><span class="mr-swatch sw-area" aria-hidden="true"></span>Área da última magia</li>
       <li><span class="sw-diamond" aria-hidden="true"></span>Ponto de origem</li>
+    }
+    @for (item of zoneLegend(); track item.key) {
+      <li class="legend__zone"><app-zone-swatch [pattern]="item.pattern" [dashed]="item.masterOnly" />{{ item.name }}{{ item.masterOnly ? ' só você vê' : '' }}</li>
     }
     @if (isMaster()) {
       <li><app-combatant-token initial="P" [size]="22" [onMap]="true" />Jogador</li>

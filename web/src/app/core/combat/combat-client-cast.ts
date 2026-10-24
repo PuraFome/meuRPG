@@ -19,7 +19,7 @@ import {
 import { castExtrasBody, castRollOneof, areaOneof, need } from './combat-client-wire';
 import { HeldRollAsked, heldOfferOf } from '../held-rolls/held-roll-offer';
 
-/** The calls of spells: casting, previewing an area and the hidden creatures an area reached. */
+/** The calls of spells: casting, previewing an area, the hidden creatures an area reached, and the zones a spell keeps. */
 export class CombatCastCalls {
   constructor(private readonly base: CombatClientBase) {}
 
@@ -158,5 +158,35 @@ export class CombatCastCalls {
         }),
     );
     return need(res.encounter, 'ResolveHiddenReveal');
+  }
+
+  /** `MoveSpellZone`: the caster moves an area that moves by an action (the master moves any zone). One key per move:
+   * the same zone and square again is a retry and keeps it; after the move worked the next one is new. */
+  async moveSpellZone(
+    campaignId: string,
+    encounterId: string,
+    zoneId: string,
+    origin: { col: number; row: number },
+  ): Promise<Encounter> {
+    const res = await this.base.keyed(
+      ['moveSpellZone', campaignId, encounterId, zoneId, origin.col, origin.row],
+      (sent) =>
+        this.base.client.moveSpellZone({
+          campaignId,
+          encounterId,
+          zoneId,
+          origin: { col: origin.col, row: origin.row },
+          idempotencyKey: sent,
+        }),
+    );
+    return need(res.encounter, 'MoveSpellZone');
+  }
+
+  /** `EndSpellZone`: the master ends a zone (a concentration that ended outside the app). */
+  async endSpellZone(campaignId: string, encounterId: string, zoneId: string): Promise<Encounter> {
+    const res = await this.base.keyed(['endSpellZone', campaignId, encounterId, zoneId], (sent) =>
+      this.base.client.endSpellZone({ campaignId, encounterId, zoneId, idempotencyKey: sent }),
+    );
+    return need(res.encounter, 'EndSpellZone');
   }
 }

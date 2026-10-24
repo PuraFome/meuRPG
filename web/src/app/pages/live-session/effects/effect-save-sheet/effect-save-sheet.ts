@@ -32,6 +32,7 @@ import {
   missingDice,
   saveFormula,
 } from '../../../../core/effects/effects';
+import { zoneCasterLabel, zoneResultDc } from '../../../../core/effects/zone-save';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { HeldRollPrompt } from '../../../../shared/held-roll-prompt/held-roll-prompt';
 import { rerollShow } from '../../../../shared/held-roll-prompt/held-roll-shows';
@@ -135,7 +136,13 @@ export class EffectSaveSheet {
     }
     return p.value;
   });
-  protected readonly view = computed(() => effectSaveView(this.prompt(), this.data.round));
+  protected readonly view = computed(() =>
+    effectSaveView(
+      this.prompt(),
+      this.data.round,
+      zoneCasterLabel(this.data.state.encounter(), this.prompt().zoneId),
+    ),
+  );
   /** The fields of the d4 the prompt lists (or the ones a refusal asked for). */
   protected readonly fields = computed<readonly ExtraDieField[]>(() => {
     const listed = dieFields(
@@ -169,6 +176,7 @@ export class EffectSaveSheet {
       'Este teste já foi respondido: ele não espera mais a sua rolagem.',
   );
   protected readonly formula = saveFormula;
+  protected readonly againstDc = zoneResultDc;
 
   /** One key per answer (how it is rolled): the same tap again is a retry, another way is a new request. */
   private readonly keys = new ActionKey();
