@@ -72,7 +72,7 @@ test(
       // Start with the party and three hidden goblins (and the captain).
       await clickStartCombat(m);
       await expect(m.getByRole('dialog', { name: 'Iniciar combate' })).toBeVisible();
-      await expect(m.getByText('20 × 14 · 1,5 m')).toBeVisible();
+      await expect(m.getByText('20 × 14 quadrados de 1,5 m')).toBeVisible();
       await expect(m.getByText('30 m × 21 m').first()).toBeVisible();
       for (let i = 0; i < 3; i++) {
         await m.getByRole('button', { name: 'Mais um Goblin', exact: true }).click();
