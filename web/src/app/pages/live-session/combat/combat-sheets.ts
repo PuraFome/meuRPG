@@ -237,7 +237,7 @@ export class CombatSheets {
         labelledBy: 'sheet-t',
         width: '760px',
         panelClass: 'mr-sheet-zone',
-        focus: '[role="application"]',
+        focus: '.cm__surface[tabindex]',
       },
     ).subscribe({ complete: onClosed });
     return true;

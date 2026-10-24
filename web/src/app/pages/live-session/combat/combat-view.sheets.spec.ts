@@ -27,7 +27,12 @@ import {
   SpellDetailsSchema,
   TurnOptionsSchema,
 } from '../../../../gen/meurpg/rules/v1/rules_pb';
-import { combatant, encounter, reactionWindow, spellZone } from '../../../core/combat/combat-testing';
+import {
+  combatant,
+  encounter,
+  reactionWindow,
+  spellZone,
+} from '../../../core/combat/combat-testing';
 import { settle } from '../../../../test-settle';
 import { PHONE_QUERY } from '../../../shared/map-view/media-query';
 import { spellDetailsFromGen } from '../../../shared/spell-details/spell-details-map';
