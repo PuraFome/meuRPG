@@ -219,6 +219,7 @@ Esconder e mostrar dão aos jogadores o mesmo aviso de qualquer mudança da cena
 Uma cena fica aberta para a mesa toda, inclusive um jogador que entra depois, ou para exatamente os jogadores que o mestre escolhe, e que ele pode mudar enquanto ela está aberta.
 Um jogador que está fora não recebe cena nenhuma, exatamente como quando nenhuma está aberta: nem o nome, o ponto, a descrição, as ações, as rolagens, o palco ou os retratos, nem o teste em grupo pedido nela, nem um aviso ao vivo, e uma rolagem dele é recusada como se nenhuma cena estivesse aberta.
 Um jogador que entra lê a cena na hora e um jogador que sai a perde na hora, cada um avisado pelo mesmo aviso de qualquer mudança da cena.
+Com o interruptor do mestre "Os jogadores podem entrar" ligado, um jogador que está fora lê o nome da cena e que pode entrar, e nada mais, e entrar o faz um dos jogadores dela para o que vem depois (uma imagem mostrada aos jogadores da cena chega a ele; uma mostrada a jogadores escolhidos não).
 Os testes passados nela contam no resumo só para o mestre e os jogadores que estavam dentro; uma cena fica "descoberta" para as anotações do grupo quando está aberta para todos.
 
 **Quem vê a imagem** (["Quem vê a imagem"](historias.md#mr-028-mostrar-uma-imagem-aos-jogadores), [MR-028](historias.md#mr-028-mostrar-uma-imagem-aos-jogadores)).

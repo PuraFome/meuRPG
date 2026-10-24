@@ -151,6 +151,7 @@ Onde um nível da magia puder ser confundido com o nível do personagem, o texto
 | Jogador removido | Removed player | O que o feed mostra como autor de uma linha quando a conta do autor foi apagada. A linha fica. |
 | Narrador | Narrator | A voz do mestre quando nenhum NPC está falando. Tem uma voz própria quando uma linha é ouvida. |
 | Ouvir | Hear | O botão que toca uma linha do narrador ou de um NPC com uma voz gerada. O áudio é feito na primeira vez que um leitor pede e guardado com a linha (RN-36). |
+| Entrar na cena | Join the scene | O que um jogador faz numa cena aberta para só alguns jogadores quando o mestre permite ("Os jogadores podem entrar"): ele lê o nome, toca o botão e vira um dos jogadores dela; o mestre vê que ele entrou sozinho (MR-015, RN-10). |
 | Quem está na cena | Who is in the scene | Os jogadores para quem uma cena está aberta: a mesa toda (inclusive quem entra depois) ou os que o mestre escolhe e pode mudar enquanto ela está aberta. Um jogador que está fora não recebe cena nenhuma, como quando nenhuma está aberta; o mestre lê quem está dentro e quem está fora (MR-015, RN-10). |
 | Quem vê a imagem | Who sees the image | A audiência da imagem que o mestre mostra: a mesa toda ("Mostrar a toda a mesa"), os jogadores da cena ou jogadores escolhidos ("Mudar quem vê"). Um jogador fora dela nunca recebe a imagem (MR-028, RN-10). |
 | Retrato do NPC | NPC portrait | Uma imagem da galeria na ficha de um NPC, mostrada no cartão dele (só para o mestre) e na cena enquanto ele está em cena. |

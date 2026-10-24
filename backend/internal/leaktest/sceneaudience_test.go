@@ -2,6 +2,7 @@ package leaktest
 
 import (
 	"bytes"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -477,5 +478,73 @@ func TestRN10_AnImageLeftWithThePlayersKeepsItsAudience(t *testing.T) {
 	}
 	if status, _ := w.caio.get("/images/" + table.id); status != 200 {
 		t.Errorf("Caio gets HTTP %d for the image left with the whole table, want 200", status)
+	}
+}
+
+// MR-015, RN-10: with "Os jogadores podem entrar" on, a player out of the scene reads its name and that they may join,
+// and no other needle of it (its point id, description, action, stage, portrait); after JoinScene they read the stage.
+func TestRN10_APlayerOutOfAJoinableSceneReadsOnlyItsName(t *testing.T) {
+	w := newWorld(t)
+	ps := w.buildPartialScene()
+	master, ana, caio := w.master, w.ana, w.caio
+	sm, sa, sc := w.watchStream(master), w.watchStream(ana), w.watchStream(caio)
+	w.openSceneTo(ps.point.GetId(), ana)
+	must(master.play.PutOnStage(t.Context(), rq(&playv1.PutOnStageRequest{CampaignId: w.campaign, CharacterId: ps.npc})))
+	name := w.needlesOf("partial-scene-name")[0]
+	rest := slices.DeleteFunc(slices.Clone(ps.needles), func(n string) bool { return n == name })
+
+	// Switch off: nothing, not even the name (the other test holds the needles).
+	if _, found := holdsAny(w.openSceneAs(caio).body, ps.needles); found {
+		t.Fatal("Caio reads the scene with the switch off")
+	}
+	must(master.play.SetScenePlayersMayJoin(t.Context(), rq(&playv1.SetScenePlayersMayJoinRequest{CampaignId: w.campaign, PlayersMayJoin: true})))
+	w.settle(sm, sa, sc)
+
+	// Switch on: the name reaches the outsiders; the master and Ana read all of it (the positive control).
+	for _, p := range []*person{caio, w.pending, w.stranger, w.anonymous()} {
+		r := w.openSceneAs(p)
+		holdsName := bytes.Contains(r.body, []byte(name))
+		isMember := p == caio
+		if holdsName != isMember {
+			t.Errorf("%s reads the name = %v, want %v: %s", p.name, holdsName, isMember, shorten(r.body))
+		}
+		if n, found := holdsAny(r.body, rest); found {
+			t.Errorf("%s reads %q of a scene they may only join", p.name, n)
+		}
+	}
+	for _, p := range []*person{master, ana} {
+		r := w.openSceneAs(p)
+		for _, n := range ps.needles {
+			if !bytes.Contains(r.body, []byte(n)) {
+				t.Errorf("%s's scene lacks %q: %s", p.name, n, shorten(r.body))
+			}
+		}
+	}
+	// No image of the scene, no portrait, no roll.
+	portrait := ps.needles[len(ps.needles)-1]
+	if status, _ := caio.get("/images/" + portrait); status == 200 {
+		t.Error("Caio fetches the portrait of a scene he has not joined")
+	}
+	// Strangers, pending members and the master cannot join; the refusal of a stranger says nothing.
+	for _, p := range []*person{master, w.pending, w.stranger, w.anonymous()} {
+		if r := p.call(playv1connect.PlayServiceJoinSceneProcedure, &playv1.JoinSceneRequest{CampaignId: w.campaign}); r.ok() {
+			t.Errorf("%s joined the scene", p.name)
+		}
+	}
+	// Joining brings the stage.
+	mark := sc.count()
+	r := caio.call(playv1connect.PlayServiceJoinSceneProcedure, &playv1.JoinSceneRequest{CampaignId: w.campaign})
+	if !r.ok() {
+		t.Fatalf("Caio could not join: %s", r.body)
+	}
+	w.settle(sm, sa, sc)
+	if _, found := holdsAny(w.openSceneAs(caio).body, ps.needles); !found || !bytes.Contains(w.openSceneAs(caio).body, []byte(w.needlesOf("partial-stage-name")[0])) {
+		t.Error("Caio, who joined, does not read the stage")
+	}
+	if status, _ := caio.get("/images/" + portrait); status != 200 {
+		t.Errorf("Caio gets HTTP %d for the portrait after joining, want 200", status)
+	}
+	if len(eventsAfter(sc, mark)) == 0 {
+		t.Error("Caio's stream got no hint when he joined")
 	}
 }

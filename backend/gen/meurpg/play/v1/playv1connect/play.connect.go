@@ -104,6 +104,11 @@ const (
 	// PlayServiceSetSceneAudienceProcedure is the fully-qualified name of the PlayService's
 	// SetSceneAudience RPC.
 	PlayServiceSetSceneAudienceProcedure = "/meurpg.play.v1.PlayService/SetSceneAudience"
+	// PlayServiceSetScenePlayersMayJoinProcedure is the fully-qualified name of the PlayService's
+	// SetScenePlayersMayJoin RPC.
+	PlayServiceSetScenePlayersMayJoinProcedure = "/meurpg.play.v1.PlayService/SetScenePlayersMayJoin"
+	// PlayServiceJoinSceneProcedure is the fully-qualified name of the PlayService's JoinScene RPC.
+	PlayServiceJoinSceneProcedure = "/meurpg.play.v1.PlayService/JoinScene"
 	// PlayServiceCloseSceneProcedure is the fully-qualified name of the PlayService's CloseScene RPC.
 	PlayServiceCloseSceneProcedure = "/meurpg.play.v1.PlayService/CloseScene"
 	// PlayServiceGetOpenSceneProcedure is the fully-qualified name of the PlayService's GetOpenScene
@@ -695,6 +700,32 @@ type PlayServiceClient interface {
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION), or no scene is open (SceneBlocked NO_OPEN_SCENE).
 	SetSceneAudience(context.Context, *connect.Request[v1.SetSceneAudienceRequest]) (*connect.Response[v1.SetSceneAudienceResponse], error)
+	// SetScenePlayersMayJoin turns the switch "Os jogadores podem entrar" of the open scene (MR-015, RN-10), off by
+	// default and set back to off when the scene closes or another opens. Only the master may call it, and only
+	// for a scene open to only some players (a scene open to everyone has nobody to let in:
+	// SceneBlocked SCENE_NOT_PARTIAL). With it on, every player out of the scene reads GetOpenScene as a scene
+	// with only `name` and `joinable` (nothing else of it), and may call JoinScene; with it off they read no
+	// scene. Every player gets `scene_changed` when the switch changes, so the prompt appears or goes. The same
+	// value changes nothing.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session (GameSessionBlocked, NO_OPEN_SESSION), no scene (SceneBlocked
+	//     NO_OPEN_SCENE) or a scene open to everyone (SceneBlocked SCENE_NOT_PARTIAL).
+	SetScenePlayersMayJoin(context.Context, *connect.Request[v1.SetScenePlayersMayJoinRequest]) (*connect.Response[v1.SetScenePlayersMayJoinResponse], error)
+	// JoinScene adds the caller to the players of the open scene, when the master lets players join. The caller
+	// then reads the scene as any member does, and gets `scene_changed`; the master sees who joined and how
+	// (ScenePlayer.joined_by_self), and an image shown to the scene's players reaches them. A player already in
+	// the scene gets the scene and nothing changes. It is refused as when no scene is open (SceneBlocked
+	// NO_OPEN_SCENE) when the switch is off, so a refusal never says a scene exists.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist or the caller is not a member of it.
+	//   - `permission_denied`: the caller is the master.
+	//   - `failed_precondition`: no open session (GameSessionBlocked, NO_OPEN_SESSION), or no scene to join
+	//     (SceneBlocked NO_OPEN_SCENE).
+	JoinScene(context.Context, *connect.Request[v1.JoinSceneRequest]) (*connect.Response[v1.JoinSceneResponse], error)
 	// CloseScene closes the open scene, asking nothing. Only the campaign's
 	// master may call it. With no scene open it changes nothing. Every stream
 	// gets `scene_changed`, and a `scene_closed` event goes to the history.
@@ -1188,6 +1219,18 @@ func NewPlayServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(playServiceMethods.ByName("SetSceneAudience")),
 			connect.WithClientOptions(opts...),
 		),
+		setScenePlayersMayJoin: connect.NewClient[v1.SetScenePlayersMayJoinRequest, v1.SetScenePlayersMayJoinResponse](
+			httpClient,
+			baseURL+PlayServiceSetScenePlayersMayJoinProcedure,
+			connect.WithSchema(playServiceMethods.ByName("SetScenePlayersMayJoin")),
+			connect.WithClientOptions(opts...),
+		),
+		joinScene: connect.NewClient[v1.JoinSceneRequest, v1.JoinSceneResponse](
+			httpClient,
+			baseURL+PlayServiceJoinSceneProcedure,
+			connect.WithSchema(playServiceMethods.ByName("JoinScene")),
+			connect.WithClientOptions(opts...),
+		),
 		closeScene: connect.NewClient[v1.CloseSceneRequest, v1.CloseSceneResponse](
 			httpClient,
 			baseURL+PlayServiceCloseSceneProcedure,
@@ -1310,46 +1353,48 @@ func NewPlayServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 
 // playServiceClient implements PlayServiceClient.
 type playServiceClient struct {
-	startGameSession      *connect.Client[v1.StartGameSessionRequest, v1.StartGameSessionResponse]
-	endGameSession        *connect.Client[v1.EndGameSessionRequest, v1.EndGameSessionResponse]
-	getSessionSummary     *connect.Client[v1.GetSessionSummaryRequest, v1.GetSessionSummaryResponse]
-	listGameSessions      *connect.Client[v1.ListGameSessionsRequest, v1.ListGameSessionsResponse]
-	listOpenGameSessions  *connect.Client[v1.ListOpenGameSessionsRequest, v1.ListOpenGameSessionsResponse]
-	getLiveSession        *connect.Client[v1.GetLiveSessionRequest, v1.GetLiveSessionResponse]
-	watchGameSession      *connect.Client[v1.WatchGameSessionRequest, v1.WatchGameSessionResponse]
-	adjustCharacterVitals *connect.Client[v1.AdjustCharacterVitalsRequest, v1.AdjustCharacterVitalsResponse]
-	nudgePlayer           *connect.Client[v1.NudgePlayerRequest, v1.NudgePlayerResponse]
-	sendSessionMessage    *connect.Client[v1.SendSessionMessageRequest, v1.SendSessionMessageResponse]
-	listSessionMessages   *connect.Client[v1.ListSessionMessagesRequest, v1.ListSessionMessagesResponse]
-	signalMasterTyping    *connect.Client[v1.SignalMasterTypingRequest, v1.SignalMasterTypingResponse]
-	rollFreeDice          *connect.Client[v1.RollFreeDiceRequest, v1.RollFreeDiceResponse]
-	listFreeRolls         *connect.Client[v1.ListFreeRollsRequest, v1.ListFreeRollsResponse]
-	setCurrentMap         *connect.Client[v1.SetCurrentMapRequest, v1.SetCurrentMapResponse]
-	setShownImage         *connect.Client[v1.SetShownImageRequest, v1.SetShownImageResponse]
-	setShownImageAudience *connect.Client[v1.SetShownImageAudienceRequest, v1.SetShownImageAudienceResponse]
-	listLeftImages        *connect.Client[v1.ListLeftImagesRequest, v1.ListLeftImagesResponse]
-	takeBackLeftImage     *connect.Client[v1.TakeBackLeftImageRequest, v1.TakeBackLeftImageResponse]
-	openScene             *connect.Client[v1.OpenSceneRequest, v1.OpenSceneResponse]
-	setSceneAudience      *connect.Client[v1.SetSceneAudienceRequest, v1.SetSceneAudienceResponse]
-	closeScene            *connect.Client[v1.CloseSceneRequest, v1.CloseSceneResponse]
-	getOpenScene          *connect.Client[v1.GetOpenSceneRequest, v1.GetOpenSceneResponse]
-	rollSceneCheck        *connect.Client[v1.RollSceneCheckRequest, v1.RollSceneCheckResponse]
-	searchForTraps        *connect.Client[v1.SearchForTrapsRequest, v1.SearchForTrapsResponse]
-	fireTrap              *connect.Client[v1.FireTrapRequest, v1.FireTrapResponse]
-	listTrapActivity      *connect.Client[v1.ListTrapActivityRequest, v1.ListTrapActivityResponse]
-	listTrapDamages       *connect.Client[v1.ListTrapDamagesRequest, v1.ListTrapDamagesResponse]
-	applyTrapDamage       *connect.Client[v1.ApplyTrapDamageRequest, v1.ApplyTrapDamageResponse]
-	discardTrapDamage     *connect.Client[v1.DiscardTrapDamageRequest, v1.DiscardTrapDamageResponse]
-	grantSceneAttempt     *connect.Client[v1.GrantSceneAttemptRequest, v1.GrantSceneAttemptResponse]
-	putOnStage            *connect.Client[v1.PutOnStageRequest, v1.PutOnStageResponse]
-	takeOffStage          *connect.Client[v1.TakeOffStageRequest, v1.TakeOffStageResponse]
-	setStageNpcHidden     *connect.Client[v1.SetStageNpcHiddenRequest, v1.SetStageNpcHiddenResponse]
-	setSpeaker            *connect.Client[v1.SetSpeakerRequest, v1.SetSpeakerResponse]
-	castSummon            *connect.Client[v1.CastSummonRequest, v1.CastSummonResponse]
-	assumeWildShape       *connect.Client[v1.AssumeWildShapeRequest, v1.AssumeWildShapeResponse]
-	leaveWildShape        *connect.Client[v1.LeaveWildShapeRequest, v1.LeaveWildShapeResponse]
-	startFamiliarSight    *connect.Client[v1.StartFamiliarSightRequest, v1.StartFamiliarSightResponse]
-	stopFamiliarSight     *connect.Client[v1.StopFamiliarSightRequest, v1.StopFamiliarSightResponse]
+	startGameSession       *connect.Client[v1.StartGameSessionRequest, v1.StartGameSessionResponse]
+	endGameSession         *connect.Client[v1.EndGameSessionRequest, v1.EndGameSessionResponse]
+	getSessionSummary      *connect.Client[v1.GetSessionSummaryRequest, v1.GetSessionSummaryResponse]
+	listGameSessions       *connect.Client[v1.ListGameSessionsRequest, v1.ListGameSessionsResponse]
+	listOpenGameSessions   *connect.Client[v1.ListOpenGameSessionsRequest, v1.ListOpenGameSessionsResponse]
+	getLiveSession         *connect.Client[v1.GetLiveSessionRequest, v1.GetLiveSessionResponse]
+	watchGameSession       *connect.Client[v1.WatchGameSessionRequest, v1.WatchGameSessionResponse]
+	adjustCharacterVitals  *connect.Client[v1.AdjustCharacterVitalsRequest, v1.AdjustCharacterVitalsResponse]
+	nudgePlayer            *connect.Client[v1.NudgePlayerRequest, v1.NudgePlayerResponse]
+	sendSessionMessage     *connect.Client[v1.SendSessionMessageRequest, v1.SendSessionMessageResponse]
+	listSessionMessages    *connect.Client[v1.ListSessionMessagesRequest, v1.ListSessionMessagesResponse]
+	signalMasterTyping     *connect.Client[v1.SignalMasterTypingRequest, v1.SignalMasterTypingResponse]
+	rollFreeDice           *connect.Client[v1.RollFreeDiceRequest, v1.RollFreeDiceResponse]
+	listFreeRolls          *connect.Client[v1.ListFreeRollsRequest, v1.ListFreeRollsResponse]
+	setCurrentMap          *connect.Client[v1.SetCurrentMapRequest, v1.SetCurrentMapResponse]
+	setShownImage          *connect.Client[v1.SetShownImageRequest, v1.SetShownImageResponse]
+	setShownImageAudience  *connect.Client[v1.SetShownImageAudienceRequest, v1.SetShownImageAudienceResponse]
+	listLeftImages         *connect.Client[v1.ListLeftImagesRequest, v1.ListLeftImagesResponse]
+	takeBackLeftImage      *connect.Client[v1.TakeBackLeftImageRequest, v1.TakeBackLeftImageResponse]
+	openScene              *connect.Client[v1.OpenSceneRequest, v1.OpenSceneResponse]
+	setSceneAudience       *connect.Client[v1.SetSceneAudienceRequest, v1.SetSceneAudienceResponse]
+	setScenePlayersMayJoin *connect.Client[v1.SetScenePlayersMayJoinRequest, v1.SetScenePlayersMayJoinResponse]
+	joinScene              *connect.Client[v1.JoinSceneRequest, v1.JoinSceneResponse]
+	closeScene             *connect.Client[v1.CloseSceneRequest, v1.CloseSceneResponse]
+	getOpenScene           *connect.Client[v1.GetOpenSceneRequest, v1.GetOpenSceneResponse]
+	rollSceneCheck         *connect.Client[v1.RollSceneCheckRequest, v1.RollSceneCheckResponse]
+	searchForTraps         *connect.Client[v1.SearchForTrapsRequest, v1.SearchForTrapsResponse]
+	fireTrap               *connect.Client[v1.FireTrapRequest, v1.FireTrapResponse]
+	listTrapActivity       *connect.Client[v1.ListTrapActivityRequest, v1.ListTrapActivityResponse]
+	listTrapDamages        *connect.Client[v1.ListTrapDamagesRequest, v1.ListTrapDamagesResponse]
+	applyTrapDamage        *connect.Client[v1.ApplyTrapDamageRequest, v1.ApplyTrapDamageResponse]
+	discardTrapDamage      *connect.Client[v1.DiscardTrapDamageRequest, v1.DiscardTrapDamageResponse]
+	grantSceneAttempt      *connect.Client[v1.GrantSceneAttemptRequest, v1.GrantSceneAttemptResponse]
+	putOnStage             *connect.Client[v1.PutOnStageRequest, v1.PutOnStageResponse]
+	takeOffStage           *connect.Client[v1.TakeOffStageRequest, v1.TakeOffStageResponse]
+	setStageNpcHidden      *connect.Client[v1.SetStageNpcHiddenRequest, v1.SetStageNpcHiddenResponse]
+	setSpeaker             *connect.Client[v1.SetSpeakerRequest, v1.SetSpeakerResponse]
+	castSummon             *connect.Client[v1.CastSummonRequest, v1.CastSummonResponse]
+	assumeWildShape        *connect.Client[v1.AssumeWildShapeRequest, v1.AssumeWildShapeResponse]
+	leaveWildShape         *connect.Client[v1.LeaveWildShapeRequest, v1.LeaveWildShapeResponse]
+	startFamiliarSight     *connect.Client[v1.StartFamiliarSightRequest, v1.StartFamiliarSightResponse]
+	stopFamiliarSight      *connect.Client[v1.StopFamiliarSightRequest, v1.StopFamiliarSightResponse]
 }
 
 // StartGameSession calls meurpg.play.v1.PlayService.StartGameSession.
@@ -1455,6 +1500,16 @@ func (c *playServiceClient) OpenScene(ctx context.Context, req *connect.Request[
 // SetSceneAudience calls meurpg.play.v1.PlayService.SetSceneAudience.
 func (c *playServiceClient) SetSceneAudience(ctx context.Context, req *connect.Request[v1.SetSceneAudienceRequest]) (*connect.Response[v1.SetSceneAudienceResponse], error) {
 	return c.setSceneAudience.CallUnary(ctx, req)
+}
+
+// SetScenePlayersMayJoin calls meurpg.play.v1.PlayService.SetScenePlayersMayJoin.
+func (c *playServiceClient) SetScenePlayersMayJoin(ctx context.Context, req *connect.Request[v1.SetScenePlayersMayJoinRequest]) (*connect.Response[v1.SetScenePlayersMayJoinResponse], error) {
+	return c.setScenePlayersMayJoin.CallUnary(ctx, req)
+}
+
+// JoinScene calls meurpg.play.v1.PlayService.JoinScene.
+func (c *playServiceClient) JoinScene(ctx context.Context, req *connect.Request[v1.JoinSceneRequest]) (*connect.Response[v1.JoinSceneResponse], error) {
+	return c.joinScene.CallUnary(ctx, req)
 }
 
 // CloseScene calls meurpg.play.v1.PlayService.CloseScene.
@@ -2089,6 +2144,32 @@ type PlayServiceHandler interface {
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION), or no scene is open (SceneBlocked NO_OPEN_SCENE).
 	SetSceneAudience(context.Context, *connect.Request[v1.SetSceneAudienceRequest]) (*connect.Response[v1.SetSceneAudienceResponse], error)
+	// SetScenePlayersMayJoin turns the switch "Os jogadores podem entrar" of the open scene (MR-015, RN-10), off by
+	// default and set back to off when the scene closes or another opens. Only the master may call it, and only
+	// for a scene open to only some players (a scene open to everyone has nobody to let in:
+	// SceneBlocked SCENE_NOT_PARTIAL). With it on, every player out of the scene reads GetOpenScene as a scene
+	// with only `name` and `joinable` (nothing else of it), and may call JoinScene; with it off they read no
+	// scene. Every player gets `scene_changed` when the switch changes, so the prompt appears or goes. The same
+	// value changes nothing.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist or the caller is not a member of it.
+	//   - `permission_denied`: the caller is a player.
+	//   - `failed_precondition`: no open session (GameSessionBlocked, NO_OPEN_SESSION), no scene (SceneBlocked
+	//     NO_OPEN_SCENE) or a scene open to everyone (SceneBlocked SCENE_NOT_PARTIAL).
+	SetScenePlayersMayJoin(context.Context, *connect.Request[v1.SetScenePlayersMayJoinRequest]) (*connect.Response[v1.SetScenePlayersMayJoinResponse], error)
+	// JoinScene adds the caller to the players of the open scene, when the master lets players join. The caller
+	// then reads the scene as any member does, and gets `scene_changed`; the master sees who joined and how
+	// (ScenePlayer.joined_by_self), and an image shown to the scene's players reaches them. A player already in
+	// the scene gets the scene and nothing changes. It is refused as when no scene is open (SceneBlocked
+	// NO_OPEN_SCENE) when the switch is off, so a refusal never says a scene exists.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist or the caller is not a member of it.
+	//   - `permission_denied`: the caller is the master.
+	//   - `failed_precondition`: no open session (GameSessionBlocked, NO_OPEN_SESSION), or no scene to join
+	//     (SceneBlocked NO_OPEN_SCENE).
+	JoinScene(context.Context, *connect.Request[v1.JoinSceneRequest]) (*connect.Response[v1.JoinSceneResponse], error)
 	// CloseScene closes the open scene, asking nothing. Only the campaign's
 	// master may call it. With no scene open it changes nothing. Every stream
 	// gets `scene_changed`, and a `scene_closed` event goes to the history.
@@ -2578,6 +2659,18 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(playServiceMethods.ByName("SetSceneAudience")),
 		connect.WithHandlerOptions(opts...),
 	)
+	playServiceSetScenePlayersMayJoinHandler := connect.NewUnaryHandler(
+		PlayServiceSetScenePlayersMayJoinProcedure,
+		svc.SetScenePlayersMayJoin,
+		connect.WithSchema(playServiceMethods.ByName("SetScenePlayersMayJoin")),
+		connect.WithHandlerOptions(opts...),
+	)
+	playServiceJoinSceneHandler := connect.NewUnaryHandler(
+		PlayServiceJoinSceneProcedure,
+		svc.JoinScene,
+		connect.WithSchema(playServiceMethods.ByName("JoinScene")),
+		connect.WithHandlerOptions(opts...),
+	)
 	playServiceCloseSceneHandler := connect.NewUnaryHandler(
 		PlayServiceCloseSceneProcedure,
 		svc.CloseScene,
@@ -2739,6 +2832,10 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 			playServiceOpenSceneHandler.ServeHTTP(w, r)
 		case PlayServiceSetSceneAudienceProcedure:
 			playServiceSetSceneAudienceHandler.ServeHTTP(w, r)
+		case PlayServiceSetScenePlayersMayJoinProcedure:
+			playServiceSetScenePlayersMayJoinHandler.ServeHTTP(w, r)
+		case PlayServiceJoinSceneProcedure:
+			playServiceJoinSceneHandler.ServeHTTP(w, r)
 		case PlayServiceCloseSceneProcedure:
 			playServiceCloseSceneHandler.ServeHTTP(w, r)
 		case PlayServiceGetOpenSceneProcedure:
@@ -2868,6 +2965,14 @@ func (UnimplementedPlayServiceHandler) OpenScene(context.Context, *connect.Reque
 
 func (UnimplementedPlayServiceHandler) SetSceneAudience(context.Context, *connect.Request[v1.SetSceneAudienceRequest]) (*connect.Response[v1.SetSceneAudienceResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.SetSceneAudience is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) SetScenePlayersMayJoin(context.Context, *connect.Request[v1.SetScenePlayersMayJoinRequest]) (*connect.Response[v1.SetScenePlayersMayJoinResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.SetScenePlayersMayJoin is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) JoinScene(context.Context, *connect.Request[v1.JoinSceneRequest]) (*connect.Response[v1.JoinSceneResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.JoinScene is not implemented"))
 }
 
 func (UnimplementedPlayServiceHandler) CloseScene(context.Context, *connect.Request[v1.CloseSceneRequest]) (*connect.Response[v1.CloseSceneResponse], error) {

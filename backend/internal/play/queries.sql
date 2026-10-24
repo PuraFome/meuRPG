@@ -562,15 +562,19 @@ FROM game_sessions AS gs
 WHERE gs.id = sqlc.arg(session_id);
 
 -- name: ListScenePlayers :many
--- The players the open scene is open to, when it is not open to everyone.
-SELECT user_id FROM game_session_scene_players
+-- The players the open scene is open to, when it is not open to everyone, and whether each joined by themselves.
+SELECT user_id, joined_by_self FROM game_session_scene_players
 WHERE game_session_id = $1
 ORDER BY user_id;
 
 -- name: InsertScenePlayer :exec
-INSERT INTO game_session_scene_players (game_session_id, user_id)
-VALUES ($1, $2)
+INSERT INTO game_session_scene_players (game_session_id, user_id, joined_by_self)
+VALUES ($1, $2, $3)
 ON CONFLICT (game_session_id, user_id) DO NOTHING;
+
+-- name: SetScenePlayersMayJoin :one
+UPDATE game_sessions SET scene_players_may_join = sqlc.arg(scene_players_may_join) WHERE id = sqlc.arg(id)
+RETURNING *;
 
 -- name: ClearScenePlayers :exec
 DELETE FROM game_session_scene_players WHERE game_session_id = $1;

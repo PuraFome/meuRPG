@@ -255,7 +255,7 @@ func (s *Service) OpenScene(
 	if err != nil {
 		return nil, err
 	}
-	opening := sceneOpening{point: pointID.String(), actions: len(scene.Actions), audience: audience, given: given}
+	opening := sceneOpening{point: pointID.String(), actions: len(scene.Actions), audience: audience, given: given, mayJoin: req.Msg.GetPlayersMayJoin()}
 
 	var sw sceneSwitch
 	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
@@ -283,6 +283,7 @@ type sceneOpening struct {
 	actions  int
 	audience viewers
 	given    bool
+	mayJoin  bool // "Os jogadores podem entrar", for a scene newly opened to only some players
 }
 
 // who is the players the scene is open to.
@@ -366,7 +367,7 @@ func (s *Service) startScene(ctx context.Context, q *playdb.Queries, session pla
 	if err != nil {
 		return audienceChange{}, err
 	}
-	ch := audienceChange{before: before, after: op.who(), changed: true}
+	ch := audienceChange{before: before, after: op.who(), changed: true, wide: session.ScenePlayersMayJoin || (op.mayJoin && !op.who().all)}
 	if ch.image, err = s.settleShownImage(ctx, q, session); err != nil {
 		return ch, err
 	}
@@ -380,6 +381,9 @@ func (s *Service) startScene(ctx context.Context, q *playdb.Queries, session pla
 	}
 	if _, err := q.SetOpenSceneEveryone(ctx, playdb.SetOpenSceneEveryoneParams{ID: session.ID, OpenSceneEveryone: ch.after.all}); err != nil {
 		return ch, fmt.Errorf("set who the scene is open to: %w", err)
+	}
+	if _, err := q.SetScenePlayersMayJoin(ctx, playdb.SetScenePlayersMayJoinParams{ID: session.ID, ScenePlayersMayJoin: op.mayJoin && !ch.after.all}); err != nil {
+		return ch, fmt.Errorf("set whether players may join the scene: %w", err)
 	}
 	if *updated, err = q.SetOpenScene(ctx, playdb.SetOpenSceneParams{ID: session.ID, OpenScenePointID: &op.point}); err != nil {
 		return ch, fmt.Errorf("open the scene: %w", err)
@@ -427,7 +431,7 @@ func (s *Service) switchSceneOff(ctx context.Context, tx pgx.Tx, m authz.Members
 		return err
 	}
 	// The image shown to the scene's players stays with them, and who was in goes with the scene.
-	sw.audience = audienceChange{before: before, changed: true}
+	sw.audience = audienceChange{before: before, changed: true, wide: session.ScenePlayersMayJoin}
 	if sw.audience.image, err = s.settleShownImage(ctx, q, session); err != nil {
 		return err
 	}
@@ -436,6 +440,9 @@ func (s *Service) switchSceneOff(ctx context.Context, tx pgx.Tx, m authz.Members
 	}
 	if _, err := q.SetOpenSceneEveryone(ctx, playdb.SetOpenSceneEveryoneParams{ID: session.ID, OpenSceneEveryone: true}); err != nil {
 		return fmt.Errorf("reset who the scene is open to: %w", err)
+	}
+	if _, err := q.SetScenePlayersMayJoin(ctx, playdb.SetScenePlayersMayJoinParams{ID: session.ID}); err != nil {
+		return fmt.Errorf("reset whether players may join the scene: %w", err)
 	}
 	if _, err := q.SetOpenScene(ctx, playdb.SetOpenSceneParams{ID: session.ID}); err != nil {
 		return fmt.Errorf("close the scene: %w", err)
@@ -485,7 +492,7 @@ func (s *Service) openSceneInfo(ctx context.Context, m authz.Membership) (*playv
 	if err != nil {
 		return nil, s.dbError(ctx, "read who is in the scene", err)
 	}
-	if !in {
+	if !in && !session.ScenePlayersMayJoin {
 		return nil, nil
 	}
 	scene, err := s.maps.ScenePoint(ctx, nil, m.CampaignID, *session.OpenScenePointID)
@@ -496,6 +503,9 @@ func (s *Service) openSceneInfo(ctx context.Context, m authz.Membership) (*playv
 	}
 	if err != nil {
 		return nil, s.dbError(ctx, "read the open scene", err)
+	}
+	if !in {
+		return s.joinableScene(scene), nil // the name and that they may join: nothing else
 	}
 	return s.sceneInfo(ctx, m, session, scene)
 }
@@ -549,6 +559,7 @@ func (s *Service) sceneInfo(ctx context.Context, m authz.Membership, session pla
 		if info.Audience, err = s.sceneAudienceView(ctx, session); err != nil {
 			return nil, err
 		}
+		info.PlayersMayJoin = session.ScenePlayersMayJoin
 	}
 
 	if info.Rolls, err = s.sceneRolls(ctx, v); err != nil {

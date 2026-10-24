@@ -107,9 +107,13 @@ func sceneViewersOf(ctx context.Context, q *playdb.Queries, session playdb.GameS
 
 // scenePlayersOf are the players listed for the session's scene, whether or not it is open to everyone.
 func scenePlayersOf(ctx context.Context, q *playdb.Queries, sessionID string) (viewers, error) {
-	ids, err := q.ListScenePlayers(ctx, sessionID)
+	rows, err := q.ListScenePlayers(ctx, sessionID)
 	if err != nil {
 		return viewers{}, fmt.Errorf("list the players of the scene: %w", err)
+	}
+	ids := make([]string, 0, len(rows))
+	for _, r := range rows {
+		ids = append(ids, r.UserID)
 	}
 	return usersViewers(ids), nil
 }
@@ -233,11 +237,18 @@ func (s *Service) parseSceneAudience(ctx context.Context, campaignID string, a *
 type audienceChange struct {
 	before, after viewers
 	changed       bool
+	wide          bool      // the scene let players join, before or after: every player reads its prompt appear or go
 	image         imageMove // the shown image that follows the scene's players
 }
 
-// notify is who hears that the scene changed: the players in it before and after.
-func (c audienceChange) notify() viewers { return c.before.union(c.after) }
+// notify is who hears that the scene changed: the players in it before and after, and every player when
+// the scene let others join.
+func (c audienceChange) notify() viewers {
+	if c.wide {
+		return allViewers()
+	}
+	return c.before.union(c.after)
+}
 
 // applySceneAudience sets who the open scene (the session's locked row) is open to, and moves the shown
 // image that follows the scene's players. It writes nothing when the audience is the same.
@@ -257,11 +268,15 @@ func (s *Service) applySceneAudience(ctx context.Context, q *playdb.Queries, ses
 			return session, ch, err
 		}
 	}
+	joined, err := joinedBySelf(ctx, q, session.ID) // who joined by themselves stays marked
+	if err != nil {
+		return session, ch, err
+	}
 	if err := q.ClearScenePlayers(ctx, session.ID); err != nil {
 		return session, ch, fmt.Errorf("clear the players of the scene: %w", err)
 	}
 	for _, u := range to.users {
-		if err := q.InsertScenePlayer(ctx, playdb.InsertScenePlayerParams{GameSessionID: session.ID, UserID: u}); err != nil {
+		if err := q.InsertScenePlayer(ctx, playdb.InsertScenePlayerParams{GameSessionID: session.ID, UserID: u, JoinedBySelf: joined[u]}); err != nil {
 			return session, ch, fmt.Errorf("put a player in the scene: %w", err)
 		}
 	}
@@ -272,6 +287,19 @@ func (s *Service) applySceneAudience(ctx context.Context, q *playdb.Queries, ses
 		ch.image = sceneImageMove(session, before, to)
 	}
 	return session, ch, nil
+}
+
+// joinedBySelf are the players of the scene who joined it by themselves.
+func joinedBySelf(ctx context.Context, q *playdb.Queries, sessionID string) (map[string]bool, error) {
+	rows, err := q.ListScenePlayers(ctx, sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("list the players of the scene: %w", err)
+	}
+	out := map[string]bool{}
+	for _, r := range rows {
+		out[r.UserID] = r.JoinedBySelf
+	}
+	return out, nil
 }
 
 // SetSceneAudience implements playv1connect.PlayServiceHandler.
@@ -342,12 +370,16 @@ func (s *Service) sceneAudienceView(ctx context.Context, session playdb.GameSess
 	if err != nil {
 		return nil, s.dbError(ctx, "read the party", err)
 	}
+	joined, err := joinedBySelf(ctx, s.queries, session.ID)
+	if err != nil {
+		return nil, s.dbError(ctx, "read who joined the scene", err)
+	}
 	out := &playv1.SceneAudienceView{Everyone: in.all}
 	for _, c := range party {
 		if c.PlayerUserID == "" {
 			continue
 		}
-		p := &playv1.ScenePlayer{UserId: c.PlayerUserID, CharacterId: c.ID, CharacterName: c.Name}
+		p := &playv1.ScenePlayer{UserId: c.PlayerUserID, CharacterId: c.ID, CharacterName: c.Name, JoinedBySelf: !in.all && joined[c.PlayerUserID]}
 		if in.has(c.PlayerUserID) {
 			out.Inside = append(out.Inside, p)
 		} else {
@@ -377,4 +409,100 @@ func (s *Service) partyInScene(ctx context.Context, q *playdb.Queries, session p
 		return nil, err
 	}
 	return slices.DeleteFunc(slices.Clone(party), func(c link.Character) bool { return !in.has(c.PlayerUserID) }), nil
+}
+
+// SetScenePlayersMayJoin implements playv1connect.PlayServiceHandler.
+func (s *Service) SetScenePlayersMayJoin(
+	ctx context.Context,
+	req *connect.Request[playv1.SetScenePlayersMayJoinRequest],
+) (*connect.Response[playv1.SetScenePlayersMayJoinResponse], error) {
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return nil, err
+	}
+	changed := false
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		changed = false
+		q := s.queries.WithTx(tx)
+		session, err := lockOpenSessionOrNone(ctx, q, m.CampaignID)
+		if err != nil {
+			return err
+		}
+		if _, err := s.openSceneIn(ctx, tx, m.CampaignID, session); err != nil {
+			return err
+		}
+		if !partialScene(session) {
+			return notPartialScene()
+		}
+		if changed = session.ScenePlayersMayJoin != req.Msg.GetPlayersMayJoin(); !changed {
+			return nil
+		}
+		_, err = q.SetScenePlayersMayJoin(ctx, playdb.SetScenePlayersMayJoinParams{ID: session.ID, ScenePlayersMayJoin: req.Msg.GetPlayersMayJoin()})
+		return err
+	})
+	if err != nil {
+		return nil, s.dbError(ctx, "set whether players may join the scene", err)
+	}
+	if changed {
+		// Every player hears it: the ones out read the prompt appear or go.
+		s.publishTo(m.CampaignID, true, allViewers().audiences(), sceneChangedEvent())
+	}
+	info, err := s.openSceneInfo(ctx, m)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&playv1.SetScenePlayersMayJoinResponse{Scene: info}), nil
+}
+
+// JoinScene implements playv1connect.PlayServiceHandler.
+func (s *Service) JoinScene(
+	ctx context.Context,
+	req *connect.Request[playv1.JoinSceneRequest],
+) (*connect.Response[playv1.JoinSceneResponse], error) {
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RolePlayer)
+	if err != nil {
+		return nil, err
+	}
+	var ch audienceChange
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		ch = audienceChange{}
+		q := s.queries.WithTx(tx)
+		session, err := lockOpenSessionOrNone(ctx, q, m.CampaignID)
+		if err != nil {
+			return err
+		}
+		if _, err := s.openSceneIn(ctx, tx, m.CampaignID, session); err != nil {
+			return err
+		}
+		before, err := sceneViewersOf(ctx, q, session)
+		if err != nil {
+			return err
+		}
+		if before.has(m.UserID) {
+			return nil // already in
+		}
+		if !session.ScenePlayersMayJoin {
+			return errNoOpenScene() // no trace of the scene
+		}
+		after := usersViewers(append(slices.Clone(before.users), m.UserID))
+		if err := q.InsertScenePlayer(ctx, playdb.InsertScenePlayerParams{GameSessionID: session.ID, UserID: m.UserID, JoinedBySelf: true}); err != nil {
+			return fmt.Errorf("join the scene: %w", err)
+		}
+		ch = audienceChange{before: before, after: after, changed: true, image: sceneImageMove(session, before, after)}
+		return nil
+	})
+	if err != nil {
+		return nil, s.dbError(ctx, "join the scene", err)
+	}
+	s.publishAudienceChange(ctx, m.CampaignID, ch)
+	info, err := s.openSceneInfo(ctx, m)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&playv1.JoinSceneResponse{Scene: info}), nil
+}
+
+// joinableScene is what a player out of a scene that lets players join reads of it: its name and that they may join.
+func (s *Service) joinableScene(scene link.Scene) *playv1.OpenSceneInfo {
+	return &playv1.OpenSceneInfo{Name: scene.Name, Joinable: true}
 }

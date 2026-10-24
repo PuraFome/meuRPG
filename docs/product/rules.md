@@ -219,6 +219,7 @@ Hiding and showing tell the players the same hint as any change of the scene, so
 A scene is open to the whole table, a player who joins later included, or to exactly the players the master picks, who he may change while it is open.
 A player who is out gets no scene at all, exactly as when none is open: not its name, point, description, actions, rolls, stage or portraits, not the group check asked in it, not a live hint, and a roll of theirs is refused as with no open scene.
 A player who comes in reads the scene at once and a player who goes out loses it at once, each told by the same hint as any change of the scene.
+With the master's switch "Os jogadores podem entrar" on, a player who is out reads the scene's name and that they may join and nothing else, and joining makes them one of its players for what follows (an image shown to the scene's players reaches them; one shown to chosen players does not).
 The checks passed in it count in the summary only for the master and the players who were in; a scene is "discovered" for the group's notes when it is open to everyone.
 
 **Who sees the image** (["Quem vê a imagem"](stories.md#mr-028-show-an-image-to-the-players), [MR-028](stories.md#mr-028-show-an-image-to-the-players)).

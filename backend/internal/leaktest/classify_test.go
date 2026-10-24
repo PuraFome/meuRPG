@@ -242,6 +242,8 @@ var notReads = map[string]classified{
 	playv1connect.PlayServiceSendSessionMessageProcedure:                        {playerAction, "a member speaks as their own character, or out of character; only the master chooses readers or attaches an image (RN-36): the conversation tests aim it at what is hidden"},
 	playv1connect.PlayServiceSignalMasterTypingProcedure:                        {masterWrite, masterOnlyWhy},
 	playv1connect.PlayServiceSetCurrentMapProcedure:                             {masterWrite, masterOnlyWhy},
+	playv1connect.PlayServiceJoinSceneProcedure:                                 {playerAction, "a player joins the open scene when the master lets players join; aimed at a scene they are out of, with the switch off, it answers as no scene"},
+	playv1connect.PlayServiceSetScenePlayersMayJoinProcedure:                    {masterWrite, masterOnlyWhy},
 	playv1connect.PlayServiceSetSceneAudienceProcedure:                          {masterWrite, masterOnlyWhy},
 	playv1connect.PlayServiceSetShownImageProcedure:                             {masterWrite, masterOnlyWhy},
 	playv1connect.PlayServiceSetShownImageAudienceProcedure:                     {masterWrite, masterOnlyWhy},

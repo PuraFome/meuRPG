@@ -619,6 +619,34 @@ service PlayService {
   //     NO_OPEN_SESSION), or no scene is open (SceneBlocked NO_OPEN_SCENE).
   rpc SetSceneAudience(SetSceneAudienceRequest) returns (SetSceneAudienceResponse);
 
+  // SetScenePlayersMayJoin turns the switch "Os jogadores podem entrar" of the open scene (MR-015, RN-10), off by
+  // default and set back to off when the scene closes or another opens. Only the master may call it, and only
+  // for a scene open to only some players (a scene open to everyone has nobody to let in:
+  // SceneBlocked SCENE_NOT_PARTIAL). With it on, every player out of the scene reads GetOpenScene as a scene
+  // with only `name` and `joinable` (nothing else of it), and may call JoinScene; with it off they read no
+  // scene. Every player gets `scene_changed` when the switch changes, so the prompt appears or goes. The same
+  // value changes nothing.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist or the caller is not a member of it.
+  //   - `permission_denied`: the caller is a player.
+  //   - `failed_precondition`: no open session (GameSessionBlocked, NO_OPEN_SESSION), no scene (SceneBlocked
+  //     NO_OPEN_SCENE) or a scene open to everyone (SceneBlocked SCENE_NOT_PARTIAL).
+  rpc SetScenePlayersMayJoin(SetScenePlayersMayJoinRequest) returns (SetScenePlayersMayJoinResponse);
+
+  // JoinScene adds the caller to the players of the open scene, when the master lets players join. The caller
+  // then reads the scene as any member does, and gets `scene_changed`; the master sees who joined and how
+  // (ScenePlayer.joined_by_self), and an image shown to the scene's players reaches them. A player already in
+  // the scene gets the scene and nothing changes. It is refused as when no scene is open (SceneBlocked
+  // NO_OPEN_SCENE) when the switch is off, so a refusal never says a scene exists.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist or the caller is not a member of it.
+  //   - `permission_denied`: the caller is the master.
+  //   - `failed_precondition`: no open session (GameSessionBlocked, NO_OPEN_SESSION), or no scene to join
+  //     (SceneBlocked NO_OPEN_SCENE).
+  rpc JoinScene(JoinSceneRequest) returns (JoinSceneResponse);
+
   // CloseScene closes the open scene, asking nothing. Only the campaign's
   // master may call it. With no scene open it changes nothing. Every stream
   // gets `scene_changed`, and a `scene_closed` event goes to the history.

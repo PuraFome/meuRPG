@@ -151,6 +151,7 @@ Where a spell level could be confused with the character's level, the text says 
 | Jogador removido | Removed player | What the feed shows as the author of a line when the author's account was erased. The line stays. |
 | Narrador | Narrator | The master's voice when no NPC is speaking. It has one voice of its own when a line is heard. |
 | Ouvir | Hear | The button that plays a narrator or NPC line with a generated voice. The audio is made the first time a reader asks and kept with the line (RN-36). |
+| Entrar na cena | Join the scene | What a player does in a scene open to only some players when the master allows it ("Os jogadores podem entrar"): they read its name, tap the button and become one of its players; the master sees that they joined by themselves (MR-015, RN-10). |
 | Quem está na cena | Who is in the scene | The players a scene is open to: the whole table (a later joiner included) or the ones the master picks and may change while it is open. A player who is out gets no scene at all, as when none is open; the master reads who is in and who is out (MR-015, RN-10). |
 | Quem vê a imagem | Who sees the image | The audience of the image the master shows: the whole table ("Mostrar a toda a mesa"), the scene's players or chosen players ("Mudar quem vê"). A player outside it never receives the image (MR-028, RN-10). |
 | Retrato do NPC | NPC portrait | A gallery image on an NPC's sheet, shown on its card (master only) and in the scene while it is on stage. |

@@ -199,6 +199,7 @@ The players a scene is open to, and the players a shown image is shown to, when 
 `(game_session_id, user_id)` is the primary key of both; both foreign keys cascade, so the rows go with the session and with the player's account (`user_id` is indexed for that).
 The rows of `game_session_scene_players` are read only while `open_scene_everyone` is false (and by an image whose audience is `scene`); opening, closing or changing the scene rewrites them.
 The rows of `game_session_image_viewers` are read only while `shown_image_audience` is `chosen`.
+`game_session_scene_players.joined_by_self` marks a player who joined by themselves (`JoinScene`); `game_sessions.scene_players_may_join` is the master's switch "Os jogadores podem entrar".
 They hold ids only.
 The history keeps the accounts of a scene open to only some players too (`scene_opened.players`, `scene_check_rolled.audience`); erasing an account takes its id out of those lists with the other who-saw lists (migration `00278`).
 

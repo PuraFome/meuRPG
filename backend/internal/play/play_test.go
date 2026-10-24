@@ -236,6 +236,15 @@ func TestAuthorizationMatrix(t *testing.T) {
 			_, err := c.SetSceneAudience(ctx, connect.NewRequest(&playv1.SetSceneAudienceRequest{CampaignId: campaign, Audience: &playv1.SceneAudience{Everyone: true}}))
 			return err
 		}, [5]connect.Code{connect.CodeFailedPrecondition, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"SetScenePlayersMayJoin", func(ctx context.Context, c client) error {
+			_, err := c.SetScenePlayersMayJoin(ctx, connect.NewRequest(&playv1.SetScenePlayersMayJoinRequest{CampaignId: campaign, PlayersMayJoin: true}))
+			return err
+		}, [5]connect.Code{connect.CodeFailedPrecondition, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		// No scene is open here: a player has nothing to join (failed_precondition), the master is not a player.
+		{"JoinScene", func(ctx context.Context, c client) error {
+			_, err := c.JoinScene(ctx, connect.NewRequest(&playv1.JoinSceneRequest{CampaignId: campaign}))
+			return err
+		}, [5]connect.Code{connect.CodePermissionDenied, connect.CodeFailedPrecondition, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
 		// No NPC is on the stage here, so the master's call finds none (not_found).
 		{"SetStageNpcHidden", func(ctx context.Context, c client) error {
 			_, err := c.SetStageNpcHidden(ctx, connect.NewRequest(&playv1.SetStageNpcHiddenRequest{CampaignId: campaign, CharacterId: pc.GetId(), Hidden: true}))
@@ -846,6 +855,8 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["OpenScene"] = c.OpenScene(ctx, connect.NewRequest(&playv1.OpenSceneRequest{CampaignId: id, PointId: id}))
 	_, calls["CloseScene"] = c.CloseScene(ctx, connect.NewRequest(&playv1.CloseSceneRequest{CampaignId: id}))
 	_, calls["SetSceneAudience"] = c.SetSceneAudience(ctx, connect.NewRequest(&playv1.SetSceneAudienceRequest{CampaignId: id, Audience: &playv1.SceneAudience{Everyone: true}}))
+	_, calls["SetScenePlayersMayJoin"] = c.SetScenePlayersMayJoin(ctx, connect.NewRequest(&playv1.SetScenePlayersMayJoinRequest{CampaignId: id}))
+	_, calls["JoinScene"] = c.JoinScene(ctx, connect.NewRequest(&playv1.JoinSceneRequest{CampaignId: id}))
 	_, calls["GetOpenScene"] = c.GetOpenScene(ctx, connect.NewRequest(&playv1.GetOpenSceneRequest{CampaignId: id}))
 	_, calls["RollSceneCheck"] = c.RollSceneCheck(ctx, connect.NewRequest(&playv1.RollSceneCheckRequest{
 		CampaignId: id, ActionId: id, IdempotencyKey: id, Roll: &playv1.RollSceneCheckRequest_RollInApp{RollInApp: true},

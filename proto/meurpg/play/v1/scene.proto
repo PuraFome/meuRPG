@@ -105,6 +105,12 @@ message OpenSceneInfo {
   // of the scene does not get the scene at all (GetOpenScene answers them
   // as it does when none is open), and one who is in does not learn who else is.
   SceneAudienceView audience = 13;
+  // The master's switch "Os jogadores podem entrar" (off by default). Only the master gets it.
+  bool players_may_join = 14;
+  // Set only for a player who is out of a scene open to only some players that lets them join
+  // (PlayService.JoinScene): then the scene holds nothing but its `name` and this flag (no point,
+  // description, stage, actions, rolls, images or clues, RN-10). False everywhere else.
+  bool joinable = 15;
 }
 
 // SceneAudience says which players a scene is open to (MR-015, RN-10).
@@ -127,6 +133,8 @@ message ScenePlayer {
   // The player's living character in the party (a UUID) and its name.
   string character_id = 2;
   string character_name = 3;
+  // True for a player who joined the scene by themselves (JoinScene), false for one the master chose.
+  bool joined_by_self = 4;
 }
 
 // SceneAudienceView is who is in and out of the open scene, for the master.
@@ -323,6 +331,9 @@ message OpenSceneRequest {
   // nothing (opening it again does not widen it), and a value is applied as
   // SetSceneAudience does.
   SceneAudience audience = 3;
+  // The switch "Os jogadores podem entrar" for a scene newly opened to only some players (ignored for the
+  // others); see SetScenePlayersMayJoin.
+  bool players_may_join = 4;
 }
 
 // OpenSceneResponse returns the scene as the master sees it.
@@ -426,5 +437,26 @@ message SetSceneAudienceRequest {
 
 // SetSceneAudienceResponse returns the scene as the master sees it.
 message SetSceneAudienceResponse {
+  OpenSceneInfo scene = 1;
+}
+
+// SetScenePlayersMayJoinRequest sets the switch "Os jogadores podem entrar".
+message SetScenePlayersMayJoinRequest {
+  string campaign_id = 1;
+  bool players_may_join = 2;
+}
+
+// SetScenePlayersMayJoinResponse returns the scene as the master sees it.
+message SetScenePlayersMayJoinResponse {
+  OpenSceneInfo scene = 1;
+}
+
+// JoinSceneRequest names the campaign.
+message JoinSceneRequest {
+  string campaign_id = 1;
+}
+
+// JoinSceneResponse returns the scene as the player who joined reads it.
+message JoinSceneResponse {
   OpenSceneInfo scene = 1;
 }

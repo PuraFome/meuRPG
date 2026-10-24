@@ -7,6 +7,8 @@ import (
 
 	"connectrpc.com/connect"
 
+	"google.golang.org/protobuf/proto"
+
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
@@ -497,4 +499,142 @@ func TestSceneAudience_TheSummaryDoesNotCountAScenesRollsForThoseOutside(t *test
 	if got := passedBy(at.caio); got != 0 {
 		t.Errorf("checks passed in the summary of Caio (out of the scene) = %d, want 0", got)
 	}
+}
+
+func (a *armed) setMayJoin(u *user, on bool) (*playv1.OpenSceneInfo, error) {
+	res, err := u.play.SetScenePlayersMayJoin(a.h.t.Context(), connect.NewRequest(&playv1.SetScenePlayersMayJoinRequest{CampaignId: a.campaignID, PlayersMayJoin: on}))
+	if err != nil {
+		return nil, err
+	}
+	return res.Msg.GetScene(), nil
+}
+
+func (a *armed) join(u *user) (*playv1.OpenSceneInfo, error) {
+	res, err := u.play.JoinScene(a.h.t.Context(), connect.NewRequest(&playv1.JoinSceneRequest{CampaignId: a.campaignID}))
+	if err != nil {
+		return nil, err
+	}
+	return res.Msg.GetScene(), nil
+}
+
+func TestSceneJoin_WithTheSwitchOffAPlayerOutHasNoTraceAndCannotJoin(t *testing.T) {
+	t.Parallel()
+	at := newSceneTable(t)
+	at.openFor(t, at.point, at.ana)
+	if got := at.readScene(t, at.bia); got != nil {
+		t.Errorf("Bia reads %v, want no scene", got)
+	}
+	_, err := at.join(at.bia)
+	wantSceneRefusal(t, "JoinScene with the switch off", err, connect.CodeFailedPrecondition, sceneNoScene, "no scene is open")
+	_, err = at.join(at.master)
+	wantRefusal(t, "the master joins", err, connect.CodePermissionDenied, "")
+	_, err = at.join(at.h.newUser("Estranha"))
+	wantRefusal(t, "a stranger joins", err, connect.CodeNotFound, "")
+	if got := at.readScene(t, at.master).GetPlayersMayJoin(); got {
+		t.Error("the switch is on by default")
+	}
+}
+
+func TestSceneJoin_WithTheSwitchOnAnOutsiderReadsTheNameAndJoins(t *testing.T) {
+	t.Parallel()
+	at := newSceneTable(t)
+	ctx := t.Context()
+	_, err := at.setMayJoin(at.master, true)
+	wantSceneRefusal(t, "the switch with no scene", err, connect.CodeFailedPrecondition, sceneNoScene, "no scene is open")
+	at.openScene(t, at.point)
+	_, err = at.setMayJoin(at.master, true)
+	wantSceneRefusal(t, "the switch on a scene open to everyone", err, connect.CodeFailedPrecondition, playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_SCENE_NOT_PARTIAL, notPartialMessage)
+	at.openFor(t, at.point, at.ana)
+	_, err = at.setMayJoin(at.ana, true)
+	wantRefusal(t, "a player turns the switch", err, connect.CodePermissionDenied, "")
+	at.hints(t)
+
+	info, err := at.setMayJoin(at.master, true)
+	if err != nil || !info.GetPlayersMayJoin() {
+		t.Fatalf("SetScenePlayersMayJoin(true) = %v, %v", info, err)
+	}
+	// Every player hears it, the ones out read the prompt.
+	wantWords(t, "the switch on", at.hints(t), "scene_changed", "scene_changed", "scene_changed", "scene_changed")
+	want := &playv1.OpenSceneInfo{Name: "A carroça", Joinable: true}
+	for _, u := range []*user{at.caio, at.bia} {
+		if got := at.readScene(t, u); !proto.Equal(got, want) {
+			t.Errorf("a player out reads %v, want only the name and that they may join", got)
+		}
+	}
+	// Nothing else reaches them: no roll, no stage.
+	if _, err := sceneInApp(at.armed, at.caio, at.action, newKey(), 12); err == nil {
+		t.Error("a player out rolled an action of the scene")
+	}
+	// The same value changes nothing.
+	if _, err := at.setMayJoin(at.master, true); err != nil {
+		t.Fatalf("SetScenePlayersMayJoin() again error = %v", err)
+	}
+	wantWords(t, "the switch again", at.hints(t), "", "", "", "")
+
+	if _, err := at.master.play.PutOnStage(ctx, connect.NewRequest(&playv1.PutOnStageRequest{CampaignId: at.campaignID, CharacterId: at.goblin.GetId()})); err != nil {
+		t.Fatalf("PutOnStage() error = %v", err)
+	}
+	at.hints(t)
+	joined, err := at.join(at.bia)
+	if err != nil || joined.GetPointId() != at.point || len(joined.GetStage()) != 1 {
+		t.Fatalf("JoinScene = %v, %v; want the scene with its stage", joined, err)
+	}
+	// Joining twice changes nothing; the others in hear Bia came in; Caio hears nothing.
+	if again, err := at.join(at.bia); err != nil || again.GetPointId() != at.point {
+		t.Errorf("JoinScene again = %v, %v", again, err)
+	}
+	wantWords(t, "Bia joined", at.hints(t), "scene_changed", "scene_changed", "", "scene_changed")
+	if got := at.readScene(t, at.caio); !proto.Equal(got, want) {
+		t.Errorf("Caio still reads %v", got)
+	}
+	// The master sees who joined and how.
+	for _, p := range at.readScene(t, at.master).GetAudience().GetInside() {
+		if wantSelf := p.GetCharacterName() == "Brisa"; p.GetJoinedBySelf() != wantSelf {
+			t.Errorf("%s joined_by_self = %v, want %v", p.GetCharacterName(), p.GetJoinedBySelf(), wantSelf)
+		}
+	}
+	// Bia keeps being marked when the master changes the list, and the switch resets when the scene closes.
+	at.mustSetAudience(t, at.ana, at.bia)
+	for _, p := range at.readScene(t, at.master).GetAudience().GetInside() {
+		if wantSelf := p.GetCharacterName() == "Brisa"; p.GetJoinedBySelf() != wantSelf {
+			t.Errorf("after the change, %s joined_by_self = %v, want %v", p.GetCharacterName(), p.GetJoinedBySelf(), wantSelf)
+		}
+	}
+	if _, err := at.master.play.CloseScene(ctx, connect.NewRequest(&playv1.CloseSceneRequest{CampaignId: at.campaignID})); err != nil {
+		t.Fatalf("CloseScene() error = %v", err)
+	}
+	at.openFor(t, at.point, at.ana)
+	if at.readScene(t, at.master).GetPlayersMayJoin() || at.readScene(t, at.caio) != nil {
+		t.Error("the switch survived the scene closing")
+	}
+}
+
+// A player who joins is one of the scene's players for what follows: an image shown to the scene's players reaches
+// them at once; an image shown to chosen players does not, unless they were chosen.
+func TestSceneJoin_TheJoinerGetsTheScenesImageAndNotAChosenOne(t *testing.T) {
+	t.Parallel()
+	at := newSceneTable(t)
+	at.openFor(t, at.point, at.ana)
+	if _, err := at.setMayJoin(at.master, true); err != nil {
+		t.Fatalf("SetScenePlayersMayJoin() error = %v", err)
+	}
+	scene, chosenImg := at.image(t), at.image(t)
+	at.mustShow(t, scene, false, nil) // the scene's players
+	at.wantSeen(t, "before joining", scene, true, false, false)
+	at.hints(t)
+	if _, err := at.join(at.bia); err != nil {
+		t.Fatalf("JoinScene() error = %v", err)
+	}
+	at.wantSeen(t, "after joining", scene, true, false, true)
+	wantWords(t, "Bia joined", at.hints(t), "scene_changed,image:"+scene, "scene_changed", "", "scene_changed,image:"+scene)
+
+	at.mustShow(t, chosenImg, false, imageAudience(kindChosen, at.ana))
+	at.hints(t)
+	if _, err := at.setMayJoin(at.master, true); err != nil {
+		t.Fatalf("SetScenePlayersMayJoin() error = %v", err)
+	}
+	if _, err := at.join(at.caio); err != nil {
+		t.Fatalf("JoinScene() error = %v", err)
+	}
+	at.wantSeen(t, "chosen image, joiner not chosen", chosenImg, true, false, false)
 }
