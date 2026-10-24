@@ -2,12 +2,21 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
+  afterRenderEffect,
   computed,
   input,
   model,
+  signal,
+  viewChild,
   viewChildren,
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+
+/** What a count says (C6-10): `wait`, amber, something waits for the person; `news`, grená, new messages; `count`, neutral, how many there are. */
+export type TabTone = 'wait' | 'news' | 'count';
+
+/** The edge fade of a list that scrolls sideways, and how near the edge the fade starts. */
+const EDGE_SLACK = 1;
 
 /** One tab of a `TabList`. */
 export interface TabItem {
@@ -16,6 +25,8 @@ export interface TabItem {
   readonly icon?: string;
   /** The count as the eye reads it ("3", "99+"); empty or absent draws none. */
   readonly badge?: string;
+  /** What the count means; neutral when absent. Colour is never alone: `words` says the same. */
+  readonly tone?: TabTone;
   /** The count in words, appended to the tab's name ("3 mensagens novas"): the name is "Conversa, 3 mensagens novas". */
   readonly words?: string;
 }
@@ -35,7 +46,8 @@ export const tabPanelId = (prefix: string, id: string): string => `${prefix}-pan
   imports: [MatIconModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="tl" role="tablist" [attr.aria-label]="label()">
+    <div class="tl-wrap" [class.tl-wrap--start]="fadeStart()" [class.tl-wrap--end]="fadeEnd()">
+    <div #list class="tl" role="tablist" [class.tl--compact]="compact()" [attr.aria-label]="label()" (scroll)="measure()">
       @for (t of tabs(); track t.id) {
         <button
           #tab
@@ -56,10 +68,11 @@ export const tabPanelId = (prefix: string, id: string): string => `${prefix}-pan
           }
           <span>{{ t.label }}</span>
           @if (t.badge) {
-            <span class="tl__badge" aria-hidden="true">{{ t.badge }}</span>
+            <span class="tl__badge" [class]="'tl__badge tl__badge--' + (t.tone ?? 'count')" aria-hidden="true">{{ t.badge }}</span>
           }
         </button>
       }
+    </div>
     </div>
   `,
   styleUrl: './tab-list.scss',
@@ -72,8 +85,25 @@ export class TabList {
   readonly idPrefix = input.required<string>();
   /** The selected tab's id; the first tab until one is chosen. */
   readonly selected = model('');
+  /** The narrow look of a list that does not fit a phone: smaller type and padding, so more tabs show. */
+  readonly compact = input(false);
+
+  /** More tabs lie beyond the left or the right edge: the fade says so. */
+  protected readonly fadeStart = signal(false);
+  protected readonly fadeEnd = signal(false);
+  private readonly list = viewChild<ElementRef<HTMLElement>>('list');
 
   private readonly buttons = viewChildren<ElementRef<HTMLButtonElement>>('tab');
+
+  constructor() {
+    // The list scrolls sideways when it is wider than its room: the open tab stays in view and the edges fade.
+    afterRenderEffect(() => {
+      this.tabs();
+      this.current();
+      this.reveal();
+      this.measure();
+    });
+  }
 
   /** The selected tab, or the first when `selected` names none of them. */
   protected readonly current = computed(() => {
@@ -87,6 +117,31 @@ export class TabList {
 
   protected panelOf(id: string): string {
     return tabPanelId(this.idPrefix(), id);
+  }
+
+  protected measure(): void {
+    const el = this.list()?.nativeElement;
+    if (!el) {
+      return;
+    }
+    this.fadeStart.set(el.scrollLeft > EDGE_SLACK);
+    this.fadeEnd.set(el.scrollLeft + el.clientWidth < el.scrollWidth - EDGE_SLACK);
+  }
+
+  /** Scrolls the list just enough to show the selected tab whole. */
+  private reveal(): void {
+    const el = this.list()?.nativeElement;
+    const tab = this.buttons().find(
+      (b) => b.nativeElement.id === this.idOf(this.current()),
+    )?.nativeElement;
+    if (!el || !tab) {
+      return;
+    }
+    if (tab.offsetLeft < el.scrollLeft) {
+      el.scrollLeft = tab.offsetLeft;
+    } else if (tab.offsetLeft + tab.offsetWidth > el.scrollLeft + el.clientWidth) {
+      el.scrollLeft = tab.offsetLeft + tab.offsetWidth - el.clientWidth;
+    }
   }
 
   protected nameOf(tab: TabItem): string | null {

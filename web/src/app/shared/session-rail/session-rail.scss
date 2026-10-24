@@ -12,11 +12,11 @@
 @media (min-width: 1024px) {
   :host {
     position: sticky;
-    top: var(--mr-rail-top, 120px);
+    top: var(--mr-rail-top, 124px);
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
-    height: calc(100dvh - var(--mr-rail-top, 120px));
+    height: calc(100dvh - var(--mr-rail-top, 124px));
     overflow: hidden;
   }
 

@@ -4,18 +4,16 @@
     [routerLink]="['/campaigns', campaignId()]"
     [attr.aria-label]="'Voltar para a campanha ' + campaignName()"
   >
-    <mat-icon aria-hidden="true">arrow_back</mat-icon>
+    <mat-icon aria-hidden="true">chevron_left</mat-icon>
     <span class="bar__camp">{{ campaignName() }}</span>
   </a>
 
   <h1 class="bar__title">Sessão {{ session().sessionNumber }}</h1>
 
-  @if (!reconnecting()) {
-    <p class="bar__status">
-      <app-live-pill />
-      <span class="bar__since">{{ since() }}</span>
-    </p>
-  }
+  <p class="bar__status">
+    <app-live-pill />
+    <span class="bar__since">{{ since() }}</span>
+  </p>
 
   <div class="bar__actions">
     @if (isMaster() && !inCombat() && !phone()) {
@@ -57,7 +55,7 @@
         <span class="bar__label">{{ copied() ? 'Link copiado' : 'Sessão' }}</span>
         <mat-icon class="bar__chevron" aria-hidden="true">expand_more</mat-icon>
       </button>
-      <mat-menu #menu="matMenu" xPosition="before">
+      <mat-menu #menu="matMenu" xPosition="before" class="mr-session-menu">
         @if (phone() && !inCombat()) {
           <button mat-menu-item type="button" [disabled]="startOff()" (click)="startCombat.emit()">
             <mat-icon aria-hidden="true">swords</mat-icon>Iniciar combate
@@ -67,7 +65,7 @@
           <mat-icon aria-hidden="true">content_copy</mat-icon>Copiar link da sessão
         </button>
         <button mat-menu-item type="button" class="js-end" (click)="askToEnd()">
-          <mat-icon aria-hidden="true">stop_circle</mat-icon>Encerrar sessão
+          <mat-icon aria-hidden="true">flag</mat-icon>Encerrar sessão…
         </button>
       </mat-menu>
     }
@@ -78,7 +76,10 @@
   <div class="mr-notice mr-notice--neutral bar__offline" role="status">
     <mat-icon aria-hidden="true">cloud_off</mat-icon>
     <p id="dice-off">
-      <strong>Reconectando…</strong> {{ lastUpdateLabel() }} Não dá para rolar sem conexão.
+      <strong>Reconectando…</strong>@if (!phone()) {
+        {{ lastUpdateLabel() }}
+      }
+      Não dá para rolar sem conexão.
     </p>
   </div>
 }
@@ -89,7 +90,7 @@
     <div class="bar__confirm" role="group" aria-labelledby="confirm-end-text" data-confirm>
       <mat-icon aria-hidden="true">warning</mat-icon>
       <p id="confirm-end-text" class="bar__ask">
-        Encerrar a sessão {{ session().sessionNumber }}? Ela não reabre depois.
+        <b>Encerrar a sessão {{ session().sessionNumber }}?</b> Ela não reabre depois.
       </p>
       <button
         matButton="outlined"

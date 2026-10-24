@@ -8343,8 +8343,10 @@ async function scanSessionBar(browser: Browser, colorScheme: 'light' | 'dark', w
       const bar = page.locator('app-session-header .bar');
       await expect(bar).toBeVisible();
       const box = await bar.boundingBox();
-      expect(box?.height).toBeGreaterThanOrEqual(55);
-      expect(box?.height).toBeLessThanOrEqual(57);
+      // 60 px on a computer, 56 px on a phone (C6-10).
+      const barHeight = phone ? 56 : 60;
+      expect(box?.height).toBeGreaterThanOrEqual(barHeight - 1);
+      expect(box?.height).toBeLessThanOrEqual(barHeight + 1);
       await expect(page.getByRole('link', { name: /^Voltar para a campanha/ })).toBeVisible();
       await expect(page.getByRole('button', { name: /^Dados|^Rolando/ })).toBeVisible();
       await expectScreenPasses(page, `Barra da sessão, ${who} ${where}`);

@@ -150,14 +150,15 @@ describe('SessionHeader the "Dados" button', () => {
     expect(opened).not.toHaveBeenCalled();
   });
 
-  it('is off while the stream reconnects, and the notice under the bar says why', () => {
+  it('is off while the stream reconnects, and the notice under the bar says why (the pill stays)', () => {
     const { el, dice, opened } = setup({ connection: 'reconnecting', lastUpdate: null });
     expect(dice()?.getAttribute('aria-disabled')).toBe('true');
     const notice = el.querySelector('.bar__offline');
     expect(notice?.textContent).toContain('Reconectando…');
     expect(notice?.textContent).toContain('Não dá para rolar sem conexão.');
     expect(dice()?.getAttribute('aria-describedby')).toBe(notice?.querySelector('p')?.id);
-    expect(el.querySelector('.bar__status')).toBeNull();
+    // The pill stays: it is the stream's state the notice explains.
+    expect(el.querySelector('.bar__status')).not.toBeNull();
     dice()!.click();
     expect(opened).not.toHaveBeenCalled();
   });

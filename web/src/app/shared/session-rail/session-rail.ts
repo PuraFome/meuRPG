@@ -17,7 +17,7 @@ const RAIL_ID_PREFIX = 'rail';
  * its user, sticky under the bars, as tall as the screen, with its own scroll. Its tab list carries the counts in words,
  * and every panel (an `appRailPanel` element) stays mounted, `hidden` when inactive, so a draft in a composer and the place in a feed
  * survive a change of tab. Under 1024 px it is a plain block: the screens decide where it goes there (a phone has the pinned nav).
- * `--mr-rail-top` is the height of the bars above it (the app bar and the session bar, 120 px).
+ * `--mr-rail-top` is the height of the bars above it (the app bar and the session bar, 124 px).
  */
 @Component({
   selector: 'app-session-rail',

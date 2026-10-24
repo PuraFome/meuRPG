@@ -400,6 +400,29 @@ a:hover {
   outline-offset: 2px;
 }
 
+// The "Sessão" menu of the session bar: 250px, a `control-line` border, 44px items.
+.mr-session-menu.mat-mdc-menu-panel {
+  min-width: 250px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: 8px;
+  background: var(--mr-surface);
+
+  .mat-mdc-menu-content {
+    padding: 4px;
+  }
+
+  .mat-mdc-menu-item {
+    --mat-menu-item-label-text-size: 16px;
+    min-height: 44px;
+
+    .mat-icon {
+      width: 20px;
+      height: 20px;
+      font-size: 20px;
+    }
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -2523,7 +2523,7 @@ describe('LiveSession', () => {
       source.failWith = new KindError('forbidden');
       const el = await render();
       expect(el.querySelector('a[aria-label^="Voltar para a campanha"]')).not.toBeNull();
-      expect(textOf(el)).not.toContain('Ao vivo');
+      expect(textOf(el)).toContain('Reconectando');
     });
 
     it('ends the page when the snapshot says there is no session', async () => {

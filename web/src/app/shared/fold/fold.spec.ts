@@ -68,4 +68,17 @@ describe('Fold', () => {
     expect(el.querySelector('.mr-fold__title')?.textContent).toBe('Ganchos e anotações');
     expect(el.querySelector('.body')).not.toBeNull();
   });
+
+  it('has the quiet group row look, with an icon and the muted words', () => {
+    const fixture = TestBed.createComponent(Fold);
+    fixture.componentRef.setInput('title', 'Ação bônus · Usada');
+    fixture.componentRef.setInput('appearance', 'row');
+    fixture.componentRef.setInput('icon', 'change_history');
+    fixture.componentRef.setInput('muted', true);
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.classList).toContain('mr-panel--fold-row');
+    expect(host.classList).toContain('mr-fold--muted');
+    expect(host.querySelector('.mr-fold__icon')?.textContent).toBe('change_history');
+  });
 });

@@ -6,9 +6,9 @@
 .bar {
   display: flex;
   align-items: center;
-  gap: var(--mr-space-3);
+  gap: 14px;
   box-sizing: border-box;
-  min-height: 56px;
+  min-height: 60px;
 }
 
 .bar__back {
@@ -44,7 +44,7 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-size: 28px;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 32px;
   white-space: nowrap;
 }
@@ -67,7 +67,18 @@
   flex: 1 1 auto;
   align-items: center;
   justify-content: flex-end;
-  gap: var(--mr-space-2);
+  gap: 12px;
+}
+
+// "Sessão" has its word and a chevron at its right; its padding is smaller on that side.
+.bar__menu {
+  padding-inline: 16px 12px;
+}
+
+// The chevron comes after the word (Material puts an icon first).
+.bar__menu .bar__chevron {
+  order: 2;
+  margin: 0 0 0 4px;
 }
 
 // The menu's three dots are the phone's button; from a tablet it has its word and a chevron.
@@ -93,29 +104,37 @@
   }
 }
 
-// Under the bar, in place: the question, then the two buttons; Cancelar is the first of them and has the focus.
+// Under the bar, in place: the question on the warning surface, then the two buttons; Cancelar is the first of them and has the focus.
 .bar__confirm {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--mr-space-2) var(--mr-space-3);
+  gap: var(--mr-space-2) 12px;
   box-sizing: border-box;
   margin-top: var(--mr-space-2);
-  padding: var(--mr-space-3) var(--mr-space-4);
-  border: 1px solid var(--mr-danger-ink);
-  border-radius: var(--mr-radius-lg);
-  background: var(--mr-surface);
+  padding: 10px 12px 10px 16px;
+  border: 1px solid var(--mr-warning-line);
+  border-radius: 10px;
+  background: var(--mr-warning-surface);
+  color: var(--mr-warning-ink);
 
   > .mat-icon {
     flex: none;
-    color: var(--mr-danger-ink);
+  }
+
+  .mat-mdc-button-base {
+    background: var(--mr-surface);
+  }
+
+  .js-cancel-end:focus {
+    outline: 2px solid var(--mr-accent);
+    outline-offset: 2px;
   }
 }
 
 .bar__ask {
   flex: 1 1 14rem;
   margin: 0;
-  font-weight: 700;
 }
 
 .bar__danger {
@@ -150,10 +169,19 @@
 @media (max-width: 767.98px) {
   .bar {
     gap: var(--mr-space-2);
+    min-height: 56px;
+  }
+
+  .bar__actions {
+    gap: 6px;
   }
 
   .bar__back {
-    padding-inline-end: 8px;
+    box-sizing: border-box;
+    justify-content: center;
+    width: 44px;
+    margin-inline-start: -10px;
+    padding: 0;
     border-inline-end: 0;
   }
 
@@ -168,12 +196,12 @@
     display: inline-block;
   }
 
-  .bar__button .mat-icon {
+  .bar__menu .mat-icon {
     margin: 0;
   }
 
   .bar__title {
-    font-size: 22px;
+    font-size: 24px;
     line-height: 28px;
   }
 
@@ -183,13 +211,8 @@
     padding-inline: 0;
   }
 
-  .bar--master .js-dice .bar__label {
-    display: none;
-  }
-
-  .bar--master .js-dice {
-    min-width: 44px;
-    padding-inline: 0;
+  .js-dice {
+    padding-inline: 12px;
   }
 }
 

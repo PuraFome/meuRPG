@@ -3,8 +3,15 @@ import { TestBed } from '@angular/core/testing';
 import { TabItem, TabList, tabPanelId } from './tab-list';
 
 const TABS: readonly TabItem[] = [
-  { id: 'chat', label: 'Conversa', icon: 'chat', badge: '3', words: '3 mensagens novas' },
-  { id: 'sheet', label: 'Ficha' },
+  {
+    id: 'chat',
+    label: 'Conversa',
+    icon: 'chat',
+    badge: '3',
+    words: '3 mensagens novas',
+    tone: 'news',
+  },
+  { id: 'sheet', label: 'Ficha', badge: '1', tone: 'wait', words: '1 espera você' },
   { id: 'log', label: 'Registro' },
 ];
 
@@ -45,11 +52,30 @@ describe('TabList', () => {
   it('puts the count in the name, in words, and hides the badge from a reader', () => {
     const { tabs } = setup();
     expect(tabs()[0].getAttribute('aria-label')).toBe('Conversa, 3 mensagens novas');
-    expect(tabs()[1].getAttribute('aria-label')).toBeNull();
+    expect(tabs()[2].getAttribute('aria-label')).toBeNull();
     const badge = tabs()[0].querySelector('.tl__badge');
     expect(badge?.textContent?.trim()).toBe('3');
     expect(badge?.getAttribute('aria-hidden')).toBe('true');
-    expect(tabs()[1].querySelector('.tl__badge')).toBeNull();
+    expect(tabs()[2].querySelector('.tl__badge')).toBeNull();
+  });
+
+  it('tells what a count means by its tone: news, waiting or a plain count', () => {
+    const { fixture, tabs } = setup();
+    expect(tabs()[0].querySelector('.tl__badge')?.classList).toContain('tl__badge--news');
+    expect(tabs()[1].querySelector('.tl__badge')?.classList).toContain('tl__badge--wait');
+    fixture.componentRef.setInput('tabs', [{ id: 'a', label: 'Efeitos', badge: '2' }]);
+    fixture.detectChanges();
+    expect(tabs()[0].querySelector('.tl__badge')?.classList).toContain('tl__badge--count');
+  });
+
+  it('has the narrow look on request, and drops a tab that does not apply', () => {
+    const { fixture, el, tabs } = setup();
+    expect(el.querySelector('.tl--compact')).toBeNull();
+    fixture.componentRef.setInput('compact', true);
+    fixture.componentRef.setInput('tabs', TABS.slice(0, 2));
+    fixture.detectChanges();
+    expect(el.querySelector('.tl--compact')).not.toBeNull();
+    expect(tabs().map((t) => t.textContent?.trim())).toEqual(['chatConversa3', 'Ficha1']);
   });
 
   it('selects on a click', () => {

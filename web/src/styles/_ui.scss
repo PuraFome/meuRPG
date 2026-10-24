@@ -109,6 +109,40 @@
   padding-block-end: var(--mr-space-4);
 }
 
+// The group row (C6-10, "Ação bônus · Usada"): a 12px radius, a 52px header in sans bold with its icon at the left, and a rule between the header and the body.
+.mr-panel--fold-row {
+  padding-inline: 12px;
+  border-radius: var(--mr-radius-lg);
+
+  .mr-fold__head {
+    font-family: var(--mr-font-sans);
+    font-size: 16px;
+    line-height: 21px;
+  }
+
+  .mr-fold__button,
+  .mr-fold__head > .mr-fold__title {
+    min-height: 52px;
+    gap: 8px;
+  }
+
+  .mr-fold__icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+
+  .mr-fold__body {
+    padding-block-end: 6px;
+    border-top: 1px solid var(--mr-rule);
+  }
+}
+
+.mr-fold--muted .mr-fold__head {
+  color: var(--mr-ink-muted);
+}
+
 .mr-panel__title {
   margin: 0 0 var(--mr-space-2);
   font-family: var(--mr-font-display);
