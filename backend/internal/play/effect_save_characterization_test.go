@@ -321,7 +321,7 @@ func TestResolveConcentrationSaveTypedPassKeepsTheSpell(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveConcentrationSave() error = %v", err)
 	}
-	if r := res.GetResult(); !r.GetKept() || r.GetSave().GetTotal() != 15 || !r.GetSave().GetPhysical() || r.GetDc() != 10 {
+	if r := res.GetResult(); !r.GetKept() || r.GetSave().GetTotal() != 15 || !r.GetSave().GetPhysical() || r.GetDc() != 0 { // the rule is off: the roller reads no DC
 		t.Errorf("the result = %v, want a typed 14 + 1 that kept the concentration", r)
 	}
 	if got := byLabel(t, res.GetEncounter(), "Pensantus").GetConcentrationSpell(); got != webSpell {
@@ -353,8 +353,11 @@ func TestAfterDamageOpensOneConcentrationSaveForTheWholeCast(t *testing.T) {
 	if w == nil {
 		t.Fatalf("Toren's windows = %v, want one concentration save", a.windows(t, a.caio))
 	}
-	if p := w.GetConcentrationSave(); p.GetDc() != 14 || p.GetDamageTaken() != 28 || p.GetSpellKey() != webSpell {
-		t.Errorf("the prompt = %v, want DC 14 from 28 damage taken on Teia", p)
+	if p := w.GetConcentrationSave(); p.GetDc() != 0 || p.GetDamageTaken() != 28 || p.GetSpellKey() != webSpell { // the rule is off: only the master reads the DC
+		t.Errorf("the prompt = %v, want 28 damage taken on Teia and no DC", p)
+	}
+	if p := a.windowOf(t, a.master, playv1.ReactionKind_REACTION_KIND_CONCENTRATION_SAVE).GetConcentrationSave(); p.GetDc() != 14 {
+		t.Errorf("the master's prompt = %v, want DC 14 from 28 damage taken", p)
 	}
 	var n int
 	for _, x := range a.windows(t, a.master) {

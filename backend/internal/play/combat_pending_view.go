@@ -134,7 +134,7 @@ func decorate(p *playv1.PendingDamage, ev actionEvent, v combatViewer, owner fun
 			dc = h.ConcentrationDC
 		}
 	}
-	if t, ok := owner(p.GetTargetId()); ok && dc > 0 && (v.master || v.owns(t)) {
+	if t, ok := owner(p.GetTargetId()); ok && dc > 0 && v.saveDCFor(t) {
 		p.ConcentrationDc = &dc
 	}
 }

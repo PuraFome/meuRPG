@@ -3189,7 +3189,8 @@ message PendingDamage {
   optional int32 applied_amount = 18;
   // APPLIED to a target that is concentrating on a spell: the Constitution save
   // DC to keep it, 10 or half of the damage taken, whichever is higher (RN-22).
-  // The table rolls it. Only the master and the target's own player.
+  // The table rolls it. Only the master, and the target's own player when the
+  // table rule "Os jogadores veem a CD dos testes de resistência" is on.
   optional int32 concentration_dc = 19;
   // APPLIED to a player's character that was already at 0 hit points: the
   // death save failures the damage caused (1, or 2 for a critical hit) instead
@@ -5203,7 +5204,8 @@ message CombatLogDamage {
   // (ApplyPendingDamage.amount): `amount` is what was applied. Only the master.
   optional int32 rolled_amount = 10;
   // The Constitution save DC to keep a concentration the damage threatened
-  // (RN-22). Only the master and the target's own player.
+  // (RN-22). Only the master, and the target's own player when the table rule
+  // "Os jogadores veem a CD dos testes de resistência" is on.
   optional int32 concentration_dc = 11;
   // APPLIED to a character already at 0: the death save failures it caused. When
   // the table hides the death saves (RN-24) only the master and the target's own
@@ -5762,7 +5764,9 @@ message ConcentrationSavePrompt {
   string spell_name_pt = 2;
   // The damage that threatens it, from the source the window is for.
   int32 damage_taken = 3;
-  // 10 or half the damage, whichever is higher (SRD).
+  // 10 or half the damage, whichever is higher (SRD). The master's, and the
+  // roller's when the table rule "Os jogadores veem a CD dos testes de
+  // resistência" is on; 0 (absent) for the roller otherwise.
   int32 dc = 4;
   // What threatens it ("Bola de Fogo do Mago 1"), when the reactor sees the source.
   string source_label = 5;
@@ -5985,6 +5989,8 @@ message ResolveConcentrationSaveResponse {
 
 message ConcentrationSaveResult {
   DiceRoll save = 1;
+  // The save's DC: the master's, and the roller's when the table rule "Os
+  // jogadores veem a CD dos testes de resistência" is on; 0 (absent) otherwise.
   int32 dc = 2;
   bool kept = 3;
   string spell_key = 4;

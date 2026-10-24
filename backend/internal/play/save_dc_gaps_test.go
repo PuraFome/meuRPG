@@ -104,7 +104,7 @@ func TestSaveDCTheResultOfAConcentrationSave(t *testing.T) {
 }
 
 // concentrationLine is the log line of the save as u reads it ("" when there is none).
-func concentrationLine(a *armed, t *testing.T, u *user, e *playv1.Encounter) string {
+func (a *armed) concentrationLine(t *testing.T, u *user, e *playv1.Encounter) string {
 	t.Helper()
 	for _, en := range logEntries(a.log(t, u, e)) {
 		if txt := en.GetReactionTextPt(); strings.Contains(txt, "concentração em") {
@@ -124,17 +124,17 @@ func TestSaveDCTheLogLineOfAConcentrationSave(t *testing.T) {
 			if _, err := a.resolveConcentration(t, a.ana, e, w.GetId(), concentrationFace(face)); err != nil {
 				t.Fatalf("ResolveConcentrationSave(%d) error = %v", face, err)
 			}
-			ana := concentrationLine(a, t, a.ana, e)
+			ana := a.concentrationLine(t, a.ana, e)
 			if !strings.Contains(ana, "1d20") {
 				t.Fatalf("rule %v: Pensantus's player reads %q, want her dice", on, ana)
 			}
 			if got := strings.Contains(ana, "contra CD 16"); got != on {
 				t.Errorf("rule %v, d20 %d: Pensantus's player reads %q, DC shown = %v", on, face, ana, got)
 			}
-			if got := concentrationLine(a, t, a.master, e); !strings.Contains(got, "contra CD 16") {
+			if got := a.concentrationLine(t, a.master, e); !strings.Contains(got, "contra CD 16") {
 				t.Errorf("rule %v: the master reads %q, want the DC", on, got)
 			}
-			if got := concentrationLine(a, t, a.caio, e); strings.Contains(got, "CD") || strings.Contains(got, "1d20") {
+			if got := a.concentrationLine(t, a.caio, e); strings.Contains(got, "CD") || strings.Contains(got, "1d20") {
 				t.Errorf("rule %v: a bystander reads %q", on, got)
 			}
 		}
@@ -142,7 +142,7 @@ func TestSaveDCTheLogLineOfAConcentrationSave(t *testing.T) {
 }
 
 // damageDCOf is the concentration DC of the applied damage in the log u reads (0: none).
-func damageDCOf(a *armed, t *testing.T, u *user, e *playv1.Encounter) int32 {
+func (a *armed) damageDCOf(t *testing.T, u *user, e *playv1.Encounter) int32 {
 	t.Helper()
 	for _, en := range logEntries(a.log(t, u, e)) {
 		if en.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK && en.GetDamage().GetStatus() == playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED {
@@ -159,11 +159,11 @@ func TestSaveDCTheDamageThatThreatensAConcentration(t *testing.T) {
 	t.Parallel()
 	for _, on := range []bool{false, true} {
 		a, e, _ := concentrationTable(t, on)
-		wantConcentrationDC(t, "the DC on the damage in Pensantus's player's log", damageDCOf(a, t, a.ana, e), on)
-		if got := damageDCOf(a, t, a.master, e); got != keepDC {
+		wantConcentrationDC(t, "the DC on the damage in Pensantus's player's log", a.damageDCOf(t, a.ana, e), on)
+		if got := a.damageDCOf(t, a.master, e); got != keepDC {
 			t.Errorf("rule %v: the master's log DC = %d, want %d", on, got, keepDC)
 		}
-		if got := damageDCOf(a, t, a.caio, e); got != 0 {
+		if got := a.damageDCOf(t, a.caio, e); got != 0 {
 			t.Errorf("rule %v: a bystander's log DC = %d, want none", on, got)
 		}
 	}
@@ -172,7 +172,7 @@ func TestSaveDCTheDamageThatThreatensAConcentration(t *testing.T) {
 // ---- Hellish Rebuke on a player's character ----
 
 // rebukeLineOf is the Hellish Rebuke line of the log u reads ("" when there is none).
-func rebukeLineOf(a *armed, t *testing.T, u *user, e *playv1.Encounter) string {
+func (a *armed) rebukeLineOf(t *testing.T, u *user, e *playv1.Encounter) string {
 	t.Helper()
 	for _, en := range logEntries(a.log(t, u, e)) {
 		if txt := en.GetReactionTextPt(); strings.Contains(txt, "Repreensão Infernal") {
@@ -198,17 +198,17 @@ func TestSaveDCAHellishRebukeOnAPlayersCharacter(t *testing.T) {
 			t.Fatal("the master's result carries no DC")
 		}
 		want := "CD " + itoa(dc)
-		if got := rebukeLineOf(a, t, a.master, e); !strings.Contains(got, want) {
+		if got := a.rebukeLineOf(t, a.master, e); !strings.Contains(got, want) {
 			t.Errorf("rule %v: the master reads %q, want %q", on, got, want)
 		}
-		ana := rebukeLineOf(a, t, a.ana, e)
+		ana := a.rebukeLineOf(t, a.ana, e)
 		if ana == "" {
 			t.Fatalf("rule %v: Toren's player reads no Hellish Rebuke line", on)
 		}
 		if got := strings.Contains(ana, want); got != on {
 			t.Errorf("rule %v: Toren's player reads %q, DC shown = %v", on, ana, got)
 		}
-		if got := rebukeLineOf(a, t, a.caio, e); strings.Contains(got, "CD") {
+		if got := a.rebukeLineOf(t, a.caio, e); strings.Contains(got, "CD") {
 			t.Errorf("rule %v: a bystander reads %q", on, got)
 		}
 	}

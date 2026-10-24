@@ -454,7 +454,10 @@ func (wv *windowView) concentrationPrompt(w playdb.ReactionWindow, reactor *play
 	t := windowTriggerOf(w)
 	p := &playv1.ConcentrationSavePrompt{
 		SpellKey: t.Spell, SpellNamePt: wv.names(t.Spell), DamageTaken: t.Taken,
-		Dc: clamp32(reaction.ConcentrationDC(int(t.Taken)), 0, math.MaxInt32), HandedToMaster: t.Handed,
+		HandedToMaster: t.Handed,
+	}
+	if wv.v.master || (reactor != nil && wv.v.saveDCFor(*reactor)) { // the DC is the master's, and the roller's when the table shows it
+		p.Dc = clamp32(reaction.ConcentrationDC(int(t.Taken)), 0, math.MaxInt32)
 	}
 	if a, ok := wv.byID[t.Actor]; ok && wv.v.sees(a) && t.Key != "" {
 		if name := wv.names(t.Key); name != "" {

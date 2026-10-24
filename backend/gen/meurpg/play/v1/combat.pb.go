@@ -8723,7 +8723,8 @@ type PendingDamage struct {
 	AppliedAmount *int32 `protobuf:"varint,18,opt,name=applied_amount,json=appliedAmount,proto3,oneof" json:"applied_amount,omitempty"`
 	// APPLIED to a target that is concentrating on a spell: the Constitution save
 	// DC to keep it, 10 or half of the damage taken, whichever is higher (RN-22).
-	// The table rolls it. Only the master and the target's own player.
+	// The table rolls it. Only the master, and the target's own player when the
+	// table rule "Os jogadores veem a CD dos testes de resistência" is on.
 	ConcentrationDc *int32 `protobuf:"varint,19,opt,name=concentration_dc,json=concentrationDc,proto3,oneof" json:"concentration_dc,omitempty"`
 	// APPLIED to a player's character that was already at 0 hit points: the
 	// death save failures the damage caused (1, or 2 for a critical hit) instead
@@ -17771,7 +17772,8 @@ type CombatLogDamage struct {
 	// (ApplyPendingDamage.amount): `amount` is what was applied. Only the master.
 	RolledAmount *int32 `protobuf:"varint,10,opt,name=rolled_amount,json=rolledAmount,proto3,oneof" json:"rolled_amount,omitempty"`
 	// The Constitution save DC to keep a concentration the damage threatened
-	// (RN-22). Only the master and the target's own player.
+	// (RN-22). Only the master, and the target's own player when the table rule
+	// "Os jogadores veem a CD dos testes de resistência" is on.
 	ConcentrationDc *int32 `protobuf:"varint,11,opt,name=concentration_dc,json=concentrationDc,proto3,oneof" json:"concentration_dc,omitempty"`
 	// APPLIED to a character already at 0: the death save failures it caused. When
 	// the table hides the death saves (RN-24) only the master and the target's own
@@ -20603,7 +20605,9 @@ type ConcentrationSavePrompt struct {
 	SpellNamePt string                 `protobuf:"bytes,2,opt,name=spell_name_pt,json=spellNamePt,proto3" json:"spell_name_pt,omitempty"`
 	// The damage that threatens it, from the source the window is for.
 	DamageTaken int32 `protobuf:"varint,3,opt,name=damage_taken,json=damageTaken,proto3" json:"damage_taken,omitempty"`
-	// 10 or half the damage, whichever is higher (SRD).
+	// 10 or half the damage, whichever is higher (SRD). The master's, and the
+	// roller's when the table rule "Os jogadores veem a CD dos testes de
+	// resistência" is on; 0 (absent) for the roller otherwise.
 	Dc int32 `protobuf:"varint,4,opt,name=dc,proto3" json:"dc,omitempty"`
 	// What threatens it ("Bola de Fogo do Mago 1"), when the reactor sees the source.
 	SourceLabel string `protobuf:"bytes,5,opt,name=source_label,json=sourceLabel,proto3" json:"source_label,omitempty"`
@@ -22237,12 +22241,14 @@ func (x *ResolveConcentrationSaveResponse) GetHeldRollOffer() *HeldRollOffer {
 }
 
 type ConcentrationSaveResult struct {
-	state       protoimpl.MessageState `protogen:"open.v1"`
-	Save        *DiceRoll              `protobuf:"bytes,1,opt,name=save,proto3" json:"save,omitempty"`
-	Dc          int32                  `protobuf:"varint,2,opt,name=dc,proto3" json:"dc,omitempty"`
-	Kept        bool                   `protobuf:"varint,3,opt,name=kept,proto3" json:"kept,omitempty"`
-	SpellKey    string                 `protobuf:"bytes,4,opt,name=spell_key,json=spellKey,proto3" json:"spell_key,omitempty"`
-	SpellNamePt string                 `protobuf:"bytes,5,opt,name=spell_name_pt,json=spellNamePt,proto3" json:"spell_name_pt,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Save  *DiceRoll              `protobuf:"bytes,1,opt,name=save,proto3" json:"save,omitempty"`
+	// The save's DC: the master's, and the roller's when the table rule "Os
+	// jogadores veem a CD dos testes de resistência" is on; 0 (absent) otherwise.
+	Dc          int32  `protobuf:"varint,2,opt,name=dc,proto3" json:"dc,omitempty"`
+	Kept        bool   `protobuf:"varint,3,opt,name=kept,proto3" json:"kept,omitempty"`
+	SpellKey    string `protobuf:"bytes,4,opt,name=spell_key,json=spellKey,proto3" json:"spell_key,omitempty"`
+	SpellNamePt string `protobuf:"bytes,5,opt,name=spell_name_pt,json=spellNamePt,proto3" json:"spell_name_pt,omitempty"`
 	// The Bardic Inspiration die the player added after the d20, already in the total of `save`.
 	BonusDice     []*BonusDie `protobuf:"bytes,6,rep,name=bonus_dice,json=bonusDice,proto3" json:"bonus_dice,omitempty"`
 	unknownFields protoimpl.UnknownFields

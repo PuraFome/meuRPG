@@ -917,7 +917,7 @@ func (e *logEntry) fillAttack(c *logViewing, out *playv1.CombatLogEntry) bool {
 	if len(e.stopped) > 0 { // Escudo stopped it: a miss, with no damage
 		out.Outcome, out.StoppedByReaction = playv1.AttackOutcome_ATTACK_OUTCOME_MISS, true
 	} else if e.ev.Pending != "" {
-		out.Damage = e.damage(c.dice, v.master, v.master || v.owns(c.target), out)
+		out.Damage = e.damage(c.dice, v.master, v.master || v.owns(c.target), v.saveDCFor(c.target), out)
 		e.dressDamage(out.Damage, v, c.dice, v.master || (c.target.Kind == kindPlayer && v.owns(c.target)), holdsHP(c.target))
 	}
 	return true
@@ -1110,7 +1110,7 @@ func (e *logEntry) spellTargetView(v combatViewer, h castHit, caster, target pla
 // overruled to him alone.
 func (d *damageLog) view(v combatViewer, caster, target playdb.Combatant) *playv1.CombatLogDamage {
 	out := &playv1.CombatLogDamage{Status: d.status}
-	if d.discarded != nil && d.discarded.ConcentrationDC > 0 && (v.master || v.owns(target)) {
+	if d.discarded != nil && d.discarded.ConcentrationDC > 0 && v.saveDCFor(target) {
 		dc := d.discarded.ConcentrationDC
 		out.ConcentrationDc = &dc
 	}
@@ -1159,7 +1159,7 @@ func (d *damageLog) viewApplied(out *playv1.CombatLogDamage, v combatViewer, tar
 		rolled := ap.Rolled
 		out.RolledAmount = &rolled
 	}
-	if dc := ap.ConcentrationDC; dc > 0 && (v.master || v.owns(target)) {
+	if dc := ap.ConcentrationDC; dc > 0 && v.saveDCFor(target) {
 		out.ConcentrationDc = &dc
 	}
 	if after := ap.After; after != nil {
@@ -1175,15 +1175,16 @@ func (d *damageLog) viewLanded(out *playv1.CombatLogDamage, v combatViewer, targ
 	}
 	out.TargetDefeated = after.Defeated
 	out.TargetDown = !after.Defeated && after.HP == 0
-	if dc := d.hit.ConcentrationDC; dc > 0 && (v.master || v.owns(target)) {
+	if dc := d.hit.ConcentrationDC; dc > 0 && v.saveDCFor(target) {
 		out.ConcentrationDc = &dc
 	}
 }
 
 // damage is the damage of an attack as the viewer gets it. The target's hit
 // points after it are the master's alone, set on the entry; the concentration
-// DC is the master's and the target's own player's (targetsOwn).
-func (e *logEntry) damage(dice, master, targetsOwn bool, out *playv1.CombatLogEntry) *playv1.CombatLogDamage {
+// DC is the master's and, when the table shows the DC of a saving throw, the target's own player's
+// (showDC).
+func (e *logEntry) damage(dice, master, targetsOwn, showDC bool, out *playv1.CombatLogEntry) *playv1.CombatLogDamage {
 	d := &playv1.CombatLogDamage{Status: e.status}
 	if e.dmg == nil {
 		return d // the attack hit and its damage is not rolled yet
@@ -1195,7 +1196,7 @@ func (e *logEntry) damage(dice, master, targetsOwn bool, out *playv1.CombatLogEn
 		d.Roll = diceRoll(e.dmg.DiceCount, e.dmg.DiceSides, e.dmg.Faces, e.dmg.Modifier, e.dmg.Amount, e.dmg.Physical)
 	}
 	if e.applied != nil { // the master's apply of a character's damage
-		e.damageApplied(d, master, targetsOwn)
+		e.damageApplied(d, master, targetsOwn, showDC)
 	}
 	if after := e.dmg.After; after != nil && e.status == playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED {
 		d.TargetDefeated = after.Defeated
@@ -1204,7 +1205,7 @@ func (e *logEntry) damage(dice, master, targetsOwn bool, out *playv1.CombatLogEn
 			out.HitPointsAfter = &after.HP
 		}
 	}
-	if e.applied == nil && e.dmg.ConcentrationDC > 0 && targetsOwn && e.status == playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED {
+	if e.applied == nil && e.dmg.ConcentrationDC > 0 && showDC && e.status == playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED {
 		dc := e.dmg.ConcentrationDC
 		d.ConcentrationDc = &dc
 	}
@@ -1212,7 +1213,7 @@ func (e *logEntry) damage(dice, master, targetsOwn bool, out *playv1.CombatLogEn
 }
 
 // damageApplied adds the master's apply of a character's damage to an attack's damage.
-func (e *logEntry) damageApplied(d *playv1.CombatLogDamage, master, targetsOwn bool) {
+func (e *logEntry) damageApplied(d *playv1.CombatLogDamage, master, targetsOwn, showDC bool) {
 	ap := e.applied
 	d.Amount = ap.Amount
 	d.RelentlessEndurance = ap.Relentless
@@ -1223,7 +1224,7 @@ func (e *logEntry) damageApplied(d *playv1.CombatLogDamage, master, targetsOwn b
 		rolled := ap.Rolled
 		d.RolledAmount = &rolled
 	}
-	if dc := ap.ConcentrationDC; dc > 0 && targetsOwn {
+	if dc := ap.ConcentrationDC; dc > 0 && showDC {
 		d.ConcentrationDc = &dc
 	}
 }

@@ -1,6 +1,7 @@
 package leaktest
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -316,7 +317,7 @@ func TestTheDCOfAConcentrationSaveReachesOnlyItsRollerWhenTheTableShowsIt(t *tes
 				t.Fatalf("Caio's save: status %d %s", roll.status, roll.body)
 			}
 			holds := func(p *person) (number, line bool) {
-				replies := append(beforeRoll[p], w.reads(p)...)
+				replies := slices.Concat(beforeRoll[p], w.reads(p))
 				if p == w.caio {
 					replies = append(replies, roll)
 				}

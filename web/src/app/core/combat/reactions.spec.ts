@@ -513,3 +513,50 @@ describe('the result of an answered reaction', () => {
     expect(lost.text[0]).toContain('A concentração em Constrição acabou.');
   });
 });
+
+describe('the DC of a concentration save reaches the screen only when the server sent it', () => {
+  const prompt = (dc: number) =>
+    promptView(
+      win('concentrationSave', {
+        spellNamePt: 'Voo',
+        damageTaken: 33,
+        dc,
+        saveBonus: 2,
+        bonusKnown: true,
+        mode: '',
+        modeSourcesPt: [],
+      }),
+      2,
+    );
+  const result = (dc: number) =>
+    concentrationResultView(
+      {
+        save: { diceCount: 1, diceSides: 20, faces: [7], modifier: 2, total: 9, physical: false },
+        dc,
+        kept: false,
+        spellNamePt: 'Voo',
+      } as never,
+      2,
+    );
+
+  it('the question says "contra CD 17" when the DC arrives', () => {
+    const view = prompt(17);
+    expect(view?.question).toContain('contra CD 17');
+    expect(view?.question).toContain('metade dos 33 de dano');
+    expect(view?.ariaLabel).toContain('contra CD 17');
+  });
+
+  it('the question has no DC, and no way to work it out, when the server sent none', () => {
+    const view = prompt(0);
+    expect(view?.question).toBe(
+      'Você mantém a concentração em Voo. Faça um teste de resistência de Constituição.',
+    );
+    expect(`${view?.question} ${view?.ariaLabel}`).not.toMatch(/CD|metade/);
+  });
+
+  it('the answer names the DC only when it arrives', () => {
+    expect(plain(result(17).text[0])).toContain('contra CD 17.');
+    expect(plain(result(0).text[0])).not.toContain('CD');
+    expect(plain(result(0).text[0])).toContain('= 9. A concentração em Voo acabou.');
+  });
+});
