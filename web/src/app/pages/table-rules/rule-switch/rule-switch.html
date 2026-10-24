@@ -1,0 +1,22 @@
+<div class="rule__row">
+  <span class="rule__text">
+    <span class="rule__label" [id]="key() + '-label'">{{ label() }}</span>
+    <span class="rule__hint" [id]="key() + '-hint'">{{ hint() }}</span>
+  </span>
+  <button
+    type="button"
+    role="switch"
+    class="switch"
+    [class.switch--on]="checked()"
+    [attr.aria-checked]="checked()"
+    [attr.aria-labelledby]="key() + '-label'"
+    [attr.aria-describedby]="key() + '-hint'"
+    (click)="toggled.emit(!checked())"
+  >
+    <span class="switch__handle">
+      @if (checked()) {
+        <mat-icon aria-hidden="true">check</mat-icon>
+      }
+    </span>
+  </button>
+</div>

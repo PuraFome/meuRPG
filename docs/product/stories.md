@@ -647,6 +647,8 @@ The data rules, limits and the server side are in [Table content: rules](../arch
   With physical dice, the player types them once and the campaign's dice rule applies.
 - **Given** the critical hit rule ("dados dobrados" or "máximo mais uma rolagem"), **then** it applies to every critical hit: weapon, spell, creature and NPC, with a map or in theatre of the mind.
   With physical dice, the damage step says what to roll ("role os dados duas vezes" or "o máximo mais uma rolagem"), and the total shown before confirming is what the server stores.
+- **Given** the rule "Os jogadores veem a CD dos testes de resistência" (off by default), **when** it is off, **then** the player whose creature rolls a saving throw (a zone, an effect at the start or end of a turn, a spell cast by an NPC or by another character, a trap) reads the roll and whether it passed, never the DC; only the master reads it, and the caster's player the DC of their own spell.
+  **When** the master turns it on, **then** that player reads the DC of the saves their creatures roll, in the question, the answer, the effect card and the log, from the next one on ("CD 14"); another player, who does not roll, still never reads it, and a hidden caster or trap stays hidden.
 - **Given** the death saving throws are hidden, **then** the other players read only "Caído", "Estável" or "Morto", with no marks or counts, and the log says "Esta mesa só deixa o dono e o mestre verem os testes contra a morte".
   The owner and the game master see the marks, labelled "Só você e o mestre" and "Dono e mestre".
 - **Given** the XP mode, **when** the game master changes it, **then** it changes at once if no XP was given; otherwise the app asks for confirmation with the number of awards and of XP, and nothing is converted.
@@ -690,7 +692,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - **"Importar pacote"** (choose a `.json` file; the preview with counts by kind and each refusal's reason; "Importar N entradas", off while an entry is refused) and **"Exportar"**.
 - **"Opções para os jogadores"** (`/campaigns/:id/content/options`): one group per kind with a counter ("Raças: 9 de 10 ligadas"), search, "Ligar todas" and "Desligar todas", each option's switch with how many sheets use it and the note of a switched-off parent, all saved at once.
   The editors have a "Disponível para os jogadores" switch.
-- **"Regras da mesa"** (`/campaigns/:id/rules`, from the campaign's "Regras da mesa" panel; the game master edits, a player reads): the style, hit points, the ability methods (at least one), the critical hit, the death saves, the reminders, the XP mode, "Talentos" ("Não usados" by default, "Permitidos") and the links to the maps' grid and to the table content.
+- **"Regras da mesa"** (`/campaigns/:id/rules`, from the campaign's "Regras da mesa" panel; the game master edits, a player reads): the style, hit points, the ability methods (at least one), the critical hit, the death saves, "Os jogadores veem a CD dos testes de resistência" (off by default), the reminders, the XP mode, "Talentos" ("Não usados" by default, "Permitidos") and the links to the maps' grid and to the table content.
   The dice mode is edited only here.
   See [Design](../design/maps.md#rules).
 - **The character editor and the level-up** show the table's classes, subclasses, races, subraces and backgrounds among the SRD's, labelled "Da mesa".

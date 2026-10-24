@@ -49,6 +49,7 @@ func (h *harness) buildFixture(master *user) *fixture {
 		HouseRules:     []string{"Beber uma poção é uma ação bônus.", "Ninguém ressuscita no primeiro dia."},
 		HiddenAreaHits: campaignsv1.HiddenAreaHitRule_HIDDEN_AREA_HIT_RULE_ASK,
 		EnemyReactions: campaignsv1.EnemyReactionsRule_ENEMY_REACTIONS_RULE_ALWAYS,
+		ShowSaveDc:     true,
 	}})))
 
 	// The gallery: two map backgrounds and a portrait.

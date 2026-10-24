@@ -15,6 +15,7 @@ import {
   concentrationModeLine as modeLineOfSave,
 } from '../../../../core/combat/reactions';
 import type { EffectSaveAnswer } from '../../../../core/effects/effects-client';
+import { dcLabel } from '../../../../core/format/save-dc';
 
 // What the master's cards say about a window and about the answer just given. Pure: the component only picks the window.
 
@@ -53,7 +54,7 @@ export function effectSaveTitle(w: ReactionWindow): string {
   const parts = [
     `Teste de resistência de ${p?.abilityNamePt ?? ''} ${whose}`,
     p?.sourceNamePt ?? '',
-    p?.dc !== undefined ? `CD ${p.dc}` : '',
+    dcLabel(p?.dc),
   ];
   return parts.filter((x) => x !== '').join(' · ');
 }

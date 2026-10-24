@@ -318,6 +318,7 @@ The rules in `TableRules` (the proto lists the values):
 | `feats_allowed` | Whether the level-up offers a feat in place of the ability increase. A sheet write is not gated by it. | `characters` |
 | `hidden_area_hits` | What an area spell does to the hiding of a hidden creature it hits: reveal (default), keep hidden, or ask the master | `play` |
 | `enemy_reactions` | Whether a player's action against an enemy waits for the master's one-tap answer only when an enemy has a reaction (default), or always | `play` |
+| `show_save_dc` | Whether the player who rolls a saving throw the app asks of them reads its DC too (default off: only the master, and a spell's caster's player). See [Table rules in combat](play/table-rules.md#the-dc-of-a-saving-throw) | `play` |
 | `house_rules` | Up to 20 one-line reminders of 1 to 200 characters, shown and never enforced | the page |
 
 - **The table style is not stored.** `StyleOf(dice mode, combat with map, fog on new maps)` returns `TUDO_NO_APP`, `MESA_FISICA`, `TEATRO_DA_MENTE` or `PERSONALIZADO` when the three values match none of the presets.

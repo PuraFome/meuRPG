@@ -242,7 +242,7 @@ func (ev *effectViewer) card(g effectGroup, onTarget string) *playv1.LastingEffe
 		out.Modifiers = append(out.Modifiers, modifierProto(m))
 	}
 	ev.cardClock(out, f, caster, casterSeen)
-	ev.cardSaves(out, f, ev.v.master || (casterSeen && ev.v.owns(caster)))
+	ev.cardSaves(out, f, ev.v.master || (casterSeen && ev.v.owns(caster)) || ev.v.saveDCFor(ev.byID[onTarget]))
 	ev.cardNotes(out, f, def)
 	if ev.v.master {
 		out.PlayerVisible, out.Audience, out.PlayerLabel = f.PlayerVisible, audienceProto(f.Audience), conv.OrZero(f.PlayerLabel)

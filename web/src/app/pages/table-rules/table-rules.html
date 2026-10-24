@@ -220,6 +220,18 @@
             <p class="hint">Você pode mudar isto a qualquer hora, no meio da sessão. Vale a partir da próxima magia.</p>
           </section>
 
+          <section class="mr-panel block" aria-labelledby="save-dc-title">
+            <h2 class="mr-panel__title" id="save-dc-title">Testes de resistência</h2>
+            <app-rule-switch
+              key="save-dc"
+              label="Os jogadores veem a CD dos testes de resistência"
+              [hint]="saveDcHint"
+              [checked]="d.showSaveDc"
+              (toggled)="edit({ showSaveDc: $event })"
+            />
+            <p class="hint">Vale a partir do próximo teste. Pode mudar a qualquer hora, no meio da sessão.</p>
+          </section>
+
           <app-xp-mode-panel [campaignId]="campaignId()" [mode]="s.xpMode" (questionOpen)="questionOpen.set($event)" />
 
           <section class="mr-panel block" aria-labelledby="reminders-title">

@@ -721,7 +721,10 @@ type trapView struct {
 	master bool
 	// owns says the viewer plays the target; hidden says a player does not get it.
 	owns, hidden func(targetID string) bool
-	label        func(targetID string) string
+	// showDC says the viewer reads the DC of the save of a target they play: the table's rule
+	// "os jogadores veem a CD dos testes de resistência".
+	showDC bool
+	label  func(targetID string) string
 	// names writes a content key in Portuguese, for the sentences of the sources.
 	names func(key string) string
 	// status says where a damage is now (a master's apply moves it on); the
@@ -812,6 +815,8 @@ func (v trapView) saveProto(sv saveRoll, sources []sourceRec, mine bool) *playv1
 	}
 	if v.master {
 		r.Dc, r.BonusKnown = sv.DC, !sv.Unknown
+	} else if mine && v.showDC {
+		r.Dc = sv.DC
 	}
 	return r
 }

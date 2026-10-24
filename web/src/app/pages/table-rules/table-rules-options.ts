@@ -167,3 +167,7 @@ export const COMBAT_OPTIONS: readonly DiceOption<number>[] = [
     description: 'O mestre julga o alcance; o movimento é por número.',
   },
 ];
+
+/** "Os jogadores veem a CD dos testes de resistência": what the switch says off and on, and who always sees it. */
+export const SAVE_DC_HINT =
+  'Desligado: só o mestre vê a CD. Ligado: quem rola o teste também vê a CD. Quem conjurou vê a CD da própria magia de qualquer jeito.';

@@ -32,6 +32,7 @@ import {
   missingDice,
   saveFormula,
 } from '../../../../core/effects/effects';
+import { dcLabel } from '../../../../core/format/save-dc';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { HeldRollPrompt } from '../../../../shared/held-roll-prompt/held-roll-prompt';
 import { rerollShow } from '../../../../shared/held-roll-prompt/held-roll-shows';
@@ -111,6 +112,8 @@ export class EffectSaveSheet {
     error: this.error,
   });
   /** "Sortudo: 1 → 14" under the result: the d20 Lucky rolled again (the faces and the total are the new ones). */
+  /** "CD 14" under the result, when the server sent the DC with it. */
+  protected readonly resultDc = computed(() => dcLabel(this.result()?.dc));
   protected readonly luckyLine = computed(() => luckyText(this.result() ?? undefined));
   protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
   protected readonly extraFaces = signal<readonly (number | null)[]>([]);
