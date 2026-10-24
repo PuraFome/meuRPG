@@ -202,4 +202,35 @@ describe('OrderList compact rows (C1-02, Main)', () => {
     expect(el.querySelector('.order__icon')).toBeNull();
     expect(el.querySelector('.order__title')!.classList).toContain('mr-visually-hidden');
   });
+
+  it('says one state word in a closed row, by priority: "Escondido" before "Concentração"; the spell is in the opened row', () => {
+    const { fixture, el, head, plain } = setup([
+      combatant({
+        id: 'bri',
+        label: 'Brisa',
+        kind: CombatantKind.PLAYER,
+        characterId: 'bri-c',
+        hitPointsCurrent: 14,
+        hitPointsMax: 24,
+        initiative: 11,
+        concentrationSpell: 'spell:faerie-fire',
+        concentrationSpellNamePt: 'Fogo das Fadas',
+      }),
+      combatant({
+        id: 'cul',
+        label: 'Cultista',
+        hidden: true,
+        initiative: 7,
+        concentrationSpell: 'spell:hold-person',
+        concentrationSpellNamePt: 'Imobilizar Pessoa',
+      }),
+    ]);
+    const sub = (label: string) => plain(head(label).querySelector('.row__sub'));
+    expect(sub('Brisa')).toBe('Concentração · inic. 11');
+    expect(sub('Cultista')).toBe('Escondido · inic. 7');
+    expect(plain(head('Brisa'))).not.toContain('Fogo das Fadas');
+    head('Brisa').click();
+    fixture.detectChanges();
+    expect(plain(el.querySelector('.row__conc'))).toContain('Concentração: Fogo das Fadas');
+  });
 });

@@ -400,8 +400,8 @@ test('o goblin do mestre ataca: ele vê a CA, aplica o dano (os PV do jogador mu
   try {
     await openSessionPage(m, campaignId);
     await openSessionPage(p, campaignId);
-    await expect(m.getByRole('heading', { name: 'Vez do Capitão Goblin' })).toBeVisible();
-    const card = m.getByRole('region', { name: 'Vez do Capitão Goblin' });
+    await expect(m.getByRole('heading', { name: /^(Ações do|Vez do) Capitão Goblin$/ })).toBeVisible();
+    const card = m.getByRole('region', { name: /^(Ações do|Vez do) Capitão Goblin$/ });
     await expect(card.getByText('Pontos de vida')).toBeVisible();
     await expect(card.getByText('CA', { exact: true })).toBeVisible();
     await expect(m.getByText('CA 13').first()).toBeVisible(); // Pensantus, in the order
@@ -422,7 +422,7 @@ test('o goblin do mestre ataca: ele vê a CA, aplica o dano (os PV do jogador mu
     await expect(m.getByRole('alertdialog', { name: /Há dano sem aplicar/ })).toBeVisible();
     await expect(m.getByRole('button', { name: 'Voltar' })).toBeFocused();
     await m.getByRole('button', { name: 'Voltar' }).click();
-    await expect(m.getByRole('heading', { name: 'Vez do Capitão Goblin' })).toBeVisible();
+    await expect(m.getByRole('heading', { name: /^(Ações do|Vez do) Capitão Goblin$/ })).toBeVisible();
 
     // Applying changes the player's hit points, and the log says so.
     await card.getByRole('button', { name: /Aplicar \d+ de dano/ }).click();
@@ -514,7 +514,7 @@ test('o jogador pode conjurar Escudo: o mestre responde por ele, o acerto vira e
   try {
     await openSessionPage(m, campaignId);
     await openSessionPage(p, campaignId);
-    const card = m.getByRole('region', { name: 'Vez do Capitão Goblin' });
+    const card = m.getByRole('region', { name: /^(Ações do|Vez do) Capitão Goblin$/ });
     const roll = async (face: string) => {
       await card.getByRole('button', { name: 'Digitar o resultado' }).click();
       await card.getByLabel(/Role 1d20 para Cimitarra/).fill(face);
@@ -764,7 +764,7 @@ test('o Escudo: o jogador decide num aviso, o cartão do mestre troca ao vivo, e
   try {
     await openSessionPage(m, campaignId);
     await openSessionPage(p, campaignId);
-    const card = m.getByRole('region', { name: 'Vez do Capitão Goblin' });
+    const card = m.getByRole('region', { name: /^(Ações do|Vez do) Capitão Goblin$/ });
     const roll = async (face: string) => {
       await card.getByRole('button', { name: 'Digitar o resultado' }).click();
       await card.getByLabel(/Role 1d20 para Cimitarra/).fill(face);
@@ -811,7 +811,7 @@ test('o Escudo: o mestre responde pelo jogador enquanto o aviso está aberto, e 
   try {
     await openSessionPage(m, campaignId);
     await openSessionPage(p, campaignId);
-    const card = m.getByRole('region', { name: 'Vez do Capitão Goblin' });
+    const card = m.getByRole('region', { name: /^(Ações do|Vez do) Capitão Goblin$/ });
     await card.getByRole('button', { name: 'Digitar o resultado' }).click();
     await card.getByLabel(/Role 1d20 para Cimitarra/).fill('11');
     await card.getByRole('button', { name: 'Confirmar 11' }).click();
@@ -908,7 +908,7 @@ test('o mestre aplica outro valor de dano, e o lembrete da concentração mostra
     await p.getByRole('dialog').getByRole('button', { name: 'Conjurar mesmo assim' }).click(); // nobody ticked: PM-02b asks in place
     await p.getByRole('button', { name: 'Voltar à sua vez' }).click();
     await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
-    const card = m.getByRole('region', { name: 'Vez do Capitão Goblin' });
+    const card = m.getByRole('region', { name: /^(Ações do|Vez do) Capitão Goblin$/ });
     await card.getByRole('button', { name: 'Digitar o resultado' }).click();
     await card.getByLabel(/Role 1d20 para Cimitarra/).fill('20');
     await card.getByRole('button', { name: 'Confirmar 20' }).click();
@@ -1104,7 +1104,7 @@ test('a distância sai em metros e em quadrados: o quadro Movimento, a barra do 
     // slower: 15 ft): the Deslocamento in both units, and the Movimento chip.
     await openSessionPage(m, campaignId);
     await passTurnsTo(m, campaignId, 'Capitão Goblin');
-    const card = m.getByRole('region', { name: /Vez do Capitão Goblin/ });
+    const card = m.getByRole('region', { name: /^(Ações do|Vez do) Capitão Goblin$/ });
     await expect(card.locator('.stat', { hasText: 'Deslocamento' })).toContainText('4,5 m · 3 quadrados');
     await expect(card.locator('.chip', { hasText: 'Movimento' })).toContainText('4,5 m · 3 quadrados');
 
@@ -1425,6 +1425,7 @@ test('Ajuda sobre quem está a 0 PV: acorda, a ficha mostra o efeito, e o mestre
 
     // The master's row says it on one line, even at 1280 px.
     const order = m.getByRole('region', { name: 'Ordem de iniciativa' });
+    await openOrderRow(m, 'Pensantus');
     const chip = order.locator('.row__effect--aid');
     await expect(chip).toContainText('Ajuda +5 PV');
     expect((await layoutSize(chip)).height).toBeLessThan(30);

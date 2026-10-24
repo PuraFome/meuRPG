@@ -32,7 +32,7 @@ export function stateWordOf(c: Combatant): string {
   return stateWord(c.defeated && isPlayer(c) ? CombatantState.DEAD : c.state, c.label);
 }
 
-/** The one state word of a row, or `''`: "Escondido", "Caída", "Morrendo · 3 falhas", "Derrotado". */
+/** The one state word of a closed row, or `''`, by priority: "Derrotado", "Caída", "Morrendo · 3 falhas", "Escondido", "Concentração". */
 export function rowState(c: Combatant): string {
   if (c.defeated) {
     return isPlayer(c) ? stateWordOf(c) : 'Derrotado';
@@ -40,7 +40,11 @@ export function rowState(c: Combatant): string {
   if (isDown(c)) {
     return downText(c);
   }
-  return c.hidden ? 'Escondido' : '';
+  if (c.hidden) {
+    return 'Escondido';
+  }
+  // The last of the words of a closed row, by priority: whoever holds a spell says it at a glance; the spell is in the opened row.
+  return c.concentrationSpell ? 'Concentração' : '';
 }
 
 /** The class and the armor class of a row, without the kind label of an NPC or its challenge rating (the opened row says it). */

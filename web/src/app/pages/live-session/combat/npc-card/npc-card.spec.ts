@@ -376,10 +376,11 @@ describe('NpcCard: compact in the rail (C7-02)', () => {
     return fixture.nativeElement as HTMLElement;
   };
 
-  it('keeps the heading for a screen reader and does not draw it, since the bar says "Vez do Goblin 1"', () => {
+  it('names the card for a screen reader ("Ações do Goblin 1") and does not draw it, since the bar says "Vez do Goblin 1"', () => {
     const el = card(false);
     const title = el.querySelector('h2')!;
-    expect(title.textContent?.replace(/\u00a0/g, ' ')).toContain('Vez do Goblin 1');
+    // Not "Vez do…": the bar above says it, and one text on the screen must not say it twice.
+    expect(title.textContent?.replace(/\u00a0/g, ' ')).toContain('Ações do Goblin 1');
     expect(title.classList).toContain('mr-visually-hidden');
     expect(el.querySelector('section')!.classList).toContain('card--bare');
   });

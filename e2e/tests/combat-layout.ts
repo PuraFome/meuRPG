@@ -11,15 +11,18 @@ export type CombatPanel = 'Registro' | 'Efeitos' | 'Névoa e luz' | 'Armadilhas'
 /** Opens a row of "Mais do combate" in place (nothing if it is open); on a phone it opens "Turno" and its "Mais" fold first. */
 export async function openCombatPanel(page: Page, name: CombatPanel): Promise<void> {
   const row = page.locator('app-combat-view .more').getByRole('button', { name: new RegExp(`^${name}`) });
+  // The phone keeps the rows inside the "Mais" fold at the end of "Turno" ("Mais 5 painéis").
+  const fold = page.getByRole('button', { name: /^Mais \d+ painéis/ });
+  await row.or(fold).first().waitFor();
   if (!(await row.isVisible())) {
     const turn = page.getByRole('tab', { name: /^Turno/ });
     if (await turn.isVisible()) {
       await turn.click();
     }
-    const more = page.getByRole('button', { name: /^Mais/, expanded: false }).filter({ hasNotText: /ações/ });
-    if ((await more.count()) > 0) {
-      await more.first().click();
+    if ((await fold.getAttribute('aria-expanded')) === 'false') {
+      await fold.click();
     }
+    await row.waitFor();
   }
   if ((await row.getAttribute('aria-expanded')) === 'false') {
     await row.click();
@@ -42,5 +45,21 @@ export async function openOrderRow(page: Page, label: string): Promise<void> {
   const head = page.locator('app-order-list').getByRole('button', { name: new RegExp(`^${escaped}(,|$)`) });
   if ((await head.getAttribute('aria-expanded')) === 'false') {
     await head.click();
+  }
+}
+
+/** Back to "Turno" on a phone (where the order is its own tab, and an opened row leaves "Turno" behind); on a computer it is the rail's tab. */
+export async function openTurn(page: Page): Promise<void> {
+  const turn = page.getByRole('tab', { name: /^Turno/ });
+  if (await turn.isVisible()) {
+    await turn.click();
+  }
+}
+
+/** The map on a phone (where it is the tab "Mapa"); on a computer it is already in the middle column. */
+export async function openMap(page: Page): Promise<void> {
+  const map = page.getByRole('tab', { name: /^Mapa/ });
+  if (await map.isVisible()) {
+    await map.click();
   }
 }

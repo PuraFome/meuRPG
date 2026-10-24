@@ -9,7 +9,7 @@
     }
     <div class="card__ident">
       <h2 class="card__title" [class.mr-visually-hidden]="!framed()" id="npc-title">
-        {{ full() ? 'Vez ' + ofLabel() : 'Dano de ' + subject().label }}
+        {{ full() ? (framed() ? 'Vez ' : 'Ações ') + ofLabel() : 'Dano de ' + subject().label }}
       </h2>
       @if (identity(); as line) {
         <span class="card__kind">{{ line }}</span>

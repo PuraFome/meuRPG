@@ -112,6 +112,9 @@ test(
 
       // The master's order says each enemy's cover against whoever has the turn, with the source, never an object.
       const order = m.getByRole('region', { name: 'Ordem de iniciativa' });
+      // The lines of cover are in the opened rows.
+      await openOrderRow(m, 'Capitão Goblin');
+      await openOrderRow(m, 'Goblin 2');
       await expect(order.getByText('Meia cobertura (do mapa) contra o Pensantus')).toBeVisible();
       await expect(order.getByText('Cobertura total (do mapa) contra o Pensantus')).toBeVisible();
 

@@ -156,7 +156,7 @@ describe("CombatView, the master's three columns (alternative B)", () => {
   it('puts the turn card in "Turno", with no "Próximo turno" of its own: the combat bar has it', async () => {
     const { el } = await mount(WIDE);
     const card = el.querySelector('#rail-panel-turn app-npc-card')!;
-    expect(card.textContent?.replace(/\u00a0/g, ' ')).toContain('Vez do Goblin 1');
+    expect(card.textContent?.replace(/\u00a0/g, ' ')).toContain('Ações do Goblin 1');
     expect(
       Array.from(card.querySelectorAll('button')).some((b) =>
         b.textContent?.includes('Próximo turno'),
