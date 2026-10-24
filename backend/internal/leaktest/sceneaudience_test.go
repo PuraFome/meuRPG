@@ -112,8 +112,8 @@ func (w *world) settle(ws ...*streamWatcher) {
 func eventsAfter(sw *streamWatcher, n int) []string {
 	var out []string
 	for _, ev := range sw.since(n) {
-		if ev.GetCurrentMapChanged() != nil {
-			continue // the marker
+		if ev.GetCurrentMapChanged() != nil || ev.GetHeartbeat() != nil {
+			continue // the marker, and the heartbeat of an idle stream
 		}
 		body, err := protojson.Marshal(ev)
 		if err != nil {
@@ -202,7 +202,10 @@ func TestRN10_APlayerOutsideAnOpenSceneReadsNoScene(t *testing.T) {
 			t.Errorf("%s gets the portrait of an NPC on the stage of a scene they are not in", p.name)
 		}
 	}
-	// The group check asked in it goes to Ana's character alone.
+	// The group check asked in it goes to Ana's character alone (the table's own is closed first).
+	if open := must(master.contests.GetGroupCheck(t.Context(), rq(&playv1.GetGroupCheckRequest{CampaignId: w.campaign}))).GetGroupCheck(); open.GetOpen() {
+		must(master.contests.CloseGroupCheck(t.Context(), rq(&playv1.CloseGroupCheckRequest{CampaignId: w.campaign, IdempotencyKey: newKey(), GroupCheckId: open.GetId()})))
+	}
 	check := must(master.contests.RequestGroupCheck(t.Context(), rq(&playv1.RequestGroupCheckRequest{
 		CampaignId: w.campaign, IdempotencyKey: newKey(), SkillKey: "skill:stealth", Dc: 17, ShowDc: true,
 	}))).GetGroupCheck()
@@ -319,7 +322,7 @@ func (w *world) wantImage(t *testing.T, step string, im shownImage, sa, sc *stre
 		if sentTheImage && !c.want {
 			t.Errorf("%s: %s's stream carried the image", step, c.p.name)
 		}
-		if len(fresh) > i && fresh[i] && !sentTheImage {
+		if wantSent := i < len(fresh) && fresh[i]; wantSent && !sentTheImage {
 			t.Errorf("%s: %s's stream did not carry the image: the positive control of the stream is missing", step, c.p.name)
 		}
 	}
