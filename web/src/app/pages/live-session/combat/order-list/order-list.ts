@@ -60,10 +60,10 @@ import type { CombatantInfo } from '../combat-info';
 import { CombatantTags } from '../combatant-tags/combatant-tags';
 import { BeastPool, FormTag } from '../combatant-tags/form-tag';
 import { EndAidQuestion } from './end-aid-question';
-import { ConcPill, LoseQuestion } from './lose-question';
+import { LoseQuestion } from './lose-question';
 import { OrderLegend } from './order-legend';
 import { RowCover } from './row-cover';
-import { downText, isDown, isDying, rowDetail, rowState, stateWordOf } from './row-words';
+import { downText, isDown, isDying, rowDetail, rowFacts, rowState, stateWordOf } from './row-words';
 import { rowsBelow } from './rows-below';
 import { ShieldWatch } from './shield-watch';
 import { DeathRow } from '../death-saves/death-marks';
@@ -91,7 +91,6 @@ function concentrationOf(c: Combatant): string {
   imports: [
     NudgeButton,
     BeastPool,
-    ConcPill,
     EndAidQuestion,
     FormTag,
     LoseQuestion,
@@ -157,6 +156,8 @@ export class OrderList {
   readonly folded = model(false);
   /** The fold button is offered: the three-column layout only. */
   readonly foldable = input(false);
+  /** The head says "Ordem" (not where a tab above already does: the phone's "Ordem" tab). */
+  readonly titled = input(true);
 
   protected readonly Stable = CombatantState.STABLE;
 
@@ -278,6 +279,10 @@ export class OrderList {
         rowDetail(c, this.encounter(), this.info().get(c.characterId), this.shield(c) > 0),
       ].filter(Boolean),
     );
+  }
+
+  protected facts(c: Combatant): string {
+    return rowFacts(c, this.shield(c), this.aid(c) > 0 ? this.aidTag(this.aid(c)) : '');
   }
 
   /** How many rows lie wholly below the room of the list: "Mais 6 abaixo". */

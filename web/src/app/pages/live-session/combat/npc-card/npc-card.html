@@ -3,12 +3,12 @@
        combat bar's (the phone's fixed bar), never this card's. -->
   <div class="card__who">
     @if (isNpc() && subject().portraitUrl) {
-      <app-portrait [src]="subject().portraitUrl" [name]="subject().label" [size]="56" fit="cover" [decorative]="true" />
+      <app-portrait [src]="subject().portraitUrl" [name]="subject().label" [size]="framed() ? 56 : 36" fit="cover" [decorative]="true" />
     } @else {
-      <app-combatant-token [initial]="initial()" [npc]="isNpc()" [creature]="isCreatureSubject()" [current]="true" [size]="48" />
+      <app-combatant-token [initial]="initial()" [npc]="isNpc()" [creature]="isCreatureSubject()" [current]="true" [size]="framed() ? 48 : 32" />
     }
     <div class="card__ident">
-      <h2 class="card__title" id="npc-title">
+      <h2 class="card__title" [class.mr-visually-hidden]="!framed()" id="npc-title">
         {{ full() ? 'Vez ' + ofLabel() : 'Dano de ' + subject().label }}
       </h2>
       @if (identity(); as line) {

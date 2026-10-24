@@ -4,6 +4,7 @@ import { combatRPC, getEncounterRPC, startEncounterRPC, tableForCombat, type Com
 import { createPointRPC } from './maps-support';
 import { callRPC, createCharacterRPC, newSignedInContext } from './support';
 import { openSessionPage, clickStartCombat } from './live-session-support';
+import { openOrderRow } from './combat-layout';
 
 // MR-042 (monsters in the combat, "Pôr no combate"), MR-043 (the encounter builder: "Gerar encontro", "Trocar", the battle point,
 // "Começar este combate"), RN-29 (the monsters of the bestiary), RN-20 (what a player never receives of a monster) and RN-10 (the builder
@@ -102,9 +103,13 @@ test(
       // The master's order: the ND beside the armor class, the hidden one marked.
       await openSessionPage(master, campaignId);
       const order = master.getByRole('region', { name: 'Ordem de iniciativa' });
-      await expect(order.locator('.row', { hasText: 'Bandido 3' })).toContainText('ND 1/8');
       await expect(order.locator('.row', { hasText: 'Bandido 3' })).toContainText('Escondido');
-      await expect(order.locator('.row', { hasText: 'Bandido 2' })).toContainText('Revelado');
+      await expect(order.locator('.row', { hasText: 'Bandido 2' })).not.toContainText('Escondido');
+      // The ND is the first item of the row's "Mais".
+      await openOrderRow(master, 'Bandido 3');
+      await master.getByRole('button', { name: 'Mais ações para Bandido 3' }).click();
+      await expect(master.getByRole('menuitem', { name: /ND 1\/8/ })).toBeVisible();
+      await master.keyboard.press('Escape');
 
       // The player's JSON: Bandido 2 by its name and the word of its state, no numbers; nothing at all of Bandido 1 and 3.
       const revealed = await getEncounterRPC(player, campaignId);

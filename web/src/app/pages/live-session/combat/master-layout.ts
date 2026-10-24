@@ -3,6 +3,7 @@ import { type Signal, computed, signal } from '@angular/core';
 import type { TabItem, TabTone } from '../../../shared/tab-list/tab-list';
 import type { Encounter } from '../../../../gen/meurpg/play/v1/combat_pb';
 import { roundLabel, turnBanner } from '../../../core/combat/combat-view';
+import type { MasterQuestion } from '../../../core/held-rolls/held-questions';
 import type { MapTab, MapTabId } from './map-tabs/map-tab';
 
 /** The most a tab's count shows before it says "99+". */
@@ -47,6 +48,8 @@ export interface MasterLayoutDeps {
   /** The panels the page projected into "Mais do combate". */
   readonly projected: Signal<readonly MapTab[]>;
   readonly combatants: Signal<number>;
+  /** How many effects of the combat are in play (the count of the row "Efeitos"). */
+  readonly effects: Signal<number>;
   /** The combat, for the words of the phone's line (the round, who comes next). */
   readonly encounter: Signal<Encounter | null>;
   /** A combat without a map: no "Mapa" tab on a phone. */
@@ -102,10 +105,13 @@ export class MasterLayout {
       (id) =>
         id === 'log' || id === 'effects' || this.deps.projected().some((t) => t.appMapTab() === id),
     ).map((id) => {
-      const count = this.deps
-        .projected()
-        .find((t) => t.appMapTab() === id)
-        ?.mapTabCount();
+      const count =
+        id === 'effects'
+          ? this.deps.effects()
+          : this.deps
+              .projected()
+              .find((t) => t.appMapTab() === id)
+              ?.mapTabCount();
       return { id, ...PANELS[id], ...(count ? { count } : {}) };
     }),
   );
@@ -161,6 +167,12 @@ export class MasterLayout {
     }
     return tabs;
   });
+
+  /** Who the held attack was against, for the question's words. */
+  heldTarget(q: MasterQuestion): string {
+    const target = q.controller.offer()?.targetId;
+    return (target && this.deps.encounter()?.combatants.find((c) => c.id === target)?.label) || '';
+  }
 
   readonly shownPhoneTab = computed(() =>
     this.phoneTabs().some((t) => t.id === this.phoneTab()) ? this.phoneTab() : 'turn',

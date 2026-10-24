@@ -13,6 +13,7 @@ describe('MasterLayout', () => {
     const unread = signal(0);
     const hasChat = signal(true);
     const projected = signal<readonly MapTab[]>([]);
+    const effects = signal(0);
     const combatants = signal(6);
     const theatre = signal(false);
     const layout = new MasterLayout({
@@ -21,10 +22,11 @@ describe('MasterLayout', () => {
       hasChat,
       projected,
       combatants,
+      effects,
       encounter: signal(null),
       theatre,
     });
-    return { layout, waiting, unread, hasChat, projected, combatants, theatre };
+    return { layout, waiting, unread, hasChat, projected, combatants, theatre, effects };
   }
 
   it('has the rail tabs "Turno" and "Conversa", with the counts in words', () => {
@@ -76,6 +78,13 @@ describe('MasterLayout', () => {
     expect(layout.panels().find((p) => p.id === 'fog')?.count).toBeUndefined();
     expect(layout.hasPanel('fog')).toBe(true);
     expect(layout.hasPanel('puzzles')).toBe(false);
+  });
+
+  it('says the count of the effects in their row, like the traps', () => {
+    const { layout, effects } = setup();
+    expect(layout.panels().find((p) => p.id === 'effects')?.count).toBeUndefined();
+    effects.set(2);
+    expect(layout.panels().find((p) => p.id === 'effects')?.count).toBe(2);
   });
 
   it('keeps each row open or folded by itself', () => {

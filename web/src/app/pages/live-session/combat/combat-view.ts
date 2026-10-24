@@ -1,6 +1,7 @@
 import {
   Component,
   DestroyRef,
+  ElementRef,
   type TemplateRef,
   computed,
   contentChildren,
@@ -8,6 +9,7 @@ import {
   inject,
   input,
   output,
+  signal,
   untracked,
 } from '@angular/core';
 import {
@@ -28,7 +30,6 @@ import { offersToAnswer, reactorIsMasters } from '../../../core/combat/opportuni
 import { sheetWindow } from '../../../core/combat/reactions';
 import { questions } from '../../../core/combat/hidden-reveal';
 import { heldOfferOf } from '../../../core/held-rolls/held-roll-offer';
-import type { MasterQuestion } from '../../../core/held-rolls/held-questions';
 import { COMBAT_VIEW_IMPORTS } from './combat-view-imports';
 import { CombatViewPartsDirective } from './combat-view-parts';
 import { MapTab } from './map-tabs/map-tab';
@@ -71,6 +72,9 @@ export class CombatView extends CombatViewPartsDirective {
   /** The panels the page projects under the map (fog, traps, treasure, puzzles). */
   protected readonly projected = contentChildren(MapTab);
 
+  /** How many effects the combat has, said by the effects panel once it has read them (it stays mounted, folded). */
+  protected readonly effectsCount = signal(0);
+
   /** The tabs of the master's combat and which one is open. */
   protected readonly layout = new MasterLayout({
     waiting: computed(() => this.held.count() + (this.owed() ? 1 : 0) + (this.waitNote() ? 1 : 0)),
@@ -78,6 +82,7 @@ export class CombatView extends CombatViewPartsDirective {
     hasChat: computed(() => this.chat() !== null),
     projected: computed(() => this.projected()),
     combatants: computed(() => this.encounter()?.combatants.length ?? 0),
+    effects: this.effectsCount,
     encounter: computed(() => this.encounter() ?? null),
     theatre: computed(() => this.theatre()),
   });
@@ -87,12 +92,6 @@ export class CombatView extends CombatViewPartsDirective {
       this.layout.phoneTab.set('order');
     }
     super.focusOrder();
-  }
-
-  /** Who the held attack was against, for the question's words. */
-  protected heldTarget(q: MasterQuestion): string {
-    const target = q.controller.offer()?.targetId;
-    return (target && this.encounter()?.combatants.find((c) => c.id === target)?.label) || '';
   }
 
   constructor() {
@@ -111,8 +110,10 @@ export class CombatView extends CombatViewPartsDirective {
       });
     });
     keepFocusClear(
+      inject(ElementRef),
       computed(() => this.isMaster() && this.active()),
       this.laptop,
+      computed(() => this.encounter()?.status),
     );
     // The rail's conversation tab is open (and the rail is there): the page counts nothing as unread.
     effect(() => {

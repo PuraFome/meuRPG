@@ -164,7 +164,7 @@ test(
       await openOrderRow(m, 'Sálvia');
       await expect(order.getByText('Lobos atrozes da Sálvia ·')).toBeVisible();
       await expect(order.getByText('CA 14 · da Sálvia')).toHaveCount(2);
-      await expect(order.getByText('Concentra em Conjurar Animais · 2 Lobos atrozes')).toBeVisible();
+      await expect(order.getByText('Concentração: Conjurar Animais · 2 Lobos atrozes')).toBeVisible();
       await order.getByRole('button', { name: 'Perdeu a concentração' }).click();
       const question = order.getByRole('alertdialog', { name: 'A Sálvia perdeu a concentração?' });
       await expect(question.getByRole('button', { name: 'Voltar' })).toBeFocused();

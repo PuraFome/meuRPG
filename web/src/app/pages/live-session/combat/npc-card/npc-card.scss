@@ -31,6 +31,40 @@
   border-color: transparent;
 }
 
+.card--bare {
+  // In the rail the bar above already says "Vez do Goblin 1": the card is compact (who it is, three small boxes, the chips) so
+  // "Mais do combate" stays in view.
+  gap: 8px;
+
+  .card__kind {
+    font-size: 14px;
+    line-height: 19px;
+  }
+
+  .stats {
+    gap: 6px;
+  }
+
+  .stat {
+    padding: 4px 10px;
+  }
+
+  .stat__val {
+    font-size: 19px;
+    line-height: 23px;
+  }
+
+  .stat--wide small {
+    display: none;
+  }
+
+  .chip {
+    height: 28px;
+    padding: 0 10px;
+    font-size: 14px;
+  }
+}
+
 .card__who {
   display: flex;
   align-items: center;

@@ -453,10 +453,10 @@ test(
       await expect(m.getByText('Vez do Goblin 1').first()).toBeVisible();
       const forced = m.getByRole('checkbox', { name: /Movimento forçado/ });
       await expect(forced).not.toBeChecked();
-      await expect(m.getByText('Arraste um token para movê-lo. O mestre anda sem limite.')).toBeVisible();
       await forced.check();
       await expect(m.getByText('Ligado para o próximo arrasto')).toBeVisible();
-      await expect(m.getByText('Arraste um token: o movimento é forçado e não provoca ataque de oportunidade.')).toBeVisible();
+      // The words of the box (it ends the opportunity attacks of one drag) are its description.
+      await expect(forced).toHaveAccessibleDescription(/não provocar ataque de oportunidade/);
 
       // The goblin on turn leaves Pensantus's reach: a plain drag would provoke (the test above); a forced one does not.
       const start = await getEncounterRPC(m, campaignId);

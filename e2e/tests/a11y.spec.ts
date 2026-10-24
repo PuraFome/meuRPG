@@ -3790,7 +3790,8 @@ async function scanCreatureCombatScreens(browser: Browser, colorScheme: 'light' 
     // The master: the order with the group box, the legend and the concentration question.
     await m.goto(sessionRoute(campaignId));
     const order = m.getByRole('region', { name: 'Ordem de iniciativa' });
-    await expect(order.getByText('Concentra em Conjurar Animais · 2 Lobos atrozes')).toBeVisible();
+    await openOrderRow(m, 'Sálvia');
+    await expect(order.getByText('Concentração: Conjurar Animais · 2 Lobos atrozes')).toBeVisible();
     await expectScreenPasses(m, `A ordem do mestre com as criaturas ${where}`);
     await order.getByRole('button', { name: 'Perdeu a concentração' }).click();
     await expect(order.getByRole('alertdialog')).toBeVisible();
@@ -5637,7 +5638,10 @@ async function scanMonsterScreens(browser: Browser, colorScheme: 'light' | 'dark
     const second = enc.combatants.find((c) => c.label === 'Bandido 2')!;
     await combatRPC(m, 'SetCombatantHidden', { campaignId, encounterId: enc.id, combatantId: second.id, hidden: false });
     await openSessionPage(m, campaignId);
-    await expect(m.getByRole('region', { name: 'Ordem de iniciativa' }).locator('.row', { hasText: 'Bandido 3' })).toContainText('ND 1/8');
+    await openOrderRow(m, 'Bandido 3');
+    await m.getByRole('button', { name: 'Mais ações para Bandido 3' }).click();
+    await expect(m.getByRole('menuitem', { name: /ND 1\/8/ })).toBeVisible();
+    await m.keyboard.press('Escape');
     await expectScreenPasses(m, `Combate com monstros, a ordem do mestre ${where}`);
     await openSessionPage(p, campaignId);
     await expect(p.getByText('Bandido 2').first()).toBeVisible();

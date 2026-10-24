@@ -58,3 +58,14 @@ export function rowDetail(
   const first = isPlayer(c) ? (info?.classSummary ?? '') : '';
   return [first, ac].filter(Boolean).join(' · ');
 }
+
+/** The first line of an opened row (C7-02): "CA 13 · 14 de 24 PV", with the shield's bonus after the armor class and Ajuda's tag after the hit points. */
+export function rowFacts(c: Combatant, shield: number, aidTag: string): string {
+  const ac =
+    c.armorClass === undefined ? '' : `CA ${c.armorClass}${shield > 0 ? ` + ${shield}` : ''}`;
+  const hp =
+    c.hitPointsMax === undefined
+      ? ''
+      : `${c.hitPointsCurrent} de ${c.hitPointsMax} PV${aidTag ? ` · ${aidTag}` : ''}`;
+  return joinDots([ac, hp].filter(Boolean));
+}

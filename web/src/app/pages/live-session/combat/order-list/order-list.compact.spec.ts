@@ -165,4 +165,41 @@ describe('OrderList compact rows (C1-02, Main)', () => {
     ).toBe('true');
     expect(el.querySelector('[role="alertdialog"]')).not.toBeNull();
   });
+
+  it('opens a row with "CA 13 · 14 de 24 PV", the state only when there is one, and no ND or "Revelado" line (C7-02)', () => {
+    const { fixture, el, head, plain } = setup([
+      combatant({
+        id: 'g1',
+        label: 'Goblin 1',
+        hitPointsCurrent: 14,
+        hitPointsMax: 24,
+        initiative: 14,
+        armorClass: 13,
+        challengeRating: '1/4',
+      }),
+    ]);
+    head('Goblin 1').click();
+    fixture.detectChanges();
+    expect(plain(el.querySelector('.row__facts'))).toBe('CA 13 · 14 de 24 PV');
+    expect(el.querySelector('.row__state-line')).toBeNull();
+    expect(el.querySelector('.row__open')!.textContent).not.toContain('Revelado');
+    expect(el.querySelector('.row__open')!.textContent).not.toContain('ND');
+  });
+
+  it('puts "Dano/Cura", "Condições" and "Mais" in one grid of three equal columns', () => {
+    const { fixture, el, head } = setup();
+    head('Pensantus').click();
+    fixture.detectChanges();
+    const actions = el.querySelector<HTMLElement>('.row__actions')!;
+    expect(actions.querySelectorAll('button').length).toBe(3);
+    expect(getComputedStyle(actions).display).toBe('grid');
+  });
+
+  it('keeps the head quiet where a tab above already says "Ordem"', () => {
+    const { fixture, el } = setup();
+    fixture.componentRef.setInput('titled', false);
+    fixture.detectChanges();
+    expect(el.querySelector('.order__icon')).toBeNull();
+    expect(el.querySelector('.order__title')!.classList).toContain('mr-visually-hidden');
+  });
 });

@@ -39,9 +39,12 @@
 // with the page. From 1024px the order is inside the rail's "Turno" and the map has the rest; from 1280px it is a column of 288px (a
 // strip of 64px when folded). Below 1024px see `.phone`.
 .tri {
-  --tri-top: 164px;
+  --tri-top: var(--combat-top, 164px);
   --mr-rail-top: var(--tri-top);
-  --order-max: calc(100dvh - var(--tri-top) - var(--mr-space-4));
+  // The columns are a little shorter than the room under the bar: the page has a margin under them, and a sticky column is pushed up by
+  // the end of its container, which would slide it under the bar.
+  --tri-tail: 48px;
+  --order-max: calc(100dvh - var(--tri-top) - var(--tri-tail));
   display: grid;
   grid-template-columns: minmax(0, 1fr) 380px;
   align-items: start;
@@ -85,6 +88,7 @@
 
 // The rail is a card: its tab list on top, the panels inside it, the cards of "Turno" without a frame of their own.
 .tri__rail {
+  height: calc(100dvh - var(--tri-top) - var(--tri-tail));
   border: 1px solid var(--mr-line);
   border-radius: var(--mr-radius-lg);
   background: var(--mr-surface);
@@ -148,6 +152,16 @@
   padding: 0 0 var(--mr-space-4);
 }
 
+// The panels the page projects (fog, traps, treasure, puzzles) and the log draw a card of their own; in a row they are its content, so the
+// frame, the ground and the padding of the card go (not the cards inside it) and every row indents the same.
+.more__body ::ng-deep .mr-panel:not(.mr-panel .mr-panel) {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
 // Under 1024px: "Turno · Ordem · Mapa", and a fixed bar (above the pinned nav) with what the turn owes and "Próximo turno".
 .phone {
   display: flex;
@@ -168,6 +182,13 @@
 
   b {
     color: var(--mr-ink);
+  }
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
   }
 }
 

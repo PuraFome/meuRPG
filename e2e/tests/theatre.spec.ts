@@ -41,7 +41,7 @@ test(
       expect((started as { mode?: string }).mode).toBe('ENCOUNTER_MODE_THEATRE');
       // Nobody has a square: no "Sem quadrado no mapa" warning, no map card.
       await expect(m.getByText('Sem quadrado no mapa.')).toHaveCount(0);
-      await expect(m.getByRole('button', { name: 'Abrir mapa' })).toHaveCount(0);
+      await expect(m.getByRole('button', { name: 'Ver mapa' })).toHaveCount(0);
 
       // The dialog starts the NPCs hidden (question 31): the master reveals them, as he would on screen.
       for (const c of started.combatants.filter((x) => x.kind === 'COMBATANT_KIND_NPC')) {

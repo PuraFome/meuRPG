@@ -72,7 +72,7 @@ test(
       // Start with the party and three hidden goblins (and the captain).
       await clickStartCombat(m);
       await expect(m.getByRole('dialog', { name: 'Iniciar combate' })).toBeVisible();
-      await expect(m.getByText('20 × 14 quadrados de 1,5 m')).toBeVisible();
+      await expect(m.getByText('20 × 14 · 1,5 m')).toBeVisible();
       await expect(m.getByText('30 m × 21 m').first()).toBeVisible();
       for (let i = 0; i < 3; i++) {
         await m.getByRole('button', { name: 'Mais um Goblin', exact: true }).click();
@@ -880,7 +880,8 @@ test('condições e concentração: o mestre marca no menu, o jogador vê as eti
     await expect(sheet.getByText('Sua ação foi usada.')).toBeVisible();
     await sheet.getByRole('button', { name: 'Voltar à sua vez' }).click();
     await expect(p.getByText('Concentrado em Teia', { exact: true })).toBeVisible();
-    await expect(m.getByText('Concentra em Teia')).toBeVisible();
+    await openOrderRow(m, 'Pensantus');
+    await expect(m.getByText('Concentração: Teia')).toBeVisible();
     // The master sees it in the dialog too, with the same action.
     await openOrderRow(m, 'Pensantus');
     await m.getByRole('button', { name: 'Mais ações para Pensantus' }).click();

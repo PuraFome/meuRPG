@@ -53,7 +53,6 @@
                   [isMaster]="true"
                   title="Posições iniciais"
                   [layers]="layers()"
-                  [hint]="false"
                   [legend]="false"
                   note="Cada token está no quadrado marcado no mapa. Você pode mover qualquer um durante o combate."
                   (tokenDrop)="moves.drop($event)"
@@ -541,6 +540,7 @@
           [title]="p.label"
           [icon]="p.icon"
           [level]="4"
+          [keep]="true"
           [open]="layout.isRowOpen(p.id)"
           (openChange)="layout.setRowOpen(p.id, $event)"
         >
@@ -562,7 +562,7 @@
               }
               @case ('effects') {
                 <!-- The effects that last and the clock of the turns (W7-E board 4): the master only. -->
-                <app-effects-panel [campaignId]="campaignId()" [state]="state()" />
+                <app-effects-panel [campaignId]="campaignId()" [state]="state()" [compact]="true" (counted)="effectsCount.set($event)" />
               }
               @case ('fog') {
                 <ng-content select="[appMapTab=fog]" />
@@ -610,7 +610,7 @@
 <ng-template #masterWaiting>
   @if (encounter(); as e) {
     @for (q of held.entries(); track q.holdId) {
-      <app-held-question layout="card" [question]="q" [canType]="heldCanType()" [target]="heldTarget(q)" />
+      <app-held-question layout="card" [question]="q" [canType]="heldCanType()" [target]="layout.heldTarget(q)" />
     }
     <app-roll-mode-queue [encounter]="e" [campaignId]="campaignId()" [state]="state()" />
     <app-hidden-reveal-card
@@ -732,6 +732,7 @@
       [deathsHidden]="deathsHidden()"
       [theatre]="theatre()"
       [foldable]="wideLayout()"
+      [titled]="laptop()"
       [folded]="wideLayout() && layout.orderFolded()"
       (foldedChange)="layout.orderFolded.set($event)"
       (coverEdit)="coverRequest.set({ id: $event, n: (coverRequest()?.n ?? 0) + 1 })"

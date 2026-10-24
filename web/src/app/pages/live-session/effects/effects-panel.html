@@ -1,8 +1,8 @@
-<section class="mr-panel fx" aria-labelledby="fx-title" data-testid="effects-panel">
+<section class="fx" [class.mr-panel]="!compact()" [class.fx--compact]="compact()" aria-labelledby="fx-title" data-testid="effects-panel">
   <div class="fx__head">
     <div class="fx__titles">
-      <h2 class="mr-panel__title fx__title" id="fx-title" tabindex="-1" data-effects-title>Efeitos em jogo</h2>
-      <p class="fx__count">{{ subtitle() }}</p>
+      <h2 class="mr-panel__title fx__title" [class.mr-visually-hidden]="compact()" id="fx-title" tabindex="-1" data-effects-title>Efeitos em jogo</h2>
+      <p class="fx__count" [class.mr-visually-hidden]="compact()">{{ subtitle() }}</p>
     </div>
     <div class="fx__tools">
       <button matButton="outlined" type="button" data-testid="add-effect" (click)="openAdd()">
@@ -88,7 +88,10 @@
               disabledInteractive
               (click)="end(row)"
             >
-              {{ row.several ? 'Encerrar ' + row.effect.sourceNamePt : 'Encerrar' }}
+              @if (compact()) {
+                <mat-icon aria-hidden="true">close</mat-icon>
+              }
+              {{ row.several && !compact() ? 'Encerrar ' + row.effect.sourceNamePt : 'Encerrar' }}
             </button>
             <button
               matButton="outlined"

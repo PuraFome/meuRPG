@@ -242,7 +242,7 @@ describe("OrderList with a player's creatures (E9-12)", () => {
       b.textContent?.includes('Perdeu a concentração'),
     )!;
     expect(text(open.closest('.row__extra'))).toContain(
-      'Concentra em Conjurar Animais · 2 Lobos atrozes',
+      'Concentração: Conjurar Animais · 2 Lobos atrozes',
     );
     open.click();
     fixture.detectChanges();
@@ -278,11 +278,13 @@ describe("OrderList with a player's creatures (E9-12)", () => {
     const el = fixture.nativeElement as HTMLElement;
     const row = (name: string) =>
       Array.from(el.querySelectorAll('li.row')).find((r) => r.textContent?.includes(name))!;
-    expect(text(row('Capitão Goblin').querySelector('.row__extra'))).toBe('Concentra em Teia');
+    expect(text(row('Capitão Goblin').querySelector('.row__extra'))).toContain(
+      'Concentração: Teia',
+    );
     expect(row('Capitão Goblin').textContent).not.toContain('Perdeu a concentração');
     // The caster with a casting's creatures does.
     expect(row('Sálvia').textContent).toContain('Perdeu a concentração');
-    // The pill is one solid "Concentração", not a dashed "Concentrado" chip.
+    // One line with the hourglass, not a dashed "Concentrado" chip.
     expect(text(row('Capitão Goblin').querySelector('.row__conc'))).toContain('Concentração');
     expect(el.textContent).not.toContain('Concentrado');
   });
@@ -387,12 +389,15 @@ describe('OrderList: the monsters of the bestiary (MR-042, RN-29, E10-08 state 5
       (fixture.nativeElement as HTMLElement).querySelectorAll('.row__sub'),
     ).map((s) => s.textContent?.replace(/\s+/g, ' ').trim());
     expect(subs).toEqual(['Inic. 11 · CA 12', 'Escondido · inic. 5', 'Inic. 9 · CA 15']);
-    const nds = Array.from(
-      (fixture.nativeElement as HTMLElement).querySelectorAll('.row__nd'),
-      (n) => n.textContent?.replace(/\s+/g, ' ').trim(),
-    );
-    expect(nds).toEqual(['ND 1/8', 'ND 1/8']);
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Escondido');
+    // The ND is not a line of the opened row (C7-02): it is the first item of "Mais".
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.row__nd')).toBeNull();
+    expect(el.querySelector('.row__open')!.textContent).not.toContain('Revelado');
+    el.querySelector<HTMLButtonElement>('.row__more')!.click();
+    fixture.detectChanges();
+    const fact = document.querySelector('.row__menu-fact');
+    expect(fact?.textContent?.replace(/\s+/g, ' ').trim()).toContain('ND 1/8');
+    expect(el.textContent).toContain('Escondido');
   });
 
   it('keeps the question to remove a combatant open, and sends nothing, while the page is busy', () => {

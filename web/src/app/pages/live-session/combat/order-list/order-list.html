@@ -28,9 +28,11 @@
 } @else {
 <section class="mr-panel order" aria-label="Ordem de iniciativa">
   <div class="order__head">
-    <mat-icon class="order__icon" aria-hidden="true">swords</mat-icon>
-    <h2 class="order__title">Ordem</h2>
-    @if (rows().length > crowded) {
+    @if (titled()) {
+      <mat-icon class="order__icon" aria-hidden="true">swords</mat-icon>
+    }
+    <h2 class="order__title" [class.mr-visually-hidden]="!titled()">Ordem</h2>
+    @if (titled() && rows().length > crowded) {
       <span class="order__count" [attr.aria-label]="rows().length + ' combatentes'">{{ rows().length }}</span>
     }
     <span class="order__tools">
@@ -153,33 +155,28 @@
               role="group"
             />
           }
-          <span class="row__state-line">
-            @if (c.defeated && player(c)) {
-              <span class="row__state row__state--out"><mat-icon aria-hidden="true">close</mat-icon>{{ word(c) }}</span>
-            } @else if (c.defeated) {
-              <span class="row__state row__state--out"><mat-icon aria-hidden="true">close</mat-icon>Derrotado</span>
-            } @else if (down(c)) {
-              <span class="row__state" [class.row__state--out]="c.state !== Stable">
-                <mat-icon aria-hidden="true">{{ dying(c) ? 'skull' : 'favorite_border' }}</mat-icon>{{ downText(c) }}
-              </span>
-            } @else if (c.hidden) {
-              <span class="row__state"><mat-icon aria-hidden="true">visibility_off</mat-icon>Escondido</span>
-            } @else if (npc(c)) {
-              <span class="row__state">Revelado</span>
-            }
-            @if (ally(c)) {
-              <span class="row__state"><mat-icon aria-hidden="true">handshake</mat-icon>Aliado</span>
-            }
-            @if (c.concentrationSpell) {
-              <app-conc-pill class="row__conc" />
-            }
-            @if (c.challengeRating) {
-              <span class="row__nd">ND&nbsp;{{ c.challengeRating }}</span>
-            }
-            @if (c.hitPointsMax !== undefined) {
-              <span class="row__pv-inline">PV {{ c.hitPointsCurrent }} de {{ c.hitPointsMax }}@if (aid(c) > 0) { · {{ aidTag(aid(c)) }}}@if (c.initiative !== undefined) { · iniciativa&nbsp;<b>{{ c.initiative }}</b>}</span>
-            }
-          </span>
+          @if (c.defeated || down(c) || c.hidden || ally(c)) {
+            <span class="row__state-line">
+              @if (c.defeated && player(c)) {
+                <span class="row__state row__state--out"><mat-icon aria-hidden="true">close</mat-icon>{{ word(c) }}</span>
+              } @else if (c.defeated) {
+                <span class="row__state row__state--out"><mat-icon aria-hidden="true">close</mat-icon>Derrotado</span>
+              } @else if (down(c)) {
+                <span class="row__state" [class.row__state--out]="c.state !== Stable">
+                  <mat-icon aria-hidden="true">{{ dying(c) ? 'skull' : 'favorite_border' }}</mat-icon>{{ downText(c) }}
+                </span>
+              } @else if (c.hidden) {
+                <span class="row__state"><mat-icon aria-hidden="true">visibility_off</mat-icon>Escondido</span>
+              }
+              @if (ally(c)) {
+                <span class="row__state"><mat-icon aria-hidden="true">handshake</mat-icon>Aliado</span>
+              }
+            </span>
+          }
+          <!-- The board's first line of an opened row: "CA 13 · 14 de 24 PV". -->
+          @if (facts(c); as line) {
+            <span class="row__facts">{{ line }}</span>
+          }
           @if (c.hitPointsMax !== undefined && formPool(c); as beast) {
             <span class="row__pv-inline">{{ beast }}</span>
           }
@@ -237,7 +234,7 @@
           }
           @if (live() && c.concentrationSpell && losing() !== c.id && removing() !== c.id) {
             <div class="row__extra">
-              <p class="row__hidden-note">Concentra em <b>{{ concentration(c) }}</b>{{ held(c) }}</p>
+              <p class="row__conc"><mat-icon aria-hidden="true">hourglass_empty</mat-icon>Concentração: <b>{{ concentration(c) }}</b>{{ held(c) }}</p>
               @if (heldBy(c).length > 0) {
                 <button mat-stroked-button type="button" class="row__lose" [disabled]="busy()" (click)="losing.set(c.id)">Perdeu a concentração</button>
               }
@@ -316,6 +313,11 @@
                   <mat-icon aria-hidden="true">more_vert</mat-icon>Mais
                 </button>
                 <mat-menu #menu="matMenu" xPosition="before">
+                  @if (c.challengeRating) {
+                    <button mat-menu-item type="button" disabled class="row__menu-fact">
+                      <mat-icon aria-hidden="true">pest_control</mat-icon>ND&nbsp;{{ c.challengeRating }}
+                    </button>
+                  }
                   @if (aid(c) > 0) {
                     <button mat-menu-item type="button" (click)="endingAid.set(c.id)">
                       <mat-icon aria-hidden="true">favorite_border</mat-icon>Encerrar Ajuda em {{ c.label }}

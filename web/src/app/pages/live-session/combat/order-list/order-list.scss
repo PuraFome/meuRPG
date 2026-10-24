@@ -192,10 +192,6 @@
   color: var(--mr-ink);
 }
 
-.row__nd {
-  font-weight: 700;
-}
-
 .row__label {
   min-width: 0;
   overflow: hidden;
@@ -294,6 +290,26 @@
   color: var(--mr-ink-muted);
 }
 
+.row__facts {
+  color: var(--mr-ink);
+}
+
+.row__conc {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
 .row__state-line {
   display: flex;
   flex-wrap: wrap;
@@ -365,21 +381,21 @@
   min-width: 0;
 }
 
-// "Dano/Cura", "Condições" and "Mais", three equal buttons.
+// "Dano/Cura", "Condições" and "Mais": three equal buttons on one line, the icon over the label, across the row (C7-02).
 .row__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 4px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin: 4px 0 0 -40px;
 
   .mat-mdc-outlined-button {
-    --mat-button-outlined-container-height: 52px;
+    --mat-button-outlined-container-height: 56px;
     --mat-button-outlined-label-text-color: var(--mr-ink);
-    flex: 1 1 0;
-    min-width: 88px;
+    min-width: 0;
     flex-direction: column;
-    height: 52px;
-    padding: 0 8px;
+    height: 56px;
+    padding: 0 4px;
+    font-size: 14px;
     line-height: 16px;
 
     .mat-icon {
