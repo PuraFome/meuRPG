@@ -3,6 +3,7 @@ import { expect, test, type Browser, type BrowserContext, type Page } from '@pla
 import { beginAttackCombatRPC, combatRPC, getEncounterRPC, pensantusCasting, tableForCombat, type CombatTable } from './combat-support';
 import { endOpenSessionRPC, openSessionPage } from './live-session-support';
 import { callRPC, newSignedInContext } from './support';
+import { setTableRulesRPC } from './table-rules-support';
 
 // The reaction window (PM-04): an NPC's Escudo holds a player's turn and the player reads only "Esperando o mestre",
 // a Contramágica asks the master about a player's cast, and a damage on a concentrating character asks its owner for
@@ -144,65 +145,71 @@ test(
   },
 );
 
-test(
-  'o dano em quem se concentra pede o teste ao dono: ele rola no app, e o ataque que deu o dano espera',
-  { tag: ['@PM-04', '@RN-22'] },
-  async ({ browser }) => {
-    test.setTimeout(240_000);
-    const { m, p, campaignId, done } = await reactionTable(browser, 'Concentração');
-    try {
-      await openSessionPage(m, campaignId);
-      await openSessionPage(p, campaignId);
-      let enc = await getEncounterRPC(m, campaignId);
-      const id = (label: string) => enc.combatants.find((c) => c.label === label)!.id;
-      // Pensantus concentrates on Teia and ends his turn; the Capitão hits him.
-      const cast = await callRPC(p, 'meurpg.play.v1.CombatService/CastSpell', {
-        campaignId,
-        encounterId: enc.id,
-        casterId: id('Pensantus'),
-        spellKey: 'spell:web',
-        slot: { level: 2 },
-        targets: [],
-        idempotencyKey: crypto.randomUUID(),
-      });
-      expect(cast.ok(), await cast.text()).toBeTruthy();
-      enc = await combatRPC(m, 'EndTurn', { campaignId, encounterId: enc.id, expectedCombatantId: id('Pensantus') });
-      const hit = await callRPC(m, 'meurpg.play.v1.CombatService/RollAttack', {
-        campaignId,
-        encounterId: enc.id,
-        attackerId: id('Capitão Goblin'),
-        attackKey: 'equipment:scimitar',
-        targetId: id('Pensantus'),
-        d20Face: 15,
-        idempotencyKey: crypto.randomUUID(),
-      });
-      expect(hit.ok(), await hit.text()).toBeTruthy();
-      const pending = (await hit.json()).pendingDamage.id as string;
-      // Escudo asks first; he lets it pass.
-      const shield = p.getByRole('alertdialog', { name: 'Você foi atingido: usar Escudo Arcano?' });
-      await expect(shield).toBeVisible();
-      await shield.getByRole('button', { name: 'Deixar passar' }).click();
-      // The sheet closes only once AnswerReaction returns; until then the window is open and RollDamage is refused.
-      await expect(shield).toHaveCount(0);
-      const dmg = await callRPC(m, 'meurpg.play.v1.CombatService/RollDamage', { campaignId, encounterId: enc.id, pendingDamageId: pending, rollInApp: true, idempotencyKey: crypto.randomUUID() });
-      expect(dmg.ok(), await dmg.text()).toBeTruthy();
-      const apply = await callRPC(m, 'meurpg.play.v1.CombatService/ApplyPendingDamage', { campaignId, encounterId: enc.id, pendingDamageId: pending, idempotencyKey: crypto.randomUUID() });
-      expect(apply.ok(), await apply.text()).toBeTruthy();
+// The DC is the master's unless the table's rule "Os jogadores veem a CD dos testes de resistência" is on (RN-24, RN-10).
+for (const showDC of [false, true]) {
+  test(
+    `o dano em quem se concentra pede o teste ao dono: ele rola no app, e o ataque que deu o dano espera (${showDC ? 'com' : 'sem'} a CD)`,
+    { tag: ['@PM-04', '@RN-22'] },
+    async ({ browser }) => {
+      test.setTimeout(240_000);
+      const { m, p, campaignId, done } = await reactionTable(browser, 'Concentração');
+      try {
+        if (showDC) {
+          await setTableRulesRPC(m, campaignId, { showSaveDc: true });
+        }
+        await openSessionPage(m, campaignId);
+        await openSessionPage(p, campaignId);
+        let enc = await getEncounterRPC(m, campaignId);
+        const id = (label: string) => enc.combatants.find((c) => c.label === label)!.id;
+        // Pensantus concentrates on Teia and ends his turn; the Capitão hits him.
+        const cast = await callRPC(p, 'meurpg.play.v1.CombatService/CastSpell', {
+          campaignId,
+          encounterId: enc.id,
+          casterId: id('Pensantus'),
+          spellKey: 'spell:web',
+          slot: { level: 2 },
+          targets: [],
+          idempotencyKey: crypto.randomUUID(),
+        });
+        expect(cast.ok(), await cast.text()).toBeTruthy();
+        enc = await combatRPC(m, 'EndTurn', { campaignId, encounterId: enc.id, expectedCombatantId: id('Pensantus') });
+        const hit = await callRPC(m, 'meurpg.play.v1.CombatService/RollAttack', {
+          campaignId,
+          encounterId: enc.id,
+          attackerId: id('Capitão Goblin'),
+          attackKey: 'equipment:scimitar',
+          targetId: id('Pensantus'),
+          d20Face: 15,
+          idempotencyKey: crypto.randomUUID(),
+        });
+        expect(hit.ok(), await hit.text()).toBeTruthy();
+        const pending = (await hit.json()).pendingDamage.id as string;
+        // Escudo asks first; he lets it pass.
+        const shield = p.getByRole('alertdialog', { name: 'Você foi atingido: usar Escudo Arcano?' });
+        await expect(shield).toBeVisible();
+        await shield.getByRole('button', { name: 'Deixar passar' }).click();
+        // The sheet closes only once AnswerReaction returns; until then the window is open and RollDamage is refused.
+        await expect(shield).toHaveCount(0);
+        const dmg = await callRPC(m, 'meurpg.play.v1.CombatService/RollDamage', { campaignId, encounterId: enc.id, pendingDamageId: pending, rollInApp: true, idempotencyKey: crypto.randomUUID() });
+        expect(dmg.ok(), await dmg.text()).toBeTruthy();
+        const apply = await callRPC(m, 'meurpg.play.v1.CombatService/ApplyPendingDamage', { campaignId, encounterId: enc.id, pendingDamageId: pending, idempotencyKey: crypto.randomUUID() });
+        expect(apply.ok(), await apply.text()).toBeTruthy();
 
-      // The owner's prompt, with the save the SRD asks for (Constituição, CD 10 or half the damage).
-      const save = p.getByRole('alertdialog', { name: /Concentração em risco: teste de resistência de Constituição contra CD \d+/ });
-      await expect(save).toBeVisible();
-      await expect(save.getByText(/mantém a concentração em Teia/)).toBeVisible();
-      await expect(save.getByRole('button', { name: 'Rolar no app' })).toBeVisible();
-      await expect(save.getByRole('button', { name: 'Deixar o mestre rolar por mim' })).toBeVisible();
-      // The turn does not pass while the save waits, for the master either.
-      await expect(m.getByRole('button', { name: 'Próximo turno' })).toBeDisabled();
-      await save.getByRole('button', { name: 'Rolar no app' }).click();
-      await expect(save.getByText(/Você (manteve|perdeu) a concentração/)).toBeVisible();
-      await save.getByRole('button', { name: 'Fechar' }).click();
-      await expect(m.getByRole('button', { name: 'Próximo turno' })).toBeEnabled();
-    } finally {
-      await done();
-    }
-  },
-);
+        // The owner's prompt, with the save the SRD asks for (Constituição, CD 10 or half the damage).
+        const save = p.getByRole('alertdialog', { name: showDC ? /Concentração em risco: teste de resistência de Constituição contra CD \d+/ : /^Concentração em risco: teste de resistência de Constituição$/ });
+        await expect(save).toBeVisible();
+        await expect(save.getByText(/mantém a concentração em Teia/)).toBeVisible();
+        await expect(save.getByRole('button', { name: 'Rolar no app' })).toBeVisible();
+        await expect(save.getByRole('button', { name: 'Deixar o mestre rolar por mim' })).toBeVisible();
+        // The turn does not pass while the save waits, for the master either.
+        await expect(m.getByRole('button', { name: 'Próximo turno' })).toBeDisabled();
+        await save.getByRole('button', { name: 'Rolar no app' }).click();
+        await expect(save.getByText(/Você (manteve|perdeu) a concentração/)).toBeVisible();
+        await save.getByRole('button', { name: 'Fechar' }).click();
+        await expect(m.getByRole('button', { name: 'Próximo turno' })).toBeEnabled();
+      } finally {
+        await done();
+      }
+    },
+  );
+}
