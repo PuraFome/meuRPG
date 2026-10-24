@@ -152,7 +152,7 @@ Quando o mestre inicia a sessão, os membros recebem um aviso no app, para quem 
 O link da sessão exige que a pessoa esteja logada (com o Google; a RN-17 não está construída) e abre a sessão só para membros.
 
 - O aviso aparece sob a barra do app, com um link "Ao vivo" na barra. O app procura sessões abertas a cada 30 segundos enquanto a aba está visível. Não há notificação push com o app fechado.
-- Na página da campanha não há aviso: o cartão "Sessão" é o anúncio. O cartão de um jogador mostra "Entrar na sessão" quando uma sessão começa e o tira quando ela termina, sem recarregar.
+- Na página da campanha não há aviso: a faixa da sessão é o anúncio. A faixa de um jogador mostra "Entrar na sessão" quando uma sessão começa e o tira quando ela termina, sem recarregar.
 - Quem não é membro, inclusive um membro pendente, não consegue abrir a página da sessão. Vê "peça um convite ao mestre".
 
 ## RN-07: Convite não é link da sessão

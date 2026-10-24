@@ -232,7 +232,10 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 
 #### In the app
 - The notice "A sessão 4 de Mirathel começou." sits under the app bar with "Entrar na sessão", for people who play in the campaign, outside the campaign and session pages. Closing it lasts only for the tab. The app checks for open sessions every 30 seconds while the tab is visible. The on-screen notice is enough: there is no browser push notification (RN-06).
-- Other entry points: the "Ao vivo" link in the bar, the "Sessão ao vivo" tag in "Minhas campanhas", and the campaign's "Sessão" panel with "Entrar na sessão" and "Copiar link da sessão".
+- Other entry points: the "Ao vivo" link in the bar, the "Sessão ao vivo" tag in "Minhas campanhas", and the session strip of the campaign page.
+  The master's strip sits above the three tabs, so it is there on every one: "Encerrar sessão", "Copiar link da sessão" and "Entrar na sessão" (the page's one filled button), or "Iniciar sessão" while none is open. The list of sheets with choices open ("Iniciar mesmo assim?") opens under it.
+  On a phone the strip keeps "Entrar na sessão" and a "Mais ações da sessão" menu with "Copiar link da sessão" and "Encerrar sessão".
+  A player's campaign page shows the strip only while a session is open, with "Entrar na sessão".
 - See [Architecture](../architecture/play/live-session.md).
 
 #### Related
@@ -379,7 +382,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 
 #### Related
 - RN-02: the master can correct hit points and spell slots by hand (see [Business rules](rules.md)).
-- Dice (RN-18): the master chooses how the campaign rolls (each player chooses, everyone in the app, or everyone with their own dice) and each player keeps their own preference, on the campaign page. With a physical die the player types the sum of the dice and the app adds the modifier. Combat rolls follow this rule.
+- Dice (RN-18): the master chooses how the campaign rolls (each player chooses, everyone in the app, or everyone with their own dice) on "Regras da mesa", and sees it in "Dados" on the "Regras" tab; each player keeps their own preference, on the campaign page. With a physical die the player types the sum of the dice and the app adds the modifier. Combat rolls follow this rule.
 - The player sees whether they hit or missed and the damage, not armor class or the NPC's roll (RN-20).
 - Which actions, reactions and resources the system knows come from the rules engine (rules as data). See [ADR-0008](../adr/0008-rules-content-as-data-pure-engine.md).
 
@@ -464,7 +467,7 @@ Only the game master sees the document.
 
 #### In the app
 - Links: `[text](map:<id>)`, `[text](character:<id>)` and `![caption](image:<id>)`. The server stores the text as sent; the app resolves each link with the usual authorization.
-- Screens: `/campaigns/:id/document` and the "Documento da campanha" panel on the campaign page. See [Design](../design/session.md#campaign-document-and-gallery) and [Architecture](../architecture/campaigns.md#campaign-document).
+- Screens: `/campaigns/:id/document` and the "Documento da campanha" row on the campaign page's "Preparação" tab. See [Design](../design/session.md#campaign-document-and-gallery) and [Architecture](../architecture/campaigns.md#campaign-document).
 
 ### MR-019: Image gallery
 
@@ -485,7 +488,7 @@ Limits: JPEG, PNG or WebP, up to 10 MB per image, 300 images and 500 MB per camp
 - **Given** a form that needs an image ("Novo mapa", the document editor, "Mostrar imagem"), **when** the master opens the picker, **then** they pick an image or upload a new one and pick it at once.
 
 #### In the app
-- `/campaigns/:id/gallery` and the "Galeria" panel on the campaign page (the 5 newest images, the quota and "Abrir galeria"), game master only. See [Design](../design/session.md#campaign-document-and-gallery) and [Architecture](../architecture/maps/images.md).
+- `/campaigns/:id/gallery` and the "Galeria" panel on the campaign page's "Preparação" tab ("12 de 200 imagens", the 6 newest images, "Enviar imagem" and "Ver todas as 12 imagens"), game master only. See [Design](../design/session.md#campaign-document-and-gallery) and [Architecture](../architecture/maps/images.md).
 
 ### MR-024: Approve the character from the invite
 
@@ -1056,7 +1059,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - **Given** a player, **when** the server answers about a puzzle, **then** it never carries the accepted answers, the next step of the sequence, the unencrypted message, the key, a DC or another player's part (RN-10).
 
 #### In the app
-- **Master, list and editor.** "Quebra-cabeças" on the campaign page lists the puzzles with their states, "Editar", "Arquivar" (asked on the row; what was shown stays as session history) and "Mostrar os arquivados". "Novo quebra-cabeça" and "Editar quebra-cabeça" have the form of each kind, the clue, the hints, "Dica por teste de perícia", "Informação dividida", "Ao errar" (one way at a time) and "Ao resolver". Each refusal shows on the field it refers to.
+- **Master, list and editor.** "Quebra-cabeças" on the campaign page's "Preparação" tab lists the puzzles with their states, "Editar", "Arquivar" (asked on the row; what was shown stays as session history) and "Mostrar os arquivados". "Novo quebra-cabeça" and "Editar quebra-cabeça" have the form of each kind, the clue, the hints, "Dica por teste de perícia", "Informação dividida", "Ao errar" (one way at a time) and "Ao resolver". Each refusal shows on the field it refers to.
 - **Master, in the session.** "Mostrar aos jogadores" and "Ver ao vivo" show the puzzle as the players have it, the last move and who made it, the hints ("Mostrar a próxima dica"), "Gerar outro começo", "Recomeçar" and "Fechar", asked on the screen itself. Only the master reads, with "Só você vê", the accepted answers, the sequence's steps, the message in the clear, the attempts left, the counters and who won a skill hint.
 - **Player.** The notice "O mestre mostrou um quebra-cabeça" opens the puzzle in the session page. The riddle answers "Não é isso." with "Tentativas restantes 2 de 3"; the sequence says "Errou o passo 4. A tentativa recomeçou; a Lia errou."; the counters read "Jogadas 7 de 10" and "Tempo 4:48 de 5:00"; "Tentar uma dica · Investigação" gives "Você conseguiu. Esta dica é só sua" or "Não deu desta vez." The 7 × 7 panel fits a 320 × 568 px screen.
 - See [Architecture](../architecture/play/puzzles.md), [RN-27](rules.md) and [Design](../design/session.md#puzzles).
@@ -1147,7 +1150,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 
 #### In the app
 - Editor: "Tesouro" in the point bar, with "Descrição para os jogadores", "Valor em ouro", "Marcar como encontrado" and "Desmarcar".
-- Gold campaign page: the strip "Encontrado, ainda não convertido" and "Voltar à cidade" beside "Dar XP".
+- Gold campaign: in "Experiência" on the "Mesa" tab, the strip "Encontrado, ainda não convertido" and "Voltar à cidade" beside "Dar XP".
 - The "Voltar à cidade" dialog lists the found treasures (at most 100 at a time) and shows the math before the GM confirms.
 - The GM can still type the gp in "Dar XP por ouro" ([MR-016](#mr-016-award-xp)).
 
@@ -1173,7 +1176,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - **Given** I am a player, **when** I look for the bestiary, **then** I find no entry point, and I never learn which creature a monster is, its CR or its rolled HP.
 
 #### In the app
-- The "Bestiário" panel of the campaign page (GM only), a list with search and filters, and a page per creature with "Criar NPC" and "Pôr no combate" (the sheet asks "Quantos", the base name, HP "Média" or "Rolar" and "Escondidos no início").
+- The "Bestiário" row of the campaign page's "Preparação" tab (GM only), a list with search and filters, and a page per creature with "Criar NPC" and "Pôr no combate" (the sheet asks "Quantos", the base name, HP "Média" or "Rolar" and "Escondidos no início").
 - In the session, the GM's order shows the monster's CR and the turn card links to "Ficha da criatura".
 
 #### Related
@@ -1197,7 +1200,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - **Given** I am a player, **when** I open the builder or a battle point, **then** I read "Só o mestre monta encontros." and never receive the encounter or what it stores (RN-10).
 
 #### In the app
-- The "Encontros" panel of the campaign page (GM only) leads to the builder: the group in chips ("Pôr um NPC no grupo", level 1 to 20), a bar with the three bands, the creature list with search, and the generate, swap and store buttons.
+- The "Encontros" panel of the campaign page's "Preparação" tab (GM only), with "Montar encontro", leads to the builder: the group in chips ("Pôr um NPC no grupo", level 1 to 20), a bar with the three bands, the creature list with search, and the generate, swap and store buttons.
 - The numbers come from the "XP Budget per Character" table of SRD 5.2.1 (CC BY 4.0), credited on the "Créditos" page. SRD 5.1 has no difficulty table; whether it fits the 2014 monsters is for the table to judge after playing.
 - In the session, a battle point that holds an encounter shows today's difficulty and "Começar este combate"; from a battle point on a map with a grid the dialog opens on "Com mapa".
 
@@ -1222,7 +1225,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - **Given** I am a player, **when** I look for the treasure page, **then** I read "Só o mestre gera o tesouro da campanha." and never see a placed treasure until it is marked found.
 
 #### In the app
-- "Gerar tesouro" in the "Mapas" panel of the campaign page. The result also says what the campaign does with the gold (by enemies and by milestones it is not XP; by gold it converts at "Voltar à cidade").
+- "Gerar tesouro" in the "Mapas" panel of the campaign page's "Preparação" tab. The result also says what the campaign does with the gold (by enemies and by milestones it is not XP; by gold it converts at "Voltar à cidade").
 - SRD 5.1 has no item values and no random treasure tables: the values come from SRD 5.2.1 and the tables of coins, gems and art objects are ours. See [Architecture](../architecture/maps/treasure.md#treasure-generator-mr-044) and [Rules content](../rules-content.md).
 
 #### Related
@@ -1246,7 +1249,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - **Given** the search, the filters and an open spell, **when** I share or reload the page, **then** they are in the link, and Back closes the spell and brings back the same list.
 
 #### In the app
-- `/campaigns/:id/spells`, from the "Magias" panel of the campaign page, for every active member, the GM too. Three columns from 1100 px; below that one column, with "Filtros (n)".
+- `/campaigns/:id/spells`, from the "Magias" panel of the master's "Regras" tab (and of a player's campaign page), for every active member, the GM too. Three columns from 1100 px; below that one column, with "Filtros (n)".
 
 #### Related
 - A part of [MR-020](#mr-020-look-up-the-rulebook), with only the spells. Letting the GM accept a spell outside the class list is for after the MVP ([MR-046](#mr-046-table-style-feature-by-feature)). Table content: [MR-025](#mr-025-register-table-content).
@@ -1286,7 +1289,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - Rules: RN-10, RN-30
 - Modules: campaignpackage, campaigns, characters, maps, play
 
-**Export** (the campaign's page, "Exportar campanha"):
+**Export** (the "Pacote da campanha" panel of the "Regras" tab, "Exportar campanha"):
 - Only the master. The page shows the progress and may be closed. The file (`<campanha>.meurpg.zip`) stays 24 hours ("Baixar de novo") and is then deleted; it is also deleted with the campaign or the account.
 - It carries the campaign document, the table rules, the gallery (the image files), the maps (image, grid, layers, doors, lights, traps, points), the NPCs and creatures with the master's notes, the scenes with their actions, clues and hooks, the puzzles, the battle points with their encounters, the treasure points, the table content and the options switched off, and the players' characters (as reserved, with no owner).
 - It never carries the players' private notes, the session history and logs, accounts (ids, e-mails, names), owners and members, invites and claim links, or what each player remembers of the fog. A map comes back as prepared: traps armed, treasures unfound.
@@ -1383,7 +1386,7 @@ See [Architecture](../architecture/campaign-package.md).
 - **Given** a reserved character, **when** a session starts, **then** it is not locked with the others; it locks with the sessions that start after it is claimed.
 
 #### In the app
-- The "Personagens reservados" panel of the campaign page: each row says where its link stands and offers "Gerar link para o jogador" / "Gerar novo link", "Editar", "Revogar o link", "Excluir" and, for a claimed character, "Ver ficha" and "Devolver à reserva".
+- The "Personagens reservados" panel of the campaign page's "Mesa" tab, under the players' characters: each row says where its link stands and offers "Gerar link para o jogador" / "Gerar novo link", "Editar", "Revogar o link", "Excluir" and, for a claimed character, "Ver ficha" and "Devolver à reserva".
 - The master makes the sheet in the usual editor, in the master's mode (the table's ability-score method and hit-point rule are not applied), and saves with "Salvar como reservado".
 - The card at `/claim` offers "Assumir este personagem", "Voltar para minhas campanhas" and "Não é você? Entrar com outra conta".
 - Claiming is rate limited per person and per address.

@@ -11,6 +11,7 @@ This folder is the reference for anyone who touches a screen in `web/`.
 | [sheet.md](sheet.md) | The character sheet and the editors |
 | [session.md](session.md) | The live session: shown image, scenes, the conversation, rolls, resources, puzzles |
 | [combat.md](combat.md) | The combat screens |
+| [campaign.md](campaign.md) | The campaign page: the master's session strip and three tabs, the player's single page |
 | [maps.md](maps.md) | Maps, layers, fog of war, the map editor and printing |
 
 The same system is drawn in Claude Design, to design a new screen before the code: "MeuRPG — sistema visual" (the components) and "MeuRPG — direções visuais" (the explored directions).
