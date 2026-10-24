@@ -32,7 +32,8 @@ import {
   missingDice,
   saveFormula,
 } from '../../../../core/effects/effects';
-import { zoneCasterLabel, zoneResultDc } from '../../../../core/effects/zone-save';
+import { zoneCasterLabel } from '../../../../core/effects/zone-save';
+import { dcLabel } from '../../../../core/format/save-dc';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { HeldRollPrompt } from '../../../../shared/held-roll-prompt/held-roll-prompt';
 import { rerollShow } from '../../../../shared/held-roll-prompt/held-roll-shows';
@@ -112,6 +113,8 @@ export class EffectSaveSheet {
     error: this.error,
   });
   /** "Sortudo: 1 → 14" under the result: the d20 Lucky rolled again (the faces and the total are the new ones). */
+  /** "CD 14" under the result, when the server sent the DC with it. */
+  protected readonly resultDc = computed(() => dcLabel(this.result()?.dc));
   protected readonly luckyLine = computed(() => luckyText(this.result() ?? undefined));
   protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
   protected readonly extraFaces = signal<readonly (number | null)[]>([]);
@@ -176,7 +179,6 @@ export class EffectSaveSheet {
       'Este teste já foi respondido: ele não espera mais a sua rolagem.',
   );
   protected readonly formula = saveFormula;
-  protected readonly againstDc = zoneResultDc;
 
   /** One key per answer (how it is rolled): the same tap again is a retry, another way is a new request. */
   private readonly keys = new ActionKey();

@@ -62,7 +62,17 @@ describe('the log lines of spell zones', () => {
       total: 12,
       dc: 14,
     });
-    expect(text(e)).toBe('O Goblin 2 entrou no Raio Lunar e falhou no teste de Constituição');
+    // The rolling player reads the DC only when the server sent it (the table rule decides).
+    expect(text(e)).toBe(
+      'O Goblin 2 entrou no Raio Lunar e falhou no teste de Constituição (CD 14)',
+    );
+    const bare = effect({
+      change: CombatLogEffectChange.SAVE_FAILED,
+      reason: 'zone_enter',
+      targetLabels: ['Goblin 2'],
+      abilityNamePt: 'Constituição',
+    });
+    expect(text(bare)).toBe('O Goblin 2 entrou no Raio Lunar e falhou no teste de Constituição');
     expect(text(e, true)).toBe(
       'O Goblin 2 entrou no Raio Lunar e falhou no teste de Constituição (d20 9, total 12 contra CD 14)',
     );

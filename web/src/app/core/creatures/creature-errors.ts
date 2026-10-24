@@ -24,6 +24,30 @@ const WHAT: Record<CreatureAction, string> = {
   read: 'abrir as criaturas',
 };
 
+/** What each refusal of `CastSummon` that needs no number says. */
+const SUMMON_REFUSALS: ReadonlyMap<EncounterBlockedReason, string> = new Map([
+  [
+    EncounterBlockedReason.CASTING_TIME_TOO_LONG,
+    'Esta magia leva mais tempo do que um combate dá. Conjure fora do combate.',
+  ],
+  [
+    EncounterBlockedReason.SUMMON_CHOICE_INVALID,
+    'Essa escolha não vale para o espaço que você usou. Mude a forma ou o espaço e tente de novo.',
+  ],
+  [
+    EncounterBlockedReason.SUMMON_IN_COMBAT,
+    'Há um combate em andamento. Conjure pela sua vez, na tela do combate.',
+  ],
+  [
+    EncounterBlockedReason.WILD_SHAPE_NO_SPELLS,
+    'Na Forma Selvagem não dá para conjurar. Volte à forma normal e tente de novo.',
+  ],
+  [
+    EncounterBlockedReason.ARMOR_NOT_PROFICIENT,
+    'Com armadura ou escudo sem proficiência não dá para conjurar.',
+  ],
+]);
+
 /**
  * The Portuguese message for a failed call of the creatures (MR-037): what
  * happened and how to fix it, by code and by typed detail, never by the
@@ -39,22 +63,15 @@ export function creatureErrorMessage(err: unknown, action: CreatureAction): stri
     }
     const blocked = connectErr.findDetails(EncounterBlockedSchema)[0];
     if (blocked) {
-      switch (blocked.reason) {
-        case EncounterBlockedReason.CASTING_TIME_TOO_LONG:
-          return 'Esta magia leva mais tempo do que um combate dá. Conjure fora do combate.';
-        case EncounterBlockedReason.SUMMON_CHOICE_INVALID:
-          return 'Essa escolha não vale para o espaço que você usou. Mude a forma ou o espaço e tente de novo.';
-        case EncounterBlockedReason.SUMMON_IN_COMBAT:
-          return 'Há um combate em andamento. Conjure pela sua vez, na tela do combate.';
-        case EncounterBlockedReason.WILD_SHAPE_NO_SPELLS:
-          return 'Na Forma Selvagem não dá para conjurar. Volte à forma normal e tente de novo.';
-        case EncounterBlockedReason.NO_SLOT:
-          return blocked.minLevel > 0
-            ? `Não há espaço de ${circleLabel(blocked.minLevel)} ou maior livre.`
-            : 'Não há espaço de magia livre.';
-        default:
-          return 'Não dá para fazer isso agora. Feche esta folha, olhe a ficha e tente de novo.';
+      if (blocked.reason === EncounterBlockedReason.NO_SLOT) {
+        return blocked.minLevel > 0
+          ? `Não há espaço de ${circleLabel(blocked.minLevel)} ou maior livre.`
+          : 'Não há espaço de magia livre.';
       }
+      return (
+        SUMMON_REFUSALS.get(blocked.reason) ??
+        'Não dá para fazer isso agora. Feche esta folha, olhe a ficha e tente de novo.'
+      );
     }
     const reason = connectErr.findDetails(CharacterBlockedSchema)[0]?.reason;
     if (reason === CharacterBlockedReason.CREATURE_LIMIT) {

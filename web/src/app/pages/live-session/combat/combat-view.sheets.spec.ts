@@ -1445,7 +1445,10 @@ describe('CombatView sheets: the reaction and the effect saving throw', () => {
   it('labels the phone sheet of a zone saving throw with the title the dialog is named by', async () => {
     const m = await setup({
       matches: PHONE,
-      enc: onMap({ currentCombatantId: 't', zones: [spellZone({ id: 'z1', ownerLabel: 'Druida' })] }),
+      enc: onMap({
+        currentCombatantId: 't',
+        zones: [spellZone({ id: 'z1', ownerLabel: 'Druida' })],
+      }),
     });
     m.view.sheets.reactions.effectSave(
       reactionWindow({

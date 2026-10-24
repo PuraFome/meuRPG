@@ -1,12 +1,13 @@
-import { Component, input, output } from '@angular/core';
-import { MatIconModule } from '@angular/material/icon';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 
-/** "Névoa de guerra nos mapas novos" (RN-24): the app's switch, an ink track with a check when on, and its words beside it. */
+import { RuleSwitch } from '../rule-switch/rule-switch';
+
+/** "Névoa de guerra nos mapas novos" (RN-24): the rule switch with the fog's words. */
 @Component({
   selector: 'app-fog-switch',
-  imports: [MatIconModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [RuleSwitch],
   templateUrl: './fog-switch.html',
-  styleUrl: './fog-switch.scss',
 })
 export class FogSwitch {
   readonly checked = input.required<boolean>();

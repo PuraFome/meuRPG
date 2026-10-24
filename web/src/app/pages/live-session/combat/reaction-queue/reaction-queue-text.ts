@@ -17,6 +17,7 @@ import {
 import { abilityName } from '../../../../core/effects/ability-choice';
 import type { EffectSaveAnswer } from '../../../../core/effects/effects-client';
 import { zoneReasonText, zoneSaveTitle } from '../../../../core/effects/zone-save';
+import { dcLabel } from '../../../../core/format/save-dc';
 
 // What the master's cards say about a window and about the answer just given. Pure: the component only picks the window.
 
@@ -62,7 +63,7 @@ export function effectSaveTitle(w: ReactionWindow, zoneCaster = ''): string {
   const test = `Teste de resistência de ${effectSaveAbility(w)} ${whose}`;
   const parts = [
     ...(zone ? [zoneSaveTitle(p, zoneCaster), test] : [test, p?.sourceNamePt ?? '']),
-    p?.dc !== undefined ? `CD${zone ? '\u00a0' : ' '}${p.dc}` : '',
+    dcLabel(p?.dc),
   ];
   return parts.filter((x) => x !== '').join(' · ');
 }

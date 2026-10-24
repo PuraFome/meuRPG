@@ -33,16 +33,6 @@ export function zoneCasterLabel(encounter: Encounter | null, zoneId: string): st
   return encounter?.zones.find((z) => z.id === zoneId)?.ownerLabel ?? '';
 }
 
-/** ", CD 14" when the server sent the DC, else nothing: no number and no placeholder. */
-export function zoneDcText(dc: number | undefined): string {
-  return dc === undefined ? '' : `, CD\u00a0${dc}`;
-}
-
-/** " contra CD 14" after the roll, again only with the DC. */
-export function zoneResultDc(dc: number | undefined): string {
-  return dc === undefined ? '' : ` contra CD\u00a0${dc}`;
-}
-
 /** What a failure and a pass do: the damage type and "metade do dano" from the prompt's fields; a zone with no damage (the web)
  * says what its text says, and "Soltar-se gasta uma ação" is a static line the server sends nowhere. */
 export function zoneConsequence(prompt: EffectSavePrompt, textAfterAbility: string): string {
@@ -61,7 +51,6 @@ export function zoneSheetWords(prompt: EffectSavePrompt, caster: string, textAft
     title: zoneSaveTitle(prompt, caster),
     subtitle: `${ZONE_SAVE_HEADER}. ${zoneReasonText(prompt.zoneReason, '')}`.trim(),
     consequence: zoneConsequence(prompt, textAfterAbility),
-    dcText: zoneDcText(prompt.dc),
     source: caster ? `${prompt.sourceNamePt}, de ${caster}` : '',
   };
 }

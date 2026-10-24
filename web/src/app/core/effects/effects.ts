@@ -1,5 +1,6 @@
 import {
   type CharacterEffect,
+  type EffectSave,
   type EffectSavePrompt,
   type ExtraDie,
   type LastingEffect,
@@ -7,6 +8,7 @@ import {
   EffectPhase,
   EffectRollKind,
 } from '../../../gen/meurpg/play/v1/lasting_effects_pb';
+import { dcLabel } from '../format/save-dc';
 import { upFirst } from '../format/text';
 import { abilityName } from './ability-choice';
 import { zoneSheetWords } from './zone-save';
@@ -33,13 +35,19 @@ export interface EffectCardView {
   readonly changes: readonly string[];
 }
 
-/** The line of the saving throw a card asks again: the ability only, never the DC (RN-10, RN-20). */
+/** The ability of a save, with "(CD 14)" only when the server sent the DC (the table's rule; RN-10, RN-20). */
+function saveWords(save: EffectSave): string {
+  const dc = dcLabel(save.dc);
+  return `${save.abilityNamePt}${dc ? ` (${dc})` : ''}`;
+}
+
+/** The line of the saving throw a card asks again: the ability, and the DC when the server sent it. */
 function saveLine(effect: LastingEffect): string {
   if (effect.endSave) {
-    return `No fim de cada turno seu: teste de resistência de ${effect.endSave.abilityNamePt}.`;
+    return `No fim de cada turno seu: teste de resistência de ${saveWords(effect.endSave)}.`;
   }
   if (effect.startSave) {
-    return `No começo de cada turno seu: teste de resistência de ${effect.startSave.abilityNamePt}.`;
+    return `No começo de cada turno seu: teste de resistência de ${saveWords(effect.startSave)}.`;
   }
   return '';
 }
@@ -196,9 +204,9 @@ export interface EffectSaveView {
   readonly mode: 'normal' | 'advantage' | 'disadvantage';
   readonly autoFail: boolean;
   readonly handed: boolean;
+  /** "CD 14" when the server sent the DC to this player, else empty. */
+  readonly dc: string;
   readonly dice: readonly ExtraDie[];
-  /** ", CD 14" when the server sent the DC (a zone's save, for the master and the caster's player), else empty. */
-  readonly dcText: string;
   /** "Raio Lunar, de Bartolo" for a zone's save; empty otherwise. */
   readonly source: string;
 }
@@ -227,13 +235,13 @@ export function effectSaveView(
     subtitle: prompt.sourceNamePt || `Rodada ${round}`,
     ability,
     consequence: after,
-    dcText: '',
     source: '',
     modifier: prompt.bonusKnown ? `Seu modificador: ${signed(prompt.modifier)}.` : '',
     modeLine: modeLineOf(prompt, mode),
     mode,
     autoFail: prompt.autoFail,
     handed: prompt.handedToMaster,
+    dc: dcLabel(prompt.dc),
     dice: prompt.extraDice,
   };
   return prompt.zoneId ? { ...base, ...zoneSheetWords(prompt, zoneCaster, after) } : base;

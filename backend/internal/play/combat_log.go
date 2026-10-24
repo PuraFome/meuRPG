@@ -208,7 +208,7 @@ func (s *Service) logViewer(ctx context.Context, m authz.Membership) (combatView
 		if err != nil {
 			return v, s.dbError(ctx, "read the table's rules", err)
 		}
-		v.hideDeath = rules.DeathSavesHidden
+		v.hideDeath, v.showSaveDC = rules.DeathSavesHidden, rules.ShowSaveDC
 	}
 	return v, nil
 }
@@ -876,7 +876,7 @@ func (e *logEntry) fillHitRider(c *logViewing, out *playv1.CombatLogEntry) bool 
 	if r := e.ev.Rider; r != nil {
 		// The target's roll is the master's (an NPC's roll never reaches a player, RN-20), or the
 		// target's own player's when a player's character made the save.
-		out.HitRider = riderLogProto(r, c.v.master || c.v.owns(c.byID[e.ev.Target]))
+		out.HitRider = riderLogProto(r, c.v.master || c.v.owns(c.byID[e.ev.Target]), c.v.saveDCFor(c.byID[e.ev.Target]))
 	}
 	return true
 }
@@ -1237,6 +1237,7 @@ func (e *logEntry) trapEntry(ctx context.Context, v combatViewer, byID map[strin
 	}
 	tv := trapView{
 		master: v.master,
+		showDC: v.showSaveDC,
 		owns:   func(id string) bool { return v.owns(byID[id]) },
 		hidden: func(id string) bool {
 			if byID[id].Hidden {

@@ -6,6 +6,7 @@ import {
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { listNames } from './conditions';
 import { article } from '../format/article';
+import { dcLabel } from '../format/save-dc';
 import { naturalMark } from './natural-mark';
 import { luckyText } from './lucky';
 import { LogContext, LogLine } from './combat-log-types';
@@ -34,9 +35,14 @@ function effectTargets(fx: CombatLogEffect, ctx: LogContext, prep: '' | 'em' | '
 
 type EffectLine = (fx: CombatLogEffect, ctx: LogContext) => string;
 
-/** "(d20 12, total 15 contra CD 14)": the numbers of a saving throw against an effect, only for the master. */
+/** "(d20 12, total 15 contra CD 14)": the numbers of a saving throw against an effect, for the master. The rolling
+ * player reads "(CD 14)" when the table shows the DC and the server sent it. */
 function effectSaveNumbers(fx: CombatLogEffect, ctx: LogContext): string {
-  if (!ctx.master || fx.total === undefined || fx.dc === undefined) {
+  if (!ctx.master) {
+    const dc = dcLabel(fx.dc);
+    return dc ? ` (${dc})` : '';
+  }
+  if (fx.total === undefined || fx.dc === undefined) {
     return '';
   }
   // "20 natural" is information only: a saving throw has no automatic success or failure (SRD 5.1).

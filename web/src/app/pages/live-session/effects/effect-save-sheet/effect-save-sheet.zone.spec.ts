@@ -126,7 +126,7 @@ describe('EffectSaveSheet for a spell zone', () => {
     );
     const text = plain(el.textContent);
     expect(text).toContain('Falhou');
-    expect(text).toContain('contra CD 14');
+    expect(text).toContain('Contra CD 14');
   });
 
   it('types the d20 when the table rolls physical dice', () => {

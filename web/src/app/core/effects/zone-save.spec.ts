@@ -6,13 +6,7 @@ import {
 } from '../../../gen/meurpg/play/v1/lasting_effects_pb';
 import { encounter, spellZone } from '../combat/combat-testing';
 import { effectSaveView } from './effects';
-import {
-  zoneCasterLabel,
-  zoneDcText,
-  zoneReasonText,
-  zoneResultDc,
-  zoneSaveTitle,
-} from './zone-save';
+import { zoneCasterLabel, zoneReasonText, zoneSaveTitle } from './zone-save';
 
 const prompt = (over: object = {}) =>
   create(EffectSavePromptSchema, {
@@ -55,10 +49,8 @@ describe('the save prompt of a spell zone', () => {
   });
 
   it('writes the DC only when the server sent it: no number and no placeholder otherwise', () => {
-    expect(zoneDcText(14)).toBe(', CD\u00a014');
-    expect(zoneDcText(undefined)).toBe('');
-    expect(zoneResultDc(14)).toBe(' contra CD\u00a014');
-    expect(zoneResultDc(undefined)).toBe('');
+    expect(effectSaveView(prompt({ dc: 14 }), 3, 'Bartolo').dc).toBe('CD 14');
+    expect(effectSaveView(prompt({ dc: undefined }), 3, 'Bartolo').dc).toBe('');
   });
 
   it('builds the sheet: title, reason, the damage and half on a pass, the bonus', () => {
@@ -66,7 +58,7 @@ describe('the save prompt of a spell zone', () => {
     expect(v.title).toBe('Raio Lunar de Bartolo');
     expect(v.subtitle).toBe('Magia que ficou no mapa. A zona atingiu você no começo do seu turno.');
     expect(v.ability).toBe('Constituição');
-    expect(v.dcText).toBe('');
+    expect(v.dc).toBe('');
     expect(v.consequence).toBe('Se falhar: sofre dano radiante. Se passar: metade do dano.');
     expect(v.modifier).toBe('Seu modificador: +3.');
     expect(v.source).toBe('Raio Lunar, de Bartolo');
@@ -102,7 +94,7 @@ describe('the save prompt of a spell zone', () => {
   });
 
   it('shows the DC for the master or the caster own player', () => {
-    expect(effectSaveView(prompt({ dc: 14 }), 3, 'Bartolo').dcText).toBe(', CD\u00a014');
+    expect(effectSaveView(prompt({ dc: 14 }), 3, 'Bartolo').dc).toBe('CD 14');
   });
 
   it('says a pass with no half takes the damage away, and a restraint with its static line', () => {
@@ -129,7 +121,7 @@ describe('the save prompt of a spell zone', () => {
   it('leaves a prompt that is not a zone as it was', () => {
     const v = effectSaveView(prompt({ zoneId: '', zoneReason: '', phase: EffectPhase.END }), 3, '');
     expect(v.title).toBe('Fim do seu turno');
-    expect(v.dcText).toBe('');
+    expect(v.dc).toBe('');
     expect(v.source).toBe('');
   });
 });

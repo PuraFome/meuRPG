@@ -1995,6 +1995,9 @@ enum DisabledReasonCode {
   DISABLED_REASON_CODE_EFFECT_LETHARGY = 101;
   // The speed is 0 (Impedido, Agarrado, exhaustion 5, an effect): the movement line only.
   DISABLED_REASON_CODE_SPEED_ZERO = 102;
+  // A spell, or a cantrip that makes an attack roll: the character wears armor or a shield
+  // it is not proficient with, and cannot cast spells (SRD 5.1, "Armor").
+  DISABLED_REASON_CODE_ARMOR_NOT_PROFICIENT = 112;
 }
 
 // BonusAttackRule is the rule that makes an attack a bonus action attack right

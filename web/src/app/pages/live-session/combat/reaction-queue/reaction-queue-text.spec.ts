@@ -123,7 +123,7 @@ describe('reaction-queue-text', () => {
       const zone = save({ zoneId: 'z1', ability: 'con', abilityNamePt: '', dc: 14 });
       expect(effectSaveAbility(zone)).toBe('Constituição');
       expect(effectSaveTitle(zone, 'Bartolo')).toBe(
-        'Riso Histérico de Bartolo · Teste de resistência de Constituição do Goblin · CD\u00a014',
+        'Riso Histérico de Bartolo · Teste de resistência de Constituição do Goblin · CD 14',
       );
       expect(effectSaveRule(save({ ability: 'con', abilityNamePt: '' }))).toBe('Constituição: −1');
     });
@@ -303,7 +303,7 @@ describe('the master queue for a zone save', () => {
 
   it('titles it with the zone and the DC he reads, and the caster when he has it', () => {
     expect(effectSaveTitle(zoneSave(), 'Pensantus')).toBe(
-      'Teia de Pensantus · Teste de resistência de Sabedoria de Tor · CD\u00a013',
+      'Teia de Pensantus · Teste de resistência de Sabedoria de Tor · CD 13',
     );
     expect(effectSaveTitle(save())).toBe(
       'Teste de resistência de Sabedoria do Goblin · Riso Histérico · CD 13',

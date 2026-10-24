@@ -1876,6 +1876,10 @@ enum EncounterBlockedReason {
   ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TARGET = 109;
   // Preserve Life: the hit points asked add up to more than five times the cleric's level.
   ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TOO_MUCH = 110;
+  // CastSpell, CastSummon, RollAttack (a spell attack): the character wears armor or a
+  // shield it is not proficient with, and cannot cast spells (SRD 5.1, "Armor"). Nothing
+  // is spent.
+  ENCOUNTER_BLOCKED_REASON_ARMOR_NOT_PROFICIENT = 111;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused

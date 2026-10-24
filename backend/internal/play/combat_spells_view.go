@@ -52,7 +52,7 @@ func saveView(sr *saveRoll, v combatViewer, caster, target playdb.Combatant) *pl
 	if v.master {
 		out.BonusKnown = !sr.Unknown
 	}
-	if v.master || v.owns(caster) {
+	if v.master || v.owns(caster) || v.saveDCFor(target) {
 		out.Dc = sr.DC
 	}
 	return out

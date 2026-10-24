@@ -935,6 +935,10 @@ const (
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TARGET EncounterBlockedReason = 109
 	// Preserve Life: the hit points asked add up to more than five times the cleric's level.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TOO_MUCH EncounterBlockedReason = 110
+	// CastSpell, CastSummon, RollAttack (a spell attack): the character wears armor or a
+	// shield it is not proficient with, and cannot cast spells (SRD 5.1, "Armor"). Nothing
+	// is spent.
+	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ARMOR_NOT_PROFICIENT EncounterBlockedReason = 111
 )
 
 // Enum value maps for EncounterBlockedReason.
@@ -1031,6 +1035,7 @@ var (
 		108: "ENCOUNTER_BLOCKED_REASON_DESTINATION_REQUIRED",
 		109: "ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TARGET",
 		110: "ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TOO_MUCH",
+		111: "ENCOUNTER_BLOCKED_REASON_ARMOR_NOT_PROFICIENT",
 	}
 	EncounterBlockedReason_value = map[string]int32{
 		"ENCOUNTER_BLOCKED_REASON_UNSPECIFIED":                  0,
@@ -1124,6 +1129,7 @@ var (
 		"ENCOUNTER_BLOCKED_REASON_DESTINATION_REQUIRED":         108,
 		"ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TARGET":      109,
 		"ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TOO_MUCH":    110,
+		"ENCOUNTER_BLOCKED_REASON_ARMOR_NOT_PROFICIENT":         111,
 	}
 )
 
@@ -24914,7 +24920,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x14COMBATANT_STATE_DOWN\x10\x05\x12\x19\n" +
 	"\x15COMBATANT_STATE_DYING\x10\x06\x12\x1a\n" +
 	"\x16COMBATANT_STATE_STABLE\x10\a\x12\x18\n" +
-	"\x14COMBATANT_STATE_DEAD\x10\b*\x9a\"\n" +
+	"\x14COMBATANT_STATE_DEAD\x10\b*\xcd\"\n" +
 	"\x16EncounterBlockedReason\x12(\n" +
 	"$ENCOUNTER_BLOCKED_REASON_UNSPECIFIED\x10\x00\x123\n" +
 	"/ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ALREADY_OPEN\x10\x01\x12+\n" +
@@ -25007,7 +25013,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"0ENCOUNTER_BLOCKED_REASON_DESTINATION_UNAVAILABLE\x10k\x121\n" +
 	"-ENCOUNTER_BLOCKED_REASON_DESTINATION_REQUIRED\x10l\x124\n" +
 	"0ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TARGET\x10m\x126\n" +
-	"2ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TOO_MUCH\x10n*\x91\x03\n" +
+	"2ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TOO_MUCH\x10n\x121\n" +
+	"-ENCOUNTER_BLOCKED_REASON_ARMOR_NOT_PROFICIENT\x10o*\x91\x03\n" +
 	"\x1aFamiliarSightBlockedReason\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_NO_FAMILIAR\x10\x01\x12,\n" +
