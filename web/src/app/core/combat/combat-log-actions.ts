@@ -18,6 +18,7 @@ import { circleLabel } from './combat-options';
 import { pointsText } from '../resources/pools';
 import { countsSentence } from './death-saves';
 import { article } from '../format/article';
+import { dcLabel } from '../format/save-dc';
 import { the } from './combat-log-words';
 
 /** What a class resource did (Cura pelas Mãos, Conjuração Flexível, Inspiração de Bardo). The hit points a touch gave back
@@ -294,7 +295,7 @@ export function wildShapeText(e: CombatLogEntry): string {
   }
 }
 
-/** The line of an answered monk rider: "Toren usou a Técnica da Mão Aberta (Derrubar) em Goblin: ...". The roll and the DC only come for the master and the monk's player. */
+/** The line of an answered monk rider: "Toren usou a Técnica da Mão Aberta (Derrubar) em Goblin: ...". The roll comes for the master and the monk's player, the DC for the master and, when the table shows it, the target's player. */
 export function hitRiderText(e: CombatLogEntry): string {
   const r = e.hitRider;
   const target = e.targetLabel || 'alguém';
@@ -308,7 +309,9 @@ export function hitRiderText(e: CombatLogEntry): string {
       'a Técnica da Mão Aberta (sem reações até o fim do próximo turno)',
     [HitRiderChoice.STUN]: 'o Golpe Atordoante',
   };
-  const roll = r.numbers ? ` (1d20 ${r.d20} = ${r.saveTotal} contra CD ${r.dc})` : '';
+  const roll = r.numbers
+    ? ` (1d20 ${r.d20} = ${r.saveTotal}${r.dc > 0 ? ` contra ${dcLabel(r.dc)}` : ''})`
+    : '';
   let result = '';
   if (r.result === HitRiderLogResult.SAVED) {
     result = `: ${target} passou no teste${roll}`;

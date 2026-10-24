@@ -61,6 +61,7 @@ const saved: RulesDraft = {
   hiddenAreaHits: HiddenAreaHitRule.REVEAL,
   featsAllowed: false,
   enemyReactions: EnemyReactionsRule.ONLY_WHEN_POSSIBLE,
+  showSaveDc: false,
   houseRules: ['Beber uma poção é uma ação bônus'],
 };
 

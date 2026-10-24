@@ -67,4 +67,5 @@ type CampaignTableRule struct {
 	FeatsAllowed         bool
 	HiddenAreaHits       string
 	EnemyReactions       string
+	ShowSaveDc           bool
 }

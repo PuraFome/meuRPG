@@ -37,6 +37,8 @@ export interface RulesDraft {
   readonly featsAllowed: boolean;
   /** When the game waits for the master before the result of a player's action against an enemy (PM-04). */
   readonly enemyReactions: EnemyReactionsRule;
+  /** Whether the player who rolls a saving throw also reads its DC (the master and the caster's player always do). */
+  readonly showSaveDc: boolean;
   readonly houseRules: readonly string[];
 }
 
@@ -86,7 +88,13 @@ function playDraftPart(
   rules: RulesMessage,
 ): Pick<
   RulesDraft,
-  'critical' | 'deathSaves' | 'hiddenAreaHits' | 'featsAllowed' | 'enemyReactions' | 'houseRules'
+  | 'critical'
+  | 'deathSaves'
+  | 'hiddenAreaHits'
+  | 'featsAllowed'
+  | 'enemyReactions'
+  | 'showSaveDc'
+  | 'houseRules'
 > {
   return {
     critical: rules?.critical ?? CriticalRule.DOUBLED_DICE,
@@ -97,6 +105,7 @@ function playDraftPart(
     featsAllowed: rules?.featsAllowed ?? false,
     // The server refuses UNSPECIFIED: an old reading is the default rule.
     enemyReactions: rules?.enemyReactions || EnemyReactionsRule.ONLY_WHEN_POSSIBLE,
+    showSaveDc: rules?.showSaveDc ?? false,
     houseRules: rules?.houseRules ?? [],
   };
 }
@@ -161,6 +170,7 @@ export function changeCount(draft: RulesDraft, saved: RulesDraft): number {
     'hiddenAreaHits',
     'featsAllowed',
     'enemyReactions',
+    'showSaveDc',
   ];
   for (const key of scalar) {
     if (draft[key] !== saved[key]) {
@@ -266,6 +276,7 @@ export class TableRulesClient {
         hiddenAreaHits: d.hiddenAreaHits,
         featsAllowed: d.featsAllowed,
         enemyReactions: d.enemyReactions,
+        showSaveDc: d.showSaveDc,
         houseRules: [...d.houseRules],
       },
     });
