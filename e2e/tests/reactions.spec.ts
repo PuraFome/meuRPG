@@ -82,7 +82,7 @@ test(
       await sheet.getByRole('button', { name: 'Voltar à sua vez' }).click();
       const wait = p.getByRole('status').filter({ hasText: 'Esperando o mestre.' });
       await expect(wait).toContainText('O resultado do seu ataque sai quando ele responder.');
-      await expect(p.getByRole('button', { name: 'Encerrar turno' }).last()).toHaveAttribute('aria-disabled', 'true');
+      await expect(p.getByRole('button', { name: 'Encerrar turno' })).toHaveAttribute('aria-disabled', 'true');
       await expect(wait).not.toContainText(/Escudo|Contramágica|Mago/);
 
       // The master's: the card of the Mago, what Escudo would change, and the turn that does not pass meanwhile.
@@ -94,7 +94,7 @@ test(
 
       // The hit became a miss, the wait is gone, and the turn goes on.
       await expect(wait).toHaveCount(0);
-      await expect(p.getByRole('button', { name: 'Encerrar turno' }).last()).not.toHaveAttribute('aria-disabled', 'true');
+      await expect(p.getByRole('button', { name: 'Encerrar turno' })).not.toHaveAttribute('aria-disabled', 'true');
       await p.getByRole('button', { name: 'Abrir o registro do combate' }).click();
       await expect(p.getByRole('log', { name: 'Registro do combate' })).toContainText('Escudo Arcano');
     } finally {
@@ -132,7 +132,7 @@ test(
       await expect(wait).toBeVisible();
       await expect(wait).not.toContainText(/Contramágica|Mago|Mísseis/);
       await expect(p.getByRole('alertdialog')).toHaveCount(0);
-      await expect(p.getByRole('button', { name: 'Encerrar turno' }).last()).toHaveAttribute('aria-disabled', 'true');
+      await expect(p.getByRole('button', { name: 'Encerrar turno' })).toHaveAttribute('aria-disabled', 'true');
 
       // The master's card of the Mago: who is casting (the master knows the spell: the player never reads it).
       const card = m.getByRole('region', { name: mage });

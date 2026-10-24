@@ -141,11 +141,12 @@ test(
       await expect(t.p.getByText('Você não pode agir.').first()).toBeVisible();
       await expect(t.p.getByRole('group', { name: 'Imobilizar Pessoa' })).toContainText('De Capitão Goblin');
 
-      // Nothing of the turn is available, so the Ação does not say "Disponível" and ending the turn does not ask.
-      await expect(t.p.getByText('Disponível', { exact: true })).toHaveCount(0);
+      // Nothing of the turn is available, so the shapes of the Ação, the Bônus and the Reação say "indisponível" and ending the turn does not ask.
+      await expect(t.p.getByRole('listitem', { name: 'Ação indisponível' })).toBeVisible();
+      await expect(t.p.getByRole('listitem', { name: 'Ação disponível' })).toHaveCount(0);
 
       // Ending the turn opens the saving throw: the ability, the modifier and the three answers, never a DC.
-      await t.p.getByRole('button', { name: 'Encerrar turno' }).last().click();
+      await t.p.getByRole('button', { name: 'Encerrar turno' }).click();
       await expect(t.p.getByText('Ainda tem ação disponível. Encerrar mesmo?')).toHaveCount(0);
       const sheet = t.p.getByRole('dialog', { name: 'Teste de resistência do fim do turno' });
       await expect(sheet.getByRole('heading', { name: 'Fim do seu turno' })).toBeVisible();

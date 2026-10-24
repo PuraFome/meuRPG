@@ -4,7 +4,7 @@ import { combatRPC, endTurnOf, passTurnsTo, startEncounterRPC, tableForCombat } 
 import { grog, rollsTable, vex } from './combat-rolls-support';
 import { alliedTable, closeSheet, contestRPC, idOf, typeD20 } from './contests-support';
 import { endOpenSessionRPC, openSessionPage } from './live-session-support';
-import { newSignedInContext } from './support';
+import { newSignedInContext, openActionTab } from './support';
 
 test('o jogador agarra o goblin (o mestre responde), é agarrado por ele e escapa: nunca lê o total do NPC', { tag: ['@RN-34', '@RN-10', '@RN-20'] }, async ({ browser }) => {
   test.setTimeout(180_000);
@@ -12,6 +12,7 @@ test('o jogador agarra o goblin (o mestre responde), é agarrado por ele e escap
   try {
     await openSessionPage(p, campaignId);
     await expect(p.getByRole('heading', { name: 'Sua vez, Grog' })).toBeVisible();
+    await openActionTab(p, 'Ataques');
     await p.getByRole('button', { name: /Agarrar: escolher o alvo/ }).click();
     const sheet = p.getByRole('dialog');
     await sheet.getByText('Tenho uma mão livre').click();
@@ -61,6 +62,7 @@ test('o jogador agarra o goblin (o mestre responde), é agarrado por ele e escap
     await passTurnsTo(m, campaignId, 'Grog');
     await expect(p.getByRole('heading', { name: 'Sua vez, Grog' })).toBeVisible();
     await expect(p.getByText('Agarrado').first()).toBeVisible();
+    await openActionTab(p, 'Ataques');
     await p.getByRole('button', { name: 'Escapar do agarrão' }).click();
     const escape = p.getByRole('dialog');
     await escape.locator('label', { hasText: 'Acrobacia' }).click();
@@ -84,6 +86,7 @@ test('o jogador derruba o goblin com um empurrão e escapa de um agarrão de CD 
   try {
     await openSessionPage(p, campaignId);
     await expect(p.getByRole('heading', { name: 'Sua vez, Grog' })).toBeVisible();
+    await openActionTab(p, 'Ataques');
     await p.getByRole('button', { name: /Empurrar: escolher o alvo/ }).click();
     const sheet = p.getByRole('dialog');
     // A shove needs no free hand (SRD 5.1): the sheet does not ask for one.
@@ -119,6 +122,7 @@ test('o jogador derruba o goblin com um empurrão e escapa de um agarrão de CD 
     });
     await expect(m.getByTestId('grapples')).toContainText('CD de escape 16');
     await passTurnsTo(m, campaignId, 'Grog');
+    await openActionTab(p, 'Ataques');
     await p.getByRole('button', { name: 'Escapar do agarrão' }).click();
     const escape = p.getByRole('dialog');
     await escape.locator('label', { hasText: 'Atletismo' }).click();
@@ -137,6 +141,7 @@ test('a ladina se esconde com a Ação Ardilosa sem ler quem notou, e ajuda um a
   try {
     await openSessionPage(p, campaignId);
     await expect(p.getByRole('heading', { name: 'Sua vez, Vex' })).toBeVisible();
+    await openActionTab(p, 'Ladino');
     await p.getByRole('button', { name: 'Usar Ação Ardilosa: Esconder' }).click();
     const sheet = p.getByRole('dialog');
     await expect(sheet).toContainText(/Você não se esconde de quem [oa] vê claramente/);
@@ -155,6 +160,7 @@ test('a ladina se esconde com a Ação Ardilosa sem ler quem notou, e ajuda um a
     await expect(p.locator('body')).not.toContainText('Percepção passiva');
 
     // Help: an ally and a task (the action).
+    await openActionTab(p, 'Outras');
     await p.getByRole('button', { name: 'Ajudar', exact: true }).click();
     const help = p.getByRole('dialog');
     await help.locator('label', { hasText: 'Tavo' }).click();
