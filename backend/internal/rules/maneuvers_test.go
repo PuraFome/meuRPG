@@ -150,8 +150,8 @@ func TestSuperiorityDieIsOnTheMenu(t *testing.T) {
 		}
 	}
 	j := slices.IndexFunc(menu.Lists, func(l MenuList) bool { return l.Name == ListManeuverApplies })
-	if j < 0 || len(menu.Lists[j].Values) != 4 {
-		t.Errorf("the applies list = %+v, want four values", menu.Lists)
+	if j < 0 || len(menu.Lists[j].Values) != 5 {
+		t.Errorf("the applies list = %+v, want five values", menu.Lists)
 	}
 }
 
