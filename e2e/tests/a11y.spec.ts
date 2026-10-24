@@ -8164,7 +8164,7 @@ async function scanConversationScreens(browser: Browser, colorScheme: 'light' | 
   const phone = width < 768;
   const openChat = async (page: Page) => {
     if (phone) {
-      await page.getByRole('button', { name: /^Conversa/ }).click();
+      await page.getByRole('button', { name: /^Conversa(, \d+ mensage(?:m|ns) novas?)?$/ }).click();
     }
     // The empty feed is not drawn; the panel is there once its message box is.
     await expect(messageBoxOf(page)).toBeVisible();
@@ -8200,8 +8200,12 @@ async function scanConversationScreens(browser: Browser, colorScheme: 'light' | 
 
     // The player: on a phone the tab says there is news, then the full-screen view.
     if (phone) {
-      await expect(p.getByRole('button', { name: /^Conversa, \d+ mensagens? novas?$/ })).toBeVisible();
-      await expectScreenPasses(p, `Aba Conversa com mensagens novas ${where}`);
+      await expect(p.getByRole('button', { name: /^Conversa, \d+ mensage(?:m|ns) novas?$/ })).toBeVisible();
+      // The notice at the top of the page says the same, in view without scrolling; it is awaited by its words.
+      const notice = p.getByRole('button', { name: /^Conversa: \d+ mensage(?:m|ns) novas? Abrir$/ });
+      await expect(notice).toBeVisible();
+      await expect(notice).toBeInViewport();
+      await expectScreenPasses(p, `Aviso de mensagens novas no topo e aba Conversa com mensagens novas ${where}`);
     }
     await openChat(p);
     await expect(lineOf(p, npc)).toBeVisible();

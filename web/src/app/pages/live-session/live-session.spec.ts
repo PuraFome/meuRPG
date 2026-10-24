@@ -63,6 +63,7 @@ import {
   mapToken,
 } from '../../core/maps/maps-testing';
 import { ConversationClient } from '../../core/conversation/conversation-client';
+import type { MessagesPage } from '../../core/conversation/conversation-state';
 import { QuietConversationApi, line } from '../../core/conversation/conversation-testing';
 import { SessionMessageSpeakerKind } from '../../../gen/meurpg/play/v1/session_messages_pb';
 import type { LiveSessionParts } from './live-session-deps';
@@ -2091,6 +2092,130 @@ describe('LiveSession', () => {
       await settle(fixture);
       expect(chat().getAttribute('aria-label')).toBeNull();
       expect(parts(fixture).conversation.unread()).toBe(0);
+    });
+
+    describe('the notice of new lines at the top of the page', () => {
+      const notice = (el: HTMLElement) => el.querySelector('app-unread-notice');
+      const arrive = async (fixture: ComponentFixture<LiveSession>, ids: string[]) => {
+        for (const [at, id] of ids.entries()) {
+          source.push({
+            kind: 'sessionMessage',
+            message: line(id, { authorUserId: 'u-mestre', at }),
+          });
+          await settle(fixture);
+        }
+      };
+
+      it('is not drawn without news', async () => {
+        onPhone(true);
+        const el = await settle(TestBed.createComponent(LiveSession));
+        expect(notice(el)).toBeNull();
+      });
+
+      it('is the first thing in the main column once a line arrives, ahead of the board and the tabs', async () => {
+        onPhone(true);
+        const fixture = TestBed.createComponent(LiveSession);
+        const el = await settle(fixture);
+        await arrive(fixture, ['m1']);
+        const main = el.querySelector('.split__main') as HTMLElement;
+        expect(main.firstElementChild?.tagName.toLowerCase()).toBe('app-unread-notice');
+        expect(notice(el)?.textContent).toContain('Conversa: 1 mensagem nova');
+      });
+
+      it('says how many lines are new, and opens the chat when pressed, then goes', async () => {
+        onPhone(true);
+        const fixture = TestBed.createComponent(LiveSession);
+        const el = await settle(fixture);
+        await arrive(fixture, ['m1', 'm2', 'm3']);
+        const button = notice(el)?.querySelector('button') as HTMLButtonElement;
+        expect(button.textContent).toContain('Conversa: 3 mensagens novas');
+        button.click();
+        await settle(fixture);
+        expect(notice(el)).toBeNull();
+        expect(el.querySelector('.split__main')?.hasAttribute('inert')).toBe(true);
+        expect(parts(fixture).conversation.unread()).toBe(0);
+      });
+
+      it('goes when the Conversa tab clears the count, and keeps the badge on the tab while shown', async () => {
+        onPhone(true);
+        const fixture = TestBed.createComponent(LiveSession);
+        const el = await settle(fixture);
+        await arrive(fixture, ['m1', 'm2']);
+        expect(el.querySelector('app-session-tabs .tab__badge')?.textContent?.trim()).toBe('2');
+        (el.querySelectorAll('app-session-tabs button.tab')[1] as HTMLButtonElement).click();
+        await settle(fixture);
+        expect(notice(el)).toBeNull();
+      });
+
+      it('is not a live region of its own: the panel already tells each line', async () => {
+        onPhone(true);
+        const fixture = TestBed.createComponent(LiveSession);
+        const el = await settle(fixture);
+        await arrive(fixture, ['m1']);
+        const host = notice(el) as HTMLElement;
+        expect(host.querySelector('[role="status"], [role="alert"], [aria-live]')).toBeNull();
+      });
+
+      /** What a screen reader (and the e2e's `getByRole('button', { name })`) hears: the text, minus what is aria-hidden. */
+      const accessibleName = (button: HTMLElement) => {
+        const copy = button.cloneNode(true) as HTMLElement;
+        copy.querySelectorAll('[aria-hidden="true"]').forEach((n) => n.remove());
+        return (copy.textContent ?? '').replace(/\s+/g, ' ').trim();
+      };
+
+      it('has the name "Conversa: 1 mensagem nova Abrir" for the line of the stream', async () => {
+        onPhone(true);
+        const fixture = TestBed.createComponent(LiveSession);
+        const el = await settle(fixture);
+        await arrive(fixture, ['m1']);
+        const button = notice(el)?.querySelector('button') as HTMLButtonElement;
+        expect(accessibleName(button)).toMatch(/^Conversa: \d+ mensage(?:m|ns) novas? Abrir$/);
+        expect(accessibleName(button)).toBe('Conversa: 1 mensagem nova Abrir');
+      });
+
+      it('counts a line of the stream that comes while the first history page is still being read', async () => {
+        onPhone(true);
+        let answer!: (page: MessagesPage) => void;
+        vi.spyOn(conversation, 'list').mockReturnValue(
+          new Promise<MessagesPage>((resolve) => (answer = resolve)),
+        );
+        const fixture = TestBed.createComponent(LiveSession);
+        const el = await settle(fixture);
+        expect(parts(fixture).conversation.loaded()).toBe(false);
+        const narration = line('m1', { authorUserId: 'u-mestre' });
+        source.push({ kind: 'sessionMessage', message: narration });
+        await settle(fixture);
+        // The history then holds that same line: it is one line, and it is news.
+        answer({ messages: [narration], hasOlder: false, voiceEnabled: false });
+        await settle(fixture);
+        expect(parts(fixture).conversation.unread()).toBe(1);
+        expect(notice(el)?.textContent).toContain('Conversa: 1 mensagem nova');
+      });
+
+      it('does not count a line the first history page already holds: it came before the page opened', async () => {
+        onPhone(true);
+        vi.spyOn(conversation, 'list').mockResolvedValue({
+          messages: [line('m0', { authorUserId: 'u-mestre' })],
+          hasOlder: false,
+          voiceEnabled: false,
+        });
+        const fixture = TestBed.createComponent(LiveSession);
+        const el = await settle(fixture);
+        expect(
+          parts(fixture)
+            .conversation.lines()
+            .map((l) => l.id),
+        ).toEqual(['m0']);
+        expect(notice(el)).toBeNull();
+      });
+
+      it('is never drawn on a computer', async () => {
+        onPhone(false);
+        const fixture = TestBed.createComponent(LiveSession);
+        const el = await settle(fixture);
+        await arrive(fixture, ['m1']);
+        expect(notice(el)).toBeNull();
+      });
     });
 
     it('does not count on a computer, where the column is on screen', async () => {
