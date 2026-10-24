@@ -85,8 +85,11 @@
         [connection]="state.connection()"
         [lastUpdate]="state.lastUpdate()"
         [rolling]="freeDice.rolling()"
+        [inCombat]="view.combatOnScreen()"
+        [startOff]="launch.off()"
         (ended)="sessionEndedHere()"
         (openDice)="sheets.openDice()"
+        (startCombat)="launch.open()"
       />
       }
 
@@ -241,12 +244,9 @@
           [tick]="state.heldRollsTick()"
           [diceMode]="state.campaign()?.diceMode ?? 1"
         />
-        <app-combat-launch
-          class="launch"
-          [campaignId]="state.campaignId()"
-          [state]="mapState"
-          (started)="combatStarted($event)"
-        />
+        @if (launch.unreadable()) {
+          <app-combat-launch-notice class="launch" (retry)="mapState.refresh()" />
+        }
         <!-- The encounters kept on the battle points of the current map, with "Começar este combate" (MR-043, E10-09 state 7). -->
         <app-battle-encounters [campaignId]="state.campaignId()" [state]="mapState" (started)="combatStarted($event)" />
         <div class="board board--master" [class.board--scene-open]="scene.scene()">
@@ -474,16 +474,6 @@
         <!-- The free rolls of the session (MR-052): under the board, so no screen's layout moves for it. -->
         <app-free-roll-log [rolls]="freeDice.table()" [listState]="freeDice.listState()" (retry)="freeDice.refresh()" />
       }
-      <!-- Last in the column, so the turn's actions stay right under the title on a phone; the tabs close the page. -->
-      @if (slot.phone()) {
-        <app-session-tabs
-          class="split__tabs"
-          [tab]="slot.tab()"
-          [unread]="conversation.unread()"
-          [sheetLink]="slot.sheetLink()"
-          (choose)="slot.choose($event)"
-        />
-      }
       </div>
       <div class="split__chat" [class.split__chat--full]="slot.chatOpen()" [class.split__chat--away]="slot.phone() && !slot.chatOpen()">
         @defer (when slot.wanted()) {
@@ -503,6 +493,15 @@
           />
         }
       </div>
+      <!-- The phone's nav, pinned to the bottom of the screen and outside the page behind it, so it stays usable while the chat covers the page. -->
+      @if (slot.phone()) {
+        <app-session-tabs
+          [tab]="slot.tab()"
+          [unread]="conversation.unread()"
+          [sheetLink]="slot.sheetLink()"
+          (choose)="slot.choose($event)"
+        />
+      }
       </div>
       }
     }

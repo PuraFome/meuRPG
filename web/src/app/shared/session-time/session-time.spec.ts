@@ -4,6 +4,7 @@ import {
   formatSessionSpan,
   formatSessionStart,
   sessionSince,
+  sessionSinceShort,
 } from './session-time';
 
 describe('session time', () => {
@@ -100,5 +101,13 @@ describe('session time', () => {
       expect(span).toContain('1\u00a0de\u00a0out.');
       expect(span).toContain(', 19h05 às 22h47');
     });
+  });
+
+  it('says "desde 20:05" for the session bar, with the day when it started on another one', () => {
+    const now = new Date(2026, 9, 3, 21, 0);
+    expect(sessionSinceShort(new Date(2026, 9, 3, 20, 5), now)).toBe('desde 20:05');
+    expect(sessionSinceShort(new Date(2026, 9, 2, 23, 30), now).replace(/\u00a0/g, ' ')).toBe(
+      'desde 02/10 às 23:30',
+    );
   });
 });

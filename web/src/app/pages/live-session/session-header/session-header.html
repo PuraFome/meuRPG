@@ -1,105 +1,128 @@
-<a class="back" [routerLink]="['/campaigns', campaignId()]">
-  <mat-icon aria-hidden="true">arrow_back</mat-icon>Voltar para a campanha
-</a>
+<div class="bar" [class.bar--master]="isMaster()">
+  <a
+    class="bar__back"
+    [routerLink]="['/campaigns', campaignId()]"
+    [attr.aria-label]="'Voltar para a campanha ' + campaignName()"
+  >
+    <mat-icon aria-hidden="true">arrow_back</mat-icon>
+    <span class="bar__camp">{{ campaignName() }}</span>
+  </a>
 
-<div class="head" [class.head--master]="isMaster()">
-  <div class="head__title">
-    <div class="head__row">
-      <div class="head__names">
-        <h1 class="mr-page-title">Sessão {{ session().sessionNumber }}</h1>
-        <p class="mr-page-lead">{{ campaignName() }}</p>
-      </div>
-      <!-- The free dice roller (MR-052), for the master and the players alike: off while a roll is on its way and while the stream reconnects. -->
+  <h1 class="bar__title">Sessão {{ session().sessionNumber }}</h1>
+
+  @if (!reconnecting()) {
+    <p class="bar__status">
+      <app-live-pill />
+      <span class="bar__since">{{ since() }}</span>
+    </p>
+  }
+
+  <div class="bar__actions">
+    @if (isMaster() && !inCombat() && !phone()) {
+      <!-- Outside a combat: the "Combate" strip is gone, this opens its dialog. On a phone the same action is the first item of the menu. -->
       <button
         matButton="outlined"
         type="button"
-        class="head__dice js-dice"
-        [class.mr-button--off]="diceOff()"
-        [disabled]="diceOff()"
-        disabledInteractive
-        [attr.aria-describedby]="reconnecting() ? 'dice-off' : null"
-        (click)="openDiceNow()"
+        class="bar__button bar__start"
+        [disabled]="startOff()"
+        (click)="startCombat.emit()"
       >
-        <mat-icon aria-hidden="true">casino</mat-icon><span class="js-dice-text">{{ rolling() ? 'Rolando…' : 'Dados' }}</span>
+        <mat-icon aria-hidden="true">swords</mat-icon>Iniciar combate
       </button>
-    </div>
-
-    @if (reconnecting()) {
-      <div class="mr-notice mr-notice--neutral head__offline" role="status">
-        <mat-icon aria-hidden="true">cloud_off</mat-icon>
-        <p id="dice-off">
-          <strong>Reconectando…</strong> {{ lastUpdateLabel() }} Não dá para rolar sem conexão.
-        </p>
-      </div>
-    } @else {
-      <p class="head__status">
-        <app-live-pill />
-        <span>{{ since() }}</span>
-      </p>
     }
-  </div>
-
-  @if (isMaster()) {
-    <div class="actions" [class.actions--confirming]="endState() !== 'idle'">
-      <div class="actions__link">
-        <label class="mr-label" for="session-link">Link da sessão</label>
-        <input
-          #linkField
-          id="session-link"
-          class="actions__field"
-          type="text"
-          readonly
-          [value]="link()"
-        />
-      </div>
-      <button mat-stroked-button type="button" class="actions__button" (click)="copyLink()">
-        <mat-icon aria-hidden="true">{{ copied() ? 'check' : 'content_copy' }}</mat-icon>
-        {{ copied() ? 'Link copiado' : 'Copiar link da sessão' }}
+    <!-- The free dice roller (MR-052), for the master and the players alike: off while a roll is on its way and while the stream reconnects. -->
+    <button
+      matButton="outlined"
+      type="button"
+      class="bar__button js-dice"
+      [class.mr-button--off]="diceOff()"
+      [disabled]="diceOff()"
+      disabledInteractive
+      [attr.aria-describedby]="reconnecting() ? 'dice-off' : null"
+      [attr.aria-label]="rolling() ? 'Rolando…' : 'Dados'"
+      (click)="openDiceNow()"
+    >
+      <mat-icon aria-hidden="true">casino</mat-icon><span class="bar__label js-dice-text">{{ rolling() ? 'Rolando…' : 'Dados' }}</span>
+    </button>
+    @if (isMaster()) {
+      <button
+        matButton="outlined"
+        type="button"
+        class="bar__button bar__menu"
+        aria-haspopup="menu"
+        [matMenuTriggerFor]="menu"
+        [attr.aria-label]="copied() ? 'Link copiado' : 'Sessão'"
+      >
+        <mat-icon aria-hidden="true">{{ copied() ? 'check' : 'more_vert' }}</mat-icon>
+        <span class="bar__label">{{ copied() ? 'Link copiado' : 'Sessão' }}</span>
+        <mat-icon class="bar__chevron" aria-hidden="true">expand_more</mat-icon>
       </button>
-      @switch (endState()) {
-        @case ('idle') {
-          <span class="actions__divider" aria-hidden="true"></span>
-          <button
-            mat-stroked-button
-            type="button"
-            class="actions__button actions__end js-end"
-            (click)="askToEnd()"
-          >
-            Encerrar sessão
+      <mat-menu #menu="matMenu" xPosition="before">
+        @if (phone() && !inCombat()) {
+          <button mat-menu-item type="button" [disabled]="startOff()" (click)="startCombat.emit()">
+            <mat-icon aria-hidden="true">swords</mat-icon>Iniciar combate
           </button>
         }
-        @default {
-          <div class="confirm" role="group" aria-labelledby="confirm-end-text">
-            <p id="confirm-end-text" class="confirm__text">
-              Encerrar a sessão {{ session().sessionNumber }}? Ela não reabre depois.
-            </p>
-            <button
-              mat-stroked-button
-              type="button"
-              class="confirm__button js-confirm-end"
-              [disabled]="endState() === 'saving'"
-              (click)="endSession()"
-            >
-              Confirmar encerramento
-            </button>
-            <button
-              mat-button
-              type="button"
-              [disabled]="endState() === 'saving'"
-              (click)="cancelEnd()"
-            >
-              Cancelar
-            </button>
-          </div>
-        }
-      }
-      <p class="mr-visually-hidden" role="status">{{ copied() ? 'Link copiado' : '' }}</p>
-    </div>
-  }
+        <button mat-menu-item type="button" (click)="copyLink()">
+          <mat-icon aria-hidden="true">content_copy</mat-icon>Copiar link da sessão
+        </button>
+        <button mat-menu-item type="button" class="js-end" (click)="askToEnd()">
+          <mat-icon aria-hidden="true">stop_circle</mat-icon>Encerrar sessão
+        </button>
+      </mat-menu>
+    }
+  </div>
 </div>
 
+@if (reconnecting()) {
+  <div class="mr-notice mr-notice--neutral bar__offline" role="status">
+    <mat-icon aria-hidden="true">cloud_off</mat-icon>
+    <p id="dice-off">
+      <strong>Reconectando…</strong> {{ lastUpdateLabel() }} Não dá para rolar sem conexão.
+    </p>
+  </div>
+}
+
+@if (isMaster()) {
+  @if (endState() !== 'idle') {
+    <!-- The end asks in place under the bar: Cancelar has the focus, and for the first moments a click is ignored (data-confirm). -->
+    <div class="bar__confirm" role="group" aria-labelledby="confirm-end-text" data-confirm>
+      <mat-icon aria-hidden="true">warning</mat-icon>
+      <p id="confirm-end-text" class="bar__ask">
+        Encerrar a sessão {{ session().sessionNumber }}? Ela não reabre depois.
+      </p>
+      <button
+        matButton="outlined"
+        type="button"
+        class="js-cancel-end"
+        [disabled]="endState() === 'saving'"
+        (click)="cancelEnd()"
+      >
+        Cancelar
+      </button>
+      <button
+        matButton="outlined"
+        type="button"
+        class="bar__danger js-confirm-end"
+        [disabled]="endState() === 'saving'"
+        (click)="endSession()"
+      >
+        Confirmar encerramento
+      </button>
+    </div>
+  }
+  @if (linkShown()) {
+    <div class="bar__link">
+      <label class="mr-label" for="session-link">Link da sessão</label>
+      <input #linkField id="session-link" class="bar__field" type="text" readonly [value]="link()" />
+      <button matButton type="button" (click)="linkShown.set(false)">Fechar</button>
+    </div>
+  }
+  <p class="mr-visually-hidden" role="status">{{ copied() ? 'Link copiado' : '' }}</p>
+}
+
 @if (endState() === 'error') {
-  <div class="mr-notice mr-notice--danger head__error" role="alert">
+  <div class="mr-notice mr-notice--danger bar__error" role="alert">
     <mat-icon aria-hidden="true">error</mat-icon>
     <p>
       <strong>Não foi possível encerrar a sessão.</strong>

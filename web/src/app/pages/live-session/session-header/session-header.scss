@@ -2,12 +2,24 @@
   display: block;
 }
 
-// "← Voltar para a campanha", quiet, above the title.
-.back {
+// One row of 56px: the back link, the title, the live status and, at the right, the buttons.
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  min-height: 56px;
+}
+
+.bar__back {
   display: inline-flex;
+  flex: none;
   align-items: center;
   gap: 6px;
   min-height: 44px;
+  margin-inline-start: -8px;
+  padding-inline: 8px 12px;
+  border-inline-end: 1px solid var(--mr-line);
   color: var(--mr-ink-muted);
   text-decoration: none;
 
@@ -15,132 +27,109 @@
     color: var(--mr-ink);
   }
 
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
   .mat-icon {
-    width: 20px;
-    height: 20px;
-    font-size: 20px;
+    width: 24px;
+    height: 24px;
+    font-size: 24px;
   }
 }
 
-.head {
+.bar__title {
+  flex: none;
+  margin: 0;
+  font-family: var(--mr-font-display);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 32px;
+  white-space: nowrap;
+}
+
+.bar__status {
   display: flex;
-  flex-direction: column;
-  gap: var(--mr-space-4);
-  margin-top: var(--mr-space-2);
-
-  // The master's link and buttons sit on the right of the title, from
-  // 1024px up (E5-04); stacked under it below that (E5-06).
-  &--master {
-    @media (min-width: 1024px) {
-      flex-direction: row;
-      align-items: flex-end;
-      justify-content: space-between;
-      gap: var(--mr-space-6);
-    }
-  }
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+  white-space: nowrap;
 }
 
-.head__title {
+.bar__actions {
   display: flex;
   flex: 1 1 auto;
-  flex-direction: column;
-  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--mr-space-2);
 }
 
-.head__row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--mr-space-3);
-}
-
-.head__names {
-  flex: 1 1 auto;
-  min-width: 0;
-
-  .mr-page-lead {
-    margin: 6px 0 0;
-  }
-}
-
-.head__dice {
+.bar__button {
+  --mat-button-outlined-container-height: 44px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
   flex: none;
   white-space: nowrap;
 }
 
-.head__status {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--mr-space-2) 10px;
-  margin: var(--mr-space-3) 0 0;
-  font-size: 14px;
-  line-height: 19px;
-  color: var(--mr-ink-muted);
-}
-
-.head__offline {
-  margin-top: var(--mr-space-3);
+.bar__offline,
+.bar__error {
+  margin-top: var(--mr-space-2);
 
   // As wide as its sentence, not a band across the page.
   @media (min-width: 768px) {
     align-self: flex-start;
+    width: fit-content;
   }
 }
 
-.head__error {
-  margin-top: var(--mr-space-4);
-}
-
-// A column on a phone (E5-06); from a tablet, the field on its own line and
-// the two buttons side by side; from 1024px, all in one row (E5-04).
-.actions {
+// Under the bar, in place: the question, then the two buttons; Cancelar is the first of them and has the focus.
+.bar__confirm {
   display: flex;
-  flex-direction: column;
-  gap: var(--mr-space-3);
-
-  @media (min-width: 768px) {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: flex-end;
-  }
-
-  // One row that never wraps; only the in-place confirmation takes a line
-  // of its own. The title's column gives way, not the buttons.
-  @media (min-width: 1024px) {
-    flex: 0 0 auto;
-    flex-wrap: nowrap;
-    justify-content: flex-end;
-
-    &--confirming {
-      flex-wrap: wrap;
-    }
-  }
-}
-
-.actions__link {
-  display: flex;
-  flex-direction: column;
-  gap: var(--mr-space-1);
-  min-width: 0;
-
-  @media (min-width: 768px) {
-    flex-basis: 100%;
-  }
-
-  @media (min-width: 1024px) {
-    flex: 0 0 300px;
-  }
-}
-
-.actions__button {
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.actions__field {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2) var(--mr-space-3);
   box-sizing: border-box;
-  width: 100%;
+  margin-top: var(--mr-space-2);
+  padding: var(--mr-space-3) var(--mr-space-4);
+  border: 1px solid var(--mr-danger-ink);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+
+  > .mat-icon {
+    flex: none;
+    color: var(--mr-danger-ink);
+  }
+}
+
+.bar__ask {
+  flex: 1 1 14rem;
+  margin: 0;
+  font-weight: 700;
+}
+
+.bar__danger {
+  --mat-button-outlined-label-text-color: var(--mr-danger-ink);
+  --mat-button-outlined-outline-color: var(--mr-danger-ink);
+}
+
+// The link in a field, only when the clipboard refused it: selected, to copy by hand.
+.bar__link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2) var(--mr-space-3);
+  margin-top: var(--mr-space-2);
+}
+
+.bar__field {
+  box-sizing: border-box;
+  flex: 1 1 16rem;
   height: 44px;
   padding: 0 var(--mr-space-3);
   border: 1px solid var(--mr-control-line);
@@ -152,48 +141,57 @@
   text-overflow: ellipsis;
 }
 
-.actions__divider {
-  display: none;
+// A phone: the arrow alone, no "desde", the menu is an icon, and the master's "Dados" too (the player's keeps its word).
+@media (max-width: 767.98px) {
+  .bar {
+    gap: var(--mr-space-2);
+  }
 
-  @media (min-width: 1024px) {
-    display: block;
-    width: 1px;
-    height: 32px;
-    margin: 0 var(--mr-space-1) 6px;
-    background: var(--mr-line);
+  .bar__back {
+    padding-inline-end: 8px;
+    border-inline-end: 0;
+  }
+
+  .bar__camp,
+  .bar__since,
+  .bar__chevron,
+  .bar__menu .bar__label {
+    display: none;
+  }
+
+  .bar__title {
+    font-size: 22px;
+    line-height: 28px;
+  }
+
+  .bar__menu {
+    --mat-button-outlined-container-shape: var(--mr-radius-sm);
+    min-width: 44px;
+    padding-inline: 0;
+  }
+
+  .bar--master .js-dice .bar__label {
+    display: none;
+  }
+
+  .bar--master .js-dice {
+    min-width: 44px;
+    padding-inline: 0;
   }
 }
 
-// Rare and final: stroked, with an ink label.
-.actions__end {
-  --mat-button-outlined-label-text-color: var(--mr-ink);
-}
-
-// The in-place confirmation (docs/design/README.md), the confirm button in the
-// danger ink, stroked: the screen keeps its one fill for "Salvar ajuste".
-.confirm {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--mr-space-2) var(--mr-space-3);
-
-  @media (min-width: 1024px) {
-    justify-content: flex-end;
-    max-width: 22rem;
+// The narrowest phones: the live word goes to the app bar's link, "Dados" is an icon for everyone.
+@media (max-width: 359.98px) {
+  .bar__status {
+    display: none;
   }
-}
 
-.confirm__text {
-  flex-basis: 100%;
-  margin: 0;
-  font-size: 15px;
-
-  @media (min-width: 1024px) {
-    text-align: right;
+  .js-dice .bar__label {
+    display: none;
   }
-}
 
-.confirm__button {
-  --mat-button-outlined-label-text-color: var(--mr-danger-ink);
-  --mat-button-outlined-outline-color: var(--mr-danger-ink);
+  .js-dice {
+    min-width: 44px;
+    padding-inline: 0;
+  }
 }

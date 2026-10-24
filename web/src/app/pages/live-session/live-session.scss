@@ -38,13 +38,20 @@
 }
 
 @media (max-width: 767.98px) {
+  // The pinned nav's height (see `SessionTabs`): the page keeps this much room under its content, the full-screen
+  // chat ends above it and the player's turn bar sits right above it.
+  :host {
+    --mr-session-nav: calc(64px + env(safe-area-inset-bottom));
+    padding-bottom: var(--mr-session-nav);
+  }
+
   .split__chat--away {
     display: none;
   }
 
   .split__chat--full {
     position: fixed;
-    inset: 0;
+    inset: 0 0 var(--mr-session-nav);
     z-index: 900;
     margin: 0;
     background: var(--mr-surface);
@@ -56,11 +63,6 @@
 
   .split__news {
     margin-bottom: var(--mr-space-3);
-  }
-
-  .split__tabs {
-    display: block;
-    margin-top: var(--mr-space-6);
   }
 }
 
@@ -239,7 +241,7 @@
   min-height: 44px;
 }
 
-// The combat takes the board's place (MR-013); the launch strip sits above
+// The combat takes the board's place (MR-013); the launch notice (a map that could not be read) sits above
 // the board, with the same step under the header.
 .combat,
 .launch,

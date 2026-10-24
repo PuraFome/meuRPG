@@ -97,6 +97,7 @@ import { FreeDiceClient } from '../../core/free-dice/free-dice-client';
 import { FakeFreeDiceClient, freeRoll } from '../../core/free-dice/free-dice-testing';
 import { RollAnimator } from '../../shared/roll-overlay/roll-animator';
 import { CALLING_NOTICE_MS, LiveSession } from './live-session';
+import { openSessionMenu, sessionMenuItem } from './session-header/session-header-testing';
 import { mageArmorClassOf } from './live-session-loader';
 import {
   CampaignInfoVm,
@@ -373,7 +374,7 @@ describe('LiveSession', () => {
     expect(el.querySelector('h1')?.textContent).toContain('Sessão 4');
     expect(el.textContent).toContain('Mirathel');
     expect(el.textContent).toContain('Ao vivo');
-    expect(el.textContent).toContain('Em andamento desde 30/09 às 20:05');
+    expect(el.textContent).toContain('desde 30/09 às 20:05');
     expect(el.querySelector('.hp__current')?.textContent).toBe('17');
     expect(el.textContent).toContain('de 23');
     expect(el.querySelector('.shield__number')?.textContent).toBe('14');
@@ -707,18 +708,19 @@ describe('LiveSession', () => {
       shownImage: null,
       shownImageKeep: false,
     };
-    const el = await render();
-    expect(el.textContent).toContain('Em andamento desde 30/09 às 20:05');
+    const fixture = TestBed.createComponent(LiveSession);
+    const el = await settle(fixture);
+    expect(el.textContent).toContain('desde 30/09 às 20:05');
     expect(el.querySelector('[aria-label="Ajustar Pensantus"]')).not.toBeNull();
     expect(el.querySelector('[aria-label="Ajustar Brisa"]')).not.toBeNull();
     expect(el.textContent).toContain('Ladina 3, de Ana');
     expect(el.textContent).toContain('+5 temporários');
     expect(el.textContent).toContain('Abaixo da metade');
-    expect(el.querySelector<HTMLInputElement>('#session-link')?.value).toBe(
-      `${location.origin}/campaigns/mirathel/session`,
-    );
-    expect(el.textContent).toContain('Copiar link da sessão');
-    expect(el.textContent).toContain('Encerrar sessão');
+    // The link and the end are in the "Sessão" menu.
+    openSessionMenu(el);
+    await settle(fixture);
+    expect(sessionMenuItem('Copiar link da sessão')).toBeDefined();
+    expect(sessionMenuItem('Encerrar sessão')).toBeDefined();
   });
 
   describe("the master's rests (PM-07b 9)", () => {
@@ -960,7 +962,9 @@ describe('LiveSession', () => {
     );
     const fixture = TestBed.createComponent(LiveSession);
     const el = await settle(fixture);
-    button(el, 'Encerrar sessão').click();
+    openSessionMenu(el);
+    await settle(fixture);
+    sessionMenuItem('Encerrar sessão')!.click();
     await settle(fixture);
     button(el, 'Confirmar encerramento').click();
     await settle(fixture);
@@ -983,7 +987,9 @@ describe('LiveSession', () => {
     const fixture = TestBed.createComponent(LiveSession);
     const el = await settle(fixture);
 
-    button(el, 'Encerrar sessão').click();
+    openSessionMenu(el);
+    await settle(fixture);
+    sessionMenuItem('Encerrar sessão')!.click();
     await settle(fixture);
     expect(source.endSession).not.toHaveBeenCalled();
     button(el, 'Confirmar encerramento').click();
@@ -2516,7 +2522,7 @@ describe('LiveSession', () => {
     it('leaves the blocked page when the stream fails for good with a refusal', async () => {
       source.failWith = new KindError('forbidden');
       const el = await render();
-      expect(textOf(el)).toContain('Voltar para a campanha');
+      expect(el.querySelector('a[aria-label^="Voltar para a campanha"]')).not.toBeNull();
       expect(textOf(el)).not.toContain('Ao vivo');
     });
 

@@ -13,32 +13,32 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { RouterLink } from '@angular/router';
 
+import { PHONE_QUERY, mediaQuery } from '../../../shared/map-view/media-query';
 import { LivePill } from '../../../shared/live-pill/live-pill';
 import { COPIED_FOR_MS, copyText, sessionLink } from '../../../shared/session-link/session-link';
-import { formatClock, sessionSince } from '../../../shared/session-time/session-time';
+import { formatClock, sessionSinceShort } from '../../../shared/session-time/session-time';
 import { LiveSessionSource, LiveSessionVm } from '../../../core/play/live-session.types';
 import { StreamStatus } from '../../../core/play/live-stream';
 
 type EndState = 'idle' | 'confirming' | 'saving' | 'error';
 
 /**
- * The session page's title block (README-A): "← Voltar para a campanha",
- * "Sessão 4", the campaign's name, and the status line: the "Ao vivo" pill
- * with "Em andamento desde 20:05" (the day too, "30/09 às 20:05", when it
- * started on another day), for the master and the players alike. While the stream is down it turns into "Reconectando… Última
- * atualização às 21:14." (E5-08), with no spinner, so nothing moves.
+ * The session bar of every live screen, master and player: one row of 56 px with the back link to the campaign (its name
+ * on a computer, the arrow alone on a phone), "Sessão 4", the "Ao vivo" pill with "desde 20:05" (the day too, "desde 30/09 às 20:05",
+ * when it started on another day) and "Dados" (MR-052: normal, "Rolando…" while a roll is on its way, off while the stream
+ * reconnects). While the stream is down the status turns into the notice "Reconectando… Última atualização às 21:14."
+ * (E5-08) under the bar, with no spinner, so nothing moves.
  *
- * The "Dados" button (MR-052) sits at the right of the title for everyone: normal, "Rolando…" while a roll is on its way,
- * and off while the stream reconnects, with "Não dá para rolar sem conexão." in the status line.
- *
- * The master also gets the session link in a read-only field, "Copiar link
- * da sessão" (RN-07) and "Encerrar sessão", which confirms in place.
+ * The master also gets "Iniciar combate" outside a combat (the page opens the dialog; on a phone it is the menu's first item) and
+ * the "Sessão" menu with "Copiar link da sessão" (RN-07) and "Encerrar sessão", which asks in place under the bar with
+ * "Cancelar" focused.
  */
 @Component({
   selector: 'app-session-header',
-  imports: [LivePill, MatButtonModule, MatIconModule, RouterLink],
+  imports: [LivePill, MatButtonModule, MatIconModule, MatMenuModule, RouterLink],
   templateUrl: './session-header.html',
   styleUrl: './session-header.scss',
 })
@@ -46,6 +46,7 @@ export class SessionHeader implements OnDestroy {
   private readonly source = inject(LiveSessionSource);
   private readonly injector = inject(Injector);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  protected readonly phone = mediaQuery(PHONE_QUERY);
 
   readonly campaignId = input.required<string>();
   readonly campaignName = input.required<string>();
@@ -55,13 +56,19 @@ export class SessionHeader implements OnDestroy {
   readonly lastUpdate = input<Date | null>(null);
   /** A free roll is on its way (MR-052): the "Dados" button waits. */
   readonly rolling = input(false);
+  /** A combat is on: the master's "Iniciar combate" is not offered. */
+  readonly inCombat = input(false);
+  /** The current map is still being read (or could not be): "Iniciar combate" waits for it. */
+  readonly startOff = input(false);
 
   /** The master ended the session from here. */
   readonly ended = output<void>();
   /** "Dados": the person wants the free dice roller. */
   readonly openDice = output<void>();
+  /** "Iniciar combate": the master wants the dialog that starts a combat. */
+  readonly startCombat = output<void>();
 
-  protected readonly since = computed(() => sessionSince(this.session().startedAt));
+  protected readonly since = computed(() => sessionSinceShort(this.session().startedAt));
   protected readonly link = computed(() => sessionLink(this.campaignId()));
   protected readonly reconnecting = computed(() => {
     const status = this.connection();
@@ -75,6 +82,8 @@ export class SessionHeader implements OnDestroy {
   });
 
   protected readonly copied = signal(false);
+  /** The clipboard refused: the link is shown in a field, selected, to copy by hand. */
+  protected readonly linkShown = signal(false);
   protected readonly endState = signal<EndState>('idle');
 
   private readonly field = viewChild<ElementRef<HTMLInputElement>>('linkField');
@@ -99,9 +108,15 @@ export class SessionHeader implements OnDestroy {
       }, COPIED_FOR_MS);
       return;
     }
-    const field = this.field()?.nativeElement;
-    field?.focus();
-    field?.select();
+    this.linkShown.set(true);
+    afterNextRender(
+      () => {
+        const field = this.field()?.nativeElement;
+        field?.focus();
+        field?.select();
+      },
+      { injector: this.injector },
+    );
   }
 
   protected openDiceNow(): void {
@@ -112,7 +127,7 @@ export class SessionHeader implements OnDestroy {
 
   protected askToEnd(): void {
     this.endState.set('confirming');
-    this.focusAfterRender('.js-confirm-end');
+    this.focusAfterRender('.js-cancel-end');
   }
 
   protected cancelEnd(): void {
@@ -121,7 +136,7 @@ export class SessionHeader implements OnDestroy {
       return;
     }
     this.endState.set('idle');
-    this.focusAfterRender('.js-end');
+    this.focusAfterRender('.bar__menu');
   }
 
   protected async endSession(): Promise<void> {

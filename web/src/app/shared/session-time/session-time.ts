@@ -19,11 +19,16 @@ export function formatClock(date: Date): string {
  * shared decision 8): the line under "Sessão 5" for the master and the
  * players alike. */
 export function sessionSince(startedAt: Date, now: Date = new Date()): string {
+  return `Em andamento ${sessionSinceShort(startedAt, now)}`;
+}
+
+/** "desde 20:05" (the session bar, beside its "Ao vivo" pill), with the day when it started on another one. */
+export function sessionSinceShort(startedAt: Date, now: Date = new Date()): string {
   const today =
     startedAt.getFullYear() === now.getFullYear() &&
     startedAt.getMonth() === now.getMonth() &&
     startedAt.getDate() === now.getDate();
-  return `Em andamento desde ${today ? formatClock(startedAt) : formatDayAt(startedAt)}`;
+  return `desde ${today ? formatClock(startedAt) : formatDayAt(startedAt)}`;
 }
 
 const NBSP = ' ';
