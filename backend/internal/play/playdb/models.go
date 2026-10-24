@@ -453,6 +453,8 @@ type PuzzleHintTry struct {
 	Counted        int32
 	RollMode       string
 	LuckyIndex     *int32
+	BonusSides     *int32
+	BonusFace      *int32
 }
 
 type PuzzleMove struct {

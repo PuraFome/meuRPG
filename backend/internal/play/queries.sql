@@ -1011,9 +1011,10 @@ WHERE run_id = $1 AND seq > $2 AND wrong AND user_id IS NOT NULL
 GROUP BY user_id;
 
 -- name: InsertPuzzleHintTry :one
--- lucky_index is the d20 the halfling's Lucky rolled again (NULL when none was).
-INSERT INTO puzzle_hint_tries (run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at, d20_b, counted, roll_mode, lucky_index)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+-- lucky_index is the d20 the halfling's Lucky rolled again (NULL when none was); bonus_sides and
+-- bonus_face the Bardic Inspiration die the player added (NULL when none was).
+INSERT INTO puzzle_hint_tries (run_id, user_id, character_id, idempotency_key, hint_index, passed, granted_count, d20, modifier, total, physical, created_at, d20_b, counted, roll_mode, lucky_index, bonus_sides, bonus_face)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
 RETURNING *;
 
 -- name: GetPuzzleHintTryByKey :one
