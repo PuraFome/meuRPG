@@ -8,18 +8,17 @@ import {
   inject,
   input,
   output,
+  model,
   signal,
   untracked,
   viewChild,
 } from '@angular/core';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
-import { NgTemplateOutlet } from '@angular/common';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 
-import { actionSubtitle, actionTitle } from '../../../../core/maps/scene-actions';
 import { type CluePlayer, clueCount } from '../../../../core/maps/scene-clues';
 import type { MapState } from '../../../../core/maps/map-state';
 import { joinDots, tieShortWords } from '../../../../core/format/text';
@@ -27,14 +26,13 @@ import { SceneClient } from '../../../../core/play/scene-client';
 import { sceneErrorMessage } from '../../../../core/play/scene-errors';
 import type { ShownImageVm } from '../../../../core/play/live-session.types';
 import type { SceneState } from '../../../../core/play/scene-state';
-import { actionCount, masterAttempts, rollCount } from '../../../../core/play/scene-view';
-import { Fold } from '../../../../shared/fold/fold';
+import { actionCount, rollCount } from '../../../../core/play/scene-view';
 import { formatClock } from '../../../../shared/session-time/session-time';
 import { PHONE_QUERY, mediaQuery } from '../../../../shared/map-view/media-query';
 import { SceneClues } from '../scene-clues/scene-clues';
 import { SceneImagesShow } from '../scene-images/scene-images';
 import { SceneHooks } from '../scene-hooks/scene-hooks';
-import { SceneRollLine } from '../scene-roll-line/scene-roll-line';
+import { SceneActions } from '../scene-actions/scene-actions';
 import { StageMaster } from '../stage-master/stage-master';
 import { openScenePicker } from '../scene-picker/scene-picker';
 
@@ -59,14 +57,12 @@ import { openScenePicker } from '../scene-picker/scene-picker';
 @Component({
   selector: 'app-scene-open',
   imports: [
-    Fold,
     MatButtonModule,
-    NgTemplateOutlet,
     MatIconModule,
+    SceneActions,
     SceneClues,
     SceneHooks,
     SceneImagesShow,
-    SceneRollLine,
     StageMaster,
   ],
   templateUrl: './scene-open.html',
@@ -86,20 +82,16 @@ export class SceneOpen {
   /** The image on the players' screens now, and the "Deixar com os jogadores" switch: the scene's images show through the gallery's own action. */
   readonly shown = input<ShownImageVm | null>(null);
   readonly keep = input(false);
+  /** The scene's tab is the one on screen (the master's board opens it after the scene is open): the title takes focus then, not before. */
+  readonly visible = input(true);
   readonly shownChange = output<ShownImageVm | null>();
   readonly leftChanged = output<void>();
+  /** "Teste em grupo" was pressed: the group check's form is open under the actions (the page owns it). */
+  readonly groupAsk = model(false);
 
   protected readonly phone = mediaQuery(PHONE_QUERY);
-  protected readonly actionsOpen = signal(true);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
-  protected readonly title = actionTitle;
-  protected readonly subtitle = actionSubtitle;
-  protected readonly attempts = masterAttempts;
-  /** Who sees the DC, as the top of "Ações" says it (the switch of the point, RN-20). */
-  protected readonly dcNote = computed(() =>
-    this.scene()?.showDc ? 'Os jogadores veem a CD' : 'Só você vê a CD',
-  );
 
   private readonly heading = viewChild<ElementRef<HTMLElement>>('heading');
 
@@ -111,11 +103,6 @@ export class SceneOpen {
     return at
       ? `Aberta para os jogadores desde ${formatClock(timestampDate(at))}`
       : 'Aberta para os jogadores';
-  });
-  /** The phone's line under "Rolagens": how many, and the order (E7-05). */
-  protected readonly rollsHint = computed(() => {
-    const n = this.scene()?.rolls.length ?? 0;
-    return joinDots([n === 0 ? 'Nenhuma rolagem' : rollCount(n), 'a mais nova em cima']);
   });
   protected readonly meta = computed(() => {
     const scene = this.scene();
@@ -137,7 +124,8 @@ export class SceneOpen {
   constructor() {
     // The title takes focus once, after the master's own open or swap.
     effect(() => {
-      if (this.state().focusNext() === 'title' && this.heading()) {
+      // The title takes focus when it can be seen: the master's board may still be on another tab when the scene opens.
+      if (this.state().focusNext() === 'title' && this.visible() && this.heading()) {
         const state = untracked(() => this.state());
         afterNextRender(
           () => {

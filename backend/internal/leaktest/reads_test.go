@@ -224,6 +224,12 @@ var reads = []read{
 		},
 	},
 	{
+		procedure: charactersv1connect.CharacterServiceGetCharacterProcedure, label: "an NPC hidden on the stage", allow: masterOnlyRead, why: "the master hid it from the players: they read no stage NPC as a character, and this one not even through GetOpenScene",
+		req: func(w *world) proto.Message {
+			return &charactersv1.GetCharacterRequest{CampaignId: w.campaign, CharacterId: w.hiddenStageNPC.GetId()}
+		},
+	},
+	{
 		procedure: charactersv1connect.CharacterServiceGetCharacterProcedure, label: "an NPC put on the stage by the stream test", allow: masterOnlyRead, why: "a player reads a stage NPC through GetOpenScene, never as a character",
 		req: func(w *world) proto.Message {
 			return &charactersv1.GetCharacterRequest{CampaignId: w.campaign, CharacterId: w.stage2.GetId()}

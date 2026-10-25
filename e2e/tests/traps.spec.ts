@@ -1,10 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { endOpenSessionRPC, openSessionPage } from './live-session-support';
+import { endOpenSessionRPC, openSessionPage, showMapTool } from './live-session-support';
 import { callRPC, newSignedInContext } from './support';
 import { dalila, dalilaSheet, toren } from './combat-support';
 import { sessionRoute, squareBp, tableForFog } from './fog-support';
 import { movePensantus, pensantusFirst, pointNames, sq20, thirdPlayer, trapRPC, trapTable, treasureRPC } from './trap-support';
+import { openCombatPanel } from './combat-layout';
 
 // Traps and treasure in the session, on screen (Etapa 9, slice 9.14, MR-035, MR-041, RN-10, RN-02,
 // question 71). The table, the traps and the combat come through the API; what is under test is what
@@ -23,7 +24,8 @@ test(
     const third = await thirdPlayer(browser, t, toren);
     try {
       await trapRPC(m, table, 'Fosso escondido', 12, 7, { noticeDc: 30 });
-      await openSessionPage(m, campaignId);
+      await openSessionPage(m, campaignId, 'mapa');
+      await showMapTool(m, 'Armadilhas');
       await openSessionPage(third.page, campaignId);
       expect(await pointNames(p, table)).not.toContain('Fosso escondido');
       expect(await pointNames(third.page, table)).not.toContain('Fosso escondido');
@@ -116,6 +118,7 @@ test(
       await expect(card).toContainText('3 de concussão');
       await card.getByRole('button', { name: 'Aplicar 3 de dano' }).click();
       await expect(card).toBeHidden();
+      await openCombatPanel(m, 'Registro');
       await expect(m.getByText('A armadilha Fosso escondido foi disparada').first()).toBeVisible();
     } finally {
       await done();
@@ -132,7 +135,8 @@ test(
     try {
       await trapRPC(m, table, 'Fosso escondido', 12, 7, { manual: true, damage: '4' });
       await trapRPC(m, table, 'Fosso raso', 14, 7, { manual: true, damage: '5' });
-      await openSessionPage(m, campaignId);
+      await openSessionPage(m, campaignId, 'mapa');
+      await showMapTool(m, 'Armadilhas');
       const fire = async (name: string) => {
         const card = trapPanel(m).getByRole('article', { name });
         if (await card.getByRole('button', { name: 'Ver detalhes' }).count()) {
@@ -188,7 +192,8 @@ test(
         await new Promise((r) => setTimeout(r, 3_000));
         await route.continue();
       });
-      await openSessionPage(m, campaignId);
+      await openSessionPage(m, campaignId, 'mapa');
+      await showMapTool(m, 'Armadilhas');
       const card = trapPanel(m).getByRole('article', { name: 'Fosso escondido' });
       if (await card.getByRole('button', { name: 'Ver detalhes' }).count()) {
         await card.getByRole('button', { name: 'Ver detalhes' }).click();
@@ -270,7 +275,8 @@ test(
     const third = await thirdPlayer(browser, t, toren);
     try {
       await treasureRPC(m, table, 'Baú de moedas', 12, 7);
-      await openSessionPage(m, campaignId);
+      await openSessionPage(m, campaignId, 'mapa');
+      await showMapTool(m, 'Tesouro');
       await openSessionPage(p, campaignId);
       expect(await pointNames(p, table)).not.toContain('Baú de moedas');
 

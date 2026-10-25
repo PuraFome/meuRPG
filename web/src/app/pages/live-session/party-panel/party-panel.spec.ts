@@ -86,7 +86,7 @@ describe('PartyPanel under Ajuda (PM-03a)', () => {
 });
 
 describe('PartyPanel: Chamar a atenção', () => {
-  it('has the master call each character by name, and calls with that character', () => {
+  it("has the master call each character by name from the row's menu, and calls with that character", async () => {
     TestBed.configureTestingModule({}).overrideComponent(PartyPanel, {
       remove: { imports: [SessionXp] },
       add: { imports: [SessionXpStub] },
@@ -100,12 +100,17 @@ describe('PartyPanel: Chamar a atenção', () => {
     ]);
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
-    const buttons = el.querySelectorAll<HTMLButtonElement>('app-nudge-button button');
-    expect([...buttons].map((b) => b.getAttribute('aria-label'))).toEqual([
-      'Chamar a atenção de Pensantus',
-      'Chamar a atenção de Brisa',
+    const menus = el.querySelectorAll<HTMLButtonElement>('.member__more');
+    expect([...menus].map((b) => b.getAttribute('aria-label'))).toEqual([
+      'Mais ações de Pensantus',
+      'Mais ações de Brisa',
     ]);
-    buttons[1].click();
+    menus[1].click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const item = document.querySelector<HTMLButtonElement>('.js-nudge')!;
+    expect(item.getAttribute('aria-label')).toBe('Chamar a atenção de Brisa');
+    item.click();
     expect(call).toHaveBeenCalledWith('camp', 'b');
   });
 });

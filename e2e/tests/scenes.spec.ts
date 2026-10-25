@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { endOpenSessionRPC, openSessionPage, openSheetTab } from './live-session-support';
+import { endOpenSessionRPC, openRolls, openSessionPage, openSheetTab, showMapTool } from './live-session-support';
 import { addActionRPC, rollTyped, sceneActionIdsRPC, setAttemptsRPC, tableForScenes } from './scene-support';
 import { orla, orlaSheet } from './rests-support';
 import { callRPC, newSignedInContext } from './support';
@@ -154,14 +154,14 @@ test(
       await expect(scene.getByRole('button', { name: 'Rolar Percepção' })).toBeVisible();
 
       // The master sees both, newest first, with the formula and Passou / Não passou.
-      const rolls = master.getByRole('heading', { name: 'Rolagens' }).locator('xpath=ancestor::section[1]');
-      await expect(rolls.getByRole('listitem')).toHaveCount(2);
-      const newest = rolls.getByRole('listitem').nth(0);
+      const rolls = await openRolls(master);
+      await expect(rolls).toHaveCount(2);
+      const newest = rolls.filter({ hasText: 'Resistir ao cheiro de fumaça' });
       await expect(newest).toContainText('Pensantus');
       await expect(newest).toContainText('Resistir ao cheiro de fumaça · dado físico');
       await expect(newest).toContainText('3 + 3 = 6');
       await expect(newest).toContainText('Não passou · CD 10');
-      const oldest = rolls.getByRole('listitem').nth(1);
+      const oldest = rolls.filter({ hasText: 'Procurar pistas na carroça' });
       await expect(oldest).toContainText('Procurar pistas na carroça');
       await expect(oldest).toContainText(/1d20 \(\d+\) \+ 6 = \d+/);
       await expect(oldest).toContainText(/(Passou|Não passou)\s·\sCD\s12/);
@@ -223,7 +223,7 @@ test(
       await expect(player.getByText('O mestre abriu uma cena: A carroça tombada.')).toBeAttached();
       await expect(scene.getByRole('button', { name: /^Rolar / })).toHaveCount(5);
       await expect(scene.getByText('Rolada')).toHaveCount(0);
-      await expect(master.getByText('Ninguém rolou ainda.')).toBeVisible();
+      await expect(master.locator('app-scene-actions .chip')).toHaveCount(0);
     } finally {
       if (campaignId) {
         await endOpenSessionRPC(master, campaignId);
@@ -295,10 +295,10 @@ test(
       await master.goto('/');
       const table = await tableForScenes(master, player, `Cena pelo ponto ${Date.now()}`);
       campaignId = table.campaignId;
-      await openSessionPage(master, campaignId);
+      await openSessionPage(master, campaignId, 'mapa');
       await openSessionPage(player, campaignId);
 
-      // The list of points: every scene opens, even the one with no actions (question 63).
+      // The list of points ("Pontos" under the map): every scene opens, even the one with no actions (question 63).
       const points = master.getByRole('list', { name: 'Pontos do mapa' });
       await expect(points.getByText('Sem ações')).toHaveCount(0);
       await expect(points.getByRole('button', { name: 'Abrir cena Vau do riacho' })).toBeVisible();
@@ -306,13 +306,15 @@ test(
       await expect(master.getByRole('heading', { name: 'Cena: A carroça tombada' })).toBeFocused();
       await expect(player.getByRole('region', { name: 'Cena: A carroça tombada' })).toBeVisible();
 
-      // The point that is open says so; the other offers to swap.
+      // The point that is open says so; the other offers to swap. Opening a scene took the board to "Cena": the points are under "Mapa".
+      await showMapTool(master, 'Pontos');
       await expect(points.getByText('Cena aberta agora')).toHaveCount(1);
       await points.getByRole('button', { name: 'Trocar para a cena Posto da guarda' }).click();
       await expect(master.getByRole('heading', { name: 'Cena: Posto da guarda' })).toBeFocused();
       await expect(player.getByRole('region', { name: 'Cena: Posto da guarda' })).toBeVisible();
       await expect(player.getByRole('region', { name: 'Cena: A carroça tombada' })).toHaveCount(0);
       // The hidden point opened this way is still hidden on the player's map.
+      await showMapTool(master, 'Pontos');
       await expect(points.getByText('Escondido').first()).toBeVisible();
     } finally {
       if (campaignId) {
@@ -367,7 +369,7 @@ test(
       await openSessionPage(master, campaignId);
       await openScene(master, 'A carroça tombada');
       await expect(master.getByText('Os jogadores veem a CD')).toBeVisible();
-      await expect(master.getByText('3 tentativas por jogador')).toBeVisible();
+      await expect(master.getByText('3 tentativas', { exact: true })).toBeVisible();
 
       // The player sees the DC and the attempts before rolling.
       await openSessionPage(player, campaignId);
@@ -401,13 +403,13 @@ test(
       await expect(clues.getByRole('button')).toHaveCount(0);
 
       // The master reads which attempt each roll was, and "Dar mais uma tentativa" is only on the last, failed, one.
-      const rolls = master.getByRole('heading', { name: 'Rolagens' }).locator('xpath=ancestor::section[1]');
-      await expect(rolls.getByRole('listitem')).toHaveCount(3);
-      await expect(rolls.getByRole('listitem').nth(0)).toContainText('Tentativa 3 de 3');
-      await expect(rolls.getByRole('listitem').nth(2)).toContainText('Tentativa 1 de 3');
+      const rolls = await openRolls(master);
+      await expect(rolls).toHaveCount(3);
+      await expect(rolls.nth(0)).toContainText('Tentativa 3 de 3');
+      await expect(rolls.nth(2)).toContainText('Tentativa 1 de 3');
       const grant = master.getByRole('button', { name: 'Dar mais uma tentativa a Pensantus em Procurar pistas na carroça' });
       await expect(grant).toHaveCount(1);
-      await expect(rolls.getByRole('listitem').nth(0).getByRole('button')).toHaveCount(1);
+      await expect(rolls.nth(0).getByRole('button')).toHaveCount(1);
 
       // It asks in place first: "Voltar" is focused and goes back with no change.
       await grant.click();
@@ -422,7 +424,7 @@ test(
       await grant.click();
       await master.getByRole('alertdialog').getByRole('button', { name: 'Dar mais uma tentativa' }).click();
       await expect(master.getByRole('status').filter({ hasText: /Mais uma tentativa dada a Pensantus às \d\d:\d\d\./ })).toBeVisible();
-      await expect(rolls.getByRole('listitem').nth(0)).toContainText('Tentativa 3 de 4');
+      await expect(rolls.nth(0)).toContainText('Tentativa 3 de 4');
       await expect(grant).toHaveCount(0);
 
       // The player has it back at once: the row, the button and the live region.
@@ -473,10 +475,10 @@ test(
       await expect(scene).not.toContainText(/\bCD\b|passou/i);
 
       // The master sees both results, and with the DC hidden any exhausted roll may be given another try.
-      const rolls = master.getByRole('heading', { name: 'Rolagens' }).locator('xpath=ancestor::section[1]');
-      await expect(rolls.getByRole('listitem')).toHaveCount(2);
-      await expect(rolls.getByRole('listitem').nth(0)).toContainText('Passou · CD 12');
-      await expect(rolls.getByRole('listitem').nth(0)).toContainText('Tentativa 2 de 2');
+      const rolls = await openRolls(master);
+      await expect(rolls).toHaveCount(2);
+      await expect(rolls.nth(0)).toContainText('Passou · CD 12');
+      await expect(rolls.nth(0)).toContainText('Tentativa 2 de 2');
       await expect(master.getByRole('button', { name: /^Dar mais uma tentativa a Pensantus/ })).toHaveCount(1);
     } finally {
       if (campaignId) {

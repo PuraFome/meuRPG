@@ -34,6 +34,17 @@ describe('TabList', () => {
     return { fixture, el, tabs, press };
   }
 
+  it('marks a list of more than three tabs, which drops the icons in a narrow room', () => {
+    const { fixture, el } = setup();
+    expect(el.querySelector('.tl--many')).toBeNull();
+    fixture.componentRef.setInput('tabs', [
+      ...TABS,
+      { id: 'a', label: 'Outras', icon: 'more_horiz', badge: '8' },
+    ]);
+    fixture.detectChanges();
+    expect(el.querySelector('.tl--many')).not.toBeNull();
+  });
+
   it('is a tab list with a name, one selected tab and one tab stop', () => {
     const { el, tabs } = setup();
     expect(el.querySelector('[role="tablist"]')?.getAttribute('aria-label')).toBe(

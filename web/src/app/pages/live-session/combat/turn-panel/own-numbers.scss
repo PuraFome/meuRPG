@@ -1,0 +1,28 @@
+:host {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  font-size: 14px;
+  line-height: 19px;
+  font-variant-numeric: lining-nums;
+}
+
+.num {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  .mat-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}

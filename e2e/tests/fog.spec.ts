@@ -2,8 +2,9 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
 
 import { getEncounterRPC } from './combat-support';
 import { beginFogCombat, moveTo, sessionRoute, tableForFog, visionOf, type FogOptions, type FogTable } from './fog-support';
-import { endOpenSessionRPC } from './live-session-support';
-import { callRPC, newSignedInContext } from './support';
+import { endOpenSessionRPC, showMapTool } from './live-session-support';
+import { callRPC, newSignedInContext, openActionTab } from './support';
+import { openCombatPanel } from './combat-layout';
 
 // The fog of war on screen (Etapa 9, MR-036, RN-10, RN-20; E9-03 and E9-04). The tests read the shading
 // (`data-shaded` and `data-seen` on the picture: how many squares of each state), the tokens the map draws
@@ -206,9 +207,10 @@ test('o mestre vê o mapa como o Toren vê, ao lado do mapa, e volta com "Todos"
     await loaded(mp);
     expect((await shading(mp)).unseen).toBe(0);
     expect(asked.some(wholeImage)).toBe(true);
-    // "Ver como" is next to the map, in the right column, not under everything.
+    // "Ver como" is in the tab "Névoa e luz" under the map, with the lights.
+    await showMapTool(mp, 'Névoa e luz');
     const list = mp.getByRole('radiogroup', { name: 'Ver como' });
-    await expect(mp.locator('.board__fog')).toContainText('Luz dos personagens');
+    await expect(mp.locator('#map-tool-panel-nevoa')).toContainText('Luz dos personagens');
     await expect(list.getByRole('radio')).toHaveCount(3);
     await expect(list.getByRole('radio', { name: /Todos/ })).toHaveAttribute('aria-checked', 'true');
     await expect(list.getByRole('radio', { name: /Pensantus/ })).toContainText(/\d+\s+quadrados vistos/);
@@ -246,6 +248,7 @@ test('o mestre vê o mapa como o Toren vê, ao lado do mapa, e volta com "Todos"
 test('"Ver como" um personagem que morreu volta para "Todos" e diz por quê @MR-036', async ({ browser }) => {
   await atTable(browser, {}, 'Ver como morto', async ({ table, mp }) => {
     await mp.goto(sessionRoute(table.campaignId));
+    await showMapTool(mp, 'Névoa e luz');
     const list = mp.getByRole('radiogroup', { name: 'Ver como' });
     await list.getByRole('radio', { name: /Toren/ }).click();
     await expect(mp.getByText('Você está vendo o mapa como Toren.', { exact: false })).toBeVisible();
@@ -323,18 +326,19 @@ test('no combate, o mapa tem a mesma névoa e os controles continuam; ver pelos 
 
     await ap.goto(sessionRoute(table.campaignId));
     await expect(ap.getByRole('heading', { name: /Sua vez, Pensantus/ })).toBeVisible();
-    // The combat map is the same fog: the tiles, the shading and the legend, with the names of the exploration's.
+    // The combat map is the same fog: the tiles and the shading (the player's map card has no legend of its own).
     await loaded(ap);
     expect((await shading(ap)).grey).toBeGreaterThan(0);
-    await expect(ap.locator('.mr-legend').getByText('No escuro, em cinza', { exact: true })).toBeVisible();
     await expect(ap.getByTestId('familiar-blind')).toHaveCount(0);
     // The light stays in reach during the combat, and so does the master's "Ver como".
     await expect(ap.getByRole('button', { name: /Luz que você carrega/ })).toBeVisible();
     await mp.goto(sessionRoute(table.campaignId));
+    await openCombatPanel(mp, 'Névoa e luz');
     await expect(mp.getByRole('radiogroup', { name: 'Ver como' })).toBeVisible();
     await expect(mp.getByRole('heading', { name: 'Luz dos personagens' })).toBeVisible();
 
-    // The action: "Ver pelos olhos do Nanquim", tagged Ação, with what it lasts.
+    // The action, in "Outras": "Ver pelos olhos do Nanquim", tagged Ação, with what it lasts.
+    await openActionTab(ap, 'Outras');
     const action = ap.locator('app-action-row', { hasText: 'Ver pelos olhos do Nanquim' });
     await expect(action).toContainText('Ação');
     await expect(action).toContainText('Dura até o começo da sua próxima vez, ou até você voltar.');

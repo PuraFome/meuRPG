@@ -478,6 +478,7 @@ func TestStageAuthorizationMatrix(t *testing.T) {
 	masterOnly := [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}
 	rows := []row{
 		{"PutOnStage", func(u *user) error { _, err := u.putOnStage(s.campaign, aldo.GetId()); return err }, masterOnly},
+		{"SetStageNpcHidden", func(u *user) error { _, err := u.setStageNpcHidden(s.campaign, aldo.GetId(), true); return err }, masterOnly},
 		{"TakeOffStage", func(u *user) error {
 			_, err := u.play.TakeOffStage(t.Context(), connect.NewRequest(&playv1.TakeOffStageRequest{CampaignId: s.campaign, CharacterId: aldo.GetId()}))
 			return err
@@ -491,7 +492,7 @@ func TestStageAuthorizationMatrix(t *testing.T) {
 	methods := playv1.File_meurpg_play_v1_play_proto.Services().ByName("PlayService").Methods()
 	for i := range methods.Len() {
 		name := string(methods.Get(i).Name())
-		if strings.HasSuffix(name, "Stage") || name == "SetSpeaker" {
+		if strings.Contains(name, "Stage") || name == "SetSpeaker" {
 			if !covered[name] {
 				t.Errorf("PlayService.%s is missing from the stage authorization matrix", name)
 			}

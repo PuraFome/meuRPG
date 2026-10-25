@@ -42,6 +42,8 @@ export class ViewAsList {
   readonly groupVision = input(false);
   /** A line about the chosen view ("Toren vê 22 quadrados e nenhum inimigo além do Goblin 2"). */
   readonly note = input('');
+  /** Inside a tab of the master's map: no frame of its own (the tab is the card). */
+  readonly flat = input(false);
 
   /** The master chose a row: a character's ID, or `null` for "Todos". */
   readonly choose = output<string | null>();

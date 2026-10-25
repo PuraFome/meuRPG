@@ -67,6 +67,10 @@ export class CombatLogPanel {
   readonly campaignId = input.required<string>();
   readonly state = input.required<CombatState>();
   readonly master = input(false);
+  /** A player's log as a fold under the map from 1024px (C6-07): the latest lines open in place, and "Ver o registro todo" opens the whole log. */
+  readonly fold = input(false);
+  /** The log is a tab under the map (the master's): the list is always drawn, on a phone too, and the fold and the sheet are not needed. */
+  readonly inTab = input(false);
   /** The table hides the death saves (RN-24) and this is not their owner's screen: the log says why a character's rolls are not in it. */
   readonly deathNote = input(false);
 
@@ -105,7 +109,9 @@ export class CombatLogPanel {
     return e ? `Desfazer ${undoLabel(e)}?` : '';
   });
   /** The list is drawn: always on a laptop, on a phone only the master's, open. */
-  protected readonly showList = computed(() => !this.phone() || (this.master() && this.open()));
+  protected readonly showList = computed(
+    () => !this.phone() || this.inTab() || (this.master() && this.open()),
+  );
 
   /** The player's tall sheet, with the whole log. */
   protected openSheet(): void {

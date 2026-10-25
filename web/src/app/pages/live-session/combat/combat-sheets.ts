@@ -18,10 +18,17 @@ import {
   opensOnMap,
 } from './cast-sheet/cast-sheet-data';
 import { ZoneMoveSheet, zoneMoveTitle, type ZoneMoveSheetData } from './zone-move/zone-move-sheet';
+import { spellKind } from '../../../core/combat/cast-flow';
+import type { CastPreset } from './target-mode/target-flow';
 import { openRevivifySheet } from './revivify-sheet/revivify-sheet';
 import { ActionSheets } from './action-sheets';
 import type { AttackOpen, CombatSheetsContext } from './combat-sheets-context';
 import { ReactionSheets } from './reaction-sheets';
+
+/** The player's own attack of a turn, which has a target to tap on the map: not a creature's, a reaction, a damage or a held roll's. */
+function aimsOnMap(req: AttackOpen): boolean {
+  return !req.who && !req.asReaction && !req.resume && !req.held && !req.thrown;
+}
 
 /**
  * Every sheet and dialog the combat screen opens for the player or the master. What each is handed is built by pure
@@ -76,6 +83,18 @@ export class CombatSheets {
     if (!data) {
       return;
     }
+    // The player's own attack on a turn: the target is tapped on the map first (C7-04); any other opens the sheet at once.
+    if (
+      aimsOnMap(req) &&
+      this.ctx.target?.()?.attack(data, (target) => this.openAttack(req, data, target))
+    ) {
+      return;
+    }
+    this.openAttack(req, data, null);
+  }
+
+  /** The attack sheet, at the roll when the target is already named. */
+  private openAttack(req: AttackOpen, data: AttackSheetData, target: string | null): void {
     trackOpen(
       this.attackOpen,
       openSheet<AttackSheet, AttackSheetData, boolean>(
@@ -83,7 +102,7 @@ export class CombatSheets {
         this.ctx.bottomSheet,
         AttackSheet,
         {
-          data,
+          data: target ? { ...data, target } : data,
           ariaLabel: attackAriaLabel(data.attack, req.asReaction ?? false, req.who),
           labelledBy: 'sheet-t',
         },
@@ -109,7 +128,23 @@ export class CombatSheets {
       this.revivify();
       return;
     }
-    this.castSheet(key);
+    if (!(await this.castOnMap(key))) {
+      this.castSheet(key);
+    }
+  }
+
+  /** The player's spell with creatures to aim at: they are tapped on the map first (C7-04). `false` when the sheet opens as it
+   * always did (the master, no map, an area, a spell on the caster). */
+  private async castOnMap(key: string): Promise<boolean> {
+    const flow = this.ctx.target?.();
+    const data = flow && !this.ctx.isMaster() ? this.castData(key) : null;
+    if (!flow || !data) {
+      return false;
+    }
+    const details = await this.ctx.catalog.details(this.ctx.campaignId(), key);
+    return flow.cast(data, spellKind(key, details ?? null), (preset) =>
+      this.castSheet(key, undefined, preset ?? undefined),
+    );
   }
 
   /** Revivificar has its own sheet (who died nearby, the diamonds, the result), not the target picker. */
@@ -131,14 +166,29 @@ export class CombatSheets {
 
   /** The cast sheet for a spell of the options, or a cantrip that asks for a saving throw; with `resume` it opens at the
    * damage the player never rolled. */
-  castSheet(key: string, resume?: readonly PendingDamage[]): void {
+  castSheet(key: string, resume?: readonly PendingDamage[], preset?: CastPreset): void {
+    const built = this.castData(key, resume);
+    if (!built) {
+      return;
+    }
+    const data: CastSheetData = preset ? { ...built, preset } : built;
+    openSheet<CastSheet, CastSheetData, boolean>(this.ctx.dialog, this.ctx.bottomSheet, CastSheet, {
+      data,
+      ariaLabel: castAriaLabel(data.name, !!resume),
+      labelledBy: 'sheet-t',
+      ...(opensOnMap(data) ? { focus: '[role="application"]' } : {}),
+    }).subscribe();
+  }
+
+  /** What the cast sheet is handed for a spell of the options, or `null` when the combat or the options are not there. */
+  private castData(key: string, resume?: readonly PendingDamage[]): CastSheetData | null {
     const e = this.ctx.encounter();
     const caster = this.ctx.own();
     const turn = this.ctx.options();
     if (!e || !caster || !turn?.options) {
-      return;
+      return null;
     }
-    const data: CastSheetData = castSheetData({
+    return castSheetData({
       key,
       campaignId: this.ctx.campaignId(),
       encounter: e,
@@ -152,12 +202,6 @@ export class CombatSheets {
       resume,
       map: this.castMap(),
     });
-    openSheet<CastSheet, CastSheetData, boolean>(this.ctx.dialog, this.ctx.bottomSheet, CastSheet, {
-      data,
-      ariaLabel: castAriaLabel(data.name, !!resume),
-      labelledBy: 'sheet-t',
-      ...(opensOnMap(data) ? { focus: '[role="application"]' } : {}),
-    }).subscribe();
   }
 
   /** The battle map an area spell is placed on: the picture, the grid, the layers and, for a player, what the fog lets them

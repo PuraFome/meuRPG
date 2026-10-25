@@ -1,0 +1,81 @@
+:host {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  padding: 6px 8px 6px 12px;
+  border-top: 1px solid var(--mr-line);
+}
+
+.row__icon {
+  flex: none;
+  color: var(--mr-ink);
+}
+
+// With the bar under the line, the text column is taller than the line: the icon rises 4px so its middle is the middle of the capitals.
+:host:has(.row__bar) .row__icon {
+  margin: -3px 0 5px;
+}
+
+.row__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  font-size: 15px;
+  line-height: 19px;
+}
+
+// The line wraps to a second line in a narrow phone (320px) instead of being cut.
+.row__line {
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.row__bar {
+  display: block;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--mr-rule);
+}
+
+.row__fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--mr-ink);
+}
+
+.row__why {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 19px;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.row__btn {
+  --mat-button-outlined-container-height: 44px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  flex: none;
+  min-width: 104px;
+  font-weight: 700;
+}
+
+.row__btn--off {
+  --mat-button-outlined-label-text-color: var(--mr-ink-muted);
+  --mat-button-outlined-disabled-label-text-color: var(--mr-ink-muted);
+  --mat-button-outlined-disabled-outline-color: var(--mr-control-line);
+  border-style: dashed;
+  cursor: default;
+}

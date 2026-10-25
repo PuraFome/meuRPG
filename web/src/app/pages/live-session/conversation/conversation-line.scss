@@ -112,6 +112,17 @@ app-listen-button {
 }
 
 // The reader's own line: to the right, tinted.
+:host(.line--own-portrait) {
+  position: relative;
+  padding-inline-end: 48px;
+
+  .line__portrait--own {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+  }
+}
+
 :host(.line--own) {
   align-items: flex-end;
 

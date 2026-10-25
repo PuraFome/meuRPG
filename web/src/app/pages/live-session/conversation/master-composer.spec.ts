@@ -77,6 +77,15 @@ describe('MasterComposer', () => {
     expect(getComputedStyle(trigger).position).toBe('static');
   });
 
+  it('outlines "Enviar" while a combat runs, so "Próximo turno" is the one filled button', () => {
+    const { el, fixture } = setup();
+    const send = el.querySelector('.composer__send') as HTMLElement;
+    expect(send.classList).not.toContain('composer__send--quiet');
+    fixture.componentRef.setInput('combat', true);
+    fixture.detectChanges();
+    expect(send.classList).toContain('composer__send--quiet');
+  });
+
   it('starts as the narrator, to everyone', async () => {
     const { el, buttonWith, fixture } = setup();
     await settle(fixture);

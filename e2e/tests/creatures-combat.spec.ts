@@ -4,7 +4,8 @@ import { combatRPC, endTurnOf, getEncounterRPC, passTurnsTo, type Encounter } fr
 import { beginCreatureCombat, hitAndApply, sessionRoute, tableForCreatureCombat, tapCaveSquare, trapAt } from './creatures-combat-support';
 import { closeSheet } from './contests-support';
 import { endOpenSessionRPC } from './live-session-support';
-import { callRPC, newSignedInContext } from './support';
+import { callRPC, newSignedInContext, openActionTab } from './support';
+import { openOrderRow } from './combat-layout';
 
 // MR-037 (a player's creatures in combat and the druid's Wild Shape) and RN-20 (a creature's hit points go only
 // to its owner's player and the master; another player gets the state word). The setup goes through the API; the
@@ -54,9 +55,10 @@ test(
       await p.goto(sessionRoute(campaignId));
       await expect(p.getByRole('heading', { name: 'Sua vez, Sálvia' })).toBeVisible();
       // Alone, she has no tabs.
-      await expect(p.getByRole('tablist')).toHaveCount(0);
+      await expect(p.getByRole('tablist', { name: 'O que você joga' })).toHaveCount(0);
 
       // The sheet: the slot, how many and which, what losing the concentration does, and one d20 for the group.
+      await openActionTab(p, 'Magias');
       await p.getByRole('button', { name: 'Conjurar Conjurar Animais' }).click();
       // The dialog's name is its title, which changes to "Lobos atrozes conjurados" with the result.
     const sheet = p.getByRole('dialog');
@@ -159,9 +161,11 @@ test(
       // The master's order: the wolves in a box named for them, and Sálvia's concentration with its question.
       await m.goto(sessionRoute(campaignId));
       const order = m.getByRole('region', { name: 'Ordem de iniciativa' });
+      // A row opens in place: the concentration, the form and the beast's pool are in the opened row.
+      await openOrderRow(m, 'Sálvia');
       await expect(order.getByText('Lobos atrozes da Sálvia ·')).toBeVisible();
       await expect(order.getByText('CA 14 · da Sálvia')).toHaveCount(2);
-      await expect(order.getByText('Concentra em Conjurar Animais · 2 Lobos atrozes')).toBeVisible();
+      await expect(order.getByText('Concentração: Conjurar Animais · 2 Lobos atrozes')).toBeVisible();
       await order.getByRole('button', { name: 'Perdeu a concentração' }).click();
       const question = order.getByRole('alertdialog', { name: 'A Sálvia perdeu a concentração?' });
       await expect(question.getByRole('button', { name: 'Voltar' })).toBeFocused();
@@ -173,7 +177,7 @@ test(
       // Her phone says so and stays until touched; the tabs are gone.
       const lost = p.getByTestId('concentration-lost');
       await expect(lost).toContainText('Você perdeu a concentração em Conjurar Animais. Os 2 Lobos atrozes sumiram.');
-      await expect(p.getByRole('tablist')).toHaveCount(0);
+      await expect(p.getByRole('tablist', { name: 'O que você joga' })).toHaveCount(0);
       await lost.getByRole('button', { name: 'Entendi' }).click();
       await expect(lost).toHaveCount(0);
     } finally {
@@ -195,7 +199,8 @@ test(
       await p.goto(sessionRoute(campaignId));
       await expect(p.getByRole('heading', { name: 'Sua vez, Sálvia' })).toBeVisible();
 
-      // The line of the Ação: its uses and what it costs.
+      // The line of the Ação, in the class's tab (Druida): its uses and what it costs.
+      await openActionTab(p, 'Druida');
       const row = p.locator('app-action-row', { hasText: 'Forma Selvagem' });
       await expect(row).toContainText('Vire uma fera · restam 2 de 2 usos · volta no descanso curto ou longo');
       await row.getByRole('button', { name: 'Transformar: Forma Selvagem' }).click();
@@ -217,8 +222,11 @@ test(
       await expect(p.locator('app-wild-pools')).toContainText('PV do Lobo');
       await expect(p.locator('app-wild-pools')).toContainText('11 de 11');
       await expect(p.locator('app-wild-pools')).toContainText('PV da Sálvia');
+      await openActionTab(p, 'Magias');
       await expect(p.getByText('Sem magias na forma de fera. Volte à forma normal para conjurar.')).toBeVisible();
       await expect(p.getByRole('button', { name: /Conjurar/ })).toHaveCount(0);
+      // The Forma Selvagem line is gone from the class's tab, which is "Habilidades" now: the way back is there.
+      await openActionTab(p, 'Habilidades');
       await expect(p.getByRole('button', { name: 'Voltar à forma normal' })).toBeVisible();
       await expect(p.getByText('Traços do Lobo')).toBeVisible();
 
@@ -232,8 +240,9 @@ test(
       }
       await expect(t.getByText(/PV do Lobo|11 de 11/)).toHaveCount(0);
       await m.goto(sessionRoute(campaignId));
+      await openOrderRow(m, 'Sálvia');
       await expect(m.getByRole('region', { name: 'Ordem de iniciativa' }).getByText('Na forma de Lobo').first()).toBeVisible();
-      await expect(m.getByRole('region', { name: 'Ordem de iniciativa' }).locator('.row__hp', { hasText: '11 de 11' })).toBeVisible();
+      await expect(m.getByRole('region', { name: 'Ordem de iniciativa' }).locator('app-beast-pool', { hasText: '11 de 11' })).toBeVisible();
 
       // Damage past the beast's hit points: the master applies it; the beast falls, 19 carry over, and she is told.
       await hitAndApply(m, campaignId, 'Goblin 1', 'Sálvia', 30);
@@ -251,13 +260,15 @@ test(
       await endTurnOf(p, m, campaignId, 'Sálvia');
       await passTurnsTo(m, campaignId, 'Sálvia');
       await expect(p.getByRole('heading', { name: 'Sua vez, Sálvia' })).toBeVisible();
+      await openActionTab(p, 'Druida');
       await p.getByRole('button', { name: 'Transformar: Forma Selvagem' }).click();
       const again = p.getByRole('dialog', { name: 'Forma Selvagem' });
       await again.getByLabel('Buscar fera').fill('wolf');
       await again.locator('label', { hasText: '(Wolf)' }).click();
       await again.getByRole('button', { name: 'Virar Lobo' }).click();
       await expect(p.getByText('Na forma de Lobo').first()).toBeVisible();
-      await p.getByRole('button', { name: 'Voltar à forma normal' }).first().click();
+      await openActionTab(p, 'Habilidades');
+      await p.getByRole('button', { name: 'Voltar à forma normal' }).click();
       await expect(p.getByText('Na forma de Lobo')).toHaveCount(0);
       await expect(p.getByTestId('form-ended')).toHaveCount(0);
     } finally {

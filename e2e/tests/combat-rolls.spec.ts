@@ -4,7 +4,7 @@ import { combatRPC, getEncounterRPC, passTurnsTo, tableForCombat, waitTurnLeaves
 import { grog, pipo, rollsTable, vex } from './combat-rolls-support';
 import { endOpenSessionRPC, openSessionPage } from './live-session-support';
 import { beginPlacedCombatRPC, orla, orlaSheet } from './rests-support';
-import { callRPC, newSignedInContext } from './support';
+import { callRPC, newSignedInContext, openActionTab, openCombatLog, viaTargetList } from './support';
 import { secondPlayer } from './theatre-support';
 
 // Advantage and disadvantage, the damage extras and the resistance steps on screen
@@ -27,6 +27,7 @@ test(
 
       await p.getByRole('button', { name: /^Atacar com Rapieira/ }).click();
       const sheet = p.getByRole('dialog', { name: /Atacar com Rapieira/ });
+      await viaTargetList(p, sheet);
       await sheet.locator('label', { hasText: 'Goblin 1' }).click();
       // The mode is the server's: advantage, with the reason in words.
       const modes = sheet.getByRole('radiogroup', { name: 'Como rolar o d20' });
@@ -53,7 +54,7 @@ test(
 
       // The log has the pair and the part.
       await sheet.getByRole('button', { name: /Voltar à sua vez/ }).click();
-      await p.getByRole('button', { name: 'Abrir o registro do combate' }).click();
+      await openCombatLog(p);
       await expect(p.getByRole('log', { name: 'Registro do combate' })).toContainText('Goblin 1');
     } finally {
       await done().catch(() => undefined);
@@ -68,6 +69,7 @@ test('a fúria do bárbaro corta o dano pela metade e o mestre vê o passo da re
     await openSessionPage(p, campaignId);
     await expect(p.getByRole('heading', { name: 'Sua vez, Grog' })).toBeVisible();
     // Grog is a Berserker: Fúria asks about the frenzy first (SRD 5.1, Frenzy); this rage is a plain one.
+    await openActionTab(p, 'Bárbaro');
     await p.getByRole('button', { name: /Fúria/ }).click();
     await p.getByRole('button', { name: 'Só fúria' }).click();
     await expect(p.getByText('Em fúria').first()).toBeVisible();
@@ -91,7 +93,7 @@ test('a fúria do bárbaro corta o dano pela metade e o mestre vê o passo da re
 
     // The goblin's blow lands on the raging barbarian: the master reads the step.
     await openSessionPage(m, campaignId);
-    const card = m.getByRole('region', { name: 'Ações do Goblin 1' });
+    const card = m.getByRole('region', { name: /^(Ações do|Vez do) Goblin 1$/ });
     await card.getByRole('button', { name: 'Digitar o resultado' }).click();
     await card.getByLabel(/Role 1d20/).fill('20');
     await card.getByRole('button', { name: 'Confirmar 20' }).click();
@@ -117,6 +119,7 @@ test(
       await expect(p.getByRole('heading', { name: 'Sua vez, Pipo' })).toBeVisible();
       await p.getByRole('button', { name: /^Atacar com Machado de batalha/ }).click();
       const sheet = p.getByRole('dialog', { name: /Atacar com Machado de batalha/ });
+      await viaTargetList(p, sheet);
       await sheet.locator('label', { hasText: 'Goblin 1' }).click();
       await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
       await sheet.getByLabel(/Role 1d20 para/).fill('1');
@@ -222,6 +225,7 @@ test(
 
       await p.getByRole('button', { name: /^Atacar com Machado de batalha/ }).click();
       const sheet = p.getByRole('dialog', { name: /Atacar com Machado de batalha/ });
+      await viaTargetList(p, sheet);
       await sheet.locator('label', { hasText: 'Capitão Goblin' }).click();
       await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
       await sheet.getByLabel(/Role 1d20 para/).fill('1');

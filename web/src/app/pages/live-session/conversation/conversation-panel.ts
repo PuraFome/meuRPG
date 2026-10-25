@@ -99,6 +99,8 @@ export class ConversationPanel {
   readonly ownCharacterName = input.required<string>();
   /** The character ids of the NPCs on the stage, for "Falar como". */
   readonly stageIds = input.required<ReadonlySet<string>>();
+  /** A combat is running: the master's "Enviar" is outlined. */
+  readonly combat = input(false);
   readonly sceneName = input('');
   readonly connection = input<StreamStatus>('live');
   /** The phone's full-screen view, with the back arrow. */

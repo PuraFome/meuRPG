@@ -1,6 +1,6 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 
-import { endOpenSessionRPC } from './live-session-support';
+import { endOpenSessionRPC, showMasterTab } from './live-session-support';
 import { generateSceneRPC, generateTextureRPC, liveSessionAsPlayer, mapRoute, referenceRPC, statusRPC, tableForImages, type ImagesTable } from './images-support';
 import { sessionRoute } from './fog-support';
 import { afterRender, callRPC, newSignedInContext } from './support';
@@ -292,6 +292,8 @@ test('na sessão: o seletor de "Mostrar imagem" marca o mapa inteiro e pergunta 
     const textureId = await generateTextureRPC(mp, table);
     await ap.goto(sessionRoute(table.campaignId));
     await mp.goto(sessionRoute(table.campaignId));
+    // With no scene open the board opens on "Mapa"; the shown image's panel is in "Cena".
+    await showMasterTab(mp, 'cena');
     await mp.getByRole('button', { name: 'Mostrar imagem' }).click();
     const picker = mp.getByRole('dialog', { name: 'Mostrar uma imagem aos jogadores' });
     // The picture of the whole map is tagged in the grid.

@@ -8,6 +8,7 @@ import {
   effect,
   inject,
   input,
+  output,
   signal,
   untracked,
 } from '@angular/core';
@@ -23,6 +24,7 @@ import {
   EffectEndScope,
 } from '../../../../gen/meurpg/play/v1/lasting_effects_pb';
 import { ActionKey } from '../../../core/connect/idempotency';
+import { joinDots } from '../../../core/format/text';
 import { focusWithRing } from '../../../core/creatures/focus-ring';
 import { EffectsClient } from '../../../core/effects/effects-client';
 import { effectsErrorMessage } from '../../../core/effects/effects-errors';
@@ -51,8 +53,8 @@ import {
 /** A card of the panel with what the template reads. */
 interface Card {
   readonly effect: CharacterEffect;
-  readonly see: string;
-  readonly tags: string;
+  /** "Restam 7 h 40 min · Os jogadores veem: o dono", and the tags and conditions after it. */
+  readonly line: string;
   readonly questionTitle: string;
 }
 
@@ -76,6 +78,8 @@ export class CharacterEffectsPanel {
   readonly party = input<readonly VitalsVm[]>([]);
   /** Goes up when something that may change the effects happened (a spell cast, a rest). */
   readonly tick = input(0);
+  /** The conditions the effects put on each character, for the party's rows ("Envenenada"). */
+  readonly conditions = output<ReadonlyMap<string, readonly string[]>>();
 
   private readonly api = inject(EffectsClient);
   private readonly dialog = inject(MatDialog);
@@ -109,19 +113,22 @@ export class CharacterEffectsPanel {
   protected readonly cards = computed<readonly Card[]>(() =>
     (this.effects() ?? []).map((effect) => ({
       effect,
-      see: !effect.playerVisible
-        ? 'Não'
-        : effect.audience === EffectAudience.OWNER
-          ? 'Sim: só o dono do alvo'
-          : 'Sim',
-      tags: [...effect.tagsPt, ...effect.conditionNamesPt].join(', '),
+      line: joinDots([
+        effect.durationTextPt,
+        !effect.playerVisible
+          ? 'Os jogadores não veem'
+          : effect.audience === EffectAudience.OWNER
+            ? 'Os jogadores veem: o dono'
+            : 'Os jogadores veem: todos',
+        ...effect.tagsPt,
+        ...effect.conditionNamesPt,
+      ]),
       questionTitle: `Encerrar ${effect.sourceNamePt} em ${effect.characterName}?`,
     })),
   );
-  protected readonly subtitle = computed(() => {
-    const n = this.cards().length;
-    return n === 1 ? '1 efeito' : `${n} efeitos`;
-  });
+  protected readonly countText = computed(() => String(this.cards().length));
+  /** "Outro tempo": the seconds field and its button, for a time the four buttons do not have. */
+  protected readonly custom = signal(false);
 
   protected readonly secondsNumber = computed(() => Number(this.seconds().trim() || NaN));
   protected readonly secondsIssues = computed(() =>
@@ -135,6 +142,19 @@ export class CharacterEffectsPanel {
     effect(() => {
       this.tick();
       untracked(() => void this.reload());
+    });
+    effect(() => {
+      const byCharacter = new Map<string, string[]>();
+      for (const e of this.effects() ?? []) {
+        for (const name of e.conditionNamesPt) {
+          const list = byCharacter.get(e.characterId) ?? [];
+          if (!list.includes(name)) {
+            list.push(name);
+          }
+          byCharacter.set(e.characterId, list);
+        }
+      }
+      this.conditions.emit(byCharacter);
     });
     // The page's own numbers are newer than what the master set a moment ago.
     effect(() => {
@@ -297,13 +317,10 @@ export class CharacterEffectsPanel {
     });
   }
 
-  protected pickPreset(seconds: number): void {
+  /** A button of "Passar o tempo": that much time went by. */
+  protected advanceBy(seconds: number): Promise<void> {
     this.seconds.set(String(seconds));
-    this.advanced.set('');
-  }
-
-  protected presetOn(seconds: number): boolean {
-    return this.secondsNumber() === seconds;
+    return this.advance();
   }
 
   /** "Passar o tempo": says how much time went by; the effects whose time ran out end. */

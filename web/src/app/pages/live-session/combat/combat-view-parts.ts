@@ -8,6 +8,9 @@ import { searchRoute } from '../../../core/traps/trap-search';
 import { acts } from '../../../core/combat/joint-turn';
 import { featureNote } from '../../../core/combat/combat-derived';
 import { CombatSheets } from './combat-sheets';
+import { pressedButton, revealMap } from './target-mode/reveal-map';
+import { TargetFlow } from './target-mode/target-flow';
+import { TargetMode } from './target-mode/target-mode';
 import { CombatOffers } from './combat-offers';
 import { MoveFlow } from './move-flow';
 import { ContestHost } from './contest-host';
@@ -54,7 +57,24 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
     layers: () => this.layers(),
     fogVision: () => this.fogVision(),
     spendClosed: () => this.moves.moveNote.set(''),
+    target: () => this.targeting,
   });
+  /** The player's choice of a target on the map for an attack, a spell or a grapple (C7-04, C7-05); the sheets open with it named. */
+  protected readonly targeting = new TargetFlow(
+    new TargetMode((run) => afterNextRender(run, { injector: this.injector })),
+    {
+      onMap: () =>
+        !this.isMaster() &&
+        this.myTurn() &&
+        !this.ownDown() &&
+        !this.creatureTab() &&
+        !this.theatre() &&
+        !!this.image(),
+      placed: (id) => !!this.encounter()?.combatants.find((c) => c.id === id)?.placed,
+      reveal: () => revealMap(this.host.nativeElement, this.injector, this.laptop()),
+      origin: () => pressedButton(this.host.nativeElement),
+    },
+  );
   protected readonly attackSheetOpen = this.sheets.attackOpen;
   protected readonly reactionOpen = this.sheets.reactions.reactionOpen;
   protected readonly reactionHandled = this.sheets.reactions.reactionHandled;
@@ -110,6 +130,7 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
     state: () => this.state(),
     diceMode: () => this.diceMode(),
     preference: () => this.dicePreference(),
+    target: () => this.targeting,
   });
   /** The master's questions about the rolls that wait for their roller (kept in step with the combat's, in its effects). */
   protected readonly held = new HeldQuestions({

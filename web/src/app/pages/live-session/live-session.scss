@@ -21,10 +21,20 @@
 
 .split__chat {
   margin-top: var(--mr-space-6);
+
+  // The tablet's conversation is a tab of the board: nothing is left in this column.
+  &:empty {
+    display: none;
+  }
 }
 
 @media (min-width: 1600px) {
-  .split {
+  // The master's running combat has the conversation in its own rail: the board takes the whole width.
+  .split--rail {
+    display: block;
+  }
+
+  .split:not(.split--rail) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(380px, 420px);
     gap: var(--mr-space-6);
@@ -260,118 +270,9 @@
   }
 }
 
-// The master's board, in the order a phone reads it (the party, the image
-// on show, the map with its points, the tokens); from 1024px the map takes
-// the left column and the three panels stack on the right (E5-04, E5-10).
-.board--master {
-  @media (min-width: 1024px) {
-    grid-template-columns: minmax(0, 1fr) 400px;
-    grid-template-areas:
-      'main fog'
-      'main image'
-      'main puzzles'
-      'main scene'
-      'main party'
-      'main rest'
-      'main effects'
-      'main casting'
-      'main tokens'
-      'traps traps';
-    grid-template-rows: auto auto auto auto auto auto auto auto auto;
-
-    .board__fog {
-      grid-area: fog;
-    }
-
-    .board__left {
-      grid-area: main;
-    }
-
-    .board__scene {
-      grid-area: scene;
-    }
-
-    .board__image {
-      grid-area: image;
-    }
-
-    .board__puzzles {
-      grid-area: puzzles;
-    }
-
-    .board__party {
-      grid-area: party;
-    }
-
-    .board__effects {
-      grid-area: effects;
-    }
-
-    .board__rest {
-      grid-area: rest;
-    }
-
-    .board__casting {
-      grid-area: casting;
-    }
-
-    .board__tokens {
-      grid-area: tokens;
-    }
-
-    .board__traps--row {
-      grid-area: traps;
-    }
-  }
-}
-
-// With a scene open, "Cena de RP" is gone from the right column (the open scene
-// is the first block of the map's column, E7-02), and its row with it.
-.board--scene-open {
-  @media (min-width: 1024px) {
-    grid-template-areas:
-      'main fog'
-      'main image'
-      'main puzzles'
-      'main party'
-      'main rest'
-      'main effects'
-      'main casting'
-      'main tokens'
-      'traps traps';
-    grid-template-rows: auto auto auto auto auto auto auto auto;
-  }
-}
-
 // A scene open on the player's page: the HP card's frame goes neutral (E7-03).
 .board--scene {
   --vitals-frame: var(--mr-control-line);
-}
-
-// The master's map column: the open scene (when there is one), then the map. On
-// a phone it dissolves into the board, and the open scene goes first (E7-05).
-.board__left {
-  display: contents;
-
-  @media (min-width: 1024px) {
-    display: flex;
-    flex-direction: column;
-    gap: var(--mr-space-4);
-  }
-}
-
-.board__open {
-  order: -1;
-}
-
-// The master's open puzzle comes first in the main column (above the open scene and the map).
-.board__live {
-  order: -3;
-  min-width: 0;
-}
-
-.board__scene {
-  order: -2;
 }
 
 // The player's left column: the image on show, then the map.
@@ -392,18 +293,7 @@
   }
 }
 
-.board__party,
-.board__rest,
-.board__effects,
-.board__casting,
-.board__puzzles,
-.board__fog,
-.board__image,
-.board__tokens,
 .board__main,
-.board__left,
-.board__scene,
-.board__open,
 .board__side {
   min-width: 0;
 }
@@ -476,5 +366,49 @@
 
   @media (max-width: 767.98px) {
     display: none;
+  }
+}
+
+// The master's board outside a combat (C3, C6-05, C6-06): the tab list, then the panels of the tabs, which stay mounted and hidden.
+.mb {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  margin-top: var(--mr-space-4);
+  min-width: 0;
+}
+
+.mb__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  min-width: 0;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.mb__tabs {
+  border-bottom: 1px solid var(--mr-rule);
+}
+
+.mb__map-fold {
+  display: block;
+}
+
+// From 1024px the master's Conversa is a rail (C3-01): the column is a sticky aside beside the board, as tall as the screen; the page
+// under 1024px keeps it under the board, and a phone has the pinned nav.
+@media (min-width: 1024px) {
+  .split.split--board {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(340px, 400px);
+    gap: var(--mr-space-6);
+    align-items: stretch;
+  }
+
+  .split--board .split__chat--rail {
+    position: static;
+    margin-top: var(--mr-space-4);
   }
 }

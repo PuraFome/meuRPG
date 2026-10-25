@@ -59,16 +59,21 @@ describe('viewLine: how a line looks to its reader', () => {
     expect(viewLine(msg, player, directory)).toMatchObject({ look: 'npc', label: 'Brisa' });
   });
 
-  it("the master's own NPC line keeps the NPC look and reads '<name> · você'", () => {
+  it("the master's own NPC line and narration read to the right, '<name> · você'", () => {
     const msg = line('1', {
       speakerKind: Kind.NPC,
       speakerName: 'Bartolo, o taverneiro',
       authorUserId: 'u-mestre',
     });
     expect(viewLine(msg, master, directory)).toMatchObject({
-      look: 'npc',
+      look: 'own',
       mine: true,
       label: 'Bartolo, o taverneiro · você',
+    });
+    const narration = line('2', { speakerKind: Kind.NARRATOR, authorUserId: 'u-mestre' });
+    expect(viewLine(narration, master, directory)).toMatchObject({
+      look: 'own',
+      label: 'Narração · você',
     });
   });
 

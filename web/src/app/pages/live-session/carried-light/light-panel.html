@@ -1,6 +1,6 @@
-<section class="mr-panel" aria-labelledby="light-panel-title">
-  <h2 class="mr-panel__title" id="light-panel-title">Luz dos personagens</h2>
-  <p class="lead">O que cada personagem carrega. O jogador também muda a própria luz; vale a última mudança.</p>
+<section [class.mr-panel]="!flat()" aria-labelledby="light-panel-title">
+  <h2 class="title" [class.mr-panel__title]="!flat()" id="light-panel-title"><mat-icon aria-hidden="true">lightbulb</mat-icon>Luz dos personagens</h2>
+  <p class="lead">O jogador também muda a própria luz; vale a última mudança.</p>
 
   @if (rows().length === 0) {
     <p class="mr-muted">Nenhum personagem de jogador está neste mapa.</p>
@@ -8,12 +8,19 @@
     <ul class="rows">
       @for (r of rows(); track r.token.characterId) {
         <li class="row">
-          <span class="row__who">
+          <span class="row__who" [class.row__who--flat]="flat()">
+            @if (flat()) {
+              <app-combatant-token [initial]="initial(r.token.name)" [size]="32" />
+            }
             <span class="row__name">{{ r.token.name }}</span>
-            <span class="row__sub">{{ r.sub }}</span>
+            @if (!flat()) {
+              <span class="row__sub">{{ r.sub }}</span>
+            }
           </span>
           <mat-form-field appearance="outline" class="row__select" subscriptSizing="dynamic">
-            <mat-label>Luz</mat-label>
+            @if (!flat()) {
+              <mat-label>Luz</mat-label>
+            }
             <select
               #select
               matNativeControl

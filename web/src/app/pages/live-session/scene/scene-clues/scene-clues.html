@@ -1,11 +1,11 @@
 <section class="sc" aria-labelledby="sc-title">
   <div class="sc__head">
-    <h3 class="sc__title" id="sc-title" tabindex="-1">Pistas</h3>
+    <h3 class="sc__title" id="sc-title" tabindex="-1"><mat-icon aria-hidden="true">key</mat-icon>Pistas</h3>
     <span class="sc__count">{{ count(rows().length) }}</span>
+    <p class="sc__hint">
+      {{ phone() ? 'Só quem você escolher recebe a pista.' : 'a pista vai para as anotações de quem a recebe' }}
+    </p>
   </div>
-  <p class="sc__hint">
-    {{ phone() ? 'Só quem você escolher recebe a pista.' : 'Só quem você escolher recebe a pista, e ela vai para as anotações da pessoa.' }}
-  </p>
 
   <div role="status" aria-live="polite">
     @if (confirmation(); as text) {
@@ -23,7 +23,7 @@
           <div class="sc__body">
             <p class="sc__text">{{ r.clue.text }}</p>
             <span class="sc__who" [class.sc__who--all]="r.audience.kind === 'all'" [class.sc__who--none]="r.audience.kind === 'none'">
-              <mat-icon aria-hidden="true">{{ icon(r.audience.kind) }}</mat-icon>{{ r.audience.kind === 'none' ? r.audience.label : r.line }}
+              <mat-icon aria-hidden="true">{{ icon(r.audience.kind) }}</mat-icon>{{ r.line }}
             </span>
           </div>
           @if (r.button; as label) {
@@ -32,7 +32,7 @@
               type="button"
               class="sc__reveal"
               [attr.data-reveal]="r.clue.id"
-              [attr.aria-label]="label === 'Revelar' ? 'Revelar a pista ' + r.n : 'Revelar a pista ' + r.n + ' aos outros'"
+              [attr.aria-label]="label === 'Revelar' ? 'Revelar a pista ' + r.n : 'Revelar a pista ' + r.n + ' a mais alguém'"
               (click)="reveal(r.clue, r.n)"
             >
               <mat-icon aria-hidden="true">visibility</mat-icon>{{ label }}

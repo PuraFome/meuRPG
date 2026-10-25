@@ -208,7 +208,7 @@ test('a exaustão: níveis de 0 a 6, "Baixar 1 nível" e a confirmação do nív
   }
 });
 
-test('a 390 px a tabela vira um cartão por efeito, com os botões em largura total e nada rola de lado', { tag: ['@W7-E', '@RN-22', '@RN-10'] }, async ({ browser }) => {
+test('a 390 px o efeito é uma linha compacta de "Mais", com os botões de 44 px e nada rola de lado', { tag: ['@W7-E', '@RN-22', '@RN-10'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   const t = await effectsTable(browser, 'Efeitos no celular', 390);
   try {
@@ -216,12 +216,11 @@ test('a 390 px a tabela vira um cartão por efeito, com os botões em largura to
     await expect(panel.locator('.fx__cols')).toBeHidden();
     const bless = effectRow(panel, 'Bênção');
     await expect(bless.locator('.fx__sub')).toContainText(/Em (Pensantus, Goblin 1|Goblin 1, Pensantus) · de Pensantus/);
-    await expect(bless.locator('.fx__who')).toBeHidden();
-    const card = await boxOf(bless);
+    // C7-02: one line per effect (its name, the targets, the end), no frame; "Encerrar" and the others stay 44 px tall.
+    await expect(bless.locator('.fx__who')).toBeVisible();
     for (const name of [/^Encerrar Bênção/, /^Mudar a duração de/]) {
       const box = await boxOf(bless.getByRole('button', { name }));
-      expect(box.height).toBeGreaterThanOrEqual(48);
-      expect(box.width).toBeGreaterThan(card.width - 40);
+      expect(box.height).toBeGreaterThanOrEqual(44);
     }
     const overflow = await t.m.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(0);
@@ -253,22 +252,21 @@ test('fora do combate: o painel lista os efeitos dos personagens, "Passar o temp
     campaignId = table.campaignId;
     await startSessionRPC(m, campaignId);
     await setExhaustionRPC(m, campaignId, table.characterId, 2, 0);
-    await openSessionPage(m, campaignId);
+    await openSessionPage(m, campaignId, 'grupo');
 
     const panel = m.getByRole('region', { name: 'Efeitos em jogo' });
     await expect(panel.getByText('Nenhum efeito nos personagens agora.')).toBeVisible();
 
-    // "Passar o tempo": the presets fill the seconds, nothing moves until the button, and the answer says what ended.
-    const time = m.getByRole('region', { name: 'Passar o tempo' });
-    await time.getByRole('button', { name: '10 minutos' }).click();
-    await expect(time.getByRole('button', { name: '10 minutos' })).toHaveAttribute('aria-pressed', 'true');
-    await expect(time.getByLabel('Segundos')).toHaveValue('600');
-    await expect(time).toContainText('Vai passar 10 minutos.');
-    await time.getByLabel('Segundos').fill('0');
-    await expect(time.getByRole('button', { name: 'Passar o tempo' })).toHaveAttribute('aria-disabled', 'true');
-    await time.getByLabel('Segundos').fill('600');
-    await time.getByRole('button', { name: 'Passar o tempo' }).click();
-    await expect(time).toContainText('Passou 10 minutos. Nenhum efeito acabou.');
+    // "Passar o tempo": the four buttons pass the time at once and the answer says what ended; "Outro tempo" takes any seconds.
+    const time = m.getByRole('group', { name: 'Passar o tempo' });
+    await time.getByRole('button', { name: 'Passar 10 minutos' }).click();
+    await expect(panel).toContainText('Passou 10 minutos. Nenhum efeito acabou.');
+    await time.getByRole('button', { name: 'Outro tempo' }).click();
+    await panel.getByLabel('Segundos').fill('0');
+    await expect(panel.getByRole('button', { name: 'Passar', exact: true })).toHaveAttribute('aria-disabled', 'true');
+    await panel.getByLabel('Segundos').fill('600');
+    await panel.getByRole('button', { name: 'Passar', exact: true }).click();
+    await expect(panel).toContainText('Passou 10 minutos. Nenhum efeito acabou.');
 
     // The long rest asks about food and drink, the switch is off, and one level of exhaustion comes off.
     const rest = m.getByRole('region', { name: 'Descanso' });
@@ -279,7 +277,7 @@ test('fora do combate: o painel lista os efeitos dos personagens, "Passar o temp
     await expect(question).toContainText('Com comida e bebida, o descanso longo baixa 1 nível de exaustão de cada personagem.');
     await question.getByRole('button', { name: 'Descansar' }).click();
     await expect(rest.getByText('Descanso longo feito.').first()).toBeVisible();
-    await openSessionPage(m, campaignId);
+    await openSessionPage(m, campaignId, 'grupo');
     await panel.getByRole('button', { name: 'Exaustão' }).click();
     let dialog = sheet(m, /^Exaustão/);
     await expect(dialog.getByRole('radio', { name: /^Nível 1/ })).toBeChecked();
@@ -291,7 +289,7 @@ test('fora do combate: o painel lista os efeitos dos personagens, "Passar o temp
     await expect(question.getByRole('switch', { name: 'Sem comida ou bebida' })).toHaveAttribute('aria-checked', 'true');
     await question.getByRole('button', { name: 'Descansar' }).click();
     await expect(rest.getByText('Descanso longo feito.').first()).toBeVisible();
-    await openSessionPage(m, campaignId);
+    await openSessionPage(m, campaignId, 'grupo');
     await panel.getByRole('button', { name: 'Exaustão' }).click();
     dialog = sheet(m, /^Exaustão/);
     await expect(dialog.getByRole('radio', { name: /^Nível 1/ })).toBeChecked();
@@ -315,11 +313,11 @@ test('fora do combate: "Dar efeito" põe um efeito do catálogo no personagem, c
     const table = await tableWithPensantus(m, p, `Dar efeito ${Date.now()}`);
     campaignId = table.campaignId;
     await startSessionRPC(m, campaignId);
-    await openSessionPage(m, campaignId);
+    await openSessionPage(m, campaignId, 'grupo');
 
     const panel = m.getByRole('region', { name: 'Efeitos em jogo' });
     await expect(panel.getByText('Nenhum efeito nos personagens agora.')).toBeVisible();
-    await panel.getByRole('button', { name: 'Dar efeito' }).click();
+    await panel.getByRole('button', { name: 'Adicionar efeito' }).click();
     const dialog = sheet(m, 'Dar um efeito');
     await expect(dialog.getByRole('heading', { name: 'Dar um efeito' })).toBeVisible();
     // Nobody ticked yet: nothing to give.
@@ -341,14 +339,12 @@ test('fora do combate: "Dar efeito" põe um efeito do catálogo no personagem, c
     await expect(dialog).toHaveCount(0);
 
     const card = panel.getByRole('listitem').filter({ hasText: 'Aprimorar Habilidade' });
-    await expect(card).toContainText('Em Pensantus');
+    await expect(card).toContainText('Pensantus');
     await expect(card).toContainText(/1 hora|3600|60 minutos/);
 
     // The time the master passes is taken off the effect.
-    const time = m.getByRole('region', { name: 'Passar o tempo' });
-    await time.getByRole('button', { name: '10 minutos' }).click();
-    await time.getByRole('button', { name: 'Passar o tempo' }).click();
-    await expect(time).toContainText('Passou 10 minutos. Nenhum efeito acabou.');
+    await m.getByRole('group', { name: 'Passar o tempo' }).getByRole('button', { name: 'Passar 10 minutos' }).click();
+    await expect(panel).toContainText('Passou 10 minutos. Nenhum efeito acabou.');
   } finally {
     await endOpenSessionRPC(m, campaignId);
     await master.close();

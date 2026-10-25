@@ -67,7 +67,7 @@ test(
       campaignId = table.campaignId;
 
       await openSessionPage(player, campaignId);
-      await openSessionPage(master, campaignId);
+      await openSessionPage(master, campaignId, 'grupo');
       const sheet = await openCastOf(player, 'Alarme');
       await pickChoice(sheet, 'Como ritual');
       await expect(sheet.getByText('1 minuto + 10 = 11 minutos')).toBeVisible();
@@ -82,7 +82,7 @@ test(
 
       // The master sees the queue and completes the cast; the player's panel follows on its own.
       const queue = master.locator('app-casting-panel');
-      await expect(queue.getByText('Conjurações em andamento')).toBeVisible();
+      await expect(queue.getByText(/conjura Alarme como ritual\./)).toBeVisible();
       await queue.getByRole('button', { name: 'Concluir conjuração' }).click();
       await expect(mine.getByText('Magias ativas')).toBeVisible();
       await expect(mine.getByText('dura 8 horas')).toBeVisible();

@@ -201,7 +201,7 @@ describe("CombatView, the master's screen without a map", () => {
     expect(el.querySelector('app-combat-map-card')).toBeNull();
     expect(plain(el.textContent)).not.toContain('Sem quadrado no mapa');
     expect(plain(el.textContent)).toContain('Cobertura dos alvos');
-    expect(plain(el.textContent)).toContain('Ações do Goblin');
+    expect(plain(el.textContent)).toContain('Vez do Goblin');
     expect(plain(el.querySelector('app-combat-bar')?.textContent)).toContain('Teatro da mente');
     expect(el.querySelector('app-order-list')).not.toBeNull();
   });
@@ -265,7 +265,7 @@ describe("CombatView, the master's screen without a map", () => {
   it('gives a player on turn the card with the movement he may spend, but no offer; and none for a fallen one', async () => {
     const { fixture, el } = setup({ master: true, current: 't' });
     await settle(fixture);
-    expect(plain(el.textContent)).toContain('Ações do Toren');
+    expect(plain(el.textContent)).toContain('Vez do Toren');
     expect(plain(el.textContent)).toContain('Gastar movimento');
     expect(plain(el.textContent)).not.toContain('Oferecer ataque de oportunidade');
     const down = setup({

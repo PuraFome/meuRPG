@@ -13,7 +13,8 @@
   gap: var(--mr-space-1);
   box-sizing: border-box;
   padding: var(--mr-space-2) var(--mr-space-2) calc(var(--mr-space-2) + env(safe-area-inset-bottom));
-  border-top: 1px solid var(--mr-line);
+  // A line drawn outside the box, so the bar is exactly `--mr-session-nav` high and the turn bar above it sits flush.
+  box-shadow: 0 -1px 0 var(--mr-line);
   background: var(--mr-surface);
 }
 
@@ -50,8 +51,8 @@
   }
 }
 
+// New messages: the word in bold and the badge; the tint is the open tab's alone (C6-01 shows one tab active).
 .tab--news {
-  background: var(--mr-accent-soft);
   color: var(--mr-ink);
   font-weight: 700;
 }
@@ -66,4 +67,11 @@
   color: var(--mr-on-accent);
   font-size: 12px;
   line-height: 20px;
+}
+
+// Amber: something waits for the master in "Grupo" (the count is in the button's name too).
+.tab__badge--wait {
+  border: 1px solid var(--mr-warning-line);
+  background: var(--mr-warning-surface);
+  color: var(--mr-warning-ink);
 }

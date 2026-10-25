@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { cardNumbers, diceTable, freeRollsRPC, openDice, rollUntilRefused, stepModifier } from './free-dice-support';
-import { endOpenSessionRPC, startSessionRPC } from './live-session-support';
+import { endOpenSessionRPC, openTableRolls, startSessionRPC } from './live-session-support';
 import { callRPC, newSignedInContext } from './support';
 
 // MR-052: the free dice roller. A member of the table opens "Dados" in the session's header, picks the dice and
@@ -21,6 +21,8 @@ test(
       // The suite runs with reduced motion, which keeps the dice overlay from playing (playwright.config.ts). This test is
       // about what the master sees on it, so his page asks for motion, and the overlay is closed again below.
       await m.emulateMedia({ reducedMotion: 'no-preference' });
+      // The overlay is a deferred part of the shell: it must be mounted before the roll arrives, or the dice have nowhere to tumble.
+      await expect(m.locator('app-roll-overlay')).toBeAttached({ timeout: 20_000 });
       const sheet = await openDice(p);
       await sheet.getByRole('button', { name: '2d6', exact: true }).click();
       await stepModifier(sheet, 0, 3);
@@ -38,18 +40,19 @@ test(
       await expect(sheet.getByRole('button', { name: 'Mudar dados' })).toBeVisible();
       await expect(sheet.getByRole('button', { name: 'Rolar 2d6 + 3 de novo' })).toBeVisible();
 
-      // The master reads the same roll in "Rolagens da mesa" and sees the dice on the overlay.
-      const row = m
-        .getByRole('region', { name: 'Rolagens da mesa' })
-        .getByRole('listitem')
-        .filter({ hasText: `2d6 + 3 = ${total} (${faces[0]}, ${faces[1]})` });
-      await expect(row).toHaveCount(1);
-      await expect(row).toContainText('Rolagem livre ·');
+      // The master sees the dice on the overlay first: it covers the page, and a tap anywhere closes it, so it is read and
+      // closed before the master opens anything.
       const overlay = m.locator('app-roll-overlay .result').filter({ hasText: 'Rolagem livre · 2d6 + 3' });
       await expect(overlay).toBeVisible({ timeout: 15_000 });
       await expect(overlay).toContainText(/rolou/);
       await m.locator('app-roll-overlay .scrim').click(); // "Toque para fechar"
       await expect(overlay).toBeHidden();
+      // Then the master reads the same roll in "Rolagens da mesa".
+      const row = (await openTableRolls(m))
+        .getByRole('listitem')
+        .filter({ hasText: `2d6 + 3 = ${total} (${faces[0]}, ${faces[1]})` });
+      await expect(row).toHaveCount(1);
+      await expect(row).toContainText('Rolagem livre ·');
     } finally {
       await done();
     }
@@ -82,15 +85,14 @@ test(
       await expect(sheet).toBeHidden();
 
       // The master reads both in the log, the secret one with its badge.
-      const masterLog = m.getByRole('region', { name: 'Rolagens da mesa' });
+      const masterLog = await openTableRolls(m);
       const secretRow = masterLog.getByRole('listitem').filter({ hasText: '1d20 + 7' });
       await expect(secretRow).toHaveCount(1);
       await expect(secretRow).toContainText('Só você');
 
       // The player reads the table's roll; only now does the absence of the other one mean anything.
-      const playerLog = p.getByRole('region', { name: 'Rolagens da mesa' });
       // The player's log is a fold at the end of the scene (C6-08), closed until opened.
-      await playerLog.getByRole('button', { name: 'Rolagens da mesa' }).click();
+      const playerLog = await openTableRolls(p);
       await expect(playerLog.getByRole('listitem').filter({ hasText: /: 1d6 = \d+ \(\d\)/ })).toHaveCount(1);
       await expect(playerLog.getByText('1d20 + 7')).toHaveCount(0);
       await expect(playerLog.getByText('Só você')).toHaveCount(0);
@@ -122,7 +124,7 @@ test('um toque duplo em "Rolar" rola uma vez só', { tag: ['@MR-052'] }, async (
     const sheet = await openDice(p);
     await sheet.getByRole('button', { name: 'Rolar 1d20', exact: true }).dblclick();
     await expect(sheet.locator('app-free-roll-card')).toBeVisible();
-    await expect(m.getByRole('region', { name: 'Rolagens da mesa' }).getByRole('listitem')).toHaveCount(1);
+    await expect((await openTableRolls(m)).getByRole('listitem')).toHaveCount(1);
     const own = await freeRollsRPC(p, campaignId);
     expect(own.mine).toHaveLength(1);
     expect(own.table).toHaveLength(1);

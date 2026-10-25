@@ -1,4 +1,7 @@
 {
   "point_id": "x",
-  "actions": 1
+  "actions": 1,
+  "players": [
+    "x"
+  ]
 }

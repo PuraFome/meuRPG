@@ -19,6 +19,7 @@ const DEFAULT_LEVEL = 3;
   host: {
     class: 'mr-panel mr-panel--fold',
     '[class.mr-panel--fold-row]': "appearance() === 'row'",
+    '[class.mr-panel--fold-flush]': "appearance() === 'flush'",
     '[class.mr-fold--muted]': 'muted()',
     '[attr.role]': "region() ? 'region' : null",
     '[attr.aria-label]': 'region() ? title() : null',
@@ -46,8 +47,8 @@ const DEFAULT_LEVEL = 3;
         <span class="mr-fold__note"><ng-content select="[foldNote]" /></span>
       }
     </div>
-    @if (open() || !foldable()) {
-      <div class="mr-fold__body" [id]="id + '-body'">
+    @if (keep() || open() || !foldable()) {
+      <div class="mr-fold__body" [id]="id + '-body'" [hidden]="foldable() && !open()">
         <ng-content />
       </div>
     }
@@ -60,14 +61,16 @@ export class Fold {
   /** The heading level of the header (the page's outline), 3 by default. */
   readonly level = input(DEFAULT_LEVEL);
   readonly foldable = input(true);
-  /** `section`: a titled block of the page (display type); `row`: a quieter group row (sans type, an icon at the left, a rule under the header when open). */
-  readonly appearance = input<'section' | 'row'>('section');
+  /** `section`: a titled block of the page (display type); `row`: a quieter group row (sans type, an icon at the left, a rule under the header when open); `flush`: a fold inside a card, framed by the card (a rule above it). */
+  readonly appearance = input<'section' | 'row' | 'flush'>('section');
   /** The row's icon, at the left of its words. */
   readonly icon = input('');
   /** The words in the muted ink: a group that is spent ("Ação bônus · Usada"). */
   readonly muted = input(false);
   /** The panel is a landmark named by its title (a section the person looks for by name). */
   readonly region = input(false);
+  /** The body stays mounted while folded (`hidden`): a panel that reads its own data, so the header can say a count. */
+  readonly keep = input(false);
   /** Open or folded; two-way, so the caller may open it (a notice that points into it). */
   readonly open = model(false);
 }

@@ -32,6 +32,8 @@ describe('CastingPanel (MR-048)', () => {
     fixture.componentRef.setInput('characterName', 'Ilaria');
     fixture.componentRef.setInput('diceMode', diceMode);
     const el = fixture.nativeElement as HTMLElement;
+    const waiting: number[] = [];
+    fixture.componentInstance.castsWaiting.subscribe((n) => waiting.push(n));
     const settle = async () => {
       for (let i = 0; i < 4; i++) {
         await fixture.whenStable();
@@ -49,7 +51,7 @@ describe('CastingPanel (MR-048)', () => {
       b!.click();
       await settle();
     };
-    return { el, api, fixture, settle, press };
+    return { el, api, fixture, settle, press, waiting };
   }
 
   const casting = outsideCast({
@@ -69,11 +71,15 @@ describe('CastingPanel (MR-048)', () => {
     expect(api.stopped).toEqual(['long']);
   });
 
+  it('tells the page how many casts wait, for the count on "Grupo"', async () => {
+    const { waiting } = await setup(true, (a) => (a.active = [casting]));
+    expect(waiting.at(-1)).toBe(1);
+  });
+
   it('the master completes the cast, with the dice in the app', async () => {
     const { el, api, press } = await setup(true, (a) => (a.active = [casting]));
-    expect(plain(el.textContent)).toContain('Conjurações em andamento');
     expect(plain(el.textContent)).toContain('Conjurar como NPC');
-    await press('Concluir conjuração');
+    await press('Concluir');
     expect(api.finished).toHaveLength(1);
     expect(api.finished[0]).toMatchObject({ castId: 'long', dice: { inApp: true } });
   });
@@ -88,8 +94,12 @@ describe('CastingPanel (MR-048)', () => {
       castingMinutes: 11,
     });
     const { el } = await setup(true, (a) => (a.active = [ritual]));
-    expect(plain(el.querySelector('.cast__name')?.textContent)).toBe('Alarme (ritual)');
-    expect(plain(el.querySelector('.cast__who')?.textContent)).toBe('Pensantus · 11 minutos');
+    expect(plain(el.querySelector('.wait__text b')?.textContent)).toBe(
+      'Pensantus conjura Alarme como ritual.',
+    );
+    expect(plain(el.querySelector('.wait__text')?.textContent)).toBe(
+      'Pensantus conjura Alarme como ritual. 11 minutos. Um ritual não gasta espaço de magia.',
+    );
     expect(plain(el.querySelector('[role="note"] p')?.textContent)).toBe(
       'Fora do combate não há relógio: a conjuração termina quando você confirma que o tempo passou.',
     );
@@ -139,7 +149,7 @@ describe('CastingPanel (MR-048)', () => {
     field.value = '9';
     field.dispatchEvent(new Event('input'));
     await settle();
-    await press('Concluir conjuração');
+    await press('Concluir');
     expect(api.finished[0].dice).toEqual({ typedSum: 9 });
   });
 

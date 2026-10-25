@@ -25,12 +25,13 @@ import { CombatantTags } from '../combatant-tags/combatant-tags';
 import { FormTag } from '../combatant-tags/form-tag';
 import { OrderGroup } from '../joint-turn/order-group';
 import { PartState } from '../joint-turn/part-state';
+import type { OwnHitPoints } from './own-numbers';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 
 /**
  * "Ordem" (E6-14): the order of the turns as a column on the left, from
  * 1280px, numbered, with each one's token, name and one word: an NPC's state
- * ("Ileso", "Ferido"), "Jogador" for another player, "Você" for the person's
+ * ("Ileso", "Ferido"), "Jogador" for another player, "Você · 23 de 23 PV" for the person's
  * own, "✕ Derrotado"; a character at 0 hit points reads "Caída". The one on turn has the "Vez" pill on an `accent-soft`
  * row. Below 1280px the same is the strip (`order-strip`).
  */
@@ -47,7 +48,7 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
   ],
   template: `
     <section class="panel" aria-labelledby="order-col-title">
-      <h2 class="panel__title" id="order-col-title">Ordem</h2>
+      <h2 class="panel__title" id="order-col-title"><mat-icon aria-hidden="true">format_list_numbered</mat-icon>Ordem</h2>
       <ol class="rows">
         @for (item of items(); track key(item)) {
           @if (item.kind === 'group') {
@@ -91,6 +92,8 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
 })
 export class OrderColumn {
   readonly encounter = input.required<Encounter>();
+  /** The player's hit points from its vitals, for "Você · 23 de 23 PV" when the combatant has none of its own (the server gives a player's character's numbers through its vitals). */
+  readonly hitPoints = input<OwnHitPoints | null>(null);
 
   protected initial(c: Combatant): string {
     return combatantInitial(c.label);
@@ -141,6 +144,13 @@ export class OrderColumn {
       : '';
   }
 
+  /** " · 23 de 23 PV": the combatant's own numbers, or the player's vitals when the server sent none with it; empty when neither is there. */
+  private ownNumbers(c: Combatant): string {
+    const now = c.hitPointsCurrent ?? this.hitPoints()?.current;
+    const max = c.hitPointsMax ?? this.hitPoints()?.max;
+    return now !== undefined && max !== undefined ? ` · ${now} de ${max} PV` : '';
+  }
+
   protected word(c: Combatant): string {
     if (c.defeated) {
       return isPlayer(c) ? stateWord(CombatantState.DEAD, c.label) : 'Derrotado';
@@ -148,7 +158,9 @@ export class OrderColumn {
     // A character at 0 hit points says so, even the person's own ("Você, caída").
     const down = isPlayer(c) && isDown(c) ? stateWord(c.state, c.label) : '';
     if (c.mine) {
-      return down ? `Você, ${down.toLowerCase()}` : 'Você';
+      // The person's own numbers are theirs to read: "Você · 23 de 23 PV" (C6-07); every other creature has a word, never a number (RN-20).
+      const own = this.ownNumbers(c);
+      return down ? `Você, ${down.toLowerCase()}${own}` : `Você${own}`;
     }
     const word = isPlayer(c) ? playerWord(c) : stateWord(c.state);
     if (isCreature(c)) {

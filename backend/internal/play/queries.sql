@@ -543,6 +543,77 @@ SET open_scene_point_id = sqlc.narg(open_scene_point_id)
 WHERE id = sqlc.arg(id)
 RETURNING *;
 
+-- name: SetOpenSceneEveryone :one
+-- Whether the open scene is open to the whole table (true) or to the players of
+-- game_session_scene_players only (MR-015, RN-10).
+UPDATE game_sessions
+SET open_scene_everyone = sqlc.arg(open_scene_everyone)
+WHERE id = sqlc.arg(id)
+RETURNING *;
+
+-- name: PlayerReadsScene :one
+-- Whether the player reads the scene open in the session: none is open, or it is
+-- open to everyone, or to them (RN-10). The stage of the scene follows.
+SELECT (gs.open_scene_point_id IS NULL OR gs.open_scene_everyone OR EXISTS (
+    SELECT 1 FROM game_session_scene_players AS p
+    WHERE p.game_session_id = gs.id AND p.user_id = sqlc.arg(user_id)::UUID
+))::BOOL AS reads
+FROM game_sessions AS gs
+WHERE gs.id = sqlc.arg(session_id);
+
+-- name: ListScenePlayers :many
+-- The players the open scene is open to, when it is not open to everyone, and whether each joined by themselves.
+SELECT user_id, joined_by_self FROM game_session_scene_players
+WHERE game_session_id = $1
+ORDER BY user_id;
+
+-- name: InsertScenePlayer :exec
+INSERT INTO game_session_scene_players (game_session_id, user_id, joined_by_self)
+VALUES ($1, $2, $3)
+ON CONFLICT (game_session_id, user_id) DO NOTHING;
+
+-- name: SetScenePlayersMayJoin :one
+UPDATE game_sessions SET scene_players_may_join = sqlc.arg(scene_players_may_join) WHERE id = sqlc.arg(id)
+RETURNING *;
+
+-- name: ClearScenePlayers :exec
+DELETE FROM game_session_scene_players WHERE game_session_id = $1;
+
+-- name: SetShownImageAudienceKind :exec
+-- The kind of the shown image's audience: 'table', 'scene' or 'chosen' (MR-028).
+UPDATE game_sessions SET shown_image_audience = sqlc.arg(shown_image_audience) WHERE id = sqlc.arg(id);
+
+-- name: ListImageViewers :many
+-- The players of a shown image whose audience is 'chosen'.
+SELECT user_id FROM game_session_image_viewers
+WHERE game_session_id = $1
+ORDER BY user_id;
+
+-- name: InsertImageViewer :exec
+INSERT INTO game_session_image_viewers (game_session_id, user_id)
+VALUES ($1, $2)
+ON CONFLICT (game_session_id, user_id) DO NOTHING;
+
+-- name: ClearImageViewers :exec
+DELETE FROM game_session_image_viewers WHERE game_session_id = $1;
+
+-- name: ShownImageSeenBy :one
+-- Whether the player sees the image the campaign's open session shows now: it is
+-- the shown image and the player is in its audience (RN-10). 'scene' is the
+-- players of the scene open to only some players. The image route asks it for a
+-- player on every request.
+SELECT EXISTS (
+    SELECT 1 FROM game_sessions AS gs
+    WHERE gs.campaign_id = sqlc.arg(campaign_id) AND gs.ended_at IS NULL AND gs.shown_image_id = sqlc.arg(image_id)::UUID
+      AND (
+          gs.shown_image_audience = 'table'
+          OR (gs.shown_image_audience = 'scene' AND EXISTS (
+              SELECT 1 FROM game_session_scene_players AS p WHERE p.game_session_id = gs.id AND p.user_id = sqlc.arg(user_id)::UUID))
+          OR (gs.shown_image_audience = 'chosen' AND EXISTS (
+              SELECT 1 FROM game_session_image_viewers AS v WHERE v.game_session_id = gs.id AND v.user_id = sqlc.arg(user_id)::UUID))
+      )
+)::BOOL AS seen;
+
 -- name: GetOpenSceneEvent :one
 -- The event that opened the scene now open: the session's latest scene_opened.
 -- Rolls after it belong to this opening; closing and opening again starts a new
@@ -588,19 +659,29 @@ SELECT * FROM stage_npcs
 WHERE game_session_id = $1
 ORDER BY position, id;
 
+-- name: ListShownStage :many
+-- The NPCs of the stage the players see, in the order they came in: a hidden NPC is the master's alone
+-- (RN-10). Everything a player, the casts and the portraits read of the stage goes through this one.
+SELECT * FROM stage_npcs
+WHERE game_session_id = $1 AND NOT hidden
+ORDER BY position, id;
+
 -- name: InsertStageNPC :one
--- An NPC comes in after the ones already there: the highest position plus one.
-INSERT INTO stage_npcs (game_session_id, character_id, position, created_at)
+-- An NPC comes in after the ones already there: the highest position plus one. It comes in hidden from
+-- the players when the master said so.
+INSERT INTO stage_npcs (game_session_id, character_id, position, hidden, created_at)
 VALUES (
     sqlc.arg(game_session_id), sqlc.arg(character_id),
     (SELECT COALESCE(max(position) + 1, 0)::INT4 FROM stage_npcs WHERE game_session_id = sqlc.arg(game_session_id)),
-    sqlc.arg(created_at)
+    sqlc.arg(hidden), sqlc.arg(created_at)
 )
 RETURNING *;
 
--- name: DeleteStageNPC :execrows
+-- name: DeleteStageNPC :one
+-- Takes the NPC off the stage and says whether the players saw it. No row: it was not there.
 DELETE FROM stage_npcs
-WHERE game_session_id = $1 AND character_id = $2;
+WHERE game_session_id = $1 AND character_id = $2
+RETURNING hidden;
 
 -- name: ClearStage :execrows
 -- The scene closed or changed: nobody is on the stage.
@@ -612,8 +693,14 @@ UPDATE stage_npcs SET speaking = false
 WHERE game_session_id = $1 AND speaking;
 
 -- name: SetStageSpeaker :execrows
-UPDATE stage_npcs SET speaking = true
+-- The NPC speaks, and a hidden one is shown by it: giving the floor is showing.
+UPDATE stage_npcs SET speaking = true, hidden = false
 WHERE game_session_id = $1 AND character_id = $2;
+
+-- name: SetStageNPCHidden :execrows
+-- Hides or shows the NPC to the players. A hidden NPC does not speak.
+UPDATE stage_npcs SET hidden = sqlc.arg(hidden), speaking = speaking AND NOT sqlc.arg(hidden)::BOOL
+WHERE game_session_id = sqlc.arg(game_session_id) AND character_id = sqlc.arg(character_id);
 
 -- name: ListEncounterCombatEvents :many
 -- The events that count in the combat highlights (MR-032), oldest first, with
@@ -648,15 +735,18 @@ WHERE game_session_id = $1 AND kind = 'scene_opened';
 -- name: TallySessionSceneChecks :many
 -- The checks rolled outside combat, per character: tried and passed, counting
 -- only a roll the players could see the DC of, on an action that had one
--- (RN-20). Done in SQL, so a session with any number of rolls costs one row
+-- (RN-20). A roll made in a scene open to only some players carries their
+-- accounts (payload audience) and counts for them and for the master only
+-- (RN-10). Done in SQL, so a session with any number of rolls costs one row
 -- per character.
 SELECT character_id,
        count(*)::INT8 AS tried,
        (count(*) FILTER (WHERE payload->>'passed' = 'true'))::INT8 AS passed
 FROM session_events
-WHERE game_session_id = $1 AND kind = 'scene_check_rolled'
+WHERE game_session_id = sqlc.arg(game_session_id) AND kind = 'scene_check_rolled'
   AND character_id IS NOT NULL
   AND payload->>'dc_shown' = 'true' AND payload ? 'passed'
+  AND (sqlc.arg(master)::BOOL OR NOT (payload ? 'audience') OR (payload->'audience') ? sqlc.arg(user_id)::TEXT)
 GROUP BY character_id;
 
 -- Progression (MR-016): what the XP awards read from the combats and the log.

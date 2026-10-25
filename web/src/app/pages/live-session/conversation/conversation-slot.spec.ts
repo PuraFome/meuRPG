@@ -3,14 +3,13 @@ import { signal } from '@angular/core';
 import { ConversationSlot } from './conversation-slot';
 
 describe('ConversationSlot', () => {
-  function setup(
-    over: { phone?: boolean; master?: boolean; ownId?: string; railed?: boolean } = {},
-  ) {
+  function setup(over: { phone?: boolean; master?: boolean; ownId?: string } = {}) {
     const live = signal(true);
     const phone = signal(over.phone ?? false);
     const pageVisible = signal(true);
     const stage = signal<readonly string[]>(['n1']);
     const unread = signal(0);
+    const railMode = signal(false);
     const slot = new ConversationSlot({
       live,
       phone,
@@ -21,9 +20,9 @@ describe('ConversationSlot', () => {
       userId: signal('u-p'),
       stageCharacterIds: stage,
       unread,
-      railed: signal(over.railed ?? false),
+      railMode,
     });
-    return { slot, live, phone, pageVisible, stage, unread };
+    return { slot, live, phone, pageVisible, stage, unread, railMode };
   }
 
   it('is on screen on the desktop while the session is live and the page is visible', () => {
@@ -34,6 +33,20 @@ describe('ConversationSlot', () => {
     pageVisible.set(true);
     live.set(false);
     expect(slot.onScreen()).toBe(false);
+  });
+
+  it("is on screen in the master's combat rail only while its Conversa tab is open", () => {
+    const { slot, railMode } = setup({ master: true });
+    railMode.set(true);
+    expect(slot.onScreen()).toBe(false);
+    expect(slot.shown()).toBe(false);
+    slot.railShown.set(true);
+    expect(slot.onScreen()).toBe(true);
+    expect(slot.shown()).toBe(true);
+    railMode.set(false);
+    slot.railShown.set(false);
+    expect(slot.onScreen()).toBe(true);
+    expect(slot.shown()).toBe(true);
   });
 
   it('is on screen on a phone only in the Conversa tab', () => {
@@ -86,15 +99,15 @@ describe('ConversationSlot', () => {
     expect(slot.sheetOpen()).toBe(false);
   });
 
-  it('counts the lines while the rail shows "Ficha", and not while it shows "Conversa"', () => {
-    const { slot } = setup({ railed: true });
+  it('counts the lines while the player\'s rail shows "Ficha", and not while it shows "Conversa"', () => {
+    const { slot, railMode } = setup();
+    railMode.set(true);
+    slot.railShown.set(slot.railTab() === 'chat');
     expect(slot.onScreen()).toBe(true);
-    expect(slot.shown()).toBe(true);
     slot.railTab.set('sheet');
+    slot.railShown.set(slot.railTab() === 'chat');
     expect(slot.onScreen()).toBe(false);
     expect(slot.shown()).toBe(false);
-    slot.railTab.set('chat');
-    expect(slot.onScreen()).toBe(true);
   });
 
   it('hands the stage as a set of character ids', () => {

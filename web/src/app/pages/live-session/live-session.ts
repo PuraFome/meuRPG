@@ -1,17 +1,21 @@
-import { Component, TemplateRef, computed, viewChild } from '@angular/core';
+import { Component, TemplateRef, computed, effect, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
-import type { Encounter } from '../../../gen/meurpg/play/v1/combat_pb';
+import { MapPointKind } from '../../../gen/meurpg/maps/v1/maps_pb';
+import { type Encounter, EncounterStatus } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { VitalsVm } from '../../core/play/live-session.types';
 import { applyVitals } from '../../core/play/vitals';
 import { setPageSubject } from '../../core/title/page-title';
 import { PHONE_QUERY, mediaQuery } from '../../shared/map-view/media-query';
-import type { TabItem } from '../../shared/tab-list/tab-list';
 import { CombatLaunch } from './combat/combat-launch';
 import { ConversationPanel } from './conversation/conversation-panel';
 import { ConversationSlot } from './conversation/conversation-slot';
 import { pageVisible } from './conversation/page-visible';
+import type { SessionTab } from './conversation/session-tabs';
 import { unreadWords } from './conversation/unread-notice';
+import { MasterBoard } from './master-board/master-board';
+import type { MapToolCounts } from './session-map/session-map';
+import type { TabItem } from '../../shared/tab-list/tab-list';
 import { wireLiveSessionEffects } from './live-session-effects';
 import { CALLING_NOTICE_MS, LiveSessionEvents } from './live-session-events';
 import { LiveSessionParts, injectLiveSessionServices } from './live-session-deps';
@@ -23,9 +27,9 @@ import { LiveSessionView } from './live-session-view';
 
 export { CALLING_NOTICE_MS };
 
-/** From here the player's right column is the rail "Conversa · Ficha" (C6-08); under it the conversation sits under the board, and a phone has the pinned nav. */
-const RAIL_QUERY = '(min-width: 1024px)';
-/** The badge on the rail's "Conversa" stops counting here, as the phone's does. */
+/** A tablet: the master's Conversa is a tab of the board, with no rail (under 1024 px) and no pinned nav (from 768 px). */
+const NARROW_QUERY = '(min-width: 768px) and (max-width: 1023.98px)';
+/** The badge on the player's rail "Conversa" stops counting here, as the phone's does. */
 const BADGE_MAX = 99;
 
 /**
@@ -79,21 +83,35 @@ export class LiveSession {
     () => this.mapState,
     (encounter) => this.combatStarted(encounter),
   );
+  /** The conversation is a tab of the board and another one is shown (the board tells it, after the slot is made). */
+  private readonly chatBehind = signal(false);
   /**
-   * The player's rail: "Conversa" and "Ficha" in the right column from 1024px, outside a combat (the combat keeps the whole width
-   * until its own screen is drawn). The master keeps the column of 1600px.
+   * The combat's rail draws the conversation ("Turno · Conversa" for the master, "Ações · Conversa" for the player) from 1024px; the
+   * page keeps it elsewhere otherwise. The master's is the running combat that is not on a page of its own; the player's, the combat on screen.
    */
-  private readonly wide = mediaQuery(RAIL_QUERY);
-  protected readonly railed = computed(
-    () => !this.state.isMaster() && this.wide() && !this.view.combatOnScreen(),
+  private readonly laptop = mediaQuery('(min-width: 1024px)');
+  protected readonly railChat = computed(
+    () =>
+      this.laptop() &&
+      (this.state.isMaster()
+        ? this.combat.encounter()?.status === EncounterStatus.ACTIVE && !this.combat.fullPage()
+        : this.view.combatOnScreen()),
+  );
+  /**
+   * The player's rail outside a combat: "Conversa" and "Ficha" in the right column from 1024px (C6-08). The combat has its own rail
+   * ("Ações · Conversa") and the master's board its own; this is the rest of the player's page.
+   */
+  protected readonly playerRail = computed(
+    () => !this.state.isMaster() && this.laptop() && !this.view.combatOnScreen(),
   );
   /** Where the conversation sits: a column beside the stage, or the phone's "Conversa" tab. */
   protected readonly slot = new ConversationSlot({
     live: computed(() => this.state.phase() === 'live' && this.state.session() !== null),
     phone: mediaQuery(PHONE_QUERY),
     unread: this.conversation.unread,
+    railMode: computed(() => this.railChat() || this.playerRail()),
     pageVisible: pageVisible(this.services.document, this.services.destroyRef),
-    railed: this.railed,
+    behind: this.chatBehind,
     isMaster: this.state.isMaster,
     campaignId: this.state.campaignId,
     ownCharacterId: this.state.ownCharacterId,
@@ -108,29 +126,50 @@ export class LiveSession {
         .filter((id) => id !== ''),
     ),
   });
-  /** A phone with a scene open: the scene is in tabs ("Ações · Mapa · Imagens"), C7-07. */
-  protected readonly sceneTabs = computed(
-    () => this.slot.phone() && this.scene.scene() !== null && !this.state.isMaster(),
-  );
   protected readonly ownEffects = this.view.ownEffects;
-  /** The rail's tabs: the unread count on "Conversa" in the accent colour and, in words, in the tab's name. */
-  protected readonly railTabs = computed<readonly TabItem[]>(() => {
-    const n = this.conversation.unread();
-    return [
-      {
-        id: 'chat',
-        label: 'Conversa',
-        icon: 'chat_bubble_outline',
-        ...(n > 0
-          ? {
-              badge: n > BADGE_MAX ? `${BADGE_MAX}+` : String(n),
-              tone: 'news' as const,
-              words: unreadWords(n),
-            }
-          : {}),
-      },
-      { id: 'sheet', label: 'Ficha', icon: 'favorite_border' },
-    ];
+  /** The master's board outside a combat: "Cena", "Mapa" and "Grupo", in the address (`?vista=`). */
+  protected readonly board = new MasterBoard({
+    route: this.services.route,
+    router: this.services.router,
+    sceneOpen: computed(() => this.scene.scene() !== null),
+    rolls: computed(() => this.scene.scene()?.rolls.length ?? 0),
+    openedHere: computed(() => this.scene.focusNext() === 'title'),
+    phone: computed(() => this.slot.phone()),
+    narrow: mediaQuery(NARROW_QUERY),
+    unread: this.conversation.unread,
+  });
+  protected readonly behindFollows = effect(() =>
+    this.chatBehind.set(this.board.chatTab() && this.board.tab() !== 'conversa'),
+  );
+  /** The master's board puts the conversation in a rail from 1024px (C3-01): the master's page outside a combat. */
+  protected readonly railed = computed(() => this.state.isMaster() && !this.view.combatOnScreen());
+  /** The rail's one tab: the tab list draws nothing for it. */
+  protected readonly railTabs: readonly TabItem[] = [{ id: 'conversa', label: 'Conversa' }];
+  /** The conditions the effects in play put on each character, for the party's rows. */
+  protected readonly partyConditions = signal<ReadonlyMap<string, readonly string[]>>(new Map());
+  /** "Teste em grupo" of the open scene was pressed: the group check's form is open. */
+  protected readonly askingGroup = signal(false);
+  /** The map's fold on a phone, open or folded. */
+  protected readonly mapFoldOpen = signal(false);
+  /** How many encounters the map's battle points keep (the "Encontros" tab counts them). */
+  protected readonly encounterCount = signal(0);
+  /** What the tab set under the master's map counts. */
+  protected readonly mapToolCounts = computed<MapToolCounts>(() => {
+    const points = this.mapState.points();
+    const kind = (k: MapPointKind) => points.filter((p) => p.kind === k).length;
+    return {
+      tokens: this.mapState.tokens().length,
+      traps: kind(MapPointKind.TRAP),
+      treasure: kind(MapPointKind.TREASURE),
+      encounters: this.encounterCount(),
+    };
+  });
+  /** The phone's pinned nav: the master's "Cena" and "Grupo" are the board's tabs; "Conversa" opens the conversation. */
+  protected readonly phoneTab = computed<SessionTab>(() => {
+    if (this.slot.tab() === 'chat' || this.slot.tab() === 'sheet') {
+      return this.slot.tab();
+    }
+    return this.railed() && this.board.tab() === 'grupo' ? 'group' : 'scene';
   });
   protected readonly loader = new LiveSessionLoader(this.services, this.state, this.parts);
   protected readonly events: LiveSessionEvents = new LiveSessionEvents(
@@ -180,6 +219,47 @@ export class LiveSession {
       this.notesBar,
       (id) => this.load(id),
     );
+  }
+
+  /** The player's rail tabs: the unread count on "Conversa" in the accent colour and, in words, in the tab's name. */
+  protected readonly playerRailTabs = computed<readonly TabItem[]>(() => {
+    const n = this.conversation.unread();
+    return [
+      {
+        id: 'chat',
+        label: 'Conversa',
+        icon: 'chat_bubble_outline',
+        ...(n > 0
+          ? {
+              badge: n > BADGE_MAX ? `${BADGE_MAX}+` : String(n),
+              tone: 'news' as const,
+              words: unreadWords(n),
+            }
+          : {}),
+      },
+      { id: 'sheet', label: 'Ficha', icon: 'favorite_border' },
+    ];
+  });
+  /** A phone with a scene open: the scene is in tabs ("Ações · Mapa · Imagens"), C7-07. */
+  protected readonly sceneTabs = computed(
+    () => this.slot.phone() && this.scene.scene() !== null && !this.state.isMaster(),
+  );
+  /** The player's rail says whether its "Conversa" tab is the open one (the slot counts the lines only while it is). */
+  protected readonly railShownFollows = effect(() => {
+    const shown = this.playerRail() && this.slot.railTab() === 'chat';
+    if (this.playerRail()) {
+      this.slot.railShown.set(shown);
+    }
+  });
+
+  /** A tap on the phone's nav: the master's "Cena" and "Grupo" choose a tab of the board, the rest is the conversation slot's. */
+  protected phoneNav(tab: SessionTab): void {
+    if (this.railed() && tab !== 'chat') {
+      this.board.choose(tab === 'group' ? 'grupo' : 'cena');
+      this.slot.choose('scene');
+      return;
+    }
+    this.slot.choose(tab === 'group' ? 'scene' : tab);
   }
 
   /** What a screen reader hears of the "Anotações" button when the visible words are cut short on a narrow phone: how many clues are new. */

@@ -3,6 +3,7 @@ import { expect, type Browser, type BrowserContext, type Locator, type Page } fr
 import { beginAttackCombatRPC, getEncounterRPC, tableForCombat, type CombatTable, type Encounter } from './combat-support';
 import { endOpenSessionRPC, openSessionPage } from './live-session-support';
 import { authStatePath, callRPC, newSignedInContext } from './support';
+import { openCombatPanel } from './combat-layout';
 
 // Setup for the master's side of the effects that last (W7-E, RN-22): a combat with a few effects, put through the
 // API, so the specs prove the panel, its dialogs and the exhaustion controls, not the spells that make an effect.
@@ -95,6 +96,8 @@ export async function effectsTable(
 /** The master's page of the table, open on the session, with the panel on screen. */
 export async function openPanel(t: EffectsTable): Promise<Locator> {
   await openSessionPage(t.m, t.campaignId);
+  // In the combat the effects are a row of "Mais do combate" in the rail.
+  await openCombatPanel(t.m, 'Efeitos');
   const panel = t.m.getByRole('region', { name: 'Efeitos em jogo' }).first();
   await expect(panel).toBeVisible();
   await expect(panel.locator('li.fx__row').first()).toBeVisible();

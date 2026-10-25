@@ -13,7 +13,8 @@ import {
   damageCombatantRPC,
   spendForRestRPC,
 } from './rests-support';
-import { newSignedInContext } from './support';
+import { newSignedInContext, openActionTab } from './support';
+import { masterLog } from './combat-layout';
 
 // Rests, hit dice and Lay on Hands on screen (Etapa 8, MR-012, MR-014, RN-02, RN-10): the master's short rest
 // and what it gives back, the player's page changing with no reload, the hit die spent from the sheet, and the touch
@@ -50,7 +51,7 @@ test(
       await expect(p.locator('.hp__current')).toHaveText('10');
 
       // The master opens the rest card and reads what a short rest gives back before taking it.
-      await openSessionPage(m, campaignId);
+      await openSessionPage(m, campaignId, 'grupo');
       const card = m.getByRole('region', { name: 'Descanso' });
       await card.getByRole('button', { name: 'Descanso curto' }).click();
       const question = card.getByRole('alertdialog', { name: 'Começar o descanso curto?' });
@@ -109,12 +110,13 @@ test(
       await damageCombatantRPC(m, campaignId, 'Esqueleto', 3);
       expect(await hitPoints('Brisa')).toBe(8);
 
-      await openSessionPage(m, campaignId);
+      await openSessionPage(m, campaignId, 'grupo');
       await openSessionPage(p, campaignId);
       await expect(p.getByRole('heading', { name: 'Sua vez, Aurora' })).toBeVisible();
       const groups = p.getByRole('region', { name: 'O que você pode fazer' });
 
       // The touch on the ally: five points, "Curou", and the pool is 10 of 15.
+      await openActionTab(p, 'Paladino');
       await groups.getByRole('button', { name: 'Usar Cura pelas Mãos' }).click();
       let dialog = p.getByRole('dialog', { name: 'Cura pelas Mãos' });
       await expect(dialog).toContainText('Reserva: 15 de 15 pontos');
@@ -125,12 +127,13 @@ test(
       await dialog.locator('button', { hasText: 'Fechar' }).click();
       await expect(dialog).toHaveCount(0);
       await expect.poll(() => hitPoints('Brisa')).toBe(13);
-      await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Aurora curou 5 PV de Brisa com a Cura pelas Mãos (5 pontos)');
+      await expect(await masterLog(m)).toContainText('Aurora curou 5 PV de Brisa com a Cura pelas Mãos (5 pontos)');
 
       // The next round: the pool shows what is left, and the touch on the undead spends the points and does nothing.
       await endTurnOf(p, m, campaignId, 'Aurora');
       await passTurnsTo(m, campaignId, 'Aurora');
       await expect(p.getByRole('heading', { name: 'Sua vez, Aurora' })).toBeVisible();
+      await openActionTab(p, 'Paladino');
       await groups.getByRole('button', { name: 'Usar Cura pelas Mãos' }).click();
       dialog = p.getByRole('dialog', { name: 'Cura pelas Mãos' });
       await expect(dialog).toContainText('Reserva: 10 de 15 pontos');
@@ -144,7 +147,7 @@ test(
       await dialog.locator('button', { hasText: 'Fechar' }).click();
       expect(await hitPoints('Esqueleto')).toBe(skeletonBefore);
       // The master's log is the only place that says why.
-      await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Aurora tocou o Esqueleto com a Cura pelas Mãos (5 pontos): sem efeito; o toque não agiu');
+      await expect(await masterLog(m)).toContainText('Aurora tocou o Esqueleto com a Cura pelas Mãos (5 pontos): sem efeito; o toque não agiu');
       await expect(p.getByText(/o toque não agiu/)).toHaveCount(0);
     } finally {
       await endOpenSessionRPC(m, campaignId);

@@ -378,7 +378,7 @@ func payloadJSONType(raw json.RawMessage) string {
 // sqlPayloadPaths are the keys the SQL queries of the summary and the rests read inside a payload
 // (queries.sql: payload->>'key'), by kind. TestEverySQLPayloadPathIsListed keeps this list equal to the queries.
 var sqlPayloadPaths = map[string][]sqlPath{
-	"scene_check_rolled":    {{"CountSceneRolls", "action_id", "string"}, {"TallySessionSceneChecks", "passed", "bool"}, {"TallySessionSceneChecks", "dc_shown", "bool"}},
+	"scene_check_rolled":    {{"CountSceneRolls", "action_id", "string"}, {"TallySessionSceneChecks", "passed", "bool"}, {"TallySessionSceneChecks", "dc_shown", "bool"}, {"TallySessionSceneChecks", "audience", "array"}},
 	"scene_attempt_granted": {{"ListSceneAttemptGrantEvents", "action_id", "string"}},
 	"rest_taken":            {{"HasLongRestInSession", "kind", "string"}, {"GetLatestRestKindInSession", "kind", "string"}},
 	"hit_dice_spent":        {{"HasSongOfRestSinceLatestRest", "song_sides", "number"}},

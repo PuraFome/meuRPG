@@ -1081,7 +1081,8 @@ message MapPoint {
   // The checks of a SCENE point (MR-015), in the order the master put them;
   // empty for any other kind. The master gets each one with its DC; a player
   // gets the DC only when the master turned `show_dc` on for the scene
-  // (RN-20), and only for a point they see (RN-10).
+  // (RN-20), and only for a point they see (RN-10). A player never gets an
+  // action the master hid (`SceneAction.hidden`).
   repeated SceneAction scene_actions = 12;
   // "Ganchos e anotações" (MR-029): the master's private Markdown text on a
   // SCENE point, 0 to 4,000 characters. Only the master gets it: a player
@@ -1277,6 +1278,12 @@ message SceneAction {
   // count afresh. Every viewer gets it; the open scene
   // (PlayService.GetOpenScene) also says how many a player has left.
   int32 max_attempts = 6;
+  // Whether the master hid the action from the players ("Escondida"). A
+  // player never gets a hidden action in `MapPoint.scene_actions`, in the open
+  // scene or in the stream: not its name, DC, attempts or rolls, and a roll on
+  // it is refused as an action that does not exist (RN-10). Only the master's
+  // copy says true.
+  bool hidden = 7;
 }
 
 // MapToken is a character's token on a map.
@@ -1725,6 +1732,9 @@ message AddSceneActionRequest {
   // The key is unique in the campaign; the same key with another request is `invalid_argument`.
   // Empty: the call is not deduplicated.
   string idempotency_key = 8;
+  // Add the action hidden from the players. False (the default) adds it where
+  // the players see it. A hidden action is told to the master's stream only.
+  bool hidden = 9;
 }
 
 // AddSceneActionResponse returns the point's actions as they are now.
@@ -1753,6 +1763,12 @@ message UpdateSceneActionRequest {
   // it below what someone already used leaves them without attempts in the
   // open scene; nothing is erased, and a raise gives attempts back.
   optional int32 max_attempts = 8;
+  // The new visibility: true hides the action from the players ("Escondida"),
+  // false shows it ("Os jogadores veem"). Showing an action in the open scene
+  // offers it to the players at once (`scene_changed`), and hiding it takes it
+  // from them at once; changing a hidden action that stays hidden tells only
+  // the master's stream.
+  optional bool hidden = 9;
 }
 
 // UpdateSceneActionResponse returns the point's actions as they are now.

@@ -19,8 +19,10 @@ export interface SlotInputs {
   readonly stageCharacterIds: Signal<readonly string[]>;
   /** The lines that came while the conversation was not on screen. */
   readonly unread: Signal<number>;
-  /** The conversation sits in the right rail beside "Ficha" (a player from 1024 px): the rail's other tab hides it. */
-  readonly railed?: Signal<boolean>;
+  /** The conversation is a tab of the board and another tab is shown (a tablet's master): it is not on screen. */
+  readonly behind?: Signal<boolean>;
+  /** A running combat draws the conversation in its rail ("Turno · Conversa", "Ações · Conversa"): it is on screen only while that tab is open. */
+  readonly railMode: Signal<boolean>;
 }
 
 /**
@@ -31,21 +33,24 @@ export interface SlotInputs {
  */
 export class ConversationSlot {
   readonly tab = signal<SessionTab>('scene');
-  /** The rail's open tab, from 1024 px: "Conversa" until the reader opens "Ficha". */
-  readonly railTab = signal('chat');
   private readonly opened = signal(false);
+  /** The rail's "Conversa" tab is the one open (the combat says so). */
+  readonly railShown = signal(false);
+  /** The player's rail outside a combat ("Conversa · Ficha", from 1024 px): the tab open in it. */
+  readonly railTab = signal('chat');
 
   /** The phone shows the conversation, full screen. */
   readonly chatOpen = computed(() => this.inputs.phone() && this.tab() === 'chat');
-  /** The phone shows the character's panel inside the session. */
+  /** The phone shows the character's panel inside the session ("Ficha" of the pinned nav). */
   readonly sheetOpen = computed(() => this.inputs.phone() && this.tab() === 'sheet');
   /** The reader can see the conversation now; the unread count waits for it to be false. */
   readonly onScreen = computed(
     () =>
       this.inputs.live() &&
+      !this.inputs.behind?.() &&
       (this.inputs.phone()
         ? this.tab() === 'chat'
-        : this.inputs.pageVisible() && !(this.inputs.railed?.() && this.railTab() === 'sheet')),
+        : this.inputs.pageVisible() && (!this.inputs.railMode() || this.railShown())),
   );
   /** The count the notice at the top of the page shows: only on a phone, with the chat closed, in a live session; else 0. */
   readonly news = computed(() =>
@@ -61,9 +66,11 @@ export class ConversationSlot {
   });
   /** The conversation is what the reader looks at (a phone's open tab, or the column on a computer): the voice stops when not. */
   readonly shown = computed(() =>
-    this.inputs.phone()
-      ? this.tab() === 'chat'
-      : !(this.inputs.railed?.() && this.railTab() === 'sheet'),
+    this.inputs.behind?.()
+      ? false
+      : this.inputs.railMode() && !this.inputs.phone()
+        ? this.railShown()
+        : !this.inputs.phone() || this.tab() === 'chat',
   );
   readonly phone = computed(() => this.inputs.phone());
   readonly userId = computed(() => this.inputs.userId());

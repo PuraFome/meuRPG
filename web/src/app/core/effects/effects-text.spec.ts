@@ -154,11 +154,11 @@ describe('effects text', () => {
   });
 
   it('has the presets of the board and the six levels of exhaustion', () => {
-    expect(TIME_PRESETS.map((p) => [p.label, p.seconds])).toEqual([
-      ['1 rodada (6 s)', 6],
-      ['1 minuto', 60],
-      ['10 minutos', 600],
+    expect(TIME_PRESETS.map((p) => [p.short, p.seconds])).toEqual([
+      ['1 min', 60],
+      ['10 min', 600],
       ['1 hora', 3600],
+      ['8 horas', 28800],
     ]);
     expect(EXHAUSTION_LEVELS.map((l) => l.level)).toEqual([0, 1, 2, 3, 4, 5, 6]);
     expect(EXHAUSTION_LEVELS[4].text).toBe('PV máximos pela metade (e os de baixo)');

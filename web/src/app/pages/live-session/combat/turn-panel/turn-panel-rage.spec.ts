@@ -46,7 +46,7 @@ describe("TurnPanel: the player's own states and rage", () => {
 
   it('shows the chips under the turn, the two facts and "Encerrar fúria"', () => {
     const { fixture, el } = setup(true);
-    const chips = Array.from(el.querySelectorAll('.turn__states button'), (b) =>
+    const chips = Array.from(el.querySelectorAll('.turn__states .tag__text'), (b) =>
       b.textContent?.trim(),
     );
     expect(chips).toEqual(['Em fúria', 'Ataque descuidado']);

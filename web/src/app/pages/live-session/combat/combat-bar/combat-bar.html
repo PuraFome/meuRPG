@@ -30,11 +30,38 @@
   </div>
   <span class="bar__sep" aria-hidden="true"></span>
 
-  @if (setup()) {
+  @if (setup() && cancelling()) {
+    <div class="confirm" role="alertdialog" aria-labelledby="cancel-title" aria-describedby="cancel-text">
+      <mat-icon aria-hidden="true">warning</mat-icon>
+      <div class="confirm__text">
+        <h2 id="cancel-title" class="confirm__title">Cancelar o combate?</h2>
+        <p id="cancel-text">Ele acaba sem ter começado.</p>
+      </div>
+      <div class="confirm__buttons">
+        <button #safe mat-stroked-button type="button" (click)="cancel()">Voltar</button>
+        <button mat-stroked-button type="button" class="danger" (click)="confirmCancel()">Cancelar combate</button>
+      </div>
+    </div>
+  } @else if (setup()) {
     <p class="bar__lead" role="status">
       Os NPCs rolaram sozinhos. Confira os totais, mude o que precisar e comece o combate quando
       todos tiverem rolado.
     </p>
+    <div class="bar__actions">
+      <button
+        mat-flat-button
+        type="button"
+        class="next begin"
+        [class.begin--blocked]="!ready()"
+        [disabled]="!ready()"
+        disabledInteractive
+        [attr.aria-describedby]="ready() ? null : 'begin-reason'"
+        (click)="start()"
+      >
+        Começar o combate
+      </button>
+      <button mat-stroked-button type="button" class="end" (click)="askCancel()">Cancelar combate</button>
+    </div>
   } @else if (confirming()) {
     <ng-container *ngTemplateOutlet="endConfirm" />
   } @else {

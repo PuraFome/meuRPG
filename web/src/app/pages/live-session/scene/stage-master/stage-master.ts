@@ -13,6 +13,8 @@ import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
+import { RouterLink } from '@angular/router';
 
 import type { StageNpc } from '../../../../../gen/meurpg/play/v1/scene_pb';
 import { SceneClient } from '../../../../core/play/scene-client';
@@ -33,13 +35,14 @@ interface StageCard {
 }
 
 /**
- * "Em cena", the master's side of the stage (MR-031, E8-09): the first section
- * of the open scene. One card per NPC on the stage, in the order they came in
- * (portrait, name, kind), each with "Dar a fala" / "Fala agora" (a toggle,
- * `aria-pressed`; the speaker's card gets the 2px accent border) and "Tirar de
- * cena" (at once). Below, "Pôr em cena" lists the campaign's NPCs in place on
- * a desktop and in a sheet on a phone; a full stage ("4 de 4") says why in a
- * sentence and shows the dashed button.
+ * "Em cena", the master's side of the stage (MR-031, E8-09, C3-01): one compact
+ * row per NPC on the stage, in the order they came in (portrait, name, "Os
+ * jogadores veem"), each with "Dar a fala" / "Fala agora" (a toggle,
+ * `aria-pressed`; the speaker's row gets the 2px accent border) and a menu
+ * with "Tirar de cena" (at once) and "Abrir a ficha do NPC". "Pôr em cena" is
+ * a text action in the header: it lists the campaign's NPCs in place on a
+ * desktop and in a sheet on a phone; a full stage ("4 de 4") says why in a
+ * sentence and the action goes dashed.
  *
  * The writes go through one `StageController`: one in flight per NPC, the
  * answer applied at once, an error by code. Focus: "Tirar de cena" sends it to
@@ -48,7 +51,7 @@ interface StageCard {
  */
 @Component({
   selector: 'app-stage-master',
-  imports: [MatButtonModule, MatIconModule, Portrait, StageList],
+  imports: [MatButtonModule, MatIconModule, MatMenuModule, Portrait, RouterLink, StageList],
   templateUrl: './stage-master.html',
   styleUrl: './stage-master.scss',
 })

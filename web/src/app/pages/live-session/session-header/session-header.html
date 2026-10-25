@@ -22,10 +22,11 @@
         matButton="outlined"
         type="button"
         class="bar__button bar__start"
+        aria-label="Iniciar combate"
         [disabled]="startOff()"
         (click)="startCombat.emit()"
       >
-        <mat-icon aria-hidden="true">swords</mat-icon>Iniciar combate
+        <mat-icon aria-hidden="true">swords</mat-icon><span class="bar__start-text">Iniciar combate</span>
       </button>
     }
     <!-- The free dice roller (MR-052), for the master and the players alike: off while a roll is on its way and while the stream reconnects. -->

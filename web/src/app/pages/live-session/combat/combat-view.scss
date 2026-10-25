@@ -13,13 +13,13 @@
 }
 
 // The initiative: the list, and on the right what is missing and where
-// everyone starts (E6-04). One column below 1024px.
+// everyone starts (E6-04). One column below 1280px: the list's five columns need more room than 1024px leaves beside the side.
 .setup {
   display: flex;
   flex-direction: column;
   gap: var(--mr-space-5);
 
-  @media (min-width: 1024px) {
+  @media (min-width: 1280px) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 400px;
     align-items: start;
@@ -27,99 +27,316 @@
   }
 }
 
-.setup__side,
-.active__map {
+.setup__side {
   display: flex;
   flex-direction: column;
   gap: var(--mr-space-5);
   min-width: 0;
 }
 
-// The running combat: the master's card and the order first on a phone, where
-// they are read all the time (E6-12); on the left from 1024px the map and the
-// log, on the right the card and the order (E6-11).
-.active {
-  display: flex;
-  flex-direction: column;
-  gap: var(--mr-space-5);
-
-  // One column until 1280px: the master's order needs the width for the cover lines (E9-07).
-  @media (min-width: 1280px) {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 500px;
-    grid-template-areas:
-      'map side'
-      'log side';
-    grid-template-rows: auto 1fr;
-    align-items: start;
-    gap: var(--mr-space-6);
-  }
+// The master's running combat, alternative B (C1-02, Main): the order on the left, the map with its tabs in the middle, the rail on the
+// right. The order and the rail stick under the app bar and the combat bar and scroll inside themselves; the middle column scrolls
+// with the page. From 1024px the order is inside the rail's "Turno" and the map has the rest; from 1280px it is a column of 288px (a
+// strip of 64px when folded). Below 1024px see `.phone`.
+.tri {
+  --tri-top: var(--combat-top, 164px);
+  --mr-rail-top: var(--tri-top);
+  // The columns are a little shorter than the room under the bar: the page has a margin under them, and a sticky column is pushed up by
+  // the end of its container, which would slide it under the bar.
+  --tri-tail: 48px;
+  --order-max: calc(100dvh - var(--tri-top) - var(--tri-tail));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  align-items: start;
+  gap: var(--mr-space-6);
 }
 
-.active__map {
-  grid-area: map;
+.tri--wide {
+  grid-template-columns: 288px minmax(0, 1fr) 368px;
 }
 
-.active__side {
-  display: flex;
-  flex-direction: column;
-  gap: var(--mr-space-5);
-  grid-area: side;
-  min-width: 0;
-  order: -1;
-
-  @media (min-width: 1024px) {
-    order: 0;
-  }
+.tri--folded {
+  grid-template-columns: 64px minmax(0, 1fr) 368px;
 }
 
-.active__end {
-  display: block;
-}
-
-.active__log {
-  grid-area: log;
+.tri__order {
+  position: sticky;
+  top: var(--tri-top);
   min-width: 0;
 }
 
-// The player's turn: the card first, then what they can do (E6-06), the map
-// and the log, the vitals last. From 1024px "O que você pode fazer" is the
-// right column (E6-14); without it (off turn) the vitals take that column.
-.player {
+// The map's column keeps its place while the rail scrolls: the page never has to move for the map.
+.tri__main {
+  position: sticky;
+  top: var(--tri-top);
+  max-height: var(--order-max);
+  overflow-y: auto;
+}
+
+.tri__main,
+.tri__turn {
   display: flex;
   flex-direction: column;
   gap: var(--mr-space-4);
+  min-width: 0;
 
-  @media (min-width: 1024px) {
-    display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-    grid-template-areas:
-      'turn turn'
-      'map side'
-      'log side';
-    grid-template-rows: auto auto 1fr;
-    align-items: start;
-    gap: var(--mr-space-6);
+  // A card with nothing to say draws nothing, and takes no gap.
+  > :empty {
+    display: none;
   }
 }
 
-.player--mine {
-  @media (min-width: 1024px) {
-    grid-template-areas:
-      'turn turn'
-      'map actions'
-      'log actions'
-      'side actions';
-    grid-template-rows: auto auto auto 1fr;
+// The rail is a card: its tab list on top, the panels inside it, the cards of "Turno" without a frame of their own.
+.tri__rail {
+  height: calc(100dvh - var(--tri-top) - var(--tri-tail));
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-surface);
+}
+
+.tri__turn {
+  padding: var(--mr-space-4);
+}
+
+.tri__chat {
+  min-height: 100%;
+}
+
+// "Mais do combate": under the content of "Turno", one fold per panel (the rail scrolls inside itself, so a row that opens never moves the map).
+.more {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.more__title {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: var(--mr-space-2) 0 0;
+  font: 700 22px/28px var(--mr-font-display);
+
+  .mat-icon {
+    color: var(--mr-ink-muted);
   }
+}
+
+.more__row {
+  border-width: 0 0 1px;
+  border-radius: 0;
+  background: none;
+}
+
+.more__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-ground);
+  color: var(--mr-ink-muted);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.more__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  min-width: 0;
+  padding: 0 0 var(--mr-space-4);
+}
+
+// The panels the page projects (fog, traps, treasure, puzzles) and the log draw a card of their own; in a row they are its content, so the
+// frame, the ground and the padding of the card go (not the cards inside it) and every row indents the same.
+.more__body ::ng-deep .mr-panel:not(.mr-panel .mr-panel) {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+// Under 1024px: "Turno · Ordem · Mapa", and a fixed bar (above the pinned nav) with what the turn owes and "Próximo turno".
+.phone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  // Room for the fixed bar.
+  padding-bottom: 88px;
+}
+
+.phone__line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+
+  b {
+    color: var(--mr-ink);
+  }
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.phone__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  min-width: 0;
+
+  > :empty {
+    display: none;
+  }
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.phone__more {
+  font-weight: 400;
+  color: var(--mr-ink-muted);
+}
+
+.phone__bar {
+  position: fixed;
+  inset: auto 0 var(--mr-session-nav, 0px);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  padding: var(--mr-space-2) var(--mr-gutter);
+  border-top: 1px solid var(--mr-line);
+  background: var(--mr-surface);
+}
+
+.phone__next {
+  margin-inline-start: auto;
+}
+
+// The player's turn (C4-03, C6-07). The DOM reads turn card, notes, actions, strip, map, log, vitals, bar (the keyboard order); the
+// phone shows the map first, then the card and the tabs, by `order` on the page's column (`.player` is `display: contents` there).
+// From 1024px the turn bar is the first row and sticks under the page's bars (its card is `display: contents`, so the column is its
+// room), and what follows is a grid: map and log in the middle, the actions rail on the right, the order on the left from 1280px.
+.stack--player {
+  gap: var(--mr-space-4);
+}
+
+.player {
+  display: contents;
 }
 
 .player__turn {
   display: flex;
   flex-direction: column;
   gap: var(--mr-space-4);
-  grid-area: turn;
   min-width: 0;
+}
+
+// The turn alert's switch, the notices that wait for an answer and the Bardic Inspiration die: under the card, not in the sticky bar.
+.player__notes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  min-width: 0;
+}
+
+@media (max-width: 1023.98px) {
+  .player__map {
+    order: 1;
+  }
+
+  .player__turn,
+  .player__notes {
+    order: 2;
+  }
+
+  .player__actions {
+    order: 3;
+  }
+
+  .player__strip {
+    order: 4;
+  }
+
+  .player__log {
+    order: 5;
+  }
+
+  .player__side {
+    order: 6;
+  }
+
+  .player__bar {
+    order: 7;
+  }
+}
+
+@media (min-width: 1024px) {
+  .player__turn--sticky {
+    display: contents;
+  }
+
+  .player {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    grid-template-areas:
+      'map side'
+      'log side';
+    grid-template-rows: auto 1fr;
+    align-items: start;
+    gap: var(--mr-space-6);
+    // The actions rail sticks under the turn bar: the page's bars and the bar itself (two rows when it wraps).
+    --mr-rail-top: 270px;
+  }
+
+  .player--mine {
+    grid-template-areas:
+      'map actions'
+      'log actions'
+      'side actions';
+    grid-template-rows: auto auto 1fr;
+  }
+}
+
+// From 1280px the order is a column on the left (E6-14): order | map and log | the actions rail (or the vitals, off turn).
+@media (min-width: 1280px) {
+  .player {
+    grid-template-columns: 232px minmax(0, 1fr) 400px;
+    grid-template-areas:
+      'order map side'
+      'order log side';
+    grid-template-rows: auto 1fr;
+    --mr-rail-top: 216px;
+  }
+
+  .player--mine {
+    grid-template-areas:
+      'order map actions'
+      'order log actions'
+      'order side actions';
+    grid-template-rows: auto auto 1fr;
+  }
+
+  .player__order {
+    grid-area: order;
+  }
 }
 
 // The blocks of a creature's turn, or the actions and the beast's traits: one under the other.
@@ -155,32 +372,6 @@
   margin-right: -12px;
 }
 
-// From 1280px the order is a column on the left (E6-14): order | map and log |
-// what the player can do (or the vitals, off turn).
-@media (min-width: 1280px) {
-  .player {
-    grid-template-columns: 232px minmax(0, 1fr) 400px;
-    grid-template-areas:
-      'turn turn turn'
-      'order map side'
-      'order log side';
-    grid-template-rows: auto auto 1fr;
-  }
-
-  .player--mine {
-    grid-template-areas:
-      'turn turn turn'
-      'order map actions'
-      'order log actions'
-      'order side actions';
-    grid-template-rows: auto auto auto 1fr;
-  }
-
-  .player__order {
-    grid-area: order;
-  }
-}
-
 .player__actions {
   grid-area: actions;
   min-width: 0;
@@ -208,6 +399,25 @@
   min-width: 0;
 }
 
+// Off turn, the rail's one line: what the player still has (C6-07).
+.offturn {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0;
+  padding: var(--mr-space-3) 0 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+.offturn__note {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
 .unplaced {
   display: flex;
   flex-wrap: wrap;
@@ -217,60 +427,6 @@
     flex: 1 1 100%;
     margin: 0;
   }
-}
-
-// A combat without a map, the master's screen (E10-04 state 2): the card, its movement and the offer on the left, the order on the right;
-// below 1280px one column, the card first and the order right after it, then the cover and the log.
-.theatre {
-  display: flex;
-  flex-direction: column;
-  gap: var(--mr-space-5);
-
-  @media (min-width: 1280px) {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 500px;
-    grid-template-areas:
-      'top order'
-      'rest order';
-    grid-template-rows: auto 1fr;
-    align-items: start;
-    gap: var(--mr-space-6);
-  }
-}
-
-.theatre__top,
-.theatre__rest,
-.theatre__order {
-  display: flex;
-  flex-direction: column;
-  gap: var(--mr-space-5);
-  min-width: 0;
-}
-
-.theatre__top {
-  grid-area: top;
-
-  // Nothing above the card: an empty column takes no gap, and neither does a host with nothing in it (no offer, no death question).
-  &:empty,
-  &:not(:has(> :not(:empty))) {
-    display: none;
-  }
-
-  > :empty {
-    display: none;
-  }
-}
-
-.theatre__rest {
-  grid-area: rest;
-}
-
-.theatre__order {
-  grid-area: order;
-}
-
-.theatre__end {
-  display: block;
 }
 
 // The Bardic Inspiration die card under the turn bar.

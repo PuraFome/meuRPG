@@ -63,8 +63,8 @@ describe('CharacterEffectsPanel (outside a combat)', () => {
     await settle();
     const el = fixture.nativeElement as HTMLElement;
     const card = (name: string) =>
-      Array.from(el.querySelectorAll('li.cx__card')).find(
-        (c) => flat(c.querySelector('h3')) === name,
+      Array.from(el.querySelectorAll('li.cx__row')).find((c) =>
+        flat(c.querySelector('h3'))?.startsWith(name),
       ) as HTMLElement;
     return { fixture, el, settle, card };
   }
@@ -72,16 +72,16 @@ describe('CharacterEffectsPanel (outside a combat)', () => {
   it('lists the effects on the characters, with what the players see', async () => {
     const { el, card } = await render();
     expect(listCharacterEffects).toHaveBeenCalledWith('camp');
-    expect(flat(el.querySelector('h2'))).toBe('Efeitos em jogo');
-    expect(flat(el.querySelector('.cx__count'))).toBe('2 efeitos · fora do combate');
+    expect(flat(el.querySelector('h2'))).toContain('Efeitos em jogo');
+    expect(flat(el.querySelector('.cx__count'))).toBe('2 · fora do combate');
     const first = card('Passos Largos');
-    expect(flat(first.querySelector('.cx__sub'))).toBe('Em Toren');
-    expect(flat(first.querySelector('.cx__line'))).toContain('dura 1 hora');
-    expect(flat(first)).toContain('Jogadores veem: Sim');
+    expect(flat(first.querySelector('h3'))).toContain('Toren');
+    expect(flat(first.querySelector('.cx__sub'))).toContain('dura 1 hora');
+    expect(flat(first)).toContain('Os jogadores veem: todos');
     const second = card('Bênção');
     expect(flat(second.querySelector('.cx__pill'))).toContain('Concentração');
     expect(flat(second)).toContain('+1d4 em ataques e resistências');
-    expect(flat(second)).toContain('Jogadores veem: Não');
+    expect(flat(second)).toContain('Os jogadores não veem');
   });
 
   it('ends an effect on a character with an empty encounter id', async () => {
@@ -146,47 +146,39 @@ describe('CharacterEffectsPanel (outside a combat)', () => {
   });
 
   describe('"Passar o tempo"', () => {
-    it('offers the four presets, the seconds and the button', async () => {
+    it('offers the four buttons of the board, equal and outlined, and no filled button', async () => {
       const { el } = await render();
       const time = el.querySelector('[data-testid="pass-time"]') as HTMLElement;
-      expect(flat(time.querySelector('h2'))).toBe('Passar o tempo');
+      expect(flat(time.querySelector('.cx__timelabel'))).toContain('Passar o tempo');
       expect(Array.from(time.querySelectorAll('.cx__preset')).map(flat)).toEqual([
-        '1 rodada (6 s)',
-        '1 minuto',
-        '10 minutos',
+        '1 min',
+        '10 min',
         '1 hora',
+        '8 horas',
       ]);
-      expect((time.querySelector('input[data-field="seconds"]') as HTMLInputElement).value).toBe(
-        '60',
-      );
-      const pressed = Array.from(time.querySelectorAll('.cx__preset')).map((b) =>
-        b.getAttribute('aria-pressed'),
-      );
-      expect(pressed).toEqual(['false', 'true', 'false', 'false']);
-      expect(time.querySelector('[role="group"]')?.getAttribute('aria-label')).toBe(
-        'Quanto tempo passa',
-      );
+      expect(
+        Array.from(time.querySelectorAll('.cx__preset')).map((b) => b.getAttribute('aria-label')),
+      ).toEqual(['Passar 1 minuto', 'Passar 10 minutos', 'Passar 1 hora', 'Passar 8 horas']);
+      expect(el.querySelector('.mat-mdc-unelevated-button')).toBeNull();
+      expect(el.querySelector('input[data-field="seconds"]')).toBeNull();
     });
 
-    it('moves the time the preset says and tells how many effects ended', async () => {
+    it('moves the time a button says at once, and tells how many effects ended', async () => {
       const { el, settle } = await render();
       const time = el.querySelector('[data-testid="pass-time"]') as HTMLElement;
-      (time.querySelectorAll('.cx__preset')[2] as HTMLButtonElement).click();
-      await settle();
-      expect(flat(time.querySelector('#time-preview'))).toBe('Vai passar 10 minutos.');
-      expect(advanceTime).not.toHaveBeenCalled();
-      (time.querySelector('.cx__btn--go') as HTMLButtonElement).click();
+      (time.querySelectorAll('.cx__preset')[1] as HTMLButtonElement).click();
       await settle();
       expect(advanceTime).toHaveBeenCalledWith('camp', 600, expect.any(String));
-      expect(flat(time.querySelector('.cx__done'))).toBe('Passou 10 minutos. 2 efeitos acabaram.');
+      expect(flat(el.querySelector('.cx__done'))).toBe('Passou 10 minutos. 2 efeitos acabaram.');
       expect(listCharacterEffects).toHaveBeenCalledTimes(2);
     });
 
-    it('takes any number of seconds from 1 to 86,400 and refuses the rest', async () => {
+    it('takes any number of seconds from 1 to 86,400 under "Outro tempo", and refuses the rest', async () => {
       const { el, settle } = await render();
-      const time = el.querySelector('[data-testid="pass-time"]') as HTMLElement;
-      const input = time.querySelector('input[data-field="seconds"]') as HTMLInputElement;
-      const go = time.querySelector('.cx__btn--go') as HTMLButtonElement;
+      (el.querySelector('.cx__other') as HTMLButtonElement).click();
+      await settle();
+      const input = el.querySelector('input[data-field="seconds"]') as HTMLInputElement;
+      const go = el.querySelector('.cx__go') as HTMLButtonElement;
       const typeSeconds = async (v: string) => {
         input.value = v;
         input.dispatchEvent(new Event('input'));
@@ -194,9 +186,7 @@ describe('CharacterEffectsPanel (outside a combat)', () => {
       };
       await typeSeconds('0');
       expect(isOff(go)).toBe(true);
-      expect(flat(time.querySelector('app-field-note'))).toContain(
-        'Digite de 1 a 86.400 segundos.',
-      );
+      expect(flat(el.querySelector('app-field-note'))).toContain('Digite de 1 a 86.400 segundos.');
       await typeSeconds('86401');
       expect(isOff(go)).toBe(true);
       await typeSeconds('86400');
@@ -209,13 +199,13 @@ describe('CharacterEffectsPanel (outside a combat)', () => {
     it('says the time did not pass when the server refuses, and retries with the same key', async () => {
       advanceTime.mockRejectedValueOnce(new ConnectError('x', Code.Unavailable));
       const { el, settle } = await render();
-      const go = el.querySelector('.cx__btn--go') as HTMLButtonElement;
-      go.click();
+      const minute = el.querySelector('.cx__preset') as HTMLButtonElement;
+      minute.click();
       await settle();
-      expect(flat(el.querySelector('.cx--time [role="alert"] p'))).toBe(
+      expect(flat(el.querySelector('.cx > [role="alert"] p'))).toBe(
         'Não deu para passar o tempo: o servidor não respondeu. Tente de novo.',
       );
-      go.click();
+      minute.click();
       await settle();
       expect(advanceTime.mock.calls[1][2]).toBe(advanceTime.mock.calls[0][2]);
       expect(flat(el.querySelector('.cx__done'))).toBe('Passou 1 minuto. 2 efeitos acabaram.');
@@ -238,7 +228,7 @@ describe('CharacterEffectsPanel (outside a combat)', () => {
     TestBed.inject(MatDialog).closeAll();
   });
 
-  it('reads the catalog and opens "Dar efeito" with the party and the effects', async () => {
+  it('reads the catalog and opens "Adicionar efeito" with the party and the effects', async () => {
     const { el, settle } = await render();
     const open = vi.spyOn(TestBed.inject(MatDialog), 'open');
     (el.querySelector('[data-testid="open-give-effect"]') as HTMLButtonElement).click();

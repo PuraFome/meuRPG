@@ -23,17 +23,6 @@ let nextId = 0;
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Fold, MatButtonModule, MatIconModule, NgTemplateOutlet],
   template: `
-    @if (fold()) {
-      <!-- The player's (C6-08): a fold at the end of the scene, closed until opened. -->
-      <app-fold class="log-fold" appearance="row" icon="casino" title="Rolagens da mesa" [level]="2" [region]="true">
-        <ng-container [ngTemplateOutlet]="body" />
-      </app-fold>
-    } @else {
-      <section class="log" [attr.aria-labelledby]="headingId">
-        <h2 class="log__title" [id]="headingId">Rolagens da mesa</h2>
-        <ng-container [ngTemplateOutlet]="body" />
-      </section>
-    }
     <ng-template #body>
       @if (rolls().length > 0) {
         <ul class="log__list">
@@ -67,6 +56,21 @@ let nextId = 0;
         <p class="mr-muted">Ninguém rolou dados nesta sessão ainda. As rolagens da mesa aparecem aqui.</p>
       }
     </ng-template>
+    @if (fold()) {
+      <!-- The player's (C6-08): a fold at the end of the scene, closed until opened. -->
+      <app-fold class="log-fold" appearance="row" icon="casino" title="Rolagens da mesa" [level]="2" [region]="true">
+        <ng-container [ngTemplateOutlet]="body" />
+      </app-fold>
+    } @else if (folded()) {
+      <app-fold title="Rolagens da mesa" [(open)]="open" [region]="true">
+        <ng-container *ngTemplateOutlet="body" />
+      </app-fold>
+    } @else {
+      <section class="log" [attr.aria-labelledby]="headingId">
+        <h2 class="log__title" [id]="headingId">Rolagens da mesa</h2>
+        <ng-container *ngTemplateOutlet="body" />
+      </section>
+    }
   `,
   styleUrl: './free-roll-log.scss',
 })
@@ -75,8 +79,11 @@ export class FreeRollLog {
   readonly rolls = input.required<readonly FreeRollVm[]>();
   readonly listState = input.required<ListState>();
   readonly retry = output<void>();
-  /** A fold, closed until opened (the player's, at the end of the scene), instead of the always-open section. */
+  /** A fold, closed until opened, in the row look (the player's, at the end of the scene), instead of the always-open section. */
   readonly fold = input(false);
+  /** The master's board closes its column with the log folded, one line (C3-01); a player's page draws the section. */
+  readonly folded = input(false);
+  protected readonly open = signal(false);
 
   protected readonly headingId = `free-log-${nextId++}`;
   protected readonly all = signal(false);

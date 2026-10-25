@@ -1,0 +1,86 @@
+<section class="sa" aria-labelledby="sa-title">
+  <div class="sa__head">
+    <h3 class="sa__title" id="sa-title"><mat-icon aria-hidden="true">casino</mat-icon>Ações e rolagens</h3>
+    @if (freshTotal() > 0) {
+      <span class="sa__fresh">{{ freshText(freshTotal()) }}</span>
+    }
+    <span class="sa__dc"><mat-icon aria-hidden="true">{{ scene().showDc ? 'visibility' : 'visibility_off' }}</mat-icon>{{ dcNote() }}</span>
+    <button
+      matButton
+      type="button"
+      class="sa__group"
+      aria-label="Pedir teste em grupo"
+      [attr.aria-expanded]="groupAsk()"
+      (click)="groupAsk.set(!groupAsk())"
+    >
+      <mat-icon aria-hidden="true">groups</mat-icon>Teste em grupo
+    </button>
+  </div>
+
+  <ng-content />
+
+  @if (rows().length === 0) {
+    <p class="sa__none">Esta cena não tem ações. Adicione no editor do mapa.</p>
+  } @else {
+    <ul class="sa__list">
+      @for (row of rows(); track row.id) {
+        <li class="sa__item">
+          <div class="sa__row">
+            <div class="sa__what">
+              <span class="sa__name">{{ row.title }}</span>
+              @if (row.freshCount > 0) {
+                <span class="sa__new">{{ freshText(row.freshCount) }}</span>
+              }
+              <span class="sa__line">
+                @if (row.check) {
+                  <span>{{ row.check }}</span>
+                }
+                @if (row.dc > 0) {
+                  <span class="sa__sep" aria-hidden="true">·</span><b class="sa__cd">CD&nbsp;{{ row.dc }}</b>
+                }
+                @if (row.attempts) {
+                  <span class="sa__sep" aria-hidden="true">·</span><span>{{ row.attempts }}</span>
+                }
+              </span>
+            </div>
+            @if (row.chips.length > 0) {
+              <ul class="sa__chips" [attr.aria-label]="'Rolagens de ' + row.title">
+                @for (chip of row.chips; track chip.roll.id) {
+                  <li>
+                    <button
+                      type="button"
+                      class="chip"
+                      [class.chip--passed]="chip.verdict === 'passed'"
+                      [class.chip--failed]="chip.verdict === 'failed'"
+                      [attr.aria-expanded]="isOpen(chip.roll.id)"
+                      [attr.aria-controls]="'sa-roll-' + chip.roll.id"
+                      (click)="toggle(chip)"
+                    >
+                      <span class="chip__init" aria-hidden="true">{{ chip.initial }}</span>
+                      <span class="chip__who">{{ chip.who }}</span>
+                      <b class="chip__total">{{ chip.total }}</b>
+                      @if (chip.verdict) {
+                        <mat-icon aria-hidden="true">{{ chip.verdict === 'passed' ? 'check' : 'close' }}</mat-icon>
+                        <span class="mr-visually-hidden">{{ chip.words }}</span>
+                      }
+                    </button>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+          @for (chip of openChips(row); track chip.roll.id) {
+            <app-scene-roll-line
+              class="sa__detail"
+              [id]="'sa-roll-' + chip.roll.id"
+              [campaignId]="campaignId()"
+              [state]="state()"
+              [scene]="scene()"
+              [roll]="chip.roll"
+            />
+          }
+        </li>
+      }
+    </ul>
+  }
+</section>

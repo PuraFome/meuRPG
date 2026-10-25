@@ -8,16 +8,10 @@
         <p class="so__meta">{{ meta() }}</p>
       </div>
       <div class="so__buttons">
-        <button matButton="outlined" type="button" (click)="swap()">
+        <button matButton type="button" (click)="swap()">
           <mat-icon aria-hidden="true">swap_horiz</mat-icon>Trocar cena
         </button>
-        <button
-          matButton="outlined"
-          type="button"
-          [disabled]="busy()"
-          disabledInteractive
-          (click)="close()"
-        >
+        <button matButton type="button" [disabled]="busy()" disabledInteractive (click)="close()">
           <mat-icon aria-hidden="true">close</mat-icon>Fechar cena
         </button>
       </div>
@@ -30,83 +24,31 @@
       </div>
     }
 
-    <app-stage-master class="so__stage" [campaignId]="campaignId()" [state]="state()" />
+    <app-stage-master class="so__part" [campaignId]="campaignId()" [state]="state()" />
 
-    <app-scene-images-show
-      class="so__images"
-      [campaignId]="campaignId()"
-      [images]="s.images"
-      [shown]="shown()"
-      [keep]="keep()"
-      (changed)="shownChange.emit($event)"
-      (leftChanged)="leftChanged.emit()"
-    />
-
-    <div class="so__cols">
-      @if (!phone()) {
-        <div class="so__notes">
-          <app-scene-clues [campaignId]="campaignId()" [state]="state()" [players]="players()" />
-          <app-scene-hooks [hooks]="s.hooks" />
-        </div>
-      }
-      <section class="so__rolls" aria-labelledby="so-rolls">
-        <div class="so__sub">
-          <h3 class="so__h" id="so-rolls">Rolagens</h3>
-          <span class="so__hint">{{ phone() ? rollsHint() : 'Chegam aqui na hora, a mais nova em cima' }}</span>
-        </div>
-        @if (s.rolls.length === 0) {
-          <p class="so__none">Ninguém rolou ainda.</p>
-        } @else {
-          <ul class="so__list so__list--rolls">
-            @for (r of s.rolls; track r.id) {
-              <li><app-scene-roll-line [campaignId]="campaignId()" [state]="state()" [scene]="s" [roll]="r" /></li>
-            }
-          </ul>
-        }
-      </section>
-
-      <ng-template #actionList>
-        <ul class="so__list" id="so-actions-list">
-          @for (a of s.actions; track a.id) {
-            <li class="so__action">
-              <span class="so__aname">{{ title(a) }}</span>
-              <span class="so__acheck">{{ subtitle(a) }}</span>
-              @if (a.dc > 0) {
-                <span class="so__dcline">
-                  <span class="mr-tag so__dc">CD&nbsp;{{ a.dc }}</span>
-                  <span class="so__acheck">{{ attempts(a) }}</span>
-                </span>
-              } @else {
-                <span class="so__acheck">{{ attempts(a) }}</span>
-              }
-            </li>
-          }
-        </ul>
-      </ng-template>
-
-      @if (phone()) {
-        <app-fold class="so__actions" title="Ações da cena" [(open)]="actionsOpen">
-          <p class="so__hint so__dcnote"><mat-icon aria-hidden="true">{{ s.showDc ? 'visibility' : 'visibility_off' }}</mat-icon>{{ dcNote() }}</p>
-          <ng-container *ngTemplateOutlet="actionList" />
-        </app-fold>
-      } @else {
-        <section class="so__actions" aria-labelledby="so-actions">
-          <div class="so__sub">
-            <h3 class="so__h" id="so-actions">Ações</h3>
-            <span class="so__hint so__dcnote"><mat-icon aria-hidden="true">{{ s.showDc ? 'visibility' : 'visibility_off' }}</mat-icon>{{ dcNote() }}</span>
-          </div>
-          <ng-container *ngTemplateOutlet="actionList" />
-        </section>
-      }
+    <div class="so__part so__images">
+      <app-scene-images-show
+        [campaignId]="campaignId()"
+        [images]="s.images"
+        [shown]="shown()"
+        [keep]="keep()"
+        (changed)="shownChange.emit($event)"
+        (leftChanged)="leftChanged.emit()"
+      >
+        <ng-content select="[galleryTile]" ngProjectAs="[galleryTile]" />
+      </app-scene-images-show>
+      <!-- "Deixar com os jogadores" and "Parar de mostrar" on one line under the thumbnails. -->
+      <ng-content select="[sceneImageTools]" />
     </div>
+
+    <app-scene-actions class="so__part" [campaignId]="campaignId()" [state]="state()" [scene]="s" [(groupAsk)]="groupAsk">
+      <ng-content select="[sceneTools]" />
+    </app-scene-actions>
+
+    <app-scene-clues class="so__part" [campaignId]="campaignId()" [state]="state()" [players]="players()" [phone]="phone()" />
+
+    <app-scene-hooks [hooks]="s.hooks" [phone]="phone()" />
 
     <p class="mr-visually-hidden so__live" role="status" aria-live="polite">{{ state().notice() }}</p>
   </section>
-
-  @if (phone()) {
-    <div class="so__panel mr-panel">
-      <app-scene-clues [campaignId]="campaignId()" [state]="state()" [players]="players()" [phone]="true" />
-    </div>
-    <app-scene-hooks class="so__panel" [hooks]="s.hooks" [phone]="true" />
-  }
 }

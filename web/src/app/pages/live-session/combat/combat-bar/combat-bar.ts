@@ -17,6 +17,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { type Encounter, EncounterStatus } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import {
   combatantInitial,
+  missingInitiative,
   isPlayer,
   roundLabel,
   turnBanner,
@@ -29,8 +30,9 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
 
 /**
  * The master's combat bar (E6-04, E6-11, E6-12, E6-16): which combat, whose
- * turn, and the two buttons that move it. In SETUP it only says "Iniciativa"
- * and what to do. Running, "Próximo turno" is the page's one filled button
+ * turn, and the two buttons that move it. From 1024 px it sticks under the app bar. In SETUP it says "Iniciativa"
+ * and what to do, and "Começar o combate" (the page's one filled button, dashed and `aria-disabled` while someone has not
+ * rolled) and "Cancelar combate" sit where "Próximo turno" and "Encerrar combate" will be. Running, "Próximo turno" is the page's one filled button
  * (EndTurn), and "Encerrar combate" asks in place: the confirmation takes
  * the bar's buttons, and the focus goes to the safe "Cancelar".
  */
@@ -68,10 +70,20 @@ export class CombatBar {
   readonly next = output<boolean>();
   /** "Encerrar combate", confirmed. */
   readonly end = output<void>();
+  /** "Começar o combate" (setup, everyone has rolled): the first turn begins. */
+  readonly begin = output<void>();
+  /** "Cancelar combate" in setup, confirmed. */
+  readonly cancelCombat = output<void>();
 
   protected readonly confirming = signal(false);
+  /** The question "Cancelar o combate?" of the setup is open. */
+  protected readonly cancelling = signal(false);
   private readonly cancelButton = viewChild('safe', { read: ElementRef<HTMLButtonElement> });
 
+  /** Setup: someone has no initiative yet, so "Começar o combate" waits (it keeps its focus stop and points at the reason). */
+  protected readonly ready = computed(
+    () => missingInitiative(this.encounter().combatants).length === 0,
+  );
   protected readonly setup = computed(() => this.encounter().status === EncounterStatus.SETUP);
   protected readonly turnKey = computed(
     () => `${this.encounter().currentCombatantId}:${this.encounter().round}`,
@@ -103,6 +115,23 @@ export class CombatBar {
 
   protected cancel(): void {
     this.confirming.set(false);
+    this.cancelling.set(false);
+  }
+
+  protected start(): void {
+    if (this.ready() && !this.busy()) {
+      this.begin.emit();
+    }
+  }
+
+  protected askCancel(): void {
+    this.cancelling.set(true);
+    afterNextRender(() => this.cancelButton()?.nativeElement.focus(), { injector: this.injector });
+  }
+
+  protected confirmCancel(): void {
+    this.cancelling.set(false);
+    this.cancelCombat.emit();
   }
 
   protected confirmEnd(): void {

@@ -24,6 +24,13 @@ var actions = []read{
 		},
 	},
 	{
+		procedure: playv1connect.PlayServiceRollSceneCheckProcedure, label: "a hidden action", allow: masterOnlyRead, notMaster: true,
+		why: "a roll on an action the master hid is refused exactly like a roll on an action that does not exist: it never says the action is there",
+		req: func(w *world) proto.Message {
+			return &playv1.RollSceneCheckRequest{CampaignId: w.campaign, ActionId: w.hiddenAction, IdempotencyKey: newKey(), Roll: &playv1.RollSceneCheckRequest_D20Face{D20Face: 12}}
+		},
+	},
+	{
 		procedure: playv1connect.PlayServiceSearchForTrapsProcedure, label: "Investigation", allow: onlyCaio, notMaster: true,
 		why: "a search that finds nothing reads like a failed roll: it never says there is a trap (Ana's character is down in the combat: she cannot search)",
 		req: func(w *world) proto.Message {

@@ -201,6 +201,11 @@ export abstract class CombatViewStateDirective {
       ...(joint.waitsForMaster ? ['o mestre'] : []),
     ];
   });
+  /** The player's own hit points, from its vitals (the combatant carries them only for a beast's pool): the turn card and the order read them. */
+  protected readonly ownHitPoints = computed(() => {
+    const v = this.ownVitals();
+    return v ? { current: v.hitPointsCurrent, max: v.hitPointsMax } : null;
+  });
   /** The player's own slots, for the rows above the spell list. */
   protected readonly ownSlots = computed(() => {
     const own = this.own();

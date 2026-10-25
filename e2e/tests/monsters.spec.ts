@@ -3,7 +3,8 @@ import { expect, test, type Page } from '@playwright/test';
 import { combatRPC, getEncounterRPC, startEncounterRPC, tableForCombat, type CombatTable, type Encounter } from './combat-support';
 import { createPointRPC } from './maps-support';
 import { callRPC, createCharacterRPC, newSignedInContext } from './support';
-import { openSessionPage, clickStartCombat } from './live-session-support';
+import { openSessionPage, clickStartCombat, showMapTool } from './live-session-support';
+import { openOrderRow } from './combat-layout';
 
 // MR-042 (monsters in the combat, "Pôr no combate"), MR-043 (the encounter builder: "Gerar encontro", "Trocar", the battle point,
 // "Começar este combate"), RN-29 (the monsters of the bestiary), RN-20 (what a player never receives of a monster) and RN-10 (the builder
@@ -102,9 +103,13 @@ test(
       // The master's order: the ND beside the armor class, the hidden one marked.
       await openSessionPage(master, campaignId);
       const order = master.getByRole('region', { name: 'Ordem de iniciativa' });
-      await expect(order.locator('.row', { hasText: 'Bandido 3' })).toContainText('ND 1/8');
       await expect(order.locator('.row', { hasText: 'Bandido 3' })).toContainText('Escondido');
-      await expect(order.locator('.row', { hasText: 'Bandido 2' })).toContainText('Revelado');
+      await expect(order.locator('.row', { hasText: 'Bandido 2' })).not.toContainText('Escondido');
+      // The ND is the first item of the row's "Mais".
+      await openOrderRow(master, 'Bandido 3');
+      await master.getByRole('button', { name: 'Mais ações para Bandido 3' }).click();
+      await expect(master.getByRole('menuitem', { name: /ND 1\/8/ })).toBeVisible();
+      await master.keyboard.press('Escape');
 
       // The player's JSON: Bandido 2 by its name and the word of its state, no numbers; nothing at all of Bandido 1 and 3.
       const revealed = await getEncounterRPC(player, campaignId);
@@ -387,7 +392,8 @@ test(
       expect(JSON.stringify(await kept.json())).toContain('"count":2');
 
       // The session: the card of the point, and "Começar este combate" opens "Iniciar combate" filled.
-      await openSessionPage(master, campaignId);
+      await openSessionPage(master, campaignId, 'mapa');
+      await showMapTool(master, 'Encontros');
       const card = master.locator('.enc', { hasText: 'Emboscada na ponte' });
       await expect(card.locator('.enc__pill')).toContainText('Encontro guardado');
       await expect(card.locator('.enc__band')).toContainText(' XP');
@@ -484,7 +490,8 @@ test(
         encounter: { monsters: [{ creatureKey: 'monster:goblin', count: 2 }] },
       });
       expect(again.ok(), await again.text()).toBeTruthy();
-      await openSessionPage(master, campaignId);
+      await openSessionPage(master, campaignId, 'mapa');
+      await showMapTool(master, 'Encontros');
       await master.locator('.enc', { hasText: 'Ruínas do forte' }).getByRole('button', { name: 'Começar este combate' }).click();
       const start = master.getByRole('dialog', { name: 'Iniciar combate' });
       await start.getByText('Sem mapa (teatro da mente)', { exact: true }).click();

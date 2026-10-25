@@ -1,5 +1,5 @@
-<section class="mr-panel va" aria-labelledby="view-as-title">
-  <h2 class="mr-panel__title" id="view-as-title">Ver como</h2>
+<section class="va" [class.mr-panel]="!flat()" [class.va--flat]="flat()" aria-labelledby="view-as-title">
+  <h2 class="va__title" [class.mr-panel__title]="!flat()" id="view-as-title"><mat-icon aria-hidden="true">visibility</mat-icon>Ver como</h2>
   <p class="va__lead">Veja o mapa como um jogador vê. Só você, e só aqui: nada muda para ninguém.</p>
 
   <div appRelayEvents class="va__rows" role="radiogroup" aria-labelledby="view-as-title" (relayKeydown)="onKey($event)">
@@ -20,10 +20,10 @@
           @if (row.sub) {
             <span class="va__sub">{{ row.sub }}</span>
           }
-          @if (row.count) {
-            <span class="va__count">{{ row.count }}</span>
-          }
         </span>
+        @if (row.count) {
+          <span class="va__count">{{ row.count }}</span>
+        }
       </button>
     }
   </div>

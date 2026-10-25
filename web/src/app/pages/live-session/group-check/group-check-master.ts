@@ -5,6 +5,7 @@ import {
   effect,
   inject,
   input,
+  model,
   signal,
   untracked,
 } from '@angular/core';
@@ -42,14 +43,13 @@ export interface AskPerson {
 }
 
 /**
- * "Pedir um teste" on the master's page (W7-X, board W7-Xc 10, the master's side; SRD 5.1, ability checks, saving throws and Group
- * Checks). Asking: who rolls ("Todos" or the characters ticked), the test (a skill, an ability check or a saving throw), "Teste em
- * grupo" (the group passes if at least half pass; only with two characters or more), the DC (empty for none) and "Mostrar a CD aos
- * jogadores" (`show_dc`: the players read passou or falhou, never the DC itself). Waiting: who
- * answered ("4 de 5 responderam"), each character's bonus, total and "Passou" or "Falhou", "Não respondeu" for the one who has not,
- * "Rolar por Ragna" for that one (the master's roll, app or typed) and "Encerrar o teste" (whoever did not answer counts as failed).
- * The verdict ("2 de 5 passaram; precisa de 3. O grupo falhou.") is only his, until the DC is shown. It reads the check again on each
- * `group_check_changed` (the page bumps `tick`). Every write carries its own key, made once.
+ * "Pedir um teste" on the master's page (W7-X; SRD 5.1, ability checks, saving throws and Group Checks). Asking: who rolls ("Todos" or
+ * the characters ticked), the test (a skill, an ability check or a saving throw), "Teste em grupo" (the group passes if at least half
+ * pass; two characters or more), the DC (empty for none) and "Mostrar a CD aos jogadores" (the players read passou or falhou, never
+ * the DC). Waiting: who answered ("4 de 5 responderam"), each bonus, total and "Passou" or "Falhou", "Rolar por Ragna" for one who
+ * did not, and "Encerrar o teste" (who did not answer counts as failed). The verdict is only the master's until the DC is shown. It
+ * reads the check again on each `group_check_changed` (the page bumps `tick`); every write carries its own key. With `collapsible`
+ * only a button "Pedir teste em grupo" shows until the master asks (the scene's own button, C3-01).
  */
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -132,6 +132,11 @@ export interface AskPerson {
           </div>
         </section>
       }
+      @if (collapsible() && !asking() && askButton()) {
+        <button mat-stroked-button type="button" class="btn btn--ask" (click)="asking.set(true)">
+          <mat-icon aria-hidden="true">groups</mat-icon>Pedir teste em grupo
+        </button>
+      } @else if (!collapsible() || asking()) {
       <section class="card" [attr.aria-labelledby]="uid + 'a'" data-testid="group-ask">
         <h2 class="card__title" [id]="uid + 'a'">Pedir um teste</h2>
         <p class="card__sub">
@@ -233,15 +238,14 @@ export interface AskPerson {
           >
             Pedir o teste
           </button>
+          @if (collapsible()) {
+            <button mat-stroked-button type="button" class="btn" (click)="asking.set(false)">Cancelar</button>
+          }
         </div>
       </section>
+      }
     }
     <span class="mr-visually-hidden" role="status" aria-live="polite">{{ said() }}</span>
-  `,
-  styles: `
-    .row__form {
-      flex: 1 1 100%;
-    }
   `,
 })
 export class GroupCheckMaster {
@@ -256,6 +260,8 @@ export class GroupCheckMaster {
   readonly preference = input.required<DicePreference>();
   /** The characters the master can pick ("Quem rola"). */
   readonly people = input<readonly AskPerson[]>([]);
+  /** Idle, only a button "Pedir teste em grupo" shows, and the asking form opens under it (the scene's own button). */
+  readonly collapsible = input(false);
 
   protected readonly uid = `gm-${nextId++}-`;
   protected readonly taskGroups = askTaskGroups(HELP_TASKS);
@@ -270,6 +276,10 @@ export class GroupCheckMaster {
   protected readonly picked = signal<ReadonlySet<string>>(new Set());
   protected readonly everyone = computed(() => this.picked().size === 0);
   protected readonly wantGroup = signal(true);
+  /** The asking form is open (only when `collapsible`). */
+  readonly asking = model(false);
+  /** The scene draws its own "Teste em grupo" button: with this off, idle draws nothing. */
+  readonly askButton = input(true);
   /** How many characters would roll; "Teste em grupo" needs two or more. */
   protected readonly askedCount = computed(() =>
     this.picked().size > 0 ? this.picked().size : this.people().length,
@@ -313,14 +323,9 @@ export class GroupCheckMaster {
   protected readonly dc = computed(() => dcOf(this.dcText()));
   protected readonly result = memberResult;
   /** "20 natural" / "1 natural" beside the member's result: information only, the verdict is the total against the DC. */
-  protected natural(m: GroupCheckMemberView): string {
-    return checkNaturalMark(m.roll);
-  }
-
+  protected readonly natural = (m: GroupCheckMemberView): string => checkNaturalMark(m.roll);
   /** "Sortudo: 1 → 14" beside a halfling's result: the d20 that showed a 1 was rolled again, and the total is the new one. */
-  protected lucky(m: GroupCheckMemberView): string {
-    return luckyText(m.roll);
-  }
+  protected readonly lucky = (m: GroupCheckMemberView): string => luckyText(m.roll);
 
   constructor() {
     effect(() => {
@@ -371,6 +376,7 @@ export class GroupCheckMaster {
       );
       this.checks.apply(view);
       this.keys.renew();
+      this.asking.set(false);
       this.said.set(`${view.group ? 'Teste em grupo' : 'Teste'} pedido: ${view.skillNamePt}.`);
     });
   }

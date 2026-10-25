@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, input, output, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -10,6 +11,7 @@ import {
   ContestAttackOptionKind,
 } from '../../../../../gen/meurpg/play/v1/contest_types_pb';
 import {
+  ActionEconomy,
   type ActionOption,
   type Attack,
   type AttackOption,
@@ -28,16 +30,25 @@ import {
   bonusAttackLine,
   circleLabel,
   featureUsesText,
+  groupOf,
   groupState,
   isBonusAttack,
   isCantrip,
   isReactionHint,
-  optionsFor,
   reasonText,
   spellReasonText,
   spellLine,
   spellTags,
 } from '../../../../core/combat/combat-options';
+import {
+  type ActionTabId,
+  type SpentGroups,
+  actionCounts,
+  actionTabs,
+  classTabName,
+  featureGroup,
+  partByEconomy,
+} from '../../../../core/combat/action-tabs';
 import { cannotAct } from '../../../../core/combat/conditions';
 import { spellSummary } from '../../../../core/combat/spell-summary';
 import {
@@ -51,11 +62,11 @@ import {
 } from '../../../../core/combat/contest-view';
 import { freeText } from '../../../../core/combat/cast-flow';
 import { standUpRow } from '../../../../core/combat/stand-up';
-import { mediaQuery } from '../../../../shared/map-view/media-query';
+import { Fold } from '../../../../shared/fold/fold';
+import { TabList, tabId, tabPanelId } from '../../../../shared/tab-list/tab-list';
 import type { PactSlotsVm, SlotUsageVm } from '../../../../core/play/resource-usage.types';
 import { SlotDots } from '../../../../shared/slot-dots/slot-dots';
-import { ActionRow } from './action-row';
-import { EconomyTiles } from './economy-tiles';
+import { ActionRow, type RowEconomy } from './action-row';
 import { GroupState } from './group-state';
 
 /** The standard actions an extra action may be, by the key the server sends. */
@@ -84,18 +95,40 @@ const EXTRA_NAMES: Readonly<Record<string, string>> = {
  * attacks stay enabled. Disabled options keep their place with the reason, by
  * code (`reasonText`).
  */
+/** The icon beside each tab's words (C4-03, C4-04). */
+const TAB_ICONS: Readonly<Record<ActionTabId, string>> = {
+  attacks: 'swords',
+  spells: 'auto_fix_high',
+  class: 'shield',
+  other: 'more_horiz',
+};
+
+/** "1º": the circle as the slots line writes it. */
+const shortCircle = (level: number): string => `${level}º`;
+
 /** The question Fúria asks a Berserker (SRD 5.1, Path of the Berserker, Frenzy). */
 const FRENZY_QUESTION =
   'Entrar em frenesi? Um ataque corpo a corpo como ação bônus em cada turno seguinte; quando a fúria acabar, você ganha 1 nível de exaustão.';
 
 @Component({
   selector: 'app-action-groups',
-  imports: [ActionRow, EconomyTiles, GroupState, MatButtonModule, MatIconModule, SlotDots],
+  imports: [
+    ActionRow,
+    Fold,
+    GroupState,
+    MatButtonModule,
+    MatIconModule,
+    NgTemplateOutlet,
+    SlotDots,
+    TabList,
+  ],
   templateUrl: './action-groups.html',
   styleUrl: './action-groups.scss',
 })
 export class ActionGroups {
   readonly options = input.required<TurnOptions>();
+  /** The key of the action whose target the player is choosing on the map (C7-05): its row says "Escolhendo o alvo". */
+  readonly choosing = input('');
   /** The player's own combatant: its economy and movement. */
   readonly own = input.required<Combatant>();
   /** Extra Attack: the attacks of this Attack action that remain, and how many
@@ -188,8 +221,10 @@ export class ActionGroups {
   /** "Voltar" (to the normal shape), a bonus action. */
   readonly leaveForm = output<void>();
 
-  /** From 1024px the economy tiles are the panel's first thing (E6-14). */
-  protected readonly desktop = mediaQuery('(min-width: 1024px)');
+  /** The ids of the tab buttons and of their panels start with this. */
+  protected readonly prefix = 'acts';
+  /** The tab the person chose; the first one until they choose (it lives here, in memory). */
+  protected readonly tab = signal('');
 
   protected readonly surprised = computed(() => this.contest()?.surprised === true);
   protected readonly grappled = computed(() => this.contest()?.grappled === true);
@@ -212,8 +247,93 @@ export class ActionGroups {
       ? { name: 'Empurrar', detail: SHOVE_DETAIL }
       : { name: 'Agarrar', detail: GRAPPLE_DETAIL };
   }
+  /** Spent this turn, by economy: its rows fold to one line. With Extra Attack the Action stays open while attacks remain. */
+  protected readonly spent = computed<SpentGroups>(() => {
+    const own = this.own();
+    const cannot = cannotAct(own);
+    const partial = this.attacksLeft() > 0 && this.attacksPerAction() > 1;
+    return {
+      action: cannot || (own.actionUsed && !partial),
+      bonus: cannot || own.bonusActionUsed,
+      reaction: cannot || own.reactionUsed,
+    };
+  });
+  /** A row the server still offers (a follow-up strike, the next attack) is never folded away as spent. */
+  private readonly canUse = (row: { readonly enabled: boolean }) =>
+    row.enabled && !cannotAct(this.own());
+  protected readonly spentWord = computed(() => (cannotAct(this.own()) ? 'Indisponível' : 'Usada'));
+  protected readonly attackParts = computed(() =>
+    partByEconomy(
+      this.options().attacks,
+      (a) => (isBonusAttack(a) ? 'bonus' : 'action'),
+      this.spent(),
+      this.spentWord(),
+      this.canUse,
+    ),
+  );
+  protected readonly spellParts = computed(() =>
+    partByEconomy(
+      this.spells(),
+      (s) => groupOf(s.economy),
+      this.spent(),
+      this.spentWord(),
+      this.canUse,
+    ),
+  );
+  /** The class's abilities, in the order the server sends them: all of an economy but the form's own way out (the beast has "Voltar à forma normal"). */
+  protected readonly classFeatures = computed(() =>
+    this.options().featureActions.filter(
+      (f) => !(this.beast() && f.action?.key?.startsWith('feature:wild-shape')),
+    ),
+  );
+  protected readonly featureParts = computed(() =>
+    partByEconomy(this.classFeatures(), featureGroup, this.spent(), this.spentWord(), this.canUse),
+  );
+  protected readonly hasSpells = computed(() => this.spells().length > 0 || !!this.beast());
+  protected readonly hasClassTab = computed(
+    () => this.classFeatures().length > 0 || !!this.beast(),
+  );
+  protected readonly tabItems = computed(() =>
+    actionTabs(
+      actionCounts(this.options(), {
+        contestAttacks: this.contestAttacks().length,
+        escape: this.grappled(),
+        standard: this.standard().length,
+      }),
+      classTabName(this.classFeatures()),
+      { beast: !!this.beast() },
+    ).map((t) => ({
+      id: t.id,
+      label: t.label,
+      icon: TAB_ICONS[t.id],
+      badge: t.badge,
+      words: t.words,
+    })),
+  );
+  /** The tab shown: the person's choice while it is still there, else the first. */
+  protected readonly current = computed<ActionTabId>(() => {
+    const items = this.tabItems();
+    const chosen = items.find((t) => t.id === this.tab());
+    return (chosen ?? items[0]).id as ActionTabId;
+  });
+  protected panelId(id: string): string {
+    return tabPanelId(this.prefix, id);
+  }
+  protected tabButtonId(id: string): string {
+    return tabId(this.prefix, id);
+  }
+  protected readonly isBonusAttack = isBonusAttack;
+  /** The mark of a spell's or a feature's economy. */
+  protected economyOf(economy: ActionEconomy): RowEconomy | null {
+    return groupOf(economy);
+  }
+  protected featureEconomy(a: ActionOption): RowEconomy | null {
+    return a.action?.economy === ActionEconomy.FREE ? 'free' : groupOf(a.action?.economy ?? 0);
+  }
+  protected isReaction(a: ActionOption): boolean {
+    return a.action?.economy === ActionEconomy.REACTION;
+  }
   protected readonly standRow = computed(() => standUpRow(this.own()));
-  protected readonly action_ = computed(() => optionsFor(this.options(), 'action'));
   /** Every spell, whatever its economy, as the server ordered them. */
   protected readonly spells = computed(() => this.options().spells);
   /** One row for each circle the character has slots in, then the pact slots. */
@@ -223,6 +343,7 @@ export class ActionGroups {
       .filter((u) => u.total > 0)
       .map((u) => ({
         title: circleLabel(u.level),
+        short: shortCircle(u.level),
         total: u.total,
         used: u.used,
         text: freeText(u.total - u.used, u.total),
@@ -230,6 +351,7 @@ export class ActionGroups {
     if (pact && pact.total > 0) {
       rows.push({
         title: `${circleLabel(pact.slotLevel)} (pacto)`,
+        short: `${shortCircle(pact.slotLevel)} pacto`,
         total: pact.total,
         used: pact.used,
         text: freeText(pact.total - pact.used, pact.total),
@@ -237,8 +359,6 @@ export class ActionGroups {
     }
     return rows;
   });
-  protected readonly bonus = computed(() => optionsFor(this.options(), 'bonus'));
-  protected readonly reaction = computed(() => optionsFor(this.options(), 'reaction'));
   /** Atacar and Conjurar are not repeated here: they are the rows above. */
   protected readonly standard = computed(() =>
     this.options().standardActions.filter(
@@ -319,12 +439,9 @@ export class ActionGroups {
     return bonusAttackLine(o) || beamsLeftLine(o);
   }
 
-  /** The tags under an attack's name: "Truque" for a cantrip, "Ação bônus" for a bonus action attack. */
+  /** The tags under an attack's name: "Truque" for a cantrip (its economy has its own mark). */
   protected attackTags(o: AttackOption): string[] {
-    if (o.attack && isCantrip(o.attack)) {
-      return ['Truque'];
-    }
-    return isBonusAttack(o) ? ['Ação bônus'] : [];
+    return o.attack && isCantrip(o.attack) ? ['Truque'] : [];
   }
   protected readonly attackDetail = (a: Parameters<typeof attackDetail>[0]) => attackDetail(a);
   protected readonly reasonText = reasonText;
@@ -333,7 +450,15 @@ export class ActionGroups {
     cannotAct(this.own()) ? 'Indisponível' : groupState(used);
   protected readonly isCantrip = isCantrip;
 
-  protected spellTags = spellTags;
+  /** The circle and "Concentração"/"Ritual"; the economy is the row's mark, not a tag. */
+  protected spellTags(s: SpellOption): string[] {
+    return spellTags(s).filter((t) => t !== 'Ação bônus' && t !== 'Reação');
+  }
+
+  /** The tags ("1º nível", "Concentração", "Truque") as the first words of the line under the name: the row shows the name, its economy and one line. */
+  protected withTags(tags: readonly string[], line: string): string {
+    return [...tags, line].filter(Boolean).join(' · ');
+  }
 
   /** The line under a spell's name. */
   protected spellLine(s: SpellOption): string {
@@ -375,13 +500,6 @@ export class ActionGroups {
     const wild = this.wild();
     return !!wild && a.action?.key === wild.key;
   }
-
-  /** The features of the Ação but Wild Shape (a row of its own after the attacks), and none of it as a beast: the form's own way out is "Voltar à forma normal". */
-  protected readonly otherFeatures = computed(() =>
-    this.action_().features.filter(
-      (f) => !this.isWild(f) && !(this.beast() && f.action?.key?.startsWith('feature:wild-shape')),
-    ),
-  );
 
   /** The SRD's own text of a creature's attack, under it (English); a character's attack has none shown. */
   protected rider(a: Attack): string {

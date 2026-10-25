@@ -83,21 +83,20 @@ import { MatIconModule } from '@angular/material/icon';
       color: var(--mr-ink-muted);
     }
 
+    // The question sits in a column of 288px (the master's order) as well as on a phone: the buttons share the line when there is room for
+    // both and stack when there is not, and never reach past the box.
     .ask__buttons {
       display: flex;
-      flex-direction: column;
+      flex-wrap: wrap;
       gap: var(--mr-space-2);
       margin-top: var(--mr-space-3);
-
-      @media (min-width: 768px) {
-        flex-direction: row;
-      }
     }
 
     button {
       --mat-button-outlined-container-height: 48px;
       --mat-button-outlined-label-text-color: var(--mr-ink);
-      min-width: 140px;
+      flex: 1 1 130px;
+      min-width: 0;
       font-family: var(--mr-font-sans);
     }
 

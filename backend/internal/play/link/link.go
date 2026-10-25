@@ -611,6 +611,13 @@ type Scene struct {
 	ShowDC bool
 }
 
+// ImageAudience is who an image left with the players was left with (MR-028, RN-10): the whole
+// table, or exactly the players UserIDs. The master always sees every image.
+type ImageAudience struct {
+	Everyone bool
+	UserIDs  []string
+}
+
 // SceneImage is a gallery image attached to a scene.
 type SceneImage struct {
 	ID, Name string
@@ -643,6 +650,9 @@ type SceneAction struct {
 	// MaxAttempts is how many times each player's character may roll it while
 	// the scene is open: 1 to 5, and 0 means unlimited.
 	MaxAttempts int
+	// Hidden says the master hid the action from the players: package play offers it to the master
+	// alone and refuses a player's roll on it as on an action that does not exist (RN-10).
+	Hidden bool
 }
 
 // SceneOption is a scene check with one character's numbers on it (the rules

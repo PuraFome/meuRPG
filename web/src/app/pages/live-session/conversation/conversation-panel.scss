@@ -29,7 +29,29 @@
   font-weight: 700;
 }
 
+.panel__title--icon {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+
+  .mat-icon {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    font-size: 22px;
+  }
+}
+
+.panel__count .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+}
+
 .panel__count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   margin-left: auto;
   font-size: 14px;
   color: var(--mr-ink-muted);

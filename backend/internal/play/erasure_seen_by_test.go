@@ -25,6 +25,10 @@ func TestErasingAnAccountScrubsItsIDFromTheWhoSawListsOfTheHistory(t *testing.T)
 		{"an empty list stays", `{"fogged":true,"seen_by":[]}`, `{"fogged":true,"seen_by":[]}`},
 		{"a null list stays", `{"fogged":true,"seen_by":null}`, `{"fogged":true,"seen_by":null}`},
 		{"no list", `{"round":2}`, `{"round":2}`},
+		// A scene open to only some players (MR-015): the players it was opened to, and the players in it when a check was rolled.
+		{"players of a scene", `{"point_id":"p","actions":1,"players":[` + a + `,` + c + `]}`, `{"point_id":"p","actions":1,"players":[` + c + `]}`},
+		{"audience of a roll", `{"point_id":"p","audience":[` + c + `,` + a + `],"dc_shown":true}`, `{"point_id":"p","audience":[` + c + `],"dc_shown":true}`},
+		{"Ana alone in a scene", `{"point_id":"p","players":[` + a + `]}`, `{"point_id":"p","players":[]}`},
 		{"cover_seen_by", `{"cover_restricted":true,"cover_seen_by":[` + a + `,` + c + `]}`, `{"cover_restricted":true,"cover_seen_by":[` + c + `]}`},
 		{
 			// The masks of the hits count the players by their place in cover_users: the

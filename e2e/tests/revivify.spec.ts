@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import { getEncounterRPC, waitTurnLeaves } from './combat-support';
 import { endOpenSessionRPC, openSessionPage, openSheetTab } from './live-session-support';
 import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support';
-import { newSignedInContext } from './support';
+import { newSignedInContext, openActionTab } from './support';
 
 // RN-03 and RN-10 (Revivificar, PM-08d), against the real screens: the cleric casts on a dead ally in a combat and outside one,
 // the player's list holds only what the spell reaches, the diamonds are ticked, and the master answers outside a combat. The table
@@ -28,6 +28,7 @@ test(
       await expect(p.getByRole('heading', { name: 'Sua vez, Ilaria' })).toBeVisible();
 
       // Choosing the spell opens its own sheet, with the caster and the three steps.
+      await openActionTab(p, 'Magias');
       await p.getByRole('button', { name: 'Conjurar Revivificar' }).click();
       const sheet = p.getByRole('dialog', { name: 'Revivificar' });
       await expect(sheet.getByRole('heading', { name: 'Revivificar' })).toBeFocused();

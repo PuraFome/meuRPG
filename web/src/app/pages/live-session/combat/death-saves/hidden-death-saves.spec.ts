@@ -17,6 +17,7 @@ import { CombatState } from '../../../../core/combat/combat-state';
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
 import { CombatLogPanel } from '../combat-log/combat-log-panel';
 import { OrderList } from '../order-list/order-list';
+import { openAllRows } from '../order-list/order-list-testing';
 import { DeathSaves } from './death-saves';
 
 // The death saves a table hides (RN-24, E10-04 state 6): the owner and the master read the marks and who else sees them; the other
@@ -71,6 +72,7 @@ describe("the master's order", () => {
     );
     fixture.componentRef.setInput('deathsHidden', deathsHidden);
     fixture.detectChanges();
+    openAllRows(fixture);
     return fixture.nativeElement as HTMLElement;
   }
 

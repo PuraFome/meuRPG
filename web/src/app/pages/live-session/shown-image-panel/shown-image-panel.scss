@@ -99,3 +99,24 @@
     min-height: 44px;
   }
 }
+
+// The row under a scene's images (C3-01): the switch and "Parar de mostrar" on one line.
+.strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-2) var(--mr-space-4);
+
+  button {
+    min-height: 44px;
+  }
+}
+
+// The dashed tile at the end of the scene's thumbnails.
+.tile {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  border-style: dashed;
+}

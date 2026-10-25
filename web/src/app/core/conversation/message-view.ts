@@ -43,6 +43,8 @@ export interface LineView {
   readonly canHear: boolean;
   /** The reader wrote this line (their character, or the master's own NPC): it is not announced back to them. */
   readonly mine: boolean;
+  /** The master spoke as an NPC: their own line to the right keeps the NPC's round portrait beside the bubble. */
+  readonly npc?: boolean;
   readonly audioUrl: string;
 }
 
@@ -83,12 +85,12 @@ function byMaster(message: SessionMessage): boolean {
 function baseLook(message: SessionMessage, viewer: Viewer): Exclude<LineLook, 'restricted'> {
   switch (message.speakerKind) {
     case Kind.NARRATOR:
-      return 'narration';
+      // The master reads their own narration to the right, like any line of theirs (C3-01); the table reads it on the page.
+      return isMine(message, viewer) ? 'own' : 'narration';
     case Kind.OUT_OF_CHARACTER:
       return 'out-of-character';
     default:
-      // The master's NPC line keeps the NPC look (portrait, bubble) whoever wrote it.
-      return isMine(message, viewer) && message.speakerKind !== Kind.NPC ? 'own' : 'npc';
+      return isMine(message, viewer) ? 'own' : 'npc';
   }
 }
 
@@ -111,7 +113,7 @@ function baseLabel(
     case 'narration':
       return 'Narração';
     case 'own':
-      return `${name} · você`;
+      return `${name || 'Narração'} · você`;
     case 'npc':
       return isMine(message, viewer) ? `${name} · você` : name;
     case 'out-of-character':
@@ -153,10 +155,16 @@ export function viewLine(
 ): LineView {
   const base = baseLook(message, viewer);
   const restricted = !message.forEveryone;
-  // The master's narration is not "own": it has no speaker to be "você" for.
   const look: LineLook = restricted ? 'restricted' : base;
+  // A line for chosen readers keeps the words it always had: the label names the speaker, then who reads.
+  const wordsLook: Exclude<LineLook, 'restricted'> =
+    message.speakerKind === Kind.NARRATOR
+      ? 'narration'
+      : message.speakerKind === Kind.NPC
+        ? 'npc'
+        : base;
   const words = restricted
-    ? restrictedWords(message, viewer, directory, base)
+    ? restrictedWords(message, viewer, directory, wordsLook)
     : { label: baseLabel(message, base, viewer, directory), audience: null };
   const portrait = message.speakerPortrait;
   return {
@@ -170,6 +178,7 @@ export function viewLine(
     image: message.image ?? null,
     canHear: message.canHear,
     mine: speaks(message) && isMine(message, viewer),
+    npc: message.speakerKind === Kind.NPC,
     audioUrl: message.audioUrl,
   };
 }

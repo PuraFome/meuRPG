@@ -16,31 +16,33 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/slowclient"
 )
 
-// playersSeeImage says whether the campaign's players see the image now:
-// it is the open session's shown image, an image the master left with them
-// (MR-028), or the background of a map they see (revealed, or the
-// session's current map), or the portrait of an NPC on the stage of the open
-// scene (MR-031). Reads, one per module: what the session shows and the
-// stage come from play (LiveSession), the maps from this module's table.
+// playersSeeImage says whether the player sees the image now: it is the open
+// session's shown image and they are in its audience, an image the master left
+// with them (MR-028, RN-10), or the background of a map they see (revealed, or
+// the session's current map), or the portrait of an NPC on the stage of the open
+// scene when they are in the scene (MR-031). Reads, one per module: what the
+// session shows and the stage come from play (LiveSession), the maps from this
+// module's table.
 //
 // The background of a map with the fog of war on is never one of them: a player
 // receives such a map only as the squares their character sees (MR-036), so the
 // raw image is refused them whatever else shows it (RN-10). Turning the fog on
 // copies an image that is also used another way (fogimage.go), so the fog map's
 // image is its own.
-func (s *Service) playersSeeImage(ctx context.Context, campaignID, imageID string) (bool, error) {
+func (s *Service) playersSeeImage(ctx context.Context, campaignID, userID, imageID string) (bool, error) {
 	fog, err := s.queries.ImageIsOnAFogMap(ctx, mapsdb.ImageIsOnAFogMapParams{CampaignID: campaignID, ImageID: imageID})
 	if err != nil || fog {
 		return false, err
 	}
-	currentMap, shownImage, err := s.live.OnScreen(ctx, campaignID)
+	currentMap, _, err := s.live.OnScreen(ctx, campaignID)
 	if err != nil {
 		return false, err
 	}
-	if shownImage == imageID {
-		return true, nil
+	shown, err := s.live.ImageShownTo(ctx, campaignID, userID, imageID)
+	if err != nil || shown {
+		return shown, err
 	}
-	left, err := s.queries.ImageIsLeft(ctx, mapsdb.ImageIsLeftParams{CampaignID: campaignID, ImageID: imageID})
+	left, err := s.queries.ImageIsLeftWith(ctx, mapsdb.ImageIsLeftWithParams{CampaignID: campaignID, ImageID: imageID, UserID: userID})
 	if err != nil || left {
 		return left, err
 	}
@@ -54,12 +56,12 @@ func (s *Service) playersSeeImage(ctx context.Context, campaignID, imageID strin
 	}
 	// A portrait is fetchable only while its NPC is on the stage (RN-20): the
 	// moment the master takes the NPC off, or closes the scene, it is 404.
-	return s.live.ImageOnStage(ctx, campaignID, imageID)
+	return s.live.ImageOnStage(ctx, campaignID, userID, imageID)
 }
 
 // playerSeesImage is playersSeeImage, or an image a line the player may read carries (RN-36).
 func (s *Service) playerSeesImage(ctx context.Context, campaignID, userID, imageID string) (bool, error) {
-	visible, err := s.playersSeeImage(ctx, campaignID, imageID)
+	visible, err := s.playersSeeImage(ctx, campaignID, userID, imageID)
 	if err != nil || visible {
 		return visible, err
 	}
@@ -90,9 +92,10 @@ func (s *Service) handleThumbnail(w http.ResponseWriter, r *http.Request) {
 //   - the campaign's master, every image of the campaign;
 //   - a player, only an image they see at this moment: the background of a
 //     map they see (revealed, or the open session's current map), the
-//     image the master shows in the open session, an image the master
-//     left with the players (MR-028), or the portrait of an NPC that is on
-//     the stage of the open scene (MR-031).
+//     image the master shows in the open session when they are in its
+//     audience, an image the master left with them (MR-028, RN-10), or the
+//     portrait of an NPC that is on the stage of the open scene they are in
+//     (MR-031).
 //
 // Knowing an ID is not enough for a player: they keep the IDs of maps that
 // were hidden again and of images no longer shown, so the rule is checked

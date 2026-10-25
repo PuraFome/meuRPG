@@ -89,31 +89,6 @@ export class SceneImagesShow {
     }
   }
 
-  protected async stop(image: SceneImage): Promise<void> {
-    if (this.busyId() !== null) {
-      return;
-    }
-    const leaving = this.keep() ? this.shown() : null;
-    this.busyId.set(image.id);
-    this.error.set('');
-    try {
-      await this.source.setShownImage(this.campaignId(), null);
-      this.changed.emit(null);
-      if (leaving) {
-        this.leftChanged.emit();
-      }
-      this.status.set(
-        leaving
-          ? `${leaving.name} continua com os jogadores.`
-          : 'Imagem retirada da tela dos jogadores.',
-      );
-    } catch (err) {
-      this.error.set(showErrorMessage(err));
-    } finally {
-      this.busyId.set(null);
-    }
-  }
-
   protected cancelAsk(): void {
     this.askingId.set(null);
   }

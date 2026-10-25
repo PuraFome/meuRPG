@@ -95,7 +95,7 @@
 
       <!-- The conversation of the scene (MR-051): a column beside the stage from 1600px, under it below that; on a phone the
            "Conversa" tab opens it full screen (the page behind is inert). Its code loads lazily. -->
-      <div class="split" [class.split--rail]="railed()">
+      <div class="split" [class.split--rail]="railChat() || playerRail()" [class.split--board]="railed()">
       <div class="split__main" [attr.inert]="slot.chatOpen() ? '' : null">
 
       <!-- New lines while the phone's chat is closed: one quiet row on top, because the tabs close the page, out of sight. -->
@@ -179,34 +179,59 @@
           [dicePreference]="state.campaign()?.dicePreference ?? 1"
           [trapSkills]="view.trapSkills()"
           [traps]="state.isMaster() ? trapBoard : null"
+          [chat]="railChat() ? chatPanel : null"
+          [chatUnread]="conversation.unread()"
           (adjust)="sheets.adjust($event)"
           (changeDice)="sheets.changeDice()"
+          (chatShown)="slot.railShown.set($event)"
         >
           @if (state.ownVitals(); as v) {
             <app-player-vitals [vitals]="v" [sheet]="state.ownSheet()" [beastAc]="state.beastAc()" [campaignId]="state.campaignId()" [armorClassBonus]="view.ownArmorBonus()" [ownDeathSaves]="view.ownDeathSaves()" [onTurn]="view.ownTurn()" [effectCards]="ownEffects.cards()" [conditionNames]="ownEffects.conditions()" [compact]="true" />
           }
+          @if (state.isMaster() && !view.inTheatre() && view.fogMaster()) {
+            <app-fog-master-panel
+              appMapTab="fog"
+              [campaignId]="state.campaignId()"
+              [state]="mapState"
+              [map]="mapState.map()"
+              [people]="view.viewAsPeople()"
+              [info]="state.partyInfo()"
+              [tick]="state.visionTick()"
+              [viewAs]="state.viewAs()"
+              [note]="state.viewNote()"
+              [goneNote]="state.viewGone()"
+              [inCombat]="true"
+              (viewAsChange)="setViewAs($event)"
+              (noteChange)="state.viewNote.set($event)"
+              (gone)="viewAsGone()"
+            />
+          }
+          <!-- In a combat the master still reveals, fires and disarms (E9-08) and marks treasure (E9-09): one tab each, under the map. -->
+          @if (state.isMaster() && !view.inTheatre()) {
+            <app-trap-panel
+              appMapTab="traps"
+              [mapTabCount]="view.trapCount()"
+              [campaignId]="state.campaignId()"
+              [state]="mapState"
+              [board]="trapBoard"
+              [players]="view.cluePlayers()"
+              [vitals]="state.vitals()"
+              [combat]="combat"
+              [withDamages]="false"
+            />
+          }
+          @if (state.isMaster() && !view.inTheatre()) {
+            <app-treasure-panel appMapTab="treasure" [mapTabCount]="view.treasureCount()" [campaignId]="state.campaignId()" [state]="mapState" [people]="view.finderRows()" />
+          }
+          @if (state.isMaster() && view.puzzlesShown()) {
+            <div appMapTab="puzzles" class="puzzles-tab">
+              <app-master-puzzles [campaignId]="state.campaignId()" [state]="puzzles" />
+              <app-master-live [campaignId]="state.campaignId()" [state]="puzzles" />
+            </div>
+          }
         </app-combat-view>
-        <!-- The fog's tools stay during a combat (MR-036): the master's "Ver como" and the lights, the player's light. A combat without a map has no fog (RN-25). -->
-        @if (view.inTheatre()) {
-          <!-- Nothing that depends on place exists here. -->
-        } @else if (view.fogMaster()) {
-          <app-fog-master-panel
-            class="fog-panel"
-            [campaignId]="state.campaignId()"
-            [state]="mapState"
-            [map]="mapState.map()"
-            [people]="view.viewAsPeople()"
-            [info]="state.partyInfo()"
-            [tick]="state.visionTick()"
-            [viewAs]="state.viewAs()"
-            [note]="state.viewNote()"
-            [goneNote]="state.viewGone()"
-            [inCombat]="true"
-            (viewAsChange)="setViewAs($event)"
-            (noteChange)="state.viewNote.set($event)"
-            (gone)="viewAsGone()"
-          />
-        } @else if (view.fogPlayer() && view.ownToken(); as me) {
+        <!-- The player's light stays during a combat (MR-036); the master's fog, traps, treasure and puzzles are tabs under the map. A combat without a map has no fog (RN-25). -->
+        @if (!state.isMaster() && !view.inTheatre() && view.fogPlayer() && view.ownToken(); as me) {
           <app-fog-player-tools
             class="fog-panel"
             [campaignId]="state.campaignId()"
@@ -220,27 +245,8 @@
             [seeing]="state.seeingFamiliar()"
           />
         }
-        @if (state.isMaster() && !view.inTheatre()) {
-          <!-- In a combat the master still reveals, fires and disarms (E9-08) and marks treasure (E9-09). -->
-          <div class="board__traps">
-            <app-trap-panel
-              [campaignId]="state.campaignId()"
-              [state]="mapState"
-              [board]="trapBoard"
-              [players]="view.cluePlayers()"
-              [vitals]="state.vitals()"
-              [combat]="combat"
-              [withDamages]="false"
-            />
-            <app-treasure-panel [campaignId]="state.campaignId()" [state]="mapState" [people]="view.finderRows()" />
-          </div>
-          @if (view.puzzlesShown()) {
-            <app-master-puzzles class="board__traps" [campaignId]="state.campaignId()" [state]="puzzles" />
-            <app-master-live class="board__traps" [campaignId]="state.campaignId()" [state]="puzzles" />
-          }
-        }
       } @else if (state.isMaster()) {
-        <!-- The rolls that wait for their roller's answer, which the master may answer too after ten seconds: above the stage. -->
+        <!-- The rolls that wait for their roller's answer, which the master may answer too after ten seconds: above the tabs. -->
         <app-held-rolls-panel
           [campaignId]="state.campaignId()"
           [tick]="state.heldRollsTick()"
@@ -249,71 +255,22 @@
         @if (launch.unreadable()) {
           <app-combat-launch-notice class="launch" (retry)="mapState.refresh()" />
         }
-        <!-- The encounters kept on the battle points of the current map, with "Começar este combate" (MR-043, E10-09 state 7). -->
-        <app-battle-encounters [campaignId]="state.campaignId()" [state]="mapState" (started)="combatStarted($event)" />
-        <div class="board board--master" [class.board--scene-open]="scene.scene()">
-          @if (!scene.scene()) {
-            <app-scene-panel
-              class="board__scene"
-              [campaignId]="state.campaignId()"
-              [state]="scene"
-              [mapState]="mapState"
+        <!-- The master's board outside a combat (C3, C6-05, C6-06): "Cena", "Mapa" and "Grupo"; on a phone the pinned nav chooses between "Cena" and "Grupo" and the map is a fold of the scene. -->
+        <div class="mb">
+          @if (!slot.phone()) {
+            <app-tab-list
+              class="mb__tabs"
+              label="Seções da mesa"
+              idPrefix="mb"
+              [tabs]="board.tabs()"
+              [selected]="board.tab()"
+              (selectedChange)="board.choose($event)"
             />
           }
-          <app-party-panel
-            class="board__party"
-            [campaignId]="state.campaignId()"
-            [campaignName]="state.campaign()?.name ?? ''"
-            [party]="state.vitals()"
-            [info]="state.partyInfo()"
-            [dark]="dark.ids()"
-            (adjust)="sheets.adjust($event)"
-          />
-          <!-- The master's short and long rests (PM-07b 9). -->
-          <app-rest-card
-            class="board__rest"
-            [campaignId]="state.campaignId()"
-            [party]="state.vitals()"
-            (restTaken)="takeVitals($event)"
-          />
-          <!-- The effects on the characters outside a combat, the exhaustion and "Passar o tempo" (W7-E). -->
-          <app-character-effects-panel
-            class="board__effects"
-            [campaignId]="state.campaignId()"
-            [party]="state.vitals()"
-            [tick]="state.effectsTick()"
-          />
-          <app-casting-panel
-            class="board__casting"
-            [campaignId]="state.campaignId()"
-            [master]="true"
-            [tick]="state.castsTick()"
-            [diceMode]="state.campaign()?.diceMode ?? 1"
-            [preference]="state.campaign()?.dicePreference ?? 1"
-          />
-          <app-bardic-block
-            [campaignId]="state.campaignId()"
-            [tick]="state.castsTick()"
-          />
-          <app-shown-image-panel
-            class="board__image"
-            [campaignId]="state.campaignId()"
-            [shown]="state.shownImage()"
-            [maps]="state.campaignMaps()"
-            [keep]="state.shownKeep()"
-            [left]="state.leftImages()"
-            (changed)="state.shownImage.set($event); state.shownKeep.set(false)"
-            (keepChange)="state.shownKeep.set($event)"
-            (leftChanged)="loader.reloadLeftImages()"
-            (taken)="loader.takenBack($event)"
-          />
-          @if (view.puzzlesShown()) {
-            <app-master-puzzles class="board__puzzles" [campaignId]="state.campaignId()" [state]="puzzles" />
-          }
-          <div class="board__left">
+
+          <div appMasterPanel="cena" [board]="board">
             @if (scene.scene()) {
               <app-scene-open
-                class="board__open"
                 [campaignId]="state.campaignId()"
                 [state]="scene"
                 [mapState]="mapState"
@@ -322,69 +279,205 @@
                 [keep]="state.shownKeep()"
                 (shownChange)="state.shownImage.set($event); state.shownKeep.set(false)"
                 (leftChanged)="loader.reloadLeftImages()"
+                [visible]="board.tab() === 'cena'"
+                [(groupAsk)]="askingGroup"
+              >
+                <app-shown-image-panel
+                  galleryTile
+                  appearance="tile"
+                  [campaignId]="state.campaignId()"
+                  [shown]="state.shownImage()"
+                  [maps]="state.campaignMaps()"
+                  [keep]="state.shownKeep()"
+                  [left]="state.leftImages()"
+                  (changed)="state.shownImage.set($event); state.shownKeep.set(false)"
+                  (leftChanged)="loader.reloadLeftImages()"
+                />
+                <app-shown-image-panel
+                  sceneImageTools
+                  appearance="row"
+                  [campaignId]="state.campaignId()"
+                  [shown]="state.shownImage()"
+                  [maps]="state.campaignMaps()"
+                  [keep]="state.shownKeep()"
+                  [left]="state.leftImages()"
+                  (changed)="state.shownImage.set($event); state.shownKeep.set(false)"
+                  (keepChange)="state.shownKeep.set($event)"
+                  (leftChanged)="loader.reloadLeftImages()"
+                  (taken)="loader.takenBack($event)"
+                />
+                <!-- The master's group check (W7-X): the scene's own button asks, and the card shows who answered. -->
+                <app-group-check-master
+                  sceneTools
+                  [collapsible]="true"
+                  [askButton]="false"
+                  [(asking)]="askingGroup"
+                  [campaignId]="state.campaignId()"
+                  [tick]="state.groupCheckTick()"
+                  [diceMode]="state.campaign()?.diceMode ?? 1"
+                  [preference]="state.campaign()?.dicePreference ?? 1"
+                  [people]="view.viewAsPeople()"
+                />
+              </app-scene-open>
+            } @else {
+              <app-scene-panel
+                [campaignId]="state.campaignId()"
+                [state]="scene"
+                [mapState]="mapState"
+              />
+              <!-- With no scene open the shown image is its own panel, next to "Abrir cena". -->
+              <app-shown-image-panel
+                [campaignId]="state.campaignId()"
+                [shown]="state.shownImage()"
+                [maps]="state.campaignMaps()"
+                [keep]="state.shownKeep()"
+                [left]="state.leftImages()"
+                (changed)="state.shownImage.set($event); state.shownKeep.set(false)"
+                (keepChange)="state.shownKeep.set($event)"
+                (leftChanged)="loader.reloadLeftImages()"
+                (taken)="loader.takenBack($event)"
+              />
+              <app-group-check-master
+                [collapsible]="true"
+                [campaignId]="state.campaignId()"
+                [tick]="state.groupCheckTick()"
+                [diceMode]="state.campaign()?.diceMode ?? 1"
+                [preference]="state.campaign()?.dicePreference ?? 1"
+                [people]="view.viewAsPeople()"
               />
             }
-            <!-- The master's group check (W7-X): asking, who answered, rolling for one who did not, closing. -->
-            <app-group-check-master
+            <!-- The master's open puzzle (MR-038, E10-06) and the list of the puzzles. -->
+            <app-master-live [campaignId]="state.campaignId()" [state]="puzzles" />
+            @if (view.puzzlesShown()) {
+              <app-master-puzzles [campaignId]="state.campaignId()" [state]="puzzles" />
+            }
+            @if (slot.phone()) {
+              <app-fold
+                class="mb__map-fold"
+                [title]="'Mapa · ' + (mapState.map()?.name ?? 'nenhum')"
+                [open]="mapFoldOpen()"
+                (openChange)="mapFoldOpen.set($event)"
+              >
+                <ng-container *ngTemplateOutlet="mapBlock" />
+              </app-fold>
+            }
+            <!-- "Rolagens da mesa" closes the column (MR-052). -->
+            <app-free-roll-log [folded]="true" [rolls]="freeDice.table()" [listState]="freeDice.listState()" (retry)="freeDice.refresh()" />
+          </div>
+
+          <div appMasterPanel="mapa" [board]="board">
+            @if (!slot.phone()) {
+              <ng-container *ngTemplateOutlet="mapBlock" />
+            }
+          </div>
+
+          @if (board.chatTab()) {
+            <!-- A tablet has no rail and no pinned nav: the Conversa is the board's fourth tab, with its draft kept while the others show. -->
+            <div appMasterPanel="conversa" [board]="board">
+              <ng-container *ngTemplateOutlet="chatPanel" />
+            </div>
+          }
+          <div appMasterPanel="grupo" [board]="board">
+            <app-party-panel
               [campaignId]="state.campaignId()"
-              [tick]="state.groupCheckTick()"
+              [campaignName]="state.campaign()?.name ?? ''"
+              [party]="state.vitals()"
+              [info]="state.partyInfo()"
+              [dark]="dark.ids()"
+              [conditions]="partyConditions()"
+              (adjust)="sheets.adjust($event)"
+            />
+            <!-- The master's short and long rests (PM-07b 9). -->
+            <app-rest-card
+              [campaignId]="state.campaignId()"
+              [party]="state.vitals()"
+              (restTaken)="takeVitals($event)"
+            />
+            <!-- The effects on the characters outside a combat, the exhaustion and "Passar o tempo" (W7-E). -->
+            <app-character-effects-panel
+              [campaignId]="state.campaignId()"
+              [party]="state.vitals()"
+              [tick]="state.effectsTick()"
+              (conditions)="partyConditions.set($event)"
+            />
+            <app-casting-panel
+              [campaignId]="state.campaignId()"
+              [master]="true"
+              [tick]="state.castsTick()"
               [diceMode]="state.campaign()?.diceMode ?? 1"
               [preference]="state.campaign()?.dicePreference ?? 1"
-              [people]="view.viewAsPeople()"
+              (castsWaiting)="board.setCastsWaiting($event)"
             />
-            <!-- The master's open puzzle (MR-038, E10-06): the board needs the main column; the list stays in the rail. -->
-            <app-master-live class="board__live" [campaignId]="state.campaignId()" [state]="puzzles" />
-            <app-session-map
-              [isMaster]="true"
-              [scene]="scene"
+            <app-bardic-block [campaignId]="state.campaignId()" [tick]="state.castsTick()" />
+          </div>
+        </div>
+
+        <!-- The map and its tab set, in "Mapa" on a computer and in a fold of "Cena" on a phone. -->
+        <ng-template #mapBlock>
+          <app-session-map
+            [isMaster]="true"
+            [tools]="true"
+            [counts]="mapToolCounts()"
+            [scene]="scene"
+            [campaignId]="state.campaignId()"
+            [state]="mapState"
+            [mapId]="state.currentMapId()"
+            [maps]="state.campaignMaps()"
+            [fog]="fog"
+            [dark]="dark"
+            [people]="view.viewAsPeople()"
+            [viewAs]="state.viewAs()"
+            [tick]="state.visionTick()"
+            (viewNoteChange)="state.viewNote.set($event)"
+            (viewAsGone)="viewAsGone()"
+            (viewAsBack)="setViewAs(null)"
+            (currentChanged)="events.showMap($event)"
+          >
+            <app-session-tokens
+              mapTokens
               [campaignId]="state.campaignId()"
               [state]="mapState"
-              [mapId]="state.currentMapId()"
-              [maps]="state.campaignMaps()"
-              [fog]="fog"
-              [dark]="dark"
-              [people]="view.viewAsPeople()"
-              [viewAs]="state.viewAs()"
-              [tick]="state.visionTick()"
-              (viewNoteChange)="state.viewNote.set($event)"
-              (viewAsGone)="viewAsGone()"
-              (viewAsBack)="setViewAs(null)"
-              (currentChanged)="events.showMap($event)"
+              [info]="state.partyInfo()"
             />
-          </div>
-          <!-- The master's trap and treasure panels: under the map on a phone, across the whole width below the page from 1024px (E9-08, E9-09). -->
-          <div class="board__traps board__traps--row">
+            @if (view.fogMaster()) {
+              <app-fog-master-panel
+                mapFog
+                [flat]="true"
+                [campaignId]="state.campaignId()"
+                [state]="mapState"
+                [map]="mapState.map()"
+                [people]="view.viewAsPeople()"
+                [info]="state.partyInfo()"
+                [tick]="state.visionTick()"
+                [viewAs]="state.viewAs()"
+                [note]="state.viewNote()"
+                [goneNote]="state.viewGone()"
+                (viewAsChange)="setViewAs($event)"
+              />
+            }
             <app-trap-panel
+              mapTraps
               [campaignId]="state.campaignId()"
               [state]="mapState"
               [board]="trapBoard"
               [players]="view.cluePlayers()"
               [vitals]="state.vitals()"
             />
-            <app-treasure-panel [campaignId]="state.campaignId()" [state]="mapState" [people]="view.finderRows()" />
-          </div>
-          @if (view.fogMaster()) {
-            <app-fog-master-panel
-              class="board__fog"
-              [campaignId]="state.campaignId()"
-              [state]="mapState"
-              [map]="mapState.map()"
-              [people]="view.viewAsPeople()"
-              [info]="state.partyInfo()"
-              [tick]="state.visionTick()"
-              [viewAs]="state.viewAs()"
-              [note]="state.viewNote()"
-              [goneNote]="state.viewGone()"
-              (viewAsChange)="setViewAs($event)"
-            />
-          }
-          <app-session-tokens
-            class="board__tokens"
-            [campaignId]="state.campaignId()"
-            [state]="mapState"
-            [info]="state.partyInfo()"
-          />
-        </div>
+            <app-treasure-panel mapTreasure [campaignId]="state.campaignId()" [state]="mapState" [people]="view.finderRows()" />
+            <!-- The encounters kept on the battle points of the current map, with "Começar este combate" (MR-043, E10-09 state 7). -->
+            <div mapEncounters>
+              <app-battle-encounters
+                [campaignId]="state.campaignId()"
+                [state]="mapState"
+                (started)="combatStarted($event)"
+                (count)="encounterCount.set($event)"
+              />
+              @if (encounterCount() === 0) {
+                <p class="mr-muted">Nenhum encontro guardado nos pontos de combate deste mapa. Guarde um em “Encontros”, na página da campanha.</p>
+              }
+            </div>
+          </app-session-map>
+        </ng-template>
       } @else {
         <app-clue-notice
           [clues]="notes.notice() ? notes.fresh() : []"
@@ -437,7 +530,7 @@
           }
           <app-found-treasures class="player-board__finds" [points]="mapState.points()" [mapName]="mapState.map()?.name ?? ''" />
           <div class="player-board__activity"><app-trap-activity [activity]="trapBoard.activity()" /></div>
-          @if (!slot.phone() && !railed()) {
+          @if (!slot.phone() && !playerRail()) {
             <!-- A tablet (768 to 1023px): the sheet's numbers under the scene, in the page's one column. -->
             <div class="player-board__side">
               <ng-container [ngTemplateOutlet]="sheetPanel" />
@@ -447,8 +540,8 @@
         <p class="mr-visually-hidden" role="status" aria-live="polite">{{ state.shownNotice() }}</p>
         <p class="mr-visually-hidden" role="status" aria-live="polite">{{ scene.notice() }}</p>
       }
-      @if (!combat.fullPage()) {
-        <!-- The free rolls of the session (MR-052): under the board, so no screen's layout moves for it; the player's is a fold. -->
+      @if (!combat.fullPage() && !(state.isMaster() && !view.combatOnScreen())) {
+        <!-- The free rolls of the session (MR-052): under the board, so no screen's layout moves for it; the player's is a fold. The master's board outside a combat closes its "Cena" with them. -->
         <app-free-roll-log [rolls]="freeDice.table()" [listState]="freeDice.listState()" [fold]="!state.isMaster()" (retry)="freeDice.refresh()" />
       }
       </div>
@@ -459,25 +552,43 @@
         </section>
       }
       </div>
-      @if (railed()) {
-        <!-- From 1024px the player's right column: "Conversa" and "Ficha" as tabs of one rail (C6-08); both stay mounted. -->
-        <app-session-rail class="split__rail" label="Conversa e ficha" [tabs]="railTabs()" [selected]="slot.railTab()" (selectedChange)="slot.railTab.set($event)">
+      @if (playerRail()) {
+        <!-- From 1024px the player's right column outside a combat: "Conversa" and "Ficha" as tabs of one rail (C6-08); both stay mounted. -->
+        <app-session-rail class="split__rail" label="Conversa e ficha" [tabs]="playerRailTabs()" [selected]="slot.railTab()" (selectedChange)="slot.railTab.set($event)">
           <div appRailPanel="chat"><ng-container [ngTemplateOutlet]="chatPanel" /></div>
           <div appRailPanel="sheet"><ng-container [ngTemplateOutlet]="sheetPanel" /></div>
         </app-session-rail>
-      } @else {
-      <div class="split__chat" [class.split__chat--full]="slot.chatOpen()" [class.split__chat--away]="slot.phone() && !slot.chatOpen()">
-        <ng-container [ngTemplateOutlet]="chatPanel" />
-      </div>
+      } @else if (!railChat()) {
+        <div
+          class="split__chat"
+          [class.split__chat--rail]="railed()"
+          [class.split__chat--full]="slot.chatOpen()"
+          [class.split__chat--away]="slot.phone() && !slot.chatOpen()"
+        >
+          @if (railed() && board.chatTab()) {
+            <!-- On a tablet the conversation is the board's "Conversa" tab. -->
+          } @else if (railed() && !slot.phone()) {
+            <!-- From 1024px the master's Conversa is the rail: an aside, sticky under the bars, as tall as the screen (C3-01). -->
+            <app-session-rail label="Conversa" [tabs]="railTabs">
+              <ng-container *ngTemplateOutlet="chatPanel" />
+            </app-session-rail>
+          } @else {
+            <ng-container *ngTemplateOutlet="chatPanel" />
+          }
+        </div>
       }
       <!-- The phone's nav, pinned to the bottom of the screen and outside the page behind it, so it stays usable while the chat covers the page. -->
       @if (slot.phone()) {
         <app-session-tabs
-          [tab]="slot.tab()"
+          [tab]="phoneTab()"
           [unread]="conversation.unread()"
           [sheetLink]="slot.sheetLink()"
           [sheetPanel]="!state.isMaster()"
-          (choose)="slot.choose($event)"
+          [sceneLabel]="state.isMaster() && view.combatOnScreen() ? 'Combate' : 'Cena'"
+          [sheetLabel]="state.isMaster() ? 'Grupo' : 'Ficha'"
+          [master]="state.isMaster() && !view.combatOnScreen()"
+          [groupCount]="board.counts().castsWaiting"
+          (choose)="phoneNav($event)"
         />
       }
       </div>
@@ -496,7 +607,7 @@
   </button>
 </ng-template>
 
-<!-- The conversation, drawn where it sits: the phone's full-screen tab, the master's column, or the player's rail. -->
+<!-- The conversation, drawn where it sits: the phone's full-screen tab, the column beside the stage or under the board, a combat's rail, or the player's rail. Its code loads lazily. -->
 <ng-template #chatPanel>
   @defer (when slot.wanted()) {
     <app-conversation
@@ -507,10 +618,11 @@
       [ownCharacterId]="state.ownCharacterId()"
       [ownCharacterName]="view.ownCharacterName()"
       [stageIds]="slot.stageIds()"
+      [combat]="state.isMaster() && view.combatOnScreen()"
       [sceneName]="scene.scene()?.name ?? ''"
       [connection]="state.connection()"
       [phone]="slot.phone()"
-      [bare]="railed()"
+      [bare]="playerRail()"
       [active]="slot.shown()"
       (back)="slot.choose('scene')"
     />

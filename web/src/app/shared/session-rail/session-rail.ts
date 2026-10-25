@@ -25,7 +25,7 @@ const RAIL_ID_PREFIX = 'rail';
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { role: 'complementary', '[attr.aria-label]': 'label()' },
   template: `
-    @if (tabs().length > 1) {
+    @if (tabsShown()) {
       <app-tab-list
         [label]="tabsLabel()"
         [tabs]="tabs()"
@@ -45,6 +45,10 @@ export class SessionRail {
   readonly tabs = input.required<readonly TabItem[]>();
   /** The tab shown: the first until one is chosen. */
   readonly selected = model('');
+  /** Draws the tab list for a single tab too (the player's "Ações" with nothing beside it). */
+  readonly showSingle = input(false);
+  /** The tab list is drawn: with more than one tab, or when `showSingle` asks. */
+  readonly tabsShown = computed(() => this.tabs().length > 1 || this.showSingle());
 
   protected readonly prefix = RAIL_ID_PREFIX;
   /** The shown tab's id. */
@@ -73,6 +77,6 @@ export class RailPanel {
   protected readonly shown = computed(() => this.rail.current() === this.appRailPanel());
   protected readonly panelId = computed(() => tabPanelId(RAIL_ID_PREFIX, this.appRailPanel()));
   protected readonly tabButtonId = computed(() =>
-    this.rail.tabs().length > 1 ? tabId(RAIL_ID_PREFIX, this.appRailPanel()) : null,
+    this.rail.tabsShown() ? tabId(RAIL_ID_PREFIX, this.appRailPanel()) : null,
   );
 }

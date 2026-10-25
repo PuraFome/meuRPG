@@ -11,6 +11,7 @@ import {
   EncounterStatus,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
 import {
+  type ContestAttackOption,
   ContestAttackOptionKind,
   ContestPurpose,
   ContestStatus,
@@ -26,6 +27,7 @@ import { openContestAnswerSheet } from './contest-answer-sheet/contest-answer-sh
 import { openContestSheet } from './contest-sheet/contest-sheet';
 import { openHelpSheet } from './help-sheet/help-sheet';
 import { openHideSheet } from './hide-sheet/hide-sheet';
+import type { TargetFlow } from './target-mode/target-flow';
 import { trackOpen } from '../../../shared/sheet/sheet-host';
 
 /** What the host reads from the combat page. */
@@ -42,6 +44,14 @@ export interface ContestHostDeps {
   readonly state: () => CombatState;
   readonly diceMode: () => DiceMode;
   readonly preference: () => DicePreference;
+  /** The player's choice of a target on the map (C7-04); absent where the sheet keeps its list. */
+  readonly target?: () => TargetFlow;
+}
+
+/** The creature the player tapped on the map goes first in the sheet's list, where the sheet starts its choice (C7-04). */
+function tappedFirst(option: ContestAttackOption, id: string): ContestAttackOption {
+  const tapped = option.targets.filter((t) => t.combatantId === id);
+  return { ...option, targets: [...tapped, ...option.targets.filter((t) => t.combatantId !== id)] };
 }
 
 /**
@@ -162,14 +172,36 @@ export class ContestHost {
     if (!own || !option || !e) {
       return;
     }
+    const shove = kind === ContestAttackOptionKind.SHOVE;
+    const labelOf = (id: string) => e.combatants.find((c) => c.id === id)?.label ?? 'Alguém';
+    // The target is tapped on the map first (C7-04); the sheet then opens with it chosen.
+    const mapped = this.deps
+      .target?.()
+      ?.contest(option, shove ? 'Empurrar' : 'Agarrar', labelOf, (target) =>
+        this.startContest(own.id, e.id, option, target),
+      );
+    if (!mapped) {
+      this.startContest(own.id, e.id, option, null);
+    }
+  }
+
+  /** The grapple or shove sheet for the target chosen on the map, or the list's own first one. */
+  private startContest(
+    initiatorId: string,
+    encounterId: string,
+    option: ContestAttackOption,
+    target: string | null,
+  ): void {
     this.track(
       openContestSheet(this.deps.dialog, this.deps.bottomSheet, {
         campaignId: this.deps.campaignId(),
-        encounterId: e.id,
-        initiatorId: own.id,
+        encounterId,
+        initiatorId,
         purpose:
-          kind === ContestAttackOptionKind.SHOVE ? ContestPurpose.SHOVE : ContestPurpose.GRAPPLE,
-        attack: option,
+          option.kind === ContestAttackOptionKind.SHOVE
+            ? ContestPurpose.SHOVE
+            : ContestPurpose.GRAPPLE,
+        attack: target ? tappedFirst(option, target) : option,
         diceMode: this.deps.diceMode(),
         preference: this.deps.preference(),
         state: this.deps.state(),

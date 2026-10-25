@@ -1275,7 +1275,8 @@ type MapPoint struct {
 	// The checks of a SCENE point (MR-015), in the order the master put them;
 	// empty for any other kind. The master gets each one with its DC; a player
 	// gets the DC only when the master turned `show_dc` on for the scene
-	// (RN-20), and only for a point they see (RN-10).
+	// (RN-20), and only for a point they see (RN-10). A player never gets an
+	// action the master hid (`SceneAction.hidden`).
 	SceneActions []*SceneAction `protobuf:"bytes,12,rep,name=scene_actions,json=sceneActions,proto3" json:"scene_actions,omitempty"`
 	// "Ganchos e anotações" (MR-029): the master's private Markdown text on a
 	// SCENE point, 0 to 4,000 characters. Only the master gets it: a player
@@ -2084,7 +2085,13 @@ type SceneAction struct {
 	// New actions have 1. Closing the scene and opening it again starts every
 	// count afresh. Every viewer gets it; the open scene
 	// (PlayService.GetOpenScene) also says how many a player has left.
-	MaxAttempts   int32 `protobuf:"varint,6,opt,name=max_attempts,json=maxAttempts,proto3" json:"max_attempts,omitempty"`
+	MaxAttempts int32 `protobuf:"varint,6,opt,name=max_attempts,json=maxAttempts,proto3" json:"max_attempts,omitempty"`
+	// Whether the master hid the action from the players ("Escondida"). A
+	// player never gets a hidden action in `MapPoint.scene_actions`, in the open
+	// scene or in the stream: not its name, DC, attempts or rolls, and a roll on
+	// it is refused as an action that does not exist (RN-10). Only the master's
+	// copy says true.
+	Hidden        bool `protobuf:"varint,7,opt,name=hidden,proto3" json:"hidden,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2159,6 +2166,13 @@ func (x *SceneAction) GetMaxAttempts() int32 {
 		return x.MaxAttempts
 	}
 	return 0
+}
+
+func (x *SceneAction) GetHidden() bool {
+	if x != nil {
+		return x.Hidden
+	}
+	return false
 }
 
 // MapToken is a character's token on a map.
@@ -4611,8 +4625,11 @@ type AddSceneActionRequest struct {
 	// The key is unique in the campaign; the same key with another request is `invalid_argument`.
 	// Empty: the call is not deduplicated.
 	IdempotencyKey string `protobuf:"bytes,8,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Add the action hidden from the players. False (the default) adds it where
+	// the players see it. A hidden action is told to the master's stream only.
+	Hidden        bool `protobuf:"varint,9,opt,name=hidden,proto3" json:"hidden,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AddSceneActionRequest) Reset() {
@@ -4701,6 +4718,13 @@ func (x *AddSceneActionRequest) GetIdempotencyKey() string {
 	return ""
 }
 
+func (x *AddSceneActionRequest) GetHidden() bool {
+	if x != nil {
+		return x.Hidden
+	}
+	return false
+}
+
 // AddSceneActionResponse returns the point's actions as they are now.
 type AddSceneActionResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -4774,7 +4798,13 @@ type UpdateSceneActionRequest struct {
 	// The new limit of attempts per player, 1 to 5, or 0 for unlimited. Lowering
 	// it below what someone already used leaves them without attempts in the
 	// open scene; nothing is erased, and a raise gives attempts back.
-	MaxAttempts   *int32 `protobuf:"varint,8,opt,name=max_attempts,json=maxAttempts,proto3,oneof" json:"max_attempts,omitempty"`
+	MaxAttempts *int32 `protobuf:"varint,8,opt,name=max_attempts,json=maxAttempts,proto3,oneof" json:"max_attempts,omitempty"`
+	// The new visibility: true hides the action from the players ("Escondida"),
+	// false shows it ("Os jogadores veem"). Showing an action in the open scene
+	// offers it to the players at once (`scene_changed`), and hiding it takes it
+	// from them at once; changing a hidden action that stays hidden tells only
+	// the master's stream.
+	Hidden        *bool `protobuf:"varint,9,opt,name=hidden,proto3,oneof" json:"hidden,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4863,6 +4893,13 @@ func (x *UpdateSceneActionRequest) GetMaxAttempts() int32 {
 		return *x.MaxAttempts
 	}
 	return 0
+}
+
+func (x *UpdateSceneActionRequest) GetHidden() bool {
+	if x != nil && x.Hidden != nil {
+		return *x.Hidden
+	}
+	return false
 }
 
 // UpdateSceneActionResponse returns the point's actions as they are now.
@@ -7916,7 +7953,7 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12%\n" +
 	"\x0echaracter_name\x18\x02 \x01(\tR\rcharacterName\x12;\n" +
 	"\vrevealed_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"revealedAt\"\x95\x01\n" +
+	"revealedAt\"\xad\x01\n" +
 	"\vSceneAction\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
 	"\x03key\x18\x02 \x01(\tR\x03key\x12\x12\n" +
@@ -7924,7 +7961,8 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\n" +
 	"check_name\x18\x04 \x01(\tR\tcheckName\x12\x0e\n" +
 	"\x02dc\x18\x05 \x01(\x05R\x02dc\x12!\n" +
-	"\fmax_attempts\x18\x06 \x01(\x05R\vmaxAttempts\"\xe4\x02\n" +
+	"\fmax_attempts\x18\x06 \x01(\x05R\vmaxAttempts\x12\x16\n" +
+	"\x06hidden\x18\a \x01(\bR\x06hidden\"\xe4\x02\n" +
 	"\bMapToken\x12\x15\n" +
 	"\x06map_id\x18\x01 \x01(\tR\x05mapId\x12!\n" +
 	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x12\x12\n" +
@@ -8122,7 +8160,7 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\fcharacter_id\x18\x03 \x01(\tR\vcharacterId\x12\x1f\n" +
 	"\vcreature_id\x18\x04 \x01(\tR\n" +
 	"creatureId\"\x18\n" +
-	"\x16RemoveMapTokenResponse\"\x82\x02\n" +
+	"\x16RemoveMapTokenResponse\"\x9a\x02\n" +
 	"\x15AddSceneActionRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x15\n" +
@@ -8132,11 +8170,12 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\x04name\x18\x05 \x01(\tR\x04name\x12\x0e\n" +
 	"\x02dc\x18\x06 \x01(\x05R\x02dc\x12&\n" +
 	"\fmax_attempts\x18\a \x01(\x05H\x00R\vmaxAttempts\x88\x01\x01\x12'\n" +
-	"\x0fidempotency_key\x18\b \x01(\tR\x0eidempotencyKeyB\x0f\n" +
+	"\x0fidempotency_key\x18\b \x01(\tR\x0eidempotencyKey\x12\x16\n" +
+	"\x06hidden\x18\t \x01(\bR\x06hiddenB\x0f\n" +
 	"\r_max_attempts\"\x84\x01\n" +
 	"\x16AddSceneActionResponse\x123\n" +
 	"\x06action\x18\x01 \x01(\v2\x1b.meurpg.maps.v1.SceneActionR\x06action\x125\n" +
-	"\aactions\x18\x02 \x03(\v2\x1b.meurpg.maps.v1.SceneActionR\aactions\"\xa0\x02\n" +
+	"\aactions\x18\x02 \x03(\v2\x1b.meurpg.maps.v1.SceneActionR\aactions\"\xc8\x02\n" +
 	"\x18UpdateSceneActionRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x15\n" +
@@ -8146,11 +8185,13 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\x03key\x18\x05 \x01(\tH\x00R\x03key\x88\x01\x01\x12\x17\n" +
 	"\x04name\x18\x06 \x01(\tH\x01R\x04name\x88\x01\x01\x12\x13\n" +
 	"\x02dc\x18\a \x01(\x05H\x02R\x02dc\x88\x01\x01\x12&\n" +
-	"\fmax_attempts\x18\b \x01(\x05H\x03R\vmaxAttempts\x88\x01\x01B\x06\n" +
+	"\fmax_attempts\x18\b \x01(\x05H\x03R\vmaxAttempts\x88\x01\x01\x12\x1b\n" +
+	"\x06hidden\x18\t \x01(\bH\x04R\x06hidden\x88\x01\x01B\x06\n" +
 	"\x04_keyB\a\n" +
 	"\x05_nameB\x05\n" +
 	"\x03_dcB\x0f\n" +
-	"\r_max_attempts\"\x87\x01\n" +
+	"\r_max_attemptsB\t\n" +
+	"\a_hidden\"\x87\x01\n" +
 	"\x19UpdateSceneActionResponse\x123\n" +
 	"\x06action\x18\x01 \x01(\v2\x1b.meurpg.maps.v1.SceneActionR\x06action\x125\n" +
 	"\aactions\x18\x02 \x03(\v2\x1b.meurpg.maps.v1.SceneActionR\aactions\"\xcc\x01\n" +

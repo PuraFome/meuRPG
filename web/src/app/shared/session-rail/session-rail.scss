@@ -17,7 +17,8 @@
     flex-direction: column;
     box-sizing: border-box;
     height: calc(100dvh - var(--mr-rail-top, 124px));
-    overflow: hidden;
+    // `clip`, not `hidden`: nothing may scroll the card itself (a focused control inside it scrolls its panel), so the tabs stay put.
+    overflow: clip;
   }
 
   .rail__panels {

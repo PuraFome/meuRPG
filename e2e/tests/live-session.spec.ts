@@ -149,7 +149,7 @@ test(
       await playerPage.evaluate(() => ((window as unknown as { sameDocument: boolean }).sameDocument = true));
 
       // The master takes 5 HP in the adjust sheet and saves.
-      await openSessionPage(masterPage, campaignId);
+      await openSessionPage(masterPage, campaignId, 'grupo');
       await masterPage.getByRole('button', { name: 'Ajustar Pensantus' }).click();
       const dialog = masterPage.getByRole('dialog', { name: 'Ajustar Pensantus' });
       await dialog.getByRole('button', { name: 'Tirar 5 PV' }).click();
@@ -188,7 +188,7 @@ test(
       const { campaignId } = await tableWithPensantus(masterPage, playerPage, `Limite ${Date.now()}`);
       const sessionId = await startSessionRPC(masterPage, campaignId);
 
-      await openSessionPage(masterPage, campaignId);
+      await openSessionPage(masterPage, campaignId, 'grupo');
       await masterPage.getByRole('button', { name: 'Ajustar Pensantus' }).click();
       const dialog = masterPage.getByRole('dialog', { name: 'Ajustar Pensantus' });
 

@@ -130,11 +130,12 @@ func (w *world) buildGallery() {
 	w.imgShown = w.image("shown-image", 90, 60, w.ana, w.caio)
 	w.imgLeft = w.image("left-image", 100, 60, w.ana, w.caio)
 	w.imgStage = w.image("stage-portrait", 60, 60) // its gallery name is the master's; players fetch the picture only
+	w.imgHiddenStage = w.image("hidden-stage-portrait", 60, 60)
 	w.imgPortrait = w.image("portrait-image", 60, 60)
 	// The pictures the master attached to the scenes (MR-015): nobody was shown them.
 	w.imgSceneA = w.image("scene-image-a", 70, 50)
 	w.imgSceneB = w.image("scene-image-b", 70, 50)
-	for _, id := range []string{w.imgMap, w.imgUnshown, w.imgPortrait, w.imgSceneA, w.imgSceneB} {
+	for _, id := range []string{w.imgMap, w.imgUnshown, w.imgPortrait, w.imgHiddenStage, w.imgSceneA, w.imgSceneB} {
 		w.secrets.id("gallery-image", id)
 	}
 }
@@ -303,6 +304,14 @@ func (w *world) buildSession() {
 	w.offstage, _ = w.npc("offstage", &charactersv1.BasicSheet{HitPointsMax: 9, ArmorClass: 11, SpeedFt: 30, PortraitImageId: w.imgPortrait})
 	w.secrets.id("offstage-npc", w.offstage.GetId())
 	must(m.play.PutOnStage(ctx, rq(&playv1.PutOnStageRequest{CampaignId: w.campaign, CharacterId: w.merchant.GetId()})))
+	// The master also put an NPC on the stage hidden from the players, and hid one action of the open scene: the
+	// players read neither (MR-031, MR-015, RN-10). Their names, ids, portrait and DC are the master's alone.
+	w.hiddenStageNPC, _ = w.npc("hidden-stage", &charactersv1.BasicSheet{HitPointsMax: 9, ArmorClass: 11, SpeedFt: 30, PortraitImageId: w.imgHiddenStage})
+	w.secrets.id("hidden-stage-npc", w.hiddenStageNPC.GetId())
+	must(m.play.PutOnStage(ctx, rq(&playv1.PutOnStageRequest{CampaignId: w.campaign, CharacterId: w.hiddenStageNPC.GetId(), Hidden: true})))
+	w.secrets.number("scene-hidden-dc", hiddenActDC, "dc")
+	w.hiddenAction = w.addHiddenAction(s1, "skill:stealth", w.secrets.marker("scene-hidden-action"), hiddenActDC, 3)
+	w.secrets.id("scene-hidden-action", w.hiddenAction)
 
 	w.buildHealing()
 
@@ -325,6 +334,14 @@ func (w *world) setSceneImages(p *mapsv1.MapPoint, ids ...string) {
 
 func (w *world) addAction(p *mapsv1.MapPoint, key, name string, dc, attempts int32) {
 	must(w.master.maps.AddSceneAction(w.t.Context(), rq(&mapsv1.AddSceneActionRequest{CampaignId: w.campaign, MapId: p.GetMapId(), PointId: p.GetId(), Key: key, Name: name, Dc: dc, MaxAttempts: new(attempts)})))
+}
+
+// addHiddenAction adds an action to a scene point that the players do not see, and returns its id.
+func (w *world) addHiddenAction(p *mapsv1.MapPoint, key, name string, dc, attempts int32) string {
+	res := must(w.master.maps.AddSceneAction(w.t.Context(), rq(&mapsv1.AddSceneActionRequest{
+		CampaignId: w.campaign, MapId: p.GetMapId(), PointId: p.GetId(), Key: key, Name: name, Dc: dc, MaxAttempts: new(attempts), Hidden: true,
+	})))
+	return res.GetAction().GetId()
 }
 
 func (w *world) addClue(p *mapsv1.MapPoint, text string) string {

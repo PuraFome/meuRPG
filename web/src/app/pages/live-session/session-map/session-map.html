@@ -31,9 +31,9 @@
 } @else {
 <section class="mr-panel map" [class.map--tab]="inTab()" [attr.aria-labelledby]="inTab() ? null : 'session-map-heading'" [attr.aria-label]="inTab() ? 'Mapa' : null">
   @if (!inTab()) {
-  <div class="map__head">
+  <div class="map__head" [class.map__head--master]="isMaster()">
     @if (isMaster()) {
-      <h2 class="mr-panel__title" id="session-map-heading" tabindex="-1">Mapa</h2>
+      <h2 class="mr-panel__title mr-visually-hidden" id="session-map-heading" tabindex="-1">Mapa</h2>
     } @else {
       <!-- The player's (C6-08): "Mapa" and, muted, the map's name and that it is the current one; "Ver mapa" is the icon button at the right. -->
       <h2 class="mr-panel__title map__title" id="session-map-heading" tabindex="-1">
@@ -44,9 +44,9 @@
       </h2>
     }
     @if (isMaster()) {
+      <span class="map__label" id="map-current-label">Mapa atual</span>
       <mat-form-field appearance="outline" class="map__select" subscriptSizing="dynamic">
-        <mat-label>Mapa atual</mat-label>
-        <select #select matNativeControl [disabled]="busy()" (change)="choose(select)">
+        <select #select matNativeControl aria-labelledby="map-current-label" [disabled]="busy()" (change)="choose(select)">
           <option value="" [selected]="mapId() === null">Nenhum mapa</option>
           @for (m of maps(); track m.id) {
             <option [value]="m.id" [selected]="m.id === mapId()">
@@ -55,6 +55,21 @@
           }
         </select>
       </mat-form-field>
+      @if (gridText(); as grid) {
+        <span class="map__grid">{{ grid }}</span>
+      }
+      @if (map(); as current) {
+        <span class="map__links">
+          <a matButton class="map__open" [routerLink]="['/campaigns', campaignId(), 'maps', current.id]" [queryParams]="{ from: 'session' }">
+            <mat-icon aria-hidden="true">edit</mat-icon>Editar o mapa
+          </a>
+          @if (fullAvailable) {
+            <button matButton type="button" class="map__open" (click)="openFull()">
+              <mat-icon aria-hidden="true">open_in_full</mat-icon>Abrir mapa
+            </button>
+          }
+        </span>
+      }
     } @else if (map() && image()) {
       <a
         matIconButton
@@ -82,6 +97,7 @@
     </div>
   }
 
+  <div #stage class="map__stage">
   @switch (status()) {
     @case ('loading') {
       <p class="mr-muted" role="status">Carregando o mapa...</p>
@@ -142,11 +158,8 @@
                     Arraste um token para movê-lo no mapa.
                   </p>
                 }
-                <app-map-legend [shapes]="true" [states]="true" [tokens]="[]" />
+                <ng-container *ngTemplateOutlet="tokenLegend" />
               </div>
-              <a matButton="outlined" class="map__open" [routerLink]="['/campaigns', campaignId(), 'maps', map()?.id]" [queryParams]="{ de: 'session' }">
-                <mat-icon aria-hidden="true">open_in_full</mat-icon>Abrir mapa
-              </a>
             </div>
           }
         }
@@ -215,16 +228,16 @@
                 Arraste um token para movê-lo no mapa.
               </p>
             }
-            <app-map-legend
-              [shapes]="isMaster()"
-              [states]="isMaster()"
-              [tokens]="isMaster() && !phone() ? [] : state().tokens()"
-            />
-            <app-map-pins-legend [points]="state().points()" [isMaster]="isMaster()" />
+            @if (isMaster()) {
+              <ng-container *ngTemplateOutlet="tokenLegend" />
+            } @else {
+              <app-map-legend [shapes]="false" [states]="false" [tokens]="state().tokens()" />
+              <app-map-pins-legend [points]="state().points()" [isMaster]="false" />
+            }
             @if (isMaster()) {
               <p class="map__hint">
                 <mat-icon aria-hidden="true">door_front</mat-icon>
-                Sem a névoa, as portas deste mapa se abrem, fecham e trancam no editor do mapa (“Abrir mapa”).
+                Sem a névoa, as portas deste mapa se abrem, fecham e trancam no editor do mapa (“Editar o mapa”).
               </p>
             }
           </div>
@@ -239,21 +252,22 @@
                 <mat-icon aria-hidden="true">fullscreen</mat-icon>Ver mapa
               </a>
             }
-            @if (isMaster()) {
-              <a
-                matButton="outlined"
-                class="map__open"
-                [routerLink]="['/campaigns', campaignId(), 'maps', map()?.id]"
-                [queryParams]="{ from: 'session' }"
-              >
-                <mat-icon aria-hidden="true">open_in_full</mat-icon>Abrir mapa
-              </a>
-            }
           </div>
         </div>
       }
 
-      @if (isMaster() && (fogOn() || image()) && markerPoints().length > 0) {
+      <ng-template #tokenLegend>
+        <ul class="map__tokens" aria-label="Legenda dos tokens">
+          @for (sample of tokenSamples; track sample.label) {
+            <li>
+              <app-map-token [token]="sample.token" [initial]="sample.initial" [kindShapes]="true" [legend]="true" />
+              {{ sample.label }}
+            </li>
+          }
+        </ul>
+      </ng-template>
+
+      <ng-template #pointsBlock>
         <div class="map__points">
           <app-map-points-list
             [points]="markerPoints()"
@@ -281,7 +295,43 @@
           <p class="mr-visually-hidden" role="status" aria-live="polite">
             {{ reveals.announcement() }}
           </p>
+          <div class="map__shapes">
+            <app-map-legend [shapes]="true" [states]="true" [tokens]="[]" [points]="markerPoints()" />
+            <app-map-pins-legend [points]="state().points()" [isMaster]="true" />
+          </div>
         </div>
+      </ng-template>
+      @if (isMaster() && tools() && (fogOn() || image())) {
+        <!-- The tab set under the master's map (C6-05): the points, the tokens, the fog and the lights, the traps, the treasure, the encounters. -->
+        <div class="map__tools">
+          <app-tab-list label="Ferramentas do mapa" idPrefix="map-tool" [compact]="true" [tabs]="toolTabs()" [selected]="toolShown()" (selectedChange)="tool.set($event)" />
+          <div class="map__tool" role="tabpanel" [id]="panelId('pontos')" [attr.aria-labelledby]="tabId('pontos')" [hidden]="toolShown() !== 'pontos'">
+            @if (markerPoints().length > 0) {
+              <ng-container *ngTemplateOutlet="pointsBlock" />
+            } @else {
+              <p class="mr-muted">Este mapa ainda não tem pontos. Crie-os no editor do mapa (“Abrir mapa”).</p>
+            }
+          </div>
+          <div class="map__tool" role="tabpanel" [id]="panelId('tokens')" [attr.aria-labelledby]="tabId('tokens')" [hidden]="toolShown() !== 'tokens'">
+            <ng-content select="[mapTokens]" />
+          </div>
+          @if (fogOn()) {
+            <div class="map__tool" role="tabpanel" [id]="panelId('nevoa')" [attr.aria-labelledby]="tabId('nevoa')" [hidden]="toolShown() !== 'nevoa'">
+              <ng-content select="[mapFog]" />
+            </div>
+          }
+          <div class="map__tool" role="tabpanel" [id]="panelId('armadilhas')" [attr.aria-labelledby]="tabId('armadilhas')" [hidden]="toolShown() !== 'armadilhas'">
+            <ng-content select="[mapTraps]" />
+          </div>
+          <div class="map__tool" role="tabpanel" [id]="panelId('tesouro')" [attr.aria-labelledby]="tabId('tesouro')" [hidden]="toolShown() !== 'tesouro'">
+            <ng-content select="[mapTreasure]" />
+          </div>
+          <div class="map__tool" role="tabpanel" [id]="panelId('encontros')" [attr.aria-labelledby]="tabId('encontros')" [hidden]="toolShown() !== 'encontros'">
+            <ng-content select="[mapEncounters]" />
+          </div>
+        </div>
+      } @else if (isMaster() && (fogOn() || image()) && markerPoints().length > 0) {
+        <ng-container *ngTemplateOutlet="pointsBlock" />
       }
     }
     @case ('error') {
@@ -310,5 +360,6 @@
       </div>
     }
   }
+  </div>
 </section>
 }
