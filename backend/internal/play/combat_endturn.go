@@ -176,13 +176,14 @@ func (s *Service) endTurnGates(ctx context.Context, c *combatTx, v combatViewer,
 	if _, err := c.q.SkipPendingOpportunityOffersOfMover(ctx, playdb.SkipPendingOpportunityOffersOfMoverParams{EncounterID: c.enc.ID, MoverID: current.ID, AnsweredAt: &c.now}); err != nil {
 		return false, fmt.Errorf("pass the opportunity offers over: %w", err)
 	}
-	return false, s.mustHaveRolledDeathSave(ctx, c, v, current)
+	return false, s.mustHaveRolledDeathSave(ctx, c, current)
 }
 
 // mustHaveRolledDeathSave refuses a player whose character is down and has not rolled its death
-// save (RN-03); the master may end the part anyway.
-func (s *Service) mustHaveRolledDeathSave(ctx context.Context, c *combatTx, v combatViewer, current playdb.Combatant) error {
-	if v.master || current.Kind != kindPlayer {
+// save (RN-03). The master is held too: he rolls the save for the character (in the app or with a
+// typed d20) and the turn then ends.
+func (s *Service) mustHaveRolledDeathSave(ctx context.Context, c *combatTx, current playdb.Combatant) error {
+	if current.Kind != kindPlayer {
 		return nil
 	}
 	vit, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, current.CharacterID)

@@ -1033,6 +1033,12 @@ func (a *armed) passTo(t *testing.T, e *playv1.Encounter, label string) *playv1.
 		if cur.GetCurrentCombatantId() == a.id(t, label) {
 			return cur
 		}
+		// A downed character's turn waits for its death save: the master rolls it (a typed 14, a success).
+		if on := byLabel(t, cur, current(cur)); on.GetDeathSaveDue() {
+			if _, err := a.deathSave(t, a.master, e, on.GetLabel(), deathFace(14)); err != nil {
+				t.Fatalf("the master's death save for %s while passing to %s: %v", on.GetLabel(), label, err)
+			}
+		}
 		var err error
 		if _, err = a.endTurn(t, a.master, e, true); err != nil {
 			t.Fatalf("EndTurn() while passing to %s: %v", label, err)
