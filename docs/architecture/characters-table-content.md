@@ -146,6 +146,13 @@ flowchart LR
   The SRD prerequisites are sheet notices (`multiclass_prerequisite`) for the master and refuse a player's sheet; a subclass before its level is the `subclass_level` notice.
   Hit points follow the table rule (RN-24): with "roll", the calculation is of levels after the first, summing the classes (`HIT_POINTS_RULE` refuses the average and missing rolls), and the first level is the first class's full die.
   Spell slots follow the multiclass caster table.
+- **A class's own list names SRD spells.** `TableCasting.srd_spell_keys` goes through `tableCastingOf` into the overlay like the other casting fields and is stored with the body (protojson in `campaign_content.data`; an absent field is an empty list).
+  The overlay builder checks it with the class (see [Table content: rules](rules-table-content.md#the-class)), so a refusal is a violation at `table_class.casting.srd_spell_keys[<i>]` or at the field itself.
+  `ListSpells`, the sheet's `Derived` and the level-up read the class's list from the campaign's content, so a character of the class prepares and learns those spells and gets no `spell_not_on_list` for them.
+- **A subclass whose spells are expanded.** `TableSubclass.spells_expanded` goes through `tableSubclassOf` with the always-prepared list.
+  The sheet then has no given spell from the subclass: its spells are on the class's list to choose from, and the `spell_sources` of `PreviewChoices` offer them (`patron_spells`) from their class level on.
+- **Expertise only where proficient.** `TableEffect.only_proficient` goes through `tableEffectsOf`; `Derive` reads it when the sheet is worked out, so a change of the character's proficiencies moves the doubled skills with no write.
+  The effect menu served by `GetEffectMenu` carries it as the `yes_no` field `only_proficient` of the `proficiency` type.
 - **The casting subclass at level-up.** `LevelUpSubclass` carries what a third caster adds on choosing the subclass: `spells`, `spells_kind`, `spell_list_class_key`, `max_spell_level`, and for one that prepares, `prepares` and `prepared_max_after`.
   The subclass's always-prepared spells enter the sheet at their level and do not count against the limit.
 - **A table spell in combat** goes through the same `CombatSpell` and the campaign's content: attack, save (half or nothing), damage per level or per cantrip tier, healing with the modifier, concentration, slots and the log work as for an SRD spell.

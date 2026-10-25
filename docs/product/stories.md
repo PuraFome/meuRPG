@@ -623,6 +623,12 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - **Given** a feature the game master registers, **when** they pick its effect, **then** they pick from a closed menu (modifier, proficiency, resource, sense, roll mode, action, extra attack, ranged attack, choice, maneuver die, note, granted spell).
   An action may spend a resource the entry defines, and a class or subclass feature may carry an **option list** the player picks from (a table's maneuvers, each with its own effects; "Opções para escolher" in the feature editor).
   Table content never runs code.
+- **Given** a table class that casts from a list of its own, **when** I name SRD spells on that list in the class editor ("Magias do SRD na lista da classe"), **then** they join the table spells that name the class: the character prepares and learns them, the level-up offers them and the "Magias" page lists them for the class.
+  The server refuses an unknown spell, a table spell, a repeated one and any of them on a class that reuses another class's list.
+- **Given** a table subclass that names spells, **when** I mark "As magias da subclasse entram na lista da classe, para escolher", **then** those spells are not prepared for free: they join the class's list for a character of that subclass, who picks them like any other spell of the list, and they count against the spells known or prepared.
+  Without the mark they are always prepared. The mark is offered only when the subclass has spells, and the server refuses it otherwise.
+- **Given** a feature with a proficiency effect of level "expertise" on a skill, **when** I turn on "Só onde já tem proficiência", **then** the sheet doubles the skill only for a character who is proficient in it from another source, and gives no proficiency by itself.
+  The SRD's own expertise works as before.
 - **Given** a table class with a spellcasting subclass (a third-caster), **when** I register the subclass with "Esta subclasse conjura", **then** the third-caster table starts at the level it begins, and the subclass's spells come from the class list it casts from.
 
 **Feats.**

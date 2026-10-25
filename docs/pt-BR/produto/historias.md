@@ -623,6 +623,12 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 - **Dado** uma característica que o mestre cadastra, **quando** ele escolhe o efeito dela, **então** escolhe num menu fechado (modificador, proficiência, recurso, sentido, modo de rolagem, ação, ataque extra, ataque à distância, escolha, dado de manobra, nota, magia concedida).
   Uma ação pode gastar um recurso que a entrada define, e uma característica de classe ou de subclasse pode ter uma **lista de opções** que o jogador escolhe (as manobras de uma mesa, cada uma com os seus efeitos; "Opções para escolher" no editor da característica).
   O conteúdo da mesa nunca executa código.
+- **Dado** uma classe da mesa que conjura de uma lista própria, **quando** dou nome a magias do SRD nessa lista no editor da classe ("Magias do SRD na lista da classe"), **então** elas se juntam às magias da mesa que citam a classe: o personagem as prepara e aprende, o avanço de nível as oferece e a página "Magias" as lista para a classe.
+  O servidor recusa uma magia desconhecida, uma magia da mesa, uma repetida e qualquer uma delas numa classe que reusa a lista de outra classe.
+- **Dado** uma subclasse da mesa que cita magias, **quando** marco "As magias da subclasse entram na lista da classe, para escolher", **então** essas magias não vêm preparadas de graça: entram na lista da classe para quem tem aquela subclasse, que as escolhe como qualquer outra magia da lista, e contam no limite de magias conhecidas ou preparadas.
+  Sem a marca elas são sempre preparadas. A marca só aparece quando a subclasse tem magias, e o servidor a recusa em caso contrário.
+- **Dado** uma característica com um efeito de proficiência de nível "especialização" numa perícia, **quando** ligo "Só onde já tem proficiência", **então** a ficha dobra a perícia só para quem já é proficiente nela por outra fonte, e não dá proficiência sozinha.
+  A especialização do próprio SRD funciona como antes.
 - **Dado** uma classe da mesa com uma subclasse que conjura (um conjurador de um terço), **quando** cadastro a subclasse com "Esta subclasse conjura", **então** a tabela do conjurador de um terço começa no nível em que ela começa, e as magias da subclasse vêm da lista de classe da qual ela conjura.
 
 **Talentos.**
