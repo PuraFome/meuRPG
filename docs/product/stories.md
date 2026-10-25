@@ -728,10 +728,10 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - **The editors** (one page, one "Salvar"):
   - The spell: all fields, "Alvo" before the mechanics, "Mais criaturas por nível", "Pessoal" and "Toque", the classes that learn it, and a "Como os jogadores veem" preview.
   - The race and subrace, and the background.
-  - The class: name, hit die, "Teste de resistência 1" and "2", how many skills and from which, proficiencies, the multiclass prerequisite, casting (none, full, half or pact; prepared or known; the list) and the subclass level.
+  - The class: name, hit die, "Teste de resistência 1" and "2", how many skills and from which, proficiencies, the multiclass prerequisite, casting (none, full, half or pact; prepared or known; the list, and "Magias do SRD na lista da classe" for a class with a list of its own) and the subclass level.
     The 20-level table starts at the SRD's numbers for the chosen casting and the game master edits it cell by cell; changing the casting asks before redoing an edited table.
     Features have a level and an effect from the menu, with the counter "N de 60".
-  - The subclass: features by level, "Esta subclasse conjura" and always-prepared spells by class level.
+  - The subclass: features by level, "Esta subclasse conjura", always-prepared spells by class level and, when it has spells, "As magias da subclasse entram na lista da classe, para escolher".
   - The feat: "Novo talento", "Dados do talento", "O que o talento pede", "Salvar talento"; "Aumento de habilidade" is offered only there.
 - **Refusals:** each violation returns on the field it names, in Portuguese, also on a table cell and on a collapsed feature, which opens.
   A summary on top says how many fields need adjusting, and what the game master typed stays.

@@ -728,10 +728,10 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 - **Os editores** (uma página, um "Salvar"):
   - A magia: todos os campos, "Alvo" antes da mecânica, "Mais criaturas por nível", "Pessoal" e "Toque", as classes que a aprendem e uma prévia "Como os jogadores veem".
   - A raça e a sub-raça, e o antecedente.
-  - A classe: nome, dado de vida, "Teste de resistência 1" e "2", quantas perícias e de quais, proficiências, o pré-requisito de multiclasse, conjuração (nenhuma, completa, metade ou pacto; preparadas ou conhecidas; a lista) e o nível da subclasse.
+  - A classe: nome, dado de vida, "Teste de resistência 1" e "2", quantas perícias e de quais, proficiências, o pré-requisito de multiclasse, conjuração (nenhuma, completa, metade ou pacto; preparadas ou conhecidas; a lista, e "Magias do SRD na lista da classe" para uma classe com lista própria) e o nível da subclasse.
     A tabela de 20 níveis começa nos números do SRD para a conjuração escolhida e o mestre a edita célula a célula; mudar a conjuração pergunta antes de refazer uma tabela editada.
     As características têm um nível e um efeito do menu, com o contador "N de 60".
-  - A subclasse: características por nível, "Esta subclasse conjura" e magias sempre preparadas por nível de classe.
+  - A subclasse: características por nível, "Esta subclasse conjura", magias sempre preparadas por nível de classe e, quando tem magias, "As magias da subclasse entram na lista da classe, para escolher".
   - O talento: "Novo talento", "Dados do talento", "O que o talento pede", "Salvar talento"; "Aumento de habilidade" é oferecido só ali.
 - **Recusas:** cada violação volta no campo que ela nomeia, em português, também numa célula da tabela e numa característica recolhida, que se abre.
   Um resumo no alto diz quantos campos precisam de ajuste, e o que o mestre digitou fica.
