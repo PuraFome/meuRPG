@@ -255,17 +255,11 @@ func (b *overlayBuilder) checkEffect(owner, path string, e *Effect, strict bool)
 	switch e.Type {
 	case "choice":
 		return b.checkChoiceEffect(site, e)
-	case "ability_increase":
-		if attr, msg := checkAbilityIncrease(e); attr != "" {
-			return site.fail(attr, ReasonValue, "%s", msg)
-		}
+	case "ability_increase", "proficiency":
+		return checkOwnFields(site, e)
 	case "grant_action":
 		if e.Resource != "" && !b.resourceDefined(owner, e.Resource) {
 			return site.fail(".resource", ReasonReference, "the action spends %q, which no resource effect of this entry or its class defines", e.Resource)
-		}
-	case "proficiency":
-		if msg := checkOnlyProficient(e); msg != "" {
-			return site.fail(".only_proficient", ReasonValue, "%s", msg)
 		}
 	case "superiority_die":
 		return b.checkSuperiorityDie(site, e)
@@ -273,6 +267,21 @@ func (b *overlayBuilder) checkEffect(owner, path string, e *Effect, strict bool)
 		return b.checkOnTarget(site, e)
 	case "resource":
 		return b.checkResourceEffect(site, e)
+	}
+	return nil
+}
+
+// checkOwnFields checks the fields of an ability_increase or a proficiency
+// effect that depend on one another.
+func checkOwnFields(site effectSite, e *Effect) error {
+	if e.Type == "proficiency" {
+		if msg := checkOnlyProficient(e); msg != "" {
+			return site.fail(".only_proficient", ReasonValue, "%s", msg)
+		}
+		return nil
+	}
+	if attr, msg := checkAbilityIncrease(e); attr != "" {
+		return site.fail(attr, ReasonValue, "%s", msg)
 	}
 	return nil
 }

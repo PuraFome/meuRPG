@@ -318,22 +318,23 @@ func (x effectCompiler) strayFields() error {
 	if e.Type != "replaces" && e.Replaces != "" {
 		return x.fail("replaces belongs to the replaces effect")
 	}
-	if err := x.strayResistance(); err != nil {
+	if err := x.strayOwnFields(); err != nil {
 		return err
 	}
 	if e.Type != "ranged_attack" && (e.IgnoreCover || e.RangeMultiplier != 0 || e.NoLongRangeDisadvantage) {
 		return x.fail("ignore_cover, range_multiplier and no_long_range_disadvantage belong to ranged_attack")
 	}
-	if e.Type != "proficiency" && e.OnlyProficient {
-		return x.fail("only_proficient belongs to proficiency")
-	}
 	return nil
 }
 
-// strayResistance refuses except and while on an effect of another type.
-func (x effectCompiler) strayResistance() error {
+// strayOwnFields refuses except and while on an effect of another type, and
+// only_proficient on one that is not a proficiency.
+func (x effectCompiler) strayOwnFields() error {
 	if x.e.Type != "resistance" && (x.e.Except != "" || x.e.While != "") {
 		return x.fail("except and while belong to resistance")
+	}
+	if x.e.Type != "proficiency" && x.e.OnlyProficient {
+		return x.fail("only_proficient belongs to proficiency")
 	}
 	return nil
 }

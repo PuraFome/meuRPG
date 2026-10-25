@@ -114,7 +114,10 @@ func TestTableClassSRDSpellRefusalsPointAtTheirField(t *testing.T) {
 		{"a table spell", func(c *rulesv1.TableClass) { c.Casting.SrdSpellKeys[2] = "spell:selo@mesa" }, "table_class.casting.srd_spell_keys[2]", "dangling_reference"},
 		{"a spell twice", func(c *rulesv1.TableClass) { c.Casting.SrdSpellKeys[2] = c.Casting.SrdSpellKeys[0] }, "table_class.casting.srd_spell_keys[2]", "bad_value"},
 		{"a reused list", func(c *rulesv1.TableClass) { c.Casting.ListFrom = "class:cleric" }, "table_class.casting.srd_spell_keys", "bad_casting"},
-		{"a class that does not cast", func(c *rulesv1.TableClass) { *c = *testClass("Sem magia"); c.Casting = &rulesv1.TableCasting{SrdSpellKeys: []string{"spell:aid"}} }, "table_class.casting.srd_spell_keys", "bad_casting"},
+		{"a class that does not cast", func(c *rulesv1.TableClass) {
+			*c = *testClass("Sem magia")
+			c.Casting = &rulesv1.TableCasting{SrdSpellKeys: []string{"spell:aid"}}
+		}, "table_class.casting.srd_spell_keys", "bad_casting"},
 	}
 	for _, tc := range cases {
 		c := artificerLike("Artífice", "spell:guidance", "spell:cure-wounds", "spell:aid")
