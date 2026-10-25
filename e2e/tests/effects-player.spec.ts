@@ -142,8 +142,8 @@ test(
       await expect(t.p.getByRole('group', { name: 'Imobilizar Pessoa' })).toContainText('De Capitão Goblin');
 
       // Nothing of the turn is available, so the shapes of the Ação, the Bônus and the Reação say "indisponível" and ending the turn does not ask.
-      await expect(t.p.getByRole('listitem', { name: 'Ação indisponível' })).toBeVisible();
-      await expect(t.p.getByRole('listitem', { name: 'Ação disponível' })).toHaveCount(0);
+      await expect(t.p.getByRole('listitem', { name: 'Ação indisponível', exact: true })).toBeVisible();
+      await expect(t.p.getByRole('listitem', { name: 'Ação disponível', exact: true })).toHaveCount(0);
 
       // Ending the turn opens the saving throw: the ability, the modifier and the three answers, never a DC.
       await t.p.getByRole('button', { name: 'Encerrar turno' }).click();

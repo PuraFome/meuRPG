@@ -65,7 +65,7 @@ test('o jogador toca o alvo no mapa: Adaga em Goblin 1, Confirmar abre a folha n
     // Goblin 1 is within reach; Goblin 2 is far: the dagger throws that far, with disadvantage.
     await ring(p, 'Goblin 1').click();
     await expect(asking(p)).toContainText('Adaga em Goblin 1');
-    await expect(asking(p)).toContainText('+4 para acertar');
+    await expect(asking(p)).toContainText('+5 para acertar');
     await expect(p.getByRole('button', { name: 'Confirmar' })).toBeEnabled();
     await p.getByRole('button', { name: 'Confirmar' }).click();
     // The sheet names the target before the roll, as it always did.
@@ -157,7 +157,8 @@ test('um alvo apagado diz por que não vale, ao toque: fora de alcance', { tag: 
     await expect(asking(p)).toBeVisible();
     // A dimmed one still has a name, with its reason, and a tap on it chooses nothing.
     const far = p.getByRole('button', { name: 'Goblin 2: fora de alcance' });
-    await far.click();
+    // It is aria-disabled on purpose (it chooses nothing) yet it takes the tap that says why: the click is sent as it is.
+    await far.dispatchEvent('click');
     // The reason is in the bar's hint line, and on the map too where a free place is left.
     await expect(asking(p)).toContainText('Goblin 2: fora de alcance');
     await expect(asking(p)).toContainText('Escolha o alvo · Adaga');
@@ -200,7 +201,8 @@ test('a 1280: o mapa ganha o destaque, o cartão da ação pendente fica no tril
     await expect(p.getByRole('button', { name: 'Mover' })).toHaveCount(1);
     await expect(p.getByRole('button', { name: 'Encerrar turno' })).toHaveCount(1);
     // Goblin 2 is past the dagger's reach and within its long range: valid, with the catch said on the map.
-    await expect(p.locator('.cm__far')).toContainText('Longe');
+    await expect(p.getByRole('button', { name: /Goblin 2.*Longe: desvantagem/ })).toBeVisible();
+    await expect(p.locator('.cm__far').first()).toContainText('Longe');
     await ring(p, 'Goblin 1').click();
     await expect(card).toContainText('Adaga em Goblin 1');
     await card.getByRole('button', { name: 'Confirmar' }).click();

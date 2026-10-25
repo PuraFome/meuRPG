@@ -1014,8 +1014,10 @@ test('guerreiro 5: o Ataque Extra deixa dois ataques por ação, Retomar o Fôle
     // The Bonus action is spent: Retomar o Fôlego is in the folded "Ação bônus · Usada" of the tab.
     await openActionTab(p, 'Guerreiro');
     const spentBonus = await openSpentGroup(p, 'Ação bônus');
-    await expect(spentBonus.getByText('Sem usos: volta num descanso curto')).toBeVisible();
-    await expect(spentBonus.getByRole('button', { name: 'Usar Retomar o Fôlego' })).toHaveAttribute('aria-disabled', 'true');
+    // The reason is the button's description (the row's own line): found by the button, not by a fold's id.
+    const second = spentBonus.getByRole('button', { name: 'Usar Retomar o Fôlego' });
+    await expect(second).toHaveAttribute('aria-disabled', 'true');
+    await expect(second).toHaveAccessibleDescription(/Sem usos: volta num descanso curto/);
   } finally {
     await done();
   }
@@ -1164,9 +1166,10 @@ test('as magias vêm na ordem do servidor, cada uma com o "?", e o Escudo na sua
     await adjustVitalsRPC(m, campaignId, table.characterId, { spellSlotsUsed: [{ level: 1, used: 4 }, { level: 2, used: 2 }] });
     await openSessionPage(p, campaignId);
     await openActionTab(p, 'Magias');
-    const slots = groups.getByRole('list', { name: 'Seus espaços de magia' });
-    await expect(slots.getByRole('listitem', { name: /0 livres de 4/ })).toBeVisible();
-    await expect(slots.getByRole('listitem', { name: /0 livres de 2/ })).toBeVisible();
+    // The slots line of the Magias tab (from 1024px) or the turn card's circles (a phone): both name each circle.
+    const slot = (words: RegExp) => p.getByRole('listitem', { name: words }).or(p.getByRole('img', { name: words })).first();
+    await expect(slot(/0 livres de 4/)).toBeVisible();
+    await expect(slot(/0 livres de 2/)).toBeVisible();
     await expect(groups.locator('.row__why', { hasText: /^\s*block\s*Sem espaço\s*$/ })).toHaveCount(4);
     await expect(groups.getByText(/Sem espaço de/)).toHaveCount(0);
     // Nothing can be cast now: the order is by circle, then by name, and Escudo Arcano is among them.
@@ -1301,6 +1304,8 @@ test('monge 3: o golpe das Artes Marciais e a Rajada de Golpes aparecem como ata
 
     await openActionTab(p, 'Chi');
     await groups.getByRole('button', { name: 'Usar Rajada de Golpes' }).click();
+    // The counter is the note of the bonus action attack, in the attacks' tab.
+    await openActionTab(p, 'Ataques');
     await expect(groups.getByText('Rajada de Golpes: 2 golpes restantes')).toBeVisible();
     sheet = await strike();
     await expect(sheet.getByText('Rajada de Golpes: 1 golpe restante.')).toBeVisible();

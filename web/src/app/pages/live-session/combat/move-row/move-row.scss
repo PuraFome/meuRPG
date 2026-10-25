@@ -12,6 +12,11 @@
   color: var(--mr-ink);
 }
 
+// With the bar under the line, the text column is taller than the line: the icon rises 4px so its middle is the middle of the capitals.
+:host:has(.row__bar) .row__icon {
+  margin: -3px 0 5px;
+}
+
 .row__text {
   display: flex;
   flex: 1;
