@@ -10,36 +10,42 @@
 
 .st__head {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  align-items: center;
   gap: var(--mr-space-2);
 }
 
 .st__title {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
   margin: 0;
   font-family: var(--mr-font-display);
   font-size: 22px;
   line-height: 28px;
   font-weight: 700;
+
+  .mat-icon {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    font-size: 22px;
+    color: var(--mr-ink-muted);
+  }
 }
 
 .st__count {
+  margin-right: auto;
   font-size: 14px;
   color: var(--mr-ink-muted);
   white-space: nowrap;
 }
 
-.st__lead,
 .st__empty,
 .st__reason {
   margin: 0;
   font-size: 14px;
   line-height: 19px;
   color: var(--mr-ink-muted);
-}
-
-.st__lead {
-  margin-top: -6px;
 }
 
 // "Aldo entrou na cena.": the green line after "Pôr em cena". The sentence is
@@ -64,84 +70,88 @@
   }
 }
 
-// Two cards a row on a desktop, one on a phone.
-.st__cards {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--mr-space-3);
+// One compact row per NPC (C3-01): the token, the name with "Os jogadores veem", "Fala agora" / "Dar a fala" at a
+// fixed width, and the menu. The one who speaks gets a 2px accent border.
+.st__rows {
+  display: flex;
+  flex-direction: column;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--mr-space-3);
-  box-sizing: border-box;
-  padding: 14px;
-  border: 1px solid var(--mr-line);
-  border-radius: var(--mr-radius-lg);
-  background: var(--mr-surface);
-
-  // The one who speaks: a 2px accent border (the padding gives 1px back).
-  &--speaking {
-    padding: 13px;
-    border: 2px solid var(--mr-accent);
-  }
-}
-
-.card__who {
+.row {
   display: flex;
   align-items: center;
-  gap: 14px;
-}
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-2) 0;
+  border-top: 1px solid var(--mr-rule);
 
-.card__text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.card__name {
-  font-family: var(--mr-font-display);
-  font-size: 22px;
-  line-height: 26px;
-  font-weight: 700;
-  overflow-wrap: anywhere;
-}
-
-.card__kind {
-  font-size: 14px;
-  line-height: 19px;
-  color: var(--mr-ink-muted);
-}
-
-.card__buttons {
-  display: flex;
-  gap: 10px;
-}
-
-// Both buttons the same width; "Fala agora" is pressed: soft accent, a check,
-// the 2px border (words and an icon, never colour alone).
-.card__btn {
-  flex: 1 1 0;
-  min-width: 0;
-  padding: 0 8px;
-  white-space: nowrap;
-
-  &--on {
+  &--speaking .row__speak {
     border: 2px solid var(--mr-accent);
     background: var(--mr-accent-soft);
   }
 }
 
+.row__text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.row__name {
+  font-family: var(--mr-font-display);
+  font-size: 20px;
+  line-height: 24px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.row__sees {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.row__speak {
+  flex: none;
+  width: 136px;
+  min-height: 44px;
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+.row__more {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--mr-radius-sm);
+  background: none;
+  color: var(--mr-ink);
+  cursor: pointer;
+}
+
 .st__put {
-  align-self: flex-start;
+  flex: none;
+  min-height: 44px;
 
   &--off {
-    border-style: dashed;
     color: var(--mr-ink-muted);
   }
 }
@@ -181,25 +191,27 @@
   color: var(--mr-ink-muted);
 }
 
-// A phone: one card a row, 56px portraits, 48px buttons side by side; at 320px
-// the two labels do not fit, so they stack, full width.
+// A phone keeps one line a row (C3-01): the token, the name cut with an ellipsis (the whole name is in the button's name) and the button
+// and the menu at the right; the line "Os jogadores veem" goes.
 @media (max-width: 767.98px) {
-  .st__cards {
-    grid-template-columns: minmax(0, 1fr);
+  .row {
+    gap: var(--mr-space-2);
   }
 
-  .card__btn,
-  .st__put {
-    min-height: 48px;
+  .row__name {
+    display: block;
+    overflow: hidden;
+    font-size: 18px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  .st__put {
-    align-self: stretch;
+  .row__sees {
+    display: none;
   }
-}
 
-@media (max-width: 359.98px) {
-  .card__buttons {
-    flex-direction: column;
+  .row__speak {
+    width: 116px;
+    padding: 0 4px;
   }
 }

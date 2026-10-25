@@ -17,6 +17,7 @@ import type { SceneClue } from '../../../../../gen/meurpg/maps/v1/maps_pb';
 import {
   type CluePlayer,
   clueAudience,
+  listNames,
   clueCount,
   playersWithout,
   revealedLine,
@@ -68,13 +69,16 @@ export class SceneClues {
         clue,
         n: i + 1,
         audience,
-        line: revealedLine(clue, players),
+        line:
+          audience.kind === 'none'
+            ? 'Ninguém tem esta pista ainda.'
+            : `Com ${audience.kind === 'all' ? 'todos' : listNames(audience.names)}`,
         button:
           audience.kind === 'all'
             ? null
             : audience.kind === 'none'
               ? 'Revelar'
-              : 'Revelar aos outros',
+              : 'Revelar a mais alguém',
       };
     });
   });

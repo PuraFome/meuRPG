@@ -4,6 +4,7 @@
   [style.--rows]="rows()"
   [style.width.px]="widthPx()"
   [class.cm--scroll]="cellPx() !== null"
+  [class.cm--pick]="!!pick()"
 >
   <div
     #surface
@@ -148,12 +149,13 @@
         [attr.data-id]="c.id"
         [class.cm__tk--movable]="movable(c)"
         [class.cm__tk--current]="c.id === currentId()"
+        [class.cm__tk--dim]="layer.dim(c.id)"
         [style.left.%]="centerX(c)"
         [style.top.%]="centerY(c)"
         [style.--span]="span(c)"
       >
         @if (c.id === currentId() && showTurn()) {
-          <span class="cm__turn" [class]="'cm__turn cm__turn--' + turnSide(c)">Vez</span>
+          <span class="cm__turn" [class]="'cm__turn cm__turn--' + turnSide(c) + layer.turnLean(c)">Vez</span>
         }
         <app-combatant-token
           [initial]="initial(c)"
@@ -168,6 +170,48 @@
           size="calc(var(--cm-tk) * var(--span, 1))"
         />
       </span>
+    }
+    @if (pick()) {
+      @for (c of shown(); track c.id) {
+        @if (layer.of(c.id); as m) {
+          <button
+            type="button"
+            class="cm__pick"
+            [class.cm__pick--off]="!!m.reason"
+            [class.cm__pick--on]="m.count > 0"
+            [attr.data-pick]="c.id"
+            [attr.aria-disabled]="m.reason ? 'true' : null"
+            [attr.aria-label]="layer.name(m)"
+            [style.left.%]="centerX(c)"
+            [style.top.%]="centerY(c)"
+            [style.--span]="span(c)"
+            (click)="pickTap.emit(m.id)"
+          ></button>
+          @if (layer.tagsAt(c.id); as at) {
+            <!-- The tags of this creature, beside its token: "Alvo" (or "×2") first, then "Longe". -->
+            <span [class]="'cm__fl cm__tags cm__fl--' + at.side" aria-hidden="true" [style.left.%]="layer.left(c, at)" [style.top.%]="layer.top(c, at)">
+              @if (m.count > 0) {
+                <span class="cm__mark-n">
+                  @if (m.mode === 'darts') {
+                    ×{{ m.count }}
+                  } @else {
+                    <mat-icon>check</mat-icon>Alvo
+                  }
+                </span>
+              }
+              @if (m.note) {
+                <span class="cm__far">{{ layer.far(m) }}{{ layer.farRest(m, at) }}</span>
+              }
+            </span>
+          }
+        }
+      }
+      @if (layer.note(); as n) {
+        @if (layer.whyAt(); as at) {
+          <span [class]="'cm__fl cm__why cm__fl--' + at.side" aria-hidden="true" [style.left.%]="layer.left(n.c, at)" [style.top.%]="layer.top(n.c, at)"><mat-icon>block</mat-icon>{{ n.text }}</span>
+        }
+      }
+      <span class="mr-visually-hidden" role="status">{{ pickNote()?.text }}</span>
     }
     <!-- A picker's own marks over the map, in its squares (the area picker): placed by z-index among the map's. -->
     <ng-content />

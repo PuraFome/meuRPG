@@ -68,6 +68,41 @@ describe('SessionTabs', () => {
     one.fixture.detectChanges();
     expect(one.el.querySelector('.tab__badge')?.textContent?.trim()).toBe('99+');
   });
+  describe('for the master outside a combat', () => {
+    function master(tab: 'scene' | 'group' | 'chat' = 'scene', groupCount = 0) {
+      const made = setup();
+      made.fixture.componentRef.setInput('tab', tab);
+      made.fixture.componentRef.setInput('master', true);
+      made.fixture.componentRef.setInput('groupCount', groupCount);
+      made.fixture.detectChanges();
+      return made;
+    }
+
+    it('is Cena, Grupo and Conversa, all buttons', () => {
+      const { el } = master();
+      expect(Array.from(el.querySelectorAll('.tab'), (t) => t.textContent?.trim())).toEqual([
+        'Cena',
+        'Grupo',
+        'Conversa',
+      ]);
+      expect(el.querySelector('a.tab')).toBeNull();
+    });
+
+    it('says "group" when Grupo is chosen and marks it current', () => {
+      const { el, chosen } = master('group');
+      const group = el.querySelectorAll('button.tab')[1] as HTMLButtonElement;
+      expect(group.getAttribute('aria-current')).toBe('true');
+      group.click();
+      expect(chosen).toEqual(['group']);
+    });
+
+    it('counts the casts waiting on Grupo, in words', () => {
+      const { el } = master('scene', 2);
+      const group = el.querySelectorAll('button.tab')[1];
+      expect(group.getAttribute('aria-label')).toContain('2');
+      expect(group.querySelector('.tab__badge--wait')?.textContent?.trim()).toBe('2');
+    });
+  });
 
   it('says "Grupo" for the master and "Combate" while the master\'s combat is on', () => {
     const { fixture, el } = setup();

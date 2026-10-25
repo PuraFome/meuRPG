@@ -1,12 +1,12 @@
 <section class="mr-panel cx" aria-labelledby="cx-title" data-testid="character-effects-panel">
   <div class="cx__head">
-    <div class="cx__titles">
-      <h2 class="mr-panel__title cx__title" id="cx-title" tabindex="-1" data-effects-title>Efeitos em jogo</h2>
-      <p class="cx__count">{{ subtitle() }} · fora do combate</p>
-    </div>
+    <h2 class="mr-panel__title cx__title" id="cx-title" tabindex="-1" data-effects-title>
+      <mat-icon aria-hidden="true">hourglass_empty</mat-icon>Efeitos em jogo
+    </h2>
+    <p class="cx__count">{{ countText() }} · fora do combate</p>
     <div class="cx__actions">
       <button
-        matButton="outlined"
+        matButton
         type="button"
         data-testid="open-give-effect"
         [disabled]="opening() || party().length === 0"
@@ -14,9 +14,9 @@
         [attr.aria-busy]="opening()"
         (click)="openGive()"
       >
-        <mat-icon aria-hidden="true">add</mat-icon>Dar efeito
+        <mat-icon aria-hidden="true">add</mat-icon>Adicionar efeito
       </button>
-      <button matButton="outlined" type="button" data-testid="open-exhaustion" (click)="openExhaustion()">
+      <button matButton type="button" data-testid="open-exhaustion" (click)="openExhaustion()">
         <mat-icon aria-hidden="true">battery_alert</mat-icon>Exaustão
       </button>
     </div>
@@ -43,26 +43,21 @@
   } @else {
     <ul class="cx__list" aria-label="Efeitos nos personagens">
       @for (card of cards(); track card.effect.id) {
-        <li class="cx__card" [attr.aria-labelledby]="'cx-n-' + card.effect.id" data-testid="character-effect">
-          <div class="cx__name">
-            <h3 class="cx__nametext" [id]="'cx-n-' + card.effect.id">{{ card.effect.sourceNamePt }}</h3>
-            @if (card.effect.concentration) {
-              <span class="cx__pill"><mat-icon aria-hidden="true">auto_awesome</mat-icon>Concentração</span>
-            }
+        <li class="cx__row" [attr.aria-labelledby]="'cx-n-' + card.effect.id" data-testid="character-effect">
+          <mat-icon class="cx__glass" aria-hidden="true">hourglass_empty</mat-icon>
+          <div class="cx__text">
+            <h3 class="cx__nametext" [id]="'cx-n-' + card.effect.id">
+              {{ card.effect.sourceNamePt }}<span class="cx__in" aria-hidden="true"> · </span><span class="mr-visually-hidden"> em </span>{{ card.effect.characterName }}
+              @if (card.effect.concentration) {
+                <span class="cx__pill"><mat-icon aria-hidden="true">auto_awesome</mat-icon>Concentração</span>
+              }
+            </h3>
+            <p class="cx__sub">{{ card.line }}</p>
           </div>
-          <p class="cx__sub">Em {{ card.effect.characterName }}</p>
-          <p class="cx__line">
-            <mat-icon aria-hidden="true">schedule</mat-icon>
-            <span>{{ card.effect.durationTextPt }}</span>
-          </p>
-          @if (card.tags) {
-            <p class="cx__tags">{{ card.tags }}</p>
-          }
-          <p class="cx__tags">Jogadores veem: {{ card.see }}</p>
           <button
-            matButton="outlined"
+            matButton
             type="button"
-            class="cx__btn"
+            class="cx__end"
             [attr.data-end]="card.effect.id"
             [attr.aria-label]="'Encerrar ' + card.effect.sourceNamePt + ' em ' + card.effect.characterName"
             [attr.aria-expanded]="card.effect.concentration ? asking() === card.effect.id : null"
@@ -70,7 +65,7 @@
             disabledInteractive
             (click)="end(card)"
           >
-            Encerrar
+            <mat-icon aria-hidden="true">close</mat-icon>Encerrar
           </button>
           @if (asking() === card.effect.id) {
             <div
@@ -102,56 +97,58 @@
       }
     </ul>
   }
-</section>
 
-<section class="mr-panel cx cx--time" aria-labelledby="time-title" data-testid="pass-time">
-  <h2 class="mr-panel__title cx__title" id="time-title">Passar o tempo</h2>
-  <p class="cx__count">
-    Fora do combate o app não conta o tempo: diga quanto passou e os efeitos cujo tempo acabou terminam.
-  </p>
-  <div class="cx__presets" role="group" aria-label="Quanto tempo passa">
-    @for (p of presets; track p.seconds) {
+  <div class="cx__time" role="group" aria-labelledby="time-title" data-testid="pass-time">
+    <span class="cx__timelabel" id="time-title"><mat-icon aria-hidden="true">schedule</mat-icon>Passar o tempo</span>
+    <div class="cx__presets">
+      @for (p of presets; track p.seconds) {
+        <button
+          matButton="outlined"
+          type="button"
+          class="cx__preset"
+          [attr.aria-label]="'Passar ' + p.label"
+          [disabled]="advancing()"
+          disabledInteractive
+          (click)="advanceBy(p.seconds)"
+        >
+          {{ p.short }}
+        </button>
+      }
+      <button matButton type="button" class="cx__other" [attr.aria-expanded]="custom()" (click)="custom.set(!custom())">
+        Outro tempo
+      </button>
+    </div>
+  </div>
+  @if (custom()) {
+    <div class="cx__custom">
+      <app-text-field
+        label="Segundos"
+        path="seconds"
+        inputmode="numeric"
+        [value]="seconds()"
+        [issues]="secondsIssues()"
+        hint="De 1 a 86.400 (24 horas). Uma rodada tem 6 segundos."
+        (valueChange)="seconds.set($event); advanced.set('')"
+      />
       <button
         matButton="outlined"
         type="button"
-        class="cx__preset"
-        [class.cx__preset--on]="presetOn(p.seconds)"
-        [attr.aria-pressed]="presetOn(p.seconds)"
-        (click)="pickPreset(p.seconds)"
+        class="cx__go"
+        [disabled]="advancing() || secondsIssues().length > 0"
+        disabledInteractive
+        [attr.aria-describedby]="preview() ? 'time-preview' : null"
+        (click)="advance()"
       >
-        {{ p.label }}
+        <mat-icon aria-hidden="true">hourglass_bottom</mat-icon>Passar
       </button>
-    }
-  </div>
-  <app-text-field
-    label="Segundos"
-    path="seconds"
-    inputmode="numeric"
-    [value]="seconds()"
-    [issues]="secondsIssues()"
-    hint="De 1 a 86.400 (24 horas). Uma rodada tem 6 segundos."
-    (valueChange)="seconds.set($event); advanced.set('')"
-  />
+      <p class="cx__count" id="time-preview">{{ preview() }}</p>
+    </div>
+  }
   @if (advanceError()) {
     <div class="mr-notice mr-notice--danger" role="alert">
       <mat-icon aria-hidden="true">error</mat-icon>
       <p>{{ advanceError() }}</p>
     </div>
   }
-  <div class="cx__go">
-    <button
-      matButton="filled"
-      type="button"
-      class="cx__btn cx__btn--go"
-      [disabled]="advancing() || secondsIssues().length > 0"
-      disabledInteractive
-      [attr.aria-busy]="advancing()"
-      [attr.aria-describedby]="preview() ? 'time-preview' : null"
-      (click)="advance()"
-    >
-      <mat-icon aria-hidden="true">hourglass_bottom</mat-icon>Passar o tempo
-    </button>
-    <p class="cx__count" id="time-preview">{{ preview() }}</p>
-  </div>
   <p class="cx__done" role="status" aria-live="polite">{{ advanced() }}</p>
 </section>

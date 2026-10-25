@@ -264,6 +264,8 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 - **Dado** o mestre, **quando** ele precisa corrigir algo, **então** pode editar os pontos de vida de um NPC ("Dano/Cura"), desfazer a última ação e ler o registro do combate. O jogador recebe o registro só com o que ele vê (RN-20).
 
 #### No app
+- Num combate, a tela do jogador é o mapa primeiro, com o movimento embaixo ("Restam 9,0 m · 6 quadrados" e "Mover"), depois o cartão da vez com os próprios pontos de vida, classe de armadura e espaços de magia, depois as ações em abas; os pontos de vida das outras criaturas são palavras, nunca números (RN-20).
+- O alvo de um ataque, de uma magia ou de "Agarrar"/"Empurrar" se toca nesse mapa: a página o traz para a vista com a borda de destaque, as criaturas que o servidor oferece têm um anel, as fora de alcance ou atrás de cobertura total ficam apagadas e dizem o motivo ao toque ("Goblin 3: cobertura total"), e uma barra acima da navegação (um cartão no trilho a partir de 1024 px) diz "Escolha o alvo · Raio de Fogo" com "Escolher na lista", "Cancelar" e "Confirmar". Mísseis Mágicos e Raio Ardente pedem um toque para cada dardo ou raio ("2 de 3 dardos", "Desfazer"). "Escolher na lista" abre a lista da própria folha, o caminho do teclado e do leitor de tela.
 - Ver [Arquitetura](../../architecture/play/live-session.md) e [Combate](../../architecture/play/combat.md#combat).
 
 #### Relacionadas
@@ -295,6 +297,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 - **Dado** um turno conjunto com um membro escondido, **quando** o jogador lê o turno, **então** o membro escondido nunca é nomeado.
 
 #### No app
+- A vez do jogador: "Sua vez, Pensantus" com "Rodada 3 · depois de você: Toren" e o que a vez ainda tem em formas (um círculo para a Ação, um triângulo para o Bônus, um quadrado para a Reação, um caminhante para os metros que restam; cheia enquanto existe, tracejada depois de gasta). As ações são abas montadas com as opções do próprio personagem ("Ataques", "Magias" para quem conjura, uma aba com o nome da classe quando ela dá ações, "Outras" para as ações padrão); um grupo gasto é uma linha dobrada ("Ação bônus · Usada") que abre para o que ele tinha. "Mover" é a linha embaixo do mapa no celular e parte da barra da vez a partir de 1024 px, com "Encerrar turno" (uma barra acima da navegação do celular diz "Ainda tem" e as formas que restam). Fora da vez a tela diz de quem é a vez e, a partir de 1024 px, "Reação · Disponível".
 - O combate do mestre é a barra do combate (rodada, de quem é a vez, "Em seguida", o que espera, "Próximo turno"), a ordem, o mapa e a coluna "Turno / Conversa" (com "Mais do combate", uma dobra por painel), em três colunas no computador, e as abas "Turno · Ordem · Mapa" com uma barra fixa no celular (ver [Design](../../design/combat.md#the-masters-combat)).
 - Telas: o cartão do mestre tem um bloco por membro e "Encerrar a parte da Brisa"; o jogador lê "Vez de Brisa e Toren", "Vez dos Goblins", "Você encerrou a sua parte" e "O que a Brisa ainda tem".
 - A tela acompanha a sessão ao vivo sem recarregar.
@@ -381,6 +384,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 #### No app
 - O servidor calcula a economia, as opções e o motivo de cada opção desativada; o app só as desenha. Ver [Combate](../../architecture/play/combat.md#combat), [Regras e combate](../../architecture/rules-combat.md#spell-details), [Ataques e dano](../../architecture/play/attacks-and-damage.md), [Conjuração](../../architecture/play/casting.md), [Reações](../../architecture/play/reactions.md) e [Design](../../design/combat.md).
 - No celular as folhas de ataque e de conjuração são painéis inferiores; no desktop, diálogos. A partir de 1024 px o turno é uma faixa compacta com "Encerrar turno" à direita.
+- "Atacar" e "Conjurar" num combate com mapa pedem o alvo no mapa primeiro (os mesmos alvos, alcance, cobertura e desvantagem da lista da folha: "Longe: desvantagem" é dito no token, não apagado); "Confirmar" abre a folha na rolagem com o alvo nomeado ("Adaga em Goblin 1"), e "Escolher na lista" a abre na lista de alvos. Uma magia de área, sobre o conjurador ou sem alvo mantém a sua folha; as folhas do mestre e o ataque de oportunidade também.
 
 #### Relacionadas
 - RN-02: o mestre pode corrigir pontos de vida e espaços de magia à mão (ver [Regras de negócio](regras.md)).
@@ -425,7 +429,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 
 #### No app
 - Editor: "Ações da cena" e "Imagens da cena" do painel do ponto (miniaturas em ordem com ↑ ↓ e "Tirar da cena", que mantém a imagem na galeria; "Escolher da galeria"; "Gerar imagem com IA", cuja imagem entra na lista; "N de 8").
-- Sessão: o mestre tem "Cena de RP" com "Abrir cena", "Trocar cena" e "Fechar cena", rolagens ao vivo com Passou / Não passou, e "Imagens da cena" com "Mostrar aos jogadores" (uma imagem do mapa inteiro pergunta antes) e "À mostra agora" com "Parar de mostrar". O jogador tem o bloco "Cena" com o bônus dele e "Rolar".
+- Sessão: o mestre abre a "Cena de RP" na aba "Cena" ("Abrir cena", "Trocar cena", "Fechar cena"; abrir uma cena leva para a aba). A cena aberta é um cartão só: "Em cena" (uma linha por NPC), "Imagens da cena" (miniaturas; um toque mostra uma, a imagem do mapa inteiro pergunta antes; a que está à mostra leva "À mostra"; o bloco tracejado "Da galeria" e "Parar de mostrar"), "Ações e rolagens" (uma linha por ação, cada rolagem num chip que abre a fórmula e o Passou / Não passou; "Teste em grupo" no cabeçalho), "Pistas" e os "Ganchos e anotações", dobrados. No celular as partes dobram. O jogador tem o bloco "Cena" com o bônus dele e "Rolar".
 - Ver [Cenas e palco](../../architecture/play/scenes-and-stage.md).
 
 #### Relacionadas
@@ -579,7 +583,7 @@ Cada convite escolhe se exige aprovação, e uma recusa apaga o personagem e a p
 - Um jogador baixa a imagem só enquanto ela está sendo mostrada e ele está na audiência dela, enquanto está deixada com ele, ou enquanto é o fundo de um mapa que ele vê.
   Fora disso é um `404`, mesmo com o ID guardado.
   Veja [RN-10](regras.md) e [Servir imagens](../../architecture/maps/images.md#serving-images).
-- Tela do mestre: o painel "Imagem para os jogadores" ("Mostrar imagem", o seletor da galeria com "Mostrar aos jogadores", "Trocar imagem", "Parar de mostrar"), o interruptor "Deixar com os jogadores" ("Ligado"/"Desligado", desligado sempre que uma imagem nova é mostrada) e a lista "Deixadas com os jogadores" com "Tirar".
+- Tela do mestre: com uma cena aberta, a linha "Imagens da cena" (o bloco tracejado "Da galeria", o interruptor "Deixar com os jogadores" com a palavra do estado numa linha, "Parar de mostrar" e a lista das imagens deixadas); sem cena aberta, o painel "Imagem para os jogadores" ("Mostrar imagem", o seletor da galeria com "Mostrar aos jogadores", "Trocar imagem", "Parar de mostrar"), o interruptor "Deixar com os jogadores" ("Ligado"/"Desligado", desligado sempre que uma imagem nova é mostrada) e a lista "Deixadas com os jogadores" com "Tirar".
 - Tela do jogador: o bloco "O mestre está mostrando" com a imagem, o nome dela como legenda e "Ver em tela cheia", que aparece e some ao vivo e é anunciado; e a lista "Imagens que o mestre deixou" com "Ver em tela cheia", escondida enquanto vazia.
   A lista fica só na página da sessão, não na página da campanha.
   Veja [Design](../../design/session.md#images-shown-to-players) e [Arquitetura](../../architecture/play/live-session.md#what-the-session-shows).

@@ -14,7 +14,7 @@ import { MatIconModule } from '@angular/material/icon';
   selector: 'app-keep-switch',
   imports: [MatIconModule],
   template: `
-    <div class="row">
+    <div class="row" [class.row--compact]="compact()">
       <button
         type="button"
         role="switch"
@@ -23,7 +23,7 @@ import { MatIconModule } from '@angular/material/icon';
         [attr.aria-checked]="checked()"
         [disabled]="disabled()"
         aria-labelledby="keep-label"
-        aria-describedby="keep-hint"
+        [attr.aria-describedby]="compact() ? null : 'keep-hint'"
         (click)="toggle.emit(!checked())"
       >
         <span class="handle">
@@ -34,7 +34,9 @@ import { MatIconModule } from '@angular/material/icon';
       </button>
       <span class="text">
         <span class="label" id="keep-label">Deixar com os jogadores</span>
-        <span class="hint" id="keep-hint">Fica com os jogadores ao parar ou trocar.</span>
+        @if (!compact()) {
+          <span class="hint" id="keep-hint">Fica com os jogadores ao parar ou trocar.</span>
+        }
       </span>
       <span class="state" [class.state--on]="checked()" aria-hidden="true">
         {{ checked() ? 'Ligado' : 'Desligado' }}
@@ -49,6 +51,14 @@ import { MatIconModule } from '@angular/material/icon';
       min-height: 56px;
       padding: 6px 0;
       border-block: 1px solid var(--mr-line);
+    }
+
+    // On one line inside a scene (C3-01): no rules above and below, no hint.
+    .row--compact {
+      flex: 1 1 auto;
+      min-height: 44px;
+      padding: 0;
+      border-block: 0;
     }
 
     // 52 x 28 track, with a 44px-tall target around it.
@@ -144,6 +154,8 @@ import { MatIconModule } from '@angular/material/icon';
 export class KeepSwitch {
   readonly checked = input(false);
   readonly disabled = input(false);
+  /** One line, without the hint and the rules (the scene's image row). */
+  readonly compact = input(false);
   /** The new state the master asks for. */
   readonly toggle = output<boolean>();
 }

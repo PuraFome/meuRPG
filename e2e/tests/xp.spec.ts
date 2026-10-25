@@ -50,7 +50,7 @@ test(
       await stream;
 
       // The summary: what the defeated are worth, who receives, the division, and one filled button.
-      await m.goto(`/campaigns/${campaignId}/session`);
+      await m.goto(`/campaigns/${campaignId}/session?vista=grupo`);
       await expect(m.getByRole('heading', { name: 'Combate encerrado' })).toBeVisible();
       const block = m.getByRole('region', { name: 'Experiência do combate' });
       await expect(block).toContainText('Total dos 4 derrotados');
@@ -118,7 +118,7 @@ test(
       const combat = await tableForXpCombat(m, p, `XP depois ${Date.now()}`);
       campaignId = combat.table.campaignId;
       await winCombatRPC(m, combat);
-      await m.goto(`/campaigns/${campaignId}/session`);
+      await m.goto(`/campaigns/${campaignId}/session?vista=grupo`);
       const block = m.getByRole('region', { name: 'Experiência do combate' });
 
       await block.getByRole('button', { name: 'Agora não' }).click();

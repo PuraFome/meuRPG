@@ -664,9 +664,9 @@ describe('LiveSession', () => {
       expect(panel.textContent).toContain('Mostrar aos jogadores');
       // The live card is in the main column, not in the rail: one at a time, the shown one chosen.
       expect(panel.querySelector('app-master-run')).toBeNull();
-      expect(el.querySelector('.board__left app-master-live app-master-run h3')?.textContent).toBe(
-        'O selo da Capela',
-      );
+      expect(
+        el.querySelector('#mb-panel-cena app-master-live app-master-run h3')?.textContent,
+      ).toBe('O selo da Capela');
       // A master never gets the player's way in.
       expect(el.querySelector('app-puzzle-notice')).toBeNull();
     });
@@ -713,7 +713,7 @@ describe('LiveSession', () => {
     expect(el.textContent).toContain('desde 30/09 às 20:05');
     expect(el.querySelector('[aria-label="Ajustar Pensantus"]')).not.toBeNull();
     expect(el.querySelector('[aria-label="Ajustar Brisa"]')).not.toBeNull();
-    expect(el.textContent).toContain('Ladina 3, de Ana');
+    expect(el.textContent).toContain('Ladina 3');
     expect(el.textContent).toContain('+5 temporários');
     expect(el.textContent).toContain('Abaixo da metade');
     // The link and the end are in the "Sessão" menu.
@@ -744,7 +744,7 @@ describe('LiveSession', () => {
     it('gives the master the "Descanso" card with the two rests', async () => {
       asMaster();
       const el = await render();
-      expect(el.querySelector('app-rest-card h2')?.textContent).toBe('Descanso');
+      expect(el.querySelector('app-rest-card h2')?.textContent).toContain('Descanso');
       expect(button(el, 'Descanso curto')).toBeTruthy();
       expect(button(el, 'Descanso longo')).toBeTruthy();
     });
@@ -1302,17 +1302,43 @@ describe('LiveSession', () => {
         expect(el.querySelector('app-scene-panel h2')?.textContent).toBe('Cena de RP');
         expect(el.textContent).toContain('Nenhuma cena aberta.');
         expect(el.querySelector('app-scene-open')).toBeNull();
-        expect(el.querySelector('.board--scene-open')).toBeNull();
+        expect(el.querySelector('#mb-panel-cena')?.hasAttribute('hidden')).toBe(true);
+      });
+
+      it('has the tabs "Cena", "Mapa" and "Grupo" over panels that stay mounted, opening on "Mapa" with no scene', async () => {
+        const el = await render();
+        const names = Array.from(el.querySelectorAll('.mb__tabs [role="tab"]'), (t) =>
+          t.querySelector('span')?.textContent?.trim(),
+        );
+        expect(names).toEqual(['Cena', 'Mapa', 'Grupo']);
+        expect(el.querySelector('#mb-tab-mapa')?.getAttribute('aria-selected')).toBe('true');
+        const hidden = ['cena', 'mapa', 'grupo'].map((t) =>
+          el.querySelector(`#mb-panel-${t}`)?.hasAttribute('hidden'),
+        );
+        expect(hidden).toEqual([true, false, true]);
+        // Hidden panels keep their parts: the party is in "Grupo" even while "Mapa" shows.
+        expect(el.querySelector('#mb-panel-grupo app-party-panel')).not.toBeNull();
+        // The Conversa is the rail beside the board.
+        expect(el.querySelector('app-session-rail[aria-label="Conversa"]')).not.toBeNull();
+      });
+
+      it('opens on the tab the address names', async () => {
+        query.next(convertToParamMap({ vista: 'grupo' }));
+        const el = await render();
+        expect(el.querySelector('#mb-tab-grupo')?.getAttribute('aria-selected')).toBe('true');
+        expect(el.querySelector('#mb-panel-grupo')?.hasAttribute('hidden')).toBe(false);
       });
 
       it('moves the open scene to the top of the map column and takes "Cena de RP" out of the right one', async () => {
         scenes.scene = masterScene([sceneRoll('r1', 'a2', 'Toren', 7, { passed: false })]);
         const el = await render();
         expect(el.querySelector('app-scene-panel')).toBeNull();
-        expect(el.querySelector('.board--scene-open')).not.toBeNull();
-        const left = el.querySelector('.board__left')!;
-        expect(left.firstElementChild?.tagName.toLowerCase()).toBe('app-scene-open');
-        expect(left.querySelector('app-session-map')).not.toBeNull();
+        // The scene is the first block of "Cena", which is the tab shown while a scene is open; the map is in "Mapa".
+        const cena = el.querySelector('#mb-panel-cena')!;
+        expect(cena.hasAttribute('hidden')).toBe(false);
+        expect(cena.firstElementChild?.tagName.toLowerCase()).toBe('app-scene-open');
+        expect(el.querySelector('#mb-panel-mapa')?.hasAttribute('hidden')).toBe(true);
+        expect(el.querySelector('#mb-panel-mapa app-session-map')).not.toBeNull();
         expect(el.querySelector('#so-title')?.textContent).toBe('Cena: A\u00a0carroça tombada');
         expect(el.textContent).toContain('Não passou');
       });
@@ -1320,13 +1346,16 @@ describe('LiveSession', () => {
       it('reads the rolls again on scene_check_rolled and reads the new one aloud', async () => {
         scenes.scene = masterScene();
         const el = await render();
-        expect(el.textContent).toContain('Ninguém rolou ainda.');
+        expect(el.querySelectorAll('#mb-panel-cena .chip')).toHaveLength(0);
         scenes.scene = masterScene([sceneRoll('r1', 'a2', 'Toren', 7, { passed: false })]);
         source.push({ kind: 'sceneCheckRolled' });
         await tick();
         await tick();
         expect(el.textContent).toContain('Toren: Seguir os rastros dos goblins, 7, não passou');
-        expect(el.querySelectorAll('app-scene-roll-line')).toHaveLength(1);
+        expect(el.querySelectorAll('#mb-panel-cena .chip')).toHaveLength(1);
+        expect(el.querySelector('#mb-panel-cena .sa__fresh')?.textContent).toContain(
+          '1 rolagem nova',
+        );
       });
 
       it('opens a scene from its point in "Pontos do mapa", and the list says it is the open one', async () => {
@@ -1781,8 +1810,8 @@ describe('LiveSession', () => {
           'Pensantus Vinicius 4 quadrados vistos',
           'Brisa Ana 2 quadrados vistos',
         ]);
-        // Next to the map: the panel is the first block of the right column.
-        expect(el.querySelector('.board__fog app-view-as-list')).not.toBeNull();
+        // Under the map: the tab "Névoa e luz".
+        expect(el.querySelector('#map-tool-panel-nevoa app-view-as-list')).not.toBeNull();
       });
 
       it('shows the map as one character sees it, with the band and the badge, and comes back with "Todos"', async () => {
@@ -2036,7 +2065,7 @@ describe('LiveSession', () => {
     it('puts the panel beside the stage on a computer, with the composer of a player, and no tabs', async () => {
       onPhone(false);
       const el = await render();
-      expect(el.querySelector('app-conversation h2')?.textContent?.trim()).toBe('Conversa');
+      expect(el.querySelector('app-conversation h2')?.textContent).toContain('Conversa');
       expect(el.querySelector('app-player-composer')).not.toBeNull();
       expect(el.querySelector('app-session-tabs')).toBeNull();
     });

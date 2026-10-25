@@ -12,12 +12,14 @@ describe('SceneHooks', () => {
     return { fixture, el, toggle: () => el.querySelector<HTMLButtonElement>('.mr-fold__button')! };
   }
 
-  it('is open on a computer, shows the text as Markdown and always shows the lock and "Só você vê"', () => {
-    const { el, toggle } = setup('O mercador foi levado.\n\nMira está escondida.', false);
-    expect(toggle().getAttribute('aria-expanded')).toBe('true');
-    expect(el.querySelectorAll('.sh__text p')).toHaveLength(2);
+  it('is folded on a computer too, shows the text as Markdown once opened and always shows "Só você vê" and the lock', () => {
+    const { fixture, el, toggle } = setup('O mercador foi levado.\n\nMira está escondida.', false);
+    expect(toggle().getAttribute('aria-expanded')).toBe('false');
     expect(el.querySelector('.sh__lock')?.textContent).toContain('Só você vê');
-    expect(el.querySelector('.sh__lock mat-icon')?.textContent).toBe('lock');
+    expect(el.querySelector('.mr-fold__icon')?.textContent).toBe('lock');
+    toggle().click();
+    fixture.detectChanges();
+    expect(el.querySelectorAll('.sh__text p')).toHaveLength(2);
   });
 
   it('is folded on a phone with the lock still on screen, and opens and closes with a named button', () => {
@@ -37,7 +39,9 @@ describe('SceneHooks', () => {
   });
 
   it('says there are no hooks when the scene has none', () => {
-    const { el } = setup('  ', false);
+    const { fixture, el, toggle } = setup('  ', false);
+    toggle().click();
+    fixture.detectChanges();
     expect(el.querySelector('.sh__none')?.textContent).toContain('Esta cena não tem ganchos.');
   });
 });

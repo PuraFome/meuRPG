@@ -76,4 +76,26 @@ describe('SessionRail', () => {
     expect(el.querySelector('[role="tablist"]')).toBeNull();
     expect(el.querySelector('#rail-panel-chat')?.getAttribute('aria-labelledby')).toBeNull();
   });
+
+  it('draws the tab list for a single tab when asked, and wires the panel to it', () => {
+    @Component({
+      changeDetection: ChangeDetectionStrategy.OnPush,
+      imports: [SessionRail, RailPanel],
+      template: `
+        <app-session-rail label="Ações" [tabs]="tabs" [showSingle]="true">
+          <div appRailPanel="actions">Reação</div>
+        </app-session-rail>
+      `,
+    })
+    class Single {
+      readonly tabs: readonly TabItem[] = [{ id: 'actions', label: 'Ações' }];
+    }
+    const fixture = TestBed.createComponent(Single);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelectorAll('[role="tab"]')).toHaveLength(1);
+    expect(el.querySelector('#rail-panel-actions')?.getAttribute('aria-labelledby')).toBe(
+      'rail-tab-actions',
+    );
+  });
 });

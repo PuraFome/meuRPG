@@ -22,13 +22,14 @@ import { BattleEncounters } from './battle-encounters';
 @Component({
   imports: [BattleEncounters],
   template:
-    '<app-battle-encounters campaignId="camp-1" [state]="state" (started)="started.set($event.name)" />',
+    '<app-battle-encounters campaignId="camp-1" [state]="state" (started)="started.set($event.name)" (count)="counted.set($event)" />',
 })
 class Host {
   state = new MapState(async () => {
     throw new Error('not read');
   });
   started = signal('');
+  counted = signal(-1);
 }
 
 describe('BattleEncounters: "Começar este combate" on the master\'s session (MR-043, E10-09 state 7)', () => {
@@ -81,6 +82,11 @@ describe('BattleEncounters: "Começar este combate" on the master\'s session (MR
     const el = fixture.nativeElement as HTMLElement;
     return { el, settle, host: fixture.componentInstance };
   }
+
+  it('says how many encounters it keeps, for the "Encontros" tab', async () => {
+    const { host } = await setup();
+    expect(host.counted()).toBe(1);
+  });
 
   it("shows the point that keeps an encounter, with the band against today's party, the label, and the creatures", async () => {
     const { el } = await setup();

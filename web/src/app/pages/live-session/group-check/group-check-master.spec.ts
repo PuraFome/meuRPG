@@ -355,4 +355,37 @@ describe('GroupCheckMaster, the natural mark (information only)', () => {
     await settle();
     expect(textOf(el.querySelector('[data-testid="lucky"]')!)).toBe('Sortudo: 1 → 14');
   });
+  describe('collapsible, as a button of the open scene', () => {
+    it('shows one "Pedir teste em grupo" button, then the form with "Cancelar"', async () => {
+      const api = new FakeContestClient();
+      api.group = null;
+      TestBed.configureTestingModule({
+        providers: [{ provide: ContestClient, useValue: api.as() }],
+      });
+      const fixture = TestBed.createComponent(GroupCheckMaster);
+      const ref = fixture.componentRef;
+      ref.setInput('campaignId', 'camp');
+      ref.setInput('tick', 0);
+      ref.setInput('diceMode', DiceMode.PLAYERS_CHOOSE);
+      ref.setInput('preference', DicePreference.APP);
+      ref.setInput('people', PEOPLE);
+      ref.setInput('collapsible', true);
+      for (let i = 0; i < 4; i++) {
+        fixture.detectChanges();
+        await fixture.whenStable();
+      }
+      const el = fixture.nativeElement as HTMLElement;
+      const find = (name: string) =>
+        Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
+          textOf(b).includes(name),
+        );
+      expect(el.querySelector('[data-testid="group-ask"]')).toBeNull();
+      find('Pedir teste em grupo')!.click();
+      fixture.detectChanges();
+      expect(el.querySelector('[data-testid="group-ask"]')).not.toBeNull();
+      find('Cancelar')!.click();
+      fixture.detectChanges();
+      expect(el.querySelector('[data-testid="group-ask"]')).toBeNull();
+    });
+  });
 });

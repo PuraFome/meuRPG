@@ -19,7 +19,9 @@ export interface SlotInputs {
   readonly stageCharacterIds: Signal<readonly string[]>;
   /** The lines that came while the conversation was not on screen. */
   readonly unread: Signal<number>;
-  /** The master's running combat draws the conversation in its rail ("Turno · Conversa"): it is on screen only while that tab is open. */
+  /** The conversation is a tab of the board and another tab is shown (a tablet's master): it is not on screen. */
+  readonly behind?: Signal<boolean>;
+  /** A running combat draws the conversation in its rail ("Turno · Conversa", "Ações · Conversa"): it is on screen only while that tab is open. */
   readonly railMode: Signal<boolean>;
 }
 
@@ -41,6 +43,7 @@ export class ConversationSlot {
   readonly onScreen = computed(
     () =>
       this.inputs.live() &&
+      !this.inputs.behind?.() &&
       (this.inputs.phone()
         ? this.tab() === 'chat'
         : this.inputs.pageVisible() && (!this.inputs.railMode() || this.railShown())),
@@ -59,9 +62,11 @@ export class ConversationSlot {
   });
   /** The conversation is what the reader looks at (a phone's open tab, or the column on a computer): the voice stops when not. */
   readonly shown = computed(() =>
-    this.inputs.railMode() && !this.inputs.phone()
-      ? this.railShown()
-      : !this.inputs.phone() || this.tab() === 'chat',
+    this.inputs.behind?.()
+      ? false
+      : this.inputs.railMode() && !this.inputs.phone()
+        ? this.railShown()
+        : !this.inputs.phone() || this.tab() === 'chat',
   );
   readonly phone = computed(() => this.inputs.phone());
   readonly userId = computed(() => this.inputs.userId());

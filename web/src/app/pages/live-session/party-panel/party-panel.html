@@ -1,6 +1,6 @@
 <section class="mr-panel party" aria-labelledby="party-heading">
   <div class="party__head">
-    <h2 class="mr-panel__title" id="party-heading">Grupo</h2>
+    <h2 class="mr-panel__title" id="party-heading"><mat-icon aria-hidden="true">groups</mat-icon>Grupo</h2>
     <app-session-xp [campaignId]="campaignId()" [campaignName]="campaignName()" />
   </div>
   @if (party().length === 0) {
@@ -12,96 +12,119 @@
     <ul class="party__list">
       @for (v of party(); track v.characterId) {
         <li class="member">
-          <div class="member__head">
-            <div class="member__who">
-              <span class="member__line">
-                <span class="member__name">{{ v.name }}</span>
-                @if (dark().has(v.characterId)) {
-                  <!-- The master's light warning (B3): only the master's panel has it, so a player's screen never does (RN-10). -->
-                  <span class="js-dark member__dark">
-                    <mat-icon aria-hidden="true">dark_mode</mat-icon>No escuro
-                  </span>
-                }
-              </span>
-              @if (sub(info().get(v.characterId)); as line) {
-                <span class="member__sub">{{ line }}</span>
+          <app-combatant-token class="member__token" [initial]="initial(v.name)" [size]="48" />
+          <div class="member__who">
+            <span class="member__line">
+              <span class="member__name">{{ v.name }}</span>
+              @if (dark().has(v.characterId)) {
+                <!-- The master's light warning (B3): only the master's panel has it, so a player's screen never does (RN-10). -->
+                <span class="js-dark member__dark">
+                  <mat-icon aria-hidden="true">dark_mode</mat-icon>No escuro
+                </span>
               }
-            </div>
-            <div class="member__buttons">
-              <app-nudge-button [campaignId]="campaignId()" [characterId]="v.characterId" [name]="v.name" />
-              <button
-                mat-stroked-button
-                type="button"
-                class="js-adjust"
-                [attr.aria-label]="'Ajustar ' + v.name"
-                (click)="adjust.emit(v)"
-              >
-                Ajustar
-              </button>
-            </div>
+            </span>
+            <span class="member__sub">
+              {{ info().get(v.characterId)?.classSummary }}
+              @for (c of conditionsOf(v.characterId); track c) {
+                <span class="member__sep" aria-hidden="true">·</span>
+                <span class="member__condition"><mat-icon aria-hidden="true">error_outline</mat-icon>{{ c }}</span>
+              }
+            </span>
+            @if (nudger.messageFor() === v.characterId && nudger.message()) {
+              <span class="member__said" role="status">{{ nudger.message() }}</span>
+            }
           </div>
 
           <div class="member__hp">
             <span class="member__numbers">
               <span class="member__current">{{ v.hitPointsCurrent }}</span>
-              <span class="member__max">de {{ v.hitPointsMax }}</span>
-              <span class="member__unit">PV</span>
+              <span class="member__max">de {{ v.hitPointsMax }} PV</span>
             </span>
-            @if (v.hitPointsTemporary > 0) {
-              <span class="mr-tag">+{{ v.hitPointsTemporary }} temporários</span>
+            <div class="member__bar" aria-hidden="true">
+              <div class="member__fill" [style.width.%]="percent(v)"></div>
+            </div>
+            @if (hasTags(v)) {
+              <span class="member__tags">
+                @if (v.hitPointsTemporary > 0) {
+                  <span class="mr-tag">+{{ v.hitPointsTemporary }} temporários</span>
+                }
+                @if ((v.hitPointsMaxBonus ?? 0) > 0) {
+                  <span class="mr-tag js-aid">{{ aidTag(v.hitPointsMaxBonus ?? 0) }}</span>
+                }
+                @if ((v.armorClassBase ?? 0) > 0) {
+                  <span class="mr-tag js-armor-base">CA {{ v.armorClassBase }} (efeito)</span>
+                }
+                @if (v.wildShape; as beast) {
+                  <span class="mr-tag js-beast"
+                    >{{ beast.beastNamePt }} {{ beast.hitPointsCurrent }} de {{ beast.hitPointsMax }} PV</span
+                  >
+                }
+                @if (hpState(v); as state) {
+                  <span class="mr-tag" [class]="'mr-tag--' + state.tone">{{ state.label }}</span>
+                }
+              </span>
             }
-            @if ((v.hitPointsMaxBonus ?? 0) > 0) {
-              <span class="mr-tag js-aid">{{ aidTag(v.hitPointsMaxBonus ?? 0) }}</span>
-            }
-            @if ((v.armorClassBase ?? 0) > 0) {
-              <span class="mr-tag js-armor-base">CA {{ v.armorClassBase }} (efeito)</span>
-            }
-            @if (v.wildShape; as beast) {
-              <span class="mr-tag js-beast"
-                >{{ beast.beastNamePt }} {{ beast.hitPointsCurrent }} de {{ beast.hitPointsMax }} PV</span
-              >
-            }
-            @if (hpState(v); as state) {
-              <span class="mr-tag" [class]="'mr-tag--' + state.tone">{{ state.label }}</span>
-            }
-          </div>
-          <div class="member__bar" aria-hidden="true">
-            <div class="member__fill" [style.width.%]="percent(v)"></div>
           </div>
 
-          @if (v.spellSlots.length > 0 || v.pactSlots) {
-            <div class="member__slots">
-              <span class="member__slots-label">Espaços de magia</span>
-              @for (s of v.spellSlots; track s.level) {
-                <span
-                  class="member__slot"
-                  role="img"
-                  [attr.aria-label]="slotRowLabel(s.level + 'º nível', s.used, s.total)"
+          <div class="member__slots">
+            @if (v.spellSlots.length === 0 && !v.pactSlots) {
+              <span class="member__none">Sem espaços de magia</span>
+            }
+            @for (s of v.spellSlots; track s.level) {
+              <span
+                class="member__slot"
+                role="img"
+                [attr.aria-label]="slotRowLabel(s.level + 'º nível', s.used, s.total)"
+              >
+                <span aria-hidden="true">{{ s.level }}º</span>
+                <app-slot-dots [total]="s.total" [used]="s.used" size="small" />
+                <span class="member__slot-count" aria-hidden="true">{{ s.total - s.used }} de {{ s.total }}</span>
+              </span>
+            }
+            @if (v.pactSlots; as p) {
+              <span
+                class="member__slot"
+                role="img"
+                [attr.aria-label]="slotRowLabel('Pacto, ' + p.slotLevel + 'º nível', p.used, p.total)"
+              >
+                <span aria-hidden="true">Pacto {{ p.slotLevel }}º</span>
+                <app-slot-dots [total]="p.total" [used]="p.used" size="small" />
+                <span class="member__slot-count" aria-hidden="true">{{ p.total - p.used }} de {{ p.total }}</span>
+              </span>
+            }
+          </div>
+
+          <div class="member__buttons">
+            <button
+              matButton
+              type="button"
+              class="js-adjust"
+              [attr.aria-label]="'Ajustar ' + v.name"
+              (click)="adjust.emit(v)"
+            >
+              <mat-icon aria-hidden="true">edit</mat-icon>Ajustar
+            </button>
+            <button
+                type="button"
+                class="member__more"
+                [matMenuTriggerFor]="menu"
+                [attr.aria-label]="'Mais ações de ' + v.name"
+              >
+                <mat-icon aria-hidden="true">more_vert</mat-icon>
+              </button>
+              <mat-menu #menu="matMenu">
+                <button
+                  mat-menu-item
+                  type="button"
+                  class="js-nudge"
+                  [attr.aria-label]="'Chamar a atenção de ' + v.name"
+                  [disabled]="nudger.cooling().has(v.characterId)"
+                  (click)="call(v)"
                 >
-                  <span aria-hidden="true">{{ s.level }}º</span>
-                  <app-slot-dots [total]="s.total" [used]="s.used" size="small" />
-                  <span class="member__slot-count" aria-hidden="true"
-                    >{{ free(s.used, s.total) }}</span
-                  >
-                </span>
-              }
-              @if (v.pactSlots; as p) {
-                <span
-                  class="member__slot"
-                  role="img"
-                  [attr.aria-label]="
-                    slotRowLabel('Pacto, ' + p.slotLevel + 'º nível', p.used, p.total)
-                  "
-                >
-                  <span aria-hidden="true">Pacto {{ p.slotLevel }}º</span>
-                  <app-slot-dots [total]="p.total" [used]="p.used" size="small" />
-                  <span class="member__slot-count" aria-hidden="true"
-                    >{{ free(p.used, p.total) }}</span
-                  >
-                </span>
-              }
-            </div>
-          }
+                  <mat-icon aria-hidden="true">notifications_active</mat-icon>Chamar a atenção
+                </button>
+              </mat-menu>
+          </div>
         </li>
       }
     </ul>

@@ -19,8 +19,10 @@ import type { PartyMemberInfoVm } from '../../../core/play/live-session.types';
  */
 @Component({
   selector: 'app-fog-master-panel',
+  host: { '[class.fog--flat]': 'flat()' },
   imports: [LightPanel, MatIconModule, ViewAsList, ViewAsMapView],
   template: `
+    <div class="fog__cols">
     <app-view-as-list
       [people]="people()"
       [counts]="counts.counts()"
@@ -28,6 +30,7 @@ import type { PartyMemberInfoVm } from '../../../core/play/live-session.types';
       [selected]="viewAs()"
       [groupVision]="map()?.groupVision ?? false"
       [note]="note()"
+      [flat]="flat()"
       (choose)="viewAsChange.emit($event)"
     />
     @if (goneNote()) {
@@ -52,7 +55,8 @@ import type { PartyMemberInfoVm } from '../../../core/play/live-session.types';
         (back)="viewAsChange.emit(null)"
       />
     }
-    <app-light-panel [campaignId]="campaignId()" [state]="state()" [info]="info()" />
+    <app-light-panel [campaignId]="campaignId()" [state]="state()" [info]="info()" [flat]="flat()" />
+    </div>
   `,
   styles: `
     :host {
@@ -60,6 +64,27 @@ import type { PartyMemberInfoVm } from '../../../core/play/live-session.types';
       flex-direction: column;
       gap: var(--mr-space-4);
       min-width: 0;
+    }
+
+    :host(.fog--flat) {
+      container-type: inline-size;
+    }
+
+    .fog__cols {
+      display: flex;
+      flex-direction: column;
+      gap: var(--mr-space-4);
+      min-width: 0;
+    }
+
+    // Side by side when the tab is wide enough (C6-05): "Ver como" left, "Luz dos personagens" right.
+    @container (min-width: 640px) {
+      .fog__cols {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: var(--mr-space-6);
+        align-items: start;
+      }
     }
 
     .gone {
@@ -82,6 +107,8 @@ export class FogMasterPanel {
   readonly note = input('');
   readonly goneNote = input('');
   readonly inCombat = input(false);
+  /** In the master's "Névoa e luz" tab (C6-05): the two lists side by side, with no frame of their own. */
+  readonly flat = input(false);
 
   readonly viewAsChange = output<string | null>();
   readonly noteChange = output<string>();

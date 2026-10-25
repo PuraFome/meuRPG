@@ -42,5 +42,9 @@ export class CastState {
 
   constructor(readonly data: CastSheetData) {
     this.teleportFt = data.map ? (data.targets?.teleportRangeFt ?? 0) : 0;
+    if (data.preset) {
+      this.chosen.set([...data.preset.chosen]);
+      this.dealt.set(new Map(data.preset.dealt));
+    }
   }
 }

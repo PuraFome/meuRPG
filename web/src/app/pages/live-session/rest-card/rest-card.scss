@@ -8,14 +8,58 @@
   gap: var(--mr-space-3);
 
   .mr-panel__title {
+    display: flex;
+    align-items: center;
+    gap: var(--mr-space-3);
     margin: 0;
+    font-size: 22px;
+    line-height: 28px;
+
+    .mat-icon {
+      flex: none;
+      width: 22px;
+      height: 22px;
+      font-size: 22px;
+      color: var(--mr-ink-muted);
+    }
   }
 }
 
+.rest__lead {
+  margin: 0;
+  color: var(--mr-ink-muted);
+}
+
+// Two equal outlined buttons (C6-06); the one whose question is open has the 2px accent border.
 .rest__buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--mr-space-2);
+  gap: var(--mr-space-3);
+}
+
+.rest__button {
+  flex: 0 1 200px;
+  min-width: 0;
+  min-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+
+  // A phone: the two buttons are two equal rows, so the words stay whole.
+  @media (max-width: 479.98px) {
+    flex: 1 1 100%;
+  }
+
+  &--on {
+    border-width: 2px;
+    --mat-button-outlined-outline-color: var(--mr-accent);
+    background: var(--mr-accent-soft);
+  }
+}
+
+// The confirmation: the only emphasis the question has, an accent outline (the tab has no filled button).
+.question__go {
+  --mat-button-outlined-outline-color: var(--mr-accent);
+  --mat-button-outlined-label-text-color: var(--mr-accent-text);
+  border-width: 2px;
 }
 
 .rest__done {

@@ -20,7 +20,7 @@ function initialStage(data: AttackSheetData): AttackStage {
   if (data.resume) {
     return 'damage';
   }
-  return data.opportunity ? 'roll' : 'target';
+  return data.opportunity || data.target ? 'roll' : 'target';
 }
 
 /** What the attack sheet is showing, shared by the parts that read and write it. */
@@ -44,7 +44,9 @@ export class AttackState {
   constructor(readonly data: AttackSheetData) {
     this.reopened = data.held;
     this.stage = signal(initialStage(data));
-    this.targetId = signal(data.opportunity?.targetId ?? this.reopened?.offer.targetId ?? null);
+    this.targetId = signal(
+      data.opportunity?.targetId ?? this.reopened?.offer.targetId ?? data.target ?? null,
+    );
     this.roll = signal(
       this.reopened
         ? create(AttackRollSchema, {

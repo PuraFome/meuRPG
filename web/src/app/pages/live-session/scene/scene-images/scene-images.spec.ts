@@ -50,18 +50,25 @@ describe("SceneImagesShow (the master's open scene)", () => {
   }
 
   const tile = (id: string) => el.querySelector(`[data-image="${id}"]`)!;
+  /** The thumbnail is the button that shows the image; the questions of a whole-map image sit under the row. */
   const button = (id: string, text: string) =>
-    Array.from(tile(id).querySelectorAll('button')).find((b) => b.textContent?.includes(text))!;
+    text === 'Mostrar aos jogadores'
+      ? tile(id).querySelector<HTMLButtonElement>('button.sm__pic')!
+      : Array.from(el.querySelectorAll<HTMLButtonElement>('.sm__ask button')).find((b) =>
+          b.textContent?.includes(text),
+        )!;
 
-  it('draws nothing for a scene without images', () => {
+  it('with no images draws the title, "0 de 8" and the place of the gallery tile', () => {
     setup([]);
-    expect(el.querySelector('section')).toBeNull();
+    expect(el.querySelector('h3')?.textContent).toContain('Imagens da cena');
+    expect(el.querySelector('.sm__count')?.textContent).toContain('0');
+    expect(el.querySelectorAll('.sm__tile--add')).toHaveLength(1);
   });
 
   it('lists the images, each with "Mostrar aos jogadores"', () => {
     setup([image('i1', 'A carroça'), image('i2', 'A estrada')]);
-    expect(el.querySelector('h3')?.textContent).toBe('Imagens da cena');
-    expect(el.querySelectorAll('.sm__tile').length).toBe(2);
+    expect(el.querySelector('h3')?.textContent).toContain('Imagens da cena');
+    expect(el.querySelectorAll('.sm__tile:not(.sm__tile--add)').length).toBe(2);
     expect(button('i1', 'Mostrar aos jogadores').getAttribute('aria-label')).toBe(
       'Mostrar A carroça aos jogadores',
     );
@@ -78,15 +85,12 @@ describe("SceneImagesShow (the master's open scene)", () => {
     );
   });
 
-  it('marks the image on display and offers to stop it', async () => {
+  it("marks the image on display; stopping it is the scene row's button, not the tile's", () => {
     setup([image('i1', 'A carroça'), image('i2', 'A estrada')], vm('i1', 'A carroça'));
-    expect(tile('i1').textContent).toContain('À mostra agora');
+    expect(tile('i1').textContent).toContain('À mostra');
     expect(tile('i1').classList).toContain('sm__tile--shown');
-    expect(tile('i2').textContent).not.toContain('À mostra agora');
-    button('i1', 'Parar de mostrar').click();
-    await settle();
-    expect(source.setShownImage).toHaveBeenCalledWith('c1', null);
-    expect(changed).toEqual([null]);
+    expect(tile('i2').textContent).not.toContain('À mostra');
+    expect(tile('i1').querySelector('button')).toBeNull();
   });
 
   it('with "Deixar com os jogadores" on, replacing the image tells the page to read the left list', async () => {
@@ -101,7 +105,7 @@ describe("SceneImagesShow (the master's open scene)", () => {
     button('m1', 'Mostrar aos jogadores').click();
     await settle();
     expect(source.setShownImage).not.toHaveBeenCalled();
-    expect(tile('m1').textContent).toContain('mostra o mapa inteiro');
+    expect(el.querySelector('.sm__ask')?.textContent).toContain('mostra o mapa inteiro');
     button('m1', 'Voltar').click();
     await settle();
     expect(button('m1', 'Mostrar aos jogadores')).toBeTruthy();

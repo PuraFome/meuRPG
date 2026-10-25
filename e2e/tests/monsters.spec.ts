@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { combatRPC, getEncounterRPC, startEncounterRPC, tableForCombat, type CombatTable, type Encounter } from './combat-support';
 import { createPointRPC } from './maps-support';
 import { callRPC, createCharacterRPC, newSignedInContext } from './support';
-import { openSessionPage, clickStartCombat } from './live-session-support';
+import { openSessionPage, clickStartCombat, showMapTool } from './live-session-support';
 import { openOrderRow } from './combat-layout';
 
 // MR-042 (monsters in the combat, "Pôr no combate"), MR-043 (the encounter builder: "Gerar encontro", "Trocar", the battle point,
@@ -392,7 +392,8 @@ test(
       expect(JSON.stringify(await kept.json())).toContain('"count":2');
 
       // The session: the card of the point, and "Começar este combate" opens "Iniciar combate" filled.
-      await openSessionPage(master, campaignId);
+      await openSessionPage(master, campaignId, 'mapa');
+      await showMapTool(master, 'Encontros');
       const card = master.locator('.enc', { hasText: 'Emboscada na ponte' });
       await expect(card.locator('.enc__pill')).toContainText('Encontro guardado');
       await expect(card.locator('.enc__band')).toContainText(' XP');
@@ -489,7 +490,8 @@ test(
         encounter: { monsters: [{ creatureKey: 'monster:goblin', count: 2 }] },
       });
       expect(again.ok(), await again.text()).toBeTruthy();
-      await openSessionPage(master, campaignId);
+      await openSessionPage(master, campaignId, 'mapa');
+      await showMapTool(master, 'Encontros');
       await master.locator('.enc', { hasText: 'Ruínas do forte' }).getByRole('button', { name: 'Começar este combate' }).click();
       const start = master.getByRole('dialog', { name: 'Iniciar combate' });
       await start.getByText('Sem mapa (teatro da mente)', { exact: true }).click();

@@ -88,4 +88,15 @@ describe('ActionRow', () => {
     });
     expect(el.querySelector('button')).toBeNull();
   });
+
+  it('puts "Escolhendo o alvo" where the button was, and keeps the button for the focus to come back to', () => {
+    const { el } = setup({ name: 'Raio de Fogo', button: 'Atacar', choosing: true });
+    expect(el.querySelector('.row__choosing')?.textContent).toBe('Escolhendo o alvo');
+    expect(el.querySelector<HTMLElement>('button')!.style.display).toBe('none');
+  });
+
+  it('has no pill when the target is not being chosen', () => {
+    const { el } = setup({ name: 'Raio de Fogo', button: 'Atacar' });
+    expect(el.querySelector('.row__choosing')).toBeNull();
+  });
 });

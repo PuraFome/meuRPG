@@ -65,6 +65,8 @@ export class BattleEncounters {
   readonly state = input.required<MapState>();
   /** The combat that was started: the page shows it. */
   readonly started = output<Encounter>();
+  /** How many encounters the map's battle points keep: the "Encontros" tab counts them. */
+  readonly count = output<number>();
 
   protected readonly kept = signal<readonly Kept[]>([]);
   protected readonly error = signal('');
@@ -89,6 +91,7 @@ export class BattleEncounters {
       const key = this.battleKey();
       untracked(() => void this.load(key));
     });
+    effect(() => this.count.emit(this.kept().length));
   }
 
   /** The warning the server already sends for a saved encounter that does not fit one combat of 40 with today's party. */

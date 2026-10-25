@@ -105,8 +105,11 @@ test(
       await openScene(master, 'A carroça tombada');
       const clues = master.getByRole('heading', { name: 'Pistas' }).locator('xpath=ancestor::section[1]');
       await expect(clues.getByRole('listitem')).toHaveCount(3);
-      await expect(clues.getByText('Ninguém ainda')).toHaveCount(3);
-      await expect(master.getByRole('region', { name: 'Ganchos e anotações' }).getByText('Só você vê')).toBeVisible();
+      await expect(clues.getByText('Ninguém tem esta pista ainda.')).toHaveCount(3);
+      const hooks = master.getByRole('region', { name: 'Ganchos e anotações' });
+      await expect(hooks.getByText('Só você vê')).toBeVisible();
+      // The hooks start folded: the words are one tap away.
+      await hooks.getByRole('button', { name: /^Ganchos e anotações/ }).click();
       await expect(master.getByText(cartHooks)).toBeVisible();
       await expect(player.getByRole('button', { name: 'Anotações', exact: true })).toBeVisible();
 
@@ -127,7 +130,7 @@ test(
       await dialog.getByRole('button', { name: 'Revelar para Pensantus' }).click();
       await expect(dialog).toBeHidden();
       await expect(master.getByText(/Pista revelada para todos às\s\d\d:\d\d\./)).toBeVisible();
-      await expect(clues.getByRole('listitem').nth(1)).toContainText(/Revelada para todos às\s\d\d:\d\d/);
+      await expect(clues.getByRole('listitem').nth(1)).toContainText('Com todos');
       await expect(clues.getByRole('button', { name: 'Revelar a pista 2' })).toHaveCount(0);
       await expect(clues.getByRole('button', { name: /^Revelar a pista [13]$/ })).toHaveCount(2);
 

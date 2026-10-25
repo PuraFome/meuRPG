@@ -1,5 +1,6 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, ElementRef, computed, effect, input, output, viewChild } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import {
@@ -12,7 +13,8 @@ import type { EffectNote } from '../../../../../gen/meurpg/play/v1/lasting_effec
 import { joinDots, tight } from '../../../../core/format/text';
 import { contestNotes } from '../../../../core/combat/contest-view';
 import { noteParts } from '../../../../core/effects/effects';
-import { metersFixed, squaresFree } from '../../../../core/units';
+import { metersFixed } from '../../../../core/units';
+import { moveLine } from '../../../../core/combat/move-line';
 import { article } from '../../../../core/combat/combat-log';
 import {
   combatantInitial,
@@ -26,7 +28,7 @@ import {
   turnBanner,
 } from '../../../../core/combat/combat-view';
 import { isCreature } from '../../../../core/combat/creature-names';
-import { cannotAct, conditionTags } from '../../../../core/combat/conditions';
+import { conditionTags } from '../../../../core/combat/conditions';
 import {
   leftSentence,
   listNames,
@@ -34,6 +36,8 @@ import {
   passNote,
   playsBefore,
 } from '../../../../core/combat/joint-turn';
+import { keepClear } from '../../../../shared/scroll-clearance/scroll-clearance';
+import { EconomyShapes, economyShapes } from '../../../../shared/economy-shapes/economy-shapes';
 import { mediaQuery } from '../../../../shared/map-view/media-query';
 import { WildBand } from '../../../../shared/wild-shape/wild-band';
 import type { FallNote } from '../../../../core/traps/trap-log';
@@ -44,6 +48,7 @@ import { JointPill } from '../joint-turn/joint-pill';
 import { CombatantTags } from '../combatant-tags/combatant-tags';
 import { RageStatus } from '../rage-end/rage-status';
 import { EndTurn } from './end-turn';
+import { type OwnHitPoints, OwnNumbers, type OwnSlots } from './own-numbers';
 import { OrderStrip } from './order-strip';
 import { ConcentrationLine, TurnReaction } from './turn-extras';
 
@@ -67,13 +72,16 @@ import { ConcentrationLine, TurnReaction } from './turn-extras';
     CombatantTags,
     CombatantToken,
     ConcentrationLine,
+    EconomyShapes,
     EndPart,
     EndTurn,
     JointOthers,
     JointPill,
+    MatButtonModule,
     MatIconModule,
     NgTemplateOutlet,
     OrderStrip,
+    OwnNumbers,
     RageStatus,
     TurnReaction,
     WildBand,
@@ -111,8 +119,15 @@ export class TurnPanel {
   readonly orderBelow = input(false);
   /** The contest facts of the turn (`GetTurnOptions.contest_state`): hidden, surprised (W7-X). */
   readonly contest = input<ContestTurnState | undefined>(undefined);
+  /** The player's armor class and slots: the line of numbers under the title (C4-03). */
+  readonly armorClass = input<number | null>(null);
+  readonly slots = input<OwnSlots>({ usage: [], pact: null });
+  /** The player's hit points from its vitals, for the card's "PV 23 de 23" when the combatant has none of its own. */
+  readonly hitPoints = input<OwnHitPoints | null>(null);
 
   readonly endTurn = output<void>();
+  /** "Mover" of the turn bar (from 1024px): the page opens the move page. */
+  readonly move = output<void>();
   /** "Ataque de oportunidade": the key of the melee attack. */
   readonly opportunity = output<string>();
   readonly endConcentration = output<void>();
@@ -120,10 +135,11 @@ export class TurnPanel {
   readonly endRage = output<string>();
 
   private readonly hero = viewChild<ElementRef<HTMLElement>>('hero');
+  private readonly bar = viewChild<ElementRef<HTMLElement>>('bar');
 
   /** From 1024px the player's own turn is a compact banner (E6-14); from
    * 1280px the order is a column on the left, so the strip goes. */
-  private readonly desktop = mediaQuery('(min-width: 1024px)');
+  protected readonly desktop = mediaQuery('(min-width: 1024px)');
   protected readonly wide = mediaQuery('(min-width: 1280px)');
   protected readonly compact = computed(() => this.desktop() && this.banner().mine && !this.down());
   protected readonly banner = computed(() => turnBanner(this.encounter()));
@@ -201,57 +217,37 @@ export class TurnPanel {
       ? `É a sua vez, mas com ${pv} você não age. Role o teste contra a morte.`
       : `É a sua vez, mas com ${pv} você não age.`;
   });
-  /** The tiles of the hero: with Extra Attack the Ação tile counts the attacks left. */
-  protected readonly tiles = computed(() => {
+  /** The shapes of the card: the Ação, the Bônus and the Reação; with Extra Attack the Ação says the attacks left. */
+  protected readonly cardShapes = computed(() => {
     const c = this.own();
-    if (!c) {
-      return [];
-    }
-    const left = this.attacksLeft();
-    const partial = c.actionUsed && left > 0 && this.attacksPerAction() > 1;
-    if (cannotAct(c)) {
-      return ['Ação', 'Ação bônus', 'Reação'].map((name) => ({
-        name,
-        used: true,
-        word: 'Indisponível',
-      }));
-    }
-    return [
-      {
-        name: 'Ação',
-        used: c.actionUsed && !partial,
-        word: partial
-          ? `${left} ${left === 1 ? 'ataque restante' : 'ataques restantes'}`
-          : c.actionUsed
-            ? 'Usada'
-            : 'Disponível',
-      },
-      {
-        name: 'Ação bônus',
-        used: c.bonusActionUsed,
-        word: c.bonusActionUsed ? 'Usada' : 'Disponível',
-      },
-      { name: 'Reação', used: c.reactionUsed, word: c.reactionUsed ? 'Usada' : 'Disponível' },
-    ];
+    return c
+      ? economyShapes(c, {
+          attacksLeft: this.attacksLeft(),
+          attacksPerAction: this.attacksPerAction(),
+          // With no map the movement is a number the player spends by saying it: the walker keeps the count (MR-025).
+          moveText: this.theatre() && this.line().canMove ? this.line().left : null,
+        })
+      : [];
+  });
+  /** The turn bar's shapes: the same and the walker with the metres left. */
+  protected readonly bannerShapes = computed(() => {
+    const c = this.own();
+    return c
+      ? economyShapes(c, {
+          attacksLeft: this.attacksLeft(),
+          attacksPerAction: this.attacksPerAction(),
+          moveText: this.line().canMove ? this.line().left : null,
+        })
+      : [];
+  });
+  /** The movement left, and whether there is a move to make. */
+  protected readonly line = computed(() => {
+    const c = this.own();
+    return c
+      ? moveLine(c, this.contest()?.grappled === true)
+      : { lead: '', rest: '', left: '', percent: 0, canMove: false };
   });
   protected readonly strip = computed(() => this.encounter().combatants);
-  protected readonly movement = computed(() => {
-    const own = this.own();
-    return own
-      ? {
-          // Tenths of a foot, metres with one decimal: "6,9 m de 9,0 m".
-          left: metersFixed(own.movementLeftDft / 10),
-          total: metersFixed(own.speedDft / 10),
-          free: squaresFree(own.movementLeftFt),
-          used: own.movementUsedDft > 0 ? metersFixed(own.movementUsedDft / 10) : '',
-          none: own.movementLeftDft <= 0,
-          percent: Math.max(
-            0,
-            Math.min(100, (own.movementLeftDft / Math.max(1, own.speedDft)) * 100),
-          ),
-        }
-      : null;
-  });
   /** The pill of a joint turn: "Turno conjunto com Brisa" for a member, "Turno
    * conjunto" for the other players. A group of NPCs alone has none (RN-20). */
   protected readonly pill = computed(() => {
@@ -267,6 +263,8 @@ export class TurnPanel {
   protected readonly afterPrefix = computed(() =>
     this.banner().joint ? 'Depois de vocês' : 'Depois de você',
   );
+  /** "depois de você": the card's second line reads "Rodada 3 · depois de você: Toren". */
+  protected readonly afterLower = computed(() => this.afterPrefix().toLowerCase());
   /** "O turno passa quando você e a Brisa encerrarem." */
   protected readonly footerNote = computed(() => {
     const joint = this.banner().joint;
@@ -308,6 +306,8 @@ export class TurnPanel {
   });
 
   constructor() {
+    // From 1024px the turn bar sticks under the page's bars: what is focused or scrolled into view stops below it.
+    keepClear(() => this.bar()?.nativeElement, 'top');
     // Focus moves to the hero when the turn arrives, once, so the next Tab
     // reaches "Mover".
     let wasMine = false;

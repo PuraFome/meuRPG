@@ -69,7 +69,7 @@ describe('RestCard (PM-07b 9)', () => {
 
   it('offers the two rests and asks nothing yet', () => {
     const { el, button } = render();
-    expect(flat(el.querySelector('h2'))).toBe('Descanso');
+    expect(flat(el.querySelector('h2'))).toContain('Descanso');
     expect(button('Descanso curto')).toBeTruthy();
     expect(button('Descanso longo')).toBeTruthy();
     expect(el.querySelector('[role="alertdialog"]')).toBeNull();

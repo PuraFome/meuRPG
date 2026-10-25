@@ -2,13 +2,10 @@ import {
   Component,
   DestroyRef,
   ElementRef,
-  type TemplateRef,
   computed,
   contentChildren,
   effect,
   inject,
-  input,
-  output,
   signal,
   untracked,
 } from '@angular/core';
@@ -63,12 +60,6 @@ export class CombatView extends CombatViewPartsDirective {
   /** Set the first time the combat is read: "Combate atualizado agora." only follows a reload. */
   private refreshChecked = false;
 
-  /** The conversation the page draws in the master's rail ("Turno · Conversa"), or `null` where the page keeps it elsewhere. */
-  readonly chat = input<TemplateRef<unknown> | null>(null);
-  /** The conversation's lines that came while it was not shown: the count of its tab. */
-  readonly chatUnread = input(0);
-  /** The conversation is what the rail shows now (its tab is open): the page counts nothing as unread meanwhile. */
-  readonly chatShown = output<boolean>();
   /** The panels the page projects under the map (fog, traps, treasure, puzzles). */
   protected readonly projected = contentChildren(MapTab);
 
@@ -117,12 +108,8 @@ export class CombatView extends CombatViewPartsDirective {
     );
     // The rail's conversation tab is open (and the rail is there): the page counts nothing as unread.
     effect(() => {
-      const shown =
-        this.isMaster() &&
-        this.laptop() &&
-        this.chat() !== null &&
-        this.layout.railTab() === 'chat' &&
-        this.active();
+      const tab = this.isMaster() ? this.layout.railTab() : this.railTab();
+      const shown = this.laptop() && this.chat() !== null && tab === 'chat' && this.active();
       untracked(() => this.chatShown.emit(shown));
     });
     // "Ainda não" holds while the character stays dying: when they leave DYING the question is
@@ -139,6 +126,18 @@ export class CombatView extends CombatViewPartsDirective {
           this.deaths.later.set(new Set([...later].filter((id) => dying.has(id))));
         }
       });
+    });
+    // The choice of a target on the map belongs to the player's own turn: when it ends, or the character falls, it goes.
+    effect(() => {
+      const stays =
+        this.myTurn() &&
+        !this.ownDown() &&
+        !this.creatureTab() &&
+        !this.theatre() &&
+        !!this.image();
+      if (!stays && this.targeting.mode.active()) {
+        untracked(() => this.targeting.mode.clear());
+      }
     });
     // The offer's form belongs to a turn: when it passes, or the combat ends, it closes.
     effect(() => {

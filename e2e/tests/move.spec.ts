@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { combatRPC, getEncounterRPC, torenSheet, toren, pensantusCasting } from './combat-support';
 import { openSessionPage } from './live-session-support';
-import { boxOf, layoutSize } from './support';
+import { boxOf, layoutSize, viaTargetList } from './support';
 import { movingTable, paintRPC, pickRadio, tapSquare } from './move-support';
 import { masterLog, openOrderRow } from './combat-layout';
 
@@ -60,7 +60,7 @@ test(
       await p.getByRole('button', { name: 'Mover para cá' }).click();
       await expect(p.getByRole('heading', { name: 'Sua vez, Toren' })).toBeVisible();
       await expect.poll(async () => (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === 'Toren')?.col).toBe(7);
-      await expect(p.getByText('4,5 m de 9,0 m').first()).toBeVisible();
+      await expect(p.getByText('Restam 4,5 m')).toBeVisible(); // the movement row under the map
 
       // Saltar: the limits come from Força 17 (a human's +1), and the 10 ft on foot just before give the running start.
       await p.getByRole('button', { name: 'Mover', exact: true }).click();
@@ -122,6 +122,7 @@ test(
       // The player's target list: the cover with its source, the walled goblin left out.
       await p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
       const sheet = p.getByRole('dialog', { name: 'Atacar com Raio de Fogo' });
+      await viaTargetList(p, sheet);
       const capitao = sheet.locator('label', { hasText: 'Capitão Goblin' });
       await expect(capitao).toContainText('Meia cobertura (do mapa)');
       await expect(sheet.locator('label', { hasText: 'Goblin 2' })).not.toContainText('cobertura');
@@ -153,6 +154,7 @@ test(
         }
         await p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
         const open = p.getByRole('dialog');
+        await viaTargetList(p, open);
         await expect(open.locator('label', { hasText: 'Goblin 2' })).toContainText('Cobertura total (marcada pelo mestre): não pode ser alvo', { timeout: 2_000 });
       }).toPass({ timeout: 30_000 });
       const again = p.getByRole('dialog');
@@ -345,7 +347,7 @@ test(
       await p.getByRole('button', { name: 'Mover para cá' }).click();
       await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
       await expect(p.getByText('Você usou Desengajar. Seus movimentos deste turno não provocam ataque de oportunidade.')).toBeVisible();
-      await expect(p.getByText('Desengajado').first()).toBeVisible();
+      await expect(p.getByRole('status').filter({ hasText: 'sem provocar' })).toContainText('Restam 4,5 m'); // the movement row says the squares do not provoke
       // No offer, no waiting: the master has no prompt, and the player's turn goes on.
       await expect(m.getByRole('group', { name: /Ataque de oportunidade/ })).toHaveCount(0);
       await expect(p.getByText('Esperando a reação')).toHaveCount(0);

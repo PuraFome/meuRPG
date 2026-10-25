@@ -27,6 +27,7 @@ import { type GiveResult, XpGiveButton } from '../../../shared/xp/xp-give-button
       [treasures]="store.treasures()"
       [treasuresTotal]="store.treasuresTotal()"
       [treasuresState]="store.treasuresState()"
+      [neutral]="true"
       (given)="given($event)"
     />
     <div class="status" role="status">

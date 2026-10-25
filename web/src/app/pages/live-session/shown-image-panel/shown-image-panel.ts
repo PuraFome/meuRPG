@@ -80,6 +80,8 @@ export class ShownImagePanel {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   readonly campaignId = input.required<string>();
+  /** `panel`: the "Imagem para os jogadores" panel; `row`: the switch and "Parar de mostrar" on one line under a scene's images; `tile`: the dashed "Da galeria" tile that ends the thumbnails (C3-01). */
+  readonly appearance = input<'panel' | 'row' | 'tile'>('panel');
   readonly shown = input<ShownImageVm | null>(null);
   /** The campaign's maps, to tag the images that back a hidden map. */
   readonly maps = input<readonly MapMessage[]>([]);
@@ -120,6 +122,12 @@ export class ShownImagePanel {
     });
   }
 
+  /** The tile and the row are two instances in a scene: focus moves between them. */
+  private sibling(selector: string): HTMLElement | null {
+    const scope = this.host.nativeElement.closest('app-scene-open') ?? document;
+    return scope.querySelector<HTMLElement>(selector);
+  }
+
   protected open(): void {
     const shown = this.shown();
     const ref = openImagePicker(
@@ -158,7 +166,7 @@ export class ShownImagePanel {
       afterNextRender(
         () => {
           if (done) {
-            this.stopButton()?.nativeElement.focus();
+            (this.stopButton()?.nativeElement ?? this.sibling('[data-stop-image]'))?.focus();
           } else {
             (this.showButton() ?? this.stopButton())?.nativeElement.focus();
           }
@@ -186,7 +194,10 @@ export class ShownImagePanel {
           ? `${leaving.name} continua com os jogadores.`
           : 'Imagem retirada da tela dos jogadores.',
       );
-      afterNextRender(() => this.showButton()?.nativeElement.focus(), { injector: this.injector });
+      afterNextRender(
+        () => (this.showButton()?.nativeElement ?? this.sibling('[data-gallery-tile]'))?.focus(),
+        { injector: this.injector },
+      );
     } catch (err) {
       this.error.set(showErrorMessage(err));
     } finally {

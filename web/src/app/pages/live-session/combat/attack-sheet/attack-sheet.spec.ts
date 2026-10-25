@@ -305,3 +305,83 @@ describe('AttackSheet: the target list without a map (RN-25)', () => {
     expect((total.querySelector('input') as HTMLInputElement).disabled).toBe(true);
   });
 });
+
+describe('AttackSheet: the list as the fallback of the map (C7-04)', () => {
+  const targets = [
+    {
+      combatantId: 'cap',
+      label: 'Capitão Goblin',
+      state: 1,
+      cover: CoverDegree.NONE,
+      coverSource: CoverSource.UNSPECIFIED,
+      tooFar: false,
+      untargetable: false,
+    },
+  ];
+
+  const stepIsRoll = (el: HTMLElement) => el.querySelector('app-roll-picker') !== null;
+
+  it('a click with no detail on the radio alone chooses it and does not go on', () => {
+    const { fixture, el } = setup({ diceMode: DiceMode.PHYSICAL, targets });
+    const input = el.querySelector('.target input') as HTMLInputElement;
+    const click = new MouseEvent('click', { bubbles: false, cancelable: true, detail: 0 });
+    input.dispatchEvent(click);
+    fixture.detectChanges();
+    expect(click.defaultPrevented).toBe(false);
+    expect(input.checked).toBe(true);
+    expect(stepIsRoll(el)).toBe(false);
+  });
+
+  it('a click on the label (detail 1) goes on to the roll, once, with the browser’s own sequence', () => {
+    const { fixture, el } = setup({ diceMode: DiceMode.PHYSICAL, targets });
+    const label = el.querySelector('.target') as HTMLElement;
+    const input = label.querySelector('input') as HTMLInputElement;
+    // What a browser sends for label.click(): pointerdown, the label's click, the radio's re-sent click (detail 0), then change.
+    label.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    label.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }));
+    input.dispatchEvent(new MouseEvent('click', { bubbles: false, detail: 0 }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    fixture.detectChanges();
+    expect(stepIsRoll(el)).toBe(true);
+    expect(el.querySelectorAll('app-roll-picker')).toHaveLength(1);
+  });
+
+  it('Enter on the radio goes on to the roll', () => {
+    const { fixture, el } = setup({ diceMode: DiceMode.PHYSICAL, targets });
+    const input = el.querySelector('.target input') as HTMLInputElement;
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    fixture.detectChanges();
+    expect(stepIsRoll(el)).toBe(true);
+  });
+
+  it('a click on a row that cannot be chosen does nothing', () => {
+    const blocked = [
+      ...targets,
+      {
+        ...targets[0],
+        combatantId: 'x',
+        label: 'Goblin',
+        cover: CoverDegree.TOTAL,
+        coverSource: CoverSource.MARK,
+        untargetable: true,
+      },
+    ];
+    const { fixture, el } = setup({ diceMode: DiceMode.PHYSICAL, targets: blocked });
+    const row = el.querySelectorAll('.target')[1] as HTMLElement;
+    row.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    row.querySelector('input')!.dispatchEvent(new MouseEvent('click', { detail: 0 }));
+    fixture.detectChanges();
+    expect(stepIsRoll(el)).toBe(false);
+  });
+
+  it('opens at the target step with the list, and a click on a target moves on to the roll', () => {
+    const { fixture, el } = setup({ diceMode: DiceMode.PHYSICAL, targets });
+    expect(plain(el.textContent)).toContain('Escolha o alvo');
+    const input = el.querySelector('.target input') as HTMLInputElement;
+    input.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    input.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+    fixture.detectChanges();
+    expect(plain(el.textContent)).not.toContain('Escolha o alvo');
+    expect(el.querySelector('app-roll-picker')).not.toBeNull();
+  });
+});

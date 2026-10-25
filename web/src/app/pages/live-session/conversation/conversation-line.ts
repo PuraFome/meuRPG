@@ -22,6 +22,7 @@ import { ListenButton } from './listen-button';
     '[class.line--card]': "card() && view().look === 'narration'",
     '[class.line--npc]': "view().look === 'npc'",
     '[class.line--own]': "view().look === 'own'",
+    '[class.line--own-portrait]': "view().look === 'own' && view().npc === true",
     '[class.line--ooc]': "view().look === 'out-of-character'",
     '[class.line--restricted]': "view().look === 'restricted'",
   },
@@ -66,6 +67,13 @@ import { ListenButton } from './listen-button';
         />
       }
       <p [class]="textClass()">{{ view().text }}</p>
+      @if (view().look === 'own' && view().npc) {
+        @if (view().portraitUrl; as url) {
+          <img class="line__portrait line__portrait--own" [src]="url" alt="" aria-hidden="true" />
+        } @else {
+          <span class="line__portrait line__portrait--own" aria-hidden="true">{{ view().initial }}</span>
+        }
+      }
     }
   `,
   styleUrl: './conversation-line.scss',

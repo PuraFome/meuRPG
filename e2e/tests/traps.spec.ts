@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { endOpenSessionRPC, openSessionPage } from './live-session-support';
+import { endOpenSessionRPC, openSessionPage, showMapTool } from './live-session-support';
 import { callRPC, newSignedInContext } from './support';
 import { dalila, dalilaSheet, toren } from './combat-support';
 import { sessionRoute, squareBp, tableForFog } from './fog-support';
@@ -24,7 +24,8 @@ test(
     const third = await thirdPlayer(browser, t, toren);
     try {
       await trapRPC(m, table, 'Fosso escondido', 12, 7, { noticeDc: 30 });
-      await openSessionPage(m, campaignId);
+      await openSessionPage(m, campaignId, 'mapa');
+      await showMapTool(m, 'Armadilhas');
       await openSessionPage(third.page, campaignId);
       expect(await pointNames(p, table)).not.toContain('Fosso escondido');
       expect(await pointNames(third.page, table)).not.toContain('Fosso escondido');
@@ -134,7 +135,8 @@ test(
     try {
       await trapRPC(m, table, 'Fosso escondido', 12, 7, { manual: true, damage: '4' });
       await trapRPC(m, table, 'Fosso raso', 14, 7, { manual: true, damage: '5' });
-      await openSessionPage(m, campaignId);
+      await openSessionPage(m, campaignId, 'mapa');
+      await showMapTool(m, 'Armadilhas');
       const fire = async (name: string) => {
         const card = trapPanel(m).getByRole('article', { name });
         if (await card.getByRole('button', { name: 'Ver detalhes' }).count()) {
@@ -190,7 +192,8 @@ test(
         await new Promise((r) => setTimeout(r, 3_000));
         await route.continue();
       });
-      await openSessionPage(m, campaignId);
+      await openSessionPage(m, campaignId, 'mapa');
+      await showMapTool(m, 'Armadilhas');
       const card = trapPanel(m).getByRole('article', { name: 'Fosso escondido' });
       if (await card.getByRole('button', { name: 'Ver detalhes' }).count()) {
         await card.getByRole('button', { name: 'Ver detalhes' }).click();
@@ -272,7 +275,8 @@ test(
     const third = await thirdPlayer(browser, t, toren);
     try {
       await treasureRPC(m, table, 'Baú de moedas', 12, 7);
-      await openSessionPage(m, campaignId);
+      await openSessionPage(m, campaignId, 'mapa');
+      await showMapTool(m, 'Tesouro');
       await openSessionPage(p, campaignId);
       expect(await pointNames(p, table)).not.toContain('Baú de moedas');
 

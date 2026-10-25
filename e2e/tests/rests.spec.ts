@@ -13,7 +13,7 @@ import {
   damageCombatantRPC,
   spendForRestRPC,
 } from './rests-support';
-import { newSignedInContext } from './support';
+import { newSignedInContext, openActionTab } from './support';
 import { masterLog } from './combat-layout';
 
 // Rests, hit dice and Lay on Hands on screen (Etapa 8, MR-012, MR-014, RN-02, RN-10): the master's short rest
@@ -51,7 +51,7 @@ test(
       await expect(p.locator('.hp__current')).toHaveText('10');
 
       // The master opens the rest card and reads what a short rest gives back before taking it.
-      await openSessionPage(m, campaignId);
+      await openSessionPage(m, campaignId, 'grupo');
       const card = m.getByRole('region', { name: 'Descanso' });
       await card.getByRole('button', { name: 'Descanso curto' }).click();
       const question = card.getByRole('alertdialog', { name: 'Começar o descanso curto?' });
@@ -109,12 +109,13 @@ test(
       await damageCombatantRPC(m, campaignId, 'Esqueleto', 3);
       expect(await hitPoints('Brisa')).toBe(8);
 
-      await openSessionPage(m, campaignId);
+      await openSessionPage(m, campaignId, 'grupo');
       await openSessionPage(p, campaignId);
       await expect(p.getByRole('heading', { name: 'Sua vez, Aurora' })).toBeVisible();
       const groups = p.getByRole('region', { name: 'O que você pode fazer' });
 
       // The touch on the ally: five points, "Curou", and the pool is 10 of 15.
+      await openActionTab(p, 'Paladino');
       await groups.getByRole('button', { name: 'Usar Cura pelas Mãos' }).click();
       let dialog = p.getByRole('dialog', { name: 'Cura pelas Mãos' });
       await expect(dialog).toContainText('Reserva: 15 de 15 pontos');
@@ -131,6 +132,7 @@ test(
       await endTurnOf(p, m, campaignId, 'Aurora');
       await passTurnsTo(m, campaignId, 'Aurora');
       await expect(p.getByRole('heading', { name: 'Sua vez, Aurora' })).toBeVisible();
+      await openActionTab(p, 'Paladino');
       await groups.getByRole('button', { name: 'Usar Cura pelas Mãos' }).click();
       dialog = p.getByRole('dialog', { name: 'Cura pelas Mãos' });
       await expect(dialog).toContainText('Reserva: 10 de 15 pontos');

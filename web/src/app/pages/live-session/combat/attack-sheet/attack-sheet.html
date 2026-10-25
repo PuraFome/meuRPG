@@ -28,7 +28,7 @@
       <p class="sheet__ask" id="target-label">{{ theatre() ? 'Escolha o alvo (quem você vê)' : 'Escolha o alvo (só quem você vê)' }}</p>
       <div class="targets" role="radiogroup" aria-labelledby="target-label">
         @for (t of rows(); track t.id) {
-          <label class="target" [class.target--off]="t.blocked">
+          <label class="target" [class.target--off]="t.blocked" (pointerdown)="pointed = true">
             <input
               type="radio"
               class="mr-visually-hidden"
@@ -37,7 +37,8 @@
               [disabled]="!!t.blocked"
               [checked]="s.targetId() === t.id"
               (change)="pick(t.id)"
-              (click)="$event.detail > 0 && pick(t.id); $event.detail > 0 && advance()"
+              (click)="clicked(t)"
+              (keydown)="pointed = false"
               (keydown.enter)="pick(t.id); advance()"
             />
             <app-combatant-token [initial]="initial(t.label)" [npc]="npcTarget(t.id)" [creature]="creatureTarget(t.id)" [size]="30" />
