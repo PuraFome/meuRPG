@@ -837,6 +837,7 @@
                       (describe)="sheets.actions.describeSpell($event.key, $event.name)"
                       (feature)="useFeature($event)"
                       (rage)="useFeature($event.key, $event.frenzy)"
+                      (spend)="useFeature($event.key, false, $event.points)"
                       (action)="standardAction($event)"
                       (move)="moves.open()"
                       (standUp)="standUp()"

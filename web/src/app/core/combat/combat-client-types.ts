@@ -201,6 +201,9 @@ export interface ActionResult {
   readonly encounter: Encounter;
   readonly roll: DiceRoll | undefined;
   readonly healed: number | undefined;
+  /** A table feature's action: the points it spent and the temporary hit points the target gained. */
+  readonly spent: number | undefined;
+  readonly tempHpGained: number | undefined;
 }
 
 /** What the master changes in "Condições…": the new set of conditions (unset

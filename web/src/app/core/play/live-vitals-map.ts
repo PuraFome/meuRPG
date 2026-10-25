@@ -2,11 +2,15 @@ import type { CharacterVitals, ShownImage } from '../../../gen/meurpg/play/v1/pl
 import { Recharge } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { hitDiceWords } from '../resources/hit-dice-text';
 import type { ShownImageVm, VitalsVm } from './live-session.types';
+import type { ResourceUsageVm } from './resource-usage.types';
 
-const RECHARGE: Partial<Record<Recharge, 'short_rest' | 'long_rest' | 'dawn' | 'none'>> = {
+const RECHARGE: Partial<Record<Recharge, ResourceUsageVm['recharge']>> = {
   [Recharge.SHORT_REST]: 'short_rest',
   [Recharge.LONG_REST]: 'long_rest',
   [Recharge.DAWN]: 'dawn',
+  [Recharge.INITIATIVE]: 'initiative',
+  [Recharge.RESTORE_ONE_ON_SHORT_REST]: 'restore_one_on_short_rest',
+  [Recharge.RESTORE_ONE_ON_LONG_REST]: 'restore_one_on_long_rest',
 };
 
 export function toVitalsVm(v: CharacterVitals): VitalsVm {

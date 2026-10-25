@@ -128,6 +128,12 @@ export function rechargeText(recharge: Recharge): string {
       return 'volta num descanso longo';
     case Recharge.DAWN:
       return 'volta ao amanhecer';
+    case Recharge.INITIATIVE:
+      return 'volta um uso ao rolar iniciativa';
+    case Recharge.RESTORE_ONE_ON_SHORT_REST:
+      return 'volta um uso num descanso curto e todos num longo';
+    case Recharge.RESTORE_ONE_ON_LONG_REST:
+      return 'volta um uso num descanso longo';
     default:
       return 'só o mestre devolve';
   }

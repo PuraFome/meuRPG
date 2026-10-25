@@ -610,7 +610,7 @@ describe('CombatView sheets: useFeature', () => {
     await m.view.useFeature('feature:rage');
     expect(m.opened).toHaveLength(0);
     expect(m.callsOf('takeAction').map((c) => c.args)).toEqual([
-      ['c', 'enc', 't', 'feature:rage', undefined, undefined, false, false],
+      ['c', 'enc', 't', 'feature:rage', undefined, undefined, false, false, 0],
     ]);
     expect(m.view.actionNote()).toBe('Usou Fúria.');
   });
@@ -637,8 +637,30 @@ describe('CombatView sheets: useFeature', () => {
       undefined,
       false,
       true,
+      0,
     ]);
     expect(m.view.actionNote()).toBe('Fúria: você entrou em frenesi.');
+  });
+
+  it('sends the number picked in "Quantos?" as the spend of the use, and notes it', async () => {
+    const m = await setup({
+      turnOptions: withFeatures(
+        feature('feature:folego-da-mesa', 'Fôlego da Mesa', { cost: 0, costMax: 3 }),
+      ),
+    });
+    await m.view.useFeature('feature:folego-da-mesa', false, 3);
+    expect(m.callsOf('takeAction')[0].args).toEqual([
+      'c',
+      'enc',
+      't',
+      'feature:folego-da-mesa',
+      undefined,
+      undefined,
+      false,
+      false,
+      3,
+    ]);
+    expect(m.view.actionNote()).toBe('Usou Fôlego da Mesa, gastando 3.');
   });
 
   it('keeps the note away when the server refuses the feature, and says why', async () => {

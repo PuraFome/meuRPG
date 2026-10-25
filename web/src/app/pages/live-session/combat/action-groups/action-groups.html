@@ -308,10 +308,19 @@
       button="Usar"
       [buttonLabel]="'Usar ' + (f.action?.namePt ?? '')"
       [off]="featureOff(f) || !!locked()"
-      [reason]="locked() || reasonText(f.reason)"
+      [reason]="locked() || featureWhy(f)"
       [busy]="busy()"
       (press)="pressFeature(f)"
     />
+    @if (spendAsk() === f.action?.key) {
+      <!-- "Usar" of "Quantos?": the number picked goes with the key; the server checks it against the range. -->
+      <app-spend-ask
+        [option]="f"
+        [busy]="busy()"
+        (confirmed)="spendAsk.set(null); spend.emit({ key: f.action?.key ?? '', points: $event })"
+        (cancelled)="spendAsk.set(null)"
+      />
+    }
     @if (f.offersFrenzy && frenzyAsk() === f.action?.key) {
       <div class="frenzy" role="group" aria-label="Entrar em frenesi?">
         <p class="frenzy__text">{{ frenzyText }}</p>

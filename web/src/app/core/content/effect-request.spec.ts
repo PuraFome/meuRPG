@@ -35,6 +35,14 @@ const ALL = [
   'ignore_cover',
   'range_multiplier',
   'no_long_range_disadvantage',
+  'cost',
+  'cost_max',
+  'value_per_point',
+  'heal',
+  'temp_hp',
+  'event',
+  'restore',
+  'heal_percent_max',
   'unknown_to_the_app',
 ];
 
@@ -65,6 +73,14 @@ const filled = (): EffectDraft => ({
   ignoreCover: true,
   rangeMultiplier: 2,
   noLongRangeDisadvantage: true,
+  cost: ' 2 ',
+  costMax: ' prof() ',
+  valuePerPoint: ' 1d6 ',
+  heal: ' 1d6+2 ',
+  tempHp: ' level() ',
+  event: 'long_rest',
+  restore: ' reserva_de_teste ',
+  healPercentMax: 50,
 });
 
 describe('the effect a request sends, field by field', () => {
@@ -97,6 +113,14 @@ describe('the effect a request sends, field by field', () => {
       ignoreCover: true,
       rangeMultiplier: 2,
       noLongRangeDisadvantage: true,
+      cost: '2',
+      costMax: 'prof()',
+      valuePerPoint: '1d6',
+      heal: '1d6+2',
+      tempHp: 'level()',
+      event: 'long_rest',
+      restore: 'reserva_de_teste',
+      healPercentMax: 50,
     });
     expect(draftToEffect(filled(), menuReading(['value', 'count']))).toEqual({
       type: 'any',

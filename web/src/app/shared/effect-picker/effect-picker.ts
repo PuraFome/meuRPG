@@ -1,13 +1,8 @@
 import { Component, computed, input, output, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import {
-  EFFECT_FIELD_HINTS,
-  EFFECT_FIELD_LABELS,
-  type EffectDraft,
-  type EffectMenuVm,
-  emptyEffect,
-} from '../../core/content/effect-draft';
+import { EFFECT_FIELD_HINTS, EFFECT_FIELD_LABELS } from '../../core/content/effect-field-copy';
+import { type EffectDraft, type EffectMenuVm, emptyEffect } from '../../core/content/effect-draft';
 import type { EffectMenuField } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { CheckRow } from '../form-fields/check-row';
 import { FieldNote } from '../form-fields/field-note';
@@ -97,8 +92,13 @@ export class EffectPicker {
   }
 
   protected labelOf(f: EffectMenuField): string {
-    // The resource an action spends is the same proto field as a resource's own name.
-    return f.kind === 'resource_ref' ? 'Gasta um uso de' : (EFFECT_FIELD_LABELS[f.name] ?? f.name);
+    // The resource an action spends is the same proto field as a resource's own name; a hook's `restore` gives back.
+    if (f.kind === 'resource_ref') {
+      return this.effect().type === 'on_event'
+        ? (RESOURCE_REF_LABEL_HOOK[f.name] ?? 'Gasta usos de')
+        : 'Gasta usos de';
+    }
+    return EFFECT_FIELD_LABELS[f.name] ?? f.name;
   }
 
   /** The hint of a field that is not showing a refusal: written beside it. */
@@ -115,10 +115,10 @@ export class EffectPicker {
       return this.menu().tagHint();
     }
     if (f.kind === 'formula') {
-      return this.menu().formulaHint();
+      return own ? `${own} ${this.menu().formulaHint()}` : this.menu().formulaHint();
     }
     if (f.kind === 'resource_ref') {
-      return 'O nome de um recurso que esta entrada define (o campo "Nome do recurso" de um efeito Recurso). Cada uso gasta 1; sem usos, a ação fica desligada.';
+      return f.name === 'restore' ? own : RESOURCE_REF_HINT;
     }
     if (f.kind === 'condition') {
       return 'Deixe vazio para valer sempre. Uma condição, como as fórmulas.';
@@ -227,6 +227,15 @@ export class EffectPicker {
     });
   }
 }
+
+/** The labels of a hook's two resource fields: the one it spends and the one it gives back. */
+const RESOURCE_REF_LABEL_HOOK: Readonly<Record<string, string>> = {
+  resource: 'Gasta usos de',
+  restore: 'Devolve usos de',
+};
+
+const RESOURCE_REF_HINT =
+  'O nome de um recurso que esta entrada define (o campo "Nome do recurso" de um efeito Recurso). Gasta o custo (1 se vazio); sem usos o bastante, a ação fica desligada.';
 
 /** "text_pt" → "textPt": the draft's key for a proto field. */
 function camel(name: string): keyof EffectDraft {

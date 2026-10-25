@@ -53,6 +53,19 @@ export interface EffectDraft {
   /** resistance: the damage type it leaves out, and when it holds ("rage"). */
   except: string;
   while: string;
+  /** grant_action and on_event: what a use spends (a formula), and the most the player may choose to spend. */
+  cost: string;
+  costMax: string;
+  /** What each point spent above the cost adds: dice for the heal, a formula for the temporary hit points. */
+  valuePerPoint: string;
+  /** Hit points regained, as dice ("1d6", "2d4+2"); the ability's modifier is added when `ability` is set. */
+  heal: string;
+  /** Temporary hit points, a formula. */
+  tempHp: string;
+  /** on_event: when it runs ("long_rest"...), the resource it gives back, and the heal as a percentage of the maximum. */
+  event: string;
+  restore: string;
+  healPercentMax: number;
 }
 
 let nextId = 0;
@@ -93,6 +106,14 @@ export function emptyEffect(type = ''): EffectDraft {
     noLongRangeDisadvantage: false,
     except: '',
     while: '',
+    cost: '',
+    costMax: '',
+    valuePerPoint: '',
+    heal: '',
+    tempHp: '',
+    event: '',
+    restore: '',
+    healPercentMax: 0,
   };
 }
 
@@ -128,6 +149,14 @@ export function effectToDraft(e: TableEffect): EffectDraft {
     noLongRangeDisadvantage: e.noLongRangeDisadvantage,
     except: e.except,
     while: e.while,
+    cost: e.cost,
+    costMax: e.costMax,
+    valuePerPoint: e.valuePerPoint,
+    heal: e.heal,
+    tempHp: e.tempHp,
+    event: e.event,
+    restore: e.restore,
+    healPercentMax: e.healPercentMax,
   };
 }
 
@@ -146,7 +175,20 @@ type EffectWriter = (d: EffectDraft) => EffectInit;
 
 /** A text the server reads trimmed; an empty one is not sent. */
 const trimmedText =
-  (key: 'value' | 'when' | 'resource' | 'max' | 'textPt'): EffectWriter =>
+  (
+    key:
+      | 'value'
+      | 'when'
+      | 'resource'
+      | 'max'
+      | 'textPt'
+      | 'cost'
+      | 'costMax'
+      | 'valuePerPoint'
+      | 'heal'
+      | 'tempHp'
+      | 'restore',
+  ): EffectWriter =>
   (d) => {
     const text = d[key].trim();
     return text ? ({ [key]: text } as EffectInit) : {};
@@ -168,7 +210,8 @@ const pickedText =
       | 'applies'
       | 'ability'
       | 'except'
-      | 'while',
+      | 'while'
+      | 'event',
   ): EffectWriter =>
   (d) =>
     d[key] ? ({ [key]: d[key] } as EffectInit) : {};
@@ -212,6 +255,14 @@ const EFFECT_WRITERS: ReadonlyMap<string, EffectWriter> = new Map<string, Effect
   ['text_pt', trimmedText('textPt')],
   ['except', pickedText('except')],
   ['while', pickedText('while')],
+  ['cost', trimmedText('cost')],
+  ['cost_max', trimmedText('costMax')],
+  ['value_per_point', trimmedText('valuePerPoint')],
+  ['heal', trimmedText('heal')],
+  ['temp_hp', trimmedText('tempHp')],
+  ['event', pickedText('event')],
+  ['restore', trimmedText('restore')],
+  ['heal_percent_max', (d) => (d.healPercentMax > 0 ? { healPercentMax: d.healPercentMax } : {})],
   ['ignore_cover', (d) => (d.ignoreCover ? { ignoreCover: true } : {})],
   [
     'range_multiplier',
@@ -232,47 +283,6 @@ export function draftToEffect(d: EffectDraft, menu: EffectMenuVm): EffectInit {
   }
   return out;
 }
-
-/** The labels of the effect fields, in our words (the menu names the fields by their proto name). */
-export const EFFECT_FIELD_LABELS: Readonly<Record<string, string>> = {
-  target: 'O que muda',
-  mode: 'Como muda',
-  value: 'Valor',
-  when: 'Só quando',
-  tags: 'Situação',
-  proficiency: 'Proficiência em',
-  level: 'Quanto',
-  roll: 'Rolagem',
-  targets: 'Em quê',
-  sense: 'Sentido',
-  range_ft: 'Alcance',
-  resource: 'Nome do recurso',
-  max: 'Usos (máximo)',
-  recharge: 'Volta em',
-  choice: 'O jogador escolhe',
-  count: 'Quantos',
-  from: 'Entre',
-  economy: 'Tipo de ação',
-  applies: 'Onde o dado entra',
-  ability: 'Habilidade somada',
-  spells: 'Magias',
-  text_pt: 'Texto na ficha',
-  except: 'Menos o dano de tipo',
-  while: 'Enquanto',
-  ignore_cover: 'Ignora meia cobertura e três quartos',
-  range_multiplier: 'Multiplica o alcance da magia por',
-  no_long_range_disadvantage: 'Sem desvantagem no alcance longo',
-};
-
-/** One line under a field, where the name alone does not say. This is screen copy; the formula functions and the tag
- * prefixes it mentions come from the server's menu (`EffectMenuVm.formulaHint`, `tagHint`). */
-export const EFFECT_FIELD_HINTS: Readonly<Record<string, string>> = {
-  resource: 'Só letras minúsculas sem acento, números e _ (de 1 a 40).',
-  text_pt: 'O que a ficha mostra. {value} vira o valor com sinal.',
-  ignore_cover: 'O alvo não ganha o bônus na CA. A cobertura total continua impedindo o ataque.',
-  range_multiplier: 'Só para magias: 2 dobra o alcance, 3 triplica. Vazio, o alcance não muda.',
-  no_long_range_disadvantage: 'Só para armas: até o alcance longo, a rolagem não tem desvantagem.',
-};
 
 /** A value of a closed list: the key the effect stores and the Portuguese name. */
 export interface MenuOption {
@@ -406,6 +416,7 @@ export function strictRangeFeet(text: string): number {
 /** Whether a required closed-list field of the action, maneuver and resistance types is still empty. */
 function choiceEmpty(d: EffectDraft, name: string): boolean {
   return (
+    (name === 'event' && d.event === '') ||
     (name === 'economy' && d.economy === '') ||
     (name === 'applies' && d.applies === '') ||
     (name === 'except' && d.except === '') ||
