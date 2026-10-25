@@ -95,7 +95,7 @@
 
       <!-- The conversation of the scene (MR-051): a column beside the stage from 1600px, under it below that; on a phone the
            "Conversa" tab opens it full screen (the page behind is inert). Its code loads lazily. -->
-      <div class="split" [class.split--rail]="railChat() || playerRail()" [class.split--board]="railed()">
+      <div class="split" [class.split--rail]="railChat()" [class.split--player-rail]="playerRail()" [class.split--board]="railed()">
       <div class="split__main" [attr.inert]="slot.chatOpen() ? '' : null">
 
       <!-- New lines while the phone's chat is closed: one quiet row on top, because the tabs close the page, out of sight. -->

@@ -2075,7 +2075,7 @@ async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await expect(dice.getByRole('button', { name: 'Rolagens da mesa' })).toHaveAttribute('aria-expanded', 'true');
     await expectScreenPasses(p, `Rolagens da mesa aberta, jogador ${where}`);
     await dice.getByRole('button', { name: 'Rolagens da mesa' }).click();
-    await sceneImages.getByRole('button', { name: 'Parar de mostrar Vista da carroça' }).click();
+    await m.getByRole('button', { name: 'Parar de mostrar', exact: true }).click();
     await expect(p.getByRole('region', { name: 'O mestre está mostrando' })).toHaveCount(0);
 
     // The master with the roll and one more, with and without a DC.

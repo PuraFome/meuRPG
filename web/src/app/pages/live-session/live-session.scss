@@ -34,7 +34,7 @@
     display: block;
   }
 
-  .split:not(.split--rail) {
+  .split:not(.split--rail):not(.split--player-rail) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(380px, 420px);
     gap: var(--mr-space-6);
@@ -79,7 +79,7 @@
 // The player's right column from 1024px: the rail "Conversa · Ficha" (C6-08). It stays in view while the board scrolls; the
 // master's column keeps its 1600px above.
 @media (min-width: 1024px) {
-  .split--rail {
+  .split--player-rail {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(340px, 400px);
     gap: var(--mr-space-6);
