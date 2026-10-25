@@ -61,12 +61,12 @@ describe('ClassEditor: Magias do SRD na lista da classe', () => {
     }),
   );
 
-  const artifice = (listFrom: string, srd: string[]) =>
-    entry(TableContentKind.CLASS, 'Artífice', {
+  const apprentice = (listFrom: string, srd: string[]) =>
+    entry(TableContentKind.CLASS, 'Aprendiz', {
       body: {
         case: 'tableClass',
         value: create(TableClassSchema, {
-          namePt: 'Artífice',
+          namePt: 'Aprendiz',
           hitDie: 8,
           savingThrows: [Ability.CONSTITUTION, Ability.INTELLIGENCE],
           skillChoose: 2,
@@ -86,7 +86,7 @@ describe('ClassEditor: Magias do SRD na lista da classe', () => {
       },
     });
 
-  function setup(e: ReturnType<typeof artifice>, issues: [string, string][] = []) {
+  function setup(e: ReturnType<typeof apprentice>, issues: [string, string][] = []) {
     save.mockReset();
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
@@ -130,7 +130,7 @@ describe('ClassEditor: Magias do SRD na lista da classe', () => {
     s.dispatchEvent(new Event('change'));
   };
   const saveClass = async (fixture: ReturnType<typeof setup>['fixture'], el: HTMLElement) => {
-    save.mockResolvedValue({ entry: artifice('', []), affected: [] });
+    save.mockResolvedValue({ entry: apprentice('', []), affected: [] });
     Array.from(el.querySelectorAll<HTMLButtonElement>('button'))
       .find((b) => text(b).includes('Salvar classe'))!
       .click();
@@ -139,7 +139,7 @@ describe('ClassEditor: Magias do SRD na lista da classe', () => {
   };
 
   it("is empty on a class with a list of its own: it offers the SRD spells with their circle and school, never the table's", () => {
-    const { el } = setup(artifice('', []));
+    const { el } = setup(apprentice('', []));
     expect(text(el)).toContain('Magias do SRD na lista da classe');
     expect(chips(el)).toEqual([]);
     expect(select(el)!.disabled).toBe(false);
@@ -153,7 +153,7 @@ describe('ClassEditor: Magias do SRD na lista da classe', () => {
   });
 
   it('adds a spell as a chip, takes it off again, and sends the keys in the order they were added', async () => {
-    const { fixture, el } = setup(artifice('', ['spell:light']));
+    const { fixture, el } = setup(apprentice('', ['spell:light']));
     expect(chips(el)).toEqual(['Luz (Truque, Evocação)']);
     pick(el, 'spell:aid');
     await settle(fixture, 3);
@@ -176,7 +176,7 @@ describe('ClassEditor: Magias do SRD na lista da classe', () => {
   });
 
   it('is off, with the reason, on a class that reuses the list of another: the chips stay, the request sends none', async () => {
-    const { fixture, el } = setup(artifice('class:wizard', ['spell:light']));
+    const { fixture, el } = setup(apprentice('class:wizard', ['spell:light']));
     expect(chips(el)).toEqual(['Luz (Truque, Evocação)']);
     expect(select(el)!.disabled).toBe(true);
     expect((picker(el).querySelector('.chip__x') as HTMLButtonElement).disabled).toBe(true);
@@ -189,7 +189,7 @@ describe('ClassEditor: Magias do SRD na lista da classe', () => {
   });
 
   it('writes the refusal of a spell under the picker, in Portuguese', async () => {
-    const { fixture, el } = setup(artifice('', ['spell:light', 'spell:aid']), [
+    const { fixture, el } = setup(apprentice('', ['spell:light', 'spell:aid']), [
       ['table_class.casting.srd_spell_keys[1]', 'dangling_reference'],
     ]);
     Array.from(el.querySelectorAll<HTMLButtonElement>('button'))

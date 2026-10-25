@@ -258,13 +258,13 @@ test(
       await Promise.all([m.goto('/'), p.goto('/')]);
       const campaignId = await campaignWithEmptyPlayer(m, p, `Classes lista SRD ${Date.now()}`);
       // A half caster with a list of its own (no list_from) and a list that reuses the druid's.
-      const own = halfCasterBody('Artífice');
+      const own = halfCasterBody('Aprendiz');
       (own.casting as Record<string, unknown>).listFrom = '';
       (own.casting as Record<string, unknown>).ability = 'ABILITY_INTELLIGENCE';
       const key = await createClassRPC(m, campaignId, own);
 
       await m.goto(entryRoute(campaignId, key));
-      await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Artífice');
+      await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Aprendiz');
       await expect(m.getByText('Magias do SRD na lista da classe').first()).toBeVisible();
       await expect(m.getByText('Elas se juntam às magias da mesa que citam esta classe.')).toBeVisible();
       const add = m.getByLabel('Adicionar magia do SRD');
@@ -280,8 +280,8 @@ test(
       await expect(add).toBeEnabled();
 
       await m.getByRole('button', { name: 'Salvar classe' }).click();
-      await expect(m.getByText('A classe Artífice foi salva.')).toBeVisible();
-      const stored = (await listEntries(m, campaignId)).find((e) => e.namePt === 'Artífice')!;
+      await expect(m.getByText('A classe Aprendiz foi salva.')).toBeVisible();
+      const stored = (await listEntries(m, campaignId)).find((e) => e.namePt === 'Aprendiz')!;
       expect(stored.tableClass.casting.srdSpellKeys).toEqual(['spell:cure-wounds', 'spell:aid']);
 
       // The "Magias" page lists them for the class, and only them.

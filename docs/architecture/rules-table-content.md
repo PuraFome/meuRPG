@@ -115,7 +115,7 @@ The ADR-0018 contract: hit die (6, 8, 10 or 12), two saves, skills, proficiencie
 The ability score improvement levels default to 4, 8, 12, 16 and 19; the server writes the features `<class>-ability-score-improvement-<n>@mesa`, which the engine finds by key like the SRD's.
 
 **Casting.** `none`, `full`, `half` or `pact`; the ability; `known` or `prepared`; and the list: an SRD class's (or a table class's own), plus the spells that cite the class.
-A class with a list of its own (`list_from` empty) can also name SRD spells in `casting.srd_spell_keys`, which join the table spells that cite the class (an Artificer-like class built on Cure Wounds, Aid and Revivify).
+A class with a list of its own (`list_from` empty) can also name SRD spells in `casting.srd_spell_keys`, which join the table spells that cite the class (an apprentice-like class built on Cure Wounds, Aid and Revivify).
 Each key is an SRD spell (`spell:<index>`, never a table key), named once, and a class names at most `MaxClassSRDSpells` (400, checked with the other budgets).
 A class that reuses another list (`list_from` set), a class that does not cast and a third caster's subclass have none: the refusal is `bad_casting` at `casting.srd_spell_keys`; an unknown or table key is `dangling_reference` and a repeated one `bad_value`, at the key's index.
 The builder puts the class on the `Classes` of a copy of each named spell, so every reader of the list follows: the "Magias" page and its learnable filter, the catalog entry's `class_keys`, what a class prepares or learns, the level-up check and the sheet's `spell_not_on_list`.

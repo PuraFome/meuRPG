@@ -8,26 +8,26 @@ import (
 )
 
 // A table class's own spell list can name SRD spells (casting.srd_spell_keys):
-// they join the table spells that name the class. An Artificer-like class is the
+// they join the table spells that name the class. An apprentice-like class is the
 // case: a half caster that prepares and whose list is made of SRD spells.
 
-// artificerSpells are the SRD spells on the list of the Artificer-like class of
+// apprenticeSpells are the SRD spells on the list of the apprentice-like class of
 // these tests: cantrips and spells of the 1st to the 3rd circle.
-var artificerSpells = []string{
+var apprenticeSpells = []string{
 	"spell:guidance", "spell:mending", "spell:light", "spell:resistance",
 	"spell:cure-wounds", "spell:healing-word", "spell:detect-magic", "spell:shield-of-faith",
 	"spell:aid", "spell:lesser-restoration", "spell:protection-from-poison", "spell:spiritual-weapon",
 	"spell:revivify", "spell:dispel-magic", "spell:remove-curse", "spell:beacon-of-hope",
 }
 
-// artificerClass is a full caster that prepares, with a list of its own made of
+// apprenticeClass is a full caster that prepares, with a list of its own made of
 // SRD spells only.
-func artificerClass(base *Content) TableClass {
+func apprenticeClass(base *Content) TableClass {
 	gk := genKinds[1]
 	gk.casting.ListFrom = ""
 	tc := genClass(base, gk)
-	tc.Key = "class:artifice" + tableSuffix
-	tc.Casting.SRDSpells = slices.Clone(artificerSpells)
+	tc.Key = "class:apprentice" + tableSuffix
+	tc.Casting.SRDSpells = slices.Clone(apprenticeSpells)
 	return tc
 }
 
@@ -41,24 +41,24 @@ func catalogSpell(c *Content, key string) (SpellEntry, bool) {
 	return SpellEntry{}, false
 }
 
-// artificerSub is the subclass the class's level-up tests choose.
-const artificerSub = "subclass:artifice-a" + tableSuffix
+// apprenticeSub is the subclass the class's level-up tests choose.
+const apprenticeSub = "subclass:apprentice-a" + tableSuffix
 
-func artificerContent(t *testing.T) (*Content, string) {
+func apprenticeContent(t *testing.T) (*Content, string) {
 	t.Helper()
 	base := loadForTest(t)
-	tc := artificerClass(base)
+	tc := apprenticeClass(base)
 	return withOverlayOn(t, base, Overlay{Revision: 1, Classes: []TableClass{tc}, Subclasses: genSubclasses(tc)[:1]}), tc.Key
 }
 
 func TestTableClassListNamesSRDSpells(t *testing.T) {
 	t.Parallel()
-	c, class := artificerContent(t)
+	c, class := apprenticeContent(t)
 
 	// The Magias page lists them for the class, and only them.
 	got := spellKeys(c.ListSpells(SpellFilter{Class: class}))
 	slices.Sort(got)
-	want := slices.Clone(artificerSpells)
+	want := slices.Clone(apprenticeSpells)
 	slices.Sort(want)
 	if !slices.Equal(got, want) {
 		t.Errorf("the class's list = %v, want %v", got, want)
@@ -85,7 +85,7 @@ func TestTableClassListNamesSRDSpells(t *testing.T) {
 
 func TestTableClassSRDSpellsAreOnTheSheet(t *testing.T) {
 	t.Parallel()
-	c, class := artificerContent(t)
+	c, class := apprenticeContent(t)
 	b := standard(class, 5)
 	b.Cantrips = []string{"spell:guidance", "spell:mending", "spell:light"}
 	b.SpellsPrepared = []string{"spell:cure-wounds", "spell:aid", "spell:revivify"}
@@ -110,8 +110,8 @@ func TestTableClassSRDSpellsAreOnTheSheet(t *testing.T) {
 
 func TestTableClassSRDSpellsAreOfferedAtLevelUp(t *testing.T) {
 	t.Parallel()
-	c, class := artificerContent(t)
-	b := sweepBase(t, c, class, artificerSub)
+	c, class := apprenticeContent(t)
+	b := sweepBase(t, c, class, apprenticeSub)
 	o, err := LevelUpOptions(b, class, c)
 	if err != nil {
 		t.Fatalf("LevelUpOptions: %v", err)
@@ -120,10 +120,10 @@ func TestTableClassSRDSpellsAreOfferedAtLevelUp(t *testing.T) {
 		t.Errorf("the offer's spell list = %q, want the class", o.SpellList)
 	}
 	// The sweep picks the spells from the class's list, level by level.
-	sweepUp(t, c, b, class, artificerSub, 9)
+	sweepUp(t, c, b, class, apprenticeSub, 9)
 
 	// A spell of another class's list is refused when the sheet levels up.
-	ch := satisfy(t, c, b, class, artificerSub)
+	ch := satisfy(t, c, b, class, apprenticeSub)
 	after, err := ApplyLevelUp(b, ch, c)
 	if err != nil {
 		t.Fatalf("ApplyLevelUp: %v", err)
@@ -160,7 +160,7 @@ func TestTableClassSRDSpellsAreChecked(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			class := artificerClass(srd)
+			class := apprenticeClass(srd)
 			tc.edit(&class)
 			_, err := srd.With(Overlay{Revision: 1, Classes: []TableClass{class}, Strict: []string{class.Key}})
 			var oe *OverlayError

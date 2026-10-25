@@ -283,7 +283,7 @@ describe('the class request (E10-02 states 1 to 3)', () => {
       " class's own",
     () => {
       const stored = create(TableClassSchema, {
-        namePt: 'Artífice',
+        namePt: 'Aprendiz',
         casting: {
           kind: 'half',
           ability: Ability.INTELLIGENCE,

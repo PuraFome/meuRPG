@@ -20,8 +20,8 @@ func issueCodesOf(c *charactersv1.Character) []string {
 	return out
 }
 
-// artificerLike is a table class whose own list is made of SRD spells only.
-func artificerLike(name string, spells ...string) *rulesv1.TableClass {
+// apprenticeLike is a table class whose own list is made of SRD spells only.
+func apprenticeLike(name string, spells ...string) *rulesv1.TableClass {
 	c := testGuardian(name)
 	c.Casting.ListFrom = ""
 	c.Casting.SrdSpellKeys = spells
@@ -53,9 +53,9 @@ func TestTableClassListNamesSRDSpells(t *testing.T) {
 	master, rafa, lia := h.newUser("Samuel"), h.newUser("Rafa"), h.newUser("Lia")
 	campaign := h.newCampaign(master, "Mirathel", rafa, lia)
 
-	class := master.addEntry(t, campaign, artificerLike("Artífice",
+	class := master.addEntry(t, campaign, apprenticeLike("Aprendiz",
 		"spell:guidance", "spell:mending", "spell:light", "spell:cure-wounds", "spell:healing-word", "spell:aid", "spell:revivify"))
-	selo := master.addEntry(t, campaign, testSpell("Selo do Artífice", "class:wizard", class.GetKey()))
+	selo := master.addEntry(t, campaign, testSpell("Selo do Aprendiz", "class:wizard", class.GetKey()))
 
 	list := spellKeysOf(rafa.listSpells(t, &rulesv1.ListSpellsRequest{CampaignId: campaign, ClassKey: class.GetKey(), PageSize: 400}))
 	for _, want := range []string{"spell:guidance", "spell:cure-wounds", "spell:aid", "spell:revivify", selo.GetKey()} {
@@ -120,7 +120,7 @@ func TestTableClassSRDSpellRefusalsPointAtTheirField(t *testing.T) {
 		}, "table_class.casting.srd_spell_keys", "bad_casting"},
 	}
 	for _, tc := range cases {
-		c := artificerLike("Artífice", "spell:guidance", "spell:cure-wounds", "spell:aid")
+		c := apprenticeLike("Aprendiz", "spell:guidance", "spell:cure-wounds", "spell:aid")
 		tc.edit(c)
 		vs := master.refused(t, campaign, c)
 		if len(vs) == 0 || vs[0].GetField() != tc.field || vs[0].GetReason() != tc.reason {
@@ -132,7 +132,7 @@ func TestTableClassSRDSpellRefusalsPointAtTheirField(t *testing.T) {
 	}
 
 	// The stored class keeps its SRD spells as written.
-	entry := master.addEntry(t, campaign, artificerLike("Artífice", "spell:aid", "spell:guidance"))
+	entry := master.addEntry(t, campaign, apprenticeLike("Aprendiz", "spell:aid", "spell:guidance"))
 	got := master.entries(t, campaign)[entry.GetKey()].GetTableClass().GetCasting().GetSrdSpellKeys()
 	if !slices.Equal(got, []string{"spell:aid", "spell:guidance"}) {
 		t.Errorf("stored srd_spell_keys = %v", got)
