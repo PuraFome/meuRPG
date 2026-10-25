@@ -480,6 +480,7 @@
             "sense": "darkvision"
           }
         ],
+        "size": "Medium",
         "skills": [
           {
             "ability": "ABILITY_DEXTERITY",
@@ -937,6 +938,7 @@
             "sense": "darkvision"
           }
         ],
+        "size": "Medium",
         "skills": [
           {
             "ability": "ABILITY_DEXTERITY",
@@ -1374,6 +1376,7 @@
             "namePt": "Carisma"
           }
         ],
+        "size": "Medium",
         "skills": [
           {
             "ability": "ABILITY_DEXTERITY",
@@ -1854,6 +1857,7 @@
             "namePt": "Carisma"
           }
         ],
+        "size": "Medium",
         "skills": [
           {
             "ability": "ABILITY_DEXTERITY",

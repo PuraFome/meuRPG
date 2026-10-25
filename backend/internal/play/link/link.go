@@ -202,7 +202,7 @@ const LuckyTrait = "trait:lucky"
 type TaggedSave struct {
 	Source, Against string
 	Abilities       []string
-	Disadvantage    bool
+	Disadvantage    bool `json:",omitempty"`
 }
 
 // Traits are what a sheet has that changes how its owner rolls and what its
@@ -252,7 +252,7 @@ type Traits struct {
 	// Resistances are the damage resistances, immunities and vulnerabilities the features and traits give.
 	Resistances []Resistance
 	// ConditionImmunities are the conditions the features and traits make the sheet immune to.
-	ConditionImmunities []ConditionImmunity
+	ConditionImmunities []ConditionImmunity `json:",omitempty"`
 	// Maneuvers are the dice the table's options add to a roll (superiority_die effects).
 	Maneuvers []Maneuver
 	// ExtraDamages are the damage the table's features add to a weapon hit (extra_damage effects).
@@ -282,8 +282,8 @@ type Resistance struct {
 	While          string
 	// Kind is rules.ResistanceKindResist, ResistanceKindImmune or ResistanceKindVulnerable, and Nonmagical
 	// limits it to the damage of attacks that are not magical.
-	Kind       string
-	Nonmagical bool
+	Kind       string `json:",omitempty"`
+	Nonmagical bool   `json:",omitempty"`
 }
 
 // ConditionImmunity is a condition the sheet takes none of, with the trait that says so.
