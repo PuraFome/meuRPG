@@ -116,8 +116,12 @@ const (
 	ListIncreaseAmounts    = "ability_increase_amounts"
 	ListRangedAttacks      = "ranged_attack_applies"
 	ListExtraDamageApplies = "extra_damage_applies"
-	ListAmbushApplies      = "ambush_applies"
-	ListDamageTypes        = "damage_types"
+	// ListExtraDamageWeapons and ListExtraDamageFrequencies are the closed values of an
+	// extra_damage's weapon and frequency.
+	ListExtraDamageWeapons     = "extra_damage_weapons"
+	ListExtraDamageFrequencies = "extra_damage_frequencies"
+	ListAmbushApplies          = "ambush_applies"
+	ListDamageTypes            = "damage_types"
 	// ListResistanceConditions are when a resistance effect holds.
 	ListResistanceConditions = "resistance_conditions"
 )
@@ -180,9 +184,15 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
-	{Type: "extra_damage", NamePT: "Dano extra", HintPT: "Dano somado a um ataque com arma que acertou, no máximo uma vez por turno, quando o alvo é o que o texto pede (qualquer um, ou maior que o personagem). O valor é uma fórmula. Se a entrada define um recurso, cada uso gasta um (por descanso curto ou longo). O jogador escolhe usar na hora de rolar o dano.", Fields: []MenuField{
+	{Type: "extra_damage", NamePT: "Dano extra", HintPT: "Dano somado a um ataque com arma que acertou, quando o alvo é o que o texto pede (qualquer um, ou maior que o personagem): um número fixo (o valor, uma fórmula), dados, ou os dois. Sem tipo, o dano é do tipo da arma. Por padrão vale uma vez por turno; pode valer em todo acerto. Os dados dobram no acerto crítico, a menos que a entrada diga que não. Se a entrada define um recurso, cada uso gasta um (por descanso curto ou longo). O jogador escolhe usar na hora de rolar o dano.", Fields: []MenuField{
 		{Name: "applies", Required: true, Kind: "choice", List: ListExtraDamageApplies},
-		{Name: "value", Required: true, Kind: "formula"},
+		{Name: "value", Kind: "formula", AlwaysShown: true},
+		{Name: "dice", Kind: "formula", AlwaysShown: true},
+		{Name: "dice_sides", Kind: "number", Min: MinExtraDamageSides, Max: MaxExtraDamageSides, AlwaysShown: true},
+		{Name: "damage_type", Kind: "choice", List: ListDamageTypes, AlwaysShown: true},
+		{Name: "weapon", Kind: "choice", List: ListExtraDamageWeapons, AlwaysShown: true},
+		{Name: "frequency", Kind: "choice", List: ListExtraDamageFrequencies, AlwaysShown: true},
+		{Name: "no_crit_doubling", Kind: "yes_no"},
 		{Name: "resource", Kind: "resource_ref"},
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
@@ -252,6 +262,12 @@ var (
 	extraDamageNms = map[string][2]string{
 		ExtraDamageAnyTarget:    {"Qualquer alvo", "Vale contra qualquer criatura atingida."},
 		ExtraDamageLargerTarget: {"Alvo maior que o personagem", "Só vale se o alvo for de um tamanho maior que o do personagem."},
+	}
+	extraDamageWeaponNms = map[string]string{
+		ExtraDamageAnyWeapon: "Qualquer ataque com arma", ExtraDamageMeleeWeapon: "Ataque com arma corpo a corpo", ExtraDamageRangedWeapon: "Ataque com arma à distância",
+	}
+	extraDamageFrequencyNms = map[string]string{
+		ExtraDamageOncePerTurn: "Uma vez por turno", ExtraDamageEachHit: "Em todo acerto",
 	}
 	rangedAttackNms = map[string][2]string{
 		RangedAttackSpell:  {"Magias com jogada de ataque", "Só as magias que pedem jogada de ataque. O alcance multiplicado vale para as que têm alcance em metros; toque e pessoal não mudam."},
@@ -421,6 +437,8 @@ func (c *content) menuLists() []MenuList {
 		{Name: ListIncreaseAmounts, Values: []MenuValue{{Key: "1", NamePT: "+1"}, {Key: "2", NamePT: "+2"}}},
 		{Name: ListRangedAttacks, Values: rangedAttackValues()},
 		{Name: ListExtraDamageApplies, Values: extraDamageValues()},
+		{Name: ListExtraDamageWeapons, Values: extraDamageWeaponValues()},
+		{Name: ListExtraDamageFrequencies, Values: extraDamageFrequencyValues()},
 		{Name: ListAmbushApplies, Values: ambushValues()},
 		{Name: ListDamageTypes, Values: c.menuDamageTypes()},
 		{Name: ListResistanceConditions, Values: []MenuValue{{Key: ResistanceWhileRage, NamePT: "Em fúria", HintPT: "Vale enquanto o personagem estiver em fúria (e não usar armadura pesada)."}}},

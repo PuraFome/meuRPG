@@ -183,12 +183,17 @@ type Maneuver struct {
 	Sides, SaveDC                                            int
 }
 
-// ExtraDamage is damage a table feature adds to a weapon hit once per turn (the engine's extra_damage
-// effect): Applies says what it asks of the target ("any_target" or "larger_target"), Resource the
-// uses it spends ("" for none) and Amount the fixed damage, never doubled by a critical hit.
+// ExtraDamage is damage a table feature adds to a weapon hit (the engine's extra_damage effect):
+// Applies says what it asks of the target ("any_target" or "larger_target"), Resource the uses it
+// spends ("" for none), Amount the fixed damage (never doubled by a critical hit) and DiceCount d
+// DiceSides the dice (0 for none; a critical hit doubles them unless NoCritDoubling). DamageType is
+// the damage's own type, empty for the weapon's. Weapon ("any", "melee" or "ranged") says which weapon
+// attacks it goes with and Frequency ("once_per_turn" or "each_hit") how often.
 type ExtraDamage struct {
 	Key, NamePT, Applies, Resource, TextPT string
-	Amount                                 int
+	DamageType, Weapon, Frequency          string
+	Amount, DiceCount, DiceSides           int
+	NoCritDoubling                         bool
 }
 
 // LuckyTrait is the content key of the halfling's Lucky (SRD 5.1, Halfling): the sheet that

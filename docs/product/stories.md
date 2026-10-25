@@ -644,6 +644,10 @@ The data rules, limits and the server side are in [Table content: rules](../arch
   For spells that need an attack roll, the range is twice or three times as long and half or three-quarters cover is ignored.
   For ranged weapons (a thrown weapon at range included), that cover is ignored and long range gives no disadvantage.
   Total cover still blocks the attack, and the roll shows no cover where the cover was ignored.
+- **Given** a table feature or feat with an extra damage effect ("Dano extra") that has dice (for example, "once per turn, +1d6 fire on a melee weapon hit"), **when** its owner hits with a weapon it fits, **then** the damage card offers it as an extra to mark, and the dice are rolled beside the weapon's (in the app, or with the physical dice the player types).
+  The damage is a line of its own type (the feature's, or the weapon's when it names none), so a resistance to that type takes only that line.
+  A critical hit doubles the dice unless the feature says otherwise; a fixed number is never doubled.
+  The extra is off, with its reason, on the other kind of weapon (melee or ranged), against a target that is not larger when the feature asks for a larger one, when it was already used this turn (the default is once per turn; "em todo acerto" has no such limit) and when its resource has no use left.
 
 **Changing, archiving and switching.**
 

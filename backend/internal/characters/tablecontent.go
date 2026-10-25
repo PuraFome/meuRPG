@@ -370,6 +370,8 @@ func tableEffectsOf(in []*rulesv1.TableEffect) []rules.Effect {
 			Spells: e.GetSpells(), TextPT: e.GetTextPt(),
 			IgnoreCover: e.GetIgnoreCover(), RangeMultiplier: int(e.GetRangeMultiplier()), NoLongRangeDisadvantage: e.GetNoLongRangeDisadvantage(),
 			Except: e.GetExcept(), While: e.GetWhile(),
+			Dice: e.GetDice(), DiceSides: int(e.GetDiceSides()), DamageType: e.GetDamageType(), Weapon: e.GetWeapon(),
+			Frequency: e.GetFrequency(), NoCritDoubling: e.GetNoCritDoubling(),
 		})
 	}
 	return out

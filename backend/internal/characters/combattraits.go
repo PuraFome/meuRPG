@@ -140,6 +140,8 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 	for _, x := range d.ExtraDamages {
 		t.ExtraDamages = append(t.ExtraDamages, link.ExtraDamage{
 			Key: x.Key, NamePT: x.NamePT, Applies: x.Applies, Resource: x.Resource, TextPT: x.TextPT, Amount: x.Amount,
+			DiceCount: x.Dice.Count, DiceSides: x.Dice.Sides, NoCritDoubling: x.NoCritDoubling, DamageType: x.DamageType,
+			Weapon: x.Weapon, Frequency: x.Frequency,
 		})
 	}
 	return t

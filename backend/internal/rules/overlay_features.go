@@ -454,7 +454,7 @@ var ownFields = map[string][]string{
 	// An ability_increase is a feat's alone (checkEffect).
 	"ability_increase": {"value", "count", "from"},
 	// An extra_damage adds its value to a weapon hit, when its applies holds, from a resource if it names one.
-	"extra_damage": {"applies", "value", "resource"},
+	"extra_damage": {"applies", "value", "resource", "dice", "dice_sides", "damage_type", "weapon", "frequency", "no_crit_doubling"},
 	// An ambush gives an edge against a target, by its applies alone.
 	"ambush": {"applies"},
 	// A ranged_attack's switches; which of them its applies allows is checkRangedAttack's.
@@ -498,6 +498,12 @@ var effectFields = []effectField{
 	{"no_long_range_disadvantage", func(e *Effect) bool { return e.NoLongRangeDisadvantage }, func(e *Effect) { e.NoLongRangeDisadvantage = false }},
 	{"except", func(e *Effect) bool { return e.Except != "" }, func(e *Effect) { e.Except = "" }},
 	{"while", func(e *Effect) bool { return e.While != "" }, func(e *Effect) { e.While = "" }},
+	{"dice", func(e *Effect) bool { return e.Dice != "" }, func(e *Effect) { e.Dice = "" }},
+	{"dice_sides", func(e *Effect) bool { return e.DiceSides != 0 }, func(e *Effect) { e.DiceSides = 0 }},
+	{"damage_type", func(e *Effect) bool { return e.DamageType != "" }, func(e *Effect) { e.DamageType = "" }},
+	{"weapon", func(e *Effect) bool { return e.Weapon != "" }, func(e *Effect) { e.Weapon = "" }},
+	{"frequency", func(e *Effect) bool { return e.Frequency != "" }, func(e *Effect) { e.Frequency = "" }},
+	{"no_crit_doubling", func(e *Effect) bool { return e.NoCritDoubling }, func(e *Effect) { e.NoCritDoubling = false }},
 	{"progression", func(e *Effect) bool { return e.Progression != "" }, func(e *Effect) { e.Progression = "" }},
 	{"prepares", func(e *Effect) bool { return e.Prepares }, func(e *Effect) { e.Prepares = false }},
 	{"prepared_max", func(e *Effect) bool { return e.PreparedMax != "" }, func(e *Effect) { e.PreparedMax = "" }},
@@ -632,7 +638,12 @@ var effectErrorRules = []effectErrorRule{
 	{[]string{"extra_attack needs"}, fieldAttr(".count"), ReasonValue},
 	{[]string{"empty tag"}, fieldAttr(".tags"), ReasonValue},
 	{[]string{"unknown spell"}, fieldAttr(".spells"), ReasonReference},
-	{[]string{"is not a damage type"}, fieldAttr(".except"), ReasonReference},
+	{[]string{"is not a damage type"}, func(e *Effect, _ func(...string) bool) string {
+		if e.Type == "extra_damage" {
+			return ".damage_type"
+		}
+		return ".except"
+	}, ReasonReference},
 	{[]string{"while must be"}, fieldAttr(".while"), ReasonValue},
 	{[]string{"a resistance has no when"}, fieldAttr(".when"), ReasonValue},
 	{[]string{"a resistance has no tags"}, fieldAttr(".tags"), ReasonValue},
@@ -641,7 +652,7 @@ var effectErrorRules = []effectErrorRule{
 // formulaAttr is the field whose formula a compile error names (".when", ".value"
 // or ".max"), "" when it names none of them. has says whether the error says a word.
 func formulaAttr(e *Effect, has func(words ...string) bool) string {
-	for _, f := range []struct{ name, src string }{{"when", e.When}, {"value", e.Value}, {"max", e.Max}} {
+	for _, f := range []struct{ name, src string }{{"when", e.When}, {"value", e.Value}, {"max", e.Max}, {"dice", e.Dice}} {
 		if f.src != "" && has("formula "+strconv.Quote(f.src)) {
 			return "." + f.name
 		}

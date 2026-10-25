@@ -644,6 +644,10 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
   Para magias que pedem uma rolagem de ataque, o alcance é o dobro ou o triplo e a meia cobertura ou a cobertura de três quartos é ignorada.
   Para armas à distância (arma de arremesso a distância incluída), essa cobertura é ignorada e o alcance longo não dá desvantagem.
   A cobertura total ainda bloqueia o ataque, e a rolagem não mostra cobertura onde ela foi ignorada.
+- **Dado** uma característica ou talento da mesa com um efeito de dano extra ("Dano extra") que tem dados (por exemplo, "uma vez por turno, +1d6 de fogo num acerto com arma corpo a corpo"), **quando** o dono dele acerta com uma arma que se encaixa, **então** o cartão de dano o oferece como um extra a marcar, e os dados são rolados junto com os da arma (no app, ou com os dados físicos que o jogador digita).
+  O dano é uma linha de tipo próprio (o da característica, ou o da arma quando ela não diz nenhum), então uma resistência a esse tipo reduz só essa linha.
+  Um acerto crítico dobra os dados, a menos que a característica diga o contrário; um número fixo nunca é dobrado.
+  O extra fica desligado, com o motivo, no outro tipo de arma (corpo a corpo ou à distância), contra um alvo que não é maior quando a característica pede um maior, quando já foi usado neste turno (o padrão é uma vez por turno; "em todo acerto" não tem esse limite) e quando o recurso não tem mais usos.
 
 **Mudar, arquivar e ligar e desligar.**
 

@@ -120,6 +120,19 @@ type Effect struct {
 	RangeMultiplier         int  `json:"range_multiplier,omitempty"`
 	NoLongRangeDisadvantage bool `json:"no_long_range_disadvantage,omitempty"`
 
+	// extra_damage (extradamage.go): the dice it rolls, Dice an Int formula for how many
+	// and DiceSides (4, 6, 8, 10 or 12) their sides, beside the fixed Value; DamageType a
+	// "damage-type:" key (empty is the weapon's own); Weapon one of ExtraDamageAnyWeapon,
+	// ExtraDamageMeleeWeapon and ExtraDamageRangedWeapon; Frequency one of
+	// ExtraDamageOncePerTurn and ExtraDamageEachHit; NoCritDoubling keeps a critical hit
+	// from doubling the dice.
+	Dice           string `json:"dice,omitempty"`
+	DiceSides      int    `json:"dice_sides,omitempty"`
+	DamageType     string `json:"damage_type,omitempty"`
+	Weapon         string `json:"weapon,omitempty"`
+	Frequency      string `json:"frequency,omitempty"`
+	NoCritDoubling bool   `json:"no_crit_doubling,omitempty"`
+
 	// resistance: resistance to every damage type but Except (a "damage-type:"
 	// key) while the condition in While holds ("rage", ResistanceWhileRage). It
 	// takes no When, because While is its condition. Content.Resistances lists it,
@@ -163,7 +176,7 @@ type Effect struct {
 	TextPT string `json:"text_pt,omitempty"`
 
 	// Compiled formulas, filled at load.
-	value, when, preparedMax, max, rechargeIf *formula.Program
+	value, when, preparedMax, max, rechargeIf, dice *formula.Program
 }
 
 // The closed sets of the effect schema.
@@ -316,8 +329,20 @@ func (x effectCompiler) strayFields() error {
 	if err := x.strayResistance(); err != nil {
 		return err
 	}
+	if err := x.strayExtraDamage(); err != nil {
+		return err
+	}
 	if e.Type != "ranged_attack" && (e.IgnoreCover || e.RangeMultiplier != 0 || e.NoLongRangeDisadvantage) {
 		return x.fail("ignore_cover, range_multiplier and no_long_range_disadvantage belong to ranged_attack")
+	}
+	return nil
+}
+
+// strayExtraDamage refuses the dice, damage type, weapon and frequency of an extra_damage on an effect of another type.
+func (x effectCompiler) strayExtraDamage() error {
+	e := x.e
+	if e.Type != "extra_damage" && (e.Dice != "" || e.DiceSides != 0 || e.DamageType != "" || e.Weapon != "" || e.Frequency != "" || e.NoCritDoubling) {
+		return x.fail("dice, dice_sides, damage_type, weapon, frequency and no_crit_doubling belong to extra_damage")
 	}
 	return nil
 }

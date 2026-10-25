@@ -88,15 +88,19 @@ How combat spends the die (damage, grapple, reduction) is in the [play module](p
 
 ### Extra damage
 
-`extra_damage` (menu name "Dano extra"; fields `applies`, `value`, `resource`, `when`, `text_pt`; `rules/extradamage.go`) is fixed damage a feature adds to a weapon hit, once per turn, when the target is what `applies` asks.
+`extra_damage` (menu name "Dano extra"; fields `applies`, `value`, `dice`, `dice_sides`, `damage_type`, `weapon`, `frequency`, `no_crit_doubling`, `resource`, `when`, `text_pt`; `rules/extradamage.go`) is damage a feature adds to a weapon hit when the target is what `applies` asks: a fixed number, dice, or both.
 Checked at its fields:
 
 - `applies` is `any_target` or `larger_target` (`.applies`, `bad_value`);
-- `value` is required and compiles (`.value`, `bad_value`, `bad_formula`);
+- `value` (the fixed part, never doubled) and `dice` (an Int formula for how many dice, 1 to 20 once worked out) compile (`.value`, `.dice`, `bad_value`, `bad_formula`); at least one is set;
+- `dice` and `dice_sides` (4, 6, 8, 10 or 12) go together (`.dice`, `.dice_sides`, `bad_value`);
+- `damage_type` is a `damage-type:` key of the content; empty is the weapon's own type (`.damage_type`, `bad_reference`);
+- `weapon` is `any` (empty), `melee` or `ranged`; `frequency` is `once_per_turn` (empty) or `each_hit` (`.weapon`, `.frequency`, `bad_value`);
+- `no_crit_doubling` keeps a critical hit from doubling the dice, and needs dice (`.no_crit_doubling`, `bad_value`);
 - `resource`, when set, is one the entry or its class defines (`.resource`, `bad_reference`);
-- any field the type does not read is refused for the entry being written (`economy`, `ability`...), and a feature has at most one (`.type`, `forbidden_effect`).
+- any field the type does not read is refused for the entry being written (`economy`, `ability`, or these fields on another type), and a feature has at most one (`.type`, `forbidden_effect`).
 
-`Derive` fills `Derived.ExtraDamages` with the amount worked out; a resource the character does not have at that level leaves the effect out.
+`Derive` fills `Derived.ExtraDamages` with the fixed amount and the dice worked out (`Amount`, `Dice`), the damage type, the weapon and the frequency with their defaults; a resource the character does not have at that level leaves the effect out, and so does a formula that gives no damage.
 The attack card offers it after a hit as a choosable part ([Attacks and damage](play/attacks-and-damage.md)).
 
 ### Ambush
