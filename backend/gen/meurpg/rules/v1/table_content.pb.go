@@ -741,7 +741,7 @@ func (*TableEntry_TableFeat) isTableEntry_Body() {}
 // "superiority_die" or "note"; "ability_increase" is a feat's alone. Only the fields of the type are
 // read, and a field the type does not use is refused. A feature with no effects is text only and always valid. Formulas ("value",
 // "when", "max") use level(), classLevel("<class>"), mod("int"), score("int"),
-// prof(), floor, ceil, min and max, and must compile.
+// prof(), floor, ceil, min and max, and must compile; a formula has at most 1024 bytes and 256 nodes.
 type TableEffect struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Type  string                 `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
@@ -2867,9 +2867,9 @@ type TableContentViolation struct {
 	// (a key, kind or parent changed, or a spell crossing between cantrip and
 	// leveled), "duplicate_name" (another entry of the kind has the name), "unknown_field" (ImportTableContent:
 	// a field the message does not have) and
-	// "size_limit" (64 KiB of data). The 300-entry limit is "limit", with an empty
+	// "size_limit" (64 KiB of data). The 1000-entry limit is "limit", with an empty
 	// field. In ImportTableContent a violation about the pack itself is at a field
-	// that starts with "pack": "pack" (over 2 MiB: "size_limit"), "pack.format" and
+	// that starts with "pack": "pack" (over 3 MiB: "size_limit"), "pack.format" and
 	// "pack.version" ("bad_value"), "pack.entries[3].key" ("bad_key" for a key that is
 	// not "<kind>:<slug>@mesa" of the entry's kind, "duplicate_key" for one that
 	// repeats) and "pack.entries[3].body" ("bad_value": no body, or one of another
@@ -3945,7 +3945,7 @@ type TableContentPack struct {
 	// A label for the pack: the campaign's name when exported. 0 to 80 characters on
 	// one line; kept by nothing, shown in the preview.
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	// The entries. At most 300. Each has `key`, `kind`, `name_pt` and its body; the
+	// The entries. At most 1000. Each has `key`, `kind`, `name_pt` and its body; the
 	// other fields of TableEntry are left out of an export and ignored in an import.
 	Entries       []*TableEntry `protobuf:"bytes,4,rep,name=entries,proto3" json:"entries,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -4116,7 +4116,7 @@ type ImportTableContentRequest struct {
 	// The pack file as the master has it, in proto JSON. Prefer it to `pack`: the server
 	// reads it strictly, and a field it does not know (a misspelled "proficiency" for
 	// "proficiency_key") is a violation of its entry at the path of the field (reason
-	// "unknown_field"), never dropped. When set, `pack` must be unset. The 2 MiB limit is
+	// "unknown_field"), never dropped. When set, `pack` must be unset. The 3 MiB limit is
 	// this field's size.
 	PackJson      []byte `protobuf:"bytes,5,opt,name=pack_json,json=packJson,proto3" json:"pack_json,omitempty"`
 	unknownFields protoimpl.UnknownFields

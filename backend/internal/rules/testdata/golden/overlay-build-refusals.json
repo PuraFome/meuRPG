@@ -1,5 +1,5 @@
 {
-  "301 entries": "overlay: 301 entries; the limit is 300 per table [field= reason=limit]",
+  "1001 entries": "overlay: 1001 entries; the limit is 1000 per table [field= reason=limit]",
   "a failing feat brings its effects": "overlay: feat:talento@mesa: the level is 0 to 20 [field=feats[0].prerequisite.level reason=bad_value] || overlay: feat:talento@mesa: a handler effect is not allowed: the table's content never runs code [field=feats[0].effects[0].type reason=forbidden_effect]",
   "a failing feature has no entry to compile": "overlay: trait:x: the key must end in \"@mesa\" [field=races[0].traits[0].key reason=bad_key]",
   "a failing race brings its traits' effects": "overlay: race:anao-das-brumas@mesa: size is Tiny, Small, Medium or Large [field=races[0].size reason=bad_value] || overlay: trait:resistente@mesa: effect type \"teleport\" is not on the table's menu [field=races[0].traits[0].effects[1].type reason=forbidden_effect] || overlay: trait:resistente@mesa: effect trait:resistente@mesa (modifier): unknown target \"nope\" [field=races[0].traits[0].effects[2].target reason=bad_value]",
@@ -22,8 +22,8 @@
   "feat refused": "overlay: feat:talento@mesa: the level is 0 to 20 [field=feats[0].prerequisite.level reason=bad_value]",
   "key before name": "overlay: class:x: the key must end in \"@mesa\" [field=classes[1].key reason=bad_key]",
   "keys in key order, not the caller's": "overlay: spell:aa: the key must end in \"@mesa\" [field=spells[4].key reason=bad_key]",
-  "limit before budget": "overlay: 324 entries; the limit is 300 per table [field= reason=limit]",
-  "ok: 300 entries": "accepted",
+  "limit before budget": "overlay: 1024 entries; the limit is 1000 per table [field= reason=limit]",
+  "ok: 1000 entries": "accepted",
   "ok: lax ignores a stray field": "accepted",
   "ok: revision 0": "accepted",
   "ok: the full overlay": "accepted",

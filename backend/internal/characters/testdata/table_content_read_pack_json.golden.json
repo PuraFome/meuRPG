@@ -82,7 +82,7 @@
     "value": {
       "pack_nil": true,
       "top": [
-        "pack | size_limit | the pack is over 2097152 bytes"
+        "pack | size_limit | the pack is over 3145728 bytes"
       ],
       "unknown": null
     }

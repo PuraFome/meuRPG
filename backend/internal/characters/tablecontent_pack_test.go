@@ -343,12 +343,12 @@ func TestMR025_ImportRefusesWhatIsWrongWithThePackItself(t *testing.T) {
 		}, "pack.entries[0].body", "bad_value"},
 		{"a name that is not the body's", func(p *rulesv1.TableContentPack) { p.Entries[0].NamePt = "Outro" }, "pack.entries[0].name_pt", "bad_value"},
 		{"the same key twice", func(p *rulesv1.TableContentPack) { p.Entries = append(p.Entries, feat("um")) }, "pack.entries[1].key", "duplicate_key"},
-		{"301 entries", func(p *rulesv1.TableContentPack) {
-			for i := range 300 {
+		{"1001 entries", func(p *rulesv1.TableContentPack) {
+			for i := range 1001 {
 				p.Entries = append(p.Entries, feat("f"+strconv.Itoa(i)))
 			}
 		}, "pack.entries", "limit"},
-		{"a pack over 2 MiB", func(p *rulesv1.TableContentPack) {
+		{"a pack over 3 MiB", func(p *rulesv1.TableContentPack) {
 			big := strings.Repeat("a", 3000)
 			for i := range 300 {
 				e := feat("g" + strconv.Itoa(i))
@@ -379,7 +379,7 @@ func TestMR025_ImportRefusesWhatIsWrongWithThePackItself(t *testing.T) {
 	}
 }
 
-// TestMR025_ImportHoldsTheLimitsOfTheTable: the 300 entries and the 64 KiB per entry hold for
+// TestMR025_ImportHoldsTheLimitsOfTheTable: the 1000 entries and the 64 KiB per entry hold for
 // the campaign as a whole, whatever the pack says about itself.
 func TestMR025_ImportHoldsTheLimitsOfTheTable(t *testing.T) {
 	t.Parallel()
@@ -406,23 +406,23 @@ func TestMR025_ImportHoldsTheLimitsOfTheTable(t *testing.T) {
 		t.Errorf("entry over 64 KiB: %v; want it refused with size_limit and the other new", pv.GetEntries())
 	}
 
-	// 299 entries in the campaign, two more in the pack: 301.
+	// 999 entries in the campaign, two more in the pack: 1001.
 	var first []*rulesv1.TableEntry
-	for i := range 299 {
+	for i := range 999 {
 		first = append(first, feat("f"+strconv.Itoa(i)))
 	}
 	pt.apply(t, pt.to, pack(first...), "")
 	_, err := pt.importPack(pt.master, pt.to, pack(feat("a1"), feat("a2")), rulesv1.TableImportMode_TABLE_IMPORT_MODE_APPLY, "")
 	vs := violationsOfErr(t, err)
 	if len(vs) == 0 || vs[0].GetReason() != "limit" || vs[0].GetField() != "" {
-		t.Errorf("301 entries in the table: violations = %v, want the table's limit", vs)
+		t.Errorf("1001 entries in the table: violations = %v, want the table's limit", vs)
 	}
-	if got := len(pt.entries(t, pt.to)); got != 299 {
-		t.Errorf("the table has %d entries after a refused import, want 299", got)
+	if got := len(pt.entries(t, pt.to)); got != 999 {
+		t.Errorf("the table has %d entries after a refused import, want 999", got)
 	}
 	// One more fits.
 	if res := pt.apply(t, pt.to, pack(feat("a1")), ""); res.GetTotals().GetNew() != 1 {
-		t.Errorf("the 300th entry: %v", res.GetTotals())
+		t.Errorf("the 1000th entry: %v", res.GetTotals())
 	}
 }
 

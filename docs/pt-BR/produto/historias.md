@@ -664,7 +664,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 **Cadastrar bem.**
 
 - **Dado** que salvo uma entrada que quebra uma regra, **então** o servidor lista todas as violações de uma vez, cada uma no seu campo, e nada é salvo.
-  Uma entrada é limitada a 60 características, e uma campanha a 300 entradas.
+  Uma entrada é limitada a 60 características, e uma campanha a 1.000 entradas e 6.000 efeitos; uma fórmula é limitada a 1.024 bytes.
 - **Dado** um jogador, **então** ele lê toda entrada jogável por inteiro, com "Da mesa", e nunca uma arquivada ou desligada, nem por referência, a não ser que a ficha dele a use.
   Ele nunca lê contagens nem estado, e não pode escrever.
 
@@ -719,7 +719,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
   - O mestre vê o rótulo "Teatro da mente" e o cartão "Ações do …" com "Gastar movimento" (em passos de 1,5 m); o jogador vê "Combate sem mapa" e uma folha "Gastar movimento" com "Depois restam 3,0 m", que é só uma prévia do número do servidor.
 
 #### As telas
-- **"Conteúdo da mesa"** (`/campaigns/:id/content`, a partir do painel "Conteúdo da mesa" da campanha): o mestre, num notebook, vê os cinco tipos com contagens (arquivados incluídos), "7 de 300 entradas", busca, "Mostrar" (Todas, Em uso, Sem fichas, Arquivadas) e linhas com o estado em palavras ("Em uso por 2 fichas", "Arquivado · 1 ficha usa").
+- **"Conteúdo da mesa"** (`/campaigns/:id/content`, a partir do painel "Conteúdo da mesa" da campanha): o mestre, num notebook, vê os cinco tipos com contagens (arquivados incluídos), "7 de 1000 entradas", busca, "Mostrar" (Todas, Em uso, Sem fichas, Arquivadas) e linhas com o estado em palavras ("Em uso por 2 fichas", "Arquivado · 1 ficha usa").
   Uma campanha vazia diz "Nada cadastrado ainda." e que o SRD continua valendo.
   No celular o mestre só lê e arquiva.
   Um jogador lê toda entrada ligada, tipo por tipo, com "Da mesa".
@@ -1350,7 +1350,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 - O arquivo sobe em partes, então uma conexão que cai recomeça de onde parou. O envio pertence à conta do mestre, uma pessoa tem um por vez, e as partes inacabadas são apagadas uma hora depois da última.
 - Uma prévia conta o que o pacote guarda e lista cada problema em palavras simples. Qualquer problema bloqueia "Criar campanha": tudo ou nada, e uma falha no meio não deixa nada para trás.
 - Um pacote é recusado quando vem de um MeuRPG mais novo ("Este pacote é de uma versão mais nova do MeuRPG, e este servidor ainda não sabe abri-lo."), foi alterado, traz um campo que este servidor não conhece, passa de 200 MiB ou 2.000 entradas (10 MiB por entrada), está suspeitamente comprimido, tem um nome que sobe para fora de uma pasta, ou se refere a algo que lhe falta.
-- Toda regra do app vale como se o mestre tivesse digitado os dados: nomes, tamanhos, CDs, ações de cena, armadilhas, quebra-cabeças, fichas (com o conteúdo de mesa do próprio pacote), os limites de uma campanha (300 imagens, 200 mapas, 200 pontos por mapa, 300 entradas de mesa, o limite de personagens e NPCs) e o limite de campanhas da conta ("Você já tem 10 campanhas.") e a lista de criadores. As imagens passam pelo pipeline do envio (recodificadas, sem metadados).
+- Toda regra do app vale como se o mestre tivesse digitado os dados: nomes, tamanhos, CDs, ações de cena, armadilhas, quebra-cabeças, fichas (com o conteúdo de mesa do próprio pacote), os limites de uma campanha (300 imagens, 200 mapas, 200 pontos por mapa, 1.000 entradas de mesa, o limite de personagens e NPCs) e o limite de campanhas da conta ("Você já tem 10 campanhas.") e a lista de criadores. As imagens passam pelo pipeline do envio (recodificadas, sem metadados).
 - Os ids nunca são reaproveitados: cada coisa ganha um id novo e toda referência, inclusive os links no documento, o acompanha.
 - Os personagens dos jogadores chegam reservados (MR-049): invisíveis aos jogadores até um deles assumir com o link do mestre.
 

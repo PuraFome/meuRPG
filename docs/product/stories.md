@@ -664,7 +664,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 **Registering well.**
 
 - **Given** I save an entry that breaks a rule, **then** the server lists every violation at once, each at its field, and nothing is saved.
-  An entry is limited to 60 features, and a campaign to 300 entries.
+  An entry is limited to 60 features, and a campaign to 1,000 entries and 6,000 effects; a formula is limited to 1,024 bytes.
 - **Given** a player, **then** they read every playable entry in full, with "Da mesa", and never an archived or switched-off one, not even by reference, unless their own sheet uses it.
   They never read counts or state, and cannot write.
 
@@ -719,7 +719,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
   - The game master sees the label "Teatro da mente" and the card "Ações do …" with "Gastar movimento" (in 1.5 m steps); the player sees "Combate sem mapa" and a "Gastar movimento" sheet with "Depois restam 3,0 m", which is only a preview of the server's number.
 
 #### The screens
-- **"Conteúdo da mesa"** (`/campaigns/:id/content`, from the campaign's "Conteúdo da mesa" panel): the game master, on a laptop, sees the five kinds with counts (archived included), "7 de 300 entradas", search, "Mostrar" (Todas, Em uso, Sem fichas, Arquivadas) and rows with the state in words ("Em uso por 2 fichas", "Arquivado · 1 ficha usa").
+- **"Conteúdo da mesa"** (`/campaigns/:id/content`, from the campaign's "Conteúdo da mesa" panel): the game master, on a laptop, sees the five kinds with counts (archived included), "7 de 1000 entradas", search, "Mostrar" (Todas, Em uso, Sem fichas, Arquivadas) and rows with the state in words ("Em uso por 2 fichas", "Arquivado · 1 ficha usa").
   An empty campaign says "Nada cadastrado ainda." and that the SRD still applies.
   On a phone the game master only reads and archives.
   A player reads every switched-on entry, kind by kind, with "Da mesa".
@@ -1350,7 +1350,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - The file goes up in parts, so a dropped connection resumes. The upload belongs to the master's account, a person has one at a time, and unfinished parts are deleted an hour after the last one.
 - A preview counts what the package holds and lists every problem in plain words. Any problem blocks "Criar campanha": all or nothing, and a failure halfway leaves nothing behind.
 - A package is refused when it comes from a newer MeuRPG ("Este pacote é de uma versão mais nova do MeuRPG, e este servidor ainda não sabe abri-lo."), was changed, holds a field this server does not know, is over 200 MiB or 2,000 entries (10 MiB for an entry), is suspiciously compressed, has a name that climbs out of a folder, or refers to something it lacks.
-- Every rule of the app applies as if the master had typed the data: names, sizes, DCs, scene actions, traps, puzzles, sheets (with the package's own table content), the caps of a campaign (300 images, 200 maps, 200 points a map, 300 table entries, the characters and NPCs cap) and the account's cap of campaigns ("Você já tem 10 campanhas.") and the creators list. Images go through the upload's pipeline (re-encoded, metadata dropped).
+- Every rule of the app applies as if the master had typed the data: names, sizes, DCs, scene actions, traps, puzzles, sheets (with the package's own table content), the caps of a campaign (300 images, 200 maps, 200 points a map, 1,000 table entries, the characters and NPCs cap) and the account's cap of campaigns ("Você já tem 10 campanhas.") and the creators list. Images go through the upload's pipeline (re-encoded, metadata dropped).
 - Ids are never reused: every thing gets a new id and every reference, including the links in the document, follows.
 - The players' characters arrive reserved (MR-049): invisible to the players until one claims it with the master's link.
 

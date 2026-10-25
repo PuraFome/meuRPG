@@ -2064,7 +2064,7 @@
       "problems": [
         {
           "kind": "PACKAGE_PROBLEM_KIND_CONTENT",
-          "limit": "300",
+          "limit": "1000",
           "reason": "PACKAGE_PROBLEM_REASON_LIMIT"
         }
       ]
