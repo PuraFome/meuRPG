@@ -174,3 +174,25 @@ func TestTheMastersCastForACharacterSpendsItsSlotAndIsMarkedByMaster(t *testing.
 		}
 	}
 }
+
+// hideAgain hides the NPC from the players again, for a fight whose NPC had to be seen while the master
+// attacked for the players' characters (he is bound by what they see).
+func hideAgain(t *testing.T, a *armed, e *playv1.Encounter, label string) {
+	t.Helper()
+	if _, err := a.master.combat.SetCombatantHidden(t.Context(), connect.NewRequest(&playv1.SetCombatantHiddenRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, label), IdempotencyKey: newKey(), Hidden: true,
+	})); err != nil {
+		t.Fatalf("SetCombatantHidden(%s) error = %v", label, err)
+	}
+}
+
+// showNPC shows a hidden NPC to the players, for a fight whose NPCs have to be seen while the master casts or
+// attacks for a player's character (he is bound by what the character sees).
+func showNPC(t *testing.T, a *armed, e *playv1.Encounter, label string) {
+	t.Helper()
+	if _, err := a.master.combat.SetCombatantHidden(t.Context(), connect.NewRequest(&playv1.SetCombatantHiddenRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, label), IdempotencyKey: newKey(), Hidden: false,
+	})); err != nil {
+		t.Fatalf("SetCombatantHidden(%s) error = %v", label, err)
+	}
+}

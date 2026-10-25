@@ -279,7 +279,7 @@ func TestMR032_HighlightsSkipTheUndoneAndCountWhatHappened(t *testing.T) {
 	e := a.start(t, plan{
 		npcs: []*playv1.Participant{
 			{CharacterId: a.goblin.GetId(), Hidden: new(false)},
-			{CharacterId: a.capitao.GetId()}, // hidden: a new NPC starts hidden
+			{CharacterId: a.capitao.GetId(), Hidden: new(false)}, // seen while the master attacks for the players' characters; hidden again at the end
 		},
 		npcRolls: []int{1, 2},
 		players:  map[string]int32{"Toren": 20, "Pensantus": 15, "Brisa": 10},
@@ -337,6 +337,7 @@ func TestMR032_HighlightsSkipTheUndoneAndCountWhatHappened(t *testing.T) {
 	if _, err := a.adjustHP(t, e, "Capitão Goblin", damageHP(3)); err != nil { // the master's own hand
 		t.Fatalf("AdjustCombatantHitPoints() error = %v", err)
 	}
+	hideAgain(t, a, e, "Capitão Goblin")
 	a.endEncounter(t, e)
 
 	want := []string{
