@@ -927,11 +927,11 @@ func TestWithRefusals(t *testing.T) {
 		{"19 level rows", func(o *Overlay) { c := classIdx(o, "none"); c.Levels = c.Levels[:19] }, []string{"class:gen-none@mesa", "20 rows", "19"}},
 		{"21 level rows", func(o *Overlay) { c := classIdx(o, "none"); c.Levels = append(c.Levels, TableClassLevel{}) }, []string{"20 rows", "21"}},
 		{"no level rows", func(o *Overlay) { classIdx(o, "none").Levels = nil }, []string{"20 rows"}},
-		{"301 entries", func(o *Overlay) {
+		{"1001 entries", func(o *Overlay) {
 			for len(o.Spells)+len(o.Classes)+len(o.Subclasses)+len(o.Races)+len(o.Subraces)+len(o.Backgrounds) <= MaxOverlayEntries {
 				o.Spells = append(o.Spells, o.Spells[0])
 			}
-		}, []string{"301", "300"}},
+		}, []string{"1001", "1000"}},
 		{"61 features in a class", func(o *Overlay) {
 			c := classIdx(o, "none")
 			for n := range 61 {
