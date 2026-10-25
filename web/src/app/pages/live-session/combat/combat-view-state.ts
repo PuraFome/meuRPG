@@ -35,7 +35,12 @@ import { offersToAnswer } from '../../../core/combat/opportunity';
 import { LayersState } from '../../../core/maps/layers-state';
 import { CombatLogState } from '../../../core/combat/combat-log-state';
 import { TurnOptionsState } from '../../../core/combat/turn-options-state';
-import { currentCombatant, isDown, ownCombatant } from '../../../core/combat/combat-view';
+import {
+  currentCombatant,
+  isDown,
+  isPlayer,
+  ownCombatant,
+} from '../../../core/combat/combat-view';
 import { acts, jointTurn, masterActor } from '../../../core/combat/joint-turn';
 import { MasterAutoPass } from '../../../core/combat/auto-pass';
 import { CombatCalls } from '../../../core/combat/combat-calls';
@@ -155,8 +160,24 @@ export abstract class CombatViewStateDirective {
   /** The combat is played without a map (RN-25): a list instead of a map, movement by number, the master's offers (E10-04). */
   protected readonly theatre = computed(() => isTheatre(this.encounter()));
   protected readonly lookingThroughFamiliar = computed(() => !!this.own()?.familiarSightCreatureId);
+  /** The player character the master plays for on its turn (C8-01), by its combatant id; `null` while he is only the master. */
+  readonly actFor = signal<string | null>(null);
+  /** The character the master acts for now: a player character that is on turn and on its feet. It goes with the turn. */
+  protected readonly acting = computed(() => {
+    const e = this.encounter();
+    const id = this.actFor();
+    if (!this.isMaster() || !e || e.status !== EncounterStatus.ACTIVE || !id) {
+      return null;
+    }
+    const c = e.combatants.find((x) => x.id === id);
+    return c && isPlayer(c) && acts(e, c) && !isDown(c) ? c : null;
+  });
+  /** The character the screen acts for: the player's own, or, for the master, the one he acts for. */
   protected readonly own = computed(() => {
     const e = this.encounter();
+    if (this.isMaster()) {
+      return this.acting();
+    }
     return e ? ownCombatant(e) : null;
   });
   protected readonly myTurn = computed(() => {

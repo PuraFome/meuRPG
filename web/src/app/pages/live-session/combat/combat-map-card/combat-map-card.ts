@@ -102,6 +102,8 @@ export class CombatMapCard {
   readonly pick = input<readonly PickMark[] | null>(null);
   /** Why the creature just tapped cannot be the target. */
   readonly pickNote = input<PickNote | null>(null);
+  /** The master acts for this character (C8-01): the head says whose target is asked ("Toque no alvo · por Pensantus"), and "Mover" is in it while no target is. */
+  readonly actingFor = input('');
 
   /** The master taps a door of the map (E10-05 10): the page opens the door's sheet. Not on the phone's cropped preview. */
   readonly doorPick = output<DoorSquare>();
@@ -115,6 +117,8 @@ export class CombatMapCard {
   readonly openMap = output<void>();
   /** A creature offered as a target was tapped. */
   readonly pickTap = output<string>();
+  /** "Mover" in the master's head, while he acts for a character. */
+  readonly move = output<void>();
 
   private readonly phone = mediaQuery(PHONE_QUERY);
   private readonly settled = signal<ReadonlySet<string>>(new Set());
@@ -205,7 +209,7 @@ export class CombatMapCard {
   }
 
   protected readonly preview = computed(
-    () => this.cropOnPhone() && this.isMaster() && this.phone(),
+    () => this.cropOnPhone() && this.isMaster() && this.phone() && !this.pick(),
   );
 
   /** Where the 2x map sits inside the preview frame, so that the one on turn

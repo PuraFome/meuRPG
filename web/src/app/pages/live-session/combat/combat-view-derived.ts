@@ -37,6 +37,9 @@ import { CombatNotices } from './combat-notices';
 import { CombatRage } from './combat-rage';
 import { CombatViewStateDirective } from './combat-view-state';
 
+/** What the combat bar says while a downed character still owes its death save. */
+const DEATH_SAVE_MISSING = 'Falta o teste contra a morte';
+
 /** The most the badge writes before "99+". */
 const MAX_BADGE = 99;
 
@@ -309,9 +312,14 @@ export abstract class CombatViewDerivedDirective extends CombatViewStateDirectiv
   /** The master's bar: "Esperando a sua resposta: escondidas atingidas", or "Esperando a sua reação: Goblin 2". */
   protected readonly waitNote = computed(() => {
     const e = this.encounter();
-    return e && this.isMaster()
-      ? masterWaitNote(e, this.autoLeft(), (id) => this.info().get(id)?.playerName ?? '')
-      : '';
+    if (!e || !this.isMaster()) {
+      return '';
+    }
+    // A downed character's turn starts with its death save (SRD 5.1): the turn does not pass without it (G-02).
+    if (this.deathDue().length > 0) {
+      return DEATH_SAVE_MISSING;
+    }
+    return masterWaitNote(e, this.autoLeft(), (id) => this.info().get(id)?.playerName ?? '');
   });
   /** The reactors drawn on the map for whoever answers, with the square the mover left. */
   protected readonly offerMarks = computed<readonly OfferMark[]>(() => {

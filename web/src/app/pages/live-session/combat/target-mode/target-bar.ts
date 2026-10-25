@@ -203,6 +203,8 @@ export class TargetBar {
   readonly mode = input.required<TargetMode>();
   /** "bar": above the phone's nav; "card": under the action tabs of the rail. */
   readonly variant = input<'bar' | 'card'>('bar');
+  /** The master acts for this character (C8-01): the ask says "por Pensantus". */
+  readonly by = input('');
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
@@ -225,8 +227,15 @@ export class TargetBar {
     if (why) {
       return why;
     }
-    if (this.variant() === 'card' && single && m.picks().length === 0 && words) {
-      return `${m.session()?.name} · ${words.hint.charAt(0).toLowerCase()}${words.hint.slice(1)}`;
+    if (single && m.picks().length === 0 && words) {
+      const hint = `${words.hint.charAt(0).toLowerCase()}${words.hint.slice(1)}`;
+      const by = this.by();
+      if (this.variant() === 'card') {
+        return `${m.session()?.name}${by ? `, por ${by}` : ''} · ${hint}`;
+      }
+      if (by) {
+        return `Por ${by} · ${hint}`;
+      }
     }
     return words?.hint ?? '';
   });
