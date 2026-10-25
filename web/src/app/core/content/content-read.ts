@@ -2,6 +2,7 @@ import type {
   TableBackground,
   TableEntry,
   TableFeat,
+  TableOption,
   TableRace,
   TableSpell,
   TableSubrace,
@@ -22,6 +23,7 @@ import { bonusText } from './feature-draft';
 import { spellToDraft } from './spell-draft';
 import { previewRows } from './spell-preview';
 import { prerequisiteParts } from './feat-text';
+import { optionPrerequisiteParts, optionSetName } from './option-text';
 
 function raceAbilitiesRow(r: TableRace, nameOf: NameOf): ReadRow {
   const choice =
@@ -100,6 +102,15 @@ function readFeat(f: TableFeat, nameOf: NameOf): EntryRead {
   return { rows, sections: [], text: f.descPt };
 }
 
+function readOption(o: TableOption, nameOf: NameOf): EntryRead {
+  const asks = optionPrerequisiteParts(o.prerequisite, nameOf);
+  const rows: ReadRow[] = [
+    { label: 'Conjunto', value: optionSetName(o.set) },
+    { label: 'Pré-requisito', value: asks.length > 0 ? asks.join(', ') : 'Nenhum' },
+  ];
+  return { rows, sections: [], text: o.descPt };
+}
+
 function readSpell(s: TableSpell, nameOf: NameOf): EntryRead {
   const rows: ReadRow[] = [...previewRows(spellToDraft(s), nameOf)];
   const classes = names(s.classKeys, nameOf);
@@ -122,6 +133,8 @@ export function readEntry(
       return readBackground(body.value, nameOf);
     case 'tableFeat':
       return readFeat(body.value, nameOf);
+    case 'tableOption':
+      return readOption(body.value, nameOf);
     case 'tableSpell':
       return readSpell(body.value, nameOf);
     case 'tableClass':

@@ -5583,6 +5583,18 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
       await open(m, entryRoute(campaignId, background));
       await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Cartógrafo do Vale');
       await expectScreenPasses(m, `Editor de antecedente ${where}`);
+      await open(m, `/campaigns/${campaignId}/content/new/option`);
+      await expectScreenPasses(m, `Editor de opção, o conjunto a escolher ${where}`);
+      const option = await createEntryRPC(m, campaignId, 'tableOption', {
+        namePt: 'Olhar do Corvo',
+        descPt: ['Você enxerga o que o corvo vê.'],
+        set: 'invocation',
+        prerequisite: { classLevel: { classKey: 'class:warlock', level: 5 }, requiresPact: 'feature:pact-of-the-tome' },
+        effects: [{ type: 'note', textPt: 'Enxerga pelos olhos de um corvo.' }],
+      });
+      await open(m, entryRoute(campaignId, option));
+      await expect(m.getByLabel('Nome da opção')).toHaveValue('Olhar do Corvo');
+      await expectScreenPasses(m, `Editor de opção ${where}`);
       await open(m, `/campaigns/${campaignId}/content/new/spell`);
       await m.getByLabel('Nome', { exact: true }).fill('Lâmina de Nanquim');
       await m.getByLabel('Distância').fill('18');

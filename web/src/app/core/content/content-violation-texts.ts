@@ -171,6 +171,39 @@ export const FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text: strin
     reason: 'bad_value',
     text: 'Este valor não serve para este efeito (um aumento de habilidade soma +1 ou +2 a cada habilidade).',
   },
+  // A table option for an SRD option set (MR-025): the paths and reasons of backend/internal/rules/overlay_option.go.
+  {
+    shape: /^table_option\.set$/,
+    text: 'Escolha um conjunto da lista. O conjunto de uma opção salva não muda.',
+  },
+  {
+    shape: /^table_option\.prerequisite\.class_level$/,
+    text: 'A classe e o nível vão juntos: preencha os dois ou nenhum.',
+  },
+  {
+    shape: /^table_option\.prerequisite\.class_level\.class_key$/,
+    text: 'Esta classe não existe mais. Escolha outra.',
+  },
+  {
+    shape: /^table_option\.prerequisite\.class_level\.level$/,
+    text: 'O nível vai de 1 a 20.',
+  },
+  {
+    shape: /^table_option\.prerequisite\.requires_option_keys(\[\])?$/,
+    text: 'Escolha opções que existem, sem a própria opção, e no máximo 10.',
+  },
+  {
+    shape: /^table_option\.prerequisite\.requires_pact$/,
+    text: 'Escolha uma dádiva do pacto da lista.',
+  },
+  {
+    shape: /^table_option\.prerequisite\.requires_spell_key$/,
+    text: 'Esta magia não existe mais. Escolha outra.',
+  },
+  {
+    shape: /^table_option\.effects\[\]\.type$/,
+    text: 'Uma opção não pede outra escolha: use outro tipo de efeito.',
+  },
   { shape: /\.level$/, text: 'Escolha um nível de magia de 0 (truque) a 9.' },
   { shape: /\.school_key$/, text: 'Escolha a escola da magia.' },
   {

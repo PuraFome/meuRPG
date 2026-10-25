@@ -645,6 +645,13 @@ The data rules, limits and the server side are in [Table content: rules](../arch
   For ranged weapons (a thrown weapon at range included), that cover is ignored and long range gives no disadvantage.
   Total cover still blocks the attack, and the roll shows no cover where the cover was ignored.
 
+**Options for the SRD's option sets.**
+
+- **Given** I am the game master of "Mirathel", **when** I register an option for one of the SRD's option sets (an Eldritch Invocation, a Metamagic option, a fighting style, a Pact Boon, a Hunter's Prey, Defensive Tactics, Multiattack or Superior Hunter's Defense) with its text, its effects from the closed menu and what it asks for (a level in a class, other options, a Pact Boon, a spell the character knows), **then** the choice of that set offers it, in "Mirathel" only, next to the SRD's options, **and** a set with many table options is not cut at 20.
+- **Given** a table option, **when** a character does not meet what it asks for, **then** the choice lists it blocked with the reason ("Exige o nível 5 de Bruxo. Você está no 3.", "Exige o Pacto do Tomo"), **and** the server refuses a sheet that picks it anyway; **when** the character meets it, **then** the player picks it and its effects (and its action, if it has one) are on the sheet.
+- **Given** the "Opções para os jogadores" screen, **when** the master switches a table option off, **then** players are not offered it and the server refuses it as a new pick; a sheet that already has it keeps it.
+- **Given** the option editor, **when** I save an option with an unknown set, a class or option or Pact Boon or spell that does not exist, a level outside 1 to 20, or another choice among its effects, **then** the server refuses each at its field, **and** the set of an option never changes after it is created.
+
 **Changing, archiving and switching.**
 
 - **Given** a table class that a sheet uses, **when** the game master changes one of its numbers, **then** the sheet shows the new number, locked sheets included, **and** whatever fell outside the rules appears on the sheet as a notice ("A classe mudou") with one sentence per change, without blocking any other edit (RN-23).
