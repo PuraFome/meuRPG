@@ -163,7 +163,7 @@ The choice engine reads it with the SRD options: `GetLevelUpOptions`, `PreviewCh
 ## Table class features
 
 `TABLE_CONTENT_KIND_CLASS_FEATURE` (`classfeature` rows of `campaign_content`, key `classfeature:<slug>@mesa`, migration 00281) is a feature the master adds to a class at a class level, optionally taking the place of one of the class's own.
-`TableClassFeature` has `class_key`, `level`, `replaces_feature_key` and the feature body; the class and the level can change on update, the key never does.
+`TableClassFeature` has `class_key`, `level`, `replaces_feature_key` and the feature body; the key and the class never change (`immutable`), the level, the replaced feature and the body do.
 It goes through the same writes, archive mark, switch (`SetOptionSwitches`, `ListOptionSwitches`), pack and player view as the other kinds, and a sheet that has the class gets the notice "A classe mudou" when it changes.
 The engine side is [Table class features](rules-table-content.md#table-class-features).
 A player's copy drops a hidden class, a hidden replaced feature and the effects' hidden references.
