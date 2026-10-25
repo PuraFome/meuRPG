@@ -77,7 +77,9 @@ func TestAClassFeatureComesAtItsLevelAndOnATableClass(t *testing.T) {
 	late.Replaces, late.Level, late.Class = "", 3, "class:fighter"
 	late.Effects = []Effect{{Type: "sense", Sense: "darkvision", RangeFt: 30}}
 	c := withOverlay(t, cfOverlay(late))
-	fighter := func(level int) Build { return choiceBuild("race:human", "", ClassLevel{Class: "class:fighter", Level: level}, "feature:fighter-fighting-style-defense") }
+	fighter := func(level int) Build {
+		return choiceBuild("race:human", "", ClassLevel{Class: "class:fighter", Level: level}, "feature:fighter-fighting-style-defense")
+	}
 	if hasFeature(Derive(fighter(2), c), trackerGaze) {
 		t.Error("the feature is there before its level")
 	}
