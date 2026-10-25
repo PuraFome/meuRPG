@@ -101,3 +101,23 @@ describe('TargetMode', () => {
     expect(open).toHaveBeenCalledWith(null);
   });
 });
+
+describe('TargetMode for the master acting for a character', () => {
+  it('says the character does not see a target it cannot see', () => {
+    const mode = new TargetMode((run) => run());
+    mode.begin({
+      key: 'attack:dagger',
+      name: 'Adaga',
+      rows: [{ id: 'c', label: 'Cultista', reason: 'não vê este alvo', note: '' }],
+      rule: SINGLE,
+      detail: '',
+      foe: true,
+      origin: null,
+      by: 'Pensantus',
+      open: vi.fn(),
+    });
+    mode.tap('c');
+    expect(mode.note()?.text).toBe('Pensantus não vê este alvo');
+    expect(mode.picks()).toEqual([]);
+  });
+});

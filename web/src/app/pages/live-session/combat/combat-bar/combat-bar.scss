@@ -268,3 +268,10 @@
 .end--block {
   width: 100%;
 }
+
+// "Você age por Pensantus" (C8-01): the garnet tag beside whose turn comes next.
+.bar__acting {
+  border-color: var(--mr-accent);
+  background: var(--mr-accent-soft);
+  color: var(--mr-accent-text);
+}

@@ -122,9 +122,15 @@ export class ReactionQueue {
   private readonly picks = signal<Readonly<Record<string, SlotOption>>>({});
   private readonly keys = new ActionKey();
 
-  protected readonly cards = computed<readonly ReactionCard[]>(() =>
-    reactionCards(this.encounter()),
-  );
+  /** `late`: only the questions that came to the master after 10 s (they lead the "Turno"); `rest`: all the others. */
+  readonly part = input<'all' | 'late' | 'rest'>('all');
+
+  protected readonly cards = computed<readonly ReactionCard[]>(() => {
+    const part = this.part();
+    return reactionCards(this.encounter()).filter(
+      (c) => part === 'all' || (part === 'late') === (c.type === 'unanswered'),
+    );
+  });
 
   constructor() {
     // The focus opens on the first button of the first window to answer, when it is a new one.
@@ -162,7 +168,9 @@ export class ReactionQueue {
 
   protected isSlot(windowId: string, option: SlotOption): boolean {
     const row = this.cards()
-      .flatMap((c) => (c.type === 'queue' ? c.rows : c.type === 'single' ? [c.row] : []))
+      .flatMap((c) =>
+        c.type === 'queue' ? c.rows : c.type === 'single' || c.type === 'unanswered' ? [c.row] : [],
+      )
       .find((r) => r.window.id === windowId);
     const chosen = row ? this.slotOf(row) : null;
     return (
