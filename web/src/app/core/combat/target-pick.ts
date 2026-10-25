@@ -21,8 +21,15 @@ export interface PickRow {
   readonly note: string;
 }
 
+/** The reason of a target the acted-for character does not see; the map says it with the character's name. */
+export const NOT_SEEN = 'não vê este alvo';
+
 /** The server's word on a target that cannot be chosen, as the map says it. */
 export function reasonOf(t: TargetInReach): string {
+  // The master acting for a character: a creature the character does not see is listed and dimmed (C8-01).
+  if (t.notSeen) {
+    return NOT_SEEN;
+  }
   const cover = listing(t);
   if (cover.kind === 'blocked') {
     return cover.text;

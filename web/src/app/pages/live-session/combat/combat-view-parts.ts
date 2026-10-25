@@ -73,6 +73,7 @@ export abstract class CombatViewPartsDirective extends CombatViewActingDirective
       placed: (id) => !!this.encounter()?.combatants.find((c) => c.id === id)?.placed,
       reveal: () => revealMap(this.host.nativeElement, this.injector, this.laptop()),
       origin: () => pressedButton(this.host.nativeElement),
+      by: () => this.acting()?.label ?? '',
     },
   );
   protected readonly attackSheetOpen = this.sheets.attackOpen;

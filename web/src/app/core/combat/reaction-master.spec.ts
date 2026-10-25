@@ -356,6 +356,7 @@ describe("the master's card for an effect's saving throw (RN-22)", () => {
             armorClassWithShield: 17,
             slotEffects: [],
           } as never,
+          prompt: { case: 'shield', value: { slots: [{ level: 1, free: 3 }] } } as never,
         } as never),
       ],
     } as never);
@@ -366,7 +367,7 @@ describe("the master's card for an effect's saving throw (RN-22)", () => {
       expect(plain(card.text)).toBe(
         'O ataque de 16 do Capitão Goblin acerta a CA 12. Com Escudo Arcano a CA vai a 17 e o ataque erra.',
       );
-      expect(card.cost).toContain('Gasta a reação');
+      expect(plain(card.cost)).toContain('Gasta a reação e um espaço de 1º nível (3 livres)');
       expect(card.cost).toContain('10 s');
     }
     expect(windowsBarText(e)).toBe('Falta responder por Pensantus');

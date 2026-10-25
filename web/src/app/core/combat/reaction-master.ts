@@ -303,11 +303,11 @@ function lateText(w: ReactionWindow): string {
 
 /** What the reaction costs the character: its reaction, and the slot a spell takes. */
 function lateCost(w: ReactionWindow): string {
-  const slot =
-    w.prompt.case === 'shield'
-      ? [...w.prompt.value.slots].sort((a, b) => a.level - b.level)[0]
-      : null;
-  const spent = slot ? ` e um espaço de ${circleLabel(slot.level)}` : '';
+  const slots = w.prompt.case === 'shield' ? w.prompt.value.slots.filter((x) => x.free > 0) : [];
+  const slot = [...slots].sort((x, y) => x.level - y.level)[0];
+  const spent = slot
+    ? ` e um espaço de ${circleLabel(slot.level)} (${slot.free} ${slot.free === 1 ? 'livre' : 'livres'})`
+    : '';
   return `Gasta a reação${spent}. O jogador não respondeu em ${LATE_SECONDS} s; você responde por ele.`;
 }
 
