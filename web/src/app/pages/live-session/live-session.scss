@@ -24,7 +24,12 @@
 }
 
 @media (min-width: 1600px) {
-  .split {
+  // The master's running combat has the conversation in its own rail: the board takes the whole width.
+  .split--rail {
+    display: block;
+  }
+
+  .split:not(.split--rail) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(380px, 420px);
     gap: var(--mr-space-6);

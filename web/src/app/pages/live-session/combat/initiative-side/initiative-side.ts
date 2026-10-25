@@ -1,14 +1,4 @@
-import {
-  Component,
-  ElementRef,
-  computed,
-  effect,
-  input,
-  output,
-  signal,
-  viewChild,
-} from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
+import { Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
@@ -17,32 +7,19 @@ import type { CombatantInfo } from '../combat-info';
 
 /**
  * "Falta uma rolagem" (E6-04): what stands between the master and the first
- * turn, and the button that starts it. "Começar o combate" is the page's one
- * filled button; while someone has no initiative it is a dashed outline with
- * the reason beside it, and it keeps its focus stop (`aria-disabled`, not
- * `disabled`), so a screen reader hears the reason. A tie does not block
- * the start: the order stays as it is (BeginCombat). "Cancelar combate"
- * ends the combat from SETUP and asks in place first, with the focus on the
- * safe "Voltar".
+ * turn. The button that starts it, "Começar o combate" (the page's one filled button), and "Cancelar combate" are
+ * in the sticky combat bar (`CombatBar`); this card keeps the reason the button points at with `aria-describedby`.
+ * A tie does not block the start: the order stays as it is (BeginCombat).
  */
 @Component({
   selector: 'app-initiative-side',
-  imports: [MatButtonModule, MatIconModule],
+  imports: [MatIconModule],
   templateUrl: './initiative-side.html',
   styleUrl: './initiative-side.scss',
 })
 export class InitiativeSide {
   readonly encounter = input.required<Encounter>();
   readonly info = input<ReadonlyMap<string, CombatantInfo>>(new Map());
-  readonly busy = input(false);
-
-  readonly begin = output<void>();
-  /** "Cancelar combate", confirmed. */
-  readonly cancel = output<void>();
-
-  protected readonly confirming = signal(false);
-  private readonly back = viewChild('back', { read: ElementRef<HTMLButtonElement> });
-
   protected readonly total = computed(() => this.encounter().combatants.length);
   protected readonly missing = computed(() => missingInitiative(this.encounter().combatants));
   protected readonly rolled = computed(() => this.total() - this.missing().length);
@@ -85,19 +62,4 @@ export class InitiativeSide {
         ? 'Falta uma rolagem'
         : 'Faltam rolagens',
   );
-
-  constructor() {
-    effect(() => this.back()?.nativeElement.focus());
-  }
-
-  protected start(): void {
-    if (this.ready() && !this.busy()) {
-      this.begin.emit();
-    }
-  }
-
-  protected confirmCancel(): void {
-    this.confirming.set(false);
-    this.cancel.emit();
-  }
 }

@@ -4,6 +4,7 @@ import { getEncounterRPC } from './combat-support';
 import { beginFogCombat, moveTo, sessionRoute, tableForFog, visionOf, type FogOptions, type FogTable } from './fog-support';
 import { endOpenSessionRPC } from './live-session-support';
 import { callRPC, newSignedInContext } from './support';
+import { openCombatPanel } from './combat-layout';
 
 // The fog of war on screen (Etapa 9, MR-036, RN-10, RN-20; E9-03 and E9-04). The tests read the shading
 // (`data-shaded` and `data-seen` on the picture: how many squares of each state), the tokens the map draws
@@ -331,6 +332,7 @@ test('no combate, o mapa tem a mesma névoa e os controles continuam; ver pelos 
     // The light stays in reach during the combat, and so does the master's "Ver como".
     await expect(ap.getByRole('button', { name: /Luz que você carrega/ })).toBeVisible();
     await mp.goto(sessionRoute(table.campaignId));
+    await openCombatPanel(mp, 'Névoa e luz');
     await expect(mp.getByRole('radiogroup', { name: 'Ver como' })).toBeVisible();
     await expect(mp.getByRole('heading', { name: 'Luz dos personagens' })).toBeVisible();
 

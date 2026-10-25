@@ -39,6 +39,7 @@ func (w *world) probeRequest(p *person, method protoreflect.MethodDescriptor) *d
 		"generation_id":       w.generation,
 		"game_session_id":     w.session,
 		"clue_id":             w.clueUnrevealed,
+		"action_id":           w.hiddenAction,
 		"map_point_id":        w.pts["battle"].GetId(),
 		"idempotency_key":     uuid.New().String(),
 		"token":               "x",

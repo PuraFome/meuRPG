@@ -482,9 +482,15 @@ func (noLive) OnScreen(context.Context, string) (string, string, error) {
 
 func (noLive) Publish(string, bool, *playv1.WatchGameSessionResponse) {}
 
-func (noLive) ImageOnStage(context.Context, string, string) (bool, error) {
+func (noLive) ImageOnStage(context.Context, string, string, string) (bool, error) {
 	return false, errors.New("not in this test")
 }
+
+func (noLive) ImageShownTo(context.Context, string, string, string) (bool, error) {
+	return false, errors.New("not in this test")
+}
+
+func (noLive) PublishToScene(context.Context, string, *playv1.WatchGameSessionResponse) {}
 
 func (noLive) ImageInConversation(context.Context, string, string, string) (bool, error) {
 	return false, nil

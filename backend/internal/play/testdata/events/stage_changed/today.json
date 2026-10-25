@@ -1,4 +1,6 @@
 {
   "change": "x",
-  "character_id": "x"
+  "character_id": "x",
+  "hidden": true,
+  "revealed": true
 }

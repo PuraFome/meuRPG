@@ -94,7 +94,7 @@ func (h *harness) buildFixture(master *user) *fixture {
 		CampaignId: cid, MapId: f.village, PointId: f.taverna, Key: "skill:persuasion", Name: "Convencer o estalajadeiro", Dc: 14, MaxAttempts: ptr(int32(2)),
 	})))
 	_ = must(master.maps.AddSceneAction(ctx, connect.NewRequest(&mapsv1.AddSceneActionRequest{
-		CampaignId: cid, MapId: f.village, PointId: f.taverna, Key: "save:wis", Name: "", Dc: 12,
+		CampaignId: cid, MapId: f.village, PointId: f.taverna, Key: "save:wis", Name: "", Dc: 12, Hidden: true,
 	})))
 	clue := must(master.maps.AddSceneClue(ctx, connect.NewRequest(&mapsv1.AddSceneClueRequest{
 		CampaignId: cid, MapId: f.village, PointId: f.taverna, Text: "Há uma marca de corvo na lareira.",

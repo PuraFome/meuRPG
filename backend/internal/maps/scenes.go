@@ -84,6 +84,7 @@ type newAction struct {
 	name     string
 	dc       *int32
 	attempts int32
+	hidden   bool
 }
 
 // addActionCall is one AddSceneAction inside its transaction: the action to
@@ -125,7 +126,7 @@ func (s *Service) AddSceneAction(
 		return nil, s.dbError(ctx, "add a scene action", err)
 	}
 	if !call.replayed {
-		s.actionsChanged(ctx, m.CampaignID, ch)
+		s.actionsChangedFor(ctx, m.CampaignID, ch, !action.hidden)
 	}
 	return connect.NewResponse(&mapsv1.AddSceneActionResponse{
 		Action: s.actionToProto(call.added, true), Actions: s.actionsToProto(call.actions, true),
@@ -153,7 +154,7 @@ func (s *Service) cleanNewAction(msg *mapsv1.AddSceneActionRequest) (newAction, 
 			return newAction{}, err
 		}
 	}
-	return newAction{key: key, name: name, dc: dc, attempts: attempts}, nil
+	return newAction{key: key, name: name, dc: dc, attempts: attempts, hidden: msg.GetHidden()}, nil
 }
 
 // appendAction reads the point's actions and adds the new one after them, or
@@ -190,7 +191,7 @@ func (s *Service) insertAction(ctx context.Context, q *mapsdb.Queries, call *add
 	}
 	a, err := q.InsertSceneAction(ctx, mapsdb.InsertSceneActionParams{
 		PointID: call.pointID, Position: position, Key: call.action.key, Name: call.action.name, Dc: call.action.dc, MaxAttempts: call.action.attempts,
-		CreateKey: call.scopedKey, CreateHash: call.requestHash, Now: s.now(),
+		Hidden: call.action.hidden, CreateKey: call.scopedKey, CreateHash: call.requestHash, Now: s.now(),
 	})
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return a, fmt.Errorf("insert action: %w", err)
@@ -206,6 +207,7 @@ type actionEdit struct {
 	dc       *int32
 	dcSet    bool
 	attempts *int32
+	hidden   *bool
 }
 
 // UpdateSceneAction implements mapsv1connect.MapServiceHandler.
@@ -226,17 +228,18 @@ func (s *Service) UpdateSceneAction(
 		return nil, err
 	}
 
-	var changed mapsdb.SceneAction
+	var before, changed mapsdb.SceneAction
 	var actions []mapsdb.SceneAction
 	ch, err := s.changeActions(ctx, m, mapID, pointID, func(q *mapsdb.Queries) error {
 		var err error
-		changed, actions, err = s.editAction(ctx, q, pointID, actionID, edit)
+		before, changed, actions, err = s.editAction(ctx, q, pointID, actionID, edit)
 		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "update a scene action", err)
 	}
-	s.actionsChanged(ctx, m.CampaignID, ch)
+	// An action that was hidden and stays hidden is the master's business alone.
+	s.actionsChangedFor(ctx, m.CampaignID, ch, !before.Hidden || !changed.Hidden)
 	return connect.NewResponse(&mapsv1.UpdateSceneActionResponse{
 		Action: s.actionToProto(changed, true), Actions: s.actionsToProto(actions, true),
 	}), nil
@@ -257,7 +260,7 @@ func cleanOptional[In, Out any](in *In, clean func(In) (Out, error)) (*Out, erro
 // cleanActionEdit checks the fields of an UpdateSceneAction in order: at
 // least one must be there, then the key, the name, the DC and the attempts.
 func (s *Service) cleanActionEdit(msg *mapsv1.UpdateSceneActionRequest) (actionEdit, error) {
-	if msg.Key == nil && msg.Name == nil && msg.Dc == nil && msg.MaxAttempts == nil {
+	if msg.Key == nil && msg.Name == nil && msg.Dc == nil && msg.MaxAttempts == nil && msg.Hidden == nil {
 		return actionEdit{}, connect.NewError(connect.CodeInvalidArgument, errors.New("nothing to change"))
 	}
 	var edit actionEdit
@@ -276,30 +279,31 @@ func (s *Service) cleanActionEdit(msg *mapsv1.UpdateSceneActionRequest) (actionE
 	if edit.attempts, err = cleanOptional(msg.MaxAttempts, cleanAttempts); err != nil {
 		return actionEdit{}, err
 	}
+	edit.hidden = msg.Hidden
 	return edit, nil
 }
 
 // editAction locks the action, applies the edit and reads the point's
-// actions as they are now.
-func (s *Service) editAction(ctx context.Context, q *mapsdb.Queries, pointID, actionID string, edit actionEdit) (mapsdb.SceneAction, []mapsdb.SceneAction, error) {
+// actions as they are now. It returns the action as it was and as it is.
+func (s *Service) editAction(ctx context.Context, q *mapsdb.Queries, pointID, actionID string, edit actionEdit) (before, after mapsdb.SceneAction, actions []mapsdb.SceneAction, err error) {
 	a, err := q.GetSceneActionForUpdate(ctx, mapsdb.GetSceneActionForUpdateParams{PointID: pointID, ID: actionID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return mapsdb.SceneAction{}, nil, errActionNotFound()
+		return a, a, nil, errActionNotFound()
 	}
 	if err != nil {
-		return mapsdb.SceneAction{}, nil, fmt.Errorf("find action: %w", err)
+		return a, a, nil, fmt.Errorf("find action: %w", err)
 	}
-	params := mapsdb.UpdateSceneActionParams{PointID: pointID, ID: actionID, Key: a.Key, Name: a.Name, Dc: a.Dc, MaxAttempts: a.MaxAttempts, Now: s.now()}
+	params := mapsdb.UpdateSceneActionParams{PointID: pointID, ID: actionID, Key: a.Key, Name: a.Name, Dc: a.Dc, MaxAttempts: a.MaxAttempts, Hidden: a.Hidden, Now: s.now()}
 	edit.applyTo(&params)
 	changed, err := q.UpdateSceneAction(ctx, params)
 	if err != nil {
-		return changed, nil, fmt.Errorf("update action: %w", err)
+		return a, changed, nil, fmt.Errorf("update action: %w", err)
 	}
-	actions, err := q.ListSceneActions(ctx, pointID)
+	actions, err = q.ListSceneActions(ctx, pointID)
 	if err != nil {
-		return changed, actions, fmt.Errorf("list the actions: %w", err)
+		return a, changed, actions, fmt.Errorf("list the actions: %w", err)
 	}
-	return changed, actions, nil
+	return a, changed, actions, nil
 }
 
 func (e actionEdit) applyTo(params *mapsdb.UpdateSceneActionParams) {
@@ -314,6 +318,9 @@ func (e actionEdit) applyTo(params *mapsdb.UpdateSceneActionParams) {
 	}
 	if e.attempts != nil {
 		params.MaxAttempts = *e.attempts
+	}
+	if e.hidden != nil {
+		params.Hidden = *e.hidden
 	}
 }
 
@@ -346,7 +353,9 @@ func (s *Service) MoveSceneAction(
 		return nil, s.dbError(ctx, "move a scene action", err)
 	}
 	if moved {
-		s.actionsChanged(ctx, m.CampaignID, ch)
+		// Moving a hidden action changes nothing the players read.
+		i := slices.IndexFunc(actions, func(a mapsdb.SceneAction) bool { return a.ID == actionID })
+		s.actionsChangedFor(ctx, m.CampaignID, ch, i < 0 || !actions[i].Hidden)
 	}
 	return connect.NewResponse(&mapsv1.MoveSceneActionResponse{Actions: s.actionsToProto(actions, true)}), nil
 }
@@ -412,24 +421,39 @@ func (s *Service) RemoveSceneAction(
 		return nil, errActionNotFound()
 	}
 	var actions []mapsdb.SceneAction
+	var removedHidden bool
 	ch, err := s.changeActions(ctx, m, mapID, pointID, func(q *mapsdb.Queries) error {
-		n, err := q.DeleteSceneAction(ctx, mapsdb.DeleteSceneActionParams{PointID: pointID, ID: actionID})
-		if err != nil {
-			return fmt.Errorf("delete action: %w", err)
-		}
-		if n == 0 {
-			return errActionNotFound()
-		}
-		if actions, err = q.ListSceneActions(ctx, pointID); err != nil {
-			return fmt.Errorf("list the actions: %w", err)
+		var err error
+		if removedHidden, actions, err = s.removeAction(ctx, q, pointID, actionID); err != nil {
+			return err
 		}
 		return nil
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "remove a scene action", err)
 	}
-	s.actionsChanged(ctx, m.CampaignID, ch)
+	s.actionsChangedFor(ctx, m.CampaignID, ch, !removedHidden) // the players never knew a hidden action
 	return connect.NewResponse(&mapsv1.RemoveSceneActionResponse{Actions: s.actionsToProto(actions, true)}), nil
+}
+
+// removeAction deletes the action and reads the point's actions as they are now. It says whether
+// the action was hidden from the players.
+func (s *Service) removeAction(ctx context.Context, q *mapsdb.Queries, pointID, actionID string) (bool, []mapsdb.SceneAction, error) {
+	a, err := q.GetSceneActionForUpdate(ctx, mapsdb.GetSceneActionForUpdateParams{PointID: pointID, ID: actionID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil, errActionNotFound()
+	}
+	if err != nil {
+		return false, nil, fmt.Errorf("find action: %w", err)
+	}
+	if _, err := q.DeleteSceneAction(ctx, mapsdb.DeleteSceneActionParams{PointID: pointID, ID: actionID}); err != nil {
+		return false, nil, fmt.Errorf("delete action: %w", err)
+	}
+	actions, err := q.ListSceneActions(ctx, pointID)
+	if err != nil {
+		return false, nil, fmt.Errorf("list the actions: %w", err)
+	}
+	return a.Hidden, actions, nil
 }
 
 // sceneCall is the start of every scene-action handler: the master's check,
@@ -495,6 +519,16 @@ func (s *Service) actionsChanged(ctx context.Context, campaignID string, ch chan
 	s.publishSceneChangedIf(ctx, campaignID, ch.point.ID)
 }
 
+// actionsChangedFor is actionsChanged for a change the players may not read: when players is false
+// (an action that is hidden from them, and stays so) only the master's streams hear of it.
+func (s *Service) actionsChangedFor(ctx context.Context, campaignID string, ch changedPoint, players bool) {
+	if players {
+		s.actionsChanged(ctx, campaignID, ch)
+		return
+	}
+	s.cluesChanged(ctx, campaignID, ch)
+}
+
 // publishSceneChangedIf tells everyone that the open scene changed, when the
 // point is the scene open in the session. The hint names nothing: the app
 // reads the scene again, filtered for it.
@@ -505,14 +539,14 @@ func (s *Service) publishSceneChangedIf(ctx context.Context, campaignID, pointID
 		return
 	}
 	if open != "" && open == pointID {
-		s.publishSceneChanged(campaignID)
+		s.publishSceneChanged(ctx, campaignID)
 	}
 }
 
-// publishSceneChanged tells everyone in the session that the open scene
-// changed.
-func (s *Service) publishSceneChanged(campaignID string) {
-	s.live.Publish(campaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_SceneChanged_{
+// publishSceneChanged tells the master and the players in the open scene that it
+// changed (everyone, when it is open to the whole table).
+func (s *Service) publishSceneChanged(ctx context.Context, campaignID string) {
+	s.live.PublishToScene(ctx, campaignID, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_SceneChanged_{
 		SceneChanged: &playv1.WatchGameSessionResponse_SceneChanged{},
 	}})
 }
@@ -568,7 +602,7 @@ func errActionNotFound() error {
 // gets it.
 func (s *Service) actionToProto(a mapsdb.SceneAction, withDC bool) *mapsv1.SceneAction {
 	checkName, _ := s.checks.SceneCheckName(a.Key)
-	out := &mapsv1.SceneAction{Id: a.ID, Key: a.Key, Name: a.Name, CheckName: checkName, MaxAttempts: a.MaxAttempts}
+	out := &mapsv1.SceneAction{Id: a.ID, Key: a.Key, Name: a.Name, CheckName: checkName, MaxAttempts: a.MaxAttempts, Hidden: a.Hidden}
 	if withDC && a.Dc != nil {
 		out.Dc = *a.Dc
 	}
@@ -585,7 +619,7 @@ func (s *Service) actionsToProto(rows []mapsdb.SceneAction, withDC bool) []*maps
 
 // attachActions fills the scene_actions of the SCENE points of a map, as the
 // viewer sees them: a player gets a DC only from a scene that shows it
-// (show_dc).
+// (show_dc), and never an action the master hid (RN-10).
 func (s *Service) attachActions(ctx context.Context, mapID string, points []*mapsv1.MapPoint, master bool) error {
 	if !slices.ContainsFunc(points, func(p *mapsv1.MapPoint) bool { return p.GetKind() == mapsv1.MapPointKind_MAP_POINT_KIND_SCENE }) {
 		return nil
@@ -596,6 +630,9 @@ func (s *Service) attachActions(ctx context.Context, mapID string, points []*map
 	}
 	byPoint := map[string][]mapsdb.SceneAction{}
 	for _, r := range rows {
+		if r.Hidden && !master {
+			continue
+		}
 		byPoint[r.PointID] = append(byPoint[r.PointID], r)
 	}
 	for _, p := range points {
@@ -629,7 +666,7 @@ func (sm *SessionMaps) ScenePoint(ctx context.Context, tx pgx.Tx, campaignID, po
 		return link.Scene{}, err
 	}
 	for _, a := range rows {
-		act := link.SceneAction{ID: a.ID, Key: a.Key, Name: a.Name, MaxAttempts: int(a.MaxAttempts)}
+		act := link.SceneAction{ID: a.ID, Key: a.Key, Name: a.Name, MaxAttempts: int(a.MaxAttempts), Hidden: a.Hidden}
 		if a.Dc != nil {
 			act.DC = int(*a.Dc)
 		}

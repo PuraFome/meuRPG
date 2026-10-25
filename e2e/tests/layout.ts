@@ -192,6 +192,9 @@ function auditLayout(): LayoutIssue[] {
       if (!visible(c) || !inFlow(c) || c.closest('.cdk-visually-hidden, .mr-visually-hidden')) continue;
       const nearest = c.closest('.mr-panel');
       if (nearest !== card) continue;
+      // A strip that scrolls sideways on purpose (the tabs of a narrow card) clips its own controls.
+      const strip = c.closest('[role="tablist"]');
+      if (strip && ['auto', 'scroll'].includes(getComputedStyle(strip).overflowX)) continue;
       const r = c.getBoundingClientRect();
       if (r.right > cb.right + 1 || r.left < cb.left - 1) {
         issues.push({

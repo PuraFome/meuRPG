@@ -97,6 +97,15 @@ describe('the panel of effects in the combat page', () => {
     const fixture = render(true, EncounterStatus.ACTIVE);
     await settle(fixture);
     const el = fixture.nativeElement as HTMLElement;
+    // On a small screen the effects are a row of "Mais", at the end of "Turno"; a row opens in place.
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => b.textContent?.includes('Mais'))!
+      .click();
+    await settle(fixture);
+    Array.from(el.querySelectorAll<HTMLButtonElement>('.more .mr-fold__button'))
+      .find((b) => b.textContent?.includes('Efeitos'))!
+      .click();
+    await settle(fixture);
     expect(el.querySelector('app-effects-panel [data-testid="effects-panel"]')).toBeTruthy();
     expect(list).toHaveBeenCalledWith('c', 'enc');
   });

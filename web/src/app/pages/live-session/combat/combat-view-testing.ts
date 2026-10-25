@@ -5,7 +5,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { provideRouter } from '@angular/router';
 import { create } from '@bufbuild/protobuf';
 import { Subject } from 'rxjs';
-import { vi } from 'vitest';
+import { onTestFinished, vi } from 'vitest';
 
 import { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import type { Encounter } from '../../../../gen/meurpg/play/v1/combat_pb';
@@ -73,7 +73,9 @@ export type ViewApi = any;
 export function mountCombatView(opts: MountOptions) {
   TestBed.resetTestingModule();
   const matching = opts.matches ?? [];
-  // `vi.stubGlobal` is undone by the setup file after each test.
+  // `vi.stubGlobal` is undone by the setup file after each test, but under `--coverage` that file runs once per worker, not per spec
+  // file: the stub (a wide screen, say) would reach the next file and change how its component draws. It is undone here, when the test ends.
+  onTestFinished(() => void vi.unstubAllGlobals());
   vi.stubGlobal('matchMedia', (query: string) => ({
     matches: matching.includes(query),
     media: query,

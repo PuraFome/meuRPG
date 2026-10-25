@@ -43,14 +43,13 @@ import {
   isPlayer,
   roundLabel,
 } from '../../../../core/combat/combat-view';
+import { joinDots } from '../../../../core/format/text';
 import { isCreature } from '../../../../core/combat/creature-names';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { Portrait } from '../../../../shared/portrait/portrait';
-import { NextTurn } from '../combat-bar/next-turn';
 import { MultiRoll } from '../multi-roll/multi-roll';
 import { RollPicker } from '../../../../shared/roll-picker/roll-picker';
 import { MasterSpend } from '../theatre/master-spend';
-import { TheatrePill } from '../theatre/theatre-pill';
 import { AttackChoice } from './attack-choice';
 import {
   D20_FIELDS,
@@ -90,11 +89,9 @@ import { PendingDamages } from './pending-damages';
     CombatantToken,
     MasterSpend,
     MatButtonModule,
-    TheatrePill,
     MatFormFieldModule,
     MatIconModule,
     MatSelectModule,
-    NextTurn,
     PendingDamages,
     Portrait,
     RageStatus,
@@ -116,13 +113,8 @@ export class NpcCard {
   readonly subject = input.required<Combatant>();
   readonly options = input<GetTurnOptionsResponse | null>(null);
   readonly state = input.required<CombatState>();
-  /** On a phone or a tablet the card is the whole turn (E6-12): its title, the
-   * warning that damage is owed and "Próximo turno" at its end. */
-  readonly narrow = input(false);
-  /** A joint turn is running: the turn passes when the last part ends, so no "Próximo turno". */
-  readonly joint = input(false);
-  /** What the turn still owes ("Falta aplicar 5 de dano"), or `null`. */
-  readonly pendingNote = input<string | null>(null);
+  /** The card has its own accent frame (the theatre's, in the middle of the page); inside the rail it is bare. */
+  readonly framed = input(true);
   /** The newest attack of this one was stopped by the target's Escudo (from the log). */
   readonly reactionStopped = input(false);
   /** The page's own call (the turn passing) is in flight. */
@@ -133,22 +125,15 @@ export class NpcCard {
   readonly offering = input(false);
   /** Why "Oferecer ataque de oportunidade" cannot be used now ("Ninguém pode reagir agora."), or `''`. */
   readonly offerWhy = input('');
-  /** A question about hidden creatures holds the turn: why "Próximo turno" waits ("Responda ao pedido abaixo para seguir."), or `''`. */
-  readonly waitWhy = input('');
   /** "Oferecer ataque de oportunidade": the page opens the form. */
   readonly offer = output<void>();
   /** "Conjurar" on an NPC's area spell placed on the map: the page opens the master's picker (PM-02d state 11). */
   readonly castArea = output<string>();
-  /** "Próximo turno"; `true` when the master passes it with a damage waiting. */
-  readonly next = output<boolean>();
   /** A damage was applied or discarded (`PendingDamages`): the page keeps the card for its note. */
   readonly settledNote = output<void>();
   /** "Encerrar fúria": the id of the raging combatant. */
   readonly endRage = output<string>();
 
-  protected readonly turnKey = computed(
-    () => `${this.encounter().currentCombatantId}:${this.encounter().round}`,
-  );
   protected readonly attackKey = signal('');
   protected readonly targetId = signal('');
   protected readonly busy = signal(false);
@@ -171,6 +156,12 @@ export class NpcCard {
   protected readonly creatureSlug = computed(() =>
     creatureSlug(this.subject().bestiaryCreatureKey ?? ''),
   );
+  /** "Goblin · ND 1/4": what it is, under the title; empty for a character or a creature of a player. */
+  protected readonly identity = computed(() => {
+    const c = this.subject();
+    const nd = c.challengeRating ? `ND\u00a0${c.challengeRating}` : '';
+    return joinDots([c.monsterNamePt, nd].filter(Boolean));
+  });
   protected readonly isNpc = computed(
     () => !isPlayer(this.subject()) && !isCreature(this.subject()),
   );

@@ -102,7 +102,7 @@ func (s *Service) GetSessionSummary(
 		return nil, err
 	}
 
-	scenesOpened, err := s.tallyChecks(ctx, session.ID, &st)
+	scenesOpened, err := s.tallyChecks(ctx, session.ID, m, &st)
 	if err != nil {
 		return nil, err
 	}
@@ -263,15 +263,16 @@ func playerResult(list []*characterTally, chars map[string]link.Character, userI
 	return characterSummary(&total)
 }
 
-// tallyChecks adds the checks passed and tried outside combat to the tallies,
-// and returns how many scenes the master opened. The counting is done by the
+// tallyChecks adds the checks passed and tried outside combat to the tallies, as the member may count
+// them, and returns how many scenes the master opened. The counting is done by the
 // database, so the number of rolls in a session does not matter.
-func (s *Service) tallyChecks(ctx context.Context, sessionID string, st *sessionTally) (int, error) {
+func (s *Service) tallyChecks(ctx context.Context, sessionID string, m authz.Membership, st *sessionTally) (int, error) {
 	opened, err := s.queries.CountSessionScenesOpened(ctx, sessionID)
 	if err != nil {
 		return 0, s.dbError(ctx, "count the session's scenes", err)
 	}
-	rows, err := s.queries.TallySessionSceneChecks(ctx, sessionID)
+	// The rolls of a scene open to only some players count for its players and the master alone (RN-10).
+	rows, err := s.queries.TallySessionSceneChecks(ctx, playdb.TallySessionSceneChecksParams{GameSessionID: sessionID, Master: m.Role == authz.RoleMaster, UserID: m.UserID})
 	if err != nil {
 		return 0, s.dbError(ctx, "tally the session's checks", err)
 	}

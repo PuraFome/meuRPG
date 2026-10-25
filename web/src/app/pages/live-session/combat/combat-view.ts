@@ -1,10 +1,22 @@
-import { Component, DestroyRef, effect, inject, untracked } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  type TemplateRef,
+  computed,
+  contentChildren,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 import {
   CombatEffect,
   CombatantSide,
   CombatantState,
   CoverDegree,
-  type Encounter,
   EncounterStatus,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
 import {
@@ -20,11 +32,11 @@ import { questions } from '../../../core/combat/hidden-reveal';
 import { heldOfferOf } from '../../../core/held-rolls/held-roll-offer';
 import { COMBAT_VIEW_IMPORTS } from './combat-view-imports';
 import { CombatViewPartsDirective } from './combat-view-parts';
+import { MapTab } from './map-tabs/map-tab';
+import { MasterLayout } from './master-layout';
+import { keepFocusClear } from './sticky-room';
+import { openAddCombatants } from './add-combatants';
 import { type RiderPick } from './hit-rider/hit-rider-card';
-import {
-  type StartCombatData,
-  StartCombatDialog,
-} from '../../../shared/start-combat/start-combat-dialog';
 
 /**
  * The combat on the session page (MR-013, E6-01 to E6-16): it picks the
@@ -51,6 +63,37 @@ export class CombatView extends CombatViewPartsDirective {
   /** Set the first time the combat is read: "Combate atualizado agora." only follows a reload. */
   private refreshChecked = false;
 
+  /** The conversation the page draws in the master's rail ("Turno · Conversa"), or `null` where the page keeps it elsewhere. */
+  readonly chat = input<TemplateRef<unknown> | null>(null);
+  /** The conversation's lines that came while it was not shown: the count of its tab. */
+  readonly chatUnread = input(0);
+  /** The conversation is what the rail shows now (its tab is open): the page counts nothing as unread meanwhile. */
+  readonly chatShown = output<boolean>();
+  /** The panels the page projects under the map (fog, traps, treasure, puzzles). */
+  protected readonly projected = contentChildren(MapTab);
+
+  /** How many effects the combat has, said by the effects panel once it has read them (it stays mounted, folded). */
+  protected readonly effectsCount = signal(0);
+
+  /** The tabs of the master's combat and which one is open. */
+  protected readonly layout = new MasterLayout({
+    waiting: computed(() => this.held.count() + (this.owed() ? 1 : 0) + (this.waitNote() ? 1 : 0)),
+    unread: computed(() => this.chatUnread()),
+    hasChat: computed(() => this.chat() !== null),
+    projected: computed(() => this.projected()),
+    combatants: computed(() => this.encounter()?.combatants.length ?? 0),
+    effects: this.effectsCount,
+    encounter: computed(() => this.encounter() ?? null),
+    theatre: computed(() => this.theatre()),
+  });
+  /** The answer went to the order: on a small screen the order is its own tab, so it opens first. */
+  protected override focusOrder(): void {
+    if (!this.laptop()) {
+      this.layout.phoneTab.set('order');
+    }
+    super.focusOrder();
+  }
+
   constructor() {
     super();
     effect(() => {
@@ -65,6 +108,22 @@ export class CombatView extends CombatViewPartsDirective {
           this.refreshed.set('');
         }
       });
+    });
+    keepFocusClear(
+      inject(ElementRef),
+      computed(() => this.isMaster() && this.active()),
+      this.laptop,
+      computed(() => this.encounter()?.status),
+    );
+    // The rail's conversation tab is open (and the rail is there): the page counts nothing as unread.
+    effect(() => {
+      const shown =
+        this.isMaster() &&
+        this.laptop() &&
+        this.chat() !== null &&
+        this.layout.railTab() === 'chat' &&
+        this.active();
+      untracked(() => this.chatShown.emit(shown));
     });
     // "Ainda não" holds while the character stays dying: when they leave DYING the question is
     // new the next time they fall.
@@ -367,28 +426,11 @@ export class CombatView extends CombatViewPartsDirective {
   /** "Adicionar combatente": the start dialog, with the NPCs only. */
   protected addCombatants(): void {
     const e = this.encounter();
-    if (!e) {
-      return;
+    if (e) {
+      openAddCombatants(this.dialog, this.campaignId(), e, this.phone()).subscribe(
+        (added) => added && this.state().apply(added),
+      );
     }
-    const phone = this.phone();
-    this.dialog
-      .open<StartCombatDialog, StartCombatData, Encounter>(StartCombatDialog, {
-        data: {
-          campaignId: this.campaignId(),
-          mode: 'add',
-          map: null,
-          encounterId: e.id,
-          existing: e.combatants.length,
-        },
-        width: phone ? '100vw' : '760px',
-        maxWidth: phone ? '100vw' : 'calc(100vw - 32px)',
-        height: phone ? '100dvh' : undefined,
-        maxHeight: phone ? '100dvh' : '92dvh',
-        ariaLabelledBy: 'start-title',
-        autoFocus: 'first-tabbable',
-      })
-      .afterClosed()
-      .subscribe((added) => added && this.state().apply(added));
   }
   // ---- opportunity attacks (E9-13) ----
 

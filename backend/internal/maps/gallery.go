@@ -20,6 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/rpcerr"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 )
 
 // Every GalleryService method is the master's: the gallery is preparation,
@@ -151,8 +152,10 @@ func (s *Service) DeleteGalleryImage(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the shown image", err)
 	}
-	wasLeft, err := s.queries.ImageIsLeft(ctx, mapsdb.ImageIsLeftParams{CampaignID: m.CampaignID, ImageID: id.String()})
-	if err != nil {
+	// Who the image was left with, if it was: they are the ones to hear it go.
+	leftTo, err := leftWith(ctx, s.queries, m.CampaignID, id.String())
+	wasLeft := err == nil
+	if err != nil && connect.CodeOf(err) != connect.CodeNotFound {
 		return nil, s.dbError(ctx, "check whether the image is left with the players", err)
 	}
 	portraits, err := s.deleteImageRows(ctx, m.CampaignID, id.String())
@@ -160,7 +163,7 @@ func (s *Service) DeleteGalleryImage(
 		return nil, err
 	}
 	s.deleteFiles(ctx, m.CampaignID, id.String())
-	s.publishImageDeleted(m.CampaignID, shown == id.String(), portraits > 0, wasLeft)
+	s.publishImageDeleted(ctx, m.CampaignID, shown == id.String(), portraits > 0, wasLeft, leftTo)
 	return connect.NewResponse(&mapsv1.DeleteGalleryImageResponse{}), nil
 }
 
@@ -211,10 +214,10 @@ func (s *Service) deleteImageTx(ctx context.Context, tx pgx.Tx, campaignID, imag
 	return portraits, nil
 }
 
-// publishImageDeleted tells everyone in the session what a deleted image took
-// with it: the image on the screen, the NPC portraits on the stage and the
-// image left with the players.
-func (s *Service) publishImageDeleted(campaignID string, wasShown, hadPortraits, wasLeft bool) {
+// publishImageDeleted tells the session what a deleted image took with it: the
+// image on the screen, the NPC portraits on the stage and the image left with the
+// players (only the master and the players it was left with hear that).
+func (s *Service) publishImageDeleted(ctx context.Context, campaignID string, wasShown, hadPortraits, wasLeft bool, leftTo link.ImageAudience) {
 	if wasShown {
 		// Everyone watching the session stops seeing it.
 		s.live.Publish(campaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_ShownImageChanged_{
@@ -222,16 +225,20 @@ func (s *Service) publishImageDeleted(campaignID string, wasShown, hadPortraits,
 		}})
 	}
 	if hadPortraits {
-		// The NPC may have been on the stage: its portrait is gone for everyone.
-		s.live.Publish(campaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_StageChanged_{
+		// The NPC may have been on the stage: its portrait is gone for the scene.
+		s.live.PublishToScene(ctx, campaignID, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_StageChanged_{
 			StageChanged: &playv1.WatchGameSessionResponse_StageChanged{},
 		}})
 	}
 	if wasLeft {
 		// It left the players' list too (the foreign key deleted the row).
-		s.live.Publish(campaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_LeftImagesChanged_{
+		ev := &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_LeftImagesChanged_{
 			LeftImagesChanged: &playv1.WatchGameSessionResponse_LeftImagesChanged{},
-		}})
+		}}
+		s.live.Publish(campaignID, leftTo.Everyone, ev)
+		if !leftTo.Everyone {
+			s.live.PublishToUsers(campaignID, leftTo.UserIDs, ev)
+		}
 	}
 }
 

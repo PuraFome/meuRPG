@@ -11,6 +11,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 )
 
 // Characterization of SetShownImage (onscreen.go) with the real maps module's
@@ -21,7 +22,7 @@ import (
 type showMaps struct {
 	MapKeeper
 	prepare func(ctx context.Context, campaignID, imageID string) (*playv1.ShownImage, ShownCopy, error)
-	leave   func(ctx context.Context, tx pgx.Tx, campaignID, imageID string, at time.Time) error
+	leave   func(ctx context.Context, tx pgx.Tx, campaignID, imageID string, at time.Time, who link.ImageAudience) error
 }
 
 func (m *showMaps) PrepareShow(ctx context.Context, campaignID, imageID string) (*playv1.ShownImage, ShownCopy, error) {
@@ -31,11 +32,11 @@ func (m *showMaps) PrepareShow(ctx context.Context, campaignID, imageID string) 
 	return m.MapKeeper.PrepareShow(ctx, campaignID, imageID)
 }
 
-func (m *showMaps) LeaveImage(ctx context.Context, tx pgx.Tx, campaignID, imageID string, at time.Time) error {
+func (m *showMaps) LeaveImage(ctx context.Context, tx pgx.Tx, campaignID, imageID string, at time.Time, who link.ImageAudience) error {
 	if m.leave != nil {
-		return m.leave(ctx, tx, campaignID, imageID, at)
+		return m.leave(ctx, tx, campaignID, imageID, at, who)
 	}
-	return m.MapKeeper.LeaveImage(ctx, tx, campaignID, imageID, at)
+	return m.MapKeeper.LeaveImage(ctx, tx, campaignID, imageID, at, who)
 }
 
 // fakeCopy is a ShownCopy that records what became of it.
@@ -231,7 +232,7 @@ func TestSetShownImage_PrepareAndLeaveFailures(t *testing.T) {
 	if _, err := st.show(t, a, true); err != nil {
 		t.Fatalf("show A error = %v", err)
 	}
-	st.maps.leave = func(context.Context, pgx.Tx, string, string, time.Time) error { return boom }
+	st.maps.leave = func(context.Context, pgx.Tx, string, string, time.Time, link.ImageAudience) error { return boom }
 	_, err = st.show(t, b, false)
 	wantRefusal(t, "leave fails", err, connect.CodeInternal, "")
 	if id, keep := st.dbShown(t); id != a || !keep {

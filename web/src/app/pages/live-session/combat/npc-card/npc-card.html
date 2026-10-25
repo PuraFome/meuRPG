@@ -1,35 +1,23 @@
-<section class="card" aria-labelledby="npc-title">
-  @if (narrow()) {
-    <!-- The phone's one turn card (E6-12): whose turn, then what to do, then "Próximo turno". -->
-    <div class="card__top">
-      <span class="mr-label card__kicker">{{ round() }} · {{ encounter().name }}</span>
-      @if (theatre()) {
-        <app-theatre-pill />
-      }
-    </div>
-    <div class="card__who">
-      @if (isNpc()) {
-        <app-portrait [src]="subject().portraitUrl" [name]="subject().label" [size]="56" fit="cover" [decorative]="true" />
-      } @else {
-        <app-combatant-token [initial]="initial()" [npc]="isNpc()" [creature]="isCreatureSubject()" [current]="true" [size]="40" />
-      }
-      <h2 class="card__title card__title--turn" id="npc-title">Vez do {{ subject().label }}</h2>
-    </div>
-    @if (creatureSlug(); as slug) {
-      <a class="card__sheet" [routerLink]="['/campaigns', campaignId(), 'bestiary', slug]">Ficha da criatura</a>
+<section class="card" [class.card--bare]="!framed()" aria-labelledby="npc-title">
+  <!-- The turn's card, the same on a phone and on a computer: the token (or the portrait), "Vez do Goblin 1" and who it is. "Próximo turno" is the
+       combat bar's (the phone's fixed bar), never this card's. -->
+  <div class="card__who">
+    @if (isNpc() && subject().portraitUrl) {
+      <app-portrait [src]="subject().portraitUrl" [name]="subject().label" [size]="framed() ? 56 : 36" fit="cover" [decorative]="true" />
+    } @else {
+      <app-combatant-token [initial]="initial()" [npc]="isNpc()" [creature]="isCreatureSubject()" [current]="true" [size]="framed() ? 48 : 32" />
     }
-  } @else {
-    <div class="card__who card__who--desk">
-      @if (isNpc()) {
-        <app-portrait [src]="subject().portraitUrl" [name]="subject().label" [size]="64" fit="cover" [decorative]="true" />
-      }
-      <h2 class="card__title" id="npc-title">
-        {{ full() ? 'Ações ' + ofLabel() : 'Dano de ' + subject().label }}
+    <div class="card__ident">
+      <h2 class="card__title" [class.mr-visually-hidden]="!framed()" id="npc-title">
+        {{ full() ? (framed() ? 'Vez ' : 'Ações ') + ofLabel() : 'Dano de ' + subject().label }}
       </h2>
-      @if (creatureSlug(); as slug) {
-        <a class="card__sheet card__sheet--desk" [routerLink]="['/campaigns', campaignId(), 'bestiary', slug]">Ficha da criatura</a>
+      @if (identity(); as line) {
+        <span class="card__kind">{{ line }}</span>
       }
     </div>
+  </div>
+  @if (creatureSlug(); as slug) {
+    <a class="card__sheet" [routerLink]="['/campaigns', campaignId(), 'bestiary', slug]">Ficha da criatura</a>
   }
 
   <app-combatant-tags class="card__states" [names]="conditions()" [label]="subject().label" [states]="subject().states" [sources]="subject().conditionSources" [people]="encounter().combatants" />
@@ -214,17 +202,5 @@
       <mat-icon aria-hidden="true">error</mat-icon>
       <p>{{ error() }}</p>
     </div>
-  }
-
-  @if (narrow()) {
-    @if (pendingNote()) {
-      <div class="mr-notice mr-notice--warning">
-        <mat-icon aria-hidden="true">warning</mat-icon>
-        <p><strong>{{ pendingNote() }}</strong> antes de passar o turno.</p>
-      </div>
-    }
-    @if (!joint()) {
-      <app-next-turn [turn]="turnKey()" [pendingNote]="pendingNote()" [busy]="busy() || turnBusy()" [waiting]="!!waitWhy()" [why]="waitWhy()" (next)="next.emit($event)" />
-    }
   }
 </section>

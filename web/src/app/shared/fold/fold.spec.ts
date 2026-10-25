@@ -18,6 +18,19 @@ class Host {
   open = false;
 }
 
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [Fold],
+  template: `
+    <app-fold title="Efeitos" [keep]="true" [(open)]="open">
+      <p class="body">A lista</p>
+    </app-fold>
+  `,
+})
+class KeepHost {
+  open = false;
+}
+
 describe('Fold', () => {
   function setup(patch: Partial<Host> = {}) {
     const fixture = TestBed.createComponent(Host);
@@ -80,5 +93,18 @@ describe('Fold', () => {
     expect(host.classList).toContain('mr-panel--fold-row');
     expect(host.classList).toContain('mr-fold--muted');
     expect(host.querySelector('.mr-fold__icon')?.textContent).toBe('change_history');
+  });
+
+  it('keeps the body mounted, hidden, when asked to (a panel that counts while folded)', () => {
+    const fixture = TestBed.createComponent(KeepHost);
+    fixture.detectChanges();
+    const body = (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>(
+      '.mr-fold__body',
+    )!;
+    expect(body.hidden).toBe(true);
+    expect(body.querySelector('.body')).not.toBeNull();
+    (fixture.nativeElement as HTMLElement).querySelector('button')!.click();
+    fixture.detectChanges();
+    expect(body.hidden).toBe(false);
   });
 });

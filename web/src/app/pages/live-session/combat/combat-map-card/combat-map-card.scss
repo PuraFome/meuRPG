@@ -36,29 +36,33 @@
   }
 }
 
+.card__icon {
+  margin-inline-end: var(--mr-space-2);
+  vertical-align: -5px;
+  color: var(--mr-ink-muted);
+}
+
+// The two switches of the master, in a row of the head (the explanation is read by a screen reader, not drawn).
+.card__switches {
+  display: flex;
+  flex: 1 0 100%;
+  flex-wrap: wrap;
+  gap: 0 var(--mr-space-5);
+}
+
 .card__size {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
   font-size: 14px;
   color: var(--mr-ink-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 // "Tela cheia" sits at the end of the head; the size stays next to the title.
 .card__full {
   margin-inline-start: auto;
-}
-
-.card__hint {
-  display: flex;
-  align-items: center;
-  gap: var(--mr-space-2);
-  margin: 0;
-  font-size: 14px;
-
-  .mat-icon {
-    flex: none;
-    width: 18px;
-    height: 18px;
-    font-size: 18px;
-  }
 }
 
 .legend {
@@ -81,12 +85,6 @@
   app-combatant-token.tk--mine:not(.tk--current) {
     margin: 3px;
   }
-}
-
-.card__reach {
-  display: flex;
-  flex-direction: column;
-  gap: var(--mr-space-2);
 }
 
 .card__check {
@@ -121,11 +119,6 @@
   align-items: center;
   padding: 10px 14px;
   font-size: 14px;
-}
-
-.card__hint--text {
-  align-items: flex-start;
-  color: var(--mr-ink-muted);
 }
 
 .card__note {

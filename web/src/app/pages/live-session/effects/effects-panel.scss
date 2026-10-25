@@ -420,7 +420,7 @@
 
   // The second button of the row is a link here, as the board draws "Tirar de um alvo".
   .fx__btn--duration {
-    --mat-button-outlined-container-height: 36px;
+    --mat-button-outlined-container-height: 44px;
     --mat-button-outlined-outline-color: transparent;
     --mat-button-outlined-label-text-color: var(--mr-accent-text);
     font-weight: 700;
@@ -439,5 +439,132 @@
 
   .fx__askbtns {
     flex-direction: row;
+  }
+}
+
+// Inside a row of "Mais do combate" (C7-02): no frame, one line per effect ("Fogo das Fadas · Goblins 1 e 2", the end line, "× Encerrar"),
+// the other controls of the row as small links under it. The columns of the table are not drawn.
+.fx--compact {
+  padding: 0;
+
+  .fx__head {
+    justify-content: flex-start;
+  }
+
+  .fx__cols {
+    display: none;
+  }
+
+  .fx__rows {
+    gap: 0;
+  }
+
+  .fx__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'name actions'
+      'who actions'
+      'end end'
+      'see more';
+    column-gap: var(--mr-space-3);
+    row-gap: 2px;
+    align-items: start;
+    padding: var(--mr-space-3) 0;
+    border: 0;
+    border-top: 1px solid var(--mr-rule);
+    border-radius: 0;
+    background: none;
+
+    &:first-child {
+      border-top: 0;
+    }
+  }
+
+  .fx__name {
+    grid-area: name;
+    flex-direction: row;
+  }
+
+  .fx__nametext {
+    font-family: var(--mr-font-sans);
+    font-size: 16px;
+    line-height: 21px;
+  }
+
+  // "Fogo das Fadas" and, under it, the targets.
+  .fx__who {
+    display: block;
+    grid-area: who;
+    font-size: 14px;
+    line-height: 19px;
+    color: var(--mr-ink-muted);
+  }
+
+  .fx__pill,
+  .fx__sub,
+  .fx__origin,
+  .fx__seephone,
+  .fx__eye {
+    display: none;
+  }
+
+  .fx__seedesk {
+    display: inline;
+  }
+
+  .fx__end {
+    grid-area: end;
+  }
+
+  .fx__see {
+    grid-area: see;
+  }
+
+  .fx__seebtn {
+    min-height: 44px;
+    font-size: 14px;
+  }
+
+  // The buttons of the row are items of the grid: "Encerrar" at the end, the others under.
+  .fx__actions {
+    display: contents;
+  }
+
+  .fx__btn {
+    --mat-button-outlined-container-height: 44px;
+    --mat-button-outlined-outline-color: transparent;
+    --mat-button-outlined-label-text-color: var(--mr-accent-text);
+    grid-area: actions;
+    width: auto;
+    font-weight: 700;
+  }
+
+  .fx__btn--duration {
+    --mat-button-outlined-container-height: 44px;
+    grid-area: more;
+    justify-self: end;
+    font-size: 14px;
+  }
+
+  .fx__link {
+    grid-column: 1 / -1;
+    justify-self: end;
+  }
+
+  .fx__remove,
+  .fx__ask {
+    grid-column: 1 / -1;
+  }
+
+  .fx__tools {
+    gap: 0;
+    margin-inline-start: -8px;
+  }
+
+  .fx__tools .mat-mdc-outlined-button {
+    --mat-button-outlined-outline-color: transparent;
+    --mat-button-outlined-label-text-color: var(--mr-accent-text);
+    font-weight: 700;
   }
 }

@@ -355,3 +355,37 @@ describe('NpcCard: Levantar-se of a prone NPC', () => {
     ).not.toContain('Levantar-se');
   });
 });
+
+describe('NpcCard: compact in the rail (C7-02)', () => {
+  const card = (framed: boolean) => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [{ provide: CombatClient, useValue: {} }] });
+    const fixture = TestBed.createComponent(NpcCard);
+    const goblin = combatant({
+      id: 'npc',
+      label: 'Goblin 1',
+      hitPointsCurrent: 7,
+      hitPointsMax: 7,
+    });
+    fixture.componentRef.setInput('campaignId', 'c');
+    fixture.componentRef.setInput('encounter', encounter({ combatants: [goblin] }));
+    fixture.componentRef.setInput('subject', goblin);
+    fixture.componentRef.setInput('state', { apply: vi.fn() } as unknown as CombatState);
+    fixture.componentRef.setInput('framed', framed);
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  };
+
+  it('names the card for a screen reader ("Ações do Goblin 1") and does not draw it, since the bar says "Vez do Goblin 1"', () => {
+    const el = card(false);
+    const title = el.querySelector('h2')!;
+    // Not "Vez do…": the bar above says it, and one text on the screen must not say it twice.
+    expect(title.textContent?.replace(/\u00a0/g, ' ')).toContain('Ações do Goblin 1');
+    expect(title.classList).toContain('mr-visually-hidden');
+    expect(el.querySelector('section')!.classList).toContain('card--bare');
+  });
+
+  it('draws the big heading in a frame (the phone, the middle column of a combat without a map)', () => {
+    expect(card(true).querySelector('h2')!.classList).not.toContain('mr-visually-hidden');
+  });
+});
