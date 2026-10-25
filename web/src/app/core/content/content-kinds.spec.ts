@@ -39,7 +39,10 @@ describe('the list of the table content (E10-01 states 1, 2 and 10)', () => {
   });
 
   it('counts a campaign at the limit of 1000 entries', () => {
-    const full = Array.from({ length: 1000 }, (_, i) => ({ ...entries[0], key: `class:c${i}@mesa` }));
+    const full = Array.from({ length: 1000 }, (_, i) => ({
+      ...entries[0],
+      key: `class:c${i}@mesa`,
+    }));
     expect(limitLine(full)).toBe('1000 de 1000 entradas · o limite de uma campanha');
   });
 
