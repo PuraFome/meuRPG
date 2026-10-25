@@ -1,8 +1,48 @@
-<section class="mr-panel map" aria-labelledby="session-map-heading">
+@if (!isMaster() && phone() && !inTab() && status() === 'ready' && map(); as current) {
+  <!-- The player's map on a phone (C5-01, C5-02): one row; "Ver mapa" opens the whole map, where the zoom and the fog live. What the player
+       does with it here stays: "Procurar armadilhas" and the lights they carry. -->
+  <section class="map-row" aria-labelledby="session-map-heading">
+    <div class="map-row__bar">
+      <mat-icon aria-hidden="true">map</mat-icon>
+      <h2 class="map-row__title" id="session-map-heading" tabindex="-1">Mapa · {{ current.name }}</h2>
+      <a matButton class="map-row__open" [routerLink]="['/campaigns', campaignId(), 'maps', current.id]" [queryParams]="{ from: 'session' }">
+        <mat-icon aria-hidden="true">open_in_full</mat-icon>Ver mapa
+      </a>
+    </div>
+    @if (searchable()) {
+      <button matButton="outlined" type="button" class="map__search" (click)="searchTraps.emit()">
+        <mat-icon aria-hidden="true">search</mat-icon>Procurar armadilhas
+      </button>
+    }
+    @if (fogOn()) {
+      <app-fog-player-tools
+        [campaignId]="campaignId()"
+        [state]="state()"
+        [fog]="fog()"
+        [mapId]="current.id"
+        [own]="ownToken()"
+        [characterId]="ownCharacterId()"
+        [characterName]="characterName()"
+        [seeing]="seeing()"
+        [creaturesTick]="creaturesTick()"
+      />
+    }
+  </section>
+} @else {
+<section class="mr-panel map" [class.map--tab]="inTab()" [attr.aria-labelledby]="inTab() ? null : 'session-map-heading'" [attr.aria-label]="inTab() ? 'Mapa' : null">
+  @if (!inTab()) {
   <div class="map__head" [class.map__head--master]="isMaster()">
-    <h2 class="mr-panel__title" [class.mr-visually-hidden]="isMaster()" id="session-map-heading" tabindex="-1">
-      {{ isMaster() ? 'Mapa' : (map()?.name ?? 'Mapa') }}
-    </h2>
+    @if (isMaster()) {
+      <h2 class="mr-panel__title mr-visually-hidden" id="session-map-heading" tabindex="-1">Mapa</h2>
+    } @else {
+      <!-- The player's (C6-08): "Mapa" and, muted, the map's name and that it is the current one; "Ver mapa" is the icon button at the right. -->
+      <h2 class="mr-panel__title map__title" id="session-map-heading" tabindex="-1">
+        <mat-icon aria-hidden="true">map</mat-icon>Mapa<span class="mr-visually-hidden"> · </span>
+        @if (map(); as current) {
+          <span class="map__sub">{{ current.name }} · mapa atual</span>
+        }
+      </h2>
+    }
     @if (isMaster()) {
       <span class="map__label" id="map-current-label">Mapa atual</span>
       <mat-form-field appearance="outline" class="map__select" subscriptSizing="dynamic">
@@ -30,10 +70,19 @@
           }
         </span>
       }
-    } @else if (map()) {
-      <span class="mr-muted">Mapa atual</span>
+    } @else if (map() && image()) {
+      <a
+        matIconButton
+        class="map__full"
+        aria-label="Ver mapa"
+        [routerLink]="['/campaigns', campaignId(), 'maps', map()?.id]"
+        [queryParams]="{ from: 'session' }"
+      >
+        <mat-icon aria-hidden="true">fullscreen</mat-icon>
+      </a>
     }
   </div>
+  }
 
   @if (isMaster() && openHiddenNote()) {
     <p class="map__note">
@@ -170,6 +219,9 @@
 
         <div class="map__foot">
           <div class="map__legend">
+            @if (inTab()) {
+              <p class="map__caption">{{ map()?.name }} · mapa atual</p>
+            }
             @if (isMaster() && !phone()) {
               <p class="map__hint">
                 <mat-icon aria-hidden="true">drag_pan</mat-icon>
@@ -195,14 +247,9 @@
                 <mat-icon aria-hidden="true">search</mat-icon>Procurar armadilhas
               </button>
             }
-            @if (!isMaster()) {
-              <a
-                matButton="outlined"
-                class="map__open"
-                [routerLink]="['/campaigns', campaignId(), 'maps', map()?.id]"
-                [queryParams]="{ from: 'session' }"
-              >
-                <mat-icon aria-hidden="true">open_in_full</mat-icon>Ver mapa
+            @if (inTab()) {
+              <a matButton class="map__tabopen" [routerLink]="['/campaigns', campaignId(), 'maps', map()?.id]" [queryParams]="{ from: 'session' }">
+                <mat-icon aria-hidden="true">fullscreen</mat-icon>Ver mapa
               </a>
             }
           </div>
@@ -315,3 +362,4 @@
   }
   </div>
 </section>
+}

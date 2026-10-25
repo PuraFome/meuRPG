@@ -25,7 +25,7 @@ function thousands(n: number): string {
   selector: 'app-composer-field',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <label class="composer__label" [for]="id">Mensagem</label>
+    <label class="composer__label" [class.composer__label--hidden]="!labelled()" [for]="id">Mensagem</label>
     <textarea
       class="composer__area"
       [class.composer__area--dashed]="dashed()"
@@ -52,6 +52,8 @@ export class ComposerField {
   readonly value = model('');
   readonly placeholder = input('');
   readonly rows = input(2);
+  /** The label "Mensagem" is drawn (the master's composer); off, it stays for a screen reader only (the player's, C6-08). */
+  readonly labelled = input(true);
   /** A whisper: the box has the dashed accent border. */
   readonly dashed = input(false);
   /** Why the last send was refused; empty when it was not. */

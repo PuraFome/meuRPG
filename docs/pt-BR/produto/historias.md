@@ -584,7 +584,7 @@ Cada convite escolhe se exige aprovação, e uma recusa apaga o personagem e a p
   Fora disso é um `404`, mesmo com o ID guardado.
   Veja [RN-10](regras.md) e [Servir imagens](../../architecture/maps/images.md#serving-images).
 - Tela do mestre: com uma cena aberta, a linha "Imagens da cena" (o bloco tracejado "Da galeria", o interruptor "Deixar com os jogadores" com a palavra do estado numa linha, "Parar de mostrar" e a lista das imagens deixadas); sem cena aberta, o painel "Imagem para os jogadores" ("Mostrar imagem", o seletor da galeria com "Mostrar aos jogadores", "Trocar imagem", "Parar de mostrar"), o interruptor "Deixar com os jogadores" ("Ligado"/"Desligado", desligado sempre que uma imagem nova é mostrada) e a lista "Deixadas com os jogadores" com "Tirar".
-- Tela do jogador: o bloco "O mestre está mostrando" com a imagem, o nome dela como legenda e "Ver em tela cheia", que aparece e some ao vivo e é anunciado; e a lista "Imagens que o mestre deixou" com "Ver em tela cheia", escondida enquanto vazia.
+- Tela do jogador: o bloco "O mestre está mostrando" com a imagem, o nome dela como legenda e "Ver em tela cheia", o primeiro da página no celular e com no máximo 40 % da altura da tela, que aparece e some ao vivo e é anunciado; e as miniaturas de "Imagens que o mestre deixou (n)", cada uma abrindo a mesma visão em tela cheia ("Ver <nome> em tela cheia"), uma dobra de uma linha no celular (a aba "Imagens" do cartão da cena enquanto há uma cena aberta) e aberta ao lado da cena no computador, escondida enquanto vazia.
   A lista fica só na página da sessão, não na página da campanha.
   Veja [Design](../../design/session.md#images-shown-to-players) e [Arquitetura](../../architecture/play/live-session.md#what-the-session-shows).
 - A audiência faz parte da chamada de mostrar e tem uma chamada própria para mudá-la enquanto a imagem é mostrada (`SetShownImage`, `SetShownImageAudience`); o mestre a lê na imagem, e um jogador nunca.
@@ -1378,7 +1378,7 @@ Ver [Arquitetura](../../architecture/campaign-package.md).
 - **Dado** que um jogador é apagado, **então** as linhas dele ficam e o autor aparece como "Jogador removido".
 
 #### No app
-- O painel "Conversa" ao lado da cena e do mapa, e uma aba no celular; o compositor do mestre tem "Falar como", "Para", "Imagem da galeria" e "Enviar"; o do jogador tem "Como <personagem>" e "Fora do personagem".
+- O painel "Conversa" ao lado da cena e do mapa (o do jogador, a partir de 1024 px, é uma aba da coluna da direita "Conversa · Ficha", ao lado da "Ficha" do personagem), e uma aba da navegação fixa no celular, onde "Ficha" é um painel dentro da sessão; o compositor do mestre tem "Falar como", "Para", "Imagem da galeria" e "Enviar"; o do jogador tem "Como <personagem>" e "Fora do personagem".
 
 #### Relacionadas
 - [RN-36](regras.md#rn-36-quem-lê-uma-linha-da-conversa-da-cena), [RN-10](regras.md), [RN-18](regras.md), [MR-028](#mr-028-mostrar-uma-imagem-aos-jogadores), [MR-039](#mr-039-imagens-geradas-para-masmorras-e-cenas). Ver [Arquitetura](../../architecture/play/live-session.md#the-conversation-of-the-scene) e [Privacidade](../privacidade.md#o-que-a-voz-envia-ao-google-mr-051).

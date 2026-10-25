@@ -12,6 +12,7 @@ import { ConversationPanel } from './conversation/conversation-panel';
 import { ConversationSlot } from './conversation/conversation-slot';
 import { pageVisible } from './conversation/page-visible';
 import type { SessionTab } from './conversation/session-tabs';
+import { unreadWords } from './conversation/unread-notice';
 import { MasterBoard } from './master-board/master-board';
 import type { MapToolCounts } from './session-map/session-map';
 import type { TabItem } from '../../shared/tab-list/tab-list';
@@ -28,6 +29,8 @@ export { CALLING_NOTICE_MS };
 
 /** A tablet: the master's Conversa is a tab of the board, with no rail (under 1024 px) and no pinned nav (from 768 px). */
 const NARROW_QUERY = '(min-width: 768px) and (max-width: 1023.98px)';
+/** The badge on the player's rail "Conversa" stops counting here, as the phone's does. */
+const BADGE_MAX = 99;
 
 /**
  * The session page, `/campaigns/:id/session` (MR-011, MR-012, RN-02, RN-06,
@@ -94,12 +97,19 @@ export class LiveSession {
         ? this.combat.encounter()?.status === EncounterStatus.ACTIVE && !this.combat.fullPage()
         : this.view.combatOnScreen()),
   );
+  /**
+   * The player's rail outside a combat: "Conversa" and "Ficha" in the right column from 1024px (C6-08). The combat has its own rail
+   * ("Ações · Conversa") and the master's board its own; this is the rest of the player's page.
+   */
+  protected readonly playerRail = computed(
+    () => !this.state.isMaster() && this.laptop() && !this.view.combatOnScreen(),
+  );
   /** Where the conversation sits: a column beside the stage, or the phone's "Conversa" tab. */
   protected readonly slot = new ConversationSlot({
     live: computed(() => this.state.phase() === 'live' && this.state.session() !== null),
     phone: mediaQuery(PHONE_QUERY),
     unread: this.conversation.unread,
-    railMode: this.railChat,
+    railMode: computed(() => this.railChat() || this.playerRail()),
     pageVisible: pageVisible(this.services.document, this.services.destroyRef),
     behind: this.chatBehind,
     isMaster: this.state.isMaster,
@@ -156,8 +166,8 @@ export class LiveSession {
   });
   /** The phone's pinned nav: the master's "Cena" and "Grupo" are the board's tabs; "Conversa" opens the conversation. */
   protected readonly phoneTab = computed<SessionTab>(() => {
-    if (this.slot.tab() === 'chat') {
-      return 'chat';
+    if (this.slot.tab() === 'chat' || this.slot.tab() === 'sheet') {
+      return this.slot.tab();
     }
     return this.railed() && this.board.tab() === 'grupo' ? 'group' : 'scene';
   });
@@ -198,6 +208,7 @@ export class LiveSession {
       this.events.dispose();
       this.loader.dispose();
       this.services.sessionNotes.bar.set(null);
+      this.services.document.body.classList.remove('mr-live-phone');
     });
     wireLiveSessionEffects(
       this.services,
@@ -209,6 +220,37 @@ export class LiveSession {
       (id) => this.load(id),
     );
   }
+
+  /** The player's rail tabs: the unread count on "Conversa" in the accent colour and, in words, in the tab's name. */
+  protected readonly playerRailTabs = computed<readonly TabItem[]>(() => {
+    const n = this.conversation.unread();
+    return [
+      {
+        id: 'chat',
+        label: 'Conversa',
+        icon: 'chat_bubble_outline',
+        ...(n > 0
+          ? {
+              badge: n > BADGE_MAX ? `${BADGE_MAX}+` : String(n),
+              tone: 'news' as const,
+              words: unreadWords(n),
+            }
+          : {}),
+      },
+      { id: 'sheet', label: 'Ficha', icon: 'favorite_border' },
+    ];
+  });
+  /** A phone with a scene open: the scene is in tabs ("Ações · Mapa · Imagens"), C7-07. */
+  protected readonly sceneTabs = computed(
+    () => this.slot.phone() && this.scene.scene() !== null && !this.state.isMaster(),
+  );
+  /** The player's rail says whether its "Conversa" tab is the open one (the slot counts the lines only while it is). */
+  protected readonly railShownFollows = effect(() => {
+    const shown = this.playerRail() && this.slot.railTab() === 'chat';
+    if (this.playerRail()) {
+      this.slot.railShown.set(shown);
+    }
+  });
 
   /** A tap on the phone's nav: the master's "Cena" and "Grupo" choose a tab of the board, the rest is the conversation slot's. */
   protected phoneNav(tab: SessionTab): void {

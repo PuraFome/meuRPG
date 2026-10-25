@@ -92,6 +92,8 @@ export class PlayerVitals {
   /** The combat's version (E6-05): the PV box and the shield side by side,
    * then the slots; no temporary HP, hit dice or footer. */
   readonly compact = input(false);
+  /** The link to the whole sheet and the line about who changes the numbers, under the card; off where the page draws them itself. */
+  readonly foot = input(true);
   /** The Escudo Arcano's bonus on the character's own combatant while a combat runs (0 without the spell); `null`
    * when there is no combat or no combatant, which is not the shield ending. */
   readonly armorClassBonus = input<number | null>(null);
@@ -200,8 +202,13 @@ export class PlayerVitals {
       : 'Classe de Armadura';
   });
 
+  /** The tile's word: "CA", or "CA do Lobo" while a beast. */
+  protected readonly acShort = computed(() => (this.vitals().wildShape ? this.acLabel() : 'CA'));
+
   /** "3 de 5d10 e 1 de 1d6": the dice left by size. */
   protected readonly diceLeft = computed(() => hitDiceLeftWords(this.vitals().hitDiceSizes));
+  /** The dice not yet spent, of every size. */
+  protected readonly diceFree = computed(() => totalDiceLeft(this.vitals().hitDiceSizes));
   protected readonly freeWords = freeWords;
   /** "Gastar dados de vida" has nothing to spend when every die is used. */
   protected readonly noDiceLeft = computed(
@@ -252,6 +259,11 @@ export class PlayerVitals {
   });
 
   protected readonly slotRowLabel = slotRowLabel;
+
+  /** "1º nível" as the card reads it: "1º" (the row's name for a screen reader keeps the whole). */
+  protected levelShort(label: string): string {
+    return label.replace(' nível', '');
+  }
 
   /** Said once by screen readers when the master changes a number: the
    * screen changes under the player's eyes, and this says what changed. */

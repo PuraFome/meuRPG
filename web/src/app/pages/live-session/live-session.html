@@ -95,7 +95,7 @@
 
       <!-- The conversation of the scene (MR-051): a column beside the stage from 1600px, under it below that; on a phone the
            "Conversa" tab opens it full screen (the page behind is inert). Its code loads lazily. -->
-      <div class="split" [class.split--rail]="railChat()" [class.split--board]="railed()">
+      <div class="split" [class.split--rail]="railChat()" [class.split--player-rail]="playerRail()" [class.split--board]="railed()">
       <div class="split__main" [attr.inert]="slot.chatOpen() ? '' : null">
 
       <!-- New lines while the phone's chat is closed: one quiet row on top, because the tabs close the page, out of sight. -->
@@ -159,6 +159,8 @@
         }
       }
 
+      <!-- The "Cena" of a phone: hidden (still mounted) while the player's "Ficha" panel is open. For the master it dissolves. -->
+      <div class="scene-wrap" [hidden]="slot.sheetOpen()">
       @if (view.combatOnScreen()) {
         <app-combat-view
           class="combat"
@@ -482,93 +484,81 @@
           (opened)="sheets.openNotes()"
           (dismissed)="notes.dismissNotice()"
         />
-        <div class="board" [class.board--scene]="scene.scene()">
-          <div class="board__main">
-            <app-group-check-card
-              [campaignId]="state.campaignId()"
-              [tick]="state.groupCheckTick()"
-              [diceMode]="state.campaign()?.diceMode ?? 1"
-              [preference]="state.campaign()?.dicePreference ?? 1"
-            />
+        <!-- The player's scene (C5-01, C5-02, C6-08): on a phone one column (the image shown, the scene, the map row, the images left);
+             from 1024px the image (and the images left under it) beside the scene, the map under them, and the rail on the right. -->
+        <div class="player-board" [class.board--scene]="scene.scene()" [class.player-board--split]="scene.scene() && (state.shownImage() || state.leftImages().length > 0)" [class.player-board--image]="state.shownImage()" [class.player-board--left]="state.leftImages().length > 0 && (slot.phone() || !state.shownImage())">
+          <app-group-check-card
+            class="player-board__group"
+            (needsRoll)="state.groupWaiting.set($event)"
+            [campaignId]="state.campaignId()"
+            [tick]="state.groupCheckTick()"
+            [diceMode]="state.campaign()?.diceMode ?? 1"
+            [preference]="state.campaign()?.dicePreference ?? 1"
+          />
+          <div class="player-top">
+            <app-shown-image-block class="player-board__image" [image]="state.shownImage()" [animate]="state.phase() === 'live'">
+              @if (!slot.phone() && state.shownImage()) {
+                <!-- Beside the scene the images left are inside the image's card, under a divider (C6-08). -->
+                <ng-container [ngTemplateOutlet]="leftImages" [ngTemplateOutletContext]="{ $implicit: true }" />
+              }
+            </app-shown-image-block>
             <app-scene-player
+              class="player-board__scene"
               [campaignId]="state.campaignId()"
               [state]="scene"
               [diceMode]="state.campaign()?.diceMode ?? 1"
               [dicePreference]="state.campaign()?.dicePreference ?? 1"
               [reliableTalent]="state.playerSheet()?.skills?.reliableTalent ?? []"
-            />
-            <app-shown-image-block [image]="state.shownImage()" [animate]="state.phase() === 'live'" />
-            <app-left-images-block [images]="state.leftImages()" />
-            <app-session-map
-              [campaignId]="state.campaignId()"
-              [state]="mapState"
-              [mapId]="state.currentMapId()"
-              [searchable]="view.searchable()"
-              (searchTraps)="sheets.searchTraps()"
-              [fog]="fog"
-              [characterName]="view.ownCharacterName()"
-              [ownCharacterId]="state.ownCharacterId()"
-              [senses]="state.playerSheet()?.senses ?? []"
-              [seeing]="state.seeingFamiliar()"
-              [seeingFamiliar]="state.familiarNameNow()"
-              [creaturesTick]="state.creaturesTick()"
-            />
-            <app-found-treasures [points]="mapState.points()" [mapName]="mapState.map()?.name ?? ''" />
-            <app-trap-activity [activity]="trapBoard.activity()" />
-          </div>
-          <div class="board__side">
-            @if (state.ownVitals(); as v) {
-              <app-player-vitals
-                [vitals]="v"
-                [sheet]="state.ownSheet()"
-                [beastAc]="state.beastAc()"
-                [campaignId]="state.campaignId()"
-                [armorClassBonus]="view.ownArmorBonus()"
-                [ownDeathSaves]="view.ownDeathSaves()"
-                [effectCards]="ownEffects.cards()"
-                [conditionNames]="ownEffects.conditions()"
-                [diceMode]="state.campaign()?.diceMode ?? 1"
-                [dicePreference]="state.campaign()?.dicePreference ?? 1"
-                (vitalsChange)="takeVitals([$event])"
-              />
-              @if (state.playerSheet()?.revivify) {
-                <button matButton="outlined" type="button" class="revivify" (click)="sheets.openRevivify()">
-                  <mat-icon aria-hidden="true">favorite</mat-icon>Revivificar
-                </button>
+              [tabs]="sceneTabs()"
+              [imagesCount]="state.leftImages().length"
+              [waiting]="state.groupWaiting()"
+            >
+              <!-- On a phone the map and the images left are tabs of the scene's card (C7-07); one element per @if so each is projected by its selector. -->
+              @if (sceneTabs()) {
+                <div sceneMap><ng-container [ngTemplateOutlet]="mapBlock" [ngTemplateOutletContext]="{ $implicit: true }" /></div>
               }
-              <app-casting-panel
-                [campaignId]="state.campaignId()"
-                [characterId]="v.characterId"
-                [characterName]="v.name"
-                [tick]="state.castsTick()"
-                [diceMode]="state.campaign()?.diceMode ?? 1"
-                [preference]="state.campaign()?.dicePreference ?? 1"
-              />
-              <app-bardic-block
-                [campaignId]="state.campaignId()"
-                [diceMode]="state.campaign()?.diceMode ?? 1"
-                [tick]="state.castsTick()"
-              />
-            } @else {
-              <div class="mr-notice mr-notice--neutral">
-                <mat-icon aria-hidden="true">person_off</mat-icon>
-                <p>
-                  <strong>Você não tem um personagem vivo nesta campanha.</strong>
-                  Crie um na página da campanha; os números dele aparecem aqui.
-                </p>
-              </div>
+              @if (sceneTabs()) {
+                <div sceneImages><app-left-images-block [images]="state.leftImages()" [bare]="true" /></div>
+              }
+            </app-scene-player>
+            @if ((slot.phone() || !state.shownImage()) && !sceneTabs()) {
+              <ng-container [ngTemplateOutlet]="leftImages" [ngTemplateOutletContext]="{ $implicit: false }" />
             }
           </div>
+          @if (!sceneTabs()) {
+            <ng-container [ngTemplateOutlet]="mapBlock" [ngTemplateOutletContext]="{ $implicit: false }" />
+          }
+          <app-found-treasures class="player-board__finds" [points]="mapState.points()" [mapName]="mapState.map()?.name ?? ''" />
+          <div class="player-board__activity"><app-trap-activity [activity]="trapBoard.activity()" /></div>
+          @if (!slot.phone() && !playerRail()) {
+            <!-- A tablet (768 to 1023px): the sheet's numbers under the scene, in the page's one column. -->
+            <div class="player-board__side">
+              <ng-container [ngTemplateOutlet]="sheetPanel" />
+            </div>
+          }
         </div>
         <p class="mr-visually-hidden" role="status" aria-live="polite">{{ state.shownNotice() }}</p>
         <p class="mr-visually-hidden" role="status" aria-live="polite">{{ scene.notice() }}</p>
       }
       @if (!combat.fullPage() && !(state.isMaster() && !view.combatOnScreen())) {
-        <!-- The free rolls of the session (MR-052): under the board, so no screen's layout moves for it. The master's board outside a combat closes its "Cena" with them. -->
-        <app-free-roll-log [rolls]="freeDice.table()" [listState]="freeDice.listState()" (retry)="freeDice.refresh()" />
+        <!-- The free rolls of the session (MR-052): under the board, so no screen's layout moves for it; the player's is a fold. The master's board outside a combat closes its "Cena" with them. -->
+        <app-free-roll-log [rolls]="freeDice.table()" [listState]="freeDice.listState()" [fold]="!state.isMaster()" (retry)="freeDice.refresh()" />
       }
       </div>
-      @if (!railChat()) {
+      <!-- The player's "Ficha" on a phone: a panel inside the session, the stream and the badges live while it is open (C6-09). -->
+      @if (!state.isMaster() && slot.phone()) {
+        <section class="sheet-view" [hidden]="!slot.sheetOpen()" aria-label="Ficha">
+          <ng-container [ngTemplateOutlet]="sheetPanel" />
+        </section>
+      }
+      </div>
+      @if (playerRail()) {
+        <!-- From 1024px the player's right column outside a combat: "Conversa" and "Ficha" as tabs of one rail (C6-08); both stay mounted. -->
+        <app-session-rail class="split__rail" label="Conversa e ficha" [tabs]="playerRailTabs()" [selected]="slot.railTab()" (selectedChange)="slot.railTab.set($event)">
+          <div appRailPanel="chat"><ng-container [ngTemplateOutlet]="chatPanel" /></div>
+          <div appRailPanel="sheet"><ng-container [ngTemplateOutlet]="sheetPanel" /></div>
+        </app-session-rail>
+      } @else if (!railChat()) {
         <div
           class="split__chat"
           [class.split__chat--rail]="railed()"
@@ -593,6 +583,7 @@
           [tab]="phoneTab()"
           [unread]="conversation.unread()"
           [sheetLink]="slot.sheetLink()"
+          [sheetPanel]="!state.isMaster()"
           [sceneLabel]="state.isMaster() && view.combatOnScreen() ? 'Combate' : 'Cena'"
           [sheetLabel]="state.isMaster() ? 'Grupo' : 'Ficha'"
           [master]="state.isMaster() && !view.combatOnScreen()"
@@ -616,23 +607,105 @@
   </button>
 </ng-template>
 
-<!-- The conversation: in the column beside the stage, under the board, or (the master's running combat) in the rail. Its code loads lazily. -->
+<!-- The conversation, drawn where it sits: the phone's full-screen tab, the column beside the stage or under the board, a combat's rail, or the player's rail. Its code loads lazily. -->
 <ng-template #chatPanel>
   @defer (when slot.wanted()) {
-          <app-conversation
-            [state]="conversation"
-            [campaignId]="state.campaignId()"
-            [isMaster]="state.isMaster()"
-            [userId]="slot.userId()"
-            [ownCharacterId]="state.ownCharacterId()"
-            [ownCharacterName]="view.ownCharacterName()"
-            [stageIds]="slot.stageIds()"
-            [combat]="state.isMaster() && view.combatOnScreen()"
-            [sceneName]="scene.scene()?.name ?? ''"
-            [connection]="state.connection()"
-            [phone]="slot.phone()"
-            [active]="slot.shown()"
-            (back)="slot.choose('scene')"
-          />
+    <app-conversation
+      [state]="conversation"
+      [campaignId]="state.campaignId()"
+      [isMaster]="state.isMaster()"
+      [userId]="slot.userId()"
+      [ownCharacterId]="state.ownCharacterId()"
+      [ownCharacterName]="view.ownCharacterName()"
+      [stageIds]="slot.stageIds()"
+      [combat]="state.isMaster() && view.combatOnScreen()"
+      [sceneName]="scene.scene()?.name ?? ''"
+      [connection]="state.connection()"
+      [phone]="slot.phone()"
+      [bare]="playerRail()"
+      [active]="slot.shown()"
+      (back)="slot.choose('scene')"
+    />
+  }
+</ng-template>
+
+<!-- The player's numbers in play (C6-09): the vitals, the slots, "Magias" with "Revivificar", and the link to the whole sheet. Drawn once:
+     in "Ficha" on a phone, in the rail from 1024px, under the scene on a tablet. -->
+<ng-template #sheetPanel>
+  @if (state.ownVitals(); as v) {
+    <div class="sheet">
+      <app-player-vitals
+        [vitals]="v"
+        [sheet]="state.ownSheet()"
+        [beastAc]="state.beastAc()"
+        [campaignId]="state.campaignId()"
+        [armorClassBonus]="view.ownArmorBonus()"
+        [ownDeathSaves]="view.ownDeathSaves()"
+        [effectCards]="ownEffects.cards()"
+        [conditionNames]="ownEffects.conditions()"
+        [diceMode]="state.campaign()?.diceMode ?? 1"
+        [dicePreference]="state.campaign()?.dicePreference ?? 1"
+        [foot]="false"
+        (vitalsChange)="takeVitals([$event])"
+      />
+      <app-casting-panel
+        [campaignId]="state.campaignId()"
+        [characterId]="v.characterId"
+        [characterName]="v.name"
+        [tick]="state.castsTick()"
+        [diceMode]="state.campaign()?.diceMode ?? 1"
+        [preference]="state.campaign()?.dicePreference ?? 1"
+      >
+        @if (state.playerSheet()?.revivify) {
+          <button matButton="outlined" type="button" class="revivify" (click)="sheets.openRevivify()">
+            <mat-icon aria-hidden="true">favorite</mat-icon>Revivificar
+          </button>
+          <p class="sheet__hint">Revivificar: para quem morreu há até 1 minuto; gasta um espaço de 3º nível e um diamante de 300 PO.</p>
         }
+      </app-casting-panel>
+      <app-bardic-block
+        [campaignId]="state.campaignId()"
+        [diceMode]="state.campaign()?.diceMode ?? 1"
+        [tick]="state.castsTick()"
+      />
+      <p class="sheet__lock">
+        <mat-icon aria-hidden="true">lock</mat-icon>
+        Durante a sessão, só o mestre muda esses números, fora os dados de vida que você gasta.
+      </p>
+      <a class="sheet__full" [routerLink]="['/campaigns', state.campaignId(), 'characters', v.characterId]">Abrir a ficha completa</a>
+    </div>
+  } @else {
+    <div class="mr-notice mr-notice--neutral">
+      <mat-icon aria-hidden="true">person_off</mat-icon>
+      <p>
+        <strong>Você não tem um personagem vivo nesta campanha.</strong>
+        Crie um na página da campanha; os números dele aparecem aqui.
+      </p>
+    </div>
+  }
+</ng-template>
+
+<!-- The images the master left with the players: a fold of one row on a phone, and inside the shown image's card (or alone, open) beside the scene. -->
+<ng-template #leftImages let-embedded>
+  <app-left-images-block class="player-board__left" [images]="state.leftImages()" [embedded]="embedded" />
+</ng-template>
+
+<!-- The player's map: a block of the board, or the "Mapa" tab of the scene's card on a phone. -->
+<ng-template #mapBlock let-inTab>
+  <app-session-map
+            class="player-board__map"
+            [inTab]="inTab"
+            [campaignId]="state.campaignId()"
+            [state]="mapState"
+            [mapId]="state.currentMapId()"
+            [searchable]="view.searchable()"
+            (searchTraps)="sheets.searchTraps()"
+            [fog]="fog"
+            [characterName]="view.ownCharacterName()"
+            [ownCharacterId]="state.ownCharacterId()"
+            [senses]="state.playerSheet()?.senses ?? []"
+            [seeing]="state.seeingFamiliar()"
+            [seeingFamiliar]="state.familiarNameNow()"
+            [creaturesTick]="state.creaturesTick()"
+          />
 </ng-template>

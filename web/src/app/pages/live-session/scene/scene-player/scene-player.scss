@@ -1,13 +1,16 @@
 :host {
   display: block;
+  height: 100%;
+  // The rows stack by the room the scene has (beside an image it is half the page), not by the screen's width.
+  container-type: inline-size;
 }
 
 // The same accent frame as "O mestre está mostrando": on the table right now.
 .sc {
   // The width of "Rolar", which a rolled row keeps empty so its result lines up with the bonuses.
-  --roll-w: 80px;
+  --roll-w: 100px;
   box-sizing: border-box;
-  margin-bottom: var(--mr-space-4);
+  height: 100%;
   padding: 14px 18px;
   border: 1px solid var(--mr-accent);
   border-radius: var(--mr-radius-lg);
@@ -53,6 +56,9 @@
 }
 
 .sc__sub {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
   margin: var(--mr-space-4) 0 0;
   font-family: var(--mr-font-display);
   font-size: 21px;
@@ -82,12 +88,6 @@
   &:focus-visible {
     outline: 2px solid var(--mr-focus);
     outline-offset: 2px;
-  }
-
-  @media (max-width: 599.98px) {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--mr-space-2);
   }
 }
 
@@ -190,9 +190,10 @@
     grid-column: 3;
   }
 
-  @media (max-width: 599.98px) {
-    display: flex;
-    gap: var(--mr-space-2);
+  // In a narrow scene (beside an image, or on a phone) the number and "Rolar" take only the room they need, so the name keeps the rest.
+  @container (max-width: 559.98px) {
+    grid-template-columns: auto auto var(--roll-w);
+    column-gap: var(--mr-space-2);
   }
 }
 
@@ -205,11 +206,6 @@
   font-size: 38px;
   font-weight: 800;
   line-height: 42px;
-
-  @media (max-width: 599.98px) {
-    min-width: 0;
-    text-align: left;
-  }
 }
 
 // The roll's own line, beside the number: "1d20 (11) + 6".
@@ -218,21 +214,13 @@
   font-size: 14px;
   line-height: 19px;
   color: var(--mr-ink-muted);
-
-  @media (max-width: 599.98px) {
-    flex: 1 1 auto;
-  }
 }
 
 .sc__roll,
 .sc__slot {
   flex: none;
   width: var(--roll-w);
-  --mat-button-outlined-container-height: 48px;
-
-  @media (max-width: 599.98px) {
-    margin-left: auto;
-  }
+  --mat-button-outlined-container-height: 44px;
 }
 
 .sc__slot {
@@ -275,4 +263,36 @@
 
 .sc__natural {
   margin-top: 2px;
+}
+
+.sc__sub .mat-icon {
+  flex: none;
+  color: var(--mr-ink-muted);
+}
+
+// A narrow scene (320px): the number is a little smaller so the name keeps its room beside it.
+@container (max-width: 319.98px) {
+  .sc {
+    --roll-w: 92px;
+  }
+
+  .sc__bonus,
+  .sc__total {
+    font-size: 30px;
+    line-height: 34px;
+  }
+}
+
+// The tabs of a phone (C7-07): the list under the title, the open panel under it.
+.sc__tabs {
+  display: block;
+  margin: var(--mr-space-3) calc(-1 * var(--mr-space-1)) 0;
+}
+
+.sc__panel {
+  padding-top: var(--mr-space-3);
+
+  &[hidden] {
+    display: none;
+  }
 }

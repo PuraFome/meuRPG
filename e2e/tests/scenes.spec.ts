@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { endOpenSessionRPC, openRolls, openSessionPage, showMapTool } from './live-session-support';
+import { endOpenSessionRPC, openRolls, openSessionPage, openSheetTab, showMapTool } from './live-session-support';
 import { addActionRPC, rollTyped, sceneActionIdsRPC, setAttemptsRPC, tableForScenes } from './scene-support';
 import { orla, orlaSheet } from './rests-support';
 import { callRPC, newSignedInContext } from './support';
@@ -114,8 +114,9 @@ test(
       const rows = scene.getByRole('listitem');
       await expect(rows).toHaveCount(3);
       await expect(rows.nth(0)).toContainText('+6');
-      await expect(rows.nth(0)).toContainText('Investigação passiva 16');
-      await expect(rows.nth(1)).toContainText('Percepção passiva 11');
+      // The passive value is not drawn (it is not on the board, C5-01).
+      await expect(rows.nth(0)).not.toContainText('passiva');
+      await expect(rows.nth(1)).not.toContainText('passiva');
       await expect(rows.nth(2)).toContainText('+3');
       await expect(scene).not.toContainText(/\bCD\b|passou/i);
 
@@ -675,6 +676,7 @@ test(
         expect(gift.ok(), await gift.text()).toBeTruthy();
         await openScene(master, 'A carroça tombada');
         await openSessionPage(player, campaignId);
+        await openSheetTab(player);
         await expect(player.getByText(/Você tem uma Inspiração de Bardo \(d6\) de Orla/)).toBeVisible();
         const scene = player.getByRole('region', { name: 'Cena: A carroça tombada' });
         await scene.getByRole('button', { name: 'Rolar Procurar pistas na carroça' }).click();

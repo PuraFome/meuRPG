@@ -91,7 +91,8 @@ test(
       await expect(secretRow).toContainText('Só você');
 
       // The player reads the table's roll; only now does the absence of the other one mean anything.
-      const playerLog = p.getByRole('region', { name: 'Rolagens da mesa' });
+      // The player's log is a fold at the end of the scene (C6-08), closed until opened.
+      const playerLog = await openTableRolls(p);
       await expect(playerLog.getByRole('listitem').filter({ hasText: /: 1d6 = \d+ \(\d\)/ })).toHaveCount(1);
       await expect(playerLog.getByText('1d20 + 7')).toHaveCount(0);
       await expect(playerLog.getByText('Só você')).toHaveCount(0);

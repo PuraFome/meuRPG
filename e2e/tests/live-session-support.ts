@@ -212,3 +212,58 @@ export async function openTableRolls(page: Page): Promise<Locator> {
   }
   return region;
 }
+
+/**
+ * The player's "Ficha" (C6-08, C6-09), in whatever shape the width gives it: a tab of the rail "Conversa · Ficha" from 1024 px, the
+ * "Ficha" of the pinned nav on a phone (a panel inside the session), and a block under the scene between the two (nothing to open).
+ * It opens the tab when there is one, and returns the place the numbers are in.
+ */
+export async function openSheetTab(page: Page): Promise<Locator> {
+  const width = page.viewportSize()?.width ?? 1280;
+  if (width < 768) {
+    await page.getByRole('navigation', { name: 'Seções da sessão' }).getByRole('button', { name: 'Ficha' }).click();
+    await expect(page.getByRole('navigation', { name: 'Seções da sessão' }).getByRole('button', { name: 'Ficha' })).toHaveAttribute('aria-current', 'true');
+    return page.getByRole('region', { name: 'Ficha', exact: true });
+  }
+  if (width >= 1024) {
+    const tab = railOf(page).getByRole('tab', { name: 'Ficha' });
+    await tab.click();
+    await expect(tab).toHaveAttribute('aria-selected', 'true');
+    return railOf(page).getByRole('tabpanel', { name: 'Ficha' });
+  }
+  return page.locator('.player-board__side');
+}
+
+/** Back to the scene on a phone ("Cena" of the pinned nav), or to "Conversa" in the rail from 1024 px. */
+export async function openChatTab(page: Page): Promise<void> {
+  const width = page.viewportSize()?.width ?? 1280;
+  if (width >= 1024) {
+    const tab = railOf(page).getByRole('tab', { name: /^Conversa/ });
+    await tab.click();
+    await expect(tab).toHaveAttribute('aria-selected', 'true');
+  }
+}
+
+/** The player's right column from 1024 px: the rail named "Conversa e ficha". */
+export function railOf(page: Page): Locator {
+  return page.getByRole('complementary', { name: 'Conversa e ficha' });
+}
+
+/**
+ * The player's whole map, from the session page: on a phone the map there is one row, "Mapa · <nome>" with "Ver mapa" (C5-01), so the
+ * fog, its legend and its loading state are on the map page that link opens; from 768 px they are on the session page itself.
+ * Call it on a session page already open; it follows the link on a phone and does nothing elsewhere.
+ */
+export async function followMapLink(page: Page): Promise<void> {
+  if (!onPhone(page)) {
+    return;
+  }
+  await page.getByRole('link', { name: 'Ver mapa' }).click();
+  await expect(page).toHaveURL(/\/maps\/[^/?]+\?from=session/);
+}
+
+/** `goto` of the session's address, then `followMapLink`: the page where the player's whole map is at this width. */
+export async function openPlayerMap(page: Page, sessionUrl: string): Promise<void> {
+  await page.goto(sessionUrl);
+  await followMapLink(page);
+}

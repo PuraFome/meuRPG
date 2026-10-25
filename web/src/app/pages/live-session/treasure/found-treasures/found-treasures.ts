@@ -110,11 +110,11 @@ export function openTreasureSheet(
   `,
   styles: `
     :host {
-      display: contents;
+      display: block;
     }
 
     .ft {
-      margin-top: var(--mr-space-4);
+      margin: 0;
       padding: 0 var(--mr-space-3);
       border: 1px solid var(--mr-line);
       border-radius: var(--mr-radius-md);

@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MapState, tokenKey } from '../../../core/maps/map-state';
 import { MapsClient } from '../../../core/maps/maps-client';
@@ -206,5 +206,74 @@ describe("SessionMap: the master's tool tabs (C6-05)", () => {
     );
     expect(el.querySelector('#map-tool-panel-pontos')?.hasAttribute('hidden')).toBe(false);
     expect(el.querySelector('#map-tool-panel-tokens')?.hasAttribute('hidden')).toBe(true);
+  });
+});
+
+describe('SessionMap, the player on a phone (C5-01)', () => {
+  const asPhone = (matches: boolean) => {
+    window.matchMedia = (() => ({
+      matches,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    })) as unknown as typeof window.matchMedia;
+  };
+
+  async function mount(searchable: boolean) {
+    const state = new MapState(async () =>
+      mapResponse(mapMessage('map-1', 'Cripta do Corvo', { revealed: true }), [], []),
+    );
+    await state.open('map-1');
+    const fixture = TestBed.createComponent(SessionMap);
+    fixture.componentRef.setInput('campaignId', 'camp-1');
+    fixture.componentRef.setInput('state', state);
+    fixture.componentRef.setInput('mapId', 'map-1');
+    fixture.componentRef.setInput('searchable', searchable);
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  beforeEach(() =>
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        { provide: MapsClient, useValue: {} },
+        { provide: LiveSessionSource, useValue: {} },
+        { provide: SceneClient, useValue: {} },
+      ],
+    }),
+  );
+  afterEach(() => {
+    delete (window as unknown as Record<string, unknown>)['matchMedia'];
+  });
+
+  it('is one row, "Mapa · Cripta do Corvo" with "Ver mapa" to the whole map, and no preview', async () => {
+    asPhone(true);
+    const el = await mount(false);
+    expect(el.querySelector('.map-row__title')?.textContent?.trim()).toBe('Mapa · Cripta do Corvo');
+    const open = el.querySelector('a.map-row__open') as HTMLAnchorElement;
+    expect(open.textContent).toContain('Ver mapa');
+    expect(open.getAttribute('href')).toBe('/campaigns/camp-1/maps/map-1?from=session');
+    expect(el.querySelector('app-map-view')).toBeNull();
+    expect(el.querySelector('.map__search')).toBeNull();
+  });
+
+  it('keeps "Procurar armadilhas" under the row', async () => {
+    asPhone(true);
+    const el = await mount(true);
+    expect(el.querySelector('.map-row .map__search')?.textContent).toContain('Procurar armadilhas');
+  });
+
+  it('is the preview with "Ver mapa" on a computer', async () => {
+    asPhone(false);
+    const el = await mount(false);
+    expect(el.querySelector('.map-row')).toBeNull();
+    // "Mapa" and, muted, the map's name and that it is the current one; "Ver mapa" is an icon button at the right (C6-08).
+    expect(el.querySelector('#session-map-heading')?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      'mapMapa · Cripta do Corvo · mapa atual',
+    );
+    const full = el.querySelector('a.map__full') as HTMLAnchorElement;
+    expect(full.getAttribute('aria-label')).toBe('Ver mapa');
+    expect(full.getAttribute('href')).toBe('/campaigns/camp-1/maps/map-1?from=session');
+    expect(el.querySelector('a.map__open')).toBeNull();
   });
 });

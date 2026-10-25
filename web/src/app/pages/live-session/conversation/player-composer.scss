@@ -18,6 +18,22 @@
   flex: 1;
 }
 
+// From a tablet up the box takes a row of its own, with "Só o mestre lê" at the left and "Enviar" at the right under it (C6-08).
+@media (min-width: 768px) {
+  .composer__row {
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .composer__field {
+    flex: 1 1 100%;
+  }
+
+  .composer__private {
+    margin-right: auto;
+  }
+}
+
 .composer__private {
   display: inline-flex;
   align-items: center;
@@ -39,6 +55,14 @@
     font-size: 20px;
   }
 
+  @media (min-width: 768px) {
+    width: auto;
+    gap: var(--mr-space-2);
+    padding: 0 var(--mr-space-4);
+    font: inherit;
+    font-weight: 700;
+  }
+
   &[aria-pressed='true'] {
     border-color: var(--mr-accent);
     background: var(--mr-accent-soft);
@@ -51,13 +75,16 @@
   }
 }
 
-// The lock is an icon alone (the field keeps its room); the words stay for a screen reader.
+// From a tablet up the lock has its words ("Só o mestre lê", C6-08); on a phone it is an icon alone (the field keeps its room) and
+// the words stay for a screen reader.
 .composer__private-text {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
+  @media (max-width: 767.98px) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
 }
 
 .composer__send {
@@ -79,7 +106,6 @@
   cursor: pointer;
 
   .mat-icon {
-    display: none;
     width: 20px;
     height: 20px;
     font-size: 20px;
@@ -94,10 +120,6 @@
   @media (max-width: 767.98px) {
     width: 48px;
     padding: 0;
-
-    .mat-icon {
-      display: inline-block;
-    }
 
     .composer__send-text {
       position: absolute;

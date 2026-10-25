@@ -1,23 +1,40 @@
 @if (scene(); as s) {
   <section class="sc" aria-labelledby="sc-title">
-    <p class="sc__eyebrow"><mat-icon aria-hidden="true">chat_bubble_outline</mat-icon>O mestre abriu uma cena</p>
+    @if (!tabs()) {
+      <p class="sc__eyebrow"><mat-icon aria-hidden="true">chat_bubble_outline</mat-icon>O mestre abriu uma cena</p>
+    }
     <h2 class="sc__title" id="sc-title">Cena: {{ sceneName() }}</h2>
+    @if (tabs()) {
+      <!-- On a phone (C7-07): the scene in tabs, "Ações · Mapa · Imagens"; every panel stays mounted, hidden when it is not the open one. -->
+      <app-tab-list class="sc__tabs" label="Seções da cena" idPrefix="scene" [compact]="true" [tabs]="tabItems()" [(selected)]="tab" />
+      <div class="sc__panel" role="tabpanel" [id]="panelId('actions')" [attr.aria-labelledby]="tabId('actions')" [hidden]="current() !== 'actions'">
+        <ng-container [ngTemplateOutlet]="actions" />
+      </div>
+      <div class="sc__panel" role="tabpanel" [id]="panelId('map')" [attr.aria-labelledby]="tabId('map')" [hidden]="current() !== 'map'">
+        <ng-content select="[sceneMap]" />
+      </div>
+      <div class="sc__panel" role="tabpanel" [id]="panelId('images')" [attr.aria-labelledby]="tabId('images')" [hidden]="current() !== 'images'">
+        <ng-content select="[sceneImages]" />
+      </div>
+    } @else {
+      <ng-container [ngTemplateOutlet]="actions" />
+    }
+  </section>
+
+  <ng-template #actions>
     <app-stage-player class="sc__stage" [state]="state()" />
     @if (s.description) {
       <p class="sc__text">{{ s.description }}</p>
     }
 
     @if (rows().length > 0) {
-    <h3 class="sc__sub">O que você pode fazer</h3>
+    <h3 class="sc__sub"><mat-icon aria-hidden="true">casino</mat-icon>O que você pode fazer</h3>
     <ul class="sc__list">
       @for (r of rows(); track r.action.id) {
         <li class="sc__row" tabindex="-1" [attr.data-action]="r.action.id">
           <div class="sc__words">
             <span class="sc__name">{{ r.title }}</span>
             <span class="sc__check">{{ r.check }}</span>
-            @if (r.passive) {
-              <span class="sc__passive">{{ r.passive }}</span>
-            }
             @if (r.pass; as pass) {
               <span class="mr-tag sc__tag" [class.mr-tag--success]="pass.ok" [class.mr-tag--danger]="!pass.ok">
                 <mat-icon aria-hidden="true">{{ pass.ok ? 'check' : 'close' }}</mat-icon>{{ pass.text }}
@@ -56,7 +73,7 @@
                 [attr.aria-label]="'Rolar ' + r.title"
                 (click)="roll(r.action)"
               >
-                Rolar
+                <mat-icon aria-hidden="true">casino</mat-icon>Rolar
               </button>
             } @else {
               <span class="sc__slot" aria-hidden="true"></span>
@@ -70,5 +87,5 @@
       <mat-icon aria-hidden="true">visibility</mat-icon>O mestre vê cada resultado. Você vê só os seus.
     </p>
     }
-  </section>
+  </ng-template>
 }

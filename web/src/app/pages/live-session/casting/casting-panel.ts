@@ -84,6 +84,13 @@ export class CastingPanel {
   protected readonly note = ACTIVE_NOTE;
   protected readonly going = computed(() => this.active().filter(isCasting));
   protected readonly lasting = computed(() => this.active().filter(isActive));
+  /** The player's line under "Magias": the cast going on, and the concentration held (or none). */
+  protected readonly status = computed(() => {
+    const going = this.going()[0];
+    const holding = this.lasting().find((c) => c.concentrating);
+    const first = going ? `Conjurando ${going.spellNamePt}.` : 'Nada sendo conjurado agora.';
+    return `${first} Concentração: ${holding ? holding.spellNamePt : 'nenhuma'}.`;
+  });
   protected readonly lines = computed(() =>
     this.log()
       .slice(0, LOG_LINES)

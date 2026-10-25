@@ -16,7 +16,7 @@ let nextId = 0;
  * "Rolagens da mesa" (MR-052, B5-04): the free rolls of the session as the table's log, newest first
  * ("Rolagem livre · Brisa: 2d6 + 3 = 11 (4, 4)"). The master's own secret rolls are in it with the "Só você" badge;
  * a player's list never holds one. It sits under the stage, so no screen's layout moves for it. It is a small
- * section, not a panel: ten lines, the rest on request.
+ * section, not a panel: ten lines, the rest on request. The player's is a fold (`fold`), the master's a section.
  */
 @Component({
   selector: 'app-free-roll-log',
@@ -56,7 +56,12 @@ let nextId = 0;
         <p class="mr-muted">Ninguém rolou dados nesta sessão ainda. As rolagens da mesa aparecem aqui.</p>
       }
     </ng-template>
-    @if (folded()) {
+    @if (fold()) {
+      <!-- The player's (C6-08): a fold at the end of the scene, closed until opened. -->
+      <app-fold class="log-fold" appearance="row" icon="casino" title="Rolagens da mesa" [level]="2" [region]="true">
+        <ng-container [ngTemplateOutlet]="body" />
+      </app-fold>
+    } @else if (folded()) {
       <app-fold title="Rolagens da mesa" [(open)]="open" [region]="true">
         <ng-container *ngTemplateOutlet="body" />
       </app-fold>
@@ -74,6 +79,8 @@ export class FreeRollLog {
   readonly rolls = input.required<readonly FreeRollVm[]>();
   readonly listState = input.required<ListState>();
   readonly retry = output<void>();
+  /** A fold, closed until opened, in the row look (the player's, at the end of the scene), instead of the always-open section. */
+  readonly fold = input(false);
   /** The master's board closes its column with the log folded, one line (C3-01); a player's page draws the section. */
   readonly folded = input(false);
   protected readonly open = signal(false);

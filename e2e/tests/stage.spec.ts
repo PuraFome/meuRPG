@@ -78,12 +78,12 @@ test(
       await expect(stage.getByRole('button', { name: 'Ver Capitão Goblin maior, fala agora' })).toBeVisible();
       await expect(stage).not.toContainText(/Inimigo|PV|CA\b/);
       await expect(stage.locator('img')).toHaveCount(2);
-      // The portraits are cut-outs: a bare image, no box around it.
-      const box = await stage.locator('img').first().evaluate((img) => {
-        const s = getComputedStyle(img);
-        return { border: s.borderTopWidth, radius: s.borderTopLeftRadius, bg: s.backgroundColor };
+      // Each one is a chip: the portrait in a 48 px square tile, contained so it is never cropped (C5-01).
+      const tile = await stage.locator('img').first().evaluate((img) => {
+        const rect = img.getBoundingClientRect();
+        return { fit: getComputedStyle(img).objectFit, width: Math.round(rect.width), height: Math.round(rect.height) };
       });
-      expect(box).toEqual({ border: '0px', radius: '0px', bg: 'rgba(0, 0, 0, 0)' });
+      expect(tile).toEqual({ fit: 'contain', width: 48, height: 48 });
 
       // Tap Mira: the larger view, only her name and picture.
       await stage.getByRole('button', { name: 'Ver Mira maior' }).click();

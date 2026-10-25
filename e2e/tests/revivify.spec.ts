@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { getEncounterRPC, waitTurnLeaves } from './combat-support';
-import { endOpenSessionRPC, openSessionPage } from './live-session-support';
+import { endOpenSessionRPC, openSessionPage, openSheetTab } from './live-session-support';
 import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support';
 import { newSignedInContext, openActionTab } from './support';
 
@@ -98,6 +98,7 @@ test(
       await openSessionPage(p, campaignId);
 
       // The button is on the page of the player whose character has the spell, with no combat open.
+      await openSheetTab(p);
       await p.getByRole('button', { name: 'Revivificar', exact: true }).click();
       const sheet = p.getByRole('dialog', { name: 'Revivificar' });
       await expect(sheet.getByRole('radiogroup', { name: 'Quem morreu por perto' })).toContainText('Toren');
@@ -148,6 +149,7 @@ test(
       const table = await tableWithDead(m, p, 'Voltou à vida', false);
       campaignId = table.campaignId;
       await openSessionPage(p, campaignId);
+      await openSheetTab(p);
       await expect(p.getByText('Você não tem um personagem vivo nesta campanha.')).toBeVisible();
 
       await reviveRPC(m, campaignId, table.deadId);

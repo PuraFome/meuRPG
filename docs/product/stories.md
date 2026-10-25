@@ -584,7 +584,7 @@ Each invite chooses whether it requires approval, and a refusal deletes the char
   Otherwise it is a `404`, even with the ID stored.
   See [RN-10](rules.md) and [Serving images](../architecture/maps/images.md#serving-images).
 - Game master screen: with a scene open, the scene's "Imagens da cena" row (the dashed "Da galeria" tile, the "Deixar com os jogadores" switch with its state word on one line, "Parar de mostrar" and the list of images left); with no scene open, the "Imagem para os jogadores" panel ("Mostrar imagem", the gallery picker with "Mostrar aos jogadores", "Trocar imagem", "Parar de mostrar"), the "Deixar com os jogadores" switch ("Ligado"/"Desligado", off whenever a new image is shown) and the "Deixadas com os jogadores" list with "Tirar".
-- Player screen: the "O mestre está mostrando" block with the image, its name as caption and "Ver em tela cheia", which appears and disappears live and is announced; and the "Imagens que o mestre deixou" list with "Ver em tela cheia", hidden while empty.
+- Player screen: the "O mestre está mostrando" block with the image, its name as caption and "Ver em tela cheia", first on the page on a phone and at most 40 % of the screen high, which appears and disappears live and is announced; and the "Imagens que o mestre deixou (n)" thumbnails, each opening the same full-screen view ("Ver <nome> em tela cheia"), a fold of one row on a phone (the "Imagens" tab of the scene's card while a scene is open) and open beside the scene on a computer, hidden while empty.
   The list is on the session page only, not on the campaign page.
   See [Design](../design/session.md#images-shown-to-players) and [Architecture](../architecture/play/live-session.md#what-the-session-shows).
 - The audience is part of the show call and has its own call to change it while the image is shown (`SetShownImage`, `SetShownImageAudience`); the game master reads it on the image, and a player never does.
@@ -1378,7 +1378,7 @@ See [Architecture](../architecture/campaign-package.md).
 - **Given** a player is erased, **then** their lines stay and the author reads "Jogador removido".
 
 #### In the app
-- The "Conversa" panel beside the stage and the map, and a tab on the phone; the master's composer has "Falar como", "Para", "Imagem da galeria" and "Enviar"; the player's has "Como <personagem>" and "Fora do personagem".
+- The "Conversa" panel beside the stage and the map (the player's, from 1024 px, is a tab of the right column "Conversa · Ficha" beside the character's "Ficha"), and a tab of the pinned nav on the phone, where "Ficha" is a panel inside the session; the master's composer has "Falar como", "Para", "Imagem da galeria" and "Enviar"; the player's has "Como <personagem>" and "Fora do personagem".
 
 #### Related
 - [RN-36](rules.md#rn-36-who-reads-a-line-of-the-scenes-conversation), [RN-10](rules.md), [RN-18](rules.md), [MR-028](#mr-028-show-an-image-to-the-players), [MR-039](#mr-039-ai-generated-images-for-dungeons-and-scenes). See [Architecture](../architecture/play/live-session.md#the-conversation-of-the-scene) and [Privacy](../privacy.md#what-the-voice-sends-to-google-mr-051).

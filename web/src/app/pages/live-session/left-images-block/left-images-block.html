@@ -1,34 +1,43 @@
 @if (images().length > 0) {
-  <section class="block" aria-labelledby="left-title">
-    <h2 class="block__heading" id="left-title">
-      <mat-icon aria-hidden="true">image</mat-icon>Imagens que o mestre deixou
-    </h2>
-    <ul class="block__list">
-      @for (image of images(); track image.id) {
-        <li class="row">
-          <img
-            class="row__thumb"
-            [src]="thumb(image)"
-            alt=""
-            width="96"
-            height="72"
-            loading="lazy"
-          />
-          <div class="row__text">
-            <p class="row__name">{{ image.name }}</p>
-            <button
-              matButton
-              type="button"
-              class="row__full"
-              [attr.aria-label]="'Ver ' + image.name + ' em tela cheia'"
-              (click)="openFull(image)"
-            >
-              <mat-icon aria-hidden="true">fullscreen</mat-icon>Ver em tela cheia
-            </button>
-          </div>
-        </li>
-      }
-    </ul>
-    <p class="block__note">Ficam aqui até o mestre tirar.</p>
-  </section>
+  @if (bare()) {
+    <!-- Inside the scene's "Imagens" tab (C7-07): the thumbnails alone, the tab says the rest. -->
+    <ng-container [ngTemplateOutlet]="grid" />
+  } @else if (embedded()) {
+    <!-- Under the image shown, in its card, behind a divider (C6-08): open, with no fold. -->
+    <section class="emb" [attr.aria-labelledby]="headingId">
+      <h3 class="emb__title" [id]="headingId"><mat-icon aria-hidden="true">image</mat-icon>{{ title() }}</h3>
+      <ng-container [ngTemplateOutlet]="grid" />
+    </section>
+  } @else {
+    <!-- A fold of one row on a phone ("Imagens que o mestre deixou (2)"); open at once beside the scene on a computer. -->
+    <app-fold
+      class="left"
+      appearance="row"
+      icon="image"
+      [level]="2"
+      [region]="true"
+      [foldable]="phone()"
+      [title]="title()"
+    >
+      <ng-container [ngTemplateOutlet]="grid" />
+    </app-fold>
+  }
 }
+
+<ng-template #grid>
+  <ul class="left__grid">
+    @for (image of images(); track image.id) {
+      <li>
+        <button
+          type="button"
+          class="thumb"
+          [attr.aria-label]="'Ver ' + image.name + ' em tela cheia'"
+          (click)="openFull(image)"
+        >
+          <img class="thumb__img" [src]="thumb(image)" alt="" width="96" height="72" loading="lazy" />
+          <span class="thumb__name">{{ image.name }}</span>
+        </button>
+      </li>
+    }
+  </ul>
+</ng-template>

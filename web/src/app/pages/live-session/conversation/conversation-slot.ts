@@ -36,9 +36,13 @@ export class ConversationSlot {
   private readonly opened = signal(false);
   /** The rail's "Conversa" tab is the one open (the combat says so). */
   readonly railShown = signal(false);
+  /** The player's rail outside a combat ("Conversa · Ficha", from 1024 px): the tab open in it. */
+  readonly railTab = signal('chat');
 
   /** The phone shows the conversation, full screen. */
   readonly chatOpen = computed(() => this.inputs.phone() && this.tab() === 'chat');
+  /** The phone shows the character's panel inside the session ("Ficha" of the pinned nav). */
+  readonly sheetOpen = computed(() => this.inputs.phone() && this.tab() === 'sheet');
   /** The reader can see the conversation now; the unread count waits for it to be false. */
   readonly onScreen = computed(
     () =>

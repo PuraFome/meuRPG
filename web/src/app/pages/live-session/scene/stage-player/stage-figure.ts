@@ -21,7 +21,7 @@ import { initialsOf } from '../../../../core/play/stage-view';
 @Component({
   selector: 'app-stage-figure',
   template: `
-    <span class="fig" [class.fig--speaking]="speaking()">
+    <span class="fig" [class.fig--speaking]="speaking()" [class.fig--chip]="chip()">
       @if (src() && !failed()) {
         <img class="fig__img" [src]="src()" alt="" decoding="async" draggable="false" (error)="failed.set(true)" />
       } @else {
@@ -39,6 +39,8 @@ export class StageFigure {
   readonly src = input('');
   readonly name = input.required<string>();
   readonly speaking = input(false);
+  /** A small square tile (the stage's chips) instead of the tall cut-out the enlarged view draws. */
+  readonly chip = input(false);
 
   protected readonly failed = signal(false);
   protected readonly initials = computed(() => initialsOf(this.name()));

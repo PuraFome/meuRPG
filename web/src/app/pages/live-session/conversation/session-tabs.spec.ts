@@ -6,10 +6,11 @@ import { SessionTabs } from './session-tabs';
 describe('SessionTabs', () => {
   beforeEach(() => TestBed.configureTestingModule({ providers: [provideRouter([])] }));
 
-  function setup(tab: 'scene' | 'chat' = 'scene', unread = 0) {
+  function setup(tab: 'scene' | 'sheet' | 'chat' = 'scene', unread = 0, sheetPanel = false) {
     const fixture = TestBed.createComponent(SessionTabs);
     fixture.componentRef.setInput('tab', tab);
     fixture.componentRef.setInput('unread', unread);
+    fixture.componentRef.setInput('sheetPanel', sheetPanel);
     fixture.componentRef.setInput('sheetLink', ['/campaigns', 'c1', 'characters', 'pc1']);
     const chosen: string[] = [];
     fixture.componentInstance.choose.subscribe((t) => chosen.push(t));
@@ -68,6 +69,27 @@ describe('SessionTabs', () => {
     one.fixture.detectChanges();
     expect(one.el.querySelector('.tab__badge')?.textContent?.trim()).toBe('99+');
   });
+
+  describe('with the sheet as a panel of the session (a player with a character)', () => {
+    it('draws "Ficha" as a button, not a link', () => {
+      const { el } = setup('scene', 0, true);
+      expect(el.querySelector('a.tab')).toBeNull();
+      expect(Array.from(el.querySelectorAll('button.tab'), (t) => t.textContent?.trim())).toEqual([
+        'Cena',
+        'Ficha',
+        'Conversa',
+      ]);
+    });
+
+    it('says "sheet" when it is chosen and marks it as current when open', () => {
+      const { el, chosen } = setup('sheet', 0, true);
+      const sheet = el.querySelectorAll('button.tab')[1] as HTMLButtonElement;
+      expect(sheet.getAttribute('aria-current')).toBe('true');
+      sheet.click();
+      expect(chosen).toEqual(['sheet']);
+    });
+  });
+
   describe('for the master outside a combat', () => {
     function master(tab: 'scene' | 'group' | 'chat' = 'scene', groupCount = 0) {
       const made = setup();

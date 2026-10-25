@@ -105,6 +105,8 @@ export class ConversationPanel {
   readonly connection = input<StreamStatus>('live');
   /** The phone's full-screen view, with the back arrow. */
   readonly phone = input(false);
+  /** Inside the player's rail, whose tab already says "Conversa": no header of its own (the section keeps its name). */
+  readonly bare = input(false);
   /** The panel is on the reader's screen; off it, the voice stops. */
   readonly active = input(true);
   readonly back = output<void>();

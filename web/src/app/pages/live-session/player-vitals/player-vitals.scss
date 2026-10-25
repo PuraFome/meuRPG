@@ -293,10 +293,19 @@
   }
 }
 
-.box__words {
-  display: block;
-  margin-top: 1px;
-  color: var(--mr-ink);
+// "1 de 5 livres": a size that fits the third of a 320px phone; "livres" may wrap under it.
+.box__value--dice {
+  font-size: 26px;
+  line-height: 28px;
+  white-space: normal;
+}
+
+// "livres" after "1 de 5": smaller, in the muted ink.
+.box__unit {
+  font-family: var(--mr-font-sans);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--mr-ink-muted);
 }
 
 .slots {
@@ -407,5 +416,152 @@
     width: 18px;
     height: 18px;
     font-size: 18px;
+  }
+}
+
+// The sheet's card, "Ficha" (C6-09): a neutral frame, the hit points on one line with the bar under them, and three equal tiles
+// (CA, PV temporários, Dados de vida), each with its icon. In a combat (`compact`) the accent frame and the shield stay.
+.vitals--sheet {
+  .hp {
+    gap: 6px;
+    padding: 10px 14px;
+    border: 1px solid var(--mr-line);
+  }
+
+  .hp__numbers {
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px var(--mr-space-2);
+  }
+
+  .hp__current {
+    font-size: 38px;
+    line-height: 40px;
+  }
+
+  .hp__of {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px var(--mr-space-2);
+  }
+
+  .hp__max {
+    font-family: var(--mr-font-sans);
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 20px;
+  }
+
+  // "pontos de vida", in the board's lower case.
+  .hp__label::first-letter {
+    text-transform: lowercase;
+  }
+
+  .hp__bar {
+    height: 4px;
+  }
+
+  .stats {
+    display: flex;
+    align-items: stretch;
+    gap: var(--mr-space-2);
+  }
+
+  .shield,
+  .box {
+    flex: 1 1 0;
+    min-width: 0;
+    height: auto;
+    min-height: 62px;
+    box-sizing: border-box;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 2px;
+    margin: 0;
+    padding: 8px 10px;
+    border: 1px solid var(--mr-control-line);
+    border-radius: 10px;
+    background: transparent;
+    text-align: left;
+  }
+
+  .shield__shape {
+    display: none;
+  }
+
+  .stats__label {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 4px;
+    max-width: none;
+    font-size: 12px;
+    line-height: 16px;
+
+    .mat-icon {
+      flex: none;
+      width: 14px;
+      height: 14px;
+      font-size: 14px;
+    }
+  }
+
+  // On a 320px phone the three tiles are ~90px wide: the label takes the whole line, so its icon goes (the words say it).
+  @media (max-width: 359.98px) {
+    .stats__label .mat-icon {
+      display: none;
+    }
+  }
+
+  .shield__value {
+    justify-content: flex-start;
+  }
+
+  .shield__number,
+  .box__value {
+    margin: 0;
+    font-size: 22px;
+    line-height: 26px;
+  }
+
+  .shield--sum {
+    margin: 0;
+  }
+
+  .shield__sum {
+    position: static;
+    margin: 0;
+    text-align: left;
+  }
+
+  .box__value--dice {
+    font-size: 22px;
+    line-height: 26px;
+  }
+
+  .slots {
+    gap: 0;
+    padding: 12px 14px;
+  }
+
+  .slots__title {
+    display: flex;
+    align-items: center;
+    gap: var(--mr-space-2);
+    margin-bottom: var(--mr-space-2);
+    font-size: 20px;
+    line-height: 24px;
+
+    .mat-icon {
+      flex: none;
+      color: var(--mr-ink-muted);
+    }
+  }
+
+  .slots__level {
+    min-width: 44px;
+    font-weight: 700;
   }
 }

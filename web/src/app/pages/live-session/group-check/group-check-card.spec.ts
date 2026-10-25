@@ -60,6 +60,22 @@ describe('GroupCheckCard', () => {
     expect(api.calls.filter((c) => c === 'groupCheck')).toHaveLength(2);
   });
 
+  it('says whether a check waits for this player\'s roll (the scene\'s "Ações" tab lights with it)', async () => {
+    const { fixture, settle } = setup();
+    const said: boolean[] = [];
+    fixture.componentInstance.needsRoll.subscribe((w) => said.push(w));
+    await settle();
+    expect(said.at(-1)).toBe(true);
+  });
+
+  it('does not say it waits when the player already rolled', async () => {
+    const { fixture, settle } = setup(groupCheck({ youRoll: false, members: [member()] }));
+    const said: boolean[] = [];
+    fixture.componentInstance.needsRoll.subscribe((w) => said.push(w));
+    await settle();
+    expect(said.includes(true)).toBe(false);
+  });
+
   it('words a saving throw asked of this player alone, with no group', async () => {
     const { el, settle } = setup(
       groupCheck({

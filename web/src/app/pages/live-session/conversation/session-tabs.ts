@@ -3,16 +3,16 @@ import { RouterLink } from '@angular/router';
 
 import { unreadWords } from './unread-notice';
 
-export type SessionTab = 'scene' | 'group' | 'chat';
+export type SessionTab = 'scene' | 'sheet' | 'group' | 'chat';
 
 /** The badge stops counting here: "99+" is as much as a glance can use. */
 const BADGE_MAX = 99;
 
 /**
  * The phone's section nav, "Cena | Ficha | Conversa" (MR-051; the master's is "Cena | Grupo | Conversa", and "Combate | Grupo | Conversa" while a combat is on), pinned to the bottom of every live phone screen (the board's
- * "Cena · Ficha · Conversa"): "Cena" is the session page, "Ficha"
- * goes to the character (the master's to the campaign, where the party is), and "Conversa" opens
- * the full-screen conversation. The unread count sits on "Conversa" in the accent colour and is
+ * "Cena · Ficha · Conversa"): "Cena" is the session page, "Ficha" is the panel of the player's character inside the session
+ * (`sheetPanel`; a link to the character when it is off, and the master's "Grupo" is a tab of the board or a link to the campaign,
+ * where the party is), and "Conversa" opens the full-screen conversation. The unread count sits on "Conversa" in the accent colour and is
  * spoken in words in the button's name ("Conversa, 3 mensagens novas").
  */
 @Component({
@@ -36,6 +36,8 @@ const BADGE_MAX = 99;
             <span class="tab__badge tab__badge--wait" aria-hidden="true">{{ groupCount() }}</span>
           }
         </button>
+      } @else if (sheetPanel()) {
+        <button type="button" class="tab" [attr.aria-current]="tab() === 'sheet' ? 'true' : null" (click)="choose.emit('sheet')">Ficha</button>
       } @else {
         <a class="tab" [routerLink]="sheetLink()">{{ sheetLabel() }}</a>
       }
@@ -64,6 +66,8 @@ export class SessionTabs {
   readonly sceneLabel = input('Cena');
   /** The second tab's word: "Ficha" for a player, "Grupo" for the master's combat (a link to the campaign page, where the party is). */
   readonly sheetLabel = input('Ficha');
+  /** "Ficha" opens the player's panel inside the session instead of leaving for a page. */
+  readonly sheetPanel = input(false);
   /** The master's nav outside a combat: "Grupo" (the party and the table's clock) is a tab of the board and takes the place of the link. */
   readonly master = input(false);
   /** What waits for the master in "Grupo" (a long cast): a count in amber. */
