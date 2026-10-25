@@ -655,6 +655,10 @@ func (noRoster) CombatSpell(context.Context, pgx.Tx, string, string, string, int
 	return link.Spell{}, errors.New("not in this test")
 }
 
+func (noRoster) GrantedCombatSpell(context.Context, pgx.Tx, string, string, string, string, int, string) (link.Spell, error) {
+	return link.Spell{}, errors.New("not in this test")
+}
+
 func (noRoster) SceneOptions(context.Context, pgx.Tx, string, string, []string) ([]link.SceneOption, error) {
 	return nil, errors.New("not in this test")
 }

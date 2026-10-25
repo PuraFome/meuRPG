@@ -47,7 +47,9 @@ type castAim struct {
 // castCall is what CastSpell reads from its request, checked.
 type castCall struct {
 	key, encounterID, casterID, spellKey string
-	targets                              []castAim
+	// grantedBy is the source of the granted_spell effect that casts the spell; "" for the character's classes.
+	grantedBy string
+	targets   []castAim
 	// in is how the dice come; rolled says the request sets them at all.
 	in     rollInput
 	rolled bool
@@ -66,6 +68,9 @@ func readCastIDs(req *playv1.CastSpellRequest) (castCall, error) {
 	call.spellKey = req.GetSpellKey()
 	if call.spellKey == "" || len(call.spellKey) > maxSpellKeyLen {
 		return call, connect.NewError(connect.CodeInvalidArgument, errors.New("spell_key must name one of the caster's spells"))
+	}
+	if call.grantedBy = req.GetGrantedBy(); len(call.grantedBy) > maxSpellKeyLen {
+		return call, connect.NewError(connect.CodeInvalidArgument, errors.New("granted_by must name the trait, feat or feature that grants the spell"))
 	}
 	return call, nil
 }
@@ -322,7 +327,7 @@ func (f *castFlow) pickSpell(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if f.cast, err = castableOf(opts, f.call.spellKey); err != nil {
+	if f.cast, err = castableOf(opts, f.call.spellKey, f.call.grantedBy); err != nil {
 		return err
 	}
 	quick := slices.ContainsFunc(f.req.GetMetamagic(), func(mc *playv1.MetamagicChoice) bool { return mc.GetKey() == rules.MetamagicQuickened })
@@ -359,7 +364,7 @@ func (f *castFlow) pickSlot(ctx context.Context) error {
 	if f.slot != nil {
 		f.slotLevel = int(f.slot.Level)
 	}
-	if f.sp, err = f.s.roster.CombatSpell(ctx, f.c.tx, f.m.CampaignID, f.caster.CharacterID, f.call.spellKey, f.slotLevel, f.req.GetDamageTypeKey()); err != nil {
+	if f.sp, err = f.s.roster.GrantedCombatSpell(ctx, f.c.tx, f.m.CampaignID, f.caster.CharacterID, f.call.spellKey, f.call.grantedBy, f.slotLevel, f.req.GetDamageTypeKey()); err != nil {
 		return err
 	}
 	if f.abilityKey, err = f.s.abilityChoiceOf(ctx, f.c, f.call.spellKey, f.req.GetAbilityKey()); err != nil {
@@ -581,7 +586,7 @@ func (f *castFlow) spend(ctx context.Context) error {
 		ActionBefore: f.caster.ActionUsed, BonusBefore: f.caster.BonusActionUsed, ReactionBefore: f.caster.ReactionUsed, DashedBefore: f.caster.Dashed,
 		SpellCastBefore: f.caster.SpellCast, BonusSpellBefore: f.caster.BonusSpellCast,
 	}
-	for _, phase := range []func(context.Context) error{f.spendCastSlot, f.spendPoints, f.spendEconomy, f.noteSpellCast} {
+	for _, phase := range []func(context.Context) error{f.spendCastSlot, f.spendGrantUse, f.spendPoints, f.spendEconomy, f.noteSpellCast} {
 		if err := phase(ctx); err != nil {
 			return err
 		}
@@ -599,6 +604,22 @@ func (f *castFlow) spendCastSlot(ctx context.Context) error {
 		return err
 	}
 	f.out.vitals = append(f.out.vitals, slotVitals)
+	return nil
+}
+
+// spendGrantUse spends the use a spell cast through a limited grant costs: one of the grant's
+// resource, kept in the event for the undo. A cast with a slot, an at-will grant and an NPC spend none.
+func (f *castFlow) spendGrantUse(ctx context.Context) error {
+	g := f.cast.grant
+	if g == nil || f.slot != nil || g.GetAtWill() || f.caster.Kind != kindPlayer {
+		return nil
+	}
+	v, err := f.s.spendResource(ctx, f.c, f.caster.CharacterID, g.GetResource(), 1)
+	if err != nil {
+		return err
+	}
+	f.out.vitals = append(f.out.vitals, v)
+	f.out.made.GrantUse = g.GetResource()
 	return nil
 }
 

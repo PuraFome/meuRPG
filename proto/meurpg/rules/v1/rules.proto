@@ -2105,6 +2105,28 @@ message SpellOption {
   // True when the character has Sculpt Spells (the evocation wizard) and this spell is of
   // the school of evocation: the cast may name creatures to spare (CastSpellRequest.sculpted_ids).
   bool sculpt_spells = 31;
+  // Set for a spell a granted_spell effect gives (GrantedSpell): it is cast with no slot,
+  // by CastSpellRequest.granted_by = grant.source_key, spending a use of grant.resource
+  // unless the grant is at will. A spell the character has both from a class and from
+  // a grant is two options. `slots` lists slots only when grant.also_with_slot.
+  SpellGrantOption grant = 32;
+}
+
+// SpellGrantOption is how a granted spell is cast now.
+message SpellGrantOption {
+  // The trait, feat or feature that grants the spell, and its name.
+  string source_key = 1;
+  string source_name_pt = 2;
+  bool at_will = 3;
+  // The resource a cast spends one of, and the uses left; both empty/0 for an at-will grant.
+  string resource = 4;
+  int32 uses_left = 5;
+  // A spell slot casts it too.
+  bool also_with_slot = 6;
+  // The casting ability of the grant and the spell attack bonus and save DC it gives.
+  string ability = 7;
+  int32 attack_bonus = 8;
+  int32 save_dc = 9;
 }
 
 // MetamagicOption is one Metamagic option the character knows, and whether the

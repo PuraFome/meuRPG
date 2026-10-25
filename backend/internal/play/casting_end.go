@@ -323,9 +323,15 @@ func (s *Service) planFinish(ctx context.Context, c *combatTx, m authz.Membershi
 	plan := castPlan{g: g, osp: osp, spell: row.SpellKey, ritual: row.Ritual, slot: slotOfRow(row), minutes: int(row.CastingMinutes)}
 	switch {
 	case row.Ritual:
-		if !osp.CanRitual {
+		if !osp.CanRitual && !osp.GrantedRitual() {
 			return plan, badCast("the character cannot cast this spell as a ritual")
 		}
+		if !osp.CanRitual {
+			return s.finishWithGrant(ctx, c, m, plan, true)
+		}
+	case !osp.Prepared && plan.slot == nil && osp.GrantedWithoutSlot():
+		// A long casting through a grant: the use was spent when it started.
+		return s.finishWithGrant(ctx, c, m, plan, false)
 	case !osp.Prepared:
 		return plan, badCast("spell_key is not one of the caster's spells")
 	case plan.slot != nil:
@@ -334,6 +340,18 @@ func (s *Service) planFinish(ctx context.Context, c *combatTx, m authz.Membershi
 				func(b *playv1.CastingBlocked) { b.MinLevel = plan.slot.Level })
 		}
 	}
+	return plan, nil
+}
+
+// finishWithGrant gives a long casting through a grant the grant's numbers (the spell attack
+// bonus, the save DC, the healing modifier): the first grant that casts it the way the row says.
+func (s *Service) finishWithGrant(ctx context.Context, c *combatTx, m authz.Membership, plan castPlan, ritual bool) (castPlan, error) {
+	i := slices.IndexFunc(plan.osp.Grants, func(g link.OutsideGrant) bool { return g.RitualOnly == ritual })
+	sp, err := s.roster.GrantedCombatSpell(ctx, c.tx, m.CampaignID, plan.g.caster.ID, plan.spell, plan.osp.Grants[i].Source, plan.osp.Spell.Level, "")
+	if err != nil {
+		return plan, err
+	}
+	plan.osp.Spell = sp
 	return plan, nil
 }
 
