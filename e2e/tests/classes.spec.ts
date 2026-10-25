@@ -354,7 +354,9 @@ test(
       await m.getByRole('button', { name: 'Mais opções', exact: true }).last().click();
       await m.getByLabel('Quanto').selectOption({ value: 'expertise' });
       await expect(only).not.toBeChecked();
-      await only.check();
+      // The real checkbox sits under the row's drawn box: a click on its words ticks it.
+      await m.getByText('Só onde já tem proficiência', { exact: true }).click();
+      await expect(only).toBeChecked();
       await m.getByRole('button', { name: 'Salvar classe' }).click();
       await expect(m.getByText('A classe Guardião do Vale foi salva.')).toBeVisible();
 

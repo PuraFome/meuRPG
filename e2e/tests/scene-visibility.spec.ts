@@ -84,6 +84,7 @@ test(
       await openSceneRPC(m, campaignId, table.cartId);
       await openSessionPage(m, campaignId);
       await openSessionPage(second.page, campaignId);
+      await openSessionPage(p, campaignId);
       await expect(m.getByText(/^Aberta para os jogadores desde \d\d:\d\d$/)).toBeVisible();
       await expect(second.page.getByRole('region', { name: 'Cena: A carroça tombada' })).toBeVisible();
 
