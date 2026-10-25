@@ -824,10 +824,23 @@ type TableEffect struct {
 	// for as long as the character is raging. Both are required, and the effect has no
 	// `when` and no `tags`. Resistance never stacks: the same type from another source
 	// (the barbarian's own rage resistance) counts once.
-	Except        string `protobuf:"bytes,27,opt,name=except,proto3" json:"except,omitempty"`
-	While         string `protobuf:"bytes,28,opt,name=while,proto3" json:"while,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Except string `protobuf:"bytes,27,opt,name=except,proto3" json:"except,omitempty"`
+	While  string `protobuf:"bytes,28,opt,name=while,proto3" json:"while,omitempty"`
+	// extra_damage: damage added to a weapon hit when `applies` holds. `value` is the
+	// fixed part (a formula) and may be empty when dice are set; `dice` is a formula for
+	// how many dice, `dice_sides` their sides (4, 6, 8, 10 or 12), set together.
+	// `damage_type` is a "damage-type:" key of the SRD; empty is the weapon's own type.
+	// `weapon` is "any" (the default), "melee" or "ranged"; `frequency` is
+	// "once_per_turn" (the default) or "each_hit". A critical hit doubles the dice
+	// unless `no_crit_doubling` is set, which needs dice. The fixed part is never doubled.
+	Dice           string `protobuf:"bytes,29,opt,name=dice,proto3" json:"dice,omitempty"`
+	DiceSides      int32  `protobuf:"varint,30,opt,name=dice_sides,json=diceSides,proto3" json:"dice_sides,omitempty"`
+	DamageType     string `protobuf:"bytes,31,opt,name=damage_type,json=damageType,proto3" json:"damage_type,omitempty"`
+	Weapon         string `protobuf:"bytes,32,opt,name=weapon,proto3" json:"weapon,omitempty"`
+	Frequency      string `protobuf:"bytes,33,opt,name=frequency,proto3" json:"frequency,omitempty"`
+	NoCritDoubling bool   `protobuf:"varint,34,opt,name=no_crit_doubling,json=noCritDoubling,proto3" json:"no_crit_doubling,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *TableEffect) Reset() {
@@ -1054,6 +1067,48 @@ func (x *TableEffect) GetWhile() string {
 		return x.While
 	}
 	return ""
+}
+
+func (x *TableEffect) GetDice() string {
+	if x != nil {
+		return x.Dice
+	}
+	return ""
+}
+
+func (x *TableEffect) GetDiceSides() int32 {
+	if x != nil {
+		return x.DiceSides
+	}
+	return 0
+}
+
+func (x *TableEffect) GetDamageType() string {
+	if x != nil {
+		return x.DamageType
+	}
+	return ""
+}
+
+func (x *TableEffect) GetWeapon() string {
+	if x != nil {
+		return x.Weapon
+	}
+	return ""
+}
+
+func (x *TableEffect) GetFrequency() string {
+	if x != nil {
+		return x.Frequency
+	}
+	return ""
+}
+
+func (x *TableEffect) GetNoCritDoubling() bool {
+	if x != nil {
+		return x.NoCritDoubling
+	}
+	return false
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
@@ -5675,7 +5730,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"tableSpell\x12;\n" +
 	"\n" +
 	"table_feat\x18\x11 \x01(\v2\x1a.meurpg.rules.v1.TableFeatH\x00R\ttableFeatB\x06\n" +
-	"\x04body\"\xe6\x05\n" +
+	"\x04body\"\x9a\a\n" +
 	"\vTableEffect\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
 	"\x06target\x18\x02 \x01(\tR\x06target\x12\x12\n" +
@@ -5705,7 +5760,15 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x10range_multiplier\x18\x19 \x01(\x05R\x0frangeMultiplier\x12;\n" +
 	"\x1ano_long_range_disadvantage\x18\x1a \x01(\bR\x17noLongRangeDisadvantage\x12\x16\n" +
 	"\x06except\x18\x1b \x01(\tR\x06except\x12\x14\n" +
-	"\x05while\x18\x1c \x01(\tR\x05while\"\xc3\x01\n" +
+	"\x05while\x18\x1c \x01(\tR\x05while\x12\x12\n" +
+	"\x04dice\x18\x1d \x01(\tR\x04dice\x12\x1d\n" +
+	"\n" +
+	"dice_sides\x18\x1e \x01(\x05R\tdiceSides\x12\x1f\n" +
+	"\vdamage_type\x18\x1f \x01(\tR\n" +
+	"damageType\x12\x16\n" +
+	"\x06weapon\x18  \x01(\tR\x06weapon\x12\x1c\n" +
+	"\tfrequency\x18! \x01(\tR\tfrequency\x12(\n" +
+	"\x10no_crit_doubling\x18\" \x01(\bR\x0enoCritDoubling\"\xc3\x01\n" +
 	"\fTableFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x17\n" +

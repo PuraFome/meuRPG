@@ -179,6 +179,19 @@ message TableEffect {
   // (the barbarian's own rage resistance) counts once.
   string except = 27;
   string while = 28;
+  // extra_damage: damage added to a weapon hit when `applies` holds. `value` is the
+  // fixed part (a formula) and may be empty when dice are set; `dice` is a formula for
+  // how many dice, `dice_sides` their sides (4, 6, 8, 10 or 12), set together.
+  // `damage_type` is a "damage-type:" key of the SRD; empty is the weapon's own type.
+  // `weapon` is "any" (the default), "melee" or "ranged"; `frequency` is
+  // "once_per_turn" (the default) or "each_hit". A critical hit doubles the dice
+  // unless `no_crit_doubling` is set, which needs dice. The fixed part is never doubled.
+  string dice = 29;
+  int32 dice_sides = 30;
+  string damage_type = 31;
+  string weapon = 32;
+  string frequency = 33;
+  bool no_crit_doubling = 34;
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
