@@ -17,6 +17,9 @@ import { MatIconModule } from '@angular/material/icon';
 /** What a count says (C6-10): `wait`, amber, something waits for the person; `news`, grená, new messages; `count`, neutral, how many there are. */
 export type TabTone = 'wait' | 'news' | 'count';
 
+/** More tabs than this and a narrow list drops the icons, so each word and count stays whole. */
+const MANY_TABS = 3;
+
 /** The edge fade of a list that scrolls sideways, and how near the edge the fade starts. */
 const EDGE_SLACK = 1;
 
@@ -49,7 +52,7 @@ export const tabPanelId = (prefix: string, id: string): string => `${prefix}-pan
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="tl-wrap" [class.tl-wrap--start]="fadeStart()" [class.tl-wrap--end]="fadeEnd()">
-    <div #list class="tl" role="tablist" [class.tl--compact]="compact()" [attr.aria-label]="label()" (scroll)="measure()">
+    <div #list class="tl" role="tablist" [class.tl--compact]="compact()" [class.tl--many]="tabs().length > MANY_TABS" [attr.aria-label]="label()" (scroll)="measure()">
       @for (t of tabs(); track t.id) {
         <button
           #tab
@@ -91,6 +94,7 @@ export class TabList {
   readonly compact = input(false);
 
   /** More tabs lie beyond the left or the right edge: the fade says so. */
+  protected readonly MANY_TABS = MANY_TABS;
   protected readonly fadeStart = signal(false);
   protected readonly fadeEnd = signal(false);
   private readonly list = viewChild<ElementRef<HTMLElement>>('list');

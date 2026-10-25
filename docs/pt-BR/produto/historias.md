@@ -264,6 +264,8 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 - **Dado** o mestre, **quando** ele precisa corrigir algo, **então** pode editar os pontos de vida de um NPC ("Dano/Cura"), desfazer a última ação e ler o registro do combate. O jogador recebe o registro só com o que ele vê (RN-20).
 
 #### No app
+- Num combate, a tela do jogador é o mapa primeiro, com o movimento embaixo ("Restam 9,0 m · 6 quadrados" e "Mover"), depois o cartão da vez com os próprios pontos de vida, classe de armadura e espaços de magia, depois as ações em abas; os pontos de vida das outras criaturas são palavras, nunca números (RN-20).
+- O alvo de um ataque, de uma magia ou de "Agarrar"/"Empurrar" se toca nesse mapa: a página o traz para a vista com a borda de destaque, as criaturas que o servidor oferece têm um anel, as fora de alcance ou atrás de cobertura total ficam apagadas e dizem o motivo ao toque ("Goblin 3: cobertura total"), e uma barra acima da navegação (um cartão no trilho a partir de 1024 px) diz "Escolha o alvo · Raio de Fogo" com "Escolher na lista", "Cancelar" e "Confirmar". Mísseis Mágicos e Raio Ardente pedem um toque para cada dardo ou raio ("2 de 3 dardos", "Desfazer"). "Escolher na lista" abre a lista da própria folha, o caminho do teclado e do leitor de tela.
 - Ver [Arquitetura](../../architecture/play/live-session.md) e [Combate](../../architecture/play/combat.md#combat).
 
 #### Relacionadas
@@ -295,6 +297,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 - **Dado** um turno conjunto com um membro escondido, **quando** o jogador lê o turno, **então** o membro escondido nunca é nomeado.
 
 #### No app
+- A vez do jogador: "Sua vez, Pensantus" com "Rodada 3 · depois de você: Toren" e o que a vez ainda tem em formas (um círculo para a Ação, um triângulo para o Bônus, um quadrado para a Reação, um caminhante para os metros que restam; cheia enquanto existe, tracejada depois de gasta). As ações são abas montadas com as opções do próprio personagem ("Ataques", "Magias" para quem conjura, uma aba com o nome da classe quando ela dá ações, "Outras" para as ações padrão); um grupo gasto é uma linha dobrada ("Ação bônus · Usada") que abre para o que ele tinha. "Mover" é a linha embaixo do mapa no celular e parte da barra da vez a partir de 1024 px, com "Encerrar turno" (uma barra acima da navegação do celular diz "Ainda tem" e as formas que restam). Fora da vez a tela diz de quem é a vez e, a partir de 1024 px, "Reação · Disponível".
 - O combate do mestre é a barra do combate (rodada, de quem é a vez, "Em seguida", o que espera, "Próximo turno"), a ordem, o mapa e a coluna "Turno / Conversa" (com "Mais do combate", uma dobra por painel), em três colunas no computador, e as abas "Turno · Ordem · Mapa" com uma barra fixa no celular (ver [Design](../../design/combat.md#the-masters-combat)).
 - Telas: o cartão do mestre tem um bloco por membro e "Encerrar a parte da Brisa"; o jogador lê "Vez de Brisa e Toren", "Vez dos Goblins", "Você encerrou a sua parte" e "O que a Brisa ainda tem".
 - A tela acompanha a sessão ao vivo sem recarregar.
@@ -381,6 +384,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 #### No app
 - O servidor calcula a economia, as opções e o motivo de cada opção desativada; o app só as desenha. Ver [Combate](../../architecture/play/combat.md#combat), [Regras e combate](../../architecture/rules-combat.md#spell-details), [Ataques e dano](../../architecture/play/attacks-and-damage.md), [Conjuração](../../architecture/play/casting.md), [Reações](../../architecture/play/reactions.md) e [Design](../../design/combat.md).
 - No celular as folhas de ataque e de conjuração são painéis inferiores; no desktop, diálogos. A partir de 1024 px o turno é uma faixa compacta com "Encerrar turno" à direita.
+- "Atacar" e "Conjurar" num combate com mapa pedem o alvo no mapa primeiro (os mesmos alvos, alcance, cobertura e desvantagem da lista da folha: "Longe: desvantagem" é dito no token, não apagado); "Confirmar" abre a folha na rolagem com o alvo nomeado ("Adaga em Goblin 1"), e "Escolher na lista" a abre na lista de alvos. Uma magia de área, sobre o conjurador ou sem alvo mantém a sua folha; as folhas do mestre e o ataque de oportunidade também.
 
 #### Relacionadas
 - RN-02: o mestre pode corrigir pontos de vida e espaços de magia à mão (ver [Regras de negócio](regras.md)).

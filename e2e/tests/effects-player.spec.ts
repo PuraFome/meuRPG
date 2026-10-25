@@ -2,7 +2,7 @@ import { expect, test, type Browser, type BrowserContext, type Page } from '@pla
 
 import { beginAttackCombatRPC, getEncounterRPC, pensantusAttacks, tableForCombat, type CombatTable } from './combat-support';
 import { endOpenSessionRPC, openSessionPage } from './live-session-support';
-import { callRPC, newSignedInContext } from './support';
+import { callRPC, newSignedInContext, viaTargetList } from './support';
 
 // The effects that last, on the player's screens (W7-E, RN-22): "Seus efeitos" and the exhaustion card on the live sheet,
 // what a paralysing effect takes from the turn, the saving throw of the end of the turn, and the d4 of Bênção typed from a
@@ -141,11 +141,12 @@ test(
       await expect(t.p.getByText('Você não pode agir.').first()).toBeVisible();
       await expect(t.p.getByRole('group', { name: 'Imobilizar Pessoa' })).toContainText('De Capitão Goblin');
 
-      // Nothing of the turn is available, so the Ação does not say "Disponível" and ending the turn does not ask.
-      await expect(t.p.getByText('Disponível', { exact: true })).toHaveCount(0);
+      // Nothing of the turn is available, so the shapes of the Ação, the Bônus and the Reação say "indisponível" and ending the turn does not ask.
+      await expect(t.p.getByRole('listitem', { name: 'Ação indisponível' })).toBeVisible();
+      await expect(t.p.getByRole('listitem', { name: 'Ação disponível' })).toHaveCount(0);
 
       // Ending the turn opens the saving throw: the ability, the modifier and the three answers, never a DC.
-      await t.p.getByRole('button', { name: 'Encerrar turno' }).last().click();
+      await t.p.getByRole('button', { name: 'Encerrar turno' }).click();
       await expect(t.p.getByText('Ainda tem ação disponível. Encerrar mesmo?')).toHaveCount(0);
       const sheet = t.p.getByRole('dialog', { name: 'Teste de resistência do fim do turno' });
       await expect(sheet.getByRole('heading', { name: 'Fim do seu turno' })).toBeVisible();
@@ -196,6 +197,7 @@ test(
       await openSessionPage(t.p, t.campaignId);
       await t.p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
       const sheet = t.p.getByRole('dialog', { name: 'Atacar com Raio de Fogo' });
+      await viaTargetList(t.p, sheet);
       await sheet.locator('label', { hasText: 'Capitão Goblin' }).click();
       await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
 

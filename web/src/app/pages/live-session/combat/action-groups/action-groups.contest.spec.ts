@@ -81,8 +81,10 @@ describe('ActionGroups: the special attacks, escape and the states of the turn (
     it('lists them under the attacks, each saying it replaces an attack, with the note of the board', () => {
       const { el, row } = setup({ contestAttacks: both });
       expect(row('Espada longa')).toBeTruthy();
-      expect(textOf(row('Agarrar')!)).toBe('Agarrar Substitui um ataque · Atletismo Agarrar');
-      expect(textOf(row('Empurrar')!)).toBe('Empurrar Substitui um ataque · Atletismo Empurrar');
+      expect(textOf(row('Agarrar')!)).toBe('Agarrar Ação Substitui um ataque · Atletismo Agarrar');
+      expect(textOf(row('Empurrar')!)).toBe(
+        'Empurrar Ação Substitui um ataque · Atletismo Empurrar',
+      );
       expect(textOf(el)).toContain(
         'Agarrar e Empurrar usam o seu ataque. Com mais de um ataque, você escolhe qual troca.',
       );
@@ -149,15 +151,9 @@ describe('ActionGroups: the special attacks, escape and the states of the turn (
       expect(escapes()).toBe(0);
     });
 
-    it('says the movement is unavailable because of the grapple, by the character’s gender', () => {
-      const she = setup({ contest: grappled(), label: 'Brisa' });
-      expect(textOf(she.el)).toContain('Indisponível: Agarrada.');
-      expect(she.el.textContent).toContain('Sem movimento');
-      TestBed.resetTestingModule();
-      const he = setup({ contest: grappled(), label: 'Toren' });
-      expect(textOf(he.el)).toContain('Indisponível: Agarrado.');
-      // No "Mover" button while the speed is 0.
-      expect(he.el.querySelector('button[aria-label="Mover"]')).toBeNull();
+    it('has no "Mover": a grappled character\u2019s movement says so in the row under the map', () => {
+      const { el } = setup({ contest: grappled(), label: 'Brisa' });
+      expect(el.querySelector('button[aria-label="Mover"]')).toBeNull();
     });
 
     it('has no "Escapar" for a combatant that is not grappled', () => {

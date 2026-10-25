@@ -700,3 +700,63 @@ export async function showAllPicks(panel: import('@playwright/test').Locator, hi
     await more.click();
   }
 }
+
+const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Chooses a tab of "O que você pode fazer" ("Ataques", "Magias", the class's tab such as "Guerreiro" or "Chi", "Outras") and
+ * returns its panel. Only the chosen tab's panel is shown: "Atacar com X" is in "Ataques" (the one shown first), "Conjurar X" and
+ * a cantrip's "Cast" in "Magias", "Usar X" in the class's tab, the standard actions ("Disparada", "Esconder") in "Outras".
+ * A tab's accessible name carries its count in words ("Magias, 3 magias"), so it is found by the start of it.
+ */
+export async function openActionTab(page: Page, label: string): Promise<Locator> {
+  const tab = page.getByRole('tablist', { name: 'Tipos de ação' }).getByRole('tab', { name: new RegExp(`^${escapeRegExp(label)}(,|$)`) });
+  await tab.click();
+  await expect(tab).toHaveAttribute('aria-selected', 'true');
+  return page.getByRole('tabpanel', { name: new RegExp(`^${escapeRegExp(label)}\\b`) });
+}
+
+/**
+ * "Atacar com X", "Conjurar X", "Agarrar" and "Empurrar" ask for the target on the map first when the combat has one (C7-04, C7-05); the
+ * specs that go on through the sheet's own list press "Escolher na lista" there. Without a map (or with nobody on it to tap) the sheet is
+ * already open, and nothing is pressed. `sheet` is the dialog the action opens.
+ */
+export async function viaTargetList(page: Page, sheet: Locator): Promise<void> {
+  const list = page.getByRole('button', { name: 'Escolher na lista' });
+  await expect(list.or(sheet).first()).toBeVisible();
+  if (await list.isVisible()) {
+    await list.click();
+  }
+}
+
+/**
+ * Opens the folded line of a group that is spent in the tab shown ("Ação · Usada", "Ação bônus · Usada", "Reação · Usada";
+ * `word` is "Indisponível" for a character that cannot act) and returns the line's own region, the rows it holds.
+ */
+export async function openSpentGroup(page: Page, group: 'Ação' | 'Ação bônus' | 'Reação', word = 'Usada'): Promise<Locator> {
+  const fold = page.getByRole('button', { name: `${group} · ${word}`, exact: true });
+  await expect(fold).toBeVisible();
+  if ((await fold.getAttribute('aria-expanded')) !== 'true') {
+    await fold.click();
+  }
+  await expect(fold).toHaveAttribute('aria-expanded', 'true');
+  return page.locator(`#${await fold.getAttribute('aria-controls')}`);
+}
+
+/**
+ * Opens the player's combat log and returns it: on a phone the chevron "Abrir o registro do combate" opens the sheet with it; from
+ * 768 px "Registro do combate" is a fold under the map, closed until it is opened.
+ */
+export async function openCombatLog(page: Page): Promise<Locator> {
+  const sheet = page.getByRole('button', { name: 'Abrir o registro do combate' });
+  const fold = page.getByRole('button', { name: /^Registro do combate/ });
+  await expect(sheet.or(fold)).toBeVisible();
+  if (await sheet.isVisible()) {
+    await sheet.click();
+  } else if ((await fold.getAttribute('aria-expanded')) !== 'true') {
+    await fold.click();
+  }
+  const log = page.getByRole('log', { name: 'Registro do combate' });
+  await expect(log).toBeVisible();
+  return log;
+}

@@ -230,44 +230,113 @@
   margin-inline-start: auto;
 }
 
-// The player's turn: the card first, then what they can do (E6-06), the map
-// and the log, the vitals last. From 1024px "O que você pode fazer" is the
-// right column (E6-14); without it (off turn) the vitals take that column.
-.player {
-  display: flex;
-  flex-direction: column;
+// The player's turn (C4-03, C6-07). The DOM reads turn card, notes, actions, strip, map, log, vitals, bar (the keyboard order); the
+// phone shows the map first, then the card and the tabs, by `order` on the page's column (`.player` is `display: contents` there).
+// From 1024px the turn bar is the first row and sticks under the page's bars (its card is `display: contents`, so the column is its
+// room), and what follows is a grid: map and log in the middle, the actions rail on the right, the order on the left from 1280px.
+.stack--player {
   gap: var(--mr-space-4);
-
-  @media (min-width: 1024px) {
-    display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-    grid-template-areas:
-      'turn turn'
-      'map side'
-      'log side';
-    grid-template-rows: auto auto 1fr;
-    align-items: start;
-    gap: var(--mr-space-6);
-  }
 }
 
-.player--mine {
-  @media (min-width: 1024px) {
-    grid-template-areas:
-      'turn turn'
-      'map actions'
-      'log actions'
-      'side actions';
-    grid-template-rows: auto auto auto 1fr;
-  }
+.player {
+  display: contents;
 }
 
 .player__turn {
   display: flex;
   flex-direction: column;
   gap: var(--mr-space-4);
-  grid-area: turn;
   min-width: 0;
+}
+
+// The turn alert's switch, the notices that wait for an answer and the Bardic Inspiration die: under the card, not in the sticky bar.
+.player__notes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-4);
+  min-width: 0;
+}
+
+@media (max-width: 1023.98px) {
+  .player__map {
+    order: 1;
+  }
+
+  .player__turn,
+  .player__notes {
+    order: 2;
+  }
+
+  .player__actions {
+    order: 3;
+  }
+
+  .player__strip {
+    order: 4;
+  }
+
+  .player__log {
+    order: 5;
+  }
+
+  .player__side {
+    order: 6;
+  }
+
+  .player__bar {
+    order: 7;
+  }
+}
+
+@media (min-width: 1024px) {
+  .player__turn--sticky {
+    display: contents;
+  }
+
+  .player {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    grid-template-areas:
+      'map side'
+      'log side';
+    grid-template-rows: auto 1fr;
+    align-items: start;
+    gap: var(--mr-space-6);
+    // The actions rail sticks under the turn bar: the page's bars and the bar itself (two rows when it wraps).
+    --mr-rail-top: 270px;
+  }
+
+  .player--mine {
+    grid-template-areas:
+      'map actions'
+      'log actions'
+      'side actions';
+    grid-template-rows: auto auto 1fr;
+  }
+}
+
+// From 1280px the order is a column on the left (E6-14): order | map and log | the actions rail (or the vitals, off turn).
+@media (min-width: 1280px) {
+  .player {
+    grid-template-columns: 232px minmax(0, 1fr) 400px;
+    grid-template-areas:
+      'order map side'
+      'order log side';
+    grid-template-rows: auto 1fr;
+    --mr-rail-top: 216px;
+  }
+
+  .player--mine {
+    grid-template-areas:
+      'order map actions'
+      'order log actions'
+      'order side actions';
+    grid-template-rows: auto auto 1fr;
+  }
+
+  .player__order {
+    grid-area: order;
+  }
 }
 
 // The blocks of a creature's turn, or the actions and the beast's traits: one under the other.
@@ -303,32 +372,6 @@
   margin-right: -12px;
 }
 
-// From 1280px the order is a column on the left (E6-14): order | map and log |
-// what the player can do (or the vitals, off turn).
-@media (min-width: 1280px) {
-  .player {
-    grid-template-columns: 232px minmax(0, 1fr) 400px;
-    grid-template-areas:
-      'turn turn turn'
-      'order map side'
-      'order log side';
-    grid-template-rows: auto auto 1fr;
-  }
-
-  .player--mine {
-    grid-template-areas:
-      'turn turn turn'
-      'order map actions'
-      'order log actions'
-      'order side actions';
-    grid-template-rows: auto auto auto 1fr;
-  }
-
-  .player__order {
-    grid-area: order;
-  }
-}
-
 .player__actions {
   grid-area: actions;
   min-width: 0;
@@ -354,6 +397,25 @@
   gap: var(--mr-space-4);
   grid-area: side;
   min-width: 0;
+}
+
+// Off turn, the rail's one line: what the player still has (C6-07).
+.offturn {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0;
+  padding: var(--mr-space-3) 0 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 22px;
+}
+
+.offturn__note {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
 }
 
 .unplaced {

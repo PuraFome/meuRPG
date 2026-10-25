@@ -38,6 +38,52 @@ describe('OrderColumn', () => {
     ).toContain('Pensantus');
   });
 
+  it("says the person's own hit points in numbers and everyone else's in words (RN-20)", () => {
+    const fixture = TestBed.createComponent(OrderColumn);
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({
+        currentCombatantId: 'pen',
+        combatants: [
+          combatant({
+            id: 'pen',
+            label: 'Pensantus',
+            kind: CombatantKind.PLAYER,
+            mine: true,
+            hitPointsCurrent: 23,
+            hitPointsMax: 23,
+          }),
+          combatant({ id: 'cap', label: 'Capitão Goblin', state: CombatantState.HURT }),
+        ],
+      }),
+    );
+    fixture.detectChanges();
+    const rows = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.row'), (r) =>
+      r.textContent?.replace(/\s+/g, ' ').trim(),
+    );
+    expect(rows[0]).toMatch(/Pensantus VezVocê · 23 de 23 PV$/);
+    expect(rows[1]).toMatch(/Capitão Goblin Ferido$/);
+    expect(rows[1]).not.toMatch(/PV|\d+ de \d+/);
+  });
+
+  it("takes the person's numbers from its vitals when the combatant carries none", () => {
+    const fixture = TestBed.createComponent(OrderColumn);
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({
+        currentCombatantId: 'pen',
+        combatants: [
+          combatant({ id: 'pen', label: 'Pensantus', kind: CombatantKind.PLAYER, mine: true }),
+        ],
+      }),
+    );
+    fixture.componentRef.setInput('hitPoints', { current: 19, max: 23 });
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).querySelector('.row')?.textContent).toContain(
+      'Você · 19 de 23 PV',
+    );
+  });
+
   it('says a creature of another player with only its owner and a state word, and the concentration to everyone', () => {
     const fixture = TestBed.createComponent(OrderColumn);
     fixture.componentRef.setInput(

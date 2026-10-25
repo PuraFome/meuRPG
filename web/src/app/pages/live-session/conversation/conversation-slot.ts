@@ -21,7 +21,7 @@ export interface SlotInputs {
   readonly unread: Signal<number>;
   /** The conversation is a tab of the board and another tab is shown (a tablet's master): it is not on screen. */
   readonly behind?: Signal<boolean>;
-  /** The master's running combat draws the conversation in its rail ("Turno · Conversa"): it is on screen only while that tab is open. */
+  /** A running combat draws the conversation in its rail ("Turno · Conversa", "Ações · Conversa"): it is on screen only while that tab is open. */
   readonly railMode: Signal<boolean>;
 }
 

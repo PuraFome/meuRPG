@@ -82,14 +82,17 @@ export class LiveSession {
   );
   /** The conversation is a tab of the board and another one is shown (the board tells it, after the slot is made). */
   private readonly chatBehind = signal(false);
-  /** The master's running combat draws the conversation in its rail ("Turno · Conversa") from 1024px; the page keeps it elsewhere otherwise. */
+  /**
+   * The combat's rail draws the conversation ("Turno · Conversa" for the master, "Ações · Conversa" for the player) from 1024px; the
+   * page keeps it elsewhere otherwise. The master's is the running combat that is not on a page of its own; the player's, the combat on screen.
+   */
   private readonly laptop = mediaQuery('(min-width: 1024px)');
   protected readonly railChat = computed(
     () =>
-      this.state.isMaster() &&
       this.laptop() &&
-      this.combat.encounter()?.status === EncounterStatus.ACTIVE &&
-      !this.combat.fullPage(),
+      (this.state.isMaster()
+        ? this.combat.encounter()?.status === EncounterStatus.ACTIVE && !this.combat.fullPage()
+        : this.view.combatOnScreen()),
   );
   /** Where the conversation sits: a column beside the stage, or the phone's "Conversa" tab. */
   protected readonly slot = new ConversationSlot({

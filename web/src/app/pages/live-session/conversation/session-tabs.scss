@@ -13,7 +13,8 @@
   gap: var(--mr-space-1);
   box-sizing: border-box;
   padding: var(--mr-space-2) var(--mr-space-2) calc(var(--mr-space-2) + env(safe-area-inset-bottom));
-  border-top: 1px solid var(--mr-line);
+  // A line drawn outside the box, so the bar is exactly `--mr-session-nav` high and the turn bar above it sits flush.
+  box-shadow: 0 -1px 0 var(--mr-line);
   background: var(--mr-surface);
 }
 

@@ -2,7 +2,18 @@ import { Component, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
+import { EconomyMark } from '../../../../shared/economy-shapes/economy-shapes';
 import { SpellHelp } from '../../../../shared/spell-details/spell-help';
+
+/** The economy a row spends, as its mark and word read: the shape of the Action, the Bonus action, the Reaction, or a bolt for what costs nothing. */
+export type RowEconomy = 'action' | 'bonus' | 'reaction' | 'free';
+
+const ECONOMY_WORD: Readonly<Record<RowEconomy, string>> = {
+  action: 'Ação',
+  bonus: 'Bônus',
+  reaction: 'Reação',
+  free: 'Sem custo',
+};
 
 let nextId = 0;
 
@@ -21,18 +32,23 @@ let nextId = 0;
  */
 @Component({
   selector: 'app-action-row',
-  imports: [MatButtonModule, MatIconModule, SpellHelp],
+  imports: [EconomyMark, MatButtonModule, MatIconModule, SpellHelp],
   template: `
     <div class="row__text">
       @if (name()) {
-        <span class="row__name">{{ name() }}</span>
-        @if (tags().length) {
-          <span class="row__tags">
-            @for (tag of tags(); track tag) {
-              <span class="row__pill">{{ tag }}</span>
-            }
-          </span>
-        }
+        <span class="row__head">
+          <span class="row__name">{{ name() }}</span>
+          @if (tags().length || economy()) {
+            <span class="row__tags">
+              @for (tag of tags(); track tag) {
+                <span class="row__pill">{{ tag }}</span>
+              }
+              @if (economy(); as e) {
+                <span class="row__econ"><app-economy-mark [kind]="e" [spent]="off()" />{{ word(e) }}</span>
+              }
+            </span>
+          }
+        </span>
       }
       @if (detail()) {
         <span class="row__detail">{{ detail() }}</span>
@@ -50,11 +66,15 @@ let nextId = 0;
     @if (helpName()) {
       <app-spell-help [name]="helpName()" (press)="help.emit()" />
     }
+    @if (choosing()) {
+      <span class="row__choosing">Escolhendo o alvo</span>
+    }
     @if (button()) {
       <button
         mat-stroked-button
         type="button"
         class="row__btn"
+        [style.display]="choosing() ? 'none' : null"
         [class.row__btn--off]="off()"
         [class.mr-button--off]="off()"
         [disabled]="off() || busy()"
@@ -63,12 +83,19 @@ let nextId = 0;
         [attr.aria-describedby]="off() && reason() ? whyId : null"
         (click)="pressed()"
       >
+        @if (icon()) {
+          <mat-icon aria-hidden="true">{{ icon() }}</mat-icon>
+        }
         {{ button() }}
       </button>
     }
   `,
   styleUrl: './action-row.scss',
-  host: { '[class.row--off]': 'off()', '[class.row--help]': '!!helpName()' },
+  host: {
+    '[class.row--off]': 'off()',
+    '[class.row--help]': '!!helpName()',
+    '[class.row--choose]': 'choosing()',
+  },
 })
 export class ActionRow {
   readonly name = input.required<string>();
@@ -76,6 +103,8 @@ export class ActionRow {
   readonly tags = input<readonly string[]>([]);
   /** The spell's name, when the row has the "?": it names the button ("Detalhes de Sono"). */
   readonly helpName = input('');
+  /** The economy the row spends (a mark and its word beside the name's tags); `null` for a row that spends none, or says it elsewhere. */
+  readonly economy = input<RowEconomy | null>(null);
   readonly detail = input('');
   /** A short line of why under the detail ("Golpe desarmado das Artes Marciais"). */
   readonly note = input('');
@@ -83,17 +112,25 @@ export class ActionRow {
   readonly rider = input('');
   /** "Atacar", "Conjurar"; empty for a row with no button. */
   readonly button = input('');
+  /** The icon beside the button's word (a wand for "Conjurar", swords for "Atacar"); none for a button without one. */
+  readonly icon = input('');
   /** The button's accessible name: "Atacar com Raio de Fogo". */
   readonly buttonLabel = input<string | null>(null);
   readonly off = input(false);
   readonly reason = input('');
   readonly busy = input(false);
+  /** The player is choosing this action's target on the map (C7-05): the pill takes the button's place. */
+  readonly choosing = input(false);
 
   readonly press = output<void>();
   /** The "?": open the spell's details. */
   readonly help = output<void>();
 
   protected readonly whyId = `row-why-${nextId++}`;
+
+  protected word(e: RowEconomy): string {
+    return ECONOMY_WORD[e];
+  }
 
   /** A disabled option keeps its focus stop but does nothing. */
   protected pressed(): void {

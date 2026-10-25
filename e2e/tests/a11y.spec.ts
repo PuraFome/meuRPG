@@ -23,7 +23,7 @@ import { paintRPC, pickRadio, tapSquare } from './move-support';
 import { beginFogCombat, moveTo, sessionRoute, setCarriedLightRPC, tableForFog } from './fog-support';
 import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
 import { claimRoute, linkRPC, reservedRPC, revokeLinkRPC, rowOf } from './claim-support';
-import { authStatePath, boxOf, callRPC, layoutSize, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus, showAllPicks, signIn, type TestUser, openFoldedPanel, openXpHistory } from './support';
+import { authStatePath, boxOf, callRPC, layoutSize, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus, showAllPicks, signIn, type TestUser, openActionTab, openCombatLog, openFoldedPanel, openSpentGroup, openXpHistory, viaTargetList } from './support';
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { tableForCaster, tableForCreatures } from './creatures-support';
 import { grog, pipo, rollsTable, vex } from './combat-rolls-support';
@@ -1059,12 +1059,23 @@ async function scanActionScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await openSessionPage(p, campaignId);
     await expect(p.getByRole('button', { name: 'Atacar com Raio de Fogo' })).toBeVisible();
     await expectScreenPasses(p, `Sua vez, com os grupos de ações ${where}`);
-    await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
+    if (width >= 1024) {
+      // From 1024 px the conversation is the rail's second tab; its panel stays mounted and the Actions tab comes back as it was.
+      await p.getByRole('tab', { name: /^Conversa/ }).click();
+      await expect(p.getByRole('heading', { name: 'Conversa', level: 2 })).toBeVisible();
+      await expectScreenPasses(p, `Sua vez, a aba Conversa da coluna ${where}`);
+      await p.getByRole('tab', { name: /^Ações/ }).first().click();
+    }
+    await p.getByRole('button', { name: 'Encerrar turno' }).click();
     await expect(p.getByText('Ainda tem ação disponível. Encerrar mesmo?')).toBeVisible();
     await expectScreenPasses(p, `Encerrar turno com a ação livre ${where}`);
     await p.getByRole('button', { name: 'Voltar' }).click();
 
     await p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
+    // The target is tapped on the map first (C7-04, C7-05): the map with its rings and the bar (a card in the rail from 1024 px), then the list.
+    await expect(p.getByRole('region', { name: 'Escolha do alvo' })).toBeVisible();
+    await expectScreenPasses(p, `Atacar, escolher o alvo no mapa ${where}`);
+    await p.getByRole('region', { name: 'Escolha do alvo' }).getByRole('button', { name: 'Escolher na lista' }).click();
     await expect(p.getByRole('heading', { name: 'Atacar com Raio de Fogo' })).toBeVisible();
     await expectScreenPasses(p, `Atacar, escolher o alvo ${where}`);
     await p.locator('label', { hasText: 'Goblin 1' }).click();
@@ -1088,15 +1099,21 @@ async function scanActionScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await expectScreenPasses(p, `Atacar, resultado ${where}`);
     await p.getByRole('button', { name: 'Voltar à sua vez' }).click();
     await expectScreenPasses(p, `Sua vez, depois de atacar ${where}`);
+    await openActionTab(p, 'Ataques');
+    await expect(p.getByRole('button', { name: 'Ação · Usada', exact: true })).toHaveAttribute('aria-expanded', 'false');
+    await expectScreenPasses(p, `Sua vez, o grupo da Ação usado e fechado ${where}`);
+    await openSpentGroup(p, 'Ação');
+    await expectScreenPasses(p, `Sua vez, o grupo da Ação usado e aberto ${where}`);
+    await openCombatLog(p);
     if (width < 768) {
-      await p.getByRole('button', { name: 'Abrir o registro do combate' }).click();
-      await expect(p.getByRole('log', { name: 'Registro do combate' })).toBeVisible();
       await expectScreenPasses(p, `Registro do combate, folha ${where}`);
       await p.keyboard.press('Escape');
+    } else {
+      await expectScreenPasses(p, `Registro do combate, a dobra aberta ${where}`);
     }
 
     // The master: the captain's card, the roll with the armor class, the damage and the questions.
-    await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
+    await p.getByRole('button', { name: 'Encerrar turno' }).click();
     await openSessionPage(m, campaignId);
     await expect(m.getByRole('heading', { name: /Ações do Capitão Goblin|Vez do Capitão Goblin/ })).toBeVisible();
     await expectScreenPasses(m, `Cartão do mestre, antes de rolar ${where}`);
@@ -1171,16 +1188,16 @@ async function checkTurnAboveTheFold(browser: Browser): Promise<void> {
     await openSessionPage(p, campaignId);
     await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
 
-    // The four boxes are one compact row; the attack and the spell are on the first screen.
-    const tiles = p.getByRole('list', { name: 'O que você tem neste turno' }).getByRole('listitem');
-    await expect(tiles).toHaveCount(4);
-    const row = await Promise.all((await tiles.all()).map((t) => boxOf(t)));
+    // The shapes of the turn (the Ação, the Bônus, the Reação) are one compact row in the card; the attack is on the first screen.
+    const shapes = p.getByRole('list', { name: 'O que tem neste turno' }).getByRole('listitem');
+    await expect(shapes).toHaveCount(3);
+    const row = await Promise.all((await shapes.all()).map((t) => boxOf(t)));
     expect(new Set(row.map((b) => Math.round(b.y))).size).toBe(1);
     expect(Math.max(...row.map((b) => b.height))).toBeLessThanOrEqual(80);
     await expect(p.getByRole('button', { name: 'Atacar com Raio de Fogo' })).toBeInViewport();
 
     // The action block comes before the order of initiative.
-    const actions = await boxOf(p.getByRole('heading', { name: 'Ação', exact: true }));
+    const actions = await boxOf(p.getByRole('heading', { name: 'O que você pode fazer' }));
     const order = await boxOf(p.getByRole('list', { name: 'Ordem de iniciativa' }));
     expect(actions.y).toBeLessThan(order.y);
   } finally {
@@ -1196,6 +1213,74 @@ test('no celular de 390 x 844 as ações da vez ficam acima da dobra, logo sob o
   test.setTimeout(240_000);
   await checkTurnAboveTheFold(browser);
 });
+
+/** The player's compact combat (MR-013, MR-014; boards C4-03, C6-07, C6-10): off turn, then on the turn the action tabs one by
+ * one, the sticky bar of a phone or the turn bar of 1280 with exactly one "Mover" and one "Encerrar turno" in sight, the map's
+ * "Ver mapa" icon, and the groups that are spent, folded and opened. */
+async function scanCompactTurnScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade turno compacto ${Date.now()}`, true, true, { sheet: pensantusCasting });
+    campaignId = table.campaignId;
+    await beginAttackCombatRPC(m, table, { Pensantus: 15, 'Capitão Goblin': 20, 'Goblin 1': 5, 'Goblin 2': 4 });
+
+    // Off turn: the card says whose turn it is; from 1024px the rail says what the player still has, a phone has the line.
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Vez do Capitão Goblin' })).toBeVisible();
+    if (width >= 1024) {
+      await expect(p.getByRole('complementary', { name: 'Ações' })).toContainText('Reação · Disponível');
+    } else {
+      await expect(p.getByText('Sua reação: Disponível.')).toBeVisible();
+    }
+    await expectScreenPasses(p, `Compacto, fora da vez ${where}`);
+
+    // The player's turn: one "Mover" and one "Encerrar turno" in sight, the tab list, and "Ver mapa" as an icon at the map's top.
+    await passTurnsTo(m, campaignId, 'Pensantus');
+    await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
+    await expect(p.getByRole('button', { name: 'Mover', exact: true })).toHaveCount(1);
+    await expect(p.getByRole('button', { name: 'Encerrar turno' })).toHaveCount(1);
+    await expect(p.getByRole('button', { name: 'Ver mapa' })).toHaveCount(1);
+    await expect(p.getByRole('complementary', { name: 'Ações' })).toBeVisible();
+    await expectScreenPasses(p, width >= 1024 ? `Compacto, a barra do turno ${where}` : `Compacto, a barra fixa ${where}`);
+    for (const label of ['Ataques', 'Magias', 'Outras']) {
+      await openActionTab(p, label);
+      await expectScreenPasses(p, `Compacto, a aba ${label} ${where}`);
+    }
+
+    // The Action spent: its group is one folded line in every tab, and opens.
+    await p.getByRole('button', { name: 'Disparada' }).click();
+    for (const label of ['Outras', 'Magias', 'Ataques']) {
+      await openActionTab(p, label);
+      await expect(p.getByRole('button', { name: 'Ação · Usada', exact: true })).toHaveAttribute('aria-expanded', 'false');
+      await expectScreenPasses(p, `Compacto, a aba ${label} com o grupo usado e fechado ${where}`);
+      await openSpentGroup(p, 'Ação');
+      await expectScreenPasses(p, `Compacto, a aba ${label} com o grupo usado e aberto ${where}`);
+    }
+    await expect(p.getByRole('button', { name: 'Mover', exact: true })).toHaveCount(1);
+    await expect(p.getByRole('button', { name: 'Encerrar turno' })).toHaveCount(1);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [scheme, width] of [['light', 1280], ['dark', 390], ['dark', 1280], ['light', 390]] as const) {
+  test(`o turno compacto do jogador passa no axe e nas conferências de layout no tema ${scheme === 'light' ? 'claro' : 'escuro'}, em ${width}px`, { tag: ['@a11y', '@MR-013', '@MR-014'] }, async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanCompactTurnScreens(browser, scheme, width);
+  });
+}
 
 /** Moving by the circle, jumping, cover and the opportunity attacks (Etapa 9,
  * slice 9.15; E9-05, E9-06, E9-07, E9-13): the "Mover" page with nothing chosen,
@@ -1269,6 +1354,7 @@ async function scanMoveScreens(browser: Browser, colorScheme: 'light' | 'dark', 
 
     // Cover: the target list, and the master's order with the mark in place.
     await p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
+    await viaTargetList(p, p.getByRole('dialog'));
     await expect(p.locator('label', { hasText: 'Capitão Goblin' })).toContainText('Meia cobertura (do mapa)');
     await expectScreenPasses(p, `Atacar, alvos com cobertura ${where}`);
     await p.getByRole('button', { name: 'Fechar' }).click();
@@ -1290,8 +1376,8 @@ async function scanMoveScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await expectScreenPasses(m, `Ordem do mestre, com "Aliado" e a marca ${where}`);
 
     // The player's `alertdialog`: Goblin 1 has the turn and leaves Pensantus's reach.
-    await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
-    await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
+    await p.getByRole('button', { name: 'Encerrar turno' }).click();
+    await p.getByRole('button', { name: 'Encerrar turno' }).click();
     // On a phone the opened rows left "Turno" for the tab "Ordem".
     await openTurn(m);
     await expect(m.getByText('Vez do Goblin 1')).toBeVisible();
@@ -1360,7 +1446,14 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     await openSessionPage(p, campaignId);
 
     // The cast sheet: the slot and the darts, then the result and the damage to roll.
+    await openActionTab(p, 'Magias');
     await p.getByRole('button', { name: 'Conjurar Mísseis Mágicos' }).click();
+    // The darts are tapped on the map first (C7-04): two on one creature, the third on another.
+    await expect(p.getByRole('region', { name: 'Escolha do alvo' })).toBeVisible();
+    await p.getByRole('button', { name: /^Escolher Capitão Goblin/ }).click();
+    await p.getByRole('button', { name: /^Pôr outro dardo em Capitão Goblin/ }).click();
+    await expectScreenPasses(p, `Conjurar, os dardos no mapa ${where}`);
+    await p.getByRole('region', { name: 'Escolha do alvo' }).getByRole('button', { name: 'Escolher na lista' }).click();
     await expect(p.getByText('É o seu último espaço de 1º nível: depois dele, o Escudo Arcano fica sem espaço.')).toBeVisible();
     await expectScreenPasses(p, `Conjurar, o espaço e os dardos ${where}`);
     const more = (who: string) => p.getByRole('button', { name: `Pôr um dardo em ${who}` });
@@ -1401,7 +1494,7 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
 
     // Escudo Arcano: the prompt, its answer, and the master's card meanwhile (the slots are given back: the cast took the last one).
     await adjustVitalsRPC(m, campaignId, table.characterId, { spellSlotsUsed: [{ level: 1, used: 2 }, { level: 2, used: 0 }] });
-    await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
+    await p.getByRole('button', { name: 'Encerrar turno' }).click();
     await openTurn(m);
     const card = m.getByRole('region', { name: /Ações do Capitão Goblin|Vez do Capitão Goblin/ });
     await card.getByRole('button', { name: 'Digitar o resultado' }).click();
@@ -1449,7 +1542,7 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expectScreenPasses(p, `Concentrado, a linha da vez ${where}`);
     await expectScreenPasses(m, `Concentrado, a ordem do mestre ${where}`);
     // Teia used the action, so "Encerrar turno" ends the turn without asking.
-    await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
+    await p.getByRole('button', { name: 'Encerrar turno' }).click();
     await waitTurnLeaves(m, campaignId, 'Pensantus');
     await passTurnsTo(m, campaignId, 'Capitão Goblin');
 
@@ -1574,6 +1667,7 @@ async function scanReactionScreens(browser: Browser, colorScheme: 'light' | 'dar
     // Escudo of the Mago: the player's wait, then the master's card.
     await p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
     const sheet = p.getByRole('dialog', { name: 'Atacar com Raio de Fogo' });
+    await viaTargetList(p, sheet);
     await sheet.locator('label', { hasText: mage.label }).click();
     await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
     await p.getByLabel(/Role 1d20 para Raio de Fogo/).fill('10');
@@ -1648,6 +1742,9 @@ async function scanFighterScreens(browser: Browser, colorScheme: 'light' | 'dark
     await openSessionPage(p, campaignId);
     const groups = p.getByRole('region', { name: 'O que você pode fazer' });
     await expectScreenPasses(p, `Guerreiro, a vez com as habilidades ${where}`);
+    await openActionTab(p, 'Guerreiro');
+    await expectScreenPasses(p, `Guerreiro, a aba da classe ${where}`);
+    await openActionTab(p, 'Ataques');
     await groups.getByRole('button', { name: /^Atacar com Espada/ }).click();
     const sheet = p.getByRole('dialog', { name: /Atacar com Espada/ });
     await sheet.locator('label', { hasText: 'Goblin 1' }).click();
@@ -1656,8 +1753,10 @@ async function scanFighterScreens(browser: Browser, colorScheme: 'light' | 'dark
     await p.getByRole('button', { name: 'Confirmar 1' }).click();
     await expect(p.getByText('Você ainda tem 1 ataque desta ação.')).toBeVisible();
     await p.getByRole('button', { name: 'Voltar à sua vez' }).click();
-    await expect(groups.getByText('1 ataque restante').first()).toBeVisible();
+    // The card and, on a phone, the sticky bar both say it with the Ação's shape.
+    await expect(p.getByRole('listitem', { name: 'Ação, 1 ataque restante' }).first()).toBeVisible();
     await expectScreenPasses(p, `Ataque Extra, um ataque restante ${where}`);
+    await openActionTab(p, 'Guerreiro');
     await groups.getByRole('button', { name: 'Usar Retomar o Fôlego' }).click();
     await expectScreenPasses(p, `Retomar o Fôlego, antes de rolar ${where}`);
     await p.getByRole('button', { name: 'Digitar o resultado' }).click();
@@ -1667,6 +1766,10 @@ async function scanFighterScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expect(p.getByText(/\d+ PV recuperados/)).toBeVisible();
     await expectScreenPasses(p, `Retomar o Fôlego, resultado ${where}`);
     await p.getByRole('button', { name: 'Voltar à sua vez' }).click();
+    await openActionTab(p, 'Guerreiro');
+    await expectScreenPasses(p, `Guerreiro, a aba da classe com o Ação bônus usado ${where}`);
+    await openSpentGroup(p, 'Ação bônus');
+    await expectScreenPasses(p, `Guerreiro, o Ação bônus usado aberto ${where}`);
     await groups.getByRole('button', { name: 'Usar Surto de Ação' }).click();
     await expect(groups.getByText('Surto de Ação: você tem outra ação.')).toBeVisible();
     await expectScreenPasses(p, `Surto de Ação, a nota ${where}`);
@@ -2559,17 +2662,11 @@ async function scanCombatDetailsScreens(browser: Browser, colorScheme: 'light' |
     await openSessionPage(m, campaignId);
     await openSessionPage(p, campaignId);
 
-    await expect(p.getByRole('button', { name: 'Detalhes de Sono' })).toBeVisible();
-    await expectScreenPasses(p, `Magias com o "?" e os espaços ${where}`);
-    await p.getByRole('button', { name: 'Detalhes de Sono' }).click();
-    const details = p.getByRole('dialog', { name: phone ? 'Descrição de Sono' : 'Sono', exact: true });
-    await expect(details.getByRole('button', { name: 'Ver em inglês' })).toBeVisible();
-    await expectScreenPasses(p, `Detalhes de Sono na sessão ${where}`);
-    await details.getByRole('button', { name: 'Ver em inglês' }).click();
-    await expect(details.getByText('This spell sends creatures into a magical slumber.')).toBeVisible();
-    await expectScreenPasses(p, `Detalhes de Sono na sessão, em inglês ${where}`);
-    await details.getByRole('button', { name: 'Fechar' }).last().click();
+    await openActionTab(p, 'Magias');
+    await expect(p.getByRole('button', { name: 'Conjurar Sono' })).toBeVisible();
+    await expectScreenPasses(p, `Magias e os espaços ${where}`);
 
+    await openActionTab(p, 'Magias');
     await p.getByRole('button', { name: 'Conjurar Sono' }).click();
     const sheet = p.getByRole('dialog', { name: 'Conjurar Sono' });
     // The area picker (PM-02a, PM-02b): the map before a point, then a point with nobody seen in it and its confirmation.
@@ -2664,6 +2761,7 @@ async function scanHiddenAreaScreens(browser: Browser, colorScheme: 'light' | 'd
     await openSessionPage(m, campaignId);
     await openSessionPage(p, campaignId);
 
+    await openActionTab(p, 'Magias');
     await p.getByRole('button', { name: 'Conjurar Sono' }).click();
     const sheet = p.getByRole('dialog', { name: 'Conjurar Sono' });
     const map = sheet.getByRole('application', { name: 'Mapa: escolha o ponto da Sono' });
@@ -3757,6 +3855,7 @@ async function scanCreatureCombatScreens(browser: Browser, colorScheme: 'light' 
     await expectScreenPasses(p, `A vez da Sálvia, com Forma Selvagem ${where}`);
 
     // Wild Shape: the list of beasts, with one chosen.
+    await openActionTab(p, 'Druida');
     await tapAboveBar(p.getByRole('button', { name: 'Transformar: Forma Selvagem' }));
     const wild = p.getByRole('dialog', { name: 'Forma Selvagem' });
     await expect(wild.getByText('Escolha uma fera.')).toBeVisible();
@@ -3780,6 +3879,7 @@ async function scanCreatureCombatScreens(browser: Browser, colorScheme: 'light' 
     await expect(p.getByRole('heading', { name: 'Sua vez, Sálvia' })).toBeVisible();
 
     // Conjurar Animais: the sheet, then the result.
+    await openActionTab(p, 'Magias');
     await tapAboveBar(p.getByRole('button', { name: 'Conjurar Conjurar Animais' }));
     // The dialog's name is its title, which changes to "Lobos atrozes conjurados" with the result.
     const sheet = p.getByRole('dialog');
@@ -5228,8 +5328,7 @@ async function scanTheatreScreens(browser: Browser, colorScheme: 'light' | 'dark
       await p.getByRole('button', { name: 'Mais 1,5 m' }).click();
     }
     await p.getByRole('button', { name: /^Gastar 6,0/ }).click();
-    // The number is said once, in the movement tile ("3,0 m de 9,0 m"); the group below has no pill of its own.
-      await expect(p.locator('.tile--move').first()).toContainText('3,0 m');
+    await expect(p.getByRole('listitem', { name: /^Movimento: 3,0\sm$/ }).first()).toBeVisible();
     await expectScreenPasses(p, `Depois de gastar o movimento ${where}`);
     await p.getByRole('button', { name: 'Atacar com Espada longa' }).click();
     await expect(p.getByText('O mestre decide quem está ao alcance.')).toBeVisible();
@@ -6728,6 +6827,7 @@ async function scanRevivifyScreens(browser: Browser, colorScheme: 'light' | 'dar
     const fight = await combatWithTwoDown(m, p, `Acessibilidade revivificar ${Date.now()}`);
     campaigns.push(fight.table.campaignId);
     await openSessionPage(p, fight.table.campaignId);
+    await openActionTab(p, 'Magias');
     await p.getByRole('button', { name: 'Conjurar Revivificar' }).click();
     let sheet = sheetOf(p);
     await expect(sheet.getByRole('radiogroup', { name: 'Quem morreu por perto' })).toContainText('Goblin 1');
@@ -6953,6 +7053,7 @@ async function scanRageScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await openSessionPage(p, campaignId);
     await expect(p.getByRole('heading', { name: 'Sua vez, Grog' })).toBeVisible();
     // Grog is a Berserker: Fúria asks about the frenzy first, in place (SRD 5.1, Frenzy).
+    await openActionTab(p, 'Bárbaro');
     await p.getByRole('button', { name: /Fúria/ }).click();
     await expect(p.getByRole('group', { name: 'Entrar em frenesi?' })).toBeVisible();
     await expectScreenPasses(p, `Entrar em frenesi? ${where}`);
@@ -6962,7 +7063,7 @@ async function scanRageScreens(browser: Browser, colorScheme: 'light' | 'dark', 
 
     // Ending the turn without attacking or taking damage asks before the rage ends (after the
     // question about the free action).
-    await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
+    await p.getByRole('button', { name: 'Encerrar turno' }).click();
     await expect(p.getByText('Ainda tem ação disponível. Encerrar mesmo?')).toBeVisible();
     await p.getByRole('button', { name: /^Encerrar/ }).last().click();
     const question = p.getByRole('alertdialog', { name: /A sua fúria vai acabar/ });
@@ -7148,6 +7249,7 @@ async function scanLayOnHandsAndInspirationScreens(browser: Browser, colorScheme
 
     // Orla's turn: the gift, the list of who can be inspired, and the answer.
     await expect(b.getByRole('heading', { name: 'Sua vez, Orla' })).toBeVisible();
+    await openActionTab(b, 'Bardo');
     await b.getByRole('region', { name: 'O que você pode fazer' }).getByRole('button', { name: /^Usar Inspiração de Bardo/ }).click();
     const gift = b.getByRole('dialog', { name: 'Inspiração de Bardo' });
     await expect(gift.locator('label', { hasText: 'Aurora' })).toBeVisible();
@@ -7164,6 +7266,7 @@ async function scanLayOnHandsAndInspirationScreens(browser: Browser, colorScheme
     await expect(p.getByText('Inspiração de Bardo: d6').first()).toBeVisible();
     const groups = p.getByRole('region', { name: 'O que você pode fazer' });
     await expectScreenPasses(p, `Sua vez, com o dado de Inspiração de Bardo ${where}`);
+    await openActionTab(p, 'Paladino');
     await groups.getByRole('button', { name: 'Usar Cura pelas Mãos' }).click();
     const hands = p.getByRole('dialog', { name: 'Cura pelas Mãos' });
     await expect(hands.locator('label', { hasText: 'Orla' })).toBeVisible();
@@ -7185,6 +7288,7 @@ async function scanLayOnHandsAndInspirationScreens(browser: Browser, colorScheme
     await passTurnsTo(m, campaignId, 'Orla');
     await passTurnsTo(m, campaignId, 'Aurora');
     await expect(p.getByRole('heading', { name: 'Sua vez, Aurora' })).toBeVisible();
+    await openActionTab(p, 'Ataques');
     await groups.getByRole('button', { name: /^Atacar com Espada/ }).click();
     const attack = p.getByRole('dialog', { name: /Atacar com Espada/ });
     await attack.locator('label', { hasText: 'Capitão Goblin' }).click();
@@ -7255,6 +7359,7 @@ async function scanFlexibleCastingScreens(browser: Browser, colorScheme: 'light'
     const groups = p.getByRole('region', { name: 'O que você pode fazer' });
 
     // The cast sheet with Metamagic: the options, one marked, and the grey one with its reason.
+    await openActionTab(p, 'Magias');
     await groups.getByRole('button', { name: 'Conjurar Enfeitiçar Pessoa' }).click();
     const cast = p.getByRole('dialog', { name: 'Conjurar Enfeitiçar Pessoa' });
     await cast.locator('label', { hasText: 'Capitão Goblin' }).click();
@@ -7267,6 +7372,7 @@ async function scanFlexibleCastingScreens(browser: Browser, colorScheme: 'light'
     await expect(p.getByRole('dialog')).toHaveCount(0);
 
     // Flexible Casting: nothing to convert at the maximum of points (the reason is written), then a slot is created.
+    await openActionTab(p, 'Feiticeiro');
     await groups.getByRole('button', { name: 'Usar Conjuração Flexível: Criar Espaços de Magia' }).click();
     const flex = p.getByRole('dialog', { name: 'Conjuração Flexível' });
     await expect(flex).toContainText('Pontos de Feitiçaria: 3 de 3');
@@ -7511,9 +7617,8 @@ async function scanBrutalScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await expect(sheet.getByRole('button', { name: 'Voltar à sua vez' })).toBeVisible();
     await expectScreenPasses(p, `Crítico Brutal, o resultado ${where}`);
     await sheet.getByRole('button', { name: 'Voltar à sua vez' }).click();
-    // On a phone the log opens from its button; on the wide screen it is already on the page.
-    const log = p.getByRole('log', { name: 'Registro do combate' });
-    await p.getByRole('button', { name: 'Abrir o registro do combate' }).or(log).first().click();
+    // On a phone the log opens from its button; from 768px it is a fold under the map.
+    const log = await openCombatLog(p);
     await expect(log).toContainText('Crítico Brutal');
     await expectScreenPasses(p, `Crítico Brutal, o registro do combate ${where}`);
   } finally {
@@ -7638,6 +7743,7 @@ async function scanContestScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expect(p.getByRole('heading', { name: 'Sua vez, Vex' })).toBeVisible();
 
     // Ajudar: the ally, then the task (it is closed without helping, so the action stays).
+    await openActionTab(p, 'Outras');
     await p.getByRole('button', { name: 'Ajudar', exact: true }).click();
     const help = p.getByRole('dialog');
     await expect(help.getByText('Tavo').first()).toBeVisible();
@@ -7650,6 +7756,7 @@ async function scanContestScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expect(p.getByRole('dialog')).toHaveCount(0);
 
     // Esconder-se (the bonus action of the Ação Ardilosa): the roll, the wait, the master's card and the result.
+    await openActionTab(p, 'Ladino');
     await p.getByRole('button', { name: 'Usar Ação Ardilosa: Esconder' }).click();
     const hide = p.getByRole('dialog');
     await expect(hide.getByText('Seu teste de Furtividade')).toBeVisible();
@@ -8018,7 +8125,7 @@ async function scanEffectsPlayerScreens(browser: Browser, colorScheme: 'light' |
     await add('spell:hold-person', captain);
     await expect(p.getByTestId('effect-note')).toBeVisible();
     await expectScreenPasses(p, `O turno de quem está paralisado ${where}`);
-    await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
+    await p.getByRole('button', { name: 'Encerrar turno' }).click();
     // The dialog of a desktop is named by its title, the bottom sheet of a phone by its label.
     const save = p.getByRole('dialog', { name: /^(Teste de resistência do fim do turno|Fim do seu turno)$/ });
     await expect(save.getByRole('button', { name: 'Rolar no app' })).toBeVisible();

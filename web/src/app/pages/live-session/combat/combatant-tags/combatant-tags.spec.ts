@@ -40,31 +40,27 @@ function setup(inputs: Record<string, unknown>) {
 }
 
 describe('CombatantTags: states and sources', () => {
-  it('draws a state as a focusable chip with the word the server gave', () => {
+  it('draws a state as a label with the word the server gave', () => {
     const { el } = setup({ states: [rage], people });
-    const chip = el.querySelector<HTMLButtonElement>('button.tag__btn')!;
-    expect(chip.textContent?.trim()).toBe('Em fúria');
+    const chip = el.querySelector<HTMLElement>('li.tag--state')!;
+    expect(chip.querySelector('.tag__text')?.textContent?.trim()).toBe('Em fúria');
+    expect(el.querySelector('button')).toBeNull();
     expect(el.querySelector('ul')?.getAttribute('aria-label')).toBe('Condições de Toren');
   });
 
-  it('gives the chip a text description a keyboard and a screen reader reach', () => {
-    const { fixture, el } = setup({ states: [rage], people });
-    const chip = el.querySelector<HTMLButtonElement>('button.tag__btn')!;
+  it('gives the label a text description a screen reader and a tooltip reach', () => {
+    const { el } = setup({ states: [rage], people });
+    const chip = el.querySelector<HTMLElement>('li.tag--state')!;
     const described = el.querySelector(`#${chip.getAttribute('aria-describedby')}`);
     expect(described?.textContent).toContain('Vantagem em testes de Força');
-    expect(chip.getAttribute('aria-expanded')).toBe('false');
-    chip.click();
-    fixture.detectChanges();
-    expect(chip.getAttribute('aria-expanded')).toBe('true');
-    expect(el.querySelector('[role="note"]')?.textContent).toContain('resistência a dano físico');
-    chip.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
-    fixture.detectChanges();
-    expect(el.querySelector('[role="note"]')).toBeNull();
+    expect(chip.getAttribute('title')).toContain('resistência a dano físico');
   });
 
   it('says who marked a target and until when', () => {
     const { el } = setup({ states: [mark], people });
-    expect(el.querySelector('button.tag__btn')?.textContent?.trim()).toBe('Marcado por Brisa');
+    expect(el.querySelector('li.tag--state .tag__text')?.textContent?.trim()).toBe(
+      'Marcado por Brisa',
+    );
     expect(el.querySelector('.sr')?.textContent).toContain('Até o início do turno de Brisa');
   });
 
@@ -96,7 +92,7 @@ describe('CombatantTags: states and sources', () => {
   it('keeps one tag and a count in the compact strip, states first', () => {
     const { el } = setup({ states: [rage], names: ['Cego'], people, compact: true });
     const items = Array.from(el.querySelectorAll('li')).map((li) =>
-      (li.querySelector('button') ?? li).textContent?.trim(),
+      (li.querySelector('.tag__text') ?? li).textContent?.trim(),
     );
     expect(items).toEqual(['Em fúria', '+1']);
   });

@@ -22,7 +22,7 @@ import {
 } from './combat-support';
 import type { CharacterBuild } from './support';
 import { endOpenSessionRPC, openSessionPage, clickStartCombat, expectStartCombatOffered } from './live-session-support';
-import { boxOf, callRPC, layoutSize, newSignedInContext, pensantus } from './support';
+import { boxOf, callRPC, layoutSize, newSignedInContext, openActionTab, openSpentGroup, pensantus, viaTargetList } from './support';
 import { placeTokenRPC } from './maps-support';
 import { setTableRulesRPC } from './table-rules-support';
 import { sq20, thirdPlayer, trapTable } from './trap-support';
@@ -279,18 +279,21 @@ test('o jogador ataca com dados físicos: digita o d20 e a soma do dano, e o gob
   try {
     await openSessionPage(p, campaignId);
     await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
-    // The groups: the cantrip with its pill, the spells, the standard actions (not Atacar or Conjurar), the movement.
+    // The tabs: "Ataques" is shown first, with the cantrip; the standard actions (not Atacar or Conjurar) are in "Outras"; the movement is "Mover".
     const groups = p.getByRole('region', { name: 'O que você pode fazer' });
-    await expect(groups.getByRole('heading', { name: 'Ação', exact: true })).toBeVisible();
+    await expect(groups.getByRole('tab', { name: /^Ataques/ })).toHaveAttribute('aria-selected', 'true');
     await expect(groups.getByText('+6 para acertar · 1d10 de fogo · alcance 36 m')).toBeVisible();
-    await expect(groups.getByRole('button', { name: 'Disparada' })).toBeVisible();
+    const other = await openActionTab(p, 'Outras');
+    await expect(other.getByRole('button', { name: 'Disparada' })).toBeVisible();
     await expect(groups.getByRole('button', { name: 'Conjurar uma magia' })).toHaveCount(0);
-    await expect(groups.getByRole('heading', { name: 'Movimento' })).toBeVisible();
+    await expect(p.getByRole('button', { name: 'Mover' })).toBeVisible();
+    await openActionTab(p, 'Ataques');
     // No armor class on the player's screen.
     await expect(p.getByText(/contra CA/)).toHaveCount(0);
 
     await p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
     const sheet = p.getByRole('dialog', { name: 'Atacar com Raio de Fogo' });
+    await viaTargetList(p, sheet);
     await expect(sheet).toBeVisible();
     await expect(sheet.getByRole('heading', { name: 'Atacar com Raio de Fogo' })).toBeFocused();
     await expect(sheet.getByText('Ferido')).toHaveCount(0);
@@ -322,7 +325,8 @@ test('o jogador ataca com dados físicos: digita o d20 e a soma do dano, e o gob
     // The goblin is defeated for everyone, the action is used, and "Encerrar turno" does not ask.
     const enc = await getEncounterRPC(m, campaignId);
     expect(enc.combatants.find((c) => c.label === 'Goblin 1')?.defeated).toBe(true);
-    await expect(p.getByText('Ação já usada').first()).toBeVisible();
+    await openActionTab(p, 'Ataques');
+    await expect((await openSpentGroup(p, 'Ação')).getByText('Ação já usada').first()).toBeVisible();
     // The log: his sentence, with the damage and the defeat.
     await p.getByRole('button', { name: 'Abrir o registro do combate' }).click();
     await expect(p.getByRole('log', { name: 'Registro do combate' })).toContainText('Pensantus atira no Goblin 1 com o Raio de Fogo: crítico, 12 de dano. Goblin 1 derrotado');
@@ -338,6 +342,7 @@ test('o jogador rola o ataque no app: o resultado mostra a conta e nunca a CA', 
     await openSessionPage(p, campaignId);
     await p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
     const sheet = p.getByRole('dialog', { name: 'Atacar com Raio de Fogo' });
+    await viaTargetList(p, sheet);
     await expect(sheet.getByRole('radio', { name: /Capitão Goblin/ })).toBeEnabled();
     await sheet.locator('label', { hasText: 'Capitão Goblin' }).click();
     await sheet.getByRole('button', { name: 'Rolar no app' }).click();
@@ -367,7 +372,7 @@ test('o jogador encerra o turno: pergunta com a ação livre, e a Disparada dobr
     await openSessionPage(p, campaignId);
     await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
     // "Encerrar turno" is an outline while the action is free, and asks before ending.
-    await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
+    await p.getByRole('button', { name: 'Encerrar turno' }).click();
     await expect(p.getByRole('alertdialog', { name: /Ainda tem ação disponível/ })).toBeVisible();
     await expect(p.getByRole('button', { name: 'Voltar' })).toBeFocused();
     await p.getByRole('button', { name: 'Voltar' }).click();
@@ -376,18 +381,18 @@ test('o jogador encerra o turno: pergunta com a ação livre, e a Disparada dobr
     expect(before?.movementLeftFt).toBe(25);
 
     // The Disparada spends the action and doubles the movement left.
+    await openActionTab(p, 'Outras');
     await p.getByRole('button', { name: 'Disparada' }).click();
-    await expect(p.getByText('Ação já usada').first()).toBeVisible();
+    await expect((await openSpentGroup(p, 'Ação')).getByText('Ação já usada').first()).toBeVisible();
     await expect(p.getByText('Restam 15,0 m')).toBeVisible();
     // The speed already includes the Dash: the total is the doubled one, never doubled again.
-    await expect(p.getByText('de 15,0 m').first()).toBeVisible();
-    await expect(p.getByText('de 30,0 m')).toHaveCount(0);
+    await expect(p.getByText('Restam 30,0 m')).toHaveCount(0);
     const after = (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === 'Pensantus');
     expect(after?.movementLeftFt).toBe(50);
     await expect(p.getByRole('log', { name: 'Registro do combate' })).toHaveCount(0);
 
     // The action is used and the bonus action still free: still no filled button, but no question either.
-    await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
+    await p.getByRole('button', { name: 'Encerrar turno' }).click();
     await expect(p.getByRole('heading', { name: 'Vez do Capitão Goblin' })).toBeVisible();
   } finally {
     await done();
@@ -562,9 +567,9 @@ test('numa tela de 320 × 568: a pergunta de encerrar cabe numa linha por botão
   try {
     await openSessionPage(p, campaignId);
     // The two answers keep one line each: the same height, or two full rows of the same height.
-    await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
+    await p.getByRole('button', { name: 'Encerrar turno' }).click();
     const back = await layoutSize(p.getByRole('button', { name: 'Voltar' }));
-    const end = await layoutSize(p.getByRole('button', { name: 'Encerrar turno' }).last());
+    const end = await layoutSize(p.getByRole('button', { name: 'Encerrar turno' }));
     expect(back.height).toBe(end.height);
     expect(end.height).toBeLessThanOrEqual(48);
     expect(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
@@ -572,6 +577,7 @@ test('numa tela de 320 × 568: a pergunta de encerrar cabe numa linha por botão
 
     // The physical roll's error is in view, above the sticky footer, not under it.
     await p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
+    await viaTargetList(p, p.getByRole('dialog'));
     await p.locator('label', { hasText: 'Goblin 1' }).click();
     await p.getByRole('button', { name: 'Digitar o resultado' }).click();
     await p.getByLabel(/Role 1d20/).fill('27');
@@ -610,8 +616,10 @@ test('o jogador conjura Mísseis Mágicos repartindo os dardos: o espaço some, 
     // Three of four 1st-level slots and both 2nd-level ones used: this cast takes the last slot there is.
     await adjustVitalsRPC(m, campaignId, table.characterId, { spellSlotsUsed: [{ level: 1, used: 3 }, { level: 2, used: 2 }] });
     await openSessionPage(p, campaignId);
+    await openActionTab(p, 'Magias');
     await p.getByRole('button', { name: 'Conjurar Mísseis Mágicos' }).click();
     const sheet = p.getByRole('dialog', { name: 'Conjurar Mísseis Mágicos' });
+    await viaTargetList(p, sheet);
     await expect(sheet.getByRole('heading', { name: 'Conjurar Mísseis Mágicos' })).toBeFocused();
     await expect(sheet.getByRole('radio', { name: /1º nível/ })).toBeChecked();
     await expect(sheet.getByText('1 livre de 4')).toBeVisible();
@@ -642,7 +650,8 @@ test('o jogador conjura Mísseis Mágicos repartindo os dardos: o espaço some, 
     await sheet.getByRole('button', { name: 'Voltar à sua vez' }).click();
     // The goblins took the damage; the log says it.
     expect((await vitalsOf(m, campaignId, 'Capitão Goblin')).hitPointsCurrent).toBeLessThan(23);
-    await expect(p.getByText('Ação já usada').first()).toBeVisible();
+    await openActionTab(p, 'Magias');
+    await expect((await openSpentGroup(p, 'Ação')).getByText('Ação já usada').first()).toBeVisible();
     await p.getByRole('button', { name: 'Abrir o registro do combate' }).click();
     await expect(p.getByRole('log', { name: 'Registro do combate' })).toContainText('Pensantus conjura Mísseis Mágicos (1º nível): 2 dardos no Capitão Goblin');
   } finally {
@@ -658,6 +667,7 @@ test('um cone sai de quem conjura: "Apontar para…" dá a direção, a lista di
   const { m, p, campaignId, done } = await actingTable(browser, 'Resistência', playerFirst, [], undefined, casting, besidePensantus);
   try {
     await openSessionPage(p, campaignId);
+    await openActionTab(p, 'Magias');
     await p.getByRole('button', { name: 'Conjurar Mãos Flamejantes' }).click();
     const sheet = p.getByRole('dialog', { name: 'Conjurar Mãos Flamejantes' });
     // Step 1: the direction, from the list of the creatures he sees (the same place as a tap).
@@ -870,6 +880,7 @@ test('condições e concentração: o mestre marca no menu, o jogador vê as eti
     await p.keyboard.press('Escape');
 
     // Pensantus casts Teia, which asks for concentration; he sees it and may end it himself.
+    await openActionTab(p, 'Magias');
     await p.getByRole('button', { name: 'Conjurar Teia' }).click();
     const sheet = p.getByRole('dialog', { name: 'Conjurar Teia' });
     await sheet.getByRole('button', { name: 'Conjurar Teia' }).click();
@@ -903,11 +914,12 @@ test('o mestre aplica outro valor de dano, e o lembrete da concentração mostra
     await openSessionPage(m, campaignId);
     await openSessionPage(p, campaignId);
     // Pensantus concentrates on Teia, then the captain hits him with a critical (Escudo never stops it).
+    await openActionTab(p, 'Magias');
     await p.getByRole('button', { name: 'Conjurar Teia' }).click();
     await p.getByRole('dialog').getByRole('button', { name: 'Conjurar Teia' }).click();
     await p.getByRole('dialog').getByRole('button', { name: 'Conjurar mesmo assim' }).click(); // nobody ticked: PM-02b asks in place
     await p.getByRole('button', { name: 'Voltar à sua vez' }).click();
-    await p.getByRole('button', { name: 'Encerrar turno' }).last().click();
+    await p.getByRole('button', { name: 'Encerrar turno' }).click();
     const card = m.getByRole('region', { name: /^(Ações do|Vez do) Capitão Goblin$/ });
     await card.getByRole('button', { name: 'Digitar o resultado' }).click();
     await card.getByLabel(/Role 1d20 para Cimitarra/).fill('20');
@@ -950,12 +962,15 @@ test('guerreiro 5: o Ataque Extra deixa dois ataques por ação, Retomar o Fôle
     await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: start.id, combatantId: start.combatants.find((c) => c.label === 'Toren')!.id, col: 8, row: 9 });
     await openSessionPage(p, campaignId);
     const groups = p.getByRole('region', { name: 'O que você pode fazer' });
+    await openActionTab(p, 'Guerreiro');
     await expect(groups.getByText('2 usos').or(groups.getByText('1 uso')).first()).toBeVisible();
     // The first attack spends the action, but not the second one of the Attack action.
     // A natural 1 always misses: the attack is spent and no damage is left to roll.
     const attack = async () => {
+      await openActionTab(p, 'Ataques');
       await groups.getByRole('button', { name: /^Atacar com Espada/ }).click();
       const sheet = p.getByRole('dialog', { name: /Atacar com Espada/ });
+      await viaTargetList(p, sheet);
       await sheet.locator('label', { hasText: 'Goblin 1' }).click();
       await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
       await sheet.getByLabel(/Role 1d20/).fill('1');
@@ -965,21 +980,28 @@ test('guerreiro 5: o Ataque Extra deixa dois ataques por ação, Retomar o Fôle
     let sheet = await attack();
     await expect(sheet.getByText('Você ainda tem 1 ataque desta ação.')).toBeVisible();
     await sheet.getByRole('button', { name: 'Voltar à sua vez' }).click();
-    await expect(groups.getByText('1 ataque restante').first()).toBeVisible();
+    // The Action stays a filled circle while an attack is left: the bar says how many.
+    await expect(p.locator('app-turn-bar').getByLabel('Ação, 1 ataque restante')).toBeVisible();
+    await openActionTab(p, 'Ataques');
     await expect(groups.getByRole('button', { name: /^Atacar com Espada/ })).toBeEnabled();
     sheet = await attack();
     await expect(sheet.getByText('Sua ação foi usada.')).toBeVisible();
     await sheet.getByRole('button', { name: 'Voltar à sua vez' }).click();
-    // Both attacks made: the row keeps its place with the reason.
-    await expect(groups.getByText('Ataques desta ação já usados').first()).toBeVisible();
-    await expect(groups.getByRole('button', { name: /^Atacar com Espada/ })).toHaveAttribute('aria-disabled', 'true');
+    // Both attacks made: the Action is spent, and the row is in its folded line with the reason.
+    await openActionTab(p, 'Ataques');
+    const spentAttacks = await openSpentGroup(p, 'Ação');
+    await expect(spentAttacks.getByText('Ataques desta ação já usados').first()).toBeVisible();
+    await expect(spentAttacks.getByRole('button', { name: /^Atacar com Espada/ })).toHaveAttribute('aria-disabled', 'true');
 
-    // Surto de Ação: another action, with its attacks.
+    // Surto de Ação (in the Guerreiro tab): another action, with its attacks.
+    await openActionTab(p, 'Guerreiro');
     await groups.getByRole('button', { name: 'Usar Surto de Ação' }).click();
     await expect(groups.getByText('Surto de Ação: você tem outra ação.')).toBeVisible();
+    await openActionTab(p, 'Ataques');
     await expect(groups.getByRole('button', { name: /^Atacar com Espada/ })).toBeEnabled();
 
     // Retomar o Fôlego rolls its d10 (typed here) and heals; the use is spent.
+    await openActionTab(p, 'Guerreiro');
     await groups.getByRole('button', { name: 'Usar Retomar o Fôlego' }).click();
     const wind = p.getByRole('dialog', { name: 'Retomar o Fôlego' });
     await wind.getByRole('button', { name: 'Digitar o resultado' }).click();
@@ -989,8 +1011,11 @@ test('guerreiro 5: o Ataque Extra deixa dois ataques por ação, Retomar o Fôle
     await expect(wind.getByText('Sua ação bônus foi usada.')).toBeVisible();
     await wind.getByRole('button', { name: 'Voltar à sua vez' }).click();
     await expect.poll(async () => (await vitalsOf(m, campaignId, 'Toren')).hitPointsCurrent).toBeGreaterThan(20);
-    await expect(groups.getByText('Sem usos: volta num descanso curto')).toBeVisible();
-    await expect(groups.getByRole('button', { name: 'Usar Retomar o Fôlego' })).toHaveAttribute('aria-disabled', 'true');
+    // The Bonus action is spent: Retomar o Fôlego is in the folded "Ação bônus · Usada" of the tab.
+    await openActionTab(p, 'Guerreiro');
+    const spentBonus = await openSpentGroup(p, 'Ação bônus');
+    await expect(spentBonus.getByText('Sem usos: volta num descanso curto')).toBeVisible();
+    await expect(spentBonus.getByRole('button', { name: 'Usar Retomar o Fôlego' })).toHaveAttribute('aria-disabled', 'true');
   } finally {
     await done();
   }
@@ -1034,8 +1059,10 @@ test('a clériga conjura Curar Ferimentos em si mesma: a cura rola e vale na hor
   try {
     await adjustVitalsRPC(m, campaignId, table.characterId, { hitPointsCurrent: 4 });
     await openSessionPage(p, campaignId);
+    await openActionTab(p, 'Magias');
     await p.getByRole('button', { name: 'Conjurar Curar Ferimentos' }).click();
     const sheet = p.getByRole('dialog', { name: 'Conjurar Curar Ferimentos' });
+    await viaTargetList(p, sheet);
     // A heal may be aimed at oneself, and only a heal.
     await sheet.locator('label', { hasText: 'Brisa (você)' }).click();
     await sheet.getByRole('button', { name: 'Conjurar Curar Ferimentos' }).click();
@@ -1083,22 +1110,18 @@ test('o mestre passa a vez de quem está caído com o teste por rolar; o jogador
 // Mágicos, Sono, Escudo Arcano, Teia and Passo Nebuloso (`pensantusAttacks`), a
 // gnome with 25 ft of speed (7,5 m, 5 squares); the Goblins have 7 hit points.
 
-test('a distância sai em metros e em quadrados: o quadro Movimento, a barra do turno, o cartão do mestre e a ficha', { tag: ['@MR-013'] }, async ({ browser }) => {
+test('a distância sai em metros e em quadrados: a linha do movimento, a barra do turno, o cartão do mestre e a ficha', { tag: ['@MR-013'] }, async ({ browser }) => {
   test.setTimeout(180_000);
   const { m, p, table, campaignId, done } = await actingTable(browser, 'Quadrados', playerFirst);
   try {
     await openSessionPage(p, campaignId);
     await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
-    // The Movimento tile: the meters, and the squares under the bar.
-    const tiles = p.getByRole('list', { name: 'O que você tem neste turno' });
-    await expect(tiles.getByText('7,5 m de 7,5 m')).toBeVisible();
-    await expect(tiles.getByText('5 quadrados livres')).toBeVisible();
-    // The turn bar: "Mover 7,5 m · 5 quadrados" in a cell of its own, inside the bar.
+    // The movement row under the map: the meters and the squares, beside "Mover".
+    await expect(p.getByRole('status').filter({ hasText: 'Restam 7,5 m' })).toContainText('Restam 7,5 m · 5 quadrados');
+    // The sticky turn bar: the walker with "7,5 m" among what is left, inside the bar.
     const bar = p.locator('app-turn-bar');
-    await expect(bar.getByText('Mover 7,5 m · 5 quadrados')).toBeVisible();
+    await expect(bar.getByText('7,5 m')).toBeVisible();
     expect(await bar.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
-    // The "Movimento" group says it in a sentence.
-    await expect(p.getByText('Você ainda não andou. Dá para andar até 7,5 m (5 quadrados).')).toBeVisible();
 
     // The master's card for the captain (a gnome too, in chain mail without the Strength 13 it asks for, so 10 ft
     // slower: 15 ft): the Deslocamento in both units, and the Movimento chip.
@@ -1123,34 +1146,32 @@ test('as magias vêm na ordem do servidor, cada uma com o "?", e o Escudo na sua
     await openSessionPage(p, campaignId);
     const groups = p.getByRole('region', { name: 'O que você pode fazer' });
     // What can be cast now first, then by circle and by name; Escudo Arcano, a reaction, with the ones that can't.
-    const names = groups.locator('app-action-row:has(app-spell-help) .row__name');
-    await expect(names).toHaveText(['Raio de Fogo', 'Mísseis Mágicos', 'Sono', 'Passo Nebuloso', 'Teia', 'Escudo Arcano']);
+    // The cantrip that attacks is in "Ataques", with its "?"; the spells are in "Magias" (their description is the cast sheet's "?", below).
+    const attacks = await openActionTab(p, 'Ataques');
+    await expect(attacks.locator('app-action-row:has(app-spell-help) .row__name')).toHaveText(['Raio de Fogo']);
+    const spells = await openActionTab(p, 'Magias');
+    const names = spells.locator('app-action-row .row__name');
+    await expect(names).toHaveText(['Mísseis Mágicos', 'Sono', 'Passo Nebuloso', 'Teia', 'Escudo Arcano']);
     const shield = groups.locator('app-action-row', { hasText: 'Escudo Arcano' });
     await expect(shield.getByText('Só fora da sua vez')).toBeVisible();
     await expect(shield.getByRole('button', { name: 'Conjurar Escudo Arcano' })).toHaveAttribute('aria-disabled', 'true');
     await expect(shield.getByText('Reação', { exact: true })).toBeVisible();
 
-    // The "?" opens the spell's description in the session, and "Fechar" gives the focus back to it.
-    const help = groups.getByRole('button', { name: 'Detalhes de Sono' });
-    await help.click();
-    const details = p.getByRole('dialog', { name: 'Descrição de Sono' });
-    await expect(details.getByRole('heading', { name: 'Sono' })).toBeVisible();
-    await expect(details.getByText('Tempo de conjuração')).toBeVisible();
-    await expect(details.getByText('Esta magia coloca criaturas em um sono mágico.')).toBeVisible();
-    await expect(details.getByRole('button', { name: 'Fechar' }).last()).toBeInViewport({ ratio: 1 });
-    await details.getByRole('button', { name: 'Fechar' }).last().click();
-    await expect(details).toHaveCount(0);
-    await expect(help).toBeFocused();
+    // A spell row has no "?": the description opens from the cast sheet.
+    await expect(spells.locator('app-spell-help')).toHaveCount(0);
 
     // With no free slot the 1st and 2nd circles say "Sem espaço", and the slot rows above are the explanation.
     await adjustVitalsRPC(m, campaignId, table.characterId, { spellSlotsUsed: [{ level: 1, used: 4 }, { level: 2, used: 2 }] });
     await openSessionPage(p, campaignId);
-    await expect(groups.getByText('0 livres de 4')).toBeVisible();
-    await expect(groups.getByText('0 livres de 2')).toBeVisible();
+    await openActionTab(p, 'Magias');
+    const slots = groups.getByRole('list', { name: 'Seus espaços de magia' });
+    await expect(slots.getByRole('listitem', { name: /0 livres de 4/ })).toBeVisible();
+    await expect(slots.getByRole('listitem', { name: /0 livres de 2/ })).toBeVisible();
     await expect(groups.locator('.row__why', { hasText: /^\s*block\s*Sem espaço\s*$/ })).toHaveCount(4);
     await expect(groups.getByText(/Sem espaço de/)).toHaveCount(0);
     // Nothing can be cast now: the order is by circle, then by name, and Escudo Arcano is among them.
-    await expect(names).toHaveText(['Raio de Fogo', 'Escudo Arcano', 'Mísseis Mágicos', 'Sono', 'Passo Nebuloso', 'Teia']);
+    await openActionTab(p, 'Magias');
+    await expect(names).toHaveText(['Escudo Arcano', 'Mísseis Mágicos', 'Sono', 'Passo Nebuloso', 'Teia']);
   } finally {
     await done();
   }
@@ -1165,6 +1186,7 @@ test('Sono em dois goblins e no Capitão: o mestre vê o total e os PV, o jogado
   try {
     await openSessionPage(m, campaignId);
     await openSessionPage(p, campaignId);
+    await openActionTab(p, 'Magias');
     await p.getByRole('button', { name: 'Conjurar Sono' }).click();
     const sheet = p.getByRole('dialog', { name: 'Conjurar Sono' });
     // On a map the sphere is placed: the focus starts on the map, and "Centrar em…" places it on a creature he sees.
@@ -1252,8 +1274,10 @@ test('monge 3: o golpe das Artes Marciais e a Rajada de Golpes aparecem como ata
     const groups = p.getByRole('region', { name: 'O que você pode fazer' });
     // A natural 1 always misses: the attack is spent and no damage is left to roll.
     const strike = async () => {
+      await openActionTab(p, 'Ataques');
       await groups.getByRole('button', { name: /^Atacar com Golpe desarmado/ }).click();
       const sheet = p.getByRole('dialog', { name: /Atacar com Golpe desarmado/ });
+      await viaTargetList(p, sheet);
       await sheet.locator('label', { hasText: 'Goblin 1' }).click();
       // Each attack sheet opens fresh, with the app's dice offered first (as the Raio de Fogo test above).
       await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
@@ -1263,6 +1287,7 @@ test('monge 3: o golpe das Artes Marciais e a Rajada de Golpes aparecem como ata
     };
 
     // Before the Attack action, Rajada de Golpes is off and says why.
+    await openActionTab(p, 'Chi');
     await expect(groups.getByText('Só depois de atacar com a ação')).toBeVisible();
     await expect(groups.getByRole('button', { name: 'Usar Rajada de Golpes' })).toHaveAttribute('aria-disabled', 'true');
 
@@ -1270,9 +1295,11 @@ test('monge 3: o golpe das Artes Marciais e a Rajada de Golpes aparecem como ata
     await expect(sheet.getByText('Sua ação foi usada.')).toBeVisible();
     await sheet.getByRole('button', { name: 'Voltar à sua vez' }).click();
     // The action is spent, yet the strike stays on offer as a bonus action attack.
+    await openActionTab(p, 'Ataques');
     await expect(groups.getByText('Golpe desarmado das Artes Marciais')).toBeVisible();
     await expect(groups.getByRole('button', { name: /^Atacar com Golpe desarmado/ })).toBeEnabled();
 
+    await openActionTab(p, 'Chi');
     await groups.getByRole('button', { name: 'Usar Rajada de Golpes' }).click();
     await expect(groups.getByText('Rajada de Golpes: 2 golpes restantes')).toBeVisible();
     sheet = await strike();
@@ -1302,6 +1329,7 @@ test('a Bola de Fogo é posta num ponto do mapa: o ponto, quem está na área, a
   const { m, p, campaignId, done } = await actingTable(browser, 'Bola de Fogo', playerFirst, [], undefined, fireballCaster, aroundGoblin1Far);
   try {
     await openSessionPage(p, campaignId);
+    await openActionTab(p, 'Magias');
     await p.getByRole('button', { name: 'Conjurar Bola de Fogo' }).click();
     const sheet = p.getByRole('dialog', { name: 'Conjurar Bola de Fogo' });
     await expect(sheet.getByText('Onde ela explode')).toBeVisible();
@@ -1342,6 +1370,7 @@ test('"Perguntar a cada vez": a Bola de Fogo segura o turno, o mestre vê a áre
     await setTableRulesRPC(m, campaignId, { hiddenAreaHits: 'HIDDEN_AREA_HIT_RULE_ASK' });
     await openSessionPage(p, campaignId);
     await openSessionPage(m, campaignId);
+    await openActionTab(p, 'Magias');
     await p.getByRole('button', { name: 'Conjurar Bola de Fogo' }).click();
     const sheet = p.getByRole('dialog', { name: 'Conjurar Bola de Fogo' });
     const map = sheet.getByRole('application', { name: 'Mapa: escolha o ponto da Bola de Fogo' });
@@ -1467,6 +1496,7 @@ test('Crítico Brutal com dados no app: a conta antes de rolar, a linha do resul
     await openSessionPage(p, campaignId);
     await p.getByRole('button', { name: 'Atacar com Machado grande' }).click();
     const sheet = p.getByRole('dialog', { name: 'Atacar com Machado grande' });
+    await viaTargetList(p, sheet);
     await sheet.locator('label', { hasText: 'Goblin 1' }).click();
     await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
     await sheet.getByLabel(/Role 1d20 para Machado grande/).fill('20');
@@ -1495,6 +1525,7 @@ test('Crítico Brutal com dados físicos: o jogador rola três dados, o botão l
     await openSessionPage(p, campaignId);
     await p.getByRole('button', { name: 'Atacar com Machado grande' }).click();
     const sheet = p.getByRole('dialog', { name: 'Atacar com Machado grande' });
+    await viaTargetList(p, sheet);
     await sheet.locator('label', { hasText: 'Goblin 1' }).click();
     await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
     await sheet.getByLabel(/Role 1d20 para Machado grande/).fill('20');

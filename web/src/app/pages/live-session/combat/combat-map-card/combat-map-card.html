@@ -1,4 +1,16 @@
-<section class="mr-panel card" aria-labelledby="map-title">
+<section class="mr-panel card" [class.card--compact]="compact()" [class.card--pick]="!!pick()" aria-labelledby="map-title">
+  @if (compact()) {
+    <div class="bar">
+      <mat-icon class="bar__icon" aria-hidden="true">map</mat-icon>
+      <h2 class="bar__chip" id="map-title"><span class="bar__word">Mapa </span><span class="bar__area">{{ title() }}</span></h2>
+      @if (pick()) {
+        <span class="bar__pick"><mat-icon aria-hidden="true">my_location</mat-icon>Toque no alvo</span>
+      }
+      <button type="button" class="bar__open" aria-label="Ver mapa" title="Ver mapa" (click)="openMap.emit()">
+        <mat-icon aria-hidden="true">open_in_full</mat-icon>
+      </button>
+    </div>
+  } @else {
   <div class="card__head">
     <h2 class="mr-panel__title" id="map-title">
       @if (isMaster()) {
@@ -60,6 +72,7 @@
       </div>
     }
   </div>
+  }
 
   @if (preview()) {
     <div class="card__preview">
@@ -97,7 +110,7 @@
       </p>
     </div>
   }
-  <div class="card__crop" [class.card__crop--on]="!!crop()" [style.aspect-ratio]="crop()?.ratio ?? null" [style.--cm-ar]="mapAspect()">
+  <div class="card__crop" [class.card__crop--on]="!!crop()" [class.card__crop--pick]="!!crop() && !!pick()" [style.aspect-ratio]="crop()?.ratio ?? null" [style.--cm-ar]="mapAspect()">
     <div class="card__shift" [style.width.%]="crop()?.width ?? 100" [style.transform]="crop()?.shift ?? null">
       <app-combat-map
         [fog]="fog()"
@@ -117,6 +130,9 @@
         [forcedDrag]="forcedSwitch() && forced()"
         [ownMoveId]="ownMovable() ? (own()?.id ?? null) : null"
         [doorPicks]="doorTaps() && isMaster()"
+        [pick]="pick()"
+        [pickNote]="pickNote()"
+        (pickTap)="pickTap.emit($event)"
         (doorPick)="doorPick.emit($event)"
         (tokenDrop)="tokenDrop.emit($event)"
       >
@@ -141,7 +157,7 @@
     </div>
   }
 
-  @if (!isMaster()) {
+  @if (!isMaster() && !compact()) {
     <button mat-stroked-button type="button" class="card__open" (click)="openMap.emit()">
       <mat-icon aria-hidden="true">open_in_full</mat-icon>Ver mapa
     </button>
@@ -207,4 +223,5 @@
     }
   </app-map-layers-legend>
   }
+  <ng-content select="[mapFoot]" />
 </section>

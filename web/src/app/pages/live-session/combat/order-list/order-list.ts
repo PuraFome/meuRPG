@@ -107,7 +107,7 @@ function concentrationOf(c: Combatant): string {
     PartState,
   ],
   templateUrl: './order-list.html',
-  styleUrl: './order-list.scss',
+  styleUrls: ['./order-list.scss', './order-list.parts.scss'],
 })
 export class OrderList {
   readonly encounter = input.required<Encounter>();

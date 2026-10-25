@@ -341,3 +341,32 @@ describe("CombatMapCard: the master's header (C7-02)", () => {
     expect(plain(el.textContent)).not.toContain('Arraste um token');
   });
 });
+
+describe('CombatMapCard: the player’s compact card (C4-03, C6-07)', () => {
+  it('has the map’s name as its title, one "Ver mapa" button, and no "Tela cheia", legend or second "Ver mapa"', () => {
+    const { fixture, el } = mount({
+      isMaster: false,
+      compact: true,
+      legend: false,
+      title: 'Cripta do Corvo',
+    });
+    const opened: number[] = [];
+    fixture.componentInstance.openMap.subscribe(() => opened.push(1));
+    expect(plain(el.querySelector('h2')?.textContent)).toBe('Mapa Cripta do Corvo');
+    const buttons = [...el.querySelectorAll('button')];
+    expect(buttons.map((b) => b.getAttribute('aria-label') ?? plain(b.textContent))).toEqual([
+      'Ver mapa',
+    ]);
+    expect(el.querySelector('app-map-layers-legend')).toBeNull();
+    expect(plain(el.textContent)).not.toContain('Tela cheia');
+    buttons[0].click();
+    expect(opened).toEqual([1]);
+  });
+
+  it('keeps the full head and the "Ver mapa" button under the map for a card that is not compact', () => {
+    const { el } = mount({ isMaster: false });
+    expect(plain(el.textContent)).toContain('Quadrados de 1,5 m');
+    expect(plain(el.querySelector('.card__open')?.textContent)).toContain('Ver mapa');
+    expect(el.querySelector('.bar')).toBeNull();
+  });
+});

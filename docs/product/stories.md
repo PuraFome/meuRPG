@@ -264,6 +264,8 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 - **Given** the master, **when** they need to fix something, **then** they can edit an NPC's hit points ("Dano/Cura"), undo the last action and read the combat log. The player gets the log only with what they see (RN-20).
 
 #### In the app
+- In a combat the player's screen is the map first, with the movement under it ("Restam 9,0 m · 6 quadrados" and "Mover"), then the turn card with their own hit points, armor class and slots, then the actions in tabs; the other creatures' hit points are words, never numbers (RN-20).
+- The target of an attack, a spell or "Agarrar"/"Empurrar" is tapped on that map: the page brings it into view with the accent border, the creatures the server offers have a ring, the ones out of reach or behind total cover are dimmed and say why when tapped ("Goblin 3: cobertura total"), and a bar above the nav (a card in the rail from 1024 px) reads "Escolha o alvo · Raio de Fogo" with "Escolher na lista", "Cancelar" and "Confirmar". Magic Missile and Scorching Ray take one tap for each dart or ray ("2 de 3 dardos", "Desfazer"). "Escolher na lista" opens the sheet's own list, the way for the keyboard and the screen reader.
 - See [Architecture](../architecture/play/live-session.md) and [Combat](../architecture/play/combat.md#combat).
 
 #### Related
@@ -295,6 +297,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 - **Given** a joint turn with a hidden member, **when** the player reads the turn, **then** the hidden member is never named.
 
 #### In the app
+- The player's turn: "Sua vez, Pensantus" with "Rodada 3 · depois de você: Toren" and what the turn still has as shapes (a circle for the Ação, a triangle for the Bônus, a square for the Reação, a walker for the metres left; filled while it is there, dashed once spent). The actions are tabs built from the character's own options ("Ataques", "Magias" for a caster, a tab named for the class when it grants actions, "Outras" for the standard actions); a spent group is one folded line ("Ação bônus · Usada") that opens to what it held. "Mover" is the row under the map on a phone and part of the turn bar from 1024 px, with "Encerrar turno" (a bar above the phone's nav says "Ainda tem" and the shapes left). Off turn the screen says whose turn it is and, from 1024 px, "Reação · Disponível".
 - The master's combat is the combat bar (round, whose turn, "Em seguida", what waits, "Próximo turno"), the order, the map and the rail "Turno / Conversa" (with "Mais do combate", a fold per panel) in three columns on a computer, and the tabs "Turno · Ordem · Mapa" with a fixed bar on a phone (see [Design](../design/combat.md#the-masters-combat)).
 - Screens: the master's card has one block per member and "Encerrar a parte da Brisa"; the player reads "Vez de Brisa e Toren", "Vez dos Goblins", "Você encerrou a sua parte" and "O que a Brisa ainda tem".
 - The screen follows the live session without reloading.
@@ -381,6 +384,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 #### In the app
 - The server calculates the economy, the options and each disabled option's reason; the app only draws them. See [Combat](../architecture/play/combat.md#combat), [Rules and combat](../architecture/rules-combat.md#spell-details), [Attacks and damage](../architecture/play/attacks-and-damage.md), [Casting](../architecture/play/casting.md), [Reactions](../architecture/play/reactions.md) and [Design](../design/combat.md).
 - On a phone the attack and cast sheets are bottom sheets; on desktop, dialogs. From 1024 px the turn is a compact strip with "Encerrar turno" on the right.
+- "Atacar" and "Conjurar" on a combat with a map ask for the target on the map first (the same targets, reach, cover and disadvantage the sheet's list has: "Longe: desvantagem" is said on the token, not dimmed); "Confirmar" opens the sheet at the roll with the target named ("Adaga em Goblin 1"), and "Escolher na lista" opens it at its list of targets. A spell on an area, on the caster or with no target keeps its own sheet; so do the master's sheets and an opportunity attack.
 
 #### Related
 - RN-02: the master can correct hit points and spell slots by hand (see [Business rules](rules.md)).

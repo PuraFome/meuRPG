@@ -75,8 +75,8 @@ test(
       await expect(p.getByText('Depois restam')).toBeVisible();
       await expect(p.locator('.sum__row--after dd')).toHaveText('3,0 m');
       await p.getByRole('button', { name: 'Gastar 6,0 m' }).click();
-      // The number is said once, in the movement tile ("3,0 m de 9,0 m"); the group below has no pill of its own.
-      await expect(p.locator('.tile--move').first()).toContainText('3,0 m');
+      // The walker keeps the count of the metres left, with no map to show it on (MR-025).
+      await expect(p.getByRole('listitem', { name: /^Movimento: 3,0\sm$/ }).first()).toBeVisible();
       // The server's number, as the JSON says it: 6 m = 20 ft = 200 tenths of a foot spent, no square.
       const after = await getEncounterRPC(p, campaignId);
       const toren = after.combatants.find((c) => c.label === 'Toren') as unknown as { movementUsedDft: number; movementLeftDft: number; placed?: boolean };

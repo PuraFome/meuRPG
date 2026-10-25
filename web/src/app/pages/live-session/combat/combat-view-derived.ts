@@ -1,4 +1,4 @@
-import { computed, effect, signal, Directive } from '@angular/core';
+import { TemplateRef, computed, effect, input, output, signal, Directive } from '@angular/core';
 import {
   CombatLogKind,
   CombatantSide,
@@ -14,7 +14,8 @@ import { coverTargets, everyoneStanding } from '../../../core/combat/theatre';
 import { offersHolding, waitingText } from '../../../core/combat/opportunity';
 import type { OfferMark } from '../../../shared/combat-map/combat-map';
 import { openDamages, pendingNote } from '../../../core/combat/attack-flow';
-import { isDown, isPlayer } from '../../../core/combat/combat-view';
+import { isDead, isDown, isPlayer } from '../../../core/combat/combat-view';
+import type { TabItem } from '../../../shared/tab-list/tab-list';
 import { masterWaitNote } from '../../../core/combat/auto-pass';
 import {
   coverAgainst,
@@ -35,6 +36,9 @@ import { CombatInitiative } from './combat-initiative';
 import { CombatNotices } from './combat-notices';
 import { CombatRage } from './combat-rage';
 import { CombatViewStateDirective } from './combat-view-state';
+
+/** The most the badge writes before "99+". */
+const MAX_BADGE = 99;
 
 /** What the screen derives from the combat for the template: notes, marks, cards and who waits for what. */
 @Directive()
@@ -157,6 +161,62 @@ export abstract class CombatViewDerivedDirective extends CombatViewStateDirectiv
   /** On a phone, on the player's own turn, the order strip goes under the actions instead of between the title and them. */
   protected readonly orderBelow = computed(
     () => !this.laptop() && this.myTurn() && !this.ownDown() && !this.creatureTab(),
+  );
+  /** The conversation the page draws in the rail ("Turno · Conversa" for the master, "Ações · Conversa" for the player), or `null` where the page keeps it elsewhere. */
+  readonly chat = input<TemplateRef<unknown> | null>(null);
+  /** The conversation's lines that came while it was not shown: the count of its tab. */
+  readonly chatUnread = input(0);
+  /** The conversation is what the rail shows now (its tab is open): the page counts nothing as unread meanwhile. */
+  readonly chatShown = output<boolean>();
+  protected readonly railTab = signal('actions');
+  /** "Ações", and "Conversa" with its unread count (grená, and the number in words in the tab's name). */
+  protected readonly railTabItems = computed<readonly TabItem[]>(() => {
+    const n = this.chatUnread();
+    return [
+      { id: 'actions', label: 'Ações', icon: 'swords' },
+      ...(this.chat() !== null
+        ? [
+            {
+              id: 'chat',
+              label: 'Conversa',
+              icon: 'chat_bubble_outline',
+              ...(n > 0
+                ? {
+                    badge: n > MAX_BADGE ? `${MAX_BADGE}+` : String(n),
+                    tone: 'news' as const,
+                    words: `${n} ${n === 1 ? 'mensagem nova' : 'mensagens novas'}`,
+                  }
+                : {}),
+            },
+          ]
+        : []),
+    ];
+  });
+  /** The player's own character on its turn, with the movement row under the map (a map, no creature's page, not down). */
+  protected readonly moveRowOn = computed(() => {
+    const own = this.own();
+    return own && this.myTurn() && !this.ownDown() && !this.creatureTab() && !this.theatre()
+      ? own
+      : null;
+  });
+  /** From 1024px, off turn, the rail still has the character's reaction to say (C6-07). */
+  protected readonly offRail = computed(() => {
+    const own = this.own();
+    return own && !this.myTurn() && !this.creatureTab() && !this.ownDown() && !isDead(own)
+      ? own
+      : null;
+  });
+  /** The actions column is a rail: on the player's turn with its options, a creature's page, or off turn with a reaction to say, and with the conversation in it. */
+  protected readonly railOn = computed(
+    () =>
+      (this.myTurn() && !!this.options()) ||
+      !!this.creatureTab() ||
+      !!this.offRail() ||
+      this.chat() !== null,
+  );
+  /** The turn bar sticks under the bars of the page from 1024px, on the player's own turn. */
+  protected readonly stickyTurn = computed(
+    () => this.laptop() && this.myTurn() && !this.ownDown() && !this.creatureTab(),
   );
   /** What it waits for ("Esperando a reação do mestre") on the page of a creature's turn. */
   protected readonly creatureLocked = computed(() => this.waiting()?.title ?? '');

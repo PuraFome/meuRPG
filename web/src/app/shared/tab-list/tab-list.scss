@@ -1,5 +1,6 @@
 :host {
   display: block;
+  container-type: inline-size;
 }
 
 // A list wider than its room scrolls sideways (no scrollbar) and fades where more tabs lie beyond the edge.
@@ -48,6 +49,7 @@
   gap: var(--mr-space-2);
   box-sizing: border-box;
   height: 48px;
+  min-width: 44px;
   margin-bottom: -1px;
   padding: 0 12px;
   border: 0;
@@ -128,5 +130,60 @@
     height: 18px;
     padding: 0 5px;
     font-size: 12px;
+  }
+}
+
+// A room under 480px (a phone, or a narrow column) keeps the words and the counts whole: tighter padding, a smaller count and
+// the icon beside the word; with four tabs or more, or under 340px, the icon goes too, and the type shrinks once more.
+@container (max-width: 479px) {
+  .tl {
+    gap: 0;
+    padding: 0 var(--mr-space-1);
+  }
+
+  .tl .tl__tab {
+    gap: 4px;
+    padding: 0 6px;
+    font-size: 15px;
+
+    .mat-icon {
+      width: 18px;
+      height: 18px;
+      font-size: 18px;
+    }
+  }
+
+  .tl .tl__badge {
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    font-size: 12px;
+  }
+
+  .tl--many .tl__tab .mat-icon {
+    display: none;
+  }
+}
+
+@container (max-width: 339px) {
+  .tl {
+    padding: 0;
+  }
+
+  .tl .tl__tab {
+    gap: 3px;
+    padding: 0 5px;
+    font-size: 14px;
+
+    .mat-icon {
+      display: none;
+    }
+  }
+
+  .tl .tl__badge {
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    font-size: 11px;
   }
 }

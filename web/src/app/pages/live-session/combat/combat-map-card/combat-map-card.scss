@@ -161,6 +161,12 @@
   outline: 1px solid var(--mr-line);
 }
 
+// Choosing a target on a cropped map: the window has a gutter of its own, so the ring of a creature on the map's edge is whole.
+.card__crop--pick {
+  --cm-gutter: 0px;
+  padding: 12px;
+}
+
 // The legend's samples of "Área da última magia" and "Ponto de origem" (the same as the picker's).
 .sw-area {
   border-color: var(--mr-map-accent);
@@ -177,4 +183,144 @@
   background: var(--mr-map-accent);
   box-shadow: 0 0 0 1.5px var(--mr-map-accent);
   transform: rotate(45deg);
+}
+
+// The player's compact card (C4-03, C6-07): the map reaches the card's edges and the movement row closes it. On a phone the map's
+// name and "Ver mapa" are chips over the map's top corners; from 768px they are a row above it.
+.card--compact {
+  position: relative;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+
+  .card__crop {
+    border-radius: 0;
+    outline: 0;
+  }
+
+  // Choosing a target: the bar is a row above the map, so the expand button never sits over a ring at the corner.
+  @media (max-width: 767.98px) {
+    &:not(.card--pick) .bar {
+      position: absolute;
+      inset: 8px 8px auto;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    &:not(.card--pick) .bar__chip,
+    &:not(.card--pick) .bar__open {
+      pointer-events: auto;
+    }
+
+    &.card--pick .bar {
+      padding: 4px 8px;
+    }
+  }
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+
+  @media (min-width: 768px) {
+    padding: 8px 12px;
+  }
+}
+
+.bar__icon {
+  display: none;
+  flex: none;
+
+  @media (min-width: 768px) {
+    display: inline-flex;
+  }
+}
+
+.bar__word {
+  display: none;
+
+  @media (min-width: 768px) {
+    display: inline;
+    margin-inline-end: var(--mr-space-2);
+  }
+}
+
+.bar__area {
+  @media (min-width: 768px) {
+    display: inline-flex;
+    align-items: center;
+    height: 28px;
+    padding: 0 10px;
+    border: 1px solid var(--mr-line);
+    border-radius: var(--mr-radius-pill);
+    background: var(--mr-surface);
+    font-family: var(--mr-font-sans);
+    font-size: 13px;
+    font-weight: 700;
+    vertical-align: middle;
+  }
+}
+
+.bar__chip {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: 28px;
+  margin: 0;
+  padding: 0 10px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-surface);
+  font-family: var(--mr-font-sans);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+
+  @media (min-width: 768px) {
+    flex: 1;
+    height: auto;
+    padding: 0;
+    border: 0;
+    background: none;
+    font-family: var(--mr-font-display);
+    font-size: 21px;
+    line-height: 26px;
+  }
+}
+
+.bar__open {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  cursor: pointer;
+}
+
+// Choosing a target (C7-04, C7-05): the map is the part of the page that waits for a tap, so it has the accent border.
+.card--pick {
+  border-color: var(--mr-accent);
+  box-shadow: 0 0 0 1px var(--mr-accent);
+}
+
+// "Toque no alvo", beside the map's name from 768px (a phone's bar below says the same).
+.bar__pick {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  margin-inline-start: auto;
+  color: var(--mr-accent-text);
+  font-size: 14px;
+  font-weight: 700;
+
+  @media (min-width: 768px) {
+    display: inline-flex;
+  }
 }
