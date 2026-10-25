@@ -67,7 +67,7 @@
             (click)="speak(card)"
           >
             <mat-icon aria-hidden="true">{{ card.npc.speaking ? 'check' : 'chat_bubble_outline' }}</mat-icon>
-            {{ card.npc.speaking ? 'Fala agora' : 'Dar a fala' }}
+            <span class="row__speak-label">{{ card.npc.speaking ? 'Fala agora' : 'Dar a fala' }}</span>
           </button>
           <button
             type="button"

@@ -73,11 +73,34 @@
 // One compact row per NPC (C3-01): the token, the name with "Os jogadores veem", "Fala agora" / "Dar a fala" at a
 // fixed width, and the menu. The one who speaks gets a 2px accent border.
 .st__rows {
+  container: stage-rows / inline-size;
   display: flex;
   flex-direction: column;
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+// On the narrowest phones the eye leaves no room for the button's words: the button keeps its icon and its
+// accessible name, and the row stays on one line.
+@container stage-rows (max-width: 340px) {
+  .row {
+    gap: var(--mr-space-2);
+  }
+
+  .row__speak {
+    width: 44px;
+    min-width: 44px;
+    padding: 0;
+
+    .mat-icon {
+      margin: 0;
+    }
+  }
+
+  .row__speak-label {
+    display: none;
+  }
 }
 
 .row {

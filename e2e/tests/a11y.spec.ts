@@ -2789,7 +2789,7 @@ async function scanSceneVisibilityScreens(browser: Browser, colorScheme: 'light'
 
     // The eyes: a hidden NPC and a hidden action.
     await m.getByRole('button', { name: 'Esconder Capitão Goblin dos jogadores' }).click();
-    await expect(m.getByText('Escondida dos jogadores')).toBeVisible();
+    await expect(m.locator('[data-stage-card]').filter({ hasText: 'Capitão Goblin' })).toContainText('Escondida dos jogadores');
     await m.getByRole('button', { name: 'Esconder Acalmar os cavalos dos jogadores' }).click();
     await expect(m.getByText('Escondida', { exact: true })).toBeVisible();
     await expectScreenPasses(m, `Um NPC e uma ação escondidos ${where}`);
