@@ -40,17 +40,19 @@ test(
       await expect(sheet.getByRole('button', { name: 'Mudar dados' })).toBeVisible();
       await expect(sheet.getByRole('button', { name: 'Rolar 2d6 + 3 de novo' })).toBeVisible();
 
-      // The master reads the same roll in "Rolagens da mesa" and sees the dice on the overlay.
-      const row = (await openTableRolls(m))
-        .getByRole('listitem')
-        .filter({ hasText: `2d6 + 3 = ${total} (${faces[0]}, ${faces[1]})` });
-      await expect(row).toHaveCount(1);
-      await expect(row).toContainText('Rolagem livre ·');
+      // The master sees the dice on the overlay first: it covers the page, and a tap anywhere closes it, so it is read and
+      // closed before the master opens anything.
       const overlay = m.locator('app-roll-overlay .result').filter({ hasText: 'Rolagem livre · 2d6 + 3' });
       await expect(overlay).toBeVisible({ timeout: 15_000 });
       await expect(overlay).toContainText(/rolou/);
       await m.locator('app-roll-overlay .scrim').click(); // "Toque para fechar"
       await expect(overlay).toBeHidden();
+      // Then the master reads the same roll in "Rolagens da mesa".
+      const row = (await openTableRolls(m))
+        .getByRole('listitem')
+        .filter({ hasText: `2d6 + 3 = ${total} (${faces[0]}, ${faces[1]})` });
+      await expect(row).toHaveCount(1);
+      await expect(row).toContainText('Rolagem livre ·');
     } finally {
       await done();
     }

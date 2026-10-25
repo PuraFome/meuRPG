@@ -423,7 +423,7 @@ test(
       await grant.click();
       await master.getByRole('alertdialog').getByRole('button', { name: 'Dar mais uma tentativa' }).click();
       await expect(master.getByRole('status').filter({ hasText: /Mais uma tentativa dada a Pensantus às \d\d:\d\d\./ })).toBeVisible();
-      await expect(rolls.getByRole('listitem').nth(0)).toContainText('Tentativa 3 de 4');
+      await expect(rolls.nth(0)).toContainText('Tentativa 3 de 4');
       await expect(grant).toHaveCount(0);
 
       // The player has it back at once: the row, the button and the live region.
