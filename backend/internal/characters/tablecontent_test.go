@@ -577,13 +577,14 @@ func TestTableContentLimits(t *testing.T) {
 	ctx := t.Context()
 	for i := range 999 {
 		name := "Antecedente " + strings.Repeat("x", i%5) + strconv.Itoa(i)
-		data, err := storedData(testBackground(name))
+		slug := slugify(name) + "-" + strconv.Itoa(i)
+		key := "background:" + slug + "@mesa"
+		st, err := prepare(key, rulesv1.TableContentKind_TABLE_CONTENT_KIND_BACKGROUND, testBackground(name+" "+slug), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		slug := slugify(name) + "-" + strconv.Itoa(i)
 		if _, err := h.pool.Exec(ctx, `INSERT INTO campaign_content (campaign_id, content_key, kind, name_pt, data, revision, created_at, updated_at)
-			VALUES ($1, $2, 'background', $3, $4, 1, now(), now())`, campaign, "background:"+slug+"@mesa", name+" "+slug, data); err != nil {
+			VALUES ($1, $2, 'background', $3, $4, 1, now(), now())`, campaign, key, name+" "+slug, st.data); err != nil {
 			t.Fatalf("insert entry %d: %v", i, err)
 		}
 	}
