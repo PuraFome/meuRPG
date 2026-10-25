@@ -29,6 +29,7 @@ export const NEW_KINDS: Readonly<Record<string, TableContentKind>> = {
   subclass: TableContentKind.SUBCLASS,
   feat: TableContentKind.FEAT,
   option: TableContentKind.OPTION,
+  classfeature: TableContentKind.CLASS_FEATURE,
 };
 
 export const NEW_TITLES: Readonly<Record<number, string>> = {
@@ -40,6 +41,7 @@ export const NEW_TITLES: Readonly<Record<number, string>> = {
   [TableContentKind.SUBCLASS]: 'Nova subclasse',
   [TableContentKind.FEAT]: 'Novo talento',
   [TableContentKind.OPTION]: 'Nova opção',
+  [TableContentKind.CLASS_FEATURE]: 'Nova característica de classe',
 };
 
 /** The table's own feats a "feat" choice may list (the catalog has no feats; the SRD's are not offered by name). */
@@ -60,6 +62,7 @@ export const EDITABLE = new Set<TableContentKind>([
   TableContentKind.SUBCLASS,
   TableContentKind.FEAT,
   TableContentKind.OPTION,
+  TableContentKind.CLASS_FEATURE,
 ]);
 
 /** The entries a read-again brings, with the one being edited kept as it is typed: when another write changed its body and

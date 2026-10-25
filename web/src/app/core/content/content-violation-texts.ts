@@ -204,6 +204,23 @@ export const FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text: strin
     shape: /^table_option\.effects\[\]\.type$/,
     text: 'Uma opção não pede outra escolha: use outro tipo de efeito.',
   },
+  // A table class feature (MR-025): the paths and reasons of backend/internal/rules/overlay_classfeature.go.
+  {
+    shape: /^table_class_feature\.class_key$/,
+    text: 'Esta classe não existe mais. Escolha outra.',
+  },
+  {
+    shape: /^table_class_feature\.level$/,
+    text: 'O nível vai de 1 a 20.',
+  },
+  {
+    shape: /^table_class_feature\.replaces_feature_key$/,
+    text: 'A classe não tem essa característica neste nível ou depois dele. Uma característica que o personagem já tinha antes não pode ser trocada.',
+  },
+  {
+    shape: /^table_class_feature\.effects(\[\])?$/,
+    text: 'Esta característica tem efeitos demais. Tire alguns.',
+  },
   { shape: /\.level$/, text: 'Escolha um nível de magia de 0 (truque) a 9.' },
   { shape: /\.school_key$/, text: 'Escolha a escola da magia.' },
   {
