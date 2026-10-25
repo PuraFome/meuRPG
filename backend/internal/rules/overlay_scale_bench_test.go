@@ -95,8 +95,15 @@ func bookOverlay(t testing.TB, c *Content, n int) Overlay {
 		}
 		o.Feats = append(o.Feats, f)
 	}
+	o.Spells = bookSpells(spells, srdClasses, tableClasses)
+	return o
+}
+
+// bookSpells are n spells with class lists of the SRD's classes and the table's.
+func bookSpells(n int, srdClasses, tableClasses []string) []TableSpell {
 	base := tableTestSpells()
-	for i := range spells {
+	var out []TableSpell
+	for i := range n {
 		s := base[i%len(base)]
 		slug := "magia-" + strconv.Itoa(i)
 		s.Key, s.NamePT = "spell:"+slug+tableSuffix, "Magia "+strconv.Itoa(i)
@@ -111,9 +118,9 @@ func bookOverlay(t testing.TB, c *Content, n int) Overlay {
 		if s.Level > 0 {
 			s.Level = 1 + i%9
 		}
-		o.Spells = append(o.Spells, s)
+		out = append(out, s)
 	}
-	return o
+	return out
 }
 
 // bookText is paragraphs of about 300 characters, each one different.

@@ -26,26 +26,7 @@ func bookRows(t testing.TB, n, extraEffects int) []charactersdb.CampaignContent 
 	// features, the same number on each, of the books' mix of types.
 	bodies := n/9 + n/14 + n/20 + n/12
 	perBody := min(extraEffects/max(bodies, 1), 19)
-	mix := func(k int) []*rulesv1.TableEffect {
-		out := make([]*rulesv1.TableEffect, 0, perBody)
-		for i := range perBody {
-			switch (i + k) % 6 {
-			case 0:
-				out = append(out, &rulesv1.TableEffect{Type: "modifier", Target: "ac", Mode: "add", Value: fmt.Sprintf(`max(1, mod("str") + %d)`, (k+i)%100+1)})
-			case 1:
-				out = append(out, &rulesv1.TableEffect{Type: "proficiency", Proficiency: "skill:survival"})
-			case 2:
-				out = append(out, &rulesv1.TableEffect{Type: "resistance", Except: "damage-type:psychic", While: "rage"})
-			case 3:
-				out = append(out, &rulesv1.TableEffect{Type: "note", TextPt: fmt.Sprintf("Nota do livro %d.", k+i)})
-			case 4:
-				out = append(out, &rulesv1.TableEffect{Type: "choice", Choice: "skill", Count: 1})
-			default:
-				out = append(out, &rulesv1.TableEffect{Type: "resource", Resource: fmt.Sprintf("recurso_%d_%d", k, i), Max: "prof()", Recharge: "short_rest"})
-			}
-		}
-		return out
-	}
+	mix := func(k int) []*rulesv1.TableEffect { return effectMix(k, perBody) }
 	classes, subclasses, races := n/70, n/9, n/14
 	subraces, backgrounds, feats := n/12, n/20, n/12
 	spells := n - classes - subclasses - races - subraces - backgrounds - feats
@@ -110,6 +91,28 @@ func bookRows(t testing.TB, n, extraEffects int) []charactersdb.CampaignContent 
 		add(rulesv1.TableContentKind_TABLE_CONTENT_KIND_SPELL, name, sp)
 	}
 	return rows
+}
+
+// effectMix are n effects of the books' mix of types, different from one k to the next.
+func effectMix(k, n int) []*rulesv1.TableEffect {
+	out := make([]*rulesv1.TableEffect, 0, n)
+	for i := range n {
+		switch (i + k) % 6 {
+		case 0:
+			out = append(out, &rulesv1.TableEffect{Type: "modifier", Target: "ac", Mode: "add", Value: fmt.Sprintf(`max(1, mod("str") + %d)`, (k+i)%100+1)})
+		case 1:
+			out = append(out, &rulesv1.TableEffect{Type: "proficiency", Proficiency: "skill:survival"})
+		case 2:
+			out = append(out, &rulesv1.TableEffect{Type: "resistance", Except: "damage-type:psychic", While: "rage"})
+		case 3:
+			out = append(out, &rulesv1.TableEffect{Type: "note", TextPt: fmt.Sprintf("Nota do livro %d.", k+i)})
+		case 4:
+			out = append(out, &rulesv1.TableEffect{Type: "choice", Choice: "skill", Count: 1})
+		default:
+			out = append(out, &rulesv1.TableEffect{Type: "resource", Resource: fmt.Sprintf("recurso_%d_%d", k, i), Max: "prof()", Recharge: "short_rest"})
+		}
+	}
+	return out
 }
 
 // insertRows writes the rows straight into the campaign (each through the API
@@ -253,6 +256,14 @@ func measureScale(t *testing.T, n, extraEffects int) {
 	d, _, _ = median(5, func() { catalog = tb.master.catalog(t, tb.campaign) })
 	t.Logf("%4d entries: ListContent as the master %v, %d KiB on the wire", n, d.Round(time.Microsecond), proto.Size(catalog)/1024)
 
+	measureSwitches(t, tb, n, tableKeys)
+}
+
+// measureSwitches measures the master's switches of the campaign: the list, then
+// the keys switched off and on in one call.
+func measureSwitches(t *testing.T, tb *levelUpTable, n int, tableKeys []string) {
+	ctx := t.Context()
+	var d time.Duration
 	// The master's switches: the list, then the table's entries switched off and
 	// on in one call (the call is refused above MaxOptionSwitches).
 	var opts *rulesv1.ListOptionSwitchesResponse
