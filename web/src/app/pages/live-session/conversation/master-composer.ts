@@ -89,7 +89,7 @@ interface PickedImage {
           <mat-icon aria-hidden="true">image</mat-icon>
           <span class="composer__image-text">Imagem da galeria</span>
         </button>
-        <button type="submit" class="composer__send">
+        <button type="submit" class="composer__send" [class.composer__send--quiet]="combat()">
           <mat-icon aria-hidden="true">send</mat-icon>
           <span class="composer__send-text">Enviar</span>
         </button>
@@ -99,6 +99,8 @@ interface PickedImage {
   styleUrl: './master-composer.scss',
 })
 export class MasterComposer {
+  /** A combat is running: "Enviar" steps back to an outline so "Próximo turno" is the one filled button on the screen. */
+  readonly combat = input(false);
   readonly state = input.required<ConversationState>();
   readonly campaignId = input.required<string>();
   readonly speakers = input.required<readonly Speaker[]>();

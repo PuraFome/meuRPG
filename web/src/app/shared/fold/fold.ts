@@ -47,8 +47,8 @@ const DEFAULT_LEVEL = 3;
         <span class="mr-fold__note"><ng-content select="[foldNote]" /></span>
       }
     </div>
-    @if (open() || !foldable()) {
-      <div class="mr-fold__body" [id]="id + '-body'">
+    @if (keep() || open() || !foldable()) {
+      <div class="mr-fold__body" [id]="id + '-body'" [hidden]="foldable() && !open()">
         <ng-content />
       </div>
     }
@@ -69,6 +69,8 @@ export class Fold {
   readonly muted = input(false);
   /** The panel is a landmark named by its title (a section the person looks for by name). */
   readonly region = input(false);
+  /** The body stays mounted while folded (`hidden`): a panel that reads its own data, so the header can say a count. */
+  readonly keep = input(false);
   /** Open or folded; two-way, so the caller may open it (a notice that points into it). */
   readonly open = model(false);
 }

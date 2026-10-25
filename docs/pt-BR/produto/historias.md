@@ -295,6 +295,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 - **Dado** um turno conjunto com um membro escondido, **quando** o jogador lê o turno, **então** o membro escondido nunca é nomeado.
 
 #### No app
+- O combate do mestre é a barra do combate (rodada, de quem é a vez, "Em seguida", o que espera, "Próximo turno"), a ordem, o mapa e a coluna "Turno / Conversa" (com "Mais do combate", uma dobra por painel), em três colunas no computador, e as abas "Turno · Ordem · Mapa" com uma barra fixa no celular (ver [Design](../../design/combat.md#the-masters-combat)).
 - Telas: o cartão do mestre tem um bloco por membro e "Encerrar a parte da Brisa"; o jogador lê "Vez de Brisa e Toren", "Vez dos Goblins", "Você encerrou a sua parte" e "O que a Brisa ainda tem".
 - A tela acompanha a sessão ao vivo sem recarregar.
 - Ver [Combate](../../architecture/play/combat.md#combat) e [Design](../../design/combat.md).
@@ -406,6 +407,21 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 - **Dado** o "Dar mais uma tentativa" do mestre, **quando** ele a oferece, **então** o botão aparece só na última rolagem do personagem naquela ação, pergunta ali mesmo com "Voltar" primeiro e, com a CD mostrada, só é oferecido se a rolagem falhou (ou quando a ação não tem CD). A tela do jogador anuncia.
 - **Dado** um ponto de cena de RP, **quando** o mestre anexa a ele imagens da galeria (até 8, na ordem que escolher), **então** só o mestre vê essa lista (RN-10), **e** na sessão ao vivo a cena aberta mostra as imagens com "Mostrar aos jogadores", a ação própria da galeria (MR-019), **e** os jogadores só veem uma imagem depois que o mestre a mostra. Apagar a imagem da galeria ou o ponto remove o vínculo.
 - **Dado** um combate na tela, **quando** uma cena está aberta, **então** os blocos da cena não são desenhados para ninguém; a cena volta à tela quando o combate termina.
+- **Dado** o mestre que abre uma cena, **quando** ele escolhe os jogadores que estão nela ("Quem está na cena"), **então** só esses jogadores, e o mestre, recebem a cena: o nome, o ponto, a descrição, as ações, as rolagens, o palco, o teste em grupo pedido nela e todo aviso ao vivo sobre ela (RN-10). Sem ninguém escolhido a cena fica aberta para a mesa toda, **e** um jogador que entra na campanha depois está nela; com uma lista, a cena fica aberta para exatamente esses jogadores, e um jogador que entra depois está fora.
+- **Dado** uma cena aberta para só alguns jogadores, **quando** um jogador que está fora lê a cena, rola uma ação dela ou pede o palco, **então** recebe o que recebe quando nenhuma cena está aberta: nenhuma cena, a mesma recusa de "nenhuma cena está aberta", nenhum retrato (404), e nenhum aviso ao vivo sobre ela, então nada diz a ele que há uma cena aberta.
+- **Dado** a cena aberta, **quando** o mestre muda quem está nela ("Quem está na cena"), **então** um jogador que entra vê a cena na hora (e as rolagens que já tinha feito nela, se já estivera), **e** um jogador que sai a perde na hora, sem cena na tela dele; as rolagens já feitas ficam com a abertura. Os jogadores que ficam, e os que entraram ou saíram, ficam sabendo da mudança; mais ninguém.
+- **Dado** a cena aberta, **quando** o mestre a lê, **então** ela diz desde quando está aberta e quem está dentro e quem está fora, com os nomes dos personagens ("Aberta desde 20:20 para Pensantus, Brisa"; "Fora da cena: Sálvia e Jabuti"); nenhum jogador lê essa lista.
+- **Dado** uma cena aberta para só alguns jogadores, **quando** o mestre pede um teste em grupo ("Teste em grupo") sem nomear personagens, **então** ele pede só aos jogadores da cena, **e** nomear um personagem que está fora é recusado; um jogador tirado da cena deixa de ler o teste e não pode respondê-lo. O mestre dá uma tentativa só a um personagem que está dentro.
+- **Dado** uma cena aberta para só alguns jogadores, **quando** a sessão termina, **então** os testes passados nela contam no resumo para o mestre e para os jogadores que estavam dentro, e para nenhum outro jogador.
+- **Dado** uma cena aberta para só alguns jogadores, **quando** o mestre liga "Os jogadores podem entrar" (desligado por padrão, mutável com a cena aberta, volta a desligado quando a cena fecha), **então** um jogador que está fora lê exatamente duas coisas dela: o nome e que pode entrar, e nada mais (nem ponto, descrição, palco, ações, rolagens, imagens ou pistas); com o interruptor desligado não lê nada, como quando nenhuma cena está aberta. Todos os jogadores são avisados quando o interruptor muda.
+- **Dado** uma cena que deixa os jogadores entrarem, **quando** um jogador toca "Entrar na cena", **então** ele vira um dos jogadores dela na hora, lê como qualquer membro e o mestre o vê marcado como quem entrou sozinho, contra os que ele escolheu; entrar de novo não muda nada. O mestre, um estranho e um membro pendente não podem entrar, e com o interruptor desligado a recusa é a de "nenhuma cena está aberta".
+- **Dado** um jogador que entrou numa cena, **então** ele é um dos jogadores dela para o que vem depois: uma imagem mostrada aos "jogadores da cena" chega a ele na hora, e uma imagem mostrada a jogadores escolhidos não chega, a menos que ele tenha sido escolhido.
+- **Dado** uma cena aberta para alguns jogadores, **quando** o mestre a abre para todos, **então** ela fica "descoberta" para o grupo, e o nome dela pode rotular uma anotação; enquanto está aberta para alguns ela não fica, e a lista de cenas não conta nada aos outros.
+- **Dado** uma ação de cena, **quando** o mestre a marca "Escondida" (ao acrescentá-la, ou depois, também com a cena aberta), **então** nenhum jogador a recebe: nem o nome, a CD, as tentativas ou as rolagens, no mapa, na cena aberta, num aviso ao vivo ou no histórico que ele lê (RN-10); o mestre continua a vê-la, marcada, rola nela pela mesa e dá tentativas nela.
+- **Dado** uma ação escondida, **quando** um jogador tenta rolá-la mesmo assim, **então** a recusa é exatamente a de uma ação que não existe (o mesmo erro, a mesma mensagem), para nunca dizer ao jogador que a ação está lá.
+- **Dado** uma ação escondida na cena aberta, **quando** o mestre a mostra ("Os jogadores veem"), **então** os jogadores da cena a veem na hora e podem rolá-la; **quando** o mestre a esconde de novo, **então** ela sai da tela deles na hora, com as rolagens que fizeram nela. Nada é apagado: mostrá-la outra vez devolve as rolagens e as tentativas.
+- **Dado** que o mestre edita, move ou remove uma ação escondida (e que continua escondida), **quando** os jogadores estão assistindo, **então** só a tela do mestre fica sabendo.
+- **Dado** o teste em grupo ("Teste em grupo"), **quando** o mestre o pede, **então** ele pede à mesa uma perícia, nunca uma ação de cena, e por isso uma ação escondida não é oferecida nem nomeada por ele.
 
 #### No app
 - Editor: "Ações da cena" e "Imagens da cena" do painel do ponto (miniaturas em ordem com ↑ ↓ e "Tirar da cena", que mantém a imagem na galeria; "Escolher da galeria"; "Gerar imagem com IA", cuja imagem entra na lista; "N de 8").
@@ -415,6 +431,13 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 #### Relacionadas
 - Numa cena de RP o mestre escolhe as ações possíveis e o jogador vê o que pode fazer com o próprio bônus; em combate o sistema decide. Ver [Regras de negócio](regras.md) e [ADR-0008](../../adr/0008-rules-content-as-data-pure-engine.md).
 - As cenas têm testes de perícia, testes de habilidade e testes de resistência; magias e habilidades não fazem parte delas.
+
+#### Dúvidas
+- Uma cena aberta para só alguns jogadores não fica "descoberta" para o grupo, então os jogadores dela não podem rotular uma anotação com ela até o mestre abri-la para todos. Os jogadores da cena deveriam poder?
+- Uma pista que o mestre revela a um personagem que está fora da cena aberta chega às anotações desse jogador (o mestre escolheu o personagem). Revelar uma pista de uma cena a um jogador que está fora deveria ser recusado?
+- Só um jogador dono de um personagem vivo do grupo pode ser nomeado numa cena, como nos leitores da conversa. O jogador de um personagem morto deveria poder acompanhar uma cena?
+- Uma rolagem que um jogador fez numa ação escondida depois sai da lista de rolagens dele, mas continua no resumo da sessão, que conta tentativas e acertos por personagem (nunca a ação): o resumo guarda o número que a mesa já viu. Esconder uma ação deve tirar as rolagens dela também do resumo?
+- Um pacote exportado com uma ação escondida a traz de volta escondida. É isso que o mestre quer quando compartilha uma campanha com outro mestre?
 
 ### MR-016: Dar XP
 
@@ -542,21 +565,32 @@ Cada convite escolhe se exige aprovação, e uma recusa apaga o personagem e a p
 - **Dado** que a sessão acabou ou o mestre parou de mostrar a imagem, **então** os jogadores deixam de receber o ID da imagem, e um jogador não consegue baixá-la.
 - **Dado** uma imagem que o mestre quer que os jogadores continuem vendo, **quando** ele liga "Deixar com os jogadores" e depois para de mostrar ou troca a imagem, **então** ela fica com os jogadores, numa lista "Imagens que o mestre deixou" na página da sessão deles, até o mestre removê-la ("Tirar"); a lista pertence à campanha e sobrevive ao fim da sessão.
 - **Dado** um jogador, **quando** ele tenta mostrar uma imagem, ou o mestre tenta mostrar uma de outra campanha ou sem sessão aberta, **então** o servidor recusa.
+- **Dado** uma imagem mostrada, **quando** o mestre olha quem a vê ("Quem vê a imagem"), **então** ela tem uma audiência de três tipos: a mesa toda; os jogadores da cena; ou jogadores escolhidos, qualquer conjunto de jogadores da campanha, escolhidos como o "Para" da conversa. A audiência é a mesa toda quando nenhuma cena está aberta ou a cena aberta está aberta para todos, exatamente como antes; enquanto uma cena aberta para só alguns jogadores está aberta, o padrão são os jogadores da cena, **e** o mestre pode escolher a mesa toda ou jogadores escolhidos ao mostrar a imagem.
+- **Dado** uma imagem mostrada aos jogadores da cena, **quando** o mestre muda quem está na cena, **então** um jogador que entra vê a imagem na hora e um jogador que sai deixa de vê-la na hora; **quando** a cena fecha, outra abre, ou a cena abre para todos, **então** a imagem fica com os jogadores que estavam dentro naquele momento, até o mestre parar de mostrá-la ou mostrar outra: ela não chega a mais ninguém, e nenhum jogador a recebe retroativamente.
+- **Dado** uma imagem mostrada, **quando** o mestre toca "Mostrar a toda a mesa", **então** todos os jogadores a veem na hora, como uma imagem mostrada sem cena; **quando** ele toca "Mudar quem vê" e escolhe os jogadores, **então** os escolhidos a veem, os outros a perdem na hora (a imagem some da tela deles, da leitura da sessão ao vivo e da rota da imagem, que responde 404) e os jogadores que ficam não ouvem nada.
+- **Dado** um jogador fora da audiência da imagem, **então** ele nunca a recebe: nem a imagem, nem o ID ou o nome dela numa leitura, nem num evento ao vivo (ele só fica sabendo que uma imagem que viu deixou de ser mostrada), nem pela rota da imagem, nem no resumo ou nos destaques (RN-10).
+- **Dado** uma imagem com "Deixar com os jogadores" ligado, **quando** ela deixa de ser mostrada, **então** ela fica só com os jogadores que estavam na audiência dela (a mesa toda, ou esses jogadores); a lista que os outros jogadores leem não a tem, a rota da imagem responde 404 a eles e as telas deles não ouvem nada dela; "Tirar" funciona como antes. Deixar uma imagem de novo toma a audiência da deixada mais recente.
 
 #### No app
 - Uma imagem por vez, independente do mapa atual; uma sessão nova começa sem nenhuma.
   Apagar a imagem da galeria para de mostrá-la e a tira da lista.
   O nome da imagem é o nome do arquivo enviado e aparece para os jogadores como legenda, então o mestre pode renomeá-la antes de mostrar.
 - Mostrar o fundo de um mapa com névoa mostra uma cópia dele ("… (névoa)"), para não entregar a névoa.
-- Um jogador baixa a imagem só enquanto ela está sendo mostrada, enquanto está deixada com os jogadores, ou enquanto é o fundo de um mapa que ele vê.
+- Um jogador baixa a imagem só enquanto ela está sendo mostrada e ele está na audiência dela, enquanto está deixada com ele, ou enquanto é o fundo de um mapa que ele vê.
   Fora disso é um `404`, mesmo com o ID guardado.
   Veja [RN-10](regras.md) e [Servir imagens](../../architecture/maps/images.md#serving-images).
 - Tela do mestre: com uma cena aberta, a linha "Imagens da cena" (o bloco tracejado "Da galeria", o interruptor "Deixar com os jogadores" com a palavra do estado numa linha, "Parar de mostrar" e a lista das imagens deixadas); sem cena aberta, o painel "Imagem para os jogadores" ("Mostrar imagem", o seletor da galeria com "Mostrar aos jogadores", "Trocar imagem", "Parar de mostrar"), o interruptor "Deixar com os jogadores" ("Ligado"/"Desligado", desligado sempre que uma imagem nova é mostrada) e a lista "Deixadas com os jogadores" com "Tirar".
 - Tela do jogador: o bloco "O mestre está mostrando" com a imagem, o nome dela como legenda e "Ver em tela cheia", que aparece e some ao vivo e é anunciado; e a lista "Imagens que o mestre deixou" com "Ver em tela cheia", escondida enquanto vazia.
   A lista fica só na página da sessão, não na página da campanha.
   Veja [Design](../../design/session.md#images-shown-to-players) e [Arquitetura](../../architecture/play/live-session.md#what-the-session-shows).
+- A audiência faz parte da chamada de mostrar e tem uma chamada própria para mudá-la enquanto a imagem é mostrada (`SetShownImage`, `SetShownImageAudience`); o mestre a lê na imagem, e um jogador nunca.
 - Fora do escopo: um "baú" por jogador com toda imagem já mostrada.
-  A lista guarda só o que o mestre escolheu deixar, e é a mesma para todos os jogadores.
+  A lista guarda só o que o mestre escolheu deixar, e um jogador lê as imagens deixadas com ele.
+
+#### Dúvidas
+- Apagar a imagem que está sendo mostrada avisa todos os jogadores de que ela deixou de ser mostrada, também os que estão fora da audiência (o evento não leva imagem). Deveria avisar só os jogadores que a viram?
+- Uma imagem deixada de novo toma a audiência da deixada mais recente, o que pode estreitar o que um jogador já tinha. Deveria guardar a audiência mais ampla?
+- A audiência de uma imagem já deixada não pode ser mudada; o mestre a tira e a mostra de novo. Um "Mudar quem vê" para a lista das deixadas é necessário?
 
 ### MR-025: Cadastrar conteúdo da mesa
 
@@ -836,6 +870,12 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 - **Dado** um mestre que quer o retrato de um NPC, **quando** o escolhe na ficha, **então** só vale uma imagem da galeria da campanha, e só num NPC.
 - **Dado** um retrato PNG com fundo transparente, **quando** o NPC entra na cena, **então** a transparência é mantida e o palco o desenha sem caixa atrás, só uma linha de base.
 - **Dado** a cena aberta, **quando** um jogador toca num NPC no palco, **então** ele vê o NPC maior, com o nome e o retrato, e nada mais: a cena pertence inteira ao mestre.
+- **Dado** uma cena aberta, **quando** o mestre põe um NPC no palco escondido ("Escondida dos jogadores"), **então** ele ocupa uma das 4 vagas e o mestre o lê marcado, mas nenhum jogador o recebe: nem o nome, o retrato ou o lugar no palco, nem na cena aberta, nem num aviso ao vivo, nem como alvo ou conjurador de uma conjuração, nem no histórico, no resumo ou nos destaques que lê (RN-10); os jogadores não são avisados quando ele entra ou sai do palco escondido.
+- **Dado** um NPC no palco, **quando** o mestre o alterna entre "Os jogadores veem" e "Escondida dos jogadores", **então** mostrá-lo o faz entrar na imagem dos jogadores ao vivo, e escondê-lo o faz sair, exatamente como tirá-lo: nada diz aos jogadores que ele foi escondido em vez de tirado.
+- **Dado** um NPC escondido, **quando** o mestre toca "Dar a fala", **então** ele é mostrado na mesma chamada e fala: os jogadores o veem entrar e falar na hora. Esconder o NPC que fala tira a fala dele.
+- **Dado** o retrato de um NPC escondido, **quando** um jogador tenta baixá-lo, **então** é `404`, como fora do palco; o mestre sempre consegue.
+- **Dado** uma cena aberta para só alguns jogadores, **quando** o mestre põe um NPC no palco, **então** só os jogadores da cena recebem o palco, os NPCs nele e os retratos deles, e os avisos do palco; um jogador que está fora não recebe palco nenhum, nem para mirar uma conjuração num NPC dele (MR-015, RN-10).
+- **Dado** um NPC escondido, **quando** o mestre conjura uma magia por ele fora do combate, **então** a conjuração é só do mestre e nenhum jogador pode mirar nele, nem pelo lugar no palco; as conjurações que ele fez à vista saem da lista dos jogadores enquanto ele está escondido e voltam quando é mostrado.
 
 #### No app
 - O palco comporta até 4 NPCs por sessão, em ordem, com quem está falando; fechar ou trocar a cena o esvazia.
@@ -848,6 +888,11 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 
 #### Relacionadas
 - Usa as imagens da [galeria](#mr-019-galeria-de-imagens), como a [MR-028](#mr-028-mostrar-uma-imagem-aos-jogadores).
+
+#### Dúvidas
+- Uma fala que o mestre manda "como" um NPC escondido na conversa da cena (MR-051) chega aos leitores que ele escolheu e não mostra o NPC no palco. Mandar uma fala como NPC escondido deve mostrá-lo também?
+- Pôr no palco um NPC que já está nele, com o valor do outro lado do "escondido", não muda nada: o alternador é o jeito de mostrar ou esconder. Isso está claro, ou o "pôr" deveria alternar?
+- "Dar a fala" sempre mostra o NPC. Deveria haver um jeito de fazer um NPC escondido falar sem mostrá-lo (uma voz fora da tela)?
 
 ### MR-032: Destaques do combate
 

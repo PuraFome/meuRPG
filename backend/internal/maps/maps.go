@@ -145,9 +145,18 @@ type LiveSession interface {
 	// session is.
 	OpenScenePoint(ctx context.Context, campaignID string) (pointID string, err error)
 	// ImageOnStage reports whether the image is the portrait of an NPC on the
-	// stage of the open scene of the campaign's open game session (MR-031).
-	// False when no session or no scene is open.
-	ImageOnStage(ctx context.Context, campaignID, imageID string) (bool, error)
+	// stage of the open scene of the campaign's open game session (MR-031),
+	// as the user sees that stage: a player outside a scene open to only some
+	// players sees none. An empty userID is nobody in particular: any NPC of the
+	// stage counts. False when no session or no scene is open.
+	ImageOnStage(ctx context.Context, campaignID, userID, imageID string) (bool, error)
+	// ImageShownTo reports whether the image is the one the open session shows
+	// and the user is in the audience that sees it (MR-028, RN-10).
+	ImageShownTo(ctx context.Context, campaignID, userID, imageID string) (bool, error)
+	// PublishToScene sends ev to the streams of the master and of the players
+	// in the open scene (everyone when the scene is open to the whole table or
+	// none is open). Without an open session nothing happens.
+	PublishToScene(ctx context.Context, campaignID string, ev *playv1.WatchGameSessionResponse)
 	// ImageInConversation reports whether the user may read a line of the
 	// scene's conversation that carries the image, or that an NPC with it as
 	// its portrait speaks (RN-36): the one thing a line lets its readers open.

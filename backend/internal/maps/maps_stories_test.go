@@ -396,8 +396,9 @@ func TestMR028_MasterShowsAnImageToThePlayers(t *testing.T) {
 	// current map.
 	shown, err := show(master, portrait.GetId())
 	want := &playv1.ShownImage{Id: portrait.GetId(), Name: "Velha Odra", Width: 60, Height: 80, Url: portrait.GetUrl(), ThumbnailUrl: portrait.GetThumbnailUrl()}
-	if err != nil || !proto.Equal(shown, want) {
-		t.Fatalf("SetShownImage() = %v, %v; want %v", shown, err, want)
+	// The master's copy says who sees it (the whole table); the player's never does.
+	if err != nil || !proto.Equal(shown, &playv1.ShownImage{Id: want.Id, Name: want.Name, Width: want.Width, Height: want.Height, Url: want.Url, ThumbnailUrl: want.ThumbnailUrl, Audience: &playv1.ImageAudience{Kind: playv1.ImageAudienceKind_IMAGE_AUDIENCE_KIND_WHOLE_TABLE}}) {
+		t.Fatalf("SetShownImage() = %v, %v; want %v with the whole table", shown, err, want)
 	}
 	if ev := pw.next().GetShownImageChanged(); !proto.Equal(ev.GetImage(), want) {
 		t.Errorf("the player's event = %v, want shown_image_changed with the portrait", ev)

@@ -208,7 +208,7 @@ test('a exaustão: níveis de 0 a 6, "Baixar 1 nível" e a confirmação do nív
   }
 });
 
-test('a 390 px a tabela vira um cartão por efeito, com os botões em largura total e nada rola de lado', { tag: ['@W7-E', '@RN-22', '@RN-10'] }, async ({ browser }) => {
+test('a 390 px o efeito é uma linha compacta de "Mais", com os botões de 44 px e nada rola de lado', { tag: ['@W7-E', '@RN-22', '@RN-10'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   const t = await effectsTable(browser, 'Efeitos no celular', 390);
   try {
@@ -216,12 +216,11 @@ test('a 390 px a tabela vira um cartão por efeito, com os botões em largura to
     await expect(panel.locator('.fx__cols')).toBeHidden();
     const bless = effectRow(panel, 'Bênção');
     await expect(bless.locator('.fx__sub')).toContainText(/Em (Pensantus, Goblin 1|Goblin 1, Pensantus) · de Pensantus/);
-    await expect(bless.locator('.fx__who')).toBeHidden();
-    const card = await boxOf(bless);
+    // C7-02: one line per effect (its name, the targets, the end), no frame; "Encerrar" and the others stay 44 px tall.
+    await expect(bless.locator('.fx__who')).toBeVisible();
     for (const name of [/^Encerrar Bênção/, /^Mudar a duração de/]) {
       const box = await boxOf(bless.getByRole('button', { name }));
-      expect(box.height).toBeGreaterThanOrEqual(48);
-      expect(box.width).toBeGreaterThan(card.width - 40);
+      expect(box.height).toBeGreaterThanOrEqual(44);
     }
     const overflow = await t.m.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(0);

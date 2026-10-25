@@ -29,7 +29,12 @@
 }
 
 @media (min-width: 1600px) {
-  .split {
+  // The master's running combat has the conversation in its own rail: the board takes the whole width.
+  .split--rail {
+    display: block;
+  }
+
+  .split:not(.split--rail) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(380px, 420px);
     gap: var(--mr-space-6);
@@ -218,14 +223,15 @@
 // From 1024px the master's Conversa is a rail (C3-01): the column is a sticky aside beside the board, as tall as the screen; the page
 // under 1024px keeps it under the board, and a phone has the pinned nav.
 @media (min-width: 1024px) {
-  .split--rail {
+  .split.split--board {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(340px, 400px);
     gap: var(--mr-space-6);
     align-items: stretch;
   }
 
-  .split--rail .split__chat--rail {
+  .split--board .split__chat--rail {
+    position: static;
     margin-top: var(--mr-space-4);
   }
 }

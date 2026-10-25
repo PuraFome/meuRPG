@@ -103,4 +103,16 @@ describe('SessionTabs', () => {
       expect(group.querySelector('.tab__badge--wait')?.textContent?.trim()).toBe('2');
     });
   });
+
+  it('says "Grupo" for the master and "Combate" while the master\'s combat is on', () => {
+    const { fixture, el } = setup();
+    fixture.componentRef.setInput('sceneLabel', 'Combate');
+    fixture.componentRef.setInput('sheetLabel', 'Grupo');
+    fixture.detectChanges();
+    expect(Array.from(el.querySelectorAll('.tab'), (t) => t.textContent?.trim())).toEqual([
+      'Combate',
+      'Grupo',
+      'Conversa',
+    ]);
+  });
 });

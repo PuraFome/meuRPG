@@ -86,13 +86,12 @@ export class CombatMapCard {
   readonly forcedNote = input('');
   /** The player's own combatant may be dragged to pick a square (their turn, desktop): the drop opens "Mover" there. */
   readonly ownMovable = input(false);
-  readonly hint = input(true);
   /** The legend of the shapes; the setup's small map says it in a note. */
   readonly legend = input(true);
   /** A line under the map instead of the legend. */
   readonly note = input('');
   /** On a phone the master gets a zoomed, cropped preview centered on whoever
-   * is on turn, and "Abrir mapa" for the whole map (E6-12). */
+   * is on turn, and "Ver mapa" for the whole map (E6-12). */
   readonly cropOnPhone = input(false);
 
   /** The master taps a door of the map (E10-05 10): the page opens the door's sheet. Not on the phone's cropped preview. */
@@ -194,7 +193,10 @@ export class CombatMapCard {
   protected readonly own = computed(() => ownCombatant(this.encounter()));
   protected readonly size = computed(() => {
     const e = this.encounter();
-    return `${e.gridColumns} × ${e.gridRows} quadrados de 1,5 m`;
+    // The master's head is one line (C7-02): "24 × 16 · 1,5 m".
+    return this.isMaster()
+      ? `${e.gridColumns} × ${e.gridRows} · 1,5 m`
+      : `${e.gridColumns} × ${e.gridRows} quadrados de 1,5 m`;
   });
   /** "Área da última magia": the area a player's spell reached, while its question waits (the master's map only). */
   protected readonly lastArea = computed(() =>

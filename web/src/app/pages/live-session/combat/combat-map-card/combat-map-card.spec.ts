@@ -52,25 +52,26 @@ describe('CombatMapCard: "Movimento forçado"', () => {
     expect(el.querySelector('[role="status"]')).toBeNull();
   });
 
-  it('is a box of 44 px that says what it does, after the range box, off by default', () => {
+  it('is a box of 44 px in the head, with its explanation described and not drawn, off by default', () => {
     const { el } = mount({
       forcedSwitch: true,
       reachSwitch: { name: 'do Pensantus', on: false },
     });
     const boxes = [...el.querySelectorAll<HTMLInputElement>('label.card__check input')];
     expect(boxes.map((b) => plain(b.parentElement?.textContent))).toEqual([
-      'Mostrar o alcance do Pensantus no mapa',
+      'Alcance do Pensantus',
       'Movimento forçado',
     ]);
     expect(boxes[1].checked).toBe(false);
-    expect(plain(el.textContent)).toContain('Vale só para o próximo arrasto.');
-    expect(plain(el.textContent)).toContain(
-      'Arraste um token para movê-lo. O mestre anda sem limite.',
-    );
+    expect(el.querySelector('.card__head .card__switches')).not.toBeNull();
+    const why = el.querySelector(`#${boxes[1].getAttribute('aria-describedby')}`)!;
+    expect(plain(why.textContent)).toContain('Vale só para o próximo arrasto.');
+    expect(why.classList).toContain('mr-visually-hidden');
+    expect(plain(el.textContent)).not.toContain('Arraste um token');
     expect(el.querySelector('.card__state')).toBeNull();
   });
 
-  it('on, says so in words and changes the hint of the map; the box tells the page', () => {
+  it('on, says so in words; the box tells the page', () => {
     const { fixture, el } = mount({ forcedSwitch: true });
     const changes: boolean[] = [];
     fixture.componentInstance.forcedChange.subscribe((v) => changes.push(v));
@@ -83,10 +84,6 @@ describe('CombatMapCard: "Movimento forçado"', () => {
     expect(plain(el.querySelector('.card__state')?.textContent)).toBe(
       'Ligado para o próximo arrasto',
     );
-    expect(plain(el.textContent)).toContain(
-      'Arraste um token: o movimento é forçado e não provoca ataque de oportunidade.',
-    );
-    expect(plain(el.textContent)).not.toContain('O mestre anda sem limite.');
   });
 
   it('keeps the live region on the page, empty, and fills it with the result of a forced drag', () => {
@@ -236,12 +233,21 @@ describe('CombatMapCard: "Tela cheia"', () => {
   const button = (el: HTMLElement) =>
     [...el.querySelectorAll<HTMLButtonElement>('.card__full')].at(0) ?? null;
 
-  it('is offered only where the browser has full screen', () => {
+  it('is "Ver mapa" in the header: the browser\'s full screen where it has one, the map\'s own screen where not', () => {
     fs = stubFullscreen(false);
-    expect(button(mount().el)).toBeNull();
+    expect(plain(button(mount().el)?.textContent)).toContain('Ver mapa');
+    expect(button(mount().el)!.getAttribute('aria-pressed')).toBeNull();
     fs.restore();
     fs = stubFullscreen(true);
-    expect(plain(button(mount().el)?.textContent)).toContain('Tela cheia');
+    expect(plain(button(mount().el)?.textContent)).toContain('Ver mapa');
+  });
+
+  it('is offered to a player only where the browser has full screen, as "Tela cheia"', () => {
+    fs = stubFullscreen(false);
+    expect(button(mount({ isMaster: false }).el)).toBeNull();
+    fs.restore();
+    fs = stubFullscreen(true);
+    expect(plain(button(mount({ isMaster: false }).el)?.textContent)).toContain('Tela cheia');
   });
 
   it('puts the card on full screen, says how to leave, and leaves on a second tap', () => {
@@ -303,5 +309,35 @@ describe('CombatMapCard: the zones the spells keep', () => {
     const { el } = withZones([zone({ id: 'a' })], false);
     expect(el.querySelector('app-zone-layer')).not.toBeNull();
     expect(plain(el.querySelector('.legend__zone')?.textContent)).toBe('Raio Lunar');
+  });
+});
+
+describe("CombatMapCard: the master's header (C7-02)", () => {
+  let fs: ReturnType<typeof stubFullscreen> | undefined;
+  afterEach(() => fs?.restore());
+
+  it('has "Ver mapa" with its icon in the header, and no row of "Tela cheia"', () => {
+    fs = stubFullscreen(true);
+    const { el } = mount({ isMaster: true });
+    const button = el.querySelector<HTMLButtonElement>('.card__head .card__full')!;
+    expect(plain(button.textContent)).toContain('Ver mapa');
+    expect(button.querySelector('mat-icon')!.textContent).toBe('fullscreen');
+    expect(plain(el.textContent)).not.toContain('Tela cheia');
+  });
+
+  it('opens the map itself where the browser has no full screen', () => {
+    fs = stubFullscreen(false);
+    const { fixture, el } = mount({ isMaster: true });
+    let opened = 0;
+    fixture.componentInstance.openMap.subscribe(() => opened++);
+    el.querySelector<HTMLButtonElement>('.card__head .card__full')!.click();
+    expect(opened).toBe(1);
+  });
+
+  it('reads "Personagem · NPC · Escondido (só você vê) · Vez" in the legend, with no line about dragging', () => {
+    const { el } = mount({ isMaster: true });
+    const words = [...el.querySelectorAll('.legend li')].map((li) => plain(li.textContent));
+    expect(words.map((w) => w.replace(/^[A-Z] /, ''))).toEqual(['Personagem', 'NPC', 'Vez']);
+    expect(plain(el.textContent)).not.toContain('Arraste um token');
   });
 });

@@ -278,6 +278,15 @@ func (q *Queries) ClearCombatTurns(ctx context.Context, encounterID string) erro
 	return err
 }
 
+const clearImageViewers = `-- name: ClearImageViewers :exec
+DELETE FROM game_session_image_viewers WHERE game_session_id = $1
+`
+
+func (q *Queries) ClearImageViewers(ctx context.Context, gameSessionID string) error {
+	_, err := q.db.Exec(ctx, clearImageViewers, gameSessionID)
+	return err
+}
+
 const clearPendingDamageApplied = `-- name: ClearPendingDamageApplied :one
 UPDATE pending_damages
 SET status = 'rolled', resolved_at = NULL, applied_amount = NULL, taken = NULL
@@ -382,6 +391,15 @@ func (q *Queries) ClearPendingDamageRoll(ctx context.Context, id string) (Pendin
 		&i.SavageDice,
 	)
 	return i, err
+}
+
+const clearScenePlayers = `-- name: ClearScenePlayers :exec
+DELETE FROM game_session_scene_players WHERE game_session_id = $1
+`
+
+func (q *Queries) ClearScenePlayers(ctx context.Context, gameSessionID string) error {
+	_, err := q.db.Exec(ctx, clearScenePlayers, gameSessionID)
+	return err
 }
 
 const clearStage = `-- name: ClearStage :execrows
@@ -1201,9 +1219,10 @@ func (q *Queries) DeleteReactionWindowsOfEncounter(ctx context.Context, encounte
 	return err
 }
 
-const deleteStageNPC = `-- name: DeleteStageNPC :execrows
+const deleteStageNPC = `-- name: DeleteStageNPC :one
 DELETE FROM stage_npcs
 WHERE game_session_id = $1 AND character_id = $2
+RETURNING hidden
 `
 
 type DeleteStageNPCParams struct {
@@ -1211,12 +1230,12 @@ type DeleteStageNPCParams struct {
 	CharacterID   string
 }
 
-func (q *Queries) DeleteStageNPC(ctx context.Context, arg DeleteStageNPCParams) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteStageNPC, arg.GameSessionID, arg.CharacterID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
+// Takes the NPC off the stage and says whether the players saw it. No row: it was not there.
+func (q *Queries) DeleteStageNPC(ctx context.Context, arg DeleteStageNPCParams) (bool, error) {
+	row := q.db.QueryRow(ctx, deleteStageNPC, arg.GameSessionID, arg.CharacterID)
+	var hidden bool
+	err := row.Scan(&hidden)
+	return hidden, err
 }
 
 const deleteStatesOfCombatant = `-- name: DeleteStatesOfCombatant :many
@@ -1299,7 +1318,7 @@ const endGameSession = `-- name: EndGameSession :one
 UPDATE game_sessions
 SET ended_at = COALESCE(ended_at, GREATEST($3::TIMESTAMPTZ, started_at))
 WHERE campaign_id = $1 AND id = $2
-RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash
+RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join
 `
 
 type EndGameSessionParams struct {
@@ -1326,6 +1345,9 @@ func (q *Queries) EndGameSession(ctx context.Context, arg EndGameSessionParams) 
 		&i.OpenScenePointID,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.OpenSceneEveryone,
+		&i.ShownImageAudience,
+		&i.ScenePlayersMayJoin,
 	)
 	return i, err
 }
@@ -1590,7 +1612,7 @@ func (q *Queries) GetEncounterInSession(ctx context.Context, arg GetEncounterInS
 }
 
 const getGameSessionByCreateKey = `-- name: GetGameSessionByCreateKey :one
-SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash FROM game_sessions WHERE create_key = $1
+SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join FROM game_sessions WHERE create_key = $1
 `
 
 // The session a StartGameSession with this idempotency key started, if any (the key carries the
@@ -1610,12 +1632,15 @@ func (q *Queries) GetGameSessionByCreateKey(ctx context.Context, createKey *stri
 		&i.OpenScenePointID,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.OpenSceneEveryone,
+		&i.ShownImageAudience,
+		&i.ScenePlayersMayJoin,
 	)
 	return i, err
 }
 
 const getGameSessionForUpdate = `-- name: GetGameSessionForUpdate :one
-SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash FROM game_sessions
+SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join FROM game_sessions
 WHERE campaign_id = $1 AND id = $2
 FOR UPDATE
 `
@@ -1641,13 +1666,16 @@ func (q *Queries) GetGameSessionForUpdate(ctx context.Context, arg GetGameSessio
 		&i.OpenScenePointID,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.OpenSceneEveryone,
+		&i.ShownImageAudience,
+		&i.ScenePlayersMayJoin,
 	)
 	return i, err
 }
 
 const getGameSessionInCampaign = `-- name: GetGameSessionInCampaign :one
 
-SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash FROM game_sessions
+SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join FROM game_sessions
 WHERE campaign_id = $1 AND id = $2
 `
 
@@ -1674,6 +1702,9 @@ func (q *Queries) GetGameSessionInCampaign(ctx context.Context, arg GetGameSessi
 		&i.OpenScenePointID,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.OpenSceneEveryone,
+		&i.ShownImageAudience,
+		&i.ScenePlayersMayJoin,
 	)
 	return i, err
 }
@@ -1962,7 +1993,7 @@ func (q *Queries) GetOpenEncounter(ctx context.Context, gameSessionID string) (E
 }
 
 const getOpenGameSession = `-- name: GetOpenGameSession :one
-SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash FROM game_sessions
+SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join FROM game_sessions
 WHERE campaign_id = $1 AND ended_at IS NULL
 `
 
@@ -1983,12 +2014,15 @@ func (q *Queries) GetOpenGameSession(ctx context.Context, campaignID string) (Ga
 		&i.OpenScenePointID,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.OpenSceneEveryone,
+		&i.ShownImageAudience,
+		&i.ScenePlayersMayJoin,
 	)
 	return i, err
 }
 
 const getOpenGameSessionForUpdate = `-- name: GetOpenGameSessionForUpdate :one
-SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash FROM game_sessions
+SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join FROM game_sessions
 WHERE campaign_id = $1 AND ended_at IS NULL
 FOR UPDATE
 `
@@ -2012,6 +2046,9 @@ func (q *Queries) GetOpenGameSessionForUpdate(ctx context.Context, campaignID st
 		&i.OpenScenePointID,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.OpenSceneEveryone,
+		&i.ShownImageAudience,
+		&i.ScenePlayersMayJoin,
 	)
 	return i, err
 }
@@ -3526,7 +3563,7 @@ const insertGameSession = `-- name: InsertGameSession :one
 INSERT INTO game_sessions (campaign_id, session_number, started_at, create_key, create_hash)
 VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
-RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash
+RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join
 `
 
 type InsertGameSessionParams struct {
@@ -3561,6 +3598,9 @@ func (q *Queries) InsertGameSession(ctx context.Context, arg InsertGameSessionPa
 		&i.OpenScenePointID,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.OpenSceneEveryone,
+		&i.ShownImageAudience,
+		&i.ScenePlayersMayJoin,
 	)
 	return i, err
 }
@@ -3656,6 +3696,22 @@ func (q *Queries) InsertHitRider(ctx context.Context, arg InsertHitRiderParams) 
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const insertImageViewer = `-- name: InsertImageViewer :exec
+INSERT INTO game_session_image_viewers (game_session_id, user_id)
+VALUES ($1, $2)
+ON CONFLICT (game_session_id, user_id) DO NOTHING
+`
+
+type InsertImageViewerParams struct {
+	GameSessionID string
+	UserID        string
+}
+
+func (q *Queries) InsertImageViewer(ctx context.Context, arg InsertImageViewerParams) error {
+	_, err := q.db.Exec(ctx, insertImageViewer, arg.GameSessionID, arg.UserID)
+	return err
 }
 
 const insertInspirationHold = `-- name: InsertInspirationHold :one
@@ -4491,6 +4547,23 @@ func (q *Queries) InsertRollModeRequest(ctx context.Context, arg InsertRollModeR
 	return i, err
 }
 
+const insertScenePlayer = `-- name: InsertScenePlayer :exec
+INSERT INTO game_session_scene_players (game_session_id, user_id, joined_by_self)
+VALUES ($1, $2, $3)
+ON CONFLICT (game_session_id, user_id) DO NOTHING
+`
+
+type InsertScenePlayerParams struct {
+	GameSessionID string
+	UserID        string
+	JoinedBySelf  bool
+}
+
+func (q *Queries) InsertScenePlayer(ctx context.Context, arg InsertScenePlayerParams) error {
+	_, err := q.db.Exec(ctx, insertScenePlayer, arg.GameSessionID, arg.UserID, arg.JoinedBySelf)
+	return err
+}
+
 const insertSessionEvent = `-- name: InsertSessionEvent :one
 INSERT INTO session_events
     (game_session_id, seq, kind, actor_user_id, character_id, payload, idempotency_key, created_at, encounter_id, idempotency_hash)
@@ -4535,24 +4608,31 @@ func (q *Queries) InsertSessionEvent(ctx context.Context, arg InsertSessionEvent
 }
 
 const insertStageNPC = `-- name: InsertStageNPC :one
-INSERT INTO stage_npcs (game_session_id, character_id, position, created_at)
+INSERT INTO stage_npcs (game_session_id, character_id, position, hidden, created_at)
 VALUES (
     $1, $2,
     (SELECT COALESCE(max(position) + 1, 0)::INT4 FROM stage_npcs WHERE game_session_id = $1),
-    $3
+    $3, $4
 )
-RETURNING id, game_session_id, character_id, position, speaking, created_at
+RETURNING id, game_session_id, character_id, position, speaking, created_at, hidden
 `
 
 type InsertStageNPCParams struct {
 	GameSessionID string
 	CharacterID   string
+	Hidden        bool
 	CreatedAt     time.Time
 }
 
-// An NPC comes in after the ones already there: the highest position plus one.
+// An NPC comes in after the ones already there: the highest position plus one. It comes in hidden from
+// the players when the master said so.
 func (q *Queries) InsertStageNPC(ctx context.Context, arg InsertStageNPCParams) (StageNpc, error) {
-	row := q.db.QueryRow(ctx, insertStageNPC, arg.GameSessionID, arg.CharacterID, arg.CreatedAt)
+	row := q.db.QueryRow(ctx, insertStageNPC,
+		arg.GameSessionID,
+		arg.CharacterID,
+		arg.Hidden,
+		arg.CreatedAt,
+	)
 	var i StageNpc
 	err := row.Scan(
 		&i.ID,
@@ -4561,6 +4641,7 @@ func (q *Queries) InsertStageNPC(ctx context.Context, arg InsertStageNPCParams) 
 		&i.Position,
 		&i.Speaking,
 		&i.CreatedAt,
+		&i.Hidden,
 	)
 	return i, err
 }
@@ -5863,7 +5944,7 @@ func (q *Queries) ListFreeRollEvents(ctx context.Context, arg ListFreeRollEvents
 }
 
 const listGameSessions = `-- name: ListGameSessions :many
-SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash FROM game_sessions
+SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join FROM game_sessions
 WHERE campaign_id = $1
 ORDER BY session_number DESC
 `
@@ -5890,6 +5971,9 @@ func (q *Queries) ListGameSessions(ctx context.Context, campaignID string) ([]Ga
 			&i.OpenScenePointID,
 			&i.CreateKey,
 			&i.CreateHash,
+			&i.OpenSceneEveryone,
+			&i.ShownImageAudience,
+			&i.ScenePlayersMayJoin,
 		); err != nil {
 			return nil, err
 		}
@@ -5964,6 +6048,33 @@ func (q *Queries) ListHitRiders(ctx context.Context, encounterID string) ([]HitR
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listImageViewers = `-- name: ListImageViewers :many
+SELECT user_id FROM game_session_image_viewers
+WHERE game_session_id = $1
+ORDER BY user_id
+`
+
+// The players of a shown image whose audience is 'chosen'.
+func (q *Queries) ListImageViewers(ctx context.Context, gameSessionID string) ([]string, error) {
+	rows, err := q.db.Query(ctx, listImageViewers, gameSessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var user_id string
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -6199,7 +6310,7 @@ func (q *Queries) ListOpenCombatantsOfCreatures(ctx context.Context, arg ListOpe
 }
 
 const listOpenGameSessions = `-- name: ListOpenGameSessions :many
-SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash FROM game_sessions
+SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join FROM game_sessions
 WHERE campaign_id = ANY($1::UUID[]) AND ended_at IS NULL
 ORDER BY started_at DESC, id
 `
@@ -6227,6 +6338,9 @@ func (q *Queries) ListOpenGameSessions(ctx context.Context, campaignIds []string
 			&i.OpenScenePointID,
 			&i.CreateKey,
 			&i.CreateHash,
+			&i.OpenSceneEveryone,
+			&i.ShownImageAudience,
+			&i.ScenePlayersMayJoin,
 		); err != nil {
 			return nil, err
 		}
@@ -7071,6 +7185,38 @@ func (q *Queries) ListSceneAttemptGrantEvents(ctx context.Context, arg ListScene
 	return items, nil
 }
 
+const listScenePlayers = `-- name: ListScenePlayers :many
+SELECT user_id, joined_by_self FROM game_session_scene_players
+WHERE game_session_id = $1
+ORDER BY user_id
+`
+
+type ListScenePlayersRow struct {
+	UserID       string
+	JoinedBySelf bool
+}
+
+// The players the open scene is open to, when it is not open to everyone, and whether each joined by themselves.
+func (q *Queries) ListScenePlayers(ctx context.Context, gameSessionID string) ([]ListScenePlayersRow, error) {
+	rows, err := q.db.Query(ctx, listScenePlayers, gameSessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListScenePlayersRow
+	for rows.Next() {
+		var i ListScenePlayersRow
+		if err := rows.Scan(&i.UserID, &i.JoinedBySelf); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSceneRollEvents = `-- name: ListSceneRollEvents :many
 SELECT id, seq, character_id, payload, created_at FROM session_events
 WHERE game_session_id = $1 AND kind = 'scene_check_rolled' AND seq > $2
@@ -7275,9 +7421,45 @@ func (q *Queries) ListShownPuzzleRuns(ctx context.Context, gameSessionID string)
 	return items, nil
 }
 
+const listShownStage = `-- name: ListShownStage :many
+SELECT id, game_session_id, character_id, position, speaking, created_at, hidden FROM stage_npcs
+WHERE game_session_id = $1 AND NOT hidden
+ORDER BY position, id
+`
+
+// The NPCs of the stage the players see, in the order they came in: a hidden NPC is the master's alone
+// (RN-10). Everything a player, the casts and the portraits read of the stage goes through this one.
+func (q *Queries) ListShownStage(ctx context.Context, gameSessionID string) ([]StageNpc, error) {
+	rows, err := q.db.Query(ctx, listShownStage, gameSessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []StageNpc
+	for rows.Next() {
+		var i StageNpc
+		if err := rows.Scan(
+			&i.ID,
+			&i.GameSessionID,
+			&i.CharacterID,
+			&i.Position,
+			&i.Speaking,
+			&i.CreatedAt,
+			&i.Hidden,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listStage = `-- name: ListStage :many
 
-SELECT id, game_session_id, character_id, position, speaking, created_at FROM stage_npcs
+SELECT id, game_session_id, character_id, position, speaking, created_at, hidden FROM stage_npcs
 WHERE game_session_id = $1
 ORDER BY position, id
 `
@@ -7301,6 +7483,7 @@ func (q *Queries) ListStage(ctx context.Context, gameSessionID string) ([]StageN
 			&i.Position,
 			&i.Speaking,
 			&i.CreatedAt,
+			&i.Hidden,
 		); err != nil {
 			return nil, err
 		}
@@ -7557,6 +7740,29 @@ func (q *Queries) NextSessionNumber(ctx context.Context, campaignID string) (int
 	var next int32
 	err := row.Scan(&next)
 	return next, err
+}
+
+const playerReadsScene = `-- name: PlayerReadsScene :one
+SELECT (gs.open_scene_point_id IS NULL OR gs.open_scene_everyone OR EXISTS (
+    SELECT 1 FROM game_session_scene_players AS p
+    WHERE p.game_session_id = gs.id AND p.user_id = $1::UUID
+))::BOOL AS reads
+FROM game_sessions AS gs
+WHERE gs.id = $2
+`
+
+type PlayerReadsSceneParams struct {
+	UserID    string
+	SessionID string
+}
+
+// Whether the player reads the scene open in the session: none is open, or it is
+// open to everyone, or to them (RN-10). The stage of the scene follows.
+func (q *Queries) PlayerReadsScene(ctx context.Context, arg PlayerReadsSceneParams) (bool, error) {
+	row := q.db.QueryRow(ctx, playerReadsScene, arg.UserID, arg.SessionID)
+	var reads bool
+	err := row.Scan(&reads)
+	return reads, err
 }
 
 const reopenReactionWindow = `-- name: ReopenReactionWindow :exec
@@ -8582,7 +8788,7 @@ const setCurrentMap = `-- name: SetCurrentMap :one
 UPDATE game_sessions
 SET current_map_id = $1
 WHERE id = $2
-RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash
+RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join
 `
 
 type SetCurrentMapParams struct {
@@ -8606,6 +8812,9 @@ func (q *Queries) SetCurrentMap(ctx context.Context, arg SetCurrentMapParams) (G
 		&i.OpenScenePointID,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.OpenSceneEveryone,
+		&i.ShownImageAudience,
+		&i.ScenePlayersMayJoin,
 	)
 	return i, err
 }
@@ -8842,7 +9051,7 @@ const setOpenScene = `-- name: SetOpenScene :one
 UPDATE game_sessions
 SET open_scene_point_id = $1
 WHERE id = $2
-RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash
+RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join
 `
 
 type SetOpenSceneParams struct {
@@ -8867,6 +9076,45 @@ func (q *Queries) SetOpenScene(ctx context.Context, arg SetOpenSceneParams) (Gam
 		&i.OpenScenePointID,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.OpenSceneEveryone,
+		&i.ShownImageAudience,
+		&i.ScenePlayersMayJoin,
+	)
+	return i, err
+}
+
+const setOpenSceneEveryone = `-- name: SetOpenSceneEveryone :one
+UPDATE game_sessions
+SET open_scene_everyone = $1
+WHERE id = $2
+RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join
+`
+
+type SetOpenSceneEveryoneParams struct {
+	OpenSceneEveryone bool
+	ID                string
+}
+
+// Whether the open scene is open to the whole table (true) or to the players of
+// game_session_scene_players only (MR-015, RN-10).
+func (q *Queries) SetOpenSceneEveryone(ctx context.Context, arg SetOpenSceneEveryoneParams) (GameSession, error) {
+	row := q.db.QueryRow(ctx, setOpenSceneEveryone, arg.OpenSceneEveryone, arg.ID)
+	var i GameSession
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.SessionNumber,
+		&i.StartedAt,
+		&i.EndedAt,
+		&i.CurrentMapID,
+		&i.ShownImageID,
+		&i.ShownImageKeep,
+		&i.OpenScenePointID,
+		&i.CreateKey,
+		&i.CreateHash,
+		&i.OpenSceneEveryone,
+		&i.ShownImageAudience,
+		&i.ScenePlayersMayJoin,
 	)
 	return i, err
 }
@@ -9311,11 +9559,43 @@ func (q *Queries) SetReactionWindowStep(ctx context.Context, arg SetReactionWind
 	return i, err
 }
 
+const setScenePlayersMayJoin = `-- name: SetScenePlayersMayJoin :one
+UPDATE game_sessions SET scene_players_may_join = $1 WHERE id = $2
+RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join
+`
+
+type SetScenePlayersMayJoinParams struct {
+	ScenePlayersMayJoin bool
+	ID                  string
+}
+
+func (q *Queries) SetScenePlayersMayJoin(ctx context.Context, arg SetScenePlayersMayJoinParams) (GameSession, error) {
+	row := q.db.QueryRow(ctx, setScenePlayersMayJoin, arg.ScenePlayersMayJoin, arg.ID)
+	var i GameSession
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.SessionNumber,
+		&i.StartedAt,
+		&i.EndedAt,
+		&i.CurrentMapID,
+		&i.ShownImageID,
+		&i.ShownImageKeep,
+		&i.OpenScenePointID,
+		&i.CreateKey,
+		&i.CreateHash,
+		&i.OpenSceneEveryone,
+		&i.ShownImageAudience,
+		&i.ScenePlayersMayJoin,
+	)
+	return i, err
+}
+
 const setShownImage = `-- name: SetShownImage :one
 UPDATE game_sessions
 SET shown_image_id = $1, shown_image_keep = $2
 WHERE id = $3
-RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash
+RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join
 `
 
 type SetShownImageParams struct {
@@ -9340,12 +9620,50 @@ func (q *Queries) SetShownImage(ctx context.Context, arg SetShownImageParams) (G
 		&i.OpenScenePointID,
 		&i.CreateKey,
 		&i.CreateHash,
+		&i.OpenSceneEveryone,
+		&i.ShownImageAudience,
+		&i.ScenePlayersMayJoin,
 	)
 	return i, err
 }
 
+const setShownImageAudienceKind = `-- name: SetShownImageAudienceKind :exec
+UPDATE game_sessions SET shown_image_audience = $1 WHERE id = $2
+`
+
+type SetShownImageAudienceKindParams struct {
+	ShownImageAudience string
+	ID                 string
+}
+
+// The kind of the shown image's audience: 'table', 'scene' or 'chosen' (MR-028).
+func (q *Queries) SetShownImageAudienceKind(ctx context.Context, arg SetShownImageAudienceKindParams) error {
+	_, err := q.db.Exec(ctx, setShownImageAudienceKind, arg.ShownImageAudience, arg.ID)
+	return err
+}
+
+const setStageNPCHidden = `-- name: SetStageNPCHidden :execrows
+UPDATE stage_npcs SET hidden = $1, speaking = speaking AND NOT $1::BOOL
+WHERE game_session_id = $2 AND character_id = $3
+`
+
+type SetStageNPCHiddenParams struct {
+	Hidden        bool
+	GameSessionID string
+	CharacterID   string
+}
+
+// Hides or shows the NPC to the players. A hidden NPC does not speak.
+func (q *Queries) SetStageNPCHidden(ctx context.Context, arg SetStageNPCHiddenParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setStageNPCHidden, arg.Hidden, arg.GameSessionID, arg.CharacterID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const setStageSpeaker = `-- name: SetStageSpeaker :execrows
-UPDATE stage_npcs SET speaking = true
+UPDATE stage_npcs SET speaking = true, hidden = false
 WHERE game_session_id = $1 AND character_id = $2
 `
 
@@ -9354,6 +9672,7 @@ type SetStageSpeakerParams struct {
 	CharacterID   string
 }
 
+// The NPC speaks, and a hidden one is shown by it: giving the floor is showing.
 func (q *Queries) SetStageSpeaker(ctx context.Context, arg SetStageSpeakerParams) (int64, error) {
 	result, err := q.db.Exec(ctx, setStageSpeaker, arg.GameSessionID, arg.CharacterID)
 	if err != nil {
@@ -9416,6 +9735,37 @@ func (q *Queries) SetTrapDamageStatus(ctx context.Context, arg SetTrapDamageStat
 	return i, err
 }
 
+const shownImageSeenBy = `-- name: ShownImageSeenBy :one
+SELECT EXISTS (
+    SELECT 1 FROM game_sessions AS gs
+    WHERE gs.campaign_id = $1 AND gs.ended_at IS NULL AND gs.shown_image_id = $2::UUID
+      AND (
+          gs.shown_image_audience = 'table'
+          OR (gs.shown_image_audience = 'scene' AND EXISTS (
+              SELECT 1 FROM game_session_scene_players AS p WHERE p.game_session_id = gs.id AND p.user_id = $3::UUID))
+          OR (gs.shown_image_audience = 'chosen' AND EXISTS (
+              SELECT 1 FROM game_session_image_viewers AS v WHERE v.game_session_id = gs.id AND v.user_id = $3::UUID))
+      )
+)::BOOL AS seen
+`
+
+type ShownImageSeenByParams struct {
+	CampaignID string
+	ImageID    string
+	UserID     string
+}
+
+// Whether the player sees the image the campaign's open session shows now: it is
+// the shown image and the player is in its audience (RN-10). 'scene' is the
+// players of the scene open to only some players. The image route asks it for a
+// player on every request.
+func (q *Queries) ShownImageSeenBy(ctx context.Context, arg ShownImageSeenByParams) (bool, error) {
+	row := q.db.QueryRow(ctx, shownImageSeenBy, arg.CampaignID, arg.ImageID, arg.UserID)
+	var seen bool
+	err := row.Scan(&seen)
+	return seen, err
+}
+
 const skipPendingOpportunityOffersBetweenAllies = `-- name: SkipPendingOpportunityOffersBetweenAllies :execrows
 UPDATE opportunity_offers AS o
 SET state = 'skipped', answered_at = $3
@@ -9470,8 +9820,15 @@ FROM session_events
 WHERE game_session_id = $1 AND kind = 'scene_check_rolled'
   AND character_id IS NOT NULL
   AND payload->>'dc_shown' = 'true' AND payload ? 'passed'
+  AND ($2::BOOL OR NOT (payload ? 'audience') OR (payload->'audience') ? $3::TEXT)
 GROUP BY character_id
 `
+
+type TallySessionSceneChecksParams struct {
+	GameSessionID string
+	Master        bool
+	UserID        string
+}
 
 type TallySessionSceneChecksRow struct {
 	CharacterID *string
@@ -9481,10 +9838,12 @@ type TallySessionSceneChecksRow struct {
 
 // The checks rolled outside combat, per character: tried and passed, counting
 // only a roll the players could see the DC of, on an action that had one
-// (RN-20). Done in SQL, so a session with any number of rolls costs one row
+// (RN-20). A roll made in a scene open to only some players carries their
+// accounts (payload audience) and counts for them and for the master only
+// (RN-10). Done in SQL, so a session with any number of rolls costs one row
 // per character.
-func (q *Queries) TallySessionSceneChecks(ctx context.Context, gameSessionID string) ([]TallySessionSceneChecksRow, error) {
-	rows, err := q.db.Query(ctx, tallySessionSceneChecks, gameSessionID)
+func (q *Queries) TallySessionSceneChecks(ctx context.Context, arg TallySessionSceneChecksParams) ([]TallySessionSceneChecksRow, error) {
+	rows, err := q.db.Query(ctx, tallySessionSceneChecks, arg.GameSessionID, arg.Master, arg.UserID)
 	if err != nil {
 		return nil, err
 	}

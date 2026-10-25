@@ -1173,9 +1173,6 @@
     }
   },
   "src/app/pages/live-session/combat/initiative-side/initiative-side.ts": {
-    "@angular-eslint/no-output-native": {
-      "count": 1
-    },
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1
     }

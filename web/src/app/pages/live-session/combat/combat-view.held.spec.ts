@@ -72,11 +72,11 @@ describe('CombatView: the questions of the held rolls', () => {
     });
     await fixture.whenStable();
     fixture.detectChanges();
-    const row = Array.from(el.querySelectorAll('li.row')).find((li) =>
-      li.textContent?.includes('Brisa'),
+    // The question is in "Turno", with the other answers that wait, and names who rolled.
+    const section = el.querySelector('app-held-question section');
+    expect(plain(section?.querySelector('h3')?.textContent)).toBe(
+      'Brisa · Tirou 1: rolar de novo?',
     );
-    const section = row?.querySelector('section');
-    expect(plain(section?.querySelector('h3')?.textContent)).toBe('Tirou 1: rolar de novo?');
     expect(plain(section?.textContent)).toContain('Ataque com arma contra Goblin chefe.');
     expect(plain(section?.querySelector('.q__status')?.textContent)).toMatch(
       /Brisa responde primeiro.*você em [67] s/,
@@ -113,8 +113,8 @@ describe('CombatView: the questions of the held rolls', () => {
       ),
     ).toBe('2 perguntas pendentes');
     // The one that waited more than ten seconds can be answered already.
-    const pens = Array.from(el.querySelectorAll('li.row')).find((li) =>
-      li.textContent?.includes('Pensantus'),
+    const pens = Array.from(el.querySelectorAll('app-held-question')).find((q) =>
+      q.textContent?.includes('Pensantus'),
     );
     expect(plain(pens?.querySelector('.q__status')?.textContent)).toContain(
       'Pensantus não respondeu',
@@ -131,7 +131,7 @@ describe('CombatView: the questions of the held rolls', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     expect(el.querySelector('.bar__held')).toBeNull();
-    expect(el.querySelector('li.row section')).toBeNull();
+    expect(el.querySelector('app-held-question')).toBeNull();
   });
 
   it('follows the combat: a question the encounter stops carrying says that the roller answered', async () => {
@@ -146,7 +146,7 @@ describe('CombatView: the questions of the held rolls', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(plain(el.querySelector('li.row')?.textContent)).toContain('Brisa respondeu.');
+    expect(plain(el.querySelector('app-held-question')?.textContent)).toContain('Brisa respondeu.');
   });
 
   it('tells the roller the master answered when their question vanishes and they did not answer it here', async () => {

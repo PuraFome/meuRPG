@@ -4,6 +4,7 @@ import { adjustVitalsRPC, brisa, brisaSheet, combatRPC, getEncounterRPC, passTur
 import { openSessionPage } from './live-session-support';
 import { setTableRulesRPC } from './table-rules-support';
 import { beginTheatreRPC, secondPlayer, startTheatreRPC, theatreTable } from './theatre-support';
+import { masterLog, openOrderRow } from './combat-layout';
 
 // Combat without a map on screen (Etapa 10, slice 10.13b, MR-025, RN-25, RN-24, RN-20, ADR-0017): the start dialog's mode, the
 // master's and the player's screens with no grid, movement by number, the opportunity attack the master offers, the critical
@@ -40,7 +41,7 @@ test(
       expect((started as { mode?: string }).mode).toBe('ENCOUNTER_MODE_THEATRE');
       // Nobody has a square: no "Sem quadrado no mapa" warning, no map card.
       await expect(m.getByText('Sem quadrado no mapa.')).toHaveCount(0);
-      await expect(m.getByRole('button', { name: 'Abrir mapa' })).toHaveCount(0);
+      await expect(m.getByRole('button', { name: 'Ver mapa' })).toHaveCount(0);
 
       // The dialog starts the NPCs hidden (question 31): the master reveals them, as he would on screen.
       for (const c of started.combatants.filter((x) => x.kind === 'COMBATANT_KIND_NPC')) {
@@ -50,9 +51,9 @@ test(
       await beginTheatreRPC(m, table, started, { Toren: 20, 'Goblin': 12, 'Capitão Goblin': 10 });
 
       // The master: the pill, the card of whoever is on turn with the movement he may spend, the cover panel, no map.
-      await expect(m.getByText('Vez do Toren', { exact: true })).toBeVisible();
+      await expect(m.getByText('Vez do Toren', { exact: true }).first()).toBeVisible();
       await expect(m.locator('app-theatre-pill')).toContainText('Teatro da mente');
-      await expect(m.getByRole('heading', { name: 'Ações do Toren' })).toBeVisible();
+      await expect(m.getByRole('heading', { name: 'Vez do Toren' })).toBeVisible();
       await expect(m.getByRole('heading', { name: 'Cobertura dos alvos' })).toBeVisible();
       await expect(m.getByText('Sem mapa: só o número')).toBeVisible();
 
@@ -82,8 +83,8 @@ test(
       expect(toren.movementUsedDft).toBe(200);
       expect(toren.movementLeftDft).toBe(100);
       expect(toren.placed ?? false).toBe(false);
-      await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Toren gastou 6,0 m de movimento');
-      await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('sem mapa (teatro da mente)');
+      await expect(await masterLog(m)).toContainText('Toren gastou 6,0 m de movimento');
+      await expect(await masterLog(m)).toContainText('sem mapa (teatro da mente)');
 
       // The attack: every enemy in sight is a target, with no distance and no "Longe demais".
       await p.getByRole('button', { name: 'Atacar com Espada longa' }).click();
@@ -109,7 +110,7 @@ test(
       // Toren's turn ends; on the Goblin's turn the master offers the opportunity attack to Toren.
       await combatRPC(m, 'EndTurn', { campaignId, encounterId: started.id, expectedCombatantId: (await getEncounterRPC(m, campaignId)).currentCombatantId, discardPendingDamage: true });
       await passTurnsTo(m, campaignId, 'Goblin');
-      await expect(m.getByRole('heading', { name: 'Ações do Goblin' })).toBeVisible();
+      await expect(m.getByRole('heading', { name: 'Vez do Goblin' })).toBeVisible();
       await m.getByRole('button', { name: 'Oferecer ataque de oportunidade' }).click();
       await expect(m.getByRole('heading', { name: 'Oferecer ataque de oportunidade' })).toBeVisible();
       await expect(m.getByText('Saiu do alcance de', { exact: true })).toBeVisible();
@@ -119,7 +120,7 @@ test(
       await expect(prompt).toBeVisible();
       await expect(prompt).toContainText('O Goblin está saindo do seu alcance. Ataque de oportunidade?');
       await expect(m.getByRole('status').filter({ hasText: 'Esperando a resposta do' })).toBeVisible();
-      await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Goblin saiu do alcance de Toren');
+      await expect(await masterLog(m)).toContainText('Goblin saiu do alcance de Toren');
       // Withdrawn by mistake: the question leaves the phone, and nobody lost a reaction.
       await m.getByRole('button', { name: 'Retirar a oferta' }).click();
       await expect(prompt.getByText('retirou a oferta')).toBeVisible();
@@ -167,6 +168,7 @@ test(
       // The owner: the marks and the words that say who sees them.
       await expect(lia.page.getByTestId('death-private')).toContainText('Só você e o mestre');
       // The master: the same marks, with who else sees them.
+      await openOrderRow(m, 'Brisa');
       await expect(m.getByText('Dono e mestre').first()).toBeVisible();
       // The other player: the state in words, no marks, no counts, and the reason in the log.
       await expect(p.getByText('Caída').first()).toBeVisible();

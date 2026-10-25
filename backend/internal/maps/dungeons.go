@@ -822,7 +822,7 @@ func (s *Service) finishRedraw(ctx context.Context, m authz.Membership, src *red
 		s.deleteFiles(ctx, m.CampaignID, src.old.ID)
 	}
 	if out.portraits > 0 {
-		s.live.Publish(m.CampaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_StageChanged_{
+		s.live.PublishToScene(ctx, m.CampaignID, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_StageChanged_{
 			StageChanged: &playv1.WatchGameSessionResponse_StageChanged{},
 		}})
 	}
@@ -912,7 +912,7 @@ func (s *Service) imageUsedElsewhere(ctx context.Context, campaignID, mapID, ima
 	} else if shown == imageID {
 		return true, nil
 	}
-	onStage, err := s.live.ImageOnStage(ctx, campaignID, imageID)
+	onStage, err := s.live.ImageOnStage(ctx, campaignID, "", imageID)
 	if err != nil {
 		return false, fmt.Errorf("read the stage: %w", err)
 	}

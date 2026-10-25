@@ -135,6 +135,11 @@ func TestAuthorizationMatrix(t *testing.T) {
 			_, err := c.SetShownImage(ctx, connect.NewRequest(&playv1.SetShownImageRequest{CampaignId: campaign}))
 			return err
 		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		// Nothing is shown here, so the master's call finds no image (not_found).
+		{"SetShownImageAudience", func(ctx context.Context, c client) error {
+			_, err := c.SetShownImageAudience(ctx, connect.NewRequest(&playv1.SetShownImageAudienceRequest{CampaignId: campaign, Audience: &playv1.ImageAudience{Kind: playv1.ImageAudienceKind_IMAGE_AUDIENCE_KIND_WHOLE_TABLE}}))
+			return err
+		}, [5]connect.Code{connect.CodeNotFound, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
 		// Any member, in or out of a session.
 		{"ListLeftImages", func(ctx context.Context, c client) error {
 			_, err := c.ListLeftImages(ctx, connect.NewRequest(&playv1.ListLeftImagesRequest{CampaignId: campaign}))
@@ -226,6 +231,25 @@ func TestAuthorizationMatrix(t *testing.T) {
 			_, err := c.StopFamiliarSight(ctx, connect.NewRequest(&playv1.StopFamiliarSightRequest{CampaignId: campaign, CharacterId: pc.GetId(), IdempotencyKey: newKey()}))
 			return err
 		}, [5]connect.Code{connect.CodeFailedPrecondition, connect.CodeFailedPrecondition, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		// No scene is open here, so the master's call is refused by the state (failed_precondition).
+		{"SetSceneAudience", func(ctx context.Context, c client) error {
+			_, err := c.SetSceneAudience(ctx, connect.NewRequest(&playv1.SetSceneAudienceRequest{CampaignId: campaign, Audience: &playv1.SceneAudience{Everyone: true}}))
+			return err
+		}, [5]connect.Code{connect.CodeFailedPrecondition, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"SetScenePlayersMayJoin", func(ctx context.Context, c client) error {
+			_, err := c.SetScenePlayersMayJoin(ctx, connect.NewRequest(&playv1.SetScenePlayersMayJoinRequest{CampaignId: campaign, PlayersMayJoin: true}))
+			return err
+		}, [5]connect.Code{connect.CodeFailedPrecondition, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		// No scene is open here: a player has nothing to join (failed_precondition), the master is not a player.
+		{"JoinScene", func(ctx context.Context, c client) error {
+			_, err := c.JoinScene(ctx, connect.NewRequest(&playv1.JoinSceneRequest{CampaignId: campaign}))
+			return err
+		}, [5]connect.Code{connect.CodePermissionDenied, connect.CodeFailedPrecondition, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		// No NPC is on the stage here, so the master's call finds none (not_found).
+		{"SetStageNpcHidden", func(ctx context.Context, c client) error {
+			_, err := c.SetStageNpcHidden(ctx, connect.NewRequest(&playv1.SetStageNpcHiddenRequest{CampaignId: campaign, CharacterId: pc.GetId(), Hidden: true}))
+			return err
+		}, [5]connect.Code{connect.CodeNotFound, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
 		{"SetSpeaker", func(ctx context.Context, c client) error {
 			_, err := c.SetSpeaker(ctx, connect.NewRequest(&playv1.SetSpeakerRequest{CampaignId: campaign}))
 			return err
@@ -569,16 +593,16 @@ func (noMaps) ShownImage(context.Context, string, string) (*playv1.ShownImage, e
 	return nil, errors.New("not in this test")
 }
 
-func (noMaps) LeaveImage(context.Context, pgx.Tx, string, string, time.Time) error {
+func (noMaps) LeaveImage(context.Context, pgx.Tx, string, string, time.Time, link.ImageAudience) error {
 	return errors.New("not in this test")
 }
 
-func (noMaps) ListLeftImages(context.Context, string) ([]*playv1.ShownImage, error) {
+func (noMaps) ListLeftImages(context.Context, string, string, bool) ([]*playv1.ShownImage, error) {
 	return nil, errors.New("not in this test")
 }
 
-func (noMaps) TakeBackImage(context.Context, string, string) error {
-	return errors.New("not in this test")
+func (noMaps) TakeBackImage(context.Context, string, string) (link.ImageAudience, error) {
+	return link.ImageAudience{}, errors.New("not in this test")
 }
 
 func (noMaps) MapGrid(context.Context, pgx.Tx, string, string) (link.Grid, error) {
@@ -825,10 +849,14 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["ListFreeRolls"] = c.ListFreeRolls(ctx, connect.NewRequest(&playv1.ListFreeRollsRequest{CampaignId: id}))
 	_, calls["SetCurrentMap"] = c.SetCurrentMap(ctx, connect.NewRequest(&playv1.SetCurrentMapRequest{CampaignId: id, MapId: id}))
 	_, calls["SetShownImage"] = c.SetShownImage(ctx, connect.NewRequest(&playv1.SetShownImageRequest{CampaignId: id, ImageId: id}))
+	_, calls["SetShownImageAudience"] = c.SetShownImageAudience(ctx, connect.NewRequest(&playv1.SetShownImageAudienceRequest{CampaignId: id, Audience: &playv1.ImageAudience{Kind: playv1.ImageAudienceKind_IMAGE_AUDIENCE_KIND_WHOLE_TABLE}}))
 	_, calls["ListLeftImages"] = c.ListLeftImages(ctx, connect.NewRequest(&playv1.ListLeftImagesRequest{CampaignId: id}))
 	_, calls["TakeBackLeftImage"] = c.TakeBackLeftImage(ctx, connect.NewRequest(&playv1.TakeBackLeftImageRequest{CampaignId: id, ImageId: id}))
 	_, calls["OpenScene"] = c.OpenScene(ctx, connect.NewRequest(&playv1.OpenSceneRequest{CampaignId: id, PointId: id}))
 	_, calls["CloseScene"] = c.CloseScene(ctx, connect.NewRequest(&playv1.CloseSceneRequest{CampaignId: id}))
+	_, calls["SetSceneAudience"] = c.SetSceneAudience(ctx, connect.NewRequest(&playv1.SetSceneAudienceRequest{CampaignId: id, Audience: &playv1.SceneAudience{Everyone: true}}))
+	_, calls["SetScenePlayersMayJoin"] = c.SetScenePlayersMayJoin(ctx, connect.NewRequest(&playv1.SetScenePlayersMayJoinRequest{CampaignId: id}))
+	_, calls["JoinScene"] = c.JoinScene(ctx, connect.NewRequest(&playv1.JoinSceneRequest{CampaignId: id}))
 	_, calls["GetOpenScene"] = c.GetOpenScene(ctx, connect.NewRequest(&playv1.GetOpenSceneRequest{CampaignId: id}))
 	_, calls["RollSceneCheck"] = c.RollSceneCheck(ctx, connect.NewRequest(&playv1.RollSceneCheckRequest{
 		CampaignId: id, ActionId: id, IdempotencyKey: id, Roll: &playv1.RollSceneCheckRequest_RollInApp{RollInApp: true},
@@ -837,6 +865,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["GetSessionSummary"] = c.GetSessionSummary(ctx, connect.NewRequest(&playv1.GetSessionSummaryRequest{CampaignId: id, GameSessionId: id}))
 	_, calls["PutOnStage"] = c.PutOnStage(ctx, connect.NewRequest(&playv1.PutOnStageRequest{CampaignId: id, CharacterId: id}))
 	_, calls["TakeOffStage"] = c.TakeOffStage(ctx, connect.NewRequest(&playv1.TakeOffStageRequest{CampaignId: id, CharacterId: id}))
+	_, calls["SetStageNpcHidden"] = c.SetStageNpcHidden(ctx, connect.NewRequest(&playv1.SetStageNpcHiddenRequest{CampaignId: id, CharacterId: id}))
 	_, calls["SetSpeaker"] = c.SetSpeaker(ctx, connect.NewRequest(&playv1.SetSpeakerRequest{CampaignId: id}))
 	_, calls["SearchForTraps"] = c.SearchForTraps(ctx, connect.NewRequest(&playv1.SearchForTrapsRequest{
 		CampaignId: id, IdempotencyKey: id, Skill: playv1.TrapSearchSkill_TRAP_SEARCH_SKILL_PERCEPTION, Roll: &playv1.SearchForTrapsRequest_RollInApp{RollInApp: true},

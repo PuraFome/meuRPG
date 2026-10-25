@@ -5,6 +5,7 @@ import { callRPC, newSignedInContext } from './support';
 import { dalila, dalilaSheet, toren } from './combat-support';
 import { sessionRoute, squareBp, tableForFog } from './fog-support';
 import { movePensantus, pensantusFirst, pointNames, sq20, thirdPlayer, trapRPC, trapTable, treasureRPC } from './trap-support';
+import { openCombatPanel } from './combat-layout';
 
 // Traps and treasure in the session, on screen (Etapa 9, slice 9.14, MR-035, MR-041, RN-10, RN-02,
 // question 71). The table, the traps and the combat come through the API; what is under test is what
@@ -117,6 +118,7 @@ test(
       await expect(card).toContainText('3 de concussão');
       await card.getByRole('button', { name: 'Aplicar 3 de dano' }).click();
       await expect(card).toBeHidden();
+      await openCombatPanel(m, 'Registro');
       await expect(m.getByText('A armadilha Fosso escondido foi disparada').first()).toBeVisible();
     } finally {
       await done();

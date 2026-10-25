@@ -8,6 +8,7 @@ import {
   effect,
   inject,
   input,
+  output,
   signal,
   untracked,
 } from '@angular/core';
@@ -86,6 +87,10 @@ interface Row {
 export class EffectsPanel {
   readonly campaignId = input.required<string>();
   readonly state = input.required<CombatState>();
+  /** Inside a row of "Mais do combate" (C7-02): no frame and no heading drawn, one line per effect. */
+  readonly compact = input(false);
+  /** How many effects the combat has, once read: the count of the row that holds the panel. */
+  readonly counted = output<number>();
 
   private readonly api = inject(EffectsClient);
   private readonly dialog = inject(MatDialog);
@@ -160,6 +165,12 @@ export class EffectsPanel {
   );
 
   constructor() {
+    effect(() => {
+      if (this.data() !== null) {
+        const n = this.rows().length;
+        untracked(() => this.counted.emit(n));
+      }
+    });
     // The combat changed (a revision, a new log line): read the effects and the clock again.
     effect(() => {
       const e = this.state().encounter();

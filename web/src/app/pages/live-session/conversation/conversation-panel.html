@@ -57,6 +57,7 @@
   <div class="panel__compose">
     @if (isMaster()) {
       <app-master-composer
+        [combat]="combat()"
         [state]="state()"
         [campaignId]="campaignId()"
         [speakers]="roster.speakers()"

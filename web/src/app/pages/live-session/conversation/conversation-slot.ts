@@ -21,6 +21,8 @@ export interface SlotInputs {
   readonly unread: Signal<number>;
   /** The conversation is a tab of the board and another tab is shown (a tablet's master): it is not on screen. */
   readonly behind?: Signal<boolean>;
+  /** The master's running combat draws the conversation in its rail ("Turno · Conversa"): it is on screen only while that tab is open. */
+  readonly railMode: Signal<boolean>;
 }
 
 /**
@@ -32,6 +34,8 @@ export interface SlotInputs {
 export class ConversationSlot {
   readonly tab = signal<SessionTab>('scene');
   private readonly opened = signal(false);
+  /** The rail's "Conversa" tab is the one open (the combat says so). */
+  readonly railShown = signal(false);
 
   /** The phone shows the conversation, full screen. */
   readonly chatOpen = computed(() => this.inputs.phone() && this.tab() === 'chat');
@@ -40,7 +44,9 @@ export class ConversationSlot {
     () =>
       this.inputs.live() &&
       !this.inputs.behind?.() &&
-      (this.inputs.phone() ? this.tab() === 'chat' : this.inputs.pageVisible()),
+      (this.inputs.phone()
+        ? this.tab() === 'chat'
+        : this.inputs.pageVisible() && (!this.inputs.railMode() || this.railShown())),
   );
   /** The count the notice at the top of the page shows: only on a phone, with the chat closed, in a live session; else 0. */
   readonly news = computed(() =>
@@ -55,8 +61,12 @@ export class ConversationSlot {
       : ['/campaigns', campaignId()];
   });
   /** The conversation is what the reader looks at (a phone's open tab, or the column on a computer): the voice stops when not. */
-  readonly shown = computed(
-    () => !this.inputs.behind?.() && (!this.inputs.phone() || this.tab() === 'chat'),
+  readonly shown = computed(() =>
+    this.inputs.behind?.()
+      ? false
+      : this.inputs.railMode() && !this.inputs.phone()
+        ? this.railShown()
+        : !this.inputs.phone() || this.tab() === 'chat',
   );
   readonly phone = computed(() => this.inputs.phone());
   readonly userId = computed(() => this.inputs.userId());

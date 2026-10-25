@@ -5,6 +5,7 @@ import { SessionRail } from '../../shared/session-rail/session-rail';
 import { Fold } from '../../shared/fold/fold';
 import { TabList } from '../../shared/tab-list/tab-list';
 import { MasterPanel } from './master-board/master-panel';
+import { MapTab } from './combat/map-tabs/map-tab';
 import { SessionTabs } from './conversation/session-tabs';
 import { UnreadNotice } from './conversation/unread-notice';
 import { ClueNotice } from './clue-notice/clue-notice';
@@ -62,6 +63,8 @@ export const LIVE_SESSION_IMPORTS = [
   ClueNotice,
   FreeRollLog,
   SessionTabs,
+  NgTemplateOutlet,
+  MapTab,
   UnreadNotice,
   FogMasterPanel,
   FogPlayerTools,

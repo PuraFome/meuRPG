@@ -9,7 +9,7 @@ export type SessionTab = 'scene' | 'group' | 'chat';
 const BADGE_MAX = 99;
 
 /**
- * The phone's section nav, "Cena | Ficha | Conversa" (MR-051), pinned to the bottom of every live phone screen (the board's
+ * The phone's section nav, "Cena | Ficha | Conversa" (MR-051; the master's is "Cena | Grupo | Conversa", and "Combate | Grupo | Conversa" while a combat is on), pinned to the bottom of every live phone screen (the board's
  * "Cena · Ficha · Conversa"): "Cena" is the session page, "Ficha"
  * goes to the character (the master's to the campaign, where the party is), and "Conversa" opens
  * the full-screen conversation. The unread count sits on "Conversa" in the accent colour and is
@@ -21,7 +21,7 @@ const BADGE_MAX = 99;
   imports: [RouterLink],
   template: `
     <nav class="tabs" aria-label="Seções da sessão">
-      <button type="button" class="tab" [attr.aria-current]="tab() === 'scene' ? 'true' : null" (click)="choose.emit('scene')">Cena</button>
+      <button type="button" class="tab" [attr.aria-current]="tab() === 'scene' ? 'true' : null" (click)="choose.emit('scene')">{{ sceneLabel() }}</button>
       @if (master()) {
         <button
           type="button"
@@ -37,7 +37,7 @@ const BADGE_MAX = 99;
           }
         </button>
       } @else {
-        <a class="tab" [routerLink]="sheetLink()">Ficha</a>
+        <a class="tab" [routerLink]="sheetLink()">{{ sheetLabel() }}</a>
       }
       <button
         type="button"
@@ -60,7 +60,11 @@ export class SessionTabs {
   readonly tab = input.required<SessionTab>();
   readonly unread = input(0);
   readonly sheetLink = input.required<readonly string[]>();
-  /** The master's nav outside a combat: "Grupo" (the party and the table's clock) takes the place of "Ficha". */
+  /** The first tab's word: "Cena", or "Combate" while the master's combat is on. */
+  readonly sceneLabel = input('Cena');
+  /** The second tab's word: "Ficha" for a player, "Grupo" for the master's combat (a link to the campaign page, where the party is). */
+  readonly sheetLabel = input('Ficha');
+  /** The master's nav outside a combat: "Grupo" (the party and the table's clock) is a tab of the board and takes the place of the link. */
   readonly master = input(false);
   /** What waits for the master in "Grupo" (a long cast): a count in amber. */
   readonly groupCount = input(0);
