@@ -240,7 +240,9 @@ var weaponRuleRefusals = []struct {
 	{"a reach off the 5 ft grid", func(e *Effect) { e.ReachFt = 7 }, ".reach_ft"},
 	{"a reach too long", func(e *Effect) { e.ReachFt = MaxWeaponReachFt + 5 }, ".reach_ft"},
 	{"a reach for ranged weapons", func(e *Effect) { e.Weapon, e.ReachFt = WeaponRanged, 10 }, ".reach_ft"},
-	{"nothing to change", func(e *Effect) { e.AttackAbility, e.DamageAbility, e.AttackBonus, e.DamageBonus, e.ReachFt = "", "", 0, 0, 0 }, ".type"},
+	{"nothing to change", func(e *Effect) {
+		e.AttackAbility, e.DamageAbility, e.AttackBonus, e.DamageBonus, e.ReachFt = "", "", 0, 0, 0
+	}, ".type"},
 	{"tags", func(e *Effect) { e.Tags = []string{"about:teste"} }, ".tags"},
 	{"a state of nobody", func(e *Effect) { e.While = "fantasma" }, ".while"},
 	{"a field of another type", func(e *Effect) { e.Target = "ac" }, ".target"},

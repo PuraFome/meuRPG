@@ -43,6 +43,11 @@ func (b *overlayBuilder) addFeat(tf *TableFeat, path string) error {
 			}
 		}
 	}
+	// A feat owns its effects, so it is its own entry: its resources and states are its own.
+	k := featureKind{prefix: "feat:", owner: key}
+	b.know(key, k)
+	b.declareResources(k, tf.Effects)
+	b.declareStates(key, key, tf.Effects)
 	// The effects are queued before the entry is judged: if it is refused, its effects'
 	// problems come with the rest (compileEffectsOf).
 	if len(tf.Effects) > 0 {

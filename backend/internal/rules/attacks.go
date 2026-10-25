@@ -39,6 +39,7 @@ func (x *deriver) attacks() {
 	for _, key := range x.b.Cantrips {
 		x.cantripAttack(key)
 	}
+	x.pseudoWeapons()
 	// Last, so the weapons and cantrips stay the first lines of the sheet.
 	x.unarmedStrike(martialArts, martialDie)
 }
@@ -56,25 +57,28 @@ func (x *deriver) weaponAttack(i int, key string, martialArts bool, martialDie i
 	kind := w.Range // "melee" or "ranged"
 	has := func(property string) bool { return slices.Contains(w.Properties, "weapon-property:"+property) }
 	monkWeapon := martialArts && has("monk")
-	ab := x.weaponAbility(kind, has("finesse") || monkWeapon)
+	// The weapon rules offer other abilities: the best of the options attacks, and the best hurts.
+	t := x.tuneWeapon(x.weaponAbility(kind, has("finesse") || monkWeapon), weaponFacts{
+		name: foldPT(strings.TrimSpace(c.namePT(key))), melee: kind == "melee", finesse: has("finesse"),
+	})
 	if has("heavy") {
 		x.heavyWeaponHint(key, kind)
 	}
 	proficient := x.weaponProficient(key, w.Category)
-	bonus := x.mods[ab]
+	bonus := x.mods[t.attackAbility]
 	if proficient {
 		bonus += x.prof
 	}
-	dmg := x.modifiers("damage.weapon."+kind, x.mods[ab])
+	dmg := x.modifiers("damage.weapon."+kind, x.mods[t.damageAbility]) + t.damageBonus
 	oneHanded, note := dmg, ""
 	if kind == "melee" && !has("two-handed") {
 		oneHanded, note = x.oneHandedDamage(dmg)
 	}
 	a := Attack{
-		Key: key, Name: eq.Name, NamePT: c.namePT(key), Kind: "weapon", Ability: ab,
-		AttackBonus: x.modifiers("attack.weapon."+kind, bonus), Proficient: proficient,
+		Key: key, Name: eq.Name, NamePT: c.namePT(key), Kind: "weapon", Ability: t.attackAbility,
+		AttackBonus: x.modifiers("attack.weapon."+kind, bonus) + t.attackBonus, Proficient: proficient,
 		DamageType: w.DamageType, DamageTypeNamePT: c.namePT(w.DamageType),
-		Melee: kind == "melee", MartialArts: monkWeapon, AbilityMod: x.mods[ab],
+		Melee: kind == "melee", MartialArts: monkWeapon, AbilityMod: x.mods[t.damageAbility],
 		Light:        kind == "melee" && has("light"),
 		Finesse:      has("finesse"),
 		TwoHanded:    has("two-handed"),
@@ -91,6 +95,9 @@ func (x *deriver) weaponAttack(i int, key string, martialArts bool, martialDie i
 		a.VersatileDamage = withModifier(monkDice(w.TwoHandedDamage, monkDie), dmg)
 	}
 	a.RangeFt, a.LongRangeFt = weaponRange(w)
+	if a.Melee && t.reachFt > 0 {
+		a.RangeFt, a.ReachFt = max(a.RangeFt, t.reachFt), t.reachFt
+	}
 	a.DamageDice, _ = ParseDice(a.Damage)
 	a.VersatileDice, _ = ParseDice(a.VersatileDamage)
 	x.d.Attacks = append(x.d.Attacks, a)
@@ -230,18 +237,24 @@ func (x *deriver) unarmedStrike(martialArts bool, martialDie int) {
 	if martialArts && x.mods[DEX] > x.mods[STR] {
 		ab = DEX
 	}
-	mod := x.mods[ab]
+	magical := HasFeature(*x.d, kiEmpoweredStrikes)
+	namePT := x.c.namePT(UnarmedStrikeKey)
+	t := x.tuneWeapon(ab, weaponFacts{name: foldPT(strings.TrimSpace(namePT)), melee: true, magical: magical})
+	mod := x.mods[t.damageAbility]
 	a := Attack{
-		Key: UnarmedStrikeKey, Name: "Unarmed Strike", NamePT: x.c.namePT(UnarmedStrikeKey), Kind: "weapon", Ability: ab,
-		AttackBonus: mod + x.prof, Proficient: true,
+		Key: UnarmedStrikeKey, Name: "Unarmed Strike", NamePT: namePT, Kind: "weapon", Ability: t.attackAbility,
+		AttackBonus: x.mods[t.attackAbility] + x.prof + t.attackBonus, Proficient: true,
 		DamageType: "damage-type:bludgeoning", DamageTypeNamePT: x.c.namePT("damage-type:bludgeoning"),
-		Melee: true, RangeFt: unarmedReachFt, MartialArts: martialArts, AbilityMod: mod,
-		Magical: HasFeature(*x.d, kiEmpoweredStrikes),
+		Melee: true, RangeFt: max(unarmedReachFt, t.reachFt), MartialArts: martialArts, AbilityMod: mod,
+		Magical: magical,
+	}
+	if t.reachFt > 0 {
+		a.ReachFt = t.reachFt
 	}
 	if martialArts && martialDie > 0 {
-		a.Damage = withModifier("1d"+strconv.Itoa(martialDie), mod)
+		a.Damage = withModifier("1d"+strconv.Itoa(martialDie), mod+t.damageBonus)
 	} else {
-		a.Damage = strconv.Itoa(max(1+mod, 0))
+		a.Damage = strconv.Itoa(max(1+mod+t.damageBonus, 0))
 	}
 	a.DamageDice, _ = ParseDice(a.Damage)
 	x.d.Attacks = append(x.d.Attacks, a)

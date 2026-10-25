@@ -173,6 +173,10 @@ type Build struct {
 	// feature: its effects apply and the sheet lists it. The abilities a feat
 	// raises are in ExtraAbilityBonuses, like an Ability Score Improvement's.
 	Feats []string
+	// ActiveStates are the keys of the states that are on for the character right now
+	// (State.Key). Like MageArmor, they belong to the game session: the caller sets them and the
+	// sheet never stores them. A key that no state effect of the sheet defines is ignored.
+	ActiveStates []string `json:",omitempty"`
 	// FeatSlots says, for a feat taken in place of an Ability Score Improvement, the
 	// feature of that improvement it replaced ("feature:fighter-ability-score-improvement-1"):
 	// the sheet lists the feat at that level and not the improvement. A feat the master added
@@ -669,6 +673,10 @@ type Derived struct {
 	Resources       []Resource
 	Actions         []Action
 	StandardActions []Action
+	// States are the temporary states the character's features define and may switch on
+	// (state.go), with the ones that are on marked. Each has an action in Actions that
+	// starts it and, while it is on, ends it.
+	States []State `json:",omitempty"`
 	// Maneuvers are the dice the character's table options add to a roll
 	// (superiority_die effects), with the die's sides worked out for the level.
 	Maneuvers []Maneuver
@@ -888,6 +896,9 @@ type Attack struct {
 	// RangeFt is the reach or normal range, LongRangeFt the long range.
 	RangeFt     int
 	LongRangeFt int
+	// ReachFt is the melee reach a weapon rule gives the line (RangeFt is at least this); 0
+	// when the line has the usual 5 ft. An opportunity attack reaches this far too.
+	ReachFt int `json:",omitempty"`
 	// Melee is true for a weapon the SRD lists as a melee weapon, thrown or not
 	// (a dagger, a spear, a handaxe), and false for a ranged weapon and a spell:
 	// an opportunity attack needs a melee weapon.

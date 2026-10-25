@@ -89,9 +89,19 @@ func (c *Content) Resistances(d Derived) []Resistance {
 			out = append(out, r)
 		}
 		for _, e := range c.c.effects[f.Key] {
-			if e.Type == "resistance" {
-				out = append(out, Resistance{Source: f.Key, NamePT: c.c.namePT(f.Key), DamageTypes: c.c.damageTypesBut(e.Except), While: e.While})
+			if e.Type != "resistance" {
+				continue
 			}
+			// The barbarian's rage is for play to judge; a state of the sheet is judged here:
+			// the resistance is listed, and holds at once, while the state is on.
+			while := e.While
+			if while != ResistanceWhileRage {
+				if !d.StateOn(e.gateKey) {
+					continue
+				}
+				while = ResistanceAlways
+			}
+			out = append(out, Resistance{Source: f.Key, NamePT: c.c.namePT(f.Key), DamageTypes: c.c.damageTypesBut(e.Except), While: while})
 		}
 	}
 	return out
@@ -113,7 +123,11 @@ func (c *content) damageTypesBut(except string) []string {
 func (x *deriver) resistanceHint(a activeEffect) {
 	e := a.effect
 	if e.TextPT == "" {
-		e = &Effect{TextPT: fmt.Sprintf("Resistência a todos os tipos de dano, menos %s, enquanto estiver em fúria.", x.c.namePT(e.Except))}
+		when := "enquanto estiver em fúria"
+		if e.While != ResistanceWhileRage {
+			when = "enquanto " + x.c.namePT(a.owner) + " estiver ativo"
+		}
+		e = &Effect{TextPT: fmt.Sprintf("Resistência a todos os tipos de dano, menos %s, %s.", x.c.namePT(e.Except), when)}
 		a = activeEffect{owner: a.owner, effect: e}
 	}
 	x.hint(a, nil, "note", 0)

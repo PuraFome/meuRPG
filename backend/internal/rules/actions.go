@@ -57,6 +57,11 @@ type Action struct {
 	// ("standard:dash" for Cunning Action's Dash), whose effect on the turn it
 	// has; "" for any other action.
 	Standard string
+	// State is the key of the state the action starts or ends (the action's own Key); ""
+	// for any other action. StateActive says the state is on, so the action ends it: free,
+	// and without the resource that starting it spends.
+	State       string `json:",omitempty"`
+	StateActive bool   `json:",omitempty"`
 }
 
 // featureStandards are the features whose action is a standard action taken
@@ -137,6 +142,7 @@ func (x *deriver) resourcesAndActions() {
 		}
 		x.grantAction(a)
 	}
+	x.states()
 }
 
 // extraAttacks sets AttacksPerAction from the extra_attack effects: the

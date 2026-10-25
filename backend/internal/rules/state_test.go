@@ -212,7 +212,9 @@ func TestRollModeAndExtraDamageFollowTheState(t *testing.T) {
 	if len(on.ExtraDamages) != 1 || on.ExtraDamages[0].Amount != 2 {
 		t.Errorf("extra damages = %+v, want the +2 while the state is on", on.ExtraDamages)
 	}
-	if !slices.ContainsFunc(on.Hints, func(h Hint) bool { return h.Source == stateFeature && h.Mode == "advantage" && slices.Contains(h.Targets, "save.dex") }) {
+	if !slices.ContainsFunc(on.Hints, func(h Hint) bool {
+		return h.Source == stateFeature && h.Mode == "advantage" && slices.Contains(h.Targets, "save.dex")
+	}) {
 		t.Errorf("no advantage hint while the state is on: %+v", on.Hints)
 	}
 }
@@ -299,7 +301,9 @@ func TestTheStateOverlayRefusalsNameTheirField(t *testing.T) {
 			if !errors.As(err, &oe) {
 				t.Fatalf("want an OverlayError, got %v", err)
 			}
-			if !slices.ContainsFunc(oe.Violations(), func(v *OverlayError) bool { return strings.Contains(v.Field, "effects[") && strings.HasSuffix(v.Field, tc.field) && v.Reason == tc.reason }) {
+			if !slices.ContainsFunc(oe.Violations(), func(v *OverlayError) bool {
+				return strings.Contains(v.Field, "effects[") && strings.HasSuffix(v.Field, tc.field) && v.Reason == tc.reason
+			}) {
 				t.Errorf("violations = %+v, want one at %s with reason %s", oe.Violations(), tc.field, tc.reason)
 			}
 		})

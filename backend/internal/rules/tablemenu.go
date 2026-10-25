@@ -118,8 +118,15 @@ const (
 	ListExtraDamageApplies = "extra_damage_applies"
 	ListAmbushApplies      = "ambush_applies"
 	ListDamageTypes        = "damage_types"
-	// ListResistanceConditions are when a resistance effect holds.
+	// ListResistanceConditions are when a resistance effect holds, besides a state of the entry.
 	ListResistanceConditions = "resistance_conditions"
+	// ListStateEnds and ListStateEconomies are the ways a state ends and what starting one costs;
+	// ListWeaponFilters and ListWeaponKinds are the weapons a weapon rule chooses and the kinds of
+	// attack a pseudo-weapon is.
+	ListStateEnds      = "state_ends"
+	ListStateEconomies = "state_economies"
+	ListWeaponFilters  = "weapon_filters"
+	ListWeaponKinds    = "weapon_kinds"
 )
 
 // menuTypes is the menu's types, in the picker's order, with the copy in
@@ -157,6 +164,7 @@ var menuTypes = []MenuType{
 		{Name: "targets", Required: true, Kind: "choices", List: ListRollTargets},
 		{Name: "tags", Kind: "tags", List: ListTagPrefixes},
 		{Name: "when", Kind: "condition"},
+		{Name: "while", Kind: "state_ref"},
 		{Name: "text_pt", Kind: "text"},
 	}},
 	{Type: "grant_action", NamePT: "Ação", HintPT: "Uma ação que o personagem passa a ter na vez dele: ação, ação bônus, reação, livre ou movimento. Pode gastar um uso de um recurso que a entrada define (\"Gasta um uso de\").", Fields: []MenuField{
@@ -185,6 +193,7 @@ var menuTypes = []MenuType{
 		{Name: "value", Required: true, Kind: "formula"},
 		{Name: "resource", Kind: "resource_ref"},
 		{Name: "when", Kind: "condition"},
+		{Name: "while", Kind: "state_ref"},
 		{Name: "text_pt", Kind: "text"},
 	}},
 	{Type: "ambush", NamePT: "Emboscada", HintPT: "Uma vantagem do personagem contra alvos pegos de surpresa: vantagem nas jogadas de ataque contra uma criatura que ainda não teve o seu turno no combate, ou acerto crítico em uma criatura surpresa (a marca de surpresa é a do mestre, no início do combate).", Fields: []MenuField{
@@ -200,9 +209,42 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
-	{Type: "resistance", NamePT: "Resistência a dano", HintPT: "Resistência a todos os tipos de dano menos um, que a entrada escolhe, enquanto vale a condição (em fúria). A resistência não se acumula: a mesma de outra fonte conta uma vez só.", Fields: []MenuField{
+	{Type: "resistance", NamePT: "Resistência a dano", HintPT: "Resistência a todos os tipos de dano menos um, que a entrada escolhe, enquanto vale a condição: em fúria ou enquanto um estado da entrada estiver ligado. A resistência não se acumula: a mesma de outra fonte conta uma vez só.", Fields: []MenuField{
 		{Name: "except", Required: true, Kind: "choice", List: ListDamageTypes},
-		{Name: "while", Required: true, Kind: "choice", List: ListResistanceConditions},
+		{Name: "while", Required: true, Kind: "state_ref", List: ListResistanceConditions},
+		{Name: "text_pt", Kind: "text"},
+	}},
+	{Type: "state", NamePT: "Estado", HintPT: "Algo que o personagem liga por um tempo, como uma postura ou uma forma. A ficha ganha uma carta com Ativar e Encerrar, como uma ação: ligar gasta o tempo de ação escolhido e, se houver, um uso de um recurso da entrada. A duração é em rodadas (vazio ou 0: dura até acabar) e acaba também nas situações marcadas. Os outros efeitos da entrada valem só enquanto o estado está ligado: pelo campo \"Enquanto\" ou pela condição active(\"nome\").", Fields: []MenuField{
+		{Name: "state_name", Required: true, Kind: "text"},
+		{Name: "duration_rounds", Kind: "formula", AlwaysShown: true},
+		{Name: "ends_on", Kind: "choices", List: ListStateEnds, AlwaysShown: true},
+		{Name: "economy", Required: true, Kind: "choice", List: ListStateEconomies},
+		{Name: "resource", Kind: "resource_ref"},
+		{Name: "when", Kind: "condition"},
+		{Name: "text_pt", Kind: "text"},
+	}},
+	{Type: "weapon_rule", NamePT: "Regra de arma", HintPT: "Muda as armas que o filtro escolhe: outra habilidade para atacar ou para o dano (vale a melhor entre a da arma e as da regra), um bônus na jogada de ataque ou no dano, um alcance maior no corpo a corpo. Vale também para as armas da característica.", Fields: []MenuField{
+		{Name: "weapon", Required: true, Kind: "choice", List: ListWeaponFilters},
+		{Name: "weapon_name", Kind: "text"},
+		{Name: "attack_ability", Kind: "choice", List: ListAbilities, AlwaysShown: true},
+		{Name: "damage_ability", Kind: "choice", List: ListAbilities, AlwaysShown: true},
+		{Name: "attack_bonus", Kind: "number", Min: -MaxWeaponPenalty, Max: MaxWeaponBonus, AlwaysShown: true},
+		{Name: "damage_bonus", Kind: "number", Min: -MaxWeaponPenalty, Max: MaxWeaponBonus, AlwaysShown: true},
+		{Name: "reach_ft", Kind: "number", Min: feetStep, Max: MaxWeaponReachFt, AlwaysShown: true},
+		{Name: "when", Kind: "condition"},
+		{Name: "while", Kind: "state_ref"},
+		{Name: "text_pt", Kind: "text"},
+	}},
+	{Type: "pseudo_weapon", NamePT: "Arma da característica", HintPT: "Dá à ficha um ataque próprio, que nunca é um item: nome, dados de dano, tipo de dano, a habilidade que usa e o alcance (o de contato, no corpo a corpo; a distância máxima, à distância). Conta como uma arma em que o personagem tem proficiência, aparece na lista de ataques e no combate, e as regras de arma também a mudam.", Fields: []MenuField{
+		{Name: "attack_name", Required: true, Kind: "text"},
+		{Name: "weapon", Required: true, Kind: "choice", List: ListWeaponKinds},
+		{Name: "damage_dice", Required: true, Kind: "text"},
+		{Name: "damage_type", Required: true, Kind: "choice", List: ListDamageTypes},
+		{Name: "ability", Required: true, Kind: "choice", List: ListAbilities},
+		{Name: "range_ft", Kind: "number", Min: feetStep, Max: MaxWeaponRangeFt, AlwaysShown: true},
+		{Name: "reach_ft", Kind: "number", Min: feetStep, Max: MaxWeaponReachFt, AlwaysShown: true},
+		{Name: "when", Kind: "condition"},
+		{Name: "while", Kind: "state_ref"},
 		{Name: "text_pt", Kind: "text"},
 	}},
 	{Type: "choice", NamePT: "Escolha", HintPT: "Algo que o jogador escolhe: perícias, especialização, truques, magias, idiomas, ferramentas ou uma opção de uma lista (do SRD, como um estilo de luta, ou a lista de opções da própria característica, como manobras).", Fields: []MenuField{
@@ -272,6 +314,34 @@ var (
 		{"about:", "Sobre…", "Vale sobre um assunto (about:magic-items); o app lembra e o mestre decide."},
 	}
 )
+
+// stateEndNms and weaponFilterNms are the Portuguese names (and one-line hints) of the ways a state
+// ends and of the weapons a weapon rule chooses, in our own words.
+var (
+	stateEndNms = map[string][2]string{
+		StateEndsDismiss:       {"Quando o jogador encerrar", "A carta da ficha ganha o botão Encerrar, de graça."},
+		StateEndsIncapacitated: {"Ao ficar incapacitado", "Acaba se o personagem cai a 0 pontos de vida ou fica com uma condição que o incapacita."},
+		StateEndsShortRest:     {"Num descanso curto", "Acaba num descanso curto ou longo."},
+		StateEndsLongRest:      {"Num descanso longo", "Acaba só num descanso longo."},
+	}
+	weaponFilterNms = map[string][2]string{
+		WeaponAny:     {"Qualquer arma", "Toda arma da lista de ataques, golpe desarmado incluído."},
+		WeaponMelee:   {"Corpo a corpo", "As armas de corpo a corpo, arremessadas ou não."},
+		WeaponRanged:  {"À distância", "As armas de disparo e de arremesso à distância."},
+		WeaponFinesse: {"Com acuidade", "As armas com a propriedade acuidade."},
+		WeaponMagic:   {"Mágica", "As armas que a ficha marca como mágicas, como o golpe desarmado de quem tem Golpes Fortalecidos por Ki."},
+		WeaponNamed:   {"Uma arma pelo nome", "A arma cujo nome em português é o escrito no campo ao lado, sem diferença de maiúsculas ou acentos."},
+	}
+)
+
+// namedMenuHint gives each key its name and its hint.
+func namedMenuHint(keys []string, words map[string][2]string) []MenuValue {
+	out := make([]MenuValue, 0, len(keys))
+	for _, k := range keys {
+		out = append(out, MenuValue{Key: k, NamePT: words[k][0], HintPT: words[k][1]})
+	}
+	return out
+}
 
 // rangedAttackValues is the list of a ranged_attack's applies, with its words.
 func rangedAttackValues() []MenuValue {
@@ -424,6 +494,10 @@ func (c *content) menuLists() []MenuList {
 		{Name: ListAmbushApplies, Values: ambushValues()},
 		{Name: ListDamageTypes, Values: c.menuDamageTypes()},
 		{Name: ListResistanceConditions, Values: []MenuValue{{Key: ResistanceWhileRage, NamePT: "Em fúria", HintPT: "Vale enquanto o personagem estiver em fúria (e não usar armadura pesada)."}}},
+		{Name: ListStateEnds, Values: namedMenuHint(stateEnds, stateEndNms)},
+		{Name: ListStateEconomies, Values: namedMenu(stateEconomies, func(k string) string { return economyNms[k] })},
+		{Name: ListWeaponFilters, Values: namedMenuHint(weaponFilters, weaponFilterNms)},
+		{Name: ListWeaponKinds, Values: namedMenuHint(weaponKinds, weaponFilterNms)},
 	}
 }
 
@@ -494,6 +568,7 @@ func menuHelpers() []FormulaHelper {
 		{Call: "prof()", Returns: "number", HintPT: "O bônus de proficiência."},
 		{Call: "armor()", Returns: "text", HintPT: `A armadura vestida: "none", "light", "medium" ou "heavy".`},
 		{Call: "shield()", Returns: "yes/no", HintPT: "Se o personagem carrega um escudo."},
+		{Call: `active("<estado>")`, Returns: "yes/no", HintPT: `Se o estado desta entrada com esse nome está ligado (o "Nome do estado" de um efeito Estado). Só vale na condição ("Só quando") de um efeito.`},
 		{Call: "floor(x)", Returns: "number", HintPT: "Arredonda para baixo."},
 		{Call: "ceil(x)", Returns: "number", HintPT: "Arredonda para cima."},
 		{Call: "min(a, b)", Returns: "number", HintPT: "O menor dos dois."},

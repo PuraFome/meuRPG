@@ -792,6 +792,10 @@ type overlayBuilder struct {
 	// each entry declare. They serve the checks made once every entry exists.
 	optionEntry, featureEntry, featureClass map[string]string
 	resources                               map[string]map[string]bool
+	// stateKeys are the states each entry defines, by name, with the key each has on the
+	// sheet, and stateCount how many state effects of the entry use each name (state.go).
+	stateKeys  map[string]map[string]string
+	stateCount map[string]map[string]int
 }
 
 type pendingEffects struct {

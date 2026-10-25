@@ -49,6 +49,11 @@ type deriver struct {
 	inactiveFeats map[string]bool
 
 	env *formula.Env
+	// activeKeys are the keys of the states that are on (Build.ActiveStates that a state effect
+	// of the sheet defines), and whenStates the keys the condition being asked reads by name:
+	// active("name") answers from them (gate.go).
+	activeKeys map[string]bool
+	whenStates map[string]string
 	// conditions caches each effect's `when` result: the character does
 	// not change during one Derive, and a broken condition must report one
 	// Issue, not one per use.
@@ -99,6 +104,7 @@ func deriveWith(b Build, c *content, inactive map[string]bool) Derived {
 	x.abilities()
 	x.levelAndProficiency()
 	x.collectEffects()
+	x.collectActiveStates()
 	x.buildEnv()
 	x.abilityEffects()
 	x.proficiencies()
@@ -757,18 +763,24 @@ func (x *deriver) buildEnv() {
 		Prof:       func() int { return x.prof },
 		Armor:      func() string { return x.armorCategory },
 		Shield:     x.shieldWielded,
+		Active:     func(name string) bool { return x.stateOn(x.whenStates[name]) },
 	}
 }
 
 // applies says whether an active effect's condition holds. A broken
 // condition becomes an Issue and the effect is skipped.
 func (x *deriver) applies(a activeEffect) bool {
+	// A resistance holds in a state through Content.Resistances, which asks gateOpen itself.
+	if a.effect.Type != "resistance" && !x.gateOpen(a) {
+		return false
+	}
 	if a.effect.when == nil {
 		return true
 	}
 	if ok, cached := x.conditions[a.effect]; cached {
 		return ok
 	}
+	x.whenStates = a.effect.whenStates
 	ok, err := a.effect.when.Bool(x.env)
 	if err != nil {
 		x.issue(IssueFormula, "", "Um efeito de %s foi ignorado: a condição falhou.", x.c.namePT(a.owner))
