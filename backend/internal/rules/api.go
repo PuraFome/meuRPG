@@ -896,8 +896,10 @@ type Attack struct {
 	// RangeFt is the reach or normal range, LongRangeFt the long range.
 	RangeFt     int
 	LongRangeFt int
-	// ReachFt is the melee reach a weapon rule gives the line (RangeFt is at least this); 0
-	// when the line has the usual 5 ft. An opportunity attack reaches this far too.
+	// ReachFt is the melee reach a weapon rule or a pseudo-weapon gives the line (RangeFt is at
+	// least this, and an attack on the actor's own turn reaches that far); 0 when the line has the
+	// usual 5 ft. The rules that count 5 ft (an opportunity attack, a hostile creature next to a
+	// ranged attacker) keep counting it.
 	ReachFt int `json:",omitempty"`
 	// Melee is true for a weapon the SRD lists as a melee weapon, thrown or not
 	// (a dagger, a spear, a handaxe), and false for a ranged weapon and a spell:

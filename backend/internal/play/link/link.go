@@ -349,6 +349,12 @@ type FeatureAction struct {
 	// Standard is the standard action it performs ("standard:dash" for Cunning
 	// Action's Dash), or "".
 	Standard string
+	// State is the key of the state the action starts or ends (rules.Action.State), or "";
+	// StateActive says the state is on, so taking the action ends it.
+	State       string
+	StateActive bool
+	// StateRounds is how many rounds the state lasts once started, 0 until it ends.
+	StateRounds int
 }
 
 // Dice is a roll: Count d Sides plus Bonus (Count 0 is a flat number), with the

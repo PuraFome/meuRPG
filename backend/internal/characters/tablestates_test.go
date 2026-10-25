@@ -111,7 +111,9 @@ func TestTableContentRefusesWrongStatesAndWeaponsAtTheirFields(t *testing.T) {
 			t.Parallel()
 			_, err := master.table.CreateTableEntry(t.Context(), connect.NewRequest(createReq(campaign, tc.body)))
 			v := violationsOfErr(t, err)
-			if !slices.ContainsFunc(v, func(x *rulesv1.TableContentViolation) bool { return x.GetField() == tc.field && x.GetReason() == tc.reason }) {
+			if !slices.ContainsFunc(v, func(x *rulesv1.TableContentViolation) bool {
+				return x.GetField() == tc.field && x.GetReason() == tc.reason
+			}) {
 				t.Errorf("violations = %v, want one at %s with reason %s", v, tc.field, tc.reason)
 			}
 		})

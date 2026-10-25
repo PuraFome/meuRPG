@@ -707,6 +707,35 @@ message DerivedSheet {
   // reads a two-handed weapon as the one in hand). The player gets the bonus back by
   // taking the weapon off the sheet.
   bool shield_idle = 46;
+  // The temporary states the character's features define (a table's `state` effect),
+  // with the ones that are on marked. Which are on is the game session's, not the
+  // sheet's. Each has an action in `actions`.
+  repeated DerivedState states = 47;
+}
+
+// DerivedState is a temporary state a feature defines: a stance, a form.
+message DerivedState {
+  // The state's key: its feature's key, "#" and its name.
+  string key = 1;
+  // The name the feature's other effects read it by.
+  string name = 2;
+  // The Portuguese name of the feature that defines it.
+  string name_pt = 3;
+  // The content key of that feature.
+  string source_key = 4;
+  // How many rounds it lasts; 0 until it ends.
+  int32 duration_rounds = 5;
+  // How it ends besides its duration: "dismiss", "incapacitated", "short_rest",
+  // "long_rest".
+  repeated string ends_on = 6;
+  // The resource each start spends one use of, empty for none.
+  string resource_key = 7;
+  // What starting it costs.
+  ActionEconomy economy = 8;
+  // The effect's text for the sheet, in Portuguese; may be empty.
+  string text_pt = 9;
+  // True while the state is on.
+  bool active = 10;
 }
 
 // BreathWeapon is the dragonborn's Breath Weapon (SRD 5.1, Dragonborn): the dragon
@@ -846,6 +875,12 @@ message Action {
   // Content key of the feature or trait that grants it. Empty for a
   // standard action.
   string source_key = 5;
+  // The key of the state this action starts or ends (DerivedState.key; the action's own
+  // key). Empty for any other action. One card does both: while `state_active` is false it
+  // starts the state ("Ativar"), spending `resource_key` and the `economy`; while it is
+  // true it ends it ("Encerrar"), for free.
+  string state_key = 6;
+  bool state_active = 7;
 }
 
 // ActionEconomy is the part of the turn an action costs.
@@ -1063,6 +1098,9 @@ message Attack {
   // check, with the condition, in Portuguese: "Inclui +2 de Estilo de
   // Luta: Duelismo (sem outra arma na mão)". Empty when the damage holds no such bonus.
   string damage_note_pt = 20;
+  // The melee reach in feet, when a weapon rule or a pseudo-weapon makes it longer than
+  // 5 ft; 0 otherwise. `range_ft` is at least this for a melee attack.
+  int32 reach_ft = 21;
 }
 
 // AttackKind says whether an attack is a weapon or a spell.

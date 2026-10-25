@@ -256,35 +256,40 @@ func (b *overlayBuilder) checkEffect(owner, path string, e *Effect, strict bool)
 		}
 	}
 	entry := b.featureEntry[owner]
-	if err := b.checkGate(site, entry, e); err != nil {
+	if err := b.checkStateReads(site, entry, e); err != nil {
 		return err
 	}
-	if err := b.checkWhenStates(site, entry, e); err != nil {
-		return err
+	if check, ok := effectTypeChecks[e.Type]; ok {
+		return check(b, site, e)
 	}
-	switch e.Type {
-	case "state":
-		return b.checkState(site, entry, e)
-	case "weapon_rule", "pseudo_weapon":
-		return b.checkWeaponEffects(site, e)
-	case "choice":
-		return b.checkChoiceEffect(site, e)
-	case "ability_increase":
+	return nil
+}
+
+// effectTypeChecks are what the table's menu checks of each effect type at its fields, once
+// the checks every effect goes through are done.
+var effectTypeChecks = map[string]func(b *overlayBuilder, site effectSite, e *Effect) error{
+	"state": func(b *overlayBuilder, site effectSite, e *Effect) error {
+		return b.checkState(site, b.featureEntry[site.owner], e)
+	},
+	"weapon_rule":   (*overlayBuilder).checkWeaponEffects,
+	"pseudo_weapon": (*overlayBuilder).checkWeaponEffects,
+	"choice":        (*overlayBuilder).checkChoiceEffect,
+	"ability_increase": func(_ *overlayBuilder, site effectSite, e *Effect) error {
 		if attr, msg := checkAbilityIncrease(e); attr != "" {
 			return site.fail(attr, ReasonValue, "%s", msg)
 		}
-	case "grant_action":
-		if e.Resource != "" && !b.resourceDefined(owner, e.Resource) {
+		return nil
+	},
+	"grant_action": func(b *overlayBuilder, site effectSite, e *Effect) error {
+		if e.Resource != "" && !b.resourceDefined(site.owner, e.Resource) {
 			return site.fail(".resource", ReasonReference, "the action spends %q, which no resource effect of this entry or its class defines", e.Resource)
 		}
-	case "superiority_die":
-		return b.checkSuperiorityDie(site, e)
-	case "extra_damage", "ambush":
-		return b.checkOnTarget(site, e)
-	case "resource":
-		return b.checkResourceEffect(site, e)
-	}
-	return nil
+		return nil
+	},
+	"superiority_die": (*overlayBuilder).checkSuperiorityDie,
+	"extra_damage":    (*overlayBuilder).checkOnTarget,
+	"ambush":          (*overlayBuilder).checkOnTarget,
+	"resource":        (*overlayBuilder).checkResourceEffect,
 }
 
 // checkEffectType refuses a type that is not on the menu.

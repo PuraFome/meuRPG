@@ -1895,6 +1895,11 @@ enum EncounterBlockedReason {
   // shield it is not proficient with, and cannot cast spells (SRD 5.1, "Armor"). Nothing
   // is spent.
   ENCOUNTER_BLOCKED_REASON_ARMOR_NOT_PROFICIENT = 111;
+  // TakeAction: the action starts a temporary state (a table feature's state effect) that is
+  // already on for the character. Nothing is spent.
+  ENCOUNTER_BLOCKED_REASON_STATE_ALREADY_ON = 112;
+  // TakeAction with end_state: the state the action would end is not on. Nothing changes.
+  ENCOUNTER_BLOCKED_REASON_STATE_NOT_ON = 113;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -3874,6 +3879,13 @@ message TakeActionRequest {
   // above the limit (CHANNEL_DIVINITY_TOO_MUCH). With no entry the points go to the cleric's side, the creature
   // hurt the most in proportion first, each as far as half its maximum. Ignored by any other action.
   repeated PreserveLifeHeal preserve_life = 102;
+  // True: the action is the card of a temporary state (a table feature's state effect,
+  // rules.v1.Action.state_key) and the player ends the state that is on ("Encerrar");
+  // false starts it ("Ativar"), spending the action's economy and the use of its resource.
+  // Starting a state that is on is refused with `failed_precondition` (EncounterBlocked
+  // STATE_ALREADY_ON), and so is ending one that is not (STATE_NOT_ON); nothing is spent.
+  // Ignored by an action that is not a state's.
+  bool end_state = 103;
 }
 
 // PreserveLifeHeal is the hit points the cleric gives one creature with Preserve Life.
@@ -4847,14 +4859,21 @@ enum CombatLogKind {
 
 // CombatLogStateChange is a state that began or ended.
 message CombatLogStateChange {
+  // COMBATANT_STATE_KIND_TABLE for a temporary state a table feature defines; `key` and
+  // `name_pt` then say which.
   CombatantStateKind kind = 2;
   // True when it began.
   bool started = 3;
   // Why it ended (empty when it began): the combatant's own text key, one of
   // "no_attack" (the turn ended with no attack on a hostile creature or damage taken),
   // "unconscious", "by_choice", "duration" or "left" (the source's concentration or
-  // the combat ended).
+  // the combat ended). A table state also ends for "incapacitated", "short_rest",
+  // "long_rest" and "master".
   string reason = 4;
+  // For a table state: its key (rules.v1.DerivedState.key) and the Portuguese name of
+  // the feature that defines it.
+  string key = 5;
+  string name_pt = 6;
 }
 
 // CombatLogModeChange is a roll whose mode is not the server's suggestion.

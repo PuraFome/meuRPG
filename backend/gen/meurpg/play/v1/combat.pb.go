@@ -939,6 +939,11 @@ const (
 	// shield it is not proficient with, and cannot cast spells (SRD 5.1, "Armor"). Nothing
 	// is spent.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ARMOR_NOT_PROFICIENT EncounterBlockedReason = 111
+	// TakeAction: the action starts a temporary state (a table feature's state effect) that is
+	// already on for the character. Nothing is spent.
+	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_STATE_ALREADY_ON EncounterBlockedReason = 112
+	// TakeAction with end_state: the state the action would end is not on. Nothing changes.
+	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_STATE_NOT_ON EncounterBlockedReason = 113
 )
 
 // Enum value maps for EncounterBlockedReason.
@@ -1036,6 +1041,8 @@ var (
 		109: "ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TARGET",
 		110: "ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TOO_MUCH",
 		111: "ENCOUNTER_BLOCKED_REASON_ARMOR_NOT_PROFICIENT",
+		112: "ENCOUNTER_BLOCKED_REASON_STATE_ALREADY_ON",
+		113: "ENCOUNTER_BLOCKED_REASON_STATE_NOT_ON",
 	}
 	EncounterBlockedReason_value = map[string]int32{
 		"ENCOUNTER_BLOCKED_REASON_UNSPECIFIED":                  0,
@@ -1130,6 +1137,8 @@ var (
 		"ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TARGET":      109,
 		"ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TOO_MUCH":    110,
 		"ENCOUNTER_BLOCKED_REASON_ARMOR_NOT_PROFICIENT":         111,
+		"ENCOUNTER_BLOCKED_REASON_STATE_ALREADY_ON":             112,
+		"ENCOUNTER_BLOCKED_REASON_STATE_NOT_ON":                 113,
 	}
 )
 
@@ -11699,7 +11708,14 @@ type TakeActionRequest struct {
 	// construct is refused with `failed_precondition` (EncounterBlocked CHANNEL_DIVINITY_TARGET), and so is a total
 	// above the limit (CHANNEL_DIVINITY_TOO_MUCH). With no entry the points go to the cleric's side, the creature
 	// hurt the most in proportion first, each as far as half its maximum. Ignored by any other action.
-	PreserveLife  []*PreserveLifeHeal `protobuf:"bytes,102,rep,name=preserve_life,json=preserveLife,proto3" json:"preserve_life,omitempty"`
+	PreserveLife []*PreserveLifeHeal `protobuf:"bytes,102,rep,name=preserve_life,json=preserveLife,proto3" json:"preserve_life,omitempty"`
+	// True: the action is the card of a temporary state (a table feature's state effect,
+	// rules.v1.Action.state_key) and the player ends the state that is on ("Encerrar");
+	// false starts it ("Ativar"), spending the action's economy and the use of its resource.
+	// Starting a state that is on is refused with `failed_precondition` (EncounterBlocked
+	// STATE_ALREADY_ON), and so is ending one that is not (STATE_NOT_ON); nothing is spent.
+	// Ignored by an action that is not a state's.
+	EndState      bool `protobuf:"varint,103,opt,name=end_state,json=endState,proto3" json:"end_state,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -11813,6 +11829,13 @@ func (x *TakeActionRequest) GetPreserveLife() []*PreserveLifeHeal {
 		return x.PreserveLife
 	}
 	return nil
+}
+
+func (x *TakeActionRequest) GetEndState() bool {
+	if x != nil {
+		return x.EndState
+	}
+	return false
 }
 
 type isTakeActionRequest_Roll interface {
@@ -16228,14 +16251,21 @@ func (x *CombatLogRound) GetEntries() []*CombatLogEntry {
 // CombatLogStateChange is a state that began or ended.
 type CombatLogStateChange struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	Kind  CombatantStateKind     `protobuf:"varint,2,opt,name=kind,proto3,enum=meurpg.play.v1.CombatantStateKind" json:"kind,omitempty"`
+	// COMBATANT_STATE_KIND_TABLE for a temporary state a table feature defines; `key` and
+	// `name_pt` then say which.
+	Kind CombatantStateKind `protobuf:"varint,2,opt,name=kind,proto3,enum=meurpg.play.v1.CombatantStateKind" json:"kind,omitempty"`
 	// True when it began.
 	Started bool `protobuf:"varint,3,opt,name=started,proto3" json:"started,omitempty"`
 	// Why it ended (empty when it began): the combatant's own text key, one of
 	// "no_attack" (the turn ended with no attack on a hostile creature or damage taken),
 	// "unconscious", "by_choice", "duration" or "left" (the source's concentration or
-	// the combat ended).
-	Reason        string `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
+	// the combat ended). A table state also ends for "incapacitated", "short_rest",
+	// "long_rest" and "master".
+	Reason string `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
+	// For a table state: its key (rules.v1.DerivedState.key) and the Portuguese name of
+	// the feature that defines it.
+	Key           string `protobuf:"bytes,5,opt,name=key,proto3" json:"key,omitempty"`
+	NamePt        string `protobuf:"bytes,6,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -16287,6 +16317,20 @@ func (x *CombatLogStateChange) GetStarted() bool {
 func (x *CombatLogStateChange) GetReason() string {
 	if x != nil {
 		return x.Reason
+	}
+	return ""
+}
+
+func (x *CombatLogStateChange) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *CombatLogStateChange) GetNamePt() string {
+	if x != nil {
+		return x.NamePt
 	}
 	return ""
 }
@@ -24056,7 +24100,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\"\x9d\x01\n" +
 	"\x1cDiscardPendingDamageResponse\x127\n" +
 	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\x12D\n" +
-	"\x0epending_damage\x18\x02 \x01(\v2\x1d.meurpg.play.v1.PendingDamageR\rpendingDamage\"\x94\x03\n" +
+	"\x0epending_damage\x18\x02 \x01(\v2\x1d.meurpg.play.v1.PendingDamageR\rpendingDamage\"\xb1\x03\n" +
 	"\x11TakeActionRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -24069,7 +24113,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\ttyped_sum\x18\a \x01(\x05H\x00R\btypedSum\x12(\n" +
 	"\x10use_extra_action\x18d \x01(\bR\x0euseExtraAction\x12\x16\n" +
 	"\x06frenzy\x18e \x01(\bR\x06frenzy\x12E\n" +
-	"\rpreserve_life\x18f \x03(\v2 .meurpg.play.v1.PreserveLifeHealR\fpreserveLifeB\x06\n" +
+	"\rpreserve_life\x18f \x03(\v2 .meurpg.play.v1.PreserveLifeHealR\fpreserveLife\x12\x1b\n" +
+	"\tend_state\x18g \x01(\bR\bendStateB\x06\n" +
 	"\x04roll\"T\n" +
 	"\x10PreserveLifeHeal\x12!\n" +
 	"\fcombatant_id\x18\x01 \x01(\tR\vcombatantId\x12\x1d\n" +
@@ -24423,11 +24468,13 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x11undoable_event_id\x18\x02 \x01(\tR\x0fundoableEventId\"`\n" +
 	"\x0eCombatLogRound\x12\x14\n" +
 	"\x05round\x18\x01 \x01(\x05R\x05round\x128\n" +
-	"\aentries\x18\x02 \x03(\v2\x1e.meurpg.play.v1.CombatLogEntryR\aentries\"\x80\x01\n" +
+	"\aentries\x18\x02 \x03(\v2\x1e.meurpg.play.v1.CombatLogEntryR\aentries\"\xab\x01\n" +
 	"\x14CombatLogStateChange\x126\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\".meurpg.play.v1.CombatantStateKindR\x04kind\x12\x18\n" +
 	"\astarted\x18\x03 \x01(\bR\astarted\x12\x16\n" +
-	"\x06reason\x18\x04 \x01(\tR\x06reason\"\xf3\x01\n" +
+	"\x06reason\x18\x04 \x01(\tR\x06reason\x12\x10\n" +
+	"\x03key\x18\x05 \x01(\tR\x03key\x12\x17\n" +
+	"\aname_pt\x18\x06 \x01(\tR\x06namePt\"\xf3\x01\n" +
 	"\x13CombatLogModeChange\x12?\n" +
 	"\x0esuggested_mode\x18\x02 \x01(\x0e2\x18.meurpg.play.v1.RollModeR\rsuggestedMode\x12,\n" +
 	"\x04mode\x18\x03 \x01(\x0e2\x18.meurpg.play.v1.RollModeR\x04mode\x12\x1b\n" +
@@ -25131,7 +25178,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x14COMBATANT_STATE_DOWN\x10\x05\x12\x19\n" +
 	"\x15COMBATANT_STATE_DYING\x10\x06\x12\x1a\n" +
 	"\x16COMBATANT_STATE_STABLE\x10\a\x12\x18\n" +
-	"\x14COMBATANT_STATE_DEAD\x10\b*\xcd\"\n" +
+	"\x14COMBATANT_STATE_DEAD\x10\b*\xa7#\n" +
 	"\x16EncounterBlockedReason\x12(\n" +
 	"$ENCOUNTER_BLOCKED_REASON_UNSPECIFIED\x10\x00\x123\n" +
 	"/ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ALREADY_OPEN\x10\x01\x12+\n" +
@@ -25225,7 +25272,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"-ENCOUNTER_BLOCKED_REASON_DESTINATION_REQUIRED\x10l\x124\n" +
 	"0ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TARGET\x10m\x126\n" +
 	"2ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TOO_MUCH\x10n\x121\n" +
-	"-ENCOUNTER_BLOCKED_REASON_ARMOR_NOT_PROFICIENT\x10o*\x91\x03\n" +
+	"-ENCOUNTER_BLOCKED_REASON_ARMOR_NOT_PROFICIENT\x10o\x12-\n" +
+	")ENCOUNTER_BLOCKED_REASON_STATE_ALREADY_ON\x10p\x12)\n" +
+	"%ENCOUNTER_BLOCKED_REASON_STATE_NOT_ON\x10q*\x91\x03\n" +
 	"\x1aFamiliarSightBlockedReason\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_NO_FAMILIAR\x10\x01\x12,\n" +

@@ -154,6 +154,10 @@ func (s *Service) startOfTurnEffects(ctx context.Context, c *combatTx, ids []str
 	if err := s.endStatesAtStart(ctx, c, ids, round); err != nil {
 		return err
 	}
+	// The rounds of a table's temporary state count down on its owner's turn.
+	if err := s.tickTableStates(ctx, c, ids); err != nil {
+		return err
+	}
 	// The effects that last: what ends now, the damage a turn under them brings and
 	// the saving throws of the start of the turn (RN-22).
 	if err := s.effectsAfterTurnStart(ctx, c, ids, round); err != nil {

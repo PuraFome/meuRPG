@@ -47,6 +47,8 @@ type takeActionCall struct {
 	frenzy bool
 	// preserveLife is who Preserve Life restores and by how much.
 	preserveLife []preserveHeal
+	// endState says the card is a state's and the player ends it (rules.Action.State).
+	endState bool
 }
 
 // readTakeActionCall reads the request, in the order the answers are given: the ids, the action, the roll.
@@ -66,7 +68,7 @@ func readTakeActionCall(req *playv1.TakeActionRequest) (takeActionCall, error) {
 	if call.in, call.rolled, err = readTakeActionRoll(req); err != nil {
 		return call, err
 	}
-	call.useExtra, call.frenzy = req.GetUseExtraAction(), req.GetFrenzy()
+	call.useExtra, call.frenzy, call.endState = req.GetUseExtraAction(), req.GetFrenzy(), req.GetEndState()
 	if call.actionKey == preserveLifeAction {
 		call.preserveLife, err = readPreserveLife(req)
 	}
@@ -175,6 +177,9 @@ func (f *takeActionFlow) run(ctx context.Context) (any, error) {
 	if err := f.choose(); err != nil {
 		return nil, err
 	}
+	if err := f.checkState(); err != nil {
+		return nil, err
+	}
 	if err := f.mayTake(ctx); err != nil {
 		return nil, err
 	}
@@ -227,7 +232,7 @@ func (f *takeActionFlow) choose() error {
 	}
 	// A feature action is a class or subclass feature's or a race trait's (the goblin's
 	// Fuga Ágil, from the table's content).
-	f.feature = strings.HasPrefix(key, "feature:") || strings.HasPrefix(key, "trait:")
+	f.feature = strings.HasPrefix(key, "feature:") || strings.HasPrefix(key, "trait:") || strings.HasPrefix(key, "feat:") || strings.HasPrefix(key, "background-feature:")
 	list := f.opts.GetStandardActions()
 	if f.feature {
 		list = f.opts.GetFeatureActions()
@@ -453,6 +458,9 @@ func (f *takeActionFlow) performFeature(ctx context.Context) (string, error) {
 	}
 	if err := f.spendFeatureUse(ctx, fa); err != nil {
 		return "", err
+	}
+	if fa.State != "" { // the card of a table's state starts or ends it, and does nothing else
+		return standard, f.toggleState(ctx, fa)
 	}
 	if err := f.performKind(ctx, sheet); err != nil {
 		return "", err

@@ -223,17 +223,21 @@ func stateAction(s State) (Action, bool) {
 // effects on an effect of another type.
 func (x effectCompiler) strayStateAndWeapon() error {
 	e := x.e
-	if e.Type != "state" && (e.StateName != "" || e.DurationRounds != "" || len(e.EndsOn) > 0) {
-		return x.fail("state_name, duration_rounds and ends_on belong to state")
+	groups := []struct {
+		types []string
+		set   bool
+		names string
+	}{
+		{[]string{"state"}, e.StateName != "" || e.DurationRounds != "" || len(e.EndsOn) > 0, "state_name, duration_rounds and ends_on belong to state"},
+		{[]string{"weapon_rule"}, e.WeaponName != "" || e.AttackAbility != "" || e.DamageAbility != "" || e.AttackBonus != 0 || e.DamageBonus != 0,
+			"weapon_name, attack_ability, damage_ability, attack_bonus and damage_bonus belong to weapon_rule"},
+		{[]string{"pseudo_weapon"}, e.AttackName != "" || e.DamageDice != "" || e.DamageType != "", "attack_name, damage_dice and damage_type belong to pseudo_weapon"},
+		{[]string{"weapon_rule", "pseudo_weapon"}, e.Weapon != "" || e.ReachFt != 0, "weapon and reach_ft belong to weapon_rule and pseudo_weapon"},
 	}
-	if e.Type != "weapon_rule" && (e.WeaponName != "" || e.AttackAbility != "" || e.DamageAbility != "" || e.AttackBonus != 0 || e.DamageBonus != 0) {
-		return x.fail("weapon_name, attack_ability, damage_ability, attack_bonus and damage_bonus belong to weapon_rule")
-	}
-	if e.Type != "pseudo_weapon" && (e.AttackName != "" || e.DamageDice != "" || e.DamageType != "") {
-		return x.fail("attack_name, damage_dice and damage_type belong to pseudo_weapon")
-	}
-	if e.Type != "weapon_rule" && e.Type != "pseudo_weapon" && (e.Weapon != "" || e.ReachFt != 0) {
-		return x.fail("weapon and reach_ft belong to weapon_rule and pseudo_weapon")
+	for _, g := range groups {
+		if g.set && !slices.Contains(g.types, e.Type) {
+			return x.fail("%s", g.names)
+		}
 	}
 	return nil
 }

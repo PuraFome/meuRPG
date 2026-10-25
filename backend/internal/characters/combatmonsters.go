@@ -109,7 +109,7 @@ func (s *Service) MonsterNpc(ctx context.Context, tx pgx.Tx, campaignID, masterU
 			return link.Character{}, false, err
 		}
 	}
-	out, err := combatCharacter(content, row.ID, row.Kind, row.Name, nil, row.Sheet, nil)
+	out, err := combatCharacter(content, row.ID, row.Kind, row.Name, nil, row.Sheet, nil, nil)
 	if err != nil {
 		return link.Character{}, false, err
 	}

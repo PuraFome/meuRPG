@@ -173,6 +173,10 @@ func (s *Service) settleEndedCombatants(ctx context.Context, c *combatTx, cs []p
 	if err := s.endCombatSights(ctx, c, cs); err != nil {
 		return err
 	}
+	// The temporary states that last a number of rounds end with the fight that counted them.
+	if err := s.endCombatStates(ctx, c, cs); err != nil {
+		return err
+	}
 	// The effects on the characters go back to game time with the rounds they have left.
 	if err := s.effectsToCharacters(ctx, c, cs, nil); err != nil {
 		return err

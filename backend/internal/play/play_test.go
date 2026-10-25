@@ -563,6 +563,10 @@ func (noVitals) SetHitPointsMaxBonus(context.Context, pgx.Tx, string, string, in
 	return nil, nil, errors.New("not in this test")
 }
 
+func (noVitals) SetActiveStates(context.Context, pgx.Tx, string, string, []*playv1.ActiveState) (before, after *playv1.CharacterVitals, err error) {
+	return nil, nil, errors.New("not in this test")
+}
+
 func (noVitals) SetExhaustion(context.Context, pgx.Tx, string, string, int32) (before, after *playv1.CharacterVitals, err error) {
 	return nil, nil, errors.New("not in this test")
 }

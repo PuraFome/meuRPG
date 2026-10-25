@@ -45,6 +45,15 @@ func (b *overlayBuilder) checkGate(site effectSite, entry string, e *Effect) err
 	return nil
 }
 
+// checkStateReads checks what an effect reads of the states of its entry: its `while` and
+// the states its condition reads with active().
+func (b *overlayBuilder) checkStateReads(site effectSite, entry string, e *Effect) error {
+	if err := b.checkGate(site, entry, e); err != nil {
+		return err
+	}
+	return b.checkWhenStates(site, entry, e)
+}
+
 // checkWhenStates checks the states a `when` formula reads with active(): each
 // must be defined by a state effect of the effect's entry. A name that cannot be a
 // state name is left to the compiler, which refuses it as a formula.

@@ -28,13 +28,22 @@ var vitalsChanges = []vitalsChange{
 	changeHitDiceUsed,
 	changeHitDiceUsedByDie,
 	changeResourcesUsed,
+	changeEndStates,
 }
 
 // setsAnyVital says whether req sets at least one value to change.
 func setsAnyVital(req *playv1.AdjustCharacterVitalsRequest) bool {
 	return req.HitPointsCurrent != nil || req.HitPointsTemporary != nil || len(req.GetSpellSlotsUsed()) > 0 ||
 		req.PactSlotsUsed != nil || req.HitDiceUsed != nil || len(req.GetHitDiceUsedByDie()) > 0 ||
-		len(req.GetResourcesUsed()) > 0 || req.WildShapeHitPointsCurrent != nil
+		len(req.GetResourcesUsed()) > 0 || req.WildShapeHitPointsCurrent != nil || len(req.GetEndStates()) > 0
+}
+
+// changeEndStates ends the states the correction names.
+func changeEndStates(v *playv1.CharacterVitals, req *playv1.AdjustCharacterVitalsRequest) error {
+	if len(req.GetEndStates()) == 0 {
+		return nil
+	}
+	return endChosenStates(v, req.GetEndStates())
 }
 
 // changeWildShapeHitPoints sets the beast's hit points; at 0 the beast is gone and the

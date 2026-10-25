@@ -154,7 +154,7 @@ func (s *Service) characterToProto(content *rules.Content, row charactersdb.Char
 		c.RevivifyBlocked = row.RevivifyBlocked
 	}
 	if full := sheet.GetFull(); full != nil {
-		build := buildOf(full)
+		build := buildWithStates(full, stateKeysOf(row.ActiveStates))
 		der := rules.Derive(build, content)
 		c.Derived = derivedToProto(der)
 		addChangedContent(c.Derived, der.Issues, content, build, full)

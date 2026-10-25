@@ -92,7 +92,8 @@ message TableEntry {
 // TableEffect is one effect of a feature, from the closed menu: what the engine
 // computes with, never code. `type` is "modifier", "proficiency", "resource",
 // "sense", "roll_mode", "grant_action", "extra_attack", "ranged_attack", "choice", "ability_increase",
-// "superiority_die" or "note"; "ability_increase" is a feat's alone. Only the fields of the type are
+// "superiority_die", "extra_damage", "ambush", "resistance", "state", "weapon_rule", "pseudo_weapon" or "note";
+// "ability_increase" is a feat's alone. Only the fields of the type are
 // read, and a field the type does not use is refused. A feature with no effects is text only and always valid. Formulas ("value",
 // "when", "max") use level(), classLevel("<class>"), mod("int"), score("int"),
 // prof(), floor, ceil, min and max, and must compile.
@@ -105,7 +106,8 @@ message TableEffect {
   string target = 2;
   string mode = 3;
   string value = 4;
-  // modifier: a Bool formula; the effect applies only while it is true.
+  // A Bool formula; the effect applies only while it is true. It may read a state of the
+  // same entry with active("name"), which is true while that state is on (see `state`).
   string when = 5;
   // Makes an effect situational ("against:magic"): the engine shows it as a
   // reminder and the master decides.
@@ -174,11 +176,57 @@ message TableEffect {
   bool no_long_range_disadvantage = 26;
   // resistance: resistance to every damage type but `except` (a "damage-type:" key
   // of the SRD, such as "damage-type:psychic") while `while` holds; `while` is "rage"
-  // for as long as the character is raging. Both are required, and the effect has no
-  // `when` and no `tags`. Resistance never stacks: the same type from another source
-  // (the barbarian's own rage resistance) counts once.
+  // for as long as the character is raging, or the `state_name` of a state of the same
+  // entry. Both are required, and the effect has no `when` and no `tags`. Resistance
+  // never stacks: the same type from another source (the barbarian's own rage
+  // resistance) counts once.
+  //
+  // `while` is the state gate, shared by the effects that hold only while a state is on:
+  // resistance, roll_mode, extra_damage, weapon_rule and pseudo_weapon. On all but
+  // resistance it is optional and names a state of the same entry (never "rage"):
+  // the effect applies only while that state is on. A name no state effect of the entry
+  // defines is refused.
   string except = 27;
   string while = 28;
+  // state: a temporary state the feature switches on and off (a stance for 1 minute, a
+  // form that lasts until a long rest). `state_name` names it within the entry, like a
+  // resource (1 to 40 characters of a-z, 0-9 and _; at most 8 states in an entry).
+  // `duration_rounds` is a formula for how many rounds it lasts (empty or 0: until it
+  // ends; at most 14400, 24 hours); `ends_on` lists the other ways it ends: "dismiss"
+  // (the player ends it), "incapacitated" (0 hit points or an incapacitating
+  // condition), "short_rest" (a short or long rest) and "long_rest". A state needs a
+  // duration or at least one `ends_on`. `resource` is a resource of the entry or its
+  // class that each start spends one use of, and `economy` ("action", "bonus_action" or
+  // "free") what starting it costs; ending it is free. The sheet shows an action with
+  // Ativar and Encerrar. The other effects of the entry hold only while it is on, by
+  // their `while` or by a `when` that calls active("state_name").
+  string state_name = 29;
+  string duration_rounds = 30;
+  repeated string ends_on = 31;
+  // weapon_rule: changes the weapon lines `weapon` chooses: "any", "melee", "ranged",
+  // "finesse", "magic" (lines the sheet marks as magical) or "named" (the weapon whose
+  // Portuguese name is `weapon_name`, ignoring case and accents; required for "named",
+  // refused for the others). `attack_ability` and `damage_ability` offer another ability
+  // for the attack roll and for the damage ("str", "dex", "con", "int", "wis", "cha"): the
+  // best of the line's own and the offered ones applies. `attack_bonus` and `damage_bonus`
+  // add, from -5 to 10. `reach_ft` makes a melee reach longer (5 to 60, in steps of 5; not
+  // for "ranged"). The rule must change something. pseudo_weapon: `weapon` is "melee" or
+  // "ranged" and these are the fields of the attack line the feature gives: `attack_name`
+  // (1 to 40 characters), `damage_dice` (plain dice, 1 to 10 of d4, d6, d8, d10 or d12),
+  // `damage_type` (a "damage-type:" key of the SRD), `ability` (the ability it attacks and
+  // hurts with), `reach_ft` for a melee one (5 to 60, default 5) and `range_ft`, required, for
+  // a ranged one (5 to 300, in steps of 5). It counts as a weapon the character is
+  // proficient with, is never an item, and the weapon rules change it like any weapon.
+  string weapon = 32;
+  string weapon_name = 33;
+  string attack_ability = 34;
+  string damage_ability = 35;
+  int32 attack_bonus = 36;
+  int32 damage_bonus = 37;
+  int32 reach_ft = 38;
+  string attack_name = 39;
+  string damage_dice = 40;
+  string damage_type = 41;
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
@@ -1170,7 +1218,8 @@ message EffectMenuField {
   // How the editor asks: "formula" (an Int formula), "condition" (a Bool formula),
   // "text", "number", "choice" (one value of `list`), "choices" (several), "tags",
   // "resource_ref" (the name of a resource effect the entry defines; the editor lists
-  // the ones it has) or "yes_no" (a switch: true or false).
+  // the ones it has), "state_ref" (the name of a state effect the entry defines, or one
+  // of `list` when it has one: "rage" for a resistance) or "yes_no" (a switch: true or false).
   string kind = 3;
   // The EffectMenuList the value comes from, when it is a closed list; empty for a
   // free value. For a `choice` effect's `from` the list depends on the kind chosen:
@@ -1200,8 +1249,10 @@ message EffectMenuList {
   // "modifier_targets", "modifier_modes", "proficiency_targets",
   // "proficiency_levels", "roll_modes", "roll_targets", "senses", "recharges",
   // "economies", "choice_kinds", "skills", "languages", "tools", "tag_prefixes",
-  // "abilities" (the six abilities, for an ability_increase's `from`) or
-  // "ability_increase_amounts" (its `value`: "1" or "2").
+  // "abilities" (the six abilities, for an ability_increase's `from`),
+  // "ability_increase_amounts" (its `value`: "1" or "2"), "state_ends" (a state's
+  // `ends_on`), "state_economies" (its `economy`), "weapon_filters" (a weapon_rule's
+  // `weapon`) or "weapon_kinds" (a pseudo_weapon's).
   string name = 1;
   repeated EffectMenuValue values = 2;
 }

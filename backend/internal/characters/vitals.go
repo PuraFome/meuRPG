@@ -64,6 +64,8 @@ type vitalsMax struct {
 	conMod int
 	// resources are the class and race resources the sheet has at its level.
 	resources []rules.Resource
+	// states are the temporary states the sheet defines, with the ones that are on marked.
+	states []rules.State
 	// beast is the Wild Shape form the character is in (MR-037): its content key,
 	// Portuguese name and the stat block's hit points. Empty key: its own shape.
 	beast       string
@@ -73,7 +75,7 @@ type vitalsMax struct {
 
 // maxima derives the maximums from a stored sheet. A player character
 // always has a full sheet; anything else has no hit points, slots or dice.
-func maxima(content *rules.Content, characterID string, doc []byte, beast *string) (vitalsMax, error) {
+func maxima(content *rules.Content, characterID string, doc []byte, beast *string, active []byte) (vitalsMax, error) {
 	sheet, err := loadSheet(characterID, doc)
 	if err != nil {
 		return vitalsMax{}, err
@@ -82,8 +84,8 @@ func maxima(content *rules.Content, characterID string, doc []byte, beast *strin
 	if full == nil {
 		return vitalsMax{}, nil
 	}
-	d := rules.Derive(buildOf(full), content)
-	m := vitalsMax{hitPoints: max(d.HitPointsMax, 0), hitDice: d.HitDice, resources: d.Resources, songSides: d.SongOfRestSides}
+	d := rules.Derive(buildWithStates(full, stateKeysOf(active)), content)
+	m := vitalsMax{hitPoints: max(d.HitPointsMax, 0), hitDice: d.HitDice, resources: d.Resources, songSides: d.SongOfRestSides, states: d.States}
 	if b, ok := content.MonsterDerived(conv.OrZero(beast)); ok && beast != nil {
 		m.beast, m.beastNamePT, m.beastMax = *beast, content.NamePT(*beast), max(b.HitPointsMax, 1)
 	}
@@ -200,6 +202,7 @@ func vitalsToProto(row vitalsRow, m vitalsMax) *playv1.CharacterVitals {
 			BeastKey: m.beast, BeastNamePt: m.beastNamePT, HitPointsCurrent: min(max(*row.WildShapeHp, 1), i32(m.beastMax)), HitPointsMax: i32(m.beastMax),
 		}
 	}
+	v.ActiveStates = activeStatesProto(parseStoredStates(row.ActiveStates), m.states)
 	if row.FamiliarSightCreatureID != nil {
 		v.FamiliarSight = &playv1.FamiliarSightState{
 			CreatureId: *row.FamiliarSightCreatureID, InCombat: conv.OrZero(row.FamiliarSightInCombat), ConditionsGiven: row.FamiliarSightConditions,
@@ -223,7 +226,7 @@ func (s *Service) ListVitals(ctx context.Context, campaignID string) ([]*playv1.
 	}
 	out := make([]*playv1.CharacterVitals, 0, len(rows))
 	for _, row := range rows {
-		m, err := maxima(content, row.ID, row.Sheet, row.WildShapeBeast)
+		m, err := maxima(content, row.ID, row.Sheet, row.WildShapeBeast, row.ActiveStates)
 		if err != nil {
 			return nil, s.dbError(ctx, "list vitals", err)
 		}
@@ -273,7 +276,7 @@ func (s *Service) getVitals(ctx context.Context, tx pgx.Tx, campaignID, characte
 	if err != nil {
 		return nil, s.dbError(ctx, "get vitals", err)
 	}
-	m, err := maxima(content, row.ID, row.Sheet, row.WildShapeBeast)
+	m, err := maxima(content, row.ID, row.Sheet, row.WildShapeBeast, row.ActiveStates)
 	if err != nil {
 		return nil, s.dbError(ctx, "get vitals", err)
 	}
@@ -307,6 +310,7 @@ func (s *Service) AdjustVitals(ctx context.Context, tx pgx.Tx, campaignID, chara
 	if err := applyVitalsChange(after, req); err != nil {
 		return nil, nil, invalidArgument(err)
 	}
+	dropIncapacitated(before, after) // a character at 0 hit points is incapacitated
 	params, err := correctedVitals(r.row, req, after)
 	if err != nil {
 		return nil, nil, err
@@ -318,6 +322,9 @@ func (s *Service) AdjustVitals(ctx context.Context, tx pgx.Tx, campaignID, chara
 		return nil, nil, wrap("save vitals", err)
 	}
 	if err := s.saveWildShapeChange(ctx, q, r.row.ID, req, after); err != nil {
+		return nil, nil, err
+	}
+	if err := s.saveStateChange(ctx, tx, r.row.ID, before, after); err != nil {
 		return nil, nil, err
 	}
 	after.Revision = saved.Revision
@@ -452,11 +459,11 @@ func inRange(field string, value, maximum int32) error {
 // A character whose current hit points were never set is full whatever the
 // maximum is, and needs nothing.
 func (s *Service) carryHitPoints(ctx context.Context, q *charactersdb.Queries, content *rules.Content, characterID string, before, after []byte) error {
-	was, err := maxima(content, characterID, before, nil)
+	was, err := maxima(content, characterID, before, nil, nil)
 	if err != nil {
 		return err
 	}
-	now, err := maxima(content, characterID, after, nil)
+	now, err := maxima(content, characterID, after, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -540,7 +547,7 @@ func (s *Service) SetExhaustion(ctx context.Context, tx pgx.Tx, campaignID, char
 	if before.GetExhaustionLevel() == level {
 		return before, before, nil
 	}
-	m, err := maxima(content, row.ID, row.Sheet, row.WildShapeBeast)
+	m, err := maxima(content, row.ID, row.Sheet, row.WildShapeBeast, row.ActiveStates)
 	if err != nil {
 		return nil, nil, err
 	}

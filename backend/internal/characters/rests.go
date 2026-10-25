@@ -47,6 +47,7 @@ type restPlan struct {
 // nothing: the plan carries the vitals after.
 func planRest(kind string, v *playv1.CharacterVitals, m vitalsMax, choice rules.HitDiceUsed) (restPlan, error) {
 	after := proto.CloneOf(v)
+	restStates(kind, after) // a rest ends the states that say so, whatever else it gives
 	preview := &playv1.RestPreview{
 		CharacterId: v.GetCharacterId(), Name: v.GetName(),
 		HitPointsCurrent: v.GetHitPointsCurrent(), HitPointsMax: v.GetHitPointsMax(),
@@ -152,7 +153,7 @@ func (s *Service) restRows(ctx context.Context, tx pgx.Tx, campaignID string) ([
 	}
 	out := make([]restRow, 0, len(rows))
 	for _, row := range rows {
-		m, err := maxima(content, row.ID, row.Sheet, row.WildShapeBeast)
+		m, err := maxima(content, row.ID, row.Sheet, row.WildShapeBeast, row.ActiveStates)
 		if err != nil {
 			return nil, err
 		}
@@ -283,6 +284,11 @@ func (s *Service) writeRestPlan(ctx context.Context, q *charactersdb.Queries, r 
 		}
 		saved.Revision, saved.UpdatedAt = saved2.Revision, saved2.UpdatedAt
 	}
+	if statesChanged(r.view, plan.after) {
+		if err := q.SetActiveStates(ctx, charactersdb.SetActiveStatesParams{ID: r.row.ID, States: storedOf(plan.after.GetActiveStates())}); err != nil {
+			return wrap("end the states", err)
+		}
+	}
 	plan.after.Revision = saved.Revision
 	plan.after.UpdatedAt = timestamppb.New(saved.UpdatedAt)
 	return nil
@@ -382,7 +388,7 @@ func (s *Service) vitalsOfRow(ctx context.Context, tx pgx.Tx, campaignID, charac
 	if err != nil {
 		return restRow{}, nil, wrap("read rules content", err)
 	}
-	m, err := maxima(content, got.ID, got.Sheet, got.WildShapeBeast)
+	m, err := maxima(content, got.ID, got.Sheet, got.WildShapeBeast, got.ActiveStates)
 	if err != nil {
 		return restRow{}, nil, err
 	}

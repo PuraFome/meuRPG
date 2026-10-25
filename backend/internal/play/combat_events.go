@@ -660,6 +660,12 @@ type actionEvent struct {
 	StateStarted bool   `json:"state_started,omitempty"`
 	StateReason  string `json:"state_reason,omitempty"`
 	StateID      string `json:"state_id,omitempty"`
+	// StateName is the Portuguese name of the feature that defines a table state (the "table"
+	// kind) whose line this is; Key is the state's key. StatesBefore are the character's
+	// states before an action that began or ended one (StatesChanged): an undo puts them back.
+	StateName     string     `json:"state_name,omitempty"`
+	StatesBefore  []stateRec `json:"states_before,omitempty"`
+	StatesChanged bool       `json:"states_changed,omitempty"`
 	// Rider is an answered monk rider (hit_rider).
 	Rider *riderEvent `json:"rider,omitempty"`
 

@@ -961,6 +961,9 @@ func (e *logEntry) fillAnswer(c *logViewing, out *playv1.CombatLogEntry) bool {
 
 func (e *logEntry) fillState(_ *logViewing, out *playv1.CombatLogEntry) bool {
 	out.State = &playv1.CombatLogStateChange{Kind: stateKindProto(e.ev.StateKind), Started: e.ev.StateStarted, Reason: e.ev.StateReason}
+	if e.ev.StateKind == stateTable {
+		out.State.Key, out.State.NamePt = e.ev.Key, e.ev.StateName
+	}
 	return true
 }
 

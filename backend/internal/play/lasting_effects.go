@@ -383,6 +383,9 @@ func (s *Service) refreshOne(ctx context.Context, c *combatTx, cs []playdb.Comba
 		return fmt.Errorf("work out the effects' state: %w", err)
 	}
 	cs[i].Conditions, cs[i].EffectConditions = st.conds, st.derived
+	if err := s.dropStatesIfIncapacitated(ctx, c, cs[i]); err != nil {
+		return err
+	}
 	return s.dropConcentrationIfIncapacitated(ctx, c, cs[i])
 }
 
