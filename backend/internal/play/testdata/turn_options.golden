@@ -3670,7 +3670,21 @@ options as options of Pensantus to her player
 - .spellTargets[4].targets[Goblin].state
 state unchanged
 == options of Pensantus with a hidden goblin to the master ==
-options as options of Pensantus to the master (no difference)
+options as options of Pensantus to the master
++ .attackTargets[attack:unarmed-strike].targets[Goblin].notSeen = true
++ .attackTargets[attack:unarmed-strike].targets[Goblin].untargetable = true
++ .attackTargets[spell:fire-bolt].targets[Goblin].notSeen = true
++ .attackTargets[spell:fire-bolt].targets[Goblin].untargetable = true
++ .spellTargets[0].targets[Goblin].notSeen = true
++ .spellTargets[0].targets[Goblin].untargetable = true
++ .spellTargets[1].targets[Goblin].notSeen = true
++ .spellTargets[1].targets[Goblin].untargetable = true
++ .spellTargets[2].targets[Goblin].notSeen = true
++ .spellTargets[2].targets[Goblin].untargetable = true
++ .spellTargets[3].targets[Goblin].notSeen = true
++ .spellTargets[3].targets[Goblin].untargetable = true
++ .spellTargets[4].targets[Goblin].notSeen = true
++ .spellTargets[4].targets[Goblin].untargetable = true
 state unchanged
 == options of Pensantus with no slots left ==
 options as options of Pensantus to her player (no difference)
@@ -5086,6 +5100,10 @@ options as options of Toren on his turn to his player
 state unchanged
 == options of Toren with a hidden goblin to the master ==
 options as options of Toren on his turn to the master
++ .attackTargets[attack:unarmed-strike].targets[Goblin].notSeen = true
++ .attackTargets[attack:unarmed-strike].targets[Goblin].untargetable = true
++ .attackTargets[equipment:battleaxe].targets[Goblin].notSeen = true
++ .attackTargets[equipment:battleaxe].targets[Goblin].untargetable = true
 - .attackTargets[attack:unarmed-strike].targets[Pensantus].coverSource
 - .attackTargets[equipment:battleaxe].targets[Pensantus].coverSource
 ~ .attackTargets[attack:unarmed-strike].targets[Pensantus].cover = "COVER_DEGREE_NONE"
@@ -5279,6 +5297,10 @@ options as options of Toren on his turn to his player
 state unchanged
 == options of Toren with the goblin hidden after the attack to the master ==
 options as options of Toren on his turn to the master
++ .attackTargets[attack:unarmed-strike].targets[Goblin].notSeen = true
++ .attackTargets[attack:unarmed-strike].targets[Goblin].untargetable = true
++ .attackTargets[equipment:battleaxe].targets[Goblin].notSeen = true
++ .attackTargets[equipment:battleaxe].targets[Goblin].untargetable = true
 + .contestState.helpAction.reason.code = "DISABLED_REASON_CODE_ACTION_USED"
 + .contestState.hideActions[standard:hide].reason.code = "DISABLED_REASON_CODE_ACTION_USED"
 + .options.attacks[attack:unarmed-strike].reason.code = "DISABLED_REASON_CODE_ACTION_USED"

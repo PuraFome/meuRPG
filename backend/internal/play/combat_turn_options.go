@@ -78,7 +78,43 @@ func (s *Service) GetTurnOptions(
 	if err != nil {
 		return nil, s.dbError(ctx, "work out the contests of the turn", err)
 	}
+	if err := s.markUnseenTargets(ctx, m, res, d, v, sight, who); err != nil {
+		return nil, err
+	}
 	return connect.NewResponse(res), nil
+}
+
+// markUnseenTargets marks, for the master reading the turn of a player's character, the targets
+// the character's player does not see: they stay listed (the master knows them) but cannot be
+// picked, as the server refuses them for the character (RollAttack, CastSpell).
+func (s *Service) markUnseenTargets(ctx context.Context, m authz.Membership, res *playv1.GetTurnOptionsResponse, d *encounterData, v combatViewer, sight *fogSight, who playdb.Combatant) error {
+	eyes, _, err := s.actorSightFor(ctx, m, d.enc, d.cs, v, sight, who)
+	if err != nil {
+		return s.dbError(ctx, "work out what the character sees", err)
+	}
+	if !v.master || eyes.master {
+		return nil
+	}
+	var lists [][]*playv1.TargetInReach
+	for _, a := range res.GetAttackTargets() {
+		lists = append(lists, a.GetTargets())
+	}
+	for _, sp := range res.GetSpellTargets() {
+		lists = append(lists, sp.GetTargets())
+	}
+	for _, r := range res.GetResourceTargets() {
+		for _, t := range r.GetTargets() {
+			lists = append(lists, []*playv1.TargetInReach{t.GetTarget()})
+		}
+	}
+	for _, list := range lists {
+		for _, t := range list {
+			if c, ok := combatantByID(d.cs, t.GetCombatantId()); ok && !eyes.sees(c) {
+				t.NotSeen, t.Untargetable = true, true
+			}
+		}
+	}
+	return nil
 }
 
 // locateTurnOptions finds the combatant as the caller sees the fog, and checks the caller may act for it.
