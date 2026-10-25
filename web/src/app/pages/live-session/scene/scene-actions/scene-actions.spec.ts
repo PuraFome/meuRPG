@@ -131,4 +131,11 @@ describe('SceneActions ("Ações e rolagens", C3-01)', () => {
     expect(fixture.componentInstance.groupAsk()).toBe(true);
     expect(button.getAttribute('aria-expanded')).toBe('true');
   });
+
+  it('lists the chips of one action newest first, as the server sends the rolls', () => {
+    const newer = sceneRoll('r9', 'a4', 'Pensantus', 12, { passed: true });
+    const { el } = setup(masterScene([newer, brisa]));
+    const names = Array.from(rows(el)[3].querySelectorAll('.chip__who'), (c) => flat(c));
+    expect(names).toEqual(['Pensantus', 'Brisa']);
+  });
 });
