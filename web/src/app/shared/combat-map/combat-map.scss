@@ -404,25 +404,60 @@
   box-shadow: none;
 }
 
-// "Alvo" with its check, or "×2": a garnet pill at the token's right edge.
-.cm__mark-n {
+// The labels of the choice (C7-04) hang from a point beside their token and are never over another: the planner (`planPick`)
+// picks the point and the side; the side says which edge of the label the point is.
+.cm__fl {
   position: absolute;
-  top: 0;
-  left: calc(50% + var(--cm-tk) * var(--span, 1) * 0.35);
+  z-index: 6;
+  pointer-events: none;
+}
+
+.cm__fl--right {
+  transform: translate(0, -50%);
+}
+
+.cm__fl--left {
+  transform: translate(-100%, -50%);
+}
+
+.cm__fl--below {
+  transform: translate(-50%, 0);
+}
+
+.cm__fl--above {
+  transform: translate(-50%, -100%);
+}
+
+// A creature's tags: "Alvo" with its check (or "×2") first and nearest the token, then "Longe".
+.cm__tags {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cm__fl--left.cm__tags {
+  flex-direction: row-reverse;
+}
+
+.cm__mark-n,
+.cm__far {
   display: inline-flex;
   align-items: center;
   gap: 3px;
   box-sizing: border-box;
   height: 20px;
   padding: 0 8px;
-  border: 1.5px solid var(--mr-map-token-surface);
   border-radius: var(--mr-radius-pill);
-  background: var(--mr-map-accent);
-  color: var(--mr-map-token-surface);
   font-size: 12px;
   font-weight: 700;
   line-height: 17px;
   white-space: nowrap;
+}
+
+.cm__mark-n {
+  border: 1.5px solid var(--mr-map-token-surface);
+  background: var(--mr-map-accent);
+  color: var(--mr-map-token-surface);
 
   .mat-icon {
     width: 14px;
@@ -431,66 +466,15 @@
   }
 }
 
-// "Longe: desvantagem": a valid target, said and not dimmed. It sits below its token (the "Alvo" mark is at the token's top, so a
-// neighbour's chip never covers it), above at the foot of the map, and leans away from a side edge so it is not cut.
+// "Longe: desvantagem": a valid target, said and not dimmed.
 .cm__far {
-  position: absolute;
-  top: calc(50% + var(--cm-tk) * var(--span, 1) * 0.5 + 4px);
-  left: 50%;
-  box-sizing: border-box;
-  height: 20px;
-  padding: 0 8px;
   border: 1.5px solid var(--mr-map-token-ink);
-  border-radius: var(--mr-radius-pill);
   background: var(--mr-map-token-surface);
   color: var(--mr-map-token-ink);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 17px;
-  white-space: nowrap;
-  transform: translateX(-50%);
 }
 
-.cm__far--above {
-  top: auto;
-  bottom: calc(50% + var(--cm-tk) * var(--span, 1) * 0.5 + 4px);
-}
-
-.cm__far--left {
-  left: calc(50% - var(--cm-tk) * var(--span, 1) * 0.5);
-  transform: none;
-}
-
-.cm__far--right {
-  right: calc(50% - var(--cm-tk) * var(--span, 1) * 0.5);
-  left: auto;
-  transform: none;
-}
-
-// The chip that says why a creature cannot be chosen, beside its token; in a narrow map the bar's hint says it instead.
-@container (max-width: 599px) {
-  .cm__whyat {
-    display: none;
-  }
-
-  // The catch chip is "Longe" alone on a narrow map; the button's name has the whole.
-  .cm__far-rest {
-    display: none;
-  }
-}
-
-.cm__whyat {
-  position: absolute;
-  z-index: 6;
-  width: 0;
-  height: 0;
-  pointer-events: none;
-}
-
+// Why a creature cannot be chosen, in free map; with no free place the bar's hint line says it.
 .cm__why {
-  position: absolute;
-  top: calc(var(--cm-tk) * 0.6);
-  left: 0;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -511,14 +495,4 @@
     height: 16px;
     font-size: 16px;
   }
-}
-
-.cm__why--right {
-  right: 0;
-  left: auto;
-}
-
-.cm__why--above {
-  top: auto;
-  bottom: calc(var(--cm-tk) * 0.6);
 }

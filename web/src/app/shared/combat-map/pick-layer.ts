@@ -1,18 +1,7 @@
 import { computed } from '@angular/core';
 
 import type { Combatant } from '../../../gen/meurpg/play/v1/combat_pb';
-
-/** How near a side edge (a share of the map's width) a chip leans away from it. */
-const EDGE_LEAN = 0.2;
-
-/** Chips within this many columns of each other, in the same zone, would touch. */
-const NEAR_CHIPS = 2;
-
-/** How near a side edge (a share of the map's width) the "Vez" word leans inward. */
-const TURN_LEAN = 0.08;
-
-/** The middle of a square. */
-const HALF = 0.5;
+import { type Place, type PickPlan, planPick } from './pick-places';
 
 /** A creature of the map while the player chooses a target (C7-04): ringed and tappable, or dimmed with the reason a tap tells. */
 export interface PickMark {
@@ -34,14 +23,58 @@ export interface PickNote {
   readonly text: string;
 }
 
-/** What the map reads to draw the choice of a target: the marks by creature, the dimmed ones and the chip beside its token. */
+/** The room the chips and tags take, in px (12 and 13px bold type): the check mark and "Alvo", "×2", a word of "Longe", the reason's icon and text. */
+const MARK_WIDTH = 62;
+const DART_WIDTH = 36;
+const CHAR_WIDTH = 7;
+const FAR_PADDING = 18;
+const WHY_PADDING = 44;
+const WHY_HEIGHT = 30;
+const HALF = 2;
+const PERCENT = 100;
+/** How near a side edge (a share of the map's width) the "Vez" word leans inward. */
+const TURN_LEAN = 0.08;
+/** A map this wide (px) has room for the whole "Longe: desvantagem" when it is the only one. */
+const WIDE_MAP = 600;
+
+/** What the map reads to draw the choice of a target: the marks by creature, the dimmed ones, and where each tag and the reason chip go. */
 export class PickLayer {
   private readonly byId = computed(() => new Map((this.marks() ?? []).map((m) => [m.id, m])));
-  /** The chip's text and the creature it sits beside. */
+  private readonly noted = computed(() => (this.marks() ?? []).filter((m) => m.note).length);
+  /** The chip's text and the creature it is about. */
   readonly note = computed(() => {
     const note = this.chip();
     const c = note ? this.shown().find((x) => x.id === note.id) : undefined;
     return note && c ? { text: note.text, c } : null;
+  });
+  private readonly plan = computed<PickPlan>(() => {
+    const unit = this.unit();
+    const { columns, rows } = this.grid();
+    const whole = this.noted() === 1 && unit * columns >= WIDE_MAP;
+    const tags = this.shown()
+      .map((c) => this.byId().get(c.id))
+      .filter((m): m is PickMark => !!m && (m.count > 0 || !!m.note))
+      .map((m) => {
+        const far = this.farWidth(m.note);
+        return {
+          id: m.id,
+          mark: m.count > 0 ? (m.mode === 'darts' ? DART_WIDTH : MARK_WIDTH) : 0,
+          far: whole ? far : this.farWidth(this.far(m)),
+          farShort: this.farWidth(this.far(m)),
+          hasFar: !!m.note && far > 0,
+        };
+      });
+    const note = this.note();
+    return planPick({
+      unit,
+      columns,
+      rows,
+      tokens: this.shown().map((c) => ({ id: c.id, col: c.col, row: c.row, span: this.span(c) })),
+      tags,
+      why: note
+        ? { id: note.c.id, w: note.text.length * CHAR_WIDTH + WHY_PADDING, h: WHY_HEIGHT }
+        : null,
+    });
   });
 
   constructor(
@@ -49,6 +82,8 @@ export class PickLayer {
     private readonly chip: () => PickNote | null,
     private readonly shown: () => readonly Combatant[],
     private readonly grid: () => { readonly columns: number; readonly rows: number },
+    private readonly unit: () => number,
+    private readonly span: (c: Combatant) => number,
   ) {}
 
   of(id: string): PickMark | undefined {
@@ -72,60 +107,49 @@ export class PickLayer {
     return m.note ? `${base}. ${m.note}` : base;
   }
 
-  /** The chip opens toward the middle of the map, below the token unless it is at the foot. */
-  side(c: Combatant): string {
-    const { columns, rows } = this.grid();
-    const right = c.col * 2 > columns ? ' cm__why--right' : '';
-    return `cm__why${right}${c.row + 2 >= rows ? ' cm__why--above' : ''}`;
-  }
-
-  /** Where each "Longe" chip goes: below its token unless a creature stands there or another chip is, then above; never two chips in one zone. */
-  private readonly farPlan = computed(() => {
-    const occupied = new Set(this.shown().map((c) => `${c.col},${c.row}`));
-    const free = (c: Combatant, dr: number) =>
-      [-1, 0, 1].every((dx) => !occupied.has(`${c.col + dx},${c.row + dr}`));
-    const zones: { col: number; zone: number }[] = [];
-    const plan = new Map<string, 'below' | 'above'>();
-    const { rows } = this.grid();
-    for (const c of this.shown().filter((x) => this.byId().get(x.id)?.note)) {
-      const order: ('below' | 'above')[] =
-        c.row + 2 >= rows ? ['above', 'below'] : ['below', 'above'];
-      const zoneOf = (side: 'below' | 'above') => (side === 'below' ? c.row + 1 : c.row - 1);
-      const clash = (side: 'below' | 'above') =>
-        zones.some((z) => z.zone === zoneOf(side) && Math.abs(z.col - c.col) <= NEAR_CHIPS);
-      const room = (side: 'below' | 'above') =>
-        zoneOf(side) >= 0 && zoneOf(side) < rows && free(c, zoneOf(side) - c.row);
-      const side =
-        order.find((o) => room(o) && !clash(o)) ?? order.find((o) => !clash(o)) ?? order[0];
-      plan.set(c.id, side);
-      zones.push({ col: c.col, zone: zoneOf(side) });
-    }
-    return plan;
-  });
-  private readonly noted = computed(() => (this.marks() ?? []).filter((m) => m.note).length);
-
-  /** The chip's words: whole when it is the only one, "Longe" when several share the map (the button's name has the whole). */
+  /** The "Longe" of "Longe: desvantagem". */
   far(m: PickMark): string {
     return m.note.split(':')[0];
   }
 
-  /** The rest of a lone chip (": desvantagem"); a narrow map hides it by its width, and several chips never have it. */
-  farRest(m: PickMark): string {
-    return this.noted() > 1 ? '' : m.note.slice(this.far(m).length);
+  /** The rest of a lone chip on a wide map (": desvantagem"); never on a narrow one, nor with several chips. */
+  farRest(m: PickMark, place: Place | undefined): string {
+    return !place || place.short || this.noted() > 1 ? '' : m.note.slice(this.far(m).length);
   }
 
-  /** The "Longe" chip's place: below its token, above when something is there or at the foot, leaning away from a side edge. */
-  farSide(c: Combatant): string {
+  private farWidth(text: string): number {
+    return text ? text.length * CHAR_WIDTH + FAR_PADDING : 0;
+  }
+
+  /** Where a token's tags hang (px from the map's top left), or `undefined` for a creature with none. */
+  tagsAt(id: string): Place | undefined {
+    return this.plan().tags.get(id);
+  }
+
+  /** Where the reason chip goes, or `null` where no free place is left (the bar's hint line says it). */
+  whyAt(): Place | null {
+    return this.plan().why;
+  }
+
+  /** A place's left and top as the map's own percentages (the token's centre until the map is measured). */
+  left(c: Combatant, place: Place): number {
     const { columns } = this.grid();
-    const x = (c.col + HALF) / columns;
-    const lean = x < EDGE_LEAN ? ' cm__far--left' : x > 1 - EDGE_LEAN ? ' cm__far--right' : '';
-    return `cm__far${lean}${this.farPlan().get(c.id) === 'above' ? ' cm__far--above' : ''}`;
+    return this.unit() > 0
+      ? (place.x / (columns * this.unit())) * PERCENT
+      : ((c.col + this.span(c) / HALF) / columns) * PERCENT;
+  }
+
+  top(c: Combatant, place: Place): number {
+    const { rows } = this.grid();
+    return this.unit() > 0
+      ? (place.y / (rows * this.unit())) * PERCENT
+      : ((c.row + this.span(c) / HALF) / rows) * PERCENT;
   }
 
   /** A "Vez" word above or below a token at a side edge leans inward, so the map does not cut it. */
   turnLean(c: Combatant): string {
     const { columns } = this.grid();
-    const x = (c.col + HALF) / columns;
+    const x = (c.col + 1 / HALF) / columns;
     return x < TURN_LEAN
       ? ' cm__turn--lean-left'
       : x > 1 - TURN_LEAN

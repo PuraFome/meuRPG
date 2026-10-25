@@ -156,6 +156,9 @@ export function actionTabs(
       badge: String(counts.spells),
       words: plural(counts.spells, 'magia', 'magias'),
     });
+  } else if (options.beast) {
+    // A druid in a beast's shape casts nothing, and the tab says so instead of vanishing.
+    tabs.push({ id: 'spells', label: 'Magias', badge: '', words: '' });
   }
   if (counts.features > 0 || options.beast) {
     tabs.push({

@@ -281,6 +281,9 @@ export class AttackSheet {
     return !!c && isCreature(c);
   }
 
+  /** A tap or a click is on a target of the list: its change moves on to the roll even where the click event carries no detail. */
+  protected pointed = false;
+
   protected pick(id: string): void {
     this.s.targetId.set(id);
     this.s.error.set('');

@@ -25,7 +25,7 @@ import { zoneViews } from '../../../../core/combat/zones';
 import { AreaOverlay } from '../../../../shared/area-picker/area-overlay';
 import { lastArea } from '../../../../core/combat/hidden-reveal';
 import { MapLayersLegend } from '../../../../shared/map-layers/map-layers-legend';
-import { pickWindow } from './pick-window';
+import { pickWindow, turnWindow } from './pick-window';
 import {
   type Vision,
   knownWindow,
@@ -183,10 +183,20 @@ export class CombatMapCard {
       return known && known.cols * known.rows < CROP_MAX_SHARE * columns * rows ? known : null;
     }
     const offered = new Set((this.pick() ?? []).map((m) => m.id));
+    const mine = this.own()?.id;
+    const own = e.combatants.find((c) => c.id === mine && c.placed);
+    if (this.phone() && this.compact() && offered.size === 0 && own) {
+      // The player's own turn view: wide and short, around their token (C4-03).
+      return turnWindow(
+        own,
+        e.combatants.filter((c) => c.placed && c.id !== mine),
+        columns,
+        rows,
+      );
+    }
     if (!this.phone() || offered.size === 0) {
       return null;
     }
-    const mine = this.own()?.id;
     return pickWindow(
       e.combatants.filter((c) => c.placed && (offered.has(c.id) || c.id === mine)),
       columns,

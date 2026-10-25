@@ -158,7 +158,8 @@ test('um alvo apagado diz por que não vale, ao toque: fora de alcance', { tag: 
     // A dimmed one still has a name, with its reason, and a tap on it chooses nothing.
     const far = p.getByRole('button', { name: 'Goblin 2: fora de alcance' });
     await far.click();
-    await expect(p.locator('.cm__why')).toContainText('Goblin 2: fora de alcance');
+    // The reason is in the bar's hint line, and on the map too where a free place is left.
+    await expect(asking(p)).toContainText('Goblin 2: fora de alcance');
     await expect(asking(p)).toContainText('Escolha o alvo · Adaga');
     await expect(p.getByRole('button', { name: 'Confirmar' })).toHaveAttribute('aria-disabled', 'true');
   } finally {
@@ -199,7 +200,7 @@ test('a 1280: o mapa ganha o destaque, o cartão da ação pendente fica no tril
     await expect(p.getByRole('button', { name: 'Mover' })).toHaveCount(1);
     await expect(p.getByRole('button', { name: 'Encerrar turno' })).toHaveCount(1);
     // Goblin 2 is past the dagger's reach and within its long range: valid, with the catch said on the map.
-    await expect(p.locator('.cm__far')).toContainText('Longe: desvantagem');
+    await expect(p.locator('.cm__far')).toContainText('Longe');
     await ring(p, 'Goblin 1').click();
     await expect(card).toContainText('Adaga em Goblin 1');
     await card.getByRole('button', { name: 'Confirmar' }).click();

@@ -125,6 +125,12 @@ describe('actionTabs', () => {
     ).toContain('class');
   });
 
+  it('keeps "Magias" for a beast even with no spell to show, so the tab says why', () => {
+    const tabs = actionTabs({ ...counts, spells: 0 }, 'Druida', { beast: true });
+    expect(tabs.map((t) => t.id)).toContain('spells');
+    expect(actionTabs({ ...counts, spells: 0 }, 'Druida').map((t) => t.id)).not.toContain('spells');
+  });
+
   it('says one in the singular', () => {
     expect(actionTabs({ ...counts, attacks: 1 }, 'x')[0].words).toBe('1 ataque');
   });

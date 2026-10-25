@@ -89,7 +89,7 @@ describe('CombatMap: choosing a target (C7-04)', () => {
     expect(el.querySelector('.cm--pick')).not.toBeNull();
   });
 
-  it('shortens two catch chips to "Longe" and never puts them in one zone', () => {
+  it('shortens two catch chips to "Longe"', () => {
     const { fixture, el } = map({
       pick: [
         mark('g1', 'Goblin 1', { note: 'Longe: desvantagem' }),
@@ -103,7 +103,6 @@ describe('CombatMap: choosing a target (C7-04)', () => {
     fixture.detectChanges();
     const chips = [...el.querySelectorAll('.cm__far')];
     expect(chips.map((c) => c.textContent)).toEqual(['Longe', 'Longe']);
-    expect(chips.filter((c) => c.className.includes('cm__far--above'))).toHaveLength(1);
     expect(el.querySelector('.cm__pick')?.getAttribute('aria-label')).toContain('desvantagem');
   });
 
@@ -113,8 +112,6 @@ describe('CombatMap: choosing a target (C7-04)', () => {
       pickNote: { id: 'g3', text: 'Goblin 3: cobertura total' },
     });
     expect(el.querySelector('.cm__why')?.textContent).toContain('Goblin 3: cobertura total');
-    expect(el.querySelector('.cm__why')?.className).toContain('cm__why--above');
-    expect(el.querySelector('.cm__why')?.className).toContain('cm__why--right');
     expect(el.querySelector('[role="status"]')?.textContent).toBe('Goblin 3: cobertura total');
   });
 });

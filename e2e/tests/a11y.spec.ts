@@ -1196,6 +1196,10 @@ async function checkTurnAboveTheFold(browser: Browser): Promise<void> {
     expect(new Set(row.map((b) => Math.round(b.y))).size).toBe(1);
     expect(Math.max(...row.map((b) => b.height))).toBeLessThanOrEqual(80);
     await expect(p.getByRole('button', { name: 'Atacar com Raio de Fogo' })).toBeInViewport();
+    // The first action row ends above the sticky bar, not behind it (8px of air).
+    const firstRow = await boxOf(p.locator('app-action-row:visible').first());
+    const bar = await boxOf(p.locator('app-turn-bar'));
+    expect(firstRow.y + firstRow.height + 8).toBeLessThanOrEqual(bar.y);
 
     // The action block comes before the order of initiative.
     const actions = await boxOf(p.getByRole('heading', { name: 'O que você pode fazer' }));
@@ -1748,6 +1752,7 @@ async function scanFighterScreens(browser: Browser, colorScheme: 'light' | 'dark
     await openActionTab(p, 'Ataques');
     await groups.getByRole('button', { name: /^Atacar com Espada/ }).click();
     const sheet = p.getByRole('dialog', { name: /Atacar com Espada/ });
+    await viaTargetList(p, sheet);
     await sheet.locator('label', { hasText: 'Goblin 1' }).click();
     await p.getByRole('button', { name: 'Digitar o resultado' }).click();
     await p.getByLabel(/Role 1d20/).fill('1');
@@ -3668,6 +3673,7 @@ async function scanFogCombatScreens(browser: Browser, colorScheme: 'light' | 'da
     await expect(p.getByTestId('fog-loading')).toHaveCount(0);
     await expectScreenPasses(p, `Combate na névoa, o mapa e a luz ${where}`);
 
+    await openActionTab(p, 'Outras');
     const action = p.locator('app-action-row', { hasText: 'Ver pelos olhos do Nanquim' });
     await expect(action).toBeVisible();
     await expectScreenPasses(p, `Combate na névoa, a ação "Ver pelos olhos do Nanquim" ${where}`);
@@ -6914,6 +6920,7 @@ async function scanRollModeScreens(browser: Browser, colorScheme: 'light' | 'dar
 
     // A better mode than the suggestion is asked of the master: the pending request, on both screens.
     await p.getByRole('button', { name: /^Atacar com Rapieira/ }).click();
+    await viaTargetList(p, p.getByRole('dialog'));
     await p.locator('label', { hasText: 'Goblin 1' }).click();
     await expectScreenPasses(p, `Atacar, o modo normal e o pedido ${where}`);
     await p.locator('.radio__word', { hasText: /^Vantagem$/ }).click();
@@ -7294,6 +7301,7 @@ async function scanLayOnHandsAndInspirationScreens(browser: Browser, colorScheme
     await openActionTab(p, 'Ataques');
     await groups.getByRole('button', { name: /^Atacar com Espada/ }).click();
     const attack = p.getByRole('dialog', { name: /Atacar com Espada/ });
+    await viaTargetList(p, attack);
     await attack.locator('label', { hasText: 'Capitão Goblin' }).click();
     await p.getByRole('button', { name: 'Digitar o resultado' }).click();
     await p.getByLabel(/Role 1d20/).fill('1');
@@ -7365,6 +7373,7 @@ async function scanFlexibleCastingScreens(browser: Browser, colorScheme: 'light'
     await openActionTab(p, 'Magias');
     await groups.getByRole('button', { name: 'Conjurar Enfeitiçar Pessoa' }).click();
     const cast = p.getByRole('dialog', { name: 'Conjurar Enfeitiçar Pessoa' });
+    await viaTargetList(p, cast);
     await cast.locator('label', { hasText: 'Capitão Goblin' }).click();
     await expect(cast.getByRole('heading', { name: /^Metamagia/ })).toBeVisible();
     await expect(cast.getByText('Pontos de Feitiçaria: 3 de 3')).toBeVisible();
@@ -7606,6 +7615,7 @@ async function scanBrutalScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await p.getByRole('button', { name: 'Atacar com Machado grande' }).click();
     // The dialog's name follows its heading, which changes with each step: the one dialog on the page.
     const sheet = p.getByRole('dialog');
+    await viaTargetList(p, sheet);
     await sheet.locator('label', { hasText: 'Goblin 1' }).click();
     await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
     await sheet.getByLabel(/Role 1d20 para Machado grande/).fill('20');
@@ -7775,8 +7785,10 @@ async function scanContestScreens(browser: Browser, colorScheme: 'light' | 'dark
     await closeSheet(hide);
 
     // Agarrar: the target, the wait for the master and his card, the result.
+    await openActionTab(p, 'Ataques');
     await p.getByRole('button', { name: /Agarrar: escolher o alvo/ }).click();
     const grapple = p.getByRole('dialog');
+    await viaTargetList(p, grapple);
     await grapple.getByText('Tenho uma mão livre').click();
     await grapple.locator('label', { hasText: 'Goblin 1' }).click();
     await expectScreenPasses(p, `Agarrar, o alvo ${where}`);
@@ -8110,6 +8122,7 @@ async function scanEffectsPlayerScreens(browser: Browser, colorScheme: 'light' |
     await p.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
     // The sheet's name changes while the result is typed, and the exhaustion of level 4 makes the attack take two d20.
     const attack = p.getByRole('dialog');
+    await viaTargetList(p, attack);
     await attack.locator('label', { hasText: 'Capitão Goblin' }).click();
     await attack.getByRole('button', { name: 'Digitar o resultado' }).click();
     await expect(attack.getByLabel('Resultado do d4 (Bênção)')).toBeVisible();

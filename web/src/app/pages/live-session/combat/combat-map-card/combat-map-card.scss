@@ -164,6 +164,10 @@
 // Choosing a target on a cropped map: the window has a gutter of its own, so the ring of a creature on the map's edge is whole.
 .card__crop--pick {
   --cm-gutter: 0px;
+  padding: 6px;
+}
+
+.card--pick .card__crop--pick {
   padding: 12px;
 }
 

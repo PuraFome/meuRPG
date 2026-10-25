@@ -49,3 +49,45 @@ export function pickWindow(
     rows: high,
   };
 }
+
+/** The card's shape on the player's own turn on a phone: as wide as the screen and about 125px tall (354 × 125), so the first action row ends well above the sticky bar. */
+const TURN_WIDTH = 354;
+const TURN_HEIGHT = 125;
+const TURN_WIDTH_OVER_HEIGHT = TURN_WIDTH / TURN_HEIGHT;
+
+/** The fewest squares across the player's window: a lone token still gets room around it. */
+const TURN_MIN_COLS = 12;
+
+/**
+ * The part of the map a phone shows on the player's turn (C4-03): wide and short, so the turn card and the action tabs start on the
+ * first screen. It holds the player's token and the creatures that fit with a margin, centred on them (on the player's own token
+ * when they do not all fit); "Ver mapa" has the whole map.
+ */
+export function turnWindow(
+  own: Pick<Combatant, 'col' | 'row'>,
+  others: readonly Pick<Combatant, 'col' | 'row'>[],
+  columns: number,
+  rows: number,
+): SquareWindow {
+  const near = others.filter(
+    (t) => Math.abs(t.col - own.col) <= columns / 2 && Math.abs(t.row - own.row) <= rows / 2,
+  );
+  const all = [own, ...near];
+  const c0 = Math.min(...all.map((t) => t.col)) - MARGIN;
+  const c1 = Math.max(...all.map((t) => t.col)) + MARGIN;
+  const r0 = Math.min(...all.map((t) => t.row)) - MARGIN;
+  const r1 = Math.max(...all.map((t) => t.row)) + MARGIN;
+  let high = Math.max(r1 - r0 + 1, Math.ceil(TURN_MIN_COLS / TURN_WIDTH_OVER_HEIGHT));
+  let cols = Math.max(c1 - c0 + 1, Math.ceil(high * TURN_WIDTH_OVER_HEIGHT), TURN_MIN_COLS);
+  cols = Math.min(columns, cols);
+  high = Math.min(rows, Math.max(1, Math.round(cols / TURN_WIDTH_OVER_HEIGHT)));
+  const fits = r1 - r0 + 1 <= high && c1 - c0 + 1 <= cols;
+  const midC = fits ? (c0 + c1) / 2 : own.col;
+  const midR = fits ? (r0 + r1) / 2 : own.row;
+  return {
+    col: Math.min(Math.max(0, Math.round(midC - cols / 2)), columns - cols),
+    row: Math.min(Math.max(0, Math.round(midR - high / 2)), rows - high),
+    cols,
+    rows: high,
+  };
+}
