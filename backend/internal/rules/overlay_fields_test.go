@@ -53,6 +53,15 @@ func TestClassRefusalsNameTheirField(t *testing.T) {
 		{"a list of a class that does not cast", func(o *Overlay) { o.Classes[1].Casting.ListFrom = "class:fighter" }, "classes[1].casting.list_from", ReasonCasting},
 		{"a start level", func(o *Overlay) { o.Classes[1].Casting.StartLevel = 25 }, "classes[1].casting.start_level", ReasonCasting},
 		{"a list on a class that does not cast", func(o *Overlay) { o.Classes[0].Casting.ListFrom = "class:wizard" }, "classes[0].casting.list_from", ReasonCasting},
+		{"an SRD spell on a list that is reused", func(o *Overlay) { o.Classes[1].Casting.SRDSpells = []string{"spell:aid"} }, "classes[1].casting.srd_spell_keys", ReasonCasting},
+		{"an SRD spell that is not there", func(o *Overlay) {
+			o.Classes[1].Casting.ListFrom, o.Classes[1].Casting.SRDSpells = "", []string{"spell:aid", "spell:fantasma"}
+		}, "classes[1].casting.srd_spell_keys[1]", ReasonReference},
+		{"an SRD spell twice", func(o *Overlay) {
+			o.Classes[1].Casting.ListFrom, o.Classes[1].Casting.SRDSpells = "", []string{"spell:aid", "spell:aid"}
+		}, "classes[1].casting.srd_spell_keys[1]", ReasonValue},
+		{"an SRD spell on a class that does not cast", func(o *Overlay) { o.Classes[0].Casting.SRDSpells = []string{"spell:aid"} }, "classes[0].casting.srd_spell_keys", ReasonCasting},
+		{"expanded spells without spells", func(o *Overlay) { o.Subclasses[0].SpellsExpanded = true }, "subclasses[0].spells_expanded", ReasonValue},
 		{"a prepared formula", func(o *Overlay) { o.Classes[1].Casting.PreparedMax = "rand()" }, "classes[1].casting.prepared_max", ReasonFormula},
 		{"a prepared formula without parentheses", func(o *Overlay) { o.Classes[1].Casting.PreparedMax = "level" }, "classes[1].casting.prepared_max", ReasonFormula},
 		{"a third caster's prepared formula", func(o *Overlay) { o.Subclasses[10].Casting.PreparedMax = "rand()" }, "subclasses[10].casting.prepared_max", ReasonFormula},
@@ -105,6 +114,9 @@ func TestClassRefusalsNameTheirField(t *testing.T) {
 		{"a when formula", effect(Effect{Type: "modifier", Target: "ac", Mode: "add", Value: "1", When: "level() +"}), eff + ".when", ReasonFormula},
 		{"a max formula", effect(Effect{Type: "resource", Resource: "surto", Max: "rand()", Recharge: "long_rest"}), eff + ".max", ReasonFormula},
 		{"a proficiency", effect(Effect{Type: "proficiency", Proficiency: "skill:nope"}), eff + ".proficiency", ReasonValue},
+		{"only proficient on a full proficiency", effect(Effect{Type: "proficiency", Proficiency: "skill:arcana", Level: "full", OnlyProficient: true}), eff + ".only_proficient", ReasonValue},
+		{"only proficient on a saving throw", effect(Effect{Type: "proficiency", Proficiency: "save.wis", Level: "expertise", OnlyProficient: true}), eff + ".only_proficient", ReasonValue},
+		{"only proficient on a modifier", effect(Effect{Type: "modifier", Target: "ac", Mode: "add", Value: "1", OnlyProficient: true}), eff + ".only_proficient", ReasonValue},
 		{"a proficiency level", effect(Effect{Type: "proficiency", Proficiency: "skill:arcana", Level: "triple"}), eff + ".level", ReasonValue},
 		{"a roll mode", effect(Effect{Type: "roll_mode", Roll: "luck", Targets: []string{"save.wis"}}), eff + ".roll", ReasonValue},
 		{"no roll targets", effect(Effect{Type: "roll_mode", Roll: "advantage"}), eff + ".targets", ReasonValue},
