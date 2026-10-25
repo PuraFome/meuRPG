@@ -831,6 +831,12 @@ enum Recharge {
   RECHARGE_DAWN = 3;
   // Never on its own: the master decides.
   RECHARGE_NONE = 4;
+  // One use comes back when the owner rolls initiative, only if none is left.
+  RECHARGE_INITIATIVE = 5;
+  // A short rest gives back one use, a long rest gives back all of them.
+  RECHARGE_RESTORE_ONE_ON_SHORT_REST = 6;
+  // A long rest gives back one use; a short rest none.
+  RECHARGE_RESTORE_ONE_ON_LONG_REST = 7;
 }
 
 // Action is something a character does on their turn.
@@ -846,6 +852,23 @@ message Action {
   // Content key of the feature or trait that grants it. Empty for a
   // standard action.
   string source_key = 5;
+  // How many uses of the resource each use of the action spends; 0 or 1 is one. The
+  // action is off while fewer are left.
+  int32 cost = 6;
+  // The most the player may spend on one use; 0 is a fixed cost. Set, the use asks
+  // "quantos?" with a number from `cost` to the smaller of `cost_max` and what is
+  // left, and the server validates it against that range.
+  int32 cost_max = 7;
+  // Hit points the action heals at the base cost (dice, the ability modifier already
+  // in the bonus); unset when it heals none. The target is the owner or one creature
+  // chosen at use.
+  DiceFormula heal = 8;
+  // Temporary hit points at the base cost; 0 when it gives none.
+  int32 temp_hp = 9;
+  // What each point spent above `cost` adds to the heal (dice) and to the temporary
+  // hit points (a flat number).
+  DiceFormula heal_per_point = 10;
+  int32 temp_hp_per_point = 11;
 }
 
 // ActionEconomy is the part of the turn an action costs.

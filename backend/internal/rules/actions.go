@@ -22,6 +22,14 @@ const (
 	RechargeLongRest  = "long_rest"
 	RechargeDawn      = "dawn"
 	RechargeNone      = "none"
+	// RechargeInitiative gives back one use when the owner rolls initiative, only
+	// when none is left.
+	RechargeInitiative = "initiative"
+	// RechargeRestoreOneShort gives back one use on a short rest and all of them on
+	// a long rest; RechargeRestoreOneLong gives back one use on a long rest and none
+	// on a short one.
+	RechargeRestoreOneShort = "restore_one_on_short_rest"
+	RechargeRestoreOneLong  = "restore_one_on_long_rest"
 )
 
 // Resource is a use-limited feature at the character's level: Second Wind
@@ -57,6 +65,13 @@ type Action struct {
 	// ("standard:dash" for Cunning Action's Dash), whose effect on the turn it
 	// has; "" for any other action.
 	Standard string
+	// Cost is how many uses of Resource each use of the action spends, from the
+	// grant_action effect's cost (1 when the effect has none); CostMax, when above
+	// Cost, is the most the player may spend on one use, and the use asks how many.
+	// Both are 0 for an action with no Resource. See actionspend.go.
+	Cost, CostMax int
+	// Result is what a use of the action gives: hit points regained, temporary hit points.
+	Result ActionResult
 }
 
 // featureStandards are the features whose action is a standard action taken

@@ -31,6 +31,27 @@ func RechargesOnRest(recharge, kind string) bool {
 	return false
 }
 
+// Recovery is how much of a resource a moment gives back.
+type Recovery int
+
+// The Recover* values.
+const (
+	RecoverNone Recovery = iota
+	RecoverOne
+	RecoverAll
+)
+
+// RestRecovery says how much of a resource that recharges as recharge a rest of the
+// kind gives back. RecoverAll is what RechargesOnRest answers true to; the recharge
+// "restore_one_on_short_rest" gives one use on a short rest and all on a long one,
+// "restore_one_on_long_rest" one use on a long rest and none on a short one.
+func RestRecovery(recharge, kind string) Recovery { return -1 }
+
+// InitiativeRecovery is how many uses a resource that recharges as recharge gets
+// when its owner rolls initiative with used of total spent: one, and only when none
+// is left (used == total), for the recharge "initiative"; 0 otherwise.
+func InitiativeRecovery(recharge string, used, total int) int { return -1 }
+
 // PactSlotsReturnOn says whether a warlock's pact magic slots come back with the
 // rest (SRD 5.1, Warlock, Pact Magic: "You regain all expended spell slots when
 // you finish a short or long rest"), and SpellSlotsReturnOn whether the other

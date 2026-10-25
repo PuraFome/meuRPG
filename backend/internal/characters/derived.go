@@ -238,10 +238,13 @@ var breathShapeToProto = map[string]rulesv1.BreathShape{
 }
 
 var rechargeToProto = map[string]rulesv1.Recharge{
-	rules.RechargeShortRest: rulesv1.Recharge_RECHARGE_SHORT_REST,
-	rules.RechargeLongRest:  rulesv1.Recharge_RECHARGE_LONG_REST,
-	rules.RechargeDawn:      rulesv1.Recharge_RECHARGE_DAWN,
-	rules.RechargeNone:      rulesv1.Recharge_RECHARGE_NONE,
+	rules.RechargeShortRest:       rulesv1.Recharge_RECHARGE_SHORT_REST,
+	rules.RechargeLongRest:        rulesv1.Recharge_RECHARGE_LONG_REST,
+	rules.RechargeDawn:            rulesv1.Recharge_RECHARGE_DAWN,
+	rules.RechargeNone:            rulesv1.Recharge_RECHARGE_NONE,
+	rules.RechargeInitiative:      rulesv1.Recharge_RECHARGE_INITIATIVE,
+	rules.RechargeRestoreOneShort: rulesv1.Recharge_RECHARGE_RESTORE_ONE_ON_SHORT_REST,
+	rules.RechargeRestoreOneLong:  rulesv1.Recharge_RECHARGE_RESTORE_ONE_ON_LONG_REST,
 }
 
 var economyToProto = map[string]rulesv1.ActionEconomy{

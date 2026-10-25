@@ -92,7 +92,7 @@ message TableEntry {
 // TableEffect is one effect of a feature, from the closed menu: what the engine
 // computes with, never code. `type` is "modifier", "proficiency", "resource",
 // "sense", "roll_mode", "grant_action", "extra_attack", "ranged_attack", "choice", "ability_increase",
-// "superiority_die" or "note"; "ability_increase" is a feat's alone. Only the fields of the type are
+// "superiority_die", "on_event" or "note"; "ability_increase" is a feat's alone. Only the fields of the type are
 // read, and a field the type does not use is refused. A feature with no effects is text only and always valid. Formulas ("value",
 // "when", "max") use level(), classLevel("<class>"), mod("int"), score("int"),
 // prof(), floor, ceil, min and max, and must compile.
@@ -123,7 +123,12 @@ message TableEffect {
   string sense = 11;
   int32 range_ft = 12;
   // resource: a name for the resource, the formula of its maximum and when it
-  // comes back ("short_rest", "long_rest", "dawn" or "none").
+  // comes back ("short_rest", "long_rest", "dawn", "none", "initiative",
+  // "restore_one_on_short_rest" or "restore_one_on_long_rest"). The last three:
+  // "initiative" gives back one use when the owner rolls initiative, only if none is
+  // left; "restore_one_on_short_rest" gives back one use on a short rest and all of
+  // them on a long rest; "restore_one_on_long_rest" gives back one use on a long rest
+  // and none on a short one.
   string resource = 13;
   string max = 14;
   string recharge = 15;
@@ -140,7 +145,7 @@ message TableEffect {
   repeated string from = 18;
   // grant_action: "action", "bonus_action", "reaction", "free" or "movement". The
   // action may also name in `resource` a resource effect of the same entry (or of
-  // its class) to spend: each use spends 1, and the action is off while none is left.
+  // its class) to spend: each use spends `cost` of it (1 when empty), and the action is off while fewer are left.
   string economy = 19;
   // note: spells the feature grants (a race that knows a cantrip).
   repeated string spells = 20;
@@ -179,6 +184,41 @@ message TableEffect {
   // (the barbarian's own rage resistance) counts once.
   string except = 27;
   string while = 28;
+  // grant_action: how many uses of `resource` each use of the action spends, a formula
+  // (level(), prof(), mod(...)); empty is 1. The action is off while fewer are left.
+  // Never above the resource's maximum: an entry whose cost the resource can never
+  // pay is refused.
+  string cost = 29;
+  // grant_action: the most the player may spend on one use, a formula, never below
+  // `cost`. Set, the player chooses at use how many to spend, from `cost` to
+  // `cost_max` (or what is left); the server reads that number in the same
+  // transaction as the use and refuses one outside the range. Empty is a fixed cost.
+  string cost_max = 30;
+  // grant_action with `cost_max`: what each point spent above `cost` adds to the
+  // result. Dice ("1d6", the same sides as `heal`) add to `heal`; a flat formula
+  // adds to `temp_hp` (or to `heal` when the action has no temp_hp). The result of
+  // spending `n` points is the base result plus this value `n - cost` times.
+  string value_per_point = 31;
+  // grant_action and on_event: hit points regained, dice ("1d6", "2d4+2"), at least one
+  // die. For grant_action the target is the owner or one creature chosen at use (the
+  // owner and one ally); `ability` adds that ability's modifier. The heal follows the
+  // rules of the spells: it never passes the maximum and a dead creature is not
+  // healed. For on_event the target is the owner.
+  string heal = 32;
+  // grant_action and on_event: temporary hit points, a formula. They do not stack:
+  // the target keeps the larger of what it had and this.
+  string temp_hp = 33;
+  // on_event: when the hook runs, on the OWNER only: "short_rest" and "long_rest"
+  // (when the owner finishes the rest), "death_save_failed" (when one of the owner's
+  // death saves fails) or "drop_to_zero" (when the owner drops to 0 hit points).
+  string event = 34;
+  // on_event: the name of a resource of the entry (or of its class) whose uses the
+  // hook gives back, as many as `value` (a formula; empty is 1), never above the
+  // maximum.
+  string restore = 35;
+  // on_event: hit points regained as a percentage of the maximum (1 to 100, rounded
+  // down, at least 1), instead of `heal`; the two are not both set.
+  int32 heal_percent_max = 36;
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a

@@ -66,7 +66,8 @@ type Effect struct {
 	Ritual      bool   `json:"ritual,omitempty"`
 
 	// resource: a use-limited resource. Max is an Int formula; Recharge is
-	// short_rest, long_rest, dawn or none. It becomes Derived.Resources; the
+	// short_rest, long_rest, dawn, none, initiative, restore_one_on_short_rest or
+	// restore_one_on_long_rest. It becomes Derived.Resources; the
 	// session counts the uses (RN-02).
 	// RechargeIf is an optional Bool formula: while it holds, the resource
 	// recharges as RechargeThen instead of Recharge (Bardic Inspiration comes
@@ -147,6 +148,25 @@ type Effect struct {
 	// sheet lists only the newest tier; the older one's effects still apply.
 	Replaces string `json:"replaces,omitempty"`
 
+	// grant_action (actions.go): Cost is how many uses of Resource each use spends (an Int
+	// formula; empty is 1) and CostMax, when set, the most the player may spend on one use.
+	// ValuePerPoint is what each point above Cost adds to the result (dice, or a flat
+	// formula); Heal is dice, HealPercentMax (on_event only) a share of the maximum, TempHP a
+	// formula. The same Heal, TempHP and (for the ability modifier) Ability serve on_event.
+	Cost          string `json:"cost,omitempty"`
+	CostMax       string `json:"cost_max,omitempty"`
+	ValuePerPoint string `json:"value_per_point,omitempty"`
+	Heal          string `json:"heal,omitempty"`
+	TempHP        string `json:"temp_hp,omitempty"`
+
+	// on_event (hooks.go): Event is one of the Event* constants, the hook runs for the
+	// owner alone. Restore is the resource whose uses it gives back (Value, an Int
+	// formula, how many; empty is 1) and HealPercentMax a share of the maximum hit
+	// points healed instead of Heal.
+	Event          string `json:"event,omitempty"`
+	Restore        string `json:"restore,omitempty"`
+	HealPercentMax int    `json:"heal_percent_max,omitempty"`
+
 	// handler: the name of a Go function for what data cannot say, from
 	// handlers.
 	Handler string `json:"handler,omitempty"`
@@ -163,7 +183,7 @@ type Effect struct {
 	TextPT string `json:"text_pt,omitempty"`
 
 	// Compiled formulas, filled at load.
-	value, when, preparedMax, max, rechargeIf *formula.Program
+	value, when, preparedMax, max, rechargeIf, cost, costMax, tempHP, perPointFlat *formula.Program
 }
 
 // The closed sets of the effect schema.
@@ -171,7 +191,7 @@ var (
 	effectTypes = []string{
 		"modifier", "proficiency", "roll_mode", "sense", "spellcasting",
 		"resource", "choice", "grant_action", "extra_attack", "note", "handler", "wild_shape", "beast_spells", "replaces",
-		"ability_increase", "superiority_die", "song_of_rest", "ranged_attack", "extra_damage", "ambush", "resistance",
+		"ability_increase", "superiority_die", "song_of_rest", "ranged_attack", "extra_damage", "ambush", "resistance", "on_event",
 	}
 	modifierTargets = []string{
 		"ac.base", "ac", "hp.max", "speed.walk", "initiative",
@@ -183,7 +203,7 @@ var (
 	rollModes         = []string{"advantage", "disadvantage"}
 	senses            = []string{"darkvision", "blindsight", "tremorsense", "truesight"}
 	progressions      = []string{"full", "half", "third", "pact"}
-	recharges         = []string{"short_rest", "long_rest", "dawn", "none"}
+	recharges         = []string{RechargeShortRest, RechargeLongRest, RechargeDawn, RechargeNone, RechargeInitiative, RechargeRestoreOneShort, RechargeRestoreOneLong}
 	choiceKinds       = []string{
 		"skill", "expertise", "cantrip", "spell", "subclass", "feature",
 		"language", "tool", "ability_score_improvement", "feat",

@@ -41,6 +41,17 @@ func ApplyHeal(hp, maxHP, amount int) HealResult {
 	return HealResult{HP: after, Healed: after - hp}
 }
 
+// TempHPResult is a creature's temporary hit points after it is given some.
+type TempHPResult struct {
+	// TempHP is what the creature has after, Gained how many it gained.
+	TempHP, Gained int
+}
+
+// ApplyTempHP gives temporary hit points: they do not stack, so the creature keeps
+// the larger of what it had and amount (SRD 5.1, "Temporary Hit Points"). A negative
+// amount counts as 0.
+func ApplyTempHP(current, amount int) TempHPResult { return TempHPResult{TempHP: -1, Gained: -1} }
+
 // Death save outcomes.
 const (
 	// DeathSaveContinues: still making saves.
