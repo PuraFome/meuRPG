@@ -310,6 +310,28 @@ describe('the refusals of the server, back on the fields (E10-01 state 5)', () =
       'bad_casting',
       'A conjuração começa num nível de 1 a 20, e uma subclasse não conjura antes de ser escolhida.',
     ],
+    [
+      'table_class.casting.srd_spell_keys[1]',
+      'dangling_reference',
+      'Esta magia não está no SRD. Tire-a da lista.',
+    ],
+    ['table_class.casting.srd_spell_keys[1]', 'bad_value', 'Esta magia está na lista duas vezes.'],
+    [
+      'table_class.casting.srd_spell_keys',
+      'bad_casting',
+      'Só uma classe com lista própria tem magias do SRD. Escolha "A própria lista da classe".',
+    ],
+    ['table_class.casting.srd_spell_keys', 'limit', 'A lista passou de 400 magias do SRD.'],
+    [
+      'table_subclass.spells_expanded',
+      'bad_value',
+      'Esta marca precisa de magias na subclasse. Adicione magias ou desligue.',
+    ],
+    [
+      'table_class.levels[0].features[0].effects[0].only_proficient',
+      'bad_value',
+      'Só vale para a especialização numa perícia.',
+    ],
     ['table_subclass.class_key', 'dangling_reference', 'A classe desta subclasse não existe mais.'],
     ['table_subclass.level', 'bad_value', 'A subclasse é escolhida no nível da classe.'],
     [

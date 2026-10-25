@@ -98,6 +98,20 @@
       }
     </div>
     <app-field-note [issues]="issuesOf('table_subclass.always_prepared')" />
+    @if (hasSpells()) {
+      <div class="expanded" data-field="table_subclass.spells_expanded">
+        <app-switch-field
+          label="As magias da subclasse entram na lista da classe, para escolher"
+          [checked]="d.spellsExpanded"
+          path="table_subclass.spells_expanded"
+          (toggled)="patch({ spellsExpanded: $event })"
+        />
+        <p class="hint">
+          {{ d.spellsExpanded ? 'A pessoa escolhe estas magias como as outras da lista, e elas contam no limite.' : 'Desligado: elas são sempre preparadas.' }}
+        </p>
+        <app-field-note [issues]="issuesOf('table_subclass.spells_expanded')" />
+      </div>
+    }
     @if (freeLevels().length > 0) {
       <div class="addlevel">
         <app-select-field label="Adicionar nível" [options]="freeLevels()" value="" placeholder="Escolha o nível…" (valueChange)="addGroup($event)" />

@@ -129,6 +129,56 @@ describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
     expect(emitted.at(-1)?.rangeM).toBe('9');
   });
 
+  it('offers "Só onde já tem proficiência" for the level Especialização on a skill, and turns it on', () => {
+    setup({
+      ...emptyEffect('proficiency'),
+      proficiency: 'skill:perception',
+      level: 'expertise',
+    });
+    const only = field('only_proficient') as HTMLInputElement;
+    expect(only).not.toBeNull();
+    expect(only.type).toBe('checkbox');
+    expect(only.checked).toBe(false);
+    expect(text(el)).toContain('Só onde já tem proficiência');
+    expect(text(el)).toContain('Quem não é, fica como está.');
+    only.dispatchEvent(new Event('change'));
+    expect(emitted.at(-1)?.onlyProficient).toBe(true);
+
+    // On, it reads as on and a refusal shows under it.
+    setup(
+      {
+        ...emptyEffect('proficiency'),
+        proficiency: 'skill:perception',
+        level: 'expertise',
+        onlyProficient: true,
+      },
+      {
+        issues: {
+          'table_race.traits[0].effects[0].only_proficient': [
+            'Só vale para a especialização numa perícia.',
+          ],
+        },
+      },
+    );
+    expect((field('only_proficient') as HTMLInputElement).checked).toBe(true);
+    expect(text(el)).toContain('Só vale para a especialização numa perícia.');
+  });
+
+  it('leaves the switch out where it means nothing: another level, or a target that is not a skill', () => {
+    setup({ ...emptyEffect('proficiency'), proficiency: 'skill:perception', level: 'full' });
+    expect(field('only_proficient')).toBeNull();
+    setup({ ...emptyEffect('proficiency'), proficiency: 'save.wis', level: 'expertise' });
+    expect(field('only_proficient')).toBeNull();
+    setup(emptyEffect('proficiency'));
+    (
+      Array.from(el.querySelectorAll('button')).find((b) =>
+        text(b).includes('Mais opções'),
+      ) as HTMLButtonElement
+    ).click();
+    fixture.detectChanges();
+    expect(field('only_proficient')).toBeNull();
+  });
+
   it("shows ranged_attack's switches and multiplier unfolded, though none is required, and turns a switch on", () => {
     const ranged = rangedAttackMenu();
     setup({ ...emptyEffect('ranged_attack'), applies: 'spell' }, { menu: ranged });
