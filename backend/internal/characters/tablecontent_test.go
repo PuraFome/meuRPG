@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -575,12 +576,12 @@ func TestTableContentLimits(t *testing.T) {
 	// 999 entries, written straight into the table: each through the API would take minutes.
 	ctx := t.Context()
 	for i := range 999 {
-		name := "Antecedente " + strings.Repeat("x", i%5) + string(rune('a'+i%26)) + string(rune('a'+i/26))
+		name := "Antecedente " + strings.Repeat("x", i%5) + strconv.Itoa(i)
 		data, err := storedData(testBackground(name))
 		if err != nil {
 			t.Fatal(err)
 		}
-		slug := slugify(name) + "-" + string(rune('a'+i/26)) + string(rune('a'+i%26))
+		slug := slugify(name) + "-" + strconv.Itoa(i)
 		if _, err := h.pool.Exec(ctx, `INSERT INTO campaign_content (campaign_id, content_key, kind, name_pt, data, revision, created_at, updated_at)
 			VALUES ($1, $2, 'background', $3, $4, 1, now(), now())`, campaign, "background:"+slug+"@mesa", name+" "+slug, data); err != nil {
 			t.Fatalf("insert entry %d: %v", i, err)
