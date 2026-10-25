@@ -40,6 +40,7 @@ import { MineTabs } from './mine-tabs/mine-tabs';
 import { TrapDamages } from '../traps/trap-damages/trap-damages';
 import { OrderColumn } from './turn-panel/order-column';
 import { OrderStrip } from './turn-panel/order-strip';
+import { MasterSpend } from './theatre/master-spend';
 import { ActAsCard } from './master-acts/act-as-card';
 import { ActingBand } from './master-acts/acting-band';
 import { EconomyShapes } from '../../../shared/economy-shapes/economy-shapes';
@@ -60,6 +61,7 @@ import { MapTab } from './map-tabs/map-tab';
 export const COMBAT_VIEW_IMPORTS = [
   TargetBar,
   ActAsCard,
+  MasterSpend,
   ActingBand,
   EconomyShapes,
   OwnNumbers,
