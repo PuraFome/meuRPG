@@ -43,6 +43,7 @@ import { ArchiveQuestion } from '../archive/archive-question';
 import { BackgroundEditor } from '../background-editor/background-editor';
 import { EntryRead } from '../entry-read/entry-read';
 import { FeatEditor } from '../feat-editor/feat-editor';
+import { OptionEditor } from '../option-editor/option-editor';
 import { RaceEditor } from '../race-editor/race-editor';
 import { type EditorSaved, SpellEditor } from '../spell-editor/spell-editor';
 import { ClassEditor } from '../class-editor/class-editor';
@@ -90,6 +91,7 @@ type PageState =
     ClassEditor,
     EntryRead,
     FeatEditor,
+    OptionEditor,
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
@@ -447,9 +449,5 @@ export class ContentEntry {
         ctx: { ...s.ctx, entries: replaceEntry(s.ctx.entries, entry) },
       });
     }
-  }
-
-  protected characterLink(a: AffectedCharacter): string[] {
-    return ['/campaigns', this.campaignId(), 'characters', a.characterId];
   }
 }

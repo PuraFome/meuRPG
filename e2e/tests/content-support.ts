@@ -42,7 +42,7 @@ export function raceBody(namePt = 'Corujeiro'): Record<string, unknown> {
   };
 }
 
-export async function createEntryRPC(master: Page, campaignId: string, kind: 'tableSpell' | 'tableRace' | 'tableBackground', body: Record<string, unknown>): Promise<string> {
+export async function createEntryRPC(master: Page, campaignId: string, kind: 'tableSpell' | 'tableRace' | 'tableBackground' | 'tableOption', body: Record<string, unknown>): Promise<string> {
   const res = await callRPC(master, `${service}/CreateTableEntry`, { campaignId, [kind]: body });
   expect(res.ok(), await res.text()).toBeTruthy();
   return (await res.json()).entry.key as string;
@@ -66,7 +66,7 @@ export function entryRoute(campaignId: string, key: string): string {
 }
 
 /** `UpdateTableEntry` at the entry's current revision, as the other master's tab would. */
-export async function updateEntryRPC(master: Page, campaignId: string, key: string, kind: 'tableSpell' | 'tableRace' | 'tableBackground', body: Record<string, unknown>): Promise<void> {
+export async function updateEntryRPC(master: Page, campaignId: string, key: string, kind: 'tableSpell' | 'tableRace' | 'tableBackground' | 'tableOption', body: Record<string, unknown>): Promise<void> {
   const current = (await listEntriesJSON(master, campaignId)).entries!.find((e) => e.key === key)!;
   const res = await callRPC(master, `${service}/UpdateTableEntry`, { campaignId, key, expectedRevision: current.revision, [kind]: body });
   expect(res.ok(), await res.text()).toBeTruthy();
