@@ -676,6 +676,8 @@ func immutableChange(kind rulesv1.TableContentKind, old, next tableBody) *rulesv
 			}
 		}
 		return nil
+	case rulesv1.TableContentKind_TABLE_CONTENT_KIND_CLASS_FEATURE:
+		from, to, field = old.(*rulesv1.TableClassFeature).GetClassKey(), next.(*rulesv1.TableClassFeature).GetClassKey(), "table_class_feature.class_key"
 	case rulesv1.TableContentKind_TABLE_CONTENT_KIND_OPTION:
 		from, to, field = old.(*rulesv1.TableOption).GetSet(), next.(*rulesv1.TableOption).GetSet(), "table_option.set"
 	case rulesv1.TableContentKind_TABLE_CONTENT_KIND_SUBCLASS:

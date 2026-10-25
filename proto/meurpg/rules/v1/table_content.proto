@@ -50,6 +50,10 @@ enum TableContentKind {
   // option, a fighting style, a Pact Boon...), written by the master. The choice of
   // that set offers it next to the SRD's options (MR-025).
   TABLE_CONTENT_KIND_OPTION = 8;
+  // An optional feature of a class (SRD or the table's), at a class level: every
+  // character of the class has it from that level, and it may take the place of a
+  // feature the class has (MR-025).
+  TABLE_CONTENT_KIND_CLASS_FEATURE = 9;
 }
 
 // TableEntry is one entry of the table's content, as ListTableEntries and the
@@ -91,6 +95,7 @@ message TableEntry {
     TableSpell table_spell = 15;
     TableFeat table_feat = 17;
     TableOption table_option = 18;
+    TableClassFeature table_class_feature = 19;
   }
 }
 
@@ -263,6 +268,29 @@ message OptionClassLevel {
   string class_key = 1;
   // 1 to 20.
   int32 level = 2;
+}
+
+// TableClassFeature is a feature the master adds to a class, as a table entry
+// "classfeature:<slug>@mesa": it is in the class's row of `level`, like a feature of
+// the class's own table, so the sheet, the level-up and play read it where they read
+// the class's features. A table class's own features go in its rows; this is for a
+// class the table does not own (an SRD class) and for what the master wants to switch
+// on and off by itself.
+message TableClassFeature {
+  string name_pt = 1;
+  // The text, one paragraph per entry.
+  repeated string desc_pt = 2;
+  // The class that has it: an SRD class or a table class. Never changes.
+  string class_key = 3;
+  // The class level it comes at, 1 to 20.
+  int32 level = 4;
+  // A feature of the same class that it takes the place of (an SRD feature, or another
+  // table class feature), which the character no longer has: its effects, its choices
+  // and its line on the sheet are gone. The replaced feature comes at the level of this
+  // one or later (a character never loses what it already had). Empty replaces nothing.
+  string replaces_feature_key = 5;
+  // At most 20. A `choice` effect asks the player at the level, like any feature's.
+  repeated TableEffect effects = 6;
 }
 
 // TableCasting is how a class, or a third caster's subclass, casts.
@@ -867,6 +895,7 @@ message CreateTableEntryRequest {
     TableSpell table_spell = 15;
     TableFeat table_feat = 17;
     TableOption table_option = 18;
+    TableClassFeature table_class_feature = 19;
   }
   // Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
   // same key and the same request returns what the first call made instead of making another.
@@ -901,6 +930,7 @@ message UpdateTableEntryRequest {
     TableSpell table_spell = 15;
     TableFeat table_feat = 17;
     TableOption table_option = 18;
+    TableClassFeature table_class_feature = 19;
   }
 }
 

@@ -53,6 +53,7 @@ var tableKinds = []struct {
 	{"spell", rulesv1.TableContentKind_TABLE_CONTENT_KIND_SPELL},
 	{"feat", rulesv1.TableContentKind_TABLE_CONTENT_KIND_FEAT},
 	{"option", rulesv1.TableContentKind_TABLE_CONTENT_KIND_OPTION},
+	{"classfeature", rulesv1.TableContentKind_TABLE_CONTENT_KIND_CLASS_FEATURE},
 }
 
 func kindPrefix(k rulesv1.TableContentKind) string {
@@ -105,6 +106,8 @@ func newBody(kind rulesv1.TableContentKind) tableBody {
 		return &rulesv1.TableFeat{}
 	case rulesv1.TableContentKind_TABLE_CONTENT_KIND_OPTION:
 		return &rulesv1.TableOption{}
+	case rulesv1.TableContentKind_TABLE_CONTENT_KIND_CLASS_FEATURE:
+		return &rulesv1.TableClassFeature{}
 	}
 	return nil
 }
@@ -128,10 +131,12 @@ func setBody(e *rulesv1.TableEntry, b tableBody) {
 		e.Body = &rulesv1.TableEntry_TableFeat{TableFeat: v}
 	case *rulesv1.TableOption:
 		e.Body = &rulesv1.TableEntry_TableOption{TableOption: v}
+	case *rulesv1.TableClassFeature:
+		e.Body = &rulesv1.TableEntry_TableClassFeature{TableClassFeature: v}
 	}
 }
 
-// bodyFields are the eight oneof getters of a write request.
+// bodyFields are the nine oneof getters of a write request.
 type bodyFields interface {
 	GetTableClass() *rulesv1.TableClass
 	GetTableSubclass() *rulesv1.TableSubclass
@@ -141,6 +146,7 @@ type bodyFields interface {
 	GetTableSpell() *rulesv1.TableSpell
 	GetTableFeat() *rulesv1.TableFeat
 	GetTableOption() *rulesv1.TableOption
+	GetTableClassFeature() *rulesv1.TableClassFeature
 }
 
 // bodyOf is the body a request carries, with the kind it gives, or nil.
@@ -162,6 +168,8 @@ func bodyOf(r bodyFields) (tableBody, rulesv1.TableContentKind) {
 		return r.GetTableFeat(), rulesv1.TableContentKind_TABLE_CONTENT_KIND_FEAT
 	case r.GetTableOption() != nil:
 		return r.GetTableOption(), rulesv1.TableContentKind_TABLE_CONTENT_KIND_OPTION
+	case r.GetTableClassFeature() != nil:
+		return r.GetTableClassFeature(), rulesv1.TableContentKind_TABLE_CONTENT_KIND_CLASS_FEATURE
 	}
 	return nil, rulesv1.TableContentKind_TABLE_CONTENT_KIND_UNSPECIFIED
 }
@@ -247,6 +255,12 @@ func overlayFromEntries(entries []entryRow, revision int) (rules.Overlay, overla
 		case *rulesv1.TableOption:
 			o.Options = append(o.Options, tableOptionOf(te, b))
 			idx["options"] = append(idx["options"], e)
+		case *rulesv1.TableClassFeature:
+			o.ClassFeatures = append(o.ClassFeatures, rules.TableClassFeature{
+				TableEntry: te, DescPT: b.GetDescPt(), Class: b.GetClassKey(), Level: int(b.GetLevel()),
+				Replaces: b.GetReplacesFeatureKey(), Effects: tableEffectsOf(b.GetEffects()),
+			})
+			idx["class_features"] = append(idx["class_features"], e)
 		}
 	}
 	return o, idx
@@ -604,7 +618,7 @@ func violationOf(oe *rules.OverlayError, idx overlayIndex, entry string) *rulesv
 
 // overlayPath splits "classes[2].levels[4]" into the kind's list, the index and
 // the rest.
-var overlayPath = regexp.MustCompile(`^(classes|subclasses|races|subraces|backgrounds|spells|feats|options)\[(\d+)\](.*)$`)
+var overlayPath = regexp.MustCompile(`^(classes|subclasses|races|subraces|backgrounds|spells|feats|options|class_features)\[(\d+)\](.*)$`)
 
 // slugify makes the slug of a key from a Portuguese name: lower case, without
 // accents, the rest of it a-z0-9 joined by hyphens, at most rules.MaxSlugLength.
@@ -975,6 +989,11 @@ func (v playerView) strip(body tableBody) {
 		v.stripFeat(b)
 	case *rulesv1.TableOption:
 		v.stripOption(b)
+	case *rulesv1.TableClassFeature:
+		v.dropEffects([]*rulesv1.TableFeature{{Effects: b.GetEffects()}})
+		if v.hidden(b.GetReplacesFeatureKey()) {
+			b.ReplacesFeatureKey = "" // a feature the players do not see is not named to them
+		}
 	}
 }
 
