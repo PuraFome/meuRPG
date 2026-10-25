@@ -1,24 +1,24 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  ElementRef,
-  Injector,
-  afterNextRender,
   computed,
-  effect,
-  inject,
   input,
   output,
-  viewChild,
+  signal,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
+import { DiceMode, type DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import type { Combatant } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import type { AttackDie } from '../../../../core/combat/combat-client-types';
+import { article } from '../../../../core/combat/combat-log';
+import { combatantInitial } from '../../../../core/combat/combat-view';
 import { countText } from '../../../../core/combat/death-saves';
+import { joinDots } from '../../../../core/format/text';
+import type { VitalsVm } from '../../../../core/play/live-session.types';
+import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
+import type { CombatantInfo } from '../combat-info';
 import { DeathMarks } from '../death-saves/death-marks';
 import { RollPicker } from '../../../../shared/roll-picker/roll-picker';
 
@@ -29,57 +29,65 @@ export interface DeathSaveRoll {
 }
 
 /**
- * The master's death save for a player who is not there (RN-03, RN-18): on the
- * turn of a downed character whose save is still due, the card "Teste contra a
- * morte de Brisa" with "Rolar teste contra a morte de Brisa" ("Rolar no app" or
- * "Digitar o resultado", as the table's dice mode and the master's preference
- * say, the same picker the player's own card uses). Without it the character
- * would never stabilise or die when its player is away, because the master's
- * "Próximo turno" does not wait for the save. Once rolled, the card stays with
- * the result line (only the master and the owner ever read it, RN-24). When the
- * master taps "Próximo turno" with the save still due, `asking` swaps in the
- * question in place: "Rolar agora" (safe, with the focus) or "Passar sem rolar".
+ * The turn card of a downed player character on the master's "Turno" (C8-03, RN-03, RN-18): "Toren está caído: teste contra a
+ * morte", before anything else. A downed character's turn starts with its death save (SRD 5.1), so the card shows the successes and
+ * failures so far, one line of the rule, "Rolar por Toren" (the app's dice) and "Digitar o resultado" (a physical die), at the same
+ * size, as the table's dice mode allows. The turn does not pass until the save is made ("Próximo turno" is off, the bar says why), and
+ * there is no "Agir por": the character does only the save. Once rolled, the line of the result stays (only the master and the owner
+ * ever read it, RN-24).
  */
 @Component({
   selector: 'app-death-save-due',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DeathMarks, MatButtonModule, MatIconModule, RollPicker],
+  imports: [CombatantToken, DeathMarks, MatButtonModule, MatIconModule, RollPicker],
   template: `
     @for (c of due(); track c.id) {
-      <section #box class="due mr-notice mr-notice--warning" [attr.aria-label]="'Teste contra a morte de ' + c.label" data-testid="death-save-due">
-        <mat-icon aria-hidden="true">casino</mat-icon>
+      <section class="due mr-notice mr-notice--danger" [attr.aria-label]="'Teste contra a morte de ' + c.label" data-testid="death-save-due">
         <div class="due__body">
-          <h3 class="due__title">Teste contra a morte de {{ c.label }}</h3>
-          <div class="due__row">
-            <span class="due__name"><b>Sucessos</b><small>{{ count(c.deathSuccesses) }}</small></span>
-            <app-death-marks kind="success" [count]="c.deathSuccesses" />
-          </div>
-          <div class="due__row">
-            <span class="due__name"><b>Falhas</b><small>{{ count(c.deathFailures) }}</small></span>
-            <app-death-marks kind="failure" [count]="c.deathFailures" />
-          </div>
-          @if (asking()) {
-            <div class="due__ask" role="alertdialog" [attr.aria-label]="'O teste contra a morte de ' + c.label + ' ainda não foi rolado'">
-              <p class="due__text"><strong>O teste contra a morte de {{ c.label }} ainda não foi rolado.</strong></p>
-              <div class="due__btns">
-                <button #safe mat-stroked-button type="button" class="due__btn" (click)="rollNow.emit()">Rolar agora</button>
-                <button mat-stroked-button type="button" class="due__btn" [disabled]="busy()" (click)="pass.emit()">Passar sem rolar</button>
-              </div>
+          <div class="due__head">
+            <app-combatant-token [initial]="initial(c)" [current]="true" [size]="44" />
+            <div class="due__who">
+              <h3 class="due__title">{{ c.label }} está {{ down(c) }}: teste contra a morte</h3>
+              <p class="due__sub">{{ sub(c) }}</p>
             </div>
+          </div>
+          <div class="due__rows">
+            <div class="due__row">
+              <app-death-marks kind="success" [count]="c.deathSuccesses" />
+              <span class="due__name"><b>Sucessos</b><small>{{ count(c.deathSuccesses) }}</small></span>
+            </div>
+            <div class="due__row">
+              <app-death-marks kind="failure" [count]="c.deathFailures" />
+              <span class="due__name"><b>Falhas</b><small>{{ count(c.deathFailures) }}</small></span>
+            </div>
+          </div>
+          <p class="due__rule">1d20 sem modificador: 10 ou mais é sucesso; 1 conta duas falhas; 20 levanta {{ c.label }} com 1 PV.</p>
+          <div class="due__btns">
+            @if (canApp()) {
+              <button mat-flat-button type="button" class="due__btn" [disabled]="busy()" disabledInteractive (click)="roll.emit({ id: c.id, die: { inApp: true } })">
+                <mat-icon aria-hidden="true">casino</mat-icon>Rolar por {{ c.label }}
+              </button>
+            }
+            @if (canType()) {
+              <button mat-stroked-button type="button" class="due__btn" [attr.aria-expanded]="typing()" (click)="typing.set(!typing())">
+                <mat-icon aria-hidden="true">edit</mat-icon>Digitar o resultado
+              </button>
+            }
+          </div>
+          @if (typing() || !canApp()) {
+            <app-roll-picker
+              [compact]="true"
+              [canApp]="false"
+              [canType]="true"
+              [typing]="true"
+              [label]="'Role 1d20 para o teste contra a morte de ' + c.label"
+              hint="Role o dado e digite o número que saiu (1 a 20)."
+              totalNote="Teste contra a morte"
+              [busy]="busy()"
+              (typed)="roll.emit({ id: c.id, die: { face: $event } })"
+            />
           }
-          <app-roll-picker
-            [compact]="true"
-            [canApp]="canApp()"
-            [canType]="canType()"
-            [preferApp]="preferApp()"
-            [label]="'Role 1d20 para o teste contra a morte de ' + c.label"
-            hint="Role o dado e digite o número que saiu (1 a 20)."
-            totalNote="Teste contra a morte"
-            [busy]="busy()"
-            [appLabel]="'Rolar o teste contra a morte de ' + c.label"
-            (app)="roll.emit({ id: c.id, die: { inApp: true } })"
-            (typed)="roll.emit({ id: c.id, die: { face: $event } })"
-          />
+          <p class="due__note"><mat-icon aria-hidden="true">info</mat-icon>O turno de {{ c.label }} só passa depois do teste.</p>
         </div>
       </section>
     } @empty {
@@ -132,17 +140,53 @@ export interface DeathSaveRoll {
       gap: 8px;
     }
 
+    .due__head {
+      align-items: center;
+      display: flex;
+      gap: 12px;
+    }
+
+    .due__title {
+      font-family: var(--mr-font-display);
+      font-size: 22px;
+      line-height: 26px;
+    }
+
+    .due__sub,
+    .due__rule,
+    .due__note {
+      margin: 0;
+      font-size: 14px;
+      line-height: 19px;
+    }
+
+    .due__rows {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 20px;
+    }
+
+    .due__note {
+      align-items: center;
+      display: flex;
+      gap: 6px;
+
+      .mat-icon {
+        flex: none;
+        font-size: 16px;
+        height: 16px;
+        width: 16px;
+      }
+    }
+
     .due__btns {
       display: grid;
       gap: 10px;
       grid-template-columns: minmax(0, 1fr);
-
-      @media (min-width: 768px) {
-        grid-template-columns: repeat(2, 200px);
-      }
     }
 
     .due__btn {
+      --mat-button-filled-container-height: 48px;
       --mat-button-outlined-container-height: 48px;
       --mat-button-outlined-label-text-color: var(--mr-ink);
       --mat-button-outlined-outline-color: var(--mr-control-line);
@@ -150,14 +194,13 @@ export interface DeathSaveRoll {
       white-space: nowrap;
 
       @media (min-width: 768px) {
+        --mat-button-filled-container-height: 44px;
         --mat-button-outlined-container-height: 44px;
       }
     }
   `,
 })
 export class DeathSaveDue {
-  private readonly injector = inject(Injector);
-
   /** The player characters at 0 hit points whose save is due this turn (`death_save_due`). */
   readonly due = input.required<readonly Combatant[]>();
   readonly busy = input(false);
@@ -165,40 +208,35 @@ export class DeathSaveDue {
   readonly dicePreference = input.required<DicePreference>();
   /** The sentence of the save just rolled ("Teste contra a morte: ..."), shown once nothing is due. */
   readonly result = input('');
-  /** "Próximo turno" was tapped with a save due: the question takes the card. */
-  readonly asking = input(false);
+  /** "Guerreiro 3" by character id, and the characters' hit points, for the line under the title. */
+  readonly info = input<ReadonlyMap<string, CombatantInfo>>(new Map());
+  readonly vitals = input<readonly VitalsVm[]>([]);
 
   readonly roll = output<DeathSaveRoll>();
-  /** "Rolar agora": the question goes away and the roll is next. */
-  readonly rollNow = output<void>();
-  /** "Passar sem rolar": the turn ends with the save unrolled. */
-  readonly pass = output<void>();
 
-  private readonly safe = viewChild('safe', { read: ElementRef<HTMLButtonElement> });
-  private readonly box = viewChild('box', { read: ElementRef<HTMLElement> });
-
+  protected readonly typing = signal(false);
   protected readonly canApp = computed(() => this.diceMode() !== DiceMode.PHYSICAL);
   protected readonly canType = computed(() => this.diceMode() !== DiceMode.APP);
-  protected readonly preferApp = computed(
-    () => effectivePreference(this.diceMode(), this.dicePreference()) === DicePreference.APP,
-  );
-
-  constructor() {
-    // The question opens with the focus on the safe answer, "Rolar agora" (a stray Enter must not skip a death save).
-    effect(() => {
-      if (this.asking()) {
-        afterNextRender(
-          () => {
-            this.box()?.nativeElement.scrollIntoView({ block: 'start' });
-            this.safe()?.nativeElement.focus({ preventScroll: true });
-          },
-          { injector: this.injector },
-        );
-      }
-    });
-  }
 
   protected count(n: number): string {
     return countText(n);
+  }
+
+  protected initial(c: Combatant): string {
+    return combatantInitial(c.label);
+  }
+
+  /** "caído" or "caída", by the name's article. */
+  protected down(c: Combatant): string {
+    return article(c.label) === 'a' ? 'caída' : 'caído';
+  }
+
+  /** "Guerreiro 3 · 0 de 28 PV". */
+  protected sub(c: Combatant): string {
+    const max = this.vitals().find((v) => v.characterId === c.characterId)?.hitPointsMax;
+    return joinDots([
+      this.info().get(c.characterId)?.classSummary ?? '',
+      max === undefined ? '0 PV' : `0 de ${max} PV`,
+    ]);
   }
 }

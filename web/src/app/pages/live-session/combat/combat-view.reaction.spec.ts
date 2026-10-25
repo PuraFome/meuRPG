@@ -241,7 +241,7 @@ describe('CombatView, the reaction windows', () => {
     });
     await settle(fixture);
     expect(opened.filter((o) => o.component === ReactionSheet)).toHaveLength(0);
-    expect(plain(el.querySelector('app-reaction-queue')?.textContent)).toContain(
+    expect(plain(el.querySelector('app-reaction-queue[part="rest"]')?.textContent)).toContain(
       'Esperando a sua reação: o Mago 1 pode conjurar Escudo Arcano',
     );
   });

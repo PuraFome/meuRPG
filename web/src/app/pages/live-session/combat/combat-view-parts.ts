@@ -139,6 +139,8 @@ export abstract class CombatViewPartsDirective extends CombatViewActingDirective
   });
   protected readonly heldCount = computed(() => pendingCountText(this.held.count()));
   protected readonly heldCanType = computed(() => this.diceMode() !== DiceMode.APP);
+  /** The master may roll in the app for a player (the campaign did not force physical dice). */
+  protected readonly heldCanRoll = computed(() => this.diceMode() !== DiceMode.PHYSICAL);
   /** The roller's notice when the master answered the question they were shown. */
   protected readonly vanish = new HeldVanishWatch();
 

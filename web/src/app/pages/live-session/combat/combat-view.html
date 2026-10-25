@@ -39,6 +39,8 @@
               [busy]="busy()"
               [heldQuestions]="held"
               [heldCanType]="heldCanType()"
+              [canRoll]="heldCanRoll()"
+              (rollFor)="initiative.rollInApp($event)"
               (submit)="initiative.submitFace($event.id, $event.face)"
               (order)="initiative.setOrder($event)"
             />
@@ -595,6 +597,8 @@
 
 <ng-template #masterWaiting>
   @if (encounter(); as e) {
+    <!-- A player's reaction nobody answered in 10 s (C8-04): the question comes to the master, at the top. -->
+    <app-reaction-queue [encounter]="e" [campaignId]="campaignId()" [state]="state()" [autoLeft]="autoLeft()" part="late" />
     @for (q of held.entries(); track q.holdId) {
       <app-held-question layout="card" [question]="q" [canType]="heldCanType()" [target]="layout.heldTarget(q)" />
     }
@@ -626,6 +630,8 @@
       [diceMode]="diceMode()"
       [dicePreference]="dicePreference()"
       [result]="deaths.masterResult()"
+      [info]="info()"
+      [vitals]="vitals()"
       (roll)="deaths.rollMaster($event)"
     />
     <app-death-question
@@ -691,7 +697,7 @@
 <ng-template #masterAfter>
   @if (encounter(); as e) {
     <!-- The reaction windows the master answers (PM-04): below the card, in the order the server answers them. -->
-    <app-reaction-queue [encounter]="e" [campaignId]="campaignId()" [state]="state()" [autoLeft]="autoLeft()" />
+    <app-reaction-queue [encounter]="e" [campaignId]="campaignId()" [state]="state()" [autoLeft]="autoLeft()" part="rest" />
     <!-- The contests that wait for the master (W7-X): CONTEST windows, Hide, grapples; never answered with AnswerReaction. -->
     <app-contest-master
       [encounter]="e"
