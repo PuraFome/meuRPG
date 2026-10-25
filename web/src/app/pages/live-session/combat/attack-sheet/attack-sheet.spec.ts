@@ -307,28 +307,6 @@ describe('AttackSheet: the target list without a map (RN-25)', () => {
 });
 
 describe('AttackSheet: the list as the fallback of the map (C7-04)', () => {
-  it('moves on to the roll when a pointer chose the target, even if the click event has no detail', () => {
-    const { fixture, el } = setup({
-      diceMode: DiceMode.PHYSICAL,
-      targets: [
-        {
-          id: 'cap',
-          label: 'Capitão Goblin',
-          cover: 0,
-          untargetable: false,
-          distanceFt: 5,
-          inReach: true,
-        },
-      ],
-    });
-    el.querySelector('.target')!.dispatchEvent(new Event('pointerdown', { bubbles: true }));
-    const input = el.querySelector('.target input') as HTMLInputElement;
-    input.checked = true;
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-    fixture.detectChanges();
-    expect(el.querySelector('app-roll-picker')).not.toBeNull();
-  });
-
   const targets = [
     {
       id: 'cap',
@@ -339,6 +317,17 @@ describe('AttackSheet: the list as the fallback of the map (C7-04)', () => {
       inReach: true,
     },
   ];
+
+  it('lets the radio be chosen by a click with no detail (the label’s own), and does not go on', () => {
+    const { fixture, el } = setup({ diceMode: DiceMode.PHYSICAL, targets });
+    const input = el.querySelector('.target input') as HTMLInputElement;
+    const click = new MouseEvent('click', { bubbles: true, cancelable: true, detail: 0 });
+    input.dispatchEvent(click);
+    fixture.detectChanges();
+    expect(click.defaultPrevented).toBe(false);
+    expect(input.checked).toBe(true);
+    expect(plain(el.textContent)).toContain('Escolha o alvo');
+  });
 
   it('opens at the target step with the list, and a click on a target moves on to the roll', () => {
     const { fixture, el } = setup({ diceMode: DiceMode.PHYSICAL, targets });

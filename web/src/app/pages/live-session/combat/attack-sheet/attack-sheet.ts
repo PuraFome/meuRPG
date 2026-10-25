@@ -281,8 +281,17 @@ export class AttackSheet {
     return !!c && isCreature(c);
   }
 
-  /** A tap or a click is on a target of the list: its change moves on to the roll even where the click event carries no detail. */
-  protected pointed = false;
+  /**
+   * A click on a target of the list: a mouse or a touch (`detail` above 0) chooses it and goes on to the roll at once; the click
+   * the browser re-sends to the radio from its label or the keyboard (`detail` 0) only lets the radio be chosen. The handler
+   * returns nothing: a template handler that returns `false` cancels the click, and the radio would never be chosen.
+   */
+  protected clicked(event: MouseEvent, id: string): void {
+    if (event.detail > 0) {
+      this.pick(id);
+      this.advance();
+    }
+  }
 
   protected pick(id: string): void {
     this.s.targetId.set(id);
