@@ -1,6 +1,6 @@
-import { test as setup } from "@playwright/test";
+import { test as setup } from '@playwright/test';
 
-import { authStatePath, signIn } from "./support";
+import { authStatePath, signIn } from './support';
 
 // Playwright's standard "setup project" pattern: signs in once per test
 // user this suite needs, and saves each signed-in `storageState` (cookies)
@@ -19,19 +19,17 @@ import { authStatePath, signIn } from "./support";
 // uses work side by side. Never sign the saved state out (`signOut` deletes
 // the session on the server).
 
-setup("autenticar como Mestre Teste", async ({ page }) => {
-  await signIn(page, "Mestre Teste", "/");
-  await page.context().storageState({ path: authStatePath("Mestre Teste") });
+setup('autenticar como Mestre Teste', async ({ page }) => {
+  await signIn(page, 'Mestre Teste', '/');
+  await page.context().storageState({ path: authStatePath('Mestre Teste') });
 });
 
-setup("autenticar como Jogador Teste", async ({ page }) => {
-  await signIn(page, "Jogador Teste", "/");
-  await page.context().storageState({ path: authStatePath("Jogador Teste") });
+setup('autenticar como Jogador Teste', async ({ page }) => {
+  await signIn(page, 'Jogador Teste', '/');
+  await page.context().storageState({ path: authStatePath('Jogador Teste') });
 });
 
-setup("autenticar como E-mail Não Verificado", async ({ page }) => {
-  await signIn(page, "E-mail Não Verificado", "/");
-  await page
-    .context()
-    .storageState({ path: authStatePath("E-mail Não Verificado") });
+setup('autenticar como E-mail Não Verificado', async ({ page }) => {
+  await signIn(page, 'E-mail Não Verificado', '/');
+  await page.context().storageState({ path: authStatePath('E-mail Não Verificado') });
 });

@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Page } from '@playwright/test';
 
 /**
  * Waits until the screen is done loading, by what a person would see: no
@@ -11,7 +11,5 @@ import { expect, type Page } from "@playwright/test";
  */
 export async function expectLoaded(page: Page): Promise<void> {
   await expect(page.locator('mat-spinner, [aria-busy="true"]')).toHaveCount(0);
-  await expect
-    .poll(() => page.evaluate(() => document.fonts.status))
-    .toBe("loaded");
+  await expect.poll(() => page.evaluate(() => document.fonts.status)).toBe('loaded');
 }

@@ -1,13 +1,7 @@
-import { expect, type Locator, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from '@playwright/test';
 
-import { startSessionRPC } from "./live-session-support";
-import {
-  callRPC,
-  characterRpcBody,
-  createCharacterRPC,
-  pensantus,
-  type CharacterBuild,
-} from "./support";
+import { startSessionRPC } from './live-session-support';
+import { callRPC, characterRpcBody, createCharacterRPC, pensantus, type CharacterBuild } from './support';
 
 // Setup for the guided level-up specs (Etapa 8, MR-040, RN-01, RN-12), through the API: these tests
 // prove the level-up screens, not the campaign, invite and character ones other specs cover. Every
@@ -20,44 +14,44 @@ export interface LevelUpTable {
 
 /** Pensantus with the book of the artboards: 3 cantrips, 10 spells in the book, 7 of them prepared. */
 export const pensantusBook = {
-  cantripKeys: ["spell:fire-bolt", "spell:mage-hand", "spell:ray-of-frost"],
+  cantripKeys: ['spell:fire-bolt', 'spell:mage-hand', 'spell:ray-of-frost'],
   knownSpellKeys: [
-    "spell:magic-missile",
-    "spell:shield",
-    "spell:mage-armor",
-    "spell:burning-hands",
-    "spell:sleep",
-    "spell:scorching-ray",
-    "spell:web",
-    "spell:detect-magic",
-    "spell:comprehend-languages",
-    "spell:find-familiar",
+    'spell:magic-missile',
+    'spell:shield',
+    'spell:mage-armor',
+    'spell:burning-hands',
+    'spell:sleep',
+    'spell:scorching-ray',
+    'spell:web',
+    'spell:detect-magic',
+    'spell:comprehend-languages',
+    'spell:find-familiar',
   ],
   preparedSpellKeys: [
-    "spell:magic-missile",
-    "spell:shield",
-    "spell:mage-armor",
-    "spell:burning-hands",
-    "spell:sleep",
-    "spell:scorching-ray",
-    "spell:web",
+    'spell:magic-missile',
+    'spell:shield',
+    'spell:mage-armor',
+    'spell:burning-hands',
+    'spell:sleep',
+    'spell:scorching-ray',
+    'spell:web',
   ],
 };
 
 /** Toren: a Guerreiro 4 (Campeão), Con 16: the level 5 has nothing to choose but the hit points. */
 export const toren: CharacterBuild = {
-  name: "Toren",
-  raceKey: "race:human",
-  race: "Humano",
-  classKey: "class:fighter",
-  class: "Guerreiro",
-  subclassKey: "subclass:champion",
+  name: 'Toren',
+  raceKey: 'race:human',
+  race: 'Humano',
+  classKey: 'class:fighter',
+  class: 'Guerreiro',
+  subclassKey: 'subclass:champion',
   level: 4,
-  background: "Soldado",
-  backgroundSkillKeys: ["skill:athletics", "skill:intimidation"],
-  backgroundSkills: ["Atletismo", "Intimidação"],
-  extraSkillKeys: ["skill:perception", "skill:survival"],
-  extraSkills: ["Percepção", "Sobrevivência"],
+  background: 'Soldado',
+  backgroundSkillKeys: ['skill:athletics', 'skill:intimidation'],
+  backgroundSkills: ['Atletismo', 'Intimidação'],
+  extraSkillKeys: ['skill:perception', 'skill:survival'],
+  extraSkills: ['Percepção', 'Sobrevivência'],
   scores: { for: 16, des: 12, con: 16, int: 10, sab: 12, car: 8 },
 };
 
@@ -71,44 +65,22 @@ export async function tableForLevelUp(
   masterPage: Page,
   playerPage: Page,
   name: string,
-  options: {
-    build?: CharacterBuild;
-    sheet?: Record<string, unknown>;
-    milestone?: boolean;
-    xpMode?: string;
-    session?: boolean;
-  } = {},
+  options: { build?: CharacterBuild; sheet?: Record<string, unknown>; milestone?: boolean; xpMode?: string; session?: boolean } = {},
 ): Promise<LevelUpTable> {
   const build = options.build ?? pensantus;
-  const created = await callRPC(
-    masterPage,
-    "meurpg.campaigns.v1.CampaignService/CreateCampaign",
-    {
-      name,
-      xpMode: options.xpMode ?? "XP_MODE_MILESTONES",
-    },
-  );
+  const created = await callRPC(masterPage, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', {
+    name,
+    xpMode: options.xpMode ?? 'XP_MODE_MILESTONES',
+  });
   expect(created.ok(), await created.text()).toBeTruthy();
   const campaignId = (await created.json()).campaign.id as string;
-  const invite = await callRPC(
-    masterPage,
-    "meurpg.campaigns.v1.CampaignService/CreateInvite",
-    { campaignId, maxUses: 1, expiresIn: "3600s" },
-  );
+  const invite = await callRPC(masterPage, 'meurpg.campaigns.v1.CampaignService/CreateInvite', { campaignId, maxUses: 1, expiresIn: '3600s' });
   expect(invite.ok()).toBeTruthy();
-  const accepted = await callRPC(
-    playerPage,
-    "meurpg.campaigns.v1.CampaignService/AcceptInvite",
-    { token: (await invite.json()).token },
-  );
+  const accepted = await callRPC(playerPage, 'meurpg.campaigns.v1.CampaignService/AcceptInvite', { token: (await invite.json()).token });
   expect(accepted.ok()).toBeTruthy();
 
-  const body = characterRpcBody("PLAYER", build) as { sheet: { full: object } };
-  body.sheet.full = {
-    ...body.sheet.full,
-    ...(build === pensantus ? pensantusBook : {}),
-    ...options.sheet,
-  };
+  const body = characterRpcBody('PLAYER', build) as { sheet: { full: object } };
+  body.sheet.full = { ...body.sheet.full, ...(build === pensantus ? pensantusBook : {}), ...options.sheet };
   const character = await createCharacterRPC(playerPage, campaignId, body);
   expect(character.ok(), await character.text()).toBeTruthy();
   const characterId = (await character.json()).character.id as string;
@@ -116,34 +88,20 @@ export async function tableForLevelUp(
   if (options.session !== false) {
     await startSessionRPC(masterPage, campaignId);
   }
-  if (
-    options.milestone !== false &&
-    (options.xpMode ?? "XP_MODE_MILESTONES") === "XP_MODE_MILESTONES"
-  ) {
-    await markMilestoneRPC(masterPage, campaignId, "Chegar ao Vale Seco", [
-      characterId,
-    ]);
+  if (options.milestone !== false && (options.xpMode ?? 'XP_MODE_MILESTONES') === 'XP_MODE_MILESTONES') {
+    await markMilestoneRPC(masterPage, campaignId, 'Chegar ao Vale Seco', [characterId]);
   }
   return { campaignId, characterId };
 }
 
 /** The master marks a milestone: the characters it names can level up (RN-12). */
-export async function markMilestoneRPC(
-  masterPage: Page,
-  campaignId: string,
-  reason: string,
-  characterIds: string[],
-): Promise<void> {
-  const res = await callRPC(
-    masterPage,
-    "meurpg.progression.v1.ProgressionService/MarkMilestone",
-    {
-      campaignId,
-      reason,
-      characterIds,
-      idempotencyKey: crypto.randomUUID(),
-    },
-  );
+export async function markMilestoneRPC(masterPage: Page, campaignId: string, reason: string, characterIds: string[]): Promise<void> {
+  const res = await callRPC(masterPage, 'meurpg.progression.v1.ProgressionService/MarkMilestone', {
+    campaignId,
+    reason,
+    characterIds,
+    idempotencyKey: crypto.randomUUID(),
+  });
   expect(res.ok(), await res.text()).toBeTruthy();
 }
 
@@ -153,13 +111,10 @@ export async function markMilestoneRPC(
  */
 export async function passClassStep(page: Page): Promise<void> {
   await expect(page.getByText(/Passo 1 de \d+ · Classe/)).toBeVisible();
-  await page.getByRole("button", { name: "Próximo" }).click();
+  await page.getByRole('button', { name: 'Próximo' }).click();
 }
 
 /** The card of a class in "Subir em qual classe?": the radio inside is visually hidden, so a tap goes to the card. */
 export function classCard(page: Page, name: RegExp): Locator {
-  return page
-    .locator("app-class-pick label.card")
-    .filter({ hasText: name })
-    .first();
+  return page.locator('app-class-pick label.card').filter({ hasText: name }).first();
 }

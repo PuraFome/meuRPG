@@ -1,23 +1,8 @@
-import {
-  expect,
-  type Browser,
-  type BrowserContext,
-  type Locator,
-  type Page,
-} from "@playwright/test";
+import { expect, type Browser, type BrowserContext, type Locator, type Page } from '@playwright/test';
 
-import {
-  beginAttackCombatRPC,
-  tableForCombat,
-  type CombatTable,
-} from "./combat-support";
-import { endOpenSessionRPC } from "./live-session-support";
-import {
-  boxOf,
-  callRPC,
-  newSignedInContext,
-  type CharacterBuild,
-} from "./support";
+import { beginAttackCombatRPC, tableForCombat, type CombatTable } from './combat-support';
+import { endOpenSessionRPC } from './live-session-support';
+import { boxOf, callRPC, newSignedInContext, type CharacterBuild } from './support';
 
 // Setup for the movement specs (Etapa 9, slice 9.15, MR-034, RN-21): a combat
 // on a 20 x 14 grid with the layers painted through `PaintMapCells`, and the
@@ -33,18 +18,11 @@ export interface MoveTable {
 }
 
 /** A layer of the map's grid, as the Connect JSON names it. */
-export type Layer =
-  "MAP_LAYER_DIFFICULT_TERRAIN" | "MAP_LAYER_WALL" | "MAP_LAYER_COVER";
+export type Layer = 'MAP_LAYER_DIFFICULT_TERRAIN' | 'MAP_LAYER_WALL' | 'MAP_LAYER_COVER';
 
 /** Paints squares of one layer: terrain and wall take 0 or 1, cover 1 (half) or 2 (three-quarters). */
-export async function paintRPC(
-  page: Page,
-  table: CombatTable,
-  layer: Layer,
-  value: number,
-  squares: [number, number][],
-): Promise<void> {
-  const res = await callRPC(page, "meurpg.maps.v1.MapService/PaintMapCells", {
+export async function paintRPC(page: Page, table: CombatTable, layer: Layer, value: number, squares: [number, number][]): Promise<void> {
+  const res = await callRPC(page, 'meurpg.maps.v1.MapService/PaintMapCells', {
     campaignId: table.campaignId,
     mapId: table.mapId,
     layer,
@@ -73,28 +51,13 @@ export async function movingTable(
     viewport?: { width: number; height: number };
   } = {},
 ): Promise<MoveTable> {
-  const master: BrowserContext = await newSignedInContext(
-    browser,
-    "Mestre Teste",
-    { viewport: { width: 1280, height: 900 } },
-  );
-  const player: BrowserContext = await newSignedInContext(
-    browser,
-    "Jogador Teste",
-    { viewport: options.viewport ?? { width: 1280, height: 900 } },
-  );
+  const master: BrowserContext = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 900 } });
+  const player: BrowserContext = await newSignedInContext(browser, 'Jogador Teste', { viewport: options.viewport ?? { width: 1280, height: 900 } });
   const m = await master.newPage();
   const p = await player.newPage();
-  await m.goto("/");
-  await p.goto("/");
-  const table = await tableForCombat(
-    m,
-    p,
-    `${name} ${Date.now()}`,
-    true,
-    true,
-    options.character ?? {},
-  );
+  await m.goto('/');
+  await p.goto('/');
+  const table = await tableForCombat(m, p, `${name} ${Date.now()}`, true, true, options.character ?? {});
   await options.paint?.(m, table);
   await beginAttackCombatRPC(m, table, faces, options.at, options.hidden);
   return {
@@ -111,26 +74,14 @@ export async function movingTable(
 }
 
 /** Taps a square of the "Mover" page's map (20 x 14 squares, the map fills its box). */
-export async function tapSquare(
-  page: Page,
-  col: number,
-  row: number,
-): Promise<void> {
-  const map: Locator = page.getByRole("group", { name: /Mapa de batalha/ });
+export async function tapSquare(page: Page, col: number, row: number): Promise<void> {
+  const map: Locator = page.getByRole('group', { name: /Mapa de batalha/ });
   await expect(map).toBeVisible();
   const box = await boxOf(map);
-  await map.click({
-    position: {
-      x: ((col + 0.5) * box.width) / 20,
-      y: ((row + 0.5) * box.height) / 14,
-    },
-  });
+  await map.click({ position: { x: ((col + 0.5) * box.width) / 20, y: ((row + 0.5) * box.height) / 14 } });
 }
 
 /** Picks a radio the app draws as a label over a hidden input (the "Andar | Saltar" segments, the cover mark's choices). */
-export async function pickRadio(
-  scope: Page | Locator,
-  text: string | RegExp,
-): Promise<void> {
-  await scope.locator("label", { hasText: text }).first().click();
+export async function pickRadio(scope: Page | Locator, text: string | RegExp): Promise<void> {
+  await scope.locator('label', { hasText: text }).first().click();
 }
