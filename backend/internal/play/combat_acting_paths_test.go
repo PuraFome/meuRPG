@@ -45,6 +45,7 @@ func TestTheMasterActsForAPlayersCharacterOnEveryPath(t *testing.T) {
 	t.Parallel()
 	paths := map[string]func(t *testing.T){
 		"a spell attack with the player's die held": func(t *testing.T) {
+			t.Helper()
 			a := newCasters(t)
 			e := a.start(t, plan{
 				npcs:     []*playv1.Participant{{CharacterId: a.goblin.GetId()}},
@@ -63,12 +64,13 @@ func TestTheMasterActsForAPlayersCharacterOnEveryPath(t *testing.T) {
 			if err != nil || res.GetHeldRollOffer() == nil {
 				t.Fatalf("CastSpell(master) = %v, %v; want the die's question", res, err)
 			}
-			if _, err := a.answerOutside(t, a.bia, res.GetInspirationOffer().GetHoldId(), true, false, 8); err != nil { // the player answers first
+			if _, err := a.answerOutside(t, a.bia, res.GetHeldRollOffer().GetHoldId(), true, false, 8); err != nil { // the player answers first
 				t.Fatalf("the player's answer: %v", err)
 			}
 			wantActedByMaster(t, a, e, "Brisa", a.bia, a.ana, playv1.CombatLogKind_COMBAT_LOG_KIND_SPELL_CAST, playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK)
 		},
 		"Second Wind": func(t *testing.T) {
+			t.Helper()
 			a := newCasters(t)
 			e := a.castersFight(t, 1)
 			a.correct(t, a.toren, hpIs(20))
@@ -82,6 +84,7 @@ func TestTheMasterActsForAPlayersCharacterOnEveryPath(t *testing.T) {
 			wantActedByMaster(t, a, e, "Toren", a.caio, a.ana, playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION)
 		},
 		"a move": func(t *testing.T) {
+			t.Helper()
 			a := newArmed(t)
 			e := a.threeAndAGoblin(t)
 			_, err := a.frozenMove(t, a.ana, "Toren", 2, 3)
@@ -92,6 +95,7 @@ func TestTheMasterActsForAPlayersCharacterOnEveryPath(t *testing.T) {
 			wantActedByMaster(t, a, e, "Toren", a.caio, a.ana, playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED)
 		},
 		"Wild Shape in and out": func(t *testing.T) {
+			t.Helper()
 			s := newShapers(t)
 			e := s.fight(t)
 			_, err := s.assume(t, s.caio, s.bri, wolfKey)
@@ -101,6 +105,7 @@ func TestTheMasterActsForAPlayersCharacterOnEveryPath(t *testing.T) {
 			wantActedByMaster(t, s.armed, e, "Sálvia", s.bia, s.ana, playv1.CombatLogKind_COMBAT_LOG_KIND_WILD_SHAPE)
 		},
 		"Bardic Inspiration": func(t *testing.T) {
+			t.Helper()
 			a := newResourceTable(t)
 			e := a.resourceFight(t)
 			a.passTo(t, e, "Orla")
@@ -118,6 +123,7 @@ func TestTheMasterActsForAPlayersCharacterOnEveryPath(t *testing.T) {
 			}
 		},
 		"a summon cast": func(t *testing.T) {
+			t.Helper()
 			a := newSummoners(t)
 			e := a.summonersFight(t)
 			a.toSalvia(t, e)
@@ -129,6 +135,7 @@ func TestTheMasterActsForAPlayersCharacterOnEveryPath(t *testing.T) {
 			wantActedByMaster(t, a, e, "Sálvia", a.bia, a.caio, playv1.CombatLogKind_COMBAT_LOG_KIND_SPELL_CAST)
 		},
 		"the familiar's eyes": func(t *testing.T) {
+			t.Helper()
 			// The familiar's sight leaves no log line: it is the character's own state, read in its vitals.
 			s := newShapers(t)
 			a := s.armed
@@ -147,6 +154,7 @@ func TestTheMasterActsForAPlayersCharacterOnEveryPath(t *testing.T) {
 	}
 	for name, run := range paths {
 		t.Run(name, func(t *testing.T) {
+			t.Helper()
 			t.Parallel()
 			run(t)
 		})
