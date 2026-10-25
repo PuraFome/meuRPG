@@ -26,11 +26,11 @@ All checked in the first pass, before anything compiles; the error names the lim
 
 | What | Limit |
 | --- | --- |
-| Entries (of the seven kinds; features do not count) | 300 (`MaxOverlayEntries`) |
+| Entries (of the seven kinds; features do not count) | 1,000 (`MaxOverlayEntries`) |
 | Features | 60 per class and 60 per subclass, counted apart (`MaxTableFeatures`); the features the engine writes do not count |
 | Traits | 60 per race and per subrace (`MaxTraits`) |
 | Options in a feature's option list | 60 (`MaxFeatureOptions`) |
-| Effects | 20 per feature (`MaxFeatureEffects`); 2,000 in the set, the effects the engine writes included (`MaxOverlayEffects`) |
+| Effects | 20 per feature (`MaxFeatureEffects`); 6,000 in the set, the effects the engine writes included (`MaxOverlayEffects`) |
 | Distinct formulas | 500 in the set; a repeated one counts once (`MaxOverlayFormulas`) |
 | Items in a list of an effect | 20 |
 | `choice` count | 1 to 18 (`MaxChoiceCount`) |
@@ -39,7 +39,8 @@ All checked in the first pass, before anything compiles; the error names the lim
 
 The 64 KiB per entry is a storage limit, checked by the server.
 Without these budgets, hundreds of classes of 60 features of 20 effects each cost seconds and gigabytes.
-The ADR-0018 budget for a realistic content (300 entries) is about 25 ms and 4 MB per `With`; measure with `go test -run '^$' -bench BenchmarkWith -benchmem ./internal/rules` (without `-race`), and the memory a content retains with `MEURPG_MEASURE=1 go test ./internal/rules -run TestWithMemory -v`.
+The ADR-0018 budget for a realistic content of 300 entries is about 25 ms and 4 MB per `With` (19 ms and 3.8 MB measured); a table of 1,000 entries takes 28 ms and 8.3 MB, and one with 6,000 effects 40 ms and 16.6 MB (76 ms and 33 MB with 480 distinct formulas), a content keeping 3.7 to 7 MB.
+The numbers, the machine and the commands (`BenchmarkWithEntries`, `BenchmarkWithEffects`, `TestWithMemoryByEntries`, `TestWithMemoryByEffects`) are in [Performance](../performance.md#table-content-at-its-limits).
 Cache and memory limits of the live source are in [Characters](characters-table-content.md#the-live-source).
 
 ## The closed menu of effects
