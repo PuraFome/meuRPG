@@ -53,7 +53,9 @@ type OutsideGrant struct {
 func (g OutsideGrant) Ready() bool { return g.castable() }
 
 // Enabled says some way of casting the spell works now.
-func (o OutsideSpell) Enabled() bool { return o.CanCast || o.CanRitual || slices.ContainsFunc(o.Grants, OutsideGrant.Ready) }
+func (o OutsideSpell) Enabled() bool {
+	return o.CanCast || o.CanRitual || slices.ContainsFunc(o.Grants, OutsideGrant.Ready)
+}
 
 // OutsideSpells lists the spells of the sheet the character can cast outside a
 // fight: the prepared ones and the ones only a ritual reaches (a wizard's
