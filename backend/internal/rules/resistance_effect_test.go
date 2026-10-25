@@ -89,10 +89,9 @@ func TestResistanceEffectRefusalsNameTheirField(t *testing.T) {
 		edit  func(e *Effect)
 		field string
 	}{
-		{"no excepted type", func(e *Effect) { e.Except = "" }, ".except"},
+		{"no excepted type and no damage types", func(e *Effect) { e.Except = "" }, ".damage_types"},
 		{"an unknown damage type", func(e *Effect) { e.Except = "damage-type:fixture-none" }, ".except"},
 		{"a key that is no damage type", func(e *Effect) { e.Except = "skill:arcana" }, ".except"},
-		{"no condition", func(e *Effect) { e.While = "" }, ".while"},
 		{"an unknown condition", func(e *Effect) { e.While = "always" }, ".while"},
 		{"a formula condition", func(e *Effect) { e.When = "true" }, ".when"},
 		{"tags", func(e *Effect) { e.Tags = []string{"about:fixture"} }, ".tags"},
@@ -123,9 +122,11 @@ func TestResistanceEffectIsOnTheEffectMenu(t *testing.T) {
 	if i < 0 {
 		t.Fatal("no resistance type on the menu")
 	}
-	for _, name := range []string{"except", "while"} {
-		if !slices.ContainsFunc(menu.Types[i].Fields, func(f MenuField) bool { return f.Name == name && f.Required }) {
-			t.Errorf("field %s is missing or not required", name)
+	// A resistance names its damage types or the one it leaves out, and "while" empty is always: none of
+	// the fields is required alone.
+	for _, name := range []string{"kind", "damage_types", "except", "while"} {
+		if !slices.ContainsFunc(menu.Types[i].Fields, func(f MenuField) bool { return f.Name == name && !f.Required }) {
+			t.Errorf("field %s is missing or required", name)
 		}
 	}
 	for _, name := range []string{ListDamageTypes, ListResistanceConditions} {

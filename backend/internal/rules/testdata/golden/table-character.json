@@ -264,6 +264,7 @@
       }
     ],
     "SpeedWalkFt": 25,
+    "Size": "Medium",
     "SpeedFlyFt": 0,
     "SpeedSwimFt": 0,
     "SpeedClimbFt": 0,
@@ -977,6 +978,7 @@
       }
     ],
     "SpeedWalkFt": 25,
+    "Size": "Medium",
     "SpeedFlyFt": 0,
     "SpeedSwimFt": 0,
     "SpeedClimbFt": 0,
@@ -2140,6 +2142,7 @@
       }
     ],
     "SpeedWalkFt": 25,
+    "Size": "Medium",
     "SpeedFlyFt": 0,
     "SpeedSwimFt": 0,
     "SpeedClimbFt": 0,

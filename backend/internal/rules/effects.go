@@ -120,12 +120,24 @@ type Effect struct {
 	RangeMultiplier         int  `json:"range_multiplier,omitempty"`
 	NoLongRangeDisadvantage bool `json:"no_long_range_disadvantage,omitempty"`
 
-	// resistance: resistance to every damage type but Except (a "damage-type:"
-	// key) while the condition in While holds ("rage", ResistanceWhileRage). It
-	// takes no When, because While is its condition. Content.Resistances lists it,
-	// so play applies it with the other resistances (resistance never stacks).
-	Except string `json:"except,omitempty"`
-	While  string `json:"while,omitempty"`
+	// resistance: resistance (Kind "resist", the default), immunity ("immune") or
+	// vulnerability ("vulnerable") to the damage types it names: every damage type but
+	// Except (a "damage-type:" key), or the DamageTypes ("damage-type:" keys, or one of
+	// the words DamageTypeAll and DamageTypeNonmagicalBPS). Except and DamageTypes
+	// exclude each other and one of them is required. While is ResistanceAlways ("") or
+	// ResistanceWhileRage ("rage"). It takes no When, because While is its condition.
+	// Content.Resistances lists it, so play applies it with the other resistances (the
+	// same type from two sources counts once).
+	Except      string   `json:"except,omitempty"`
+	While       string   `json:"while,omitempty"`
+	DamageTypes []string `json:"damage_types,omitempty"`
+	Kind        string   `json:"kind,omitempty"`
+
+	// condition_immunity: the creature takes none of the Conditions ("condition:" keys of
+	// the 15 conditions). roll_mode may also name an AgainstCondition: its advantage or
+	// disadvantage holds on the saving throws against being that condition.
+	Conditions       []string `json:"conditions,omitempty"`
+	AgainstCondition string   `json:"against_condition,omitempty"`
 
 	// wild_shape: the beasts a druid may turn into (wildshape.go). MaxCR is
 	// the highest challenge rating, such as "1/4", and NoFly and NoSwim leave
@@ -171,7 +183,7 @@ var (
 	effectTypes = []string{
 		"modifier", "proficiency", "roll_mode", "sense", "spellcasting",
 		"resource", "choice", "grant_action", "extra_attack", "note", "handler", "wild_shape", "beast_spells", "replaces",
-		"ability_increase", "superiority_die", "song_of_rest", "ranged_attack", "extra_damage", "ambush", "resistance",
+		"ability_increase", "superiority_die", "song_of_rest", "ranged_attack", "extra_damage", "ambush", "resistance", "condition_immunity",
 	}
 	modifierTargets = []string{
 		"ac.base", "ac", "hp.max", "speed.walk", "initiative",
@@ -246,27 +258,28 @@ func (x effectCompiler) takesOnly(strip func(other *Effect)) bool {
 // effectCheckers check what each effect type needs, after the checks every
 // effect goes through.
 var effectCheckers = map[string]func(x effectCompiler) error{
-	"ranged_attack":    effectCompiler.rangedAttack,
-	"resistance":       effectCompiler.resistance,
-	"replaces":         effectCompiler.replaces,
-	"modifier":         effectCompiler.modifier,
-	"proficiency":      effectCompiler.proficiency,
-	"roll_mode":        effectCompiler.rollMode,
-	"sense":            effectCompiler.sense,
-	"spellcasting":     effectCompiler.spellcasting,
-	"resource":         effectCompiler.resource,
-	"choice":           effectCompiler.choice,
-	"ability_increase": effectCompiler.abilityIncrease,
-	"grant_action":     effectCompiler.grantAction,
-	"superiority_die":  effectCompiler.superiorityDie,
-	"extra_damage":     effectCompiler.extraDamage,
-	"ambush":           effectCompiler.ambush,
-	"extra_attack":     effectCompiler.extraAttack,
-	"wild_shape":       effectCompiler.wildShape,
-	"song_of_rest":     effectCompiler.songOfRest,
-	"beast_spells":     effectCompiler.beastSpells,
-	"handler":          effectCompiler.handler,
-	"note":             effectCompiler.note,
+	"ranged_attack":      effectCompiler.rangedAttack,
+	"resistance":         effectCompiler.resistance,
+	"condition_immunity": effectCompiler.conditionImmunity,
+	"replaces":           effectCompiler.replaces,
+	"modifier":           effectCompiler.modifier,
+	"proficiency":        effectCompiler.proficiency,
+	"roll_mode":          effectCompiler.rollMode,
+	"sense":              effectCompiler.sense,
+	"spellcasting":       effectCompiler.spellcasting,
+	"resource":           effectCompiler.resource,
+	"choice":             effectCompiler.choice,
+	"ability_increase":   effectCompiler.abilityIncrease,
+	"grant_action":       effectCompiler.grantAction,
+	"superiority_die":    effectCompiler.superiorityDie,
+	"extra_damage":       effectCompiler.extraDamage,
+	"ambush":             effectCompiler.ambush,
+	"extra_attack":       effectCompiler.extraAttack,
+	"wild_shape":         effectCompiler.wildShape,
+	"song_of_rest":       effectCompiler.songOfRest,
+	"beast_spells":       effectCompiler.beastSpells,
+	"handler":            effectCompiler.handler,
+	"note":               effectCompiler.note,
 }
 
 // compileEffect checks one effect against the schema and compiles its
@@ -316,16 +329,31 @@ func (x effectCompiler) strayFields() error {
 	if err := x.strayResistance(); err != nil {
 		return err
 	}
+	if err := x.strayConditions(); err != nil {
+		return err
+	}
 	if e.Type != "ranged_attack" && (e.IgnoreCover || e.RangeMultiplier != 0 || e.NoLongRangeDisadvantage) {
 		return x.fail("ignore_cover, range_multiplier and no_long_range_disadvantage belong to ranged_attack")
 	}
 	return nil
 }
 
+// strayConditions refuses conditions on an effect that is no condition_immunity and against_condition on one that
+// is no roll_mode.
+func (x effectCompiler) strayConditions() error {
+	switch {
+	case x.e.Type != "condition_immunity" && len(x.e.Conditions) > 0:
+		return x.fail("conditions belong to condition_immunity")
+	case x.e.Type != "roll_mode" && x.e.AgainstCondition != "":
+		return x.fail("against_condition belongs to roll_mode")
+	}
+	return nil
+}
+
 // strayResistance refuses except and while on an effect of another type.
 func (x effectCompiler) strayResistance() error {
-	if x.e.Type != "resistance" && (x.e.Except != "" || x.e.While != "") {
-		return x.fail("except and while belong to resistance")
+	if x.e.Type != "resistance" && (x.e.Except != "" || x.e.While != "" || len(x.e.DamageTypes) > 0 || x.e.Kind != "") {
+		return x.fail("except, while, damage_types and kind belong to resistance")
 	}
 	return nil
 }
@@ -337,20 +365,44 @@ func (x effectCompiler) rangedAttack() error {
 	return nil
 }
 
-// resistance checks the damage type a resistance leaves out and when it holds.
+// resistance checks what a resistance covers (the damage types it names, or every
+// type but the one it leaves out), its kind and when it holds.
 func (x effectCompiler) resistance() error {
 	e := x.e
-	if !x.c.isLiveDamageType(e.Except) {
-		return x.fail("except %q is not a damage type", e.Except)
+	if e.Except != "" && len(e.DamageTypes) > 0 {
+		return x.fail("except and damage_types exclude each other")
 	}
-	if e.While != ResistanceWhileRage {
-		return x.fail("while must be %q", ResistanceWhileRage)
+	if msg := x.c.checkDamageTypes(e); msg != "" {
+		return x.fail("%s", msg)
+	}
+	if !slices.Contains(ResistanceKinds, e.Kind) {
+		return x.fail("kind %q is not resist, immune or vulnerable", e.Kind)
+	}
+	if e.While != ResistanceAlways && e.While != ResistanceWhileRage {
+		return x.fail("while must be empty or %q", ResistanceWhileRage)
 	}
 	if e.When != "" {
 		return x.fail("a resistance has no when: while is its condition")
 	}
 	if len(e.Tags) > 0 {
 		return x.fail("a resistance has no tags: while is its condition")
+	}
+	return nil
+}
+
+// conditionImmunity checks the conditions the character takes none of.
+func (x effectCompiler) conditionImmunity() error {
+	e := x.e
+	if len(e.Conditions) == 0 {
+		return x.fail("conditions are required")
+	}
+	for i, k := range e.Conditions {
+		if !x.c.isCondition(k) {
+			return x.fail("%q is not a condition", k)
+		}
+		if slices.Contains(e.Conditions[:i], k) {
+			return x.fail("the condition %q is listed twice in conditions", k)
+		}
 	}
 	return nil
 }
@@ -420,6 +472,26 @@ func (x effectCompiler) rollMode() error {
 		if !x.c.validRollTarget(t) {
 			return x.fail("unknown target %q", t)
 		}
+	}
+	if e.AgainstCondition != "" {
+		return x.againstCondition()
+	}
+	return nil
+}
+
+// againstCondition checks a roll_mode that holds on the saving throws against one condition.
+func (x effectCompiler) againstCondition() error {
+	e := x.e
+	if !x.c.isCondition(e.AgainstCondition) {
+		return x.fail("against_condition %q is not a condition", e.AgainstCondition)
+	}
+	for _, t := range e.Targets {
+		if !strings.HasPrefix(t, "save.") {
+			return x.fail("against_condition holds on saving throws: target %q is not one", t)
+		}
+	}
+	if len(e.Tags) > 0 {
+		return x.fail("against_condition takes no tags: the condition is the situation")
 	}
 	return nil
 }

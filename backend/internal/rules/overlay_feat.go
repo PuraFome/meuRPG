@@ -46,6 +46,8 @@ func (b *overlayBuilder) addFeat(tf *TableFeat, path string) error {
 	// The effects are queued before the entry is judged: if it is refused, its effects'
 	// problems come with the rest (compileEffectsOf).
 	if len(tf.Effects) > 0 {
+		b.ensureOwners()
+		b.declareResources(featureKind{owner: key}, tf.Effects)
 		b.pending = append(b.pending, pendingEffects{owner: key, entry: key, effects: tf.Effects, path: path, strict: b.strict[key]})
 	}
 	if err := c.err(); err != nil {

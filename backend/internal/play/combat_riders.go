@@ -298,6 +298,18 @@ func (s *Service) spendStunKi(ctx context.Context, c *combatTx, m authz.Membersh
 	return err
 }
 
+// riderAgainst is what the saving throw of a rider's choice is against: the condition the choice puts on a
+// target that fails it.
+func riderAgainst(choice string) []string {
+	switch choice {
+	case choiceProne:
+		return []string{condProne}
+	case choiceStun:
+		return []string{"condition:stunned"}
+	}
+	return nil
+}
+
 // rollRiderOutcome sets what the rider's result says and tells whether the choice lands: a choice
 // with no save lands, one with a save lands only when the target fails it.
 func (s *Service) rollRiderOutcome(ctx context.Context, c *combatTx, m authz.Membership, target playdb.Combatant, choice string, dc int32, re *riderEvent) (bool, error) {
@@ -306,7 +318,7 @@ func (s *Service) rollRiderOutcome(ctx context.Context, c *combatTx, m authz.Mem
 		re.Result = riderApplied
 		return true, nil
 	}
-	saved, err := s.rollRiderSave(ctx, c, m, target, ability, dc, re)
+	saved, err := s.rollRiderSave(ctx, c, m, target, ability, riderAgainst(choice), dc, re)
 	if err != nil {
 		return false, err
 	}
@@ -322,6 +334,9 @@ func (s *Service) rollRiderOutcome(ctx context.Context, c *combatTx, m authz.Mem
 func (s *Service) riderConsequence(ctx context.Context, c *combatTx, cs []playdb.Combatant, attacker, target playdb.Combatant, choice string, re *riderEvent) error {
 	switch choice {
 	case choiceProne:
+		if immune, err := c.immuneToCondition(ctx, target, condProne); err != nil || immune {
+			return err
+		}
 		if !slices.Contains(target.Conditions, condProne) && len(target.Conditions) < maxConditions {
 			return setConditionsOf(ctx, c, target, withCondition(target.Conditions, condProne))
 		}
@@ -334,7 +349,11 @@ func (s *Service) riderConsequence(ctx context.Context, c *combatTx, cs []playdb
 		if err != nil {
 			return err
 		}
-		if combat.ImmuneTo(effectModsOf(states, target.ID), "condition:stunned") {
+		sheetImmune, err := c.immuneToCondition(ctx, target, "condition:stunned")
+		if err != nil {
+			return err
+		}
+		if sheetImmune || combat.ImmuneTo(effectModsOf(states, target.ID), "condition:stunned") {
 			re.Result = riderSaved
 			return nil
 		}
@@ -364,7 +383,7 @@ func (s *Service) riderEffect(ctx context.Context, c *combatTx, cs []playdb.Comb
 }
 
 // rollRiderSave has the server roll the target's saving throw, as a spell's save is rolled.
-func (s *Service) rollRiderSave(ctx context.Context, c *combatTx, m authz.Membership, target playdb.Combatant, ability string, dc int32, re *riderEvent) (bool, error) {
+func (s *Service) rollRiderSave(ctx context.Context, c *combatTx, m authz.Membership, target playdb.Combatant, ability string, against []string, dc int32, re *riderEvent) (bool, error) {
 	save, err := s.saveOf(ctx, c.tx, m.CampaignID, target, ability)
 	if err != nil {
 		return false, err
@@ -381,7 +400,7 @@ func (s *Service) rollRiderSave(ctx context.Context, c *combatTx, m authz.Member
 	if combat.AutoFailsSave(creature, ability) {
 		return false, nil
 	}
-	mode := combat.Resolve(combat.SaveMode(combat.SaveScene{Creature: creature, Ability: ability, EffectVisible: true}))
+	mode := combat.Resolve(combat.SaveMode(combat.SaveScene{Creature: creature, Ability: ability, EffectVisible: true, Against: against}))
 	d20, err := s.d20With(rollInput{inApp: true}, save.Bonus, mode)
 	if err != nil {
 		return false, err
@@ -450,7 +469,7 @@ func (s *Service) goadTarget(ctx context.Context, c *combatTx, m authz.Membershi
 			continue
 		}
 		var re riderEvent
-		saved, err := s.rollRiderSave(ctx, c, m, target, goadSaveAbility, conv.Int32(mv.SaveDC), &re)
+		saved, err := s.rollRiderSave(ctx, c, m, target, goadSaveAbility, nil, conv.Int32(mv.SaveDC), &re)
 		if err != nil || saved {
 			return err
 		}

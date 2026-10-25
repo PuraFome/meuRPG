@@ -45,7 +45,7 @@ type ChoiceResistance struct {
 // raise some (the half-elf's two +1), in the order of the race's list.
 func (x *deriver) pickedAbilities() []Ability {
 	r := x.race
-	if r == nil || r.AbilityBonusChoices == nil || len(x.c.raceChoice[r.Key]) > 0 {
+	if r == nil || r.AbilityBonusChoices == nil || len(x.c.raceBonusSets(r.Key)) > 0 {
 		return nil
 	}
 	key := AbilityChoiceKey(r.Key)

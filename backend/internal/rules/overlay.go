@@ -253,6 +253,13 @@ type TableRace struct {
 	// to your choice" (the master's own option; each goes on a different ability).
 	AbilityBonuses map[Ability]int
 	ChoiceBonuses  []int
+	// ChoiceBonusSets are alternative sets of bonuses to place, such as {{2, 1}, {1, 1, 1}}:
+	// the player picks one set and each of its bonuses goes on a different ability.
+	// ChoiceBonuses is the same for a single set; a race has one or the other.
+	ChoiceBonusSets [][]int
+	// Sizes are the sizes the player picks one from, a subset of Small and Medium; Size is
+	// the default and, when Sizes is not empty, one of them.
+	Sizes []string
 	// DarkvisionFt is 0 or the range of the darkvision sense, in feet.
 	DarkvisionFt int
 	// Languages are SRD language keys always known; LanguageChoices more are
@@ -1190,6 +1197,8 @@ func (c *content) cloneForOverlay() *content {
 	n.spellTargets = map[string]SpellTarget{}
 	n.spellZones = map[string]SpellZoneRule{}
 	n.raceChoice = map[string][]int{}
+	n.raceSets = map[string][][]int{}
+	n.raceSizes = map[string][]string{}
 	n.bgEquipment = map[string]string{}
 	n.catalog = Catalog{}
 	n.spellEntries = nil

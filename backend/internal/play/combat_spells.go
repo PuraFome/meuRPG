@@ -551,12 +551,11 @@ func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership
 	if err != nil {
 		return err
 	}
-	targetSheet, err := s.sheetOf(ctx, c.tx, m.CampaignID, target)
+	targetSheet, creature, against, err := s.spellSaveScene(ctx, c, m.CampaignID, sp, target, modes)
 	if err != nil {
 		return err
 	}
-	creature := creatureFacts(target, modes.in.states, targetSheet.Traits)
-	sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: sp.SaveAbility, EffectVisible: true, Against: spellAgainst(sp)})
+	sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: sp.SaveAbility, EffectVisible: true, Against: against})
 	modes.save[target.ID] = shownSources(sources, modes.names)
 	// Cover adds to a Dexterity save (SRD): half +2, three-quarters +5. The bonus
 	// the save shows already has it.
@@ -701,4 +700,29 @@ func (s *Service) openSpellPending(ctx context.Context, c *combatTx, sp link.Spe
 		hit.More = append(hit.More, p.ID)
 	}
 	return nil
+}
+
+// spellSaveScene is what the saving throw of a target against a spell needs: the target's sheet, what the combat
+// knows of it and what the save is against.
+func (s *Service) spellSaveScene(ctx context.Context, c *combatTx, campaignID string, sp link.Spell, target playdb.Combatant, modes *spellModes) (link.Sheet, combat.Creature, []string, error) {
+	targetSheet, err := s.sheetOf(ctx, c.tx, campaignID, target)
+	if err != nil {
+		return link.Sheet{}, combat.Creature{}, nil, err
+	}
+	against, err := s.spellSaveAgainst(ctx, c, sp)
+	return targetSheet, creatureFacts(target, modes.in.states, targetSheet.Traits), against, err
+}
+
+// spellSaveAgainst is what the saving throw against a spell is against: its own kinds (spellAgainst) and the
+// conditions its lasting effect puts on a target that fails, which a roll mode against a condition reads.
+func (s *Service) spellSaveAgainst(ctx context.Context, c *combatTx, sp link.Spell) ([]string, error) {
+	against := spellAgainst(sp)
+	content, err := s.contentOf(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+	if def, ok := content.CombatSpellEffect(sp.Key); ok {
+		against = withSaveConditions(against, def.Conditions)
+	}
+	return against, nil
 }

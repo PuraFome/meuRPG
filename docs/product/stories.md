@@ -615,13 +615,15 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - **Given** I am the game master of "Mirathel", **when** I register a new class with its hit die, skills, the 20-level table and its features, **then** the class appears in the character editor and in the level-up only in "Mirathel" **and** the sheet calculates its numbers with it (RN-23).
 - **Given** I am the game master of "Mirathel", **when** I register a subclass of an SRD class (a Bard college, a Wizard tradition), **then** it appears in that class's subclass choice only in "Mirathel", with its always-prepared spells, if it has any.
 - **Given** I register a race, a subrace or a background, **then** it appears in the character editor with everything the editor shows (size, speed, darkvision, "+2 e +1 à escolha", languages, traits, skills, tools, equipment and the feature) **and** a table background's equipment reaches the sheet.
+  A race may offer **alternative sets** of ability bonuses ("+2 e +1 ou +1, +1 e +1": I write them in "Valores à escolha", separated by a slash) **and** a **size to pick** (Pequeno or Médio, with the race's own size among them): the character editor shows the sets in the hint under "Raça" and asks "Tamanho" only when the race really offers two; the player places one set's bonuses in "Bônus manuais", each on a different ability, and the sheet shows an issue while the bonuses cover no set.
+  The server refuses a bonus above +2 in a set, more than six bonuses, a repeated size and a race that has both a single list and sets.
 - **Given** I am the game master of "Mirathel", **when** I register an own spell, **then** it appears for the characters of "Mirathel" who can learn it **and** not in another campaign.
   If it has an attack, or a saving throw and damage, combat resolves it like an SRD spell: the attack, the save with half, healing, several creatures (one more per level), an area, the cantrip by tier, concentration and slots.
 - **Given** I register an area spell (a 4.5 m cone, a 6 m radius sphere), **when** I save it, **then** the area appears in its description, **and** in combat the caster chooses the creatures it hits, as with an SRD area spell.
   A spell with range "Pessoal" or "Toque" is valid; "Pessoal" with "one creature" or "several" is refused.
 - **Given** content registered in "Mirathel", **when** I open another campaign of mine, **then** it does not appear there: content is per campaign.
-- **Given** a feature the game master registers, **when** they pick its effect, **then** they pick from a closed menu (modifier, proficiency, resource, sense, roll mode, action, extra attack, ranged attack, choice, maneuver die, note, granted spell).
-  An action may spend a resource the entry defines, and a class or subclass feature may carry an **option list** the player picks from (a table's maneuvers, each with its own effects; "Opções para escolher" in the feature editor).
+- **Given** a feature the game master registers, **when** they pick its effect, **then** they pick from a closed menu (modifier, proficiency, resource, sense, roll mode, action, extra attack, ranged attack, resistance, immunity to a condition, choice, maneuver die, note, granted spell).
+  An action may spend a resource the entry defines (a feat's action, one its own effects define: a table feat with 3 uses per long rest), and a class or subclass feature may carry an **option list** the player picks from (a table's maneuvers, each with its own effects; "Opções para escolher" in the feature editor).
   Table content never runs code.
 - **Given** a table class with a spellcasting subclass (a third-caster), **when** I register the subclass with "Esta subclasse conjura", **then** the third-caster table starts at the level it begins, and the subclass's spells come from the class list it casts from.
 
@@ -644,6 +646,12 @@ The data rules, limits and the server side are in [Table content: rules](../arch
   For spells that need an attack roll, the range is twice or three times as long and half or three-quarters cover is ignored.
   For ranged weapons (a thrown weapon at range included), that cover is ignored and long range gives no disadvantage.
   Total cover still blocks the attack, and the roll shows no cover where the cover was ignored.
+- **Given** a table race, feat or feature with a **resistance** effect, **when** I pick it, **then** I choose the damage types from the SRD's list (or "Todos os tipos de dano", or the nonmagical bludgeoning, piercing and slashing) **and** the kind on three radio cards: resistance, immunity or vulnerability; "Todos os tipos de dano, menos" and "Enquanto" (always, or only in a rage) are the rarer fields under "Mais opções".
+  In a fight the damage that character takes follows it: immunity takes it to 0, resistance halves it (rounded down), vulnerability doubles it (after the resistance), the same protection from two sources counts once, and a limit to nonmagical attacks covers a weapon attack that is not marked magical, never a spell or damage that is no attack.
+  The master reads the step in the damage line; the sheet lists the effect as a note.
+  A refusal names the field: a damage type that does not exist, an empty list, both "menos" and a list, "all" mixed with other types.
+- **Given** a table entry with **immunity to a condition** (one or more of the 15 conditions), **when** a spell, a rider, a trap or a hold would put one of them on that character, **then** it takes none of them: the spell's hit reads "o alvo é imune à condição" for the master, a grapple fails and a shove does not knock prone.
+- **Given** a table roll mode "Vantagem ou desvantagem" with a **condition** picked ("Só nos testes de resistência contra a condição"), **when** the character rolls a saving throw against a spell, an effect, a trap or a rider that gives that condition, **then** the roll has the advantage or disadvantage and the roll's reasons say so; with no condition picked, the effect stays a reminder of the situation (its tags) and the master decides.
 
 **Changing, archiving and switching.**
 

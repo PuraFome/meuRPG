@@ -11,6 +11,7 @@ import {
   catalogNameOf,
   chosenSkillsOf,
   choiceBonusesHintOf,
+  sizeChoicesOf,
   choicesSubtitleOf,
   finalConstitutionOf,
   grantedSkillsOf,
@@ -124,6 +125,36 @@ describe('choiceBonusesHintOf', () => {
   it('says nothing for a race with none, or no race', () => {
     expect(choiceBonusesHintOf(race())).toBe('');
     expect(choiceBonusesHintOf(undefined)).toBe('');
+  });
+
+  it('lists the sets of a race that offers several, to pick one', () => {
+    expect(
+      choiceBonusesHintOf(
+        race({
+          choiceBonusSets: [
+            [2, 1],
+            [1, 1, 1],
+          ],
+        }),
+      ),
+    ).toBe(
+      'Dá um destes grupos, nas habilidades que você escolher (uma por valor): +2 e +1 ou +1, +1 e +1. Ponha em “Bônus manuais”, no passo Habilidades.',
+    );
+  });
+});
+
+describe('sizeChoicesOf', () => {
+  it("offers the race's own size and the other one when the race offers a real choice", () => {
+    expect(sizeChoicesOf(race({ sizes: ['Small', 'Medium'], size: 'Medium' }))).toEqual([
+      { value: '', label: 'Médio (da raça)' },
+      { value: 'Small', label: 'Pequeno' },
+    ]);
+  });
+
+  it('shows no picker for a race with only its own size, or no race', () => {
+    expect(sizeChoicesOf(race())).toEqual([]);
+    expect(sizeChoicesOf(race({ sizes: ['Medium'], size: 'Medium' }))).toEqual([]);
+    expect(sizeChoicesOf(undefined)).toEqual([]);
   });
 });
 

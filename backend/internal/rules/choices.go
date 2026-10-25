@@ -34,6 +34,8 @@ func (x *deriver) effectHint(a activeEffect) {
 		x.noteHint(a)
 	case e.Type == "resistance":
 		x.resistanceHint(a)
+	case e.Type == "condition_immunity":
+		x.conditionImmunityHint(a)
 	}
 }
 
@@ -44,6 +46,33 @@ func (x *deriver) rollModeHint(a activeEffect) {
 		targets[i] = hintTarget(t)
 	}
 	x.hint(a, targets, a.effect.Roll, 0)
+	if a.effect.AgainstCondition != "" {
+		h := &x.d.Hints[len(x.d.Hints)-1]
+		h.AgainstCondition = a.effect.AgainstCondition
+		if a.effect.TextPT == "" {
+			h.TextPT = x.c.rollAgainstText(a.effect)
+		}
+	}
+}
+
+// rollAgainstText is the sentence of a roll mode against a condition, in Portuguese.
+func (c *content) rollAgainstText(e *Effect) string {
+	mode := map[string]string{"advantage": "Vantagem", "disadvantage": "Desvantagem"}[e.Roll]
+	return fmt.Sprintf("%s em testes de resistência para não ficar com a condição %s.", mode, strings.ToLower(c.namePT(e.AgainstCondition)))
+}
+
+// conditionImmunityHint is the sheet's note of the conditions the character takes none of.
+func (x *deriver) conditionImmunityHint(a activeEffect) {
+	e := a.effect
+	if e.TextPT == "" {
+		names := make([]string, len(e.Conditions))
+		for i, k := range e.Conditions {
+			names[i] = strings.ToLower(x.c.namePT(k))
+		}
+		e = &Effect{TextPT: "Imune às condições: " + strings.Join(names, ", ") + "."}
+		a = activeEffect{owner: a.owner, effect: e}
+	}
+	x.hint(a, nil, "note", 0)
 }
 
 // taggedSkillHint is a skill proficiency that only counts in some situations,

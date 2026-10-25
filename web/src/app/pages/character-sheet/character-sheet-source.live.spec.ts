@@ -142,6 +142,7 @@ function minimalDerivedSheet(): DerivedSheet {
     hitPointsFromEffects: 0,
     resistances: [],
     shieldIdle: false,
+    size: '',
   };
 }
 
@@ -181,6 +182,7 @@ function minimalFullSheet(overrides: Partial<FullSheet> = {}): FullSheet {
     featureChoiceText: {},
     cuttingWordsAsk: CuttingWordsAsk.UNSPECIFIED,
     xpValue: 0,
+    size: '',
     ...overrides,
   };
 }

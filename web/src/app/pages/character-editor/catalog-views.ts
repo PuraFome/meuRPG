@@ -49,12 +49,40 @@ export function skillNoteOf(c: ClassOptionVm | undefined): string {
   return `O ${c.namePt} escolhe ${c.skillChoose} ${c.skillChoose === 1 ? 'perícia' : 'perícias'} ao começar${savesText}.`;
 }
 
-/** The race's "+2 e +1 à sua escolha": where the player puts them (the server's numbers, from the catalog). */
+/** The race's "+2 e +1 à sua escolha" (or one of several sets of them): where the player puts them (the server's numbers,
+ * from the catalog). */
 export function choiceBonusesHintOf(race: RaceOptionVm | undefined): string {
+  const sets = race?.choiceBonusSets ?? [];
+  if (sets.length > 0) {
+    return `Dá um destes grupos, nas habilidades que você escolher (uma por valor): ${sets.map((s) => bonusWords(s)).join(' ou ')}. Ponha em “Bônus manuais”, no passo Habilidades.`;
+  }
   const bonuses = race?.choiceBonuses ?? [];
   return bonuses.length > 0
     ? `Dá ${bonusWords(bonuses)} nas habilidades que você escolher: ponha em “Bônus manuais”, no passo Habilidades.`
     : '';
+}
+
+const SIZE_NAMES: Readonly<Record<string, string>> = {
+  Tiny: 'Miúdo',
+  Small: 'Pequeno',
+  Medium: 'Médio',
+  Large: 'Grande',
+};
+
+/** The sizes the player picks one from, for a race that offers two or more; none for a race with only its own size, so the
+ * step shows the picker only when there is a real choice. The empty value is the race's own size. */
+export function sizeChoicesOf(
+  race: RaceOptionVm | undefined,
+): readonly { value: string; label: string }[] {
+  const sizes = race?.sizes ?? [];
+  if (sizes.length < 2) {
+    return [];
+  }
+  const own = race?.size ?? sizes[0];
+  return [
+    { value: '', label: `${SIZE_NAMES[own] ?? own} (da raça)` },
+    ...sizes.filter((s) => s !== own).map((s) => ({ value: s, label: SIZE_NAMES[s] ?? s })),
+  ];
 }
 
 /** The hint under "Subclasse" while the level is below the one where the class chooses it; empty once the level

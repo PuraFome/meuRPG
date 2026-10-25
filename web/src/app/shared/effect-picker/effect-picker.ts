@@ -1,17 +1,13 @@
 import { Component, computed, input, output, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import {
-  EFFECT_FIELD_HINTS,
-  EFFECT_FIELD_LABELS,
-  type EffectDraft,
-  type EffectMenuVm,
-  emptyEffect,
-} from '../../core/content/effect-draft';
+import { type EffectDraft, type EffectMenuVm, emptyEffect } from '../../core/content/effect-draft';
+import { EFFECT_FIELD_HINTS, EFFECT_FIELD_LABELS } from '../../core/content/effect-field-text';
 import type { EffectMenuField } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { CheckRow } from '../form-fields/check-row';
 import { FieldNote } from '../form-fields/field-note';
 import { PickList } from '../form-fields/pick-list';
+import { RadioCards, type RadioCard } from '../form-fields/radio-cards';
 import { SelectField, type SelectOption } from '../form-fields/select-field';
 import { TextField } from '../form-fields/text-field';
 
@@ -26,7 +22,7 @@ import { TextField } from '../form-fields/text-field';
  */
 @Component({
   selector: 'app-effect-picker',
-  imports: [CheckRow, FieldNote, MatIconModule, PickList, SelectField, TextField],
+  imports: [CheckRow, FieldNote, MatIconModule, PickList, RadioCards, SelectField, TextField],
   templateUrl: './effect-picker.html',
   styleUrl: './effect-picker.scss',
 })
@@ -147,6 +143,16 @@ export class EffectPicker {
   protected choiceOptions(f: EffectMenuField): SelectOption[] {
     const list = this.optionsOf(f);
     return f.required ? list : [{ value: '', label: 'Padrão' }, ...list];
+  }
+
+  /** The cards of a short closed list (a resistance's kind), with the menu's line under each. */
+  protected cardsOf(f: EffectMenuField): RadioCard[] {
+    return this.optionsOf(f).map((o) => ({ value: o.value, label: o.label, hint: o.hint }));
+  }
+
+  /** The card that is on: what the draft holds, or the first card, which is what an empty field means. */
+  protected cardValue(f: EffectMenuField): string {
+    return this.read(f.name) || (this.optionsOf(f)[0]?.value ?? '');
   }
 
   protected pickOptions(f: EffectMenuField): SelectOption[] {

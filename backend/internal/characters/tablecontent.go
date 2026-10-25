@@ -341,6 +341,10 @@ func tableRaceOf(te rules.TableEntry, b *rulesv1.TableRace) rules.TableRace {
 	for _, n := range b.GetChoiceBonuses() {
 		r.ChoiceBonuses = append(r.ChoiceBonuses, int(n))
 	}
+	for _, set := range b.GetChoiceBonusSets() {
+		r.ChoiceBonusSets = append(r.ChoiceBonusSets, intsOf(set.GetBonuses()))
+	}
+	r.Sizes = b.GetSizes()
 	return r
 }
 
@@ -369,7 +373,8 @@ func tableEffectsOf(in []*rulesv1.TableEffect) []rules.Effect {
 			Choice: e.GetChoice(), Count: int(e.GetCount()), From: e.GetFrom(), Economy: e.GetEconomy(), Applies: e.GetApplies(), Ability: e.GetAbility(),
 			Spells: e.GetSpells(), TextPT: e.GetTextPt(),
 			IgnoreCover: e.GetIgnoreCover(), RangeMultiplier: int(e.GetRangeMultiplier()), NoLongRangeDisadvantage: e.GetNoLongRangeDisadvantage(),
-			Except: e.GetExcept(), While: e.GetWhile(),
+			Except: e.GetExcept(), While: e.GetWhile(), DamageTypes: e.GetDamageTypes(), Kind: e.GetKind(),
+			Conditions: e.GetConditions(), AgainstCondition: e.GetAgainstCondition(),
 		})
 	}
 	return out
@@ -996,4 +1001,13 @@ func (v playerView) casting(c *rulesv1.TableCasting) {
 	if c != nil && v.hidden(c.GetListFrom()) {
 		c.ListFrom = ""
 	}
+}
+
+// intsOf is the int32s as ints.
+func intsOf(in []int32) []int {
+	out := make([]int, len(in))
+	for i, n := range in {
+		out[i] = int(n)
+	}
+	return out
 }

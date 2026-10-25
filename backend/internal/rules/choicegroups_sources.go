@@ -67,7 +67,7 @@ func (cb *choiceBuilder) traitChoices(g *groupBuild, tk string) {
 // race's choice is placed in the manual bonuses and is not asked here.
 func (cb *choiceBuilder) abilityChoice(r *srd51.Race) {
 	c := cb.c
-	if r.AbilityBonusChoices == nil || len(c.raceChoice[r.Key]) > 0 {
+	if r.AbilityBonusChoices == nil || len(c.raceBonusSets(r.Key)) > 0 {
 		return
 	}
 	g := cb.group(ChoiceOriginRace, r.Key, 0, 0)

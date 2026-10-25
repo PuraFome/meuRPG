@@ -59,6 +59,7 @@ export function buildFullValue(d: DraftParts): CharacterFormValue {
     name: v.name,
     race: v.race,
     subrace: v.subrace,
+    raceSize: v.raceSize,
     className: v.className,
     subclassName: v.subclassName,
     customSubclassName: v.customSubclassName,

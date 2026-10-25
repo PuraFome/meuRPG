@@ -439,15 +439,16 @@ func foldPT(s string) string {
 }
 
 // checkRaceBonus checks the bonuses a table race lets the player place ("+2 and
-// +1 to your choice"): the player puts them in the manual bonuses, and an
-// Issue says when the manual bonuses do not cover them. A level's Ability Score
-// Improvement only adds to them, so it never takes the check back.
+// +1 to your choice", or one of several sets): the player puts them in the manual
+// bonuses, and an Issue says when the manual bonuses do not cover any of the sets.
+// A level's Ability Score Improvement only adds to them, so it never takes the
+// check back.
 func (x *deriver) checkRaceBonus() {
 	if x.race == nil {
 		return
 	}
-	want := x.c.raceChoice[x.race.Key]
-	if len(want) == 0 {
+	sets := x.c.raceBonusSets(x.race.Key)
+	if len(sets) == 0 {
 		return
 	}
 	var placed []int
@@ -457,16 +458,45 @@ func (x *deriver) checkRaceBonus() {
 		}
 	}
 	slices.SortFunc(placed, func(a, b int) int { return b - a })
-	covered := len(placed) >= len(want)
-	for i := 0; covered && i < len(want); i++ {
-		covered = placed[i] >= want[i]
-	}
-	if covered {
+	if slices.ContainsFunc(sets, func(want []int) bool { return coversBonuses(placed, want) }) {
 		return
 	}
-	parts := make([]string, len(want))
-	for i, v := range want {
-		parts[i] = signed(v)
+	options := make([]string, len(sets))
+	for i, set := range sets {
+		parts := make([]string, len(set))
+		for j, v := range set {
+			parts[j] = signed(v)
+		}
+		options[i] = strings.Join(parts, " e ")
 	}
-	x.issue(IssueRaceBonus, "full.extra_ability_bonuses", "%s: distribua %s em habilidades diferentes, à sua escolha, nos bônus manuais.", x.c.namePT(x.race.Key), strings.Join(parts, " e "))
+	text := "distribua %s em habilidades diferentes, à sua escolha, nos bônus manuais."
+	if len(sets) > 1 {
+		text = "escolha um dos grupos (%s) e distribua em habilidades diferentes, à sua escolha, nos bônus manuais."
+	}
+	x.issue(IssueRaceBonus, "full.extra_ability_bonuses", "%s: "+text, x.c.namePT(x.race.Key), strings.Join(options, " ou "))
+}
+
+// coversBonuses says the placed bonuses (largest first) cover the wanted ones (largest first).
+func coversBonuses(placed, want []int) bool {
+	if len(placed) < len(want) {
+		return false
+	}
+	for i, v := range want {
+		if placed[i] < v {
+			return false
+		}
+	}
+	return true
+}
+
+// raceBonusSets are the sets of ability bonuses a table race lets the player place, largest first: its
+// alternative sets, or its single set of choice_bonuses; nil when it has none.
+func (c *content) raceBonusSets(raceKey string) [][]int {
+	if sets := c.raceSets[raceKey]; len(sets) > 0 {
+		return sets
+	}
+	if one := c.raceChoice[raceKey]; len(one) > 0 {
+		return [][]int{one}
+	}
+	return nil
 }

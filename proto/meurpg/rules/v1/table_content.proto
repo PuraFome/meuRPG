@@ -172,13 +172,29 @@ message TableEffect {
   // range, gives the roll no disadvantage. A ranged_attack effect sets at least one of
   // ignore_cover, range_multiplier and no_long_range_disadvantage.
   bool no_long_range_disadvantage = 26;
-  // resistance: resistance to every damage type but `except` (a "damage-type:" key
-  // of the SRD, such as "damage-type:psychic") while `while` holds; `while` is "rage"
-  // for as long as the character is raging. Both are required, and the effect has no
-  // `when` and no `tags`. Resistance never stacks: the same type from another source
-  // (the barbarian's own rage resistance) counts once.
+  // resistance: resistance, immunity or vulnerability to damage types (SRD 5.1,
+  // "Damage Resistance and Vulnerability"). The types are either `damage_types` (the
+  // SRD's "damage-type:" keys, such as "damage-type:cold", or one of the closed words
+  // "all" for every type and "nonmagical_bps" for the bludgeoning, piercing and slashing
+  // damage of attacks that are not magical; "all" is alone in the list, no key is
+  // listed twice) or every type but `except` (a "damage-type:" key); exactly one of
+  // the two is set. `kind` is "resist" (half the damage, the default when empty),
+  // "immune" (none) or "vulnerable" (double). Immunity wins over resistance, resistance
+  // is applied before vulnerability, and the same kind from two sources counts once.
+  // `while` is empty (always) or "rage" (for as long as the character is raging). The
+  // effect has no `when` and no `tags`. An attack the sheet or the stat block does not
+  // mark as magical counts as nonmagical.
   string except = 27;
   string while = 28;
+  repeated string damage_types = 29;
+  string kind = 30;
+  // condition_immunity: the keys of the conditions ("condition:poisoned", one of the 15
+  // of the SRD) the character takes none of: no spell, trap or blow puts them on it.
+  repeated string conditions = 31;
+  // roll_mode: the saving throws (the `targets` are "save.<ability>" or "save.all")
+  // against being this condition ("condition:frightened") get the roll mode of `roll`.
+  // It has no `tags`: the condition is the situation, and the app applies the mode.
+  string against_condition = 32;
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
@@ -334,6 +350,8 @@ message TableRace {
   AbilityScores ability_bonuses = 4;
   // Bonuses the player places on abilities of their choice, such as [2, 1] for "+2
   // and +1 to your choice"; each goes on a different ability.
+  // A single set of such bonuses; `choice_bonus_sets` holds several. A race has one or
+  // the other, never both. Each bonus is 1 to 4 here.
   repeated int32 choice_bonuses = 5;
   // 0, or the range of the darkvision, in feet.
   int32 darkvision_ft = 6;
@@ -341,6 +359,16 @@ message TableRace {
   repeated string languages = 7;
   int32 language_choices = 8;
   repeated TableFeature traits = 9;
+  // Alternative sets of bonuses to place ("+2 and +1, or +1, +1 and +1"): the player
+  // picks one set at creation and each of its bonuses goes on a different ability
+  // (the sheet keeps them as manual ability bonuses, and an issue says when they cover
+  // no set). At most 4 sets, each of 1 to 6 bonuses of +1 or +2, no two the same; the
+  // race has `choice_bonuses` or this, never both.
+  repeated BonusSet choice_bonus_sets = 10;
+  // The sizes the player picks one from: "Small", "Medium", or both, once each. `size`
+  // is the default (and one of them); the character creator asks only when there are
+  // two. Empty means the race has only `size`.
+  repeated string sizes = 11;
 }
 
 // TableSubrace is a subrace.
@@ -1168,7 +1196,8 @@ message EffectMenuField {
   // The effect is refused without it.
   bool required = 2;
   // How the editor asks: "formula" (an Int formula), "condition" (a Bool formula),
-  // "text", "number", "choice" (one value of `list`), "choices" (several), "tags",
+  // "text", "number", "choice" (one value of `list`), "choices" (several), "cards" (one
+  // value of a short `list`, shown as radio cards with their hints), "tags",
   // "resource_ref" (the name of a resource effect the entry defines; the editor lists
   // the ones it has) or "yes_no" (a switch: true or false).
   string kind = 3;

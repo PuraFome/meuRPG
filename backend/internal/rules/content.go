@@ -159,6 +159,10 @@ type content struct {
 	// (effects/damage_resistances.json), by key.
 	resistances map[string]Resistance
 	raceChoice  map[string][]int
+	// raceSets are the alternative sets of ability bonuses a table race lets the player place
+	// and raceSizes the sizes it lets the player pick; absent for the races that have none.
+	raceSets    map[string][][]int
+	raceSizes   map[string][]string
 	bgEquipment map[string]string
 	// entryRevision is the revision of each table entry at its last change.
 	entryRevision  map[string]int
@@ -791,7 +795,7 @@ func (c *content) raceEntries() []RaceEntry {
 		out = append(out, RaceEntry{
 			Key: k, Name: r.Name, NamePT: c.namePT(k), SpeedFt: r.SpeedFt, Size: r.Size,
 			AbilityBonuses: abilityMap(r.AbilityBonuses), Subraces: r.Subraces,
-			ChoiceBonuses: c.raceChoice[k], SkillProficiencies: c.traitSkills(r.Traits), Archived: c.archived[k], Off: c.off[k],
+			ChoiceBonuses: c.raceChoice[k], ChoiceBonusSets: c.raceSets[k], Sizes: slices.Clone(c.raceSizes[k]), SkillProficiencies: c.traitSkills(r.Traits), Archived: c.archived[k], Off: c.off[k],
 		})
 	}
 	sortPT(out, func(e RaceEntry) string { return e.NamePT })

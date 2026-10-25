@@ -195,12 +195,14 @@ type ExtraDamage struct {
 // has it sets Traits.Lucky, and a d20 it rolled again names it as the source of the reroll.
 const LuckyTrait = "trait:lucky"
 
-// TaggedSave is an advantage on saving throws against one kind of source ("magic", "frightened", "charmed",
-// "poison"), as the sheet's trait gives it: Source is the key of the trait, Abilities the saves it covers (all when
+// TaggedSave is an advantage (or a disadvantage, Disadvantage) on saving throws against one kind of source ("magic",
+// "frightened", "charmed", "poison", or a condition key such as "condition:frightened" for a table's roll mode against
+// a condition), as the sheet's trait gives it: Source is the key of the trait, Abilities the saves it covers (all when
 // empty).
 type TaggedSave struct {
 	Source, Against string
 	Abilities       []string
+	Disadvantage    bool
 }
 
 // Traits are what a sheet has that changes how its owner rolls and what its
@@ -247,8 +249,10 @@ type Traits struct {
 	StealthDisadvantage bool
 	// ArmorUntrained says the character wears armor or a shield it is not proficient with.
 	ArmorUntrained bool
-	// Resistances are the damage resistances the features and traits give.
+	// Resistances are the damage resistances, immunities and vulnerabilities the features and traits give.
 	Resistances []Resistance
+	// ConditionImmunities are the conditions the features and traits make the sheet immune to.
+	ConditionImmunities []ConditionImmunity
 	// Maneuvers are the dice the table's options add to a roll (superiority_die effects).
 	Maneuvers []Maneuver
 	// ExtraDamages are the damage the table's features add to a weapon hit (extra_damage effects).
@@ -276,6 +280,16 @@ type Resistance struct {
 	Source, NamePT string
 	DamageTypes    []string
 	While          string
+	// Kind is rules.ResistanceKindResist, ResistanceKindImmune or ResistanceKindVulnerable, and Nonmagical
+	// limits it to the damage of attacks that are not magical.
+	Kind       string
+	Nonmagical bool
+}
+
+// ConditionImmunity is a condition the sheet takes none of, with the trait that says so.
+type ConditionImmunity struct {
+	Source     string
+	Conditions []string
 }
 
 // Senses are a creature's special senses, as a range in feet (0 for none).

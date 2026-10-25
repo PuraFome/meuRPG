@@ -118,6 +118,7 @@ function fullyPopulatedFullSheet(): FullSheet {
     contentBaselines: {},
     featureChoiceText: {},
     cuttingWordsAsk: CuttingWordsAsk.NEVER,
+    size: '',
   };
 }
 
@@ -139,6 +140,7 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
       },
       raceKey: loaded.raceKey,
       subraceKey: loaded.subraceKey,
+      size: loaded.size,
       classes: [
         {
           classKey: loaded.classes[0].classKey,
@@ -445,6 +447,8 @@ describe('the catalog the editor reads (slice 10.12b)', () => {
                 namePt: 'Gnomo',
                 abilityBonuses: { constitution: 0 },
                 choiceBonuses: [],
+                choiceBonusSets: [],
+                sizes: [],
                 archived: false,
               },
               {
@@ -452,6 +456,8 @@ describe('the catalog the editor reads (slice 10.12b)', () => {
                 namePt: 'Corujeiro',
                 abilityBonuses: undefined,
                 choiceBonuses: [2, 1],
+                choiceBonusSets: [],
+                sizes: [],
                 archived: true,
               },
             ],
