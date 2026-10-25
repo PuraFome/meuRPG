@@ -8625,3 +8625,60 @@ test('a barra da sessão, o menu "Sessão" e a navegação fixa passam no axe e 
   test.setTimeout(240_000);
   await scanSessionBar(browser, 'light', 320);
 });
+
+/** The master acts for a player's character (MR-053, C8-01 to C8-04): the character's card with "Agir por", the rail while acting, the target
+ * asked for the character, and the card of a downed character, whose death save leads the turn. */
+async function scanMasterActs(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade mestre age ${Date.now()}`, true, true, { sheet: pensantusCasting });
+    campaignId = table.campaignId;
+    await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+
+    await openSessionPage(m, campaignId);
+    await expect(m.getByRole('button', { name: 'Agir por Pensantus' })).toBeVisible();
+    await expectScreenPasses(m, `O mestre, a vez de Pensantus com "Agir por" ${where}`);
+    await m.getByRole('button', { name: 'Agir por Pensantus' }).click();
+    await expect(m.getByText('Você está agindo por Pensantus')).toBeVisible();
+    await expectScreenPasses(m, `O mestre age por Pensantus ${where}`);
+    await m.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
+    await expect(m.getByRole('region', { name: 'Escolha do alvo' })).toBeVisible();
+    await expectScreenPasses(m, `O mestre escolhe o alvo de Pensantus no mapa ${where}`);
+    await m.getByRole('region', { name: 'Escolha do alvo' }).getByRole('button', { name: 'Cancelar' }).click();
+    await m.getByRole('button', { name: 'Voltar ao mestre' }).click();
+
+    // A downed character: the death save leads the turn, "Próximo turno" is the dashed button.
+    await adjustVitalsRPC(m, campaignId, table.characterId, { hitPointsCurrent: 0 });
+    const enc = await getEncounterRPC(m, campaignId);
+    await combatRPC(m, 'EndTurn', { campaignId, encounterId: enc.id, expectedCombatantId: enc.currentCombatantId });
+    await passTurnsTo(m, campaignId, 'Pensantus');
+    await expect(m.getByRole('heading', { name: 'Pensantus está caído: teste contra a morte' })).toBeVisible();
+    await expectScreenPasses(m, `O mestre, o teste contra a morte de Pensantus ${where}`);
+    await m.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await expectScreenPasses(m, `O mestre digita o teste contra a morte ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('o mestre agir por um personagem passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-053'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanMasterActs(browser, 'light', 1280);
+});
+
+test('o mestre agir por um personagem passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-053'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanMasterActs(browser, 'dark', 390);
+});

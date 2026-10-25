@@ -290,7 +290,11 @@ function lateTitle(w: ReactionWindow): string {
 /** The numbers of the reaction that came to the master: the Shield's hit against its armor class, with and without the spell. */
 function lateText(w: ReactionWindow): string {
   const t = w.trigger;
-  if (w.kind === ReactionKind.SHIELD && t?.attackTotal !== undefined && t.armorClassWithShield !== undefined) {
+  if (
+    w.kind === ReactionKind.SHIELD &&
+    t?.attackTotal !== undefined &&
+    t.armorClassWithShield !== undefined
+  ) {
     const base = t.armorClassWithShield - SHIELD_BONUS;
     return `O ataque de ${t.attackTotal} ${ofThe([t.actorLabel])} acerta a CA ${base}. Com ${reactionName(w)} a CA vai a ${t.armorClassWithShield} e o ataque ${t.attackTotal >= t.armorClassWithShield ? 'acerta' : 'erra'}.`;
   }
@@ -299,7 +303,10 @@ function lateText(w: ReactionWindow): string {
 
 /** What the reaction costs the character: its reaction, and the slot a spell takes. */
 function lateCost(w: ReactionWindow): string {
-  const slot = w.prompt.case === 'shield' ? [...w.prompt.value.slots].sort((a, b) => a.level - b.level)[0] : null;
+  const slot =
+    w.prompt.case === 'shield'
+      ? [...w.prompt.value.slots].sort((a, b) => a.level - b.level)[0]
+      : null;
   const spent = slot ? ` e um espaço de ${circleLabel(slot.level)}` : '';
   return `Gasta a reação${spent}. O jogador não respondeu em ${LATE_SECONDS} s; você responde por ele.`;
 }

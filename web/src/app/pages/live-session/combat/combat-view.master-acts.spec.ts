@@ -109,7 +109,11 @@ async function mount(first: ReturnType<typeof enc>) {
       { provide: SpellCatalog, useValue: { details: async () => null } },
       {
         provide: CreaturesClient,
-        useValue: { list: async () => [], statBlock: async () => null, summonOptions: async () => [] },
+        useValue: {
+          list: async () => [],
+          statBlock: async () => null,
+          summonOptions: async () => [],
+        },
       },
       {
         provide: TableRulesClient,
@@ -148,7 +152,9 @@ describe('the master acts for a player character', () => {
 
   it('shows the character\'s card with "Agir por Pensantus" on its turn', async () => {
     const { el } = await mount(enc('p'));
-    expect(plain(el.querySelector('[data-testid="act-as-card"] h2')?.textContent)).toBe('Vez de Pensantus');
+    expect(plain(el.querySelector('[data-testid="act-as-card"] h2')?.textContent)).toBe(
+      'Vez de Pensantus',
+    );
     expect(button(el, 'Agir por Pensantus')).toBeDefined();
     expect(el.querySelector('[data-testid="acting-band"]')).toBeNull();
   });
@@ -168,11 +174,17 @@ describe('the master acts for a player character', () => {
     expect(button(el, 'Voltar ao mestre')).toBeDefined();
     expect(button(el, 'Próximo turno')).toBeUndefined();
     expect(el.querySelectorAll('button').length).toBeGreaterThan(0);
-    expect([...el.querySelectorAll('button')].filter((b) => plain(b.textContent).includes('Encerrar o turno de Pensantus'))).toHaveLength(1);
-    expect(plain(el.querySelector('[data-testid="acting-chip"]')?.textContent)).toContain('Você age por Pensantus');
+    expect(
+      [...el.querySelectorAll('button')].filter((b) =>
+        plain(b.textContent).includes('Encerrar o turno de Pensantus'),
+      ),
+    ).toHaveLength(1);
+    expect(plain(el.querySelector('[data-testid="acting-chip"]')?.textContent)).toContain(
+      'Você age por Pensantus',
+    );
   });
 
-  it('ends the character\'s own turn with its id', async () => {
+  it("ends the character's own turn with its id", async () => {
     const { fixture, el, turnsEnded } = await mount(enc('p'));
     button(el, 'Agir por Pensantus')!.click();
     await settle(fixture);
@@ -205,7 +217,7 @@ describe('the master acts for a player character', () => {
     expect(button(el, 'Agir por Pensantus')).toBeDefined();
   });
 
-  it('asks for the character\'s own turn options while acting', async () => {
+  it("asks for the character's own turn options while acting", async () => {
     const { asked } = await mount(enc('p'));
     expect(asked).toContain('p');
   });

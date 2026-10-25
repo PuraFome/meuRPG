@@ -35,12 +35,7 @@ import { offersToAnswer } from '../../../core/combat/opportunity';
 import { LayersState } from '../../../core/maps/layers-state';
 import { CombatLogState } from '../../../core/combat/combat-log-state';
 import { TurnOptionsState } from '../../../core/combat/turn-options-state';
-import {
-  currentCombatant,
-  isDown,
-  isPlayer,
-  ownCombatant,
-} from '../../../core/combat/combat-view';
+import { currentCombatant, isDown, isPlayer, ownCombatant } from '../../../core/combat/combat-view';
 import { acts, jointTurn, masterActor } from '../../../core/combat/joint-turn';
 import { MasterAutoPass } from '../../../core/combat/auto-pass';
 import { CombatCalls } from '../../../core/combat/combat-calls';
