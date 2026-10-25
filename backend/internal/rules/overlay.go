@@ -244,6 +244,10 @@ type TableSubclass struct {
 	Casting *TableCasting
 	// AlwaysPrepared are the spells it always has prepared.
 	AlwaysPrepared []TableAlwaysPrepared
+	// SpellsExpanded says AlwaysPrepared are not given: they join the class's spell
+	// list to choose from, as a warlock patron's expanded list does, and count
+	// against the spells known or prepared. It needs AlwaysPrepared to have spells.
+	SpellsExpanded bool
 }
 
 // TableRace is a race in the 2014 shape.

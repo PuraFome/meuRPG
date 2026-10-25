@@ -1735,6 +1735,11 @@ type TableSubclass struct {
 	// start level to 20.
 	Casting        *TableCasting          `protobuf:"bytes,6,opt,name=casting,proto3" json:"casting,omitempty"`
 	AlwaysPrepared []*TableAlwaysPrepared `protobuf:"bytes,7,rep,name=always_prepared,json=alwaysPrepared,proto3" json:"always_prepared,omitempty"`
+	// The spells of always_prepared are not given: they join the class's spell list
+	// to choose from, as a warlock patron's expanded list does, and count against
+	// the spells known or prepared. It needs always_prepared to have spells; a
+	// subclass without spells that sets it is refused.
+	SpellsExpanded bool `protobuf:"varint,8,opt,name=spells_expanded,json=spellsExpanded,proto3" json:"spells_expanded,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -1816,6 +1821,13 @@ func (x *TableSubclass) GetAlwaysPrepared() []*TableAlwaysPrepared {
 		return x.AlwaysPrepared
 	}
 	return nil
+}
+
+func (x *TableSubclass) GetSpellsExpanded() bool {
+	if x != nil {
+		return x.SpellsExpanded
+	}
+	return false
 }
 
 // TableRace is a race.
@@ -5774,7 +5786,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\bfeatures\x18\x02 \x03(\v2\x1d.meurpg.rules.v1.TableFeatureR\bfeatures\x12%\n" +
 	"\x0ecantrips_known\x18\x03 \x01(\x05R\rcantripsKnown\x12!\n" +
 	"\fspells_known\x18\x04 \x01(\x05R\vspellsKnown\x12\x14\n" +
-	"\x05slots\x18\x05 \x03(\x05R\x05slots\"\xb9\x02\n" +
+	"\x05slots\x18\x05 \x03(\x05R\x05slots\"\xe2\x02\n" +
 	"\rTableSubclass\x12\x17\n" +
 	"\aname_pt\x18\x01 \x01(\tR\x06namePt\x12\x1b\n" +
 	"\tclass_key\x18\x02 \x01(\tR\bclassKey\x12\x14\n" +
@@ -5782,7 +5794,8 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\adesc_pt\x18\x04 \x03(\tR\x06descPt\x12;\n" +
 	"\x06levels\x18\x05 \x03(\v2#.meurpg.rules.v1.TableSubclassLevelR\x06levels\x127\n" +
 	"\acasting\x18\x06 \x01(\v2\x1d.meurpg.rules.v1.TableCastingR\acasting\x12M\n" +
-	"\x0falways_prepared\x18\a \x03(\v2$.meurpg.rules.v1.TableAlwaysPreparedR\x0ealwaysPrepared\"\xe8\x02\n" +
+	"\x0falways_prepared\x18\a \x03(\v2$.meurpg.rules.v1.TableAlwaysPreparedR\x0ealwaysPrepared\x12'\n" +
+	"\x0fspells_expanded\x18\b \x01(\bR\x0espellsExpanded\"\xe8\x02\n" +
 	"\tTableRace\x12\x17\n" +
 	"\aname_pt\x18\x01 \x01(\tR\x06namePt\x12\x12\n" +
 	"\x04size\x18\x02 \x01(\tR\x04size\x12\x19\n" +

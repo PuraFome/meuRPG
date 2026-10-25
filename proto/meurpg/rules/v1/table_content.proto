@@ -327,6 +327,11 @@ message TableSubclass {
   // start level to 20.
   TableCasting casting = 6;
   repeated TableAlwaysPrepared always_prepared = 7;
+  // The spells of always_prepared are not given: they join the class's spell list
+  // to choose from, as a warlock patron's expanded list does, and count against
+  // the spells known or prepared. It needs always_prepared to have spells; a
+  // subclass without spells that sets it is refused.
+  bool spells_expanded = 8;
 }
 
 // TableRace is a race.

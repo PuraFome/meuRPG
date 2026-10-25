@@ -595,6 +595,9 @@ func (b *overlayBuilder) addSubclass(ts *TableSubclass, path string) error {
 		return err
 	}
 	b.register(ts.TableEntry)
+	if ts.SpellsExpanded {
+		b.expandList(sub)
+	}
 	n.subclasses[key] = sub
 	n.subclassLevels[key] = sb.rows
 	cp := *n.classes[parent]
@@ -746,10 +749,25 @@ func (s *subclassBuilder) castingFeature() {
 	n.subCasting[key] = *s.casting
 }
 
+// expandList makes the subclass's spells an expanded list: they are not given,
+// they join the class's list to choose from. Each spell names the subclass on a
+// copy of it, like the SRD's patron spells, and the base's are never written.
+func (b *overlayBuilder) expandList(sub *srd51.Subclass) {
+	sub.ExpandedList = true
+	for _, ss := range sub.Spells {
+		cp := *b.n.spells[ss.Spell]
+		cp.Subclasses = append(slices.Clone(cp.Subclasses), sub.Key)
+		b.n.spells[ss.Spell] = &cp
+	}
+}
+
 // alwaysPrepared checks the spells the subclass always prepares and lists the
 // good ones on sub.
 func (s *subclassBuilder) alwaysPrepared(sub *srd51.Subclass) {
 	ts, key := s.ts, s.ts.Key
+	if ts.SpellsExpanded && len(ts.AlwaysPrepared) == 0 {
+		s.c.at(key, s.path, ".spells_expanded", ReasonValue, "spells_expanded needs the subclass to name spells")
+	}
 	if _, parentCasts := s.b.base.casting[s.parent]; s.parentOK && len(ts.AlwaysPrepared) > 0 && ts.Casting == nil && !parentCasts && s.b.classCasts[s.parent] == CastingNone {
 		s.c.list = append(s.c.list, ovErr(key, "always-prepared spells need a class or subclass that casts").at(s.path+".always_prepared", ReasonCasting))
 	}

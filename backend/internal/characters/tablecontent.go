@@ -317,7 +317,7 @@ func tableLevelOf(cantrips, spells int32, slots []int32) rules.TableLevel {
 }
 
 func tableSubclassOf(te rules.TableEntry, b *rulesv1.TableSubclass) rules.TableSubclass {
-	s := rules.TableSubclass{TableEntry: te, Class: b.GetClassKey(), Level: int(b.GetLevel()), DescPT: b.GetDescPt()}
+	s := rules.TableSubclass{TableEntry: te, Class: b.GetClassKey(), Level: int(b.GetLevel()), DescPT: b.GetDescPt(), SpellsExpanded: b.GetSpellsExpanded()}
 	for _, l := range b.GetLevels() {
 		s.Levels = append(s.Levels, rules.TableSubclassLevel{
 			Level: int(l.GetLevel()), Features: tableFeaturesOf(l.GetFeatures()),
