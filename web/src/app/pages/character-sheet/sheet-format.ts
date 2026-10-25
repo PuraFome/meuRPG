@@ -1,7 +1,12 @@
-import { spellLevelLabel } from '../../core/characters/character-labels';
+import {
+  abilityLabel,
+  formatModifier,
+  spellLevelLabel,
+} from '../../core/characters/character-labels';
 import { AbilityKey, CharacterState } from '../../core/characters/characters.types';
 import {
   CoinsVm,
+  GrantedSpellVm,
   IssueVm,
   PactSlotsVm,
   ReviewVm,
@@ -286,4 +291,32 @@ export function spellStateSummary(groups: readonly SpellGroup[]): string {
     parts.push(known === 1 ? '1 só conhecida' : `${known} só conhecidas`);
   }
   return parts.length === 0 ? '' : `${parts.join(' e ')}.`;
+}
+
+/** How a granted spell is cast, in tags: "À vontade" or the resource it spends, then the switches of the grant. */
+export function grantedSpellTags(g: GrantedSpellVm): string[] {
+  const tags = [g.atWill ? 'À vontade' : `Gasta um uso de ${g.resourceNamePt}`];
+  if (g.alsoWithSlot) {
+    tags.push('Também com espaço');
+  }
+  if (g.ritualOnly) {
+    tags.push('Só como ritual');
+  }
+  if (g.countsAsKnown) {
+    tags.push('Conhecida');
+  }
+  return tags;
+}
+
+/** The casting ability of a granted spell and the numbers it gives, or what is missing: "Carisma · CD 14 · ataque +6". */
+export function grantedSpellNumbers(g: GrantedSpellVm): string {
+  if (g.ability === null) {
+    return 'Escolha a habilidade de conjuração nas escolhas da ficha.';
+  }
+  return `${abilityLabel(g.ability)} · CD ${g.saveDc} · ataque ${formatModifier(g.attackBonus)}`;
+}
+
+/** The level of a granted spell in words: "Truque" or "2º nível". */
+export function grantedSpellLevel(g: GrantedSpellVm): string {
+  return g.level === 0 ? 'Truque' : spellLevelLabel(g.level);
 }

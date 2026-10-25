@@ -123,3 +123,11 @@
 .nometa {
   align-self: flex-start;
 }
+
+// A granted spell: where it comes from and what it costs, above the (optional) slot.
+.grant {
+  margin: 0 0 var(--mr-space-2);
+  color: var(--mr-ink-muted);
+  font-size: 14px;
+  line-height: 20px;
+}

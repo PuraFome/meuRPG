@@ -11,6 +11,9 @@ import { FullSheetVm } from '../character-sheet.types';
 import { CombatStats } from '../combat-stats/combat-stats';
 import {
   coinEntries,
+  grantedSpellLevel,
+  grantedSpellNumbers,
+  grantedSpellTags,
   keepUnitsTogether,
   pactSlotRow,
   spellGroups,
@@ -49,6 +52,9 @@ export class CombatColumn {
   protected readonly abilityLabel = abilityLabel;
   protected readonly formatModifier = formatModifier;
   protected readonly spellLimitsText = spellLimitsText;
+  protected readonly grantedLevel = grantedSpellLevel;
+  protected readonly grantedTags = grantedSpellTags;
+  protected readonly grantedNumbers = grantedSpellNumbers;
 
   /** A tap on a spell (its name or its "?"): the key, so the sheet opens its description. */
   readonly spellOpened = output<string>();

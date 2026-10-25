@@ -23,7 +23,7 @@ import { KIND_FROM_GEN } from '../../core/characters/character-kind-gen';
 import { ABILITY_FROM_GEN } from '../../core/characters/ability-gen';
 import { SkillProficiency } from '../../core/characters/character-labels';
 import { metersWithFeet } from '../../core/units';
-import { CharacterState, ReviewStatus } from '../../core/characters/characters.types';
+import { AbilityKey, CharacterState, ReviewStatus } from '../../core/characters/characters.types';
 import { damageTypeFromGen } from '../../core/characters/damage-type-gen';
 import {
   AttackVm,
@@ -211,6 +211,26 @@ function scoresVm(derived: GenDerivedSheet) {
   };
 }
 
+function grantedSpellVm(g: GenDerivedSheet['grantedSpells'][number], derived: GenDerivedSheet) {
+  const resource = derived.resources.find((r) => r.key === g.resource);
+  return {
+    key: g.spell?.key ?? '',
+    namePt: g.spell?.namePt ?? '',
+    level: g.spell?.level ?? 0,
+    sourcePt: g.sourceNamePt,
+    atWill: g.atWill,
+    resource: g.resource,
+    resourceNamePt: resource?.namePt ?? g.resource,
+    alsoWithSlot: g.alsoWithSlot,
+    ritualOnly: g.ritualOnly,
+    countsAsKnown: g.countsAsKnown,
+    ability: g.abilityPending || g.ability === '' ? null : (g.ability as AbilityKey),
+    abilityPending: g.abilityPending,
+    saveDc: g.saveDc,
+    attackBonus: g.attackBonus,
+  };
+}
+
 /** The spells and the slots to cast them with. */
 function castingVm(derived: GenDerivedSheet) {
   return {
@@ -220,6 +240,7 @@ function castingVm(derived: GenDerivedSheet) {
       ? { level: derived.pactMagic.slotLevel, count: derived.pactMagic.count }
       : null,
     spells: derived.spells.map(spellVm),
+    grantedSpells: derived.grantedSpells.map((g) => grantedSpellVm(g, derived)),
   };
 }
 

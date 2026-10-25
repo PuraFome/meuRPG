@@ -267,3 +267,47 @@ export function resistanceMenu(): EffectMenuVm {
   );
   return new EffectMenuVm(res);
 }
+
+/** The menu with the real one's granted_spell and breathes_water effects, for their own specs. */
+export function grantedSpellMenu(): EffectMenuVm {
+  const res = menuResponse();
+  res.types.push(
+    create(EffectMenuTypeSchema, {
+      type: 'granted_spell',
+      namePt: 'Magia concedida',
+      hintPt: 'Uma magia que a entrada dá ao personagem fora das listas das classes dele.',
+      fields: [
+        { name: 'spell', kind: 'choice', required: true },
+        { name: 'ability', kind: 'choice', required: true, list: 'granted_spell_abilities' },
+        { name: 'from_level', kind: 'formula' },
+        { name: 'uses', kind: 'resource_ref' },
+        { name: 'also_with_slot', kind: 'yes_no', alwaysShown: true },
+        { name: 'ritual_only', kind: 'yes_no', alwaysShown: true },
+        { name: 'counts_as_known', kind: 'yes_no', alwaysShown: true },
+        { name: 'when', kind: 'condition' },
+        { name: 'text_pt', kind: 'text' },
+      ],
+    }),
+    create(EffectMenuTypeSchema, {
+      type: 'breathes_water',
+      namePt: 'Respira na água',
+      hintPt: "O personagem respira debaixo d'água.",
+      fields: [
+        { name: 'when', kind: 'condition' },
+        { name: 'text_pt', kind: 'text' },
+      ],
+    }),
+  );
+  res.lists.push(
+    create(EffectMenuListSchema, {
+      name: 'granted_spell_abilities',
+      values: [
+        { key: 'int', namePt: 'Inteligência' },
+        { key: 'wis', namePt: 'Sabedoria' },
+        { key: 'cha', namePt: 'Carisma' },
+        { key: 'choice', namePt: 'O jogador escolhe' },
+      ],
+    }),
+  );
+  return new EffectMenuVm(res);
+}

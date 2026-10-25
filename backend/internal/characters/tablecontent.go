@@ -987,6 +987,9 @@ func (v playerView) dropEffects(fs []*rulesv1.TableFeature) {
 		for _, ef := range f.GetEffects() {
 			ef.Spells = v.visible(ef.Spells)
 			ef.From = v.visible(ef.From)
+			if v.hidden(ef.Spell) {
+				ef.Spell = "" // a granted spell the players do not see is not named to them
+			}
 		}
 		v.dropEffects(f.GetOptions())
 	}

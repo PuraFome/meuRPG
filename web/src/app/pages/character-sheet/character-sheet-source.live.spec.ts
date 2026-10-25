@@ -143,6 +143,7 @@ function minimalDerivedSheet(): DerivedSheet {
     resistances: [],
     shieldIdle: false,
     breathesWater: false,
+    grantedSpells: [],
   };
 }
 

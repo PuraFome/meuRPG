@@ -75,6 +75,12 @@ func TestForPlayerOfEveryKindIsFrozen(t *testing.T) {
 			NamePt: "Talento 2", Prerequisite: &rulesv1.FeatPrerequisite{RaceKey: "race:elf"},
 		}},
 		{"feat without a prerequisite", rulesv1.TableContentKind_TABLE_CONTENT_KIND_FEAT, &rulesv1.TableFeat{NamePt: "Talento 3", Effects: frozenEffects()}},
+		{"feat that grants a hidden and a visible spell", rulesv1.TableContentKind_TABLE_CONTENT_KIND_FEAT, &rulesv1.TableFeat{
+			NamePt: "Talento 4", Effects: []*rulesv1.TableEffect{
+				{Type: "granted_spell", Spell: "spell:cure-wounds", Ability: "wis"},
+				{Type: "granted_spell", Spell: "spell:fire-bolt", Ability: "cha", Uses: "at_will"},
+			},
+		}},
 	}
 	var steps []tableContentGoldenStep
 	for _, b := range bodies {

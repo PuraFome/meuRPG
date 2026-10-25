@@ -1,13 +1,13 @@
 import { Component, computed, input, output, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
+import { type EffectDraft, type EffectMenuVm, emptyEffect } from '../../core/content/effect-draft';
 import {
   EFFECT_FIELD_HINTS,
   EFFECT_FIELD_LABELS,
-  type EffectDraft,
-  type EffectMenuVm,
-  emptyEffect,
-} from '../../core/content/effect-draft';
+  EFFECT_TYPE_FIELD_HINTS,
+  EFFECT_TYPE_FIELD_LABELS,
+} from '../../core/content/effect-field-copy';
 import type { EffectMenuField } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { CheckRow } from '../form-fields/check-row';
 import { FieldNote } from '../form-fields/field-note';
@@ -97,8 +97,14 @@ export class EffectPicker {
   }
 
   protected labelOf(f: EffectMenuField): string {
+    const typed = EFFECT_TYPE_FIELD_LABELS[this.effect().type]?.[f.name];
+    if (typed) {
+      return typed;
+    }
     // The resource an action spends is the same proto field as a resource's own name.
-    return f.kind === 'resource_ref' ? 'Gasta um uso de' : (EFFECT_FIELD_LABELS[f.name] ?? f.name);
+    return f.kind === 'resource_ref' && f.name === 'resource'
+      ? 'Gasta um uso de'
+      : (EFFECT_FIELD_LABELS[f.name] ?? f.name);
   }
 
   /** The hint of a field that is not showing a refusal: written beside it. */
@@ -107,7 +113,11 @@ export class EffectPicker {
   }
 
   protected hintOf(f: EffectMenuField): string {
-    const own = EFFECT_FIELD_HINTS[f.name] ?? '';
+    const own =
+      EFFECT_TYPE_FIELD_HINTS[this.effect().type]?.[f.name] ?? EFFECT_FIELD_HINTS[f.name] ?? '';
+    if (f.name === 'uses') {
+      return own; // its own sentence: an empty resource is at will, not a disabled action
+    }
     if (f.name === 'count' && f.max > 0) {
       return `De ${f.min} a ${f.max}.`;
     }
@@ -133,6 +143,9 @@ export class EffectPicker {
 
   /** The options of a closed list, with the menu's one-line explanation of each. */
   protected optionsOf(f: EffectMenuField): (SelectOption & { hint: string })[] {
+    if (f.name === 'spell') {
+      return this.spellOptions().map((o) => ({ ...o, hint: '' }));
+    }
     const menu = this.menu();
     const list =
       f.name === 'from' && f.list === ''

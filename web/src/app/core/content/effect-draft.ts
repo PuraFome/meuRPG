@@ -53,6 +53,14 @@ export interface EffectDraft {
   /** resistance: the damage type it leaves out, and when it holds ("rage"). */
   except: string;
   while: string;
+  /** granted_spell: the spell (SRD or the table's), the level it starts at (a formula), the resource each cast spends one of
+   * (empty: at will), and the switches. The casting ability is `ability`. */
+  spell: string;
+  fromLevel: string;
+  uses: string;
+  alsoWithSlot: boolean;
+  ritualOnly: boolean;
+  countsAsKnown: boolean;
 }
 
 let nextId = 0;
@@ -93,6 +101,12 @@ export function emptyEffect(type = ''): EffectDraft {
     noLongRangeDisadvantage: false,
     except: '',
     while: '',
+    spell: '',
+    fromLevel: '',
+    uses: '',
+    alsoWithSlot: false,
+    ritualOnly: false,
+    countsAsKnown: false,
   };
 }
 
@@ -128,6 +142,12 @@ export function effectToDraft(e: TableEffect): EffectDraft {
     noLongRangeDisadvantage: e.noLongRangeDisadvantage,
     except: e.except,
     while: e.while,
+    spell: e.spell,
+    fromLevel: e.fromLevel,
+    uses: e.uses,
+    alsoWithSlot: e.alsoWithSlot,
+    ritualOnly: e.ritualOnly,
+    countsAsKnown: e.countsAsKnown,
   };
 }
 
@@ -146,7 +166,7 @@ type EffectWriter = (d: EffectDraft) => EffectInit;
 
 /** A text the server reads trimmed; an empty one is not sent. */
 const trimmedText =
-  (key: 'value' | 'when' | 'resource' | 'max' | 'textPt'): EffectWriter =>
+  (key: 'value' | 'when' | 'resource' | 'max' | 'textPt' | 'fromLevel' | 'uses'): EffectWriter =>
   (d) => {
     const text = d[key].trim();
     return text ? ({ [key]: text } as EffectInit) : {};
@@ -168,7 +188,8 @@ const pickedText =
       | 'applies'
       | 'ability'
       | 'except'
-      | 'while',
+      | 'while'
+      | 'spell',
   ): EffectWriter =>
   (d) =>
     d[key] ? ({ [key]: d[key] } as EffectInit) : {};
@@ -212,6 +233,12 @@ const EFFECT_WRITERS: ReadonlyMap<string, EffectWriter> = new Map<string, Effect
   ['text_pt', trimmedText('textPt')],
   ['except', pickedText('except')],
   ['while', pickedText('while')],
+  ['spell', pickedText('spell')],
+  ['from_level', trimmedText('fromLevel')],
+  ['uses', trimmedText('uses')],
+  ['also_with_slot', (d) => (d.alsoWithSlot ? { alsoWithSlot: true } : {})],
+  ['ritual_only', (d) => (d.ritualOnly ? { ritualOnly: true } : {})],
+  ['counts_as_known', (d) => (d.countsAsKnown ? { countsAsKnown: true } : {})],
   ['ignore_cover', (d) => (d.ignoreCover ? { ignoreCover: true } : {})],
   [
     'range_multiplier',
@@ -232,47 +259,6 @@ export function draftToEffect(d: EffectDraft, menu: EffectMenuVm): EffectInit {
   }
   return out;
 }
-
-/** The labels of the effect fields, in our words (the menu names the fields by their proto name). */
-export const EFFECT_FIELD_LABELS: Readonly<Record<string, string>> = {
-  target: 'O que muda',
-  mode: 'Como muda',
-  value: 'Valor',
-  when: 'Só quando',
-  tags: 'Situação',
-  proficiency: 'Proficiência em',
-  level: 'Quanto',
-  roll: 'Rolagem',
-  targets: 'Em quê',
-  sense: 'Sentido',
-  range_ft: 'Alcance',
-  resource: 'Nome do recurso',
-  max: 'Usos (máximo)',
-  recharge: 'Volta em',
-  choice: 'O jogador escolhe',
-  count: 'Quantos',
-  from: 'Entre',
-  economy: 'Tipo de ação',
-  applies: 'Onde o dado entra',
-  ability: 'Habilidade somada',
-  spells: 'Magias',
-  text_pt: 'Texto na ficha',
-  except: 'Menos o dano de tipo',
-  while: 'Enquanto',
-  ignore_cover: 'Ignora meia cobertura e três quartos',
-  range_multiplier: 'Multiplica o alcance da magia por',
-  no_long_range_disadvantage: 'Sem desvantagem no alcance longo',
-};
-
-/** One line under a field, where the name alone does not say. This is screen copy; the formula functions and the tag
- * prefixes it mentions come from the server's menu (`EffectMenuVm.formulaHint`, `tagHint`). */
-export const EFFECT_FIELD_HINTS: Readonly<Record<string, string>> = {
-  resource: 'Só letras minúsculas sem acento, números e _ (de 1 a 40).',
-  text_pt: 'O que a ficha mostra. {value} vira o valor com sinal.',
-  ignore_cover: 'O alvo não ganha o bônus na CA. A cobertura total continua impedindo o ataque.',
-  range_multiplier: 'Só para magias: 2 dobra o alcance, 3 triplica. Vazio, o alcance não muda.',
-  no_long_range_disadvantage: 'Só para armas: até o alcance longo, a rolagem não tem desvantagem.',
-};
 
 /** A value of a closed list: the key the effect stores and the Portuguese name. */
 export interface MenuOption {
@@ -409,7 +395,9 @@ function choiceEmpty(d: EffectDraft, name: string): boolean {
     (name === 'economy' && d.economy === '') ||
     (name === 'applies' && d.applies === '') ||
     (name === 'except' && d.except === '') ||
-    (name === 'while' && d.while === '')
+    (name === 'while' && d.while === '') ||
+    (name === 'spell' && d.spell === '') ||
+    (name === 'ability' && d.ability === '')
   );
 }
 

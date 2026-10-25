@@ -645,6 +645,20 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
   Para armas à distância (arma de arremesso a distância incluída), essa cobertura é ignorada e o alcance longo não dá desvantagem.
   A cobertura total ainda bloqueia o ataque, e a rolagem não mostra cobertura onde ela foi ignorada.
 
+**Deslocamentos e magias que a mesa concede.**
+
+- **Dado** uma característica, um traço ou um talento da mesa com um modificador do deslocamento de voo, de natação, de escalada ou de escavação ("Deslocamento de voo", "de natação", "de escalada", "de escavação"; "somar", "pelo menos" ou "definir"), **quando** um personagem o tem, **então** a ficha lista esse deslocamento sob o deslocamento de caminhada, em metros e pés, **e** ele segue a condição do efeito (`when`).
+  A fórmula pode ler `speedwalk()`, o deslocamento de caminhada já com os modificadores: uma raça que nada tão rápido quanto anda escreve "definir `speedwalk()`", e um talento que soma 3 m (10 pés) ao deslocamento de caminhada leva junto o de natação.
+  No combate a criatura se move no deslocamento de voo quando ele é o melhor dos dois; nadar e escalar ficam só na ficha, porque a grade não tem custo para eles.
+- **Dado** um efeito "Respira na água", **quando** um personagem o tem, **então** a ficha diz "Respira na água" na caixa do deslocamento; o app não conta fôlego nem afogamento.
+- **Dado** um talento, um traço ou uma característica com o efeito "Magia concedida" (uma magia do SRD ou da mesa, o nível em que começa, a habilidade de conjuração — Inteligência, Sabedoria, Carisma ou "o jogador escolhe" —, o recurso que cada conjuração gasta, uma chave para conjurar também com espaço, uma chave para só ritual e uma chave para listá-la entre as conhecidas), **quando** um personagem o tem, **então** a ficha lista a magia em "Magias concedidas" com a origem, como se conjura e a CD e o bônus de ataque da concessão, **e** os números de magias conhecidas, truques e preparadas do personagem continuam como estavam.
+  Uma magia de círculo é conjurada no próprio círculo, um truque cresce com o nível do personagem e os componentes materiais não são dispensados.
+  Quando a habilidade é "o jogador escolhe", o jogador escolhe uma vez, nas escolhas da ficha, e até lá a concessão não tem números.
+- **Dado** uma magia concedida, **quando** o jogador a conjura, em combate ou fora dele, **então** a ficha de conjuração a oferece como um jeito próprio, sem espaço de magia (espaço só quando a concessão permite), usando a habilidade da concessão para a jogada de ataque e a CD do teste de resistência.
+  Uma concessão limitada gasta um uso do recurso: a segunda conjuração sem uso é recusada ("A concessão não tem mais usos."), o desfazer da primeira devolve o uso, e uma concessão à vontade nunca acaba.
+  Uma concessão só de ritual conjura como ritual.
+- **Dado** o editor de efeitos, **quando** cadastro uma magia concedida, **então** o servidor recusa uma magia que não existe, uma concessão só de ritual numa magia sem a etiqueta de ritual, um recurso que a entrada não define e uma habilidade que não é uma das quatro, cada um no seu campo.
+
 **Mudar, arquivar e ligar e desligar.**
 
 - **Dado** uma classe da mesa que uma ficha usa, **quando** o mestre muda um dos números dela, **então** a ficha mostra o número novo, as fichas travadas incluídas, **e** o que ficou fora das regras aparece na ficha como um aviso ("A classe mudou") com uma frase por mudança, sem bloquear nenhuma outra edição (RN-23).

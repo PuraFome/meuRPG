@@ -166,6 +166,31 @@
   </section>
 }
 
+@if (s.grantedSpells.length > 0) {
+  <section class="mr-panel granted" aria-labelledby="concedidas-heading">
+    <h2 id="concedidas-heading" class="mr-panel__title">Magias concedidas</h2>
+    <ul class="granted__list">
+      @for (g of s.grantedSpells; track g.key + g.sourcePt) {
+        <li class="granted__item">
+          <div class="spell">
+            <button type="button" class="spell__open" (click)="spellOpened.emit(g.key)">
+              <span class="spell__name">{{ g.namePt }}</span>
+              <span class="spell__tags">
+                <span class="mr-tag spell__tag">{{ grantedLevel(g) }}</span>
+                @for (tag of grantedTags(g); track tag) {
+                  <span class="mr-tag spell__tag">{{ tag }}</span>
+                }
+              </span>
+            </button>
+            <app-spell-help [name]="g.namePt" (press)="spellOpened.emit(g.key)" />
+          </div>
+          <p class="granted__meta">{{ g.sourcePt }} · {{ grantedNumbers(g) }}</p>
+        </li>
+      }
+    </ul>
+  </section>
+}
+
 <!-- The creatures panel (MR-037) sits here: after Combate and Magias, before Equipamento (E9-10). -->
 <ng-content select="[creatures]" />
 

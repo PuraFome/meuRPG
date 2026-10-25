@@ -180,6 +180,7 @@ function fullSheet(overrides: Partial<FullSheetVm> = {}): FullSheetVm {
     hasShield: false,
     shieldIdle: false,
     speedExtras: [],
+    grantedSpells: [],
     hitPointsMax: 10,
     hitDice: '1d6',
     speedWalkFt: 25,
