@@ -1365,3 +1365,38 @@ describe('the log line of a critical with the extra dice of Crítico Brutal (PM-
     );
   });
 });
+
+describe('the combat log and an on_event hook or temporary hit points', () => {
+  it('adds the hook of a failed death save, naming who stood up', () => {
+    const save = entry({
+      kind: CombatLogKind.DEATH_SAVE,
+      actorLabel: 'Toren',
+      deathSave: {
+        roll: { diceCount: 1, diceSides: 20, faces: [4], modifier: 0, total: 4, physical: false },
+        outcome: DeathSaveOutcome.FAILURE,
+        failures: 1,
+        hook: { sourceNamePt: 'Reserva de Teste', healed: 6 },
+      } as never,
+    });
+    expect(logLine(save)?.text).toContain('. Reserva de Teste levantou Toren com 6 PV');
+  });
+
+  it('adds the temporary hit points a table action gave, and the hook of the damage that did not drop the target', () => {
+    const heal = entry({
+      kind: CombatLogKind.ATTACK,
+      outcome: AttackOutcome.HIT,
+      actorLabel: 'Goblin',
+      targetLabel: 'Toren',
+      damage: {
+        status: PendingDamageStatus.APPLIED,
+        amount: 5,
+        tempHpGained: 2,
+        hook: { sourceNamePt: 'Reserva de Teste', healed: 6 },
+      } as never,
+    });
+    const text = logLine(heal)?.text ?? '';
+    expect(text).toContain('5 de dano');
+    expect(text).toContain('ganha 2 PV temporários');
+    expect(text).toContain('Reserva de Teste entrou em ação: recupera 6 PV');
+  });
+});
