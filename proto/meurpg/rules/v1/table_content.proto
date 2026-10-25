@@ -179,6 +179,12 @@ message TableEffect {
   // (the barbarian's own rage resistance) counts once.
   string except = 27;
   string while = 28;
+  // proficiency, level "expertise" on a skill ("skill:*" is every skill) only: the
+  // skill is doubled only where the character already has its proficiency from
+  // another source when the sheet is worked out (the race, the background, the
+  // sheet's picks or another feature); the effect never gives the proficiency itself.
+  // Empty or false doubles the skill whether or not the character is proficient.
+  bool only_proficient = 29;
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a

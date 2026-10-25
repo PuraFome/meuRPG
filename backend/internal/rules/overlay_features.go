@@ -263,6 +263,10 @@ func (b *overlayBuilder) checkEffect(owner, path string, e *Effect, strict bool)
 		if e.Resource != "" && !b.resourceDefined(owner, e.Resource) {
 			return site.fail(".resource", ReasonReference, "the action spends %q, which no resource effect of this entry or its class defines", e.Resource)
 		}
+	case "proficiency":
+		if msg := checkOnlyProficient(e); msg != "" {
+			return site.fail(".only_proficient", ReasonValue, "%s", msg)
+		}
 	case "superiority_die":
 		return b.checkSuperiorityDie(site, e)
 	case "extra_damage", "ambush":
@@ -441,7 +445,7 @@ func (b *overlayBuilder) checkResourceEffect(site effectSite, e *Effect) error {
 // table.
 var ownFields = map[string][]string{
 	"modifier":     {"target", "mode", "value"},
-	"proficiency":  {"proficiency", "level"},
+	"proficiency":  {"proficiency", "level", "only_proficient"},
 	"roll_mode":    {"roll", "targets"},
 	"sense":        {"sense", "range_ft"},
 	"resource":     {"resource", "max", "recharge"},
@@ -496,6 +500,7 @@ var effectFields = []effectField{
 	{"ignore_cover", func(e *Effect) bool { return e.IgnoreCover }, func(e *Effect) { e.IgnoreCover = false }},
 	{"range_multiplier", func(e *Effect) bool { return e.RangeMultiplier != 0 }, func(e *Effect) { e.RangeMultiplier = 0 }},
 	{"no_long_range_disadvantage", func(e *Effect) bool { return e.NoLongRangeDisadvantage }, func(e *Effect) { e.NoLongRangeDisadvantage = false }},
+	{"only_proficient", func(e *Effect) bool { return e.OnlyProficient }, func(e *Effect) { e.OnlyProficient = false }},
 	{"except", func(e *Effect) bool { return e.Except != "" }, func(e *Effect) { e.Except = "" }},
 	{"while", func(e *Effect) bool { return e.While != "" }, func(e *Effect) { e.While = "" }},
 	{"progression", func(e *Effect) bool { return e.Progression != "" }, func(e *Effect) { e.Progression = "" }},

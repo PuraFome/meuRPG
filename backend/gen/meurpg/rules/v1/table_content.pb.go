@@ -824,10 +824,16 @@ type TableEffect struct {
 	// for as long as the character is raging. Both are required, and the effect has no
 	// `when` and no `tags`. Resistance never stacks: the same type from another source
 	// (the barbarian's own rage resistance) counts once.
-	Except        string `protobuf:"bytes,27,opt,name=except,proto3" json:"except,omitempty"`
-	While         string `protobuf:"bytes,28,opt,name=while,proto3" json:"while,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Except string `protobuf:"bytes,27,opt,name=except,proto3" json:"except,omitempty"`
+	While  string `protobuf:"bytes,28,opt,name=while,proto3" json:"while,omitempty"`
+	// proficiency, level "expertise" on a skill ("skill:*" is every skill) only: the
+	// skill is doubled only where the character already has its proficiency from
+	// another source when the sheet is worked out (the race, the background, the
+	// sheet's picks or another feature); the effect never gives the proficiency itself.
+	// Empty or false doubles the skill whether or not the character is proficient.
+	OnlyProficient bool `protobuf:"varint,29,opt,name=only_proficient,json=onlyProficient,proto3" json:"only_proficient,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *TableEffect) Reset() {
@@ -1054,6 +1060,13 @@ func (x *TableEffect) GetWhile() string {
 		return x.While
 	}
 	return ""
+}
+
+func (x *TableEffect) GetOnlyProficient() bool {
+	if x != nil {
+		return x.OnlyProficient
+	}
+	return false
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
@@ -5699,7 +5712,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"tableSpell\x12;\n" +
 	"\n" +
 	"table_feat\x18\x11 \x01(\v2\x1a.meurpg.rules.v1.TableFeatH\x00R\ttableFeatB\x06\n" +
-	"\x04body\"\xe6\x05\n" +
+	"\x04body\"\x8f\x06\n" +
 	"\vTableEffect\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
 	"\x06target\x18\x02 \x01(\tR\x06target\x12\x12\n" +
@@ -5729,7 +5742,8 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x10range_multiplier\x18\x19 \x01(\x05R\x0frangeMultiplier\x12;\n" +
 	"\x1ano_long_range_disadvantage\x18\x1a \x01(\bR\x17noLongRangeDisadvantage\x12\x16\n" +
 	"\x06except\x18\x1b \x01(\tR\x06except\x12\x14\n" +
-	"\x05while\x18\x1c \x01(\tR\x05while\"\xc3\x01\n" +
+	"\x05while\x18\x1c \x01(\tR\x05while\x12'\n" +
+	"\x0fonly_proficient\x18\x1d \x01(\bR\x0eonlyProficient\"\xc3\x01\n" +
 	"\fTableFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x17\n" +
