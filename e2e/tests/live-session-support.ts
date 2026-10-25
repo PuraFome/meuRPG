@@ -248,3 +248,22 @@ export async function openChatTab(page: Page): Promise<void> {
 export function railOf(page: Page): Locator {
   return page.getByRole('complementary', { name: 'Conversa e ficha' });
 }
+
+/**
+ * The player's whole map, from the session page: on a phone the map there is one row, "Mapa · <nome>" with "Ver mapa" (C5-01), so the
+ * fog, its legend and its loading state are on the map page that link opens; from 768 px they are on the session page itself.
+ * Call it on a session page already open; it follows the link on a phone and does nothing elsewhere.
+ */
+export async function followMapLink(page: Page): Promise<void> {
+  if (!onPhone(page)) {
+    return;
+  }
+  await page.getByRole('link', { name: 'Ver mapa' }).click();
+  await expect(page).toHaveURL(/\/maps\/[^/?]+\?from=session/);
+}
+
+/** `goto` of the session's address, then `followMapLink`: the page where the player's whole map is at this width. */
+export async function openPlayerMap(page: Page, sessionUrl: string): Promise<void> {
+  await page.goto(sessionUrl);
+  await followMapLink(page);
+}
