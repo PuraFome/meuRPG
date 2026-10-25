@@ -9,12 +9,11 @@ import (
 // choice groups the guided level-up knows: the cantrips of the class, or one of the
 // option sets (the SRD's and the table's options of the set make the pool).
 const (
-	SwapGroupCantrip      = "cantrip"
-	SwapGroupFightStyle   = "fighting_style"
-	SwapGroupMetamagic    = "metamagic"
-	SwapGroupInvocation   = "invocation"
-	SwapGroupPactBoon     = "pact_boon"
-	LevelUpReasonSwapPick = "swap_pick"
+	SwapGroupCantrip    = "cantrip"
+	SwapGroupFightStyle = "fighting_style"
+	SwapGroupMetamagic  = "metamagic"
+	SwapGroupInvocation = "invocation"
+	SwapGroupPactBoon   = "pact_boon"
 )
 
 var swapGroupNames = map[string]string{
@@ -154,4 +153,16 @@ func swapOf(before, after Build, offer LevelUpOffer) (swap PickSwap, found bool)
 		return swap, true
 	}
 	return PickSwap{}, false
+}
+
+// Offers says the offer lets the swap be made: the group is offered, from is one of its
+// picks and to is in its pool.
+func (o LevelUpOffer) Offers(s PickSwap) bool {
+	for _, g := range o.PickSwaps {
+		if g.Group == s.Group {
+			return slices.ContainsFunc(g.Picks, func(n NamedKey) bool { return n.Key == s.From }) &&
+				slices.ContainsFunc(g.Pool, func(n NamedKey) bool { return n.Key == s.To })
+		}
+	}
+	return false
 }
