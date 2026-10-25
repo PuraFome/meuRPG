@@ -241,6 +241,11 @@ message TableCasting {
   int32 start_level = 6;
   // Whether it casts rituals.
   bool ritual = 7;
+  // SRD spells ("spell:cure-wounds") on the class's own list, next to the table
+  // spells that name the class. Only a class whose list_from is empty has them;
+  // a third caster's subclass and a class that does not cast have none. Each is
+  // a spell of the SRD, named once, and a class names at most 400.
+  repeated string srd_spell_keys = 8;
 }
 
 // TableClassLevel is one row of a class's 20-level table.

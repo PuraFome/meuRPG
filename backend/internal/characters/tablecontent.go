@@ -301,6 +301,7 @@ func tableCastingOf(c *rulesv1.TableCasting) *rules.TableCasting {
 	return &rules.TableCasting{
 		Kind: c.GetKind(), Ability: abilityFromProto[c.GetAbility()], Preparation: c.GetPreparation(), ListFrom: c.GetListFrom(),
 		PreparedMax: c.GetPreparedMax(), StartLevel: int(c.GetStartLevel()), Ritual: c.GetRitual(),
+		SRDSpells: c.GetSrdSpellKeys(),
 	}
 }
 

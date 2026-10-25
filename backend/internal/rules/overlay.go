@@ -144,6 +144,10 @@ type TableCasting struct {
 	// that name the class are then added to the ones of ListFrom. For a third
 	// caster it is required.
 	ListFrom string
+	// SRDSpells are SRD spells ("spell:cure-wounds") on the class's own list, next
+	// to the table spells that name the class. Only a class with a list of its own
+	// (ListFrom empty) has them; a third caster's subclass does not.
+	SRDSpells []string
 	// PreparedMax is the formula of how many spells a class that prepares may
 	// prepare. Empty is the synthesized one: the ability modifier plus the class
 	// level (half of it for a half caster), at least 1.

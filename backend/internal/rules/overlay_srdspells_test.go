@@ -41,11 +41,14 @@ func catalogSpell(c *Content, key string) (SpellEntry, bool) {
 	return SpellEntry{}, false
 }
 
+// artificerSub is the subclass the class's level-up tests choose.
+const artificerSub = "subclass:artifice-a" + tableSuffix
+
 func artificerContent(t *testing.T) (*Content, string) {
 	t.Helper()
 	base := loadForTest(t)
 	tc := artificerClass(base)
-	return withOverlayOn(t, base, Overlay{Revision: 1, Classes: []TableClass{tc}}), tc.Key
+	return withOverlayOn(t, base, Overlay{Revision: 1, Classes: []TableClass{tc}, Subclasses: genSubclasses(tc)[:1]}), tc.Key
 }
 
 func TestTableClassListNamesSRDSpells(t *testing.T) {
@@ -108,7 +111,7 @@ func TestTableClassSRDSpellsAreOnTheSheet(t *testing.T) {
 func TestTableClassSRDSpellsAreOfferedAtLevelUp(t *testing.T) {
 	t.Parallel()
 	c, class := artificerContent(t)
-	b := sweepBase(t, c, class, "")
+	b := sweepBase(t, c, class, artificerSub)
 	o, err := LevelUpOptions(b, class, c)
 	if err != nil {
 		t.Fatalf("LevelUpOptions: %v", err)
@@ -117,10 +120,10 @@ func TestTableClassSRDSpellsAreOfferedAtLevelUp(t *testing.T) {
 		t.Errorf("the offer's spell list = %q, want the class", o.SpellList)
 	}
 	// The sweep picks the spells from the class's list, level by level.
-	sweepUp(t, c, b, class, "", 9)
+	sweepUp(t, c, b, class, artificerSub, 9)
 
 	// A spell of another class's list is refused when the sheet levels up.
-	ch := satisfy(t, c, b, class, "")
+	ch := satisfy(t, c, b, class, artificerSub)
 	after, err := ApplyLevelUp(b, ch, c)
 	if err != nil {
 		t.Fatalf("ApplyLevelUp: %v", err)

@@ -23,6 +23,9 @@ const (
 	MaxTraits = 60
 	// MaxFeatureEffects is the most effects one feature has.
 	MaxFeatureEffects = 20
+	// MaxClassSRDSpells is the most SRD spells one class's own list names (the
+	// SRD has fewer spells than this, so a list can hold all of them).
+	MaxClassSRDSpells = 400
 	// maxEffectList bounds the lists inside an effect (tags, targets, options,
 	// granted spells).
 	maxEffectList = 20
@@ -90,6 +93,9 @@ func (bg *budget) feature(path string, f *TableFeature) error {
 // casting counts the Spellcasting effect the engine writes for a casting class
 // or subclass, and its prepared formula.
 func (bg *budget) casting(path string, key string, c *TableCasting) error {
+	if c != nil && len(c.SRDSpells) > MaxClassSRDSpells {
+		return ovErr(key, "%d SRD spells on the list; the limit is %d per class", len(c.SRDSpells), MaxClassSRDSpells).at(path+".casting.srd_spell_keys", ReasonLimit)
+	}
 	if c == nil || c.Kind == CastingNone {
 		return nil
 	}

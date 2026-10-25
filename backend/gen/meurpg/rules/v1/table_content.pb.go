@@ -1245,7 +1245,12 @@ type TableCasting struct {
 	// The class level casting starts at; 0 is 1 (2 for half, 3 for third).
 	StartLevel int32 `protobuf:"varint,6,opt,name=start_level,json=startLevel,proto3" json:"start_level,omitempty"`
 	// Whether it casts rituals.
-	Ritual        bool `protobuf:"varint,7,opt,name=ritual,proto3" json:"ritual,omitempty"`
+	Ritual bool `protobuf:"varint,7,opt,name=ritual,proto3" json:"ritual,omitempty"`
+	// SRD spells ("spell:cure-wounds") on the class's own list, next to the table
+	// spells that name the class. Only a class whose list_from is empty has them;
+	// a third caster's subclass and a class that does not cast have none. Each is
+	// a spell of the SRD, named once, and a class names at most 400.
+	SrdSpellKeys  []string `protobuf:"bytes,8,rep,name=srd_spell_keys,json=srdSpellKeys,proto3" json:"srd_spell_keys,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1327,6 +1332,13 @@ func (x *TableCasting) GetRitual() bool {
 		return x.Ritual
 	}
 	return false
+}
+
+func (x *TableCasting) GetSrdSpellKeys() []string {
+	if x != nil {
+		return x.SrdSpellKeys
+	}
+	return nil
 }
 
 // TableClassLevel is one row of a class's 20-level table.
@@ -5716,7 +5728,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\aname_pt\x18\x01 \x01(\tR\x06namePt\x12\x17\n" +
 	"\adesc_pt\x18\x02 \x03(\tR\x06descPt\x12E\n" +
 	"\fprerequisite\x18\x03 \x01(\v2!.meurpg.rules.v1.FeatPrerequisiteR\fprerequisite\x126\n" +
-	"\aeffects\x18\x04 \x03(\v2\x1c.meurpg.rules.v1.TableEffectR\aeffects\"\xf1\x01\n" +
+	"\aeffects\x18\x04 \x03(\v2\x1c.meurpg.rules.v1.TableEffectR\aeffects\"\x97\x02\n" +
 	"\fTableCasting\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x122\n" +
 	"\aability\x18\x02 \x01(\x0e2\x18.meurpg.rules.v1.AbilityR\aability\x12 \n" +
@@ -5725,7 +5737,8 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\fprepared_max\x18\x05 \x01(\tR\vpreparedMax\x12\x1f\n" +
 	"\vstart_level\x18\x06 \x01(\x05R\n" +
 	"startLevel\x12\x16\n" +
-	"\x06ritual\x18\a \x01(\bR\x06ritual\"\xcb\x01\n" +
+	"\x06ritual\x18\a \x01(\bR\x06ritual\x12$\n" +
+	"\x0esrd_spell_keys\x18\b \x03(\tR\fsrdSpellKeys\"\xcb\x01\n" +
 	"\x0fTableClassLevel\x12\x1d\n" +
 	"\n" +
 	"prof_bonus\x18\x01 \x01(\x05R\tprofBonus\x129\n" +
