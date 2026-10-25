@@ -28,8 +28,8 @@ import (
 // the live hint content_changed.
 
 // MaxOptionSwitches is the most options one SetOptionSwitches call may change: the
-// SRD has about 400 switchable options, and the table adds up to 300.
-const MaxOptionSwitches = 700
+// SRD has 358 switchable options, and the table adds up to 1000 entries, so one call can switch a whole campaign off (1400 leaves room for the SRD to grow).
+const MaxOptionSwitches = 1400
 
 // errNoSwitchChange is what the transaction of SetOptionSwitches returns when
 // nothing needs to change: it rolls the revision bump back.

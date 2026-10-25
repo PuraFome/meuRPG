@@ -1453,9 +1453,9 @@ export type TableContentViolation = Message<"meurpg.rules.v1.TableContentViolati
    * (a key, kind or parent changed, or a spell crossing between cantrip and
    * leveled), "duplicate_name" (another entry of the kind has the name), "unknown_field" (ImportTableContent:
    * a field the message does not have) and
-   * "size_limit" (64 KiB of data). The 300-entry limit is "limit", with an empty
+   * "size_limit" (64 KiB of data). The 1000-entry limit is "limit", with an empty
    * field. In ImportTableContent a violation about the pack itself is at a field
-   * that starts with "pack": "pack" (over 2 MiB: "size_limit"), "pack.format" and
+   * that starts with "pack": "pack" (over 3 MiB: "size_limit"), "pack.format" and
    * "pack.version" ("bad_value"), "pack.entries[3].key" ("bad_key" for a key that is
    * not "<kind>:<slug>@mesa" of the entry's kind, "duplicate_key" for one that
    * repeats) and "pack.entries[3].body" ("bad_value": no body, or one of another
@@ -1977,7 +1977,7 @@ export type TableContentPack = Message<"meurpg.rules.v1.TableContentPack"> & {
   name: string;
 
   /**
-   * The entries. At most 300. Each has `key`, `kind`, `name_pt` and its body; the
+   * The entries. At most 1000. Each has `key`, `kind`, `name_pt` and its body; the
    * other fields of TableEntry are left out of an export and ignored in an import.
    *
    * @generated from field: repeated meurpg.rules.v1.TableEntry entries = 4;
@@ -2069,7 +2069,7 @@ export type ImportTableContentRequest = Message<"meurpg.rules.v1.ImportTableCont
    * The pack file as the master has it, in proto JSON. Prefer it to `pack`: the server
    * reads it strictly, and a field it does not know (a misspelled "proficiency" for
    * "proficiency_key") is a violation of its entry at the path of the field (reason
-   * "unknown_field"), never dropped. When set, `pack` must be unset. The 2 MiB limit is
+   * "unknown_field"), never dropped. When set, `pack` must be unset. The 3 MiB limit is
    * this field's size.
    *
    * @generated from field: bytes pack_json = 5;
@@ -3309,7 +3309,7 @@ export const TableContentService: GenService<{
    *   - `permission_denied`: the caller is not the campaign's master.
    *   - `not_found`: the campaign does not exist, or the caller is not a member.
    *   - `invalid_argument`: a TableContentRefusal detail lists every violation
-   *     (the 300-entry and 64 KiB limits included).
+   *     (the 1000-entry and 64 KiB limits included).
    *
    * Safe to retry when the request carries an idempotency_key: a second call with the same key and
    * the same request returns what the first one made and makes nothing; the same key with another
@@ -3413,8 +3413,8 @@ export const TableContentService: GenService<{
    * raise the revision. A new entry is on for the players, as a hand-made one; the
    * import never switches anything off or on.
    *
-   * The limits are the ones of the editors, checked on the whole campaign: 300
-   * entries, 64 KiB of data per entry; and the pack itself is at most 2 MiB (in
+   * The limits are the ones of the editors, checked on the whole campaign: 1000
+   * entries, 64 KiB of data per entry; and the pack itself is at most 3 MiB (in
    * proto JSON), has `format` "meurpg.table-content" and `version` 1, and every key
    * is "<kind>:<slug>@mesa" of its entry's kind, without repeats. The
    * violation reasons of a pack are in TableContentViolation.

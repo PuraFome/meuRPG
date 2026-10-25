@@ -7,13 +7,13 @@ import (
 
 // Budgets of one overlay, checked in the first pass, before anything compiles.
 // The per-entry limits alone let an overlay cost seconds and hundreds of
-// megabytes (300 classes of 60 features of 20 effects, each with its own formula
+// megabytes (1000 classes of 60 features of 20 effects, each with its own formula
 // to compile and keep), so the whole overlay has a budget too.
 const (
 	// MaxOverlayEffects is the most effects (the features', the race's
 	// darkvision, and the Spellcasting effect of each casting class and subclass)
 	// in one overlay.
-	MaxOverlayEffects = 2000
+	MaxOverlayEffects = 6000
 	// MaxOverlayFormulas is the most distinct formula texts in one overlay. A
 	// formula repeated in many effects is compiled once, so only the distinct
 	// texts count (the prepared-spells formula of each class that prepares

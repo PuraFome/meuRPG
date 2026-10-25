@@ -197,7 +197,7 @@ func (p *packagePart) stageContent(in *campaignpackage.Import) *stagedContent {
 	if !p.compileStagedContent(in, sc) || !stageSwitchedOff(in, sc, options) {
 		return nil
 	}
-	in.Counts.ContentEntries += int32(len(sc.entries)) //nolint:gosec // G115: at most 300
+	in.Counts.ContentEntries += int32(len(sc.entries)) //nolint:gosec // G115: at most 1000
 	return sc
 }
 

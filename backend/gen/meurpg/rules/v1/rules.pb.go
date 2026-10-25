@@ -7569,7 +7569,7 @@ type ListSpellsRequest struct {
 	// "Só as que posso aprender" for this character (see the RPC).
 	CharacterId string `protobuf:"bytes,6,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
 	// How many rows to return, 1 to 400; 0 means 100. The page asks for 400; a
-	// longer list (the SRD's 319 spells and up to 300 of the table's) comes in
+	// longer list (the SRD's 319 spells and up to 1000 of the table's) comes in
 	// pages, with next_page_token.
 	PageSize int32 `protobuf:"varint,7,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
 	// The next_page_token of the previous page; empty for the first.

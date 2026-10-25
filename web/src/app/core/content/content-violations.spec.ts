@@ -194,7 +194,7 @@ describe('the refusals of the server, back on the fields (E10-01 state 5)', () =
       'immutable',
       'Um truque não vira magia de 1º nível ou mais, nem o contrário. Crie outra.',
     ],
-    ['', 'limit', 'A mesa já tem 300 entradas. Arquive ou use o que já existe.'],
+    ['', 'limit', 'A mesa já tem 1000 entradas. Arquive ou use o que já existe.'],
     ['', 'size_limit', 'Esta entrada passou de 64 KiB de dados. Tire um pouco de texto.'],
   ];
 
@@ -447,7 +447,7 @@ describe('the refusals of the server, back on the fields (E10-01 state 5)', () =
     );
     expect(placed.fields).toEqual(['table_race.traits[1].effects[0]']);
     expect(placed.top.map((t) => t.text)).toEqual([
-      'A mesa já tem 300 entradas. Arquive ou use o que já existe.',
+      'A mesa já tem 1000 entradas. Arquive ou use o que já existe.',
       'Sobre Corujeiro: Já existe uma raça da mesa com este nome. Escolha outro.',
       'Escolha o tamanho.',
     ]);

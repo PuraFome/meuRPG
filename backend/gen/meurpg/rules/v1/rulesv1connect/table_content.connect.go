@@ -119,7 +119,7 @@ type TableContentServiceClient interface {
 	//   - `permission_denied`: the caller is not the campaign's master.
 	//   - `not_found`: the campaign does not exist, or the caller is not a member.
 	//   - `invalid_argument`: a TableContentRefusal detail lists every violation
-	//     (the 300-entry and 64 KiB limits included).
+	//     (the 1000-entry and 64 KiB limits included).
 	//
 	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
 	// the same request returns what the first one made and makes nothing; the same key with another
@@ -183,8 +183,8 @@ type TableContentServiceClient interface {
 	// raise the revision. A new entry is on for the players, as a hand-made one; the
 	// import never switches anything off or on.
 	//
-	// The limits are the ones of the editors, checked on the whole campaign: 300
-	// entries, 64 KiB of data per entry; and the pack itself is at most 2 MiB (in
+	// The limits are the ones of the editors, checked on the whole campaign: 1000
+	// entries, 64 KiB of data per entry; and the pack itself is at most 3 MiB (in
 	// proto JSON), has `format` "meurpg.table-content" and `version` 1, and every key
 	// is "<kind>:<slug>@mesa" of its entry's kind, without repeats. The
 	// violation reasons of a pack are in TableContentViolation.
@@ -442,7 +442,7 @@ type TableContentServiceHandler interface {
 	//   - `permission_denied`: the caller is not the campaign's master.
 	//   - `not_found`: the campaign does not exist, or the caller is not a member.
 	//   - `invalid_argument`: a TableContentRefusal detail lists every violation
-	//     (the 300-entry and 64 KiB limits included).
+	//     (the 1000-entry and 64 KiB limits included).
 	//
 	// Safe to retry when the request carries an idempotency_key: a second call with the same key and
 	// the same request returns what the first one made and makes nothing; the same key with another
@@ -506,8 +506,8 @@ type TableContentServiceHandler interface {
 	// raise the revision. A new entry is on for the players, as a hand-made one; the
 	// import never switches anything off or on.
 	//
-	// The limits are the ones of the editors, checked on the whole campaign: 300
-	// entries, 64 KiB of data per entry; and the pack itself is at most 2 MiB (in
+	// The limits are the ones of the editors, checked on the whole campaign: 1000
+	// entries, 64 KiB of data per entry; and the pack itself is at most 3 MiB (in
 	// proto JSON), has `format` "meurpg.table-content" and `version` 1, and every key
 	// is "<kind>:<slug>@mesa" of its entry's kind, without repeats. The
 	// violation reasons of a pack are in TableContentViolation.

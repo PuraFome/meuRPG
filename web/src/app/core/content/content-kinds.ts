@@ -163,14 +163,14 @@ export const CONTENT_FILTERS: readonly { value: ContentFilter; label: string }[]
 ];
 
 /** The campaign's limit of entries (RN-23, `limit` with no field). */
-export const CONTENT_LIMIT = 300;
+export const CONTENT_LIMIT = 1000;
 
 /** The master's count of one kind of the nav, archived entries included. */
 export function countOfNav(entries: readonly TableEntry[], nav: ContentNavKind): number {
   return entries.filter((e) => nav.kinds.includes(e.kind)).length;
 }
 
-/** "7 de 300 entradas · o limite de uma campanha". */
+/** "7 de 1000 entradas · o limite de uma campanha". */
 export function limitLine(entries: readonly TableEntry[]): string {
   return `${entries.length} de ${CONTENT_LIMIT} entradas · o limite de uma campanha`;
 }

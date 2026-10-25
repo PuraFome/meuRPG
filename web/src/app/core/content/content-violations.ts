@@ -79,7 +79,7 @@ const SIZE_LIMIT_TEXT = 'Esta entrada passou de 64 KiB de dados. Tire um pouco d
 function entryText(r: string): string {
   switch (r) {
     case 'limit':
-      return 'A mesa já tem 300 entradas. Arquive ou use o que já existe.';
+      return 'A mesa já tem 1000 entradas. Arquive ou use o que já existe.';
     case 'size_limit':
       return SIZE_LIMIT_TEXT;
     case 'overlay':

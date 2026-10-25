@@ -34,7 +34,7 @@ const (
 	tableSuffix = "@mesa"
 	// MaxOverlayEntries is the most entries (of the six kinds, features not
 	// counted) one table may have.
-	MaxOverlayEntries = 300
+	MaxOverlayEntries = 1000
 	// MaxTableFeatures is the most features one class may have, and the most
 	// one subclass may have, counted apart. The features the engine makes (the
 	// Ability Score Improvements and the Spellcasting feature) do not count.
