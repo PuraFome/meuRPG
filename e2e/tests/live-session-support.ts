@@ -188,9 +188,27 @@ export async function showMapTool(page: Page, tool: MapTool): Promise<void> {
  */
 export async function openRolls(page: Page): Promise<Locator> {
   await showMasterTab(page, 'cena');
-  const closed = page.locator('app-scene-actions .chip[aria-expanded="false"]');
-  while ((await closed.count()) > 0) {
-    await closed.first().click();
+  const chips = page.locator('app-scene-actions .chip');
+  const count = await chips.count();
+  for (let i = 0; i < count; i++) {
+    const chip = chips.nth(i);
+    if ((await chip.getAttribute('aria-expanded')) === 'false') {
+      await chip.click();
+      await expect(chip).toHaveAttribute('aria-expanded', 'true');
+    }
   }
   return page.locator('app-scene-actions app-scene-roll-line');
+}
+
+/**
+ * "Rolagens da mesa" on the master's page: the log closes the "Cena" tab as a fold, folded at the start; this opens it and returns its region.
+ * A player's page draws the section open, so there is nothing to press there.
+ */
+export async function openTableRolls(page: Page): Promise<Locator> {
+  const region = page.getByRole('region', { name: 'Rolagens da mesa' });
+  const toggle = region.getByRole('button', { name: /^Rolagens da mesa/ });
+  if ((await toggle.count()) > 0 && (await toggle.getAttribute('aria-expanded')) === 'false') {
+    await toggle.click();
+  }
+  return region;
 }

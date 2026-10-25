@@ -277,6 +277,7 @@
                 [keep]="state.shownKeep()"
                 (shownChange)="state.shownImage.set($event); state.shownKeep.set(false)"
                 (leftChanged)="loader.reloadLeftImages()"
+                [visible]="board.tab() === 'cena'"
                 [(groupAsk)]="askingGroup"
               >
                 <app-shown-image-panel

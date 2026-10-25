@@ -8,7 +8,7 @@ import { expectAligned } from './layout';
 import { expectLoaded } from './loaded';
 import { diceTable, openDice, stepModifier } from './free-dice-support';
 import { chooseReaders, lineOf, messageBoxOf, openConversaTable, say } from './conversa-support';
-import { endOpenSessionRPC, endSessionRPC, openSessionPage, showMapTool, showMasterTab, startSessionRPC, tableWithPensantus, openSessionMenu, clickStartCombat, expectStartCombatOffered, endSessionFromBar } from './live-session-support';
+import { endOpenSessionRPC, endSessionRPC, openRolls, openSessionPage, showMapTool, showMasterTab, startSessionRPC, tableWithPensantus, openSessionMenu, clickStartCombat, expectStartCombatOffered, endSessionFromBar } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
 import { adjustVitalsRPC, beginAttackCombatRPC, setGridRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
 import { addActionRPC, attachTwoImagesRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC, sceneActionIdsRPC, setAttemptsRPC, setShowDcRPC, tableForScenes } from './scene-support';
@@ -561,6 +561,7 @@ async function scanMapScreens(browser: Browser, colorScheme: 'light' | 'dark', w
     await startSessionRPC(masterPage, campaignId);
     await setCurrentMapRPC(masterPage, campaignId, world);
     await openSessionPage(masterPage, campaignId, 'mapa');
+    await showMapTool(masterPage, 'Pontos');
     await expect(masterPage.getByRole('heading', { name: 'Pontos do mapa' })).toBeVisible();
     await expectScreenPasses(masterPage, `Sessão com mapa, mestre ${suffix}`);
     // The map's tools, then "Grupo" and "Cena": every tab of the master's board is scanned.
@@ -1927,15 +1928,11 @@ async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark',
     const ids = open1.scene!.actions.map((a) => a.id);
     await rollSceneRPC(p, campaignId, ids[3], 14);
     await rollSceneRPC(p, campaignId, ids[4], 3);
+    // Each roll is a chip beside its action; opening them shows the formula and the verdict.
+    await openRolls(m);
     await expect(m.getByText('Não passou · CD 10')).toBeVisible();
     await expect(m.getByText('Passou · CD 12')).toBeVisible();
     await expectScreenPasses(m, `Cena aberta com três rolagens ${where}`);
-    if (width < 768) {
-      await m.getByRole('button', { name: 'Ações da cena' }).click();
-      await expect(m.getByRole('button', { name: 'Ações da cena' })).toHaveAttribute('aria-expanded', 'false');
-      await expectScreenPasses(m, `Cena aberta, ações recolhidas ${where}`);
-      await m.getByRole('button', { name: 'Ações da cena' }).click();
-    }
     // With a scene open, the points of the map say what they do with it.
     await showMapTool(m, 'Pontos');
     await expect(m.getByText('Cena aberta agora')).toBeVisible();
@@ -2786,6 +2783,7 @@ async function scanSceneOptionsScreens(browser: Browser, colorScheme: 'light' | 
     await openSessionPage(m, campaignId);
     await expect(m.getByRole('heading', { name: 'Cena: A carroça tombada' })).toBeVisible();
     await expect(m.getByText('Os jogadores veem a CD')).toBeVisible();
+    await openRolls(m);
     await expect(m.getByText('Tentativa 1 de 1').first()).toBeVisible();
     await expectScreenPasses(m, `Cena aberta do mestre com os limites e as tentativas ${where}`);
     const grant = m.getByRole('button', { name: 'Dar mais uma tentativa a Pensantus em Resistir ao cheiro de fumaça' });
@@ -2858,6 +2856,7 @@ async function scanSessionSummaryScreens(browser: Browser, colorScheme: 'light' 
     await rollSceneRPC(p, campaignId, actionIds[0], 11);
     await rollSceneRPC(p, campaignId, actionIds[4], 3);
     await openSessionPage(m, campaignId);
+    await openRolls(m);
     await expect(m.getByText('Passou · CD 12')).toBeVisible();
 
     await endSessionFromBar(m);
@@ -3493,6 +3492,7 @@ async function scanFogScreens(browser: Browser, colorScheme: 'light' | 'dark', w
 
     // The master: "Ver como" and "Luz dos personagens", then the map as Pensantus sees it.
     await m.goto(sessionRoute(campaignId));
+    await showMapTool(m, 'Névoa e luz');
     const list = m.getByRole('radiogroup', { name: 'Ver como' });
     await expect(list.getByRole('radio', { name: /Pensantus/ })).toContainText(/\d+\s+quadrados vistos/);
     await expectScreenPasses(m, `Ver como, a lista e a luz dos personagens ${where}`);
@@ -3631,7 +3631,8 @@ async function scanTrapScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await openSessionPage(m, campaignId);
     await openSessionPage(p, campaignId);
 
-    // The master's cards, the reveal and the fire dialogs.
+    // The master's cards, the reveal and the fire dialogs (the "Armadilhas" tool under the map).
+    await showMapTool(m, 'Armadilhas');
     const panel = m.getByRole('region', { name: 'Armadilhas do mapa' });
     const card = panel.getByRole('article', { name: 'Fosso escondido' });
     await expect(card).toContainText('Quem notaria');
@@ -3647,7 +3648,8 @@ async function scanTrapScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await expect(card).toContainText('Disparada');
     await expectScreenPasses(m, `Armadilha disparada e o registro ${where}`);
 
-    // The treasure: hidden, the form in place, found, the question in place.
+    // The treasure: hidden, the form in place, found, the question in place (the "Tesouro" tool).
+    await showMapTool(m, 'Tesouro');
     const chest = m.getByRole('region', { name: 'Tesouros do mapa' }).getByRole('article', { name: 'Baú de moedas' });
     await expectScreenPasses(m, `Tesouros do mapa, escondido ${where}`);
     await chest.getByRole('button', { name: 'Marcar o Baú de moedas como encontrado' }).click();
@@ -4099,6 +4101,7 @@ async function scanDoorScreens(browser: Browser, colorScheme: 'light' | 'dark', 
 
     // The session: the master's map names every door and each door has its sheet; the player's names only "Porta fechada".
     await Promise.all([m.goto(sessionRoute(campaignId)), ap.goto(sessionRoute(campaignId))]);
+    await showMasterTab(m, 'mapa');
     await expect(m.getByRole('list', { name: 'Legenda do mapa' }).getByText('Porta secreta (só você vê)')).toBeVisible();
     await expect(m.getByRole('group', { name: /^Mapa A caverna/ })).toBeVisible();
     await expectScreenPasses(m, `Sessão, o mestre, o mapa com as portas e a legenda ${where}`);
@@ -8138,6 +8141,8 @@ async function scanDarkWarningScreens(browser: Browser, colorScheme: 'light' | '
 
     // The notice, the badge and the ring: Toren is the only one in the dark (Pensantus has darkvision).
     await m.goto(sessionRoute(table.campaignId));
+    // The map: a tab of the board, a fold of the scene's page on a phone.
+    await showMasterTab(m, 'mapa');
     const notice = m.locator('app-session-dark .dark');
     await expect(notice).toContainText('No escuro: Toren não enxerga onde está (sem luz e sem visão no escuro).');
     await expect(m.locator('.js-dark')).toContainText('No escuro');

@@ -43,6 +43,8 @@ export interface LineView {
   readonly canHear: boolean;
   /** The reader wrote this line (their character, or the master's own NPC): it is not announced back to them. */
   readonly mine: boolean;
+  /** The master spoke as an NPC: their own line to the right keeps the NPC's round portrait beside the bubble. */
+  readonly npc?: boolean;
   readonly audioUrl: string;
 }
 
@@ -176,6 +178,7 @@ export function viewLine(
     image: message.image ?? null,
     canHear: message.canHear,
     mine: speaks(message) && isMine(message, viewer),
+    npc: message.speakerKind === Kind.NPC,
     audioUrl: message.audioUrl,
   };
 }

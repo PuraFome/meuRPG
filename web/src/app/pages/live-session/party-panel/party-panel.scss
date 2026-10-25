@@ -1,5 +1,6 @@
 :host {
   display: block;
+  container-type: inline-size;
 }
 
 .party {
@@ -68,8 +69,9 @@
     grid-row: 1;
   }
 
-  @media (min-width: 1024px) {
-    grid-template-columns: 48px minmax(110px, 0.9fr) minmax(130px, 170px) minmax(230px, 1.5fr) auto;
+  // One line a character when the card has the room (the board's column at 1024 px has less than at 1280).
+  @container (min-width: 740px) {
+    grid-template-columns: 48px minmax(110px, 0.9fr) minmax(130px, 170px) minmax(210px, 1.5fr) auto;
 
     .member__hp,
     .member__slots,

@@ -82,6 +82,8 @@ export class SceneOpen {
   /** The image on the players' screens now, and the "Deixar com os jogadores" switch: the scene's images show through the gallery's own action. */
   readonly shown = input<ShownImageVm | null>(null);
   readonly keep = input(false);
+  /** The scene's tab is the one on screen (the master's board opens it after the scene is open): the title takes focus then, not before. */
+  readonly visible = input(true);
   readonly shownChange = output<ShownImageVm | null>();
   readonly leftChanged = output<void>();
   /** "Teste em grupo" was pressed: the group check's form is open under the actions (the page owns it). */
@@ -122,7 +124,8 @@ export class SceneOpen {
   constructor() {
     // The title takes focus once, after the master's own open or swap.
     effect(() => {
-      if (this.state().focusNext() === 'title' && this.heading()) {
+      // The title takes focus when it can be seen: the master's board may still be on another tab when the scene opens.
+      if (this.state().focusNext() === 'title' && this.visible() && this.heading()) {
         const state = untracked(() => this.state());
         afterNextRender(
           () => {

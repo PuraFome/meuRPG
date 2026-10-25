@@ -62,8 +62,11 @@ test(
       await openSceneRPC(master, campaignId, table.cartId);
       const images = master.getByRole('region', { name: 'Imagens da cena' });
       await expect(images).toBeVisible();
-      await expect(images.locator('.sm__tile')).toHaveCount(2);
-      await expect(images.locator('.sm__tile').first()).toContainText('Rastros na lama');
+      const tiles = images.locator('.sm__tile:not(.sm__tile--add)');
+      await expect(tiles).toHaveCount(2);
+      await expect(tiles.first()).toContainText('Rastros na lama');
+      // The dashed "Da galeria" tile ends the row.
+      await expect(images.getByRole('button', { name: 'Da galeria' })).toBeVisible();
 
       // The player: the scene is open, but nothing says which pictures it holds.
       await openSessionPage(player, campaignId);
@@ -82,8 +85,8 @@ test(
 
       // "Mostrar aos jogadores": the gallery's own action; the shown one is marked.
       await images.getByRole('button', { name: 'Mostrar Rastros na lama aos jogadores' }).click();
-      await expect(images.locator('.sm__tile').first()).toContainText('À mostra agora');
-      // The scene's image row keeps the one "Parar de mostrar" (the tile only says "À mostra agora").
+      await expect(tiles.first()).toContainText('À mostra');
+      // The scene's image row keeps the one "Parar de mostrar" (the thumbnail only says "À mostra").
       await expect(master.getByRole('button', { name: 'Parar de mostrar', exact: true })).toBeVisible();
       const shown = player.getByRole('region', { name: 'O mestre está mostrando' });
       await expect(shown).toBeVisible();
