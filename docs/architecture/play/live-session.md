@@ -234,11 +234,11 @@ Both live on the session's row in `game_sessions`, and only the master changes t
 
 |              | Current map                                                                     | Shown image                                                                   |
 | ------------ | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Call         | `SetCurrentMap(map_id)`, empty to clear                                         | `SetShownImage(image_id, keep)`, empty to stop                                |
-| Column       | `current_map_id`                                                                | `shown_image_id`, `shown_image_keep`                                          |
+| Call         | `SetCurrentMap(map_id)`, empty to clear                                         | `SetShownImage(image_id, keep, audience)`, empty to stop; `SetShownImageAudience(audience)` |
+| Column       | `current_map_id`                                                                | `shown_image_id`, `shown_image_keep`, `shown_image_audience`                  |
 | Reveals      | The map (RN-10): the player always sees the current map                         | Only the image itself, while it is shown                                      |
-| Snapshot     | `GetLiveSession.current_map_id`; the app reads the map with `MapService.GetMap` | `GetLiveSession.shown_image` (id, caption, size, URLs)                        |
-| Stream       | `current_map_changed`, to everyone                                              | `shown_image_changed`, to everyone                                            |
+| Snapshot     | `GetLiveSession.current_map_id`; the app reads the map with `MapService.GetMap` | `GetLiveSession.shown_image` (id, caption, size, URLs), only for who is in its audience |
+| Stream       | `current_map_changed`, to everyone                                              | `shown_image_changed`, to the master and to the players whose picture changed |
 | When deleted | `DeleteMap` sets it to null and sends an empty `current_map_changed`            | `DeleteGalleryImage` sets it to null and sends an empty `shown_image_changed` |
 
 - A new session starts with neither.
@@ -248,6 +248,22 @@ Both live on the session's row in `game_sessions`, and only the master changes t
 - The shown image does not open the gallery.
   The player receives the image's id only while it is shown; afterwards `GET /images/{id}` answers `404` to them unless the master left it with the players (see [Architecture](../maps/images.md#serving-images) and [MR-028](../../product/stories.md#mr-028-show-an-image-to-the-players)).
 
+### Who sees the image
+
+The shown image has one audience, `game_sessions.shown_image_audience`, and the audience is the same rule on the read, the stream and the image route (RN-10):
+
+| Audience | Who sees it | When |
+| --- | --- | --- |
+| `table` (`WHOLE_TABLE`) | Every member | The only one with no scene open or a scene open to everyone; the master may pick it at any time ("Mostrar a toda a mesa") |
+| `scene` (`SCENE_PLAYERS`) | The master and the players of the scene open to only some players, so it follows `SetSceneAudience` | The default while such a scene is open (`resolveAudience`); `SCENE_NOT_PARTIAL` if asked with none |
+| `chosen` (`CHOSEN_PLAYERS`) | The master and the players of `game_session_image_viewers` ("Mudar quem vê") | Picked in the show call or with `SetShownImageAudience`, like the conversation's "Para" (`playersOf`) |
+
+- **The read.** `GetLiveSession.shown_image` is unset for a player outside the audience (`shownImageFor`); the master gets the image with `ShownImage.audience`.
+- **The image route.** `maps.playersSeeImage` asks `LiveSession.ImageShownTo(user, image)` (one query, `ShownImageSeenBy`), so a player taken out is `404` on their next request, also on `If-None-Match`.
+- **The stream.** `shown_image_changed` goes to the master with the audience, to the players who see the image now with the image, and to the players who saw an image and do not any more with no image (the update they already get when an image stops being shown); a player who never saw it hears nothing (`imageMove`, `publishImageMove`). The same image with the same audience, in any order of the players, sends nothing.
+- **When the scene stops being the image's** (it closes, another one opens, or it opens to everyone) the image stays with the players who were in: `settleShownImage` turns `scene` into `chosen` with them, in the same transaction, and tells the master alone. The same image shown again with no audience keeps its own.
+- **Tests.** `TestImageAudience_*` (play) and `TestRN10_AShownImageReachesOnlyItsAudience` (leak test: a needle and a positive control for each audience, the narrowing and the widening, on the read, the stream and the route).
+
 ### Images left with the players
 
 The master can leave the shown image with the players ("Deixar com os jogadores", MR-028): it leaves the screen but stays in a list the players see until the master takes it away.
@@ -256,10 +272,11 @@ The switch of the image currently shown belongs to the session: `game_sessions.s
 
 | Call                                       | What it does                                                                                                                                                                                                                                                        |
 | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SetShownImage(image_id, keep)`            | `keep` is the switch. The master turns it on by calling again with the same image (no event: players do not know about it). With it on, stopping or swapping moves the image to the list, in the transaction that locks the session; `EndGameSession` does the same |
-| `ListLeftImages(campaign_id)`              | Any active member, with or without a session: oldest to newest, with the same URLs as the shown image                                                                                                                                                               |
+| `SetShownImage(image_id, keep, audience)`  | `keep` is the switch. The master turns it on by calling again with the same image (no event: players do not know about it). With it on, stopping or swapping moves the image to the list, in the transaction that locks the session, left only with the players who saw it; `EndGameSession` does the same |
+| `ListLeftImages(campaign_id)`              | Any active member, with or without a session: oldest to newest, with the same URLs as the shown image; a player reads only the images left with them, the master every one with its `audience`                                                                      |
 | `TakeBackLeftImage(campaign_id, image_id)` | Master only: removes the image from the list (it stays in the gallery); `not_found` if it is not there                                                                                                                                                              |
-| `left_images_changed`                      | A contentless hint to everyone: an image was left, taken back or deleted                                                                                                                                                                                            |
+| `left_images_changed`                      | A contentless hint to the master and the players the image was left with: an image was left, taken back or deleted                                                                                                                                                  |
 
-The table belongs to the `maps` module (the images route reads it); `play` writes it through `MapKeeper` (`LeaveImage` inside its transaction, `ListLeftImages`, `TakeBackImage`).
+The table belongs to the `maps` module (the images route reads it); `play` writes it through `MapKeeper` (`LeaveImage(…, audience)` inside its transaction, `ListLeftImages(user, master)`, `TakeBackImage`, which answers who it was left with).
+The audience is `campaign_left_images.audience_everyone` and `campaign_left_image_viewers`; the route reads it with `ImageIsLeftWith(user)`.
 `GetLiveSession.shown_image_keep` tells the master whether the switch is on; the player always receives `false`.

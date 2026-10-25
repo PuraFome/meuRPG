@@ -13,7 +13,7 @@ The cleanup rules of the bucket are in [Operations](../operations/reference.md#c
 | `manifest.json` | Written last. The format version (`FormatVersion`, 1), the rules content version of the exporter, the date, the campaign's name, and every other entry with its kind, size and SHA-256. |
 | `campaign.json` | The name, the XP mode, the table rules (with the dice mode) and the campaign document. |
 | `images.json`, `images/<n>` | The gallery list and the stored image files. The thumbnail is made again on import. |
-| `maps/<n>.json` | A map with its grid, flags, layers (the six, "can't pass" included; a package made before it has none), points, scene actions, clues and battle encounters. |
+| `maps/<n>.json` | A map with its grid, flags, layers (the six, "can't pass" included; a package made before it has none), points, scene actions (each with whether the master hid it from the players; a package made before the flag reads as not hidden), clues and battle encounters. |
 | `npcs/<n>.json`, `characters/<n>.json` | The NPCs and creatures (with the master's notes) and the players' characters. |
 | `puzzles/<n>.json`, `encounters.json` | The puzzles, and the encounters saved on the maps' battle points. |
 | `content/<n>.json`, `content/options.json` | The table content entries and the options switched off. |

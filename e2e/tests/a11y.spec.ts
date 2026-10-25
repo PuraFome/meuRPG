@@ -80,6 +80,7 @@ import {
   icaroSheetBody,
   lockAndMilestone,
 } from './table-sheet-support';
+import { openCombatPanel, openMap, openOrderRow, openTurn } from './combat-layout';
 
 // docs/design/README.md#how-a-screen-is-made: every screen passes axe with no
 // serious or critical violation of WCAG 2.1 A and AA, in the light and the
@@ -1131,10 +1132,16 @@ async function scanActionScreens(browser: Browser, colorScheme: 'light' | 'dark'
     await m.getByRole('button', { name: 'Voltar' }).click();
     await m.getByRole('button', { name: /Aplicar \d+ de dano/ }).click();
     await expect(m.getByText(/Dano de \d+ aplicado\./).first()).toBeVisible();
+    // "Mais do combate": the rows open in place in the rail.
+    await openCombatPanel(m, 'Efeitos');
+    await expectScreenPasses(m, `Mais do combate, Efeitos aberto ${where}`);
+    await openCombatPanel(m, 'Registro');
+    await expectScreenPasses(m, `Mais do combate, Registro aberto ${where}`);
     await m.getByRole('button', { name: 'Desfazer última ação' }).first().click();
     await expect(m.getByText(/Desfazer o ataque do Capitão Goblin/)).toBeVisible();
     await expectScreenPasses(m, `Desfazer a última ação ${where}`);
     await m.getByRole('button', { name: 'Voltar' }).click();
+    await openOrderRow(m, 'Goblin 1');
     await m.getByRole('button', { name: 'Dano ou cura em Goblin 1' }).click();
     await expect(m.getByRole('heading', { name: 'Dano ou cura em Goblin 1' })).toBeVisible();
     await expectScreenPasses(m, `Dano/Cura de um NPC ${where}`);
@@ -1344,14 +1351,17 @@ async function scanMoveScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await expectScreenPasses(p, `Atacar, alvos com cobertura ${where}`);
     await p.getByRole('button', { name: 'Fechar' }).click();
     const order = m.getByRole('region', { name: 'Ordem de iniciativa' });
+    await openOrderRow(m, 'Capitão Goblin');
     await expect(order.getByText('Meia cobertura (do mapa) contra o Pensantus').first()).toBeVisible();
     await expectScreenPasses(m, `Ordem do mestre, com a cobertura contra quem tem a vez ${where}`);
+    await openOrderRow(m, 'Capitão Goblin');
     await order.getByRole('button', { name: 'Marcar cobertura de Capitão Goblin' }).click();
     await expect(order.getByRole('radiogroup', { name: 'Cobertura marcada de Capitão Goblin' })).toBeVisible();
     await expectScreenPasses(m, `Marcar cobertura, no lugar ${where}`);
     await pickRadio(order, 'Três quartos');
     await expect(order.getByText('Três quartos (marcada pelo mestre) contra o Pensantus')).toBeVisible();
     await order.getByRole('button', { name: 'Fechar' }).click();
+    await openOrderRow(m, 'Goblin 2');
     await order.getByRole('button', { name: 'Mais ações para Goblin 2' }).click();
     await m.getByRole('menuitem', { name: 'Marcar como aliado' }).click();
     await expect(order.getByText('Aliado')).toBeVisible();
@@ -1360,6 +1370,8 @@ async function scanMoveScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     // The player's `alertdialog`: Goblin 1 has the turn and leaves Pensantus's reach.
     await p.getByRole('button', { name: 'Encerrar turno' }).click();
     await p.getByRole('button', { name: 'Encerrar turno' }).click();
+    // On a phone the opened rows left "Turno" for the tab "Ordem".
+    await openTurn(m);
     await expect(m.getByText('Vez do Goblin 1')).toBeVisible();
     // It steps next to Pensantus (who moved away), then out of his reach again.
     const now = await getEncounterRPC(m, campaignId);
@@ -1461,6 +1473,7 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     await p.getByRole('button', { name: 'Voltar à sua vez' }).click();
 
     // The conditions: the dialog (the master) and the tags on both screens.
+    await openOrderRow(m, 'Goblin 1');
     await m.getByRole('button', { name: 'Mais ações para Goblin 1' }).click();
     await m.getByRole('menuitem', { name: 'Mudar condições' }).click();
     await expect(m.getByRole('dialog', { name: 'Condições de Goblin 1' })).toBeVisible();
@@ -1474,6 +1487,7 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     // Escudo Arcano: the prompt, its answer, and the master's card meanwhile (the slots are given back: the cast took the last one).
     await adjustVitalsRPC(m, campaignId, table.characterId, { spellSlotsUsed: [{ level: 1, used: 2 }, { level: 2, used: 0 }] });
     await p.getByRole('button', { name: 'Encerrar turno' }).click();
+    await openTurn(m);
     const card = m.getByRole('region', { name: /Ações do Capitão Goblin|Vez do Capitão Goblin/ });
     await card.getByRole('button', { name: 'Digitar o resultado' }).click();
     await card.getByLabel(/Role 1d20 para Cimitarra/).fill('11');
@@ -1487,10 +1501,13 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expect(prompt.getByText('O Escudo Arcano segurou o ataque do Capitão Goblin.')).toBeVisible();
     await expectScreenPasses(p, `Escudo, o resultado ${where}`);
     // On the master's row the shield's label stays on one line, whatever the width of the screen.
+    await openOrderRow(m, 'Pensantus');
     const shieldChip = m.getByRole('region', { name: 'Ordem de iniciativa' }).locator('.row__effect', { hasText: 'Escudo Arcano' });
     await expect(shieldChip).toBeVisible();
     expect((await layoutSize(shieldChip)).height).toBeLessThan(30);
     await prompt.getByRole('button', { name: 'Fechar' }).click();
+    // The opened row took the phone to "Ordem"; the captain's card is in "Turno".
+    await openTurn(m);
     // The captain's turn goes on: a second hit (a critical one) is damage to roll and discard; then Pensantus's turn.
     await card.getByRole('button', { name: 'Digitar o resultado' }).click();
     await card.getByLabel(/Role 1d20 para Cimitarra/).fill('20');
@@ -1530,6 +1547,7 @@ async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark
     await p.getByRole('dialog').getByRole('button', { name: 'Fechar' }).click();
 
     // Another amount, with the concentration reminder (Pensantus concentrates on Teia).
+    await openTurn(m);
     const card2 = m.getByRole('region', { name: /Ações do Capitão Goblin|Vez do Capitão Goblin/ });
     await card2.getByRole('button', { name: 'Digitar o resultado' }).click();
     await card2.getByLabel(/Role 1d20 para Cimitarra/).fill('20');
@@ -2681,10 +2699,8 @@ async function scanCombatDetailsScreens(browser: Browser, colorScheme: 'light' |
     await expectScreenPasses(p, `Sono conjurado, o resultado do jogador ${where}`);
     await p.getByRole('button', { name: 'Voltar à sua vez' }).click();
 
-    if (phone) {
-      // The master's log is folded on a phone.
-      await m.getByRole('button', { name: 'Registro do combate' }).click();
-    }
+    // The master's log is a row of "Mais do combate", folded.
+    await openCombatPanel(m, 'Registro');
     await expect(m.locator('app-pool-card')).toBeVisible({ timeout: 20_000 });
     await expectScreenPasses(m, `O cartão do Sono no registro do mestre ${where}`);
   } finally {
@@ -2757,12 +2773,12 @@ async function scanHiddenAreaScreens(browser: Browser, colorScheme: 'light' | 'd
     await expect(p.getByText('Esperando o mestre').first()).toBeVisible();
     await expectScreenPasses(p, `Esperando o mestre, a vez parada ${where}`);
 
-    if (width < 768) {
-      await m.getByRole('button', { name: 'Registro do combate' }).click().catch(() => undefined);
-    }
     const card = m.getByRole('group', { name: hiddenInArea ? /atingiu 1 criatura escondida/ : /nenhuma criatura escondida na área/ });
     await expect(card).toBeVisible({ timeout: 20_000 });
+    // On a phone the map is its own tab: the area is drawn there, the question waits in "Turno".
+    await openMap(m);
     await expect(m.locator('app-area-overlay')).toBeVisible();
+    await openTurn(m);
     await expectScreenPasses(m, `A pergunta ao mestre, com a área da última magia ${where}`);
     await m.reload();
     await expect(m.getByRole('status').filter({ hasText: 'Combate atualizado agora.' })).toBeVisible();
@@ -3655,6 +3671,8 @@ async function scanFogCombatScreens(browser: Browser, colorScheme: 'light' | 'da
     await expectScreenPasses(p, `Combate na névoa, a faixa e a linha "Cego" ${where}`);
 
     await m.goto(sessionRoute(campaignId));
+    // In the combat the fog tools are a row of "Mais do combate".
+    await openCombatPanel(m, 'Névoa e luz');
     await expect(m.getByRole('radiogroup', { name: 'Ver como' })).toBeVisible();
     await m.getByRole('radio', { name: /Toren/ }).click();
     await expect(m.locator('app-view-as-map')).toBeVisible();
@@ -3884,7 +3902,8 @@ async function scanCreatureCombatScreens(browser: Browser, colorScheme: 'light' 
     // The master: the order with the group box, the legend and the concentration question.
     await m.goto(sessionRoute(campaignId));
     const order = m.getByRole('region', { name: 'Ordem de iniciativa' });
-    await expect(order.getByText('Concentra em Conjurar Animais · 2 Lobos atrozes')).toBeVisible();
+    await openOrderRow(m, 'Sálvia');
+    await expect(order.getByText('Concentração: Conjurar Animais · 2 Lobos atrozes')).toBeVisible();
     await expectScreenPasses(m, `A ordem do mestre com as criaturas ${where}`);
     await order.getByRole('button', { name: 'Perdeu a concentração' }).click();
     await expect(order.getByRole('alertdialog')).toBeVisible();
@@ -5730,7 +5749,10 @@ async function scanMonsterScreens(browser: Browser, colorScheme: 'light' | 'dark
     const second = enc.combatants.find((c) => c.label === 'Bandido 2')!;
     await combatRPC(m, 'SetCombatantHidden', { campaignId, encounterId: enc.id, combatantId: second.id, hidden: false });
     await openSessionPage(m, campaignId);
-    await expect(m.getByRole('region', { name: 'Ordem de iniciativa' }).locator('.row', { hasText: 'Bandido 3' })).toContainText('ND 1/8');
+    await openOrderRow(m, 'Bandido 3');
+    await m.getByRole('button', { name: 'Mais ações para Bandido 3' }).click();
+    await expect(m.getByRole('menuitem', { name: /ND 1\/8/ })).toBeVisible();
+    await m.keyboard.press('Escape');
     await expectScreenPasses(m, `Combate com monstros, a ordem do mestre ${where}`);
     await openSessionPage(p, campaignId);
     await expect(p.getByText('Bandido 2').first()).toBeVisible();
@@ -7515,6 +7537,7 @@ async function scanAidScreens(browser: Browser, colorScheme: 'light' | 'dark', w
     await expectScreenPasses(p, `Ajuda sobre quem estava a 0 PV, acordou ${where}`);
 
     const order = m.getByRole('region', { name: 'Ordem de iniciativa' });
+    await openOrderRow(m, 'Pensantus');
     await expect(order.locator('.row__effect--aid')).toContainText('Ajuda +5 PV');
     await expectScreenPasses(m, `A ordem do mestre com Ajuda ${where}`);
     await order.getByRole('button', { name: 'Mais ações para Pensantus' }).click();

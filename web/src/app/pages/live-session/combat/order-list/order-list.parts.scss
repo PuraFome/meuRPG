@@ -1,67 +1,25 @@
 .row__meta {
+  display: block;
+}
+
+.row__sub {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row__hp {
   display: flex;
   flex-direction: column;
-
-  @container order (max-width: 25.99rem) {
-    font-size: 13px;
-  }
-
-  @container order (min-width: 18rem) and (max-width: 25.99rem) {
-    flex-flow: row wrap;
-
-    > *:not(:last-child)::after {
-      content: '\a0·\a0';
-    }
-  }
-}
-
-.row__state {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-
-  .mat-icon {
-    width: 16px;
-    height: 16px;
-    font-size: 16px;
-  }
-}
-
-.row__state--out {
-  color: var(--mr-danger-ink);
-  font-weight: 700;
-}
-
-.row__pv-inline {
-  @container order (min-width: 26rem) {
-    display: none;
-  }
-}
-
-.row__init,
-.row__hp {
-  display: none;
+  align-items: flex-end;
   font-family: var(--mr-font-display);
   font-weight: 700;
   color: var(--mr-ink);
-
-  @container order (min-width: 26rem) {
-    display: block;
-  }
-}
-
-.row__init {
-  grid-area: init;
-  font-size: 22px;
-  text-align: center;
-}
-
-.row__hp {
-  grid-area: hp;
 }
 
 .row__hp-n {
-  font-size: 19px;
+  font-size: 18px;
   line-height: 1;
 }
 
@@ -70,9 +28,10 @@
   color: var(--mr-ink-muted);
 }
 
-.row__bar {
+.row__bar,
+.strip__bar {
   display: flex;
-  width: 76px;
+  width: 64px;
   height: 5px;
   margin-top: 6px;
   overflow: hidden;
@@ -96,6 +55,65 @@
   background: repeating-linear-gradient(135deg, var(--mr-ink) 0 2px, var(--mr-surface) 2px 4px);
 }
 
+.row__chev {
+  color: var(--mr-ink-muted);
+}
+
+// The opened part: what the master needs for this combatant, under its head.
+.row__open {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 10px 12px 50px;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.row__facts {
+  color: var(--mr-ink);
+}
+
+.row__conc {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.row__state-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 12px;
+}
+
+.row__state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.row__state--out {
+  color: var(--mr-danger-ink);
+  font-weight: 700;
+}
+
 .row__aid,
 .row__effect {
   display: inline-flex;
@@ -112,7 +130,6 @@
 .row__aid {
   margin-left: 6px;
   padding: 1px 8px;
-  vertical-align: 2px;
 }
 
 // The labels under the name: the shield in the accent, Ajuda in the warning colours.
@@ -120,7 +137,6 @@
   display: flex;
   flex-wrap: wrap;
   gap: 4px 6px;
-  margin-top: 4px;
 }
 
 .row__effect {
@@ -141,72 +157,37 @@
   }
 }
 
-.order__live:empty {
-  display: none;
+.row__death {
+  min-width: 0;
 }
 
-.order__ended {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 8px 0 0;
-  font-size: 14px;
-  color: var(--mr-ink-muted);
-
-  .mat-icon {
-    flex: none;
-    width: 16px;
-    height: 16px;
-    font-size: 16px;
-  }
-}
-
+// "Dano/Cura", "Condições" and "Mais": three equal buttons on one line, the icon over the label, across the row (C7-02).
 .row__actions {
-  display: flex;
-  grid-area: actions;
-  align-items: center;
-  justify-content: flex-end;
-}
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin: 4px 0 0 -40px;
 
-.row__adjust {
-  --mat-button-outlined-label-text-color: var(--mr-ink);
-  flex: none;
-  min-width: 108px;
-
-  @container order (max-width: 25.99rem) {
+  .mat-mdc-outlined-button {
+    --mat-button-outlined-container-height: 56px;
+    --mat-button-outlined-label-text-color: var(--mr-ink);
     min-width: 0;
-    padding: 0 8px;
-  }
-}
+    flex-direction: column;
+    height: 56px;
+    padding: 0 4px;
+    font-size: 14px;
+    line-height: 16px;
 
-.row__more,
-.row__spacer {
-  display: flex;
-  flex: none;
-  align-items: center;
-  justify-content: flex-end;
-  // The dots sit 10px inside the icon box.
-  margin-right: -10px;
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--mr-ink);
-  cursor: pointer;
+    .mat-icon {
+      display: block;
+      margin: 0 auto 2px;
+    }
+  }
 }
 
 .row__extra,
 .row__confirm {
-  grid-area: extra;
   min-width: 0;
-}
-
-// The master's question about the roll this combatant holds (the roller answers first).
-.row__held {
-  grid-area: held;
-  min-width: 0;
-  padding-top: 8px;
 }
 
 .row__extra {
@@ -251,4 +232,55 @@
     --mat-button-outlined-label-text-color: var(--mr-danger-ink);
     --mat-button-outlined-outline-color: var(--mr-danger-ink);
   }
+}
+
+// The folded column (C1-02): 64px, the turn ring, the dashed hidden token, an HP bar each.
+.strip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  max-height: inherit;
+  padding: 12px 0;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.strip__list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-height: 0;
+  margin: 0;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--mr-rule);
+  overflow-y: auto;
+  list-style: none;
+}
+
+.strip__token {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+  min-width: 44px;
+  min-height: 56px;
+  padding: 6px 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 0;
+  }
+}
+
+.strip__bar {
+  width: 36px;
+  margin-top: 6px;
 }

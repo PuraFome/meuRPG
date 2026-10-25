@@ -105,14 +105,8 @@ func (s *Service) GetLiveSession(
 		// player sees the current map even if the master hides it again.
 		res.CurrentMapId = *session.CurrentMapID
 	}
-	if session.ShownImageID != nil {
-		res.ShownImage, err = s.maps.ShownImage(ctx, m.CampaignID, *session.ShownImageID)
-		if connect.CodeOf(err) == connect.CodeNotFound {
-			res.ShownImage, err = nil, nil // deleted since the read above
-		}
-		if err != nil {
-			return nil, s.dbError(ctx, "read the shown image", err)
-		}
+	if res.ShownImage, err = s.shownImageFor(ctx, m, session); err != nil {
+		return nil, err
 	}
 	// The switch is the master's: players get false.
 	res.ShownImageKeep = m.Role == authz.RoleMaster && session.ShownImageKeep && res.ShownImage != nil

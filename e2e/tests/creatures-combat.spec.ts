@@ -5,6 +5,7 @@ import { beginCreatureCombat, hitAndApply, sessionRoute, tableForCreatureCombat,
 import { closeSheet } from './contests-support';
 import { endOpenSessionRPC } from './live-session-support';
 import { callRPC, newSignedInContext, openActionTab } from './support';
+import { openOrderRow } from './combat-layout';
 
 // MR-037 (a player's creatures in combat and the druid's Wild Shape) and RN-20 (a creature's hit points go only
 // to its owner's player and the master; another player gets the state word). The setup goes through the API; the
@@ -160,9 +161,11 @@ test(
       // The master's order: the wolves in a box named for them, and Sálvia's concentration with its question.
       await m.goto(sessionRoute(campaignId));
       const order = m.getByRole('region', { name: 'Ordem de iniciativa' });
+      // A row opens in place: the concentration, the form and the beast's pool are in the opened row.
+      await openOrderRow(m, 'Sálvia');
       await expect(order.getByText('Lobos atrozes da Sálvia ·')).toBeVisible();
       await expect(order.getByText('CA 14 · da Sálvia')).toHaveCount(2);
-      await expect(order.getByText('Concentra em Conjurar Animais · 2 Lobos atrozes')).toBeVisible();
+      await expect(order.getByText('Concentração: Conjurar Animais · 2 Lobos atrozes')).toBeVisible();
       await order.getByRole('button', { name: 'Perdeu a concentração' }).click();
       const question = order.getByRole('alertdialog', { name: 'A Sálvia perdeu a concentração?' });
       await expect(question.getByRole('button', { name: 'Voltar' })).toBeFocused();
@@ -237,8 +240,9 @@ test(
       }
       await expect(t.getByText(/PV do Lobo|11 de 11/)).toHaveCount(0);
       await m.goto(sessionRoute(campaignId));
+      await openOrderRow(m, 'Sálvia');
       await expect(m.getByRole('region', { name: 'Ordem de iniciativa' }).getByText('Na forma de Lobo').first()).toBeVisible();
-      await expect(m.getByRole('region', { name: 'Ordem de iniciativa' }).locator('.row__hp', { hasText: '11 de 11' })).toBeVisible();
+      await expect(m.getByRole('region', { name: 'Ordem de iniciativa' }).locator('app-beast-pool', { hasText: '11 de 11' })).toBeVisible();
 
       // Damage past the beast's hit points: the master applies it; the beast falls, 19 carry over, and she is told.
       await hitAndApply(m, campaignId, 'Goblin 1', 'Sálvia', 30);

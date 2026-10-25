@@ -180,6 +180,7 @@ type SceneAction struct {
 	MaxAttempts int32
 	CreateKey   *string
 	CreateHash  *string
+	Hidden      bool
 }
 
 type SceneClue struct {

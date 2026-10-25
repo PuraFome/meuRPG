@@ -28,8 +28,15 @@ import (
 //     player gets an NPC's name, its portrait and whether it speaks, and
 //     nothing else about it, not even its character ID (RN-20): the entry's
 //     own ID is the place on the stage.
+//   - The master may keep an NPC on the stage hidden from the players
+//     (stage_npcs.hidden): it counts for the limit, the master reads it marked,
+//     and no player ever receives it (RN-10): not in the open scene, not its
+//     portrait, not the casts and targets of the stage, not a hint when it comes
+//     in or goes out. Hiding and showing it send the hint everyone gets for a
+//     change of the stage, so the players read the scene again. A hidden NPC does
+//     not speak: hiding it takes the floor, and giving it the floor shows it.
 //   - A player may fetch an NPC's portrait only while the NPC is on the stage
-//     (ImageOnStage, which package maps asks on every request).
+//     and shown (ImageOnStage, which package maps asks on every request).
 //   - Each change is a session event (ADR-0007): ids only.
 
 // maxStage is how many NPCs can be on the stage at once: the screens fit four
@@ -41,11 +48,15 @@ const imagesPath = "/images/"
 
 // stageEvent is the payload of stage_changed: ids only.
 type stageEvent struct {
-	// Change is "put", "taken_off", "speaker" or "cleared".
+	// Change is "put", "taken_off", "speaker", "hidden", "shown" or "cleared".
 	Change string `json:"change"`
 	// CharacterID is the NPC the change is about; empty for "cleared" and for
 	// a speaker set to nobody.
 	CharacterID string `json:"character_id,omitempty"`
+	// Hidden says a "put" put the NPC on the stage hidden from the players.
+	Hidden bool `json:"hidden,omitempty"`
+	// Revealed says a "speaker" gave the floor to an NPC that was hidden, which showed it.
+	Revealed bool `json:"revealed,omitempty"`
 }
 
 const (
@@ -53,21 +64,40 @@ const (
 	stageTakenOff = "taken_off"
 	stageSpeaker  = "speaker"
 	stageCleared  = "cleared"
+	stageHidden   = "hidden"
+	stageShown    = "shown"
 )
 
-// publishStageChanged tells everyone in the session that the stage changed. The
-// hint names no NPC: each app reads the scene again, filtered for it.
-func (s *Service) publishStageChanged(campaignID string) {
-	s.Publish(campaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_StageChanged_{
+// stageChangedEvent is the hint that the stage changed. It names no NPC: each app reads the scene
+// again, filtered for it.
+func stageChangedEvent() *playv1.WatchGameSessionResponse {
+	return &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_StageChanged_{
 		StageChanged: &playv1.WatchGameSessionResponse_StageChanged{},
-	}})
+	}}
+}
+
+// publishStageChanged tells the session that the stage changed: the master and the players in the scene
+// when the players saw the change, the master alone when only he did (a hidden NPC put on the stage or
+// taken off it).
+func (s *Service) publishStageChanged(ctx context.Context, campaignID string, players bool) {
+	if players {
+		s.PublishToScene(ctx, campaignID, stageChangedEvent())
+		return
+	}
+	s.Publish(campaignID, false, stageChangedEvent())
 }
 
 // stageOf builds the stage as the caller sees it: the master gets the
-// character IDs too. An NPC that is no longer a living character of the
-// campaign is left out.
+// character IDs too, and every NPC, the hidden ones marked; a player gets the
+// NPCs the players see and no other. An NPC that is no longer a living
+// character of the campaign is left out.
 func (s *Service) stageOf(ctx context.Context, m authz.Membership, sessionID string) ([]*playv1.StageNpc, error) {
-	rows, err := s.queries.ListStage(ctx, sessionID)
+	master := m.Role == authz.RoleMaster
+	list := s.queries.ListShownStage
+	if master {
+		list = s.queries.ListStage
+	}
+	rows, err := list(ctx, sessionID)
 	if err != nil {
 		return nil, s.dbError(ctx, "list the stage", err)
 	}
@@ -75,7 +105,6 @@ func (s *Service) stageOf(ctx context.Context, m authz.Membership, sessionID str
 	if err != nil {
 		return nil, s.dbError(ctx, "read the NPCs on the stage", err)
 	}
-	master := m.Role == authz.RoleMaster
 	var out []*playv1.StageNpc
 	for _, r := range rows {
 		c, ok := chars[r.CharacterID]
@@ -87,7 +116,7 @@ func (s *Service) stageOf(ctx context.Context, m authz.Membership, sessionID str
 			npc.PortraitUrl = imagesPath + c.PortraitImageID
 		}
 		if master {
-			npc.CharacterId = r.CharacterID
+			npc.CharacterId, npc.Hidden = r.CharacterID, r.Hidden
 		}
 		out = append(out, npc)
 	}
@@ -114,18 +143,23 @@ func (s *Service) stageCharacters(ctx context.Context, campaignID string, rows [
 	return out, nil
 }
 
-// ImageOnStage says whether the gallery image is the portrait of an NPC on the
-// stage of the open scene of the campaign's open session. It implements
+// ImageOnStage says whether the gallery image is the portrait of an NPC the
+// players see on the stage of the open scene of the campaign's open session. It implements
 // maps.LiveSession: the image route lets a player fetch a portrait only then
 // (RN-10, RN-20), so a portrait is 404 for them the moment the NPC leaves the
 // stage or the scene closes.
-func (s *Service) ImageOnStage(ctx context.Context, campaignID, imageID string) (bool, error) {
+func (s *Service) ImageOnStage(ctx context.Context, campaignID, userID, imageID string) (bool, error) {
 	session, err := s.queries.GetOpenGameSession(ctx, campaignID)
 	if errors.Is(err, pgx.ErrNoRows) || (err == nil && session.OpenScenePointID == nil) {
 		return false, nil // no session, or no scene: no stage
 	}
 	if err != nil {
 		return false, fmt.Errorf("find the open session: %w", err)
+	}
+	// A player out of a scene open to only some players sees no stage (an empty userID is nobody in
+	// particular: any NPC counts).
+	if out, err := outsideOpenScene(ctx, s.queries, session, userID); err != nil || out {
+		return false, err
 	}
 	// A point the master turned into another kind is no open scene (GetOpenScene
 	// says so too), and its stage is not on show.
@@ -134,7 +168,7 @@ func (s *Service) ImageOnStage(ctx context.Context, campaignID, imageID string) 
 	} else if err != nil {
 		return false, fmt.Errorf("find the open scene: %w", err)
 	}
-	rows, err := s.queries.ListStage(ctx, session.ID)
+	rows, err := s.queries.ListShownStage(ctx, session.ID) // a hidden NPC's portrait is the master's alone
 	if err != nil {
 		return false, fmt.Errorf("list the stage: %w", err)
 	}
@@ -150,19 +184,30 @@ func (s *Service) ImageOnStage(ctx context.Context, campaignID, imageID string) 
 	return false, nil
 }
 
-// stageChange is what one master's call to the stage does, inside the
-// transaction. It returns the kind of change it made, "" when nothing changed.
-type stageChange func(c *combatTx) (change, characterID string, err error)
+// stageDone is what one master's call to the stage did, inside the transaction. An empty change
+// means nothing changed.
+type stageDone struct {
+	change      string
+	characterID string
+	// hidden: a put put the NPC on the stage hidden. revealed: the floor was given to a hidden NPC.
+	hidden, revealed bool
+	// master: only the master read the change, so the players are told nothing.
+	master bool
+}
+
+// stageChange is one master's call to the stage, inside the transaction.
+type stageChange func(c *combatTx) (stageDone, error)
 
 // changeStage runs a change of the stage for the master: it locks the open
 // session, applies the change, writes the stage_changed event, and answers with
-// the stage. Everyone hears of it once it is committed.
+// the stage. Once it is committed everyone hears of it, unless only the master
+// read the change.
 func (s *Service) changeStage(ctx context.Context, m authz.Membership, what string, apply stageChange) ([]*playv1.StageNpc, error) {
-	var changed bool
+	var done stageDone
 	var sessionID string
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
-		changed = false
+		done = stageDone{}
 		session, err := lockOpenSessionOrNone(ctx, q, m.CampaignID)
 		if err != nil {
 			return err
@@ -172,24 +217,21 @@ func (s *Service) changeStage(ctx context.Context, m authz.Membership, what stri
 		if err != nil {
 			return err
 		}
-		change, characterID, err := apply(c)
-		if err != nil || change == "" {
+		if done, err = apply(c); err != nil || done.change == "" {
 			return err
 		}
-		if characterID != "" {
-			c.characterID = &characterID
+		if done.characterID != "" {
+			c.characterID = &done.characterID
 		}
-		if _, err := insertSceneEvent(ctx, c, eventStageChanged, &m.UserID, nil, stageEvent{Change: change, CharacterID: characterID}); err != nil {
-			return err
-		}
-		changed = true
-		return nil
+		ev := stageEvent{Change: done.change, CharacterID: done.characterID, Hidden: done.hidden, Revealed: done.revealed}
+		_, err = insertSceneEvent(ctx, c, eventStageChanged, &m.UserID, nil, ev)
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, what, err)
 	}
-	if changed {
-		s.publishStageChanged(m.CampaignID)
+	if done.change != "" {
+		s.publishStageChanged(ctx, m.CampaignID, !done.master)
 	}
 	return s.stageOf(ctx, m, sessionID)
 }
@@ -217,8 +259,8 @@ func (s *Service) PutOnStage(
 	if err != nil {
 		return nil, err
 	}
-	stage, err := s.changeStage(ctx, m, "put an NPC on the stage", func(c *combatTx) (string, string, error) {
-		return s.putNPC(ctx, c, m.CampaignID, characterID)
+	stage, err := s.changeStage(ctx, m, "put an NPC on the stage", func(c *combatTx) (stageDone, error) {
+		return s.putNPC(ctx, c, m.CampaignID, characterID, req.Msg.GetHidden())
 	})
 	if err != nil {
 		return nil, err
@@ -226,29 +268,30 @@ func (s *Service) PutOnStage(
 	return connect.NewResponse(&playv1.PutOnStageResponse{Stage: stage}), nil
 }
 
-// putNPC is PutOnStage's change: it puts the NPC at the end of the stage, unless it is
-// there already (nothing changes).
-func (s *Service) putNPC(ctx context.Context, c *combatTx, campaignID, characterID string) (string, string, error) {
+// putNPC is PutOnStage's change: it puts the NPC at the end of the stage, hidden from the players
+// when the master said so, unless it is there already (nothing changes). A hidden NPC counts for the
+// limit, and only the master hears of it.
+func (s *Service) putNPC(ctx context.Context, c *combatTx, campaignID, characterID string, hidden bool) (stageDone, error) {
 	if c.session.OpenScenePointID == nil {
-		return "", "", errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_NO_OPEN_SCENE, "no scene is open, so there is no stage")
+		return stageDone{}, errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_NO_OPEN_SCENE, "no scene is open, so there is no stage")
 	}
 	if err := s.checkStageNPC(ctx, c, campaignID, characterID); err != nil {
-		return "", "", err
+		return stageDone{}, err
 	}
 	rows, err := c.q.ListStage(ctx, c.session.ID)
 	if err != nil {
-		return "", "", fmt.Errorf("list the stage: %w", err)
+		return stageDone{}, fmt.Errorf("list the stage: %w", err)
 	}
 	if slices.ContainsFunc(rows, func(r playdb.StageNpc) bool { return r.CharacterID == characterID }) {
-		return "", "", nil // already there: nothing changes
+		return stageDone{}, nil // already there: nothing changes
 	}
 	if len(rows) >= maxStage {
-		return "", "", errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_STAGE_FULL, "the stage is full")
+		return stageDone{}, errScene(playv1.SceneBlockedReason_SCENE_BLOCKED_REASON_STAGE_FULL, "the stage is full")
 	}
-	if _, err := c.q.InsertStageNPC(ctx, playdb.InsertStageNPCParams{GameSessionID: c.session.ID, CharacterID: characterID, CreatedAt: c.now}); err != nil {
-		return "", "", fmt.Errorf("put the NPC on the stage: %w", err)
+	if _, err := c.q.InsertStageNPC(ctx, playdb.InsertStageNPCParams{GameSessionID: c.session.ID, CharacterID: characterID, Hidden: hidden, CreatedAt: c.now}); err != nil {
+		return stageDone{}, fmt.Errorf("put the NPC on the stage: %w", err)
 	}
-	return stagePut, characterID, nil
+	return stageDone{change: stagePut, characterID: characterID, hidden: hidden, master: hidden}, nil
 }
 
 // checkStageNPC checks that the character is a living NPC of the campaign the master
@@ -280,20 +323,67 @@ func (s *Service) TakeOffStage(
 	if err != nil {
 		return nil, err
 	}
-	stage, err := s.changeStage(ctx, m, "take an NPC off the stage", func(c *combatTx) (string, string, error) {
-		n, err := c.q.DeleteStageNPC(ctx, playdb.DeleteStageNPCParams{GameSessionID: c.session.ID, CharacterID: characterID})
+	stage, err := s.changeStage(ctx, m, "take an NPC off the stage", func(c *combatTx) (stageDone, error) {
+		wasHidden, err := c.q.DeleteStageNPC(ctx, playdb.DeleteStageNPCParams{GameSessionID: c.session.ID, CharacterID: characterID})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return stageDone{}, nil // not there: nothing changes
+		}
 		if err != nil {
-			return "", "", fmt.Errorf("take the NPC off the stage: %w", err)
+			return stageDone{}, fmt.Errorf("take the NPC off the stage: %w", err)
 		}
-		if n == 0 {
-			return "", "", nil // not there: nothing changes
-		}
-		return stageTakenOff, characterID, nil
+		return stageDone{change: stageTakenOff, characterID: characterID, master: wasHidden}, nil
 	})
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.TakeOffStageResponse{Stage: stage}), nil
+}
+
+// SetStageNpcHidden implements playv1connect.PlayServiceHandler.
+func (s *Service) SetStageNpcHidden(
+	ctx context.Context,
+	req *connect.Request[playv1.SetStageNpcHiddenRequest],
+) (*connect.Response[playv1.SetStageNpcHiddenResponse], error) {
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return nil, err
+	}
+	characterID, err := parseStageNPC(req.Msg.GetCharacterId())
+	if err != nil {
+		return nil, err
+	}
+	stage, err := s.changeStage(ctx, m, "show or hide an NPC on the stage", func(c *combatTx) (stageDone, error) {
+		return setNPCHidden(ctx, c, characterID, req.Msg.GetHidden())
+	})
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&playv1.SetStageNpcHiddenResponse{Stage: stage}), nil
+}
+
+// setNPCHidden is SetStageNpcHidden's change: the NPC on the stage is hidden from the players, or
+// shown to them. Hiding the NPC that speaks takes the floor from it. Setting what it already is
+// changes nothing.
+func setNPCHidden(ctx context.Context, c *combatTx, characterID string, hidden bool) (stageDone, error) {
+	rows, err := c.q.ListStage(ctx, c.session.ID)
+	if err != nil {
+		return stageDone{}, fmt.Errorf("list the stage: %w", err)
+	}
+	i := slices.IndexFunc(rows, func(r playdb.StageNpc) bool { return r.CharacterID == characterID })
+	if i < 0 {
+		return stageDone{}, errCharacterNotFound() // not on the stage
+	}
+	if rows[i].Hidden == hidden {
+		return stageDone{}, nil
+	}
+	if _, err := c.q.SetStageNPCHidden(ctx, playdb.SetStageNPCHiddenParams{GameSessionID: c.session.ID, CharacterID: characterID, Hidden: hidden}); err != nil {
+		return stageDone{}, fmt.Errorf("show or hide the NPC on the stage: %w", err)
+	}
+	change := stageShown
+	if hidden {
+		change = stageHidden
+	}
+	return stageDone{change: change, characterID: characterID}, nil
 }
 
 // SetSpeaker implements playv1connect.PlayServiceHandler.
@@ -311,7 +401,7 @@ func (s *Service) SetSpeaker(
 			return nil, err
 		}
 	}
-	stage, err := s.changeStage(ctx, m, "set the speaker", func(c *combatTx) (string, string, error) {
+	stage, err := s.changeStage(ctx, m, "set the speaker", func(c *combatTx) (stageDone, error) {
 		return setSpeakerOf(ctx, c, characterID)
 	})
 	if err != nil {
@@ -320,37 +410,38 @@ func (s *Service) SetSpeaker(
 	return connect.NewResponse(&playv1.SetSpeakerResponse{Stage: stage}), nil
 }
 
-// setSpeakerOf is SetSpeaker's change: the NPC speaks, or nobody when it is empty.
-func setSpeakerOf(ctx context.Context, c *combatTx, characterID string) (string, string, error) {
+// setSpeakerOf is SetSpeaker's change: the NPC speaks, or nobody when it is empty. An NPC hidden
+// from the players is shown by it: the master's tap means that it speaks now.
+func setSpeakerOf(ctx context.Context, c *combatTx, characterID string) (stageDone, error) {
 	rows, err := c.q.ListStage(ctx, c.session.ID)
 	if err != nil {
-		return "", "", fmt.Errorf("list the stage: %w", err)
+		return stageDone{}, fmt.Errorf("list the stage: %w", err)
 	}
 	speaking := slices.IndexFunc(rows, func(r playdb.StageNpc) bool { return r.Speaking })
 	if characterID == "" {
 		if speaking < 0 {
-			return "", "", nil // nobody speaks already
+			return stageDone{}, nil // nobody speaks already
 		}
 		if err := c.q.ClearStageSpeakers(ctx, c.session.ID); err != nil {
-			return "", "", fmt.Errorf("clear the speaker: %w", err)
+			return stageDone{}, fmt.Errorf("clear the speaker: %w", err)
 		}
-		return stageSpeaker, "", nil
+		return stageDone{change: stageSpeaker}, nil
 	}
 	i := slices.IndexFunc(rows, func(r playdb.StageNpc) bool { return r.CharacterID == characterID })
 	if i < 0 {
-		return "", "", errCharacterNotFound() // not on the stage
+		return stageDone{}, errCharacterNotFound() // not on the stage
 	}
 	if i == speaking {
-		return "", "", nil // speaks already
+		return stageDone{}, nil // speaks already
 	}
 	// One speaks at a time: the old one stops before the new one starts.
 	if err := c.q.ClearStageSpeakers(ctx, c.session.ID); err != nil {
-		return "", "", fmt.Errorf("clear the speaker: %w", err)
+		return stageDone{}, fmt.Errorf("clear the speaker: %w", err)
 	}
 	if _, err := c.q.SetStageSpeaker(ctx, playdb.SetStageSpeakerParams{GameSessionID: c.session.ID, CharacterID: characterID}); err != nil {
-		return "", "", fmt.Errorf("set the speaker: %w", err)
+		return stageDone{}, fmt.Errorf("set the speaker: %w", err)
 	}
-	return stageSpeaker, characterID, nil
+	return stageDone{change: stageSpeaker, characterID: characterID, revealed: rows[i].Hidden}, nil
 }
 
 // clearStage empties the session's stage inside tx, and writes the event when

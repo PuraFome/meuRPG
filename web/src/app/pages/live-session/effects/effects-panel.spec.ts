@@ -319,4 +319,39 @@ describe('EffectsPanel (W7-E board 4)', () => {
     document.querySelectorAll('.cdk-overlay-container *').forEach(() => undefined);
     TestBed.inject(MatDialog).closeAll();
   });
+
+  it('says how many effects there are, once it has read them (the count of its row)', async () => {
+    const fixture = TestBed.createComponent(EffectsPanel);
+    document.body.appendChild(fixture.nativeElement);
+    fixture.componentRef.setInput('campaignId', 'camp');
+    fixture.componentRef.setInput('state', state);
+    const counts: number[] = [];
+    fixture.componentInstance.counted.subscribe((n) => counts.push(n));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(counts.at(-1)).toBe(5);
+  });
+
+  it('is compact inside "Mais do combate": no frame and no drawn heading, the name with the targets, "Encerrar" with its cross (C7-02)', async () => {
+    const fixture = TestBed.createComponent(EffectsPanel);
+    document.body.appendChild(fixture.nativeElement);
+    fixture.componentRef.setInput('campaignId', 'camp');
+    fixture.componentRef.setInput('state', state);
+    fixture.componentRef.setInput('compact', true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const panel = el.querySelector('section')!;
+    expect(panel.classList).not.toContain('mr-panel');
+    expect(panel.classList).toContain('fx--compact');
+    // The heading stays for the region's name and a screen reader, not drawn.
+    expect(el.querySelector('h2')!.classList).toContain('mr-visually-hidden');
+    expect(flat(el.querySelector('li.fx__row h3'))).toBe('Imobilizar Pessoa');
+    expect(flat(el.querySelector('li.fx__row .fx__who'))).toContain('Brisa');
+    const end = el.querySelector('[data-end]')!;
+    expect(flat(end)).toContain('Encerrar');
+    expect(end.querySelector('mat-icon')?.textContent).toBe('close');
+  });
 });

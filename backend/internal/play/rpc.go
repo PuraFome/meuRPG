@@ -196,7 +196,11 @@ func (s *Service) endSessionIn(ctx context.Context, tx pgx.Tx, m authz.Membershi
 	}
 	if current.ShownImageKeep && current.ShownImageID != nil {
 		// The image left with the players outlives the session (MR-028).
-		if err := s.maps.LeaveImage(ctx, tx, m.CampaignID, *current.ShownImageID, s.now()); err != nil {
+		who, err := shownViewersOf(ctx, q, current)
+		if err != nil {
+			return err
+		}
+		if err := s.maps.LeaveImage(ctx, tx, m.CampaignID, *current.ShownImageID, s.now(), leftAudience(who)); err != nil {
 			return err
 		}
 	}

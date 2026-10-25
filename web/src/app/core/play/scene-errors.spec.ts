@@ -22,6 +22,7 @@ describe('scene errors', () => {
     SceneBlockedReason.WRONG_DICE_MODE,
     SceneBlockedReason.NO_CHARACTER,
     SceneBlockedReason.STAGE_FULL,
+    SceneBlockedReason.SCENE_NOT_PARTIAL,
   ];
 
   it('has its own Portuguese sentence for every refusal', () => {
@@ -38,6 +39,7 @@ describe('scene errors', () => {
     );
     expect(sceneBlockedMessage(SceneBlockedReason.WRONG_DICE_MODE)).toContain('forma de rolar');
     expect(sceneBlockedMessage(SceneBlockedReason.NO_CHARACTER)).toContain('personagem vivo');
+    expect(sceneBlockedMessage(SceneBlockedReason.SCENE_NOT_PARTIAL)).toContain('toda a mesa');
   });
 
   it('reads the typed detail, never the message', () => {

@@ -438,7 +438,7 @@ func (s *Service) announceDeletedMap(ctx context.Context, campaignID, mapID stri
 		// The map's points went with it: if the scene was one of them, the
 		// foreign key closed it.
 		if still, err := s.live.OpenScenePoint(ctx, campaignID); err == nil && still == "" {
-			s.publishSceneChanged(campaignID)
+			s.publishSceneChanged(ctx, campaignID)
 		}
 	}
 }

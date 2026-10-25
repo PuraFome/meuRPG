@@ -43,6 +43,10 @@ enum SceneBlockedReason {
   SCENE_BLOCKED_REASON_NO_CHARACTER = 5;
   // PutOnStage: 4 NPCs are on the stage already (the limit, MR-031).
   SCENE_BLOCKED_REASON_STAGE_FULL = 6;
+  // SetShownImage, SetShownImageAudience: the audience asked is "the scene's
+  // players" (IMAGE_AUDIENCE_KIND_SCENE_PLAYERS), and no scene open to only
+  // some players is open, so there are no scene players to show it to.
+  SCENE_BLOCKED_REASON_SCENE_NOT_PARTIAL = 7;
 }
 
 // SceneBlocked is the error detail of a scene call's `failed_precondition`
@@ -62,7 +66,9 @@ message OpenSceneInfo {
   // The point's description, which every member reads in the open scene
   // (up to 2,000 characters, with line breaks).
   string description = 3;
-  // The scene's actions, in the order the master put them.
+  // The scene's actions, in the order the master put them. A player never
+  // gets an action the master hid ("Escondida"): not its name, DC, limit or
+  // rolls, as if it did not exist (RN-10). The master gets them all.
   repeated SceneActionView actions = 4;
   // The rolls made since the scene was opened, newest first. The master
   // gets everyone's; a player only their own character's.
@@ -77,9 +83,10 @@ message OpenSceneInfo {
   // Only the master gets them: a player never gets a clue here, revealed or
   // not (the revealed ones are in their notes, NotesService.ListNotes).
   repeated meurpg.maps.v1.SceneClue clues = 8;
-  // The NPCs "em cena", in the order they came in, at most 4 (MR-031). Every
-  // member gets the same list, each entry with only what a player may see
-  // (StageNpc). Empty when nobody is on the stage.
+  // The NPCs "em cena", in the order they came in, at most 4 (MR-031). Each
+  // entry carries only what a player may see (StageNpc). The master gets
+  // every NPC, the hidden ones marked `hidden`; a player gets only the ones
+  // the players see, never a hidden one. Empty when nobody is on the stage.
   repeated StageNpc stage = 10;
   // Whether this scene shows its DCs to the players ("Mostrar a CD aos
   // jogadores", MR-015, question 52). Every member gets it. On: a player's
@@ -92,6 +99,54 @@ message OpenSceneInfo {
   // gets none (RN-10); a player sees an image only when the master shows it
   // (PlayService.SetShownImage).
   repeated meurpg.maps.v1.SceneImage images = 12;
+  // Who is in the scene and who is out of it ("Aberta desde 20:20 para
+  // Pensantus, Brisa"; "Fora da cena: Sálvia e Jabuti"), with `opened_at`. Only
+  // the master gets it: a player always gets it unset. A player who is out
+  // of the scene does not get the scene at all (GetOpenScene answers them
+  // as it does when none is open), and one who is in does not learn who else is.
+  SceneAudienceView audience = 13;
+  // The master's switch "Os jogadores podem entrar" (off by default). Only the master gets it.
+  bool players_may_join = 14;
+  // Set only for a player who is out of a scene open to only some players that lets them join
+  // (PlayService.JoinScene): then the scene holds nothing but its `name` and this flag (no point,
+  // description, stage, actions, rolls, images or clues, RN-10). False everywhere else.
+  bool joinable = 15;
+}
+
+// SceneAudience says which players a scene is open to (MR-015, RN-10).
+message SceneAudience {
+  // True: the whole table, including a player who joins the campaign later
+  // (what a scene open with no audience is). `user_ids` must then be empty.
+  bool everyone = 1;
+  // With `everyone` false: exactly these players, by account (a UUID each; the
+  // account of a player who owns a living character of the party), at least
+  // one, repeats ignored. The master is always in. A player not listed gets no
+  // scene at all, as when none is open, and a player who joins later is out.
+  repeated string user_ids = 2;
+}
+
+// ScenePlayer is a player of the table with the character the master knows
+// them by.
+message ScenePlayer {
+  // The player's account (a UUID).
+  string user_id = 1;
+  // The player's living character in the party (a UUID) and its name.
+  string character_id = 2;
+  string character_name = 3;
+  // True for a player who joined the scene by themselves (JoinScene), false for one the master chose.
+  bool joined_by_self = 4;
+}
+
+// SceneAudienceView is who is in and out of the open scene, for the master.
+message SceneAudienceView {
+  // True when the scene is open to the whole table: `inside` then lists every
+  // player and `outside` is empty. A player who joins later is in.
+  bool everyone = 1;
+  // The players in the scene, in the party's order.
+  repeated ScenePlayer inside = 2;
+  // The players of the party who are not in it, in the party's order. A
+  // player who has no living character is in neither list.
+  repeated ScenePlayer outside = 3;
 }
 
 // StageNpc is an NPC on the stage of the open scene, as the caller sees it
@@ -109,11 +164,18 @@ message StageNpc {
   // thumbnail), or empty when the NPC has none and the app draws its
   // initials. A player may fetch it only while the NPC is on the stage.
   string portrait_url = 3;
-  // Whether the NPC is the one speaking now. At most one entry is.
+  // Whether the NPC is the one speaking now. At most one entry is. A hidden
+  // NPC never speaks.
   bool speaking = 4;
   // The character's ID (a UUID). Only the master gets it; a player's is
   // always empty (RN-20).
   string character_id = 5;
+  // Whether the NPC is hidden from the players ("Escondida dos jogadores"):
+  // true on the master's copy for an NPC the players do not see, and false
+  // for "Os jogadores veem". A player never gets a hidden NPC at all (not in
+  // the open scene, not in the stream, not its portrait), so a player's
+  // entries always carry false (RN-10).
+  bool hidden = 6;
 }
 
 // PutOnStageRequest names the NPC.
@@ -121,6 +183,10 @@ message PutOnStageRequest {
   string campaign_id = 1;
   // A living NPC of the campaign (a UUID).
   string character_id = 2;
+  // Put the NPC on the stage hidden from the players (it still counts for
+  // the limit of 4). False puts it where the players see it. Ignored for an
+  // NPC that is on the stage already: SetStageNpcHidden changes that.
+  bool hidden = 3;
 }
 
 // PutOnStageResponse returns the stage as it is now.
@@ -137,6 +203,23 @@ message TakeOffStageRequest {
 
 // TakeOffStageResponse returns the stage as it is now.
 message TakeOffStageResponse {
+  repeated StageNpc stage = 1;
+}
+
+// SetStageNpcHiddenRequest names the NPC on the stage and whether the players
+// see it.
+message SetStageNpcHiddenRequest {
+  string campaign_id = 1;
+  // An NPC on the stage (a UUID).
+  string character_id = 2;
+  // True hides the NPC from the players ("Escondida dos jogadores"); false
+  // shows it ("Os jogadores veem").
+  bool hidden = 3;
+}
+
+// SetStageNpcHiddenResponse returns the stage as it is now, as the master
+// sees it.
+message SetStageNpcHiddenResponse {
   repeated StageNpc stage = 1;
 }
 
@@ -190,6 +273,10 @@ message SceneActionView {
   // purpose may push it above `max_attempts` ("6 de 5"): when it is above,
   // write "Restam N tentativas" without the "de M".
   optional int32 attempts_left = 9;
+  // Whether the master hid this action from the players ("Escondida"). Set
+  // only on the master's copy: a player never gets a hidden action, so a
+  // player's actions always carry false (RN-10).
+  bool hidden = 10;
 }
 
 // SceneRoll is one check rolled in the scene.
@@ -239,6 +326,14 @@ message OpenSceneRequest {
   // (MR-030), so players may tag notes with it, even while the point is
   // hidden on the map.
   string point_id = 2;
+  // The players the scene is open to. Unset: the whole table, for a scene that
+  // was not open yet. For the scene that is open already, unset changes
+  // nothing (opening it again does not widen it), and a value is applied as
+  // SetSceneAudience does.
+  SceneAudience audience = 3;
+  // The switch "Os jogadores podem entrar" for a scene newly opened to only some players (ignored for the
+  // others); see SetScenePlayersMayJoin.
+  bool players_may_join = 4;
 }
 
 // OpenSceneResponse returns the scene as the master sees it.
@@ -330,5 +425,38 @@ message GrantSceneAttemptRequest {
 
 // GrantSceneAttemptResponse returns the open scene as the master sees it.
 message GrantSceneAttemptResponse {
+  OpenSceneInfo scene = 1;
+}
+
+// SetSceneAudienceRequest names the players the open scene is open to.
+message SetSceneAudienceRequest {
+  string campaign_id = 1;
+  // Required: `everyone`, or exactly these players (see SceneAudience).
+  SceneAudience audience = 2;
+}
+
+// SetSceneAudienceResponse returns the scene as the master sees it.
+message SetSceneAudienceResponse {
+  OpenSceneInfo scene = 1;
+}
+
+// SetScenePlayersMayJoinRequest sets the switch "Os jogadores podem entrar".
+message SetScenePlayersMayJoinRequest {
+  string campaign_id = 1;
+  bool players_may_join = 2;
+}
+
+// SetScenePlayersMayJoinResponse returns the scene as the master sees it.
+message SetScenePlayersMayJoinResponse {
+  OpenSceneInfo scene = 1;
+}
+
+// JoinSceneRequest names the campaign.
+message JoinSceneRequest {
+  string campaign_id = 1;
+}
+
+// JoinSceneResponse returns the scene as the player who joined reads it.
+message JoinSceneResponse {
   OpenSceneInfo scene = 1;
 }

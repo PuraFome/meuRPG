@@ -7,6 +7,7 @@ import {
   effect,
   inject,
   input,
+  model,
   output,
   signal,
   untracked,
@@ -41,12 +42,11 @@ import { conditionTags } from '../../../../core/combat/conditions';
 import { labelTags } from '../../../../core/effects/effects';
 import { coverMark, coverText, sideTags } from '../../../../core/combat/cover';
 import { article } from '../../../../core/combat/combat-log';
-import { combatantInitial, isPlayer, stateWord } from '../../../../core/combat/combat-view';
+import { combatantInitial, isPlayer } from '../../../../core/combat/combat-view';
 import {
   groupFeminine,
   groupName,
   isCreature,
-  kindWord,
   ofOwner,
 } from '../../../../core/combat/creature-names';
 import {
@@ -55,19 +55,17 @@ import {
   listNames,
   orderItems,
 } from '../../../../core/combat/joint-turn';
-import {
-  type HeldQuestions,
-  type MasterQuestion,
-} from '../../../../core/held-rolls/held-questions';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
-import { HeldQuestion } from '../../held-questions/held-question';
 import type { CombatantInfo } from '../combat-info';
 import { CombatantTags } from '../combatant-tags/combatant-tags';
 import { BeastPool, FormTag } from '../combatant-tags/form-tag';
 import { EndAidQuestion } from './end-aid-question';
-import { ConcPill, LoseQuestion } from './lose-question';
+import { LoseQuestion } from './lose-question';
 import { OrderLegend } from './order-legend';
 import { RowCover } from './row-cover';
+import { downText, isDown, isDying, rowDetail, rowFacts, rowState, stateWordOf } from './row-words';
+import { rowsBelow } from './rows-below';
+import { ShieldWatch } from './shield-watch';
 import { DeathRow } from '../death-saves/death-marks';
 import { OrderGroup } from '../joint-turn/order-group';
 import { PartState } from '../joint-turn/part-state';
@@ -93,10 +91,8 @@ function concentrationOf(c: Combatant): string {
   imports: [
     NudgeButton,
     BeastPool,
-    ConcPill,
     EndAidQuestion,
     FormTag,
-    HeldQuestion,
     LoseQuestion,
     CombatantTags,
     CombatantToken,
@@ -156,18 +152,21 @@ export class OrderList {
   readonly deathDismissed = input<ReadonlySet<string>>(new Set());
   /** "Confirmar a morte": the question again. */
   readonly askDeath = output<string>();
-  /** The questions of the rolls that wait for their roller: each is drawn inside the row of the combatant who rolled. */
-  readonly heldQuestions = input<HeldQuestions | null>(null);
-  /** The master may type the face of a real die (the campaign did not force the app dice). */
-  readonly heldCanType = input(true);
+  /** The column is folded to a strip of tokens (C1-02); the page keeps it in memory, never on the device. */
+  readonly folded = model(false);
+  /** The fold button is offered: the three-column layout only. */
+  readonly foldable = input(false);
+  /** The head says "Ordem" (not where a tab above already does: the phone's "Ordem" tab). */
+  readonly titled = input(true);
 
   protected readonly Stable = CombatantState.STABLE;
 
-  /** Who the held attack was against, for the question's words. */
-  protected heldTarget(q: MasterQuestion): string {
-    const target = q.controller.offer()?.targetId;
-    return (target && this.encounter().combatants.find((c) => c.id === target)?.label) || '';
-  }
+  /** The count chip of the heading shows from this many combatants (the board's eight players). */
+  protected readonly crowded = 7;
+  /** The rows that are open in place (a tap opens or closes one); a question that is open keeps its row open too. */
+  private readonly openIds = signal<ReadonlySet<string>>(new Set());
+  protected readonly below = signal(0);
+  private readonly scroller = viewChild<ElementRef<HTMLElement>>('scroller');
   protected readonly removing = signal<string | null>(null);
   /** The combatant whose "Perdeu a concentração" question is open. */
   protected readonly losing = signal<string | null>(null);
@@ -176,8 +175,7 @@ export class OrderList {
   /** "O Escudo Arcano de Pensantus acabou", said in the list for a few seconds after the stream took the bonus away. */
   protected readonly shieldEnded = signal('');
   private endedTimer: ReturnType<typeof setTimeout> | undefined;
-  private shieldSeen = new Map<string, number>();
-  private encounterSeen = '';
+  private readonly shields = new ShieldWatch();
   /** The combatant whose cover mark is open. */
   protected readonly marking = signal<string | null>(null);
   protected readonly Party = CombatantSide.PARTY;
@@ -187,27 +185,20 @@ export class OrderList {
   /** The order with the boxes of the joint turns (the master has every total). */
   protected readonly items = computed(() => orderItems(this.encounter(), true));
   private readonly joint = computed(() => jointTurn(this.encounter()));
+  /** Every combatant in the order of the list, the joint turns' members in their place. */
+  protected readonly flat = computed(() =>
+    this.items().flatMap((i) => (i.kind === 'group' ? [...i.members] : [i.combatant])),
+  );
   /** Everything is read-only after the combat ends. */
   protected readonly live = computed(() => this.encounter().status !== EncounterStatus.ENDED);
 
   constructor() {
     inject(DestroyRef).onDestroy(() => clearTimeout(this.endedTimer));
-    // A shield that goes from above 0 to 0 on a combatant that is still there ended (it ends by itself when the caster's turn
-    // begins); a combatant that left the combat, or another combat, is not that.
+    // A shield that goes from above 0 to 0 on a combatant that is still there ended (it ends by itself when the caster's turn begins).
     effect(() => {
       const e = this.encounter();
       untracked(() => {
-        const ended: string[] = [];
-        const seen = new Map<string, number>();
-        for (const c of e.combatants) {
-          const before = this.shieldSeen.get(c.id) ?? 0;
-          if (e.id === this.encounterSeen && before > 0 && c.armorClassBonus === 0) {
-            ended.push(shieldEndedForMaster(c.label));
-          }
-          seen.set(c.id, c.armorClassBonus);
-        }
-        this.shieldSeen = seen;
-        this.encounterSeen = e.id;
+        const ended = this.shields.update(e).map(shieldEndedForMaster);
         if (ended.length > 0) {
           this.shieldEnded.set(ended.join('. '));
           clearTimeout(this.endedTimer);
@@ -215,8 +206,93 @@ export class OrderList {
         }
       });
     });
+    // The "Mais N abaixo" cue follows the rows and the room: a list that changes or a window that resizes.
+    effect(() => {
+      this.items();
+      this.folded();
+      queueMicrotask(() => this.measure());
+    });
+    const observer =
+      typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => this.measure());
+    effect(() => {
+      const el = this.scroller()?.nativeElement;
+      observer?.disconnect();
+      if (el) {
+        observer?.observe(el);
+      }
+    });
+    inject(DestroyRef).onDestroy(() => observer?.disconnect());
     // Opening the confirmation puts the focus on the safe button.
     effect(() => this.back()?.nativeElement.focus({ focusVisible: true } as FocusOptions));
+  }
+
+  /** A row is open when it was tapped, or while one of its questions is (so the answer is never hidden). */
+  protected isOpen(c: Combatant): boolean {
+    return (
+      this.openIds().has(c.id) ||
+      this.marking() === c.id ||
+      this.losing() === c.id ||
+      this.removing() === c.id ||
+      this.endingAid() === c.id
+    );
+  }
+
+  protected toggle(id: string): void {
+    const next = new Set(this.openIds());
+    if (!next.delete(id)) {
+      next.add(id);
+    }
+    this.openIds.set(next);
+  }
+
+  protected fold(on: boolean): void {
+    this.folded.set(on);
+  }
+
+  /** A token of the strip: the column opens with that row open. */
+  protected openFromStrip(id: string): void {
+    this.openIds.set(new Set([id]));
+    this.folded.set(false);
+  }
+
+  /** The strip's token has no words of its own: "Goblin 1, 7 de 7 PV, é a vez". */
+  protected stripLabel(c: Combatant): string {
+    return this.headName(c);
+  }
+
+  /** The name of a row's head for a screen reader: who, whether it is their turn, their state and hit points. */
+  protected headName(c: Combatant): string {
+    const hp = c.hitPointsMax === undefined ? '' : `${c.hitPointsCurrent} de ${c.hitPointsMax} PV`;
+    return [c.label, this.current(c) ? 'é a vez' : '', rowState(c), hp].filter(Boolean).join(', ');
+  }
+
+  /** The line under the name of a compact row: "Inic. 14 · CA 15", or the state word first ("Escondido · inic. 7"). */
+  protected compactSub(c: Combatant, inGroup: boolean): string {
+    const init = c.initiative !== undefined && !inGroup ? c.initiative : null;
+    const state = rowState(c);
+    if (state) {
+      return joinDots([state, init === null ? '' : `inic. ${init}`].filter(Boolean));
+    }
+    return joinDots(
+      [
+        init === null ? '' : `Inic. ${init}`,
+        rowDetail(c, this.encounter(), this.info().get(c.characterId), this.shield(c) > 0),
+      ].filter(Boolean),
+    );
+  }
+
+  protected facts(c: Combatant): string {
+    return rowFacts(c, this.shield(c), this.aid(c) > 0 ? this.aidTag(this.aid(c)) : '');
+  }
+
+  /** How many rows lie wholly below the room of the list: "Mais 6 abaixo". */
+  protected measure(): void {
+    this.below.set(rowsBelow(this.scroller()?.nativeElement));
+  }
+
+  protected scrollDown(): void {
+    const el = this.scroller()?.nativeElement;
+    el?.scrollTo({ top: el.scrollTop + el.clientHeight, behavior: 'smooth' });
   }
 
   protected initial(c: Combatant): string {
@@ -247,33 +323,11 @@ export class OrderList {
     return c.concentrationSpellNamePt;
   }
 
-  /** A player's character at 0 hit points that is still in the story. */
-  protected down(c: Combatant): boolean {
-    return (
-      c.state === CombatantState.DOWN ||
-      c.state === CombatantState.DYING ||
-      c.state === CombatantState.STABLE
-    );
-  }
-
-  protected dying(c: Combatant): boolean {
-    return c.state === CombatantState.DYING;
-  }
-
-  /** "Caída", "Estável", "Morrendo · 3 falhas". */
-  protected downText(c: Combatant): string {
-    return this.dying(c)
-      ? joinDots(['Morrendo', `${c.deathFailures} falhas`])
-      : stateWord(c.state, c.label);
-  }
-
-  protected player(c: Combatant): boolean {
-    return isPlayer(c);
-  }
-
-  protected word(c: Combatant): string {
-    return stateWord(c.defeated && isPlayer(c) ? CombatantState.DEAD : c.state, c.label);
-  }
+  protected readonly down = isDown;
+  protected readonly dying = isDying;
+  protected readonly downText = downText;
+  protected readonly player = isPlayer;
+  protected readonly word = stateWordOf;
 
   /** The legend of the three shapes, once a player's creature is in the order. */
   protected readonly hasCreatures = computed(() => this.rows().some(isCreature));
@@ -322,24 +376,6 @@ export class OrderList {
     }
     this.endingAid.set(null);
     this.endAid.emit(id);
-  }
-
-  protected sub(c: Combatant): string {
-    const info = this.info().get(c.characterId);
-    // Under the shield the row says the sum in bold after the line ("CA 13 + 5"), so the plain "CA 13" waits out.
-    const ac = c.armorClass === undefined || this.shield(c) > 0 ? '' : `CA ${c.armorClass}`;
-    if (isCreature(c)) {
-      // "CA 14 · da Sálvia": its armor class and whose it is (the round dashed token and the legend say it is a creature); the
-      // book's name only when the table gave it another ("Lobo atroz 1" needs none, "Nanquim" is a "Corvo").
-      const kind = kindWord(c);
-      return [kind === 'Criatura' ? '' : kind, ac, ofOwner(this.encounter(), c)]
-        .filter(Boolean)
-        .join(' · ');
-    }
-    const first = isPlayer(c) ? (info?.classSummary ?? '') : (info?.kindLabel ?? 'NPC');
-    // A monster of the bestiary (RN-29): the master alone is told its challenge rating ("ND 1/8").
-    const nd = c.challengeRating ? `ND\u00a0${c.challengeRating}` : '';
-    return [first, nd, ac].filter(Boolean).join(' · ');
   }
 
   protected readonly article = article;

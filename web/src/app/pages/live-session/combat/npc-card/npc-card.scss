@@ -16,31 +16,71 @@
 .card__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-weight: 700;
-  font-size: 24px;
-  line-height: 28px;
+  font-weight: 800;
+  font-size: 28px;
+  line-height: 32px;
+  overflow-wrap: anywhere;
 }
 
-.card__kicker {
-  margin: 0 0 -6px;
-  font-size: 14px;
+.card > :empty {
+  display: none;
+}
+
+.card--bare {
+  padding: 0;
+  border-color: transparent;
+}
+
+.card--bare {
+  // In the rail the bar above already says "Vez do Goblin 1": the card is compact (who it is, three small boxes, the chips) so
+  // "Mais do combate" stays in view.
+  gap: 8px;
+
+  .card__kind {
+    font-size: 14px;
+    line-height: 19px;
+  }
+
+  .stats {
+    gap: 6px;
+  }
+
+  .stat {
+    padding: 4px 10px;
+  }
+
+  .stat__val {
+    font-size: 19px;
+    line-height: 23px;
+  }
+
+  .stat--wide small {
+    display: none;
+  }
+
+  .chip {
+    height: 28px;
+    padding: 0 10px;
+    font-size: 14px;
+  }
 }
 
 .card__who {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-left: 5px;
 }
 
-.card__who--desk {
-  margin-left: 0;
+.card__ident {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
-.card__title--turn {
-  font-weight: 800;
-  font-size: 26px;
-  line-height: 30px;
+.card__kind {
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
 }
 
 .card__cap {
@@ -51,13 +91,8 @@
 
 .stats {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
-}
-
-// Deslocamento reads as a sentence ("9 m · 6 quadrados"): a row of its own.
-.stat--wide {
-  grid-column: 1 / -1;
 }
 
 .stat {
@@ -78,8 +113,8 @@
 .stat__val {
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 26px;
-  line-height: 30px;
+  font-size: 24px;
+  line-height: 28px;
 
   small {
     font-family: var(--mr-font-sans);
@@ -212,11 +247,6 @@
   color: var(--mr-accent-text);
 }
 
-.card__sheet--desk {
-  align-self: center;
-  margin-left: auto;
-}
-
 // "Oferecer ataque de oportunidade" (a combat without a map): outlined and full width, the page's one filled button stays "Próximo turno".
 .offer {
   --mat-button-outlined-container-height: 48px;
@@ -227,15 +257,6 @@
   @media (min-width: 768px) {
     --mat-button-outlined-container-height: 44px;
   }
-}
-
-// The kicker and the mode's pill share the card's top line.
-.card__top {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px 12px;
 }
 
 .offer__why {

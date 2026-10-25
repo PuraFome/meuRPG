@@ -1,7 +1,7 @@
-import { Component, TemplateRef, computed, effect, untracked, viewChild } from '@angular/core';
+import { Component, TemplateRef, computed, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
-import type { Encounter } from '../../../gen/meurpg/play/v1/combat_pb';
+import { type Encounter, EncounterStatus } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { VitalsVm } from '../../core/play/live-session.types';
 import { applyVitals } from '../../core/play/vitals';
 import { setPageSubject } from '../../core/title/page-title';
@@ -72,11 +72,24 @@ export class LiveSession {
     () => this.mapState,
     (encounter) => this.combatStarted(encounter),
   );
+  /**
+   * The combat's rail draws the conversation ("Turno · Conversa" for the master, "Ações · Conversa" for the player) from 1024px; the
+   * page keeps it elsewhere otherwise. The master's is the running combat that is not on a page of its own; the player's, the combat on screen.
+   */
+  private readonly laptop = mediaQuery('(min-width: 1024px)');
+  protected readonly railChat = computed(
+    () =>
+      this.laptop() &&
+      (this.state.isMaster()
+        ? this.combat.encounter()?.status === EncounterStatus.ACTIVE && !this.combat.fullPage()
+        : this.view.combatOnScreen()),
+  );
   /** Where the conversation sits: a column beside the stage, or the phone's "Conversa" tab. */
   protected readonly slot = new ConversationSlot({
     live: computed(() => this.state.phase() === 'live' && this.state.session() !== null),
     phone: mediaQuery(PHONE_QUERY),
     unread: this.conversation.unread,
+    railMode: this.railChat,
     pageVisible: pageVisible(this.services.document, this.services.destroyRef),
     isMaster: this.state.isMaster,
     campaignId: this.state.campaignId,
@@ -92,11 +105,6 @@ export class LiveSession {
         .filter((id) => id !== ''),
     ),
   });
-  /** In a player's combat from 1024 px the conversation is the "Conversa" tab of the combat's rail, not the slot under the board. */
-  private readonly wide = mediaQuery('(min-width: 1024px)');
-  protected readonly railChat = computed(
-    () => this.wide() && this.view.combatOnScreen() && !this.state.isMaster(),
-  );
   protected readonly ownEffects = this.view.ownEffects;
   protected readonly loader = new LiveSessionLoader(this.services, this.state, this.parts);
   protected readonly events: LiveSessionEvents = new LiveSessionEvents(
@@ -118,10 +126,6 @@ export class LiveSession {
   protected readonly notesBar = viewChild<TemplateRef<unknown>>('notesBar');
 
   constructor() {
-    effect(() => {
-      const inRail = this.railChat();
-      untracked(() => this.slot.inRail.set(inRail));
-    });
     // The tab's title carries the campaign's name once it is loaded.
     setPageSubject(() => this.state.campaign()?.name);
     const { route } = this.services;

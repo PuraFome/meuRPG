@@ -48,9 +48,10 @@
   }
 }
 
-// New messages are said by the badge alone: the fill belongs to the current tab, so two never look selected.
+// New messages: the word in bold and the badge; the tint is the open tab's alone (C6-01 shows one tab active).
 .tab--news {
   color: var(--mr-ink);
+  font-weight: 700;
 }
 
 .tab__badge {

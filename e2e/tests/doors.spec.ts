@@ -7,6 +7,7 @@ import { endOpenSessionRPC, openSessionPage } from './live-session-support';
 import { placeTokenRPC, tableForMaps } from './maps-support';
 import { movingTable, tapSquare } from './move-support';
 import { callRPC, newSignedInContext } from './support';
+import { openCombatPanel } from './combat-layout';
 
 // The doors in the map editor and in the session (Etapa 10, slice 10.14a: MR-010, RN-26, RN-10; E10-05 7 to 11). The maps, the walls and
 // the doors come through the API; what is under test is the screens: the "Porta" tool, a player walking into a closed and a locked door,
@@ -188,6 +189,7 @@ test('Toren anda até uma porta fechada em combate e ela se abre; o registro diz
     expect((await layers(p, campaignId, table.mapId)).door(8, 7)).toBe(OPEN);
     expect((await layers(m, campaignId, table.mapId)).door(8, 7)).toBe(OPEN);
     await expect(p.getByText('abriu a porta').first()).toBeVisible();
+    await openCombatPanel(m, 'Registro');
     await expect(m.getByText('abriu a porta').first()).toBeVisible();
     // The map says so too: the legend of the "Mover" page now names an open door (the combat's own map card has no legend).
     await p.getByRole('button', { name: 'Mover', exact: true }).click();

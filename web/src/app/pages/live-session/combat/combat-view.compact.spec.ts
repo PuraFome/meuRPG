@@ -1,3 +1,5 @@
+import { ChangeDetectionStrategy, Component, TemplateRef, viewChild } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
 import { create } from '@bufbuild/protobuf';
 
 import {
@@ -178,6 +180,14 @@ describe('CombatView: the player’s own turn at 1280', () => {
   });
 });
 
+@Component({
+  template: '<ng-template #t><p class="fake-chat">A conversa</p></ng-template>',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+class ChatHost {
+  readonly template = viewChild.required<TemplateRef<unknown>>('t');
+}
+
 describe('CombatView: the rail at 1280 and off turn on a phone', () => {
   it('keeps the "Ações" tab in the strip off turn, with the reaction under it', async () => {
     const { el } = await mount(LAPTOP, 'g');
@@ -196,8 +206,13 @@ describe('CombatView: the rail at 1280 and off turn on a phone', () => {
 
   it('has "Ações" and "Conversa" with the unread count in words, and the chat panel mounted and hidden', async () => {
     const opened: boolean[] = [];
-    const mounted = await mount(LAPTOP, 't', { chatRail: true, chatUnread: 3 });
-    mounted.view.chatOpen.subscribe((v: boolean) => opened.push(v));
+    const host = TestBed.createComponent(ChatHost);
+    host.detectChanges();
+    const mounted = await mount(LAPTOP, 't', {
+      chat: host.componentInstance.template(),
+      chatUnread: 3,
+    });
+    mounted.view.chatShown.subscribe((v: boolean) => opened.push(v));
     const rail = mounted.el.querySelector('app-session-rail')!;
     const tabs = [
       ...rail.querySelectorAll<HTMLButtonElement>(':scope > app-tab-list [role="tab"]'),

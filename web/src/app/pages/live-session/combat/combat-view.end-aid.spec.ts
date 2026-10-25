@@ -139,6 +139,9 @@ describe('"Encerrar Ajuda" in the master\'s order of initiative', () => {
     await settle(fixture);
     const el = fixture.nativeElement as HTMLElement;
 
+    // The row opens in place (a tap on its head), and "Mais" is in it.
+    (el.querySelector('li.row[data-combatant="s"] .row__head') as HTMLButtonElement).click();
+    await settle(fixture);
     const more = el.querySelector<HTMLButtonElement>(
       'button[aria-label="Mais ações para Sálvia"]',
     )!;

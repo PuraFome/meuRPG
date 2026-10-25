@@ -26,6 +26,7 @@ import { boxOf, callRPC, layoutSize, newSignedInContext, openActionTab, openSpen
 import { placeTokenRPC } from './maps-support';
 import { setTableRulesRPC } from './table-rules-support';
 import { sq20, thirdPlayer, trapTable } from './trap-support';
+import { masterLog, openCombatPanel, openOrderRow } from './combat-layout';
 
 // The combat on screen (Etapa 6, slice 6.5a, MR-013, RN-18 to RN-22): the
 // master sets the grid and starts a combat, everybody rolls initiative, the
@@ -125,7 +126,7 @@ test(
       }
       await m.getByRole('button', { name: 'Começar o combate' }).click();
       await expect(m.getByRole('button', { name: 'Próximo turno' })).toBeVisible();
-      await expect(m.getByText('Vez do Capitão Goblin')).toBeVisible();
+      await expect(m.getByText('Vez do Capitão Goblin').first()).toBeVisible();
       await expect(m.getByRole('region', { name: 'Combate', exact: true }).getByText('Rodada 1', { exact: true })).toBeVisible();
 
       // The captain is hidden: the player sees "Vez do mestre", never a goblin.
@@ -135,7 +136,7 @@ test(
 
       // "Próximo turno": Pensantus, and the player is told.
       await m.getByRole('button', { name: 'Próximo turno' }).click();
-      await expect(m.getByText('Vez do Pensantus')).toBeVisible();
+      await expect(m.getByText('Vez do Pensantus').first()).toBeVisible();
       await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
 
       // The player moves 2 right and 1 down (11,2 ft, 3,4 m: the straight line, RN-21) inside the circle, and is refused beyond it.
@@ -404,8 +405,8 @@ test('o goblin do mestre ataca: ele vê a CA, aplica o dano (os PV do jogador mu
   try {
     await openSessionPage(m, campaignId);
     await openSessionPage(p, campaignId);
-    await expect(m.getByRole('heading', { name: 'Ações do Capitão Goblin' })).toBeVisible();
-    const card = m.getByRole('region', { name: 'Ações do Capitão Goblin' });
+    await expect(m.getByRole('heading', { name: /^(Ações do|Vez do) Capitão Goblin$/ })).toBeVisible();
+    const card = m.getByRole('region', { name: /^(Ações do|Vez do) Capitão Goblin$/ });
     await expect(card.getByText('Pontos de vida')).toBeVisible();
     await expect(card.getByText('CA', { exact: true })).toBeVisible();
     await expect(m.getByText('CA 13').first()).toBeVisible(); // Pensantus, in the order
@@ -426,12 +427,12 @@ test('o goblin do mestre ataca: ele vê a CA, aplica o dano (os PV do jogador mu
     await expect(m.getByRole('alertdialog', { name: /Há dano sem aplicar/ })).toBeVisible();
     await expect(m.getByRole('button', { name: 'Voltar' })).toBeFocused();
     await m.getByRole('button', { name: 'Voltar' }).click();
-    await expect(m.getByRole('heading', { name: 'Ações do Capitão Goblin' })).toBeVisible();
+    await expect(m.getByRole('heading', { name: /^(Ações do|Vez do) Capitão Goblin$/ })).toBeVisible();
 
     // Applying changes the player's hit points, and the log says so.
     await card.getByRole('button', { name: /Aplicar \d+ de dano/ }).click();
     await expect.poll(async () => (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === 'Pensantus')?.hitPointsCurrent).toBeLessThan(23);
-    await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Capitão Goblin ataca');
+    await expect(await masterLog(m)).toContainText('Capitão Goblin ataca');
 
     // A second attack of the same turn (the master may attack again): the damage is discarded, after a question.
     await card.getByRole('button', { name: 'Digitar o resultado' }).click();
@@ -446,6 +447,7 @@ test('o goblin do mestre ataca: ele vê a CA, aplica o dano (os PV do jogador mu
     expect(hp).toBeLessThan(23);
 
     // Undo takes back the last action only, named in the question; the damage discarded comes back to be decided.
+    await openCombatPanel(m, 'Registro');
     await m.getByRole('button', { name: 'Desfazer última ação' }).first().click();
     await expect(m.getByText(/Desfazer o ataque do Capitão Goblin ao Pensantus/).or(m.getByText(/Desfazer o ataque do Capitão Goblin à Pensantus/))).toBeVisible();
     await expect(m.getByRole('button', { name: 'Voltar' }).last()).toBeFocused();
@@ -475,8 +477,8 @@ test('o mestre ajusta os PV de um NPC em "Dano/Cura", e o jogador não vê um go
       targetId: enc.combatants.find((c) => c.label === 'Pensantus')!.id,
       d20Face: 3,
     });
-    await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Goblin 1');
-    await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Só o mestre vê');
+    await expect(await masterLog(m)).toContainText('Goblin 1');
+    await expect(await masterLog(m)).toContainText('Só o mestre vê');
     await p.getByRole('button', { name: 'Abrir o registro do combate' }).click();
     await expect(p.getByRole('log', { name: 'Registro do combate' })).toBeVisible();
     await expect(p.getByRole('log', { name: 'Registro do combate' })).not.toContainText('Goblin 1');
@@ -484,6 +486,7 @@ test('o mestre ajusta os PV de um NPC em "Dano/Cura", e o jogador não vê um go
     await p.keyboard.press('Escape');
 
     // "Dano/Cura" on Goblin 2: 3 of damage, then a heal back.
+    await openOrderRow(m, 'Goblin 2');
     await m.getByRole('button', { name: 'Dano ou cura em Goblin 2' }).click();
     const dialog = m.getByRole('dialog', { name: 'Dano ou cura em Goblin 2' });
     await expect(dialog.getByRole('heading', { name: 'Dano ou cura em Goblin 2' })).toBeFocused();
@@ -493,10 +496,11 @@ test('o mestre ajusta os PV de um NPC em "Dano/Cura", e o jogador não vê um go
     await dialog.getByRole('button', { name: 'Salvar ajuste' }).click();
     await expect(dialog).toHaveCount(0);
     await expect.poll(async () => (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.id === goblin2.id)?.hitPointsCurrent).toBe(4);
-    await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Goblin 2 perdeu 3 PV, por ajuste do mestre, agora com 4 PV');
+    await expect(await masterLog(m)).toContainText('Goblin 2 perdeu 3 PV, por ajuste do mestre, agora com 4 PV');
     // The player sees only the state word of the NPC, never the numbers.
     await expect(p.getByText('4 de 7')).toHaveCount(0);
 
+    await openOrderRow(m, 'Goblin 2');
     await m.getByRole('button', { name: 'Dano ou cura em Goblin 2' }).click();
     await m.getByRole('dialog').locator('label', { hasText: /^\s*Cura\s*$/ }).click();
     await m.getByLabel('PV curados').fill('9');
@@ -515,7 +519,7 @@ test('o jogador pode conjurar Escudo: o mestre responde por ele, o acerto vira e
   try {
     await openSessionPage(m, campaignId);
     await openSessionPage(p, campaignId);
-    const card = m.getByRole('region', { name: 'Ações do Capitão Goblin' });
+    const card = m.getByRole('region', { name: /^(Ações do|Vez do) Capitão Goblin$/ });
     const roll = async (face: string) => {
       await card.getByRole('button', { name: 'Digitar o resultado' }).click();
       await card.getByLabel(/Role 1d20 para Cimitarra/).fill(face);
@@ -549,7 +553,7 @@ test('o jogador pode conjurar Escudo: o mestre responde por ele, o acerto vira e
     await queue.getByRole('button', { name: 'Usar pelo jogador' }).click();
     await expect(card.locator('.pill', { hasText: 'Errou: o Escudo Arcano segurou' })).toBeVisible();
     await expect(card.getByRole('button', { name: /Rolar dano|Aplicar/ })).toHaveCount(0);
-    await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('o Escudo Arcano segurou');
+    await expect(await masterLog(m)).toContainText('o Escudo Arcano segurou');
     const pens = (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === 'Pensantus');
     expect(pens?.hitPointsCurrent).toBe(23);
   } finally {
@@ -723,7 +727,7 @@ test('caído: o teste contra a morte (sucesso), e com três falhas só o mestre 
     // The save is done: the one filled button is "Encerrar turno".
     await endTurnOf(p, m, campaignId, 'Pensantus');
     // The master's log has the roll; the other players would read only the outcome.
-    await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Pensantus rola o teste contra a morte: 14 · dado físico, sucesso (1 sucesso, 0 falhas)');
+    await expect(await masterLog(m)).toContainText('Pensantus rola o teste contra a morte: 14 · dado físico, sucesso (1 sucesso, 0 falhas)');
 
     // Round 3: a natural 1 counts two failures; round 4: a 5 is the third.
     enc = await passTurnsTo(m, campaignId, 'Pensantus');
@@ -752,10 +756,11 @@ test('caído: o teste contra a morte (sucesso), e com três falhas só o mestre 
     await expect(question.getByRole('button', { name: 'Ainda não' })).toBeFocused();
     await question.getByRole('button', { name: 'Ainda não' }).click();
     await expect(question).toHaveCount(0);
+    await openOrderRow(m, 'Pensantus');
     await row.first().getByRole('button', { name: 'Confirmar a morte' }).click();
     await m.getByRole('alertdialog').getByRole('button', { name: 'Confirmar a morte' }).click();
     await expect(m.getByText('Morto').first()).toBeVisible();
-    await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Pensantus morreu');
+    await expect(await masterLog(m)).toContainText('Pensantus morreu');
     enc = await getEncounterRPC(m, campaignId);
     expect(enc.combatants.find((c) => c.label === 'Pensantus')?.defeated).toBe(true);
   } finally {
@@ -769,7 +774,7 @@ test('o Escudo: o jogador decide num aviso, o cartão do mestre troca ao vivo, e
   try {
     await openSessionPage(m, campaignId);
     await openSessionPage(p, campaignId);
-    const card = m.getByRole('region', { name: 'Ações do Capitão Goblin' });
+    const card = m.getByRole('region', { name: /^(Ações do|Vez do) Capitão Goblin$/ });
     const roll = async (face: string) => {
       await card.getByRole('button', { name: 'Digitar o resultado' }).click();
       await card.getByLabel(/Role 1d20 para Cimitarra/).fill(face);
@@ -816,7 +821,7 @@ test('o Escudo: o mestre responde pelo jogador enquanto o aviso está aberto, e 
   try {
     await openSessionPage(m, campaignId);
     await openSessionPage(p, campaignId);
-    const card = m.getByRole('region', { name: 'Ações do Capitão Goblin' });
+    const card = m.getByRole('region', { name: /^(Ações do|Vez do) Capitão Goblin$/ });
     await card.getByRole('button', { name: 'Digitar o resultado' }).click();
     await card.getByLabel(/Role 1d20 para Cimitarra/).fill('11');
     await card.getByRole('button', { name: 'Confirmar 11' }).click();
@@ -851,6 +856,7 @@ test('condições e concentração: o mestre marca no menu, o jogador vê as eti
     await openSessionPage(m, campaignId);
     await openSessionPage(p, campaignId);
     // The master marks two conditions on Goblin 1 from its ⋮ menu.
+    await openOrderRow(m, 'Goblin 1');
     await m.getByRole('button', { name: 'Mais ações para Goblin 1' }).click();
     await m.getByRole('menuitem', { name: 'Mudar condições' }).click();
     const dialog = m.getByRole('dialog', { name: 'Condições de Goblin 1' });
@@ -885,8 +891,10 @@ test('condições e concentração: o mestre marca no menu, o jogador vê as eti
     await expect(sheet.getByText('Sua ação foi usada.')).toBeVisible();
     await sheet.getByRole('button', { name: 'Voltar à sua vez' }).click();
     await expect(p.getByText('Concentrado em Teia', { exact: true })).toBeVisible();
-    await expect(m.getByText('Concentra em Teia')).toBeVisible();
+    await openOrderRow(m, 'Pensantus');
+    await expect(m.getByText('Concentração: Teia')).toBeVisible();
     // The master sees it in the dialog too, with the same action.
+    await openOrderRow(m, 'Pensantus');
     await m.getByRole('button', { name: 'Mais ações para Pensantus' }).click();
     await m.getByRole('menuitem', { name: 'Mudar condições' }).click();
     await expect(m.getByRole('dialog', { name: 'Condições de Pensantus' }).getByText('Concentrado em')).toBeVisible();
@@ -912,7 +920,7 @@ test('o mestre aplica outro valor de dano, e o lembrete da concentração mostra
     await p.getByRole('dialog').getByRole('button', { name: 'Conjurar mesmo assim' }).click(); // nobody ticked: PM-02b asks in place
     await p.getByRole('button', { name: 'Voltar à sua vez' }).click();
     await p.getByRole('button', { name: 'Encerrar turno' }).click();
-    const card = m.getByRole('region', { name: 'Ações do Capitão Goblin' });
+    const card = m.getByRole('region', { name: /^(Ações do|Vez do) Capitão Goblin$/ });
     await card.getByRole('button', { name: 'Digitar o resultado' }).click();
     await card.getByLabel(/Role 1d20 para Cimitarra/).fill('20');
     await card.getByRole('button', { name: 'Confirmar 20' }).click();
@@ -937,8 +945,8 @@ test('o mestre aplica outro valor de dano, e o lembrete da concentração mostra
     await expect(card.getByText('Pensantus está concentrado em Teia. Teste de Constituição, CD 10.')).toBeVisible();
     expect((await vitalsOf(m, campaignId, 'Pensantus')).hitPointsCurrent).toBe(22);
     // The log keeps both numbers for the master, and the reminder.
-    await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('1 de dano (o dado deu');
-    await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Teste de Constituição, CD 10, para manter a concentração');
+    await expect(await masterLog(m)).toContainText('1 de dano (o dado deu');
+    await expect(await masterLog(m)).toContainText('Teste de Constituição, CD 10, para manter a concentração');
   } finally {
     await done();
   }
@@ -1039,7 +1047,7 @@ test('fora da vez: o ataque de oportunidade gasta a reação, só com ataques co
     // The reaction is spent: the line says so, and the action is gone.
     await expect(p.getByText('Sua reação: Usada até o começo do seu próximo turno.')).toBeVisible();
     await expect(p.getByRole('button', { name: /Ataque de oportunidade/ })).toHaveCount(0);
-    await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Pensantus ataca o Goblin 1 com a Adaga (ataque de oportunidade): errou');
+    await expect(await masterLog(m)).toContainText('Pensantus ataca o Goblin 1 com a Adaga (ataque de oportunidade): errou');
   } finally {
     await done();
   }
@@ -1119,7 +1127,7 @@ test('a distância sai em metros e em quadrados: a linha do movimento, a barra d
     // slower: 15 ft): the Deslocamento in both units, and the Movimento chip.
     await openSessionPage(m, campaignId);
     await passTurnsTo(m, campaignId, 'Capitão Goblin');
-    const card = m.getByRole('region', { name: /Ações do Capitão Goblin|Vez do Capitão Goblin/ });
+    const card = m.getByRole('region', { name: /^(Ações do|Vez do) Capitão Goblin$/ });
     await expect(card.locator('.stat', { hasText: 'Deslocamento' })).toContainText('4,5 m · 3 quadrados');
     await expect(card.locator('.chip', { hasText: 'Movimento' })).toContainText('4,5 m · 3 quadrados');
 
@@ -1220,8 +1228,8 @@ test('Sono em dois goblins e no Capitão: o mestre vê o total e os PV, o jogado
     await expect(playerLog).not.toContainText('PV');
 
     // The master: the pool, each creature from the lowest hit points up with the total that is left.
-    const masterLog = m.getByRole('log', { name: 'Registro do combate' });
-    await expect(masterLog).toContainText('Pensantus conjura Sono (1º nível)');
+    const log = await masterLog(m);
+    await expect(log).toContainText('Pensantus conjura Sono (1º nível)');
     const card = m.locator('app-pool-card');
     await expect(card).toContainText('5d8 = 20');
     await expect(card.locator('.row', { hasText: 'Goblin 1' })).toContainText('7 PV');
@@ -1446,6 +1454,7 @@ test('Ajuda sobre quem está a 0 PV: acorda, a ficha mostra o efeito, e o mestre
 
     // The master's row says it on one line, even at 1280 px.
     const order = m.getByRole('region', { name: 'Ordem de iniciativa' });
+    await openOrderRow(m, 'Pensantus');
     const chip = order.locator('.row__effect--aid');
     await expect(chip).toContainText('Ajuda +5 PV');
     expect((await layoutSize(chip)).height).toBeLessThan(30);
@@ -1459,6 +1468,7 @@ test('Ajuda sobre quem está a 0 PV: acorda, a ficha mostra o efeito, e o mestre
     await expect(stats.getByText('Ajuda: +5 nos PV até o mestre encerrar ou um descanso longo')).toBeVisible();
 
     // The master ends it from the row's menu: each item has its icon, the question says the account, and the confirm ends it.
+    await openOrderRow(m, 'Pensantus');
     await order.getByRole('button', { name: 'Mais ações para Pensantus' }).click();
     await expect(m.getByRole('menuitem', { name: 'Encerrar Ajuda em Pensantus' })).toBeVisible();
     await expect(m.getByRole('menuitem', { name: 'Mudar condições' })).toBeVisible();

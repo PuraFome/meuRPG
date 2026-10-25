@@ -272,17 +272,20 @@ type Encounter struct {
 }
 
 type GameSession struct {
-	ID               string
-	CampaignID       string
-	SessionNumber    int32
-	StartedAt        time.Time
-	EndedAt          *time.Time
-	CurrentMapID     *string
-	ShownImageID     *string
-	ShownImageKeep   bool
-	OpenScenePointID *string
-	CreateKey        *string
-	CreateHash       *string
+	ID                  string
+	CampaignID          string
+	SessionNumber       int32
+	StartedAt           time.Time
+	EndedAt             *time.Time
+	CurrentMapID        *string
+	ShownImageID        *string
+	ShownImageKeep      bool
+	OpenScenePointID    *string
+	CreateKey           *string
+	CreateHash          *string
+	OpenSceneEveryone   bool
+	ShownImageAudience  string
+	ScenePlayersMayJoin bool
 }
 
 type GroupCheck struct {
@@ -645,6 +648,7 @@ type StageNpc struct {
 	Position      int32
 	Speaking      bool
 	CreatedAt     time.Time
+	Hidden        bool
 }
 
 type TrapDamage struct {

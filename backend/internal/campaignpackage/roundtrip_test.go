@@ -1,6 +1,7 @@
 package campaignpackage_test
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -53,6 +54,10 @@ func TestExportThenImportMakesTheSameCampaign(t *testing.T) {
 	}
 	if !strings.Contains(before, "Taverna do Corvo") || !strings.Contains(before, "Gruk") || !strings.Contains(before, "Charada da lareira") {
 		t.Fatalf("the fixture is missing what the test is about:\n%.400s", before)
+	}
+	// A scene action the master hid comes back hidden: a package never shows the players what the master kept from them.
+	if hidden := regexp.MustCompile(`"hidden":\s*true`); !hidden.MatchString(before) || !hidden.MatchString(after) {
+		t.Fatalf("the hidden scene action is missing from the dumps:\n%.400s", before)
 	}
 	c := got.GetCounts()
 	if c.GetMaps() != 2 || c.GetNpcs() != 2 || c.GetCharacters() != 1 || c.GetScenes() != 1 || c.GetPuzzles() != 3 || c.GetBattlePoints() != 1 || c.GetTreasurePoints() != 1 || c.GetImages() != 3 || c.GetContentEntries() != 5 {

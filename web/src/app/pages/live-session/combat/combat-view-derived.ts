@@ -1,4 +1,4 @@
-import { computed, effect, input, output, signal, Directive } from '@angular/core';
+import { TemplateRef, computed, effect, input, output, signal, Directive } from '@angular/core';
 import {
   CombatLogKind,
   CombatantSide,
@@ -162,19 +162,19 @@ export abstract class CombatViewDerivedDirective extends CombatViewStateDirectiv
   protected readonly orderBelow = computed(
     () => !this.laptop() && this.myTurn() && !this.ownDown() && !this.creatureTab(),
   );
-  /** The conversation is the rail's second tab (the session page hosts it in the `[railChat]` slot): a player's combat from 1024px. */
-  readonly chatRail = input(false);
-  /** The lines that came while the conversation was not on screen. */
+  /** The conversation the page draws in the rail ("Turno · Conversa" for the master, "Ações · Conversa" for the player), or `null` where the page keeps it elsewhere. */
+  readonly chat = input<TemplateRef<unknown> | null>(null);
+  /** The conversation's lines that came while it was not shown: the count of its tab. */
   readonly chatUnread = input(0);
-  /** Whether the rail's "Conversa" tab is the one shown, for the page's unread count. */
-  readonly chatOpen = output<boolean>();
+  /** The conversation is what the rail shows now (its tab is open): the page counts nothing as unread meanwhile. */
+  readonly chatShown = output<boolean>();
   protected readonly railTab = signal('actions');
   /** "Ações", and "Conversa" with its unread count (grená, and the number in words in the tab's name). */
   protected readonly railTabItems = computed<readonly TabItem[]>(() => {
     const n = this.chatUnread();
     return [
       { id: 'actions', label: 'Ações', icon: 'swords' },
-      ...(this.chatRail()
+      ...(this.chat() !== null
         ? [
             {
               id: 'chat',
@@ -212,7 +212,7 @@ export abstract class CombatViewDerivedDirective extends CombatViewStateDirectiv
       (this.myTurn() && !!this.options()) ||
       !!this.creatureTab() ||
       !!this.offRail() ||
-      this.chatRail(),
+      this.chat() !== null,
   );
   /** The turn bar sticks under the bars of the page from 1024px, on the player's own turn. */
   protected readonly stickyTurn = computed(

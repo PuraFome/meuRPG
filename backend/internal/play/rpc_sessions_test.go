@@ -12,6 +12,7 @@ import (
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 )
 
 // Characterization of StartGameSession and EndGameSession (rpc.go): the
@@ -81,7 +82,7 @@ func TestEndGameSession_TheKeptImageLeavesWithThePlayers(t *testing.T) {
 
 	// The maps module fails to leave the image: the session stays open.
 	boom := errors.New("boom")
-	st.maps.leave = func(context.Context, pgx.Tx, string, string, time.Time) error { return boom }
+	st.maps.leave = func(context.Context, pgx.Tx, string, string, time.Time, link.ImageAudience) error { return boom }
 	_, err := st.master.play.EndGameSession(t.Context(), connect.NewRequest(&playv1.EndGameSessionRequest{CampaignId: st.campaign, GameSessionId: session.GetId()}))
 	wantRefusal(t, "leave fails", err, connect.CodeInternal, "")
 	if id, _ := st.dbShown(t); id != a {

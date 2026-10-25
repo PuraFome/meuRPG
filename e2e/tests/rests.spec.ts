@@ -14,6 +14,7 @@ import {
   spendForRestRPC,
 } from './rests-support';
 import { newSignedInContext, openActionTab } from './support';
+import { masterLog } from './combat-layout';
 
 // Rests, hit dice and Lay on Hands on screen (Etapa 8, MR-012, MR-014, RN-02, RN-10): the master's short rest
 // and what it gives back, the player's page changing with no reload, the hit die spent from the sheet, and the touch
@@ -125,7 +126,7 @@ test(
       await dialog.locator('button', { hasText: 'Fechar' }).click();
       await expect(dialog).toHaveCount(0);
       await expect.poll(() => hitPoints('Brisa')).toBe(13);
-      await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Aurora curou 5 PV de Brisa com a Cura pelas Mãos (5 pontos)');
+      await expect(await masterLog(m)).toContainText('Aurora curou 5 PV de Brisa com a Cura pelas Mãos (5 pontos)');
 
       // The next round: the pool shows what is left, and the touch on the undead spends the points and does nothing.
       await endTurnOf(p, m, campaignId, 'Aurora');
@@ -145,7 +146,7 @@ test(
       await dialog.locator('button', { hasText: 'Fechar' }).click();
       expect(await hitPoints('Esqueleto')).toBe(skeletonBefore);
       // The master's log is the only place that says why.
-      await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('Aurora tocou o Esqueleto com a Cura pelas Mãos (5 pontos): sem efeito; o toque não agiu');
+      await expect(await masterLog(m)).toContainText('Aurora tocou o Esqueleto com a Cura pelas Mãos (5 pontos): sem efeito; o toque não agiu');
       await expect(p.getByText(/o toque não agiu/)).toHaveCount(0);
     } finally {
       await endOpenSessionRPC(m, campaignId);
