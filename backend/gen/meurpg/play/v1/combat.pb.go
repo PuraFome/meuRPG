@@ -939,6 +939,8 @@ const (
 	// shield it is not proficient with, and cannot cast spells (SRD 5.1, "Armor"). Nothing
 	// is spent.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ARMOR_NOT_PROFICIENT EncounterBlockedReason = 111
+	// AnswerReaction: the window was answered already, by the player or by the master (the first answer wins).
+	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_ALREADY_ANSWERED EncounterBlockedReason = 112
 )
 
 // Enum value maps for EncounterBlockedReason.
@@ -1036,6 +1038,7 @@ var (
 		109: "ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TARGET",
 		110: "ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TOO_MUCH",
 		111: "ENCOUNTER_BLOCKED_REASON_ARMOR_NOT_PROFICIENT",
+		112: "ENCOUNTER_BLOCKED_REASON_REACTION_ALREADY_ANSWERED",
 	}
 	EncounterBlockedReason_value = map[string]int32{
 		"ENCOUNTER_BLOCKED_REASON_UNSPECIFIED":                  0,
@@ -1130,6 +1133,7 @@ var (
 		"ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TARGET":      109,
 		"ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TOO_MUCH":    110,
 		"ENCOUNTER_BLOCKED_REASON_ARMOR_NOT_PROFICIENT":         111,
+		"ENCOUNTER_BLOCKED_REASON_REACTION_ALREADY_ANSWERED":    112,
 	}
 )
 
@@ -16579,8 +16583,12 @@ type CombatLogEntry struct {
 	HitRider *CombatLogHitRider `protobuf:"bytes,110,opt,name=hit_rider,json=hitRider,proto3" json:"hit_rider,omitempty"`
 	// What a Channel Divinity action did (Preserve Life, Turn Undead): for the master and the cleric's player.
 	ChannelDivinity *ChannelDivinityResult `protobuf:"bytes,111,opt,name=channel_divinity,json=channelDivinity,proto3" json:"channel_divinity,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The master did this for a player's character (the line reads "(pelo mestre)"): an attack, a spell, a death save,
+	// a move, a feature, a Wild Shape or the end of the turn made through the master's hand, not the player's. Everyone
+	// who gets the line gets the flag, the player too when they are back.
+	ByMaster      bool `protobuf:"varint,112,opt,name=by_master,json=byMaster,proto3" json:"by_master,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CombatLogEntry) Reset() {
@@ -16989,6 +16997,13 @@ func (x *CombatLogEntry) GetChannelDivinity() *ChannelDivinityResult {
 		return x.ChannelDivinity
 	}
 	return nil
+}
+
+func (x *CombatLogEntry) GetByMaster() bool {
+	if x != nil {
+		return x.ByMaster
+	}
+	return false
 }
 
 // CombatLogEffectEnd is an effect that ended, in the combat log.
@@ -19072,6 +19087,10 @@ type ReactionWindow struct {
 	// longer; the player reads their own mark back. Never sent for a window nobody
 	// marked.
 	Rolling bool `protobuf:"varint,13,opt,name=rolling,proto3" json:"rolling,omitempty"`
+	// Only the master: the reactor is a player's character and nobody answered in the first 10 s, so the question has come
+	// to the master ("10 s sem resposta"). The player may still answer; the first answer wins and the other reads
+	// REACTION_ALREADY_ANSWERED.
+	Unanswered bool `protobuf:"varint,14,opt,name=unanswered,proto3" json:"unanswered,omitempty"`
 	// Only whoever answers: the question, by kind.
 	//
 	// Types that are valid to be assigned to Prompt:
@@ -19213,6 +19232,13 @@ func (x *ReactionWindow) GetSecondStep() bool {
 func (x *ReactionWindow) GetRolling() bool {
 	if x != nil {
 		return x.Rolling
+	}
+	return false
+}
+
+func (x *ReactionWindow) GetUnanswered() bool {
+	if x != nil {
+		return x.Unanswered
 	}
 	return false
 }
@@ -24441,7 +24467,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\astarted\x18\x03 \x01(\bR\astarted\x12A\n" +
 	"\n" +
 	"end_reason\x18\x04 \x01(\x0e2\".meurpg.play.v1.WildShapeEndReasonR\tendReason\x12%\n" +
-	"\x0ecarried_damage\x18\x05 \x01(\x05R\rcarriedDamage\"\xca\x13\n" +
+	"\x0ecarried_damage\x18\x05 \x01(\x05R\rcarriedDamage\"\xe7\x13\n" +
 	"\x0eCombatLogEntry\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x121\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x1d.meurpg.play.v1.CombatLogKindR\x04kind\x12*\n" +
@@ -24510,7 +24536,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"effect_end\x18. \x01(\v2\".meurpg.play.v1.CombatLogEffectEndR\teffectEnd\x127\n" +
 	"\x06effect\x18d \x01(\v2\x1f.meurpg.play.v1.CombatLogEffectR\x06effect\x12>\n" +
 	"\thit_rider\x18n \x01(\v2!.meurpg.play.v1.CombatLogHitRiderR\bhitRider\x12P\n" +
-	"\x10channel_divinity\x18o \x01(\v2%.meurpg.play.v1.ChannelDivinityResultR\x0fchannelDivinityB\x13\n" +
+	"\x10channel_divinity\x18o \x01(\v2%.meurpg.play.v1.ChannelDivinityResultR\x0fchannelDivinity\x12\x1b\n" +
+	"\tby_master\x18p \x01(\bR\bbyMasterB\x13\n" +
 	"\x11_hit_points_afterB\x15\n" +
 	"\x13_target_armor_class\"\x84\x02\n" +
 	"\x12CombatLogEffectEnd\x124\n" +
@@ -24707,7 +24734,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x0ftarget_defeated\x18\t \x01(\bR\x0etargetDefeated\"F\n" +
 	"\fReactionWait\x12\x19\n" +
 	"\btitle_pt\x18\x01 \x01(\tR\atitlePt\x12\x1b\n" +
-	"\tdetail_pt\x18\x02 \x01(\tR\bdetailPt\"\x85\r\n" +
+	"\tdetail_pt\x18\x02 \x01(\tR\bdetailPt\"\xa5\r\n" +
 	"\x0eReactionWindow\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x120\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x1c.meurpg.play.v1.ReactionKindR\x04kind\x12<\n" +
@@ -24725,7 +24752,10 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\atrigger\x18\v \x01(\v2\x1f.meurpg.play.v1.ReactionTriggerR\atrigger\x12\x1f\n" +
 	"\vsecond_step\x18\f \x01(\bR\n" +
 	"secondStep\x12\x18\n" +
-	"\arolling\x18\r \x01(\bR\arolling\x126\n" +
+	"\arolling\x18\r \x01(\bR\arolling\x12\x1e\n" +
+	"\n" +
+	"unanswered\x18\x0e \x01(\bR\n" +
+	"unanswered\x126\n" +
 	"\x06shield\x18\x14 \x01(\v2\x1c.meurpg.play.v1.ShieldPromptH\x00R\x06shield\x12I\n" +
 	"\runcanny_dodge\x18\x15 \x01(\v2\".meurpg.play.v1.UncannyDodgePromptH\x00R\funcannyDodge\x12L\n" +
 	"\x0ehellish_rebuke\x18\x16 \x01(\v2#.meurpg.play.v1.HellishRebukePromptH\x00R\rhellishRebuke\x12H\n" +
@@ -25131,7 +25161,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x14COMBATANT_STATE_DOWN\x10\x05\x12\x19\n" +
 	"\x15COMBATANT_STATE_DYING\x10\x06\x12\x1a\n" +
 	"\x16COMBATANT_STATE_STABLE\x10\a\x12\x18\n" +
-	"\x14COMBATANT_STATE_DEAD\x10\b*\xcd\"\n" +
+	"\x14COMBATANT_STATE_DEAD\x10\b*\x85#\n" +
 	"\x16EncounterBlockedReason\x12(\n" +
 	"$ENCOUNTER_BLOCKED_REASON_UNSPECIFIED\x10\x00\x123\n" +
 	"/ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ALREADY_OPEN\x10\x01\x12+\n" +
@@ -25225,7 +25255,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"-ENCOUNTER_BLOCKED_REASON_DESTINATION_REQUIRED\x10l\x124\n" +
 	"0ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TARGET\x10m\x126\n" +
 	"2ENCOUNTER_BLOCKED_REASON_CHANNEL_DIVINITY_TOO_MUCH\x10n\x121\n" +
-	"-ENCOUNTER_BLOCKED_REASON_ARMOR_NOT_PROFICIENT\x10o*\x91\x03\n" +
+	"-ENCOUNTER_BLOCKED_REASON_ARMOR_NOT_PROFICIENT\x10o\x126\n" +
+	"2ENCOUNTER_BLOCKED_REASON_REACTION_ALREADY_ANSWERED\x10p*\x91\x03\n" +
 	"\x1aFamiliarSightBlockedReason\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_NO_FAMILIAR\x10\x01\x12,\n" +
