@@ -151,7 +151,7 @@ func tableTraitsOf(d rules.Derived) (maneuvers []link.Maneuver, extras []link.Ex
 	for _, m := range d.Maneuvers {
 		maneuvers = append(maneuvers, link.Maneuver{
 			Key: m.Key, NamePT: m.NamePT, Resource: m.Resource, Applies: m.Applies, Economy: m.Economy,
-			Ability: m.Ability, TextPT: m.TextPT, Sides: m.Sides, SaveDC: m.SaveDC,
+			Ability: m.Ability, TextPT: m.TextPT, Sides: m.Sides, SaveDC: m.SaveDC, Targets: m.Targets,
 		})
 	}
 	for _, x := range d.ExtraDamages {

@@ -122,9 +122,11 @@ const (
 	ListExtraDamageFrequencies = "extra_damage_frequencies"
 	// ListSpellModifierTargets and ListSpellChanges are the spells a spell_modifier fits and what it changes.
 	ListSpellModifierTargets = "spell_modifier_targets"
-	ListSpellChanges         = "spell_changes"
-	ListAmbushApplies        = "ambush_applies"
-	ListDamageTypes          = "damage_types"
+	// ListRollDieTargets are the skills and abilities a superiority die on ability checks may be limited to.
+	ListRollDieTargets = "roll_die_targets"
+	ListSpellChanges   = "spell_changes"
+	ListAmbushApplies  = "ambush_applies"
+	ListDamageTypes    = "damage_types"
 	// ListResistanceConditions are when a resistance effect holds.
 	ListResistanceConditions = "resistance_conditions"
 )
@@ -173,11 +175,12 @@ var menuTypes = []MenuType{
 		{Name: "tags", Kind: "tags", List: ListTagPrefixes},
 		{Name: "text_pt", Kind: "text"},
 	}},
-	{Type: "superiority_die", NamePT: "Dado de manobra", HintPT: "Um dado que uma opção (uma manobra) soma a uma rolagem e que gasta um uso de um recurso que a entrada define: ao dano de um ataque com arma que acertou, a um ataque, ao teste de Atletismo de uma agarrada, como redução do dano de um ataque corpo a corpo (reação), ou ao dano com uma provocação: o alvo faz um teste de Sabedoria contra a CD da manobra (8 + proficiência + o modificador da habilidade escolhida) e, se falhar, tem desvantagem nos ataques contra quem não seja o personagem até o fim do próximo turno dele. O texto é o efeito que o mestre lê.", Fields: []MenuField{
+	{Type: "superiority_die", NamePT: "Dado de manobra", HintPT: "Um dado que uma opção (uma manobra) soma a uma rolagem e que gasta um uso de um recurso que a entrada define: ao dano de um ataque com arma que acertou, a um ataque, ao teste de Atletismo de uma agarrada, como redução do dano de um ataque corpo a corpo (reação), ou ao dano com uma provocação: o alvo faz um teste de Sabedoria contra a CD da manobra (8 + proficiência + o modificador da habilidade escolhida) e, se falhar, tem desvantagem nos ataques contra quem não seja o personagem até o fim do próximo turno dele. Também pode ir num teste de habilidade do personagem (todos, ou só os das perícias e habilidades da lista), num teste de resistência (qualquer, ou o da habilidade escolhida) ou na iniciativa; esses não custam ação. O texto é o efeito que o mestre lê.", Fields: []MenuField{
 		{Name: "applies", Required: true, Kind: "choice", List: ListManeuverApplies},
 		{Name: "resource", Required: true, Kind: "resource_ref"},
 		{Name: "value", Required: true, Kind: "formula"},
 		{Name: "ability", Kind: "choice", List: ListAbilities},
+		{Name: "targets", Kind: "choices", List: ListRollDieTargets},
 		{Name: "economy", Kind: "choice", List: ListEconomies},
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
@@ -268,6 +271,9 @@ var (
 		ManeuverDamage: "Dano de um ataque com arma que acertou", ManeuverAttack: "Rolagem de ataque", ManeuverGrapple: "Atletismo de uma agarrada (ação bônus)",
 		ManeuverReduceMelee: "Reduz o dano de um ataque corpo a corpo (reação)",
 		ManeuverGoad:        "Dano de um ataque com arma que acertou e provocação (teste de Sabedoria)",
+		ManeuverCheck:       "Teste de habilidade (todos, ou os de perícias e habilidades escolhidas)",
+		ManeuverSave:        "Teste de resistência (qualquer, ou o de uma habilidade)",
+		ManeuverInitiative:  "Iniciativa",
 	}
 	ambushNms = map[string][2]string{
 		AmbushUnactedAdvantage:  {"Vantagem contra quem não agiu", "Vantagem nas jogadas de ataque contra uma criatura que ainda não teve um turno no combate."},
@@ -341,6 +347,15 @@ func (c *content) menuSkillRolls() []MenuValue {
 		out = append(out, MenuValue{Key: "skill." + strings.TrimPrefix(k, "skill:"), NamePT: "Perícia: " + c.namePT(k)})
 	}
 	return out
+}
+
+// menuRollDieTargets are the skills and the abilities a die on ability checks may be limited to.
+func (c *content) menuRollDieTargets() []MenuValue {
+	var out []MenuValue
+	for _, a := range AllAbilities() {
+		out = append(out, MenuValue{Key: "check." + string(a), NamePT: "Testes de " + c.menuAbilityName(a)})
+	}
+	return append(out, c.menuSkillRolls()...)
 }
 
 // menuSaves are the six saving throws as targets ("save.dex").
@@ -454,6 +469,7 @@ func (c *content) menuLists() []MenuList {
 		{Name: ListExtraDamageWeapons, Values: extraDamageWeaponValues()},
 		{Name: ListExtraDamageFrequencies, Values: extraDamageFrequencyValues()},
 		{Name: ListSpellModifierTargets, Values: c.menuSpellTargets()},
+		{Name: ListRollDieTargets, Values: c.menuRollDieTargets()},
 		{Name: ListSpellChanges, Values: spellChangeValues()},
 		{Name: ListAmbushApplies, Values: ambushValues()},
 		{Name: ListDamageTypes, Values: c.menuDamageTypes()},

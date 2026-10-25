@@ -87,6 +87,8 @@ A goad is a damage die with a rider: the target makes a Wisdom save against `Man
 An option with a `superiority_die` does not list its `grant_action`, so the resource is not spent twice.
 How combat spends the die (damage, grapple, reduction) is in the [play module](play/README.md).
 
+**Dice on the character's own rolls.** `applies` may also be `check` (an ability check; `targets` lists the skills `skill.stealth` and abilities `check.dex` it is limited to, empty is every check), `save` (a saving throw; `ability` limits it to one) or `initiative`. These cost no action (`.economy`), `targets` belongs to `check` alone (`.targets`) and `ability` to `save` (and the other maneuvers that already name one). `Derive` copies `Targets` into `Derived.Maneuvers`. Play does not spend these dice yet; a number that is always on is a `modifier` (`skill.*`, `save.*`, `initiative`, `ac`).
+
 ### Extra damage
 
 `extra_damage` (menu name "Dano extra"; fields `applies`, `value`, `dice`, `dice_sides`, `damage_type`, `weapon`, `frequency`, `no_crit_doubling`, `resource`, `when`, `text_pt`; `rules/extradamage.go`) is damage a feature adds to a weapon hit when the target is what `applies` asks: a fixed number, dice, or both.

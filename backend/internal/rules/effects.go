@@ -211,7 +211,7 @@ var (
 	// maneuverApplies is where a superiority die goes: the damage of a weapon attack
 	// after a hit, an attack roll, the Athletics check of a grapple, or a reduction
 	// of the damage of a melee attack that hits the character (a reaction).
-	maneuverApplies = []string{ManeuverDamage, ManeuverAttack, ManeuverGrapple, ManeuverReduceMelee, ManeuverGoad}
+	maneuverApplies = []string{ManeuverDamage, ManeuverAttack, ManeuverGrapple, ManeuverReduceMelee, ManeuverGoad, ManeuverCheck, ManeuverSave, ManeuverInitiative}
 	// handlers are the Go functions an effect may name. Content (and, later,
 	// the table's homebrew) can only point at these; it never brings code.
 	handlers = []string{
@@ -543,6 +543,9 @@ func (x effectCompiler) superiorityDie() error {
 	if e.value, err = x.compile(e.Value, formula.Int); err != nil {
 		return err
 	}
+	if err := x.strayTargets(); err != nil {
+		return err
+	}
 	return x.maneuverRider()
 }
 
@@ -569,10 +572,31 @@ func (x effectCompiler) maneuverRider() error {
 		if e.Economy != "" && e.Economy != EconomyBonusAction {
 			return x.fail("a grapple maneuver costs a bonus action or nothing")
 		}
+	case ManeuverCheck, ManeuverSave, ManeuverInitiative:
+		return x.rollDie()
 	default:
 		if e.Ability != "" || e.Economy != "" {
 			return x.fail("%s takes no ability and no economy", e.Applies)
 		}
+	}
+	return nil
+}
+
+// strayTargets refuses the targets of a superiority die that is not on ability checks.
+func (x effectCompiler) strayTargets() error {
+	if x.e.Applies != ManeuverCheck && len(x.e.Targets) > 0 {
+		return x.fail("only a die added to ability checks lists targets")
+	}
+	return nil
+}
+
+// rollDie checks a superiority die that goes on a roll of the character.
+func (x effectCompiler) rollDie() error {
+	if _, msg := rollDieShape(x.e); msg != "" {
+		return x.fail("%s", msg)
+	}
+	if t, ok := x.c.rollDieTargetsOK(x.e.Targets); !ok {
+		return x.fail("unknown target %q: a die on ability checks lists skills and abilities", t)
 	}
 	return nil
 }

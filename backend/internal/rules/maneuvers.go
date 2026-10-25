@@ -1,6 +1,10 @@
 package rules
 
-import "slices"
+import (
+	"fmt"
+	"slices"
+	"strings"
+)
 
 // Where a superiority die goes (the `applies` of a superiority_die effect).
 const (
@@ -18,6 +22,13 @@ const (
 	// modifier of Ability): on a failure it has disadvantage on its attack rolls against creatures
 	// other than the attacker until the end of the attacker's next turn (EffectGoaded).
 	ManeuverGoad = "goad"
+	// ManeuverCheck adds the die to an ability check of the character (a scene check, a search, a contest...),
+	// all of them or, with `targets`, the skills and abilities it lists.
+	ManeuverCheck = "check"
+	// ManeuverSave adds the die to a saving throw of the character, any or, with `ability`, that ability's.
+	ManeuverSave = "save"
+	// ManeuverInitiative adds the die to the initiative roll.
+	ManeuverInitiative = "initiative"
 )
 
 // Bounds of a superiority die's sides: a formula that gives anything else is ignored.
@@ -39,6 +50,9 @@ type Maneuver struct {
 	Applies string
 	// Economy is bonus_action or reaction when using it costs one; empty when it does not.
 	Economy string
+	// Targets are, for ManeuverCheck, the skills ("skill.stealth") and abilities ("check.dex") the die goes
+	// on; empty is every ability check.
+	Targets []string
 	// Ability is, for ManeuverReduceMelee, the ability whose modifier is added, and for ManeuverGoad
 	// the one whose modifier is in SaveDC.
 	Ability string
@@ -67,9 +81,44 @@ func (x *deriver) maneuvers() {
 		}
 		x.d.Maneuvers = append(x.d.Maneuvers, Maneuver{
 			Key: a.owner, NamePT: x.c.namePT(a.owner), Resource: e.Resource, Sides: sides,
-			Applies: e.Applies, Economy: e.Economy, Ability: e.Ability, TextPT: e.TextPT, SaveDC: x.goadDC(e),
+			Applies: e.Applies, Economy: e.Economy, Ability: e.Ability, TextPT: e.TextPT, SaveDC: x.goadDC(e), Targets: slices.Clone(e.Targets),
 		})
 	}
+}
+
+// rollDieShape names the field of a superiority die that goes on a roll of the character (a check, a save or the
+// initiative) that is wrong and why (both "" when right). The keys of `targets` are the content's to check.
+func rollDieShape(e *Effect) (field, msg string) {
+	switch {
+	case e.Economy != "":
+		return "economy", "a die added to a roll costs no action"
+	case e.Applies != ManeuverCheck && len(e.Targets) > 0:
+		return "targets", "only a die added to ability checks lists targets"
+	case e.Applies != ManeuverSave && e.Ability != "":
+		return "ability", "only a die added to a saving throw names an ability"
+	case e.Applies == ManeuverSave && e.Ability != "":
+		if _, ok := abilityIndex[Ability(e.Ability)]; !ok {
+			return "ability", fmt.Sprintf("ability %q is not an ability", e.Ability)
+		}
+	}
+	return "", ""
+}
+
+// rollDieTargetsOK says every target of a die on ability checks is a skill ("skill.stealth") or an ability
+// ("check.dex") of the content.
+func (c *content) rollDieTargetsOK(targets []string) (string, bool) {
+	for _, t := range targets {
+		known := strings.HasPrefix(t, "skill.") || strings.HasPrefix(t, "check.")
+		if t == "check.all" || !known || !c.validRollTarget(t) {
+			return t, false
+		}
+	}
+	return "", true
+}
+
+// isRollDie says the superiority die goes on a roll of the character: a check, a save or the initiative.
+func isRollDie(applies string) bool {
+	return applies == ManeuverCheck || applies == ManeuverSave || applies == ManeuverInitiative
 }
 
 // hasManeuver says the feature (an option) has a superiority_die effect that applies: the die

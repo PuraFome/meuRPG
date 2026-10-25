@@ -396,7 +396,25 @@ func (b *overlayBuilder) checkSuperiorityDie(site effectSite, e *Effect) error {
 	if !slices.Contains(maneuverApplies, e.Applies) {
 		return site.fail(".applies", ReasonValue, "applies %q is not on the table's menu", e.Applies)
 	}
+	if isRollDie(e.Applies) {
+		return b.checkRollDie(site, e)
+	}
+	if len(e.Targets) > 0 {
+		return site.fail(".targets", ReasonValue, "only a die added to ability checks lists targets")
+	}
 	return checkManeuverCost(site, e)
+}
+
+// checkRollDie checks a superiority die that goes on a roll of the character: no action, the targets of a check
+// and the ability of a save.
+func (b *overlayBuilder) checkRollDie(site effectSite, e *Effect) error {
+	if field, msg := rollDieShape(e); field != "" {
+		return site.fail("."+field, ReasonValue, "%s", msg)
+	}
+	if t, ok := b.base.rollDieTargetsOK(e.Targets); !ok {
+		return site.fail(".targets", ReasonReference, "target %q is not a skill or an ability of the content", t)
+	}
+	return nil
 }
 
 // checkManeuverCost checks the action a maneuver costs and the ability it adds,
@@ -450,7 +468,7 @@ var ownFields = map[string][]string{
 	"grant_action": {"economy", "resource"},
 	"note":         {"value", "spells"},
 	// A superiority die is a feature option's (or a feature's) die from a resource.
-	"superiority_die": {"value", "resource", "economy", "applies", "ability"},
+	"superiority_die": {"value", "resource", "economy", "applies", "ability", "targets"},
 	// An ability_increase is a feat's alone (checkEffect).
 	"ability_increase": {"value", "count", "from"},
 	// An extra_damage adds its value to a weapon hit, when its applies holds, from a resource if it names one.

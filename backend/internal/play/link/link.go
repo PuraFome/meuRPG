@@ -181,6 +181,9 @@ type Sheet struct {
 type Maneuver struct {
 	Key, NamePT, Resource, Applies, Economy, Ability, TextPT string
 	Sides, SaveDC                                            int
+	// Targets are the skills ("skill.stealth") and abilities ("check.dex") a die on ability checks goes on;
+	// empty is every ability check.
+	Targets []string
 }
 
 // ExtraDamage is damage a table feature adds to a weapon hit (the engine's extra_damage effect):
