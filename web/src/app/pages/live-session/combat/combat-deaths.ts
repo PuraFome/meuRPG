@@ -140,7 +140,11 @@ export class CombatDeaths {
     if (show) {
       this.ctx.animator.play(show);
     }
-    if (save.outcome === DeathSaveOutcome.REVIVED && id === this.ctx.ownId()) {
+    // A natural 20, or a hook that stood the character up: the card of the dying is gone, so the line goes to the note.
+    if (
+      (save.outcome === DeathSaveOutcome.REVIVED || save.hook?.healed) &&
+      id === this.ctx.ownId()
+    ) {
       this.ctx.note(text);
     }
     return text;
