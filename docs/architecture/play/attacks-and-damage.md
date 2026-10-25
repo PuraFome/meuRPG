@@ -73,6 +73,10 @@ The state goes `awaiting_reaction` → `awaiting_roll` → `rolled` (player char
   `RollDamage` rolls `dice_count + extra_dice` dice of the weapon's die in one roll and `typed_sum` is checked against all of them.
 - **Relentless Endurance** (`combat_relentless.go`) runs where a character's damage reaches its vitals (`ApplyPendingDamage` and the trap damage the master settles): when `combat.ApplyDamage` says the character fell to 0, the left-over damage is below the hit point maximum and the `relentless_endurance` resource has a use, the use is spent in the same transaction and the HP set to 1.
   The `damage_applied` event keeps `relentless` for the log (`CombatLogDamage.relentless_endurance`) and the undo.
+- **A `drop_to_zero` hook** (`table_effects.go`, `applyDamageFlow.dropHook`) runs in the same place, after Relentless Endurance: when the damage took a character from above 0 to 0, the left-over damage is below the hit point maximum (massive damage kills outright and no hook prevents it) and the character has an `on_event` hook for `drop_to_zero` it can pay (`link.Sheet.Hooks`: the resource it spends has the uses), the hook's heal replaces the 0 before the character is unconscious, so it stays on its feet, and the uses it spends are written in the same `AdjustVitals`.
+  Only damage that lands through `ApplyPendingDamage` counts: the master's corrections (`AdjustCharacterVitals`, `AdjustCombatantHitPoints`), traps and a druid's beast form are not drops the hook answers.
+  An event runs the first hook that can be paid.
+  The `damage_applied` event keeps `hook` (the feature's key, the hit points healed, the uses spent), which the undo gives back with the hit points; the master and the target's own player read it in the log (`CombatLogDamage.hook`).
 
 ### Resistance
 
@@ -196,6 +200,18 @@ Dodge adds the `dodging` state until the start of the dodger's next turn.
 | Breath Weapon (dragonborn) | Action | Spends the action and a use and logs |
 
 Second Wind, Action Surge, Preserve Life and Turn Undead change numbers; the rest spend and log, and the effect is the table's.
+
+### The table's actions that spend, heal and give (MR-025)
+
+A feature action from the table's content (a `grant_action`, see [Costs, healing actions and hooks](../rules-table-content.md#costs-healing-actions-and-hooks)) reaches `TakeAction` as `link.FeatureAction` with its `Cost`, `CostMax`, `Heal`, `HealPerPoint`, `TempHP` and `TempHPPerPoint` (`characters.featureActionOf`), and the option is off with `NO_USES` while fewer uses than one use costs are left (`actionOption`).
+`takeActionFlow.spendFeatureUse` reads the uses left in the transaction of the use and asks `rules.Action.Spend` for what to spend: `TakeActionRequest.spend` is the number the player picked (0 takes the cost; ignored when the cost is fixed), and a number outside the cost to `cost_max` or what is left is `invalid_argument` with nothing spent, never trusted beyond the number.
+`grantResult` then gives the result:
+
+- **The heal** is `Action.Outcome(spent)`: the dice of `heal` plus those of `heal_per_point` for each point above the cost, rolled like a damage (RN-18: `roll_in_app` or `typed_sum`, which must be set for an action that heals), through `healCombatant`, so it never passes the maximum and whoever was at 0 stands up and the death saves reset.
+- **The temporary hit points** go through `giveTempHP`, the spells' path: they do not stack, the larger number is kept, and the answer says how many were gained (`temp_hp_gained`, 0 when the target already had more).
+- **The target** is the actor, or one ally named in `heal_target_combatant_id`: another player's character the caller sees. An NPC or a creature is `invalid_argument`; a dead target is refused with `TARGET_DEAD` (`refuseTheDead`) and nothing is spent.
+- **The event** is the action's: `resource`, `points_spent`, the roll (`heal`, `dice_count`, `faces`...), `temp_tried` and `temp_gained`, the target when it is not the actor, and the target's hit points before for the undo, which also gives the uses back.
+  The master and the actor's player read the numbers in the log (`CombatLogDamage` with `healing`, `amount` and `temp_hp_gained`); everyone else reads the line without them (RN-10).
 
 ### The monk's riders (RN-35)
 

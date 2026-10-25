@@ -25,6 +25,11 @@ stateDiagram-v2
 
 - **The save.** `RollDeathSave` (the owner, or the master) uses `combat.DeathSave`: 10 or more is a success, less a failure, a natural 1 is two failures, a natural 20 returns with 1 HP through `character_vitals`.
   The d20 is the app's or typed, on each roll (RN-18).
+- **A `death_save_failed` hook.** On each failed roll (a failure or a natural 1, which fires it once, though it counts two failures) `RollDeathSave` runs the first `on_event` hook of the character for `death_save_failed` that it can pay (`deathSaveHook`), **before** the failure is added to the count.
+  A hook that heals above 0 (its `heal` or `heal_percent_max`) stands the character up through `character_vitals` like a natural 20: the counts start over and the failure is not added, so the hook that comes with the third failure keeps the character alive; the uses it spends are written in the same vitals change.
+  A hook the character cannot pay (the resource has no uses left) does nothing and the failure counts.
+  The event keeps `hook` (the feature's key, the hit points healed, the uses spent), with the hit points before; the undo puts all of it back.
+  The owner and the master read it (`DeathSave.hook`, `CombatLogDeathSave.hook`); the others see only the counts and the table's visibility rule.
 - **Damage at 0 HP.** Damage that hits someone at 0 HP (the master's "Aplicar") does not lower the HP: it adds a failure (`combat.DamageWhileDown`), two on a critical.
 - **Stable.** A character that becomes stable has both counts back at zero (`tally` clears the failures and keeps the three successes as the stable marker); damage to a stable character (`failuresWhileDown`) starts the counts over, so it counts one failure.
 - **Healing.** Any heal above 0 resets both counts: a spell, Second Wind, the natural 20, the master's HP correction (`AdjustCharacterVitals`) and an undo, all through `changeVitals`.

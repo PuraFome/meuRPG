@@ -500,7 +500,8 @@ func TestDroppingToZeroRunsTheHookExceptForMassiveDamage(t *testing.T) {
 		))
 		e := fxFight(t, a)
 		a.hurt(t, a.toren, 5)
-		return a, a.passTo(t, e, "Goblin")
+		e = a.passTo(t, e, "Goblin")
+		return a, e
 	}
 	t.Run("the hook keeps her up", func(t *testing.T) {
 		t.Parallel()

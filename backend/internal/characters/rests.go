@@ -14,9 +14,11 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
 // Rests and the class resources that move points between the vitals (SRD 5.1,
@@ -53,7 +55,7 @@ func planRest(kind string, v *playv1.CharacterVitals, m vitalsMax, choice rules.
 type hookDice func(rules.DiceFormula) (int, error)
 
 // planRestWith is planRest with the dice the rest's hooks heal rolled by roll.
-func planRestWith(kind string, v *playv1.CharacterVitals, m vitalsMax, choice rules.HitDiceUsed, _ hookDice) (restPlan, error) {
+func planRestWith(kind string, v *playv1.CharacterVitals, m vitalsMax, choice rules.HitDiceUsed, roll hookDice) (restPlan, error) {
 	after := proto.CloneOf(v)
 	preview := &playv1.RestPreview{
 		CharacterId: v.GetCharacterId(), Name: v.GetName(),
@@ -89,6 +91,10 @@ func planRestWith(kind string, v *playv1.CharacterVitals, m vitalsMax, choice ru
 		preview.HitDiceBack = hitDiceProto(back, m.hitDice)
 		setHitDiceUsed(after, left)
 	}
+	// The hooks come last: the temporary hit points of a long rest hook are given after the rest ended the old ones.
+	if err := restHooks(kind, after, m, preview, roll); err != nil {
+		return restPlan{}, err
+	}
 	return restPlan{after: after, preview: preview}, nil
 }
 
@@ -99,11 +105,121 @@ func restResources(kind string, after *playv1.CharacterVitals, m vitalsMax, prev
 		rechargeOf[r.Key] = r.Recharge
 	}
 	for _, r := range after.GetResources() {
-		if r.GetUsed() > 0 && rules.RechargesOnRest(rechargeOf[r.GetKey()], kind) {
-			preview.Resources = append(preview.Resources, &playv1.RestResourceBack{Key: r.GetKey(), NamePt: r.GetNamePt(), Spent: r.GetUsed(), Total: r.GetTotal()})
-			r.Used = 0
+		back := resourceBack(rules.RestRecovery(rechargeOf[r.GetKey()], kind), r.GetUsed())
+		if back == 0 {
+			continue
+		}
+		entry := &playv1.RestResourceBack{Key: r.GetKey(), NamePt: r.GetNamePt(), Spent: r.GetUsed(), Total: r.GetTotal()}
+		if back < r.GetUsed() {
+			entry.Back = back
+		}
+		preview.Resources = append(preview.Resources, entry)
+		r.Used -= back
+	}
+}
+
+// resourceBack is how many of the used uses a rest of that recovery gives back.
+func resourceBack(rec rules.Recovery, used int32) int32 {
+	switch {
+	case used <= 0:
+		return 0
+	case rec == rules.RecoverAll:
+		return used
+	case rec == rules.RecoverOne:
+		return 1
+	}
+	return 0
+}
+
+// restHooks runs the character's hooks of the rest (short_rest, long_rest), in the order of its features: a hook
+// that spends a resource runs only with the uses left, and one that restores uses never gives back more than are
+// spent, so a rest taken again changes nothing more.
+func restHooks(kind string, after *playv1.CharacterVitals, m vitalsMax, preview *playv1.RestPreview, roll hookDice) error {
+	event := rules.EventShortRest
+	if kind == rules.RestLong {
+		event = rules.EventLongRest
+	}
+	for _, h := range m.hooks {
+		if h.Event != event {
+			continue
+		}
+		res, ran, err := runRestHook(h, after, roll)
+		if err != nil {
+			return err
+		}
+		if ran {
+			res.SourceNamePt = m.hookNames[h.Source]
+			preview.Hooks = append(preview.Hooks, res)
 		}
 	}
+	return nil
+}
+
+// runRestHook applies one hook to the vitals after the rest, and says what it did; false when it could not be
+// paid or gave nothing.
+func runRestHook(h rules.EventHook, after *playv1.CharacterVitals, roll hookDice) (*playv1.HookResult, bool, error) {
+	res := &playv1.HookResult{}
+	if h.Spends != "" {
+		r := resourceOf(after, h.Spends)
+		if r == nil || r.GetTotal()-r.GetUsed() < i32(h.SpendCount) {
+			return nil, false, nil
+		}
+		r.Used += i32(h.SpendCount)
+		res.SpentResource, res.Spent = h.Spends, i32(h.SpendCount)
+	}
+	amount, err := hookHeal(h, int(after.GetHitPointsMax()), roll)
+	if err != nil {
+		return nil, false, err
+	}
+	if healed := combat.ApplyHeal(int(after.GetHitPointsCurrent()), int(after.GetHitPointsMax()), amount); healed.Healed > 0 {
+		after.HitPointsCurrent = i32(healed.HP)
+		res.Healed = i32(healed.Healed)
+	}
+	if h.TempHP > 0 {
+		given := combat.ApplyTempHP(int(after.GetHitPointsTemporary()), h.TempHP)
+		after.HitPointsTemporary = i32(given.TempHP)
+		res.TempHpGained = i32(given.Gained)
+	}
+	if r := resourceOf(after, h.Restore); r != nil && h.RestoreCount > 0 {
+		if back := i32(rules.RestoreUses(int(r.GetUsed()), h.RestoreCount)); back > 0 {
+			r.Used -= back
+			res.RestoredResource, res.Restored = h.Restore, back
+		}
+	}
+	return res, res.GetHealed() > 0 || res.GetTempHpGained() > 0 || res.GetRestored() > 0 || res.GetSpent() > 0, nil
+}
+
+// hookHeal is the hit points a hook heals: its dice (rolled by roll, or the average when roll is nil) plus its share
+// of the maximum.
+func hookHeal(h rules.EventHook, maxHP int, roll hookDice) (int, error) {
+	amount := 0
+	if d := h.Heal; d != nil {
+		if roll == nil {
+			amount = d.Count*(d.Sides+1)/2 + d.Bonus
+		} else {
+			n, err := roll(*d)
+			if err != nil {
+				return 0, err
+			}
+			amount = n
+		}
+	}
+	if h.HealPercentMax > 0 {
+		amount += rules.PercentOfMax(h.HealPercentMax, maxHP)
+	}
+	return max(amount, 0), nil
+}
+
+// resourceOf is the resource of the vitals with the key, nil when there is none.
+func resourceOf(v *playv1.CharacterVitals, key string) *playv1.ResourceUsage {
+	if key == "" {
+		return nil
+	}
+	i := slices.IndexFunc(v.GetResources(), func(r *playv1.ResourceUsage) bool { return r.GetKey() == key })
+	if i < 0 {
+		return nil
+	}
+	return v.GetResources()[i]
 }
 
 // restPactSlots gives back the spent pact magic slots, when the rest does.
@@ -138,6 +254,15 @@ func restEndAid(after *playv1.CharacterVitals) {
 	after.HitPointsMax -= after.GetHitPointsMaxBonus()
 	after.HitPointsMaxBonus = 0
 	after.HitPointsCurrent = after.GetHitPointsMax()
+}
+
+// rollHookDice rolls the dice of a rest hook's heal in the app.
+func (s *Service) rollHookDice(d rules.DiceFormula) (int, error) {
+	res, err := dice.Roll(s.roller, dice.Expr{Count: d.Count, Sides: d.Sides, Modifier: d.Bonus})
+	if err != nil {
+		return 0, wrap("roll a hook's dice", err)
+	}
+	return res.Total, nil
 }
 
 // restRow is a living, active player character with its vitals and maximums.
@@ -261,7 +386,7 @@ func restHitDicePick(c *playv1.HitDiceChoice) (rules.HitDiceUsed, error) {
 func (s *Service) restEveryone(ctx context.Context, tx pgx.Tx, kind string, rows []restRow, choices map[string]rules.HitDiceUsed) (before, after []*playv1.CharacterVitals, err error) {
 	q := s.queries.WithTx(tx)
 	for _, r := range rows {
-		plan, err := planRest(kind, r.view, r.m, choices[r.row.ID])
+		plan, err := planRestWith(kind, r.view, r.m, choices[r.row.ID], s.rollHookDice)
 		if err != nil {
 			return nil, nil, err
 		}

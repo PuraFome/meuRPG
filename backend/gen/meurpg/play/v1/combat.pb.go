@@ -12015,7 +12015,7 @@ func (x *TakeActionResponse) GetTempHpGained() int32 {
 // too.
 type HookResult struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The feature, trait or feat that has the hook, in Portuguese.
+	// The feature, trait or feat that has the hook, in Portuguese. Empty where the line cannot name it: `source` is its key.
 	SourceNamePt string `protobuf:"bytes,1,opt,name=source_name_pt,json=sourceNamePt,proto3" json:"source_name_pt,omitempty"`
 	// The hit points regained (up to the maximum) and the temporary hit points gained.
 	Healed       int32 `protobuf:"varint,2,opt,name=healed,proto3" json:"healed,omitempty"`
@@ -12025,8 +12025,10 @@ type HookResult struct {
 	Spent            int32  `protobuf:"varint,5,opt,name=spent,proto3" json:"spent,omitempty"`
 	RestoredResource string `protobuf:"bytes,6,opt,name=restored_resource,json=restoredResource,proto3" json:"restored_resource,omitempty"`
 	Restored         int32  `protobuf:"varint,7,opt,name=restored,proto3" json:"restored,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The content key of the feature that has the hook ("feat:..."), for the clients that name it themselves.
+	Source        string `protobuf:"bytes,8,opt,name=source,proto3" json:"source,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *HookResult) Reset() {
@@ -12106,6 +12108,13 @@ func (x *HookResult) GetRestored() int32 {
 		return x.Restored
 	}
 	return 0
+}
+
+func (x *HookResult) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
 }
 
 // ChannelDivinityResult is what a Channel Divinity action did, creature by creature.
@@ -24270,7 +24279,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x0etemp_hp_gained\x18\x06 \x01(\x05H\x02R\ftempHpGained\x88\x01\x01B\t\n" +
 	"\a_healedB\b\n" +
 	"\x06_spentB\x11\n" +
-	"\x0f_temp_hp_gained\"\xf6\x01\n" +
+	"\x0f_temp_hp_gained\"\x8e\x02\n" +
 	"\n" +
 	"HookResult\x12$\n" +
 	"\x0esource_name_pt\x18\x01 \x01(\tR\fsourceNamePt\x12\x16\n" +
@@ -24279,7 +24288,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x0espent_resource\x18\x04 \x01(\tR\rspentResource\x12\x14\n" +
 	"\x05spent\x18\x05 \x01(\x05R\x05spent\x12+\n" +
 	"\x11restored_resource\x18\x06 \x01(\tR\x10restoredResource\x12\x1a\n" +
-	"\brestored\x18\a \x01(\x05R\brestored\"\xa6\x01\n" +
+	"\brestored\x18\a \x01(\x05R\brestored\x12\x16\n" +
+	"\x06source\x18\b \x01(\tR\x06source\"\xa6\x01\n" +
 	"\x15ChannelDivinityResult\x129\n" +
 	"\x05heals\x18\x01 \x03(\v2#.meurpg.play.v1.ChannelDivinityHealR\x05heals\x129\n" +
 	"\x05turns\x18\x02 \x03(\v2#.meurpg.play.v1.ChannelDivinityTurnR\x05turns\x12\x17\n" +

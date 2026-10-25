@@ -3920,7 +3920,7 @@ message TakeActionResponse {
 // the feature that has it and what it gave. The numbers follow the audience of the line that carries it; the name does
 // too.
 message HookResult {
-  // The feature, trait or feat that has the hook, in Portuguese.
+  // The feature, trait or feat that has the hook, in Portuguese. Empty where the line cannot name it: `source` is its key.
   string source_name_pt = 1;
   // The hit points regained (up to the maximum) and the temporary hit points gained.
   int32 healed = 2;
@@ -3930,6 +3930,8 @@ message HookResult {
   int32 spent = 5;
   string restored_resource = 6;
   int32 restored = 7;
+  // The content key of the feature that has the hook ("feat:..."), for the clients that name it themselves.
+  string source = 8;
 }
 
 // ChannelDivinityResult is what a Channel Divinity action did, creature by creature.
