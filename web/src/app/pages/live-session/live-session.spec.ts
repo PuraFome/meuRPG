@@ -171,6 +171,7 @@ class FakeLiveSessionSource implements LiveSessionSource {
   readonly adjustVitals = vi.fn();
   readonly setCurrentMap = vi.fn((_c: string, mapId: string | null) => Promise.resolve(mapId));
   readonly setShownImage = vi.fn();
+  readonly setShownImageAudience = vi.fn();
   /** The images left with the players, as the server lists them. */
   left: ShownImageVm[] = [];
   readonly listLeftImages = vi.fn(() => Promise.resolve(this.left));

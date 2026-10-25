@@ -87,3 +87,28 @@ export function stageErrorMessage(err: unknown): string {
   }
   return sceneErrorMessage(err, 'mudar o palco');
 }
+
+/** What a failed "Quem está na cena" call (`SetSceneAudience`, `SetScenePlayersMayJoin`) says to the master. */
+export function sceneAudienceErrorMessage(err: unknown): string {
+  const connectErr = ConnectError.from(err, Code.Unavailable);
+  if (connectErr.code === Code.InvalidArgument) {
+    return 'Alguém dessa lista não joga mais nesta campanha. A lista foi atualizada: escolha de novo.';
+  }
+  return sceneErrorMessage(err, 'mudar quem está na cena');
+}
+
+/** What a failed "Mostrar" / "Mudar quem vê" call says to the master (MR-028). */
+export function imageAudienceErrorMessage(err: unknown): string {
+  const blocked = sceneBlocked(err);
+  if (blocked?.reason === SceneBlockedReason.SCENE_NOT_PARTIAL) {
+    return 'A cena não está aberta só para alguns jogadores. Mostre a imagem para a mesa toda ou escolha quem vê.';
+  }
+  const connectErr = ConnectError.from(err, Code.Unavailable);
+  if (connectErr.code === Code.InvalidArgument) {
+    return 'Alguém dessa lista não joga mais nesta campanha. A lista foi atualizada: escolha de novo.';
+  }
+  if (connectErr.code === Code.NotFound) {
+    return 'Nenhuma imagem está sendo mostrada. A tela foi atualizada.';
+  }
+  return sceneErrorMessage(err, 'mudar quem vê a imagem');
+}

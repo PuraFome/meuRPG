@@ -3,7 +3,14 @@ import { create } from '@bufbuild/protobuf';
 
 import { SceneClueSchema } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { SceneState } from './scene-state';
-import { joinableScene, masterScene, playerScene, sceneRoll, stageNpc } from './scene-testing';
+import {
+  joinableScene,
+  masterScene,
+  playerScene,
+  sceneAudienceView,
+  sceneRoll,
+  stageNpc,
+} from './scene-testing';
 
 describe('SceneState', () => {
   function stateWith(isMaster: boolean, ...answers: (OpenSceneInfo | null | Error)[]): SceneState {
@@ -16,6 +23,53 @@ describe('SceneState', () => {
       () => isMaster,
     );
   }
+
+  describe('who is in the scene (MR-015, RN-10)', () => {
+    it('carries the audience and the switch of the open scene, and nothing with no scene', () => {
+      const state = stateWith(true);
+      expect(state.audience()).toBeNull();
+      expect(state.playersMayJoin()).toBe(false);
+      state.apply(
+        masterScene([], [], {
+          audience: sceneAudienceView(['Pensantus'], ['Toren']),
+          playersMayJoin: true,
+        }),
+      );
+      expect(state.audience()?.outside.map((p) => p.characterName)).toEqual(['Toren']);
+      expect(state.playersMayJoin()).toBe(true);
+    });
+
+    it('tells the master who joined by themselves, with the time, and clears it with the scene', async () => {
+      const before = masterScene([], [], { audience: sceneAudienceView(['Pensantus'], ['Toren']) });
+      const after = masterScene([], [], {
+        audience: sceneAudienceView(['Pensantus', 'Toren'], [], false, ['Toren']),
+      });
+      const state = stateWith(true, before, after, null);
+      await state.refresh();
+      expect(state.joined()).toBe('');
+      await state.refresh();
+      expect(state.joined()).toMatch(/^Toren entrou na cena às \d\d:\d\d\.$/);
+      expect(state.notice()).toBe('Toren entrou na cena.');
+      await state.refresh();
+      expect(state.joined()).toBe('');
+    });
+
+    it('does not announce a player the master chose', async () => {
+      const before = masterScene([], [], { audience: sceneAudienceView(['Pensantus'], ['Toren']) });
+      const after = masterScene([], [], { audience: sceneAudienceView(['Pensantus', 'Toren']) });
+      const state = stateWith(true, before, after);
+      await state.refresh();
+      await state.refresh();
+      expect(state.joined()).toBe('');
+    });
+  });
+
+  it('carries the eye of an action at once', () => {
+    const state = stateWith(true);
+    state.apply(masterScene());
+    state.setActionHidden('a2', true);
+    expect(state.scene()?.actions.map((a) => a.hidden)).toEqual([false, true, false, false, false]);
+  });
 
   it('says nothing for the first read (the page was just opened)', async () => {
     const state = stateWith(false, playerScene());

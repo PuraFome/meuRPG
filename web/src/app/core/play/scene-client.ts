@@ -50,6 +50,37 @@ export class SceneClient {
     return res.stage;
   }
 
+  /** `SetStageNpcHidden` (MR-031, RN-10): the NPC's eye. Hidden is "Escondida dos jogadores", shown is "Os jogadores veem". */
+  async setStageNpcHidden(
+    campaignId: string,
+    characterId: string,
+    hidden: boolean,
+  ): Promise<readonly StageNpc[]> {
+    const res = await this.client.setStageNpcHidden({ campaignId, characterId, hidden });
+    return res.stage;
+  }
+
+  /** `SetSceneAudience` (MR-015, RN-10): the players the open scene is open to, or the whole table. The answer is the scene as the master sees it. */
+  async setAudience(
+    campaignId: string,
+    audience: { readonly everyone: true } | { readonly userIds: readonly string[] },
+  ): Promise<OpenSceneInfo> {
+    const res = await this.client.setSceneAudience({
+      campaignId,
+      audience:
+        'everyone' in audience
+          ? { everyone: true, userIds: [] }
+          : { everyone: false, userIds: [...audience.userIds] },
+    });
+    return need(res.scene, 'SetSceneAudience');
+  }
+
+  /** `SetScenePlayersMayJoin`: the switch "Os jogadores podem entrar" of a scene open to only some players. */
+  async setPlayersMayJoin(campaignId: string, playersMayJoin: boolean): Promise<OpenSceneInfo> {
+    const res = await this.client.setScenePlayersMayJoin({ campaignId, playersMayJoin });
+    return need(res.scene, 'SetScenePlayersMayJoin');
+  }
+
   /** `TakeOffStage`: at once, nothing to confirm. */
   async takeOffStage(campaignId: string, characterId: string): Promise<readonly StageNpc[]> {
     const res = await this.client.takeOffStage({ campaignId, characterId });

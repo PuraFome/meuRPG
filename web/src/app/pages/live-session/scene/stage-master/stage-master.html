@@ -36,20 +36,34 @@
   } @else {
     <ul class="st__rows">
       @for (card of cards(); track card.npc.id; let i = $index) {
-        <li class="row" [class.row--speaking]="card.npc.speaking" data-stage-card>
+        <li class="row" [class.row--speaking]="card.npc.speaking" [class.row--hidden]="card.npc.hidden" data-stage-card>
+          <button
+            type="button"
+            class="row__eye"
+            [attr.aria-label]="card.npc.hidden ? 'Mostrar ' + card.npc.name + ' aos jogadores' : 'Esconder ' + card.npc.name + ' dos jogadores'"
+            [aria-disabled]="ctl().busy(card.npc.characterId)"
+            (click)="toggleHidden(card)"
+          >
+            <mat-icon aria-hidden="true">{{ card.npc.hidden ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
           <app-portrait [src]="card.npc.portraitUrl" [name]="card.npc.name" [size]="48" fit="cover" />
           <div class="row__text">
             <span class="row__name">{{ card.npc.name }}</span>
-            <span class="row__sees"><mat-icon aria-hidden="true">visibility</mat-icon>Os jogadores veem</span>
+            @if (card.npc.hidden) {
+              <span class="row__sees row__sees--hidden"><mat-icon aria-hidden="true">visibility_off</mat-icon>Escondida dos jogadores</span>
+            } @else {
+              <span class="row__sees"><mat-icon aria-hidden="true">visibility</mat-icon>Os jogadores veem</span>
+            }
           </div>
           <button
             matButton="outlined"
             type="button"
             class="row__speak"
             [class.row__speak--on]="card.npc.speaking"
+            [class.row__speak--off]="card.npc.hidden"
             [attr.aria-pressed]="card.npc.speaking"
-            [aria-disabled]="ctl().busy(card.npc.characterId)"
-            [attr.aria-label]="card.npc.speaking ? card.npc.name + ' está com a fala. Tirar a fala' : 'Dar a fala a ' + card.npc.name"
+            [aria-disabled]="card.npc.hidden || ctl().busy(card.npc.characterId)"
+            [attr.aria-label]="card.npc.hidden ? card.npc.name + ' está escondida dos jogadores e não fala. Mostre-a para dar a fala' : card.npc.speaking ? card.npc.name + ' está com a fala. Tirar a fala' : 'Dar a fala a ' + card.npc.name"
             (click)="speak(card)"
           >
             <mat-icon aria-hidden="true">{{ card.npc.speaking ? 'check' : 'chat_bubble_outline' }}</mat-icon>

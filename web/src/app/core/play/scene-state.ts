@@ -1,7 +1,12 @@
 import { computed, signal } from '@angular/core';
 
 import type { SceneClue } from '../../../gen/meurpg/maps/v1/maps_pb';
-import type { OpenSceneInfo, StageNpc } from '../../../gen/meurpg/play/v1/scene_pb';
+import type {
+  OpenSceneInfo,
+  SceneAudienceView,
+  StageNpc,
+} from '../../../gen/meurpg/play/v1/scene_pb';
+import { formatClock } from '../../shared/session-time/session-time';
 import { attemptsAnnouncement, rollAnnouncement } from './scene-view';
 import { stageAnnouncement } from './stage-view';
 
@@ -27,6 +32,12 @@ export class SceneState {
   /** The NPCs on the scene's stage, in the order they came in (empty with no
    * scene). Part of the scene: the server clears it when the scene closes. */
   readonly stage = computed<readonly StageNpc[]>(() => this.scene()?.stage ?? []);
+  /** Who is in and out of the open scene, as the master sees it (MR-015, RN-10); `null` for a player or with no scene. */
+  readonly audience = computed<SceneAudienceView | null>(() => this.scene()?.audience ?? null);
+  /** "Os jogadores podem entrar": a scene open to some may be joined by the others. */
+  readonly playersMayJoin = computed(() => this.scene()?.playersMayJoin ?? false);
+  /** "Toren entrou na cena às 20:41.": the master's line after a player joined by themselves, until the next news. */
+  readonly joined = signal('');
   /** What the live region says now; changes with each news. */
   readonly notice = signal('');
   /**
@@ -84,6 +95,9 @@ export class SceneState {
     } else if (!next || next.joinable || (prev && !sameScene(prev, next))) {
       this.enteredHere.set(false);
     }
+    if (!next || !prev || !sameScene(prev, next)) {
+      this.joined.set('');
+    }
     if (this.loaded) {
       this.say(prev, next);
     }
@@ -99,6 +113,19 @@ export class SceneState {
     }
     this.edits++;
     this.scene.set({ ...scene, clues: scene.clues.map((c) => (c.id === clue.id ? clue : c)) });
+  }
+
+  /** The master's own eye on an action answered (`UpdateSceneAction`): the open scene carries it at once. */
+  setActionHidden(actionId: string, hidden: boolean): void {
+    const scene = this.scene();
+    if (!scene) {
+      return;
+    }
+    this.edits++;
+    this.scene.set({
+      ...scene,
+      actions: scene.actions.map((a) => (a.id === actionId ? { ...a, hidden } : a)),
+    });
   }
 
   /** The master's own stage call answered: the stage as it is now. Applied in
@@ -132,24 +159,42 @@ export class SceneState {
     this.focusNext.set(null);
     this.enteredHere.set(false);
     this.loaded = false;
+    this.joined.set('');
   }
 
   private say(prev: OpenSceneInfo | null, next: OpenSceneInfo | null): void {
-    const words = this.isMaster() ? masterNotice(prev, next) : playerNotice(prev, next);
-    if (words) {
-      this.notice.set(words);
+    const news = this.isMaster()
+      ? masterNews(prev, next)
+      : { notice: playerNotice(prev, next), joined: '' };
+    if (news.joined) {
+      this.joined.set(news.joined);
+    }
+    if (news.notice) {
+      this.notice.set(news.notice);
     }
   }
 }
 
-/** What the master's live region says of a new read: each new roll of the same scene. */
-function masterNotice(prev: OpenSceneInfo | null, next: OpenSceneInfo | null): string {
+/** What a read says: the live region's words and, for the master, the line "<nome> entrou na cena às 20:41." (empty when nobody joined). */
+interface News {
+  readonly notice: string;
+  readonly joined: string;
+}
+
+/** What the master hears: each new roll of the same scene, and a player who joined by themselves (JoinScene). */
+function masterNews(prev: OpenSceneInfo | null, next: OpenSceneInfo | null): News {
   if (!next || !prev || !sameScene(prev, next)) {
-    return '';
+    return { notice: '', joined: '' };
   }
   const known = new Set(prev.rolls.map((r) => r.id));
   const fresh = next.rolls.filter((r) => !known.has(r.id)).reverse();
-  return fresh.map((r) => rollAnnouncement(next, r)).join('. ');
+  const came = joinedByThemselves(prev, next).join(' e ');
+  return {
+    notice: came
+      ? `${came} entrou na cena.`
+      : fresh.map((r) => rollAnnouncement(next, r)).join('. '),
+    joined: came ? `${came} entrou na cena às ${formatClock(new Date())}.` : '',
+  };
 }
 
 /** The words for a scene a player may join: the card comes, gives way to the scene (entered) or goes (the switch went off). */
@@ -179,6 +224,14 @@ function playerNotice(prev: OpenSceneInfo | null, next: OpenSceneInfo | null): s
     return attemptsAnnouncement(prev, next) || stageAnnouncement(prev.stage, next.stage);
   }
   return '';
+}
+
+/** The names of the players who joined by themselves since `prev` (JoinScene), in the party's order. */
+function joinedByThemselves(prev: OpenSceneInfo, next: OpenSceneInfo): string[] {
+  const known = new Set(prev.audience?.inside.map((p) => p.userId));
+  return (next.audience?.inside ?? [])
+    .filter((p) => p.joinedBySelf && !known.has(p.userId))
+    .map((p) => p.characterName);
 }
 
 /** The same opening of the same scene (closing and opening it again is another). */
