@@ -95,7 +95,8 @@ test(
       await expect(chooser.getByText('Pensantus está na cena.')).toBeVisible();
       await chooser.getByRole('button', { name: 'Pronto' }).click();
       await expect(chooser).toBeHidden();
-      await expect(m.getByText(/^Aberta desde \d\d:\d\d para/)).toContainText('Pensantus');
+      await expect(m.getByText(/^Aberta desde \d\d:\d\d para$/)).toBeVisible();
+      await expect(m.getByRole('list', { name: 'Quem está na cena' })).toContainText('Pensantus');
       await expect(m.getByText('Toren não está nesta cena.')).toBeVisible();
       await expect(second.page.getByRole('region', { name: 'Cena: A carroça tombada' })).toHaveCount(0);
       expect(JSON.stringify(await getOpenSceneRPC(second.page, campaignId))).not.toContain('A carroça tombada');
@@ -112,7 +113,7 @@ test(
       const joined = await callRPC(second.page, 'meurpg.play.v1.PlayService/JoinScene', { campaignId });
       expect(joined.ok(), await joined.text()).toBeTruthy();
       await expect(m.getByText(/^Toren entrou na cena às \d\d:\d\d\.$/)).toBeVisible();
-      await expect(m.getByText(/^Aberta desde \d\d:\d\d para/)).toContainText('Toren');
+      await expect(m.getByRole('list', { name: 'Quem está na cena' })).toContainText('Toren');
 
       // A scene open to everyone again has no switch: nobody to let in.
       await m.getByRole('button', { name: 'Quem está na cena' }).click();
@@ -158,7 +159,7 @@ test(
       await who.getByRole('button', { name: 'Pronto' }).click();
       await expect(who).toBeHidden();
       const images = m.getByRole('region', { name: 'Imagens da cena' });
-      const shownTo = async (page: typeof p) => (await liveSessionAsPlayer(page, campaignId)).shownImage?.imageId ?? '';
+      const shownTo = async (page: typeof p) => (await liveSessionAsPlayer(page, campaignId)).shownImage?.id ?? '';
 
       // On a partial scene "Mostrar" is a menu: the default is those in the scene.
       await images.getByRole('button', { name: 'Mostrar Vista do salão para…' }).click();

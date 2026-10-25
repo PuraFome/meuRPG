@@ -132,7 +132,7 @@ func (h *harness) insertRows(campaign string, rows []charactersdb.CampaignConten
 
 // median runs fn reps times and returns the median duration and the average
 // allocations and bytes of one run.
-func median(reps int, fn func()) (d time.Duration, allocs, bytes uint64) {
+func median(reps uint64, fn func()) (d time.Duration, allocs, bytes uint64) {
 	times := make([]time.Duration, 0, reps)
 	var before, after runtime.MemStats
 	runtime.ReadMemStats(&before)
@@ -143,7 +143,7 @@ func median(reps int, fn func()) (d time.Duration, allocs, bytes uint64) {
 	}
 	runtime.ReadMemStats(&after)
 	slices.Sort(times)
-	return times[len(times)/2], (after.Mallocs - before.Mallocs) / uint64(reps), (after.TotalAlloc - before.TotalAlloc) / uint64(reps)
+	return times[len(times)/2], (after.Mallocs - before.Mallocs) / reps, (after.TotalAlloc - before.TotalAlloc) / reps
 }
 
 // TestTableContentScale measures a campaign whose table has 300, 450, 600, 800
@@ -163,6 +163,7 @@ func TestTableContentScale(t *testing.T) {
 }
 
 func measureScale(t *testing.T, n, extraEffects int) {
+	t.Helper()
 	tb := newLevelUpTable(t, 2700, 5)
 	rows := bookRows(t, n, extraEffects)
 	var stored int
@@ -262,6 +263,7 @@ func measureScale(t *testing.T, n, extraEffects int) {
 // measureSwitches measures the master's switches of the campaign: the list, then
 // the keys switched off and on in one call.
 func measureSwitches(t *testing.T, tb *levelUpTable, n int, tableKeys []string) {
+	t.Helper()
 	ctx := t.Context()
 	var d time.Duration
 	// The master's switches: the list, then the table's entries switched off and
