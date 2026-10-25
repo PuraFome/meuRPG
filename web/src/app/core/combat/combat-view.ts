@@ -256,7 +256,7 @@ function jointBanner(e: Encounter, joint: JointTurn, after: TurnBanner['after'])
 }
 
 /** The title of a turn of one: the caller's own, a creature's, or a name with its article. */
-function soloTitle(e: Encounter, who: Combatant | null): string {
+export function soloTitle(e: Encounter, who: Combatant | null): string {
   if (!who) {
     return 'Ninguém está na vez';
   }

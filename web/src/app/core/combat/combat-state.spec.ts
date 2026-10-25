@@ -1,5 +1,6 @@
 import {
   CombatantKind,
+  CombatantState,
   EncounterMode,
   EncounterStatus,
 } from '../../../gen/meurpg/play/v1/combat_pb';
@@ -338,5 +339,31 @@ describe('CombatState, the reaction windows that closed (PM-04)', () => {
     state.noteReactionOpened('w1');
     expect(state.wasAnnounced('w1')).toBe(true);
     expect(state.wasAnnounced('w2')).toBe(false);
+  });
+
+  it("a turn that comes to a player's character at 0 hit points brings its death save due, until the combat is read again", () => {
+    const state = new CombatState();
+    state.apply(
+      encounter({
+        revision: 5,
+        currentCombatantId: 'g',
+        combatants: [
+          combatant({
+            id: 'p',
+            label: 'Pensantus',
+            kind: CombatantKind.PLAYER,
+            state: CombatantState.DOWN,
+          }),
+          combatant({ id: 'g', label: 'Goblin' }),
+        ],
+      }),
+    );
+    state.applyTurn({ encounterId: 'enc', round: 2, currentCombatantId: 'p', masterTurn: false });
+    const due = (id: string) =>
+      state.encounter()?.combatants.find((c) => c.id === id)?.deathSaveDue;
+    expect(due('p')).toBe(true);
+    expect(due('g')).toBe(false);
+    state.applyTurn({ encounterId: 'enc', round: 2, currentCombatantId: 'g', masterTurn: false });
+    expect(due('p')).toBe(false);
   });
 });

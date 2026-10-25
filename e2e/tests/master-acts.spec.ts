@@ -50,7 +50,7 @@ test('o mestre age pelo Pensantus: a faixa, "Voltar ao mestre" e um só botão p
     await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
 
     // On the player's turn the master's "Turno" has the character's card: one outlined "Agir por", the combat bar still "Próximo turno".
-    await expect(m.getByRole('region', { name: 'Vez de Pensantus' })).toBeVisible();
+    await expect(m.getByRole('region', { name: 'Vez do Pensantus' })).toBeVisible();
     await expect(m.getByRole('button', { name: 'Próximo turno' })).toBeVisible();
     await expect(m.getByRole('button', { name: 'Mover' })).toHaveCount(0);
 

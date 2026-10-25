@@ -53,7 +53,7 @@ test(
       // The master: the pill, the card of whoever is on turn with the movement he may spend, the cover panel, no map.
       await expect(m.getByText('Vez do Toren', { exact: true }).first()).toBeVisible();
       await expect(m.locator('app-theatre-pill')).toContainText('Teatro da mente');
-      await expect(m.getByRole('heading', { name: 'Vez de Toren' })).toBeVisible();
+      await expect(m.getByRole('heading', { name: 'Vez do Toren' })).toBeVisible();
       await expect(m.getByRole('heading', { name: 'Cobertura dos alvos' })).toBeVisible();
       await expect(m.getByText('Sem mapa: só o número')).toBeVisible();
 

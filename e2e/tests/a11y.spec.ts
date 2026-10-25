@@ -5372,7 +5372,7 @@ async function scanTheatreScreens(browser: Browser, colorScheme: 'light' | 'dark
     await beginTheatreRPC(m, table, enc, { Toren: 20, Brisa: 18, Goblin: 12, 'Capitão Goblin': 10 });
 
     // The master's screen, Toren on turn, and the cover's four rows.
-    await expect(m.getByRole('heading', { name: /^(Ações do|Vez do|Vez de) Toren$/ })).toBeVisible();
+    await expect(m.getByRole('heading', { name: /^(Ações do|Vez do) Toren$/ })).toBeVisible();
     await expectScreenPasses(m, `Combate sem mapa, mestre, vez de um jogador ${where}`);
     await m.getByRole('button', { name: 'Mudar a cobertura de Capitão Goblin' }).click();
     await expect(m.getByRole('heading', { name: 'Cobertura do Capitão Goblin' })).toBeVisible();
