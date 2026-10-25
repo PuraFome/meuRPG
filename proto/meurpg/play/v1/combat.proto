@@ -3471,6 +3471,11 @@ message TargetInReach {
   // A hit on this target is a critical hit: it is paralyzed or unconscious and the
   // attacker is within 5 ft (SRD 5.1, Conditions).
   bool critical_on_hit = 11;
+  // Only for the master reading the turn options of a player's character: the character's player does not see this
+  // creature (the master hid it, or it is in the dark of a fog map), so the master acting for the character cannot pick
+  // it. It is listed so the screen can dim it ("Pensantus não vê este alvo"); `untargetable` is true too. The server
+  // refuses it in RollAttack and CastSpell with `not_found`. Never set for a player.
+  bool not_seen = 12;
 }
 
 // RollAttackRequest rolls an attack.
