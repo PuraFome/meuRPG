@@ -309,24 +309,68 @@ describe('AttackSheet: the target list without a map (RN-25)', () => {
 describe('AttackSheet: the list as the fallback of the map (C7-04)', () => {
   const targets = [
     {
-      id: 'cap',
+      combatantId: 'cap',
       label: 'Capitão Goblin',
-      cover: 0,
+      state: 1,
+      cover: CoverDegree.NONE,
+      coverSource: CoverSource.UNSPECIFIED,
+      tooFar: false,
       untargetable: false,
-      distanceFt: 5,
-      inReach: true,
     },
   ];
 
-  it('lets the radio be chosen by a click with no detail (the label’s own), and does not go on', () => {
+  const stepIsRoll = (el: HTMLElement) => el.querySelector('app-roll-picker') !== null;
+
+  it('a click with no detail on the radio alone chooses it and does not go on', () => {
     const { fixture, el } = setup({ diceMode: DiceMode.PHYSICAL, targets });
     const input = el.querySelector('.target input') as HTMLInputElement;
-    const click = new MouseEvent('click', { bubbles: true, cancelable: true, detail: 0 });
+    const click = new MouseEvent('click', { bubbles: false, cancelable: true, detail: 0 });
     input.dispatchEvent(click);
     fixture.detectChanges();
     expect(click.defaultPrevented).toBe(false);
     expect(input.checked).toBe(true);
-    expect(plain(el.textContent)).toContain('Escolha o alvo');
+    expect(stepIsRoll(el)).toBe(false);
+  });
+
+  it('a click on the label (detail 1) goes on to the roll, once, with the browser’s own sequence', () => {
+    const { fixture, el } = setup({ diceMode: DiceMode.PHYSICAL, targets });
+    const label = el.querySelector('.target') as HTMLElement;
+    const input = label.querySelector('input') as HTMLInputElement;
+    // What a browser sends for label.click(): the label's click, the radio's re-sent click (detail 0), then change.
+    label.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }));
+    input.dispatchEvent(new MouseEvent('click', { bubbles: false, detail: 0 }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    fixture.detectChanges();
+    expect(stepIsRoll(el)).toBe(true);
+    expect(el.querySelectorAll('app-roll-picker')).toHaveLength(1);
+  });
+
+  it('Enter on the radio goes on to the roll', () => {
+    const { fixture, el } = setup({ diceMode: DiceMode.PHYSICAL, targets });
+    const input = el.querySelector('.target input') as HTMLInputElement;
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    fixture.detectChanges();
+    expect(stepIsRoll(el)).toBe(true);
+  });
+
+  it('a click on a row that cannot be chosen does nothing', () => {
+    const blocked = [
+      ...targets,
+      {
+        ...targets[0],
+        combatantId: 'x',
+        label: 'Goblin',
+        cover: CoverDegree.TOTAL,
+        coverSource: CoverSource.MARK,
+        untargetable: true,
+      },
+    ];
+    const { fixture, el } = setup({ diceMode: DiceMode.PHYSICAL, targets: blocked });
+    (el.querySelectorAll('.target')[1] as HTMLElement).dispatchEvent(
+      new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }),
+    );
+    fixture.detectChanges();
+    expect(stepIsRoll(el)).toBe(false);
   });
 
   it('opens at the target step with the list, and a click on a target moves on to the roll', () => {

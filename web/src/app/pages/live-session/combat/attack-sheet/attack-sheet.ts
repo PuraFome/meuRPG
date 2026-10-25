@@ -282,13 +282,16 @@ export class AttackSheet {
   }
 
   /**
-   * A click on a target of the list: a mouse or a touch (`detail` above 0) chooses it and goes on to the roll at once; the click
-   * the browser re-sends to the radio from its label or the keyboard (`detail` 0) only lets the radio be chosen. The handler
-   * returns nothing: a template handler that returns `false` cancels the click, and the radio would never be chosen.
+   * A click on a row of the list: a mouse or a touch (`detail` above 0) chooses the target and goes on to the roll at once. The
+   * click the browser re-sends to the radio from its label (and the one a key makes) has `detail` 0 and only lets the radio be
+   * chosen (`change`), so a keyboard choice waits for Enter. The handler returns nothing: one that returns `false` cancels the click.
    */
-  protected clicked(event: MouseEvent, id: string): void {
-    if (event.detail > 0) {
-      this.pick(id);
+  protected labelClicked(
+    event: MouseEvent,
+    row: { readonly id: string; readonly blocked?: string },
+  ): void {
+    if (event.detail > 0 && !row.blocked) {
+      this.pick(row.id);
       this.advance();
     }
   }
@@ -301,7 +304,7 @@ export class AttackSheet {
 
   /** The target is chosen: on to the roll (a click, or Enter). */
   protected advance(): void {
-    if (this.s.targetId() !== null) {
+    if (this.s.stage() === 'target' && this.s.targetId() !== null) {
       this.s.stage.set('roll');
     }
   }
