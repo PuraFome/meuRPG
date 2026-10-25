@@ -9,6 +9,7 @@ import (
 	"slices"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
@@ -360,20 +361,26 @@ func (s *Service) deathSaveHook(ctx context.Context, c *combatTx, who playdb.Com
 	return plan.ev.Healed > 0 && after.GetHitPointsCurrent() > 0, nil
 }
 
-// dropHook runs the character's "drop_to_zero" hook on a damage that would take it to 0 hit points: it returns the
-// plan (the hit points and temporary hit points the character keeps and the uses spent), or false when the character
-// has no hook it can pay or the hook does not heal. Massive damage is not a drop the hook answers (the caller checks
-// it): instant death is not prevented.
-func (f *applyDamageFlow) dropHook(ctx context.Context) (hookPlan, bool, error) {
-	sheet, err := f.s.sheetOf(ctx, f.c.tx, f.c.session.CampaignID, f.target)
+// dropToZeroHook runs the character's "drop_to_zero" hook on a damage that took it from above 0 to 0 hit points (dmg is
+// combat.ApplyDamage on the vitals now): the combat's damage and a trap's both land here, the one copy of the rule. It
+// returns the plan (the hit points and temporary hit points the character keeps and the uses spent), or false when the
+// character has no hook it can pay, the hook does not heal, or the damage is one no hook answers: it did not drop the
+// character, it was massive (the left-over damage reaches the maximum: instant death is not prevented), or it fell on a
+// beast form. A dead or dying character is never raised: damage at 0 hit points is not a drop. The master's corrections
+// never come here.
+func (s *Service) dropToZeroHook(ctx context.Context, tx pgx.Tx, campaignID, characterID string, now *playv1.CharacterVitals, dmg combat.DamageResult) (hookPlan, bool, error) {
+	if !dmg.FellToZero || now.GetWildShape() != nil || dmg.Excess >= int(now.GetHitPointsMax()) {
+		return hookPlan{}, false, nil
+	}
+	sheet, err := s.roster.CombatSheet(ctx, tx, campaignID, characterID)
 	if err != nil {
 		return hookPlan{}, false, err
 	}
-	h, ok := pickHook(sheet.Hooks, rules.EventDropToZero, f.now)
+	h, ok := pickHook(sheet.Hooks, rules.EventDropToZero, now)
 	if !ok {
 		return hookPlan{}, false, nil
 	}
-	plan, err := f.s.planHook(h, f.now, 0, 0)
+	plan, err := s.planHook(h, now, 0, 0)
 	if err != nil || plan.ev.Healed == 0 {
 		return plan, false, err // a hook that does not heal does not keep the character up: nothing is spent
 	}

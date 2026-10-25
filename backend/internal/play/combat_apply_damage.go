@@ -291,8 +291,8 @@ func (f *applyDamageFlow) landNormal(ctx context.Context) error {
 	}
 	hp, temp := clamp32(dmg.HP, 0, math.MaxInt32), clamp32(dmg.TempHP, 0, math.MaxInt32)
 	req := &playv1.AdjustCharacterVitalsRequest{HitPointsCurrent: &hp, HitPointsTemporary: &temp}
-	if dmg.FellToZero && !f.made.Relentless && dmg.Excess < int(f.now.GetHitPointsMax()) { // massive damage kills outright: no hook answers it
-		plan, kept, err := f.dropHook(ctx)
+	if !f.made.Relentless {
+		plan, kept, err := f.s.dropToZeroHook(ctx, f.c.tx, f.c.session.CampaignID, f.target.CharacterID, f.now, dmg)
 		if err != nil {
 			return err
 		}
