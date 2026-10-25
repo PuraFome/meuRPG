@@ -2791,7 +2791,7 @@ async function scanSceneVisibilityScreens(browser: Browser, colorScheme: 'light'
     await m.getByRole('button', { name: 'Esconder Capitão Goblin dos jogadores' }).click();
     await expect(m.locator('[data-stage-card]').filter({ hasText: 'Capitão Goblin' })).toContainText('Escondida dos jogadores');
     await m.getByRole('button', { name: 'Esconder Acalmar os cavalos dos jogadores' }).click();
-    await expect(m.getByText('Escondida', { exact: true })).toBeVisible();
+    await expect(m.getByRole('region', { name: 'Ações e rolagens' }).locator('.sa__item').filter({ hasText: 'Acalmar os cavalos' })).toContainText('Escondida');
     await expectScreenPasses(m, `Um NPC e uma ação escondidos ${where}`);
 
     // "Mostrar" on a thumbnail, then who sees the image on display.

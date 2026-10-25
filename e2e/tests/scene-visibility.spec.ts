@@ -113,7 +113,8 @@ test(
       expect(JSON.stringify(seen)).not.toContain('Procurar pistas na carroça');
       const joined = await callRPC(second.page, 'meurpg.play.v1.PlayService/JoinScene', { campaignId });
       expect(joined.ok(), await joined.text()).toBeTruthy();
-      await expect(m.getByText(/^Toren entrou na cena às \d\d:\d\d\.$/)).toBeVisible();
+      // The line starts with its icon's ligature, so the words are matched without the start anchor.
+      await expect(m.getByText(/Toren entrou na cena às \d\d:\d\d\.$/)).toBeVisible();
       await expect(m.getByRole('list', { name: 'Quem está na cena' })).toContainText('Toren');
 
       // A scene open to everyone again has no switch: nobody to let in.
