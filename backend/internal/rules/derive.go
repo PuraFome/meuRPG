@@ -582,7 +582,7 @@ func (col *collector) options() {
 		switch {
 		case x.c.choiceValueOK(key):
 			// A pick of the choice engine (choicegroups.go), which checks it.
-		case strings.HasPrefix(key, "feature:"):
+		case strings.HasPrefix(key, "feature:"), strings.HasPrefix(key, OptionKeyPrefix):
 			col.featureOption(field, key, pickedNames)
 		case strings.HasPrefix(key, "trait:"):
 			col.traitOption(field, key)

@@ -74,6 +74,15 @@ func TestForPlayerOfEveryKindIsFrozen(t *testing.T) {
 		{"feat of a visible race", rulesv1.TableContentKind_TABLE_CONTENT_KIND_FEAT, &rulesv1.TableFeat{
 			NamePt: "Talento 2", Prerequisite: &rulesv1.FeatPrerequisite{RaceKey: "race:elf"},
 		}},
+		{"option that asks for hidden keys", rulesv1.TableContentKind_TABLE_CONTENT_KIND_OPTION, &rulesv1.TableOption{
+			NamePt: "Opção", Set: "invocation", Effects: frozenEffects(), Prerequisite: &rulesv1.OptionPrerequisite{
+				ClassLevel:         &rulesv1.OptionClassLevel{ClassKey: "class:druid", Level: 3},
+				RequiresOptionKeys: []string{"option:invocation:x@mesa", "spell:cure-wounds"}, RequiresPact: "feature:pact-of-the-tome", RequiresSpellKey: "spell:cure-wounds",
+			},
+		}},
+		{"option that asks for visible keys", rulesv1.TableContentKind_TABLE_CONTENT_KIND_OPTION, &rulesv1.TableOption{
+			NamePt: "Opção 2", Set: "metamagic", Prerequisite: &rulesv1.OptionPrerequisite{ClassLevel: &rulesv1.OptionClassLevel{ClassKey: "class:sorcerer", Level: 10}},
+		}},
 		{"feat without a prerequisite", rulesv1.TableContentKind_TABLE_CONTENT_KIND_FEAT, &rulesv1.TableFeat{NamePt: "Talento 3", Effects: frozenEffects()}},
 	}
 	var steps []tableContentGoldenStep

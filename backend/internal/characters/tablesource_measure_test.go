@@ -22,7 +22,7 @@ func realisticRows(t testing.TB) []charactersdb.CampaignContent {
 	t.Helper()
 	var rows []charactersdb.CampaignContent
 	add := func(kind rulesv1.TableContentKind, name string, body tableBody) string {
-		key := entryKey(kind, name, rows)
+		key := entryKey(kind, &rulesv1.TableFeat{NamePt: name}, rows)
 		st, err := prepare(key, kind, body, nil)
 		if err != nil {
 			t.Fatalf("prepare(%s): %v", key, err)
@@ -128,7 +128,7 @@ func TestLiveContentMemoryAtMaximumText(t *testing.T) {
 		for p := range 15 { // 15 paragraphs of 4,000 characters: just under the entry's 64 KiB
 			spell.DescPt = append(spell.DescPt, strings.Repeat(string(rune('a'+(i+p)%26)), 3990)+fmt.Sprint(i, p))
 		}
-		key := entryKey(kind, name, rows)
+		key := entryKey(kind, &rulesv1.TableFeat{NamePt: name}, rows)
 		st, err := prepare(key, kind, spell, nil)
 		if err != nil {
 			t.Fatalf("prepare(%s): %v", key, err)

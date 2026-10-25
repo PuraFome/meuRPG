@@ -101,6 +101,9 @@ func optionEntries(c *rules.Content, uses map[string]int) []*rulesv1.OptionSwitc
 	for _, e := range c.Feats() {
 		add(rulesv1.TableContentKind_TABLE_CONTENT_KIND_FEAT, e.Key, e.NamePT, "", 0, e.Archived, e.Off)
 	}
+	for _, e := range c.Options() {
+		add(rulesv1.TableContentKind_TABLE_CONTENT_KIND_OPTION, e.Key, e.NamePT, "", 0, e.Archived, e.Off)
+	}
 	slices.SortStableFunc(out, func(a, b *rulesv1.OptionSwitchEntry) int {
 		if d := cmp.Compare(a.GetKind(), b.GetKind()); d != 0 {
 			return d

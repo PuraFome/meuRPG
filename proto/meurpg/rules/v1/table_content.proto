@@ -46,6 +46,10 @@ enum TableContentKind {
   // A feat: an optional rule of the game, taken in place of an Ability Score
   // Improvement when the table's rule "Talentos" allows it (MR-025).
   TABLE_CONTENT_KIND_FEAT = 7;
+  // An option of one of the SRD's option sets (an Eldritch Invocation, a Metamagic
+  // option, a fighting style, a Pact Boon...), written by the master. The choice of
+  // that set offers it next to the SRD's options (MR-025).
+  TABLE_CONTENT_KIND_OPTION = 8;
 }
 
 // TableEntry is one entry of the table's content, as ListTableEntries and the
@@ -86,6 +90,7 @@ message TableEntry {
     TableBackground table_background = 14;
     TableSpell table_spell = 15;
     TableFeat table_feat = 17;
+    TableOption table_option = 18;
   }
 }
 
@@ -220,6 +225,44 @@ message TableFeat {
   FeatPrerequisite prerequisite = 3;
   // At most 20, and at most one ability_increase.
   repeated TableEffect effects = 4;
+}
+
+// TableOption is an option the master adds to an option set of the SRD, as a table
+// entry "option:<set>:<slug>@mesa". The text and the effects are the feature the
+// character gets when it picks the option; `set` says which choice offers it.
+message TableOption {
+  string name_pt = 1;
+  // The text, one paragraph per entry.
+  repeated string desc_pt = 2;
+  // The option set: one of the closed list "option_set_names" of GetEffectMenu ("invocation",
+  // "metamagic", "fighting_style", "pact_boon", "hunters_prey", "defensive_tactics",
+  // "multiattack" or "superior_hunters_defense"). It never changes after the entry is
+  // created: it is in the key.
+  string set = 3;
+  // What the option asks of the character; unset asks nothing. An option whose
+  // prerequisite is not met is listed in the choice, disabled, with what it lacks.
+  OptionPrerequisite prerequisite = 4;
+  // At most 20.
+  repeated TableEffect effects = 5;
+}
+
+// OptionPrerequisite is what a table option asks for. Every one that is set must hold.
+message OptionPrerequisite {
+  // A level in one class, SRD or the table's.
+  OptionClassLevel class_level = 1;
+  // Other options the character has already picked, SRD options or the table's. At most 10.
+  repeated string requires_option_keys = 2;
+  // A Pact Boon the character has (an SRD one, or a table option of the set "pact_boon").
+  string requires_pact = 3;
+  // A spell the character knows (a cantrip, a known or a prepared spell).
+  string requires_spell_key = 4;
+}
+
+// OptionClassLevel is "level N in class X".
+message OptionClassLevel {
+  string class_key = 1;
+  // 1 to 20.
+  int32 level = 2;
 }
 
 // TableCasting is how a class, or a third caster's subclass, casts.
@@ -823,6 +866,7 @@ message CreateTableEntryRequest {
     TableBackground table_background = 14;
     TableSpell table_spell = 15;
     TableFeat table_feat = 17;
+    TableOption table_option = 18;
   }
   // Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
   // same key and the same request returns what the first call made instead of making another.
@@ -856,6 +900,7 @@ message UpdateTableEntryRequest {
     TableBackground table_background = 14;
     TableSpell table_spell = 15;
     TableFeat table_feat = 17;
+    TableOption table_option = 18;
   }
 }
 

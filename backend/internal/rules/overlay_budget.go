@@ -105,7 +105,7 @@ func (bg *budget) casting(path string, key string, c *TableCasting) error {
 // parts are walked in a fixed order, so the first refusal is always the same.
 func checkBudgets(o *Overlay) error {
 	bg := &budget{formulas: map[string]bool{}}
-	for _, part := range []func(*Overlay) error{bg.classes, bg.subclasses, bg.races, bg.subraces, bg.backgrounds, bg.feats} {
+	for _, part := range []func(*Overlay) error{bg.classes, bg.subclasses, bg.races, bg.subraces, bg.backgrounds, bg.feats, bg.options} {
 		if err := part(o); err != nil {
 			return err
 		}
@@ -207,6 +207,17 @@ func (bg *budget) subraces(o *Overlay) error {
 func (bg *budget) backgrounds(o *Overlay) error {
 	for bi := range o.Backgrounds {
 		if err := bg.feature(fmt.Sprintf("backgrounds[%d].feature", bi), &o.Backgrounds[bi].Feature); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// options counts each table option's effects, as a feature's.
+func (bg *budget) options(o *Overlay) error {
+	for i := range o.Options {
+		to := &o.Options[i]
+		if err := bg.feature(fmt.Sprintf("options[%d]", i), &TableFeature{Key: to.Key, Effects: to.Effects}); err != nil {
 			return err
 		}
 	}

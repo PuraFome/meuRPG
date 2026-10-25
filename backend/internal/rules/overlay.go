@@ -89,6 +89,7 @@ type Overlay struct {
 	Backgrounds []TableBackground
 	Spells      []TableSpell
 	Feats       []TableFeat
+	Options     []TableOption
 }
 
 // TableEntry is what every entry has. Key is "<kind>:<slug>@mesa" (kind is
@@ -651,6 +652,9 @@ func (c *content) isSwitchable(key string) bool {
 	case strings.HasPrefix(key, "feat:"):
 		_, ok := c.feats[key]
 		return ok
+	case strings.HasPrefix(key, OptionKeyPrefix):
+		_, ok := c.optionSet[key]
+		return ok
 	}
 	return false
 }
@@ -791,6 +795,8 @@ type overlayBuilder struct {
 	// of every feature and option; resources are the resource names the effects of
 	// each entry declare. They serve the checks made once every entry exists.
 	optionEntry, featureEntry, featureClass map[string]string
+	// optionOffers are the SRD features that already got a table option, so they are copied once.
+	optionOffers map[string]bool
 	resources                               map[string]map[string]bool
 }
 
@@ -819,6 +825,8 @@ type overlayKind struct {
 	// learn, when set, records what the later checks need of the entry once its
 	// key is claimed.
 	learn func(i int)
+	// checkKey, when set, replaces the check of the key's shape ("<prefix><slug>@mesa").
+	checkKey func(key string) error
 }
 
 // The order claimKeys claims the kinds in (overlayKind.claimRank).
@@ -830,6 +838,7 @@ const (
 	claimBackgrounds
 	claimSpells
 	claimFeats
+	claimOptions
 )
 
 // overlayKinds lists the seven kinds in the order addEntries adds them.
@@ -875,6 +884,12 @@ func (b *overlayBuilder) overlayKinds(o *Overlay) []overlayKind {
 			list: "feats", prefix: "feat:", claimRank: claimFeats, n: len(o.Feats),
 			entry: func(i int) TableEntry { return o.Feats[i].TableEntry },
 			add:   func(i int, path string) error { return b.addFeat(&o.Feats[i], path) },
+		},
+		{
+			list: "options", prefix: OptionKeyPrefix, claimRank: claimOptions, n: len(o.Options),
+			entry:    func(i int) TableEntry { return o.Options[i].TableEntry },
+			add:      func(i int, path string) error { return b.addOption(&o.Options[i], path) },
+			checkKey: checkOptionKey,
 		},
 	}
 }
@@ -1002,7 +1017,7 @@ func (b *overlayBuilder) claimKeys(o *Overlay) error {
 	slices.SortFunc(kinds, func(x, y overlayKind) int { return x.claimRank - y.claimRank })
 	for _, k := range kinds {
 		for _, i := range k.byKey() {
-			if err := b.claimEntry(k.prefix, fmt.Sprintf("%s[%d]", k.list, i), k.entry(i)); err != nil {
+			if err := b.claimEntry(k, fmt.Sprintf("%s[%d]", k.list, i), k.entry(i)); err != nil {
 				return err
 			}
 			if k.learn != nil {
@@ -1014,8 +1029,12 @@ func (b *overlayBuilder) claimKeys(o *Overlay) error {
 }
 
 // claimEntry checks an entry's key and claims it, then checks its name.
-func (b *overlayBuilder) claimEntry(prefix, path string, e TableEntry) error {
-	if err := checkTableKey(prefix, e.Key); err != nil {
+func (b *overlayBuilder) claimEntry(k overlayKind, path string, e TableEntry) error {
+	check := k.checkKey
+	if check == nil {
+		check = func(key string) error { return checkTableKey(k.prefix, key) }
+	}
+	if err := check(e.Key); err != nil {
 		return locate(err, path)
 	}
 	if err := b.claim(e.Key); err != nil {
@@ -1173,6 +1192,8 @@ func (c *content) cloneForOverlay() *content {
 	n.features = maps.Clone(c.features)
 	n.backgrounds = maps.Clone(c.backgrounds)
 	n.feats = maps.Clone(c.feats)
+	n.optionSet = map[string]string{}
+	n.optionPrereq = map[string]TableOptionPrerequisite{}
 	n.spells = maps.Clone(c.spells)
 	n.classLevels = maps.Clone(c.classLevels)
 	n.subclassLevels = maps.Clone(c.subclassLevels)

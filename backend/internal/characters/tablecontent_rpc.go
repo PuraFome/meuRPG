@@ -399,7 +399,7 @@ func (c *createCall) run(ctx context.Context, tx pgx.Tx) error {
 	if err != nil {
 		return err
 	}
-	key := entryKey(c.kind, c.body.GetNamePt(), rows)
+	key := entryKey(c.kind, c.body, rows)
 	// A name another entry has is one more violation of this entry, listed with the ones the rules find (not instead of them).
 	lead := duplicateLead(entries, c.kind, key, c.body.GetNamePt())
 	st, err := prepare(key, c.kind, c.body, nil, lead...)
@@ -676,6 +676,8 @@ func immutableChange(kind rulesv1.TableContentKind, old, next tableBody) *rulesv
 			}
 		}
 		return nil
+	case rulesv1.TableContentKind_TABLE_CONTENT_KIND_OPTION:
+		from, to, field = old.(*rulesv1.TableOption).GetSet(), next.(*rulesv1.TableOption).GetSet(), "table_option.set"
 	case rulesv1.TableContentKind_TABLE_CONTENT_KIND_SUBCLASS:
 		from, to, field = old.(*rulesv1.TableSubclass).GetClassKey(), next.(*rulesv1.TableSubclass).GetClassKey(), "table_subclass.class_key"
 	case rulesv1.TableContentKind_TABLE_CONTENT_KIND_SUBRACE:
