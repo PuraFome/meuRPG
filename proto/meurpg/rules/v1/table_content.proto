@@ -192,6 +192,20 @@ message TableEffect {
   string weapon = 32;
   string frequency = 33;
   bool no_crit_doubling = 34;
+  // spell_modifier: cast options the feature offers for the spells it fits.
+  // `applies_to` is "damage_spell" (a spell that deals damage), "cantrip", an SRD school
+  // key ("school:evocation") or an SRD damage type key ("damage-type:fire"): the spells
+  // whose school or one of whose damage types it is. `spell_change` is the one change:
+  // "damage_type_swap" (`from` lists the damage types it swaps among: the damage of one
+  // of them becomes another of them, which the caster picks at the cast),
+  // "bonus_damage" (`value` is the fixed damage added, a formula; `damage_type` its type,
+  // empty is the spell's own) or "extra_dice_per_slot_over" (`count` more dice of the
+  // spell's damage die for each slot level above the spell's own). `resource`, when set,
+  // names a resource effect of the same entry or its class: using the option spends one
+  // use, and the caster ticks it on the cast sheet. Without a resource, bonus_damage and
+  // extra_dice_per_slot_over are always on and damage_type_swap is a free choice.
+  string applies_to = 35;
+  string spell_change = 36;
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a

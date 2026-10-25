@@ -4098,6 +4098,20 @@ message CastSpellRequest {
   // caster back. It is `invalid_argument` for any other spell, and in a combat
   // without a map.
   SpellOrigin destination = 32;
+  // The cast options of the character's table features the caster ticked
+  // (SpellOption.table_options that are not always on). Each must be an option the
+  // spell takes at this slot, with a use left when it names a resource; otherwise
+  // `invalid_argument` or, with no use left, `failed_precondition` with NO_USES. The
+  // always-on ones apply without being named. The uses are spent with the slot.
+  repeated SpellOptionChoice spell_options = 33;
+}
+
+// SpellOptionChoice is a table cast option ticked on a casting.
+message SpellOptionChoice {
+  // The option's feature key.
+  string key = 1;
+  // damage_type_swap: the new damage type, one of the option's damage_type_keys.
+  string damage_type_key = 2;
 }
 
 // MetamagicChoice is one Metamagic option on a casting.

@@ -839,8 +839,22 @@ type TableEffect struct {
 	Weapon         string `protobuf:"bytes,32,opt,name=weapon,proto3" json:"weapon,omitempty"`
 	Frequency      string `protobuf:"bytes,33,opt,name=frequency,proto3" json:"frequency,omitempty"`
 	NoCritDoubling bool   `protobuf:"varint,34,opt,name=no_crit_doubling,json=noCritDoubling,proto3" json:"no_crit_doubling,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// spell_modifier: cast options the feature offers for the spells it fits.
+	// `applies_to` is "damage_spell" (a spell that deals damage), "cantrip", an SRD school
+	// key ("school:evocation") or an SRD damage type key ("damage-type:fire"): the spells
+	// whose school or one of whose damage types it is. `spell_change` is the one change:
+	// "damage_type_swap" (`from` lists the damage types it swaps among: the damage of one
+	// of them becomes another of them, which the caster picks at the cast),
+	// "bonus_damage" (`value` is the fixed damage added, a formula; `damage_type` its type,
+	// empty is the spell's own) or "extra_dice_per_slot_over" (`count` more dice of the
+	// spell's damage die for each slot level above the spell's own). `resource`, when set,
+	// names a resource effect of the same entry or its class: using the option spends one
+	// use, and the caster ticks it on the cast sheet. Without a resource, bonus_damage and
+	// extra_dice_per_slot_over are always on and damage_type_swap is a free choice.
+	AppliesTo     string `protobuf:"bytes,35,opt,name=applies_to,json=appliesTo,proto3" json:"applies_to,omitempty"`
+	SpellChange   string `protobuf:"bytes,36,opt,name=spell_change,json=spellChange,proto3" json:"spell_change,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TableEffect) Reset() {
@@ -1109,6 +1123,20 @@ func (x *TableEffect) GetNoCritDoubling() bool {
 		return x.NoCritDoubling
 	}
 	return false
+}
+
+func (x *TableEffect) GetAppliesTo() string {
+	if x != nil {
+		return x.AppliesTo
+	}
+	return ""
+}
+
+func (x *TableEffect) GetSpellChange() string {
+	if x != nil {
+		return x.SpellChange
+	}
+	return ""
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
@@ -5730,7 +5758,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"tableSpell\x12;\n" +
 	"\n" +
 	"table_feat\x18\x11 \x01(\v2\x1a.meurpg.rules.v1.TableFeatH\x00R\ttableFeatB\x06\n" +
-	"\x04body\"\x9a\a\n" +
+	"\x04body\"\xdc\a\n" +
 	"\vTableEffect\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
 	"\x06target\x18\x02 \x01(\tR\x06target\x12\x12\n" +
@@ -5768,7 +5796,10 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"damageType\x12\x16\n" +
 	"\x06weapon\x18  \x01(\tR\x06weapon\x12\x1c\n" +
 	"\tfrequency\x18! \x01(\tR\tfrequency\x12(\n" +
-	"\x10no_crit_doubling\x18\" \x01(\bR\x0enoCritDoubling\"\xc3\x01\n" +
+	"\x10no_crit_doubling\x18\" \x01(\bR\x0enoCritDoubling\x12\x1d\n" +
+	"\n" +
+	"applies_to\x18# \x01(\tR\tappliesTo\x12!\n" +
+	"\fspell_change\x18$ \x01(\tR\vspellChange\"\xc3\x01\n" +
 	"\fTableFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x17\n" +

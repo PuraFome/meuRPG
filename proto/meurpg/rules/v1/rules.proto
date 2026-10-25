@@ -2069,6 +2069,32 @@ message SpellOption {
   // True when the character has Sculpt Spells (the evocation wizard) and this spell is of
   // the school of evocation: the cast may name creatures to spare (CastSpellRequest.sculpted_ids).
   bool sculpt_spells = 31;
+  // The cast options the character's table features offer for this spell (spell_modifier
+  // effects), at the spell's own level. Empty for a character with none. The cast checks
+  // them again at the slot it is cast with.
+  repeated SpellTableOption table_options = 32;
+}
+
+// SpellTableOption is a cast option a table feature offers for a spell (a spell_modifier).
+message SpellTableOption {
+  // The feature that gives it ("feature:...@mesa"); CastSpellRequest.spell_options names it.
+  string key = 1;
+  string name_pt = 2;
+  // What it does, in one sentence.
+  string summary_pt = 3;
+  // "damage_type_swap", "bonus_damage" or "extra_dice_per_slot_over".
+  string change = 4;
+  // True when it applies by itself (no resource, not a swap): shown, not ticked.
+  bool always_on = 5;
+  // The resource each use spends, one use; empty for none, and the uses it has left.
+  string resource = 6;
+  int32 uses_left = 7;
+  // Whether the caster may tick it now; when not, the reason in Portuguese.
+  bool allowed = 8;
+  string disabled_reason_pt = 9;
+  // damage_type_swap: the damage types the caster may pick as the new one (SRD
+  // "damage-type:" keys), for the spell's damage.
+  repeated string damage_type_keys = 10;
 }
 
 // MetamagicOption is one Metamagic option the character knows, and whether the
