@@ -12,7 +12,7 @@ The browser draws what the server sends and computes no rule: multiclass prerequ
   The state is a word, never colour alone.
 - **Resources** (`resource-counters`, `shared/count-pips`): inside a session the sheet shows "Recursos" right after the combat numbers, one read-only box per resource (name, "2 de 3", pips, and when it comes back), then "Espaços de magia" with a row per spell level and the pact slots as "Pacto · 2º nível".
   Outside a session the sheet shows the maximums only. Nothing in the block takes focus.
-- **Session vitals** (`pages/live-session/player-vitals`): the HP box with a 2 px `accent` border and a bar (`aria-hidden`: the numbers say it all), the AC shield, temporary HP and hit dice, and the spell slots counted by the free ones ("1 livre de 4").
+- **Session vitals** (`pages/live-session/player-vitals`): the HP box with a 2 px `accent` border and a bar (`aria-hidden`: the numbers say it all), the AC shield, temporary HP and hit dice, and the spell slots counted by the free ones ("1 livre de 4"). The states that are on (a stance, a form) are small pills under the name, each with the rounds left ("2 rodadas", nothing for one that lasts until it ends).
   In combat the block is compact. On the master's "Grupo" row the HP bar is 6 px and the words "Abaixo da metade" or "Inconsciente" appear when needed; a druid in a beast form carries a `mr-tag` with the beast and its pool.
   Hit dice are written by size everywhere ("5d10 e 1d6").
 - **Creatures** (`creatures-panel`, `creature-card`, `creature-page`): a "Criaturas" panel after "Combate" and "Magias", only for whoever can have a creature; HP numbers reach the owner and the master only (RN-20), and for others the panel does not exist.
@@ -25,7 +25,7 @@ The browser draws what the server sends and computes no rule: multiclass prerequ
 - **Ability scores:** the method is chosen with `app-method-cards`; to place rolled results, each ability is a picker on desktop and a button that looks like the field on a phone (dashed and "Livre" when empty). A rolled value shows its dice (`dice-result`: the four dice, the lowest struck through; the `aria-label` says everything).
   "Escolher" with no result is text-sized, in `ink-muted`, because it is an instruction.
 - **Classes:** one block per class (`class-block`); hit points, spell slots and prerequisites come from the server.
-- **Table content** (`pages/content`): lists with "Da mesa" and "Arquivada" marks (`app-table-mark`); one page per entry; the effect menu (`app-effect-picker`) and the feature card (`app-feature-editor`); the 20-level grid (`app-level-grid`).
+- **Table content** (`pages/content`): lists with "Da mesa" and "Arquivada" marks (`app-table-mark`); one page per entry; the effect menu (`app-effect-picker`; a state, a weapon rule and a pseudo-weapon have their fields there, "Só enquanto o estado" is a text field under the effects that can be gated, and a reach or a range is typed in metres) and the feature card (`app-feature-editor`); the 20-level grid (`app-level-grid`).
   A server refusal lands on the field: the summary is an alert on top ("Não foi possível salvar a magia. 3 campos precisam de ajuste. Nada foi salvo; o que você digitou continua aqui."), focus goes to the first field with an error, and what has no field stays on top.
   "Esta entrada mudou enquanto você editava" is a notice with "Recarregar".
 - **Table rules** (`pages/table-rules`): the page is one form with "Salvar regras"; each switch is a real `role="switch"` with its word.

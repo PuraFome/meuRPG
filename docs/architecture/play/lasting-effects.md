@@ -75,6 +75,16 @@ A player's character keeps its level in `character_vitals.exhaustion_level` (the
 Level 6 needs `confirm_death`; in a combat it puts the player's character at three death failures (the `ConfirmDeath` flow), outside one the call marks the character dead (`CombatRoster.MarkDead`).
 The concentration save reads `combat.SaveMode` like the other saves (exhaustion 3 gives disadvantage, with `second_d20_face` for physical dice); its prompt (`ConcentrationSavePrompt`) carries the same mode and its sources (`mode`, `mode_sources_pt`, from `concentrationSources`, the function the roll uses too), so the sheet asks for both d20 whenever the roll needs two.
 
+## Table states
+
+A state a table feature defines (a stance, a form; [Table content](../rules-table-content.md#states)) is kept per character, not on the combatant, and the combat starts, counts and ends it (`combat_table_states.go`).
+
+- **Start and end.** `TakeAction` on the feature's action key turns the state on (the action's economy and the use of its resource are spent); with `end_state` it ends the state, free. Starting one that is on is refused (`STATE_ALREADY_ON`), ending one that is off too (`STATE_NOT_ON`); nothing is spent.
+- **The clock.** When the turn of the character starts, each state with rounds left loses one and ends at none (`reason` `duration`). A state with no duration is not counted.
+- **Other ends.** Incapacity or 0 hit points ends the states that end on `incapacitated`; the end of the combat ends the ones that have a duration (`left`); a rest ends the ones that name it (see [Characters](../characters.md#temporary-states)); the master's correction (`AdjustVitalsRequest.end_states`) ends any by hand.
+- **Log and undo.** Each start and end is a state line of kind `TABLE` (key and Portuguese name of the feature). The action event keeps the states before (`states_before`), so undoing the action puts them back, and the sheet's armor class, speed and size are worked out again with the states that are on.
+- **Who sees.** The states are in the character's vitals (`active_states`, with `rounds_left`) and so only the master and the player read them.
+
 ## Other details
 
 - A base-AC effect (Mage Armor) is worked out per target (`modifiersForTarget`: the sheet for a character; 13 + the initiative bonus, the Dexterity modifier, for a summoned creature).

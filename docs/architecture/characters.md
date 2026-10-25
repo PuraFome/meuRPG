@@ -368,6 +368,14 @@ Each method takes the caller's transaction and runs after the other module's own
 | `CharacterDirectory` (maps) | The characters that may stand on a map (`MapCharacters`), NPC portraits (`NpcPortraits`), party levels for the treasure generator (`PartyTotalLevels`), party vision (`PartyVision`), a creature's map tokens. |
 | Campaign package (campaigns) | The table content, NPCs, creatures, notes and reserved player characters of the campaign package (`package.go`, `package_players.go`), checked by the same calls that make them by hand. |
 
+## Temporary states
+
+The states a table feature defines (a stance, a form) that are on for a character are `characters.active_states`, a JSON list of `{key, rounds_left}` in the order they began.
+It is a column of the character, not of the vitals, because the sheet's numbers depend on it: every `Derive` of the sheet (`derive`, `maxima`, the combat sheet) passes the keys as `Build.ActiveStates`, and the vitals view and its revision follow the column.
+`SetActiveStates` (the `VitalsKeeper` the combat calls) replaces the list and checks that every key is a state the sheet defines; a key the content does not define is dropped on the next write and ignored on read.
+A short rest ends the states that say `short_rest`, a long rest the ones that say `short_rest` or `long_rest`; reaching 0 hit points ends the ones that say `incapacitated`; `AdjustVitals` with `end_states` ends the keys it names.
+Starting and counting down are the combat's ([Lasting effects](play/lasting-effects.md#table-states)).
+
 ## Vitals and rests
 
 A player character's current and temporary hit points, spell slots used, pact slots used, hit dice used by die size and class resources used last from one session to the next (RN-02; table `character_vitals`).

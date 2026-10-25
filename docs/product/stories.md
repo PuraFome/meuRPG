@@ -743,6 +743,12 @@ The data rules, limits and the server side are in [Table content: rules](../arch
   The level-up summary shows only the rows that change, with "Da mesa" and "Novas características".
   A spell's target and area come ready from the server, in metres ("Cone de 4,5 m").
   The "Habilidades" step shows neither the modifier nor the race bonus; the sheet does.
+- **States and weapon rules.** A feature may define a **state** (a stance, a form): a name, a duration in rounds (a formula; empty or 0 lasts until it ends), the situations that end it besides the duration (the player ends it, incapacity, a short rest, a long rest), the action it costs and, optionally, a resource whose use it spends.
+  - The sheet and the combat show the state as the card of an action with "Ativar" (it spends the action and the use) and, while it is on, "Encerrar" (free). Starting one that is on, or ending one that is off, is refused and spends nothing.
+  - The player's vitals and the game master's view list the states that are on with the rounds left ("2 rodadas"); a round of the owner's turn counts one down, and the state ends when none is left, at 0 hit points or other incapacity when it says so, at the rest it names and when the combat ends (if it has a duration). The game master's correction ends one by hand. The combat log says when it began and why it ended.
+  - The other effects of the entry may hold only while a state is on: a resistance, a roll mode, extra damage, a weapon rule and a pseudo-weapon carry "Só enquanto o estado", and any condition may read `active("nome")`. A resistance may also name `rage`.
+  - A **weapon rule** changes the weapons its filter picks (all, melee, ranged, finesse, magical, one by name): another ability for the attack or the damage (the better one counts), a bonus from -5 to 10 on the attack or the damage, a melee reach up to 18 m.
+  - A **pseudo-weapon** adds an attack of its own to the sheet and the combat (name, dice, damage type, ability, reach or range) that counts as a weapon the character is proficient with, so the weapon rules change it too.
 - **"A classe mudou":** the notice on the sheet (owner and game master) and the "O que mudou" sheet, with the server's sentences.
 - The SRD 5.2.1 attribution is on the "Créditos" page.
 - See [Design](../design/sheet.md#editors), [Design: combat without a grid](../design/combat.md#gridless-combat-teatro-da-mente) and [Architecture: table rules](../architecture/play/table-rules.md#table-rules-in-combat).
