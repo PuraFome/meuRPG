@@ -1,4 +1,10 @@
+import {
+  type Combatant,
+  CombatantKind,
+  CombatantState,
+} from '../../../gen/meurpg/play/v1/combat_pb';
 import type { ActionOption, DiceFormula } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { stateWord } from './combat-view';
 import { featureUsesText, isReactionHint, reasonText } from './combat-options';
 
 /**
@@ -103,4 +109,56 @@ export function featureWhy(o: ActionOption): string {
 /** The line under a feature's name: what a use costs and what is left ("Gasta de 1 a 3 · restam 5"), or "2 usos". */
 export function featureLine(o: ActionOption): string {
   return costDetail(o) || featureUsesText(o.action?.resourceKey ?? '', o.usesLeft);
+}
+
+/** The action heals or gives temporary hit points: it asks who gets them. */
+export function givesResult(o: ActionOption): boolean {
+  const a = o.action;
+  return !!a && (!!a.heal || a.tempHp > 0 || a.tempHpPerPoint > 0 || !!a.healPerPoint);
+}
+
+/** The use asks something first: how many points, who gets the result, or the dice of the heal. */
+export function opensSheet(o: ActionOption): boolean {
+  return asksHowMany(o) || givesResult(o);
+}
+
+/** The dice the heal rolls when `n` points are spent (the bonus once); `null` when the action rolls nothing. */
+export function healDice(
+  o: ActionOption,
+  n: number,
+): { count: number; sides: number; bonus: number } | null {
+  const base = zeroDice(o.action?.heal);
+  const per = zeroDice(o.action?.healPerPoint);
+  const extra = Math.max(0, n - leastCost(o));
+  const count = base.count + per.count * extra;
+  const sides = base.sides || per.sides;
+  return count > 0 && sides > 0 ? { count, sides, bonus: base.bonus + per.bonus * extra } : null;
+}
+
+/** A dice formula, with zeros for an unset one. */
+function zeroDice(d: DiceFormula | undefined): { count: number; sides: number; bonus: number } {
+  return { count: d?.count ?? 0, sides: d?.sides ?? 0, bonus: d?.bonus ?? 0 };
+}
+
+/** One creature the heal may go to. */
+export interface AllyRow {
+  readonly id: string;
+  readonly label: string;
+  /** "Ferido". */
+  readonly sub: string;
+}
+
+/** The other player characters of the combat the caller sees (the server sends only those) that are alive and not hidden: who a
+ * heal may go to besides the actor. The server checks the choice again and refuses a creature or a dead one. */
+export function allyRows(combatants: readonly Combatant[], ownId: string): AllyRow[] {
+  return combatants
+    .filter(
+      (c) =>
+        c.kind === CombatantKind.PLAYER &&
+        c.id !== ownId &&
+        !c.hidden &&
+        c.state !== CombatantState.DEAD &&
+        c.state !== CombatantState.DEFEATED,
+    )
+    .map((c) => ({ id: c.id, label: c.label, sub: stateWord(c.state, c.label) }));
 }

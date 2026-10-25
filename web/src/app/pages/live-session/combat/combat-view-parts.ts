@@ -1,3 +1,4 @@
+import { opensSheet } from '../../../core/combat/action-spend';
 import { afterNextRender, computed, inject, Directive } from '@angular/core';
 import {
   EncounterStatus,
@@ -255,7 +256,7 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
 
   /** "Usar" on a feature: Retomar o Fôlego rolls (its own sheet); the others
    * only spend the action and remind the table ("Você tem outra ação"). */
-  protected async useFeature(key: string, frenzy = false, points = 0): Promise<void> {
+  protected async useFeature(key: string, frenzy = false): Promise<void> {
     const own = this.own();
     const e = this.encounter();
     const option = this.options()?.options?.featureActions.find((a) => a.action?.key === key);
@@ -277,6 +278,11 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
       this.sheets.actions.secondWind(own, e, name, option.action.economy);
       return;
     }
+    if (opensSheet(option)) {
+      // A table feature that asks how many, for whom or the dice of its heal: its own sheet.
+      this.sheets.actions.tableAction(own, e, option);
+      return;
+    }
     const actionKey = key;
     if (
       await this.calls.run(
@@ -291,16 +297,11 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
               undefined,
               false,
               frenzy,
-              points,
             )
           ).encounter,
       )
     ) {
-      this.actionNote.set(
-        points > 0
-          ? `Usou ${name}, gastando ${points}.`
-          : featureNote(name, option.action.resourceKey, frenzy),
-      );
+      this.actionNote.set(featureNote(name, option.action.resourceKey, frenzy));
     }
   }
 

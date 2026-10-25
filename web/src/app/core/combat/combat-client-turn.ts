@@ -232,6 +232,7 @@ export class CombatTurnCalls {
     useExtraAction = false,
     frenzy = false,
     spend = 0,
+    healTarget = '',
   ): Promise<ActionResult> {
     const res = await this.base.keyed(
       [
@@ -244,6 +245,7 @@ export class CombatTurnCalls {
         useExtraAction,
         frenzy,
         spend,
+        healTarget,
       ],
       (sent) =>
         this.base.client.takeAction({
@@ -258,6 +260,8 @@ export class CombatTurnCalls {
           frenzy,
           // A table feature that lets the player choose how many points to spend (0 takes the cost); the server checks the range.
           spend,
+          // The ally a healing action goes to; empty is the actor.
+          healTargetCombatantId: healTarget,
           roll: !die
             ? { case: undefined }
             : 'inApp' in die

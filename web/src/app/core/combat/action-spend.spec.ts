@@ -1,7 +1,22 @@
 import { create } from '@bufbuild/protobuf';
 
 import { ActionOptionSchema } from '../../../gen/meurpg/rules/v1/rules_pb';
-import { asksHowMany, costDetail, notEnoughUses, spendPreview, spendRange } from './action-spend';
+import {
+  CombatantKind,
+  CombatantSchema,
+  CombatantState,
+} from '../../../gen/meurpg/play/v1/combat_pb';
+import {
+  allyRows,
+  asksHowMany,
+  costDetail,
+  givesResult,
+  healDice,
+  notEnoughUses,
+  opensSheet,
+  spendPreview,
+  spendRange,
+} from './action-spend';
 
 /** An invented table feature: "Fôlego da Mesa" spends 1 to 3 points of "Reserva de Teste" and heals 1d6 per point. */
 function option(
@@ -115,5 +130,51 @@ describe('what the action card says it will cost and give (display only: the ser
 
   it('reads "faltam usos" for an action the pool cannot pay', () => {
     expect(costDetail(option({ cost: 2, usesLeft: 1 }))).toBe('Faltam usos: gasta 2, restam 1');
+  });
+});
+
+describe('what makes the card open its sheet', () => {
+  it('opens for a choice of points, a heal or temporary hit points, and not for a plain action', () => {
+    expect(opensSheet(option({ costMax: 3 }))).toBe(true);
+    expect(opensSheet(option({ heal: { count: 1, sides: 8 } }))).toBe(true);
+    expect(opensSheet(option({ tempHp: 3 }))).toBe(true);
+    expect(opensSheet(option({ cost: 2 }))).toBe(false);
+    expect(givesResult(option())).toBe(false);
+  });
+
+  it('rolls the heal for the points spent: the dice grow by the dice per point', () => {
+    const o = option({
+      costMax: 3,
+      heal: { count: 1, sides: 6, bonus: 2 },
+      healPerPoint: { count: 1, sides: 6 },
+    });
+    expect(healDice(o, 1)).toEqual({ count: 1, sides: 6, bonus: 2 });
+    expect(healDice(o, 3)).toEqual({ count: 3, sides: 6, bonus: 2 });
+    expect(healDice(option({ tempHp: 3 }), 1)).toBeNull();
+  });
+});
+
+describe('who a heal may go to', () => {
+  const c = (id: string, label: string, over: object = {}) =>
+    create(CombatantSchema, {
+      id,
+      label,
+      kind: CombatantKind.PLAYER,
+      state: CombatantState.UNHURT,
+      ...over,
+    });
+
+  it('lists the other player characters the viewer sees and that are not dead, never the actor', () => {
+    const rows = allyRows(
+      [
+        c('me', 'Toren'),
+        c('a', 'Lira', { state: CombatantState.HURT }),
+        c('d', 'Morto', { state: CombatantState.DEAD }),
+        c('x', 'Goblin', { kind: CombatantKind.NPC }),
+        c('h', 'Escondida', { hidden: true }),
+      ],
+      'me',
+    );
+    expect(rows).toEqual([{ id: 'a', label: 'Lira', sub: 'Ferido' }]);
   });
 });

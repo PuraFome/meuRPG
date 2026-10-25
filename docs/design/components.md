@@ -69,7 +69,7 @@ Defined in `web/src/styles/_ui.scss`.
 | `<app-roll-picker>` (`shared/roll-picker`) | The two ways to roll one die (RN-18): "Rolar no app" and "Digitar o resultado". The saved preference is the filled button, the other an underlined text; a forced mode hides the other. Typing shows a 64 px field, a live total in a `role="status"` and "Confirmar 16", dashed until valid |
 | `<app-gallery-picker>` (`shared/gallery-picker`) | A `radiogroup` of gallery thumbnails; the chosen one has a 2 px `accent` border and a check; the last, dashed block is "Enviar imagem". The surrounding form supplies the visible label and the error |
 | `<app-effect-picker>`, `<app-feature-editor>`, `<app-feat-picker>` | The table-content editors' pieces; the picker draws the menu's cost, maximum cost, dice (`heal`), temporary hit points, event, restore and percentage fields, and the recharge list with its hints |
-| `<app-spend-ask>` | "Quantos?": the in-place question of a table action that lets the player choose how many points to spend (`pages/live-session/combat/spend-ask`) |
+| `<app-table-action-sheet>` | The sheet of a table action that asks "Quantos?", "Para quem" and the dice of its heal (`pages/live-session/combat/table-action-sheet`) |
 
 ## Display pieces
 

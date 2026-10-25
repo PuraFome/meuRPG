@@ -65,13 +65,7 @@ import { TabList, tabId, tabPanelId } from '../../../../shared/tab-list/tab-list
 import type { PactSlotsVm, SlotUsageVm } from '../../../../core/play/resource-usage.types';
 import { SlotDots } from '../../../../shared/slot-dots/slot-dots';
 import { ActionRow, type RowEconomy } from './action-row';
-import { SpendAsk } from '../spend-ask/spend-ask';
-import {
-  asksHowMany,
-  featureIsOff,
-  featureLine,
-  featureWhy,
-} from '../../../../core/combat/action-spend';
+import { featureIsOff, featureLine, featureWhy } from '../../../../core/combat/action-spend';
 import { GroupState } from './group-state';
 import { EXTRA_NAMES, FRENZY_QUESTION, TAB_ICONS, shortCircle } from './action-groups-text';
 
@@ -97,7 +91,6 @@ import { EXTRA_NAMES, FRENZY_QUESTION, TAB_ICONS, shortCircle } from './action-g
   selector: 'app-action-groups',
   imports: [
     ActionRow,
-    SpendAsk,
     Fold,
     GroupState,
     MatButtonModule,
@@ -180,12 +173,8 @@ export class ActionGroups {
   readonly feature = output<string>();
   /** The Berserker's answer to "Entrar em frenesi?": the key of Fúria and whether the rage is a frenzy. */
   readonly rage = output<{ readonly key: string; readonly frenzy: boolean }>();
-  /** The answer to "Quantos?" of a table feature that lets the player choose how many points to spend: the key and the number. */
-  readonly spend = output<{ readonly key: string; readonly points: number }>();
   /** The Fúria whose question "Entrar em frenesi?" is open, in place of the next tap. */
   protected readonly frenzyAsk = signal<string | null>(null);
-  /** The key of the feature whose "Quantos?" is open. */
-  protected readonly spendAsk = signal<string | null>(null);
   protected readonly frenzyText = FRENZY_QUESTION;
   readonly move = output<void>();
   /** "Levantar-se" of a prone combatant (half the speed). */
@@ -468,10 +457,6 @@ export class ActionGroups {
     const key = f.action?.key ?? '';
     if (f.offersFrenzy) {
       this.frenzyAsk.set(key);
-      return;
-    }
-    if (asksHowMany(f)) {
-      this.spendAsk.set(key);
       return;
     }
     this.feature.emit(key);
