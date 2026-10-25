@@ -13,6 +13,78 @@ import { MapPointKind, MapRefSchema } from '../../../../gen/meurpg/maps/v1/maps_
 import { MapView } from '../../../shared/map-view/map-view';
 import { LiveSessionSource } from '../../../core/play/live-session.types';
 import { SessionMap } from './session-map';
+import { TokenMover } from '../../../core/maps/token-mover';
+import { MapMoveStop } from '../../../../gen/meurpg/maps/v1/maps_pb';
+
+describe('SessionMap moving tokens outside combat (B2)', () => {
+  async function mount() {
+    const tor = mapToken('tor', 'Tor', { xBp: 2000, yBp: 2000 });
+    const brisa = mapToken('brisa', 'Brisa', { xBp: 3000, yBp: 2000 });
+    const state = new MapState(async () =>
+      mapResponse(
+        mapMessage('map-1', 'Torre', { revealed: true, gridColumns: 20, gridRows: 20 }),
+        [],
+        [tor, brisa],
+      ),
+    );
+    await state.open('map-1');
+    const moveTokens = vi.fn(
+      async (_c: string, _m: string, ids: readonly string[], xBp: number, yBp: number) => ({
+        moved: true,
+        blocked: '',
+        results: ids.map((id) => ({
+          characterId: id,
+          name: id,
+          xBp,
+          yBp,
+          asked: 4,
+          moved: 2,
+          stopped: MapMoveStop.NO_PASS,
+        })),
+      }),
+    );
+    const mover = new TokenMover({ moveTokens }, state, () => 'camp-1');
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        { provide: MapsClient, useValue: { placeToken: vi.fn() } },
+        { provide: LiveSessionSource, useValue: {} },
+        { provide: SceneClient, useValue: {} },
+      ],
+    });
+    const fixture = TestBed.createComponent(SessionMap);
+    fixture.componentRef.setInput('campaignId', 'camp-1');
+    fixture.componentRef.setInput('state', state);
+    fixture.componentRef.setInput('mapId', 'map-1');
+    fixture.componentRef.setInput('isMaster', true);
+    fixture.componentRef.setInput('mover', mover);
+    fixture.detectChanges();
+    const view = fixture.debugElement.query(By.directive(MapView)).componentInstance as MapView;
+    return { state, view, fixture, mover, moveTokens };
+  }
+
+  it('asks the server to walk a dragged character token instead of putting it where it was dropped', async () => {
+    const { view, moveTokens, mover, state } = await mount();
+    view.moved.emit({ kind: 'token', id: 'tor', xBp: 5000, yBp: 2000 });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(moveTokens).toHaveBeenCalledWith('camp-1', 'map-1', ['tor'], 5000, 2000);
+    expect(state.tokens().find((t) => t.characterId === 'tor')).toMatchObject({ xBp: 5000 });
+    expect(mover.last()?.notice.lead).toBe('O movimento parou antes.');
+  });
+
+  it('chooses a token on a click, adds one on Shift, and a click on a square is the destination', async () => {
+    const { view, mover, fixture } = await mount();
+    view.tokenPick.emit({ id: 'tor', additive: false });
+    view.tokenPick.emit({ id: 'brisa', additive: true });
+    expect(mover.selected()).toEqual(['tor', 'brisa']);
+    view.emptyClick.emit({ xBp: 7000, yBp: 7000 });
+    expect(mover.target()).not.toBeNull();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-move-overlay')).not.toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('app-move-overlay .ring')).toHaveLength(3);
+  });
+});
 
 describe('SessionMap dragging a token', () => {
   const placeToken = vi.fn();

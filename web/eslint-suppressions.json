@@ -1516,11 +1516,6 @@
       "count": 1
     }
   },
-  "src/app/pages/live-session/session-tokens/session-tokens.ts": {
-    "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 1
-    }
-  },
   "src/app/pages/live-session/session-xp/session-xp.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
       "count": 1

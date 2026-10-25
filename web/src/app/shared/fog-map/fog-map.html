@@ -83,6 +83,8 @@
           [initialOf]="initialOf"
           (pointSelect)="pointSelect.emit($event)"
           (moved)="moved.emit($event)"
+          (tokenPick)="tokenPick.emit($event)"
+          (emptyClick)="emptyClick.emit($event)"
         >
           <app-fog-base
             mapBase
@@ -99,6 +101,7 @@
           @if (isMaster() && dark().size > 0) {
             <app-dark-marks mapOverlay [tokens]="tokens()" [dark]="dark()" [chosen]="darkChosen()" />
           }
+          <ng-content select="[mapOverlay]" ngProjectAs="[mapOverlay]" />
           @if (pins()) {
             <app-map-pins mapOverlay [points]="points()" [columns]="v.columns" [rows]="v.rows" [isMaster]="isMaster()" />
           }

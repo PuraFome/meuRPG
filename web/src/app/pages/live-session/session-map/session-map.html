@@ -148,7 +148,13 @@
             [dark]="darkIds()"
             [darkChosen]="darkChosen()"
             (moved)="onMoved($event)"
-          />
+            (tokenPick)="mover()?.pick($event.id, $event.additive)"
+            (emptyClick)="mover()?.tap($event)"
+          >
+            @if (mover(); as m) {
+              <app-move-overlay mapOverlay [rings]="m.rings()" [plan]="m.plan()" [trail]="m.trail()" [columns]="map()?.gridColumns ?? 0" />
+            }
+          </app-fog-map>
           @if (isMaster()) {
             <div class="map__foot">
               <div class="map__legend">
@@ -196,7 +202,12 @@
             [mode]="isMaster() && !phone() ? 'tokens' : 'preview'"
             [focusParty]="phone()"
             (moved)="onMoved($event)"
+            (tokenPick)="mover()?.pick($event.id, $event.additive)"
+            (emptyClick)="mover()?.tap($event)"
           >
+            @if (mover(); as m) {
+              <app-move-overlay mapOverlay [rings]="m.rings()" [plan]="m.plan()" [trail]="m.trail()" [columns]="map()?.gridColumns ?? 0" />
+            }
             <!-- The traps, the chests and the lights: drawn over the picture (docs/design/README.md). -->
             <app-map-pins
               mapOverlay

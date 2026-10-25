@@ -64,6 +64,7 @@ export class LiveSession {
   protected readonly state = new LiveSessionState();
   private readonly parts = new LiveSessionParts(this.services, this.state);
   protected readonly mapState = this.parts.mapState;
+  protected readonly mover = this.parts.mover;
   protected readonly trapBoard = this.parts.trapBoard;
   protected readonly toasts = this.parts.toasts;
   protected readonly fog = this.parts.fog;

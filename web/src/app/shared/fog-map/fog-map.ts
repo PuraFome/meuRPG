@@ -127,6 +127,9 @@ export class FogMap {
   /** The master tapped a door (`doorTaps`). */
   readonly doorPick = output<DoorSquare>();
   readonly moved = output<MapMove>();
+  /** The master's click on a token, with Shift or not, and on an empty spot (B2: choose to move, and where to). */
+  readonly tokenPick = output<{ id: string; additive: boolean }>();
+  readonly emptyClick = output<{ xBp: number; yBp: number }>();
 
   protected readonly phone = mediaQuery(PHONE_QUERY);
   protected readonly view = viewChild(MapView);

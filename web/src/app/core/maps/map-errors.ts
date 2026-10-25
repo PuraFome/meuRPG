@@ -150,3 +150,45 @@ export function editorErrorMessage(err: unknown, call: EditorCall, what: string)
   }
   return mapErrorMessage(err, what);
 }
+
+/** What a failed `MoveMapTokens` says to the master (B2): the token did not move. */
+export function moveErrorMessage(err: unknown, who: string): string {
+  const reason = mapBlockedReason(err);
+  if (reason === MapBlockedReason.COMBAT_RUNNING) {
+    return `Não deu para mover ${who}. Há um combate neste mapa: os tokens andam pelo combate.`;
+  }
+  const lost = `O token voltou para onde estava.`;
+  return describeConnectError(err, {
+    [Code.InvalidArgument]: `Não deu para mover ${who}. Esse destino está fora do mapa. ${lost}`,
+    [Code.NotFound]: `Não deu para mover ${who}. Ele não está mais neste mapa. ${lost}`,
+    [Code.PermissionDenied]: `Não deu para mover ${who}. Só o mestre move os tokens aqui. ${lost}`,
+  });
+}
+
+/** What a failed `PutPartyOnMap` says to the master (B2-05). */
+export function putPartyErrorMessage(err: unknown): string {
+  switch (mapBlockedReason(err)) {
+    case MapBlockedReason.NO_GRID:
+      return 'Este mapa não tem grade: sem quadrados não dá para pôr o grupo em formação.';
+    case MapBlockedReason.COMBAT_RUNNING:
+      return 'Há um combate neste mapa: os tokens andam pelo combate.';
+    case MapBlockedReason.NO_ROOM:
+      return 'Não há quadrados livres para tantos personagens perto desse lugar. Escolha outro lugar ou tire alguém da lista.';
+    default:
+      return describeConnectError(err, {
+        [Code.InvalidArgument]:
+          'Não deu para pôr o grupo: escolha de 1 a 40 personagens e um quadrado do mapa.',
+        [Code.NotFound]:
+          'Esse mapa, ou um desses personagens, não existe mais. Recarregue a página.',
+        [Code.PermissionDenied]: 'Só o mestre da campanha põe o grupo no mapa.',
+      });
+  }
+}
+
+/** What a failed `SetMapPlayersMove` says to the master. */
+export function playersMoveErrorMessage(err: unknown): string {
+  return describeConnectError(err, {
+    [Code.NotFound]: 'Esse mapa não existe mais. Recarregue a página.',
+    [Code.PermissionDenied]: 'Só o mestre da campanha muda isso.',
+  });
+}

@@ -26,6 +26,8 @@ import { CombatState } from '../../core/combat/combat-state';
 import { DarkWatch } from '../../core/maps/dark-watch';
 import { FogView } from '../../core/maps/fog-view';
 import { MapState } from '../../core/maps/map-state';
+import { TokenMoveClient } from '../../core/maps/token-move-client';
+import { TokenMover } from '../../core/maps/token-mover';
 import { NotesState } from '../../core/notes/notes-state';
 import { ConversationState } from '../../core/conversation/conversation-state';
 import { SceneState } from '../../core/play/scene-state';
@@ -48,6 +50,7 @@ export interface LiveSessionServices {
   readonly dialog: MatDialog;
   readonly bottomSheet: MatBottomSheet;
   readonly mapsApi: MapsClient;
+  readonly tokenMoveApi: TokenMoveClient;
   readonly combatApi: CombatClient;
   readonly castingApi: CastingClient;
   readonly sceneApi: SceneClient;
@@ -81,6 +84,7 @@ export function injectLiveSessionServices(): LiveSessionServices {
     dialog: inject(MatDialog),
     bottomSheet: inject(MatBottomSheet),
     mapsApi: inject(MapsClient),
+    tokenMoveApi: inject(TokenMoveClient),
     combatApi: inject(CombatClient),
     castingApi: inject(CastingClient),
     sceneApi: inject(SceneClient),
@@ -102,6 +106,8 @@ export function injectLiveSessionServices(): LiveSessionServices {
 /** The state holders the page builds around its services: each one is a plain class with its own tests. */
 export class LiveSessionParts {
   readonly mapState: MapState;
+  /** The master's moving of tokens outside combat (B2): the selection and the move the map and the "Tokens" tab share. */
+  readonly mover: TokenMover;
   /** What traps did and the damage that waits (MR-035): the master's panel and the players' "Registro". */
   readonly trapBoard: TrapBoard;
   /** The player's toasts: a trap noticed, a treasure found (8 s each). */
@@ -134,6 +140,7 @@ export class LiveSessionParts {
   constructor(services: LiveSessionServices, state: LiveSessionState) {
     const { mapsApi } = services;
     this.mapState = new MapState((mapId) => mapsApi.get(state.campaignId(), mapId));
+    this.mover = new TokenMover(services.tokenMoveApi, this.mapState, () => state.campaignId());
     this.trapBoard = new TrapBoard(
       services.trapsApi,
       mapsApi,

@@ -151,6 +151,8 @@ export class MapView {
 
   readonly pointSelect = output<string>();
   readonly tokenSelect = output<string>();
+  /** The same click with its modifier: Shift (or Ctrl, or Cmd) adds the token to a selection instead of choosing only it (B2). */
+  readonly tokenPick = output<{ id: string; additive: boolean }>();
   /** A click on an empty spot of the map, where it fell. */
   readonly emptyClick = output<{ xBp: number; yBp: number }>();
   readonly moved = output<MapMove>();
@@ -441,6 +443,7 @@ export class MapView {
       this.pointSelect.emit(id);
     } else if (kind === 'token' && this.tokensMovable()) {
       this.tokenSelect.emit(id);
+      this.tokenPick.emit({ id, additive: event.shiftKey || event.ctrlKey || event.metaKey });
     }
   }
 

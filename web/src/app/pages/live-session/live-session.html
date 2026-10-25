@@ -428,6 +428,7 @@
             [people]="view.viewAsPeople()"
             [viewAs]="state.viewAs()"
             [tick]="state.visionTick()"
+            [mover]="mover"
             (viewNoteChange)="state.viewNote.set($event)"
             (viewAsGone)="viewAsGone()"
             (viewAsBack)="setViewAs(null)"
@@ -438,6 +439,9 @@
               [campaignId]="state.campaignId()"
               [state]="mapState"
               [info]="state.partyInfo()"
+              [mover]="mover"
+              [party]="view.cluePlayers()"
+              [layers]="view.fogMaster() ? fog.layers() : null"
             />
             @if (view.fogMaster()) {
               <app-fog-master-panel

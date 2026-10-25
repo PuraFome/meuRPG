@@ -2689,6 +2689,75 @@ test('o retrato, o palco e os destaques passam no axe e nas conferências de lay
   await scanStageScreens(browser, 'light', 320);
 });
 
+// MR-012, RN-10 (B2): the master's moving of tokens outside combat, in the "Tokens" tab under the map: the switch, "Pôr o grupo no mapa" with its
+// dialog (a sheet on a phone), "Mover Pensantus" with the pad, the amber notice of a move that stopped before a marked square, the group.
+async function scanTokenMoveScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width >= 768 ? 1000 : 844 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const pensantus = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const toren = await browser.newContext({ storageState: authStatePath('E-mail Não Verificado'), colorScheme, viewport });
+  const [m, a, b] = await Promise.all([master.newPage(), pensantus.newPage(), toren.newPage()]);
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await Promise.all([m.goto('/'), a.goto('/'), b.goto('/')]);
+    const table = await tableForFog(m, a, b, `Acessibilidade mover ${Date.now()}`, { noFog: true, pensantusAt: { col: 2, row: 7 }, torenAt: { col: 3, row: 9 } });
+    campaignId = table.campaignId;
+    const marked = await callRPC(m, 'meurpg.maps.v1.MapService/PaintMapCells', { campaignId, mapId: table.mapId, layer: 'MAP_LAYER_NO_PASS', value: 1, squares: [{ col: 9, row: 7 }] });
+    expect(marked.ok(), await marked.text()).toBeTruthy();
+    await m.goto(sessionRoute(campaignId));
+    await showMapTool(m, 'Tokens');
+    await expect(m.getByRole('switch', { name: 'Os jogadores movem os próprios personagens' })).toBeVisible();
+    await expectScreenPasses(m, `Tokens, nada escolhido ${where}`);
+
+    await m.getByRole('checkbox', { name: 'Escolher Pensantus para mover' }).check();
+    await expect(m.getByRole('heading', { name: 'Mover Pensantus' })).toBeVisible();
+    await expectScreenPasses(m, `Mover Pensantus, sem destino ${where}`);
+    await m.getByRole('button', { name: 'Ir para a direita' }).click();
+    for (let i = 0; i < 9; i++) {
+      await m.getByRole('button', { name: 'Mais um quadrado' }).click();
+    }
+    await expect(m.getByText('Pensantus vai 10 quadrados para a direita')).toBeVisible();
+    await expectScreenPasses(m, `Mover Pensantus, com destino ${where}`);
+    await m.getByRole('button', { name: 'Mover Pensantus', exact: true }).click();
+    await expect(m.getByText('O movimento parou antes.')).toBeVisible();
+    await expectScreenPasses(m, `Mover Pensantus, parou antes ${where}`);
+
+    await m.getByRole('checkbox', { name: 'Escolher Toren para mover' }).check();
+    await expect(m.getByRole('heading', { name: '2 selecionados' })).toBeVisible();
+    await expectScreenPasses(m, `Dois selecionados ${where}`);
+
+    await m.getByRole('button', { name: 'Pôr o grupo no mapa' }).click();
+    const dialog = m.getByRole('dialog', { name: 'Pôr o grupo no mapa' });
+    await expect(dialog).toBeVisible();
+    await m.waitForFunction(() => document.getAnimations().every((x) => x.playState !== 'running'));
+    await expectScreenPasses(m, `Pôr o grupo no mapa ${where}`);
+  } finally {
+    await endOpenSessionRPC(m, campaignId);
+    await Promise.all([master.close(), pensantus.close(), toren.close()]);
+  }
+}
+
+test('o mover de tokens passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-012', '@RN-10'] }, async ({ browser }) => {
+  test.setTimeout(480_000);
+  await scanTokenMoveScreens(browser, 'light', 1280);
+});
+
+test('o mover de tokens passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-012', '@RN-10'] }, async ({ browser }) => {
+  test.setTimeout(480_000);
+  await scanTokenMoveScreens(browser, 'dark', 390);
+});
+
+test('o mover de tokens passa no axe e nas conferências de layout no tema escuro, no tablet de 768', { tag: ['@a11y', '@MR-012', '@RN-10'] }, async ({ browser }) => {
+  test.setTimeout(480_000);
+  await scanTokenMoveScreens(browser, 'dark', 768);
+});
+
+test('o mover de tokens passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-012', '@RN-10'] }, async ({ browser }) => {
+  test.setTimeout(480_000);
+  await scanTokenMoveScreens(browser, 'light', 320);
+});
+
 /** The spells in the session (Etapa 8, slice 8.4; E8-02, E8-03): the list with its "?" and slot
  * rows, the details sheet, the cast sheet with its "?", the details over it, the result a player
  * reads, and the master's card under Sono in the log. */
