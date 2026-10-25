@@ -81,28 +81,6 @@
   list-style: none;
 }
 
-// On the narrowest phones the eye leaves no room for the button's words: the button keeps its icon and its
-// accessible name, and the row stays on one line.
-@container stage-rows (max-width: 340px) {
-  .row {
-    gap: var(--mr-space-2);
-  }
-
-  .row__speak {
-    width: 44px;
-    min-width: 44px;
-    padding: 0;
-
-    .mat-icon {
-      margin: 0;
-    }
-  }
-
-  .row__speak-label {
-    display: none;
-  }
-}
-
 .row {
   display: flex;
   align-items: center;
@@ -271,5 +249,28 @@
   .row__speak {
     width: 116px;
     padding: 0 4px;
+  }
+}
+
+// On the narrowest phones the eye leaves no room for the button's words: the button keeps its icon and its
+// accessible name, and the row stays on one line. Last in the file, so it wins over the phone width of
+// "Dar a fala" above (same specificity, the later rule applies).
+@container stage-rows (max-width: 340px) {
+  .row {
+    gap: var(--mr-space-2);
+  }
+
+  .row__speak {
+    width: 44px;
+    min-width: 44px;
+    padding: 0;
+
+    .mat-icon {
+      margin: 0;
+    }
+  }
+
+  .row__speak-label {
+    display: none;
   }
 }
