@@ -87,12 +87,13 @@ function spellFacts(spell: SpellOption | undefined) {
   };
 }
 
-/** What the sorcerer's options say: Metamagic, Sculpt Spells, and a damage cantrip's dice at the caster's level. */
+/** What the sorcerer's options say: Metamagic, Sculpt Spells, the table features' cast options, and a damage cantrip's dice at the caster's level. */
 function optionFacts(spell: SpellOption | undefined, cantrip: Attack | undefined) {
   return {
     cantripDice: cantrip?.spellDice ?? '',
     metamagic: spell?.metamagicOptions ?? [],
     sculptSpells: spell?.sculptSpells ?? false,
+    tableOptions: spell?.tableOptions ?? [],
   };
 }
 

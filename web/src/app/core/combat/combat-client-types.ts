@@ -171,6 +171,8 @@ export interface CastExtras {
   readonly sculptedIds?: readonly string[];
   /** A teleport spell on a map with a grid (Passo Nebuloso): the square the caster lands on. */
   readonly destination?: { readonly col: number; readonly row: number };
+  /** The cast options of the character's table features that were ticked (`SpellOptionChoice`). */
+  readonly spellOptions?: readonly { readonly key: string; readonly damageTypeKey: string }[];
 }
 
 /** What a summoning spell brings (`SummonChoice`): the option, a content key per creature and, optionally, a name each. */

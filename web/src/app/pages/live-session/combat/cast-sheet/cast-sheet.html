@@ -191,6 +191,13 @@
           </button>
         }
       }
+      @if (ch.tableRows().length) {
+        <app-table-option-picker
+          [rows]="ch.tableRows()"
+          (flip)="ch.toggleTable($event)"
+          (typed)="ch.pickTableType($event.key, $event.type)"
+        />
+      }
       @if (ch.pool(); as p) {
         @if (ch.usesPicker() && (!ar.flow || (ar.flow.step() === 'list' && !ar.asks()))) {
           <app-roll-picker

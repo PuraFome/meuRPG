@@ -3,6 +3,7 @@ import type { PendingDamage, SpellTargets } from '../../../../../gen/meurpg/play
 import type {
   ActionEconomy,
   MetamagicOption,
+  SpellTableOption,
   SlotChoice,
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import type { CombatState } from '../../../../core/combat/combat-state';
@@ -68,6 +69,8 @@ export interface CastSheetData {
   readonly resume?: readonly PendingDamage[];
   /** The Metamagic options the sorcerer knows, for this spell (`SpellOption.metamagic_options`); empty for none. */
   readonly metamagic?: readonly MetamagicOption[];
+  /** The cast options the character's table features offer for this spell (`SpellOption.table_options`); empty for none. */
+  readonly tableOptions?: readonly SpellTableOption[];
   /** The sorcery points left and their maximum, for "Pontos de Feitiçaria: 5 de 5". */
   readonly sorceryPoints?: Pool | null;
   /** The caster has Sculpt Spells and the spell is of evocation (`SpellOption.sculpt_spells`). */

@@ -3,10 +3,11 @@ import { MatIconModule } from '@angular/material/icon';
 
 import {
   EFFECT_FIELD_HINTS,
-  EFFECT_FIELD_LABELS,
+  effectFieldLabel,
   type EffectDraft,
   type EffectMenuVm,
   emptyEffect,
+  visibleFields,
 } from '../../core/content/effect-draft';
 import type { EffectMenuField } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { CheckRow } from '../form-fields/check-row';
@@ -60,7 +61,9 @@ export class EffectPicker {
       ? 'Só o texto aparece na ficha; o app não faz conta com ele.'
       : (this.menu().typeOf(t)?.hintPt ?? '');
   });
-  protected readonly allFields = computed(() => this.menu().fieldsOf(this.effect().type));
+  protected readonly allFields = computed(() =>
+    visibleFields(this.menu().fieldsOf(this.effect().type), this.effect()),
+  );
   /** "Mais opções": the optional fields stay folded until they hold something, a refusal points at them, or the person opens them;
    * a field the menu says is always shown (what the effect does lies in it, as ranged_attack's switches) is never folded. */
   protected readonly expanded = signal(false);
@@ -98,7 +101,9 @@ export class EffectPicker {
 
   protected labelOf(f: EffectMenuField): string {
     // The resource an action spends is the same proto field as a resource's own name.
-    return f.kind === 'resource_ref' ? 'Gasta um uso de' : (EFFECT_FIELD_LABELS[f.name] ?? f.name);
+    return f.kind === 'resource_ref'
+      ? 'Gasta um uso de'
+      : effectFieldLabel(this.effect().type, f.name);
   }
 
   /** The hint of a field that is not showing a refusal: written beside it. */
@@ -136,7 +141,9 @@ export class EffectPicker {
     const menu = this.menu();
     const list =
       f.name === 'from' && f.list === ''
-        ? menu.fromOptions(this.effect().choice)
+        ? this.effect().type === 'spell_modifier'
+          ? menu.list('damage_types')
+          : menu.fromOptions(this.effect().choice)
         : f.name === 'spells'
           ? []
           : menu.list(f.list);

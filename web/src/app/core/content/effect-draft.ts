@@ -53,6 +53,17 @@ export interface EffectDraft {
   /** resistance: the damage type it leaves out, and when it holds ("rage"). */
   except: string;
   while: string;
+  /** extra_damage: how many dice (a formula) and their sides, the damage type ("" is the weapon's), the weapon kind, how often it
+   * applies, and whether a critical hit leaves the dice alone. */
+  dice: string;
+  diceSides: number;
+  damageType: string;
+  weapon: string;
+  frequency: string;
+  noCritDoubling: boolean;
+  /** spell_modifier: the spells it fits, and the one change it makes. */
+  appliesTo: string;
+  spellChange: string;
 }
 
 let nextId = 0;
@@ -93,6 +104,14 @@ export function emptyEffect(type = ''): EffectDraft {
     noLongRangeDisadvantage: false,
     except: '',
     while: '',
+    dice: '',
+    diceSides: 0,
+    damageType: '',
+    weapon: '',
+    frequency: '',
+    noCritDoubling: false,
+    appliesTo: '',
+    spellChange: '',
   };
 }
 
@@ -128,6 +147,14 @@ export function effectToDraft(e: TableEffect): EffectDraft {
     noLongRangeDisadvantage: e.noLongRangeDisadvantage,
     except: e.except,
     while: e.while,
+    dice: e.dice,
+    diceSides: e.diceSides,
+    damageType: e.damageType,
+    weapon: e.weapon,
+    frequency: e.frequency,
+    noCritDoubling: e.noCritDoubling,
+    appliesTo: e.appliesTo,
+    spellChange: e.spellChange,
   };
 }
 
@@ -146,7 +173,7 @@ type EffectWriter = (d: EffectDraft) => EffectInit;
 
 /** A text the server reads trimmed; an empty one is not sent. */
 const trimmedText =
-  (key: 'value' | 'when' | 'resource' | 'max' | 'textPt'): EffectWriter =>
+  (key: 'value' | 'when' | 'resource' | 'max' | 'textPt' | 'dice'): EffectWriter =>
   (d) => {
     const text = d[key].trim();
     return text ? ({ [key]: text } as EffectInit) : {};
@@ -168,7 +195,12 @@ const pickedText =
       | 'applies'
       | 'ability'
       | 'except'
-      | 'while',
+      | 'while'
+      | 'damageType'
+      | 'weapon'
+      | 'frequency'
+      | 'appliesTo'
+      | 'spellChange',
   ): EffectWriter =>
   (d) =>
     d[key] ? ({ [key]: d[key] } as EffectInit) : {};
@@ -212,6 +244,14 @@ const EFFECT_WRITERS: ReadonlyMap<string, EffectWriter> = new Map<string, Effect
   ['text_pt', trimmedText('textPt')],
   ['except', pickedText('except')],
   ['while', pickedText('while')],
+  ['dice', trimmedText('dice')],
+  ['dice_sides', (d) => (d.diceSides > 0 ? { diceSides: d.diceSides } : {})],
+  ['damage_type', pickedText('damageType')],
+  ['weapon', pickedText('weapon')],
+  ['frequency', pickedText('frequency')],
+  ['no_crit_doubling', (d) => (d.noCritDoubling ? { noCritDoubling: true } : {})],
+  ['applies_to', pickedText('appliesTo')],
+  ['spell_change', pickedText('spellChange')],
   ['ignore_cover', (d) => (d.ignoreCover ? { ignoreCover: true } : {})],
   [
     'range_multiplier',
@@ -227,10 +267,32 @@ const EFFECT_WRITERS: ReadonlyMap<string, EffectWriter> = new Map<string, Effect
  * list is not sent: the server reads "not set" the same way. */
 export function draftToEffect(d: EffectDraft, menu: EffectMenuVm): EffectInit {
   const out: EffectInit = { type: d.type };
-  for (const f of menu.fieldsOf(d.type)) {
+  for (const f of visibleFields(menu.fieldsOf(d.type), d)) {
     Object.assign(out, EFFECT_WRITERS.get(f.name)?.(d));
   }
   return out;
+}
+
+/** What a spell_modifier's change reads besides the fields every change has: the swap lists the types it swaps among, the bonus
+ * damage its amount and type, the extra dice their count. The other fields stay out of the editor (and of the request). */
+const SPELL_CHANGE_FIELDS: Readonly<Record<string, readonly string[]>> = {
+  damage_type_swap: ['from'],
+  bonus_damage: ['value', 'damage_type'],
+  extra_dice_per_slot_over: ['count'],
+};
+const SPELL_CHANGE_ONLY: ReadonlySet<string> = new Set(Object.values(SPELL_CHANGE_FIELDS).flat());
+
+/** The fields of the draft's type that apply to it now: a spell_modifier shows only what its chosen change reads (none of the
+ * change's own fields until one is chosen); every other type shows all of its menu fields. */
+export function visibleFields(
+  fields: readonly EffectMenuField[],
+  d: EffectDraft,
+): readonly EffectMenuField[] {
+  if (d.type !== 'spell_modifier') {
+    return fields;
+  }
+  const own = SPELL_CHANGE_FIELDS[d.spellChange] ?? [];
+  return fields.filter((f) => !SPELL_CHANGE_ONLY.has(f.name) || own.includes(f.name));
 }
 
 /** The labels of the effect fields, in our words (the menu names the fields by their proto name). */
@@ -262,7 +324,32 @@ export const EFFECT_FIELD_LABELS: Readonly<Record<string, string>> = {
   ignore_cover: 'Ignora meia cobertura e três quartos',
   range_multiplier: 'Multiplica o alcance da magia por',
   no_long_range_disadvantage: 'Sem desvantagem no alcance longo',
+  dice: 'Dados (quantos)',
+  dice_sides: 'Lados do dado',
+  damage_type: 'Tipo de dano',
+  weapon: 'Arma',
+  frequency: 'Quantas vezes',
+  no_crit_doubling: 'Não dobra no acerto crítico',
+  applies_to: 'Vale para',
+  spell_change: 'O que muda na magia',
 };
+
+/** A label that reads differently in one type: a spell_modifier's `from` lists the damage types it swaps, its `count` is dice. */
+const TYPE_FIELD_LABELS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  extra_damage: { value: 'Dano fixo' },
+  spell_modifier: {
+    from: 'Tipos de dano que troca',
+    value: 'Dano fixo somado',
+    count: 'Dados a mais por nível acima',
+    damage_type: 'Tipo do dano somado',
+    resource: 'Gasta um uso de',
+  },
+};
+
+/** The label of a field of a type: the type's own wording when it has one. */
+export function effectFieldLabel(type: string, name: string): string {
+  return TYPE_FIELD_LABELS[type]?.[name] ?? EFFECT_FIELD_LABELS[name] ?? name;
+}
 
 /** One line under a field, where the name alone does not say. This is screen copy; the formula functions and the tag
  * prefixes it mentions come from the server's menu (`EffectMenuVm.formulaHint`, `tagHint`). */
@@ -272,6 +359,9 @@ export const EFFECT_FIELD_HINTS: Readonly<Record<string, string>> = {
   ignore_cover: 'O alvo não ganha o bônus na CA. A cobertura total continua impedindo o ataque.',
   range_multiplier: 'Só para magias: 2 dobra o alcance, 3 triplica. Vazio, o alcance não muda.',
   no_long_range_disadvantage: 'Só para armas: até o alcance longo, a rolagem não tem desvantagem.',
+  dice: 'Uma fórmula, como 1 ou prof(). Vale junto com os lados do dado.',
+  dice_sides: 'De 4 a 12: d4, d6, d8, d10 ou d12.',
+  no_crit_doubling: 'Por padrão os dados dobram no acerto crítico; o dano fixo nunca dobra.',
 };
 
 /** A value of a closed list: the key the effect stores and the Portuguese name. */
@@ -403,20 +493,22 @@ export function strictRangeFeet(text: string): number {
   return unreadableRange(text) ? Number.NaN : rangeFeet(text);
 }
 
-/** Whether a required closed-list field of the action, maneuver and resistance types is still empty. */
+/** Whether a required closed-list field of the action, maneuver, resistance and spell_modifier types is still empty. */
 function choiceEmpty(d: EffectDraft, name: string): boolean {
   return (
     (name === 'economy' && d.economy === '') ||
     (name === 'applies' && d.applies === '') ||
     (name === 'except' && d.except === '') ||
-    (name === 'while' && d.while === '')
+    (name === 'while' && d.while === '') ||
+    (name === 'applies_to' && d.appliesTo === '') ||
+    (name === 'spell_change' && d.spellChange === '')
   );
 }
 
 /** A required field of the type that still has nothing: the editor says so before the server does. */
 export function missingRequired(d: EffectDraft, menu: EffectMenuVm): string[] {
   const out: string[] = [];
-  for (const f of menu.fieldsOf(d.type)) {
+  for (const f of visibleFields(menu.fieldsOf(d.type), d)) {
     if (!f.required) {
       continue;
     }
