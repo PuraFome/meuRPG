@@ -6,6 +6,7 @@ import {
   ActionEconomy,
   ActionOptionSchema,
   AttackOptionSchema,
+  BonusAttackRule,
   SpellOptionSchema,
   TurnOptionsSchema,
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
@@ -24,14 +25,14 @@ const attack = (key: string, namePt: string) =>
     },
     enabled: true,
   });
-const spell = (key: string, namePt: string, economy = ActionEconomy.ACTION) =>
+const spell = (key: string, namePt: string, economy = ActionEconomy.ACTION, enabled = true) =>
   create(SpellOptionSchema, {
     spell: { key, name: namePt, namePt, level: 1, schoolNamePt: 'Evocação' },
     economy,
-    enabled: true,
+    enabled,
   });
-const feature = (key: string, namePt: string, economy: ActionEconomy) =>
-  create(ActionOptionSchema, { action: { key, namePt, economy }, enabled: true });
+const feature = (key: string, namePt: string, economy: ActionEconomy, enabled = true) =>
+  create(ActionOptionSchema, { action: { key, namePt, economy }, enabled });
 const standard = (key: string, namePt: string) =>
   create(ActionOptionSchema, {
     action: { key: `standard:${key}`, namePt, economy: ActionEconomy.ACTION },
@@ -69,8 +70,8 @@ describe('ActionGroups: the action tabs (C4-03, C4-04, C6-07)', () => {
     spells: [
       spell('spell:magic-missile', 'Mísseis Mágicos'),
       spell('spell:web', 'Teia'),
-      spell('spell:misty-step', 'Passo Nebuloso', ActionEconomy.BONUS_ACTION),
-      spell('spell:shield', 'Escudo Arcano', ActionEconomy.REACTION),
+      spell('spell:misty-step', 'Passo Nebuloso', ActionEconomy.BONUS_ACTION, false),
+      spell('spell:shield', 'Escudo Arcano', ActionEconomy.REACTION, false),
     ],
     standardActions: ['dash', 'dodge', 'help'].map((k) => standard(k, k)),
   };
@@ -135,11 +136,33 @@ describe('ActionGroups: the action tabs (C4-03, C4-04, C6-07)', () => {
     expect(names(spells)).toContain('Passo Nebuloso');
   });
 
+  it('keeps a bonus attack that can still be made open (the follow-up of Rajada de Golpes), and folds the group when none can', () => {
+    const strike = (enabled: boolean) =>
+      create(AttackOptionSchema, {
+        attack: {
+          key: 'unarmed',
+          name: 'Golpe desarmado',
+          namePt: 'Golpe desarmado',
+          attackBonus: 5,
+        },
+        bonusRule: BonusAttackRule.FLURRY_OF_BLOWS,
+        bonusAttacksLeft: 2,
+        enabled,
+      });
+    const some = setup({ attacks: [strike(true)] }, { bonusActionUsed: true });
+    expect(names(some.panel('attacks'))).toEqual(['Golpe desarmado']);
+    expect(some.panel('attacks').textContent).toContain('Rajada de Golpes: 2 golpes restantes');
+    TestBed.resetTestingModule();
+    const none = setup({ attacks: [strike(false)] }, { bonusActionUsed: true });
+    expect(names(none.panel('attacks'))).toEqual([]);
+    expect(none.panel('attacks').textContent).toContain('Ação bônus · Usada');
+  });
+
   it('never folds what costs nothing, even with the Action spent', () => {
     const { panel } = setup(
       {
         featureActions: [
-          feature('feature:second-wind', 'Retomar o Fôlego', ActionEconomy.BONUS_ACTION),
+          feature('feature:second-wind', 'Retomar o Fôlego', ActionEconomy.BONUS_ACTION, false),
           feature('feature:action-surge-1-use', 'Surto de Ação', ActionEconomy.FREE),
         ],
       },

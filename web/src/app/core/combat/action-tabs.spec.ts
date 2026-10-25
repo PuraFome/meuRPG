@@ -79,6 +79,33 @@ describe('partByEconomy', () => {
     expect(parts.folded).toEqual([]);
   });
 
+  it('keeps a row that can still be used open in a spent group (a follow-up strike), and folds the rest', () => {
+    const strikes = [
+      { n: 'Golpe 1', g: 'bonus' as const, on: true },
+      { n: 'Passo do Vento', g: 'bonus' as const, on: false },
+    ];
+    const spent = { action: false, bonus: true, reaction: false };
+    const some = partByEconomy(
+      strikes,
+      (r) => r.g,
+      spent,
+      'Usada',
+      (r) => r.on,
+    );
+    expect(some.open.map((r) => r.n)).toEqual(['Golpe 1']);
+    expect(some.folded[0].title).toBe('Ação bônus · Usada');
+    expect(some.folded[0].rows.map((r) => r.n)).toEqual(['Passo do Vento']);
+    const none = partByEconomy(
+      strikes,
+      (r) => r.g,
+      spent,
+      'Usada',
+      () => false,
+    );
+    expect(none.open).toEqual([]);
+    expect(none.folded).toHaveLength(1);
+  });
+
   it('folds a spent group to one titled line, in the order Ação, Ação bônus, Reação', () => {
     const parts = partByEconomy(
       rows,

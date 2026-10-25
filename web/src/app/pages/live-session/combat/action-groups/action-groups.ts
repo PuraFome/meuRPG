@@ -265,11 +265,22 @@ export class ActionGroups {
       (a) => (isBonusAttack(a) ? 'bonus' : 'action'),
       this.spent(),
       this.spentWord(),
+      (a) => this.usable(a),
     ),
   );
   protected readonly spellParts = computed(() =>
-    partByEconomy(this.spells(), (s) => groupOf(s.economy), this.spent(), this.spentWord()),
+    partByEconomy(
+      this.spells(),
+      (s) => groupOf(s.economy),
+      this.spent(),
+      this.spentWord(),
+      (s) => this.usable(s),
+    ),
   );
+  /** A row the server still offers (a follow-up strike, the next attack) is never folded away as spent. */
+  private usable(row: { readonly enabled: boolean }): boolean {
+    return row.enabled && !cannotAct(this.own());
+  }
   /** The class's abilities, in the order the server sends them: all of an economy but the form's own way out (the beast has "Voltar à forma normal"). */
   protected readonly classFeatures = computed(() =>
     this.options().featureActions.filter(
@@ -277,7 +288,9 @@ export class ActionGroups {
     ),
   );
   protected readonly featureParts = computed(() =>
-    partByEconomy(this.classFeatures(), featureGroup, this.spent(), this.spentWord()),
+    partByEconomy(this.classFeatures(), featureGroup, this.spent(), this.spentWord(), (f) =>
+      this.usable(f),
+    ),
   );
   protected readonly hasSpells = computed(() => this.spells().length > 0 || !!this.beast());
   protected readonly hasClassTab = computed(

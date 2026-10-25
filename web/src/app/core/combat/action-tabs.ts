@@ -85,19 +85,21 @@ export interface GroupParts<T> {
 /**
  * Splits rows by the economy they spend: what is still there stays in the list (in the order it came), and a group that is spent
  * (its Action, Bonus action or Reaction used, or none usable) becomes one folded line named for it, "Ação bônus · Usada" (or
- * `Indisponível` for one who cannot act). A row with no economy is always open.
+ * `Indisponível` for one who cannot act). A row with no economy is always open, and so is a row that can still be used (`usable`:
+ * the follow-up strikes of Rajada de Golpes, the next attack of Ataque Extra): only what is over folds.
  */
 export function partByEconomy<T>(
   rows: readonly T[],
   groupFor: (row: T) => EconomyGroup | null,
   spent: SpentGroups,
   word: string,
+  usable: (row: T) => boolean = () => false,
 ): GroupParts<T> {
   const open: T[] = [];
   const folded = new Map<EconomyGroup, T[]>();
   for (const row of rows) {
     const group = groupFor(row);
-    if (group && spent[group]) {
+    if (group && spent[group] && !usable(row)) {
       folded.set(group, [...(folded.get(group) ?? []), row]);
     } else {
       open.push(row);
