@@ -46,6 +46,14 @@ type restPlan struct {
 // which hit dice a long rest gives back (nil: the largest first). It changes
 // nothing: the plan carries the vitals after.
 func planRest(kind string, v *playv1.CharacterVitals, m vitalsMax, choice rules.HitDiceUsed) (restPlan, error) {
+	return planRestWith(kind, v, m, choice, nil)
+}
+
+// hookDice rolls the dice of an on_event hook's heal; nil estimates with the average.
+type hookDice func(rules.DiceFormula) (int, error)
+
+// planRestWith is planRest with the dice the rest's hooks heal rolled by roll.
+func planRestWith(kind string, v *playv1.CharacterVitals, m vitalsMax, choice rules.HitDiceUsed, _ hookDice) (restPlan, error) {
 	after := proto.CloneOf(v)
 	preview := &playv1.RestPreview{
 		CharacterId: v.GetCharacterId(), Name: v.GetName(),

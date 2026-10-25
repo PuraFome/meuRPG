@@ -460,10 +460,9 @@ type RestPreview struct {
 	SpellSlotsBack   []*SpellSlotBack `protobuf:"bytes,11,rep,name=spell_slots_back,json=spellSlotsBack,proto3" json:"spell_slots_back,omitempty"`
 	PactSlotsBack    int32            `protobuf:"varint,12,opt,name=pact_slots_back,json=pactSlotsBack,proto3" json:"pact_slots_back,omitempty"`
 	CreatedSlotsLost int32            `protobuf:"varint,13,opt,name=created_slots_lost,json=createdSlotsLost,proto3" json:"created_slots_lost,omitempty"`
-	// The on_event hooks of the character for this kind of rest (short_rest, long_rest): the hit points they heal, the temporary hit
-	// points they give (after the long rest ended the old ones) and the uses they restore (RestResourceBack lists them
-	// with the resources that recharge). A hit point amount from dice is an estimate (the average, rounded down): the rest rolls
-	// the dice.
+	// The on_event hooks of the character for this kind of rest (short_rest, long_rest): the hit points they heal, the
+	// temporary hit points they give (after a long rest ended the old ones) and the uses they restore. A heal from dice is an
+	// estimate here (the average, rounded down): the rest rolls the dice.
 	Hooks         []*HookResult `protobuf:"bytes,14,rep,name=hooks,proto3" json:"hooks,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -598,11 +597,14 @@ func (x *RestPreview) GetHooks() []*HookResult {
 }
 
 type RestResourceBack struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Key           string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	NamePt        string                 `protobuf:"bytes,2,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
-	Spent         int32                  `protobuf:"varint,3,opt,name=spent,proto3" json:"spent,omitempty"`
-	Total         int32                  `protobuf:"varint,4,opt,name=total,proto3" json:"total,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Key    string                 `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	NamePt string                 `protobuf:"bytes,2,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
+	Spent  int32                  `protobuf:"varint,3,opt,name=spent,proto3" json:"spent,omitempty"`
+	Total  int32                  `protobuf:"varint,4,opt,name=total,proto3" json:"total,omitempty"`
+	// Set only when fewer than all the spent uses come back: the one use of a resource that recharges as
+	// restore_one_on_short_rest or restore_one_on_long_rest. 0: all of them.
+	Back          int32 `protobuf:"varint,5,opt,name=back,proto3" json:"back,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -661,6 +663,13 @@ func (x *RestResourceBack) GetSpent() int32 {
 func (x *RestResourceBack) GetTotal() int32 {
 	if x != nil {
 		return x.Total
+	}
+	return 0
+}
+
+func (x *RestResourceBack) GetBack() int32 {
+	if x != nil {
+		return x.Back
 	}
 	return 0
 }
@@ -3920,12 +3929,13 @@ const file_meurpg_play_v1_resources_proto_rawDesc = "" +
 	"\x10spell_slots_back\x18\v \x03(\v2\x1d.meurpg.play.v1.SpellSlotBackR\x0espellSlotsBack\x12&\n" +
 	"\x0fpact_slots_back\x18\f \x01(\x05R\rpactSlotsBack\x12,\n" +
 	"\x12created_slots_lost\x18\r \x01(\x05R\x10createdSlotsLost\x120\n" +
-	"\x05hooks\x18\x0e \x03(\v2\x1a.meurpg.play.v1.HookResultR\x05hooks\"i\n" +
+	"\x05hooks\x18\x0e \x03(\v2\x1a.meurpg.play.v1.HookResultR\x05hooks\"}\n" +
 	"\x10RestResourceBack\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x14\n" +
 	"\x05spent\x18\x03 \x01(\x05R\x05spent\x12\x14\n" +
-	"\x05total\x18\x04 \x01(\x05R\x05total\";\n" +
+	"\x05total\x18\x04 \x01(\x05R\x05total\x12\x12\n" +
+	"\x04back\x18\x05 \x01(\x05R\x04back\";\n" +
 	"\rSpellSlotBack\x12\x14\n" +
 	"\x05level\x18\x01 \x01(\x05R\x05level\x12\x14\n" +
 	"\x05count\x18\x02 \x01(\x05R\x05count\"\x85\x02\n" +

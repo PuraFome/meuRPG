@@ -376,10 +376,9 @@ message RestPreview {
   repeated SpellSlotBack spell_slots_back = 11;
   int32 pact_slots_back = 12;
   int32 created_slots_lost = 13;
-  // The on_event hooks of the character for this kind of rest (short_rest, long_rest): the hit points they heal, the temporary hit
-  // points they give (after the long rest ended the old ones) and the uses they restore (RestResourceBack lists them
-  // with the resources that recharge). A hit point amount from dice is an estimate (the average, rounded down): the rest rolls
-  // the dice.
+  // The on_event hooks of the character for this kind of rest (short_rest, long_rest): the hit points they heal, the
+  // temporary hit points they give (after a long rest ended the old ones) and the uses they restore. A heal from dice is an
+  // estimate here (the average, rounded down): the rest rolls the dice.
   repeated HookResult hooks = 14;
 }
 
@@ -388,6 +387,9 @@ message RestResourceBack {
   string name_pt = 2;
   int32 spent = 3;
   int32 total = 4;
+  // Set only when fewer than all the spent uses come back: the one use of a resource that recharges as
+  // restore_one_on_short_rest or restore_one_on_long_rest. 0: all of them.
+  int32 back = 5;
 }
 
 message SpellSlotBack {

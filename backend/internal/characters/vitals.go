@@ -64,6 +64,8 @@ type vitalsMax struct {
 	conMod int
 	// resources are the class and race resources the sheet has at its level.
 	resources []rules.Resource
+	// hooks are the character's on_event effects, for its level.
+	hooks []rules.EventHook
 	// beast is the Wild Shape form the character is in (MR-037): its content key,
 	// Portuguese name and the stat block's hit points. Empty key: its own shape.
 	beast       string
