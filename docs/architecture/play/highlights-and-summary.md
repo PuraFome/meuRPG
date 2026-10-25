@@ -37,6 +37,7 @@ The app knows the summary exists from the `session_ended` event, which carries t
 
 - **Where it comes from.** Like the highlights, on every read.
   The checks are counted by the database (`CountSessionScenesOpened` and `TallySessionSceneChecks`: one row per character), so the number of rolls does not change what the summary costs.
+  A roll counts for the master and the players who saw or rolled it (the `audience` of its moment, when the scene was open to only some players) and stays when the master hides the action afterwards: the count is per character and never names the action (`TestSummary_ARollOnAnActionHiddenAfterwardsStaysForThoseWhoSawIt`).
   For each combat that began in the session (`started_at` filled) the server runs the same `tallyHighlights` as `GetCombatHighlights` and sums, per character, in the order they appeared.
   The categories come from the same `categoriesOf`, with two more: `HIGHLIGHT_KIND_CHECKS_PASSED` ("Mais testes passados fora do combate": the count of checks passed, a tie names everyone) and `HIGHLIGHT_KIND_TREASURE_FOUND` ("Mais tesouro encontrado").
 - **What counts as a check.** Only a `scene_check_rolled` roll with `dc_shown` (the scene showed the DC when it was made) and `passed` filled (the action had a DC).

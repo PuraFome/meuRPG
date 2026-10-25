@@ -417,10 +417,13 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 - **Given** the open scene, **when** the master reads it, **then** it says since when it is open and who is in and who is out, with the characters' names ("Aberta desde 20:20 para Pensantus, Brisa"; "Fora da cena: Sálvia e Jabuti"); no player reads that list.
 - **Given** a scene open to only some players, **when** the master asks for a group check ("Teste em grupo") without naming characters, **then** it asks the scene's players only, **and** naming a character who is out is refused; a player taken out of the scene stops reading the check and cannot answer it. The master gives an attempt only to a character who is in.
 - **Given** a scene open to only some players, **when** the session ends, **then** the checks passed in it count in the summary for the master and for the players who were in, and for no other player.
+- **Given** a roll a player made on an action that the master hid afterwards, **when** the session ends, **then** the roll stays in the summary for the players who saw or rolled it, because it happened: the summary counts tries and passes per character, never the action, so it names nothing of it; the rolls list of the scene no longer shows the roll to the players (RN-10).
 - **Given** a scene open to only some players, **when** the master turns on "Os jogadores podem entrar" (off by default, changeable while the scene is open, set back to off when the scene closes), **then** a player who is out reads exactly two things of it: its name and that they can join, and nothing else (no point, description, stage, actions, rolls, images or clues); with the switch off they read nothing, as when no scene is open. Every player is told when the switch changes.
 - **Given** a scene that lets players join, **when** a player taps "Entrar na cena", **then** they become one of its players at once, read it as any member does and the master sees them marked as having joined by themselves, against the players he chose; joining again changes nothing. The master, a stranger and a pending member cannot join, and with the switch off the refusal is that of "no scene is open".
 - **Given** a player who joined a scene, **then** they are one of its players for what follows: an image shown to "the scene's players" reaches them at once, and an image shown to chosen players does not, unless they were chosen.
-- **Given** a scene opened to some players, **when** the master opens it to everyone, **then** it is "discovered" for the group, and its name may label a note; while it is open to some it is not, so the list of scenes tells the others nothing.
+- **Given** a scene opened to some players, **when** the master opens it to everyone, **then** it is "discovered" for the group and any player may label a note with its name; while it is open to some, only its players discover it, each for themselves: they may label a note with it (also when the master brings them in or they join it, and after they leave it, as what they read they read), and no other player's list of scenes or notes tells its name nor accepts it as a label (the refusal is that of a scene that does not exist).
+- **Given** a scene open to only some players, **when** the master names who is in, **then** he may name any player of the campaign, also the player of a dead character: the scene's audience is about players, and that player follows the scene like anyone in it. Rolling an action still needs a living character.
+- **Given** a scene open to only some players, **when** the master reveals a clue to a character whose player is out, **then** it is allowed (the master chose the character): the clue is in that player's notes and nothing else of the scene reaches them: no scene, stage, actions, images or scene name, and the clue carries no scene label for them.
 - **Given** a scene action, **when** the master marks it "Escondida" (adding it, or later, also with the scene open), **then** no player receives it: not its name, DC, attempts or rolls, on the map, in the open scene, in a live hint or in the history they read (RN-10); the master still sees it, marked, rolls on it for the table and gives attempts on it.
 - **Given** a hidden action, **when** a player rolls it anyway, **then** the refusal is exactly the one of an action that does not exist (same error, same message), so it never tells the player that the action is there.
 - **Given** a hidden action in the open scene, **when** the master shows it ("Os jogadores veem"), **then** the scene's players see it at once and can roll it; **when** the master hides it again, **then** it leaves their screen at once, with the rolls they made on it. Nothing is erased: showing it again gives them back their rolls and attempts.
@@ -437,10 +440,6 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 - Scenes have skill checks, ability checks and saving throws; spells and abilities are not part of them.
 
 #### Open points
-- A scene open to only some players is not "discovered" for the group, so its players cannot label a note with it until the master opens it to everyone. Should the scene's players be able to?
-- A clue the master reveals to a character who is out of the open scene reaches that player's notes (the master chose the character). Should revealing a clue of a scene to a player who is out be refused?
-- Only a player who owns a living character of the party can be named in a scene, as in the conversation's readers. Should the player of a dead character be able to follow a scene?
-- A roll a player made on an action that was hidden afterwards leaves the player's list of rolls but stays in the session summary, which counts tries and passes per character (never the action): the summary keeps the number the table already saw. Should hiding an action also take its rolls out of the summary?
 - A package exported with a hidden action brings it back hidden. Is that what the master wants when he shares a campaign with another master?
 
 ### MR-016: Award XP
@@ -572,8 +571,9 @@ Each invite chooses whether it requires approval, and a refusal deletes the char
 - **Given** a shown image, **when** the game master looks at who sees it ("Quem vê a imagem"), **then** it has one audience of three kinds: the whole table; the scene's players; or chosen players, any set of the campaign's players, picked like the conversation's "Para". The audience is the whole table when no scene is open or the open scene is open to everyone, exactly as before; while a scene open to only some players is open, the default is the scene's players, **and** the game master may pick the whole table or chosen players when they show the image.
 - **Given** an image shown to the scene's players, **when** the game master changes who is in the scene, **then** a player who comes in sees the image at once and a player who goes out stops seeing it at once; **when** the scene closes, another one opens, or the scene opens to everyone, **then** the image stays with the players who were in at that moment, until the game master stops showing it or shows another: it reaches no one else, and no player gets it retroactively.
 - **Given** a shown image, **when** the game master taps "Mostrar a toda a mesa", **then** every player sees it at once, as an image shown with no scene; **when** they tap "Mudar quem vê" and pick the players, **then** the ones picked see it, the others lose it at once (the image goes from their screen, from the live session read and from the image route, which answers 404) and the players who stay hear nothing.
+- **Given** the image on screen is deleted from the gallery, **then** only the game master and the players who saw it hear that it stopped being shown; a player outside its audience hears nothing, and the lists of left images they read are unchanged (RN-10).
 - **Given** a player outside the image's audience, **then** they never receive it: not the image, its ID or its name in a read, not in a live event (they only hear that an image they saw stopped being shown), not through the image route, not in the summary or the highlights (RN-10).
-- **Given** an image with "Deixar com os jogadores" on, **when** it stops being shown, **then** it stays only with the players who were in its audience (the whole table, or those players); the list the other players read does not have it, the image route answers them 404 and their screens hear nothing of it; "Tirar" works as before. Leaving an image again takes the audience of the latest leaving.
+- **Given** an image with "Deixar com os jogadores" on, **when** it stops being shown, **then** it stays only with the players who were in its audience (the whole table, or those players); the list the other players read does not have it, the image route answers them 404 and their screens hear nothing of it; "Tirar" works as before. Leaving an image again, with another audience, keeps the widest: whoever already had it keeps it and the new players get it too; only "Tirar" (taking it back) narrows it. A "Mudar quem vê" for the list of left images is for later: the audience of a left image does not change until it is taken back.
 
 #### In the app
 - One image at a time, independent of the current map; a new session starts with none.
@@ -590,11 +590,6 @@ Each invite chooses whether it requires approval, and a refusal deletes the char
 - The audience is part of the show call and has its own call to change it while the image is shown (`SetShownImage`, `SetShownImageAudience`); the game master reads it on the image, and a player never does.
 - Out of scope: a per-player "chest" of every image already shown.
   The list holds only what the game master chose to leave, and a player reads the images left with them.
-
-#### Open points
-- Deleting the image that is shown tells every player that it stopped being shown, also the ones outside its audience (the event carries no image). Should it tell only the players who saw it?
-- An image left again takes the audience of the latest leaving, which can narrow what a player already had. Should it keep the widest audience instead?
-- The audience of an image already left cannot be changed; the game master takes it back and shows it again. Is a "Mudar quem vê" for the left list needed?
 
 ### MR-025: Register table content
 
@@ -877,7 +872,9 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - **Given** an open scene, **when** the game master puts an NPC on the stage hidden ("Escondida dos jogadores"), **then** it takes a place of the 4 and the game master reads it marked, but no player receives it: not its name, portrait or place on the stage, not in the open scene, not in a live hint, not as a target or caster of a cast, not in the history, summary or highlights they read (RN-10); the players are told nothing when it enters or leaves the stage hidden.
 - **Given** an NPC on the stage, **when** the game master turns it between "Os jogadores veem" and "Escondida dos jogadores", **then** showing it makes it enter the players' picture live, and hiding it makes it leave, exactly as taking it off would: nothing tells the players that it was hidden rather than taken off.
 - **Given** a hidden NPC, **when** the game master taps "Dar a fala", **then** it is shown in the same call and speaks: the players see it enter and speak at once. Hiding the NPC that speaks takes the floor from it.
+- **Given** a hidden NPC, **when** the game master speaks in the conversation as it (MR-051), **then** the line names the NPC for the readers he chose, whoever they are, and nothing else of it reaches them: not its portrait (the line carries none and the image route answers `404`), not a place on the stage; speaking in the conversation does not show the NPC, only "Dar a fala" does. A player who is not a reader of the line never learns the name.
 - **Given** a hidden NPC's portrait, **when** a player tries to download it, **then** it is `404`, as off the stage; the game master always can.
+- **Given** an NPC on the stage already, **when** the game master puts it again with the other hidden flag, **then** nothing changes: the toggle is how to show or hide it. **Given** a hidden NPC, **when** the game master gives it the floor, **then** it is shown, by design: there is no voice off screen.
 - **Given** a scene open to only some players, **when** the game master puts an NPC on the stage, **then** only the scene's players receive the stage, the NPCs on it and their portraits, and the stage hints; a player who is out receives no stage, not even to aim a cast at an NPC on it (MR-015, RN-10).
 - **Given** a hidden NPC, **when** the game master casts a spell for it outside combat, **then** the cast is the game master's alone and no player can aim at it, not even by its place on the stage; the casts it made in plain sight leave the players' list while it is hidden and come back when it is shown.
 
@@ -892,11 +889,6 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 
 #### Related
 - Uses the images of the [gallery](#mr-019-image-gallery), like [MR-028](#mr-028-show-an-image-to-the-players).
-
-#### Open points
-- A line the game master sends "as" a hidden NPC in the scene's conversation (MR-051) reaches the readers he chose and does not show the NPC on the stage. Should sending a line as a hidden NPC also show it?
-- Putting an NPC that is on the stage already, with the hidden flag of the other value, changes nothing: the toggle is how to show or hide it. Is that clear enough, or should the put turn it?
-- "Dar a fala" always shows the NPC. Should there be a way to make a hidden NPC speak without showing it (a voice off screen)?
 
 ### MR-032: Combat highlights
 
