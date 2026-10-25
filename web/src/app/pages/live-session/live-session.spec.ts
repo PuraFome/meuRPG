@@ -2571,6 +2571,39 @@ describe('LiveSession', () => {
       expect(get).toHaveBeenCalledTimes(3);
     });
 
+    it('gives the master\'s phone "Grupo" as a panel of the session in a combat: the party shows, the combat waits behind it', async () => {
+      asMaster();
+      window.matchMedia = ((query: string) => ({
+        matches: query.includes('max-width'),
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      })) as unknown as typeof window.matchMedia;
+      try {
+        const { fixture } = await withCombat();
+        const el = fixture.nativeElement as HTMLElement;
+        const nav = () => Array.from(el.querySelectorAll<HTMLElement>('app-session-tabs .tab'));
+        expect(nav().map((t) => t.textContent?.trim())).toEqual(['Combate', 'Grupo', 'Conversa']);
+        // "Grupo" is a button of the session now, not a link to the campaign page.
+        expect(el.querySelector('app-session-tabs a.tab')).toBeNull();
+        expect(el.querySelector('.grupo')?.hasAttribute('hidden')).toBe(true);
+        expect(el.querySelector('app-combat-view')?.hasAttribute('hidden')).toBe(false);
+
+        nav()[1].click();
+        await settle(fixture);
+        expect(nav()[1].getAttribute('aria-current')).toBe('true');
+        expect(el.querySelector('.grupo')?.hasAttribute('hidden')).toBe(false);
+        expect(el.querySelector('.grupo app-party-panel')).not.toBeNull();
+        expect(el.querySelector('app-combat-view')?.hasAttribute('hidden')).toBe(true);
+
+        nav()[0].click();
+        await settle(fixture);
+        expect(el.querySelector('.grupo')?.hasAttribute('hidden')).toBe(true);
+        expect(el.querySelector('app-combat-view')?.hasAttribute('hidden')).toBe(false);
+      } finally {
+        delete (window as unknown as Record<string, unknown>)['matchMedia'];
+      }
+    });
+
     it('reads a combat that arrives while the screen has none', async () => {
       const { fixture, get } = await withCombat(null);
       source.push({ kind: 'encounterChanged', encounterId: 'e1', revision: 1 });

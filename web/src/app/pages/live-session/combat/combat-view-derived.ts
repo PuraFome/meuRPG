@@ -1,3 +1,4 @@
+import { noticeOpenedDoors } from './door-notice';
 import { TemplateRef, computed, effect, input, output, signal, Directive } from '@angular/core';
 import {
   CombatLogKind,
@@ -168,6 +169,9 @@ export abstract class CombatViewDerivedDirective extends CombatViewStateDirectiv
   readonly chatUnread = input(0);
   /** The conversation is what the rail shows now (its tab is open): the page counts nothing as unread meanwhile. */
   readonly chatShown = output<boolean>();
+  /** The player's own move opened a door: the page says so in a toast. */
+  readonly doorOpened = output<void>();
+  protected readonly doors = noticeOpenedDoors(this.log, this.own, () => this.doorOpened.emit());
   protected readonly railTab = signal('actions');
   /** "Ações", and "Conversa" with its unread count (grená, and the number in words in the tab's name). */
   protected readonly railTabItems = computed<readonly TabItem[]>(() => {

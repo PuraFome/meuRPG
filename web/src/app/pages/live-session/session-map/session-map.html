@@ -142,6 +142,7 @@
             [doorTaps]="isMaster()"
             (doorPick)="openDoor($event)"
             [pins]="true"
+            [tokenMarks]="!isMaster()"
             [senses]="senses()"
             [carried]="carriedName()"
             [familiar]="seeingName()"
@@ -152,12 +153,6 @@
           @if (isMaster()) {
             <div class="map__foot">
               <div class="map__legend">
-                @if (!phone()) {
-                  <p class="map__hint">
-                    <mat-icon aria-hidden="true">drag_pan</mat-icon>
-                    Arraste um token para movê-lo no mapa.
-                  </p>
-                }
                 <ng-container *ngTemplateOutlet="tokenLegend" />
               </div>
             </div>
@@ -220,13 +215,7 @@
         <div class="map__foot">
           <div class="map__legend">
             @if (inTab()) {
-              <p class="map__caption">{{ map()?.name }} · mapa atual</p>
-            }
-            @if (isMaster() && !phone()) {
-              <p class="map__hint">
-                <mat-icon aria-hidden="true">drag_pan</mat-icon>
-                Arraste um token para movê-lo no mapa.
-              </p>
+              <p class="map__caption">Mapa · {{ map()?.name }}</p>
             }
             @if (isMaster()) {
               <ng-container *ngTemplateOutlet="tokenLegend" />
