@@ -206,7 +206,10 @@ func TestMR032_HighlightsOfTheAmbush(t *testing.T) {
 
 	// Rodada 4: the combat is not over until the master ends it, and the
 	// highlights wait for that.
-	end(a.master) // Brisa, down, owes a death save: the master passes the turn
+	if _, err := a.deathSave(t, a.master, e, "Brisa", deathFace(14)); err != nil { // Brisa, down, owes a death save: the master rolls it for her
+		t.Fatalf("the master's death save for Brisa: %v", err)
+	}
+	end(a.master)
 	miss(a.ana, "Pensantus", fireBolt, "Goblin 3")
 	end(a.ana)
 	end(a.master) // Goblin 3
