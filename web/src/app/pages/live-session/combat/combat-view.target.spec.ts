@@ -198,9 +198,7 @@ describe('CombatView: choosing the target on the map, on a phone', () => {
     await m.tap('g1');
     await m.tap('g1');
     expect(m.el.querySelector('app-target-bar')?.textContent).toContain('2 de 3 dardos');
-    expect(
-      m.el.querySelector('[data-pick="g1"] .cm__mark-n')?.textContent?.replace(/\s+/g, ''),
-    ).toBe('×2');
+    expect(m.el.querySelector('.cm__mark-n')?.textContent?.replace(/\s+/g, '')).toBe('×2');
     await m.press('Desfazer');
     expect(m.view.targeting.mode.picks()).toEqual(['g1']);
     await m.tap('g2');

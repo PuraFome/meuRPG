@@ -186,26 +186,30 @@
             [style.top.%]="centerY(c)"
             [style.--span]="span(c)"
             (click)="pickTap.emit(m.id)"
-          >
-            @if (m.count > 0) {
-              <span class="cm__mark-n" aria-hidden="true">
-                @if (m.mode === 'darts') {
-                  ×{{ m.count }}
-                } @else {
-                  <mat-icon>check</mat-icon>Alvo
-                }
-              </span>
-            }
-            @if (m.note) {
-              <span [class]="layer.farSide(c)" aria-hidden="true">{{ layer.far(m) }}<span class="cm__far-rest">{{ layer.farRest(m) }}</span></span>
-            }
-          </button>
+          ></button>
+          @if (layer.tagsAt(c.id); as at) {
+            <!-- The tags of this creature, beside its token: "Alvo" (or "×2") first, then "Longe". -->
+            <span [class]="'cm__fl cm__tags cm__fl--' + at.side" aria-hidden="true" [style.left.%]="layer.left(c, at)" [style.top.%]="layer.top(c, at)">
+              @if (m.count > 0) {
+                <span class="cm__mark-n">
+                  @if (m.mode === 'darts') {
+                    ×{{ m.count }}
+                  } @else {
+                    <mat-icon>check</mat-icon>Alvo
+                  }
+                </span>
+              }
+              @if (m.note) {
+                <span class="cm__far">{{ layer.far(m) }}{{ layer.farRest(m, at) }}</span>
+              }
+            </span>
+          }
         }
       }
       @if (layer.note(); as n) {
-        <span class="cm__whyat" aria-hidden="true" [style.left.%]="centerX(n.c)" [style.top.%]="centerY(n.c)">
-          <span [class]="layer.side(n.c)"><mat-icon>block</mat-icon>{{ n.text }}</span>
-        </span>
+        @if (layer.whyAt(); as at) {
+          <span [class]="'cm__fl cm__why cm__fl--' + at.side" aria-hidden="true" [style.left.%]="layer.left(n.c, at)" [style.top.%]="layer.top(n.c, at)"><mat-icon>block</mat-icon>{{ n.text }}</span>
+        }
       }
       <span class="mr-visually-hidden" role="status">{{ pickNote()?.text }}</span>
     }

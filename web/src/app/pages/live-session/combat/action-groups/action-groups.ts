@@ -279,7 +279,7 @@ export class ActionGroups {
   protected readonly featureParts = computed(() =>
     partByEconomy(this.classFeatures(), featureGroup, this.spent(), this.spentWord()),
   );
-  protected readonly hasSpells = computed(() => this.spells().length > 0);
+  protected readonly hasSpells = computed(() => this.spells().length > 0 || !!this.beast());
   protected readonly hasClassTab = computed(
     () => this.classFeatures().length > 0 || !!this.beast(),
   );

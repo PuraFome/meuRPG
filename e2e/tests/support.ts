@@ -1,17 +1,27 @@
-import path from 'node:path';
+import path from "node:path";
 
-import { expect, type APIResponse, type Browser, type BrowserContext, type BrowserContextOptions, type Locator, type Page } from '@playwright/test';
+import {
+  expect,
+  type APIResponse,
+  type Browser,
+  type BrowserContext,
+  type BrowserContextOptions,
+  type Locator,
+  type Page,
+} from "@playwright/test";
 
 // devidp's issuer (deploy/local/compose.yaml). The browser resolves any
 // *.localhost name to 127.0.0.1 by itself.
-export const idpOrigin = process.env.E2E_IDP_ORIGIN ?? 'http://idp.localhost:9090';
+export const idpOrigin =
+  process.env.E2E_IDP_ORIGIN ?? "http://idp.localhost:9090";
 
-export const sessionCookie = '__Host-meurpg_session';
-export const loginCookie = '__Host-meurpg_login';
+export const sessionCookie = "__Host-meurpg_session";
+export const loginCookie = "__Host-meurpg_login";
 
 /** The test users devidp lists on its login page (oidctest.TestUsers). */
 // 'Sessões Teste' is not in auth.setup.ts: only sessions.spec.ts uses it, and signs in for real.
-export type TestUser = 'Mestre Teste' | 'Jogador Teste' | 'E-mail Não Verificado' | 'Sessões Teste';
+export type TestUser =
+  "Mestre Teste" | "Jogador Teste" | "E-mail Não Verificado" | "Sessões Teste";
 
 /**
  * Signs in through devidp, the way a person would: open the sign-in URL,
@@ -31,10 +41,16 @@ export type TestUser = 'Mestre Teste' | 'Jogador Teste' | 'E-mail Não Verificad
  * context that also calls `signOut` — signing out deletes the session on
  * the server, so it would break every other test sharing that state.
  */
-export async function signIn(page: Page, user: TestUser = 'Mestre Teste', returnTo = '/'): Promise<void> {
+export async function signIn(
+  page: Page,
+  user: TestUser = "Mestre Teste",
+  returnTo = "/",
+): Promise<void> {
   await page.goto(`/auth/login?return_to=${encodeURIComponent(returnTo)}`);
-  await expect(page).toHaveURL((url) => url.origin === idpOrigin && url.pathname === '/authorize');
-  await page.getByRole('button', { name: user, exact: true }).click();
+  await expect(page).toHaveURL(
+    (url) => url.origin === idpOrigin && url.pathname === "/authorize",
+  );
+  await page.getByRole("button", { name: user, exact: true }).click();
   // A relative URL is resolved against baseURL: back on the app, at returnTo.
   await expect(page).toHaveURL(returnTo);
 }
@@ -47,15 +63,15 @@ export async function signIn(page: Page, user: TestUser = 'Mestre Teste', return
  */
 export function authStatePath(user: TestUser): string {
   const slugs: Record<TestUser, string> = {
-    'Mestre Teste': 'mestre-teste',
-    'Jogador Teste': 'jogador-teste',
+    "Mestre Teste": "mestre-teste",
+    "Jogador Teste": "jogador-teste",
     // The third account is a second player where a table needs two (the fog of war, E9-03): its e-mail
     // is unverified, which changes nothing for a player.
-    'E-mail Não Verificado': 'e-mail-nao-verificado',
-    'Sessões Teste': 'sessoes-teste', // never saved: sessions.spec.ts signs in for real
+    "E-mail Não Verificado": "e-mail-nao-verificado",
+    "Sessões Teste": "sessoes-teste", // never saved: sessions.spec.ts signs in for real
   };
   const slug = slugs[user];
-  return path.join(__dirname, '..', '.auth', `${slug}.json`);
+  return path.join(__dirname, "..", ".auth", `${slug}.json`);
 }
 
 /**
@@ -65,7 +81,11 @@ export function authStatePath(user: TestUser): string {
  * every context that just needs to act as a signed-in user, which is most
  * of them (see `signIn`'s doc comment for the exceptions).
  */
-export function newSignedInContext(browser: Browser, user: TestUser, options: BrowserContextOptions = {}): Promise<BrowserContext> {
+export function newSignedInContext(
+  browser: Browser,
+  user: TestUser,
+  options: BrowserContextOptions = {},
+): Promise<BrowserContext> {
   return browser.newContext({ ...options, storageState: authStatePath(user) });
 }
 
@@ -76,15 +96,21 @@ export function newSignedInContext(browser: Browser, user: TestUser, options: Br
  *
  * Use it for what the page does not show; ui.spec.ts asserts on the page.
  */
-export function callRPC(page: Page, method: string, body: object = {}): Promise<APIResponse> {
+export function callRPC(
+  page: Page,
+  method: string,
+  body: object = {},
+): Promise<APIResponse> {
   return page.request.post(`/${method}`, {
     data: body,
-    headers: { 'Connect-Protocol-Version': '1' },
+    headers: { "Connect-Protocol-Version": "1" },
   });
 }
 
-export const getMe = (page: Page) => callRPC(page, 'meurpg.identity.v1.IdentityService/GetMe');
-export const signOut = (page: Page) => callRPC(page, 'meurpg.identity.v1.IdentityService/SignOut');
+export const getMe = (page: Page) =>
+  callRPC(page, "meurpg.identity.v1.IdentityService/GetMe");
+export const signOut = (page: Page) =>
+  callRPC(page, "meurpg.identity.v1.IdentityService/SignOut");
 
 /**
  * The layout size of an element: offsetWidth and offsetHeight, which a CSS
@@ -92,8 +118,13 @@ export const signOut = (page: Page) => callRPC(page, 'meurpg.identity.v1.Identit
  * of a dialog still running its opening animation (a scale) can measure
  * different sizes a few milliseconds apart; compare sizes with this instead.
  */
-export function layoutSize(locator: Locator): Promise<{ width: number; height: number }> {
-  return locator.evaluate((el: HTMLElement) => ({ width: el.offsetWidth, height: el.offsetHeight }));
+export function layoutSize(
+  locator: Locator,
+): Promise<{ width: number; height: number }> {
+  return locator.evaluate((el: HTMLElement) => ({
+    width: el.offsetWidth,
+    height: el.offsetHeight,
+  }));
 }
 
 /**
@@ -102,8 +133,11 @@ export function layoutSize(locator: Locator): Promise<{ width: number; height: n
  * box while it hasn't been laid out; this waits for a real one instead of
  * letting the caller read a field of null.
  */
-export async function boxOf(locator: Locator): Promise<{ x: number; y: number; width: number; height: number }> {
-  let box: { x: number; y: number; width: number; height: number } | null = null;
+export async function boxOf(
+  locator: Locator,
+): Promise<{ x: number; y: number; width: number; height: number }> {
+  let box: { x: number; y: number; width: number; height: number } | null =
+    null;
   await expect
     .poll(async () => {
       box = await locator.boundingBox();
@@ -119,7 +153,12 @@ export async function boxOf(locator: Locator): Promise<{ x: number; y: number; w
  * assertion passes before the click's effect could show.
  */
 export async function afterRender(page: Page): Promise<void> {
-  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
 }
 
 export const day = 24 * 60 * 60 * 1000;
@@ -137,9 +176,9 @@ export const day = 24 * 60 * 60 * 1000;
 export async function waitForCampaignList(page: Page): Promise<void> {
   await expect(
     page
-      .getByRole('region', { name: 'Minhas campanhas' })
-      .getByRole('list')
-      .or(page.getByText('Você ainda não tem nenhuma campanha.')),
+      .getByRole("region", { name: "Minhas campanhas" })
+      .getByRole("list")
+      .or(page.getByText("Você ainda não tem nenhuma campanha.")),
   ).toBeVisible();
 }
 
@@ -152,57 +191,87 @@ export async function waitForCampaignList(page: Page): Promise<void> {
  * as setup, so their assertions stay about invites and membership, not
  * about the form they don't need to prove again.
  */
-export async function createCampaign(page: Page, name: string): Promise<string> {
-  await page.goto('/campaigns');
+export async function createCampaign(
+  page: Page,
+  name: string,
+): Promise<string> {
+  await page.goto("/campaigns");
   await waitForCampaignList(page);
-  await page.getByLabel('Nome da campanha').fill(name);
-  await page.getByLabel('Modo de XP').click();
-  await page.getByRole('option', { name: 'Por inimigos derrotados' }).click();
-  await page.getByRole('button', { name: 'Criar campanha' }).click();
+  await page.getByLabel("Nome da campanha").fill(name);
+  await page.getByLabel("Modo de XP").click();
+  await page.getByRole("option", { name: "Por inimigos derrotados" }).click();
+  await page.getByRole("button", { name: "Criar campanha" }).click();
 
   await expect(page).toHaveURL(/\/campaigns\/[^/]+$/);
-  return page.url().split('/').pop()!;
+  return page.url().split("/").pop()!;
 }
 
 /** The master's three tabs on the campaign page (`/campaigns/:id`, `/prep`, `/setup`). */
-export type CampaignTab = 'Mesa' | 'Preparação' | 'Regras';
+export type CampaignTab = "Mesa" | "Preparação" | "Regras";
 
-const CAMPAIGN_TAB_PATHS: Record<CampaignTab, string> = { Mesa: '', Preparação: '/prep', Regras: '/setup' };
+const CAMPAIGN_TAB_PATHS: Record<CampaignTab, string> = {
+  Mesa: "",
+  Preparação: "/prep",
+  Regras: "/setup",
+};
 
 /** The nav link of a tab: the tab's name, then the count that may follow it ("Mesa, 1 esperando aprovação"). */
 function campaignTabLink(page: Page, tab: CampaignTab): Locator {
-  return page.getByRole('navigation', { name: 'Seções da campanha' }).getByRole('link', { name: new RegExp(`^${tab}`) });
+  return page
+    .getByRole("navigation", { name: "Seções da campanha" })
+    .getByRole("link", { name: new RegExp(`^${tab}`) });
 }
 
 /** Opens a tab of the master's campaign page by its link, as a person does (the helper per tab set the panels moved behind). */
-export async function openCampaignTab(page: Page, tab: CampaignTab): Promise<void> {
+export async function openCampaignTab(
+  page: Page,
+  tab: CampaignTab,
+): Promise<void> {
   const link = campaignTabLink(page, tab);
   await link.click();
-  await expect(link).toHaveAttribute('aria-current', 'page');
+  await expect(link).toHaveAttribute("aria-current", "page");
 }
 
 /** Goes straight to a tab of the master's campaign page by its URL. */
-export async function gotoCampaignTab(page: Page, campaignId: string, tab: CampaignTab): Promise<void> {
+export async function gotoCampaignTab(
+  page: Page,
+  campaignId: string,
+  tab: CampaignTab,
+): Promise<void> {
   await page.goto(`/campaigns/${campaignId}${CAMPAIGN_TAB_PATHS[tab]}`);
-  await expect(campaignTabLink(page, tab)).toHaveAttribute('aria-current', 'page');
+  await expect(campaignTabLink(page, tab)).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
 }
 
 /** Opens a panel the master's phone folds to one row ("Membros · 4 na mesa", "Convites · 1 usado", "Sessões anteriores · 3"). On a wider screen the panel is open already and nothing happens. */
-export async function openFoldedPanel(page: Page, name: 'Membros' | 'Convites' | 'Sessões anteriores'): Promise<void> {
-  const fold = page.getByRole('heading', { name: new RegExp(`^${name}`) }).getByRole('button', { expanded: false });
+export async function openFoldedPanel(
+  page: Page,
+  name: "Membros" | "Convites" | "Sessões anteriores",
+): Promise<void> {
+  const fold = page
+    .getByRole("heading", { name: new RegExp(`^${name}`) })
+    .getByRole("button", { expanded: false });
   if ((await fold.count()) > 0) {
     await fold.click();
-    await expect(page.getByRole('heading', { name: new RegExp(`^${name}`) }).getByRole('button', { expanded: true })).toBeVisible();
+    await expect(
+      page
+        .getByRole("heading", { name: new RegExp(`^${name}`) })
+        .getByRole("button", { expanded: true }),
+    ).toBeVisible();
   }
 }
 
 /** Opens "Histórico de XP (N)" in the master's "Experiência" panel: the history is folded until it is asked for. */
 export async function openXpHistory(page: Page): Promise<void> {
-  const toggle = page.getByRole('region', { name: 'Experiência', exact: true }).getByRole('button', { name: /^Histórico de XP/ });
-  if ((await toggle.getAttribute('aria-expanded')) !== 'true') {
+  const toggle = page
+    .getByRole("region", { name: "Experiência", exact: true })
+    .getByRole("button", { name: /^Histórico de XP/ });
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") {
     await toggle.click();
   }
-  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
 }
 
 // --- Etapa 4: characters, rules and the play stub --------------------------
@@ -244,7 +313,14 @@ export interface CharacterBuild {
    * picks): content keys for the RPC path, `name_pt` for the UI path. */
   extraSkillKeys: string[];
   extraSkills: string[];
-  scores: { for: number; des: number; con: number; int: number; sab: number; car: number };
+  scores: {
+    for: number;
+    des: number;
+    con: number;
+    int: number;
+    sab: number;
+    car: number;
+  };
 }
 
 /**
@@ -270,21 +346,21 @@ export interface CharacterBuild {
  * unarmored (10 + the +3 DEX modifier, no shield or armor worn).
  */
 export const pensantus: CharacterBuild = {
-  name: 'Pensantus',
-  raceKey: 'race:gnome',
-  race: 'Gnomo',
-  subraceKey: 'subrace:rock-gnome',
-  subrace: 'Gnomo das Rochas',
-  classKey: 'class:wizard',
-  class: 'Mago',
-  subclassKey: 'subclass:evocation',
-  subclass: 'Escola de Evocação',
+  name: "Pensantus",
+  raceKey: "race:gnome",
+  race: "Gnomo",
+  subraceKey: "subrace:rock-gnome",
+  subrace: "Gnomo das Rochas",
+  classKey: "class:wizard",
+  class: "Mago",
+  subclassKey: "subclass:evocation",
+  subclass: "Escola de Evocação",
   level: 3,
-  background: 'Sábio', // custom background, not an SRD content key (ADR-0008)
-  backgroundSkillKeys: ['skill:arcana', 'skill:history'],
-  backgroundSkills: ['Arcanismo', 'História'],
-  extraSkillKeys: ['skill:investigation', 'skill:insight'],
-  extraSkills: ['Investigação', 'Intuição'],
+  background: "Sábio", // custom background, not an SRD content key (ADR-0008)
+  backgroundSkillKeys: ["skill:arcana", "skill:history"],
+  backgroundSkills: ["Arcanismo", "História"],
+  extraSkillKeys: ["skill:investigation", "skill:insight"],
+  extraSkills: ["Investigação", "Intuição"],
   scores: { for: 12, des: 16, con: 15, int: 16, sab: 13, car: 12 },
 };
 
@@ -292,9 +368,9 @@ export const pensantus: CharacterBuild = {
  * build, confirmed live against the running stack (see `pensantus`'s doc
  * comment). */
 export const pensantusDerived = {
-  intModifier: '+4',
+  intModifier: "+4",
   spellSaveDc: 14,
-  spellAttackBonus: '+6',
+  spellAttackBonus: "+6",
   armorClass: 13,
   hitPointsMax: 23,
 };
@@ -309,7 +385,11 @@ export const pensantusDerived = {
 export interface CharacterBlockedBody {
   code: string;
   message: string;
-  details: Array<{ type: string; value: string; debug?: { reason: string; characterId?: string } }>;
+  details: Array<{
+    type: string;
+    value: string;
+    debug?: { reason: string; characterId?: string };
+  }>;
 }
 
 /**
@@ -319,11 +399,14 @@ export interface CharacterBlockedBody {
  * `_LIVING_CHARACTER_EXISTS`, `_STORY_LOCKED` — characters.proto's
  * `CharacterBlockedReason`).
  */
-export async function expectCharacterBlocked(res: APIResponse, reason: string): Promise<void> {
+export async function expectCharacterBlocked(
+  res: APIResponse,
+  reason: string,
+): Promise<void> {
   expect(res.status()).toBe(400);
   const body = (await res.json()) as CharacterBlockedBody;
-  expect(body.code).toBe('failed_precondition');
-  expect(body.details?.[0]?.type).toBe('meurpg.characters.v1.CharacterBlocked');
+  expect(body.code).toBe("failed_precondition");
+  expect(body.details?.[0]?.type).toBe("meurpg.characters.v1.CharacterBlocked");
   expect(body.details?.[0]?.debug?.reason).toBe(reason);
 }
 
@@ -335,11 +418,14 @@ export async function expectCharacterBlocked(res: APIResponse, reason: string): 
  * not a fresh `signIn` call; the signed-out path is its own flow, already
  * covered directly in invite.spec.ts.
  */
-export async function acceptInvite(context: BrowserContext, link: string): Promise<{ page: Page; campaignId: string }> {
+export async function acceptInvite(
+  context: BrowserContext,
+  link: string,
+): Promise<{ page: Page; campaignId: string }> {
   const page = await context.newPage();
   await page.goto(link);
   await expect(page).toHaveURL(/\/campaigns\/[^/]+$/);
-  return { page, campaignId: page.url().split('/').pop()! };
+  return { page, campaignId: page.url().split("/").pop()! };
 }
 
 /**
@@ -363,14 +449,21 @@ export async function acceptInvite(context: BrowserContext, link: string): Promi
  * alone or the name followed by those words, and nothing else ("Anão" never
  * matches "Anão da Colina").
  */
-async function selectMatOption(page: Page, label: string, optionName: string): Promise<void> {
-  const control = page.getByRole('combobox', { name: label, exact: true });
+async function selectMatOption(
+  page: Page,
+  label: string,
+  optionName: string,
+): Promise<void> {
+  const control = page.getByRole("combobox", { name: label, exact: true });
   await control.focus();
-  await control.press('Enter');
-  const name = optionName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const marks = '(?:\\s*(?:Da mesa|Arquivada|Arquivado|Desligada para os jogadores))*';
-  await page.getByRole('option', { name: new RegExp(`^${name}${marks}$`) }).click();
-  await expect(control).toHaveAttribute('aria-expanded', 'false');
+  await control.press("Enter");
+  const name = optionName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const marks =
+    "(?:\\s*(?:Da mesa|Arquivada|Arquivado|Desligada para os jogadores))*";
+  await page
+    .getByRole("option", { name: new RegExp(`^${name}${marks}$`) })
+    .click();
+  await expect(control).toHaveAttribute("aria-expanded", "false");
 }
 
 /**
@@ -413,20 +506,26 @@ export async function createCharacterViaUI(
   // needs by its tab.)
 
   // Passo "Básico" (selected by default).
-  await page.getByLabel('Nome do personagem', { exact: true }).fill(build.name);
-  await selectMatOption(page, 'Raça', build.race);
+  await page.getByLabel("Nome do personagem", { exact: true }).fill(build.name);
+  await selectMatOption(page, "Raça", build.race);
   if (build.subrace) {
-    await selectMatOption(page, 'Sub-raça', build.subrace);
+    await selectMatOption(page, "Sub-raça", build.subrace);
   }
-  await selectMatOption(page, 'Classe', build.class);
+  await selectMatOption(page, "Classe", build.class);
   // The subclass field waits for the level the class chooses it at: the level goes in first.
-  await page.getByLabel('Nível', { exact: true }).fill(String(build.level));
+  await page.getByLabel("Nível", { exact: true }).fill(String(build.level));
   if (build.subclass) {
-    await selectMatOption(page, 'Subclasse', build.subclass);
+    await selectMatOption(page, "Subclasse", build.subclass);
   }
-  await selectMatOption(page, 'Antecedente', build.background ? 'Outro (personalizado)' : 'Acólito');
+  await selectMatOption(
+    page,
+    "Antecedente",
+    build.background ? "Outro (personalizado)" : "Acólito",
+  );
   if (build.background) {
-    await page.getByLabel('Nome do antecedente', { exact: true }).fill(build.background);
+    await page
+      .getByLabel("Nome do antecedente", { exact: true })
+      .fill(build.background);
     // The background's own two skills: a separate checkbox group
     // (aria-labelledby="background-skills-label"), right below "Nome do
     // antecedente" on this same "Básico" step. Scoped to that group, not
@@ -434,28 +533,50 @@ export async function createCharacterViaUI(
     // in the "Perícias" step's full skill list (also always in the DOM —
     // see the note above), so an unscoped role/name match would be
     // ambiguous whenever a background skill and a class skill coincide.
-    const backgroundSkillsGroup = page.locator('[aria-labelledby="background-skills-label"]');
+    const backgroundSkillsGroup = page.locator(
+      '[aria-labelledby="background-skills-label"]',
+    );
     for (const skill of build.backgroundSkills) {
-      await backgroundSkillsGroup.getByRole('checkbox', { name: skill, exact: true }).check();
+      await backgroundSkillsGroup
+        .getByRole("checkbox", { name: skill, exact: true })
+        .check();
     }
   }
 
   // Passo "Habilidades": jump there by clicking its tab (no "next" button).
-  await page.getByRole('tab', { name: 'Habilidades' }).click();
+  await page.getByRole("tab", { name: "Habilidades" }).click();
   // A player makes the scores by one of the table's ways (RN-24, all four allowed by default): "Digitar" is the one
   // that takes the six numbers as they are. The master's NPCs have the free fields and no choice of way.
-  const typedWay = page.locator('.seg__item').filter({ hasText: 'Digitar' });
+  const typedWay = page.locator(".seg__item").filter({ hasText: "Digitar" });
   if ((await typedWay.count()) > 0) {
     await typedWay.click();
   }
   // The input itself: while the page switches how the scores are made, another
   // element labelled with the ability's name (a total, a medallion) can be the first match.
-  await page.locator('input').and(page.getByLabel('Força', { exact: true })).fill(String(build.scores.for));
-  await page.locator('input').and(page.getByLabel('Destreza', { exact: true })).fill(String(build.scores.des));
-  await page.locator('input').and(page.getByLabel('Constituição', { exact: true })).fill(String(build.scores.con));
-  await page.locator('input').and(page.getByLabel('Inteligência', { exact: true })).fill(String(build.scores.int));
-  await page.locator('input').and(page.getByLabel('Sabedoria', { exact: true })).fill(String(build.scores.sab));
-  await page.locator('input').and(page.getByLabel('Carisma', { exact: true })).fill(String(build.scores.car));
+  await page
+    .locator("input")
+    .and(page.getByLabel("Força", { exact: true }))
+    .fill(String(build.scores.for));
+  await page
+    .locator("input")
+    .and(page.getByLabel("Destreza", { exact: true }))
+    .fill(String(build.scores.des));
+  await page
+    .locator("input")
+    .and(page.getByLabel("Constituição", { exact: true }))
+    .fill(String(build.scores.con));
+  await page
+    .locator("input")
+    .and(page.getByLabel("Inteligência", { exact: true }))
+    .fill(String(build.scores.int));
+  await page
+    .locator("input")
+    .and(page.getByLabel("Sabedoria", { exact: true }))
+    .fill(String(build.scores.sab));
+  await page
+    .locator("input")
+    .and(page.getByLabel("Carisma", { exact: true }))
+    .fill(String(build.scores.car));
   // Pontos de Vida (Média/Rolado) defaults to "Média" — matches `pensantus`
   // (fixed/average hit points), so nothing to select here.
 
@@ -463,28 +584,35 @@ export async function createCharacterViaUI(
   // step's own group (see `backgroundSkillsGroup` above for why — the same
   // skill name can also appear as a background skill). Each skill has two
   // checkboxes here, itself and "Expertise"; this checks only the first.
-  await page.getByRole('tab', { name: 'Perícias' }).click();
-  const classSkillsGroup = page.getByRole('group', { name: 'Perícias', exact: true });
+  await page.getByRole("tab", { name: "Perícias" }).click();
+  const classSkillsGroup = page.getByRole("group", {
+    name: "Perícias",
+    exact: true,
+  });
   for (const skill of build.extraSkills) {
-    await classSkillsGroup.getByRole('checkbox', { name: skill, exact: true }).check();
+    await classSkillsGroup
+      .getByRole("checkbox", { name: skill, exact: true })
+      .check();
   }
 
   await fillChoicesStep(page);
 
   if (reserved) {
-    await page.getByRole('button', { name: 'Salvar como reservado' }).click();
+    await page.getByRole("button", { name: "Salvar como reservado" }).click();
     await expect(page).toHaveURL(new RegExp(`/campaigns/${campaignId}$`));
-    return '';
+    return "";
   }
 
   // "Criar personagem" for a player, "Criar NPC" from the master's menu.
-  await page.getByRole('button', { name: /^Criar (personagem|NPC)$/ }).click();
+  await page.getByRole("button", { name: /^Criar (personagem|NPC)$/ }).click();
 
   // `(?!new$)`: the player's own entry path, `/characters/new`, already
   // matches `/characters/<anything>`, so without it this would return
   // "new" whenever the check ran before the app navigated to the sheet.
-  await expect(page).toHaveURL(/\/campaigns\/[^/]+\/characters\/(?!new$)[^/]+$/);
-  return page.url().split('/').pop()!;
+  await expect(page).toHaveURL(
+    /\/campaigns\/[^/]+\/characters\/(?!new$)[^/]+$/,
+  );
+  return page.url().split("/").pop()!;
 }
 
 /**
@@ -499,34 +627,47 @@ export async function createCharacterViaUI(
  * `sheet` for a full-sheet kind. See `characterRpcBody` for a body built
  * from a `CharacterBuild`.
  */
-export async function createCharacterRPC(page: Page, campaignId: string, body: Record<string, unknown>): Promise<APIResponse> {
-  return callRPC(page, 'meurpg.characters.v1.CharacterService/CreateCharacter', {
-    campaignId,
-    ...(await withDefaultChoices(page, campaignId, body)),
-  });
+export async function createCharacterRPC(
+  page: Page,
+  campaignId: string,
+  body: Record<string, unknown>,
+): Promise<APIResponse> {
+  return callRPC(
+    page,
+    "meurpg.characters.v1.CharacterService/CreateCharacter",
+    {
+      campaignId,
+      ...(await withDefaultChoices(page, campaignId, body)),
+    },
+  );
 }
 
 /** The options that change a number or the actions of a fight: the last ones a default pick takes, so a test's expected numbers do not move. */
 const NUMERIC_CHOICES = [
-  'archery',
-  'defense',
-  'dueling',
-  'protection',
-  'two-weapon-fighting',
-  'agonizing-blast',
-  'beguiling-influence',
-  'devils-sight',
-  'giant-killer',
-  'evasion',
-  'uncanny-dodge',
-  'volley',
-  'whirlwind',
+  "archery",
+  "defense",
+  "dueling",
+  "protection",
+  "two-weapon-fighting",
+  "agonizing-blast",
+  "beguiling-influence",
+  "devils-sight",
+  "giant-killer",
+  "evasion",
+  "uncanny-dodge",
+  "volley",
+  "whirlwind",
 ];
 
 interface PreviewedChoice {
   missing?: number;
   picked?: string[];
-  options?: { key: string; storedKey: string; reasonPt?: string; needsText?: boolean }[];
+  options?: {
+    key: string;
+    storedKey: string;
+    reasonPt?: string;
+    needsText?: boolean;
+  }[];
 }
 
 /**
@@ -537,34 +678,54 @@ interface PreviewedChoice {
  * each open choice, the first options the sheet can take that change no number of a fight, and asks again until
  * nothing is open. A body that is not a player's full sheet, or that already has its picks, is returned as it is.
  */
-export async function withDefaultChoices(page: Page, campaignId: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
+export async function withDefaultChoices(
+  page: Page,
+  campaignId: string,
+  body: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
   const sheet = body.sheet as { full?: Record<string, unknown> } | undefined;
-  if (body.kind !== 'CHARACTER_KIND_PLAYER' || !sheet?.full) {
+  if (body.kind !== "CHARACTER_KIND_PLAYER" || !sheet?.full) {
     return body;
   }
-  const keys = [...((sheet.full.featureChoiceKeys as string[] | undefined) ?? [])];
-  const rank = (key: string) => (NUMERIC_CHOICES.some((n) => key.includes(n)) ? 1 : 0);
+  const keys = [
+    ...((sheet.full.featureChoiceKeys as string[] | undefined) ?? []),
+  ];
+  const rank = (key: string) =>
+    NUMERIC_CHOICES.some((n) => key.includes(n)) ? 1 : 0;
   const maxRounds = 12;
   for (let round = 0; round < maxRounds; round++) {
-    const res = await callRPC(page, 'meurpg.characters.v1.CharacterService/PreviewChoices', {
-      campaignId,
-      characterId: '',
-      kind: 'CHARACTER_KIND_PLAYER',
-      sheet: { full: { ...sheet.full, featureChoiceKeys: keys } },
-    });
+    const res = await callRPC(
+      page,
+      "meurpg.characters.v1.CharacterService/PreviewChoices",
+      {
+        campaignId,
+        characterId: "",
+        kind: "CHARACTER_KIND_PLAYER",
+        sheet: { full: { ...sheet.full, featureChoiceKeys: keys } },
+      },
+    );
     if (!res.ok()) {
       break;
     }
-    const groups = ((await res.json()) as { groups?: { choices?: PreviewedChoice[] }[] }).groups ?? [];
+    const groups =
+      ((await res.json()) as { groups?: { choices?: PreviewedChoice[] }[] })
+        .groups ?? [];
     let added = false;
     for (const choice of groups.flatMap((g) => g.choices ?? [])) {
       let need = choice.missing ?? 0;
-      const options = [...(choice.options ?? [])].sort((a, b) => rank(a.key) - rank(b.key));
+      const options = [...(choice.options ?? [])].sort(
+        (a, b) => rank(a.key) - rank(b.key),
+      );
       for (const o of options) {
         if (need === 0) {
           break;
         }
-        if (o.reasonPt || o.needsText || choice.picked?.includes(o.key) || keys.includes(o.storedKey)) {
+        if (
+          o.reasonPt ||
+          o.needsText ||
+          choice.picked?.includes(o.key) ||
+          keys.includes(o.storedKey)
+        ) {
           continue;
         }
         keys.push(o.storedKey);
@@ -576,7 +737,10 @@ export async function withDefaultChoices(page: Page, campaignId: string, body: R
       break;
     }
   }
-  return { ...body, sheet: { ...sheet, full: { ...sheet.full, featureChoiceKeys: keys } } };
+  return {
+    ...body,
+    sheet: { ...sheet, full: { ...sheet.full, featureChoiceKeys: keys } },
+  };
 }
 
 /**
@@ -586,31 +750,41 @@ export async function withDefaultChoices(page: Page, campaignId: string, body: R
  * (the step is not there). The server judges the sheet; this only fills it.
  */
 export async function fillChoicesStep(page: Page): Promise<void> {
-  const tab = page.getByRole('tab', { name: /Escolhas/ });
+  const tab = page.getByRole("tab", { name: /Escolhas/ });
   if ((await tab.count()) === 0) {
     return;
   }
   await tab.click();
   const maxRounds = 40;
-  for (let round = 0; round < maxRounds && (await tab.textContent())?.includes('Escolha pendente'); round++) {
-    const pending = page.locator('[data-pending]').first();
+  for (
+    let round = 0;
+    round < maxRounds &&
+    (await tab.textContent())?.includes("Escolha pendente");
+    round++
+  ) {
+    const pending = page.locator("[data-pending]").first();
     // A favored enemy's type and its language are lists; the humanoid type asks two texts, so it is skipped.
-    const lists = pending.locator('mat-select');
+    const lists = pending.locator("mat-select");
     if ((await lists.count()) > 0) {
       for (let i = 0; i < (await lists.count()); i++) {
         await lists.nth(i).click();
         await page
-          .getByRole('option')
+          .getByRole("option")
           .filter({ hasNotText: /^—$|Humanoide/ })
           .first()
           .click();
       }
       continue;
     }
-    const cards = pending.locator('.card[aria-checked="false"]:not([aria-disabled="true"])');
+    const cards = pending.locator(
+      '.card[aria-checked="false"]:not([aria-disabled="true"])',
+    );
     const names = await cards.allTextContents();
-    const numeric = /Arquearia|Defesa|Duelo|Duelismo|Proteção|Duas Armas|Rajada|Influência|Visão do Diabo|Matador de Gigantes|Evasão|Esquiva/;
-    const best = names.map((text, i) => ({ i, r: numeric.test(text) ? 1 : 0 })).sort((a, b) => a.r - b.r || a.i - b.i)[0];
+    const numeric =
+      /Arquearia|Defesa|Duelo|Duelismo|Proteção|Duas Armas|Rajada|Influência|Visão do Diabo|Matador de Gigantes|Evasão|Esquiva/;
+    const best = names
+      .map((text, i) => ({ i, r: numeric.test(text) ? 1 : 0 }))
+      .sort((a, b) => a.r - b.r || a.i - b.i)[0];
     if (!best) {
       break;
     }
@@ -629,7 +803,10 @@ export async function fillChoicesStep(page: Page): Promise<void> {
  * `hitPoints.method` is `"HIT_POINTS_METHOD_AVERAGE"` for `pensantus`
  * (`HitPointsMethod` enum, characters.proto).
  */
-export function characterRpcBody(kind: 'PLAYER' | 'ENEMY' | 'BOSS' | 'MINION' | 'STORY', build: CharacterBuild): Record<string, unknown> {
+export function characterRpcBody(
+  kind: "PLAYER" | "ENEMY" | "BOSS" | "MINION" | "STORY",
+  build: CharacterBuild,
+): Record<string, unknown> {
   return {
     kind: `CHARACTER_KIND_${kind}`,
     name: build.name,
@@ -645,12 +822,23 @@ export function characterRpcBody(kind: 'PLAYER' | 'ENEMY' | 'BOSS' | 'MINION' | 
         },
         raceKey: build.raceKey,
         subraceKey: build.subraceKey,
-        classes: [{ classKey: build.classKey, level: build.level, subclassKey: build.subclassKey }],
+        classes: [
+          {
+            classKey: build.classKey,
+            level: build.level,
+            subclassKey: build.subclassKey,
+          },
+        ],
         ...(build.background
-          ? { customBackground: { name: build.background, skillKeys: build.backgroundSkillKeys } }
+          ? {
+              customBackground: {
+                name: build.background,
+                skillKeys: build.backgroundSkillKeys,
+              },
+            }
           : { backgroundKey: build.backgroundKey }),
         skillProficiencyKeys: build.extraSkillKeys,
-        hitPoints: { method: 'HIT_POINTS_METHOD_AVERAGE' },
+        hitPoints: { method: "HIT_POINTS_METHOD_AVERAGE" },
       },
     },
   };
@@ -668,12 +856,19 @@ export function characterRpcBody(kind: 'PLAYER' | 'ENEMY' | 'BOSS' | 'MINION' | 
  * call `startGameSession(page)`, as the plan's helper list (§6) has it; pass
  * `campaignId` explicitly from any other page.
  */
-export async function startGameSession(page: Page, campaignId?: string): Promise<APIResponse> {
+export async function startGameSession(
+  page: Page,
+  campaignId?: string,
+): Promise<APIResponse> {
   const id = campaignId ?? page.url().match(/\/campaigns\/([^/]+)/)?.[1];
   if (!id) {
-    throw new Error('startGameSession: no campaignId given, and none found in the current page URL');
+    throw new Error(
+      "startGameSession: no campaignId given, and none found in the current page URL",
+    );
   }
-  return callRPC(page, 'meurpg.play.v1.PlayService/StartGameSession', { campaignId: id });
+  return callRPC(page, "meurpg.play.v1.PlayService/StartGameSession", {
+    campaignId: id,
+  });
 }
 
 /**
@@ -684,24 +879,32 @@ export async function startGameSession(page: Page, campaignId?: string): Promise
  * drawn its rows, never from the one before the last pick: pass `hidden` (how many rows the list
  * keeps back once it is complete) when the list was just changed, and the call waits for that button.
  */
-export async function showAllPicks(panel: import('@playwright/test').Locator, hidden?: number): Promise<void> {
-  const more = panel.getByRole('button', { name: new RegExp(`^Ver (os outros|as outras) ${hidden ?? '\\d+'}\\b`) });
+export async function showAllPicks(
+  panel: import("@playwright/test").Locator,
+  hidden?: number,
+): Promise<void> {
+  const more = panel.getByRole("button", {
+    name: new RegExp(`^Ver (os outros|as outras) ${hidden ?? "\\d+"}\\b`),
+  });
   if (hidden !== undefined) {
     // A list drawn whole (the level-up's prepared spells, `showAll`) has no such button: then every row is there.
-    const whole = panel.locator('xpath=descendant-or-self::app-pick-list[@data-all]');
+    const whole = panel.locator(
+      "xpath=descendant-or-self::app-pick-list[@data-all]",
+    );
     await more.or(whole).first().waitFor();
     if ((await more.count()) > 0) {
       await more.click();
     }
     return;
   }
-  await panel.locator('input.row__input').first().waitFor();
+  await panel.locator("input.row__input").first().waitFor();
   if ((await more.count()) > 0) {
     await more.click();
   }
 }
 
-const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const escapeRegExp = (text: string): string =>
+  text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
  * Chooses a tab of "O que você pode fazer" ("Ataques", "Magias", the class's tab such as "Guerreiro" or "Chi", "Outras") and
@@ -709,11 +912,18 @@ const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/
  * a cantrip's "Cast" in "Magias", "Usar X" in the class's tab, the standard actions ("Disparada", "Esconder") in "Outras".
  * A tab's accessible name carries its count in words ("Magias, 3 magias"), so it is found by the start of it.
  */
-export async function openActionTab(page: Page, label: string): Promise<Locator> {
-  const tab = page.getByRole('tablist', { name: 'Tipos de ação' }).getByRole('tab', { name: new RegExp(`^${escapeRegExp(label)}(,|$)`) });
+export async function openActionTab(
+  page: Page,
+  label: string,
+): Promise<Locator> {
+  const tab = page
+    .getByRole("tablist", { name: "Tipos de ação" })
+    .getByRole("tab", { name: new RegExp(`^${escapeRegExp(label)}(,|$)`) });
   await tab.click();
-  await expect(tab).toHaveAttribute('aria-selected', 'true');
-  return page.getByRole('tabpanel', { name: new RegExp(`^${escapeRegExp(label)}\\b`) });
+  await expect(tab).toHaveAttribute("aria-selected", "true");
+  return page.getByRole("tabpanel", {
+    name: new RegExp(`^${escapeRegExp(label)}\\b`),
+  });
 }
 
 /**
@@ -722,7 +932,7 @@ export async function openActionTab(page: Page, label: string): Promise<Locator>
  * already open, and nothing is pressed. `sheet` is the dialog the action opens.
  */
 export async function viaTargetList(page: Page, sheet: Locator): Promise<void> {
-  const list = page.getByRole('button', { name: 'Escolher na lista' });
+  const list = page.getByRole("button", { name: "Escolher na lista" });
   await expect(list.or(sheet).first()).toBeVisible();
   if (await list.isVisible()) {
     await list.click();
@@ -733,14 +943,21 @@ export async function viaTargetList(page: Page, sheet: Locator): Promise<void> {
  * Opens the folded line of a group that is spent in the tab shown ("Ação · Usada", "Ação bônus · Usada", "Reação · Usada";
  * `word` is "Indisponível" for a character that cannot act) and returns the line's own region, the rows it holds.
  */
-export async function openSpentGroup(page: Page, group: 'Ação' | 'Ação bônus' | 'Reação', word = 'Usada'): Promise<Locator> {
-  const fold = page.getByRole('button', { name: `${group} · ${word}`, exact: true });
+export async function openSpentGroup(
+  page: Page,
+  group: "Ação" | "Ação bônus" | "Reação",
+  word = "Usada",
+): Promise<Locator> {
+  const fold = page.getByRole("button", {
+    name: `${group} · ${word}`,
+    exact: true,
+  });
   await expect(fold).toBeVisible();
-  if ((await fold.getAttribute('aria-expanded')) !== 'true') {
+  if ((await fold.getAttribute("aria-expanded")) !== "true") {
     await fold.click();
   }
-  await expect(fold).toHaveAttribute('aria-expanded', 'true');
-  return page.locator(`#${await fold.getAttribute('aria-controls')}`);
+  await expect(fold).toHaveAttribute("aria-expanded", "true");
+  return page.locator(`#${await fold.getAttribute("aria-controls")}`);
 }
 
 /**
@@ -748,15 +965,17 @@ export async function openSpentGroup(page: Page, group: 'Ação' | 'Ação bônu
  * 768 px "Registro do combate" is a fold under the map, closed until it is opened.
  */
 export async function openCombatLog(page: Page): Promise<Locator> {
-  const sheet = page.getByRole('button', { name: 'Abrir o registro do combate' });
-  const fold = page.getByRole('button', { name: /^Registro do combate/ });
+  const sheet = page.getByRole("button", {
+    name: "Abrir o registro do combate",
+  });
+  const fold = page.getByRole("button", { name: /^Registro do combate/ });
   await expect(sheet.or(fold)).toBeVisible();
   if (await sheet.isVisible()) {
     await sheet.click();
-  } else if ((await fold.getAttribute('aria-expanded')) !== 'true') {
+  } else if ((await fold.getAttribute("aria-expanded")) !== "true") {
     await fold.click();
   }
-  const log = page.getByRole('log', { name: 'Registro do combate' });
+  const log = page.getByRole("log", { name: "Registro do combate" });
   await expect(log).toBeVisible();
   return log;
 }

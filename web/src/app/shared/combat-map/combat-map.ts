@@ -19,6 +19,7 @@ import type { Vision } from '../../core/maps/vision';
 import { FogBase } from '../fog-map/fog-base';
 import { DoorPicks } from '../map-layers/door-picks';
 import { MapLayersOverlay } from '../map-layers/map-layers';
+import { gridPath, watchUnit } from './measure-unit';
 import { type PickMark, type PickNote, PickLayer } from './pick-layer';
 
 export type { PickMark, PickNote } from './pick-layer';
@@ -173,27 +174,24 @@ export class CombatMap {
     }
     return cells;
   });
+  private readonly surfaceEl = viewChild<ElementRef<HTMLElement>>('surface');
   protected readonly layer = new PickLayer(
     () => this.pick(),
     () => this.pickNote(),
     () => this.shown(),
     () => ({ columns: this.columns(), rows: this.rows() }),
+    watchUnit(
+      () => this.surfaceEl()?.nativeElement,
+      () => this.columns(),
+    ),
+    (c) => this.span(c),
   );
   protected readonly aspect = computed(() => `${this.image().width} / ${this.image().height}`);
   protected readonly widthPx = computed(() => {
     const cell = this.cellPx();
     return cell ? cell * this.columns() : null;
   });
-  protected readonly gridPath = computed(() => {
-    const parts: string[] = [];
-    for (let c = 0; c <= this.columns(); c++) {
-      parts.push(`M${c} 0V${this.rows()}`);
-    }
-    for (let r = 0; r <= this.rows(); r++) {
-      parts.push(`M0 ${r}H${this.columns()}`);
-    }
-    return parts.join('');
-  });
+  protected readonly gridPath = computed(() => gridPath(this.columns(), this.rows()));
   /** The squares the reach tints (the server's list). */
   protected readonly reachCells = computed<readonly Square[]>(() => this.reach()?.squares ?? []);
   /** The circle of the movement left, in squares (a square straight is 50 tenths of a foot). */
