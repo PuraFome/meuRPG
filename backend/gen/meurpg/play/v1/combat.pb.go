@@ -9859,6 +9859,11 @@ type TargetInReach struct {
 	// A hit on this target is a critical hit: it is paralyzed or unconscious and the
 	// attacker is within 5 ft (SRD 5.1, Conditions).
 	CriticalOnHit bool `protobuf:"varint,11,opt,name=critical_on_hit,json=criticalOnHit,proto3" json:"critical_on_hit,omitempty"`
+	// Only for the master reading the turn options of a player's character: the character's player does not see this
+	// creature (the master hid it, or it is in the dark of a fog map), so the master acting for the character cannot pick
+	// it. It is listed so the screen can dim it ("Pensantus não vê este alvo"); `untargetable` is true too. The server
+	// refuses it in RollAttack and CastSpell with `not_found`. Never set for a player.
+	NotSeen       bool `protobuf:"varint,12,opt,name=not_seen,json=notSeen,proto3" json:"not_seen,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -9966,6 +9971,13 @@ func (x *TargetInReach) GetSources() []*AdvantageSource {
 func (x *TargetInReach) GetCriticalOnHit() bool {
 	if x != nil {
 		return x.CriticalOnHit
+	}
+	return false
+}
+
+func (x *TargetInReach) GetNotSeen() bool {
+	if x != nil {
+		return x.NotSeen
 	}
 	return false
 }
@@ -23916,7 +23928,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\rAttackTargets\x12\x1d\n" +
 	"\n" +
 	"attack_key\x18\x01 \x01(\tR\tattackKey\x127\n" +
-	"\atargets\x18\x02 \x03(\v2\x1d.meurpg.play.v1.TargetInReachR\atargets\"\xfe\x03\n" +
+	"\atargets\x18\x02 \x03(\v2\x1d.meurpg.play.v1.TargetInReachR\atargets\"\x99\x04\n" +
 	"\rTargetInReach\x12!\n" +
 	"\fcombatant_id\x18\x01 \x01(\tR\vcombatantId\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x124\n" +
@@ -23930,7 +23942,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\troll_mode\x18\t \x01(\x0e2\x18.meurpg.play.v1.RollModeR\brollMode\x129\n" +
 	"\asources\x18\n" +
 	" \x03(\v2\x1f.meurpg.play.v1.AdvantageSourceR\asources\x12&\n" +
-	"\x0fcritical_on_hit\x18\v \x01(\bR\rcriticalOnHitB\x0e\n" +
+	"\x0fcritical_on_hit\x18\v \x01(\bR\rcriticalOnHit\x12\x19\n" +
+	"\bnot_seen\x18\f \x01(\bR\anotSeenB\x0e\n" +
 	"\f_distance_ft\"\x97\x05\n" +
 	"\x11RollAttackRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +

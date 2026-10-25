@@ -76,6 +76,9 @@ func (s *Service) windowToAnswer(ctx context.Context, c *combatTx, m authz.Membe
 	if !master && (w.ReactorID == nil || reactor.ID == "" || reactor.UserID == nil || *reactor.UserID != m.UserID || isCreature(reactor)) {
 		return none, reactor, errWindowDenied()
 	}
+	if w.Status == windowAnswered { // the other of the player and the master answered first
+		return none, reactor, errReactionAlreadyAnswered()
+	}
 	if w.Status != windowOpen {
 		return none, reactor, errNotYourTurnToAnswer()
 	}
