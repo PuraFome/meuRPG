@@ -169,8 +169,13 @@
   width: 100%;
   white-space: nowrap;
 
+  // A phone: a text action with its icon under the clue, as wide as its words (a full-width button made the list the longest part of the page).
   @media (max-width: 767.98px) {
-    --mat-button-outlined-container-height: 48px;
+    --mat-button-outlined-container-height: 44px;
+    --mat-button-outlined-outline-color: transparent;
+    width: auto;
+    justify-self: start;
+    padding-inline: 0;
   }
 
   @container (min-width: 380px) {

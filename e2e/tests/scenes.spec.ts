@@ -222,7 +222,7 @@ test(
       await expect(player.getByText('O mestre abriu uma cena: A carroça tombada.')).toBeAttached();
       await expect(scene.getByRole('button', { name: /^Rolar / })).toHaveCount(5);
       await expect(scene.getByText('Rolada')).toHaveCount(0);
-      await expect(master.getByText('Ninguém rolou ainda.')).toBeVisible();
+      await expect(master.locator('app-scene-actions .chip')).toHaveCount(0);
     } finally {
       if (campaignId) {
         await endOpenSessionRPC(master, campaignId);
@@ -368,7 +368,7 @@ test(
       await openSessionPage(master, campaignId);
       await openScene(master, 'A carroça tombada');
       await expect(master.getByText('Os jogadores veem a CD')).toBeVisible();
-      await expect(master.getByText('3 tentativas por jogador')).toBeVisible();
+      await expect(master.getByText('3 tentativas', { exact: true })).toBeVisible();
 
       // The player sees the DC and the attempts before rolling.
       await openSessionPage(player, campaignId);

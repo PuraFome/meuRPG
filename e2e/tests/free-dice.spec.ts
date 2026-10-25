@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { cardNumbers, diceTable, freeRollsRPC, openDice, rollUntilRefused, stepModifier } from './free-dice-support';
-import { endOpenSessionRPC, startSessionRPC } from './live-session-support';
+import { endOpenSessionRPC, openTableRolls, startSessionRPC } from './live-session-support';
 import { callRPC, newSignedInContext } from './support';
 
 // MR-052: the free dice roller. A member of the table opens "Dados" in the session's header, picks the dice and
@@ -39,8 +39,7 @@ test(
       await expect(sheet.getByRole('button', { name: 'Rolar 2d6 + 3 de novo' })).toBeVisible();
 
       // The master reads the same roll in "Rolagens da mesa" and sees the dice on the overlay.
-      const row = m
-        .getByRole('region', { name: 'Rolagens da mesa' })
+      const row = (await openTableRolls(m))
         .getByRole('listitem')
         .filter({ hasText: `2d6 + 3 = ${total} (${faces[0]}, ${faces[1]})` });
       await expect(row).toHaveCount(1);
@@ -82,7 +81,7 @@ test(
       await expect(sheet).toBeHidden();
 
       // The master reads both in the log, the secret one with its badge.
-      const masterLog = m.getByRole('region', { name: 'Rolagens da mesa' });
+      const masterLog = await openTableRolls(m);
       const secretRow = masterLog.getByRole('listitem').filter({ hasText: '1d20 + 7' });
       await expect(secretRow).toHaveCount(1);
       await expect(secretRow).toContainText('Só você');
@@ -120,7 +119,7 @@ test('um toque duplo em "Rolar" rola uma vez só', { tag: ['@MR-052'] }, async (
     const sheet = await openDice(p);
     await sheet.getByRole('button', { name: 'Rolar 1d20', exact: true }).dblclick();
     await expect(sheet.locator('app-free-roll-card')).toBeVisible();
-    await expect(m.getByRole('region', { name: 'Rolagens da mesa' }).getByRole('listitem')).toHaveCount(1);
+    await expect((await openTableRolls(m)).getByRole('listitem')).toHaveCount(1);
     const own = await freeRollsRPC(p, campaignId);
     expect(own.mine).toHaveLength(1);
     expect(own.table).toHaveLength(1);

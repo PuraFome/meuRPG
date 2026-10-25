@@ -43,6 +43,11 @@
   min-height: 48px;
   --mat-button-outlined-label-text-color: var(--mr-ink);
 
+  // A phone: the two buttons are two equal rows, so the words stay whole.
+  @media (max-width: 479.98px) {
+    flex: 1 1 100%;
+  }
+
   &--on {
     border-width: 2px;
     --mat-button-outlined-outline-color: var(--mr-accent);

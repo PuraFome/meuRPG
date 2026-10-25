@@ -170,6 +170,8 @@ describe('ConversationLine', () => {
     expect(el.classList.contains('line--npc')).toBe(false);
     expect(label).toBe('Bartolo, o taverneiro · você');
     expect(el.querySelector('.line__bubble')?.textContent).toBe('Quartos, só amanhã.');
+    // The NPC's round portrait stays beside the bubble.
+    expect(el.querySelector('.line__portrait--own')?.textContent?.trim()).toBe('B');
   });
 
   it('draws another player as a bubble without portrait ring text of "você"', () => {
