@@ -555,7 +555,7 @@ func (h *harness) contentRevision(campaign string) int32 {
 	return rev
 }
 
-// TestTableContentLimits: 64 KiB of data per entry, 300 entries per campaign.
+// TestTableContentLimits: 64 KiB of data per entry, 1000 entries per campaign.
 func TestTableContentLimits(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
@@ -572,9 +572,9 @@ func TestTableContentLimits(t *testing.T) {
 		t.Errorf("an entry over 64 KiB: violations = %v, want size_limit", v)
 	}
 
-	// 300 entries, written straight into the table: each through the API would take minutes.
+	// 999 entries, written straight into the table: each through the API would take minutes.
 	ctx := t.Context()
-	for i := range 300 {
+	for i := range 999 {
 		name := "Antecedente " + strings.Repeat("x", i%5) + string(rune('a'+i%26)) + string(rune('a'+i/26))
 		data, err := storedData(testBackground(name))
 		if err != nil {
@@ -589,12 +589,15 @@ func TestTableContentLimits(t *testing.T) {
 	if _, err := h.pool.Exec(ctx, "INSERT INTO campaign_content_state (campaign_id, revision, updated_at) VALUES ($1, 1, now())", campaign); err != nil {
 		t.Fatalf("insert the revision: %v", err)
 	}
-	_, err = master.table.CreateTableEntry(t.Context(), connect.NewRequest(createReq(campaign, testBackground("A trecentésima primeira"))))
+	// The 1000th fits, the 1001st does not.
+	master.addEntry(t, campaign, testBackground("A milésima"))
+	revisionAfter := h.contentRevision(campaign)
+	_, err = master.table.CreateTableEntry(t.Context(), connect.NewRequest(createReq(campaign, testBackground("A milésima primeira"))))
 	if v := violationsOfErr(t, err); len(v) != 1 || v[0].GetReason() != rules.ReasonLimit {
-		t.Errorf("the 301st entry: violations = %v, want limit", v)
+		t.Errorf("the 1001st entry: violations = %v, want limit", v)
 	}
-	if got := h.contentRevision(campaign); got != 1 {
-		t.Errorf("revision = %d after a refused 301st entry, want 1", got)
+	if got := h.contentRevision(campaign); got != revisionAfter {
+		t.Errorf("revision = %d after a refused 1001st entry, want %d", got, revisionAfter)
 	}
 }
 
