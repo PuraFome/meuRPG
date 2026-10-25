@@ -58,6 +58,8 @@ export interface CastingDraft {
   /** 0 is the kind's default. */
   startLevel: number;
   ritual: boolean;
+  /** SRD spells on the class's own list (`srd_spell_keys`); sent only while the list is the class's own. */
+  srdSpells: string[];
 }
 
 export interface LevelFeature {
@@ -107,6 +109,8 @@ export interface SubclassDraft {
   rows: RowDraft[];
   features: LevelFeature[];
   alwaysPrepared: AlwaysPreparedGroup[];
+  /** The always-prepared spells join the class's list to choose from instead of being given (`spells_expanded`). */
+  spellsExpanded: boolean;
 }
 
 let nextFeatureId = 0;
@@ -131,6 +135,7 @@ export function emptyCasting(kind: CastingKind = ''): CastingDraft {
     preparedMax: '',
     startLevel: 0,
     ritual: false,
+    srdSpells: [],
   };
 }
 
@@ -272,6 +277,7 @@ export function castingToDraft(
         ? c.startLevel
         : (tableFor(defaults, c.kind as CastingKind, preparation)?.startLevel ?? 1),
     ritual: c.ritual,
+    srdSpells: [...c.srdSpellKeys],
   };
 }
 
@@ -284,6 +290,7 @@ export function castingInit(c: CastingDraft): MessageInitShape<typeof TableClass
     preparedMax: c.preparation === 'prepared' ? c.preparedMax.trim() : '',
     startLevel: c.startLevel,
     ritual: c.ritual,
+    srdSpellKeys: c.listFrom === '' ? [...c.srdSpells] : [],
   };
 }
 

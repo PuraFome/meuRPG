@@ -127,6 +127,11 @@ type Effect struct {
 	Except string `json:"except,omitempty"`
 	While  string `json:"while,omitempty"`
 
+	// proficiency, level "expertise" on a skill: OnlyProficient doubles the skill
+	// only where the character has its proficiency from another source when the
+	// sheet is worked out; the effect never gives the proficiency itself.
+	OnlyProficient bool `json:"only_proficient,omitempty"`
+
 	// wild_shape: the beasts a druid may turn into (wildshape.go). MaxCR is
 	// the highest challenge rating, such as "1/4", and NoFly and NoSwim leave
 	// out the beasts with a fly or a swim speed. The druid's features of
@@ -313,7 +318,7 @@ func (x effectCompiler) strayFields() error {
 	if e.Type != "replaces" && e.Replaces != "" {
 		return x.fail("replaces belongs to the replaces effect")
 	}
-	if err := x.strayResistance(); err != nil {
+	if err := x.strayOwnFields(); err != nil {
 		return err
 	}
 	if e.Type != "ranged_attack" && (e.IgnoreCover || e.RangeMultiplier != 0 || e.NoLongRangeDisadvantage) {
@@ -322,10 +327,14 @@ func (x effectCompiler) strayFields() error {
 	return nil
 }
 
-// strayResistance refuses except and while on an effect of another type.
-func (x effectCompiler) strayResistance() error {
+// strayOwnFields refuses except and while on an effect of another type, and
+// only_proficient on one that is not a proficiency.
+func (x effectCompiler) strayOwnFields() error {
 	if x.e.Type != "resistance" && (x.e.Except != "" || x.e.While != "") {
 		return x.fail("except and while belong to resistance")
+	}
+	if x.e.Type != "proficiency" && x.e.OnlyProficient {
+		return x.fail("only_proficient belongs to proficiency")
 	}
 	return nil
 }
@@ -405,7 +414,23 @@ func (x effectCompiler) proficiency() error {
 	if e.Level != "" && !slices.Contains(proficiencyLevels, e.Level) {
 		return x.fail("unknown level %q", e.Level)
 	}
+	if msg := checkOnlyProficient(e); msg != "" {
+		return x.fail("%s", msg)
+	}
 	return nil
+}
+
+// checkOnlyProficient says what is wrong with the only_proficient switch of a
+// proficiency effect, or "": it doubles skills, so it goes with the level
+// "expertise" and a skill (or "skill:*").
+func checkOnlyProficient(e *Effect) string {
+	if !e.OnlyProficient {
+		return ""
+	}
+	if e.Level != "expertise" || !strings.HasPrefix(e.Proficiency, "skill:") {
+		return "only_proficient goes with the level expertise on a skill"
+	}
+	return ""
 }
 
 func (x effectCompiler) rollMode() error {

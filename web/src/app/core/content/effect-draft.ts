@@ -53,6 +53,8 @@ export interface EffectDraft {
   /** resistance: the damage type it leaves out, and when it holds ("rage"). */
   except: string;
   while: string;
+  /** proficiency, level "expertise" on a skill: doubles it only where the character is already proficient. */
+  onlyProficient: boolean;
 }
 
 let nextId = 0;
@@ -93,6 +95,7 @@ export function emptyEffect(type = ''): EffectDraft {
     noLongRangeDisadvantage: false,
     except: '',
     while: '',
+    onlyProficient: false,
   };
 }
 
@@ -128,6 +131,7 @@ export function effectToDraft(e: TableEffect): EffectDraft {
     noLongRangeDisadvantage: e.noLongRangeDisadvantage,
     except: e.except,
     while: e.while,
+    onlyProficient: e.onlyProficient,
   };
 }
 
@@ -214,6 +218,10 @@ const EFFECT_WRITERS: ReadonlyMap<string, EffectWriter> = new Map<string, Effect
   ['while', pickedText('while')],
   ['ignore_cover', (d) => (d.ignoreCover ? { ignoreCover: true } : {})],
   [
+    'only_proficient',
+    (d) => (onlyProficientApplies(d) && d.onlyProficient ? { onlyProficient: true } : {}),
+  ],
+  [
     'range_multiplier',
     (d) => (d.rangeMultiplier > 0 ? { rangeMultiplier: d.rangeMultiplier } : {}),
   ],
@@ -222,6 +230,12 @@ const EFFECT_WRITERS: ReadonlyMap<string, EffectWriter> = new Map<string, Effect
     (d) => (d.noLongRangeDisadvantage ? { noLongRangeDisadvantage: true } : {}),
   ],
 ]);
+
+/** Whether "Só onde já tem proficiência" means something for the effect: it doubles a skill, so it goes with the level
+ * "Especialização" on a skill ("skill:*" is every skill). The editor shows it only then, and the request sends it only then. */
+export function onlyProficientApplies(d: Pick<EffectDraft, 'level' | 'proficiency'>): boolean {
+  return d.level === 'expertise' && d.proficiency.startsWith('skill:');
+}
 
 /** The effect a request sends: `type` and the fields the menu says that type reads, and nothing else. An empty text or an empty
  * list is not sent: the server reads "not set" the same way. */
@@ -262,6 +276,7 @@ export const EFFECT_FIELD_LABELS: Readonly<Record<string, string>> = {
   ignore_cover: 'Ignora meia cobertura e três quartos',
   range_multiplier: 'Multiplica o alcance da magia por',
   no_long_range_disadvantage: 'Sem desvantagem no alcance longo',
+  only_proficient: 'Só onde já tem proficiência',
 };
 
 /** One line under a field, where the name alone does not say. This is screen copy; the formula functions and the tag
@@ -272,6 +287,8 @@ export const EFFECT_FIELD_HINTS: Readonly<Record<string, string>> = {
   ignore_cover: 'O alvo não ganha o bônus na CA. A cobertura total continua impedindo o ataque.',
   range_multiplier: 'Só para magias: 2 dobra o alcance, 3 triplica. Vazio, o alcance não muda.',
   no_long_range_disadvantage: 'Só para armas: até o alcance longo, a rolagem não tem desvantagem.',
+  only_proficient:
+    'Dobra a perícia só de quem já é proficiente nela por outra fonte. Quem não é, fica como está.',
 };
 
 /** A value of a closed list: the key the effect stores and the Portuguese name. */

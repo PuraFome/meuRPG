@@ -179,6 +179,12 @@ message TableEffect {
   // (the barbarian's own rage resistance) counts once.
   string except = 27;
   string while = 28;
+  // proficiency, level "expertise" on a skill ("skill:*" is every skill) only: the
+  // skill is doubled only where the character already has its proficiency from
+  // another source when the sheet is worked out (the race, the background, the
+  // sheet's picks or another feature); the effect never gives the proficiency itself.
+  // Empty or false doubles the skill whether or not the character is proficient.
+  bool only_proficient = 29;
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
@@ -241,6 +247,11 @@ message TableCasting {
   int32 start_level = 6;
   // Whether it casts rituals.
   bool ritual = 7;
+  // SRD spells ("spell:cure-wounds") on the class's own list, next to the table
+  // spells that name the class. Only a class whose list_from is empty has them;
+  // a third caster's subclass and a class that does not cast have none. Each is
+  // a spell of the SRD, named once, and a class names at most 400.
+  repeated string srd_spell_keys = 8;
 }
 
 // TableClassLevel is one row of a class's 20-level table.
@@ -322,6 +333,11 @@ message TableSubclass {
   // start level to 20.
   TableCasting casting = 6;
   repeated TableAlwaysPrepared always_prepared = 7;
+  // The spells of always_prepared are not given: they join the class's spell list
+  // to choose from, as a warlock patron's expanded list does, and count against
+  // the spells known or prepared. It needs always_prepared to have spells; a
+  // subclass without spells that sets it is refused.
+  bool spells_expanded = 8;
 }
 
 // TableRace is a race.

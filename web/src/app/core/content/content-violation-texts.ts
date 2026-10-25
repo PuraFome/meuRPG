@@ -99,6 +99,32 @@ export const FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text: strin
     text: 'Escolha uma classe que tenha lista de magias própria (uma subclasse que conjura precisa de uma).',
   },
   {
+    shape: /^table_class\.casting\.srd_spell_keys\[\]$/,
+    reason: 'dangling_reference',
+    text: 'Esta magia não está no SRD. Tire-a da lista.',
+  },
+  {
+    shape: /^table_class\.casting\.srd_spell_keys\[\]$/,
+    text: 'Esta magia está na lista duas vezes.',
+  },
+  {
+    shape: /^table_(class|subclass)\.casting\.srd_spell_keys$/,
+    reason: 'limit',
+    text: 'A lista passou de 400 magias do SRD.',
+  },
+  {
+    shape: /^table_(class|subclass)\.casting\.srd_spell_keys$/,
+    text: 'Só uma classe com lista própria tem magias do SRD. Escolha "A própria lista da classe".',
+  },
+  {
+    shape: /^table_subclass\.spells_expanded$/,
+    text: 'Esta marca precisa de magias na subclasse. Adicione magias ou desligue.',
+  },
+  {
+    shape: /\.effects\[\]\.only_proficient$/,
+    text: 'Só vale para a especialização numa perícia.',
+  },
+  {
     shape: /^table_(class|subclass)\.casting\.start_level$/,
     text: 'A conjuração começa num nível de 1 a 20, e uma subclasse não conjura antes de ser escolhida.',
   },

@@ -110,7 +110,7 @@ What the engine needs to know is written by hand in `effects/*.json`, in a close
 | Type | What it does |
 | --- | --- |
 | `modifier` | Changes a target with a mode (`add`, `max`, `set`) and a formula. Targets: `ac.base` (the highest of the options, e.g. Unarmored Defense `10 + mod("dex") + mod("con")` with `armor() == "none"`), `ac`, `hp.max`, `speed.walk`, `initiative`, `attack.weapon.melee`, `attack.weapon.ranged`, `damage.weapon.melee`, `damage.weapon.ranged`, plus the dynamic targets (a skill, a saving throw, `save.all`, which Aura of Protection uses, and `score.<ability>`). A score modifier is an `add` with a `cap` above 20, the highest value the effect lifts it to (Primal Champion: `+4`, cap 24); a score already above the cap is left alone, and no other modifier has a cap. |
-| `proficiency` | A proficiency, expertise, or half proficiency (Jack of All Trades: every skill, raw ability check and initiative). |
+| `proficiency` | A proficiency, expertise, or half proficiency (Jack of All Trades: every skill, raw ability check and initiative). With `only_proficient`, an expertise effect doubles a skill only where the character is proficient from another source (see [Table content](rules-table-content.md#the-closed-menu-of-effects)). |
 | `roll_mode` | Advantage or disadvantage on a kind of roll (`attack`, `death_save`, `initiative`, `check.all`, `save.all`, an ability's checks, a skill, a save). With a tag (`against:magic`, Gnome Cunning) it becomes a hint. |
 | `sense` | Darkvision, blindsight, truesight, tremorsense, with the range. |
 | `spellcasting` | Ability, how spells are prepared or known, the list, the prepared formula (Wizard: `max(1, mod("int") + classLevel("wizard"))`). |
