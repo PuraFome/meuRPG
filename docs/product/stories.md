@@ -652,6 +652,17 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - **Given** the "Opções para os jogadores" screen, **when** the master switches a table option off, **then** players are not offered it and the server refuses it as a new pick; a sheet that already has it keeps it.
 - **Given** the option editor, **when** I save an option with an unknown set, a class or option or Pact Boon or spell that does not exist, a level outside 1 to 20, or another choice among its effects, **then** the server refuses each at its field, **and** the set of an option never changes after it is created.
 
+**Class features.**
+
+- **Given** I am the game master of "Mirathel", **when** I register a feature for a class (the SRD's or one of the table) at a class level, with its text and effects, **then** every character of that class reads it from that level on, in "Mirathel" only, like any feature of the class.
+- **Given** a class feature that replaces another feature of the class (an invented Ranger feature at level 1 that replaces Favored Enemy), **then** characters of the class no longer have the replaced feature from that level on, **and** the replaced feature is not asked for in their choices; **when** I switch the entry off, **then** the class reads as before and the replaced feature is back.
+- **Given** the editor, **when** I save a class feature with a class that does not exist, a level outside 1 to 20, or a replaced feature the class does not have at that level or later (or that it already had before), **then** the server refuses each at its field.
+
+**Swapping a pick.**
+
+- **Given** the table rule "Trocar uma escolha no aumento de atributo" is on and a Fighter reaches level 4, **when** the level-up reaches the ability step, **then** it also offers to give up one earlier pick of one group (cantrip, fighting style, metamagic option, invocation, pact boon) for another of the same pool, with "Não trocar" as the default, **and** the sheet shows the new pick and not the old one; the new pick still needs the prerequisites of any pick.
+- **Given** the rule is off (the default), or the level has no Ability Score Improvement, **then** the level-up offers no swap and the server refuses one (`SWAP_NOT_ALLOWED`).
+
 **Changing, archiving and switching.**
 
 - **Given** a table class that a sheet uses, **when** the game master changes one of its numbers, **then** the sheet shows the new number, locked sheets included, **and** whatever fell outside the rules appears on the sheet as a notice ("A classe mudou") with one sentence per change, without blocking any other edit (RN-23).
