@@ -65,6 +65,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 | [MR-051](#mr-051-the-scenes-conversation) | Session | MVP |
 | [MR-052](#mr-052-the-free-dice-roller) | Session | MVP |
 | [MR-049](#mr-049-reserved-characters-and-claim-links) | Character | MVP |
+| [MR-053](#mr-053-the-master-acts-for-a-players-character) | Combat | MVP |
 | [MR-002](#mr-002-generate-an-invite) | Campaign | MVP (prerequisite) |
 | [MR-005](#mr-005-create-npcs) | Character | MVP (prerequisite) |
 | [MR-007](#mr-007-import-a-sheet-from-pdf) | Character | Later |
@@ -371,7 +372,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 - **Given** the master asks one, some or all characters for a skill check, an ability check or a saving throw outside a combat, **when** they send it, **then** each roll is judged alone unless they choose a group check, only the characters asked read the request, and the master marks who is surprised.
 - **Given** someone at 0 HP, **when** the player looks at the turn, **then** they see "Brisa está caída", the marks and "Rolar teste contra a morte"; on the third failure the character dies only when the master confirms ("Confirmar a morte" / "Ainda não") (RN-03).
 - **Given** conditions (the 15 of the SRD; "Derrubado" is Prone) and concentration, **when** they apply, **then** they show as tags under the name, in the player's strip and as a dot on the token, and the player ends their own concentration. The master sets them in "Condições…" in the order's ⋮. When damage hits a concentrating target, the master applying **another value** ("Aplicar outro valor") reads "Teste de Constituição, CD 10". Conditions and concentration are marked and reminded; the master decides the effects (RN-22).
-- **Given** a player's character at 0 HP, still making death saves, on its turn with the save not yet rolled, **when** the player is away and the game master reads "Teste contra a morte de Brisa", **then** they roll it ("Rolar no app" or "Digitar o resultado", by the table's dice mode) and the counts move, **and** if they tap "Próximo turno" first the app asks "O teste contra a morte de Brisa ainda não foi rolado." with "Rolar agora" or "Passar sem rolar"; the card never shows for an NPC or a stable character, and the other players never read the result (RN-03, RN-24).
+- **Given** a player's character at 0 HP, still making death saves, on its turn with the save not yet rolled, **when** the player is away and the game master reads "Teste contra a morte de Brisa", **then** they roll it ("Rolar no app" or "Digitar o resultado", by the table's dice mode) and the counts move, **and** the turn does not pass until it is rolled ("Próximo turno" is dashed and the bar says "Falta o teste contra a morte"; the server refuses it too, MR-053); the card never shows for an NPC or a stable character, and the other players never read the result (RN-03, RN-24).
 
 **Master's turn and the log**
 - **Given** an NPC's turn, **when** the master plays it, **then** the card "Ações do Capitão Goblin" shows hit points, armor class, speed and the attack with the "Alvo" field; "Rolar ataque" works in the app or typed ("Acertou contra CA 18 do Toren"), and "Aplicar 5 de dano" / "Não aplicar" (which asks "Descartar o dano de 5?"). While damage is unapplied, "Próximo turno" asks "Há dano sem aplicar. Passar o turno mesmo assim?". Armor class is master-only.
@@ -1444,6 +1445,33 @@ See [Architecture](../architecture/campaign-package.md).
 
 #### Related
 - [MR-002](#mr-002-generate-an-invite) and [MR-003](#mr-003-join-through-the-invite) (the other way into a campaign), [MR-024](#mr-024-approve-the-character-from-the-invite) (a pending member), [MR-006](#mr-006-locked-sheet). The package of a campaign ([MR-050](#mr-050-campaign-package-export-and-import)) brings its characters in as reserved. See [Architecture](../architecture/characters.md#reserved-characters-and-claim-links).
+
+### MR-053: The master acts for a player's character
+
+**As a** master, **I want** to play a player character's turn when its player is not there (or does not answer), **so that** the combat does not stop and the table keeps the player's character in the game.
+
+- Priority: MVP
+- Rules: RN-03, RN-10, RN-18, RN-19, RN-20
+- Modules: play
+
+#### Acceptance criteria
+- **Given** a player character's turn, **when** the master reads "Turno", **then** the card of that character shows "Agir por <name>" on every player turn: there is no "absent" mode to switch on first. A character at 0 hit points has no "Agir por": its card is the death save (below).
+- **Given** the master taps "Agir por <name>", **then** he gets the character's own turn: its economy, its action tabs built from its sheet, its attacks, spells, features, Wild Shape, summons and familiar, its movement and target picking, as the player has them, and "Voltar ao mestre" (which gives the rail back without ending the turn); the combat bar says "Você age por <name>" and its one filled button reads "Encerrar o turno de <name>" in place of "Próximo turno", so there is one end-of-turn button on the screen.
+- **Given** the master acts, **when** he moves, **then** he drags the character's token or uses "Mover" in the map's header (it is not in the rail) while no target is being picked.
+- **Given** the master acts, **when** he picks a target, **then** only what the character sees counts (the server's target list for that character: a hidden creature is dimmed, "<name> não vê este alvo"), and the server refuses any other target the same way (RN-10, RN-20).
+- **Given** the master did something for a character (an attack, a spell, a feature, a death save, a move, the end of the turn), **then** the combat log says "(pelo mestre)" at the end of the line, for everyone who reads it, the player too when they are back.
+- **Given** the player comes back in the middle of the turn, **then** either of them may act; nothing is locked, and the second answer to the same question reads "Já respondido".
+- **Given** the master acts, **then** the order's tools (damage, conditions, the master's marks) stay available.
+- **Given** the combat is in its setup, **then** "Começar o combate" waits for every initiative; "Rolar por <name>" rolls the missing one with the character's bonus, "Digitar o resultado" types it for a physical die, and the bar says who is missing. The same "Rolar por <name>" is beside each character who has not answered a group check or a check the master asked for in a scene, with the typed result when the table plays with physical dice.
+- **Given** a player's optional reaction (Escudo Arcano, Esquiva Sobrenatural...) nobody answered in 10 s, **then** the question goes to the master, at the top of "Turno", with what it changes in numbers (the attack against the armor class, with and without the spell), what it costs, the tag "10 s sem resposta", and "Usar" and "Não usar"; the tab says "Turno · 2" and the combat bar "Falta responder por <name>". The first answer wins (the player's or the master's); the other reads "Já respondido".
+- **Given** a character at 0 hit points on its turn, **then** its turn starts with its death save (SRD 5.1) and does not end without it, for the master too: the card leads with "<name> está caído: teste contra a morte", the successes and failures so far, "Rolar por <name>" (the app's dice) and "Digitar o resultado" (a physical die) at the same size; "Próximo turno" is dashed and the bar says "Falta o teste contra a morte". The server refuses the end of that turn until the save is made; the old "Passar sem rolar" is gone.
+
+#### In the app
+- "Turno" on a player's turn: the card "Vez de Pensantus" ("Mago 3 · o jogador joga na tela dele"), the hit points, armor class and movement, the economy shapes, "Esperando Pensantus. Se o jogador não estiver, jogue este turno por ele." and one outlined button, "Agir por Pensantus". Acting, the rail starts with the band "Você está agindo por Pensantus" and "Voltar ao mestre", then the shapes, "PV 23 de 23 · CA 12 · 1º ○○○● 2º ○○" and the character's tabs (on a phone without their counts); the target is picked on the map ("Toque no alvo · por Pensantus") and a phone's pinned bar becomes "Encerrar o turno de Pensantus", or the target bar of the map.
+- A reaction nobody answered, a held roll and the group check keep their cards at the top of "Turno"; the setup's initiative rows have "Rolar por Brisa" beside "Digitar pelo jogador".
+
+#### Related
+- [MR-013](#mr-013-turn-order), [MR-014](#mr-014-your-turn), [RN-03](rules.md), [RN-10](rules.md), [RN-18](rules.md). See [Design](../design/combat.md).
 
 ## Priority: MVP (prerequisite)
 

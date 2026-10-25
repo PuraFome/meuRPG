@@ -63,6 +63,11 @@ export class CombatBar {
   readonly waitNote = input('');
   /** Why "Próximo turno" waits, written under it ("Responda ao pedido abaixo para seguir."), or `''`. */
   readonly waitWhy = input('');
+  /** The name of the character the master acts for (C8-01): the bar says "Você age por …" and its one filled button ends that turn. */
+  readonly actingFor = input('');
+  protected readonly nextLabel = computed(() =>
+    this.actingFor() ? `Encerrar o turno de ${this.actingFor()}` : 'Próximo turno',
+  );
   /** The combat is played without a map (RN-25): the pill says it, and the end of the combat leaves no tokens behind. */
   readonly theatre = input(false);
   /** "Próximo turno": ends the turn of whoever is on turn; `true` when the

@@ -164,7 +164,7 @@ describe('the master rolls the death save of an absent player', () => {
   it('offers it for a downed player character on its turn with the save due', async () => {
     const { el } = await mount(enc('b', brisa()));
     expect(el.querySelector('app-death-save-due [data-testid="death-save-due"]')).not.toBeNull();
-    expect(button(el, 'Rolar o teste contra a morte de Brisa')).toBeDefined();
+    expect(button(el, 'Rolar por Brisa')).toBeDefined();
     expect(button(el, 'Digitar o resultado')).toBeDefined();
   });
 
@@ -192,7 +192,7 @@ describe('the master rolls the death save of an absent player', () => {
 
   it('rolls in the app with the combatant id and keeps the result line', async () => {
     const { fixture, el, rolls } = await mount(enc('b', brisa()));
-    button(el, 'Rolar o teste contra a morte de Brisa')!.click();
+    button(el, 'Rolar por Brisa')!.click();
     await settle(fixture);
     expect(rolls).toEqual([{ combatantId: 'b', die: { inApp: true } }]);
     expect(plain(el.querySelector('[data-testid="death-save-result"]')?.textContent)).toContain(
@@ -214,31 +214,29 @@ describe('the master rolls the death save of an absent player', () => {
 
   it('follows the dice mode: physical dice only type', async () => {
     const { el } = await mount(enc('b', brisa()), DiceMode.PHYSICAL);
-    expect(button(el, 'Rolar o teste contra a morte de Brisa')).toBeUndefined();
+    expect(button(el, 'Rolar por Brisa')).toBeUndefined();
     expect(el.querySelector('app-death-save-due input')).not.toBeNull();
   });
 
-  it('asks in place on "Próximo turno" while the save is due, and "Passar sem rolar" ends the turn', async () => {
-    const { fixture, el, turnsEnded } = await mount(enc('b', brisa()));
-    button(el, 'Próximo turno')!.click();
-    await settle(fixture);
-    expect(turnsEnded).toEqual([]);
-    expect(
-      plain(el.querySelector('app-death-save-due [role="alertdialog"]')?.textContent),
-    ).toContain('O teste contra a morte de Brisa ainda não foi rolado.');
-    button(el, 'Passar sem rolar')!.click();
-    await settle(fixture);
-    expect(turnsEnded).toEqual(['b']);
+  it('leads with the card "Brisa está caída: teste contra a morte", with no "Agir por" and no way to skip the save', async () => {
+    const { el } = await mount(enc('b', brisa()));
+    expect(plain(el.querySelector('[data-testid="death-save-due"] h3')?.textContent)).toBe(
+      'Brisa está caída: teste contra a morte',
+    );
+    expect(plain(el.querySelector('[data-testid="death-save-due"]')?.textContent)).toContain(
+      'O turno de Brisa só passa depois do teste.',
+    );
+    expect(button(el, 'Agir por Brisa')).toBeUndefined();
+    expect(button(el, 'Passar sem rolar')).toBeUndefined();
   });
 
-  it('"Rolar agora" puts the question away without passing the turn', async () => {
+  it('keeps "Próximo turno" off while the save is due: it ends nothing and the bar says why', async () => {
     const { fixture, el, turnsEnded } = await mount(enc('b', brisa()));
     button(el, 'Próximo turno')!.click();
     await settle(fixture);
-    button(el, 'Rolar agora')!.click();
-    await settle(fixture);
-    expect(el.querySelector('app-death-save-due [role="alertdialog"]')).toBeNull();
     expect(turnsEnded).toEqual([]);
+    expect(button(el, 'Próximo turno')!.getAttribute('aria-disabled')).toBe('true');
+    expect(plain(el.textContent)).toContain('Falta o teste contra a morte');
   });
 
   it('passes the turn at once when no save is due', async () => {

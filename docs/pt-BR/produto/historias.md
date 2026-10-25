@@ -65,6 +65,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 | [MR-051](#mr-051-conversa-da-cena) | Sessão | MVP |
 | [MR-052](#mr-052-o-rolador-de-dados-livre) | Sessão | MVP |
 | [MR-049](#mr-049-personagens-reservados-e-links-para-assumir) | Personagem | MVP |
+| [MR-053](#mr-053-o-mestre-age-pelo-personagem-de-um-jogador) | Combate | MVP |
 | [MR-002](#mr-002-gerar-convite) | Campanha | MVP (pré-requisito) |
 | [MR-005](#mr-005-criar-npcs) | Personagem | MVP (pré-requisito) |
 | [MR-007](#mr-007-importar-ficha-em-pdf) | Personagem | Depois |
@@ -371,7 +372,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 - **Dado** que o mestre pede a um, alguns ou todos os personagens um teste de perícia, um teste de habilidade ou um teste de resistência fora de um combate, **quando** ele o envia, **então** cada rolagem é julgada sozinha, a menos que ele escolha um teste em grupo, só os personagens pedidos leem o pedido, e o mestre marca quem está surpreso.
 - **Dado** alguém com 0 PV, **quando** o jogador olha o turno, **então** vê "Brisa está caída", as marcas e "Rolar teste contra a morte"; na terceira falha o personagem morre só quando o mestre confirma ("Confirmar a morte" / "Ainda não") (RN-03).
 - **Dado** condições (as 15 do SRD; "Derrubado" é Prone) e concentração, **quando** elas se aplicam, **então** aparecem como etiquetas sob o nome, na faixa do jogador e como um ponto na peça, e o jogador encerra a própria concentração. O mestre as define em "Condições…" no ⋮ da ordem. Quando o dano atinge um alvo que se concentra, o mestre que aplica **outro valor** ("Aplicar outro valor") lê "Teste de Constituição, CD 10". Condições e concentração são marcadas e lembradas; o mestre decide os efeitos (RN-22).
-- **Dado** o personagem de um jogador com 0 PV, ainda fazendo testes contra a morte, no turno dele com o teste ainda não rolado, **quando** o jogador está ausente e o mestre do jogo lê "Teste contra a morte de Brisa", **então** ele o rola ("Rolar no app" ou "Digitar o resultado", pelo modo de dados da mesa) e as contagens andam, **e** se ele tocar em "Próximo turno" antes o app pergunta "O teste contra a morte de Brisa ainda não foi rolado." com "Rolar agora" ou "Passar sem rolar"; o cartão nunca aparece para um NPC nem para um personagem estável, e os outros jogadores nunca leem o resultado (RN-03, RN-24).
+- **Dado** o personagem de um jogador com 0 PV, ainda fazendo testes contra a morte, no turno dele com o teste ainda não rolado, **quando** o jogador está ausente e o mestre do jogo lê "Teste contra a morte de Brisa", **então** ele o rola ("Rolar no app" ou "Digitar o resultado", pelo modo de dados da mesa) e as contagens andam, **e** o turno não passa antes de ele ser rolado ("Próximo turno" fica tracejado e a barra diz "Falta o teste contra a morte"; o servidor também recusa, MR-053); o cartão nunca aparece para um NPC nem para um personagem estável, e os outros jogadores nunca leem o resultado (RN-03, RN-24).
 
 **Turno do mestre e o registro**
 - **Dado** a vez de um NPC, **quando** o mestre a joga, **então** o cartão "Ações do Capitão Goblin" mostra pontos de vida, classe de armadura, velocidade e o ataque com o campo "Alvo"; "Rolar ataque" funciona no app ou digitado ("Acertou contra CA 18 do Toren"), e "Aplicar 5 de dano" / "Não aplicar" (que pergunta "Descartar o dano de 5?"). Enquanto há dano sem aplicar, "Próximo turno" pergunta "Há dano sem aplicar. Passar o turno mesmo assim?". A classe de armadura é só do mestre.
@@ -1444,6 +1445,33 @@ Ver [Arquitetura](../../architecture/campaign-package.md).
 
 #### Relacionadas
 - [MR-002](#mr-002-gerar-convite) e [MR-003](#mr-003-entrar-pelo-convite) (a outra entrada numa campanha), [MR-024](#mr-024-aprovar-o-personagem-do-convite) (um membro pendente), [MR-006](#mr-006-ficha-travada). O pacote de uma campanha ([MR-050](#mr-050-pacote-da-campanha-exportar-e-importar)) traz os personagens dela como reservados. Ver [Arquitetura](../../architecture/characters.md#reserved-characters-and-claim-links).
+
+### MR-053: O mestre age pelo personagem de um jogador
+
+**Como** mestre, **quero** jogar o turno do personagem de um jogador quando ele não está (ou não responde), **para que** o combate não pare e a mesa mantenha o personagem do jogador no jogo.
+
+- Prioridade: MVP
+- Regras: RN-03, RN-10, RN-18, RN-19, RN-20
+- Módulos: play
+
+#### Critérios de aceitação
+- **Dado** o turno de um personagem de jogador, **quando** o mestre lê "Turno", **então** o cartão desse personagem mostra "Agir por <nome>" em toda vez de jogador: não há um modo "ausente" para ligar antes. Um personagem com 0 PV não tem "Agir por": o cartão dele é o teste contra a morte (abaixo).
+- **Dado** que o mestre toca em "Agir por <nome>", **então** ele recebe o turno do próprio personagem: a economia, as abas de ação montadas pela ficha, os ataques, magias, recursos, Forma Selvagem, invocações e familiar, o movimento e a escolha de alvo, como o jogador os tem, e "Voltar ao mestre" (que devolve o trilho sem encerrar o turno); a barra do combate diz "Você age por <nome>" e o botão cheio dela vira "Encerrar o turno de <nome>" no lugar de "Próximo turno", de modo que a tela tem um só botão de passar a vez.
+- **Dado** que o mestre age, **quando** ele move, **então** arrasta o token do personagem ou usa "Mover" no cabeçalho do mapa (não está no trilho) enquanto nenhum alvo está sendo escolhido.
+- **Dado** que o mestre age, **quando** ele escolhe um alvo, **então** só vale o que o personagem enxerga (a lista de alvos do servidor para esse personagem: uma criatura escondida fica apagada, "<nome> não vê este alvo"), e o servidor recusa qualquer outro alvo do mesmo jeito (RN-10, RN-20).
+- **Dado** que o mestre fez algo por um personagem (um ataque, uma magia, um recurso, um teste contra a morte, um movimento, o fim do turno), **então** o registro do combate diz "(pelo mestre)" no fim da linha, para quem a lê, o jogador também quando volta.
+- **Dado** que o jogador volta no meio do turno, **então** qualquer um dos dois pode agir; nada trava, e a segunda resposta à mesma pergunta diz "Já respondido".
+- **Dado** que o mestre age, **então** as ferramentas da ordem (dano, condições, as marcas do mestre) continuam disponíveis.
+- **Dado** que o combate está na preparação, **então** "Começar o combate" espera todas as iniciativas; "Rolar por <nome>" rola a que falta com o bônus do personagem, "Digitar o resultado" digita para um dado físico, e a barra diz quem falta. O mesmo "Rolar por <nome>" fica ao lado de cada personagem que ainda não respondeu a um teste em grupo ou a um teste que o mestre pediu numa cena, com o resultado digitado quando a mesa joga com dados físicos.
+- **Dado** uma reação opcional de um jogador (Escudo Arcano, Esquiva Sobrenatural...) que ninguém respondeu em 10 s, **então** a pergunta vai para o mestre, no topo de "Turno", com o que ela muda em números (o ataque contra a classe de armadura, com e sem a magia), o que custa, a etiqueta "10 s sem resposta", e "Usar" e "Não usar"; a aba diz "Turno · 2" e a barra do combate "Falta responder por <nome>". A primeira resposta vale (a do jogador ou a do mestre); a outra lê "Já respondido".
+- **Dado** um personagem com 0 PV no turno dele, **então** o turno começa com o teste contra a morte (SRD 5.1) e não termina sem ele, nem para o mestre: o cartão abre com "<nome> está caído: teste contra a morte", os sucessos e falhas até agora, "Rolar por <nome>" (dados do app) e "Digitar o resultado" (dado físico) do mesmo tamanho; "Próximo turno" fica tracejado e a barra diz "Falta o teste contra a morte". O servidor recusa o fim desse turno até o teste ser feito; o antigo "Passar sem rolar" não existe mais.
+
+#### No app
+- "Turno" na vez de um jogador: o cartão "Vez de Pensantus" ("Mago 3 · o jogador joga na tela dele"), os pontos de vida, a CA e o deslocamento, as formas da economia, "Esperando Pensantus. Se o jogador não estiver, jogue este turno por ele." e um botão contornado, "Agir por Pensantus". Agindo, o trilho começa pela faixa "Você está agindo por Pensantus" com "Voltar ao mestre", depois as formas, "PV 23 de 23 · CA 12 · 1º ○○○● 2º ○○" e as abas do personagem (no celular sem as contagens); o alvo se escolhe no mapa ("Toque no alvo · por Pensantus") e a barra fixa do celular vira "Encerrar o turno de Pensantus", ou a barra do alvo do mapa.
+- Uma reação sem resposta, uma rolagem retida e o teste em grupo mantêm os cartões no topo de "Turno"; as linhas da iniciativa na preparação têm "Rolar por Brisa" ao lado de "Digitar pelo jogador".
+
+#### Relacionadas
+- [MR-013](#mr-013-ordem-dos-turnos), [MR-014](#mr-014-sua-vez), [RN-03](regras.md), [RN-10](regras.md), [RN-18](regras.md). Veja o [Design](../../design/combat.md).
 
 ## Prioridade: MVP (pré-requisito)
 
