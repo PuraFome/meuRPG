@@ -95,6 +95,12 @@ describe('npc card view', () => {
         subject: 'n',
       }) as never;
     expect(resultOf(null, e, false, 'Escudo')).toBeNull();
+    // The head of the block names the attack and the target ("Cimitarra em Brisa"); without the attack in the options it is empty.
+    const scimitar = { key: 'attack:scimitar', name: 'Scimitar', namePt: 'Cimitarra' } as never;
+    expect(
+      resultOf(last({ attackKey: 'attack:scimitar' }), e, false, 'Escudo', [scimitar])!.head,
+    ).toBe('Cimitarra em Brisa');
+    expect(resultOf(last({ attackKey: 'attack:scimitar' }), e, false, 'Escudo')!.head).toBe('');
     const hit = resultOf(last({ targetArmorClass: 13 }), e, false, 'Escudo')!;
     expect(hit).toMatchObject({
       word: 'Acertou',

@@ -137,9 +137,9 @@ import type { TargetMode } from './target-mode';
       overflow: hidden;
       -webkit-box-orient: vertical;
       -webkit-line-clamp: 2;
-      font-size: 13px;
-      line-height: 18px;
-      color: var(--mr-ink-muted);
+      font-size: 14px;
+      line-height: 19px;
+      color: var(--mr-ink);
     }
 
     .links {

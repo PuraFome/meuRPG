@@ -11,7 +11,7 @@ import { MatIconModule } from '@angular/material/icon';
   selector: 'app-spell-help',
   imports: [MatIconModule],
   template: `
-    <button type="button" class="help" [attr.aria-label]="'Detalhes de ' + name()" (click)="press.emit()">
+    <button type="button" class="help" [attr.aria-label]="'Detalhes de ' + name()" [attr.title]="'Detalhes de ' + name()" (click)="press.emit()">
       <mat-icon aria-hidden="true">help_outline</mat-icon>
     </button>
   `,
@@ -25,8 +25,11 @@ import { MatIconModule } from '@angular/material/icon';
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      box-sizing: border-box;
       width: 44px;
+      min-width: 44px;
       height: 44px;
+      min-height: 44px;
       padding: 0;
       border: 0;
       border-radius: 50%;

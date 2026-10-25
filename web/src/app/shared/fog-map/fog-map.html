@@ -150,12 +150,14 @@
           <li before><span class="mr-swatch mr-swatch--sample mr-swatch--unseen" aria-hidden="true"></span>Não visto</li>
         }
         @if (isMaster()) {
-          <li><span class="fm__mark"><app-combatant-token initial="P" [onMap]="true" [size]="20" /></span>Personagem</li>
-          @if (enemies().length > 0 || hiddenTokens().length > 0) {
-            <li><span class="fm__mark"><app-combatant-token initial="G" [npc]="true" [onMap]="true" [size]="20" /></span>NPC</li>
-          }
-          @if (hiddenTokens().length > 0) {
-            <li><span class="fm__mark"><app-combatant-token initial="G" [npc]="true" [hidden]="true" [onMap]="true" [size]="20" /></span>Escondido (só você vê)</li>
+          @if (tokenMarks()) {
+            <li><span class="fm__mark"><app-combatant-token initial="P" [onMap]="true" [size]="20" /></span>Personagem</li>
+            @if (enemies().length > 0 || hiddenTokens().length > 0) {
+              <li><span class="fm__mark"><app-combatant-token initial="G" [npc]="true" [onMap]="true" [size]="20" /></span>NPC</li>
+            }
+            @if (hiddenTokens().length > 0) {
+              <li><span class="fm__mark"><app-combatant-token initial="G" [npc]="true" [hidden]="true" [onMap]="true" [size]="20" /></span>Escondido (só você vê)</li>
+            }
           }
           @if (dark().size > 0) {
             <li><span class="fm__mark fm__mark--dark" aria-hidden="true"></span>No escuro</li>

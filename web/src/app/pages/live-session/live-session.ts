@@ -169,7 +169,17 @@ export class LiveSession {
     if (this.slot.tab() === 'chat' || this.slot.tab() === 'sheet') {
       return this.slot.tab();
     }
+    if (this.state.isMaster() && this.view.combatOnScreen()) {
+      return this.combatGroup() ? 'group' : 'scene';
+    }
     return this.railed() && this.board.tab() === 'grupo' ? 'group' : 'scene';
+  });
+  /** The master's phone in a combat: "Grupo" is open (the party's panel shows, the combat waits behind it). */
+  protected readonly combatGroup = signal(false);
+  protected readonly combatGroupEnds = effect(() => {
+    if (!this.view.combatOnScreen()) {
+      this.combatGroup.set(false);
+    }
   });
   protected readonly loader = new LiveSessionLoader(this.services, this.state, this.parts);
   protected readonly events: LiveSessionEvents = new LiveSessionEvents(
@@ -254,6 +264,11 @@ export class LiveSession {
 
   /** A tap on the phone's nav: the master's "Cena" and "Grupo" choose a tab of the board, the rest is the conversation slot's. */
   protected phoneNav(tab: SessionTab): void {
+    if (this.state.isMaster() && this.view.combatOnScreen() && tab !== 'chat') {
+      this.combatGroup.set(tab === 'group');
+      this.slot.choose('scene');
+      return;
+    }
     if (this.railed() && tab !== 'chat') {
       this.board.choose(tab === 'group' ? 'grupo' : 'cena');
       this.slot.choose('scene');

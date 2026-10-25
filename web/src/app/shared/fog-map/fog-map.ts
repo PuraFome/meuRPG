@@ -108,6 +108,8 @@ export class FogMap {
   readonly selectablePoints = input(false);
   /** The card "Você vê ..." under the legend (players). */
   readonly caption = input(true);
+  /** The master's token marks (Personagem, NPC, Escondido) in the legend: off where the page draws its own row of them under the map (no word twice). */
+  readonly tokenMarks = input(true);
   /** The character's senses ("Visão no escuro: 18 m") for that card. */
   readonly senses = input<readonly string[]>([]);
   /** What the character carries ("Tocha"), when it carries something. */
