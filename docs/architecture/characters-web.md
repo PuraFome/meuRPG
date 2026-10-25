@@ -106,6 +106,8 @@ The screens of MR-025 and RN-23 use only the server of [Table content](character
   It is a client-side note beside the form, with no code from the server; it never blocks "Salvar magia", and it goes away when the master picks an attack or a saving throw, or an area target.
   Dice typed under "Só texto" are not sent, so only a saved body raises it.
 - **What comes from the server and what is screen text.** The effect menu (`GetEffectMenu`: types, fields, closed lists with Portuguese names, SRD options, formula functions, tag prefixes), the abilities, damage types, languages, proficiencies, skills and schools (`ListContent`) and the race bonus limit (-4 to +4) come from the server; the picker (`shared/effect-picker`) and the editors draw what it sends.
+  A field's `kind` is how it is asked: `choice`, `choices`, `number` (with the menu's `min` and `max`), `formula`, `dice` (`heal`: text such as `1d6` or `2d4+2`), `condition`, `text`, `yes_no` and `resource_ref`. The recharge and event lists (`recharges`, `events`) carry a hint per value, shown under the select when that value is picked.
+  On an `on_event` the two `resource_ref` fields are worded apart: `resource` is "Gasta usos de" and `restore` "Devolve usos de".
   The browser keeps only screen text: labels, hints, the refusals' sentences (`content-violations.ts`) and the shape and mode options (cone, cube, action, minutes), which are screen names of closed `.proto` fields.
 - **From violation to field** (`core/content/content-violations.ts`):
 
