@@ -217,7 +217,7 @@ func featureActionOf(a rules.Action) link.FeatureAction {
 
 // hooksOf is the combat's view of the character's on_event effects, with the name of the feature that has each.
 func hooksOf(content *rules.Content, hooks []rules.EventHook) []link.Hook {
-	out := make([]link.Hook, 0, len(hooks))
+	var out []link.Hook
 	for _, h := range hooks {
 		lh := link.Hook{
 			Event: h.Event, Source: h.Source, SourceNamePT: content.NamePT(h.Source), HealPercentMax: h.HealPercentMax, TempHP: h.TempHP,

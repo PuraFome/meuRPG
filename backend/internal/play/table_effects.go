@@ -41,10 +41,10 @@ func (f *takeActionFlow) pickSpend(ctx context.Context, fa link.FeatureAction) (
 	if err != nil {
 		return 0, err
 	}
-	left := 0
+	left, recharge := 0, rulesv1.Recharge_RECHARGE_UNSPECIFIED
 	if i := slices.IndexFunc(now.GetResources(), func(r *playv1.ResourceUsage) bool { return r.GetKey() == fa.Resource }); i >= 0 {
 		r := now.GetResources()[i]
-		left = int(r.GetTotal() - r.GetUsed())
+		left, recharge = int(r.GetTotal()-r.GetUsed()), r.GetRecharge()
 	}
 	act := asRules(fa)
 	chosen := int(f.call.spend)
@@ -56,7 +56,8 @@ func (f *takeActionFlow) pickSpend(ctx context.Context, fa link.FeatureAction) (
 	case err == nil:
 		return n, nil
 	case left < act.UnitCost():
-		return 0, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_USES, "no uses left")
+		return 0, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_USES, "no uses left",
+			func(b *playv1.EncounterBlocked) { b.Recharge = recharge })
 	}
 	return 0, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("spend must be %d to %d: %w", act.UnitCost(), min(act.CostMax, left), err))
 }
