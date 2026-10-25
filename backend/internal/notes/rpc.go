@@ -63,9 +63,9 @@ func cleanNoteText(raw string) (string, error) {
 	return text, nil
 }
 
-// discovered reads the scenes the group discovered, by ID.
-func (s *Service) discovered(ctx context.Context, campaignID string) (map[string]string, []link.Scene, error) {
-	scenes, err := s.scenes.DiscoveredScenes(ctx, campaignID)
+// discovered reads the scenes the player may tag notes with, by ID.
+func (s *Service) discovered(ctx context.Context, campaignID, userID string) (map[string]string, []link.Scene, error) {
+	scenes, err := s.scenes.DiscoveredScenes(ctx, campaignID, userID)
 	if err != nil {
 		return nil, nil, s.dbError(ctx, "read the discovered scenes", err)
 	}
@@ -141,7 +141,7 @@ func (s *Service) ListNotes(
 	if err != nil {
 		return nil, s.dbError(ctx, "list the received clues", err)
 	}
-	discovered, _, err := s.discovered(ctx, m.CampaignID)
+	discovered, _, err := s.discovered(ctx, m.CampaignID, m.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +219,7 @@ func (s *Service) readNewNote(ctx context.Context, msg *notesv1.CreateNoteReques
 	if err != nil {
 		return newNote{}, nil, err
 	}
-	discovered, _, err := s.discovered(ctx, m.CampaignID)
+	discovered, _, err := s.discovered(ctx, m.CampaignID, m.UserID)
 	if err != nil {
 		return newNote{}, nil, err
 	}
@@ -315,7 +315,7 @@ func (s *Service) readNoteChange(ctx context.Context, msg *notesv1.UpdateNoteReq
 		}
 		in.text = &t
 	}
-	discovered, _, err := s.discovered(ctx, m.CampaignID)
+	discovered, _, err := s.discovered(ctx, m.CampaignID, m.UserID)
 	if err != nil {
 		return noteChange{}, nil, err
 	}
@@ -392,7 +392,7 @@ func (s *Service) ListNoteScenes(
 	if err != nil {
 		return nil, err
 	}
-	_, scenes, err := s.discovered(ctx, m.CampaignID)
+	_, scenes, err := s.discovered(ctx, m.CampaignID, m.UserID)
 	if err != nil {
 		return nil, err
 	}

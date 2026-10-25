@@ -118,7 +118,7 @@ Both foreign keys cascade.
 The switch is `game_sessions.shown_image_keep` ([play.md](play.md#game_sessions)).
 `audience_everyone` (true by default) says the image was left with the whole table; when it is false the image was left only with the players of `campaign_left_image_viewers` (`(campaign_id, image_id, user_id)`, cascading with the left image and the player's account; `user_id` is indexed): the players who were in the audience of the shown image when it stopped being shown (RN-10).
 It is a column, not "no rows", so erasing the last player's account never leaves the image with everyone.
-Leaving an image again takes the audience of the latest leaving.
+Leaving an image again keeps the widest audience: the whole table if either leaving was for it, else the players of both; only taking it back (`TakeBackLeftImage`) narrows it.
 
 ## Who reads
 

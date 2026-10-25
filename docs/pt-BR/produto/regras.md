@@ -214,20 +214,24 @@ Um NPC escondido conta para o limite de 4 do palco, mas nenhum jogador o recebe:
 Uma ação escondida não chega a nenhum jogador: nem o nome, a CD, as tentativas ou as rolagens, e a rolagem de um jogador nela é recusada exatamente como a de uma ação que não existe.
 Esconder e mostrar dão aos jogadores o mesmo aviso de qualquer mudança da cena, então o que estava escondido sai da tela deles, ou entra nela, na hora; pôr algo no palco escondido, tirá-lo, ou mudar uma ação que continua escondida avisa só o mestre.
 "Dar a fala" a um NPC escondido o mostra: o toque do mestre quer dizer que ele fala agora.
+Uma fala que o mestre manda na conversa da cena como um NPC escondido o nomeia para os leitores que ele escolheu e nada mais dele: nem o retrato, nem um lugar no palco; só "Dar a fala" o mostra.
 
 **Quem está na cena** (["Quem está na cena"](historias.md#mr-015-ações-da-cena-de-rp), [MR-015](historias.md#mr-015-ações-da-cena-de-rp)).
 Uma cena fica aberta para a mesa toda, inclusive um jogador que entra depois, ou para exatamente os jogadores que o mestre escolhe, e que ele pode mudar enquanto ela está aberta.
 Um jogador que está fora não recebe cena nenhuma, exatamente como quando nenhuma está aberta: nem o nome, o ponto, a descrição, as ações, as rolagens, o palco ou os retratos, nem o teste em grupo pedido nela, nem um aviso ao vivo, e uma rolagem dele é recusada como se nenhuma cena estivesse aberta.
 Um jogador que entra lê a cena na hora e um jogador que sai a perde na hora, cada um avisado pelo mesmo aviso de qualquer mudança da cena.
 Com o interruptor do mestre "Os jogadores podem entrar" ligado, um jogador que está fora lê o nome da cena e que pode entrar, e nada mais, e entrar o faz um dos jogadores dela para o que vem depois (uma imagem mostrada aos jogadores da cena chega a ele; uma mostrada a jogadores escolhidos não).
-Os testes passados nela contam no resumo só para o mestre e os jogadores que estavam dentro; uma cena fica "descoberta" para as anotações do grupo quando está aberta para todos.
+O mestre pode nomear qualquer jogador da campanha, também o jogador de um personagem morto: a audiência é sobre jogadores, não personagens.
+Os testes passados nela contam no resumo só para o mestre e os jogadores que estavam dentro, também quando a ação é escondida depois; uma cena fica "descoberta" para as anotações do grupo quando está aberta para todos e, enquanto está aberta para só alguns jogadores, por cada um deles sozinho: as anotações de nenhum outro jogador listam o nome dela nem a aceitam como rótulo.
+Uma pista revelada a um jogador que está fora chega às anotações dele e nada mais da cena.
 
 **Quem vê a imagem** (["Quem vê a imagem"](historias.md#mr-028-mostrar-uma-imagem-aos-jogadores), [MR-028](historias.md#mr-028-mostrar-uma-imagem-aos-jogadores)).
 A imagem que o mestre mostra tem uma audiência: a mesa toda (a única quando nenhuma cena está aberta ou a cena aberta está aberta para todos), os jogadores da cena (o padrão enquanto uma cena está aberta para só alguns, acompanhando quem está dentro enquanto essa cena continua aberta) ou jogadores escolhidos.
 O mestre a muda enquanto a imagem é mostrada: "Mostrar a toda a mesa" a alarga, "Mudar quem vê" escolhe os jogadores.
 Um jogador tirado perde a imagem na hora, na leitura, no fluxo ao vivo e na rota da imagem; um jogador incluído a recebe na hora.
 Quando a cena fecha, outra abre, ou ela abre para todos, uma imagem mostrada aos jogadores dela fica com esses mesmos jogadores e com mais ninguém, e uma imagem deixada com os jogadores ("Deixar com os jogadores") fica só com os jogadores da audiência dela.
-Um jogador fora da audiência nunca recebe a imagem, o nome ou o ID dela, nem no resumo.
+Um jogador fora da audiência nunca recebe a imagem, o nome ou o ID dela, nem no resumo; apagar a imagem avisa só o mestre e os jogadores que a viram.
+Uma imagem deixada de novo com os jogadores guarda a audiência mais ampla; só tirá-la a estreita.
 
 **Névoa de guerra** ([MR-036](historias.md#mr-036-névoa-de-guerra-pela-visão)).
 Num mapa com a névoa ligada, o jogador recebe só o que o personagem dele vê agora ou já viu: decidem as paredes e a luz que o mestre pintou, os pontos de luz e as luzes carregadas, e a visão no escuro da ficha.

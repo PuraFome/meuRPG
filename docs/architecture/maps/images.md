@@ -10,7 +10,7 @@ The code is in `backend/internal/maps` (`upload.go`, `serve.go`, `gallery.go`) a
 | `GET /images/{id}` and `GET /images/{id}/thumb` | The image's campaign master; a player only while they see the image | Delivers the image, or the thumbnail (480 px on the longer side) |
 | `GalleryService.ListGalleryImages` | The master | Lists the gallery, newest first, with the quota usage |
 | `GalleryService.RenameGalleryImage` | The master | Changes the name (1 to 80 characters, one line) |
-| `GalleryService.DeleteGalleryImage` | The master | Deletes the row and the files. `failed_precondition` if a map uses the image; if it is an NPC's portrait, the portrait is cleared (MR-031) |
+| `GalleryService.DeleteGalleryImage` | The master | Deletes the row and the files. `failed_precondition` if a map uses the image; if it is an NPC's portrait, the portrait is cleared (MR-031). The shown image's deletion is told to the master and the players who saw it, the left image's to the ones it was left with |
 
 Uploading and downloading are not Connect calls because the body is a file.
 Both routes use the same session cookie and the same `authz` checks as the rest of the API (see Who is calling in [Architecture](../identity.md#who-is-calling)).

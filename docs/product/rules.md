@@ -214,20 +214,24 @@ A hidden NPC counts for the stage's limit of 4, but no player receives it: not i
 A hidden action reaches no player: not its name, DC, attempts or rolls, and a player's roll on it is refused exactly as a roll on an action that does not exist.
 Hiding and showing tell the players the same hint as any change of the scene, so what was hidden leaves their screen, or enters it, at once; putting something on the stage hidden, or taking it off, and changing an action that stays hidden, tell only the master.
 "Dar a fala" to a hidden NPC shows it: the master's tap means that it speaks now.
+A line the master sends in the scene's conversation as a hidden NPC names it for the readers he chose and nothing else of it: not its portrait, not a place on the stage; only "Dar a fala" shows it.
 
 **Who is in the scene** (["Quem está na cena"](stories.md#mr-015-rp-scene-actions), [MR-015](stories.md#mr-015-rp-scene-actions)).
 A scene is open to the whole table, a player who joins later included, or to exactly the players the master picks, who he may change while it is open.
 A player who is out gets no scene at all, exactly as when none is open: not its name, point, description, actions, rolls, stage or portraits, not the group check asked in it, not a live hint, and a roll of theirs is refused as with no open scene.
 A player who comes in reads the scene at once and a player who goes out loses it at once, each told by the same hint as any change of the scene.
 With the master's switch "Os jogadores podem entrar" on, a player who is out reads the scene's name and that they may join and nothing else, and joining makes them one of its players for what follows (an image shown to the scene's players reaches them; one shown to chosen players does not).
-The checks passed in it count in the summary only for the master and the players who were in; a scene is "discovered" for the group's notes when it is open to everyone.
+The master may name any player of the campaign, also the player of a dead character: the audience is about players, not characters.
+The checks passed in it count in the summary only for the master and the players who were in, also when the action is hidden afterwards; a scene is "discovered" for the group's notes when it is open to everyone, and, while it is open to only some players, by each of them alone: no other player's notes list its name or accept it as a label.
+A clue revealed to a player who is out reaches their notes and nothing else of the scene.
 
 **Who sees the image** (["Quem vê a imagem"](stories.md#mr-028-show-an-image-to-the-players), [MR-028](stories.md#mr-028-show-an-image-to-the-players)).
 The image the master shows has one audience: the whole table (the only one when no scene is open or the open scene is open to everyone), the scene's players (the default while a scene is open to only some, following who is in while that scene stays open), or chosen players.
 The master changes it while the image is shown: "Mostrar a toda a mesa" widens it, "Mudar quem vê" picks the players.
 A player taken out loses the image at once, in the read, on the live stream and on the image route; one brought in gets it at once.
 When the scene closes, another opens, or it opens to everyone, an image shown to its players stays with those same players and no one else, and an image left with the players ("Deixar com os jogadores") is left only with the players of its audience.
-A player outside the audience never receives the image, its name or its ID, also not in the summary.
+A player outside the audience never receives the image, its name or its ID, also not in the summary; deleting the image tells only the master and the players who saw it.
+An image left with the players again keeps the widest audience; only taking it back narrows it.
 
 **Fog of war** ([MR-036](stories.md#mr-036-fog-of-war-by-sight)).
 On a map with fog on, the player receives only what their character sees now or has already seen: the walls and light the master painted, the light points and carried lights, and the sheet's darkvision decide.

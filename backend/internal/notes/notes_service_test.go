@@ -77,7 +77,7 @@ type notesScenes struct {
 	err        error
 }
 
-func (s *notesScenes) DiscoveredScenes(context.Context, string) ([]link.Scene, error) {
+func (s *notesScenes) DiscoveredScenes(context.Context, string, string) ([]link.Scene, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.discovered, s.err
