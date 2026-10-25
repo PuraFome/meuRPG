@@ -258,6 +258,14 @@ const BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, string> = new Map([
     EncounterBlockedReason.ARMOR_NOT_PROFICIENT,
     'Com armadura ou escudo sem proficiência não dá para atacar nem conjurar.',
   ],
+  [
+    EncounterBlockedReason.STATE_ALREADY_ON,
+    'Esse estado já está ligado. A tela foi atualizada; nada foi gasto.',
+  ],
+  [
+    EncounterBlockedReason.STATE_NOT_ON,
+    'Esse estado já não está ligado. A tela foi atualizada; nada mudou.',
+  ],
   [EncounterBlockedReason.SUMMON_NEEDS_INITIATIVE, 'Falta o d20 da iniciativa das criaturas.'],
   [
     EncounterBlockedReason.CREATURE_CANNOT_ATTACK,

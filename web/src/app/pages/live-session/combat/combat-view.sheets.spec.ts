@@ -610,7 +610,7 @@ describe('CombatView sheets: useFeature', () => {
     await m.view.useFeature('feature:rage');
     expect(m.opened).toHaveLength(0);
     expect(m.callsOf('takeAction').map((c) => c.args)).toEqual([
-      ['c', 'enc', 't', 'feature:rage', undefined, undefined, false, false],
+      ['c', 'enc', 't', 'feature:rage', undefined, undefined, false, false, false],
     ]);
     expect(m.view.actionNote()).toBe('Usou Fúria.');
   });
@@ -637,6 +637,7 @@ describe('CombatView sheets: useFeature', () => {
       undefined,
       false,
       true,
+      false,
     ]);
     expect(m.view.actionNote()).toBe('Fúria: você entrou em frenesi.');
   });

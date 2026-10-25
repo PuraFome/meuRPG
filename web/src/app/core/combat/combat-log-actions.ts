@@ -226,7 +226,9 @@ export function stateText(e: CombatLogEntry, st: CombatLogStateChange): string {
             ? 'Ataque descuidado'
             : 'Estado';
   const who = e.actorLabel || e.targetLabel;
-  const name = who ? `${noun} de ${who}` : noun;
+  // A state a table feature defines is called by the feature's name.
+  const called = st.kind === CombatantStateKind.TABLE && st.namePt ? st.namePt : noun;
+  const name = who ? `${called} de ${who}` : called;
   if (st.started) {
     return `${name} começou`;
   }
@@ -244,6 +246,8 @@ function stateReason(key: string): string {
       return 'por escolha';
     case 'duration':
       return 'a duração acabou';
+    case 'incapacitated':
+      return 'ficou incapacitado';
     case 'left':
       return 'a concentração ou o combate acabou';
     default:

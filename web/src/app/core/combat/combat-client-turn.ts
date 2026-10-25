@@ -231,9 +231,20 @@ export class CombatTurnCalls {
     key?: string,
     useExtraAction = false,
     frenzy = false,
+    endState = false,
   ): Promise<ActionResult> {
     const res = await this.base.keyed(
-      ['takeAction', campaignId, encounterId, combatantId, actionKey, die, useExtraAction, frenzy],
+      [
+        'takeAction',
+        campaignId,
+        encounterId,
+        combatantId,
+        actionKey,
+        die,
+        useExtraAction,
+        frenzy,
+        endState,
+      ],
       (sent) =>
         this.base.client.takeAction({
           campaignId,
@@ -245,6 +256,8 @@ export class CombatTurnCalls {
           useExtraAction,
           // The Berserker's Fúria in a frenzy (SRD 5.1, Frenzy); ignored by every other action.
           frenzy,
+          // The card of a table state: true ends the state that is on ("Encerrar"), false starts it ("Ativar").
+          endState,
           roll: !die
             ? { case: undefined }
             : 'inApp' in die

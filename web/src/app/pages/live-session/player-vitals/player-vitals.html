@@ -16,6 +16,20 @@
     }
   </div>
 
+  @if (states().length > 0) {
+    <ul class="states" aria-label="Estados ligados">
+      @for (s of states(); track s.key) {
+        <li class="states__item">
+          <mat-icon aria-hidden="true">bolt</mat-icon>
+          <span class="states__name">{{ s.name }}</span>
+          @if (s.left) {
+            <span class="states__left">{{ s.left }}</span>
+          }
+        </li>
+      }
+    </ul>
+  }
+
   <div class="top" [class.top--compact]="compact()">
   @if (pools(); as p) {
     <app-wild-pools class="top__pools" [beast]="p.beast" [character]="p.character" />

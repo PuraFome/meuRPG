@@ -146,14 +146,24 @@ func (s *Service) tableStateLine(ctx context.Context, c *combatTx, who playdb.Co
 // stateTable is the kind of the state events of a table's states.
 const stateTable = "table"
 
+// statesNow reads the vitals of a combatant's character for its states. A character the
+// vitals do not list (dead, or gone from the table) has no state to end: nil, no error.
+func (s *Service) statesNow(ctx context.Context, c *combatTx, who playdb.Combatant) (*playv1.CharacterVitals, error) {
+	now, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, who.CharacterID)
+	if connect.CodeOf(err) == connect.CodeNotFound {
+		return nil, nil
+	}
+	return now, err
+}
+
 // endStatesWhere ends the states of a combat character for which ends says so, with a line
 // each, and tells the streams. It does nothing for a combatant that is not a player's character.
 func (s *Service) endStatesWhere(ctx context.Context, c *combatTx, who playdb.Combatant, reason string, ends func(*playv1.ActiveState) bool) error {
 	if who.Kind != kindPlayer {
 		return nil
 	}
-	now, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, who.CharacterID)
-	if err != nil {
+	now, err := s.statesNow(ctx, c, who)
+	if err != nil || now == nil {
 		return err
 	}
 	var next []stateRec
@@ -203,8 +213,8 @@ func (s *Service) tickTableStates(ctx context.Context, c *combatTx, ids []string
 
 // tickOne counts a round down for one character.
 func (s *Service) tickOne(ctx context.Context, c *combatTx, who playdb.Combatant) error {
-	now, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, who.CharacterID)
-	if err != nil {
+	now, err := s.statesNow(ctx, c, who)
+	if err != nil || now == nil {
 		return err
 	}
 	if !slices.ContainsFunc(now.GetActiveStates(), func(st *playv1.ActiveState) bool { return st.GetRoundsLeft() > 0 }) {

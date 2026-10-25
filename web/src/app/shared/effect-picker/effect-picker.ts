@@ -82,7 +82,7 @@ export class EffectPicker {
     return Array.isArray(v)
       ? v.length > 0
       : typeof v === 'number'
-        ? v > 0
+        ? v !== 0
         : typeof v === 'string'
           ? v.trim() !== ''
           : v === true;
@@ -98,7 +98,14 @@ export class EffectPicker {
 
   protected labelOf(f: EffectMenuField): string {
     // The resource an action spends is the same proto field as a resource's own name.
-    return f.kind === 'resource_ref' ? 'Gasta um uso de' : (EFFECT_FIELD_LABELS[f.name] ?? f.name);
+    if (f.kind === 'resource_ref') {
+      return 'Gasta um uso de';
+    }
+    // A pseudo-weapon names its kind, its ability and its reach in the words of an attack.
+    return (
+      (this.effect().type === 'pseudo_weapon' && PSEUDO_LABELS[f.name]) ||
+      (EFFECT_FIELD_LABELS[f.name] ?? f.name)
+    );
   }
 
   /** The hint of a field that is not showing a refusal: written beside it. */
@@ -120,8 +127,11 @@ export class EffectPicker {
     if (f.kind === 'resource_ref') {
       return 'O nome de um recurso que esta entrada define (o campo "Nome do recurso" de um efeito Recurso). Cada uso gasta 1; sem usos, a ação fica desligada.';
     }
+    if (f.kind === 'state_ref') {
+      return this.stateRefHint(f);
+    }
     if (f.kind === 'condition') {
-      return 'Deixe vazio para valer sempre. Uma condição, como as fórmulas.';
+      return 'Deixe vazio para valer sempre. Uma condição, como as fórmulas; active("nome") vale enquanto o estado de mesmo nome desta entrada está ligado.';
     }
     if (f.kind === 'choice') {
       const list = this.optionsOf(f);
@@ -129,6 +139,16 @@ export class EffectPicker {
       return picked?.hint ?? own;
     }
     return own;
+  }
+
+  /** Under "Só enquanto o estado": the name of a state effect of the entry, and the ready values the menu lists ("rage"). */
+  private stateRefHint(f: EffectMenuField): string {
+    const ready = this.menu()
+      .list(f.list)
+      .map((o) => `${o.key} (${o.namePt})`);
+    const own =
+      'O nome de um estado que esta entrada define (o campo "Nome do estado" de um efeito Estado).';
+    return ready.length > 0 ? `${own} Também vale: ${ready.join(', ')}.` : own;
   }
 
   /** The options of a closed list, with the menu's one-line explanation of each. */
@@ -166,7 +186,7 @@ export class EffectPicker {
   /** What the draft holds for a field of the menu, by its proto name. */
   protected read(name: string): string {
     const v = this.effect()[camel(name)];
-    return typeof v === 'string' ? v : typeof v === 'number' ? (v > 0 ? String(v) : '') : '';
+    return typeof v === 'string' ? v : typeof v === 'number' ? (v !== 0 ? String(v) : '') : '';
   }
 
   protected list(name: string): readonly string[] {
@@ -174,8 +194,13 @@ export class EffectPicker {
     return Array.isArray(v) ? v : [];
   }
 
-  protected meters(): string {
-    return this.effect().rangeM;
+  /** What a field in metres holds (the server stores feet): the range and the melee reach. */
+  protected meters(name: string): string {
+    return name === 'reach_ft' ? this.effect().reachM : this.effect().rangeM;
+  }
+
+  protected inMeters(name: string): boolean {
+    return name === 'range_ft' || name === 'reach_ft';
   }
 
   /** Whether a yes-or-no field is on. */
@@ -194,20 +219,19 @@ export class EffectPicker {
     this.effectChange.emit({ ...this.effect(), [camel(name)]: text });
   }
 
-  protected setNumber(name: string, text: string): void {
+  /** A whole number; a field the menu bounds below zero (a bonus) may be negative, the others are 0 or more. */
+  protected setNumber(f: EffectMenuField, text: string): void {
     const n = Number(text.trim());
-    this.effectChange.emit({
-      ...this.effect(),
-      [camel(name)]: Number.isInteger(n) && n > 0 ? n : 0,
-    });
+    const ok = Number.isInteger(n) && (n > 0 || (n < 0 && f.min < 0));
+    this.effectChange.emit({ ...this.effect(), [camel(f.name)]: ok ? n : 0 });
   }
 
   protected setFlag(name: string, on: boolean): void {
     this.effectChange.emit({ ...this.effect(), [camel(name)]: on });
   }
 
-  protected setMeters(text: string): void {
-    this.effectChange.emit({ ...this.effect(), rangeM: text });
+  protected setMeters(name: string, text: string): void {
+    this.effectChange.emit({ ...this.effect(), [name === 'reach_ft' ? 'reachM' : 'rangeM']: text });
   }
 
   protected setChoice(f: EffectMenuField, value: string): void {
@@ -227,6 +251,14 @@ export class EffectPicker {
     });
   }
 }
+
+/** The labels a pseudo-weapon gives the fields it shares with other types. */
+const PSEUDO_LABELS: Readonly<Record<string, string>> = {
+  weapon: 'Tipo de ataque',
+  ability: 'Habilidade do ataque',
+  reach_ft: 'Alcance de contato',
+  range_ft: 'Alcance (à distância)',
+};
 
 /** "text_pt" → "textPt": the draft's key for a proto field. */
 function camel(name: string): keyof EffectDraft {

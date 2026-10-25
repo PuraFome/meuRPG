@@ -47,6 +47,7 @@ import {
   actionTabs,
   classTabName,
   featureGroup,
+  featureVerb,
   partByEconomy,
 } from '../../../../core/combat/action-tabs';
 import { cannotAct } from '../../../../core/combat/conditions';
@@ -490,6 +491,8 @@ export class ActionGroups {
     this.frenzyAsk.set(null);
     this.rage.emit({ key, frenzy });
   }
+
+  protected readonly featureVerb = featureVerb;
 
   protected featureOff(a: ActionOption): boolean {
     return !a.enabled && !isReactionHint(a.reason);

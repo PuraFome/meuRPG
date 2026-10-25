@@ -6,7 +6,15 @@ import type {
   GetEffectMenuResponse,
   TableEffect,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
-import { feetToMeters, metersToFeet } from '../units';
+import { rangeFeet, rangeMeters } from './range-text';
+
+export {
+  rangeFeet,
+  rangeMeters,
+  strictRangeFeet,
+  unreadableRange,
+  UNREADABLE_RANGE,
+} from './range-text';
 
 /**
  * A feature's effect as the editor holds it (MR-025, ADR-0018, section 4), and the menu it is chosen from. The menu is the
@@ -50,9 +58,27 @@ export interface EffectDraft {
   ignoreCover: boolean;
   rangeMultiplier: number;
   noLongRangeDisadvantage: boolean;
-  /** resistance: the damage type it leaves out, and when it holds ("rage"). */
+  /** resistance: the damage type it leaves out, and when it holds ("rage" or a state of the entry). The other effects that
+   * hold only while a state is on (roll_mode, extra_damage, weapon_rule, pseudo_weapon) carry the same `while`: optional there. */
   except: string;
   while: string;
+  /** state: its name in the entry, the formula of its duration in rounds (empty: until it ends), and how else it ends. */
+  stateName: string;
+  durationRounds: string;
+  endsOn: string[];
+  /** weapon_rule: which weapons (and the name of "named"), another ability for the attack and for the damage, bonuses (signed),
+   * and a melee reach in metres as typed. pseudo_weapon: its kind in `weapon`, `attackName`, `damageDice`, `damageType`, the
+   * ability in `ability`, the reach in `reachM` and the range in `rangeM`. */
+  weapon: string;
+  weaponName: string;
+  attackAbility: string;
+  damageAbility: string;
+  attackBonus: number;
+  damageBonus: number;
+  reachM: string;
+  attackName: string;
+  damageDice: string;
+  damageType: string;
 }
 
 let nextId = 0;
@@ -93,6 +119,19 @@ export function emptyEffect(type = ''): EffectDraft {
     noLongRangeDisadvantage: false,
     except: '',
     while: '',
+    stateName: '',
+    durationRounds: '',
+    endsOn: [],
+    weapon: '',
+    weaponName: '',
+    attackAbility: '',
+    damageAbility: '',
+    attackBonus: 0,
+    damageBonus: 0,
+    reachM: '',
+    attackName: '',
+    damageDice: '',
+    damageType: '',
   };
 }
 
@@ -128,6 +167,19 @@ export function effectToDraft(e: TableEffect): EffectDraft {
     noLongRangeDisadvantage: e.noLongRangeDisadvantage,
     except: e.except,
     while: e.while,
+    stateName: e.stateName,
+    durationRounds: e.durationRounds,
+    endsOn: [...e.endsOn],
+    weapon: e.weapon,
+    weaponName: e.weaponName,
+    attackAbility: e.attackAbility,
+    damageAbility: e.damageAbility,
+    attackBonus: e.attackBonus,
+    damageBonus: e.damageBonus,
+    reachM: rangeMeters(e.reachFt),
+    attackName: e.attackName,
+    damageDice: e.damageDice,
+    damageType: e.damageType,
   };
 }
 
@@ -146,7 +198,19 @@ type EffectWriter = (d: EffectDraft) => EffectInit;
 
 /** A text the server reads trimmed; an empty one is not sent. */
 const trimmedText =
-  (key: 'value' | 'when' | 'resource' | 'max' | 'textPt'): EffectWriter =>
+  (
+    key:
+      | 'value'
+      | 'when'
+      | 'resource'
+      | 'max'
+      | 'textPt'
+      | 'stateName'
+      | 'durationRounds'
+      | 'weaponName'
+      | 'attackName'
+      | 'damageDice',
+  ): EffectWriter =>
   (d) => {
     const text = d[key].trim();
     return text ? ({ [key]: text } as EffectInit) : {};
@@ -168,14 +232,18 @@ const pickedText =
       | 'applies'
       | 'ability'
       | 'except'
-      | 'while',
+      | 'while'
+      | 'weapon'
+      | 'attackAbility'
+      | 'damageAbility'
+      | 'damageType',
   ): EffectWriter =>
   (d) =>
     d[key] ? ({ [key]: d[key] } as EffectInit) : {};
 
 /** A list that is sent (as a copy) when it has something in it. */
 const pickedList =
-  (key: 'targets' | 'from' | 'spells'): EffectWriter =>
+  (key: 'targets' | 'from' | 'spells' | 'endsOn'): EffectWriter =>
   (d) =>
     d[key].length > 0 ? ({ [key]: [...d[key]] } as EffectInit) : {};
 
@@ -212,6 +280,19 @@ const EFFECT_WRITERS: ReadonlyMap<string, EffectWriter> = new Map<string, Effect
   ['text_pt', trimmedText('textPt')],
   ['except', pickedText('except')],
   ['while', pickedText('while')],
+  ['state_name', trimmedText('stateName')],
+  ['duration_rounds', trimmedText('durationRounds')],
+  ['ends_on', pickedList('endsOn')],
+  ['weapon', pickedText('weapon')],
+  ['weapon_name', trimmedText('weaponName')],
+  ['attack_ability', pickedText('attackAbility')],
+  ['damage_ability', pickedText('damageAbility')],
+  ['attack_bonus', (d) => (d.attackBonus !== 0 ? { attackBonus: d.attackBonus } : {})],
+  ['damage_bonus', (d) => (d.damageBonus !== 0 ? { damageBonus: d.damageBonus } : {})],
+  ['reach_ft', (d) => (rangeFeet(d.reachM) > 0 ? { reachFt: rangeFeet(d.reachM) } : {})],
+  ['attack_name', trimmedText('attackName')],
+  ['damage_dice', trimmedText('damageDice')],
+  ['damage_type', pickedText('damageType')],
   ['ignore_cover', (d) => (d.ignoreCover ? { ignoreCover: true } : {})],
   [
     'range_multiplier',
@@ -233,46 +314,7 @@ export function draftToEffect(d: EffectDraft, menu: EffectMenuVm): EffectInit {
   return out;
 }
 
-/** The labels of the effect fields, in our words (the menu names the fields by their proto name). */
-export const EFFECT_FIELD_LABELS: Readonly<Record<string, string>> = {
-  target: 'O que muda',
-  mode: 'Como muda',
-  value: 'Valor',
-  when: 'Só quando',
-  tags: 'Situação',
-  proficiency: 'Proficiência em',
-  level: 'Quanto',
-  roll: 'Rolagem',
-  targets: 'Em quê',
-  sense: 'Sentido',
-  range_ft: 'Alcance',
-  resource: 'Nome do recurso',
-  max: 'Usos (máximo)',
-  recharge: 'Volta em',
-  choice: 'O jogador escolhe',
-  count: 'Quantos',
-  from: 'Entre',
-  economy: 'Tipo de ação',
-  applies: 'Onde o dado entra',
-  ability: 'Habilidade somada',
-  spells: 'Magias',
-  text_pt: 'Texto na ficha',
-  except: 'Menos o dano de tipo',
-  while: 'Enquanto',
-  ignore_cover: 'Ignora meia cobertura e três quartos',
-  range_multiplier: 'Multiplica o alcance da magia por',
-  no_long_range_disadvantage: 'Sem desvantagem no alcance longo',
-};
-
-/** One line under a field, where the name alone does not say. This is screen copy; the formula functions and the tag
- * prefixes it mentions come from the server's menu (`EffectMenuVm.formulaHint`, `tagHint`). */
-export const EFFECT_FIELD_HINTS: Readonly<Record<string, string>> = {
-  resource: 'Só letras minúsculas sem acento, números e _ (de 1 a 40).',
-  text_pt: 'O que a ficha mostra. {value} vira o valor com sinal.',
-  ignore_cover: 'O alvo não ganha o bônus na CA. A cobertura total continua impedindo o ataque.',
-  range_multiplier: 'Só para magias: 2 dobra o alcance, 3 triplica. Vazio, o alcance não muda.',
-  no_long_range_disadvantage: 'Só para armas: até o alcance longo, a rolagem não tem desvantagem.',
-};
+export { EFFECT_FIELD_HINTS, EFFECT_FIELD_LABELS } from './effect-labels';
 
 /** A value of a closed list: the key the effect stores and the Portuguese name. */
 export interface MenuOption {
@@ -309,7 +351,8 @@ export class EffectMenuVm {
 
   /** "Um número ou uma fórmula com: mod("<habilidade>"), prof()…": the functions are the server's (`helpers`). */
   formulaHint(): string {
-    const calls = this.helpers.map((h) => h.call);
+    // active("nome") reads a state and is only for a condition ("Só quando"): a number never has it.
+    const calls = this.helpers.map((h) => h.call).filter((c) => !c.startsWith('active('));
     return calls.length > 0
       ? `Um número ou uma fórmula. Funções: ${calls.join(', ')}.`
       : 'Um número ou uma fórmula.';
@@ -374,43 +417,10 @@ export class EffectMenuVm {
   }
 }
 
-/** The metres a range field shows, from the feet it stores. */
-export function rangeMeters(ft: number): string {
-  return ft > 0 ? String(feetToMeters(ft)).replace('.', ',') : '';
-}
-
-/** The feet of what a range field holds ("18" or "4,5" metres); 0 for an empty or unreadable field. */
-export function rangeFeet(text: string): number {
-  const n = Number(text.trim().replace(',', '.'));
-  return Number.isFinite(n) && n > 0 ? metersToFeet(n) : 0;
-}
-
-/** Whether a range field holds something that is not a number of metres (empty is fine: it means none). */
-export function unreadableRange(text: string): boolean {
-  const t = text.trim();
-  if (t === '') {
-    return false;
-  }
-  const n = Number(t.replace(',', '.'));
-  return !Number.isFinite(n) || n < 0;
-}
-
-/** What the editor says of a range field it cannot read. */
-export const UNREADABLE_RANGE = 'Escreva só o número de metros, como 18 ou 4,5.';
-
-/** Like rangeFeet, but unreadable text is NaN instead of 0, so a field where 0 is valid cannot save it by accident. */
-export function strictRangeFeet(text: string): number {
-  return unreadableRange(text) ? Number.NaN : rangeFeet(text);
-}
-
-/** Whether a required closed-list field of the action, maneuver and resistance types is still empty. */
+/** Whether a required field the switch of `missingRequired` does not name (a closed list, a text) is still empty. */
 function choiceEmpty(d: EffectDraft, name: string): boolean {
-  return (
-    (name === 'economy' && d.economy === '') ||
-    (name === 'applies' && d.applies === '') ||
-    (name === 'except' && d.except === '') ||
-    (name === 'while' && d.while === '')
-  );
+  const v = d[name.replace(/_(\w)/g, (_, c: string) => c.toUpperCase()) as keyof EffectDraft];
+  return typeof v === 'string' && v.trim() === '';
 }
 
 /** A required field of the type that still has nothing: the editor says so before the server does. */

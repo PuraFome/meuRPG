@@ -214,7 +214,7 @@ var menuTypes = []MenuType{
 		{Name: "while", Required: true, Kind: "state_ref", List: ListResistanceConditions},
 		{Name: "text_pt", Kind: "text"},
 	}},
-	{Type: "state", NamePT: "Estado", HintPT: "Algo que o personagem liga por um tempo, como uma postura ou uma forma. A ficha ganha uma carta com Ativar e Encerrar, como uma ação: ligar gasta o tempo de ação escolhido e, se houver, um uso de um recurso da entrada. A duração é em rodadas (vazio ou 0: dura até acabar) e acaba também nas situações marcadas. Os outros efeitos da entrada valem só enquanto o estado está ligado: pelo campo \"Enquanto\" ou pela condição active(\"nome\").", Fields: []MenuField{
+	{Type: "state", NamePT: "Estado", HintPT: "Algo que o personagem liga por um tempo, como uma postura ou uma forma. A ficha ganha uma carta com Ativar e Encerrar, como uma ação: ligar gasta o tempo de ação escolhido e, se houver, um uso de um recurso da entrada. A duração é em rodadas (vazio ou 0: dura até acabar) e acaba também nas situações marcadas. Os outros efeitos da entrada valem só enquanto o estado está ligado: pelo campo \"Só enquanto o estado\" ou pela condição active(\"nome\").", Fields: []MenuField{
 		{Name: "state_name", Required: true, Kind: "text"},
 		{Name: "duration_rounds", Kind: "formula", AlwaysShown: true},
 		{Name: "ends_on", Kind: "choices", List: ListStateEnds, AlwaysShown: true},

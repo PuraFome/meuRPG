@@ -7,7 +7,14 @@ import {
   SpellOptionSchema,
   TurnOptionsSchema,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
-import { actionCounts, actionTabs, classTabName, featureGroup, partByEconomy } from './action-tabs';
+import {
+  actionCounts,
+  actionTabs,
+  classTabName,
+  featureGroup,
+  featureVerb,
+  partByEconomy,
+} from './action-tabs';
 
 const feature = (key: string, economy: ActionEconomy) =>
   create(ActionOptionSchema, { action: { key, namePt: key, economy }, enabled: true });
@@ -176,5 +183,22 @@ describe('actionCounts', () => {
       features: 1,
       standard: 8,
     });
+  });
+});
+
+describe('featureVerb', () => {
+  it('uses a feature, turns a state on and ends one that is on', () => {
+    const plain = feature('feature:second-wind', ActionEconomy.BONUS_ACTION);
+    const off = create(ActionOptionSchema, {
+      action: { key: 'k', stateKey: 'k#postura', stateActive: false },
+    });
+    const on = create(ActionOptionSchema, {
+      action: { key: 'k', stateKey: 'k#postura', stateActive: true },
+    });
+    expect([featureVerb(plain), featureVerb(off), featureVerb(on)]).toEqual([
+      'Usar',
+      'Ativar',
+      'Encerrar',
+    ]);
   });
 });

@@ -49,6 +49,13 @@ export function toVitalsVm(v: CharacterVitals): VitalsVm {
       used: r.used,
       recharge: RECHARGE[r.recharge] ?? 'none',
     })),
+    states: v.activeStates.map((s) => ({
+      key: s.key,
+      namePt: s.namePt,
+      textPt: s.textPt,
+      durationRounds: s.durationRounds,
+      roundsLeft: s.roundsLeft,
+    })),
     wildShape: v.wildShape
       ? {
           beastKey: v.wildShape.beastKey,

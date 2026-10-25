@@ -744,6 +744,14 @@
   "state_started": true,
   "state_reason": "x",
   "state_id": "x",
+  "state_name": "x",
+  "states_before": [
+    {
+      "key": "x",
+      "rounds": 1
+    }
+  ],
+  "states_changed": true,
   "rider": {
     "choice": "x",
     "result": "x",

@@ -38,24 +38,24 @@
             />
           }
           @case ('number') {
-            @if (f.name === 'range_ft') {
+            @if (inMeters(f.name)) {
               <app-text-field
                 [label]="labelOf(f)"
-                [value]="meters()"
+                [value]="meters(f.name)"
                 suffix="m"
                 inputmode="decimal"
                 [path]="path(f.name)"
                 [issues]="issues(f.name)"
-                (valueChange)="setMeters($event)"
+                (valueChange)="setMeters(f.name, $event)"
               />
             } @else {
               <app-text-field
                 [label]="labelOf(f)"
                 [value]="read(f.name)"
-                inputmode="numeric"
+                [inputmode]="f.min < 0 ? 'text' : 'numeric'"
                 [path]="path(f.name)"
                 [issues]="issues(f.name)"
-                (valueChange)="setNumber(f.name, $event)"
+                (valueChange)="setNumber(f, $event)"
               />
             }
           }
