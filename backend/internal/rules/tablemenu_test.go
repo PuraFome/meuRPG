@@ -258,6 +258,7 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 		"ambush":          {Type: "ambush", Applies: AmbushUnactedAdvantage},
 		"resistance":      {Type: "resistance", Except: "damage-type:psychic", While: ResistanceWhileRage},
 		"breathes_water":  {Type: "breathes_water"},
+		"granted_spell":   {Type: "granted_spell", Spell: "spell:detect-magic", Ability: "wis"},
 		// Only a feat has it, so it is hosted by a feat below.
 		"ability_increase": {Type: "ability_increase", Count: 1, From: []string{"str", "dex"}, Value: "1"},
 	}
@@ -291,6 +292,10 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 			e.Applies = ""
 		case "count":
 			e.Count = 0
+		case "spell":
+			e.Spell = ""
+		case "ability":
+			e.Ability = ""
 		case "except":
 			e.Except = ""
 		case "while":

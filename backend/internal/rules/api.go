@@ -662,6 +662,9 @@ type Derived struct {
 	// plus the subclass's always-prepared spells), cantrips first, then by
 	// level and NamePT.
 	Spells []CharacterSpell
+	// GrantedSpells are the spells the character's traits, feats and features grant
+	// (granted_spell effects), by level and name; see GrantedSpell.
+	GrantedSpells []GrantedSpell
 	// Attacks are the carried weapons (Kind "weapon") and the cantrips
 	// that deal damage (Kind "spell").
 	Attacks []Attack

@@ -151,6 +151,22 @@ type Effect struct {
 	// handlers.
 	Handler string `json:"handler,omitempty"`
 
+	// granted_spell (grantedspells.go): a spell the entry gives the character, apart from
+	// the class's lists. Spell is its key (SRD, or a table spell of the same table);
+	// FromLevel an Int formula, the level from which it is granted (1 when empty):
+	// the class level for a class or subclass feature, the character level for
+	// anything else. Uses is GrantedAtWill or the name of a resource of the entry that
+	// every cast spends one of. AlsoWithSlot lets the character cast it with a spell
+	// slot too. Ability is the casting ability of the grant (GrantedAbilities, or
+	// GrantedAbilityChoice: the player picks one). RitualOnly limits the grant to the
+	// ritual way; CountsAsKnown puts the spell among the known ones too.
+	Spell         string `json:"spell,omitempty"`
+	FromLevel     string `json:"from_level,omitempty"`
+	Uses          string `json:"uses,omitempty"`
+	AlsoWithSlot  bool   `json:"also_with_slot,omitempty"`
+	RitualOnly    bool   `json:"ritual_only,omitempty"`
+	CountsAsKnown bool   `json:"counts_as_known,omitempty"`
+
 	// Spells are spells the effect grants, which then count as on the
 	// character's list (Infernal Legacy's thaumaturgy).
 	Spells []string `json:"spells,omitempty"`
@@ -163,7 +179,7 @@ type Effect struct {
 	TextPT string `json:"text_pt,omitempty"`
 
 	// Compiled formulas, filled at load.
-	value, when, preparedMax, max, rechargeIf *formula.Program
+	value, when, preparedMax, max, rechargeIf, fromLevel *formula.Program
 }
 
 // The closed sets of the effect schema.
@@ -171,7 +187,7 @@ var (
 	effectTypes = []string{
 		"modifier", "proficiency", "roll_mode", "sense", "spellcasting",
 		"resource", "choice", "grant_action", "extra_attack", "note", "handler", "wild_shape", "beast_spells", "replaces",
-		"ability_increase", "superiority_die", "song_of_rest", "ranged_attack", "extra_damage", "ambush", "resistance", "breathes_water",
+		"ability_increase", "superiority_die", "song_of_rest", "ranged_attack", "extra_damage", "ambush", "resistance", "breathes_water", "granted_spell",
 	}
 	modifierTargets = []string{
 		"ac.base", "ac", "hp.max", "speed.walk", "speed.fly", "speed.swim", "speed.climb", "speed.burrow", "initiative",
@@ -249,6 +265,7 @@ var effectCheckers = map[string]func(x effectCompiler) error{
 	"ranged_attack":    effectCompiler.rangedAttack,
 	"resistance":       effectCompiler.resistance,
 	"breathes_water":   effectCompiler.breathesWater,
+	"granted_spell":    effectCompiler.grantedSpell,
 	"replaces":         effectCompiler.replaces,
 	"modifier":         effectCompiler.modifier,
 	"proficiency":      effectCompiler.proficiency,
@@ -319,6 +336,9 @@ func (x effectCompiler) strayFields() error {
 	}
 	if err := x.strayResistance(); err != nil {
 		return err
+	}
+	if e.Type != "granted_spell" && (e.Spell != "" || e.FromLevel != "" || e.Uses != "" || e.AlsoWithSlot || e.RitualOnly || e.CountsAsKnown) {
+		return x.fail("spell, from_level, uses, also_with_slot, ritual_only and counts_as_known belong to granted_spell")
 	}
 	if e.Type != "ranged_attack" && (e.IgnoreCover || e.RangeMultiplier != 0 || e.NoLongRangeDisadvantage) {
 		return x.fail("ignore_cover, range_multiplier and no_long_range_disadvantage belong to ranged_attack")

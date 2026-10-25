@@ -617,6 +617,7 @@
       "Prepared": true
     }
   ],
+  "GrantedSpells": null,
   "Attacks": [
     {
       "Key": "equipment:quarterstaff",

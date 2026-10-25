@@ -120,6 +120,8 @@ const (
 	ListDamageTypes        = "damage_types"
 	// ListResistanceConditions are when a resistance effect holds.
 	ListResistanceConditions = "resistance_conditions"
+	// ListGrantAbilities are the casting abilities of a granted spell.
+	ListGrantAbilities = "granted_spell_abilities"
 )
 
 // menuTypes is the menu's types, in the picker's order, with the copy in
@@ -206,6 +208,17 @@ var menuTypes = []MenuType{
 		{Name: "text_pt", Kind: "text"},
 	}},
 	{Type: "breathes_water", NamePT: "Respira na água", HintPT: "O personagem respira debaixo d'água. A ficha mostra a característica; o jogo não conta fôlego nem afogamento.", Fields: []MenuField{
+		{Name: "when", Kind: "condition"},
+		{Name: "text_pt", Kind: "text"},
+	}},
+	{Type: "granted_spell", NamePT: "Magia concedida", HintPT: "Uma magia que a entrada dá ao personagem fora das listas das classes dele: à vontade ou gastando usos de um recurso que a entrada define, sem espaço de magia. A magia de nível acima de truque é conjurada no próprio nível. A habilidade escolhida dá o bônus de ataque e a CD de resistência (8 + proficiência + modificador); \"o jogador escolhe\" pede essa escolha uma vez, ao pegar a entrada. Magias de ritual com \"só como ritual\" não gastam espaço nem preparo. Não dispensa componentes materiais.", Fields: []MenuField{
+		{Name: "spell", Required: true, Kind: "choice"},
+		{Name: "ability", Required: true, Kind: "choice", List: ListGrantAbilities},
+		{Name: "from_level", Kind: "formula"},
+		{Name: "uses", Kind: "resource_ref"},
+		{Name: "also_with_slot", Kind: "yes_no", AlwaysShown: true},
+		{Name: "ritual_only", Kind: "yes_no", AlwaysShown: true},
+		{Name: "counts_as_known", Kind: "yes_no", AlwaysShown: true},
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
@@ -428,8 +441,18 @@ func (c *content) menuLists() []MenuList {
 		{Name: ListExtraDamageApplies, Values: extraDamageValues()},
 		{Name: ListAmbushApplies, Values: ambushValues()},
 		{Name: ListDamageTypes, Values: c.menuDamageTypes()},
+		{Name: ListGrantAbilities, Values: c.menuGrantAbilities()},
 		{Name: ListResistanceConditions, Values: []MenuValue{{Key: ResistanceWhileRage, NamePT: "Em fúria", HintPT: "Vale enquanto o personagem estiver em fúria (e não usar armadura pesada)."}}},
 	}
+}
+
+// menuGrantAbilities are the casting abilities of a granted spell, and the pick the player makes.
+func (c *content) menuGrantAbilities() []MenuValue {
+	out := make([]MenuValue, 0, len(GrantedAbilities)+1)
+	for _, a := range GrantedAbilities {
+		out = append(out, MenuValue{Key: string(a), NamePT: c.menuAbilityName(a)})
+	}
+	return append(out, MenuValue{Key: GrantedAbilityChoice, NamePT: "O jogador escolhe", HintPT: "Uma escolha, feita uma vez ao pegar a entrada: Inteligência, Sabedoria ou Carisma."})
 }
 
 // menuDamageTypes are the damage types, by Portuguese name.

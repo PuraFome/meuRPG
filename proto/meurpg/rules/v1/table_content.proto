@@ -179,6 +179,25 @@ message TableEffect {
   // (the barbarian's own rage resistance) counts once.
   string except = 27;
   string while = 28;
+  // granted_spell: a spell the entry gives the character apart from the lists of its
+  // classes. `spell` is an SRD key or a spell of the same table; `ability` is "int",
+  // "wis", "cha" or "choice" (the player picks one of the three once, when the entry
+  // is taken) and gives the spell attack bonus and the save DC (8 + proficiency + the
+  // modifier). `from_level` is a formula, the level the grant starts at (1 when empty):
+  // the class level for a class or subclass feature, the character level for anything
+  // else. `uses` is empty or "at_will" for no limit, or the name of a resource effect of
+  // the same entry (or its class), of which every cast spends one. `also_with_slot`
+  // lets the character cast it with a spell slot too, `ritual_only` limits it to the
+  // ritual way (a spell with the ritual tag; not with also_with_slot) and
+  // `counts_as_known` lists it among the known spells without using any of the
+  // class's picks. A leveled spell cast through the grant is cast at its own level;
+  // the material components are not waived. Required: `spell` and `ability`.
+  string spell = 29;
+  string from_level = 30;
+  string uses = 31;
+  bool also_with_slot = 32;
+  bool ritual_only = 33;
+  bool counts_as_known = 34;
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a

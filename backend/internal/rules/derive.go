@@ -108,6 +108,7 @@ func deriveWith(b Build, c *content, inactive map[string]bool) Derived {
 	x.hitPoints()
 	x.speedAndSenses()
 	x.languages()
+	x.grantedSpells()
 	x.spellcasting()
 	x.rangedAttacks()
 	x.attacks()

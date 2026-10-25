@@ -712,6 +712,10 @@ message DerivedSheet {
   // True when a table's breathes_water effect applies: the character breathes
   // underwater (the sheet shows it; the engine keeps no air or drowning count).
   bool breathes_water = 47;
+  // The spells the character's traits, feats and features grant through a
+  // granted_spell effect, by level and name, each with its source. They are cast
+  // through the grant (see GrantedSpell); the sheet lists them apart from `spells`.
+  repeated GrantedSpell granted_spells = 48;
 }
 
 // BreathWeapon is the dragonborn's Breath Weapon (SRD 5.1, Dragonborn): the dragon
@@ -1007,6 +1011,33 @@ message CharacterSpell {
   // a class that knows its spells, and the spells on the sheet's prepared
   // list.
   bool prepared = 2;
+}
+
+// GrantedSpell is a spell an entry of the character gives (granted_spell effect), at
+// the character's level, with the numbers of its casting ability.
+message GrantedSpell {
+  Spell spell = 1;
+  // The key and the Portuguese name of the trait, feat or feature that grants it.
+  string source_key = 2;
+  string source_name_pt = 3;
+  // True when it has no limit; otherwise `resource` is the resource every cast
+  // spends one of (the sheet's resources list it with its uses).
+  bool at_will = 4;
+  string resource = 5;
+  // The grant also allows a spell slot; only the ritual way; the spell is also listed as known.
+  bool also_with_slot = 6;
+  bool ritual_only = 7;
+  bool counts_as_known = 8;
+  // The casting ability ("int", "wis" or "cha"). Empty while `ability_pending`: the
+  // grant asks the player to pick one (a choice of the sheet) and has no numbers yet.
+  string ability = 9;
+  bool ability_pending = 10;
+  // The spell attack bonus (proficiency + modifier) and the save DC (8 + the same),
+  // both 0 while the ability is pending.
+  int32 attack_bonus = 11;
+  int32 save_dc = 12;
+  // The level the grant starts at (the class level for a class or subclass feature).
+  int32 from_level = 13;
 }
 
 // Attack is an attack with a weapon on the sheet.

@@ -530,6 +530,7 @@
         "Prepared": false
       }
     ],
+    "GrantedSpells": null,
     "Attacks": [
       {
         "Key": "equipment:longsword",
@@ -1243,6 +1244,7 @@
     ],
     "PactMagic": null,
     "Spells": null,
+    "GrantedSpells": null,
     "Attacks": [
       {
         "Key": "equipment:longsword",

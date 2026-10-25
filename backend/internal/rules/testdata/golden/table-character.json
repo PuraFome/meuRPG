@@ -432,6 +432,7 @@
         "Prepared": true
       }
     ],
+    "GrantedSpells": null,
     "Attacks": [
       {
         "Key": "spell:faisca-de-teste@mesa",
@@ -1470,6 +1471,7 @@
         "Prepared": true
       }
     ],
+    "GrantedSpells": null,
     "Attacks": [
       {
         "Key": "spell:faisca-de-teste@mesa",
@@ -2458,6 +2460,7 @@
         "Prepared": true
       }
     ],
+    "GrantedSpells": null,
     "Attacks": [
       {
         "Key": "spell:faisca-de-teste@mesa",
