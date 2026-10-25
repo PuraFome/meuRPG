@@ -11,7 +11,7 @@ import { chooseReaders, lineOf, messageBoxOf, openConversaTable, say } from './c
 import { followMapLink, openChatTab, openPlayerMap, openSheetTab, endOpenSessionRPC, endSessionRPC, openRolls, openSessionPage, showMapTool, showMasterTab, startSessionRPC, tableWithPensantus, openSessionMenu, clickStartCombat, expectStartCombatOffered, endSessionFromBar } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
 import { adjustVitalsRPC, beginAttackCombatRPC, setGridRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
-import { addActionRPC, attachTwoImagesRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC, sceneActionIdsRPC, setAttemptsRPC, setShowDcRPC, tableForScenes } from './scene-support';
+import { addActionRPC, attachTwoImagesRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC, sceneActionIdsRPC, setAttemptsRPC, setSceneImagesRPC, setShowDcRPC, tableForScenes } from './scene-support';
 import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support';
 import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
 import { printRoute, tableForPrinting } from './print-support';
@@ -2687,6 +2687,99 @@ test('o retrato, o palco e os destaques passam no axe e nas conferências de lay
 test('o retrato, o palco e os destaques passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-031', '@MR-032'] }, async ({ browser }) => {
   test.setTimeout(480_000);
   await scanStageScreens(browser, 'light', 320);
+});
+
+// MR-015, MR-028, MR-031, RN-10: the master's side of who sees what in a scene: the eye of a stage NPC and of an action, "Quem está
+// na cena" with the players as chips and "Os jogadores podem entrar", the menu "Mostrar" of a thumbnail, who sees the image on
+// display, and the chooser of players (a sheet on a phone, a dialog from a tablet up).
+async function scanSceneVisibilityScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width >= 768 ? 900 : 844 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  let toren2: Awaited<ReturnType<typeof secondPlayer>> | null = null;
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForScenes(m, p, `Acessibilidade quem vê ${Date.now()}`);
+    campaignId = table.campaignId;
+    toren2 = await secondPlayer(browser, m, campaignId, toren, torenSheet);
+    const miraId = await createMiraRPC(m, campaignId);
+    const capitaoId = await createCapitaoRPC(m, campaignId);
+    const hall = await uploadImageRPC(m, campaignId, 'Vista do salão', await canvasPng(m, 640, 400, 'Vista do salão', '#7a5a40'));
+    const cellar = await uploadImageRPC(m, campaignId, 'O porão', await canvasPng(m, 640, 400, 'O porão', '#5a4b42'));
+    await setSceneImagesRPC(m, table, table.cartId, [hall, cellar]);
+    await openSceneRPC(m, campaignId, table.cartId);
+    await putOnStageRPC(m, campaignId, miraId);
+    await putOnStageRPC(m, campaignId, capitaoId);
+    await openSessionPage(m, campaignId);
+    await expect(m.getByRole('heading', { name: 'Cena: A carroça tombada' })).toBeVisible();
+
+    // The scene's chooser, then the scene open to Pensantus only, with the switch on.
+    await m.getByRole('button', { name: 'Quem está na cena' }).click();
+    const chooser = m.getByRole('dialog', { name: 'Quem está na cena?' });
+    await expect(chooser).toBeVisible();
+    await m.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await expectScreenPasses(m, `Quem está na cena, o seletor ${where}`);
+    await chooser.getByRole('checkbox', { name: /Toren/ }).uncheck();
+    await expectScreenPasses(m, `Quem está na cena, só a Pensantus ${where}`);
+    await chooser.getByRole('button', { name: 'Pronto' }).click();
+    await expect(m.getByText('Toren não está nesta cena.')).toBeVisible();
+    await m.getByRole('switch', { name: 'Os jogadores podem entrar' }).click();
+    await expect(m.getByRole('switch', { name: 'Os jogadores podem entrar' })).toHaveAttribute('aria-checked', 'true');
+    await expectScreenPasses(m, `Cena aberta só para a Pensantus, entrar ligado ${where}`);
+
+    // The eyes: a hidden NPC and a hidden action.
+    await m.getByRole('button', { name: 'Esconder Capitão Goblin dos jogadores' }).click();
+    await expect(m.getByText('Escondida dos jogadores')).toBeVisible();
+    await m.getByRole('button', { name: 'Esconder Acalmar os cavalos dos jogadores' }).click();
+    await expect(m.getByText('Escondida', { exact: true })).toBeVisible();
+    await expectScreenPasses(m, `Um NPC e uma ação escondidos ${where}`);
+
+    // "Mostrar" on a thumbnail, then who sees the image on display.
+    await m.getByRole('button', { name: 'Mostrar Vista do salão para…' }).click();
+    await expect(m.getByRole('menu').getByText('Mostrar “Vista do salão” para')).toBeVisible();
+    await m.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await expectScreenPasses(m, `Mostrar para quem, o menu ${where}`);
+    await m.getByRole('menuitem', { name: /Só quem está na cena/ }).click();
+    await expect(m.getByText('Pensantus vê')).toBeVisible();
+    await expectScreenPasses(m, `Imagem só para quem está na cena ${where}`);
+    await m.getByRole('button', { name: 'Mudar quem vê' }).click();
+    const viewers = m.getByRole('dialog', { name: 'Quem vê “Vista do salão”?' });
+    await expect(viewers).toBeVisible();
+    await m.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await expectScreenPasses(m, `Quem vê a imagem, o seletor ${where}`);
+    await viewers.getByRole('button', { name: 'Cancelar' }).click();
+    await expect(viewers).toBeHidden();
+  } finally {
+    await endOpenSessionRPC(m, campaignId);
+    await toren2?.close();
+    await master.close();
+    await player.close();
+  }
+}
+
+test('o quem vê da cena passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-015', '@MR-028', '@RN-10'] }, async ({ browser }) => {
+  test.setTimeout(480_000);
+  await scanSceneVisibilityScreens(browser, 'light', 1280);
+});
+
+test('o quem vê da cena passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-015', '@MR-028', '@RN-10'] }, async ({ browser }) => {
+  test.setTimeout(480_000);
+  await scanSceneVisibilityScreens(browser, 'dark', 390);
+});
+
+test('o quem vê da cena passa no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-015', '@MR-028', '@RN-10'] }, async ({ browser }) => {
+  test.setTimeout(480_000);
+  await scanSceneVisibilityScreens(browser, 'dark', 1024);
+});
+
+test('o quem vê da cena passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-015', '@MR-028', '@RN-10'] }, async ({ browser }) => {
+  test.setTimeout(480_000);
+  await scanSceneVisibilityScreens(browser, 'light', 320);
 });
 
 /** The spells in the session (Etapa 8, slice 8.4; E8-02, E8-03): the list with its "?" and slot

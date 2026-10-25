@@ -1,7 +1,12 @@
 import { computed, signal } from '@angular/core';
 
 import type { SceneClue } from '../../../gen/meurpg/maps/v1/maps_pb';
-import type { OpenSceneInfo, StageNpc } from '../../../gen/meurpg/play/v1/scene_pb';
+import type {
+  OpenSceneInfo,
+  SceneAudienceView,
+  StageNpc,
+} from '../../../gen/meurpg/play/v1/scene_pb';
+import { formatClock } from '../../shared/session-time/session-time';
 import { attemptsAnnouncement, rollAnnouncement } from './scene-view';
 import { stageAnnouncement } from './stage-view';
 
@@ -27,6 +32,12 @@ export class SceneState {
   /** The NPCs on the scene's stage, in the order they came in (empty with no
    * scene). Part of the scene: the server clears it when the scene closes. */
   readonly stage = computed<readonly StageNpc[]>(() => this.scene()?.stage ?? []);
+  /** Who is in and out of the open scene, as the master sees it (MR-015, RN-10); `null` for a player or with no scene. */
+  readonly audience = computed<SceneAudienceView | null>(() => this.scene()?.audience ?? null);
+  /** "Os jogadores podem entrar": a scene open to some may be joined by the others. */
+  readonly playersMayJoin = computed(() => this.scene()?.playersMayJoin ?? false);
+  /** "Toren entrou na cena às 20:41.": the master's line after a player joined by themselves, until the next news. */
+  readonly joined = signal('');
   /** What the live region says now; changes with each news. */
   readonly notice = signal('');
   /**
@@ -77,6 +88,9 @@ export class SceneState {
   private show(next: OpenSceneInfo | null): void {
     const prev = this.scene();
     this.scene.set(next);
+    if (!next || !prev || !sameScene(prev, next)) {
+      this.joined.set('');
+    }
     if (this.loaded) {
       this.say(prev, next);
     }
@@ -92,6 +106,19 @@ export class SceneState {
     }
     this.edits++;
     this.scene.set({ ...scene, clues: scene.clues.map((c) => (c.id === clue.id ? clue : c)) });
+  }
+
+  /** The master's own eye on an action answered (`UpdateSceneAction`): the open scene carries it at once. */
+  setActionHidden(actionId: string, hidden: boolean): void {
+    const scene = this.scene();
+    if (!scene) {
+      return;
+    }
+    this.edits++;
+    this.scene.set({
+      ...scene,
+      actions: scene.actions.map((a) => (a.id === actionId ? { ...a, hidden } : a)),
+    });
   }
 
   /** The master's own stage call answered: the stage as it is now. Applied in
@@ -124,17 +151,30 @@ export class SceneState {
     this.notice.set('');
     this.focusNext.set(null);
     this.loaded = false;
+    this.joined.set('');
+  }
+
+  /** What the master hears: each new roll, and a player who joined by themselves. */
+  private sayToMaster(prev: OpenSceneInfo | null, next: OpenSceneInfo | null): void {
+    if (!next || !prev || !sameScene(prev, next)) {
+      return;
+    }
+    const known = new Set(prev.rolls.map((r) => r.id));
+    const fresh = next.rolls.filter((r) => !known.has(r.id)).reverse();
+    if (fresh.length > 0) {
+      this.notice.set(fresh.map((r) => rollAnnouncement(next, r)).join('. '));
+    }
+    const came = joinedByThemselves(prev, next);
+    if (came.length > 0) {
+      const names = came.join(' e ');
+      this.joined.set(`${names} entrou na cena às ${formatClock(new Date())}.`);
+      this.notice.set(`${names} entrou na cena.`);
+    }
   }
 
   private say(prev: OpenSceneInfo | null, next: OpenSceneInfo | null): void {
     if (this.isMaster()) {
-      if (next && prev && sameScene(prev, next)) {
-        const known = new Set(prev.rolls.map((r) => r.id));
-        const fresh = next.rolls.filter((r) => !known.has(r.id)).reverse();
-        if (fresh.length > 0) {
-          this.notice.set(fresh.map((r) => rollAnnouncement(next, r)).join('. '));
-        }
-      }
+      this.sayToMaster(prev, next);
       return;
     }
     if (next && (!prev || !sameScene(prev, next))) {
@@ -151,6 +191,14 @@ export class SceneState {
       }
     }
   }
+}
+
+/** The names of the players who joined by themselves since `prev` (JoinScene), in the party's order. */
+function joinedByThemselves(prev: OpenSceneInfo, next: OpenSceneInfo): string[] {
+  const known = new Set(prev.audience?.inside.map((p) => p.userId));
+  return (next.audience?.inside ?? [])
+    .filter((p) => p.joinedBySelf && !known.has(p.userId))
+    .map((p) => p.characterName);
 }
 
 /** The same opening of the same scene (closing and opening it again is another). */

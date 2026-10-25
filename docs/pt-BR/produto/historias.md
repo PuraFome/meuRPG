@@ -430,6 +430,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 #### No app
 - Editor: "Ações da cena" e "Imagens da cena" do painel do ponto (miniaturas em ordem com ↑ ↓ e "Tirar da cena", que mantém a imagem na galeria; "Escolher da galeria"; "Gerar imagem com IA", cuja imagem entra na lista; "N de 8").
 - Sessão: o mestre abre a "Cena de RP" na aba "Cena" ("Abrir cena", "Trocar cena", "Fechar cena"; abrir uma cena leva para a aba). A cena aberta é um cartão só: "Em cena" (uma linha por NPC), "Imagens da cena" (miniaturas; um toque mostra uma, a imagem do mapa inteiro pergunta antes; a que está à mostra leva "À mostra"; o bloco tracejado "Da galeria" e "Parar de mostrar"), "Ações e rolagens" (uma linha por ação, cada rolagem num chip que abre a fórmula e o Passou / Não passou; "Teste em grupo" no cabeçalho), "Pistas" e os "Ganchos e anotações", dobrados. No celular as partes dobram. O jogador tem o bloco "Cena" com o bônus dele e "Rolar".
+- Quem vê o quê (RN-10): a primeira linha da cena aberta diz "Aberta desde 20:20 para" com os jogadores que estão nela em chips (uma contagem e as iniciais sobrepostas a partir de quatro) e "Quem está na cena", que abre o seletor de jogadores (uma folha no celular); embaixo, quem está fora ("Toren não está nesta cena.") e, numa cena aberta só para alguns jogadores, o interruptor "Os jogadores podem entrar"; quando um jogador entra por conta própria a linha diz "Toren entrou na cena às 20:41.". Cada ação tem um olho ("Escondida": os jogadores nunca a recebem nem as rolagens dela).
 - Ver [Cenas e palco](../../architecture/play/scenes-and-stage.md).
 
 #### Relacionadas
@@ -579,6 +580,7 @@ Cada convite escolhe se exige aprovação, e uma recusa apaga o personagem e a p
 - Uma imagem por vez, independente do mapa atual; uma sessão nova começa sem nenhuma.
   Apagar a imagem da galeria para de mostrá-la e a tira da lista.
   O nome da imagem é o nome do arquivo enviado e aparece para os jogadores como legenda, então o mestre pode renomeá-la antes de mostrar.
+- Na sessão o mestre escolhe quem vê. Com a cena aberta para a mesa toda um toque mostra a imagem para a mesa; com ela aberta só para alguns jogadores, "Mostrar" numa miniatura é um menu ("Só quem está na cena", "Toda a mesa", "Escolher quem vê…"). Sob as miniaturas uma linha diz quem vê a imagem à mostra ("Pensantus e Brisa veem", "Só Brisa vê", "Toda a mesa vê", "Os jogadores veem"), com "Mostrar a toda a mesa" e "Mudar quem vê", que abre o seletor ("Quem vê “Vista do salão”?") e tira a imagem na hora de quem ficou de fora.
 - Mostrar o fundo de um mapa com névoa mostra uma cópia dele ("… (névoa)"), para não entregar a névoa.
 - Um jogador baixa a imagem só enquanto ela está sendo mostrada e ele está na audiência dela, enquanto está deixada com ele, ou enquanto é o fundo de um mapa que ele vê.
   Fora disso é um `404`, mesmo com o ID guardado.
@@ -887,7 +889,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
   Veja [Arquitetura](../../architecture/play/scenes-and-stage.md#npcs-on-stage).
 - O editor de NPC tem "Retrato" (a ficha curta e o passo Básico de inimigo e chefe): iniciais sem imagem, "Escolher/Trocar retrato" no seletor da galeria, "Remover retrato" com a pergunta no lugar, tudo salvo com a ficha.
   O retrato aparece no cartão do NPC no combate e no cabeçalho da ficha.
-- O mestre vê "Em cena" na cena aberta ("Dar a fala"/"Fala agora", "Tirar de cena", "Pôr em cena" no lugar ou numa folha no celular, "4 de 4").
+- O mestre vê "Em cena" na cena aberta (um olho por NPC: "Escondida dos jogadores" deixa o NPC no palco só para o mestre, e um NPC escondido nunca fala; "Dar a fala"/"Fala agora", "Tirar de cena", "Pôr em cena" no lugar ou numa folha no celular, "4 de 4").
   Os jogadores veem o palco com recortes sem caixa e quem fala em destaque; o palco some quando vazio.
 
 #### Relacionadas

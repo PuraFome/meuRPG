@@ -430,6 +430,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 #### In the app
 - Editor: the point panel's "Ações da cena" and "Imagens da cena" (thumbnails in order with ↑ ↓ and "Tirar da cena", which keeps the image in the gallery; "Escolher da galeria"; "Gerar imagem com IA", whose picture joins the list; "N de 8").
 - Session: the master opens "Cena de RP" from the "Cena" tab ("Abrir cena", "Trocar cena", "Fechar cena"; opening one switches to the tab). The open scene is one card: "Em cena" (a row per NPC), "Imagens da cena" (thumbnails; a tap shows one, a whole-map image asks first; the one on show is "À mostra"; the dashed "Da galeria" tile and "Parar de mostrar"), "Ações e rolagens" (a line per action with each roll as a chip that opens the formula and Passou / Não passou; "Teste em grupo" in its header), "Pistas" and the folded "Ganchos e anotações". On a phone the parts fold. The player has the block "Cena" with their bonus and "Rolar".
+- Who sees what (RN-10): the first line of the open scene says "Aberta desde 20:20 para" with the players in it as chips (a count and overlapping initials past three) and "Quem está na cena", which opens the chooser of players (a sheet on a phone); under it, who is out ("Toren não está nesta cena.") and, for a scene open to only some players, the switch "Os jogadores podem entrar"; when a player joins by themselves the line says "Toren entrou na cena às 20:41.". Each action has an eye ("Escondida": the players never get it nor its rolls).
 - See [Scenes and stage](../architecture/play/scenes-and-stage.md).
 
 #### Related
@@ -579,6 +580,7 @@ Each invite chooses whether it requires approval, and a refusal deletes the char
 - One image at a time, independent of the current map; a new session starts with none.
   Deleting the image from the gallery stops showing it and removes it from the list.
   The image's name is the uploaded file's name and is shown to the players as the caption, so the game master can rename it before showing it.
+- In the session the master chooses who sees it. With the scene open to the whole table a tap shows the image to the table; with it open to only some players "Mostrar" on a thumbnail is a menu ("Só quem está na cena", "Toda a mesa", "Escolher quem vê…"). Under the thumbnails a line says who sees the image on show ("Pensantus e Brisa veem", "Só Brisa vê", "Toda a mesa vê", "Os jogadores veem"), with "Mostrar a toda a mesa" and "Mudar quem vê", which opens the chooser ("Quem vê “Vista do salão”?") and takes the image away at once from whoever is left out.
 - Showing the background of a map with fog on shows a copy of it ("… (névoa)"), so the fog is not given away.
 - A player downloads the image only while it is shown and they are in its audience, while it is left with them, or while it is the background of a map they can see.
   Otherwise it is a `404`, even with the ID stored.
@@ -887,7 +889,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
   See [Architecture](../architecture/play/scenes-and-stage.md#npcs-on-stage).
 - The NPC editor has "Retrato" (the short sheet and the Básico step of enemy and boss): initials without an image, "Escolher/Trocar retrato" in the gallery picker, "Remover retrato" with the question in place, all saved with the sheet.
   The portrait appears on the NPC card in combat and in the sheet header.
-- The game master sees "Em cena" in the open scene ("Dar a fala"/"Fala agora", "Tirar de cena", "Pôr em cena" in place or in a sheet on a phone, "4 de 4").
+- The game master sees "Em cena" in the open scene (an eye per NPC: "Escondida dos jogadores" keeps it on the stage for the master only, and a hidden NPC never speaks; "Dar a fala"/"Fala agora", "Tirar de cena", "Pôr em cena" in place or in a sheet on a phone, "4 de 4").
   The players see the stage with cut-outs without a box and the speaker highlighted; the stage disappears when empty.
 
 #### Related

@@ -6,6 +6,8 @@ import {
   OpenSceneInfoSchema,
   type SceneActionView,
   SceneActionViewSchema,
+  type SceneAudienceView,
+  SceneAudienceViewSchema,
   type SceneRoll,
   SceneRollSchema,
   type StageNpc,
@@ -77,6 +79,26 @@ export function stageNpc(
     portraitUrl: '',
     speaking: false,
     ...rest,
+  });
+}
+
+/** Who is in and out of the open scene as the master reads it: the names are the characters', the accounts `u-<name>`. */
+export function sceneAudienceView(
+  inside: readonly string[],
+  outside: readonly string[] = [],
+  everyone = false,
+  joinedBySelf: readonly string[] = [],
+): SceneAudienceView {
+  const player = (name: string) => ({
+    userId: `u-${name.toLowerCase()}`,
+    characterId: `c-${name.toLowerCase()}`,
+    characterName: name,
+    joinedBySelf: joinedBySelf.includes(name),
+  });
+  return create(SceneAudienceViewSchema, {
+    everyone,
+    inside: inside.map(player),
+    outside: outside.map(player),
   });
 }
 
@@ -232,6 +254,32 @@ export class FakeSceneClient {
     await this.hold;
     this.stage = this.stage.map((n) => ({ ...n, speaking: n.characterId === characterId }));
     return this.stage;
+  }
+
+  async setStageNpcHidden(
+    _campaignId: string,
+    characterId: string,
+    hidden: boolean,
+  ): Promise<readonly StageNpc[]> {
+    this.record(`${hidden ? 'hide' : 'show'} ${characterId}`);
+    await this.hold;
+    this.stage = this.stage.map((n) =>
+      n.characterId === characterId ? { ...n, hidden, speaking: hidden ? false : n.speaking } : n,
+    );
+    return this.stage;
+  }
+
+  async setAudience(
+    _campaignId: string,
+    audience: { readonly everyone: true } | { readonly userIds: readonly string[] },
+  ): Promise<OpenSceneInfo> {
+    this.record(`audience ${'everyone' in audience ? 'everyone' : audience.userIds.join(',')}`);
+    return this.scene ?? masterScene();
+  }
+
+  async setPlayersMayJoin(_campaignId: string, playersMayJoin: boolean): Promise<OpenSceneInfo> {
+    this.record(`may-join ${playersMayJoin}`);
+    return this.scene ?? masterScene();
   }
 
   async roll(
