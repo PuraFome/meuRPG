@@ -1014,10 +1014,14 @@ test('guerreiro 5: o Ataque Extra deixa dois ataques por ação, Retomar o Fôle
     // The Bonus action is spent: Retomar o Fôlego is in the folded "Ação bônus · Usada" of the tab.
     await openActionTab(p, 'Guerreiro');
     const spentBonus = await openSpentGroup(p, 'Ação bônus');
-    // The reason is the button's description (the row's own line): found by the button, not by a fold's id.
+    // Second Wind is a bonus action and the bonus action is spent: that is its reason (the button's description).
     const second = spentBonus.getByRole('button', { name: 'Usar Retomar o Fôlego' });
     await expect(second).toHaveAttribute('aria-disabled', 'true');
-    await expect(second).toHaveAccessibleDescription(/Sem usos: volta num descanso curto/);
+    await expect(second).toHaveAccessibleDescription(/Ação bônus já usada/);
+    // Surto de Ação costs no economy, so it is never in a folded line: its row says it has no uses left.
+    const surge = groups.getByRole('button', { name: 'Usar Surto de Ação' });
+    await expect(surge).toHaveAttribute('aria-disabled', 'true');
+    await expect(surge).toHaveAccessibleDescription(/Sem usos: volta num descanso curto/);
   } finally {
     await done();
   }
