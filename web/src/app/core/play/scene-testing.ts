@@ -119,6 +119,11 @@ export function masterScene(
 }
 
 /** The same scene as Pensantus sees it: his bonuses, his attempts and, by default, no DC. */
+/** The scene as a player out of it reads it when the master lets players join (C7-06): the name and `joinable`, nothing else. */
+export function joinableScene(name = 'A taverna do Javali Cego'): OpenSceneInfo {
+  return create(OpenSceneInfoSchema, { name, joinable: true });
+}
+
 export function playerScene(
   rolls: SceneRoll[] = [],
   stage: StageNpc[] = [],
@@ -203,6 +208,14 @@ export class FakeSceneClient {
   async get(): Promise<OpenSceneInfo | null> {
     this.record('get');
     return this.scene;
+  }
+
+  /** What `join` answers with: the scene as the player who joined reads it. */
+  joined: OpenSceneInfo | null = null;
+
+  async join(): Promise<OpenSceneInfo> {
+    this.record('join');
+    return this.joined ?? playerScene();
   }
 
   async putOnStage(_campaignId: string, characterId: string): Promise<readonly StageNpc[]> {

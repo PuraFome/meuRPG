@@ -486,7 +486,7 @@
         />
         <!-- The player's scene (C5-01, C5-02, C6-08): on a phone one column (the image shown, the scene, the map row, the images left);
              from 1024px the image (and the images left under it) beside the scene, the map under them, and the rail on the right. -->
-        <div class="player-board" [class.board--scene]="scene.scene()" [class.player-board--split]="scene.scene() && (state.shownImage() || state.leftImages().length > 0)" [class.player-board--image]="state.shownImage()" [class.player-board--left]="state.leftImages().length > 0 && (slot.phone() || !state.shownImage())">
+        <div class="player-board" [class.board--scene]="sceneOpen()" [class.player-board--split]="sceneOpen() && (state.shownImage() || state.leftImages().length > 0)" [class.player-board--image]="state.shownImage()" [class.player-board--left]="state.leftImages().length > 0 && (slot.phone() || !state.shownImage())">
           <app-group-check-card
             class="player-board__group"
             (needsRoll)="state.groupWaiting.set($event)"

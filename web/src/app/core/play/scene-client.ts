@@ -37,6 +37,12 @@ export class SceneClient {
     return res.scene ?? null;
   }
 
+  /** `JoinScene`: the player enters the open scene when the master lets players join. The answer is the scene as they read it now. */
+  async join(campaignId: string): Promise<OpenSceneInfo> {
+    const res = await this.client.joinScene({ campaignId });
+    return need(res.scene, 'JoinScene');
+  }
+
   /** `PutOnStage` (MR-031): the NPC comes in after those already there. The
    * answer is the stage as it is now. */
   async putOnStage(campaignId: string, characterId: string): Promise<readonly StageNpc[]> {

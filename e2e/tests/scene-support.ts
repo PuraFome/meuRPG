@@ -189,3 +189,31 @@ export async function setSceneImagesRPC(page: Page, table: { campaignId: string;
   const res = await callRPC(page, 'meurpg.maps.v1.MapService/SetSceneImages', { campaignId: table.campaignId, mapId: table.mapId, pointId, imageIds });
   expect(res.ok(), await res.text()).toBeTruthy();
 }
+
+/** The master's switch "Os jogadores podem entrar", through the API (`SetScenePlayersMayJoin`). */
+export async function setMayJoinRPC(master: Page, campaignId: string, playersMayJoin: boolean): Promise<void> {
+  const res = await callRPC(master, 'meurpg.play.v1.PlayService/SetScenePlayersMayJoin', { campaignId, playersMayJoin });
+  expect(res.ok(), await res.text()).toBeTruthy();
+}
+
+/**
+ * Opens the scene of `pointId` to only `characterName`'s player (`SetSceneAudience`): the open scene lists who is in, so the account is
+ * read from there, then the audience is narrowed to it. Everyone else is out until they join.
+ */
+export async function openSceneOnlyToRPC(master: Page, campaignId: string, pointId: string, characterName: string): Promise<void> {
+  await openSceneRPC(master, campaignId, pointId);
+  const open = await callRPC(master, 'meurpg.play.v1.PlayService/GetOpenScene', { campaignId });
+  expect(open.ok(), await open.text()).toBeTruthy();
+  const inside = ((await open.json()) as { scene: { audience: { inside: { userId: string; characterName: string }[] } } }).scene.audience.inside;
+  const userId = inside.find((p) => p.characterName === characterName)?.userId;
+  expect(userId, `${characterName} is in the open scene`).toBeTruthy();
+  const res = await callRPC(master, 'meurpg.play.v1.PlayService/SetSceneAudience', { campaignId, audience: { everyone: false, userIds: [userId] } });
+  expect(res.ok(), await res.text()).toBeTruthy();
+}
+
+/** The scene as `page`'s account reads it (`GetOpenScene`): `scene` is absent when they read none. */
+export async function readSceneRPC(page: Page, campaignId: string): Promise<Record<string, unknown> | undefined> {
+  const res = await callRPC(page, 'meurpg.play.v1.PlayService/GetOpenScene', { campaignId });
+  expect(res.ok(), await res.text()).toBeTruthy();
+  return ((await res.json()) as { scene?: Record<string, unknown> }).scene;
+}

@@ -11,7 +11,7 @@ import { chooseReaders, lineOf, messageBoxOf, openConversaTable, say } from './c
 import { followMapLink, openChatTab, openPlayerMap, openSheetTab, endOpenSessionRPC, endSessionRPC, openRolls, openSessionPage, showMapTool, showMasterTab, startSessionRPC, tableWithPensantus, openSessionMenu, clickStartCombat, expectStartCombatOffered, endSessionFromBar } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, placeTokenRPC, revealMapRPC, setCurrentMapRPC, tableForMaps, uploadImageRPC } from './maps-support';
 import { adjustVitalsRPC, beginAttackCombatRPC, setGridRPC, combatRPC, getEncounterRPC, startEncounterRPC, endTurnOf, passTurnsTo, pensantusCasting, waitTurnLeaves, tableForCombat, toren, torenSheet } from './combat-support';
-import { addActionRPC, attachTwoImagesRPC, cartActions, getOpenSceneRPC, openSceneRPC, rollSceneRPC, sceneActionIdsRPC, setAttemptsRPC, setShowDcRPC, tableForScenes } from './scene-support';
+import { addActionRPC, attachTwoImagesRPC, cartActions, getOpenSceneRPC, openSceneOnlyToRPC, openSceneRPC, rollSceneRPC, sceneActionIdsRPC, setAttemptsRPC, setMayJoinRPC, setShowDcRPC, tableForScenes } from './scene-support';
 import { addClueRPC, cartClues, cartHooks, createNoteRPC } from './notes-support';
 import { createCapitaoRPC, createMiraRPC, playedCombatRPC, putOnStageRPC, uploadPortrait } from './stage-support';
 import { printRoute, tableForPrinting } from './print-support';
@@ -2113,6 +2113,61 @@ async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark',
     await player.close();
   }
 }
+
+/**
+ * "Entrar na cena" (C7-06), the player outside a scene open to only some players: no scene card at all (the switch off), the card "Há uma
+ * cena aberta" with the filled "Entrar na cena" (the switch on), and the scene after entering, under "Você entrou na cena". Toren is the
+ * one outside; on a phone the scene comes in tabs.
+ */
+async function scanEnterSceneScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width >= 768 ? 900 : 844 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  let outsider: Awaited<ReturnType<typeof secondPlayer>> | undefined;
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await tableForScenes(m, p, `Acessibilidade entrar na cena ${Date.now()}`);
+    campaignId = table.campaignId;
+    outsider = await secondPlayer(browser, m, campaignId, toren, {}, { storageState: authStatePath('E-mail Não Verificado'), colorScheme, viewport });
+    const out = outsider.page;
+    await openSceneOnlyToRPC(m, campaignId, table.cartId, 'Pensantus');
+    await openSessionPage(out, campaignId);
+    await expect(out.getByRole('region', { name: /A carroça tombada/ })).toHaveCount(0);
+    await expectScreenPasses(out, `Entrar na cena, o interruptor desligado ${where}`);
+
+    await setMayJoinRPC(m, campaignId, true);
+    const card = out.getByRole('region', { name: 'A carroça tombada' });
+    await expect(card.getByRole('button', { name: 'Entrar na cena' })).toBeVisible();
+    await out.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await expectScreenPasses(out, `Entrar na cena, o cartão ${where}`);
+
+    await card.getByRole('button', { name: 'Entrar na cena' }).click();
+    await expect(out.getByRole('heading', { name: 'Cena: A carroça tombada' })).toBeFocused();
+    await out.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await expectScreenPasses(out, `Entrar na cena, depois de entrar ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await outsider?.close();
+    await master.close();
+    await player.close();
+  }
+}
+
+test('"Entrar na cena" passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-015', '@RN-10'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanEnterSceneScreens(browser, 'light', 1280);
+});
+
+test('"Entrar na cena" passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-015', '@RN-10'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanEnterSceneScreens(browser, 'dark', 390);
+});
 
 test('as cenas de RP passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-015'] }, async ({ browser }) => {
   test.setTimeout(240_000);

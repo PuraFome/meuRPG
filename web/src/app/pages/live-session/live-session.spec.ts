@@ -83,6 +83,7 @@ import { SessionSummaryClient } from '../../core/play/session-summary';
 import { SessionSummarySchema } from '../../../gen/meurpg/play/v1/summary_pb';
 import {
   FakeSceneClient,
+  joinableScene,
   masterScene,
   playerScene,
   sceneRoll,
@@ -1282,6 +1283,46 @@ describe('LiveSession', () => {
         expect(el.querySelector('[role="tab"]')).toBeNull();
         expect(el.querySelector('app-left-images-block app-fold')).not.toBeNull();
         expect(el.querySelector('[role="tabpanel"]')).toBeNull();
+      });
+    });
+
+    describe('a scene the player may join (C7-06)', () => {
+      const phone = () => {
+        window.matchMedia = ((query: string) => ({
+          matches: query.includes('max-width'),
+          addEventListener: () => undefined,
+          removeEventListener: () => undefined,
+        })) as unknown as typeof window.matchMedia;
+      };
+      afterEach(() => {
+        delete (window as unknown as Record<string, unknown>)['matchMedia'];
+      });
+
+      it('draws the card "Há uma cena aberta" and the rest of the page as with no scene: the map and the images', async () => {
+        phone();
+        scenes.scene = joinableScene();
+        source.left = [
+          { id: 'img-2', name: 'Planta da torre', width: 800, height: 600, url: '/images/img-2' },
+        ];
+        const el = await render();
+        expect(el.querySelector('app-scene-player')?.textContent).toContain('Há uma cena aberta');
+        expect(el.querySelector('button.sc__join')).not.toBeNull();
+        // No tabs: the scene is not laid out before the player enters.
+        expect(el.querySelector('[role="tablist"]')).toBeNull();
+        expect(el.querySelector('app-left-images-block app-fold')).not.toBeNull();
+        expect(el.querySelector('.player-board--split')).toBeNull();
+      });
+
+      it('lays the scene out (tabs on a phone) once the player has entered', async () => {
+        phone();
+        scenes.scene = joinableScene();
+        scenes.joined = playerScene();
+        const el = await render();
+        (el.querySelector('button.sc__join') as HTMLButtonElement).click();
+        await nextTurn();
+        TestBed.inject(ApplicationRef).tick();
+        expect(el.querySelector('button.sc__join')).toBeNull();
+        expect(el.querySelectorAll('app-scene-player [role="tab"]').length).toBeGreaterThan(0);
       });
     });
 

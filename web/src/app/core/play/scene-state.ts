@@ -37,6 +37,8 @@ export class SceneState {
    * `null`; a scene that was already open when the page loaded never sets it.
    */
   readonly focusNext = signal<'title' | 'open' | null>(null);
+  /** The player came into this scene from the card "Há uma cena aberta" (JoinScene, C7-06): the scene says "Você entrou na cena". */
+  readonly enteredHere = signal(false);
 
   private generation = 0;
   /** Moves with each local answer: a read that began before it may lack what the answer carries (or carry less
@@ -77,6 +79,11 @@ export class SceneState {
   private show(next: OpenSceneInfo | null): void {
     const prev = this.scene();
     this.scene.set(next);
+    if (prev?.joinable && next && !next.joinable) {
+      this.enteredHere.set(true);
+    } else if (!next || next.joinable || (prev && !sameScene(prev, next))) {
+      this.enteredHere.set(false);
+    }
     if (this.loaded) {
       this.say(prev, next);
     }
@@ -123,34 +130,55 @@ export class SceneState {
     this.scene.set(null);
     this.notice.set('');
     this.focusNext.set(null);
+    this.enteredHere.set(false);
     this.loaded = false;
   }
 
   private say(prev: OpenSceneInfo | null, next: OpenSceneInfo | null): void {
-    if (this.isMaster()) {
-      if (next && prev && sameScene(prev, next)) {
-        const known = new Set(prev.rolls.map((r) => r.id));
-        const fresh = next.rolls.filter((r) => !known.has(r.id)).reverse();
-        if (fresh.length > 0) {
-          this.notice.set(fresh.map((r) => rollAnnouncement(next, r)).join('. '));
-        }
-      }
-      return;
-    }
-    if (next && (!prev || !sameScene(prev, next))) {
-      this.notice.set(`O mestre abriu uma cena: ${next.name}.`);
-    } else if (!next && prev) {
-      this.notice.set('O mestre fechou a cena.');
-    } else if (next && prev) {
-      const stage = stageAnnouncement(prev.stage, next.stage);
-      const attempts = attemptsAnnouncement(prev, next);
-      if (attempts) {
-        this.notice.set(attempts);
-      } else if (stage) {
-        this.notice.set(stage);
-      }
+    const words = this.isMaster() ? masterNotice(prev, next) : playerNotice(prev, next);
+    if (words) {
+      this.notice.set(words);
     }
   }
+}
+
+/** What the master's live region says of a new read: each new roll of the same scene. */
+function masterNotice(prev: OpenSceneInfo | null, next: OpenSceneInfo | null): string {
+  if (!next || !prev || !sameScene(prev, next)) {
+    return '';
+  }
+  const known = new Set(prev.rolls.map((r) => r.id));
+  const fresh = next.rolls.filter((r) => !known.has(r.id)).reverse();
+  return fresh.map((r) => rollAnnouncement(next, r)).join('. ');
+}
+
+/** The words for a scene a player may join: the card comes, gives way to the scene (entered) or goes (the switch went off). */
+function joinNotice(prev: OpenSceneInfo | null, next: OpenSceneInfo | null): string {
+  if (next?.joinable && !prev?.joinable) {
+    return `Há uma cena aberta: ${next.name}. Você pode entrar.`;
+  }
+  if (prev?.joinable && next && !next.joinable) {
+    return `Você entrou na cena: ${next.name}.`;
+  }
+  return prev?.joinable && !next ? 'A cena não está mais aberta para entrar.' : '';
+}
+
+/** What a player's live region says of a new read: the scene opening, closing, being enterable or entered, the stage and the attempts. */
+function playerNotice(prev: OpenSceneInfo | null, next: OpenSceneInfo | null): string {
+  const join = joinNotice(prev, next);
+  if (join) {
+    return join;
+  }
+  if (next && !next.joinable && (!prev || !sameScene(prev, next))) {
+    return `O mestre abriu uma cena: ${next.name}.`;
+  }
+  if (!next && prev) {
+    return 'O mestre fechou a cena.';
+  }
+  if (next && prev) {
+    return attemptsAnnouncement(prev, next) || stageAnnouncement(prev.stage, next.stage);
+  }
+  return '';
 }
 
 /** The same opening of the same scene (closing and opening it again is another). */

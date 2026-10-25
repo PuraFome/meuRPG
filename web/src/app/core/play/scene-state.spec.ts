@@ -3,7 +3,7 @@ import { create } from '@bufbuild/protobuf';
 
 import { SceneClueSchema } from '../../../gen/meurpg/maps/v1/maps_pb';
 import { SceneState } from './scene-state';
-import { masterScene, playerScene, sceneRoll, stageNpc } from './scene-testing';
+import { joinableScene, masterScene, playerScene, sceneRoll, stageNpc } from './scene-testing';
 
 describe('SceneState', () => {
   function stateWith(isMaster: boolean, ...answers: (OpenSceneInfo | null | Error)[]): SceneState {
@@ -32,6 +32,65 @@ describe('SceneState', () => {
     await state.refresh();
     expect(state.notice()).toBe('O mestre fechou a cena.');
     expect(state.scene()).toBeNull();
+  });
+
+  describe('a scene the player may join (C7-06)', () => {
+    it('says there is a scene to enter, and says nothing about the stub on the first read', async () => {
+      const first = stateWith(false, joinableScene());
+      await first.refresh();
+      expect(first.scene()?.joinable).toBe(true);
+      expect(first.notice()).toBe('');
+      const later = stateWith(false, null, joinableScene());
+      await later.refresh();
+      await later.refresh();
+      expect(later.notice()).toBe(
+        'Há uma cena aberta: A taverna do Javali Cego. Você pode entrar.',
+      );
+    });
+
+    it('says the player came in, and marks the scene as entered here', async () => {
+      const state = stateWith(false, joinableScene(), playerScene());
+      await state.refresh();
+      expect(state.enteredHere()).toBe(false);
+      await state.refresh();
+      expect(state.notice()).toBe('Você entrou na cena: A carroça tombada.');
+      expect(state.enteredHere()).toBe(true);
+    });
+
+    it("marks it as entered when the join call's answer is applied", async () => {
+      const state = stateWith(false, joinableScene());
+      await state.refresh();
+      state.apply(playerScene());
+      expect(state.enteredHere()).toBe(true);
+    });
+
+    it('says the scene is not open to enter when the master turns the switch off, and clears the mark', async () => {
+      const state = stateWith(false, joinableScene(), null);
+      await state.refresh();
+      await state.refresh();
+      expect(state.notice()).toBe('A cena não está mais aberta para entrar.');
+      expect(state.scene()).toBeNull();
+    });
+
+    it('forgets that the player entered when the scene is another', async () => {
+      const state = stateWith(
+        false,
+        joinableScene(),
+        playerScene(),
+        playerScene([], [], { pointId: 'p2' }),
+      );
+      await state.refresh();
+      await state.refresh();
+      expect(state.enteredHere()).toBe(true);
+      await state.refresh();
+      expect(state.enteredHere()).toBe(false);
+    });
+
+    it('does not mark a scene open to the player from the start', async () => {
+      const state = stateWith(false, playerScene());
+      await state.refresh();
+      expect(state.enteredHere()).toBe(false);
+    });
   });
 
   it("does not tell a player about another player's roll or their own new row", async () => {

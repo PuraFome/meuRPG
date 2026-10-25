@@ -242,8 +242,13 @@ export class LiveSession {
   });
   /** A phone with a scene open: the scene is in tabs ("Ações · Mapa · Imagens"), C7-07. */
   protected readonly sceneTabs = computed(
-    () => this.slot.phone() && this.scene.scene() !== null && !this.state.isMaster(),
+    () => this.slot.phone() && this.sceneOpen() && !this.state.isMaster(),
   );
+  /** A scene the player is in: not the card "Há uma cena aberta" of one they may join, which has nothing of the scene to lay out (C7-06). */
+  protected readonly sceneOpen = computed(() => {
+    const open = this.scene.scene();
+    return open !== null && !open.joinable;
+  });
   /** The player's rail says whether its "Conversa" tab is the open one (the slot counts the lines only while it is). */
   protected readonly railShownFollows = effect(() => {
     const shown = this.playerRail() && this.slot.railTab() === 'chat';
