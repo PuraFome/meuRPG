@@ -41,7 +41,6 @@ export interface OwnHitPoints {
           <span class="slot" role="img" [attr.aria-label]="r.name + ': ' + r.text">
             <span aria-hidden="true">{{ r.short }}</span>
             <app-slot-dots size="small" [total]="r.total" [used]="r.used" />
-            <span class="slot__free" aria-hidden="true">{{ r.total - r.used }} de {{ r.total }}</span>
           </span>
         }
       </span>

@@ -57,10 +57,5 @@ describe('OwnNumbers', () => {
       '2º nível: 2 livres de 2',
     ]);
     expect(slots[0].querySelectorAll('svg')).toHaveLength(4);
-    // The free ones in numbers beside the dots, not left to be counted.
-    expect(slots.map((s) => s.querySelector('.slot__free')?.textContent)).toEqual([
-      '3 de 4',
-      '2 de 2',
-    ]);
   });
 });

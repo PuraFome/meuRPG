@@ -26,9 +26,3 @@
   align-items: center;
   gap: 4px;
 }
-
-// How many are free, in numbers beside the dots ("3 de 4"): the dots alone ask to be counted.
-.slot__free {
-  color: var(--mr-ink-muted);
-  white-space: nowrap;
-}
