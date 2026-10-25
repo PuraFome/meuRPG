@@ -24,6 +24,10 @@ type EventHook struct {
 	// Restore is the resource whose uses come back, RestoreCount how many.
 	Restore      string `json:",omitempty"`
 	RestoreCount int    `json:",omitempty"`
+	// Spends is the resource the hook costs, SpendCount how many uses: the hook runs
+	// only when that many are left, and spends them.
+	Spends     string `json:",omitempty"`
+	SpendCount int    `json:",omitempty"`
 }
 
 // HooksFor lists the hooks of an event, in the order of the character's features.

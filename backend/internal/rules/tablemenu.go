@@ -105,6 +105,7 @@ const (
 	ListRollTargets        = "roll_targets"
 	ListSenses             = "senses"
 	ListRecharges          = "recharges"
+	ListEvents             = "events"
 	ListEconomies          = "economies"
 	ListManeuverApplies    = "maneuver_applies"
 	ListChoiceKinds        = "choice_kinds"
