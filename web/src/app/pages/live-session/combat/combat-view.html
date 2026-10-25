@@ -574,6 +574,10 @@
       @if (actCard(); as who) {
         <!-- A player character's turn (C8-01): its card with "Agir por", on every one, with no "absent" mode to switch on first. -->
         <app-act-as-card [who]="who" [title]="actCardTitle()" [classLine]="info().get(who.characterId)?.classSummary ?? ''" [hitPoints]="actCardHitPoints()" [busy]="busy()" (act)="actFor.set(who.id)" />
+        @if (theatre()) {
+          <!-- No map: the movement is a number the master spends for the character, as the NPC's card has it (RN-25). -->
+          <app-master-spend [campaignId]="campaignId()" [encounterId]="e.id" [subject]="who" [state]="state()" />
+        }
       }
       @if (!theatre() || !laptop()) {
         <ng-container *ngTemplateOutlet="npcCardTpl" />

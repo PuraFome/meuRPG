@@ -266,6 +266,9 @@ describe("CombatView, the master's screen without a map", () => {
     const { fixture, el } = setup({ master: true, current: 't' });
     await settle(fixture);
     expect(el.querySelector('[data-testid="act-as-card"]')).not.toBeNull();
+    // The movement he may spend for the character stays, as the NPC's card has it.
+    expect(plain(el.textContent)).toContain('Sem mapa: só o número');
+    expect(plain(el.textContent)).toContain('Gastar movimento');
     expect(plain(el.textContent)).toContain('Agir por Toren');
     expect(plain(el.textContent)).not.toContain('Oferecer ataque de oportunidade');
     const down = setup({
