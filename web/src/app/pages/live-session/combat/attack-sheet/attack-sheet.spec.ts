@@ -336,7 +336,8 @@ describe('AttackSheet: the list as the fallback of the map (C7-04)', () => {
     const { fixture, el } = setup({ diceMode: DiceMode.PHYSICAL, targets });
     const label = el.querySelector('.target') as HTMLElement;
     const input = label.querySelector('input') as HTMLInputElement;
-    // What a browser sends for label.click(): the label's click, the radio's re-sent click (detail 0), then change.
+    // What a browser sends for label.click(): pointerdown, the label's click, the radio's re-sent click (detail 0), then change.
+    label.dispatchEvent(new Event('pointerdown', { bubbles: true }));
     label.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }));
     input.dispatchEvent(new MouseEvent('click', { bubbles: false, detail: 0 }));
     input.dispatchEvent(new Event('change', { bubbles: true }));
@@ -366,9 +367,9 @@ describe('AttackSheet: the list as the fallback of the map (C7-04)', () => {
       },
     ];
     const { fixture, el } = setup({ diceMode: DiceMode.PHYSICAL, targets: blocked });
-    (el.querySelectorAll('.target')[1] as HTMLElement).dispatchEvent(
-      new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }),
-    );
+    const row = el.querySelectorAll('.target')[1] as HTMLElement;
+    row.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    row.querySelector('input')!.dispatchEvent(new MouseEvent('click', { detail: 0 }));
     fixture.detectChanges();
     expect(stepIsRoll(el)).toBe(false);
   });
@@ -377,6 +378,7 @@ describe('AttackSheet: the list as the fallback of the map (C7-04)', () => {
     const { fixture, el } = setup({ diceMode: DiceMode.PHYSICAL, targets });
     expect(plain(el.textContent)).toContain('Escolha o alvo');
     const input = el.querySelector('.target input') as HTMLInputElement;
+    input.dispatchEvent(new Event('pointerdown', { bubbles: true }));
     input.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
     fixture.detectChanges();
     expect(plain(el.textContent)).not.toContain('Escolha o alvo');

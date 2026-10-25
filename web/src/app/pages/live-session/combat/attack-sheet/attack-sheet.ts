@@ -281,19 +281,20 @@ export class AttackSheet {
     return !!c && isCreature(c);
   }
 
+  /** A mouse or a finger went down on a row of the list (and no key since): its click goes on to the roll. */
+  protected pointed = false;
+
   /**
-   * A click on a row of the list: a mouse or a touch (`detail` above 0) chooses the target and goes on to the roll at once. The
-   * click the browser re-sends to the radio from its label (and the one a key makes) has `detail` 0 and only lets the radio be
-   * chosen (`change`), so a keyboard choice waits for Enter. The handler returns nothing: one that returns `false` cancels the click.
+   * The click on a row's radio (the one the browser re-sends from the label carries no `detail`, so the pointer press before it is
+   * what says a mouse or a touch chose it): choose the target and go on to the roll at once. A key (Space) only selects, and Enter
+   * goes on by its own handler. The handler returns nothing: one that returns `false` cancels the click.
    */
-  protected labelClicked(
-    event: MouseEvent,
-    row: { readonly id: string; readonly blocked?: string },
-  ): void {
-    if (event.detail > 0 && !row.blocked) {
+  protected clicked(row: { readonly id: string; readonly blocked?: string }): void {
+    if (this.pointed && !row.blocked) {
       this.pick(row.id);
       this.advance();
     }
+    this.pointed = false;
   }
 
   protected pick(id: string): void {
