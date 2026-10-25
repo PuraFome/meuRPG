@@ -57,6 +57,7 @@ A table feature has effects of these types only; anything else is `forbidden_eff
 | `choice` | Picks among SRD options (a key the SRD has) or, for kind `feature`, among the option list of a table feature. Kinds: `skill`, `expertise`, `cantrip`, `spell`, `language`, `tool`, `feature`, `feat`. A `feature` choice never asks for more than the options it lists. |
 | `ability_increase` | Feats only. `count` different abilities from `from`, `value` 1 or 2; at most one per feat. The sheet keeps the result in `ExtraAbilityBonuses`. |
 | `ambush` | See [Ambush](#ambush). |
+| `spell_modifier` | See [Spell modifier](#spell-modifier). |
 | `superiority_die` | See [Maneuvers](#maneuvers). |
 | Granted spell | A `note` with `spells` (like the SRD's Infernal Legacy): the character knows the cantrip, or a spell once per day when the same feature has a `resource`. A granted spell is on the sheet's list, does not count in the class numbers and needs no slot. Only a `note` grants spells. |
 
@@ -102,6 +103,24 @@ Checked at its fields:
 
 `Derive` fills `Derived.ExtraDamages` with the fixed amount and the dice worked out (`Amount`, `Dice`), the damage type, the weapon and the frequency with their defaults; a resource the character does not have at that level leaves the effect out, and so does a formula that gives no damage.
 The attack card offers it after a hit as a choosable part ([Attacks and damage](play/attacks-and-damage.md)).
+
+### Spell modifier
+
+`spell_modifier` (menu name "Opção de magia"; fields `applies_to`, `spell_change`, `from`, `value`, `damage_type`, `count`, `resource`, `when`, `text_pt`; `rules/spellmodifier.go`) is a cast option a feature offers for the spells it fits.
+`applies_to` is `damage_spell` (a spell that rolls damage), `cantrip`, an SRD school key (`school:evocation`) or an SRD damage type key (`damage-type:fire`: a spell that deals damage of that type); `spell_change` is the one change:
+
+| `spell_change` | Fields | What it does |
+| --- | --- | --- |
+| `damage_type_swap` | `from`: at least two different damage types | The damage of a type in the list becomes another type of the list, which the caster picks at the cast |
+| `bonus_damage` | `value`: a formula, 1 to 99 once worked out; `damage_type`: empty is the spell's own | Adds a fixed damage |
+| `extra_dice_per_slot_over` | `count`: 1 to 6 | Adds that many dice of the spell's damage die for each slot level above the spell's own (none for a cantrip) |
+
+`resource`, when set, is one the entry or its class defines (`.resource`, `bad_reference`): the option is ticked on the cast sheet and spends one use.
+Without a resource, `bonus_damage` and `extra_dice_per_slot_over` are always on and `damage_type_swap` is a free choice.
+A feature has at most one (`.type`, `forbidden_effect`).
+Checked at its fields: `.applies_to` and `.spell_change` (`bad_value`; `bad_reference` for a key the content does not have), `.from`, `.value` (`bad_formula`), `.damage_type` and `.count`; the fields of the other changes, and these fields on any other type, are refused for the entry being written.
+`Derive` fills `Derived.SpellModifiers` with the amounts worked out; a resource the character does not have at that level leaves the effect out.
+How a cast applies it is in [Spells](play/casting.md#casting-in-combat).
 
 ### Ambush
 

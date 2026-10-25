@@ -60,6 +60,15 @@ With `scale` (Flame Strike) every type is dealt and the dice a higher slot adds 
 An empty pick takes the spell's first type; a type the spell does not offer is `invalid_argument`.
 The cast sheet draws the pick as radio cards (`damage-type-picker`) whenever `damage_choice` is set, and a new pick is a new request with a new idempotency key.
 
+**Cast options of table features.** The `spell_modifier` effects of the caster's features ([Rules: table content](../rules-table-content.md#spell-modifier)) change the damage of the spell cast (`combat_spell_options.go`). `GetTurnOptions` lists, for each spell, the options that fit it at its own level (`SpellOption.table_options`: name, change, whether it is always on, the resource and its uses left, the damage types a swap offers). The cast works them out on `link.Spell` right after the spell is read at its slot (`applyTableOptions`), so the damage rolls as the spell's own, one pending damage for each damage type:
+
+- always-on options (no resource, not a swap) apply by themselves; the others are named in `CastSpellRequest.spell_options` (a swap names the new type in `damage_type_key`, one of the types the option offers) and an option the spell does not fit, one ticked twice or a bad pick is `invalid_argument`;
+- swaps apply first, so a bonus damage with no type of its own follows the new type; a bonus damage adds to the spell's part of that type (or is a part of its own), and the extra dice go to the first part with dice (the part of the named damage type for an `applies_to` that is one);
+- each ticked option with a resource spends one use with the slot (`spendTableOptions`; no use left is `NO_USES` and the cast spends nothing); the uses are in the event (`actionEvent.TableUses`) and the master's undo gives them back;
+- a spell attack opens a pending damage for each part, the first as the hit's and the rest with it.
+
+Options apply to casts (`CastSpell`); the attack cantrips rolled by `RollAttack`, and the darts of Magic Missile, do not read them.
+
 **The bonus action spell limit.** `combatants.spell_cast` and `combatants.bonus_spell_cast` say which kinds of spell the combatant cast this turn (a cantrip with a casting time of 1 action counts as neither); `ResetCombatantTurn` clears both and the undo of a cast puts them back.
 A spell is refused with `BONUS_ACTION_SPELL_LIMIT` when a bonus action spell was cast and this is not that cantrip, or when this is a bonus action spell and another one was cast.
 Reactions (Shield) do not count.

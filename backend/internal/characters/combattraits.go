@@ -131,19 +131,7 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 	t.SpellAttackIgnoresCover, t.RangedWeaponIgnoresCover = d.SpellAttackIgnoresCover, d.RangedWeaponIgnoresCover
 	t.RangedWeaponNoLongRangeDisadvantage = d.RangedWeaponNoLongRangeDisadvantage
 	t.UnactedAdvantage, t.SurprisedCritical = d.UnactedAdvantage, d.SurprisedCritical
-	for _, m := range d.Maneuvers {
-		t.Maneuvers = append(t.Maneuvers, link.Maneuver{
-			Key: m.Key, NamePT: m.NamePT, Resource: m.Resource, Applies: m.Applies, Economy: m.Economy,
-			Ability: m.Ability, TextPT: m.TextPT, Sides: m.Sides, SaveDC: m.SaveDC,
-		})
-	}
-	for _, x := range d.ExtraDamages {
-		t.ExtraDamages = append(t.ExtraDamages, link.ExtraDamage{
-			Key: x.Key, NamePT: x.NamePT, Applies: x.Applies, Resource: x.Resource, TextPT: x.TextPT, Amount: x.Amount,
-			DiceCount: x.Dice.Count, DiceSides: x.Dice.Sides, NoCritDoubling: x.NoCritDoubling, DamageType: x.DamageType,
-			Weapon: x.Weapon, Frequency: x.Frequency,
-		})
-	}
+	t.Maneuvers, t.ExtraDamages, t.SpellModifiers = tableTraitsOf(d)
 	return t
 }
 
@@ -156,4 +144,28 @@ func armorTrainingOf(d rules.Derived, kind string, beast *string) rules.ArmorUnt
 		return rules.ArmorUntrained{}
 	}
 	return d.ArmorUntrained
+}
+
+// tableTraitsOf are the maneuvers, extra damages and cast options the character's table features give.
+func tableTraitsOf(d rules.Derived) (maneuvers []link.Maneuver, extras []link.ExtraDamage, options []link.SpellModifier) {
+	for _, m := range d.Maneuvers {
+		maneuvers = append(maneuvers, link.Maneuver{
+			Key: m.Key, NamePT: m.NamePT, Resource: m.Resource, Applies: m.Applies, Economy: m.Economy,
+			Ability: m.Ability, TextPT: m.TextPT, Sides: m.Sides, SaveDC: m.SaveDC,
+		})
+	}
+	for _, x := range d.ExtraDamages {
+		extras = append(extras, link.ExtraDamage{
+			Key: x.Key, NamePT: x.NamePT, Applies: x.Applies, Resource: x.Resource, TextPT: x.TextPT, Amount: x.Amount,
+			DiceCount: x.Dice.Count, DiceSides: x.Dice.Sides, NoCritDoubling: x.NoCritDoubling, DamageType: x.DamageType,
+			Weapon: x.Weapon, Frequency: x.Frequency,
+		})
+	}
+	for _, m := range d.SpellModifiers {
+		options = append(options, link.SpellModifier{
+			Key: m.Key, NamePT: m.NamePT, AppliesTo: m.AppliesTo, Change: m.Change, BonusType: m.BonusType, Resource: m.Resource,
+			TextPT: m.TextPT, From: m.From, Bonus: m.Bonus, ExtraDice: m.ExtraDice,
+		})
+	}
+	return maneuvers, extras, options
 }

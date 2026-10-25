@@ -196,6 +196,17 @@ type ExtraDamage struct {
 	NoCritDoubling                         bool
 }
 
+// SpellModifier is a cast option a table feature offers (the engine's spell_modifier effect): AppliesTo
+// says which spells it fits ("damage_spell", "cantrip", a school key or a damage type key) and Change what
+// it does ("damage_type_swap", "bonus_damage" or "extra_dice_per_slot_over"). From are the types a swap is
+// among, Bonus and BonusType the fixed damage and its type (empty is the spell's), ExtraDice the dice per
+// slot level above the spell's own, and Resource the resource each use spends ("" for none).
+type SpellModifier struct {
+	Key, NamePT, AppliesTo, Change, BonusType, Resource, TextPT string
+	From                                                        []string
+	Bonus, ExtraDice                                            int
+}
+
 // LuckyTrait is the content key of the halfling's Lucky (SRD 5.1, Halfling): the sheet that
 // has it sets Traits.Lucky, and a d20 it rolled again names it as the source of the reroll.
 const LuckyTrait = "trait:lucky"
@@ -258,6 +269,8 @@ type Traits struct {
 	Maneuvers []Maneuver
 	// ExtraDamages are the damage the table's features add to a weapon hit (extra_damage effects).
 	ExtraDamages []ExtraDamage
+	// SpellModifiers are the cast options the table's features offer (spell_modifier effects).
+	SpellModifiers []SpellModifier
 	// CreatureType is the SRD type of a monster ("undead", "fiend", "beast"); empty
 	// for a character.
 	CreatureType string
@@ -368,8 +381,9 @@ type Dice struct {
 // the slot level the spell is cast with (MR-014).
 type Spell struct {
 	Key, Name string
-	// Level is the spell's own level, 0 for a cantrip.
-	Level int
+	// Level is the spell's own level, 0 for a cantrip, and School its school's key ("school:evocation").
+	Level  int
+	School string
 	// Economy is "action", "bonus_action" or "reaction"; "" for a casting time
 	// too long for a fight.
 	Economy       string

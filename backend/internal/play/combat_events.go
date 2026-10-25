@@ -682,6 +682,9 @@ type actionEvent struct {
 	// Res is what a class resource flow did (Lay on Hands, Flexible Casting,
 	// Bardic Inspiration): see combat_resources.go.
 	Res *resourceEvent `json:"res,omitempty"`
+	// TableUses are the resources the options of a cast's table features spent, one use each (the undo
+	// gives them back).
+	TableUses []string `json:"table_uses,omitempty"`
 	// Die is the Bardic Inspiration die a spell attack of the cast used (resBardicUse), kept apart
 	// from Res because a Metamagic casting already uses that one: the undo of the cast holds the die
 	// again.

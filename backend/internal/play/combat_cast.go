@@ -190,6 +190,8 @@ type castFlow struct {
 	sp         link.Spell
 	abilityKey string
 	meta       *castMeta
+	// ticks are the options of the caster's table features ticked on the cast sheet.
+	ticks []tableTick
 	// known is what the player knows of the map, for the cover they are told; terrain is the real one.
 	known      *grid.Terrain
 	terrain    grid.Terrain
@@ -242,7 +244,7 @@ func (f *castFlow) run(ctx context.Context) (any, error) {
 // Metamagic, the targets and the dice. Nothing is written.
 func (f *castFlow) prepare(ctx context.Context) error {
 	for _, phase := range []func(context.Context) error{
-		f.findCaster, f.findTargets, f.pickSpell, f.checkEnabled, f.pickSlot, f.checkTargetsAlive,
+		f.findCaster, f.findTargets, f.pickSpell, f.checkEnabled, f.pickSlot, f.applyTableOptions, f.checkTargetsAlive,
 		f.applyMetamagic, f.readMap, f.checkTeleport, f.placeArea, f.checkMembers, f.checkTargetList, f.planSummon,
 	} {
 		if err := phase(ctx); err != nil {
@@ -372,6 +374,13 @@ func (f *castFlow) pickSlot(ctx context.Context) error {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("damage_type_key must be one of the damage types of a spell that lets the caster choose"))
 	}
 	return nil
+}
+
+// applyTableOptions gives the spell what the options of the caster's table features change in its damage.
+func (f *castFlow) applyTableOptions(ctx context.Context) error {
+	var err error
+	f.sp, f.ticks, err = f.s.applyTableSpellOptions(ctx, f.c, f.m.CampaignID, f.caster, f.req.GetSpellOptions(), f.sp, f.slotLevel)
+	return err
 }
 
 // checkTargetsAlive refuses a spell aimed at the dead. A dead creature regains no hit points (SRD 5.1), so a
@@ -581,7 +590,7 @@ func (f *castFlow) spend(ctx context.Context) error {
 		ActionBefore: f.caster.ActionUsed, BonusBefore: f.caster.BonusActionUsed, ReactionBefore: f.caster.ReactionUsed, DashedBefore: f.caster.Dashed,
 		SpellCastBefore: f.caster.SpellCast, BonusSpellBefore: f.caster.BonusSpellCast,
 	}
-	for _, phase := range []func(context.Context) error{f.spendCastSlot, f.spendPoints, f.spendEconomy, f.noteSpellCast} {
+	for _, phase := range []func(context.Context) error{f.spendCastSlot, f.spendPoints, f.spendTableOptions, f.spendEconomy, f.noteSpellCast} {
 		if err := phase(ctx); err != nil {
 			return err
 		}

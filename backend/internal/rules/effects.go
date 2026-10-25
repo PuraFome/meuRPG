@@ -133,6 +133,12 @@ type Effect struct {
 	Frequency      string `json:"frequency,omitempty"`
 	NoCritDoubling bool   `json:"no_crit_doubling,omitempty"`
 
+	// spell_modifier (spellmodifier.go): AppliesTo which spells ("damage_spell", "cantrip", an SRD
+	// school key or damage type key) and SpellChange what it does (SpellChange*). From, Value (the
+	// fixed damage), DamageType and Count are the change's own.
+	AppliesTo   string `json:"applies_to,omitempty"`
+	SpellChange string `json:"spell_change,omitempty"`
+
 	// resistance: resistance to every damage type but Except (a "damage-type:"
 	// key) while the condition in While holds ("rage", ResistanceWhileRage). It
 	// takes no When, because While is its condition. Content.Resistances lists it,
@@ -184,7 +190,7 @@ var (
 	effectTypes = []string{
 		"modifier", "proficiency", "roll_mode", "sense", "spellcasting",
 		"resource", "choice", "grant_action", "extra_attack", "note", "handler", "wild_shape", "beast_spells", "replaces",
-		"ability_increase", "superiority_die", "song_of_rest", "ranged_attack", "extra_damage", "ambush", "resistance",
+		"ability_increase", "superiority_die", "song_of_rest", "ranged_attack", "extra_damage", "ambush", "resistance", "spell_modifier",
 	}
 	modifierTargets = []string{
 		"ac.base", "ac", "hp.max", "speed.walk", "initiative",
@@ -273,6 +279,7 @@ var effectCheckers = map[string]func(x effectCompiler) error{
 	"grant_action":     effectCompiler.grantAction,
 	"superiority_die":  effectCompiler.superiorityDie,
 	"extra_damage":     effectCompiler.extraDamage,
+	"spell_modifier":   effectCompiler.spellModifier,
 	"ambush":           effectCompiler.ambush,
 	"extra_attack":     effectCompiler.extraAttack,
 	"wild_shape":       effectCompiler.wildShape,
@@ -338,11 +345,14 @@ func (x effectCompiler) strayFields() error {
 	return nil
 }
 
-// strayExtraDamage refuses the dice, damage type, weapon and frequency of an extra_damage on an effect of another type.
+// strayExtraDamage refuses the fields of extra_damage and spell_modifier on an effect of another type.
 func (x effectCompiler) strayExtraDamage() error {
 	e := x.e
-	if e.Type != "extra_damage" && (e.Dice != "" || e.DiceSides != 0 || e.DamageType != "" || e.Weapon != "" || e.Frequency != "" || e.NoCritDoubling) {
+	if e.Type != "extra_damage" && (e.Dice != "" || e.DiceSides != 0 || (e.DamageType != "" && e.Type != "spell_modifier") || e.Weapon != "" || e.Frequency != "" || e.NoCritDoubling) {
 		return x.fail("dice, dice_sides, damage_type, weapon, frequency and no_crit_doubling belong to extra_damage")
+	}
+	if e.Type != "spell_modifier" && (e.AppliesTo != "" || e.SpellChange != "") {
+		return x.fail("applies_to and spell_change belong to spell_modifier")
 	}
 	return nil
 }

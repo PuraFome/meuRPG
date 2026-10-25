@@ -120,8 +120,11 @@ const (
 	// extra_damage's weapon and frequency.
 	ListExtraDamageWeapons     = "extra_damage_weapons"
 	ListExtraDamageFrequencies = "extra_damage_frequencies"
-	ListAmbushApplies          = "ambush_applies"
-	ListDamageTypes            = "damage_types"
+	// ListSpellModifierTargets and ListSpellChanges are the spells a spell_modifier fits and what it changes.
+	ListSpellModifierTargets = "spell_modifier_targets"
+	ListSpellChanges         = "spell_changes"
+	ListAmbushApplies        = "ambush_applies"
+	ListDamageTypes          = "damage_types"
 	// ListResistanceConditions are when a resistance effect holds.
 	ListResistanceConditions = "resistance_conditions"
 )
@@ -213,6 +216,17 @@ var menuTypes = []MenuType{
 	{Type: "resistance", NamePT: "Resistência a dano", HintPT: "Resistência a todos os tipos de dano menos um, que a entrada escolhe, enquanto vale a condição (em fúria). A resistência não se acumula: a mesma de outra fonte conta uma vez só.", Fields: []MenuField{
 		{Name: "except", Required: true, Kind: "choice", List: ListDamageTypes},
 		{Name: "while", Required: true, Kind: "choice", List: ListResistanceConditions},
+		{Name: "text_pt", Kind: "text"},
+	}},
+	{Type: "spell_modifier", NamePT: "Opção de magia", HintPT: "Uma opção de quem conjura para as magias que a entrada escolhe (as que causam dano, os truques, uma escola ou um tipo de dano). Muda o dano de um jeito só: trocar o tipo de dano por outro da lista (quem conjura escolhe ao conjurar), somar um dano fixo (o valor, uma fórmula, do tipo da magia ou do tipo dado) ou somar dados por nível do espaço acima do nível da magia. Sem recurso, somar dano e somar dados valem sempre e a troca de tipo é livre. Com um recurso da entrada, cada uso gasta um e quem conjura marca a opção na ficha de conjuração.", Fields: []MenuField{
+		{Name: "applies_to", Required: true, Kind: "choice", List: ListSpellModifierTargets},
+		{Name: "spell_change", Required: true, Kind: "choice", List: ListSpellChanges},
+		{Name: "from", Kind: "choices", List: ListDamageTypes, AlwaysShown: true},
+		{Name: "value", Kind: "formula", AlwaysShown: true},
+		{Name: "damage_type", Kind: "choice", List: ListDamageTypes, AlwaysShown: true},
+		{Name: "count", Kind: "number", Min: 1, Max: maxSpellExtraDice, AlwaysShown: true},
+		{Name: "resource", Kind: "resource_ref"},
+		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
 	{Type: "choice", NamePT: "Escolha", HintPT: "Algo que o jogador escolhe: perícias, especialização, truques, magias, idiomas, ferramentas ou uma opção de uma lista (do SRD, como um estilo de luta, ou a lista de opções da própria característica, como manobras).", Fields: []MenuField{
@@ -439,6 +453,8 @@ func (c *content) menuLists() []MenuList {
 		{Name: ListExtraDamageApplies, Values: extraDamageValues()},
 		{Name: ListExtraDamageWeapons, Values: extraDamageWeaponValues()},
 		{Name: ListExtraDamageFrequencies, Values: extraDamageFrequencyValues()},
+		{Name: ListSpellModifierTargets, Values: c.menuSpellTargets()},
+		{Name: ListSpellChanges, Values: spellChangeValues()},
 		{Name: ListAmbushApplies, Values: ambushValues()},
 		{Name: ListDamageTypes, Values: c.menuDamageTypes()},
 		{Name: ListResistanceConditions, Values: []MenuValue{{Key: ResistanceWhileRage, NamePT: "Em fúria", HintPT: "Vale enquanto o personagem estiver em fúria (e não usar armadura pesada)."}}},

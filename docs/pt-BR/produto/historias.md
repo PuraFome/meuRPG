@@ -648,6 +648,9 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
   O dano é uma linha de tipo próprio (o da característica, ou o da arma quando ela não diz nenhum), então uma resistência a esse tipo reduz só essa linha.
   Um acerto crítico dobra os dados, a menos que a característica diga o contrário; um número fixo nunca é dobrado.
   O extra fica desligado, com o motivo, no outro tipo de arma (corpo a corpo ou à distância), contra um alvo que não é maior quando a característica pede um maior, quando já foi usado neste turno (o padrão é uma vez por turno; "em todo acerto" não tem esse limite) e quando o recurso não tem mais usos.
+- **Dado** uma característica ou talento da mesa com uma opção de magia ("Opção de magia") que serve a uma magia (por exemplo, "magias de evocação: +2 de dano de frio, 2 usos por descanso longo"; "dano de fogo ou de frio: trocar um pelo outro"; "um dado a mais por nível do espaço acima do nível da magia"), **quando** o dono dela abre a ficha de conjuração de uma magia que ela serve, **então** a ficha lista a opção; as que somam sozinhas aparecem como sempre ligadas, as outras são marcadas, e a troca de tipo pede o novo tipo de dano entre os que a magia pode ter.
+  A conjuração rola o dano com a opção: o dano fixo é uma linha de tipo próprio quando o tipo difere do da magia, a troca muda o tipo do dano, e os dados extras vêm com o espaço escolhido.
+  Uma opção com recurso gasta um uso junto com o espaço; sem usos ela fica desligada, com o motivo, e uma conjuração que a marca é recusada e não gasta nada. O desfazer do mestre devolve o uso.
 
 **Mudar, arquivar e ligar e desligar.**
 
