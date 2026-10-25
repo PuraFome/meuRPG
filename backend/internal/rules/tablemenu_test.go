@@ -120,7 +120,8 @@ func TestEffectMenuIsWhatTheValidatorAccepts(t *testing.T) {
 	for name, want := range map[string][]string{
 		ListModifierModes: modifierModes, ListProficiencyLevels: proficiencyLevels, ListRollModes: rollModes,
 		ListSenses: senses, ListRecharges: recharges, ListEconomies: economies, ListChoiceKinds: overlayChoiceKinds,
-		ListRangedAttacks: rangedAttackApplies,
+		ListRangedAttacks: rangedAttackApplies, ListStateEnds: stateEnds, ListStateEconomies: stateEconomies,
+		ListWeaponFilters: weaponFilters, ListWeaponKinds: weaponKinds,
 	} {
 		if got := valueKeys(menuList(t, m, name)); !slices.Equal(got, want) {
 			t.Errorf("list %s = %v, want %v", name, got, want)
@@ -201,6 +202,27 @@ func TestEffectMenuIsWhatTheValidatorAccepts(t *testing.T) {
 		effects = append(effects, Effect{Type: "ranged_attack", Applies: RangedAttackSpell, RangeMultiplier: n})
 	}
 	effects = append(effects, Effect{Type: "ranged_attack", Applies: RangedAttackWeapon, NoLongRangeDisadvantage: true})
+	// The states: each way to end and each economy, the weapon filters and the kinds of a pseudo-weapon.
+	for _, v := range menuList(t, m, ListStateEnds) {
+		effects = append(effects, Effect{Type: "state", StateName: "fim_" + v.Key, EndsOn: []string{v.Key}, Economy: EconomyFree})
+	}
+	for _, v := range menuList(t, m, ListStateEconomies) {
+		effects = append(effects, Effect{Type: "state", StateName: "custo_" + v.Key, EndsOn: []string{StateEndsDismiss}, Economy: v.Key})
+	}
+	for _, v := range menuList(t, m, ListWeaponFilters) {
+		e := Effect{Type: "weapon_rule", Weapon: v.Key, AttackBonus: 1}
+		if v.Key == WeaponNamed {
+			e.WeaponName = "Espada longa"
+		}
+		effects = append(effects, e)
+	}
+	for i, v := range menuList(t, m, ListWeaponKinds) {
+		e := Effect{Type: "pseudo_weapon", AttackName: "Arma " + strconv.Itoa(i), Weapon: v.Key, DamageDice: "1d6", DamageType: "damage-type:force", Ability: "int"}
+		if v.Key == WeaponRanged {
+			e.RangeFt = 30
+		}
+		effects = append(effects, e)
+	}
 	// The option sets: each option of each set, offered by a feature choice.
 	if len(m.OptionSets) == 0 {
 		t.Fatal("the menu has no option set (fighting styles...)")
@@ -257,6 +279,9 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 		"extra_damage":    {Type: "extra_damage", Applies: ExtraDamageLargerTarget, Value: "2", Resource: "dados_de_teste"},
 		"ambush":          {Type: "ambush", Applies: AmbushUnactedAdvantage},
 		"resistance":      {Type: "resistance", Except: "damage-type:psychic", While: ResistanceWhileRage},
+		"state":           {Type: "state", StateName: "estado_de_teste", EndsOn: []string{StateEndsDismiss}, Economy: EconomyFree},
+		"weapon_rule":     {Type: "weapon_rule", Weapon: WeaponAny, AttackBonus: 1},
+		"pseudo_weapon":   {Type: "pseudo_weapon", AttackName: "Raio de Teste", Weapon: WeaponRanged, DamageDice: "1d6", DamageType: "damage-type:force", Ability: "int", RangeFt: 60},
 		// Only a feat has it, so it is hosted by a feat below.
 		"ability_increase": {Type: "ability_increase", Count: 1, From: []string{"str", "dex"}, Value: "1"},
 	}
@@ -294,6 +319,18 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 			e.Except = ""
 		case "while":
 			e.While = ""
+		case "state_name":
+			e.StateName = ""
+		case "weapon":
+			e.Weapon = ""
+		case "attack_name":
+			e.AttackName = ""
+		case "damage_dice":
+			e.DamageDice = ""
+		case "damage_type":
+			e.DamageType = ""
+		case "ability":
+			e.Ability = ""
 		case "choice":
 			e.Choice = ""
 		case "from":
@@ -384,6 +421,15 @@ func TestEffectMenuFormulaHelpers(t *testing.T) {
 	for _, h := range m.Helpers {
 		if h.HintPT == "" {
 			t.Errorf("helper %s has no hint", h.Call)
+		}
+		if h.Call == `active("<estado>")` {
+			// A gate: it reads a state of the same entry.
+			state := Effect{Type: "state", StateName: "estado", EndsOn: []string{StateEndsDismiss}, Economy: EconomyFree}
+			gated := Effect{Type: "modifier", Target: "ac", Mode: "add", Value: "1", When: `active("estado")`}
+			if _, err := srd.With(Overlay{Revision: 1, Classes: []TableClass{classWithEffects([]Effect{state, gated})}}); err != nil {
+				t.Errorf("helper %s is refused: %v", h.Call, err)
+			}
+			continue
 		}
 		var e Effect
 		switch {
