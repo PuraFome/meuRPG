@@ -305,3 +305,48 @@ describe('AttackSheet: the target list without a map (RN-25)', () => {
     expect((total.querySelector('input') as HTMLInputElement).disabled).toBe(true);
   });
 });
+
+describe('AttackSheet: the list as the fallback of the map (C7-04)', () => {
+  it('moves on to the roll when a pointer chose the target, even if the click event has no detail', () => {
+    const { fixture, el } = setup({
+      diceMode: DiceMode.PHYSICAL,
+      targets: [
+        {
+          id: 'cap',
+          label: 'Capitão Goblin',
+          cover: 0,
+          untargetable: false,
+          distanceFt: 5,
+          inReach: true,
+        },
+      ],
+    });
+    el.querySelector('.target')!.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    const input = el.querySelector('.target input') as HTMLInputElement;
+    input.checked = true;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    fixture.detectChanges();
+    expect(el.querySelector('app-roll-picker')).not.toBeNull();
+  });
+
+  const targets = [
+    {
+      id: 'cap',
+      label: 'Capitão Goblin',
+      cover: 0,
+      untargetable: false,
+      distanceFt: 5,
+      inReach: true,
+    },
+  ];
+
+  it('opens at the target step with the list, and a click on a target moves on to the roll', () => {
+    const { fixture, el } = setup({ diceMode: DiceMode.PHYSICAL, targets });
+    expect(plain(el.textContent)).toContain('Escolha o alvo');
+    const input = el.querySelector('.target input') as HTMLInputElement;
+    input.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+    fixture.detectChanges();
+    expect(plain(el.textContent)).not.toContain('Escolha o alvo');
+    expect(el.querySelector('app-roll-picker')).not.toBeNull();
+  });
+});

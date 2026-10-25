@@ -2210,6 +2210,10 @@ async function checkTurnAboveTheFold(browser: Browser): Promise<void> {
     await expect(
       p.getByRole("button", { name: "Atacar com Raio de Fogo" }),
     ).toBeInViewport();
+    // The first action row ends above the sticky bar, not behind it (8px of air).
+    const firstRow = await boxOf(p.locator("app-action-row:visible").first());
+    const bar = await boxOf(p.locator("app-turn-bar"));
+    expect(firstRow.y + firstRow.height + 8).toBeLessThanOrEqual(bar.y);
 
     // The action block comes before the order of initiative.
     const actions = await boxOf(
@@ -14404,11 +14408,9 @@ async function scanDarkWarningScreens(
       "",
     );
     await expect(
-      m
-        .getByRole("status")
-        .filter({
-          hasText: "A tocha de Toren apagou. A luz de Toren ficou “Nenhuma”.",
-        }),
+      m.getByRole("status").filter({
+        hasText: "A tocha de Toren apagou. A luz de Toren ficou “Nenhuma”.",
+      }),
     ).toBeVisible();
     await expect(notice).toBeVisible();
     await expectScreenPasses(m, `No escuro, a luz apagou ${where}`);

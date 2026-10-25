@@ -6,7 +6,7 @@ import { sessionRoute, tableForFog } from "./fog-support";
 import { endOpenSessionRPC, openSessionPage } from "./live-session-support";
 import { placeTokenRPC, tableForMaps } from "./maps-support";
 import { movingTable, tapSquare } from "./move-support";
-import { callRPC, newSignedInContext } from "./support";
+import { callRPC, newSignedInContext, openCombatLog } from "./support";
 import { openCombatPanel } from "./combat-layout";
 
 // The doors in the map editor and in the session (Etapa 10, slice 10.14a: MR-010, RN-26, RN-10; E10-05 7 to 11). The maps, the walls and
@@ -297,7 +297,8 @@ test("Toren anda até uma porta fechada em combate e ela se abre; o registro diz
     // The door is open for everyone, and the log says who opened it, to the master and to the player.
     expect((await layers(p, campaignId, table.mapId)).door(8, 7)).toBe(OPEN);
     expect((await layers(m, campaignId, table.mapId)).door(8, 7)).toBe(OPEN);
-    await expect(p.getByText("abriu a porta").first()).toBeVisible();
+    // The player's log is a fold under the map (a sheet on a phone): open it first.
+    await expect(await openCombatLog(p)).toContainText("abriu a porta");
     await openCombatPanel(m, "Registro");
     await expect(m.getByText("abriu a porta").first()).toBeVisible();
     // The map says so too: the legend of the "Mover" page now names an open door (the combat's own map card has no legend).

@@ -1239,11 +1239,9 @@ test(
       await p.getByLabel(/Role 1d20 para o teste contra a morte/).fill("14");
       await p.getByRole("button", { name: "Confirmar 14" }).click();
       await expect(
-        p
-          .getByRole("status")
-          .filter({
-            hasText: "Teste contra a morte: 14 · dado físico. Sucesso.",
-          }),
+        p.getByRole("status").filter({
+          hasText: "Teste contra a morte: 14 · dado físico. Sucesso.",
+        }),
       ).toBeVisible();
       await expect(p.getByText("1 de 3").first()).toBeVisible();
       // The save is done: the one filled button is "Encerrar turno".

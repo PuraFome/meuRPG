@@ -50,9 +50,9 @@ export function pickWindow(
   };
 }
 
-/** The card's shape on the player's own turn on a phone: as wide as the screen and about 160px tall (354 × 160 on C4-03). */
+/** The card's shape on the player's own turn on a phone: as wide as the screen and about 125px tall (354 × 125), so the first action row ends well above the sticky bar. */
 const TURN_WIDTH = 354;
-const TURN_HEIGHT = 160;
+const TURN_HEIGHT = 125;
 const TURN_WIDTH_OVER_HEIGHT = TURN_WIDTH / TURN_HEIGHT;
 
 /** The fewest squares across the player's window: a lone token still gets room around it. */

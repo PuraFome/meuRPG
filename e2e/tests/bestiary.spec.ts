@@ -143,13 +143,11 @@ test(
       ).toBeVisible();
       // Each number in its own tile, with the note that says where it comes from.
       const tile = (label: string) =>
-        master
-          .locator(".tile")
-          .filter({
-            has: master.locator(".tile__l", {
-              hasText: new RegExp(`^${label}$`),
-            }),
-          });
+        master.locator(".tile").filter({
+          has: master.locator(".tile__l", {
+            hasText: new RegExp(`^${label}$`),
+          }),
+        });
       await expect(tile("CA").locator(".tile__v")).toHaveText("11");
       await expect(tile("CA").locator(".tile__n")).toHaveText("gibão de peles");
       await expect(tile("PV").locator(".tile__v")).toHaveText("59");

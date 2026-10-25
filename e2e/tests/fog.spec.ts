@@ -280,11 +280,9 @@ test("Toren acende a tocha e passa a ver mais; a confirmação não empurra o ma
     await sheet.getByRole("button", { name: "Pronto" }).click();
     await expect(sheet).toHaveCount(0);
     // The page says what it did, for six seconds, over the page: the map stays where it was.
-    const toast = bp
-      .getByRole("status")
-      .filter({
-        hasText: "Você acendeu a tocha: 6 m claro + 6 m de penumbra.",
-      });
+    const toast = bp.getByRole("status").filter({
+      hasText: "Você acendeu a tocha: 6 m claro + 6 m de penumbra.",
+    });
     await expect(toast).toBeVisible();
     expect(await mapTop()).toBe(before_);
 

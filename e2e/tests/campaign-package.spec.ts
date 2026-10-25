@@ -206,12 +206,10 @@ test.describe("importar um pacote", () => {
       });
 
       await expect(
-        page
-          .getByRole("alert")
-          .filter({
-            hasText:
-              "Esse arquivo não parece um pacote de campanha. Ele precisa terminar em .meurpg.zip (ou .zip).",
-          }),
+        page.getByRole("alert").filter({
+          hasText:
+            "Esse arquivo não parece um pacote de campanha. Ele precisa terminar em .meurpg.zip (ou .zip).",
+        }),
       ).toBeVisible();
       await expect(
         page.getByRole("button", { name: "Criar campanha" }),
@@ -278,11 +276,9 @@ test.describe("importar um pacote", () => {
           buffer: zipWithManifest({ format_version: 2 }),
         });
         await expect(
-          page
-            .getByRole("strong")
-            .filter({
-              hasText: "Este pacote é de uma versão mais nova do MeuRPG",
-            }),
+          page.getByRole("strong").filter({
+            hasText: "Este pacote é de uma versão mais nova do MeuRPG",
+          }),
         ).toBeVisible({ timeout: 60_000 });
         expect(await overflow()).toBeLessThanOrEqual(0);
       } finally {

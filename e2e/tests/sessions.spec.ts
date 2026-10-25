@@ -33,11 +33,9 @@ test.describe("sessões", () => {
       await expect(laptopPage.getByText("Não dá para desfazer.")).toBeVisible();
       await laptopPage.getByRole("button", { name: "Confirmar saída" }).click();
       await expect(
-        laptopPage
-          .getByRole("status")
-          .filter({
-            hasText: /Pronto: \d+ dispositivos? (foi|foram) desconectados?\./,
-          }),
+        laptopPage.getByRole("status").filter({
+          hasText: /Pronto: \d+ dispositivos? (foi|foram) desconectados?\./,
+        }),
       ).toBeVisible();
 
       // The laptop is still signed in; the phone is signed out for real.

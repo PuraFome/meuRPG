@@ -66,8 +66,8 @@ describe('turnWindow (C4-03)', () => {
       40,
       30,
     );
-    expect(w.cols / w.rows).toBeGreaterThan(1.8);
-    expect(w.cols / w.rows).toBeLessThan(2.6);
+    expect(w.cols / w.rows).toBeGreaterThan(2.4);
+    expect(w.cols / w.rows).toBeLessThan(3.3);
     expect(w.col).toBeGreaterThanOrEqual(0);
     expect(w.col + w.cols).toBeLessThanOrEqual(40);
     expect(w.row + w.rows).toBeLessThanOrEqual(30);
@@ -77,10 +77,10 @@ describe('turnWindow (C4-03)', () => {
     expect(w.row + w.rows).toBeGreaterThan(12);
   });
 
-  it('is 160px tall at 354px wide: its rows are the share of its columns', () => {
+  it('is 125px tall at 354px wide: its rows are the share of its columns', () => {
     const w = turnWindow(own, [], 40, 30);
-    expect((354 * w.rows) / w.cols).toBeGreaterThan(150);
-    expect((354 * w.rows) / w.cols).toBeLessThan(170);
+    expect((354 * w.rows) / w.cols).toBeGreaterThan(115);
+    expect((354 * w.rows) / w.cols).toBeLessThan(135);
   });
 
   it('keeps the player in view when the creatures are far away, and shows the whole of a small map', () => {
@@ -90,6 +90,6 @@ describe('turnWindow (C4-03)', () => {
     expect(own.row).toBeGreaterThanOrEqual(w.row);
     expect(own.row).toBeLessThan(w.row + w.rows);
     const small = turnWindow({ col: 3, row: 2 }, [], 8, 6);
-    expect(small).toEqual({ col: 0, row: 0, cols: 8, rows: 4 });
+    expect(small).toEqual({ col: 0, row: 1, cols: 8, rows: 3 });
   });
 });

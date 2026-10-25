@@ -121,11 +121,9 @@ test(
       await expect(form).toBeHidden();
 
       await expect(master.getByText("3 de 20", { exact: true })).toBeVisible();
-      const list = master
-        .getByRole("list")
-        .filter({
-          has: master.getByRole("button", { name: "Subir Percepção" }),
-        });
+      const list = master.getByRole("list").filter({
+        has: master.getByRole("button", { name: "Subir Percepção" }),
+      });
       await expect(list.getByRole("listitem")).toHaveCount(3);
       // The first ↑ and the last ↓ are quiet; a move saves at once and keeps focus on the same button.
       await expect(
@@ -265,11 +263,9 @@ test(
       await expect(oldest).toContainText(/(Passou|Não passou)\s·\sCD\s12/);
       // The master hears the new roll in a polite live region.
       await expect(
-        master
-          .getByRole("status")
-          .filter({
-            hasText: "Pensantus: Resistir ao cheiro de fumaça, 6, não passou",
-          }),
+        master.getByRole("status").filter({
+          hasText: "Pensantus: Resistir ao cheiro de fumaça, 6, não passou",
+        }),
       ).toHaveCount(1);
     } finally {
       if (campaignId) {
@@ -547,11 +543,9 @@ test(
         .first()
         .selectOption("3");
       await expect(
-        master
-          .getByRole("status")
-          .filter({
-            hasText: "Procurar pistas na carroça: 3 tentativas por jogador.",
-          }),
+        master.getByRole("status").filter({
+          hasText: "Procurar pistas na carroça: 3 tentativas por jogador.",
+        }),
       ).toHaveCount(1);
       await dcSwitch.click();
       await expect(dcSwitch).toHaveAttribute("aria-checked", "true");
@@ -671,11 +665,9 @@ test(
         .getByRole("button", { name: "Dar mais uma tentativa" })
         .click();
       await expect(
-        master
-          .getByRole("status")
-          .filter({
-            hasText: /Mais uma tentativa dada a Pensantus às \d\d:\d\d\./,
-          }),
+        master.getByRole("status").filter({
+          hasText: /Mais uma tentativa dada a Pensantus às \d\d:\d\d\./,
+        }),
       ).toBeVisible();
       await expect(rolls.getByRole("listitem").nth(0)).toContainText(
         "Tentativa 3 de 4",

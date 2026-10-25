@@ -817,12 +817,10 @@ test(
       await m.mouse.up();
 
       await expect(
-        m
-          .getByRole("status")
-          .filter({
-            hasText:
-              "Goblin 1 foi movido à força. Ninguém recebeu oferta de ataque de oportunidade.",
-          }),
+        m.getByRole("status").filter({
+          hasText:
+            "Goblin 1 foi movido à força. Ninguém recebeu oferta de ataque de oportunidade.",
+        }),
       ).toBeVisible();
       await expect(forced).not.toBeChecked();
       await expect(m.getByText("Ligado para o próximo arrasto")).toHaveCount(0);

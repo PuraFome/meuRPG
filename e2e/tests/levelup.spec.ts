@@ -131,11 +131,9 @@ test(
         new RegExp(`/characters/${table.characterId}$`),
       );
       await expect(
-        p
-          .getByRole("status")
-          .filter({
-            hasText: "Pensantus subiu para o nível 4. O mestre foi avisado.",
-          }),
+        p.getByRole("status").filter({
+          hasText: "Pensantus subiu para o nível 4. O mestre foi avisado.",
+        }),
       ).toBeVisible();
       await expect(
         p.getByRole("definition").filter({ hasText: "Mago 4" }),
