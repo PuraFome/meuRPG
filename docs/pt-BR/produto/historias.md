@@ -978,7 +978,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 #### No app
 - **Página de mover.** "Mover" mostra todo quadrado alcançável, o custo de cada quadrado, o motivo de um quadrado ser recusado e quem pode provocar; tem "Saltar" com a distância e a altura que o servidor permite.
 - **Cobertura na tela.** A lista de alvos diz a cobertura e a origem dela ("Meia cobertura (do mapa)", "Três quartos (marcada pelo mestre)") e deixa de fora quem uma parede cobre por inteiro; a ordem do mestre tem "Marcar cobertura" e "Marcar como aliado".
-- **Editor de mapas.** No notebook, "Pontos | Pintar" tem Terreno difícil, Parede, Cobertura (Meia, Três quartos) e Luz (Claro, Penumbra, Escuro), "Apagar" e um pincel 1×1 ou 3×3.
+- **Editor de mapas.** No notebook, "Pontos | Pintar" tem Terreno difícil, Parede, Cobertura (Meia, Três quartos), Luz (Claro, Penumbra, Escuro) e "Não dá para passar" (um xadrez: ninguém entra no quadrado, mas a visão e a luz passam), "Apagar" e um pincel 1×1 ou 3×3; "Camadas" a lista com o interruptor dela.
   Arrastar, clicar, Shift para apagar e o teclado pintam. "Camadas" diz "Tudo salvo", "Salvando" ou "Não salvou".
   Sem grade, as ferramentas ficam tracejadas ("Defina a grade para pintar e ligar a névoa.").
   Mudar a grade, trocar a imagem e "Esquecer o que foi visto" perguntam no lugar antes.

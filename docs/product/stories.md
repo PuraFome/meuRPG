@@ -978,7 +978,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 #### In the app
 - **Move page.** "Mover" shows every reachable square, each square's cost, the reason a square is refused and who may provoke; it has "Saltar" with the distance and height the server allows.
 - **Cover on screen.** The target list states the cover and its origin ("Meia cobertura (do mapa)", "Três quartos (marcada pelo mestre)") and leaves out who a wall covers entirely; the master's order has "Marcar cobertura" and "Marcar como aliado".
-- **Map editor.** On a computer, "Pontos | Pintar" has Terreno difícil, Parede, Cobertura (Meia, Três quartos) and Luz (Claro, Penumbra, Escuro), "Apagar" and a 1×1 or 3×3 brush.
+- **Map editor.** On a computer, "Pontos | Pintar" has Terreno difícil, Parede, Cobertura (Meia, Três quartos), Luz (Claro, Penumbra, Escuro) and "Não dá para passar" (a checkerboard: nobody walks into the square, but sight and light pass), "Apagar" and a 1×1 or 3×3 brush; "Camadas" lists it with its own switch.
   Dragging, clicking, Shift to erase and the keyboard all paint. "Camadas" says "Tudo salvo", "Salvando" or "Não salvou".
   Without a grid the tools are dashed ("Defina a grade para pintar e ligar a névoa.").
   Changing the grid, replacing the image and "Esquecer o que foi visto" ask in place first.

@@ -146,7 +146,7 @@
   },
   "src/app/core/maps/paint-layers.ts": {
     "@typescript-eslint/no-magic-numbers": {
-      "count": 34
+      "count": 23
     }
   },
   "src/app/core/maps/paint-queue.ts": {
