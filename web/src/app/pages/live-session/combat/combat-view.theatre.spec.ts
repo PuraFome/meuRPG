@@ -265,7 +265,7 @@ describe("CombatView, the master's screen without a map", () => {
   it('gives a player on turn the card with "Agir por", and none for a fallen one', async () => {
     const { fixture, el } = setup({ master: true, current: 't' });
     await settle(fixture);
-    expect(plain(el.textContent)).toContain('Vez de Toren');
+    expect(el.querySelector('[data-testid="act-as-card"]')).not.toBeNull();
     expect(plain(el.textContent)).toContain('Agir por Toren');
     expect(plain(el.textContent)).not.toContain('Oferecer ataque de oportunidade');
     const down = setup({

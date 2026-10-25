@@ -1,6 +1,6 @@
 import { computed, Directive } from '@angular/core';
 
-import { isDead, isDown, isPlayer } from '../../../core/combat/combat-view';
+import { isDead, isDown, isPlayer, soloTitle } from '../../../core/combat/combat-view';
 import { moveLine } from '../../../core/combat/move-line';
 import { economyShapes } from '../../../shared/economy-shapes/economy-shapes';
 import { CombatViewDerivedDirective } from './combat-view-derived';
@@ -18,6 +18,12 @@ export abstract class CombatViewActingDirective extends CombatViewDerivedDirecti
     return c && isPlayer(c) && !this.acting() && !isDown(c) && !isDead(c) && !this.cardVisible()
       ? c
       : null;
+  });
+  /** "Vez do Pensantus": the same title the bar and the player's own screens give a turn. */
+  protected readonly actCardTitle = computed(() => {
+    const e = this.encounter();
+    const c = this.actCard();
+    return e && c ? soloTitle(e, c) : '';
   });
   /** The NPC card: for an NPC on turn, and for a player's turn that left damage to apply; never over the player's own card. */
   protected readonly npcCardOn = computed(() => {

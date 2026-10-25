@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatDialog } from '@angular/material/dialog';
 import { provideRouter } from '@angular/router';
-import { create } from '@bufbuild/protobuf';
+import { create, fromJson } from '@bufbuild/protobuf';
 import { TurnOptionsSchema } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import {
   DeathSaveVisibility,
@@ -17,6 +17,7 @@ import {
   CombatantState,
   DeathSaveOutcome,
   EncounterMode,
+  EncounterSchema,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
 import { TableRulesClient } from '../../../core/campaigns/table-rules';
 import { CombatClient } from '../../../core/combat/combat-client';
@@ -166,6 +167,40 @@ describe('the master rolls the death save of an absent player', () => {
     expect(el.querySelector('app-death-save-due [data-testid="death-save-due"]')).not.toBeNull();
     expect(button(el, 'Rolar por Brisa')).toBeDefined();
     expect(button(el, 'Digitar o resultado')).toBeDefined();
+  });
+
+  it('shows the card for the combat as the server sends it (JSON: names for the enums, zero values left out)', async () => {
+    const wire = fromJson(EncounterSchema, {
+      id: 'enc',
+      name: 'Emboscada',
+      status: 'ENCOUNTER_STATUS_ACTIVE',
+      mode: 'ENCOUNTER_MODE_GRID',
+      round: 2,
+      mapId: 'map',
+      gridColumns: 20,
+      gridRows: 14,
+      currentCombatantId: 'pen',
+      turnGroupIds: ['pen'],
+      combatants: [
+        {
+          id: 'pen',
+          label: 'Pensantus',
+          kind: 'COMBATANT_KIND_PLAYER',
+          side: 'COMBATANT_SIDE_PARTY',
+          characterId: 'pen-c',
+          state: 'COMBATANT_STATE_DOWN',
+          deathSaveDue: true,
+          col: 3,
+          row: 4,
+          placed: true,
+        },
+        { id: 'g', label: 'Goblin', kind: 'COMBATANT_KIND_NPC', side: 'COMBATANT_SIDE_ENEMY' },
+      ],
+    });
+    const { el } = await mount(wire);
+    expect(plain(el.querySelector('[data-testid="death-save-due"] h3')?.textContent)).toBe(
+      'Pensantus está caído: teste contra a morte',
+    );
   });
 
   it('does not offer it for an NPC, a stable or dead player, or a save not due', async () => {

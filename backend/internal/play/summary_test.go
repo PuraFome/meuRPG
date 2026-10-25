@@ -102,7 +102,7 @@ func TestMR032_SessionSummary(t *testing.T) {
 	e := a.start(t, plan{
 		npcs: []*playv1.Participant{
 			{CharacterId: a.goblin.GetId(), Hidden: new(false)},
-			{CharacterId: a.capitao.GetId()}, // hidden: a new NPC starts hidden
+			{CharacterId: a.capitao.GetId(), Hidden: new(false)}, // seen while the master attacks for the players' characters; hidden again at the end
 		},
 		npcRolls: []int{1, 2},
 		players:  map[string]int32{"Toren": 20, "Pensantus": 15, "Brisa": 10},
@@ -127,6 +127,7 @@ func TestMR032_SessionSummary(t *testing.T) {
 	hit("Pensantus", fireBolt, "Capitão Goblin", 15, 7)
 	a.mustEndTurn(t, a.master, e)
 	hit("Brisa", rapier, "Capitão Goblin", 15, 5) // 8
+	hideAgain(t, a, e, "Capitão Goblin")
 	a.endEncounter(t, e)
 
 	// The scenes. Pensantus's Investigação is +3 and Toren's +0, Atletismo +3

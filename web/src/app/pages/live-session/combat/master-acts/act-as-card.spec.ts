@@ -12,6 +12,7 @@ describe('ActAsCard', () => {
       'who',
       combatant({ id: 'p', label: 'Pensantus', kind: CombatantKind.PLAYER, armorClass: 12 }),
     );
+    fixture.componentRef.setInput('title', 'Vez do Pensantus');
     fixture.componentRef.setInput('classLine', 'Mago 3');
     fixture.componentRef.setInput('hitPoints', { current: 23, max: 23 });
     const acted: string[] = [];
@@ -19,7 +20,7 @@ describe('ActAsCard', () => {
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     const text = (el.textContent ?? '').replace(/\s+/g, ' ');
-    expect(text).toContain('Vez de Pensantus');
+    expect(text).toContain('Vez do Pensantus');
     expect(text).toContain('Mago 3 · o jogador joga na tela dele');
     expect(text).toContain('23 de 23');
     expect(text).toContain(

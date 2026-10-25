@@ -153,7 +153,7 @@ describe('the master acts for a player character', () => {
   it('shows the character\'s card with "Agir por Pensantus" on its turn', async () => {
     const { el } = await mount(enc('p'));
     expect(plain(el.querySelector('[data-testid="act-as-card"] h2')?.textContent)).toBe(
-      'Vez de Pensantus',
+      'Vez do Pensantus',
     );
     expect(button(el, 'Agir por Pensantus')).toBeDefined();
     expect(el.querySelector('[data-testid="acting-band"]')).toBeNull();

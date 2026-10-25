@@ -10,7 +10,7 @@ import { EconomyShapes, economyShapes } from '../../../../shared/economy-shapes/
 import type { OwnHitPoints } from '../turn-panel/own-numbers';
 
 /**
- * The turn card of a player character on the master's "Turno" (C8-01, C8-02): "Vez de Pensantus", whose player plays on their own
+ * The turn card of a player character on the master's "Turno" (C8-01, C8-02): "Vez do Pensantus", whose player plays on their own
  * screen, the numbers the master needs (hit points, armor class, movement), the turn's economy as shapes and "Agir por Pensantus", one
  * outlined button. The button is on every player turn: there is no "absent" mode to switch on first. A character at 0 hit points has no
  * button, its card is the death save (C8-03).
@@ -20,11 +20,11 @@ import type { OwnHitPoints } from '../turn-panel/own-numbers';
   imports: [CombatantToken, EconomyShapes, MatButtonModule, MatIconModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="card" [attr.aria-label]="'Vez de ' + who().label" data-testid="act-as-card">
+    <section class="card" [attr.aria-label]="title()" data-testid="act-as-card">
       <div class="card__head">
         <app-combatant-token [initial]="initial()" [current]="true" [size]="48" />
         <div class="card__who">
-          <h2 class="card__title">Vez de {{ who().label }}</h2>
+          <h2 class="card__title">{{ title() }}</h2>
           <p class="card__sub">{{ sub() }}</p>
         </div>
       </div>
@@ -66,6 +66,8 @@ import type { OwnHitPoints } from '../turn-panel/own-numbers';
 export class ActAsCard {
   /** The character on turn. */
   readonly who = input.required<Combatant>();
+  /** The title of the turn as the app words it everywhere ("Vez do Pensantus"). */
+  readonly title = input.required<string>();
   /** "Mago 3": the class line the page knows. */
   readonly classLine = input('');
   /** The character's hit points from its vitals (the master reads the numbers). */
