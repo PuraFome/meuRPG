@@ -122,7 +122,9 @@ export type SessionMessage = Message<"meurpg.play.v1.SessionMessage"> & {
   speakerName: string;
 
   /**
-   * The portrait of the NPC that speaks, when it has one. Unset otherwise.
+   * The portrait of the NPC that speaks, when it has one. Unset otherwise,
+   * and unset on a line of an NPC the master keeps hidden on the stage: the
+   * line names the NPC for its readers and nothing else of it reaches them.
    *
    * @generated from field: meurpg.play.v1.SessionMessageImage speaker_portrait = 6;
    */
