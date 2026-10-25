@@ -3446,9 +3446,11 @@ type DerivedSheet struct {
 	// compare it with FullSheet.experience_points to show "Pode subir de
 	// nível" (RN-12).
 	NextLevelXp int32 `protobuf:"varint,34,opt,name=next_level_xp,json=nextLevelXp,proto3" json:"next_level_xp,omitempty"`
-	// The other speeds, in feet, 0 for none. A character has none of them
-	// today; a creature, or a druid in Wild Shape, may fly, swim, climb or
-	// burrow. speed_walk_ft stays the walking speed.
+	// The other speeds, in feet, 0 for none. No SRD race gives a character one;
+	// a table's speed.fly, speed.swim, speed.climb or speed.burrow modifier does
+	// (mode add, max or set, with the `when` of any modifier, and speedwalk() in
+	// the formula for "the walking speed"). A creature, or a druid in Wild Shape,
+	// may fly, swim, climb or burrow. speed_walk_ft stays the walking speed.
 	SpeedFlyFt    int32 `protobuf:"varint,35,opt,name=speed_fly_ft,json=speedFlyFt,proto3" json:"speed_fly_ft,omitempty"`
 	SpeedSwimFt   int32 `protobuf:"varint,36,opt,name=speed_swim_ft,json=speedSwimFt,proto3" json:"speed_swim_ft,omitempty"`
 	SpeedClimbFt  int32 `protobuf:"varint,37,opt,name=speed_climb_ft,json=speedClimbFt,proto3" json:"speed_climb_ft,omitempty"`
@@ -3489,7 +3491,10 @@ type DerivedSheet struct {
 	// two-handed weapon is on the sheet too (the sheet lists what is carried, so it
 	// reads a two-handed weapon as the one in hand). The player gets the bonus back by
 	// taking the weapon off the sheet.
-	ShieldIdle    bool `protobuf:"varint,46,opt,name=shield_idle,json=shieldIdle,proto3" json:"shield_idle,omitempty"`
+	ShieldIdle bool `protobuf:"varint,46,opt,name=shield_idle,json=shieldIdle,proto3" json:"shield_idle,omitempty"`
+	// True when a table's breathes_water effect applies: the character breathes
+	// underwater (the sheet shows it; the engine keeps no air or drowning count).
+	BreathesWater bool `protobuf:"varint,47,opt,name=breathes_water,json=breathesWater,proto3" json:"breathes_water,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3842,6 +3847,13 @@ func (x *DerivedSheet) GetResistances() []*Resistance {
 func (x *DerivedSheet) GetShieldIdle() bool {
 	if x != nil {
 		return x.ShieldIdle
+	}
+	return false
+}
+
+func (x *DerivedSheet) GetBreathesWater() bool {
+	if x != nil {
+		return x.BreathesWater
 	}
 	return false
 }
@@ -11195,7 +11207,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\adesc_pt\x18\v \x03(\tR\x06descPt\x12&\n" +
 	"\x0fdesc_pt_missing\x18\f \x01(\bR\rdescPtMissing\x12 \n" +
 	"\fdesc_pt_only\x18\r \x01(\bR\n" +
-	"descPtOnly\"\xde\x11\n" +
+	"descPtOnly\"\x85\x12\n" +
 	"\fDerivedSheet\x12'\n" +
 	"\x0fcontent_version\x18\x01 \x01(\tR\x0econtentVersion\x12 \n" +
 	"\frace_name_pt\x18\x02 \x01(\tR\n" +
@@ -11252,7 +11264,8 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\rbreath_weapon\x18, \x01(\v2\x1d.meurpg.rules.v1.BreathWeaponR\fbreathWeapon\x12=\n" +
 	"\vresistances\x18- \x03(\v2\x1b.meurpg.rules.v1.ResistanceR\vresistances\x12\x1f\n" +
 	"\vshield_idle\x18. \x01(\bR\n" +
-	"shieldIdle\"\xe3\x02\n" +
+	"shieldIdle\x12%\n" +
+	"\x0ebreathes_water\x18/ \x01(\bR\rbreathesWater\"\xe3\x02\n" +
 	"\fBreathWeapon\x12!\n" +
 	"\fancestry_key\x18\x01 \x01(\tR\vancestryKey\x12\x1f\n" +
 	"\vdamage_type\x18\x02 \x01(\tR\n" +

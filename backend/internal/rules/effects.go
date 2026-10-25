@@ -171,10 +171,10 @@ var (
 	effectTypes = []string{
 		"modifier", "proficiency", "roll_mode", "sense", "spellcasting",
 		"resource", "choice", "grant_action", "extra_attack", "note", "handler", "wild_shape", "beast_spells", "replaces",
-		"ability_increase", "superiority_die", "song_of_rest", "ranged_attack", "extra_damage", "ambush", "resistance",
+		"ability_increase", "superiority_die", "song_of_rest", "ranged_attack", "extra_damage", "ambush", "resistance", "breathes_water",
 	}
 	modifierTargets = []string{
-		"ac.base", "ac", "hp.max", "speed.walk", "initiative",
+		"ac.base", "ac", "hp.max", "speed.walk", "speed.fly", "speed.swim", "speed.climb", "speed.burrow", "initiative",
 		"attack.weapon.melee", "attack.weapon.ranged",
 		"damage.weapon.melee", "damage.weapon.ranged",
 	}
@@ -248,6 +248,7 @@ func (x effectCompiler) takesOnly(strip func(other *Effect)) bool {
 var effectCheckers = map[string]func(x effectCompiler) error{
 	"ranged_attack":    effectCompiler.rangedAttack,
 	"resistance":       effectCompiler.resistance,
+	"breathes_water":   effectCompiler.breathesWater,
 	"replaces":         effectCompiler.replaces,
 	"modifier":         effectCompiler.modifier,
 	"proficiency":      effectCompiler.proficiency,
@@ -286,6 +287,9 @@ func (c *content) compileEffect(key string, e *Effect) error {
 		}
 	}
 	if err := x.strayFields(); err != nil {
+		return err
+	}
+	if err := x.speedwalkOnlyForOtherSpeeds(); err != nil {
 		return err
 	}
 	if check, ok := effectCheckers[e.Type]; ok {
@@ -555,6 +559,28 @@ func (x effectCompiler) wildShape() error {
 	}
 	if _, ok := crEighths(x.e.MaxCR); !ok {
 		return x.fail("wild_shape needs a max_cr that is a challenge rating, such as \"1/4\"")
+	}
+	return nil
+}
+
+// otherSpeedTargets are the modifier targets whose formulas may read speedwalk().
+var otherSpeedTargets = []string{"speed.fly", "speed.swim", "speed.climb", "speed.burrow"}
+
+// speedwalkOnlyForOtherSpeeds keeps speedwalk() to the other speeds' modifiers:
+// the walking speed is worked out first, so anything else would read 0.
+func (x effectCompiler) speedwalkOnlyForOtherSpeeds() error {
+	e := x.e
+	reads := strings.Contains(e.Value, "speedwalk") || strings.Contains(e.When, "speedwalk")
+	if reads && (e.Type != "modifier" || !slices.Contains(otherSpeedTargets, e.Target)) {
+		return x.fail("speedwalk() belongs to the modifiers of the fly, swim, climb and burrow speeds")
+	}
+	return nil
+}
+
+// breathesWater checks the effect that lets the character breathe underwater.
+func (x effectCompiler) breathesWater() error {
+	if !x.takesOnly(func(o *Effect) { o.Type, o.When, o.TextPT = "", "", ""; o.when = nil }) {
+		return x.fail("breathes_water takes no fields but when and text_pt")
 	}
 	return nil
 }

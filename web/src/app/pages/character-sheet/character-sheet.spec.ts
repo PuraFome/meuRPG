@@ -179,6 +179,7 @@ function fullSheet(overrides: Partial<FullSheetVm> = {}): FullSheetVm {
     wearsArmor: false,
     hasShield: false,
     shieldIdle: false,
+    speedExtras: [],
     hitPointsMax: 10,
     hitDice: '1d6',
     speedWalkFt: 25,

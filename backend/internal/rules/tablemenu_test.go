@@ -257,6 +257,7 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 		"extra_damage":    {Type: "extra_damage", Applies: ExtraDamageLargerTarget, Value: "2", Resource: "dados_de_teste"},
 		"ambush":          {Type: "ambush", Applies: AmbushUnactedAdvantage},
 		"resistance":      {Type: "resistance", Except: "damage-type:psychic", While: ResistanceWhileRage},
+		"breathes_water":  {Type: "breathes_water"},
 		// Only a feat has it, so it is hosted by a feat below.
 		"ability_increase": {Type: "ability_increase", Count: 1, From: []string{"str", "dex"}, Value: "1"},
 	}
@@ -387,6 +388,8 @@ func TestEffectMenuFormulaHelpers(t *testing.T) {
 		}
 		var e Effect
 		switch {
+		case h.Call == "speedwalk()":
+			e = Effect{Type: "modifier", Target: "speed.swim", Mode: "set", Value: "speedwalk()"}
 		case samples[h.Call] != "":
 			e = Effect{Type: "modifier", Target: "ac", Mode: "add", Value: samples[h.Call]}
 		case conditions[h.Call] != "":

@@ -17,7 +17,7 @@ import (
 // the SRD has no effect of that type (a feat from another book brings it).
 var overlayEffectTypes = []string{
 	"modifier", "proficiency", "resource", "sense", "roll_mode", "grant_action",
-	"superiority_die", "extra_attack", "extra_damage", "ambush", "ranged_attack", "resistance", "choice", "ability_increase", "note",
+	"superiority_die", "extra_attack", "extra_damage", "ambush", "ranged_attack", "resistance", "breathes_water", "choice", "ability_increase", "note",
 }
 
 // overlayChoiceKinds are the choices a table feature may offer. The subclass and
@@ -461,6 +461,8 @@ var ownFields = map[string][]string{
 	"ranged_attack": {"applies", "ignore_cover", "range_multiplier", "no_long_range_disadvantage"},
 	// A resistance names the damage type it leaves out and when it holds.
 	"resistance": {"except", "while"},
+	// breathes_water has no field of its own: only the when that gates it.
+	"breathes_water": {},
 }
 
 // effectField is a field of an Effect a type may not read: its name in the
@@ -632,6 +634,12 @@ var effectErrorRules = []effectErrorRule{
 	{[]string{"extra_attack needs"}, fieldAttr(".count"), ReasonValue},
 	{[]string{"empty tag"}, fieldAttr(".tags"), ReasonValue},
 	{[]string{"unknown spell"}, fieldAttr(".spells"), ReasonReference},
+	{[]string{"speedwalk() belongs"}, func(e *Effect, _ func(...string) bool) string {
+		if strings.Contains(e.Value, "speedwalk") {
+			return ".value"
+		}
+		return ".when"
+	}, ReasonFormula},
 	{[]string{"is not a damage type"}, fieldAttr(".except"), ReasonReference},
 	{[]string{"while must be"}, fieldAttr(".while"), ReasonValue},
 	{[]string{"a resistance has no when"}, fieldAttr(".when"), ReasonValue},

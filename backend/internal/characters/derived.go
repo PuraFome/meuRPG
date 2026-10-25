@@ -101,6 +101,7 @@ func derivedNumbersToProto(d rules.Derived) *rulesv1.DerivedSheet {
 		SpeedClimbFt:          i32(d.SpeedClimbFt),
 		SpeedBurrowFt:         i32(d.SpeedBurrowFt),
 		Hover:                 d.Hover,
+		BreathesWater:         d.BreathesWater,
 	}
 }
 

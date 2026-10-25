@@ -191,6 +191,9 @@ export interface FullSheetVm {
   readonly hitPointsMax: number;
   readonly hitDice: string;
   readonly speedWalkFt: number;
+  /** The speeds beyond walking and what the table lets the character do in water, as lines
+   * of the Deslocamento box: "Voo 3 m (10 pés)", "Respira na água". Empty without any. */
+  readonly speedExtras: readonly string[];
   readonly senses: readonly string[];
   readonly attacks: readonly AttackVm[];
   readonly spellcasting: readonly SpellcastingVm[];

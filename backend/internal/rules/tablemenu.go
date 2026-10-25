@@ -205,6 +205,10 @@ var menuTypes = []MenuType{
 		{Name: "while", Required: true, Kind: "choice", List: ListResistanceConditions},
 		{Name: "text_pt", Kind: "text"},
 	}},
+	{Type: "breathes_water", NamePT: "Respira na água", HintPT: "O personagem respira debaixo d'água. A ficha mostra a característica; o jogo não conta fôlego nem afogamento.", Fields: []MenuField{
+		{Name: "when", Kind: "condition"},
+		{Name: "text_pt", Kind: "text"},
+	}},
 	{Type: "choice", NamePT: "Escolha", HintPT: "Algo que o jogador escolhe: perícias, especialização, truques, magias, idiomas, ferramentas ou uma opção de uma lista (do SRD, como um estilo de luta, ou a lista de opções da própria característica, como manobras).", Fields: []MenuField{
 		{Name: "choice", Required: true, Kind: "choice", List: ListChoiceKinds},
 		{Name: "count", Required: true, Kind: "number", Min: 1, Max: MaxChoiceCount},
@@ -231,7 +235,8 @@ var menuTypes = []MenuType{
 var (
 	modifierTargetNames = map[string]string{
 		"ac.base": "Classe de Armadura base", "ac": "Classe de Armadura", "hp.max": "Pontos de vida máximos",
-		"speed.walk": "Deslocamento", "initiative": "Iniciativa",
+		"speed.walk": "Deslocamento", "speed.fly": "Deslocamento de voo", "speed.swim": "Deslocamento de natação",
+		"speed.climb": "Deslocamento de escalada", "speed.burrow": "Deslocamento de escavação", "initiative": "Iniciativa",
 		"attack.weapon.melee": "Ataque com arma corpo a corpo", "attack.weapon.ranged": "Ataque com arma à distância",
 		"damage.weapon.melee": "Dano de arma corpo a corpo", "damage.weapon.ranged": "Dano de arma à distância",
 	}
@@ -492,6 +497,7 @@ func menuHelpers() []FormulaHelper {
 		{Call: `mod("<habilidade>")`, Returns: "number", HintPT: `O modificador de uma habilidade: "str", "dex", "con", "int", "wis" ou "cha".`},
 		{Call: `score("<habilidade>")`, Returns: "number", HintPT: "O valor de uma habilidade, com os bônus."},
 		{Call: "prof()", Returns: "number", HintPT: "O bônus de proficiência."},
+		{Call: "speedwalk()", Returns: "number", HintPT: "O deslocamento de caminhada, já com os modificadores. Só vale nos modificadores de voo, natação, escalada e escavação (ex.: nadar na mesma velocidade que anda)."},
 		{Call: "armor()", Returns: "text", HintPT: `A armadura vestida: "none", "light", "medium" ou "heavy".`},
 		{Call: "shield()", Returns: "yes/no", HintPT: "Se o personagem carrega um escudo."},
 		{Call: "floor(x)", Returns: "number", HintPT: "Arredonda para baixo."},

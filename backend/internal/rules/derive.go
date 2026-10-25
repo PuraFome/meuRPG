@@ -757,6 +757,7 @@ func (x *deriver) buildEnv() {
 		Prof:       func() int { return x.prof },
 		Armor:      func() string { return x.armorCategory },
 		Shield:     x.shieldWielded,
+		SpeedWalk:  func() int { return x.d.SpeedWalkFt },
 	}
 }
 

@@ -268,6 +268,7 @@
   "SpeedClimbFt": 0,
   "SpeedBurrowFt": 0,
   "Hover": false,
+  "BreathesWater": false,
   "Senses": [
     {
       "Key": "darkvision",

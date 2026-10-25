@@ -237,6 +237,20 @@ function notesVm(derived: GenDerivedSheet) {
   };
 }
 
+/** The other speeds, in the table's order, then "Respira na água" (`DerivedSheet`). */
+function speedExtrasOf(derived: GenDerivedSheet): readonly string[] {
+  const speeds: [number, string][] = [
+    [derived.speedFlyFt, 'Voo'],
+    [derived.speedSwimFt, 'Natação'],
+    [derived.speedClimbFt, 'Escalada'],
+    [derived.speedBurrowFt, 'Escavação'],
+  ];
+  const lines = speeds
+    .filter(([ft]) => ft > 0)
+    .map(([ft, name]) => `${name} ${metersWithFeet(ft)}`);
+  return derived.breathesWater ? [...lines, 'Respira na água'] : lines;
+}
+
 function toFullSheetVm(full: GenFullSheet, derived: GenDerivedSheet): FullSheetVm {
   return {
     kind: 'full',
@@ -254,6 +268,7 @@ function toFullSheetVm(full: GenFullSheet, derived: GenDerivedSheet): FullSheetV
     hitPointsMax: derived.hitPointsMax,
     hitDice: hitDiceWords(derived.hitDice),
     speedWalkFt: derived.speedWalkFt,
+    speedExtras: speedExtrasOf(derived),
     senses: derived.senses.map((s) => `${s.namePt}: ${metersWithFeet(s.rangeFt)}`),
     attacks: derived.attacks.map(toAttackVm),
     ...castingVm(derived),
