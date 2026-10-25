@@ -191,16 +191,27 @@
   color: var(--mr-ink-muted);
 }
 
-@media (max-width: 479.98px) {
+// A phone keeps one line a row (C3-01): the token, the name cut with an ellipsis (the whole name is in the button's name) and the button
+// and the menu at the right; the line "Os jogadores veem" goes.
+@media (max-width: 767.98px) {
   .row {
-    flex-wrap: wrap;
+    gap: var(--mr-space-2);
   }
 
-  .row__text {
-    flex-basis: calc(100% - 48px - var(--mr-space-3) - 44px - var(--mr-space-3));
+  .row__name {
+    display: block;
+    overflow: hidden;
+    font-size: 18px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .row__sees {
+    display: none;
   }
 
   .row__speak {
-    margin-left: 56px;
+    width: 116px;
+    padding: 0 4px;
   }
 }
