@@ -69,9 +69,10 @@ type Action struct {
 	// grant_action effect's cost (1 when the effect has none); CostMax, when above
 	// Cost, is the most the player may spend on one use, and the use asks how many.
 	// Both are 0 for an action with no Resource. See actionspend.go.
-	Cost, CostMax int
+	Cost    int `json:",omitempty"`
+	CostMax int `json:",omitempty"`
 	// Result is what a use of the action gives: hit points regained, temporary hit points.
-	Result ActionResult
+	Result ActionResult `json:",omitzero"`
 }
 
 // featureStandards are the features whose action is a standard action taken
@@ -152,6 +153,7 @@ func (x *deriver) resourcesAndActions() {
 		}
 		x.grantAction(a)
 	}
+	x.hooks()
 }
 
 // extraAttacks sets AttacksPerAction from the extra_attack effects: the
@@ -225,6 +227,7 @@ func (x *deriver) grantAction(a activeEffect) {
 		}
 		act.Resource = spent
 	}
+	x.costAndResult(&act, a)
 	for _, route := range x.routes(act, a.effect.TextPT) {
 		if !slices.ContainsFunc(x.d.Actions, func(o Action) bool { return o.Key == route.Key && o.Economy == route.Economy }) {
 			x.d.Actions = append(x.d.Actions, route)

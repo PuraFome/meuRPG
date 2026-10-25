@@ -50,7 +50,8 @@ A table feature has effects of these types only; anything else is `forbidden_eff
 | --- | --- |
 | `modifier`, `proficiency`, `sense`, `roll_mode`, `extra_attack`, `note` | As in [Effects](rules.md#effects). |
 | `resource` | With uses and recharge. The resource may not have the name of an SRD one. |
-| `grant_action` | May carry `resource`: the name of a `resource` effect of the same entry, its class, or an SRD resource. Each use spends one and the action is off with none left. Refused as `bad_reference` when nothing defines it. |
+| `grant_action` | May carry `resource`: the name of a `resource` effect of the same entry (a feat included), its class, or an SRD resource. Each use spends `cost` of it (1 when empty) and the action is off while fewer are left; see [Costs, healing actions and hooks](#costs-healing-actions-and-hooks). Refused as `bad_reference` when nothing defines the resource. |
+| `on_event` | The owner's hook on `short_rest`, `long_rest`, `death_save_failed` or `drop_to_zero`; see [Costs, healing actions and hooks](#costs-healing-actions-and-hooks). |
 | `ranged_attack` | Checked at its fields: `applies` is `spell` or `weapon`; `range_multiplier` is 2 or 3 and only on `spell`; `no_long_range_disadvantage` only on `weapon`; an effect that sets none of the three switches is refused at `.type`; `tags` at `.tags`; the switches on any other type are stray fields. |
 | `resistance` | Resistance to every damage type but `except`, while `while` holds. `except` is a damage type of the content (refused at `.except`, `bad_reference`), `while` is `rage` (refused at `.while`, `bad_value`), and a `when` or `tags` is refused at its own field (`bad_value`): `while` is the condition. See [Effects](rules.md#effects). |
 | `extra_damage` | See [Extra damage](#extra-damage). |
@@ -83,6 +84,42 @@ Checked at its fields:
 
 `Derive` fills `Derived.Maneuvers` from the effects of what the character has (picked options included), with the die's sides worked out for the level, and only when the resource exists at that level; a `value` that gives fewer than 2 or more than 100 sides is ignored with a notice.
 A goad is a damage die with a rider: the target makes a Wisdom save against `Maneuver.SaveDC` (8 + proficiency bonus + the `ability` modifier) and, on a failure, takes the combat effect `effect:goaded` until the end of the attacker's next turn. That effect is one `attack_disadvantage` modifier with `except_source`, so the target's attacks against anyone but the goader have disadvantage.
+## Costs, healing actions and hooks
+
+A `grant_action` spends a resource, heals and gives temporary hit points; an `on_event` runs the same results on the owner's events.
+The formulas are Int formulas ([Effects](rules.md#effects)); dice are `NdS`, `NdS+B` or `NdS-B` with 1 to 20 dice of 2 to 100 sides (`parseHealDice`).
+
+| Field | On | Meaning |
+| --- | --- | --- |
+| `cost` | `grant_action`, `on_event` | Uses of `resource` each use spends: a formula, 1 when empty, at least 1 at any level. Needs `resource`. |
+| `cost_max` | `grant_action` | When set, the player picks how many to spend at use, from `cost` to `cost_max` or what is left. Never below `cost`; needs `resource`. A `cost_max` that is not above the cost (or that the resource's maximum cuts down to it) leaves the cost fixed. |
+| `value_per_point` | `grant_action` | What each point spent above `cost` adds to the result. Dice (`1d6`, with the sides of `heal`) add to `heal`; a flat formula adds to `temp_hp`, or to `heal` when there is no `temp_hp`. Needs `cost_max` and a `heal` or `temp_hp`. |
+| `heal` | `grant_action`, `on_event` | Dice of hit points regained, at least one die; `ability` adds that ability's modifier (worked out at `Derive`, so the dice carry it in `Bonus`). |
+| `temp_hp` | `grant_action`, `on_event` | Temporary hit points: a formula. |
+| `event` | `on_event` | `short_rest`, `long_rest`, `death_save_failed` or `drop_to_zero`; required. |
+| `restore` | `on_event` | A resource of the entry (or its class) whose uses the hook gives back, `value` of them (an Int formula, 1 when empty), never more than are spent. |
+| `heal_percent_max` | `on_event` | 1 to 100: that share of the maximum hit points (rounded down, at least 1) regained, instead of `heal`. |
+| `resource` | `on_event` | The resource the hook spends (`cost` uses, 1 when empty): the hook runs only when that many are left. |
+
+Refusals, each at its field and with the reason `bad_value` unless said: a `cost` that no level from 1 to 20 can pay with the resource's maximum (`.cost`; judged when both formulas read only `level()` and `prof()`, always when both are numbers); a `cost` or `cost_max` below 1 or with no `resource`; a `cost_max` below `cost` (`.cost_max`); a `heal` with no die, with `+ MOD` in the text or with an unknown or lonely `ability` (`.heal`, `.ability`); a `value_per_point` with no `cost_max`, with no result to scale, or with dice of other sides than `heal` (`.value_per_point`); an `on_event` with an unknown or empty `event` (`.event`), with no result (`.type`), with both `heal` and `heal_percent_max` or a share outside 1 to 100 (`.heal_percent_max`), with a `value` and no `restore` (`.value`), or with `cost_max`, `value_per_point` or `economy`; a `resource` or a `restore` that nothing defines (`bad_reference`).
+Each of these fields on any other type is a stray field (`ownFields` in `overlay_features.go` lists what each type reads), and a formula that fails to compile is refused at its field with `bad_formula`.
+
+What `Derive` gives the runtime:
+
+- **`Action`** carries `Cost` (0 for the default of 1), `CostMax` (0 for a fixed cost) and `Result` (`Heal`, `TempHP`, and `HealPerPoint`, `TempHPPerPoint` for each point above the cost). `UnitCost()`, `ChoosesSpend()`, `SpendRange(left)` (the range offered, `ok` false when fewer than the cost are left), `Spend(chosen, left)` (validates the number picked, 0 takes the least; `ErrSpend` outside the range) and `Outcome(spent)` (the dice and temporary hit points of that spend) are the only arithmetic.
+  The server reads `left` in the transaction of the use, so the client only supplies the number it picked.
+  The action reaches the sheet as the proto `Action` (`cost`, `cost_max`, `heal`, `temp_hp`, `heal_per_point`, `temp_hp_per_point`).
+- **`Derived.Hooks`** lists the character's `EventHook`s; `HooksFor(event)` picks those of an event.
+  A hook that spends a resource the character does not have at its level is left out, and a `restore` of such a resource is dropped from the hook.
+  A hook runs for its **owner only**: an effect on allies who rest nearby stays text.
+  `PercentOfMax(pct, maxHP)` and `RestoreUses(used, count)` (never more than are spent, so a hook that runs again changes nothing) are its arithmetic.
+- **Hit points and temporary hit points** follow the rules the spells share: `combat.ApplyHeal` (never above the maximum) and `combat.ApplyTempHP` (temporary hit points do not stack: the larger is kept).
+  The target of an action's heal or temporary hit points is its owner or one creature chosen at use (the owner and one ally); a dead creature is not healed.
+
+Recharges: besides `short_rest`, `long_rest`, `dawn` and `none`, a resource may recharge as `initiative` (one use when the owner rolls initiative, only when none is left: `InitiativeRecovery`), `restore_one_on_short_rest` (one use on a short rest, all on a long rest) or `restore_one_on_long_rest` (one use on a long rest, none on a short one).
+`RestRecovery(recharge, kind)` answers `RecoverNone`, `RecoverOne` or `RecoverAll`; `RechargesOnRest` is `RecoverAll`.
+A resource counts uses; a pool of hit points is not offered.
+
 An option with a `superiority_die` does not list its `grant_action`, so the resource is not spent twice.
 How combat spends the die (damage, grapple, reduction) is in the [play module](play/README.md).
 
@@ -205,7 +242,7 @@ Two reads give the class editor everything it needs, so the browser computes not
   Each row is a `TableClassLevel` ready to be the class's `levels` (features empty): bonus, cantrips known, spells known and the nine slot counts.
   The numbers are read from the SRD itself, never from the campaign's content: full and third use the Wizard/Cleric's, half the Paladin's (starts at level 2), pact the Warlock's, "knows" the cantrips and spells known of the Sorcerer (full), the Ranger (half) and the Warlock; "prepares" has no spells known.
   The third caster, which SRD 5.1 lacks, is our default: the full table at a third of the level, rounded up, 2 cantrips (3 from level 10) and, for one that knows spells, 3 at levels 3 and 4 and one more every two levels; the master changes whatever they want.
-- **`EffectMenu`** returns the fourteen effect types of the menu with their Portuguese names and sentences, each one's fields (required or not, the field's kind and list, a number's limits, `always_shown` for an optional field the editor never folds away), and every closed list with Portuguese names: modifier targets, modes, proficiency targets, levels, advantage modes and targets, senses, recharges, action economies, choice kinds, `ranged_attack_applies`, `damage_types`, `resistance_conditions`, skills, languages, tools and tag prefixes.
+- **`EffectMenu`** returns the effect types of the menu with their Portuguese names and sentences, each one's fields (required or not, the field's kind and list, a number's limits, `always_shown` for an optional field the editor never folds away), and every closed list with Portuguese names: modifier targets, modes, proficiency targets, levels, advantage modes and targets, senses, recharges, `events`, action economies, choice kinds, `ranged_attack_applies`, `damage_types`, `resistance_conditions`, skills, languages, tools and tag prefixes.
   It also carries the SRD option lists a "one option from a list" choice can offer, the formula functions with a sentence each, the class indexes `classLevel` accepts (SRD and table) and the limits.
   A test puts each value of each list in an effect and checks that `With` accepts it, so the menu never offers what the server refuses; it offers a subset of what the engine understands.
 

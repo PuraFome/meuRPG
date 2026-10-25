@@ -792,6 +792,8 @@ type overlayBuilder struct {
 	// each entry declare. They serve the checks made once every entry exists.
 	optionEntry, featureEntry, featureClass map[string]string
 	resources                               map[string]map[string]bool
+	// resourceMax is the formula of the maximum of each resource an entry declares.
+	resourceMax map[string]map[string]string
 }
 
 type pendingEffects struct {

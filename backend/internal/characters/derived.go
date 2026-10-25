@@ -281,7 +281,19 @@ func attackToProto(a rules.Attack) *rulesv1.Attack {
 }
 
 func actionToProto(a rules.Action) *rulesv1.Action {
-	return &rulesv1.Action{Key: a.Key, NamePt: a.NamePT, Economy: economyToProto[a.Economy], ResourceKey: a.Resource, SourceKey: a.Source}
+	return &rulesv1.Action{
+		Key: a.Key, NamePt: a.NamePT, Economy: economyToProto[a.Economy], ResourceKey: a.Resource, SourceKey: a.Source,
+		Cost: i32(a.Cost), CostMax: i32(a.CostMax), TempHp: i32(a.Result.TempHP), TempHpPerPoint: i32(a.Result.TempHPPerPoint),
+		HealPerPoint: diceToProto(a.Result.HealPerPoint), Heal: healToProto(a.Result.Heal),
+	}
+}
+
+// healToProto is nil for an action that heals nothing.
+func healToProto(f *rules.DiceFormula) *rulesv1.DiceFormula {
+	if f == nil {
+		return nil
+	}
+	return &rulesv1.DiceFormula{Count: i32(f.Count), Sides: i32(f.Sides), Bonus: i32(f.Bonus)}
 }
 
 // diceToProto is nil for a weapon without damage dice.

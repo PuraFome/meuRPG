@@ -278,6 +278,7 @@ var effectCheckers = map[string]func(x effectCompiler) error{
 	"choice":           effectCompiler.choice,
 	"ability_increase": effectCompiler.abilityIncrease,
 	"grant_action":     effectCompiler.grantAction,
+	"on_event":         effectCompiler.onEvent,
 	"superiority_die":  effectCompiler.superiorityDie,
 	"extra_damage":     effectCompiler.extraDamage,
 	"ambush":           effectCompiler.ambush,
@@ -334,6 +335,9 @@ func (x effectCompiler) strayFields() error {
 		return x.fail("replaces belongs to the replaces effect")
 	}
 	if err := x.strayResistance(); err != nil {
+		return err
+	}
+	if err := x.strayCosts(); err != nil {
 		return err
 	}
 	if e.Type != "ranged_attack" && (e.IgnoreCover || e.RangeMultiplier != 0 || e.NoLongRangeDisadvantage) {
@@ -502,13 +506,6 @@ func (x effectCompiler) choice() error {
 func (x effectCompiler) abilityIncrease() error {
 	if attr, msg := checkAbilityIncrease(x.e); attr != "" {
 		return x.fail("%s", msg)
-	}
-	return nil
-}
-
-func (x effectCompiler) grantAction() error {
-	if !slices.Contains(economies, x.e.Economy) {
-		return x.fail("unknown economy %q", x.e.Economy)
 	}
 	return nil
 }

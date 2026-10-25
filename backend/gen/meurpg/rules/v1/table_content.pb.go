@@ -831,10 +831,11 @@ type TableEffect struct {
 	// (the barbarian's own rage resistance) counts once.
 	Except string `protobuf:"bytes,27,opt,name=except,proto3" json:"except,omitempty"`
 	While  string `protobuf:"bytes,28,opt,name=while,proto3" json:"while,omitempty"`
-	// grant_action: how many uses of `resource` each use of the action spends, a formula
-	// (level(), prof(), mod(...)); empty is 1. The action is off while fewer are left.
-	// Never above the resource's maximum: an entry whose cost the resource can never
-	// pay is refused.
+	// grant_action and on_event: how many uses of `resource` each use of the action (or
+	// each run of the hook) spends, a formula (level(), prof(), mod(...)); empty is 1,
+	// and it needs `resource`. The action is off, and the hook does not run, while fewer
+	// are left. Never above the resource's maximum: an entry whose cost the resource can
+	// never pay is refused. For on_event, `resource` is the resource the hook spends.
 	Cost string `protobuf:"bytes,29,opt,name=cost,proto3" json:"cost,omitempty"`
 	// grant_action: the most the player may spend on one use, a formula, never below
 	// `cost`. Set, the player chooses at use how many to spend, from `cost` to
@@ -860,8 +861,8 @@ type TableEffect struct {
 	// death saves fails) or "drop_to_zero" (when the owner drops to 0 hit points).
 	Event string `protobuf:"bytes,34,opt,name=event,proto3" json:"event,omitempty"`
 	// on_event: the name of a resource of the entry (or of its class) whose uses the
-	// hook gives back, as many as `value` (a formula; empty is 1), never above the
-	// maximum.
+	// hook gives back, as many as `value` (an Int formula; empty is 1), never more than
+	// are spent, so the same event handled twice restores once.
 	Restore string `protobuf:"bytes,35,opt,name=restore,proto3" json:"restore,omitempty"`
 	// on_event: hit points regained as a percentage of the maximum (1 to 100, rounded
 	// down, at least 1), instead of `heal`; the two are not both set.

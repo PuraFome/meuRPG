@@ -50,7 +50,10 @@ type TempHPResult struct {
 // ApplyTempHP gives temporary hit points: they do not stack, so the creature keeps
 // the larger of what it had and amount (SRD 5.1, "Temporary Hit Points"). A negative
 // amount counts as 0.
-func ApplyTempHP(current, amount int) TempHPResult { return TempHPResult{TempHP: -1, Gained: -1} }
+func ApplyTempHP(current, amount int) TempHPResult {
+	after := max(current, amount, 0)
+	return TempHPResult{TempHP: after, Gained: after - max(current, 0)}
+}
 
 // Death save outcomes.
 const (

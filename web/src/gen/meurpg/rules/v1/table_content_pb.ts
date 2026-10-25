@@ -406,10 +406,11 @@ export type TableEffect = Message<"meurpg.rules.v1.TableEffect"> & {
   while: string;
 
   /**
-   * grant_action: how many uses of `resource` each use of the action spends, a formula
-   * (level(), prof(), mod(...)); empty is 1. The action is off while fewer are left.
-   * Never above the resource's maximum: an entry whose cost the resource can never
-   * pay is refused.
+   * grant_action and on_event: how many uses of `resource` each use of the action (or
+   * each run of the hook) spends, a formula (level(), prof(), mod(...)); empty is 1,
+   * and it needs `resource`. The action is off, and the hook does not run, while fewer
+   * are left. Never above the resource's maximum: an entry whose cost the resource can
+   * never pay is refused. For on_event, `resource` is the resource the hook spends.
    *
    * @generated from field: string cost = 29;
    */
@@ -465,8 +466,8 @@ export type TableEffect = Message<"meurpg.rules.v1.TableEffect"> & {
 
   /**
    * on_event: the name of a resource of the entry (or of its class) whose uses the
-   * hook gives back, as many as `value` (a formula; empty is 1), never above the
-   * maximum.
+   * hook gives back, as many as `value` (an Int formula; empty is 1), never more than
+   * are spent, so the same event handled twice restores once.
    *
    * @generated from field: string restore = 35;
    */

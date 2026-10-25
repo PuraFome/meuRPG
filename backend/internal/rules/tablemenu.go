@@ -160,9 +160,15 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
-	{Type: "grant_action", NamePT: "Ação", HintPT: "Uma ação que o personagem passa a ter na vez dele: ação, ação bônus, reação, livre ou movimento. Pode gastar um uso de um recurso que a entrada define (\"Gasta um uso de\").", Fields: []MenuField{
+	{Type: "grant_action", NamePT: "Ação", HintPT: "Uma ação que o personagem passa a ter na vez dele: ação, ação bônus, reação, livre ou movimento. Pode gastar usos de um recurso que a entrada define (\"Gasta um uso de\"): o custo é uma fórmula (1 se vazio) e, com um custo máximo, o jogador escolhe na hora quantos gastar, do custo ao máximo (ou o que restar). Pode curar (dados, mais o modificador de uma habilidade) e dar pontos de vida temporários (uma fórmula) a si mesmo ou a uma criatura escolhida na hora; o valor por ponto soma, a cada ponto gasto acima do custo, mais dados de cura (os mesmos dados da cura) ou mais pontos temporários.", Fields: []MenuField{
 		{Name: "economy", Required: true, Kind: "choice", List: ListEconomies},
 		{Name: "resource", Kind: "resource_ref"},
+		{Name: "cost", Kind: "formula"},
+		{Name: "cost_max", Kind: "formula"},
+		{Name: "heal", Kind: "dice"},
+		{Name: "ability", Kind: "choice", List: ListAbilities},
+		{Name: "temp_hp", Kind: "formula"},
+		{Name: "value_per_point", Kind: "formula"},
 		{Name: "when", Kind: "condition"},
 		{Name: "tags", Kind: "tags", List: ListTagPrefixes},
 		{Name: "text_pt", Kind: "text"},
@@ -206,6 +212,19 @@ var menuTypes = []MenuType{
 		{Name: "while", Required: true, Kind: "choice", List: ListResistanceConditions},
 		{Name: "text_pt", Kind: "text"},
 	}},
+	{Type: "on_event", NamePT: "Gatilho", HintPT: "Algo que acontece com o dono da característica, e só com ele, quando um evento ocorre: ao terminar um descanso curto ou longo, quando falha um teste contra a morte, ou quando cai a 0 pontos de vida. O resultado pode curar (dados, ou uma parte dos pontos de vida máximos), dar pontos de vida temporários, devolver usos de um recurso da entrada ou gastar usos de um recurso para valer (\"uma vez por descanso longo\"). Aliados que descansam por perto não são afetados: isso fica como texto.", Fields: []MenuField{
+		{Name: "event", Required: true, Kind: "choice", List: ListEvents},
+		{Name: "resource", Kind: "resource_ref"},
+		{Name: "cost", Kind: "formula"},
+		{Name: "heal", Kind: "dice"},
+		{Name: "ability", Kind: "choice", List: ListAbilities},
+		{Name: "heal_percent_max", Kind: "number", Min: 1, Max: MaxHealPercent},
+		{Name: "temp_hp", Kind: "formula"},
+		{Name: "restore", Kind: "resource_ref"},
+		{Name: "value", Kind: "formula"},
+		{Name: "when", Kind: "condition"},
+		{Name: "text_pt", Kind: "text"},
+	}},
 	{Type: "choice", NamePT: "Escolha", HintPT: "Algo que o jogador escolhe: perícias, especialização, truques, magias, idiomas, ferramentas ou uma opção de uma lista (do SRD, como um estilo de luta, ou a lista de opções da própria característica, como manobras).", Fields: []MenuField{
 		{Name: "choice", Required: true, Kind: "choice", List: ListChoiceKinds},
 		{Name: "count", Required: true, Kind: "number", Min: 1, Max: MaxChoiceCount},
@@ -240,7 +259,18 @@ var (
 	levelNames  = map[string]string{"half": "Metade", "full": "Completa", "expertise": "Especialização"}
 	rollNames   = map[string]string{"advantage": "Vantagem", "disadvantage": "Desvantagem"}
 	senseNames  = map[string]string{"darkvision": "Visão no escuro", "blindsight": "Visão às cegas", "tremorsense": "Sentido sísmico", "truesight": "Visão verdadeira"}
-	rechargeNms = map[string]string{"short_rest": "Descanso curto", "long_rest": "Descanso longo", "dawn": "Ao amanhecer", "none": "Não volta sozinho"}
+	rechargeNms = map[string][2]string{
+		"short_rest": {"Descanso curto", ""}, "long_rest": {"Descanso longo", ""}, "dawn": {"Ao amanhecer", ""}, "none": {"Não volta sozinho", ""},
+		RechargeInitiative:      {"Ao rolar iniciativa", "Volta um uso quando o personagem rola iniciativa, mas só se não restar nenhum."},
+		RechargeRestoreOneShort: {"Um uso por descanso curto", "Um descanso curto devolve um uso; um descanso longo devolve todos."},
+		RechargeRestoreOneLong:  {"Um uso por descanso longo", "Um descanso longo devolve um uso; um descanso curto não devolve nenhum."},
+	}
+	eventNms = map[string][2]string{
+		EventShortRest:       {"Ao terminar um descanso curto", "Quando o dono termina um descanso curto."},
+		EventLongRest:        {"Ao terminar um descanso longo", "Quando o dono termina um descanso longo."},
+		EventDeathSaveFailed: {"Ao falhar num teste contra a morte", "Quando o dono falha num teste contra a morte."},
+		EventDropToZero:      {"Ao cair a 0 pontos de vida", "Quando o dono cai a 0 pontos de vida."},
+	}
 	maneuverNms = map[string]string{
 		ManeuverDamage: "Dano de um ataque com arma que acertou", ManeuverAttack: "Rolagem de ataque", ManeuverGrapple: "Atletismo de uma agarrada (ação bônus)",
 		ManeuverReduceMelee: "Reduz o dano de um ataque corpo a corpo (reação)",
@@ -384,6 +414,15 @@ func namedMenu(keys []string, name func(string) string) []MenuValue {
 	return out
 }
 
+// hintedMenu gives each key its name and its hint ({name, hint}).
+func hintedMenu(keys []string, names map[string][2]string) []MenuValue {
+	out := make([]MenuValue, 0, len(keys))
+	for _, k := range keys {
+		out = append(out, MenuValue{Key: k, NamePT: names[k][0], HintPT: names[k][1]})
+	}
+	return out
+}
+
 // menuLists are the menu's closed lists, in the order the editor shows them.
 func (c *content) menuLists() []MenuList {
 	profs, skills, tools := c.menuProficiencies()
@@ -410,7 +449,8 @@ func (c *content) menuLists() []MenuList {
 		{Name: ListRollModes, Values: namedMenu(rollModes, func(k string) string { return rollNames[k] })},
 		{Name: ListRollTargets, Values: c.menuRollTargets()},
 		{Name: ListSenses, Values: namedMenu(senses, func(k string) string { return senseNames[k] })},
-		{Name: ListRecharges, Values: namedMenu(recharges, func(k string) string { return rechargeNms[k] })},
+		{Name: ListRecharges, Values: hintedMenu(recharges, rechargeNms)},
+		{Name: ListEvents, Values: hintedMenu(eventKinds, eventNms)},
 		{Name: ListEconomies, Values: namedMenu(economies, func(k string) string { return economyNms[k] })},
 		{Name: ListManeuverApplies, Values: namedMenu(maneuverApplies, func(k string) string { return maneuverNms[k] })},
 		{Name: ListChoiceKinds, Values: namedMenu(overlayChoiceKinds, func(k string) string { return choiceNames[k] })},

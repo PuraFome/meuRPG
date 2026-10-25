@@ -620,9 +620,18 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - **Given** I register an area spell (a 4.5 m cone, a 6 m radius sphere), **when** I save it, **then** the area appears in its description, **and** in combat the caster chooses the creatures it hits, as with an SRD area spell.
   A spell with range "Pessoal" or "Toque" is valid; "Pessoal" with "one creature" or "several" is refused.
 - **Given** content registered in "Mirathel", **when** I open another campaign of mine, **then** it does not appear there: content is per campaign.
-- **Given** a feature the game master registers, **when** they pick its effect, **then** they pick from a closed menu (modifier, proficiency, resource, sense, roll mode, action, extra attack, ranged attack, choice, maneuver die, note, granted spell).
+- **Given** a feature the game master registers, **when** they pick its effect, **then** they pick from a closed menu (modifier, proficiency, resource, sense, roll mode, action, extra attack, ranged attack, trigger on an event, choice, maneuver die, note, granted spell).
   An action may spend a resource the entry defines, and a class or subclass feature may carry an **option list** the player picks from (a table's maneuvers, each with its own effects; "Opções para escolher" in the feature editor).
   Table content never runs code.
+- **Given** a table feature or feat with an action that spends a resource, **when** I set its cost, **then** each use spends that many (a feature that spends 2 of a pool for a bonus action), the action is off while fewer are left, **and** the server refuses a cost the resource's maximum can never pay, a maximum cost below the cost, and a cost with no resource.
+  With a maximum cost the player chooses at use how many to spend, from the cost to the maximum or what is left ("quantos?"); the server reads the uses left and checks the number in the same transaction as the use.
+- **Given** an action that heals or gives temporary hit points (a feature that spends 1 to 3 points to heal 1d6 per point; a feat that gives temporary hit points equal to the level), **when** the player uses it, **then** it heals the dice plus the ability modifier I chose, and each point spent above the cost adds the value per point, to the owner or to one creature picked at use (the owner and one ally).
+  The rules are those of the spells: temporary hit points do not stack (the larger is kept), healing never passes the maximum and a dead character is not healed.
+  A heal with no dice is refused.
+- **Given** a resource, **when** I pick how it comes back, **then** besides a short rest, a long rest, dawn and never, it may return one use when its owner rolls initiative (only when none is left), one use on a short rest (and all on a long rest), or one use on a long rest.
+- **Given** a feature or feat with a trigger on an event (after a short or long rest, when a death save fails, when the owner drops to 0 hit points), **when** the event happens to its owner, **then** the trigger gives temporary hit points, heals dice or a share of the maximum, restores uses of a resource of the entry, and may spend a resource to count at all ("once per long rest, stand up with half the maximum when a death save fails"); a rest finished twice never restores a use twice.
+  Only the owner's triggers run: an effect on allies who rest nearby stays text.
+  The server refuses an unknown event, a trigger with no result, and a resource the entry does not define.
 - **Given** a table class with a spellcasting subclass (a third-caster), **when** I register the subclass with "Esta subclasse conjura", **then** the third-caster table starts at the level it begins, and the subclass's spells come from the class list it casts from.
 
 **Feats.**

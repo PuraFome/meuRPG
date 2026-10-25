@@ -2,6 +2,7 @@ package rules
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 	"testing"
 )
@@ -17,8 +18,8 @@ const (
 )
 
 // resourceEffect is a resource of the tests' feats.
-func resourceEffect(name, max, recharge string) Effect {
-	return Effect{Type: "resource", Resource: name, Max: max, Recharge: recharge}
+func resourceEffect(name, limit, recharge string) Effect {
+	return Effect{Type: "resource", Resource: name, Max: limit, Recharge: recharge}
 }
 
 // featWith writes a feat of effects, checked as the editor does (strict).
@@ -146,7 +147,7 @@ func TestCostedActionShapes(t *testing.T) {
 				return
 			}
 			// The effect that is wrong is the last one.
-			violationAt(t, err, "feats[0].effects["+string(rune('0'+len(tc.effects)-1))+"]"+tc.field, tc.why)
+			violationAt(t, err, fmt.Sprintf("feats[0].effects[%d]%s", len(tc.effects)-1, tc.field), tc.why)
 		})
 	}
 }
@@ -182,7 +183,7 @@ func TestOnEventShapes(t *testing.T) {
 		})}, "", ""},
 		{"no event", []Effect{hook(func(e *Effect) { e.Event, e.TempHP = "", "2" })}, ".event", ReasonValue},
 		{"an unknown event", []Effect{hook(func(e *Effect) { e.Event, e.TempHP = "on_sneeze", "2" })}, ".event", ReasonValue},
-		{"no result", []Effect{hook(func(e *Effect) {})}, ".type", ReasonValue},
+		{"no result", []Effect{hook(func(*Effect) {})}, ".type", ReasonValue},
 		{"a heal with no dice", []Effect{hook(func(e *Effect) { e.Heal = "5" })}, ".heal", ReasonValue},
 		{"a heal and a share of the maximum", []Effect{hook(func(e *Effect) { e.Heal, e.HealPercentMax = "1d6", 50 })}, ".heal_percent_max", ReasonValue},
 		{"a share above 100", []Effect{hook(func(e *Effect) { e.HealPercentMax = 101 })}, ".heal_percent_max", ReasonValue},
@@ -208,7 +209,7 @@ func TestOnEventShapes(t *testing.T) {
 				}
 				return
 			}
-			violationAt(t, err, "feats[0].effects["+string(rune('0'+len(tc.effects)-1))+"]"+tc.field, tc.why)
+			violationAt(t, err, fmt.Sprintf("feats[0].effects[%d]%s", len(tc.effects)-1, tc.field), tc.why)
 		})
 	}
 	// A class feature may have a hook too, and a feature's hook can restore the resource
@@ -237,6 +238,7 @@ func TestCostedActionsOnTheSheet(t *testing.T) {
 	}})
 
 	t.Run("a fixed cost of 2", func(t *testing.T) {
+		t.Parallel()
 		a := grantedActionOf(t, d, reserveFeat)
 		if a.Cost != 2 || a.CostMax != 0 || a.Resource != "reserva_de_teste" || a.UnitCost() != 2 || a.ChoosesSpend() {
 			t.Fatalf("action = %+v, want a fixed cost of 2 of reserva_de_teste", a)
@@ -261,6 +263,7 @@ func TestCostedActionsOnTheSheet(t *testing.T) {
 	})
 
 	t.Run("1 to 3 points that heal 1d6 each", func(t *testing.T) {
+		t.Parallel()
 		a := grantedActionOf(t, d, breathFeat)
 		if a.Cost != 1 || a.CostMax != 3 || !a.ChoosesSpend() || a.Result.Heal == nil {
 			t.Fatalf("action = %+v, want cost 1 to 3 with a heal", a)
@@ -296,6 +299,7 @@ func TestCostedActionsOnTheSheet(t *testing.T) {
 	})
 
 	t.Run("temporary hit points equal to the level", func(t *testing.T) {
+		t.Parallel()
 		a := grantedActionOf(t, d, vigorFeat)
 		if a.Result.TempHP != 3 || a.Result.Heal != nil || a.Resource != "" || a.UnitCost() != 0 {
 			t.Fatalf("action = %+v, want 3 temporary hit points and no resource", a)
