@@ -31,7 +31,8 @@ All checked in the first pass, before anything compiles; the error names the lim
 | Traits | 60 per race and per subrace (`MaxTraits`) |
 | Options in a feature's option list | 60 (`MaxFeatureOptions`) |
 | Effects | 20 per feature (`MaxFeatureEffects`); 6,000 in the set, the effects the engine writes included (`MaxOverlayEffects`) |
-| Distinct formulas | 500 in the set; a repeated one counts once (`MaxOverlayFormulas`) |
+| Distinct formulas | 500 in the set, and 100 KiB of their text added up; a repeated one counts once (`MaxOverlayFormulas`, `MaxOverlayFormulaBytes`) |
+| One formula | 1,024 bytes and 256 nodes (`formula.MaxSourceBytes`, `formula.MaxNodes`) |
 | Items in a list of an effect | 20 |
 | `choice` count | 1 to 18 (`MaxChoiceCount`) |
 | Name | 80 characters; a name over it is `bad_name` |

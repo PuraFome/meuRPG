@@ -741,7 +741,7 @@ func (*TableEntry_TableFeat) isTableEntry_Body() {}
 // "superiority_die" or "note"; "ability_increase" is a feat's alone. Only the fields of the type are
 // read, and a field the type does not use is refused. A feature with no effects is text only and always valid. Formulas ("value",
 // "when", "max") use level(), classLevel("<class>"), mod("int"), score("int"),
-// prof(), floor, ceil, min and max, and must compile.
+// prof(), floor, ceil, min and max, and must compile; a formula has at most 1024 bytes and 256 nodes.
 type TableEffect struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Type  string                 `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`

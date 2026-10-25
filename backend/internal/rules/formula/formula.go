@@ -42,10 +42,14 @@ import (
 // Limits on a formula.
 const (
 	// MaxSourceBytes bounds the formula's text. SRD formulas are one short
-	// line; the longest we have (Unarmored Movement) is about 150 bytes.
-	MaxSourceBytes = 256
-	// MaxNodes bounds the syntax tree, checked by Expr itself.
-	MaxNodes = 64
+	// line; the longest we have (Unarmored Movement) is about 150 bytes. A table
+	// class whose resource follows an irregular 20-level table is a sum of
+	// steps, ten of them with the longest class key about 970 bytes.
+	MaxSourceBytes = 1024
+	// MaxNodes bounds the syntax tree, checked by Expr itself. The bytes
+	// alone do not bound the work (two bytes can be a node, "1+"), the nodes
+	// do: at 256 the biggest formula compiles in about 0.5 ms and 0.2 MB.
+	MaxNodes = 256
 	// MaxLiteral bounds every number written in a formula, and MaxResult
 	// every number a formula returns. No 5e number comes near either, and
 	// the bounds keep a formula from overflowing into nonsense.

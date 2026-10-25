@@ -19,6 +19,11 @@ const (
 	// texts count (the prepared-spells formula of each class that prepares
 	// included).
 	MaxOverlayFormulas = 500
+	// MaxOverlayFormulaBytes is the most bytes of formula text in one overlay,
+	// the distinct texts added up. A formula may have 1,024 bytes, and 500 of
+	// them cost 310 ms and 106 MB of one With; 100 KiB of text costs about 80 ms
+	// and 27 MB, the cost of 6,000 effects with 480 short formulas twice over.
+	MaxOverlayFormulaBytes = 100 << 10
 	// MaxTraits is the most traits one race has, and the most one subrace has.
 	MaxTraits = 60
 	// MaxFeatureEffects is the most effects one feature has.
@@ -34,19 +39,24 @@ const (
 
 // budget counts what an overlay will cost while it is walked in the first pass.
 type budget struct {
-	effects  int
-	formulas map[string]bool
+	effects      int
+	formulas     map[string]bool
+	formulaBytes int // the distinct formulas' text added up
 }
 
 func (bg *budget) add(path string, n int, formulas ...string) error {
 	bg.effects += n
 	for _, f := range formulas {
-		if f != "" {
+		if f != "" && !bg.formulas[f] {
 			bg.formulas[f] = true
+			bg.formulaBytes += len(f)
 		}
 	}
 	if bg.effects > MaxOverlayEffects {
 		return ovErr("", "more than %d effects in the table (the limit)", MaxOverlayEffects).at(path, ReasonLimit)
+	}
+	if bg.formulaBytes > MaxOverlayFormulaBytes {
+		return ovErr("", "more than %d bytes of distinct formulas in the table (the limit)", MaxOverlayFormulaBytes).at(path, ReasonLimit)
 	}
 	if len(bg.formulas) > MaxOverlayFormulas {
 		return ovErr("", "more than %d distinct formulas in the table (the limit)", MaxOverlayFormulas).at(path, ReasonLimit)

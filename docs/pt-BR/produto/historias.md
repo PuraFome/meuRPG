@@ -660,7 +660,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 **Cadastrar bem.**
 
 - **Dado** que salvo uma entrada que quebra uma regra, **então** o servidor lista todas as violações de uma vez, cada uma no seu campo, e nada é salvo.
-  Uma entrada é limitada a 60 características, e uma campanha a 1.000 entradas e 6.000 efeitos.
+  Uma entrada é limitada a 60 características, e uma campanha a 1.000 entradas e 6.000 efeitos; uma fórmula é limitada a 1.024 bytes.
 - **Dado** um jogador, **então** ele lê toda entrada jogável por inteiro, com "Da mesa", e nunca uma arquivada ou desligada, nem por referência, a não ser que a ficha dele a use.
   Ele nunca lê contagens nem estado, e não pode escrever.
 

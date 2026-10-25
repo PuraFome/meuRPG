@@ -27,7 +27,8 @@ How the deployed numbers add up against the memory limit is in [Operations](arch
 | Table-content pack | 3 MiB of proto JSON | `MaxPackBytes` in `backend/internal/characters/tablecontent_pack.go` |
 | Content catalogs | 8, holding their content weakly | `maxCatalogs` in `backend/internal/characters/contentsource.go` |
 | Generated-image requests kept alive | 5 | `maxPendingRequests` in `backend/internal/maps/imagegen.go` |
-| One table overlay | 6,000 effects, 500 distinct formulas, 60 traits per race, 20 effects per feature | `MaxOverlayEffects`, `MaxOverlayFormulas`, `MaxTraits`, `MaxFeatureEffects` in `backend/internal/rules/overlay_budget.go` |
+| One table overlay | 6,000 effects, 500 distinct formulas and 100 KiB of their text, 60 traits per race, 20 effects per feature | `MaxOverlayEffects`, `MaxOverlayFormulas`, `MaxOverlayFormulaBytes`, `MaxTraits`, `MaxFeatureEffects` in `backend/internal/rules/overlay_budget.go` |
+| One formula | 1,024 bytes and 256 syntax nodes | `MaxSourceBytes`, `MaxNodes` in `backend/internal/rules/formula/formula.go` |
 | Database pool | 10 connections in production | `defaultMaxConns` in `backend/internal/platform/db/db.go` |
 | Dungeon size | 15 to 199 wide, 15 to 399 high | `Options` in `backend/internal/rules/dungeon/options.go` |
 | Web initial bundle | 500 kB (warning from 490 kB) | `web/angular.json`; see [CI](ci.md#the-web-bundle-budget) |
@@ -103,6 +104,20 @@ The largest request the server takes is 4 MiB and a pack of 1,000 entries is 1.1
 With 6,000 effects the same calls take 104, 233, 258 and 312 ms.
 There is no grouping of entries by book, so switching a book off is the master choosing its keys, one call of at most 1,400.
 
+A formula may have 1,024 bytes and 256 nodes, enough for a table class's 20-level table written as a sum of steps.
+The biggest formula of each shape the limits take, compiled once when a content loads and evaluated on a sheet read:
+
+| Shape | Limits of 256 bytes and 64 nodes | Limits of 1,024 bytes and 256 nodes |
+| --- | --- | --- |
+| Steps of a class table, longest class key | 191 bytes: 0.14 ms, 52 KB to compile; 1.0 microseconds to evaluate | 967 bytes: 0.41 ms, 105 KB; 3.0 microseconds |
+| Steps with a one-letter key | 187 bytes: 0.20 ms, 68 KB; 1.9 microseconds | 804 bytes: 0.66 ms, 197 KB; 5.3 microseconds |
+| Sum of ones (the most nodes) | 63 bytes: 0.14 ms, 58 KB; 0.2 microseconds | 255 bytes: 0.40 ms, 130 KB; 0.2 microseconds |
+| Calls inside calls (the deepest tree) | 175 bytes: 0.21 ms, 80 KB; 3.2 microseconds | 687 bytes: 0.64 ms, 207 KB; 12.9 microseconds |
+| Chain of conditions | 253 bytes: 0.21 ms, 70 KB; 0.6 microseconds | 995 bytes: 0.65 ms, 167 KB; 0.9 microseconds |
+
+The nodes, not the bytes, bound the work (two bytes can be a node), so the limit of nodes rises with the bytes.
+A formula compiles once per distinct text, so the text of a table has a budget too: 6,000 effects with formulas of about 950 bytes cost 78 ms and 27 MB of a `With` for 100 distinct formulas, and 310 ms and 106 MB for 500, so the distinct texts add up to at most 100 KiB.
+
 ## Time budgets the tests check
 
 Some tests assert a time budget, but only with `MEURPG_MEASURE=1`, without `-race` and on a quiet machine: on a busy machine or in CI a clock test fails for nothing.
@@ -120,6 +135,7 @@ Run them from `backend/`, without `-race` (the detector multiplies time and memo
 | The rules engine, one `Derive` (runs on every sheet read) | `go test ./internal/rules -run '^$' -bench Derive -benchmem` |
 | Loading the SRD | `go test ./internal/rules -run '^$' -bench LoadSRD -benchmem` |
 | A table overlay | `go test ./internal/rules -run '^$' -bench BenchmarkWith -benchmem` (`BenchmarkWithEntries` at 300 to 1,000 entries, `BenchmarkWithEffects` at 1,000 entries and 2,000 to 6,000 effects); memory: `MEURPG_MEASURE=1 go test ./internal/rules -run 'TestWithMemory' -v` (`TestWithMemoryByEntries`, `TestWithMemoryByEffects`); the live source, a sheet read, the spell list and the switches with the database: `MEURPG_MEASURE=1 go test ./internal/characters -run TestTableContentScale -v`; at the budgets: `MEURPG_MEASURE=1 go test ./internal/rules -run TestWithAtTheBudgets -v` |
+| The biggest formulas the limits take, compile and evaluation | `go test ./internal/rules/formula -run '^$' -bench Worst -benchmem`; inside a `With`: `go test ./internal/rules -run '^$' -bench BigFormulas -benchmem` |
 | Fog vision (cave, medium and largest maps, dark and lit) | `go test ./internal/rules/vision -run '^$' -bench . -benchmem` |
 | A player's filtered map read, without the database | `go test -run '^$' -bench FilteredMap -benchmem ./internal/maps` |
 | The whole `GetMap` with fog, with the database | `go test -run TestFogGetMapTiming -v ./internal/maps` |

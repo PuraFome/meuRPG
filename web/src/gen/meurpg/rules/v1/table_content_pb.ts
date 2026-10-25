@@ -185,7 +185,7 @@ export const TableEntrySchema: GenMessage<TableEntry> = /*@__PURE__*/
  * "superiority_die" or "note"; "ability_increase" is a feat's alone. Only the fields of the type are
  * read, and a field the type does not use is refused. A feature with no effects is text only and always valid. Formulas ("value",
  * "when", "max") use level(), classLevel("<class>"), mod("int"), score("int"),
- * prof(), floor, ceil, min and max, and must compile.
+ * prof(), floor, ceil, min and max, and must compile; a formula has at most 1024 bytes and 256 nodes.
  *
  * @generated from message meurpg.rules.v1.TableEffect
  */

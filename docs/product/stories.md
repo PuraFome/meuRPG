@@ -660,7 +660,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 **Registering well.**
 
 - **Given** I save an entry that breaks a rule, **then** the server lists every violation at once, each at its field, and nothing is saved.
-  An entry is limited to 60 features, and a campaign to 1,000 entries and 6,000 effects.
+  An entry is limited to 60 features, and a campaign to 1,000 entries and 6,000 effects; a formula is limited to 1,024 bytes.
 - **Given** a player, **then** they read every playable entry in full, with "Da mesa", and never an archived or switched-off one, not even by reference, unless their own sheet uses it.
   They never read counts or state, and cannot write.
 
