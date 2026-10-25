@@ -182,10 +182,12 @@ export const TableEntrySchema: GenMessage<TableEntry> = /*@__PURE__*/
  * TableEffect is one effect of a feature, from the closed menu: what the engine
  * computes with, never code. `type` is "modifier", "proficiency", "resource",
  * "sense", "roll_mode", "grant_action", "extra_attack", "ranged_attack", "choice", "ability_increase",
- * "superiority_die" or "note"; "ability_increase" is a feat's alone. Only the fields of the type are
+ * "superiority_die", "resistance", "breathes_water", "granted_spell" or "note"; "ability_increase" is a feat's alone.
+ * "breathes_water" has no field of its own (`when` and `text_pt` only): the character breathes underwater. Only the fields of the type are
  * read, and a field the type does not use is refused. A feature with no effects is text only and always valid. Formulas ("value",
  * "when", "max") use level(), classLevel("<class>"), mod("int"), score("int"),
- * prof(), floor, ceil, min and max, and must compile.
+ * prof(), floor, ceil, min and max, and must compile; the modifiers of the "speed.fly", "speed.swim", "speed.climb" and
+ * "speed.burrow" targets may also call speedwalk(), the walking speed after the modifiers.
  *
  * @generated from message meurpg.rules.v1.TableEffect
  */
@@ -196,8 +198,8 @@ export type TableEffect = Message<"meurpg.rules.v1.TableEffect"> & {
   type: string;
 
   /**
-   * modifier: what changes ("ac.base", "ac", "hp.max", "speed.walk",
-   * "initiative", "attack.weapon.melee", "attack.weapon.ranged",
+   * modifier: what changes ("ac.base", "ac", "hp.max", "speed.walk", "speed.fly", "speed.swim",
+   * "speed.climb", "speed.burrow", "initiative", "attack.weapon.melee", "attack.weapon.ranged",
    * "damage.weapon.melee", "damage.weapon.ranged", "skill.<skill>",
    * "save.<ability>"), how ("add", "max" or "set") and the formula.
    *
