@@ -70,7 +70,7 @@ func (s *Service) parseImageAudience(ctx context.Context, campaignID string, a *
 		if len(a.GetUserIds()) == 0 {
 			return audienceAsk{}, bad("pick at least one player")
 		}
-		users, err := s.playersOf(ctx, campaignID, a.GetUserIds())
+		users, err := playersOf(ctx, campaignID, a.GetUserIds())
 		return audienceAsk{kind: audienceChosen, users: users}, err
 	}
 	return audienceAsk{}, bad("unknown audience")
@@ -349,6 +349,26 @@ func (s *Service) ImageShownTo(ctx context.Context, campaignID, userID, imageID 
 		return false, fmt.Errorf("read who sees the shown image: %w", err)
 	}
 	return seen, nil
+}
+
+// ShownImageViewers says who sees the image the open session shows: the players of its audience, nobody
+// when no session is open or it shows no image. It implements maps.LiveSession: deleting the image tells them.
+func (s *Service) ShownImageViewers(ctx context.Context, campaignID string) (link.ImageAudience, error) {
+	session, err := s.queries.GetOpenGameSession(ctx, campaignID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return link.ImageAudience{}, nil
+	}
+	if err != nil {
+		return link.ImageAudience{}, fmt.Errorf("find the open session: %w", err)
+	}
+	if session.ShownImageID == nil {
+		return link.ImageAudience{}, nil
+	}
+	v, err := shownViewersOf(ctx, s.queries, session)
+	if err != nil {
+		return link.ImageAudience{}, err
+	}
+	return leftAudience(v), nil
 }
 
 // shownImageFor reads the image the session shows as the member sees it: the master with its audience, a

@@ -55,9 +55,10 @@ const (
 // Scenes is what the notes need from the maps module (maps.SessionMaps
 // implements it).
 type Scenes interface {
-	// DiscoveredScenes returns the scenes the campaign's group discovered
-	// (MR-030), with their current names, oldest discovery first.
-	DiscoveredScenes(ctx context.Context, campaignID string) ([]link.Scene, error)
+	// DiscoveredScenes returns the scenes the player may tag notes with
+	// (MR-030): the ones the campaign's group discovered and the ones only
+	// this player discovered, with their current names, oldest discovery first.
+	DiscoveredScenes(ctx context.Context, campaignID, userID string) ([]link.Scene, error)
 	// ReceivedClues returns the clues revealed to the player in the campaign
 	// (MR-029), newest first, with the text they were given.
 	ReceivedClues(ctx context.Context, campaignID, userID string) ([]link.Clue, error)

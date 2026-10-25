@@ -469,7 +469,7 @@ SELECT EXISTS (
 -- Leaves the campaign's gallery image with the players (MR-028). Selecting
 -- from gallery_images makes an image deleted meanwhile, or another
 -- campaign's, insert nothing. An image left already keeps its left_at and takes
--- the audience of this leaving, the master's latest.
+-- the audience given, which the caller made the widest of the two leavings.
 INSERT INTO campaign_left_images (campaign_id, image_id, left_at, audience_everyone)
 SELECT g.campaign_id, g.id, sqlc.arg(now)::TIMESTAMPTZ, sqlc.arg(audience_everyone)::BOOL FROM gallery_images g
 WHERE g.campaign_id = sqlc.arg(campaign_id) AND g.id = sqlc.arg(image_id)
@@ -700,16 +700,29 @@ INSERT INTO scene_discoveries (campaign_id, point_id, discovered_at)
 VALUES ($1, $2, $3)
 ON CONFLICT (campaign_id, point_id) DO NOTHING;
 
+-- name: UpsertScenePlayerDiscovery :exec
+-- A scene open to only some players was discovered by this player alone (MR-030, RN-10): the first time wins.
+INSERT INTO scene_player_discoveries (campaign_id, point_id, user_id, discovered_at)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (campaign_id, point_id, user_id) DO NOTHING;
+
 -- name: ListDiscoveredScenes :many
--- The scenes the group discovered, with their current names, oldest discovery
--- first. A point that stopped being a scene is not listed, nor is one of a map the
--- players cannot open (not revealed, and not the session's current map).
-SELECT p.id, p.name FROM scene_discoveries AS d
+-- The scenes the user may tag notes with, with their current names, oldest discovery first: the ones the
+-- group discovered and the ones only this player discovered (a scene open to some players). A point that
+-- stopped being a scene is not listed, nor is one of a map the players cannot open (not revealed, and not
+-- the session's current map).
+SELECT p.id, p.name FROM (
+    SELECT g.point_id, g.discovered_at FROM scene_discoveries AS g WHERE g.campaign_id = sqlc.arg(campaign_id)::UUID
+    UNION ALL
+    SELECT o.point_id, o.discovered_at FROM scene_player_discoveries AS o
+    WHERE o.campaign_id = sqlc.arg(campaign_id)::UUID AND o.user_id = sqlc.arg(user_id)::UUID
+) AS d
 JOIN map_points AS p ON p.id = d.point_id
 JOIN maps AS m ON m.id = p.map_id
-WHERE d.campaign_id = sqlc.arg(campaign_id) AND p.kind = 'scene'
+WHERE p.kind = 'scene'
   AND (m.revealed_at IS NOT NULL OR m.id = sqlc.narg(current_map_id)::UUID)
-ORDER BY d.discovered_at, p.id;
+GROUP BY p.id, p.name
+ORDER BY min(d.discovered_at), p.id;
 
 -- name: ListReceivedClues :many
 -- The clues revealed to a player in a campaign, newest first.
