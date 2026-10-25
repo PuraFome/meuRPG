@@ -84,19 +84,12 @@ export class SceneActions {
     const scene = this.scene();
     const fresh = this.fresh();
     const chipsOf = (id: string) =>
-      scene.rolls
-        .filter((r) => r.actionId === id)
-        .slice()
-        .reverse()
-        .map((roll) => this.chip(roll, fresh));
+      scene.rolls.filter((r) => r.actionId === id).map((roll) => this.chip(roll, fresh));
     const rows = scene.actions.map((a) => this.row(a, chipsOf(a.id)));
     const known = new Set(scene.actions.map((a) => a.id));
     const lost = scene.rolls.filter((r) => !known.has(r.actionId));
     if (lost.length > 0) {
-      const chips = lost
-        .slice()
-        .reverse()
-        .map((roll) => this.chip(roll, fresh));
+      const chips = lost.map((roll) => this.chip(roll, fresh));
       rows.push({
         id: 'lost',
         title: 'Ação que saiu da cena',

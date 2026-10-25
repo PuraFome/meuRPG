@@ -21,6 +21,8 @@ test(
       // The suite runs with reduced motion, which keeps the dice overlay from playing (playwright.config.ts). This test is
       // about what the master sees on it, so his page asks for motion, and the overlay is closed again below.
       await m.emulateMedia({ reducedMotion: 'no-preference' });
+      // The overlay is a deferred part of the shell: it must be mounted before the roll arrives, or the dice have nowhere to tumble.
+      await expect(m.locator('app-roll-overlay')).toBeAttached({ timeout: 20_000 });
       const sheet = await openDice(p);
       await sheet.getByRole('button', { name: '2d6', exact: true }).click();
       await stepModifier(sheet, 0, 3);
