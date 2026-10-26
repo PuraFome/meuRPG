@@ -42,7 +42,7 @@ export function raceBody(namePt = 'Corujeiro'): Record<string, unknown> {
   };
 }
 
-export async function createEntryRPC(master: Page, campaignId: string, kind: 'tableSpell' | 'tableRace' | 'tableBackground', body: Record<string, unknown>): Promise<string> {
+export async function createEntryRPC(master: Page, campaignId: string, kind: 'tableSpell' | 'tableRace' | 'tableBackground' | 'tableFeat', body: Record<string, unknown>): Promise<string> {
   const res = await callRPC(master, `${service}/CreateTableEntry`, { campaignId, [kind]: body });
   expect(res.ok(), await res.text()).toBeTruthy();
   return (await res.json()).entry.key as string;
