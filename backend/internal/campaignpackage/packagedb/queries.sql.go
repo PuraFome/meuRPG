@@ -13,7 +13,7 @@ import (
 const cancelCampaignExport = `-- name: CancelCampaignExport :one
 UPDATE campaign_exports
 SET state = 'canceled', updated_at = $2, finished_at = $2, expires_at = $3
-WHERE id = $1 AND state = 'running'
+WHERE id = $1 AND state IN ('pending', 'running')
 RETURNING id, campaign_id, requested_by, state, percent, failure, file_name, blob_key, byte_size, entry_count, create_key, create_hash, created_at, updated_at, finished_at, expires_at
 `
 
@@ -25,6 +25,42 @@ type CancelCampaignExportParams struct {
 
 func (q *Queries) CancelCampaignExport(ctx context.Context, arg CancelCampaignExportParams) (CampaignExport, error) {
 	row := q.db.QueryRow(ctx, cancelCampaignExport, arg.ID, arg.UpdatedAt, arg.ExpiresAt)
+	var i CampaignExport
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.RequestedBy,
+		&i.State,
+		&i.Percent,
+		&i.Failure,
+		&i.FileName,
+		&i.BlobKey,
+		&i.ByteSize,
+		&i.EntryCount,
+		&i.CreateKey,
+		&i.CreateHash,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.FinishedAt,
+		&i.ExpiresAt,
+	)
+	return i, err
+}
+
+const claimCampaignExport = `-- name: ClaimCampaignExport :one
+UPDATE campaign_exports SET state = 'running', updated_at = $2
+WHERE id = $1 AND state = 'pending'
+RETURNING id, campaign_id, requested_by, state, percent, failure, file_name, blob_key, byte_size, entry_count, create_key, create_hash, created_at, updated_at, finished_at, expires_at
+`
+
+type ClaimCampaignExportParams struct {
+	ID        string
+	UpdatedAt time.Time
+}
+
+// The task takes the export: only a pending one, so a duplicate delivery gets no row.
+func (q *Queries) ClaimCampaignExport(ctx context.Context, arg ClaimCampaignExportParams) (CampaignExport, error) {
+	row := q.db.QueryRow(ctx, claimCampaignExport, arg.ID, arg.UpdatedAt)
 	var i CampaignExport
 	err := row.Scan(
 		&i.ID,
@@ -87,7 +123,7 @@ func (q *Queries) DeleteCampaignImport(ctx context.Context, id string) error {
 const failCampaignExport = `-- name: FailCampaignExport :one
 UPDATE campaign_exports
 SET state = 'failed', failure = $2, updated_at = $3, finished_at = $3, expires_at = $4
-WHERE id = $1 AND state = 'running'
+WHERE id = $1 AND state IN ('pending', 'running')
 RETURNING id, campaign_id, requested_by, state, percent, failure, file_name, blob_key, byte_size, entry_count, create_key, create_hash, created_at, updated_at, finished_at, expires_at
 `
 
@@ -130,7 +166,7 @@ func (q *Queries) FailCampaignExport(ctx context.Context, arg FailCampaignExport
 const failStaleCampaignExports = `-- name: FailStaleCampaignExports :execrows
 UPDATE campaign_exports
 SET state = 'failed', failure = 'interrupted', updated_at = $1, finished_at = $1, expires_at = $2
-WHERE state = 'running' AND updated_at < $3
+WHERE state IN ('pending', 'running') AND updated_at < $3
 `
 
 type FailStaleCampaignExportsParams struct {
@@ -366,7 +402,7 @@ func (q *Queries) GetLatestCampaignExport(ctx context.Context, arg GetLatestCamp
 
 const getRunningCampaignExport = `-- name: GetRunningCampaignExport :one
 SELECT id, campaign_id, requested_by, state, percent, failure, file_name, blob_key, byte_size, entry_count, create_key, create_hash, created_at, updated_at, finished_at, expires_at FROM campaign_exports
-WHERE campaign_id = $1 AND state = 'running'
+WHERE campaign_id = $1 AND state IN ('pending', 'running')
 ORDER BY created_at DESC, id
 LIMIT 1
 `
@@ -398,7 +434,7 @@ func (q *Queries) GetRunningCampaignExport(ctx context.Context, campaignID strin
 const insertCampaignExport = `-- name: InsertCampaignExport :one
 
 INSERT INTO campaign_exports (id, campaign_id, requested_by, state, create_key, create_hash, created_at, updated_at, expires_at)
-VALUES ($1, $2, $3, 'running', $4, $5, $6, $6, $7)
+VALUES ($1, $2, $3, 'pending', $4, $5, $6, $6, $7)
 ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
 RETURNING id, campaign_id, requested_by, state, percent, failure, file_name, blob_key, byte_size, entry_count, create_key, create_hash, created_at, updated_at, finished_at, expires_at
 `
@@ -416,7 +452,7 @@ type InsertCampaignExportParams struct {
 // The campaign package's own tables: the exports and the uploads in progress
 // (MR-050). What a package carries belongs to the other modules' tables, which
 // their own queries read and write.
-// A new export, running. create_key and create_hash are the idempotency key of
+// A new export, pending: its task claims it (ClaimCampaignExport). create_key and create_hash are the idempotency key of
 // StartCampaignExport; a retry with the same key reads the first export
 // (GetCampaignExportByCreateKey).
 func (q *Queries) InsertCampaignExport(ctx context.Context, arg InsertCampaignExportParams) (CampaignExport, error) {
