@@ -214,7 +214,7 @@ func TestTableClassEditorStartsFromTheServer(t *testing.T) {
 	if senses == nil || len(senses.GetValues()) != 4 || senses.GetValues()[0].GetKey() != "darkvision" || senses.GetValues()[0].GetNamePt() != "Visão no escuro" {
 		t.Errorf("senses = %v", senses)
 	}
-	if len(menu.GetHelpers()) != 11 || len(fightingStyles(t, menu)) < 4 {
+	if len(menu.GetHelpers()) != 12 || len(fightingStyles(t, menu)) < 4 {
 		t.Errorf("helpers = %d, fighting styles = %d", len(menu.GetHelpers()), len(fightingStyles(t, menu)))
 	}
 	if !slices.Contains(menu.GetClassIndexes(), "wizard") || slices.ContainsFunc(menu.GetClassIndexes(), func(s string) bool { return strings.HasSuffix(s, "@mesa") }) {

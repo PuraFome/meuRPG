@@ -67,7 +67,8 @@ func TestMR025_ATableOptionIsOfferedOnlyToWhoQualifiesAndAppliesWhenPicked(t *te
 	if key != "option:invocation:olhar-do-corvo@mesa" {
 		t.Fatalf("key = %q, want one that names the set", key)
 	}
-	invoke := []string{"feature:eldritch-invocation-armor-of-shadows", "feature:eldritch-invocation-devils-sight"}
+	// Two SRD invocations that give no darkvision, so the option's 60 ft is the sheet's (Devil's Sight would cover it).
+	invoke := []string{"feature:eldritch-invocation-armor-of-shadows", "feature:eldritch-invocation-beast-speech"}
 
 	// The choice lists it for a warlock of level 5 with the Tome, unblocked; for a lower level or another
 	// pact it stays in the list, blocked, with what it lacks.
@@ -103,7 +104,7 @@ func TestMR025_ATableOptionIsOfferedOnlyToWhoQualifiesAndAppliesWhenPicked(t *te
 		t.Fatalf("a warlock 5 with the Tome and the option: %v", err)
 	}
 	d := tb.ana.get(t, tb.campaign, c.GetId()).GetDerived()
-	if i := slices.IndexFunc(d.GetSenses(), func(s *rulesv1.Sense) bool { return s.GetKey() == "darkvision" && s.GetRangeFt() == 60 }); i < 0 {
+	if i := slices.IndexFunc(d.GetSenses(), func(s *rulesv1.Sense) bool { return s.GetSense() == "darkvision" && s.GetRangeFt() == 60 }); i < 0 {
 		t.Errorf("senses = %v, want the 60 ft darkvision of the option", d.GetSenses())
 	}
 	if i := slices.IndexFunc(d.GetFeatures(), func(f *rulesv1.Feature) bool { return f.GetKey() == key }); i < 0 {

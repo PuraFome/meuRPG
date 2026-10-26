@@ -85,8 +85,8 @@ test(
       // The server walks it and says where it stopped: before the marked square, 6 squares (9 m) on.
       await go.click();
       await expect(mp.locator('.mr-notice').getByText('O movimento parou antes.', { exact: true })).toBeVisible();
-      await expect(mp.locator('.mr-notice').getByText(/O próximo quadrado está marcado como “Não dá para passar”\. Pensantus andou 9 m\./)).toBeVisible();
-      await expect(mp.getByText(/Pedido: 10 quadrados \(15 m\) · andou 6 \(9 m\)/)).toBeVisible();
+      await expect(mp.locator('.mr-notice').getByText(/O próximo quadrado está marcado como “Não dá para passar”\. Pensantus andou 9\s+m\./)).toBeVisible();
+      await expect(mp.getByText(/Pedido: 10\s+quadrados \(15\s+m\) · andou 6 \(9\s+m\)/)).toBeVisible();
       await expect(mp.getByText('9 m · parou antes')).toBeVisible();
       expect(await squareOf(mp, table, table.pensantusId)).toEqual({ col: 8, row: 7 });
     });
@@ -194,7 +194,7 @@ test(
       await expect(ap.getByText('Pensantus vai 10 quadrados para a direita')).toBeVisible();
       await ap.getByRole('button', { name: 'Mover Pensantus', exact: true }).click();
       await expect(ap.locator('.mr-notice').getByText('O movimento parou antes.', { exact: true })).toBeVisible();
-      await expect(ap.locator('.mr-notice').getByText(/O próximo quadrado está marcado como “Não dá para passar”\. Pensantus andou 6 \(9 m\)\./)).toBeVisible();
+      await expect(ap.locator('.mr-notice').getByText(/O próximo quadrado está marcado como “Não dá para passar”\. Pensantus andou 6 \(9\s+m\)\./)).toBeVisible();
       expect(await squareOf(mp, table, table.pensantusId)).toEqual({ col: 8, row: 7 });
 
       // The master takes the switch back: the notice, and the panel goes away without moving anybody.

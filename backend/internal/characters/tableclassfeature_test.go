@@ -63,7 +63,7 @@ func TestMR025_ATableClassFeatureReplacesAFeatureOfTheClass(t *testing.T) {
 	// The sheet shows the feature and its effect.
 	sheet := choiceSheet("race:human", "", "class:ranger", "", 1, "feature:natural-explorer-1-terrain-type=terrain:forest")
 	sheet.GetFull().SkillProficiencyKeys = []string{"skill:stealth", "skill:perception", "skill:athletics"}
-	c := tb.master.create(t, tb.campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Rastreadora", sheet)
+	c := tb.caio.create(t, tb.campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Rastreadora", sheet)
 	d := tb.master.get(t, tb.campaign, c.GetId()).GetDerived()
 	found := false
 	for _, f := range d.GetFeatures() {
@@ -91,7 +91,9 @@ func TestMR025_ATableClassFeatureHasItsOwnSwitchAndCount(t *testing.T) {
 	if _, err := tb.create(tb.ana, choiceSheet("race:human", "", "class:fighter", "", 1, "feature:fighter-fighting-style-defense")); err != nil {
 		t.Fatalf("create() error = %v", err)
 	}
-	tb.master.create(t, tb.campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Rastreadora", choiceSheet("race:human", "", "class:ranger", "", 1))
+	ranger := choiceSheet("race:human", "", "class:ranger", "", 1, "feature:natural-explorer-1-terrain-type=terrain:forest")
+	ranger.GetFull().SkillProficiencyKeys = []string{"skill:stealth", "skill:perception", "skill:athletics"}
+	tb.caio.create(t, tb.campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Rastreadora", ranger)
 	list, err := tb.master.table.ListOptionSwitches(t.Context(), connect.NewRequest(&rulesv1.ListOptionSwitchesRequest{CampaignId: tb.campaign}))
 	if err != nil {
 		t.Fatalf("ListOptionSwitches() error = %v", err)
