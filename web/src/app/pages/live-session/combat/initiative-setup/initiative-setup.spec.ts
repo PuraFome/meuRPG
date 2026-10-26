@@ -187,4 +187,21 @@ describe('InitiativeSetup', () => {
       Array.from(el.querySelectorAll('[data-testid="natural-mark"]'), (m) => m.textContent?.trim()),
     ).toEqual(['20 natural', '1 natural']);
   });
+
+  it('offers "Rolar por Toren" beside the player who has not rolled, when the app may roll, and asks the page to roll', () => {
+    const { fixture, el } = setup();
+    const rolls: string[] = [];
+    fixture.componentInstance.rollFor.subscribe((id) => rolls.push(id));
+    const find = () =>
+      [...el.querySelectorAll('button')].find((b) => b.textContent?.includes('Rolar por Toren'));
+    expect(find()).toBeUndefined();
+    fixture.componentRef.setInput('canRoll', true);
+    fixture.detectChanges();
+    expect(
+      [...el.querySelectorAll('button')].some((b) => b.textContent?.includes('Rolar por Brisa')),
+    ).toBe(false);
+    find()!.click();
+    expect(rolls).toEqual(['toren']);
+    expect(el.textContent).toContain('Digitar pelo jogador');
+  });
 });

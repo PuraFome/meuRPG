@@ -1,9 +1,26 @@
 @if (scene(); as s) {
+  @if (s.joinable) {
+    <!-- A scene open to only some players that lets others in (C7-06): the name and "Entrar na cena", nothing of the scene before. -->
+    <section class="sc sc--join" aria-labelledby="sc-join-title">
+      <p class="sc__eyebrow"><mat-icon aria-hidden="true">chat_bubble_outline</mat-icon>Há uma cena aberta</p>
+      <h2 class="sc__title" id="sc-join-title">{{ sceneName() }}</h2>
+      <p class="sc__text">Você ainda não está nela. Entre para ver e participar.</p>
+      @if (joinError(); as problem) {
+        <div class="mr-notice mr-notice--danger sc__error" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          <p>{{ problem }}</p>
+        </div>
+      }
+      <button matButton="filled" type="button" class="sc__join" [disabled]="joining()" disabledInteractive (click)="join()">
+        <mat-icon aria-hidden="true">login</mat-icon>Entrar na cena
+      </button>
+    </section>
+  } @else {
   <section class="sc" aria-labelledby="sc-title">
-    @if (!tabs()) {
-      <p class="sc__eyebrow"><mat-icon aria-hidden="true">chat_bubble_outline</mat-icon>O mestre abriu uma cena</p>
+    @if (!tabs() || state().enteredHere()) {
+      <p class="sc__eyebrow"><mat-icon aria-hidden="true">chat_bubble_outline</mat-icon>{{ state().enteredHere() ? 'Você entrou na cena' : 'O mestre abriu uma cena' }}</p>
     }
-    <h2 class="sc__title" id="sc-title">Cena: {{ sceneName() }}</h2>
+    <h2 class="sc__title" id="sc-title" tabindex="-1">Cena: {{ sceneName() }}</h2>
     @if (tabs()) {
       <!-- On a phone (C7-07): the scene in tabs, "Ações · Mapa · Imagens"; every panel stays mounted, hidden when it is not the open one. -->
       <app-tab-list class="sc__tabs" label="Seções da cena" idPrefix="scene" [compact]="true" [tabs]="tabItems()" [(selected)]="tab" />
@@ -20,6 +37,7 @@
       <ng-container [ngTemplateOutlet]="actions" />
     }
   </section>
+  }
 
   <ng-template #actions>
     <app-stage-player class="sc__stage" [state]="state()" />

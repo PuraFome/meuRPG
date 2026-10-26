@@ -3,6 +3,8 @@ import type { EffectMenuField } from '../../../gen/meurpg/rules/v1/table_content
 /** What `visibleFields` reads of a draft. */
 interface Shape {
   readonly type: string;
+  readonly level: string;
+  readonly proficiency: string;
   readonly applies: string;
   readonly spellChange: string;
 }
@@ -24,6 +26,15 @@ const ROLL_DIE_HIDES: Readonly<Record<string, readonly string[]>> = {
   initiative: ['ability', 'targets', 'economy'],
 };
 
+/** Whether "Só onde já tem proficiência" means something for the effect: it doubles a skill, so it goes with the level
+ * "Especialização" on a skill ("skill:*" is every skill). The editor shows it only then, and the request sends it only then. */
+export function onlyProficientApplies(d: {
+  readonly level: string;
+  readonly proficiency: string;
+}): boolean {
+  return d.level === 'expertise' && d.proficiency.startsWith('skill:');
+}
+
 /** The fields of the draft's type that apply to it now: a spell_modifier shows only what its chosen change reads (none of the
  * change's own fields until one is chosen), a superiority_die on a roll only what that roll reads; every other type shows all
  * of its menu fields. */
@@ -36,7 +47,7 @@ export function visibleFields(
     return fields.filter((f) => !hidden.includes(f.name));
   }
   if (d.type !== 'spell_modifier') {
-    return fields;
+    return fields.filter((f) => f.name !== 'only_proficient' || onlyProficientApplies(d));
   }
   const own = SPELL_CHANGE_FIELDS[d.spellChange] ?? [];
   return fields.filter((f) => !SPELL_CHANGE_ONLY.has(f.name) || own.includes(f.name));

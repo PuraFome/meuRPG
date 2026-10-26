@@ -75,6 +75,11 @@
           @if (nextLine()) {
             <span class="bar__next">{{ nextLine() }}</span>
           }
+          @if (actingFor()) {
+            <span class="mr-tag bar__acting" data-testid="acting-chip">
+              <mat-icon aria-hidden="true">person</mat-icon>Você age por {{ actingFor() }}
+            </span>
+          }
           @if (pendingNote(); as note) {
             <span class="mr-tag mr-tag--pending bar__pending">
               <mat-icon aria-hidden="true">warning</mat-icon>{{ note }}
@@ -94,7 +99,7 @@
     <div class="bar__actions">
       <!-- A joint turn has no "end the group's turn": it passes when the last part ends. -->
       @if (!banner().joint) {
-        <app-next-turn class="next" [turn]="turnKey()" [pendingNote]="pendingNote()" [busy]="busy()" [waiting]="!!waitNote()" [why]="waitWhy()" (next)="next.emit($event)" />
+        <app-next-turn class="next" [turn]="turnKey()" [pendingNote]="pendingNote()" [busy]="busy()" [waiting]="!!waitNote()" [why]="waitWhy()" [label]="nextLabel()" (next)="next.emit($event)" />
       }
       <button mat-stroked-button type="button" class="end" (click)="ask()">
         <mat-icon aria-hidden="true">flag</mat-icon>Encerrar combate

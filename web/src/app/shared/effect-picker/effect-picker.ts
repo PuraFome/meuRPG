@@ -68,6 +68,7 @@ export class EffectPicker {
         this.expanded() ||
         f.required ||
         f.alwaysShown ||
+        f.name === 'only_proficient' ||
         this.filled(f) ||
         this.issues(f.name).length > 0,
     ),

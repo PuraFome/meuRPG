@@ -73,7 +73,7 @@ let nextId = 0;
 
     .end {
       --mat-button-outlined-container-height: 48px;
-      --mat-button-outlined-label-text-color: var(--mr-accent-text);
+      --mat-button-outlined-label-text-color: var(--mr-ink);
     }
 
     // Waiting for an answer: the dashed, off button of the app, never a click that fails.

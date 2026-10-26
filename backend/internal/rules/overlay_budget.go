@@ -7,22 +7,30 @@ import (
 
 // Budgets of one overlay, checked in the first pass, before anything compiles.
 // The per-entry limits alone let an overlay cost seconds and hundreds of
-// megabytes (300 classes of 60 features of 20 effects, each with its own formula
+// megabytes (1000 classes of 60 features of 20 effects, each with its own formula
 // to compile and keep), so the whole overlay has a budget too.
 const (
 	// MaxOverlayEffects is the most effects (the features', the race's
 	// darkvision, and the Spellcasting effect of each casting class and subclass)
 	// in one overlay.
-	MaxOverlayEffects = 2000
+	MaxOverlayEffects = 6000
 	// MaxOverlayFormulas is the most distinct formula texts in one overlay. A
 	// formula repeated in many effects is compiled once, so only the distinct
 	// texts count (the prepared-spells formula of each class that prepares
 	// included).
 	MaxOverlayFormulas = 500
+	// MaxOverlayFormulaBytes is the most bytes of formula text in one overlay,
+	// the distinct texts added up. A formula may have 1,024 bytes, and 500 of
+	// them cost 310 ms and 106 MB of one With; 100 KiB of text costs about 80 ms
+	// and 27 MB, the cost of 6,000 effects with 480 short formulas twice over.
+	MaxOverlayFormulaBytes = 100 << 10
 	// MaxTraits is the most traits one race has, and the most one subrace has.
 	MaxTraits = 60
 	// MaxFeatureEffects is the most effects one feature has.
 	MaxFeatureEffects = 20
+	// MaxClassSRDSpells is the most SRD spells one class's own list names (the
+	// SRD has fewer spells than this, so a list can hold all of them).
+	MaxClassSRDSpells = 400
 	// maxEffectList bounds the lists inside an effect (tags, targets, options,
 	// granted spells).
 	maxEffectList = 20
@@ -34,19 +42,24 @@ const (
 
 // budget counts what an overlay will cost while it is walked in the first pass.
 type budget struct {
-	effects  int
-	formulas map[string]bool
+	effects      int
+	formulas     map[string]bool
+	formulaBytes int // the distinct formulas' text added up
 }
 
 func (bg *budget) add(path string, n int, formulas ...string) error {
 	bg.effects += n
 	for _, f := range formulas {
-		if f != "" {
+		if f != "" && !bg.formulas[f] {
 			bg.formulas[f] = true
+			bg.formulaBytes += len(f)
 		}
 	}
 	if bg.effects > MaxOverlayEffects {
 		return ovErr("", "more than %d effects in the table (the limit)", MaxOverlayEffects).at(path, ReasonLimit)
+	}
+	if bg.formulaBytes > MaxOverlayFormulaBytes {
+		return ovErr("", "more than %d bytes of distinct formulas in the table (the limit)", MaxOverlayFormulaBytes).at(path, ReasonLimit)
 	}
 	if len(bg.formulas) > MaxOverlayFormulas {
 		return ovErr("", "more than %d distinct formulas in the table (the limit)", MaxOverlayFormulas).at(path, ReasonLimit)
@@ -90,6 +103,9 @@ func (bg *budget) feature(path string, f *TableFeature) error {
 // casting counts the Spellcasting effect the engine writes for a casting class
 // or subclass, and its prepared formula.
 func (bg *budget) casting(path string, key string, c *TableCasting) error {
+	if c != nil && len(c.SRDSpells) > MaxClassSRDSpells {
+		return ovErr(key, "%d SRD spells on the list; the limit is %d per class", len(c.SRDSpells), MaxClassSRDSpells).at(path+".casting.srd_spell_keys", ReasonLimit)
+	}
 	if c == nil || c.Kind == CastingNone {
 		return nil
 	}

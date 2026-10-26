@@ -7,7 +7,7 @@ import type {
   TableEffect,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { feetToMeters, metersToFeet } from '../units';
-import { visibleFields } from './effect-visible';
+import { onlyProficientApplies, visibleFields } from './effect-visible';
 
 /**
  * A feature's effect as the editor holds it (MR-025, ADR-0018, section 4), and the menu it is chosen from. The menu is the
@@ -64,6 +64,8 @@ export interface EffectDraft {
   /** spell_modifier: the spells it fits and its change. */
   appliesTo: string;
   spellChange: string;
+  /** proficiency, level "expertise" on a skill: doubles it only where the character is already proficient. */
+  onlyProficient: boolean;
 }
 
 let nextId = 0;
@@ -112,6 +114,7 @@ export function emptyEffect(type = ''): EffectDraft {
     noCritDoubling: false,
     appliesTo: '',
     spellChange: '',
+    onlyProficient: false,
   };
 }
 
@@ -155,6 +158,7 @@ export function effectToDraft(e: TableEffect): EffectDraft {
     noCritDoubling: e.noCritDoubling,
     appliesTo: e.appliesTo,
     spellChange: e.spellChange,
+    onlyProficient: e.onlyProficient,
   };
 }
 
@@ -253,6 +257,10 @@ const EFFECT_WRITERS: ReadonlyMap<string, EffectWriter> = new Map<string, Effect
   ['applies_to', pickedText('appliesTo')],
   ['spell_change', pickedText('spellChange')],
   ['ignore_cover', (d) => (d.ignoreCover ? { ignoreCover: true } : {})],
+  [
+    'only_proficient',
+    (d) => (onlyProficientApplies(d) && d.onlyProficient ? { onlyProficient: true } : {}),
+  ],
   [
     'range_multiplier',
     (d) => (d.rangeMultiplier > 0 ? { rangeMultiplier: d.rangeMultiplier } : {}),

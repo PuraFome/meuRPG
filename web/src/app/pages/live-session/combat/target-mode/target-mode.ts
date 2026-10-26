@@ -5,6 +5,7 @@ import type { TargetRule } from '../../../../core/combat/cast-flow';
 import {
   type PickRow,
   type PickWords,
+  NOT_SEEN,
   counts,
   enough,
   pickWords,
@@ -25,6 +26,8 @@ export interface PickSession {
   readonly foe: boolean;
   /** The action's own button, where the focus goes back to. */
   readonly origin: HTMLElement | null;
+  /** The master acts for this character: a target it does not see reads "<name> não vê este alvo". */
+  readonly by?: string;
   /** Opens the action's sheet: with the picks (the target named, the darts placed), or with none for the list. */
   readonly open: (picks: readonly string[] | null) => void;
 }
@@ -106,7 +109,9 @@ export class TargetMode {
       return;
     }
     if (row.reason) {
-      this.note.set({ id, text: `${row.label}: ${row.reason}` });
+      const text =
+        row.reason === NOT_SEEN && s.by ? `${s.by} ${NOT_SEEN}` : `${row.label}: ${row.reason}`;
+      this.note.set({ id, text });
       return;
     }
     this.note.set(null);

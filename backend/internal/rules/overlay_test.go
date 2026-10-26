@@ -927,11 +927,11 @@ func TestWithRefusals(t *testing.T) {
 		{"19 level rows", func(o *Overlay) { c := classIdx(o, "none"); c.Levels = c.Levels[:19] }, []string{"class:gen-none@mesa", "20 rows", "19"}},
 		{"21 level rows", func(o *Overlay) { c := classIdx(o, "none"); c.Levels = append(c.Levels, TableClassLevel{}) }, []string{"20 rows", "21"}},
 		{"no level rows", func(o *Overlay) { classIdx(o, "none").Levels = nil }, []string{"20 rows"}},
-		{"301 entries", func(o *Overlay) {
+		{"1001 entries", func(o *Overlay) {
 			for len(o.Spells)+len(o.Classes)+len(o.Subclasses)+len(o.Races)+len(o.Subraces)+len(o.Backgrounds) <= MaxOverlayEntries {
 				o.Spells = append(o.Spells, o.Spells[0])
 			}
-		}, []string{"301", "300"}},
+		}, []string{"1001", "1000"}},
 		{"61 features in a class", func(o *Overlay) {
 			c := classIdx(o, "none")
 			for n := range 61 {
@@ -1041,14 +1041,14 @@ func TestWithRefusals(t *testing.T) {
 				o.Subraces[0].Traits = append(o.Subraces[0].Traits, TableFeature{Key: "trait:sub-" + string(rune('a'+n%26)) + string(rune('a'+n/26)) + tableSuffix, NamePT: "T"})
 			}
 		}, []string{"traits", "60"}},
-		{"2001 effects", func(o *Overlay) {
-			for n := 0; len(o.Backgrounds) < 101; n++ {
+		{"6001 effects", func(o *Overlay) {
+			for n := 0; len(o.Backgrounds) < MaxOverlayEffects/MaxFeatureEffects+1; n++ {
 				bg := o.Backgrounds[0]
 				bg.Key = "background:b" + strconv.Itoa(n) + tableSuffix
 				bg.Feature = TableFeature{Key: "background-feature:b" + strconv.Itoa(n) + tableSuffix, NamePT: "F", Effects: slices.Repeat([]Effect{{Type: "note"}}, 20)}
 				o.Backgrounds = append(o.Backgrounds, bg)
 			}
-		}, []string{"2000 effects", "limit"}},
+		}, []string{"6000 effects", "limit"}},
 		{"501 distinct formulas", func(o *Overlay) {
 			c := classIdx(o, "none")
 			for n := range 11 {

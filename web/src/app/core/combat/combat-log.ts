@@ -30,6 +30,11 @@ export type {
   PoolCardRow,
 } from './combat-log-types';
 
+/** What the master did for a player's character carries "(pelo mestre)" at the end of its line, for everyone who reads it. */
+function byMaster(e: CombatLogEntry, line: LogLine | null): LogLine | null {
+  return line && e.byMaster ? { ...line, text: `${line.text} (pelo mestre)` } : line;
+}
+
 /** The rounds as the log draws them: latest first, the current round
  * "em andamento". Every round after the first ends with "A rodada N
  * começou", the earliest line of its group. */
@@ -41,7 +46,7 @@ export function logGroups(
 ): LogGroup[] {
   return rounds.map((r) => {
     const lines = r.entries
-      .map((e) => logLine(e, encounterName, ctx))
+      .map((e) => byMaster(e, logLine(e, encounterName, ctx)))
       .filter((l): l is LogLine => l !== null);
     if (r.round > 1) {
       lines.push({

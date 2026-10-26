@@ -40,6 +40,7 @@ export function menuResponse(): GetEffectMenuResponse {
         fields: [
           field('proficiency', 'choice', true, 'proficiency_targets'),
           field('level', 'choice', false, 'proficiency_levels'),
+          field('only_proficient', 'yes_no'),
           field('when', 'condition'),
           field('text_pt', 'text'),
         ],
@@ -128,12 +129,19 @@ export function menuResponse(): GetEffectMenuResponse {
         ],
       },
       { name: 'modifier_modes', values: [{ key: 'add', namePt: 'Somar' }] },
-      { name: 'proficiency_targets', values: [{ key: 'skill:perception', namePt: 'Percepção' }] },
+      {
+        name: 'proficiency_targets',
+        values: [
+          { key: 'skill:perception', namePt: 'Percepção' },
+          { key: 'save.wis', namePt: 'Teste de Sabedoria' },
+        ],
+      },
       {
         name: 'proficiency_levels',
         values: [
           { key: 'half', namePt: 'Metade' },
           { key: 'full', namePt: 'Completa' },
+          { key: 'expertise', namePt: 'Especialização' },
         ],
       },
       { name: 'senses', values: [{ key: 'darkvision', namePt: 'Visão no escuro' }] },

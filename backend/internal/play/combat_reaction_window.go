@@ -212,6 +212,12 @@ func errNotYourTurnToAnswer() error {
 	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN_TO_ANSWER, "this reaction window cannot be answered now")
 }
 
+// errReactionAlreadyAnswered is the refusal of an answer that came second: the player and the
+// master both may answer a player's window, and the first answer wins.
+func errReactionAlreadyAnswered() error {
+	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_ALREADY_ANSWERED, "the reaction was answered already")
+}
+
 // openWindowsOf lists the windows that are open in the combat, in the order they
 // are answered.
 func openWindowsOf(ctx context.Context, c *combatTx) ([]playdb.ReactionWindow, error) {

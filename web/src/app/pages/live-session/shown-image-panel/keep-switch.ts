@@ -22,8 +22,8 @@ import { MatIconModule } from '@angular/material/icon';
         [class.track--on]="checked()"
         [attr.aria-checked]="checked()"
         [disabled]="disabled()"
-        aria-labelledby="keep-label"
-        [attr.aria-describedby]="compact() ? null : 'keep-hint'"
+        [attr.aria-labelledby]="id() + '-label'"
+        [attr.aria-describedby]="compact() ? null : id() + '-hint'"
         (click)="toggle.emit(!checked())"
       >
         <span class="handle">
@@ -33,9 +33,9 @@ import { MatIconModule } from '@angular/material/icon';
         </span>
       </button>
       <span class="text">
-        <span class="label" id="keep-label">Deixar com os jogadores</span>
+        <span class="label" [id]="id() + '-label'">{{ label() }}</span>
         @if (!compact()) {
-          <span class="hint" id="keep-hint">Fica com os jogadores ao parar ou trocar.</span>
+          <span class="hint" [id]="id() + '-hint'">{{ hint() }}</span>
         }
       </span>
       <span class="state" [class.state--on]="checked()" aria-hidden="true">
@@ -152,6 +152,11 @@ import { MatIconModule } from '@angular/material/icon';
   `,
 })
 export class KeepSwitch {
+  /** The words of the switch; "Os jogadores podem entrar" (C7-06) is the same control. */
+  readonly label = input('Deixar com os jogadores');
+  readonly hint = input('Fica com os jogadores ao parar ou trocar.');
+  /** Prefix of the ids that name and describe the button; one per switch on the page. */
+  readonly id = input('keep');
   readonly checked = input(false);
   readonly disabled = input(false);
   /** One line, without the hint and the rules (the scene's image row). */

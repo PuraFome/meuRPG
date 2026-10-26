@@ -69,6 +69,13 @@ export interface LiveSessionVm {
 /** The gallery image the master shows the players (MR-028, `ShownImage`):
  * what a player's block needs, so the frame is reserved from the size
  * before the bytes arrive. */
+/** Who sees a shown image (MR-028): the whole table, the players of the scene open to only some players, or players chosen one by one. */
+export interface ImageAudienceVm {
+  readonly kind: 'whole' | 'scene' | 'chosen';
+  /** The accounts: the players chosen, or the players in the scene now; empty for the whole table. */
+  readonly userIds: readonly string[];
+}
+
 export interface ShownImageVm {
   readonly id: string;
   /** The image's name in the gallery: the caption. */
@@ -76,6 +83,8 @@ export interface ShownImageVm {
   readonly width: number;
   readonly height: number;
   readonly url: string;
+  /** Who sees it; only the master gets it (a player's copy has none). */
+  readonly audience?: ImageAudienceVm;
 }
 
 /** `GetLiveSession`: the session and the vitals the caller may see (the
@@ -278,6 +287,12 @@ export abstract class LiveSessionSource {
     campaignId: string,
     imageId: string | null,
     keep?: boolean,
+    audience?: ImageAudienceVm,
+  ): Promise<ShownImageVm | null>;
+  /** `SetShownImageAudience`: who sees the image shown now ("Mostrar a toda a mesa", "Mudar quem vê"). */
+  abstract setShownImageAudience(
+    campaignId: string,
+    audience: ImageAudienceVm,
   ): Promise<ShownImageVm | null>;
   /** `ListLeftImages`: the images the master left with the players. */
   abstract listLeftImages(campaignId: string): Promise<readonly ShownImageVm[]>;

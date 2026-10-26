@@ -248,6 +248,9 @@ func (s *Service) sendMessageTx(ctx context.Context, tx pgx.Tx, in newMessage, i
 	if err != nil {
 		return sentMessage{}, fmt.Errorf("lock the open session: %w", err)
 	}
+	if in, err = s.withoutHiddenPortrait(ctx, q, session.ID, in); err != nil {
+		return sentMessage{}, err
+	}
 	var out sentMessage
 	out.row, out.replayed, err = idem.Create(ctx, in.scopedKey, in.requestHash, q.GetSessionMessageByCreateKey,
 		func(r playdb.SessionMessage) *string { return r.CreateHash },
@@ -263,6 +266,23 @@ func (s *Service) sendMessageTx(ctx context.Context, tx pgx.Tx, in newMessage, i
 			return s.insertMessage(ctx, q, session.ID, in, image)
 		})
 	return out, err
+}
+
+// withoutHiddenPortrait takes the portrait off the line of an NPC the master keeps hidden on the stage: the
+// line names the NPC for its readers, and nothing else of it reaches them, so not the portrait, which would
+// open the image route (RN-10). "Dar a fala" shows the NPC; lines sent after that carry the portrait.
+func (s *Service) withoutHiddenPortrait(ctx context.Context, q *playdb.Queries, sessionID string, in newMessage) (newMessage, error) {
+	if in.kind != speakerNPC || in.speakerImg == nil || in.speakerRef == nil {
+		return in, nil
+	}
+	stage, err := q.ListStage(ctx, sessionID)
+	if err != nil {
+		return in, fmt.Errorf("read the stage: %w", err)
+	}
+	if slices.ContainsFunc(stage, func(n playdb.StageNpc) bool { return n.CharacterID == *in.speakerRef && n.Hidden }) {
+		in.speakerImg = nil
+	}
+	return in, nil
 }
 
 // insertMessage inserts the line and the rows of its readers. The key's unique index answers a lost

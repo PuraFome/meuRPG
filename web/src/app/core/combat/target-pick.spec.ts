@@ -150,3 +150,13 @@ describe('target-pick: the words', () => {
     );
   });
 });
+
+describe('a target the acted-for character does not see', () => {
+  it('is listed with the reason "não vê este alvo"', () => {
+    const row = attackPickRows(
+      [{ combatantId: 'c', label: 'Cultista', notSeen: true, untargetable: true } as never],
+      { rangeFt: 5, longRangeFt: 0 },
+    )[0];
+    expect(row.reason).toBe('não vê este alvo');
+  });
+});

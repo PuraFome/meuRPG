@@ -37,6 +37,7 @@ export const EFFECT_FIELD_LABELS: Readonly<Record<string, string>> = {
   no_crit_doubling: 'Não dobra no acerto crítico',
   applies_to: 'Vale para',
   spell_change: 'O que muda na magia',
+  only_proficient: 'Só onde já tem proficiência',
 };
 
 /** A label that reads differently in one type: a spell_modifier's `from` lists the damage types it swaps, its `count` is dice. */
@@ -65,6 +66,8 @@ export const EFFECT_FIELD_HINTS: Readonly<Record<string, string>> = {
   range_multiplier: 'Só para magias: 2 dobra o alcance, 3 triplica. Vazio, o alcance não muda.',
   no_long_range_disadvantage: 'Só para armas: até o alcance longo, a rolagem não tem desvantagem.',
   dice: 'Uma fórmula, como 1 ou prof(). Vale junto com os lados do dado.',
+  only_proficient:
+    'Dobra a perícia só de quem já é proficiente nela por outra fonte. Quem não é, fica como está.',
   dice_sides: 'De 4 a 12: d4, d6, d8, d10 ou d12.',
   no_crit_doubling: 'Por padrão os dados dobram no acerto crítico; o dano fixo nunca dobra.',
 };

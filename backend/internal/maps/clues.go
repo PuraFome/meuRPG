@@ -35,8 +35,10 @@ import (
 //     clue's text: removing or editing the clue afterwards changes nothing for
 //     the players who have it, as what was said at the table stays said.
 //   - A scene is "discovered" when its point is revealed on the map or opened
-//     in a session (scene_discoveries). A player's note may be tagged with a
-//     discovered scene only; package notes reads both through SessionMaps.
+//     to the whole table in a session (scene_discoveries), and, for a scene open
+//     to only some players, by each of them (scene_player_discoveries). A
+//     player's note may be tagged with a scene they discovered only; package
+//     notes reads both through SessionMaps.
 //
 // Opening a scene in the session is package play's; it reads the hooks and
 // the clues through SessionMaps.ScenePoint and gives them to the master only.
@@ -567,11 +569,27 @@ func (sm *SessionMaps) DiscoverScene(ctx context.Context, tx pgx.Tx, campaignID,
 	return nil
 }
 
-// DiscoveredScenes returns the scenes the campaign's group discovered, with
-// their current names, oldest discovery first, as the players read them: a scene on a
-// map the players cannot open (not revealed, not the session's current map) is not
-// listed, however it was discovered (RN-10). It implements notes.Scenes.
-func (sm *SessionMaps) DiscoveredScenes(ctx context.Context, campaignID string) ([]notelink.Scene, error) {
+// DiscoverSceneFor records, inside tx, that these players alone discovered a scene: the master opened it to
+// them, brought them in, or they joined it, while it was open to only some players (MR-030, RN-10). The
+// group's list stays as it is, so nobody else learns the scene's name from the notes. A scene they
+// discovered already stays as it is. It implements play.MapKeeper; the caller checked that the point is a
+// SCENE point of the campaign (ScenePoint) and that the users are players of the campaign.
+func (sm *SessionMaps) DiscoverSceneFor(ctx context.Context, tx pgx.Tx, campaignID, pointID string, userIDs []string, at time.Time) error {
+	q := sm.queries.WithTx(tx)
+	for _, user := range userIDs {
+		if err := q.UpsertScenePlayerDiscovery(ctx, mapsdb.UpsertScenePlayerDiscoveryParams{CampaignID: campaignID, PointID: pointID, UserID: user, DiscoveredAt: at}); err != nil {
+			return fmt.Errorf("record the scene's discovery by a player: %w", err)
+		}
+	}
+	return nil
+}
+
+// DiscoveredScenes returns the scenes the player may tag notes with, with their current
+// names, oldest discovery first: the ones the campaign's group discovered and the ones only
+// this player discovered (a scene open to some players, DiscoverSceneFor). As the player reads
+// them, a scene on a map the players cannot open (not revealed, not the session's current map)
+// is not listed, however it was discovered (RN-10). It implements notes.Scenes.
+func (sm *SessionMaps) DiscoveredScenes(ctx context.Context, campaignID, userID string) ([]notelink.Scene, error) {
 	var current *string
 	if sm.svc != nil {
 		id, err := sm.svc.currentMap(ctx, campaignID)
@@ -582,7 +600,7 @@ func (sm *SessionMaps) DiscoveredScenes(ctx context.Context, campaignID string) 
 			current = &id
 		}
 	}
-	rows, err := sm.queries.ListDiscoveredScenes(ctx, mapsdb.ListDiscoveredScenesParams{CampaignID: campaignID, CurrentMapID: current})
+	rows, err := sm.queries.ListDiscoveredScenes(ctx, mapsdb.ListDiscoveredScenesParams{CampaignID: campaignID, UserID: userID, CurrentMapID: current})
 	if err != nil {
 		return nil, fmt.Errorf("list the discovered scenes: %w", err)
 	}

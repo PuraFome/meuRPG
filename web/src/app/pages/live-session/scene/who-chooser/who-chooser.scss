@@ -1,0 +1,142 @@
+.group {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 var(--mr-space-3);
+  padding: 0;
+  border: 0;
+}
+
+.person {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  min-height: 56px;
+  border-bottom: 1px solid var(--mr-rule);
+  cursor: pointer;
+
+  &:last-child {
+    border-bottom: 0;
+  }
+
+  &:has(:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: -2px;
+  }
+}
+
+input[type='checkbox'] {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--mr-accent);
+}
+
+.person__mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--mr-ink);
+  color: var(--mr-surface);
+  font-size: 14px;
+  font-weight: 700;
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+    color: var(--mr-ink-muted);
+  }
+
+  &:has(.mat-icon) {
+    border: 1px solid var(--mr-control-line);
+    background: var(--mr-surface);
+  }
+}
+
+.person__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.person__name {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.person__sub {
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.live {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+
+  .mat-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+.foot {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mr-space-2);
+}
+
+.foot__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 48px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-sm);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  @media (min-width: 768px) {
+    min-height: 44px;
+  }
+}
+
+.foot__button--primary {
+  border-color: transparent;
+  background: var(--mr-accent);
+  color: var(--mr-on-accent);
+
+  &[aria-disabled='true'] {
+    border: 1px dashed var(--mr-control-line);
+    background: transparent;
+    color: var(--mr-ink-muted);
+    cursor: default;
+  }
+}

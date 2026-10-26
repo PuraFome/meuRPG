@@ -27,7 +27,7 @@ export const NO_FILTER: SpellFilter = {
   onlyMine: false,
 };
 
-/** How many rows a page asks for (the most the server gives); the SRD's 319 spells and the table's up to 300 come in two pages, "Mostrar mais" asks for the next. */
+/** How many rows a page asks for (the most the server gives); the SRD's 319 spells and the table's up to 1000 come in four pages, "Mostrar mais" asks for the next. */
 export const PAGE_SIZE = 400;
 
 /** The eight schools of the SRD, in the order the book lists them. */

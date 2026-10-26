@@ -95,7 +95,7 @@ message TableEntry {
 // "superiority_die" or "note"; "ability_increase" is a feat's alone. Only the fields of the type are
 // read, and a field the type does not use is refused. A feature with no effects is text only and always valid. Formulas ("value",
 // "when", "max") use level(), classLevel("<class>"), mod("int"), score("int"),
-// prof(), floor, ceil, min and max, and must compile.
+// prof(), floor, ceil, min and max, and must compile; a formula has at most 1024 bytes and 256 nodes.
 message TableEffect {
   string type = 1;
   // modifier: what changes ("ac.base", "ac", "hp.max", "speed.walk",
@@ -206,6 +206,12 @@ message TableEffect {
   // extra_dice_per_slot_over are always on and damage_type_swap is a free choice.
   string applies_to = 36;
   string spell_change = 37;
+  // proficiency, level "expertise" on a skill ("skill:*" is every skill) only: the
+  // skill is doubled only where the character already has its proficiency from
+  // another source when the sheet is worked out (the race, the background, the
+  // sheet's picks or another feature); the effect never gives the proficiency itself.
+  // Empty or false doubles the skill whether or not the character is proficient.
+  bool only_proficient = 29;
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
@@ -268,6 +274,11 @@ message TableCasting {
   int32 start_level = 6;
   // Whether it casts rituals.
   bool ritual = 7;
+  // SRD spells ("spell:cure-wounds") on the class's own list, next to the table
+  // spells that name the class. Only a class whose list_from is empty has them;
+  // a third caster's subclass and a class that does not cast have none. Each is
+  // a spell of the SRD, named once, and a class names at most 400.
+  repeated string srd_spell_keys = 8;
 }
 
 // TableClassLevel is one row of a class's 20-level table.
@@ -349,6 +360,11 @@ message TableSubclass {
   // start level to 20.
   TableCasting casting = 6;
   repeated TableAlwaysPrepared always_prepared = 7;
+  // The spells of always_prepared are not given: they join the class's spell list
+  // to choose from, as a warlock patron's expanded list does, and count against
+  // the spells known or prepared. It needs always_prepared to have spells; a
+  // subclass without spells that sets it is refused.
+  bool spells_expanded = 8;
 }
 
 // TableRace is a race.
@@ -571,9 +587,9 @@ message TableContentViolation {
   // (a key, kind or parent changed, or a spell crossing between cantrip and
   // leveled), "duplicate_name" (another entry of the kind has the name), "unknown_field" (ImportTableContent:
   // a field the message does not have) and
-  // "size_limit" (64 KiB of data). The 300-entry limit is "limit", with an empty
+  // "size_limit" (64 KiB of data). The 1000-entry limit is "limit", with an empty
   // field. In ImportTableContent a violation about the pack itself is at a field
-  // that starts with "pack": "pack" (over 2 MiB: "size_limit"), "pack.format" and
+  // that starts with "pack": "pack" (over 3 MiB: "size_limit"), "pack.format" and
   // "pack.version" ("bad_value"), "pack.entries[3].key" ("bad_key" for a key that is
   // not "<kind>:<slug>@mesa" of the entry's kind, "duplicate_key" for one that
   // repeats) and "pack.entries[3].body" ("bad_value": no body, or one of another
@@ -667,7 +683,7 @@ service TableContentService {
   //   - `permission_denied`: the caller is not the campaign's master.
   //   - `not_found`: the campaign does not exist, or the caller is not a member.
   //   - `invalid_argument`: a TableContentRefusal detail lists every violation
-  //     (the 300-entry and 64 KiB limits included).
+  //     (the 1000-entry and 64 KiB limits included).
   //
   // Safe to retry when the request carries an idempotency_key: a second call with the same key and
   // the same request returns what the first one made and makes nothing; the same key with another
@@ -738,8 +754,8 @@ service TableContentService {
   // raise the revision. A new entry is on for the players, as a hand-made one; the
   // import never switches anything off or on.
   //
-  // The limits are the ones of the editors, checked on the whole campaign: 300
-  // entries, 64 KiB of data per entry; and the pack itself is at most 2 MiB (in
+  // The limits are the ones of the editors, checked on the whole campaign: 1000
+  // entries, 64 KiB of data per entry; and the pack itself is at most 3 MiB (in
   // proto JSON), has `format` "meurpg.table-content" and `version` 1, and every key
   // is "<kind>:<slug>@mesa" of its entry's kind, without repeats. The
   // violation reasons of a pack are in TableContentViolation.
@@ -931,7 +947,7 @@ message TableContentPack {
   // A label for the pack: the campaign's name when exported. 0 to 80 characters on
   // one line; kept by nothing, shown in the preview.
   string name = 3;
-  // The entries. At most 300. Each has `key`, `kind`, `name_pt` and its body; the
+  // The entries. At most 1000. Each has `key`, `kind`, `name_pt` and its body; the
   // other fields of TableEntry are left out of an export and ignored in an import.
   repeated TableEntry entries = 4;
 }
@@ -970,7 +986,7 @@ message ImportTableContentRequest {
   // The pack file as the master has it, in proto JSON. Prefer it to `pack`: the server
   // reads it strictly, and a field it does not know (a misspelled "proficiency" for
   // "proficiency_key") is a violation of its entry at the path of the field (reason
-  // "unknown_field"), never dropped. When set, `pack` must be unset. The 2 MiB limit is
+  // "unknown_field"), never dropped. When set, `pack` must be unset. The 3 MiB limit is
   // this field's size.
   bytes pack_json = 5;
 }

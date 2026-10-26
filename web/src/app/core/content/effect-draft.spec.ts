@@ -46,6 +46,7 @@ describe("an effect from the server's menu (ADR-0018, section 4)", () => {
     expect(m.fieldsOf('proficiency').map((f) => f.name)).toEqual([
       'proficiency',
       'level',
+      'only_proficient',
       'when',
       'text_pt',
     ]);

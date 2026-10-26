@@ -2,6 +2,7 @@ package play
 
 import (
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 
@@ -70,5 +71,57 @@ func TestReactionWindowAnswersAreTheReactorsAndTheMasters(t *testing.T) {
 	// The master answers for the player, and the window says so to its owner.
 	if _, err := r.answerReaction(t, r.master, re, w.GetId(), useAnswer(0)); err != nil {
 		t.Errorf("the master answering for the rogue error = %v", err)
+	}
+}
+
+// TestAReactionNobodyAnsweredComesToTheMasterAndTheFirstAnswerWins: the master reads a player's
+// reaction question as unanswered once the player's first 10 s pass, and whoever answers
+// second is told the question was answered already, in either order.
+func TestAReactionNobodyAnsweredComesToTheMasterAndTheFirstAnswerWins(t *testing.T) {
+	t.Parallel()
+	for name, masterFirst := range map[string]bool{"the master answers first": true, "the player answers first": false} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			r, re := reactorFight(t, rogueFive)
+			hit := r.mustAttack(t, r.master, re, "Goblin", sword, "Reator", d20(15))
+			r.mustDamage(t, r.master, re, hit.GetPendingDamage().GetId(), typedDamage(6))
+			w := r.windowOf(t, r.ana, playv1.ReactionKind_REACTION_KIND_UNCANNY_DODGE)
+			if w == nil {
+				t.Fatal("the rogue has no Uncanny Dodge window")
+			}
+			mastersView := func() *playv1.ReactionWindow {
+				for _, x := range r.windows(t, r.master) {
+					if x.GetId() == w.GetId() {
+						return x
+					}
+				}
+				return nil
+			}
+			if got := mastersView(); got == nil || got.GetUnanswered() {
+				t.Fatalf("the master's window right away = %v, want it open and not unanswered", got)
+			}
+			r.h.clock.advance(9 * time.Second)
+			if got := mastersView(); got == nil || got.GetUnanswered() {
+				t.Fatalf("the master's window after 9 s = %v, want not unanswered", got)
+			}
+			r.h.clock.advance(2 * time.Second)
+			if got := mastersView(); got == nil || !got.GetUnanswered() {
+				t.Fatalf("the master's window after 11 s = %v, want unanswered", got)
+			}
+			for _, x := range r.windows(t, r.ana) {
+				if x.GetUnanswered() {
+					t.Error("the player reads the master's unanswered flag")
+				}
+			}
+			first, second := r.ana, r.master
+			if masterFirst {
+				first, second = r.master, r.ana
+			}
+			if _, err := r.answerReaction(t, first, re, w.GetId(), passAnswer); err != nil {
+				t.Fatalf("the first answer: %v", err)
+			}
+			_, err := r.answerReaction(t, second, re, w.GetId(), passAnswer)
+			wantBlockedBy(t, "the second answer", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_ALREADY_ANSWERED)
+		})
 	}
 }

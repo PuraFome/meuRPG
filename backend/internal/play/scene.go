@@ -25,6 +25,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // The RP scene during a session (MR-015; questions 51 to 55 of
@@ -322,13 +323,11 @@ func (s *Service) switchSceneOn(ctx context.Context, tx pgx.Tx, m authz.Membersh
 	if err != nil {
 		return err
 	}
-	// Opening a scene, even a hidden point's, makes it "discovered" for the group: the players see its
-	// name in the open scene, so they may tag notes with it (MR-030, question 61). A scene open to only
-	// some players is discovered when it opens to everyone: the group's list would tell the others its name.
-	if op.who().all {
-		if err := s.maps.DiscoverScene(ctx, tx, m.CampaignID, op.point, c.now); err != nil {
-			return err
-		}
+	// Opening a scene, even a hidden point's, makes it "discovered": the players see its name in the open
+	// scene, so they may tag notes with it (MR-030, question 61). A scene open to only some players is
+	// discovered by those players alone; the group discovers it when it opens to everyone.
+	if err := s.discoverScene(ctx, tx, m.CampaignID, op.point, op.who(), c.now); err != nil {
+		return err
 	}
 	ev := sceneEvent{PointID: op.point, Actions: op.actions}
 	if who := op.who(); !who.all {
@@ -354,10 +353,19 @@ func (s *Service) reopenScene(ctx context.Context, tx pgx.Tx, q *playdb.Queries,
 		return err
 	}
 	sw.changed = sw.audience.changed
-	if sw.changed && op.audience.all {
-		return s.maps.DiscoverScene(ctx, tx, m.CampaignID, op.point, s.now())
+	if !sw.changed {
+		return nil
 	}
-	return nil
+	return s.discoverScene(ctx, tx, m.CampaignID, op.point, op.audience, s.now())
+}
+
+// discoverScene records that the players the scene is open to discovered it: the whole group when it is open to
+// everyone, else each of the players alone (MR-030, RN-10).
+func (s *Service) discoverScene(ctx context.Context, tx pgx.Tx, campaignID, pointID string, to viewers, at time.Time) error {
+	if to.all {
+		return s.maps.DiscoverScene(ctx, tx, campaignID, pointID, at)
+	}
+	return s.maps.DiscoverSceneFor(ctx, tx, campaignID, pointID, to.users, at)
 }
 
 // startScene opens the point and sets who it is open to, in the locked session. The image shown to the
@@ -1131,6 +1139,15 @@ func (c *sceneRollCall) modeAndBonus(ctx context.Context, sessionID string, acti
 	if err != nil {
 		return cm, 0, err
 	}
+	applies := rules.ManeuverCheck
+	if !isCheck {
+		applies = rules.ManeuverSave
+	}
+	own, err := c.s.maneuverDice(ctx, c.tx, c.m.CampaignID, c.out.who.ID, c.req.GetManeuverKey(), applies, action.Key, ability)
+	if err != nil {
+		return cm, 0, err
+	}
+	cm.Dice = append(cm.Dice, own...)
 	if bonus, err = c.s.withEffectDice(c.in, c.in.extraFaces, &cm, bonus); err != nil {
 		return cm, 0, err
 	}
@@ -1171,6 +1188,9 @@ func (c *sceneRollCall) write(ctx context.Context, session playdb.GameSession, s
 		return err
 	}
 	if err := c.s.spendCheckHelps(ctx, tc, cm.Helps); err != nil {
+		return err
+	}
+	if _, err := c.s.spendManeuverDice(ctx, tc, c.out.who.ID, cm.Rolled); err != nil {
 		return err
 	}
 	c.out.rollID, err = insertSceneEvent(ctx, tc, eventSceneCheckRolled, &c.m.UserID, &c.key, ev)
