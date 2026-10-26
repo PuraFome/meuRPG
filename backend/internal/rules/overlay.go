@@ -805,7 +805,7 @@ type overlayBuilder struct {
 	optionEntry, featureEntry, featureClass map[string]string
 	// optionOffers are the SRD features that already got a table option, so they are copied once.
 	optionOffers map[string]bool
-	resources                               map[string]map[string]bool
+	resources    map[string]map[string]bool
 }
 
 type pendingEffects struct {
