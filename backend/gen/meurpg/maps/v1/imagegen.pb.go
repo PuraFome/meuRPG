@@ -319,6 +319,11 @@ const (
 	// "A imagem foi feita, mas não deu para guardá-la. Tente de novo; esta não
 	// conta no seu limite."
 	ImageGenerationFailure_IMAGE_GENERATION_FAILURE_STORAGE_FAILED ImageGenerationFailure = 8
+	// The map changed (its image, its grid or its walls) between the request and
+	// the moment the server drew the reference, so the picture would not be the
+	// one the master asked for. Nothing was sent and the slot is back: "O mapa
+	// mudou depois do pedido. Gere de novo; esta não conta no seu limite."
+	ImageGenerationFailure_IMAGE_GENERATION_FAILURE_MAP_CHANGED ImageGenerationFailure = 9
 )
 
 // Enum value maps for ImageGenerationFailure.
@@ -333,6 +338,7 @@ var (
 		6: "IMAGE_GENERATION_FAILURE_TIMEOUT",
 		7: "IMAGE_GENERATION_FAILURE_SERVICE_OFF",
 		8: "IMAGE_GENERATION_FAILURE_STORAGE_FAILED",
+		9: "IMAGE_GENERATION_FAILURE_MAP_CHANGED",
 	}
 	ImageGenerationFailure_value = map[string]int32{
 		"IMAGE_GENERATION_FAILURE_UNSPECIFIED":    0,
@@ -344,6 +350,7 @@ var (
 		"IMAGE_GENERATION_FAILURE_TIMEOUT":        6,
 		"IMAGE_GENERATION_FAILURE_SERVICE_OFF":    7,
 		"IMAGE_GENERATION_FAILURE_STORAGE_FAILED": 8,
+		"IMAGE_GENERATION_FAILURE_MAP_CHANGED":    9,
 	}
 )
 
@@ -2431,7 +2438,7 @@ const file_meurpg_maps_v1_imagegen_proto_rawDesc = "" +
 	"\x1bIMAGE_GENERATION_STATE_DONE\x10\x02\x12\"\n" +
 	"\x1eIMAGE_GENERATION_STATE_REFUSED\x10\x03\x12!\n" +
 	"\x1dIMAGE_GENERATION_STATE_FAILED\x10\x04\x12#\n" +
-	"\x1fIMAGE_GENERATION_STATE_CANCELED\x10\x05*\x8d\x03\n" +
+	"\x1fIMAGE_GENERATION_STATE_CANCELED\x10\x05*\xb7\x03\n" +
 	"\x16ImageGenerationFailure\x12(\n" +
 	"$IMAGE_GENERATION_FAILURE_UNSPECIFIED\x10\x00\x12%\n" +
 	"!IMAGE_GENERATION_FAILURE_NO_IMAGE\x10\x01\x12$\n" +
@@ -2441,7 +2448,8 @@ const file_meurpg_maps_v1_imagegen_proto_rawDesc = "" +
 	"&IMAGE_GENERATION_FAILURE_IMAGE_MISSING\x10\x05\x12$\n" +
 	" IMAGE_GENERATION_FAILURE_TIMEOUT\x10\x06\x12(\n" +
 	"$IMAGE_GENERATION_FAILURE_SERVICE_OFF\x10\a\x12+\n" +
-	"'IMAGE_GENERATION_FAILURE_STORAGE_FAILED\x10\b*\xa5\x04\n" +
+	"'IMAGE_GENERATION_FAILURE_STORAGE_FAILED\x10\b\x12(\n" +
+	"$IMAGE_GENERATION_FAILURE_MAP_CHANGED\x10\t*\xa5\x04\n" +
 	"\x1cImageGenerationBlockedReason\x12/\n" +
 	"+IMAGE_GENERATION_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12'\n" +
 	"#IMAGE_GENERATION_BLOCKED_REASON_OFF\x10\x01\x121\n" +
