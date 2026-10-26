@@ -79,6 +79,29 @@ test('o mestre age pelo Pensantus: a faixa, "Voltar ao mestre" e um só botão p
   }
 });
 
+test('com as leituras do combate lentas, o turno que chega ao personagem caído mostra o teste contra a morte', { tag: ['@MR-053', '@RN-03'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  const { m, table, campaignId, done } = await actsTable(browser, 'Caído com leitura lenta');
+  try {
+    await openSessionPage(m, campaignId);
+    // Every read of the combat the page makes answers late, as on a busy table: the turn events that follow the drop to 0 arrive
+    // before the reads they asked for, and a copy patched with them would hold the turn but not the hit points.
+    await m.route(/CombatService\/GetEncounter/, async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await route.continue();
+    });
+    await adjustVitalsRPC(m, campaignId, table.characterId, { hitPointsCurrent: 0 });
+    let enc = await getEncounterRPC(m, campaignId);
+    enc = await combatRPC(m, 'EndTurn', { campaignId, encounterId: enc.id, expectedCombatantId: enc.currentCombatantId });
+    enc = await passTurnsTo(m, campaignId, 'Pensantus');
+    expect(enc.combatants.find((c) => c.label === 'Pensantus')?.deathSaveDue).toBe(true);
+    await expect(m.getByRole('heading', { name: 'Pensantus está caído: teste contra a morte' })).toBeVisible();
+    await expect(m.getByRole('button', { name: 'Agir por Pensantus' })).toHaveCount(0);
+  } finally {
+    await done();
+  }
+});
+
 test('o turno de um personagem caído começa pelo teste contra a morte e o mestre não o pula', { tag: ['@MR-053', '@RN-03'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   const { m, table, campaignId, done } = await actsTable(browser, 'Caído pelo mestre');

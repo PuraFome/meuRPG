@@ -152,7 +152,7 @@ async function mount(first: ReturnType<typeof enc>, diceMode = DiceMode.PLAYERS_
   fixture.componentRef.setInput('dicePreference', DicePreference.APP);
   fixture.detectChanges();
   await settle(fixture);
-  return { fixture, el: fixture.nativeElement as HTMLElement, rolls, turnsEnded };
+  return { fixture, el: fixture.nativeElement as HTMLElement, rolls, turnsEnded, state };
 }
 
 const button = (el: HTMLElement, text: string) =>
@@ -201,6 +201,26 @@ describe('the master rolls the death save of an absent player', () => {
     expect(plain(el.querySelector('[data-testid="death-save-due"] h3')?.textContent)).toBe(
       'Pensantus está caído: teste contra a morte',
     );
+  });
+
+  it('shows the card when the turn event is two revisions ahead of the copy from before the player dropped to 0', async () => {
+    // The page's copy is from before the master set Brisa to 0 (revision 4); the turns passed to her came as events 5, 6 (the
+    // revision in between is the drop). A copy patched with the event would claim revision 6 with Brisa still standing.
+    const standing = brisa({ state: CombatantState.UNSPECIFIED, deathSaveDue: false });
+    const before = { ...enc('g', standing), revision: 4 };
+    const { fixture, el, state } = await mount(before);
+    expect(el.querySelector('[data-testid="death-save-due"]')).toBeNull();
+
+    const turn = { encounterId: 'enc', round: 2, currentCombatantId: 'b', masterTurn: false };
+    // The page reads again when the event is not the next revision: the read is the combat as the server has it.
+    if (!state.applyTurn({ ...turn, revision: 6 })) {
+      state.apply({ ...enc('b', brisa()), revision: 6 });
+    }
+    await settle(fixture);
+    expect(plain(el.querySelector('[data-testid="death-save-due"] h3')?.textContent)).toBe(
+      'Brisa está caída: teste contra a morte',
+    );
+    expect(button(el, 'Rolar por Brisa')).toBeDefined();
   });
 
   it('does not offer it for an NPC, a stable or dead player, or a save not due', async () => {
