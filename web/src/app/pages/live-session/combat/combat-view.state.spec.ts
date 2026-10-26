@@ -650,7 +650,6 @@ describe('CombatView state: the master reach and the moves', () => {
     view.actionNote.set('Surto de Ação');
     view.deaths.result.set('x');
     view.deaths.masterResult.set('y');
-    view.deaths.asking.set({ discard: false });
     view.moves.moveNote.set('z');
     await settle(fixture);
     // The same turn read again keeps them.
@@ -665,7 +664,6 @@ describe('CombatView state: the master reach and the moves', () => {
       view.deaths.masterResult(),
       view.moves.moveNote(),
     ]).toEqual(['', '', '', '']);
-    expect(view.deaths.asking()).toBeNull();
   });
 
   it('closes the offer form when the turn passes', async () => {

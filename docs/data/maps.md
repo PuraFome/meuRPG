@@ -62,6 +62,11 @@ erDiagram
         uuid campaign_id PK,FK
         uuid point_id PK,FK
     }
+    scene_player_discoveries {
+        uuid campaign_id PK,FK
+        uuid point_id PK,FK
+        uuid user_id PK,FK
+    }
     map_point_images {
         uuid point_id PK,FK
         uuid image_id PK,FK
@@ -109,6 +114,9 @@ erDiagram
     map_points ||--o{ scene_clues : "point_id"
     campaigns ||--o{ scene_discoveries : "campaign_id"
     map_points ||--o{ scene_discoveries : "point_id"
+    campaigns ||--o{ scene_player_discoveries : "campaign_id"
+    map_points ||--o{ scene_player_discoveries : "point_id"
+    users ||--o{ scene_player_discoveries : "user_id"
 ```
 
 Limits the server checks in the `INSERT` transaction: 200 maps per campaign (`DefaultMaxMaps`) and a per-map point limit (`DefaultMaxPointsPerMap`), answered with `resource_exhausted`.
@@ -235,7 +243,12 @@ Combat only moves a token that already exists, at the end of the fight; the mast
 - **`scene_discoveries`**: key `(campaign_id, point_id)`; the first time counts.
   `maps` writes it when a scene point is revealed, and when the master opens the scene (`play` calls `maps` for it; `OpenScene` counts even on a hidden point), in each one's transaction.
   It holds for the whole group and survives the point being hidden again.
+  A scene open to only some players is not written here (it would tell its name to the others).
   The list of scenes a player may label notes with joins `map_points` and shows only what is still a `scene`.
+- **`scene_player_discoveries`**: key `(campaign_id, point_id, user_id)`, cascading with the point, the campaign and the player's account; the first time counts.
+  `play` writes it, through `maps`, for the players a scene open to only some players is open to when it opens, when the master brings them in and when they join.
+  It is the scenes only that player discovered: it stays when they leave the scene, and no other player reads it.
+  The list of scenes a player may label notes with is `scene_discoveries` of the campaign plus the player's own rows.
 
 ## Who reads
 

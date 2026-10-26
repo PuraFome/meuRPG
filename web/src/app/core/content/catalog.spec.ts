@@ -92,6 +92,36 @@ describe('the catalog the editors read', () => {
     expect(vm.damageTypes).toEqual([{ value: 'damage-type:fire', label: 'Fogo' }]);
   });
 
+  it("lists the SRD's spells for a class's own list: not the table's, not the archived, with their circle and school", () => {
+    const withTable = catalogVm(
+      create(ContentSchema, {
+        spells: [
+          {
+            key: 'spell:aid',
+            namePt: 'Auxílio',
+            level: 2,
+            schoolKey: 'school:abjuration',
+            schoolNamePt: 'Abjuração',
+          },
+          {
+            key: 'spell:light',
+            namePt: 'Luz',
+            level: 0,
+            schoolKey: 'school:evocation',
+            schoolNamePt: 'Evocação',
+          },
+          { key: 'spell:old', namePt: 'Velha', level: 1, schoolNamePt: 'Evocação', archived: true },
+          { key: 'spell:selo@mesa', namePt: 'Selo', level: 1, schoolNamePt: 'Abjuração' },
+        ],
+      } as never),
+    );
+    expect(withTable.srdSpells).toEqual([
+      { value: 'spell:aid', label: 'Auxílio (2º nível, Abjuração)' },
+      { value: 'spell:light', label: 'Luz (Truque, Evocação)' },
+    ]);
+    expect(withTable.spells.map((s) => s.value)).toContain('spell:selo@mesa');
+  });
+
   it('lists the casting classes with the catalog first and the table last', () => {
     expect(vm.castingClasses).toEqual([
       { key: 'class:wizard', name: 'Mago', table: false },

@@ -15,5 +15,5 @@ Ogro hp 59/59 base - temp 0 defeated=false exh=0 fails=0 conds=[] derived=[] ac+
 Pensantus hp -/- base - temp - defeated=false exh=0 fails=0 conds=[] derived=[] ac+0 speed 100% +0ft noAction=false noReaction=false noMove=false mage=- conc=spell:hideous-laughter turn=acting
 
 events:
-lasting_effect_ended {"combatant_id":"<Pensantus>","lasting":{"change":"ended","effects":["<uuid>"],"key":"spell:hold-person","reason":"concentration","targets":["<Bandido>"]},"round":2,"secret":true,"target_id":"<Bandido>"}
+lasting_effect_ended {"combatant_id":"<Pensantus>","lasting":{"change":"ended","effects":["<uuid>"],"key":"spell:hold-person","reason":"concentration","targets":["<Bandido>"]},"round":2,"target_id":"<Bandido>"}
 

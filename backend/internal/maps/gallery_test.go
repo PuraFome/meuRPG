@@ -31,6 +31,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/maps/images"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
+	playlink "github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -488,6 +489,10 @@ func (noLive) ImageOnStage(context.Context, string, string, string) (bool, error
 
 func (noLive) ImageShownTo(context.Context, string, string, string) (bool, error) {
 	return false, errors.New("not in this test")
+}
+
+func (noLive) ShownImageViewers(context.Context, string) (playlink.ImageAudience, error) {
+	return playlink.ImageAudience{}, errors.New("not in this test")
 }
 
 func (noLive) PublishToScene(context.Context, string, *playv1.WatchGameSessionResponse) {}

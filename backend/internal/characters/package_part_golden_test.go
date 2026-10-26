@@ -408,7 +408,7 @@ func packagePartVariants(t *testing.T, base []packagePartEntry) map[string][]pac
 	out := map[string][]packagePartEntry{"the exported campaign": base}
 
 	var many []packagePartEntry
-	for i := range 301 {
+	for i := range 1001 {
 		many = append(many, packagePartContent(t, fmt.Sprintf("content/9%04d.json", i), background))
 	}
 	out["more table entries than the overlay takes"] = packagePartWith(base, content, many...)

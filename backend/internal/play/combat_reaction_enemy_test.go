@@ -116,7 +116,7 @@ func shieldedHit(t *testing.T) (*armed, *playv1.Encounter, *playv1.ReactionWindo
 }
 
 // TestTwoAnswersToOneWindowSettleToOne: the master answers the same window twice at the
-// same time; one wins and the other is told it came too late, and Shield is spent once.
+// same time; one wins and the other is told it was answered already, and Shield is spent once.
 func TestTwoAnswersToOneWindowSettleToOne(t *testing.T) {
 	t.Parallel()
 	a, e, w := shieldedHit(t)
@@ -131,7 +131,7 @@ func TestTwoAnswersToOneWindowSettleToOne(t *testing.T) {
 	for range 2 {
 		if err := <-errs; err != nil {
 			failed++
-			wantBlockedBy(t, "the late answer", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN_TO_ANSWER)
+			wantBlockedBy(t, "the late answer", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_ALREADY_ANSWERED)
 		} else {
 			won++
 		}

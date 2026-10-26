@@ -21,7 +21,7 @@ The actions, images, clues and hooks live in `maps`; opening the scene in the se
 ## Who is in the scene (MR-015, RN-10)
 
 A scene is open to the whole table (`game_sessions.open_scene_everyone`, the default, a later joiner included) or to exactly the players of `game_session_scene_players`; the master is always in.
-`SceneAudience` is `everyone` or `user_ids` (accounts of the party's players, validated as the conversation's readers are, `playersOf`).
+`SceneAudience` is `everyone` or `user_ids` (accounts of players of the campaign, `playersOf`: the conversation's readers keep their own check).
 `OpenScene` writes it with the point (`startScene`), `SetSceneAudience` while the scene is open (`applySceneAudience`); closing clears the rows and sets the flag back.
 Opening the scene that is open already with no audience changes nothing, so a second tap never widens it.
 
@@ -31,7 +31,8 @@ Opening the scene that is open already with no audience changes nothing, so a se
 - **Joining.** `game_sessions.scene_players_may_join` ("Os jogadores podem entrar", off by default, reset when the scene closes or another opens; `SetScenePlayersMayJoin`, or `OpenScene(players_may_join)`) lets `openSceneInfo` answer a player who is out with `{name, joinable}` and nothing else (`joinableScene`); `JoinScene` adds the caller (`game_session_scene_players.joined_by_self`, kept when the master changes the list; the master reads it in `ScenePlayer.joined_by_self`) and refuses as no scene when the switch is off. The joiner is one of the scene's players from then on (`sceneImageMove`: the image shown to the scene's players reaches them, a chosen one does not). A change of the switch, and any change of a scene that lets players join, is announced to every player (`audienceChange.wide`).
 - **The stream follows the audience.** Every hint of the scene (`scene_changed`, `stage_changed`, `group_check_changed`) goes to the master and the players in the scene (`PublishToScene`, also what `maps.LiveSession` calls); a change of who is in sends `scene_changed` to the players of the scene before and after, so one reads the scene and the other reads none.
 - **The rolls remember it.** `scene_opened` carries `players`, and `scene_check_rolled` the `audience` of its moment, when the scene was open to only some players; the summary counts a roll for the master and for those players only (`TallySessionSceneChecks`).
-- **Discovery.** The scene is discovered for the group when it is open to everyone, so the list of scenes a note can label never names a scene the others were not in.
+- **Discovery.** The scene is discovered for the group when it is open to everyone. While it is open to only some players, each of them discovers it alone (`MapKeeper.DiscoverSceneFor`, `scene_player_discoveries`) when it opens, when the master brings them in and when they join, and keeps it after leaving; the list of scenes a note can label (`DiscoveredScenes(campaign, user)`) never names a scene to a player who was not in it.
+- **Who can be named.** The audience names players of the campaign (`authz.IsActivePlayer`), not characters: the player of a dead character follows the scene like anyone in it; the master's view of who is in and out lists the players with a living character of the party, and rolling still needs a living character.
 - **The image** the master shows to the scene's players follows who is in (see [the live session](live-session.md#who-sees-the-image)).
 - Tests: `TestSceneAudience_*` (play), `TestRN10_APlayerOutsideAnOpenSceneReadsNoScene` (leak test, with its needles and its stream), `TestAuthorizationMatrix`, `TestSceneAuthorizationMatrix` and `TestEveryMethodNeedsASession` for the two calls.
 
@@ -138,7 +139,7 @@ sequenceDiagram
   It holds for the whole party and keeps holding if the point is hidden again.
   It is the only list of scenes a player reaches by name outside the map and the open scene (see [Architecture](../notes.md#notes-module-player-notes)).
 
-**How the modules meet.** `play` reads the scene through `MapKeeper.ScenePoint` (hooks and clues come only for the master), stores the discovery through `MapKeeper.DiscoverScene` in `OpenScene`'s transaction, and asks `CombatRoster.SceneOptions` and `CombatRoster.SceneCheckName` (`characters.Service`).
+**How the modules meet.** `play` reads the scene through `MapKeeper.ScenePoint` (hooks and clues come only for the master), stores the discovery through `MapKeeper.DiscoverScene` (the group) or `MapKeeper.DiscoverSceneFor` (some players) in `OpenScene`'s transaction, and asks `CombatRoster.SceneOptions` and `CombatRoster.SceneCheckName` (`characters.Service`).
 `maps` asks which point is the open scene through `LiveSession.OpenScenePoint`, to notify the stream when an action or the open scene's point changes.
 
 **History** (`session_events`).

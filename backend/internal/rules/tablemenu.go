@@ -142,6 +142,7 @@ var menuTypes = []MenuType{
 	{Type: "proficiency", NamePT: "Proficiência", HintPT: "Dá proficiência numa perícia, num teste de resistência, numa ferramenta, arma ou armadura, ou na iniciativa.", Fields: []MenuField{
 		{Name: "proficiency", Required: true, Kind: "choice", List: ListProficiencies},
 		{Name: "level", Kind: "choice", List: ListProficiencyLevels},
+		{Name: "only_proficient", Kind: "yes_no"},
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},

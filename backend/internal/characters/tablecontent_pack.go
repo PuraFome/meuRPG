@@ -37,8 +37,8 @@ const (
 	// reads.
 	PackFormat  = "meurpg.table-content"
 	PackVersion = 1
-	// MaxPackBytes is the most proto JSON a pack takes.
-	MaxPackBytes = 2 << 20
+	// MaxPackBytes is the most proto JSON a pack takes: 1000 entries of the books' size come to about 1.4 MiB, and the RPC message limit is 4 MiB.
+	MaxPackBytes = 3 << 20
 	// maxPackNameRunes bounds the pack's label.
 	maxPackNameRunes = 80
 	// maxImportPasses bounds how many times the engine checks a pack that has refused

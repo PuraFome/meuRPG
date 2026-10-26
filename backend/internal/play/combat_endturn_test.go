@@ -169,20 +169,35 @@ func TestEndTurnRefusalsThatHoldThePart(t *testing.T) {
 	}
 }
 
-// TestEndTurnWaitsForTheDeathSaveOfAPlayer: Toren is down when his turn starts; his player
-// must roll the save first, and the master may pass his part anyway.
+// TestEndTurnWaitsForTheDeathSaveOfAPlayer: Toren is down when his turn starts; neither his
+// player nor the master can pass his part before the save is rolled (the master rolls it for
+// him, in the app or with a typed d20), and after it the master passes it.
 func TestEndTurnWaitsForTheDeathSaveOfAPlayer(t *testing.T) {
 	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 1) // Pensantus, Toren, Brisa, Goblin, Capitão
 	a.correct(t, a.toren, hpIs(0))
 	a.mustEndTurn(t, a.ana, e) // Toren's turn starts with a death save due
-	_, err := a.endTurnAs(t, a.caio, e, func(r *playv1.EndTurnRequest) { r.ExpectedCombatantId = a.id(t, "Toren") })
-	wantBlockedBy(t, "Toren's player", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DEATH_SAVE_DUE)
-	wantRefusal(t, "Toren's player", err, connect.CodeFailedPrecondition, "roll your death save before ending the turn")
+	toren := func(r *playv1.EndTurnRequest) { r.ExpectedCombatantId = a.id(t, "Toren") }
 	before := len(a.eventTrace(t, e, 0))
-	if _, err := a.endTurnAs(t, a.master, e, func(r *playv1.EndTurnRequest) { r.ExpectedCombatantId = a.id(t, "Toren") }); err != nil {
-		t.Fatalf("the master passing Toren's part: %v", err)
+	for who, u := range map[string]*user{"Toren's player": a.caio, "the master": a.master} {
+		_, err := a.endTurnAs(t, u, e, toren)
+		wantBlockedBy(t, who, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DEATH_SAVE_DUE)
+		wantRefusal(t, who, err, connect.CodeFailedPrecondition, "roll your death save before ending the turn")
+	}
+	// Discarding does not skip the save either.
+	_, err := a.endTurnAs(t, a.master, e, func(r *playv1.EndTurnRequest) { toren(r); r.DiscardPendingDamage = true })
+	wantBlockedBy(t, "the master discarding", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DEATH_SAVE_DUE)
+	if n := len(a.eventTrace(t, e, 0)); n != before {
+		t.Errorf("events after the refusals = %d, want %d", n, before)
+	}
+	// The master rolls it for Toren with a typed d20 (physical dice), then passes the part.
+	if _, err := a.deathSave(t, a.master, e, "Toren", deathFace(14)); err != nil {
+		t.Fatalf("the master's death save for Toren: %v", err)
+	}
+	before = len(a.eventTrace(t, e, 0))
+	if _, err := a.endTurnAs(t, a.master, e, toren); err != nil {
+		t.Fatalf("the master passing Toren's part after the save: %v", err)
 	}
 	got := a.eventTrace(t, e, before)
 	if len(got) != 1 || !strings.HasPrefix(got[0], `turn_ended {"discarded": 0, "from": "Toren"`) {

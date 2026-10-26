@@ -301,6 +301,7 @@ func tableCastingOf(c *rulesv1.TableCasting) *rules.TableCasting {
 	return &rules.TableCasting{
 		Kind: c.GetKind(), Ability: abilityFromProto[c.GetAbility()], Preparation: c.GetPreparation(), ListFrom: c.GetListFrom(),
 		PreparedMax: c.GetPreparedMax(), StartLevel: int(c.GetStartLevel()), Ritual: c.GetRitual(),
+		SRDSpells: c.GetSrdSpellKeys(),
 	}
 }
 
@@ -316,7 +317,7 @@ func tableLevelOf(cantrips, spells int32, slots []int32) rules.TableLevel {
 }
 
 func tableSubclassOf(te rules.TableEntry, b *rulesv1.TableSubclass) rules.TableSubclass {
-	s := rules.TableSubclass{TableEntry: te, Class: b.GetClassKey(), Level: int(b.GetLevel()), DescPT: b.GetDescPt()}
+	s := rules.TableSubclass{TableEntry: te, Class: b.GetClassKey(), Level: int(b.GetLevel()), DescPT: b.GetDescPt(), SpellsExpanded: b.GetSpellsExpanded()}
 	for _, l := range b.GetLevels() {
 		s.Levels = append(s.Levels, rules.TableSubclassLevel{
 			Level: int(l.GetLevel()), Features: tableFeaturesOf(l.GetFeatures()),
@@ -373,8 +374,8 @@ func tableEffectsOf(in []*rulesv1.TableEffect) []rules.Effect {
 			Choice: e.GetChoice(), Count: int(e.GetCount()), From: e.GetFrom(), Economy: e.GetEconomy(), Applies: e.GetApplies(), Ability: e.GetAbility(),
 			Spells: e.GetSpells(), TextPT: e.GetTextPt(),
 			IgnoreCover: e.GetIgnoreCover(), RangeMultiplier: int(e.GetRangeMultiplier()), NoLongRangeDisadvantage: e.GetNoLongRangeDisadvantage(),
-			Except: e.GetExcept(), While: e.GetWhile(), DamageTypes: e.GetDamageTypes(), Kind: e.GetKind(),
-			Conditions: e.GetConditions(), AgainstCondition: e.GetAgainstCondition(),
+			Except: e.GetExcept(), While: e.GetWhile(), OnlyProficient: e.GetOnlyProficient(),
+			DamageTypes: e.GetDamageTypes(), Kind: e.GetKind(), Conditions: e.GetConditions(), AgainstCondition: e.GetAgainstCondition(),
 		})
 	}
 	return out

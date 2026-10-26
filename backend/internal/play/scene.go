@@ -322,13 +322,11 @@ func (s *Service) switchSceneOn(ctx context.Context, tx pgx.Tx, m authz.Membersh
 	if err != nil {
 		return err
 	}
-	// Opening a scene, even a hidden point's, makes it "discovered" for the group: the players see its
-	// name in the open scene, so they may tag notes with it (MR-030, question 61). A scene open to only
-	// some players is discovered when it opens to everyone: the group's list would tell the others its name.
-	if op.who().all {
-		if err := s.maps.DiscoverScene(ctx, tx, m.CampaignID, op.point, c.now); err != nil {
-			return err
-		}
+	// Opening a scene, even a hidden point's, makes it "discovered": the players see its name in the open
+	// scene, so they may tag notes with it (MR-030, question 61). A scene open to only some players is
+	// discovered by those players alone; the group discovers it when it opens to everyone.
+	if err := s.discoverScene(ctx, tx, m.CampaignID, op.point, op.who(), c.now); err != nil {
+		return err
 	}
 	ev := sceneEvent{PointID: op.point, Actions: op.actions}
 	if who := op.who(); !who.all {
@@ -354,10 +352,19 @@ func (s *Service) reopenScene(ctx context.Context, tx pgx.Tx, q *playdb.Queries,
 		return err
 	}
 	sw.changed = sw.audience.changed
-	if sw.changed && op.audience.all {
-		return s.maps.DiscoverScene(ctx, tx, m.CampaignID, op.point, s.now())
+	if !sw.changed {
+		return nil
 	}
-	return nil
+	return s.discoverScene(ctx, tx, m.CampaignID, op.point, op.audience, s.now())
+}
+
+// discoverScene records that the players the scene is open to discovered it: the whole group when it is open to
+// everyone, else each of the players alone (MR-030, RN-10).
+func (s *Service) discoverScene(ctx context.Context, tx pgx.Tx, campaignID, pointID string, to viewers, at time.Time) error {
+	if to.all {
+		return s.maps.DiscoverScene(ctx, tx, campaignID, pointID, at)
+	}
+	return s.maps.DiscoverSceneFor(ctx, tx, campaignID, pointID, to.users, at)
 }
 
 // startScene opens the point and sets who it is open to, in the locked session. The image shown to the

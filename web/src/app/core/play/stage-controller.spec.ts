@@ -44,6 +44,19 @@ describe('StageController', () => {
     expect(api.calls).toEqual(['speaker mira', 'speaker nobody']);
   });
 
+  it('hides an NPC from the players and shows it again, saying so (RN-10)', async () => {
+    const { api, state, ctl } = setup();
+    await ctl.speak('mira', false);
+    expect(await ctl.setHidden('mira', true)).toBe(true);
+    expect(state.stage()[0].hidden).toBe(true);
+    expect(state.stage()[0].speaking).toBe(false);
+    expect(ctl.status()).toBe('Mira: escondida dos jogadores.');
+    await ctl.setHidden('mira', false);
+    expect(state.stage()[0].hidden).toBe(false);
+    expect(ctl.status()).toBe('Os jogadores veem Mira.');
+    expect(api.calls).toEqual(['speaker mira', 'hide mira', 'show mira']);
+  });
+
   it('takes an NPC off at once and says who left', async () => {
     const { state, ctl } = setup();
     expect(await ctl.take('mira')).toBe(true);
@@ -121,6 +134,7 @@ describe('StageController', () => {
         putOnStage: () => Promise.reject(new Error('unused')),
         takeOffStage: () => Promise.reject(new Error('unused')),
         setSpeaker: () => new Promise((resolve) => answers.push(resolve)),
+        setStageNpcHidden: () => Promise.reject(new Error('unused')),
       };
       let reads = 0;
       const state = new SceneState(

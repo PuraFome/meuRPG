@@ -311,11 +311,20 @@
 // The combat takes the board's place (MR-013); the launch notice (a map that could not be read) sits above
 // the board, with the same step under the header.
 .combat,
+.grupo,
 .launch,
 .familiar,
 .fog-panel {
   display: block;
   margin-top: var(--mr-space-6);
+}
+
+// On a phone the map (or the bar) comes right under the header: the 24px step was dead space above it.
+@media (max-width: 767.98px) {
+  .combat,
+  .grupo {
+    margin-top: var(--mr-space-3);
+  }
 }
 
 // "Anotações" in the app bar (E8-06): a bordered 44px button with the icon and
@@ -411,4 +420,9 @@
     position: static;
     margin-top: var(--mr-space-4);
   }
+}
+
+.combat[hidden],
+.grupo[hidden] {
+  display: none;
 }

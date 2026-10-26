@@ -5,31 +5,13 @@
   container-type: inline-size;
 }
 
-// "On the players' screens right now": the 1px accent frame, with the words
-// and the icon beside it (the frame is never the only sign).
+// "On the players' screens right now": the 1px accent frame, with the words and the icon beside it
+// (the frame is never the only sign); the first lines are `app-scene-who`.
 .so {
   display: flex;
   flex-direction: column;
   gap: var(--mr-space-3);
   border-color: var(--mr-accent);
-}
-
-.so__since {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-  color: var(--mr-accent-text);
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 20px;
-
-  .mat-icon {
-    flex: none;
-    width: 18px;
-    height: 18px;
-    font-size: 18px;
-  }
 }
 
 .so__head {

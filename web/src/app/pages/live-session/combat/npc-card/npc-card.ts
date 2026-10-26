@@ -208,7 +208,13 @@ export class NpcCard {
   });
   protected readonly stats = computed(() => statsOf(this.subject(), this.theatre()));
   protected readonly result = computed(() =>
-    resultOf(this.last(), this.encounter(), this.reactionStopped(), this.shieldName()),
+    resultOf(
+      this.last(),
+      this.encounter(),
+      this.reactionStopped(),
+      this.shieldName(),
+      this.attacks(),
+    ),
   );
   /** The mode the server works out for this attack on this target (advantage, disadvantage, normal): the d20 the master
    * types follow it, one face or two, as the player's own sheet does (SRD 5.1, "Advantage and Disadvantage"). */

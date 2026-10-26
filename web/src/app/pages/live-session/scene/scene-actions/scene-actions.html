@@ -19,13 +19,31 @@
 
   <ng-content />
 
+  @if (error()) {
+    <div class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  }
+
   @if (rows().length === 0) {
     <p class="sa__none">Esta cena não tem ações. Adicione no editor do mapa.</p>
   } @else {
     <ul class="sa__list">
       @for (row of rows(); track row.id) {
-        <li class="sa__item">
+        <li class="sa__item" [class.sa__item--hidden]="row.hidden">
           <div class="sa__row">
+            @if (row.id !== 'lost') {
+              <button
+                type="button"
+                class="sa__eye"
+                [attr.aria-label]="row.hidden ? 'Mostrar ' + row.title + ' aos jogadores' : 'Esconder ' + row.title + ' dos jogadores'"
+                [aria-disabled]="eyeDisabled(row)"
+                (click)="toggleHidden(row)"
+              >
+                <mat-icon aria-hidden="true">{{ row.hidden ? 'visibility_off' : 'visibility' }}</mat-icon>
+              </button>
+            }
             <div class="sa__what">
               <span class="sa__name">{{ row.title }}</span>
               @if (row.freshCount > 0) {
@@ -40,6 +58,9 @@
                 }
                 @if (row.attempts) {
                   <span class="sa__sep" aria-hidden="true">·</span><span>{{ row.attempts }}</span>
+                }
+                @if (row.hidden) {
+                  <span class="sa__sep" aria-hidden="true">·</span><b class="sa__hidden"><mat-icon aria-hidden="true">visibility_off</mat-icon>Escondida</b>
                 }
               </span>
             </div>
@@ -83,4 +104,5 @@
       }
     </ul>
   }
+  <p class="mr-visually-hidden" role="status" aria-live="polite">{{ status() }}</p>
 </section>

@@ -33,6 +33,7 @@ export const EFFECT_FIELD_LABELS: Readonly<Record<string, string>> = {
   damage_types: 'Tipos de dano',
   conditions: 'Condições',
   against_condition: 'Só nos testes de resistência contra a condição',
+  only_proficient: 'Só onde já tem proficiência',
   ignore_cover: 'Ignora meia cobertura e três quartos',
   range_multiplier: 'Multiplica o alcance da magia por',
   no_long_range_disadvantage: 'Sem desvantagem no alcance longo',
@@ -51,6 +52,8 @@ export const EFFECT_FIELD_HINTS: Readonly<Record<string, string>> = {
   except:
     'Em vez de listar os tipos: vale para todos menos este. Deixe vazio se escolheu os tipos acima.',
   while: 'Vazio, vale sempre. Em fúria, só enquanto o personagem estiver em fúria.',
+  only_proficient:
+    'Dobra a perícia só de quem já é proficiente nela por outra fonte. Quem não é, fica como está.',
   against_condition:
     'Vazio, a vantagem ou desvantagem fica como lembrete da situação. Com uma condição, o app aplica nos testes de resistência para não ficar com ela.',
 };

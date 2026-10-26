@@ -284,15 +284,42 @@ func (x *deriver) skillLevels() (map[string]ProficiencyLevel, map[string]bool) {
 			sk.raise(s, ProficiencyFull)
 		}
 	}
+	var conditional []*Effect
 	for _, a := range x.active {
 		e := a.effect
 		if e.Type != "proficiency" || !strings.HasPrefix(e.Proficiency, "skill:") || len(e.Tags) > 0 || !x.applies(a) {
 			continue
 		}
+		if e.OnlyProficient {
+			conditional = append(conditional, e)
+			continue
+		}
 		x.skillEffect(&sk, e)
 	}
+	x.onlyProficientExpertise(&sk, conditional)
 	x.expertise(sk.levels)
 	return sk.levels, sk.automatic
+}
+
+// onlyProficientExpertise doubles the skills the only_proficient effects name
+// where the character is proficient from any other source: the levels are read
+// before any of them applies, so they never lift each other.
+func (x *deriver) onlyProficientExpertise(sk *skillTally, effects []*Effect) {
+	proficient := map[string]bool{}
+	for skill, lvl := range sk.levels {
+		proficient[skill] = lvl >= ProficiencyFull
+	}
+	for _, e := range effects {
+		if e.Proficiency == "skill:*" {
+			for _, s := range x.c.skillOrder {
+				if proficient[s] {
+					sk.raise(s, ProficiencyExpertise)
+				}
+			}
+		} else if proficient[e.Proficiency] {
+			sk.raise(e.Proficiency, ProficiencyExpertise)
+		}
+	}
 }
 
 // skillTally is the skills' proficiency levels as skillLevels gathers them, and

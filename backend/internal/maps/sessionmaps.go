@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -156,12 +157,18 @@ func shownImage(img mapsdb.GalleryImage) *playv1.ShownImage {
 
 // LeaveImage leaves the campaign's gallery image with the players inside
 // tx, with the audience given: the whole table, or exactly some players (MR-028,
-// RN-10). An image already left takes the audience of this leaving; one that
-// is not the campaign's anymore (deleted meanwhile) is skipped, since a left
-// image that is gone has nothing to leave. The caller checked that the caller is
-// the campaign's master.
+// RN-10). An image already left keeps the widest audience: whoever had it still
+// has it, and the players of this leaving have it too; only TakeBackImage
+// narrows it. One that is not the campaign's anymore (deleted meanwhile) is
+// skipped, since a left image that is gone has nothing to leave. The caller
+// checked that the caller is the campaign's master.
 func (sm *SessionMaps) LeaveImage(ctx context.Context, tx pgx.Tx, campaignID, imageID string, at time.Time, who link.ImageAudience) error {
 	q := sm.queries.WithTx(tx)
+	before, err := leftWith(ctx, q, campaignID, imageID)
+	if err != nil && connect.CodeOf(err) != connect.CodeNotFound {
+		return err
+	}
+	who = who.Union(before)
 	n, err := q.LeaveImage(ctx, mapsdb.LeaveImageParams{CampaignID: campaignID, ImageID: imageID, Now: at, AudienceEveryone: who.Everyone})
 	if err != nil {
 		return fmt.Errorf("leave the image with the players: %w", err)

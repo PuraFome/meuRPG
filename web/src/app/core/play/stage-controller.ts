@@ -11,6 +11,11 @@ export interface StageApi {
   putOnStage(campaignId: string, characterId: string): Promise<readonly StageNpc[]>;
   takeOffStage(campaignId: string, characterId: string): Promise<readonly StageNpc[]>;
   setSpeaker(campaignId: string, characterId: string): Promise<readonly StageNpc[]>;
+  setStageNpcHidden(
+    campaignId: string,
+    characterId: string,
+    hidden: boolean,
+  ): Promise<readonly StageNpc[]>;
 }
 
 /**
@@ -95,6 +100,20 @@ export class StageController {
     if (result === 'applied') {
       this.entered.set('');
       this.status.set(speaking ? 'Ninguém fala.' : `${name} fala.`);
+    }
+    return result !== 'failed';
+  }
+
+  /** The eye of a row: hides the NPC from the players or shows it again (RN-10). A hidden NPC
+   * never speaks, so the server also takes the floor from it. */
+  async setHidden(characterId: string, hidden: boolean): Promise<boolean> {
+    const name = this.nameOf(characterId);
+    const result = await this.run(characterId, () =>
+      this.api.setStageNpcHidden(this.campaignId(), characterId, hidden),
+    );
+    if (result === 'applied') {
+      this.entered.set('');
+      this.status.set(hidden ? `${name}: escondida dos jogadores.` : `Os jogadores veem ${name}.`);
     }
     return result !== 'failed';
   }

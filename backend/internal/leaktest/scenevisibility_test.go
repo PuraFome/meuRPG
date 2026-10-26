@@ -78,6 +78,37 @@ func TestRN10_AHiddenStageNPCIsTheMastersAlone(t *testing.T) {
 		}
 	}
 
+	// The master speaks in the conversation as the hidden NPC, for Ana alone: her line names it (the name needle is
+	// the positive control), Caio and the rest never read the line, and nothing else of the NPC reaches Ana:
+	// not the stage, not the portrait, whether on the stage read or through the line.
+	w.say(w.master, speakNPC, w.secrets.marker("line-hidden-npc", w.ana), func(r *playv1.SendSessionMessageRequest) {
+		r.SpeakerId, r.ReaderUserIds = w.hiddenStageNPC.GetId(), []string{w.ana.id}
+	})
+	lines := func(p *person) reply {
+		return p.call(playv1connect.PlayServiceListSessionMessagesProcedure, &playv1.ListSessionMessagesRequest{CampaignId: w.campaign})
+	}
+	for _, p := range []*person{w.master, w.ana} {
+		if !bytes.Contains(lines(p).body, []byte(needles[0])) {
+			t.Errorf("%s reads no line naming the hidden NPC that spoke", p.name)
+		}
+	}
+	for _, p := range []*person{w.caio, w.pending, w.stranger, w.anonymous()} {
+		if n, found := holdsAny(lines(p).body, needles); found {
+			t.Errorf("%s reads a line of the hidden NPC (%s) that was not theirs", p.name, n)
+		}
+	}
+	if bytes.Contains(lines(w.ana).body, []byte(w.imgHiddenStage)) {
+		t.Errorf("Ana's line carries the hidden NPC's portrait (%s)", w.imgHiddenStage)
+	}
+	for _, p := range players {
+		if n, found := holdsAny(w.openSceneAs(p).body, needles); found {
+			t.Errorf("%s reads the hidden stage NPC (%s) in the open scene after it spoke in the conversation", p.name, n)
+		}
+	}
+	if status, _ := w.ana.get("/images/" + w.imgHiddenStage); status != 404 {
+		t.Errorf("Ana gets HTTP %d for the portrait of the hidden NPC that spoke in the conversation, want 404", status)
+	}
+
 	// "Dar a fala" shows it: Ana and Caio read it where they may, and Bia (pending) and Eva (a stranger) still do not.
 	must(w.master.play.SetSpeaker(ctx, rq(&playv1.SetSpeakerRequest{CampaignId: w.campaign, CharacterId: w.hiddenStageNPC.GetId()})))
 	for _, p := range []*person{w.ana, w.caio} {

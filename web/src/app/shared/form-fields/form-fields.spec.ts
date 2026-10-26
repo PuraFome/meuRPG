@@ -24,7 +24,7 @@ import { TextField } from './text-field';
   template: `
     <app-text-field label="Nome" [value]="name()" path="table_spell.name_pt" [issues]="issues()" hint="Dica." (valueChange)="name.set($event)" />
     <app-select-field label="Escola" [options]="options" [value]="school()" path="table_spell.school_key" (valueChange)="school.set($event)" />
-    <app-pick-list label="Idiomas" addLabel="Adicionar idioma" [options]="options" [values]="langs()" path="table_race.languages" (added)="langs.set([...langs(), $event])" (removed)="langs.set(langs().filter((k) => k !== $event))" />
+    <app-pick-list label="Idiomas" addLabel="Adicionar idioma" [options]="options" [values]="langs()" [disabled]="off()" [hint]="hintText()" path="table_race.languages" (added)="langs.set([...langs(), $event])" (removed)="langs.set(langs().filter((k) => k !== $event))" />
     <app-switch-field label="Ritual" [checked]="on()" (toggled)="on.set($event)" />
     <app-check-row label="V" [checked]="on()" (toggled)="on.set($event)" />
     <app-number-stepper label="Sabedoria" [value]="n()" [min]="-4" [max]="4" (valueChange)="n.set($event)" />
@@ -37,6 +37,8 @@ class Host {
   readonly school = signal('a');
   readonly langs = signal<string[]>(['a']);
   readonly on = signal(false);
+  readonly off = signal(false);
+  readonly hintText = signal('');
   readonly n = signal(0);
   readonly card = signal('resist');
   readonly cards: RadioCard[] = [
@@ -114,6 +116,20 @@ describe('form fields', () => {
     expect(box.height).toBe('44px');
     x.click();
     expect(host().langs()).toEqual(['b']);
+  });
+
+  it('pick list: off, it keeps the chips, takes none off and adds none, and points at its hint', () => {
+    const list = el.querySelector('app-pick-list')!;
+    expect(list.querySelector('select')!.disabled).toBe(false);
+    expect(list.querySelector<HTMLButtonElement>('.chip__x')!.disabled).toBe(false);
+    host().off.set(true);
+    host().hintText.set('Está desligada.');
+    fixture.detectChanges();
+    expect(text(list)).toContain('Alfa');
+    expect(list.querySelector('select')!.disabled).toBe(true);
+    expect(list.querySelector<HTMLButtonElement>('.chip__x')!.disabled).toBe(true);
+    expect(text(list)).toContain('Está desligada.');
+    expect(list.querySelector('select')!.getAttribute('aria-describedby')).not.toBeNull();
   });
 
   it('switch: a real switch with the state in a word', () => {
