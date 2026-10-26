@@ -3,6 +3,7 @@ package campaignpackage
 import (
 	"archive/zip"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -15,6 +16,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/safego"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/tasks"
 )
 
 // exportKey is where an export's zip lives: under the campaign's prefix, with
@@ -26,25 +28,92 @@ func exportKey(campaignID, exportID string) string {
 // progressEvery is the least time between two writes of the export's progress.
 const progressEvery = time.Second
 
-// launchExport runs the export in the background. The export is a row first,
-// so the page can ask about it at once and a restart leaves a trace.
-func (s *Service) launchExport(exportID, campaignID string) {
-	ctx, cancel := context.WithTimeout(context.Background(), exportTimeout)
+// exportKind is the kind of the task that writes an export's zip. Its payload holds the ids
+// only. The delivery is at least once, so the handler claims the row first (pending to
+// running): a duplicate, or an export already ended, finds nothing to claim and does nothing.
+const exportKind tasks.Kind = "campaign-export"
+
+// sweepKind is the kind of the scheduled task that deletes what expired.
+const sweepKind tasks.Kind = "campaign-sweep"
+
+// maxDispatchDeadline is the most a Cloud Tasks HTTP task may run (its dispatch deadline).
+const maxDispatchDeadline = 30 * time.Minute
+
+// exportDeadline is how long one delivery of an export may run: exportTimeout, and never
+// more than Cloud Tasks gives a task.
+const exportDeadline = min(exportTimeout, maxDispatchDeadline)
+
+type exportPayload struct {
+	CampaignID string `json:"campaign_id"`
+	ExportID   string `json:"export_id"`
+}
+
+// enqueueExport schedules the task of an export that is a pending row. When the task cannot
+// be accepted the export is failed (interrupted) at once, instead of staying pending until
+// the stale rule gives up on it; it returns the row as the page should see it.
+func (s *Service) enqueueExport(ctx context.Context, row packagedb.CampaignExport) packagedb.CampaignExport {
+	err := s.tasks.Enqueue(ctx, tasks.Job{Kind: exportKind, Payload: exportPayload{CampaignID: row.CampaignID, ExportID: row.ID}})
+	if err == nil || errors.Is(err, tasks.ErrExists) {
+		return row
+	}
+	s.logger.ErrorContext(ctx, "campaignpackage: cannot enqueue an export", "export_id", row.ID, "error", err)
+	s.failExport(row.ID, "interrupted")
+	if cur, err := s.queries.GetCampaignExport(ctx, row.ID); err == nil {
+		return cur
+	}
+	return row
+}
+
+// handleExport is the handler of exportKind. It answers nil for everything but a failure to
+// reach the database before the claim, which a retry can help.
+func (s *Service) handleExport(ctx context.Context, raw json.RawMessage) error {
+	var in exportPayload
+	if err := json.Unmarshal(raw, &in); err != nil || !validExportID(in.ExportID) {
+		return tasks.Permanent(errors.New("campaignpackage: the export task has no valid export id"))
+	}
+	row, err := s.queries.ClaimCampaignExport(ctx, packagedb.ClaimCampaignExportParams{ID: in.ExportID, UpdatedAt: s.now()})
+	if errors.Is(err, pgx.ErrNoRows) {
+		s.settleUnclaimed(ctx, in.ExportID)
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("claim the export: %w", err)
+	}
+	s.execExport(ctx, row.ID, row.CampaignID)
+	return nil
+}
+
+// settleUnclaimed is what a delivery does with an export it could not claim: nothing, since
+// it is done, failed, canceled, gone, or being written by another delivery; except when the
+// row says running but has not moved for staleExportAfter, which means the instance that
+// claimed it died. That export is failed (interrupted), the way the page's read fails it;
+// it is never written twice.
+func (s *Service) settleUnclaimed(ctx context.Context, exportID string) {
+	cur, err := s.queries.GetCampaignExport(ctx, exportID)
+	if err != nil {
+		return
+	}
+	if cur.State == "running" && cur.UpdatedAt.Before(s.now().Add(-staleExportAfter)) {
+		s.failExport(exportID, "interrupted")
+	}
+}
+
+// execExport writes the claimed export, in this process, where stopExport can cancel it.
+func (s *Service) execExport(ctx context.Context, exportID, campaignID string) {
+	ctx, cancel := context.WithCancel(ctx)
 	s.mu.Lock()
 	s.running[exportID] = cancel
 	s.mu.Unlock()
 	s.wg.Add(1)
-	go func() {
-		defer s.wg.Done()
-		defer func() {
-			cancel()
-			s.mu.Lock()
-			delete(s.running, exportID)
-			s.mu.Unlock()
-		}()
-		defer safego.Recover(s.logger, "export a campaign", func() { s.failExport(exportID, "interrupted") })
-		s.runExport(ctx, exportID, campaignID)
+	defer func() {
+		cancel()
+		s.mu.Lock()
+		delete(s.running, exportID)
+		s.mu.Unlock()
+		s.wg.Done()
 	}()
+	defer safego.Recover(s.logger, "export a campaign", func() { s.failExport(exportID, "interrupted") })
+	s.runExport(ctx, exportID, campaignID)
 }
 
 // stopExport cancels an export running in this process.

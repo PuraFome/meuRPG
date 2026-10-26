@@ -40,7 +40,7 @@ func exportToProto(e packagedb.CampaignExport) *pkgv1.CampaignExport {
 		Id: e.ID, Percent: e.Percent, CreatedAt: timestamppb.New(e.CreatedAt),
 	}
 	switch e.State {
-	case "running":
+	case "pending", "running":
 		out.State = pkgv1.CampaignExportState_CAMPAIGN_EXPORT_STATE_RUNNING
 	case "done":
 		out.State = pkgv1.CampaignExportState_CAMPAIGN_EXPORT_STATE_DONE
@@ -82,7 +82,7 @@ func (s *Service) StartCampaignExport(
 		return nil, s.dbError(ctx, "start an export", err)
 	}
 	if started {
-		s.launchExport(row.ID, in.campaignID)
+		row = s.enqueueExport(ctx, row)
 	}
 	return connect.NewResponse(&pkgv1.StartCampaignExportResponse{Export: exportToProto(row)}), nil
 }
@@ -125,7 +125,7 @@ func (s *Service) checkExportStart(ctx context.Context, msg *pkgv1.StartCampaign
 
 // startExport is StartCampaignExport's transaction: the export of the key,
 // or the one running for the campaign, or a new one. started is true for a
-// new one, which the caller launches.
+// new one, whose task the caller enqueues.
 func (s *Service) startExport(ctx context.Context, q *packagedb.Queries, in exportStart) (row packagedb.CampaignExport, started bool, err error) {
 	row, _, err = idem.Create(ctx, in.scoped, in.hash, q.GetCampaignExportByCreateKey,
 		func(e packagedb.CampaignExport) *string { return e.CreateHash },
@@ -233,7 +233,7 @@ func (s *Service) CancelCampaignExport(
 			return fmt.Errorf("find the export: %w", err)
 		}
 		row = cur
-		if cur.State != "running" {
+		if cur.State != "pending" && cur.State != "running" {
 			return nil // finished already: nothing to stop
 		}
 		now := s.now()
