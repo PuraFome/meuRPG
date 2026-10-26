@@ -63,7 +63,7 @@ func TestUnconsciousTargetSpellAttackFromAfarHasAdvantageOnly(t *testing.T) {
 	}
 	id := hit.GetPendingDamage().GetId()
 	s.mustDamage(t, s.ana, e, id, inAppDamage)
-	applied, err := s.settle(t, s.ana, e, id, true)
+	applied, err := s.settle(t, s.master, e, id, true)
 	if err != nil || applied.GetDeathFailuresAdded() != 1 {
 		t.Fatalf("the damage at 0 = %v, %v; want one death save failure", applied, err)
 	}
