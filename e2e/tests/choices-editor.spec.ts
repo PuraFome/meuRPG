@@ -98,6 +98,70 @@ test(
 );
 
 test(
+  'dois idiomas iguais escolhidos em sequência, antes de o servidor responder, não passam: o repetido nem é oferecido @RN-33',
+  { tag: '@RN-33' },
+  async ({ browser }) => {
+    const master = await newSignedInContext(browser, 'Mestre Teste');
+    const player = await newSignedInContext(browser, 'Jogador Teste');
+    try {
+      const m = await master.newPage();
+      const p = await player.newPage();
+      await Promise.all([m.goto('/'), p.goto('/')]);
+      const campaignId = await campaignWithEmptyPlayer(m, p, `Repetido ${Date.now()}`);
+
+      await p.goto(`/campaigns/${campaignId}/characters/new`);
+      await p.getByLabel('Nome do personagem', { exact: true }).fill('Brenna');
+      await pick(p, 'Raça', 'Humano');
+      await pick(p, 'Classe', 'Guerreiro');
+      await pick(p, 'Antecedente', 'Acólito');
+      await p.getByRole('tab', { name: 'Habilidades' }).click();
+      await method(p, 'Digitar');
+      await p.getByRole('tab', { name: /Escolhas/ }).click();
+      await expect(p.getByText(/Escolhas feitas: 0 de 4/)).toBeVisible();
+
+      // The server's answers are held: what the page knows is only what the player did.
+      let release: () => void = () => undefined;
+      const held = new Promise<void>((resolve) => (release = resolve));
+      await p.route(/PreviewChoices/, async (route) => {
+        await held;
+        await route.continue();
+      });
+
+      const extra = p.getByRole('region', { name: /^Idioma(?!s)/ });
+      const acolyte = p.getByRole('region', { name: /^Idiomas/ });
+      await extra.getByRole('radio', { name: /^Abissal/ }).click();
+      // The language the race took is not offered to the background, before it can be clicked.
+      const repeated = acolyte.getByRole('checkbox', { name: /^Abissal/ });
+      await expect(repeated).toHaveAttribute('aria-disabled', 'true');
+      await expect(repeated).toContainText('Você já escolheu esta opção.');
+      // A click on the disabled option does nothing (the event, since a disabled control takes no pointer click).
+      await repeated.dispatchEvent('click');
+      await expect(repeated).not.toBeChecked();
+      await acolyte.getByRole('checkbox', { name: /^Anão/ }).click();
+      // And the other way round: what the background took is not offered to the race.
+      await expect(extra.getByRole('radio', { name: /^Anão/ })).toHaveAttribute('aria-disabled', 'true');
+      release();
+      await p.getByRole('region', { name: /Estilo de Luta/ }).getByRole('radio', { name: /Defesa/ }).click();
+      await acolyte.getByRole('checkbox', { name: /^Celestial/ }).click();
+      await expect(p.getByText(/Escolhas feitas: 4 de 4/)).toBeVisible();
+
+      await p.getByRole('button', { name: 'Criar personagem' }).click();
+      await expect(p).toHaveURL(/\/campaigns\/[^/]+\/characters\/(?!new$)[^/]+$/);
+      expect(await storedPicks(p, campaignId)).toEqual(
+        expect.arrayContaining([
+          'race:human#language=language:abyssal',
+          'background:acolyte#language=language:dwarvish',
+          'background:acolyte#language=language:celestial',
+        ]),
+      );
+    } finally {
+      await master.close();
+      await player.close();
+    }
+  },
+);
+
+test(
   'um humano escolhe o idioma extra e os dois do Acólito no passo Escolhas, e a ficha lista os três @RN-33',
   { tag: '@RN-33' },
   async ({ browser }) => {
