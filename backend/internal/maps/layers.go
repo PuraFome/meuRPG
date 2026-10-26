@@ -18,6 +18,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/safego"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -147,7 +148,7 @@ func (s *Service) PaintMapCells(
 	if err != nil {
 		return nil, err
 	}
-	mapID, ok := parseID(req.Msg.GetMapId())
+	mapID, ok := uid.Canonical(req.Msg.GetMapId())
 	if !ok {
 		return nil, errMapNotFound()
 	}
@@ -533,7 +534,7 @@ func (s *Service) GetMapLayers(
 	if err != nil {
 		return nil, err
 	}
-	mapID, ok := parseID(req.Msg.GetMapId())
+	mapID, ok := uid.Canonical(req.Msg.GetMapId())
 	if !ok {
 		return nil, errMapNotFound()
 	}
@@ -629,7 +630,7 @@ func (s *Service) SetMapFog(
 	if err != nil {
 		return nil, err
 	}
-	mapID, ok := parseID(req.Msg.GetMapId())
+	mapID, ok := uid.Canonical(req.Msg.GetMapId())
 	if !ok {
 		return nil, errMapNotFound()
 	}

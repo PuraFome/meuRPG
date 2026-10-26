@@ -546,7 +546,8 @@ func firstSkillChoice(choices []optionSet) (srd51.Choice, bool) {
 }
 
 // classMulticlass reads what multiclassing into the class asks and gives.
-// Unlike the class's own skill choice, the last skill choice listed is kept.
+// Unlike the class's own skill choice (the first one), every skill choice is kept, in the order the source
+// lists them: the first in SkillChoices and the others in MoreSkillChoices.
 func classMulticlass(src classMultiClassing) srd51.Multiclass {
 	mc := srd51.Multiclass{Proficiencies: keys("proficiency:", src.Proficiencies)}
 	for _, p := range src.Prerequisites {
@@ -562,8 +563,13 @@ func classMulticlass(src classMultiClassing) srd51.Multiclass {
 		}
 	}
 	for i := range src.ProficiencyChoices {
-		if choice, ok := skillChoice(&src.ProficiencyChoices[i]); ok {
+		choice, ok := skillChoice(&src.ProficiencyChoices[i])
+		switch {
+		case !ok:
+		case mc.SkillChoices == nil:
 			mc.SkillChoices = &choice
+		default:
+			mc.MoreSkillChoices = append(mc.MoreSkillChoices, choice)
 		}
 	}
 	return mc
@@ -979,7 +985,7 @@ func convertEquipment(in *inputs) (output, error) {
 	if err != nil {
 		return output{}, err
 	}
-	var out []srd51.Equipment
+	out := []srd51.Equipment{} // never nil: an empty list is written as [], not null
 	for _, r := range rows {
 		e := srd51.Equipment{Key: "equipment:" + r.Index, Name: r.Name}
 		switch r.EquipmentCategory.Index {

@@ -10,6 +10,7 @@ import (
 
 	"github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/vision"
 )
@@ -22,7 +23,7 @@ import (
 
 // fogRow reads the map's row and its grid, and says whether it has the fog on.
 func (s *Service) fogRow(ctx context.Context, campaignID, mapID string) (fogInput, mapsdb.Map, bool, error) {
-	id, ok := parseID(mapID)
+	id, ok := uid.Canonical(mapID)
 	if !ok {
 		return fogInput{}, mapsdb.Map{}, false, nil
 	}

@@ -17,6 +17,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 )
 
@@ -219,7 +220,7 @@ func (s *Service) UpdateSceneAction(
 	if err != nil {
 		return nil, err
 	}
-	actionID, ok := parseID(req.Msg.GetActionId())
+	actionID, ok := uid.Canonical(req.Msg.GetActionId())
 	if !ok {
 		return nil, errActionNotFound()
 	}
@@ -333,7 +334,7 @@ func (s *Service) MoveSceneAction(
 	if err != nil {
 		return nil, err
 	}
-	actionID, ok := parseID(req.Msg.GetActionId())
+	actionID, ok := uid.Canonical(req.Msg.GetActionId())
 	if !ok {
 		return nil, errActionNotFound()
 	}
@@ -416,7 +417,7 @@ func (s *Service) RemoveSceneAction(
 	if err != nil {
 		return nil, err
 	}
-	actionID, ok := parseID(req.Msg.GetActionId())
+	actionID, ok := uid.Canonical(req.Msg.GetActionId())
 	if !ok {
 		return nil, errActionNotFound()
 	}
@@ -463,11 +464,11 @@ func (s *Service) sceneCall(ctx context.Context, campaignID, rawMapID, rawPointI
 	if err != nil {
 		return m, "", "", err
 	}
-	mapID, ok := parseID(rawMapID)
+	mapID, ok := uid.Canonical(rawMapID)
 	if !ok {
 		return m, "", "", errMapNotFound()
 	}
-	pointID, ok = parseID(rawPointID)
+	pointID, ok = uid.Canonical(rawPointID)
 	if !ok {
 		return m, "", "", errPointNotFound()
 	}

@@ -15,6 +15,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -44,7 +45,7 @@ func characterIDs(raw []string) ([]string, error) {
 	}
 	ids := make([]string, 0, len(raw))
 	for _, r := range raw {
-		id, ok := parseID(r)
+		id, ok := uid.Canonical(r)
 		if !ok || slices.Contains(ids, id) {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("character_ids must be different UUIDs"))
 		}
@@ -80,7 +81,7 @@ func (s *Service) SetMapPlayersMove(
 	if err != nil {
 		return nil, err
 	}
-	mapID, ok := parseID(req.Msg.GetMapId())
+	mapID, ok := uid.Canonical(req.Msg.GetMapId())
 	if !ok {
 		return nil, errMapNotFound()
 	}
@@ -160,7 +161,7 @@ func (s *Service) readMoveAsk(ctx context.Context, msg *mapsv1.MoveMapTokensRequ
 	if err != nil {
 		return tokenAsk{}, nil, err
 	}
-	mapID, ok := parseID(msg.GetMapId())
+	mapID, ok := uid.Canonical(msg.GetMapId())
 	if !ok {
 		return tokenAsk{}, nil, errMapNotFound()
 	}

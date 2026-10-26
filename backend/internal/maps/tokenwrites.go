@@ -13,6 +13,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 )
 
 // PlaceMapToken implements mapsv1connect.MapServiceHandler.
@@ -24,7 +25,7 @@ func (s *Service) PlaceMapToken(
 	if err != nil {
 		return nil, err
 	}
-	mapID, ok := parseID(req.Msg.GetMapId())
+	mapID, ok := uid.Canonical(req.Msg.GetMapId())
 	if !ok {
 		return nil, errMapNotFound()
 	}
@@ -131,7 +132,7 @@ func (s *Service) SetMapTokenHidden(
 	if err != nil {
 		return nil, err
 	}
-	mapID, ok := parseID(req.Msg.GetMapId())
+	mapID, ok := uid.Canonical(req.Msg.GetMapId())
 	if !ok {
 		return nil, errMapNotFound()
 	}
@@ -191,7 +192,7 @@ func (s *Service) RemoveMapToken(
 	if err != nil {
 		return nil, err
 	}
-	mapID, ok := parseID(req.Msg.GetMapId())
+	mapID, ok := uid.Canonical(req.Msg.GetMapId())
 	if !ok {
 		return nil, errMapNotFound()
 	}
@@ -204,7 +205,7 @@ func (s *Service) RemoveMapToken(
 		}
 		return connect.NewResponse(&mapsv1.RemoveMapTokenResponse{}), nil
 	}
-	characterID, ok := parseID(req.Msg.GetCharacterId())
+	characterID, ok := uid.Canonical(req.Msg.GetCharacterId())
 	if !ok {
 		return nil, errTokenNotFound()
 	}

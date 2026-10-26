@@ -13,6 +13,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 )
 
 // CreateMapPoint implements mapsv1connect.MapServiceHandler.
@@ -103,7 +104,7 @@ func checkSceneOnlyData(kind, hooks string, showDC bool) error {
 // checkNewPoint reads and checks a CreateMapPoint request, up to the data of
 // its kind, before anything is read from the database.
 func (s *Service) checkNewPoint(msg *mapsv1.CreateMapPointRequest) (newPoint, error) {
-	mapID, ok := parseID(msg.GetMapId())
+	mapID, ok := uid.Canonical(msg.GetMapId())
 	if !ok {
 		return newPoint{}, errMapNotFound()
 	}
@@ -202,11 +203,11 @@ func (s *Service) UpdateMapPoint(
 	if err != nil {
 		return nil, err
 	}
-	mapID, ok := parseID(req.Msg.GetMapId())
+	mapID, ok := uid.Canonical(req.Msg.GetMapId())
 	if !ok {
 		return nil, errMapNotFound()
 	}
-	pointID, ok := parseID(req.Msg.GetPointId())
+	pointID, ok := uid.Canonical(req.Msg.GetPointId())
 	if !ok {
 		return nil, errPointNotFound()
 	}
@@ -506,11 +507,11 @@ func (s *Service) DeleteMapPoint(
 	if err != nil {
 		return nil, err
 	}
-	mapID, ok := parseID(req.Msg.GetMapId())
+	mapID, ok := uid.Canonical(req.Msg.GetMapId())
 	if !ok {
 		return nil, errMapNotFound()
 	}
-	pointID, ok := parseID(req.Msg.GetPointId())
+	pointID, ok := uid.Canonical(req.Msg.GetPointId())
 	if !ok {
 		return nil, errPointNotFound()
 	}
@@ -543,11 +544,11 @@ func (s *Service) SetMapPointRevealed(
 	if err != nil {
 		return nil, err
 	}
-	mapID, ok := parseID(req.Msg.GetMapId())
+	mapID, ok := uid.Canonical(req.Msg.GetMapId())
 	if !ok {
 		return nil, errMapNotFound()
 	}
-	pointID, ok := parseID(req.Msg.GetPointId())
+	pointID, ok := uid.Canonical(req.Msg.GetPointId())
 	if !ok {
 		return nil, errPointNotFound()
 	}

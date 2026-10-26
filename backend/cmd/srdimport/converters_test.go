@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/PuraFome/meuRPG/backend/internal/platform/goldentest"
@@ -68,7 +69,7 @@ const srdImportLevels = `[
 	{"level": 6, "class": {"index": "b"}, "subclass": {"index": "sub-b"}}]`
 
 // TestSrdImportClasses: the saving throws are not proficiencies,
-// the first skill choice wins for the class and the last one for multiclassing,
+// the first skill choice wins for the class and multiclassing keeps every one (the first apart, the others in MoreSkillChoices),
 // both kinds of prerequisite, spellcasting, and the subclass level is the lowest
 // known one (a subclass without levels only counts while nothing is known yet).
 func TestSrdImportClasses(t *testing.T) {
@@ -105,6 +106,28 @@ func TestSrdImportClasses(t *testing.T) {
 	wantSrdImportRefusal(t, "bad classes", err, "5e-SRD-Classes.json: unexpected EOF")
 	_, err = convertClasses(srdImportInputs(map[string]string{"5e-SRD-Classes.json": noSkill, "5e-SRD-Levels.json": `{`}))
 	wantSrdImportRefusal(t, "bad levels", err, "5e-SRD-Levels.json: unexpected EOF")
+}
+
+// TestSrdImportMulticlassKeepsEverySkillChoice: the skill choices of a class's multiclass proficiencies are all
+// kept, in the order the source lists them (the first in skill_choices, the others in more_skill_choices); a
+// tool choice between them is not a skill choice.
+func TestSrdImportMulticlassKeepsEverySkillChoice(t *testing.T) {
+	t.Parallel()
+	mc := classMultiClassing{}
+	if err := json.Unmarshal([]byte(`{"proficiency_choices": [`+srdImportOtherSkillChoice+`, `+srdImportToolChoice+`, `+srdImportSkillChoice+`]}`), &mc); err != nil {
+		t.Fatal(err)
+	}
+	got := classMulticlass(mc)
+	if got.SkillChoices == nil || got.SkillChoices.Choose != 1 || len(got.SkillChoices.From) != 1 || got.SkillChoices.From[0] != "skill:stealth" {
+		t.Fatalf("SkillChoices = %+v, want the first (1 of stealth)", got.SkillChoices)
+	}
+	if len(got.MoreSkillChoices) != 1 || got.MoreSkillChoices[0].Choose != 2 || got.MoreSkillChoices[0].From[0] != "skill:arcana" {
+		t.Errorf("MoreSkillChoices = %+v, want the second (2 of arcana and history)", got.MoreSkillChoices)
+	}
+	one := classMulticlass(classMultiClassing{})
+	if one.SkillChoices != nil || one.MoreSkillChoices != nil {
+		t.Errorf("no choice = %+v, want none", one)
+	}
 }
 
 // TestSrdImportSubclasses: a spell's prerequisites are class
@@ -248,8 +271,11 @@ func TestSrdImportEquipment(t *testing.T) {
 	_, err = convertEquipment(srdImportInputs(map[string]string{"5e-SRD-Equipment.json": `{`}))
 	wantSrdImportRefusal(t, "bad json", err, "5e-SRD-Equipment.json: unexpected EOF")
 	out, err = convertEquipment(srdImportInputs(map[string]string{"5e-SRD-Equipment.json": `[{"index": "rope", "equipment_category": {"index": "adventuring-gear"}}]`}))
-	if err != nil || out.data.([]srd51.Equipment) != nil {
-		t.Errorf("nothing kept = %#v, %v (a nil list, written as null)", out.data, err)
+	if got, ok := out.data.([]srd51.Equipment); err != nil || !ok || got == nil || len(got) != 0 {
+		t.Errorf("nothing kept = %#v, %v (want an empty list, not nil)", out.data, err)
+	}
+	if raw, encErr := encode(out.data); encErr != nil || strings.TrimSpace(string(raw)) != "[]" {
+		t.Errorf("nothing kept is written as %q, %v; want []", raw, encErr)
 	}
 }
 
