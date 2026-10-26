@@ -18,14 +18,14 @@
   gap: 6px;
   min-height: 44px;
   margin: -10px 0 -8px;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   color: var(--mr-ink-muted);
   text-decoration: none;
 
   .mat-icon {
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 
   &:hover {
@@ -73,14 +73,14 @@
 .lead,
 .hint {
   margin: 0 0 var(--mr-space-3);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
   color: var(--mr-ink-muted);
 }
 
 .hint {
   margin: var(--mr-space-3) 0 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 }
 
@@ -90,7 +90,7 @@
 
 .list-title {
   margin: var(--mr-space-4) 0 var(--mr-space-2);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
   font-weight: 700;
 }
@@ -102,7 +102,7 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
 
   li {
@@ -116,7 +116,7 @@
     width: 20px;
     height: 20px;
     margin-top: 1px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
@@ -138,7 +138,7 @@
   padding: 12px 14px;
   border: 1px solid var(--mr-line);
   border-radius: var(--mr-radius-md);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
 }
 
@@ -202,7 +202,7 @@
 
 .progress-text {
   margin: var(--mr-space-3) 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
   color: var(--mr-ink-muted);
 }

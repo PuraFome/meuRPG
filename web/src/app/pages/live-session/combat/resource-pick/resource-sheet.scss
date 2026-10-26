@@ -12,20 +12,20 @@
 
 .what {
   margin: 0;
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   line-height: 23px;
 }
 
 .small {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
 
 .ask {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   font-weight: 700;
 }
@@ -37,7 +37,7 @@
 }
 
 .step__unit {
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
@@ -60,13 +60,13 @@
   border-radius: var(--mr-radius-pill);
   background: var(--mr-success-surface);
   color: var(--mr-success-ink);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
 
   .mat-icon {
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 
   // A touch that did nothing: neutral, never a warning (it is no error and it gives no reason).
@@ -91,7 +91,7 @@
   padding: 0 10px;
   border: 1px solid var(--mr-control-line);
   border-radius: var(--mr-radius-pill);
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 700;
 }
 

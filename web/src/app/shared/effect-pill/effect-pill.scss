@@ -9,7 +9,7 @@
   border-radius: var(--mr-radius-pill);
   background: var(--mr-accent-soft);
   color: var(--mr-accent-text);
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 700;
   line-height: 1.2;
 }
@@ -18,7 +18,7 @@
   flex: none;
   width: 14px;
   height: 14px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   // The capitals of the 13px type sit a hair above the middle of the line: the icon follows them.
   transform: translateY(-1px);
 }

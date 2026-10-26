@@ -19,6 +19,7 @@ import {
   type Choice,
   ChoiceKind,
   type ChoiceOption,
+  ChoiceOrigin,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import type { ChoiceGroup } from '../../../gen/meurpg/characters/v1/characters_pb';
 import {
@@ -111,6 +112,28 @@ export class ChoiceGroups {
     return sectionsOf(shown as readonly ChoiceGroup[]);
   });
 
+  /** Every choice of the round with its group, in order: the choices an option may be shared with. */
+  private readonly everyChoice = computed(() =>
+    this.groups().flatMap((group) => group.choices.map((choice) => ({ choice, group }))),
+  );
+
+  /** "Escolhas feitas", as the page sees it now: the server's count less the repeats it has not caught up with yet. */
+  protected readonly shownDone = computed(() => {
+    const done = this.done();
+    if (done === null) {
+      return null;
+    }
+    const unseen = this.everyChoice().reduce(
+      (n, { choice }) =>
+        n +
+        this.pickedKeys(choice).filter(
+          (k) => this.earlierHolder(choice, k) && !choice.unmet.includes(k),
+        ).length,
+      0,
+    );
+    return Math.max(0, done - unseen);
+  });
+
   constructor() {
     // A new answer from the server is the truth again.
     effect(() => {
@@ -127,11 +150,15 @@ export class ChoiceGroups {
     });
   }
 
-  /** Moves the focus to the title of the first choice that still has something to pick. */
+  /**
+   * Moves the focus to the title of the first choice that still has something to pick: one that stops the sheet
+   * first, then one that only warns (the languages and tools).
+   */
   focusFirstPending(): boolean {
-    const title = this.host.nativeElement.querySelector<HTMLElement>(
-      '[data-pending] .choice__title',
-    );
+    const el = this.host.nativeElement;
+    const title =
+      el.querySelector<HTMLElement>('[data-pending]:not([data-advisory]) .choice__title') ??
+      el.querySelector<HTMLElement>('[data-pending] .choice__title');
     title?.focus();
     return title !== null;
   }
@@ -148,8 +175,76 @@ export class ChoiceGroups {
     return this.pickedKeys(choice).includes(option.key);
   }
 
+  /** The earlier choice of the round that offers the option `key` and holds it, if any: this pick is a repeat of that one. */
+  private earlierHolder(choice: Choice, key: string): Choice | undefined {
+    for (const { choice: other } of this.everyChoice()) {
+      if (other.key === choice.key) {
+        return undefined;
+      }
+      if (this.holds(other, key)) {
+        return other;
+      }
+    }
+    return undefined;
+  }
+
+  /** Whether the choice offers the option `key` and has it picked. */
+  private holds(choice: Choice, key: string): boolean {
+    return this.pickedKeys(choice).includes(key) && choice.options.some((o) => o.key === key);
+  }
+
+  /** Whether another choice of the round holds the option, so this one must not take it. */
+  protected isTaken(choice: Choice, option: ChoiceOption): boolean {
+    return (
+      !this.isPicked(choice, option) &&
+      this.everyChoice().some(
+        ({ choice: other }) => other.key !== choice.key && this.holds(other, option.key),
+      )
+    );
+  }
+
+  /** The picks of the choice that repeat one an earlier choice holds, or that the server says cannot stand. */
+  private repeats(choice: Choice): string[] {
+    return this.pickedKeys(choice).filter(
+      (k) => choice.unmet.includes(k) || this.earlierHolder(choice, k) !== undefined,
+    );
+  }
+
+  /** "Abissal já foi escolhido em Idioma (raça).", for each pick that repeats an earlier choice's. */
+  protected repeatLines(choice: Choice): string[] {
+    const lines: string[] = [];
+    for (const key of this.pickedKeys(choice)) {
+      const earlier = this.earlierHolder(choice, key);
+      const name = choice.options.find((o) => o.key === key)?.namePt;
+      if (earlier && name) {
+        lines.push(`${name} já foi escolhido em ${this.where(earlier)}.`);
+      }
+    }
+    return lines;
+  }
+
+  private where(choice: Choice): string {
+    const group = this.everyChoice().find((e) => e.choice.key === choice.key)?.group;
+    switch (group?.origin) {
+      case ChoiceOrigin.RACE:
+        return `${choice.titlePt} (raça)`;
+      case ChoiceOrigin.BACKGROUND:
+        return `${choice.titlePt} (antecedente)`;
+      case ChoiceOrigin.FEAT:
+        return `${choice.titlePt} (talento)`;
+      default:
+        return choice.titlePt;
+    }
+  }
+
+  /** Why an option cannot be taken, in one line. */
+  protected reason(option: ChoiceOption): string {
+    return isBlocked(option) ? option.reasonPt : 'Você já escolheu esta opção.';
+  }
+
   protected count(choice: Choice): number {
-    const n = Math.min(this.pickedKeys(choice).length, choice.picks);
+    const kept = this.pickedKeys(choice).length - this.repeats(choice).length;
+    const n = Math.min(kept, choice.picks);
     return choice.kind === ChoiceKind.ENEMY &&
       n > 0 &&
       this.needsTexts(choice) &&
@@ -173,10 +268,13 @@ export class ChoiceGroups {
     return choice.picks > 1 && this.pickedKeys(choice).length >= choice.picks;
   }
 
+  /** Whether an option cannot be clicked: one that is picked never is, so it can always be unticked. */
   protected isOff(choice: Choice, option: ChoiceOption): boolean {
+    if (this.isPicked(choice, option)) {
+      return false;
+    }
     return (
-      isBlocked(option) ||
-      (!this.isPicked(choice, option) && this.isFull(choice) && !isRadio(choice))
+      isBlocked(option) || this.isTaken(choice, option) || (this.isFull(choice) && !isRadio(choice))
     );
   }
 
@@ -202,16 +300,15 @@ export class ChoiceGroups {
 
   /** The options in the order shown: for a long list with blocked options, the ones that can be taken first. */
   protected visibleOptions(choice: Choice): { takable: ChoiceOption[]; blocked: ChoiceOption[] } {
-    const split = choice.options.length > LONG_LIST && choice.options.some(isBlocked);
+    const parked = (o: ChoiceOption) => isBlocked(o) && !this.isPicked(choice, o);
+    const split = choice.options.length > LONG_LIST && choice.options.some(parked);
     const byName = (a: ChoiceOption, b: ChoiceOption) => a.namePt.localeCompare(b.namePt, 'pt-BR');
     if (!split) {
       return { takable: this.filtered(choice, [...choice.options]), blocked: [] };
     }
     return {
-      takable: this.filtered(choice, choice.options.filter((o) => !isBlocked(o)).sort(byName)),
-      blocked: this.onlyTakable().get(choice.key)
-        ? []
-        : choice.options.filter(isBlocked).sort(byName),
+      takable: this.filtered(choice, choice.options.filter((o) => !parked(o)).sort(byName)),
+      blocked: this.onlyTakable().get(choice.key) ? [] : choice.options.filter(parked).sort(byName),
     };
   }
 

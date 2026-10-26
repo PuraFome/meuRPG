@@ -37,7 +37,7 @@ import { DocDialog } from '../doc-dialog/doc-dialog';
       align-self: flex-start;
       margin: 0;
       font-family: var(--mr-font-display);
-      font-size: 20px;
+      font-size: var(--mr-font-20);
       font-weight: 700;
       line-height: 26px;
     }
@@ -48,14 +48,14 @@ import { DocDialog } from '../doc-dialog/doc-dialog';
       gap: 6px;
       margin: 0;
       color: var(--mr-warning-ink);
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       line-height: 21px;
 
       .mat-icon {
         flex: none;
         width: 20px;
         height: 20px;
-        font-size: 20px;
+        font-size: var(--mr-font-20);
       }
     }
   `,

@@ -30,7 +30,7 @@ import { MatIconModule } from '@angular/material/icon';
     .st__label {
       display: block;
       margin-bottom: var(--mr-space-2);
-      font-size: 16px;
+      font-size: var(--mr-font-16);
       font-weight: 700;
     }
 
@@ -70,11 +70,11 @@ import { MatIconModule } from '@angular/material/icon';
       text-align: center;
       font-family: var(--mr-font-display);
       font-weight: 800;
-      font-size: 24px;
+      font-size: var(--mr-font-24);
     }
 
     .st__range {
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       color: var(--mr-ink-muted);
     }
   `,

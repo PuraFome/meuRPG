@@ -2951,12 +2951,20 @@ type FullSheet struct {
 	// Equipment and treasure as free text: at most 100 items.
 	Equipment []*Item `protobuf:"bytes,17,rep,name=equipment,proto3" json:"equipment,omitempty"`
 	Coins     *Coins  `protobuf:"bytes,18,opt,name=coins,proto3" json:"coins,omitempty"`
-	// Languages the player adds, as free text; the ones from race and
-	// background come in DerivedSheet.languages. At most 20, each 1 to 40
+	// Languages the player adds, as free text: the ones the master adds beyond
+	// the race's and the picks. The languages a race, a trait or a background
+	// lets the player pick are choices (feature_choice_keys, written
+	// "<owner key>#language=<language key>"), and DerivedSheet.languages lists
+	// the race's, the picks and these. A sheet from before the picks answers
+	// the ones it is owed with what is written here. At most 20, each 1 to 40
 	// characters, one line.
 	Languages []string `protobuf:"bytes,19,rep,name=languages,proto3" json:"languages,omitempty"`
-	// Tool proficiencies the player adds, as free text. At most 20, each 1 to
-	// 40 characters, one line.
+	// Tool proficiencies the player adds, as free text. The tools a trait,
+	// background or feature lets the player pick are choices
+	// (feature_choice_keys, written "<owner key>#tool=<proficiency key>"); the
+	// sheet's proficiencies list them with these. A sheet from before the picks
+	// answers the ones it is owed with what is written here. At most 20, each 1
+	// to 40 characters, one line.
 	ToolProficiencies []string `protobuf:"bytes,20,rep,name=tool_proficiencies,json=toolProficiencies,proto3" json:"tool_proficiencies,omitempty"`
 	// Experience points: 0 to 1,000,000. The master's XP awards add to it, even
 	// after the sheet locked (ProgressionService.AwardXP; RN-01 stops the
@@ -11727,7 +11735,12 @@ type Choice struct {
 	Unmet    []string `protobuf:"bytes,14,rep,name=unmet,proto3" json:"unmet,omitempty"`
 	Overflow []string `protobuf:"bytes,15,rep,name=overflow,proto3" json:"overflow,omitempty"`
 	// How many selections are still to make.
-	Missing       int32 `protobuf:"varint,16,opt,name=missing,proto3" json:"missing,omitempty"`
+	Missing int32 `protobuf:"varint,16,opt,name=missing,proto3" json:"missing,omitempty"`
+	// True for the choices that only warn while open: the languages and the tools a race,
+	// a trait, a background or a feature lets the player pick. They count as pending (the
+	// step marks them, a locked sheet and the master's list count them) but a player's sheet
+	// is saved with them open, as it always was (RN-33).
+	Advisory      bool `protobuf:"varint,17,opt,name=advisory,proto3" json:"advisory,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -11872,6 +11885,13 @@ func (x *Choice) GetMissing() int32 {
 		return x.Missing
 	}
 	return 0
+}
+
+func (x *Choice) GetAdvisory() bool {
+	if x != nil {
+		return x.Advisory
+	}
+	return false
 }
 
 // ChoiceGroup is the choices one source asks at one level.
@@ -13548,7 +13568,7 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"classes_pt\x18\n" +
 	" \x03(\tR\tclassesPt\x12\x1d\n" +
 	"\n" +
-	"needs_text\x18\v \x01(\bR\tneedsText\"\xda\x03\n" +
+	"needs_text\x18\v \x01(\bR\tneedsText\"\xf6\x03\n" +
 	"\x06Choice\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x1f\n" +
 	"\vfeature_key\x18\x02 \x01(\tR\n" +
@@ -13567,7 +13587,8 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\tresult_pt\x18\r \x01(\tR\bresultPt\x12\x14\n" +
 	"\x05unmet\x18\x0e \x03(\tR\x05unmet\x12\x1a\n" +
 	"\boverflow\x18\x0f \x03(\tR\boverflow\x12\x18\n" +
-	"\amissing\x18\x10 \x01(\x05R\amissing\"\x80\x02\n" +
+	"\amissing\x18\x10 \x01(\x05R\amissing\x12\x1a\n" +
+	"\badvisory\x18\x11 \x01(\bR\badvisory\"\x80\x02\n" +
 	"\vChoiceGroup\x12:\n" +
 	"\x06origin\x18\x01 \x01(\x0e2\".meurpg.characters.v1.ChoiceOriginR\x06origin\x12\x1d\n" +
 	"\n" +

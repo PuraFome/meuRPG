@@ -826,6 +826,8 @@ func TestRN10_FogCombatAnOpportunityAttackOnANPCThatRetreatsIntoTheDark(t *testi
 	e := f.fight(t)
 	f.mustMove(t, f.master, "Goblin 1", 7, 8)
 	f.passTo(t, e, "Goblin 1")
+	// The master drags it on its turn, so the walk spends its movement: a fast goblin, for 9 squares are 45 ft.
+	f.execSQL(t, `UPDATE combatants SET speed_ft = 60 WHERE id = $1`, f.id(t, "Goblin 1"))
 	f.moveOffering(t, "Goblin 1", 16, 8) // into the dark, 10 squares from Toren's torch
 	if slices.Contains(npcLabels(f.get(t, f.caio)), "Goblin 1") {
 		t.Fatalf("Toren still sees Goblin 1 at 16, 8")

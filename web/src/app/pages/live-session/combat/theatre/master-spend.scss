@@ -20,13 +20,13 @@
 .move__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 19px;
+  font-size: var(--mr-font-19);
   font-weight: 700;
   line-height: 24px;
 }
 
 .move__hint {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -54,7 +54,7 @@
 
 .move__cap {
   flex: 1 0 100%;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 
   @media (min-width: 768px) {
@@ -75,7 +75,7 @@
 }
 
 .move__why {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -84,13 +84,13 @@
   align-items: flex-start;
   gap: 8px;
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   color: var(--mr-danger-ink);
 
   mat-icon {
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }

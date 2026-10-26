@@ -71,7 +71,7 @@ let nextId = 0;
         flex: none;
         width: 14px;
         height: 14px;
-        font-size: 14px;
+        font-size: var(--mr-font-14);
       }
 
       &:has(:focus-visible) {

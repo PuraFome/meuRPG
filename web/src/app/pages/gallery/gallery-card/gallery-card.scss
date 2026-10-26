@@ -131,19 +131,19 @@ p {
 }
 
 .card__name {
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 21px;
   font-weight: 700;
   overflow-wrap: anywhere;
 
   @media (min-width: 768px) {
-    font-size: 17px;
+    font-size: var(--mr-font-17);
     line-height: 22px;
   }
 }
 
 .card__meta {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -152,7 +152,7 @@ p {
   display: flex;
   align-items: flex-start;
   gap: 4px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
@@ -160,7 +160,7 @@ p {
     flex: none;
     width: 17px;
     height: 17px;
-    font-size: 17px;
+    font-size: var(--mr-font-17);
     margin-top: 1px;
   }
 }
@@ -169,7 +169,7 @@ p {
   gap: var(--mr-space-2);
   margin-top: var(--mr-space-2);
   padding: 10px var(--mr-space-3);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 }
 
@@ -211,7 +211,7 @@ p {
 }
 
 .confirm__text {
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 }
 
@@ -233,6 +233,6 @@ p {
 
 .card__from {
   color: var(--mr-ink-muted);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 }

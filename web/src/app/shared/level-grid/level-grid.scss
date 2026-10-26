@@ -24,7 +24,7 @@
   min-width: 720px;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
 
   th,
   td {
@@ -39,7 +39,7 @@
     top: 0;
     z-index: 2;
     background: var(--mr-surface);
-    font-size: 14px;
+    font-size: var(--mr-font-14);
     font-weight: 700;
     color: var(--mr-ink);
     border-bottom: 1px solid var(--mr-line);
@@ -122,7 +122,7 @@ thead .g__level {
   background: var(--mr-surface);
   color: var(--mr-ink);
   font: inherit;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   cursor: pointer;
 
   &:hover {
@@ -137,7 +137,7 @@ thead .g__level {
   .mat-icon {
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 
@@ -173,7 +173,7 @@ thead .g__level {
     padding: 4px;
     border: 1px solid var(--mr-control-line);
     border-radius: 50%;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 
   &:focus-visible {
@@ -197,7 +197,7 @@ thead .g__level {
   align-items: flex-start;
   gap: 6px;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 18px;
   color: var(--mr-danger-ink);
 
@@ -205,7 +205,7 @@ thead .g__level {
     flex: none;
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
     margin-top: 1px;
   }
 }

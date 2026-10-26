@@ -91,7 +91,7 @@
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -123,7 +123,7 @@
   .mat-icon {
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 
@@ -186,7 +186,7 @@
   .mat-icon {
     width: 14px;
     height: 14px;
-    font-size: 14px;
+    font-size: var(--mr-font-14);
     color: var(--mr-on-accent);
     visibility: hidden;
   }
@@ -205,7 +205,7 @@
   margin: 0;
   padding: var(--mr-space-2) var(--mr-space-3);
   border-top: 1px solid var(--mr-rule);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -257,19 +257,19 @@
   align-items: center;
   gap: var(--mr-space-2);
   margin: 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
 
   .mat-icon {
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
 .part__sub {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 }
 
@@ -340,7 +340,7 @@
   background: var(--mr-surface);
   color: var(--mr-ink);
   font: inherit;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   cursor: pointer;
 
   & + & {
@@ -355,6 +355,6 @@
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }

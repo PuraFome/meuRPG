@@ -132,6 +132,10 @@ type Choice struct {
 	// Unmet are the picked options whose prerequisites are not met, and Overflow the
 	// picks past what the choice takes or that it does not offer.
 	Unmet, Overflow []string
+	// Advisory says the choice only warns while it is open: the languages and the tools a race, a trait, a
+	// background or a feature lets the player pick. It is pending (the step marks it, the locked sheet and the master's
+	// list count it) but no problem is raised for it and a level-up does not ask it, as before the picks were here.
+	Advisory bool
 
 	family string
 	// plain says the picks are options written as their own keys (a fighting style),
@@ -145,11 +149,24 @@ type Choice struct {
 	viaCantrips bool
 }
 
-// Done is how many of the choice's selections are made (never more than Picks).
+// Done is how many of the choice's selections are made (never more than Picks). A pick of an
+// option another choice took is a repeat, not a selection made.
 func (ch Choice) Done() int {
-	n := min(len(ch.Picked)+ch.legacy, ch.Picks)
+	n := min(len(ch.Picked)-ch.repeats()+ch.legacy, ch.Picks)
 	if n > 0 && ch.needsTexts() && !ch.textsComplete() {
 		return n - 1
+	}
+	return n
+}
+
+// repeats is how many of the picks are of an option that another choice (of the same
+// pool or family) took.
+func (ch Choice) repeats() int {
+	n := 0
+	for _, o := range ch.Options {
+		if slices.Contains(ch.Picked, o.Key) && o.taken() {
+			n++
+		}
 	}
 	return n
 }
@@ -318,7 +335,7 @@ func overflowProblems(out []ChoiceProblem, ch Choice) []ChoiceProblem {
 
 // missingProblem is a choice left open.
 func missingProblem(out []ChoiceProblem, ch Choice) []ChoiceProblem {
-	if ch.Missing() > 0 {
+	if ch.Missing() > 0 && !ch.Advisory {
 		out = append(out, ChoiceProblem{Code: ChoiceProblemMissing, ChoiceKey: ch.Key, Field: choiceKeysField, LabelPT: ch.LabelPT, Picked: ch.Done(), Required: ch.Picks})
 	}
 	return out
@@ -357,6 +374,8 @@ type choiceBuilder struct {
 	order   int
 
 	derived *Derived
+	// typedLanguages and typedTools count the entries of the free fields that earlier choices took as answers.
+	typedLanguages, typedTools int
 	// legacyTaken counts the surplus cantrips choices already claimed.
 	legacyTaken int
 }
@@ -555,4 +574,15 @@ func blockTaken(ch *Choice, taken []string) {
 			ch.Unmet = append(ch.Unmet, o.Key)
 		}
 	}
+}
+
+// taken says an earlier pick of the sheet already holds the option: a prerequisite of the
+// "taken" kind that is not met.
+func (o ChoiceOption) taken() bool {
+	for _, p := range o.Prerequisites {
+		if p.Kind == PrerequisiteTaken && !p.Met {
+			return true
+		}
+	}
+	return false
 }

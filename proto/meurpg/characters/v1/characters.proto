@@ -1407,12 +1407,20 @@ message FullSheet {
   // Equipment and treasure as free text: at most 100 items.
   repeated Item equipment = 17;
   Coins coins = 18;
-  // Languages the player adds, as free text; the ones from race and
-  // background come in DerivedSheet.languages. At most 20, each 1 to 40
+  // Languages the player adds, as free text: the ones the master adds beyond
+  // the race's and the picks. The languages a race, a trait or a background
+  // lets the player pick are choices (feature_choice_keys, written
+  // "<owner key>#language=<language key>"), and DerivedSheet.languages lists
+  // the race's, the picks and these. A sheet from before the picks answers
+  // the ones it is owed with what is written here. At most 20, each 1 to 40
   // characters, one line.
   repeated string languages = 19;
-  // Tool proficiencies the player adds, as free text. At most 20, each 1 to
-  // 40 characters, one line.
+  // Tool proficiencies the player adds, as free text. The tools a trait,
+  // background or feature lets the player pick are choices
+  // (feature_choice_keys, written "<owner key>#tool=<proficiency key>"); the
+  // sheet's proficiencies list them with these. A sheet from before the picks
+  // answers the ones it is owed with what is written here. At most 20, each 1
+  // to 40 characters, one line.
   repeated string tool_proficiencies = 20;
   // Experience points: 0 to 1,000,000. The master's XP awards add to it, even
   // after the sheet locked (ProgressionService.AwardXP; RN-01 stops the
@@ -3376,6 +3384,11 @@ message Choice {
   repeated string overflow = 15;
   // How many selections are still to make.
   int32 missing = 16;
+  // True for the choices that only warn while open: the languages and the tools a race,
+  // a trait, a background or a feature lets the player pick. They count as pending (the
+  // step marks them, a locked sheet and the master's list count them) but a player's sheet
+  // is saved with them open, as it always was (RN-33).
+  bool advisory = 17;
 }
 
 // ChoiceGroup is the choices one source asks at one level.

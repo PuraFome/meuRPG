@@ -58,7 +58,7 @@ import { FictionNotice } from '../../../shared/fiction-notice/fiction-notice';
     .hf__title {
       margin: 0;
       font-family: var(--mr-font-display);
-      font-size: 21px;
+      font-size: var(--mr-font-21);
       font-weight: 700;
       line-height: 26px;
     }
@@ -72,14 +72,14 @@ import { FictionNotice } from '../../../shared/fiction-notice/fiction-notice';
       padding: 10px 12px;
       border-radius: var(--mr-radius-md);
       background: var(--mr-ground);
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 19px;
 
       .mat-icon {
         flex: none;
         width: 18px;
         height: 18px;
-        font-size: 18px;
+        font-size: var(--mr-font-18);
       }
     }
 

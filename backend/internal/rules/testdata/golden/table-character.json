@@ -669,6 +669,18 @@
       {
         "Key": "language:common",
         "NamePT": "Comum"
+      },
+      {
+        "Key": "",
+        "NamePT": "Anão"
+      },
+      {
+        "Key": "",
+        "NamePT": "Élfico"
+      },
+      {
+        "Key": "",
+        "NamePT": "Gnômico"
       }
     ],
     "Proficiencies": [
@@ -1817,6 +1829,18 @@
       {
         "Key": "language:common",
         "NamePT": "Comum"
+      },
+      {
+        "Key": "",
+        "NamePT": "Anão"
+      },
+      {
+        "Key": "",
+        "NamePT": "Élfico"
+      },
+      {
+        "Key": "",
+        "NamePT": "Gnômico"
       }
     ],
     "Proficiencies": [
@@ -2761,6 +2785,18 @@
       {
         "Key": "language:common",
         "NamePT": "Comum"
+      },
+      {
+        "Key": "",
+        "NamePT": "Anão"
+      },
+      {
+        "Key": "",
+        "NamePT": "Élfico"
+      },
+      {
+        "Key": "",
+        "NamePT": "Gnômico"
       }
     ],
     "Proficiencies": [

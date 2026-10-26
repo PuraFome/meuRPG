@@ -20,14 +20,14 @@
 .result__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 26px;
+  font-size: var(--mr-font-26);
   font-weight: 800;
   line-height: 30px;
 }
 
 .result__seed {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 .kinds {
@@ -67,7 +67,7 @@
   gap: var(--mr-space-2);
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 21px;
+  font-size: var(--mr-font-21);
   font-weight: 800;
   line-height: 26px;
 
@@ -75,7 +75,7 @@
     flex: none;
     width: 22px;
     height: 22px;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
     color: var(--mr-accent-text);
   }
 }
@@ -89,7 +89,7 @@
 
 .kind__in {
   font-family: var(--mr-font-body);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 400;
   color: var(--mr-ink-muted);
 }
@@ -108,7 +108,7 @@
   display: flex;
   justify-content: space-between;
   margin: var(--mr-space-2) 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -139,7 +139,7 @@
 }
 
 .row__sub {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 17px;
   color: var(--mr-ink-muted);
 }
@@ -151,7 +151,7 @@
 }
 .note {
   margin: var(--mr-space-2) 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
@@ -190,18 +190,18 @@
     padding-top: var(--mr-space-2);
     border-top: 1px solid var(--mr-line);
     font-family: var(--mr-font-display);
-    font-size: 24px;
+    font-size: var(--mr-font-24);
     font-weight: 800;
 
     dd {
-      font-size: 26px;
+      font-size: var(--mr-font-26);
     }
   }
 }
 
 .totals__note {
   display: block;
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 17px;
 }
 
@@ -214,14 +214,14 @@
   border: 1px solid var(--mr-line);
   border-radius: var(--mr-radius-sm);
   background: var(--mr-ground);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 
   .mat-icon {
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 

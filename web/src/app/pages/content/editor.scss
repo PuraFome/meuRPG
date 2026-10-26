@@ -44,7 +44,7 @@
 
 .hint {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
@@ -105,7 +105,7 @@
 
   &__label {
     margin: 0;
-    font-size: 15px;
+    font-size: var(--mr-font-15);
     font-weight: 700;
   }
 }
@@ -121,7 +121,7 @@
   align-items: flex-start;
   gap: 6px;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 18px;
   color: var(--mr-danger-ink);
 
@@ -129,7 +129,7 @@
     flex: none;
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
     margin-top: 1px;
   }
 }
@@ -152,7 +152,7 @@
     padding-bottom: var(--mr-space-3);
     border-bottom: 1px solid var(--mr-rule);
     font-family: var(--mr-font-display);
-    font-size: 24px;
+    font-size: var(--mr-font-24);
     font-weight: 700;
     line-height: 28px;
   }
@@ -220,7 +220,7 @@
   &__name {
     flex: 1 1 auto;
     font-family: var(--mr-font-display);
-    font-size: 19px;
+    font-size: var(--mr-font-19);
     font-weight: 700;
   }
 }
@@ -234,7 +234,7 @@
 
 .sub {
   margin: var(--mr-space-2) 0 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   font-weight: 600;
   color: var(--mr-ink);

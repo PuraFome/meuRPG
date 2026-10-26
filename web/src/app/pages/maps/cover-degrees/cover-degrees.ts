@@ -47,7 +47,7 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 
     .cd__lead {
       margin: 0;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 19px;
       color: var(--mr-ink-muted);
     }
@@ -76,13 +76,13 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
       display: flex;
       flex-direction: column;
       min-width: 0;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 19px;
       color: var(--mr-ink-muted);
     }
 
     .cd__text b {
-      font-size: 16px;
+      font-size: var(--mr-font-16);
       line-height: 22px;
       color: var(--mr-ink);
     }

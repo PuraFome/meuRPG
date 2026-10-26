@@ -10,13 +10,13 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 21px;
+  font-size: var(--mr-font-21);
   line-height: 26px;
 }
 
 .granted__hint {
   margin: 2px 0 var(--mr-space-2);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -40,7 +40,7 @@
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
     color: var(--mr-ink-muted);
   }
 }
@@ -59,7 +59,7 @@
 }
 
 .granted__level {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -86,6 +86,6 @@
 
 .granted__source {
   display: block;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }

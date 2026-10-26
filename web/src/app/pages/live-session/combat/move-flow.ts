@@ -3,13 +3,14 @@ import { computed, effect, signal, untracked } from '@angular/core';
 import {
   type Combatant,
   type Encounter,
+  EncounterBlockedReason,
   EncounterStatus,
   type GetTurnOptionsResponse,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
 import type { CombatCalls } from '../../../core/combat/combat-calls';
 import { type CombatClient } from '../../../core/combat/combat-client';
 import { type MoveResult } from '../../../core/combat/combat-client-types';
-import { combatErrorMessage } from '../../../core/combat/combat-errors';
+import { combatErrorMessage, encounterBlocked } from '../../../core/combat/combat-errors';
 import type { Square } from '../../../core/combat/combat-grid';
 import { masterReach } from '../../../core/combat/combat-derived';
 import type { CombatState } from '../../../core/combat/combat-state';
@@ -67,6 +68,9 @@ export class MoveFlow {
   readonly forcedMove = signal(false);
   /** What the last forced drag did, for the live region; cleared by the next drag. */
   readonly forcedNote = signal('');
+  /** An NPC dragged past the movement it has left: the question "Mover mesmo assim?" with how much is missing (the master decides: a dash, a push). */
+  readonly overAsk = signal<{ readonly label: string; readonly missing: string } | null>(null);
+  private overDrag: { readonly combatantId: string; readonly drop: Square } | null = null;
   /** The "Saltar" page's "Distância" is on: the options are the long jump's (and its warning), not the walk's. */
   readonly jump = signal<{ readonly runningStart: boolean } | null>(null);
   /** The master's "Mostrar o alcance": the reach of whoever is on turn, drawn on the map. */
@@ -206,11 +210,14 @@ export class MoveFlow {
     c: Combatant,
     from: Square,
     drop: TokenDrop,
+    forceNow = false,
   ): Promise<void> {
     const { calls } = this.ctx;
     calls.error.set('');
-    // The box is for this drag only; a refusal gives it back.
-    const forced = this.forcedMove();
+    this.overAsk.set(null);
+    this.overDrag = null;
+    // The box is for this drag only; a refusal gives it back. "Mover mesmo assim" forces this one drag too.
+    const forced = forceNow || this.forcedMove();
     this.forcedMove.set(false);
     this.forcedNote.set('');
     this.ctx
@@ -244,7 +251,7 @@ export class MoveFlow {
           this.sayStopped(res);
         },
         failed: (saved, err) => {
-          if (forced) {
+          if (forced && !forceNow) {
             this.forcedMove.set(true);
           }
           this.ctx.state().applyMove({
@@ -253,11 +260,45 @@ export class MoveFlow {
             col: saved.xBp,
             row: saved.yBp,
           });
+          if (!forced && this.askAboutDistance(c, drop, err)) {
+            return;
+          }
           calls.error.set(combatErrorMessage(err, 'mover o token'));
           void calls.refreshAfter(err);
         },
       },
     );
+  }
+
+  /** An NPC dragged beyond its movement on its turn is refused (TOO_FAR): the master is asked, not told off. */
+  private askAboutDistance(c: Combatant, drop: TokenDrop, err: unknown): boolean {
+    const blocked = encounterBlocked(err);
+    if (blocked?.reason !== EncounterBlockedReason.TOO_FAR || blocked.jumpLimitDft > 0) {
+      return false;
+    }
+    const missingDft = blocked.missingDft || blocked.missingFt * 10;
+    this.overAsk.set({ label: c.label, missing: metersFixed(missingDft / 10) });
+    this.overDrag = { combatantId: c.id, drop: { col: drop.col, row: drop.row } };
+    return true;
+  }
+
+  /** "Mover mesmo assim": the same drag, forced (free, no limit, no offers of an opportunity attack). */
+  async moveAnyway(): Promise<void> {
+    const pending = this.overDrag;
+    const e = this.ctx.encounter();
+    const c = e?.combatants.find((x) => x.id === pending?.combatantId);
+    this.overAsk.set(null);
+    this.overDrag = null;
+    if (!pending || !e || !c) {
+      return;
+    }
+    await this.dragToken(e, c, { col: c.col, row: c.row }, { id: c.id, ...pending.drop }, true);
+  }
+
+  /** "Cancelar" on the question: the token stays where it was. */
+  dropOverAsk(): void {
+    this.overAsk.set(null);
+    this.overDrag = null;
   }
 
   /** What stopped the master's drag short, in the page's notice. */

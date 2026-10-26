@@ -49,7 +49,7 @@ import { MatIconModule } from '@angular/material/icon';
 
     .mine__title {
       margin: 0 0 var(--mr-space-2);
-      font-size: 16px;
+      font-size: var(--mr-font-16);
       font-weight: 700;
     }
 
@@ -57,7 +57,7 @@ import { MatIconModule } from '@angular/material/icon';
       margin: 0;
       font-family: var(--mr-font-display);
       font-weight: 700;
-      font-size: 20px;
+      font-size: var(--mr-font-20);
       line-height: 28px;
     }
 
@@ -66,13 +66,13 @@ import { MatIconModule } from '@angular/material/icon';
       align-items: center;
       gap: 6px;
       margin: var(--mr-space-2) 0 0;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       color: var(--mr-ink-muted);
 
       .mat-icon {
         width: 18px;
         height: 18px;
-        font-size: 18px;
+        font-size: var(--mr-font-18);
       }
     }
 
@@ -109,18 +109,18 @@ import { MatIconModule } from '@angular/material/icon';
     .others__name {
       flex: 1;
       min-width: 0;
-      font-size: 17px;
+      font-size: var(--mr-font-17);
       font-weight: 700;
     }
 
     .others__has {
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       color: var(--mr-ink-muted);
     }
 
     .others__help {
       margin: var(--mr-space-3) 0 0;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 20px;
       color: var(--mr-ink-muted);
     }

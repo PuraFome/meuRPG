@@ -21,7 +21,7 @@
   gap: var(--mr-space-2);
   margin: 0 auto 0 0;
   font-family: var(--mr-font-display);
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   line-height: 28px;
   font-weight: 700;
 
@@ -29,7 +29,7 @@
     flex: none;
     width: 22px;
     height: 22px;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
     color: var(--mr-ink-muted);
   }
 }
@@ -38,13 +38,13 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -62,7 +62,7 @@
   border-radius: var(--mr-radius-pill);
   background: var(--mr-warning-surface);
   color: var(--mr-warning-ink);
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -126,7 +126,7 @@
   .mat-icon {
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 
@@ -140,7 +140,7 @@
 }
 
 .sa__name {
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   font-weight: 700;
   line-height: 22px;
   overflow-wrap: anywhere;
@@ -148,7 +148,7 @@
 
 .sa__line {
   flex: 1 1 100%;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -183,7 +183,7 @@
   background: var(--mr-surface);
   color: var(--mr-ink);
   font: inherit;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   cursor: pointer;
 
   &--passed {
@@ -199,7 +199,7 @@
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -212,7 +212,7 @@
   border-radius: var(--mr-radius-pill);
   background: var(--mr-ink);
   color: var(--mr-surface);
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 700;
 }
 

@@ -99,6 +99,9 @@ func (c *content) choiceValueKnown(value string) bool {
 		return c.hasCreatureType(value)
 	case strings.HasPrefix(value, "terrain:"):
 		return c.hasTerrain(value)
+	case strings.HasPrefix(value, "proficiency:"):
+		_, ok := c.proficiencies[value]
+		return ok
 	case strings.HasPrefix(value, "language:"):
 		_, ok := c.languages[value]
 		return ok

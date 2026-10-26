@@ -45,7 +45,7 @@ import { PanelHead } from '../panel-head/panel-head';
 
     .enc__text {
       margin: 0;
-      font-size: 16px;
+      font-size: var(--mr-font-16);
       line-height: 22px;
       color: var(--mr-ink-muted);
     }

@@ -23,7 +23,7 @@
   border-radius: 50%;
   background: var(--mr-ink);
   color: var(--mr-surface);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
 }
 
 .part__body {
@@ -33,14 +33,14 @@
 }
 
 .part__cap {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   // As tall as the check beside it, so the two share a middle.
   line-height: 24px;
   color: var(--mr-ink-muted);
 }
 
 .part__line {
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   line-height: 22px;
 }
 
@@ -59,7 +59,7 @@
 }
 
 .part__formula {
-  font-size: 16px;
+  font-size: var(--mr-font-16);
 }
 
 .pill {
@@ -72,14 +72,14 @@
   border-radius: var(--mr-radius-pill);
   background: var(--mr-success-surface);
   color: var(--mr-success-ink);
-  font-size: 18px;
+  font-size: var(--mr-font-18);
   font-weight: 700;
   line-height: 1;
 
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 

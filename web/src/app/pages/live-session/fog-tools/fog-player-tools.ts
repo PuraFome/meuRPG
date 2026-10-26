@@ -54,7 +54,7 @@ import { FamiliarRow } from './familiar-row';
       background: var(--mr-success-surface);
       color: var(--mr-success-ink);
       box-shadow: 0 6px 24px rgb(0 0 0 / 25%);
-      font-size: 16px;
+      font-size: var(--mr-font-16);
       line-height: 22px;
 
       .mat-icon {
@@ -62,7 +62,7 @@ import { FamiliarRow } from './familiar-row';
         width: 20px;
         height: 20px;
         margin-top: 1px;
-        font-size: 20px;
+        font-size: var(--mr-font-20);
       }
     }
   `,

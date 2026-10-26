@@ -34,13 +34,13 @@
 
 .who__n {
   font-family: var(--mr-font-display);
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   line-height: 26px;
   overflow-wrap: anywhere;
 }
 
 .who__s {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -56,12 +56,12 @@
   border: 1px solid var(--mr-line);
   border-radius: var(--mr-radius-md);
   background: var(--mr-ground);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
 }
 
 .field__hint {
   margin: 4px 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -87,7 +87,7 @@
 .count__names {
   flex: 1 1 200px;
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   overflow-wrap: anywhere;
 }
@@ -100,7 +100,7 @@
   display: flex;
   justify-content: space-between;
   gap: var(--mr-space-3);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 }
 
@@ -122,20 +122,20 @@
   padding: var(--mr-space-3);
   border-radius: var(--mr-radius-md);
   background: var(--mr-ground);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 
   .mat-icon {
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
 .why {
   margin: 0 0 var(--mr-space-2);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }

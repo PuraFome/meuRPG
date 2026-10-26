@@ -78,14 +78,14 @@ import { MapAsk } from '../../../shared/map-ask/map-ask';
     .dp__lead,
     .dp__note {
       margin: 0;
-      font-size: 16px;
+      font-size: var(--mr-font-16);
       line-height: 22px;
     }
 
     .dp__note {
       padding-top: var(--mr-space-3);
       border-top: 1px solid var(--mr-line);
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 19px;
       color: var(--mr-ink-muted);
     }
@@ -96,7 +96,7 @@ import { MapAsk } from '../../../shared/map-ask/map-ask';
       gap: var(--mr-space-2);
       margin: 0;
       padding-left: 20px;
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       line-height: 21px;
     }
   `,

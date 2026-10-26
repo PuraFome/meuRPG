@@ -15,12 +15,12 @@
 .split__big {
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 28px;
+  font-size: var(--mr-font-28);
   line-height: 32px;
 }
 
 .split__sum {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -36,13 +36,13 @@
   background: none;
 
   .split__big {
-    font-size: 24px;
+    font-size: var(--mr-font-24);
     line-height: 28px;
   }
 }
 
 .split--none .split__big {
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   line-height: 28px;
   color: var(--mr-ink-muted);
 }
@@ -51,7 +51,7 @@
 // is lost on one line; the sum moves to the body, under the recipients.
 .split__lost {
   display: none;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -63,7 +63,7 @@
     column-gap: var(--mr-space-2);
 
     .split__big {
-      font-size: 20px;
+      font-size: var(--mr-font-20);
       line-height: 24px;
       white-space: nowrap;
     }
@@ -87,7 +87,7 @@
 .split--foot .split__big--quiet {
   font-family: var(--mr-font-sans);
   font-weight: 500;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 21px;
   color: var(--mr-ink-muted);
 }

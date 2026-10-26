@@ -87,7 +87,7 @@ import type { Toast } from '../../core/traps/toast-queue';
     .lt__close .mat-icon {
       width: 24px;
       height: 24px;
-      font-size: 24px;
+      font-size: var(--mr-font-24);
     }
   `,
 })

@@ -64,14 +64,14 @@
 
 .pt__n {
   font-family: var(--mr-font-display);
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   font-weight: 700;
   line-height: 24px;
   overflow-wrap: anywhere;
 }
 
 .pt__s {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 18px;
   color: var(--mr-ink-muted);
 }
@@ -83,7 +83,7 @@
   padding: var(--mr-space-3);
   border-radius: var(--mr-radius-md);
   background: var(--mr-ground);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 
   p {
@@ -106,13 +106,13 @@
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
 .guide {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 
   a {
@@ -129,7 +129,7 @@
 
 .why {
   margin: 0 0 var(--mr-space-2);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }

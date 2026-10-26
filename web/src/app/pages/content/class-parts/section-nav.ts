@@ -91,7 +91,7 @@ export interface NavSection {
       flex: none;
       width: 18px;
       height: 18px;
-      font-size: 18px;
+      font-size: var(--mr-font-18);
       color: var(--mr-danger-ink);
     }
   `,

@@ -15114,7 +15114,10 @@ export const CombatService: GenService<{
    * blocks it too, unless the two are two sizes apart; nobody ends in another
    * creature's square (only Tiny with Tiny). A creature with a fly speed moves as
    * a flier: difficult terrain costs it nothing. Swimming and climbing are not
-   * modelled. The master moves anyone anywhere for free.
+   * modelled. The master moves anyone anywhere for free, except an NPC he drags on its own turn:
+   * that is a plain walk like a player's (it pays its way, spends the NPC's movement and stops for
+   * walls, creatures and squares marked "Não dá para passar"), and one past the movement left is
+   * refused (TOO_FAR) unless `forced`. Out of its turn, and for a player's character, it stays free.
    *
    * `jump` turns it into a jump (D3): LONG goes to the square without paying for
    * difficult terrain on the way (it cannot cross a wall or land on a creature),

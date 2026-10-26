@@ -141,7 +141,7 @@ export interface DeathSaveRoll {
 
     .due__title {
       font-family: var(--mr-font-display);
-      font-size: 22px;
+      font-size: var(--mr-font-22);
       line-height: 26px;
     }
 
@@ -149,7 +149,7 @@ export interface DeathSaveRoll {
     .due__rule,
     .due__note {
       margin: 0;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 19px;
     }
 
@@ -166,7 +166,7 @@ export interface DeathSaveRoll {
 
       .mat-icon {
         flex: none;
-        font-size: 16px;
+        font-size: var(--mr-font-16);
         height: 16px;
         width: 16px;
       }

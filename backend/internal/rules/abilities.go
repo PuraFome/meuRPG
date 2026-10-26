@@ -181,6 +181,10 @@ func (x *deriver) proficiencies() {
 			}
 		}
 	}
+	x.proficiencyPicks()
+	for _, p := range x.pickedTools {
+		x.proficient[p.Value] = true
+	}
 	x.listProficiencies()
 }
 
@@ -224,6 +228,11 @@ func (x *deriver) listProficiencies() {
 		}
 		x.d.Proficiencies = append(x.d.Proficiencies, Proficiency{Kind: p.Kind, Key: key, NamePT: x.proficiencyName(key)})
 	}
+	// The tools the player typed in the free field (what the master adds, or a sheet from before the picks) are listed
+	// too, by name.
+	listedNames(x.d.Proficiencies, x.b.ToolProficiencies, func(p Proficiency) string { return p.NamePT }, func(name string) {
+		x.d.Proficiencies = append(x.d.Proficiencies, Proficiency{Kind: "tool", NamePT: name})
+	})
 	slices.SortFunc(x.d.Proficiencies, func(a, b Proficiency) int {
 		return cmp.Or(cmp.Compare(proficiencyKindRank(a.Kind), proficiencyKindRank(b.Kind)), comparePT(a.NamePT, b.NamePT))
 	})

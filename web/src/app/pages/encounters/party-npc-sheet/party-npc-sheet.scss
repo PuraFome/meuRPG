@@ -69,13 +69,13 @@
   border-radius: 7px;
   background: var(--mr-surface);
   font-family: var(--mr-font-display);
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   font-weight: 800;
 
   .mat-icon {
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
@@ -87,14 +87,14 @@
 
 .opt__n {
   font-family: var(--mr-font-display);
-  font-size: 19px;
+  font-size: var(--mr-font-19);
   font-weight: 700;
   line-height: 23px;
   overflow-wrap: anywhere;
 }
 
 .opt__s {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 18px;
   color: var(--mr-ink-muted);
 }
@@ -106,7 +106,7 @@
 }
 
 .name__err {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   color: var(--mr-danger-ink);
 }
@@ -126,7 +126,7 @@
 .lvl__hint {
   flex: 1 1 200px;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -144,26 +144,26 @@
 
 .budget__t {
   font-weight: 800;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
 }
 
 .budget__n {
   display: flex;
   flex-wrap: wrap;
   gap: 4px var(--mr-space-4);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 24px;
 }
 
 .budget__b {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
 
 .guide {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 
   a {

@@ -36,7 +36,7 @@
 }
 
 .head {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 16px;
   color: var(--mr-ink-muted);
   text-align: center;
@@ -62,7 +62,7 @@
   max-width: 100%;
   // A name never breaks inside a word ("Serpente"): the columns are wide enough for it, or they go to two rows.
   white-space: nowrap;
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 14px;
   color: var(--mr-ink-muted);
 }
@@ -107,7 +107,7 @@
 
 .turn {
   margin: 0 6px 4px; // the pillar's own 12 px beside the word, so the button never touches the column's edge
-  font-size: 16px;
+  font-size: var(--mr-font-16);
 }
 
 // Not enough room for 5 or 6 columns of 64 px (6 × 64 + 5 gaps = 414 px): two rows, and the columns fill the whole width, each

@@ -1,6 +1,6 @@
-@if (total() !== null && done() !== null) {
+@if (total() !== null && shownDone() !== null) {
   <p class="choices__counter" role="status">
-    <strong>Escolhas feitas: {{ done() }} de {{ total() }}</strong>
+    <strong>Escolhas feitas: {{ shownDone() }} de {{ total() }}</strong>
     @if (subtitle() !== '') {
       <span class="choices__subtitle">{{ subtitle() }}</span>
     }
@@ -11,6 +11,7 @@
   <section
     class="choice"
     [attr.data-pending]="isDone(section) ? null : ''"
+    [attr.data-advisory]="section.choices[0].advisory ? '' : null"
     [attr.aria-labelledby]="titleId(section.choices[0])"
   >
     <header class="choice__head">
@@ -49,7 +50,7 @@
           >
             <mat-option value="">—</mat-option>
             @for (option of choice.options; track option.key) {
-              <mat-option [value]="option.key" [disabled]="isBlocked(option)">{{ option.namePt }}</mat-option>
+              <mat-option [value]="option.key" [disabled]="isOff(choice, option)">{{ option.namePt }}</mat-option>
             }
           </mat-select>
         </mat-form-field>
@@ -114,6 +115,9 @@
             }
           }
         </div>
+        @for (line of repeatLines(choice); track line) {
+          <p class="choice__problem" role="alert">{{ line }}</p>
+        }
         @if (choice.resultPt !== '') {
           <p class="choice__result" role="status">{{ choice.resultPt }}</p>
         }
@@ -150,8 +154,8 @@
       <span class="card__meta">{{ spellLine(option) }}</span>
     }
     <span class="card__desc" [id]="optionId(choice, option) + '-d'">
-      @if (isBlocked(option)) {
-        {{ option.reasonPt }}
+      @if (isBlocked(option) || isTaken(choice, option)) {
+        {{ reason(option) }}
       } @else if (isOff(choice, option)) {
         {{ fullText(choice) }}
       } @else {

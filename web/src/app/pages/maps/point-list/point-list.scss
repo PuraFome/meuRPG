@@ -59,11 +59,11 @@
   .mat-icon {
     width: 22px;
     height: 22px;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
   }
 
   app-chest-icon {
-    font-size: 22px;
+    font-size: var(--mr-font-22);
   }
 }
 
@@ -76,13 +76,13 @@
 }
 
 .pl__name {
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   line-height: 22px;
   overflow-wrap: anywhere;
 }
 
 .pl__sub {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -97,7 +97,7 @@
 .pl__empty,
 .pl__hint {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }

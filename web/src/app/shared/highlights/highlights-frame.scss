@@ -30,7 +30,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   color: var(--mr-success-ink);
 
@@ -38,14 +38,14 @@
     width: 18px;
     height: 18px;
     margin-left: -2px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
 .card__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 36px;
+  font-size: var(--mr-font-36);
   line-height: 40px;
   font-weight: 800;
   overflow-wrap: anywhere;
@@ -53,7 +53,7 @@
 
 .card__sub {
   margin: 2px 0 6px;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   color: var(--mr-ink-muted);
 }
 
@@ -81,7 +81,7 @@
 
 .card__h {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   font-weight: 700;
 
   & + .own {
@@ -118,7 +118,7 @@
   .mat-icon {
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
@@ -134,7 +134,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 18px;
   color: var(--mr-ink-muted);
 }
@@ -148,19 +148,19 @@
   border: 1px solid var(--mr-accent-text);
   border-radius: var(--mr-radius-pill);
   color: var(--mr-accent-text);
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 700;
 }
 
 .row__small {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 16px;
   color: var(--mr-ink-muted);
 }
 
 .row__value {
   font-family: var(--mr-font-display);
-  font-size: 34px;
+  font-size: var(--mr-font-34);
   line-height: 40px;
   font-weight: 800;
   white-space: nowrap;
@@ -168,7 +168,7 @@
 
 .row__names {
   font-family: var(--mr-font-display);
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   line-height: 24px;
   font-weight: 700;
   overflow-wrap: anywhere;
@@ -207,14 +207,14 @@
 }
 
 .own__label {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 16px;
   color: var(--mr-ink-muted);
 }
 
 .own__value {
   font-family: var(--mr-font-display);
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   line-height: 24px;
   font-weight: 700;
   white-space: nowrap;

@@ -19,7 +19,7 @@ import { MatIconModule } from '@angular/material/icon';
       border: 1.5px solid var(--mr-accent);
       border-radius: var(--mr-radius-pill);
       color: var(--mr-accent-text);
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       font-weight: 700;
       line-height: 18px;
     }
@@ -28,7 +28,7 @@ import { MatIconModule } from '@angular/material/icon';
       flex: none;
       width: 18px;
       height: 18px;
-      font-size: 18px;
+      font-size: var(--mr-font-18);
     }
   `,
   host: { role: 'status' },

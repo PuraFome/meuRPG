@@ -169,7 +169,7 @@ const KINDS: readonly Segment<KindChoice>[] = [
     }
 
     .srd__label {
-      font-size: 17px;
+      font-size: var(--mr-font-17);
       font-weight: 700;
     }
 
@@ -229,11 +229,11 @@ const KINDS: readonly Segment<KindChoice>[] = [
       display: flex;
       flex-direction: column;
       gap: 2px;
-      font-size: 16px;
+      font-size: var(--mr-font-16);
       color: var(--mr-ink-muted);
 
       strong {
-        font-size: 17px;
+        font-size: var(--mr-font-17);
         color: var(--mr-ink);
       }
     }

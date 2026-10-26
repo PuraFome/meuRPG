@@ -62,7 +62,7 @@ let nextId = 0;
       border-radius: var(--mr-radius-pill);
       background: var(--mr-surface);
       color: var(--mr-ink);
-      font-size: 16px;
+      font-size: var(--mr-font-16);
     }
 
     // The 44 px target of design.md, flush with the chip's edge.
@@ -91,7 +91,7 @@ let nextId = 0;
       .mat-icon {
         width: 18px;
         height: 18px;
-        font-size: 18px;
+        font-size: var(--mr-font-18);
       }
     }
 

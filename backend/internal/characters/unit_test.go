@@ -376,6 +376,7 @@ func TestBuildOf(t *testing.T) {
 		HitPoints:  &charactersv1.HitPoints{Method: charactersv1.HitPointsMethod_HIT_POINTS_METHOD_ROLLED, Rolls: []int32{4, 6}},
 		Classes:    []*charactersv1.ClassLevel{{ClassKey: "class:wizard", Level: 3, Subclass: &charactersv1.ClassLevel_CustomSubclassName{CustomSubclassName: "Cronurgia"}}},
 		Background: &charactersv1.FullSheet_BackgroundKey{BackgroundKey: "background:acolyte"},
+		Languages:  testLanguages,
 	}
 	b = buildOf(rolled)
 	if b.HitPoints.Method != rules.HitPointsRolled || !slices.Equal(b.HitPoints.Rolls, []int{4, 6}) {

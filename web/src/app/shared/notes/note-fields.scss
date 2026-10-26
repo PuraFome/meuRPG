@@ -39,14 +39,14 @@ textarea {
 
 .nf__ask-t {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
   line-height: 21px;
 }
 
 .nf__ask-d {
   margin: var(--mr-space-1) 0 var(--mr-space-3);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }

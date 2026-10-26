@@ -20,7 +20,7 @@
   background: var(--mr-surface);
   color: var(--mr-ink);
   font: inherit;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   cursor: pointer;
 
   &--on {
@@ -43,7 +43,7 @@
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 
   // The check's room is kept on every chip, so choosing one never changes how the rows wrap.
@@ -70,7 +70,7 @@
     padding: 0 var(--mr-space-2);
     border: 0;
     border-radius: 0;
-    font-size: 15px;
+    font-size: var(--mr-font-15);
     white-space: nowrap;
 
     & + & {

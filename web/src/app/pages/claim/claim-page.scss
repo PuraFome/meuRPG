@@ -22,7 +22,7 @@
 }
 
 .claim__campaign {
-  font-size: 15px;
+  font-size: var(--mr-font-15);
 }
 
 .claim__character {
@@ -46,19 +46,19 @@
 
 .claim__name {
   font-family: var(--mr-font-display);
-  font-size: 26px;
+  font-size: var(--mr-font-26);
   font-weight: 800;
   line-height: 30px;
   overflow-wrap: anywhere;
 }
 
 .claim__sub {
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   color: var(--mr-ink-muted);
 }
 
 .claim__note {
-  font-size: 15px;
+  font-size: var(--mr-font-15);
 }
 
 .claim__actions {

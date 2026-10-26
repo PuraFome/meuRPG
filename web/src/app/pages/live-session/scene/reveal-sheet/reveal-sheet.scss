@@ -3,7 +3,7 @@
   padding: 12px 14px;
   border-radius: var(--mr-radius-md);
   background: var(--mr-ground);
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   line-height: 22px;
   overflow-wrap: anywhere;
 }
@@ -19,7 +19,7 @@
 .rv__h {
   flex: 1 1 auto;
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   font-weight: 700;
   line-height: 20px;
 }
@@ -95,7 +95,7 @@
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 
   .rv__row--on & {
@@ -114,14 +114,14 @@
 .rv__name {
   flex: 1 1 auto;
   min-width: 0;
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   line-height: 22px;
   overflow-wrap: anywhere;
 }
 
 .rv__player {
   flex: none;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -129,7 +129,7 @@
 .rv__summary,
 .rv__info {
   margin: var(--mr-space-3) 0 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 }
 
@@ -141,7 +141,7 @@
   display: flex;
   align-items: flex-start;
   gap: 6px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
@@ -149,7 +149,7 @@
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 

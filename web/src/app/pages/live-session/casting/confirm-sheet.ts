@@ -72,7 +72,7 @@ export function openCastConfirm(
     }
     .confirm__body {
       margin: 0;
-      font-size: 16px;
+      font-size: var(--mr-font-16);
       line-height: 24px;
     }
     .confirm__actions {

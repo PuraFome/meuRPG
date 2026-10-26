@@ -110,14 +110,14 @@ export class DeathMarks {
     }
 
     .lbl {
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       color: var(--mr-ink-muted);
       white-space: nowrap;
     }
 
     .cap {
       flex: 1 0 100%;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       font-weight: 700;
     }
 
@@ -131,7 +131,7 @@ export class DeathMarks {
       border: 1px solid var(--mr-control-line);
       border-radius: var(--mr-radius-pill);
       color: var(--mr-ink-muted);
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       font-weight: 700;
       line-height: 1;
       white-space: nowrap;
@@ -141,7 +141,7 @@ export class DeathMarks {
       flex: none;
       width: 16px;
       height: 16px;
-      font-size: 16px;
+      font-size: var(--mr-font-16);
     }
   `,
 })

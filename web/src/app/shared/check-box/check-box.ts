@@ -61,7 +61,7 @@ import { MatIconModule } from '@angular/material/icon';
       .mat-icon {
         width: 18px;
         height: 18px;
-        font-size: 18px;
+        font-size: var(--mr-font-18);
       }
     }
 

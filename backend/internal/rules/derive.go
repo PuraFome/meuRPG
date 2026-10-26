@@ -44,6 +44,11 @@ type deriver struct {
 	skillLevel      map[string]ProficiencyLevel
 	automaticSkills map[string]bool
 
+	// owned are the keys of the features, traits, feats and background the sheet has, set by collectEffects;
+	// pickedLanguages and pickedTools are the picks that give a language or a tool (proficiency_picks.go).
+	owned                        map[string]bool
+	pickedLanguages, pickedTools []proficiencyPick
+
 	// inactiveFeats are the feats the character took and no longer meets the prerequisite
 	// of: the sheet lists them but their effects do not apply.
 	inactiveFeats map[string]bool
@@ -428,6 +433,7 @@ func (x *deriver) collectEffects() {
 	col.feats()
 	x.choiceFeats(col.owned, col.add, col.feature)
 	col.options()
+	x.owned = col.owned
 }
 
 // collector is the state collectEffects works with: the keys the character owns,

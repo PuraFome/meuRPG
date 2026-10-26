@@ -12,14 +12,14 @@
   gap: 6px;
   min-height: 44px;
   margin: -10px 0 -8px;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   color: var(--mr-ink-muted);
   text-decoration: none;
 
   .mat-icon {
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 
   &:hover {
@@ -117,7 +117,7 @@
   .mat-icon {
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
@@ -131,7 +131,7 @@
 
 .guide {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 
   a {
@@ -146,7 +146,7 @@
 
 .cap {
   margin: var(--mr-space-2) 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -158,7 +158,7 @@
 }
 
 .lines__n {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -172,7 +172,7 @@
 
 .total__n {
   font-family: var(--mr-font-display);
-  font-size: 28px;
+  font-size: var(--mr-font-28);
   font-weight: 800;
 }
 
@@ -189,7 +189,7 @@
 .act__text,
 .act__why {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -209,7 +209,7 @@
 
 .act__ask p {
   margin: 0 0 var(--mr-space-2);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 }
 

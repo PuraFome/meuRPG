@@ -13,7 +13,7 @@
 .mp__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 21px;
+  font-size: var(--mr-font-21);
   line-height: 26px;
   font-weight: 700;
 }
@@ -21,14 +21,14 @@
 .mp__lead,
 .mp__hint {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
 
 .mp__label {
   margin: 0 0 var(--mr-space-1);
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 700;
   color: var(--mr-ink-muted);
 }
@@ -101,7 +101,7 @@
   border: 1px solid var(--mr-control-line);
   border-radius: var(--mr-radius-sm);
   font-family: var(--mr-font-display);
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   font-weight: 700;
 }
 
@@ -123,7 +123,7 @@
 
 .box__detail {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -138,7 +138,7 @@
   .mat-icon {
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
@@ -195,7 +195,7 @@
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -227,7 +227,7 @@
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 

@@ -404,16 +404,13 @@
             "code": "skill_count",
             "field": "full.skill_proficiency_keys",
             "message": "Faltam 4 perícias para escolher."
-          },
-          {
-            "code": "missing",
-            "field": "full.languages",
-            "message": "Falta escolher 3 idiomas."
           }
         ],
         "languages": [
           "Comum",
-          "Élfico"
+          "Élfico",
+          "Anão",
+          "Gnômico"
         ],
         "nextLevelXp": 300,
         "passiveInsight": 13,
@@ -684,8 +681,12 @@
             "race:half-elf#abilities=ability:dex"
           ],
           "knownIssues": [
-            "missing|full.languages|Falta escolher 3 idiomas.",
             "skill_count|full.skill_proficiency_keys|Faltam 4 perícias para escolher."
+          ],
+          "languages": [
+            "Anão",
+            "Élfico",
+            "Gnômico"
           ],
           "raceKey": "race:half-elf"
         }
@@ -862,16 +863,13 @@
             "code": "skill_count",
             "field": "full.skill_proficiency_keys",
             "message": "Faltam 4 perícias para escolher."
-          },
-          {
-            "code": "missing",
-            "field": "full.languages",
-            "message": "Falta escolher 3 idiomas."
           }
         ],
         "languages": [
           "Comum",
-          "Élfico"
+          "Élfico",
+          "Anão",
+          "Gnômico"
         ],
         "nextLevelXp": 300,
         "passiveInsight": 13,
@@ -1143,8 +1141,12 @@
             "race:half-elf#abilities=ability:con"
           ],
           "knownIssues": [
-            "missing|full.languages|Falta escolher 3 idiomas.",
             "skill_count|full.skill_proficiency_keys|Faltam 4 perícias para escolher."
+          ],
+          "languages": [
+            "Anão",
+            "Élfico",
+            "Gnômico"
           ],
           "raceKey": "race:half-elf"
         }
@@ -1308,15 +1310,13 @@
             "code": "skill_count",
             "field": "full.skill_proficiency_keys",
             "message": "Faltam 2 perícias para escolher."
-          },
-          {
-            "code": "missing",
-            "field": "full.languages",
-            "message": "Falta escolher 3 idiomas."
           }
         ],
         "languages": [
-          "Comum"
+          "Comum",
+          "Anão",
+          "Élfico",
+          "Gnômico"
         ],
         "nextLevelXp": 300,
         "passiveInsight": 13,
@@ -1583,8 +1583,12 @@
             "feature:fighter-fighting-style-archery"
           ],
           "knownIssues": [
-            "missing|full.languages|Falta escolher 3 idiomas.",
             "skill_count|full.skill_proficiency_keys|Faltam 2 perícias para escolher."
+          ],
+          "languages": [
+            "Anão",
+            "Élfico",
+            "Gnômico"
           ],
           "raceKey": "race:human"
         }
@@ -1786,8 +1790,8 @@
           },
           {
             "code": "missing",
-            "field": "full.languages",
-            "message": "Falta escolher 1 idioma."
+            "field": "full.feature_choice_keys",
+            "message": "Falta escolher 1 idioma: faça a escolha no passo “Escolhas”."
           }
         ],
         "languages": [
@@ -2058,7 +2062,7 @@
           ],
           "knownIssues": [
             "missing|full.background_key|Escolha um antecedente.",
-            "missing|full.languages|Falta escolher 1 idioma.",
+            "missing|full.feature_choice_keys|Falta escolher 1 idioma: faça a escolha no passo “Escolhas”.",
             "skill_count|full.skill_proficiency_keys|Faltam 2 perícias para escolher."
           ],
           "raceKey": "race:human",

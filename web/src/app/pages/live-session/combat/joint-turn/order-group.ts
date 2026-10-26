@@ -60,7 +60,7 @@ import { MatIconModule } from '@angular/material/icon';
       gap: 4px 8px;
       margin: 0;
       padding: 10px 12px 4px;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 20px;
       color: var(--mr-ink-muted);
 
@@ -71,7 +71,7 @@ import { MatIconModule } from '@angular/material/icon';
       .mat-icon {
         width: 18px;
         height: 18px;
-        font-size: 18px;
+        font-size: var(--mr-font-18);
         color: var(--mr-ink);
       }
     }
@@ -85,7 +85,7 @@ import { MatIconModule } from '@angular/material/icon';
       border: 1.5px solid var(--mr-accent);
       border-radius: var(--mr-radius-pill);
       color: var(--mr-accent-text);
-      font-size: 13px;
+      font-size: var(--mr-font-13);
       font-weight: 700;
       line-height: 1;
     }
@@ -136,7 +136,7 @@ import { MatIconModule } from '@angular/material/icon';
 
       .head {
         padding: 8px 10px 0;
-        font-size: 13px;
+        font-size: var(--mr-font-13);
         line-height: 18px;
       }
     }

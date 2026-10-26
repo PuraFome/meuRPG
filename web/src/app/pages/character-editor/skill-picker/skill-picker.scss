@@ -6,7 +6,7 @@
 
 .skills__summary {
   margin: 0 0 var(--mr-space-3);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -33,13 +33,13 @@
   min-height: 0;
   padding-bottom: var(--mr-space-1);
   border-top: 0;
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 16px;
   font-weight: 500;
   color: var(--mr-ink-muted);
 
   .skill__ability {
-    font-size: 13px;
+    font-size: var(--mr-font-13);
   }
 
   > span:first-child {
@@ -72,7 +72,7 @@
 }
 
 .skill__ability {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -95,7 +95,7 @@
 // Where a granted skill comes from, under its name.
 .skill__source {
   display: block;
-  font-size: 12px;
+  font-size: var(--mr-font-12);
   line-height: 16px;
   color: var(--mr-ink-muted);
 }

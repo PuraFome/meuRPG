@@ -7,7 +7,7 @@
 
 .hint {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 }
 
@@ -179,7 +179,7 @@
   .mat-icon {
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 
@@ -190,7 +190,7 @@
   border-radius: var(--mr-radius-pill);
   background: var(--mr-map-token-ink);
   color: var(--mr-map-token-surface);
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -246,7 +246,7 @@
 }
 
 .nudge__cap {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -344,6 +344,6 @@
 
 .center__detail {
   flex: none;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
