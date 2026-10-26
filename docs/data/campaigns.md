@@ -88,6 +88,7 @@ The table rules (MR-025, RN-24): one row per campaign.
 | `combat_starts_with_map` | default true | `StartEncounter` when the request does not choose a mode (RN-25) |
 | `fog_on_new_maps` | default false | `maps`, when a map is created |
 | `feats_allowed` | default false | level-up (see [Architecture](../architecture/campaigns.md#table-rules)) |
+| `pick_swap_allowed` | default false | level-up (see [Architecture](../architecture/campaigns.md#table-rules)) |
 | `hidden_area_hits` | `reveal` (default), `keep_hidden`, `ask` | what an area spell does to a hidden creature it hits |
 | `enemy_reactions` | `only_when_possible` (default), `always` | combat reactions |
 | `show_save_dc` | `BOOL NOT NULL`, default false (migration 00270) | `play`: whether the player who rolls a saving throw also reads its DC |

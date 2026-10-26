@@ -56,6 +56,7 @@ import { FeatureSheet } from './feature-sheet/feature-sheet';
 import { FlexibleCastingSheet } from './flexible-casting-sheet/flexible-casting-sheet';
 import { HelpSheet } from './help-sheet/help-sheet';
 import { HideSheet } from './hide-sheet/hide-sheet';
+import { TableActionSheet } from './table-action-sheet/table-action-sheet';
 import { LayOnHandsSheet } from './lay-on-hands-sheet/lay-on-hands-sheet';
 import { ReactionSheet } from './reaction-sheet/reaction-sheet';
 import { RevivifySheet } from './revivify-sheet/revivify-sheet';
@@ -639,6 +640,23 @@ describe('CombatView sheets: useFeature', () => {
       true,
     ]);
     expect(m.view.actionNote()).toBe('Fúria: você entrou em frenesi.');
+  });
+
+  it('opens the sheet of a table action that asks how many or heals, instead of using it at once', async () => {
+    const m = await setup({
+      turnOptions: withFeatures(
+        feature('feature:folego-da-mesa', 'Fôlego da Mesa', { cost: 0, costMax: 3 }),
+        feature('feature:grito-de-teste', 'Grito de Teste', { cost: 2 }),
+      ),
+    });
+    await m.view.useFeature('feature:folego-da-mesa');
+    expect(m.opened[0].component).toBe(TableActionSheet);
+    expect(data(m)).toMatchObject({ campaignId: 'c', encounterId: 'enc', combatantId: 't' });
+    expect(m.callsOf('takeAction')).toHaveLength(0);
+    // A fixed cost with no result is used at once, as before.
+    await m.view.useFeature('feature:grito-de-teste');
+    expect(m.opened).toHaveLength(1);
+    expect(m.callsOf('takeAction')).toHaveLength(1);
   });
 
   it('keeps the note away when the server refuses the feature, and says why', async () => {

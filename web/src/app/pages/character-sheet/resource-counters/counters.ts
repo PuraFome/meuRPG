@@ -25,6 +25,12 @@ export function rechargeLine(recharge: ResourceUsageVm['recharge']): string {
       return 'Volta num descanso curto ou longo';
     case 'long_rest':
       return 'Volta num descanso longo';
+    case 'initiative':
+      return 'Volta um uso ao rolar iniciativa, se nenhum restar';
+    case 'restore_one_on_short_rest':
+      return 'Volta um uso num descanso curto e todos num longo';
+    case 'restore_one_on_long_rest':
+      return 'Volta um uso num descanso longo';
     default:
       return '';
   }

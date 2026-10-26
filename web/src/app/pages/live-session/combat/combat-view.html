@@ -31,7 +31,7 @@
       @case (Status.SETUP) {
         <div class="stack">
           <app-combat-bar [encounter]="e" [busy]="busy()" (begin)="begin()" (cancelCombat)="endCombat()" />
-          <div class="setup">
+          <div class="setup-wrap"><div class="setup">
             <app-initiative-setup
               class="setup__list"
               [encounter]="e"
@@ -74,7 +74,7 @@
                 </div>
               }
             </div>
-          </div>
+          </div></div>
         </div>
       }
       @case (Status.ACTIVE) {

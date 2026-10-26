@@ -1,6 +1,7 @@
 import { computed } from '@angular/core';
 
 import type { Combatant } from '../../../gen/meurpg/play/v1/combat_pb';
+import { type HitBox, tappedCreature } from './pick-hit';
 import { type Place, type PickPlan, planPick } from './pick-places';
 
 /** A creature of the map while the player chooses a target (C7-04): ringed and tappable, or dimmed with the reason a tap tells. */
@@ -85,6 +86,19 @@ export class PickLayer {
     private readonly unit: () => number,
     private readonly span: (c: Combatant) => number,
   ) {}
+
+  /** Tells `emit` the creature a click on the button of `id` meant, when it is one on offer (see `tappedCreature`). */
+  tapped(
+    event: MouseEvent,
+    id: string,
+    boxes: readonly HitBox[],
+    emit: (hit: string) => void,
+  ): void {
+    const hit = tappedCreature(event, id, boxes, this.unit());
+    if (hit && this.byId().has(hit)) {
+      emit(hit);
+    }
+  }
 
   of(id: string): PickMark | undefined {
     return this.byId().get(id);

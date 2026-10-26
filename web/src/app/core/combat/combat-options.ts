@@ -6,6 +6,7 @@ import {
   BonusAttackRule,
   type DisabledReason,
   DisabledReasonCode,
+  type SpellGrantOption,
   type SpellOption,
   type TurnOptions,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
@@ -240,6 +241,12 @@ export function isCantrip(attack: Attack): boolean {
   return attack.kind === AttackKind.SPELL;
 }
 
+/** Where a granted spell comes from and what it costs: "Graça · À vontade", "Graça · 1 uso". */
+export function grantLine(g: SpellGrantOption): string {
+  const uses = g.atWill ? 'À vontade' : g.usesLeft === 1 ? '1 uso' : `${g.usesLeft} usos`;
+  return `${g.sourceNamePt} · ${uses}`;
+}
+
 /** The tags under a spell's name: its circle, and the economy when it is not
  * an action ("Reação", "Ação bônus"): the spells of every economy share one
  * list in the server's order (E8-02). */
@@ -265,10 +272,11 @@ export function spellLine(o: SpellOption, summary = ''): string {
   if (o.spell?.key === 'spell:shield') {
     return 'Quando você for atingido, o app pergunta se quer usar.';
   }
-  const parts = [summary || o.spell?.schoolNamePt || ''];
+  // A granted spell says where it comes from before anything else: the same spell may stand twice in the list.
+  const parts = [o.grant ? grantLine(o.grant) : '', summary || o.spell?.schoolNamePt || ''];
   const level = o.spell?.level ?? 0;
   const free = o.slots.reduce((sum, s) => sum + s.free, 0);
-  if (level > 0 && o.enabled && free === 1) {
+  if (level > 0 && o.enabled && free === 1 && !o.grant) {
     parts.push(`gasta o último espaço de ${circleLabel(o.slots[0].level)}`);
   }
   return tight(joinDots(parts.filter(Boolean)));

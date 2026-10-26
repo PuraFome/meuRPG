@@ -8,8 +8,9 @@ import type {
 import type { EffectSaveResult } from '../../../gen/meurpg/play/v1/lasting_effects_pb';
 import { type CheckRoll, RollModeKind } from '../../../gen/meurpg/play/v1/contest_types_pb';
 import { extraDiceText } from '../../core/combat/combat-dice';
+import type { DieSpec } from './tray/dice-types';
 
-/** The dice the game uses. A d100 is drawn as two d10 (see `shapesOf`). */
+/** The dice the game uses. A d100 is drawn as two d10 (the tray expands it). */
 export type DieSides = 4 | 6 | 8 | 10 | 12 | 20 | 100;
 // eslint-disable-next-line @typescript-eslint/no-magic-numbers -- the faces of the game's dice
 const SIDES: readonly number[] = [4, 6, 8, 10, 12, 20, 100];
@@ -39,74 +40,57 @@ export interface RollShow {
   readonly fumble?: boolean;
 }
 
-/** What the overlay draws: one silhouette per shape. */
-export interface DieShape {
-  /** The silhouette: a d100 is two d10. */
-  // eslint-disable-next-line @typescript-eslint/no-magic-numbers -- the faces of the game's dice are the type
-  readonly shape: 4 | 6 | 8 | 10 | 12 | 20;
-  /** The number it lands on ("00" to "90" for the tens die of a d100). */
-  readonly text: string;
-  readonly counts: boolean;
-  /** How many numbers it cycles through while it tumbles. */
-  readonly spin: number;
-  /** The index of the die in the roll, to tell the critical d20. */
-  readonly source: number;
-  /** Which of the two percentile d10 of a d100 this is: the tens ("00" to "90") or the units ("0" to "9"). */
-  readonly part?: 'tens' | 'units';
+/** What the tray is asked to roll: the dice and a number that changes with every roll, so the same show can play twice. */
+export interface TrayRequest {
+  readonly id: number;
+  readonly dice: readonly DieSpec[];
 }
 
-/** Timings (milliseconds): the tumble, the pause between one die landing and the next, and the longest the overlay stays open. */
-export const TUMBLE_MS = 700;
-export const STAGGER_MS = 80;
 /** The result stays for the table to read; the overlay closes by itself this long after it opened at the latest. */
 export const OPEN_MS = 10_000;
-const CYCLE_MS = 60;
-/** Steps of the tumbling number: any odd numbers will do, they only make the digits look random. */
-const SPIN_TICK = 7;
-const SPIN_DIE = 13;
 const D20 = 20;
 const D100 = 100;
-const TENS = 10;
 /** At most this many dice are drawn; the rest is a "+N" chip. */
 export const MAX_DICE = 8;
+/** What the tray holds: a d100 is two dice on it (`MAX_ON_TRAY` of `tray/dice-sim`, which the initial bundle must not import). */
+export const TRAY_BODIES = 12;
 
 /**
- * The dice roll animation (docs/design/session.md#rolls): `play` shows the dice tumbling together, landing one after
- * another on the real faces and the result, which stay on screen to be read and close by themselves after 10 s at most (the landing takes under 2 s even for eight dice). A new roll replaces
- * the one playing; a tap or Esc closes it. It does nothing when the browser asks for reduced motion (or cannot say) or
- * when no overlay is mounted, so a flow never waits for it, and it only ever shows what the caller passes: the screens
- * call it for a roll made on this screen, never for a typed physical die or another person's roll.
+ * The dice roll animation (docs/design/session.md#rolls): `play` throws the dice on a tray, which land on the real
+ * faces and the result, and stay on screen to be read until a tap or Esc closes them, or 10 s pass at most (the roll
+ * takes under 2 s even for eight dice). A tap or Esc while they roll lands them at once; a second one closes. A new
+ * roll replaces the one playing. Under reduced motion (or when the browser cannot say) nothing moves: the dice appear
+ * at rest with their results. It does nothing when no overlay is mounted, so a flow never waits for it, and it only
+ * ever shows what the caller passes: the screens call it for a roll made on this screen, never for a typed physical
+ * die or another person's roll.
  */
 @Injectable({ providedIn: 'root' })
 export class RollAnimator {
   private readonly now = signal<RollShow | null>(null);
-  private readonly landedNow = signal(0);
-  private readonly tickNow = signal(0);
+  private readonly rollId = signal(0);
+  private readonly landedNow = signal(false);
+  private readonly reducedNow = signal(true);
+  private readonly skipNow = signal(0);
   private readonly said = signal('');
   private hosts = 0;
-  private cycle: ReturnType<typeof setInterval> | undefined;
-  private timer: ReturnType<typeof setTimeout> | undefined;
   private closer: ReturnType<typeof setTimeout> | undefined;
 
   /** The roll on show, or null. */
   readonly current = this.now.asReadonly();
-  /** The silhouettes to draw, and how many dice are left out ("+N"). */
-  readonly shapes = computed(() => {
-    const r = this.now();
-    return r ? shapesOf(r.dice.slice(0, MAX_DICE)) : [];
+  /** The dice for the tray, and how many dice are left out ("+N"). */
+  readonly request = computed<TrayRequest>(() => {
+    const id = this.rollId();
+    return { id, dice: trayDice(this.now()).dice };
   });
-  readonly hidden = computed(() => Math.max(0, (this.now()?.dice.length ?? 0) - MAX_DICE));
-  /** How many silhouettes have landed. */
-  readonly landed = this.landedNow.asReadonly();
+  readonly hidden = computed(() => trayDice(this.now()).hidden);
   /** True once every die has landed: the result shows. */
-  readonly done = computed(() => this.now() !== null && this.landedNow() >= this.shapes().length);
+  readonly done = this.landedNow.asReadonly();
+  /** True when nothing may move: the tray draws the dice at rest. */
+  readonly reduced = this.reducedNow.asReadonly();
+  /** Counts the taps that ask the dice to land at once; the tray watches it. */
+  readonly skips = this.skipNow.asReadonly();
   /** The one sentence a screen reader hears, set when the dice land. */
   readonly announcement = this.said.asReadonly();
-
-  /** The number a die shows while it tumbles (display only). */
-  spinning(index: number, spin: number): number {
-    return 1 + ((this.tickNow() * SPIN_TICK + index * SPIN_DIE) % spin);
-  }
 
   /** The overlay in the shell announces itself: with none mounted (a unit test of a sheet), `play` does nothing and starts no timer. */
   attach(): () => void {
@@ -121,19 +105,37 @@ export class RollAnimator {
   }
 
   play(roll: RollShow): void {
-    if (this.hosts === 0 || !motionAllowed() || !validDice(roll.dice)) {
+    if (this.hosts === 0 || !validDice(roll.dice)) {
       return;
     }
     this.stop();
-    this.now.set(roll);
-    this.landedNow.set(0);
+    this.reducedNow.set(!motionAllowed());
+    this.landedNow.set(false);
     this.said.set('');
-    this.cycle = setInterval(() => this.tickNow.update((t) => t + 1), CYCLE_MS);
-    this.timer = setTimeout(() => this.land(roll), TUMBLE_MS);
+    this.rollId.update((n) => n + 1);
+    this.now.set(roll);
     this.closer = setTimeout(() => this.dismiss(), OPEN_MS);
   }
 
-  /** A tap or Esc: closes at once. */
+  /** The tray reports that every die has landed: the result and the sentence show. */
+  land(): void {
+    const roll = this.now();
+    if (roll && !this.landedNow()) {
+      this.landedNow.set(true);
+      this.said.set(sentence(roll));
+    }
+  }
+
+  /** A tap or Esc: while the dice roll it lands them at once, then it closes. */
+  tap(): void {
+    if (this.now() && !this.landedNow()) {
+      this.skipNow.update((n) => n + 1);
+    } else {
+      this.dismiss();
+    }
+  }
+
+  /** Closes at once. */
   dismiss(): void {
     if (this.now()) {
       this.stop();
@@ -141,38 +143,15 @@ export class RollAnimator {
     }
   }
 
-  private land(roll: RollShow): void {
-    const total = this.shapes().length;
-    this.landedNow.update((n) => n + 1);
-    if (this.landedNow() < total) {
-      this.timer = setTimeout(() => this.land(roll), STAGGER_MS);
-      return;
-    }
-    this.stopCycle();
-    this.said.set(sentence(roll));
-  }
-
   private stop(): void {
-    this.stopCycle();
-    if (this.timer !== undefined) {
-      clearTimeout(this.timer);
-      this.timer = undefined;
-    }
     if (this.closer !== undefined) {
       clearTimeout(this.closer);
       this.closer = undefined;
     }
   }
-
-  private stopCycle(): void {
-    if (this.cycle !== undefined) {
-      clearInterval(this.cycle);
-      this.cycle = undefined;
-    }
-  }
 }
 
-/** False when the browser asks for reduced motion, and when it cannot tell (jsdom): the animation is then never drawn. */
+/** False when the browser asks for reduced motion, and when it cannot tell (jsdom): the dice are then never moved. */
 function motionAllowed(): boolean {
   if (typeof matchMedia !== 'function') {
     return false;
@@ -195,36 +174,34 @@ function validDice(dice: readonly ShownDie[]): boolean {
 }
 
 /**
- * The silhouettes of the dice. A d100 is the two percentile d10 side by side, as at the table (SRD): the tens die shows
- * "00" to "90" and the units die "0" to "9", and the face 100 shows "00" and "0".
+ * The dice the tray rolls for a show: `sides`, `result: face`, `discarded` for the d20 that advantage or disadvantage
+ * left out, and the roll's critical or fumble on the d20 that counts. At most `MAX_DICE` are drawn (and as many as
+ * fit the tray, a d100 being two); the rest is the "+N" chip.
  */
-export function shapesOf(dice: readonly ShownDie[]): DieShape[] {
-  return dice.flatMap((d, source): DieShape[] => {
-    const counts = d.counts !== false;
-    if (d.sides === D100) {
-      const tens = Math.floor((d.face % D100) / TENS) * TENS;
-      return [
-        {
-          shape: 10,
-          text: String(tens).padStart(2, '0'),
-          counts,
-          spin: TENS,
-          source,
-          part: 'tens',
-        },
-        { shape: 10, text: String(d.face % TENS), counts, spin: TENS, source, part: 'units' },
-      ];
+export function trayDice(roll: RollShow | null): { dice: DieSpec[]; hidden: number } {
+  if (!roll) {
+    return { dice: [], hidden: 0 };
+  }
+  let bodies = 0;
+  const drawn: ShownDie[] = [];
+  for (const d of roll.dice.slice(0, MAX_DICE)) {
+    bodies += d.sides === D100 ? 2 : 1;
+    if (bodies > TRAY_BODIES) {
+      break;
     }
-    return [
-      {
-        shape: d.sides as DieShape['shape'],
-        text: String(d.face),
-        counts,
-        spin: d.sides,
-        source,
-      },
-    ];
-  });
+    drawn.push(d);
+  }
+  const counted = drawn.findIndex((d) => d.sides === D20 && d.counts !== false);
+  return {
+    dice: drawn.map((d, i) => ({
+      sides: d.sides,
+      result: d.face,
+      discarded: d.counts === false,
+      critical: !!roll.critical && i === counted,
+      fumble: !!roll.fumble && i === counted,
+    })),
+    hidden: roll.dice.length - drawn.length,
+  };
 }
 
 /** The word under the dice for a natural 20 or 1 the caller marked, or the caller's own outcome. */

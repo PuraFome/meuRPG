@@ -18,8 +18,8 @@ test(
     test.setTimeout(120_000);
     const { m, p, done } = await diceTable(browser, 'Dados livres', { master: 1280, player: 390 });
     try {
-      // The suite runs with reduced motion, which keeps the dice overlay from playing (playwright.config.ts). This test is
-      // about what the master sees on it, so his page asks for motion, and the overlay is closed again below.
+      // The suite runs with reduced motion, which keeps the dice still and the page usable (playwright.config.ts). This test
+      // is about what the master sees on the rolling overlay, so his page asks for motion, and the overlay is closed again below.
       await m.emulateMedia({ reducedMotion: 'no-preference' });
       // The overlay is a deferred part of the shell: it must be mounted before the roll arrives, or the dice have nowhere to tumble.
       await expect(m.locator('app-roll-overlay')).toBeAttached({ timeout: 20_000 });

@@ -153,7 +153,7 @@ func TestSpellCasterNumbersWithoutADCCarriesNoSave(t *testing.T) {
 		{"caster", caster, "dex", 13},
 	} {
 		var out link.Spell
-		spellCasterNumbers(&out, tc.d, det)
+		spellCasterNumbers(&out, tc.d, det, nil)
 		if out.SaveAbility != tc.wantAbility || out.SaveDC != tc.wantDC {
 			t.Errorf("%s: save = %q DC %d, want %q DC %d", tc.name, out.SaveAbility, out.SaveDC, tc.wantAbility, tc.wantDC)
 		}

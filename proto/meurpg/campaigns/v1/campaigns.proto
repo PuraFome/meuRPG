@@ -717,6 +717,11 @@ message TableRules {
   // it, only the master changes it, and the combat reads it when it builds each
   // answer, so a change applies from the next one on. Read as sent by SetTableRules.
   bool show_save_dc = 12;
+  // Whether a character may swap one earlier pick for another of the same group at each
+  // Ability Score Improvement level (a cantrip, a fighting style, a metamagic option, an
+  // invocation, a pact boon): a rule of the table, off by default. Read as sent by
+  // SetTableRules.
+  bool pick_swap_allowed = 13;
 }
 
 // EnemyReactionsRule is when the game waits for the master before the result of a

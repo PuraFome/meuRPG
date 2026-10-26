@@ -208,6 +208,15 @@ const EFFECTS: Record<string, [Parameters<typeof effectLine>[0], string]> = {
   'sense with no range': [{ type: 'sense', sense: 'darkvision', rangeFt: 0 } as never, ''],
   'resource once': [{ type: 'resource', max: '1', recharge: 'dawn' } as never, ''],
   'resource many': [{ type: 'resource', max: '3', recharge: 'short_rest' } as never, ''],
+  'resource on initiative': [{ type: 'resource', max: '2', recharge: 'initiative' } as never, ''],
+  'resource one per short rest': [
+    { type: 'resource', max: '3', recharge: 'restore_one_on_short_rest' } as never,
+    '',
+  ],
+  'resource one per long rest': [
+    { type: 'resource', max: '3', recharge: 'restore_one_on_long_rest' } as never,
+    '',
+  ],
   'resource unknown recharge': [{ type: 'resource', max: '2', recharge: 'zz' } as never, ''],
   'resource formula': [{ type: 'resource', max: 'prof()', recharge: 'dawn' } as never, ''],
   'extra attack': [{ type: 'extra_attack', count: 2 } as never, ''],
@@ -442,6 +451,10 @@ const EXPECTED_EFFECTS: Record<string, string> = {
   'sense with no range': '',
   'resource once': '1 uso, voltam ao amanhecer',
   'resource many': '3 usos, voltam num descanso curto',
+  'resource on initiative': '2 usos, um uso volta ao rolar iniciativa, se não restar nenhum',
+  'resource one per short rest':
+    '3 usos, um descanso curto devolve um uso e um longo devolve todos',
+  'resource one per long rest': '3 usos, um descanso longo devolve um uso',
   'resource unknown recharge': '2 usos',
   'resource formula': '',
   'extra attack': 'Ataque extra: 2 ataques',

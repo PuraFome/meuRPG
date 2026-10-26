@@ -139,6 +139,14 @@ describe('an option the master retired (RN-23, 10.1d)', () => {
     expect(f.message).toContain('escolhas que ficaram para trás');
   });
 
+  it('words a refused swap of a pick and sends the player to the Habilidades step', () => {
+    const f = describeLevelUpFailure(
+      refusedAt(LevelUpRefusalReason.SWAP_NOT_ALLOWED, 'choices.swap_pick'),
+    );
+    expect(f).toMatchObject({ kind: 'refusal', step: 'abilities' });
+    expect(f.message).toContain('troca de escolha');
+  });
+
   it('words the refusals of a feat and sends the player to the Habilidades step', () => {
     for (const reason of [
       LevelUpRefusalReason.FEAT,
@@ -245,6 +253,10 @@ describe('the level-up refusals, one by one', () => {
       LevelUpRefusalReason.LATE_CHOICE_MISSING,
       'Ainda há escolhas que ficaram para trás em níveis anteriores. Faça todas antes de subir de nível.',
     ],
+    [
+      LevelUpRefusalReason.SWAP_NOT_ALLOWED,
+      'Essa troca de escolha não vale neste nível ou nesta mesa. Tire a troca e confirme o nível.',
+    ],
     [LevelUpRefusalReason.SKILLS, 'Escolha todas as perícias novas do nível.'],
     [LevelUpRefusalReason.EXPERTISE, 'Escolha todas as especializações novas do nível.'],
     [
@@ -280,6 +292,7 @@ describe('the level-up refusals, one by one', () => {
     [LevelUpRefusalReason.SUBCLASS, 'picks'],
     [LevelUpRefusalReason.FEATURE_CHOICE, 'picks'],
     [LevelUpRefusalReason.LATE_CHOICE_MISSING, 'picks'],
+    [LevelUpRefusalReason.SWAP_NOT_ALLOWED, 'abilities'],
     [LevelUpRefusalReason.SKILLS, 'picks'],
     [LevelUpRefusalReason.EXPERTISE, 'picks'],
     [LevelUpRefusalReason.CANTRIPS, 'spells'],

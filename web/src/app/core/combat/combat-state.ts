@@ -1,3 +1,4 @@
+import type { OwnHit } from './own-hit';
 import { computed, signal } from '@angular/core';
 
 import {
@@ -100,6 +101,8 @@ export class CombatState {
   /** Goes up on every `combat_log_changed` and every (re)connection: the log
    * panel reads the log again whenever it changes. */
   readonly logTick = signal(0);
+  /** The latest attack that hurt the player's own character, read from the combat log (the sheet says it as the attack's damage). */
+  readonly ownHit = signal<OwnHit | null>(null);
   /** What a reaction window that closed by itself said (`reaction_window_closed`), kept in a status line until it is
    * dismissed, and gone with the combat. Nothing of it is stored in the browser. */
   readonly reactionNotice = signal<ReactionNotice | null>(null);

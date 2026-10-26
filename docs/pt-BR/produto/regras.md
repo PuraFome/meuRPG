@@ -208,6 +208,12 @@ Um mapa e um ponto nascem escondidos, e o mestre revela e esconde cada um.
 O token de um NPC nasce escondido. O token de um personagem de jogador é visível, e o de uma criatura também (a criatura está do lado do grupo). Escolher o mapa atual da sessão o revela.
 O jogador vê o mapa revelado e o mapa atual, só com os pontos revelados e os tokens visíveis; um ponto de submapa leva só a um mapa que o jogador também vê.
 
+**Mover tokens fora do combate** ([MR-012](historias.md#mr-012-acompanhar-a-sessão)).
+Fora do combate o mestre move o token de qualquer personagem; o jogador move só o próprio, sozinho, e só num mapa em que o mestre ligou "Os jogadores movem os próprios personagens" (desligado por padrão), e só enquanto vê esse token.
+O token anda em direção ao quadrado e para antes de uma parede, de uma porta trancada ou de um quadrado marcado "Não dá para passar", sem limite de deslocamento.
+O mestre é avisado do motivo da parada; o jogador só quando o quadrado no caminho é um que ele vê ou lembra: do contrário a resposta diz apenas que parou, e o jogador nunca descobre o que há ali (um NPC escondido, um quadrado na névoa).
+O mestre retirar o interruptor enquanto um jogador se move faz o servidor recusar aquele movimento, e a tela do jogador diz "O mestre voltou a mover os tokens.".
+
 **A cena** ([MR-015](historias.md#mr-015-ações-da-cena-de-rp), [MR-031](historias.md#mr-031-npcs-na-cena)).
 O mestre pode esconder um NPC no palco ("Escondida dos jogadores") e uma ação de cena ("Escondida"), ao preparar ou ao vivo.
 Um NPC escondido conta para o limite de 4 do palco, mas nenhum jogador o recebe: nem o nome, o retrato ou o lugar no palco, nem na cena aberta, nem em um aviso ao vivo, nem na lista de conjurações ou como alvo.
@@ -618,6 +624,7 @@ Uma mudança vale a partir da próxima jogada, sem nunca reescrever o que já fo
 - **Combate com mapa ou sem** (RN-25): "Combate com mapa" é o padrão do diálogo "Iniciar combate", a menos que a mesa comece sem mapa.
 - **Névoa nos mapas novos** liga com a primeira grade do mapa, não na criação.
 - **Talentos.** "Talentos" é "permitidos" ou "não usados" (padrão "não usados"). Só quando permitidos a etapa de Aumento de Habilidade da subida de nível oferece "Aumentar habilidades" ou "Um talento", com os talentos para os quais o personagem se qualifica. O servidor confere o pré-requisito no nível novo, aplica o aumento de habilidade do próprio talento (nenhum acima de 20) e recusa um talento que o mestre aposentou ou desligou.
+- **Trocar uma escolha.** "Trocar uma escolha no aumento de atributo" é "ligada" ou "desligada" (padrão "desligada"). Só quando ligada a etapa de Aumento de Habilidade da subida de nível também oferece abrir mão de uma escolha anterior de um grupo (um truque da classe, um estilo de luta, uma opção de Metamagia, uma invocação, uma Dádiva do Pacto) por outra do mesmo conjunto, uma troca por nível desses. O conjunto são as opções do SRD e as da mesa, menos as escolhas que o personagem já tem, e a escolha nova tem os pré-requisitos de qualquer escolha (os das invocações, os de uma opção da mesa); o servidor recusa uma troca com a regra desligada, num nível sem aumento ou por uma escolha ou opção que o nível não oferece. A troca de invocação do bruxo a cada nível é outra regra e continua como está.
 - **Um talento que uma característica concede para escolher** (uma raça, antecedente, classe ou outro talento com uma escolha de talento) é uma escolha como as outras (RN-33), pedida em "Escolhas": os talentos da mesa, ou só a lista que a concessão nomeia. Um talento que o personagem já tem, um aposentado e um desligado não são oferecidos; um para o qual o personagem ainda não se qualifica aparece com o que pede e não pode ser escolhido. A regra "Talentos" não o restringe. Ele aparece como "Talento · <origem>" e nunca duas vezes numa ficha.
 - **Modo de XP** (RN-09) pode mudar depois que a campanha é criada, com uma confirmação se alguém já ganhou XP.
 - **Regras da casa** são só um lembrete na página (por exemplo, beber uma poção é uma ação bônus); o app não as impõe. Flanquear está fora do escopo.

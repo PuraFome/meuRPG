@@ -19,6 +19,7 @@ import {
 } from './cast-sheet/cast-sheet-data';
 import { ZoneMoveSheet, zoneMoveTitle, type ZoneMoveSheetData } from './zone-move/zone-move-sheet';
 import { spellKind } from '../../../core/combat/cast-flow';
+import { optionOfRef, splitCastRef } from '../../../core/combat/cast-ref';
 import type { CastPreset } from './target-mode/target-flow';
 import { openRevivifySheet } from './revivify-sheet/revivify-sheet';
 import { ActionSheets } from './action-sheets';
@@ -118,33 +119,36 @@ export class CombatSheets {
   }
 
   /** "Conjurar": the cast sheet (the slot, the targets, the roll, the damage); a summoning spell asks for the creatures instead. */
-  async cast(key: string): Promise<void> {
-    const spell = this.ctx.options()?.options?.spells.find((s) => s.spell?.key === key);
-    if (spell?.spell && (await this.isSummon(key))) {
+  async cast(ref: string): Promise<void> {
+    const { key, grantedBy } = splitCastRef(ref);
+    const spell = optionOfRef(this.ctx.options()?.options?.spells ?? [], ref);
+    // A summoning spell and Revivificar have their own sheets, cast with the classes' slots.
+    if (grantedBy === '' && spell?.spell && (await this.isSummon(key))) {
       this.summon(key, spell.spell.namePt || spell.spell.name);
       return;
     }
-    if (isRevivify(key)) {
+    if (grantedBy === '' && isRevivify(key)) {
       this.revivify();
       return;
     }
-    if (!(await this.castOnMap(key))) {
-      this.castSheet(key);
+    if (!(await this.castOnMap(ref))) {
+      this.castSheet(ref);
     }
   }
 
   /** The player's spell with creatures to aim at: they are tapped on the map first (C7-04). `false` when the sheet opens as it
    * always did (the master, no map, an area, a spell on the caster). */
-  private async castOnMap(key: string): Promise<boolean> {
+  private async castOnMap(ref: string): Promise<boolean> {
+    const { key } = splitCastRef(ref);
     const flow = this.ctx.target?.();
     // The master picks on the map only for the character he acts for (`own` is that one).
-    const data = flow && (!this.ctx.isMaster() || this.ctx.own()) ? this.castData(key) : null;
+    const data = flow && (!this.ctx.isMaster() || this.ctx.own()) ? this.castData(ref) : null;
     if (!flow || !data) {
       return false;
     }
     const details = await this.ctx.catalog.details(this.ctx.campaignId(), key);
     return flow.cast(data, spellKind(key, details ?? null), (preset) =>
-      this.castSheet(key, undefined, preset ?? undefined),
+      this.castSheet(ref, undefined, preset ?? undefined),
     );
   }
 
@@ -167,8 +171,8 @@ export class CombatSheets {
 
   /** The cast sheet for a spell of the options, or a cantrip that asks for a saving throw; with `resume` it opens at the
    * damage the player never rolled. */
-  castSheet(key: string, resume?: readonly PendingDamage[], preset?: CastPreset): void {
-    const built = this.castData(key, resume);
+  castSheet(ref: string, resume?: readonly PendingDamage[], preset?: CastPreset): void {
+    const built = this.castData(ref, resume);
     if (!built) {
       return;
     }
@@ -182,7 +186,7 @@ export class CombatSheets {
   }
 
   /** What the cast sheet is handed for a spell of the options, or `null` when the combat or the options are not there. */
-  private castData(key: string, resume?: readonly PendingDamage[]): CastSheetData | null {
+  private castData(ref: string, resume?: readonly PendingDamage[]): CastSheetData | null {
     const e = this.ctx.encounter();
     const caster = this.ctx.own();
     const turn = this.ctx.options();
@@ -190,7 +194,7 @@ export class CombatSheets {
       return null;
     }
     return castSheetData({
-      key,
+      key: ref,
       campaignId: this.ctx.campaignId(),
       encounter: e,
       caster,

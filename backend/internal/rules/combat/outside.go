@@ -34,13 +34,28 @@ type OutsideSpell struct {
 	// Minutes is how long the normal cast takes (0 for an action, a bonus action
 	// or a reaction), and RitualMinutes how long the ritual takes.
 	Minutes, RitualMinutes int
-	// Reason is set when neither way works: ReasonNoSlot (with MinLevel) or
-	// ReasonNotCastable.
+	// Grants are the granted_spell effects that give the spell: each is a way to cast it with
+	// no slot (or with one, when the grant allows it).
+	Grants []OutsideGrant
+	// Reason is set when no way works: ReasonNoSlot (with MinLevel), ReasonNoUses (a
+	// grant that has none left) or ReasonNotCastable.
 	Reason *Reason
 }
 
+// OutsideGrant is a SpellGrant outside a fight. RitualOnly says the grant casts the
+// spell only as a ritual.
+type OutsideGrant struct {
+	SpellGrant
+	RitualOnly bool
+}
+
+// Ready says the grant works now: it is at will, or a use is left.
+func (g OutsideGrant) Ready() bool { return g.castable() }
+
 // Enabled says some way of casting the spell works now.
-func (o OutsideSpell) Enabled() bool { return o.CanCast || o.CanRitual }
+func (o OutsideSpell) Enabled() bool {
+	return o.CanCast || o.CanRitual || slices.ContainsFunc(o.Grants, OutsideGrant.Ready)
+}
 
 // OutsideSpells lists the spells of the sheet the character can cast outside a
 // fight: the prepared ones and the ones only a ritual reaches (a wizard's
@@ -72,6 +87,7 @@ func OutsideSpells(d rules.Derived, u Usage) []OutsideSpell {
 		}
 		out = append(out, o)
 	}
+	out = addGrantedOutside(d, u, out)
 	slices.SortStableFunc(out, func(a, b OutsideSpell) int {
 		if c := cmp.Compare(a.Spell.Level, b.Spell.Level); c != 0 {
 			return c
@@ -90,12 +106,40 @@ func slotChoices(d rules.Derived, u Usage, level int) []SlotChoice {
 	var out []SlotChoice
 	for l := level; l <= rules.MaxSlotLevel; l++ {
 		if free := SlotsFree(d, u, l); free > 0 {
-			out = append(out, SlotChoice{Level: l, Free: free})
+			out = append(out, SlotChoice{Level: l, Free: free, Total: d.SpellSlots[l-1]})
 		}
 	}
 	if p := d.PactMagic; p != nil && p.SlotLevel >= level {
 		if free := PactSlotsFree(d, u); free > 0 {
-			out = append(out, SlotChoice{Level: p.SlotLevel, Pact: true, Free: free})
+			out = append(out, SlotChoice{Level: p.SlotLevel, Pact: true, Free: free, Total: p.Slots})
+		}
+	}
+	return out
+}
+
+// addGrantedOutside adds the grants to the list: onto the spell they give when the sheet has
+// it already, as a spell of their own when the character has it from the grant alone. A grant
+// whose casting ability is not picked yet is left out.
+func addGrantedOutside(d rules.Derived, u Usage, out []OutsideSpell) []OutsideSpell {
+	for _, g := range d.GrantedSpells {
+		if g.AbilityPending {
+			continue
+		}
+		grant := OutsideGrant{SpellGrant: GrantOf(d, u, g), RitualOnly: g.RitualOnly}
+		i := slices.IndexFunc(out, func(o OutsideSpell) bool { return o.Spell.Key == g.Spell.Key })
+		if i < 0 {
+			sp := g.Spell
+			out = append(out, OutsideSpell{
+				Spell: sp, Standing: d.SpellStanding(sp.Key, sp.Ritual),
+				Minutes: rules.CastMinutes(sp.CastingTime, false), RitualMinutes: rules.CastMinutes(sp.CastingTime, true),
+			})
+			i = len(out) - 1
+		}
+		out[i].Grants = append(out[i].Grants, grant)
+		if out[i].Enabled() {
+			out[i].Reason = nil
+		} else if out[i].Reason == nil || out[i].Reason.Code == ReasonNotCastable {
+			out[i].Reason = &Reason{Code: ReasonNoUses, Recharge: grant.Recharge}
 		}
 	}
 	return out

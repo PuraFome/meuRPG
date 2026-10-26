@@ -22,7 +22,6 @@ import { effectivePreference } from '../../../core/campaigns/dice-labels';
 import {
   type CastWay,
   castButton,
-  defaultWay,
   endsConcentrationOf,
   isLong,
   minutesOf,
@@ -35,8 +34,8 @@ import {
   targetRows,
   targetRuleOf,
   toggledTarget,
-  waysOf,
 } from '../../../core/casting/cast-out-flow';
+import { defaultWayId, grantNumbers, pickOfWay } from '../../../core/casting/cast-grants';
 import {
   CastingClient,
   type CastDice,
@@ -66,7 +65,7 @@ import {
   spellRowsOf,
   summonedNotice,
   targetChoicesOf,
-  wayRowsOf,
+  wayCardsOf,
 } from './cast-out-view';
 import { openCastConfirm } from './confirm-sheet';
 
@@ -135,7 +134,8 @@ export class CastOutSheet {
   protected readonly options = signal<GetCastOptionsResponse | null>(null);
   protected readonly loadError = signal('');
   protected readonly spellKey = signal(this.data.spellKey ?? '');
-  protected readonly way = signal<CastWay>('slot');
+  /** The way picked: the class's ("slot", "ritual") or a granted spell's ("grant:<source>"). */
+  protected readonly wayId = signal('slot');
   protected readonly slot = signal<SlotRow | null>(null);
   protected readonly chosen = signal<string[]>([]);
   protected readonly ability = signal('');
@@ -174,17 +174,27 @@ export class CastOutSheet {
   protected readonly spellRows = computed(() => spellRowsOf(this.options()?.spells ?? []));
   /** A summoning spell (Convocar Familiar) has no target: the creature sheet casts it, as the character's sheet does. */
   protected readonly summons = computed(() => !!this.spell()?.summons && !this.data.npcCasters);
-  protected readonly ways = computed<CastWay[]>(() => {
+  protected readonly pick = computed(() => {
     const s = this.spell();
-    return s ? waysOf(s) : [];
+    return s ? pickOfWay(s, this.wayId()) : null;
+  });
+  protected readonly way = computed<CastWay>(() => this.pick()?.way ?? 'slot');
+  /** The grant the cast goes through, for the numbers it shows; `null` for the class's own way. */
+  protected readonly grantNote = computed(() => {
+    const g = this.pick()?.grant;
+    return g ? `${g.sourceNamePt}: ${grantNumbers(g)}.` : '';
   });
   protected readonly wayRows = computed(() => {
     const s = this.spell();
-    return s ? wayRowsOf(s, this.ways()) : [];
+    return s ? wayCardsOf(s) : [];
   });
+  /** The ways are asked when there is a choice, or when the only way is not the plain slot (a ritual, a grant). */
+  protected readonly showWays = computed(
+    () => this.wayRows().length > 1 || (this.wayRows()[0] && this.wayRows()[0].id !== 'slot'),
+  );
   protected readonly slots = computed<readonly SlotRow[]>(() => {
     const s = this.spell();
-    if (!s || this.way() !== 'slot' || (s.spell?.level ?? 0) === 0) {
+    if (!s || !(this.pick()?.slot ?? false) || (s.spell?.level ?? 0) === 0) {
       return [];
     }
     return slotRows(s.spell?.level ?? 1, s.slots, []);
@@ -224,6 +234,7 @@ export class CastOutSheet {
   protected readonly missing = computed(() =>
     missingOf(this.spell(), {
       way: this.way(),
+      pick: this.pick(),
       slot: this.slot(),
       showTargets: this.showTargets(),
       chosen: this.chosen(),
@@ -287,7 +298,7 @@ export class CastOutSheet {
   protected pickSpell(key: string): void {
     this.spellKey.set(key);
     const s = this.spell();
-    this.way.set(s ? defaultWay(s) : 'slot');
+    this.wayId.set(s ? defaultWayId(s) : 'slot');
     this.slot.set(null);
     this.chosen.set([]);
     this.ability.set('');
@@ -300,7 +311,7 @@ export class CastOutSheet {
   }
 
   protected pickWay(id: string): void {
-    this.way.set(id === 'ritual' ? 'ritual' : 'slot');
+    this.wayId.set(id);
     this.slot.set(null);
     this.error.set('');
     const free = this.slots().filter((r) => r.enabled);
@@ -337,6 +348,7 @@ export class CastOutSheet {
       casterId: this.casterId(),
       spellKey: this.spellKey(),
       way: this.way(),
+      pick: this.pick(),
       spell: this.spell(),
       slot: this.slot(),
       chosen: this.chosen(),

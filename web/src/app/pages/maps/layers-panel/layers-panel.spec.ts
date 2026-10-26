@@ -20,7 +20,14 @@ const layers: MapLayers = {
     { col: 9, row: 9, state: 5, axis: 'v' },
   ],
 };
-const all: LayerVisibility = { terrain: true, wall: true, cover: true, light: true, door: true };
+const all: LayerVisibility = {
+  terrain: true,
+  wall: true,
+  cover: true,
+  light: true,
+  nopass: true,
+  door: true,
+};
 
 describe('LayersPanel', () => {
   let fixture: ComponentFixture<LayersPanel>;
@@ -53,7 +60,14 @@ describe('LayersPanel', () => {
 
   it("lists the five layers with what each holds, in the artboard's words", () => {
     setup();
-    for (const name of ['Terreno difícil', 'Parede', 'Cobertura', 'Luz', 'Portas']) {
+    for (const name of [
+      'Terreno difícil',
+      'Parede',
+      'Cobertura',
+      'Luz',
+      'Não dá para passar',
+      'Portas',
+    ]) {
       expect(text()).toContain(name);
     }
     expect(text()).toContain('4 quadrados · custa +1,5 m por quadrado');
@@ -69,7 +83,7 @@ describe('LayersPanel', () => {
   it('a switch shows or hides a layer on his own map', () => {
     setup();
     const wall = el.querySelector<HTMLElement>('button[role="switch"][aria-labelledby$="-label"]')!;
-    expect(el.querySelectorAll('[role="switch"]')).toHaveLength(5);
+    expect(el.querySelectorAll('[role="switch"]')).toHaveLength(6);
     expect(wall.getAttribute('aria-checked')).toBe('true');
     wall.click();
     expect(changes).toEqual([{ ...all, terrain: false }]);

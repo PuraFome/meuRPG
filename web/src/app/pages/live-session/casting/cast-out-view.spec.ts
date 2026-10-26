@@ -1,12 +1,16 @@
-import { CastingEffectKind } from '../../../../gen/meurpg/play/v1/casting_pb';
+import { create } from '@bufbuild/protobuf';
+
+import { CastingEffectKind, CastingGrantSchema } from '../../../../gen/meurpg/play/v1/casting_pb';
 import { castingSpell } from '../../../core/casting/casting-testing';
 import {
   castRequestOf,
   diceOf,
   endsConfirmText,
   missingOf,
+  spellRowsOf,
   summonedNotice,
   targetChoicesOf,
+  wayCardsOf,
   wayRowsOf,
 } from './cast-out-view';
 
@@ -161,5 +165,85 @@ describe('summonedNotice and endsConfirmText', () => {
       confirm: 'Encerrar Escudo da Fé e conjurar',
       cancel: 'Cancelar',
     });
+  });
+});
+
+describe('the ways to cast a granted spell', () => {
+  const grant = create(CastingGrantSchema, {
+    sourceKey: 'feat:graca@mesa',
+    sourceNamePt: 'Graça de teste',
+    atWill: false,
+    usesLeft: 2,
+    ready: true,
+    alsoWithSlot: true,
+    ability: 'wis',
+    saveDc: 13,
+    attackBonus: 5,
+  });
+  const granted = castingSpell('spell:bless', 'Bênção', 1, { grants: [grant] });
+
+  it('adds a card for the grant and one for its slot way, after the class way', () => {
+    expect(wayCardsOf(granted).map((r) => r.id)).toEqual([
+      'slot',
+      'grant:feat:graca@mesa',
+      'grant-slot:feat:graca@mesa',
+    ]);
+    const [, own, withSlot] = wayCardsOf(granted);
+    expect(own.title).toBe('Graça de teste');
+    expect(own.detail).toBe('2 usos restantes · Sabedoria · CD 13 · ataque +5');
+    expect(withSlot.detail).toContain('não gasta usos');
+  });
+
+  it('lists a spell castable only through a grant, and not one whose grant is spent', () => {
+    const only = castingSpell('spell:bless', 'Bênção', 1, { canCast: false, grants: [grant] });
+    const spent = castingSpell('spell:bless', 'Bênção', 1, {
+      canCast: false,
+      grants: [
+        create(CastingGrantSchema, { ...grant, ready: false, usesLeft: 0, alsoWithSlot: false }),
+      ],
+    });
+    expect(spellRowsOf([only])[0].enabled).toBe(true);
+    expect(spellRowsOf([spent])[0]).toMatchObject({ enabled: false });
+  });
+
+  it('sends the grant, and the slot only on the grant that casts with one', () => {
+    const parts = {
+      campaignId: 'c',
+      casterId: 'p',
+      spellKey: 'spell:bless',
+      way: 'slot' as const,
+      spell: granted,
+      slot: { level: 1, pact: false } as never,
+      chosen: [],
+      dice: null,
+      ability: null,
+    };
+    const noSlot = castRequestOf({
+      ...parts,
+      pick: { id: 'grant:feat:graca@mesa', way: 'slot', grant, slot: false },
+    });
+    expect(noSlot).toMatchObject({ grantedBy: 'feat:graca@mesa', slot: null, asRitual: false });
+    const slotted = castRequestOf({
+      ...parts,
+      pick: { id: 'grant-slot:feat:graca@mesa', way: 'slot', grant, slot: true },
+    });
+    expect(slotted).toMatchObject({ grantedBy: 'feat:graca@mesa', slot: { level: 1 } });
+  });
+
+  it('asks for a slot only on a way that casts with one', () => {
+    const none = {
+      way: 'slot' as const,
+      slot: null,
+      showTargets: false,
+      chosen: [],
+      spellKey: 'spell:bless',
+      ability: '',
+    };
+    expect(
+      missingOf(granted, { ...none, pick: { id: 'g', way: 'slot', grant, slot: false } }),
+    ).toBe('');
+    expect(missingOf(granted, { ...none, pick: { id: 'g', way: 'slot', grant, slot: true } })).toBe(
+      'Escolha o espaço de magia.',
+    );
   });
 });

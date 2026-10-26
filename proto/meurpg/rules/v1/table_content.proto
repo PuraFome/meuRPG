@@ -46,6 +46,14 @@ enum TableContentKind {
   // A feat: an optional rule of the game, taken in place of an Ability Score
   // Improvement when the table's rule "Talentos" allows it (MR-025).
   TABLE_CONTENT_KIND_FEAT = 7;
+  // An option of one of the SRD's option sets (an Eldritch Invocation, a Metamagic
+  // option, a fighting style, a Pact Boon...), written by the master. The choice of
+  // that set offers it next to the SRD's options (MR-025).
+  TABLE_CONTENT_KIND_OPTION = 8;
+  // An optional feature of a class (SRD or the table's), at a class level: every
+  // character of the class has it from that level, and it may take the place of a
+  // feature the class has (MR-025).
+  TABLE_CONTENT_KIND_CLASS_FEATURE = 9;
 }
 
 // TableEntry is one entry of the table's content, as ListTableEntries and the
@@ -86,20 +94,25 @@ message TableEntry {
     TableBackground table_background = 14;
     TableSpell table_spell = 15;
     TableFeat table_feat = 17;
+    TableOption table_option = 18;
+    TableClassFeature table_class_feature = 19;
   }
 }
 
 // TableEffect is one effect of a feature, from the closed menu: what the engine
 // computes with, never code. `type` is "modifier", "proficiency", "resource",
 // "sense", "roll_mode", "grant_action", "extra_attack", "ranged_attack", "choice", "ability_increase",
-// "superiority_die" or "note"; "ability_increase" is a feat's alone. Only the fields of the type are
+// "superiority_die", "resistance", "breathes_water", "granted_spell", "on_event" or "note"; "ability_increase" is a feat's alone.
+// "breathes_water" has no field of its own (`when` and `text_pt` only): the character breathes underwater. Only the fields of the type are
 // read, and a field the type does not use is refused. A feature with no effects is text only and always valid. Formulas ("value",
 // "when", "max") use level(), classLevel("<class>"), mod("int"), score("int"),
-// prof(), floor, ceil, min and max, and must compile; a formula has at most 1024 bytes and 256 nodes.
+// prof(), floor, ceil, min and max, and must compile; a formula has at most 1024 bytes and 256 nodes. The modifiers of the
+// "speed.fly", "speed.swim", "speed.climb" and "speed.burrow" targets may also call speedwalk(), the walking speed after the
+// modifiers.
 message TableEffect {
   string type = 1;
-  // modifier: what changes ("ac.base", "ac", "hp.max", "speed.walk",
-  // "initiative", "attack.weapon.melee", "attack.weapon.ranged",
+  // modifier: what changes ("ac.base", "ac", "hp.max", "speed.walk", "speed.fly", "speed.swim",
+  // "speed.climb", "speed.burrow", "initiative", "attack.weapon.melee", "attack.weapon.ranged",
   // "damage.weapon.melee", "damage.weapon.ranged", "skill.<skill>",
   // "save.<ability>"), how ("add", "max" or "set") and the formula.
   string target = 2;
@@ -123,7 +136,12 @@ message TableEffect {
   string sense = 11;
   int32 range_ft = 12;
   // resource: a name for the resource, the formula of its maximum and when it
-  // comes back ("short_rest", "long_rest", "dawn" or "none").
+  // comes back ("short_rest", "long_rest", "dawn", "none", "initiative",
+  // "restore_one_on_short_rest" or "restore_one_on_long_rest"). The last three:
+  // "initiative" gives back one use when the owner rolls initiative, only if none is
+  // left; "restore_one_on_short_rest" gives back one use on a short rest and all of
+  // them on a long rest; "restore_one_on_long_rest" gives back one use on a long rest
+  // and none on a short one.
   string resource = 13;
   string max = 14;
   string recharge = 15;
@@ -140,7 +158,7 @@ message TableEffect {
   repeated string from = 18;
   // grant_action: "action", "bonus_action", "reaction", "free" or "movement". The
   // action may also name in `resource` a resource effect of the same entry (or of
-  // its class) to spend: each use spends 1, and the action is off while none is left.
+  // its class) to spend: each use spends `cost` of it (1 when empty), and the action is off while fewer are left.
   string economy = 19;
   // note: spells the feature grants (a race that knows a cantrip).
   repeated string spells = 20;
@@ -185,6 +203,61 @@ message TableEffect {
   // sheet's picks or another feature); the effect never gives the proficiency itself.
   // Empty or false doubles the skill whether or not the character is proficient.
   bool only_proficient = 29;
+  // granted_spell: a spell the entry gives the character apart from the lists of its
+  // classes. `spell` is an SRD key or a spell of the same table; `ability` is "int",
+  // "wis", "cha" or "choice" (the player picks one of the three once, when the entry
+  // is taken) and gives the spell attack bonus and the save DC (8 + proficiency + the
+  // modifier). `from_level` is a formula, the level the grant starts at (1 when empty):
+  // the class level for a class or subclass feature, the character level for anything
+  // else. `uses` is empty or "at_will" for no limit, or the name of a resource effect of
+  // the same entry (or its class), of which every cast spends one. `also_with_slot`
+  // lets the character cast it with a spell slot too, `ritual_only` limits it to the
+  // ritual way (a spell with the ritual tag; not with also_with_slot) and
+  // `counts_as_known` lists it among the known spells without using any of the
+  // class's picks. A leveled spell cast through the grant is cast at its own level;
+  // the material components are not waived. Required: `spell` and `ability`.
+  string spell = 30;
+  string from_level = 31;
+  string uses = 32;
+  bool also_with_slot = 33;
+  bool ritual_only = 34;
+  bool counts_as_known = 35;
+  // grant_action and on_event: how many uses of `resource` each use of the action (or
+  // each run of the hook) spends, a formula (level(), prof(), mod(...)); empty is 1,
+  // and it needs `resource`. The action is off, and the hook does not run, while fewer
+  // are left. Never above the resource's maximum: an entry whose cost the resource can
+  // never pay is refused. For on_event, `resource` is the resource the hook spends.
+  string cost = 36;
+  // grant_action: the most the player may spend on one use, a formula, never below
+  // `cost`. Set, the player chooses at use how many to spend, from `cost` to
+  // `cost_max` (or what is left); the server reads that number in the same
+  // transaction as the use and refuses one outside the range. Empty is a fixed cost.
+  string cost_max = 37;
+  // grant_action with `cost_max`: what each point spent above `cost` adds to the
+  // result. Dice ("1d6", the same sides as `heal`) add to `heal`; a flat formula
+  // adds to `temp_hp` (or to `heal` when the action has no temp_hp). The result of
+  // spending `n` points is the base result plus this value `n - cost` times.
+  string value_per_point = 38;
+  // grant_action and on_event: hit points regained, dice ("1d6", "2d4+2"), at least one
+  // die. For grant_action the target is the owner or one creature chosen at use (the
+  // owner and one ally); `ability` adds that ability's modifier. The heal follows the
+  // rules of the spells: it never passes the maximum and a dead creature is not
+  // healed. For on_event the target is the owner.
+  string heal = 39;
+  // grant_action and on_event: temporary hit points, a formula. They do not stack:
+  // the target keeps the larger of what it had and this.
+  string temp_hp = 40;
+  // on_event: when the hook runs, on the OWNER only: "short_rest" and "long_rest"
+  // (when the owner finishes the rest), "death_save_failed" (when one of the owner's
+  // death saves fails) or "drop_to_zero" (when the owner drops to 0 hit points).
+  string event = 41;
+  // on_event: the name of a resource of the entry (or of its class) whose uses the
+  // hook gives back, as many as `value` (an Int formula; empty is 1), never more than
+  // are spent, so the same event handled twice restores once.
+  string restore = 42;
+  // on_event: hit points regained as a percentage of the maximum (1 to 100, rounded
+  // down, at least 1), instead of `heal`; the two are not both set.
+  int32 heal_percent_max = 43;
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
@@ -226,6 +299,67 @@ message TableFeat {
   FeatPrerequisite prerequisite = 3;
   // At most 20, and at most one ability_increase.
   repeated TableEffect effects = 4;
+}
+
+// TableOption is an option the master adds to an option set of the SRD, as a table
+// entry "option:<set>:<slug>@mesa". The text and the effects are the feature the
+// character gets when it picks the option; `set` says which choice offers it.
+message TableOption {
+  string name_pt = 1;
+  // The text, one paragraph per entry.
+  repeated string desc_pt = 2;
+  // The option set: one of the closed list "option_set_names" of GetEffectMenu ("invocation",
+  // "metamagic", "fighting_style", "pact_boon", "hunters_prey", "defensive_tactics",
+  // "multiattack" or "superior_hunters_defense"). It never changes after the entry is
+  // created: it is in the key.
+  string set = 3;
+  // What the option asks of the character; unset asks nothing. An option whose
+  // prerequisite is not met is listed in the choice, disabled, with what it lacks.
+  OptionPrerequisite prerequisite = 4;
+  // At most 20.
+  repeated TableEffect effects = 5;
+}
+
+// OptionPrerequisite is what a table option asks for. Every one that is set must hold.
+message OptionPrerequisite {
+  // A level in one class, SRD or the table's.
+  OptionClassLevel class_level = 1;
+  // Other options the character has already picked, SRD options or the table's. At most 10.
+  repeated string requires_option_keys = 2;
+  // A Pact Boon the character has (an SRD one, or a table option of the set "pact_boon").
+  string requires_pact = 3;
+  // A spell the character knows (a cantrip, a known or a prepared spell).
+  string requires_spell_key = 4;
+}
+
+// OptionClassLevel is "level N in class X".
+message OptionClassLevel {
+  string class_key = 1;
+  // 1 to 20.
+  int32 level = 2;
+}
+
+// TableClassFeature is a feature the master adds to a class, as a table entry
+// "classfeature:<slug>@mesa": it is in the class's row of `level`, like a feature of
+// the class's own table, so the sheet, the level-up and play read it where they read
+// the class's features. A table class's own features go in its rows; this is for a
+// class the table does not own (an SRD class) and for what the master wants to switch
+// on and off by itself.
+message TableClassFeature {
+  string name_pt = 1;
+  // The text, one paragraph per entry.
+  repeated string desc_pt = 2;
+  // The class that has it: an SRD class or a table class. Never changes.
+  string class_key = 3;
+  // The class level it comes at, 1 to 20.
+  int32 level = 4;
+  // A feature of the same class that it takes the place of (an SRD feature, or another
+  // table class feature), which the character no longer has: its effects, its choices
+  // and its line on the sheet are gone. The replaced feature comes at the level of this
+  // one or later (a character never loses what it already had). Empty replaces nothing.
+  string replaces_feature_key = 5;
+  // At most 20. A `choice` effect asks the player at the level, like any feature's.
+  repeated TableEffect effects = 6;
 }
 
 // TableCasting is how a class, or a third caster's subclass, casts.
@@ -839,6 +973,8 @@ message CreateTableEntryRequest {
     TableBackground table_background = 14;
     TableSpell table_spell = 15;
     TableFeat table_feat = 17;
+    TableOption table_option = 18;
+    TableClassFeature table_class_feature = 19;
   }
   // Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
   // same key and the same request returns what the first call made instead of making another.
@@ -872,6 +1008,8 @@ message UpdateTableEntryRequest {
     TableBackground table_background = 14;
     TableSpell table_spell = 15;
     TableFeat table_feat = 17;
+    TableOption table_option = 18;
+    TableClassFeature table_class_feature = 19;
   }
 }
 

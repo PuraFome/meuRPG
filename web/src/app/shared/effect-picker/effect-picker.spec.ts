@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { type EffectDraft, type EffectMenuVm, emptyEffect } from '../../core/content/effect-draft';
 import { menu, rangedAttackMenu } from '../../core/content/content-testing-menu';
+import { costsMenu, grantedSpellMenu } from '../../core/content/content-testing-menu-costs';
 import { EffectPicker } from './effect-picker';
 
 describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
@@ -214,6 +215,54 @@ describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
     );
   });
 
+  it("draws granted_spell's spell from the table's catalog, the ability in its own words, and the switches unfolded", () => {
+    setup(
+      { ...emptyEffect('granted_spell'), spell: 'spell:light', ability: 'choice' },
+      { menu: grantedSpellMenu() },
+    );
+    fixture.componentRef.setInput('spellOptions', [
+      { value: 'spell:light', label: 'Luz' },
+      { value: 'spell:detect-magic', label: 'Detectar Magia' },
+    ]);
+    fixture.detectChanges();
+    const spell = field('spell') as HTMLSelectElement;
+    expect(Array.from(spell.options).map((o) => o.text.trim())).toEqual([
+      'Escolha…',
+      'Luz',
+      'Detectar Magia',
+    ]);
+    expect(spell.value).toBe('spell:light');
+    change(spell, 'Detectar Magia');
+    expect(emitted.at(-1)?.spell).toBe('spell:detect-magic');
+
+    const ability = field('ability') as HTMLSelectElement;
+    expect(Array.from(ability.options).map((o) => o.text.trim())).toEqual([
+      'Escolha…',
+      'Inteligência',
+      'Sabedoria',
+      'Carisma',
+      'O jogador escolhe',
+    ]);
+    expect(text(ability.closest('.frow')!)).toContain('Habilidade de conjuração');
+    for (const sw of ['also_with_slot', 'ritual_only', 'counts_as_known']) {
+      expect((field(sw) as HTMLInputElement).type).toBe('checkbox');
+    }
+    (field('ritual_only') as HTMLInputElement).dispatchEvent(new Event('change'));
+    expect(emitted.at(-1)?.ritualOnly).toBe(true);
+    // The resource each cast spends is folded until it holds something; empty means at will.
+    expect(field('uses')).toBeNull();
+    setup(
+      {
+        ...emptyEffect('granted_spell'),
+        spell: 'spell:light',
+        ability: 'cha',
+        uses: 'usos_de_teste',
+      },
+      { menu: grantedSpellMenu() },
+    );
+    expect(text(field('uses')!.closest('.frow')!)).toContain('Vazio: à vontade, sem limite.');
+  });
+
   it('puts the hint beside its field, and the refusal under it', () => {
     setup({ ...emptyEffect('modifier'), target: 'speed.walk', mode: 'add' });
     expect(el.querySelector('.frow__hint')).not.toBeNull();
@@ -301,5 +350,182 @@ describe('EffectPicker: the range field (metres on screen, feet on the wire)', (
     expect(input.value).toBe('4,');
     await type('4,5');
     expect(input.value).toBe('4,5');
+  });
+});
+
+describe("EffectPicker: costs, healing, hooks and recharge variants (the server's menu)", () => {
+  const BASE = 'table_feat.effects[0]';
+  const emitted: EffectDraft[] = [];
+  let fixture: ComponentFixture<EffectPicker>;
+  let el: HTMLElement;
+
+  function setup(effect: EffectDraft, issues: Record<string, string[]> = {}) {
+    emitted.length = 0;
+    TestBed.resetTestingModule();
+    fixture = TestBed.createComponent(EffectPicker);
+    fixture.componentRef.setInput('effect', effect);
+    fixture.componentRef.setInput('menu', costsMenu());
+    fixture.componentRef.setInput('basePath', BASE);
+    fixture.componentRef.setInput('featEditor', true);
+    fixture.componentRef.setInput('issuesOf', (path: string) => issues[path] ?? []);
+    fixture.componentInstance.effectChange.subscribe((e) => emitted.push(e));
+    fixture.detectChanges();
+    el = fixture.nativeElement as HTMLElement;
+  }
+
+  const text = (e: Element) => (e.textContent ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
+  const field = (name: string) => el.querySelector<HTMLElement>(`[data-field="${BASE}.${name}"]`);
+  const input = (name: string) => field(name) as HTMLInputElement;
+  const unfold = () => {
+    (
+      Array.from(el.querySelectorAll('button')).find((b) =>
+        text(b).includes('Mais opções'),
+      ) as HTMLButtonElement
+    ).click();
+    fixture.detectChanges();
+  };
+  const type = (name: string, value: string) => {
+    input(name).value = value;
+    input(name).dispatchEvent(new Event('input'));
+  };
+
+  it("draws the action's cost, maximum, heal, ability, temporary hit points and value per point from the menu, with their Portuguese labels", () => {
+    setup({ ...emptyEffect('grant_action'), economy: 'bonus' });
+    unfold();
+    for (const name of ['cost', 'cost_max', 'heal', 'ability', 'temp_hp', 'value_per_point']) {
+      expect(field(name), name).not.toBeNull();
+    }
+    expect(text(el)).toContain('Custo (usos)');
+    expect(text(el)).toContain('Custo máximo (o jogador escolhe)');
+    expect(text(el)).toContain('Cura (dados)');
+    expect(text(el)).toContain('Pontos de vida temporários');
+    expect(text(el)).toContain('Por ponto gasto a mais');
+    expect(text(el)).toContain('Dados, como 1d6 ou 2d4+2');
+  });
+
+  it('writes each new field into the draft: text for the formulas and the dice, a choice for the ability', () => {
+    setup({ ...emptyEffect('grant_action'), economy: 'bonus' });
+    unfold();
+    type('cost', '2');
+    expect(emitted.at(-1)?.cost).toBe('2');
+    type('cost_max', '3');
+    expect(emitted.at(-1)?.costMax).toBe('3');
+    type('heal', '1d6');
+    expect(emitted.at(-1)?.heal).toBe('1d6');
+    type('temp_hp', 'level()');
+    expect(emitted.at(-1)?.tempHp).toBe('level()');
+    type('value_per_point', '1d6');
+    expect(emitted.at(-1)?.valuePerPoint).toBe('1d6');
+  });
+
+  it('opens a field that holds a value without the fold, and says what a recharge variant does', () => {
+    setup({
+      ...emptyEffect('resource'),
+      resource: 'reserva_de_teste',
+      max: '3',
+      recharge: 'initiative',
+    });
+    expect(text(el)).toContain(
+      'Volta um uso quando o personagem rola iniciativa, mas só se não restar nenhum.',
+    );
+    const select = field('recharge') as HTMLSelectElement;
+    expect(Array.from(select.options).map((o) => o.text.trim())).toEqual([
+      'Escolha…',
+      'Descanso curto',
+      'Descanso longo',
+      'Ao rolar iniciativa',
+      'Um uso por descanso curto',
+      'Um uso por descanso longo',
+    ]);
+    setup({
+      ...emptyEffect('resource'),
+      resource: 'reserva_de_teste',
+      max: '3',
+      recharge: 'restore_one_on_long_rest',
+    });
+    expect(text(el)).toContain('um descanso curto não devolve nenhum.');
+    setup({
+      ...emptyEffect('resource'),
+      resource: 'reserva_de_teste',
+      max: '3',
+      recharge: 'restore_one_on_short_rest',
+    });
+    expect(text(el)).toContain('um descanso longo devolve todos.');
+  });
+
+  it("picks the on_event event from the menu's events, required and open", () => {
+    setup(emptyEffect('on_event'));
+    const select = field('event') as HTMLSelectElement;
+    expect(select).not.toBeNull();
+    expect(Array.from(select.options).map((o) => o.text.trim())).toEqual([
+      'Escolha…',
+      'Ao terminar um descanso curto',
+      'Ao terminar um descanso longo',
+      'Ao falhar num teste contra a morte',
+      'Ao cair a 0 pontos de vida',
+    ]);
+    select.selectedIndex = 4;
+    select.dispatchEvent(new Event('change'));
+    expect(emitted.at(-1)?.event).toBe('drop_to_zero');
+  });
+
+  it("draws the hook's result fields: the resource it spends, the one it gives back, the heal as a percentage of the maximum", () => {
+    setup({ ...emptyEffect('on_event'), event: 'death_save_failed' });
+    unfold();
+    for (const name of [
+      'resource',
+      'cost',
+      'heal',
+      'ability',
+      'heal_percent_max',
+      'temp_hp',
+      'restore',
+      'value',
+      'when',
+      'text_pt',
+    ]) {
+      expect(field(name), name).not.toBeNull();
+    }
+    expect(text(el)).toContain('Gasta usos de');
+    expect(text(el)).toContain('Devolve usos de');
+    expect(text(el)).toContain('Cura (% do máximo)');
+    type('heal_percent_max', '50');
+    expect(emitted.at(-1)?.healPercentMax).toBe(50);
+    type('restore', 'reserva_de_teste');
+    expect(emitted.at(-1)?.restore).toBe('reserva_de_teste');
+    type('heal_percent_max', '0');
+    expect(emitted.at(-1)?.healPercentMax).toBe(0);
+  });
+
+  it('says the range of the percentage as the menu gives it (1 to 100)', () => {
+    setup({ ...emptyEffect('on_event'), event: 'long_rest', healPercentMax: 50 });
+    expect(text(field('heal_percent_max')!.closest('.frow')!)).toContain('De 1 a 100');
+  });
+
+  it("shows the server's refusal under the field it names, for every new path, and opens the folded field", () => {
+    const paths = ['cost', 'cost_max', 'heal', 'ability', 'value_per_point', 'temp_hp', 'resource'];
+    for (const name of paths) {
+      setup(
+        { ...emptyEffect('grant_action'), economy: 'bonus' },
+        { [`${BASE}.${name}`]: [`Recusado em ${name}.`] },
+      );
+      const row = field(name)?.closest('.frow');
+      expect(row, name).toBeTruthy();
+      expect(text(row!)).toContain(`Recusado em ${name}.`);
+      expect(row!.querySelector('.frow__hint')).toBeNull();
+      // The refusal is the field's description, so a screen reader reads it with the field.
+      expect(field(name)!.getAttribute('aria-describedby')).toBeTruthy();
+    }
+    for (const name of ['event', 'heal_percent_max', 'value', 'restore', 'resource']) {
+      setup(emptyEffect('on_event'), { [`${BASE}.${name}`]: [`Recusado em ${name}.`] });
+      const row = field(name)?.closest('.frow');
+      expect(row, name).toBeTruthy();
+      expect(text(row!)).toContain(`Recusado em ${name}.`);
+    }
+    setup(
+      { ...emptyEffect('resource'), resource: 'reserva_de_teste', max: '2' },
+      { [`${BASE}.recharge`]: ['Esse retorno não existe.'] },
+    );
+    expect(text(field('recharge')!.closest('.frow')!)).toContain('Esse retorno não existe.');
   });
 });

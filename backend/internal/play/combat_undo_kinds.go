@@ -209,7 +209,12 @@ func (u *undoer) spendSlotBack(ctx context.Context, who playdb.Combatant, slot s
 
 // spendResourceBack gives back the use of a character's resource.
 func (u *undoer) spendResourceBack(ctx context.Context, who playdb.Combatant, key string) error {
-	v, err := u.s.spendResource(ctx, u.c, who.CharacterID, key, -1)
+	return u.spendResourcesBack(ctx, who, key, 1)
+}
+
+// spendResourcesBack gives back some uses of a character's resource.
+func (u *undoer) spendResourcesBack(ctx context.Context, who playdb.Combatant, key string, uses int32) error {
+	v, err := u.s.spendResource(ctx, u.c, who.CharacterID, key, -uses)
 	if err != nil {
 		return err
 	}
@@ -421,6 +426,9 @@ func (u *undoer) damageApplied(ctx context.Context, ev actionEvent) error {
 			return err
 		}
 	}
+	if err := u.hookBack(ctx, who, ev.Hook); err != nil { // the uses a drop_to_zero hook spent come back too
+		return err
+	}
 	if err := u.setDeath(ctx, who, ev.DeathBefore); err != nil {
 		return err
 	}
@@ -581,12 +589,16 @@ func (u *undoer) actionSpentBack(ctx context.Context, who playdb.Combatant, ev a
 		}
 	}
 	if ev.Resource != "" && who.Kind == kindPlayer {
-		if err := u.spendResourceBack(ctx, who, ev.Resource); err != nil {
+		if err := u.spendResourcesBack(ctx, who, ev.Resource, max(ev.PointsSpent, 1)); err != nil {
 			return err
 		}
 	}
-	if ev.Heal && ev.Before != nil {
-		return u.putCreatureOrVitals(ctx, who, *ev.Before, ev.DeathBefore)
+	if (ev.Heal || ev.TempTried) && ev.Before != nil {
+		target := who
+		if t, ok := u.find(ev.Target); ok && ev.Target != "" {
+			target = t // a healing action that went to an ally
+		}
+		return u.putCreatureOrVitals(ctx, target, *ev.Before, ev.DeathBefore)
 	}
 	return u.channelBack(ctx, ev.Channel)
 }
@@ -726,6 +738,11 @@ func (u *undoer) castSpentBack(ctx context.Context, who playdb.Combatant, ev act
 			return err
 		}
 		u.keep(v)
+	}
+	if ev.GrantUse != "" && who.Kind == kindPlayer {
+		if err := u.spendResourceBack(ctx, who, ev.GrantUse); err != nil {
+			return err
+		}
 	}
 	if ev.Slot != nil && who.Kind == kindPlayer {
 		return u.spendSlotBack(ctx, who, *ev.Slot)
@@ -933,12 +950,15 @@ func (u *undoer) deathSaveRolled(ctx context.Context, ev actionEvent) error {
 	if err := u.dieHeldAgain(ctx, who, ev); err != nil {
 		return err
 	}
-	if ev.Before != nil { // a natural 20 brought it back with 1 hit point
+	if ev.Before != nil { // a natural 20 brought it back with 1 hit point, or a hook gave hit points
 		after, err := u.putVitals(ctx, who, *ev.Before)
 		if err != nil {
 			return err
 		}
 		u.keep(after)
+	}
+	if err := u.hookBack(ctx, who, ev.Hook); err != nil {
+		return err
 	}
 	return u.setDeath(ctx, who, ev.DeathBefore)
 }

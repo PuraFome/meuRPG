@@ -140,6 +140,8 @@ type SlotChoice struct {
 	// Free is how many slots of this kind are free, so the app can warn
 	// about the last one.
 	Free int
+	// Total is how many slots of this kind the character has, spent or not.
+	Total int
 }
 
 // SpellOption is a spell the character can cast.
@@ -153,6 +155,9 @@ type SpellOption struct {
 	// level and with a free slot. Empty for a cantrip, and for a spell with
 	// no slot (then the option is disabled with ReasonNoSlot).
 	Slots []SlotChoice
+	// Grant is set for a spell a granted_spell effect gives (grants.go): it is cast
+	// without a slot, spending a use of the grant's resource unless it is at will.
+	Grant *SpellGrant
 }
 
 // ActionOption is a standard action or a feature's action.
@@ -202,6 +207,7 @@ func Options(d rules.Derived, turn TurnState, u Usage) TurnOptions {
 		}
 		out.Spells = append(out.Spells, spellOption(d, turn, u, cs.Spell))
 	}
+	out.Spells = append(out.Spells, grantedOptions(d, turn, u)...)
 	sortSpells(out.Spells)
 	for _, a := range d.StandardActions {
 		out.StandardActions = append(out.StandardActions, actionOption(d, turn, u, a))
@@ -514,6 +520,9 @@ func spellReason(turn TurnState, o SpellOption, sp rules.SpellEntry) *Reason {
 	if SpellLimited(turn, o.Economy, sp.Level) {
 		return &Reason{Code: ReasonBonusActionSpellLimit}
 	}
+	if o.Grant != nil {
+		return grantReason(o)
+	}
 	if sp.Level > 0 && len(o.Slots) == 0 {
 		return &Reason{Code: ReasonNoSlot, MinLevel: sp.Level}
 	}
@@ -527,7 +536,7 @@ func actionOption(d rules.Derived, turn TurnState, u Usage, a rules.Action) Acti
 	}
 	left, _ := ResourceLeft(d, u, a.Resource)
 	o.UsesLeft = left
-	if o.Enabled && left == 0 {
+	if o.Enabled && left < a.UnitCost() { // fewer uses than one use costs: the table's content may set a cost above 1
 		o.Enabled = false
 		o.Reason = &Reason{Code: ReasonNoUses, Recharge: rechargeOf(d, a.Resource)}
 	} else if o.Enabled && a.Resource == actionSurgeResource && turn.ActionSurged {
