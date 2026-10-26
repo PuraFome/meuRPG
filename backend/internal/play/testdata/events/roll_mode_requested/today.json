@@ -116,6 +116,7 @@
     "level": 1,
     "pact": true
   },
+  "grant_use": "x",
   "resource": "x",
   "hits": [
     {
@@ -297,6 +298,18 @@
   "by_area": true,
   "heal": true,
   "concentrate": true,
+  "points_spent": 1,
+  "temp_tried": true,
+  "temp_gained": 1,
+  "hook": {
+    "source": "x",
+    "healed": 1,
+    "temp": 1,
+    "spent": "x",
+    "spent_n": 1,
+    "restored": "x",
+    "restored_n": 1
+  },
   "conc_before": "x",
   "conc_ended": "x",
   "marks_before": [

@@ -43,7 +43,8 @@ func (b *overlayBuilder) addFeat(tf *TableFeat, path string) error {
 			}
 		}
 	}
-	// A feat owns its effects, so it is its own entry: its resources and states are its own.
+	// A feat owns its effects, so it is its own entry: its resources and states are its own, and its actions,
+	// hooks and granted spells may spend the resources it declares.
 	k := featureKind{prefix: "feat:", owner: key}
 	b.know(key, k)
 	b.declareResources(k, tf.Effects)

@@ -88,6 +88,11 @@ func TestAnNPCsShieldHoldsAPlayersAttack(t *testing.T) {
 	if len(w.GetShield().GetSlots()) != 5 {
 		t.Errorf("the Mage's Shield slots = %v, want the five levels of its stat block", w.GetShield().GetSlots())
 	}
+	for _, sl := range w.GetShield().GetSlots() {
+		if sl.GetFree() < 1 || sl.GetTotal() < sl.GetFree() {
+			t.Errorf("the Mage's Shield slot %v, want free >= 1 and a total that holds it", sl)
+		}
+	}
 
 	// The turn waits: no damage, no second attack, no end of turn, for the player.
 	_, err := a.damage(t, a.caio, e, hit.GetPendingDamage().GetId(), inAppDamage)

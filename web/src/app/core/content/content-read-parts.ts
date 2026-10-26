@@ -43,6 +43,9 @@ const RECHARGE_WORDS: Readonly<Record<string, string>> = {
   long_rest: 'voltam num descanso longo',
   dawn: 'voltam ao amanhecer',
   none: 'não voltam sozinhos',
+  initiative: 'um uso volta ao rolar iniciativa, se não restar nenhum',
+  restore_one_on_short_rest: 'um descanso curto devolve um uso e um longo devolve todos',
+  restore_one_on_long_rest: 'um descanso longo devolve um uso',
 };
 
 const SENSE_WORDS: Readonly<Record<string, string>> = {

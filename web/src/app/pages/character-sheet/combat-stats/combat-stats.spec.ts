@@ -37,3 +37,25 @@ describe('CombatStats under Ajuda (PM-03a)', () => {
     }
   });
 });
+
+describe('CombatStats other speeds', () => {
+  function mount(extras: readonly string[]) {
+    const fixture = TestBed.createComponent(CombatStats);
+    fixture.componentRef.setInput('armorClass', 14);
+    fixture.componentRef.setInput('speedFt', 30);
+    fixture.componentRef.setInput('hitPointsMax', 38);
+    fixture.componentRef.setInput('extras', extras);
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  it('lists the other speeds and the water breathing under the walking speed', () => {
+    const el = mount(['Natação 9 m (30 pés)', 'Respira na água']);
+    const lines = [...el.querySelectorAll('.speed__extra')].map((n) => n.textContent?.trim());
+    expect(lines).toEqual(['Natação 9 m (30 pés)', 'Respira na água']);
+  });
+
+  it('draws nothing extra for a character with only a walking speed', () => {
+    expect(mount([]).querySelector('.speed__extras')).toBeNull();
+  });
+});

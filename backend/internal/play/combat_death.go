@@ -11,6 +11,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
@@ -69,6 +70,8 @@ type deathSaveOutcome struct {
 	vitals *playv1.CharacterVitals // after a natural 20
 	viewer combatViewer
 	held   *playv1.HeldRollOffer // the d20 was kept for a question: nothing is written
+	// hookName is the name of the feature whose hook ran on this save.
+	hookName string
 }
 
 // RollDeathSave implements playv1connect.CombatServiceHandler.
@@ -82,7 +85,7 @@ func (s *Service) RollDeathSave(
 	}
 	out := deathSaveOutcome{viewer: viewerOf(call.m)}
 	res, err := s.write(ctx, combatWrite{m: call.m, key: call.key, hash: idem.Hash(req.Msg), kind: eventDeathSaveRolled, encounterID: call.encounterID}, func(c *combatTx) (any, error) {
-		out.vitals, out.held = nil, nil
+		out.vitals, out.held, out.hookName = nil, nil, ""
 		return s.deathSaveWrite(ctx, c, call, &out)
 	})
 	if err != nil {
@@ -107,7 +110,7 @@ func (s *Service) RollDeathSave(
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&playv1.RollDeathSaveResponse{Encounter: enc, DeathSave: deathSaveProto(ev, out.viewer)}), nil
+	return connect.NewResponse(&playv1.RollDeathSaveResponse{Encounter: enc, DeathSave: deathSaveProto(ev, out.viewer, out.hookName)}), nil
 }
 
 // readDeathSaveRequest reads the request in the order the answers are given: who may call,
@@ -185,11 +188,9 @@ func (s *Service) deathSaveWrite(ctx context.Context, c *combatTx, call deathSav
 	if b := gate.Bonus; b != nil { // the die the player added: the log shows it and the undo gives it back
 		out.made.Res = &resourceEvent{Kind: resBardicUse, Sides: b.Sides, Face: b.Face, FromID: deref(who.InspirationFrom), ExpiresRound: derefInt32(who.InspirationExpiresRound)}
 	}
-	after := deathState{Successes: clamp32(r.Successes, 0, 3), Failures: clamp32(r.Failures, 0, 3), Rolled: true}
-	if r.Outcome == combat.DeathSaveRevived {
-		if after, err = s.reviveOnNaturalTwenty(ctx, c, who, r, out); err != nil {
-			return nil, err
-		}
+	after, err := s.deathCounts(ctx, c, who, sheet, r, out)
+	if err != nil {
+		return nil, err
 	}
 	out.made.Death = &after
 	if err := c.q.SetCombatantDeathSaves(ctx, playdb.SetCombatantDeathSavesParams{
@@ -202,6 +203,26 @@ func (s *Service) deathSaveWrite(ctx context.Context, c *combatTx, call deathSav
 	}
 	c.characterID = &who.CharacterID
 	return out.made, nil
+}
+
+// deathCounts works out the counts after the save: the roll's, or a natural 20's return with 1 hit point, or the start
+// over of a failed save a hook of the character answered by standing it up. The hook runs before the failure is added, so
+// the one that stands the character up keeps the third failure from killing it.
+func (s *Service) deathCounts(ctx context.Context, c *combatTx, who playdb.Combatant, sheet link.Sheet, r combat.DeathSaveResult, out *deathSaveOutcome) (deathState, error) {
+	after := deathState{Successes: clamp32(r.Successes, 0, 3), Failures: clamp32(r.Failures, 0, 3), Rolled: true}
+	switch {
+	case r.Outcome == combat.DeathSaveRevived:
+		return s.reviveOnNaturalTwenty(ctx, c, who, r, out)
+	case failedDeathSave(out.made.DeathOutcome):
+		stood, err := s.deathSaveHook(ctx, c, who, sheet, out)
+		if err != nil {
+			return after, err
+		}
+		if stood {
+			after = deathState{Rolled: true}
+		}
+	}
+	return after, nil
 }
 
 // deathSaveGates checks that the combatant may roll a death save now: its player or the
@@ -263,7 +284,7 @@ func deathRoll(ev actionEvent) *playv1.DiceRoll {
 
 // deathSaveProto builds the DeathSave an event tells. "Dying" is the master's:
 // a player only sees the counts.
-func deathSaveProto(ev actionEvent, v combatViewer) *playv1.DeathSave {
+func deathSaveProto(ev actionEvent, v combatViewer, hookName string) *playv1.DeathSave {
 	after := ev.Death
 	if after == nil {
 		after = &deathState{}
@@ -274,6 +295,7 @@ func deathSaveProto(ev actionEvent, v combatViewer) *playv1.DeathSave {
 		Outcome:   deathOutcomeToProto[ev.DeathOutcome],
 		Successes: after.Successes, Failures: after.Failures,
 		Stable: after.Successes >= 3, Dying: v.master && after.Failures >= 3,
+		Hook: hookProto(ev.Hook, hookName),
 	}
 }
 

@@ -24,6 +24,8 @@ export class CombatStats {
   readonly armorClass = input.required<number>();
   readonly initiative = input<number | null>(null);
   readonly speedFt = input.required<number>();
+  /** The other speeds and "Respira na água", one line each under the walking speed. */
+  readonly extras = input<readonly string[]>([]);
   readonly hitPointsMax = input.required<number>();
   /** The current hit points from the live session; `null` outside one (the box then says they appear in the session). */
   readonly hitPointsCurrent = input<number | null>(null);

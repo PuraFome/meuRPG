@@ -302,6 +302,8 @@ const (
 	// The caster wears armor or a shield it is not proficient with, and cannot cast spells
 	// (SRD 5.1, "Armor").
 	CastingBlockedReason_CASTING_BLOCKED_REASON_ARMOR_NOT_PROFICIENT CastingBlockedReason = 10
+	// granted_by: the grant is not at will and has no use left.
+	CastingBlockedReason_CASTING_BLOCKED_REASON_NO_USES CastingBlockedReason = 11
 )
 
 // Enum value maps for CastingBlockedReason.
@@ -318,6 +320,7 @@ var (
 		8:  "CASTING_BLOCKED_REASON_CLASS_CANNOT_RITUAL",
 		9:  "CASTING_BLOCKED_REASON_NOT_A_RITUAL",
 		10: "CASTING_BLOCKED_REASON_ARMOR_NOT_PROFICIENT",
+		11: "CASTING_BLOCKED_REASON_NO_USES",
 	}
 	CastingBlockedReason_value = map[string]int32{
 		"CASTING_BLOCKED_REASON_UNSPECIFIED":          0,
@@ -331,6 +334,7 @@ var (
 		"CASTING_BLOCKED_REASON_CLASS_CANNOT_RITUAL":  8,
 		"CASTING_BLOCKED_REASON_NOT_A_RITUAL":         9,
 		"CASTING_BLOCKED_REASON_ARMOR_NOT_PROFICIENT": 10,
+		"CASTING_BLOCKED_REASON_NO_USES":              11,
 	}
 )
 
@@ -534,7 +538,11 @@ type CastingSpell struct {
 	Reach []*CastingReach `protobuf:"bytes,21,rep,name=reach,proto3" json:"reach,omitempty"`
 	// Whether it brings creatures: cast it with `summon` (CharacterService.GetSummonOptions
 	// has the choices).
-	Summons       bool `protobuf:"varint,18,opt,name=summons,proto3" json:"summons,omitempty"`
+	Summons bool `protobuf:"varint,18,opt,name=summons,proto3" json:"summons,omitempty"`
+	// The granted_spell effects that give the spell, each one a way to cast it with no slot
+	// (CastSpellOutsideCombatRequest.granted_by = source_key). The spell is listed once, even
+	// when the character's class has it too.
+	Grants        []*CastingGrant `protobuf:"bytes,22,rep,name=grants,proto3" json:"grants,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -716,6 +724,143 @@ func (x *CastingSpell) GetSummons() bool {
 	return false
 }
 
+func (x *CastingSpell) GetGrants() []*CastingGrant {
+	if x != nil {
+		return x.Grants
+	}
+	return nil
+}
+
+// CastingGrant is a granted_spell effect that gives a spell the character casts outside a combat.
+type CastingGrant struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The trait, feat or feature that grants it, and its name.
+	SourceKey    string `protobuf:"bytes,1,opt,name=source_key,json=sourceKey,proto3" json:"source_key,omitempty"`
+	SourceNamePt string `protobuf:"bytes,2,opt,name=source_name_pt,json=sourceNamePt,proto3" json:"source_name_pt,omitempty"`
+	AtWill       bool   `protobuf:"varint,3,opt,name=at_will,json=atWill,proto3" json:"at_will,omitempty"`
+	// The resource a cast spends one of, and the uses left; empty and 0 for an at-will grant.
+	Resource string `protobuf:"bytes,4,opt,name=resource,proto3" json:"resource,omitempty"`
+	UsesLeft int32  `protobuf:"varint,5,opt,name=uses_left,json=usesLeft,proto3" json:"uses_left,omitempty"`
+	// A spell slot casts it too, and: it casts only as a ritual.
+	AlsoWithSlot bool `protobuf:"varint,6,opt,name=also_with_slot,json=alsoWithSlot,proto3" json:"also_with_slot,omitempty"`
+	RitualOnly   bool `protobuf:"varint,7,opt,name=ritual_only,json=ritualOnly,proto3" json:"ritual_only,omitempty"`
+	// Whether a cast works now: it is at will, or a use is left.
+	Ready bool `protobuf:"varint,8,opt,name=ready,proto3" json:"ready,omitempty"`
+	// The casting ability of the grant and the numbers it gives.
+	Ability       string `protobuf:"bytes,9,opt,name=ability,proto3" json:"ability,omitempty"`
+	AttackBonus   int32  `protobuf:"varint,10,opt,name=attack_bonus,json=attackBonus,proto3" json:"attack_bonus,omitempty"`
+	SaveDc        int32  `protobuf:"varint,11,opt,name=save_dc,json=saveDc,proto3" json:"save_dc,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CastingGrant) Reset() {
+	*x = CastingGrant{}
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CastingGrant) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CastingGrant) ProtoMessage() {}
+
+func (x *CastingGrant) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CastingGrant.ProtoReflect.Descriptor instead.
+func (*CastingGrant) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *CastingGrant) GetSourceKey() string {
+	if x != nil {
+		return x.SourceKey
+	}
+	return ""
+}
+
+func (x *CastingGrant) GetSourceNamePt() string {
+	if x != nil {
+		return x.SourceNamePt
+	}
+	return ""
+}
+
+func (x *CastingGrant) GetAtWill() bool {
+	if x != nil {
+		return x.AtWill
+	}
+	return false
+}
+
+func (x *CastingGrant) GetResource() string {
+	if x != nil {
+		return x.Resource
+	}
+	return ""
+}
+
+func (x *CastingGrant) GetUsesLeft() int32 {
+	if x != nil {
+		return x.UsesLeft
+	}
+	return 0
+}
+
+func (x *CastingGrant) GetAlsoWithSlot() bool {
+	if x != nil {
+		return x.AlsoWithSlot
+	}
+	return false
+}
+
+func (x *CastingGrant) GetRitualOnly() bool {
+	if x != nil {
+		return x.RitualOnly
+	}
+	return false
+}
+
+func (x *CastingGrant) GetReady() bool {
+	if x != nil {
+		return x.Ready
+	}
+	return false
+}
+
+func (x *CastingGrant) GetAbility() string {
+	if x != nil {
+		return x.Ability
+	}
+	return ""
+}
+
+func (x *CastingGrant) GetAttackBonus() int32 {
+	if x != nil {
+		return x.AttackBonus
+	}
+	return 0
+}
+
+func (x *CastingGrant) GetSaveDc() int32 {
+	if x != nil {
+		return x.SaveDc
+	}
+	return 0
+}
+
 // CastingReach says whether a target can be picked for a spell.
 type CastingReach struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
@@ -729,7 +874,7 @@ type CastingReach struct {
 
 func (x *CastingReach) Reset() {
 	*x = CastingReach{}
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[2]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -741,7 +886,7 @@ func (x *CastingReach) String() string {
 func (*CastingReach) ProtoMessage() {}
 
 func (x *CastingReach) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[2]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -754,7 +899,7 @@ func (x *CastingReach) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CastingReach.ProtoReflect.Descriptor instead.
 func (*CastingReach) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{2}
+	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *CastingReach) GetCharacterId() string {
@@ -797,7 +942,7 @@ type CastingTarget struct {
 
 func (x *CastingTarget) Reset() {
 	*x = CastingTarget{}
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[3]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -809,7 +954,7 @@ func (x *CastingTarget) String() string {
 func (*CastingTarget) ProtoMessage() {}
 
 func (x *CastingTarget) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[3]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -822,7 +967,7 @@ func (x *CastingTarget) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CastingTarget.ProtoReflect.Descriptor instead.
 func (*CastingTarget) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{3}
+	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *CastingTarget) GetCharacterId() string {
@@ -872,7 +1017,7 @@ type GetCastOptionsRequest struct {
 
 func (x *GetCastOptionsRequest) Reset() {
 	*x = GetCastOptionsRequest{}
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[4]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -884,7 +1029,7 @@ func (x *GetCastOptionsRequest) String() string {
 func (*GetCastOptionsRequest) ProtoMessage() {}
 
 func (x *GetCastOptionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[4]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -897,7 +1042,7 @@ func (x *GetCastOptionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCastOptionsRequest.ProtoReflect.Descriptor instead.
 func (*GetCastOptionsRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{4}
+	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GetCastOptionsRequest) GetCampaignId() string {
@@ -938,7 +1083,7 @@ type GetCastOptionsResponse struct {
 
 func (x *GetCastOptionsResponse) Reset() {
 	*x = GetCastOptionsResponse{}
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[5]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -950,7 +1095,7 @@ func (x *GetCastOptionsResponse) String() string {
 func (*GetCastOptionsResponse) ProtoMessage() {}
 
 func (x *GetCastOptionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[5]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -963,7 +1108,7 @@ func (x *GetCastOptionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCastOptionsResponse.ProtoReflect.Descriptor instead.
 func (*GetCastOptionsResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{5}
+	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetCastOptionsResponse) GetSpells() []*CastingSpell {
@@ -1048,14 +1193,21 @@ type CastSpellOutsideCombatRequest struct {
 	Summon *SummonChoice `protobuf:"bytes,10,opt,name=summon,proto3" json:"summon,omitempty"`
 	// Enhance Ability only: the ability the target is enhanced in ("str", "dex", "con", "int",
 	// "wis" or "cha"). Required for that spell, ignored by every other.
-	AbilityKey    string `protobuf:"bytes,11,opt,name=ability_key,json=abilityKey,proto3" json:"ability_key,omitempty"`
+	AbilityKey string `protobuf:"bytes,11,opt,name=ability_key,json=abilityKey,proto3" json:"ability_key,omitempty"`
+	// The trait, feat or feature whose granted_spell effect casts the spell (the
+	// `source_key` of the sheet's granted spell): the cast takes no slot, spends a use of
+	// the grant's resource unless it is at will, and the spell attack and the save DC are
+	// the grant's. With a `slot` it casts through the slot instead, which the grant must
+	// allow (also_with_slot) and which spends no use. A grant that is only for rituals
+	// takes `as_ritual`. Empty for a spell of the character's classes.
+	GrantedBy     string `protobuf:"bytes,12,opt,name=granted_by,json=grantedBy,proto3" json:"granted_by,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CastSpellOutsideCombatRequest) Reset() {
 	*x = CastSpellOutsideCombatRequest{}
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[6]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1067,7 +1219,7 @@ func (x *CastSpellOutsideCombatRequest) String() string {
 func (*CastSpellOutsideCombatRequest) ProtoMessage() {}
 
 func (x *CastSpellOutsideCombatRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[6]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1080,7 +1232,7 @@ func (x *CastSpellOutsideCombatRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CastSpellOutsideCombatRequest.ProtoReflect.Descriptor instead.
 func (*CastSpellOutsideCombatRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{6}
+	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *CastSpellOutsideCombatRequest) GetCampaignId() string {
@@ -1171,6 +1323,13 @@ func (x *CastSpellOutsideCombatRequest) GetAbilityKey() string {
 	return ""
 }
 
+func (x *CastSpellOutsideCombatRequest) GetGrantedBy() string {
+	if x != nil {
+		return x.GrantedBy
+	}
+	return ""
+}
+
 type isCastSpellOutsideCombatRequest_Roll interface {
 	isCastSpellOutsideCombatRequest_Roll()
 }
@@ -1210,7 +1369,7 @@ type ConfirmCastTimePassedRequest struct {
 
 func (x *ConfirmCastTimePassedRequest) Reset() {
 	*x = ConfirmCastTimePassedRequest{}
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[7]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1222,7 +1381,7 @@ func (x *ConfirmCastTimePassedRequest) String() string {
 func (*ConfirmCastTimePassedRequest) ProtoMessage() {}
 
 func (x *ConfirmCastTimePassedRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[7]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1235,7 +1394,7 @@ func (x *ConfirmCastTimePassedRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConfirmCastTimePassedRequest.ProtoReflect.Descriptor instead.
 func (*ConfirmCastTimePassedRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{7}
+	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ConfirmCastTimePassedRequest) GetCampaignId() string {
@@ -1329,7 +1488,7 @@ type CastSpellOutsideCombatResponse struct {
 
 func (x *CastSpellOutsideCombatResponse) Reset() {
 	*x = CastSpellOutsideCombatResponse{}
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[8]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1341,7 +1500,7 @@ func (x *CastSpellOutsideCombatResponse) String() string {
 func (*CastSpellOutsideCombatResponse) ProtoMessage() {}
 
 func (x *CastSpellOutsideCombatResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[8]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1354,7 +1513,7 @@ func (x *CastSpellOutsideCombatResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CastSpellOutsideCombatResponse.ProtoReflect.Descriptor instead.
 func (*CastSpellOutsideCombatResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{8}
+	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *CastSpellOutsideCombatResponse) GetCast() *OutsideCast {
@@ -1414,7 +1573,7 @@ type ConfirmCastTimePassedResponse struct {
 
 func (x *ConfirmCastTimePassedResponse) Reset() {
 	*x = ConfirmCastTimePassedResponse{}
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[9]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1426,7 +1585,7 @@ func (x *ConfirmCastTimePassedResponse) String() string {
 func (*ConfirmCastTimePassedResponse) ProtoMessage() {}
 
 func (x *ConfirmCastTimePassedResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[9]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1439,7 +1598,7 @@ func (x *ConfirmCastTimePassedResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConfirmCastTimePassedResponse.ProtoReflect.Descriptor instead.
 func (*ConfirmCastTimePassedResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{9}
+	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ConfirmCastTimePassedResponse) GetCast() *OutsideCast {
@@ -1489,7 +1648,7 @@ type AbandonCastRequest struct {
 
 func (x *AbandonCastRequest) Reset() {
 	*x = AbandonCastRequest{}
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[10]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1501,7 +1660,7 @@ func (x *AbandonCastRequest) String() string {
 func (*AbandonCastRequest) ProtoMessage() {}
 
 func (x *AbandonCastRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[10]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1514,7 +1673,7 @@ func (x *AbandonCastRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AbandonCastRequest.ProtoReflect.Descriptor instead.
 func (*AbandonCastRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{10}
+	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *AbandonCastRequest) GetCampaignId() string {
@@ -1548,7 +1707,7 @@ type AbandonCastResponse struct {
 
 func (x *AbandonCastResponse) Reset() {
 	*x = AbandonCastResponse{}
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[11]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1560,7 +1719,7 @@ func (x *AbandonCastResponse) String() string {
 func (*AbandonCastResponse) ProtoMessage() {}
 
 func (x *AbandonCastResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[11]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1573,7 +1732,7 @@ func (x *AbandonCastResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AbandonCastResponse.ProtoReflect.Descriptor instead.
 func (*AbandonCastResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{11}
+	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *AbandonCastResponse) GetCast() *OutsideCast {
@@ -1595,7 +1754,7 @@ type EndActiveSpellRequest struct {
 
 func (x *EndActiveSpellRequest) Reset() {
 	*x = EndActiveSpellRequest{}
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[12]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1607,7 +1766,7 @@ func (x *EndActiveSpellRequest) String() string {
 func (*EndActiveSpellRequest) ProtoMessage() {}
 
 func (x *EndActiveSpellRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[12]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1620,7 +1779,7 @@ func (x *EndActiveSpellRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EndActiveSpellRequest.ProtoReflect.Descriptor instead.
 func (*EndActiveSpellRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{12}
+	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *EndActiveSpellRequest) GetCampaignId() string {
@@ -1658,7 +1817,7 @@ type EndActiveSpellResponse struct {
 
 func (x *EndActiveSpellResponse) Reset() {
 	*x = EndActiveSpellResponse{}
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[13]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1670,7 +1829,7 @@ func (x *EndActiveSpellResponse) String() string {
 func (*EndActiveSpellResponse) ProtoMessage() {}
 
 func (x *EndActiveSpellResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[13]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1683,7 +1842,7 @@ func (x *EndActiveSpellResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EndActiveSpellResponse.ProtoReflect.Descriptor instead.
 func (*EndActiveSpellResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{13}
+	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *EndActiveSpellResponse) GetCast() *OutsideCast {
@@ -1719,7 +1878,7 @@ type ListSpellCastsRequest struct {
 
 func (x *ListSpellCastsRequest) Reset() {
 	*x = ListSpellCastsRequest{}
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[14]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1731,7 +1890,7 @@ func (x *ListSpellCastsRequest) String() string {
 func (*ListSpellCastsRequest) ProtoMessage() {}
 
 func (x *ListSpellCastsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[14]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1744,7 +1903,7 @@ func (x *ListSpellCastsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSpellCastsRequest.ProtoReflect.Descriptor instead.
 func (*ListSpellCastsRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{14}
+	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ListSpellCastsRequest) GetCampaignId() string {
@@ -1774,7 +1933,7 @@ type ListSpellCastsResponse struct {
 
 func (x *ListSpellCastsResponse) Reset() {
 	*x = ListSpellCastsResponse{}
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[15]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1786,7 +1945,7 @@ func (x *ListSpellCastsResponse) String() string {
 func (*ListSpellCastsResponse) ProtoMessage() {}
 
 func (x *ListSpellCastsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[15]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1799,7 +1958,7 @@ func (x *ListSpellCastsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSpellCastsResponse.ProtoReflect.Descriptor instead.
 func (*ListSpellCastsResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{15}
+	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ListSpellCastsResponse) GetActive() []*OutsideCast {
@@ -1871,7 +2030,7 @@ type OutsideCast struct {
 
 func (x *OutsideCast) Reset() {
 	*x = OutsideCast{}
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[16]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1883,7 +2042,7 @@ func (x *OutsideCast) String() string {
 func (*OutsideCast) ProtoMessage() {}
 
 func (x *OutsideCast) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[16]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1896,7 +2055,7 @@ func (x *OutsideCast) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OutsideCast.ProtoReflect.Descriptor instead.
 func (*OutsideCast) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{16}
+	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *OutsideCast) GetId() string {
@@ -2114,7 +2273,7 @@ type OutsideCastTarget struct {
 
 func (x *OutsideCastTarget) Reset() {
 	*x = OutsideCastTarget{}
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[17]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2126,7 +2285,7 @@ func (x *OutsideCastTarget) String() string {
 func (*OutsideCastTarget) ProtoMessage() {}
 
 func (x *OutsideCastTarget) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_casting_proto_msgTypes[17]
+	mi := &file_meurpg_play_v1_casting_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2139,7 +2298,7 @@ func (x *OutsideCastTarget) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OutsideCastTarget.ProtoReflect.Descriptor instead.
 func (*OutsideCastTarget) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{17}
+	return file_meurpg_play_v1_casting_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *OutsideCastTarget) GetCharacterId() string {
@@ -2214,7 +2373,7 @@ const file_meurpg_play_v1_casting_proto_rawDesc = "" +
 	"\x06reason\x18\x01 \x01(\x0e2$.meurpg.play.v1.CastingBlockedReasonR\x06reason\x12\x1b\n" +
 	"\tmin_level\x18\x02 \x01(\x05R\bminLevel\x12\x1d\n" +
 	"\n" +
-	"missing_ft\x18\x03 \x01(\x05R\tmissingFt\"\xcb\x06\n" +
+	"missing_ft\x18\x03 \x01(\x05R\tmissingFt\"\x81\a\n" +
 	"\fCastingSpell\x12,\n" +
 	"\x05spell\x18\x01 \x01(\v2\x16.meurpg.rules.v1.SpellR\x05spell\x12\x19\n" +
 	"\bcan_cast\x18\x02 \x01(\bR\acanCast\x12%\n" +
@@ -2241,7 +2400,23 @@ const file_meurpg_play_v1_casting_proto_rawDesc = "" +
 	"range_kind\x18\x13 \x01(\tR\trangeKind\x12\x19\n" +
 	"\brange_ft\x18\x14 \x01(\x05R\arangeFt\x122\n" +
 	"\x05reach\x18\x15 \x03(\v2\x1c.meurpg.play.v1.CastingReachR\x05reach\x12\x18\n" +
-	"\asummons\x18\x12 \x01(\bR\asummons\"i\n" +
+	"\asummons\x18\x12 \x01(\bR\asummons\x124\n" +
+	"\x06grants\x18\x16 \x03(\v2\x1c.meurpg.play.v1.CastingGrantR\x06grants\"\xd8\x02\n" +
+	"\fCastingGrant\x12\x1d\n" +
+	"\n" +
+	"source_key\x18\x01 \x01(\tR\tsourceKey\x12$\n" +
+	"\x0esource_name_pt\x18\x02 \x01(\tR\fsourceNamePt\x12\x17\n" +
+	"\aat_will\x18\x03 \x01(\bR\x06atWill\x12\x1a\n" +
+	"\bresource\x18\x04 \x01(\tR\bresource\x12\x1b\n" +
+	"\tuses_left\x18\x05 \x01(\x05R\busesLeft\x12$\n" +
+	"\x0ealso_with_slot\x18\x06 \x01(\bR\falsoWithSlot\x12\x1f\n" +
+	"\vritual_only\x18\a \x01(\bR\n" +
+	"ritualOnly\x12\x14\n" +
+	"\x05ready\x18\b \x01(\bR\x05ready\x12\x18\n" +
+	"\aability\x18\t \x01(\tR\aability\x12!\n" +
+	"\fattack_bonus\x18\n" +
+	" \x01(\x05R\vattackBonus\x12\x17\n" +
+	"\asave_dc\x18\v \x01(\x05R\x06saveDc\"i\n" +
 	"\fCastingReach\x12!\n" +
 	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12\x19\n" +
 	"\bin_range\x18\x02 \x01(\bR\ainRange\x12\x1b\n" +
@@ -2265,7 +2440,7 @@ const file_meurpg_play_v1_casting_proto_rawDesc = "" +
 	"wild_shape\x18\x04 \x01(\bR\twildShape\x125\n" +
 	"\acasting\x18\x05 \x01(\v2\x1b.meurpg.play.v1.OutsideCastR\acasting\x12A\n" +
 	"\rconcentrating\x18\x06 \x01(\v2\x1b.meurpg.play.v1.OutsideCastR\rconcentrating\x120\n" +
-	"\x14armor_not_proficient\x18\a \x01(\bR\x12armorNotProficient\"\xc1\x03\n" +
+	"\x14armor_not_proficient\x18\a \x01(\bR\x12armorNotProficient\"\xe0\x03\n" +
 	"\x1dCastSpellOutsideCombatRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12.\n" +
@@ -2281,7 +2456,9 @@ const file_meurpg_play_v1_casting_proto_rawDesc = "" +
 	"\x06summon\x18\n" +
 	" \x01(\v2\x1c.meurpg.play.v1.SummonChoiceR\x06summon\x12\x1f\n" +
 	"\vability_key\x18\v \x01(\tR\n" +
-	"abilityKeyB\x06\n" +
+	"abilityKey\x12\x1d\n" +
+	"\n" +
+	"granted_by\x18\f \x01(\tR\tgrantedByB\x06\n" +
 	"\x04roll\"\x80\x02\n" +
 	"\x1cConfirmCastTimePassedRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
@@ -2399,7 +2576,7 @@ const file_meurpg_play_v1_casting_proto_rawDesc = "" +
 	"\x10CAST_EFFECT_HEAL\x10\x02\x12$\n" +
 	" CAST_EFFECT_TEMPORARY_HIT_POINTS\x10\x03\x12\x1e\n" +
 	"\x1aCAST_EFFECT_MAX_HIT_POINTS\x10\x04\x12\x1b\n" +
-	"\x17CAST_EFFECT_ARMOR_CLASS\x10\x05*\xf5\x03\n" +
+	"\x17CAST_EFFECT_ARMOR_CLASS\x10\x05*\x99\x04\n" +
 	"\x14CastingBlockedReason\x12&\n" +
 	"\"CASTING_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12$\n" +
 	" CASTING_BLOCKED_REASON_IN_COMBAT\x10\x01\x12+\n" +
@@ -2412,7 +2589,8 @@ const file_meurpg_play_v1_casting_proto_rawDesc = "" +
 	"*CASTING_BLOCKED_REASON_CLASS_CANNOT_RITUAL\x10\b\x12'\n" +
 	"#CASTING_BLOCKED_REASON_NOT_A_RITUAL\x10\t\x12/\n" +
 	"+CASTING_BLOCKED_REASON_ARMOR_NOT_PROFICIENT\x10\n" +
-	"*\x93\x02\n" +
+	"\x12\"\n" +
+	"\x1eCASTING_BLOCKED_REASON_NO_USES\x10\v*\x93\x02\n" +
 	"\x11CastingEffectKind\x12#\n" +
 	"\x1fCASTING_EFFECT_KIND_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cCASTING_EFFECT_KIND_NARRATED\x10\x01\x12\x1c\n" +
@@ -2443,7 +2621,7 @@ func file_meurpg_play_v1_casting_proto_rawDescGZIP() []byte {
 }
 
 var file_meurpg_play_v1_casting_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_meurpg_play_v1_casting_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_meurpg_play_v1_casting_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_meurpg_play_v1_casting_proto_goTypes = []any{
 	(OutsideCastStatus)(0),                 // 0: meurpg.play.v1.OutsideCastStatus
 	(OutsideCastEnd)(0),                    // 1: meurpg.play.v1.OutsideCastEnd
@@ -2453,79 +2631,81 @@ var file_meurpg_play_v1_casting_proto_goTypes = []any{
 	(CastingEffectKind)(0),                 // 5: meurpg.play.v1.CastingEffectKind
 	(*CastingBlocked)(nil),                 // 6: meurpg.play.v1.CastingBlocked
 	(*CastingSpell)(nil),                   // 7: meurpg.play.v1.CastingSpell
-	(*CastingReach)(nil),                   // 8: meurpg.play.v1.CastingReach
-	(*CastingTarget)(nil),                  // 9: meurpg.play.v1.CastingTarget
-	(*GetCastOptionsRequest)(nil),          // 10: meurpg.play.v1.GetCastOptionsRequest
-	(*GetCastOptionsResponse)(nil),         // 11: meurpg.play.v1.GetCastOptionsResponse
-	(*CastSpellOutsideCombatRequest)(nil),  // 12: meurpg.play.v1.CastSpellOutsideCombatRequest
-	(*ConfirmCastTimePassedRequest)(nil),   // 13: meurpg.play.v1.ConfirmCastTimePassedRequest
-	(*CastSpellOutsideCombatResponse)(nil), // 14: meurpg.play.v1.CastSpellOutsideCombatResponse
-	(*ConfirmCastTimePassedResponse)(nil),  // 15: meurpg.play.v1.ConfirmCastTimePassedResponse
-	(*AbandonCastRequest)(nil),             // 16: meurpg.play.v1.AbandonCastRequest
-	(*AbandonCastResponse)(nil),            // 17: meurpg.play.v1.AbandonCastResponse
-	(*EndActiveSpellRequest)(nil),          // 18: meurpg.play.v1.EndActiveSpellRequest
-	(*EndActiveSpellResponse)(nil),         // 19: meurpg.play.v1.EndActiveSpellResponse
-	(*ListSpellCastsRequest)(nil),          // 20: meurpg.play.v1.ListSpellCastsRequest
-	(*ListSpellCastsResponse)(nil),         // 21: meurpg.play.v1.ListSpellCastsResponse
-	(*OutsideCast)(nil),                    // 22: meurpg.play.v1.OutsideCast
-	(*OutsideCastTarget)(nil),              // 23: meurpg.play.v1.OutsideCastTarget
-	(*v1.Spell)(nil),                       // 24: meurpg.rules.v1.Spell
-	(*v1.SlotChoice)(nil),                  // 25: meurpg.rules.v1.SlotChoice
-	(*v1.DisabledReason)(nil),              // 26: meurpg.rules.v1.DisabledReason
-	(*SpellSlot)(nil),                      // 27: meurpg.play.v1.SpellSlot
-	(*SummonChoice)(nil),                   // 28: meurpg.play.v1.SummonChoice
-	(*CharacterVitals)(nil),                // 29: meurpg.play.v1.CharacterVitals
-	(*timestamppb.Timestamp)(nil),          // 30: google.protobuf.Timestamp
+	(*CastingGrant)(nil),                   // 8: meurpg.play.v1.CastingGrant
+	(*CastingReach)(nil),                   // 9: meurpg.play.v1.CastingReach
+	(*CastingTarget)(nil),                  // 10: meurpg.play.v1.CastingTarget
+	(*GetCastOptionsRequest)(nil),          // 11: meurpg.play.v1.GetCastOptionsRequest
+	(*GetCastOptionsResponse)(nil),         // 12: meurpg.play.v1.GetCastOptionsResponse
+	(*CastSpellOutsideCombatRequest)(nil),  // 13: meurpg.play.v1.CastSpellOutsideCombatRequest
+	(*ConfirmCastTimePassedRequest)(nil),   // 14: meurpg.play.v1.ConfirmCastTimePassedRequest
+	(*CastSpellOutsideCombatResponse)(nil), // 15: meurpg.play.v1.CastSpellOutsideCombatResponse
+	(*ConfirmCastTimePassedResponse)(nil),  // 16: meurpg.play.v1.ConfirmCastTimePassedResponse
+	(*AbandonCastRequest)(nil),             // 17: meurpg.play.v1.AbandonCastRequest
+	(*AbandonCastResponse)(nil),            // 18: meurpg.play.v1.AbandonCastResponse
+	(*EndActiveSpellRequest)(nil),          // 19: meurpg.play.v1.EndActiveSpellRequest
+	(*EndActiveSpellResponse)(nil),         // 20: meurpg.play.v1.EndActiveSpellResponse
+	(*ListSpellCastsRequest)(nil),          // 21: meurpg.play.v1.ListSpellCastsRequest
+	(*ListSpellCastsResponse)(nil),         // 22: meurpg.play.v1.ListSpellCastsResponse
+	(*OutsideCast)(nil),                    // 23: meurpg.play.v1.OutsideCast
+	(*OutsideCastTarget)(nil),              // 24: meurpg.play.v1.OutsideCastTarget
+	(*v1.Spell)(nil),                       // 25: meurpg.rules.v1.Spell
+	(*v1.SlotChoice)(nil),                  // 26: meurpg.rules.v1.SlotChoice
+	(*v1.DisabledReason)(nil),              // 27: meurpg.rules.v1.DisabledReason
+	(*SpellSlot)(nil),                      // 28: meurpg.play.v1.SpellSlot
+	(*SummonChoice)(nil),                   // 29: meurpg.play.v1.SummonChoice
+	(*CharacterVitals)(nil),                // 30: meurpg.play.v1.CharacterVitals
+	(*timestamppb.Timestamp)(nil),          // 31: google.protobuf.Timestamp
 }
 var file_meurpg_play_v1_casting_proto_depIdxs = []int32{
 	4,  // 0: meurpg.play.v1.CastingBlocked.reason:type_name -> meurpg.play.v1.CastingBlockedReason
-	24, // 1: meurpg.play.v1.CastingSpell.spell:type_name -> meurpg.rules.v1.Spell
-	25, // 2: meurpg.play.v1.CastingSpell.slots:type_name -> meurpg.rules.v1.SlotChoice
-	26, // 3: meurpg.play.v1.CastingSpell.reason:type_name -> meurpg.rules.v1.DisabledReason
+	25, // 1: meurpg.play.v1.CastingSpell.spell:type_name -> meurpg.rules.v1.Spell
+	26, // 2: meurpg.play.v1.CastingSpell.slots:type_name -> meurpg.rules.v1.SlotChoice
+	27, // 3: meurpg.play.v1.CastingSpell.reason:type_name -> meurpg.rules.v1.DisabledReason
 	2,  // 4: meurpg.play.v1.CastingSpell.rest_ends:type_name -> meurpg.play.v1.RestThatEnds
 	5,  // 5: meurpg.play.v1.CastingSpell.effect:type_name -> meurpg.play.v1.CastingEffectKind
-	8,  // 6: meurpg.play.v1.CastingSpell.reach:type_name -> meurpg.play.v1.CastingReach
-	7,  // 7: meurpg.play.v1.GetCastOptionsResponse.spells:type_name -> meurpg.play.v1.CastingSpell
-	9,  // 8: meurpg.play.v1.GetCastOptionsResponse.targets:type_name -> meurpg.play.v1.CastingTarget
-	22, // 9: meurpg.play.v1.GetCastOptionsResponse.casting:type_name -> meurpg.play.v1.OutsideCast
-	22, // 10: meurpg.play.v1.GetCastOptionsResponse.concentrating:type_name -> meurpg.play.v1.OutsideCast
-	27, // 11: meurpg.play.v1.CastSpellOutsideCombatRequest.slot:type_name -> meurpg.play.v1.SpellSlot
-	28, // 12: meurpg.play.v1.CastSpellOutsideCombatRequest.summon:type_name -> meurpg.play.v1.SummonChoice
-	28, // 13: meurpg.play.v1.ConfirmCastTimePassedRequest.summon:type_name -> meurpg.play.v1.SummonChoice
-	22, // 14: meurpg.play.v1.CastSpellOutsideCombatResponse.cast:type_name -> meurpg.play.v1.OutsideCast
-	29, // 15: meurpg.play.v1.CastSpellOutsideCombatResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
-	22, // 16: meurpg.play.v1.ConfirmCastTimePassedResponse.cast:type_name -> meurpg.play.v1.OutsideCast
-	29, // 17: meurpg.play.v1.ConfirmCastTimePassedResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
-	22, // 18: meurpg.play.v1.AbandonCastResponse.cast:type_name -> meurpg.play.v1.OutsideCast
-	22, // 19: meurpg.play.v1.EndActiveSpellResponse.cast:type_name -> meurpg.play.v1.OutsideCast
-	29, // 20: meurpg.play.v1.EndActiveSpellResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
-	22, // 21: meurpg.play.v1.ListSpellCastsResponse.active:type_name -> meurpg.play.v1.OutsideCast
-	22, // 22: meurpg.play.v1.ListSpellCastsResponse.log:type_name -> meurpg.play.v1.OutsideCast
-	0,  // 23: meurpg.play.v1.OutsideCast.status:type_name -> meurpg.play.v1.OutsideCastStatus
-	2,  // 24: meurpg.play.v1.OutsideCast.rest_ends:type_name -> meurpg.play.v1.RestThatEnds
-	30, // 25: meurpg.play.v1.OutsideCast.started_at:type_name -> google.protobuf.Timestamp
-	30, // 26: meurpg.play.v1.OutsideCast.cast_at:type_name -> google.protobuf.Timestamp
-	30, // 27: meurpg.play.v1.OutsideCast.ended_at:type_name -> google.protobuf.Timestamp
-	1,  // 28: meurpg.play.v1.OutsideCast.end_reason:type_name -> meurpg.play.v1.OutsideCastEnd
-	23, // 29: meurpg.play.v1.OutsideCast.targets:type_name -> meurpg.play.v1.OutsideCastTarget
-	3,  // 30: meurpg.play.v1.OutsideCastTarget.effect:type_name -> meurpg.play.v1.CastEffect
-	10, // 31: meurpg.play.v1.CastingService.GetCastOptions:input_type -> meurpg.play.v1.GetCastOptionsRequest
-	12, // 32: meurpg.play.v1.CastingService.CastSpellOutsideCombat:input_type -> meurpg.play.v1.CastSpellOutsideCombatRequest
-	13, // 33: meurpg.play.v1.CastingService.ConfirmCastTimePassed:input_type -> meurpg.play.v1.ConfirmCastTimePassedRequest
-	16, // 34: meurpg.play.v1.CastingService.AbandonCast:input_type -> meurpg.play.v1.AbandonCastRequest
-	18, // 35: meurpg.play.v1.CastingService.EndActiveSpell:input_type -> meurpg.play.v1.EndActiveSpellRequest
-	20, // 36: meurpg.play.v1.CastingService.ListSpellCasts:input_type -> meurpg.play.v1.ListSpellCastsRequest
-	11, // 37: meurpg.play.v1.CastingService.GetCastOptions:output_type -> meurpg.play.v1.GetCastOptionsResponse
-	14, // 38: meurpg.play.v1.CastingService.CastSpellOutsideCombat:output_type -> meurpg.play.v1.CastSpellOutsideCombatResponse
-	15, // 39: meurpg.play.v1.CastingService.ConfirmCastTimePassed:output_type -> meurpg.play.v1.ConfirmCastTimePassedResponse
-	17, // 40: meurpg.play.v1.CastingService.AbandonCast:output_type -> meurpg.play.v1.AbandonCastResponse
-	19, // 41: meurpg.play.v1.CastingService.EndActiveSpell:output_type -> meurpg.play.v1.EndActiveSpellResponse
-	21, // 42: meurpg.play.v1.CastingService.ListSpellCasts:output_type -> meurpg.play.v1.ListSpellCastsResponse
-	37, // [37:43] is the sub-list for method output_type
-	31, // [31:37] is the sub-list for method input_type
-	31, // [31:31] is the sub-list for extension type_name
-	31, // [31:31] is the sub-list for extension extendee
-	0,  // [0:31] is the sub-list for field type_name
+	9,  // 6: meurpg.play.v1.CastingSpell.reach:type_name -> meurpg.play.v1.CastingReach
+	8,  // 7: meurpg.play.v1.CastingSpell.grants:type_name -> meurpg.play.v1.CastingGrant
+	7,  // 8: meurpg.play.v1.GetCastOptionsResponse.spells:type_name -> meurpg.play.v1.CastingSpell
+	10, // 9: meurpg.play.v1.GetCastOptionsResponse.targets:type_name -> meurpg.play.v1.CastingTarget
+	23, // 10: meurpg.play.v1.GetCastOptionsResponse.casting:type_name -> meurpg.play.v1.OutsideCast
+	23, // 11: meurpg.play.v1.GetCastOptionsResponse.concentrating:type_name -> meurpg.play.v1.OutsideCast
+	28, // 12: meurpg.play.v1.CastSpellOutsideCombatRequest.slot:type_name -> meurpg.play.v1.SpellSlot
+	29, // 13: meurpg.play.v1.CastSpellOutsideCombatRequest.summon:type_name -> meurpg.play.v1.SummonChoice
+	29, // 14: meurpg.play.v1.ConfirmCastTimePassedRequest.summon:type_name -> meurpg.play.v1.SummonChoice
+	23, // 15: meurpg.play.v1.CastSpellOutsideCombatResponse.cast:type_name -> meurpg.play.v1.OutsideCast
+	30, // 16: meurpg.play.v1.CastSpellOutsideCombatResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
+	23, // 17: meurpg.play.v1.ConfirmCastTimePassedResponse.cast:type_name -> meurpg.play.v1.OutsideCast
+	30, // 18: meurpg.play.v1.ConfirmCastTimePassedResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
+	23, // 19: meurpg.play.v1.AbandonCastResponse.cast:type_name -> meurpg.play.v1.OutsideCast
+	23, // 20: meurpg.play.v1.EndActiveSpellResponse.cast:type_name -> meurpg.play.v1.OutsideCast
+	30, // 21: meurpg.play.v1.EndActiveSpellResponse.vitals:type_name -> meurpg.play.v1.CharacterVitals
+	23, // 22: meurpg.play.v1.ListSpellCastsResponse.active:type_name -> meurpg.play.v1.OutsideCast
+	23, // 23: meurpg.play.v1.ListSpellCastsResponse.log:type_name -> meurpg.play.v1.OutsideCast
+	0,  // 24: meurpg.play.v1.OutsideCast.status:type_name -> meurpg.play.v1.OutsideCastStatus
+	2,  // 25: meurpg.play.v1.OutsideCast.rest_ends:type_name -> meurpg.play.v1.RestThatEnds
+	31, // 26: meurpg.play.v1.OutsideCast.started_at:type_name -> google.protobuf.Timestamp
+	31, // 27: meurpg.play.v1.OutsideCast.cast_at:type_name -> google.protobuf.Timestamp
+	31, // 28: meurpg.play.v1.OutsideCast.ended_at:type_name -> google.protobuf.Timestamp
+	1,  // 29: meurpg.play.v1.OutsideCast.end_reason:type_name -> meurpg.play.v1.OutsideCastEnd
+	24, // 30: meurpg.play.v1.OutsideCast.targets:type_name -> meurpg.play.v1.OutsideCastTarget
+	3,  // 31: meurpg.play.v1.OutsideCastTarget.effect:type_name -> meurpg.play.v1.CastEffect
+	11, // 32: meurpg.play.v1.CastingService.GetCastOptions:input_type -> meurpg.play.v1.GetCastOptionsRequest
+	13, // 33: meurpg.play.v1.CastingService.CastSpellOutsideCombat:input_type -> meurpg.play.v1.CastSpellOutsideCombatRequest
+	14, // 34: meurpg.play.v1.CastingService.ConfirmCastTimePassed:input_type -> meurpg.play.v1.ConfirmCastTimePassedRequest
+	17, // 35: meurpg.play.v1.CastingService.AbandonCast:input_type -> meurpg.play.v1.AbandonCastRequest
+	19, // 36: meurpg.play.v1.CastingService.EndActiveSpell:input_type -> meurpg.play.v1.EndActiveSpellRequest
+	21, // 37: meurpg.play.v1.CastingService.ListSpellCasts:input_type -> meurpg.play.v1.ListSpellCastsRequest
+	12, // 38: meurpg.play.v1.CastingService.GetCastOptions:output_type -> meurpg.play.v1.GetCastOptionsResponse
+	15, // 39: meurpg.play.v1.CastingService.CastSpellOutsideCombat:output_type -> meurpg.play.v1.CastSpellOutsideCombatResponse
+	16, // 40: meurpg.play.v1.CastingService.ConfirmCastTimePassed:output_type -> meurpg.play.v1.ConfirmCastTimePassedResponse
+	18, // 41: meurpg.play.v1.CastingService.AbandonCast:output_type -> meurpg.play.v1.AbandonCastResponse
+	20, // 42: meurpg.play.v1.CastingService.EndActiveSpell:output_type -> meurpg.play.v1.EndActiveSpellResponse
+	22, // 43: meurpg.play.v1.CastingService.ListSpellCasts:output_type -> meurpg.play.v1.ListSpellCastsResponse
+	38, // [38:44] is the sub-list for method output_type
+	32, // [32:38] is the sub-list for method input_type
+	32, // [32:32] is the sub-list for extension type_name
+	32, // [32:32] is the sub-list for extension extendee
+	0,  // [0:32] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_casting_proto_init() }
@@ -2535,11 +2715,11 @@ func file_meurpg_play_v1_casting_proto_init() {
 	}
 	file_meurpg_play_v1_combat_proto_init()
 	file_meurpg_play_v1_play_proto_init()
-	file_meurpg_play_v1_casting_proto_msgTypes[6].OneofWrappers = []any{
+	file_meurpg_play_v1_casting_proto_msgTypes[7].OneofWrappers = []any{
 		(*CastSpellOutsideCombatRequest_RollInApp)(nil),
 		(*CastSpellOutsideCombatRequest_TypedSum)(nil),
 	}
-	file_meurpg_play_v1_casting_proto_msgTypes[7].OneofWrappers = []any{
+	file_meurpg_play_v1_casting_proto_msgTypes[8].OneofWrappers = []any{
 		(*ConfirmCastTimePassedRequest_RollInApp)(nil),
 		(*ConfirmCastTimePassedRequest_TypedSum)(nil),
 	}
@@ -2549,7 +2729,7 @@ func file_meurpg_play_v1_casting_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_play_v1_casting_proto_rawDesc), len(file_meurpg_play_v1_casting_proto_rawDesc)),
 			NumEnums:      6,
-			NumMessages:   18,
+			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

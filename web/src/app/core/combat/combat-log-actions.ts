@@ -1,3 +1,4 @@
+import { hookStandUpSentence } from './hook-text';
 import {
   type CombatLogEntry,
   type CombatLogModeChange,
@@ -101,6 +102,9 @@ export function deathSaveText(e: CombatLogEntry): string {
   let out = ` ${roll}${word}`;
   if (s.outcome !== DeathSaveOutcome.REVIVED) {
     out += ` (${countsSentence(s.successes, s.failures)})`;
+  }
+  if (s.hook) {
+    out += `. ${hookStandUpSentence(s.hook, e.actorLabel || 'o personagem')}`;
   }
   if (s.stable) {
     out += '. Estável: não rola mais';

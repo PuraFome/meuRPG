@@ -44,6 +44,17 @@ describe('InitiativeSetup', () => {
     );
   });
 
+  it('gives each name its full text as the tooltip, since a narrow list ends it in an ellipsis', () => {
+    const { el } = setup();
+    const names = [...el.querySelectorAll<HTMLElement>('.row__name')];
+    expect(names.map((n) => n.getAttribute('title'))).toEqual([
+      'Brisa',
+      'Goblin 1',
+      'Goblin 2',
+      'Toren',
+    ]);
+  });
+
   it('moves a tied combatant down with the arrow, and the outer arrows do nothing', () => {
     const { el, orders } = setup();
     const button = (name: string) => el.querySelector<HTMLButtonElement>(`[aria-label="${name}"]`)!;

@@ -42,6 +42,10 @@ func (logRoster) CombatSpell(_ context.Context, _ pgx.Tx, _, _, key string, _ in
 	return link.Spell{Key: key, Name: logContentName(key)}, nil
 }
 
+func (r logRoster) GrantedCombatSpell(ctx context.Context, tx pgx.Tx, campaignID, characterID, key, _ string, level int, damageType string) (link.Spell, error) {
+	return r.CombatSpell(ctx, tx, campaignID, characterID, key, level, damageType)
+}
+
 type logTraps struct{ TrapBook }
 
 func (logTraps) TrapNames(_ context.Context, _ string, ids []string) (map[string]string, error) {

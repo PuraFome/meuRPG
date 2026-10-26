@@ -231,6 +231,8 @@ export class CombatTurnCalls {
     key?: string,
     useExtraAction = false,
     frenzy = false,
+    spend = 0,
+    healTarget = '',
     endState = false,
   ): Promise<ActionResult> {
     const res = await this.base.keyed(
@@ -243,6 +245,8 @@ export class CombatTurnCalls {
         die,
         useExtraAction,
         frenzy,
+        spend,
+        healTarget,
         endState,
       ],
       (sent) =>
@@ -258,6 +262,10 @@ export class CombatTurnCalls {
           frenzy,
           // The card of a table state: true ends the state that is on ("Encerrar"), false starts it ("Ativar").
           endState,
+          // A table feature that lets the player choose how many points to spend (0 takes the cost); the server checks the range.
+          spend,
+          // The ally a healing action goes to; empty is the actor.
+          healTargetCombatantId: healTarget,
           roll: !die
             ? { case: undefined }
             : 'inApp' in die
@@ -266,7 +274,13 @@ export class CombatTurnCalls {
         }),
       key,
     );
-    return { encounter: need(res.encounter, 'TakeAction'), roll: res.roll, healed: res.healed };
+    return {
+      encounter: need(res.encounter, 'TakeAction'),
+      roll: res.roll,
+      healed: res.healed,
+      spent: res.spent,
+      tempHpGained: res.tempHpGained,
+    };
   }
 
   /** "Desfazer última ação": `expectedEventId` is the log's undoable event. */

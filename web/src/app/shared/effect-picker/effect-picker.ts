@@ -4,6 +4,10 @@ import { MatIconModule } from '@angular/material/icon';
 import {
   EFFECT_FIELD_HINTS,
   EFFECT_FIELD_LABELS,
+  EFFECT_TYPE_FIELD_HINTS,
+  EFFECT_TYPE_FIELD_LABELS,
+} from '../../core/content/effect-field-copy';
+import {
   type EffectDraft,
   type EffectMenuVm,
   emptyEffect,
@@ -103,15 +107,17 @@ export class EffectPicker {
   }
 
   protected labelOf(f: EffectMenuField): string {
-    // The resource an action spends is the same proto field as a resource's own name.
-    if (f.kind === 'resource_ref') {
-      return 'Gasta um uso de';
+    const typed = EFFECT_TYPE_FIELD_LABELS[this.effect().type]?.[f.name];
+    if (typed) {
+      return typed;
     }
-    // A pseudo-weapon names its kind, its ability and its reach in the words of an attack.
-    return (
-      (this.effect().type === 'pseudo_weapon' && PSEUDO_LABELS[f.name]) ||
-      (EFFECT_FIELD_LABELS[f.name] ?? f.name)
-    );
+    // The resource an action spends is the same proto field as a resource's own name; a hook's `restore` gives back.
+    if (f.kind === 'resource_ref') {
+      return this.effect().type === 'on_event'
+        ? (RESOURCE_REF_LABEL_HOOK[f.name] ?? 'Gasta usos de')
+        : 'Gasta usos de';
+    }
+    return EFFECT_FIELD_LABELS[f.name] ?? f.name;
   }
 
   /** The hint of a field that is not showing a refusal: written beside it. */
@@ -120,7 +126,8 @@ export class EffectPicker {
   }
 
   protected hintOf(f: EffectMenuField): string {
-    const own = EFFECT_FIELD_HINTS[f.name] ?? '';
+    const own =
+      EFFECT_TYPE_FIELD_HINTS[this.effect().type]?.[f.name] ?? EFFECT_FIELD_HINTS[f.name] ?? '';
     if (f.name === 'count' && f.max > 0) {
       return `De ${f.min} a ${f.max}.`;
     }
@@ -128,10 +135,14 @@ export class EffectPicker {
       return this.menu().tagHint();
     }
     if (f.kind === 'formula') {
-      return this.menu().formulaHint();
+      return own ? `${own} ${this.menu().formulaHint()}` : this.menu().formulaHint();
     }
     if (f.kind === 'resource_ref') {
-      return 'O nome de um recurso que esta entrada define (o campo "Nome do recurso" de um efeito Recurso). Cada uso gasta 1; sem usos, a ação fica desligada.';
+      // `uses` has its own sentence (an empty resource is at will, not a disabled action), as `restore` does
+      if (this.effect().type === 'state') {
+        return 'O nome de um recurso que esta entrada define (o campo "Nome do recurso" de um efeito Recurso). Cada vez que o estado liga, gasta 1 uso; sem usos, o cartão fica desligado.';
+      }
+      return OWN_HINT_REFS.has(f.name) ? own : RESOURCE_REF_HINT;
     }
     if (f.kind === 'state_ref') {
       return this.stateRefHint(f);
@@ -159,6 +170,9 @@ export class EffectPicker {
 
   /** The options of a closed list, with the menu's one-line explanation of each. */
   protected optionsOf(f: EffectMenuField): (SelectOption & { hint: string })[] {
+    if (f.name === 'spell') {
+      return this.spellOptions().map((o) => ({ ...o, hint: '' }));
+    }
     const menu = this.menu();
     const list =
       f.name === 'from' && f.list === ''
@@ -258,13 +272,16 @@ export class EffectPicker {
   }
 }
 
-/** The labels a pseudo-weapon gives the fields it shares with other types. */
-const PSEUDO_LABELS: Readonly<Record<string, string>> = {
-  weapon: 'Tipo de ataque',
-  ability: 'Habilidade do ataque',
-  reach_ft: 'Alcance de contato',
-  range_ft: 'Alcance (à distância)',
+/** The labels of a hook's two resource fields: the one it spends and the one it gives back. */
+const OWN_HINT_REFS: ReadonlySet<string> = new Set(['restore', 'uses']);
+
+const RESOURCE_REF_LABEL_HOOK: Readonly<Record<string, string>> = {
+  resource: 'Gasta usos de',
+  restore: 'Devolve usos de',
 };
+
+const RESOURCE_REF_HINT =
+  'O nome de um recurso que esta entrada define (o campo "Nome do recurso" de um efeito Recurso). Gasta o custo (1 se vazio); sem usos o bastante, a ação fica desligada.';
 
 /** "text_pt" → "textPt": the draft's key for a proto field. */
 function camel(name: string): keyof EffectDraft {

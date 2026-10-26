@@ -49,6 +49,13 @@ A feat that lets the player choose never offers an ability at 20 (`FeatOption.Ca
 A feat taken in place of an improvement is recorded in `Build.FeatSlots`: the sheet lists it as "Talento · Classe nível" and no longer lists the improvement it replaced.
 Whether the table allows feats (`tablerules.Rules.FeatsAllowed`) is for the server to check.
 
+**Swapping a pick at an improvement.**
+`LevelUpOffer.PickSwaps` (`levelup_swap.go`) lists, at a level with an Ability Score Improvement, the groups with something to swap: `cantrip` (the class's cantrips and the other cantrips of its list), and the option sets `fighting_style`, `metamagic`, `invocation` and `pact_boon`.
+A group's pool is the options of the features that offered the picks (a fighter's styles, not the paladin's), the table's options included, without the picks the sheet has; a warlock's offer leaves out `invocation` because its own swap covers it.
+`LevelUpChoices.Swap` gives up `From` for `To`: `ApplyLevelUp` removes one and adds the other, and `CheckLevelUp` finds the swap by the pick the new sheet lost (`swapOf`), lets that one removal through (the cantrip count rises by one) and judges the new pick like any other: the choice engine's `prerequisite` and `not_offered` problems, the spell list.
+A pick lost with nothing in its place is still "an option was removed".
+Whether the table plays with the swap (`tablerules.Rules.PickSwapAllowed`) is for the server to check, as for feats: `GetLevelUpOptions` leaves `swap_groups` empty and `LevelUpCharacter` refuses with `SWAP_NOT_ALLOWED` (`choices.swap_pick`).
+
 ## Multiclassing at level-up
 
 SRD 5.1 "Multiclassing", in `levelup_multiclass.go`.

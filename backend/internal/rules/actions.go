@@ -22,6 +22,14 @@ const (
 	RechargeLongRest  = "long_rest"
 	RechargeDawn      = "dawn"
 	RechargeNone      = "none"
+	// RechargeInitiative gives back one use when the owner rolls initiative, only
+	// when none is left.
+	RechargeInitiative = "initiative"
+	// RechargeRestoreOneShort gives back one use on a short rest and all of them on
+	// a long rest; RechargeRestoreOneLong gives back one use on a long rest and none
+	// on a short one.
+	RechargeRestoreOneShort = "restore_one_on_short_rest"
+	RechargeRestoreOneLong  = "restore_one_on_long_rest"
 )
 
 // Resource is a use-limited feature at the character's level: Second Wind
@@ -62,6 +70,14 @@ type Action struct {
 	// and without the resource that starting it spends.
 	State       string `json:",omitempty"`
 	StateActive bool   `json:",omitempty"`
+	// Cost is how many uses of Resource each use of the action spends, from the
+	// grant_action effect's cost (1 when the effect has none); CostMax, when above
+	// Cost, is the most the player may spend on one use, and the use asks how many.
+	// Both are 0 for an action with no Resource. See actionspend.go.
+	Cost    int `json:",omitempty"`
+	CostMax int `json:",omitempty"`
+	// Result is what a use of the action gives: hit points regained, temporary hit points.
+	Result ActionResult `json:",omitzero"`
 }
 
 // featureStandards are the features whose action is a standard action taken
@@ -143,6 +159,7 @@ func (x *deriver) resourcesAndActions() {
 		x.grantAction(a)
 	}
 	x.states()
+	x.hooks()
 }
 
 // extraAttacks sets AttacksPerAction from the extra_attack effects: the
@@ -216,6 +233,7 @@ func (x *deriver) grantAction(a activeEffect) {
 		}
 		act.Resource = spent
 	}
+	x.costAndResult(&act, a)
 	for _, route := range x.routes(act, a.effect.TextPT) {
 		if !slices.ContainsFunc(x.d.Actions, func(o Action) bool { return o.Key == route.Key && o.Economy == route.Economy }) {
 			x.d.Actions = append(x.d.Actions, route)

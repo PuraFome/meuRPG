@@ -64,6 +64,10 @@ type vitalsMax struct {
 	conMod int
 	// resources are the class and race resources the sheet has at its level.
 	resources []rules.Resource
+	// hooks are the character's on_event effects, for its level.
+	hooks []rules.EventHook
+	// hookNames are the Portuguese names of the features that have the hooks, by key.
+	hookNames map[string]string
 	// states are the temporary states the sheet defines, with the ones that are on marked.
 	states []rules.State
 	// beast is the Wild Shape form the character is in (MR-037): its content key,
@@ -85,7 +89,7 @@ func maxima(content *rules.Content, characterID string, doc []byte, beast *strin
 		return vitalsMax{}, nil
 	}
 	d := rules.Derive(buildWithStates(full, stateKeysOf(active)), content)
-	m := vitalsMax{hitPoints: max(d.HitPointsMax, 0), hitDice: d.HitDice, resources: d.Resources, songSides: d.SongOfRestSides, states: d.States}
+	m := vitalsMax{hitPoints: max(d.HitPointsMax, 0), hitDice: d.HitDice, resources: d.Resources, songSides: d.SongOfRestSides, states: d.States, hooks: d.Hooks, hookNames: hookNamesOf(content, d.Hooks)}
 	if b, ok := content.MonsterDerived(conv.OrZero(beast)); ok && beast != nil {
 		m.beast, m.beastNamePT, m.beastMax = *beast, content.NamePT(*beast), max(b.HitPointsMax, 1)
 	}
@@ -111,6 +115,18 @@ func maxima(content *rules.Content, characterID string, doc []byte, beast *strin
 		}
 	}
 	return m, nil
+}
+
+// hookNamesOf are the Portuguese names of the features that have the hooks, by key; nil without hooks.
+func hookNamesOf(content *rules.Content, hooks []rules.EventHook) map[string]string {
+	if len(hooks) == 0 {
+		return nil
+	}
+	names := make(map[string]string, len(hooks))
+	for _, h := range hooks {
+		names[h.Source] = content.NamePT(h.Source)
+	}
+	return names
 }
 
 // liveFamiliar forgets the sight of a familiar that is not with the character any

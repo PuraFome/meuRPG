@@ -22,7 +22,7 @@ import { TYPED_MAX } from './riddle-board';
   imports: [LimitCounters, MatButtonModule, MatFormFieldModule, MatIconModule, MatInputModule],
   template: `
     <section class="letter" aria-labelledby="cb-letter">
-      <h3 class="title" id="cb-letter">{{ mode() === 'play' ? 'A carta, como está' : 'Os jogadores veem' }}</h3>
+      <h3 class="title" id="cb-letter">{{ title() }}</h3>
       <p class="cipher" lang="pt">{{ ciphertext() }}</p>
     </section>
     @if (mode() === 'play') {
@@ -166,6 +166,14 @@ export class CipherBoard {
   /** The ciphered message as the players read it (the server's work). */
   readonly ciphertext = input.required<string>();
   readonly mode = input<'play' | 'view'>('view');
+  /** The reader is a player (the card they solved is still their letter); the master's card says what the players see. */
+  readonly player = input(false);
+  protected readonly title = computed(() => {
+    if (this.mode() === 'play') {
+      return 'A carta, como está';
+    }
+    return this.player() ? 'A carta' : 'Os jogadores veem';
+  });
   readonly verdict = input<'' | 'wrong'>('');
   readonly blocked = input('');
   readonly busy = input(false);

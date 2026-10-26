@@ -60,7 +60,7 @@ func (c *content) loadDamageResistances(fsys fs.FS) error {
 // checkResistance says what is wrong with a resistance of the file, or "":
 // its key, its damage types, then when it holds.
 func (c *content) checkResistance(key string, damageTypes []string, while string) string {
-	if !strings.HasPrefix(key, "feature:") && !strings.HasPrefix(key, "trait:") || !c.exists(key) {
+	if !strings.HasPrefix(key, featureKeyPrefix) && !strings.HasPrefix(key, "trait:") || !c.exists(key) {
 		return "not a feature or a trait of the content"
 	}
 	if len(damageTypes) == 0 {

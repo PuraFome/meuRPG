@@ -202,11 +202,6 @@ func (x *deriver) stateRounds(a activeEffect) int {
 	return min(max(n, 0), MaxStateRounds)
 }
 
-// hasResource says the character has the resource at this level.
-func (x *deriver) hasResource(key string) bool {
-	return slices.ContainsFunc(x.d.Resources, func(r Resource) bool { return r.Key == key })
-}
-
 // stateAction is the card of a state: it starts it with the economy and the resource
 // its effect says, and, while it is on, ends it for free (when the player may dismiss
 // it). Both are the same action, keyed by the state.

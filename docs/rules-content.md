@@ -46,9 +46,10 @@ The history of what each revision changed is `git log` on `effects/revision.json
 
 - **Effect types are closed**, and loading refuses everything else. The effect types, modifier targets, modes, senses and handlers are the `effectTypes` and neighbouring lists in `backend/internal/rules/effects.go`; the limits are the constants below them. Content can only name a handler; it never brings code.
 - **Formulas** use only `level()`, `classLevel("wizard")`, `mod("int")`, `score("int")`, `prof()`, `armor()`, `shield()`, `floor`, `ceil`, `min` and `max`, and, in a condition of table content, `active("name")` (`backend/internal/rules/formula`). `FuzzCompileFormula` guards the compiler.
-- **Resources** may carry `recharge_if` (a Bool formula) and `recharge_then` together, to recharge differently from a level on. A `modifier` on a score (`score.str`...) is an `add` with a `cap` above 20. `save.all` is a modifier target.
+- **Resources** recharge as `short_rest`, `long_rest`, `dawn`, `none`, `initiative`, `restore_one_on_short_rest` or `restore_one_on_long_rest`, and may carry `recharge_if` (a Bool formula) and `recharge_then` together, to recharge differently from a level on. A `modifier` on a score (`score.str`...) is an `add` with a `cap` above 20. `save.all` is a modifier target.
 - **`replaces`**, on a higher tier of a scaling feature (Channel Divinity twice between rests, Extra Attack 2, the Bardic Inspiration die...), names the lower tier's feature key: the sheet lists only the newest tier, while the lower one's effects still count. It takes that key and nothing else.
-- **`grant_action`** may carry `resource`, the key of a resource of another feature that each use spends (the monk's ki actions); without that resource at the character's level the action is not offered.
+- **`grant_action`** may carry `resource`, the key of a resource of another feature that each use spends (the monk's ki actions); without that resource at the character's level the action is not offered. Table content may add `cost`, `cost_max`, `value_per_point`, `heal`, `temp_hp` and `ability` (see [Costs, healing actions and hooks](architecture/rules-table-content.md#costs-healing-actions-and-hooks)); the SRD's own effects use none of them.
+- **`on_event`** is table content's alone: a hook of the owner on `short_rest`, `long_rest`, `death_save_failed` or `drop_to_zero`.
 - **`wild_shape`** is the druid's effect, with `max_cr`, `no_fly` and `no_swim`; loading refuses other fields and a `max_cr` that is not a CR.
 
 ## The effect files

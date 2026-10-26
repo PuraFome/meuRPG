@@ -81,6 +81,10 @@ type Env struct {
 	// "medium" or "heavy". Shield says whether a shield is carried.
 	Armor  func() string `expr:"armor"`
 	Shield func() bool   `expr:"shield"`
+	// SpeedWalk is the walking speed in feet after every modifier. It is 0
+	// while the walking speed itself is worked out, so only the other speeds
+	// may read it.
+	SpeedWalk func() int `expr:"speedwalk"`
 	// Active says whether the state of the effect's entry with this name is on for
 	// the character (a gate: only a compiler made with WithStates accepts the call).
 	Active func(name string) bool `expr:"active"`
@@ -472,7 +476,7 @@ func (c *Compiler) checkCall(n *ast.CallNode) error {
 	switch callee.Value {
 	case "active":
 		return c.checkActive(n)
-	case "level", "prof", "armor", "shield":
+	case "level", "prof", "armor", "shield", "speedwalk":
 	case "mod", "score":
 		literals, arity = abilities, 1
 	case "classLevel":

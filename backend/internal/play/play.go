@@ -266,6 +266,10 @@ type CombatRoster interface {
 	// spellcasting modifier. It does not check that the character may cast it
 	// (CombatTurnOptions does). `not_found` for any other character or spell.
 	CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, characterID, spellKey string, slotLevel int, damageType string) (link.Spell, error)
+	// GrantedCombatSpell is CombatSpell for a spell cast through the granted_spell effect of
+	// the trait, feat or feature `source`: the attack bonus, the save DC and the healing
+	// modifier are the grant's own. `not_found` for a character without that grant.
+	GrantedCombatSpell(ctx context.Context, tx pgx.Tx, campaignID, characterID, spellKey, source string, slotLevel int, damageType string) (link.Spell, error)
 	// CombatSave returns the character's saving throw bonus for an ability
 	// ("dex"). A basic-sheet NPC has none: Known is false.
 	CombatSave(ctx context.Context, tx pgx.Tx, campaignID, characterID, ability string) (link.Save, error)

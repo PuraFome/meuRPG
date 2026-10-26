@@ -175,6 +175,8 @@ type Sheet struct {
 	Senses Senses
 	// Traits are the features the rolls and the damage of a combat read.
 	Traits Traits
+	// Hooks are the character's on_event effects (a failed death save, dropping to 0 hit points).
+	Hooks []Hook
 }
 
 // Maneuver is a die a table option adds to a roll, spent from a resource (the
@@ -350,12 +352,37 @@ type FeatureAction struct {
 	// Standard is the standard action it performs ("standard:dash" for Cunning
 	// Action's Dash), or "".
 	Standard string
+	// Cost is the uses each use spends (0: one) and CostMax the most the player may choose to
+	// spend (0: the cost is fixed); the table's content sets them.
+	Cost, CostMax int
+	// Heal is the dice the action heals, nil for none, HealPerPoint what each point above the
+	// cost adds to it; TempHP is the temporary hit points it gives and TempHPPerPoint what each
+	// point above the cost adds.
+	Heal                   *Dice
+	HealPerPoint           Dice
+	TempHP, TempHPPerPoint int
 	// State is the key of the state the action starts or ends (rules.Action.State), or "";
 	// StateActive says the state is on, so taking the action ends it.
 	State       string `json:",omitempty"`
 	StateActive bool   `json:",omitempty"`
 	// StateRounds is how many rounds the state lasts once started, 0 until it ends.
 	StateRounds int `json:",omitempty"`
+}
+
+// Hook is an on_event effect of the character (rules.EventHook): what the hook of an event gives,
+// and the resource it spends. Source is the key of the feature that has it and SourceNamePT its name.
+type Hook struct {
+	Event, Source, SourceNamePT string
+	// Heal is the dice regained, HealPercentMax the share of the maximum, TempHP the temporary hit points.
+	Heal           *Dice
+	HealPercentMax int
+	TempHP         int
+	// Restore is the resource whose uses come back and RestoreCount how many.
+	Restore      string
+	RestoreCount int
+	// Spends is the resource the hook costs and SpendCount how many uses: it runs only with that many left.
+	Spends     string
+	SpendCount int
 }
 
 // Dice is a roll: Count d Sides plus Bonus (Count 0 is a flat number), with the

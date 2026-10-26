@@ -46,6 +46,7 @@
     "LateChoices": null,
     "NewChoices": null,
     "CanSwapInvocation": false,
+    "PickSwaps": null,
     "ProficiencyBonusBefore": 2,
     "ProficiencyBonusAfter": 2,
     "SlotsBefore": [
@@ -114,6 +115,7 @@
     "LateChoices": null,
     "NewChoices": null,
     "CanSwapInvocation": false,
+    "PickSwaps": null,
     "ProficiencyBonusBefore": 4,
     "ProficiencyBonusAfter": 4,
     "SlotsBefore": [
@@ -219,6 +221,7 @@
     "LateChoices": null,
     "NewChoices": null,
     "CanSwapInvocation": false,
+    "PickSwaps": null,
     "ProficiencyBonusBefore": 2,
     "ProficiencyBonusAfter": 2,
     "SlotsBefore": [
@@ -585,6 +588,40 @@
     "LateChoices": null,
     "NewChoices": null,
     "CanSwapInvocation": false,
+    "PickSwaps": [
+      {
+        "Group": "fighting_style",
+        "NamePT": "Estilo de luta",
+        "Picks": [
+          {
+            "Key": "feature:fighter-fighting-style-defense",
+            "NamePT": "Estilo de Luta: Defesa"
+          }
+        ],
+        "Pool": [
+          {
+            "Key": "feature:fighter-fighting-style-archery",
+            "NamePT": "Estilo de Luta: Arquearia"
+          },
+          {
+            "Key": "feature:fighter-fighting-style-dueling",
+            "NamePT": "Estilo de Luta: Duelismo"
+          },
+          {
+            "Key": "feature:fighter-fighting-style-great-weapon-fighting",
+            "NamePT": "Estilo de Luta: Combate com Armas Grandes"
+          },
+          {
+            "Key": "feature:fighter-fighting-style-protection",
+            "NamePT": "Estilo de Luta: Proteção"
+          },
+          {
+            "Key": "feature:fighter-fighting-style-two-weapon-fighting",
+            "NamePT": "Estilo de Luta: Combate com Duas Armas"
+          }
+        ]
+      }
+    ],
     "ProficiencyBonusBefore": 2,
     "ProficiencyBonusAfter": 2,
     "SlotsBefore": [
@@ -811,6 +848,7 @@
     "LateChoices": null,
     "NewChoices": null,
     "CanSwapInvocation": false,
+    "PickSwaps": null,
     "ProficiencyBonusBefore": 3,
     "ProficiencyBonusAfter": 3,
     "SlotsBefore": [
@@ -886,6 +924,7 @@
     "LateChoices": null,
     "NewChoices": null,
     "CanSwapInvocation": false,
+    "PickSwaps": null,
     "ProficiencyBonusBefore": 3,
     "ProficiencyBonusAfter": 3,
     "SlotsBefore": [
@@ -987,6 +1026,7 @@
     "LateChoices": null,
     "NewChoices": null,
     "CanSwapInvocation": false,
+    "PickSwaps": null,
     "ProficiencyBonusBefore": 2,
     "ProficiencyBonusAfter": 2,
     "SlotsBefore": [
@@ -1198,6 +1238,7 @@
     "LateChoices": null,
     "NewChoices": null,
     "CanSwapInvocation": true,
+    "PickSwaps": null,
     "ProficiencyBonusBefore": 2,
     "ProficiencyBonusAfter": 3,
     "SlotsBefore": [
@@ -1310,6 +1351,72 @@
     "LateChoices": null,
     "NewChoices": null,
     "CanSwapInvocation": false,
+    "PickSwaps": [
+      {
+        "Group": "cantrip",
+        "NamePT": "Truque",
+        "Picks": [
+          {
+            "Key": "spell:fire-bolt",
+            "NamePT": "Raio de Fogo"
+          },
+          {
+            "Key": "spell:ray-of-frost",
+            "NamePT": "Raio de Gelo"
+          },
+          {
+            "Key": "spell:minor-illusion",
+            "NamePT": "Ilusão Menor"
+          }
+        ],
+        "Pool": [
+          {
+            "Key": "spell:acid-splash",
+            "NamePT": "Espirro Ácido"
+          },
+          {
+            "Key": "spell:chill-touch",
+            "NamePT": "Toque Arrepiante"
+          },
+          {
+            "Key": "spell:dancing-lights",
+            "NamePT": "Globos de Luz"
+          },
+          {
+            "Key": "spell:light",
+            "NamePT": "Luz"
+          },
+          {
+            "Key": "spell:mage-hand",
+            "NamePT": "Mãos Mágicas"
+          },
+          {
+            "Key": "spell:mending",
+            "NamePT": "Consertar"
+          },
+          {
+            "Key": "spell:message",
+            "NamePT": "Mensagem"
+          },
+          {
+            "Key": "spell:poison-spray",
+            "NamePT": "Rajada de Veneno"
+          },
+          {
+            "Key": "spell:prestidigitation",
+            "NamePT": "Prestidigitação"
+          },
+          {
+            "Key": "spell:shocking-grasp",
+            "NamePT": "Toque Chocante"
+          },
+          {
+            "Key": "spell:true-strike",
+            "NamePT": "Ataque Certeiro"
+          }
+        ]
+      }
+    ],
     "ProficiencyBonusBefore": 2,
     "ProficiencyBonusAfter": 2,
     "SlotsBefore": [

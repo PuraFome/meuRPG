@@ -18,7 +18,7 @@ import (
 var overlayEffectTypes = []string{
 	"modifier", "proficiency", "resource", "sense", "roll_mode", "grant_action",
 	"superiority_die", "extra_attack", "extra_damage", "ambush", "ranged_attack", "resistance", "state", "weapon_rule", "pseudo_weapon",
-	"choice", "ability_increase", "note",
+	"breathes_water", "granted_spell", "on_event", "choice", "ability_increase", "note",
 }
 
 // overlayChoiceKinds are the choices a table feature may offer. The subclass and
@@ -55,7 +55,7 @@ func (b *overlayBuilder) addFeature(f *TableFeature, k featureKind, path string)
 	b.n.namesEN[f.Key] = f.NamePT
 	b.n.namesPT[f.Key] = f.NamePT
 	switch k.prefix {
-	case "feature:":
+	case featureKeyPrefix:
 		if err := b.writeFeature(f, k, effects, path); err != nil {
 			return err
 		}
@@ -94,7 +94,7 @@ func (b *overlayBuilder) featureOptions(f *TableFeature, k featureKind, path str
 	if len(f.Options) == 0 {
 		return f.Effects, nil
 	}
-	if k.prefix != "feature:" {
+	if k.prefix != featureKeyPrefix {
 		return nil, ovErr(f.Key, "only a class or subclass feature has an option list").at(path+".options", ReasonEffect)
 	}
 	if len(f.Options) > MaxFeatureOptions {
@@ -169,7 +169,7 @@ func (b *overlayBuilder) writeTrait(f *TableFeature, k featureKind) {
 func (b *overlayBuilder) know(key string, k featureKind) {
 	if b.featureEntry == nil {
 		b.featureEntry, b.featureClass, b.optionEntry = map[string]string{}, map[string]string{}, map[string]string{}
-		b.resources = map[string]map[string]bool{}
+		b.resources, b.resourceMax = map[string]map[string]bool{}, map[string]map[string]string{}
 	}
 	b.featureEntry[key], b.featureClass[key] = k.owner, k.class
 }
@@ -185,6 +185,10 @@ func (b *overlayBuilder) declareResources(k featureKind, effects []Effect) {
 			b.resources[k.owner] = map[string]bool{}
 		}
 		b.resources[k.owner][effects[i].Resource] = true
+		if b.resourceMax[k.owner] == nil {
+			b.resourceMax[k.owner] = map[string]string{}
+		}
+		b.resourceMax[k.owner][effects[i].Resource] = effects[i].Max
 	}
 }
 
@@ -201,7 +205,7 @@ func (b *overlayBuilder) addOptions(f *TableFeature, k featureKind, path string)
 		if len(o.Options) > 0 {
 			return nil, ovErr(o.Key, "an option does not have options of its own").at(at+".options", ReasonValue)
 		}
-		if err := checkTableKey("feature:", o.Key); err != nil {
+		if err := checkTableKey(featureKeyPrefix, o.Key); err != nil {
 			return nil, locate(err, at)
 		}
 		if err := b.claim(o.Key); err != nil {
@@ -265,27 +269,37 @@ func (b *overlayBuilder) checkEffect(owner, path string, e *Effect, strict bool)
 	return nil
 }
 
+// checkGrantedSpell checks the spell a granted_spell effect names and the resource it
+// spends: the spell is the SRD's or the table's, and the resource one the entry (or its
+// class) defines, so a grant never spends what no effect counts.
+func (b *overlayBuilder) checkGrantedSpell(site effectSite, e *Effect) error {
+	if e.Spell != "" && !b.isSpell(e.Spell) {
+		return site.fail(".spell", ReasonReference, "the granted spell %q is not in the content", e.Spell)
+	}
+	if e.Uses != "" && e.Uses != GrantedAtWill && !b.resourceDefined(site.owner, e.Uses) {
+		return site.fail(".uses", ReasonReference, "the grant spends %q, which no resource effect of this entry or its class defines", e.Uses)
+	}
+	return nil
+}
+
 // effectTypeChecks are what the table's menu checks of each effect type at its fields, once
 // the checks every effect goes through are done.
 var effectTypeChecks = map[string]func(b *overlayBuilder, site effectSite, e *Effect) error{
 	"state": func(b *overlayBuilder, site effectSite, e *Effect) error {
 		return b.checkState(site, b.featureEntry[site.owner], e)
 	},
-	"weapon_rule":   (*overlayBuilder).checkWeaponEffects,
-	"pseudo_weapon": (*overlayBuilder).checkWeaponEffects,
-	"choice":        (*overlayBuilder).checkChoiceEffect,
+	"weapon_rule":      (*overlayBuilder).checkWeaponEffects,
+	"pseudo_weapon":    (*overlayBuilder).checkWeaponEffects,
+	"choice":           (*overlayBuilder).checkChoiceEffect,
 	"ability_increase": func(_ *overlayBuilder, site effectSite, e *Effect) error { return checkOwnFields(site, e) },
 	"proficiency":      func(_ *overlayBuilder, site effectSite, e *Effect) error { return checkOwnFields(site, e) },
-	"grant_action": func(b *overlayBuilder, site effectSite, e *Effect) error {
-		if e.Resource != "" && !b.resourceDefined(site.owner, e.Resource) {
-			return site.fail(".resource", ReasonReference, "the action spends %q, which no resource effect of this entry or its class defines", e.Resource)
-		}
-		return nil
-	},
-	"superiority_die": (*overlayBuilder).checkSuperiorityDie,
-	"extra_damage":    (*overlayBuilder).checkOnTarget,
-	"ambush":          (*overlayBuilder).checkOnTarget,
-	"resource":        (*overlayBuilder).checkResourceEffect,
+	"grant_action":     (*overlayBuilder).checkGrantAction,
+	"on_event":         (*overlayBuilder).checkOnEvent,
+	"granted_spell":    (*overlayBuilder).checkGrantedSpell,
+	"superiority_die":  (*overlayBuilder).checkSuperiorityDie,
+	"extra_damage":     (*overlayBuilder).checkOnTarget,
+	"ambush":           (*overlayBuilder).checkOnTarget,
+	"resource":         (*overlayBuilder).checkResourceEffect,
 }
 
 // checkOwnFields checks the fields of an ability_increase or a proficiency
@@ -477,7 +491,10 @@ var ownFields = map[string][]string{
 	"resource":     {"resource", "max", "recharge"},
 	"choice":       {"choice", "count", "from"},
 	"extra_attack": {"count"},
-	"grant_action": {"economy", "resource"},
+	// A grant_action may cost several uses of its resource, let the player choose how many,
+	// and heal or give temporary hit points; an on_event is the owner's hook on an event.
+	"grant_action": {"economy", "resource", "cost", "cost_max", "value_per_point", "heal", "temp_hp", "ability"},
+	"on_event":     {"event", "resource", "cost", "restore", "value", "heal", "temp_hp", "heal_percent_max", "ability"},
 	"note":         {"value", "spells"},
 	// A superiority die is a feature option's (or a feature's) die from a resource.
 	"superiority_die": {"value", "resource", "economy", "applies", "ability"},
@@ -496,6 +513,10 @@ var ownFields = map[string][]string{
 	// A weapon rule changes the weapons its filter chooses; a pseudo-weapon is an attack line of its own.
 	"weapon_rule":   {"weapon", "weapon_name", "attack_ability", "damage_ability", "attack_bonus", "damage_bonus", "reach_ft", "while"},
 	"pseudo_weapon": {"attack_name", "weapon", "damage_dice", "damage_type", "ability", "reach_ft", "range_ft", "while"},
+	// breathes_water has no field of its own: only the when that gates it.
+	"breathes_water": {},
+	// A granted_spell names the spell, from which level, what it spends, and the switches.
+	"granted_spell": {"spell", "from_level", "uses", "ability", "also_with_slot", "ritual_only", "counts_as_known"},
 }
 
 // effectField is a field of an Effect a type may not read: its name in the
@@ -532,6 +553,14 @@ var effectFields = []effectField{
 	{"range_multiplier", func(e *Effect) bool { return e.RangeMultiplier != 0 }, func(e *Effect) { e.RangeMultiplier = 0 }},
 	{"no_long_range_disadvantage", func(e *Effect) bool { return e.NoLongRangeDisadvantage }, func(e *Effect) { e.NoLongRangeDisadvantage = false }},
 	{"only_proficient", func(e *Effect) bool { return e.OnlyProficient }, func(e *Effect) { e.OnlyProficient = false }},
+	{"cost", func(e *Effect) bool { return e.Cost != "" }, func(e *Effect) { e.Cost = "" }},
+	{"cost_max", func(e *Effect) bool { return e.CostMax != "" }, func(e *Effect) { e.CostMax = "" }},
+	{"value_per_point", func(e *Effect) bool { return e.ValuePerPoint != "" }, func(e *Effect) { e.ValuePerPoint = "" }},
+	{"heal", func(e *Effect) bool { return e.Heal != "" }, func(e *Effect) { e.Heal = "" }},
+	{"temp_hp", func(e *Effect) bool { return e.TempHP != "" }, func(e *Effect) { e.TempHP = "" }},
+	{"event", func(e *Effect) bool { return e.Event != "" }, func(e *Effect) { e.Event = "" }},
+	{"restore", func(e *Effect) bool { return e.Restore != "" }, func(e *Effect) { e.Restore = "" }},
+	{"heal_percent_max", func(e *Effect) bool { return e.HealPercentMax != 0 }, func(e *Effect) { e.HealPercentMax = 0 }},
 	{"except", func(e *Effect) bool { return e.Except != "" }, func(e *Effect) { e.Except = "" }},
 	{"while", func(e *Effect) bool { return e.While != "" }, func(e *Effect) { e.While = "" }},
 	{"progression", func(e *Effect) bool { return e.Progression != "" }, func(e *Effect) { e.Progression = "" }},
@@ -541,6 +570,12 @@ var effectFields = []effectField{
 	{"ritual", func(e *Effect) bool { return e.Ritual }, func(e *Effect) { e.Ritual = false }},
 	{"handler", func(e *Effect) bool { return e.Handler != "" }, func(e *Effect) { e.Handler = "" }},
 	{"max_cr", func(e *Effect) bool { return e.MaxCR != "" }, func(e *Effect) { e.MaxCR = "" }},
+	{"spell", func(e *Effect) bool { return e.Spell != "" }, func(e *Effect) { e.Spell = "" }},
+	{"from_level", func(e *Effect) bool { return e.FromLevel != "" }, func(e *Effect) { e.FromLevel = "" }},
+	{"uses", func(e *Effect) bool { return e.Uses != "" }, func(e *Effect) { e.Uses = "" }},
+	{"also_with_slot", func(e *Effect) bool { return e.AlsoWithSlot }, func(e *Effect) { e.AlsoWithSlot = false }},
+	{"ritual_only", func(e *Effect) bool { return e.RitualOnly }, func(e *Effect) { e.RitualOnly = false }},
+	{"counts_as_known", func(e *Effect) bool { return e.CountsAsKnown }, func(e *Effect) { e.CountsAsKnown = false }},
 	{"no_fly", func(e *Effect) bool { return e.NoFly }, func(e *Effect) { e.NoFly = false }},
 	{"no_swim", func(e *Effect) bool { return e.NoSwim }, func(e *Effect) { e.NoSwim = false }},
 	{"state_name", func(e *Effect) bool { return e.StateName != "" }, func(e *Effect) { e.StateName = "" }},
@@ -678,9 +713,29 @@ var effectErrorRules = []effectErrorRule{
 		return attr
 	}, ReasonValue},
 	{[]string{"unknown economy"}, fieldAttr(".economy"), ReasonValue},
+	{[]string{"needs a result"}, fieldAttr(".type"), ReasonValue},
+	{[]string{"cost_max is below", "cost_max needs", "cost_max must", "a hook has a fixed cost"}, fieldAttr(".cost_max"), ReasonValue},
+	{[]string{"cost needs", "cost must"}, fieldAttr(".cost"), ReasonValue},
+	{[]string{"value_per_point"}, fieldAttr(".value_per_point"), ReasonValue},
+	{[]string{"heal_percent_max"}, fieldAttr(".heal_percent_max"), ReasonValue},
+	{[]string{"heal is dice"}, fieldAttr(".heal"), ReasonValue},
+	{[]string{"unknown ability", "ability goes with"}, fieldAttr(".ability"), ReasonValue},
+	{[]string{"unknown event"}, fieldAttr(".event"), ReasonValue},
+	{[]string{"value goes with restore"}, fieldAttr(".value"), ReasonValue},
 	{[]string{"extra_attack needs"}, fieldAttr(".count"), ReasonValue},
 	{[]string{"empty tag"}, fieldAttr(".tags"), ReasonValue},
 	{[]string{"unknown spell"}, fieldAttr(".spells"), ReasonReference},
+	{[]string{"the granted spell"}, fieldAttr(".spell"), ReasonReference},
+	{[]string{"uses must be"}, fieldAttr(".uses"), ReasonValue},
+	{[]string{"ability must be"}, fieldAttr(".ability"), ReasonValue},
+	{[]string{"ritual_only needs"}, fieldAttr(".ritual_only"), ReasonValue},
+	{[]string{"ritual_only and also_with_slot"}, fieldAttr(".also_with_slot"), ReasonValue},
+	{[]string{"speedwalk() belongs"}, func(e *Effect, _ func(...string) bool) string {
+		if strings.Contains(e.Value, "speedwalk") {
+			return ".value"
+		}
+		return ".when"
+	}, ReasonFormula},
 	{[]string{"is not a damage type"}, fieldAttr(".except"), ReasonReference},
 	{[]string{"while must be"}, fieldAttr(".while"), ReasonValue},
 	{[]string{"a resistance has no when"}, fieldAttr(".when"), ReasonValue},
@@ -690,7 +745,17 @@ var effectErrorRules = []effectErrorRule{
 // formulaAttr is the field whose formula a compile error names (".when", ".value"
 // or ".max"), "" when it names none of them. has says whether the error says a word.
 func formulaAttr(e *Effect, has func(words ...string) bool) string {
-	for _, f := range []struct{ name, src string }{{"when", e.When}, {"value", e.Value}, {"max", e.Max}, {"duration_rounds", e.DurationRounds}} {
+	for _, f := range []struct{ name, src string }{
+		{"when", e.When},
+		{"value", e.Value},
+		{"max", e.Max},
+		{"duration_rounds", e.DurationRounds},
+		{"from_level", e.FromLevel},
+		{"cost", e.Cost},
+		{"cost_max", e.CostMax},
+		{"temp_hp", e.TempHP},
+		{"value_per_point", e.ValuePerPoint},
+	} {
 		if f.src != "" && has("formula "+strconv.Quote(f.src)) {
 			return "." + f.name
 		}

@@ -39,6 +39,8 @@ export interface RulesDraft {
   readonly enemyReactions: EnemyReactionsRule;
   /** Whether the player who rolls a saving throw also reads its DC (the master and the caster's player always do). */
   readonly showSaveDc: boolean;
+  /** "Trocar uma escolha no aumento de atributo": whether that level may also swap one earlier pick for another of its group. */
+  readonly pickSwapAllowed: boolean;
   readonly houseRules: readonly string[];
 }
 
@@ -115,6 +117,7 @@ export function draftFromRules(rules: RulesMessage): RulesDraft {
     ...tableDraftPart(rules),
     ...abilityDraftPart(rules?.abilityMethods),
     ...playDraftPart(rules),
+    pickSwapAllowed: rules?.pickSwapAllowed ?? false,
   };
 }
 
@@ -171,6 +174,7 @@ export function changeCount(draft: RulesDraft, saved: RulesDraft): number {
     'featsAllowed',
     'enemyReactions',
     'showSaveDc',
+    'pickSwapAllowed',
   ];
   for (const key of scalar) {
     if (draft[key] !== saved[key]) {
@@ -277,6 +281,7 @@ export class TableRulesClient {
         featsAllowed: d.featsAllowed,
         enemyReactions: d.enemyReactions,
         showSaveDc: d.showSaveDc,
+        pickSwapAllowed: d.pickSwapAllowed,
         houseRules: [...d.houseRules],
       },
     });

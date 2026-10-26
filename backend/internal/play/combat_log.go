@@ -677,6 +677,9 @@ func (e *logEntry) view(ctx context.Context, v combatViewer, byID map[string]pla
 	if !e.fill(c, out) {
 		return nil, false
 	}
+	if out.GetDamage().GetHook() != nil { // the event keeps the key of the feature; the line names it
+		out.Damage.Hook.SourceNamePt = names.contentName(ctx, out.Damage.Hook.GetSource())
+	}
 	return out, true
 }
 
@@ -961,10 +964,12 @@ func (e *logEntry) attackDice(out *playv1.CombatLogEntry, v combatViewer) {
 }
 
 func (e *logEntry) fillAction(c *logViewing, out *playv1.CombatLogEntry) bool {
-	if e.ev.Heal && (c.v.master || c.v.owns(c.actor)) { // Retomar o fôlego: only the master and its own player see the numbers
+	if (e.ev.Heal || e.ev.TempTried) && (c.v.master || c.v.owns(c.actor)) { // Retomar o fôlego: only the master and its own player see the numbers
 		out.Damage = &playv1.CombatLogDamage{
-			Status: playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED, Healing: true, Amount: e.ev.Amount,
-			Roll: diceRoll(e.ev.DiceCount, e.ev.DiceSides, e.ev.Faces, e.ev.Modifier, e.ev.Total, e.ev.Physical),
+			Status: playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED, Healing: true, Amount: e.ev.Amount, TempHpGained: e.ev.TempGained,
+		}
+		if e.ev.Heal {
+			out.Damage.Roll = diceRoll(e.ev.DiceCount, e.ev.DiceSides, e.ev.Faces, e.ev.Modifier, e.ev.Total, e.ev.Physical)
 		}
 	}
 	if e.ev.Channel != nil && (c.v.master || c.v.owns(c.actor)) { // Canalizar Divindade: the numbers are the master's and its player's
@@ -1042,6 +1047,9 @@ func (e *logEntry) fillDeathSave(c *logViewing, out *playv1.CombatLogEntry) bool
 	}
 	if v.master || v.owns(c.actor) {
 		out.DeathSave.Roll = deathRoll(e.ev)
+		if h := e.ev.Hook; h != nil {
+			out.DeathSave.Hook = hookProto(h, c.names.contentName(c.ctx, h.Source)) // what a hook gave is the owner's and the master's
+		}
 	}
 	return true
 }
@@ -1178,6 +1186,9 @@ func (d *damageLog) viewApplied(out *playv1.CombatLogDamage, v combatViewer, tar
 	ap := d.applied
 	out.Amount = ap.Amount
 	out.RelentlessEndurance = ap.Relentless
+	if v.master || v.owns(target) {
+		out.Hook = hookProto(ap.Hook, "") // what a drop_to_zero hook gave is the target's player's and the master's
+	}
 	if !v.hiddenFrom(ap.DeathHidden, target) { // a hit at 0 is a death save failure (RN-24)
 		out.DeathFailuresAdded = ap.FailuresAdded
 	}
@@ -1243,6 +1254,9 @@ func (e *logEntry) damageApplied(d *playv1.CombatLogDamage, master, targetsOwn, 
 	ap := e.applied
 	d.Amount = ap.Amount
 	d.RelentlessEndurance = ap.Relentless
+	if master || targetsOwn {
+		d.Hook = hookProto(ap.Hook, "")
+	}
 	if !ap.DeathHidden || targetsOwn { // a hit at 0 is a death save failure, which the table may keep to the owner and the master (RN-24)
 		d.DeathFailuresAdded = ap.FailuresAdded
 	}

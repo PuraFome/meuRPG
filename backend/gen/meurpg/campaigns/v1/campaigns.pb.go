@@ -2520,9 +2520,14 @@ type TableRules struct {
 	// else gains it: a player who does not roll never reads the DC. Every member reads
 	// it, only the master changes it, and the combat reads it when it builds each
 	// answer, so a change applies from the next one on. Read as sent by SetTableRules.
-	ShowSaveDc    bool `protobuf:"varint,12,opt,name=show_save_dc,json=showSaveDc,proto3" json:"show_save_dc,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ShowSaveDc bool `protobuf:"varint,12,opt,name=show_save_dc,json=showSaveDc,proto3" json:"show_save_dc,omitempty"`
+	// Whether a character may swap one earlier pick for another of the same group at each
+	// Ability Score Improvement level (a cantrip, a fighting style, a metamagic option, an
+	// invocation, a pact boon): a rule of the table, off by default. Read as sent by
+	// SetTableRules.
+	PickSwapAllowed bool `protobuf:"varint,13,opt,name=pick_swap_allowed,json=pickSwapAllowed,proto3" json:"pick_swap_allowed,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *TableRules) Reset() {
@@ -2635,6 +2640,13 @@ func (x *TableRules) GetEnemyReactions() EnemyReactionsRule {
 func (x *TableRules) GetShowSaveDc() bool {
 	if x != nil {
 		return x.ShowSaveDc
+	}
+	return false
+}
+
+func (x *TableRules) GetPickSwapAllowed() bool {
+	if x != nil {
+		return x.PickSwapAllowed
 	}
 	return false
 }
@@ -3280,7 +3292,7 @@ const file_meurpg_campaigns_v1_campaigns_proto_rawDesc = "" +
 	"\tpoint_buy\x18\x02 \x01(\bR\bpointBuy\x12\x1d\n" +
 	"\n" +
 	"rolled_4d6\x18\x03 \x01(\bR\trolled4d6\x12\x14\n" +
-	"\x05typed\x18\x04 \x01(\bR\x05typed\"\xcb\x05\n" +
+	"\x05typed\x18\x04 \x01(\bR\x05typed\"\xf7\x05\n" +
 	"\n" +
 	"TableRules\x12:\n" +
 	"\tdice_mode\x18\x01 \x01(\x0e2\x1d.meurpg.campaigns.v1.DiceModeR\bdiceMode\x123\n" +
@@ -3299,7 +3311,8 @@ const file_meurpg_campaigns_v1_campaigns_proto_rawDesc = "" +
 	" \x01(\x0e2&.meurpg.campaigns.v1.HiddenAreaHitRuleR\x0ehiddenAreaHits\x12P\n" +
 	"\x0fenemy_reactions\x18\v \x01(\x0e2'.meurpg.campaigns.v1.EnemyReactionsRuleR\x0eenemyReactions\x12 \n" +
 	"\fshow_save_dc\x18\f \x01(\bR\n" +
-	"showSaveDc\"\xe1\x01\n" +
+	"showSaveDc\x12*\n" +
+	"\x11pick_swap_allowed\x18\r \x01(\bR\x0fpickSwapAllowed\"\xe1\x01\n" +
 	"\x10TableStylePreset\x125\n" +
 	"\x05style\x18\x01 \x01(\x0e2\x1f.meurpg.campaigns.v1.TableStyleR\x05style\x12:\n" +
 	"\tdice_mode\x18\x02 \x01(\x0e2\x1d.meurpg.campaigns.v1.DiceModeR\bdiceMode\x123\n" +

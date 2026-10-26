@@ -237,7 +237,7 @@ enum ImageGenerationFailure {
   IMAGE_GENERATION_FAILURE_REFUSED = 2;
   // The service timed out, failed or could not be reached, also after the retry.
   IMAGE_GENERATION_FAILURE_UNAVAILABLE = 3;
-  // A picture came but the gallery had no room for it (the slot stays spent).
+  // A picture came but the gallery had no room for it (the slot stays spent: the gallery is the master's to clear).
   IMAGE_GENERATION_FAILURE_GALLERY_FULL = 4;
   // An image the request needed is gone (deleted meanwhile).
   IMAGE_GENERATION_FAILURE_IMAGE_MISSING = 5;
@@ -247,6 +247,11 @@ enum ImageGenerationFailure {
   // operator's problem). The slot is back. "O serviço de imagens não está
   // disponível."
   IMAGE_GENERATION_FAILURE_SERVICE_OFF = 7;
+  // The service's picture came but the server could not keep it (the file
+  // store or the database failed). The picture is lost and the slot is back:
+  // "A imagem foi feita, mas não deu para guardá-la. Tente de novo; esta não
+  // conta no seu limite."
+  IMAGE_GENERATION_FAILURE_STORAGE_FAILED = 8;
 }
 
 // ImageGeneration is one request to the model.
