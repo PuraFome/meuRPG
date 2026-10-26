@@ -18,14 +18,14 @@
 .panel__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 21px;
+  font-size: var(--mr-font-21);
   line-height: 26px;
   font-weight: 700;
   color: var(--mr-ink);
 }
 
 .panel__sub {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -55,7 +55,7 @@
   flex: none;
   width: 18px;
   height: 18px;
-  font-size: 18px;
+  font-size: var(--mr-font-18);
 }
 
 .fold__title {
@@ -64,6 +64,6 @@
 }
 
 .fold__status {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 500;
 }

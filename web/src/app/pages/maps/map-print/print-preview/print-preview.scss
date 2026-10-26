@@ -23,7 +23,7 @@
 }
 
 .preview__count {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -74,7 +74,7 @@
   border-radius: 6px;
   background: #1b202b;
   color: #fff;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   line-height: 20px;
   pointer-events: none;
@@ -82,7 +82,7 @@
   &--small {
     margin: 3px 0 0 3px;
     padding: 0 4px;
-    font-size: 13px;
+    font-size: var(--mr-font-13);
     line-height: 17px;
   }
 }
@@ -107,7 +107,7 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 20px;
   color: var(--mr-ink-muted);
 
@@ -125,7 +125,7 @@
     width: 18px;
     height: 18px;
     margin-top: 1px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 

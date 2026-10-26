@@ -14,13 +14,13 @@
   background: var(--mr-surface);
   border: 1px solid var(--mr-line);
   border-radius: var(--mr-radius-lg);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
 }
 
 .bonus__value {
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 28px;
+  font-size: var(--mr-font-28);
   line-height: 32px;
 }
 
@@ -35,7 +35,7 @@
   align-items: center;
   gap: 10px;
   min-height: 26px;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 20px;
 }
 
@@ -52,7 +52,7 @@
 }
 
 .row__ability {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
   text-decoration: none;
 }
@@ -105,12 +105,12 @@
 .passive__value {
   margin: 0;
   font-weight: 700;
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   line-height: 28px;
 }
 
 .passive__label {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 16px;
   color: var(--mr-ink-muted);
 }
@@ -119,5 +119,5 @@
   display: flex;
   flex-direction: column;
   margin: 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
 }

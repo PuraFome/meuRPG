@@ -5,7 +5,7 @@
 }
 
 .cap {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 500;
   color: var(--mr-ink-muted);
 }
@@ -56,12 +56,12 @@
 
 .row__title {
   font-family: var(--mr-font-display);
-  font-size: 19px;
+  font-size: var(--mr-font-19);
   line-height: 22px;
 }
 
 .row__detail {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 18px;
   color: var(--mr-ink-muted);
 }
@@ -70,7 +70,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 500;
   line-height: 18px;
   color: var(--mr-warning-ink);
@@ -79,7 +79,7 @@
     flex: none;
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 

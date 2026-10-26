@@ -1,6 +1,6 @@
 -- +goose Up
 -- attacks_made counts the attacks the Attack action made this turn (Extra
--- Attack, MR-012, Etapa 6): the first attack spends the action, and the next
+-- Attack, MR-012): the first attack spends the action, and the next
 -- ones of the same action are allowed while the sheet's attacks per action are
 -- not all made. It goes back to 0 when the combatant's own turn starts
 -- (ResetCombatantTurn), with the rest of the turn's economy.

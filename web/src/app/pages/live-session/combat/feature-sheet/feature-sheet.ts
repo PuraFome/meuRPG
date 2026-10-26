@@ -89,13 +89,13 @@ export interface FeatureSheetData {
 
     .res__sum {
       font-family: var(--mr-font-display);
-      font-size: 26px;
+      font-size: var(--mr-font-26);
       font-weight: 800;
       line-height: 30px;
     }
 
     .res__line {
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       line-height: 20px;
       color: var(--mr-ink-muted);
     }

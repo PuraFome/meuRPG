@@ -6,7 +6,7 @@
 .cal__result,
 .cal__hint {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 }
 
@@ -34,7 +34,7 @@
 }
 
 .cal__cap {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 17px;
   color: var(--mr-ink-muted);
 }
@@ -58,6 +58,6 @@
 }
 
 .cal__arrow {
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   color: var(--mr-ink-muted);
 }

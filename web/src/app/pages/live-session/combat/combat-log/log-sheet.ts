@@ -56,7 +56,7 @@ export interface LogSheetData {
       align-items: flex-start;
       gap: 8px;
       margin: 4px 0 0;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 19px;
       color: var(--mr-ink-muted);
 
@@ -64,7 +64,7 @@ export interface LogSheetData {
         flex: none;
         width: 20px;
         height: 20px;
-        font-size: 20px;
+        font-size: var(--mr-font-20);
       }
     }
 
@@ -102,13 +102,13 @@ export interface LogSheetData {
       margin: 0;
       font-family: var(--mr-font-display);
       font-weight: 800;
-      font-size: 26px;
+      font-size: var(--mr-font-26);
       line-height: 30px;
     }
 
     .sheet__sub {
       margin: 2px 0 0;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 19px;
       color: var(--mr-ink-muted);
     }

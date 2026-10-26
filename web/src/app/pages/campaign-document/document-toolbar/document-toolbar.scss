@@ -24,14 +24,14 @@
   background: none;
   color: var(--mr-ink);
   font: inherit;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
   cursor: pointer;
 
   .mat-icon {
     width: 22px;
     height: 22px;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
   }
 
   &:hover {

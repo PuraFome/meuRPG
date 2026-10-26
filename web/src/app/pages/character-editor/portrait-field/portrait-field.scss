@@ -13,7 +13,7 @@
 }
 
 .pf__label {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 16px;
   color: var(--mr-ink-muted);
 }
@@ -24,7 +24,7 @@
 
 .pf__caption {
   margin: 0 0 6px;
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 17px;
   color: var(--mr-ink-muted);
   overflow-wrap: anywhere;
@@ -58,14 +58,14 @@
 
 .pf__ask-title {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   font-weight: 700;
 }
 
 .pf__ask-text {
   margin: 0 0 4px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }

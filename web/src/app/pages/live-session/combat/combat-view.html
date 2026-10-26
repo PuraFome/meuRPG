@@ -477,6 +477,7 @@
         [forcedSwitch]="true"
         [forced]="moves.forcedMove()"
         [forcedNote]="moves.forcedNote()"
+        [overAsk]="moves.overAsk()"
         [pick]="targeting.mode.marks()"
         [pickNote]="targeting.mode.note()"
         [actingFor]="acting()?.label ?? ''"
@@ -485,6 +486,8 @@
         (doorPick)="sheets.actions.door($event)"
         (reachChange)="moves.reachOn.set($event)"
         (forcedChange)="moves.forcedMove.set($event)"
+        (overAskConfirm)="moves.moveAnyway()"
+        (overAskCancel)="moves.dropOverAsk()"
         (tokenDrop)="moves.drop($event)"
         (openMap)="state().mapOpen.set(true)"
       />

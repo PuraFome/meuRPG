@@ -19,8 +19,8 @@ import (
 // today, branch by branch, before it is split into smaller functions: the square,
 // the movement used, the running start, the cover mark, the flags of the answer,
 // the exact payload of the logged event and the code, the reason and the message
-// of every refusal. Where the behavior was judged against the rules, a "Finding
-// play-a-movement-<n>" comment says whether it was fixed or kept, and why.
+// of every refusal. Where the behavior was judged against the rules, the comment
+// says why it is what it is.
 
 // moveRow is what the database keeps of a combatant's move.
 type moveRow struct {

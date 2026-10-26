@@ -1026,7 +1026,7 @@ export type MapToken = Message<"meurpg.maps.v1.MapToken"> & {
 
   /**
    * The creature this token is, for the token of a character's creature (a
-   * familiar, a summoned animal, a gift of the master; MR-037, Etapa 9): the ID
+   * familiar, a summoned animal, a gift of the master; MR-037): the ID
    * CharacterService.ListCharacterCreatures lists (a UUID). Empty for a
    * character's own token. Then `character_id` is the creature's owner (a
    * player's character, so the party knows whose it is), `name` is the creature's
@@ -4562,7 +4562,7 @@ export const DarknessCauseSchema: GenEnum<DarknessCause> = /*@__PURE__*/
  * `map_changed` and `token_moved`, under the same rules, so a player's
  * stream never mentions a hidden thing either.
  *
- * Etapa 9 adds, on the same rules (RN-10):
+ * The map also has, on the same rules (RN-10):
  *   - Four painted layers on a map with a grid (PaintMapCells, GetMapLayers):
  *     difficult terrain, walls, cover and light. The master gets all four. A
  *     player gets walls, difficult terrain and cover (visible things) of a

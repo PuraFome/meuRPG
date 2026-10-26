@@ -138,7 +138,7 @@ span.tk__hit {
 }
 
 :host(.tk--legend) .tk__disc {
-  font-size: 12px;
+  font-size: var(--mr-font-12);
 }
 
 // The legend names a hidden token in words (", escondido") and draws it dashed: the eye badge would only sit over its letter.

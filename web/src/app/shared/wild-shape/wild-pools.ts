@@ -49,7 +49,7 @@ export interface Pool {
     }
 
     .pool__label {
-      font-size: 13px;
+      font-size: var(--mr-font-13);
       font-weight: 700;
       line-height: 17px;
       color: var(--mr-ink-muted);
@@ -57,13 +57,13 @@ export interface Pool {
 
     .pool__num {
       font-family: var(--mr-font-display);
-      font-size: 26px;
+      font-size: var(--mr-font-26);
       font-weight: 800;
       line-height: 30px;
 
       small {
         font-family: var(--mr-font-sans);
-        font-size: 14px;
+        font-size: var(--mr-font-14);
         font-weight: 500;
         color: var(--mr-ink-muted);
       }

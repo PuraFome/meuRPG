@@ -2,7 +2,7 @@
 // @generated from file meurpg/play/v1/combat.proto (package meurpg.play.v1, syntax proto3)
 /* eslint-disable */
 
-// This file is the combat's API (MR-012, MR-013, MR-014, Etapa 6): the
+// This file is the combat's API (MR-012, MR-013, MR-014): the
 // encounter, who fights, the initiative, the order of turns, the movement on
 // the map's grid, what a turn can do, the attacks and their damage, the
 // spells (slots, saving throws, healing, concentration), the reactions
@@ -11967,7 +11967,7 @@ export enum CombatantKind {
   NPC = 2,
 
   /**
-   * One of a character's creatures (MR-037, Etapa 9): a familiar, summoned
+   * One of a character's creatures (MR-037): a familiar, summoned
    * animals or undead, a creature the master gave. It belongs to a player's
    * character (`owner_character_id`), is controlled by that character's player
    * and by the master, fights on the party's side and keeps its hit points on
@@ -15180,7 +15180,10 @@ export const CombatService: GenService<{
    * blocks it too, unless the two are two sizes apart; nobody ends in another
    * creature's square (only Tiny with Tiny). A creature with a fly speed moves as
    * a flier: difficult terrain costs it nothing. Swimming and climbing are not
-   * modelled. The master moves anyone anywhere for free.
+   * modelled. The master moves anyone anywhere for free, except an NPC he drags on its own turn:
+   * that is a plain walk like a player's (it pays its way, spends the NPC's movement and stops for
+   * walls, creatures and squares marked "Não dá para passar"), and one past the movement left is
+   * refused (TOO_FAR) unless `forced`. Out of its turn, and for a player's character, it stays free.
    *
    * `jump` turns it into a jump (D3): LONG goes to the square without paying for
    * difficult terrain on the way (it cannot cross a wall or land on a creature),
@@ -15620,7 +15623,9 @@ export const CombatService: GenService<{
    *     attacker's own turn.
    *   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN
    *     (the attacker is not on turn; not for as_reaction), ACTION_USED or
-   *     ATTACKS_USED (a player), REACTION_USED (as_reaction, a player),
+   *     ATTACKS_USED (a player), ATTACKS_USED (the master's NPC made as many
+   *     attacks as its creature's Multiattack has; other NPCs are not held to a
+   *     count), REACTION_USED (as_reaction, a player),
    *     COMBATANT_DOWN,
    *     TARGET_DEFEATED, NOT_PLACED (a player without a square, or a target
    *     without one), TARGET_OUT_OF_REACH (with missing_ft) and WRONG_DICE_MODE.

@@ -276,8 +276,10 @@ func sameSet(a, b []string) bool {
 func TestChoicesAreAskedOnlyWhenTheSheetHasThem(t *testing.T) {
 	t.Parallel()
 	c := loadForTest(t)
-	if s := c.Choices(choiceBuild("race:human", "", ClassLevel{Class: "class:rogue", Level: 1})); len(s.Groups) != 0 {
-		t.Errorf("a human rogue 1 is asked %v, want nothing", choiceKeys(s))
+	// Only the languages the human and the Acolyte let the player pick (answered by the sheet's typed ones).
+	wantPicks := []string{LanguagePickKey("race:human"), LanguagePickKey("background:acolyte")}
+	if s := c.Choices(choiceBuild("race:human", "", ClassLevel{Class: "class:rogue", Level: 1})); !slices.Equal(choiceKeys(s), wantPicks) {
+		t.Errorf("a human rogue 1 is asked %v, want %v", choiceKeys(s), wantPicks)
 	}
 	if s := c.Choices(choiceBuild("race:human", "", ClassLevel{Class: "class:ranger", Level: 5})); slices.Contains(choiceKeys(s), "feature:hunters-prey") {
 		t.Error("the Hunter's Prey is asked before the Hunter is chosen")
@@ -303,7 +305,7 @@ func TestChoiceGroupsAreOrderedByRaceThenClassLevelThenSubclass(t *testing.T) {
 	b := choiceBuild("race:half-elf", "", ClassLevel{Class: "class:ranger", Subclass: "subclass:hunter", Level: 5})
 	s := c.Choices(b)
 	want := []string{
-		AbilityChoiceKey("race:half-elf"),
+		LanguagePickKey("race:half-elf"), AbilityChoiceKey("race:half-elf"), LanguagePickKey("background:acolyte"),
 		"feature:favored-enemy-1-type", "feature:favored-enemy-1-type#language", "feature:natural-explorer-1-terrain-type",
 		"feature:ranger-fighting-style", "feature:hunters-prey",
 	}
@@ -323,8 +325,8 @@ func TestChoiceGroupsAreOrderedByRaceThenClassLevelThenSubclass(t *testing.T) {
 		}
 	}
 	done, total := s.Counts()
-	if done != 0 || total != 7 {
-		t.Errorf("counts = %d of %d, want 0 of 7 (two abilities, enemy and language, terrain, style, prey)", done, total)
+	if done != 3 || total != 10 {
+		t.Errorf("counts = %d of %d, want 3 of 10 (the three languages the typed ones answer, two abilities, enemy and language, terrain, style, prey)", done, total)
 	}
 }
 
@@ -340,8 +342,8 @@ func TestChoiceCountsFollowTheSelectionsMade(t *testing.T) {
 		ScopedChoice("feature:natural-explorer-1-terrain-type", "terrain:forest"),
 		"feature:hunters-prey-colossus-slayer")
 	s := c.Choices(b)
-	if done, total := s.Counts(); done != 6 || total != 7 {
-		t.Errorf("counts = %d of %d, want 6 of 7: the fighting style is open", done, total)
+	if done, total := s.Counts(); done != 9 || total != 10 {
+		t.Errorf("counts = %d of %d, want 9 of 10: the fighting style is open", done, total)
 	}
 	pending := s.Pending()
 	if len(pending) != 1 || pending[0].ChoiceKey != "feature:ranger-fighting-style" || pending[0].Level != 2 || pending[0].LabelPT != "Estilo de Luta (Patrulheiro, nível 2)" {
@@ -349,7 +351,7 @@ func TestChoiceCountsFollowTheSelectionsMade(t *testing.T) {
 	}
 	b.FeatureChoices = append(b.FeatureChoices, "feature:ranger-fighting-style-archery")
 	s = c.Choices(b)
-	if done, total := s.Counts(); done != 7 || total != 7 || len(s.Pending()) != 0 || s.PendingCount() != 0 || len(s.ChoiceProblems(true)) != 0 {
+	if done, total := s.Counts(); done != 10 || total != 10 || len(s.Pending()) != 0 || s.PendingCount() != 0 || len(s.ChoiceProblems(true)) != 0 {
 		t.Errorf("counts = %d of %d, pending %v, problems %v; want everything done", done, total, s.Pending(), s.ChoiceProblems(true))
 	}
 }

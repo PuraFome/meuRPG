@@ -46,7 +46,7 @@ import { activityLines } from '../../../../core/traps/trap-log';
     .ta__h {
       margin: 0 0 var(--mr-space-2);
       font-family: var(--mr-font-display, inherit);
-      font-size: 20px;
+      font-size: var(--mr-font-20);
       line-height: 26px;
     }
 
@@ -61,7 +61,7 @@ import { activityLines } from '../../../../core/traps/trap-log';
       align-items: flex-start;
       gap: var(--mr-space-3);
       padding: 10px 0;
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       line-height: 21px;
     }
 
@@ -74,7 +74,7 @@ import { activityLines } from '../../../../core/traps/trap-log';
       width: 20px;
       height: 20px;
       margin-top: 1px;
-      font-size: 20px;
+      font-size: var(--mr-font-20);
     }
 
     .ta__text {

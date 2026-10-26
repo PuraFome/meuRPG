@@ -22,7 +22,7 @@
 .hl__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 21px;
+  font-size: var(--mr-font-21);
   line-height: 26px;
   font-weight: 700;
 }
@@ -30,7 +30,7 @@
 .hl__lead,
 .hl__note {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 

@@ -57,14 +57,14 @@ import type { LevelUpSwap } from '../../../core/levelup/levelup-swap';
   styles: `
     .lead {
       margin: 0 0 var(--mr-space-3);
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       line-height: 20px;
       color: var(--mr-ink-muted);
     }
 
     .sub {
       margin: var(--mr-space-3) 0 var(--mr-space-2);
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       font-weight: 700;
     }
 

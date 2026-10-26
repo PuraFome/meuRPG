@@ -132,6 +132,12 @@ describe('TokenMovePanel ("Mover Tor", B2-01, B2-03)', () => {
     expect(flat(el.querySelector('.box__detail'))).toBe(
       'Pedido: 10 quadrados (15 m) · andou 5 (7,5 m)',
     );
+    // One live region carries the result: the notice stays a plain box, so a
+    // screen reader hears it once.
+    expect(notice.getAttribute('role')).toBeNull();
+    const live = el.querySelectorAll('[role="status"]');
+    expect(live.length).toBe(1);
+    expect(flat(live[0])).toContain('O movimento parou antes.');
   });
 
   it('shows "Movendo Tor…" and a dashed button while the server has not answered', async () => {

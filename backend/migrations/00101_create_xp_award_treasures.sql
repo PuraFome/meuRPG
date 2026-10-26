@@ -1,6 +1,6 @@
 -- +goose Up
 -- xp_award_treasures records the treasures a "Voltar à cidade" award converted
--- into XP (MR-041, Etapa 9, D8): one row per treasure with its worth at that
+-- into XP (MR-041, D8): one row per treasure with its worth at that
 -- moment. map_points.treasure_converted_award_id is the lock (a treasure is
 -- converted once, and the link is cleared when the award is undone); this
 -- table is the history, so an undone award still shows what it converted: the

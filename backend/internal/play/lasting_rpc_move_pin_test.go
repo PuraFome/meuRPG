@@ -72,7 +72,7 @@ func TestLastingRPCEffectsMoveIntoACombatAndBack(t *testing.T) {
 // TestLastingRPCAPlayerLeavesACombatInSetupKeepsItsEffects pins what happens to the effects of
 // a character that the master takes out of a combat in setup: they go back to game time, as they
 // do when a combat ends, and the effects on the others stay in the combat.
-// Finding play-a-movement-3: a spell or a condition on a character is not the combat's to
+// A spell or a condition on a character is not the combat's to
 // destroy, so removing the combatant must not delete it with the row.
 func TestLastingRPCAPlayerLeavesACombatInSetupKeepsItsEffects(t *testing.T) {
 	t.Parallel()

@@ -33,7 +33,7 @@ import { MatIconModule } from '@angular/material/icon';
       flex: none;
       width: 24px;
       height: 24px;
-      font-size: 24px;
+      font-size: var(--mr-font-24);
       color: var(--mr-ink);
     }
 
@@ -45,12 +45,12 @@ import { MatIconModule } from '@angular/material/icon';
 
     .band__title {
       font-family: var(--mr-font-display);
-      font-size: 19px;
+      font-size: var(--mr-font-19);
       line-height: 23px;
     }
 
     .band__sub {
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 19px;
       color: var(--mr-ink-muted);
     }

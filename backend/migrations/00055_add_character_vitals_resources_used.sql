@@ -1,6 +1,6 @@
 -- +goose Up
 -- resources_used holds the uses spent of a character's class and race
--- resources (Retomar o fôlego, Surto de ação, Fúria...; RN-02, Etapa 6), as a
+-- resources (Retomar o fôlego, Surto de ação, Fúria...; RN-02), as a
 -- JSON object {resource key: uses}, like spell_slots_used for the slots. The
 -- totals come from the sheet (package rules derives them, like the slots) and
 -- the service clamps the stored values to them on every read. The keys are the

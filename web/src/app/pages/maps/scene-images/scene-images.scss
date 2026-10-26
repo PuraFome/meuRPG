@@ -18,14 +18,14 @@
 .si__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 21px;
+  font-size: var(--mr-font-21);
   font-weight: 700;
   line-height: 26px;
 }
 
 .si__count {
   flex: none;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -38,14 +38,14 @@
   padding: 10px 12px;
   border-radius: var(--mr-radius-md);
   background: var(--mr-ground);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 
   .mat-icon {
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
@@ -93,7 +93,7 @@
 
 .si__name {
   grid-area: name;
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   line-height: 22px;
   overflow-wrap: anywhere;
 }
@@ -131,7 +131,7 @@
 
 .si__limit {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   line-height: 19px;
 }

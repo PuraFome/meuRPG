@@ -7,19 +7,19 @@
 
 .shield-note {
   margin: var(--mr-space-2) 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 20px;
 }
 
 .attacks {
   width: 100%;
   border-collapse: collapse;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 20px;
 
   th {
     padding: 4px 0;
-    font-size: 14px;
+    font-size: var(--mr-font-14);
     font-weight: 500;
     color: var(--mr-ink-muted);
     text-align: left;
@@ -49,7 +49,7 @@
 .attacks__save,
 .attacks__versatile {
   display: block;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -65,7 +65,7 @@
 
 .spells__class {
   margin: var(--mr-space-2) 0 0;
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   line-height: 22px;
 }
 
@@ -85,7 +85,7 @@
   min-width: 0;
 
   dt {
-    font-size: 13px;
+    font-size: var(--mr-font-13);
     line-height: 16px;
     color: var(--mr-ink-muted);
   }
@@ -94,7 +94,7 @@
     margin: 0;
     padding-bottom: 4px;
     border-bottom: 1px solid var(--mr-ink);
-    font-size: 19px;
+    font-size: var(--mr-font-19);
     line-height: 24px;
     font-weight: 700;
     overflow-wrap: anywhere;
@@ -103,7 +103,7 @@
 
 .spells__limits {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -205,7 +205,7 @@
 .spell__tag {
   height: 22px;
   padding: 0 8px;
-  font-size: 13px;
+  font-size: var(--mr-font-13);
 
   &--on {
     border-color: var(--mr-success-ink);
@@ -238,7 +238,7 @@
 
 .granted__meta {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
@@ -246,7 +246,7 @@
 .spells__label {
   margin: 0 0 2px;
   font-family: var(--mr-font-sans);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 18px;
   font-weight: 500;
   color: var(--mr-ink-muted);
@@ -270,7 +270,7 @@
   flex-wrap: wrap;
   gap: var(--mr-space-3);
   margin-top: var(--mr-space-2);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
 
   abbr {
     text-decoration: none;

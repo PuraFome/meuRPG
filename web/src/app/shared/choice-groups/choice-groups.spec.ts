@@ -9,6 +9,7 @@ import {
   ChoiceSchema,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { ChoiceGroups, type ChoiceSelection } from './choice-groups';
+import { applySelection } from './choice-picks';
 
 function option(key: string, reasonPt = '') {
   return create(ChoiceOptionSchema, {
@@ -78,6 +79,113 @@ describe('ChoiceGroups', () => {
     expect(cards()[2].getAttribute('aria-disabled')).toBe('true');
     cards()[0].click();
     expect(sent[0].optionKeys).toEqual(['b']);
+  });
+
+  describe('a language or a tool the race or the background lets the player pick', () => {
+    function pickGroup(origin: ChoiceOrigin, sourceNamePt: string, key: string, picks: number) {
+      const stored = (k: string) => `${key}=${k}`;
+      return create(ChoiceGroupSchema, {
+        origin,
+        sourceKey: 'race:half-elf',
+        sourceNamePt,
+        choices: [
+          create(ChoiceSchema, {
+            key,
+            featureKey: 'race:half-elf',
+            kind: ChoiceKind.OPTIONS,
+            titlePt: picks === 1 ? 'Idioma' : 'Idiomas',
+            labelPt: `${picks === 1 ? 'Idioma' : 'Idiomas'} (${sourceNamePt})`,
+            picks,
+            missing: picks,
+            options: [
+              create(ChoiceOptionSchema, {
+                key: 'language:elvish',
+                storedKey: stored('language:elvish'),
+                namePt: 'Élfico',
+                reasonPt: 'Você já fala este idioma.',
+              }),
+              create(ChoiceOptionSchema, {
+                key: 'language:dwarvish',
+                storedKey: stored('language:dwarvish'),
+                namePt: 'Anão',
+              }),
+              create(ChoiceOptionSchema, {
+                key: 'language:giant',
+                storedKey: stored('language:giant'),
+                namePt: 'Gigante',
+              }),
+            ],
+          }),
+        ],
+      });
+    }
+
+    it('is a pick-one list under the race, with the language the character speaks blocked and told why', () => {
+      const { el, cards, sent, fixture } = setup(
+        pickGroup(ChoiceOrigin.RACE, 'Meio-elfo', 'race:half-elf#language', 1),
+      );
+      expect(el.querySelector('.choice__origin')?.textContent).toContain(
+        'Raça · Meio-elfo · 1 escolha',
+      );
+      expect(cards().map((c) => c.getAttribute('role'))).toEqual(['radio', 'radio', 'radio']);
+      const card = (name: string) =>
+        cards().find((c) => (c.textContent ?? '').replace(/\s+/g, ' ').trim().startsWith(name))!;
+      expect(card('Élfico').textContent).toContain('Você já fala este idioma.');
+      expect(card('Élfico').getAttribute('aria-disabled')).toBe('true');
+      card('Élfico').click();
+      expect(sent).toEqual([]);
+
+      card('Anão').click();
+      fixture.detectChanges();
+      expect(sent[0].optionKeys).toEqual(['language:dwarvish']);
+      expect(applySelection([], sent[0].choice, sent[0].optionKeys)).toEqual([
+        'race:half-elf#language=language:dwarvish',
+      ]);
+    });
+
+    it("is a pick-many list under the background's name", () => {
+      const { el, cards, sent } = setup(
+        pickGroup(ChoiceOrigin.BACKGROUND, 'Acólito', 'background:acolyte#language', 2),
+      );
+      expect(el.querySelector('.choice__origin')?.textContent).toContain(
+        'Antecedente · Acólito · 2 escolhas',
+      );
+      expect(cards().map((c) => c.getAttribute('role'))).toEqual([
+        'checkbox',
+        'checkbox',
+        'checkbox',
+      ]);
+      cards()[1].click();
+      expect(sent[0].optionKeys).toEqual(['language:dwarvish']);
+    });
+  });
+
+  it('leads to the choice that stops the sheet before one that only warns', () => {
+    const languages = create(ChoiceGroupSchema, {
+      origin: ChoiceOrigin.BACKGROUND,
+      sourceNamePt: 'Acólito',
+      choices: [
+        create(ChoiceSchema, {
+          key: 'background:acolyte#language',
+          kind: ChoiceKind.OPTIONS,
+          titlePt: 'Idiomas',
+          labelPt: 'Idiomas (Acólito)',
+          picks: 2,
+          missing: 2,
+          advisory: true,
+          options: [option('language:giant')],
+        }),
+      ],
+    });
+    const fixture = TestBed.createComponent(ChoiceGroups);
+    fixture.componentRef.setInput('groups', [languages, group(1)]);
+    fixture.detectChanges();
+    const titles = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('.choice__title'),
+    );
+    expect(fixture.componentInstance.focusFirstPending()).toBe(true);
+    expect(document.activeElement).toBe(titles[1]);
+    expect((titles[1].textContent ?? '').trim()).toContain('Estilo de Luta');
   });
 
   describe('a feat the player chooses', () => {

@@ -1167,8 +1167,7 @@ export const DungeonAxisSchema: GenEnum<DungeonAxis> = /*@__PURE__*/
   enumDesc(file_meurpg_maps_v1_dungeons, 6);
 
 /**
- * DungeonService turns a generated dungeon into a campaign map (MR-010, RN-26,
- * Etapa 10, slice 10.6d). The generator itself is a pure function of its options
+ * DungeonService turns a generated dungeon into a campaign map (MR-010, RN-26). The generator itself is a pure function of its options
  * and a seed (backend/internal/rules/dungeon): the same options and seed give
  * the same dungeon.
  *
@@ -1293,7 +1292,7 @@ export const DungeonService: GenService<{
     output: typeof GetDungeonRoomsResponseSchema;
   },
   /**
-   * PlaceDungeonScene puts a role-play scene point (MR-029, Etapa 8) named
+   * PlaceDungeonScene puts a role-play scene point (MR-029) named
    * "Sala N" on the middle square of room N, the way CreateMapPoint creates one:
    * hidden, with no hooks. It may be called again for the same room: each call
    * makes a new point.

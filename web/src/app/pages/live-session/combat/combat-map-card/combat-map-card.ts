@@ -87,6 +87,8 @@ export class CombatMapCard {
   readonly forced = input(false);
   /** What the last forced drag did, in words, for the live region. */
   readonly forcedNote = input('');
+  /** An NPC dragged past its movement: "Mover mesmo assim?" with how much is missing; `null` when nothing is asked. */
+  readonly overAsk = input<{ readonly label: string; readonly missing: string } | null>(null);
   /** The player's own combatant may be dragged to pick a square (their turn, desktop): the drop opens "Mover" there. */
   readonly ownMovable = input(false);
   /** The legend of the shapes; the setup's small map says it in a note. */
@@ -113,6 +115,8 @@ export class CombatMapCard {
   readonly reachChange = output<boolean>();
   /** The master turned "Movimento forçado" on or off. */
   readonly forcedChange = output<boolean>();
+  readonly overAskConfirm = output<void>();
+  readonly overAskCancel = output<void>();
   /** "Ver mapa": the player's full-screen, read-only map. */
   readonly openMap = output<void>();
   /** A creature offered as a target was tapped. */

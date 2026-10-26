@@ -61,7 +61,7 @@ export interface SculptRow {
     .sc__title {
       margin: 0 0 var(--mr-space-1);
       padding: 0;
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       line-height: 20px;
       font-weight: 700;
     }
@@ -73,7 +73,7 @@ export interface SculptRow {
 
     .sc__help {
       margin: 0 0 var(--mr-space-1);
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 19px;
       color: var(--mr-ink-muted);
     }

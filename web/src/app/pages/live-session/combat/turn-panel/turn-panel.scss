@@ -30,7 +30,7 @@
 
 .turn__kicker {
   margin: 0 0 -8px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
 }
 
 .turn__banner {
@@ -54,7 +54,7 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   line-height: 26px;
   overflow-wrap: anywhere;
 
@@ -63,7 +63,7 @@
   }
 
   @media (min-width: 768px) {
-    font-size: 28px;
+    font-size: var(--mr-font-28);
     line-height: 32px;
   }
 }
@@ -71,7 +71,7 @@
 // "Rodada 3 · depois de você: Toren" under the title.
 .turn__sub {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 18px;
   color: var(--mr-ink-muted);
 
@@ -95,7 +95,7 @@
 }
 
 .turn__next {
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
 }
 
@@ -103,7 +103,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
@@ -111,7 +111,7 @@
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -131,14 +131,14 @@
   align-items: center;
   gap: 6px;
   margin: -4px 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 500;
 
   .mat-icon {
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -169,7 +169,7 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 28px;
+  font-size: var(--mr-font-28);
   line-height: 32px;
 
   &:focus-visible {
@@ -179,7 +179,7 @@
 
 .banner__sub {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 20px;
   color: var(--mr-ink-muted);
 
@@ -248,11 +248,11 @@
 .ordercard__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 22px;
+  font-size: var(--mr-font-22);
 }
 
 .ordercard__round {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -295,7 +295,7 @@
 
 .turn__state-text {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
   color: var(--mr-ink);
 }

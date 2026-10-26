@@ -57,18 +57,29 @@ test(
       const create = p.getByRole('button', { name: 'Criar personagem' });
       await expect(create).toHaveAttribute('aria-disabled', 'true');
       await expect(create).toHaveAccessibleDescription(/Faltam escolhas: .*Estilo de Luta/);
+      // The Acolyte's two languages are open too, but they only warn: the sentence under the button does not name them.
+      await expect(create).not.toHaveAccessibleDescription(/Idiomas/);
       await create.focus();
       await p.keyboard.press('Enter');
       await expect(p).toHaveURL(/characters\/new$/);
       await expect(p.getByRole('heading', { level: 3, name: /Ancestral Dracônico/ })).toBeFocused();
-      await expect(p.getByText(/Escolhas feitas: 0 de 2/)).toBeVisible();
+      await expect(p.getByText(/Escolhas feitas: 0 de 4/)).toBeVisible();
 
       const ancestry = p.getByRole('region', { name: /Ancestral Dracônico/ });
       await ancestry.getByRole('radio', { name: /Vermelho/ }).click();
       await expect(ancestry.getByRole('radio', { name: /Vermelho/ })).toBeChecked();
       const style = p.getByRole('region', { name: /Estilo de Luta/ });
       await style.getByRole('radio', { name: /Defesa/ }).click();
-      await expect(p.getByText(/Escolhas feitas: 2 de 2/)).toBeVisible();
+      await expect(p.getByText(/Escolhas feitas: 2 de 4/)).toBeVisible();
+
+      // The two choices that stop the sheet are made: the button creates, and the step stays marked while the two
+      // languages of the Acolyte are open.
+      await expect(create).toHaveAttribute('aria-disabled', 'false');
+      await expect(tab).toContainText('Escolha pendente');
+      const languages = p.getByRole('region', { name: /^Idiomas/ });
+      await languages.getByRole('checkbox', { name: /^Anão/ }).click();
+      await languages.getByRole('checkbox', { name: /^Gnômico/ }).click();
+      await expect(p.getByText(/Escolhas feitas: 4 de 4/)).toBeVisible();
 
       // Nothing left open: the marker is gone, and the button creates.
       await expect(tab).not.toContainText('Escolha pendente');
@@ -79,6 +90,72 @@ test(
       const picks = JSON.stringify(await storedPicks(p, campaignId));
       expect(picks).toContain('red');
       expect(picks).toContain('defense');
+    } finally {
+      await master.close();
+      await player.close();
+    }
+  },
+);
+
+test(
+  'um humano escolhe o idioma extra e os dois do Acólito no passo Escolhas, e a ficha lista os três @RN-33',
+  { tag: '@RN-33' },
+  async ({ browser }) => {
+    const master = await newSignedInContext(browser, 'Mestre Teste');
+    const player = await newSignedInContext(browser, 'Jogador Teste');
+    try {
+      const m = await master.newPage();
+      const p = await player.newPage();
+      await Promise.all([m.goto('/'), p.goto('/')]);
+      const campaignId = await campaignWithEmptyPlayer(m, p, `Idiomas ${Date.now()}`);
+
+      await p.goto(`/campaigns/${campaignId}/characters/new`);
+      await p.getByLabel('Nome do personagem', { exact: true }).fill('Brenna');
+      await pick(p, 'Raça', 'Humano');
+      await pick(p, 'Classe', 'Guerreiro');
+      await pick(p, 'Antecedente', 'Acólito');
+      await p.getByRole('tab', { name: 'Habilidades' }).click();
+      await method(p, 'Digitar');
+
+      // The Fighting Style stops the sheet; the languages only warn, and the sentence under the button says so.
+      const create = p.getByRole('button', { name: 'Criar personagem' });
+      await expect(create).toHaveAccessibleDescription(/Falta uma escolha: Estilo de Luta/);
+      await expect(create).not.toHaveAccessibleDescription(/Idioma/);
+
+      await p.getByRole('tab', { name: /Escolhas/ }).click();
+      await expect(p.getByText(/Escolhas feitas: 0 de 4/)).toBeVisible();
+      await p.getByRole('region', { name: /Estilo de Luta/ }).getByRole('radio', { name: /Defesa/ }).click();
+
+      // The human's extra language: a pick-one list from the catalog's languages, the one the human speaks dotted.
+      const extra = p.getByRole('region', { name: /^Idioma(?!s)/ });
+      await expect(extra.getByRole('radio', { name: /^Comum/ })).toHaveAttribute('aria-disabled', 'true');
+      await extra.getByRole('radio', { name: /^Anão/ }).click();
+      await expect(extra.getByRole('radio', { name: /^Anão/ })).toBeChecked();
+
+      // The Acolyte's two: the language the first pick took is dotted here, and the third pick is refused.
+      const acolyte = p.getByRole('region', { name: /^Idiomas/ });
+      await expect(acolyte.getByRole('checkbox', { name: /^Anão/ })).toHaveAttribute('aria-disabled', 'true');
+      await acolyte.getByRole('checkbox', { name: /^Élfico/ }).click();
+      await acolyte.getByRole('checkbox', { name: /^Gigante/ }).click();
+      await expect(acolyte.getByRole('checkbox', { name: /^Gnômico/ })).toHaveAttribute('aria-disabled', 'true');
+      await expect(p.getByText(/Escolhas feitas: 4 de 4/)).toBeVisible();
+
+      await create.click();
+      await expect(p).toHaveURL(/\/campaigns\/[^/]+\/characters\/(?!new$)[^/]+$/);
+      const picks = await storedPicks(p, campaignId);
+      expect(picks).toEqual(
+        expect.arrayContaining([
+          'race:human#language=language:dwarvish',
+          'background:acolyte#language=language:elvish',
+          'background:acolyte#language=language:giant',
+        ]),
+      );
+
+      // The sheet lists the race's language and the three picks.
+      const line = p.locator('dl.more > div').filter({ has: p.locator('dt', { hasText: 'Idiomas' }) }).locator('dd');
+      for (const name of ['Comum', 'Anão', 'Élfico', 'Gigante']) {
+        await expect(line).toContainText(name);
+      }
     } finally {
       await master.close();
       await player.close();
@@ -127,6 +204,12 @@ test(
         await invocations.getByRole('checkbox', { name }).click();
       }
       await expect(p.getByRole('status').filter({ hasText: 'Já escolheu 3.' })).toBeVisible();
+
+      // The human's language and the Acolyte's two are choices of the step too.
+      await p.getByRole('region', { name: /^Idioma(?!s)/ }).getByRole('radio', { name: /^Anão/ }).click();
+      const languages = p.getByRole('region', { name: /^Idiomas/ });
+      await languages.getByRole('checkbox', { name: /^Élfico/ }).click();
+      await languages.getByRole('checkbox', { name: /^Gnômico/ }).click();
       await expect(p.getByRole('tab', { name: /Escolhas/ })).not.toContainText('Escolha pendente');
 
       await p.getByRole('button', { name: 'Criar personagem' }).click();

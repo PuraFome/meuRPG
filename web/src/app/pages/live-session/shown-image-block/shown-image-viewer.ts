@@ -54,7 +54,7 @@ import type { ShownImageVm } from '../../../core/play/live-session.types';
     .viewer__title {
       margin: 0;
       font-family: var(--mr-font-display);
-      font-size: 24px;
+      font-size: var(--mr-font-24);
       font-weight: 700;
       line-height: 30px;
       overflow-wrap: anywhere;

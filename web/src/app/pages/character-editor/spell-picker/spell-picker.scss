@@ -7,14 +7,14 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 19px;
+  font-size: var(--mr-font-19);
   line-height: 24px;
 }
 
 .picker__chosen {
   margin: 2px 0 var(--mr-space-3);
   min-height: 19px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -30,7 +30,7 @@
   align-items: center;
   gap: var(--mr-space-2);
   margin: 0 0 var(--mr-space-3);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-danger-ink);
 
@@ -38,14 +38,14 @@
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
 // Fewer spells prepared than the class takes.
 .picker__warn {
   margin: 0 0 var(--mr-space-3);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-warning-ink);
 }
@@ -91,7 +91,7 @@
   .mat-icon {
     width: 22px;
     height: 22px;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
   }
 
   // A 4px inset makes the 44px box's ring a 36px circle.
@@ -103,13 +103,13 @@
 
 .picker__level {
   color: var(--mr-ink-muted);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
 }
 
 .picker__empty {
   margin: 0;
   padding: var(--mr-space-3) var(--mr-space-2);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -138,12 +138,12 @@
   flex-direction: column;
   gap: 2px;
   min-width: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 }
 
 .picker__out-name {
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
 }
 

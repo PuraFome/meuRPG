@@ -21,7 +21,7 @@
   gap: var(--mr-space-2);
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   line-height: 28px;
   font-weight: 700;
 
@@ -29,14 +29,14 @@
     flex: none;
     width: 22px;
     height: 22px;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
     color: var(--mr-ink-muted);
   }
 }
 
 .sm__count {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
   white-space: nowrap;
@@ -108,19 +108,19 @@
   border-radius: var(--mr-radius-pill);
   background: var(--mr-surface);
   color: var(--mr-accent-text);
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 700;
 
   .mat-icon {
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 
 .sm__name {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   overflow-wrap: anywhere;
 }
@@ -145,14 +145,14 @@
   align-items: flex-start;
   gap: 6px;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 
   .mat-icon {
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -169,13 +169,13 @@
   border-radius: var(--mr-radius-pill);
   background: var(--mr-surface);
   color: var(--mr-accent-text);
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 700;
 
   .mat-icon {
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 
   .sm__pic:hover &,
@@ -204,7 +204,7 @@
   align-items: center;
   gap: 6px;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
@@ -212,7 +212,7 @@
     flex: none;
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 
@@ -221,7 +221,7 @@
 .sm-menu__head {
   margin: 0;
   padding: 10px 16px 4px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -233,7 +233,7 @@
   line-height: 20px;
 
   small {
-    font-size: 13px;
+    font-size: var(--mr-font-13);
     line-height: 17px;
     color: var(--mr-ink-muted);
   }

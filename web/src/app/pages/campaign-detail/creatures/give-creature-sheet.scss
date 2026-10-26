@@ -47,18 +47,18 @@
 
 .list__t {
   font-family: var(--mr-font-display);
-  font-size: 19px;
+  font-size: var(--mr-font-19);
   font-weight: 700;
 }
 
 .list__n {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
 .note {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -105,7 +105,7 @@
 
 .why {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }

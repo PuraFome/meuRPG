@@ -64,13 +64,13 @@ interface Entry {
     }
 
     .sw app-chest-icon {
-      font-size: 15px;
+      font-size: var(--mr-font-15);
     }
 
     .sw .mat-icon {
       width: 14px;
       height: 14px;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
     }
 
     .sw--trap {
@@ -102,7 +102,7 @@ interface Entry {
     .sw__eye .mat-icon {
       width: 8px;
       height: 8px;
-      font-size: 8px;
+      font-size: var(--mr-font-8);
     }
   `,
 })

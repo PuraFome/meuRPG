@@ -74,10 +74,10 @@ export interface TokenDrop extends Square {
  *
  * - **Who is drawn:** the combatants that have a square. A player never gets a
  *   hidden one from the server; the master's hidden ones are drawn dashed.
- * - **Fog (Etapa 9):** a player's map with the fog on is `app-fog-base` (the tiles, the layers and the
+ * - **Fog:** a player's map with the fog on is `app-fog-base` (the tiles, the layers and the
  *   shading of what they see) instead of the image; the combatants are what the server sends them.
- * - **Layers (Etapa 9):** the walls, the difficult terrain and the cover, drawn
- *   by `app-map-layers` over the image, and the doors (Etapa 10), one mark per kind; with `doorPicks` the master taps a door.
+ * - **Layers:** the walls, the difficult terrain and the cover, drawn
+ *   by `app-map-layers` over the image, and the doors, one mark per kind; with `doorPicks` the master taps a door.
  * - **Reach (E6-10, docs/design/README.md):** the squares the server says a combatant
  *   can go to, tinted, inside a dashed circle of the movement left. A square the
  *   circle holds that is not tinted gets no mark of its own.

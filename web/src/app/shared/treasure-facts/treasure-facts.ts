@@ -45,7 +45,7 @@ import { foundLine, poText } from '../../core/traps/treasure-text';
       align-items: center;
       gap: 6px 8px;
       margin: 0;
-      font-size: 15px;
+      font-size: var(--mr-font-15);
     }
 
     .tf__value {
@@ -65,7 +65,7 @@ import { foundLine, poText } from '../../core/traps/treasure-text';
     }
 
     .tf__cap {
-      font-size: 13px;
+      font-size: var(--mr-font-13);
       line-height: 17px;
       color: var(--mr-ink-muted);
     }
@@ -76,13 +76,13 @@ import { foundLine, poText } from '../../core/traps/treasure-text';
 
     .tf__num {
       font-family: var(--mr-font-display);
-      font-size: 24px;
+      font-size: var(--mr-font-24);
       line-height: 30px;
     }
 
     .tf__inside {
       margin: 2px 0 0;
-      font-size: 16px;
+      font-size: var(--mr-font-16);
       line-height: 22px;
       overflow-wrap: anywhere;
     }

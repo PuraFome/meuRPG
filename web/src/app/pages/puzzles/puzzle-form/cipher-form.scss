@@ -16,20 +16,20 @@
   flex-wrap: wrap;
   gap: var(--mr-space-2);
   margin: 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
 }
 
 .part__help {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
 
 .part__bad {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
 }
 
 .full {
@@ -44,7 +44,7 @@
   border-radius: var(--mr-radius-md);
   background: var(--mr-ground);
   font-family: var(--mr-font-display);
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   line-height: 30px;
   letter-spacing: 0.06em;
   overflow-wrap: anywhere;

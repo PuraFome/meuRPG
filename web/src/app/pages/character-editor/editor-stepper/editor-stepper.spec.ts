@@ -9,6 +9,9 @@ import { EditorStepper } from './editor-stepper';
   template: `
     <app-editor-stepper [pending]="pending()">
       <cdk-step label="Básico" [hasError]="basicoHasError()"><p>conteúdo básico</p></cdk-step>
+      @if (extra()) {
+        <cdk-step label="Escolhas"><p>conteúdo escolhas</p></cdk-step>
+      }
       <cdk-step label="Habilidades"><p>conteúdo habilidades</p></cdk-step>
       <cdk-step label="Equipamento"><p>conteúdo equipamento</p></cdk-step>
     </app-editor-stepper>
@@ -17,6 +20,7 @@ import { EditorStepper } from './editor-stepper';
 class Host {
   readonly basicoHasError = signal(false);
   readonly pending = signal<readonly string[]>([]);
+  readonly extra = signal(false);
 }
 
 describe('EditorStepper', () => {
@@ -29,7 +33,7 @@ describe('EditorStepper', () => {
     const el = fixture.nativeElement as HTMLElement;
     const tabs = () => Array.from(el.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
     const panels = () => Array.from(el.querySelectorAll<HTMLElement>('[role="tabpanel"]'));
-    return { fixture, el, tabs, panels };
+    return { fixture, el, tabs, panels, host: fixture.componentInstance };
   }
 
   it('renders one tab per step, named by its label, the first one selected', async () => {
@@ -91,5 +95,28 @@ describe('EditorStepper', () => {
     expect(tabs()[1].querySelector('.stepper__pending')?.getAttribute('aria-hidden')).toBe('true');
     expect(tabs()[1].textContent).toContain('Escolha pendente');
     expect(tabs()[0].textContent).not.toContain('Escolha pendente');
+  });
+
+  it('keeps the same step open when one appears before it, and keeps the opened ones built', async () => {
+    const { fixture, host, tabs, panels } = await render();
+
+    tabs()[1].click();
+    fixture.detectChanges();
+    host.extra.set(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(tabs().map((t) => t.getAttribute('aria-selected'))).toEqual([
+      'false',
+      'false',
+      'true',
+      'false',
+    ]);
+    expect(panels().map((p) => p.hidden)).toEqual([true, true, false, true]);
+    expect(panels()[2].textContent).toContain('conteúdo habilidades');
+    // The step opened before is still built; the one not opened and not eager is not.
+    expect(panels()[0].textContent).toContain('conteúdo básico');
+    expect(panels()[1].textContent).not.toContain('conteúdo escolhas');
   });
 });

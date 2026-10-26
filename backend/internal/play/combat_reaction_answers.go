@@ -481,6 +481,8 @@ func (s *Service) rebukeEvent(c *combatTx, w playdb.ReactionWindow, reactor, agg
 	re.SaveD20, re.SaveBonus, re.SaveDC, re.Saved, re.Fire = clamp32(sv.face, 1, 20), conv.Int32(sv.bonus), clamp32(sv.dc, 0, math.MaxInt32), sv.saved, hit.Amount
 	re.Level = t.CastLevel
 	got.ev.Reaction = re
+	// What the fire took off the aggressor: the summary counts it for the reactor.
+	got.ev.Applied, got.ev.Before, got.ev.After = hit.Applied, hit.Before, hit.After
 	got.ev.Lucky = sv.reroll // the aggressor's save the app rolled again: the master's line says "Sortudo: 1 → 14"
 	got.ev.Actor, got.ev.Target, got.ev.Round, got.ev.Secret = reactor.ID, aggressor.ID, c.enc.Round, reactor.Hidden || aggressor.Hidden
 }

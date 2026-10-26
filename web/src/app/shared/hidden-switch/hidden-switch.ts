@@ -105,14 +105,14 @@ let nextId = 0;
       .mat-icon {
         width: 18px;
         height: 18px;
-        font-size: 18px;
+        font-size: var(--mr-font-18);
       }
     }
 
     .word {
       flex: none;
       min-width: 54px;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       font-weight: 700;
     }
 
@@ -124,13 +124,13 @@ let nextId = 0;
     }
 
     .label {
-      font-size: 16px;
+      font-size: var(--mr-font-16);
       font-weight: 700;
       line-height: 20px;
     }
 
     .hint {
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 19px;
       color: var(--mr-ink-muted);
     }

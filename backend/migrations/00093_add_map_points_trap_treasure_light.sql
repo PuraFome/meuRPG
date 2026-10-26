@@ -1,5 +1,5 @@
 -- +goose Up
--- The new kinds of point of Etapa 9: 'trap' (Armadilha, MR-035, D5), 'treasure'
+-- The new kinds of point: 'trap' (Armadilha, MR-035, D5), 'treasure'
 -- (Tesouro, MR-041, D8) and 'light' (Luz, MR-036, D6). Each kind has columns
 -- of its own, all NULL on the other kinds (the CHECKs say so), so a point of
 -- one kind can never carry another's data.

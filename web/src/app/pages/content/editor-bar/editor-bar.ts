@@ -124,7 +124,7 @@ export class EditorAlerts {
 
     .bar__note {
       margin: 0;
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       color: var(--mr-ink-muted);
     }
 

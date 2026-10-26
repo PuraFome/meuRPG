@@ -22,7 +22,7 @@ import { MatIconModule } from '@angular/material/icon';
       border-radius: var(--mr-radius-pill);
       background: var(--mr-success-surface);
       color: var(--mr-success-ink);
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       font-weight: 700;
       line-height: 1;
       white-space: nowrap;
@@ -31,7 +31,7 @@ import { MatIconModule } from '@angular/material/icon';
     .mat-icon {
       width: 14px;
       height: 14px;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
     }
   `,
 })

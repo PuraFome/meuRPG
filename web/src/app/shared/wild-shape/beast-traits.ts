@@ -31,7 +31,7 @@ import type { Creature } from '../../../gen/meurpg/rules/v1/rules_pb';
     .traits__title {
       margin: 0;
       font-family: var(--mr-font-display);
-      font-size: 24px;
+      font-size: var(--mr-font-24);
       line-height: 28px;
     }
 
@@ -39,7 +39,7 @@ import type { Creature } from '../../../gen/meurpg/rules/v1/rules_pb';
       margin: 2px 0 0;
       padding-bottom: 8px;
       border-bottom: 1px solid var(--mr-rule);
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       color: var(--mr-ink-muted);
     }
 
@@ -55,13 +55,13 @@ import type { Creature } from '../../../gen/meurpg/rules/v1/rules_pb';
     .trait__name {
       margin: 0;
       font-family: var(--mr-font-display);
-      font-size: 19px;
+      font-size: var(--mr-font-19);
       line-height: 24px;
     }
 
     .trait__text {
       margin: 2px 0 8px;
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       line-height: 21px;
     }
   `,

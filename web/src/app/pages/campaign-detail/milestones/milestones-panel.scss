@@ -14,7 +14,7 @@
 
 .lead {
   margin: 0 0 var(--mr-space-2);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
@@ -35,12 +35,12 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   line-height: 25px;
 }
 
 .sec__count {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }

@@ -13,7 +13,7 @@
 .pp__h {
   flex: 1 1 auto;
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   font-weight: 700;
   line-height: 20px;
 }
@@ -80,7 +80,7 @@
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 
   .pp__row--on & {
@@ -104,19 +104,19 @@
 }
 
 .pp__name {
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   line-height: 22px;
   overflow-wrap: anywhere;
 }
 
 .pp__sub {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
 
 .pp__none {
   margin: var(--mr-space-3) 0 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 }

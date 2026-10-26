@@ -28,7 +28,7 @@
 }
 
 .hero__kicker {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
 }
 
 .hero__banner {
@@ -39,7 +39,7 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 28px;
+  font-size: var(--mr-font-28);
   line-height: 32px;
   overflow-wrap: anywhere;
 
@@ -48,14 +48,14 @@
   }
 
   @media (min-width: 768px) {
-    font-size: 34px;
+    font-size: var(--mr-font-34);
     line-height: 38px;
   }
 }
 
 .hero__next {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }

@@ -20,7 +20,7 @@
   gap: var(--mr-space-2);
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   line-height: 28px;
   font-weight: 700;
 
@@ -28,14 +28,14 @@
     flex: none;
     width: 22px;
     height: 22px;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
     color: var(--mr-ink-muted);
   }
 }
 
 .st__count {
   margin-right: auto;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
   white-space: nowrap;
 }
@@ -43,7 +43,7 @@
 .st__empty,
 .st__reason {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -59,14 +59,14 @@
   border-radius: var(--mr-radius-sm);
   background: var(--mr-success-surface);
   color: var(--mr-success-ink);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
 
   .mat-icon {
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -128,7 +128,7 @@
 
 .row__name {
   font-family: var(--mr-font-display);
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   line-height: 24px;
   font-weight: 700;
   overflow-wrap: anywhere;
@@ -138,7 +138,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
@@ -146,7 +146,7 @@
     flex: none;
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 
@@ -211,7 +211,7 @@
 .pick__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 19px;
+  font-size: var(--mr-font-19);
   font-weight: 700;
 }
 
@@ -222,7 +222,7 @@
 
 .pick__lead {
   margin: 2px 0 6px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -237,7 +237,7 @@
   .row__name {
     display: block;
     overflow: hidden;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
     text-overflow: ellipsis;
     white-space: nowrap;
   }

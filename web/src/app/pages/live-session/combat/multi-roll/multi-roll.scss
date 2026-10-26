@@ -35,7 +35,7 @@
 
 .type__hint {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -55,7 +55,7 @@
 
 .type__label {
   font-weight: 700;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 21px;
 }
 
@@ -69,7 +69,7 @@
   background: var(--mr-surface);
   color: var(--mr-ink);
   font-family: var(--mr-font-display);
-  font-size: 32px;
+  font-size: var(--mr-font-32);
   font-weight: 700;
   text-align: center;
 
@@ -90,14 +90,14 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 
   .mat-icon {
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -127,18 +127,18 @@
 
 .type__dash {
   font-family: var(--mr-font-display);
-  font-size: 32px;
+  font-size: var(--mr-font-32);
 }
 
 .type__num {
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 34px;
+  font-size: var(--mr-font-34);
   line-height: 34px;
 }
 
 .type__cap {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 

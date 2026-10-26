@@ -17,13 +17,13 @@
 .who__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 21px;
+  font-size: var(--mr-font-21);
   line-height: 26px;
   font-weight: 700;
 }
 
 .who__count {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -66,7 +66,7 @@
   border: 2px solid var(--mr-ink);
   border-radius: 50%;
   background: var(--mr-surface);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
 }
 
@@ -82,21 +82,21 @@
 }
 
 .who__sub {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
 
 .how__label {
   margin: 0 0 var(--mr-space-1);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   color: var(--mr-ink-muted);
 }
 
 .how__hint {
   margin: var(--mr-space-1) 0 var(--mr-space-3);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -134,7 +134,7 @@
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 

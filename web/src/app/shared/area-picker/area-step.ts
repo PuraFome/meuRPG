@@ -23,7 +23,7 @@ import { ChangeDetectionStrategy, Component, ElementRef, input, viewChild } from
       align-items: center;
       gap: var(--mr-space-2);
       margin: 0;
-      font-size: 16px;
+      font-size: var(--mr-font-16);
       font-weight: 700;
       line-height: 22px;
 
@@ -43,7 +43,7 @@ import { ChangeDetectionStrategy, Component, ElementRef, input, viewChild } from
       border: 1.5px solid var(--mr-accent);
       border-radius: 50%;
       color: var(--mr-accent-text);
-      font-size: 13px;
+      font-size: var(--mr-font-13);
     }
   `,
 })

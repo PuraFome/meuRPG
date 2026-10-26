@@ -116,7 +116,7 @@ import { MatIconModule } from '@angular/material/icon';
       .mat-icon {
         width: 16px;
         height: 16px;
-        font-size: 16px;
+        font-size: var(--mr-font-16);
       }
     }
 
@@ -128,20 +128,20 @@ import { MatIconModule } from '@angular/material/icon';
     }
 
     .label {
-      font-size: 16px;
+      font-size: var(--mr-font-16);
       font-weight: 700;
       line-height: 20px;
     }
 
     .hint {
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 19px;
       color: var(--mr-ink-muted);
     }
 
     .state {
       flex: none;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       font-weight: 700;
       color: var(--mr-ink-muted);
 

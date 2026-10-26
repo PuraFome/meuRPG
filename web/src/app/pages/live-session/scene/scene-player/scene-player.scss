@@ -23,7 +23,7 @@
   gap: 6px;
   margin: 0;
   color: var(--mr-accent-text);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   font-weight: 700;
   line-height: 20px;
 
@@ -31,14 +31,14 @@
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
 .sc__title {
   margin: var(--mr-space-1) 0 0;
   font-family: var(--mr-font-display);
-  font-size: 28px;
+  font-size: var(--mr-font-28);
   font-weight: 800;
   line-height: 32px;
   overflow-wrap: anywhere;
@@ -61,7 +61,7 @@
   gap: var(--mr-space-2);
   margin: var(--mr-space-4) 0 0;
   font-family: var(--mr-font-display);
-  font-size: 21px;
+  font-size: var(--mr-font-21);
   font-weight: 700;
   line-height: 26px;
 }
@@ -101,7 +101,7 @@
 }
 
 .sc__name {
-  font-size: 18px;
+  font-size: var(--mr-font-18);
   font-weight: 700;
   line-height: 22px;
   overflow-wrap: anywhere;
@@ -109,13 +109,13 @@
 
 .sc__check,
 .sc__passive {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
 
 .sc__passive {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
 }
 
 // The DC pill and "Passou" / "Não passou": a word and an icon, never colour alone.
@@ -132,7 +132,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
@@ -140,7 +140,7 @@
     flex: none;
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 
   // "Restam 2 de 3 tentativas" is what the player must read first.
@@ -156,13 +156,13 @@
   gap: 4px;
   margin-top: 2px;
   color: var(--mr-success-ink);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
 
   .mat-icon {
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 
@@ -203,7 +203,7 @@
   min-width: 44px;
   text-align: right;
   font-family: var(--mr-font-display);
-  font-size: 38px;
+  font-size: var(--mr-font-38);
   font-weight: 800;
   line-height: 42px;
 }
@@ -211,7 +211,7 @@
 // The roll's own line, beside the number: "1d20 (11) + 6".
 .sc__formula {
   min-width: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -234,7 +234,7 @@
   margin: var(--mr-space-2) 0 0;
   padding-top: var(--mr-space-3);
   border-top: 1px solid var(--mr-rule);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
@@ -242,7 +242,7 @@
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -256,7 +256,7 @@
 
   .sc__bonus,
   .sc__total {
-    font-size: 32px;
+    font-size: var(--mr-font-32);
     line-height: 36px;
   }
 }
@@ -278,7 +278,7 @@
 
   .sc__bonus,
   .sc__total {
-    font-size: 30px;
+    font-size: var(--mr-font-30);
     line-height: 34px;
   }
 }

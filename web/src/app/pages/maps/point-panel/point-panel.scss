@@ -10,7 +10,7 @@
 
 .pp__eyebrow {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 16px;
   color: var(--mr-ink-muted);
 }
@@ -18,7 +18,7 @@
 .pp__title {
   margin: -12px 0 0;
   font-family: var(--mr-font-display);
-  font-size: 24px;
+  font-size: var(--mr-font-24);
   font-weight: 700;
   line-height: 30px;
   overflow-wrap: anywhere;
@@ -51,7 +51,7 @@
   background: var(--mr-surface);
   color: var(--mr-ink);
   font: inherit;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   cursor: pointer;
 
   & + & {
@@ -66,7 +66,7 @@
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -113,7 +113,7 @@
   .mat-icon {
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
@@ -140,13 +140,13 @@
 
 .pp__new-note {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 18px;
   color: var(--mr-ink-muted);
 }
 
 .pp__new-error {
   margin: var(--mr-space-1) 0 0;
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   color: var(--mr-danger-ink);
 }

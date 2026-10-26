@@ -1,6 +1,6 @@
 -- +goose Up
 -- A creature of a character is a combatant of the new kind 'creature'
--- (MR-037, Etapa 9). Its character_id is the OWNER's character (the column
+-- (MR-037). Its character_id is the OWNER's character (the column
 -- stays NOT NULL, and deleting the character deletes the creature's combatant
 -- with it); creature_id says which creature it is, and the rows of kind
 -- 'creature' are the only ones that have it. monster_key, summon_attack and

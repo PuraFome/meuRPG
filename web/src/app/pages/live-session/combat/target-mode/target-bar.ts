@@ -126,7 +126,7 @@ import type { TargetMode } from './target-mode';
     }
 
     .head__title {
-      font-size: 16px;
+      font-size: var(--mr-font-16);
       line-height: 21px;
       outline-offset: 2px;
     }
@@ -137,7 +137,7 @@ import type { TargetMode } from './target-mode';
       overflow: hidden;
       -webkit-box-orient: vertical;
       -webkit-line-clamp: 2;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 19px;
       color: var(--mr-ink);
     }

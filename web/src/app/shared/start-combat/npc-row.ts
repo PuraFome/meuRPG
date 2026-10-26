@@ -99,13 +99,13 @@ import { CombatantToken } from '../combatant-token/combatant-token';
     }
 
     .name {
-      font-size: 16px;
+      font-size: var(--mr-font-16);
       font-weight: 700;
       line-height: 21px;
     }
 
     .sub {
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 19px;
       color: var(--mr-ink-muted);
     }
@@ -146,7 +146,7 @@ import { CombatantToken } from '../combatant-token/combatant-token';
       border: 1px solid var(--mr-control-line);
       border-radius: var(--mr-radius-sm);
       font-family: var(--mr-font-display);
-      font-size: 22px;
+      font-size: var(--mr-font-22);
       font-weight: 700;
       line-height: 42px;
       text-align: center;
@@ -215,12 +215,12 @@ import { CombatantToken } from '../combatant-token/combatant-token';
       .mat-icon {
         width: 16px;
         height: 16px;
-        font-size: 16px;
+        font-size: var(--mr-font-16);
       }
     }
 
     .word {
-      font-size: 15px;
+      font-size: var(--mr-font-15);
     }
   `,
 })
