@@ -61,6 +61,26 @@ describe("JointCard (the master's)", () => {
       'A vez passou para Capitão Goblin',
     );
   });
+
+  it('drops "A vez passou para" once the turn it announced is over', () => {
+    const fixture = TestBed.createComponent(JointCard);
+    fixture.componentRef.setInput('encounter', joint);
+    fixture.detectChanges();
+    const turnOf = (id: string, label: string, round: number) =>
+      encounter({
+        round,
+        combatants: [combatant({ id, label })],
+        turnGroupIds: [id],
+        currentCombatantId: id,
+      });
+    fixture.componentRef.setInput('encounter', turnOf('c', 'Capitão Goblin', 1));
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('[role="status"]')?.textContent).toContain('A vez passou para');
+    fixture.componentRef.setInput('encounter', turnOf('d', 'Brisa', 1));
+    fixture.detectChanges();
+    expect(el.querySelector('[role="status"]')?.textContent).toBe('');
+  });
 });
 
 describe("JointOthers (the player's)", () => {

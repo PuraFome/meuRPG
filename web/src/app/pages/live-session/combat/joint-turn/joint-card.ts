@@ -59,21 +59,30 @@ export class JointCard {
   protected readonly live = computed(() => this.missing() || this.passedTo());
 
   constructor() {
-    // When the joint turn is over, the line says who has the turn now.
+    // When the joint turn is over, the line says who has the turn now; it goes when that turn is over too.
     let wasJoint = false;
+    let announced = '';
     effect(() => {
       const joint = this.joint();
       const e = this.encounter();
       untracked(() => {
+        const key = `${e.round}:${turnMembers(e)
+          .map((m) => m.id)
+          .join(',')}`;
         if (joint) {
           wasJoint = true;
+          announced = '';
           this.passedTo.set('');
         } else if (wasJoint) {
           wasJoint = false;
           const next = turnMembers(e);
+          announced = next.length > 0 ? key : '';
           this.passedTo.set(
             next.length > 0 ? `A vez passou para ${listNames(next.map((m) => m.label))}` : '',
           );
+        } else if (announced !== key) {
+          announced = '';
+          this.passedTo.set('');
         }
       });
     });

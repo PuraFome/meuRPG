@@ -127,6 +127,8 @@ Never which NPC, which reaction or why.
 The Counterspell prompt carries no spell name or level; a Cutting Words prompt to a bard has no total; the numbers of the trigger (`ReactionTrigger`) are the master's.
 `reaction_window_opened` and `reaction_window_closed` go only to the reactor and the master.
 The table rule "Reações dos inimigos" (`enemy_reactions`) defaults to opening a window only for an enemy that can react; "Sempre" opens the master's check on every one.
+A two-step answer (Hellish Rebuke against an NPC, Deflect Missiles' throw back) keeps who made the reactor's decision in `windowTrigger.ByMaster`: the master rolling the NPC aggressor's save is not "respondido pelo mestre" for a reaction the player chose.
+
 Hellish Rebuke's second-step prompt carries the aggressor's modifier only for the master.
 
 ## The log and undo

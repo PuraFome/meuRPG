@@ -1197,7 +1197,22 @@ options
 .yourTurn = true
 state unchanged
 == options of Brisa with Toren hurt ==
-options as options of Brisa to her player (no difference)
+options as options of Brisa to her player
++ .attackTargets[attack:unarmed-strike].targets[Toren].criticalOnHit = true
++ .attackTargets[attack:unarmed-strike].targets[Toren].sources[ADVANTAGE_SOURCE_KIND_UNCONSCIOUS_TARGET].effect = "ROLL_MODE_ADVANTAGE"
++ .attackTargets[attack:unarmed-strike].targets[Toren].sources[ADVANTAGE_SOURCE_KIND_UNCONSCIOUS_TARGET].kind = "ADVANTAGE_SOURCE_KIND_UNCONSCIOUS_TARGET"
++ .attackTargets[attack:unarmed-strike].targets[Toren].sources[ADVANTAGE_SOURCE_KIND_UNCONSCIOUS_TARGET].textPt = "Alvo Inconsciente: vantagem"
++ .attackTargets[equipment:mace].targets[Toren].criticalOnHit = true
++ .attackTargets[equipment:mace].targets[Toren].sources[ADVANTAGE_SOURCE_KIND_UNCONSCIOUS_TARGET].effect = "ROLL_MODE_ADVANTAGE"
++ .attackTargets[equipment:mace].targets[Toren].sources[ADVANTAGE_SOURCE_KIND_UNCONSCIOUS_TARGET].kind = "ADVANTAGE_SOURCE_KIND_UNCONSCIOUS_TARGET"
++ .attackTargets[equipment:mace].targets[Toren].sources[ADVANTAGE_SOURCE_KIND_UNCONSCIOUS_TARGET].textPt = "Alvo Inconsciente: vantagem"
++ .spellTargets[2].targets[Toren].criticalOnHit = true
++ .spellTargets[2].targets[Toren].sources[ADVANTAGE_SOURCE_KIND_UNCONSCIOUS_TARGET].effect = "ROLL_MODE_ADVANTAGE"
++ .spellTargets[2].targets[Toren].sources[ADVANTAGE_SOURCE_KIND_UNCONSCIOUS_TARGET].kind = "ADVANTAGE_SOURCE_KIND_UNCONSCIOUS_TARGET"
++ .spellTargets[2].targets[Toren].sources[ADVANTAGE_SOURCE_KIND_UNCONSCIOUS_TARGET].textPt = "Alvo Inconsciente: vantagem"
+~ .attackTargets[attack:unarmed-strike].targets[Toren].rollMode = "ROLL_MODE_ADVANTAGE"
+~ .attackTargets[equipment:mace].targets[Toren].rollMode = "ROLL_MODE_ADVANTAGE"
+~ .spellTargets[2].targets[Toren].rollMode = "ROLL_MODE_ADVANTAGE"
 state unchanged
 == options of Brisa with her spells spent ==
 options as options of Brisa to her player (no difference)

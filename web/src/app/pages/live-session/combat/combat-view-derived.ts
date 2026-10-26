@@ -28,6 +28,7 @@ import {
   pendingRollOf,
   stoppedByReaction,
   trapNote,
+  unactedPlayerOnTurn,
 } from '../../../core/combat/combat-derived';
 import { reactionWait } from '../../../core/combat/reactions';
 import type { CombatantInfo } from './combat-info';
@@ -342,6 +343,8 @@ export abstract class CombatViewDerivedDirective extends CombatViewStateDirectiv
     ),
   );
   /** The characters at three failures: the master is asked to confirm each death (E6-30). */
+  /** The player on turn who has not acted: "Próximo turno" asks before passing. */
+  protected readonly idleOnTurn = computed(() => unactedPlayerOnTurn(this.encounter()));
   protected readonly dying = computed(() => (this.isMaster() ? dyingOf(this.encounter()) : []));
   /** The downed player characters whose death save is due this turn: the master rolls it when the player is away (RN-03). */
   protected readonly deathDue = computed(() =>

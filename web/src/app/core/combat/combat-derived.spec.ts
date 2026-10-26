@@ -1,4 +1,5 @@
 import {
+  type Combatant,
   CombatLogKind,
   type CombatLogRound,
   CombatantKind,
@@ -16,6 +17,7 @@ import {
   featureNote,
   initiativeLine,
   dyingOf,
+  unactedPlayerOnTurn,
   masterReach,
   offerMarks,
   opportunityAttacks,
@@ -277,5 +279,30 @@ describe('featureNote', () => {
       'Surto de Ação: você tem outra ação.',
     );
     expect(featureNote('Fúria', 'rage', false)).toBe('Usou Fúria.');
+  });
+});
+
+describe('unactedPlayerOnTurn', () => {
+  const turn = (over: Partial<Combatant>, kind = CombatantKind.PLAYER) =>
+    encounter({
+      combatants: [combatant({ id: 't', label: 'Toren', kind, ...over })],
+      currentCombatantId: 't',
+    });
+
+  it('names a player on turn who has not acted', () => {
+    expect(unactedPlayerOnTurn(turn({}))).toBe('Toren');
+  });
+
+  it('is empty after any spend, for an NPC, and for a downed character', () => {
+    expect(unactedPlayerOnTurn(turn({ actionUsed: true }))).toBe('');
+    expect(unactedPlayerOnTurn(turn({ bonusActionUsed: true }))).toBe('');
+    expect(unactedPlayerOnTurn(turn({ movementUsedDft: 10 }))).toBe('');
+    expect(unactedPlayerOnTurn(turn({}, CombatantKind.NPC))).toBe('');
+    expect(unactedPlayerOnTurn(turn({ state: CombatantState.DYING }))).toBe('');
+    expect(unactedPlayerOnTurn(turn({ deathSaveDue: true }))).toBe('');
+  });
+
+  it('does not count a spent reaction', () => {
+    expect(unactedPlayerOnTurn(turn({ reactionUsed: true }))).toBe('Toren');
   });
 });

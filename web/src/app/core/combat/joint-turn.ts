@@ -5,7 +5,7 @@ import {
   EncounterStatus,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { article } from './combat-log';
-import { groupName, ofOwner } from './creature-names';
+import { groupName, ofOwner, pluralName } from './creature-names';
 import { distanceText } from '../units';
 
 /**
@@ -108,20 +108,7 @@ export function npcPlural(labels: readonly string[]): string | null {
   if (labels.length < 2 || !bases.every((b) => b === bases[0])) {
     return null;
   }
-  return `${article(bases[0]) === 'a' ? 'as' : 'os'} ${plural(bases[0])}`;
-}
-
-/** The plural of an NPC's name as the table says it: "Goblin" is "Goblins",
- * "Orc" is "Orcs"; a name ending in "r" or "z" takes "es", and one ending in
- * "s" or "x" stays. */
-function plural(name: string): string {
-  if (/[sx]$/i.test(name)) {
-    return name;
-  }
-  if (/[rz]$/i.test(name)) {
-    return `${name}es`;
-  }
-  return `${name}s`;
+  return `${article(bases[0]) === 'a' ? 'as' : 'os'} ${pluralName(bases[0])}`;
 }
 
 /** One entry of the order list: a combatant alone, or a box of a joint turn. */

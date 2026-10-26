@@ -8,14 +8,12 @@ import {
   type PendingDamage,
   type TargetInReach,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { RollMode, type AdvantageSource } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
 import { type Attack, DisabledReasonCode } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { isHit, outcomeWord } from '../../../../core/combat/attack-flow';
 import { attackName, reasonText } from '../../../../core/combat/combat-options';
 import { rollFormula } from '../../../../core/combat/combat-dice';
 import { article } from '../../../../core/combat/combat-log';
 import { coverText } from '../../../../core/combat/cover';
-import { modeWord, sourceLine } from '../../../../core/combat/roll-mode';
 import { restamText } from '../../../../core/combat/theatre';
 import { joinDots } from '../../../../core/format/text';
 import { metersFixed, reachSquares, squaresText } from '../../../../core/units';
@@ -140,16 +138,6 @@ export function resultOf(
       e.combatants.find((c) => c.id === roll.targetId),
     ),
   };
-}
-
-/** Why the roll has advantage or disadvantage ("Vantagem: atacante não visto"), so the master knows which die counts and why. */
-export function modeLinesOf(mode: RollMode, sources: readonly AdvantageSource[]): string[] {
-  if (mode === RollMode.NORMAL) {
-    return [];
-  }
-  return sources.length
-    ? sources.map((src) => sourceLine(src))
-    : [`${modeWord(mode)} neste ataque.`];
 }
 
 /** The hint of the two typed d20: which of them counts. */

@@ -155,6 +155,42 @@ describe('CombatState', () => {
     expect(state.encounter()?.combatants[0]).toMatchObject({ placed: false });
   });
 
+  it('starts the surviving member of a joint turn with a fresh economy in the next round', () => {
+    const state = new CombatState();
+    const swords = [
+      combatant({ id: 's1', label: 'Espada 1', initiative: 12, defeated: true, actionUsed: true }),
+      combatant({
+        id: 's2',
+        label: 'Espada 2',
+        initiative: 12,
+        actionUsed: true,
+        bonusActionUsed: true,
+        reactionUsed: true,
+        movementUsedDft: 100,
+        movementLeftDft: 0,
+        speedDft: 100,
+      }),
+    ];
+    state.apply(
+      encounter({
+        combatants: swords,
+        currentCombatantId: 's2',
+        round: 1,
+        turnGroupIds: ['s1', 's2'],
+      }),
+    );
+    state.applyTurn({ encounterId: 'enc', round: 2, currentCombatantId: 's2', masterTurn: false });
+    const [dead, alive] = state.encounter()!.combatants;
+    expect(alive).toMatchObject({
+      actionUsed: false,
+      bonusActionUsed: false,
+      reactionUsed: false,
+      movementUsedDft: 0,
+      movementLeftDft: 100,
+    });
+    expect(dead.actionUsed).toBe(true);
+  });
+
   it('drops a read that started before turn_changed, which the read may not show, and says to read again', () => {
     const state = new CombatState();
     state.apply(encounter({ combatants: two, currentCombatantId: 'a', round: 1 }));
