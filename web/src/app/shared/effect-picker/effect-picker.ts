@@ -137,15 +137,8 @@ export class EffectPicker {
     if (f.kind === 'formula') {
       return own ? `${own} ${this.menu().formulaHint()}` : this.menu().formulaHint();
     }
-    if (f.kind === 'resource_ref') {
-      // `uses` has its own sentence (an empty resource is at will, not a disabled action), as `restore` does
-      if (this.effect().type === 'state') {
-        return 'O nome de um recurso que esta entrada define (o campo "Nome do recurso" de um efeito Recurso). Cada vez que o estado liga, gasta 1 uso; sem usos, o cartão fica desligado.';
-      }
-      return OWN_HINT_REFS.has(f.name) ? own : RESOURCE_REF_HINT;
-    }
-    if (f.kind === 'state_ref') {
-      return this.stateRefHint(f);
+    if (f.kind === 'resource_ref' || f.kind === 'state_ref') {
+      return this.refHint(f, own);
     }
     if (f.kind === 'condition') {
       return 'Deixe vazio para valer sempre. Uma condição, como as fórmulas; active("nome") vale enquanto o estado de mesmo nome desta entrada está ligado.';
@@ -156,6 +149,18 @@ export class EffectPicker {
       return picked?.hint ?? own;
     }
     return own;
+  }
+
+  /** The hint of a field that names a resource or a state of the entry. */
+  private refHint(f: EffectMenuField, own: string): string {
+    if (f.kind === 'state_ref') {
+      return this.stateRefHint(f);
+    }
+    // `uses` has its own sentence (an empty resource is at will, not a disabled action), as `restore` does
+    if (this.effect().type === 'state') {
+      return STATE_RESOURCE_HINT;
+    }
+    return OWN_HINT_REFS.has(f.name) ? own : RESOURCE_REF_HINT;
   }
 
   /** Under "Só enquanto o estado": the name of a state effect of the entry, and the ready values the menu lists ("rage"). */
@@ -279,6 +284,9 @@ const RESOURCE_REF_LABEL_HOOK: Readonly<Record<string, string>> = {
   resource: 'Gasta usos de',
   restore: 'Devolve usos de',
 };
+
+const STATE_RESOURCE_HINT =
+  'O nome de um recurso que esta entrada define (o campo "Nome do recurso" de um efeito Recurso). Cada vez que o estado liga, gasta 1 uso; sem usos, o cartão fica desligado.';
 
 const RESOURCE_REF_HINT =
   'O nome de um recurso que esta entrada define (o campo "Nome do recurso" de um efeito Recurso). Gasta o custo (1 se vazio); sem usos o bastante, a ação fica desligada.';

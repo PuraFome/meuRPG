@@ -286,17 +286,10 @@ export function strictRangeFeet(text: string): number {
   return unreadableRange(text) ? Number.NaN : rangeFeet(text);
 }
 
-/** Whether a required closed-list field of the action, maneuver and resistance types is still empty. */
+/** Whether a required field the switch of `missingRequired` does not name (a closed list, a text) is still empty. */
 function choiceEmpty(d: EffectDraft, name: string): boolean {
-  return (
-    (name === 'event' && d.event === '') ||
-    (name === 'economy' && d.economy === '') ||
-    (name === 'applies' && d.applies === '') ||
-    (name === 'except' && d.except === '') ||
-    (name === 'while' && d.while === '') ||
-    (name === 'spell' && d.spell === '') ||
-    (name === 'ability' && d.ability === '')
-  );
+  const v = d[name.replace(/_(\w)/g, (_, c: string) => c.toUpperCase()) as keyof EffectDraft];
+  return typeof v === 'string' && v.trim() === '';
 }
 
 /** A required field of the type that still has nothing: the editor says so before the server does. */
