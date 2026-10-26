@@ -1,7 +1,7 @@
 # AI-generated images
 
 The master asks a model (the Gemini API) for an image, and the server stores it in the gallery like any image: hidden from the players until the master shows it (MR-039, RN-28, ADR-0019).
-The code is in `backend/internal/maps` (`imagegen.go` for the calls, `imagegen_start.go`, `imagegen_read.go`, `imagegen_clean.go` and `imagegen_run.go` for a request's life, `imagegen_map.go` for the map pictures; contract `ImageGenerationService` in `proto/meurpg/maps/v1/imagegen.proto`) and in `backend/internal/maps/images/gen`, a small package that only talks to the model and knows no campaign, person or database.
+The code is in `backend/internal/maps` (`imagegen.go` for the calls, `imagegen_start.go`, `imagegen_read.go`, `imagegen_clean.go` and `imagegen_run.go` (the task) for a request's life, `imagegen_map.go` for the map pictures; contract `ImageGenerationService` in `proto/meurpg/maps/v1/imagegen.proto`) and in `backend/internal/maps/images/gen`, a small package that only talks to the model and knows no campaign, person or database.
 Configuration (`GEMINI_API_KEY`, `GEMINI_IMAGE_MODEL`, `IMAGE_GENERATOR`, the monthly and daily limits) is in [CONTRIBUTING](../../development.md#ai-generated-images); costs and memory are in [Operations](../../operations/reference.md#generated-images-the-gemini-api).
 
 | `ImageGenerationService` call | What it does |
@@ -21,7 +21,7 @@ The refusals the master can resolve are `failed_precondition` with the `ImageGen
 ## The month's slot, in three steps (RN-28)
 
 1. **Reserve.** A short transaction (`reserve`) returns the request of an already-used key, or checks that generation is on, the month's tally, the gallery and the reference images (all the campaign's, read through the transaction), then inserts the `image_requests` row. The row is the slot: the month counts the rows not given back. `SERIALIZABLE` makes two requests for the last slot retry, and the second sees it taken.
-2. **Call the model, outside any transaction.** One goroutine per request (`run`; one model call at a time on the server) takes the already-prepared images, sets `sent_at` (if a "Cancelar" came first, nothing goes out) and calls the `Generator`. It derives from a service context (cancelled on shutdown) with a 6-minute timeout (`generationTimeout`), not from the request's context: the master may close the page.
+2. **Queue the task, then call the model outside any transaction.** After the commit, `reserve` enqueues one `image-generation` task on the `tasks.Runner` (`maps.Config.Tasks`; nil means an in-process runner the service owns). The payload is `{campaign_id, request_id}`, IDs only: no text, no image. In production the runner is Cloud Tasks, which calls the service back so Cloud Run gives the CPU for that request; everywhere else the task runs in a goroutine of the process. The handler (`run`; one model call at a time on the server) waits for the call slot, **rebuilds what the model gets from the request's row** ([below](#the-task-rebuilds-what-the-model-gets)), sets `sent_at` (if a "Cancelar" came first, nothing goes out) and calls the `Generator`. Its context is the task's (the deadline is `generationTimeout`, the task kind's dispatch deadline, 6 minutes, far under the 30-minute cap) and also ends when the service shuts down: the master may close the page.
 3. **Store or give back.** The image goes through the same path as an upload (`process`, `storeImage`: decoded and re-encoded without metadata, with the gallery quota) and becomes a `generated` image. The gallery row and the request's end go in the **same transaction**, allowed once only. The name comes from the request (the scene art, the map's isometric view or the adjusted image's name; "Imagem n" only when there is none). If an adjustment's parent was deleted meanwhile, the child is left without a parent and the slot stays spent.
 
 What happens to the slot:
@@ -32,6 +32,8 @@ What happens to the slot:
 | The call may have been billed (a timeout, a connection cut after the request left, an unreadable answer) | `failed` | **Stays spent** |
 | The service returned an image that cannot be used (the answer cannot be decoded, or the gallery filled up while the call was in the air) | `failed` (`no_image` or `gallery_full`) | **Stays spent** (`FinishImageRequestSpent`): the call was billed and the picture is not the server's fault |
 | The service returned a good image and the server could not keep it (the file store or the database failed) | `failed`, `STORAGE_FAILED` ("A imagem foi feita, mas não deu para guardá-la. Tente de novo; esta não conta no seu limite.") | **Returns** (`FinishImageRequestFailed`, the same path as every other refund); the picture is lost |
+| The map changed between the request and the task (a map-made request) | `failed`, `MAP_CHANGED` ("O mapa mudou depois do pedido. Gere de novo; esta não conta no seu limite.") | **Returns**: the call never left |
+| The queue refused the task (Cloud Tasks unreachable) | `failed`, `UNAVAILABLE` | **Returns**: never sent |
 | "Cancelar" after the request left | `CANCELED`, with `image_id` if the image arrives | Stays spent; only the wait stops, and an image that comes still goes to the gallery |
 
 A key refused by Google (401 or 403, an operator's error) becomes "O serviço de imagens não está disponível", with an error log line (Google's status and reason, never the key).
@@ -41,15 +43,32 @@ Each request carries a repeat-guard key (`idempotency_key`, unique per campaign)
 
 **Lost requests.** A `PENDING` request that never left the server for 10 minutes (`staleAfter`) fails and returns the slot. One that left and stays `PENDING` for 10 minutes fails as `timeout` with the slot **spent**; an image that still arrives enters the gallery, once only. This is settled when someone reads the request, the month's state, or asks for another image of the campaign (so "Restam" is right). The reservation counts requests in flight against the gallery's space, so a full gallery does not fail after Google bills.
 
+### The task is idempotent
+
+Cloud Tasks delivers at least once, so the same task may arrive twice, also at the same time.
+
+- **The claim** is `MarkImageRequestSent`: a conditional update (`pending` and never sent). Whoever sets `sent_at` calls the model; any other delivery gets no row and answers `nil`.
+- **A delivery for a request that is not waiting** (it is not there, it ended, it was canceled, or it was already sent) does nothing and answers `nil`, before it even waits for the call slot. In particular a request found **sent with no picture** (the instance that sent it died mid-call) is **never called again**: the call may have been billed, and the expiry rules above end it (timeout, slot spent).
+- **Ends before the claim** (no call slot in time, the shutdown, an image gone, a map changed) use `FinishUnsentImageRequestFailed`, which only touches a request never sent, so a second delivery that gives up cannot refund the slot of a call another delivery has in the air.
+- **What the answer means.** After the claim every outcome is recorded in the row (the table above) and the handler answers `nil`. Only a failure before the claim that a retry can fix (the database or the file store unreachable while reading the row or rebuilding the images) is returned as an error, and the queue tries again; if no try succeeds the request stays pending and `expireStale` gives its slot back after 10 minutes. An unreadable payload is `tasks.Permanent`.
+- **The queue refusing the task.** `reserve` has already committed the row. If `Enqueue` fails, the request ends `failed` (`UNAVAILABLE`, never sent) with the slot back, and the call answers that request, not an error (a retry with the same key finds the same answer). A server that dies between the commit and the enqueue leaves a pending request nothing will run: `expireStale` gives its slot back after 10 minutes.
+
+### The task rebuilds what the model gets
+
+A payload holds no image, so `prepareFromRow` builds again, with the same functions `begin` uses, what `begin` held in memory: the shrunk references (`prepareReferences`, from `reference_ids` and `character_ids`; the NPCs' portraits of a map-made request are already in `character_ids`), the image an edit adjusts (`prepareSource`, from `source_image_id`) and, for a map, the drawing (`rebuildMap`, which shares `drawMap` with `prepareMap`). The shrunk references are the files kept next to the images (`<id>.ref`), so rebuilding reads them rather than decoding the originals.
+
+For a map-made request the drawing is made again from the map as it is **now**, and checked against what the row kept: the map, its image, grid columns and factor, size, the walls hash (`map_plan_hash`) and, for the textured map, the rectangle on the canvas. If any differs, or the map is gone, or the players now see nothing, the request ends `failed` with `MAP_CHANGED` and the slot comes back (nothing left the server, so nothing was billed). What the players see (the creatures drawn as discs, the fog's view) is read again too, never reused, so a task that runs late cannot draw what is hidden by then; a token moved in the few seconds before the task runs changes the discs, not the walls the master agreed to.
+An image the request needs that was deleted meanwhile ends it `IMAGE_MISSING`, slot back.
+
 ## Shutdown and the long poll
 
-- **Shutdown.** `cmd/api` cancels the service context when shutdown begins (`OnShutdown`): a request still queued returns its slot at once, long polls answer, and a call already sent is cut and follows the rule above. After the HTTP server stops, the goroutines are waited for about 1 s (inside Cloud Run's 10 s) before the pool closes.
-- **The long poll and Cloud Run.** Cloud Run gives CPU only during a request, so a goroutine working after the response may be left without CPU. The app therefore keeps **one long poll open** (`GetImageGeneration` with `wait_seconds` 25, again and again) while it waits, and the instance always has a request in progress during generation. The wait uses an in-memory notifier per request (single instance): the goroutine notifies on finishing, the call rereads the row before answering, and the end of the wait also answers. With more than one instance, the wait still ends at its deadline.
+- **Shutdown.** `cmd/api` cancels the service context when shutdown begins (`CancelGenerations`): a request still queued returns its slot at once, long polls answer, and a call already sent is cut and follows the rule above. After the HTTP server stops, `WaitForGenerations` waits about 1 s (inside Cloud Run's 10 s) for the handlers of this service (its own wait group; a runner the service made itself is waited for too, a shared one is the caller's to wait for) before the pool closes.
+- **The long poll and Cloud Run.** Cloud Run gives CPU only during a request, so a goroutine working after the response may be left without CPU. The app therefore keeps **one long poll open** (`GetImageGeneration` with `wait_seconds` 25, again and again) while it waits, and the instance always has a request in progress during generation. The wait uses an in-memory notifier per request (single instance, the handler runs on the instance that holds the poll): the handler notifies on finishing, the call rereads the row before answering, and the end of the wait also answers. With more than one instance, the wait still ends at its deadline.
 
-## Memory
+## Memory and the cap
 
-Every live request keeps its shrunk references in memory until its call goes out, also while it waits for the call slot.
-So at most **5 requests are alive at once** (`maxPendingRequests`: one calling the model, four waiting).
+A task waiting for the model holds only IDs: the images are read again when the call slot is free, so one request's images (up to about 6 MiB) are in memory at a time, the one being sent.
+The cap on live requests stays, counted in the database now (`CountPendingImageRequests`, inside the reserving transaction, so it holds across instances and a lost task cannot leave it stuck): at most **5 requests are alive at once** (`maxPendingRequests`: one calling the model, four waiting), so the queue for the single call at a time stays within `generationTimeout`.
 A sixth is `resource_exhausted` ("Muitas imagens sendo geradas agora. Espere uma terminar e tente de novo."), before any image is read and without spending the month's slot.
 The measured worst case and how to measure it again are in [Operations](../../operations/reference.md#generated-images-the-gemini-api).
 
