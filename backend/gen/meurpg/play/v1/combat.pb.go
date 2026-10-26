@@ -6194,7 +6194,13 @@ type SubmitInitiativeRequest struct {
 	//
 	//	*SubmitInitiativeRequest_RollInApp
 	//	*SubmitInitiativeRequest_D20Face
-	Roll          isSubmitInitiativeRequest_Roll `protobuf_oneof:"roll"`
+	Roll isSubmitInitiativeRequest_Roll `protobuf_oneof:"roll"`
+	// A table maneuver (a superiority_die effect of applies "initiative") the player adds to the
+	// initiative: its key. The die is rolled in the app, or with physical dice its face is
+	// `maneuver_face` (1 to its sides, required then). One use of its resource is spent when the
+	// initiative is set. The refusals are those of RollSceneCheckRequest.maneuver_key.
+	ManeuverKey   string `protobuf:"bytes,7,opt,name=maneuver_key,json=maneuverKey,proto3" json:"maneuver_key,omitempty"`
+	ManeuverFace  int32  `protobuf:"varint,8,opt,name=maneuver_face,json=maneuverFace,proto3" json:"maneuver_face,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6278,6 +6284,20 @@ func (x *SubmitInitiativeRequest) GetD20Face() int32 {
 		if x, ok := x.Roll.(*SubmitInitiativeRequest_D20Face); ok {
 			return x.D20Face
 		}
+	}
+	return 0
+}
+
+func (x *SubmitInitiativeRequest) GetManeuverKey() string {
+	if x != nil {
+		return x.ManeuverKey
+	}
+	return ""
+}
+
+func (x *SubmitInitiativeRequest) GetManeuverFace() int32 {
+	if x != nil {
+		return x.ManeuverFace
 	}
 	return 0
 }
@@ -22250,6 +22270,13 @@ type ResolveConcentrationSaveRequest struct {
 	// With a physical d20 and disadvantage (exhaustion 3 or more, SRD 5.1) or advantage on the
 	// saving throw, the second d20; `d20_face` is the first.
 	SecondD20Face *int32 `protobuf:"varint,101,opt,name=second_d20_face,json=secondD20Face,proto3,oneof" json:"second_d20_face,omitempty"`
+	// A table maneuver (a superiority_die effect of applies "save") the player adds to this roll:
+	// its key, one of Maneuver.key of the character's derived sheet. The die is rolled with the
+	// roll (in the app, or its face is the last of `extra_die_faces` with physical dice) and one use
+	// of its resource is spent when the roll is written. Refused with `invalid_argument` for a
+	// maneuver the character has not or that does not go on this roll, and with a resource
+	// blocked reason NO_USES_LEFT when no use is left. Empty adds none.
+	ManeuverKey   string `protobuf:"bytes,102,opt,name=maneuver_key,json=maneuverKey,proto3" json:"maneuver_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -22367,6 +22394,13 @@ func (x *ResolveConcentrationSaveRequest) GetSecondD20Face() int32 {
 		return *x.SecondD20Face
 	}
 	return 0
+}
+
+func (x *ResolveConcentrationSaveRequest) GetManeuverKey() string {
+	if x != nil {
+		return x.ManeuverKey
+	}
+	return ""
 }
 
 type isResolveConcentrationSaveRequest_Roll interface {
@@ -23659,7 +23693,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\"O\n" +
 	"\x14GetEncounterResponse\x127\n" +
-	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\xf0\x01\n" +
+	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\xb8\x02\n" +
 	"\x17SubmitInitiativeRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -23667,7 +23701,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\fcombatant_id\x18\x03 \x01(\tR\vcombatantId\x12'\n" +
 	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\x12 \n" +
 	"\vroll_in_app\x18\x05 \x01(\bH\x00R\trollInApp\x12\x1b\n" +
-	"\bd20_face\x18\x06 \x01(\x05H\x00R\ad20FaceB\x06\n" +
+	"\bd20_face\x18\x06 \x01(\x05H\x00R\ad20Face\x12!\n" +
+	"\fmaneuver_key\x18\a \x01(\tR\vmaneuverKey\x12#\n" +
+	"\rmaneuver_face\x18\b \x01(\x05R\fmaneuverFaceB\x06\n" +
 	"\x04roll\"\x9a\x01\n" +
 	"\x18SubmitInitiativeResponse\x127\n" +
 	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\x12E\n" +
@@ -25058,7 +25094,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x06caught\x18\x04 \x01(\bR\x06caught\x120\n" +
 	"\x14throw_back_available\x18\x05 \x01(\bR\x12throwBackAvailable\"0\n" +
 	"\x11FeatherFallResult\x12\x1b\n" +
-	"\tsaved_ids\x18\x01 \x03(\tR\bsavedIds\"\x99\x03\n" +
+	"\tsaved_ids\x18\x01 \x03(\tR\bsavedIds\"\xbc\x03\n" +
 	"\x1fResolveConcentrationSaveRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -25070,7 +25106,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x04keep\x18\a \x01(\bH\x00R\x04keep\x12'\n" +
 	"\x0fidempotency_key\x18\b \x01(\tR\x0eidempotencyKey\x12&\n" +
 	"\x0fextra_die_faces\x18d \x03(\x05R\rextraDieFaces\x12+\n" +
-	"\x0fsecond_d20_face\x18e \x01(\x05H\x01R\rsecondD20Face\x88\x01\x01B\x06\n" +
+	"\x0fsecond_d20_face\x18e \x01(\x05H\x01R\rsecondD20Face\x88\x01\x01\x12!\n" +
+	"\fmaneuver_key\x18f \x01(\tR\vmaneuverKeyB\x06\n" +
 	"\x04rollB\x12\n" +
 	"\x10_second_d20_face\"\xfe\x02\n" +
 	" ResolveConcentrationSaveResponse\x127\n" +

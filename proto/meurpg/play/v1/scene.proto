@@ -385,6 +385,13 @@ message RollSceneCheckRequest {
   // the order the roll's sources list them, one for each, 1 to the die's faces. With the app's
   // dice the server rolls them; a wrong number is `invalid_argument`.
   repeated int32 extra_die_faces = 7;
+  // A table maneuver (a superiority_die effect of applies "check, or save for a save action") the player adds to this roll:
+  // its key, one of Maneuver.key of the character's derived sheet. The die is rolled with the
+  // roll (in the app, or its face is the last of `extra_die_faces` with physical dice) and one use
+  // of its resource is spent when the roll is written. Refused with `invalid_argument` for a
+  // maneuver the character has not or that does not go on this roll, and with a resource
+  // blocked reason NO_USES_LEFT when no use is left. Empty adds none.
+  string maneuver_key = 8;
 }
 
 // RollSceneCheckResponse is the roll that was made.

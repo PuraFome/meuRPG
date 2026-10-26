@@ -1033,6 +1033,13 @@ type RollEffectSaveRequest struct {
 	ExtraDieFaces []int32 `protobuf:"varint,9,rep,packed,name=extra_die_faces,json=extraDieFaces,proto3" json:"extra_die_faces,omitempty"`
 	// With physical dice and advantage or disadvantage, the second d20.
 	SecondD20Face *int32 `protobuf:"varint,10,opt,name=second_d20_face,json=secondD20Face,proto3,oneof" json:"second_d20_face,omitempty"`
+	// A table maneuver (a superiority_die effect of applies "save") the player adds to this roll:
+	// its key, one of Maneuver.key of the character's derived sheet. The die is rolled with the
+	// roll (in the app, or its face is the last of `extra_die_faces` with physical dice) and one use
+	// of its resource is spent when the roll is written. Refused with `invalid_argument` for a
+	// maneuver the character has not or that does not go on this roll, and with a resource
+	// blocked reason NO_USES_LEFT when no use is left. Empty adds none.
+	ManeuverKey   string `protobuf:"bytes,11,opt,name=maneuver_key,json=maneuverKey,proto3" json:"maneuver_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1150,6 +1157,13 @@ func (x *RollEffectSaveRequest) GetSecondD20Face() int32 {
 		return *x.SecondD20Face
 	}
 	return 0
+}
+
+func (x *RollEffectSaveRequest) GetManeuverKey() string {
+	if x != nil {
+		return x.ManeuverKey
+	}
+	return ""
 }
 
 type isRollEffectSaveRequest_Roll interface {
@@ -2123,7 +2137,7 @@ const file_meurpg_play_v1_lasting_effects_service_proto_rawDesc = "" +
 	"\teffect_id\x18\x04 \x01(\tR\beffectId\x12!\n" +
 	"\fcombatant_id\x18\x05 \x01(\tR\vcombatantId\"U\n" +
 	"\x1aRemoveEffectTargetResponse\x127\n" +
-	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\x97\x03\n" +
+	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\xba\x03\n" +
 	"\x15RollEffectSaveRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -2136,7 +2150,8 @@ const file_meurpg_play_v1_lasting_effects_service_proto_rawDesc = "" +
 	"\x04skip\x18\b \x01(\bH\x00R\x04skip\x12&\n" +
 	"\x0fextra_die_faces\x18\t \x03(\x05R\rextraDieFaces\x12+\n" +
 	"\x0fsecond_d20_face\x18\n" +
-	" \x01(\x05H\x01R\rsecondD20Face\x88\x01\x01B\x06\n" +
+	" \x01(\x05H\x01R\rsecondD20Face\x88\x01\x01\x12!\n" +
+	"\fmaneuver_key\x18\v \x01(\tR\vmaneuverKeyB\x06\n" +
 	"\x04rollB\x12\n" +
 	"\x10_second_d20_face\"\xed\x02\n" +
 	"\x16RollEffectSaveResponse\x127\n" +
