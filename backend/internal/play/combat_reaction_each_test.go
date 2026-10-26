@@ -3,6 +3,7 @@ package play
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -396,5 +397,43 @@ func TestTheBardsSettingChoosesWhatCuttingWordsAsks(t *testing.T) {
 	w := all.windowOf(t, all.ana, playv1.ReactionKind_REACTION_KIND_CUTTING_WORDS)
 	if w == nil || w.GetCuttingWords().GetRollKind() != playv1.ReactionRollKind_REACTION_ROLL_KIND_DAMAGE {
 		t.Errorf("\"todos\": the damage roll's window = %v, want a Cutting Words on the damage", w)
+	}
+}
+
+// TestHellishRebukeTheMastersRollForTheGoblinIsNotTheMastersAnswerForTheTiefling: the tiefling's
+// player chooses the reaction in his own seat; the master only rolls the Goblin's saving
+// throw (the second step). No log line reads "respondido pelo mestre" for anybody.
+func TestHellishRebukeTheMastersRollForTheGoblinIsNotTheMastersAnswerForTheTiefling(t *testing.T) {
+	t.Parallel()
+	a, e := reactorFight(t, tieflingFighter)
+	hit := a.mustAttack(t, a.master, e, "Goblin", sword, "Reator", d20(15))
+	a.mustDamage(t, a.master, e, hit.GetPendingDamage().GetId(), typedDamage(3))
+	if _, err := a.settle(t, a.master, e, hit.GetPendingDamage().GetId(), true); err != nil {
+		t.Fatalf("ApplyPendingDamage() error = %v", err)
+	}
+	w := a.windowOf(t, a.ana, playv1.ReactionKind_REACTION_KIND_HELLISH_REBUKE)
+	if w == nil {
+		t.Fatal("the tiefling has no Hellish Rebuke window")
+	}
+	res := a.mustAnswer(t, a.ana, e, w.GetId(), func(r *playv1.AnswerReactionRequest) {
+		r.Answer, r.UseRacial = playv1.ReactionChoice_REACTION_CHOICE_USE, true
+	})
+	if res.GetResult().GetByMaster() {
+		t.Error("the tiefling's own answer is marked by_master")
+	}
+	a.h.roller.queue(8, 9, 7)
+	save := a.windowOf(t, a.master, playv1.ReactionKind_REACTION_KIND_HELLISH_REBUKE)
+	done := a.mustAnswer(t, a.master, e, save.GetId(), func(r *playv1.AnswerReactionRequest) {
+		r.Answer, r.Roll = playv1.ReactionChoice_REACTION_CHOICE_USE, &playv1.AnswerReactionRequest_Typed{Typed: 3}
+	})
+	if done.GetResult().GetByMaster() {
+		t.Error("the master's roll of the Goblin's save is marked by_master in the result")
+	}
+	for who, u := range map[string]*user{"the master": a.master, "the tiefling's player": a.ana} {
+		for _, l := range logLinesOf(t, a, u, e, playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION) {
+			if strings.Contains(l.GetReactionTextPt(), "respondido pelo mestre") {
+				t.Errorf("%s reads %q, want no \"respondido pelo mestre\": the player answered", who, l.GetReactionTextPt())
+			}
+		}
 	}
 }

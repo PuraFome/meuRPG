@@ -25,6 +25,7 @@ stateDiagram-v2
 
 - **The save.** `RollDeathSave` (the owner, or the master) uses `combat.DeathSave`: 10 or more is a success, less a failure, a natural 1 is two failures, a natural 20 returns with 1 HP through `character_vitals`.
   The d20 is the app's or typed, on each roll (RN-18).
+- **Attacks against someone at 0 HP.** The combatant keeps no `condition:unconscious` for it: `downCharacters` lists the player's characters whose vitals are at 0 and `modeFacts.scene` gives the target that condition for the attack rules, so weapon and spell attacks (the write path `readModeInputs` and the read path of `GetTurnOptions`, `TargetInReach.roll_mode` and `critical_on_hit`) have advantage, and a hit from within 5 ft is critical (`DamageWhileDown`: two failures).
 - **Damage at 0 HP.** Damage that hits someone at 0 HP (the master's "Aplicar") does not lower the HP: it adds a failure (`combat.DamageWhileDown`), two on a critical.
 - **Stable.** A character that becomes stable has both counts back at zero (`tally` clears the failures and keeps the three successes as the stable marker); damage to a stable character (`failuresWhileDown`) starts the counts over, so it counts one failure.
 - **Healing.** Any heal above 0 resets both counts: a spell, Second Wind, the natural 20, the master's HP correction (`AdjustCharacterVitals`) and an undo, all through `changeVitals`.

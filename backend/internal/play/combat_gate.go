@@ -77,6 +77,26 @@ func (s *Service) isDown(ctx context.Context, tx pgx.Tx, campaignID string, c pl
 	return v.GetHitPointsMax() > 0 && v.GetHitPointsCurrent() == 0, nil
 }
 
+// downCharacters lists the player's characters of cs at 0 hit points: for the attack rules
+// they are unconscious (SRD 5.1, Conditions) though the combatant keeps no condition. A write
+// passes its transaction; a read passes nil.
+func (s *Service) downCharacters(ctx context.Context, tx pgx.Tx, campaignID string, cs []playdb.Combatant) ([]string, error) {
+	var out []string
+	for _, c := range cs {
+		if c.Kind != kindPlayer || c.Dismissed {
+			continue
+		}
+		down, err := s.isDown(ctx, tx, campaignID, c)
+		if err != nil {
+			return nil, err
+		}
+		if down {
+			out = append(out, c.ID)
+		}
+	}
+	return out, nil
+}
+
 // gateError is the failed_precondition a write answers with for a reason of
 // gate.
 func gateError(code rulesv1.DisabledReasonCode) error {
