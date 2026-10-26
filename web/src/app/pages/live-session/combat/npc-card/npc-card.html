@@ -114,8 +114,20 @@
             }
           </mat-select>
         </mat-form-field>
-        @for (line of modeLines(); track line) {
-          <p class="offer__why aim__mode">{{ line }}</p>
+        @if (targetId()) {
+          <app-roll-mode-picker
+            class="aim__mode"
+            approval="free"
+            [suggested]="mode.suggested()"
+            [sources]="mode.sources()"
+            [mode]="mode.chosen()"
+            (modeChange)="mode.picked.set($event)"
+            [(reason)]="mode.reason"
+            [busy]="busy()"
+          />
+          @if (mode.criticalOnHit()) {
+            <p class="offer__why">Acerto crítico automático (a 1,5 m de alvo paralisado ou inconsciente)</p>
+          }
         }
         @if (faceCount() === 1) {
           <app-roll-picker

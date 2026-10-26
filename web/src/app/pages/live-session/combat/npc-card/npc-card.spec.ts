@@ -309,12 +309,39 @@ describe('NpcCard: the typed d20 follows the roll mode of the target', () => {
         textPt: 'atacante não visto',
       },
     ]);
-    expect(el.textContent).toContain('Vantagem: atacante não visto');
+    expect(el.textContent).toContain('Como rolar o d20');
+    expect(el.textContent).toContain('atacante não visto');
   });
 
-  it('says nothing about the mode when the roll is normal', async () => {
-    const { el } = await render(RollMode.NORMAL);
-    expect(el.textContent).not.toContain('Vantagem');
+  it('offers the three modes with the suggested one marked', async () => {
+    const { el } = await render(RollMode.ADVANTAGE);
+    const radios = Array.from(el.querySelectorAll('.radio'));
+    expect(radios.map((r) => r.querySelector('.radio__word')?.textContent?.trim())).toEqual([
+      'Normal',
+      'Vantagem',
+      'Desvantagem',
+    ]);
+    expect(el.querySelector('.radio__sug')?.parentElement?.textContent).toContain('Vantagem');
+  });
+
+  it('rolls with the mode the master picked, with its reason, and sends nothing when the suggestion stands', async () => {
+    const { fixture, rollAttack, el } = await render(RollMode.NORMAL);
+    const card = fixture.componentInstance as unknown as {
+      rollTyped(face: number): Promise<void>;
+      rollTypedPair(faces: number[]): Promise<void>;
+      mode: { picked: { set(m: RollMode): void }; reason: { set(r: string): void } };
+    };
+    await card.rollTyped(12);
+    expect(rollAttack.mock.calls[0][9]).toBeUndefined();
+    card.mode.picked.set(RollMode.DISADVANTAGE);
+    card.mode.reason.set('esta atordoado');
+    fixture.detectChanges();
+    expect(el.querySelector('app-multi-roll')).not.toBeNull();
+    await card.rollTypedPair([5, 17]);
+    expect(rollAttack.mock.calls[1][9]).toEqual({
+      mode: RollMode.DISADVANTAGE,
+      reason: 'esta atordoado',
+    });
   });
 
   it('keeps one d20 when the roll is normal', async () => {
