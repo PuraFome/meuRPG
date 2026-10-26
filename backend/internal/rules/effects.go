@@ -342,6 +342,13 @@ func (x effectCompiler) strayFields() error {
 	if err := x.strayOwnFields(); err != nil {
 		return err
 	}
+	return x.straySpellAndRangeFields()
+}
+
+// straySpellAndRangeFields refuses the fields of granted_spell and of
+// ranged_attack on an effect of another type.
+func (x effectCompiler) straySpellAndRangeFields() error {
+	e := x.e
 	if e.Type != "granted_spell" && (e.Spell != "" || e.FromLevel != "" || e.Uses != "" || e.AlsoWithSlot || e.RitualOnly || e.CountsAsKnown) {
 		return x.fail("spell, from_level, uses, also_with_slot, ritual_only and counts_as_known belong to granted_spell")
 	}

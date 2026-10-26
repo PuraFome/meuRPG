@@ -119,7 +119,8 @@
             "MULTICLASS_PREREQUISITE_CURRENT",
             "PROFICIENCY_CHOICE",
             "INSTRUMENT_CHOICE",
-            "LATE_CHOICE_MISSING"
+            "LATE_CHOICE_MISSING",
+            "SWAP_NOT_ALLOWED"
           ],
           "unsent": []
         }
