@@ -50,10 +50,10 @@ const (
 	// maxGenerating is how many calls to the model run at once on this server.
 	maxGenerating = 1
 	// maxPendingRequests is how many image requests may be alive at once on this
-	// server, the one calling the model and the ones waiting for its slot. Each
-	// keeps its shrunk references in memory (up to about 6 MiB) until its call goes
-	// out, so the wait is bounded to what the instance has room for
-	// (docs/operations/reference.md#memory-budgets).
+	// server, the one calling the model and the ones waiting for its slot. A task
+	// holds only IDs while it waits (the images are read again when its turn comes),
+	// so this no longer guards memory: it keeps the queue for the one call at a time
+	// short enough for a request to be served within generationTimeout.
 	maxPendingRequests = 5
 	// maxLongPoll is the longest wait_seconds of GetImageGeneration.
 	maxLongPoll = 25
@@ -89,6 +89,7 @@ const (
 	reasonTimeout       = "timeout"
 	reasonServiceOff    = "service_off"
 	reasonShutdown      = "shutdown"
+	reasonMapChanged    = "map_changed"
 )
 
 // brazil is the time zone of the month's count: Brazil has had no daylight

@@ -308,6 +308,20 @@ func (q *Queries) CountOpenImageRequests(ctx context.Context, arg CountOpenImage
 	return column_1, err
 }
 
+const countPendingImageRequests = `-- name: CountPendingImageRequests :one
+SELECT count(*)::INT4 FROM image_requests
+WHERE status = 'pending' AND created_at > $1
+`
+
+// The requests alive on the whole server: pending and not yet taken for lost. reserve caps them,
+// so a queue of requests waiting for the one call to the model stays short.
+func (q *Queries) CountPendingImageRequests(ctx context.Context, createdAt time.Time) (int32, error) {
+	row := q.db.QueryRow(ctx, countPendingImageRequests, createdAt)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const deleteGalleryImage = `-- name: DeleteGalleryImage :one
 DELETE FROM gallery_images
 WHERE campaign_id = $1 AND id = $2
@@ -757,6 +771,36 @@ type FinishImageRequestSpentParams struct {
 // stays spent. A request the master canceled in the meantime stays canceled.
 func (q *Queries) FinishImageRequestSpent(ctx context.Context, arg FinishImageRequestSpentParams) error {
 	_, err := q.db.Exec(ctx, finishImageRequestSpent,
+		arg.Status,
+		arg.Reason,
+		arg.Now,
+		arg.CampaignID,
+		arg.ID,
+	)
+	return err
+}
+
+const finishUnsentImageRequestFailed = `-- name: FinishUnsentImageRequestFailed :exec
+UPDATE image_requests
+SET status = CASE WHEN status = 'canceled' THEN status ELSE $1 END,
+    reason = $2, refunded = true, finished_at = $3
+WHERE campaign_id = $4 AND id = $5 AND status IN ('pending', 'canceled') AND NOT refunded AND sent_at IS NULL
+`
+
+type FinishUnsentImageRequestFailedParams struct {
+	Status     string
+	Reason     string
+	Now        *time.Time
+	CampaignID string
+	ID         string
+}
+
+// A request that ends before it left the server (its task could not take a call slot, could not
+// rebuild its images, or found the map changed): the slot is back. A task delivered twice has
+// another delivery that may have sent it already, and then this changes nothing: that call may
+// have been billed.
+func (q *Queries) FinishUnsentImageRequestFailed(ctx context.Context, arg FinishUnsentImageRequestFailedParams) error {
+	_, err := q.db.Exec(ctx, finishUnsentImageRequestFailed,
 		arg.Status,
 		arg.Reason,
 		arg.Now,
