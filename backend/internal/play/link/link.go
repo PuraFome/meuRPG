@@ -351,10 +351,10 @@ type FeatureAction struct {
 	Standard string
 	// State is the key of the state the action starts or ends (rules.Action.State), or "";
 	// StateActive says the state is on, so taking the action ends it.
-	State       string
-	StateActive bool
+	State       string `json:",omitempty"`
+	StateActive bool   `json:",omitempty"`
 	// StateRounds is how many rounds the state lasts once started, 0 until it ends.
-	StateRounds int
+	StateRounds int `json:",omitempty"`
 }
 
 // Dice is a roll: Count d Sides plus Bonus (Count 0 is a flat number), with the

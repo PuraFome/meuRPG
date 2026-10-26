@@ -18,6 +18,13 @@ ALTER TABLE characters
     DROP CONSTRAINT IF EXISTS characters_active_states_valid,
     ADD CONSTRAINT characters_active_states_valid CHECK (jsonb_typeof(active_states) = 'array' AND jsonb_array_length(active_states) <= 32);
 
+-- Adding a column makes CockroachDB rewrite the table's TTL expression (00020) in its own
+-- normal form; setting the same expression again, last, keeps a second run of the migrations
+-- from leaving the table looking different (as 00223 does).
+ALTER TABLE characters SET (
+    ttl_expiration_expression = 'CASE WHEN kind = ''player'' AND player_user_id IS NULL AND campaign_id IS NULL THEN created_at END'
+);
+
 -- +goose Down
 ALTER TABLE characters
     DROP CONSTRAINT IF EXISTS characters_active_states_valid,
