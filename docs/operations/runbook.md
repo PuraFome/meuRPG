@@ -527,16 +527,18 @@ Detached work (images, exports, sweeps) needs CPU, which the service has only in
 
    The start-up log must say `detached work runs on Cloud Tasks`. A partial set stops the revision with an error naming what is missing.
 
-4. **Prove the path** with a task for a kind that does not exist: it goes through Cloud Tasks, the ingress and the token check, and the service answers `404`. Read it in the request log, then empty the queue (Cloud Tasks would retry a `404`).
+4. **Prove the path** with a task for a kind that does not exist: it goes through Cloud Tasks, the ingress and the token check, and the service answers `404`. Read it in the request log, then delete that one task (Cloud Tasks would retry a `404`). Never purge the queue here: it also holds the sweep's next slot, and nothing schedules it again until an instance starts.
 
    ```bash
-   gcloud tasks create-http-task --queue=$QUEUE --location=$REGION \
+   export SMOKE=$(gcloud tasks create-http-task --queue=$QUEUE --location=$REGION \
      --url=$TASKS_TARGET_URL/internal/tasks/smoke --method=POST --body-content='{}' \
-     --oidc-service-account-email=$SA --oidc-token-audience=$TASKS_TARGET_URL
+     --oidc-service-account-email=$SA --oidc-token-audience=$TASKS_TARGET_URL --format='value(name)')
    gcloud logging read "resource.type=cloud_run_revision AND httpRequest.requestUrl:\"/internal/tasks/smoke\"" --limit=3 --freshness=5m \
      --format='value(httpRequest.status,httpRequest.requestUrl)'
-   gcloud tasks queues purge $QUEUE --location=$REGION --quiet
+   gcloud tasks delete $SMOKE --quiet
    ```
+
+   The queue then holds one task, `sweep-campaign-sweep-<slot>`, due at the next 10-minute mark; its request log line reads `200`, and the next slot takes its place.
 
    `404`: working. No line: the ingress refused the call (it never reached the container; see [Ingress and Cloud Tasks](README.md#ingress-and-cloud-tasks)). A line with `401`: the token was refused; check the account, the audience (the URL must be exactly `TASKS_TARGET_URL`) and the role of step 2.
 
