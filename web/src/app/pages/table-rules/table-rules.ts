@@ -55,6 +55,7 @@ import {
   FEAT_OPTIONS,
   HIDDEN_AREA_OPTIONS,
   HIT_POINT_OPTIONS,
+  PICK_SWAP_HINT,
   SAVE_DC_HINT,
   STYLE_OPTIONS,
 } from './table-rules-options';
@@ -121,6 +122,7 @@ export class TableRulesPage {
   protected readonly combatOptions = COMBAT_OPTIONS;
   protected readonly inertStyle: readonly TableStyle[] = [TableStyle.PERSONALIZADO];
   protected readonly saveDcHint = SAVE_DC_HINT;
+  protected readonly pickSwapHint = PICK_SWAP_HINT;
   protected readonly maxLength = HOUSE_RULE_MAX_LENGTH;
   protected readonly maxCount = HOUSE_RULE_MAX_COUNT;
 

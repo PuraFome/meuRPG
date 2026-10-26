@@ -19,10 +19,10 @@ func overlayBuildCases() map[string]func(o *Overlay) {
 		"ok: revision 0":        func(o *Overlay) { o.Revision = 0 },
 		"revision negative":     func(o *Overlay) { o.Revision = -1 },
 		"revision before limit": func(o *Overlay) { o.Revision = -1; o.Feats = make([]TableFeat, MaxOverlayEntries) },
-		"301 entries": func(o *Overlay) {
+		"1001 entries": func(o *Overlay) {
 			o.Feats = make([]TableFeat, MaxOverlayEntries-len(o.Classes)-len(o.Subclasses)-len(o.Spells)-len(o.Races)-len(o.Subraces)-len(o.Backgrounds)+1)
 		},
-		"ok: 300 entries": func(o *Overlay) {
+		"ok: 1000 entries": func(o *Overlay) {
 			for i := range MaxOverlayEntries - len(o.Classes) - len(o.Subclasses) - len(o.Spells) - len(o.Races) - len(o.Subraces) - len(o.Backgrounds) {
 				f := feat
 				f.Key = "feat:talento-" + strconv.Itoa(i) + tableSuffix

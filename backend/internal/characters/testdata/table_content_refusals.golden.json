@@ -165,7 +165,7 @@
   },
   {
     "step": "too many switches",
-    "value": "invalid_argument: switches must have at most 700 switches | invalid field=\"switches\""
+    "value": "invalid_argument: switches must have at most 1400 switches | invalid field=\"switches\""
   },
   {
     "step": "a switch twice",

@@ -2,8 +2,10 @@ import { create } from '@bufbuild/protobuf';
 
 import {
   TableBackgroundSchema,
+  TableClassFeatureSchema,
   TableContentKind,
   TableFeatSchema,
+  TableOptionSchema,
   TableEntrySchema,
   TableRaceSchema,
   TableSpellSchema,
@@ -12,6 +14,8 @@ import {
 import { readEntry } from './content-read';
 import { type EntryRead, type NameOf } from './content-read-parts';
 import type { FeatInit } from './feat-draft';
+import type { ClassFeatureInit } from './class-feature-draft';
+import type { OptionInit } from './option-draft';
 import type { BackgroundInit, RaceInit, SubraceInit } from './feature-draft';
 import type { SpellInit } from './spell-types';
 
@@ -24,7 +28,9 @@ export type PreviewBody =
   | { readonly case: 'tableRace'; readonly value: RaceInit }
   | { readonly case: 'tableSubrace'; readonly value: SubraceInit }
   | { readonly case: 'tableBackground'; readonly value: BackgroundInit }
-  | { readonly case: 'tableFeat'; readonly value: FeatInit };
+  | { readonly case: 'tableFeat'; readonly value: FeatInit }
+  | { readonly case: 'tableOption'; readonly value: OptionInit }
+  | { readonly case: 'tableClassFeature'; readonly value: ClassFeatureInit };
 
 export function previewRead(body: PreviewBody, nameOf: NameOf): EntryRead {
   switch (body.case) {
@@ -65,6 +71,25 @@ export function previewRead(body: PreviewBody, nameOf: NameOf): EntryRead {
         create(TableEntrySchema, {
           kind: TableContentKind.FEAT,
           body: { case: 'tableFeat', value: create(TableFeatSchema, body.value) },
+        }),
+        nameOf,
+      );
+    case 'tableOption':
+      return readEntry(
+        create(TableEntrySchema, {
+          kind: TableContentKind.OPTION,
+          body: { case: 'tableOption', value: create(TableOptionSchema, body.value) },
+        }),
+        nameOf,
+      );
+    case 'tableClassFeature':
+      return readEntry(
+        create(TableEntrySchema, {
+          kind: TableContentKind.CLASS_FEATURE,
+          body: {
+            case: 'tableClassFeature',
+            value: create(TableClassFeatureSchema, body.value),
+          },
         }),
         nameOf,
       );

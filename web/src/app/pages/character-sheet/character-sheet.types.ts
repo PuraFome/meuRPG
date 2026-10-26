@@ -95,6 +95,28 @@ export interface SheetSpellVm {
   readonly reaction: boolean;
 }
 
+/** A spell an entry of the character grants (`GrantedSpell`): cast through the grant, apart from the classes' lists. */
+export interface GrantedSpellVm {
+  readonly key: string;
+  readonly namePt: string;
+  /** 0 is a cantrip. */
+  readonly level: number;
+  /** The trait, feat or feature that grants it. */
+  readonly sourcePt: string;
+  readonly atWill: boolean;
+  /** The resource each cast spends one of, and its Portuguese name; empty at will. */
+  readonly resource: string;
+  readonly resourceNamePt: string;
+  readonly alsoWithSlot: boolean;
+  readonly ritualOnly: boolean;
+  readonly countsAsKnown: boolean;
+  /** The casting ability; `null` while the player has not picked it (`abilityPending`). */
+  readonly ability: AbilityKey | null;
+  readonly abilityPending: boolean;
+  readonly saveDc: number;
+  readonly attackBonus: number;
+}
+
 export interface FeatureVm {
   /** Portuguese name (`Feature.name_pt`). */
   readonly name: string;
@@ -191,6 +213,9 @@ export interface FullSheetVm {
   readonly hitPointsMax: number;
   readonly hitDice: string;
   readonly speedWalkFt: number;
+  /** The speeds beyond walking and what the table lets the character do in water, as lines
+   * of the Deslocamento box: "Voo 3 m (10 pés)", "Respira na água". Empty without any. */
+  readonly speedExtras: readonly string[];
   readonly senses: readonly string[];
   readonly attacks: readonly AttackVm[];
   readonly spellcasting: readonly SpellcastingVm[];
@@ -200,6 +225,8 @@ export interface FullSheetVm {
   readonly pactSlots: PactSlotsVm | null;
   /** The cantrips and spells of the sheet, by level then name, as the server sorts them. */
   readonly spells: readonly SheetSpellVm[];
+  /** The spells the character's entries grant, by level and name. */
+  readonly grantedSpells: readonly GrantedSpellVm[];
   readonly features: readonly FeatureVm[];
   /** The dragonborn's Breath Weapon with the numbers of this sheet, the whole rule in one paragraph
    * (`DerivedSheet.breath_weapon.text_pt`); empty for every other character. */

@@ -57,8 +57,9 @@ type NotesServiceClient interface {
 	// scene. The list is not paged: it holds at most 300 notes plus the
 	// revealed clues.
 	//
-	// A clue is tagged with its scene only once the group discovered it; until
-	// then it has no tag and no scene name.
+	// A clue is tagged with its scene only once the caller discovered it; until
+	// then it has no tag and no scene name (a clue revealed to a player outside
+	// a scene open to some players is theirs, without the scene).
 	//
 	// Errors:
 	//   - `not_found`: the campaign does not exist, or the caller is not an
@@ -68,7 +69,7 @@ type NotesServiceClient interface {
 	//
 	// Errors:
 	//   - `invalid_argument`: text is empty or longer than 2,000 characters;
-	//     scene_point_id is not a scene the group discovered (the same answer
+	//     scene_point_id is not a scene the caller discovered (the same answer
 	//     for a scene that does not exist or is not discovered).
 	//   - `not_found`: as ListNotes.
 	//   - `resource_exhausted`: the caller already has 300 notes in this
@@ -94,9 +95,10 @@ type NotesServiceClient interface {
 	// Errors:
 	//   - `not_found`: as UpdateNote.
 	DeleteNote(context.Context, *connect.Request[v1.DeleteNoteRequest]) (*connect.Response[v1.DeleteNoteResponse], error)
-	// ListNoteScenes returns the scenes the caller may tag a note with: only
-	// the ones the group discovered, with their names, oldest discovery first.
-	// It is the tag picker. A scene the group did not discover is not here, nor is one
+	// ListNoteScenes returns the scenes the caller may tag a note with:
+	// only the ones the caller discovered (the group's, and the ones of a scene
+	// open to some players they were in), with their names, oldest discovery first.
+	// It is the tag picker. A scene the caller did not discover is not here, nor is one
 	// on a map the players cannot open (not revealed, not the session's current one),
 	// and its name never reaches a player.
 	//
@@ -193,8 +195,9 @@ type NotesServiceHandler interface {
 	// scene. The list is not paged: it holds at most 300 notes plus the
 	// revealed clues.
 	//
-	// A clue is tagged with its scene only once the group discovered it; until
-	// then it has no tag and no scene name.
+	// A clue is tagged with its scene only once the caller discovered it; until
+	// then it has no tag and no scene name (a clue revealed to a player outside
+	// a scene open to some players is theirs, without the scene).
 	//
 	// Errors:
 	//   - `not_found`: the campaign does not exist, or the caller is not an
@@ -204,7 +207,7 @@ type NotesServiceHandler interface {
 	//
 	// Errors:
 	//   - `invalid_argument`: text is empty or longer than 2,000 characters;
-	//     scene_point_id is not a scene the group discovered (the same answer
+	//     scene_point_id is not a scene the caller discovered (the same answer
 	//     for a scene that does not exist or is not discovered).
 	//   - `not_found`: as ListNotes.
 	//   - `resource_exhausted`: the caller already has 300 notes in this
@@ -230,9 +233,10 @@ type NotesServiceHandler interface {
 	// Errors:
 	//   - `not_found`: as UpdateNote.
 	DeleteNote(context.Context, *connect.Request[v1.DeleteNoteRequest]) (*connect.Response[v1.DeleteNoteResponse], error)
-	// ListNoteScenes returns the scenes the caller may tag a note with: only
-	// the ones the group discovered, with their names, oldest discovery first.
-	// It is the tag picker. A scene the group did not discover is not here, nor is one
+	// ListNoteScenes returns the scenes the caller may tag a note with:
+	// only the ones the caller discovered (the group's, and the ones of a scene
+	// open to some players they were in), with their names, oldest discovery first.
+	// It is the tag picker. A scene the caller did not discover is not here, nor is one
 	// on a map the players cannot open (not revealed, not the session's current one),
 	// and its name never reaches a player.
 	//

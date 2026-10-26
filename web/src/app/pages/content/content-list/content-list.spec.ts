@@ -94,7 +94,7 @@ describe('ContentList', () => {
 
   it('shows the limit line under the tabs too, below 1100 px (it is not hidden by size)', async () => {
     const { el } = await setup(Role.MASTER);
-    expect(text(el.querySelector('.menu__limit')!)).toContain('7 de 300 entradas');
+    expect(text(el.querySelector('.menu__limit')!)).toContain('7 de 1000 entradas');
   });
 
   it('gives the master the kinds with their counts, the limit, and the rows with the state in words', async () => {
@@ -107,8 +107,10 @@ describe('ContentList', () => {
       'Antecedentes1',
       'Magias1',
       'Talentos0',
+      'Opções0',
+      'Características de classe0',
     ]);
-    expect(text(el)).toContain('7 de 300 entradas · o limite de uma campanha');
+    expect(text(el)).toContain('7 de 1000 entradas · o limite de uma campanha');
     expect(el.querySelector('.menu__item--on')?.getAttribute('aria-current')).toBe('page');
     const rows = Array.from(el.querySelectorAll('.row')).map((r) => text(r).trim());
     expect(rows[0]).toContain('Guardião do Vale');
@@ -152,11 +154,13 @@ describe('ContentList', () => {
     expect(text(el)).toContain('Nenhuma entrada com esta busca');
   });
 
-  it('draws the empty campaign: "Nada cadastrado ainda." with the SRD still valid, six kinds with 0', async () => {
+  it('draws the empty campaign: "Nada cadastrado ainda." with the SRD still valid, eight kinds with 0', async () => {
     const { el } = await setup(Role.MASTER, { entries: [], kind: 'spells' });
     expect(text(el)).toContain('Nada cadastrado ainda.');
     expect(text(el)).toContain('O SRD continua valendo');
     expect(Array.from(el.querySelectorAll('.menu__count')).map((c) => c.textContent)).toEqual([
+      '0',
+      '0',
       '0',
       '0',
       '0',
@@ -178,7 +182,7 @@ describe('ContentList', () => {
     expect(text(el)).toContain('o que o mestre criou para esta campanha');
     expect(text(el)).not.toContain('fichas');
     expect(text(el)).not.toContain('Arquiv');
-    expect(text(el)).not.toContain('300');
+    expect(text(el)).not.toContain('1000');
     expect(el.querySelector('button')).toBeNull();
     expect(el.querySelectorAll('.mr-tag')).toHaveLength(onlyOn.length);
     expect(text(el)).toContain('Da mesa');
@@ -201,7 +205,7 @@ describe('ContentList', () => {
       b.getAttribute('aria-label'),
     );
     expect(buttons).toEqual(['Arquivar Guardião do Vale', 'Desarquivar Bardo das Cinzas']);
-    expect(text(el)).toContain('7 de 300 entradas na campanha.');
+    expect(text(el)).toContain('7 de 1000 entradas na campanha.');
     // "Desarquivar" comes back at once, with no question.
     (el.querySelectorAll('.prow__btn')[1] as HTMLButtonElement).click();
     await settle(fixture, 3);

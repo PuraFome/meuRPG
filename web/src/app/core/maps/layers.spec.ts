@@ -125,6 +125,30 @@ describe('decodeLayers: the doors (RN-26)', () => {
     expect(hasLayers(layers)).toBe(true);
   });
 
+  it('reads the "Não dá para passar" layer as a one-bit layer, and a map with only it still has layers to name', () => {
+    const layers = decodeLayers({
+      ...empty,
+      gridColumns: 4,
+      gridRows: 2,
+      wall: new Uint8Array(),
+      noPass: Uint8Array.of(0b0010_0001),
+    });
+    expect(layers.noPass).toEqual([
+      { col: 0, row: 0 },
+      { col: 1, row: 1 },
+    ]);
+    expect(hasLayers(layers)).toBe(true);
+    expect(
+      decodeLayers({
+        ...empty,
+        gridColumns: 4,
+        gridRows: 2,
+        wall: new Uint8Array(),
+        noPass: new Uint8Array(),
+      }).noPass,
+    ).toBeUndefined();
+  });
+
   it('has no doors when the layer is empty, and a map with doors only still has layers to name', () => {
     const none = decodeLayers({
       ...empty,

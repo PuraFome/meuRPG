@@ -211,6 +211,10 @@ const BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, string> = new Map([
     'Essa reação não espera a sua resposta agora. A tela foi atualizada.',
   ],
   [
+    EncounterBlockedReason.REACTION_ALREADY_ANSWERED,
+    'Já respondido: a primeira resposta vale. A tela foi atualizada.',
+  ],
+  [
     EncounterBlockedReason.REACTION_NEEDS_ROLL,
     'Falta o dado: role no app ou digite o resultado do dado.',
   ],

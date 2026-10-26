@@ -1,4 +1,4 @@
-import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test';
+import { expect, type Browser, type BrowserContext, type BrowserContextOptions, type Page } from '@playwright/test';
 
 import { type CombatTable, combatRPC, getEncounterRPC, tableForCombat, toren, torenSheet, type Encounter } from './combat-support';
 import { endOpenSessionRPC } from './live-session-support';
@@ -72,8 +72,9 @@ export async function secondPlayer(
   campaignId: string,
   build: CharacterBuild,
   sheet: Record<string, unknown> = {},
+  options: BrowserContextOptions = { viewport: { width: 390, height: 844 } },
 ): Promise<{ page: Page; characterId: string; close: () => Promise<void> }> {
-  const context = await newSignedInContext(browser, 'E-mail Não Verificado', { viewport: { width: 390, height: 844 } });
+  const context = await newSignedInContext(browser, 'E-mail Não Verificado', options);
   const page = await context.newPage();
   await page.goto('/');
   const invite = await callRPC(master, 'meurpg.campaigns.v1.CampaignService/CreateInvite', { campaignId, maxUses: 1, expiresIn: '3600s' });

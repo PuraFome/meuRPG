@@ -99,6 +99,32 @@ export const FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text: strin
     text: 'Escolha uma classe que tenha lista de magias própria (uma subclasse que conjura precisa de uma).',
   },
   {
+    shape: /^table_class\.casting\.srd_spell_keys\[\]$/,
+    reason: 'dangling_reference',
+    text: 'Esta magia não está no SRD. Tire-a da lista.',
+  },
+  {
+    shape: /^table_class\.casting\.srd_spell_keys\[\]$/,
+    text: 'Esta magia está na lista duas vezes.',
+  },
+  {
+    shape: /^table_(class|subclass)\.casting\.srd_spell_keys$/,
+    reason: 'limit',
+    text: 'A lista passou de 400 magias do SRD.',
+  },
+  {
+    shape: /^table_(class|subclass)\.casting\.srd_spell_keys$/,
+    text: 'Só uma classe com lista própria tem magias do SRD. Escolha "A própria lista da classe".',
+  },
+  {
+    shape: /^table_subclass\.spells_expanded$/,
+    text: 'Esta marca precisa de magias na subclasse. Adicione magias ou desligue.',
+  },
+  {
+    shape: /\.effects\[\]\.only_proficient$/,
+    text: 'Só vale para a especialização numa perícia.',
+  },
+  {
     shape: /^table_(class|subclass)\.casting\.start_level$/,
     text: 'A conjuração começa num nível de 1 a 20, e uma subclasse não conjura antes de ser escolhida.',
   },
@@ -170,6 +196,56 @@ export const FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text: strin
     shape: /^table_feat\.effects\[\]\.value$/,
     reason: 'bad_value',
     text: 'Este valor não serve para este efeito (um aumento de habilidade soma +1 ou +2 a cada habilidade).',
+  },
+  // A table option for an SRD option set (MR-025): the paths and reasons of backend/internal/rules/overlay_option.go.
+  {
+    shape: /^table_option\.set$/,
+    text: 'Escolha um conjunto da lista. O conjunto de uma opção salva não muda.',
+  },
+  {
+    shape: /^table_option\.prerequisite\.class_level$/,
+    text: 'A classe e o nível vão juntos: preencha os dois ou nenhum.',
+  },
+  {
+    shape: /^table_option\.prerequisite\.class_level\.class_key$/,
+    text: 'Esta classe não existe mais. Escolha outra.',
+  },
+  {
+    shape: /^table_option\.prerequisite\.class_level\.level$/,
+    text: 'O nível vai de 1 a 20.',
+  },
+  {
+    shape: /^table_option\.prerequisite\.requires_option_keys(\[\])?$/,
+    text: 'Escolha opções que existem, sem a própria opção, e no máximo 10.',
+  },
+  {
+    shape: /^table_option\.prerequisite\.requires_pact$/,
+    text: 'Escolha uma dádiva do pacto da lista.',
+  },
+  {
+    shape: /^table_option\.prerequisite\.requires_spell_key$/,
+    text: 'Esta magia não existe mais. Escolha outra.',
+  },
+  {
+    shape: /^table_option\.effects\[\]\.type$/,
+    text: 'Uma opção não pede outra escolha: use outro tipo de efeito.',
+  },
+  // A table class feature (MR-025): the paths and reasons of backend/internal/rules/overlay_classfeature.go.
+  {
+    shape: /^table_class_feature\.class_key$/,
+    text: 'Esta classe não existe mais. Escolha outra.',
+  },
+  {
+    shape: /^table_class_feature\.level$/,
+    text: 'O nível vai de 1 a 20.',
+  },
+  {
+    shape: /^table_class_feature\.replaces_feature_key$/,
+    text: 'A classe não tem essa característica neste nível ou depois dele. Uma característica que o personagem já tinha antes não pode ser trocada.',
+  },
+  {
+    shape: /^table_class_feature\.effects(\[\])?$/,
+    text: 'Esta característica tem efeitos demais. Tire alguns.',
   },
   { shape: /\.level$/, text: 'Escolha um nível de magia de 0 (truque) a 9.' },
   { shape: /\.school_key$/, text: 'Escolha a escola da magia.' },

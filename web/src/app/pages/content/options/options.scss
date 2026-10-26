@@ -69,22 +69,22 @@
   }
 }
 
-// The kinds: a column from 1100 px, a strip of tabs on top that scrolls inside itself below it (1024), a select on a phone.
+// The kinds: a column from 1100 px, rows of tabs on top that wrap below it (1024), a select on a phone. The rows wrap
+// instead of scrolling so that every kind stays in sight.
 .menu {
   padding: 12px;
 
   &__list {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--mr-space-2);
     margin: 0;
-    padding: 0 0 4px;
+    padding: 0;
     list-style: none;
-    overflow-x: auto;
 
     @media (min-width: 1100px) {
       flex-direction: column;
-      padding: 0;
-      overflow: visible;
+      flex-wrap: nowrap;
     }
   }
 

@@ -121,6 +121,10 @@ const (
 	ListDamageTypes        = "damage_types"
 	// ListResistanceConditions are when a resistance effect holds.
 	ListResistanceConditions = "resistance_conditions"
+	// ListGrantAbilities are the casting abilities of a granted spell.
+	ListGrantAbilities = "granted_spell_abilities"
+	// ListOptionSetNames are the option sets a table option may join (TableOption.set).
+	ListOptionSetNames = "option_set_names"
 )
 
 // menuTypes is the menu's types, in the picker's order, with the copy in
@@ -137,6 +141,7 @@ var menuTypes = []MenuType{
 	{Type: "proficiency", NamePT: "Proficiência", HintPT: "Dá proficiência numa perícia, num teste de resistência, numa ferramenta, arma ou armadura, ou na iniciativa.", Fields: []MenuField{
 		{Name: "proficiency", Required: true, Kind: "choice", List: ListProficiencies},
 		{Name: "level", Kind: "choice", List: ListProficiencyLevels},
+		{Name: "only_proficient", Kind: "yes_no"},
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
@@ -212,6 +217,21 @@ var menuTypes = []MenuType{
 		{Name: "while", Required: true, Kind: "choice", List: ListResistanceConditions},
 		{Name: "text_pt", Kind: "text"},
 	}},
+	{Type: "breathes_water", NamePT: "Respira na água", HintPT: "O personagem respira debaixo d'água. A ficha mostra a característica; o jogo não conta fôlego nem afogamento.", Fields: []MenuField{
+		{Name: "when", Kind: "condition"},
+		{Name: "text_pt", Kind: "text"},
+	}},
+	{Type: "granted_spell", NamePT: "Magia concedida", HintPT: "Uma magia que a entrada dá ao personagem fora das listas das classes dele: à vontade ou gastando usos de um recurso que a entrada define, sem espaço de magia. A magia de nível acima de truque é conjurada no próprio nível. A habilidade escolhida dá o bônus de ataque e a CD de resistência (8 + proficiência + modificador); \"o jogador escolhe\" pede essa escolha uma vez, ao pegar a entrada. Magias de ritual com \"só como ritual\" não gastam espaço nem preparo. Não dispensa o material que a magia pede.", Fields: []MenuField{
+		{Name: "spell", Required: true, Kind: "choice"},
+		{Name: "ability", Required: true, Kind: "choice", List: ListGrantAbilities},
+		{Name: "from_level", Kind: "formula"},
+		{Name: "uses", Kind: "resource_ref"},
+		{Name: "also_with_slot", Kind: "yes_no", AlwaysShown: true},
+		{Name: "ritual_only", Kind: "yes_no", AlwaysShown: true},
+		{Name: "counts_as_known", Kind: "yes_no", AlwaysShown: true},
+		{Name: "when", Kind: "condition"},
+		{Name: "text_pt", Kind: "text"},
+	}},
 	{Type: "on_event", NamePT: "Gatilho", HintPT: "Algo que acontece com o dono da característica, e só com ele, quando um evento ocorre: ao terminar um descanso curto ou longo, quando falha um teste contra a morte, ou quando cai a 0 pontos de vida. O resultado pode curar (dados, ou uma parte dos pontos de vida máximos), dar pontos de vida temporários, devolver usos de um recurso da entrada ou gastar usos de um recurso para valer (\"uma vez por descanso longo\"). Aliados que descansam por perto não são afetados: isso fica como texto.", Fields: []MenuField{
 		{Name: "event", Required: true, Kind: "choice", List: ListEvents},
 		{Name: "resource", Kind: "resource_ref"},
@@ -251,7 +271,8 @@ var menuTypes = []MenuType{
 var (
 	modifierTargetNames = map[string]string{
 		"ac.base": "Classe de Armadura base", "ac": "Classe de Armadura", "hp.max": "Pontos de vida máximos",
-		"speed.walk": "Deslocamento", "initiative": "Iniciativa",
+		"speed.walk": "Deslocamento", "speed.fly": "Deslocamento de voo", "speed.swim": "Deslocamento de natação",
+		"speed.climb": "Deslocamento de escalada", "speed.burrow": "Deslocamento de escavação", "initiative": "Iniciativa",
 		"attack.weapon.melee": "Ataque com arma corpo a corpo", "attack.weapon.ranged": "Ataque com arma à distância",
 		"damage.weapon.melee": "Dano de arma corpo a corpo", "damage.weapon.ranged": "Dano de arma à distância",
 	}
@@ -464,8 +485,28 @@ func (c *content) menuLists() []MenuList {
 		{Name: ListExtraDamageApplies, Values: extraDamageValues()},
 		{Name: ListAmbushApplies, Values: ambushValues()},
 		{Name: ListDamageTypes, Values: c.menuDamageTypes()},
+		{Name: ListGrantAbilities, Values: c.menuGrantAbilities()},
+		{Name: ListOptionSetNames, Values: menuOptionSetNames()},
 		{Name: ListResistanceConditions, Values: []MenuValue{{Key: ResistanceWhileRage, NamePT: "Em fúria", HintPT: "Vale enquanto o personagem estiver em fúria (e não usar armadura pesada)."}}},
 	}
+}
+
+// menuGrantAbilities are the casting abilities of a granted spell, and the pick the player makes.
+func (c *content) menuGrantAbilities() []MenuValue {
+	out := make([]MenuValue, 0, len(GrantedAbilities)+1)
+	for _, a := range GrantedAbilities {
+		out = append(out, MenuValue{Key: string(a), NamePT: c.menuAbilityName(a)})
+	}
+	return append(out, MenuValue{Key: GrantedAbilityChoice, NamePT: "O jogador escolhe", HintPT: "Uma escolha, feita uma vez ao pegar a entrada: Inteligência, Sabedoria ou Carisma."})
+}
+
+// menuOptionSetNames are the sets a table option may join, with the SRD features that offer them.
+func menuOptionSetNames() []MenuValue {
+	out := make([]MenuValue, len(optionSetDefs))
+	for i, d := range optionSetDefs {
+		out[i] = MenuValue{Key: d.Name, NamePT: d.NamePT, HintPT: d.HintPT}
+	}
+	return out
 }
 
 // menuDamageTypes are the damage types, by Portuguese name.
@@ -533,6 +574,7 @@ func menuHelpers() []FormulaHelper {
 		{Call: `mod("<habilidade>")`, Returns: "number", HintPT: `O modificador de uma habilidade: "str", "dex", "con", "int", "wis" ou "cha".`},
 		{Call: `score("<habilidade>")`, Returns: "number", HintPT: "O valor de uma habilidade, com os bônus."},
 		{Call: "prof()", Returns: "number", HintPT: "O bônus de proficiência."},
+		{Call: "speedwalk()", Returns: "number", HintPT: "O deslocamento de caminhada, já com os modificadores. Só vale nos modificadores de voo, natação, escalada e escavação (ex.: nadar na mesma velocidade que anda)."},
 		{Call: "armor()", Returns: "text", HintPT: `A armadura vestida: "none", "light", "medium" ou "heavy".`},
 		{Call: "shield()", Returns: "yes/no", HintPT: "Se o personagem carrega um escudo."},
 		{Call: "floor(x)", Returns: "number", HintPT: "Arredonda para baixo."},

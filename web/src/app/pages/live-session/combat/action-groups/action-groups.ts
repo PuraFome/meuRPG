@@ -58,6 +58,7 @@ import {
   grappledWord,
   hiddenWord,
 } from '../../../../core/combat/contest-view';
+import { castRefOf } from '../../../../core/combat/cast-ref';
 import { freeText } from '../../../../core/combat/cast-flow';
 import { standUpRow } from '../../../../core/combat/stand-up';
 import { Fold } from '../../../../shared/fold/fold';
@@ -423,6 +424,7 @@ export class ActionGroups {
   protected readonly attackDetail = (a: Parameters<typeof attackDetail>[0]) => attackDetail(a);
   protected readonly reasonText = reasonText;
   protected readonly spellReasonText = spellReasonText;
+  protected readonly castRef = castRefOf;
   protected readonly state = (used: boolean): string =>
     cannotAct(this.own()) ? 'Indisponível' : groupState(used);
   protected readonly isCantrip = isCantrip;

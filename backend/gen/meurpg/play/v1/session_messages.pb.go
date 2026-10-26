@@ -198,7 +198,9 @@ type SessionMessage struct {
 	// author's account was erased (author_removed), and for one whose author
 	// never chose a display name (the app then says "Jogador").
 	SpeakerName string `protobuf:"bytes,5,opt,name=speaker_name,json=speakerName,proto3" json:"speaker_name,omitempty"`
-	// The portrait of the NPC that speaks, when it has one. Unset otherwise.
+	// The portrait of the NPC that speaks, when it has one. Unset otherwise,
+	// and unset on a line of an NPC the master keeps hidden on the stage: the
+	// line names the NPC for its readers and nothing else of it reaches them.
 	SpeakerPortrait *SessionMessageImage `protobuf:"bytes,6,opt,name=speaker_portrait,json=speakerPortrait,proto3" json:"speaker_portrait,omitempty"`
 	// The account that sent the line (a UUID). Empty when that account was
 	// erased: the line stays and the app shows "Jogador removido".

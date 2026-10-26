@@ -32,6 +32,7 @@ const REFUSAL_STEPS: Readonly<Partial<Record<LevelUpRefusalReason, StepKey>>> = 
   [LevelUpRefusalReason.SUBCLASS]: 'picks',
   [LevelUpRefusalReason.FEATURE_CHOICE]: 'picks',
   [LevelUpRefusalReason.LATE_CHOICE_MISSING]: 'picks',
+  [LevelUpRefusalReason.SWAP_NOT_ALLOWED]: 'abilities',
   [LevelUpRefusalReason.SKILLS]: 'picks',
   [LevelUpRefusalReason.EXPERTISE]: 'picks',
   [LevelUpRefusalReason.CANTRIPS]: 'spells',
@@ -93,6 +94,8 @@ const REFUSAL_MESSAGES: Readonly<Partial<Record<LevelUpRefusalReason, string>>> 
   [LevelUpRefusalReason.SPELLS]: 'Escolha todas as magias novas do nível, nem mais nem menos.',
   [LevelUpRefusalReason.PREPARED]: 'As magias preparadas só ganham vagas novas: nenhuma sai.',
   [LevelUpRefusalReason.FEATURE_CHOICE]: 'Escolha todas as opções das novas características.',
+  [LevelUpRefusalReason.SWAP_NOT_ALLOWED]:
+    'Essa troca de escolha não vale neste nível ou nesta mesa. Tire a troca e confirme o nível.',
   [LevelUpRefusalReason.LATE_CHOICE_MISSING]:
     'Ainda há escolhas que ficaram para trás em níveis anteriores. Faça todas antes de subir de nível.',
   [LevelUpRefusalReason.SKILLS]: 'Escolha todas as perícias novas do nível.',

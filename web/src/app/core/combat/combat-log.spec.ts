@@ -426,6 +426,23 @@ describe('the combat log sentences (timeline.md, Rodadas 1 and 2)', () => {
   });
 });
 
+describe('what the master did for a character', () => {
+  it('ends the line with "(pelo mestre)" for everyone who reads it, and only then', () => {
+    const rounds = [
+      create(CombatLogRoundSchema, {
+        round: 1,
+        entries: [
+          entry({ kind: CombatLogKind.MOVED, actorLabel: 'Toren', distanceFt: 5, byMaster: true }),
+          entry({ kind: CombatLogKind.MOVED, actorLabel: 'Brisa', distanceFt: 5 }),
+        ],
+      }),
+    ];
+    const [toren, brisa] = logGroups(rounds, 1)[0].lines;
+    expect(toren.text.endsWith(' (pelo mestre)')).toBe(true);
+    expect(brisa.text).not.toContain('pelo mestre');
+  });
+});
+
 describe('the rounds of the log', () => {
   const rounds = [
     create(CombatLogRoundSchema, {

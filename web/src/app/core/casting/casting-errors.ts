@@ -75,6 +75,8 @@ function blockedText(b: CastingBlocked): string {
       return 'Só magias com a etiqueta "Ritual" podem ser conjuradas assim.';
     case CastingBlockedReason.ARMOR_NOT_PROFICIENT:
       return ARMOR_NOT_PROFICIENT_TEXT;
+    case CastingBlockedReason.NO_USES:
+      return 'A concessão não tem mais usos.';
     default:
       return 'Esta magia não pode ser conjurada agora.';
   }

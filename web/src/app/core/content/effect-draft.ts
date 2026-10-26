@@ -7,6 +7,9 @@ import type {
   TableEffect,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { feetToMeters, metersToFeet } from '../units';
+import { EFFECT_WRITERS } from './effect-writers';
+
+export { onlyProficientApplies } from './effect-writers';
 
 /**
  * A feature's effect as the editor holds it (MR-025, ADR-0018, section 4), and the menu it is chosen from. The menu is the
@@ -66,6 +69,16 @@ export interface EffectDraft {
   event: string;
   restore: string;
   healPercentMax: number;
+  /** proficiency, level "expertise" on a skill: doubles it only where the character is already proficient. */
+  onlyProficient: boolean;
+  /** granted_spell: the spell (SRD or the table's), the level it starts at (a formula), the resource each cast spends one of
+   * (empty: at will), and the switches. The casting ability is `ability`. */
+  spell: string;
+  fromLevel: string;
+  uses: string;
+  alsoWithSlot: boolean;
+  ritualOnly: boolean;
+  countsAsKnown: boolean;
 }
 
 let nextId = 0;
@@ -114,6 +127,13 @@ export function emptyEffect(type = ''): EffectDraft {
     event: '',
     restore: '',
     healPercentMax: 0,
+    onlyProficient: false,
+    spell: '',
+    fromLevel: '',
+    uses: '',
+    alsoWithSlot: false,
+    ritualOnly: false,
+    countsAsKnown: false,
   };
 }
 
@@ -157,6 +177,13 @@ export function effectToDraft(e: TableEffect): EffectDraft {
     event: e.event,
     restore: e.restore,
     healPercentMax: e.healPercentMax,
+    onlyProficient: e.onlyProficient,
+    spell: e.spell,
+    fromLevel: e.fromLevel,
+    uses: e.uses,
+    alsoWithSlot: e.alsoWithSlot,
+    ritualOnly: e.ritualOnly,
+    countsAsKnown: e.countsAsKnown,
   };
 }
 
@@ -170,109 +197,6 @@ export function splitTags(text: string): string[] {
     .map((t) => t.trim())
     .filter((t) => t !== '');
 }
-
-type EffectWriter = (d: EffectDraft) => EffectInit;
-
-/** A text the server reads trimmed; an empty one is not sent. */
-const trimmedText =
-  (
-    key:
-      | 'value'
-      | 'when'
-      | 'resource'
-      | 'max'
-      | 'textPt'
-      | 'cost'
-      | 'costMax'
-      | 'valuePerPoint'
-      | 'heal'
-      | 'tempHp'
-      | 'restore',
-  ): EffectWriter =>
-  (d) => {
-    const text = d[key].trim();
-    return text ? ({ [key]: text } as EffectInit) : {};
-  };
-
-/** A choice that is sent when something is picked. */
-const pickedText =
-  (
-    key:
-      | 'target'
-      | 'mode'
-      | 'proficiency'
-      | 'level'
-      | 'roll'
-      | 'sense'
-      | 'recharge'
-      | 'choice'
-      | 'economy'
-      | 'applies'
-      | 'ability'
-      | 'except'
-      | 'while'
-      | 'event',
-  ): EffectWriter =>
-  (d) =>
-    d[key] ? ({ [key]: d[key] } as EffectInit) : {};
-
-/** A list that is sent (as a copy) when it has something in it. */
-const pickedList =
-  (key: 'targets' | 'from' | 'spells'): EffectWriter =>
-  (d) =>
-    d[key].length > 0 ? ({ [key]: [...d[key]] } as EffectInit) : {};
-
-/** How each field the menu names goes into the request, by the field's proto name. ranged_attack's switches and its multiplier
- * are only sent when on (or set). A name the table does not know writes nothing. */
-const EFFECT_WRITERS: ReadonlyMap<string, EffectWriter> = new Map<string, EffectWriter>([
-  ['target', pickedText('target')],
-  ['mode', pickedText('mode')],
-  ['value', trimmedText('value')],
-  ['when', trimmedText('when')],
-  [
-    'tags',
-    (d) => {
-      const tags = splitTags(d.tags);
-      return tags.length > 0 ? { tags } : {};
-    },
-  ],
-  ['proficiency', pickedText('proficiency')],
-  ['level', pickedText('level')],
-  ['roll', pickedText('roll')],
-  ['targets', pickedList('targets')],
-  ['sense', pickedText('sense')],
-  ['range_ft', (d) => (rangeFeet(d.rangeM) > 0 ? { rangeFt: rangeFeet(d.rangeM) } : {})],
-  ['resource', trimmedText('resource')],
-  ['max', trimmedText('max')],
-  ['recharge', pickedText('recharge')],
-  ['choice', pickedText('choice')],
-  ['count', (d) => (d.count > 0 ? { count: d.count } : {})],
-  ['from', pickedList('from')],
-  ['economy', pickedText('economy')],
-  ['applies', pickedText('applies')],
-  ['ability', pickedText('ability')],
-  ['spells', pickedList('spells')],
-  ['text_pt', trimmedText('textPt')],
-  ['except', pickedText('except')],
-  ['while', pickedText('while')],
-  ['cost', trimmedText('cost')],
-  ['cost_max', trimmedText('costMax')],
-  ['value_per_point', trimmedText('valuePerPoint')],
-  ['heal', trimmedText('heal')],
-  ['temp_hp', trimmedText('tempHp')],
-  ['event', pickedText('event')],
-  ['restore', trimmedText('restore')],
-  ['heal_percent_max', (d) => (d.healPercentMax > 0 ? { healPercentMax: d.healPercentMax } : {})],
-  ['ignore_cover', (d) => (d.ignoreCover ? { ignoreCover: true } : {})],
-  [
-    'range_multiplier',
-    (d) => (d.rangeMultiplier > 0 ? { rangeMultiplier: d.rangeMultiplier } : {}),
-  ],
-  [
-    'no_long_range_disadvantage',
-    (d) => (d.noLongRangeDisadvantage ? { noLongRangeDisadvantage: true } : {}),
-  ],
-]);
 
 /** The effect a request sends: `type` and the fields the menu says that type reads, and nothing else. An empty text or an empty
  * list is not sent: the server reads "not set" the same way. */
@@ -420,7 +344,9 @@ function choiceEmpty(d: EffectDraft, name: string): boolean {
     (name === 'economy' && d.economy === '') ||
     (name === 'applies' && d.applies === '') ||
     (name === 'except' && d.except === '') ||
-    (name === 'while' && d.while === '')
+    (name === 'while' && d.while === '') ||
+    (name === 'spell' && d.spell === '') ||
+    (name === 'ability' && d.ability === '')
   );
 }
 

@@ -719,7 +719,7 @@ func (x *ListNoteScenesResponse) GetScenes() []*NoteScene {
 	return nil
 }
 
-// NoteScene is a scene the group discovered.
+// NoteScene is a scene the caller discovered.
 type NoteScene struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The scene's map point (a UUID).

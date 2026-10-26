@@ -22,6 +22,7 @@ import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import type { SlotRow } from '../../../../core/combat/cast-flow';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { SpellCatalog } from '../../../../core/combat/spell-catalog';
+import { grantLine } from '../../../../core/combat/combat-options';
 import { castLabel } from '../../../../core/resources/metamagic';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { AreaList } from '../../../../shared/area-picker/area-list';
@@ -38,6 +39,7 @@ import { openSpellDetails } from '../../../../shared/spell-details/open-spell-de
 import { spellDetailsFromGen } from '../../../../shared/spell-details/spell-details-map';
 import { SpellHelp } from '../../../../shared/spell-details/spell-help';
 import { AbilityPicker } from '../../effects/ability-picker/ability-picker';
+import { CheckRow } from '../../../../shared/form-fields/check-row';
 import { MultiRoll } from '../multi-roll/multi-roll';
 import { RollModePicker } from '../roll-mode/roll-mode-picker';
 import { CastArea } from './cast-area';
@@ -83,6 +85,7 @@ export type { CastMapData, CastSheetData } from './cast-sheet-types';
     CastSlots,
     CastTargets,
     AbilityPicker,
+    CheckRow,
     DamageTypePicker,
     HeldRollPrompt,
     MatButtonModule,
@@ -118,6 +121,7 @@ export class CastSheet {
   protected readonly preferApp =
     effectivePreference(this.data.diceMode, this.data.preference) === DicePreference.APP;
   protected readonly Placement = AreaPlacement;
+  protected readonly grantLine = grantLine;
   protected readonly d20Fields = D20_FIELDS;
 
   protected readonly s = new CastState(this.data);

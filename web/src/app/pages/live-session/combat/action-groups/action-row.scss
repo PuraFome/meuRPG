@@ -108,7 +108,8 @@
 .row__btn {
   grid-column: 3;
   --mat-button-outlined-container-height: 48px;
-  --mat-button-outlined-label-text-color: var(--mr-accent-text);
+  // C4-03: the words of an outlined action are in the ink, not the accent (the accent is for the filled button).
+  --mat-button-outlined-label-text-color: var(--mr-ink);
   --mat-button-outlined-outline-color: var(--mr-control-line);
   flex: none;
   width: 112px;

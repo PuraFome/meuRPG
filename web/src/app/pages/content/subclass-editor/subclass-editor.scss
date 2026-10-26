@@ -82,6 +82,15 @@
   }
 }
 
+.expanded {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-1);
+  margin-top: var(--mr-space-3);
+  padding-top: var(--mr-space-3);
+  border-top: 1px solid var(--mr-rule);
+}
+
 .addlevel {
   max-width: 280px;
 }

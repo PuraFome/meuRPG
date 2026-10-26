@@ -149,8 +149,13 @@ export class MapView {
     null,
   );
 
+  /** A player's own token, the only one that may be dragged where the master does not move all (B2: the switch of the map is on). */
+  readonly onlyToken = input<string | null>(null);
+
   readonly pointSelect = output<string>();
   readonly tokenSelect = output<string>();
+  /** The same click with its modifier: Shift (or Ctrl, or Cmd) adds the token to a selection instead of choosing only it (B2). */
+  readonly tokenPick = output<{ id: string; additive: boolean }>();
   /** A click on an empty spot of the map, where it fell. */
   readonly emptyClick = output<{ xBp: number; yBp: number }>();
   readonly moved = output<MapMove>();
@@ -211,6 +216,8 @@ export class MapView {
   protected readonly tokensMovable = computed(
     () => this.mode() === 'tokens' || this.mode() === 'edit',
   );
+  /** The one token a player may drag, when it is set and the map is not a still preview. */
+  protected readonly ownMovable = computed(() => this.onlyToken() !== null && this.interactive());
   protected readonly ratio = computed(() => this.image().width / Math.max(1, this.image().height));
   protected readonly aspect = computed(() => `${this.image().width} / ${this.image().height}`);
   protected readonly selectedKey = computed(() => {
@@ -441,6 +448,7 @@ export class MapView {
       this.pointSelect.emit(id);
     } else if (kind === 'token' && this.tokensMovable()) {
       this.tokenSelect.emit(id);
+      this.tokenPick.emit({ id, additive: event.shiftKey || event.ctrlKey || event.metaKey });
     }
   }
 
@@ -505,7 +513,10 @@ export class MapView {
       const p = this.points().find((x) => x.id === id);
       return p ? (this.movedTo(kind, id) ?? { kind, id, xBp: p.xBp, yBp: p.yBp }) : null;
     }
-    if (kind === 'token' && this.tokensMovable()) {
+    if (
+      kind === 'token' &&
+      (this.tokensMovable() || (this.ownMovable() && id === this.onlyToken()))
+    ) {
       const t = this.tokens().find((x) => tokenKey(x) === id);
       return t ? (this.movedTo(kind, id) ?? { kind, id, xBp: t.xBp, yBp: t.yBp }) : null;
     }

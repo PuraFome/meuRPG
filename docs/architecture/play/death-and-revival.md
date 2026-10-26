@@ -33,7 +33,7 @@ stateDiagram-v2
 - **Damage at 0 HP.** Damage that hits someone at 0 HP (the master's "Aplicar") does not lower the HP: it adds a failure (`combat.DamageWhileDown`), two on a critical.
 - **Stable.** A character that becomes stable has both counts back at zero (`tally` clears the failures and keeps the three successes as the stable marker); damage to a stable character (`failuresWhileDown`) starts the counts over, so it counts one failure.
 - **Healing.** Any heal above 0 resets both counts: a spell, Second Wind, the natural 20, the master's HP correction (`AdjustCharacterVitals`) and an undo, all through `changeVitals`.
-- **`EndTurn`.** A player who tries it with the save still to roll gets `DEATH_SAVE_DUE` (the master passes the turn anyway).
+- **`EndTurn`.** Anyone who tries it with the save still to roll gets `DEATH_SAVE_DUE`, the master included: he rolls the save for the character first (`RollDeathSave` accepts the master, in the app or with a typed d20), and the turn ends after it.
 - **Dying.** With three failures the character is dying: the master sees "Morrendo" and confirms with `ConfirmDeath`, which calls `MarkCharacterDead` (the character becomes `dead` and the player may create another), marks the combatant out of the order and passes the turn if it was theirs.
   For the players the word stays "Caído", with the counts (public, unless the table hides them from everyone but the owner and the master: see [Table rules in combat](table-rules.md#hidden-death-saves)).
   The app never says someone died before the master confirms.

@@ -28,7 +28,10 @@ import (
 //
 // The slot is spent once the request has left the server ("sent_at") and the
 // picture is in the gallery, or the master canceled after it left. Anything
-// that ends without a picture gives the slot back.
+// that ends without a picture gives the slot back, unless the call may have been
+// billed and its picture is not the server's fault (a timeout after the request
+// left, an unreadable answer, a picture that cannot be decoded, a full gallery).
+// A picture that came but that the server could not keep gives it back too.
 
 // DefaultMonthlyImages is how many images a campaign may generate per month
 // (a proposal; docs/operations/README.md has the cost behind it).
@@ -77,14 +80,15 @@ const (
 
 // The reasons a request ended without a picture, as the table writes them.
 const (
-	reasonNoImage      = "no_image"
-	reasonRefused      = "refused"
-	reasonUnavailable  = "unavailable"
-	reasonGalleryFull  = "gallery_full"
-	reasonImageMissing = "image_missing"
-	reasonTimeout      = "timeout"
-	reasonServiceOff   = "service_off"
-	reasonShutdown     = "shutdown"
+	reasonNoImage       = "no_image"
+	reasonRefused       = "refused"
+	reasonUnavailable   = "unavailable"
+	reasonGalleryFull   = "gallery_full"
+	reasonStorageFailed = "storage_failed"
+	reasonImageMissing  = "image_missing"
+	reasonTimeout       = "timeout"
+	reasonServiceOff    = "service_off"
+	reasonShutdown      = "shutdown"
 )
 
 // brazil is the time zone of the month's count: Brazil has had no daylight

@@ -66,6 +66,10 @@ export class InitiativeSetup {
 
   /** The master typed a d20 face for a combatant. */
   readonly submit = output<{ id: string; face: number }>();
+  /** The master may roll in the app for a player who has not rolled (the campaign did not force physical dice). */
+  readonly canRoll = input(false);
+  /** "Rolar por Brisa" (C8-05): the app rolls the initiative of a player who has not. */
+  readonly rollFor = output<string>();
   /** The new order of a tie group. */
   readonly order = output<string[]>();
 
@@ -116,6 +120,10 @@ export class InitiativeSetup {
 
   protected initial(c: Combatant): string {
     return combatantInitial(c.label);
+  }
+
+  protected isPlayerRow(c: Combatant): boolean {
+    return isPlayer(c);
   }
 
   protected npc(c: Combatant): boolean {

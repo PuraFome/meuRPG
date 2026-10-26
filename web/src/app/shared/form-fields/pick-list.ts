@@ -20,7 +20,7 @@ let nextId = 0;
       @for (key of values(); track key) {
         <span class="chip">
           {{ nameOf(key) }}
-          <button type="button" class="chip__x" [attr.aria-label]="'Tirar ' + nameOf(key)" (click)="removed.emit(key)">
+          <button type="button" class="chip__x" [attr.aria-label]="'Tirar ' + nameOf(key)" [disabled]="disabled()" (click)="removed.emit(key)">
             <mat-icon aria-hidden="true">close</mat-icon>
           </button>
         </span>
@@ -28,7 +28,7 @@ let nextId = 0;
       @if (available().length > 0 && (max() === 0 || values().length < max())) {
         <mat-form-field class="pick__add" appearance="outline" subscriptSizing="dynamic">
           <mat-label>{{ addLabel() }}</mat-label>
-          <select matNativeControl [attr.aria-describedby]="issues().length > 0 ? noteId : null" (change)="add($event)">
+          <select matNativeControl [disabled]="disabled()" [attr.aria-describedby]="describedBy()" (change)="add($event)">
             <option value=""></option>
             @for (o of available(); track o.value) {
               <option [value]="o.value">{{ o.label }}</option>
@@ -79,8 +79,13 @@ let nextId = 0;
       color: var(--mr-ink-muted);
       cursor: pointer;
 
-      &:hover {
+      &:hover:not(:disabled) {
         color: var(--mr-accent-text);
+      }
+
+      &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
       }
 
       .mat-icon {
@@ -106,6 +111,8 @@ export class PickList {
   readonly hint = input('');
   /** The most it takes; 0 is no limit. */
   readonly max = input(0);
+  /** Nothing can be added or taken off; the hint says why. */
+  readonly disabled = input(false);
   readonly added = output<string>();
   readonly removed = output<string>();
 
@@ -113,6 +120,10 @@ export class PickList {
   protected readonly available = computed(() =>
     this.options().filter((o) => !this.values().includes(o.value)),
   );
+
+  protected describedBy(): string | null {
+    return this.issues().length > 0 || this.hint() !== '' ? this.noteId : null;
+  }
 
   protected nameOf(key: string): string {
     return this.options().find((o) => o.value === key)?.label ?? key;

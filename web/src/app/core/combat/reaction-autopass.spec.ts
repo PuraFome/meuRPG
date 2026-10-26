@@ -40,6 +40,11 @@ describe("the automatic pass of a player's optional reaction", () => {
     vi.useRealTimers();
   });
 
+  it('never passes a window that came to the master: his answer is the one that counts', () => {
+    expect(autoPasses(win('w', ReactionKind.SHIELD))).toBe(true);
+    expect(autoPasses(win('w', ReactionKind.SHIELD, { unanswered: true }))).toBe(false);
+  });
+
   it('passes an optional player window once, at 30 s, with the auto-pass key', () => {
     const clock = new AutoPassClock();
     const w = win('w1', ReactionKind.CUTTING_WORDS);

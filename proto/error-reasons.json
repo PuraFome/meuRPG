@@ -119,7 +119,8 @@
             "MULTICLASS_PREREQUISITE_CURRENT",
             "PROFICIENCY_CHOICE",
             "INSTRUMENT_CHOICE",
-            "LATE_CHOICE_MISSING"
+            "LATE_CHOICE_MISSING",
+            "SWAP_NOT_ALLOWED"
           ],
           "unsent": []
         }
@@ -395,7 +396,8 @@
             "FRENZY_UNAVAILABLE",
             "NO_MELEE_HIT", "DESTINATION_REQUIRED", "DESTINATION_UNAVAILABLE", "TELEPORT_TOO_FAR",
             "CHANNEL_DIVINITY_TARGET", "CHANNEL_DIVINITY_TOO_MUCH",
-            "ARMOR_NOT_PROFICIENT"
+            "ARMOR_NOT_PROFICIENT",
+            "REACTION_ALREADY_ANSWERED"
           ],
           "unsent": [
             "RAGE_END_PENDING"
@@ -589,7 +591,8 @@
             "TARGET_OUT_OF_REACH",
             "CLASS_CANNOT_RITUAL",
             "NOT_A_RITUAL",
-            "ARMOR_NOT_PROFICIENT"
+            "ARMOR_NOT_PROFICIENT",
+            "NO_USES"
           ],
           "unsent": []
         }

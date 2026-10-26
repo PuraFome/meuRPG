@@ -140,6 +140,11 @@ flowchart LR
   A stored third-caster subclass is compared with the default only on the casting columns.
 - **The features** are a single list, each with its level; `classFeatureBase` says where the request puts each (`table_class.levels[4].features[0]`), so a refusal lands on the right field and opens the closed feature.
   The "N de 60" counter uses the menu's limit.
+- **The class's own list and the subclass's expanded spells.** `CastingFields` (`class-parts/casting-fields.ts`) draws "Magias do SRD na lista da classe" under "Lista de magias" with the shared `PickList` (a select of `CatalogVm.srdSpells`, the SRD's spells named with circle and school, and chips that come off).
+  It is off, with the reason, while the class reuses another class's list; the draft keeps the chips, and `castingInit` sends `srd_spell_keys` only while the list is the class's own.
+  The subclass editor shows the switch "As magias da subclasse entram na lista da classe, para escolher" (`spells_expanded`) when the subclass names spells; `draftToSubclass` sends it only then.
+  A refusal at `srd_spell_keys[<i>]` lands on the picker, at `spells_expanded` on the switch.
+- **Expertise only where proficient.** The effect picker draws the `only_proficient` field of the menu ("Só onde já tem proficiência") only while the effect has the level "Especialização" on a skill (`onlyProficientApplies`); `draftToEffect` sends it only then.
 - **The grid** (`shared/level-grid`) scrolls inside (titles pinned on top, the level on the left), one `<input>` per cell with `data-field` (`table_class.levels[4].slots[2]`) and an `aria-label`; arrows change row and Page Down jumps five.
   It shows the levels the casting type's default uses, and "Mostrar os 9 níveis de magia" opens the rest.
   The third-caster subclass uses the same grid without bonus and features.

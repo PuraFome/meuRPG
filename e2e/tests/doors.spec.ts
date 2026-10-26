@@ -188,6 +188,8 @@ test('Toren anda até uma porta fechada em combate e ela se abre; o registro diz
     // The door is open for everyone, and the log says who opened it, to the master and to the player.
     expect((await layers(p, campaignId, table.mapId)).door(8, 7)).toBe(OPEN);
     expect((await layers(m, campaignId, table.mapId)).door(8, 7)).toBe(OPEN);
+    // A toast says it at once, so the player need not open the log to know the move opened the door.
+    await expect(p.getByText('Você abriu a porta.')).toBeVisible();
     // The player's log is a fold under the map (a sheet on a phone): open it first.
     await expect(await openCombatLog(p)).toContainText('abriu a porta');
     await openCombatPanel(m, 'Registro');

@@ -1,8 +1,18 @@
 import { Component, computed, input, output, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { EFFECT_FIELD_HINTS, EFFECT_FIELD_LABELS } from '../../core/content/effect-field-copy';
-import { type EffectDraft, type EffectMenuVm, emptyEffect } from '../../core/content/effect-draft';
+import {
+  EFFECT_FIELD_HINTS,
+  EFFECT_FIELD_LABELS,
+  EFFECT_TYPE_FIELD_HINTS,
+  EFFECT_TYPE_FIELD_LABELS,
+} from '../../core/content/effect-field-copy';
+import {
+  type EffectDraft,
+  type EffectMenuVm,
+  emptyEffect,
+  onlyProficientApplies,
+} from '../../core/content/effect-draft';
 import type { EffectMenuField } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { CheckRow } from '../form-fields/check-row';
 import { FieldNote } from '../form-fields/field-note';
@@ -55,7 +65,11 @@ export class EffectPicker {
       ? 'Só o texto aparece na ficha; o app não faz conta com ele.'
       : (this.menu().typeOf(t)?.hintPt ?? '');
   });
-  protected readonly allFields = computed(() => this.menu().fieldsOf(this.effect().type));
+  protected readonly allFields = computed(() =>
+    this.menu()
+      .fieldsOf(this.effect().type)
+      .filter((f) => f.name !== 'only_proficient' || onlyProficientApplies(this.effect())),
+  );
   /** "Mais opções": the optional fields stay folded until they hold something, a refusal points at them, or the person opens them;
    * a field the menu says is always shown (what the effect does lies in it, as ranged_attack's switches) is never folded. */
   protected readonly expanded = signal(false);
@@ -65,6 +79,7 @@ export class EffectPicker {
         this.expanded() ||
         f.required ||
         f.alwaysShown ||
+        f.name === 'only_proficient' ||
         this.filled(f) ||
         this.issues(f.name).length > 0,
     ),
@@ -92,6 +107,10 @@ export class EffectPicker {
   }
 
   protected labelOf(f: EffectMenuField): string {
+    const typed = EFFECT_TYPE_FIELD_LABELS[this.effect().type]?.[f.name];
+    if (typed) {
+      return typed;
+    }
     // The resource an action spends is the same proto field as a resource's own name; a hook's `restore` gives back.
     if (f.kind === 'resource_ref') {
       return this.effect().type === 'on_event'
@@ -107,7 +126,8 @@ export class EffectPicker {
   }
 
   protected hintOf(f: EffectMenuField): string {
-    const own = EFFECT_FIELD_HINTS[f.name] ?? '';
+    const own =
+      EFFECT_TYPE_FIELD_HINTS[this.effect().type]?.[f.name] ?? EFFECT_FIELD_HINTS[f.name] ?? '';
     if (f.name === 'count' && f.max > 0) {
       return `De ${f.min} a ${f.max}.`;
     }
@@ -118,7 +138,8 @@ export class EffectPicker {
       return own ? `${own} ${this.menu().formulaHint()}` : this.menu().formulaHint();
     }
     if (f.kind === 'resource_ref') {
-      return f.name === 'restore' ? own : RESOURCE_REF_HINT;
+      // `uses` has its own sentence (an empty resource is at will, not a disabled action), as `restore` does
+      return OWN_HINT_REFS.has(f.name) ? own : RESOURCE_REF_HINT;
     }
     if (f.kind === 'condition') {
       return 'Deixe vazio para valer sempre. Uma condição, como as fórmulas.';
@@ -133,6 +154,9 @@ export class EffectPicker {
 
   /** The options of a closed list, with the menu's one-line explanation of each. */
   protected optionsOf(f: EffectMenuField): (SelectOption & { hint: string })[] {
+    if (f.name === 'spell') {
+      return this.spellOptions().map((o) => ({ ...o, hint: '' }));
+    }
     const menu = this.menu();
     const list =
       f.name === 'from' && f.list === ''
@@ -229,6 +253,8 @@ export class EffectPicker {
 }
 
 /** The labels of a hook's two resource fields: the one it spends and the one it gives back. */
+const OWN_HINT_REFS: ReadonlySet<string> = new Set(['restore', 'uses']);
+
 const RESOURCE_REF_LABEL_HOOK: Readonly<Record<string, string>> = {
   resource: 'Gasta usos de',
   restore: 'Devolve usos de',

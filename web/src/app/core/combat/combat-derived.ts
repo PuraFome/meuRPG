@@ -84,7 +84,9 @@ export function dyingOf(e: Encounter | null): Combatant[] {
 /** The downed player characters whose death save is due this turn: the master rolls it when the player is away. */
 export function deathDueOf(e: Encounter | null): Combatant[] {
   return (e?.combatants ?? []).filter(
-    (c) => c.kind === CombatantKind.PLAYER && c.state === CombatantState.DOWN && c.deathSaveDue,
+    // `death_save_due` is the server's own word (the character is down, still rolling, on its turn and not yet rolled): the
+    // state word is not asked again, so a down character shown as dying or stable by another rule still owes its save.
+    (c) => c.kind === CombatantKind.PLAYER && c.deathSaveDue && !c.defeated,
   );
 }
 

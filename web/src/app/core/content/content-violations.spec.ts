@@ -194,7 +194,7 @@ describe('the refusals of the server, back on the fields (E10-01 state 5)', () =
       'immutable',
       'Um truque não vira magia de 1º nível ou mais, nem o contrário. Crie outra.',
     ],
-    ['', 'limit', 'A mesa já tem 300 entradas. Arquive ou use o que já existe.'],
+    ['', 'limit', 'A mesa já tem 1000 entradas. Arquive ou use o que já existe.'],
     ['', 'size_limit', 'Esta entrada passou de 64 KiB de dados. Tire um pouco de texto.'],
   ];
 
@@ -309,6 +309,28 @@ describe('the refusals of the server, back on the fields (E10-01 state 5)', () =
       'table_class.casting.start_level',
       'bad_casting',
       'A conjuração começa num nível de 1 a 20, e uma subclasse não conjura antes de ser escolhida.',
+    ],
+    [
+      'table_class.casting.srd_spell_keys[1]',
+      'dangling_reference',
+      'Esta magia não está no SRD. Tire-a da lista.',
+    ],
+    ['table_class.casting.srd_spell_keys[1]', 'bad_value', 'Esta magia está na lista duas vezes.'],
+    [
+      'table_class.casting.srd_spell_keys',
+      'bad_casting',
+      'Só uma classe com lista própria tem magias do SRD. Escolha "A própria lista da classe".',
+    ],
+    ['table_class.casting.srd_spell_keys', 'limit', 'A lista passou de 400 magias do SRD.'],
+    [
+      'table_subclass.spells_expanded',
+      'bad_value',
+      'Esta marca precisa de magias na subclasse. Adicione magias ou desligue.',
+    ],
+    [
+      'table_class.levels[0].features[0].effects[0].only_proficient',
+      'bad_value',
+      'Só vale para a especialização numa perícia.',
     ],
     ['table_subclass.class_key', 'dangling_reference', 'A classe desta subclasse não existe mais.'],
     ['table_subclass.level', 'bad_value', 'A subclasse é escolhida no nível da classe.'],
@@ -447,7 +469,7 @@ describe('the refusals of the server, back on the fields (E10-01 state 5)', () =
     );
     expect(placed.fields).toEqual(['table_race.traits[1].effects[0]']);
     expect(placed.top.map((t) => t.text)).toEqual([
-      'A mesa já tem 300 entradas. Arquive ou use o que já existe.',
+      'A mesa já tem 1000 entradas. Arquive ou use o que já existe.',
       'Sobre Corujeiro: Já existe uma raça da mesa com este nome. Escolha outro.',
       'Escolha o tamanho.',
     ]);

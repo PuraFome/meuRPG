@@ -64,6 +64,8 @@ type logEntry struct {
 	// 0 hit points, and it went back to the square it left the reach at (or could
 	// not, because the square was taken: the master's line says so).
 	returned, returnBlocked bool
+	// actorUser is who made the first event of the line (the master's hand when he acted for a player).
+	actorUser *string
 	// masterOnly is a line only the master gets, whatever the combatants.
 	masterOnly bool
 	// shapeStarted: a Wild Shape line is the druid becoming the beast, not leaving it.
@@ -345,7 +347,7 @@ func (b *logBuilder) entry(e playdb.ListEncounterEventsRow) *logEntry {
 	if ev.Reaction != nil && ev.Reaction.Hold {
 		return nil // the event of a held action stands for nothing yet: its replay is the line
 	}
-	entry := &logEntry{id: e.ID, at: e.CreatedAt, ev: ev, hosts: []string{e.ID}}
+	entry := &logEntry{id: e.ID, at: e.CreatedAt, ev: ev, hosts: []string{e.ID}, actorUser: e.ActorUserID}
 	handle, ok := logHandlers[e.Kind]
 	if !ok || !handle(b, e, entry) {
 		return nil
@@ -773,6 +775,26 @@ func (e *logEntry) viewerGets(v combatViewer, actor, target playdb.Combatant, vi
 	return e.kind != playv1.CombatLogKind_COMBAT_LOG_KIND_OPPORTUNITY_OFFERED || v.owns(actor) || v.owns(target)
 }
 
+// actedForPlayerKinds are the lines of what a character does on its turn: when the master's hand
+// made one for a player's character, the line says so (his corrections of hit points, conditions
+// and the like are the master's own tools, not an act for the character).
+var actedForPlayerKinds = map[playv1.CombatLogKind]bool{
+	playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK:          true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_SPELL_CAST:      true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_DEATH_SAVE:      true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED:           true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION:          true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_RESOURCE:        true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_WILD_SHAPE:      true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_TURN_PART_ENDED: true,
+}
+
+// byMasterFor says the line is the master's act for the player's character that is its actor: a
+// user other than the character's player made it.
+func (e *logEntry) byMasterFor(actor playdb.Combatant) bool {
+	return actedForPlayerKinds[e.kind] && actor.Kind == kindPlayer && actor.UserID != nil && e.actorUser != nil && *e.actorUser != *actor.UserID
+}
+
 // commonFields are the fields every entry has, and the master's marks.
 func (e *logEntry) commonFields(c *logViewing, visible bool, lastID string) *playv1.CombatLogEntry {
 	out := &playv1.CombatLogEntry{
@@ -780,6 +802,7 @@ func (e *logEntry) commonFields(c *logViewing, visible bool, lastID string) *pla
 		ActorId: c.actor.ID, ActorLabel: c.actor.Label, TargetId: c.target.ID, TargetLabel: c.target.Label,
 		Key: e.ev.Key,
 	}
+	out.ByMaster = e.byMasterFor(c.actor)
 	if c.v.master {
 		out.Hidden = !visible || (e.ev.Fogged && len(e.ev.SeenBy) == 0)
 		out.Undoable = slices.Contains(e.hosts, lastID)

@@ -171,6 +171,8 @@ export interface CastExtras {
   readonly sculptedIds?: readonly string[];
   /** A teleport spell on a map with a grid (Passo Nebuloso): the square the caster lands on. */
   readonly destination?: { readonly col: number; readonly row: number };
+  /** A granted spell: the source of the grant it is cast through (`SpellGrantOption.source_key`). */
+  readonly grantedBy?: string;
 }
 
 /** What a summoning spell brings (`SummonChoice`): the option, a content key per creature and, optionally, a name each. */

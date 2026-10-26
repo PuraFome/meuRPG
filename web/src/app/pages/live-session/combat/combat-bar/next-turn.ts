@@ -46,7 +46,7 @@ let nextWhy = 0;
         [attr.aria-describedby]="waiting() && why() ? whyId : null"
         (click)="press()"
       >
-        <mat-icon aria-hidden="true">skip_next</mat-icon>Próximo turno
+        <mat-icon aria-hidden="true">skip_next</mat-icon>{{ label() }}
       </button>
       @if (waiting() && why()) {
         <p class="why" [id]="whyId"><mat-icon aria-hidden="true">lock</mat-icon>{{ why() }}</p>
@@ -149,6 +149,8 @@ export class NextTurn {
   /** What the turn still owes ("Falta aplicar 5 de dano"), or `null`. */
   readonly pendingNote = input<string | null>(null);
   readonly busy = input(false);
+  /** The button's words: "Próximo turno", or "Encerrar o turno de Pensantus" while the master acts for a character (C8-01). */
+  readonly label = input('Próximo turno');
   /** An opportunity attack waits for an answer: the turn cannot pass yet. */
   readonly waiting = input(false);
   /** Why it cannot pass, written under the button and linked to it ("Responda ao pedido abaixo para seguir."), or `''`. */

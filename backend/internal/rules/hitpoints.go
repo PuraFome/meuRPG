@@ -78,6 +78,11 @@ func (x *deriver) hitPointLevel(hp *hitPointTally, die int) {
 // heavyArmorSpeedPenaltyFt is the speed lost in armor the character is too weak for.
 const heavyArmorSpeedPenaltyFt = 10
 
+// flag says whether an active effect of a field-less type applies.
+func (x *deriver) flag(effectType string) bool {
+	return slices.ContainsFunc(x.active, func(a activeEffect) bool { return a.effect.Type == effectType && x.applies(a) })
+}
+
 // speedAndSenses computes the walking speed and special senses.
 func (x *deriver) speedAndSenses() {
 	speed := 0
@@ -91,6 +96,13 @@ func (x *deriver) speedAndSenses() {
 		speed -= heavyArmorSpeedPenaltyFt
 	}
 	x.d.SpeedWalkFt = max(speed, 0)
+	// The other speeds start at 0: no SRD race has one, so only the table's
+	// modifiers give them (speedwalk() reads the walking speed just set).
+	x.d.SpeedFlyFt = max(x.modifiers("speed.fly", 0), 0)
+	x.d.SpeedSwimFt = max(x.modifiers("speed.swim", 0), 0)
+	x.d.SpeedClimbFt = max(x.modifiers("speed.climb", 0), 0)
+	x.d.SpeedBurrowFt = max(x.modifiers("speed.burrow", 0), 0)
+	x.d.BreathesWater = x.flag("breathes_water")
 
 	best := map[string]int{}
 	source := map[string]string{}

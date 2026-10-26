@@ -153,6 +153,9 @@ type SpellOption struct {
 	// level and with a free slot. Empty for a cantrip, and for a spell with
 	// no slot (then the option is disabled with ReasonNoSlot).
 	Slots []SlotChoice
+	// Grant is set for a spell a granted_spell effect gives (grants.go): it is cast
+	// without a slot, spending a use of the grant's resource unless it is at will.
+	Grant *SpellGrant
 }
 
 // ActionOption is a standard action or a feature's action.
@@ -202,6 +205,7 @@ func Options(d rules.Derived, turn TurnState, u Usage) TurnOptions {
 		}
 		out.Spells = append(out.Spells, spellOption(d, turn, u, cs.Spell))
 	}
+	out.Spells = append(out.Spells, grantedOptions(d, turn, u)...)
 	sortSpells(out.Spells)
 	for _, a := range d.StandardActions {
 		out.StandardActions = append(out.StandardActions, actionOption(d, turn, u, a))
@@ -513,6 +517,9 @@ func spellReason(turn TurnState, o SpellOption, sp rules.SpellEntry) *Reason {
 	}
 	if SpellLimited(turn, o.Economy, sp.Level) {
 		return &Reason{Code: ReasonBonusActionSpellLimit}
+	}
+	if o.Grant != nil {
+		return grantReason(o)
 	}
 	if sp.Level > 0 && len(o.Slots) == 0 {
 		return &Reason{Code: ReasonNoSlot, MinLevel: sp.Level}

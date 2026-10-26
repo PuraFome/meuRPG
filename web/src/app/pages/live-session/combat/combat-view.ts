@@ -180,7 +180,7 @@ export class CombatView extends CombatViewPartsDirective {
           this.actionNote.set('');
           this.deaths.result.set('');
           this.deaths.masterResult.set('');
-          this.deaths.asking.set(null);
+          this.actFor.set(null);
           this.moves.moveNote.set('');
         });
       }

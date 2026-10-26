@@ -309,33 +309,15 @@ describe('CombatView calls: the end of the turn', () => {
     deathSaveDue: true,
   });
 
-  it('asks the master first when a death save is due, and sends nothing', async () => {
+  it('does not end the turn of a downed character while its death save is due, for the master either (G-02)', async () => {
     const { view, callsOf } = mountCombatView({
       enc: grid('g', goblin(), brisa),
       master: true,
       api: answers(grid('g', goblin(), brisa), 'endTurn'),
     });
     expect(await view.nextTurn()).toBe(false);
-    expect(view.deaths.asking()).toEqual({ discard: false });
-    expect(callsOf('endTurn')).toEqual([]);
     expect(await view.nextTurn(true)).toBe(false);
-    expect(view.deaths.asking()).toEqual({ discard: true });
-  });
-
-  it('"Passar sem rolar" ends the turn with the discard the master asked for, and puts the question away', async () => {
-    const e = grid('g', goblin(), brisa);
-    const { view, callsOf } = mountCombatView({ enc: e, master: true, api: answers(e, 'endTurn') });
-    await view.nextTurn(true);
-    expect(await view.passUnrolled()).toBe(true);
-    expect(view.deaths.asking()).toBeNull();
-    expect(callsOf('endTurn')[0].args).toEqual(['c', 'enc', 'g', true, 2]);
-  });
-
-  it('"Passar sem rolar" without a question behind it does not discard', async () => {
-    const e = grid('g', goblin());
-    const { view, callsOf } = mountCombatView({ enc: e, master: true, api: answers(e, 'endTurn') });
-    await view.passUnrolled();
-    expect(callsOf('endTurn')[0].args).toEqual(['c', 'enc', 'g', false, 2]);
+    expect(callsOf('endTurn')).toEqual([]);
   });
 
   it("passes the master's turn at once when no save is due, naming who is on turn and the round", async () => {
@@ -651,26 +633,22 @@ describe('CombatView calls: death saves', () => {
     expect(callsOf('rollDeathSave')).toEqual([]);
   });
 
-  it('the master rolls for an absent player: puts the question away and keeps the sentence', async () => {
+  it('the master rolls for an absent player and keeps the sentence', async () => {
     const { view, callsOf } = mountDying(
       () => ({ encounter: grid('t', down(), goblin()), save: save(DeathSaveOutcome.SUCCESS) }),
       true,
     );
-    view.deaths.asking.set({ discard: false });
     await view.deaths.rollMaster({ id: 't', die: { face: 9 } });
-    expect(view.deaths.asking()).toBeNull();
     expect(callsOf('rollDeathSave')[0].args.slice(0, 4)).toEqual(['c', 'enc', 't', { face: 9 }]);
     expect(view.deaths.masterResult()).toBe('Teste contra a morte: 1d20 (14) = 14. Sucesso.');
     // The master's roll does not touch the player's line.
     expect(view.deaths.result()).toBe('');
   });
 
-  it("the master's roll for a combatant that is not in the combat sends nothing and keeps the question", async () => {
+  it("the master's roll for a combatant that is not in the combat sends nothing", async () => {
     const { view, callsOf } = mountDying(() => ({}), true);
-    view.deaths.asking.set({ discard: true });
     await view.deaths.rollMaster({ id: 'nobody', die: { inApp: true } });
     expect(callsOf('rollDeathSave')).toEqual([]);
-    expect(view.deaths.asking()).toEqual({ discard: true });
   });
 
   it("leaves the master's sentence alone when his roll was refused", async () => {

@@ -278,6 +278,36 @@ describe('the class request (E10-02 states 1 to 3)', () => {
     expect(back.levels).toEqual(body.levels);
   });
 
+  it(
+    'reads the SRD spells of the class list back, and sends them only while the list is the' +
+      " class's own",
+    () => {
+      const stored = create(TableClassSchema, {
+        namePt: 'Aprendiz',
+        casting: {
+          kind: 'half',
+          ability: Ability.INTELLIGENCE,
+          preparation: 'prepared',
+          srdSpellKeys: ['spell:aid', 'spell:cure-wounds'],
+        },
+      });
+      const d = classToDraft(stored, defaults);
+      expect(d.casting.srdSpells).toEqual(['spell:aid', 'spell:cure-wounds']);
+      expect(draftToClass(d, m).casting?.srdSpellKeys).toEqual(['spell:aid', 'spell:cure-wounds']);
+      // The list of another class has none of its own: the spells stay in the draft but are not sent.
+      const reused = { ...d, casting: { ...d.casting, listFrom: 'class:wizard' } };
+      expect(draftToClass(reused, m).casting?.srdSpellKeys).toEqual([]);
+      expect(reused.casting.srdSpells).toEqual(['spell:aid', 'spell:cure-wounds']);
+      // A new casting has none; a class that stops casting loses them.
+      expect(emptyCasting('full').srdSpells).toEqual([]);
+      expect(castingOfKind('', d.casting, defaults).srdSpells).toEqual([]);
+      expect(castingOfKind('full', d.casting, defaults).srdSpells).toEqual([
+        'spell:aid',
+        'spell:cure-wounds',
+      ]);
+    },
+  );
+
   it("takes the server's start level for a casting stored with 0", () => {
     const stored = create(TableClassSchema, {
       namePt: 'X',
@@ -381,6 +411,20 @@ describe('the subclass request (E10-02 state 4)', () => {
       alwaysPrepared: flattenAlwaysPrepared(d.alwaysPrepared),
     });
     expect(subclassToDraft(stored, defaults).alwaysPrepared).toEqual(d.alwaysPrepared);
+  });
+
+  it('sends spells_expanded only for a subclass that names spells', () => {
+    const stored = create(TableSubclassSchema, {
+      namePt: 'Patrono',
+      classKey: 'class:warlock',
+      alwaysPrepared: [{ classLevel: 3, spellKey: 'spell:bless' }],
+      spellsExpanded: true,
+    });
+    const d = subclassToDraft(stored, defaults);
+    expect(d.spellsExpanded).toBe(true);
+    expect(draftToSubclass(d, m).spellsExpanded).toBe(true);
+    expect(draftToSubclass({ ...d, alwaysPrepared: [] }, m).spellsExpanded).toBe(false);
+    expect(emptySubclass('class:warlock').spellsExpanded).toBe(false);
   });
 
   it("reads a stored third caster back, the 0 start level taken from the server's table", () => {

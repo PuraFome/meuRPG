@@ -238,7 +238,7 @@ func (c *content) checkInvocation(p invocationPrerequisite, d *choiceData) error
 		}
 	}
 	if p.Feature != "" {
-		if pf, ok := c.features[p.Feature]; !ok || pf.Parent != "feature:pact-boon" {
+		if pf, ok := c.features[p.Feature]; !ok || pf.Parent != pactBoonKey {
 			return choiceDataFail("invocation %q: %q is not a Pact Boon", p.Invocation, p.Feature)
 		}
 	}

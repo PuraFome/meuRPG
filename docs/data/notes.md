@@ -28,7 +28,7 @@ erDiagram
 
 A player's private note in a campaign (MR-030).
 `text` is 1 to 2,000 characters; at most 300 notes per player per campaign, checked in the `INSERT` transaction (received clues do not count).
-`scene_point_id` optionally labels the note with a scene the player discovered (see `scene_discoveries` in [maps.md](maps.md)); the API only accepts a discovered scene, and deleting the point removes the label (`SET NULL`).
+`scene_point_id` optionally labels the note with a scene the player discovered (see `scene_discoveries` and `scene_player_discoveries` in [maps.md](maps.md)); the API only accepts a discovered scene, and deleting the point removes the label (`SET NULL`).
 `create_key`/`create_hash` are the creation idempotency key.
 The index `(campaign_id, author_user_id, updated_at DESC)` lists a player's notes, newest first.
 Deleting the account or the campaign deletes the notes (`CASCADE`).

@@ -13,7 +13,6 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -27,12 +26,12 @@ import { sceneErrorMessage } from '../../../../core/play/scene-errors';
 import type { ShownImageVm } from '../../../../core/play/live-session.types';
 import type { SceneState } from '../../../../core/play/scene-state';
 import { actionCount, rollCount } from '../../../../core/play/scene-view';
-import { formatClock } from '../../../../shared/session-time/session-time';
 import { PHONE_QUERY, mediaQuery } from '../../../../shared/map-view/media-query';
 import { SceneClues } from '../scene-clues/scene-clues';
 import { SceneImagesShow } from '../scene-images/scene-images';
 import { SceneHooks } from '../scene-hooks/scene-hooks';
 import { SceneActions } from '../scene-actions/scene-actions';
+import { SceneWho } from '../scene-who/scene-who';
 import { StageMaster } from '../stage-master/stage-master';
 import { openScenePicker } from '../scene-picker/scene-picker';
 
@@ -63,6 +62,7 @@ import { openScenePicker } from '../scene-picker/scene-picker';
     SceneClues,
     SceneHooks,
     SceneImagesShow,
+    SceneWho,
     StageMaster,
   ],
   templateUrl: './scene-open.html',
@@ -98,11 +98,15 @@ export class SceneOpen {
   protected readonly scene = computed(() => this.state().scene());
   /** The scene's name with "A" tied to the next word (no break after it). */
   protected readonly sceneName = computed(() => tieShortWords(this.scene()?.name ?? ''));
-  protected readonly since = computed(() => {
-    const at = this.scene()?.openedAt;
-    return at
-      ? `Aberta para os jogadores desde ${formatClock(timestampDate(at))}`
-      : 'Aberta para os jogadores';
+  /** The map of the scene's point, for the eye of each action; empty when the point is not on the open map. */
+  protected readonly actionsMapId = computed(() => {
+    const scene = this.scene();
+    const onMap =
+      !!scene &&
+      this.mapState()
+        .points()
+        .some((p) => p.id === scene.pointId);
+    return onMap ? (this.mapState().map()?.id ?? '') : '';
   });
   protected readonly meta = computed(() => {
     const scene = this.scene();

@@ -73,8 +73,11 @@
         </p>
       </div>
     } @else {
-      @if (ways().includes('ritual')) {
-        <app-choice-cards label="Como conjurar" [rows]="wayRows()" [chosen]="[way()]" (choose)="pickWay($event)" />
+      @if (showWays()) {
+        <app-choice-cards label="Como conjurar" [rows]="wayRows()" [chosen]="[wayId()]" (choose)="pickWay($event)" />
+      }
+      @if (grantNote()) {
+        <p class="grant-note">{{ grantNote() }}</p>
       }
       @if (slots().length) {
         <app-slot-picker [rows]="slots()" [chosen]="slot()" (pick)="pickSlot($event)" />

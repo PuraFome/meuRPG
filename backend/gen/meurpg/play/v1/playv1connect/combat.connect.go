@@ -394,8 +394,8 @@ type CombatServiceClient interface {
 	//     take a turn (NOT_ACTIVE); the member has a damage that waits to be
 	//     rolled, applied or for a reaction (PENDING_DAMAGE, see
 	//     discard_pending_damage); the player's character is down and its death
-	//     save is due (DEATH_SAVE_DUE: roll it first; the master may end the part
-	//     anyway).
+	//     save is due (DEATH_SAVE_DUE: roll it first; the master rolls it for the
+	//     character, and the part ends after it).
 	//   - `aborted`: expected_combatant_id is not a member who still acts.
 	EndTurn(context.Context, *connect.Request[v1.EndTurnRequest]) (*connect.Response[v1.EndTurnResponse], error)
 	// MoveCombatant puts a combatant on a square of the grid (RN-21).
@@ -2348,8 +2348,8 @@ type CombatServiceHandler interface {
 	//     take a turn (NOT_ACTIVE); the member has a damage that waits to be
 	//     rolled, applied or for a reaction (PENDING_DAMAGE, see
 	//     discard_pending_damage); the player's character is down and its death
-	//     save is due (DEATH_SAVE_DUE: roll it first; the master may end the part
-	//     anyway).
+	//     save is due (DEATH_SAVE_DUE: roll it first; the master rolls it for the
+	//     character, and the part ends after it).
 	//   - `aborted`: expected_combatant_id is not a member who still acts.
 	EndTurn(context.Context, *connect.Request[v1.EndTurnRequest]) (*connect.Response[v1.EndTurnResponse], error)
 	// MoveCombatant puts a combatant on a square of the grid (RN-21).

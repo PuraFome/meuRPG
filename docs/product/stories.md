@@ -65,6 +65,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 | [MR-051](#mr-051-the-scenes-conversation) | Session | MVP |
 | [MR-052](#mr-052-the-free-dice-roller) | Session | MVP |
 | [MR-049](#mr-049-reserved-characters-and-claim-links) | Character | MVP |
+| [MR-053](#mr-053-the-master-acts-for-a-players-character) | Combat | MVP |
 | [MR-002](#mr-002-generate-an-invite) | Campaign | MVP (prerequisite) |
 | [MR-005](#mr-005-create-npcs) | Character | MVP (prerequisite) |
 | [MR-007](#mr-007-import-a-sheet-from-pdf) | Character | Later |
@@ -258,6 +259,9 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 - **Given** the master chooses the session's current map, **when** a player is in the session, **then** the player's map follows it; with no map chosen, the notice reads "O mestre ainda não escolheu um mapa."
 - **Given** the master moves a visible token, **when** the player has the map open, **then** the token moves on the player's screen without a reload. A token the master hides (an NPC's, for example) reaches only the master. If the player loses sight of the map, they go back to the notice.
 - **Given** the master's session screen, **when** the master looks at the map, **then** there are the "Mapa atual" selector, draggable tokens, "Pontos do mapa" and "Tokens no mapa" with "Revelar aos jogadores" and "Esconder". A character's creature has its own row, always visible, and dragging its token moves the creature, not its owner.
+- **Given** a map with a grid and no combat on it, **when** the master drags a character's token or moves it from the "Tokens" tab, **then** the token walks toward the square and stops before a wall, a locked door or a square marked "Não dá para passar", the screen says where and why ("O movimento parou antes. O próximo quadrado está marcado como “Não dá para passar”. Tor andou 7,5 m."), and nothing moves until the server answers. Several tokens chosen together move around the first; if one does not fit, nobody moves and the screen says who is in the way.
+- **Given** the switch "Os jogadores movem os próprios personagens" is on for the map, **when** a player drags their own token, **then** it walks the same way; a player never moves another character's token, and with the switch off only the master moves tokens. A player never learns why a token stopped at a square they have not seen (RN-10): the screen says only "O movimento parou antes.".
+- **Given** the switch is off (the default) or on, **when** a player looks at the map, **then** a line under it says who moves: "O mestre move os tokens agora." with no control, or "Arraste Brisa no mapa ou use “Mover Brisa”. Os outros ficam com o mestre." with the button "Mover Brisa" for their own character only. **When** the master frees or locks the moving while the player looks, **then** the line becomes a polite one-line notice for 8 seconds ("O mestre liberou: agora você move Brisa." or "O mestre voltou a mover os tokens."), and locking closes an open move panel without moving.
 - **Given** a combat, **when** the player sees an enemy, **then** they see a word (Ileso, Ferido, Muito ferido, Derrotado), not hit points (RN-20).
 - **Given** an attack that hits, **when** it deals damage to an NPC, **then** it is applied at once (temporary hit points first; at 0 hit points the NPC is defeated and leaves the order).
 - **Given** an attack or a spell that deals damage to a player's character, **when** it lands, **then** the damage waits for the master, who applies it ("Aplicar 5 de dano", or another amount) or discards it. When applied, the owner and the master see it live. Damage to someone at 0 hit points counts one death-save failure (RN-03). A heal is applied at once and raises someone at 0.
@@ -266,6 +270,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 #### In the app
 - In a combat the player's screen is the map first, with the movement under it ("Restam 9,0 m · 6 quadrados" and "Mover"), then the turn card with their own hit points, armor class and slots, then the actions in tabs; the other creatures' hit points are words, never numbers (RN-20).
 - The target of an attack, a spell or "Agarrar"/"Empurrar" is tapped on that map: the page brings it into view with the accent border, the creatures the server offers have a ring, the ones out of reach or behind total cover are dimmed and say why when tapped ("Goblin 3: cobertura total"), and a bar above the nav (a card in the rail from 1024 px) reads "Escolha o alvo · Raio de Fogo" with "Escolher na lista", "Cancelar" and "Confirmar". Magic Missile and Scorching Ray take one tap for each dart or ray ("2 de 3 dardos", "Desfazer"). "Escolher na lista" opens the sheet's own list, the way for the keyboard and the screen reader.
+- Outside combat the master's "Tokens" tab (under the map) holds the switch "Os jogadores movem os próprios personagens", "Pôr o grupo no mapa" (a dialog, a sheet on a phone: who comes, "Em fila", "Em bloco" or "Em arco", and the square of the map for the group's corner) and "Selecionar" (a tap on a token adds it to a selection). A box on each character's row chooses it: one chosen is "Mover Tor" (the direction pad, "Quadrados por toque" from 1 to 20, "Tor vai 3 quadrados para a direita · Distância: 4,5 m" and the button), several are "3 selecionados" with "Mover os 3 juntos" and "Limpar seleção". The player's "Mover Brisa" (under the map, in the card on a computer and in a sheet on a phone) is the same panel for their own character alone, with "Brisa andou 2 (3 m)." or "O movimento parou antes." and the reason when the server gives one; on a computer the player may also drag their own token. A click on a square of the map sets the destination; the map draws a ring on each token chosen, a dashed line to the destination and, after a move that stopped early, the line walked, an X where it was headed and "7,5 m · parou antes".
 - See [Architecture](../architecture/play/live-session.md) and [Combat](../architecture/play/combat.md#combat).
 
 #### Related
@@ -371,7 +376,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 - **Given** the master asks one, some or all characters for a skill check, an ability check or a saving throw outside a combat, **when** they send it, **then** each roll is judged alone unless they choose a group check, only the characters asked read the request, and the master marks who is surprised.
 - **Given** someone at 0 HP, **when** the player looks at the turn, **then** they see "Brisa está caída", the marks and "Rolar teste contra a morte"; on the third failure the character dies only when the master confirms ("Confirmar a morte" / "Ainda não") (RN-03).
 - **Given** conditions (the 15 of the SRD; "Derrubado" is Prone) and concentration, **when** they apply, **then** they show as tags under the name, in the player's strip and as a dot on the token, and the player ends their own concentration. The master sets them in "Condições…" in the order's ⋮. When damage hits a concentrating target, the master applying **another value** ("Aplicar outro valor") reads "Teste de Constituição, CD 10". Conditions and concentration are marked and reminded; the master decides the effects (RN-22).
-- **Given** a player's character at 0 HP, still making death saves, on its turn with the save not yet rolled, **when** the player is away and the game master reads "Teste contra a morte de Brisa", **then** they roll it ("Rolar no app" or "Digitar o resultado", by the table's dice mode) and the counts move, **and** if they tap "Próximo turno" first the app asks "O teste contra a morte de Brisa ainda não foi rolado." with "Rolar agora" or "Passar sem rolar"; the card never shows for an NPC or a stable character, and the other players never read the result (RN-03, RN-24).
+- **Given** a player's character at 0 HP, still making death saves, on its turn with the save not yet rolled, **when** the player is away and the game master reads "Teste contra a morte de Brisa", **then** they roll it ("Rolar no app" or "Digitar o resultado", by the table's dice mode) and the counts move, **and** the turn does not pass until it is rolled ("Próximo turno" is dashed and the bar says "Falta o teste contra a morte"; the server refuses it too, MR-053); the card never shows for an NPC or a stable character, and the other players never read the result (RN-03, RN-24).
 
 **Master's turn and the log**
 - **Given** an NPC's turn, **when** the master plays it, **then** the card "Ações do Capitão Goblin" shows hit points, armor class, speed and the attack with the "Alvo" field; "Rolar ataque" works in the app or typed ("Acertou contra CA 18 do Toren"), and "Aplicar 5 de dano" / "Não aplicar" (which asks "Descartar o dano de 5?"). While damage is unapplied, "Próximo turno" asks "Há dano sem aplicar. Passar o turno mesmo assim?". Armor class is master-only.
@@ -417,10 +422,13 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 - **Given** the open scene, **when** the master reads it, **then** it says since when it is open and who is in and who is out, with the characters' names ("Aberta desde 20:20 para Pensantus, Brisa"; "Fora da cena: Sálvia e Jabuti"); no player reads that list.
 - **Given** a scene open to only some players, **when** the master asks for a group check ("Teste em grupo") without naming characters, **then** it asks the scene's players only, **and** naming a character who is out is refused; a player taken out of the scene stops reading the check and cannot answer it. The master gives an attempt only to a character who is in.
 - **Given** a scene open to only some players, **when** the session ends, **then** the checks passed in it count in the summary for the master and for the players who were in, and for no other player.
+- **Given** a roll a player made on an action that the master hid afterwards, **when** the session ends, **then** the roll stays in the summary for the players who saw or rolled it, because it happened: the summary counts tries and passes per character, never the action, so it names nothing of it; the rolls list of the scene no longer shows the roll to the players (RN-10).
 - **Given** a scene open to only some players, **when** the master turns on "Os jogadores podem entrar" (off by default, changeable while the scene is open, set back to off when the scene closes), **then** a player who is out reads exactly two things of it: its name and that they can join, and nothing else (no point, description, stage, actions, rolls, images or clues); with the switch off they read nothing, as when no scene is open. Every player is told when the switch changes.
 - **Given** a scene that lets players join, **when** a player taps "Entrar na cena", **then** they become one of its players at once, read it as any member does and the master sees them marked as having joined by themselves, against the players he chose; joining again changes nothing. The master, a stranger and a pending member cannot join, and with the switch off the refusal is that of "no scene is open".
 - **Given** a player who joined a scene, **then** they are one of its players for what follows: an image shown to "the scene's players" reaches them at once, and an image shown to chosen players does not, unless they were chosen.
-- **Given** a scene opened to some players, **when** the master opens it to everyone, **then** it is "discovered" for the group, and its name may label a note; while it is open to some it is not, so the list of scenes tells the others nothing.
+- **Given** a scene opened to some players, **when** the master opens it to everyone, **then** it is "discovered" for the group and any player may label a note with its name; while it is open to some, only its players discover it, each for themselves: they may label a note with it (also when the master brings them in or they join it, and after they leave it, as what they read they read), and no other player's list of scenes or notes tells its name nor accepts it as a label (the refusal is that of a scene that does not exist).
+- **Given** a scene open to only some players, **when** the master names who is in, **then** he may name any player of the campaign, also the player of a dead character: the scene's audience is about players, and that player follows the scene like anyone in it. Rolling an action still needs a living character.
+- **Given** a scene open to only some players, **when** the master reveals a clue to a character whose player is out, **then** it is allowed (the master chose the character): the clue is in that player's notes and nothing else of the scene reaches them: no scene, stage, actions, images or scene name, and the clue carries no scene label for them.
 - **Given** a scene action, **when** the master marks it "Escondida" (adding it, or later, also with the scene open), **then** no player receives it: not its name, DC, attempts or rolls, on the map, in the open scene, in a live hint or in the history they read (RN-10); the master still sees it, marked, rolls on it for the table and gives attempts on it.
 - **Given** a hidden action, **when** a player rolls it anyway, **then** the refusal is exactly the one of an action that does not exist (same error, same message), so it never tells the player that the action is there.
 - **Given** a hidden action in the open scene, **when** the master shows it ("Os jogadores veem"), **then** the scene's players see it at once and can roll it; **when** the master hides it again, **then** it leaves their screen at once, with the rolls they made on it. Nothing is erased: showing it again gives them back their rolls and attempts.
@@ -430,6 +438,8 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 #### In the app
 - Editor: the point panel's "Ações da cena" and "Imagens da cena" (thumbnails in order with ↑ ↓ and "Tirar da cena", which keeps the image in the gallery; "Escolher da galeria"; "Gerar imagem com IA", whose picture joins the list; "N de 8").
 - Session: the master opens "Cena de RP" from the "Cena" tab ("Abrir cena", "Trocar cena", "Fechar cena"; opening one switches to the tab). The open scene is one card: "Em cena" (a row per NPC), "Imagens da cena" (thumbnails; a tap shows one, a whole-map image asks first; the one on show is "À mostra"; the dashed "Da galeria" tile and "Parar de mostrar"), "Ações e rolagens" (a line per action with each roll as a chip that opens the formula and Passou / Não passou; "Teste em grupo" in its header), "Pistas" and the folded "Ganchos e anotações". On a phone the parts fold. The player has the block "Cena" with their bonus and "Rolar".
+- Who sees what (RN-10): the first line of the open scene says "Aberta desde 20:20 para" with the players in it as chips (a count and overlapping initials past three) and "Quem está na cena", which opens the chooser of players (a sheet on a phone); under it, who is out ("Toren não está nesta cena.") and, for a scene open to only some players, the switch "Os jogadores podem entrar"; when a player joins by themselves the line says "Toren entrou na cena às 20:41.". Each action has an eye ("Escondida": the players never get it nor its rolls).
+- Player screen, outside a scene open to only some players: with the master's switch off nothing of the scene is drawn (the page is as when no scene is open: the map and the images left); with it on, one compact card, "Há uma cena aberta", the scene's name, "Você ainda não está nela. Entre para ver e participar." and a filled "Entrar na cena". Entering shows the scene as any player's, under "Você entrou na cena", with the title focused; if the master turned the switch off meanwhile the card goes and the page says "A cena não está mais aberta para entrar.". See [Design](../design/session.md#the-players-scene-and-the-ficha-panel).
 - See [Scenes and stage](../architecture/play/scenes-and-stage.md).
 
 #### Related
@@ -437,10 +447,6 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 - Scenes have skill checks, ability checks and saving throws; spells and abilities are not part of them.
 
 #### Open points
-- A scene open to only some players is not "discovered" for the group, so its players cannot label a note with it until the master opens it to everyone. Should the scene's players be able to?
-- A clue the master reveals to a character who is out of the open scene reaches that player's notes (the master chose the character). Should revealing a clue of a scene to a player who is out be refused?
-- Only a player who owns a living character of the party can be named in a scene, as in the conversation's readers. Should the player of a dead character be able to follow a scene?
-- A roll a player made on an action that was hidden afterwards leaves the player's list of rolls but stays in the session summary, which counts tries and passes per character (never the action): the summary keeps the number the table already saw. Should hiding an action also take its rolls out of the summary?
 - A package exported with a hidden action brings it back hidden. Is that what the master wants when he shares a campaign with another master?
 
 ### MR-016: Award XP
@@ -572,13 +578,15 @@ Each invite chooses whether it requires approval, and a refusal deletes the char
 - **Given** a shown image, **when** the game master looks at who sees it ("Quem vê a imagem"), **then** it has one audience of three kinds: the whole table; the scene's players; or chosen players, any set of the campaign's players, picked like the conversation's "Para". The audience is the whole table when no scene is open or the open scene is open to everyone, exactly as before; while a scene open to only some players is open, the default is the scene's players, **and** the game master may pick the whole table or chosen players when they show the image.
 - **Given** an image shown to the scene's players, **when** the game master changes who is in the scene, **then** a player who comes in sees the image at once and a player who goes out stops seeing it at once; **when** the scene closes, another one opens, or the scene opens to everyone, **then** the image stays with the players who were in at that moment, until the game master stops showing it or shows another: it reaches no one else, and no player gets it retroactively.
 - **Given** a shown image, **when** the game master taps "Mostrar a toda a mesa", **then** every player sees it at once, as an image shown with no scene; **when** they tap "Mudar quem vê" and pick the players, **then** the ones picked see it, the others lose it at once (the image goes from their screen, from the live session read and from the image route, which answers 404) and the players who stay hear nothing.
+- **Given** the image on screen is deleted from the gallery, **then** only the game master and the players who saw it hear that it stopped being shown; a player outside its audience hears nothing, and the lists of left images they read are unchanged (RN-10).
 - **Given** a player outside the image's audience, **then** they never receive it: not the image, its ID or its name in a read, not in a live event (they only hear that an image they saw stopped being shown), not through the image route, not in the summary or the highlights (RN-10).
-- **Given** an image with "Deixar com os jogadores" on, **when** it stops being shown, **then** it stays only with the players who were in its audience (the whole table, or those players); the list the other players read does not have it, the image route answers them 404 and their screens hear nothing of it; "Tirar" works as before. Leaving an image again takes the audience of the latest leaving.
+- **Given** an image with "Deixar com os jogadores" on, **when** it stops being shown, **then** it stays only with the players who were in its audience (the whole table, or those players); the list the other players read does not have it, the image route answers them 404 and their screens hear nothing of it; "Tirar" works as before. Leaving an image again, with another audience, keeps the widest: whoever already had it keeps it and the new players get it too; only "Tirar" (taking it back) narrows it. A "Mudar quem vê" for the list of left images is for later: the audience of a left image does not change until it is taken back.
 
 #### In the app
 - One image at a time, independent of the current map; a new session starts with none.
   Deleting the image from the gallery stops showing it and removes it from the list.
   The image's name is the uploaded file's name and is shown to the players as the caption, so the game master can rename it before showing it.
+- In the session the master chooses who sees it. With the scene open to the whole table a tap shows the image to the table; with it open to only some players "Mostrar" on a thumbnail is a menu ("Só quem está na cena", "Toda a mesa", "Escolher quem vê…"). Under the thumbnails a line says who sees the image on show ("Pensantus e Brisa veem", "Só Brisa vê", "Toda a mesa vê", "Os jogadores veem"), with "Mostrar a toda a mesa" and "Mudar quem vê", which opens the chooser ("Quem vê “Vista do salão”?") and takes the image away at once from whoever is left out.
 - Showing the background of a map with fog on shows a copy of it ("… (névoa)"), so the fog is not given away.
 - A player downloads the image only while it is shown and they are in its audience, while it is left with them, or while it is the background of a map they can see.
   Otherwise it is a `404`, even with the ID stored.
@@ -590,11 +598,6 @@ Each invite chooses whether it requires approval, and a refusal deletes the char
 - The audience is part of the show call and has its own call to change it while the image is shown (`SetShownImage`, `SetShownImageAudience`); the game master reads it on the image, and a player never does.
 - Out of scope: a per-player "chest" of every image already shown.
   The list holds only what the game master chose to leave, and a player reads the images left with them.
-
-#### Open points
-- Deleting the image that is shown tells every player that it stopped being shown, also the ones outside its audience (the event carries no image). Should it tell only the players who saw it?
-- An image left again takes the audience of the latest leaving, which can narrow what a player already had. Should it keep the widest audience instead?
-- The audience of an image already left cannot be changed; the game master takes it back and shows it again. Is a "Mudar quem vê" for the left list needed?
 
 ### MR-025: Register table content
 
@@ -623,6 +626,12 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - **Given** a feature the game master registers, **when** they pick its effect, **then** they pick from a closed menu (modifier, proficiency, resource, sense, roll mode, action, extra attack, ranged attack, trigger on an event, choice, maneuver die, note, granted spell).
   An action may spend a resource the entry defines, and a class or subclass feature may carry an **option list** the player picks from (a table's maneuvers, each with its own effects; "Opções para escolher" in the feature editor).
   Table content never runs code.
+- **Given** a table class that casts from a list of its own, **when** I name SRD spells on that list in the class editor ("Magias do SRD na lista da classe"), **then** they join the table spells that name the class: the character prepares and learns them, the level-up offers them and the "Magias" page lists them for the class.
+  The server refuses an unknown spell, a table spell, a repeated one and any of them on a class that reuses another class's list.
+- **Given** a table subclass that names spells, **when** I mark "As magias da subclasse entram na lista da classe, para escolher", **then** those spells are not prepared for free: they join the class's list for a character of that subclass, who picks them like any other spell of the list, and they count against the spells known or prepared.
+  Without the mark they are always prepared. The mark is offered only when the subclass has spells, and the server refuses it otherwise.
+- **Given** a feature with a proficiency effect of level "expertise" on a skill, **when** I turn on "Só onde já tem proficiência", **then** the sheet doubles the skill only for a character who is proficient in it from another source, and gives no proficiency by itself.
+  The SRD's own expertise works as before.
 - **Given** a table feature or feat with an action that spends a resource, **when** I set its cost, **then** each use spends that many (a feature that spends 2 of a pool for a bonus action), the action is off while fewer are left, **and** the server refuses a cost the resource's maximum can never pay, a maximum cost below the cost, and a cost with no resource.
   With a maximum cost the player chooses at use how many to spend, from the cost to the maximum or what is left ("quantos?"); the server reads the uses left and checks the number in the same transaction as the use.
   The action card shows the cost and, with a maximum cost, "Usar" opens a sheet with "Quantos?" (a stepper from the cost to the maximum or what is left), "Para quem" (the player or one other player character, for an action that heals or gives temporary hit points), a line of what the choice will cost and give ("Gasta 3 · cura 3d6") and the roll of the dice; with fewer uses left than the cost the row is off with "Faltam usos".
@@ -658,6 +667,38 @@ The data rules, limits and the server side are in [Table content: rules](../arch
   For ranged weapons (a thrown weapon at range included), that cover is ignored and long range gives no disadvantage.
   Total cover still blocks the attack, and the roll shows no cover where the cover was ignored.
 
+**Speeds and spells the table grants.**
+
+- **Given** a feature, a trait or a feat of the table with a modifier of the fly, swim, climb or burrow speed ("Deslocamento de voo", "de natação", "de escalada", "de escavação"; "somar", "pelo menos" or "definir"), **when** a character has it, **then** the sheet lists that speed under the walking speed in meters and feet, **and** it follows the effect's condition (`when`).
+  The formula may read `speedwalk()`, the walking speed after the modifiers: a race that swims as fast as it walks writes "definir `speedwalk()`", and a feat that adds 10 ft to the walking speed moves the swimming speed along.
+  In combat a creature moves on its fly speed when it is the better of the two; swimming and climbing are on the sheet only, as the grid has no cost for them.
+- **Given** an effect "Respira na água", **when** a character has it, **then** the sheet says "Respira na água" in the speed box; the app keeps no air or drowning count.
+- **Given** a feat, a trait or a feature with the effect "Magia concedida" (a spell of the SRD or of the table, the level it starts at, the casting ability — Intelligence, Wisdom, Charisma or "o jogador escolhe" —, the resource each cast spends, a switch to cast it with a slot too, a switch for rituals only and a switch to list it among the known spells), **when** a character has it, **then** the sheet lists the spell under "Magias concedidas" with its source, how it is cast and the DC and attack bonus of the grant, **and** the character's known spells, cantrips and prepared numbers stay as they were.
+  A leveled spell is cast at its own level, a cantrip scales with the character level, and the material components are not waived.
+  When the ability is "o jogador escolhe", the player picks it once, in the sheet's choices, and until then the grant has no numbers.
+- **Given** a granted spell, **when** the player casts it, in a fight or outside one, **then** the cast sheet offers it as a way of its own, with no spell slot (a slot only when the grant allows one), using the grant's ability for the attack roll and the saving throw DC.
+  A limited grant spends one use of its resource: the second cast with no use left is refused ("A concessão não tem mais usos."), the undo of the first gives it back, and an at-will grant never runs out.
+  A ritual-only grant casts as a ritual.
+- **Given** the effect editor, **when** I register a granted spell, **then** the server refuses a spell that does not exist, a ritual-only grant on a spell without the ritual tag, a resource the entry does not define and an ability that is none of the four, each at its field.
+
+**Options for the SRD's option sets.**
+
+- **Given** I am the game master of "Mirathel", **when** I register an option for one of the SRD's option sets (an Eldritch Invocation, a Metamagic option, a fighting style, a Pact Boon, a Hunter's Prey, Defensive Tactics, Multiattack or Superior Hunter's Defense) with its text, its effects from the closed menu and what it asks for (a level in a class, other options, a Pact Boon, a spell the character knows), **then** the choice of that set offers it, in "Mirathel" only, next to the SRD's options, **and** a set with many table options is not cut at 20.
+- **Given** a table option, **when** a character does not meet what it asks for, **then** the choice lists it blocked with the reason ("Exige o nível 5 de Bruxo. Você está no 3.", "Exige o Pacto do Tomo"), **and** the server refuses a sheet that picks it anyway; **when** the character meets it, **then** the player picks it and its effects (and its action, if it has one) are on the sheet.
+- **Given** the "Opções para os jogadores" screen, **when** the master switches a table option off, **then** players are not offered it and the server refuses it as a new pick; a sheet that already has it keeps it.
+- **Given** the option editor, **when** I save an option with an unknown set, a class or option or Pact Boon or spell that does not exist, a level outside 1 to 20, or another choice among its effects, **then** the server refuses each at its field, **and** the set of an option never changes after it is created.
+
+**Class features.**
+
+- **Given** I am the game master of "Mirathel", **when** I register a feature for a class (the SRD's or one of the table) at a class level, with its text and effects, **then** every character of that class reads it from that level on, in "Mirathel" only, like any feature of the class.
+- **Given** a class feature that replaces another feature of the class (an invented Ranger feature at level 1 that replaces Favored Enemy), **then** characters of the class no longer have the replaced feature from that level on, **and** the replaced feature is not asked for in their choices; **when** I switch the entry off, **then** the class reads as before and the replaced feature is back.
+- **Given** the editor, **when** I save a class feature with a class that does not exist, a level outside 1 to 20, or a replaced feature the class does not have at that level or later (or that it already had before), **then** the server refuses each at its field.
+
+**Swapping a pick.**
+
+- **Given** the table rule "Trocar uma escolha no aumento de atributo" is on and a Fighter reaches level 4, **when** the level-up reaches the ability step, **then** it also offers to give up one earlier pick of one group (cantrip, fighting style, metamagic option, invocation, pact boon) for another of the same pool, with "Não trocar" as the default, **and** the sheet shows the new pick and not the old one; the new pick still needs the prerequisites of any pick.
+- **Given** the rule is off (the default), or the level has no Ability Score Improvement, **then** the level-up offers no swap and the server refuses one (`SWAP_NOT_ALLOWED`).
+
 **Changing, archiving and switching.**
 
 - **Given** a table class that a sheet uses, **when** the game master changes one of its numbers, **then** the sheet shows the new number, locked sheets included, **and** whatever fell outside the rules appears on the sheet as a notice ("A classe mudou") with one sentence per change, without blocking any other edit (RN-23).
@@ -673,7 +714,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 **Registering well.**
 
 - **Given** I save an entry that breaks a rule, **then** the server lists every violation at once, each at its field, and nothing is saved.
-  An entry is limited to 60 features, and a campaign to 300 entries.
+  An entry is limited to 60 features, and a campaign to 1,000 entries and 6,000 effects; a formula is limited to 1,024 bytes.
 - **Given** a player, **then** they read every playable entry in full, with "Da mesa", and never an archived or switched-off one, not even by reference, unless their own sheet uses it.
   They never read counts or state, and cannot write.
 
@@ -728,17 +769,17 @@ The data rules, limits and the server side are in [Table content: rules](../arch
   - The game master sees the label "Teatro da mente" and the card "Ações do …" with "Gastar movimento" (in 1.5 m steps); the player sees "Combate sem mapa" and a "Gastar movimento" sheet with "Depois restam 3,0 m", which is only a preview of the server's number.
 
 #### The screens
-- **"Conteúdo da mesa"** (`/campaigns/:id/content`, from the campaign's "Conteúdo da mesa" panel): the game master, on a laptop, sees the five kinds with counts (archived included), "7 de 300 entradas", search, "Mostrar" (Todas, Em uso, Sem fichas, Arquivadas) and rows with the state in words ("Em uso por 2 fichas", "Arquivado · 1 ficha usa").
+- **"Conteúdo da mesa"** (`/campaigns/:id/content`, from the campaign's "Conteúdo da mesa" panel): the game master, on a laptop, sees the five kinds with counts (archived included), "7 de 1000 entradas", search, "Mostrar" (Todas, Em uso, Sem fichas, Arquivadas) and rows with the state in words ("Em uso por 2 fichas", "Arquivado · 1 ficha usa").
   An empty campaign says "Nada cadastrado ainda." and that the SRD still applies.
   On a phone the game master only reads and archives.
   A player reads every switched-on entry, kind by kind, with "Da mesa".
 - **The editors** (one page, one "Salvar"):
   - The spell: all fields, "Alvo" before the mechanics, "Mais criaturas por nível", "Pessoal" and "Toque", the classes that learn it, and a "Como os jogadores veem" preview.
   - The race and subrace, and the background.
-  - The class: name, hit die, "Teste de resistência 1" and "2", how many skills and from which, proficiencies, the multiclass prerequisite, casting (none, full, half or pact; prepared or known; the list) and the subclass level.
+  - The class: name, hit die, "Teste de resistência 1" and "2", how many skills and from which, proficiencies, the multiclass prerequisite, casting (none, full, half or pact; prepared or known; the list, and "Magias do SRD na lista da classe" for a class with a list of its own) and the subclass level.
     The 20-level table starts at the SRD's numbers for the chosen casting and the game master edits it cell by cell; changing the casting asks before redoing an edited table.
     Features have a level and an effect from the menu, with the counter "N de 60".
-  - The subclass: features by level, "Esta subclasse conjura" and always-prepared spells by class level.
+  - The subclass: features by level, "Esta subclasse conjura", always-prepared spells by class level and, when it has spells, "As magias da subclasse entram na lista da classe, para escolher".
   - The feat: "Novo talento", "Dados do talento", "O que o talento pede", "Salvar talento"; "Aumento de habilidade" is offered only there.
 - **Refusals:** each violation returns on the field it names, in Portuguese, also on a table cell and on a collapsed feature, which opens.
   A summary on top says how many fields need adjusting, and what the game master typed stays.
@@ -890,7 +931,9 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - **Given** an open scene, **when** the game master puts an NPC on the stage hidden ("Escondida dos jogadores"), **then** it takes a place of the 4 and the game master reads it marked, but no player receives it: not its name, portrait or place on the stage, not in the open scene, not in a live hint, not as a target or caster of a cast, not in the history, summary or highlights they read (RN-10); the players are told nothing when it enters or leaves the stage hidden.
 - **Given** an NPC on the stage, **when** the game master turns it between "Os jogadores veem" and "Escondida dos jogadores", **then** showing it makes it enter the players' picture live, and hiding it makes it leave, exactly as taking it off would: nothing tells the players that it was hidden rather than taken off.
 - **Given** a hidden NPC, **when** the game master taps "Dar a fala", **then** it is shown in the same call and speaks: the players see it enter and speak at once. Hiding the NPC that speaks takes the floor from it.
+- **Given** a hidden NPC, **when** the game master speaks in the conversation as it (MR-051), **then** the line names the NPC for the readers he chose, whoever they are, and nothing else of it reaches them: not its portrait (the line carries none and the image route answers `404`), not a place on the stage; speaking in the conversation does not show the NPC, only "Dar a fala" does. A player who is not a reader of the line never learns the name.
 - **Given** a hidden NPC's portrait, **when** a player tries to download it, **then** it is `404`, as off the stage; the game master always can.
+- **Given** an NPC on the stage already, **when** the game master puts it again with the other hidden flag, **then** nothing changes: the toggle is how to show or hide it. **Given** a hidden NPC, **when** the game master gives it the floor, **then** it is shown, by design: there is no voice off screen.
 - **Given** a scene open to only some players, **when** the game master puts an NPC on the stage, **then** only the scene's players receive the stage, the NPCs on it and their portraits, and the stage hints; a player who is out receives no stage, not even to aim a cast at an NPC on it (MR-015, RN-10).
 - **Given** a hidden NPC, **when** the game master casts a spell for it outside combat, **then** the cast is the game master's alone and no player can aim at it, not even by its place on the stage; the casts it made in plain sight leave the players' list while it is hidden and come back when it is shown.
 
@@ -900,16 +943,11 @@ The data rules, limits and the server side are in [Table content: rules](../arch
   See [Architecture](../architecture/play/scenes-and-stage.md#npcs-on-stage).
 - The NPC editor has "Retrato" (the short sheet and the Básico step of enemy and boss): initials without an image, "Escolher/Trocar retrato" in the gallery picker, "Remover retrato" with the question in place, all saved with the sheet.
   The portrait appears on the NPC card in combat and in the sheet header.
-- The game master sees "Em cena" in the open scene ("Dar a fala"/"Fala agora", "Tirar de cena", "Pôr em cena" in place or in a sheet on a phone, "4 de 4").
+- The game master sees "Em cena" in the open scene (an eye per NPC: "Escondida dos jogadores" keeps it on the stage for the master only, and a hidden NPC never speaks; "Dar a fala"/"Fala agora", "Tirar de cena", "Pôr em cena" in place or in a sheet on a phone, "4 de 4").
   The players see the stage with cut-outs without a box and the speaker highlighted; the stage disappears when empty.
 
 #### Related
 - Uses the images of the [gallery](#mr-019-image-gallery), like [MR-028](#mr-028-show-an-image-to-the-players).
-
-#### Open points
-- A line the game master sends "as" a hidden NPC in the scene's conversation (MR-051) reaches the readers he chose and does not show the NPC on the stage. Should sending a line as a hidden NPC also show it?
-- Putting an NPC that is on the stage already, with the hidden flag of the other value, changes nothing: the toggle is how to show or hide it. Is that clear enough, or should the put turn it?
-- "Dar a fala" always shows the NPC. Should there be a way to make a hidden NPC speak without showing it (a voice off screen)?
 
 ### MR-032: Combat highlights
 
@@ -991,7 +1029,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 #### In the app
 - **Move page.** "Mover" shows every reachable square, each square's cost, the reason a square is refused and who may provoke; it has "Saltar" with the distance and height the server allows.
 - **Cover on screen.** The target list states the cover and its origin ("Meia cobertura (do mapa)", "Três quartos (marcada pelo mestre)") and leaves out who a wall covers entirely; the master's order has "Marcar cobertura" and "Marcar como aliado".
-- **Map editor.** On a computer, "Pontos | Pintar" has Terreno difícil, Parede, Cobertura (Meia, Três quartos) and Luz (Claro, Penumbra, Escuro), "Apagar" and a 1×1 or 3×3 brush.
+- **Map editor.** On a computer, "Pontos | Pintar" has Terreno difícil, Parede, Cobertura (Meia, Três quartos), Luz (Claro, Penumbra, Escuro) and "Não dá para passar" (a checkerboard: nobody walks into the square, but sight and light pass), "Apagar" and a 1×1 or 3×3 brush; "Camadas" lists it with its own switch.
   Dragging, clicking, Shift to erase and the keyboard all paint. "Camadas" says "Tudo salvo", "Salvando" or "Não salvou".
   Without a grid the tools are dashed ("Defina a grade para pintar e ligar a névoa.").
   Changing the grid, replacing the image and "Esquecer o que foi visto" ask in place first.
@@ -1144,6 +1182,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - **Given** a generated image, **when** the GM writes a new request ("darker", "with a bridge"), **then** the app edits it with knowledge of the scene, without starting over, **and** stores the new one next to the previous one.
 - **Given** the campaign's monthly limit (200 images in production) has been reached, **when** the GM asks for another image, **then** the app refuses and says why and when the limit resets. The server has a daily limit of its own.
 - **Given** the service refuses a request, returns no image or fails, **when** the GM waits for the image, **then** the app says so in Portuguese ("O serviço não gerou esta imagem") without spending the month's slot.
+- **Given** the service returned the image but the server could not keep it, **when** the GM waits for the image, **then** the app says the image was made but could not be stored ("A imagem foi feita, mas não deu para guardá-la"), not that the service did not answer, **and** the attempt does not count against the month. A request that left and timed out with no image still counts, because it may have been billed.
 - **Given** a map with a grid (generated or drawn), **when** the GM asks for "O mapa com textura" (the textured map), **then** the app generates the map itself seen from above, with floor and walls in place, cropped and fitted to match the grid, **and** the GM can set it as the map image ("Usar como imagem do mapa") without erasing the layers or what the players have already seen. A map whose image is over 16 megapixels cannot become a textured map, and the screen says so before asking.
 - **Given** a map, **when** the GM asks for "Vista isométrica" (isometric view), **then** the app generates the map art in isometric perspective from what the players see now, **and** it goes to the gallery as scene art.
 - **Given** scene art or an isometric view made from a map, **when** the app builds the reference drawing, **then** it carries only what the players see now: the squares some character sees, the creatures they see and the unrevealed secret door as a wall; other rooms and hidden enemies are left out, and the image does not show what they have not discovered. On a map without fog, the whole map goes, minus what is hidden from the players.
@@ -1362,7 +1401,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - The file goes up in parts, so a dropped connection resumes. The upload belongs to the master's account, a person has one at a time, and unfinished parts are deleted an hour after the last one.
 - A preview counts what the package holds and lists every problem in plain words. Any problem blocks "Criar campanha": all or nothing, and a failure halfway leaves nothing behind.
 - A package is refused when it comes from a newer MeuRPG ("Este pacote é de uma versão mais nova do MeuRPG, e este servidor ainda não sabe abri-lo."), was changed, holds a field this server does not know, is over 200 MiB or 2,000 entries (10 MiB for an entry), is suspiciously compressed, has a name that climbs out of a folder, or refers to something it lacks.
-- Every rule of the app applies as if the master had typed the data: names, sizes, DCs, scene actions, traps, puzzles, sheets (with the package's own table content), the caps of a campaign (300 images, 200 maps, 200 points a map, 300 table entries, the characters and NPCs cap) and the account's cap of campaigns ("Você já tem 10 campanhas.") and the creators list. Images go through the upload's pipeline (re-encoded, metadata dropped).
+- Every rule of the app applies as if the master had typed the data: names, sizes, DCs, scene actions, traps, puzzles, sheets (with the package's own table content), the caps of a campaign (300 images, 200 maps, 200 points a map, 1,000 table entries, the characters and NPCs cap) and the account's cap of campaigns ("Você já tem 10 campanhas.") and the creators list. Images go through the upload's pipeline (re-encoded, metadata dropped).
 - Ids are never reused: every thing gets a new id and every reference, including the links in the document, follows.
 - The players' characters arrive reserved (MR-049): invisible to the players until one claims it with the master's link.
 
@@ -1456,6 +1495,33 @@ See [Architecture](../architecture/campaign-package.md).
 
 #### Related
 - [MR-002](#mr-002-generate-an-invite) and [MR-003](#mr-003-join-through-the-invite) (the other way into a campaign), [MR-024](#mr-024-approve-the-character-from-the-invite) (a pending member), [MR-006](#mr-006-locked-sheet). The package of a campaign ([MR-050](#mr-050-campaign-package-export-and-import)) brings its characters in as reserved. See [Architecture](../architecture/characters.md#reserved-characters-and-claim-links).
+
+### MR-053: The master acts for a player's character
+
+**As a** master, **I want** to play a player character's turn when its player is not there (or does not answer), **so that** the combat does not stop and the table keeps the player's character in the game.
+
+- Priority: MVP
+- Rules: RN-03, RN-10, RN-18, RN-19, RN-20
+- Modules: play
+
+#### Acceptance criteria
+- **Given** a player character's turn, **when** the master reads "Turno", **then** the card of that character shows "Agir por <name>" on every player turn: there is no "absent" mode to switch on first. A character at 0 hit points has no "Agir por": its card is the death save (below).
+- **Given** the master taps "Agir por <name>", **then** he gets the character's own turn: its economy, its action tabs built from its sheet, its attacks, spells, features, Wild Shape, summons and familiar, its movement and target picking, as the player has them, and "Voltar ao mestre" (which gives the rail back without ending the turn); the combat bar says "Você age por <name>" and its one filled button reads "Encerrar o turno de <name>" in place of "Próximo turno", so there is one end-of-turn button on the screen.
+- **Given** the master acts, **when** he moves, **then** he drags the character's token or uses "Mover" in the map's header (it is not in the rail) while no target is being picked.
+- **Given** the master acts, **when** he picks a target, **then** only what the character sees counts (the server's target list for that character: a hidden creature is dimmed, "<name> não vê este alvo"), and the server refuses any other target the same way (RN-10, RN-20).
+- **Given** the master did something for a character (an attack, a spell, a feature, a death save, a move, the end of the turn), **then** the combat log says "(pelo mestre)" at the end of the line, for everyone who reads it, the player too when they are back.
+- **Given** the player comes back in the middle of the turn, **then** either of them may act; nothing is locked, and the second answer to the same question reads "Já respondido".
+- **Given** the master acts, **then** the order's tools (damage, conditions, the master's marks) stay available.
+- **Given** the combat is in its setup, **then** "Começar o combate" waits for every initiative; "Rolar por <name>" rolls the missing one with the character's bonus, "Digitar o resultado" types it for a physical die, and the bar says who is missing. The same "Rolar por <name>" is beside each character who has not answered a group check or a check the master asked for in a scene, with the typed result when the table plays with physical dice.
+- **Given** a player's optional reaction (Escudo Arcano, Esquiva Sobrenatural...) nobody answered in 10 s, **then** the question goes to the master, at the top of "Turno", with what it changes in numbers (the attack against the armor class, with and without the spell), what it costs, the tag "10 s sem resposta", and "Usar" and "Não usar"; the tab says "Turno · 2" and the combat bar "Falta responder por <name>". The first answer wins (the player's or the master's); the other reads "Já respondido".
+- **Given** a character at 0 hit points on its turn, **then** its turn starts with its death save (SRD 5.1) and does not end without it, for the master too: the card leads with "<name> está caído: teste contra a morte", the successes and failures so far, "Rolar por <name>" (the app's dice) and "Digitar o resultado" (a physical die) at the same size; "Próximo turno" is dashed and the bar says "Falta o teste contra a morte". The server refuses the end of that turn until the save is made; the old "Passar sem rolar" is gone.
+
+#### In the app
+- "Turno" on a player's turn: the card "Vez do Pensantus" ("Mago 3 · o jogador joga na tela dele"), the hit points, armor class and movement, the economy shapes, "Esperando Pensantus. Se o jogador não estiver, jogue este turno por ele." and one outlined button, "Agir por Pensantus". Acting, the rail starts with the band "Você está agindo por Pensantus" and "Voltar ao mestre", then the shapes, "PV 23 de 23 · CA 12 · 1º ○○○● 2º ○○" and the character's tabs (on a phone without their counts); the target is picked on the map ("Toque no alvo · por Pensantus") and a phone's pinned bar becomes "Encerrar o turno de Pensantus", or the target bar of the map.
+- A reaction nobody answered, a held roll and the group check keep their cards at the top of "Turno"; the setup's initiative rows have "Rolar por Brisa" beside "Digitar pelo jogador".
+
+#### Related
+- [MR-013](#mr-013-turn-order), [MR-014](#mr-014-your-turn), [RN-03](rules.md), [RN-10](rules.md), [RN-18](rules.md). See [Design](../design/combat.md).
 
 ## Priority: MVP (prerequisite)
 

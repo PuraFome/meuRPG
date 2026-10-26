@@ -22,6 +22,8 @@ One map component, `shared/map-view`, serves the editor, the player's viewer and
 
 ## Legend
 
+The master's map has one row of token marks ("Personagem · NPC · Escondido (só você vê) · Vez") and no line about dragging; with fog on, the fog map's own legend leaves those marks to that row (no word twice) and keeps the layers and pins. The player's scene tab on a phone captions its map "Mapa · <nome>".
+
 Below every master's map, `app-map-layers-legend` lists only what the map draws, in the same order everywhere: wall, difficult terrain, the covers, doors (closed, open, locked, portcullis, secret), then the marks and tokens. Painted light is called "Claro", "Penumbra", "Escuro" everywhere.
 A swatch is `.mr-swatch` (22 px, `aria-hidden`); the words carry the meaning.
 
@@ -31,6 +33,7 @@ A swatch is `.mr-swatch` (22 px, `aria-hidden`); the words carry the meaning.
 
 - **Parede:** a dark diagonal hatch over a veil.
 - **Terreno difícil:** a lighter crossed hatch.
+- **Não dá para passar:** a checkerboard of the map's ink (a pit, a chasm, a column of fire). It blocks movement, not sight, and is the only mark that is neither a hatch nor a pictogram; the legend names it "Não dá para passar" only when the map has one.
 - **Cobertura:** a dotted square filled from the bottom to halfway ("Meia cobertura") or three quarters ("Três quartos"). Never an object's name.
 - **Doors** (`app-door-mark`): one mark per kind, the same on the map, legend and editor buttons; the player's layer has no padlock or secret door.
 
@@ -50,7 +53,7 @@ One component (`app-fog-map`) serves the player, the master's own map ("Todos") 
 
 Computer only (768 px and up); on a phone the master pans and zooms and uses the lists.
 
-- **Bar:** "Pontos | Pintar" selector; in "Pintar" the tools (Terreno difícil, Parede, Cobertura, Luz, Porta, "Apagar"), the brush (1×1, 3×3) and the degree row. The chosen item always looks the same: `accent-soft` and a check in a slot that already exists, so choosing never shifts neighbours. Without a grid no tool looks chosen and the reason is written in the bar.
+- **Bar:** "Pontos | Pintar" selector; in "Pintar" the tools (Terreno difícil, Parede, Cobertura, Luz, "Não dá para passar", Porta, "Apagar"), the brush (1×1, 3×3) and the degree row. The chosen item always looks the same: `accent-soft` and a check in a slot that already exists, so choosing never shifts neighbours. Without a grid no tool looks chosen and the reason is written in the bar.
 - **Painting:** the surface is above the markers and moves with the map; one finger paints on touch and two fingers pan; arrows move the brush cursor and Space paints.
 - **One tap, one action for doors:** the door is written before the wall disappears, and the reverse, so no player sees a gap.
 - **Questions in place** (`app-map-ask`): "Mudar a grade?", "Trocar a imagem?", "Esquecer o que foi visto?" and the leave-with-unsaved-strokes question share one shape; nothing is erased before the second click.

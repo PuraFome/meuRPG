@@ -739,6 +739,11 @@ func (u *undoer) castSpentBack(ctx context.Context, who playdb.Combatant, ev act
 		}
 		u.keep(v)
 	}
+	if ev.GrantUse != "" && who.Kind == kindPlayer {
+		if err := u.spendResourceBack(ctx, who, ev.GrantUse); err != nil {
+			return err
+		}
+	}
 	if ev.Slot != nil && who.Kind == kindPlayer {
 		return u.spendSlotBack(ctx, who, *ev.Slot)
 	}
