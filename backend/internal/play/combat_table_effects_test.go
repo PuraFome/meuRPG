@@ -22,7 +22,7 @@ import (
 // frostTable is a theatre fight with Ragna, a character of the table's race "Gelídeo", next to the goblin.
 type frostTable struct {
 	*armed
-	race, thickSkin, glassSkin, stoneSoul, coldBlood string // the entries' keys
+	race, glassSkin, stoneSoul, coldBlood string // the entries' keys
 }
 
 // newFrostTable makes the race and the feats, and the party: Ragna (the race, Small, +2 Strength and +1
@@ -212,9 +212,9 @@ func TestMR025_ATableRaceShowsItsChoicesAndResistsInCombat(t *testing.T) {
 	if _, err := f.settle(t, f.master, e, dmg.GetId(), true); err != nil {
 		t.Fatalf("ApplyPendingDamage() error = %v", err)
 	}
-	max := f.vitals(t, f.toren).GetHitPointsMax()
-	if got := f.vitals(t, f.toren).GetHitPointsCurrent(); got != max-4-8 {
-		t.Errorf("Ragna has %d hit points, want %d: 4, then 8, then nothing", got, max-4-8)
+	hpMax := f.vitals(t, f.toren).GetHitPointsMax()
+	if got := f.vitals(t, f.toren).GetHitPointsCurrent(); got != hpMax-4-8 {
+		t.Errorf("Ragna has %d hit points, want %d: 4, then 8, then nothing", got, hpMax-4-8)
 	}
 }
 
@@ -279,7 +279,7 @@ func TestMR025_ACharacterImmuneToAConditionTakesNoEffectThatGivesIt(t *testing.T
 	}{{"immune", link.Traits{ConditionImmunities: []link.ConditionImmunity{{Source: "feat:x", Conditions: []string{"condition:paralyzed"}}}}, lastingNoEffect}, {"not immune", traits, ""}} {
 		made := &actionEvent{Hits: make([]castHit, 1)}
 		svc.markSpellHits(content, def, nil, nil, map[string]link.Traits{"ragna": tc.traits}, []playdb.Combatant{target}, made)
-		if got := made.Hits[0].Lasting; got != tc.want && !(tc.want == "" && got == lastingApplied) {
+		if got := made.Hits[0].Lasting; got != tc.want && (tc.want != "" || got != lastingApplied) {
 			t.Errorf("%s: Hold Person's hit = %q (%q)", tc.name, got, made.Hits[0].NoEffectWhy)
 		}
 		if tc.want != "" && made.Hits[0].NoEffectWhy != whyImmune {

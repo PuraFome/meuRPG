@@ -300,6 +300,9 @@ func (s *Service) restoreEffects(ctx context.Context, c *combatTx, rows []playdb
 // conditionParalyzed is the SRD condition Paralyzed.
 const conditionParalyzed = "condition:paralyzed"
 
+// conditionStunned is the SRD condition Stunned.
+const conditionStunned = "condition:stunned"
+
 // endEffectsOfTheDead ends every effect on a combatant that died and those its concentration
 // held, and the character's own outside a combat.
 func (s *Service) endEffectsOfTheDead(ctx context.Context, c *combatTx, cs []playdb.Combatant, who playdb.Combatant) error {

@@ -142,7 +142,7 @@ func (c *content) resistancesOf(key string, e *Effect) []Resistance {
 		base.DamageTypes = c.damageTypesBut(e.Except)
 		return []Resistance{base}
 	}
-	var plain, magic Resistance = base, base
+	plain, magic := base, base
 	for _, t := range e.DamageTypes {
 		switch t {
 		case DamageTypeAll:

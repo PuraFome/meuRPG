@@ -305,7 +305,7 @@ func riderAgainst(choice string) []string {
 	case choiceProne:
 		return []string{condProne}
 	case choiceStun:
-		return []string{"condition:stunned"}
+		return []string{conditionStunned}
 	}
 	return nil
 }
@@ -349,11 +349,11 @@ func (s *Service) riderConsequence(ctx context.Context, c *combatTx, cs []playdb
 		if err != nil {
 			return err
 		}
-		sheetImmune, err := c.immuneToCondition(ctx, target, "condition:stunned")
+		sheetImmune, err := c.immuneToCondition(ctx, target, conditionStunned)
 		if err != nil {
 			return err
 		}
-		if sheetImmune || combat.ImmuneTo(effectModsOf(states, target.ID), "condition:stunned") {
+		if sheetImmune || combat.ImmuneTo(effectModsOf(states, target.ID), conditionStunned) {
 			re.Result = riderSaved
 			return nil
 		}

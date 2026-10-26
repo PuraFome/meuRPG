@@ -65,7 +65,7 @@ func taggedSaveOf(h rules.Hint) (link.TaggedSave, bool) {
 	if h.AgainstCondition != "" {
 		against, ok = h.AgainstCondition, len(h.Tags) == 0
 	}
-	if !ok || !(h.Mode == "advantage" || (h.Mode == "disadvantage" && h.AgainstCondition != "")) {
+	if !ok || (h.Mode != "advantage" && (h.Mode != "disadvantage" || h.AgainstCondition == "")) {
 		return link.TaggedSave{}, false
 	}
 	if len(h.Targets) > 0 && slices.ContainsFunc(h.Targets, func(x string) bool { return !strings.HasPrefix(x, "save.") }) {
