@@ -25,6 +25,16 @@
               (valueChange)="setChoice(f, $event)"
             />
           }
+          @case ('cards') {
+            <app-radio-cards
+              [label]="labelOf(f)"
+              [options]="cardsOf(f)"
+              [value]="cardValue(f)"
+              [path]="path(f.name)"
+              [issues]="issues(f.name)"
+              (valueChange)="setChoice(f, $event)"
+            />
+          }
           @case ('choices') {
             <app-pick-list
               [label]="labelOf(f)"

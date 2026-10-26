@@ -220,6 +220,18 @@
                     <mat-error>{{ submitting.switchedOff('race') || 'Escolha a raça.' }}</mat-error>
                   </mat-form-field>
 
+                  @if (views.sizeChoices().length > 0) {
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                      <mat-label>Tamanho</mat-label>
+                      <mat-select formControlName="raceSize" panelWidth="">
+                        @for (s of views.sizeChoices(); track s.value) {
+                          <mat-option [value]="s.value">{{ s.label }}</mat-option>
+                        }
+                      </mat-select>
+                      <mat-hint>A raça deixa você escolher entre ser Pequeno ou Médio.</mat-hint>
+                    </mat-form-field>
+                  }
+
                   @if (views.availableSubraces().length > 0) {
                     <mat-form-field appearance="outline" subscriptSizing="dynamic">
                       <mat-label>Sub-raça</mat-label>

@@ -1,11 +1,12 @@
 import { computed } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 
 import type { CharacterPreviewVm, ChoicesPreviewVm } from './character-editor.types';
 import {
   catalogNameOf,
   chosenSkillsOf,
   choiceBonusesHintOf,
+  sizeChoicesOf,
   choicesSubtitleOf,
   finalConstitutionOf,
   grantedSkillsOf,
@@ -253,6 +254,8 @@ export class EditorCatalog {
   });
   /** The race's "+2 e +1 à sua escolha": where the player puts them (the server's numbers, from the catalog). */
   readonly choiceBonusesHint = computed(() => choiceBonusesHintOf(this.selectedRace()));
+  /** The sizes the race lets the player pick from: empty unless there is a real choice. */
+  readonly sizeChoices = computed(() => sizeChoicesOf(this.selectedRace()));
   /** A table background's equipment, as the master wrote it. */
   readonly backgroundEquipment = computed(() => this.selectedBackgroundVm()?.equipmentPt ?? '');
   readonly toolOptions = computed(() => this.toolsAndLanguages('tool'));
@@ -315,6 +318,13 @@ export class EditorCatalog {
     const controls = host.fullForm.controls;
     this.formChanges = toSignal(host.fullForm.valueChanges);
     this.selectedRaceKey = toSignal(controls.race.valueChanges, { initialValue: '' });
+    // A size picked for one race is not the next race's: the picker starts over on the race's own.
+    controls.race.valueChanges.pipe(takeUntilDestroyed()).subscribe((race) => {
+      const sizes = this.catalog()?.races.find((r) => r.key === race)?.sizes ?? [];
+      if (controls.raceSize.value !== '' && !sizes.includes(controls.raceSize.value)) {
+        controls.raceSize.setValue('');
+      }
+    });
     this.selectedClassKey = toSignal(controls.className.valueChanges, { initialValue: '' });
     this.selectedBackground = toSignal(controls.background.valueChanges, { initialValue: '' });
     this.selectedLevel = toSignal(controls.level.valueChanges, { initialValue: 1 });

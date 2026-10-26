@@ -132,8 +132,10 @@ export interface RaceDraft {
   bonuses: Bonuses;
   /** "O jogador escolhe onde pôr os bônus": on when the race has bonuses to place. */
   choosing: boolean;
-  /** "2, 1": the amounts the player places, each on a different ability. */
+  /** "2, 1": the amounts the player places, each on a different ability; "2, 1 / 1, 1, 1" offers several sets, of which the player picks one. */
   choice: string;
+  /** The sizes the player picks one from ("Small", "Medium"); empty is the race's own size. */
+  sizes: string[];
   languages: string[];
   languageChoices: number;
   traits: FeatureDraft[];
@@ -148,6 +150,7 @@ export function emptyRace(): RaceDraft {
     bonuses: noBonuses(),
     choosing: false,
     choice: '2, 1',
+    sizes: [],
     languages: [],
     languageChoices: 0,
     traits: [],
@@ -179,8 +182,14 @@ export function raceToDraft(r: TableRace): RaceDraft {
     speedM: rangeMeters(r.speedFt),
     darkvisionM: rangeMeters(r.darkvisionFt),
     bonuses: bonusesOf(r.abilityBonuses),
-    choosing: r.choiceBonuses.length > 0,
-    choice: r.choiceBonuses.length > 0 ? r.choiceBonuses.join(', ') : '2, 1',
+    choosing: r.choiceBonuses.length > 0 || r.choiceBonusSets.length > 0,
+    choice:
+      r.choiceBonusSets.length > 0
+        ? r.choiceBonusSets.map((s) => s.bonuses.join(', ')).join(' / ')
+        : r.choiceBonuses.length > 0
+          ? r.choiceBonuses.join(', ')
+          : '2, 1',
+    sizes: [...r.sizes],
     languages: [...r.languages],
     languageChoices: r.languageChoices,
     traits: r.traits.map(featureToDraft),
@@ -195,13 +204,22 @@ export function choiceAmounts(text: string): number[] {
     .filter((n) => Number.isInteger(n) && n !== 0);
 }
 
+/** "2, 1 / 1, 1, 1" → [[2, 1], [1, 1, 1]]: the sets of bonuses the text offers, in the order written. A text with one set is the
+ * race's single `choiceBonuses`; with more, its `choiceBonusSets`. */
+export function choiceSets(text: string): number[][] {
+  return text.split('/').map(choiceAmounts);
+}
+
 export function draftToRace(d: RaceDraft, menu: EffectMenuVm): RaceInit {
+  const sets = d.choosing ? choiceSets(d.choice) : [];
   return {
     namePt: d.name.trim(),
     size: d.size,
     speedFt: strictRangeFeet(d.speedM),
     abilityBonuses: { ...d.bonuses },
-    choiceBonuses: d.choosing ? choiceAmounts(d.choice) : [],
+    choiceBonuses: sets.length === 1 ? sets[0] : [],
+    ...(sets.length > 1 ? { choiceBonusSets: sets.map((bonuses) => ({ bonuses })) } : {}),
+    ...(d.sizes.length > 0 ? { sizes: [...d.sizes] } : {}),
     darkvisionFt: strictRangeFeet(d.darkvisionM),
     languages: [...d.languages],
     languageChoices: d.languageChoices,

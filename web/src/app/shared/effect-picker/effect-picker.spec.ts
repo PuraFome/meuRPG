@@ -1,7 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { type EffectDraft, type EffectMenuVm, emptyEffect } from '../../core/content/effect-draft';
-import { menu, rangedAttackMenu } from '../../core/content/content-testing-menu';
+import {
+  conditionMenu,
+  menu,
+  rangedAttackMenu,
+  resistanceMenu,
+} from '../../core/content/content-testing-menu';
 import { costsMenu, grantedSpellMenu } from '../../core/content/content-testing-menu-costs';
 import { EffectPicker } from './effect-picker';
 
@@ -299,6 +304,68 @@ describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
       'Destreza',
       'Constituição',
     ]);
+  });
+});
+
+describe('EffectPicker: resistance, condition immunity and the roll mode against a condition', () => {
+  let fixture: ComponentFixture<EffectPicker>;
+  let el: HTMLElement;
+  const emitted: EffectDraft[] = [];
+
+  function setup(effect: EffectDraft, m: EffectMenuVm) {
+    emitted.length = 0;
+    TestBed.resetTestingModule();
+    fixture = TestBed.createComponent(EffectPicker);
+    fixture.componentRef.setInput('effect', effect);
+    fixture.componentRef.setInput('menu', m);
+    fixture.componentRef.setInput('basePath', 'table_race.traits[0].effects[0]');
+    fixture.componentRef.setInput('issuesOf', () => []);
+    fixture.componentInstance.effectChange.subscribe((e) => emitted.push(e));
+    fixture.detectChanges();
+    el = fixture.nativeElement as HTMLElement;
+  }
+  const field = (path: string) =>
+    el.querySelector<HTMLElement>(`[data-field="table_race.traits[0].effects[0].${path}"]`);
+
+  it('asks the kind as three radio cards, shown from the start, with the resistance on when nothing is set', () => {
+    setup(emptyEffect('resistance'), resistanceMenu());
+    const radios = Array.from(el.querySelectorAll<HTMLInputElement>('input[type="radio"]'));
+    expect(radios.map((r) => r.value)).toEqual(['resist', 'immune', 'vulnerable']);
+    expect(radios.map((r) => r.checked)).toEqual([true, false, false]);
+    expect(el.textContent).toContain('Não sofre dano.');
+    expect(field('damage_types')).not.toBeNull();
+    // The rarer fields stay folded: "Todos os tipos de dano, menos" and "Enquanto".
+    expect(field('except')).toBeNull();
+    expect(field('while')).toBeNull();
+  });
+
+  it('puts the card picked in the draft, and the damage types picked from the SRD ones plus the closed words', () => {
+    setup(emptyEffect('resistance'), resistanceMenu());
+    el.querySelectorAll<HTMLInputElement>('input[type="radio"]')[1].click();
+    expect(emitted.at(-1)?.kind).toBe('immune');
+    const select = field('damage_types')!.querySelector('select')!;
+    expect(Array.from(select.options).map((o) => o.text.trim())).toEqual(
+      expect.arrayContaining(['Todos os tipos de dano', 'Frio', 'Veneno']),
+    );
+    select.selectedIndex = Array.from(select.options).findIndex((o) => o.text.trim() === 'Frio');
+    select.dispatchEvent(new Event('change'));
+    expect(emitted.at(-1)?.damageTypes).toEqual(['damage-type:cold']);
+  });
+
+  it('lists the conditions to take none of, and the one a roll mode is against', () => {
+    setup(emptyEffect('condition_immunity'), conditionMenu());
+    const select = field('conditions')!.querySelector('select')!;
+    expect(Array.from(select.options).map((o) => o.text.trim())).toEqual(
+      expect.arrayContaining(['Amedrontado', 'Envenenado']),
+    );
+    setup(
+      { ...emptyEffect('roll_mode'), roll: 'advantage', targets: ['save.wis'] },
+      conditionMenu(),
+    );
+    expect(field('against_condition')).toBeNull(); // folded: optional
+    el.querySelector<HTMLButtonElement>('button.more')!.click();
+    fixture.detectChanges();
+    expect(field('against_condition')).not.toBeNull();
   });
 });
 

@@ -1054,12 +1054,28 @@ func (s *Service) modifiersOf(ctx context.Context, c *combatTx, campaignID strin
 	var out []combat.Modifier
 	raging := hasState(states, who.ID, stateRage) && !sheet.Traits.HeavyArmor
 	for _, r := range sheet.Traits.Resistances {
-		if r.While == rules.ResistanceWhileRage && !raging {
+		if !rules.ResistanceActive(r.While, raging) {
 			continue
 		}
-		out = append(out, combat.Modifier{Kind: combat.StepResistance, Source: r.Source, DamageTypes: r.DamageTypes})
+		out = append(out, traitModifier(r))
 	}
 	return out, nil
+}
+
+// traitModifier is the modifier a sheet's resistance, immunity or vulnerability makes. A trait of the
+// content that names no kind is a resistance.
+func traitModifier(r link.Resistance) combat.Modifier {
+	m := combat.Modifier{Kind: combat.StepResistance, Source: r.Source, DamageTypes: r.DamageTypes}
+	switch r.Kind {
+	case rules.ResistanceKindImmune:
+		m.Kind = combat.StepImmunity
+	case rules.ResistanceKindVulnerable:
+		m.Kind = combat.StepVulnerability
+	}
+	if r.Nonmagical {
+		m.Qualifier = combat.QualifierNonmagical
+	}
+	return m
 }
 
 // statBlockModifiers are the immunities, resistances and vulnerabilities of a creature

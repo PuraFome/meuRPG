@@ -117,6 +117,10 @@ export class RaceEditor {
   protected readonly isRace = computed(() => this.mode() === 'race');
   protected readonly prefix = computed(() => (this.isRace() ? 'table_race' : 'table_subrace'));
   protected readonly sizes: SelectOption[] = [...SIZE_OPTIONS];
+  /** The sizes a race lets the player pick from: the SRD's player races are Small or Medium. */
+  protected readonly pickableSizes: SelectOption[] = SIZE_OPTIONS.filter((o) =>
+    ['Small', 'Medium'].includes(o.value),
+  );
   /** The six abilities, named as the catalog names them. */
   protected readonly abilities = computed(() => this.catalog().abilities);
   protected readonly bonusRange = { min: BONUS_MIN, max: BONUS_MAX };
@@ -297,6 +301,8 @@ export class RaceEditor {
         `${p}.languages`,
         `${p}.language_choices`,
         `${p}.choice_bonuses`,
+        `${p}.choice_bonus_sets`,
+        `${p}.sizes`,
       );
     } else {
       fixed.push(`${p}.race_key`);

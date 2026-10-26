@@ -43,13 +43,19 @@
           <app-switch-field label="O jogador escolhe onde pôr os bônus" [checked]="r.choosing" (toggled)="patchRace({ choosing: $event })" />
           <p class="hint">Por exemplo, +2 e +1 à escolha. Desligado: os bônus acima valem sempre.</p>
           @if (r.choosing) {
-            <app-text-field label="Valores à escolha" [value]="r.choice" [path]="prefix() + '.choice_bonuses'" [issues]="issuesOf(prefix() + '.choice_bonuses')" hint="Separe por vírgula: 2, 1. Cada um vai numa habilidade diferente." (valueChange)="patchRace({ choice: $event })" />
+            <app-text-field label="Valores à escolha" [value]="r.choice" [path]="prefix() + '.choice_bonuses'" [issues]="issuesOf(prefix() + '.choice_bonuses')" hint="Separe por vírgula: 2, 1. Cada um vai numa habilidade diferente. Para dar a escolher entre grupos, separe-os por barra: 2, 1 / 1, 1, 1." (valueChange)="patchRace({ choice: $event })" />
           }
         </div>
       }
     </section>
 
     @if (isRace()) {
+      <section class="mr-panel block" aria-labelledby="size-t">
+        <h2 class="mr-panel__title" id="size-t">Tamanho à escolha</h2>
+        <p class="hint">Vazio, a raça tem só o tamanho acima. Com Pequeno e Médio, o jogador escolhe um ao criar o personagem; o tamanho acima é o padrão e precisa estar entre eles.</p>
+        <app-pick-list label="Tamanhos" addLabel="Adicionar tamanho" [options]="pickableSizes" [values]="r.sizes" [path]="prefix() + '.sizes'" [issues]="issuesOf(prefix() + '.sizes')" (added)="patchRace({ sizes: [...r.sizes, $event] })" (removed)="patchRace({ sizes: r.sizes.filter((k) => k !== $event) })" />
+      </section>
+
       <section class="mr-panel block" aria-labelledby="lang-t">
         <h2 class="mr-panel__title" id="lang-t">Idiomas</h2>
         <app-pick-list label="Idiomas" addLabel="Adicionar idioma" [options]="languageOptions()" [values]="r.languages" [path]="prefix() + '.languages'" [issues]="issuesOf(prefix() + '.languages')" (added)="patchRace({ languages: [...r.languages, $event] })" (removed)="patchRace({ languages: r.languages.filter((k) => k !== $event) })" />

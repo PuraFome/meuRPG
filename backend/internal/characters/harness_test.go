@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -491,4 +492,16 @@ func basicSheet() *charactersv1.CharacterSheet {
 		}},
 		Description: "Um goblin nervoso.",
 	}}}
+}
+
+// withRaceBonusPicks picks the +2 and the +1 of the table race the tests invent (testRace: "+2 and +1 to your
+// choice"): Strength and Dexterity, as a player does in "Escolhas".
+func withRaceBonusPicks(s *charactersv1.CharacterSheet, race string) *charactersv1.CharacterSheet {
+	if !strings.HasSuffix(race, "@mesa") {
+		return s // an SRD race has no such choice
+	}
+	f := s.GetFull()
+	f.FeatureChoiceKeys = append(f.FeatureChoiceKeys,
+		rules.ScopedChoice(rules.BonusChoiceKey(race, 2), "ability:str"), rules.ScopedChoice(rules.BonusChoiceKey(race, 1), "ability:dex"))
+	return s
 }

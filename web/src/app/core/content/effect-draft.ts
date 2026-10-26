@@ -74,6 +74,10 @@ export function emptyEffect(type = ''): EffectDraft {
     alsoWithSlot: false,
     ritualOnly: false,
     countsAsKnown: false,
+    damageTypes: [],
+    kind: '',
+    conditions: [],
+    againstCondition: '',
   };
 }
 
@@ -124,6 +128,10 @@ export function effectToDraft(e: TableEffect): EffectDraft {
     alsoWithSlot: e.alsoWithSlot,
     ritualOnly: e.ritualOnly,
     countsAsKnown: e.countsAsKnown,
+    damageTypes: [...e.damageTypes],
+    kind: e.kind,
+    conditions: [...e.conditions],
+    againstCondition: e.againstCondition,
   };
 }
 
@@ -260,17 +268,21 @@ export function strictRangeFeet(text: string): number {
   return unreadableRange(text) ? Number.NaN : rangeFeet(text);
 }
 
-/** Whether a required closed-list field of the action, maneuver and resistance types is still empty. */
+/** The required closed-list fields of the action, maneuver, resistance, spell and condition types, by name: whether each is still empty. */
+const CHOICE_EMPTY: Readonly<Record<string, (d: EffectDraft) => boolean>> = {
+  event: (d) => d.event === '',
+  economy: (d) => d.economy === '',
+  applies: (d) => d.applies === '',
+  except: (d) => d.except === '',
+  while: (d) => d.while === '',
+  spell: (d) => d.spell === '',
+  ability: (d) => d.ability === '',
+  conditions: (d) => d.conditions.length === 0,
+};
+
+/** Whether a required closed-list field is still empty. */
 function choiceEmpty(d: EffectDraft, name: string): boolean {
-  return (
-    (name === 'event' && d.event === '') ||
-    (name === 'economy' && d.economy === '') ||
-    (name === 'applies' && d.applies === '') ||
-    (name === 'except' && d.except === '') ||
-    (name === 'while' && d.while === '') ||
-    (name === 'spell' && d.spell === '') ||
-    (name === 'ability' && d.ability === '')
-  );
+  return CHOICE_EMPTY[name]?.(d) ?? false;
 }
 
 /** A required field of the type that still has nothing: the editor says so before the server does. */
