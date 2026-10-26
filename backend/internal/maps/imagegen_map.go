@@ -24,6 +24,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/maps/refimg"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/vision"
 
@@ -178,7 +179,7 @@ func (e mapSubjectError) Error() string { return "the map cannot be drawn: " + e
 // map, mapSubjectError when it has no grid. It reads through the pool (never inside a
 // transaction).
 func (s *Service) loadSubject(ctx context.Context, campaignID, rawMapID string) (*subject, error) {
-	mapID, ok := parseID(rawMapID)
+	mapID, ok := uid.Canonical(rawMapID)
 	if !ok {
 		return nil, errMapNotFound()
 	}
@@ -494,7 +495,7 @@ func (s *Service) GenerateMapImage(
 	if err != nil {
 		return nil, err
 	}
-	mapID, ok := parseID(req.Msg.GetMapId())
+	mapID, ok := uid.Canonical(req.Msg.GetMapId())
 	if !ok {
 		return nil, errMapNotFound()
 	}
@@ -807,7 +808,7 @@ func (s *Service) UseGeneratedImageAsMapImage(
 	if err != nil {
 		return nil, err
 	}
-	imageID, ok := parseID(req.Msg.GetImageId())
+	imageID, ok := uid.Canonical(req.Msg.GetImageId())
 	if !ok {
 		return nil, errImageNotFound()
 	}

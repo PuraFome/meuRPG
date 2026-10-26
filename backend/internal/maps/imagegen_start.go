@@ -11,7 +11,6 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/images"
@@ -290,7 +289,7 @@ func (s *Service) reserve(ctx context.Context, n newRequest, campaignID string) 
 		res, err = s.reserveTx(ctx, s.queries.WithTx(tx), &n, campaignID)
 		return err
 	})
-	if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == pgUniqueViolation {
+	if db.IsUniqueViolation(err, imageRequestKeyIndex) {
 		// Two tries with the same key raced: the other one made the request.
 		if existing, getErr := s.queries.GetImageRequestByKey(ctx, mapsdb.GetImageRequestByKeyParams{CampaignID: campaignID, IdempotencyKey: n.key}); getErr == nil {
 			return s.racedReservation(ctx, existing, n, campaignID)
@@ -308,8 +307,9 @@ func (s *Service) reserve(ctx context.Context, n newRequest, campaignID string) 
 	return res.row, res.status, nil
 }
 
-// pgUniqueViolation is the SQLSTATE of a unique index that refused a row.
-const pgUniqueViolation = "23505"
+// imageRequestKeyIndex is the unique index of a campaign's idempotency keys: the only one an image request's insert
+// can break.
+const imageRequestKeyIndex = "image_requests_campaign_key_idx"
 
 // reservation is what one attempt of reserve's transaction leaves behind.
 type reservation struct {

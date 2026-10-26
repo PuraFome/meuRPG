@@ -12,6 +12,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -27,7 +28,7 @@ func (s *Service) UpdateMap(
 	if err != nil {
 		return nil, err
 	}
-	mapID, ok := parseID(req.Msg.GetMapId())
+	mapID, ok := uid.Canonical(req.Msg.GetMapId())
 	if !ok {
 		return nil, errMapNotFound()
 	}
@@ -89,7 +90,7 @@ func checkMapUpdate(msg *mapsv1.UpdateMapRequest) (mapUpdate, error) {
 		u.name = &clean
 	}
 	if msg.ImageId != nil {
-		id, ok := parseID(msg.GetImageId())
+		id, ok := uid.Canonical(msg.GetImageId())
 		if !ok {
 			return mapUpdate{}, errNotAGalleryImage()
 		}

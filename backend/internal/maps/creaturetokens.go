@@ -14,6 +14,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 )
 
 // The tokens of a character's creatures (MR-037). The master places
@@ -44,7 +45,7 @@ func tokenSubject(characterID, creatureID string) error {
 
 // liveCreature finds a live creature of the campaign.
 func (s *Service) liveCreature(ctx context.Context, campaignID, rawID string) (link.MapCreature, error) {
-	id, ok := parseID(rawID)
+	id, ok := uid.Canonical(rawID)
 	if !ok {
 		return link.MapCreature{}, errCreatureNotFound()
 	}
@@ -135,7 +136,7 @@ func (s *Service) placeCreatureToken(ctx context.Context, m authz.Membership, re
 // removeCreatureToken is RemoveMapToken for a creature. It does not ask whether the
 // creature still lives: a dismissed creature's token can be taken off too.
 func (s *Service) removeCreatureToken(ctx context.Context, m authz.Membership, mapID, rawCreatureID string) error {
-	creatureID, ok := parseID(rawCreatureID)
+	creatureID, ok := uid.Canonical(rawCreatureID)
 	if !ok {
 		return errTokenNotFound()
 	}
