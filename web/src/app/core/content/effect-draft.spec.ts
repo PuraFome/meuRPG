@@ -1,12 +1,12 @@
 import { create } from '@bufbuild/protobuf';
 
 import { TableEffectSchema } from '../../../gen/meurpg/rules/v1/table_content_pb';
+import { missingRequired } from './effect-required';
 import { menu, rangedAttackMenu, resistanceMenu } from './content-testing-menu';
 import {
   draftToEffect,
   effectToDraft,
   emptyEffect,
-  missingRequired,
   rangeFeet,
   unreadableRange,
   rangeMeters,

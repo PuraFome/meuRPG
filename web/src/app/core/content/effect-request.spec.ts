@@ -1,4 +1,5 @@
-import { EffectMenuVm, draftToEffect, emptyEffect, missingRequired } from './effect-draft';
+import { EffectMenuVm, draftToEffect, emptyEffect } from './effect-draft';
+import { missingRequired } from './effect-required';
 import type { EffectDraft } from './effect-draft';
 import { menuResponse, stateMenu } from './content-testing-menu';
 
