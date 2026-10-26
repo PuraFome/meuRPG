@@ -2,6 +2,7 @@ package maps
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -146,20 +147,25 @@ func TestMR039_ReserveRefusesImagesThatAreNotThere(t *testing.T) {
 	master.waitGeneration(campaign, row.ID)
 }
 
-// The server holds only so many requests alive: past the cap, reserve refuses
-// with resource_exhausted and reserves nothing.
+// The server holds only so many requests alive (counted in the database): past the cap,
+// reserve refuses with resource_exhausted and reserves nothing.
 func TestMR039_ReserveRefusesPastThePendingCap(t *testing.T) {
 	t.Parallel()
-	h := newHarness(t, withFake(&gen.Fake{}, 5))
+	fake, _, release := holdingFake()
+	h := newHarness(t, withFake(fake, 20))
+	defer close(release)
 	master := h.newUser("Mestre")
 	campaign := h.newCampaign(master)
 
-	h.svc.pending.Store(maxPendingRequests)
-	_, _, err := h.svc.reserve(t.Context(), sceneRequest(master, "reserve-1"), campaign)
-	h.svc.pending.Store(0)
+	for i := range maxPendingRequests {
+		if _, _, err := h.svc.reserve(t.Context(), sceneRequest(master, fmt.Sprintf("reserve-%d", i)), campaign); err != nil {
+			t.Fatalf("reserve() %d error = %v", i, err)
+		}
+	}
+	_, _, err := h.svc.reserve(t.Context(), sceneRequest(master, "reserve-over"), campaign)
 	wantRefusal(t, "reserve past the pending cap", err, connect.CodeResourceExhausted, "too many images are being made right now; wait for one to finish")
-	if got := master.imageStatus(campaign).GetUsedThisMonth(); got != 0 {
-		t.Errorf("used this month = %d, want 0", got)
+	if got := master.imageStatus(campaign).GetUsedThisMonth(); got != maxPendingRequests {
+		t.Errorf("used this month = %d, want %d", got, maxPendingRequests)
 	}
 }
 

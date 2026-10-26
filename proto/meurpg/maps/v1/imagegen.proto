@@ -252,6 +252,11 @@ enum ImageGenerationFailure {
   // "A imagem foi feita, mas não deu para guardá-la. Tente de novo; esta não
   // conta no seu limite."
   IMAGE_GENERATION_FAILURE_STORAGE_FAILED = 8;
+  // The map changed (its image, its grid or its walls) between the request and
+  // the moment the server drew the reference, so the picture would not be the
+  // one the master asked for. Nothing was sent and the slot is back: "O mapa
+  // mudou depois do pedido. Gere de novo; esta não conta no seu limite."
+  IMAGE_GENERATION_FAILURE_MAP_CHANGED = 9;
 }
 
 // ImageGeneration is one request to the model.

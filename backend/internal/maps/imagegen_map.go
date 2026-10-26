@@ -588,23 +588,92 @@ func (s *Service) prepareMap(ctx context.Context, campaignID string, n *newReque
 	if n.name == "" {
 		p.name = s.defaultMapPictureName(n.kind, sub.row)
 	}
-	ref, err := s.referenceOf(n.mapReq.layout, sub, players, refimg.Side)
-	if err != nil {
+	if err := s.drawMap(n.mapReq.layout, sub, players, p); err != nil {
 		s.logger.ErrorContext(ctx, "maps: cannot draw the reference of a map", "error", err)
 		return connect.NewError(connect.CodeInternal, errors.New("cannot draw the map right now"))
+	}
+	return nil
+}
+
+// drawMap draws the reference of a map for the model into p, with the basis it was drawn from
+// (and, for the textured map, the ratio the server picked, the rectangle on its canvas and the
+// rooms). prepareMap draws when the request begins, and rebuildMap again when its task runs.
+func (s *Service) drawMap(layout string, sub *subject, players *playersSeen, p *prepared) error {
+	ref, err := s.referenceOf(layout, sub, players, refimg.Side)
+	if err != nil {
+		return err
 	}
 	p.drawing = &gen.Image{MimeType: images.PNG, Data: ref.png}
 	p.basis = &mapBasis{
 		mapID: sub.row.ID, imageID: sub.row.ImageID, gridColumns: *sub.row.GridColumns, gridFactor: sub.row.GridFactor,
 		width: sub.imgW, height: sub.imgH, planHash: planHash(sub.solid),
 	}
-	if n.mapReq.layout == gen.LayoutTexture {
+	if layout == gen.LayoutTexture {
 		f := ref.pad.Fractions()
 		p.basis.pad = &f
 		p.ratio = ref.pad.Ratio
 		p.rooms = sub.rooms
 	}
 	return nil
+}
+
+// errMapChanged: the map is not the one the request was made over (its image, grid or walls
+// changed, or it is gone), so the drawing would not be the picture input the master agreed to.
+var errMapChanged = errors.New("maps: the map changed after the image request")
+
+// rebuildMap draws the reference of a request made from a map again, when its task runs, from
+// the map as it is now, and checks it against what the request kept (the map, its image, grid,
+// size, walls hash and, for the textured map, the rectangle on the canvas). A map that differs
+// is errMapChanged: the request ends, nothing is sent. What the players see (the creatures
+// drawn as discs) is read again too, so a task that runs late never draws what is hidden now.
+func (s *Service) rebuildMap(ctx context.Context, row mapsdb.ImageRequest, p *prepared) error {
+	if row.MapID == nil {
+		return errMapChanged
+	}
+	layout := layoutOf(row.Kind)
+	sub, err := s.loadSubject(ctx, row.CampaignID, *row.MapID)
+	if err != nil {
+		if _, blocked := errors.AsType[mapSubjectError](err); blocked || connect.CodeOf(err) == connect.CodeNotFound {
+			return errMapChanged
+		}
+		return err
+	}
+	players := &playersSeen{}
+	if layout != gen.LayoutTexture {
+		if players, err = s.playersSeenOf(ctx, row.CampaignID, sub); err != nil {
+			return err
+		}
+		if players.nobody {
+			return errMapChanged
+		}
+	}
+	if err := s.drawMap(layout, sub, players, p); err != nil {
+		return fmt.Errorf("draw the reference of a map: %w", err)
+	}
+	if !basisMatches(row, p.basis) {
+		return errMapChanged
+	}
+	return nil
+}
+
+// basisMatches says whether the basis a drawing was made from is the one the request kept.
+func basisMatches(row mapsdb.ImageRequest, b *mapBasis) bool {
+	same := func(stored *string, now string) bool { return stored != nil && *stored == now }
+	size := func(stored *int32, now int32) bool { return stored != nil && *stored == now }
+	if !same(row.MapID, b.mapID) || !same(row.MapImageID, b.imageID) || !same(row.MapPlanHash, b.planHash) ||
+		!size(row.MapGridColumns, b.gridColumns) || !size(row.MapGridFactor, b.gridFactor) ||
+		!size(row.MapWidth, b.width) || !size(row.MapHeight, b.height) {
+		return false
+	}
+	if b.pad == nil {
+		return true
+	}
+	for i, stored := range [4]*float64{row.PadX0, row.PadY0, row.PadX1, row.PadY1} {
+		if stored == nil || *stored != b.pad[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // mapPlayers checks what the request may say of the map's creatures and returns the

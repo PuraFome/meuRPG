@@ -37,12 +37,10 @@ package maps
 import (
 	"context"
 	"errors"
-	"github.com/PuraFome/meuRPG/backend/internal/platform/tasks"
 	"log/slog"
 	"net/http"
 	"slices"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"connectrpc.com/connect"
@@ -59,6 +57,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/nostore"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/ratelimit"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/tasks"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/wiring"
 	playlink "github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -351,10 +350,11 @@ type Service struct {
 	dailyImages   int32
 	generating    chan struct{}
 	generations   sync.WaitGroup
-	// pending counts the image requests alive: the one calling the model and the ones
-	// waiting for its slot (maxPendingRequests).
-	pending atomic.Int32
-	// baseCtx is what the generation goroutines derive from; CancelGenerations
+	// tasks runs the image-generation task; ownTasks is the runner New made when Config.Tasks
+	// was nil (nil when the runner is shared: its owner cancels and waits for it).
+	tasks    tasks.Runner
+	ownTasks *tasks.InProcess
+	// baseCtx is what the image tasks' contexts are tied to; CancelGenerations
 	// cancels it at shutdown. waiters wakes the long polls of GetImageGeneration.
 	baseCtx    context.Context
 	cancelBase context.CancelFunc
@@ -436,6 +436,12 @@ func New(cfg Config) (*Service, error) {
 	if s.logger == nil {
 		s.logger = slog.Default()
 	}
+	s.tasks = cfg.Tasks
+	if s.tasks == nil {
+		s.ownTasks = tasks.NewInProcess(s.logger)
+		s.tasks = s.ownTasks
+	}
+	s.tasks.Register(TaskImageGeneration, s.handleImageTask, tasks.Options{Deadline: min(generationTimeout, maxTaskDeadline)})
 	if s.now == nil {
 		s.now = time.Now
 	}
