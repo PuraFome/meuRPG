@@ -104,7 +104,7 @@ import { PHONE_QUERY, mediaQuery } from '../../../shared/map-view/media-query';
               <p class="box__detail">{{ line }}</p>
             }
           </div>
-          <div class="mr-notice" [class.mr-notice--warning]="last.notice.tone === 'stopped'" [class.mr-notice--success]="last.notice.tone === 'done'" role="status">
+          <div class="mr-notice" [class.mr-notice--warning]="last.notice.tone === 'stopped'" [class.mr-notice--success]="last.notice.tone === 'done'">
             <mat-icon aria-hidden="true">{{ last.notice.tone === 'stopped' ? 'layers' : 'check_circle' }}</mat-icon>
             <p>
               @if (last.notice.lead) {

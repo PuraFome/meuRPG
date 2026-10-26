@@ -9,6 +9,7 @@ import {
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import {
   missMark,
+  nearestInReach,
   outcomeWord,
   stageAfterRoll,
   steps,
@@ -173,5 +174,36 @@ describe('the damage that waits for the master', () => {
     expect(pendingNote([waiting])).toBe('Falta rolar o dano');
     expect(pendingNote([applied])).toBeNull();
     expect(openDamages([waiting, rolled, applied])).toHaveLength(2);
+  });
+});
+
+describe('the target an attack starts on', () => {
+  const at = (id: string, distanceFt: number | undefined, extra: object = {}) =>
+    create(TargetInReachSchema, { combatantId: id, label: id, distanceFt, ...extra });
+
+  it('is the nearest creature in reach, not the first of the order when that one is out of reach', () => {
+    const list = [at('toren', 10, { tooFar: true }), at('pensantus', 5), at('brisa', 5)];
+    expect(nearestInReach(list)).toBe('pensantus');
+  });
+
+  it('is the nearest of those in reach, and the first of the order among equals', () => {
+    const list = [at('a', 15), at('b', 5), at('c', 5), at('d', 10)];
+    expect(nearestInReach(list)).toBe('b');
+  });
+
+  it('skips a creature behind total cover the player cannot target', () => {
+    const list = [at('hidden', 5, { untargetable: true }), at('open', 10)];
+    expect(nearestInReach(list)).toBe('open');
+  });
+
+  it('puts a creature with no distance (no map) after those it can measure', () => {
+    const list = [at('unknown', undefined), at('near', 15)];
+    expect(nearestInReach(list)).toBe('near');
+  });
+
+  it('with nothing in reach starts on the first of the order, and with no one on none', () => {
+    const list = [at('far1', 20, { tooFar: true }), at('far2', 25, { tooFar: true })];
+    expect(nearestInReach(list)).toBe('far1');
+    expect(nearestInReach([])).toBe('');
   });
 });

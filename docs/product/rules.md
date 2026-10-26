@@ -461,7 +461,7 @@ See [Combat under fog](../architecture/play/fog.md#combat-under-fog) and [Testin
 On the map grid, each square is 1.5 m and movement is a **circle**.
 The distance between two squares is the straight line between their centres (a diagonal step costs about 2.1 m, not 1.5 m), and what a combatant can reach is the circle of its remaining movement.
 The app stops a player from moving farther than the turn's movement: it warns and refuses.
-The master moves anyone anywhere, but not into a wall.
+The master moves anyone anywhere, but not into a wall. The one exception is an NPC he drags on its own turn: that move is a player's (the exact line, rubble and creatures counted, the NPC's movement spent, stopped by walls and squares marked "Não dá para passar"), and a drag past the movement left is refused until the master confirms "Mover mesmo assim", which moves it for free, with no limit and no opportunity attacks, like "Movimento forçado". Out of its turn, and for a player's character, the master's drag stays a free placement.
 
 | Rule | What the player gets |
 | --- | --- |

@@ -461,7 +461,7 @@ Veja [Combate sob névoa](../../architecture/play/fog.md#combat-under-fog) e [Te
 Na grade do mapa, cada quadrado tem 1,5 m e o movimento é um **círculo**.
 A distância entre dois quadrados é a linha reta entre os centros (um passo na diagonal custa cerca de 2,1 m, não 1,5 m), e o que um combatente alcança é o círculo do movimento que lhe resta.
 O app impede o jogador de se mover além do movimento do turno: avisa e recusa.
-O mestre move qualquer um para qualquer lugar, mas não para dentro de uma parede.
+O mestre move qualquer um para qualquer lugar, mas não para dentro de uma parede. A única exceção é um NPC que ele arrasta no turno dele: esse movimento é como o de um jogador (a linha exata, entulho e criaturas contados, o movimento do NPC gasto, parando em paredes e em quadrados marcados "Não dá para passar"), e um arrasto além do movimento que resta é recusado até o mestre confirmar "Mover mesmo assim", que o move de graça, sem limite e sem ataques de oportunidade, como o "Movimento forçado". Fora do turno dele, e para o personagem de um jogador, o arrasto do mestre continua sendo uma colocação livre.
 
 | Regra | O que o jogador recebe |
 | --- | --- |

@@ -3,10 +3,15 @@ import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatDialog } from '@angular/material/dialog';
 import { provideRouter } from '@angular/router';
 
+import { create } from '@bufbuild/protobuf';
+import { Code, ConnectError } from '@connectrpc/connect';
+
 import { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
   CombatantKind,
   CombatantSide,
+  EncounterBlockedReason,
+  EncounterBlockedSchema,
   EncounterMode,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
 import { TableRulesClient } from '../../../core/campaigns/table-rules';
@@ -31,6 +36,9 @@ interface Internals {
     forcedMove: { (): boolean; set(v: boolean): void };
     forcedNote: () => string;
     drop(d: { id: string; col: number; row: number }): Promise<void>;
+    overAsk: () => { label: string; missing: string } | null;
+    moveAnyway(): Promise<void>;
+    dropOverAsk(): void;
   };
   error: () => string;
 }
@@ -111,7 +119,7 @@ function setup(move: (args: unknown[]) => Promise<void>) {
   fixture.componentRef.setInput('diceMode', DiceMode.PLAYERS_CHOOSE);
   fixture.componentRef.setInput('dicePreference', DicePreference.APP);
   fixture.detectChanges();
-  return { view: fixture.componentInstance as unknown as Internals, sent };
+  return { view: fixture.componentInstance as unknown as Internals, sent, fixture };
 }
 
 describe('CombatView: the master\'s "Movimento forçado"', () => {
@@ -151,6 +159,65 @@ describe('CombatView: the master\'s "Movimento forçado"', () => {
     await view.moves.drop({ id: 'p', col: 5, row: 5 });
     expect(view.moves.forcedMove()).toBe(true);
     expect(view.moves.forcedNote()).toBe('');
+    expect(view.error()).not.toBe('');
+  });
+});
+
+describe("CombatView: an NPC's drag past the movement it has left (B4)", () => {
+  const tooFar = (missingDft: number) =>
+    new ConnectError('too far', Code.FailedPrecondition, undefined, [
+      {
+        desc: EncounterBlockedSchema,
+        value: create(EncounterBlockedSchema, {
+          reason: EncounterBlockedReason.TOO_FAR,
+          missingFt: Math.ceil(missingDft / 10),
+          missingDft,
+        }),
+      },
+    ]);
+
+  it('asks "Mover mesmo assim" instead of an error, and the token goes back', async () => {
+    const { view } = setup(async () => {
+      throw tooFar(150);
+    });
+    await view.moves.drop({ id: 'p', col: 5, row: 5 });
+    expect(view.error()).toBe('');
+    const ask = view.moves.overAsk();
+    expect(ask?.label).toBe('Pensantus');
+    expect(ask?.missing.replace(/\u00a0/g, ' ')).toBe('4,5 m');
+  });
+
+  it('"Mover mesmo assim" sends the same drag forced, once, and the question goes', async () => {
+    let first = true;
+    const { view, sent } = setup(async () => {
+      if (first) {
+        first = false;
+        throw tooFar(150);
+      }
+    });
+    await view.moves.drop({ id: 'p', col: 5, row: 5 });
+    await view.moves.moveAnyway();
+    expect(sent).toEqual([{ forced: false }, { forced: true }]);
+    expect(view.moves.overAsk()).toBeNull();
+    expect(view.moves.forcedNote()).toContain('Pensantus foi movido à força');
+  });
+
+  it('"Cancelar" drops the question and sends nothing', async () => {
+    const { view, sent } = setup(async () => {
+      throw tooFar(150);
+    });
+    await view.moves.drop({ id: 'p', col: 5, row: 5 });
+    view.moves.dropOverAsk();
+    expect(view.moves.overAsk()).toBeNull();
+    expect(sent).toHaveLength(1);
+  });
+
+  it('a refusal for another reason is still an error, not a question', async () => {
+    const { view } = setup(async () => {
+      throw new Error('refused');
+    });
+    await view.moves.drop({ id: 'p', col: 5, row: 5 });
+    expect(view.moves.overAsk()).toBeNull();
     expect(view.error()).not.toBe('');
   });
 });

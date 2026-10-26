@@ -327,6 +327,8 @@ type moveAttempt struct {
 	target  playdb.Combatant
 	terrain grid.Terrain
 	onTurn  bool
+	// paid is an NPC's drag on its turn, which walks and spends like a player's move (paysItsWay).
+	paid bool
 	// dragged is the creature the target holds and drags, if it does; factor is
 	// what a foot of path costs after the drag and the crawl.
 	dragged    playdb.Combatant
@@ -544,6 +546,10 @@ func (s *Service) planMove(ctx context.Context, a *moveAttempt) error {
 		}
 	}
 	if a.v.master {
+		if a.paysItsWay() {
+			a.paid = true
+			return a.planNPCWalk()
+		}
 		return a.planMasterWalk()
 	}
 	if err := s.mustNotWait(ctx, a.c, a.target); err != nil {
@@ -705,6 +711,30 @@ func (a *moveAttempt) planHighJump(p playerPlan) error {
 	return nil
 }
 
+// paysItsWay says whether the master's drag walks the way a player's move does: an NPC (a combatant no
+// player owns) dragged on its own turn, in a plain walk (no jump, no "Movimento forçado", no placement).
+// It then costs what the line costs, spends the NPC's movement and stops for the same walls, creatures
+// and squares marked "Não dá para passar"; a move past what is left is refused (TOO_FAR) and the master
+// decides to force it. Out of turn, for a player's character and when forced, the master's move stays
+// free and unlimited: it puts a token right.
+func (a *moveAttempt) paysItsWay() bool {
+	return a.v.master && a.onTurn && a.req.walking() && !a.req.place && placed(a.target) && a.target.UserID == nil
+}
+
+// planNPCWalk is an NPC's drag on its own turn: a player's straight move, planned on everything there is
+// (the master sees all, so nothing cuts it short unseen).
+func (a *moveAttempt) planNPCWalk() error {
+	all := occupantsFor(a.cs, a.target, combatViewer{master: true})
+	return a.planWalk(playerPlan{
+		terrain: a.terrain,
+		seen:    all,
+		all:     all,
+		mover:   moverOf(a.target),
+		origin:  squareOfCombatant(a.target),
+		leftDFt: movementLeftDFt(a.target) / a.factor,
+	})
+}
+
 // planMasterWalk is the master's move: free, and no wall stops it, but the doors
 // do what they do for everyone (RN-26): it opens the closed ones on its line, and
 // a locked, barred or secret one stops it before. The master unlocks by painting.
@@ -814,7 +844,7 @@ func (a *moveAttempt) describeMove() {
 		made.Jump, made.HeightDFt = jumpHigh, a.req.height
 	}
 	a.logged = a.onTurn && (a.length > 0 || made.Jump == jumpHigh)
-	if a.v.master && a.squareChanged {
+	if a.v.master && a.squareChanged && !a.paid {
 		a.th.landed(a.to) // the master's move is not a walk: only where it ends counts
 	}
 }
