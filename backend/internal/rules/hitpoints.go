@@ -127,9 +127,8 @@ func (x *deriver) speedAndSenses() {
 	}
 }
 
-// languages lists the languages the race grants. Languages the player
-// chooses (from the background, a subrace or a class) are free text on the
-// sheet.
+// languages lists the languages of the sheet: the race's, the ones picked in the choices, a custom background's
+// and the ones typed in the free field.
 func (x *deriver) languages() {
 	add := func(l string) {
 		if _, ok := x.c.languages[l]; ok && !slices.ContainsFunc(x.d.Languages, func(n NamedKey) bool { return n.Key == l }) {
@@ -141,6 +140,10 @@ func (x *deriver) languages() {
 			add(l)
 		}
 	}
+	// The languages the player picked (the half-elf's, the background's) join the race's.
+	for _, p := range x.pickedLanguages {
+		add(p.Value)
+	}
 	// A custom background's two picks are tools or languages, in any mix: the
 	// languages join the race's (the tools are in proficiencies()).
 	if x.b.Background == "" {
@@ -148,4 +151,8 @@ func (x *deriver) languages() {
 			add(l)
 		}
 	}
+	// What the player typed in the free field (a language the master adds, or a sheet from before the picks).
+	listedNames(x.d.Languages, x.b.Languages, func(n NamedKey) string { return n.NamePT }, func(name string) {
+		x.d.Languages = append(x.d.Languages, NamedKey{NamePT: name})
+	})
 }

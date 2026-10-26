@@ -683,7 +683,7 @@ func pendingGroups(s ChoiceSet) []ChoiceGroup {
 	for _, g := range s.Groups {
 		var open []Choice
 		for _, ch := range g.Choices {
-			if ch.Missing() > 0 {
+			if ch.Missing() > 0 && !ch.Advisory {
 				open = append(open, ch)
 			}
 		}
@@ -709,7 +709,7 @@ func newScopedGroups(before, after ChoiceSet) []ChoiceGroup {
 	for _, g := range after.Groups {
 		var fresh []Choice
 		for _, ch := range g.Choices {
-			if had[ch.Key] || ch.Missing() == 0 || ch.plain || ch.viaCantrips {
+			if had[ch.Key] || ch.Missing() == 0 || ch.plain || ch.viaCantrips || ch.Advisory {
 				continue
 			}
 			fresh = append(fresh, ch)

@@ -29,6 +29,7 @@ func levelUpFighterSheet(level, xp int32, subclass string) *charactersv1.Charact
 		BaseScores:        &rulesv1.AbilityScores{Strength: 15, Dexterity: 12, Constitution: 14, Intelligence: 13, Wisdom: 10, Charisma: 10},
 		RaceKey:           "race:human",
 		Background:        &charactersv1.FullSheet_BackgroundKey{BackgroundKey: "background:acolyte"},
+		Languages:         testLanguages,
 		Classes:           []*charactersv1.ClassLevel{cl},
 		ArmorKey:          "equipment:chain-mail",
 		WeaponKeys:        []string{"equipment:longsword"},

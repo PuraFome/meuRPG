@@ -185,6 +185,14 @@ The pick is the scoped string `<owner>#feat=<feat key>` in `Build.FeatureChoices
 `Derive` applies the pick after `Build.Feats`, only while the owner is on the sheet, up to `count`, at most once per feat; an `ability_increase` of such a feat is not applied.
 `feats_allowed` does not gate it.
 
+**A language or a tool the player picks** (`proficiency_picks.go`) is a choice too, but an advisory one (`Choice.Advisory`, `Choice.advisory` in the API): it is pending, counted and marked, and raises no `ChoiceProblem` for being open, and a level-up does not ask it again, so a save, a level-up and a session go on as they did when these were only warnings.
+The owners are the race, a trait and a background with `language_choices` (key `<owner>#language`), and any owner with a `choice` effect of kind `tool` (key `<owner>#tool`; the effect's `from` lists the tools, empty is any tool).
+The pick is `<owner>#language=<language key>` or `<owner>#tool=<proficiency key>` in `Build.FeatureChoices`.
+Its options are the catalog's languages (or the listed tools); a language of the race (or of a custom background) or a tool the class, the race or the background gives is blocked with its reason, and each pick is blocked for the later choices of its family.
+`Derive` adds the languages to `Derived.Languages` and the tools to `Derived.Proficiencies` while the owner is on the sheet, up to the number it grants, once each.
+The free fields (`Build.Languages`, `Build.ToolProficiencies`) are listed on the sheet too (by name, without repeating one the sheet has) and answer the picks left (`Choice.legacy`, `checkProficiencyPicks`), so a sheet from before the picks has none open.
+`checkProficiencyPicks` raises the `missing` issue on `full.feature_choice_keys` and the `OpenChoices` of kind `tools` and `languages` for what neither the picks nor the free fields answer.
+
 ## Portuguese texts of the SRD
 
 The English text of spells, magic items, features, traits, background features and feats comes from `data/`.

@@ -507,7 +507,8 @@ func (c *content) proficienciesGained(before, after Build, dBefore, dAfter Deriv
 	}
 	var out []NamedKey
 	for _, p := range dAfter.Proficiencies {
-		if !c.covered(had, p.Key) {
+		// A tool typed in the free field has no key: the picks of a new class are added below.
+		if p.Key != "" && !c.covered(had, p.Key) {
 			out = append(out, NamedKey{Key: p.Key, NamePT: p.NamePT})
 		}
 	}

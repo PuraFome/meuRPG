@@ -101,14 +101,20 @@ export function sectionsOf(groups: readonly ChoiceGroup[]): ChoiceSection[] {
   return out;
 }
 
-/** The labels of the choices with something left to pick, in the order of the groups. */
-export function pendingLabels(groups: readonly ChoiceGroup[]): string[] {
-  return groups.flatMap((g) => g.choices.filter((c) => c.missing > 0).map((c) => c.labelPt));
+/**
+ * The labels of the choices with something left to pick, in the order of the groups. An advisory choice (the
+ * languages and tools a race or background lets the player pick) warns while it is open but does not stop the sheet:
+ * it counts only with `advisory`.
+ */
+export function pendingLabels(groups: readonly ChoiceGroup[], advisory = true): string[] {
+  return groups.flatMap((g) =>
+    g.choices.filter((c) => c.missing > 0 && (advisory || !c.advisory)).map((c) => c.labelPt),
+  );
 }
 
-/** The sentence under "Criar personagem" when choices are open: "Falta uma escolha: ..." */
+/** The sentence under "Criar personagem" when choices are open: "Falta uma escolha: ..." (only the ones that stop the sheet). */
 export function missingSentence(groups: readonly ChoiceGroup[]): string {
-  const labels = pendingLabels(groups);
+  const labels = pendingLabels(groups, false);
   if (labels.length === 0) {
     return '';
   }
