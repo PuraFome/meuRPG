@@ -23,7 +23,6 @@ import {
   type GetTurnOptionsResponse,
   type TargetInReach,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { RollMode } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
 import { type Attack, type Creature } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { CreaturesClient } from '../../../../core/creatures/creatures-client';
 import { CombatUndone } from '../../../../core/combat/combat-undone';
