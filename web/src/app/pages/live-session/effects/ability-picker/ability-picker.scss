@@ -5,7 +5,7 @@
 }
 
 .cap {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 500;
   color: var(--mr-ink-muted);
 }
@@ -50,12 +50,12 @@
 
 .row__title {
   font-family: var(--mr-font-display);
-  font-size: 19px;
+  font-size: var(--mr-font-19);
   line-height: 22px;
 }
 
 .row__hint {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 18px;
   color: var(--mr-ink-muted);
 }
@@ -71,7 +71,7 @@
 }
 
 .hint {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 18px;
   color: var(--mr-ink-muted);
 }

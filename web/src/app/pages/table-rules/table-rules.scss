@@ -15,14 +15,14 @@
   gap: 6px;
   min-height: 44px;
   margin: -10px 0 -8px;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   color: var(--mr-ink-muted);
   text-decoration: none;
 
   .mat-icon {
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 
   &:hover {
@@ -90,7 +90,7 @@
 
 .hint {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
@@ -98,7 +98,7 @@
 .note-list {
   margin: var(--mr-space-1) 0 0;
   padding-left: 18px;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 
   .muted {
@@ -115,14 +115,14 @@
   align-items: flex-start;
   gap: var(--mr-space-2);
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 
   .mat-icon {
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
@@ -131,7 +131,7 @@
   align-items: center;
   gap: var(--mr-space-2);
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
@@ -223,7 +223,7 @@
   align-items: center;
   gap: var(--mr-space-2);
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
 
@@ -231,7 +231,7 @@
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 

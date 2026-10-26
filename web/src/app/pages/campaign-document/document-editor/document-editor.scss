@@ -21,7 +21,7 @@ p {
   flex-wrap: wrap;
   align-items: center;
   gap: 0 var(--mr-space-3);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
 }
 
 .status__draft {
@@ -34,7 +34,7 @@ p {
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -138,7 +138,7 @@ p {
   background: var(--mr-surface);
   color: var(--mr-ink);
   font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 22px;
   resize: vertical;
 
@@ -160,5 +160,5 @@ p {
 }
 
 .preview__empty {
-  font-size: 16px;
+  font-size: var(--mr-font-16);
 }

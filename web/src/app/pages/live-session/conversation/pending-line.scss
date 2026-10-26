@@ -9,7 +9,7 @@
 }
 
 .line__label {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 16px;
   font-weight: 700;
 }
@@ -35,14 +35,14 @@
   border-radius: var(--mr-radius-md);
   background: var(--mr-danger-surface);
   color: var(--mr-danger-ink);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 
   .mat-icon {
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -55,7 +55,7 @@
   background: transparent;
   color: inherit;
   font: inherit;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   line-height: 18px;
   cursor: pointer;

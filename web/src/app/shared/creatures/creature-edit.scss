@@ -21,7 +21,7 @@
   gap: var(--mr-space-2);
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 21px;
+  font-size: var(--mr-font-21);
   font-weight: 800;
   line-height: 26px;
   overflow-wrap: anywhere;
@@ -31,13 +31,13 @@
     width: 24px;
     height: 24px;
     margin-top: 1px;
-    font-size: 24px;
+    font-size: var(--mr-font-24);
   }
 }
 
 .ask__d {
   margin: 0 0 var(--mr-space-1);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 }
 
@@ -53,7 +53,7 @@
   align-items: flex-start;
   gap: var(--mr-space-2);
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-danger-ink);
 
@@ -61,7 +61,7 @@
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
@@ -101,7 +101,7 @@
 // Why a dashed button cannot act yet.
 .why {
   margin: -4px 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }

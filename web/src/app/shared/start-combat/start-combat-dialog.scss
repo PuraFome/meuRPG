@@ -29,13 +29,13 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 30px;
+  font-size: var(--mr-font-30);
   line-height: 34px;
 }
 
 .dlg__lead {
   margin: 4px 0 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 21px;
   color: var(--mr-ink-muted);
 }
@@ -82,7 +82,7 @@
   align-items: center;
   gap: var(--mr-space-2);
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
 }
 
 .dlg__error {
@@ -93,7 +93,7 @@
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -162,11 +162,11 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 20px;
+  font-size: var(--mr-font-20);
 }
 
 .map__line {
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 21px;
 }
 
@@ -186,7 +186,7 @@
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -202,12 +202,12 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 19px;
+  font-size: var(--mr-font-19);
   line-height: 24px;
 }
 
 .sec__count {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -222,7 +222,7 @@
   align-items: flex-start;
   gap: var(--mr-space-2);
   margin: var(--mr-space-3) 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
@@ -230,14 +230,14 @@
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
 // "Começar este combate": the monsters of the saved encounter, read only, with how they start.
 .mon__hint {
   margin: 6px 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -270,7 +270,7 @@
   flex: 1 1 140px;
   min-width: 0;
   font-family: var(--mr-font-display);
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   font-weight: 700;
   overflow-wrap: anywhere;
 }
@@ -285,7 +285,7 @@
 .why {
   align-items: flex-start;
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   background: var(--mr-ground);
 }

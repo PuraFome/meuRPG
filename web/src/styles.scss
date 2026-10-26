@@ -141,6 +141,31 @@ html {
   --mr-font-display: 'Alegreya', Georgia, 'Times New Roman', serif;
   --mr-font-sans: 'Alegreya Sans', 'Segoe UI', system-ui, sans-serif;
 
+  // Type scale: one token per size the screens use, named by its pixels. A size no scale explains stays a literal.
+  --mr-font-8: 8px;
+  --mr-font-11: 11px;
+  --mr-font-12: 12px;
+  --mr-font-13: 13px;
+  --mr-font-14: 14px;
+  --mr-font-15: 15px;
+  --mr-font-16: 16px;
+  --mr-font-17: 17px;
+  --mr-font-18: 18px;
+  --mr-font-19: 19px;
+  --mr-font-20: 20px;
+  --mr-font-21: 21px;
+  --mr-font-22: 22px;
+  --mr-font-24: 24px;
+  --mr-font-26: 26px;
+  --mr-font-28: 28px;
+  --mr-font-30: 30px;
+  --mr-font-32: 32px;
+  --mr-font-34: 34px;
+  --mr-font-36: 36px;
+  --mr-font-38: 38px;
+  --mr-font-40: 40px;
+  --mr-font-48: 48px;
+
   --mr-space-1: 4px;
   --mr-space-2: 8px;
   --mr-space-3: 12px;
@@ -358,7 +383,7 @@ html {
     min-height: 32px;
     background: var(--mr-surface);
     border-top: 1px solid var(--mr-rule);
-    font-size: 14px;
+    font-size: var(--mr-font-14);
     color: var(--mr-ink-muted);
     opacity: 1;
     pointer-events: none;
@@ -374,7 +399,7 @@ body {
   background: var(--mr-ground);
   color: var(--mr-ink);
   font-family: var(--mr-font-sans);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 1.4;
   font-variant-numeric: lining-nums tabular-nums;
   -webkit-font-smoothing: antialiased;
@@ -435,7 +460,7 @@ a:hover {
     .mat-icon {
       width: 20px;
       height: 20px;
-      font-size: 20px;
+      font-size: var(--mr-font-20);
     }
   }
 }

@@ -11,7 +11,7 @@
 }
 
 .amount__cap {
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   color: var(--mr-ink-muted);
 }
 
@@ -25,7 +25,7 @@
   padding: 12px 14px;
   border: 1px solid var(--mr-line);
   border-radius: var(--mr-radius-md);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 }
 
@@ -53,13 +53,13 @@
 
   dt {
     font-family: var(--mr-font-display);
-    font-size: 19px;
+    font-size: var(--mr-font-19);
     font-weight: 700;
   }
 
   dd {
     font-family: var(--mr-font-display);
-    font-size: 24px;
+    font-size: var(--mr-font-24);
     line-height: 28px;
   }
 }
@@ -81,7 +81,7 @@
 
 .limit {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
   text-align: center;
@@ -92,7 +92,7 @@
   align-items: flex-start;
   gap: 8px;
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
 
@@ -100,7 +100,7 @@
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 

@@ -28,7 +28,7 @@
   overflow-wrap: anywhere;
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 21px;
+  font-size: var(--mr-font-21);
   line-height: 26px;
 }
 
@@ -51,7 +51,7 @@
   border: 1px solid var(--mr-control-line);
   border-radius: var(--mr-radius-pill);
   font-family: var(--mr-font-sans);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   line-height: 1;
   color: var(--mr-ink-muted);
@@ -61,7 +61,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   line-height: 24px;
   color: var(--mr-ink-muted);
@@ -69,7 +69,7 @@
 
 .row__detail {
   text-wrap: pretty;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
@@ -82,7 +82,7 @@
 // The SRD's English text of a creature's attack, as the stat block shows SRD text.
 .row__rider {
   text-wrap: pretty;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -92,7 +92,7 @@
   align-items: center;
   gap: 6px;
   margin-top: 4px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 500;
   line-height: 19px;
   color: var(--mr-ink);
@@ -101,7 +101,7 @@
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -121,7 +121,7 @@
     width: 18px;
     height: 18px;
     margin: 0 4px 0 0;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -151,7 +151,7 @@ app-spell-help {
   border-radius: var(--mr-radius-pill);
   background: var(--mr-accent-soft);
   color: var(--mr-accent-text);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   line-height: 18px;
   text-align: center;

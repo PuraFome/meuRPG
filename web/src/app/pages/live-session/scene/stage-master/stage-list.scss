@@ -12,7 +12,7 @@
 
 .sl__reason {
   margin: 0 0 var(--mr-space-2);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -33,7 +33,7 @@
 }
 
 .sl__name {
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
   overflow-wrap: anywhere;
 }
@@ -46,7 +46,7 @@
 }
 
 .sl__kind {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -62,14 +62,14 @@
   border-radius: var(--mr-radius-pill);
   background: var(--mr-success-surface);
   color: var(--mr-success-ink);
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 700;
   white-space: nowrap;
 
   .mat-icon {
     width: 14px;
     height: 14px;
-    font-size: 14px;
+    font-size: var(--mr-font-14);
   }
 }
 

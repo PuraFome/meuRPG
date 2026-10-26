@@ -181,7 +181,7 @@
   border-radius: var(--mr-radius-pill);
   background: var(--mr-map-token-surface);
   color: var(--mr-map-token-ink);
-  font-size: 12px;
+  font-size: var(--mr-font-12);
   font-weight: 700;
   line-height: 17px;
   white-space: nowrap;
@@ -229,7 +229,7 @@
   border-radius: var(--mr-radius-pill);
   background: light-dark(var(--mr-map-token-surface), var(--mr-map-token-ink));
   color: light-dark(var(--mr-map-accent), var(--mr-map-token-surface));
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 700;
   line-height: 19px;
   white-space: nowrap;
@@ -255,7 +255,7 @@
   border-radius: var(--mr-radius-pill);
   background: var(--mr-map-accent);
   color: var(--mr-map-token-surface);
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 700;
   line-height: 19px;
   white-space: nowrap;
@@ -311,7 +311,7 @@
   border-radius: var(--mr-radius-pill);
   background: var(--mr-map-token-surface);
   color: var(--mr-map-accent);
-  font-size: 12px;
+  font-size: var(--mr-font-12);
   font-weight: 700;
   line-height: 15px;
   white-space: nowrap;
@@ -449,7 +449,7 @@
   height: 20px;
   padding: 0 8px;
   border-radius: var(--mr-radius-pill);
-  font-size: 12px;
+  font-size: var(--mr-font-12);
   font-weight: 700;
   line-height: 17px;
   white-space: nowrap;
@@ -463,7 +463,7 @@
   .mat-icon {
     width: 14px;
     height: 14px;
-    font-size: 14px;
+    font-size: var(--mr-font-14);
   }
 }
 
@@ -485,7 +485,7 @@
   border-radius: var(--mr-radius-sm);
   background: var(--mr-map-token-surface);
   color: var(--mr-map-token-ink);
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 700;
   line-height: 17px;
   white-space: nowrap;
@@ -494,6 +494,6 @@
     flex: none;
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }

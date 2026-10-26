@@ -4,7 +4,7 @@
 
 .group-label {
   margin: var(--mr-space-4) 0 var(--mr-space-2);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   color: var(--mr-ink-muted);
 }
@@ -48,18 +48,18 @@
 .hp__hint,
 .hp__formula {
   flex: 1 1 200px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
 
 .hp__formula {
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   color: var(--mr-ink);
 
   strong {
     font-family: var(--mr-font-display);
-    font-size: 19px;
+    font-size: var(--mr-font-19);
   }
 }
 
@@ -81,14 +81,14 @@
   strong {
     margin-right: 6px;
     font-family: var(--mr-font-display);
-    font-size: 34px;
+    font-size: var(--mr-font-34);
     line-height: 38px;
     color: var(--mr-ink);
   }
 }
 
 .hp__line {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   line-height: 22px;
 }
@@ -97,7 +97,7 @@
   margin-top: var(--mr-space-3) !important;
   padding-top: var(--mr-space-3);
   border-top: 1px solid var(--mr-rule);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }

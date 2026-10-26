@@ -12,7 +12,7 @@
 .dice__lead {
   margin: 0;
   color: var(--mr-ink-muted);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 }
 
@@ -27,14 +27,14 @@
 }
 
 .dice__mode-title {
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   font-weight: 700;
   line-height: 22px;
 }
 
 .dice__mode-desc {
   color: var(--mr-ink-muted);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 }
 
@@ -58,7 +58,7 @@
   background: var(--mr-ink);
   color: var(--mr-surface);
   font-family: var(--mr-font-display);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   line-height: 1;
 }
@@ -67,7 +67,7 @@
   flex: 1;
   min-width: 0;
   overflow-wrap: anywhere;
-  font-size: 17px;
+  font-size: var(--mr-font-17);
 }
 
 .player__choice {
@@ -80,6 +80,6 @@
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }

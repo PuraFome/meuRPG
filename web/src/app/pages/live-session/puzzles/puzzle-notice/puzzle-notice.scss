@@ -23,13 +23,13 @@
   align-items: center;
   gap: var(--mr-space-2);
   margin: 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   color: var(--mr-accent-text);
 
   .mat-icon {
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
@@ -37,13 +37,13 @@
   margin: var(--mr-space-2) 0 0;
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 24px;
+  font-size: var(--mr-font-24);
   line-height: 28px;
 }
 
 .card__sub {
   margin: 2px 0 var(--mr-space-3);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   color: var(--mr-ink-muted);
 }
 
@@ -69,7 +69,7 @@
   align-items: center;
   min-height: 44px;
   cursor: pointer;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   color: var(--mr-accent-text);
   font-weight: 700;
 }

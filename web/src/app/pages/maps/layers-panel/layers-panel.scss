@@ -22,7 +22,7 @@
 .lp__lead,
 .lp__retry p {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -75,7 +75,7 @@
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -87,7 +87,7 @@
   margin: var(--mr-space-2) 0 0 42px;
   padding: 0;
   list-style: none;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
 
   li {
     display: flex;
@@ -111,7 +111,7 @@
   .mat-icon {
     width: 14px;
     height: 14px;
-    font-size: 14px;
+    font-size: var(--mr-font-14);
   }
 }
 

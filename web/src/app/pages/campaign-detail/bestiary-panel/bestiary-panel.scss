@@ -26,13 +26,13 @@
 .row__icon {
   width: 22px;
   height: 22px;
-  font-size: 22px;
+  font-size: var(--mr-font-22);
 }
 
 .row__chevron {
   width: 20px;
   height: 20px;
-  font-size: 20px;
+  font-size: var(--mr-font-20);
 }
 
 .row__text {
@@ -44,13 +44,13 @@
 
 .row__title {
   font-family: var(--mr-font-display);
-  font-size: 21px;
+  font-size: var(--mr-font-21);
   font-weight: 700;
   line-height: 26px;
 }
 
 .row__sub {
   color: var(--mr-ink-muted);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 }

@@ -29,7 +29,7 @@
   .mat-icon {
     width: 36px;
     height: 36px;
-    font-size: 36px;
+    font-size: var(--mr-font-36);
   }
 }
 
@@ -46,7 +46,7 @@
   display: flex;
   gap: 0.3em;
   margin: 0;
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   line-height: 22px;
   font-weight: 700;
   white-space: nowrap;
@@ -107,7 +107,7 @@
   }
 
   .card__label {
-    font-size: 15px;
+    font-size: var(--mr-font-15);
     line-height: 19px;
   }
 }

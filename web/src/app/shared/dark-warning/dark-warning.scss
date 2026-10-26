@@ -13,7 +13,7 @@
   border-radius: var(--mr-radius-md);
   background: var(--mr-surface);
   color: var(--mr-ink);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
 
   .mat-icon {
@@ -21,7 +21,7 @@
     width: 20px;
     height: 20px;
     margin-top: 1px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
@@ -36,7 +36,7 @@
   border-radius: var(--mr-radius-md);
   background: var(--mr-warning-surface);
   color: var(--mr-warning-ink);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
 
   p {
@@ -56,7 +56,7 @@
   width: 20px;
   height: 20px;
   margin-top: 1px;
-  font-size: 20px;
+  font-size: var(--mr-font-20);
 }
 
 .dark__body {
@@ -69,7 +69,7 @@
 
 .dark__cause {
   margin-top: calc(-1 * var(--mr-space-2));
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 }
 

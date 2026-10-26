@@ -101,7 +101,7 @@ import { SelectField, type SelectOption } from '../../../shared/form-fields/sele
       align-items: center;
       gap: 6px;
       margin: 0;
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       color: var(--mr-ink-muted);
 
       &--over {
@@ -112,13 +112,13 @@ import { SelectField, type SelectOption } from '../../../shared/form-fields/sele
       .mat-icon {
         width: 18px;
         height: 18px;
-        font-size: 18px;
+        font-size: var(--mr-font-18);
       }
     }
 
     .hint {
       margin: 0;
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       color: var(--mr-ink-muted);
     }
 
@@ -165,7 +165,7 @@ import { SelectField, type SelectOption } from '../../../shared/form-fields/sele
     .row__level {
       flex: none;
       min-width: 64px;
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       color: var(--mr-ink-muted);
     }
 
@@ -173,7 +173,7 @@ import { SelectField, type SelectOption } from '../../../shared/form-fields/sele
       flex: 1 1 auto;
       min-width: 0;
       font-family: var(--mr-font-display);
-      font-size: 19px;
+      font-size: var(--mr-font-19);
       font-weight: 700;
       overflow-wrap: anywhere;
     }

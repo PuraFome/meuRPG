@@ -67,7 +67,7 @@ let nextId = 0;
       margin: 0 -6px;
       padding: 2px 6px;
       font-family: var(--mr-font-display);
-      font-size: 22px;
+      font-size: var(--mr-font-22);
       font-weight: 700;
       line-height: 28px;
     }

@@ -15,7 +15,7 @@ import { MatIconModule } from '@angular/material/icon';
       display: inline-flex;
       align-items: center;
       gap: 4px;
-      font-size: 13px;
+      font-size: var(--mr-font-13);
       font-weight: 700;
       line-height: 18px;
       color: var(--mr-ink);
@@ -25,7 +25,7 @@ import { MatIconModule } from '@angular/material/icon';
       flex: none;
       width: 15px;
       height: 15px;
-      font-size: 15px;
+      font-size: var(--mr-font-15);
     }
   `,
 })
@@ -42,7 +42,7 @@ export class FormTag {
     :host {
       display: block;
       margin-bottom: 3px;
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       white-space: nowrap;
     }
 

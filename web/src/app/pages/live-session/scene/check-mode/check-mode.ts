@@ -68,7 +68,7 @@ import { modeWord, orNormal } from '../../../../core/combat/roll-mode';
     .mode__sources {
       flex-direction: column;
       gap: 2px;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 20px;
       color: var(--mr-ink-muted);
     }
@@ -90,11 +90,11 @@ import { modeWord, orNormal } from '../../../../core/combat/roll-mode';
     }
 
     .die__n {
-      font-size: 20px;
+      font-size: var(--mr-font-20);
     }
 
     .die__cap {
-      font-size: 14px;
+      font-size: var(--mr-font-14);
     }
   `,
 })

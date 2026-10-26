@@ -44,12 +44,12 @@
 .live-notice__text {
   flex-grow: 1;
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   overflow-wrap: anywhere;
 
   @media (min-width: 768px) {
-    font-size: 17px;
+    font-size: var(--mr-font-17);
     line-height: 22px;
   }
 }
@@ -67,7 +67,7 @@
   border-radius: var(--mr-radius-sm);
   background: none;
   color: var(--mr-accent-text);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
   white-space: nowrap;
   text-decoration: underline;

@@ -39,7 +39,7 @@
 }
 
 .stat__label {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 16px;
   font-weight: 500;
   color: var(--mr-ink-muted);
@@ -76,7 +76,7 @@
   margin-top: -6px;
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 40px;
+  font-size: var(--mr-font-40);
   line-height: 40px;
   color: var(--mr-ink);
 }
@@ -102,13 +102,13 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 34px;
+  font-size: var(--mr-font-34);
   line-height: 38px;
   white-space: nowrap;
   color: var(--mr-ink);
 
   &--dice {
-    font-size: 30px;
+    font-size: var(--mr-font-30);
     line-height: 34px;
   }
 }
@@ -129,7 +129,7 @@
 .speed__rest {
   font-family: var(--mr-font-sans);
   font-weight: 500;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
   color: var(--mr-ink-muted);
 }
@@ -141,7 +141,7 @@
   justify-content: center;
   gap: 0 var(--mr-space-3);
   margin: 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
   color: var(--mr-ink-muted);
 }
@@ -174,7 +174,7 @@
 .hp__label {
   grid-area: label;
   align-self: end;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 20px;
   color: var(--mr-ink);
 }
@@ -193,7 +193,7 @@
   grid-area: note;
   align-self: start;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 18px;
   color: var(--mr-ink-muted);
 }
@@ -211,7 +211,7 @@
 }
 
 .hp__of {
-  font-size: 24px;
+  font-size: var(--mr-font-24);
 }
 
 .hp__tag {

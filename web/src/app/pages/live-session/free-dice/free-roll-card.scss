@@ -72,7 +72,7 @@
 }
 
 .die__note {
-  font-size: 11px;
+  font-size: var(--mr-font-11);
   color: var(--mr-ink-muted);
 }
 
@@ -82,7 +82,7 @@
   align-items: center;
   gap: 6px;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -94,13 +94,13 @@
   border-radius: var(--mr-radius-pill);
   background: var(--mr-accent-soft);
   color: var(--mr-accent-strong);
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 700;
 
   .mat-icon {
     width: 14px;
     height: 14px;
-    font-size: 14px;
+    font-size: var(--mr-font-14);
   }
 }
 
@@ -112,7 +112,7 @@
 
   .card__total {
     min-width: 0;
-    font-size: 32px;
+    font-size: var(--mr-font-32);
     text-align: left;
   }
 
@@ -126,7 +126,7 @@
     order: 3;
     margin: var(--mr-space-2) 0 0;
     font-weight: 400;
-    font-size: 14px;
+    font-size: var(--mr-font-14);
   }
 
   .dice {

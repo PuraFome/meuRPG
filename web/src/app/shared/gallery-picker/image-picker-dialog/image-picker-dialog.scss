@@ -27,7 +27,7 @@
 
 .dlg__lead {
   margin: 2px 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -35,7 +35,7 @@
 .dlg__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 24px;
+  font-size: var(--mr-font-24);
   font-weight: 700;
   line-height: 30px;
 }
@@ -77,7 +77,7 @@
   align-items: flex-start;
   gap: 6px;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
@@ -85,13 +85,13 @@
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
 .dlg__wait {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   font-weight: 700;
 }
 
@@ -148,7 +148,7 @@
 .dlg__ask-title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   font-weight: 700;
   line-height: 26px;
 }
@@ -159,13 +159,13 @@
   gap: 6px;
   margin: 0;
   color: var(--mr-warning-ink);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 21px;
 
   .mat-icon {
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }

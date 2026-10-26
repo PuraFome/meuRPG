@@ -85,13 +85,13 @@
 }
 
 .dice-choice__title {
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   font-weight: 700;
   line-height: 22px;
 }
 
 .dice-choice__desc {
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
@@ -102,7 +102,7 @@
   align-items: flex-start;
   gap: var(--mr-space-2);
   margin-top: 6px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 400;
   line-height: 19px;
   color: var(--mr-ink-muted);
@@ -111,6 +111,6 @@
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }

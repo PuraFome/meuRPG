@@ -69,14 +69,14 @@
 
 .row__pt {
   font-family: var(--mr-font-display);
-  font-size: 19px;
+  font-size: var(--mr-font-19);
   font-weight: 700;
   line-height: 24px;
   overflow-wrap: anywhere;
 }
 
 .row__en {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 17px;
   color: var(--mr-ink-muted);
 }
@@ -85,7 +85,7 @@
 .row__kind,
 .row__nd,
 .row__stats {
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }

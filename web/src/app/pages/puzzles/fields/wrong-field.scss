@@ -15,20 +15,20 @@
 .wf__title {
   padding: 0;
   margin: 0 0 4px;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
 }
 
 .wf__help {
   margin: -2px 0 var(--mr-space-1);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
 
 .wf__note {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
@@ -93,7 +93,7 @@
 }
 
 .opt__title {
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   line-height: 22px;
   font-weight: 700;
 }

@@ -4,7 +4,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 10px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   font-variant-numeric: lining-nums;
 }
@@ -18,7 +18,7 @@
     flex: none;
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 

@@ -38,7 +38,7 @@ import { MatIconModule } from '@angular/material/icon';
       gap: 6px;
       margin: 4px 0 0;
       padding: 0 4px;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 18px;
       color: var(--mr-ink-muted);
     }
@@ -51,7 +51,7 @@ import { MatIconModule } from '@angular/material/icon';
       flex: none;
       width: 16px;
       height: 16px;
-      font-size: 16px;
+      font-size: var(--mr-font-16);
       margin-top: 1px;
     }
   `,

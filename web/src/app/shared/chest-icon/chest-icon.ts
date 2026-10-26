@@ -15,7 +15,7 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
     </svg>
   `,
   styles:
-    ':host { display: inline-flex; width: 1em; height: 1em; font-size: 24px; line-height: 1; } svg { display: block; }',
+    ':host { display: inline-flex; width: 1em; height: 1em; font-size: var(--mr-font-24); line-height: 1; } svg { display: block; }',
   host: { 'aria-hidden': 'true' },
 })
 export class ChestIcon {}

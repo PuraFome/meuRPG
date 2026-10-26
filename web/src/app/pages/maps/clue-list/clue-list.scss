@@ -18,14 +18,14 @@
 .cl__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 21px;
+  font-size: var(--mr-font-21);
   font-weight: 700;
   line-height: 26px;
 }
 
 .cl__count {
   flex: none;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -38,14 +38,14 @@
   padding: 10px 12px;
   border-radius: var(--mr-radius-md);
   background: var(--mr-ground);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 
   .mat-icon {
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
@@ -86,7 +86,7 @@
 .cl__n {
   padding-top: 1px;
   font-family: var(--mr-font-display);
-  font-size: 18px;
+  font-size: var(--mr-font-18);
   font-weight: 700;
   line-height: 22px;
   color: var(--mr-ink-muted);
@@ -101,7 +101,7 @@
   background: none;
   color: inherit;
   font: inherit;
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   line-height: 22px;
   text-align: start;
   overflow-wrap: anywhere;
@@ -126,7 +126,7 @@
   padding: 0 10px;
   border: 1px solid var(--mr-control-line);
   border-radius: var(--mr-radius-pill);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
@@ -134,7 +134,7 @@
   .mat-icon {
     width: 14px;
     height: 14px;
-    font-size: 14px;
+    font-size: var(--mr-font-14);
   }
 
   &--all {
@@ -189,14 +189,14 @@
 
 .cl__ask-title {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
   line-height: 21px;
 }
 
 .cl__ask-hint {
   margin: var(--mr-space-1) 0 var(--mr-space-3);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -223,7 +223,7 @@
   align-items: center;
   gap: 0 var(--mr-space-2);
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }

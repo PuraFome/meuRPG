@@ -31,14 +31,14 @@
 }
 
 .who__name {
-  font-size: 18px;
+  font-size: var(--mr-font-18);
   font-weight: 700;
   line-height: 22px;
   overflow-wrap: anywhere;
 }
 
 .who__sub {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -54,7 +54,7 @@
 }
 
 .state--none {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
   white-space: nowrap;

@@ -32,7 +32,7 @@ button.chip {
 
 .chip__total {
   font-family: var(--mr-font-display);
-  font-size: 26px;
+  font-size: var(--mr-font-26);
   font-weight: 800;
   line-height: 28px;
 }
@@ -52,7 +52,7 @@ button.chip {
   border: 1px solid var(--mr-control-line);
   border-radius: 6px;
   font-family: var(--mr-font-display);
-  font-size: 19px;
+  font-size: var(--mr-font-19);
   font-weight: 700;
 
   &--dropped {
@@ -66,7 +66,7 @@ button.chip {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   line-height: 19px;
   color: var(--mr-ink-muted);
@@ -74,7 +74,7 @@ button.chip {
   .mat-icon {
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 

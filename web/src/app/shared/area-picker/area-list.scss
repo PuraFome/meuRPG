@@ -15,13 +15,13 @@
 .head__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 19px;
+  font-size: var(--mr-font-19);
   font-weight: 700;
 }
 
 .head__count {
   flex: none;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -59,17 +59,17 @@
 
 .row__name {
   font-family: var(--mr-font-display);
-  font-size: 18px;
+  font-size: var(--mr-font-18);
 }
 
 .row__tag .mat-icon {
   width: 16px;
   height: 16px;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
 }
 
 .row__state {
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   color: var(--mr-ink-muted);
 }
 
@@ -77,14 +77,14 @@
   display: flex;
   align-items: flex-start;
   gap: 6px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
 
 .note {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 18px;
   color: var(--mr-ink-muted);
 }

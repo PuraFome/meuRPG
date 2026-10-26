@@ -28,7 +28,7 @@
 .bar__title {
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 26px;
+  font-size: var(--mr-font-26);
   line-height: 30px;
 }
 
@@ -40,13 +40,13 @@
 
 .move__title {
   margin-bottom: var(--mr-space-2);
-  font-size: 30px;
+  font-size: var(--mr-font-30);
   line-height: 34px;
 }
 
 .move__lead {
   margin: 0 0 var(--mr-space-4);
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   line-height: 22px;
 }
 
@@ -162,7 +162,7 @@
   align-items: flex-start;
   gap: var(--mr-space-2);
   margin: 0 0 var(--mr-space-3);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
 
@@ -170,7 +170,7 @@
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
@@ -275,13 +275,13 @@
   padding: 6px 12px;
   border: 1px solid var(--mr-control-line);
   border-radius: var(--mr-radius-pill);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   line-height: 19px;
 }
 
 .move__drag-text {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
 }

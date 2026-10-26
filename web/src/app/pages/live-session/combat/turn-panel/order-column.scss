@@ -17,14 +17,14 @@
   margin: 0 0 6px 4px;
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 24px;
+  font-size: var(--mr-font-24);
   line-height: 28px;
 
   .mat-icon {
     flex: none;
     width: 22px;
     height: 22px;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
   }
 }
 
@@ -71,7 +71,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 2px 6px;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
   line-height: 20px;
 }
@@ -86,7 +86,7 @@
   border: 1px solid var(--mr-accent-text);
   border-radius: var(--mr-radius-pill);
   color: var(--mr-accent-text);
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 18px;
 }
 
@@ -94,7 +94,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 18px;
   color: var(--mr-ink-muted);
 }
@@ -106,5 +106,5 @@
 .mat-icon {
   width: 14px;
   height: 14px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
 }

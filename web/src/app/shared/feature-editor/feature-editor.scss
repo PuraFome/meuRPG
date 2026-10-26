@@ -28,7 +28,7 @@
 .feature__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 19px;
+  font-size: var(--mr-font-19);
   font-weight: 700;
   color: var(--mr-ink);
 }
@@ -42,7 +42,7 @@
   border-radius: 50%;
   background: var(--mr-surface);
   border: 1px solid var(--mr-line);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
 }
 
 .feature__move {
@@ -136,7 +136,7 @@
   .mat-icon {
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 
   &--ink {

@@ -36,14 +36,14 @@
   align-items: center;
   gap: var(--mr-space-2);
   margin: 0;
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   font-weight: 700;
 }
 
 .zp__detail {
   margin: 2px 0 0;
   color: var(--mr-ink-muted);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
 }
 
 .zp__chips {
@@ -62,14 +62,14 @@
   border-radius: var(--mr-radius-pill);
   background: var(--mr-ground);
   color: var(--mr-ink);
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 600;
 }
 
 .zp__chip .mat-icon {
   width: 16px;
   height: 16px;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
 }
 
 .zp__chip--here {
@@ -109,5 +109,5 @@
   padding-top: var(--mr-space-2);
   border-top: 1px solid var(--mr-rule);
   color: var(--mr-ink-muted);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
 }

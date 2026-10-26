@@ -145,7 +145,7 @@ import { FormTag } from '../combatant-tags/form-tag';
 }
 
 .chip__word {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 700;
   color: var(--mr-ink-muted);
 }
@@ -155,7 +155,7 @@ import { FormTag } from '../combatant-tags/form-tag';
 }
 
 .chip__name {
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   font-weight: 700;
   line-height: 18px;
   white-space: nowrap;
@@ -169,7 +169,7 @@ import { FormTag } from '../combatant-tags/form-tag';
 }
 
 .chip__sub {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 17px;
   color: var(--mr-ink-muted);
 }

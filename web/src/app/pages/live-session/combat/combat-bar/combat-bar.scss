@@ -65,7 +65,7 @@
   display: none;
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 24px;
+  font-size: var(--mr-font-24);
   line-height: 28px;
   color: var(--mr-ink);
 
@@ -84,19 +84,19 @@
   background: var(--mr-warning-surface);
   border: 1px solid var(--mr-warning-line);
   color: var(--mr-warning-ink);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
 
   mat-icon {
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 
 .bar__big {
   display: block;
-  font-size: 30px;
+  font-size: var(--mr-font-30);
   line-height: 34px;
   font-weight: 800;
 }
@@ -116,7 +116,7 @@
   flex: 1 1 auto;
   min-width: 24ch;
   margin: 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 21px;
   color: var(--mr-ink-muted);
 }
@@ -138,12 +138,12 @@
 .bar__title {
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 28px;
+  font-size: var(--mr-font-28);
   line-height: 32px;
   overflow-wrap: anywhere;
 
   @media (min-width: 1024px) {
-    font-size: 34px;
+    font-size: var(--mr-font-34);
     line-height: 38px;
   }
 }
@@ -161,7 +161,7 @@
 }
 
 .bar__next {
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
@@ -219,12 +219,12 @@
     flex: none;
     width: 24px;
     height: 24px;
-    font-size: 24px;
+    font-size: var(--mr-font-24);
   }
 
   p {
     margin: 0;
-    font-size: 15px;
+    font-size: var(--mr-font-15);
     line-height: 20px;
   }
 }
@@ -237,7 +237,7 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 21px;
+  font-size: var(--mr-font-21);
   line-height: 26px;
 }
 

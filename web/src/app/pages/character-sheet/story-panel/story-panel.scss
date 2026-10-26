@@ -15,7 +15,7 @@
 .story__empty,
 .story__note {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 21px;
   color: var(--mr-ink-muted);
 }
@@ -26,7 +26,7 @@
   line-height: 22px;
 
   dt {
-    font-size: 13px;
+    font-size: var(--mr-font-13);
     line-height: 16px;
     font-weight: 500;
     color: var(--mr-ink-muted);

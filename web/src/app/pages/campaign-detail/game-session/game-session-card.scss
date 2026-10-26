@@ -33,7 +33,7 @@
   flex: 1 1 12rem;
   min-width: 0;
   margin: 0;
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   line-height: 24px;
 }
 
@@ -47,7 +47,7 @@
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -117,7 +117,7 @@
 .session__confirm-text {
   flex-basis: 100%;
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
 }
 
 // The sheets that start with choices open, one per line.
@@ -125,7 +125,7 @@
   flex-basis: 100%;
   margin: 0;
   padding-left: var(--mr-space-5);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
 }
 
 .session__end--confirm {
@@ -149,12 +149,12 @@
   background: var(--mr-surface);
   color: var(--mr-ink);
   font: inherit;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
 }
 
 .session__hint {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
 }
 
 // "Iniciar sessão": full width on a phone, as wide as its words from a tablet up (the theme sets its height).

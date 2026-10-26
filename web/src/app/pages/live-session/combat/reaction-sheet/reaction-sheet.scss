@@ -4,7 +4,7 @@
 
 .what {
   margin: 0;
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   line-height: 23px;
 
   &--strong {
@@ -14,7 +14,7 @@
 
 .small {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -37,13 +37,13 @@
   border-radius: var(--mr-radius-pill);
   background: var(--mr-success-surface);
   color: var(--mr-success-ink);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
 
   .mat-icon {
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 
   &--bad {
@@ -71,7 +71,7 @@
   padding: 2px 10px;
   border: 1px solid var(--mr-control-line);
   border-radius: var(--mr-radius-pill);
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 700;
   line-height: 18px;
 
@@ -93,7 +93,7 @@
 .falling__cap {
   padding: 0;
   margin-bottom: 4px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
 }
 
@@ -137,7 +137,7 @@
   .mat-icon {
     width: 22px;
     height: 22px;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
   }
 }
 
@@ -157,7 +157,7 @@
   flex-direction: column;
 
   small {
-    font-size: 14px;
+    font-size: var(--mr-font-14);
     color: var(--mr-ink-muted);
   }
 }
@@ -194,7 +194,7 @@
   align-items: center;
   gap: 6px;
   margin: 10px 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
@@ -202,6 +202,6 @@
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }

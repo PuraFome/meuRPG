@@ -63,7 +63,7 @@ describe('AudienceChooser', () => {
     const { el, close, click } = setup([], true);
     expect(el.querySelector('.frame__handle')).toBeNull();
     const title = el.querySelector('h2') as HTMLElement;
-    expect(getComputedStyle(title).fontSize).toBe('21px');
+    expect(getComputedStyle(title).fontSize).toBe('var(--mr-font-21)');
     expect(getComputedStyle(title).lineHeight).toBe('26px');
     const closer = el.querySelector('.frame__close') as HTMLButtonElement;
     expect(closer.getAttribute('aria-label')).toBe('Fechar');
@@ -74,7 +74,9 @@ describe('AudienceChooser', () => {
 
   it('as a dialog it keeps the shared frame look', () => {
     const { el } = setup();
-    expect(getComputedStyle(el.querySelector('h2') as HTMLElement).fontSize).not.toBe('21px');
+    expect(getComputedStyle(el.querySelector('h2') as HTMLElement).fontSize).not.toBe(
+      'var(--mr-font-21)',
+    );
     expect(el.querySelector('.frame__close')?.getAttribute('aria-label')).toBe('Fechar');
   });
 

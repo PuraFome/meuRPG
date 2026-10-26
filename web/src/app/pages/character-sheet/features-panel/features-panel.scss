@@ -20,7 +20,7 @@
 
 .features__caption {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   line-height: 18px;
   color: var(--mr-ink-muted);
@@ -58,7 +58,7 @@
 .feature__source {
   flex-shrink: 0;
   max-width: 50%;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 18px;
   color: var(--mr-ink-muted);
   text-align: right;
@@ -69,7 +69,7 @@
   flex-shrink: 0;
   width: 20px;
   height: 20px;
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   color: var(--mr-ink-muted);
   transition: transform 150ms ease;
 
@@ -81,7 +81,7 @@
 // The rule in one line, in our own words: the part a player reads first, before the SRD's English.
 .feature__summary-pt {
   margin: 0 0 6px;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 22px;
 }
 
@@ -96,7 +96,7 @@
 
 .feature__text {
   margin: 0 0 10px;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 22px;
   color: var(--mr-ink-muted);
 }
@@ -118,7 +118,7 @@
 .block__label {
   margin: 0 0 2px;
   font-family: var(--mr-font-sans);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 18px;
   font-weight: 500;
   color: var(--mr-ink-muted);
@@ -130,7 +130,7 @@
   flex-direction: column;
   gap: 4px;
   padding-bottom: 10px;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
 
   li {
     position: relative;
