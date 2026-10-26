@@ -911,6 +911,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 #### Acceptance criteria
 - **Given** a combat that ends, **when** the master ends it, **then** the table sees five categories, "Mais dano causado", "Mais cura", "Tanque", "Golpe final" and "Acertos críticos", each with its number and everyone who tied; a category in which everybody has 0 is left out.
 - **Given** a hit of 28 damage on a goblin with 7 HP, **when** the highlights are computed, **then** it counts 7: only the HP that actually came off. Temporary HP that absorbed damage counts as damage dealt and taken.
+- **Given** a warlock who hit a goblin with a cantrip for 5 on his turn and answered another creature's turn with Hellish Rebuke for 10, **when** the highlights or the session summary are computed, **then** his damage dealt is 15: damage dealt outside the creature's own turn (a reaction, an opportunity attack, a zone's or an effect's damage later) counts for the creature that dealt it.
 - **Given** an action the master undid, or damage nobody applied, **when** the highlights are computed, **then** it does not count.
 - **Given** an NPC dealt or took damage, **when** the highlights appear for a player, **then** they show only the players' numbers, never the NPCs' HP, AC or rolls (RN-20).
 - **Given** a player, **when** they ask for the highlights of an ended combat, **then** they receive only their own character's row (zeros included) and never another player's; only the master receives the whole table; a combat that has not ended is refused.
