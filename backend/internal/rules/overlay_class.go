@@ -501,7 +501,7 @@ func (r *classRowBuilder) features(row *srd51.Level, tl *TableClassLevel, i int)
 			r.limited = true
 			r.c.at(key, r.path, fmt.Sprintf(".levels[%d].features[%d]", i, j), ReasonLimit, "more than %d features; the limit is %d per class", MaxTableFeatures, MaxTableFeatures)
 		}
-		kind := featureKind{prefix: "feature:", owner: key, class: key, level: row.Level}
+		kind := featureKind{prefix: featureKeyPrefix, owner: key, class: key, level: row.Level}
 		if err := r.b.addFeature(f, kind, fmt.Sprintf("%s.levels[%d].features[%d]", r.path, i, j)); err != nil {
 			r.c.add(err)
 			continue
@@ -707,7 +707,7 @@ func (s *subclassBuilder) registerFeatures(row *srd51.Level, tl *TableSubclassLe
 			s.limited = true
 			s.c.at(key, s.path, fmt.Sprintf(".levels[%d].features[%d]", i, j), ReasonLimit, "more than %d features; the limit is %d per subclass", MaxTableFeatures, MaxTableFeatures)
 		}
-		kind := featureKind{prefix: "feature:", owner: key, class: s.parent, subclass: key, level: tl.Level}
+		kind := featureKind{prefix: featureKeyPrefix, owner: key, class: s.parent, subclass: key, level: tl.Level}
 		if err := s.b.addFeature(f, kind, fmt.Sprintf("%s.levels[%d].features[%d]", s.path, i, j)); err != nil {
 			s.c.add(err)
 			continue

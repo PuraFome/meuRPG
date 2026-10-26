@@ -1,3 +1,4 @@
+import { hookSentence } from './hook-text';
 import {
   AttackOutcome,
   type CombatLogDamage,
@@ -46,6 +47,12 @@ function appliedWords(d: CombatLogDamage): string {
 /** The damage of an attack or of one target of a cast, as the sentence
  * tells it: ", 5 de dano", the dice the master overruled, a heal, a half. */
 function damageText(d: CombatLogDamage): string {
+  const temp = d.tempHpGained > 0 ? `, ganha ${d.tempHpGained} PV temporários` : '';
+  const hook = d.hook ? `. ${hookSentence(d.hook)}` : '';
+  return `${baseDamageText(d)}${temp}${hook}`;
+}
+
+function baseDamageText(d: CombatLogDamage): string {
   if (d.healing) {
     return ` recupera ${d.amount} PV`;
   }

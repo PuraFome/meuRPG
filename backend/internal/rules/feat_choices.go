@@ -166,6 +166,7 @@ func (cb *choiceBuilder) featOwners() {
 // or switched off stays only for whoever already picked it.
 func (cb *choiceBuilder) featChoice(g *groupBuild, owner string) {
 	c := cb.c
+	cb.grantAbilityChoice(g, owner) // every owner of a choice passes here
 	picks, from, ok := c.featChoiceSpec(owner)
 	if !ok || owner == "" {
 		return

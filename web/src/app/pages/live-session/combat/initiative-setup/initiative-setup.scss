@@ -1,5 +1,8 @@
 :host {
   display: block;
+  // The list answers to its own width, not the screen's: beside the conversation column of a wide screen it is narrower than
+  // it is on a laptop.
+  container-type: inline-size;
 }
 
 .init__head {
@@ -48,8 +51,9 @@
   }
 }
 
-// Phone: number, token, the words, then the formula and the buttons under
-// them. From 768px: one line, as the artboard draws it.
+// Narrow (a phone, or the board beside the conversation column): number, token, the words, then the formula and the buttons
+// under them. From 600px of list the formula and the buttons share the line under the words. From 760px: one line, as the
+// artboard draws it.
 .row {
   display: grid;
   grid-template-columns: 24px 28px minmax(0, 1fr);
@@ -67,12 +71,20 @@
     border-top: 1px solid var(--mr-rule);
   }
 
-  @media (min-width: 768px) {
+  @container (min-width: 600px) {
+    grid-template-columns: 32px 28px minmax(0, 1fr) auto;
+    grid-template-areas:
+      'place token text text'
+      '. . formula actions'
+      '. . held held';
+    column-gap: 14px;
+  }
+
+  @container (min-width: 760px) {
     grid-template-columns: 32px 28px minmax(0, 1fr) 218px 190px;
     grid-template-areas:
       'place token text formula actions'
       '. . held held held';
-    column-gap: 14px;
     min-height: 64px;
   }
 }
@@ -108,11 +120,14 @@
   min-width: 0;
 }
 
+// A name never breaks letter by letter: it keeps one line and ends in an ellipsis (the full name is the tooltip).
 .row__name {
+  overflow: hidden;
   font-size: 17px;
   font-weight: 700;
   line-height: 22px;
-  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .row__sub,
@@ -172,15 +187,20 @@
 }
 
 .row__actions {
-  white-space: nowrap;
   display: flex;
   grid-area: actions;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-start;
   gap: var(--mr-space-2);
 
-  @media (min-width: 768px) {
+  @container (min-width: 600px) {
     justify-content: flex-end;
+  }
+
+  @container (min-width: 760px) {
+    flex-wrap: nowrap;
+    white-space: nowrap;
   }
 
   .mat-mdc-outlined-button {

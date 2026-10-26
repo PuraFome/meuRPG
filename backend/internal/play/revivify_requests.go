@@ -75,7 +75,7 @@ func (s *Service) outsideOptions(ctx context.Context, tx pgx.Tx, campaignID stri
 	if err != nil {
 		return castable{}, err
 	}
-	return castableOf(opts, revivifyKey)
+	return castableOf(opts, revivifyKey, "")
 }
 
 // previewOutside is PreviewRevivify with no combat: every dead character of the campaign, to be

@@ -210,6 +210,12 @@ A map and a point are born hidden, and the master reveals and hides each one.
 An NPC's token is born hidden. A player character's token is visible, and so is a creature's (a creature is on the group's side). Choosing the session's current map reveals it.
 The player sees the revealed map and the current map, with the revealed points and visible tokens only; a submap point leads only to a map the player also sees.
 
+**Moving tokens outside combat** ([MR-012](stories.md#mr-012-follow-the-session)).
+Outside combat the master moves any character's token; a player moves only their own, alone, and only on a map where the master turned on "Os jogadores movem os próprios personagens" (off by default), and only while they see that token.
+A token walks toward the square and stops before a wall, a locked door or a square marked "Não dá para passar", with no limit of movement.
+The master is told why it stopped; a player is told why only when the square in the way is one they see or remember: otherwise the answer says only that it stopped, and the player never learns what is there (a hidden NPC, a square in the fog).
+The master taking the switch back while a player is moving makes the server refuse that move, and the player's screen says "O mestre voltou a mover os tokens.".
+
 **The scene** ([MR-015](stories.md#mr-015-rp-scene-actions), [MR-031](stories.md#mr-031-npcs-in-the-scene)).
 The master may hide an NPC on the stage ("Escondida dos jogadores") and an action of a scene ("Escondida"), when preparing or live.
 A hidden NPC counts for the stage's limit of 4, but no player receives it: not its name, portrait or place on the stage, not in the open scene, not in a live hint, not in a cast list or as a target.
@@ -620,6 +626,7 @@ A change holds from the next roll, never rewriting what was already rolled.
 - **Combat with a map or without** (RN-25): "Combate com mapa" is the default of the "Iniciar combate" dialog, unless the table starts without a map.
 - **Fog in new maps** turns on with the map's first grid, not at creation.
 - **Feats.** "Talentos" is "permitidos" or "não usados" (default "não usados"). Only when allowed does the Ability Score Improvement step of the level up offer "Aumentar habilidades" or "Um talento", with the feats the character qualifies for. The server checks the prerequisite at the new level, applies the feat's own ability increase (none above 20) and refuses a feat the master retired or switched off.
+- **Swapping a pick.** "Trocar uma escolha no aumento de atributo" is "ligada" or "desligada" (default "desligada"). Only when on does the Ability Score Improvement step of the level up also offer to give up one earlier pick of one group (a cantrip of the class, a fighting style, a metamagic option, an invocation, a pact boon) for another of the same pool, one swap for each such level. The pool is the SRD's options and the table's, minus the picks the character has, and the new pick has the prerequisites of any pick (the invocations' own, a table option's); the server refuses a swap where the rule is off, at a level without an improvement, or for a pick or a pool option the level does not offer. The warlock's own swap of an invocation at every level is another rule and stays as it is.
 - **A feat a feature grants to choose** (a race, background, class or another feat with a feat choice) is a choice like the others (RN-33), asked in "Escolhas": the feats of the table, or only the list the grant names. A feat the character has, a retired one and one switched off are not offered; one the character does not yet qualify for is shown with what it asks and cannot be picked. The rule "Talentos" does not gate it. It is listed as "Talento · <source>" and never appears twice on a sheet.
 - **XP mode** (RN-09) can change after the campaign is created, with a confirmation if anyone has already earned XP.
 - **House rules** are only a reminder on the page (for example, drinking a potion is a bonus action); the app does not enforce them. Flanking is out of scope.
@@ -724,7 +731,7 @@ A monster from the bestiary ([MR-042](stories.md#mr-042-bestiary)) enters combat
 The master puts it in with "Pôr no combate", with its average hit points or rolled ones, and each one's initiative.
 The player reads only the state word (RN-20), never hit points, armor class or initiative, and a hidden monster does not reach them.
 The master reads the SRD creature sheet ("Ficha da criatura"), its challenge rating (CR, ND) and the rolled hit points; the log line about them is the master's alone.
-The creature's attacks follow the table's critical rule (RN-24), and Multiattack follows SRD 5.1: the master plays the mix of the sheet's attacks.
+The creature's attacks follow the table's critical rule (RN-24), and Multiattack follows SRD 5.1: the master plays the creature's routine, one attack after another, each with its own target; the server counts the attacks and refuses the one after the last, and the action counts as used when the routine is done or the master ends it.
 The XP by enemies adds each monster's CR: 3 Bandits, CR 1/8, give 3 × 25 = 75 XP, 18 to each of four players and 3 left over.
 "Criar NPC" in the bestiary makes a named NPC sheet from a creature.
 The encounter builder ([MR-043](stories.md#mr-043-generate-encounters)) puts its saved monsters in through the same path with "Começar este combate", and a player never receives the saved encounter.

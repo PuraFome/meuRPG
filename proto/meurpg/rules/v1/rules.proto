@@ -663,9 +663,11 @@ message DerivedSheet {
   // nível" (RN-12).
   int32 next_level_xp = 34;
 
-  // The other speeds, in feet, 0 for none. A character has none of them
-  // today; a creature, or a druid in Wild Shape, may fly, swim, climb or
-  // burrow. speed_walk_ft stays the walking speed.
+  // The other speeds, in feet, 0 for none. No SRD race gives a character one;
+  // a table's speed.fly, speed.swim, speed.climb or speed.burrow modifier does
+  // (mode add, max or set, with the `when` of any modifier, and speedwalk() in
+  // the formula for "the walking speed"). A creature, or a druid in Wild Shape,
+  // may fly, swim, climb or burrow. speed_walk_ft stays the walking speed.
   int32 speed_fly_ft = 35;
   int32 speed_swim_ft = 36;
   int32 speed_climb_ft = 37;
@@ -707,9 +709,16 @@ message DerivedSheet {
   // reads a two-handed weapon as the one in hand). The player gets the bonus back by
   // taking the weapon off the sheet.
   bool shield_idle = 46;
+  // True when a table's breathes_water effect applies: the character breathes
+  // underwater (the sheet shows it; the engine keeps no air or drowning count).
+  bool breathes_water = 47;
+  // The spells the character's traits, feats and features grant through a
+  // granted_spell effect, by level and name, each with its source. They are cast
+  // through the grant (see GrantedSpell); the sheet lists them apart from `spells`.
+  repeated GrantedSpell granted_spells = 48;
   // The character's size: the race's own ("Small", "Medium"...), or the one the sheet
   // picked among the sizes the race offers (Race.sizes). Empty without a known race.
-  string size = 47;
+  string size = 50;
 }
 
 // BreathWeapon is the dragonborn's Breath Weapon (SRD 5.1, Dragonborn): the dragon
@@ -834,6 +843,12 @@ enum Recharge {
   RECHARGE_DAWN = 3;
   // Never on its own: the master decides.
   RECHARGE_NONE = 4;
+  // One use comes back when the owner rolls initiative, only if none is left.
+  RECHARGE_INITIATIVE = 5;
+  // A short rest gives back one use, a long rest gives back all of them.
+  RECHARGE_RESTORE_ONE_ON_SHORT_REST = 6;
+  // A long rest gives back one use; a short rest none.
+  RECHARGE_RESTORE_ONE_ON_LONG_REST = 7;
 }
 
 // Action is something a character does on their turn.
@@ -849,6 +864,23 @@ message Action {
   // Content key of the feature or trait that grants it. Empty for a
   // standard action.
   string source_key = 5;
+  // How many uses of the resource each use of the action spends; 0 or 1 is one. The
+  // action is off while fewer are left.
+  int32 cost = 6;
+  // The most the player may spend on one use; 0 is a fixed cost. Set, the use asks
+  // "quantos?" with a number from `cost` to the smaller of `cost_max` and what is
+  // left, and the server validates it against that range.
+  int32 cost_max = 7;
+  // Hit points the action heals at the base cost (dice, the ability modifier already
+  // in the bonus); unset when it heals none. The target is the owner or one creature
+  // chosen at use.
+  DiceFormula heal = 8;
+  // Temporary hit points at the base cost; 0 when it gives none.
+  int32 temp_hp = 9;
+  // What each point spent above `cost` adds to the heal (dice) and to the temporary
+  // hit points (a flat number).
+  DiceFormula heal_per_point = 10;
+  int32 temp_hp_per_point = 11;
 }
 
 // ActionEconomy is the part of the turn an action costs.
@@ -1005,6 +1037,33 @@ message CharacterSpell {
   // a class that knows its spells, and the spells on the sheet's prepared
   // list.
   bool prepared = 2;
+}
+
+// GrantedSpell is a spell an entry of the character gives (granted_spell effect), at
+// the character's level, with the numbers of its casting ability.
+message GrantedSpell {
+  Spell spell = 1;
+  // The key and the Portuguese name of the trait, feat or feature that grants it.
+  string source_key = 2;
+  string source_name_pt = 3;
+  // True when it has no limit; otherwise `resource` is the resource every cast
+  // spends one of (the sheet's resources list it with its uses).
+  bool at_will = 4;
+  string resource = 5;
+  // The grant also allows a spell slot; only the ritual way; the spell is also listed as known.
+  bool also_with_slot = 6;
+  bool ritual_only = 7;
+  bool counts_as_known = 8;
+  // The casting ability ("int", "wis" or "cha"). Empty while `ability_pending`: the
+  // grant asks the player to pick one (a choice of the sheet) and has no numbers yet.
+  string ability = 9;
+  bool ability_pending = 10;
+  // The spell attack bonus (proficiency + modifier) and the save DC (8 + the same),
+  // both 0 while the ability is pending.
+  int32 attack_bonus = 11;
+  int32 save_dc = 12;
+  // The level the grant starts at (the class level for a class or subclass feature).
+  int32 from_level = 13;
 }
 
 // Attack is an attack with a weapon on the sheet.
@@ -2085,6 +2144,28 @@ message SpellOption {
   // True when the character has Sculpt Spells (the evocation wizard) and this spell is of
   // the school of evocation: the cast may name creatures to spare (CastSpellRequest.sculpted_ids).
   bool sculpt_spells = 31;
+  // Set for a spell a granted_spell effect gives (GrantedSpell): it is cast with no slot,
+  // by CastSpellRequest.granted_by = grant.source_key, spending a use of grant.resource
+  // unless the grant is at will. A spell the character has both from a class and from
+  // a grant is two options. `slots` lists slots only when grant.also_with_slot.
+  SpellGrantOption grant = 32;
+}
+
+// SpellGrantOption is how a granted spell is cast now.
+message SpellGrantOption {
+  // The trait, feat or feature that grants the spell, and its name.
+  string source_key = 1;
+  string source_name_pt = 2;
+  bool at_will = 3;
+  // The resource a cast spends one of, and the uses left; both empty/0 for an at-will grant.
+  string resource = 4;
+  int32 uses_left = 5;
+  // A spell slot casts it too.
+  bool also_with_slot = 6;
+  // The casting ability of the grant and the spell attack bonus and save DC it gives.
+  string ability = 7;
+  int32 attack_bonus = 8;
+  int32 save_dc = 9;
 }
 
 // MetamagicOption is one Metamagic option the character knows, and whether the
@@ -2112,6 +2193,9 @@ message SlotChoice {
   // How many slots of this kind are free, so the app can warn about the
   // last one.
   int32 free = 3;
+  // How many slots of this kind the character has in all, free or spent, so
+  // the app can read "3 of 4 free". 0 when not known.
+  int32 total = 4;
 }
 
 // ActionOption is a standard or feature action the character can take.

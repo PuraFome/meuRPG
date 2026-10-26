@@ -122,7 +122,7 @@ stateDiagram-v2
 | Call | Who may | Typed refusals (`CastingBlocked.reason`, `failed_precondition`) |
 | --- | --- | --- |
 | `GetCastOptions` | The character's player; the master for any character with a full sheet | None of its own: lists each spell with its reason (`NO_SLOT`) and `in_combat` |
-| `CastSpellOutsideCombat` | The character's player; the master for any, an NPC with a full sheet included | `IN_COMBAT`, `CAST_IN_PROGRESS`, `NO_SLOT`, `TARGET_WEARS_ARMOR`, `TARGET_OUT_OF_REACH`, `CLASS_CANNOT_RITUAL`, `NOT_A_RITUAL` |
+| `CastSpellOutsideCombat` | The character's player; the master for any, an NPC with a full sheet included | `IN_COMBAT`, `CAST_IN_PROGRESS`, `NO_SLOT`, `TARGET_WEARS_ARMOR`, `TARGET_OUT_OF_REACH`, `CLASS_CANNOT_RITUAL`, `NOT_A_RITUAL`, `NO_USES` |
 | `ConfirmCastTimePassed` | The master only | `CAST_NOT_GOING`, `NO_SLOT`, `IN_COMBAT` |
 | `AbandonCast` | The caster's player; the master | None. A cast that is not going again changes nothing |
 | `EndActiveSpell` | The caster's player; the master | `CAST_NOT_ACTIVE` (still being cast: use `AbandonCast`) |
@@ -131,6 +131,11 @@ stateDiagram-v2
 Every call also answers `NO_OPEN_SESSION`, `unauthenticated` and `not_found` for a campaign the caller is not in.
 The slot, targets and dice are checked by the server alone: `invalid_argument` covers a spell that is not the caster's, a slot that does not fit, a ritual with a slot and a missing roll.
 
+- **Granted spells.** A spell a `granted_spell` effect gives ([Table content](../rules-table-content.md#granted-spells)) is one more way to cast it: `GetCastOptions` lists each grant on the spell (`CastingSpell.grants`: source, uses left, ability, attack bonus and DC), and a spell the character has from a grant alone is listed too.
+  `granted_by` names the grant: the cast takes no slot (a slot only when the grant has `also_with_slot`, and then no use), spends one use of the grant's resource unless it is `at_will` (`NO_USES` when none is left), and reads the spell with the grant's casting ability.
+  A ritual-only grant takes `as_ritual`.
+  The use is spent when the cast starts, also for a long casting; the end of a long casting through a grant reads the sheet again for the way the row says.
+  In a combat the same grant is a turn option (`SpellOption.grant`) and `CastSpellRequest.granted_by` picks it; the undo gives the use back.
 - **One cast, two steps when it takes time.** An action, bonus action or reaction takes effect at once.
   A spell of a minute or more, and every ritual (casting time plus 10 minutes, no slot, no higher level: SRD 5.1 "Rituals"), starts in `casting`: nothing is spent and the caster concentrates on the casting from the start.
   The master says the time has passed and calls `ConfirmCastTimePassed`, which spends the slot and applies the effect.

@@ -102,6 +102,9 @@ func checkLevelUpKeys(c *charactersv1.LevelUpChoices) error {
 	if len(c.GetSwapInvocationKey()) > maxChoiceKeyLength {
 		return fieldErr("choices.swap_invocation_key", "must be at most %d characters", maxChoiceKeyLength)
 	}
+	if sw := c.GetSwapPick(); len(sw.GetFromKey()) > maxChoiceKeyLength || len(sw.GetToKey()) > maxChoiceKeyLength || len(sw.GetGroup()) > maxChoiceKeyLength {
+		return fieldErr("choices.swap_pick", "keys must be at most %d characters", maxChoiceKeyLength)
+	}
 	if len(c.GetFeatKey()) > maxContentKeyLength {
 		return fieldErr("choices.feat_key", "must be at most %d characters", maxContentKeyLength)
 	}
@@ -170,6 +173,12 @@ func newLevelUpPlan(t levelUpTarget, choices *charactersv1.LevelUpChoices, offer
 	if choices.GetFeatKey() != "" && !t.rules.FeatsAllowed {
 		plan.refusal = &charactersv1.LevelUpRefusal{
 			Field: "choices.feat_key", Reason: charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_FEATS_NOT_ALLOWED,
+		}
+	}
+	// Swapping a pick is a rule of the table too, and only for what the level offers.
+	if swap := pickSwapFromProto(choices.GetSwapPick()); !swap.IsZero() && plan.refusal == nil && (!t.rules.PickSwapAllowed || !offer.Offers(swap)) {
+		plan.refusal = &charactersv1.LevelUpRefusal{
+			Field: "choices.swap_pick", Reason: charactersv1.LevelUpRefusalReason_LEVEL_UP_REFUSAL_REASON_SWAP_NOT_ALLOWED,
 		}
 	}
 	return plan

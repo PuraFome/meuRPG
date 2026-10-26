@@ -29,12 +29,10 @@ import {
   beamsLeftLine,
   bonusAttackLine,
   circleLabel,
-  featureUsesText,
   groupOf,
   groupState,
   isBonusAttack,
   isCantrip,
-  isReactionHint,
   reasonText,
   spellReasonText,
   spellLine,
@@ -60,6 +58,7 @@ import {
   grappledWord,
   hiddenWord,
 } from '../../../../core/combat/contest-view';
+import { castRefOf } from '../../../../core/combat/cast-ref';
 import { freeText } from '../../../../core/combat/cast-flow';
 import { standUpRow } from '../../../../core/combat/stand-up';
 import { Fold } from '../../../../shared/fold/fold';
@@ -67,15 +66,9 @@ import { TabList, tabId, tabPanelId } from '../../../../shared/tab-list/tab-list
 import type { PactSlotsVm, SlotUsageVm } from '../../../../core/play/resource-usage.types';
 import { SlotDots } from '../../../../shared/slot-dots/slot-dots';
 import { ActionRow, type RowEconomy } from './action-row';
+import { featureIsOff, featureLine, featureWhy } from '../../../../core/combat/action-spend';
 import { GroupState } from './group-state';
-
-/** The standard actions an extra action may be, by the key the server sends. */
-const EXTRA_NAMES: Readonly<Record<string, string>> = {
-  dash: 'Disparada',
-  disengage: 'Desengajar',
-  hide: 'Esconder',
-  'use-an-object': 'Usar um objeto',
-};
+import { EXTRA_NAMES, FRENZY_QUESTION, TAB_ICONS, shortCircle } from './action-groups-text';
 
 /**
  * "O que você pode fazer" (E6-06 on a phone, E6-14 on a laptop): the options
@@ -95,21 +88,6 @@ const EXTRA_NAMES: Readonly<Record<string, string>> = {
  * attacks stay enabled. Disabled options keep their place with the reason, by
  * code (`reasonText`).
  */
-/** The icon beside each tab's words (C4-03, C4-04). */
-const TAB_ICONS: Readonly<Record<ActionTabId, string>> = {
-  attacks: 'swords',
-  spells: 'auto_fix_high',
-  class: 'shield',
-  other: 'more_horiz',
-};
-
-/** "1º": the circle as the slots line writes it. */
-const shortCircle = (level: number): string => `${level}º`;
-
-/** The question Fúria asks a Berserker (SRD 5.1, Path of the Berserker, Frenzy). */
-const FRENZY_QUESTION =
-  'Entrar em frenesi? Um ataque corpo a corpo como ação bônus em cada turno seguinte; quando a fúria acabar, você ganha 1 nível de exaustão.';
-
 @Component({
   selector: 'app-action-groups',
   imports: [
@@ -446,6 +424,7 @@ export class ActionGroups {
   protected readonly attackDetail = (a: Parameters<typeof attackDetail>[0]) => attackDetail(a);
   protected readonly reasonText = reasonText;
   protected readonly spellReasonText = spellReasonText;
+  protected readonly castRef = castRefOf;
   protected readonly state = (used: boolean): string =>
     cannotAct(this.own()) ? 'Indisponível' : groupState(used);
   protected readonly isCantrip = isCantrip;
@@ -491,9 +470,10 @@ export class ActionGroups {
     this.rage.emit({ key, frenzy });
   }
 
-  protected featureOff(a: ActionOption): boolean {
-    return !a.enabled && !isReactionHint(a.reason);
-  }
+  /** Whether a feature is off, why, and the line under its name: what a use costs and what is left (the server's reason, or "Faltam usos"). */
+  protected readonly featureOff = featureIsOff;
+  protected readonly featureWhy = featureWhy;
+  protected readonly featureDetail = featureLine;
 
   /** The feature that is the druid's Wild Shape: it opens the beasts' sheet instead of being "used". */
   protected isWild(a: ActionOption): boolean {
@@ -504,11 +484,6 @@ export class ActionGroups {
   /** The SRD's own text of a creature's attack, under it (English); a character's attack has none shown. */
   protected rider(a: Attack): string {
     return a.key.includes('#') ? a.notes : '';
-  }
-
-  /** "1 uso", "2 usos", or "Gasta 1 ki · restam 3": what a use costs and what is left of the feature's resource. */
-  protected featureDetail(a: ActionOption): string {
-    return featureUsesText(a.action?.resourceKey ?? '', a.usesLeft);
   }
 
   /** A save cantrip (Chama Sagrada) is in the attacks, but it is cast. */

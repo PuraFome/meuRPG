@@ -316,6 +316,7 @@ The rules in `TableRules` (the proto lists the values):
 | `critical` | A critical hit: doubled dice (default) or the maximum plus a roll | `play` |
 | `death_saves` | Visible to all (default) or hidden from everyone but the owner and the master | `play` |
 | `feats_allowed` | Whether the level-up offers a feat in place of the ability increase. A sheet write is not gated by it. | `characters` |
+| `pick_swap_allowed` | Whether the level-up, at an Ability Score Improvement level, also offers to swap one earlier pick of a group for another of its pool. A sheet write is not gated by it. | `characters` |
 | `hidden_area_hits` | What an area spell does to the hiding of a hidden creature it hits: reveal (default), keep hidden, or ask the master | `play` |
 | `enemy_reactions` | Whether a player's action against an enemy waits for the master's one-tap answer only when an enemy has a reaction (default), or always | `play` |
 | `show_save_dc` | Whether the player who rolls a saving throw the app asks of them reads its DC too (default off: only the master, and a spell's caster's player). See [Table rules in combat](play/table-rules.md#the-dc-of-a-saving-throw) | `play` |

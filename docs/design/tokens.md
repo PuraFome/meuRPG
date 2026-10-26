@@ -39,6 +39,29 @@ These are single values, the same in both themes.
 | `--mr-map-fog` | `#000000` | Fog of war: what was never seen, and the darkening of what was |
 | `--mr-map-sample` | `#a8977a` | A sample of a map's floor under the legend swatches |
 
+### Dice tray tokens
+
+The dice tray of the roll overlay ([session.md](session.md#rolls)) is drawn on a canvas, which reads these tokens from the page.
+The paper die is the sheet's paper and ink; the garnet is the armour class shield's (`--mr-accent`), a darker one in the dark theme so a gold critical number keeps its contrast.
+Numbers are at least 4.5:1 against their face and a die's edge is at least 3:1 against the felt, in both themes; `tray-tokens.spec.ts` measures it from the values in `styles.scss`.
+
+| Token | Light | Dark | Use |
+| --- | --- | --- | --- |
+| `--mr-tray-felt` | `#a9bda3` | `#1d3327` | The tray's floor |
+| `--mr-tray-rim` | `#7a5232` | `#5b3d25` | The wooden rim (its light and dark edges are mixed from it) |
+| `--mr-tray-shadow` | `#26352a` | `#050d09` | The dice's shadows and the walls' shade on the felt |
+| `--mr-die-paper` | `#ffffff` | `#2a3140` | A paper die's face |
+| `--mr-die-paper-shade` | `#8d95a3` | `#0c1016` | The darker faces of a paper die |
+| `--mr-die-ink` | `#1b2230` | `#e6e9ef` | Numbers on a paper die |
+| `--mr-die-garnet` | `#9e2b3b` | `#8a2232` | A garnet die's face (the d20, the d100's tens die) |
+| `--mr-die-garnet-shade` | `#3a0e16` | `#2b0810` | The darker faces of a garnet die |
+| `--mr-die-on-garnet` | `#ffffff` | `#fdecee` | Numbers on a garnet die |
+| `--mr-die-edge` | `#1b2230` | `#e6e9ef` | The outline of a die |
+| `--mr-die-gold` | `#f8d36e` | `#f0c35a` | A critical: the glow, the number, the edge and the "Crítico!" label |
+| `--mr-die-on-gold` | `#2a1d02` | `#2a1d02` | Text on the gold label |
+
+The labels beside the dice ("descartado", "vale", "Falha crítica") use `--mr-surface`, `--mr-ink`, `--mr-accent-text`, `--mr-line` and `--mr-ink-muted`.
+
 ## Fonts
 
 Two OFL families, served by the app (`@fontsource/alegreya` and `@fontsource/alegreya-sans`, Latin subset, which covers Portuguese), woff2 only.

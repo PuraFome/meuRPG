@@ -143,6 +143,8 @@ function minimalDerivedSheet(): DerivedSheet {
     resistances: [],
     shieldIdle: false,
     size: '',
+    breathesWater: false,
+    grantedSpells: [],
   };
 }
 
@@ -333,6 +335,29 @@ describe('the sheet header names the race', () => {
       derived: { ...minimalDerivedSheet(), raceNamePt: 'Humano', subraceNamePt: '' },
     });
     expect(raceOnly.raceLabel).toBe('Humano');
+  });
+});
+
+describe('the sheet shows the other speeds and the water breathing', () => {
+  const character = () => characterWithFullSheet(minimalFullSheet());
+  const extrasOf = (derived: Partial<DerivedSheet>) => {
+    const vm = toCharacterSheetVm({
+      ...character(),
+      derived: { ...minimalDerivedSheet(), ...derived },
+    });
+    if (vm.sheet.kind !== 'full') throw new Error('expected a full sheet');
+    return vm.sheet.speedExtras;
+  };
+
+  it('lists each speed above 0 in meters and feet, in a fixed order, then "Respira na água"', () => {
+    const lines = extrasOf({ speedSwimFt: 30, speedFlyFt: 10, breathesWater: true }).map((l) =>
+      l.replace(/\s/g, ' '),
+    );
+    expect(lines).toEqual(['Voo 3 m (10 pés)', 'Natação 9 m (30 pés)', 'Respira na água']);
+  });
+
+  it('has nothing for a character with only a walking speed', () => {
+    expect(extrasOf({})).toEqual([]);
   });
 });
 

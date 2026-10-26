@@ -6,6 +6,7 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
   CastingEffectKind,
+  CastingGrantSchema,
   CastingReachSchema,
   GetCastOptionsResponseSchema,
   OutsideCastStatus,
@@ -207,6 +208,120 @@ describe('CastOutSheet (MR-048)', () => {
     expect(el.querySelector('app-slot-picker')).toBeNull();
     await click('button.cast');
     expect(api.casts[0].req).toMatchObject({ asRitual: true, slot: null });
+  });
+
+  describe('a spell a granted effect gives', () => {
+    const grant = (extra: Record<string, unknown> = {}) =>
+      create(CastingGrantSchema, {
+        sourceKey: 'feat:graca@mesa',
+        sourceNamePt: 'Graça de teste',
+        atWill: true,
+        ready: true,
+        ability: 'cha',
+        attackBonus: 6,
+        saveDc: 14,
+        ...extra,
+      });
+    const bless = (grants: ReturnType<typeof grant>[], extra: Record<string, unknown> = {}) =>
+      castingSpell('spell:bless', 'Bênção', 1, { grants, maxTargets: 3, ...extra });
+
+    it('casts it through the grant with no slot, naming the grant and showing its numbers', async () => {
+      const { el, api, click } = await setup(
+        withSpells(bless([grant()], { canCast: false, slots: [] })),
+      );
+      await click('label.row', 'Bênção');
+      expect(el.querySelector('app-slot-picker')).toBeNull();
+      expect(plain(el.textContent)).toContain('Carisma · CD 14 · ataque +6');
+      await click('label.row', 'Toren');
+      await click('button.cast');
+      expect(api.casts[0].req).toMatchObject({
+        grantedBy: 'feat:graca@mesa',
+        asRitual: false,
+        slot: null,
+      });
+    });
+
+    it('offers the class way and each grant, with the uses left, and sends the one picked', async () => {
+      const limited = grant({ atWill: false, resource: 'usos', usesLeft: 1 });
+      const { el, api, click } = await setup(withSpells(bless([limited])));
+      await click('label.row', 'Bênção');
+      expect(plain(el.textContent)).toContain('Com espaço de magia');
+      expect(plain(el.textContent)).toContain('Graça de teste');
+      expect(plain(el.textContent)).toContain('1 uso restante');
+      await click('label.row', 'Graça de teste');
+      expect(el.querySelector('app-slot-picker')).toBeNull();
+      await click('label.row', 'Toren');
+      await click('button.cast');
+      expect(api.casts[0].req).toMatchObject({ grantedBy: 'feat:graca@mesa', slot: null });
+    });
+
+    it('turns a grant with no use left off, and the spell stays castable by the class', async () => {
+      const spent = grant({ atWill: false, resource: 'usos', usesLeft: 0, ready: false });
+      const { el, click } = await setup(withSpells(bless([spent])));
+      await click('label.row', 'Bênção');
+      const row = Array.from(el.querySelectorAll('label.row')).find((r) =>
+        r.textContent?.includes('Graça de teste'),
+      );
+      expect(row?.classList.contains('row--off')).toBe(true);
+      expect(plain(row?.textContent)).toContain('Sem usos restantes');
+    });
+
+    it('casts through a grant with a slot only when the grant allows one, spending no use', async () => {
+      const both = grant({
+        alsoWithSlot: true,
+        atWill: false,
+        resource: 'usos',
+        usesLeft: 0,
+        ready: false,
+      });
+      const { el, api, click } = await setup(
+        withSpells(
+          bless([both], {
+            canCast: false,
+            slots: [create(SlotChoiceSchema, { level: 1, free: 1 })],
+          }),
+        ),
+      );
+      await click('label.row', 'Bênção');
+      await click('label.row', 'com espaço de magia');
+      expect(el.querySelector('app-slot-picker')).not.toBeNull();
+      await click('app-slot-picker label.row');
+      await click('label.row', 'Toren');
+      await click('button.cast');
+      expect(api.casts[0].req).toMatchObject({
+        grantedBy: 'feat:graca@mesa',
+        slot: { level: 1, pact: false },
+      });
+    });
+
+    it('casts a ritual-only grant as a ritual', async () => {
+      const ritual = grant({ ritualOnly: true });
+      const { el, api, click } = await setup(
+        withSpells(
+          castingSpell('spell:alarm', 'Alarme', 1, {
+            canCast: false,
+            slots: [],
+            grants: [ritual],
+            ritualMinutes: 11,
+            castingMinutes: 1,
+          }),
+        ),
+      );
+      await click('label.row', 'Alarme');
+      await click('button.cast');
+      expect(api.casts[0].req).toMatchObject({
+        grantedBy: 'feat:graca@mesa',
+        asRitual: true,
+        slot: null,
+      });
+      expect(el.querySelector('app-slot-picker')).toBeNull();
+    });
+
+    it('lists a spell that has only an at-will grant as castable', async () => {
+      const { el } = await setup(withSpells(bless([grant()], { canCast: false, slots: [] })));
+      const row = el.querySelector('label.row');
+      expect(row?.classList.contains('row--off')).toBe(false);
+    });
   });
 
   it('asks before a concentration ends another one, and casts nothing if cancelled', async () => {

@@ -56,6 +56,10 @@ export function ruleRows(d: RulesDraft, xpMode: XpMode): { label: string; value:
       value: titleOf(HIDDEN_AREA_OPTIONS, d.hiddenAreaHits),
     },
     { label: 'Talentos', value: d.featsAllowed ? 'Permitidos' : 'Não usados' },
+    {
+      label: 'Troca de escolha no aumento de atributo',
+      value: d.pickSwapAllowed ? 'Permitida' : 'Não usada',
+    },
     { label: 'Reações dos inimigos', value: titleOf(ENEMY_REACTION_OPTIONS, d.enemyReactions) },
     {
       label: 'CD dos testes de resistência',

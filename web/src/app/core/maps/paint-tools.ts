@@ -4,8 +4,8 @@ import { tight } from '../format/text';
 import { squaresText } from '../units';
 import { type DoorKind, type MapLayers, doorCounts, lightCount } from './layers';
 
-/** The five tools of "Pintar" (E9-01, and "Porta" of Etapa 10). */
-export type PaintTool = 'terrain' | 'wall' | 'cover' | 'light' | 'door';
+/** The tools of "Pintar" (E9-01, "Porta", "Não dá para passar" of B2). */
+export type PaintTool = 'terrain' | 'wall' | 'cover' | 'light' | 'nopass' | 'door';
 
 /** How much cover a stroke paints: the layer's own values (1 half, 2 three-quarters). */
 export type CoverDegree = 1 | 2;
@@ -39,6 +39,7 @@ export const TOOL_LABEL: Readonly<Record<PaintTool, string>> = {
   wall: 'Parede',
   cover: 'Cobertura',
   light: 'Luz',
+  nopass: 'Não dá para passar',
   door: 'Porta',
 };
 
@@ -65,6 +66,7 @@ const LAYER: Readonly<Record<PaintTool, MapLayer>> = {
   wall: MapLayer.WALL,
   cover: MapLayer.COVER,
   light: MapLayer.LIGHT,
+  nopass: MapLayer.NO_PASS,
   door: MapLayer.DOORS,
 };
 
@@ -202,8 +204,23 @@ export function layerLines(l: MapLayers): readonly LayerLine[] {
           ? `${squaresText(light)} ${light === 1 ? 'pintado' : 'pintados'}`
           : 'nada pintado',
     },
+    noPassLine(l),
     { tool: 'door', name: 'Portas', count: doors, detail: doorsText(l) },
   ];
+}
+
+/** "Não dá para passar": nobody walks into a marked square, but sight and light pass. */
+function noPassLine(l: MapLayers): LayerLine {
+  const count = l.noPass?.length ?? 0;
+  return {
+    tool: 'nopass',
+    name: 'Não dá para passar',
+    count,
+    detail:
+      count > 0
+        ? tight(`${squaresText(count)} · bloqueia o movimento, não a visão`)
+        : 'nada pintado',
+  };
 }
 
 /** "3 portas · 1 trancada": how many doors, and the ones the master should not forget. */

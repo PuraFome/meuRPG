@@ -29,6 +29,8 @@ export interface RequestSource {
   readonly skills: ReadonlySet<string>;
   readonly expertise: ReadonlySet<string>;
   readonly instrument: string;
+  /** The swap of a pick at an Ability Score Improvement, once whole. */
+  readonly swapPick?: LevelUpChoicesInit['swapPick'];
   readonly lateDrafts: ChoiceDrafts;
   readonly newDrafts: ChoiceDrafts;
 }
@@ -72,6 +74,7 @@ export function choicesRequest(d: RequestSource, hp: Rolled | null): LevelUpChoi
     skillProficiencyKeys: [...d.skills],
     expertiseSkillKeys: [...d.expertise],
     instrumentKey: d.instrument,
+    ...(d.swapPick ? { swapPick: d.swapPick } : {}),
     hitPoints: hitPointsOf(hp),
   };
 }

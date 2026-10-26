@@ -29,6 +29,14 @@ import (
 // for a character that is not one of the campaign's living ones, or a spell the
 // content does not have.
 func (s *Service) CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, characterID, spellKey string, slotLevel int, damageType string) (link.Spell, error) {
+	return s.GrantedCombatSpell(ctx, tx, campaignID, characterID, spellKey, "", slotLevel, damageType)
+}
+
+// GrantedCombatSpell is CombatSpell for a spell cast through the granted_spell effect of
+// the trait, feat or feature `source` ("" for a spell of the character's classes): the
+// spell attack bonus, the save DC and the healing modifier are the grant's own. `not_found`
+// when the character has no such grant.
+func (s *Service) GrantedCombatSpell(ctx context.Context, tx pgx.Tx, campaignID, characterID, spellKey, source string, slotLevel int, damageType string) (link.Spell, error) {
 	_, d, content, err := s.fighter(ctx, tx, campaignID, characterID)
 	if err != nil {
 		return link.Spell{}, err
@@ -37,11 +45,19 @@ func (s *Service) CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, charac
 	if !ok {
 		return link.Spell{}, connect.NewError(connect.CodeNotFound, errUnknownSpell)
 	}
+	var grant *rules.GrantedSpell
+	if source != "" {
+		i := slices.IndexFunc(d.GrantedSpells, func(g rules.GrantedSpell) bool { return g.Spell.Key == spellKey && g.Source == source })
+		if i < 0 || d.GrantedSpells[i].AbilityPending {
+			return link.Spell{}, connect.NewError(connect.CodeNotFound, errUnknownSpell)
+		}
+		grant = &d.GrantedSpells[i]
+	}
 	// The phases run in this order on purpose: a later one may clear what an
 	// earlier one set (a hit point effect drops the damage and the heal, a spell
 	// that only reaches the caster drops the saving throw).
 	out := spellBasics(d, det)
-	mod := spellCasterNumbers(&out, d, det)
+	mod := spellCasterNumbers(&out, d, det, grant)
 	spellRolls(&out, d, det, slotLevel, damageType, mod)
 	spellHitPointEffect(&out, content, spellKey, slotLevel)
 	spellKinds(&out, content, d, det, spellKey)
@@ -80,9 +96,16 @@ func spellBasics(d rules.Derived, det *rules.SpellDetails) link.Spell {
 // saving throw, and returns the spellcasting ability's modifier (what a heal
 // adds). The class that casts it is the first that has it on its list, or the
 // first class that casts at all (as the sheet's own attacks pick it).
-func spellCasterNumbers(out *link.Spell, d rules.Derived, det *rules.SpellDetails) int {
+func spellCasterNumbers(out *link.Spell, d rules.Derived, det *rules.SpellDetails, grant *rules.GrantedSpell) int {
 	var mod int
-	if sc := casterFor(d, det.Spell.Classes); sc != nil {
+	if grant != nil {
+		// A granted spell is cast with the grant's ability, whatever the classes cast with.
+		mod = abilityMod(d, grant.Ability)
+		if det.AttackType != "" {
+			out.ToHit = grant.AttackBonus
+		}
+		out.SaveDC, out.CasterDC = grant.SaveDC, grant.SaveDC
+	} else if sc := casterFor(d, det.Spell.Classes); sc != nil {
 		mod = abilityMod(d, sc.Ability)
 		if det.AttackType != "" {
 			out.ToHit = sc.AttackBonus

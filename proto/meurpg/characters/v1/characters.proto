@@ -802,7 +802,7 @@ service CharacterService {
   }
 
   // ListCharacterCreatures lists a character's creatures that are still with
-  // it (MR-037, Etapa 9): its familiar, the animals and undead it summoned that
+  // it (MR-037): its familiar, the animals and undead it summoned that
   // the table has not dismissed, the creatures the master gave. They live
   // from one session to the next until the player or the master dismisses
   // them (the app does not count a spell's duration). Each is a kind of
@@ -825,7 +825,7 @@ service CharacterService {
   }
 
   // ListWildShapeForms lists the beasts a druid's Wild Shape allows now
-  // (MR-037, Etapa 9): the SRD beasts of the challenge rating, without the fly
+  // (MR-037): the SRD beasts of the challenge rating, without the fly
   // or swim speed, that the character's Wild Shape features give at its level
   // (level 2: up to 1/4, no fly or swim; 4: up to 1/2, no fly; 8: up to 1),
   // sorted by Portuguese name. Empty for a character without Wild Shape. The
@@ -903,8 +903,8 @@ service CharacterService {
   //   - `failed_precondition` (CharacterBlocked): CREATURE_IN_COMBAT.
   rpc AdjustCreatureHitPoints(AdjustCreatureHitPointsRequest) returns (AdjustCreatureHitPointsResponse);
 
-  // GetSummonOptions says what a character can summon from its sheet (MR-037,
-  // Etapa 9), for the "Criaturas" panel's casting sheet: the summoning spells
+  // GetSummonOptions says what a character can summon from its sheet (MR-037),
+  // for the "Criaturas" panel's casting sheet: the summoning spells
   // it can cast (Convocar Familiar, Animar Mortos, Conjurar Animais), how
   // (as a ritual, with a slot, or both), what each one may bring at each circle
   // it can use, the slots it has, and what a casting would send away. The
@@ -1657,12 +1657,12 @@ message BasicSheet {
   // Walking speed in feet: 0 to 300. The app shows it in metres
   // (5 ft = 1.5 m).
   int32 speed_ft = 3;
-  // Legacy, read only for sheets saved before Etapa 6. When the server
+  // Legacy, read only for sheets saved before the attacks list existed. When the server
   // reads such a sheet and can turn damage into an attack, it moves both
   // fields into attacks and clears them here. A write that has attacks
   // clears them. The attack bonus of the old main attack: -10 to +30.
   int32 attack_bonus = 4;
-  // Legacy, read only for sheets saved before Etapa 6 (see attack_bonus).
+  // Legacy, read only for sheets saved before the attacks list existed (see attack_bonus).
   // The old free text damage, such as "1d6+2 cortante": 0 to 40 characters,
   // one line. It stays only while it could not become an attack.
   string damage = 5;
@@ -2442,6 +2442,13 @@ message LevelUpOptions {
   // True for a warlock that knows an invocation: at each level of the class one may be
   // replaced by another (LevelUpChoices.swap_invocation_key).
   bool can_swap_invocation = 43;
+  // The groups of picks the level may swap one in (a cantrip, a fighting style, a
+  // metamagic option, an invocation, a pact boon), at a level with an Ability Score
+  // Improvement, when the table plays with the rule "Trocar uma escolha no aumento de
+  // atributo" (TableRules.pick_swap_allowed). Empty at the other levels and where the
+  // rule is off. The swap is LevelUpChoices.swap_pick; the warlock's own invocation
+  // swap stays can_swap_invocation.
+  repeated LevelUpSwapGroup swap_groups = 44;
 
   // Multiclassing (SRD 5.1, "Multiclassing"). is_new_class says the character
   // does not have class_key: the level is the class's first (from_level 0), the hit
@@ -2612,6 +2619,25 @@ message LevelUpFeatureChoice {
   repeated LevelUpBlockedOption blocked = 5;
 }
 
+// LevelUpSwapGroup is a group of picks one of which the level may swap for another.
+message LevelUpSwapGroup {
+  // The group: "cantrip", "fighting_style", "metamagic", "invocation" or "pact_boon".
+  string group = 1;
+  string name_pt = 2;
+  // The picks the character has in the group, which it may give up.
+  repeated LevelUpNamedKey picks = 3;
+  // What it may take instead: the pool of the group (the SRD's and the table's options)
+  // without the picks it has. Prerequisites are checked when the level is taken.
+  repeated LevelUpNamedKey pool = 4;
+}
+
+// LevelUpPickSwap is the swap asked for: from_key, a pick of the group, becomes to_key.
+message LevelUpPickSwap {
+  string group = 1;
+  string from_key = 2;
+  string to_key = 3;
+}
+
 // LevelUpBlockedOption is an option of a feature that the character cannot take now.
 message LevelUpBlockedOption {
   LevelUpNamedKey option = 1;
@@ -2686,6 +2712,9 @@ message LevelUpChoices {
   // An Eldritch Invocation the warlock gives up for another one in feature_choice_keys:
   // at most one at each level (SRD 5.1, Warlock). Never the Pact Boon.
   string swap_invocation_key = 15;
+  // One pick given up for another of the same group, at a level with an Ability Score
+  // Improvement, when the table allows it (TableRules.pick_swap_allowed). Unset for none.
+  LevelUpPickSwap swap_pick = 16;
 }
 
 // LevelUpRefusalReason says why the rules refuse a set of choices, so the app
@@ -2779,6 +2808,10 @@ enum LevelUpRefusalReason {
   // A choice an earlier level left open is still open (LevelUpOptions.late_choices).
   // `field` is "full.feature_choice_keys".
   LEVEL_UP_REFUSAL_REASON_LATE_CHOICE_MISSING = 29;
+  // A swap of a pick was asked where the table does not use the rule, at a level with
+  // no Ability Score Improvement, or for a pick or pool option the group does not offer.
+  // `field` is "choices.swap_pick".
+  LEVEL_UP_REFUSAL_REASON_SWAP_NOT_ALLOWED = 30;
 }
 
 // LevelUpRefusal is the first rule the choices break: the sheet field and a

@@ -404,6 +404,9 @@ func levelUpOptionsFor(m authz.Membership, r levelUpOptionsRead) *charactersv1.L
 	out := levelUpOptionsToProto(r.offer)
 	out.ClassChoices = classChoicesToProto(t.content, m, rules.LevelUpClasses(t.build, t.content))
 	out.Feats = featOptionsToProto(r.offer.Feats, t.rules.FeatsAllowed, isMaster(m))
+	if !t.rules.PickSwapAllowed {
+		out.SwapGroups = nil // the table does not use the swap rule
+	}
 	if !isMaster(m) {
 		hideFromPlayer(out, t)
 	}
@@ -422,6 +425,10 @@ func hideFromPlayer(out *charactersv1.LevelUpOptions, t levelUpTarget) {
 	out.Subclasses = slices.DeleteFunc(out.Subclasses, func(sub *charactersv1.LevelUpSubclass) bool {
 		return (sub.GetArchived() || sub.GetOff()) && !slices.ContainsFunc(t.build.Classes, func(c rules.ClassLevel) bool { return c.Subclass == sub.GetKey() })
 	})
+	// Nor an option to swap to that the master retired or switched off.
+	for _, g := range out.SwapGroups {
+		g.Pool = slices.DeleteFunc(g.Pool, func(k *charactersv1.LevelUpNamedKey) bool { return t.content.Hidden(k.GetKey()) })
+	}
 	// Nor a reference to a hidden class the sheet does not use (a list a table
 	// class or subclass reuses).
 	if hiddenListOf(t, out.GetSpellListClassKey()) {
@@ -917,7 +924,7 @@ func levelUpChoicesFromProto(classKey string, c *charactersv1.LevelUpChoices, hp
 		Class: classKey, Subclass: c.GetSubclassKey(),
 		Cantrips: c.GetCantripKeys(), Spells: c.GetKnownSpellKeys(), Prepared: c.GetPreparedSpellKeys(),
 		FeatureChoices: c.GetFeatureChoiceKeys(), SkillProficiencies: c.GetSkillProficiencyKeys(), Expertise: c.GetExpertiseSkillKeys(),
-		LateChoices: c.GetLateChoiceKeys(), FeatureChoiceText: c.GetFeatureChoiceText(), SwapInvocation: c.GetSwapInvocationKey(),
+		LateChoices: c.GetLateChoiceKeys(), FeatureChoiceText: c.GetFeatureChoiceText(), SwapInvocation: c.GetSwapInvocationKey(), Swap: pickSwapFromProto(c.GetSwapPick()),
 		Feat: c.GetFeatKey(), HitPoints: hp, Instrument: c.GetInstrumentKey(),
 	}
 	for a, v := range abilityMap(c.GetAbilityIncrease()) {
@@ -1001,7 +1008,7 @@ func levelUpOptionsToProto(o rules.LevelUpOffer) *charactersv1.LevelUpOptions {
 		PactMagicBefore: pactMagicToProto(o.PactBefore), PactMagicAfter: pactMagicToProto(o.PactAfter),
 		NewFeatures: levelUpNamedKeysToProto(o.NewFeatures), MasterAdds: levelUpNamedKeysToProto(o.MasterAdds), AnyClassSpells: i32(o.AnyClassSpells),
 		LateChoices: choiceGroupsToProto(o.LateChoices), NewChoices: choiceGroupsToProto(o.NewChoices),
-		CanSwapInvocation: o.CanSwapInvocation,
+		CanSwapInvocation: o.CanSwapInvocation, SwapGroups: swapGroupsToProto(o.PickSwaps),
 	}
 	out.SpellsKind = spellsKindOf(o.SpellsKind)
 	out.IsNewClass = o.NewClass
@@ -1013,6 +1020,22 @@ func levelUpOptionsToProto(o rules.LevelUpOffer) *charactersv1.LevelUpOptions {
 }
 
 // levelUpNamedKeysToProto copies named keys into the message; none gives nil.
+// swapGroupsToProto turns the groups of picks a level may swap one in.
+func swapGroupsToProto(groups []rules.SwapGroup) []*charactersv1.LevelUpSwapGroup {
+	var out []*charactersv1.LevelUpSwapGroup
+	for _, g := range groups {
+		out = append(out, &charactersv1.LevelUpSwapGroup{
+			Group: g.Group, NamePt: g.NamePT, Picks: levelUpNamedKeysToProto(g.Picks), Pool: levelUpNamedKeysToProto(g.Pool),
+		})
+	}
+	return out
+}
+
+// pickSwapFromProto is the swap asked for; the zero value for none.
+func pickSwapFromProto(s *charactersv1.LevelUpPickSwap) rules.PickSwap {
+	return rules.PickSwap{Group: s.GetGroup(), From: s.GetFromKey(), To: s.GetToKey()}
+}
+
 func levelUpNamedKeysToProto(keys []rules.NamedKey) []*charactersv1.LevelUpNamedKey {
 	var out []*charactersv1.LevelUpNamedKey
 	for _, k := range keys {

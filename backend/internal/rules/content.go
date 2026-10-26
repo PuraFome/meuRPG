@@ -128,6 +128,12 @@ type content struct {
 	// optionParents maps an option that 5e-database lists only in its
 	// parent's options (no "parent" field) to that parent.
 	optionParents map[string]string
+	// optionSet says, for each table option (a key "option:<set>:<slug>@mesa"), the
+	// set it joins, and optionPrereq what it asks of the character (overlay_option.go).
+	optionSet map[string]string
+	// classFeatureOf says, for each table class feature, the class and the level it is at.
+	classFeatureOf map[string]ClassFeatureEntry
+	optionPrereq   map[string]TableOptionPrerequisite
 
 	// The table's layer (overlay.go); every one of these is empty in the
 	// SRD content.
@@ -612,10 +618,10 @@ func (c *content) effectOwnerExists(key string) bool {
 			}
 		}
 		return false
-	case strings.HasPrefix(key, "feature:"), strings.HasPrefix(key, "trait:"),
+	case strings.HasPrefix(key, featureKeyPrefix), strings.HasPrefix(key, "trait:"),
 		strings.HasPrefix(key, "background:"), strings.HasPrefix(key, "race:"), strings.HasPrefix(key, "feat:"),
 		strings.HasPrefix(key, "subrace:"), strings.HasPrefix(key, "class:"),
-		strings.HasPrefix(key, "subclass:"):
+		strings.HasPrefix(key, "subclass:"), strings.HasPrefix(key, OptionKeyPrefix), strings.HasPrefix(key, ClassFeatureKeyPrefix):
 		return c.exists(key)
 	}
 	return false

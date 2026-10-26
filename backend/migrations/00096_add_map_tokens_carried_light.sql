@@ -1,5 +1,5 @@
 -- +goose Up
--- carried_light is the light a character carries on a map (MR-036, Etapa 9, D6):
+-- carried_light is the light a character carries on a map (MR-036, D6):
 -- the key of a light preset ("light:torch", "light:hooded-lantern"), or NULL for
 -- none. It moves with the token. The player sets it for their own character and
 -- the master for anyone. Only the master and the character's own player read it

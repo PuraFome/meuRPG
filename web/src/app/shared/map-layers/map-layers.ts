@@ -4,13 +4,13 @@ import type { DoorKind, MapLayers } from '../../core/maps/layers';
 import { DoorMark } from './door-mark';
 
 /**
- * The map's painted layers drawn over its image (Etapa 9, docs/design/README.md),
+ * The map's painted layers drawn over its image (docs/design/README.md),
  * the same on every map of the app: **Parede** the dark diagonal hatch,
- * **Terreno difícil** the cross hatch, **Cobertura** a pictogram in the middle
+ * **Terreno difícil** the cross hatch, **Não dá para passar** a checkerboard (it blocks movement, not sight), **Cobertura** a pictogram in the middle
  * of the square (a dotted square filled from the bottom to one half, "Meia
  * cobertura", or to three quarters, "Três quartos"). Each mark has a name in
  * `MapLayersLegend`: never colour alone, and never an object's name, because
- * the app knows only the degree. The **doors** (Etapa 10, `app-door-mark`) are one mark per kind, drawn only as they arrive:
+ * the app knows only the degree. The **doors** (`app-door-mark`) are one mark per kind, drawn only as they arrive:
  * a player's layers have no padlock and no secret door.
  *
  * Presentational and pure drawing: it takes the decoded squares
@@ -45,6 +45,9 @@ export interface BrushCursor {
     }
     @for (s of layers().walls; track s.row * 1000 + s.col) {
       <span class="sq sq--wall" [style.left.%]="x(s.col)" [style.top.%]="y(s.row)"></span>
+    }
+    @for (s of layers().noPass ?? []; track s.row * 1000 + s.col) {
+      <span class="sq sq--nopass" [style.left.%]="x(s.col)" [style.top.%]="y(s.row)"></span>
     }
     @for (d of layers().doors ?? []; track d.row * 1000 + d.col) {
       <span class="sq sq--door" [style.left.%]="x(d.col)" [style.top.%]="y(d.row)"><app-door-mark [state]="d.state" [axis]="d.axis" /></span>

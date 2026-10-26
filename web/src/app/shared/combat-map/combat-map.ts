@@ -74,10 +74,10 @@ export interface TokenDrop extends Square {
  *
  * - **Who is drawn:** the combatants that have a square. A player never gets a
  *   hidden one from the server; the master's hidden ones are drawn dashed.
- * - **Fog (Etapa 9):** a player's map with the fog on is `app-fog-base` (the tiles, the layers and the
+ * - **Fog:** a player's map with the fog on is `app-fog-base` (the tiles, the layers and the
  *   shading of what they see) instead of the image; the combatants are what the server sends them.
- * - **Layers (Etapa 9):** the walls, the difficult terrain and the cover, drawn
- *   by `app-map-layers` over the image, and the doors (Etapa 10), one mark per kind; with `doorPicks` the master taps a door.
+ * - **Layers:** the walls, the difficult terrain and the cover, drawn
+ *   by `app-map-layers` over the image, and the doors, one mark per kind; with `doorPicks` the master taps a door.
  * - **Reach (E6-10, docs/design/README.md):** the squares the server says a combatant
  *   can go to, tinted, inside a dashed circle of the movement left. A square the
  *   circle holds that is not tinted gets no mark of its own.
@@ -283,6 +283,12 @@ export class CombatMap {
 
   protected creature(c: Combatant): boolean {
     return isCreature(c);
+  }
+
+  /** A tap on a creature's button while choosing a target: the square under the pointer decides (see `tappedCreature`). */
+  protected tapPick(event: MouseEvent, id: string): void {
+    const boxes = this.shown().map((c) => ({ id: c.id, ...this.anchor(c), span: this.span(c) }));
+    this.layer.tapped(event, id, boxes, (hit) => this.pickTap.emit(hit));
   }
 
   /** How many squares a side of the token is drawn on: Large is 2, Huge 3, Gargantuan 4 (the picture only: the server still counts one square). */

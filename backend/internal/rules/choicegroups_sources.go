@@ -154,7 +154,7 @@ func (cb *choiceBuilder) featureSpecialChoice(g *groupBuild, fk string) {
 		cb.spellMastery(g)
 	case fk == "feature:signature-spell":
 		cb.signatureSpells(g)
-	case fk == "feature:pact-boon":
+	case fk == pactBoonKey:
 		if slices.Contains(cb.plain, "feature:pact-of-the-tome") {
 			cb.tomeCantrips(g)
 		}

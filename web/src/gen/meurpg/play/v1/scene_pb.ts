@@ -2,7 +2,7 @@
 // @generated from file meurpg/play/v1/scene.proto (package meurpg.play.v1, syntax proto3)
 /* eslint-disable */
 
-// The RP scene during a game session (MR-015, Etapa 7): the scene the master
+// The RP scene during a game session (MR-015): the scene the master
 // opens, what each member sees of it, and the checks the players roll. The
 // RPCs are PlayService's (play.proto); the messages are here. The scene's
 // actions are kept on the map point (meurpg.maps.v1.MapService,
@@ -1241,8 +1241,8 @@ export enum SceneBlockedReason {
   UNSPECIFIED = 0,
 
   /**
-   * Unused: it was OpenScene's refusal of a point with no actions in Etapa
-   * 7. Since Etapa 8 (question 63) any SCENE point opens, even with no
+   * Unused: it was OpenScene's refusal of a point with no actions
+   * at first. Since then (question 63) any SCENE point opens, even with no
    * actions, so the server never sends it. The value stays so the numbers
    * do not change.
    *

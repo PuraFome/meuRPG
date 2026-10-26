@@ -41,6 +41,7 @@ const saved: RulesDraft = {
   featsAllowed: true,
   enemyReactions: EnemyReactionsRule.ALWAYS,
   showSaveDc: false,
+  pickSwapAllowed: false,
   houseRules: ['Beber uma poção é uma ação bônus'],
 };
 
@@ -128,9 +129,9 @@ describe('TableRulesPage, the save DC rule', () => {
     expect(hint).toContain('Quem conjurou vê a CD da própria magia');
     // The fog switch and this one are two controls with their own names.
     const switches = el.querySelectorAll('button[role="switch"]');
-    expect(switches).toHaveLength(2);
+    expect(switches).toHaveLength(3);
     expect(new Set(Array.from(switches).map((b) => b.getAttribute('aria-labelledby'))).size).toBe(
-      2,
+      3,
     );
   });
 

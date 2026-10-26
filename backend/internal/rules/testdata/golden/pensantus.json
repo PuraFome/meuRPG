@@ -269,6 +269,7 @@
   "SpeedClimbFt": 0,
   "SpeedBurrowFt": 0,
   "Hover": false,
+  "BreathesWater": false,
   "Senses": [
     {
       "Key": "darkvision",
@@ -617,6 +618,7 @@
       "Prepared": true
     }
   ],
+  "GrantedSpells": null,
   "Attacks": [
     {
       "Key": "equipment:quarterstaff",

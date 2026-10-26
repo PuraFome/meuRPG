@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-// This file is the combat's API (MR-012, MR-013, MR-014, Etapa 6): the
+// This file is the combat's API (MR-012, MR-013, MR-014): the
 // encounter, who fights, the initiative, the order of turns, the movement on
 // the map's grid, what a turn can do, the attacks and their damage, the
 // spells (slots, saving throws, healing, concentration), the reactions
@@ -708,7 +708,9 @@ service CombatService {
   //     attacker's own turn.
   //   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN
   //     (the attacker is not on turn; not for as_reaction), ACTION_USED or
-  //     ATTACKS_USED (a player), REACTION_USED (as_reaction, a player),
+  //     ATTACKS_USED (a player), ATTACKS_USED (the master's NPC made as many
+  //     attacks as its creature's Multiattack has; other NPCs are not held to a
+  //     count), REACTION_USED (as_reaction, a player),
   //     COMBATANT_DOWN,
   //     TARGET_DEFEATED, NOT_PLACED (a player without a square, or a target
   //     without one), TARGET_OUT_OF_REACH (with missing_ft) and WRONG_DICE_MODE.
@@ -1483,7 +1485,7 @@ enum CombatantKind {
   COMBATANT_KIND_PLAYER = 1;
   // A copy of an NPC.
   COMBATANT_KIND_NPC = 2;
-  // One of a character's creatures (MR-037, Etapa 9): a familiar, summoned
+  // One of a character's creatures (MR-037): a familiar, summoned
   // animals or undead, a creature the master gave. It belongs to a player's
   // character (`owner_character_id`), is controlled by that character's player
   // and by the master, fights on the party's side and keeps its hit points on
@@ -3881,6 +3883,17 @@ message TakeActionRequest {
   // above the limit (CHANNEL_DIVINITY_TOO_MUCH). With no entry the points go to the cleric's side, the creature
   // hurt the most in proportion first, each as far as half its maximum. Ignored by any other action.
   repeated PreserveLifeHeal preserve_life = 102;
+  // A feature action of the table's content that spends several points of its resource and lets the player choose
+  // (Action.cost_max above Action.cost): how many to spend, from `cost` to `cost_max` or what is left. 0 takes the
+  // cost, the least. The server reads the points left in the same transaction as the use and refuses a number outside
+  // the range with `invalid_argument` (nothing is spent); it never trusts the client with more than this number.
+  // Ignored by an action whose cost is fixed.
+  int32 spend = 103;
+  // A feature action of the table's content that heals or gives temporary hit points (Action.heal, Action.temp_hp):
+  // the combatant that gets them, the actor itself or one ally (another player's character). Empty: the actor. An NPC,
+  // a creature or a combatant the caller does not see is refused with `invalid_argument`; a dead target with
+  // `failed_precondition` (EncounterBlocked TARGET_DEAD), and then nothing is spent. Ignored by any other action.
+  string heal_target_combatant_id = 104;
 }
 
 // PreserveLifeHeal is the hit points the cleric gives one creature with Preserve Life.
@@ -3903,6 +3916,31 @@ message TakeActionResponse {
   // (Preserve Life) or each undead's saving throw and whether it was turned (Turn Undead). Unset for any other
   // action.
   ChannelDivinityResult channel_divinity = 4;
+  // A feature action of the table's content: the points of its resource the use spent (the `spend` picked, or the
+  // cost). Unset for any other action.
+  optional int32 spent = 5;
+  // A feature action that gives temporary hit points: how many the target gained (they do not stack: the larger
+  // number is kept, so it can be less than the action gives, or 0). Unset when the action gives none. For the master
+  // and the combatant's player, like `healed`.
+  optional int32 temp_hp_gained = 6;
+}
+
+// HookResult is what an on_event hook of the character did (a rest, a failed death save, dropping to 0 hit points):
+// the feature that has it and what it gave. The numbers follow the audience of the line that carries it; the name does
+// too.
+message HookResult {
+  // The feature, trait or feat that has the hook, in Portuguese. Empty where the line cannot name it: `source` is its key.
+  string source_name_pt = 1;
+  // The hit points regained (up to the maximum) and the temporary hit points gained.
+  int32 healed = 2;
+  int32 temp_hp_gained = 3;
+  // The resource the hook spent and how many uses, and the one it restored and how many came back.
+  string spent_resource = 4;
+  int32 spent = 5;
+  string restored_resource = 6;
+  int32 restored = 7;
+  // The content key of the feature that has the hook ("feat:..."), for the clients that name it themselves.
+  string source = 8;
 }
 
 // ChannelDivinityResult is what a Channel Divinity action did, creature by creature.
@@ -4105,6 +4143,12 @@ message CastSpellRequest {
   // caster back. It is `invalid_argument` for any other spell, and in a combat
   // without a map.
   SpellOrigin destination = 32;
+  // The trait, feat or feature whose granted_spell effect casts the spell (the
+  // `grant.source_key` of the turn option): the cast takes no slot, spends a use of the
+  // grant's resource unless it is at will, the spell is cast at its own level and the spell
+  // attack and the save DC are the grant's. With a `slot` it casts through the slot instead
+  // (when the grant allows it). Empty for a spell of the character's classes.
+  string granted_by = 33;
 }
 
 // MetamagicChoice is one Metamagic option on a casting.
@@ -4191,6 +4235,8 @@ message PreviewSpellAreaRequest {
     SpellOrigin origin = 6;
     SpellDirection direction = 7;
   }
+  // As CastSpellRequest.granted_by: the grant the spell would be cast through ("" for a spell of the classes).
+  string granted_by = 8;
 }
 
 // PreviewSpellAreaResponse is who an area reaches.
@@ -4649,6 +4695,10 @@ message DeathSave {
   // The Bardic Inspiration die the player added to the d20 (SRD 5.1), when one was used: it moves the total, never the
   // natural 1 (two failures) or the natural 20 (back with 1 hit point).
   repeated BonusDie bonus_dice = 7;
+  // The hook that ran on this failed save (an on_event "death_save_failed" effect of the character), or unset. A hook that
+  // stands the character up leaves the counts at 0 and the failure is not added. For the master and the character's own
+  // player.
+  HookResult hook = 8;
 }
 
 // RollDeathSaveResponse returns the combat and the save.
@@ -5231,6 +5281,8 @@ message CombatLogDeathSave {
   bool stable = 5;
   // Only the master.
   bool dying = 6;
+  // The hook that ran on this failed save, as in DeathSave. Only the master and the character's own player.
+  HookResult hook = 7;
 }
 
 // CombatLogDamage is the damage of an attack, in the log.
@@ -5284,6 +5336,12 @@ message CombatLogDamage {
   // kept on 1 hit point instead of 0: the line reads "Resistência Implacável: fica com
   // 1 PV". Everyone who gets the line gets this.
   bool relentless_endurance = 19;
+  // A feature action of the table's content that gives temporary hit points: how many the target gained. Only the master and
+  // the actor's player, like `amount` of a heal.
+  int32 temp_hp_gained = 20;
+  // APPLIED to a player's character with an on_event "drop_to_zero" hook that ran: the damage did not drop the character to 0
+  // (the hook healed it). Only the master and the target's own player.
+  HookResult hook = 21;
 }
 
 // GetCombatHighlightsRequest names the combat.

@@ -182,6 +182,17 @@ export function menuResponse(): GetEffectMenuResponse {
         ],
       },
       {
+        name: 'option_set_names',
+        values: [
+          {
+            key: 'invocation',
+            namePt: 'Invocação mística',
+            hintPt: 'Uma opção da Invocação mística do bruxo.',
+          },
+          { key: 'fighting_style', namePt: 'Estilo de luta' },
+        ],
+      },
+      {
         name: 'tools',
         values: [{ key: 'proficiency:cartographers-tools', namePt: 'Ferramentas de cartógrafo' }],
       },
@@ -203,6 +214,12 @@ export function menuResponse(): GetEffectMenuResponse {
         namePt: 'Estilo de luta',
         choose: 1,
         options: [{ key: 'option:archery', namePt: 'Arquearia' }],
+      },
+      {
+        key: 'feature:pact-boon',
+        namePt: 'Dádiva do pacto',
+        choose: 1,
+        options: [{ key: 'feature:pact-of-the-tome', namePt: 'Dádiva do pacto: Pacto do Tomo' }],
       },
     ],
     classIndexes: ['wizard', 'cleric'],

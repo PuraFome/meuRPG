@@ -1,3 +1,5 @@
+import { tokenSize } from './pick-hit';
+
 /** A rectangle on the map, in px from the top left of its surface. */
 interface Box {
   readonly x: number;
@@ -52,8 +54,6 @@ export interface PickPlan {
 }
 
 /** The tallest token of a square (the map caps it), and the ring a creature on offer wears past it. */
-const TOKEN_CAP = 40;
-const TOKEN_SHARE = 0.86;
 const RING = 7;
 /** The air between a token's ring and its label, and the room a label keeps from the map's outer edge. */
 const GAP = 4;
@@ -102,7 +102,7 @@ export function planPick(input: PickPlanInput): PickPlan {
   const ring = (t: PlanToken): { cx: number; cy: number; r: number } => ({
     cx: (t.col + t.span / HALF) * unit,
     cy: (t.row + t.span / HALF) * unit,
-    r: (Math.min(unit * TOKEN_SHARE, TOKEN_CAP) * t.span) / HALF + RING,
+    r: tokenSize(unit, t.span) / HALF + RING,
   });
   const rings = input.tokens.map((t) => {
     const g = ring(t);

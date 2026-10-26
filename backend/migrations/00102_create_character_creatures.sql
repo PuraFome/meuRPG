@@ -1,6 +1,6 @@
 -- +goose Up
 -- character_creatures are the creatures that belong to a player's character
--- (MR-037, Etapa 9): its familiar, the animals and undead it summoned, the
+-- (MR-037): its familiar, the animals and undead it summoned, the
 -- creatures the master gave it. They last from one session to the next until
 -- the player or the master dismisses them; the app does not count a spell's
 -- duration. A creature is a kind of SRD creature (monster_key, "monster:wolf":

@@ -107,15 +107,21 @@ type castable struct {
 	slots   []*rulesv1.SlotChoice
 	enabled bool
 	reason  *rulesv1.DisabledReason
+	// grant is set for a spell cast through a granted_spell effect: no slot, a use of the
+	// grant's resource instead (unless it is at will).
+	grant *rulesv1.SpellGrantOption
 }
 
 // castableOf finds the spell among the options. invalid_argument when the
 // caster does not have it, or it is a cantrip with an attack roll.
-func castableOf(opts *rulesv1.TurnOptions, key string) (castable, error) {
+func castableOf(opts *rulesv1.TurnOptions, key, grantedBy string) (castable, error) {
 	for _, sp := range opts.GetSpells() {
-		if sp.GetSpell().GetKey() == key {
-			return castable{level: sp.GetSpell().GetLevel(), economy: sp.GetEconomy(), slots: sp.GetSlots(), enabled: sp.GetEnabled(), reason: sp.GetReason()}, nil
+		if sp.GetSpell().GetKey() == key && sp.GetGrant().GetSourceKey() == grantedBy {
+			return castable{level: sp.GetSpell().GetLevel(), economy: sp.GetEconomy(), slots: sp.GetSlots(), enabled: sp.GetEnabled(), reason: sp.GetReason(), grant: sp.GetGrant()}, nil
 		}
+	}
+	if grantedBy != "" {
+		return castable{}, connect.NewError(connect.CodeInvalidArgument, errors.New("granted_by is not a grant of this spell"))
 	}
 	for _, a := range opts.GetAttacks() {
 		if a.GetAttack().GetKey() != key || a.GetAttack().GetKind() != rulesv1.AttackKind_ATTACK_KIND_SPELL {
@@ -150,6 +156,9 @@ func castError(r *rulesv1.DisabledReason, ignoreEconomy bool) error {
 		}
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_BONUS_ACTION_SPELL_LIMIT,
 			"a spell cast with a bonus action leaves no other spell this turn but a cantrip of 1 action")
+	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_NO_USES:
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_USES, "no uses left",
+			func(b *playv1.EncounterBlocked) { b.Recharge = r.GetRecharge() })
 	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_NO_SLOT:
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_SLOT, "there is no free spell slot for this spell",
 			func(b *playv1.EncounterBlocked) { b.MinLevel = r.GetMinLevel() })
@@ -171,6 +180,15 @@ func slotOf(in *playv1.SpellSlot, c castable) (*slotRef, error) {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("a cantrip is cast with no slot"))
 		}
 		return nil, nil
+	}
+	if c.grant != nil {
+		// A granted spell is cast at its own level with no slot; a slot only if the grant allows it.
+		if in == nil {
+			return nil, nil
+		}
+		if !c.grant.GetAlsoWithSlot() {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("this grant does not cast the spell with a slot"))
+		}
 	}
 	if in == nil || in.GetLevel() < c.level || in.GetLevel() > 9 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("slot must be a spell slot of at least the spell's level"))

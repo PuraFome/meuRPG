@@ -2,7 +2,7 @@
 //
 // Source: meurpg/play/v1/lasting_effects_service.proto
 
-// The calls of the effects that last in a combat (RN-22, Etapa 10); the messages
+// The calls of the effects that last in a combat (RN-22); the messages
 // they carry are in lasting_effects.proto.
 package playv1connect
 

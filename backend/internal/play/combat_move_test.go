@@ -1324,7 +1324,7 @@ func TestMR034_TheRunningStartAddsUpOnFootAndAnythingBreaksIt(t *testing.T) {
 // TestMR034_NothingMovedKeepsTheMarkAndTheRun: a high jump and a master's forced move
 // to the square the combatant stands on change neither the master's cover mark nor
 // (but for the high jump, a jump) the running start. A player's walk to that square
-// is refused (Finding play-a-movement-1) and changes nothing either.
+// is refused and changes nothing either.
 func TestMR034_NothingMovedKeepsTheMarkAndTheRun(t *testing.T) {
 	t.Parallel()
 	c := newCave(t)

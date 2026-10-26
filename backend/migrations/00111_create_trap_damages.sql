@@ -1,6 +1,6 @@
 -- +goose Up
 -- trap_damages is the damage a fired trap did to a player's character OUTSIDE a
--- combat (MR-035, Etapa 9, D5, RN-02): there is no combatant to hold a
+-- combat (MR-035, D5, RN-02): there is no combatant to hold a
 -- pending_damages row, so the damage waits here for the master, who applies it
 -- to the character's vitals (changing the amount first, if he wants) or
 -- discards it. In a combat the same damage is a pending_damages row.

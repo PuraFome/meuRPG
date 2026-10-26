@@ -22,6 +22,7 @@ Attacks and damage are in [Attacks and damage](attacks-and-damage.md), movement 
 | `combat_attack.go`, `combat_damage.go`, `combat_parts.go` | The attack roll, the damage roll and its parts |
 | `combat_cast.go`, `combat_spells.go` | Casting a spell and what each kind of spell does to its targets |
 | `combat_apply_damage.go`, `combat_hit_points.go`, `combat_take_action.go` | The master settling a hit, NPC hit points, the standard and feature actions |
+| `table_effects.go` | The table's costed, healing and temporary hit point actions, the `on_event` hooks of a death save and of a drop to 0, and the pool that recharges on initiative |
 | `combat_gate.go` | Why a combatant cannot act now |
 | `combat_landing.go`, `combat_pending_view.go` | Where a damage or heal lands, and the pending damage as the viewer reads it |
 | `combat_events.go`, `combat_log.go` | Event payloads and the log |
@@ -81,7 +82,7 @@ The mode (`grid` or `theatre`) is chosen at the start and never changes (see [Th
 | `RollAttack`, `RollDamage`, `ApplyPendingDamage`, `DiscardPendingDamage`, `RemoveDamagePart` | See [Attacks and damage](attacks-and-damage.md) | The two-step attack |
 | `RequestRollMode`, `AnswerRollModeRequest`, `CancelRollModeRequest` | Player asks; master answers | A mode the server did not suggest |
 | `CastSpell`, `PreviewSpellArea`, `ResolveHiddenReveal`, `EndConcentration` | See [Casting](casting.md) | Spells |
-| `TakeAction` | The player on their own character, on their turn; the master on any combatant on turn | Standard actions and feature actions |
+| `TakeAction` | The player on their own character, on their turn; the master on any combatant on turn | Standard actions and feature actions; the table's actions that spend several points, heal or give temporary hit points (`spend`, `heal_target_combatant_id`: see [Attacks and damage](attacks-and-damage.md#the-tables-actions-that-spend-heal-and-give-mr-025)) |
 | `AnswerRageEnd`, `EndRage`, `UseHitRider` | The barbarian's player / monk's player; master | See [Attacks and damage](attacks-and-damage.md) |
 | `MoveCombatant`, `GetMoveOptions`, `SpendMovement`, `StandUp` | See [Movement](movement.md) and [Theatre](theatre.md) | Movement |
 | `OfferOpportunity`, `WithdrawOpportunity`, `DeclineOpportunity`, `SkipOpportunity` | See [Movement](movement.md) | Opportunity attacks |

@@ -66,7 +66,8 @@ type Effect struct {
 	Ritual      bool   `json:"ritual,omitempty"`
 
 	// resource: a use-limited resource. Max is an Int formula; Recharge is
-	// short_rest, long_rest, dawn or none. It becomes Derived.Resources; the
+	// short_rest, long_rest, dawn, none, initiative, restore_one_on_short_rest or
+	// restore_one_on_long_rest. It becomes Derived.Resources; the
 	// session counts the uses (RN-02).
 	// RechargeIf is an optional Bool formula: while it holds, the resource
 	// recharges as RechargeThen instead of Recharge (Bardic Inspiration comes
@@ -164,9 +165,44 @@ type Effect struct {
 	// sheet lists only the newest tier; the older one's effects still apply.
 	Replaces string `json:"replaces,omitempty"`
 
+	// grant_action (actions.go): Cost is how many uses of Resource each use spends (an Int
+	// formula; empty is 1) and CostMax, when set, the most the player may spend on one use.
+	// ValuePerPoint is what each point above Cost adds to the result (dice, or a flat
+	// formula); Heal is dice, HealPercentMax (on_event only) a share of the maximum, TempHP a
+	// formula. The same Heal, TempHP and (for the ability modifier) Ability serve on_event.
+	Cost          string `json:"cost,omitempty"`
+	CostMax       string `json:"cost_max,omitempty"`
+	ValuePerPoint string `json:"value_per_point,omitempty"`
+	Heal          string `json:"heal,omitempty"`
+	TempHP        string `json:"temp_hp,omitempty"`
+
+	// on_event (hooks.go): Event is one of the Event* constants, the hook runs for the
+	// owner alone. Restore is the resource whose uses it gives back (Value, an Int
+	// formula, how many; empty is 1) and HealPercentMax a share of the maximum hit
+	// points healed instead of Heal.
+	Event          string `json:"event,omitempty"`
+	Restore        string `json:"restore,omitempty"`
+	HealPercentMax int    `json:"heal_percent_max,omitempty"`
+
 	// handler: the name of a Go function for what data cannot say, from
 	// handlers.
 	Handler string `json:"handler,omitempty"`
+
+	// granted_spell (grantedspells.go): a spell the entry gives the character, apart from
+	// the class's lists. Spell is its key (SRD, or a table spell of the same table);
+	// FromLevel an Int formula, the level from which it is granted (1 when empty):
+	// the class level for a class or subclass feature, the character level for
+	// anything else. Uses is GrantedAtWill or the name of a resource of the entry that
+	// every cast spends one of. AlsoWithSlot lets the character cast it with a spell
+	// slot too. Ability is the casting ability of the grant (GrantedAbilities, or
+	// GrantedAbilityChoice: the player picks one). RitualOnly limits the grant to the
+	// ritual way; CountsAsKnown puts the spell among the known ones too.
+	Spell         string `json:"spell,omitempty"`
+	FromLevel     string `json:"from_level,omitempty"`
+	Uses          string `json:"uses,omitempty"`
+	AlsoWithSlot  bool   `json:"also_with_slot,omitempty"`
+	RitualOnly    bool   `json:"ritual_only,omitempty"`
+	CountsAsKnown bool   `json:"counts_as_known,omitempty"`
 
 	// Spells are spells the effect grants, which then count as on the
 	// character's list (Infernal Legacy's thaumaturgy).
@@ -180,7 +216,7 @@ type Effect struct {
 	TextPT string `json:"text_pt,omitempty"`
 
 	// Compiled formulas, filled at load.
-	value, when, preparedMax, max, rechargeIf *formula.Program
+	value, when, preparedMax, max, rechargeIf, fromLevel, cost, costMax, tempHP, perPointFlat *formula.Program
 }
 
 // The closed sets of the effect schema.
@@ -188,10 +224,10 @@ var (
 	effectTypes = []string{
 		"modifier", "proficiency", "roll_mode", "sense", "spellcasting",
 		"resource", "choice", "grant_action", "extra_attack", "note", "handler", "wild_shape", "beast_spells", "replaces",
-		"ability_increase", "superiority_die", "song_of_rest", "ranged_attack", "extra_damage", "ambush", "resistance", "condition_immunity",
+		"ability_increase", "superiority_die", "song_of_rest", "ranged_attack", "extra_damage", "ambush", "resistance", "breathes_water", "condition_immunity", "granted_spell", "on_event",
 	}
 	modifierTargets = []string{
-		"ac.base", "ac", "hp.max", "speed.walk", "initiative",
+		"ac.base", "ac", "hp.max", "speed.walk", "speed.fly", "speed.swim", "speed.climb", "speed.burrow", "initiative",
 		"attack.weapon.melee", "attack.weapon.ranged",
 		"damage.weapon.melee", "damage.weapon.ranged",
 	}
@@ -200,7 +236,7 @@ var (
 	rollModes         = []string{"advantage", "disadvantage"}
 	senses            = []string{"darkvision", "blindsight", "tremorsense", "truesight"}
 	progressions      = []string{"full", "half", "third", "pact"}
-	recharges         = []string{"short_rest", "long_rest", "dawn", "none"}
+	recharges         = []string{RechargeShortRest, RechargeLongRest, RechargeDawn, RechargeNone, RechargeInitiative, RechargeRestoreOneShort, RechargeRestoreOneLong}
 	choiceKinds       = []string{
 		"skill", "expertise", "cantrip", "spell", "subclass", "feature",
 		"language", "tool", "ability_score_improvement", "feat",
@@ -266,6 +302,8 @@ var effectCheckers = map[string]func(x effectCompiler) error{
 	"ranged_attack":      effectCompiler.rangedAttack,
 	"resistance":         effectCompiler.resistance,
 	"condition_immunity": effectCompiler.conditionImmunity,
+	"breathes_water":     effectCompiler.breathesWater,
+	"granted_spell":      effectCompiler.grantedSpell,
 	"replaces":           effectCompiler.replaces,
 	"modifier":           effectCompiler.modifier,
 	"proficiency":        effectCompiler.proficiency,
@@ -276,6 +314,7 @@ var effectCheckers = map[string]func(x effectCompiler) error{
 	"choice":             effectCompiler.choice,
 	"ability_increase":   effectCompiler.abilityIncrease,
 	"grant_action":       effectCompiler.grantAction,
+	"on_event":           effectCompiler.onEvent,
 	"superiority_die":    effectCompiler.superiorityDie,
 	"extra_damage":       effectCompiler.extraDamage,
 	"ambush":             effectCompiler.ambush,
@@ -304,6 +343,9 @@ func (c *content) compileEffect(key string, e *Effect) error {
 		}
 	}
 	if err := x.strayFields(); err != nil {
+		return err
+	}
+	if err := x.speedwalkOnlyForOtherSpeeds(); err != nil {
 		return err
 	}
 	if check, ok := effectCheckers[e.Type]; ok {
@@ -336,6 +378,19 @@ func (x effectCompiler) strayFields() error {
 	}
 	if err := x.strayConditions(); err != nil {
 		return err
+	}
+	if err := x.strayCosts(); err != nil {
+		return err
+	}
+	return x.straySpellAndRangeFields()
+}
+
+// straySpellAndRangeFields refuses the fields of granted_spell and of
+// ranged_attack on an effect of another type.
+func (x effectCompiler) straySpellAndRangeFields() error {
+	e := x.e
+	if e.Type != "granted_spell" && (e.Spell != "" || e.FromLevel != "" || e.Uses != "" || e.AlsoWithSlot || e.RitualOnly || e.CountsAsKnown) {
+		return x.fail("spell, from_level, uses, also_with_slot, ritual_only and counts_as_known belong to granted_spell")
 	}
 	if e.Type != "ranged_attack" && (e.IgnoreCover || e.RangeMultiplier != 0 || e.NoLongRangeDisadvantage) {
 		return x.fail("ignore_cover, range_multiplier and no_long_range_disadvantage belong to ranged_attack")
@@ -583,13 +638,6 @@ func (x effectCompiler) abilityIncrease() error {
 	return nil
 }
 
-func (x effectCompiler) grantAction() error {
-	if !slices.Contains(economies, x.e.Economy) {
-		return x.fail("unknown economy %q", x.e.Economy)
-	}
-	return nil
-}
-
 func (x effectCompiler) superiorityDie() error {
 	e := x.e
 	if e.Resource == "" {
@@ -652,6 +700,28 @@ func (x effectCompiler) wildShape() error {
 	}
 	if _, ok := crEighths(x.e.MaxCR); !ok {
 		return x.fail("wild_shape needs a max_cr that is a challenge rating, such as \"1/4\"")
+	}
+	return nil
+}
+
+// otherSpeedTargets are the modifier targets whose formulas may read speedwalk().
+var otherSpeedTargets = []string{"speed.fly", "speed.swim", "speed.climb", "speed.burrow"}
+
+// speedwalkOnlyForOtherSpeeds keeps speedwalk() to the other speeds' modifiers:
+// the walking speed is worked out first, so anything else would read 0.
+func (x effectCompiler) speedwalkOnlyForOtherSpeeds() error {
+	e := x.e
+	reads := strings.Contains(e.Value, "speedwalk") || strings.Contains(e.When, "speedwalk")
+	if reads && (e.Type != "modifier" || !slices.Contains(otherSpeedTargets, e.Target)) {
+		return x.fail("speedwalk() belongs to the modifiers of the fly, swim, climb and burrow speeds")
+	}
+	return nil
+}
+
+// breathesWater checks the effect that lets the character breathe underwater.
+func (x effectCompiler) breathesWater() error {
+	if !x.takesOnly(func(o *Effect) { o.Type, o.When, o.TextPT = "", "", ""; o.when = nil }) {
+		return x.fail("breathes_water takes no fields but when and text_pt")
 	}
 	return nil
 }

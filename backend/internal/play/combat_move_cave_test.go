@@ -155,7 +155,7 @@ func TestMoveCombatantFrozen_OnFoot(t *testing.T) {
 		{name: "three squares", col: 9, row: 7, want: moveWant{col: 9, row: 7, usedDft: 150, lastDft: 150, event: `{"col": 9, "combatant_id": "<Toren>", "cost_dft": 150, "cost_ft": 15, "distance_dft": 150, "distance_ft": 15, "from": {"col": 6, "cover": "none", "placed": true, "row": 7}, "on_turn": true, "round": 1, "row": 7, "spent_dft": 150}`}},
 		{name: "to the limit of the speed", col: 12, row: 7, want: moveWant{col: 12, row: 7, usedDft: 300, lastDft: 300, event: `{"col": 12, "combatant_id": "<Toren>", "cost_dft": 300, "cost_ft": 30, "distance_dft": 300, "distance_ft": 30, "from": {"col": 6, "cover": "none", "placed": true, "row": 7}, "on_turn": true, "round": 1, "row": 7, "spent_dft": 300}`}},
 		{name: "a diagonal of three squares costs the exact line, rounded down", col: 9, row: 10, want: moveWant{col: 9, row: 10, usedDft: 212, lastDft: 212, event: `{"col": 9, "combatant_id": "<Toren>", "cost_dft": 212, "cost_ft": 21, "distance_dft": 212, "distance_ft": 21, "from": {"col": 6, "cover": "none", "placed": true, "row": 7}, "on_turn": true, "round": 1, "row": 10, "spent_dft": 212}`}},
-		// Finding play-a-movement-1: a move to the square the mover stands on travels nothing, so
+		// A move to the square the mover stands on travels nothing, so
 		// it is refused like the jump to the same square rather than written as a step that spends
 		// nothing and leaves an undo entry that undoes nothing. The master's moves stay free of it:
 		// they put a token right, and setups repeat squares.
@@ -197,7 +197,7 @@ func TestMoveCombatantFrozen_AnUnseenCreatureInTheWay(t *testing.T) {
 			want: moveWant{col: 7, row: 7, usedDft: 50, lastDft: 50, stopped: true, event: `{"col": 7, "combatant_id": "<Toren>", "cost_dft": 50, "cost_ft": 5, "distance_dft": 50, "distance_ft": 5, "from": {"col": 6, "cover": "none", "placed": true, "row": 7}, "on_turn": true, "round": 1, "row": 7, "spent_dft": 50, "stopped_early": true}`},
 		},
 		{
-			// Finding play-a-movement-2, kept: a jump that a creature the player cannot see holds at the
+			// A jump that a creature the player cannot see holds at the
 			// landing is stopped at take-off, like a walk whose first step is held: nothing was traveled,
 			// so nothing is spent and the running start stands. It is still written as a long jump of
 			// distance 0 so the answer says it was cut short.
@@ -366,7 +366,7 @@ func TestMoveCombatantFrozen_Provoking(t *testing.T) {
 			as: "master", label: "Goblin 1", col: 17, row: 5,
 			want: moveWant{col: 17, row: 5, usedDft: 0, lastDft: 0, cover: "none", event: `{"col": 17, "combatant_id": "<Goblin 1>", "distance_dft": 50, "distance_ft": 5, "from": {"col": 18, "cover": "half", "placed": true, "row": 5}, "round": 1, "row": 5, "secret": true}`},
 		},
-		// Finding play-a-movement-1: a player's walk to where it stands is refused, and a refusal
+		// A player's walk to where it stands is refused, and a refusal
 		// changes nothing, so the master's mark stays.
 		{
 			name: "a move that goes nowhere keeps it", setup: marked("Toren", playv1.CoverDegree_COVER_DEGREE_HALF), col: 6, row: 7,

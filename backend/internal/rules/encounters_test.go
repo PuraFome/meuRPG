@@ -20,7 +20,7 @@ func TestEncounterBudgetsAreTheSRD521Table(t *testing.T) {
 	if len(b) != 20 {
 		t.Fatalf("%d levels, want 20", len(b))
 	}
-	// Rows checked against p. 201 of the SRD 5.2.1 (scratch-ms/etapa10/srd521/SOURCE.md).
+	// Rows checked against p. 201 of the SRD 5.2.1.
 	for level, want := range map[int]encounter.Budget{
 		1: {Low: 50, Moderate: 75, High: 100}, 3: {Low: 150, Moderate: 225, High: 400}, 4: {Low: 250, Moderate: 375, High: 500},
 		5: {Low: 500, Moderate: 750, High: 1100}, 11: {Low: 1900, Moderate: 2900, High: 4100}, 20: {Low: 6400, Moderate: 13200, High: 22000},
@@ -335,7 +335,7 @@ func TestGenerateEncounterSpendsTheBandOnTheSRD(t *testing.T) {
 }
 
 // TestEncounterBudgetsMatchTheSourceTable compares all 20 rows with the table transcribed from p. 201 of the
-// SRD 5.2.1 (scratch-ms/etapa10/srd521/SOURCE.md): low / moderate / high per character.
+// SRD 5.2.1: low / moderate / high per character.
 func TestEncounterBudgetsMatchTheSourceTable(t *testing.T) {
 	t.Parallel()
 	want := [20][3]int{

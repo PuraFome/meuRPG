@@ -27,7 +27,7 @@
             [size]="28"
           />
           <div class="row__text">
-            <span class="row__name">{{ c.label }}</span>
+            <span class="row__name" [attr.title]="c.label">{{ c.label }}</span>
             @if (c.initiative === undefined) {
               <span class="row__wait">
                 <mat-icon aria-hidden="true">hourglass_empty</mat-icon>Esperando {{ waitingFor(c) }}

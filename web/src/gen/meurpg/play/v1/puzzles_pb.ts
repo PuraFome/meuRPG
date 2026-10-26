@@ -2,7 +2,7 @@
 // @generated from file meurpg/play/v1/puzzles.proto (package meurpg.play.v1, syntax proto3)
 /* eslint-disable */
 
-// Puzzles (MR-038, RN-27, Etapa 10, slice 10.7a): the master makes a puzzle for the
+// Puzzles (MR-038, RN-27): the master makes a puzzle for the
 // campaign, shows it to the players of an open session, and they solve it live in the
 // app. It has six kinds: "Apagar as luzes" (a board of lights; pressing one toggles it
 // and its four neighbours), the combination lock (wheels of digits, letters or our own

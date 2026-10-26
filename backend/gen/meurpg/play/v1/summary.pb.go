@@ -4,7 +4,7 @@
 // 	protoc        (unknown)
 // source: meurpg/play/v1/summary.proto
 
-// The summary of an ended game session, "Resumo da sessão" (MR-032, Etapa 8,
+// The summary of an ended game session, "Resumo da sessão" (MR-032,
 // question 64): the combat highlights of the whole session, the checks passed
 // outside combat, and what each member gets of it. The RPC is PlayService's
 // (play.proto, GetSessionSummary); the messages are here.

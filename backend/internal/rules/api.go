@@ -650,12 +650,15 @@ type Derived struct {
 	// Size is the character's size: the race's, or the one the player picked among the
 	// ones it offers ("Small", "Medium"...); empty without a race.
 	Size string `json:",omitempty"`
-	// The other speeds, in feet, 0 for none: a character has none today, a
-	// creature (or a druid in Wild Shape) may fly, swim, climb or burrow.
-	// Hover says a flying creature hovers.
+	// The other speeds, in feet, 0 for none: a character has one only from a
+	// table's speed.fly, speed.swim, speed.climb or speed.burrow modifier (no SRD
+	// race has one); a creature (or a druid in Wild Shape) may fly, swim, climb or
+	// burrow. Hover says a flying creature hovers.
 	SpeedFlyFt, SpeedSwimFt, SpeedClimbFt, SpeedBurrowFt int
 	Hover                                                bool
-	Senses                                               []Sense
+	// BreathesWater says a table's breathes_water effect applies.
+	BreathesWater bool
+	Senses        []Sense
 	// NextLevelXP is the XP that reaches TotalLevel+1, or 0 at level 20.
 	// The sheet compares it with the XP the player has to show "Pode subir
 	// de nível" (RN-12).
@@ -671,6 +674,9 @@ type Derived struct {
 	// plus the subclass's always-prepared spells), cantrips first, then by
 	// level and NamePT.
 	Spells []CharacterSpell
+	// GrantedSpells are the spells the character's traits, feats and features grant
+	// (granted_spell effects), by level and name; see GrantedSpell.
+	GrantedSpells []GrantedSpell
 	// Attacks are the carried weapons (Kind "weapon") and the cantrips
 	// that deal damage (Kind "spell").
 	Attacks []Attack
@@ -681,6 +687,9 @@ type Derived struct {
 	Resources       []Resource
 	Actions         []Action
 	StandardActions []Action
+	// Hooks are the on_event effects of the character (the owner's alone), in the
+	// order of its features; HooksFor picks the ones of an event (hooks.go).
+	Hooks []EventHook `json:",omitempty"`
 	// Maneuvers are the dice the character's table options add to a roll
 	// (superiority_die effects), with the die's sides worked out for the level.
 	Maneuvers []Maneuver

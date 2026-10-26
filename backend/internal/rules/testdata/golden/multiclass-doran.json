@@ -280,6 +280,7 @@
     "SpeedClimbFt": 0,
     "SpeedBurrowFt": 0,
     "Hover": false,
+    "BreathesWater": false,
     "Senses": null,
     "NextLevelXP": 23000,
     "Spellcasting": [
@@ -530,6 +531,7 @@
         "Prepared": false
       }
     ],
+    "GrantedSpells": null,
     "Attacks": [
       {
         "Key": "equipment:longsword",
@@ -1227,6 +1229,7 @@
     "SpeedClimbFt": 0,
     "SpeedBurrowFt": 0,
     "Hover": false,
+    "BreathesWater": false,
     "Senses": null,
     "NextLevelXP": 14000,
     "Spellcasting": null,
@@ -1243,6 +1246,7 @@
     ],
     "PactMagic": null,
     "Spells": null,
+    "GrantedSpells": null,
     "Attacks": [
       {
         "Key": "equipment:longsword",

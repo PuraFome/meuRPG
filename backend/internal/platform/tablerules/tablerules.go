@@ -46,6 +46,11 @@ type Rules struct {
 	// DC too ("Os jogadores veem a CD dos testes de resistência"), instead of the SRD's
 	// table where only the master knows it. Nobody who does not roll the save gains it.
 	ShowSaveDC bool
+	// PickSwapAllowed lets a character, at each Ability Score Improvement level, give up one
+	// earlier pick of a group (a cantrip, a fighting style, a metamagic option, an
+	// invocation, a pact boon) for another of the same pool ("Trocar uma escolha no aumento
+	// de atributo"). The zero value is the SRD's: a pick stays.
+	PickSwapAllowed bool
 	// Reminders are the table's house rules: short texts shown on "Regras da
 	// mesa" and never enforced; none by default.
 	Reminders []string

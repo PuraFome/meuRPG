@@ -1,5 +1,5 @@
 -- +goose Up
--- scene_discoveries lists the scenes the group has discovered (MR-030, Etapa 8,
+-- scene_discoveries lists the scenes the group has discovered (MR-030,
 -- D6, question 61): a SCENE point was revealed on the map, or the master opened
 -- it in a session (even while it was hidden). A player may tag a note only with
 -- a discovered scene, and never learns the name of any other. It is shared by
