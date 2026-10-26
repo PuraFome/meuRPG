@@ -86,9 +86,18 @@ import { EndTurn } from './end-turn';
     }
 
     .left__lead {
-      font-size: 12px;
-      line-height: 14px;
+      font-size: 13px;
+      line-height: 16px;
       color: var(--mr-ink-muted);
+      // On the narrowest phones the shapes alone say it (the group is still named "Ainda tem"): the bar gives the page a line back.
+      @media (max-width: 359.98px) {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
     }
 
     .left__none {

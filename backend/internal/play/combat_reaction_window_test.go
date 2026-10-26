@@ -515,7 +515,7 @@ func TestAConcentrationSaveKeptKeepsTheSpell(t *testing.T) {
 	}
 	// The same answer again is refused: the window is closed.
 	_, err = a.resolveConcentration(t, a.ana, e, w.GetId(), concentrationFace(15))
-	wantBlockedBy(t, "a second answer", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN_TO_ANSWER)
+	wantBlockedBy(t, "a second answer", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_ALREADY_ANSWERED)
 }
 
 // TestAPlayerMayLeaveTheConcentrationSaveToTheMaster: "Deixar o mestre rolar por mim".

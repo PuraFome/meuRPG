@@ -156,6 +156,14 @@ describe('FogMap', () => {
     expect(el.querySelector('[data-testid="fog-off-map"]')).toBeNull();
   });
 
+  it("leaves the master's token marks to the page's own row when asked (no word twice under the map)", () => {
+    const withMarks = create({ isMaster: true }).el;
+    expect(plain(withMarks.querySelector('.fm__legend'))).toContain('Personagem');
+    const without = create({ isMaster: true, tokenMarks: false }).el;
+    expect(plain(without.querySelector('.fm__legend'))).not.toContain('Personagem');
+    expect(plain(without.querySelector('.fm__legend'))).not.toContain('NPC');
+  });
+
   it('does not open the master zoomed in on the party, even on a phone', () => {
     vi.stubGlobal('matchMedia', (query: string) => ({
       matches: true,

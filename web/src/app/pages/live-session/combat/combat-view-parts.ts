@@ -19,7 +19,7 @@ import { ContestClient } from '../../../core/combat/contest-client';
 import { resourceFlow } from '../../../core/resources/resource-actions';
 import { openWindows } from '../../../core/combat/reactions';
 import { type RevealAnswer } from './hidden-reveal/hidden-reveal-card';
-import { CombatViewDerivedDirective } from './combat-view-derived';
+import { CombatViewActingDirective } from './combat-view-acting';
 import { DiceMode } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { HeldQuestions } from '../../../core/held-rolls/held-questions';
 import { HeldVanishWatch } from '../../../core/held-rolls/held-vanish';
@@ -29,7 +29,7 @@ import { ResourceClient } from '../../../core/resources/resources-client';
 /** The parts the screen is composed of (`CombatSheets`, `MoveFlow`, `ContestHost`) and the calls of the turn, the
  * actions and the attacks. */
 @Directive()
-export abstract class CombatViewPartsDirective extends CombatViewDerivedDirective {
+export abstract class CombatViewPartsDirective extends CombatViewActingDirective {
   /** Every sheet and dialog the screen opens (`CombatSheets`). */
   protected readonly sheets = new CombatSheets({
     dialog: this.dialog,
@@ -64,7 +64,7 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
     new TargetMode((run) => afterNextRender(run, { injector: this.injector })),
     {
       onMap: () =>
-        !this.isMaster() &&
+        (!this.isMaster() || !!this.acting()) &&
         this.myTurn() &&
         !this.ownDown() &&
         !this.creatureTab() &&
@@ -73,6 +73,7 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
       placed: (id) => !!this.encounter()?.combatants.find((c) => c.id === id)?.placed,
       reveal: () => revealMap(this.host.nativeElement, this.injector, this.laptop()),
       origin: () => pressedButton(this.host.nativeElement),
+      by: () => this.acting()?.label ?? '',
     },
   );
   protected readonly attackSheetOpen = this.sheets.attackOpen;
@@ -139,6 +140,8 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
   });
   protected readonly heldCount = computed(() => pendingCountText(this.held.count()));
   protected readonly heldCanType = computed(() => this.diceMode() !== DiceMode.APP);
+  /** The master may roll in the app for a player (the campaign did not force physical dice). */
+  protected readonly heldCanRoll = computed(() => this.diceMode() !== DiceMode.PHYSICAL);
   /** The roller's notice when the master answered the question they were shown. */
   protected readonly vanish = new HeldVanishWatch();
 
@@ -148,29 +151,22 @@ export abstract class CombatViewPartsDirective extends CombatViewDerivedDirectiv
     return this.calls.run((e) => this.api.turn.begin(this.campaignId(), e.id));
   }
 
-  /** `discard`: the master passes the turn although a damage waits. */
+  /** `discard`: the master passes the turn although a damage waits. A downed character's turn does not pass before its death
+   * save (SRD 5.1): the button is off and the server refuses it too. */
   protected nextTurn(discard = false): Promise<boolean> {
-    // A death save still due: the server lets the master pass it, but he is asked first, in place.
     if (this.deathDue().length > 0) {
-      this.deaths.asking.set({ discard });
       return Promise.resolve(false);
     }
     return this.endTurn(discard);
-  }
-
-  /** "Passar sem rolar": the turn ends with the death save unrolled. */
-  protected passUnrolled(): Promise<boolean> {
-    const asked = this.deaths.asking();
-    this.deaths.asking.set(null);
-    return this.endTurn(asked?.discard ?? false);
   }
 
   protected endTurn(discard: boolean): Promise<boolean> {
     // In a joint turn a player ends their own part; the master ends the part of
     // the first member who still acts (the others have their own button).
     return this.calls.run((e) => {
+      // The player ends their own part; so does the master for the character he acts for (`own` is that one).
       const own = this.own();
-      const who = !this.isMaster() && own && acts(e, own) ? own.id : e.currentCombatantId;
+      const who = own && acts(e, own) ? own.id : e.currentCombatantId;
       return this.api.turn.endTurn(this.campaignId(), e.id, who, discard, e.round);
     });
   }

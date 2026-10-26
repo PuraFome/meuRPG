@@ -1,6 +1,8 @@
 package formula
 
 import (
+	"slices"
+	"strings"
 	"testing"
 )
 
@@ -26,6 +28,21 @@ func FuzzCompileFormula(f *testing.F) {
 		`"a" matches "b"`,
 		`min(max(1, 2), floor(3.5))`,
 		`-(-(-level()))`,
+	} {
+		f.Add(seed)
+	}
+	// Formulas at the size limits: a class table of ten steps, one of the
+	// bytes the limit allows, one a byte over, one of the nodes, one a node over,
+	// and deep nesting.
+	for _, seed := range []string{
+		steppedFormula(longClass, tenSteps),
+		steppedFormula("wizard", slices.Repeat([]int{1, 2, 4}, 20))[:MaxSourceBytes],
+		steppedFormula("wizard", slices.Repeat([]int{1, 2, 4}, 20))[:MaxSourceBytes+1],
+		strings.Repeat("1+", MaxNodes/2-1) + "1",
+		strings.Repeat("1+", MaxNodes) + "1",
+		strings.Repeat("min(1, ", MaxNodes/4) + `classLevel("wizard")` + strings.Repeat(")", MaxNodes/4),
+		strings.Repeat("(", MaxNodes) + "1" + strings.Repeat(")", MaxNodes),
+		strings.Repeat(`classLevel("wizard") >= 3 ? 1 : `, 20) + "0",
 	} {
 		f.Add(seed)
 	}

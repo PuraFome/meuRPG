@@ -344,7 +344,7 @@ export const ListNoteScenesResponseSchema: GenMessage<ListNoteScenesResponse> = 
   messageDesc(file_meurpg_notes_v1_notes, 10);
 
 /**
- * NoteScene is a scene the group discovered.
+ * NoteScene is a scene the caller discovered.
  *
  * @generated from message meurpg.notes.v1.NoteScene
  */
@@ -420,10 +420,13 @@ export const NoteKindSchema: GenEnum<NoteKind> = /*@__PURE__*/
  * A clue is the master's text: it cannot be edited or deleted, and it does
  * not count toward the 300-note limit.
  *
- * A note may carry a scene tag. A scene can be tagged only once the group
+ * A note may carry a scene tag. A scene can be tagged only once the caller
  * has "discovered" it (question 61): the master revealed its point on the
- * map, or opened it in a session, even while the point was hidden. The name
- * of any other scene never reaches a player through this service: a tag on a
+ * map, or opened it to the whole table in a session, even while the point was
+ * hidden (the whole group discovered it), or opened it to some players, who
+ * discover it alone (a player brought in or who joins later too, and keeps it
+ * after leaving). The name of any other scene never reaches a player through
+ * this service, so not the name of a scene open to other players: a tag on a
  * scene that is not discovered is refused exactly as a tag on a scene that
  * does not exist.
  *
@@ -462,8 +465,9 @@ export const NotesService: GenService<{
    * scene. The list is not paged: it holds at most 300 notes plus the
    * revealed clues.
    *
-   * A clue is tagged with its scene only once the group discovered it; until
-   * then it has no tag and no scene name.
+   * A clue is tagged with its scene only once the caller discovered it; until
+   * then it has no tag and no scene name (a clue revealed to a player outside
+   * a scene open to some players is theirs, without the scene).
    *
    * Errors:
    *   - `not_found`: the campaign does not exist, or the caller is not an
@@ -481,7 +485,7 @@ export const NotesService: GenService<{
    *
    * Errors:
    *   - `invalid_argument`: text is empty or longer than 2,000 characters;
-   *     scene_point_id is not a scene the group discovered (the same answer
+   *     scene_point_id is not a scene the caller discovered (the same answer
    *     for a scene that does not exist or is not discovered).
    *   - `not_found`: as ListNotes.
    *   - `resource_exhausted`: the caller already has 300 notes in this
@@ -531,9 +535,10 @@ export const NotesService: GenService<{
     output: typeof DeleteNoteResponseSchema;
   },
   /**
-   * ListNoteScenes returns the scenes the caller may tag a note with: only
-   * the ones the group discovered, with their names, oldest discovery first.
-   * It is the tag picker. A scene the group did not discover is not here, nor is one
+   * ListNoteScenes returns the scenes the caller may tag a note with:
+   * only the ones the caller discovered (the group's, and the ones of a scene
+   * open to some players they were in), with their names, oldest discovery first.
+   * It is the tag picker. A scene the caller did not discover is not here, nor is one
    * on a map the players cannot open (not revealed, not the session's current one),
    * and its name never reaches a player.
    *

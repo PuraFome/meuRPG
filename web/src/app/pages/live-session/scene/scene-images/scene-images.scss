@@ -155,3 +155,110 @@
     font-size: 18px;
   }
 }
+
+// "Mostrar ▾" on a thumbnail of a scene open to only some players (C6-11): it shows on hover, on focus and with the
+// menu open, and always where there is no hover.
+.sm__show {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  display: none;
+  align-items: center;
+  height: 24px;
+  padding: 0 4px 0 8px;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-surface);
+  color: var(--mr-accent-text);
+  font-size: 13px;
+  font-weight: 700;
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+
+  .sm__pic:hover &,
+  .sm__pic:focus-visible &,
+  .sm__pic[aria-expanded='true'] & {
+    display: inline-flex;
+  }
+
+  @media (hover: none) {
+    display: inline-flex;
+  }
+}
+
+// Who sees the image on display, with "Mostrar a toda a mesa" and "Mudar quem vê" at the right.
+.sm__who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--mr-space-1) var(--mr-space-3);
+}
+
+.sm__seeing {
+  display: flex;
+  flex: 1 1 200px;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
+// The menu of "Mostrar": a heading, then three rows with the names small under the first two (the template is ours, so these
+// rules reach its overlay copy).
+.sm-menu__head {
+  margin: 0;
+  padding: 10px 16px 4px;
+  font-size: 14px;
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.sm-menu__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  line-height: 20px;
+
+  small {
+    font-size: 13px;
+    line-height: 17px;
+    color: var(--mr-ink-muted);
+  }
+}
+
+.sm-menu__title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-2);
+}
+
+.sm-menu__check {
+  flex: none;
+  margin: 0;
+  color: var(--mr-accent-text);
+}
+
+// A phone: the line takes its own row, the two actions share the next one.
+@media (max-width: 767.98px) {
+  .sm__who {
+    justify-content: flex-start;
+  }
+
+  .sm__seeing {
+    flex-basis: 100%;
+  }
+}

@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 
-import { EncounterStatus } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { CombatantKind, EncounterStatus } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
 import { CombatBar } from './combat-bar';
 
@@ -70,5 +70,26 @@ describe('CombatBar in the initiative setup', () => {
     fixture.detectChanges();
     expect(el.querySelector('[role="alertdialog"]')).toBeNull();
     expect(button('Começar o combate')).toBeDefined();
+  });
+});
+
+describe('CombatBar while the master acts for a character', () => {
+  it('says "Você age por Pensantus" and its filled button ends that turn', () => {
+    const fixture = TestBed.createComponent(CombatBar);
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({
+        status: EncounterStatus.ACTIVE,
+        currentCombatantId: 'p',
+        combatants: [combatant({ id: 'p', label: 'Pensantus', kind: CombatantKind.PLAYER })],
+      }),
+    );
+    fixture.componentRef.setInput('actingFor', 'Pensantus');
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.textContent).toContain('Você age por Pensantus');
+    const labels = [...el.querySelectorAll('button')].map((b) => b.textContent?.trim() ?? '');
+    expect(labels.some((t) => t.includes('Encerrar o turno de Pensantus'))).toBe(true);
+    expect(labels.some((t) => t.includes('Próximo turno'))).toBe(false);
   });
 });

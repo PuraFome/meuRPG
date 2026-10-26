@@ -3707,7 +3707,7 @@ export type ListSpellsRequest = Message<"meurpg.rules.v1.ListSpellsRequest"> & {
 
   /**
    * How many rows to return, 1 to 400; 0 means 100. The page asks for 400; a
-   * longer list (the SRD's 319 spells and up to 300 of the table's) comes in
+   * longer list (the SRD's 319 spells and up to 1000 of the table's) comes in
    * pages, with next_page_token.
    *
    * @generated from field: int32 page_size = 7;

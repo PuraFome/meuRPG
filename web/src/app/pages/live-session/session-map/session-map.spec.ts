@@ -276,4 +276,20 @@ describe('SessionMap, the player on a phone (C5-01)', () => {
     expect(full.getAttribute('href')).toBe('/campaigns/camp-1/maps/map-1?from=session');
     expect(el.querySelector('a.map__open')).toBeNull();
   });
+
+  it('captions the map "Mapa · <nome>" under it in the scene\'s "Mapa" tab, as the board does', async () => {
+    asPhone(false);
+    const state = new MapState(async () =>
+      mapResponse(mapMessage('map-1', 'Cripta do Corvo', { revealed: true }), [], []),
+    );
+    await state.open('map-1');
+    const fixture = TestBed.createComponent(SessionMap);
+    fixture.componentRef.setInput('campaignId', 'camp-1');
+    fixture.componentRef.setInput('state', state);
+    fixture.componentRef.setInput('mapId', 'map-1');
+    fixture.componentRef.setInput('inTab', true);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.map__caption')?.textContent?.trim()).toBe('Mapa · Cripta do Corvo');
+  });
 });

@@ -50,6 +50,12 @@ export function reactionName(w: ReactionWindow): string {
   }
 }
 
+/** The Shield spell's bonus to armor class (SRD 5.1). */
+const SHIELD_BONUS = 5;
+
+/** How long a player has to answer before the question comes to the master (the server's number, said in the card). */
+const LATE_SECONDS = 10;
+
 /** One answer the master gives for an NPC's counterspell: the slot and what it does ("anula sem teste"). */
 export interface SlotOption {
   readonly slot: SlotChoice;
@@ -83,6 +89,17 @@ export type ReactionCard =
       readonly rows: readonly QueueRow[];
     }
   | { readonly type: 'single'; readonly id: string; readonly row: QueueRow; readonly text: string }
+  | {
+      /** A player's reaction nobody answered in 10 s: the question came to the master (C8-04). */
+      readonly type: 'unanswered';
+      readonly id: string;
+      readonly row: QueueRow;
+      readonly title: string;
+      /** What the answer changes, with the numbers (the master's only). */
+      readonly text: string;
+      /** What it costs, and why it came to the master. */
+      readonly cost: string;
+    }
   | {
       readonly type: 'check';
       readonly id: string;
@@ -265,6 +282,35 @@ function singleText(e: Encounter, w: ReactionWindow): string {
   return `Esperando a sua reação: ${who} ${what}.${reader}`;
 }
 
+/** "Pensantus pode usar Escudo Arcano": the question that came to the master. */
+function lateTitle(w: ReactionWindow): string {
+  return `${w.reactorLabel} pode usar ${reactionName(w)}`;
+}
+
+/** The numbers of the reaction that came to the master: the Shield's hit against its armor class, with and without the spell. */
+function lateText(w: ReactionWindow): string {
+  const t = w.trigger;
+  if (
+    w.kind === ReactionKind.SHIELD &&
+    t?.attackTotal !== undefined &&
+    t.armorClassWithShield !== undefined
+  ) {
+    const base = t.armorClassWithShield - SHIELD_BONUS;
+    return `O ataque de ${t.attackTotal} ${ofThe([t.actorLabel])} acerta a CA ${base}. Com ${reactionName(w)} a CA vai a ${t.armorClassWithShield} e o ataque ${t.attackTotal >= t.armorClassWithShield ? 'acerta' : 'erra'}.`;
+  }
+  return describeRow(w);
+}
+
+/** What the reaction costs the character: its reaction, and the slot a spell takes. */
+function lateCost(w: ReactionWindow): string {
+  const slots = w.prompt.case === 'shield' ? w.prompt.value.slots.filter((x) => x.free > 0) : [];
+  const slot = [...slots].sort((x, y) => x.level - y.level)[0];
+  const spent = slot
+    ? ` e um espaço de ${circleLabel(slot.level)} (${slot.free} ${slot.free === 1 ? 'livre' : 'livres'})`
+    : '';
+  return `Gasta a reação${spent}. O jogador não respondeu em ${LATE_SECONDS} s; você responde por ele.`;
+}
+
 /** The windows a queue shows: not the checks, the saves, the second steps nor the opportunity attack. */
 function inQueue(w: ReactionWindow): boolean {
   return (
@@ -315,6 +361,16 @@ function ownCard(e: Encounter, w: ReactionWindow): ReactionCard | null {
 /** The card of one action's windows: an NPC alone is its own card, the others share a queue. */
 function groupCard(e: Encounter, key: string, group: readonly ReactionWindow[]): ReactionCard {
   const rows = group.map((x, i) => rowOf(e, x, group[i - 1]));
+  if (rows.length === 1 && rows[0].isPlayer && group[0].unanswered) {
+    return {
+      type: 'unanswered',
+      id: key,
+      row: rows[0],
+      title: lateTitle(group[0]),
+      text: lateText(group[0]),
+      cost: lateCost(group[0]),
+    };
+  }
   if (rows.length === 1 && !rows[0].isPlayer) {
     return { type: 'single', id: key, row: rows[0], text: singleText(e, group[0]) };
   }
@@ -373,6 +429,11 @@ export function windowsBarText(e: Encounter): string {
   const open = openWindows(e);
   if (open.length === 0) {
     return '';
+  }
+  // A player's reaction that came to the master after 10 s without an answer (C8-04).
+  const late = open.filter((w) => w.unanswered);
+  if (late.length > 0) {
+    return `Falta responder por ${listNames([...new Set(late.map((w) => w.reactorLabel))])}`;
   }
   const mine = open.filter(
     (w) => !w.reactorIsPlayer && !combatantIsPlayer(e, w.reactorId) && w.reactorLabel,

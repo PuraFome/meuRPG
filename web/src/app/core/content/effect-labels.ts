@@ -24,6 +24,7 @@ export const EFFECT_FIELD_LABELS: Readonly<Record<string, string>> = {
   text_pt: 'Texto na ficha',
   except: 'Menos o dano de tipo',
   while: 'Só enquanto o estado',
+  only_proficient: 'Só onde já tem proficiência',
   state_name: 'Nome do estado',
   duration_rounds: 'Duração (rodadas)',
   ends_on: 'Também acaba',
@@ -61,4 +62,6 @@ export const EFFECT_FIELD_HINTS: Readonly<Record<string, string>> = {
   reach_ft: 'Em metros, de 1,5 em 1,5; só para armas de corpo a corpo.',
   attack_name: 'O nome do ataque na lista de ataques da ficha.',
   damage_dice: 'Dados simples, como 1d6 ou 2d8 (d4, d6, d8, d10 ou d12; até 10 dados).',
+  only_proficient:
+    'Dobra a perícia só de quem já é proficiente nela por outra fonte. Quem não é, fica como está.',
 };

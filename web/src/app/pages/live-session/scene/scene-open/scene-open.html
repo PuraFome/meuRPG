@@ -1,6 +1,6 @@
 @if (scene(); as s) {
   <section class="so mr-panel" aria-labelledby="so-title">
-    <p class="so__since"><mat-icon aria-hidden="true">cast</mat-icon>{{ since() }}</p>
+    <app-scene-who [campaignId]="campaignId()" [state]="state()" />
 
     <div class="so__head">
       <div class="so__titles">
@@ -32,6 +32,7 @@
         [images]="s.images"
         [shown]="shown()"
         [keep]="keep()"
+        [audience]="state().audience()"
         (changed)="shownChange.emit($event)"
         (leftChanged)="leftChanged.emit()"
       >
@@ -41,7 +42,7 @@
       <ng-content select="[sceneImageTools]" />
     </div>
 
-    <app-scene-actions class="so__part" [campaignId]="campaignId()" [state]="state()" [scene]="s" [(groupAsk)]="groupAsk">
+    <app-scene-actions class="so__part" [campaignId]="campaignId()" [state]="state()" [scene]="s" [mapId]="actionsMapId()" [(groupAsk)]="groupAsk">
       <ng-content select="[sceneTools]" />
     </app-scene-actions>
 

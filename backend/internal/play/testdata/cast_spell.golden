@@ -881,23 +881,13 @@ window effect_save | answered | - | 1
 refused invalid_argument: Sculpt Spells is for spells of the school of evocation
 state unchanged
 == a spell at a hidden creature as the master ==
-cast {"concentrating":true,"slot":{"level":2},"spellKey":"spell:hold-person","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Capitão Goblin","cover":"COVER_DEGREE_NONE","lastingEffect":"LASTING_EFFECT_OUTCOME_APPLIED","save":{"dc":14,"mode":"ROLL_MODE_NORMAL","outcome":"SAVE_OUTCOME_FAILED","roll":{"diceCount":1,"diceSides":20,"faces":[8],"total":8}}}]}
-area 
-inspiration 
-lucky 
-summoned 0
-hidden hits {}
-pending reveal false
-held false
+refused not_found: combatant not found
 event turn_ended {"discarded": 0, "from": "Capitão Goblin", "round": 1, "to": "Pensantus"}
-event spell_cast {"cast_id": "?", "combatant_id": "Pensantus", "concentrate": true, "hits": [{"lasting": "applied", "save": {"bonus_unknown": true, "d20": 8, "dc": 14, "roll_mode": "normal", "total": 8}, "target_id": "Capitão Goblin"}], "key": "spell:hold-person", "lasting": {"change": "added", "effects": ["?"], "key": "spell:hold-person", "targets": ["Capitão Goblin"]}, "round": 1, "secret": true, "slot": {"level": 2}}
 combatant Brisa | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Capitão Goblin | false | false | false | false | true | 27 | 0 | 0 | false | {condition:paralyzed} | {condition:paralyzed} | - | false | false | false | {} | false | false
+combatant Capitão Goblin | false | false | false | false | true | 27 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Goblin | false | false | false | false | false | 7 | 0 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-combatant Pensantus | true | false | false | false | false | -1 | -1 | 0 | false | {} | {} | spell:hold-person | true | false | false | {} | false | false
+combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
-vitals Pensantus | <nil> | 0 | {0,1,0,0,0,0,0,0,0} | 0
-state Capitão Goblin | effect | spell:hold-person | true | {condition:paralyzed} | rounds | 14 | 0
 == a spell at a hidden creature as the player ==
 refused not_found: combatant not found
 event turn_ended {"discarded": 0, "from": "Capitão Goblin", "round": 1, "to": "Pensantus"}

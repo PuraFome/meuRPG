@@ -114,7 +114,15 @@ export class StageMaster {
   }
 
   protected async speak(card: StageCard): Promise<void> {
+    if (card.npc.hidden) {
+      return; // a hidden NPC never speaks: the dashed button answers nothing
+    }
     await this.ctl().speak(card.npc.characterId, card.npc.speaking);
+  }
+
+  /** The eye of a row: hides the NPC from the players, or shows it (RN-10). */
+  protected async toggleHidden(card: StageCard): Promise<void> {
+    await this.ctl().setHidden(card.npc.characterId, !card.npc.hidden);
   }
 
   protected async take(card: StageCard, index: number): Promise<void> {

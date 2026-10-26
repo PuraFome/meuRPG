@@ -164,6 +164,7 @@
       @if (view.combatOnScreen()) {
         <app-combat-view
           class="combat"
+          [hidden]="combatGroup()"
           [campaignId]="state.campaignId()"
           [isMaster]="state.isMaster()"
           [state]="combat"
@@ -184,6 +185,7 @@
           (adjust)="sheets.adjust($event)"
           (changeDice)="sheets.changeDice()"
           (chatShown)="slot.railShown.set($event)"
+          (doorOpened)="toasts.push('door_open', 'Você abriu a porta.', 'Ela aparece aberta no mapa.')"
         >
           @if (state.ownVitals(); as v) {
             <app-player-vitals [vitals]="v" [sheet]="state.ownSheet()" [beastAc]="state.beastAc()" [campaignId]="state.campaignId()" [armorClassBonus]="view.ownArmorBonus()" [ownDeathSaves]="view.ownDeathSaves()" [onTurn]="view.ownTurn()" [effectCards]="ownEffects.cards()" [conditionNames]="ownEffects.conditions()" [compact]="true" />
@@ -230,6 +232,12 @@
             </div>
           }
         </app-combat-view>
+        @if (state.isMaster() && slot.phone()) {
+          <!-- The master's phone nav says "Combate · Grupo · Conversa": "Grupo" is the party's panel in the session, the combat waits behind it. -->
+          <div class="grupo" role="region" aria-label="Grupo" [hidden]="!combatGroup()">
+            <ng-container *ngTemplateOutlet="grupoBlock" />
+          </div>
+        }
         <!-- The player's light stays during a combat (MR-036); the master's fog, traps, treasure and puzzles are tabs under the map. A combat without a map has no fog (RN-25). -->
         @if (!state.isMaster() && !view.inTheatre() && view.fogPlayer() && view.ownToken(); as me) {
           <app-fog-player-tools
@@ -378,37 +386,7 @@
             </div>
           }
           <div appMasterPanel="grupo" [board]="board">
-            <app-party-panel
-              [campaignId]="state.campaignId()"
-              [campaignName]="state.campaign()?.name ?? ''"
-              [party]="state.vitals()"
-              [info]="state.partyInfo()"
-              [dark]="dark.ids()"
-              [conditions]="partyConditions()"
-              (adjust)="sheets.adjust($event)"
-            />
-            <!-- The master's short and long rests (PM-07b 9). -->
-            <app-rest-card
-              [campaignId]="state.campaignId()"
-              [party]="state.vitals()"
-              (restTaken)="takeVitals($event)"
-            />
-            <!-- The effects on the characters outside a combat, the exhaustion and "Passar o tempo" (W7-E). -->
-            <app-character-effects-panel
-              [campaignId]="state.campaignId()"
-              [party]="state.vitals()"
-              [tick]="state.effectsTick()"
-              (conditions)="partyConditions.set($event)"
-            />
-            <app-casting-panel
-              [campaignId]="state.campaignId()"
-              [master]="true"
-              [tick]="state.castsTick()"
-              [diceMode]="state.campaign()?.diceMode ?? 1"
-              [preference]="state.campaign()?.dicePreference ?? 1"
-              (castsWaiting)="board.setCastsWaiting($event)"
-            />
-            <app-bardic-block [campaignId]="state.campaignId()" [tick]="state.castsTick()" />
+            <ng-container *ngTemplateOutlet="grupoBlock" />
           </div>
         </div>
 
@@ -486,7 +464,7 @@
         />
         <!-- The player's scene (C5-01, C5-02, C6-08): on a phone one column (the image shown, the scene, the map row, the images left);
              from 1024px the image (and the images left under it) beside the scene, the map under them, and the rail on the right. -->
-        <div class="player-board" [class.board--scene]="scene.scene()" [class.player-board--split]="scene.scene() && (state.shownImage() || state.leftImages().length > 0)" [class.player-board--image]="state.shownImage()" [class.player-board--left]="state.leftImages().length > 0 && (slot.phone() || !state.shownImage())">
+        <div class="player-board" [class.board--scene]="sceneOpen()" [class.player-board--split]="sceneOpen() && (state.shownImage() || state.leftImages().length > 0)" [class.player-board--image]="state.shownImage()" [class.player-board--left]="state.leftImages().length > 0 && (slot.phone() || !state.shownImage())">
           <app-group-check-card
             class="player-board__group"
             (needsRoll)="state.groupWaiting.set($event)"
@@ -586,7 +564,7 @@
           [sheetPanel]="!state.isMaster()"
           [sceneLabel]="state.isMaster() && view.combatOnScreen() ? 'Combate' : 'Cena'"
           [sheetLabel]="state.isMaster() ? 'Grupo' : 'Ficha'"
-          [master]="state.isMaster() && !view.combatOnScreen()"
+          [master]="state.isMaster()"
           [groupCount]="board.counts().castsWaiting"
           (choose)="phoneNav($event)"
         />
@@ -605,6 +583,41 @@
       · {{ view.freshCount() }}<span class="notes-bar__more">&nbsp;{{ view.freshCount() === 1 ? 'nova' : 'novas' }}</span>
     }</span>
   </button>
+</ng-template>
+
+<!-- "Grupo": the party, the rests, the effects, the casts. A tab of the board outside a combat, a panel of the phone's nav in one. -->
+<ng-template #grupoBlock>
+    <app-party-panel
+    [campaignId]="state.campaignId()"
+    [campaignName]="state.campaign()?.name ?? ''"
+    [party]="state.vitals()"
+    [info]="state.partyInfo()"
+    [dark]="dark.ids()"
+    [conditions]="partyConditions()"
+    (adjust)="sheets.adjust($event)"
+  />
+  <!-- The master's short and long rests (PM-07b 9). -->
+  <app-rest-card
+    [campaignId]="state.campaignId()"
+    [party]="state.vitals()"
+    (restTaken)="takeVitals($event)"
+  />
+  <!-- The effects on the characters outside a combat, the exhaustion and "Passar o tempo" (W7-E). -->
+  <app-character-effects-panel
+    [campaignId]="state.campaignId()"
+    [party]="state.vitals()"
+    [tick]="state.effectsTick()"
+    (conditions)="partyConditions.set($event)"
+  />
+  <app-casting-panel
+    [campaignId]="state.campaignId()"
+    [master]="true"
+    [tick]="state.castsTick()"
+    [diceMode]="state.campaign()?.diceMode ?? 1"
+    [preference]="state.campaign()?.dicePreference ?? 1"
+    (castsWaiting)="board.setCastsWaiting($event)"
+  />
+  <app-bardic-block [campaignId]="state.campaignId()" [tick]="state.castsTick()" />
 </ng-template>
 
 <!-- The conversation, drawn where it sits: the phone's full-screen tab, the column beside the stage or under the board, a combat's rail, or the player's rail. Its code loads lazily. -->

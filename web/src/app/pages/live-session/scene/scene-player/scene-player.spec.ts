@@ -5,7 +5,14 @@ import { Subject, of } from 'rxjs';
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { SceneState } from '../../../../core/play/scene-state';
 import { SceneRollSheet } from '../scene-roll-sheet/scene-roll-sheet';
-import { playerScene, sceneAction, sceneRoll } from '../../../../core/play/scene-testing';
+import { SceneClient } from '../../../../core/play/scene-client';
+import {
+  FakeSceneClient,
+  joinableScene,
+  playerScene,
+  sceneAction,
+  sceneRoll,
+} from '../../../../core/play/scene-testing';
 import { ScenePlayer } from './scene-player';
 
 describe('ScenePlayer', () => {
@@ -43,6 +50,61 @@ describe('ScenePlayer', () => {
     return flat(copy);
   };
 
+  describe('a scene the player may join (C7-06)', () => {
+    function entry(failWith: unknown = null) {
+      const api = new FakeSceneClient();
+      api.failWith = failWith;
+      TestBed.configureTestingModule({ providers: [{ provide: SceneClient, useValue: api }] });
+      const state = new SceneState(
+        () => Promise.resolve(joinableScene()),
+        () => false,
+      );
+      state.apply(joinableScene());
+      const fixture = TestBed.createComponent(ScenePlayer);
+      fixture.componentRef.setInput('campaignId', 'c1');
+      fixture.componentRef.setInput('state', state);
+      fixture.componentRef.setInput('diceMode', DiceMode.PLAYERS_CHOOSE);
+      fixture.componentRef.setInput('dicePreference', DicePreference.APP);
+      fixture.detectChanges();
+      const el = fixture.nativeElement as HTMLElement;
+      const button = () => el.querySelector('button.sc__join') as HTMLButtonElement | null;
+      return { api, state, fixture, el, button };
+    }
+
+    it('is a compact card: "Há uma cena aberta", the name, one filled "Entrar na cena", and nothing else of the scene', () => {
+      const { el, button } = entry();
+      expect(words(el.querySelector('.sc__eyebrow'))).toBe('Há uma cena aberta');
+      expect(flat(el.querySelector('h2'))).toBe('A taverna do Javali Cego');
+      expect(el.textContent).toContain('Você ainda não está nela. Entre para ver e participar.');
+      expect(words(button())).toBe('Entrar na cena');
+      expect(el.querySelectorAll('button').length).toBe(1);
+      expect(
+        el.querySelector('app-stage-player, .sc__list, .sc__row, [role="tablist"]'),
+      ).toBeNull();
+    });
+
+    it('enters with one call, and the card gives way to the scene, titled "Você entrou na cena"', async () => {
+      const { api, el, fixture, button } = entry();
+      button()!.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(api.calls).toEqual(['join']);
+      expect(el.querySelector('button.sc__join')).toBeNull();
+      expect(words(el.querySelector('.sc__eyebrow'))).toBe('Você entrou na cena');
+      expect(rows(el)).toHaveLength(5);
+    });
+
+    it('says why it did not enter, and keeps the button', async () => {
+      const { el, fixture, button } = entry(new Error('boom'));
+      button()!.click();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(el.querySelector('[role="alert"]')).not.toBeNull();
+      expect(button()).not.toBeNull();
+      expect(button()!.hasAttribute('disabled')).toBe(false);
+    });
+  });
+
   describe('in tabs, on a phone (C7-07)', () => {
     function tabbed(inputs: Record<string, unknown> = {}) {
       const made = setup();
@@ -56,6 +118,14 @@ describe('ScenePlayer', () => {
     const tabs = (el: HTMLElement) => Array.from(el.querySelectorAll<HTMLElement>('[role="tab"]'));
     const panels = (el: HTMLElement) =>
       Array.from(el.querySelectorAll<HTMLElement>('[role="tabpanel"]'));
+
+    it('keeps "Você entrou na cena" over the title when the player has just entered', () => {
+      const made = tabbed();
+      made.state.apply(joinableScene());
+      made.state.apply(playerScene());
+      made.fixture.detectChanges();
+      expect(words(made.el.querySelector('.sc__eyebrow'))).toBe('Você entrou na cena');
+    });
 
     it('has "Ações", "Mapa" and "Imagens" with the count, under the title, and no eyebrow', () => {
       const { el } = tabbed({ imagesCount: 2 });

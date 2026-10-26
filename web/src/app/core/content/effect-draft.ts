@@ -79,6 +79,8 @@ export interface EffectDraft {
   attackName: string;
   damageDice: string;
   damageType: string;
+  /** proficiency, level "expertise" on a skill: doubles it only where the character is already proficient. */
+  onlyProficient: boolean;
 }
 
 let nextId = 0;
@@ -132,6 +134,7 @@ export function emptyEffect(type = ''): EffectDraft {
     attackName: '',
     damageDice: '',
     damageType: '',
+    onlyProficient: false,
   };
 }
 
@@ -180,6 +183,7 @@ export function effectToDraft(e: TableEffect): EffectDraft {
     attackName: e.attackName,
     damageDice: e.damageDice,
     damageType: e.damageType,
+    onlyProficient: e.onlyProficient,
   };
 }
 
@@ -295,6 +299,10 @@ const EFFECT_WRITERS: ReadonlyMap<string, EffectWriter> = new Map<string, Effect
   ['damage_type', pickedText('damageType')],
   ['ignore_cover', (d) => (d.ignoreCover ? { ignoreCover: true } : {})],
   [
+    'only_proficient',
+    (d) => (onlyProficientApplies(d) && d.onlyProficient ? { onlyProficient: true } : {}),
+  ],
+  [
     'range_multiplier',
     (d) => (d.rangeMultiplier > 0 ? { rangeMultiplier: d.rangeMultiplier } : {}),
   ],
@@ -303,6 +311,12 @@ const EFFECT_WRITERS: ReadonlyMap<string, EffectWriter> = new Map<string, Effect
     (d) => (d.noLongRangeDisadvantage ? { noLongRangeDisadvantage: true } : {}),
   ],
 ]);
+
+/** Whether "Só onde já tem proficiência" means something for the effect: it doubles a skill, so it goes with the level
+ * "Especialização" on a skill ("skill:*" is every skill). The editor shows it only then, and the request sends it only then. */
+export function onlyProficientApplies(d: Pick<EffectDraft, 'level' | 'proficiency'>): boolean {
+  return d.level === 'expertise' && d.proficiency.startsWith('skill:');
+}
 
 /** The effect a request sends: `type` and the fields the menu says that type reads, and nothing else. An empty text or an empty
  * list is not sent: the server reads "not set" the same way. */

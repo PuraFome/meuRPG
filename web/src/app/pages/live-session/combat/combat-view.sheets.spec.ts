@@ -771,13 +771,24 @@ describe('CombatView sheets: the attack sheet', () => {
     expect(m.opened).toHaveLength(0);
   });
 
-  it('tells the master sheet apart', async () => {
+  it('tells the master sheet apart: the master acting for Toren opens his attack as the master', async () => {
+    const m = await setup({
+      master: true,
+      turnOptions: forToren({ attacks: [longsword()] }),
+    });
+    m.view.actFor.set('t');
+    await settle(m.fixture, 2);
+    m.view.openAttack('attack:longsword');
+    expect(data(m)['master']).toBe(true);
+  });
+
+  it('opens nothing for the master while he acts for nobody', async () => {
     const m = await setup({
       master: true,
       turnOptions: forToren({ attacks: [longsword()] }),
     });
     m.view.openAttack('attack:longsword');
-    expect(data(m)['master']).toBe(true);
+    expect(m.opened).toHaveLength(0);
   });
 
   it('keeps the flag of an open attack sheet until the sheet closes', async () => {

@@ -252,7 +252,7 @@ It lives in `characters` and not in `campaigns` so that `characters` never write
   `name_pt` is the Portuguese name, `data` the protojson of the kind's message (`rules/v1/table_content.proto`), `revision` the campaign revision at the entry's last change.
   **Nothing is deleted**: what a sheet already uses must keep working, so the way out is `archived_at`.
   Archiving and unarchiving change only `archived_at` and the campaign revision (for the cache), not the entry's `revision` and `updated_at`; `updated_at` is the date of the last real change, the one the "A classe mudou" warning shows.
-  The limits are 300 entries per campaign and 64 KiB of `data` per entry (server rules, which show the error on the field; a 128 KiB `CHECK` on `data` is the last defence, with room for JSONB being longer than compact protojson).
+  The limits are 1,000 entries per campaign and 64 KiB of `data` per entry (server rules, which show the error on the field; a 128 KiB `CHECK` on `data` is the last defence, with room for JSONB being longer than compact protojson).
 - **`campaign_content_state`**: the campaign's content revision, one row per campaign, created by the first write (no row means revision 0).
   Every write raises it in the same transaction, so two writes to one campaign run one after the other, and every content read reads this row inside the caller's transaction (see [Architecture](../architecture/characters-table-content.md#the-live-source)).
 - **`campaign_content_off`**: the options the master turned off for the players ("Opções para os jogadores").

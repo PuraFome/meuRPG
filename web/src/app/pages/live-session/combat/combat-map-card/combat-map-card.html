@@ -18,6 +18,15 @@
       }{{ title() }}
     </h2>
     <span class="card__size">{{ isMaster() ? mapName() + ' · ' + size() : 'Quadrados de 1,5 m' }}</span>
+    @if (isMaster() && actingFor()) {
+      @if (pick()) {
+        <span class="card__pick" role="status"><mat-icon aria-hidden="true">my_location</mat-icon>Toque no alvo · por {{ actingFor() }}</span>
+      } @else {
+        <button mat-stroked-button type="button" class="card__move" (click)="move.emit()">
+          <mat-icon aria-hidden="true">open_with</mat-icon>Mover
+        </button>
+      }
+    }
     @if (isMaster() && !preview()) {
       <!-- C7-02: "Ver mapa" is in the header, with its icon: the browser's full screen, or the map's own screen where it has none. -->
       <button

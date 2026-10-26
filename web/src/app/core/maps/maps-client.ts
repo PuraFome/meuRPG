@@ -340,7 +340,7 @@ export class MapsClient {
     mapId: string,
     pointId: string,
     actionId: string,
-    changes: { key?: string; name?: string; dc?: number },
+    changes: { key?: string; name?: string; dc?: number; hidden?: boolean },
   ): Promise<readonly SceneAction[]> {
     const res = await this.client.updateSceneAction({
       campaignId,

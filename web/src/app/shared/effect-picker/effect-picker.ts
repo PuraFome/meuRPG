@@ -7,6 +7,7 @@ import {
   type EffectDraft,
   type EffectMenuVm,
   emptyEffect,
+  onlyProficientApplies,
 } from '../../core/content/effect-draft';
 import type { EffectMenuField } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { CheckRow } from '../form-fields/check-row';
@@ -60,7 +61,11 @@ export class EffectPicker {
       ? 'Só o texto aparece na ficha; o app não faz conta com ele.'
       : (this.menu().typeOf(t)?.hintPt ?? '');
   });
-  protected readonly allFields = computed(() => this.menu().fieldsOf(this.effect().type));
+  protected readonly allFields = computed(() =>
+    this.menu()
+      .fieldsOf(this.effect().type)
+      .filter((f) => f.name !== 'only_proficient' || onlyProficientApplies(this.effect())),
+  );
   /** "Mais opções": the optional fields stay folded until they hold something, a refusal points at them, or the person opens them;
    * a field the menu says is always shown (what the effect does lies in it, as ranged_attack's switches) is never folded. */
   protected readonly expanded = signal(false);
@@ -70,6 +75,7 @@ export class EffectPicker {
         this.expanded() ||
         f.required ||
         f.alwaysShown ||
+        f.name === 'only_proficient' ||
         this.filled(f) ||
         this.issues(f.name).length > 0,
     ),

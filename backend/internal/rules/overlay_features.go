@@ -274,12 +274,8 @@ var effectTypeChecks = map[string]func(b *overlayBuilder, site effectSite, e *Ef
 	"weapon_rule":   (*overlayBuilder).checkWeaponEffects,
 	"pseudo_weapon": (*overlayBuilder).checkWeaponEffects,
 	"choice":        (*overlayBuilder).checkChoiceEffect,
-	"ability_increase": func(_ *overlayBuilder, site effectSite, e *Effect) error {
-		if attr, msg := checkAbilityIncrease(e); attr != "" {
-			return site.fail(attr, ReasonValue, "%s", msg)
-		}
-		return nil
-	},
+	"ability_increase": func(_ *overlayBuilder, site effectSite, e *Effect) error { return checkOwnFields(site, e) },
+	"proficiency":      func(_ *overlayBuilder, site effectSite, e *Effect) error { return checkOwnFields(site, e) },
 	"grant_action": func(b *overlayBuilder, site effectSite, e *Effect) error {
 		if e.Resource != "" && !b.resourceDefined(site.owner, e.Resource) {
 			return site.fail(".resource", ReasonReference, "the action spends %q, which no resource effect of this entry or its class defines", e.Resource)
@@ -290,6 +286,21 @@ var effectTypeChecks = map[string]func(b *overlayBuilder, site effectSite, e *Ef
 	"extra_damage":    (*overlayBuilder).checkOnTarget,
 	"ambush":          (*overlayBuilder).checkOnTarget,
 	"resource":        (*overlayBuilder).checkResourceEffect,
+}
+
+// checkOwnFields checks the fields of an ability_increase or a proficiency
+// effect that depend on one another.
+func checkOwnFields(site effectSite, e *Effect) error {
+	if e.Type == "proficiency" {
+		if msg := checkOnlyProficient(e); msg != "" {
+			return site.fail(".only_proficient", ReasonValue, "%s", msg)
+		}
+		return nil
+	}
+	if attr, msg := checkAbilityIncrease(e); attr != "" {
+		return site.fail(attr, ReasonValue, "%s", msg)
+	}
+	return nil
 }
 
 // checkEffectType refuses a type that is not on the menu.
@@ -460,7 +471,7 @@ func (b *overlayBuilder) checkResourceEffect(site effectSite, e *Effect) error {
 // table.
 var ownFields = map[string][]string{
 	"modifier":     {"target", "mode", "value"},
-	"proficiency":  {"proficiency", "level"},
+	"proficiency":  {"proficiency", "level", "only_proficient"},
 	"roll_mode":    {"roll", "targets", "while"},
 	"sense":        {"sense", "range_ft"},
 	"resource":     {"resource", "max", "recharge"},
@@ -520,6 +531,7 @@ var effectFields = []effectField{
 	{"ignore_cover", func(e *Effect) bool { return e.IgnoreCover }, func(e *Effect) { e.IgnoreCover = false }},
 	{"range_multiplier", func(e *Effect) bool { return e.RangeMultiplier != 0 }, func(e *Effect) { e.RangeMultiplier = 0 }},
 	{"no_long_range_disadvantage", func(e *Effect) bool { return e.NoLongRangeDisadvantage }, func(e *Effect) { e.NoLongRangeDisadvantage = false }},
+	{"only_proficient", func(e *Effect) bool { return e.OnlyProficient }, func(e *Effect) { e.OnlyProficient = false }},
 	{"except", func(e *Effect) bool { return e.Except != "" }, func(e *Effect) { e.Except = "" }},
 	{"while", func(e *Effect) bool { return e.While != "" }, func(e *Effect) { e.While = "" }},
 	{"progression", func(e *Effect) bool { return e.Progression != "" }, func(e *Effect) { e.Progression = "" }},

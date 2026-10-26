@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 import { classBody, createClassRPC, halfCasterBody, listEntries } from './classes-support';
 import { archiveEntryRPC, entryRoute } from './content-support';
 import { pickRadio } from './move-support';
+import { listSpellsRPC } from './spells-support';
 import { campaignWithEmptyPlayer } from './table-rules-support';
 import { characterRpcBody, createCharacterRPC, newSignedInContext, pensantus } from './support';
 
@@ -244,3 +245,127 @@ test('mudar a conjuração de uma tabela editada pergunta no lugar, e "Restaurar
     await Promise.all([master.close(), player.close()]);
   }
 });
+
+test(
+  'o mestre dá magias do SRD à lista própria da classe, e a página Magias as lista para ela @MR-025',
+  { tag: ['@MR-025', '@RN-23'] },
+  async ({ browser }) => {
+    const master = await newSignedInContext(browser, 'Mestre Teste');
+    const player = await newSignedInContext(browser, 'Jogador Teste');
+    try {
+      const m = await master.newPage();
+      const p = await player.newPage();
+      await Promise.all([m.goto('/'), p.goto('/')]);
+      const campaignId = await campaignWithEmptyPlayer(m, p, `Classes lista SRD ${Date.now()}`);
+      // A half caster with a list of its own (no list_from) and a list that reuses the druid's.
+      const own = halfCasterBody('Aprendiz');
+      (own.casting as Record<string, unknown>).listFrom = '';
+      (own.casting as Record<string, unknown>).ability = 'ABILITY_INTELLIGENCE';
+      const key = await createClassRPC(m, campaignId, own);
+
+      await m.goto(entryRoute(campaignId, key));
+      await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Aprendiz');
+      await expect(m.getByText('Magias do SRD na lista da classe').first()).toBeVisible();
+      await expect(m.getByText('Elas se juntam às magias da mesa que citam esta classe.')).toBeVisible();
+      const add = m.getByLabel('Adicionar magia do SRD');
+      await add.selectOption({ label: 'Curar Ferimentos (1º nível, Evocação)' });
+      await add.selectOption({ label: 'Ajuda (2º nível, Abjuração)' });
+      await expect(m.getByRole('button', { name: 'Tirar Ajuda (2º nível, Abjuração)' })).toBeVisible();
+
+      // Reusing the list of another class turns the picker off and says why.
+      await m.getByLabel('Lista de magias').selectOption({ label: 'A lista do Druida' });
+      await expect(add).toBeDisabled();
+      await expect(m.getByText('Esta classe usa a lista de outra classe.')).toBeVisible();
+      await m.getByLabel('Lista de magias').selectOption({ label: 'A própria lista da classe' });
+      await expect(add).toBeEnabled();
+
+      await m.getByRole('button', { name: 'Salvar classe' }).click();
+      await expect(m.getByText('A classe Aprendiz foi salva.')).toBeVisible();
+      const stored = (await listEntries(m, campaignId)).find((e) => e.namePt === 'Aprendiz')!;
+      expect(stored.tableClass.casting.srdSpellKeys).toEqual(['spell:cure-wounds', 'spell:aid']);
+
+      // The "Magias" page lists them for the class, and only them.
+      const keys = (await listSpellsRPC(p, campaignId, { classKey: key })).spells.map((s) => s.key);
+      expect(keys.sort()).toEqual(['spell:aid', 'spell:cure-wounds']);
+    } finally {
+      await Promise.all([master.close(), player.close()]);
+    }
+  },
+);
+
+test(
+  'o mestre marca as magias de uma subclasse como lista expandida, para escolher @MR-025',
+  { tag: ['@MR-025', '@RN-23'] },
+  async ({ browser }) => {
+    const master = await newSignedInContext(browser, 'Mestre Teste');
+    const player = await newSignedInContext(browser, 'Jogador Teste');
+    try {
+      const m = await master.newPage();
+      const p = await player.newPage();
+      await Promise.all([m.goto('/'), p.goto('/')]);
+      const campaignId = await campaignWithEmptyPlayer(m, p, `Subclasses expandida ${Date.now()}`);
+
+      await m.goto(`/campaigns/${campaignId}/content?kind=subclasses`);
+      await m.getByRole('link', { name: 'Nova subclasse' }).click();
+      await m.getByLabel('Nome', { exact: true }).fill('Pacto da Tinta');
+      await m.getByLabel('É subclasse de').selectOption({ label: 'Clérigo' });
+      // The switch is for a subclass that names spells.
+      const expanded = m.getByRole('switch', { name: 'As magias da subclasse entram na lista da classe, para escolher' });
+      await expect(expanded).toHaveCount(0);
+      await m.getByLabel('Adicionar nível').selectOption({ label: 'Nível 3' });
+      await m.getByRole('group', { name: 'Nível 3' }).getByLabel('Adicionar magia').selectOption({ label: 'Mísseis Mágicos' });
+      await expect(expanded).toHaveAttribute('aria-checked', 'false');
+      await expanded.click();
+      await expect(expanded).toHaveAttribute('aria-checked', 'true');
+      await expect(m.getByText('A pessoa escolhe estas magias como as outras da lista, e elas contam no limite.')).toBeVisible();
+      await m.getByRole('button', { name: 'Salvar subclasse' }).click();
+      await expect(m.getByText('A subclasse Pacto da Tinta foi salva.')).toBeVisible();
+
+      const stored = (await listEntries(m, campaignId)).find((e) => e.namePt === 'Pacto da Tinta')!;
+      expect(stored.tableSubclass.spellsExpanded).toBe(true);
+      expect(stored.tableSubclass.alwaysPrepared).toEqual([{ classLevel: 3, spellKey: 'spell:magic-missile' }]);
+    } finally {
+      await Promise.all([master.close(), player.close()]);
+    }
+  },
+);
+
+test(
+  'o mestre liga "Só onde já tem proficiência" na especialização de uma perícia @MR-025',
+  { tag: ['@MR-025', '@RN-23'] },
+  async ({ browser }) => {
+    const master = await newSignedInContext(browser, 'Mestre Teste');
+    const player = await newSignedInContext(browser, 'Jogador Teste');
+    try {
+      const m = await master.newPage();
+      const p = await player.newPage();
+      await Promise.all([m.goto('/'), p.goto('/')]);
+      const campaignId = await campaignWithEmptyPlayer(m, p, `Classes especializacao ${Date.now()}`);
+      const key = await createClassRPC(m, campaignId, classBody());
+
+      await m.goto(entryRoute(campaignId, key));
+      await m.getByRole('button', { name: 'Adicionar característica', exact: true }).click();
+      await m.getByLabel('Nome da característica').fill('Estudo dobrado');
+      await m.getByLabel('Efeito', { exact: true }).selectOption({ label: 'Proficiência' });
+      await m.getByLabel('Proficiência em').selectOption({ value: 'skill:perception' });
+      // The switch means something only with the level "Especialização" on a skill.
+      const only = m.getByRole('checkbox', { name: 'Só onde já tem proficiência' });
+      await expect(only).toHaveCount(0);
+      await m.getByRole('button', { name: 'Mais opções', exact: true }).last().click();
+      await m.getByLabel('Quanto').selectOption({ value: 'expertise' });
+      await expect(only).not.toBeChecked();
+      // The real checkbox sits under the row's drawn box: a click on its words ticks it.
+      await m.getByText('Só onde já tem proficiência', { exact: true }).click();
+      await expect(only).toBeChecked();
+      await m.getByRole('button', { name: 'Salvar classe' }).click();
+      await expect(m.getByText('A classe Guardião do Vale foi salva.')).toBeVisible();
+
+      const stored = (await listEntries(m, campaignId)).find((e) => e.namePt === 'Guardião do Vale')!;
+      const features = stored.tableClass.levels[0].features as { namePt: string; effects: unknown[] }[];
+      const effect = features.find((f) => f.namePt === 'Estudo dobrado')!.effects[0];
+      expect(effect).toMatchObject({ type: 'proficiency', proficiency: 'skill:perception', level: 'expertise', onlyProficient: true });
+    } finally {
+      await Promise.all([master.close(), player.close()]);
+    }
+  },
+);

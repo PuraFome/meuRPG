@@ -19,6 +19,18 @@
             <img class="sm__thumb" [src]="thumb(img)" alt="" appRetryImage />
             <span class="sm__badge"><mat-icon aria-hidden="true">cast</mat-icon>À mostra<span class="mr-visually-hidden"> agora</span></span>
           </span>
+        } @else if (partial()) {
+          <button
+            type="button"
+            class="sm__pic sm__pic--button"
+            [attr.aria-label]="'Mostrar ' + img.name + ' para…'"
+            [disabled]="busyId() !== null"
+            [matMenuTriggerFor]="whoMenu"
+            [matMenuTriggerData]="{ image: img }"
+          >
+            <img class="sm__thumb" [src]="thumb(img)" alt="" appRetryImage />
+            <span class="sm__show" aria-hidden="true">Mostrar<mat-icon>expand_more</mat-icon></span>
+          </button>
         } @else {
           <button
             type="button"
@@ -35,6 +47,41 @@
     }
     <li class="sm__tile sm__tile--add"><ng-content select="[galleryTile]" /></li>
   </ul>
+
+  @if (shown()) {
+    <div class="sm__who">
+      <p class="sm__seeing"><mat-icon aria-hidden="true">visibility</mat-icon>{{ seeing() }}</p>
+      @if (canWiden()) {
+        <button matButton type="button" class="sm__btn" [disabled]="busyId() !== null" disabledInteractive (click)="widen()">
+          <mat-icon aria-hidden="true">groups</mat-icon>Mostrar a toda a mesa
+        </button>
+      }
+      <button matButton type="button" class="sm__btn" [disabled]="busyId() !== null" disabledInteractive (click)="changeWho()">
+        <mat-icon aria-hidden="true">edit</mat-icon>Mudar quem vê
+      </button>
+    </div>
+  }
+
+  <mat-menu #whoMenu="matMenu" class="sm-menu">
+    <ng-template matMenuContent let-image="image">
+      <p class="sm-menu__head">Mostrar “{{ image.name }}” para</p>
+      <button mat-menu-item type="button" (click)="show(image, false, { kind: 'scene', userIds: [] })">
+        <mat-icon aria-hidden="true">chat_bubble_outline</mat-icon>
+        <span class="sm-menu__text">
+          <span class="sm-menu__title">Só quem está na cena<mat-icon aria-hidden="true" class="sm-menu__check">check</mat-icon></span>
+          <small>{{ insideNames() }}</small>
+        </span>
+      </button>
+      <button mat-menu-item type="button" (click)="show(image, false, { kind: 'whole', userIds: [] })">
+        <mat-icon aria-hidden="true">groups</mat-icon>
+        <span class="sm-menu__text"><span>Toda a mesa</span><small>{{ tableNames() }}</small></span>
+      </button>
+      <button mat-menu-item type="button" (click)="chooseFor(image)">
+        <mat-icon aria-hidden="true">edit</mat-icon>
+        <span class="sm-menu__text"><span>Escolher quem vê…</span></span>
+      </button>
+    </ng-template>
+  </mat-menu>
 
   @for (img of images(); track img.id) {
     @if (askingId() === img.id) {

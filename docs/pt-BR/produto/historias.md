@@ -65,6 +65,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 | [MR-051](#mr-051-conversa-da-cena) | Sessão | MVP |
 | [MR-052](#mr-052-o-rolador-de-dados-livre) | Sessão | MVP |
 | [MR-049](#mr-049-personagens-reservados-e-links-para-assumir) | Personagem | MVP |
+| [MR-053](#mr-053-o-mestre-age-pelo-personagem-de-um-jogador) | Combate | MVP |
 | [MR-002](#mr-002-gerar-convite) | Campanha | MVP (pré-requisito) |
 | [MR-005](#mr-005-criar-npcs) | Personagem | MVP (pré-requisito) |
 | [MR-007](#mr-007-importar-ficha-em-pdf) | Personagem | Depois |
@@ -371,7 +372,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 - **Dado** que o mestre pede a um, alguns ou todos os personagens um teste de perícia, um teste de habilidade ou um teste de resistência fora de um combate, **quando** ele o envia, **então** cada rolagem é julgada sozinha, a menos que ele escolha um teste em grupo, só os personagens pedidos leem o pedido, e o mestre marca quem está surpreso.
 - **Dado** alguém com 0 PV, **quando** o jogador olha o turno, **então** vê "Brisa está caída", as marcas e "Rolar teste contra a morte"; na terceira falha o personagem morre só quando o mestre confirma ("Confirmar a morte" / "Ainda não") (RN-03).
 - **Dado** condições (as 15 do SRD; "Derrubado" é Prone) e concentração, **quando** elas se aplicam, **então** aparecem como etiquetas sob o nome, na faixa do jogador e como um ponto na peça, e o jogador encerra a própria concentração. O mestre as define em "Condições…" no ⋮ da ordem. Quando o dano atinge um alvo que se concentra, o mestre que aplica **outro valor** ("Aplicar outro valor") lê "Teste de Constituição, CD 10". Condições e concentração são marcadas e lembradas; o mestre decide os efeitos (RN-22).
-- **Dado** o personagem de um jogador com 0 PV, ainda fazendo testes contra a morte, no turno dele com o teste ainda não rolado, **quando** o jogador está ausente e o mestre do jogo lê "Teste contra a morte de Brisa", **então** ele o rola ("Rolar no app" ou "Digitar o resultado", pelo modo de dados da mesa) e as contagens andam, **e** se ele tocar em "Próximo turno" antes o app pergunta "O teste contra a morte de Brisa ainda não foi rolado." com "Rolar agora" ou "Passar sem rolar"; o cartão nunca aparece para um NPC nem para um personagem estável, e os outros jogadores nunca leem o resultado (RN-03, RN-24).
+- **Dado** o personagem de um jogador com 0 PV, ainda fazendo testes contra a morte, no turno dele com o teste ainda não rolado, **quando** o jogador está ausente e o mestre do jogo lê "Teste contra a morte de Brisa", **então** ele o rola ("Rolar no app" ou "Digitar o resultado", pelo modo de dados da mesa) e as contagens andam, **e** o turno não passa antes de ele ser rolado ("Próximo turno" fica tracejado e a barra diz "Falta o teste contra a morte"; o servidor também recusa, MR-053); o cartão nunca aparece para um NPC nem para um personagem estável, e os outros jogadores nunca leem o resultado (RN-03, RN-24).
 
 **Turno do mestre e o registro**
 - **Dado** a vez de um NPC, **quando** o mestre a joga, **então** o cartão "Ações do Capitão Goblin" mostra pontos de vida, classe de armadura, velocidade e o ataque com o campo "Alvo"; "Rolar ataque" funciona no app ou digitado ("Acertou contra CA 18 do Toren"), e "Aplicar 5 de dano" / "Não aplicar" (que pergunta "Descartar o dano de 5?"). Enquanto há dano sem aplicar, "Próximo turno" pergunta "Há dano sem aplicar. Passar o turno mesmo assim?". A classe de armadura é só do mestre.
@@ -417,10 +418,13 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 - **Dado** a cena aberta, **quando** o mestre a lê, **então** ela diz desde quando está aberta e quem está dentro e quem está fora, com os nomes dos personagens ("Aberta desde 20:20 para Pensantus, Brisa"; "Fora da cena: Sálvia e Jabuti"); nenhum jogador lê essa lista.
 - **Dado** uma cena aberta para só alguns jogadores, **quando** o mestre pede um teste em grupo ("Teste em grupo") sem nomear personagens, **então** ele pede só aos jogadores da cena, **e** nomear um personagem que está fora é recusado; um jogador tirado da cena deixa de ler o teste e não pode respondê-lo. O mestre dá uma tentativa só a um personagem que está dentro.
 - **Dado** uma cena aberta para só alguns jogadores, **quando** a sessão termina, **então** os testes passados nela contam no resumo para o mestre e para os jogadores que estavam dentro, e para nenhum outro jogador.
+- **Dado** uma rolagem que um jogador fez numa ação que o mestre escondeu depois, **quando** a sessão termina, **então** a rolagem continua no resumo dos jogadores que a viram ou a rolaram, porque aconteceu: o resumo conta tentativas e acertos por personagem, nunca a ação, então não diz nada dela; a lista de rolagens da cena deixa de mostrar a rolagem aos jogadores (RN-10).
 - **Dado** uma cena aberta para só alguns jogadores, **quando** o mestre liga "Os jogadores podem entrar" (desligado por padrão, mutável com a cena aberta, volta a desligado quando a cena fecha), **então** um jogador que está fora lê exatamente duas coisas dela: o nome e que pode entrar, e nada mais (nem ponto, descrição, palco, ações, rolagens, imagens ou pistas); com o interruptor desligado não lê nada, como quando nenhuma cena está aberta. Todos os jogadores são avisados quando o interruptor muda.
 - **Dado** uma cena que deixa os jogadores entrarem, **quando** um jogador toca "Entrar na cena", **então** ele vira um dos jogadores dela na hora, lê como qualquer membro e o mestre o vê marcado como quem entrou sozinho, contra os que ele escolheu; entrar de novo não muda nada. O mestre, um estranho e um membro pendente não podem entrar, e com o interruptor desligado a recusa é a de "nenhuma cena está aberta".
 - **Dado** um jogador que entrou numa cena, **então** ele é um dos jogadores dela para o que vem depois: uma imagem mostrada aos "jogadores da cena" chega a ele na hora, e uma imagem mostrada a jogadores escolhidos não chega, a menos que ele tenha sido escolhido.
-- **Dado** uma cena aberta para alguns jogadores, **quando** o mestre a abre para todos, **então** ela fica "descoberta" para o grupo, e o nome dela pode rotular uma anotação; enquanto está aberta para alguns ela não fica, e a lista de cenas não conta nada aos outros.
+- **Dado** uma cena aberta para alguns jogadores, **quando** o mestre a abre para todos, **então** ela fica "descoberta" para o grupo e qualquer jogador pode rotular uma anotação com o nome dela; enquanto está aberta para alguns, só os jogadores dela a descobrem, cada um por si: podem rotular uma anotação com ela (também quando o mestre os põe dentro ou eles entram, e depois de saírem, pois o que leram, leram), e a lista de cenas ou de anotações de nenhum outro jogador conta o nome dela nem a aceita como rótulo (a recusa é a de uma cena que não existe).
+- **Dado** uma cena aberta para só alguns jogadores, **quando** o mestre diz quem está dentro, **então** ele pode nomear qualquer jogador da campanha, também o jogador de um personagem morto: a audiência da cena é sobre jogadores, e esse jogador acompanha a cena como qualquer um dentro dela. Rolar uma ação continua pedindo um personagem vivo.
+- **Dado** uma cena aberta para só alguns jogadores, **quando** o mestre revela uma pista a um personagem cujo jogador está fora, **então** é permitido (o mestre escolheu o personagem): a pista está nas anotações desse jogador e nada mais da cena chega a ele: nem cena, palco, ações, imagens ou nome da cena, e a pista não leva rótulo de cena para ele.
 - **Dado** uma ação de cena, **quando** o mestre a marca "Escondida" (ao acrescentá-la, ou depois, também com a cena aberta), **então** nenhum jogador a recebe: nem o nome, a CD, as tentativas ou as rolagens, no mapa, na cena aberta, num aviso ao vivo ou no histórico que ele lê (RN-10); o mestre continua a vê-la, marcada, rola nela pela mesa e dá tentativas nela.
 - **Dado** uma ação escondida, **quando** um jogador tenta rolá-la mesmo assim, **então** a recusa é exatamente a de uma ação que não existe (o mesmo erro, a mesma mensagem), para nunca dizer ao jogador que a ação está lá.
 - **Dado** uma ação escondida na cena aberta, **quando** o mestre a mostra ("Os jogadores veem"), **então** os jogadores da cena a veem na hora e podem rolá-la; **quando** o mestre a esconde de novo, **então** ela sai da tela deles na hora, com as rolagens que fizeram nela. Nada é apagado: mostrá-la outra vez devolve as rolagens e as tentativas.
@@ -430,6 +434,8 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 #### No app
 - Editor: "Ações da cena" e "Imagens da cena" do painel do ponto (miniaturas em ordem com ↑ ↓ e "Tirar da cena", que mantém a imagem na galeria; "Escolher da galeria"; "Gerar imagem com IA", cuja imagem entra na lista; "N de 8").
 - Sessão: o mestre abre a "Cena de RP" na aba "Cena" ("Abrir cena", "Trocar cena", "Fechar cena"; abrir uma cena leva para a aba). A cena aberta é um cartão só: "Em cena" (uma linha por NPC), "Imagens da cena" (miniaturas; um toque mostra uma, a imagem do mapa inteiro pergunta antes; a que está à mostra leva "À mostra"; o bloco tracejado "Da galeria" e "Parar de mostrar"), "Ações e rolagens" (uma linha por ação, cada rolagem num chip que abre a fórmula e o Passou / Não passou; "Teste em grupo" no cabeçalho), "Pistas" e os "Ganchos e anotações", dobrados. No celular as partes dobram. O jogador tem o bloco "Cena" com o bônus dele e "Rolar".
+- Quem vê o quê (RN-10): a primeira linha da cena aberta diz "Aberta desde 20:20 para" com os jogadores que estão nela em chips (uma contagem e as iniciais sobrepostas a partir de quatro) e "Quem está na cena", que abre o seletor de jogadores (uma folha no celular); embaixo, quem está fora ("Toren não está nesta cena.") e, numa cena aberta só para alguns jogadores, o interruptor "Os jogadores podem entrar"; quando um jogador entra por conta própria a linha diz "Toren entrou na cena às 20:41.". Cada ação tem um olho ("Escondida": os jogadores nunca a recebem nem as rolagens dela).
+- Tela do jogador, fora de uma cena aberta para só alguns jogadores: com o interruptor do mestre desligado nada da cena é desenhado (a página fica como sem cena aberta: o mapa e as imagens deixadas); ligado, um cartão compacto, "Há uma cena aberta", o nome da cena, "Você ainda não está nela. Entre para ver e participar." e um "Entrar na cena" preenchido. Entrar mostra a cena como a de qualquer jogador, sob "Você entrou na cena", com o título em foco; se o mestre desligou o interruptor nesse meio tempo o cartão some e a página diz "A cena não está mais aberta para entrar.". Veja [Design](../../design/session.md#the-players-scene-and-the-ficha-panel).
 - Ver [Cenas e palco](../../architecture/play/scenes-and-stage.md).
 
 #### Relacionadas
@@ -437,10 +443,6 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 - As cenas têm testes de perícia, testes de habilidade e testes de resistência; magias e habilidades não fazem parte delas.
 
 #### Dúvidas
-- Uma cena aberta para só alguns jogadores não fica "descoberta" para o grupo, então os jogadores dela não podem rotular uma anotação com ela até o mestre abri-la para todos. Os jogadores da cena deveriam poder?
-- Uma pista que o mestre revela a um personagem que está fora da cena aberta chega às anotações desse jogador (o mestre escolheu o personagem). Revelar uma pista de uma cena a um jogador que está fora deveria ser recusado?
-- Só um jogador dono de um personagem vivo do grupo pode ser nomeado numa cena, como nos leitores da conversa. O jogador de um personagem morto deveria poder acompanhar uma cena?
-- Uma rolagem que um jogador fez numa ação escondida depois sai da lista de rolagens dele, mas continua no resumo da sessão, que conta tentativas e acertos por personagem (nunca a ação): o resumo guarda o número que a mesa já viu. Esconder uma ação deve tirar as rolagens dela também do resumo?
 - Um pacote exportado com uma ação escondida a traz de volta escondida. É isso que o mestre quer quando compartilha uma campanha com outro mestre?
 
 ### MR-016: Dar XP
@@ -572,13 +574,15 @@ Cada convite escolhe se exige aprovação, e uma recusa apaga o personagem e a p
 - **Dado** uma imagem mostrada, **quando** o mestre olha quem a vê ("Quem vê a imagem"), **então** ela tem uma audiência de três tipos: a mesa toda; os jogadores da cena; ou jogadores escolhidos, qualquer conjunto de jogadores da campanha, escolhidos como o "Para" da conversa. A audiência é a mesa toda quando nenhuma cena está aberta ou a cena aberta está aberta para todos, exatamente como antes; enquanto uma cena aberta para só alguns jogadores está aberta, o padrão são os jogadores da cena, **e** o mestre pode escolher a mesa toda ou jogadores escolhidos ao mostrar a imagem.
 - **Dado** uma imagem mostrada aos jogadores da cena, **quando** o mestre muda quem está na cena, **então** um jogador que entra vê a imagem na hora e um jogador que sai deixa de vê-la na hora; **quando** a cena fecha, outra abre, ou a cena abre para todos, **então** a imagem fica com os jogadores que estavam dentro naquele momento, até o mestre parar de mostrá-la ou mostrar outra: ela não chega a mais ninguém, e nenhum jogador a recebe retroativamente.
 - **Dado** uma imagem mostrada, **quando** o mestre toca "Mostrar a toda a mesa", **então** todos os jogadores a veem na hora, como uma imagem mostrada sem cena; **quando** ele toca "Mudar quem vê" e escolhe os jogadores, **então** os escolhidos a veem, os outros a perdem na hora (a imagem some da tela deles, da leitura da sessão ao vivo e da rota da imagem, que responde 404) e os jogadores que ficam não ouvem nada.
+- **Dado** que a imagem na tela é apagada da galeria, **então** só o mestre e os jogadores que a viram ficam sabendo que ela deixou de ser mostrada; um jogador fora da audiência dela não ouve nada, e as listas de imagens deixadas que ele lê não mudam (RN-10).
 - **Dado** um jogador fora da audiência da imagem, **então** ele nunca a recebe: nem a imagem, nem o ID ou o nome dela numa leitura, nem num evento ao vivo (ele só fica sabendo que uma imagem que viu deixou de ser mostrada), nem pela rota da imagem, nem no resumo ou nos destaques (RN-10).
-- **Dado** uma imagem com "Deixar com os jogadores" ligado, **quando** ela deixa de ser mostrada, **então** ela fica só com os jogadores que estavam na audiência dela (a mesa toda, ou esses jogadores); a lista que os outros jogadores leem não a tem, a rota da imagem responde 404 a eles e as telas deles não ouvem nada dela; "Tirar" funciona como antes. Deixar uma imagem de novo toma a audiência da deixada mais recente.
+- **Dado** uma imagem com "Deixar com os jogadores" ligado, **quando** ela deixa de ser mostrada, **então** ela fica só com os jogadores que estavam na audiência dela (a mesa toda, ou esses jogadores); a lista que os outros jogadores leem não a tem, a rota da imagem responde 404 a eles e as telas deles não ouvem nada dela; "Tirar" funciona como antes. Deixar uma imagem de novo, com outra audiência, guarda a mais ampla: quem já a tinha continua com ela e os jogadores novos a recebem também; só "Tirar" a estreita. Um "Mudar quem vê" para a lista das imagens deixadas fica para depois: a audiência de uma imagem deixada não muda até ela ser tirada.
 
 #### No app
 - Uma imagem por vez, independente do mapa atual; uma sessão nova começa sem nenhuma.
   Apagar a imagem da galeria para de mostrá-la e a tira da lista.
   O nome da imagem é o nome do arquivo enviado e aparece para os jogadores como legenda, então o mestre pode renomeá-la antes de mostrar.
+- Na sessão o mestre escolhe quem vê. Com a cena aberta para a mesa toda um toque mostra a imagem para a mesa; com ela aberta só para alguns jogadores, "Mostrar" numa miniatura é um menu ("Só quem está na cena", "Toda a mesa", "Escolher quem vê…"). Sob as miniaturas uma linha diz quem vê a imagem à mostra ("Pensantus e Brisa veem", "Só Brisa vê", "Toda a mesa vê", "Os jogadores veem"), com "Mostrar a toda a mesa" e "Mudar quem vê", que abre o seletor ("Quem vê “Vista do salão”?") e tira a imagem na hora de quem ficou de fora.
 - Mostrar o fundo de um mapa com névoa mostra uma cópia dele ("… (névoa)"), para não entregar a névoa.
 - Um jogador baixa a imagem só enquanto ela está sendo mostrada e ele está na audiência dela, enquanto está deixada com ele, ou enquanto é o fundo de um mapa que ele vê.
   Fora disso é um `404`, mesmo com o ID guardado.
@@ -590,11 +594,6 @@ Cada convite escolhe se exige aprovação, e uma recusa apaga o personagem e a p
 - A audiência faz parte da chamada de mostrar e tem uma chamada própria para mudá-la enquanto a imagem é mostrada (`SetShownImage`, `SetShownImageAudience`); o mestre a lê na imagem, e um jogador nunca.
 - Fora do escopo: um "baú" por jogador com toda imagem já mostrada.
   A lista guarda só o que o mestre escolheu deixar, e um jogador lê as imagens deixadas com ele.
-
-#### Dúvidas
-- Apagar a imagem que está sendo mostrada avisa todos os jogadores de que ela deixou de ser mostrada, também os que estão fora da audiência (o evento não leva imagem). Deveria avisar só os jogadores que a viram?
-- Uma imagem deixada de novo toma a audiência da deixada mais recente, o que pode estreitar o que um jogador já tinha. Deveria guardar a audiência mais ampla?
-- A audiência de uma imagem já deixada não pode ser mudada; o mestre a tira e a mostra de novo. Um "Mudar quem vê" para a lista das deixadas é necessário?
 
 ### MR-025: Cadastrar conteúdo da mesa
 
@@ -623,6 +622,12 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 - **Dado** uma característica que o mestre cadastra, **quando** ele escolhe o efeito dela, **então** escolhe num menu fechado (modificador, proficiência, recurso, sentido, modo de rolagem, ação, ataque extra, ataque à distância, escolha, dado de manobra, nota, magia concedida).
   Uma ação pode gastar um recurso que a entrada define, e uma característica de classe ou de subclasse pode ter uma **lista de opções** que o jogador escolhe (as manobras de uma mesa, cada uma com os seus efeitos; "Opções para escolher" no editor da característica).
   O conteúdo da mesa nunca executa código.
+- **Dado** uma classe da mesa que conjura de uma lista própria, **quando** dou nome a magias do SRD nessa lista no editor da classe ("Magias do SRD na lista da classe"), **então** elas se juntam às magias da mesa que citam a classe: o personagem as prepara e aprende, o avanço de nível as oferece e a página "Magias" as lista para a classe.
+  O servidor recusa uma magia desconhecida, uma magia da mesa, uma repetida e qualquer uma delas numa classe que reusa a lista de outra classe.
+- **Dado** uma subclasse da mesa que cita magias, **quando** marco "As magias da subclasse entram na lista da classe, para escolher", **então** essas magias não vêm preparadas de graça: entram na lista da classe para quem tem aquela subclasse, que as escolhe como qualquer outra magia da lista, e contam no limite de magias conhecidas ou preparadas.
+  Sem a marca elas são sempre preparadas. A marca só aparece quando a subclasse tem magias, e o servidor a recusa em caso contrário.
+- **Dado** uma característica com um efeito de proficiência de nível "especialização" numa perícia, **quando** ligo "Só onde já tem proficiência", **então** a ficha dobra a perícia só para quem já é proficiente nela por outra fonte, e não dá proficiência sozinha.
+  A especialização do próprio SRD funciona como antes.
 - **Dado** uma classe da mesa com uma subclasse que conjura (um conjurador de um terço), **quando** cadastro a subclasse com "Esta subclasse conjura", **então** a tabela do conjurador de um terço começa no nível em que ela começa, e as magias da subclasse vêm da lista de classe da qual ela conjura.
 
 **Talentos.**
@@ -660,7 +665,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 **Cadastrar bem.**
 
 - **Dado** que salvo uma entrada que quebra uma regra, **então** o servidor lista todas as violações de uma vez, cada uma no seu campo, e nada é salvo.
-  Uma entrada é limitada a 60 características, e uma campanha a 300 entradas.
+  Uma entrada é limitada a 60 características, e uma campanha a 1.000 entradas e 6.000 efeitos; uma fórmula é limitada a 1.024 bytes.
 - **Dado** um jogador, **então** ele lê toda entrada jogável por inteiro, com "Da mesa", e nunca uma arquivada ou desligada, nem por referência, a não ser que a ficha dele a use.
   Ele nunca lê contagens nem estado, e não pode escrever.
 
@@ -715,17 +720,17 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
   - O mestre vê o rótulo "Teatro da mente" e o cartão "Ações do …" com "Gastar movimento" (em passos de 1,5 m); o jogador vê "Combate sem mapa" e uma folha "Gastar movimento" com "Depois restam 3,0 m", que é só uma prévia do número do servidor.
 
 #### As telas
-- **"Conteúdo da mesa"** (`/campaigns/:id/content`, a partir do painel "Conteúdo da mesa" da campanha): o mestre, num notebook, vê os cinco tipos com contagens (arquivados incluídos), "7 de 300 entradas", busca, "Mostrar" (Todas, Em uso, Sem fichas, Arquivadas) e linhas com o estado em palavras ("Em uso por 2 fichas", "Arquivado · 1 ficha usa").
+- **"Conteúdo da mesa"** (`/campaigns/:id/content`, a partir do painel "Conteúdo da mesa" da campanha): o mestre, num notebook, vê os cinco tipos com contagens (arquivados incluídos), "7 de 1000 entradas", busca, "Mostrar" (Todas, Em uso, Sem fichas, Arquivadas) e linhas com o estado em palavras ("Em uso por 2 fichas", "Arquivado · 1 ficha usa").
   Uma campanha vazia diz "Nada cadastrado ainda." e que o SRD continua valendo.
   No celular o mestre só lê e arquiva.
   Um jogador lê toda entrada ligada, tipo por tipo, com "Da mesa".
 - **Os editores** (uma página, um "Salvar"):
   - A magia: todos os campos, "Alvo" antes da mecânica, "Mais criaturas por nível", "Pessoal" e "Toque", as classes que a aprendem e uma prévia "Como os jogadores veem".
   - A raça e a sub-raça, e o antecedente.
-  - A classe: nome, dado de vida, "Teste de resistência 1" e "2", quantas perícias e de quais, proficiências, o pré-requisito de multiclasse, conjuração (nenhuma, completa, metade ou pacto; preparadas ou conhecidas; a lista) e o nível da subclasse.
+  - A classe: nome, dado de vida, "Teste de resistência 1" e "2", quantas perícias e de quais, proficiências, o pré-requisito de multiclasse, conjuração (nenhuma, completa, metade ou pacto; preparadas ou conhecidas; a lista, e "Magias do SRD na lista da classe" para uma classe com lista própria) e o nível da subclasse.
     A tabela de 20 níveis começa nos números do SRD para a conjuração escolhida e o mestre a edita célula a célula; mudar a conjuração pergunta antes de refazer uma tabela editada.
     As características têm um nível e um efeito do menu, com o contador "N de 60".
-  - A subclasse: características por nível, "Esta subclasse conjura" e magias sempre preparadas por nível de classe.
+  - A subclasse: características por nível, "Esta subclasse conjura", magias sempre preparadas por nível de classe e, quando tem magias, "As magias da subclasse entram na lista da classe, para escolher".
   - O talento: "Novo talento", "Dados do talento", "O que o talento pede", "Salvar talento"; "Aumento de habilidade" é oferecido só ali.
 - **Recusas:** cada violação volta no campo que ela nomeia, em português, também numa célula da tabela e numa característica recolhida, que se abre.
   Um resumo no alto diz quantos campos precisam de ajuste, e o que o mestre digitou fica.
@@ -883,7 +888,9 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 - **Dado** uma cena aberta, **quando** o mestre põe um NPC no palco escondido ("Escondida dos jogadores"), **então** ele ocupa uma das 4 vagas e o mestre o lê marcado, mas nenhum jogador o recebe: nem o nome, o retrato ou o lugar no palco, nem na cena aberta, nem num aviso ao vivo, nem como alvo ou conjurador de uma conjuração, nem no histórico, no resumo ou nos destaques que lê (RN-10); os jogadores não são avisados quando ele entra ou sai do palco escondido.
 - **Dado** um NPC no palco, **quando** o mestre o alterna entre "Os jogadores veem" e "Escondida dos jogadores", **então** mostrá-lo o faz entrar na imagem dos jogadores ao vivo, e escondê-lo o faz sair, exatamente como tirá-lo: nada diz aos jogadores que ele foi escondido em vez de tirado.
 - **Dado** um NPC escondido, **quando** o mestre toca "Dar a fala", **então** ele é mostrado na mesma chamada e fala: os jogadores o veem entrar e falar na hora. Esconder o NPC que fala tira a fala dele.
+- **Dado** um NPC escondido, **quando** o mestre fala na conversa como ele (MR-051), **então** a fala nomeia o NPC para os leitores que ele escolheu, sejam quais forem, e nada mais dele chega a eles: nem o retrato (a fala não leva nenhum e a rota da imagem responde `404`), nem um lugar no palco; falar na conversa não mostra o NPC, só "Dar a fala" mostra. Um jogador que não é leitor da fala nunca fica sabendo o nome.
 - **Dado** o retrato de um NPC escondido, **quando** um jogador tenta baixá-lo, **então** é `404`, como fora do palco; o mestre sempre consegue.
+- **Dado** um NPC que já está no palco, **quando** o mestre o põe de novo com o outro valor de "escondido", **então** nada muda: o alternador é o jeito de mostrar ou esconder. **Dado** um NPC escondido, **quando** o mestre dá a fala a ele, **então** ele é mostrado, de propósito: não há voz fora da tela.
 - **Dado** uma cena aberta para só alguns jogadores, **quando** o mestre põe um NPC no palco, **então** só os jogadores da cena recebem o palco, os NPCs nele e os retratos deles, e os avisos do palco; um jogador que está fora não recebe palco nenhum, nem para mirar uma conjuração num NPC dele (MR-015, RN-10).
 - **Dado** um NPC escondido, **quando** o mestre conjura uma magia por ele fora do combate, **então** a conjuração é só do mestre e nenhum jogador pode mirar nele, nem pelo lugar no palco; as conjurações que ele fez à vista saem da lista dos jogadores enquanto ele está escondido e voltam quando é mostrado.
 
@@ -893,16 +900,11 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
   Veja [Arquitetura](../../architecture/play/scenes-and-stage.md#npcs-on-stage).
 - O editor de NPC tem "Retrato" (a ficha curta e o passo Básico de inimigo e chefe): iniciais sem imagem, "Escolher/Trocar retrato" no seletor da galeria, "Remover retrato" com a pergunta no lugar, tudo salvo com a ficha.
   O retrato aparece no cartão do NPC no combate e no cabeçalho da ficha.
-- O mestre vê "Em cena" na cena aberta ("Dar a fala"/"Fala agora", "Tirar de cena", "Pôr em cena" no lugar ou numa folha no celular, "4 de 4").
+- O mestre vê "Em cena" na cena aberta (um olho por NPC: "Escondida dos jogadores" deixa o NPC no palco só para o mestre, e um NPC escondido nunca fala; "Dar a fala"/"Fala agora", "Tirar de cena", "Pôr em cena" no lugar ou numa folha no celular, "4 de 4").
   Os jogadores veem o palco com recortes sem caixa e quem fala em destaque; o palco some quando vazio.
 
 #### Relacionadas
 - Usa as imagens da [galeria](#mr-019-galeria-de-imagens), como a [MR-028](#mr-028-mostrar-uma-imagem-aos-jogadores).
-
-#### Dúvidas
-- Uma fala que o mestre manda "como" um NPC escondido na conversa da cena (MR-051) chega aos leitores que ele escolheu e não mostra o NPC no palco. Mandar uma fala como NPC escondido deve mostrá-lo também?
-- Pôr no palco um NPC que já está nele, com o valor do outro lado do "escondido", não muda nada: o alternador é o jeito de mostrar ou esconder. Isso está claro, ou o "pôr" deveria alternar?
-- "Dar a fala" sempre mostra o NPC. Deveria haver um jeito de fazer um NPC escondido falar sem mostrá-lo (uma voz fora da tela)?
 
 ### MR-032: Destaques do combate
 
@@ -1355,7 +1357,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 - O arquivo sobe em partes, então uma conexão que cai recomeça de onde parou. O envio pertence à conta do mestre, uma pessoa tem um por vez, e as partes inacabadas são apagadas uma hora depois da última.
 - Uma prévia conta o que o pacote guarda e lista cada problema em palavras simples. Qualquer problema bloqueia "Criar campanha": tudo ou nada, e uma falha no meio não deixa nada para trás.
 - Um pacote é recusado quando vem de um MeuRPG mais novo ("Este pacote é de uma versão mais nova do MeuRPG, e este servidor ainda não sabe abri-lo."), foi alterado, traz um campo que este servidor não conhece, passa de 200 MiB ou 2.000 entradas (10 MiB por entrada), está suspeitamente comprimido, tem um nome que sobe para fora de uma pasta, ou se refere a algo que lhe falta.
-- Toda regra do app vale como se o mestre tivesse digitado os dados: nomes, tamanhos, CDs, ações de cena, armadilhas, quebra-cabeças, fichas (com o conteúdo de mesa do próprio pacote), os limites de uma campanha (300 imagens, 200 mapas, 200 pontos por mapa, 300 entradas de mesa, o limite de personagens e NPCs) e o limite de campanhas da conta ("Você já tem 10 campanhas.") e a lista de criadores. As imagens passam pelo pipeline do envio (recodificadas, sem metadados).
+- Toda regra do app vale como se o mestre tivesse digitado os dados: nomes, tamanhos, CDs, ações de cena, armadilhas, quebra-cabeças, fichas (com o conteúdo de mesa do próprio pacote), os limites de uma campanha (300 imagens, 200 mapas, 200 pontos por mapa, 1.000 entradas de mesa, o limite de personagens e NPCs) e o limite de campanhas da conta ("Você já tem 10 campanhas.") e a lista de criadores. As imagens passam pelo pipeline do envio (recodificadas, sem metadados).
 - Os ids nunca são reaproveitados: cada coisa ganha um id novo e toda referência, inclusive os links no documento, o acompanha.
 - Os personagens dos jogadores chegam reservados (MR-049): invisíveis aos jogadores até um deles assumir com o link do mestre.
 
@@ -1449,6 +1451,33 @@ Ver [Arquitetura](../../architecture/campaign-package.md).
 
 #### Relacionadas
 - [MR-002](#mr-002-gerar-convite) e [MR-003](#mr-003-entrar-pelo-convite) (a outra entrada numa campanha), [MR-024](#mr-024-aprovar-o-personagem-do-convite) (um membro pendente), [MR-006](#mr-006-ficha-travada). O pacote de uma campanha ([MR-050](#mr-050-pacote-da-campanha-exportar-e-importar)) traz os personagens dela como reservados. Ver [Arquitetura](../../architecture/characters.md#reserved-characters-and-claim-links).
+
+### MR-053: O mestre age pelo personagem de um jogador
+
+**Como** mestre, **quero** jogar o turno do personagem de um jogador quando ele não está (ou não responde), **para que** o combate não pare e a mesa mantenha o personagem do jogador no jogo.
+
+- Prioridade: MVP
+- Regras: RN-03, RN-10, RN-18, RN-19, RN-20
+- Módulos: play
+
+#### Critérios de aceitação
+- **Dado** o turno de um personagem de jogador, **quando** o mestre lê "Turno", **então** o cartão desse personagem mostra "Agir por <nome>" em toda vez de jogador: não há um modo "ausente" para ligar antes. Um personagem com 0 PV não tem "Agir por": o cartão dele é o teste contra a morte (abaixo).
+- **Dado** que o mestre toca em "Agir por <nome>", **então** ele recebe o turno do próprio personagem: a economia, as abas de ação montadas pela ficha, os ataques, magias, recursos, Forma Selvagem, invocações e familiar, o movimento e a escolha de alvo, como o jogador os tem, e "Voltar ao mestre" (que devolve o trilho sem encerrar o turno); a barra do combate diz "Você age por <nome>" e o botão cheio dela vira "Encerrar o turno de <nome>" no lugar de "Próximo turno", de modo que a tela tem um só botão de passar a vez.
+- **Dado** que o mestre age, **quando** ele move, **então** arrasta o token do personagem ou usa "Mover" no cabeçalho do mapa (não está no trilho) enquanto nenhum alvo está sendo escolhido.
+- **Dado** que o mestre age, **quando** ele escolhe um alvo, **então** só vale o que o personagem enxerga (a lista de alvos do servidor para esse personagem: uma criatura escondida fica apagada, "<nome> não vê este alvo"), e o servidor recusa qualquer outro alvo do mesmo jeito (RN-10, RN-20).
+- **Dado** que o mestre fez algo por um personagem (um ataque, uma magia, um recurso, um teste contra a morte, um movimento, o fim do turno), **então** o registro do combate diz "(pelo mestre)" no fim da linha, para quem a lê, o jogador também quando volta.
+- **Dado** que o jogador volta no meio do turno, **então** qualquer um dos dois pode agir; nada trava, e a segunda resposta à mesma pergunta diz "Já respondido".
+- **Dado** que o mestre age, **então** as ferramentas da ordem (dano, condições, as marcas do mestre) continuam disponíveis.
+- **Dado** que o combate está na preparação, **então** "Começar o combate" espera todas as iniciativas; "Rolar por <nome>" rola a que falta com o bônus do personagem, "Digitar o resultado" digita para um dado físico, e a barra diz quem falta. O mesmo "Rolar por <nome>" fica ao lado de cada personagem que ainda não respondeu a um teste em grupo ou a um teste que o mestre pediu numa cena, com o resultado digitado quando a mesa joga com dados físicos.
+- **Dado** uma reação opcional de um jogador (Escudo Arcano, Esquiva Sobrenatural...) que ninguém respondeu em 10 s, **então** a pergunta vai para o mestre, no topo de "Turno", com o que ela muda em números (o ataque contra a classe de armadura, com e sem a magia), o que custa, a etiqueta "10 s sem resposta", e "Usar" e "Não usar"; a aba diz "Turno · 2" e a barra do combate "Falta responder por <nome>". A primeira resposta vale (a do jogador ou a do mestre); a outra lê "Já respondido".
+- **Dado** um personagem com 0 PV no turno dele, **então** o turno começa com o teste contra a morte (SRD 5.1) e não termina sem ele, nem para o mestre: o cartão abre com "<nome> está caído: teste contra a morte", os sucessos e falhas até agora, "Rolar por <nome>" (dados do app) e "Digitar o resultado" (dado físico) do mesmo tamanho; "Próximo turno" fica tracejado e a barra diz "Falta o teste contra a morte". O servidor recusa o fim desse turno até o teste ser feito; o antigo "Passar sem rolar" não existe mais.
+
+#### No app
+- "Turno" na vez de um jogador: o cartão "Vez do Pensantus" ("Mago 3 · o jogador joga na tela dele"), os pontos de vida, a CA e o deslocamento, as formas da economia, "Esperando Pensantus. Se o jogador não estiver, jogue este turno por ele." e um botão contornado, "Agir por Pensantus". Agindo, o trilho começa pela faixa "Você está agindo por Pensantus" com "Voltar ao mestre", depois as formas, "PV 23 de 23 · CA 12 · 1º ○○○● 2º ○○" e as abas do personagem (no celular sem as contagens); o alvo se escolhe no mapa ("Toque no alvo · por Pensantus") e a barra fixa do celular vira "Encerrar o turno de Pensantus", ou a barra do alvo do mapa.
+- Uma reação sem resposta, uma rolagem retida e o teste em grupo mantêm os cartões no topo de "Turno"; as linhas da iniciativa na preparação têm "Rolar por Brisa" ao lado de "Digitar pelo jogador".
+
+#### Relacionadas
+- [MR-013](#mr-013-ordem-dos-turnos), [MR-014](#mr-014-sua-vez), [RN-03](regras.md), [RN-10](regras.md), [RN-18](regras.md). Veja o [Design](../../design/combat.md).
 
 ## Prioridade: MVP (pré-requisito)
 
