@@ -116,6 +116,15 @@ func TestSuperiorityDieRefusalsNameTheirField(t *testing.T) {
 		{"a reduction without a reaction", Effect{Type: "superiority_die", Applies: ManeuverReduceMelee, Ability: "dex", Resource: maneuverDice, Value: "8"}, at + ".economy", ReasonValue},
 		{"a damage die with an economy", Effect{Type: "superiority_die", Applies: ManeuverDamage, Economy: EconomyReaction, Resource: maneuverDice, Value: "8"}, at + ".economy", ReasonValue},
 		{"a grapple that costs an action", Effect{Type: "superiority_die", Applies: ManeuverGrapple, Economy: "action", Resource: maneuverDice, Value: "8"}, at + ".economy", ReasonValue},
+		{"a check die with an economy", Effect{Type: "superiority_die", Applies: ManeuverCheck, Economy: EconomyBonusAction, Resource: maneuverDice, Value: "8"}, at + ".economy", ReasonValue},
+		{"a check die with an ability", Effect{Type: "superiority_die", Applies: ManeuverCheck, Ability: "dex", Resource: maneuverDice, Value: "8"}, at + ".ability", ReasonValue},
+		{"a check die with a target that is no skill or ability", Effect{Type: "superiority_die", Applies: ManeuverCheck, Targets: []string{"save.dex"}, Resource: maneuverDice, Value: "8"}, at + ".targets", ReasonReference},
+		{"a check die with a skill nobody has", Effect{Type: "superiority_die", Applies: ManeuverCheck, Targets: []string{"skill.sonho"}, Resource: maneuverDice, Value: "8"}, at + ".targets", ReasonReference},
+		{"a save die with targets", Effect{Type: "superiority_die", Applies: ManeuverSave, Targets: []string{"skill.stealth"}, Resource: maneuverDice, Value: "8"}, at + ".targets", ReasonValue},
+		{"a save die with an ability that does not exist", Effect{Type: "superiority_die", Applies: ManeuverSave, Ability: "luck", Resource: maneuverDice, Value: "8"}, at + ".ability", ReasonValue},
+		{"an initiative die with an ability", Effect{Type: "superiority_die", Applies: ManeuverInitiative, Ability: "dex", Resource: maneuverDice, Value: "8"}, at + ".ability", ReasonValue},
+		{"an initiative die with an economy", Effect{Type: "superiority_die", Applies: ManeuverInitiative, Economy: EconomyReaction, Resource: maneuverDice, Value: "8"}, at + ".economy", ReasonValue},
+		{"targets on a damage die", Effect{Type: "superiority_die", Applies: ManeuverDamage, Targets: []string{"skill.stealth"}, Resource: maneuverDice, Value: "8"}, at + ".targets", ReasonValue},
 		{"an ability on a damage die", Effect{Type: "superiority_die", Applies: ManeuverDamage, Ability: "dex", Resource: maneuverDice, Value: "8"}, at + ".ability", ReasonValue},
 	}
 	for _, tc := range cases {
@@ -150,8 +159,8 @@ func TestSuperiorityDieIsOnTheMenu(t *testing.T) {
 		}
 	}
 	j := slices.IndexFunc(menu.Lists, func(l MenuList) bool { return l.Name == ListManeuverApplies })
-	if j < 0 || len(menu.Lists[j].Values) != 5 {
-		t.Errorf("the applies list = %+v, want five values", menu.Lists)
+	if j < 0 || len(menu.Lists[j].Values) != 8 {
+		t.Errorf("the applies list = %+v, want eight values", menu.Lists)
 	}
 }
 
@@ -171,5 +180,66 @@ func TestAManeuverOptionWithAnActionDoesNotListTheAction(t *testing.T) {
 	}
 	if len(d.Maneuvers) != 1 || d.Maneuvers[0].Key != maneuverHeron {
 		t.Errorf("maneuvers = %+v, want the die", d.Maneuvers)
+	}
+}
+
+// A die on a roll of the character: ability checks (all, or the listed skills and abilities), a saving throw (any, or
+// one ability's) and the initiative.
+func TestDeriveExposesTheDiceThatGoOnRollsOfTheCharacter(t *testing.T) {
+	const (
+		scout  = "feature:olhar-atento" + tableSuffix
+		brace  = "feature:firmeza" + tableSuffix
+		dash   = "feature:saida-rapida" + tableSuffix
+		allOfT = "feature:olho-de-tudo" + tableSuffix
+	)
+	c := withOverlay(t, maneuverOverlay(
+		postureOption(scout, "Olhar Atento", Effect{Type: "superiority_die", Applies: ManeuverCheck, Targets: []string{"skill.perception", "check.int"}, Resource: maneuverDice, Value: "6"}),
+		postureOption(brace, "Firmeza", Effect{Type: "superiority_die", Applies: ManeuverSave, Ability: "con", Resource: maneuverDice, Value: "6"}),
+		postureOption(dash, "Saída Rápida", Effect{Type: "superiority_die", Applies: ManeuverInitiative, Resource: maneuverDice, Value: "4"}),
+		postureOption(allOfT, "Olho de Tudo", Effect{Type: "superiority_die", Applies: ManeuverCheck, Resource: maneuverDice, Value: "4"}),
+	))
+	d := Derive(maneuverBuild(3, scout, brace, dash), c)
+	by := func(key string) Maneuver {
+		i := slices.IndexFunc(d.Maneuvers, func(m Maneuver) bool { return m.Key == key })
+		if i < 0 {
+			t.Fatalf("no maneuver %s in %+v", key, d.Maneuvers)
+		}
+		return d.Maneuvers[i]
+	}
+	if m := by(scout); m.Applies != ManeuverCheck || m.Sides != 6 || !slices.Equal(m.Targets, []string{"skill.perception", "check.int"}) {
+		t.Errorf("scout = %+v, want a d6 on Perception and Intelligence checks", m)
+	}
+	if m := by(brace); m.Applies != ManeuverSave || m.Ability != "con" || len(m.Targets) != 0 {
+		t.Errorf("brace = %+v, want a die on Constitution saves", m)
+	}
+	if m := by(dash); m.Applies != ManeuverInitiative || m.Sides != 4 || m.Economy != "" {
+		t.Errorf("dash = %+v, want a d4 on the initiative", m)
+	}
+	if got := Derive(maneuverBuild(3, allOfT), c).Maneuvers; len(got) != 1 || len(got[0].Targets) != 0 {
+		t.Errorf("the die with no targets = %+v, want every ability check", got)
+	}
+}
+
+func TestSuperiorityDieTargetsAndAbilityAreOnTheMenu(t *testing.T) {
+	menu := withOverlay(t, maneuverOverlay()).EffectMenu()
+	i := slices.IndexFunc(menu.Types, func(ty MenuType) bool { return ty.Type == "superiority_die" })
+	if i < 0 || !slices.ContainsFunc(menu.Types[i].Fields, func(f MenuField) bool { return f.Name == "targets" && f.List == ListRollDieTargets }) {
+		t.Fatalf("the superiority_die menu type has no targets field: %+v", menu.Types[i])
+	}
+	j := slices.IndexFunc(menu.Lists, func(l MenuList) bool { return l.Name == ListRollDieTargets })
+	if j < 0 {
+		t.Fatal("no roll_die_targets list")
+	}
+	has := func(key string) bool {
+		return slices.ContainsFunc(menu.Lists[j].Values, func(v MenuValue) bool { return v.Key == key })
+	}
+	if !has("check.dex") || !has("skill.stealth") || has("save.dex") || has("check.all") {
+		t.Errorf("the roll_die_targets list = %+v, want abilities and skills only", menu.Lists[j].Values)
+	}
+	k := slices.IndexFunc(menu.Lists, func(l MenuList) bool { return l.Name == ListManeuverApplies })
+	for _, applies := range []string{ManeuverCheck, ManeuverSave, ManeuverInitiative} {
+		if !slices.ContainsFunc(menu.Lists[k].Values, func(v MenuValue) bool { return v.Key == applies }) {
+			t.Errorf("the maneuver_applies list has no %s", applies)
+		}
 	}
 }

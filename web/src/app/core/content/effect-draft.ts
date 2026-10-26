@@ -8,6 +8,7 @@ import type {
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { feetToMeters } from '../units';
 import type { EffectDraft, EffectInit } from './effect-draft.types';
+import { visibleFields } from './effect-visible';
 import { EFFECT_WRITERS, rangeFeet } from './effect-writers';
 
 export type { EffectDraft, EffectInit } from './effect-draft.types';
@@ -74,6 +75,14 @@ export function emptyEffect(type = ''): EffectDraft {
     alsoWithSlot: false,
     ritualOnly: false,
     countsAsKnown: false,
+    dice: '',
+    diceSides: 0,
+    damageType: '',
+    weapon: '',
+    frequency: '',
+    noCritDoubling: false,
+    appliesTo: '',
+    spellChange: '',
     damageTypes: [],
     kind: '',
     conditions: [],
@@ -128,6 +137,14 @@ export function effectToDraft(e: TableEffect): EffectDraft {
     alsoWithSlot: e.alsoWithSlot,
     ritualOnly: e.ritualOnly,
     countsAsKnown: e.countsAsKnown,
+    dice: e.dice,
+    diceSides: e.diceSides,
+    damageType: e.damageType,
+    weapon: e.weapon,
+    frequency: e.frequency,
+    noCritDoubling: e.noCritDoubling,
+    appliesTo: e.appliesTo,
+    spellChange: e.spellChange,
     damageTypes: [...e.damageTypes],
     kind: e.kind,
     conditions: [...e.conditions],
@@ -139,7 +156,7 @@ export function effectToDraft(e: TableEffect): EffectDraft {
  * list is not sent: the server reads "not set" the same way. */
 export function draftToEffect(d: EffectDraft, menu: EffectMenuVm): EffectInit {
   const out: EffectInit = { type: d.type };
-  for (const f of menu.fieldsOf(d.type)) {
+  for (const f of visibleFields(menu.fieldsOf(d.type), d)) {
     Object.assign(out, EFFECT_WRITERS.get(f.name)?.(d));
   }
   return out;
@@ -278,6 +295,8 @@ const CHOICE_EMPTY: Readonly<Record<string, (d: EffectDraft) => boolean>> = {
   spell: (d) => d.spell === '',
   ability: (d) => d.ability === '',
   conditions: (d) => d.conditions.length === 0,
+  applies_to: (d) => d.appliesTo === '',
+  spell_change: (d) => d.spellChange === '',
 };
 
 /** Whether a required closed-list field is still empty. */
@@ -288,7 +307,7 @@ function choiceEmpty(d: EffectDraft, name: string): boolean {
 /** A required field of the type that still has nothing: the editor says so before the server does. */
 export function missingRequired(d: EffectDraft, menu: EffectMenuVm): string[] {
   const out: string[] = [];
-  for (const f of menu.fieldsOf(d.type)) {
+  for (const f of visibleFields(menu.fieldsOf(d.type), d)) {
     if (!f.required) {
       continue;
     }

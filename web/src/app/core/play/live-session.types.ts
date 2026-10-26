@@ -13,6 +13,7 @@ import type { SearchSkills } from '../traps/trap-search';
 import type { HitDieSize } from '../resources/hit-dice-text';
 import type { DiceMode, DicePreference } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import type { SessionMessage } from '../../../gen/meurpg/play/v1/session_messages_pb';
+import type { RollDie } from '../../../gen/meurpg/rules/v1/rules_pb';
 import type { CombatantMove, TurnChange } from '../combat/combat-state';
 import type {
   PactSlotsVm,
@@ -237,6 +238,8 @@ export interface PlayerSheetVm {
   readonly revivify?: boolean;
   /** The character's senses, as the sheet says them in meters: "Visão no escuro: 18 m" (MR-036). */
   readonly senses: readonly string[];
+  /** The table dice the character may add to a check, a save or the initiative (`DerivedSheet.roll_dice`); empty for none. */
+  readonly rollDice?: readonly RollDie[];
 }
 
 /** From `ListCharacters`, what the master's "Grupo" row shows under a

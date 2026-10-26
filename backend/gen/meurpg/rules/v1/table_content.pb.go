@@ -885,6 +885,33 @@ type TableEffect struct {
 	// mark as magical counts as nonmagical.
 	Except string `protobuf:"bytes,27,opt,name=except,proto3" json:"except,omitempty"`
 	While  string `protobuf:"bytes,28,opt,name=while,proto3" json:"while,omitempty"`
+	// extra_damage: damage added to a weapon hit when `applies` holds. `value` is the
+	// fixed part (a formula) and may be empty when dice are set; `dice` is a formula for
+	// how many dice, `dice_sides` their sides (4, 6, 8, 10 or 12), set together.
+	// `damage_type` is a "damage-type:" key of the SRD; empty is the weapon's own type.
+	// `weapon` is "any" (the default), "melee" or "ranged"; `frequency` is
+	// "once_per_turn" (the default) or "each_hit". A critical hit doubles the dice
+	// unless `no_crit_doubling` is set, which needs dice. The fixed part is never doubled.
+	Dice           string `protobuf:"bytes,44,opt,name=dice,proto3" json:"dice,omitempty"`
+	DiceSides      int32  `protobuf:"varint,45,opt,name=dice_sides,json=diceSides,proto3" json:"dice_sides,omitempty"`
+	DamageType     string `protobuf:"bytes,46,opt,name=damage_type,json=damageType,proto3" json:"damage_type,omitempty"`
+	Weapon         string `protobuf:"bytes,47,opt,name=weapon,proto3" json:"weapon,omitempty"`
+	Frequency      string `protobuf:"bytes,48,opt,name=frequency,proto3" json:"frequency,omitempty"`
+	NoCritDoubling bool   `protobuf:"varint,49,opt,name=no_crit_doubling,json=noCritDoubling,proto3" json:"no_crit_doubling,omitempty"`
+	// spell_modifier: cast options the feature offers for the spells it fits.
+	// `applies_to` is "damage_spell" (a spell that deals damage), "cantrip", an SRD school
+	// key ("school:evocation") or an SRD damage type key ("damage-type:fire"): the spells
+	// whose school or one of whose damage types it is. `spell_change` is the one change:
+	// "damage_type_swap" (`from` lists the damage types it swaps among: the damage of one
+	// of them becomes another of them, which the caster picks at the cast),
+	// "bonus_damage" (`value` is the fixed damage added, a formula; `damage_type` its type,
+	// empty is the spell's own) or "extra_dice_per_slot_over" (`count` more dice of the
+	// spell's damage die for each slot level above the spell's own). `resource`, when set,
+	// names a resource effect of the same entry or its class: using the option spends `cost`
+	// uses (a formula, empty is 1; the cost field of grant_action), and the caster ticks it on the cast sheet. Without a resource, bonus_damage and
+	// extra_dice_per_slot_over are always on and damage_type_swap is a free choice.
+	AppliesTo   string `protobuf:"bytes,50,opt,name=applies_to,json=appliesTo,proto3" json:"applies_to,omitempty"`
+	SpellChange string `protobuf:"bytes,51,opt,name=spell_change,json=spellChange,proto3" json:"spell_change,omitempty"`
 	// proficiency, level "expertise" on a skill ("skill:*" is every skill) only: the
 	// skill is doubled only where the character already has its proficiency from
 	// another source when the sheet is worked out (the race, the background, the
@@ -1181,6 +1208,62 @@ func (x *TableEffect) GetExcept() string {
 func (x *TableEffect) GetWhile() string {
 	if x != nil {
 		return x.While
+	}
+	return ""
+}
+
+func (x *TableEffect) GetDice() string {
+	if x != nil {
+		return x.Dice
+	}
+	return ""
+}
+
+func (x *TableEffect) GetDiceSides() int32 {
+	if x != nil {
+		return x.DiceSides
+	}
+	return 0
+}
+
+func (x *TableEffect) GetDamageType() string {
+	if x != nil {
+		return x.DamageType
+	}
+	return ""
+}
+
+func (x *TableEffect) GetWeapon() string {
+	if x != nil {
+		return x.Weapon
+	}
+	return ""
+}
+
+func (x *TableEffect) GetFrequency() string {
+	if x != nil {
+		return x.Frequency
+	}
+	return ""
+}
+
+func (x *TableEffect) GetNoCritDoubling() bool {
+	if x != nil {
+		return x.NoCritDoubling
+	}
+	return false
+}
+
+func (x *TableEffect) GetAppliesTo() string {
+	if x != nil {
+		return x.AppliesTo
+	}
+	return ""
+}
+
+func (x *TableEffect) GetSpellChange() string {
+	if x != nil {
+		return x.SpellChange
 	}
 	return ""
 }
@@ -6367,8 +6450,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"table_feat\x18\x11 \x01(\v2\x1a.meurpg.rules.v1.TableFeatH\x00R\ttableFeat\x12A\n" +
 	"\ftable_option\x18\x12 \x01(\v2\x1c.meurpg.rules.v1.TableOptionH\x00R\vtableOption\x12T\n" +
 	"\x13table_class_feature\x18\x13 \x01(\v2\".meurpg.rules.v1.TableClassFeatureH\x00R\x11tableClassFeatureB\x06\n" +
-	"\x04body\"\xa9\n" +
-	"\n" +
+	"\x04body\"\x9f\f\n" +
 	"\vTableEffect\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
 	"\x06target\x18\x02 \x01(\tR\x06target\x12\x12\n" +
@@ -6398,7 +6480,18 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x10range_multiplier\x18\x19 \x01(\x05R\x0frangeMultiplier\x12;\n" +
 	"\x1ano_long_range_disadvantage\x18\x1a \x01(\bR\x17noLongRangeDisadvantage\x12\x16\n" +
 	"\x06except\x18\x1b \x01(\tR\x06except\x12\x14\n" +
-	"\x05while\x18\x1c \x01(\tR\x05while\x12'\n" +
+	"\x05while\x18\x1c \x01(\tR\x05while\x12\x12\n" +
+	"\x04dice\x18, \x01(\tR\x04dice\x12\x1d\n" +
+	"\n" +
+	"dice_sides\x18- \x01(\x05R\tdiceSides\x12\x1f\n" +
+	"\vdamage_type\x18. \x01(\tR\n" +
+	"damageType\x12\x16\n" +
+	"\x06weapon\x18/ \x01(\tR\x06weapon\x12\x1c\n" +
+	"\tfrequency\x180 \x01(\tR\tfrequency\x12(\n" +
+	"\x10no_crit_doubling\x181 \x01(\bR\x0enoCritDoubling\x12\x1d\n" +
+	"\n" +
+	"applies_to\x182 \x01(\tR\tappliesTo\x12!\n" +
+	"\fspell_change\x183 \x01(\tR\vspellChange\x12'\n" +
 	"\x0fonly_proficient\x18\x1d \x01(\bR\x0eonlyProficient\x12\x14\n" +
 	"\x05spell\x18\x1e \x01(\tR\x05spell\x12\x1d\n" +
 	"\n" +

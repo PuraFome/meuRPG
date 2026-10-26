@@ -7,12 +7,8 @@ import {
   EFFECT_TYPE_FIELD_HINTS,
   EFFECT_TYPE_FIELD_LABELS,
 } from '../../core/content/effect-field-copy';
-import {
-  type EffectDraft,
-  type EffectMenuVm,
-  emptyEffect,
-  onlyProficientApplies,
-} from '../../core/content/effect-draft';
+import { type EffectDraft, type EffectMenuVm, emptyEffect } from '../../core/content/effect-draft';
+import { visibleFields } from '../../core/content/effect-visible';
 import type { EffectMenuField } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { CheckRow } from '../form-fields/check-row';
 import { FieldNote } from '../form-fields/field-note';
@@ -67,9 +63,7 @@ export class EffectPicker {
       : (this.menu().typeOf(t)?.hintPt ?? '');
   });
   protected readonly allFields = computed(() =>
-    this.menu()
-      .fieldsOf(this.effect().type)
-      .filter((f) => f.name !== 'only_proficient' || onlyProficientApplies(this.effect())),
+    visibleFields(this.menu().fieldsOf(this.effect().type), this.effect()),
   );
   /** "Mais opções": the optional fields stay folded until they hold something, a refusal points at them, or the person opens them;
    * a field the menu says is always shown (what the effect does lies in it, as ranged_attack's switches) is never folded. */
@@ -161,7 +155,9 @@ export class EffectPicker {
     const menu = this.menu();
     const list =
       f.name === 'from' && f.list === ''
-        ? menu.fromOptions(this.effect().choice)
+        ? this.effect().type === 'spell_modifier'
+          ? menu.list('damage_types')
+          : menu.fromOptions(this.effect().choice)
         : f.name === 'spells'
           ? []
           : menu.list(f.list);

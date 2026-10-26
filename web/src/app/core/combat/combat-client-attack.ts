@@ -311,6 +311,7 @@ export class CombatAttackCalls {
               : { case: 'keep', value: true },
       extraDieFaces: how.kind === 'typed' ? [...(how.extra ?? [])] : [],
       ...(how.kind === 'typed' && how.second !== undefined ? { secondD20Face: how.second } : {}),
+      ...(how.kind === 'app' || how.kind === 'typed' ? { maneuverKey: how.maneuverKey ?? '' } : {}),
       idempotencyKey: key,
     });
     return {

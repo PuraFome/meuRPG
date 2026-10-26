@@ -179,8 +179,14 @@ export class ReactionFlow {
       this.error.set(this.extra.missingText());
       return;
     }
-    const sent: ConcentrationAnswer =
+    const typedMore: ConcentrationAnswer =
       how.kind === 'typed' && extra.length > 0 ? { ...how, extra } : how;
+    // The table die ticked ("Usar <nome>") goes with the roll the app or the player rolls.
+    const maneuverKey = this.extra.maneuverKey();
+    const sent: ConcentrationAnswer =
+      maneuverKey && (typedMore.kind === 'app' || typedMore.kind === 'typed')
+        ? { ...typedMore, maneuverKey }
+        : typedMore;
     await runBusy(
       this.busy,
       this.error,

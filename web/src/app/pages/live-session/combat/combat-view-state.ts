@@ -1,3 +1,4 @@
+import type { RollDie } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import {
   ElementRef,
   Injector,
@@ -82,6 +83,8 @@ export abstract class CombatViewStateDirective {
   readonly armorClass = input<number | null>(null);
   /** "Clérigo 5": the player's class line, for the Revivificar sheet's header. */
   readonly casterClasses = input('');
+  /** The table dice the player's character may add to a save or the initiative (`DerivedSheet.roll_dice`). */
+  readonly rollDice = input<readonly RollDie[]>([]);
   readonly diceMode = input.required<DiceMode>();
   readonly dicePreference = input.required<DicePreference>();
   /** The player's bonuses in Percepção and Investigação, for "Procurar" (E9-08); `null` while unknown. */

@@ -34,6 +34,10 @@
         </div>
       }
 
+      @if (!held()) {
+        <app-roll-die-offer [dice]="dice()" [picked]="pick()" (pickedChange)="pick.set($event)" />
+      }
+
       @if (held(); as question) {
         <!-- The d20 is rolled and kept: a halfling's 1 asks Lucky first, then a Bardic Inspiration die; the initiative is set once the player answers (SRD 5.1). -->
         <app-held-roll-prompt
@@ -93,13 +97,27 @@
               <mat-icon aria-hidden="true">error</mat-icon>Digite um número de 1 a 20
             </p>
           }
+          @if (die(); as d) {
+            <label class="roll__type-label" for="die-face">Resultado do d{{ d.sides }} ({{ d.namePt }})</label>
+            <input
+              id="die-face"
+              class="roll__field"
+              type="text"
+              inputmode="numeric"
+              maxlength="2"
+              autocomplete="off"
+              [value]="typedDie()"
+              (input)="onTypeDie($event)"
+              (keydown.enter)="confirm()"
+            />
+          }
           <p id="face-sum" class="roll__sum" role="status">{{ sum() }}</p>
           <button
             mat-flat-button
             type="button"
             class="roll__main"
-            [class.roll__main--off]="face() === null"
-            [disabled]="face() === null || busy()"
+            [class.roll__main--off]="face() === null || dieMissing()"
+            [disabled]="face() === null || dieMissing() || busy()"
             disabledInteractive
             (click)="confirm()"
           >

@@ -1696,6 +1696,13 @@ type RollSceneCheckRequest struct {
 	// the order the roll's sources list them, one for each, 1 to the die's faces. With the app's
 	// dice the server rolls them; a wrong number is `invalid_argument`.
 	ExtraDieFaces []int32 `protobuf:"varint,7,rep,packed,name=extra_die_faces,json=extraDieFaces,proto3" json:"extra_die_faces,omitempty"`
+	// A table maneuver (a superiority_die effect of applies "check, or save for a save action") the player adds to this roll:
+	// its key, one of Maneuver.key of the character's derived sheet. The die is rolled with the
+	// roll (in the app, or its face is the last of `extra_die_faces` with physical dice) and one use
+	// of its resource is spent when the roll is written. Refused with `invalid_argument` for a
+	// maneuver the character has not or that does not go on this roll, and with a resource
+	// blocked reason NO_USES_LEFT when no use is left. Empty adds none.
+	ManeuverKey   string `protobuf:"bytes,8,opt,name=maneuver_key,json=maneuverKey,proto3" json:"maneuver_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1788,6 +1795,13 @@ func (x *RollSceneCheckRequest) GetExtraDieFaces() []int32 {
 		return x.ExtraDieFaces
 	}
 	return nil
+}
+
+func (x *RollSceneCheckRequest) GetManeuverKey() string {
+	if x != nil {
+		return x.ManeuverKey
+	}
+	return ""
 }
 
 type isRollSceneCheckRequest_Roll interface {
@@ -2420,7 +2434,7 @@ const file_meurpg_play_v1_scene_proto_rawDesc = "" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\"K\n" +
 	"\x14GetOpenSceneResponse\x123\n" +
-	"\x05scene\x18\x01 \x01(\v2\x1d.meurpg.play.v1.OpenSceneInfoR\x05scene\"\x8a\x02\n" +
+	"\x05scene\x18\x01 \x01(\v2\x1d.meurpg.play.v1.OpenSceneInfoR\x05scene\"\xad\x02\n" +
 	"\x15RollSceneCheckRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x1b\n" +
@@ -2429,7 +2443,8 @@ const file_meurpg_play_v1_scene_proto_rawDesc = "" +
 	"\bd20_face\x18\x04 \x01(\x05H\x00R\ad20Face\x12'\n" +
 	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\x12\x1b\n" +
 	"\td20_faces\x18\x06 \x03(\x05R\bd20Faces\x12&\n" +
-	"\x0fextra_die_faces\x18\a \x03(\x05R\rextraDieFacesB\x06\n" +
+	"\x0fextra_die_faces\x18\a \x03(\x05R\rextraDieFaces\x12!\n" +
+	"\fmaneuver_key\x18\b \x01(\tR\vmaneuverKeyB\x06\n" +
 	"\x04roll\"\xa9\x02\n" +
 	"\x16RollSceneCheckResponse\x12-\n" +
 	"\x04roll\x18\x01 \x01(\v2\x19.meurpg.play.v1.SceneRollR\x04roll\x12X\n" +

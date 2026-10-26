@@ -46,6 +46,14 @@ export const EFFECT_FIELD_LABELS: Readonly<Record<string, string>> = {
   ritual_only: 'Só como ritual',
   counts_as_known: 'Conta como magia conhecida',
   only_proficient: 'Só onde já tem proficiência',
+  dice: 'Dados (quantos)',
+  dice_sides: 'Lados do dado',
+  damage_type: 'Tipo de dano',
+  weapon: 'Arma',
+  frequency: 'Quantas vezes',
+  no_crit_doubling: 'Não dobra no acerto crítico',
+  applies_to: 'Vale para',
+  spell_change: 'O que muda na magia',
 };
 
 /** One line under a field, where the name alone does not say. This is screen copy; the formula functions and the tag
@@ -81,6 +89,9 @@ export const EFFECT_FIELD_HINTS: Readonly<Record<string, string>> = {
   also_with_slot: 'O personagem também pode conjurar com um espaço de magia, sem gastar usos.',
   ritual_only:
     'Só conjura como ritual (10 minutos a mais, sem espaço). Pede uma magia com a etiqueta de ritual.',
+  dice: 'Uma fórmula, como 1 ou prof(). Vale junto com os lados do dado.',
+  dice_sides: 'De 4 a 12: d4, d6, d8, d10 ou d12.',
+  no_crit_doubling: 'Por padrão os dados dobram no acerto crítico; o dano fixo nunca dobra.',
   counts_as_known:
     'A magia aparece também entre as conhecidas da ficha, sem gastar nenhuma escolha da classe.',
 };
@@ -89,6 +100,13 @@ export const EFFECT_FIELD_HINTS: Readonly<Record<string, string>> = {
 export const EFFECT_TYPE_FIELD_LABELS: Readonly<Record<string, Readonly<Record<string, string>>>> =
   {
     granted_spell: { ability: 'Habilidade de conjuração' },
+    extra_damage: { value: 'Dano fixo' },
+    spell_modifier: {
+      from: 'Tipos de dano que troca',
+      value: 'Dano fixo somado',
+      count: 'Dados a mais por nível acima',
+      damage_type: 'Tipo do dano somado',
+    },
   };
 
 export const EFFECT_TYPE_FIELD_HINTS: Readonly<Record<string, Readonly<Record<string, string>>>> = {

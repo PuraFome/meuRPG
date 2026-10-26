@@ -77,7 +77,7 @@ export class PuzzleHints {
     this.held.ask(null);
     this.last.set(null);
     this.pair.set(false);
-    this.extraDice.fields.set([]);
+    this.extraDice.asked.set([]);
   }
 
   /**
@@ -152,7 +152,7 @@ export class PuzzleHints {
       sources: answer.sources,
     });
     this.pair.set(takesTwo(answer.mode));
-    this.extraDice.fields.set([]);
+    this.extraDice.asked.set([]);
   }
 
   /**

@@ -73,6 +73,9 @@
         acontece.
       </p>
     }
+    @if (!roll()) {
+      <app-roll-die-offer [dice]="dice" [picked]="extra.maneuverKey()" (pickedChange)="useDie($event)" />
+    }
     @if (extra.fields().length > 0 && (typing() || !canApp)) {
       <app-extra-dice class="extra" [fields]="extra.fields()" [(faces)]="extra.faces" />
     }

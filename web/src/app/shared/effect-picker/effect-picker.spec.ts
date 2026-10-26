@@ -7,6 +7,7 @@ import {
   rangedAttackMenu,
   resistanceMenu,
 } from '../../core/content/content-testing-menu';
+import { extraDamageMenu, spellModifierMenu } from '../../core/content/content-testing-menu-damage';
 import { costsMenu, grantedSpellMenu } from '../../core/content/content-testing-menu-costs';
 import { EffectPicker } from './effect-picker';
 
@@ -218,6 +219,64 @@ describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
     expect(text(field('no_long_range_disadvantage')!.closest('.frow')!)).toContain(
       'Só para armas.',
     );
+  });
+
+  it("shows extra_damage's dice, type, weapon and frequency unfolded, and sets them", () => {
+    const m = extraDamageMenu();
+    setup({ ...emptyEffect('extra_damage'), applies: 'any_target' }, { menu: m });
+    for (const f of ['value', 'dice', 'dice_sides', 'damage_type', 'weapon', 'frequency']) {
+      expect(field(f), f).not.toBeNull();
+    }
+    // The crit switch is rarer: folded until "Mais opções".
+    expect(field('no_crit_doubling')).toBeNull();
+    expect(text(el)).toContain('Dano fixo');
+    expect(text(el)).toContain('Lados do dado');
+    const dice = field('dice') as HTMLInputElement;
+    dice.value = '1';
+    dice.dispatchEvent(new Event('input'));
+    expect(emitted.at(-1)?.dice).toBe('1');
+    const sides = field('dice_sides') as HTMLInputElement;
+    sides.value = '6';
+    sides.dispatchEvent(new Event('input'));
+    expect(emitted.at(-1)?.diceSides).toBe(6);
+    change(field('damage_type') as HTMLSelectElement, 'Fogo');
+    expect(emitted.at(-1)?.damageType).toBe('damage-type:fire');
+    change(field('frequency') as HTMLSelectElement, 'Em todo acerto');
+    expect(emitted.at(-1)?.frequency).toBe('each_hit');
+    setup(
+      {
+        ...emptyEffect('extra_damage'),
+        applies: 'any_target',
+        dice: '1',
+        diceSides: 6,
+        noCritDoubling: true,
+      },
+      { menu: m },
+    );
+    expect((field('no_crit_doubling') as HTMLInputElement).checked).toBe(true);
+  });
+
+  it("shows a spell_modifier's fields by its change: the swap the types, the bonus its amount, the dice their count", () => {
+    const m = spellModifierMenu();
+    const base = { ...emptyEffect('spell_modifier'), appliesTo: 'damage_spell' };
+    setup(base, { menu: m });
+    expect(field('spell_change')).not.toBeNull();
+    for (const f of ['from', 'value', 'count']) {
+      expect(field(f), f).toBeNull();
+    }
+    setup({ ...base, spellChange: 'damage_type_swap' }, { menu: m });
+    expect(text(el)).toContain('tipos de dano que troca');
+    expect(el.querySelector('[data-field$=".from"]')).not.toBeNull();
+    expect(field('value')).toBeNull();
+    setup({ ...base, spellChange: 'bonus_damage' }, { menu: m });
+    expect(field('value')).not.toBeNull();
+    expect(field('damage_type')).not.toBeNull();
+    expect(text(el)).toContain('Dano fixo somado');
+    expect(field('count')).toBeNull();
+    setup({ ...base, spellChange: 'extra_dice_per_slot_over' }, { menu: m });
+    expect(text(el)).toContain('Dados a mais por nível acima');
+    expect(field('count')).not.toBeNull();
+    expect(field('value')).toBeNull();
   });
 
   it("draws granted_spell's spell from the table's catalog, the ability in its own words, and the switches unfolded", () => {
