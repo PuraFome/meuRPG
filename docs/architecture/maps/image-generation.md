@@ -30,11 +30,12 @@ What happens to the slot:
 | --- | --- | --- |
 | The model certainly was not billed (a refusal, a response without an image, a key refused by Google) | `refused` or `failed` | Returns |
 | The call may have been billed (a timeout, a connection cut after the request left, an unreadable answer) | `failed` | **Stays spent** |
-| The service returned an image the server then cannot store (the gallery filled up, or the answer cannot be decoded) | `failed` | **Stays spent** (`FinishImageRequestSpent`) |
+| The service returned an image that cannot be used (the answer cannot be decoded, or the gallery filled up while the call was in the air) | `failed` (`no_image` or `gallery_full`) | **Stays spent** (`FinishImageRequestSpent`): the call was billed and the picture is not the server's fault |
+| The service returned a good image and the server could not keep it (the file store or the database failed) | `failed`, `STORAGE_FAILED` ("A imagem foi feita, mas não deu para guardá-la. Tente de novo; esta não conta no seu limite.") | **Returns** (`FinishImageRequestFailed`, the same path as every other refund); the picture is lost |
 | "Cancelar" after the request left | `CANCELED`, with `image_id` if the image arrives | Stays spent; only the wait stops, and an image that comes still goes to the gallery |
 
 A key refused by Google (401 or 403, an operator's error) becomes "O serviço de imagens não está disponível", with an error log line (Google's status and reason, never the key).
-Every failure message is a Portuguese sentence we wrote, never Google's.
+Every failure message is a Portuguese sentence we wrote, never Google's. `UNAVAILABLE` ("O serviço de imagens não respondeu") is only for a request that left and got no usable answer in time; a failure after the service answered is never told that way.
 
 Each request carries a repeat-guard key (`idempotency_key`, unique per campaign): repeating the call returns the first request and never generates again.
 

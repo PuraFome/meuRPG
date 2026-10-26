@@ -17,7 +17,7 @@ import (
 // the SRD has no effect of that type (a feat from another book brings it).
 var overlayEffectTypes = []string{
 	"modifier", "proficiency", "resource", "sense", "roll_mode", "grant_action",
-	"superiority_die", "extra_attack", "extra_damage", "ambush", "ranged_attack", "resistance", "on_event", "choice", "ability_increase", "note",
+	"superiority_die", "extra_attack", "extra_damage", "ambush", "ranged_attack", "resistance", "breathes_water", "granted_spell", "on_event", "choice", "ability_increase", "note",
 }
 
 // overlayChoiceKinds are the choices a table feature may offer. The subclass and
@@ -54,7 +54,7 @@ func (b *overlayBuilder) addFeature(f *TableFeature, k featureKind, path string)
 	b.n.namesEN[f.Key] = f.NamePT
 	b.n.namesPT[f.Key] = f.NamePT
 	switch k.prefix {
-	case "feature:":
+	case featureKeyPrefix:
 		if err := b.writeFeature(f, k, effects, path); err != nil {
 			return err
 		}
@@ -92,7 +92,7 @@ func (b *overlayBuilder) featureOptions(f *TableFeature, k featureKind, path str
 	if len(f.Options) == 0 {
 		return f.Effects, nil
 	}
-	if k.prefix != "feature:" {
+	if k.prefix != featureKeyPrefix {
 		return nil, ovErr(f.Key, "only a class or subclass feature has an option list").at(path+".options", ReasonEffect)
 	}
 	if len(f.Options) > MaxFeatureOptions {
@@ -203,7 +203,7 @@ func (b *overlayBuilder) addOptions(f *TableFeature, k featureKind, path string)
 		if len(o.Options) > 0 {
 			return nil, ovErr(o.Key, "an option does not have options of its own").at(at+".options", ReasonValue)
 		}
-		if err := checkTableKey("feature:", o.Key); err != nil {
+		if err := checkTableKey(featureKeyPrefix, o.Key); err != nil {
 			return nil, locate(err, at)
 		}
 		if err := b.claim(o.Key); err != nil {
@@ -259,10 +259,8 @@ func (b *overlayBuilder) checkEffect(owner, path string, e *Effect, strict bool)
 	switch e.Type {
 	case "choice":
 		return b.checkChoiceEffect(site, e)
-	case "ability_increase":
-		if attr, msg := checkAbilityIncrease(e); attr != "" {
-			return site.fail(attr, ReasonValue, "%s", msg)
-		}
+	case "ability_increase", "proficiency":
+		return checkOwnFields(site, e)
 	case "grant_action":
 		return b.checkGrantAction(site, e)
 	case "on_event":
@@ -273,6 +271,36 @@ func (b *overlayBuilder) checkEffect(owner, path string, e *Effect, strict bool)
 		return b.checkOnTarget(site, e)
 	case "resource":
 		return b.checkResourceEffect(site, e)
+	case "granted_spell":
+		return b.checkGrantedSpell(site, e)
+	}
+	return nil
+}
+
+// checkGrantedSpell checks the spell a granted_spell effect names and the resource it
+// spends: the spell is the SRD's or the table's, and the resource one the entry (or its
+// class) defines, so a grant never spends what no effect counts.
+func (b *overlayBuilder) checkGrantedSpell(site effectSite, e *Effect) error {
+	if e.Spell != "" && !b.isSpell(e.Spell) {
+		return site.fail(".spell", ReasonReference, "the granted spell %q is not in the content", e.Spell)
+	}
+	if e.Uses != "" && e.Uses != GrantedAtWill && !b.resourceDefined(site.owner, e.Uses) {
+		return site.fail(".uses", ReasonReference, "the grant spends %q, which no resource effect of this entry or its class defines", e.Uses)
+	}
+	return nil
+}
+
+// checkOwnFields checks the fields of an ability_increase or a proficiency
+// effect that depend on one another.
+func checkOwnFields(site effectSite, e *Effect) error {
+	if e.Type == "proficiency" {
+		if msg := checkOnlyProficient(e); msg != "" {
+			return site.fail(".only_proficient", ReasonValue, "%s", msg)
+		}
+		return nil
+	}
+	if attr, msg := checkAbilityIncrease(e); attr != "" {
+		return site.fail(attr, ReasonValue, "%s", msg)
 	}
 	return nil
 }
@@ -445,7 +473,7 @@ func (b *overlayBuilder) checkResourceEffect(site effectSite, e *Effect) error {
 // table.
 var ownFields = map[string][]string{
 	"modifier":     {"target", "mode", "value"},
-	"proficiency":  {"proficiency", "level"},
+	"proficiency":  {"proficiency", "level", "only_proficient"},
 	"roll_mode":    {"roll", "targets"},
 	"sense":        {"sense", "range_ft"},
 	"resource":     {"resource", "max", "recharge"},
@@ -468,6 +496,10 @@ var ownFields = map[string][]string{
 	"ranged_attack": {"applies", "ignore_cover", "range_multiplier", "no_long_range_disadvantage"},
 	// A resistance names the damage type it leaves out and when it holds.
 	"resistance": {"except", "while"},
+	// breathes_water has no field of its own: only the when that gates it.
+	"breathes_water": {},
+	// A granted_spell names the spell, from which level, what it spends, and the switches.
+	"granted_spell": {"spell", "from_level", "uses", "ability", "also_with_slot", "ritual_only", "counts_as_known"},
 }
 
 // effectField is a field of an Effect a type may not read: its name in the
@@ -503,6 +535,7 @@ var effectFields = []effectField{
 	{"ignore_cover", func(e *Effect) bool { return e.IgnoreCover }, func(e *Effect) { e.IgnoreCover = false }},
 	{"range_multiplier", func(e *Effect) bool { return e.RangeMultiplier != 0 }, func(e *Effect) { e.RangeMultiplier = 0 }},
 	{"no_long_range_disadvantage", func(e *Effect) bool { return e.NoLongRangeDisadvantage }, func(e *Effect) { e.NoLongRangeDisadvantage = false }},
+	{"only_proficient", func(e *Effect) bool { return e.OnlyProficient }, func(e *Effect) { e.OnlyProficient = false }},
 	{"cost", func(e *Effect) bool { return e.Cost != "" }, func(e *Effect) { e.Cost = "" }},
 	{"cost_max", func(e *Effect) bool { return e.CostMax != "" }, func(e *Effect) { e.CostMax = "" }},
 	{"value_per_point", func(e *Effect) bool { return e.ValuePerPoint != "" }, func(e *Effect) { e.ValuePerPoint = "" }},
@@ -520,6 +553,12 @@ var effectFields = []effectField{
 	{"ritual", func(e *Effect) bool { return e.Ritual }, func(e *Effect) { e.Ritual = false }},
 	{"handler", func(e *Effect) bool { return e.Handler != "" }, func(e *Effect) { e.Handler = "" }},
 	{"max_cr", func(e *Effect) bool { return e.MaxCR != "" }, func(e *Effect) { e.MaxCR = "" }},
+	{"spell", func(e *Effect) bool { return e.Spell != "" }, func(e *Effect) { e.Spell = "" }},
+	{"from_level", func(e *Effect) bool { return e.FromLevel != "" }, func(e *Effect) { e.FromLevel = "" }},
+	{"uses", func(e *Effect) bool { return e.Uses != "" }, func(e *Effect) { e.Uses = "" }},
+	{"also_with_slot", func(e *Effect) bool { return e.AlsoWithSlot }, func(e *Effect) { e.AlsoWithSlot = false }},
+	{"ritual_only", func(e *Effect) bool { return e.RitualOnly }, func(e *Effect) { e.RitualOnly = false }},
+	{"counts_as_known", func(e *Effect) bool { return e.CountsAsKnown }, func(e *Effect) { e.CountsAsKnown = false }},
 	{"no_fly", func(e *Effect) bool { return e.NoFly }, func(e *Effect) { e.NoFly = false }},
 	{"no_swim", func(e *Effect) bool { return e.NoSwim }, func(e *Effect) { e.NoSwim = false }},
 }
@@ -656,6 +695,17 @@ var effectErrorRules = []effectErrorRule{
 	{[]string{"extra_attack needs"}, fieldAttr(".count"), ReasonValue},
 	{[]string{"empty tag"}, fieldAttr(".tags"), ReasonValue},
 	{[]string{"unknown spell"}, fieldAttr(".spells"), ReasonReference},
+	{[]string{"the granted spell"}, fieldAttr(".spell"), ReasonReference},
+	{[]string{"uses must be"}, fieldAttr(".uses"), ReasonValue},
+	{[]string{"ability must be"}, fieldAttr(".ability"), ReasonValue},
+	{[]string{"ritual_only needs"}, fieldAttr(".ritual_only"), ReasonValue},
+	{[]string{"ritual_only and also_with_slot"}, fieldAttr(".also_with_slot"), ReasonValue},
+	{[]string{"speedwalk() belongs"}, func(e *Effect, _ func(...string) bool) string {
+		if strings.Contains(e.Value, "speedwalk") {
+			return ".value"
+		}
+		return ".when"
+	}, ReasonFormula},
 	{[]string{"is not a damage type"}, fieldAttr(".except"), ReasonReference},
 	{[]string{"while must be"}, fieldAttr(".while"), ReasonValue},
 	{[]string{"a resistance has no when"}, fieldAttr(".when"), ReasonValue},
@@ -669,6 +719,7 @@ func formulaAttr(e *Effect, has func(words ...string) bool) string {
 		{"when", e.When},
 		{"value", e.Value},
 		{"max", e.Max},
+		{"from_level", e.FromLevel},
 		{"cost", e.Cost},
 		{"cost_max", e.CostMax},
 		{"temp_hp", e.TempHP},

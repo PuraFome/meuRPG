@@ -62,6 +62,7 @@ export function emptySubclass(classKey: string): SubclassDraft {
     rows: Array.from({ length: LEVEL_COUNT }, emptyRow),
     features: [],
     alwaysPrepared: [],
+    spellsExpanded: false,
   };
 }
 
@@ -95,6 +96,7 @@ export function subclassToDraft(
     alwaysPrepared: [...groups]
       .sort((a, b) => a[0] - b[0])
       .map(([level, spells]) => ({ level, spells })),
+    spellsExpanded: s.spellsExpanded,
   };
 }
 
@@ -125,6 +127,7 @@ export function draftToSubclass(d: SubclassDraft, menu: EffectMenuVm): SubclassI
       };
     }),
     alwaysPrepared: flattenAlwaysPrepared(d.alwaysPrepared),
+    spellsExpanded: d.spellsExpanded && d.alwaysPrepared.some((g) => g.spells.length > 0),
   };
 }
 

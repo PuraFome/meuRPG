@@ -206,7 +206,10 @@ func TestMR032_HighlightsOfTheAmbush(t *testing.T) {
 
 	// Rodada 4: the combat is not over until the master ends it, and the
 	// highlights wait for that.
-	end(a.master) // Brisa, down, owes a death save: the master passes the turn
+	if _, err := a.deathSave(t, a.master, e, "Brisa", deathFace(14)); err != nil { // Brisa, down, owes a death save: the master rolls it for her
+		t.Fatalf("the master's death save for Brisa: %v", err)
+	}
+	end(a.master)
 	miss(a.ana, "Pensantus", fireBolt, "Goblin 3")
 	end(a.ana)
 	end(a.master) // Goblin 3
@@ -279,7 +282,7 @@ func TestMR032_HighlightsSkipTheUndoneAndCountWhatHappened(t *testing.T) {
 	e := a.start(t, plan{
 		npcs: []*playv1.Participant{
 			{CharacterId: a.goblin.GetId(), Hidden: new(false)},
-			{CharacterId: a.capitao.GetId()}, // hidden: a new NPC starts hidden
+			{CharacterId: a.capitao.GetId(), Hidden: new(false)}, // seen while the master attacks for the players' characters; hidden again at the end
 		},
 		npcRolls: []int{1, 2},
 		players:  map[string]int32{"Toren": 20, "Pensantus": 15, "Brisa": 10},
@@ -337,6 +340,7 @@ func TestMR032_HighlightsSkipTheUndoneAndCountWhatHappened(t *testing.T) {
 	if _, err := a.adjustHP(t, e, "Capitão Goblin", damageHP(3)); err != nil { // the master's own hand
 		t.Fatalf("AdjustCombatantHitPoints() error = %v", err)
 	}
+	hideAgain(t, a, e, "Capitão Goblin")
 	a.endEncounter(t, e)
 
 	want := []string{

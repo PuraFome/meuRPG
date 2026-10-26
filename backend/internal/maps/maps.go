@@ -59,6 +59,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/nostore"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/ratelimit"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/wiring"
+	playlink "github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -161,6 +162,10 @@ type LiveSession interface {
 	// scene's conversation that carries the image, or that an NPC with it as
 	// its portrait speaks (RN-36): the one thing a line lets its readers open.
 	ImageInConversation(ctx context.Context, campaignID, userID, imageID string) (bool, error)
+	// ShownImageViewers returns the players who see the image the open session
+	// shows (MR-028, RN-10): the whole table, or exactly some players. Nobody
+	// when no session is open or it shows no image.
+	ShownImageViewers(ctx context.Context, campaignID string) (playlink.ImageAudience, error)
 	// ImageShown reports whether the image is the one the open session shows the
 	// players. It reads through tx, for a transaction that is about to delete it.
 	ImageShown(ctx context.Context, tx pgx.Tx, campaignID, imageID string) (bool, error)

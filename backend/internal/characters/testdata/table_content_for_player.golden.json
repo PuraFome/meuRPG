@@ -338,6 +338,48 @@
     }
   },
   {
+    "step": "option that asks for hidden keys",
+    "value": {
+      "effects": [
+        {
+          "spells": [
+            "spell:fire-bolt"
+          ],
+          "type": "note"
+        },
+        {
+          "choice": "spell",
+          "count": 1,
+          "from": [
+            "spell:fire-bolt"
+          ],
+          "type": "choice"
+        }
+      ],
+      "namePt": "Opção",
+      "prerequisite": {
+        "requiresOptionKeys": [
+          "option:invocation:x@mesa"
+        ],
+        "requiresPact": "feature:pact-of-the-tome"
+      },
+      "set": "invocation"
+    }
+  },
+  {
+    "step": "option that asks for visible keys",
+    "value": {
+      "namePt": "Opção 2",
+      "prerequisite": {
+        "classLevel": {
+          "classKey": "class:sorcerer",
+          "level": 10
+        }
+      },
+      "set": "metamagic"
+    }
+  },
+  {
     "step": "feat without a prerequisite",
     "value": {
       "effects": [
@@ -357,6 +399,24 @@
         }
       ],
       "namePt": "Talento 3"
+    }
+  },
+  {
+    "step": "feat that grants a hidden and a visible spell",
+    "value": {
+      "effects": [
+        {
+          "ability": "wis",
+          "type": "granted_spell"
+        },
+        {
+          "ability": "cha",
+          "spell": "spell:fire-bolt",
+          "type": "granted_spell",
+          "uses": "at_will"
+        }
+      ],
+      "namePt": "Talento 4"
     }
   }
 ]

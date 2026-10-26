@@ -108,6 +108,12 @@
                 </button>
               }
               @if (c.initiative === undefined) {
+                @if (canRoll() && isPlayerRow(c)) {
+                  <!-- C8-05: the master rolls for the one still missing, with the character's own bonus. -->
+                  <button mat-stroked-button type="button" [disabled]="busy()" (click)="rollFor.emit(c.id)">
+                    <mat-icon aria-hidden="true">casino</mat-icon>Rolar por {{ c.label }}
+                  </button>
+                }
                 <button mat-stroked-button type="button" (click)="edit(c)">
                   Digitar pelo jogador
                 </button>

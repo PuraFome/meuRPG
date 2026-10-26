@@ -142,7 +142,7 @@ Where a spell level could be confused with the character's level, the text says 
 | Anotação | Note | A player's private text (up to 2,000 characters, 300 per campaign), optionally labelled with a discovered scene. Not even the master reads it (MR-030). |
 | Ações da cena | Scene action | A check the master puts on a scene: a skill, ability check or saving throw, with an optional name and DC. The player sees their own bonus; the DC only if "Mostrar a CD aos jogadores" is on. |
 | Cena de RP | RP scene | A moment outside combat: a point of interest of the scene kind, opened in the session for everyone to see. |
-| Cena descoberta | Discovered scene | An RP scene the group has already seen. Only a discovered scene can label a note. |
+| Cena descoberta | Discovered scene | An RP scene the group has already seen, or that a player saw alone while it was open to only some players. Only a scene discovered by the player can label their note. |
 | Conversa da cena | The scene's conversation | The session's live text feed (MR-051): the master narrates and speaks as NPCs, players speak as their character or out of character. Each line is for the whole table or for chosen readers (RN-36). |
 | Em cena (o palco) | On stage | The NPCs the master puts on the open scene, up to 4 at a time, one speaking. The player sees only the name and portrait (MR-031). |
 | Escondida dos jogadores | Hidden from the players | What the master keeps from the players on a scene: an NPC on the stage ("Escondida dos jogadores", against "Os jogadores veem") or an action ("Escondida"). No player receives it, in an answer, a live hint or an image; the master reads it marked (MR-031, MR-015, RN-10). |

@@ -385,6 +385,12 @@ func turnOptionsToProto(o combat.TurnOptions) *rulesv1.TurnOptions {
 		for _, c := range sp.Slots {
 			so.Slots = append(so.Slots, &rulesv1.SlotChoice{Level: i32(c.Level), Pact: c.Pact, Free: i32(c.Free)})
 		}
+		if g := sp.Grant; g != nil {
+			so.Grant = &rulesv1.SpellGrantOption{
+				SourceKey: g.Source, SourceNamePt: g.SourcePT, AtWill: g.AtWill, Resource: g.Resource, UsesLeft: i32(g.UsesLeft),
+				AlsoWithSlot: g.AlsoWithSlot, Ability: string(g.Ability), AttackBonus: i32(g.AttackBonus), SaveDc: i32(g.SaveDC),
+			}
+		}
 		out.Spells = append(out.Spells, so)
 	}
 	for _, a := range o.StandardActions {

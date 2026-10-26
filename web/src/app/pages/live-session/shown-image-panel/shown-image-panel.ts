@@ -215,7 +215,9 @@ export class ShownImagePanel {
     this.keeping.set(true);
     this.error.set(null);
     try {
-      await this.source.setShownImage(this.campaignId(), shown.id, next);
+      await (shown.audience
+        ? this.source.setShownImage(this.campaignId(), shown.id, next, shown.audience)
+        : this.source.setShownImage(this.campaignId(), shown.id, next));
       this.keepChange.emit(next);
     } catch (err) {
       this.error.set(showErrorMessage(err));

@@ -139,25 +139,27 @@
             [viewer]="viewer()"
             [isMaster]="isMaster()"
             [mode]="isMaster() && !phone() ? 'tokens' : 'view'"
+            [onlyToken]="canDrag() ? ownKey() : null"
             [doorTaps]="isMaster()"
             (doorPick)="openDoor($event)"
             [pins]="true"
+            [tokenMarks]="!isMaster()"
             [senses]="senses()"
             [carried]="carriedName()"
             [familiar]="seeingName()"
             [dark]="darkIds()"
             [darkChosen]="darkChosen()"
             (moved)="onMoved($event)"
-          />
+            (tokenPick)="mover()?.pick($event.id, $event.additive)"
+            (emptyClick)="mover()?.tap($event)"
+          >
+            @if (mover(); as m) {
+              <app-move-overlay mapOverlay [rings]="m.rings()" [plan]="m.plan()" [trail]="m.trail()" [columns]="map()?.gridColumns ?? 0" />
+            }
+          </app-fog-map>
           @if (isMaster()) {
             <div class="map__foot">
               <div class="map__legend">
-                @if (!phone()) {
-                  <p class="map__hint">
-                    <mat-icon aria-hidden="true">drag_pan</mat-icon>
-                    Arraste um token para movê-lo no mapa.
-                  </p>
-                }
                 <ng-container *ngTemplateOutlet="tokenLegend" />
               </div>
             </div>
@@ -193,10 +195,16 @@
             [points]="markerPoints()"
             [tokens]="state().tokens()"
             [isMaster]="isMaster()"
-            [mode]="isMaster() && !phone() ? 'tokens' : 'preview'"
+            [mode]="isMaster() && !phone() ? 'tokens' : canDrag() ? 'view' : 'preview'"
+            [onlyToken]="canDrag() ? ownKey() : null"
             [focusParty]="phone()"
             (moved)="onMoved($event)"
+            (tokenPick)="mover()?.pick($event.id, $event.additive)"
+            (emptyClick)="mover()?.tap($event)"
           >
+            @if (mover(); as m) {
+              <app-move-overlay mapOverlay [rings]="m.rings()" [plan]="m.plan()" [trail]="m.trail()" [columns]="map()?.gridColumns ?? 0" />
+            }
             <!-- The traps, the chests and the lights: drawn over the picture (docs/design/README.md). -->
             <app-map-pins
               mapOverlay
@@ -206,7 +214,7 @@
               [isMaster]="isMaster()"
             />
           </app-map-view>
-          @if (!isMaster() || phone()) {
+          @if ((!isMaster() || phone()) && !canDrag()) {
             <a
               class="map__cover"
               tabindex="-1"
@@ -220,13 +228,7 @@
         <div class="map__foot">
           <div class="map__legend">
             @if (inTab()) {
-              <p class="map__caption">{{ map()?.name }} · mapa atual</p>
-            }
-            @if (isMaster() && !phone()) {
-              <p class="map__hint">
-                <mat-icon aria-hidden="true">drag_pan</mat-icon>
-                Arraste um token para movê-lo no mapa.
-              </p>
+              <p class="map__caption">Mapa · {{ map()?.name }}</p>
             }
             @if (isMaster()) {
               <ng-container *ngTemplateOutlet="tokenLegend" />
@@ -332,6 +334,11 @@
         </div>
       } @else if (isMaster() && (fogOn() || image()) && markerPoints().length > 0) {
         <ng-container *ngTemplateOutlet="pointsBlock" />
+      }
+    
+      @if (!isMaster() && mover() && ownToken() && (inTab() || !phone())) {
+        <!-- Who moves the tokens (C9-01 to C9-03): the line under the map, and "Mover Brisa" when the master let the players move. -->
+        <app-player-move [mover]="mover()!" [state]="state()" [characterId]="ownToken()!.characterId" [name]="ownToken()!.name" [drag]="canDrag()" />
       }
     }
     @case ('error') {

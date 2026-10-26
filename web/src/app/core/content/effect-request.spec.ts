@@ -148,6 +148,35 @@ describe('the effect a request sends, field by field', () => {
     expect(sent.spells).not.toBe(d.spells);
   });
 
+  it('sends "Só onde já tem proficiência" only with the level Especialização on a skill, and only when on', () => {
+    const menu = menuReading(['proficiency', 'level', 'only_proficient']);
+    const expertise = {
+      ...emptyEffect('any'),
+      proficiency: 'skill:perception',
+      level: 'expertise',
+      onlyProficient: true,
+    };
+    expect(draftToEffect(expertise, menu)).toEqual({
+      type: 'any',
+      proficiency: 'skill:perception',
+      level: 'expertise',
+      onlyProficient: true,
+    });
+    expect(draftToEffect({ ...expertise, onlyProficient: false }, menu).onlyProficient).toBe(
+      undefined,
+    );
+    // Another level or a target that is not a skill: the switch stays in the draft, the server never hears of it.
+    expect(draftToEffect({ ...expertise, level: 'full' }, menu).onlyProficient).toBe(undefined);
+    expect(draftToEffect({ ...expertise, proficiency: 'save.wis' }, menu).onlyProficient).toBe(
+      undefined,
+    );
+    expect(draftToEffect({ ...expertise, proficiency: 'skill:*' }, menu).onlyProficient).toBe(true);
+    // A type that does not read it never sends it.
+    expect(draftToEffect(expertise, menuReading(['proficiency', 'level'])).onlyProficient).toBe(
+      undefined,
+    );
+  });
+
   it('writes nothing for the name of a field that is also a name of Object', () => {
     expect(draftToEffect(emptyEffect('any'), menuReading(['constructor', 'toString']))).toEqual({
       type: 'any',

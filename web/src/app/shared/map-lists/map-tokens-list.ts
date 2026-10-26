@@ -50,8 +50,16 @@ export class MapTokensList {
   readonly pendingId = input<string | null>(null);
   readonly headingLevel = input<2 | 3>(2);
   readonly toggle = output<TokenToggle>();
+  /** B2: each character's row has a box that chooses it for moving (the master's "Tokens" tab). */
+  readonly selectable = input(false);
+  /** The characters chosen, by id. */
+  readonly chosen = input<readonly string[]>([]);
+  readonly pick = output<string>();
 
   protected readonly key = tokenKey;
+  protected isChosen(t: MapToken): boolean {
+    return this.chosen().includes(t.characterId);
+  }
   protected readonly sub = (t: MapToken) => tokenSub(t, this.info(), this.ownerName(t));
 
   /** The owner's name for a creature's token, from the owner's own token on the map. */

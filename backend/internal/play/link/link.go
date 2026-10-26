@@ -12,6 +12,7 @@ package link
 
 import (
 	"errors"
+	"slices"
 	"time"
 )
 
@@ -643,6 +644,20 @@ type Scene struct {
 type ImageAudience struct {
 	Everyone bool
 	UserIDs  []string
+}
+
+// Union is the widest of the two: everyone if either is, else the players of both, without repeats.
+func (a ImageAudience) Union(b ImageAudience) ImageAudience {
+	if a.Everyone || b.Everyone {
+		return ImageAudience{Everyone: true}
+	}
+	out := ImageAudience{UserIDs: slices.Clone(a.UserIDs)}
+	for _, u := range b.UserIDs {
+		if !slices.Contains(out.UserIDs, u) {
+			out.UserIDs = append(out.UserIDs, u)
+		}
+	}
+	return out
 }
 
 // SceneImage is a gallery image attached to a scene.

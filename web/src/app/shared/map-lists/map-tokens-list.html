@@ -10,7 +10,18 @@
 } @else {
   <ul class="lst" aria-labelledby="tokens-heading">
     @for (t of tokens(); track key(t)) {
-      <li class="row">
+      <li class="row" [class.row--pick]="selectable()" [class.row--chosen]="selectable() && !t.creatureId && isChosen(t)">
+        @if (selectable() && !t.creatureId) {
+          <input
+            type="checkbox"
+            class="row__pick"
+            [checked]="isChosen(t)"
+            [attr.aria-label]="'Escolher ' + t.name + ' para mover'"
+            (change)="pick.emit(t.characterId)"
+          />
+        } @else if (selectable()) {
+          <span class="row__pick" aria-hidden="true"></span>
+        }
         <span class="row__glyph row__glyph--disc" [class.row__glyph--hidden]="t.hidden" aria-hidden="true">
           {{ initial(t) }}
           @if (t.hidden) {

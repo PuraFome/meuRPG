@@ -34,7 +34,7 @@ const (
 	tableSuffix = "@mesa"
 	// MaxOverlayEntries is the most entries (of the six kinds, features not
 	// counted) one table may have.
-	MaxOverlayEntries = 300
+	MaxOverlayEntries = 1000
 	// MaxTableFeatures is the most features one class may have, and the most
 	// one subclass may have, counted apart. The features the engine makes (the
 	// Ability Score Improvements and the Spellcasting feature) do not count.
@@ -81,14 +81,16 @@ type Overlay struct {
 	// table's own ("Opções para os jogadores", RN-23). A key that is no class,
 	// subclass, race, subrace, background or spell of this content is ignored, so
 	// a stored switch can never make a campaign unreadable.
-	Off         []string
-	Classes     []TableClass
-	Subclasses  []TableSubclass
-	Races       []TableRace
-	Subraces    []TableSubrace
-	Backgrounds []TableBackground
-	Spells      []TableSpell
-	Feats       []TableFeat
+	Off           []string
+	Classes       []TableClass
+	Subclasses    []TableSubclass
+	Races         []TableRace
+	Subraces      []TableSubrace
+	Backgrounds   []TableBackground
+	Spells        []TableSpell
+	Feats         []TableFeat
+	Options       []TableOption
+	ClassFeatures []TableClassFeature
 }
 
 // TableEntry is what every entry has. Key is "<kind>:<slug>@mesa" (kind is
@@ -144,6 +146,10 @@ type TableCasting struct {
 	// that name the class are then added to the ones of ListFrom. For a third
 	// caster it is required.
 	ListFrom string
+	// SRDSpells are SRD spells ("spell:cure-wounds") on the class's own list, next
+	// to the table spells that name the class. Only a class with a list of its own
+	// (ListFrom empty) has them; a third caster's subclass does not.
+	SRDSpells []string
 	// PreparedMax is the formula of how many spells a class that prepares may
 	// prepare. Empty is the synthesized one: the ability modifier plus the class
 	// level (half of it for a half caster), at least 1.
@@ -240,6 +246,10 @@ type TableSubclass struct {
 	Casting *TableCasting
 	// AlwaysPrepared are the spells it always has prepared.
 	AlwaysPrepared []TableAlwaysPrepared
+	// SpellsExpanded says AlwaysPrepared are not given: they join the class's spell
+	// list to choose from, as a warlock patron's expanded list does, and count
+	// against the spells known or prepared. It needs AlwaysPrepared to have spells.
+	SpellsExpanded bool
 }
 
 // TableRace is a race in the 2014 shape.
@@ -651,6 +661,12 @@ func (c *content) isSwitchable(key string) bool {
 	case strings.HasPrefix(key, "feat:"):
 		_, ok := c.feats[key]
 		return ok
+	case strings.HasPrefix(key, OptionKeyPrefix):
+		_, ok := c.optionSet[key]
+		return ok
+	case strings.HasPrefix(key, ClassFeatureKeyPrefix):
+		_, ok := c.classFeatureOf[key]
+		return ok
 	}
 	return false
 }
@@ -750,7 +766,7 @@ func BuildKeys(b Build) []KeyField {
 func (c *Content) ChangedSince(b Build, savedRevision int, baselines map[string]int) []ChangedEntry {
 	var out []ChangedEntry
 	seen := map[string]bool{}
-	for _, kf := range BuildKeys(b) {
+	for _, kf := range append(BuildKeys(b), c.ClassFeatureKeys(b)...) {
 		since := savedRevision
 		if r, ok := baselines[kf.Key]; ok {
 			since = r // an entry the sheet is still flagged for keeps its older baseline
@@ -791,7 +807,12 @@ type overlayBuilder struct {
 	// of every feature and option; resources are the resource names the effects of
 	// each entry declare. They serve the checks made once every entry exists.
 	optionEntry, featureEntry, featureClass map[string]string
-	resources                               map[string]map[string]bool
+	// optionOffers are the SRD features that already got a table option, so they are copied once.
+	optionOffers map[string]bool
+	// classFeatures are the table class features added so far, and offKeys the keys the master switched off.
+	classFeatures []pendingClassFeature
+	offKeys       map[string]bool
+	resources     map[string]map[string]bool
 	// resourceMax is the formula of the maximum of each resource an entry declares.
 	resourceMax map[string]map[string]string
 }
@@ -821,6 +842,8 @@ type overlayKind struct {
 	// learn, when set, records what the later checks need of the entry once its
 	// key is claimed.
 	learn func(i int)
+	// checkKey, when set, replaces the check of the key's shape ("<prefix><slug>@mesa").
+	checkKey func(key string) error
 }
 
 // The order claimKeys claims the kinds in (overlayKind.claimRank).
@@ -832,6 +855,8 @@ const (
 	claimBackgrounds
 	claimSpells
 	claimFeats
+	claimOptions
+	claimClassFeatures
 )
 
 // overlayKinds lists the seven kinds in the order addEntries adds them.
@@ -878,6 +903,17 @@ func (b *overlayBuilder) overlayKinds(o *Overlay) []overlayKind {
 			entry: func(i int) TableEntry { return o.Feats[i].TableEntry },
 			add:   func(i int, path string) error { return b.addFeat(&o.Feats[i], path) },
 		},
+		{
+			list: "options", prefix: OptionKeyPrefix, claimRank: claimOptions, n: len(o.Options),
+			entry:    func(i int) TableEntry { return o.Options[i].TableEntry },
+			add:      func(i int, path string) error { return b.addOption(&o.Options[i], path) },
+			checkKey: checkOptionKey,
+		},
+		{
+			list: "class_features", prefix: ClassFeatureKeyPrefix, claimRank: claimClassFeatures, n: len(o.ClassFeatures),
+			entry: func(i int) TableEntry { return o.ClassFeatures[i].TableEntry },
+			add:   func(i int, path string) error { return b.addClassFeature(&o.ClassFeatures[i], path) },
+		},
 	}
 }
 
@@ -911,6 +947,13 @@ func (b *overlayBuilder) build(o Overlay) error {
 	n := b.startClone(&o)
 	defer func() { n.programs = nil }()
 	if err := b.addEntries(&o); err != nil {
+		return err
+	}
+	b.offKeys = map[string]bool{}
+	for _, k := range o.Off {
+		b.offKeys[k] = true
+	}
+	if err := b.applyClassFeatures(); err != nil {
 		return err
 	}
 	if err := b.compileEffects(); err != nil {
@@ -1004,7 +1047,7 @@ func (b *overlayBuilder) claimKeys(o *Overlay) error {
 	slices.SortFunc(kinds, func(x, y overlayKind) int { return x.claimRank - y.claimRank })
 	for _, k := range kinds {
 		for _, i := range k.byKey() {
-			if err := b.claimEntry(k.prefix, fmt.Sprintf("%s[%d]", k.list, i), k.entry(i)); err != nil {
+			if err := b.claimEntry(k, fmt.Sprintf("%s[%d]", k.list, i), k.entry(i)); err != nil {
 				return err
 			}
 			if k.learn != nil {
@@ -1016,8 +1059,12 @@ func (b *overlayBuilder) claimKeys(o *Overlay) error {
 }
 
 // claimEntry checks an entry's key and claims it, then checks its name.
-func (b *overlayBuilder) claimEntry(prefix, path string, e TableEntry) error {
-	if err := checkTableKey(prefix, e.Key); err != nil {
+func (b *overlayBuilder) claimEntry(k overlayKind, path string, e TableEntry) error {
+	check := k.checkKey
+	if check == nil {
+		check = func(key string) error { return checkTableKey(k.prefix, key) }
+	}
+	if err := check(e.Key); err != nil {
 		return locate(err, path)
 	}
 	if err := b.claim(e.Key); err != nil {
@@ -1175,6 +1222,9 @@ func (c *content) cloneForOverlay() *content {
 	n.features = maps.Clone(c.features)
 	n.backgrounds = maps.Clone(c.backgrounds)
 	n.feats = maps.Clone(c.feats)
+	n.optionSet = map[string]string{}
+	n.classFeatureOf = map[string]ClassFeatureEntry{}
+	n.optionPrereq = map[string]TableOptionPrerequisite{}
 	n.spells = maps.Clone(c.spells)
 	n.classLevels = maps.Clone(c.classLevels)
 	n.subclassLevels = maps.Clone(c.subclassLevels)
@@ -1197,4 +1247,19 @@ func (c *content) cloneForOverlay() *content {
 	n.spellEntries = nil
 	n.spellDetails = nil
 	return &n
+}
+
+// ClassFeatureKeys are the table class features a build has: the class has the entry's class and a
+// level of it or more. The sheet field is the class's own, as a change to the class is told.
+func (c *Content) ClassFeatureKeys(b Build) []KeyField {
+	var out []KeyField
+	for _, k := range sortedKeys(c.c.classFeatureOf) {
+		cf := c.c.classFeatureOf[k]
+		for i, cl := range b.Classes {
+			if cl.Class == cf.Class && cl.Level >= cf.Level {
+				out = append(out, KeyField{Key: k, Field: fmt.Sprintf("full.classes[%d].class_key", i)})
+			}
+		}
+	}
+	return out
 }

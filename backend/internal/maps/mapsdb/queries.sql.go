@@ -2728,7 +2728,7 @@ type LeaveImageParams struct {
 // Leaves the campaign's gallery image with the players (MR-028). Selecting
 // from gallery_images makes an image deleted meanwhile, or another
 // campaign's, insert nothing. An image left already keeps its left_at and takes
-// the audience of this leaving, the master's latest.
+// the audience given, which the caller made the widest of the two leavings.
 func (q *Queries) LeaveImage(ctx context.Context, arg LeaveImageParams) (int64, error) {
 	result, err := q.db.Exec(ctx, leaveImage,
 		arg.Now,
@@ -2816,16 +2816,23 @@ func (q *Queries) ListClueRevealsOfPoint(ctx context.Context, pointID *string) (
 }
 
 const listDiscoveredScenes = `-- name: ListDiscoveredScenes :many
-SELECT p.id, p.name FROM scene_discoveries AS d
+SELECT p.id, p.name FROM (
+    SELECT g.point_id, g.discovered_at FROM scene_discoveries AS g WHERE g.campaign_id = $1::UUID
+    UNION ALL
+    SELECT o.point_id, o.discovered_at FROM scene_player_discoveries AS o
+    WHERE o.campaign_id = $1::UUID AND o.user_id = $2::UUID
+) AS d
 JOIN map_points AS p ON p.id = d.point_id
 JOIN maps AS m ON m.id = p.map_id
-WHERE d.campaign_id = $1 AND p.kind = 'scene'
-  AND (m.revealed_at IS NOT NULL OR m.id = $2::UUID)
-ORDER BY d.discovered_at, p.id
+WHERE p.kind = 'scene'
+  AND (m.revealed_at IS NOT NULL OR m.id = $3::UUID)
+GROUP BY p.id, p.name
+ORDER BY min(d.discovered_at), p.id
 `
 
 type ListDiscoveredScenesParams struct {
 	CampaignID   string
+	UserID       string
 	CurrentMapID *string
 }
 
@@ -2834,11 +2841,12 @@ type ListDiscoveredScenesRow struct {
 	Name string
 }
 
-// The scenes the group discovered, with their current names, oldest discovery
-// first. A point that stopped being a scene is not listed, nor is one of a map the
-// players cannot open (not revealed, and not the session's current map).
+// The scenes the user may tag notes with, with their current names, oldest discovery first: the ones the
+// group discovered and the ones only this player discovered (a scene open to some players). A point that
+// stopped being a scene is not listed, nor is one of a map the players cannot open (not revealed, and not
+// the session's current map).
 func (q *Queries) ListDiscoveredScenes(ctx context.Context, arg ListDiscoveredScenesParams) ([]ListDiscoveredScenesRow, error) {
-	rows, err := q.db.Query(ctx, listDiscoveredScenes, arg.CampaignID, arg.CurrentMapID)
+	rows, err := q.db.Query(ctx, listDiscoveredScenes, arg.CampaignID, arg.UserID, arg.CurrentMapID)
 	if err != nil {
 		return nil, err
 	}
@@ -5168,5 +5176,29 @@ type UpsertSceneDiscoveryParams struct {
 // The group discovered a scene (MR-030): the first time wins.
 func (q *Queries) UpsertSceneDiscovery(ctx context.Context, arg UpsertSceneDiscoveryParams) error {
 	_, err := q.db.Exec(ctx, upsertSceneDiscovery, arg.CampaignID, arg.PointID, arg.DiscoveredAt)
+	return err
+}
+
+const upsertScenePlayerDiscovery = `-- name: UpsertScenePlayerDiscovery :exec
+INSERT INTO scene_player_discoveries (campaign_id, point_id, user_id, discovered_at)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (campaign_id, point_id, user_id) DO NOTHING
+`
+
+type UpsertScenePlayerDiscoveryParams struct {
+	CampaignID   string
+	PointID      string
+	UserID       string
+	DiscoveredAt time.Time
+}
+
+// A scene open to only some players was discovered by this player alone (MR-030, RN-10): the first time wins.
+func (q *Queries) UpsertScenePlayerDiscovery(ctx context.Context, arg UpsertScenePlayerDiscoveryParams) error {
+	_, err := q.db.Exec(ctx, upsertScenePlayerDiscovery,
+		arg.CampaignID,
+		arg.PointID,
+		arg.UserID,
+		arg.DiscoveredAt,
+	)
 	return err
 }

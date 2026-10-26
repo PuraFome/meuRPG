@@ -255,19 +255,23 @@ func (s *Service) processPicture(ctx context.Context, row mapsdb.ImageRequest, k
 	}
 }
 
-// storeFailed records why a picture the model returned (the call was billed) could not
-// be stored: the slot stays spent, unless the request was closed meanwhile.
+// storeFailed records why a picture the model returned could not be stored. A gallery
+// with no room stays spent: the master fills the gallery, and refunding it would let
+// paid pictures escape the caps. Any other fault (the file store, the database) is the
+// server's, not the model's and not the master's: the picture is lost, so the slot
+// goes back and the request says so. A request closed meanwhile is left as it ended.
 func (s *Service) storeFailed(ctx context.Context, campaignID, id string, err error) {
-	why := reasonUnavailable
-	if he, ok := errors.AsType[*httpError](err); ok && he.reason == ReasonQuota {
-		why = reasonGalleryFull
-	}
 	if errors.Is(err, errRequestClosed) {
 		s.logger.WarnContext(ctx, "maps: a generated picture arrived for a request that is closed; it was dropped")
 		return
 	}
-	s.logger.ErrorContext(ctx, "maps: cannot store a generated image", "error", err, "reason", why)
-	s.finishSpent(campaignID, id, why)
+	if he, ok := errors.AsType[*httpError](err); ok && he.reason == ReasonQuota {
+		s.logger.ErrorContext(ctx, "maps: cannot store a generated image", "error", err, "reason", reasonGalleryFull)
+		s.finishSpent(campaignID, id, reasonGalleryFull)
+		return
+	}
+	s.logger.ErrorContext(ctx, "maps: cannot store a generated image", "error", err, "reason", reasonStorageFailed)
+	s.finishFailed(campaignID, id, stateFailed, reasonStorageFailed)
 }
 
 // generatedKindOf is the way a request's picture was made, as the gallery records it: the
@@ -302,8 +306,8 @@ func (s *Service) finishFailed(campaignID, id, state, reason string) {
 	s.finish(campaignID, id, state, reason, true)
 }
 
-// finishSpent ends a request whose picture the model returned but the server could
-// not store: the call was made, so the slot stays spent.
+// finishSpent ends a request that may have been billed and has no picture the master
+// can use: the slot stays spent.
 func (s *Service) finishSpent(campaignID, id, reason string) {
 	s.finish(campaignID, id, stateFailed, reason, false)
 }

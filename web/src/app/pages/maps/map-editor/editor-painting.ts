@@ -53,6 +53,7 @@ const ALL_VISIBLE: LayerVisibility = {
   wall: true,
   cover: true,
   light: true,
+  nopass: true,
   door: true,
 };
 
@@ -115,7 +116,7 @@ export class EditorPainting {
   readonly shown = computed<MapLayers>(() => {
     const l = this.painted.layers();
     const v = this.visible();
-    if (v.terrain && v.wall && v.cover && v.light && v.door) {
+    if (v.terrain && v.wall && v.cover && v.light && v.nopass && v.door) {
       return l;
     }
     return {
@@ -125,6 +126,7 @@ export class EditorPainting {
       half: v.cover ? l.half : [],
       threeQuarters: v.cover ? l.threeQuarters : [],
       light: v.light ? l.light : undefined,
+      noPass: v.nopass ? l.noPass : undefined,
       doors: v.door ? l.doors : undefined,
     };
   });

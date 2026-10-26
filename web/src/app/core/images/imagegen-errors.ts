@@ -142,6 +142,8 @@ export function failureText(
       return `Uma imagem de referência foi apagada no meio do pedido. Escolha outra e peça de novo. ${back}`;
     case ImageGenerationFailure.TIMEOUT:
       return `O pedido se perdeu pelo caminho. Tente de novo. ${back}`;
+    case ImageGenerationFailure.STORAGE_FAILED:
+      return `A imagem foi feita, mas não deu para guardá-la. Tente de novo. ${back}`;
     case ImageGenerationFailure.SERVICE_OFF:
       return `O serviço de imagens não está disponível agora. ${back}`;
     default:

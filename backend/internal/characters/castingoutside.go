@@ -66,6 +66,13 @@ func (s *Service) CastingOptions(ctx context.Context, tx pgx.Tx, campaignID, cha
 		for _, c := range o.Slots {
 			cs.Slots = append(cs.Slots, &rulesv1.SlotChoice{Level: i32(c.Level), Pact: c.Pact, Free: i32(c.Free)})
 		}
+		for _, g := range o.Grants {
+			cs.Grants = append(cs.Grants, &playv1.CastingGrant{
+				SourceKey: g.Source, SourceNamePt: g.SourcePT, AtWill: g.AtWill, Resource: g.Resource, UsesLeft: i32(g.UsesLeft),
+				AlsoWithSlot: g.AlsoWithSlot, RitualOnly: g.RitualOnly, Ready: g.Ready(), Ability: string(g.Ability),
+				AttackBonus: i32(g.AttackBonus), SaveDc: i32(g.SaveDC),
+			})
+		}
 		effect, dice := castingEffect(content, det)
 		cs.Effect, cs.RollsDice, cs.RollDice = effectKindToProto[effect], dice != "", dice
 		cs.Summons = effect == link.EffectSummon
@@ -154,6 +161,12 @@ func (s *Service) OutsideSpell(ctx context.Context, tx pgx.Tx, campaignID, chara
 		out.CanCast = o.CanCast
 		for _, c := range o.Slots {
 			out.Slots = append(out.Slots, link.CastSlot{Level: c.Level, Pact: c.Pact, Free: c.Free})
+		}
+		for _, g := range o.Grants {
+			out.Grants = append(out.Grants, link.OutsideGrant{
+				Source: g.Source, SourcePT: g.SourcePT, AtWill: g.AtWill, Resource: g.Resource, UsesLeft: g.UsesLeft,
+				AlsoWithSlot: g.AlsoWithSlot, RitualOnly: g.RitualOnly, Ready: g.Ready(),
+			})
 		}
 	}
 	out.Lasts, out.RestEnds = det.Duration.Lasts(), rules.EndedByRest(det.Duration)

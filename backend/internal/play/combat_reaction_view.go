@@ -319,6 +319,7 @@ func (wv *windowView) window(w playdb.ReactionWindow, reactor *playdb.Combatant,
 	if wv.v.master {
 		out.AnswerNow = answerNow
 		out.Trigger = wv.trigger(w)
+		out.Unanswered = wv.unanswered(w, reactor)
 	}
 	var err error
 	switch kind {
@@ -336,6 +337,13 @@ func (wv *windowView) window(w playdb.ReactionWindow, reactor *playdb.Combatant,
 		err = wv.morePrompt(kind, w, reactor, out)
 	}
 	return out, err
+}
+
+// unanswered says the question of a player's character has waited for the player longer than
+// the player's first chance (the same 10 s as a held roll's): it comes to the master now.
+func (wv *windowView) unanswered(w playdb.ReactionWindow, reactor *playdb.Combatant) bool {
+	return reactor != nil && reactor.Kind == kindPlayer && reactor.UserID != nil && w.Status == windowOpen &&
+		wv.s.now().Sub(w.CreatedAt) >= heldPlayerFirst
 }
 
 // trigger is what happened, with the master's numbers.

@@ -59,7 +59,7 @@ Defined in `web/src/styles/_ui.scss`.
 
 | Component | Use |
 | --- | --- |
-| `<app-text-field>`, `<app-select-field>`, `<app-switch-field>`, `<app-check-row>`, `<app-number-stepper>`, `<app-pick-list>` (`shared/form-fields`) | The content editors' fields: outlined, the refusal under the field, `data-field` for where a server refusal lands. A native `<select>` so the phone's picker opens. Switches carry "Ligado" / "Desligado". Rows are 44 px targets |
+| `<app-text-field>`, `<app-select-field>`, `<app-switch-field>`, `<app-check-row>`, `<app-number-stepper>`, `<app-pick-list>` (`shared/form-fields`) | The content editors' fields: outlined, the refusal under the field, `data-field` for where a server refusal lands. A native `<select>` so the phone's picker opens. Switches carry "Ligado" / "Desligado". A pick list can be off: its chips stay, nothing is added or taken off and its hint says why. Rows are 44 px targets |
 | `<app-check-box>` (`shared/check-box`) | A 24 px box in a 44 px target for a list of choices (who joins the combat, who gets the XP) |
 | `<app-reveal-switch>`, `<app-hidden-switch>` (`shared/reveal-switch`, `shared/hidden-switch`) | A real `role="switch"`: an `ink` track with a check when on, a `control-line` outline when off (burgundy is for the main button only), always with the word |
 | `<app-count-stepper>` (`shared/count-stepper`) | − and + at 44 px, never shrinking; `minusLabel`, `plusLabel`, `valueLabel` change the spoken phrases |

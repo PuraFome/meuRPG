@@ -237,6 +237,26 @@ func (c *combatTx) viewer(m authz.Membership, cs []playdb.Combatant) combatViewe
 	return v
 }
 
+// actorSight is the viewer whose eyes pick the targets of an act for the combatant: the master
+// acting for a player's character is bound by what that character's player sees (the creatures
+// the master hid, the NPCs in the dark of a fog map), as the player is; everyone else sees as
+// themselves.
+func (c *combatTx) actorSight(v combatViewer, cs []playdb.Combatant, actor playdb.Combatant) combatViewer {
+	if !v.master || actor.Kind != kindPlayer || actor.UserID == nil {
+		return v
+	}
+	return c.viewer(authz.Membership{CampaignID: c.session.CampaignID, UserID: *actor.UserID, Role: authz.RolePlayer}, cs)
+}
+
+// actorSightFor is actorSight for a read outside a change: it also returns the sight of the
+// fog map it read, for a read that needs more of it.
+func (s *Service) actorSightFor(ctx context.Context, m authz.Membership, enc playdb.Encounter, cs []playdb.Combatant, v combatViewer, sight *fogSight, actor playdb.Combatant) (combatViewer, *fogSight, error) {
+	if !v.master || actor.Kind != kindPlayer || actor.UserID == nil {
+		return v, sight, nil
+	}
+	return s.viewerWith(ctx, authz.Membership{CampaignID: m.CampaignID, UserID: *actor.UserID, Role: authz.RolePlayer}, enc, cs)
+}
+
 // ---- the move: what a player plans on ----
 
 // knownTerrain is the terrain the player knows of the map (the squares they see now

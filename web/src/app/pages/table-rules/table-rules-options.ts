@@ -168,6 +168,10 @@ export const COMBAT_OPTIONS: readonly DiceOption<number>[] = [
   },
 ];
 
+/** "Trocar uma escolha no aumento de atributo": what the switch does. */
+export const PICK_SWAP_HINT =
+  'No nível com aumento de atributo, o jogador também pode trocar uma escolha anterior (truque, estilo de luta, metamagia, invocação ou dádiva do pacto) por outra do mesmo conjunto.';
+
 /** "Os jogadores veem a CD dos testes de resistência": what the switch says off and on, and who always sees it. */
 export const SAVE_DC_HINT =
   'Desligado: só o mestre vê a CD. Ligado: quem rola o teste também vê a CD. Quem conjurou vê a CD da própria magia de qualquer jeito.';

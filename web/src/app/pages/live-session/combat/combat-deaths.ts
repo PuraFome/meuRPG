@@ -47,8 +47,6 @@ export class CombatDeaths {
   readonly masterResult = signal('');
   /** The characters at three failures the master put away with "Ainda não". */
   readonly later = signal<ReadonlySet<string>>(new Set());
-  /** The master tapped "Próximo turno" while a death save was due: the question waits for "Rolar agora" or "Passar sem rolar". */
-  readonly asking = signal<{ readonly discard: boolean } | null>(null);
   /** The question of the player's own death save when the d20 was kept for one: the halfling's Lucky about a 1 ("Tirou 1: rolar de
    * novo?"), then the Bardic Inspiration die; nothing is written, and the counts do not move, until it is answered. */
   readonly held: HeldRollController;
@@ -87,7 +85,6 @@ export class CombatDeaths {
     if (!who) {
       return;
     }
-    this.asking.set(null);
     const text = await this.rollOf(who.id, who.label, roll.die);
     if (text) {
       this.masterResult.set(text);

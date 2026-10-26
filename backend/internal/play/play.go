@@ -199,6 +199,11 @@ type MapKeeper interface {
 	// DiscoverScene records inside tx that the group discovered the scene (the
 	// master opened it, MR-030); one already discovered stays as it is.
 	DiscoverScene(ctx context.Context, tx pgx.Tx, campaignID, pointID string, at time.Time) error
+	// DiscoverSceneFor records inside tx that these players alone discovered the
+	// scene (the master opened it to them, brought them in, or they joined it
+	// while it was open to only some players): they may tag notes with it, and
+	// the group's list stays as it is.
+	DiscoverSceneFor(ctx context.Context, tx pgx.Tx, campaignID, pointID string, userIDs []string, at time.Time) error
 	// MapTokens returns where the map's tokens stand, hidden ones included.
 	MapTokens(ctx context.Context, tx pgx.Tx, mapID string) ([]link.TokenPosition, error)
 	// SetTokenPositions moves the characters' tokens on the map inside tx,
@@ -254,6 +259,10 @@ type CombatRoster interface {
 	// spellcasting modifier. It does not check that the character may cast it
 	// (CombatTurnOptions does). `not_found` for any other character or spell.
 	CombatSpell(ctx context.Context, tx pgx.Tx, campaignID, characterID, spellKey string, slotLevel int, damageType string) (link.Spell, error)
+	// GrantedCombatSpell is CombatSpell for a spell cast through the granted_spell effect of
+	// the trait, feat or feature `source`: the attack bonus, the save DC and the healing
+	// modifier are the grant's own. `not_found` for a character without that grant.
+	GrantedCombatSpell(ctx context.Context, tx pgx.Tx, campaignID, characterID, spellKey, source string, slotLevel int, damageType string) (link.Spell, error)
 	// CombatSave returns the character's saving throw bonus for an ability
 	// ("dex"). A basic-sheet NPC has none: Known is false.
 	CombatSave(ctx context.Context, tx pgx.Tx, campaignID, characterID, ability string) (link.Save, error)

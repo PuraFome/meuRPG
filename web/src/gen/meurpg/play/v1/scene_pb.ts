@@ -200,8 +200,8 @@ export type SceneAudience = Message<"meurpg.play.v1.SceneAudience"> & {
 
   /**
    * With `everyone` false: exactly these players, by account (a UUID each; the
-   * account of a player who owns a living character of the party), at least
-   * one, repeats ignored. The master is always in. A player not listed gets no
+   * account of a player of the campaign: the player of a dead character
+   * follows the scene like any other), at least one, repeats ignored. The master is always in. A player not listed gets no
    * scene at all, as when none is open, and a player who joins later is out.
    *
    * @generated from field: repeated string user_ids = 2;
@@ -280,7 +280,8 @@ export type SceneAudienceView = Message<"meurpg.play.v1.SceneAudienceView"> & {
 
   /**
    * The players of the party who are not in it, in the party's order. A
-   * player who has no living character is in neither list.
+   * player who has no living character is in neither list, though the master
+   * can name them in a SceneAudience.
    *
    * @generated from field: repeated meurpg.play.v1.ScenePlayer outside = 3;
    */
@@ -781,9 +782,10 @@ export type OpenSceneRequest = Message<"meurpg.play.v1.OpenSceneRequest"> & {
 
   /**
    * A SCENE point of the campaign's maps, hidden or not (a UUID). It may
-   * have no actions. Opening a scene makes it "discovered" for the group
-   * (MR-030), so players may tag notes with it, even while the point is
-   * hidden on the map.
+   * have no actions. Opening a scene makes it "discovered" (MR-030), so
+   * players may tag notes with it, even while the point is hidden on the
+   * map: by the whole group when it is open to everyone, else by the players
+   * it is open to (and the ones brought in or who join later), alone.
    *
    * @generated from field: string point_id = 2;
    */

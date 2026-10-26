@@ -162,6 +162,7 @@ type attackFlow struct {
 	out  *attackOut
 
 	v                combatViewer
+	sees             combatViewer // who picks the target: the attacker's player when the master acts for it
 	cs               []playdb.Combatant
 	attacker, target playdb.Combatant
 	offer            playdb.OpportunityOffer
@@ -255,12 +256,13 @@ func (f *attackFlow) findAttacker(ctx context.Context) error {
 	if f.attacker, err = findCombatant(cs, f.call.attackerID, f.v); err != nil {
 		return err
 	}
+	f.sees = f.c.actorSight(f.v, cs, f.attacker)
 	return f.v.mayAct(f.attacker)
 }
 
 // findTarget reads the target, who cannot be the attacker.
 func (f *attackFlow) findTarget(ctx context.Context) error {
-	target, err := findCombatant(f.cs, f.call.targetID, f.v)
+	target, err := findCombatant(f.cs, f.call.targetID, f.sees)
 	if err != nil && f.call.offerID != "" && connect.CodeOf(err) == connect.CodeNotFound {
 		if moved, ok := f.movedTarget(ctx); ok {
 			target, err = moved, nil

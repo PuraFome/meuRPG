@@ -1,0 +1,123 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-1) var(--mr-space-3);
+}
+
+// "Aberta desde 20:20 para" with the players as chips: the frame of the card is never the only sign.
+.who__since {
+  display: flex;
+  flex: 1 1 260px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  color: var(--mr-accent-text);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 20px;
+
+  > .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.who__count {
+  color: var(--mr-ink);
+}
+
+.who__chips {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  flex-wrap: wrap;
+  gap: 6px;
+
+  // Past three players the initials overlap, as in C3-02.
+  &--stack {
+    flex-wrap: nowrap;
+    gap: 0;
+
+    .who__chip {
+      margin-left: -6px;
+      padding: 0;
+      border: 2px solid var(--mr-surface);
+    }
+  }
+}
+
+.who__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 12px 0 4px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font-size: 15px;
+}
+
+.who__mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--mr-ink);
+  color: var(--mr-surface);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.who__edit {
+  flex: none;
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+.who__second {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-1) var(--mr-space-3);
+}
+
+.who__out {
+  display: flex;
+  flex: 1 1 220px;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+.who__join {
+  flex: 0 1 auto;
+}

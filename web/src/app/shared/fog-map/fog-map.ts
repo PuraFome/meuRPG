@@ -108,6 +108,8 @@ export class FogMap {
   readonly selectablePoints = input(false);
   /** The card "Você vê ..." under the legend (players). */
   readonly caption = input(true);
+  /** The master's token marks (Personagem, NPC, Escondido) in the legend: off where the page draws its own row of them under the map (no word twice). */
+  readonly tokenMarks = input(true);
   /** The character's senses ("Visão no escuro: 18 m") for that card. */
   readonly senses = input<readonly string[]>([]);
   /** What the character carries ("Tocha"), when it carries something. */
@@ -123,10 +125,16 @@ export class FogMap {
   /** The one "Ver no mapa" chose: the only one with the label "<Nome> · no escuro". */
   readonly darkChosen = input<string | null>(null);
 
+  /** A player's own token, the only one they may drag (the master has allowed it on this map). */
+  readonly onlyToken = input<string | null>(null);
+
   readonly pointSelect = output<string>();
   /** The master tapped a door (`doorTaps`). */
   readonly doorPick = output<DoorSquare>();
   readonly moved = output<MapMove>();
+  /** The master's click on a token, with Shift or not, and on an empty spot (B2: choose to move, and where to). */
+  readonly tokenPick = output<{ id: string; additive: boolean }>();
+  readonly emptyClick = output<{ xBp: number; yBp: number }>();
 
   protected readonly phone = mediaQuery(PHONE_QUERY);
   protected readonly view = viewChild(MapView);

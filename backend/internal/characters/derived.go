@@ -57,6 +57,7 @@ func derivedToProto(d rules.Derived) *rulesv1.DerivedSheet {
 	out.SpellSlots = spellSlotsToProto(d.SpellSlots)
 	out.PactMagic = pactMagicToProto(d.PactMagic)
 	out.Spells = mapToProto(d.Spells, characterSpellToProto)
+	out.GrantedSpells = mapToProto(d.GrantedSpells, grantedSpellToProto)
 	out.Attacks = mapToProto(d.Attacks, attackToProto)
 	out.Resources = mapToProto(d.Resources, resourceToProto)
 	out.SaveActions = mapToProto(d.SaveActions, saveActionToProto)
@@ -101,6 +102,7 @@ func derivedNumbersToProto(d rules.Derived) *rulesv1.DerivedSheet {
 		SpeedClimbFt:          i32(d.SpeedClimbFt),
 		SpeedBurrowFt:         i32(d.SpeedBurrowFt),
 		Hover:                 d.Hover,
+		BreathesWater:         d.BreathesWater,
 	}
 }
 
@@ -499,4 +501,12 @@ func openChoices(d rules.Derived) []*charactersv1.OpenChoice {
 		out = append(out, &charactersv1.OpenChoice{Kind: openChoiceKinds[o.Kind], Missing: i32(o.Missing)})
 	}
 	return out
+}
+
+func grantedSpellToProto(g rules.GrantedSpell) *rulesv1.GrantedSpell {
+	return &rulesv1.GrantedSpell{
+		Spell: spellToProto(g.Spell), SourceKey: g.Source, SourceNamePt: g.SourcePT,
+		AtWill: g.AtWill, Resource: g.Resource, AlsoWithSlot: g.AlsoWithSlot, RitualOnly: g.RitualOnly, CountsAsKnown: g.CountsAsKnown,
+		Ability: string(g.Ability), AbilityPending: g.AbilityPending, AttackBonus: i32(g.AttackBonus), SaveDc: i32(g.SaveDC), FromLevel: i32(g.FromLevel),
+	}
 }

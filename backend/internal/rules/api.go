@@ -638,12 +638,15 @@ type Derived struct {
 	// HitDice has one entry per die size, largest first.
 	HitDice     []HitDice
 	SpeedWalkFt int
-	// The other speeds, in feet, 0 for none: a character has none today, a
-	// creature (or a druid in Wild Shape) may fly, swim, climb or burrow.
-	// Hover says a flying creature hovers.
+	// The other speeds, in feet, 0 for none: a character has one only from a
+	// table's speed.fly, speed.swim, speed.climb or speed.burrow modifier (no SRD
+	// race has one); a creature (or a druid in Wild Shape) may fly, swim, climb or
+	// burrow. Hover says a flying creature hovers.
 	SpeedFlyFt, SpeedSwimFt, SpeedClimbFt, SpeedBurrowFt int
 	Hover                                                bool
-	Senses                                               []Sense
+	// BreathesWater says a table's breathes_water effect applies.
+	BreathesWater bool
+	Senses        []Sense
 	// NextLevelXP is the XP that reaches TotalLevel+1, or 0 at level 20.
 	// The sheet compares it with the XP the player has to show "Pode subir
 	// de nível" (RN-12).
@@ -659,6 +662,9 @@ type Derived struct {
 	// plus the subclass's always-prepared spells), cantrips first, then by
 	// level and NamePT.
 	Spells []CharacterSpell
+	// GrantedSpells are the spells the character's traits, feats and features grant
+	// (granted_spell effects), by level and name; see GrantedSpell.
+	GrantedSpells []GrantedSpell
 	// Attacks are the carried weapons (Kind "weapon") and the cantrips
 	// that deal damage (Kind "spell").
 	Attacks []Attack

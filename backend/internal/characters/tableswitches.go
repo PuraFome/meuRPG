@@ -28,8 +28,8 @@ import (
 // the live hint content_changed.
 
 // MaxOptionSwitches is the most options one SetOptionSwitches call may change: the
-// SRD has about 400 switchable options, and the table adds up to 300.
-const MaxOptionSwitches = 700
+// SRD has 358 switchable options, and the table adds up to 1000 entries, so one call can switch a whole campaign off (1400 leaves room for the SRD to grow).
+const MaxOptionSwitches = 1400
 
 // errNoSwitchChange is what the transaction of SetOptionSwitches returns when
 // nothing needs to change: it rolls the revision bump back.
@@ -46,7 +46,7 @@ func (s *Service) publishContentChanged(campaignID string) {
 
 // playerUses counts, per content key, the campaign's player characters that use it
 // (a key counts once per character), SRD and table keys alike.
-func playerUses(sheets []charactersdb.ListCampaignSheetsRow) (map[string]int, error) {
+func playerUses(sheets []charactersdb.ListCampaignSheetsRow, content *rules.Content) (map[string]int, error) {
 	uses := map[string]int{}
 	for _, row := range sheets {
 		if row.Kind != kindPlayer {
@@ -58,7 +58,9 @@ func playerUses(sheets []charactersdb.ListCampaignSheetsRow) (map[string]int, er
 		}
 		if full := sheet.GetFull(); full != nil {
 			seen := map[string]bool{}
-			for _, kf := range rules.BuildKeys(buildOf(full)) {
+			b := buildOf(full)
+			// The table's class features are not a pick of the sheet: it has the ones of its classes and levels.
+			for _, kf := range append(rules.BuildKeys(b), content.ClassFeatureKeys(b)...) {
 				if !seen[kf.Key] {
 					seen[kf.Key] = true
 					uses[kf.Key]++
@@ -101,6 +103,12 @@ func optionEntries(c *rules.Content, uses map[string]int) []*rulesv1.OptionSwitc
 	for _, e := range c.Feats() {
 		add(rulesv1.TableContentKind_TABLE_CONTENT_KIND_FEAT, e.Key, e.NamePT, "", 0, e.Archived, e.Off)
 	}
+	for _, e := range c.Options() {
+		add(rulesv1.TableContentKind_TABLE_CONTENT_KIND_OPTION, e.Key, e.NamePT, "", 0, e.Archived, e.Off)
+	}
+	for _, e := range c.ClassFeatures() {
+		add(rulesv1.TableContentKind_TABLE_CONTENT_KIND_CLASS_FEATURE, e.Key, e.NamePT, e.Class, e.Level, e.Archived, e.Off)
+	}
 	slices.SortStableFunc(out, func(a, b *rulesv1.OptionSwitchEntry) int {
 		if d := cmp.Compare(a.GetKind(), b.GetKind()); d != 0 {
 			return d
@@ -135,7 +143,7 @@ func (s *Service) ListOptionSwitches(
 		if err != nil {
 			return wrap("list the campaign's sheets", err)
 		}
-		uses, err := playerUses(sheets)
+		uses, err := playerUses(sheets, content)
 		if err != nil {
 			return err
 		}
@@ -248,7 +256,7 @@ func (c *switchCall) run(ctx context.Context, tx pgx.Tx) error {
 	if err != nil {
 		return wrap("list the campaign's sheets", err)
 	}
-	uses, err := playerUses(sheets)
+	uses, err := playerUses(sheets, after)
 	if err != nil {
 		return err
 	}

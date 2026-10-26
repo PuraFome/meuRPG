@@ -48,6 +48,9 @@ func TestLastingCoreASpellTakesHoldByWhatTheTargetIs(t *testing.T) {
 		a.mustAddMonsters(t, e, func(r *playv1.AddMonstersRequest) { r.CreatureKey, r.Count = key, 1 })
 	}
 	e = a.begin(t, e)
+	for _, label := range []string{"Bandido", "Lobo", "Ogro", "Mímico", "Goblin"} {
+		showNPC(t, a, e, label) // the master casts for Pensantus, so the targets are what her player sees
+	}
 	var l coreLog
 	save := func(face int) { a.h.roller.queue(face) }
 	cast := func(spell string, slot int32, label string, face int) {

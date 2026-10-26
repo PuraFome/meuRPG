@@ -77,6 +77,7 @@ export class CastArea {
               data.spellKey,
               this.slotRef(),
               area,
+              ...(data.grant ? [data.grant.sourceKey] : []),
             ),
           );
     this.shape = {

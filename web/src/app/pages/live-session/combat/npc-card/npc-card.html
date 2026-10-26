@@ -166,6 +166,9 @@
 
     @if (result(); as r) {
       <div class="res" role="status" aria-live="polite">
+        @if (r.head) {
+          <p class="res__head">{{ r.head }}</p>
+        }
         <div class="res__d20">
           <span class="res__formula">{{ r.formula }}{{ r.physical ? ' · dado físico' : '' }}</span>
           <span class="pill" [class.pill--miss]="!r.hit && !r.held" [class.pill--held]="r.held">

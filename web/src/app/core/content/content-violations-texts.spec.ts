@@ -52,7 +52,7 @@ const CASES: Record<string, [field: string, reason: string, ctx?: typeof CLASS_C
 };
 
 const EXPECTED: Record<string, string> = {
-  'entry limit': 'A mesa já tem 300 entradas. Arquive ou use o que já existe.',
+  'entry limit': 'A mesa já tem 1000 entradas. Arquive ou use o que já existe.',
   'entry size': 'Esta entrada passou de 64 KiB de dados. Tire um pouco de texto.',
   'entry overlay': 'O conteúdo da mesa não fecha com esta entrada. Confira o que ela usa.',
   'entry other': 'O servidor recusou esta entrada. Confira os campos.',

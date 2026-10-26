@@ -232,6 +232,18 @@
             <p class="hint">Vale a partir do próximo teste. Pode mudar a qualquer hora, no meio da sessão.</p>
           </section>
 
+          <section class="mr-panel block" aria-labelledby="pick-swap-title">
+            <h2 class="mr-panel__title" id="pick-swap-title">Subida de nível</h2>
+            <app-rule-switch
+              key="pick-swap"
+              label="Trocar uma escolha no aumento de atributo"
+              [hint]="pickSwapHint"
+              [checked]="d.pickSwapAllowed"
+              (toggled)="edit({ pickSwapAllowed: $event })"
+            />
+            <p class="hint">Vale a partir da próxima subida de nível. Pode mudar a qualquer hora.</p>
+          </section>
+
           <app-xp-mode-panel [campaignId]="campaignId()" [mode]="s.xpMode" (questionOpen)="questionOpen.set($event)" />
 
           <section class="mr-panel block" aria-labelledby="reminders-title">

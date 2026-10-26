@@ -142,7 +142,7 @@ Onde um nível da magia puder ser confundido com o nível do personagem, o texto
 | Anotação | Note | O texto particular de um jogador (até 2.000 caracteres, 300 por campanha), com a etiqueta opcional de uma cena descoberta. Nem o mestre a lê (MR-030). |
 | Ações da cena | Scene action | Um teste que o mestre põe numa cena: uma perícia, um teste de habilidade ou um teste de resistência, com nome e CD opcionais. O jogador vê o próprio bônus; a CD só se "Mostrar a CD aos jogadores" está ligado. |
 | Cena de RP | RP scene | Um momento fora do combate: um ponto de interesse do tipo cena, aberto na sessão para todos verem. |
-| Cena descoberta | Discovered scene | Uma cena de RP que o grupo já viu. Só uma cena descoberta pode etiquetar uma anotação. |
+| Cena descoberta | Discovered scene | Uma cena de RP que o grupo já viu, ou que um jogador viu sozinho enquanto ela estava aberta para só alguns jogadores. Só uma cena descoberta pelo jogador pode etiquetar a anotação dele. |
 | Conversa da cena | The scene's conversation | O feed de texto ao vivo da sessão (MR-051): o mestre narra e fala como NPC, os jogadores falam como o personagem ou fora do personagem. Cada linha é para a mesa toda ou para leitores escolhidos (RN-36). |
 | Em cena (o palco) | On stage | Os NPCs que o mestre põe na cena aberta, até 4 por vez, com um falando. O jogador vê só o nome e o retrato (MR-031). |
 | Escondida dos jogadores | Hidden from the players | O que o mestre guarda dos jogadores numa cena: um NPC do palco ("Escondida dos jogadores", contra "Os jogadores veem") ou uma ação ("Escondida"). Nenhum jogador a recebe, nem numa resposta, nem num aviso ao vivo, nem numa imagem; o mestre a lê marcada (MR-031, MR-015, RN-10). |

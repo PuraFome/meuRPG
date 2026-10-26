@@ -356,7 +356,7 @@ func (s *Service) summonSlot(ctx context.Context, c *combatTx, r *summonRun) (*s
 	if err != nil {
 		return nil, 0, err
 	}
-	cast, err := castableOf(opts, r.call.spellKey)
+	cast, err := castableOf(opts, r.call.spellKey, "")
 	if err != nil {
 		return nil, 0, err
 	}

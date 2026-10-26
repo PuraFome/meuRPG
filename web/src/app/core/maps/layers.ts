@@ -11,6 +11,8 @@ export interface PackedLayers {
   readonly light?: Uint8Array;
   /** The doors (four bits a square, a `DoorState`): as the viewer knows them (a player's has no locked or secret door). */
   readonly doors?: Uint8Array;
+  /** "Não dá para passar" (one bit a square): nobody walks into a marked square, but it blocks neither sight nor light. */
+  readonly noPass?: Uint8Array;
 }
 
 /** The squares of each layer, ready to draw. */
@@ -25,6 +27,8 @@ export interface MapLayers {
   readonly light?: PaintedLight;
   /** The doors the viewer knows (RN-26). Absent when the map has none. */
   readonly doors?: readonly DoorSquare[];
+  /** The squares marked "Não dá para passar" (a pit, a chasm, a column of fire): movement stops before them, sight does not. Absent when none. */
+  readonly noPass?: readonly Square[];
 }
 
 /** A door as the layer stores it (`DoorState`): 1 open, 2 closed, 3 locked, 4 barred (a grade), 5 secret. */
@@ -131,6 +135,10 @@ export function decodeLayers(packed: PackedLayers, player = false): MapLayers {
     return NO_LAYERS;
   }
   const light = packed.light;
+  const noPass =
+    packed.noPass !== undefined && packed.noPass.length > 0
+      ? bitSquares(packed.noPass, columns, rows)
+      : [];
   const walls = bitSquares(packed.wall, columns, rows);
   const doors =
     packed.doors !== undefined && packed.doors.length > 0
@@ -153,6 +161,7 @@ export function decodeLayers(packed: PackedLayers, player = false): MapLayers {
         }
       : {}),
     ...(doors.length > 0 ? { doors } : {}),
+    ...(noPass.length > 0 ? { noPass } : {}),
   };
 }
 
@@ -163,6 +172,7 @@ export function hasLayers(layers: MapLayers): boolean {
       layers.terrain.length +
       layers.half.length +
       layers.threeQuarters.length +
+      (layers.noPass?.length ?? 0) +
       (layers.doors?.length ?? 0) >
     0
   );

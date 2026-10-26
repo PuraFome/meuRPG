@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 
+import { MapsClient } from '../../../../core/maps/maps-client';
 import { SceneClient } from '../../../../core/play/scene-client';
 import { SceneState } from '../../../../core/play/scene-state';
 import { FakeSceneClient, masterScene, sceneRoll } from '../../../../core/play/scene-testing';
@@ -25,9 +26,16 @@ describe('SceneActions ("Ações e rolagens", C3-01)', () => {
       () => true,
     );
     state.apply(scene);
-    TestBed.configureTestingModule({ providers: [{ provide: SceneClient, useValue: api }] });
+    const maps = { updateSceneAction: vi.fn(() => Promise.resolve([])) };
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: SceneClient, useValue: api },
+        { provide: MapsClient, useValue: maps },
+      ],
+    });
     const fixture = TestBed.createComponent(SceneActions);
     fixture.componentRef.setInput('campaignId', 'c1');
+    fixture.componentRef.setInput('mapId', 'm1');
     fixture.componentRef.setInput('state', state);
     fixture.componentRef.setInput('scene', scene);
     fixture.detectChanges();
@@ -36,7 +44,7 @@ describe('SceneActions ("Ações e rolagens", C3-01)', () => {
       fixture.componentRef.setInput('scene', next);
       fixture.detectChanges();
     };
-    return { fixture, state, apply, el: fixture.nativeElement as HTMLElement };
+    return { fixture, state, apply, maps, el: fixture.nativeElement as HTMLElement };
   }
 
   const rows = (el: HTMLElement) => Array.from(el.querySelectorAll('.sa__item'));
@@ -55,6 +63,52 @@ describe('SceneActions ("Ações e rolagens", C3-01)', () => {
     expect(flat(rows(el)[0].querySelector('.sa__line'))).toBe('Investigação·CD 12·1 tentativa');
     expect(flat(rows(el)[3].querySelector('.sa__line'))).toBe('Perícia·3 tentativas');
     expect(flat(rows(el)[2].querySelector('.sa__line'))).toBe('Adestrar Animais·sem limite');
+  });
+
+  describe('the eye of an action (RN-10)', () => {
+    const eye = (el: HTMLElement, title: string) =>
+      el.querySelector<HTMLButtonElement>(`button[aria-label$="${title} dos jogadores"]`)!;
+
+    it('hides an action from the players, says "Escondida" and keeps the line when it is shown again', async () => {
+      const { el, maps, fixture, state } = setup();
+      eye(el, 'Esconder Acalmar os cavalos').click();
+      await fixture.whenStable();
+      fixture.componentRef.setInput('scene', state.scene());
+      fixture.detectChanges();
+      expect(maps.updateSceneAction).toHaveBeenCalledWith('c1', 'm1', 'p1', 'a3', { hidden: true });
+      expect(flat(rows(el)[2].querySelector('.sa__line'))).toContain('Escondida');
+      expect(rows(el)[2].classList.contains('sa__item--hidden')).toBe(true);
+      expect(
+        el.querySelector('button[aria-label="Mostrar Acalmar os cavalos aos jogadores"]'),
+      ).not.toBeNull();
+      expect(flat(el.querySelector('[role="status"]'))).toBe(
+        'Acalmar os cavalos: escondida dos jogadores.',
+      );
+    });
+
+    it('shows a hidden action again', async () => {
+      const hidden = masterScene([]);
+      hidden.actions[0] = { ...hidden.actions[0], hidden: true };
+      const { el, maps, fixture } = setup(hidden);
+      expect(flat(rows(el)[0].querySelector('.sa__line'))).toContain('Escondida');
+      el.querySelector<HTMLButtonElement>(
+        'button[aria-label="Mostrar Procurar pistas na carroça aos jogadores"]',
+      )!.click();
+      await fixture.whenStable();
+      expect(maps.updateSceneAction).toHaveBeenCalledWith('c1', 'm1', 'p1', 'a1', {
+        hidden: false,
+      });
+    });
+
+    it("has no eye to press when the scene's point is not on the open map", () => {
+      const { el, fixture, maps } = setup();
+      fixture.componentRef.setInput('mapId', '');
+      fixture.detectChanges();
+      const first = el.querySelector<HTMLButtonElement>('.sa__eye')!;
+      expect(first.getAttribute('aria-disabled')).toBe('true');
+      first.click();
+      expect(maps.updateSceneAction).not.toHaveBeenCalled();
+    });
   });
 
   it('puts each roll beside its action as a chip: who, the total and the verdict in an icon and in words', () => {

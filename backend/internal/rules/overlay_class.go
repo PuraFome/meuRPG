@@ -48,6 +48,7 @@ func (b *overlayBuilder) checkCasting(c *entryErrors, key, path string, cast *Ta
 	at := path + ".casting"
 	checkCastingFields(c, key, at, cast, kinds)
 	b.checkListFrom(c, key, at, cast.ListFrom, sub)
+	b.checkSRDSpells(c, key, at, cast, sub)
 	start := castingStart(cast)
 	if start < 1 || start > MaxLevel {
 		c.at(key, at, ".start_level", ReasonCasting, "casting starts at level 1 to %d", MaxLevel)
@@ -95,6 +96,41 @@ func (b *overlayBuilder) checkListFrom(c *entryErrors, key, at, from string, sub
 		} else if b.classListFrom[from] != "" {
 			c.at(key, at, ".list_from", ReasonCasting, "class %q reuses another list; use that one", from)
 		}
+	}
+}
+
+// checkSRDSpells checks the SRD spells on a class's own list: a class that has a
+// list of its own names them, one that reuses another class's list or a third
+// caster does not. Each is a spell of the SRD, named once.
+func (b *overlayBuilder) checkSRDSpells(c *entryErrors, key, at string, cast *TableCasting, sub bool) {
+	switch {
+	case len(cast.SRDSpells) == 0:
+		return
+	case sub:
+		c.at(key, at, ".srd_spell_keys", ReasonCasting, "a third caster casts from the spell list of the class it names; it has no list of its own")
+		return
+	case cast.ListFrom != "":
+		c.at(key, at, ".srd_spell_keys", ReasonCasting, "a class that reuses the spell list of %q has no list of its own to add SRD spells to; leave list_from empty to build one", cast.ListFrom)
+		return
+	}
+	for i, spell := range cast.SRDSpells {
+		field := fmt.Sprintf(".srd_spell_keys[%d]", i)
+		switch _, ok := b.base.spells[spell]; {
+		case !ok:
+			c.at(key, at, field, ReasonReference, "the spell %q is not in the SRD", spell)
+		case slices.Contains(cast.SRDSpells[:i], spell):
+			c.at(key, at, field, ReasonValue, "the spell %q is listed twice", spell)
+		}
+	}
+}
+
+// joinSRDSpells puts the class on the list of each SRD spell it names, on a copy
+// of the spell: the base content's spells are shared and never written.
+func (b *overlayBuilder) joinSRDSpells(class string, keys []string) {
+	for _, k := range keys {
+		cp := *b.n.spells[k]
+		cp.Classes = append(slices.Clone(cp.Classes), class)
+		b.n.spells[k] = &cp
 	}
 }
 
@@ -257,6 +293,7 @@ func (b *overlayBuilder) addClass(tc *TableClass, path string) error {
 	if tc.Casting.ListFrom != "" {
 		b.n.listFrom[key] = tc.Casting.ListFrom
 	}
+	b.joinSRDSpells(key, tc.Casting.SRDSpells)
 	return nil
 }
 
@@ -355,10 +392,14 @@ func (b *overlayBuilder) classRows(c *entryErrors, tc *TableClass, path string, 
 	if casts {
 		start = b.checkCasting(c, key, path, &tc.Casting, false)
 		cl.Spellcasting = &srd51.ClassSpellcaster{Level: start, Ability: string(tc.Casting.Ability)}
-	} else if tc.Casting.ListFrom != "" || tc.Casting.PreparedMax != "" {
+	} else if tc.Casting.ListFrom != "" || tc.Casting.PreparedMax != "" || len(tc.Casting.SRDSpells) > 0 {
 		at := ".casting.list_from"
-		if tc.Casting.ListFrom == "" {
+		switch {
+		case tc.Casting.ListFrom != "":
+		case tc.Casting.PreparedMax != "":
 			at = ".casting.prepared_max"
+		default:
+			at = ".casting.srd_spell_keys"
 		}
 		c.at(key, path, at, ReasonCasting, "a class that does not cast has no spell list to reuse")
 	}
@@ -460,7 +501,7 @@ func (r *classRowBuilder) features(row *srd51.Level, tl *TableClassLevel, i int)
 			r.limited = true
 			r.c.at(key, r.path, fmt.Sprintf(".levels[%d].features[%d]", i, j), ReasonLimit, "more than %d features; the limit is %d per class", MaxTableFeatures, MaxTableFeatures)
 		}
-		kind := featureKind{prefix: "feature:", owner: key, class: key, level: row.Level}
+		kind := featureKind{prefix: featureKeyPrefix, owner: key, class: key, level: row.Level}
 		if err := r.b.addFeature(f, kind, fmt.Sprintf("%s.levels[%d].features[%d]", r.path, i, j)); err != nil {
 			r.c.add(err)
 			continue
@@ -554,6 +595,9 @@ func (b *overlayBuilder) addSubclass(ts *TableSubclass, path string) error {
 		return err
 	}
 	b.register(ts.TableEntry)
+	if ts.SpellsExpanded {
+		b.expandList(sub)
+	}
 	n.subclasses[key] = sub
 	n.subclassLevels[key] = sb.rows
 	cp := *n.classes[parent]
@@ -663,7 +707,7 @@ func (s *subclassBuilder) registerFeatures(row *srd51.Level, tl *TableSubclassLe
 			s.limited = true
 			s.c.at(key, s.path, fmt.Sprintf(".levels[%d].features[%d]", i, j), ReasonLimit, "more than %d features; the limit is %d per subclass", MaxTableFeatures, MaxTableFeatures)
 		}
-		kind := featureKind{prefix: "feature:", owner: key, class: s.parent, subclass: key, level: tl.Level}
+		kind := featureKind{prefix: featureKeyPrefix, owner: key, class: s.parent, subclass: key, level: tl.Level}
 		if err := s.b.addFeature(f, kind, fmt.Sprintf("%s.levels[%d].features[%d]", s.path, i, j)); err != nil {
 			s.c.add(err)
 			continue
@@ -705,10 +749,25 @@ func (s *subclassBuilder) castingFeature() {
 	n.subCasting[key] = *s.casting
 }
 
+// expandList makes the subclass's spells an expanded list: they are not given,
+// they join the class's list to choose from. Each spell names the subclass on a
+// copy of it, like the SRD's patron spells, and the base's are never written.
+func (b *overlayBuilder) expandList(sub *srd51.Subclass) {
+	sub.ExpandedList = true
+	for _, ss := range sub.Spells {
+		cp := *b.n.spells[ss.Spell]
+		cp.Subclasses = append(slices.Clone(cp.Subclasses), sub.Key)
+		b.n.spells[ss.Spell] = &cp
+	}
+}
+
 // alwaysPrepared checks the spells the subclass always prepares and lists the
 // good ones on sub.
 func (s *subclassBuilder) alwaysPrepared(sub *srd51.Subclass) {
 	ts, key := s.ts, s.ts.Key
+	if ts.SpellsExpanded && len(ts.AlwaysPrepared) == 0 {
+		s.c.at(key, s.path, ".spells_expanded", ReasonValue, "spells_expanded needs the subclass to name spells")
+	}
 	if _, parentCasts := s.b.base.casting[s.parent]; s.parentOK && len(ts.AlwaysPrepared) > 0 && ts.Casting == nil && !parentCasts && s.b.classCasts[s.parent] == CastingNone {
 		s.c.list = append(s.c.list, ovErr(key, "always-prepared spells need a class or subclass that casts").at(s.path+".always_prepared", ReasonCasting))
 	}

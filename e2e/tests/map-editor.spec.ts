@@ -144,6 +144,30 @@ test('o pincel 3 × 3 pinta nove quadrados, e o teclado pinta quadrado a quadrad
   });
 });
 
+test('o mestre marca quadrados como "Não dá para passar": o servidor guarda, a lista e a legenda dizem, e a visão não é cortada @MR-034', async ({ browser }) => {
+  await atMaps(browser, 'Não dá para passar', 20, async ({ master, campaignId, mapId, map }) => {
+    await paintMode(master, campaignId, mapId);
+    await expect(master.locator('app-layers-panel')).toContainText('Não dá para passar');
+    await tools(master).getByRole('button', { name: 'Não dá para passar' }).click();
+    await dragSquares(master, map, [5, 8], [7, 8]);
+    await expect(master.locator('app-layers-panel')).toContainText('3 quadrados · bloqueia o movimento, não a visão');
+    await expect(saved(master)).toBeVisible();
+    await expect(master.getByRole('list', { name: 'Legenda do mapa' })).toContainText('Não dá para passar');
+    expect(await layersOf(master, campaignId, mapId)).toMatchObject({ noPass: 3, wall: 0 });
+
+    // Shift erases it, and it stays after a reload.
+    await master.keyboard.down('Shift');
+    await clickSquare(master, map, 7, 8);
+    await master.keyboard.up('Shift');
+    await expect(master.locator('app-layers-panel')).toContainText('2 quadrados · bloqueia o movimento, não a visão');
+    await expect(saved(master)).toBeVisible();
+    await master.reload();
+    await master.getByRole('radio', { name: 'Pintar' }).click();
+    await expect(master.locator('app-layers-panel')).toContainText('2 quadrados · bloqueia o movimento, não a visão');
+    expect(await layersOf(master, campaignId, mapId)).toMatchObject({ noPass: 2 });
+  });
+});
+
 test('um mapa sem grade não tem o que pintar: as ferramentas dizem por quê, e "Definir a grade" as liga @MR-034 @MR-036', async ({ browser }) => {
   await atMaps(browser, 'Sem grade', 0, async ({ master, campaignId, mapId }) => {
     await paintMode(master, campaignId, mapId);
