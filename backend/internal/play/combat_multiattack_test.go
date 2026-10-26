@@ -6,15 +6,16 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
-// multiattackFight is a theatre combat with one creature of the bestiary (named name, 1 hit point
-// of initiative so the master's first turn is its) on turn, Toren as its target.
+// multiattackFight is a theatre combat with one creature of the bestiary (named name) on turn, with
+// Toren and Pensantus as its targets.
 func multiattackFight(t *testing.T, creature, name string) (*armed, *playv1.Encounter) {
 	t.Helper()
 	a := newArmed(t)
 	e := a.monsterSetup(t, true)
 	a.h.roller.queue(20)
 	a.mustAddMonsters(t, e, func(r *playv1.AddMonstersRequest) { r.CreatureKey, r.Count, r.Name = creature, 1, name })
-	return a, a.begin(t, a.get(t, a.master))
+	e = a.begin(t, a.get(t, a.master))
+	return a, e
 }
 
 func (a *armed) attacksLeft(t *testing.T, e *playv1.Encounter, label string) int {
