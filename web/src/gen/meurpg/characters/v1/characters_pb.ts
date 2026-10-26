@@ -1301,7 +1301,7 @@ export type BasicSheet = Message<"meurpg.characters.v1.BasicSheet"> & {
   speedFt: number;
 
   /**
-   * Legacy, read only for sheets saved before Etapa 6. When the server
+   * Legacy, read only for sheets saved before the attacks list existed. When the server
    * reads such a sheet and can turn damage into an attack, it moves both
    * fields into attacks and clears them here. A write that has attacks
    * clears them. The attack bonus of the old main attack: -10 to +30.
@@ -1311,7 +1311,7 @@ export type BasicSheet = Message<"meurpg.characters.v1.BasicSheet"> & {
   attackBonus: number;
 
   /**
-   * Legacy, read only for sheets saved before Etapa 6 (see attack_bonus).
+   * Legacy, read only for sheets saved before the attacks list existed (see attack_bonus).
    * The old free text damage, such as "1d6+2 cortante": 0 to 40 characters,
    * one line. It stays only while it could not become an attack.
    *
@@ -8908,7 +8908,7 @@ export const CharacterService: GenService<{
   },
   /**
    * ListCharacterCreatures lists a character's creatures that are still with
-   * it (MR-037, Etapa 9): its familiar, the animals and undead it summoned that
+   * it (MR-037): its familiar, the animals and undead it summoned that
    * the table has not dismissed, the creatures the master gave. They live
    * from one session to the next until the player or the master dismisses
    * them (the app does not count a spell's duration). Each is a kind of
@@ -8936,7 +8936,7 @@ export const CharacterService: GenService<{
   },
   /**
    * ListWildShapeForms lists the beasts a druid's Wild Shape allows now
-   * (MR-037, Etapa 9): the SRD beasts of the challenge rating, without the fly
+   * (MR-037): the SRD beasts of the challenge rating, without the fly
    * or swim speed, that the character's Wild Shape features give at its level
    * (level 2: up to 1/4, no fly or swim; 4: up to 1/2, no fly; 8: up to 1),
    * sorted by Portuguese name. Empty for a character without Wild Shape. The
@@ -9047,8 +9047,8 @@ export const CharacterService: GenService<{
     output: typeof AdjustCreatureHitPointsResponseSchema;
   },
   /**
-   * GetSummonOptions says what a character can summon from its sheet (MR-037,
-   * Etapa 9), for the "Criaturas" panel's casting sheet: the summoning spells
+   * GetSummonOptions says what a character can summon from its sheet (MR-037),
+   * for the "Criaturas" panel's casting sheet: the summoning spells
    * it can cast (Convocar Familiar, Animar Mortos, Conjurar Animais), how
    * (as a ritual, with a slot, or both), what each one may bring at each circle
    * it can use, the slots it has, and what a casting would send away. The

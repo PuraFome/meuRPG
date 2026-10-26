@@ -3838,12 +3838,12 @@ type BasicSheet struct {
 	// Walking speed in feet: 0 to 300. The app shows it in metres
 	// (5 ft = 1.5 m).
 	SpeedFt int32 `protobuf:"varint,3,opt,name=speed_ft,json=speedFt,proto3" json:"speed_ft,omitempty"`
-	// Legacy, read only for sheets saved before Etapa 6. When the server
+	// Legacy, read only for sheets saved before the attacks list existed. When the server
 	// reads such a sheet and can turn damage into an attack, it moves both
 	// fields into attacks and clears them here. A write that has attacks
 	// clears them. The attack bonus of the old main attack: -10 to +30.
 	AttackBonus int32 `protobuf:"varint,4,opt,name=attack_bonus,json=attackBonus,proto3" json:"attack_bonus,omitempty"`
-	// Legacy, read only for sheets saved before Etapa 6 (see attack_bonus).
+	// Legacy, read only for sheets saved before the attacks list existed (see attack_bonus).
 	// The old free text damage, such as "1d6+2 cortante": 0 to 40 characters,
 	// one line. It stays only while it could not become an attack.
 	Damage string `protobuf:"bytes,5,opt,name=damage,proto3" json:"damage,omitempty"`

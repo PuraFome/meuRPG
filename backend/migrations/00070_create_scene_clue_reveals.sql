@@ -1,6 +1,6 @@
 -- +goose Up
 -- scene_clue_reveals records that the master revealed a clue to a player
--- (MR-029, Etapa 8, D5, question 59): one row per clue and player. There is no
+-- (MR-029, D5, question 59): one row per clue and player. There is no
 -- un-reveal. It is also what the player reads in their notes (MR-030): the row
 -- keeps a COPY of the clue's text, so what the player received stays as it was
 -- said at the table, even when the master edits or removes the clue, or deletes

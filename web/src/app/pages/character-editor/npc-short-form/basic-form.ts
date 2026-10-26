@@ -42,7 +42,7 @@ export type BasicSheetFormGroup = FormGroup<{
   speedWalkM: FormControl<number>;
   initiativeBonus: FormControl<string>;
   attacks: FormArray<BasicAttackFormGroup>;
-  /** The free-text damage of a sheet saved before Etapa 6 that could not
+  /** The free-text damage of a sheet saved before the attacks list existed that could not
    * become an attack; shown as a note, never edited. */
   legacyDamage: FormControl<string>;
   legacyAttackBonus: FormControl<number>;

@@ -1,5 +1,5 @@
 -- +goose Up
--- A trap's damage waits for the master as an attack's does (MR-035, Etapa 9,
+-- A trap's damage waits for the master as an attack's does (MR-035,
 -- D5, RN-02), so it uses the same table: attacker_id becomes optional (a trap
 -- attacks nobody) and trap_point_id says which trap made it. The attack_key of
 -- such a row is 'trap'. The server rolls a trap's damage when the trap fires, so

@@ -1,5 +1,5 @@
 -- +goose Up
--- "Ver pelos olhos do familiar" (MR-036, Etapa 9, D6): while it is on, the
+-- "Ver pelos olhos do familiar" (MR-036, D6): while it is on, the
 -- player sees what the character's familiar sees. familiar_sight_creature_id
 -- is the familiar (a character_creatures row), NULL while it is off, and goes
 -- back to NULL by itself if the creature is deleted. familiar_sight_in_combat

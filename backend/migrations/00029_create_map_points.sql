@@ -2,8 +2,8 @@
 -- map_points holds a map's points of interest (MR-008): a battle, a submap
 -- or an RP scene, at a spot of the map's image. Opening a point shows its
 -- name and description; a submap point also leads to another map
--- (target_map_id). Battles open their encounter with combat (Etapa 6) and
--- scenes their RP scene (Etapa 7).
+-- (target_map_id). Battles open their encounter with combat and
+-- scenes their RP scene.
 --
 -- x_bp and y_bp are the point's position in basis points of the image's
 -- width and height: 0 is the left (top) edge, 10000 the right (bottom)
