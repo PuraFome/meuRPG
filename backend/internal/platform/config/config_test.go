@@ -71,6 +71,33 @@ func TestLoad(t *testing.T) {
 			want: Config{Port: 8080, LogLevel: slog.LevelInfo, WebDir: DefaultWebDir, CloudRun: true, TrustedProxyHops: 1, BlobBucket: "meurpg-images"},
 		},
 		{
+			name: "the three TASKS variables together",
+			env: map[string]string{
+				"TASKS_QUEUE": "projects/demo-project/locations/southamerica-east1/queues/demo-tasks", "TASKS_TARGET_URL": "https://demo-api.run.app/",
+				"TASKS_SERVICE_ACCOUNT": "demo-api@demo-project.iam.gserviceaccount.com",
+			},
+			want: Config{
+				Port: 8080, LogLevel: slog.LevelInfo, WebDir: DefaultWebDir,
+				Tasks: Tasks{
+					Queue:          "projects/demo-project/locations/southamerica-east1/queues/demo-tasks",
+					TargetURL:      "https://demo-api.run.app",
+					ServiceAccount: "demo-api@demo-project.iam.gserviceaccount.com",
+				},
+			},
+		},
+		{
+			name:    "a partial TASKS set names what is missing",
+			env:     map[string]string{"TASKS_QUEUE": "projects/demo-project/locations/southamerica-east1/queues/demo-tasks"},
+			wantErr: []string{"set together or not at all", "missing: TASKS_TARGET_URL, TASKS_SERVICE_ACCOUNT"},
+		},
+		{
+			name: "every TASKS problem is reported",
+			env: map[string]string{
+				"TASKS_QUEUE": "q", "TASKS_TARGET_URL": "http://demo-api.run.app/x", "TASKS_SERVICE_ACCOUNT": "nobody",
+			},
+			wantErr: []string{"TASKS_QUEUE must be the full queue name", "TASKS_TARGET_URL", "TASKS_SERVICE_ACCOUNT must be"},
+		},
+		{
 			name: "surrounding whitespace is ignored",
 			env: map[string]string{
 				"PORT": " 3000 ", "LOG_LEVEL": " warn ", "DATABASE_URL": "  ", "WEB_DIR": "  ", "BLOB_DIR": " ",

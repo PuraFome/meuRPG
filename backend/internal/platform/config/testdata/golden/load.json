@@ -34,6 +34,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "meurpg-images",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": false,
       "TrustedProxyHops": 0,
       "TraceProject": "",
@@ -83,6 +88,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "b",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": true,
       "TrustedProxyHops": 1,
       "TraceProject": "",
@@ -131,6 +141,11 @@
       },
       "BlobDir": "/data/blobs",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": false,
       "TrustedProxyHops": 0,
       "TraceProject": "",
@@ -186,6 +201,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": false,
       "TrustedProxyHops": 0,
       "TraceProject": "",
@@ -260,6 +280,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": true,
       "TrustedProxyHops": 1,
       "TraceProject": "proj",
@@ -349,6 +374,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": true,
       "TrustedProxyHops": 1,
       "TraceProject": "",
@@ -398,6 +428,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": true,
       "TrustedProxyHops": 1,
       "TraceProject": "",
@@ -446,6 +481,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": false,
       "TrustedProxyHops": 0,
       "TraceProject": "",
@@ -492,6 +532,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": false,
       "TrustedProxyHops": 0,
       "TraceProject": "",
@@ -559,6 +604,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "b",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": true,
       "TrustedProxyHops": 2,
       "TraceProject": "p",
@@ -651,6 +701,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": true,
       "TrustedProxyHops": 2,
       "TraceProject": "",
@@ -718,6 +773,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": false,
       "TrustedProxyHops": 0,
       "TraceProject": "",
@@ -772,6 +832,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": false,
       "TrustedProxyHops": 0,
       "TraceProject": "",
@@ -826,6 +891,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": false,
       "TrustedProxyHops": 0,
       "TraceProject": "",
@@ -883,6 +953,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": false,
       "TrustedProxyHops": 0,
       "TraceProject": "",
@@ -932,6 +1007,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": false,
       "TrustedProxyHops": 0,
       "TraceProject": "",
@@ -1002,6 +1082,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": false,
       "TrustedProxyHops": 0,
       "TraceProject": "",
@@ -1067,6 +1152,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": false,
       "TrustedProxyHops": 0,
       "TraceProject": "",
@@ -1139,6 +1229,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": false,
       "TrustedProxyHops": 0,
       "TraceProject": "",
@@ -1187,6 +1282,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": false,
       "TrustedProxyHops": 0,
       "TraceProject": "",
@@ -1241,6 +1341,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": false,
       "TrustedProxyHops": 0,
       "TraceProject": "",
@@ -1289,6 +1394,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": false,
       "TrustedProxyHops": 0,
       "TraceProject": "",
@@ -1337,6 +1447,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": false,
       "TrustedProxyHops": 0,
       "TraceProject": "",
@@ -1385,6 +1500,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": false,
       "TrustedProxyHops": 0,
       "TraceProject": "",
@@ -1456,6 +1576,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": false,
       "TrustedProxyHops": 0,
       "TraceProject": "",
@@ -1509,6 +1634,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": false,
       "TrustedProxyHops": 0,
       "TraceProject": "",
@@ -1587,6 +1717,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": false,
       "TrustedProxyHops": 0,
       "TraceProject": "",
@@ -1675,6 +1810,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": false,
       "TrustedProxyHops": 0,
       "TraceProject": "",
@@ -1727,6 +1867,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": false,
       "TrustedProxyHops": 0,
       "TraceProject": "",
@@ -1862,6 +2007,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": false,
       "TrustedProxyHops": 0,
       "TraceProject": "",
@@ -1910,6 +2060,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": false,
       "TrustedProxyHops": 0,
       "TraceProject": "",
@@ -1956,6 +2111,288 @@
     },
     "error": "invalid configuration: PORT must be between 1 and 65535, got 0"
   },
+  "tasks account not an email": {
+    "env": {
+      "TASKS_QUEUE": "projects/demo-project/locations/southamerica-east1/queues/demo-tasks",
+      "TASKS_SERVICE_ACCOUNT": "demo-api",
+      "TASKS_TARGET_URL": "https://demo-api.run.app"
+    },
+    "error": "invalid configuration: TASKS_SERVICE_ACCOUNT must be the e-mail of a service account"
+  },
+  "tasks account only": {
+    "env": {
+      "TASKS_SERVICE_ACCOUNT": "demo-api@demo-project.iam.gserviceaccount.com"
+    },
+    "error": "invalid configuration: TASKS_QUEUE, TASKS_TARGET_URL and TASKS_SERVICE_ACCOUNT are set together or not at all; missing: TASKS_QUEUE, TASKS_TARGET_URL"
+  },
+  "tasks all": {
+    "env": {
+      "TASKS_QUEUE": " projects/demo-project/locations/southamerica-east1/queues/demo-tasks ",
+      "TASKS_SERVICE_ACCOUNT": "demo-api@demo-project.iam.gserviceaccount.com",
+      "TASKS_TARGET_URL": "https://demo-api-abc123-rj.a.run.app"
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "Tasks": {
+        "Queue": "projects/demo-project/locations/southamerica-east1/queues/demo-tasks",
+        "TargetURL": "https://demo-api-abc123-rj.a.run.app",
+        "ServiceAccount": "demo-api@demo-project.iam.gserviceaccount.com"
+      },
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "Voice": {
+        "Model": "",
+        "Fake": false,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "tasks all cloud": {
+    "env": {
+      "K_SERVICE": "api",
+      "TASKS_QUEUE": "projects/demo-project/locations/southamerica-east1/queues/demo-tasks",
+      "TASKS_SERVICE_ACCOUNT": "demo-api@demo-project.iam.gserviceaccount.com",
+      "TASKS_TARGET_URL": "https://demo-api-abc123-rj.a.run.app/"
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "Tasks": {
+        "Queue": "projects/demo-project/locations/southamerica-east1/queues/demo-tasks",
+        "TargetURL": "https://demo-api-abc123-rj.a.run.app",
+        "ServiceAccount": "demo-api@demo-project.iam.gserviceaccount.com"
+      },
+      "CloudRun": true,
+      "TrustedProxyHops": 1,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "Voice": {
+        "Model": "",
+        "Fake": false,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "tasks bad queue": {
+    "env": {
+      "TASKS_QUEUE": "demo-tasks",
+      "TASKS_SERVICE_ACCOUNT": "demo-api@demo-project.iam.gserviceaccount.com",
+      "TASKS_TARGET_URL": "https://demo-api-abc123-rj.a.run.app"
+    },
+    "error": "invalid configuration: TASKS_QUEUE must be the full queue name, projects/<project>/locations/<region>/queues/<queue>"
+  },
+  "tasks http target": {
+    "env": {
+      "TASKS_QUEUE": "projects/demo-project/locations/southamerica-east1/queues/demo-tasks",
+      "TASKS_SERVICE_ACCOUNT": "demo-api@demo-project.iam.gserviceaccount.com",
+      "TASKS_TARGET_URL": "http://demo-api.run.app"
+    },
+    "error": "invalid configuration: TASKS_TARGET_URL must be https (http only for localhost)"
+  },
+  "tasks local target": {
+    "env": {
+      "TASKS_QUEUE": "projects/demo-project/locations/southamerica-east1/queues/demo-tasks",
+      "TASKS_SERVICE_ACCOUNT": "demo-api@demo-project.iam.gserviceaccount.com",
+      "TASKS_TARGET_URL": "http://localhost:8080"
+    },
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "Tasks": {
+        "Queue": "projects/demo-project/locations/southamerica-east1/queues/demo-tasks",
+        "TargetURL": "http://localhost:8080",
+        "ServiceAccount": "demo-api@demo-project.iam.gserviceaccount.com"
+      },
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "Voice": {
+        "Model": "",
+        "Fake": false,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "tasks no account": {
+    "env": {
+      "TASKS_QUEUE": "projects/demo-project/locations/southamerica-east1/queues/demo-tasks",
+      "TASKS_TARGET_URL": "https://demo-api-abc123-rj.a.run.app"
+    },
+    "error": "invalid configuration: TASKS_QUEUE, TASKS_TARGET_URL and TASKS_SERVICE_ACCOUNT are set together or not at all; missing: TASKS_SERVICE_ACCOUNT"
+  },
+  "tasks none": {
+    "env": {},
+    "config": {
+      "Port": 8080,
+      "ListenHost": "",
+      "DatabaseURL": "",
+      "LogLevel": "INFO",
+      "WebDir": "/app/web",
+      "OIDC": {
+        "IssuerURL": "",
+        "ClientID": "",
+        "ClientSecret": "",
+        "RedirectURL": "",
+        "CAFile": "",
+        "MaxAge": 0
+      },
+      "BlobDir": "",
+      "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
+      "CloudRun": false,
+      "TrustedProxyHops": 0,
+      "TraceProject": "",
+      "Images": {
+        "GeminiAPIKey": "",
+        "Model": "",
+        "Fake": false,
+        "MonthlyLimit": 0,
+        "DailyLimit": 0
+      },
+      "Voice": {
+        "Model": "",
+        "Fake": false,
+        "DailyLimit": 0
+      },
+      "SessionIdleTimeout": 0,
+      "Limits": {
+        "RateMultiplier": 0,
+        "MaxCampaignsPerUser": 0,
+        "CampaignCreators": null
+      }
+    },
+    "secrets": {
+      "DatabaseURL": "",
+      "Images.GeminiKey": "",
+      "OIDC.ClientSecret": ""
+    }
+  },
+  "tasks queue only": {
+    "env": {
+      "TASKS_QUEUE": "projects/demo-project/locations/southamerica-east1/queues/demo-tasks"
+    },
+    "error": "invalid configuration: TASKS_QUEUE, TASKS_TARGET_URL and TASKS_SERVICE_ACCOUNT are set together or not at all; missing: TASKS_TARGET_URL, TASKS_SERVICE_ACCOUNT"
+  },
+  "tasks target not a url": {
+    "env": {
+      "TASKS_QUEUE": "projects/demo-project/locations/southamerica-east1/queues/demo-tasks",
+      "TASKS_SERVICE_ACCOUNT": "demo-api@demo-project.iam.gserviceaccount.com",
+      "TASKS_TARGET_URL": "demo-api"
+    },
+    "error": "invalid configuration: TASKS_TARGET_URL must be a URL like https://<service>.run.app"
+  },
+  "tasks target only": {
+    "env": {
+      "TASKS_TARGET_URL": "https://demo-api-abc123-rj.a.run.app"
+    },
+    "error": "invalid configuration: TASKS_QUEUE, TASKS_TARGET_URL and TASKS_SERVICE_ACCOUNT are set together or not at all; missing: TASKS_QUEUE, TASKS_SERVICE_ACCOUNT"
+  },
+  "tasks target path": {
+    "env": {
+      "TASKS_QUEUE": "projects/demo-project/locations/southamerica-east1/queues/demo-tasks",
+      "TASKS_SERVICE_ACCOUNT": "demo-api@demo-project.iam.gserviceaccount.com",
+      "TASKS_TARGET_URL": "https://demo-api.run.app/api?x=1"
+    },
+    "error": "invalid configuration: TASKS_TARGET_URL must have no path, query or fragment"
+  },
   "web dir": {
     "env": {
       "WEB_DIR": " /srv/web "
@@ -1976,6 +2413,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": false,
       "TrustedProxyHops": 0,
       "TraceProject": "",
@@ -2024,6 +2466,11 @@
       },
       "BlobDir": "",
       "BlobBucket": "",
+      "Tasks": {
+        "Queue": "",
+        "TargetURL": "",
+        "ServiceAccount": ""
+      },
       "CloudRun": false,
       "TrustedProxyHops": 0,
       "TraceProject": "",

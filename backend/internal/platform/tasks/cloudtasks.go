@@ -187,7 +187,7 @@ func (cfg Config) validate() error {
 }
 
 func isLoopback(host string) bool {
-	return host == "localhost" || host == "127.0.0.1" || host == "::1"
+	return host == "localhost" || host == "127.0.0.1" || host == "::1" || strings.HasSuffix(host, ".localhost")
 }
 
 // Cancel ends the context of every running handler: the shutdown.

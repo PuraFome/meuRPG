@@ -16,6 +16,7 @@ import (
 	"math"
 	"net"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -78,6 +79,12 @@ type Config struct {
 	// (BLOB_BUCKET): the production store, reached with the Cloud Run
 	// service account's token. Empty means the bucket is not used.
 	BlobBucket string
+
+	// Tasks configures the Cloud Tasks queue that runs the detached work (an image being
+	// made, an export being written, the sweeps). The zero value means "not configured": the
+	// work runs in this process (platform/tasks.InProcess), which is what local runs, tests and
+	// CI use.
+	Tasks Tasks
 
 	// CloudRun is true when the process runs on Cloud Run, which sets
 	// K_SERVICE in every service container (see "Container runtime
@@ -318,10 +325,88 @@ func Load(getenv func(string) string) (Config, error) {
 	cfg.OIDC = oidc
 	errs = append(errs, oidcErrs...)
 
+	tasks, taskErrs := loadTasks(getenv)
+	cfg.Tasks = tasks
+	errs = append(errs, taskErrs...)
+
 	if err := errors.Join(errs...); err != nil {
 		return Config{}, fmt.Errorf("invalid configuration: %w", err)
 	}
 	return cfg, nil
+}
+
+// Tasks is the Cloud Tasks queue that runs the detached work. All three variables are set, or
+// none.
+type Tasks struct {
+	// Queue is the full name of the queue (TASKS_QUEUE): projects/P/locations/L/queues/Q.
+	Queue string
+	// TargetURL is the service's own https address (TASKS_TARGET_URL), where Cloud Tasks calls
+	// back, without path or query: the run.app URL of the service.
+	TargetURL string
+	// ServiceAccount is the account that signs the call's OIDC token (TASKS_SERVICE_ACCOUNT):
+	// the service's own, which holds the enqueuer role on the queue.
+	ServiceAccount string
+}
+
+// Configured says whether the queue is set. Load guarantees that it is all or nothing.
+func (t Tasks) Configured() bool { return t.Queue != "" }
+
+var (
+	tasksQueueName = regexp.MustCompile(`^projects/[a-z][a-z0-9:.-]{3,60}/locations/[a-z0-9-]{3,40}/queues/[A-Za-z0-9_-]{1,100}$`)
+	tasksAccount   = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
+)
+
+// loadTasks reads TASKS_QUEUE, TASKS_TARGET_URL and TASKS_SERVICE_ACCOUNT: none means the work
+// runs in this process; a partial set stops the start, naming what is missing.
+func loadTasks(getenv func(string) string) (Tasks, []error) {
+	t := Tasks{
+		Queue:          strings.TrimSpace(getenv("TASKS_QUEUE")),
+		TargetURL:      strings.TrimSpace(getenv("TASKS_TARGET_URL")),
+		ServiceAccount: strings.TrimSpace(getenv("TASKS_SERVICE_ACCOUNT")),
+	}
+	var missing []string
+	for _, v := range [...]struct{ name, value string }{
+		{"TASKS_QUEUE", t.Queue}, {"TASKS_TARGET_URL", t.TargetURL}, {"TASKS_SERVICE_ACCOUNT", t.ServiceAccount},
+	} {
+		if v.value == "" {
+			missing = append(missing, v.name)
+		}
+	}
+	switch len(missing) {
+	case 0:
+	case 3:
+		return Tasks{}, nil
+	default:
+		return Tasks{}, []error{fmt.Errorf("TASKS_QUEUE, TASKS_TARGET_URL and TASKS_SERVICE_ACCOUNT are set together or not at all; missing: %s", strings.Join(missing, ", "))}
+	}
+	var errs []error
+	if !tasksQueueName.MatchString(t.Queue) {
+		errs = append(errs, errors.New("TASKS_QUEUE must be the full queue name, projects/<project>/locations/<region>/queues/<queue>"))
+	}
+	errs = appendErr(errs, checkTasksTarget(t.TargetURL))
+	if !tasksAccount.MatchString(t.ServiceAccount) {
+		errs = append(errs, errors.New("TASKS_SERVICE_ACCOUNT must be the e-mail of a service account"))
+	}
+	if len(errs) > 0 {
+		return Tasks{}, errs
+	}
+	t.TargetURL = strings.TrimSuffix(t.TargetURL, "/")
+	return t, nil
+}
+
+// checkTasksTarget wants https (http only for a local address), a host, and no path or query.
+func checkTasksTarget(raw string) error {
+	u, err := url.Parse(raw)
+	switch {
+	case err != nil || u.Host == "" || u.User != nil:
+		return errors.New("TASKS_TARGET_URL must be a URL like https://<service>.run.app")
+	case u.Path != "" && u.Path != "/", u.RawQuery != "", u.Fragment != "":
+		return errors.New("TASKS_TARGET_URL must have no path, query or fragment")
+	case !secureOrLoopback(u):
+		return errors.New("TASKS_TARGET_URL must be https (http only for localhost)")
+	default:
+		return nil
+	}
 }
 
 // appendErr appends err to errs when there is one.
