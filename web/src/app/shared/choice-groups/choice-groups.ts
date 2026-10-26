@@ -127,11 +127,15 @@ export class ChoiceGroups {
     });
   }
 
-  /** Moves the focus to the title of the first choice that still has something to pick. */
+  /**
+   * Moves the focus to the title of the first choice that still has something to pick: one that stops the sheet
+   * first, then one that only warns (the languages and tools).
+   */
   focusFirstPending(): boolean {
-    const title = this.host.nativeElement.querySelector<HTMLElement>(
-      '[data-pending] .choice__title',
-    );
+    const el = this.host.nativeElement;
+    const title =
+      el.querySelector<HTMLElement>('[data-pending]:not([data-advisory]) .choice__title') ??
+      el.querySelector<HTMLElement>('[data-pending] .choice__title');
     title?.focus();
     return title !== null;
   }

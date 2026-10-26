@@ -19,7 +19,7 @@
 .bar__top {
   position: relative;
   height: 40px;
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 16px;
   color: var(--mr-ink-muted);
 }
@@ -38,7 +38,7 @@
   flex-direction: column;
   align-items: center;
   transform: translateX(-50%);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 800;
   line-height: 16px;
   white-space: nowrap;
@@ -82,7 +82,7 @@
   position: relative;
   height: 28px;
   margin-top: 6px;
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
@@ -117,7 +117,7 @@
   align-items: center;
   gap: 8px;
   min-height: 28px;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
 

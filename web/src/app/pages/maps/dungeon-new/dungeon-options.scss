@@ -24,7 +24,7 @@
 .opt__label {
   margin: 0;
   font-family: var(--mr-font-sans);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
   line-height: 22px;
 }
@@ -56,7 +56,7 @@
 .opt__hint,
 .opt__why {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -72,7 +72,7 @@
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -87,7 +87,7 @@
 .opt__ends {
   display: flex;
   justify-content: space-between;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -123,7 +123,7 @@
 .opt__count {
   min-width: 2ch;
   font-family: var(--mr-font-display);
-  font-size: 24px;
+  font-size: var(--mr-font-24);
   font-weight: 700;
   text-align: center;
 }

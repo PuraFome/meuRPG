@@ -19,7 +19,7 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 
   li {
@@ -32,14 +32,14 @@
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
     margin-top: 1px;
   }
 }
 
 .side__reason {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   text-align: center;
   color: var(--mr-ink-muted);
 }

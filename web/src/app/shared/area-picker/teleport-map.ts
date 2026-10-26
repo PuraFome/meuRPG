@@ -70,7 +70,7 @@ import { CombatMap, type Chosen, type CombatMapImage, type Reach } from '../comb
 
     .hint {
       margin: 0;
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       line-height: 20px;
     }
   `,

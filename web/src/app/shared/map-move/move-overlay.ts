@@ -95,7 +95,7 @@ const RING_SQUARES = 1.5;
       .mat-icon {
         width: 22px;
         height: 22px;
-        font-size: 22px;
+        font-size: var(--mr-font-22);
       }
     }
 
@@ -107,7 +107,7 @@ const RING_SQUARES = 1.5;
       border-radius: 999px;
       background: var(--mr-surface);
       color: var(--mr-ink);
-      font-size: 12px;
+      font-size: var(--mr-font-12);
       font-weight: 700;
       line-height: 16px;
       white-space: nowrap;

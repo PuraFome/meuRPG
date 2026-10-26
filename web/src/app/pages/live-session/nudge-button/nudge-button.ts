@@ -53,7 +53,7 @@ import { Nudger } from '../../../core/combat/nudger';
     }
 
     .status {
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 20px;
     }
 

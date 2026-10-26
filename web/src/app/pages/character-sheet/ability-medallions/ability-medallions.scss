@@ -39,7 +39,7 @@
 
 .medallion__name {
   max-width: 100%;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 18px;
   font-weight: 500;
   color: var(--mr-ink-muted);
@@ -47,7 +47,7 @@
   text-align: center;
 
   @media (max-width: 359px) {
-    font-size: 13px;
+    font-size: var(--mr-font-13);
   }
 }
 
@@ -55,7 +55,7 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 38px;
+  font-size: var(--mr-font-38);
   line-height: 42px;
   color: var(--mr-ink);
 }
@@ -75,6 +75,6 @@
   border: 1.5px solid var(--mr-ink);
   border-radius: var(--mr-radius-pill);
   font-weight: 700;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   color: var(--mr-ink);
 }

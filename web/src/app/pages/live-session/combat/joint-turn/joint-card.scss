@@ -16,7 +16,7 @@
 .card__lead,
 .card__note {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 }
 
@@ -59,13 +59,13 @@
 }
 
 .member__name {
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
   line-height: 20px;
 }
 
 .member__sub {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 18px;
   color: var(--mr-ink-muted);
 }
@@ -101,7 +101,7 @@
   padding: 4px 10px;
   border: 1px solid var(--mr-line);
   border-radius: 16px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 18px;
   color: var(--mr-ink-muted);
 
@@ -112,7 +112,7 @@
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
     color: var(--mr-ink);
   }
 }
@@ -137,6 +137,6 @@
 
   .member__end {
     padding: 0 6px;
-    font-size: 15px;
+    font-size: var(--mr-font-15);
   }
 }

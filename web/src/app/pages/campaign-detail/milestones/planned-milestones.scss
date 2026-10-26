@@ -21,12 +21,12 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 21px;
+  font-size: var(--mr-font-21);
   line-height: 26px;
 }
 
 .head__count {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
@@ -69,7 +69,7 @@
 }
 
 .row__name {
-  font-size: 18px;
+  font-size: var(--mr-font-18);
   font-weight: 700;
   line-height: 22px;
   overflow-wrap: anywhere;
@@ -128,7 +128,7 @@
   .mat-icon {
     width: 22px;
     height: 22px;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
   }
 }
 
@@ -152,7 +152,7 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 19px;
+  font-size: var(--mr-font-19);
   line-height: 24px;
 }
 

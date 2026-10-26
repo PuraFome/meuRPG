@@ -15,14 +15,14 @@
   align-items: flex-start;
   gap: 8px;
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 
   .mat-icon {
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
     color: var(--mr-ink-muted);
   }
 }
@@ -73,7 +73,7 @@
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 
   @media (min-width: 768px) {

@@ -123,7 +123,7 @@ import { LevelUpSession } from '../level-up-session';
     .choices__title {
       margin: 0 0 var(--mr-space-1);
       font-family: var(--mr-font-display);
-      font-size: 21px;
+      font-size: var(--mr-font-21);
       font-weight: 700;
       line-height: 26px;
     }

@@ -1,6 +1,6 @@
 -- +goose Up
--- The session events of Etapa 9 (ADR-0007), all in one migration so that the
--- Etapa 9 slices built at the same time never rewrite each other's CHECK:
+-- The session events of the trap, treasure, fog and creature slices (ADR-0007), all in one migration so that the
+-- these slices built at the same time never rewrite each other's CHECK:
 -- traps (noticed, searched, triggered, disarmed, revealed; MR-035), treasure
 -- (found and unmarked; MR-041), cover and sides in a combat (cover_set,
 -- side_set; MR-034), the opportunity attack the server offers (MR-034, RN-21),

@@ -11,7 +11,7 @@
 .tbl__title {
   margin: 0 0 4px;
   font-family: var(--mr-font-display);
-  font-size: 18px;
+  font-size: var(--mr-font-18);
   font-weight: 700;
 }
 
@@ -22,12 +22,12 @@
   align-items: center;
   min-height: 40px;
   border-top: 1px solid var(--mr-rule);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
 
   &--head {
     min-height: 0;
     border-top: 0;
-    font-size: 13px;
+    font-size: var(--mr-font-13);
     color: var(--mr-ink-muted);
 
     span {
@@ -48,7 +48,7 @@
   display: block;
   text-align: right;
   font-family: var(--mr-font-display);
-  font-size: 18px;
+  font-size: var(--mr-font-18);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -88,7 +88,7 @@
 
   .tbl__lbl {
     display: inline;
-    font-size: 13px;
+    font-size: var(--mr-font-13);
     color: var(--mr-ink-muted);
   }
 }
@@ -96,7 +96,7 @@
 .tbl__caption {
   max-width: 70ch;
   margin: 0 0 6px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -104,7 +104,7 @@
 .tbl__num--muted {
   font-family: inherit;
   font-weight: 400;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   color: var(--mr-ink-muted);
 }
 
@@ -132,12 +132,12 @@
     }
 
     .tbl__lbl {
-      font-size: 12px;
+      font-size: var(--mr-font-12);
       line-height: 16px;
     }
 
     .tbl__num {
-      font-size: 20px;
+      font-size: var(--mr-font-20);
       line-height: 26px;
     }
   }

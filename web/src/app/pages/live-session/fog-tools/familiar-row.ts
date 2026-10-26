@@ -69,14 +69,14 @@ import { FamiliarEyesButton } from '../../../shared/familiar-eyes/familiar-eyes-
 
     .fr__name {
       font-family: var(--mr-font-display);
-      font-size: 18px;
+      font-size: var(--mr-font-18);
       font-weight: 700;
       line-height: 24px;
     }
 
     .fr__sub {
       color: var(--mr-ink-muted);
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       line-height: 20px;
     }
 

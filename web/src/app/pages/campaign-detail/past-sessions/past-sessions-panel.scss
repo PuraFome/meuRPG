@@ -58,7 +58,7 @@
   grid-area: name;
   min-width: 0;
   overflow-wrap: anywhere;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
   line-height: 21px;
 }
@@ -67,7 +67,7 @@
 .row__sub {
   grid-area: sub;
   min-width: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -97,13 +97,13 @@
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 
   .row__chevron {
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
     margin-left: 4px;
     color: var(--mr-ink-muted);
   }

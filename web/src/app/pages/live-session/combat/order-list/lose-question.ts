@@ -45,7 +45,7 @@ import { MatIconModule } from '@angular/material/icon';
 
     .ask__text {
       margin: 2px 0 0;
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       font-weight: 400;
       line-height: 20px;
     }
@@ -102,7 +102,7 @@ export class LoseQuestion {
       padding: 0 8px 0 6px;
       border: 1.5px solid var(--mr-ink);
       border-radius: var(--mr-radius-pill);
-      font-size: 13px;
+      font-size: var(--mr-font-13);
       font-weight: 700;
       line-height: 1;
       white-space: nowrap;
@@ -112,14 +112,14 @@ export class LoseQuestion {
     .mat-icon {
       width: 14px;
       height: 14px;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
     }
 
     // A 320 px phone: the name's column is narrow beside "Dano/Cura", so the pill is the word alone.
     @media (max-width: 359.98px) {
       :host {
         padding: 0 7px;
-        font-size: 12px;
+        font-size: var(--mr-font-12);
       }
 
       .mat-icon {

@@ -114,7 +114,7 @@ let nextId = 0;
 
     .mm__title {
       margin: 0;
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       line-height: 20px;
       font-weight: 700;
     }
@@ -126,7 +126,7 @@ let nextId = 0;
 
     .mm__line {
       margin: 0;
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       line-height: 20px;
     }
 
@@ -180,7 +180,7 @@ let nextId = 0;
       .mat-icon {
         width: 16px;
         height: 16px;
-        font-size: 16px;
+        font-size: var(--mr-font-16);
       }
     }
 
@@ -199,12 +199,12 @@ let nextId = 0;
 
     .opt__cost {
       flex: none;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       font-weight: 700;
     }
 
     .opt__sub {
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 19px;
       color: var(--mr-ink-muted);
     }
@@ -213,7 +213,7 @@ let nextId = 0;
       display: flex;
       align-items: flex-start;
       gap: 4px;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 19px;
 
       .mat-icon {
@@ -221,7 +221,7 @@ let nextId = 0;
         width: 16px;
         height: 16px;
         margin-top: 1px;
-        font-size: 16px;
+        font-size: var(--mr-font-16);
       }
     }
 
@@ -237,7 +237,7 @@ let nextId = 0;
     .careful__legend {
       margin: 0 0 var(--mr-space-1);
       padding: 0;
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       font-weight: 700;
     }
 

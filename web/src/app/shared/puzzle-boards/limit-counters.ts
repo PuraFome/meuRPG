@@ -37,7 +37,7 @@ import type { CounterRow } from '../../core/puzzles/puzzle-format';
       display: flex;
       justify-content: space-between;
       gap: var(--mr-space-3);
-      font-size: 16px;
+      font-size: var(--mr-font-16);
       line-height: 22px;
     }
 

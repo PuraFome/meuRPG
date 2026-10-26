@@ -86,7 +86,7 @@ import { MatIconModule } from '@angular/material/icon';
       border-radius: var(--mr-radius-md);
       background: var(--mr-surface);
       font-family: var(--mr-font-display);
-      font-size: 22px;
+      font-size: var(--mr-font-22);
       font-weight: 800;
     }
   `,

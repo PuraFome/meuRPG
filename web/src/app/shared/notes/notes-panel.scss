@@ -59,14 +59,14 @@
 .np__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 21px;
+  font-size: var(--mr-font-21);
   font-weight: 700;
   line-height: 26px;
 }
 
 .np__count {
   flex: none;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -76,7 +76,7 @@
   text-wrap: pretty;
   gap: var(--mr-space-2);
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
@@ -85,7 +85,7 @@
     width: 18px;
     height: 18px;
     margin-top: 1px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -109,14 +109,14 @@
 .np__empty-t {
   margin: 0 0 var(--mr-space-1);
   font-family: var(--mr-font-display);
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   font-weight: 700;
   line-height: 25px;
 }
 
 .np__limit {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   line-height: 19px;
 }
@@ -142,7 +142,7 @@
 .np__form-t {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 19px;
+  font-size: var(--mr-font-19);
   font-weight: 700;
   line-height: 24px;
 }
@@ -161,7 +161,7 @@
 
 .np__ask-t {
   margin: 0 0 var(--mr-space-2);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
   line-height: 21px;
 }

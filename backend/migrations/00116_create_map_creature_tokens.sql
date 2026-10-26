@@ -1,6 +1,6 @@
 -- +goose Up
 -- map_creature_tokens are the creatures of the characters standing on a map
--- (MR-037, Etapa 9, D7): the master places one like any token. A table of its
+-- (MR-037, D7): the master places one like any token. A table of its
 -- own, not rows of map_tokens, because map_tokens is keyed by (map_id,
 -- character_id) and a character's creatures are many, and its own token must
 -- stay one. At most one token per creature per map.

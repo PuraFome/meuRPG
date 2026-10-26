@@ -35,7 +35,7 @@
     flex: none;
     width: 22px;
     height: 22px;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
   }
 
   input {
@@ -47,7 +47,7 @@
     background: none;
     color: var(--mr-ink);
     font: inherit;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 
@@ -117,7 +117,7 @@
   flex: none;
   width: 24px;
   height: 24px;
-  font-size: 24px;
+  font-size: var(--mr-font-24);
   color: var(--mr-control-line);
 
   .row--on & {
@@ -138,7 +138,7 @@
   align-items: baseline;
   gap: 0 6px;
   font-family: var(--mr-font-display);
-  font-size: 19px;
+  font-size: var(--mr-font-19);
   font-weight: 700;
   line-height: 24px;
   overflow-wrap: anywhere;
@@ -146,14 +146,14 @@
 
 .row__alias {
   font-family: var(--mr-font-sans);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 400;
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
 
 .row__sub {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -167,14 +167,14 @@
 }
 
 .row__atk {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 500;
   line-height: 19px;
   color: var(--mr-ink);
 }
 
 .row__rider {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 18px;
   color: var(--mr-ink-muted);
 }
@@ -182,7 +182,7 @@
 .empty {
   margin: 0;
   padding: var(--mr-space-4);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   color: var(--mr-ink-muted);
 }
 
@@ -222,14 +222,14 @@
   .mat-icon {
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
 .step__n {
   min-width: 24px;
   font-family: var(--mr-font-display);
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   font-weight: 800;
   text-align: center;
 }

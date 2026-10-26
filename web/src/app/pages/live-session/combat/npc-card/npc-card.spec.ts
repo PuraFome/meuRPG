@@ -77,6 +77,37 @@ describe('NpcCard: the idempotency key follows the target', () => {
     expect(second[6]).not.toBe(first[6]);
   });
 
+  it('starts aimed at the nearest creature in reach, keeping the list in its order (the sword out of reach of the first)', async () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [{ provide: CombatClient, useValue: fakeCombatClient({}) }],
+    });
+    const fixture = TestBed.createComponent(NpcCard);
+    fixture.componentRef.setInput('campaignId', 'c');
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({ combatants: [combatant({ id: 'npc', label: 'Espada voadora 2' })] }),
+    );
+    fixture.componentRef.setInput('subject', combatant({ id: 'npc', label: 'Espada voadora 2' }));
+    fixture.componentRef.setInput('state', { apply: vi.fn() } as unknown as CombatState);
+    const options = opts(['toren', 'pensantus', 'brisa']);
+    const [row] = (
+      options as unknown as { attackTargets: { targets: Record<string, unknown>[] }[] }
+    ).attackTargets;
+    row.targets[0] = { ...row.targets[0], distanceFt: 10, tooFar: true };
+    row.targets[1] = { ...row.targets[1], distanceFt: 5, tooFar: false };
+    row.targets[2] = { ...row.targets[2], distanceFt: 5, tooFar: false };
+    fixture.componentRef.setInput('options', options);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const card = fixture.componentInstance as unknown as {
+      targetId(): string;
+      targets(): { combatantId: string }[];
+    };
+    expect(card.targetId()).toBe('pensantus');
+    expect(card.targets().map((t) => t.combatantId)).toEqual(['toren', 'pensantus', 'brisa']);
+  });
+
   it('never drops a roll silently: with no target left it says the options changed, and the buttons are off', async () => {
     TestBed.resetTestingModule();
     const rollAttack = vi.fn();

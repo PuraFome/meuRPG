@@ -44,12 +44,12 @@ import { dieCard } from '../../../../core/resources/bardic-inspiration';
     }
 
     .card__title {
-      font-size: 16px;
+      font-size: var(--mr-font-16);
       line-height: 21px;
     }
 
     .card__sub {
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 19px;
       color: var(--mr-ink-muted);
     }

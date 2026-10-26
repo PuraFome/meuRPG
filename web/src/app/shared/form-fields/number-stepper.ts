@@ -31,7 +31,7 @@ import { MatIconModule } from '@angular/material/icon';
     .step__label {
       flex: 1 1 auto;
       min-width: 0;
-      font-size: 17px;
+      font-size: var(--mr-font-17);
       color: var(--mr-ink-muted);
     }
 
@@ -66,7 +66,7 @@ import { MatIconModule } from '@angular/material/icon';
       min-width: 36px;
       text-align: center;
       font-family: var(--mr-font-display);
-      font-size: 22px;
+      font-size: var(--mr-font-22);
       font-weight: 800;
     }
   `,

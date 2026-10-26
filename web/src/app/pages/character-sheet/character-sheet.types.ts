@@ -263,7 +263,7 @@ export interface BasicSheetVm {
   readonly initiativeBonus: number;
   /** At most three, as the master typed them. */
   readonly attacks: readonly BasicAttackVm[];
-  /** The deprecated free-text damage of a sheet saved before Etapa 6 that
+  /** The deprecated free-text damage of a sheet saved before the attacks list existed that
    * could not become an attack; empty otherwise. */
   readonly legacyDamage: string;
   readonly description: string;

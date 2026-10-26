@@ -85,7 +85,7 @@ import type { EntryRead as Read } from '../../../core/content/content-read-parts
     .sec__title {
       margin: 0 0 var(--mr-space-2);
       font-family: var(--mr-font-display);
-      font-size: 19px;
+      font-size: var(--mr-font-19);
       font-weight: 700;
     }
 

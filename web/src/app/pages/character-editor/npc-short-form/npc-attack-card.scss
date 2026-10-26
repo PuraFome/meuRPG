@@ -15,7 +15,7 @@
 }
 
 .card__title {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 18px;
   font-weight: 700;
   color: var(--mr-ink-muted);
@@ -63,7 +63,7 @@
 }
 
 .card__summary {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }

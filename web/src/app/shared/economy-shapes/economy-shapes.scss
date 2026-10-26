@@ -22,7 +22,7 @@
   border: 1.5px solid var(--mr-ink);
   border-radius: var(--mr-radius-pill);
   color: var(--mr-ink);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   line-height: 18px;
   font-variant-numeric: lining-nums;
@@ -36,7 +36,7 @@
 
 .shape__icon {
   flex: none;
-  font-size: 17px;
+  font-size: var(--mr-font-17);
 }
 
 // The bar above the phone's nav: no rings, the words and their shapes side by side; tight enough that the Action, the Bonus action,
@@ -50,11 +50,11 @@
     height: auto;
     padding: 0;
     border: 0;
-    font-size: 12px;
+    font-size: var(--mr-font-12);
     line-height: 16px;
   }
 
   .shape__icon {
-    font-size: 13px;
+    font-size: var(--mr-font-13);
   }
 }

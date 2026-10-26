@@ -23,7 +23,7 @@
   .mat-icon {
     width: 22px;
     height: 22px;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
   }
 }
 
@@ -109,7 +109,7 @@ app-level-up-notice {
   padding: 0 10px;
   border-bottom: 2px solid transparent;
   color: var(--mr-ink-muted);
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   font-weight: 500;
   line-height: 20px;
   text-decoration: none;
@@ -128,7 +128,7 @@ app-level-up-notice {
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 
   @media (max-width: 599.98px) {
@@ -155,7 +155,7 @@ app-level-up-notice {
   border-radius: var(--mr-radius-pill);
   background: var(--mr-warning-surface);
   color: var(--mr-warning-ink);
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 700;
   line-height: 1;
 }

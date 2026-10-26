@@ -4,7 +4,7 @@ import { tight } from '../format/text';
 import { squaresText } from '../units';
 import { type DoorKind, type MapLayers, doorCounts, lightCount } from './layers';
 
-/** The tools of "Pintar" (E9-01, "Porta" of Etapa 10, "Não dá para passar" of B2). */
+/** The tools of "Pintar" (E9-01, "Porta", "Não dá para passar" of B2). */
 export type PaintTool = 'terrain' | 'wall' | 'cover' | 'light' | 'nopass' | 'door';
 
 /** How much cover a stroke paints: the layer's own values (1 half, 2 three-quarters). */

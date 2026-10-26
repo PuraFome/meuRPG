@@ -81,21 +81,21 @@
 .short__attacks-title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   line-height: 26px;
   font-weight: 700;
 }
 
 .short__attacks-lead {
   margin: 2px 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
 
 .short__count {
   flex-shrink: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   color: var(--mr-ink-muted);
 }
@@ -113,7 +113,7 @@
 }
 
 .short__max {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -134,14 +134,14 @@ app-fiction-notice {
 .short__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   line-height: 26px;
   font-weight: 700;
 }
 
 .short__lead {
   margin: 0 0 var(--mr-space-2);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }

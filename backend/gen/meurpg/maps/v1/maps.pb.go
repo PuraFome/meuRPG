@@ -2204,7 +2204,7 @@ type MapToken struct {
 	// (SetCarriedLight); the other players learn of it from what they see.
 	CarriedLight string `protobuf:"bytes,10,opt,name=carried_light,json=carriedLight,proto3" json:"carried_light,omitempty"`
 	// The creature this token is, for the token of a character's creature (a
-	// familiar, a summoned animal, a gift of the master; MR-037, Etapa 9): the ID
+	// familiar, a summoned animal, a gift of the master; MR-037): the ID
 	// CharacterService.ListCharacterCreatures lists (a UUID). Empty for a
 	// character's own token. Then `character_id` is the creature's owner (a
 	// player's character, so the party knows whose it is), `name` is the creature's

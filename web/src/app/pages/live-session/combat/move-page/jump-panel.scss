@@ -24,20 +24,20 @@
 
   dt {
     min-width: 76px;
-    font-size: 14px;
+    font-size: var(--mr-font-14);
     font-weight: 700;
     color: var(--mr-ink-muted);
   }
 
   dd {
     margin: 0;
-    font-size: 15px;
+    font-size: var(--mr-font-15);
     line-height: 20px;
   }
 
   b {
     font-family: var(--mr-font-display);
-    font-size: 18px;
+    font-size: var(--mr-font-18);
     font-weight: 800;
   }
 }
@@ -48,7 +48,7 @@
   align-items: center;
   gap: var(--mr-space-2);
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
@@ -69,7 +69,7 @@
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -112,7 +112,7 @@
 .high__val {
   min-width: 72px;
   font-family: var(--mr-font-display);
-  font-size: 28px;
+  font-size: var(--mr-font-28);
   font-weight: 800;
   text-align: center;
 }

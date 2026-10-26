@@ -36,6 +36,7 @@ func choiceSheet(race, subrace, class, subclass string, level int32, picks ...st
 		SubraceKey:        subrace,
 		Classes:           []*charactersv1.ClassLevel{cl},
 		Background:        &charactersv1.FullSheet_BackgroundKey{BackgroundKey: "background:acolyte"},
+		Languages:         testLanguages,
 		FeatureChoiceKeys: picks,
 	}}}
 }
@@ -253,8 +254,10 @@ func TestPreviewChoicesAnswersWhatTheDraftAsks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.GetDone() != 1 || res.GetTotal() != 2 || len(res.GetGroups()) != 2 {
-		t.Fatalf("done %d of %d in %d groups, want 1 of 2 in 2", res.GetDone(), res.GetTotal(), len(res.GetGroups()))
+	// The ancestry is picked (1 of 2 with the fighting style); the Acolyte of the sheet adds two languages to pick,
+	// which the two the sheet names (testLanguages) fill: 3 of 4, in the race, class and background groups.
+	if res.GetDone() != 3 || res.GetTotal() != 4 || len(res.GetGroups()) != 3 {
+		t.Fatalf("done %d of %d in %d groups, want 3 of 4 in 3", res.GetDone(), res.GetTotal(), len(res.GetGroups()))
 	}
 	ancestry := choiceByKey(res, "trait:draconic-ancestry")
 	if ancestry == nil || len(ancestry.GetOptions()) != 10 || !slices.Equal(ancestry.GetPicked(), []string{"trait:draconic-ancestry-red"}) ||
@@ -286,9 +289,18 @@ func TestPreviewChoicesAnswersWhatTheDraftAsks(t *testing.T) {
 	if src := res.GetSpellSources(); len(src) != 1 || src[0].GetSecrets() != 4 || src[0].GetSecretsBeyondKnown() != 2 || src[0].GetSecretsMaxSpellLevel() != 5 {
 		t.Errorf("bard sources = %v, want 4 secrets (Lore's two beyond the number known), up to the 5th circle", src)
 	}
-	// A sheet with nothing to choose has no groups, and a basic sheet has no choices.
-	if res, err = tb.preview(tb.ana, "", choiceSheet("race:human", "", "class:rogue", "", 1)); err != nil || len(res.GetGroups()) != 0 {
-		t.Errorf("a human rogue 1: %v, %v; want no groups", res, err)
+	// A sheet with nothing but the languages of its race and background to pick asks only for those, and a basic sheet
+	// has no choices.
+	res, err = tb.preview(tb.ana, "", choiceSheet("race:human", "", "class:rogue", "", 1))
+	if err != nil || len(res.GetGroups()) != 2 {
+		t.Fatalf("a human rogue 1: %v, %v; want the human's language and the Acolyte's two", res, err)
+	}
+	for _, g := range res.GetGroups() {
+		for _, ch := range g.GetChoices() {
+			if !strings.HasSuffix(ch.GetKey(), "#language") {
+				t.Errorf("a human rogue 1 asks %q, want languages only", ch.GetKey())
+			}
+		}
 	}
 	_, err = tb.master.api.PreviewChoices(t.Context(), connect.NewRequest(&charactersv1.PreviewChoicesRequest{
 		CampaignId: tb.campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_MINION, Sheet: basicSheet(),

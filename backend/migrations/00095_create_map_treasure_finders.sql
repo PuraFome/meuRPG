@@ -1,5 +1,5 @@
 -- +goose Up
--- map_treasure_finders records who found a treasure (MR-041, Etapa 9, D8): the
+-- map_treasure_finders records who found a treasure (MR-041, D8): the
 -- characters the master picked when it marked the treasure found. Everyone who
 -- sees the map reads them ("Encontrado por Brisa"), and the session summary's
 -- "Mais tesouro encontrado" splits the treasure's value among them (slice 9.11).

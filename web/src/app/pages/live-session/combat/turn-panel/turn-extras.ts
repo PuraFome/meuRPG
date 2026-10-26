@@ -51,7 +51,7 @@ import { MatIconModule } from '@angular/material/icon';
 
     .opp__hint {
       margin: 0;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 19px;
       color: var(--mr-ink-muted);
     }
@@ -98,7 +98,7 @@ export class TurnReaction {
       align-items: center;
       gap: 8px;
       margin: 0;
-      font-size: 16px;
+      font-size: var(--mr-font-16);
     }
 
     .conc__end {

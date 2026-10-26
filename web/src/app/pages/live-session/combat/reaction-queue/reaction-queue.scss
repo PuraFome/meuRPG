@@ -22,20 +22,20 @@
 .card__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   font-weight: 700;
   line-height: 27px;
   overflow-wrap: anywhere;
 }
 
 .card__sub {
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
 
 .card__text {
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
 }
 
@@ -49,14 +49,14 @@
   border-radius: var(--mr-radius-md, 10px);
   background: var(--mr-warning-surface);
   color: var(--mr-warning-ink);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
 
   .mat-icon {
     flex: none;
     width: 22px;
     height: 22px;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
   }
 }
 
@@ -109,16 +109,16 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  font-size: 18px;
+  font-size: var(--mr-font-18);
 }
 
 .row__desc {
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 }
 
 .row__status {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 18px;
   color: var(--mr-ink-muted);
 }
@@ -130,7 +130,7 @@
   padding: 0 8px;
   border: 1px solid var(--mr-control-line);
   border-radius: var(--mr-radius-pill);
-  font-size: 12px;
+  font-size: var(--mr-font-12);
   font-weight: 700;
 
   &--player {
@@ -150,7 +150,7 @@
 
 .slots__cap {
   padding: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
 }
 
@@ -160,7 +160,7 @@
   gap: 10px;
   min-height: 44px;
   cursor: pointer;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
 }
 
 .slots__dot {

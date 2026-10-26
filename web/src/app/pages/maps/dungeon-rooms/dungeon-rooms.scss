@@ -8,7 +8,7 @@
   align-items: center;
   gap: var(--mr-space-2);
   margin: 0 0 var(--mr-space-3);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -35,7 +35,7 @@
 .rooms__apart {
   margin: var(--mr-space-3) 0 var(--mr-space-2);
   font-family: var(--mr-font-sans);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   font-weight: 700;
 }
 
@@ -66,11 +66,11 @@
 .stairrow__text {
   display: flex;
   flex-direction: column;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 
   strong {
-    font-size: 16px;
+    font-size: var(--mr-font-16);
     color: var(--mr-ink);
   }
 }
@@ -106,17 +106,17 @@
   height: 28px;
   border: 2px solid var(--mr-ink);
   border-radius: 50%;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
 }
 
 .room__title strong {
-  font-size: 17px;
+  font-size: var(--mr-font-17);
 }
 
 .room__size {
   margin-inline-start: var(--mr-space-2);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -137,12 +137,12 @@
   border: 1px solid var(--mr-control-line);
   border-radius: var(--mr-radius-pill);
   background: var(--mr-surface);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
 
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -167,21 +167,21 @@
   .mat-icon {
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 
 .room__exits {
   margin: 0;
   padding-inline-start: 18px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
 .room__scenes,
 .rooms__done {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
 }
 
@@ -194,7 +194,7 @@
   align-items: flex-start;
   gap: 6px;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   color: var(--mr-danger-ink);
 
@@ -202,7 +202,7 @@
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 

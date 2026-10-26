@@ -215,6 +215,8 @@ func TestSpiritGuardiansHitsOncePerTurnWhoEnters(t *testing.T) {
 	if cur, _, _ := c.hp(t, "Ogro"); cur != 59 {
 		t.Fatalf("the ogre's hit points at the start of its turn = %d, want 59: it began outside", cur)
 	}
+	// The master drags it on its turn, so the walk spends its movement: a fast ogre, for the aura halves its speed.
+	c.execSQL(t, `UPDATE combatants SET speed_ft = 200 WHERE id = $1`, c.id(t, "Ogro"))
 	c.h.roller.queue(5, 4, 4, 4)
 	if _, err := c.move(t, c.master, "Ogro", 8, 7); err != nil {
 		t.Fatalf("MoveCombatant() error = %v", err)

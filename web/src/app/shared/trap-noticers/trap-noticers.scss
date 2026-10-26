@@ -5,14 +5,14 @@
 
 .tn__h {
   margin: 0 0 var(--mr-space-2);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
   line-height: 22px;
 }
 
 .tn__lead {
   margin: 0 0 var(--mr-space-3);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -26,7 +26,7 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 }
 
@@ -65,7 +65,7 @@
 }
 
 .tn__cap {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 17px;
   color: var(--mr-ink-muted);
 
@@ -75,12 +75,12 @@
 }
 
 .tn__num {
-  font-size: 17px;
+  font-size: var(--mr-font-17);
 }
 
 .tn__pen,
 .tn__sub {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 17px;
   color: var(--mr-ink-muted);
 }
@@ -99,7 +99,7 @@
     width: 16px;
     height: 16px;
     margin-top: 2px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 
   &--yes {

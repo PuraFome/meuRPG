@@ -11,14 +11,14 @@
     align-items: center;
     gap: var(--mr-space-3);
     margin: 0;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
     line-height: 28px;
 
     .mat-icon {
       flex: none;
       width: 22px;
       height: 22px;
-      font-size: 22px;
+      font-size: var(--mr-font-22);
       color: var(--mr-ink-muted);
     }
   }
@@ -131,7 +131,7 @@
   border-radius: var(--mr-radius-pill);
   background: var(--mr-warning-surface);
   color: var(--mr-warning-ink);
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
@@ -139,12 +139,12 @@
   .mat-icon {
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 
 .member__name {
-  font-size: 18px;
+  font-size: var(--mr-font-18);
   font-weight: 700;
   line-height: 22px;
   overflow-wrap: anywhere;
@@ -155,7 +155,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0 6px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -171,12 +171,12 @@
   .mat-icon {
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 
 .member__said {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -196,12 +196,12 @@
 .member__current {
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   line-height: 24px;
 }
 
 .member__max {
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   color: var(--mr-ink-muted);
 }
 
@@ -229,7 +229,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 4px var(--mr-space-3);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 }
 

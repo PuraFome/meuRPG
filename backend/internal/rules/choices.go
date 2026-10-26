@@ -219,36 +219,6 @@ func (x *deriver) checkExpertiseCount(allowed int) {
 	}
 }
 
-// checkProficiencyPicks warns of the tool and language picks the sheet has not made: the tools a trait lets the
-// player pick (the dwarf's), and the languages the race, its traits and the background let the player pick. Both
-// are free text on the sheet, so a pick is open when the list is shorter than the picks the character is owed.
-func (x *deriver) checkProficiencyPicks() {
-	if len(x.classes) == 0 {
-		return
-	}
-	tools, languages := 0, 0
-	if x.race != nil {
-		languages += x.race.LanguageChoices
-	}
-	for _, t := range x.ownedTraits() {
-		languages += t.LanguageChoices
-	}
-	if bg, ok := x.c.backgrounds[x.b.Background]; ok {
-		languages += bg.LanguageChoices
-	}
-	for _, a := range x.active {
-		if a.effect.Type == "choice" && a.effect.Choice == "tool" {
-			tools += a.effect.Count
-		}
-	}
-	if n := len(x.b.ToolProficiencies); n < tools {
-		x.openPick(OpenChoiceTools, tools-n, "full.tool_proficiencies", "ferramenta", "ferramentas")
-	}
-	if n := len(x.b.Languages); n < languages {
-		x.openPick(OpenChoiceLanguages, languages-n, "full.languages", "idioma", "idiomas")
-	}
-}
-
 // openPick records a pick the sheet has not made: an open choice, and an issue on the field the player fills.
 func (x *deriver) openPick(kind string, missing int, field, one, many string) {
 	x.d.OpenChoices = append(x.d.OpenChoices, OpenChoice{Kind: kind, Missing: missing})

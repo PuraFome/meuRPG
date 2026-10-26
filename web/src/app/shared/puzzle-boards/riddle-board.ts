@@ -60,7 +60,7 @@ export const TYPED_MAX = 600;
 
     .text {
       margin: 0;
-      font-size: 18px;
+      font-size: var(--mr-font-18);
       line-height: 26px;
     }
 
@@ -133,7 +133,7 @@ export const TYPED_MAX = 600;
       border: 1.5px dashed var(--mr-control-line);
       border-radius: var(--mr-radius-md);
       color: var(--mr-ink-muted);
-      font-size: 16px;
+      font-size: var(--mr-font-16);
       line-height: 22px;
     }
   `,

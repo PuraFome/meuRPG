@@ -42,7 +42,7 @@
 .cap {
   margin: 0;
   font-family: var(--mr-font-body);
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 400;
   line-height: 17px;
   color: var(--mr-ink-muted);
@@ -58,7 +58,7 @@
 .value__num {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 28px;
+  font-size: var(--mr-font-28);
   font-weight: 800;
   line-height: 34px;
 }
@@ -66,7 +66,7 @@
 .value__src,
 .value__rule {
   margin: 2px 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -87,12 +87,12 @@
 
 .text__src {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
 .text__body {
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 23px;
   overflow-wrap: anywhere;
 }

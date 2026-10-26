@@ -120,7 +120,7 @@ import { TokenMovePanel } from './token-move-panel';
     .title {
       margin: 0 0 var(--mr-space-1);
       font-family: var(--mr-font-display);
-      font-size: 21px;
+      font-size: var(--mr-font-21);
       font-weight: 700;
       line-height: 26px;
     }
@@ -152,7 +152,7 @@ import { TokenMovePanel } from './token-move-panel';
     }
 
     .hint {
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 19px;
     }
   `,

@@ -17,8 +17,7 @@ import (
 )
 
 // The combat highlights, "Destaques do combate" (MR-032, D8, RN-20; question
-// 64 with its default). The canonical fight (scratch timeline, numbers in
-// design/etapa8/README-A.md) is the main test; the rest of the rules are
+// 64 with its default). The canonical fight (a scratch timeline) is the main test; the rest of the rules are
 // worked on fabricated events, with no database, and on a smaller fight with an
 // undo, a heal and a critical hit.
 

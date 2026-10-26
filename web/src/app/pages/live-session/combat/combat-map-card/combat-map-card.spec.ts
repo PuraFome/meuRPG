@@ -45,6 +45,33 @@ function mount(inputs: Record<string, unknown> = {}) {
   return { fixture, el: fixture.nativeElement as HTMLElement };
 }
 
+describe('CombatMapCard: "Mover mesmo assim?" (an NPC dragged past its movement)', () => {
+  it('draws nothing unless the page asks', () => {
+    const { el } = mount({ forcedSwitch: true });
+    expect(el.querySelector('[data-over-ask]')).toBeNull();
+  });
+
+  it('says who lacks how much, in an alert, with the two answers', () => {
+    const { fixture, el } = mount({
+      forcedSwitch: true,
+      overAsk: { label: 'Espada voadora 2', missing: '4,5 m' },
+    });
+    const ask = el.querySelector('[data-over-ask]')!;
+    expect(ask.getAttribute('role')).toBe('alert');
+    expect(plain(ask.textContent)).toContain('Espada voadora 2 não tem movimento para tanto.');
+    expect(plain(ask.textContent)).toContain(
+      'Faltam 4,5 m do que resta. Mover mesmo assim, sem gastar o movimento?',
+    );
+    const answers: string[] = [];
+    fixture.componentInstance.overAskConfirm.subscribe(() => answers.push('confirm'));
+    fixture.componentInstance.overAskCancel.subscribe(() => answers.push('cancel'));
+    const buttons = [...el.querySelectorAll<HTMLButtonElement>('.card__ask-actions button')];
+    expect(buttons.map((b) => plain(b.textContent))).toEqual(['Mover mesmo assim', 'Cancelar']);
+    buttons.forEach((b) => b.click());
+    expect(answers).toEqual(['confirm', 'cancel']);
+  });
+});
+
 describe('CombatMapCard: "Movimento forçado"', () => {
   it('is not drawn unless the page offers it (the setup map, a player)', () => {
     const { el } = mount();

@@ -16,7 +16,7 @@
 
 .label {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 16px;
   font-weight: 700;
   color: var(--mr-ink-muted);
@@ -24,7 +24,7 @@
 
 .hint {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -63,7 +63,7 @@
   background: transparent;
   color: var(--mr-ink);
   font-family: var(--mr-font-display);
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   font-weight: 700;
   outline: none;
 }
@@ -75,7 +75,7 @@
 .hint-error {
   align-self: stretch;
   padding: 8px 12px;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   font-weight: 500;
 }
@@ -124,7 +124,7 @@
 }
 
 .paper__size {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   white-space: nowrap;
   color: var(--mr-ink-muted);
 }
@@ -146,7 +146,7 @@
   }
 
   .paper__size {
-    font-size: 12px;
+    font-size: var(--mr-font-12);
   }
 }
 
@@ -158,7 +158,7 @@
 
 .block__main {
   margin: 0;
-  font-size: 17px;
+  font-size: var(--mr-font-17);
 
   &--muted {
     color: var(--mr-ink-muted);
@@ -172,7 +172,7 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 17px;
+  font-size: var(--mr-font-17);
 
   li {
     display: flex;
@@ -184,7 +184,7 @@
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
@@ -209,12 +209,12 @@
 }
 
 .summary__big {
-  font-size: 24px;
+  font-size: var(--mr-font-24);
   line-height: 30px;
 }
 
 .summary__sheets {
-  font-size: 19px;
+  font-size: var(--mr-font-19);
   line-height: 26px;
 }
 

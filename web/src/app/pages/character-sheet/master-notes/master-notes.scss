@@ -4,7 +4,7 @@
 
 .notes__lead {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   color: var(--mr-ink-muted);
 }
 
@@ -25,6 +25,6 @@
 }
 
 .notes__saved {
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   color: var(--mr-success-ink);
 }

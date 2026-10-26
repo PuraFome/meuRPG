@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-// The calls of the effects that last in a combat (RN-22, Etapa 10); the messages
+// The calls of the effects that last in a combat (RN-22); the messages
 // they carry are in lasting_effects.proto.
 package meurpg.play.v1;
 

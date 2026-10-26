@@ -111,7 +111,7 @@ type DungeonServiceClient interface {
 	// Errors:
 	//   - `not_found`: also when the map was not made by CreateDungeonMap.
 	GetDungeonRooms(context.Context, *connect.Request[v1.GetDungeonRoomsRequest]) (*connect.Response[v1.GetDungeonRoomsResponse], error)
-	// PlaceDungeonScene puts a role-play scene point (MR-029, Etapa 8) named
+	// PlaceDungeonScene puts a role-play scene point (MR-029) named
 	// "Sala N" on the middle square of room N, the way CreateMapPoint creates one:
 	// hidden, with no hooks. It may be called again for the same room: each call
 	// makes a new point.
@@ -288,7 +288,7 @@ type DungeonServiceHandler interface {
 	// Errors:
 	//   - `not_found`: also when the map was not made by CreateDungeonMap.
 	GetDungeonRooms(context.Context, *connect.Request[v1.GetDungeonRoomsRequest]) (*connect.Response[v1.GetDungeonRoomsResponse], error)
-	// PlaceDungeonScene puts a role-play scene point (MR-029, Etapa 8) named
+	// PlaceDungeonScene puts a role-play scene point (MR-029) named
 	// "Sala N" on the middle square of room N, the way CreateMapPoint creates one:
 	// hidden, with no hooks. It may be called again for the same room: each call
 	// makes a new point.

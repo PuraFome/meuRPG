@@ -15,7 +15,7 @@
   .mat-icon {
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 
   &:hover {
@@ -25,7 +25,7 @@
 
 .lead {
   margin: 0 0 var(--mr-space-4);
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   color: var(--mr-ink-muted);
 }
 

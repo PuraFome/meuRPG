@@ -50,7 +50,7 @@
               "content_revision": 1,
               "known_issues": [
                 "missing|full.background_key|Escolha um antecedente.",
-                "missing|full.languages|Falta escolher 1 idioma.",
+                "missing|full.feature_choice_keys|Falta escolher 1 idioma: faça a escolha no passo “Escolhas”.",
                 "skill_count|full.skill_proficiency_keys|Faltam 2 perícias para escolher."
               ],
               "race_key": "race:human",
@@ -656,7 +656,7 @@
             "content_revision": 5,
             "known_issues": [
               "missing|full.background_key|Escolha um antecedente.",
-              "missing|full.languages|Falta escolher 1 idioma.",
+              "missing|full.feature_choice_keys|Falta escolher 1 idioma: faça a escolha no passo “Escolhas”.",
               "skill_count|full.skill_proficiency_keys|Faltam 2 perícias para escolher."
             ],
             "race_key": "race:human",
@@ -788,7 +788,7 @@
                 "content_revision": 1,
                 "known_issues": [
                   "missing|full.background_key|Escolha um antecedente.",
-                  "missing|full.languages|Falta escolher 1 idioma.",
+                  "missing|full.feature_choice_keys|Falta escolher 1 idioma: faça a escolha no passo “Escolhas”.",
                   "skill_count|full.skill_proficiency_keys|Faltam 2 perícias para escolher."
                 ],
                 "race_key": "race:human",
@@ -1102,7 +1102,7 @@
                 "content_revision": 1,
                 "known_issues": [
                   "missing|full.background_key|Escolha um antecedente.",
-                  "missing|full.languages|Falta escolher 1 idioma.",
+                  "missing|full.feature_choice_keys|Falta escolher 1 idioma: faça a escolha no passo “Escolhas”.",
                   "skill_count|full.skill_proficiency_keys|Faltam 2 perícias para escolher."
                 ],
                 "race_key": "race:human",
@@ -1555,7 +1555,7 @@
                 "content_revision": 1,
                 "known_issues": [
                   "missing|full.background_key|Escolha um antecedente.",
-                  "missing|full.languages|Falta escolher 1 idioma.",
+                  "missing|full.feature_choice_keys|Falta escolher 1 idioma: faça a escolha no passo “Escolhas”.",
                   "skill_count|full.skill_proficiency_keys|Faltam 2 perícias para escolher."
                 ],
                 "race_key": "race:human",
@@ -1694,7 +1694,7 @@
                 "content_revision": 1,
                 "known_issues": [
                   "missing|full.background_key|Escolha um antecedente.",
-                  "missing|full.languages|Falta escolher 1 idioma.",
+                  "missing|full.feature_choice_keys|Falta escolher 1 idioma: faça a escolha no passo “Escolhas”.",
                   "skill_count|full.skill_proficiency_keys|Faltam 2 perícias para escolher."
                 ],
                 "portrait_image_id": "\u003cid-17\u003e",
@@ -2124,7 +2124,7 @@
                 "content_revision": 1,
                 "known_issues": [
                   "missing|full.background_key|Escolha um antecedente.",
-                  "missing|full.languages|Falta escolher 1 idioma.",
+                  "missing|full.feature_choice_keys|Falta escolher 1 idioma: faça a escolha no passo “Escolhas”.",
                   "skill_count|full.skill_proficiency_keys|Faltam 2 perícias para escolher."
                 ],
                 "race_key": "race:human",

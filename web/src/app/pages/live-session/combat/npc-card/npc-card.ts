@@ -23,7 +23,9 @@ import {
   type GetTurnOptionsResponse,
   type TargetInReach,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { type Attack } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import { RollMode } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
+import { type Attack, type Creature } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import { CreaturesClient } from '../../../../core/creatures/creatures-client';
 import { CombatUndone } from '../../../../core/combat/combat-undone';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { newKey } from '../../../../core/connect/idempotency';
@@ -42,6 +44,7 @@ import {
   roundLabel,
 } from '../../../../core/combat/combat-view';
 import { joinDots } from '../../../../core/format/text';
+import { nearestInReach } from '../../../../core/combat/attack-flow';
 import { isCreature } from '../../../../core/combat/creature-names';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { Portrait } from '../../../../shared/portrait/portrait';
@@ -65,6 +68,7 @@ import {
   rollableAttacks,
   statsOf,
 } from './npc-card-view';
+import { attacksMade, routinesOf } from './multiattack';
 import { PendingDamages } from './pending-damages';
 
 /**
@@ -106,6 +110,7 @@ export class NpcCard {
   private readonly api = inject(CombatClient);
   private readonly animator = inject(RollAnimator);
   private readonly undone = inject(CombatUndone);
+  private readonly creatures = inject(CreaturesClient);
 
   readonly campaignId = input.required<string>();
   readonly encounter = input.required<Encounter>();
@@ -145,6 +150,12 @@ export class NpcCard {
   /** The d20 just rolled: shown with the armor class, until the turn changes. */
   protected readonly last = signal<LastRoll | null>(null);
   private key = newKey();
+  /** The creature's stat block, read once per kind (the client keeps it): its Multiattack routines. `null` until read, and when it cannot be. */
+  private readonly block = signal<Creature | null>(null);
+  /** The routine the master picked, when the creature has a choice between several. */
+  protected readonly routineIdx = signal(0);
+  /** "Encerrar os ataques": the master ended the routine before its last attack; the action counts as used. */
+  protected readonly ended = signal(false);
   /** The reaction spell's name, remembered from the prompt that waited (it is gone once answered). */
   protected readonly shieldName = signal('Escudo Arcano');
 
@@ -207,6 +218,34 @@ export class NpcCard {
     const id = this.last()?.pending?.id;
     return this.pendings().filter((p) => p.id !== id);
   });
+  /** The routines of the creature's Multiattack that this NPC can make; none for a creature without one (the card is then as it was). */
+  protected readonly routines = computed(() => routinesOf(this.block(), this.attacks()));
+  protected readonly routine = computed(
+    () => this.routines()[Math.min(this.routineIdx(), this.routines().length - 1)] ?? null,
+  );
+  /** The attacks of the Attack action made this turn, from the count the server keeps. */
+  protected readonly made = computed(() => {
+    const eco = this.options()?.options?.economy;
+    return attacksMade(eco?.attacksPerAction, eco?.attacksLeft);
+  });
+  /** The routine is done: its last attack was made, or the master ended it. */
+  protected readonly routineDone = computed(() => {
+    const r = this.routine();
+    return !!r && (this.ended() || this.made() >= r.total);
+  });
+  /** Some attacks of the routine were made and more may be: the action is under way, not used. */
+  protected readonly underWay = computed(
+    () => !!this.routine() && this.made() > 0 && !this.routineDone(),
+  );
+  /** The "Ação" chip: its word and whether it reads as spent. */
+  protected readonly actionChip = computed(() => {
+    const r = this.routine();
+    if (r && this.underWay()) {
+      return { used: false, word: `${this.made()} de ${r.total}` };
+    }
+    const used = r && this.routineDone() ? true : this.subject().actionUsed;
+    return { used, word: used ? 'Usada' : 'Disponível' };
+  });
   protected readonly stats = computed(() => statsOf(this.subject(), this.theatre()));
   protected readonly result = computed(() =>
     resultOf(
@@ -246,7 +285,36 @@ export class NpcCard {
       const n = this.undone.count();
       if (n !== undoneSeen) {
         undoneSeen = n;
-        untracked(() => this.last.set(null));
+        untracked(() => {
+          this.last.set(null);
+          this.ended.set(false);
+        });
+      }
+    });
+    // The creature's Multiattack: read its stat block once per kind.
+    effect(() => {
+      const key = this.subject().bestiaryCreatureKey ?? '';
+      const campaignId = this.campaignId();
+      untracked(() => {
+        this.block.set(null);
+        this.routineIdx.set(0);
+        if (!key) {
+          return;
+        }
+        this.creatures.statBlock(campaignId, key).then(
+          (block) => {
+            if (untracked(() => this.subject().bestiaryCreatureKey) === key) {
+              this.block.set(block);
+            }
+          },
+          () => undefined, // no routine to show: the card is as it was
+        );
+      });
+    });
+    // A new turn (no attack counted) starts the routine again.
+    effect(() => {
+      if (this.made() === 0) {
+        untracked(() => this.ended.set(false));
       }
     });
     effect(() => {
@@ -259,7 +327,7 @@ export class NpcCard {
     effect(() => {
       const ids = this.targets().map((t) => t.combatantId);
       if (!ids.includes(this.targetId())) {
-        this.targetId.set(ids[0] ?? '');
+        this.targetId.set(nearestInReach(this.targets()));
         this.mode.reset();
         this.key = newKey();
       }
@@ -270,6 +338,15 @@ export class NpcCard {
     this.attackKey.set(key);
     this.mode.reset();
     this.key = newKey();
+  }
+
+  protected pickRoutine(index: number): void {
+    this.routineIdx.set(index);
+  }
+
+  /** "Encerrar os ataques": the rest of the routine is not made; the action counts as used. */
+  protected endRoutine(): void {
+    this.ended.set(true);
   }
 
   protected pickTarget(id: string): void {

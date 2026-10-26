@@ -64,7 +64,7 @@ let nextId = 0;
     .reason {
       margin: 0;
       color: var(--mr-ink-muted);
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 19px;
     }
   `,

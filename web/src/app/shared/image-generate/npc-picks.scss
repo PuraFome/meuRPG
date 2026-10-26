@@ -11,14 +11,14 @@
 
 .head__title {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
   line-height: 22px;
 }
 
 .head__count {
   color: var(--mr-ink-muted);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
 }
 
 .chips {
@@ -41,7 +41,7 @@
   background: var(--mr-surface);
   color: var(--mr-ink);
   font: inherit;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   cursor: pointer;
 
   &--on {
@@ -72,7 +72,7 @@
   width: 18px;
   height: 18px;
   margin-left: 6px;
-  font-size: 18px;
+  font-size: var(--mr-font-18);
 }
 
 .chip__face {
@@ -86,7 +86,7 @@
   border-radius: 50%;
   background: var(--mr-ground);
   color: var(--mr-ink-muted);
-  font-size: 12px;
+  font-size: var(--mr-font-12);
   font-weight: 700;
 
   img {
@@ -99,6 +99,6 @@
 .note {
   margin: var(--mr-space-2) 0 0;
   color: var(--mr-ink-muted);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 }

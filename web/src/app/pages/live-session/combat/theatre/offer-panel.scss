@@ -16,14 +16,14 @@
 .offer__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   font-weight: 700;
   line-height: 28px;
 }
 
 .offer__text {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
@@ -31,7 +31,7 @@
 .offer__sub {
   margin: 4px 0 0;
   font-weight: 700;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
 }
 
 .offer__error {
@@ -39,14 +39,14 @@
   align-items: flex-start;
   gap: 8px;
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   color: var(--mr-danger-ink);
 
   mat-icon {
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
@@ -102,13 +102,13 @@
   flex: 1;
   min-width: 0;
   font-family: var(--mr-font-display);
-  font-size: 18px;
+  font-size: var(--mr-font-18);
   font-weight: 700;
   overflow-wrap: anywhere;
 }
 
 .row__sub {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
   text-align: right;
 }

@@ -62,12 +62,12 @@
 }
 
 .atk__name {
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   line-height: 22px;
 }
 
 .atk__detail {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }

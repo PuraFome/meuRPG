@@ -12,7 +12,7 @@
 
 .pk__eyebrow {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 16px;
   color: var(--mr-ink-muted);
 }
@@ -20,7 +20,7 @@
 .pk__title {
   margin: -12px 0 0;
   font-family: var(--mr-font-display);
-  font-size: 24px;
+  font-size: var(--mr-font-24);
   font-weight: 700;
   line-height: 30px;
   overflow-wrap: anywhere;
@@ -28,7 +28,7 @@
 
 .pk__sub {
   margin: -12px 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -39,7 +39,7 @@
 }
 
 .pk__h {
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   font-weight: 700;
   line-height: 22px;
 }
@@ -47,7 +47,7 @@
 .pk__hint,
 .pk__error {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -138,11 +138,11 @@
   line-height: 20px;
 
   b {
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 
   span {
-    font-size: 14px;
+    font-size: var(--mr-font-14);
     color: var(--mr-ink-muted);
   }
 }
@@ -161,7 +161,7 @@
 }
 
 .pk__p {
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
 }
 
@@ -189,7 +189,7 @@
 
 .pk__askt {
   margin: 0;
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   line-height: 22px;
 }
 

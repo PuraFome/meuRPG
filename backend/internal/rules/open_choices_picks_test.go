@@ -52,12 +52,12 @@ func TestOpenExpertiseToolAndLanguagePicksWarn(t *testing.T) {
 		b := standard("class:fighter", 1)
 		b.Race, b.Subrace = "race:dwarf", "subrace:hill-dwarf"
 		d := Derive(b, c)
-		if got := openOf(d, OpenChoiceTools); got != 1 || !hasIssueAt(d, IssueMissing, "full.tool_proficiencies") {
+		if got := openOf(d, OpenChoiceTools); got != 1 || !hasIssueAt(d, IssueMissing, choiceKeysField) {
 			t.Fatalf("open tools = %d, issues %v, want 1 and an issue", got, d.Issues)
 		}
 		b.ToolProficiencies = []string{"Ferramentas de ferreiro"}
 		d = Derive(b, c)
-		if got := openOf(d, OpenChoiceTools); got != 0 || hasIssueAt(d, IssueMissing, "full.tool_proficiencies") {
+		if got := openOf(d, OpenChoiceTools); got != 0 || hasIssueAt(d, IssueMissing, choiceKeysField) {
 			t.Errorf("one tool listed: open = %d, issues %v, want none", got, d.Issues)
 		}
 	})
@@ -67,7 +67,7 @@ func TestOpenExpertiseToolAndLanguagePicksWarn(t *testing.T) {
 		b := standard("class:fighter", 1) // a human (one language) with the acolyte (two)
 		b.Languages = nil
 		d := Derive(b, c)
-		if got := openOf(d, OpenChoiceLanguages); got != 3 || !hasIssueAt(d, IssueMissing, "full.languages") {
+		if got := openOf(d, OpenChoiceLanguages); got != 3 || !hasIssueAt(d, IssueMissing, choiceKeysField) {
 			t.Fatalf("open languages = %d, issues %v, want 3 and an issue", got, d.Issues)
 		}
 		b.Languages = []string{"Anão", "Élfico"}
@@ -76,7 +76,7 @@ func TestOpenExpertiseToolAndLanguagePicksWarn(t *testing.T) {
 		}
 		b.Languages = []string{"Anão", "Élfico", "Gnômico"}
 		d = Derive(b, c)
-		if got := openOf(d, OpenChoiceLanguages); got != 0 || hasIssueAt(d, IssueMissing, "full.languages") {
+		if got := openOf(d, OpenChoiceLanguages); got != 0 || hasIssueAt(d, IssueMissing, choiceKeysField) {
 			t.Errorf("three listed: open = %d, issues %v, want none", got, d.Issues)
 		}
 	})

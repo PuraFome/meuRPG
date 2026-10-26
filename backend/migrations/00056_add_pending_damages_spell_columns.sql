@@ -1,5 +1,5 @@
 -- +goose Up
--- A pending damage can come from a spell (MR-014, Etapa 6). cast_id groups the
+-- A pending damage can come from a spell (MR-014). cast_id groups the
 -- pending damages of one cast: an area spell's damage is one roll for the whole
 -- cast, so rolling one of them settles the others. healing says it is a heal,
 -- not a damage (the table's amount is what the target regains). half says the

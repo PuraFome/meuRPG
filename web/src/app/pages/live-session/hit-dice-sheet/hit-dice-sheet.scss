@@ -11,7 +11,7 @@
 .which__legend {
   margin: 0 0 var(--mr-space-2);
   padding: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   font-weight: 700;
   line-height: 20px;
 }
@@ -68,7 +68,7 @@
 }
 
 .opt__sub {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -78,7 +78,7 @@
   align-items: flex-start;
   gap: 6px;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
@@ -86,7 +86,7 @@
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -104,7 +104,7 @@
   display: flex;
   align-items: center;
   gap: var(--mr-space-2);
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   line-height: 23px;
   font-weight: 700;
 
@@ -112,7 +112,7 @@
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
     color: var(--mr-success-ink);
   }
 
@@ -135,7 +135,7 @@
 
 .arcane__title {
   margin: 0 0 var(--mr-space-2);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   font-weight: 700;
   line-height: 20px;
 }
@@ -155,7 +155,7 @@
 
 .arcane__sum {
   margin: var(--mr-space-2) 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 }
 
@@ -179,7 +179,7 @@
 
 .step__count {
   min-width: 24px;
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   font-weight: 700;
   text-align: center;
 }

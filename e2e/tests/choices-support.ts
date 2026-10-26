@@ -49,7 +49,9 @@ export async function tableWithOpenChoices(masterPage: Page, playerPage: Page, n
   expect(made.ok(), await made.text()).toBeTruthy();
   const character = (await made.json()).character as { id: string; name: string; revision: number; sheet: { full: Record<string, unknown> } };
 
-  const sheet = { full: { ...character.sheet.full, featureChoiceKeys: [] } };
+  // The race's language is a pick too: only the two +1s are taken out.
+  const kept = ((character.sheet.full.featureChoiceKeys as string[] | undefined) ?? []).filter((k) => !k.startsWith('race:half-elf#abilities='));
+  const sheet = { full: { ...character.sheet.full, featureChoiceKeys: kept } };
   const opened = await callRPC(masterPage, 'meurpg.characters.v1.CharacterService/UpdateCharacter', {
     campaignId,
     characterId: character.id,

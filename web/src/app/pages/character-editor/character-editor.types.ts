@@ -199,7 +199,7 @@ export interface BasicCharacterFormValue {
   initiativeBonus: number;
   attacks: BasicAttackFormValue[];
   /** `BasicSheet.damage` and `attack_bonus`, the deprecated fields of a
-   * sheet saved before Etapa 6 whose damage could not become an attack. The
+   * sheet saved before the attacks list existed whose damage could not become an attack. The
    * form shows the text as a note and sends both back unchanged. */
   legacyDamage: string;
   legacyAttackBonus: number;

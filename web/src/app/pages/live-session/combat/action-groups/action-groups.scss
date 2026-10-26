@@ -109,14 +109,14 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 24px;
+  font-size: var(--mr-font-24);
   line-height: 28px;
 }
 
 // Rows and sub-headings are divided by a 1px rule (both artboards).
 .group__sub {
   margin: 10px 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -161,7 +161,7 @@ app-action-row + .group__sub,
   align-items: center;
   gap: 6px;
   margin: 8px 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 500;
   line-height: 19px;
 
@@ -169,7 +169,7 @@ app-action-row + .group__sub,
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -188,7 +188,7 @@ app-action-row + .group__sub,
   margin: 0;
   padding: 10px 0 2px;
   list-style: none;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 20px;
 
   @media (min-width: 1024px) {
@@ -234,7 +234,7 @@ app-fold {
   margin: 0;
   font-weight: 400;
   color: var(--mr-ink-muted);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 }
 
@@ -253,7 +253,7 @@ app-fold {
 
 .frenzy__text {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 22px;
 }
 

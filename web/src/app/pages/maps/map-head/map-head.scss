@@ -17,7 +17,7 @@
   .mat-icon {
     width: 22px;
     height: 22px;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
   }
 }
 
@@ -58,7 +58,7 @@
   align-items: center;
   gap: var(--mr-space-2);
   max-width: 300px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   text-align: start;
 
@@ -66,7 +66,7 @@
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -114,14 +114,14 @@
   display: flex;
   align-items: center;
   gap: var(--mr-space-2);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
 
   .mat-icon {
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -209,14 +209,14 @@
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
     // On the first 22px line: (22 - 20) / 2.
     margin-top: 1px;
   }
 
   p {
     margin: 0;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
     line-height: 22px;
   }
 
@@ -253,13 +253,13 @@
   display: inline-flex;
   align-items: center;
   gap: var(--mr-space-2);
-  font-size: 17px;
+  font-size: var(--mr-font-17);
 
   > .mat-icon {
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 
   &::before {
@@ -330,14 +330,14 @@
   align-items: center;
   gap: var(--mr-space-2);
   margin: var(--mr-space-2) 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 
   .mat-icon {
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -353,6 +353,6 @@
 
 .ask__now {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }

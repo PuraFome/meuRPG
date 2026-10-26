@@ -42,13 +42,13 @@ input[type='checkbox'] {
   border-radius: 50%;
   background: var(--mr-ink);
   color: var(--mr-surface);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
 
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
     color: var(--mr-ink-muted);
   }
 
@@ -71,7 +71,7 @@ input[type='checkbox'] {
 }
 
 .person__sub {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -81,14 +81,14 @@ input[type='checkbox'] {
   align-items: center;
   gap: 6px;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 
   .mat-icon {
     flex: none;
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 
@@ -115,7 +115,7 @@ input[type='checkbox'] {
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 
   &:focus-visible {

@@ -26,7 +26,7 @@ import (
 
 // The fog of war on the server (MR-036, RN-10): what each player
 // receives on a map with the fog on. The map is "A caverna do Vale Seco" of the
-// design (design/etapa9/cave.py and cave-data.md): 24 x 16 squares, walls, the
+// design: 24 x 16 squares, walls, the
 // guard room's torch, four characters and three goblins. Every player's response
 // is read as the app's JSON (protojson), never as a Go struct, so a field that
 // leaks shows up whatever its name.

@@ -18,12 +18,12 @@
 .status__title {
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 24px;
+  font-size: var(--mr-font-24);
   line-height: 28px;
 }
 
 .status__text {
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
@@ -35,11 +35,11 @@
 .note {
   display: block;
   margin-top: 2px;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
 }
 
 // A text action that starts a line pulls its padding back, so its words line up
-// with the text above (etapa7-ui-rules).
+// with the text above.
 .disengage {
   align-self: flex-start;
   margin-inline-start: -12px;

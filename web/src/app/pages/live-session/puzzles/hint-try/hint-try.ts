@@ -139,7 +139,7 @@ import { CheckMode } from '../../scene/check-mode/check-mode';
 
     .help {
       margin: 0;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 20px;
       color: var(--mr-ink-muted);
     }

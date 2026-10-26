@@ -81,7 +81,7 @@ let nextWhy = 0;
       justify-content: flex-end;
       gap: 4px;
       margin: 6px 0 0;
-      font-size: 13px;
+      font-size: var(--mr-font-13);
       line-height: 17px;
       color: var(--mr-ink-muted);
 
@@ -89,7 +89,7 @@ let nextWhy = 0;
         flex: none;
         width: 14px;
         height: 14px;
-        font-size: 14px;
+        font-size: var(--mr-font-14);
       }
     }
 
@@ -116,13 +116,13 @@ let nextWhy = 0;
       margin: 0;
       font-family: var(--mr-font-display);
       font-weight: 700;
-      font-size: 20px;
+      font-size: var(--mr-font-20);
       line-height: 25px;
     }
 
     .ask__text {
       margin: 0;
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       line-height: 20px;
     }
 

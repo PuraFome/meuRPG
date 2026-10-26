@@ -178,7 +178,7 @@ func choiceToProto(ch rules.Choice) *charactersv1.Choice {
 	out := &charactersv1.Choice{
 		Key: ch.Key, FeatureKey: ch.FeatureKey, Kind: choiceKindToProto[ch.Kind],
 		TitlePt: ch.TitlePT, PartPt: ch.PartPT, LabelPt: ch.LabelPT, HintPt: ch.HintPT,
-		Level: i32(ch.Level), Picks: i32(ch.Picks), Picked: ch.Picked, Texts: ch.Texts, ResultPt: ch.ResultPT,
+		Level: i32(ch.Level), Picks: i32(ch.Picks), Picked: ch.Picked, Texts: ch.Texts, ResultPt: ch.ResultPT, Advisory: ch.Advisory,
 		Unmet: ch.Unmet, Overflow: ch.Overflow, Missing: i32(ch.Missing()),
 	}
 	for _, o := range ch.Options {

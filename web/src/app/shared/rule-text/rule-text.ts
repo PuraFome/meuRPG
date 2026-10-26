@@ -26,7 +26,7 @@ import { SrdText } from '../srd-text/srd-text';
   styles: `
     .note {
       display: block;
-      font-size: 13px;
+      font-size: var(--mr-font-13);
       color: var(--mr-ink-muted);
     }
   `,

@@ -33,14 +33,14 @@
 .head__name {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   font-weight: 800;
   line-height: 26px;
   overflow-wrap: anywhere;
 }
 
 .head__sub {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -75,7 +75,7 @@
   padding: 8px 12px;
   border: 1.5px solid var(--mr-ink);
   border-radius: var(--mr-radius-md);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 }
 
@@ -86,26 +86,26 @@
 }
 
 .tile__name {
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   font-weight: 700;
 }
 
 .tile__num {
   font-family: var(--mr-font-display);
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   font-weight: 800;
   line-height: 26px;
 }
 
 .tile__num small {
   font-family: var(--mr-font-sans);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 500;
   color: var(--mr-ink-muted);
 }
 
 .tile__sub {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 16px;
   color: var(--mr-ink-muted);
 }
@@ -116,7 +116,7 @@
   align-items: flex-start;
   gap: 6px;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 
   .mat-icon {
@@ -124,7 +124,7 @@
     width: 18px;
     height: 18px;
     margin-top: 1px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 

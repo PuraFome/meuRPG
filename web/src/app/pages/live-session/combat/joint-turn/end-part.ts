@@ -95,7 +95,7 @@ import { MatIconModule } from '@angular/material/icon';
 
     .note {
       margin: 0 0 8px;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 19px;
       color: var(--mr-ink-muted);
     }
@@ -104,13 +104,13 @@ import { MatIconModule } from '@angular/material/icon';
       margin: 0;
       font-family: var(--mr-font-display);
       font-weight: 700;
-      font-size: 22px;
+      font-size: var(--mr-font-22);
       line-height: 27px;
     }
 
     .ask__text {
       margin: 0;
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       line-height: 20px;
       color: var(--mr-ink-muted);
     }
