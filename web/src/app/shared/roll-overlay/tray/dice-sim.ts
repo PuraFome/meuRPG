@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-magic-numbers -- the geometry of the throw and the tray, tuned by feel */
 import { between, clamp, mulberry32 } from './dice-math';
+import { restRadius } from './dice-polyhedra';
 import { KIND_PHYS, PHYS, advance, aim, layDown, rollingNow, type World } from './dice-physics';
 import type { Body, Box, DieSpec, DieState, DieStyle, Kind, Sim, SimOptions } from './dice-types';
 
@@ -159,7 +160,8 @@ function newState(i: number, kind: Kind, R: number): DieState {
   const k = KIND_PHYS[kind];
   return {
     i,
-    rw: R * k.wall,
+    // the walls stop the die's whole silhouette, not only its collision circle: it never rests over the rim
+    rw: R * Math.max(k.wall, restRadius(kind)),
     rh: R * k.hit,
     stepLen: R * k.step,
     keep: k.keep,

@@ -39,6 +39,34 @@ describe('NextTurn', () => {
     expect(go.textContent?.trim()).toBe('Passar o turno');
   });
 
+  it('stays in its place, off, with the reason, in a joint turn; pressing it passes nothing', () => {
+    const { fixture, el, sent } = setup(null);
+    fixture.componentRef.setInput('joint', true);
+    fixture.detectChanges();
+    const button = el.querySelector<HTMLButtonElement>('.next')!;
+    expect(button.textContent).toContain('Próximo turno');
+    expect(button.classList.contains('next--off')).toBe(true);
+    expect(button.getAttribute('aria-disabled')).toBe('true');
+    expect(el.querySelector('.why')?.textContent).toContain(
+      'Cada um encerra a parte no painel Turno',
+    );
+    button.click();
+    expect(sent).toEqual([]);
+  });
+
+  it('asks the idle character without a pronoun, whoever the character is', () => {
+    for (const name of ['Toren', 'Brisa', 'Seraphin']) {
+      const { fixture, el } = setup(null);
+      fixture.componentRef.setInput('idle', name);
+      fixture.detectChanges();
+      el.querySelector<HTMLButtonElement>('.next')!.click();
+      fixture.detectChanges();
+      expect(el.querySelector('#idle-title')?.textContent?.trim()).toBe(
+        `Passar a vez de ${name}, que ainda não agiu?`,
+      );
+    }
+  });
+
   describe('a player character who has not acted', () => {
     function idle() {
       const opened = setup(null);
@@ -53,7 +81,7 @@ describe('NextTurn', () => {
       const { fixture, el, sent } = idle();
       expect(sent).toEqual([]);
       expect(el.querySelector('[role="alertdialog"]')?.textContent).toContain(
-        'Passar a vez de Toren? Ele ainda não agiu.',
+        'Passar a vez de Toren, que ainda não agiu?',
       );
       const [cancel, pass] = Array.from(
         el.querySelectorAll<HTMLButtonElement>('.ask__buttons button'),
