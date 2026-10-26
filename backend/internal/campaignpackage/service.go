@@ -3,7 +3,6 @@ package campaignpackage
 import (
 	"context"
 	"errors"
-	"github.com/PuraFome/meuRPG/backend/internal/platform/tasks"
 	"log/slog"
 	"net/http"
 	"slices"
@@ -22,6 +21,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/nostore"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/ratelimit"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/rpcerr"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/tasks"
 )
 
 // The routes. Both live in the namespaces the server reserves for the API
@@ -108,6 +108,10 @@ type Service struct {
 	partsLim *ratelimit.Limiter
 	heavyN   *ratelimit.Notifier
 	partsN   *ratelimit.Notifier
+	tasks    tasks.Runner
+	// ownTasks is the in-process runner New made when Config.Tasks was nil; the service waits
+	// for it and cancels it. A runner of the caller is the caller's to start, wait and cancel.
+	ownTasks *tasks.InProcess
 
 	// exportSlot lets one export run at a time on this instance: an export
 	// holds a snapshot and a zip in flight.
@@ -138,6 +142,13 @@ func New(cfg Config) (*Service, error) {
 	if s.now == nil {
 		s.now = time.Now
 	}
+	s.tasks = cfg.Tasks
+	if s.tasks == nil {
+		s.ownTasks = tasks.NewInProcess(s.logger)
+		s.tasks = s.ownTasks
+	}
+	s.tasks.Register(exportKind, s.handleExport, tasks.Options{Deadline: exportDeadline})
+	s.tasks.Every(sweepKind, sweepEvery, s.handleSweep, tasks.Options{Deadline: sweepDeadline})
 	s.heavyN = ratelimit.NewNotifier(s.logger, "campaign package calls")
 	s.partsN = ratelimit.NewNotifier(s.logger, "campaign package parts")
 	return s, nil
@@ -183,6 +194,9 @@ func (s *Service) withSession(sessions Sessions, next http.Handler) http.Handler
 
 // Wait blocks until the exports running in this process end, or ctx ends.
 func (s *Service) Wait(ctx context.Context) {
+	if s.ownTasks != nil {
+		s.ownTasks.Wait(ctx)
+	}
 	done := make(chan struct{})
 	go func() { s.wg.Wait(); close(done) }()
 	select {
@@ -194,6 +208,9 @@ func (s *Service) Wait(ctx context.Context) {
 // Cancel stops every export running in this process (the server is going
 // down); they are marked interrupted by the next read.
 func (s *Service) Cancel() {
+	if s.ownTasks != nil {
+		s.ownTasks.Cancel()
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, cancel := range s.running {
