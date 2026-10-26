@@ -78,6 +78,25 @@ They put the middle of the capitals at the middle of the line without changing i
 The base is `body`: Alegreya Sans, 16 px, line height 1.4, `font-variant-numeric: lining-nums tabular-nums` (bonus columns line up).
 Headings use `text-wrap: balance`.
 
+### Type scale
+
+Every font size the screens use is a token on `html`, named by its pixels: `--mr-font-14` is 14 px.
+Components write `font-size: var(--mr-font-14)` and never a literal pixel size; a size that is not in the table is a one-off of its component and stays a literal.
+
+| Token | Size | Where it is used |
+| --- | --- | --- |
+| `--mr-font-8`, `-11` | 8, 11 px | The smallest marks and captions |
+| `--mr-font-12`, `-13` | 12, 13 px | Captions and labels (`.mr-label` is 13), hints under a field |
+| `--mr-font-14`, `-15` | 14, 15 px | Supporting text (`.mr-tag` and `.mr-list__sub` are 14) |
+| `--mr-font-16` | 16 px | Body, buttons, `.mr-notice` |
+| `--mr-font-17`, `-18`, `-19` | 17, 18, 19 px | Lead text (`.mr-page-lead` is 17) and names (`.mr-list__name` is 18) |
+| `--mr-font-20`, `-21`, `-22` | 20, 21, 22 px | Panel and card titles (`.mr-panel__title` is 21) |
+| `--mr-font-24`, `-26`, `-28` | 24, 26, 28 px | Section headings and figures |
+| `--mr-font-30`, `-32`, `-34`, `-36`, `-38` | 30 to 38 px | Page titles (`.mr-page-title` is 34, 38 from 768 px) and large figures |
+| `--mr-font-40`, `-48` | 40, 48 px | The largest figures |
+
+Not tokens, because no scale explains them: sizes used once or twice (9, 10, 23, 25, 44, 46, 52, 56 and 92 px, and 12.5 px), the `rem` and `pt` sizes (they follow the reader's own size or the printer), and the sizes computed from a component's own measure (`calc()`, `clamp()`, `min()` and container units).
+
 Sizes the shared classes fix (the rest belong to their component):
 
 | Where | Size / line height / weight |

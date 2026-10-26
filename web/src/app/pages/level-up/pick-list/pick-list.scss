@@ -21,14 +21,14 @@
   align-items: center;
   gap: 4px;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   color: var(--mr-ink-muted);
 
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 
   &--missing {
@@ -38,7 +38,7 @@
 
 .list__lead {
   margin: 0 0 var(--mr-space-2);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
@@ -52,7 +52,7 @@
   margin: var(--mr-space-3) 0 0;
   padding-top: var(--mr-space-3);
   border-top: 1px solid var(--mr-rule);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -79,7 +79,7 @@
     background: var(--mr-surface);
     color: var(--mr-ink);
     font: inherit;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
 
     &:focus,
     &:focus-visible {
@@ -91,7 +91,7 @@
 }
 
 .list__search-label {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
 }
 
@@ -156,7 +156,7 @@
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 
   &--radio {
@@ -192,14 +192,14 @@
   flex-wrap: wrap;
   align-items: center;
   column-gap: var(--mr-space-2);
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   font-weight: 700;
   line-height: 22px;
   overflow-wrap: anywhere;
 }
 
 .row__sub {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 18px;
   color: var(--mr-ink-muted);
 }

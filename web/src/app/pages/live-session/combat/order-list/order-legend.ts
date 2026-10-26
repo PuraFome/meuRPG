@@ -25,7 +25,7 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
       margin: 12px 0 0;
       padding: 0;
       list-style: none;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       color: var(--mr-ink-muted);
     }
 

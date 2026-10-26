@@ -44,7 +44,7 @@ import { RelayEvents } from '../../../shared/relay-events/relay-events';
     .ask__title {
       margin: 0;
       font-family: var(--mr-font-display);
-      font-size: 22px;
+      font-size: var(--mr-font-22);
       line-height: 28px;
       font-weight: 700;
 

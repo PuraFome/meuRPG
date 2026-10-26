@@ -73,13 +73,13 @@
   padding-top: var(--mr-space-3);
   border-top: 1px solid var(--mr-rule);
   font-family: var(--mr-font-display);
-  font-size: 19px;
+  font-size: var(--mr-font-19);
   font-weight: 700;
 }
 
 .hint {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
@@ -99,7 +99,7 @@
 
 .group__label {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   font-weight: 700;
 }
 
@@ -142,7 +142,7 @@
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -168,13 +168,13 @@
   align-items: center;
   gap: var(--mr-space-3);
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   color: var(--mr-ink-muted);
 
   .chip {
     min-height: 32px;
     padding: 0 12px;
-    font-size: 15px;
+    font-size: var(--mr-font-15);
     border-style: dashed;
     color: var(--mr-ink-muted);
     cursor: default;
@@ -210,7 +210,7 @@
   &__name {
     flex: 1 1 auto;
     font-family: var(--mr-font-display);
-    font-size: 19px;
+    font-size: var(--mr-font-19);
     font-weight: 700;
   }
 }

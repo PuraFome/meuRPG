@@ -9,7 +9,7 @@
 
 .who__title {
   margin: 0 0 var(--mr-space-1);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   font-weight: 700;
   color: var(--mr-ink-muted);
@@ -26,7 +26,7 @@
 // A narrow phone: a smaller title (three lines are too many) and no helper note.
 @media (max-width: 360px) {
   :host ::ng-deep app-sheet-frame .frame__title {
-    font-size: 21px;
+    font-size: var(--mr-font-21);
     line-height: 25px;
   }
 }
@@ -55,13 +55,13 @@
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
 .effect__note {
   margin: 2px 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }

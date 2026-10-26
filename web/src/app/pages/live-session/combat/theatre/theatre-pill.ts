@@ -24,7 +24,7 @@ import { THEATRE_PILL } from '../../../../core/combat/theatre';
       border: 1px solid var(--mr-control-line);
       border-radius: var(--mr-radius-pill);
       color: var(--mr-ink-muted);
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       font-weight: 700;
       line-height: 18px;
       white-space: nowrap;
@@ -34,7 +34,7 @@ import { THEATRE_PILL } from '../../../../core/combat/theatre';
       flex: none;
       width: 18px;
       height: 18px;
-      font-size: 18px;
+      font-size: var(--mr-font-18);
     }
   `,
 })

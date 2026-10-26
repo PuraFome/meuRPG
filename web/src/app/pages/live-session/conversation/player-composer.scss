@@ -52,7 +52,7 @@
   .mat-icon {
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 
   @media (min-width: 768px) {
@@ -108,7 +108,7 @@
   .mat-icon {
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 
   &:focus-visible {

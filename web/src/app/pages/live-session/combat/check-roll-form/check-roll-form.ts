@@ -80,7 +80,7 @@ const PAIR_FIELDS: readonly RollField[] = [
       margin: 0 0 var(--mr-space-3);
       padding: 0;
       list-style: none;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 20px;
       color: var(--mr-ink-muted);
     }

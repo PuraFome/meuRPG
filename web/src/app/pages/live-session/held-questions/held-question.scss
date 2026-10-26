@@ -26,19 +26,19 @@
   flex: none;
   width: 18px;
   height: 18px;
-  font-size: 18px;
+  font-size: var(--mr-font-18);
 }
 
 .q__title {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
   font-weight: 700;
 }
 
 .q__status {
   margin-left: auto;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 500;
 }
 
@@ -64,12 +64,12 @@
   border: 2px solid var(--mr-ink);
   border-radius: var(--mr-radius-sm);
   font-family: var(--mr-font-display);
-  font-size: 24px;
+  font-size: var(--mr-font-24);
   font-weight: 800;
 }
 
 .q__line {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 

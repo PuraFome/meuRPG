@@ -5,7 +5,7 @@
 .toc__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 21px;
+  font-size: var(--mr-font-21);
   line-height: 26px;
   font-weight: 700;
   color: var(--mr-ink);
@@ -27,7 +27,7 @@
   background: none;
   color: var(--mr-ink-muted);
   font: inherit;
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   text-align: left;
   cursor: pointer;
 

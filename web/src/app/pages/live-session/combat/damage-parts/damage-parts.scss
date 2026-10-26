@@ -16,7 +16,7 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   line-height: 24px;
 }
 
@@ -52,13 +52,13 @@
   padding: 0 8px;
   border: 1px solid var(--mr-control-line);
   border-radius: var(--mr-radius-pill);
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 20px;
 }
 
 .line__note {
   flex-basis: 100%;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -104,14 +104,14 @@
   align-items: center;
   gap: 4px;
   padding-left: 36px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
   .mat-icon {
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 

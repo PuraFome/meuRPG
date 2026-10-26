@@ -5,7 +5,7 @@
 }
 
 .cap {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 500;
   color: var(--mr-ink-muted);
 }
@@ -61,13 +61,13 @@
 .target__name,
 .dart__name {
   font-family: var(--mr-font-display);
-  font-size: 19px;
+  font-size: var(--mr-font-19);
   line-height: 22px;
 }
 
 .target__sub,
 .dart__sub {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 18px;
   color: var(--mr-ink-muted);
 }
@@ -77,7 +77,7 @@
   align-items: center;
   gap: 6px;
   margin-top: 2px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 500;
   line-height: 19px;
   color: var(--mr-ink);
@@ -86,7 +86,7 @@
     flex: none;
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 
@@ -104,7 +104,7 @@
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
     color: var(--mr-accent-text);
   }
 }
@@ -161,7 +161,7 @@
   border: 2px solid var(--mr-ink);
   border-radius: var(--mr-radius-md);
   font-family: var(--mr-font-display);
-  font-size: 24px;
+  font-size: var(--mr-font-24);
   font-weight: 800;
   line-height: 26px;
   text-align: center;
@@ -169,7 +169,7 @@
 
 .note {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -189,7 +189,7 @@
   align-items: center;
   gap: 6px;
   margin-top: 2px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }

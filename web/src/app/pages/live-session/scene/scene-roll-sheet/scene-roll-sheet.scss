@@ -12,7 +12,7 @@
 .card__bonus {
   flex: none;
   font-family: var(--mr-font-display);
-  font-size: 38px;
+  font-size: var(--mr-font-38);
   font-weight: 800;
   line-height: 42px;
 }
@@ -24,18 +24,18 @@
 }
 
 .card__formula {
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   line-height: 22px;
 }
 
 .card__check {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
 .how {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 }
 
@@ -44,7 +44,7 @@
   align-items: flex-start;
   gap: 6px;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
@@ -52,7 +52,7 @@
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -82,12 +82,12 @@
 }
 
 .res__formula {
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   line-height: 22px;
 }
 
 .res__cap {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 

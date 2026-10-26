@@ -12,7 +12,7 @@
 .count {
   margin: var(--mr-space-2) 0 0;
   color: var(--mr-ink-muted);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 }
 
@@ -22,7 +22,7 @@
 
 .label {
   margin: 0 0 var(--mr-space-2);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
   line-height: 22px;
 }
@@ -44,7 +44,7 @@
 .privacy {
   margin-top: var(--mr-space-2);
   padding: 10px 16px;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 21px;
 }
 
@@ -76,7 +76,7 @@
 
 .along__title {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   font-weight: 700;
   line-height: 20px;
 }
@@ -89,7 +89,7 @@
 .along__body {
   margin: 4px 0 0;
   color: var(--mr-ink-muted);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 }
 
@@ -98,14 +98,14 @@
   gap: var(--mr-space-2);
   margin: var(--mr-space-2) 0 0;
   color: var(--mr-warning-ink);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 
   .mat-icon {
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 

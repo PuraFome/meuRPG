@@ -109,7 +109,7 @@
 
 .help {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -168,7 +168,7 @@
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
@@ -186,7 +186,7 @@
   gap: var(--mr-space-2);
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   font-weight: 800;
 }
 
@@ -198,7 +198,7 @@
 .what__inside,
 .what__gold-line {
   margin: var(--mr-space-1) 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
   overflow-wrap: anywhere;

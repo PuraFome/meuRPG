@@ -18,7 +18,7 @@
   border: 0;
   background: none;
   font: inherit;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   color: var(--mr-ink-muted);
   text-decoration: none;
   cursor: pointer;
@@ -30,7 +30,7 @@
   .mat-icon {
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 
   &:hover {
@@ -86,7 +86,7 @@
 .filters__t {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   font-weight: 700;
 }
 
@@ -159,7 +159,7 @@ input[type='search']::-webkit-search-cancel-button {
   .mat-icon {
     width: 22px;
     height: 22px;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
   }
 
   &:focus-visible {
@@ -206,7 +206,7 @@ input[type='search']::-webkit-search-cancel-button {
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 

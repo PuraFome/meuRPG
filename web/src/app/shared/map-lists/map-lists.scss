@@ -7,7 +7,7 @@
 .lst__title {
   margin: 0 0 var(--mr-space-1);
   font-family: var(--mr-font-display);
-  font-size: 21px;
+  font-size: var(--mr-font-21);
   font-weight: 700;
   line-height: 26px;
 }
@@ -61,7 +61,7 @@
   .mat-icon {
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 
   &--disc {
@@ -71,7 +71,7 @@
     color: var(--mr-surface);
     font-family: var(--mr-font-display);
     font-weight: 700;
-    font-size: 15px;
+    font-size: var(--mr-font-15);
     width: 30px;
     height: 30px;
     margin: 2px;
@@ -94,7 +94,7 @@
 }
 
 .row__glyph app-chest-icon {
-  font-size: 20px;
+  font-size: var(--mr-font-20);
 }
 
 .row__badge {
@@ -113,7 +113,7 @@
   .mat-icon {
     width: 11px;
     height: 11px;
-    font-size: 11px;
+    font-size: var(--mr-font-11);
   }
 }
 
@@ -124,14 +124,14 @@
 }
 
 .row__name {
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   font-weight: 700;
   line-height: 22px;
   overflow-wrap: anywhere;
 }
 
 .row__sub {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -140,13 +140,13 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 
   &--hidden {
@@ -191,7 +191,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
@@ -199,7 +199,7 @@
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -234,7 +234,7 @@
 .row__hint,
 .row__error {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }

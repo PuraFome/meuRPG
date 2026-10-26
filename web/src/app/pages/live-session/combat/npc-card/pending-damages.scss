@@ -32,12 +32,12 @@
 .dmg__formula {
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 26px;
+  font-size: var(--mr-font-26);
   line-height: 32px;
 }
 
 .dmg__effect {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -97,14 +97,14 @@
   align-items: center;
   gap: 6px;
   margin: -4px 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 500;
 
   .mat-icon {
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -124,7 +124,7 @@
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
@@ -164,14 +164,14 @@
   align-items: center;
   gap: var(--mr-space-2);
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   color: var(--mr-success-ink);
 
   .mat-icon {
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
@@ -199,7 +199,7 @@
 // A critical hit's line: what to roll under the table's rule, right above the dice.
 .dmg__crit {
   margin: 0 0 var(--mr-space-2);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   font-weight: 700;
 }

@@ -112,7 +112,7 @@ export function typedNumber(text: string): number | null {
       background: var(--mr-surface);
       color: var(--mr-ink);
       font-family: var(--mr-font-display);
-      font-size: 22px;
+      font-size: var(--mr-font-22);
       font-weight: 800;
       text-align: center;
 

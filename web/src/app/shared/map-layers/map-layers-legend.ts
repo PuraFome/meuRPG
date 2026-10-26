@@ -83,7 +83,7 @@ const DOOR_ORDER: readonly DoorKind[] = [2, 1, 3, 4, 5];
       background: var(--mr-map-token-surface);
       color: var(--mr-map-token-ink);
       font-family: 'Material Symbols Outlined';
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       font-weight: 400;
       line-height: 20px;
       text-align: center;
@@ -101,7 +101,7 @@ const DOOR_ORDER: readonly DoorKind[] = [2, 1, 3, 4, 5];
     .nm .mat-icon {
       width: 18px;
       height: 18px;
-      font-size: 18px;
+      font-size: var(--mr-font-18);
     }
 
     .lgl--bright::before {

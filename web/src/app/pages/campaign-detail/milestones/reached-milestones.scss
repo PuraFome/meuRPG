@@ -35,7 +35,7 @@
 }
 
 .item__when {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -49,13 +49,13 @@
 .item__title {
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 21px;
+  font-size: var(--mr-font-21);
   line-height: 26px;
   overflow-wrap: anywhere;
 }
 
 .item__sub {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }

@@ -32,7 +32,7 @@
 
 .row__pt {
   font-family: var(--mr-font-display);
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   font-weight: 700;
   line-height: 24px;
   color: inherit;
@@ -45,7 +45,7 @@
 }
 
 .row__en {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 17px;
   color: var(--mr-ink-muted);
 }
@@ -54,12 +54,12 @@
   grid-area: nd;
   display: flex;
   flex-direction: column;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   font-weight: 800;
 }
 
 .row__cap {
-  font-size: 12px;
+  font-size: var(--mr-font-12);
   font-weight: 700;
   line-height: 15px;
   color: var(--mr-warning-ink);
@@ -72,7 +72,7 @@
 .row__each {
   grid-area: each;
   justify-self: end;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
   white-space: nowrap;
 }
@@ -80,7 +80,7 @@
 .row__sub {
   grid-area: sub;
   font-family: var(--mr-font-display);
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   font-weight: 800;
   white-space: nowrap;
 }
@@ -104,7 +104,7 @@
 
   .row__sub {
     justify-self: end;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
   }
 
   .row__each {

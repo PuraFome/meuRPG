@@ -24,7 +24,7 @@ app-xp-reason {
 
 .amount__hint {
   margin: 4px 0 0 16px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
@@ -38,7 +38,7 @@ app-xp-reason {
 .sum-note {
   display: none;
   margin: var(--mr-space-2) 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
@@ -49,7 +49,7 @@ app-xp-reason {
 
 .who__title {
   margin: 0 0 var(--mr-space-1);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   font-weight: 700;
   color: var(--mr-ink-muted);
@@ -67,7 +67,7 @@ app-xp-reason {
   align-items: center;
   gap: var(--mr-space-3);
   margin: var(--mr-space-4) 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 

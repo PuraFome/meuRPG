@@ -24,7 +24,7 @@ import { MatIconModule } from '@angular/material/icon';
       border: 1.5px solid var(--mr-accent);
       border-radius: var(--mr-radius-pill);
       color: var(--mr-accent-text);
-      font-size: 13px;
+      font-size: var(--mr-font-13);
       font-weight: 700;
       line-height: 1;
       white-space: nowrap;
@@ -38,7 +38,7 @@ import { MatIconModule } from '@angular/material/icon';
     .mat-icon {
       width: 16px;
       height: 16px;
-      font-size: 16px;
+      font-size: var(--mr-font-16);
     }
   `,
   host: { '[class.ended]': 'ended()' },

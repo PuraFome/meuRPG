@@ -34,12 +34,12 @@
 }
 
 .stepper__label {
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
 }
 
 .stepper__hint {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -63,7 +63,7 @@
   background: var(--mr-surface);
   color: var(--mr-ink);
   font: inherit;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
   cursor: pointer;
 
@@ -96,7 +96,7 @@
   color: var(--mr-ink);
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 28px;
+  font-size: var(--mr-font-28);
   font-variant-numeric: lining-nums tabular-nums;
   line-height: 1;
   text-align: center;
@@ -126,12 +126,12 @@
   align-items: center;
   gap: 6px;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-danger-ink);
 
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }

@@ -24,7 +24,7 @@
 .sum__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 21px;
+  font-size: var(--mr-font-21);
   line-height: 26px;
   font-weight: 700;
 }
@@ -32,14 +32,14 @@
 .sum__h {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 18px;
+  font-size: var(--mr-font-18);
   font-weight: 700;
 }
 
 .sum__lead,
 .sum__note {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -48,7 +48,7 @@
   align-items: center;
   gap: var(--mr-space-2);
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
@@ -56,6 +56,6 @@
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }

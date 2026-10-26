@@ -69,14 +69,14 @@
 .note {
   margin: 0;
   color: var(--mr-ink-muted);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 }
 
 .caption {
   margin: 0;
   color: var(--mr-ink-muted);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 }
 
@@ -89,7 +89,7 @@
 
 .chain__title {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   font-weight: 700;
 }
 
@@ -141,7 +141,7 @@
 
 .privacy {
   padding: 10px 16px;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 21px;
 }
 
@@ -151,7 +151,7 @@
   margin: 0 -6px;
   padding: 2px 6px;
   font-family: var(--mr-font-display);
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   font-weight: 700;
   line-height: 28px;
 }

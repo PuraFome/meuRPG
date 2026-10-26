@@ -59,14 +59,14 @@
 
   h2 {
     font-family: var(--mr-font-display);
-    font-size: 24px;
+    font-size: var(--mr-font-24);
     line-height: 30px;
     font-weight: 700;
     overflow-wrap: anywhere;
   }
 
   p {
-    font-size: 14px;
+    font-size: var(--mr-font-14);
     line-height: 19px;
     color: var(--mr-ink-muted);
   }
@@ -82,7 +82,7 @@
     flex: none;
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
     // Centred on the 19px line: (19 - 16) / 2, rounded down.
     margin-top: 1px;
   }

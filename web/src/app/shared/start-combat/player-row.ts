@@ -55,13 +55,13 @@ import { CombatantToken } from '../combatant-token/combatant-token';
 }
 
 .name {
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
   line-height: 21px;
 }
 
 .sub {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }

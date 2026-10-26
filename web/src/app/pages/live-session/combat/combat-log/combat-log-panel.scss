@@ -28,16 +28,16 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   line-height: 28px;
 
   @media (min-width: 1024px) {
-    font-size: 24px;
+    font-size: var(--mr-font-24);
   }
 }
 
 .head__count {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -60,7 +60,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   color: var(--mr-ink-muted);
 
   b {
@@ -127,7 +127,7 @@
   align-items: flex-start;
   gap: 8px;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
@@ -135,7 +135,7 @@
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 

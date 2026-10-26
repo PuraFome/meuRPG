@@ -84,13 +84,13 @@ export interface PartyChip {
 
     .chip__n {
       font-family: var(--mr-font-display);
-      font-size: 19px;
+      font-size: var(--mr-font-19);
       font-weight: 700;
       line-height: 22px;
     }
 
     .chip__s {
-      font-size: 13px;
+      font-size: var(--mr-font-13);
       line-height: 16px;
       color: var(--mr-ink-muted);
     }

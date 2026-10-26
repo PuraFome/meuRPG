@@ -33,7 +33,7 @@
   }
 
   dt {
-    font-size: 14px;
+    font-size: var(--mr-font-14);
     line-height: 19px;
     color: var(--mr-ink-muted);
   }
@@ -48,14 +48,14 @@
 .spell__english,
 .spell__note {
   font-weight: 400;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
 .spell__label {
   margin: 0 0 var(--mr-space-2);
   font-family: var(--mr-font-sans);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   color: var(--mr-ink-muted);
 }

@@ -73,20 +73,20 @@ h2 {
   gap: 2px;
 
   h2 {
-    font-size: 22px;
+    font-size: var(--mr-font-22);
     line-height: 28px;
     font-weight: 700;
     overflow-wrap: anywhere;
 
     @media (min-width: 768px) {
-      font-size: 24px;
+      font-size: var(--mr-font-24);
       line-height: 30px;
     }
   }
 }
 
 .lightbox__meta {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }

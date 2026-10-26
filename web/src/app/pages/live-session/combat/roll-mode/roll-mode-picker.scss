@@ -16,7 +16,7 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   line-height: 24px;
 }
 
@@ -48,14 +48,14 @@
   padding: 1px 8px 1px 4px;
   border: 1px solid var(--mr-control-line);
   border-radius: var(--mr-radius-pill);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   line-height: 20px;
 
   .mat-icon {
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 
@@ -121,7 +121,7 @@
 
 .radio__sug {
   margin-left: auto;
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   color: var(--mr-ink-muted);
 }
 
@@ -156,7 +156,7 @@
 .reason__hint,
 .note {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }

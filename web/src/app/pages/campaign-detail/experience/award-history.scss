@@ -46,7 +46,7 @@
 }
 
 .when__day {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -58,14 +58,14 @@
 }
 
 .what__title {
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   font-weight: 700;
   line-height: 22px;
   overflow-wrap: anywhere;
 }
 
 .what__sub {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -85,13 +85,13 @@
 .amount__each {
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   line-height: 26px;
   white-space: nowrap;
 }
 
 .amount__total {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
   white-space: nowrap;
@@ -139,7 +139,7 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   line-height: 26px;
 }
 

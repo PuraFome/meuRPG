@@ -77,7 +77,7 @@ import { mediaQuery } from '../../../../shared/map-view/media-query';
     .tab__name {
       max-width: 100%;
       overflow: hidden;
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       font-weight: 700;
       line-height: 18px;
       text-overflow: ellipsis;

@@ -51,14 +51,14 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 26px;
+  font-size: var(--mr-font-26);
   line-height: 30px;
   overflow-wrap: anywhere;
 }
 
 .sheet__sub {
   margin: 2px 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -79,7 +79,7 @@
 
 .sheet__ask {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   color: var(--mr-ink-muted);
 }
 
@@ -88,7 +88,7 @@
   align-items: flex-start;
   gap: var(--mr-space-2);
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
@@ -96,7 +96,7 @@
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -144,12 +144,12 @@
 
 .target__name {
   font-family: var(--mr-font-display);
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   line-height: 24px;
 }
 
 .target__sub {
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
@@ -159,7 +159,7 @@
   align-items: center;
   gap: 6px;
   margin-top: 2px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 500;
   line-height: 19px;
   color: var(--mr-ink);
@@ -168,7 +168,7 @@
     flex: none;
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 
@@ -195,7 +195,7 @@
 }
 
 .chosen__cap {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 16px;
   color: var(--mr-ink-muted);
 }
@@ -222,7 +222,7 @@
 
 .dmg__what {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   color: var(--mr-ink-muted);
 }
 
@@ -238,14 +238,14 @@
 }
 
 .crit__cap {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 16px;
   color: var(--mr-ink-muted);
 }
 
 .crit__sum {
   font-family: var(--mr-font-display);
-  font-size: 28px;
+  font-size: var(--mr-font-28);
   font-weight: 800;
   line-height: 34px;
   // The sum is one line, even at 320px: it breaks only between the terms.
@@ -253,7 +253,7 @@
 }
 
 .crit__text {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink);
 }
@@ -270,7 +270,7 @@
   border-radius: var(--mr-radius-md);
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 22px;
+  font-size: var(--mr-font-22);
 
   .mat-icon {
     flex: none;
@@ -280,7 +280,7 @@
     padding: 6px;
     border-radius: var(--mr-radius-sm);
     background: var(--mr-line);
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
@@ -304,7 +304,7 @@
   align-items: center;
   gap: 6px;
   margin-top: 2px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }

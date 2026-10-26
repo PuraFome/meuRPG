@@ -11,7 +11,7 @@
 
 .npcs__hint {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   color: var(--mr-ink-muted);
 }
 
@@ -37,7 +37,7 @@
   .mat-icon {
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
@@ -67,7 +67,7 @@
   border: 1px solid var(--mr-line);
   border-radius: var(--mr-radius-sm);
   font-family: var(--mr-font-display);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
 }
 
@@ -79,7 +79,7 @@
 }
 
 .row__name {
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   font-weight: 700;
   line-height: 22px;
   overflow-wrap: anywhere;
@@ -87,7 +87,7 @@
 
 .row__sub {
   color: var(--mr-ink-muted);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 }
 
@@ -95,6 +95,6 @@
   flex: none;
   width: 20px;
   height: 20px;
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   color: var(--mr-ink-muted);
 }

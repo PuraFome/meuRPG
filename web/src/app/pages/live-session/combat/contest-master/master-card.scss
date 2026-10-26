@@ -21,25 +21,25 @@
 .card__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   font-weight: 700;
   line-height: 27px;
   overflow-wrap: anywhere;
 }
 
 .card__sub {
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
 
 .card__text {
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
 }
 
 .small {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -53,12 +53,12 @@
   border-radius: var(--mr-radius-md, 10px);
 
   &__head {
-    font-size: 16px;
+    font-size: var(--mr-font-16);
     font-weight: 700;
   }
 
   &__sum {
-    font-size: 20px;
+    font-size: var(--mr-font-20);
     font-weight: 700;
     line-height: 26px;
   }
@@ -85,7 +85,7 @@
 .choices__cap {
   width: 100%;
   padding: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
 }
 
@@ -101,7 +101,7 @@
   border: 1px solid var(--mr-control-line);
   border-radius: var(--mr-radius-md, 10px);
   background: var(--mr-surface);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   cursor: pointer;
 
   &--on {
@@ -132,7 +132,7 @@
   }
 
   &__sub {
-    font-size: 14px;
+    font-size: var(--mr-font-14);
     line-height: 19px;
     color: var(--mr-ink-muted);
   }
@@ -168,12 +168,12 @@
   }
 
   &__name {
-    font-size: 16px;
+    font-size: var(--mr-font-16);
     font-weight: 700;
   }
 
   &__sub {
-    font-size: 14px;
+    font-size: var(--mr-font-14);
     line-height: 19px;
     color: var(--mr-ink-muted);
   }
@@ -186,7 +186,7 @@
   padding: 0 8px;
   border: 1px solid var(--mr-control-line);
   border-radius: var(--mr-radius-pill);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
 
   &--ok {
@@ -201,7 +201,7 @@
   gap: 4px;
 
   label {
-    font-size: 14px;
+    font-size: var(--mr-font-14);
     font-weight: 700;
   }
 

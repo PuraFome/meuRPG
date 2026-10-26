@@ -69,7 +69,7 @@ let nextId = 0;
       padding: 1px 9px;
       border: 1px solid var(--mr-ink);
       border-radius: 12px;
-      font-size: 13px;
+      font-size: var(--mr-font-13);
       font-weight: 700;
       line-height: 18px;
       // A long tag ("Três quartos · marcada pelo mestre") wraps in a narrow chip instead of being cut.
@@ -99,7 +99,7 @@ let nextId = 0;
         flex: none;
         width: 14px;
         height: 14px;
-        font-size: 14px;
+        font-size: var(--mr-font-14);
       }
     }
 

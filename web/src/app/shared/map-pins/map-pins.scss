@@ -64,7 +64,7 @@
   .mat-icon {
     width: 11px;
     height: 11px;
-    font-size: 11px;
+    font-size: var(--mr-font-11);
   }
 }
 
@@ -96,7 +96,7 @@
 .pin__icon {
   width: 16px;
   height: 16px;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
 }
 
 // A remembered point is darkened like the squares around it (fog, slice 9.13).

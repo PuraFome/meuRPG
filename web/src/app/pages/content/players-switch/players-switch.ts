@@ -45,7 +45,7 @@ import { SwitchField } from '../../../shared/form-fields/switch-field';
 
     .note {
       margin: 0;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 19px;
       color: var(--mr-ink-muted);
     }
@@ -55,14 +55,14 @@ import { SwitchField } from '../../../shared/form-fields/switch-field';
       align-items: flex-start;
       gap: 6px;
       margin: 0;
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       color: var(--mr-danger-ink);
 
       .mat-icon {
         flex: none;
         width: 20px;
         height: 20px;
-        font-size: 20px;
+        font-size: var(--mr-font-20);
       }
     }
   `,

@@ -19,7 +19,7 @@
   .mat-icon {
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 
   &:hover {
@@ -35,24 +35,24 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 34px;
+  font-size: var(--mr-font-34);
   line-height: 38px;
 
   @media (min-width: 768px) {
-    font-size: 38px;
+    font-size: var(--mr-font-38);
     line-height: 42px;
   }
 }
 
 .head__sub {
   margin: 2px 0 var(--mr-space-4);
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   color: var(--mr-ink-muted);
 }
 
 .head__step {
   margin: var(--mr-space-2) 0 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   color: var(--mr-ink-muted);
 
   strong {
@@ -75,7 +75,7 @@
 
   .head__title {
     margin-bottom: 12px;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
     line-height: 26px;
   }
 
@@ -145,7 +145,7 @@
   align-items: center;
   gap: var(--mr-space-2);
   margin: 0 0 var(--mr-space-2);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   font-weight: 700;
   color: var(--mr-warning-ink);
 
@@ -153,7 +153,7 @@
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
@@ -231,7 +231,7 @@
 .ask__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 21px;
+  font-size: var(--mr-font-21);
   font-weight: 700;
 }
 

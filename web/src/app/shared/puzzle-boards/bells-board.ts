@@ -109,14 +109,14 @@ export function bellWord(name: string): string {
     }
 
     .bell__name {
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 16px;
       color: var(--mr-ink-muted);
       white-space: nowrap;
     }
 
     :host(.bb--pick) .bell__name {
-      font-size: 12px;
+      font-size: var(--mr-font-12);
     }
 
     // The bell that is playing: the accent frame and ground, and the word in ink (the frame is never the only sign: the page says "passo 3 de 6").

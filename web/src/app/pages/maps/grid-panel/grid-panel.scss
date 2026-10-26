@@ -23,7 +23,7 @@
     width: 24px;
     height: 24px;
     margin-top: -1px;
-    font-size: 24px;
+    font-size: var(--mr-font-24);
     color: var(--mr-ink-muted);
   }
 }
@@ -35,14 +35,14 @@
 }
 
 .gp__unit {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
 .gp__hint,
 .gp__why {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }

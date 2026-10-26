@@ -30,7 +30,7 @@
 .so__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 28px;
+  font-size: var(--mr-font-28);
   font-weight: 800;
   line-height: 32px;
   overflow-wrap: anywhere;
@@ -38,7 +38,7 @@
 
 .so__meta {
   margin: 2px 0 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   color: var(--mr-ink-muted);
 }
 

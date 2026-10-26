@@ -16,14 +16,14 @@
 .cover__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   font-weight: 700;
   line-height: 28px;
 }
 
 .cover__text {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
@@ -57,7 +57,7 @@
 
 .target__name {
   font-family: var(--mr-font-display);
-  font-size: 19px;
+  font-size: var(--mr-font-19);
   line-height: 24px;
 }
 
@@ -65,7 +65,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -134,11 +134,11 @@
 
 .choice__name {
   font-weight: 700;
-  font-size: 17px;
+  font-size: var(--mr-font-17);
 }
 
 .choice__sub {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 

@@ -58,7 +58,7 @@ import { MatIconModule } from '@angular/material/icon';
         width: 20px;
         height: 20px;
         margin-top: 3px;
-        font-size: 20px;
+        font-size: var(--mr-font-20);
         color: var(--mr-danger-ink);
       }
     }
@@ -71,14 +71,14 @@ import { MatIconModule } from '@angular/material/icon';
     .ask__q {
       margin: 0;
       font-family: var(--mr-font-display);
-      font-size: 20px;
+      font-size: var(--mr-font-20);
       font-weight: 700;
       line-height: 26px;
     }
 
     .ask__text {
       margin: 2px 0 0;
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       line-height: 20px;
       color: var(--mr-ink-muted);
     }

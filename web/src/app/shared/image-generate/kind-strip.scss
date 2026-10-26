@@ -23,7 +23,7 @@
   background: var(--mr-surface);
   color: var(--mr-ink);
   font: inherit;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   white-space: nowrap;
   cursor: pointer;
 
@@ -58,7 +58,7 @@
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 
   .seg__short {
@@ -67,7 +67,7 @@
 
   @media (max-width: 599.98px) {
     min-height: 48px;
-    font-size: 14px;
+    font-size: var(--mr-font-14);
 
     // The long name stays for a screen reader; the short one is what is drawn.
     .seg__long {

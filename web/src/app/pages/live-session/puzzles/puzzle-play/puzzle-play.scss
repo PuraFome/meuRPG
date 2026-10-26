@@ -11,14 +11,14 @@
   gap: 6px;
   min-height: 44px;
   margin: -10px 0 var(--mr-space-2);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   color: var(--mr-ink-muted);
   text-decoration: none;
 
   .mat-icon {
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 
   &:hover {
@@ -41,7 +41,7 @@
   .mat-icon {
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
@@ -72,7 +72,7 @@
 
 .clue__label {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 16px;
   color: var(--mr-ink-muted);
 }
@@ -81,20 +81,20 @@
   margin: 2px 0 0;
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   line-height: 28px;
 }
 
 .mural__title,
 .hints__title {
   margin: 0 0 var(--mr-space-2);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
 }
 
 .mural__help {
   margin: var(--mr-space-2) 0 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   color: var(--mr-ink-muted);
 }
 
@@ -120,7 +120,7 @@
 
 .info__main {
   margin: 0;
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   line-height: 24px;
 }
 
@@ -130,7 +130,7 @@
   align-items: flex-start;
   gap: var(--mr-space-2);
   margin: 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
   color: var(--mr-ink-muted);
 
@@ -138,7 +138,7 @@
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
     margin-top: 1px;
   }
 }
@@ -150,14 +150,14 @@
 // The count reads as one phrase: the number right after its label.
 .info__count {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
   color: var(--mr-ink-muted);
 }
 
 .info__solved {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
 }
 
 .info__time {
@@ -176,7 +176,7 @@
   li {
     display: flex;
     gap: var(--mr-space-3);
-    font-size: 17px;
+    font-size: var(--mr-font-17);
     line-height: 24px;
   }
 }
@@ -203,7 +203,7 @@
   }
 
   .head .mr-page-title {
-    font-size: 24px;
+    font-size: var(--mr-font-24);
     line-height: 28px;
   }
 
@@ -234,7 +234,7 @@
   .info__muted,
   .info__count,
   .info__last {
-    font-size: 14px;
+    font-size: var(--mr-font-14);
     line-height: 18px;
   }
 
@@ -267,13 +267,13 @@
 // The cipher's key, found or not yet.
 .key__title {
   margin: 0 0 var(--mr-space-2);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
 }
 
 .key__text {
   margin: 0 0 var(--mr-space-3);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
 }
 

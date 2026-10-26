@@ -3,19 +3,19 @@
 }
 
 .note {
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 21px;
 }
 
 .line {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
 }
 
 .note-line {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -67,14 +67,14 @@
 }
 
 .card__name {
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
   line-height: 22px;
   overflow-wrap: anywhere;
 }
 
 .card__sub {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -84,7 +84,7 @@
   align-items: flex-start;
   gap: 6px;
   margin-top: 2px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-warning-ink);
 
@@ -93,7 +93,7 @@
     width: 16px;
     height: 16px;
     margin-top: 2px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 
@@ -131,7 +131,7 @@
 
 .foot__hint {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -141,13 +141,13 @@
   align-items: center;
   gap: 6px;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
   .mat-icon {
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }

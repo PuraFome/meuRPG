@@ -5,7 +5,7 @@
   text-wrap: pretty;
   gap: var(--mr-space-2);
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
@@ -14,7 +14,7 @@
     width: 18px;
     height: 18px;
     margin-top: 1px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -33,7 +33,7 @@
 .ns__empty-t {
   margin: 0 0 var(--mr-space-1);
   font-family: var(--mr-font-display);
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   font-weight: 700;
   line-height: 25px;
 }
@@ -55,7 +55,7 @@
 
 .ns__limit {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   line-height: 19px;
 }
@@ -85,7 +85,7 @@
 
 .ns__ask-t {
   margin: 0 0 var(--mr-space-2);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
   line-height: 21px;
 }

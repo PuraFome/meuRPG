@@ -25,7 +25,7 @@
 
 .off__text {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -71,20 +71,20 @@
   border-radius: var(--mr-radius-pill);
   background: var(--mr-accent-soft);
   color: var(--mr-accent-text);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
 
   .mat-icon {
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 
 .on__name {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   font-weight: 700;
   line-height: 26px;
   overflow-wrap: anywhere;

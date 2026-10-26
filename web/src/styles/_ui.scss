@@ -9,12 +9,12 @@
   margin: 0 0 var(--mr-space-5);
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 34px;
+  font-size: var(--mr-font-34);
   line-height: 38px;
   color: var(--mr-ink);
 
   @media (min-width: 768px) {
-    font-size: 38px;
+    font-size: var(--mr-font-38);
     line-height: 40px;
   }
 }
@@ -25,7 +25,7 @@
 
 .mr-page-lead {
   margin: var(--mr-space-2) 0 var(--mr-space-5);
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   color: var(--mr-ink-muted);
 }
 
@@ -53,7 +53,7 @@
 .mr-fold__head {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 21px;
+  font-size: var(--mr-font-21);
   font-weight: 700;
   line-height: 26px;
 }
@@ -98,7 +98,7 @@
   flex: none;
   align-items: center;
   font-family: var(--mr-font-sans);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   line-height: 19px;
 
@@ -118,7 +118,7 @@
 
   .mr-fold__head {
     font-family: var(--mr-font-sans);
-    font-size: 16px;
+    font-size: var(--mr-font-16);
     line-height: 21px;
   }
 
@@ -132,7 +132,7 @@
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 
   .mr-fold__body {
@@ -154,7 +154,7 @@
     flex: none;
     width: 22px;
     height: 22px;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
     color: var(--mr-ink-muted);
   }
 }
@@ -167,7 +167,7 @@
   margin: 0 0 var(--mr-space-2);
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 21px;
+  font-size: var(--mr-font-21);
   line-height: 26px;
   color: var(--mr-ink);
 }
@@ -178,7 +178,7 @@
 }
 
 .mr-label {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 16px;
   font-weight: 500;
   color: var(--mr-ink-muted);
@@ -217,13 +217,13 @@ a.mr-list__row:hover .mr-list__name {
 }
 
 .mr-list__name {
-  font-size: 18px;
+  font-size: var(--mr-font-18);
   font-weight: 700;
   overflow-wrap: anywhere;
 }
 
 .mr-list__sub {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -239,14 +239,14 @@ a.mr-list__row:hover .mr-list__name {
   border: 1px solid var(--mr-control-line);
   border-radius: var(--mr-radius-pill);
   color: var(--mr-ink-muted);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 1;
   white-space: nowrap;
 
   .mat-icon {
     width: 14px;
     height: 14px;
-    font-size: 14px;
+    font-size: var(--mr-font-14);
   }
 
   &--pending {
@@ -274,14 +274,14 @@ a.mr-list__row:hover .mr-list__name {
   padding: 12px 18px;
   border: 1px solid transparent;
   border-radius: var(--mr-radius-md);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
 
   > .mat-icon {
     flex-shrink: 0;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
     margin-top: 1px;
   }
 
@@ -357,7 +357,7 @@ a.mr-list__row:hover .mr-list__name {
   margin: var(--mr-space-3) 0;
   padding: 0;
   list-style: none;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
 
   li {
     display: flex;

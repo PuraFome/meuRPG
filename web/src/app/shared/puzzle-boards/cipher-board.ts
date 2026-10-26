@@ -70,7 +70,7 @@ import { TYPED_MAX } from './riddle-board';
 
     .title {
       margin: 0 0 6px;
-      font-size: 16px;
+      font-size: var(--mr-font-16);
       font-weight: 700;
     }
 
@@ -81,7 +81,7 @@ import { TYPED_MAX } from './riddle-board';
       border-radius: var(--mr-radius-md);
       background: var(--mr-ground);
       font-family: var(--mr-font-display);
-      font-size: 22px;
+      font-size: var(--mr-font-22);
       line-height: 30px;
       letter-spacing: 0.06em;
       overflow-wrap: anywhere;
@@ -89,7 +89,7 @@ import { TYPED_MAX } from './riddle-board';
 
     .help {
       margin: 0 0 var(--mr-space-2);
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 20px;
       color: var(--mr-ink-muted);
     }
@@ -109,7 +109,7 @@ import { TYPED_MAX } from './riddle-board';
 
     .col__letter {
       font-family: var(--mr-font-display);
-      font-size: 18px;
+      font-size: var(--mr-font-18);
       font-weight: 700;
       line-height: 24px;
     }
@@ -124,7 +124,7 @@ import { TYPED_MAX } from './riddle-board';
       background: var(--mr-surface);
       color: var(--mr-ink);
       font-family: var(--mr-font-display);
-      font-size: 20px;
+      font-size: var(--mr-font-20);
       font-weight: 700;
       text-align: center;
       text-transform: uppercase;
@@ -156,7 +156,7 @@ import { TYPED_MAX } from './riddle-board';
       border: 1.5px dashed var(--mr-control-line);
       border-radius: var(--mr-radius-md);
       color: var(--mr-ink-muted);
-      font-size: 16px;
+      font-size: var(--mr-font-16);
       line-height: 22px;
     }
   `,
