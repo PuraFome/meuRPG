@@ -1,5 +1,5 @@
 -- +goose Up
--- The session events of the second Etapa 8 wave (ADR-0007): the master gave a
+-- The session events of the second scene wave (ADR-0007): the master gave a
 -- character one more attempt at a scene action (scene_attempt_granted,
 -- MR-015) and a player ended their part of a joint turn (turn_part_ended,
 -- MR-013; written by slice 8.11). Their payloads hold IDs only. The CHECK lists

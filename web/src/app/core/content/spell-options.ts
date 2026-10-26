@@ -17,7 +17,7 @@ export const TIME_OPTIONS: readonly { value: TimeChoice; label: string }[] = [
   { value: 'hour', label: 'Horas' },
 ];
 
-/** The range offers "Pessoal" and "Toque" beside a distance (E10-01 state 4b; etapa10-web-notes, 10.1b). */
+/** The range offers "Pessoal" and "Toque" beside a distance (E10-01 state 4b). */
 export const RANGE_OPTIONS: readonly { value: RangeChoice; label: string }[] = [
   { value: 'ranged', label: 'Distância' },
   { value: 'self', label: 'Pessoal' },

@@ -1,5 +1,5 @@
 -- +goose Up
--- The Etapa 8 session events (ADR-0007): a clue the master revealed to
+-- The first scene session events (ADR-0007): a clue the master revealed to
 -- players (clue_revealed, MR-029) and the NPCs on the stage changing
 -- (stage_changed, MR-031). Their payloads hold IDs only, never a name nor the
 -- clue's text. The CHECK lists every kind of the history (see 00063): dropped,

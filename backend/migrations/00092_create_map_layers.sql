@@ -1,6 +1,6 @@
 -- +goose Up
 -- map_layers holds the squares the master painted on a map's grid (MR-034,
--- MR-036, Etapa 9, D2): difficult terrain, walls, cover and light, each one a
+-- MR-036, D2): difficult terrain, walls, cover and light, each one a
 -- packed bitmap in the byte layout of package rules/grid (layer.go): row-major,
 -- one bit a square for terrain and walls, two bits for cover (0 none, 1 half, 2
 -- three-quarters) and light (0 not painted, 1 dark, 2 dim, 3 bright). A grid of

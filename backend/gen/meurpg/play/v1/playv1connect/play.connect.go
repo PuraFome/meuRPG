@@ -4,14 +4,13 @@
 
 // Package meurpg.play.v1 is about playing a campaign at the table: starting,
 // ending and listing game sessions, which locks the players' sheets
-// (RN-01), and the live session (Etapa 5): the notice that a session is
+// (RN-01), and the live session: the notice that a session is
 // open (RN-06), the session's live stream (ADR-0005), the characters'
 // vitals, which the master corrects during the session (RN-02), the
 // session's current map (the maps themselves are meurpg.maps.v1), and the
 // gallery image the master shows the players (MR-028). Combat has its own
 // service (combat.proto, CombatService: MR-013), with its attacks, actions
-// and log; spells, reactions and death saves come in the next slice of
-// Etapa 6.
+// and log.
 package playv1connect
 
 import (
@@ -973,8 +972,8 @@ type PlayServiceClient interface {
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION).
 	SetSpeaker(context.Context, *connect.Request[v1.SetSpeakerRequest]) (*connect.Response[v1.SetSpeakerResponse], error)
-	// CastSummon casts a spell that summons creatures outside a combat (MR-037,
-	// Etapa 9): Convocar Familiar (1 hour, a ritual: no slot is spent),
+	// CastSummon casts a spell that summons creatures outside a combat (MR-037):
+	// Convocar Familiar (1 hour, a ritual: no slot is spent),
 	// Animar Mortos (1 minute: it spends the slot) and Conjurar Animais
 	// (1 action). The caster is a player's character; its player casts for it,
 	// and the master for anyone. The spell must be one the character has (a
@@ -1008,7 +1007,7 @@ type PlayServiceClient interface {
 	//     NO_OPEN_SESSION); EncounterBlocked: SUMMON_CHOICE_INVALID,
 	//     NO_SLOT, SUMMON_IN_COMBAT.
 	CastSummon(context.Context, *connect.Request[v1.CastSummonRequest]) (*connect.Response[v1.CastSummonResponse], error)
-	// AssumeWildShape turns a druid into a beast (MR-037, Etapa 9, D7): during an
+	// AssumeWildShape turns a druid into a beast (MR-037, D7): during an
 	// open session, in a combat or out of it. It spends one use of the Forma
 	// Selvagem resource (2 per short rest) and, in a combat, the character's
 	// action, on its turn (the master may act again with the action used, as in
@@ -1050,7 +1049,7 @@ type PlayServiceClient interface {
 	// streams and errors as AssumeWildShape, with NOT_IN_WILD_SHAPE for a character
 	// that is in its own shape.
 	LeaveWildShape(context.Context, *connect.Request[v1.LeaveWildShapeRequest]) (*connect.Response[v1.LeaveWildShapeResponse], error)
-	// StartFamiliarSight starts "Ver pelos olhos do familiar" (MR-036, Etapa 9, D6):
+	// StartFamiliarSight starts "Ver pelos olhos do familiar" (MR-036, D6):
 	// the character's player sees what the character's familiar sees, with the
 	// familiar's senses (an owl's darkvision, a bat's blindsight), on a map with the
 	// fog of war on, and the character counts as blind and deaf until it stops
@@ -2420,8 +2419,8 @@ type PlayServiceHandler interface {
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION).
 	SetSpeaker(context.Context, *connect.Request[v1.SetSpeakerRequest]) (*connect.Response[v1.SetSpeakerResponse], error)
-	// CastSummon casts a spell that summons creatures outside a combat (MR-037,
-	// Etapa 9): Convocar Familiar (1 hour, a ritual: no slot is spent),
+	// CastSummon casts a spell that summons creatures outside a combat (MR-037):
+	// Convocar Familiar (1 hour, a ritual: no slot is spent),
 	// Animar Mortos (1 minute: it spends the slot) and Conjurar Animais
 	// (1 action). The caster is a player's character; its player casts for it,
 	// and the master for anyone. The spell must be one the character has (a
@@ -2455,7 +2454,7 @@ type PlayServiceHandler interface {
 	//     NO_OPEN_SESSION); EncounterBlocked: SUMMON_CHOICE_INVALID,
 	//     NO_SLOT, SUMMON_IN_COMBAT.
 	CastSummon(context.Context, *connect.Request[v1.CastSummonRequest]) (*connect.Response[v1.CastSummonResponse], error)
-	// AssumeWildShape turns a druid into a beast (MR-037, Etapa 9, D7): during an
+	// AssumeWildShape turns a druid into a beast (MR-037, D7): during an
 	// open session, in a combat or out of it. It spends one use of the Forma
 	// Selvagem resource (2 per short rest) and, in a combat, the character's
 	// action, on its turn (the master may act again with the action used, as in
@@ -2497,7 +2496,7 @@ type PlayServiceHandler interface {
 	// streams and errors as AssumeWildShape, with NOT_IN_WILD_SHAPE for a character
 	// that is in its own shape.
 	LeaveWildShape(context.Context, *connect.Request[v1.LeaveWildShapeRequest]) (*connect.Response[v1.LeaveWildShapeResponse], error)
-	// StartFamiliarSight starts "Ver pelos olhos do familiar" (MR-036, Etapa 9, D6):
+	// StartFamiliarSight starts "Ver pelos olhos do familiar" (MR-036, D6):
 	// the character's player sees what the character's familiar sees, with the
 	// familiar's senses (an owl's darkvision, a bat's blindsight), on a map with the
 	// fog of war on, and the character counts as blind and deaf until it stops

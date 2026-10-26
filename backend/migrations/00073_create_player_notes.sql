@@ -1,6 +1,6 @@
 -- +goose Up
 -- player_notes holds the private notes a player writes during the campaign
--- (MR-030, Etapa 8, D6, question 60). They are free text, 1 to 2,000
+-- (MR-030, D6, question 60). They are free text, 1 to 2,000
 -- characters, and they belong to their author alone: nobody else ever reads
 -- one, not even the campaign's master (RN-20). At most 300 per player per
 -- campaign (the API checks, inside the transaction that inserts one); the

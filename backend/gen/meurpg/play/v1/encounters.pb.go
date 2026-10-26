@@ -4,7 +4,7 @@
 // 	protoc        (unknown)
 // source: meurpg/play/v1/encounters.proto
 
-// The encounter builder (MR-043, RN-29, Etapa 10, slice 10.9c): the master puts SRD
+// The encounter builder (MR-043, RN-29): the master puts SRD
 // creatures and counts together, and the server says what the encounter costs (XP) and how hard
 // it is for the party: low, moderate or high, or above high. It can also draw an encounter from
 // a seed, list the creatures one entry can be swapped for, and keep an encounter on a battle

@@ -4,13 +4,13 @@ import type { DoorKind, MapLayers } from '../../core/maps/layers';
 import { DoorMark } from './door-mark';
 
 /**
- * The map's painted layers drawn over its image (Etapa 9, docs/design/README.md),
+ * The map's painted layers drawn over its image (docs/design/README.md),
  * the same on every map of the app: **Parede** the dark diagonal hatch,
  * **Terreno difícil** the cross hatch, **Não dá para passar** a checkerboard (it blocks movement, not sight), **Cobertura** a pictogram in the middle
  * of the square (a dotted square filled from the bottom to one half, "Meia
  * cobertura", or to three quarters, "Três quartos"). Each mark has a name in
  * `MapLayersLegend`: never colour alone, and never an object's name, because
- * the app knows only the degree. The **doors** (Etapa 10, `app-door-mark`) are one mark per kind, drawn only as they arrive:
+ * the app knows only the degree. The **doors** (`app-door-mark`) are one mark per kind, drawn only as they arrive:
  * a player's layers have no padlock and no secret door.
  *
  * Presentational and pure drawing: it takes the decoded squares

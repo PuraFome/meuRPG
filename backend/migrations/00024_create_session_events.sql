@@ -1,9 +1,9 @@
 -- +goose Up
 -- session_events is the game session's history (ADR-0007): every change
--- made at the table becomes one row, which is never updated. Etapa 5 writes
+-- made at the table becomes one row, which is never updated. The live session writes
 -- one kind, 'character_vitals_adjusted': the master's correction of a
 -- character's vitals (RN-02). Damage, healing, spells and XP come with
--- combat (Etapa 6), each as a new kind in the CHECK below.
+-- combat, each as a new kind in the CHECK below.
 --
 -- A row is written in the same transaction as the change it records, so
 -- the history and the state never disagree. seq numbers a session's events

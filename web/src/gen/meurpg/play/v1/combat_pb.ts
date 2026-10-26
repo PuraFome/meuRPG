@@ -2,7 +2,7 @@
 // @generated from file meurpg/play/v1/combat.proto (package meurpg.play.v1, syntax proto3)
 /* eslint-disable */
 
-// This file is the combat's API (MR-012, MR-013, MR-014, Etapa 6): the
+// This file is the combat's API (MR-012, MR-013, MR-014): the
 // encounter, who fights, the initiative, the order of turns, the movement on
 // the map's grid, what a turn can do, the attacks and their damage, the
 // spells (slots, saving throws, healing, concentration), the reactions
@@ -11901,7 +11901,7 @@ export enum CombatantKind {
   NPC = 2,
 
   /**
-   * One of a character's creatures (MR-037, Etapa 9): a familiar, summoned
+   * One of a character's creatures (MR-037): a familiar, summoned
    * animals or undead, a creature the master gave. It belongs to a player's
    * character (`owner_character_id`), is controlled by that character's player
    * and by the master, fights on the party's side and keeps its hit points on

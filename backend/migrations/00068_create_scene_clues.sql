@@ -1,6 +1,6 @@
 -- +goose Up
 -- scene_clues holds the clues the master prepared on an RP scene point
--- (MR-029, Etapa 8, D5): one short text each, at most 30 per point (the API
+-- (MR-029, D5): one short text each, at most 30 per point (the API
 -- checks, inside the transaction that inserts one). Only a point of kind
 -- 'scene' has any (the API checks that too, and deletes them when the point
 -- changes kind). The text is free text the master writes, 1 to 500

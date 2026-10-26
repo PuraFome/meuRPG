@@ -20,7 +20,7 @@
 -- on every change, so the app can tell a newer value from an older one.
 --
 -- Only player characters get a row; NPCs' numbers in a fight come with the
--- combatants (Etapa 6). Deleting the character deletes the row. There is no
+-- combatants. Deleting the character deletes the row. There is no
 -- personal data here, only numbers.
 CREATE TABLE IF NOT EXISTS character_vitals (
     character_id UUID PRIMARY KEY REFERENCES characters (id) ON DELETE CASCADE,
