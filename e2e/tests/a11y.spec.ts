@@ -2758,6 +2758,72 @@ test('o mover de tokens passa no axe e nas conferências de layout no tema claro
   await scanTokenMoveScreens(browser, 'light', 320);
 });
 
+// MR-012, RN-10 (B2, C9-01 to C9-03): the player's side of moving tokens outside combat, under the map of the scene's card: the line
+// "O mestre move os tokens agora.", the notice when the master frees it, "Mover Brisa" and its panel (a sheet on a phone), the amber notice of a
+// move that stopped before a marked square, and the notice when the master locks it again.
+async function scanPlayerMoveScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width >= 768 ? 1000 : 844 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await tableForScenes(m, p, `Acessibilidade jogador move ${Date.now()}`);
+    campaignId = table.campaignId;
+    await setGridRPC(m, campaignId, table.mapId, 24);
+    const marked = await callRPC(m, 'meurpg.maps.v1.MapService/PaintMapCells', { campaignId, mapId: table.mapId, layer: 'MAP_LAYER_NO_PASS', value: 1, squares: [{ col: 8, row: 11 }] });
+    expect(marked.ok(), await marked.text()).toBeTruthy();
+    await openSceneRPC(m, campaignId, table.cartId);
+    const switchTo = async (enabled: boolean) => {
+      const res = await callRPC(m, 'meurpg.maps.v1.MapService/SetMapPlayersMove', { campaignId, mapId: table.mapId, enabled });
+      expect(res.ok(), await res.text()).toBeTruthy();
+    };
+    await p.goto(`/campaigns/${campaignId}/session`);
+    if (width < 768) {
+      await p.getByRole('tab', { name: /^Mapa/ }).click();
+    }
+    await expect(p.getByText('O mestre move os tokens agora.')).toBeVisible();
+    await expectScreenPasses(p, `Jogador, o mestre move os tokens ${where}`);
+
+    await switchTo(true);
+    await expect(p.getByText('O mestre liberou: agora você move Pensantus.').first()).toBeVisible();
+    await expectScreenPasses(p, `Jogador, o mestre liberou ${where}`);
+    await p.getByRole('button', { name: 'Mover Pensantus', exact: true }).click();
+    await expect(p.getByRole('button', { name: 'Ir para a direita' })).toBeVisible();
+    await p.waitForFunction(() => document.getAnimations().every((x) => x.playState !== 'running'));
+    await expectScreenPasses(p, `Jogador, Mover Pensantus, sem plano ${where}`);
+    await p.getByRole('button', { name: 'Ir para a direita' }).click();
+    for (let i = 0; i < 9; i++) {
+      await p.getByRole('button', { name: 'Mais um quadrado' }).click();
+    }
+    await expectScreenPasses(p, `Jogador, Mover Pensantus, com plano ${where}`);
+    await p.getByRole('button', { name: 'Mover Pensantus', exact: true }).click();
+    await expect(p.getByText('O movimento parou antes.')).toBeVisible();
+    await expectScreenPasses(p, `Jogador, o movimento parou antes ${where}`);
+
+    await switchTo(false);
+    await expect(p.getByText('O mestre voltou a mover os tokens.').first()).toBeVisible();
+    await expectScreenPasses(p, `Jogador, o mestre voltou a mover os tokens ${where}`);
+  } finally {
+    await endOpenSessionRPC(m, campaignId);
+    await master.close();
+    await player.close();
+  }
+}
+
+test('o lado do jogador do mover de tokens passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-012', '@RN-10'] }, async ({ browser }) => {
+  test.setTimeout(480_000);
+  await scanPlayerMoveScreens(browser, 'light', 1280);
+});
+
+test('o lado do jogador do mover de tokens passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-012', '@RN-10'] }, async ({ browser }) => {
+  test.setTimeout(480_000);
+  await scanPlayerMoveScreens(browser, 'dark', 390);
+});
+
 /** The spells in the session (Etapa 8, slice 8.4; E8-02, E8-03): the list with its "?" and slot
  * rows, the details sheet, the cast sheet with its "?", the details over it, the result a player
  * reads, and the master's card under Sono in the log. */

@@ -208,6 +208,12 @@ Um mapa e um ponto nascem escondidos, e o mestre revela e esconde cada um.
 O token de um NPC nasce escondido. O token de um personagem de jogador é visível, e o de uma criatura também (a criatura está do lado do grupo). Escolher o mapa atual da sessão o revela.
 O jogador vê o mapa revelado e o mapa atual, só com os pontos revelados e os tokens visíveis; um ponto de submapa leva só a um mapa que o jogador também vê.
 
+**Mover tokens fora do combate** ([MR-012](historias.md#mr-012-acompanhar-a-sessão)).
+Fora do combate o mestre move o token de qualquer personagem; o jogador move só o próprio, sozinho, e só num mapa em que o mestre ligou "Os jogadores movem os próprios personagens" (desligado por padrão), e só enquanto vê esse token.
+O token anda em direção ao quadrado e para antes de uma parede, de uma porta trancada ou de um quadrado marcado "Não dá para passar", sem limite de deslocamento.
+O mestre é avisado do motivo da parada; o jogador só quando o quadrado no caminho é um que ele vê ou lembra: do contrário a resposta diz apenas que parou, e o jogador nunca descobre o que há ali (um NPC escondido, um quadrado na névoa).
+O mestre retirar o interruptor enquanto um jogador se move faz o servidor recusar aquele movimento, e a tela do jogador diz "O mestre voltou a mover os tokens.".
+
 **A cena** ([MR-015](historias.md#mr-015-ações-da-cena-de-rp), [MR-031](historias.md#mr-031-npcs-na-cena)).
 O mestre pode esconder um NPC no palco ("Escondida dos jogadores") e uma ação de cena ("Escondida"), ao preparar ou ao vivo.
 Um NPC escondido conta para o limite de 4 do palco, mas nenhum jogador o recebe: nem o nome, o retrato ou o lugar no palco, nem na cena aberta, nem em um aviso ao vivo, nem na lista de conjurações ou como alvo.

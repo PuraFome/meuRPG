@@ -127,7 +127,14 @@ export class TokenMover {
     private readonly api: MoveApi,
     private readonly state: MapState,
     private readonly campaignId: () => string,
+    /** False for a player's own move: their words, and the master's switch taken back says "O mestre voltou a mover os tokens." */
+    private readonly isMaster: () => boolean = () => true,
   ) {}
+
+  /** The master moves everyone; a player only themselves. */
+  master(): boolean {
+    return this.isMaster();
+  }
 
   isSelected(characterId: string): boolean {
     return this.selected().includes(characterId);
@@ -237,7 +244,7 @@ export class TokenMover {
       this.say(outcome, anchor, to);
       return outcome.moved;
     } catch (err) {
-      this.error.set(moveErrorMessage(err, who));
+      this.error.set(moveErrorMessage(err, who, !this.isMaster()));
       void this.state.refresh();
       return false;
     } finally {
@@ -258,7 +265,7 @@ export class TokenMover {
   }
 
   private say(outcome: MoveOutcome, anchor: MapToken | undefined, to: Point): void {
-    const notice = moveNotice(outcome, this.names());
+    const notice = moveNotice(outcome, this.names(), !this.isMaster());
     const first: TokenMoveResult | undefined = outcome.results[0];
     const short = outcome.results.find((r) => r.moved < r.asked);
     const from = anchor ? { xBp: anchor.xBp, yBp: anchor.yBp } : to;
@@ -270,7 +277,10 @@ export class TokenMover {
             ...(short ? { stop: { label: stopLabel(short), at: to } } : {}),
           }
         : null;
-    const lines = outcome.moved && first && outcome.results.length === 1 ? [askedLine(first)] : [];
+    const lines =
+      outcome.moved && first && outcome.results.length === 1 && this.isMaster()
+        ? [askedLine(first)]
+        : [];
     this.last.set({ notice, lines, trail });
     this.target.set(null);
     this.direction.set(null);

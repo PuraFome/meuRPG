@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import { DIRECTIONS, MAX_STEP, MIN_STEP } from '../../../core/maps/token-move';
 import type { TokenMover } from '../../../core/maps/token-mover';
+import { PHONE_QUERY, mediaQuery } from '../../../shared/map-view/media-query';
 
 /**
  * "Mover Tor" and "3 selecionados" (B2-01, B2-02, B2-03, B2-13, B2-11) in the master's "Tokens" tab: what the master
@@ -19,7 +20,7 @@ import type { TokenMover } from '../../../core/maps/token-mover';
   template: `
     @if (mover().chosen().length > 0) {
       <section class="mp" [attr.aria-labelledby]="'mp-title'">
-        <h3 class="mp__title" id="mp-title">{{ title() }}</h3>
+        <h3 class="mp__title" [class.mr-visually-hidden]="player()" id="mp-title">{{ title() }}</h3>
         @if (!mover().hasGrid()) {
           <p class="mp__lead">Este mapa não tem grade: sem quadrados não dá para contar o movimento. Arraste o token no mapa.</p>
         } @else if (several()) {
@@ -27,9 +28,11 @@ import type { TokenMover } from '../../../core/maps/token-mover';
             Arraste um dos {{ mover().chosen().length }}: os outros vão junto, na mesma formação. Desmarque um para tirá-lo da seleção.
           </p>
         } @else {
-          <p class="mp__lead">
-            Toque num quadrado do mapa ou ande com os botões. Fora do combate não há limite de deslocamento.
-          </p>
+          @if (!player()) {
+            <p class="mp__lead">
+              Toque num quadrado do mapa ou ande com os botões. Fora do combate não há limite de deslocamento.
+            </p>
+          }
           <div class="mp__controls">
             <div>
               <p class="mp__label" id="mp-dir">Direção</p>
@@ -52,7 +55,7 @@ import type { TokenMover } from '../../../core/maps/token-mover';
               </div>
             </div>
             <div class="steps">
-              <p class="mp__label" id="mp-steps">Quadrados por toque</p>
+              <p class="mp__label" id="mp-steps">{{ stepsLabel() }}</p>
               <div class="steps__row" role="group" aria-labelledby="mp-steps">
                 <button
                   type="button"
@@ -84,6 +87,11 @@ import type { TokenMover } from '../../../core/maps/token-mover';
             <p class="box__title">{{ s.title }}</p>
             <p class="box__detail">{{ s.detail }}</p>
           </div>
+        } @else if (player() && mover().hasGrid()) {
+          <div class="box">
+            <p class="box__title">Escolha a direção</p>
+            <p class="box__detail">{{ phone() ? 'Toque numa seta para o próximo movimento.' : 'Clique numa seta ou num quadrado do mapa.' }}</p>
+          </div>
         }
 
         @if (mover().busy()) {
@@ -114,17 +122,31 @@ import type { TokenMover } from '../../../core/maps/token-mover';
         }
 
         @if (mover().hasGrid()) {
+          <div class="acts" [class.acts--stack]="sheet()" [class.acts--full]="!player()">
           <button
             type="button"
             class="go"
+            [class.go--outline]="player() && !sheet()"
             [class.go--off]="!ready()"
             [attr.aria-disabled]="ready() ? null : 'true'"
             [attr.aria-describedby]="ready() ? null : 'mp-why'"
             (click)="move()"
           >
+            @if (player() && !sheet()) {
+              <mat-icon aria-hidden="true">open_with</mat-icon>
+            }
             {{ goLabel() }}
           </button>
-          @if (!ready() && !mover().busy()) {
+          @if (player()) {
+            <button type="button" [class]="sheet() ? 'clear' : 'close'" (click)="closed.emit()">
+              @if (!sheet()) {
+                <mat-icon aria-hidden="true">close</mat-icon>
+              }
+              {{ sheet() ? 'Cancelar' : 'Fechar' }}
+            </button>
+          }
+          </div>
+          @if (!player() && !ready() && !mover().busy()) {
             <p class="mp__hint" id="mp-why">Escolha o quadrado de destino.</p>
           }
         }
@@ -139,6 +161,16 @@ import type { TokenMover } from '../../../core/maps/token-mover';
 })
 export class TokenMovePanel {
   readonly mover = input.required<TokenMover>();
+  /** The panel in a sheet (a phone): the button is the filled one and the way out says "Cancelar". */
+  readonly sheet = input(false);
+  /** "Fechar" / "Cancelar": the player's way to put the panel away (the master's stays while someone is chosen). */
+  readonly closed = output<void>();
+  protected readonly phone = mediaQuery(PHONE_QUERY);
+  /** The player moves only themselves (C9-02): their words, and no "Selecionar". */
+  protected readonly player = computed(() => !this.mover().master());
+  protected readonly stepsLabel = computed(() =>
+    this.phone() ? 'Quadrados por toque' : 'Quadrados por clique',
+  );
   protected readonly min = MIN_STEP;
   protected readonly max = MAX_STEP;
   protected readonly directions = DIRECTIONS;

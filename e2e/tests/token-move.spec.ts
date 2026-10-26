@@ -151,3 +151,57 @@ test(
     });
   },
 );
+
+test(
+  'o jogador vê "O mestre move os tokens agora." e nenhum controle; quando o mestre libera ele move a Pensantus, o movimento para antes do quadrado "Não dá para passar", e quando o mestre trava o painel fecha',
+  { tag: ['@MR-012', '@RN-10'] },
+  async ({ browser }) => {
+    await atCave(browser, 'Jogador move', async ({ table, mp, ap }) => {
+      const switchTo = async (enabled: boolean) => {
+        const res = await callRPC(mp, 'meurpg.maps.v1.MapService/SetMapPlayersMove', { campaignId: table.campaignId, mapId: table.mapId, enabled });
+        expect(res.ok(), await res.text()).toBeTruthy();
+      };
+      const marked = await callRPC(mp, 'meurpg.maps.v1.MapService/PaintMapCells', {
+        campaignId: table.campaignId,
+        mapId: table.mapId,
+        layer: 'MAP_LAYER_NO_PASS',
+        value: 1,
+        squares: [{ col: 9, row: 7 }],
+      });
+      expect(marked.ok(), await marked.text()).toBeTruthy();
+      await ap.goto(sessionRoute(table.campaignId));
+
+      // The master's switch is off (the map's default): one line, no control.
+      await expect(ap.getByText('O mestre move os tokens agora.')).toBeVisible();
+      await expect(ap.getByRole('button', { name: 'Mover Pensantus' })).toHaveCount(0);
+
+      // The master frees the moving while the player looks: the notice, then the line and the button.
+      await switchTo(true);
+      await expect(ap.getByText('O mestre liberou: agora você move Pensantus.').first()).toBeVisible();
+      const open = ap.getByRole('button', { name: 'Mover Pensantus', exact: true });
+      await expect(open).toBeVisible();
+      await open.click();
+      await expect(ap.getByRole('button', { name: 'Ir para a direita' })).toBeVisible();
+      await expect(ap.getByText('Quadrados por clique')).toBeVisible();
+      await expect(ap.getByText('Escolha a direção')).toBeVisible();
+
+      // The plan, then the send: the server walks it and stops before the marked square.
+      await ap.getByRole('button', { name: 'Ir para a direita' }).click();
+      for (let i = 0; i < 9; i++) {
+        await ap.getByRole('button', { name: 'Mais um quadrado' }).click();
+      }
+      await expect(ap.getByText('Pensantus vai 10 quadrados para a direita')).toBeVisible();
+      await ap.getByRole('button', { name: 'Mover Pensantus', exact: true }).click();
+      await expect(ap.getByText('O movimento parou antes.')).toBeVisible();
+      await expect(ap.getByText(/O próximo quadrado está marcado como “Não dá para passar”\. Pensantus andou 6 \(9 m\)\./)).toBeVisible();
+      expect(await squareOf(mp, table, table.pensantusId)).toEqual(squareBp(8, 7));
+
+      // The master takes the switch back: the notice, and the panel goes away without moving anybody.
+      await switchTo(false);
+      await expect(ap.getByText('O mestre voltou a mover os tokens.').first()).toBeVisible();
+      await expect(ap.getByRole('button', { name: 'Ir para a direita' })).toHaveCount(0);
+      await expect(ap.getByRole('button', { name: 'Mover Pensantus' })).toHaveCount(0);
+      expect(await squareOf(mp, table, table.pensantusId)).toEqual(squareBp(8, 7));
+    });
+  },
+);

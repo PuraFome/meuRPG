@@ -40,6 +40,7 @@ import type { ViewAsPerson } from '../../../shared/fog-map/view-as-list';
 import { ViewAsMapView } from '../../../shared/fog-map/view-as-map';
 import { MapPointsList } from '../../../shared/map-lists/map-points-list';
 import { MapPins } from '../../../shared/map-pins/map-pins';
+import { PlayerMove } from '../player-move/player-move';
 import { MoveOverlay } from '../../../shared/map-move/move-overlay';
 import { MapPinsLegend } from '../../../shared/map-pins/map-pins-legend';
 import { MapLegend } from '../../../shared/map-view/map-legend/map-legend';
@@ -93,6 +94,7 @@ export interface MapToolCounts {
     MapPinsLegend,
     MapToken,
     MoveOverlay,
+    PlayerMove,
     MapPointsList,
     MapView,
     MatButtonModule,
@@ -263,6 +265,18 @@ export class SessionMap {
   protected readonly viewAsPerson = computed(
     () => this.people().find((p) => p.id === this.viewAs()) ?? null,
   );
+  /** The master let the players move their own characters on this map (the switch of B2). */
+  protected readonly playersMove = computed(() => this.map()?.playersMoveTokens === true);
+  /** The player's own token may be dragged: a computer, the switch on, the token on the map. */
+  protected readonly canDrag = computed(
+    () =>
+      !this.isMaster() &&
+      !this.phone() &&
+      this.playersMove() &&
+      this.ownToken() !== null &&
+      this.mover() !== null,
+  );
+  protected readonly ownKey = computed(() => this.ownToken()?.characterId ?? null);
   protected readonly viewer = computed(() => ({
     name: this.ownToken()?.name ?? (this.characterName() || 'Seu personagem'),
     own: true,
@@ -366,6 +380,13 @@ export class SessionMap {
     }
     this.error.set(null);
     const mover = this.mover();
+    if (!this.isMaster()) {
+      // A player drags only their own token, and only where the master allowed it: the server walks it and says how far it got.
+      if (mover && this.canDrag() && move.id === this.ownKey()) {
+        await mover.drag(move.id, { xBp: move.xBp, yBp: move.yBp });
+      }
+      return;
+    }
     if (mover && this.isMaster() && !before.creatureId && mover.hasGrid()) {
       // A character's token walks, and stops before a wall or a marked square: the server answers where it got (B2).
       await mover.drag(move.id, { xBp: move.xBp, yBp: move.yBp });

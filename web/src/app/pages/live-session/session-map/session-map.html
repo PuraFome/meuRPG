@@ -139,6 +139,7 @@
             [viewer]="viewer()"
             [isMaster]="isMaster()"
             [mode]="isMaster() && !phone() ? 'tokens' : 'view'"
+            [onlyToken]="canDrag() ? ownKey() : null"
             [doorTaps]="isMaster()"
             (doorPick)="openDoor($event)"
             [pins]="true"
@@ -199,7 +200,8 @@
             [points]="markerPoints()"
             [tokens]="state().tokens()"
             [isMaster]="isMaster()"
-            [mode]="isMaster() && !phone() ? 'tokens' : 'preview'"
+            [mode]="isMaster() && !phone() ? 'tokens' : canDrag() ? 'view' : 'preview'"
+            [onlyToken]="canDrag() ? ownKey() : null"
             [focusParty]="phone()"
             (moved)="onMoved($event)"
             (tokenPick)="mover()?.pick($event.id, $event.additive)"
@@ -217,7 +219,7 @@
               [isMaster]="isMaster()"
             />
           </app-map-view>
-          @if (!isMaster() || phone()) {
+          @if ((!isMaster() || phone()) && !canDrag()) {
             <a
               class="map__cover"
               tabindex="-1"
@@ -343,6 +345,11 @@
         </div>
       } @else if (isMaster() && (fogOn() || image()) && markerPoints().length > 0) {
         <ng-container *ngTemplateOutlet="pointsBlock" />
+      }
+    
+      @if (!isMaster() && mover() && ownToken() && (inTab() || !phone())) {
+        <!-- Who moves the tokens (C9-01 to C9-03): the line under the map, and "Mover Brisa" when the master let the players move. -->
+        <app-player-move [mover]="mover()!" [state]="state()" [characterId]="ownToken()!.characterId" [name]="ownToken()!.name" [drag]="canDrag()" />
       }
     }
     @case ('error') {

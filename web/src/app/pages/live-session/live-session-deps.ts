@@ -140,7 +140,12 @@ export class LiveSessionParts {
   constructor(services: LiveSessionServices, state: LiveSessionState) {
     const { mapsApi } = services;
     this.mapState = new MapState((mapId) => mapsApi.get(state.campaignId(), mapId));
-    this.mover = new TokenMover(services.tokenMoveApi, this.mapState, () => state.campaignId());
+    this.mover = new TokenMover(
+      services.tokenMoveApi,
+      this.mapState,
+      () => state.campaignId(),
+      () => state.isMaster(),
+    );
     this.trapBoard = new TrapBoard(
       services.trapsApi,
       mapsApi,

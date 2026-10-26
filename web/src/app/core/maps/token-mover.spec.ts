@@ -181,6 +181,52 @@ describe('TokenMover', () => {
     expect(state.tokens().map((t) => [t.xBp, t.yBp])).toEqual(before);
   });
 
+  describe("a player's own move (C9)", () => {
+    async function asPlayer() {
+      const s = await setup();
+      const mover = new TokenMover(
+        s.api,
+        s.state,
+        () => 'c1',
+        () => false,
+      );
+      return { ...s, mover };
+    }
+
+    it('says "Brisa andou 2 (3 m)." with no master\'s line of what was asked', async () => {
+      const { api, mover, at } = await asPlayer();
+      mover.pick('brisa');
+      mover.choose('e');
+      api.moveOutcome = {
+        moved: true,
+        blocked: '',
+        results: [
+          {
+            characterId: 'brisa',
+            name: 'Brisa',
+            ...at(5, 2),
+            asked: 2,
+            moved: 2,
+            stopped: MapMoveStop.UNSPECIFIED,
+          },
+        ],
+      };
+      await mover.move();
+      expect(mover.last()?.notice.text.replace(/\u00a0/g, ' ')).toBe('Brisa andou 2 (3 m).');
+      expect(mover.last()?.lines).toEqual([]);
+      expect(mover.master()).toBe(false);
+    });
+
+    it('says the master took the switch back when the server refuses the move', async () => {
+      const { api, mover, at } = await asPlayer();
+      mover.pick('brisa');
+      mover.tap(at(8, 2));
+      api.failWith = new ConnectError('x', Code.PermissionDenied);
+      expect(await mover.move()).toBe(false);
+      expect(mover.error()).toBe('O mestre voltou a mover os tokens.');
+    });
+  });
+
   it('writes a refusal and the token stays: one move at a time, and no destination, no move', async () => {
     const { api, mover, at } = await setup();
     expect(await mover.move()).toBe(false);

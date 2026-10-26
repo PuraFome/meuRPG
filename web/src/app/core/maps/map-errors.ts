@@ -152,7 +152,11 @@ export function editorErrorMessage(err: unknown, call: EditorCall, what: string)
 }
 
 /** What a failed `MoveMapTokens` says to the master (B2): the token did not move. */
-export function moveErrorMessage(err: unknown, who: string): string {
+export function moveErrorMessage(err: unknown, who: string, player = false): string {
+  if (player && ConnectError.from(err, Code.Unavailable).code === Code.PermissionDenied) {
+    // The master took the switch back while the move was on its way (C9-03).
+    return 'O mestre voltou a mover os tokens.';
+  }
   const reason = mapBlockedReason(err);
   if (reason === MapBlockedReason.COMBAT_RUNNING) {
     return `Não deu para mover ${who}. Há um combate neste mapa: os tokens andam pelo combate.`;

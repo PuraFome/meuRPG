@@ -186,8 +186,35 @@ export function askedLine(r: TokenMoveResult): string {
   return `Pedido: ${squaresText(r.asked)} (${metersOf(r.asked)}) · andou ${r.moved} (${metersOf(r.moved)})`;
 }
 
-/** What the master reads after a move: where it stopped and why, or that it got there. */
-export function moveNotice(outcome: MoveOutcome, names: ReadonlyMap<string, string>): MoveNotice {
+/** "Brisa andou 2 (3 m).": what a player reads of their own move (C9-02). */
+function walkedLine(r: TokenMoveResult): string {
+  return `${r.name} andou ${r.moved} (${metersOf(r.moved)}).`;
+}
+
+/** What the player reads after their own move (C9-02): "Brisa andou 2 (3 m).", or "O movimento parou antes." with the reason and how far
+ * it got; when the server could not say why (`BLOCKED`: something the player has not seen, RN-10), only "O movimento parou antes.". */
+function playerNotice(outcome: MoveOutcome): MoveNotice {
+  const mine = outcome.results[0];
+  if (!mine || mine.moved >= mine.asked) {
+    return { tone: 'done', lead: '', text: mine ? walkedLine(mine) : '' };
+  }
+  const hidden = mine.stopped === MapMoveStop.BLOCKED;
+  return {
+    tone: 'stopped',
+    lead: 'O movimento parou antes.',
+    text: hidden ? '' : [stopReason(mine.stopped), walkedLine(mine)].filter(Boolean).join(' '),
+  };
+}
+
+/** What the master reads after a move: where it stopped and why, or that it got there. The player has their own words (`player`). */
+export function moveNotice(
+  outcome: MoveOutcome,
+  names: ReadonlyMap<string, string>,
+  player = false,
+): MoveNotice {
+  if (player) {
+    return playerNotice(outcome);
+  }
   if (!outcome.moved && outcome.results.length > 1) {
     const who = names.get(outcome.blocked) ?? 'Alguém';
     return {

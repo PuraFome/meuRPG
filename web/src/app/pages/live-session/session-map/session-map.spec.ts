@@ -86,6 +86,93 @@ describe('SessionMap moving tokens outside combat (B2)', () => {
   });
 });
 
+describe("SessionMap, the player's side of moving tokens (C9)", () => {
+  async function mount(playersMove: boolean) {
+    const brisa = mapToken('brisa', 'Brisa', { mine: true, xBp: 2000, yBp: 2000 });
+    const pens = mapToken('pens', 'Pensantus', { xBp: 3000, yBp: 2000 });
+    const state = new MapState(async () =>
+      mapResponse(
+        mapMessage('map-1', 'Estrada', {
+          revealed: true,
+          gridColumns: 20,
+          gridRows: 20,
+          playersMoveTokens: playersMove,
+        }),
+        [],
+        [brisa, pens],
+      ),
+    );
+    await state.open('map-1');
+    const moveTokens = vi.fn(
+      async (_c: string, _m: string, ids: readonly string[], xBp: number, yBp: number) => ({
+        moved: true,
+        blocked: '',
+        results: ids.map((id) => ({
+          characterId: id,
+          name: 'Brisa',
+          xBp,
+          yBp,
+          asked: 3,
+          moved: 3,
+          stopped: MapMoveStop.UNSPECIFIED,
+        })),
+      }),
+    );
+    const mover = new TokenMover(
+      { moveTokens },
+      state,
+      () => 'camp-1',
+      () => false,
+    );
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        { provide: MapsClient, useValue: { placeToken: vi.fn() } },
+        { provide: LiveSessionSource, useValue: {} },
+        { provide: SceneClient, useValue: {} },
+      ],
+    });
+    const fixture = TestBed.createComponent(SessionMap);
+    fixture.componentRef.setInput('campaignId', 'camp-1');
+    fixture.componentRef.setInput('state', state);
+    fixture.componentRef.setInput('mapId', 'map-1');
+    fixture.componentRef.setInput('isMaster', false);
+    fixture.componentRef.setInput('mover', mover);
+    fixture.detectChanges();
+    const view = fixture.debugElement.query(By.directive(MapView)).componentInstance as MapView;
+    return { fixture, view, moveTokens, el: fixture.nativeElement as HTMLElement };
+  }
+
+  it('with the switch off says "O mestre move os tokens agora." and has no way to move', async () => {
+    const { el, fixture } = await mount(false);
+    expect(el.querySelector('app-player-move')?.textContent).toContain(
+      'O mestre move os tokens agora.',
+    );
+    expect(el.querySelector('.pm__go')).toBeNull();
+    expect(
+      fixture.debugElement.query(By.directive(MapView)).componentInstance.onlyToken(),
+    ).toBeNull();
+  });
+
+  it('with the switch on offers "Mover Brisa" and lets her drag her own token only: the server walks it', async () => {
+    const { el, view, moveTokens } = await mount(true);
+    expect(el.querySelector('.pm__go')?.textContent).toContain('Mover Brisa');
+    expect(view.onlyToken()).toBe('brisa');
+    view.moved.emit({ kind: 'token', id: 'brisa', xBp: 5000, yBp: 2000 });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(moveTokens).toHaveBeenCalledWith('camp-1', 'map-1', ['brisa'], 5000, 2000);
+    view.moved.emit({ kind: 'token', id: 'pens', xBp: 5000, yBp: 5000 });
+    await Promise.resolve();
+    expect(moveTokens).toHaveBeenCalledTimes(1);
+  });
+
+  it('puts no cover over the map that would steal the drag', async () => {
+    const withSwitch = await mount(true);
+    expect(withSwitch.el.querySelector('.map__cover')).toBeNull();
+  });
+});
+
 describe('SessionMap dragging a token', () => {
   const placeToken = vi.fn();
   const raven = mapToken('pens', 'Nanquim', { creatureId: 'raven', xBp: 2000, yBp: 2000 });

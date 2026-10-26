@@ -108,6 +108,36 @@ describe('token movement outside combat (B2)', () => {
       expect(notice.text).toContain('tire Jabuti da seleção');
     });
 
+    describe("the player's own words (C9-02)", () => {
+      const one = (asked: number, moved: number, stopped: MapMoveStop): MoveOutcome => ({
+        moved: moved > 0,
+        blocked: '',
+        results: [result('Brisa', asked, moved, stopped)],
+      });
+
+      it('says how far Brisa walked when she got there', () => {
+        const notice = moveNotice(one(2, 2, MapMoveStop.UNSPECIFIED), names, true);
+        expect([notice.tone, notice.lead, plain(notice.text)]).toEqual([
+          'done',
+          '',
+          'Brisa andou 2 (3 m).',
+        ]);
+      });
+
+      it('says where she stopped, why and how far, as the master would be told', () => {
+        const notice = moveNotice(one(6, 2, MapMoveStop.NO_PASS), names, true);
+        expect(notice.lead).toBe('O movimento parou antes.');
+        expect(plain(notice.text)).toBe(
+          'O próximo quadrado está marcado como “Não dá para passar”. Brisa andou 2 (3 m).',
+        );
+      });
+
+      it('says no reason when the server had none to give (a square she has not seen, RN-10)', () => {
+        const notice = moveNotice(one(6, 2, MapMoveStop.BLOCKED), names, true);
+        expect(notice).toEqual({ tone: 'stopped', lead: 'O movimento parou antes.', text: '' });
+      });
+    });
+
     it('labels the stop on the map', () => {
       expect(plain(stopLabel(result('Tor', 10, 5, MapMoveStop.NO_PASS)))).toBe(
         '7,5 m · parou antes',

@@ -208,6 +208,12 @@ A map and a point are born hidden, and the master reveals and hides each one.
 An NPC's token is born hidden. A player character's token is visible, and so is a creature's (a creature is on the group's side). Choosing the session's current map reveals it.
 The player sees the revealed map and the current map, with the revealed points and visible tokens only; a submap point leads only to a map the player also sees.
 
+**Moving tokens outside combat** ([MR-012](stories.md#mr-012-follow-the-session)).
+Outside combat the master moves any character's token; a player moves only their own, alone, and only on a map where the master turned on "Os jogadores movem os próprios personagens" (off by default), and only while they see that token.
+A token walks toward the square and stops before a wall, a locked door or a square marked "Não dá para passar", with no limit of movement.
+The master is told why it stopped; a player is told why only when the square in the way is one they see or remember: otherwise the answer says only that it stopped, and the player never learns what is there (a hidden NPC, a square in the fog).
+The master taking the switch back while a player is moving makes the server refuse that move, and the player's screen says "O mestre voltou a mover os tokens.".
+
 **The scene** ([MR-015](stories.md#mr-015-rp-scene-actions), [MR-031](stories.md#mr-031-npcs-in-the-scene)).
 The master may hide an NPC on the stage ("Escondida dos jogadores") and an action of a scene ("Escondida"), when preparing or live.
 A hidden NPC counts for the stage's limit of 4, but no player receives it: not its name, portrait or place on the stage, not in the open scene, not in a live hint, not in a cast list or as a target.

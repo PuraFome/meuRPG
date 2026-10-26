@@ -169,6 +169,68 @@
   color: var(--mr-on-accent);
 }
 
+.acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-3);
+}
+
+.acts--full .go {
+  flex: 1 1 100%;
+}
+
+.acts--stack {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.acts .go {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 var(--mr-space-4);
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
+// On a computer the filled button of the screen is "Enviar" in the conversation, so the player's "Mover Brisa" is outlined (C9-02).
+.go--outline {
+  background: var(--mr-surface);
+  border-color: var(--mr-control-line);
+  color: var(--mr-accent-text);
+}
+
+.close {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 0 var(--mr-space-2);
+  border: 0;
+  background: none;
+  color: var(--mr-accent-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+}
+
 .go--off {
   border: 1px dashed var(--mr-control-line);
   background: transparent;
