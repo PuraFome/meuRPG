@@ -78,6 +78,9 @@ func (b *overlayBuilder) neverPayable(cost, maxSrc string) bool {
 	return true
 }
 
+// plainScore is an ability score whose modifier is 0.
+const plainScore = 10
+
 // levelOnlyEnv is a formula environment of a character of the level with nothing else:
 // every ability at 10, no armor.
 func levelOnlyEnv(level int) *formula.Env {
@@ -86,7 +89,7 @@ func levelOnlyEnv(level int) *formula.Env {
 		Level:      func() int { return level },
 		ClassLevel: func(string) int { return 0 },
 		Mod:        func(string) int { return 0 },
-		Score:      func(string) int { return 10 }, //nolint:mnd // an ability of 10
+		Score:      func(string) int { return plainScore },
 		Prof:       func() int { return prof },
 		Armor:      func() string { return "none" },
 		Shield:     func() bool { return false },
