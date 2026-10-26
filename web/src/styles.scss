@@ -108,6 +108,23 @@ html {
   --mr-success-surface: light-dark(#e3f2ea, #16301f);
   --mr-success-ink: light-dark(#1f6b45, #9ed8b4);
 
+  // The dice tray (shared/roll-overlay): a felt with a wooden rim, paper dice and garnet dice, drawn on a canvas, which reads
+  // them through `color`. The paper die is the sheet's paper and ink; the garnet is the armour class shield's, darker in the
+  // dark theme so a gold critical number keeps its contrast. Numbers are at least 4.5:1 against their face, and a die's edge
+  // at least 3:1 against the felt, in both themes (tray-tokens.spec.ts measures it).
+  --mr-tray-felt: light-dark(#a9bda3, #1d3327);
+  --mr-tray-rim: light-dark(#7a5232, #5b3d25);
+  --mr-tray-shadow: light-dark(#26352a, #050d09);
+  --mr-die-paper: light-dark(#ffffff, #2a3140);
+  --mr-die-paper-shade: light-dark(#8d95a3, #0c1016);
+  --mr-die-ink: light-dark(#1b2230, #e6e9ef);
+  --mr-die-garnet: light-dark(#9e2b3b, #8a2232);
+  --mr-die-garnet-shade: light-dark(#3a0e16, #2b0810);
+  --mr-die-on-garnet: light-dark(#ffffff, #fdecee);
+  --mr-die-edge: light-dark(#1b2230, #e6e9ef);
+  --mr-die-gold: light-dark(#f8d36e, #f0c35a);
+  --mr-die-on-gold: light-dark(#2a1d02, #2a1d02);
+
   // Tokens on a battle map: the map's picture is not themed, so these do not
   // follow the theme. They are the light theme's ink and surface in both.
   --mr-map-token-ink: #1b2230;
@@ -436,4 +453,15 @@ a:hover {
 // A live phone screen has the session's nav pinned over the bottom of the page, so the footer's links stay out of it.
 body.mr-live-phone app-footer {
   display: none;
+}
+
+// The master's running combat from 1280px: its three columns (Ordem, the map, Turno) keep the widths they need and the map takes what
+// is left of the screen, so a 40-column map is not squeezed into the 1280px the other pages stop at (a square is about 11px there);
+// the side gutter is 24px instead of 48px, which is room for the map at 1280px, where Ordem (288px) and Turno (368px) already take
+// 656px of it. `main.app-content` outweighs the shell's own rule; the cap keeps an ultra-wide screen's lines readable.
+@media (min-width: 1280px) {
+  main.app-content:has(.tri--wide) {
+    --mr-gutter: var(--mr-space-6);
+    max-width: min(100%, 2400px);
+  }
 }

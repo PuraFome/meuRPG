@@ -2154,6 +2154,9 @@ message SlotChoice {
   // How many slots of this kind are free, so the app can warn about the
   // last one.
   int32 free = 3;
+  // How many slots of this kind the character has in all, free or spent, so
+  // the app can read "3 of 4 free". 0 when not known.
+  int32 total = 4;
 }
 
 // ActionOption is a standard or feature action the character can take.

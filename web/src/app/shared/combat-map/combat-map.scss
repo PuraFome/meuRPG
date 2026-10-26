@@ -377,12 +377,13 @@
   &::before {
     position: absolute;
     inset: 50% auto auto 50%;
-    width: calc(var(--cm-tk) * var(--span, 1) + 4px);
-    height: calc(var(--cm-tk) * var(--span, 1) + 4px);
+    // On small squares the ring shrinks with the token, so it never reaches over the neighbour's square.
+    width: calc(var(--cm-tk) * var(--span, 1) + min(4px, var(--cm-tk) * 0.3));
+    height: calc(var(--cm-tk) * var(--span, 1) + min(4px, var(--cm-tk) * 0.3));
     border-radius: 50%;
     box-shadow:
-      0 0 0 2px var(--mr-map-token-surface),
-      0 0 0 5px var(--mr-map-accent);
+      0 0 0 min(2px, calc(var(--cm-tk) * 0.15)) var(--mr-map-token-surface),
+      0 0 0 min(5px, calc(var(--cm-tk) * 0.4)) var(--mr-map-accent);
     content: '';
     transform: translate(-50%, -50%);
   }
@@ -395,8 +396,8 @@
 
 .cm__pick--on::before {
   box-shadow:
-    0 0 0 3px var(--mr-map-token-surface),
-    0 0 0 8px var(--mr-map-accent);
+    0 0 0 min(3px, calc(var(--cm-tk) * 0.2)) var(--mr-map-token-surface),
+    0 0 0 min(8px, calc(var(--cm-tk) * 0.6)) var(--mr-map-accent);
 }
 
 // Dimmed: no ring, only the tap that tells why.
