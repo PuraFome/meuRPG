@@ -738,15 +738,18 @@ func (*TableEntry_TableFeat) isTableEntry_Body() {}
 // TableEffect is one effect of a feature, from the closed menu: what the engine
 // computes with, never code. `type` is "modifier", "proficiency", "resource",
 // "sense", "roll_mode", "grant_action", "extra_attack", "ranged_attack", "choice", "ability_increase",
-// "superiority_die" or "note"; "ability_increase" is a feat's alone. Only the fields of the type are
+// "superiority_die", "resistance", "breathes_water", "granted_spell" or "note"; "ability_increase" is a feat's alone.
+// "breathes_water" has no field of its own (`when` and `text_pt` only): the character breathes underwater. Only the fields of the type are
 // read, and a field the type does not use is refused. A feature with no effects is text only and always valid. Formulas ("value",
 // "when", "max") use level(), classLevel("<class>"), mod("int"), score("int"),
-// prof(), floor, ceil, min and max, and must compile; a formula has at most 1024 bytes and 256 nodes.
+// prof(), floor, ceil, min and max, and must compile; a formula has at most 1024 bytes and 256 nodes. The modifiers of the
+// "speed.fly", "speed.swim", "speed.climb" and "speed.burrow" targets may also call speedwalk(), the walking speed after the
+// modifiers.
 type TableEffect struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Type  string                 `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
-	// modifier: what changes ("ac.base", "ac", "hp.max", "speed.walk",
-	// "initiative", "attack.weapon.melee", "attack.weapon.ranged",
+	// modifier: what changes ("ac.base", "ac", "hp.max", "speed.walk", "speed.fly", "speed.swim",
+	// "speed.climb", "speed.burrow", "initiative", "attack.weapon.melee", "attack.weapon.ranged",
 	// "damage.weapon.melee", "damage.weapon.ranged", "skill.<skill>",
 	// "save.<ability>"), how ("add", "max" or "set") and the formula.
 	Target string `protobuf:"bytes,2,opt,name=target,proto3" json:"target,omitempty"`
@@ -832,8 +835,27 @@ type TableEffect struct {
 	// sheet's picks or another feature); the effect never gives the proficiency itself.
 	// Empty or false doubles the skill whether or not the character is proficient.
 	OnlyProficient bool `protobuf:"varint,29,opt,name=only_proficient,json=onlyProficient,proto3" json:"only_proficient,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// granted_spell: a spell the entry gives the character apart from the lists of its
+	// classes. `spell` is an SRD key or a spell of the same table; `ability` is "int",
+	// "wis", "cha" or "choice" (the player picks one of the three once, when the entry
+	// is taken) and gives the spell attack bonus and the save DC (8 + proficiency + the
+	// modifier). `from_level` is a formula, the level the grant starts at (1 when empty):
+	// the class level for a class or subclass feature, the character level for anything
+	// else. `uses` is empty or "at_will" for no limit, or the name of a resource effect of
+	// the same entry (or its class), of which every cast spends one. `also_with_slot`
+	// lets the character cast it with a spell slot too, `ritual_only` limits it to the
+	// ritual way (a spell with the ritual tag; not with also_with_slot) and
+	// `counts_as_known` lists it among the known spells without using any of the
+	// class's picks. A leveled spell cast through the grant is cast at its own level;
+	// the material components are not waived. Required: `spell` and `ability`.
+	Spell         string `protobuf:"bytes,30,opt,name=spell,proto3" json:"spell,omitempty"`
+	FromLevel     string `protobuf:"bytes,31,opt,name=from_level,json=fromLevel,proto3" json:"from_level,omitempty"`
+	Uses          string `protobuf:"bytes,32,opt,name=uses,proto3" json:"uses,omitempty"`
+	AlsoWithSlot  bool   `protobuf:"varint,33,opt,name=also_with_slot,json=alsoWithSlot,proto3" json:"also_with_slot,omitempty"`
+	RitualOnly    bool   `protobuf:"varint,34,opt,name=ritual_only,json=ritualOnly,proto3" json:"ritual_only,omitempty"`
+	CountsAsKnown bool   `protobuf:"varint,35,opt,name=counts_as_known,json=countsAsKnown,proto3" json:"counts_as_known,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TableEffect) Reset() {
@@ -1065,6 +1087,48 @@ func (x *TableEffect) GetWhile() string {
 func (x *TableEffect) GetOnlyProficient() bool {
 	if x != nil {
 		return x.OnlyProficient
+	}
+	return false
+}
+
+func (x *TableEffect) GetSpell() string {
+	if x != nil {
+		return x.Spell
+	}
+	return ""
+}
+
+func (x *TableEffect) GetFromLevel() string {
+	if x != nil {
+		return x.FromLevel
+	}
+	return ""
+}
+
+func (x *TableEffect) GetUses() string {
+	if x != nil {
+		return x.Uses
+	}
+	return ""
+}
+
+func (x *TableEffect) GetAlsoWithSlot() bool {
+	if x != nil {
+		return x.AlsoWithSlot
+	}
+	return false
+}
+
+func (x *TableEffect) GetRitualOnly() bool {
+	if x != nil {
+		return x.RitualOnly
+	}
+	return false
+}
+
+func (x *TableEffect) GetCountsAsKnown() bool {
+	if x != nil {
+		return x.CountsAsKnown
 	}
 	return false
 }
@@ -5712,7 +5776,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"tableSpell\x12;\n" +
 	"\n" +
 	"table_feat\x18\x11 \x01(\v2\x1a.meurpg.rules.v1.TableFeatH\x00R\ttableFeatB\x06\n" +
-	"\x04body\"\x8f\x06\n" +
+	"\x04body\"\xc7\a\n" +
 	"\vTableEffect\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
 	"\x06target\x18\x02 \x01(\tR\x06target\x12\x12\n" +
@@ -5743,7 +5807,15 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x1ano_long_range_disadvantage\x18\x1a \x01(\bR\x17noLongRangeDisadvantage\x12\x16\n" +
 	"\x06except\x18\x1b \x01(\tR\x06except\x12\x14\n" +
 	"\x05while\x18\x1c \x01(\tR\x05while\x12'\n" +
-	"\x0fonly_proficient\x18\x1d \x01(\bR\x0eonlyProficient\"\xc3\x01\n" +
+	"\x0fonly_proficient\x18\x1d \x01(\bR\x0eonlyProficient\x12\x14\n" +
+	"\x05spell\x18\x1e \x01(\tR\x05spell\x12\x1d\n" +
+	"\n" +
+	"from_level\x18\x1f \x01(\tR\tfromLevel\x12\x12\n" +
+	"\x04uses\x18  \x01(\tR\x04uses\x12$\n" +
+	"\x0ealso_with_slot\x18! \x01(\bR\falsoWithSlot\x12\x1f\n" +
+	"\vritual_only\x18\" \x01(\bR\n" +
+	"ritualOnly\x12&\n" +
+	"\x0fcounts_as_known\x18# \x01(\bR\rcountsAsKnown\"\xc3\x01\n" +
 	"\fTableFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x17\n" +

@@ -358,5 +358,23 @@
       ],
       "namePt": "Talento 3"
     }
+  },
+  {
+    "step": "feat that grants a hidden and a visible spell",
+    "value": {
+      "effects": [
+        {
+          "ability": "wis",
+          "type": "granted_spell"
+        },
+        {
+          "ability": "cha",
+          "spell": "spell:fire-bolt",
+          "type": "granted_spell",
+          "uses": "at_will"
+        }
+      ],
+      "namePt": "Talento 4"
+    }
   }
 ]

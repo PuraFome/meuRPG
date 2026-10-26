@@ -219,6 +219,7 @@ func (x *deriver) characterSpells(casters []caster) {
 	s.addKnown()
 	counted := s.addPrepared()
 	s.addAlwaysPrepared()
+	s.addGrantedKnown()
 	s.checkKnownCount()
 	s.checkPreparedCount(counted)
 
@@ -345,6 +346,16 @@ func (s *spellSheet) knownByCaster(sp *srd51.Spell) bool {
 		}
 	}
 	return false
+}
+
+// addGrantedKnown puts on the sheet the spells a granted_spell effect counts as
+// known. They count against none of the class's numbers.
+func (s *spellSheet) addGrantedKnown() {
+	for _, g := range s.x.d.GrantedSpells {
+		if sp := s.c.spells[g.Spell.Key]; g.CountsAsKnown && sp != nil {
+			s.addSpell(sp, false)
+		}
+	}
 }
 
 // addSpell puts a spell on the sheet once; a second time it only marks it

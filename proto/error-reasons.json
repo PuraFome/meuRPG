@@ -590,7 +590,8 @@
             "TARGET_OUT_OF_REACH",
             "CLASS_CANNOT_RITUAL",
             "NOT_A_RITUAL",
-            "ARMOR_NOT_PROFICIENT"
+            "ARMOR_NOT_PROFICIENT",
+            "NO_USES"
           ],
           "unsent": []
         }

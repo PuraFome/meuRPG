@@ -36,6 +36,8 @@ export interface OutsideCastRequest {
   readonly summon?: CastSummon;
   /** Aprimorar Habilidade only: the ability it is cast for ("str" to "cha"). */
   readonly abilityKey?: string;
+  /** The trait, feat or feature whose granted spell effect casts the spell; empty for a spell of the classes. */
+  readonly grantedBy?: string;
 }
 
 /**
@@ -70,6 +72,7 @@ export class CastingClient {
       idempotencyKey,
       ...(req.dice ? { roll: diceOf(req.dice) } : {}),
       ...(req.abilityKey ? { abilityKey: req.abilityKey } : {}),
+      ...(req.grantedBy ? { grantedBy: req.grantedBy } : {}),
       ...(req.summon
         ? {
             summon: {

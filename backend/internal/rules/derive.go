@@ -108,6 +108,7 @@ func deriveWith(b Build, c *content, inactive map[string]bool) Derived {
 	x.hitPoints()
 	x.speedAndSenses()
 	x.languages()
+	x.grantedSpells()
 	x.spellcasting()
 	x.rangedAttacks()
 	x.attacks()
@@ -757,6 +758,7 @@ func (x *deriver) buildEnv() {
 		Prof:       func() int { return x.prof },
 		Armor:      func() string { return x.armorCategory },
 		Shield:     x.shieldWielded,
+		SpeedWalk:  func() int { return x.d.SpeedWalkFt },
 	}
 }
 

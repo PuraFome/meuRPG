@@ -56,12 +56,14 @@ A table feature has effects of these types only; anything else is `forbidden_eff
 | `grant_action` | May carry `resource`: the name of a `resource` effect of the same entry, its class, or an SRD resource. Each use spends one and the action is off with none left. Refused as `bad_reference` when nothing defines it. |
 | `ranged_attack` | Checked at its fields: `applies` is `spell` or `weapon`; `range_multiplier` is 2 or 3 and only on `spell`; `no_long_range_disadvantage` only on `weapon`; an effect that sets none of the three switches is refused at `.type`; `tags` at `.tags`; the switches on any other type are stray fields. |
 | `resistance` | Resistance to every damage type but `except`, while `while` holds. `except` is a damage type of the content (refused at `.except`, `bad_reference`), `while` is `rage` (refused at `.while`, `bad_value`), and a `when` or `tags` is refused at its own field (`bad_value`): `while` is the condition. See [Effects](rules.md#effects). |
+| `breathes_water` | The character breathes underwater (`Derived.BreathesWater`). No field of its own: a stray one is refused, `when` and `text_pt` are allowed. |
+| `granted_spell` | See [Granted spells](#granted-spells). |
 | `extra_damage` | See [Extra damage](#extra-damage). |
 | `choice` | Picks among SRD options (a key the SRD has) or, for kind `feature`, among the option list of a table feature. Kinds: `skill`, `expertise`, `cantrip`, `spell`, `language`, `tool`, `feature`, `feat`. A `feature` choice never asks for more than the options it lists. |
 | `ability_increase` | Feats only. `count` different abilities from `from`, `value` 1 or 2; at most one per feat. The sheet keeps the result in `ExtraAbilityBonuses`. |
 | `ambush` | See [Ambush](#ambush). |
 | `superiority_die` | See [Maneuvers](#maneuvers). |
-| Granted spell | A `note` with `spells` (like the SRD's Infernal Legacy): the character knows the cantrip, or a spell once per day when the same feature has a `resource`. A granted spell is on the sheet's list, does not count in the class numbers and needs no slot. Only a `note` grants spells. |
+| Spells in a `note` | A `note` with `spells` (like the SRD's Infernal Legacy): the character knows the cantrip, or a spell once per day when the same feature has a `resource`. The spell is on the sheet's list and does not count in the class numbers. Only a `note` carries `spells`. The structured way is [`granted_spell`](#granted-spells). |
 
 Never allowed: `handler` (not even one that exists, since a handler reads columns of an SRD class a table class lacks), `spellcasting` and `wild_shape` (the engine writes casting from the class), `replaces`, `beast_spells`, `song_of_rest`.
 A text-only feature always holds.
@@ -101,6 +103,30 @@ Checked at its fields:
 
 `Derive` fills `Derived.ExtraDamages` with the amount worked out; a resource the character does not have at that level leaves the effect out.
 The attack card offers it after a hit as a choosable part ([Attacks and damage](play/attacks-and-damage.md)).
+
+### Granted spells
+
+`granted_spell` (menu name "Magia concedida"; `rules/grantedspells.go`) gives the character a spell apart from the lists of the classes. It is the table's way to write what a race trait, a feat or a feature grants: a cantrip at will, a spell with a few uses per rest, a ritual.
+
+| Field | Meaning |
+| --- | --- |
+| `spell` | An SRD key or a spell of the same table (`bad_reference` at `.spell`). |
+| `ability` | `int`, `wis`, `cha`, or `choice`: the player picks one of the three once for the entry, as a pick of the choice engine (`<entry>#grant-ability=ability:int`, in `feature_choice_keys`; until it is made the grant has no numbers and the sheet asks for it). It gives the spell attack bonus (proficiency + modifier) and the save DC (8 + the same) of the grant, whatever the classes cast with. |
+| `from_level` | An Int formula, 1 when empty: the class level for a feature of a class or subclass, the character level for anything else. Below it the effect is not there. |
+| `uses` | Empty or `at_will` for no limit; otherwise the name of a `resource` effect of the same entry (or its class, or an SRD resource): `bad_reference` at `.uses` when nothing defines it. Every cast spends one use. A feat's own `resource` effects count. |
+| `also_with_slot` | The grant may also be cast with a spell slot, which spends no use. |
+| `ritual_only` | The grant casts the spell as a ritual only (no slot, 10 minutes more); the spell needs the ritual tag, and the switch excludes `also_with_slot`. |
+| `counts_as_known` | The spell is also listed among the known ones, without using any pick of the class. |
+
+`when` gates the grant like any effect. Without `counts_as_known` the grant leaves the sheet's known spells, cantrips and prepared numbers as they are.
+A spell above a cantrip cast through a grant is cast at its own level; it cannot be cast at a higher level for free, and the material components are not waived.
+A cantrip scales with the character level.
+The effect fills `Derived.GrantedSpells`; `combat.Options` lists each one as a turn option with a `Grant` (no slots unless `also_with_slot`, disabled with `NO_USES` when the resource is spent), and `combat.OutsideSpells` as one more way to cast the spell. The players' catalog drops a hidden `spell` from the effect like it does for `spells`.
+
+`CastSpell` and `CastSpellOutsideCombat` take `granted_by`, the grant's source key.
+With it, `GrantedCombatSpell` reads the spell with the grant's numbers (`rules.GrantedSpell`), no slot is spent, and a limited grant spends one use of its resource (`NO_USES` when none is left); the combat's undo gives the use back (`actionEvent.GrantUse`).
+Outside a combat a use is spent when the casting starts, so a long casting through a grant has spent it before it ends; a ritual-only grant casts with `as_ritual`.
+A summoning spell is cast with the classes, not through a grant.
 
 ### Ambush
 
@@ -216,7 +242,7 @@ Two reads give the class editor everything it needs, so the browser computes not
   Each row is a `TableClassLevel` ready to be the class's `levels` (features empty): bonus, cantrips known, spells known and the nine slot counts.
   The numbers are read from the SRD itself, never from the campaign's content: full and third use the Wizard/Cleric's, half the Paladin's (starts at level 2), pact the Warlock's, "knows" the cantrips and spells known of the Sorcerer (full), the Ranger (half) and the Warlock; "prepares" has no spells known.
   The third caster, which SRD 5.1 lacks, is our default: the full table at a third of the level, rounded up, 2 cantrips (3 from level 10) and, for one that knows spells, 3 at levels 3 and 4 and one more every two levels; the master changes whatever they want.
-- **`EffectMenu`** returns the fourteen effect types of the menu with their Portuguese names and sentences, each one's fields (required or not, the field's kind and list, a number's limits, `always_shown` for an optional field the editor never folds away), and every closed list with Portuguese names: modifier targets, modes, proficiency targets, levels, advantage modes and targets, senses, recharges, action economies, choice kinds, `ranged_attack_applies`, `damage_types`, `resistance_conditions`, skills, languages, tools and tag prefixes.
+- **`EffectMenu`** returns the sixteen effect types of the menu with their Portuguese names and sentences, each one's fields (required or not, the field's kind and list, a number's limits, `always_shown` for an optional field the editor never folds away), and every closed list with Portuguese names: modifier targets, modes, proficiency targets, levels, advantage modes and targets, senses, recharges, action economies, choice kinds, `ranged_attack_applies`, `damage_types`, `resistance_conditions`, `granted_spell_abilities`, skills, languages, tools and tag prefixes.
   It also carries the SRD option lists a "one option from a list" choice can offer, the formula functions with a sentence each, the class indexes `classLevel` accepts (SRD and table) and the limits.
   A test puts each value of each list in an effect and checks that `With` accepts it, so the menu never offers what the server refuses; it offers a subset of what the engine understands.
 

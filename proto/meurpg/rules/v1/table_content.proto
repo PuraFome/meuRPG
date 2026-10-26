@@ -92,14 +92,17 @@ message TableEntry {
 // TableEffect is one effect of a feature, from the closed menu: what the engine
 // computes with, never code. `type` is "modifier", "proficiency", "resource",
 // "sense", "roll_mode", "grant_action", "extra_attack", "ranged_attack", "choice", "ability_increase",
-// "superiority_die" or "note"; "ability_increase" is a feat's alone. Only the fields of the type are
+// "superiority_die", "resistance", "breathes_water", "granted_spell" or "note"; "ability_increase" is a feat's alone.
+// "breathes_water" has no field of its own (`when` and `text_pt` only): the character breathes underwater. Only the fields of the type are
 // read, and a field the type does not use is refused. A feature with no effects is text only and always valid. Formulas ("value",
 // "when", "max") use level(), classLevel("<class>"), mod("int"), score("int"),
-// prof(), floor, ceil, min and max, and must compile; a formula has at most 1024 bytes and 256 nodes.
+// prof(), floor, ceil, min and max, and must compile; a formula has at most 1024 bytes and 256 nodes. The modifiers of the
+// "speed.fly", "speed.swim", "speed.climb" and "speed.burrow" targets may also call speedwalk(), the walking speed after the
+// modifiers.
 message TableEffect {
   string type = 1;
-  // modifier: what changes ("ac.base", "ac", "hp.max", "speed.walk",
-  // "initiative", "attack.weapon.melee", "attack.weapon.ranged",
+  // modifier: what changes ("ac.base", "ac", "hp.max", "speed.walk", "speed.fly", "speed.swim",
+  // "speed.climb", "speed.burrow", "initiative", "attack.weapon.melee", "attack.weapon.ranged",
   // "damage.weapon.melee", "damage.weapon.ranged", "skill.<skill>",
   // "save.<ability>"), how ("add", "max" or "set") and the formula.
   string target = 2;
@@ -185,6 +188,25 @@ message TableEffect {
   // sheet's picks or another feature); the effect never gives the proficiency itself.
   // Empty or false doubles the skill whether or not the character is proficient.
   bool only_proficient = 29;
+  // granted_spell: a spell the entry gives the character apart from the lists of its
+  // classes. `spell` is an SRD key or a spell of the same table; `ability` is "int",
+  // "wis", "cha" or "choice" (the player picks one of the three once, when the entry
+  // is taken) and gives the spell attack bonus and the save DC (8 + proficiency + the
+  // modifier). `from_level` is a formula, the level the grant starts at (1 when empty):
+  // the class level for a class or subclass feature, the character level for anything
+  // else. `uses` is empty or "at_will" for no limit, or the name of a resource effect of
+  // the same entry (or its class), of which every cast spends one. `also_with_slot`
+  // lets the character cast it with a spell slot too, `ritual_only` limits it to the
+  // ritual way (a spell with the ritual tag; not with also_with_slot) and
+  // `counts_as_known` lists it among the known spells without using any of the
+  // class's picks. A leveled spell cast through the grant is cast at its own level;
+  // the material components are not waived. Required: `spell` and `ability`.
+  string spell = 30;
+  string from_level = 31;
+  string uses = 32;
+  bool also_with_slot = 33;
+  bool ritual_only = 34;
+  bool counts_as_known = 35;
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a

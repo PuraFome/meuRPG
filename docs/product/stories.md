@@ -650,6 +650,20 @@ The data rules, limits and the server side are in [Table content: rules](../arch
   For ranged weapons (a thrown weapon at range included), that cover is ignored and long range gives no disadvantage.
   Total cover still blocks the attack, and the roll shows no cover where the cover was ignored.
 
+**Speeds and spells the table grants.**
+
+- **Given** a feature, a trait or a feat of the table with a modifier of the fly, swim, climb or burrow speed ("Deslocamento de voo", "de natação", "de escalada", "de escavação"; "somar", "pelo menos" or "definir"), **when** a character has it, **then** the sheet lists that speed under the walking speed in meters and feet, **and** it follows the effect's condition (`when`).
+  The formula may read `speedwalk()`, the walking speed after the modifiers: a race that swims as fast as it walks writes "definir `speedwalk()`", and a feat that adds 10 ft to the walking speed moves the swimming speed along.
+  In combat a creature moves on its fly speed when it is the better of the two; swimming and climbing are on the sheet only, as the grid has no cost for them.
+- **Given** an effect "Respira na água", **when** a character has it, **then** the sheet says "Respira na água" in the speed box; the app keeps no air or drowning count.
+- **Given** a feat, a trait or a feature with the effect "Magia concedida" (a spell of the SRD or of the table, the level it starts at, the casting ability — Intelligence, Wisdom, Charisma or "o jogador escolhe" —, the resource each cast spends, a switch to cast it with a slot too, a switch for rituals only and a switch to list it among the known spells), **when** a character has it, **then** the sheet lists the spell under "Magias concedidas" with its source, how it is cast and the DC and attack bonus of the grant, **and** the character's known spells, cantrips and prepared numbers stay as they were.
+  A leveled spell is cast at its own level, a cantrip scales with the character level, and the material components are not waived.
+  When the ability is "o jogador escolhe", the player picks it once, in the sheet's choices, and until then the grant has no numbers.
+- **Given** a granted spell, **when** the player casts it, in a fight or outside one, **then** the cast sheet offers it as a way of its own, with no spell slot (a slot only when the grant allows one), using the grant's ability for the attack roll and the saving throw DC.
+  A limited grant spends one use of its resource: the second cast with no use left is refused ("A concessão não tem mais usos."), the undo of the first gives it back, and an at-will grant never runs out.
+  A ritual-only grant casts as a ritual.
+- **Given** the effect editor, **when** I register a granted spell, **then** the server refuses a spell that does not exist, a ritual-only grant on a spell without the ritual tag, a resource the entry does not define and an ability that is none of the four, each at its field.
+
 **Changing, archiving and switching.**
 
 - **Given** a table class that a sheet uses, **when** the game master changes one of its numbers, **then** the sheet shows the new number, locked sheets included, **and** whatever fell outside the rules appears on the sheet as a notice ("A classe mudou") with one sentence per change, without blocking any other edit (RN-23).
