@@ -33,7 +33,8 @@ const trimmedText =
       | 'tempHp'
       | 'restore'
       | 'fromLevel'
-      | 'uses',
+      | 'uses'
+      | 'dice',
   ): EffectWriter =>
   (d) => {
     const text = d[key].trim();
@@ -59,6 +60,11 @@ const pickedText =
       | 'while'
       | 'event'
       | 'spell'
+      | 'damageType'
+      | 'weapon'
+      | 'frequency'
+      | 'appliesTo'
+      | 'spellChange'
       | 'kind'
       | 'againstCondition',
   ): EffectWriter =>
@@ -122,6 +128,14 @@ export const EFFECT_WRITERS: ReadonlyMap<string, EffectWriter> = new Map<string,
   ['damage_types', pickedList('damageTypes')],
   ['conditions', pickedList('conditions')],
   ['against_condition', pickedText('againstCondition')],
+  ['dice', trimmedText('dice')],
+  ['dice_sides', (d) => (d.diceSides > 0 ? { diceSides: d.diceSides } : {})],
+  ['damage_type', pickedText('damageType')],
+  ['weapon', pickedText('weapon')],
+  ['frequency', pickedText('frequency')],
+  ['no_crit_doubling', (d) => (d.noCritDoubling ? { noCritDoubling: true } : {})],
+  ['applies_to', pickedText('appliesTo')],
+  ['spell_change', pickedText('spellChange')],
   ['ignore_cover', (d) => (d.ignoreCover ? { ignoreCover: true } : {})],
   [
     'only_proficient',

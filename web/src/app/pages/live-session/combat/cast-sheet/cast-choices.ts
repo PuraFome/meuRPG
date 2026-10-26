@@ -25,6 +25,7 @@ import {
   metamagicRows,
   toggledOption,
 } from '../../../../core/resources/metamagic';
+import { tableOptionRows, toggledTable } from '../../../../core/combat/table-cast-options';
 import type { Pool } from '../../../../core/resources/pools';
 import type { CastArea } from './cast-area';
 import {
@@ -105,6 +106,10 @@ export class CastChoices {
   readonly damageType = computed(() => damageTypeOf(this.damageChoices(), this.s.pickedType()));
   readonly warning = computed(() =>
     lastSlotWarning(this.s.slot(), this.s.data.shieldFree, this.s.data.shieldName),
+  );
+  /** The cast options of the table features, with their state. */
+  readonly tableRows = computed(() =>
+    tableOptionRows(this.s.data.tableOptions ?? [], this.s.tableTicked(), this.s.tableTypes()),
   );
   readonly metaRows = computed(() => metamagicRows(this.metaOptions, this.s.chosenMeta()));
   readonly metaCost = computed(() => metamagicCost(this.metaOptions, this.s.chosenMeta()));
@@ -240,6 +245,16 @@ export class CastChoices {
 
   pickSlot(row: SlotRow): void {
     this.s.slot.set(row);
+    this.chose();
+  }
+
+  toggleTable(key: string): void {
+    this.s.tableTicked.set(toggledTable(this.s.tableTicked(), key));
+    this.chose();
+  }
+
+  pickTableType(key: string, type: string): void {
+    this.s.tableTypes.update((t) => ({ ...t, [key]: type }));
     this.chose();
   }
 

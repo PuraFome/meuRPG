@@ -1,4 +1,4 @@
-import { Component, computed, input, output, signal } from '@angular/core';
+import { Component, computed, effect, input, output, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -20,6 +20,10 @@ import { initiativeMark } from '../../../../core/combat/natural-mark';
 import { groupName } from '../../../../core/combat/creature-names';
 import { ownCreatures } from '../../../../core/combat/mine';
 import type { HeldAnswer } from '../../../../core/held-rolls/held-roll-offer';
+import type { InitiativeManeuver } from '../../../../core/combat/combat-client-types';
+import { rollDiceFor } from '../../../../core/effects/roll-die';
+import type { RollDie } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import { RollDieOffer } from '../../../../shared/roll-die-offer/roll-die-offer';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { HeldRollPrompt } from '../../../../shared/held-roll-prompt/held-roll-prompt';
 
@@ -50,7 +54,7 @@ export interface CreatureInitiative {
  */
 @Component({
   selector: 'app-player-initiative',
-  imports: [CombatantToken, HeldRollPrompt, MatButtonModule, MatIconModule],
+  imports: [CombatantToken, HeldRollPrompt, MatButtonModule, MatIconModule, RollDieOffer],
   templateUrl: './player-initiative.html',
   styleUrl: './player-initiative.scss',
 })
@@ -59,6 +63,8 @@ export class PlayerInitiative {
   readonly diceMode = input.required<DiceMode>();
   readonly dicePreference = input.required<DicePreference>();
   readonly busy = input(false);
+  /** The table dice the character may add to a roll (`DerivedSheet.roll_dice`); the initiative offers those of "initiative". */
+  readonly rollDice = input<readonly RollDie[]>([]);
   /** A refused roll's message (the page maps the typed error). */
   readonly error = input('');
 
@@ -77,8 +83,22 @@ export class PlayerInitiative {
   readonly typeCreatureFace = output<{ id: string; face: number }>();
   /** "Mudar": the dice choice. */
   readonly changeDice = output<void>();
+  /** The table die ticked for this initiative, with its face when typed; `null` for none. The page sends it with the roll. */
+  readonly maneuverChange = output<InitiativeManeuver | null>();
 
   protected readonly typing = signal(false);
+  protected readonly dice = computed(() => rollDiceFor(this.rollDice(), { kind: 'initiative' }));
+  /** The key of the die ticked, and the face typed for it (physical dice). */
+  protected readonly pick = signal('');
+  protected readonly typedDie = signal('');
+  protected readonly die = computed(() => this.dice().find((d) => d.key === this.pick()) ?? null);
+  protected readonly dieFace = computed(() => {
+    const sides = this.die()?.sides ?? 0;
+    const text = this.typedDie().trim();
+    return /^\d{1,2}$/.test(text) && +text >= 1 && +text <= sides ? +text : null;
+  });
+  /** The typed d20 cannot go while the ticked die has no face. */
+  protected readonly dieMissing = computed(() => this.die() !== null && this.dieFace() === null);
   protected readonly typed = signal('');
   /** The key of the creature whose result is being typed, if any. */
   protected readonly typingCreature = signal<string | null>(null);
@@ -147,6 +167,19 @@ export class PlayerInitiative {
     return `${face} ${sign} ${Math.abs(this.bonus())} = ${face + this.bonus()} · dado físico`;
   });
 
+  constructor() {
+    effect(() => {
+      const die = this.die();
+      this.maneuverChange.emit(
+        die ? { key: die.key, ...(this.showTyping() ? { face: this.dieFace() ?? 0 } : {}) } : null,
+      );
+    });
+  }
+
+  protected onTypeDie(event: Event): void {
+    this.typedDie.set((event.target as HTMLInputElement).value);
+  }
+
   private faceOf(text: string): number | null {
     const value = text.trim();
     return /^\d{1,2}$/.test(value) && +value >= 1 && +value <= 20 ? +value : null;
@@ -183,7 +216,7 @@ export class PlayerInitiative {
 
   protected confirm(): void {
     const face = this.face();
-    if (face !== null && !this.busy()) {
+    if (face !== null && !this.dieMissing() && !this.busy()) {
       this.typeFace.emit(face);
     }
   }

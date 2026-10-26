@@ -126,7 +126,11 @@ func (s *Service) initiativeWrite(ctx context.Context, c *combatTx, call initiat
 		_, _, *held = s.outsideOffers(ctx, c.tx, gate.Held)
 		return nil, nil
 	}
-	total, f := conv.Int32(gate.Roll.Total), clamp32(gate.Roll.Face(), 1, 20)
+	extra, err := s.initiativeManeuver(ctx, c, call, target)
+	if err != nil {
+		return nil, err
+	}
+	total, f := conv.Int32(gate.Roll.Total)+extra.face, clamp32(gate.Roll.Face(), 1, 20)
 	if err := saveInitiative(ctx, c, cs, target, total, f); err != nil {
 		return nil, err
 	}
@@ -140,7 +144,16 @@ func (s *Service) initiativeWrite(ctx context.Context, c *combatTx, call initiat
 		return nil, err
 	}
 	c.characterID = &target.CharacterID
-	return map[string]any{"combatant_id": target.ID, "face": f, "total": total, "physical": gate.Roll.Physical}, nil
+	return initiativeEvent(target, f, total, gate.Roll.Physical, extra), nil
+}
+
+// initiativeEvent is the payload of the initiative event; a table die added to it is named with its face.
+func initiativeEvent(target playdb.Combatant, face, total int32, physical bool, die initiativeDie) map[string]any {
+	ev := map[string]any{"combatant_id": target.ID, "face": face, "total": total, "physical": physical}
+	if die.key != "" {
+		ev["maneuver_key"], ev["maneuver_face"] = die.key, die.face
+	}
+	return ev
 }
 
 // mayRollInitiative checks that the combat is in SETUP and, for a player, that the initiative

@@ -66,6 +66,7 @@ export class ReactionSheets {
       armorClass: this.ctx.armorClass(),
       diceMode: this.ctx.diceMode(),
       preference: this.ctx.preference(),
+      rollDice: this.ctx.rollDice?.() ?? [],
     };
     trackOpen(
       this.reactionOpen,
@@ -104,6 +105,7 @@ export class ReactionSheets {
       state: this.ctx.state(),
       diceMode: this.ctx.diceMode(),
       preference: this.ctx.preference(),
+      rollDice: this.ctx.rollDice?.() ?? [],
     };
     // A dialog is named by its title; the phone's bottom sheet by this label, so a zone's save reads the same on both.
     const prompt = window.prompt.case === 'effectSave' ? window.prompt.value : null;

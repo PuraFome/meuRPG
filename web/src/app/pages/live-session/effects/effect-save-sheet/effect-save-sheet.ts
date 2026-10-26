@@ -43,6 +43,9 @@ import { RollPicker } from '../../../../shared/roll-picker/roll-picker';
 import { SheetFrame } from '../../../../shared/sheet/sheet-frame/sheet-frame';
 import { injectSheet } from '../../../../shared/sheet/sheet-host';
 import { ExtraDice } from '../extra-dice/extra-dice';
+import { rollDiceFor, rollDieField } from '../../../../core/effects/roll-die';
+import type { RollDie } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import { RollDieOffer } from '../../../../shared/roll-die-offer/roll-die-offer';
 
 /** What the page hands the sheet of an effect's saving throw. */
 export interface EffectSaveSheetData {
@@ -54,6 +57,8 @@ export interface EffectSaveSheetData {
   readonly state: CombatState;
   readonly diceMode: DiceMode;
   readonly preference: DicePreference;
+  /** The table dice the character may add to a roll (`DerivedSheet.roll_dice`); the save offers those that fit its ability. */
+  readonly rollDice?: readonly RollDie[];
 }
 
 type Stage = 'ask' | 'result' | 'gone';
@@ -75,6 +80,7 @@ const EFFECT_DIE_FACES = 4;
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ExtraDice,
+    RollDieOffer,
     HeldRollPrompt,
     MatButtonModule,
     MatIconModule,
@@ -155,10 +161,23 @@ export class EffectSaveSheet {
         sign: d.sign,
       })),
     );
-    return this.asked() > listed.length
-      ? [...listed, ...genericDieFields(this.asked() - listed.length, EFFECT_DIE_FACES)]
-      : listed;
+    const all =
+      this.asked() > listed.length
+        ? [...listed, ...genericDieFields(this.asked() - listed.length, EFFECT_DIE_FACES)]
+        : listed;
+    // The table die ticked is always the last die of the roll.
+    const die = this.maneuver();
+    return die ? [...all, rollDieField(die)] : all;
   });
+  /** The table dice that fit a save of this ability. */
+  protected readonly dice = computed(() =>
+    rollDiceFor(this.data.rollDice ?? [], { kind: 'save', ability: this.prompt().ability }),
+  );
+  /** The die ticked ("Usar <nome>"); none by default. */
+  protected readonly maneuver = signal<RollDie | null>(null);
+  protected useDie(key: string): void {
+    this.maneuver.set(this.dice().find((d) => d.key === key) ?? null);
+  }
   /** The modifier to add to the typed d20 in its live total. */
   protected readonly modifier = computed(() => this.prompt().modifier);
 
@@ -212,10 +231,15 @@ export class EffectSaveSheet {
     });
   }
 
-  protected async answer(how: EffectSaveAnswer): Promise<void> {
+  protected async answer(asked: EffectSaveAnswer): Promise<void> {
     if (this.busy()) {
       return;
     }
+    const maneuverKey = this.maneuver()?.key;
+    const how: EffectSaveAnswer =
+      maneuverKey && (asked.kind === 'app' || asked.kind === 'typed')
+        ? { ...asked, maneuverKey }
+        : asked;
     const w = this.data.window;
     this.busy.set(true);
     this.error.set('');

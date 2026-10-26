@@ -64,6 +64,7 @@ A table feature has effects of these types only; anything else is `forbidden_eff
 | `choice` | Picks among SRD options (a key the SRD has) or, for kind `feature`, among the option list of a table feature. Kinds: `skill`, `expertise`, `cantrip`, `spell`, `language`, `tool`, `feature`, `feat`. A `feature` choice never asks for more than the options it lists. |
 | `ability_increase` | Feats only. `count` different abilities from `from`, `value` 1 or 2; at most one per feat. The sheet keeps the result in `ExtraAbilityBonuses`. |
 | `ambush` | See [Ambush](#ambush). |
+| `spell_modifier` | See [Spell modifier](#spell-modifier). |
 | `superiority_die` | See [Maneuvers](#maneuvers). |
 | Spells in a `note` | A `note` with `spells` (like the SRD's Infernal Legacy): the character knows the cantrip, or a spell once per day when the same feature has a `resource`. The spell is on the sheet's list and does not count in the class numbers. Only a `note` carries `spells`. The structured way is [`granted_spell`](#granted-spells). |
 
@@ -129,17 +130,23 @@ A resource counts uses; a pool of hit points is not offered.
 An option with a `superiority_die` does not list its `grant_action`, so the resource is not spent twice.
 How combat spends the die (damage, grapple, reduction) is in the [play module](play/README.md).
 
+**Dice on the character's own rolls.** `applies` may also be `check` (an ability check; `targets` lists the skills `skill.stealth` and abilities `check.dex` it is limited to, empty is every check), `save` (a saving throw; `ability` limits it to one) or `initiative`. These cost no action (`.economy`), `targets` belongs to `check` alone (`.targets`) and `ability` to `save` (and the other maneuvers that already name one). `Derive` copies `Targets` into `Derived.Maneuvers`. Play spends them on the scene check, the concentration save, the effect save and the initiative ([Rests and resources](play/rests-and-resources.md#table-dice-on-the-characters-own-rolls)); the derived sheet lists them as `DerivedSheet.roll_dice`. A number that is always on is a `modifier` (`skill.*`, `save.*`, `initiative`, `ac`); an always-on die has no effect type.
+
 ### Extra damage
 
-`extra_damage` (menu name "Dano extra"; fields `applies`, `value`, `resource`, `when`, `text_pt`; `rules/extradamage.go`) is fixed damage a feature adds to a weapon hit, once per turn, when the target is what `applies` asks.
+`extra_damage` (menu name "Dano extra"; fields `applies`, `value`, `dice`, `dice_sides`, `damage_type`, `weapon`, `frequency`, `no_crit_doubling`, `resource`, `when`, `text_pt`; `rules/extradamage.go`) is damage a feature adds to a weapon hit when the target is what `applies` asks: a fixed number, dice, or both.
 Checked at its fields:
 
 - `applies` is `any_target` or `larger_target` (`.applies`, `bad_value`);
-- `value` is required and compiles (`.value`, `bad_value`, `bad_formula`);
+- `value` (the fixed part, never doubled) and `dice` (an Int formula for how many dice, 1 to 20 once worked out) compile (`.value`, `.dice`, `bad_value`, `bad_formula`); at least one is set;
+- `dice` and `dice_sides` (4, 6, 8, 10 or 12) go together (`.dice`, `.dice_sides`, `bad_value`);
+- `damage_type` is a `damage-type:` key of the content; empty is the weapon's own type (`.damage_type`, `bad_reference`);
+- `weapon` is `any` (empty), `melee` or `ranged`; `frequency` is `once_per_turn` (empty) or `each_hit` (`.weapon`, `.frequency`, `bad_value`);
+- `no_crit_doubling` keeps a critical hit from doubling the dice, and needs dice (`.no_crit_doubling`, `bad_value`);
 - `resource`, when set, is one the entry or its class defines (`.resource`, `bad_reference`);
-- any field the type does not read is refused for the entry being written (`economy`, `ability`...), and a feature has at most one (`.type`, `forbidden_effect`).
+- any field the type does not read is refused for the entry being written (`economy`, `ability`, or these fields on another type), and a feature has at most one (`.type`, `forbidden_effect`).
 
-`Derive` fills `Derived.ExtraDamages` with the amount worked out; a resource the character does not have at that level leaves the effect out.
+`Derive` fills `Derived.ExtraDamages` with the fixed amount and the dice worked out (`Amount`, `Dice`), the damage type, the weapon and the frequency with their defaults; a resource the character does not have at that level leaves the effect out, and so does a formula that gives no damage.
 The attack card offers it after a hit as a choosable part ([Attacks and damage](play/attacks-and-damage.md)).
 
 ### Granted spells
@@ -165,6 +172,24 @@ The effect fills `Derived.GrantedSpells`; `combat.Options` lists each one as a t
 With it, `GrantedCombatSpell` reads the spell with the grant's numbers (`rules.GrantedSpell`), no slot is spent, and a limited grant spends one use of its resource (`NO_USES` when none is left); the combat's undo gives the use back (`actionEvent.GrantUse`).
 Outside a combat a use is spent when the casting starts, so a long casting through a grant has spent it before it ends; a ritual-only grant casts with `as_ritual`.
 A summoning spell is cast with the classes, not through a grant.
+
+### Spell modifier
+
+`spell_modifier` (menu name "Opção de magia"; fields `applies_to`, `spell_change`, `from`, `value`, `damage_type`, `count`, `resource`, `cost`, `when`, `text_pt`; `rules/spellmodifier.go`) is a cast option a feature offers for the spells it fits.
+`applies_to` is `damage_spell` (a spell that rolls damage), `cantrip`, an SRD school key (`school:evocation`) or an SRD damage type key (`damage-type:fire`: a spell that deals damage of that type); `spell_change` is the one change:
+
+| `spell_change` | Fields | What it does |
+| --- | --- | --- |
+| `damage_type_swap` | `from`: at least two different damage types | The damage of a type in the list becomes another type of the list, which the caster picks at the cast |
+| `bonus_damage` | `value`: a formula, 1 to 99 once worked out; `damage_type`: empty is the spell's own | Adds a fixed damage |
+| `extra_dice_per_slot_over` | `count`: 1 to 6 | Adds that many dice of the spell's damage die for each slot level above the spell's own (none for a cantrip) |
+
+`resource`, when set, is one the entry or its class defines (`.resource`, `bad_reference`): the option is ticked on the cast sheet and spends `cost` uses of it (the `cost` formula of `grant_action`, empty is 1, checked as there: it needs the resource, is at least 1 and is refused at `.cost` when the resource can never pay it).
+Without a resource, `bonus_damage` and `extra_dice_per_slot_over` are always on and `damage_type_swap` is a free choice.
+A feature has at most one (`.type`, `forbidden_effect`).
+Checked at its fields: `.applies_to` and `.spell_change` (`bad_value`; `bad_reference` for a key the content does not have), `.from`, `.value` (`bad_formula`), `.damage_type` and `.count`; the fields of the other changes, and these fields on any other type, are refused for the entry being written.
+`Derive` fills `Derived.SpellModifiers` with the amounts worked out; a resource the character does not have at that level leaves the effect out.
+How a cast applies it is in [Spells](play/casting.md#casting-in-combat).
 
 ### Ambush
 

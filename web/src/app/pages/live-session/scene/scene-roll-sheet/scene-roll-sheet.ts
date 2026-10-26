@@ -12,6 +12,9 @@ import type { SceneActionView, SceneRoll } from '../../../../../gen/meurpg/play/
 import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import { ActionKey } from '../../../../core/connect/idempotency';
 import { ExtraDiceState } from '../../../../core/effects/extra-dice-state';
+import { rollDiceFor, sceneRollKind } from '../../../../core/effects/roll-die';
+import type { RollDie } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import { RollDieOffer } from '../../../../shared/roll-die-offer/roll-die-offer';
 import { checkFaces, hasModeInfo, needsTwoD20 } from '../../../../core/play/check-roll';
 import { HeldRollController } from '../../../../core/held-rolls/held-roll-controller';
 import type { HeldAnswer } from '../../../../core/held-rolls/held-roll-offer';
@@ -51,6 +54,8 @@ export interface SceneRollSheetData {
   readonly state: SceneState;
   /** The keys of the skills Talento Confiável raises for this character (empty without it): the typed die's preview shows "6 → 10". */
   readonly reliableTalent?: readonly string[];
+  /** The table dice the character may add to a roll (`DerivedSheet.roll_dice`); the sheet offers those that fit this action. */
+  readonly rollDice?: readonly RollDie[];
 }
 
 /** The roll sheet of one action: a bottom sheet on a phone, a dialog from a
@@ -87,6 +92,7 @@ export function openSceneRollSheet(
   imports: [
     CheckMode,
     ExtraDice,
+    RollDieOffer,
     HeldRollPrompt,
     MatButtonModule,
     MatIconModule,
@@ -128,6 +134,11 @@ export class SceneRollSheet {
   protected readonly pair = signal(false);
   /** The d4 an effect adds (Orientação, Bênção) with physical dice: asked when the server says the roll takes them. */
   protected readonly extra = new ExtraDiceState();
+  /** The table dice that fit this action: a maneuver limited to other checks is not offered. */
+  protected readonly dice = rollDiceFor(
+    this.data.rollDice ?? [],
+    sceneRollKind(this.data.action.key),
+  );
   protected readonly pairFields: readonly RollField[] = [
     { key: 'first', label: 'Primeiro d20', min: 1, max: 20 },
     { key: 'second', label: 'Segundo d20', min: 1, max: 20 },
@@ -210,6 +221,11 @@ export class SceneRollSheet {
     });
   }
 
+  /** "Usar <dado>": the die ticked joins the roll; none ticked leaves it as it is. */
+  protected useDie(key: string): void {
+    this.extra.maneuver.set(this.dice.find((d) => d.key === key) ?? null);
+  }
+
   protected async rollWith(die: SceneDie): Promise<void> {
     if (this.busy()) {
       return;
@@ -226,8 +242,9 @@ export class SceneRollSheet {
         this.data.campaignId,
         this.action.id,
         die,
-        this.key.keyFor({ action: this.action.id, die, extra }),
+        this.key.keyFor({ action: this.action.id, die, extra, maneuver: this.extra.maneuverKey() }),
         extra,
+        this.extra.maneuverKey(),
       );
       if (made.$typeName !== 'meurpg.play.v1.SceneRoll') {
         this.hold(made);

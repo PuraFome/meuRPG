@@ -254,7 +254,7 @@ describe('PuzzlePlay, a try for a hint', () => {
   it('asks for the extra dice before a real die is sent, and sends none of them for the app', async () => {
     const { api, play } = setup();
     await opened(api, play);
-    play.extraDice.fields.set([{ faces: 4, sign: 1, name: 'Bênção' } as never]);
+    play.extraDice.asked.set([{ faces: 4, sign: 1, name: 'Bênção' } as never]);
     await play.tryHint({ face: 7 });
     expect(api.hints).toHaveLength(0);
     expect(play.message()).toBe('Digite o resultado do d4 antes de confirmar.');

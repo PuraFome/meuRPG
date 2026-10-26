@@ -76,6 +76,9 @@
             @if (concentrationModeText()) {
               <p class="what" role="status">{{ concentrationModeText() }}</p>
             }
+            @if (concentrating()) {
+              <app-roll-die-offer [dice]="saveDice" [picked]="extra.maneuverKey()" (pickedChange)="useDie($event)" />
+            }
             @if (typingSave()) {
               @if (extra.fields().length > 0) {
                 <app-extra-dice [fields]="extra.fields()" [(faces)]="extra.faces" />

@@ -259,6 +259,7 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 		"ranged_attack":      {Type: "ranged_attack", Applies: RangedAttackSpell, IgnoreCover: true},
 		"extra_damage":       {Type: "extra_damage", Applies: ExtraDamageLargerTarget, Value: "2", Resource: "dados_de_teste"},
 		"ambush":             {Type: "ambush", Applies: AmbushUnactedAdvantage},
+		"spell_modifier":     {Type: "spell_modifier", AppliesTo: SpellAppliesCantrip, SpellChange: SpellChangeExtraDice, Count: 1},
 		"on_event":           {Type: "on_event", Event: EventLongRest, TempHP: "level()"},
 		"resistance":         {Type: "resistance", Except: "damage-type:psychic", While: ResistanceWhileRage},
 		"condition_immunity": {Type: "condition_immunity", Conditions: []string{"condition:poisoned"}},
@@ -295,6 +296,10 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 			e.Economy = ""
 		case "applies":
 			e.Applies = ""
+		case "applies_to":
+			e.AppliesTo = ""
+		case "spell_change":
+			e.SpellChange = ""
 		case "count":
 			e.Count = 0
 		case "spell":

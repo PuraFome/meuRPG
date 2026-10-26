@@ -545,6 +545,12 @@ func (s *Service) openSpellAttackHit(ctx context.Context, c *combatTx, sp link.S
 		return err
 	}
 	hit.Pending = p.ID
+	// A part the caster's table options added (another damage type) is its own damage, apart from the hit.
+	for _, part := range sp.Damages[1:] {
+		if err := s.openSpellPending(ctx, c, sp, part, caster, target, false, false, hit); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
