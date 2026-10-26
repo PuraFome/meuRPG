@@ -35,6 +35,9 @@ The process reads them in `backend/internal/platform/config/config.go` (`config.
 | `MAX_CAMPAIGNS_PER_USER` | No | `10` | Campaigns one account may be master of, 1 to 1,000. `off` removes the cap and is refused on Cloud Run |
 | `CAMPAIGN_CREATORS` | No (personal data) | empty | Verified e-mails, comma-separated and case-insensitive, that may create campaigns. Empty: anyone. Only separators, or an entry without `@`, stops the server (the error gives the position, never the text) |
 | `RATE_LIMIT_MULTIPLIER` | No | `1` | Multiplies every request-rate limit; above 0 and at most 1,000. The local stacks and the e2e CI run with `10` |
+| `TASKS_QUEUE` | No | empty | The full name of the Cloud Tasks queue, `projects/<project>/locations/<region>/queues/<queue>`. The three `TASKS_*` variables are set together or not at all; a partial set stops the server and the error names the missing ones. None: detached work runs in the process |
+| `TASKS_TARGET_URL` | No | empty | The service's own `https` URL, scheme and host only (the `run.app` URL): where Cloud Tasks calls back and the audience of the OIDC token. `http` only for localhost |
+| `TASKS_SERVICE_ACCOUNT` | No | empty | The service account that signs that token: the service's own, `$SA` |
 | `GOMEMLIMIT` | No | unset | Read by the Go runtime, not by `config`. Production sets `400MiB` |
 
 `DATABASE_URL`, `OIDC_CLIENT_SECRET` and `GEMINI_API_KEY` are `config.Secret` values: they print as `[REDACTED]` in a log line or an error. `migrate` reads `DATABASE_URL` too and, when it is invalid, fails with a fixed sentence instead of the driver's error.
@@ -139,7 +142,23 @@ Export and import of a campaign (MR-050, [architecture](../architecture/campaign
 | Upload parts | 5 MiB each, 2 minutes to send one; the parts are kept an hour after the last | `PartSize`, `partReadTimeout`, `UploadTTL` |
 | Export file | `campaigns/<id>/exports/<id>.zip`, kept 24 hours, 20 minutes at most per export | `ExportTTL`, `exportTimeout` |
 | Download | Between 2 and 30 minutes for the response, by size | `downloadFloor`, `downloadCeiling` |
-| Cleanup | A sweep at start and every 10 minutes; a running export idle for 10 minutes is marked interrupted | `campaignpackage/sweep.go`, `staleExportAfter` |
+| Cleanup | A sweep every 10 minutes (in the process, one at start; on Cloud Tasks, a chain of tasks, [Cloud Tasks](#cloud-tasks)); a running export idle for 10 minutes is marked interrupted | `campaignpackage/sweep.go`, `staleExportAfter` |
+
+## Cloud Tasks
+
+With the three `TASKS_*` variables set, every piece of detached work (an image being made, an export being written, the sweep of what expired) is a task on one queue in the service's region, and Cloud Tasks calls the service back at `POST /internal/tasks/<kind>` with an OIDC token (`platform/tasks`, [architecture](../architecture/tasks.md)). That is how the work gets CPU: the service bills CPU per request, and a goroutine that outlives its call would starve.
+
+| What | Value | Where |
+| --- | --- | --- |
+| Queue | `meurpg-tasks` in `$REGION`: 5 attempts, backoff 10 s to 300 s (4 doublings), retry for 1 hour at most, 5 dispatches a second, 4 at once | [runbook](runbook.md#11-cloud-tasks) |
+| Call | `POST $TASKS_TARGET_URL/internal/tasks/<kind>`, JSON body of IDs, `Authorization: Bearer <OIDC token>` | `platform/tasks/cloudtasks.go` |
+| The check | Issuer `https://accounts.google.com`, audience `TASKS_TARGET_URL`, `email` equal to `TASKS_SERVICE_ACCOUNT` and `email_verified`. Anything else answers `401` with an empty body | `platform/tasks/endpoint.go` |
+| Deadline | Each kind sets the time one delivery may run, 30 minutes at most: the limit of Cloud Tasks for an HTTP target, below Cloud Run's 35-minute request timeout | `tasks.MaxDeadline` |
+| Answers | `200`: done, or a failure a retry cannot help (recorded in the row); `500`: Cloud Tasks retries | `platform/tasks/endpoint.go` |
+| Sweeps | A chain of named tasks, one per 10-minute slot (`sweep-<kind>-<slot>`): each delivery first enqueues the next slot, an instance starting enqueues it too, and `ALREADY_EXISTS` counts as success, so several instances never double a sweep | `tasks.CloudTasks` |
+| Client | `net/http` against `cloudtasks.googleapis.com/v2`, the token from the metadata server cached until a minute before it expires; a call is repeated twice after a network error, a `429` or a `5xx` | `platform/tasks/cloudtasks.go` |
+
+The endpoint is not under the per-IP limit: `ratelimit.Middleware` limits only the API prefixes (`/meurpg.`, `/images/`, `/uploads/`, `/session-messages/`). The load balancer forwards every path, so `/internal/tasks/*` is reachable from the internet through the domain too: the token check is its only gate.
 
 ## Generated images (the Gemini API)
 
@@ -172,6 +191,7 @@ The costs as configured. These are estimates for deciding architecture, not a bi
 | Cloud Storage | Standard class, São Paulo, per GiB per month; the 7-day soft delete is billed at the same price; reads are class B operations | [Storage pricing](https://cloud.google.com/storage/pricing) |
 | Cloud Build | One build per release on `E2_HIGHCPU_8`, per build-minute | [Build pricing](https://cloud.google.com/build/pricing) |
 | Domain and DNS | The `.app` yearly price (renews automatically) and one Cloud DNS zone | [DNS pricing](https://cloud.google.com/dns/pricing) |
+| Cloud Tasks | Billable operations (an API call or a delivery attempt). The first 1,000,000 a month are free and each million after costs US$ 0.40; the app makes a few thousand a month | [Cloud Tasks pricing](https://cloud.google.com/tasks/pricing) |
 | Gemini images | Per image of output on the configured model, plus input tokens; capped by the two image limits | [Gemini pricing](https://ai.google.dev/gemini-api/docs/pricing) |
 | CockroachDB | The project owner's plan; changing plan loses the legacy Unlimited plan | The cluster console |
 

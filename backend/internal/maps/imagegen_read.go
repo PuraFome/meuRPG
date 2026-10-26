@@ -250,6 +250,8 @@ func failureOf(reason string) (mapsv1.ImageGenerationFailure, string) {
 		return mapsv1.ImageGenerationFailure_IMAGE_GENERATION_FAILURE_GALLERY_FULL, "A galeria está cheia: apague uma imagem e tente de novo."
 	case reasonStorageFailed:
 		return mapsv1.ImageGenerationFailure_IMAGE_GENERATION_FAILURE_STORAGE_FAILED, "A imagem foi feita, mas não deu para guardá-la. Tente de novo; esta não conta no seu limite."
+	case reasonMapChanged:
+		return mapsv1.ImageGenerationFailure_IMAGE_GENERATION_FAILURE_MAP_CHANGED, "O mapa mudou depois do pedido. Gere de novo; esta não conta no seu limite."
 	case reasonImageMissing:
 		return mapsv1.ImageGenerationFailure_IMAGE_GENERATION_FAILURE_IMAGE_MISSING, "Uma das imagens do pedido foi apagada. Escolha de novo."
 	case reasonServiceOff:

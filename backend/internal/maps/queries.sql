@@ -936,6 +936,12 @@ WHERE campaign_id = $1 AND created_at > $2
 SELECT count(*)::INT4 FROM image_requests
 WHERE campaign_id = $1 AND quota_month = $2 AND NOT refunded;
 
+-- name: CountPendingImageRequests :one
+-- The requests alive on the whole server: pending and not yet taken for lost. reserve caps them,
+-- so a queue of requests waiting for the one call to the model stays short.
+SELECT count(*)::INT4 FROM image_requests
+WHERE status = 'pending' AND created_at > $1;
+
 -- name: CountImageRequestsSince :one
 -- The slots the whole server spent since a moment (the start of Brazil's day):
 -- the requests that were not refunded, in any campaign. The server's daily cap
@@ -986,6 +992,16 @@ UPDATE image_requests
 SET status = CASE WHEN status = 'canceled' THEN status ELSE sqlc.arg(status) END,
     reason = sqlc.arg(reason), refunded = true, finished_at = sqlc.arg(now)
 WHERE campaign_id = sqlc.arg(campaign_id) AND id = sqlc.arg(id) AND status IN ('pending', 'canceled') AND NOT refunded;
+
+-- name: FinishUnsentImageRequestFailed :exec
+-- A request that ends before it left the server (its task could not take a call slot, could not
+-- rebuild its images, or found the map changed): the slot is back. A task delivered twice has
+-- another delivery that may have sent it already, and then this changes nothing: that call may
+-- have been billed.
+UPDATE image_requests
+SET status = CASE WHEN status = 'canceled' THEN status ELSE sqlc.arg(status) END,
+    reason = sqlc.arg(reason), refunded = true, finished_at = sqlc.arg(now)
+WHERE campaign_id = sqlc.arg(campaign_id) AND id = sqlc.arg(id) AND status IN ('pending', 'canceled') AND NOT refunded AND sent_at IS NULL;
 
 -- name: FinishImageRequestSpent :exec
 -- The model answered but the picture could not be stored (the gallery filled up

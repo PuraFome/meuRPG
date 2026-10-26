@@ -2,6 +2,7 @@ package maps
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -9,26 +10,56 @@ import (
 	"strconv"
 	"sync"
 	"time"
+	"uuid"
+
+	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/PuraFome/meuRPG/backend/internal/maps/images"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/images/gen"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/safego"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/tasks"
 )
 
-// The goroutine of an image request: the call to the model, the storing of the picture,
-// and the refund when it ends without one (steps 2 and 3 of imagegen.go).
+// The task of an image request: the call to the model, the storing of the picture, and the
+// refund when it ends without one (steps 2 and 3 of imagegen.go).
 
-// CancelGenerations is the shutdown: the generation goroutines stop, a request
-// still waiting for a call slot is refunded at once, a long poll answers, and a
-// call already sent is cut off (it follows the expiry of a sent request: its
-// slot stays spent). Call WaitForGenerations after it.
-func (s *Service) CancelGenerations() { s.cancelBase() }
+// TaskImageGeneration is the kind of the task that makes one image. Its payload is
+// imageTask: two IDs, nothing else.
+const TaskImageGeneration tasks.Kind = "image-generation"
+
+// maxTaskDeadline is the most a task may run (Cloud Run's request timeout is 35 minutes).
+const maxTaskDeadline = 30 * time.Minute
+
+// imageTask is the payload of an image-generation task. The images, the map's drawing and the
+// text are all read again from the request's row when the task runs.
+type imageTask struct {
+	CampaignID string `json:"campaign_id"`
+	RequestID  string `json:"request_id"`
+}
+
+// CancelGenerations is the shutdown: the generation tasks stop, a request still
+// waiting for a call slot is refunded at once, a long poll answers, and a call
+// already sent is cut off (it follows the expiry of a sent request: its slot
+// stays spent). Call WaitForGenerations after it.
+func (s *Service) CancelGenerations() {
+	s.cancelBase()
+	if s.ownTasks != nil {
+		s.ownTasks.Cancel()
+	}
+}
 
 // WaitForGenerations waits for the requests in flight, up to ctx: the shutdown
-// (and a test's cleanup) uses it, so no goroutine writes after the pool closes.
+// (and a test's cleanup) uses it, so nothing writes after the pool closes. It
+// waits for this service's own handlers; a runner the service made itself is
+// waited for too (a task it has not started yet), while a shared one is the
+// caller's to wait for.
 func (s *Service) WaitForGenerations(ctx context.Context) {
+	if s.ownTasks != nil {
+		s.ownTasks.Wait(ctx)
+	}
 	done := make(chan struct{})
 	go func() { s.generations.Wait(); close(done) }()
 	select {
@@ -82,37 +113,108 @@ func (w *generationWaiters) notify(id string) {
 // way, or already has one). The gallery insert that asked is rolled back.
 var errRequestClosed = errors.New("maps: the image request is closed")
 
-// run is a request's goroutine: it waits for a call slot, marks the request
-// sent, calls the model outside any transaction, stores the picture together
-// with the request's end, and records how it ended. It never uses the caller's
-// context (the master may close the page): it derives from the service's.
-func (s *Service) run(campaignID, id string, prep prepared) {
+// handleImageTask is the handler of TaskImageGeneration.
+func (s *Service) handleImageTask(ctx context.Context, payload json.RawMessage) error {
+	var t imageTask
+	if err := json.Unmarshal(payload, &t); err != nil {
+		return tasks.Permanent(fmt.Errorf("maps: an image task with a payload that cannot be read: %w", err))
+	}
+	if _, err := uuid.Parse(t.CampaignID); err != nil {
+		return tasks.Permanent(errors.New("maps: an image task without a campaign"))
+	}
+	if _, err := uuid.Parse(t.RequestID); err != nil {
+		return tasks.Permanent(errors.New("maps: an image task without a request"))
+	}
+	return s.run(ctx, t.CampaignID, t.RequestID)
+}
+
+// run does the work of one request: it waits for a call slot, rebuilds what the model gets from
+// the request's row, marks the request sent, calls the model outside any transaction, stores the
+// picture together with the request's end, and records how it ended.
+//
+// A task is delivered at least once, so run is idempotent. The claim is MarkImageRequestSent
+// (pending and never sent): a delivery that finds the request sent, finished or canceled does
+// nothing and answers nil, and in particular never calls the model again (an earlier delivery
+// whose instance died mid-call may have been billed: expireStale ends that request). Once
+// claimed, every outcome is recorded in the row and run answers nil; only a failure before the
+// claim that a retry can fix (the database or the file store unreachable) is an error.
+func (s *Service) run(ctx context.Context, campaignID, id string) error {
+	s.generations.Add(1)
 	defer s.generations.Done()
-	defer s.pending.Add(-1)
 	defer s.waiters.notify(id)
-	ctx, cancel := context.WithTimeout(s.baseCtx, generationTimeout)
+	// The task's context, and the service's: CancelGenerations ends it too.
+	ctx, cancel := context.WithTimeout(ctx, generationTimeout)
 	defer cancel()
-	// This goroutine decodes and draws what a model sent back, and a panic in a
-	// goroutine the server started itself would take the whole process down (the
-	// net/http recover only covers a handler's own goroutine). So a panic fails
-	// this one request: logged with its stack, recorded as failed. Declared last,
-	// so it runs first, before the waiters are woken and the slot is given back.
-	defer safego.Recover(s.logger, "image request", func() { s.finishFailed(campaignID, id, stateFailed, reasonUnavailable) })
+	defer context.AfterFunc(s.baseCtx, cancel)()
+	claimed := false
+	// This task decodes and draws what a model sent back, and a panic in a goroutine the
+	// server started itself would take the whole process down (the net/http recover only
+	// covers a handler's own goroutine). So a panic fails this one request: logged with its
+	// stack, recorded as failed. Declared last, so it runs first, before the waiters are woken.
+	defer safego.Recover(s.logger, "image request", func() {
+		if claimed {
+			s.finishFailed(campaignID, id, stateFailed, reasonUnavailable)
+		} else {
+			s.finishUnsent(campaignID, id, stateFailed, reasonUnavailable)
+		}
+	})
+	// A delivery for a request already sent or finished does not even wait for the call slot.
+	if _, unsent, err := s.unsentRequest(ctx, campaignID, id); err != nil || !unsent {
+		return s.retryable(ctx, campaignID, id, err)
+	}
 	release, ok := s.acquireCallSlot(ctx, campaignID, id)
 	defer release()
 	if !ok {
-		return
+		return nil
 	}
-	row, request, ok := s.readyToSend(ctx, campaignID, id, prep)
-	if !ok {
-		return
+	row, request, ok, err := s.readyToSend(ctx, campaignID, id)
+	if err != nil || !ok {
+		return err
 	}
+	claimed = true
 	picture, err := s.generator.Generate(ctx, request)
 	if err != nil {
 		s.endWithoutPicture(ctx, campaignID, id, err)
-		return
+		return nil
 	}
 	s.storePicture(ctx, campaignID, id, row, picture.Data)
+	return nil
+}
+
+// retryable is what run answers for a failure before the claim: nil when the request is not
+// there or has nothing left to do (err is nil), nil too when the task itself was cut (the
+// shutdown or its deadline: the request ends as a request that never left), and otherwise err,
+// for the queue to try again. A request left pending is ended by expireStale if no try succeeds.
+func (s *Service) retryable(ctx context.Context, campaignID, id string, err error) error {
+	var out error
+	switch {
+	case err == nil:
+	case ctx.Err() != nil:
+		s.finishUnsent(campaignID, id, stateFailed, endReason(s.baseCtx))
+	default:
+		out = err
+	}
+	return out
+}
+
+// endUnsent records that a request that never left cannot be sent, for a reason a retry cannot
+// help, and answers nil: the task is done.
+func (s *Service) endUnsent(campaignID, id, reason string) error {
+	s.finishUnsent(campaignID, id, stateFailed, reason)
+	return nil
+}
+
+// unsentRequest reads the request and says whether it still waits to be sent: pending, never
+// sent. A request that is not there, or ended, or sent, is not unsent and not an error.
+func (s *Service) unsentRequest(ctx context.Context, campaignID, id string) (mapsdb.ImageRequest, bool, error) {
+	row, err := s.queries.GetImageRequest(ctx, mapsdb.GetImageRequestParams{CampaignID: campaignID, ID: id})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return row, false, nil
+	}
+	if err != nil {
+		return row, false, fmt.Errorf("read an image request to run it: %w", err)
+	}
+	return row, row.Status == statePending && row.SentAt == nil, nil
 }
 
 // acquireCallSlot waits for one of the calls to the model that may run at once. ok is
@@ -124,47 +226,82 @@ func (s *Service) acquireCallSlot(ctx context.Context, campaignID, id string) (r
 	case s.generating <- struct{}{}:
 		release = func() { <-s.generating }
 		if s.baseCtx.Err() != nil { // a slot freed by the shutdown itself
-			s.finishFailed(campaignID, id, stateFailed, reasonShutdown)
+			s.finishUnsent(campaignID, id, stateFailed, reasonShutdown)
 			return release, false
 		}
 		return release, true
 	case <-ctx.Done():
-		s.finishFailed(campaignID, id, stateFailed, endReason(s.baseCtx))
+		s.finishUnsent(campaignID, id, stateFailed, endReason(s.baseCtx))
 		return func() {}, false
 	}
 }
 
-// readyToSend reads the pending request, builds what the model gets and marks the
-// request as sent. ok is false when there is nothing to send: it was canceled before
-// it started, it cannot be built, the shutdown came, or a Cancel came first.
-func (s *Service) readyToSend(ctx context.Context, campaignID, id string, prep prepared) (row mapsdb.ImageRequest, request gen.Request, ok bool) {
-	row, err := s.queries.GetImageRequest(ctx, mapsdb.GetImageRequestParams{CampaignID: campaignID, ID: id})
+// readyToSend reads the pending request, rebuilds what the model gets from its row and marks
+// the request as sent. ok is false when there is nothing to send: it was canceled or sent
+// before, it cannot be built, the shutdown came, or a Cancel came first. err is a failure
+// before the claim that a retry can fix. The request ends here only while it was never sent
+// (finishUnsent), so a second delivery cannot give back the slot of a call in the air.
+func (s *Service) readyToSend(ctx context.Context, campaignID, id string) (row mapsdb.ImageRequest, request gen.Request, ok bool, err error) {
+	row, unsent, err := s.unsentRequest(ctx, campaignID, id)
+	if err != nil || !unsent {
+		return row, request, false, s.retryable(ctx, campaignID, id, err)
+	}
+	prep, reason, err := s.prepareFromRow(ctx, row)
 	if err != nil {
-		s.logger.ErrorContext(ctx, "maps: cannot read an image request to run it", "error", err)
-		s.finishFailed(campaignID, id, stateFailed, reasonUnavailable)
-		return row, request, false
+		if reason == "" {
+			return row, request, false, s.retryable(ctx, campaignID, id, err)
+		}
+		s.logger.WarnContext(ctx, "maps: cannot rebuild an image request", "error", err, "reason", reason)
+		return row, request, false, s.endUnsent(campaignID, id, reason)
 	}
-	if row.Status != statePending {
-		return row, request, false // canceled before it started
-	}
-	request, reason, err := s.modelRequest(ctx, row, prep)
+	request, reason, err = s.modelRequest(ctx, row, prep)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "maps: cannot build an image request", "error", err, "reason", reason)
-		s.finishFailed(campaignID, id, stateFailed, reason)
-		return row, request, false
+		return row, request, false, s.endUnsent(campaignID, id, reason)
 	}
 	if s.baseCtx.Err() != nil {
-		s.finishFailed(campaignID, id, stateFailed, reasonShutdown)
-		return row, request, false
+		return row, request, false, s.endUnsent(campaignID, id, reasonShutdown)
 	}
-	// The request leaves now. A Cancel that came first wins: nothing is sent.
+	// The request leaves now. A Cancel that came first wins, and so does another delivery: nothing is sent.
 	sent, err := s.queries.MarkImageRequestSent(ctx, mapsdb.MarkImageRequestSentParams{CampaignID: campaignID, ID: id, SentAt: new(s.now())})
 	if err != nil {
 		s.logger.ErrorContext(ctx, "maps: cannot mark an image request as sent", "error", err)
-		s.finishFailed(campaignID, id, stateFailed, reasonUnavailable)
-		return row, request, false
+		return row, request, false, s.endUnsent(campaignID, id, reasonUnavailable)
 	}
-	return row, request, sent != 0
+	return row, request, sent != 0, nil
+}
+
+// prepareFromRow rebuilds what prepare made when the request began, from the request's row: the
+// same functions, on the IDs the row keeps (the reference and character images, which already
+// hold the NPCs' portraits, the image an edit adjusts, and the map). reason is set when the
+// request cannot be built and a retry cannot help: an image gone, or a map that changed.
+func (s *Service) prepareFromRow(ctx context.Context, row mapsdb.ImageRequest) (prepared, string, error) {
+	var p prepared
+	n := newRequest{kind: row.Kind, references: row.ReferenceIds, characters: row.CharacterIds, source: row.SourceImageID}
+	if isMapKind(row.Kind) {
+		if err := s.rebuildMap(ctx, row, &p); err != nil {
+			return p, rebuildFailure(err), err
+		}
+	}
+	if n.source != nil {
+		if err := s.prepareSource(ctx, row.CampaignID, *n.source, &p); err != nil {
+			return p, rebuildFailure(err), err
+		}
+	}
+	err := s.prepareReferences(ctx, row.CampaignID, n, &p)
+	return p, rebuildFailure(err), err
+}
+
+// rebuildFailure is the stored reason of an error of prepareFromRow that a retry cannot fix, or
+// "" when a retry may.
+func rebuildFailure(err error) string {
+	if errors.Is(err, errMapChanged) {
+		return reasonMapChanged
+	}
+	if connect.CodeOf(err) == connect.CodeNotFound {
+		return reasonImageMissing
+	}
+	return ""
 }
 
 // endWithoutPicture records how a call that returned an error ended. The slot goes
@@ -303,24 +440,42 @@ func endReason(base context.Context) string {
 
 // finishFailed ends a request that made no picture: the slot goes back.
 func (s *Service) finishFailed(campaignID, id, state, reason string) {
-	s.finish(campaignID, id, state, reason, true)
+	s.finish(campaignID, id, state, reason, finishRefund)
+}
+
+// finishUnsent ends a request that never left the server: the slot goes back, unless
+// the request was sent meanwhile (another delivery of the task), in which case it is left alone.
+func (s *Service) finishUnsent(campaignID, id, state, reason string) {
+	s.finish(campaignID, id, state, reason, finishRefundUnsent)
 }
 
 // finishSpent ends a request that may have been billed and has no picture the master
 // can use: the slot stays spent.
 func (s *Service) finishSpent(campaignID, id, reason string) {
-	s.finish(campaignID, id, stateFailed, reason, false)
+	s.finish(campaignID, id, stateFailed, reason, finishKeep)
 }
 
-func (s *Service) finish(campaignID, id, state, reason string, refund bool) {
+// How finish treats the slot.
+const (
+	finishRefund       = iota // the slot goes back
+	finishRefundUnsent        // the slot goes back, if the request was never sent
+	finishKeep                // the slot stays spent
+)
+
+func (s *Service) finish(campaignID, id, state, reason string, how int) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	var err error
-	if refund {
+	switch how {
+	case finishRefund:
 		err = s.queries.FinishImageRequestFailed(ctx, mapsdb.FinishImageRequestFailedParams{
 			Now: new(s.now()), Status: state, Reason: reason, CampaignID: campaignID, ID: id,
 		})
-	} else {
+	case finishRefundUnsent:
+		err = s.queries.FinishUnsentImageRequestFailed(ctx, mapsdb.FinishUnsentImageRequestFailedParams{
+			Now: new(s.now()), Status: state, Reason: reason, CampaignID: campaignID, ID: id,
+		})
+	default:
 		err = s.queries.FinishImageRequestSpent(ctx, mapsdb.FinishImageRequestSpentParams{
 			Now: new(s.now()), Status: state, Reason: reason, CampaignID: campaignID, ID: id,
 		})

@@ -2,6 +2,7 @@ package campaignpackage
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -9,37 +10,36 @@ import (
 
 	"github.com/PuraFome/meuRPG/backend/internal/campaignpackage/packagedb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
-	"github.com/PuraFome/meuRPG/backend/internal/platform/safego"
 )
 
-// sweepEvery is how often a running server looks for what expired. A server
-// that scales to zero does not run it between requests, so Sweep also runs
-// when the server starts, and the cloud store's own lifecycle rule (see
-// docs/operations/reference.md, "Campaign package") is the last word on the exports.
+// sweepEvery is how often the scheduled task looks for what expired. The cloud store's
+// own lifecycle rule (see docs/operations/reference.md, "Campaign package") is the last
+// word on the exports.
 const (
 	sweepEvery = 10 * time.Minute
 	sweepBatch = 50
 )
 
-// RunSweeper deletes what expired until ctx ends: the finished exports 24
-// hours after they were done, and the parts of the uploads an hour after the
-// last one. It deletes the file first and the row after, so a failure leaves a
-// row that is tried again, never a file nobody names.
+// sweepDeadline is how long one pass may run.
+const sweepDeadline = 5 * time.Minute
+
+// handleSweep is the handler of sweepKind: one pass. A pass is idempotent by nature (it
+// deletes what expired, and a second one finds nothing more), so a duplicate is harmless.
+func (s *Service) handleSweep(ctx context.Context, _ json.RawMessage) error {
+	s.Sweep(ctx)
+	return nil
+}
+
+// RunSweeper starts the scheduled kinds of the runner this service owns (the sweep: every
+// sweepEvery, and once now). With a runner of the caller, whose Start the caller calls, it
+// does nothing. The pass deletes what expired: the finished exports 24 hours after they
+// were done, and the parts of the uploads an hour after the last one. It deletes the file
+// first and the row after, so a failure leaves a row that is tried again, never a file
+// nobody names.
 func (s *Service) RunSweeper(ctx context.Context) {
-	if s.blobs == nil {
-		return
+	if s.ownTasks != nil && s.blobs != nil {
+		s.ownTasks.Start(ctx)
 	}
-	go func() {
-		defer safego.Recover(s.logger, "sweep the campaign packages")
-		for {
-			s.Sweep(ctx)
-			select {
-			case <-ctx.Done():
-				return
-			case <-time.After(sweepEvery):
-			}
-		}
-	}()
 }
 
 // Sweep does one pass.

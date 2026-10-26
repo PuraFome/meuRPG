@@ -14,6 +14,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 )
 
 // GetMap (RN-10): the snapshot of the map, its points and its tokens is
@@ -29,7 +30,7 @@ func (s *Service) GetMap(
 	if err != nil {
 		return nil, err
 	}
-	mapID, ok := parseID(req.Msg.GetMapId())
+	mapID, ok := uid.Canonical(req.Msg.GetMapId())
 	if !ok {
 		return nil, errMapNotFound()
 	}
@@ -218,7 +219,7 @@ func (s *Service) CreateMap(
 	if err != nil {
 		return nil, err
 	}
-	imageID, ok := parseID(req.Msg.GetImageId())
+	imageID, ok := uid.Canonical(req.Msg.GetImageId())
 	if !ok {
 		return nil, errNotAGalleryImage()
 	}
@@ -344,7 +345,7 @@ func (s *Service) DeleteMap(
 	if err != nil {
 		return nil, err
 	}
-	mapID, ok := parseID(req.Msg.GetMapId())
+	mapID, ok := uid.Canonical(req.Msg.GetMapId())
 	if !ok {
 		return nil, errMapNotFound()
 	}
@@ -452,7 +453,7 @@ func (s *Service) SetMapRevealed(
 	if err != nil {
 		return nil, err
 	}
-	mapID, ok := parseID(req.Msg.GetMapId())
+	mapID, ok := uid.Canonical(req.Msg.GetMapId())
 	if !ok {
 		return nil, errMapNotFound()
 	}

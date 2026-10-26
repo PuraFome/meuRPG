@@ -128,6 +128,16 @@ describe('a request that ended without a picture', () => {
     expect(text).not.toContain('não respondeu');
   });
 
+  it('a map that changed after the request says to generate again and that it did not count', () => {
+    const text = failureText({
+      failure: ImageGenerationFailure.MAP_CHANGED,
+      slotSpent: false,
+      reasonPt: '',
+    });
+    expect(text).toContain('O mapa mudou depois do pedido. Gere de novo.');
+    expect(text).toContain('Esta tentativa não gastou nenhuma imagem do mês.');
+  });
+
   it('a gallery too full to keep the picture says that the slot was spent', () => {
     const text = failureText({
       failure: ImageGenerationFailure.GALLERY_FULL,
@@ -146,6 +156,7 @@ describe('a request that ended without a picture', () => {
       ImageGenerationFailure.TIMEOUT,
       ImageGenerationFailure.SERVICE_OFF,
       ImageGenerationFailure.STORAGE_FAILED,
+      ImageGenerationFailure.MAP_CHANGED,
     ]) {
       expect(failureText({ failure, slotSpent: false, reasonPt: 'x' })).not.toContain('x Esta');
     }

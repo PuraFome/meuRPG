@@ -17,6 +17,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1/mapsv1connect"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
@@ -298,7 +299,7 @@ func (s *Service) planTreasure(msg *mapsv1.PlaceTreasureRequest) (treasurePlan, 
 // treasureInputs is the part of a PlaceTreasure request the app sends: the map, the mode,
 // the level, the seed, the key, the content version and the name.
 func (s *Service) treasureInputs(msg *mapsv1.PlaceTreasureRequest) (treasurePlan, error) {
-	mapID, ok := parseID(msg.GetMapId())
+	mapID, ok := uid.Canonical(msg.GetMapId())
 	if !ok {
 		return treasurePlan{}, errMapNotFound()
 	}

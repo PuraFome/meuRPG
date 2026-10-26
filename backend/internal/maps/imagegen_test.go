@@ -1149,9 +1149,8 @@ func TestMR039_TheReferencesAreShrunkAndTheRequestIsCapped(t *testing.T) {
 	}
 }
 
-// A request keeps its shrunk references in memory until its call goes out, so the
-// server holds only so many alive at once: the one calling the model and the ones
-// waiting for its slot. Another is refused without spending the month's slot, and the
+// The server holds only so many requests alive at once: the one calling the model and
+// the ones waiting for its slot. Another is refused without spending the month's slot, and the
 // room comes back as the requests end.
 func TestMR039_OnlySoManyRequestsWaitForTheModel(t *testing.T) {
 	t.Parallel()

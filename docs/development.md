@@ -147,6 +147,10 @@ Image generation (MR-039, RN-28) calls the Gemini API; without a key it is off a
 The tests always use the fake generator. `TestRealGemini` (in `backend/internal/maps/images/gen`) uses the real model and only runs with `MEURPG_TEST_GEMINI_API_KEY` (and optionally `MEURPG_TEST_GEMINI_MODEL`) set on your machine; CI never sets them.
 The limits are explained in [Operations](operations/reference.md#generated-images-the-gemini-api).
 
+## Detached work
+
+Images, exports and sweeps run after the call that asked for them has answered. Locally, in tests and in CI they run in the server process (`tasks.InProcess`): leave `TASKS_QUEUE`, `TASKS_TARGET_URL` and `TASKS_SERVICE_ACCOUNT` unset, and the start-up log says `TASKS_QUEUE is not set; detached work (images, exports, sweeps) runs in this process`. The three are for production only ([Operations](operations/reference.md#cloud-tasks)); setting some but not all stops the server.
+
 ## Abuse-limit variables
 
 The backend limits the request rate (per IP and per user, in memory) and what one account creates; the defaults suit one table.

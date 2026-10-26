@@ -14,6 +14,7 @@ export SA=$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com
 export BUCKET=$PROJECT_ID-images
 export BUILD_SA=projects/$PROJECT_ID/serviceAccounts/meurpg-build@$PROJECT_ID.iam.gserviceaccount.com
 export DOMAIN=meurpg.app
+export QUEUE=meurpg-tasks                   # Cloud Tasks queue
 ```
 
 ## Release a new version
@@ -154,7 +155,8 @@ This creates the environment from nothing. What the app needs: one Cloud Run ser
 gcloud config set project $PROJECT_ID
 gcloud config set run/region $REGION
 gcloud services enable run.googleapis.com artifactregistry.googleapis.com \
-  secretmanager.googleapis.com storage.googleapis.com iam.googleapis.com cloudbuild.googleapis.com
+  secretmanager.googleapis.com storage.googleapis.com iam.googleapis.com cloudbuild.googleapis.com \
+  cloudtasks.googleapis.com
 ```
 
 Link a billing account to the project first and create the [budget alerts](#alerts). The Gemini key (only for AI images) is made in Google AI Studio and restricted to the Gemini API there.
@@ -490,3 +492,61 @@ In order; stop at the first failure and read the logs.
 - [ ] The client IP: the item of `X-Forwarded-For` that `TRUSTED_PROXY_HOPS` counts is the caller's ([the client IP](reference.md#the-client-ip)).
 - [ ] Only with `GEMINI_API_KEY`: generate one image in a scene; it appears in the gallery.
 - [ ] Delete the image: both objects leave the bucket listing (soft delete keeps them 7 days, out of reach of the API).
+
+### 11. Cloud Tasks
+
+Detached work (images, exports, sweeps) needs CPU, which the service has only inside a request, so each piece is a task that Cloud Tasks delivers to the service ([reference](reference.md#cloud-tasks)). Do this after step 10, once the service has its `run.app` address. Until then the three variables stay unset and the work runs in the process.
+
+1. **The queue**, in the service's region. The settings:
+
+   - `--max-concurrent-dispatches=4` and `--max-dispatches-per-second=5`: the service has one instance with 2 vCPU and a memory budget ([reference](reference.md#memory-budgets)), also serving streams; four exports or images at once is what it can carry, and a burst waits in the queue instead of reaching the instance.
+   - `--max-attempts=5`, `--min-backoff=10s`, `--max-backoff=300s`, `--max-doublings=4`: a handler answers `500` only when a retry can help (the database was busy, an instance was stopping), so a few tries over minutes are enough: 10 s, 20 s, 40 s, 80 s.
+   - `--max-retry-duration=1h`: the most a task survives after its first attempt. This is the figure [Privacy](../privacy.md#logs-memory-and-infrastructure) quotes.
+
+   ```bash
+   gcloud tasks queues create $QUEUE --location=$REGION \
+     --max-attempts=5 --min-backoff=10s --max-backoff=300s --max-doublings=4 --max-retry-duration=1h \
+     --max-dispatches-per-second=5 --max-concurrent-dispatches=4
+   ```
+
+2. **The roles** of the service account: it creates tasks on this queue, and it may act as itself, which is what lets Cloud Tasks sign the OIDC token with it.
+
+   ```bash
+   gcloud tasks queues add-iam-policy-binding $QUEUE --location=$REGION \
+     --member=serviceAccount:$SA --role=roles/cloudtasks.enqueuer
+   gcloud iam service-accounts add-iam-policy-binding $SA \
+     --member=serviceAccount:$SA --role=roles/iam.serviceAccountUser
+   ```
+
+3. **The variables** on the service. `TASKS_TARGET_URL` is the service's own `run.app` URL (the one `gcloud` prints, with no path), the same in the token's audience; the queue is `projects/$PROJECT_ID/locations/$REGION/queues/$QUEUE`. A new revision starts with them.
+
+   ```bash
+   export TASKS_TARGET_URL=$(gcloud run services describe $SERVICE --region=$REGION --format='value(status.url)')
+   gcloud run services update $SERVICE --region=$REGION --update-env-vars="^#^TASKS_QUEUE=projects/$PROJECT_ID/locations/$REGION/queues/$QUEUE#TASKS_TARGET_URL=$TASKS_TARGET_URL#TASKS_SERVICE_ACCOUNT=$SA"
+   ```
+
+   The start-up log must say `detached work runs on Cloud Tasks`. A partial set stops the revision with an error naming what is missing.
+
+4. **Prove the path** with a task for a kind that does not exist: it goes through Cloud Tasks, the ingress and the token check, and the service answers `404`. Read it in the request log, then empty the queue (Cloud Tasks would retry a `404`).
+
+   ```bash
+   gcloud tasks create-http-task --queue=$QUEUE --location=$REGION \
+     --url=$TASKS_TARGET_URL/internal/tasks/smoke --method=POST --body-content='{}' \
+     --oidc-service-account-email=$SA --oidc-token-audience=$TASKS_TARGET_URL
+   gcloud logging read "resource.type=cloud_run_revision AND httpRequest.requestUrl:\"/internal/tasks/smoke\"" --limit=3 --freshness=5m \
+     --format='value(httpRequest.status,httpRequest.requestUrl)'
+   gcloud tasks queues purge $QUEUE --location=$REGION --quiet
+   ```
+
+   `404`: working. No line: the ingress refused the call (it never reached the container; see [Ingress and Cloud Tasks](README.md#ingress-and-cloud-tasks)). A line with `401`: the token was refused; check the account, the audience (the URL must be exactly `TASKS_TARGET_URL`) and the role of step 2.
+
+5. **Roll back to in-process work**: unset the three variables. The new revision runs everything in its own process, as before; purge the queue, because the tasks still in it would hit a revision without the endpoint.
+
+   ```bash
+   gcloud run services update $SERVICE --region=$REGION --remove-env-vars=TASKS_QUEUE,TASKS_TARGET_URL,TASKS_SERVICE_ACCOUNT
+   gcloud tasks queues purge $QUEUE --location=$REGION --quiet
+   ```
+
+   The CPU of that work is throttled again outside a request: images and exports may stall until the next request arrives.
+
+A change to the queue's retry settings later is `gcloud tasks queues update $QUEUE --location=$REGION ...` with the same flags; keep `--max-retry-duration` in step with the [privacy text](../privacy.md).

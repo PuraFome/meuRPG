@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -22,7 +23,7 @@ import (
 // row is open floor. The light layer is not part of it. It reads inside tx when
 // the caller has one (a combat's change does; nil: the pool).
 func (s *Service) Terrain(ctx context.Context, tx pgx.Tx, campaignID, mapID string) (grid.Terrain, error) {
-	id, ok := parseID(mapID)
+	id, ok := uid.Canonical(mapID)
 	if !ok {
 		return grid.Terrain{}, errMapNotFound()
 	}

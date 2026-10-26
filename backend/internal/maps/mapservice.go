@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"time"
-	"uuid"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -17,6 +16,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 )
 
 // MapService (MR-008, MR-009, MR-012). Every handler starts with one
@@ -224,7 +224,7 @@ func lockMap(ctx context.Context, q *mapsdb.Queries, campaignID, mapID string) (
 // livingCharacter returns a living character of the campaign, or
 // `not_found`.
 func (s *Service) livingCharacter(ctx context.Context, campaignID, characterID string) (*charactersv1.CharacterSummary, error) {
-	id, ok := parseID(characterID)
+	id, ok := uid.Canonical(characterID)
 	if !ok {
 		return nil, errCharacterNotFound()
 	}
@@ -266,7 +266,7 @@ func parseTarget(raw, kind, mapID string) (*string, error) {
 	if !leads(kind) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("target_map_id is only for a SUBMAP or a BATTLE point"))
 	}
-	id, ok := parseID(raw)
+	id, ok := uid.Canonical(raw)
 	if !ok {
 		return nil, errNotACampaignMap()
 	}
@@ -348,16 +348,6 @@ func checkPosition(x, y int32) error {
 		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("x_bp and y_bp must be 0 to %d", maxPosition))
 	}
 	return nil
-}
-
-// parseID returns an ID in canonical form, or false when it is not a UUID:
-// such an ID names nothing.
-func parseID(raw string) (string, bool) {
-	id, err := uuid.Parse(raw)
-	if err != nil {
-		return "", false
-	}
-	return id.String(), true
 }
 
 // The answers for what is not in the campaign. Their texts are the same

@@ -11,6 +11,7 @@ Start with the [overview](overview.md); each page below covers one subject.
 | [API](api.md) | The `.proto` contracts, error codes, idempotency keys, slow clients, abuse limits. |
 | [Transactions](transactions.md) | `db.InTx` and `db.ReadTx`, the retry, and why nothing reads through the pool inside a transaction. |
 | [Logs](logs.md) | The JSON log line, the `request_id`, what never goes in the log. |
+| [Detached work](tasks.md) | `platform/tasks`: work that outlives its call runs as a Cloud Tasks task that calls the service back; in-process elsewhere. |
 | [Web app](web.md) | `web/`: structure, routing, the Connect transport, security headers, what the browser keeps. |
 
 ## Modules
