@@ -1,5 +1,6 @@
 import {
   Component,
+  computed,
   ElementRef,
   Injector,
   afterNextRender,
@@ -12,6 +13,8 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+
+import { article } from '../../../../core/combat/combat-log';
 
 let nextWhy = 0;
 
@@ -33,6 +36,14 @@ let nextWhy = 0;
         <div class="ask__buttons">
           <button #safe mat-stroked-button type="button" (click)="asking.set(false)">Voltar</button>
           <button mat-stroked-button type="button" class="ask__go" (click)="confirm()">Passar o turno</button>
+        </div>
+      </div>
+    } @else if (passing()) {
+      <div class="ask" role="alertdialog" aria-labelledby="idle-title" (keydown.escape)="passing.set(false)">
+        <p class="ask__title" id="idle-title">Passar a vez de {{ idle() }}? {{ pronoun() }} ainda não agiu.</p>
+        <div class="ask__buttons">
+          <button #safe mat-stroked-button type="button" (click)="passing.set(false)">Cancelar</button>
+          <button mat-flat-button type="button" class="ask__pass" (click)="pass()">Passar a vez</button>
         </div>
       </div>
     } @else {
@@ -136,6 +147,12 @@ let nextWhy = 0;
         }
       }
 
+      .ask__pass {
+        --mat-button-filled-container-height: 48px;
+        flex: 1 1 0;
+        min-width: max-content;
+      }
+
       .ask__go {
         --mat-button-outlined-label-text-color: var(--mr-danger-ink);
         --mat-button-outlined-outline-color: var(--mr-danger-ink);
@@ -161,7 +178,11 @@ export class NextTurn {
   /** `true` when the master passes the turn although a damage waits. */
   readonly next = output<boolean>();
 
+  /** The player character on turn who has not acted yet ("Toren"), or `''`: passing their turn is asked first. */
+  readonly idle = input('');
   protected readonly asking = signal(false);
+  protected readonly passing = signal(false);
+  protected readonly pronoun = computed(() => (article(this.idle()) === 'a' ? 'Ela' : 'Ele'));
   private readonly safe = viewChild('safe', { read: ElementRef<HTMLButtonElement> });
 
   constructor() {
@@ -173,12 +194,19 @@ export class NextTurn {
       this.turn();
       this.waiting();
       this.busy();
+      this.idle();
       this.asking.set(false);
+      this.passing.set(false);
     });
   }
 
   protected press(): void {
     if (this.waiting()) {
+      return;
+    }
+    if (this.idle() && !this.pendingNote()) {
+      this.passing.set(true);
+      afterNextRender(() => this.safe()?.nativeElement.focus(), { injector: this.injector });
       return;
     }
     if (!this.pendingNote()) {
@@ -187,6 +215,13 @@ export class NextTurn {
     }
     this.asking.set(true);
     afterNextRender(() => this.safe()?.nativeElement.focus(), { injector: this.injector });
+  }
+
+  protected pass(): void {
+    this.passing.set(false);
+    if (!this.waiting() && !this.busy()) {
+      this.next.emit(false);
+    }
   }
 
   protected confirm(): void {

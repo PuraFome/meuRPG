@@ -799,6 +799,7 @@
             [waiting]="!!waitNote()"
             [why]="waitWhy()"
             [label]="acting() ? 'Encerrar o turno de ' + acting()!.label : 'Próximo turno'"
+            [idle]="acting() ? '' : idleOnTurn()"
             (next)="nextTurn($event)"
           />
         }
