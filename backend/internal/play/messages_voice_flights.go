@@ -40,7 +40,7 @@ func (v *voiceFlights) wait(ctx context.Context, id string, timeout time.Duratio
 		runCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), timeout)
 		f = &voiceFlight{cancel: cancel, done: make(chan struct{})}
 		v.m[id] = f
-		go v.run(id, f, runCtx, work)
+		go v.run(runCtx, id, f, work)
 	}
 	f.waiters++
 	v.mu.Unlock()
@@ -53,7 +53,7 @@ func (v *voiceFlights) wait(ctx context.Context, id string, timeout time.Duratio
 	}
 }
 
-func (v *voiceFlights) run(id string, f *voiceFlight, ctx context.Context, work func(context.Context) error) {
+func (v *voiceFlights) run(ctx context.Context, id string, f *voiceFlight, work func(context.Context) error) {
 	defer f.cancel()
 	err := work(ctx)
 	v.mu.Lock()
