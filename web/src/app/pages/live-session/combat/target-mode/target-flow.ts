@@ -35,6 +35,8 @@ export interface TargetFlowDeps {
   readonly reveal: () => void;
   /** The element the player pressed, where the focus goes back to. */
   readonly origin: () => HTMLElement | null;
+  /** The character the master acts for, or `''`. */
+  readonly by?: () => string;
 }
 
 /** The spell's targets chosen on the map, as the cast sheet takes them. */
@@ -144,6 +146,7 @@ export class TargetFlow {
       ...spec,
       rows: spec.rows.filter((r) => this.deps.placed(r.id)),
       origin: this.deps.origin(),
+      by: this.deps.by?.() ?? '',
     });
     this.deps.reveal();
     return true;

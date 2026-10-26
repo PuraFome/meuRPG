@@ -137,7 +137,8 @@ export class CombatSheets {
    * always did (the master, no map, an area, a spell on the caster). */
   private async castOnMap(key: string): Promise<boolean> {
     const flow = this.ctx.target?.();
-    const data = flow && !this.ctx.isMaster() ? this.castData(key) : null;
+    // The master picks on the map only for the character he acts for (`own` is that one).
+    const data = flow && (!this.ctx.isMaster() || this.ctx.own()) ? this.castData(key) : null;
     if (!flow || !data) {
       return false;
     }

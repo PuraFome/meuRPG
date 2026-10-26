@@ -1085,7 +1085,7 @@ test('a clériga conjura Curar Ferimentos em si mesma: a cura rola e vale na hor
 });
 
 
-test('o mestre passa a vez de quem está caído com o teste por rolar; o jogador não', { tag: ['@MR-014', '@RN-03'] }, async ({ browser }) => {
+test('a vez de quem está caído não passa sem o teste contra a morte, nem para o mestre', { tag: ['@MR-014', '@MR-053', '@RN-03'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   const { m, p, table, campaignId, done } = await actingTable(browser, 'Passar a vez caído', playerFirst);
   try {
@@ -1097,12 +1097,16 @@ test('o mestre passa a vez de quem está caído com o teste por rolar; o jogador
     enc = await combatRPC(m, 'EndTurn', { campaignId, encounterId: enc.id, expectedCombatantId: enc.currentCombatantId });
     enc = await passTurnsTo(m, campaignId, 'Pensantus');
     expect(enc.combatants.find((c) => c.label === 'Pensantus')?.deathSaveDue).toBe(true);
-    // The player can't pass it before rolling (no button, and the server refuses)...
+    // Nobody can pass it before the save (SRD 5.1): the player has no button, and the server refuses both of them.
     await expect(p.getByRole('button', { name: 'Encerrar turno' })).toHaveCount(0);
-    const refused = await callRPC(p, 'meurpg.play.v1.CombatService/EndTurn', { campaignId, encounterId: enc.id, idempotencyKey: crypto.randomUUID(), expectedCombatantId: enc.currentCombatantId });
-    expect(refused.ok()).toBe(false);
-    // ...the master can, and the turn moves on.
-    enc = await combatRPC(m, 'EndTurn', { campaignId, encounterId: enc.id, expectedCombatantId: enc.currentCombatantId });
+    const turn = { campaignId, encounterId: enc.id, expectedCombatantId: enc.currentCombatantId };
+    const refusedPlayer = await callRPC(p, 'meurpg.play.v1.CombatService/EndTurn', { ...turn, idempotencyKey: crypto.randomUUID() });
+    expect(refusedPlayer.ok()).toBe(false);
+    const refusedMaster = await callRPC(m, 'meurpg.play.v1.CombatService/EndTurn', { ...turn, idempotencyKey: crypto.randomUUID() });
+    expect(refusedMaster.ok()).toBe(false);
+    // The save made (the master rolls it for the character), the turn passes.
+    await combatRPC(m, 'RollDeathSave', { campaignId, encounterId: enc.id, combatantId: enc.currentCombatantId, d20Face: 14 });
+    enc = await combatRPC(m, 'EndTurn', turn);
     expect(enc.combatants.find((c) => c.id === enc.currentCombatantId)?.label).not.toBe('Pensantus');
   } finally {
     await done();

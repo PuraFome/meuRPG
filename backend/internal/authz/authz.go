@@ -55,6 +55,7 @@ import (
 	"connectrpc.com/connect"
 
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 )
 
 // Role is what a member may do in one campaign.
@@ -184,6 +185,30 @@ func lookUp(ctx context.Context, campaignID string) (Membership, *memo, error) {
 		memo.logger.ErrorContext(ctx, "cannot check campaign membership", "error", err)
 		return Membership{}, nil, connect.NewError(connect.CodeUnavailable, errors.New("cannot check permissions right now, please try again"))
 	}
+}
+
+// IsActivePlayer says whether userID is an active player of the campaign: not its master, not a pending
+// member, not a stranger. It is for a handler that names other players (the audience of a scene or of an
+// image), with the request's memo. A malformed ID names nobody.
+func IsActivePlayer(ctx context.Context, campaignID, userID string) (bool, error) {
+	memo, err := memoFrom(ctx)
+	if err != nil {
+		return false, err
+	}
+	campaign, okCampaign := uid.Canonical(campaignID)
+	user, okUser := uid.Canonical(userID)
+	if !okCampaign || !okUser {
+		return false, nil
+	}
+	role, status, err := memo.membership(ctx, campaign, user)
+	switch {
+	case err == nil:
+		return role == RolePlayer && status == StatusActive, nil
+	case errors.Is(err, ErrNotMember):
+		return false, nil
+	}
+	memo.logger.ErrorContext(ctx, "cannot check campaign membership", "error", err)
+	return false, connect.NewError(connect.CodeUnavailable, errors.New("cannot check permissions right now, please try again"))
 }
 
 // RequireCampaignRole is RequireCampaignMember, plus `permission_denied`

@@ -93,7 +93,7 @@ describe('SceneOpen', () => {
   it('shows the title, when it opened, where it is and how much has happened', async () => {
     const { el } = await setup();
     expect(el.querySelector('h2')?.textContent).toBe('Cena: A\u00a0carroça tombada');
-    expect(flat(el.querySelector('.so__since'))).toContain('Aberta para os jogadores desde 21:10');
+    expect(flat(el.querySelector('.who__since'))).toContain('Aberta para os jogadores desde 21:10');
     expect(flat(el.querySelector('.so__meta'))).toBe('Mapa Estrada do Vale · 5 ações · 3 rolagens');
   });
 

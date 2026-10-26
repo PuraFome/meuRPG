@@ -21,7 +21,7 @@
     "value": {
       "entries": null,
       "violations": [
-        "pack | size_limit |  | the pack is over 2097152 bytes"
+        "pack | size_limit |  | the pack is over 3145728 bytes"
       ]
     }
   },
@@ -30,7 +30,7 @@
     "value": {
       "entries": null,
       "violations": [
-        "pack | size_limit |  | the pack is over 2097152 bytes"
+        "pack | size_limit |  | the pack is over 3145728 bytes"
       ]
     }
   },
@@ -78,7 +78,7 @@
       ],
       "violations": [
         "pack.format | bad_value |  | the format is \"meurpg.table-content\"",
-        "pack.entries | limit |  | 301 entries; the limit is 300 per table"
+        "pack.entries | limit |  | 1001 entries; the limit is 1000 per table"
       ]
     }
   },
@@ -86,7 +86,7 @@
     "step": "the most entries",
     "value": {
       "entries": [
-        "count 300"
+        "count 1000"
       ],
       "violations": null
     }

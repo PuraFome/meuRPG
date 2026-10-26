@@ -6,6 +6,8 @@ import {
   OpenSceneInfoSchema,
   type SceneActionView,
   SceneActionViewSchema,
+  type SceneAudienceView,
+  SceneAudienceViewSchema,
   type SceneRoll,
   SceneRollSchema,
   type StageNpc,
@@ -80,6 +82,26 @@ export function stageNpc(
   });
 }
 
+/** Who is in and out of the open scene as the master reads it: the names are the characters', the accounts `u-<name>`. */
+export function sceneAudienceView(
+  inside: readonly string[],
+  outside: readonly string[] = [],
+  everyone = false,
+  joinedBySelf: readonly string[] = [],
+): SceneAudienceView {
+  const player = (name: string) => ({
+    userId: `u-${name.toLowerCase()}`,
+    characterId: `c-${name.toLowerCase()}`,
+    characterName: name,
+    joinedBySelf: joinedBySelf.includes(name),
+  });
+  return create(SceneAudienceViewSchema, {
+    everyone,
+    inside: inside.map(player),
+    outside: outside.map(player),
+  });
+}
+
 /** "A carroça tombada" as the master sees it: five actions with their DCs. */
 export function masterScene(
   rolls: SceneRoll[] = [],
@@ -119,6 +141,11 @@ export function masterScene(
 }
 
 /** The same scene as Pensantus sees it: his bonuses, his attempts and, by default, no DC. */
+/** The scene as a player out of it reads it when the master lets players join (C7-06): the name and `joinable`, nothing else. */
+export function joinableScene(name = 'A taverna do Javali Cego'): OpenSceneInfo {
+  return create(OpenSceneInfoSchema, { name, joinable: true });
+}
+
 export function playerScene(
   rolls: SceneRoll[] = [],
   stage: StageNpc[] = [],
@@ -205,6 +232,14 @@ export class FakeSceneClient {
     return this.scene;
   }
 
+  /** What `join` answers with: the scene as the player who joined reads it. */
+  joined: OpenSceneInfo | null = null;
+
+  async join(): Promise<OpenSceneInfo> {
+    this.record('join');
+    return this.joined ?? playerScene();
+  }
+
   async putOnStage(_campaignId: string, characterId: string): Promise<readonly StageNpc[]> {
     this.record(`put ${characterId}`);
     await this.hold;
@@ -232,6 +267,32 @@ export class FakeSceneClient {
     await this.hold;
     this.stage = this.stage.map((n) => ({ ...n, speaking: n.characterId === characterId }));
     return this.stage;
+  }
+
+  async setStageNpcHidden(
+    _campaignId: string,
+    characterId: string,
+    hidden: boolean,
+  ): Promise<readonly StageNpc[]> {
+    this.record(`${hidden ? 'hide' : 'show'} ${characterId}`);
+    await this.hold;
+    this.stage = this.stage.map((n) =>
+      n.characterId === characterId ? { ...n, hidden, speaking: hidden ? false : n.speaking } : n,
+    );
+    return this.stage;
+  }
+
+  async setAudience(
+    _campaignId: string,
+    audience: { readonly everyone: true } | { readonly userIds: readonly string[] },
+  ): Promise<OpenSceneInfo> {
+    this.record(`audience ${'everyone' in audience ? 'everyone' : audience.userIds.join(',')}`);
+    return this.scene ?? masterScene();
+  }
+
+  async setPlayersMayJoin(_campaignId: string, playersMayJoin: boolean): Promise<OpenSceneInfo> {
+    this.record(`may-join ${playersMayJoin}`);
+    return this.scene ?? masterScene();
   }
 
   async roll(

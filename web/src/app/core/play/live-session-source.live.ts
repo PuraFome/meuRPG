@@ -22,7 +22,7 @@ import type { OtherSkill } from '../traps/trap-search';
 import { metersText } from '../units';
 import { classifyLiveError } from './live-error';
 import { toLiveEvent } from './live-event-map';
-import { toShownImageVm, toVitalsVm } from './live-vitals-map';
+import { imageAudienceOf, toShownImageVm, toVitalsVm } from './live-vitals-map';
 import {
   CampaignInfoVm,
   LiveErrorKind,
@@ -32,6 +32,7 @@ import {
   LiveSnapshotVm,
   PartyMemberInfoVm,
   PlayerSheetVm,
+  ImageAudienceVm,
   ShownImageVm,
   VitalsChange,
   VitalsVm,
@@ -148,8 +149,25 @@ export class LiveSessionSourceLive implements LiveSessionSource {
     campaignId: string,
     imageId: string | null,
     keep = false,
+    audience?: ImageAudienceVm,
   ): Promise<ShownImageVm | null> {
-    const res = await this.play.setShownImage({ campaignId, imageId: imageId ?? '', keep });
+    const res = await this.play.setShownImage({
+      campaignId,
+      imageId: imageId ?? '',
+      keep,
+      ...(audience ? { audience: imageAudienceOf(audience) } : {}),
+    });
+    return toShownImageVm(res.shownImage);
+  }
+
+  async setShownImageAudience(
+    campaignId: string,
+    audience: ImageAudienceVm,
+  ): Promise<ShownImageVm | null> {
+    const res = await this.play.setShownImageAudience({
+      campaignId,
+      audience: imageAudienceOf(audience),
+    });
     return toShownImageVm(res.shownImage);
   }
 

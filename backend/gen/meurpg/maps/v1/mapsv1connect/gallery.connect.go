@@ -71,7 +71,10 @@ type GalleryServiceClient interface {
 	//   - `permission_denied`: the caller is a player.
 	RenameGalleryImage(context.Context, *connect.Request[v1.RenameGalleryImageRequest]) (*connect.Response[v1.RenameGalleryImageResponse], error)
 	// DeleteGalleryImage deletes an image and its files. Only the campaign's
-	// master may call it. It cannot be undone.
+	// master may call it. It cannot be undone. The master and the players who
+	// saw the image on screen get `shown_image_changed` with no image, and the
+	// ones it was left with get `left_images_changed`; a player outside its
+	// audience hears nothing (RN-10).
 	//
 	// Errors:
 	//   - `not_found`: the image is not in this campaign (or was already
@@ -162,7 +165,10 @@ type GalleryServiceHandler interface {
 	//   - `permission_denied`: the caller is a player.
 	RenameGalleryImage(context.Context, *connect.Request[v1.RenameGalleryImageRequest]) (*connect.Response[v1.RenameGalleryImageResponse], error)
 	// DeleteGalleryImage deletes an image and its files. Only the campaign's
-	// master may call it. It cannot be undone.
+	// master may call it. It cannot be undone. The master and the players who
+	// saw the image on screen get `shown_image_changed` with no image, and the
+	// ones it was left with get `left_images_changed`; a player outside its
+	// audience hears nothing (RN-10).
 	//
 	// Errors:
 	//   - `not_found`: the image is not in this campaign (or was already

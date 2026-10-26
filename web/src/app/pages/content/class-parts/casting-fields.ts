@@ -10,6 +10,7 @@ import {
   type Preparation,
 } from '../../../core/content/class-draft';
 import { FieldNote } from '../../../shared/form-fields/field-note';
+import { PickList } from '../../../shared/form-fields/pick-list';
 import { SelectField, type SelectOption } from '../../../shared/form-fields/select-field';
 import { SwitchField } from '../../../shared/form-fields/switch-field';
 import { TextField } from '../../../shared/form-fields/text-field';
@@ -36,6 +37,7 @@ const KINDS: readonly Segment<KindChoice>[] = [
     FieldNote,
     MatIconModule,
     NgTemplateOutlet,
+    PickList,
     Segmented,
     SelectField,
     SwitchField,
@@ -73,6 +75,23 @@ const KINDS: readonly Segment<KindChoice>[] = [
           (valueChange)="patch.emit({ listFrom: $event })"
         />
       </div>
+      @if (!third()) {
+        <div class="srd">
+          <span class="srd__label" aria-hidden="true">Magias do SRD na lista da classe</span>
+          <app-pick-list
+            label="Magias do SRD na lista da classe"
+            addLabel="Adicionar magia do SRD"
+            [options]="catalog().srdSpells"
+            [values]="casting().srdSpells"
+            [disabled]="!ownList()"
+            [path]="basePath() + '.srd_spell_keys'"
+            [issues]="issuesOf()(basePath() + '.srd_spell_keys')"
+            [hint]="srdHint()"
+            (added)="patch.emit({ srdSpells: [...casting().srdSpells, $event] })"
+            (removed)="patch.emit({ srdSpells: withoutSpell($event) })"
+          />
+        </div>
+      }
       <fieldset class="prep" [attr.data-field]="basePath() + '.preparation'">
         <legend class="mr-visually-hidden">Como as magias são escolhidas</legend>
         <label class="prep__card" [class.prep__card--on]="casting().preparation === 'prepared'">
@@ -141,6 +160,17 @@ const KINDS: readonly Segment<KindChoice>[] = [
       @media (min-width: 768px) {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
+    }
+
+    .srd {
+      display: flex;
+      flex-direction: column;
+      gap: var(--mr-space-2);
+    }
+
+    .srd__label {
+      font-size: 17px;
+      font-weight: 700;
     }
 
     .prep {
@@ -273,6 +303,13 @@ export class CastingFields {
       }));
     return [...own, ...classes];
   });
+  /** Whether the list is the class's own: only then it names SRD spells. */
+  protected readonly ownList = computed(() => this.casting().listFrom === '');
+  protected readonly srdHint = computed(() =>
+    this.ownList()
+      ? 'Elas se juntam às magias da mesa que citam esta classe.'
+      : 'Esta classe usa a lista de outra classe. Para ter magias próprias, escolha "A própria lista da classe".',
+  );
   /** "Mais opções" starts open when something in it was refused or is not the default. */
   protected readonly moreOpen = computed(
     () =>
@@ -280,6 +317,10 @@ export class CastingFields {
         this.issuesOf()(this.basePath() + '.prepared_max').length >
       0,
   );
+
+  protected withoutSpell(key: string): string[] {
+    return this.casting().srdSpells.filter((k) => k !== key);
+  }
 
   protected setStart(text: string): void {
     const n = Number(text.trim());

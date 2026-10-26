@@ -1,6 +1,12 @@
 import { computed, signal } from '@angular/core';
 
-import { type Encounter, EncounterStatus } from '../../../gen/meurpg/play/v1/combat_pb';
+import {
+  type Combatant,
+  CombatantKind,
+  CombatantState,
+  type Encounter,
+  EncounterStatus,
+} from '../../../gen/meurpg/play/v1/combat_pb';
 import { isTheatre } from './theatre';
 
 /** What `turn_changed` carries (play.proto). */
@@ -25,6 +31,16 @@ export interface CombatantMove {
 export interface ReactionNotice {
   readonly windowId: string;
   readonly text: string;
+}
+
+/** A combatant as a turn that moves on finds it, until the combat is read again: its part is open, and a player's character at 0
+ * hit points that comes on turn owes its death save (SRD 5.1), which the stream's turn event does not carry. */
+function startOfTurn(c: Combatant, current: boolean): Combatant {
+  const due = c.kind === CombatantKind.PLAYER && c.state === CombatantState.DOWN && current;
+  if (!c.turnPartEnded && c.deathSaveDue === due) {
+    return c;
+  }
+  return { ...c, turnPartEnded: false, deathSaveDue: due };
 }
 
 /** What `CombatState.beginRead` hands out. */
@@ -201,9 +217,7 @@ export class CombatState {
         : {
             // The group belongs to the turn that ended; until the combat is read again the turn is the current combatant's.
             turnGroupIds: [],
-            combatants: e.combatants.map((c) =>
-              c.turnPartEnded ? { ...c, turnPartEnded: false } : c,
-            ),
+            combatants: e.combatants.map((c) => startOfTurn(c, c.id === turn.currentCombatantId)),
           }),
     });
     return true;

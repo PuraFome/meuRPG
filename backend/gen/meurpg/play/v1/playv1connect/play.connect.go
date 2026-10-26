@@ -582,6 +582,9 @@ type PlayServiceClient interface {
 	// never learn the switch. It is off for every image newly shown unless
 	// the call says otherwise. The image is left only with the players of its
 	// audience at that moment (a fixed set, or everyone for the whole table).
+	// An image left again, with another audience, keeps the widest: whoever
+	// had it still has it, and the players of this leaving have it too. Only
+	// TakeBackLeftImage narrows it.
 	//
 	// Errors:
 	//   - `not_found`: the image is not in the campaign's gallery, the
@@ -2026,6 +2029,9 @@ type PlayServiceHandler interface {
 	// never learn the switch. It is off for every image newly shown unless
 	// the call says otherwise. The image is left only with the players of its
 	// audience at that moment (a fixed set, or everyone for the whole table).
+	// An image left again, with another audience, keeps the widest: whoever
+	// had it still has it, and the players of this leaving have it too. Only
+	// TakeBackLeftImage narrows it.
 	//
 	// Errors:
 	//   - `not_found`: the image is not in the campaign's gallery, the

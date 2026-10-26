@@ -83,6 +83,7 @@ import { SessionSummaryClient } from '../../core/play/session-summary';
 import { SessionSummarySchema } from '../../../gen/meurpg/play/v1/summary_pb';
 import {
   FakeSceneClient,
+  joinableScene,
   masterScene,
   playerScene,
   sceneRoll,
@@ -170,6 +171,7 @@ class FakeLiveSessionSource implements LiveSessionSource {
   readonly adjustVitals = vi.fn();
   readonly setCurrentMap = vi.fn((_c: string, mapId: string | null) => Promise.resolve(mapId));
   readonly setShownImage = vi.fn();
+  readonly setShownImageAudience = vi.fn();
   /** The images left with the players, as the server lists them. */
   left: ShownImageVm[] = [];
   readonly listLeftImages = vi.fn(() => Promise.resolve(this.left));
@@ -1282,6 +1284,46 @@ describe('LiveSession', () => {
         expect(el.querySelector('[role="tab"]')).toBeNull();
         expect(el.querySelector('app-left-images-block app-fold')).not.toBeNull();
         expect(el.querySelector('[role="tabpanel"]')).toBeNull();
+      });
+    });
+
+    describe('a scene the player may join (C7-06)', () => {
+      const phone = () => {
+        window.matchMedia = ((query: string) => ({
+          matches: query.includes('max-width'),
+          addEventListener: () => undefined,
+          removeEventListener: () => undefined,
+        })) as unknown as typeof window.matchMedia;
+      };
+      afterEach(() => {
+        delete (window as unknown as Record<string, unknown>)['matchMedia'];
+      });
+
+      it('draws the card "Há uma cena aberta" and the rest of the page as with no scene: the map and the images', async () => {
+        phone();
+        scenes.scene = joinableScene();
+        source.left = [
+          { id: 'img-2', name: 'Planta da torre', width: 800, height: 600, url: '/images/img-2' },
+        ];
+        const el = await render();
+        expect(el.querySelector('app-scene-player')?.textContent).toContain('Há uma cena aberta');
+        expect(el.querySelector('button.sc__join')).not.toBeNull();
+        // No tabs: the scene is not laid out before the player enters.
+        expect(el.querySelector('[role="tablist"]')).toBeNull();
+        expect(el.querySelector('app-left-images-block app-fold')).not.toBeNull();
+        expect(el.querySelector('.player-board--split')).toBeNull();
+      });
+
+      it('lays the scene out (tabs on a phone) once the player has entered', async () => {
+        phone();
+        scenes.scene = joinableScene();
+        scenes.joined = playerScene();
+        const el = await render();
+        (el.querySelector('button.sc__join') as HTMLButtonElement).click();
+        await nextTurn();
+        TestBed.inject(ApplicationRef).tick();
+        expect(el.querySelector('button.sc__join')).toBeNull();
+        expect(el.querySelectorAll('app-scene-player [role="tab"]').length).toBeGreaterThan(0);
       });
     });
 
@@ -2527,6 +2569,39 @@ describe('LiveSession', () => {
       expect(get).toHaveBeenCalledTimes(2);
       await hint({ encounterId: 'other', revision: 1 });
       expect(get).toHaveBeenCalledTimes(3);
+    });
+
+    it('gives the master\'s phone "Grupo" as a panel of the session in a combat: the party shows, the combat waits behind it', async () => {
+      asMaster();
+      window.matchMedia = ((query: string) => ({
+        matches: query.includes('max-width'),
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      })) as unknown as typeof window.matchMedia;
+      try {
+        const { fixture } = await withCombat();
+        const el = fixture.nativeElement as HTMLElement;
+        const nav = () => Array.from(el.querySelectorAll<HTMLElement>('app-session-tabs .tab'));
+        expect(nav().map((t) => t.textContent?.trim())).toEqual(['Combate', 'Grupo', 'Conversa']);
+        // "Grupo" is a button of the session now, not a link to the campaign page.
+        expect(el.querySelector('app-session-tabs a.tab')).toBeNull();
+        expect(el.querySelector('.grupo')?.hasAttribute('hidden')).toBe(true);
+        expect(el.querySelector('app-combat-view')?.hasAttribute('hidden')).toBe(false);
+
+        nav()[1].click();
+        await settle(fixture);
+        expect(nav()[1].getAttribute('aria-current')).toBe('true');
+        expect(el.querySelector('.grupo')?.hasAttribute('hidden')).toBe(false);
+        expect(el.querySelector('.grupo app-party-panel')).not.toBeNull();
+        expect(el.querySelector('app-combat-view')?.hasAttribute('hidden')).toBe(true);
+
+        nav()[0].click();
+        await settle(fixture);
+        expect(el.querySelector('.grupo')?.hasAttribute('hidden')).toBe(true);
+        expect(el.querySelector('app-combat-view')?.hasAttribute('hidden')).toBe(false);
+      } finally {
+        delete (window as unknown as Record<string, unknown>)['matchMedia'];
+      }
     });
 
     it('reads a combat that arrives while the screen has none', async () => {

@@ -113,12 +113,22 @@ function againstText(roll: AttackRoll, target: Combatant | undefined): string {
 
 /** The result box of the last roll. Escudo can turn a hit into a miss after the roll (the master's answer, or the
  * player's), and a reaction that holds the roll (Palavras de Interrupção) leaves no outcome until it is answered. */
-export function resultOf(last: LastRoll | null, e: Encounter, stopped: boolean, shield: string) {
+export function resultOf(
+  last: LastRoll | null,
+  e: Encounter,
+  stopped: boolean,
+  shield: string,
+  attacks: readonly Attack[] = [],
+) {
   if (!last) {
     return null;
   }
   const roll = last.roll;
+  const attack = attacks.find((a) => a.key === roll.attackKey);
+  const target = e.combatants.find((c) => c.id === roll.targetId);
   return {
+    // The head of the block (C7-02): "Cimitarra em Brisa".
+    head: attack && target ? `${attackName(attack)} em ${target.label}` : '',
     total: roll.d20?.total ?? 0,
     formula: roll.d20 ? rollFormula(roll.d20) : '',
     physical: roll.d20?.physical ?? false,

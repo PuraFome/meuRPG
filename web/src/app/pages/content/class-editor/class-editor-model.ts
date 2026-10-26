@@ -234,6 +234,7 @@ const KNOWN_FIELDS = [
   'casting.kind',
   'casting.ability',
   'casting.list_from',
+  'casting.srd_spell_keys',
   'casting.preparation',
   'casting.start_level',
   'casting.prepared_max',

@@ -741,7 +741,7 @@ func (*TableEntry_TableFeat) isTableEntry_Body() {}
 // "superiority_die" or "note"; "ability_increase" is a feat's alone. Only the fields of the type are
 // read, and a field the type does not use is refused. A feature with no effects is text only and always valid. Formulas ("value",
 // "when", "max") use level(), classLevel("<class>"), mod("int"), score("int"),
-// prof(), floor, ceil, min and max, and must compile.
+// prof(), floor, ceil, min and max, and must compile; a formula has at most 1024 bytes and 256 nodes.
 type TableEffect struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Type  string                 `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
@@ -824,10 +824,16 @@ type TableEffect struct {
 	// for as long as the character is raging. Both are required, and the effect has no
 	// `when` and no `tags`. Resistance never stacks: the same type from another source
 	// (the barbarian's own rage resistance) counts once.
-	Except        string `protobuf:"bytes,27,opt,name=except,proto3" json:"except,omitempty"`
-	While         string `protobuf:"bytes,28,opt,name=while,proto3" json:"while,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Except string `protobuf:"bytes,27,opt,name=except,proto3" json:"except,omitempty"`
+	While  string `protobuf:"bytes,28,opt,name=while,proto3" json:"while,omitempty"`
+	// proficiency, level "expertise" on a skill ("skill:*" is every skill) only: the
+	// skill is doubled only where the character already has its proficiency from
+	// another source when the sheet is worked out (the race, the background, the
+	// sheet's picks or another feature); the effect never gives the proficiency itself.
+	// Empty or false doubles the skill whether or not the character is proficient.
+	OnlyProficient bool `protobuf:"varint,29,opt,name=only_proficient,json=onlyProficient,proto3" json:"only_proficient,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *TableEffect) Reset() {
@@ -1056,6 +1062,13 @@ func (x *TableEffect) GetWhile() string {
 	return ""
 }
 
+func (x *TableEffect) GetOnlyProficient() bool {
+	if x != nil {
+		return x.OnlyProficient
+	}
+	return false
+}
+
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
 // background's feature.
 type TableFeature struct {
@@ -1245,7 +1258,12 @@ type TableCasting struct {
 	// The class level casting starts at; 0 is 1 (2 for half, 3 for third).
 	StartLevel int32 `protobuf:"varint,6,opt,name=start_level,json=startLevel,proto3" json:"start_level,omitempty"`
 	// Whether it casts rituals.
-	Ritual        bool `protobuf:"varint,7,opt,name=ritual,proto3" json:"ritual,omitempty"`
+	Ritual bool `protobuf:"varint,7,opt,name=ritual,proto3" json:"ritual,omitempty"`
+	// SRD spells ("spell:cure-wounds") on the class's own list, next to the table
+	// spells that name the class. Only a class whose list_from is empty has them;
+	// a third caster's subclass and a class that does not cast have none. Each is
+	// a spell of the SRD, named once, and a class names at most 400.
+	SrdSpellKeys  []string `protobuf:"bytes,8,rep,name=srd_spell_keys,json=srdSpellKeys,proto3" json:"srd_spell_keys,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1327,6 +1345,13 @@ func (x *TableCasting) GetRitual() bool {
 		return x.Ritual
 	}
 	return false
+}
+
+func (x *TableCasting) GetSrdSpellKeys() []string {
+	if x != nil {
+		return x.SrdSpellKeys
+	}
+	return nil
 }
 
 // TableClassLevel is one row of a class's 20-level table.
@@ -1723,6 +1748,11 @@ type TableSubclass struct {
 	// start level to 20.
 	Casting        *TableCasting          `protobuf:"bytes,6,opt,name=casting,proto3" json:"casting,omitempty"`
 	AlwaysPrepared []*TableAlwaysPrepared `protobuf:"bytes,7,rep,name=always_prepared,json=alwaysPrepared,proto3" json:"always_prepared,omitempty"`
+	// The spells of always_prepared are not given: they join the class's spell list
+	// to choose from, as a warlock patron's expanded list does, and count against
+	// the spells known or prepared. It needs always_prepared to have spells; a
+	// subclass without spells that sets it is refused.
+	SpellsExpanded bool `protobuf:"varint,8,opt,name=spells_expanded,json=spellsExpanded,proto3" json:"spells_expanded,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -1804,6 +1834,13 @@ func (x *TableSubclass) GetAlwaysPrepared() []*TableAlwaysPrepared {
 		return x.AlwaysPrepared
 	}
 	return nil
+}
+
+func (x *TableSubclass) GetSpellsExpanded() bool {
+	if x != nil {
+		return x.SpellsExpanded
+	}
+	return false
 }
 
 // TableRace is a race.
@@ -2830,9 +2867,9 @@ type TableContentViolation struct {
 	// (a key, kind or parent changed, or a spell crossing between cantrip and
 	// leveled), "duplicate_name" (another entry of the kind has the name), "unknown_field" (ImportTableContent:
 	// a field the message does not have) and
-	// "size_limit" (64 KiB of data). The 300-entry limit is "limit", with an empty
+	// "size_limit" (64 KiB of data). The 1000-entry limit is "limit", with an empty
 	// field. In ImportTableContent a violation about the pack itself is at a field
-	// that starts with "pack": "pack" (over 2 MiB: "size_limit"), "pack.format" and
+	// that starts with "pack": "pack" (over 3 MiB: "size_limit"), "pack.format" and
 	// "pack.version" ("bad_value"), "pack.entries[3].key" ("bad_key" for a key that is
 	// not "<kind>:<slug>@mesa" of the entry's kind, "duplicate_key" for one that
 	// repeats) and "pack.entries[3].body" ("bad_value": no body, or one of another
@@ -3908,7 +3945,7 @@ type TableContentPack struct {
 	// A label for the pack: the campaign's name when exported. 0 to 80 characters on
 	// one line; kept by nothing, shown in the preview.
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	// The entries. At most 300. Each has `key`, `kind`, `name_pt` and its body; the
+	// The entries. At most 1000. Each has `key`, `kind`, `name_pt` and its body; the
 	// other fields of TableEntry are left out of an export and ignored in an import.
 	Entries       []*TableEntry `protobuf:"bytes,4,rep,name=entries,proto3" json:"entries,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -4079,7 +4116,7 @@ type ImportTableContentRequest struct {
 	// The pack file as the master has it, in proto JSON. Prefer it to `pack`: the server
 	// reads it strictly, and a field it does not know (a misspelled "proficiency" for
 	// "proficiency_key") is a violation of its entry at the path of the field (reason
-	// "unknown_field"), never dropped. When set, `pack` must be unset. The 2 MiB limit is
+	// "unknown_field"), never dropped. When set, `pack` must be unset. The 3 MiB limit is
 	// this field's size.
 	PackJson      []byte `protobuf:"bytes,5,opt,name=pack_json,json=packJson,proto3" json:"pack_json,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -5675,7 +5712,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"tableSpell\x12;\n" +
 	"\n" +
 	"table_feat\x18\x11 \x01(\v2\x1a.meurpg.rules.v1.TableFeatH\x00R\ttableFeatB\x06\n" +
-	"\x04body\"\xe6\x05\n" +
+	"\x04body\"\x8f\x06\n" +
 	"\vTableEffect\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
 	"\x06target\x18\x02 \x01(\tR\x06target\x12\x12\n" +
@@ -5705,7 +5742,8 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x10range_multiplier\x18\x19 \x01(\x05R\x0frangeMultiplier\x12;\n" +
 	"\x1ano_long_range_disadvantage\x18\x1a \x01(\bR\x17noLongRangeDisadvantage\x12\x16\n" +
 	"\x06except\x18\x1b \x01(\tR\x06except\x12\x14\n" +
-	"\x05while\x18\x1c \x01(\tR\x05while\"\xc3\x01\n" +
+	"\x05while\x18\x1c \x01(\tR\x05while\x12'\n" +
+	"\x0fonly_proficient\x18\x1d \x01(\bR\x0eonlyProficient\"\xc3\x01\n" +
 	"\fTableFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x17\n" +
@@ -5716,7 +5754,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\aname_pt\x18\x01 \x01(\tR\x06namePt\x12\x17\n" +
 	"\adesc_pt\x18\x02 \x03(\tR\x06descPt\x12E\n" +
 	"\fprerequisite\x18\x03 \x01(\v2!.meurpg.rules.v1.FeatPrerequisiteR\fprerequisite\x126\n" +
-	"\aeffects\x18\x04 \x03(\v2\x1c.meurpg.rules.v1.TableEffectR\aeffects\"\xf1\x01\n" +
+	"\aeffects\x18\x04 \x03(\v2\x1c.meurpg.rules.v1.TableEffectR\aeffects\"\x97\x02\n" +
 	"\fTableCasting\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x122\n" +
 	"\aability\x18\x02 \x01(\x0e2\x18.meurpg.rules.v1.AbilityR\aability\x12 \n" +
@@ -5725,7 +5763,8 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\fprepared_max\x18\x05 \x01(\tR\vpreparedMax\x12\x1f\n" +
 	"\vstart_level\x18\x06 \x01(\x05R\n" +
 	"startLevel\x12\x16\n" +
-	"\x06ritual\x18\a \x01(\bR\x06ritual\"\xcb\x01\n" +
+	"\x06ritual\x18\a \x01(\bR\x06ritual\x12$\n" +
+	"\x0esrd_spell_keys\x18\b \x03(\tR\fsrdSpellKeys\"\xcb\x01\n" +
 	"\x0fTableClassLevel\x12\x1d\n" +
 	"\n" +
 	"prof_bonus\x18\x01 \x01(\x05R\tprofBonus\x129\n" +
@@ -5761,7 +5800,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\bfeatures\x18\x02 \x03(\v2\x1d.meurpg.rules.v1.TableFeatureR\bfeatures\x12%\n" +
 	"\x0ecantrips_known\x18\x03 \x01(\x05R\rcantripsKnown\x12!\n" +
 	"\fspells_known\x18\x04 \x01(\x05R\vspellsKnown\x12\x14\n" +
-	"\x05slots\x18\x05 \x03(\x05R\x05slots\"\xb9\x02\n" +
+	"\x05slots\x18\x05 \x03(\x05R\x05slots\"\xe2\x02\n" +
 	"\rTableSubclass\x12\x17\n" +
 	"\aname_pt\x18\x01 \x01(\tR\x06namePt\x12\x1b\n" +
 	"\tclass_key\x18\x02 \x01(\tR\bclassKey\x12\x14\n" +
@@ -5769,7 +5808,8 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\adesc_pt\x18\x04 \x03(\tR\x06descPt\x12;\n" +
 	"\x06levels\x18\x05 \x03(\v2#.meurpg.rules.v1.TableSubclassLevelR\x06levels\x127\n" +
 	"\acasting\x18\x06 \x01(\v2\x1d.meurpg.rules.v1.TableCastingR\acasting\x12M\n" +
-	"\x0falways_prepared\x18\a \x03(\v2$.meurpg.rules.v1.TableAlwaysPreparedR\x0ealwaysPrepared\"\xe8\x02\n" +
+	"\x0falways_prepared\x18\a \x03(\v2$.meurpg.rules.v1.TableAlwaysPreparedR\x0ealwaysPrepared\x12'\n" +
+	"\x0fspells_expanded\x18\b \x01(\bR\x0espellsExpanded\"\xe8\x02\n" +
 	"\tTableRace\x12\x17\n" +
 	"\aname_pt\x18\x01 \x01(\tR\x06namePt\x12\x12\n" +
 	"\x04size\x18\x02 \x01(\tR\x04size\x12\x19\n" +

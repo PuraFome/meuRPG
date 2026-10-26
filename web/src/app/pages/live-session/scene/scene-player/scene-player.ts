@@ -18,6 +18,8 @@ import { MatIconModule } from '@angular/material/icon';
 import type { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import type { SceneActionView } from '../../../../../gen/meurpg/play/v1/scene_pb';
 import { actionSubtitle, actionTitle } from '../../../../core/maps/scene-actions';
+import { SceneClient } from '../../../../core/play/scene-client';
+import { sceneErrorMessage } from '../../../../core/play/scene-errors';
 import type { SceneState } from '../../../../core/play/scene-state';
 import {
   ownRollOf,
@@ -61,6 +63,7 @@ export class ScenePlayer {
   private readonly dialog = inject(MatDialog);
   private readonly bottomSheet = inject(MatBottomSheet);
   private readonly injector = inject(Injector);
+  private readonly api = inject(SceneClient);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   /** The roll sheet this block opened is on screen (it is the page's overlay, not part of this block's DOM). */
   private rollSheetOpen = false;
@@ -95,6 +98,10 @@ export class ScenePlayer {
   readonly imagesCount = input(0);
   /** A group check waits for this player: "Ações" lights amber with "1", whichever tab is open. */
   readonly waiting = input(false);
+
+  /** "Entrar na cena" is on its way, and why the last try was refused. */
+  protected readonly joining = signal(false);
+  protected readonly joinError = signal('');
 
   protected readonly tab = signal('actions');
   protected readonly tabItems = computed<readonly TabItem[]>(() => {
@@ -162,6 +169,26 @@ export class ScenePlayer {
       };
     });
   });
+
+  /** "Entrar na cena" (C7-06): the server answers with the scene as a member reads it, which replaces the card; focus goes to its title. */
+  protected async join(): Promise<void> {
+    if (this.joining()) {
+      return;
+    }
+    this.joining.set(true);
+    this.joinError.set('');
+    try {
+      this.state().apply(await this.api.join(this.campaignId()));
+      afterNextRender(
+        () => this.host.nativeElement.querySelector<HTMLElement>('#sc-title')?.focus(),
+        { injector: this.injector },
+      );
+    } catch (err) {
+      this.joinError.set(sceneErrorMessage(err, 'entrar na cena'));
+    } finally {
+      this.joining.set(false);
+    }
+  }
 
   protected roll(action: SceneActionView): void {
     this.rollSheetOpen = true;

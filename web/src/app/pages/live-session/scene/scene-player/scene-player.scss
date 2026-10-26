@@ -296,3 +296,20 @@
     display: none;
   }
 }
+
+// The card of a scene the player may join (C7-06): the same frame, the title and one filled 48px button.
+.sc--join {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.sc__join {
+  width: 100%;
+  min-height: 48px;
+  margin-top: var(--mr-space-2);
+}
+
+.sc__error {
+  margin-top: var(--mr-space-2);
+}

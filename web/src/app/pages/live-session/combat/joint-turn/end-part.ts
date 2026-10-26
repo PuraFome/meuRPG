@@ -59,10 +59,10 @@ import { MatIconModule } from '@angular/material/icon';
       display: block;
     }
 
-    // The button that opens the question is the same as "Encerrar turno": an outline in the accent text.
+    // The button that opens the question is the same as "Encerrar turno": an outline in the ink (the accent is the filled button's).
     .btn {
       --mat-button-outlined-container-height: 48px;
-      --mat-button-outlined-label-text-color: var(--mr-accent-text);
+      --mat-button-outlined-label-text-color: var(--mr-ink);
       --mat-button-outlined-outline-color: var(--mr-control-line);
       --mat-button-filled-container-height: 48px;
       width: 100%;

@@ -123,7 +123,7 @@ A dead character is not deleted: it stays in the system, as the base for another
 To play another campaign, at the same time or in a continuation years later, the player makes a copy ([MR-021](stories.md#mr-021-copy-a-character), not built yet).
 
 - **A second living character is refused**, and the refusal names the living one. Claiming a reserved character through a link ([MR-049](stories.md#mr-049-reserved-characters-and-claim-links)) counts too, and a person whose only character is dead may claim. A reserved character has no player, so it counts against nobody.
-- **Death saves.** A character at 0 hit points is "Caído". At the start of their turn they roll a death saving throw, in the app or typed (RN-18): 10 or more is a success, less is a failure, a natural 1 is two failures, a natural 20 returns with 1 hit point. Three successes make them stable ("Estável"). Damage while down counts a failure (two on a critical hit). Any healing resets the counts. The turn does not end until the roll is made (the master can pass it anyway). Outside combat the app does not roll death saves.
+- **Death saves.** A character at 0 hit points is "Caído". At the start of their turn they roll a death saving throw, in the app or typed (RN-18): 10 or more is a success, less is a failure, a natural 1 is two failures, a natural 20 returns with 1 hit point. Three successes make them stable ("Estável"). Damage while down counts a failure (two on a critical hit). Any healing resets the counts. The turn does not end until the roll is made, the master's end of turn included: when the player is away the master rolls for the character, in the app or by typing the result, and only then ends the turn. Outside combat the app does not roll death saves.
 - **Three failures do not kill by themselves.** The master sees "Morrendo · 3 falhas" and the question "Confirmar a morte" / "Ainda não". The players keep reading "Caída" and the counts, which are public: the app never says someone died before the master does. The confirmation cannot be undone with "Desfazer".
 - **A dead character takes no healing** (a healing spell aimed at one is refused before the slot or action is spent), and its player keeps reading the combat.
 - **Reviver (the master).** A dead character can live again with 1 hit point and no death save counted, keeping the state it had before (draft or locked). It spends nothing and has no time limit. It is refused while the player has another living character. In a running combat the character keeps its place in the order, and the log says "O mestre reviveu <name>".
@@ -214,20 +214,24 @@ A hidden NPC counts for the stage's limit of 4, but no player receives it: not i
 A hidden action reaches no player: not its name, DC, attempts or rolls, and a player's roll on it is refused exactly as a roll on an action that does not exist.
 Hiding and showing tell the players the same hint as any change of the scene, so what was hidden leaves their screen, or enters it, at once; putting something on the stage hidden, or taking it off, and changing an action that stays hidden, tell only the master.
 "Dar a fala" to a hidden NPC shows it: the master's tap means that it speaks now.
+A line the master sends in the scene's conversation as a hidden NPC names it for the readers he chose and nothing else of it: not its portrait, not a place on the stage; only "Dar a fala" shows it.
 
 **Who is in the scene** (["Quem está na cena"](stories.md#mr-015-rp-scene-actions), [MR-015](stories.md#mr-015-rp-scene-actions)).
 A scene is open to the whole table, a player who joins later included, or to exactly the players the master picks, who he may change while it is open.
 A player who is out gets no scene at all, exactly as when none is open: not its name, point, description, actions, rolls, stage or portraits, not the group check asked in it, not a live hint, and a roll of theirs is refused as with no open scene.
 A player who comes in reads the scene at once and a player who goes out loses it at once, each told by the same hint as any change of the scene.
 With the master's switch "Os jogadores podem entrar" on, a player who is out reads the scene's name and that they may join and nothing else, and joining makes them one of its players for what follows (an image shown to the scene's players reaches them; one shown to chosen players does not).
-The checks passed in it count in the summary only for the master and the players who were in; a scene is "discovered" for the group's notes when it is open to everyone.
+The master may name any player of the campaign, also the player of a dead character: the audience is about players, not characters.
+The checks passed in it count in the summary only for the master and the players who were in, also when the action is hidden afterwards; a scene is "discovered" for the group's notes when it is open to everyone, and, while it is open to only some players, by each of them alone: no other player's notes list its name or accept it as a label.
+A clue revealed to a player who is out reaches their notes and nothing else of the scene.
 
 **Who sees the image** (["Quem vê a imagem"](stories.md#mr-028-show-an-image-to-the-players), [MR-028](stories.md#mr-028-show-an-image-to-the-players)).
 The image the master shows has one audience: the whole table (the only one when no scene is open or the open scene is open to everyone), the scene's players (the default while a scene is open to only some, following who is in while that scene stays open), or chosen players.
 The master changes it while the image is shown: "Mostrar a toda a mesa" widens it, "Mudar quem vê" picks the players.
 A player taken out loses the image at once, in the read, on the live stream and on the image route; one brought in gets it at once.
 When the scene closes, another opens, or it opens to everyone, an image shown to its players stays with those same players and no one else, and an image left with the players ("Deixar com os jogadores") is left only with the players of its audience.
-A player outside the audience never receives the image, its name or its ID, also not in the summary.
+A player outside the audience never receives the image, its name or its ID, also not in the summary; deleting the image tells only the master and the players who saw it.
+An image left with the players again keeps the widest audience; only taking it back narrows it.
 
 **Fog of war** ([MR-036](stories.md#mr-036-fog-of-war-by-sight)).
 On a map with fog on, the player receives only what their character sees now or has already seen: the walls and light the master painted, the light points and carried lights, and the sheet's darkvision decide.
@@ -551,7 +555,7 @@ Members read the campaign's content; only the master writes.
 - **Classes.** A table class brings the 20-level table (proficiency bonus, features, cantrips and spells known, slots or pact slots), hit die, saving throws, skills, proficiencies, the ability score improvement levels (4, 8, 12, 16 and 19 by default) and spellcasting (none, full, half or pact). The one-third caster is a subclass that casts. The class editor starts from the server's numbers. Multiclass at creation and level up work with table classes, with the SRD prerequisites as a sheet notice.
 - **Maneuvers.** A maneuver is a die from a resource. After a weapon hit the damage step offers each damage maneuver the character knows, one per attack; it adds the die to the damage (doubled on a critical hit), spends a use, and the master reads its rider on the roll. The die can also start a grapple or reduce a melee hit's damage as a reaction. The die on an attack roll can be registered but is not rolled yet.
 - **The background "Outro"** follows the SRD 5.1 rule "Customizing a Background".
-- **Limits:** 300 entries per campaign, 64 KiB per entry, 60 features per class, 60 traits per race and subrace, 2,000 effects and 500 distinct formulas in all.
+- **Limits:** 1,000 entries per campaign, 64 KiB per entry, 60 features per class, 60 traits per race and subrace, 6,000 effects and 500 distinct formulas (100 KiB of text) in all, each formula of at most 1,024 bytes.
 
 On screen: "Conteúdo da mesa" (the list by kind with counts and each entry's state, editors for each kind, "Esta entrada mudou enquanto você editava" with "Recarregar", "N fichas ficaram com aviso" after an edit). On a phone the master only reads and archives. Details: [Design](../design/sheet.md#editors), [Architecture](../architecture/rules-table-content.md), [characters](../architecture/characters-table-content.md) and [web](../architecture/characters-web.md#table-content-screens). Stories: [MR-025](stories.md#mr-025-register-table-content), [MR-045](stories.md#mr-045-look-up-spells).
 
