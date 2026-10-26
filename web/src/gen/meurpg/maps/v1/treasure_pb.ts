@@ -894,7 +894,7 @@ export const TreasureBlockedReasonSchema: GenEnum<TreasureBlockedReason> = /*@__
 
 /**
  * TreasureService generates the treasure of a creature or of a lair and puts it on
- * a map (MR-044, RN-09, RN-10, Etapa 10, slice 10.10b).
+ * a map (MR-044, RN-09, RN-10).
  *
  * The generator is a pure function of the mode, the party level and a seed
  * (backend/internal/rules, treasure_generate.go): the same three always give the

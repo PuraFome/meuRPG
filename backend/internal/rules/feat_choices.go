@@ -32,8 +32,14 @@ type choiceFeat struct{ Feat, Owner string }
 // featChoiceSpec is what the feat choices of an owner ask in all: how many feats
 // and the list they come from (empty: any feat).
 func (c *content) featChoiceSpec(owner string) (picks int, from []string, ok bool) {
+	return c.choiceSpec(owner, "feat")
+}
+
+// choiceSpec is what the `choice` effects of a kind that owner has ask in all: how many picks and the list they
+// come from (empty: any).
+func (c *content) choiceSpec(owner, kind string) (picks int, from []string, ok bool) {
 	open := false
-	for _, e := range c.effectChoices(owner, "feat") {
+	for _, e := range c.effectChoices(owner, kind) {
 		ok = true
 		picks += max(e.Count, 1)
 		if len(e.From) == 0 {
@@ -167,6 +173,7 @@ func (cb *choiceBuilder) featOwners() {
 func (cb *choiceBuilder) featChoice(g *groupBuild, owner string) {
 	c := cb.c
 	cb.grantAbilityChoice(g, owner) // every owner of a choice passes here
+	cb.proficiencyChoices(g, owner)
 	picks, from, ok := c.featChoiceSpec(owner)
 	if !ok || owner == "" {
 		return

@@ -87,7 +87,7 @@
 .subsection__title {
   margin: 0 0 var(--mr-space-2);
   font-weight: 700;
-  font-size: 19px;
+  font-size: var(--mr-font-19);
   line-height: 24px;
 }
 
@@ -103,7 +103,7 @@
 
 .group-hint {
   margin: 2px 0 var(--mr-space-2);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -170,7 +170,7 @@
 
 .bonuses__sub,
 .option-note {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -197,7 +197,7 @@
 .spell-grid__note {
   margin: 0;
   align-self: start;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -231,7 +231,7 @@
 .editor__note {
   flex: 1 1 240px;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -244,7 +244,7 @@
 .xp-read__value {
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 24px;
+  font-size: var(--mr-font-24);
   line-height: 28px;
 }
 
@@ -308,7 +308,7 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 21px;
+  font-size: var(--mr-font-21);
   line-height: 26px;
 }
 

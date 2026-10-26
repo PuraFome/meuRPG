@@ -65,7 +65,7 @@ let nextId = 0;
 
     app-notes-select .notes-hint {
       margin: 4px 0 0 16px;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 19px;
       color: var(--mr-ink-muted);
     }
@@ -96,7 +96,7 @@ let nextId = 0;
 
     .mr-notes-panel .notes-option__count {
       flex: none;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       color: var(--mr-ink-muted);
     }
 

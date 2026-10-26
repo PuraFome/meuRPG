@@ -30,7 +30,7 @@
   flex-wrap: wrap;
   align-items: center;
   column-gap: var(--mr-space-2);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
   line-height: 21px;
   overflow-wrap: anywhere;
@@ -42,18 +42,18 @@
   align-items: center;
   gap: 2px;
   color: var(--mr-danger-ink);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
 
   .mat-icon {
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 
 .sub {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -61,14 +61,14 @@
 .amount {
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   line-height: 24px;
   white-space: nowrap;
 
   // "Não recebe" is a plain word, not a number: quiet, in the body face.
   &--off {
     font-family: var(--mr-font-sans);
-    font-size: 16px;
+    font-size: var(--mr-font-16);
     font-weight: 700;
     color: var(--mr-ink-muted);
   }

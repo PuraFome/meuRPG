@@ -707,7 +707,8 @@ WHERE game_session_id = sqlc.arg(game_session_id) AND character_id = sqlc.arg(ch
 -- the undos that may take them back.
 SELECT id, kind, payload FROM session_events
 WHERE encounter_id = $1
-  AND kind IN ('attack_rolled', 'damage_rolled', 'damage_applied', 'spell_cast', 'action_taken', 'action_undone')
+  AND kind IN ('attack_rolled', 'damage_rolled', 'damage_applied', 'spell_cast', 'action_taken', 'action_undone',
+    'reaction_answered', 'reaction_used', 'spell_zone_triggered', 'lasting_effect_triggered')
 ORDER BY seq
 LIMIT 20000;
 
@@ -768,7 +769,7 @@ SELECT e.id, e.name FROM encounters AS e
 JOIN game_sessions AS gs ON gs.id = e.game_session_id
 WHERE gs.campaign_id = sqlc.arg(campaign_id)::UUID AND e.id = ANY(sqlc.arg(ids)::UUID[]);
 
--- The character's creatures in a combat (MR-037, Etapa 9). A creature is a
+-- The character's creatures in a combat (MR-037). A creature is a
 -- combatant of kind 'creature': character_id is its owner's.
 
 -- name: InsertCreatureCombatant :one
@@ -841,7 +842,7 @@ WHERE creature_id = sqlc.arg(creature_id)::UUID
   )
 RETURNING encounter_id;
 
--- Trap damage (MR-035, Etapa 9, D5): the server rolls it when the trap fires.
+-- Trap damage (MR-035, D5): the server rolls it when the trap fires.
 
 -- name: InsertTrapPendingDamage :one
 -- A trap's damage in a combat: no attacker, rolled already. 'rolled' for a
@@ -986,7 +987,7 @@ ORDER BY o.created_at, o.id;
 SELECT id, status, applied_amount FROM trap_damages
 WHERE id = ANY($1::uuid[]);
 
--- Puzzles (MR-038, RN-27, Etapa 10): what the master makes (puzzles), what a
+-- Puzzles (MR-038, RN-27): what the master makes (puzzles), what a
 -- session plays (puzzle_runs) and every move (puzzle_moves). The service is in
 -- puzzles*.go.
 

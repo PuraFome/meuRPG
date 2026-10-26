@@ -1,6 +1,6 @@
 -- +goose Up
 -- generated_dungeons is the record of a map made by DungeonService
--- (MR-010, RN-26, Etapa 10): one row per generated map, the master's alone (a
+-- (MR-010, RN-26): one row per generated map, the master's alone (a
 -- player never reads it, RN-10: the rooms list and the seed give away the
 -- dungeon). Deleting the map deletes it.
 --

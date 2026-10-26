@@ -19,7 +19,7 @@
 }
 
 .row__hp-n {
-  font-size: 18px;
+  font-size: var(--mr-font-18);
   line-height: 1;
 }
 
@@ -65,7 +65,7 @@
   flex-direction: column;
   gap: 6px;
   padding: 0 10px 12px 50px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -86,7 +86,7 @@
     flex: none;
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 
@@ -105,7 +105,7 @@
   .mat-icon {
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 
@@ -147,7 +147,7 @@
     flex: none;
     width: 14px;
     height: 14px;
-    font-size: 14px;
+    font-size: var(--mr-font-14);
   }
 
   &--aid {
@@ -175,7 +175,7 @@
     flex-direction: column;
     height: 56px;
     padding: 0 4px;
-    font-size: 14px;
+    font-size: var(--mr-font-14);
     line-height: 16px;
 
     .mat-icon {
@@ -200,7 +200,7 @@
 
 .row__hidden-note {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 

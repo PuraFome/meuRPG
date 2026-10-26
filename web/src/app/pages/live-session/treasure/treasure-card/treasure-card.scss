@@ -19,7 +19,7 @@
 
 .tr__icon {
   flex: none;
-  font-size: 24px;
+  font-size: var(--mr-font-24);
 }
 
 .tr__name {
@@ -27,14 +27,14 @@
   min-width: 0;
   margin: 0;
   font-family: var(--mr-font-display, inherit);
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   line-height: 26px;
   overflow-wrap: anywhere;
 }
 
 .tr__sub {
   margin: 2px 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -54,7 +54,7 @@
 
 .tr__label {
   margin: var(--mr-space-3) 0 0;
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 17px;
   color: var(--mr-ink-muted);
 }
@@ -65,7 +65,7 @@
 .tr__lead,
 .tr__summary {
   margin: 2px 0 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
   overflow-wrap: anywhere;
 }
@@ -77,7 +77,7 @@
 .tr__said,
 .tr__lead {
   margin-top: var(--mr-space-2);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -87,7 +87,7 @@
   align-items: flex-start;
   gap: 6px;
   margin: var(--mr-space-3) 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
@@ -95,7 +95,7 @@
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -111,7 +111,7 @@
   padding: 10px 12px;
   border-radius: var(--mr-radius-md);
   background: var(--mr-ground);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 }
 
@@ -148,13 +148,13 @@
 
 .tr__askt {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--mr-font-18);
   line-height: 24px;
 }
 
 .tr__asks {
   margin: 2px 0 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 }
 

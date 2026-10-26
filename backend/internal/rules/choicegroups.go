@@ -132,6 +132,10 @@ type Choice struct {
 	// Unmet are the picked options whose prerequisites are not met, and Overflow the
 	// picks past what the choice takes or that it does not offer.
 	Unmet, Overflow []string
+	// Advisory says the choice only warns while it is open: the languages and the tools a race, a trait, a
+	// background or a feature lets the player pick. It is pending (the step marks it, the locked sheet and the master's
+	// list count it) but no problem is raised for it and a level-up does not ask it, as before the picks were here.
+	Advisory bool
 
 	family string
 	// plain says the picks are options written as their own keys (a fighting style),
@@ -318,7 +322,7 @@ func overflowProblems(out []ChoiceProblem, ch Choice) []ChoiceProblem {
 
 // missingProblem is a choice left open.
 func missingProblem(out []ChoiceProblem, ch Choice) []ChoiceProblem {
-	if ch.Missing() > 0 {
+	if ch.Missing() > 0 && !ch.Advisory {
 		out = append(out, ChoiceProblem{Code: ChoiceProblemMissing, ChoiceKey: ch.Key, Field: choiceKeysField, LabelPT: ch.LabelPT, Picked: ch.Done(), Required: ch.Picks})
 	}
 	return out
@@ -357,6 +361,8 @@ type choiceBuilder struct {
 	order   int
 
 	derived *Derived
+	// typedLanguages and typedTools count the entries of the free fields that earlier choices took as answers.
+	typedLanguages, typedTools int
 	// legacyTaken counts the surplus cantrips choices already claimed.
 	legacyTaken int
 }

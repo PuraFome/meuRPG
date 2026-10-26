@@ -18,21 +18,21 @@
 .sa__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 21px;
+  font-size: var(--mr-font-21);
   font-weight: 700;
   line-height: 26px;
 }
 
 .sa__count {
   flex: none;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
 .sa__lead,
 .sa__limit {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -81,14 +81,14 @@
 }
 
 .sa__name {
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   font-weight: 700;
   line-height: 22px;
   overflow-wrap: anywhere;
 }
 
 .sa__check {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -156,7 +156,7 @@
 .sa__preview-title,
 .sa__sample {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -199,7 +199,7 @@
 }
 
 .sa__attempts-label {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -219,7 +219,7 @@
     background: var(--mr-surface);
     color: var(--mr-ink);
     font: inherit;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
     appearance: none;
     cursor: pointer;
   }
@@ -236,7 +236,7 @@
 .sa__unlimited {
   flex: 1 0 100%;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }

@@ -53,7 +53,7 @@ span.pt__hit {
       transform: rotate(-45deg);
       width: 16px;
       height: 16px;
-      font-size: 16px;
+      font-size: var(--mr-font-16);
     }
   }
 
@@ -78,13 +78,13 @@ span.pt__hit {
 }
 
 .pt__chest {
-  font-size: 20px;
+  font-size: var(--mr-font-20);
 }
 
 .pt__icon {
   width: 18px;
   height: 18px;
-  font-size: 18px;
+  font-size: var(--mr-font-18);
 }
 
 :host(.pt--hidden) .pt__shape {
@@ -125,7 +125,7 @@ span.pt__hit {
   .mat-icon {
     width: 11px;
     height: 11px;
-    font-size: 11px;
+    font-size: var(--mr-font-11);
   }
 }
 

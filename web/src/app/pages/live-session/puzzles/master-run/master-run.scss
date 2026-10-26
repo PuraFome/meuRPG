@@ -18,7 +18,7 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   line-height: 26px;
 }
 
@@ -47,7 +47,7 @@
   flex-wrap: wrap;
   gap: var(--mr-space-2);
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   color: var(--mr-ink-muted);
 }
 
@@ -61,7 +61,7 @@
 .facts__meta,
 .facts__legend {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
 }
 
@@ -71,7 +71,7 @@
 }
 
 .facts__meta {
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 21px;
   color: var(--mr-ink-muted);
 }
@@ -81,7 +81,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: var(--mr-space-2);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
 }
 
 .facts__swatch {
@@ -104,7 +104,7 @@
 .outcome__said,
 .outcome__quiet {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
 }
 
 .outcome__said,
@@ -114,7 +114,7 @@
 
 .ask__text {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
 }
 
@@ -173,7 +173,7 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   line-height: 24px;
 
   li:not(:last-child)::after {

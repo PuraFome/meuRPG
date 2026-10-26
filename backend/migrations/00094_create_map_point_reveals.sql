@@ -1,6 +1,6 @@
 -- +goose Up
--- map_point_reveals records which characters know about a trap (MR-035, Etapa
--- 9, D5, RN-10): one row per trap point and character. A trap that is not
+-- map_point_reveals records which characters know about a trap (MR-035, D5,
+-- RN-10): one row per trap point and character. A trap that is not
 -- revealed to everyone (map_points.revealed_at) and has not been triggered is
 -- sent only to the players of the characters listed here, and to the master.
 --

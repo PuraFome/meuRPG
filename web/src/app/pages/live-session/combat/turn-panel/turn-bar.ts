@@ -69,7 +69,7 @@ import { EndTurn } from './end-turn';
 
     .what {
       margin: 0;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       color: var(--mr-ink-muted);
 
       b {
@@ -86,7 +86,7 @@ import { EndTurn } from './end-turn';
     }
 
     .left__lead {
-      font-size: 13px;
+      font-size: var(--mr-font-13);
       line-height: 16px;
       color: var(--mr-ink-muted);
       // On the narrowest phones the shapes alone say it (the group is still named "Ainda tem"): the bar gives the page a line back.
@@ -101,7 +101,7 @@ import { EndTurn } from './end-turn';
     }
 
     .left__none {
-      font-size: 13px;
+      font-size: var(--mr-font-13);
       line-height: 16px;
       font-weight: 700;
     }

@@ -12,14 +12,14 @@
   gap: 6px;
   min-height: 44px;
   margin: -10px 0 -8px;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   color: var(--mr-ink-muted);
   text-decoration: none;
 
   .mat-icon {
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 
   &:hover {
@@ -30,7 +30,7 @@
 
 .sub {
   margin: 2px 0 0;
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   color: var(--mr-ink-muted);
 }
 
@@ -65,7 +65,7 @@
 
 .hint {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -108,7 +108,7 @@
 
 .empty__line {
   margin: 0 0 var(--mr-space-1);
-  font-size: 18px;
+  font-size: var(--mr-font-18);
 }
 
 .placed {
@@ -131,6 +131,6 @@
 }
 
 .placed__gold {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }

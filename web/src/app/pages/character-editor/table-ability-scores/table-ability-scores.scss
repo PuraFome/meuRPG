@@ -8,7 +8,7 @@
 
 .methods__label {
   margin: 0 0 var(--mr-space-2);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   color: var(--mr-ink-muted);
 }
@@ -53,27 +53,27 @@
   .mat-icon {
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
 .way__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   line-height: 26px;
 }
 
 .way__srd,
 .way__lead {
   margin: 2px 0 var(--mr-space-3);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
 
 .way__lead {
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 }
 
@@ -93,11 +93,11 @@
   margin: 0;
 
   strong {
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 
   span {
-    font-size: 14px;
+    font-size: var(--mr-font-14);
     color: var(--mr-ink-muted);
   }
 }
@@ -139,13 +139,13 @@
 .buy__name {
   display: flex;
   flex-direction: column;
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   font-weight: 700;
   line-height: 22px;
 }
 
 .buy__cost {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 400;
   line-height: 19px;
   color: var(--mr-ink-muted);
@@ -159,7 +159,7 @@
 
 .buy__value {
   min-width: 32px;
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   font-weight: 700;
   text-align: center;
 }
@@ -196,7 +196,7 @@
   flex-wrap: wrap;
   gap: var(--mr-space-1) var(--mr-space-3);
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -222,7 +222,7 @@
 .roll__missing,
 .roll__when {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 }
 
@@ -279,7 +279,7 @@
   background: var(--mr-surface);
   color: var(--mr-ink);
   font: inherit;
-  font-size: 18px;
+  font-size: var(--mr-font-18);
   font-weight: 700;
   text-align: center;
 }

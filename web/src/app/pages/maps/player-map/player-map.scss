@@ -29,7 +29,7 @@
   .mat-icon {
     width: 22px;
     height: 22px;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
   }
 }
 
@@ -106,7 +106,7 @@
 }
 
 .list__glyph app-chest-icon {
-  font-size: 20px;
+  font-size: var(--mr-font-20);
 }
 
 .list__text {
@@ -122,7 +122,7 @@
 }
 
 .list__sub {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -132,5 +132,5 @@
 
 .none {
   margin: var(--mr-space-2) 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
 }

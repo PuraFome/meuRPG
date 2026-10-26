@@ -12,6 +12,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
 // The combat highlights, "Destaques do combate" (MR-032, D8; question 64 of
@@ -155,6 +156,13 @@ func (h *highlightTally) fold(kind string, ev *actionEvent) {
 		foldActionHealing(actor, ev)
 	case eventDamageRolled:
 		h.foldDamageRolled(actor, ev)
+	case eventReactionAnswered, eventReactionUsed:
+		h.foldReactionDamage(actor, ev)
+	case eventZoneTriggered:
+		// A zone's damage on the creature it caught: the actor is the zone's owner.
+		h.foldDealt(actor, damageHit{Target: ev.Target, Applied: ev.Applied, Before: ev.Before, After: ev.After})
+	case eventLastingTriggered:
+		h.foldEffectDamage(ev)
 	case eventDamageApplied:
 		// The master applied a damage to a player's character: it is the target
 		// that took it, whoever dealt it.
@@ -195,22 +203,50 @@ func (h *highlightTally) foldDamageRolled(actor *characterTally, ev *actionEvent
 		hits = []damageHit{{Pending: ev.Pending, Target: ev.Target, Amount: ev.Amount, Applied: ev.Applied, Before: ev.Before, After: ev.After}}
 	}
 	for _, hit := range hits {
-		switch {
-		case actor == nil || !hit.Applied:
-			// Not a player's, or a player's character's damage still waiting
-			// for the master (damage_applied counts it).
-		case ev.Heal:
+		if ev.Heal && actor != nil && hit.Applied {
 			actor.healing += hit.Amount // what was regained, up to the maximum
-		case h.ally[hit.Target]:
-			// Friendly fire (a hit on a creature of the party) counts nowhere.
-		case hit.Before != nil && hit.After != nil:
-			// Only an NPC takes a damage at once: this is damage dealt to one.
-			actor.damage += hpLost(hit.Before, hit.After)
-			if hit.After.Defeated && !hit.Before.Defeated {
-				actor.finalBlows++
-			}
+			continue
+		}
+		h.foldDealt(actor, hit)
+	}
+}
+
+// foldDealt counts a hit that landed as the damage the actor dealt.
+func (h *highlightTally) foldDealt(actor *characterTally, hit damageHit) {
+	switch {
+	case actor == nil || !hit.Applied:
+		// Not a player's, or a player's character's damage still waiting
+		// for the master (damage_applied counts it).
+	case h.ally[hit.Target]:
+		// Friendly fire (a hit on a creature of the party) counts nowhere.
+	case hit.Before != nil && hit.After != nil:
+		// Only an NPC takes a damage at once: this is damage dealt to one.
+		actor.damage += hpLost(hit.Before, hit.After)
+		if hit.After.Defeated && !hit.Before.Defeated {
+			actor.finalBlows++
 		}
 	}
+}
+
+// foldReactionDamage counts the damage a reaction dealt on its own: the fire of a Hellish
+// Rebuke, which lands on the aggressor in the event of the answer. The reactor is the actor,
+// whoever's turn it was. An answer written before the event kept the hit points has none to
+// count (the fire rolled is not what the aggressor lost), so it counts for nothing.
+func (h *highlightTally) foldReactionDamage(actor *characterTally, ev *actionEvent) {
+	if ev.Reaction == nil || ev.Reaction.Kind != string(reaction.HellishRebukeKind) {
+		return
+	}
+	h.foldDealt(actor, damageHit{Target: ev.Target, Applied: ev.Applied, Before: ev.Before, After: ev.After})
+}
+
+// foldEffectDamage counts the damage a lasting effect dealt when its time came (the web that
+// burns) for the creature that cast it, not for the one it hit, whose event it is. An event
+// written before it named the caster counts for nobody.
+func (h *highlightTally) foldEffectDamage(ev *actionEvent) {
+	if ev.Lasting == nil || ev.Lasting.Change != "damage" {
+		return
+	}
+	h.foldDealt(h.byCombatant[ev.Lasting.Caster], damageHit{Target: ev.Target, Applied: ev.Applied, Before: ev.Before, After: ev.After})
 }
 
 // highlightCategories names the winner of each category of a combat: the most

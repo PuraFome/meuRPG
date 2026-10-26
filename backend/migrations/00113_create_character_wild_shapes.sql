@@ -1,5 +1,5 @@
 -- +goose Up
--- A druid in Wild Shape (MR-037, Etapa 9, D7): the form is part of the
+-- A druid in Wild Shape (MR-037, D7): the form is part of the
 -- character's vitals as far as the API goes (CharacterVitals.wild_shape), because
 -- it lasts from one session to the next as the hit points do (the master ends it:
 -- the app does not count its hours). It has a table of its own, not columns of

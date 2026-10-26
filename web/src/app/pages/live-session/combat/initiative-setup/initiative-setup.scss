@@ -19,7 +19,7 @@
 }
 
 .init__hint {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -39,7 +39,7 @@
   border-top: 1px solid var(--mr-warning-line);
   background: var(--mr-warning-surface);
   color: var(--mr-warning-ink);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   font-weight: 700;
   line-height: 20px;
 
@@ -47,7 +47,7 @@
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
@@ -107,7 +107,7 @@
 .row__place {
   grid-area: place;
   font-family: var(--mr-font-display);
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   font-weight: 700;
   text-align: center;
   color: var(--mr-ink-muted);
@@ -123,7 +123,7 @@
 // A name never breaks letter by letter: it keeps one line and ends in an ellipsis (the full name is the tooltip).
 .row__name {
   overflow: hidden;
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   font-weight: 700;
   line-height: 22px;
   text-overflow: ellipsis;
@@ -132,7 +132,7 @@
 
 .row__sub,
 .row__wait {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -148,7 +148,7 @@
     flex: none;
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 
@@ -158,7 +158,7 @@
   align-items: center;
   gap: 6px;
   font-family: var(--mr-font-display);
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   font-weight: 700;
   line-height: 28px;
   white-space: nowrap;

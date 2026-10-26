@@ -42,7 +42,7 @@
 }
 
 .tile__l {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 700;
   line-height: 16px;
   color: var(--mr-ink-muted);
@@ -50,20 +50,20 @@
 
 .tile__v {
   font-family: var(--mr-font-display);
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   font-weight: 800;
   line-height: 28px;
 
   small {
     font-family: var(--mr-font-sans);
-    font-size: 14px;
+    font-size: var(--mr-font-14);
     font-weight: 400;
     color: var(--mr-ink-muted);
   }
 }
 
 .tile__n {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 16px;
   color: var(--mr-ink-muted);
   overflow-wrap: anywhere;
@@ -96,7 +96,7 @@
 
 .ability__n {
   max-width: 100%;
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 16px;
   color: var(--mr-ink-muted);
   overflow-wrap: anywhere;
@@ -104,13 +104,13 @@
 
 .ability__m {
   font-family: var(--mr-font-display);
-  font-size: 26px;
+  font-size: var(--mr-font-26);
   font-weight: 800;
   line-height: 32px;
 }
 
 .ability__s {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 16px;
   color: var(--mr-ink-muted);
 }
@@ -126,7 +126,7 @@
   display: grid;
   grid-template-columns: 96px minmax(0, 1fr);
   gap: var(--mr-space-3);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 21px;
 
   dt {
@@ -143,7 +143,7 @@
   margin: 0;
   padding-top: var(--mr-space-3);
   border-top: 1px solid var(--mr-rule);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -159,7 +159,7 @@
   padding-bottom: 4px;
   border-bottom: 1px solid var(--mr-rule);
   font-family: var(--mr-font-display);
-  font-size: 21px;
+  font-size: var(--mr-font-21);
   font-weight: 700;
   line-height: 26px;
 }
@@ -173,7 +173,7 @@
 .entry__n {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 19px;
+  font-size: var(--mr-font-19);
   font-weight: 700;
   line-height: 24px;
 }
@@ -181,14 +181,14 @@
 .entry__u {
   margin-left: 6px;
   font-family: var(--mr-font-sans);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 400;
   color: var(--mr-ink-muted);
 }
 
 .entry__t {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
   overflow-wrap: anywhere;
 }

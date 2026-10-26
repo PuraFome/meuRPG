@@ -3303,7 +3303,7 @@ type InsertCreatureCombatantParams struct {
 	JumpHighDft     int32
 }
 
-// The character's creatures in a combat (MR-037, Etapa 9). A creature is a
+// The character's creatures in a combat (MR-037). A creature is a
 // combatant of kind 'creature': character_id is its owner's.
 // A creature joins a combat. It has no initiative until its group rolls one,
 // and no square until somebody places it; its hit points come from the
@@ -4094,7 +4094,7 @@ type InsertPuzzleParams struct {
 	CreateHash   *string
 }
 
-// Puzzles (MR-038, RN-27, Etapa 10): what the master makes (puzzles), what a
+// Puzzles (MR-038, RN-27): what the master makes (puzzles), what a
 // session plays (puzzle_runs) and every move (puzzle_moves). The service is in
 // puzzles*.go.
 func (q *Queries) InsertPuzzle(ctx context.Context, arg InsertPuzzleParams) (Puzzle, error) {
@@ -4750,7 +4750,7 @@ type InsertTrapPendingDamageParams struct {
 	ResolvedAt      *time.Time
 }
 
-// Trap damage (MR-035, Etapa 9, D5): the server rolls it when the trap fires.
+// Trap damage (MR-035, D5): the server rolls it when the trap fires.
 // A trap's damage in a combat: no attacker, rolled already. 'rolled' for a
 // player's character (waits for the master), 'applied' for an NPC or a creature
 // (the caller put it on the combatant). amount is what lands, roll_total the roll
@@ -5735,7 +5735,8 @@ func (q *Queries) ListCreatureCombatants(ctx context.Context, encounterID string
 const listEncounterCombatEvents = `-- name: ListEncounterCombatEvents :many
 SELECT id, kind, payload FROM session_events
 WHERE encounter_id = $1
-  AND kind IN ('attack_rolled', 'damage_rolled', 'damage_applied', 'spell_cast', 'action_taken', 'action_undone')
+  AND kind IN ('attack_rolled', 'damage_rolled', 'damage_applied', 'spell_cast', 'action_taken', 'action_undone',
+    'reaction_answered', 'reaction_used', 'spell_zone_triggered', 'lasting_effect_triggered')
 ORDER BY seq
 LIMIT 20000
 `

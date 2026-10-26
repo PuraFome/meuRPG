@@ -107,14 +107,14 @@ export function fireLabel(picked: readonly string[], extend: boolean): string {
   styles: `
     .lead {
       margin: 0 0 var(--mr-space-3);
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       line-height: 20px;
       color: var(--mr-ink-muted);
     }
 
     .note {
       margin: var(--mr-space-3) 0 0;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 19px;
       color: var(--mr-ink-muted);
     }

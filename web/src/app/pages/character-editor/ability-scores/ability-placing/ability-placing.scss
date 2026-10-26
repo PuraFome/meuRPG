@@ -15,7 +15,7 @@
 .title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 19px;
+  font-size: var(--mr-font-19);
   font-weight: 700;
   line-height: 24px;
 
@@ -26,7 +26,7 @@
 
 .hint {
   margin: 2px 0 var(--mr-space-3);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -62,7 +62,7 @@
   align-items: flex-start;
   gap: 6px;
   margin: var(--mr-space-3) 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
@@ -70,7 +70,7 @@
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -133,21 +133,21 @@
   transform: translateY(-50%);
   padding: 0 4px;
   background: var(--mr-surface);
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 16px;
   color: var(--mr-ink-muted);
 }
 
 .slot__value {
   font-family: var(--mr-font-display);
-  font-size: 26px;
+  font-size: var(--mr-font-26);
   font-weight: 700;
   line-height: 30px;
 }
 
 .slot--free .slot__value {
   font-family: var(--mr-font-sans);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
   line-height: 22px;
   color: var(--mr-accent-text);

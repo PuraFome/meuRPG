@@ -12,14 +12,14 @@
   gap: 6px;
   min-height: 44px;
   margin: -10px 0 -8px;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   color: var(--mr-ink-muted);
   text-decoration: none;
 
   .mat-icon {
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 
   &:hover {
@@ -45,26 +45,26 @@
 .head__name {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 34px;
+  font-size: var(--mr-font-34);
   font-weight: 800;
   line-height: 38px;
   overflow-wrap: anywhere;
 
   @media (min-width: 768px) {
-    font-size: 38px;
+    font-size: var(--mr-font-38);
     line-height: 40px;
   }
 }
 
 .head__sub {
   margin: 2px 0 0;
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   color: var(--mr-ink-muted);
 }
 
 .head__origin {
   margin: 2px 0 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   color: var(--mr-ink-muted);
 }
 
@@ -90,7 +90,7 @@
   .mat-icon {
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 
   &--danger {
@@ -104,7 +104,7 @@
   }
 
   .head__name {
-    font-size: 28px;
+    font-size: var(--mr-font-28);
     line-height: 32px;
   }
 }

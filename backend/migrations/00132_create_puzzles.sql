@@ -1,5 +1,5 @@
 -- +goose Up
--- puzzles are the campaign's puzzles (MR-038, RN-27, Etapa 10): what the master
+-- puzzles are the campaign's puzzles (MR-038, RN-27): what the master
 -- makes, and the master only: no player ever reads this table (RN-10), the
 -- solution least of all. A puzzle is played in a session through puzzle_runs.
 --

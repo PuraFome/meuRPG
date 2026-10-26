@@ -4,7 +4,7 @@
 :host {
   display: block;
   padding-inline: var(--md-inset, 0);
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   line-height: 27px;
   color: var(--mr-ink);
   overflow-wrap: anywhere;
@@ -45,7 +45,7 @@ h2 {
 }
 
 h3 {
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   line-height: 26px;
 }
 
@@ -72,7 +72,7 @@ h3 {
   .mat-icon {
     width: 17px;
     height: 17px;
-    font-size: 17px;
+    font-size: var(--mr-font-17);
     margin-right: 4px;
     vertical-align: -3px;
     text-decoration: none;
@@ -93,7 +93,7 @@ figure {
 
 figcaption {
   margin: var(--mr-space-2) var(--md-bleed, 0) 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }

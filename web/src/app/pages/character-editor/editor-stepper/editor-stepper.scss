@@ -39,7 +39,7 @@
   background: none;
   color: var(--mr-ink-muted);
   font: inherit;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   cursor: pointer;
 
   &:hover {
@@ -82,13 +82,13 @@
   border: 1.5px solid var(--mr-control-line);
   border-radius: 50%;
   font-weight: 700;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 1;
 
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -142,7 +142,7 @@
 
 .stepper__count {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 16px;
   font-weight: 500;
   color: var(--mr-ink-muted);
@@ -152,7 +152,7 @@
   margin: 2px 0 0;
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 26px;
+  font-size: var(--mr-font-26);
   line-height: 32px;
   color: var(--mr-ink);
   // Under the sticky app bar when focused from the buttons below.
@@ -192,6 +192,6 @@
   border-radius: 50%;
   color: var(--mr-accent-text);
   font-weight: 700;
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 1;
 }

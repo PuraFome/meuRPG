@@ -5,7 +5,7 @@
 .lead {
   margin: 0 0 var(--mr-space-3);
   color: var(--mr-ink-muted);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
 }
 
@@ -33,14 +33,14 @@
 
 .row__name {
   font-family: var(--mr-font-display);
-  font-size: 18px;
+  font-size: var(--mr-font-18);
   font-weight: 700;
   line-height: 24px;
 }
 
 .row__sub {
   color: var(--mr-ink-muted);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 }
 
@@ -66,7 +66,7 @@
   gap: var(--mr-space-2);
   margin: 0 0 var(--mr-space-2);
   font-family: var(--mr-font-display);
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   line-height: 28px;
   font-weight: 700;
 
@@ -74,7 +74,7 @@
     flex: none;
     width: 22px;
     height: 22px;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
     color: var(--mr-ink-muted);
   }
 }

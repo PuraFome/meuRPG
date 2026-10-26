@@ -26,7 +26,7 @@
   gap: var(--mr-space-2);
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 22px;
+  font-size: var(--mr-font-22);
 
   .mat-icon {
     flex: none;
@@ -36,7 +36,7 @@
 
 .casting__sub {
   margin: 4px 0 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 600;
 }
 
@@ -51,7 +51,7 @@
 }
 
 .casting__log {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 20px;
 
   &--failed {
@@ -62,7 +62,7 @@
 .casting__note,
 .casting__empty {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
@@ -88,11 +88,11 @@
 
 .cast__name {
   font-family: var(--mr-font-display);
-  font-size: 19px;
+  font-size: var(--mr-font-19);
 }
 
 .cast__who {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -105,19 +105,19 @@
   padding: 2px 10px;
   border-radius: 999px;
   background: var(--mr-accent-soft);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 500;
 
   .mat-icon {
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 
 .cast__wait {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -125,7 +125,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
 
   input {
     min-height: 48px;
@@ -175,7 +175,7 @@
     align-items: center;
     gap: var(--mr-space-3);
     margin-right: auto;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
     line-height: 28px;
   }
 
@@ -183,7 +183,7 @@
     flex: none;
     width: 22px;
     height: 22px;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
     color: var(--mr-ink-muted);
   }
 
@@ -203,7 +203,7 @@
   border-radius: var(--mr-radius-pill);
   background: var(--mr-warning-surface);
   color: var(--mr-warning-ink);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
 }
 
@@ -231,7 +231,7 @@
 .wait__icon {
   width: 22px;
   height: 22px;
-  font-size: 22px;
+  font-size: var(--mr-font-22);
 }
 
 .wait__text {

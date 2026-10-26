@@ -97,7 +97,7 @@ export interface ChangedContentData {
     .sheet__title {
       margin: 0;
       font-family: var(--mr-font-display);
-      font-size: 26px;
+      font-size: var(--mr-font-26);
       font-weight: 700;
       line-height: 30px;
       overflow-wrap: anywhere;

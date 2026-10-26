@@ -27,7 +27,7 @@ export const IMAGE_PRIVACY_REMINDER =
       max-width: 100%;
       margin: 0;
       color: var(--mr-ink-muted);
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 19px;
       text-align: left;
     }
@@ -36,7 +36,7 @@ export const IMAGE_PRIVACY_REMINDER =
       flex: none;
       width: 18px;
       height: 18px;
-      font-size: 18px;
+      font-size: var(--mr-font-18);
     }
   `,
 })

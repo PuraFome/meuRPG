@@ -32,7 +32,7 @@
 .enc__t {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 24px;
+  font-size: var(--mr-font-24);
   font-weight: 700;
   line-height: 28px;
   overflow-wrap: anywhere;
@@ -46,13 +46,13 @@
   padding: 2px 12px 2px 8px;
   border: 1px solid var(--mr-control-line);
   border-radius: var(--mr-radius-pill);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
 
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -61,7 +61,7 @@ p {
 }
 
 .enc__guide {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 
   a {
@@ -72,7 +72,7 @@ p {
 
 .enc__band {
   font-family: var(--mr-font-display);
-  font-size: 26px;
+  font-size: var(--mr-font-26);
   font-weight: 800;
   line-height: 30px;
 }
@@ -99,7 +99,7 @@ p {
 }
 
 .enc__nd {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 

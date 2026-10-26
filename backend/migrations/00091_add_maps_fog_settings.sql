@@ -1,6 +1,6 @@
 -- +goose Up
 -- The map's fog of war settings and the revision of its painted layers
--- (MR-036, Etapa 9, D6, D2).
+-- (MR-036, D6, D2).
 --
 -- fog_enabled turns the fog of war on for the map (off by default: existing
 -- maps behave as before). The API refuses to turn it on for a map without a

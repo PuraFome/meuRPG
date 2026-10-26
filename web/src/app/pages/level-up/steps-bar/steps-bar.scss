@@ -104,14 +104,14 @@
     height: 30px;
     border: 1.5px solid var(--mr-control-line);
     border-radius: 50%;
-    font-size: 15px;
+    font-size: var(--mr-font-15);
     font-weight: 700;
     line-height: 1;
 
     .mat-icon {
       width: 18px;
       height: 18px;
-      font-size: 18px;
+      font-size: var(--mr-font-18);
     }
   }
 

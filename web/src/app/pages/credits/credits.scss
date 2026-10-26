@@ -25,7 +25,7 @@
   border-left: 3px solid var(--mr-control-line);
   background: var(--mr-ground);
   color: var(--mr-ink-muted);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   // The required verbatim text (docs/adr, private) carries two long,
   // unbroken URLs; without this, they overflow the panel sideways at a

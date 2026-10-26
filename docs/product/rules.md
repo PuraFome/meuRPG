@@ -461,7 +461,7 @@ See [Combat under fog](../architecture/play/fog.md#combat-under-fog) and [Testin
 On the map grid, each square is 1.5 m and movement is a **circle**.
 The distance between two squares is the straight line between their centres (a diagonal step costs about 2.1 m, not 1.5 m), and what a combatant can reach is the circle of its remaining movement.
 The app stops a player from moving farther than the turn's movement: it warns and refuses.
-The master moves anyone anywhere, but not into a wall.
+The master moves anyone anywhere, but not into a wall. The one exception is an NPC he drags on its own turn: that move is a player's (the exact line, rubble and creatures counted, the NPC's movement spent, stopped by walls and squares marked "Não dá para passar"), and a drag past the movement left is refused until the master confirms "Mover mesmo assim", which moves it for free, with no limit and no opportunity attacks, like "Movimento forçado". Out of its turn, and for a player's character, the master's drag stays a free placement.
 
 | Rule | What the player gets |
 | --- | --- |
@@ -729,7 +729,7 @@ A monster from the bestiary ([MR-042](stories.md#mr-042-bestiary)) enters combat
 The master puts it in with "Pôr no combate", with its average hit points or rolled ones, and each one's initiative.
 The player reads only the state word (RN-20), never hit points, armor class or initiative, and a hidden monster does not reach them.
 The master reads the SRD creature sheet ("Ficha da criatura"), its challenge rating (CR, ND) and the rolled hit points; the log line about them is the master's alone.
-The creature's attacks follow the table's critical rule (RN-24), and Multiattack follows SRD 5.1: the master plays the mix of the sheet's attacks.
+The creature's attacks follow the table's critical rule (RN-24), and Multiattack follows SRD 5.1: the master plays the creature's routine, one attack after another, each with its own target; the server counts the attacks and refuses the one after the last, and the action counts as used when the routine is done or the master ends it.
 The XP by enemies adds each monster's CR: 3 Bandits, CR 1/8, give 3 × 25 = 75 XP, 18 to each of four players and 3 left over.
 "Criar NPC" in the bestiary makes a named NPC sheet from a creature.
 The encounter builder ([MR-043](stories.md#mr-043-generate-encounters)) puts its saved monsters in through the same path with "Começar este combate", and a player never receives the saved encounter.
@@ -815,7 +815,8 @@ Every pick a class, subclass or race asks is a choice of the rules engine, with 
 The screen draws what the server lists; nothing on the screen knows what a Fighting Style is.
 The choices cover the SRD 5.1 sections Fighting Style, Draconic Ancestry and Breath Weapon, Dragon Ancestor, Elemental Affinity, Metamagic, Pact Boon, Eldritch Invocations, Mystic Arcanum, Favored Enemy, Natural Explorer, Hunter, Circle of the Land, Ability Score Increase (Half-Elf), the High Elf cantrip, the Fiend's Expanded Spell List, Magical Secrets, the College of Lore, Spell Mastery and Signature Spells.
 
-- **Warnings.** The sheet also warns, on the field the player fills and in the master's list of open choices, when an Expertise pick, a tool pick (the dwarf's) or a language pick (the race's, a trait's or the background's) is still open: the tools and languages are counted against what the sheet lists. These are warnings; they do not stop the sheet.
+- **Warnings.** The sheet also warns, on the field the player fills and in the master's list of open choices, when an Expertise pick is still open. These are warnings; they do not stop the sheet.
+- **Languages and tools.** The languages a race, a trait or a background lets the player pick (the Half-Elf's extra language, the Acolyte's two) and the tools a trait, background or feature lets the player pick (the Dwarf's artisan's tools, a table background's "one type of artisan's tools") are choices in the step "Escolhas", from the catalog's languages and tools: one each, never a repeat, never one the character already has (it stays in the list, dotted, "Você já fala este idioma." or "Você já tem esta proficiência."). The picks show on the sheet's languages and proficiencies. The free fields "Idiomas" and "Proficiências em ferramentas" stay for what the master adds; what is written there also shows on the sheet, and it still answers the picks the character is owed, so a sheet from before the picks stays complete. While one of these picks is open the step is marked and the sheet says "Falta escolher N idiomas: faça a escolha no passo “Escolhas”"; it is a warning: it does not stop the save, the level-up or the session.
 - **Creation.** A player's sheet with an open choice is refused ("Criar personagem" explains what is missing), and the editor has a step "Escolhas". The master's NPCs and the table sheets are not held to it.
 - **Options that cannot be taken yet** (an invocation that asks level 5, or a spell the sheet lacks) are listed, dotted, with the reason. Two options that give the same thing (the same resistance twice) are refused.
 - **A locked sheet** whose class gained a choice stays playable. The owner and the master read "N escolhas pendentes", and the player completes only the missing picks, changing nothing else on the sheet (RN-01). The master also reads "N escolhas em aberto" on the campaign page; a player never sees another's.

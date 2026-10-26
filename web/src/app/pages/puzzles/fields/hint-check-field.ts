@@ -60,20 +60,20 @@ import { type CheckOption, SceneChecks } from '../../../core/maps/scene-actions'
 
     .hc__title {
       margin: 0 0 4px;
-      font-size: 16px;
+      font-size: var(--mr-font-16);
       font-weight: 700;
     }
 
     .hc__help {
       margin: 0 0 var(--mr-space-3);
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 20px;
       color: var(--mr-ink-muted);
     }
 
     .hc__bad {
       margin: var(--mr-space-2) 0 0;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       color: var(--mr-danger-ink);
     }
 

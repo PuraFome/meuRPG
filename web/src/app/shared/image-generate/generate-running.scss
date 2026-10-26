@@ -13,7 +13,7 @@
 .req__meta {
   margin: 0;
   color: var(--mr-ink-muted);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
 }
 
@@ -33,12 +33,12 @@
   flex: none;
   width: 22px;
   height: 22px;
-  font-size: 22px;
+  font-size: var(--mr-font-22);
 }
 
 .line__words {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--mr-font-18);
   font-weight: 700;
   line-height: 24px;
 }
@@ -46,7 +46,7 @@
 .sub {
   margin: 0;
   color: var(--mr-ink-muted);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 }
 

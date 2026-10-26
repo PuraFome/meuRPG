@@ -28,26 +28,26 @@
   gap: var(--mr-space-2);
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   font-weight: 700;
 
   .mat-icon {
     flex: none;
     width: 22px;
     height: 22px;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
   }
 }
 
 .op__news,
 .op__ask {
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   line-height: 23px;
 }
 
 .op__sub,
 .op__note {
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 }
 
@@ -60,7 +60,7 @@
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
@@ -100,14 +100,14 @@
   display: flex;
   align-items: flex-start;
   gap: var(--mr-space-2);
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
 
   .mat-icon {
     flex: none;
     width: 22px;
     height: 22px;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
   }
 }
 

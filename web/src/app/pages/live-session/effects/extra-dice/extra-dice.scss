@@ -19,7 +19,7 @@
 }
 
 .die__label {
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   font-weight: 700;
   line-height: 20px;
 }
@@ -34,7 +34,7 @@
   background: var(--mr-surface);
   color: var(--mr-ink);
   font-family: var(--mr-font-display);
-  font-size: 24px;
+  font-size: var(--mr-font-24);
   font-weight: 700;
   text-align: center;
 
@@ -50,7 +50,7 @@
 
 .die__hint {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 

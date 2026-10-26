@@ -6,14 +6,13 @@
 
 // Package meurpg.play.v1 is about playing a campaign at the table: starting,
 // ending and listing game sessions, which locks the players' sheets
-// (RN-01), and the live session (Etapa 5): the notice that a session is
+// (RN-01), and the live session: the notice that a session is
 // open (RN-06), the session's live stream (ADR-0005), the characters'
 // vitals, which the master corrects during the session (RN-02), the
 // session's current map (the maps themselves are meurpg.maps.v1), and the
 // gallery image the master shows the players (MR-028). Combat has its own
 // service (combat.proto, CombatService: MR-013), with its attacks, actions
-// and log; spells, reactions and death saves come in the next slice of
-// Etapa 6.
+// and log.
 
 package playv1
 
@@ -1723,8 +1722,8 @@ type CharacterVitals struct {
 	// has at its level, in sheet order. The totals come from the sheet; the
 	// used counts last until the master corrects them (rests come later).
 	Resources []*ResourceUsage `protobuf:"bytes,14,rep,name=resources,proto3" json:"resources,omitempty"`
-	// The beast the character is in now, for a druid in Wild Shape (MR-037,
-	// Etapa 9); unset in the character's own shape. While it is set, the numbers
+	// The beast the character is in now, for a druid in Wild Shape (MR-037);
+	// unset in the character's own shape. While it is set, the numbers
 	// above are the character's own, waiting: the beast has a pool of its own
 	// (wild_shape), takes the damage and the healing, and the character takes
 	// what is left over when the beast falls to 0.

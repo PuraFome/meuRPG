@@ -4,14 +4,13 @@
 
 // Package meurpg.play.v1 is about playing a campaign at the table: starting,
 // ending and listing game sessions, which locks the players' sheets
-// (RN-01), and the live session (Etapa 5): the notice that a session is
+// (RN-01), and the live session: the notice that a session is
 // open (RN-06), the session's live stream (ADR-0005), the characters'
 // vitals, which the master corrects during the session (RN-02), the
 // session's current map (the maps themselves are meurpg.maps.v1), and the
 // gallery image the master shows the players (MR-028). Combat has its own
 // service (combat.proto, CombatService: MR-013), with its attacks, actions
-// and log; spells, reactions and death saves come in the next slice of
-// Etapa 6.
+// and log.
 
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
@@ -958,8 +957,8 @@ export type CharacterVitals = Message<"meurpg.play.v1.CharacterVitals"> & {
   resources: ResourceUsage[];
 
   /**
-   * The beast the character is in now, for a druid in Wild Shape (MR-037,
-   * Etapa 9); unset in the character's own shape. While it is set, the numbers
+   * The beast the character is in now, for a druid in Wild Shape (MR-037);
+   * unset in the character's own shape. While it is set, the numbers
    * above are the character's own, waiting: the beast has a pool of its own
    * (wild_shape), takes the damage and the healing, and the character takes
    * what is left over when the beast falls to 0.
@@ -4310,8 +4309,8 @@ export const PlayService: GenService<{
     output: typeof SetSpeakerResponseSchema;
   },
   /**
-   * CastSummon casts a spell that summons creatures outside a combat (MR-037,
-   * Etapa 9): Convocar Familiar (1 hour, a ritual: no slot is spent),
+   * CastSummon casts a spell that summons creatures outside a combat (MR-037):
+   * Convocar Familiar (1 hour, a ritual: no slot is spent),
    * Animar Mortos (1 minute: it spends the slot) and Conjurar Animais
    * (1 action). The caster is a player's character; its player casts for it,
    * and the master for anyone. The spell must be one the character has (a
@@ -4353,7 +4352,7 @@ export const PlayService: GenService<{
     output: typeof CastSummonResponseSchema;
   },
   /**
-   * AssumeWildShape turns a druid into a beast (MR-037, Etapa 9, D7): during an
+   * AssumeWildShape turns a druid into a beast (MR-037, D7): during an
    * open session, in a combat or out of it. It spends one use of the Forma
    * Selvagem resource (2 per short rest) and, in a combat, the character's
    * action, on its turn (the master may act again with the action used, as in
@@ -4411,7 +4410,7 @@ export const PlayService: GenService<{
     output: typeof LeaveWildShapeResponseSchema;
   },
   /**
-   * StartFamiliarSight starts "Ver pelos olhos do familiar" (MR-036, Etapa 9, D6):
+   * StartFamiliarSight starts "Ver pelos olhos do familiar" (MR-036, D6):
    * the character's player sees what the character's familiar sees, with the
    * familiar's senses (an owl's darkvision, a bat's blindsight), on a map with the
    * fog of war on, and the character counts as blind and deaf until it stops

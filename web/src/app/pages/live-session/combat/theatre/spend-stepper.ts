@@ -85,7 +85,7 @@ let nextId = 0;
       padding: 0 12px;
       border: 1px solid var(--mr-control-line);
       border-radius: var(--mr-radius-sm);
-      font-size: 20px;
+      font-size: var(--mr-font-20);
       font-weight: 700;
       font-variant-numeric: tabular-nums;
     }

@@ -1,5 +1,5 @@
 -- +goose Up
--- The doors layer of a map (MR-010, RN-26, Etapa 10): four bits a square, in the
+-- The doors layer of a map (MR-010, RN-26): four bits a square, in the
 -- byte layout of package rules/grid (layer.go): row-major, square n is the low
 -- nibble of byte n/2 when n is even and the high nibble when n is odd. A nibble
 -- holds a door state: 0 none, 1 open, 2 closed, 3 locked, 4 barred, 5 secret. A

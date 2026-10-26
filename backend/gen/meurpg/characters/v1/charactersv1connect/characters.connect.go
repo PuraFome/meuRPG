@@ -849,7 +849,7 @@ type CharacterServiceClient interface {
 	//     this list gave.
 	ListLevelUps(context.Context, *connect.Request[v1.ListLevelUpsRequest]) (*connect.Response[v1.ListLevelUpsResponse], error)
 	// ListCharacterCreatures lists a character's creatures that are still with
-	// it (MR-037, Etapa 9): its familiar, the animals and undead it summoned that
+	// it (MR-037): its familiar, the animals and undead it summoned that
 	// the table has not dismissed, the creatures the master gave. They live
 	// from one session to the next until the player or the master dismisses
 	// them (the app does not count a spell's duration). Each is a kind of
@@ -869,7 +869,7 @@ type CharacterServiceClient interface {
 	//     has creatures).
 	ListCharacterCreatures(context.Context, *connect.Request[v1.ListCharacterCreaturesRequest]) (*connect.Response[v1.ListCharacterCreaturesResponse], error)
 	// ListWildShapeForms lists the beasts a druid's Wild Shape allows now
-	// (MR-037, Etapa 9): the SRD beasts of the challenge rating, without the fly
+	// (MR-037): the SRD beasts of the challenge rating, without the fly
 	// or swim speed, that the character's Wild Shape features give at its level
 	// (level 2: up to 1/4, no fly or swim; 4: up to 1/2, no fly; 8: up to 1),
 	// sorted by Portuguese name. Empty for a character without Wild Shape. The
@@ -940,8 +940,8 @@ type CharacterServiceClient interface {
 	//     maximum (damage and heal: 0 to 9999).
 	//   - `failed_precondition` (CharacterBlocked): CREATURE_IN_COMBAT.
 	AdjustCreatureHitPoints(context.Context, *connect.Request[v1.AdjustCreatureHitPointsRequest]) (*connect.Response[v1.AdjustCreatureHitPointsResponse], error)
-	// GetSummonOptions says what a character can summon from its sheet (MR-037,
-	// Etapa 9), for the "Criaturas" panel's casting sheet: the summoning spells
+	// GetSummonOptions says what a character can summon from its sheet (MR-037),
+	// for the "Criaturas" panel's casting sheet: the summoning spells
 	// it can cast (Convocar Familiar, Animar Mortos, Conjurar Animais), how
 	// (as a ritual, with a slot, or both), what each one may bring at each circle
 	// it can use, the slots it has, and what a casting would send away. The
@@ -2143,7 +2143,7 @@ type CharacterServiceHandler interface {
 	//     this list gave.
 	ListLevelUps(context.Context, *connect.Request[v1.ListLevelUpsRequest]) (*connect.Response[v1.ListLevelUpsResponse], error)
 	// ListCharacterCreatures lists a character's creatures that are still with
-	// it (MR-037, Etapa 9): its familiar, the animals and undead it summoned that
+	// it (MR-037): its familiar, the animals and undead it summoned that
 	// the table has not dismissed, the creatures the master gave. They live
 	// from one session to the next until the player or the master dismisses
 	// them (the app does not count a spell's duration). Each is a kind of
@@ -2163,7 +2163,7 @@ type CharacterServiceHandler interface {
 	//     has creatures).
 	ListCharacterCreatures(context.Context, *connect.Request[v1.ListCharacterCreaturesRequest]) (*connect.Response[v1.ListCharacterCreaturesResponse], error)
 	// ListWildShapeForms lists the beasts a druid's Wild Shape allows now
-	// (MR-037, Etapa 9): the SRD beasts of the challenge rating, without the fly
+	// (MR-037): the SRD beasts of the challenge rating, without the fly
 	// or swim speed, that the character's Wild Shape features give at its level
 	// (level 2: up to 1/4, no fly or swim; 4: up to 1/2, no fly; 8: up to 1),
 	// sorted by Portuguese name. Empty for a character without Wild Shape. The
@@ -2234,8 +2234,8 @@ type CharacterServiceHandler interface {
 	//     maximum (damage and heal: 0 to 9999).
 	//   - `failed_precondition` (CharacterBlocked): CREATURE_IN_COMBAT.
 	AdjustCreatureHitPoints(context.Context, *connect.Request[v1.AdjustCreatureHitPointsRequest]) (*connect.Response[v1.AdjustCreatureHitPointsResponse], error)
-	// GetSummonOptions says what a character can summon from its sheet (MR-037,
-	// Etapa 9), for the "Criaturas" panel's casting sheet: the summoning spells
+	// GetSummonOptions says what a character can summon from its sheet (MR-037),
+	// for the "Criaturas" panel's casting sheet: the summoning spells
 	// it can cast (Convocar Familiar, Animar Mortos, Conjurar Animais), how
 	// (as a ritual, with a slot, or both), what each one may bring at each circle
 	// it can use, the slots it has, and what a casting would send away. The

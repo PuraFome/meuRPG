@@ -10,7 +10,7 @@
 
 .cap {
   margin: var(--mr-space-2) 0 0;
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 700;
   color: var(--mr-ink-muted);
 }
@@ -20,14 +20,14 @@
   align-items: center;
   gap: var(--mr-space-2);
   margin: var(--mr-space-1) 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 
   .mat-icon {
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -74,13 +74,13 @@
   border-radius: var(--mr-radius-pill);
   background: var(--mr-accent-soft);
   color: var(--mr-accent-strong);
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 700;
 
   .mat-icon {
     width: 14px;
     height: 14px;
-    font-size: 14px;
+    font-size: var(--mr-font-14);
   }
 }
 
@@ -122,7 +122,7 @@
   border: 2px solid var(--mr-ink);
   border-radius: var(--mr-radius-md);
   font-family: var(--mr-font-display);
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   font-weight: 800;
 }
 
@@ -170,7 +170,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 4px;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 

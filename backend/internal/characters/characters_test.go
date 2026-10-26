@@ -494,6 +494,8 @@ func hillDwarfSheet(level int32) *charactersv1.CharacterSheet {
 		Classes:    []*charactersv1.ClassLevel{{ClassKey: "class:fighter", Level: level}},
 		// The Fighting Style the fighter picks at level 1; a champion's second style is not asked below level 10.
 		FeatureChoiceKeys: []string{"feature:fighter-fighting-style-defense"},
+		// The dwarf's artisan's tools, typed in the free field: it answers the tool pick of the Escolhas step.
+		ToolProficiencies: []string{"Ferramentas de ferreiro"},
 	}}}
 }
 

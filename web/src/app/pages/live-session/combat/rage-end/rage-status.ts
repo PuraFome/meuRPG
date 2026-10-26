@@ -54,7 +54,7 @@ import { isFrenzied, isRaging } from './rage';
       align-items: center;
       gap: 8px;
       margin: 0;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
       line-height: 20px;
     }
 

@@ -22,7 +22,7 @@
   gap: var(--mr-space-2);
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   font-weight: 700;
   line-height: 28px;
 
@@ -30,7 +30,7 @@
     flex: none;
     width: 22px;
     height: 22px;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
     color: var(--mr-ink-muted);
   }
 }
@@ -41,13 +41,13 @@
 
 .sc__count {
   flex: none;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
 .sc__hint {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -62,7 +62,7 @@
   border-radius: var(--mr-radius-md);
   background: var(--mr-success-surface);
   color: var(--mr-success-ink);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   line-height: 19px;
 
@@ -70,7 +70,7 @@
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
@@ -109,7 +109,7 @@
 
 .sc__n {
   font-family: var(--mr-font-display);
-  font-size: 18px;
+  font-size: var(--mr-font-18);
   font-weight: 700;
   line-height: 22px;
   color: var(--mr-ink-muted);
@@ -125,7 +125,7 @@
 
 .sc__text {
   margin: 0;
-  font-size: 17px;
+  font-size: var(--mr-font-17);
   line-height: 22px;
   overflow-wrap: anywhere;
 }
@@ -140,7 +140,7 @@
   padding: 0 10px;
   border: 1px solid var(--mr-control-line);
   border-radius: var(--mr-radius-pill);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
@@ -149,7 +149,7 @@
     flex: none;
     width: 14px;
     height: 14px;
-    font-size: 14px;
+    font-size: var(--mr-font-14);
   }
 
   &--all {

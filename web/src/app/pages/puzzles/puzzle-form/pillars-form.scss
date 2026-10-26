@@ -17,13 +17,13 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   color: var(--mr-ink-muted);
 }
 
 .help {
   margin: -8px 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 20px;
   color: var(--mr-ink-muted);
 }
@@ -41,13 +41,13 @@
 
 .part__title {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   font-weight: 700;
 }
 
 .line {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--mr-font-16);
   line-height: 22px;
 }
 

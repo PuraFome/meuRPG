@@ -191,7 +191,7 @@ The questions and their rules are `rules`' (see [Class and race choices](rules.m
 
 `CharacterSummary.pending_choice_count` feeds the tag on the campaign.
 A sheet created before choices existed is never rewritten, only counted.
-`ListCharacters` also gives the master, for each living player character whose sheet is not locked yet, the choices still open (`open_choices`: skills, cantrips, spells known and prepared, Expertise, tools and languages, from `Derived.OpenChoices`; the last three are counted by `checkExpertiseCount` and `checkProficiencyPicks` against the picks the class, the race's traits and the background give, with the sheet's free-text tool and language lists as what was picked, and each also raises an issue `missing` on its field), which the "Sessão" card shows before a session starts.
+`ListCharacters` also gives the master, for each living player character whose sheet is not locked yet, the choices still open (`open_choices`: skills, cantrips, spells known and prepared, Expertise, tools and languages, from `Derived.OpenChoices`; the last three are counted by `checkExpertiseCount` and `checkProficiencyPicks` against the picks the class, the race's traits and the background give, with the picks of the "Escolhas" step and the sheet's free-text tool and language lists as what was picked, and each also raises an issue `missing` on its field: the expertise field, or `full.feature_choice_keys` for the tools and languages), which the "Sessão" card shows before a session starts.
 
 ## Approving or refusing the character
 

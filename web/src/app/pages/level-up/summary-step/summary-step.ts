@@ -53,7 +53,7 @@ import { LevelUpSession } from '../level-up-session';
 
     .lead {
       margin: 0 0 var(--mr-space-2);
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       line-height: 20px;
       color: var(--mr-ink-muted);
     }
@@ -63,7 +63,7 @@ import { LevelUpSession } from '../level-up-session';
       flex-wrap: wrap;
       gap: var(--mr-space-1) var(--mr-space-3);
       margin: 0 0 var(--mr-space-3);
-      font-size: 17px;
+      font-size: var(--mr-font-17);
     }
 
     .rest {
@@ -71,7 +71,7 @@ import { LevelUpSession } from '../level-up-session';
       align-items: flex-start;
       gap: var(--mr-space-3);
       margin: 0;
-      font-size: 15px;
+      font-size: var(--mr-font-15);
       line-height: 20px;
 
       &--quiet {
@@ -82,7 +82,7 @@ import { LevelUpSession } from '../level-up-session';
         flex: none;
         width: 20px;
         height: 20px;
-        font-size: 20px;
+        font-size: var(--mr-font-20);
       }
     }
   `,

@@ -18,7 +18,7 @@
 .vitals__name {
   margin: 0;
   font-weight: 800;
-  font-size: 26px;
+  font-size: var(--mr-font-26);
   line-height: 30px;
   overflow-wrap: anywhere;
 }
@@ -48,7 +48,7 @@
 }
 
 .vitals__summary {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 
@@ -89,12 +89,12 @@
 .hp__max {
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 22px;
+  font-size: var(--mr-font-22);
   line-height: 24px;
 }
 
 .hp__label {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 18px;
   color: var(--mr-ink-muted);
 }
@@ -125,7 +125,7 @@
 
 // "máximo 38 da ficha", small, under "Pontos de vida" while Ajuda raises the maximum.
 .hp__sheet {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 16px;
   color: var(--mr-ink-muted);
 }
@@ -146,7 +146,7 @@
   border-radius: var(--mr-radius-pill);
   background: var(--mr-accent-soft);
   color: var(--mr-accent-text);
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   font-weight: 700;
   line-height: 1.2;
   min-height: 24px;
@@ -185,14 +185,14 @@
   border: 1px solid var(--mr-line);
   border-radius: var(--mr-radius-md);
   background: var(--mr-surface);
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 
   .mat-icon {
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -228,7 +228,7 @@
 }
 
 .stats__label {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 17px;
   color: var(--mr-ink-muted);
 }
@@ -241,7 +241,7 @@
     position: relative;
     z-index: 1;
     max-width: 70px;
-    font-size: 13px;
+    font-size: var(--mr-font-13);
     line-height: 15px;
   }
 }
@@ -257,7 +257,7 @@
   left: 0;
   right: 0;
   margin-top: 2px;
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 15px;
   text-align: center;
   color: var(--mr-ink-muted);
@@ -288,7 +288,7 @@
   margin-top: -8px;
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 40px;
+  font-size: var(--mr-font-40);
   line-height: 40px;
 }
 
@@ -306,12 +306,12 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 700;
-  font-size: 34px;
+  font-size: var(--mr-font-34);
   line-height: 36px;
   white-space: nowrap;
 
   &--long {
-    font-size: 22px;
+    font-size: var(--mr-font-22);
     line-height: 26px;
     white-space: normal;
   }
@@ -319,7 +319,7 @@
 
 // "1 de 5 livres": a size that fits the third of a 320px phone; "livres" may wrap under it.
 .box__value--dice {
-  font-size: 26px;
+  font-size: var(--mr-font-26);
   line-height: 28px;
   white-space: normal;
 }
@@ -327,7 +327,7 @@
 // "livres" after "1 de 5": smaller, in the muted ink.
 .box__unit {
   font-family: var(--mr-font-sans);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 400;
   color: var(--mr-ink-muted);
 }
@@ -341,7 +341,7 @@
 .slots__title {
   margin: 0 0 var(--mr-space-1);
   font-weight: 700;
-  font-size: 18px;
+  font-size: var(--mr-font-18);
   line-height: 22px;
 }
 
@@ -359,7 +359,7 @@
 
 .slots__words {
   margin-left: auto;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
   white-space: nowrap;
 }
@@ -385,7 +385,7 @@
   align-items: flex-start;
   gap: var(--mr-space-2);
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 
@@ -393,7 +393,7 @@
     flex-shrink: 0;
     width: 16px;
     height: 16px;
-    font-size: 16px;
+    font-size: var(--mr-font-16);
     margin-top: 1px;
   }
 }
@@ -408,14 +408,14 @@
   align-items: center;
   gap: 8px;
   margin: 0;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 
   .mat-icon {
     flex: none;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 }
 
@@ -432,14 +432,14 @@
   align-items: center;
   gap: 6px;
   margin: 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
   color: var(--mr-ink-muted);
 
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -459,7 +459,7 @@
   }
 
   .hp__current {
-    font-size: 38px;
+    font-size: var(--mr-font-38);
     line-height: 40px;
   }
 
@@ -472,7 +472,7 @@
 
   .hp__max {
     font-family: var(--mr-font-sans);
-    font-size: 15px;
+    font-size: var(--mr-font-15);
     font-weight: 400;
     line-height: 20px;
   }
@@ -521,14 +521,14 @@
     align-items: center;
     gap: 0 4px;
     max-width: none;
-    font-size: 12px;
+    font-size: var(--mr-font-12);
     line-height: 16px;
 
     .mat-icon {
       flex: none;
       width: 14px;
       height: 14px;
-      font-size: 14px;
+      font-size: var(--mr-font-14);
     }
   }
 
@@ -546,7 +546,7 @@
   .shield__number,
   .box__value {
     margin: 0;
-    font-size: 22px;
+    font-size: var(--mr-font-22);
     line-height: 26px;
   }
 
@@ -561,7 +561,7 @@
   }
 
   .box__value--dice {
-    font-size: 22px;
+    font-size: var(--mr-font-22);
     line-height: 26px;
   }
 
@@ -575,7 +575,7 @@
     align-items: center;
     gap: var(--mr-space-2);
     margin-bottom: var(--mr-space-2);
-    font-size: 20px;
+    font-size: var(--mr-font-20);
     line-height: 24px;
 
     .mat-icon {

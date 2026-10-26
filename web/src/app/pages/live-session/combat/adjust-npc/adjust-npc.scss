@@ -42,13 +42,13 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 26px;
+  font-size: var(--mr-font-26);
   line-height: 30px;
   overflow-wrap: anywhere;
 }
 
 .adj__sub {
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
 }
 

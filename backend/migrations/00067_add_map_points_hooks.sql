@@ -1,6 +1,6 @@
 -- +goose Up
 -- hooks is the master's private text on a SCENE point, "Ganchos e anotações"
--- (MR-029, Etapa 8, D5): Markdown, like the campaign document, at most 4,000
+-- (MR-029, D5): Markdown, like the campaign document, at most 4,000
 -- characters, empty for none. Only the master ever receives it (RN-20): no
 -- player read, no stream event and no session event carries it. It saves with
 -- the point, like the description. Only a scene has hooks: the API keeps it

@@ -15,7 +15,7 @@
 }
 
 .bar__label {
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   font-weight: 700;
 }
 
@@ -90,7 +90,7 @@
 
 .bar__hint {
   flex: 1 1 18rem;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }
@@ -160,7 +160,7 @@
   background: var(--mr-surface);
   color: var(--mr-ink);
   font: inherit;
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   cursor: pointer;
 
   & + & {
@@ -175,7 +175,7 @@
   .mat-icon {
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -195,7 +195,7 @@
   width: 18px;
   height: 18px;
   margin-inline-end: 8px;
-  font-size: 18px;
+  font-size: var(--mr-font-18);
   vertical-align: middle;
 }
 

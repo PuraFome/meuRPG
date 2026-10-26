@@ -31,7 +31,7 @@
   width: 28px;
   height: 28px;
   margin-top: 1px;
-  font-size: 28px;
+  font-size: var(--mr-font-28);
   color: var(--mr-accent-text);
 
   // The title's line is 27 px high under 360 px: the icon's middle follows it.
@@ -49,7 +49,7 @@
   margin: 0;
   font-family: var(--mr-font-display);
   font-weight: 800;
-  font-size: 26px;
+  font-size: var(--mr-font-26);
   line-height: 30px;
   overflow-wrap: anywhere;
 
@@ -61,18 +61,18 @@
 
 .frame__title--small {
   font-weight: 700;
-  font-size: 21px;
+  font-size: var(--mr-font-21);
   line-height: 26px;
 
   @media (max-width: 359.98px) {
-    font-size: 21px;
+    font-size: var(--mr-font-21);
     line-height: 26px;
   }
 }
 
 .frame__sub {
   margin: -8px 0 0;
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   line-height: 19px;
   color: var(--mr-ink-muted);
 }

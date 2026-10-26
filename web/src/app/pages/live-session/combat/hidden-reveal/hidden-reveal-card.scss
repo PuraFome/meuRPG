@@ -37,7 +37,7 @@
   width: 22px;
   height: 22px;
   margin-top: 2px;
-  font-size: 22px;
+  font-size: var(--mr-font-22);
 }
 
 .hr__body {
@@ -48,25 +48,25 @@
 }
 
 .hr__kicker {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
 }
 
 .hr__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: 20px;
+  font-size: var(--mr-font-20);
   font-weight: 700;
   line-height: 25px;
   color: var(--mr-ink);
 }
 
 .hr__text {
-  font-size: 15px;
+  font-size: var(--mr-font-15);
   line-height: 20px;
 }
 
 .hr__rule {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
 }
 
 // Side by side while they fit, stacked at 390 px, 48 px on a phone and 44 px from a tablet up.

@@ -22,7 +22,7 @@
 }
 
 .composer__label {
-  font-size: 13px;
+  font-size: var(--mr-font-13);
   line-height: 16px;
   font-weight: 500;
   color: var(--mr-ink-muted);
@@ -73,7 +73,7 @@
     top: 12px;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
     pointer-events: none;
   }
 }
@@ -111,7 +111,7 @@
     flex: none;
     width: 18px;
     height: 18px;
-    font-size: 18px;
+    font-size: var(--mr-font-18);
   }
 }
 
@@ -163,7 +163,7 @@
   .mat-icon {
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
   }
 
   &:focus-visible {

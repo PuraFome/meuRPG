@@ -1,5 +1,5 @@
 -- +goose Up
--- grid_factor is the calibration of a map's grid (MR-025, RN-25, Etapa 10): how
+-- grid_factor is the calibration of a map's grid (MR-025, RN-25): how
 -- many squares of 1.5 m (5 ft) each square of the drawing is worth. 1 is the
 -- default and the behaviour before this column existed (a 1.5 m drawing); 2 is
 -- 3 m, 3 is 4.5 m, 4 is 6 m. grid_columns stays what the rules use, the engine's

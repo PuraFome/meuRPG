@@ -28,7 +28,7 @@
     flex-shrink: 0;
     width: 20px;
     height: 20px;
-    font-size: 20px;
+    font-size: var(--mr-font-20);
     color: var(--mr-accent-text);
   }
 
@@ -47,6 +47,6 @@
 .news__go {
   flex-shrink: 0;
   color: var(--mr-accent-text);
-  font-size: 14px;
+  font-size: var(--mr-font-14);
   font-weight: 700;
 }
