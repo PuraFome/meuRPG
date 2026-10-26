@@ -45,6 +45,8 @@ import { HeldRollPrompt } from '../../../../shared/held-roll-prompt/held-roll-pr
 import { SlotPicker } from '../../../../shared/slot-picker/slot-picker';
 import { RollAnimator } from '../../../../shared/roll-overlay/roll-animator';
 import { ExtraDice } from '../../effects/extra-dice/extra-dice';
+import { rollDiceFor } from '../../../../core/effects/roll-die';
+import { RollDieOffer } from '../../../../shared/roll-die-offer/roll-die-offer';
 import { MultiRoll, type RollField } from '../multi-roll/multi-roll';
 import { RollPicker } from '../../../../shared/roll-picker/roll-picker';
 import { SheetFrame } from '../../../../shared/sheet/sheet-frame/sheet-frame';
@@ -97,6 +99,7 @@ const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
     MatIconModule,
     MultiRoll,
     NgTemplateOutlet,
+    RollDieOffer,
     RollPicker,
     SheetFrame,
     SlotPicker,
@@ -129,6 +132,14 @@ export class ReactionSheet {
   protected readonly typingSave = this.flow.typingSave;
   protected readonly held = this.flow.held;
   protected readonly extra = this.flow.extra;
+  /** The table dice that fit a Constitution save (the concentration's). */
+  protected readonly saveDice = rollDiceFor(this.data.rollDice ?? [], {
+    kind: 'save',
+    ability: 'con',
+  });
+  protected useDie(key: string): void {
+    this.extra.maneuver.set(this.saveDice.find((d) => d.key === key) ?? null);
+  }
   protected readonly rollingAt = this.flow.rollingAt;
   private readonly step = this.flow.step;
   /** A request in the air: Esc and the backdrop do not close the sheet under it. */
@@ -177,6 +188,9 @@ export class ReactionSheet {
   });
   protected readonly concentrationDice = computed(() =>
     this.concentrationMode() === 'normal' ? 1 : 2,
+  );
+  protected readonly concentrating = computed(
+    () => this.asked().prompt.case === 'concentrationSave',
   );
   protected readonly concentrationModeText = computed(() => {
     const p = this.asked().prompt;

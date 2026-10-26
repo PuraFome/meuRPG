@@ -2,7 +2,7 @@ import type { Encounter, HeldRollOffer } from '../../../../gen/meurpg/play/v1/co
 import type { AnswerHeldRollResponse } from '../../../../gen/meurpg/play/v1/resources_pb';
 import type { CombatCalls } from '../../../core/combat/combat-calls';
 import type { CombatClient } from '../../../core/combat/combat-client';
-import type { InitiativeRoll } from '../../../core/combat/combat-client-types';
+import type { InitiativeManeuver, InitiativeRoll } from '../../../core/combat/combat-client-types';
 import { initiativeLine } from '../../../core/combat/combat-derived';
 import { HeldRollController } from '../../../core/held-rolls/held-roll-controller';
 import type { HeldAnswer } from '../../../core/held-rolls/held-roll-offer';
@@ -32,6 +32,8 @@ export class CombatInitiative {
   /** The question of the player's own initiative when the d20 was kept for one: the halfling's Lucky about a 1, then the Bardic
    * Inspiration die the character holds; the initiative is not set until it is answered. */
   readonly held: HeldRollController;
+  /** The table die the player ticked for their own initiative (set by the initiative screen); sent with their roll. */
+  maneuver: InitiativeManeuver | null = null;
 
   constructor(private readonly ctx: CombatInitiativeContext) {
     this.held = new HeldRollController({
@@ -62,12 +64,11 @@ export class CombatInitiative {
   /** One initiative call; a d20 kept for a question is asked on the player's own screen. */
   private send(combatantId: string, roll: InitiativeRoll): Promise<boolean> {
     return this.ctx.calls.run(async (e) => {
-      const res = await this.ctx.api.turn.submitInitiative(
-        this.ctx.campaignId(),
-        e.id,
-        combatantId,
-        roll,
-      );
+      const maneuver = combatantId === this.ctx.ownId() ? this.maneuver : null;
+      const args = [this.ctx.campaignId(), e.id, combatantId, roll] as const;
+      const res = await (maneuver
+        ? this.ctx.api.turn.submitInitiative(...args, maneuver)
+        : this.ctx.api.turn.submitInitiative(...args));
       // The master's roll for a player: the question sits in the player's row (the order's), so only the player's own is asked here.
       if (res.held && combatantId === this.ctx.ownId()) {
         this.held.ask(res.held);

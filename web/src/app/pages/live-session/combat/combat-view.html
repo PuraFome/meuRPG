@@ -163,6 +163,8 @@
           [busy]="busy()"
           [error]="error()"
           [held]="initiative.held.offer()"
+          [rollDice]="rollDice()"
+          (maneuverChange)="initiative.maneuver = $event"
           (answer)="initiative.held.answer($event)"
           (rollInApp)="own() && initiative.rollInApp(own()!.id)"
           (typeFace)="own() && initiative.submitFace(own()!.id, $event)"

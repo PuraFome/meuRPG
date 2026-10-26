@@ -54,6 +54,12 @@ export interface AddMonstersResult {
  * face typed from a physical die. */
 export type InitiativeRoll = { readonly inApp: true } | { readonly face: number };
 
+/** A table die added to the initiative: its key, and its face when the dice are physical. */
+export interface InitiativeManeuver {
+  readonly key: string;
+  readonly face?: number;
+}
+
 /** How a d20 of an attack comes: the app rolls it, or a typed face. */
 export type AttackDie = InitiativeRoll;
 
@@ -245,13 +251,15 @@ export interface AttackEffects {
 /** How a concentration window is settled: the d20 in the app, a typed face, "Deixar o mestre rolar por mim", or the
  * master keeping the concentration. */
 export type ConcentrationAnswer =
-  | { readonly kind: 'app' }
+  | { readonly kind: 'app'; readonly maneuverKey?: string }
   | {
       readonly kind: 'typed';
       readonly face: number;
       /** The second d20, when the save has advantage or disadvantage. */
       readonly second?: number;
       readonly extra?: readonly number[];
+      /** A table die added to the roll: its face is the last of `extra`. */
+      readonly maneuverKey?: string;
     }
   | { readonly kind: 'hand' }
   | { readonly kind: 'keep' };

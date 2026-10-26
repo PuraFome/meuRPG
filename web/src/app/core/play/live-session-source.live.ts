@@ -18,7 +18,7 @@ import {
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 import { REVIVIFY_KEY } from '../revivify/revivify-flow';
-import type { OtherSkill } from '../traps/trap-search';
+import type { OtherSkill, SearchSkills } from '../traps/trap-search';
 import { metersText } from '../units';
 import { classifyLiveError } from './live-error';
 import { toLiveEvent } from './live-event-map';
@@ -58,6 +58,33 @@ export function reliableTalentSkills(derived: DerivedSheet): string[] {
         k.proficiency === ProficiencyLevel.EXPERTISE,
     )
     .map((k) => k.key);
+}
+
+/** The bonuses "Procurar armadilhas" and the checks read from the sheet. */
+function searchSkillsOf(derived: DerivedSheet): SearchSkills {
+  const skill = (key: string) => derived.skills.find((k) => k.key === key)?.bonus ?? null;
+  return {
+    perception: skill('skill:perception'),
+    investigation: skill('skill:investigation'),
+    others: otherSkills(derived.skills),
+    reliableTalent: reliableTalentSkills(derived),
+  };
+}
+
+/** What the live session reads of the player's own sheet (`GetCharacter`): the vitals' header, the skills and the table dice. */
+function playerSheetOf(derived: DerivedSheet | undefined): PlayerSheetVm {
+  const classes = derived?.classes.map((c) => `${c.namePt} ${c.level}`).join(' / ') ?? '';
+  // The subrace's name already says the race ("Gnomo das Rochas"), as on the sheet's header.
+  const race = derived?.subraceNamePt || derived?.raceNamePt || '';
+  return {
+    armorClass: derived ? derived.armorClass : null,
+    summary: [classes, race].filter(Boolean).join(', '),
+    classes,
+    revivify: derived?.spells.some((s) => s.spell?.key === REVIVIFY_KEY && s.prepared) ?? false,
+    skills: derived && searchSkillsOf(derived),
+    senses: derived?.senses.map((s) => `${s.namePt}: ${metersText(s.rangeFt)}`) ?? [],
+    rollDice: derived?.rollDice ?? [],
+  };
 }
 
 function toSessionVm(gs: GameSession | undefined): LiveSessionVm {
@@ -182,27 +209,7 @@ export class LiveSessionSourceLive implements LiveSessionSource {
 
   async getPlayerSheet(campaignId: string, characterId: string): Promise<PlayerSheetVm> {
     const res = await this.characters.getCharacter({ campaignId, characterId });
-    const derived = res.character?.derived;
-    const classes = derived?.classes.map((c) => `${c.namePt} ${c.level}`).join(' / ') ?? '';
-    // The subrace's name already says the race ("Gnomo das Rochas"), as on
-    // the sheet's header.
-    const race = derived?.subraceNamePt || derived?.raceNamePt || '';
-    const skill = (key: string) => derived?.skills.find((k) => k.key === key)?.bonus ?? null;
-    return {
-      armorClass: derived ? derived.armorClass : null,
-      summary: [classes, race].filter(Boolean).join(', '),
-      classes,
-      revivify: derived?.spells.some((s) => s.spell?.key === REVIVIFY_KEY && s.prepared) ?? false,
-      skills: derived
-        ? {
-            perception: skill('skill:perception'),
-            investigation: skill('skill:investigation'),
-            others: otherSkills(derived.skills),
-            reliableTalent: reliableTalentSkills(derived),
-          }
-        : undefined,
-      senses: derived?.senses.map((s) => `${s.namePt}: ${metersText(s.rangeFt)}`) ?? [],
-    };
+    return playerSheetOf(res.character?.derived);
   }
 
   async getCreatureArmorClass(campaignId: string, key: string): Promise<number | null> {

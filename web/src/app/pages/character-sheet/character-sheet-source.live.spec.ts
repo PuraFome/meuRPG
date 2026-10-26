@@ -142,6 +142,7 @@ function minimalDerivedSheet(): DerivedSheet {
     hitPointsFromEffects: 0,
     resistances: [],
     shieldIdle: false,
+    rollDice: [],
   };
 }
 
