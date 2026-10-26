@@ -199,6 +199,11 @@ type MapKeeper interface {
 	// DiscoverScene records inside tx that the group discovered the scene (the
 	// master opened it, MR-030); one already discovered stays as it is.
 	DiscoverScene(ctx context.Context, tx pgx.Tx, campaignID, pointID string, at time.Time) error
+	// DiscoverSceneFor records inside tx that these players alone discovered the
+	// scene (the master opened it to them, brought them in, or they joined it
+	// while it was open to only some players): they may tag notes with it, and
+	// the group's list stays as it is.
+	DiscoverSceneFor(ctx context.Context, tx pgx.Tx, campaignID, pointID string, userIDs []string, at time.Time) error
 	// MapTokens returns where the map's tokens stand, hidden ones included.
 	MapTokens(ctx context.Context, tx pgx.Tx, mapID string) ([]link.TokenPosition, error)
 	// SetTokenPositions moves the characters' tokens on the map inside tx,

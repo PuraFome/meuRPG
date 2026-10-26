@@ -91,6 +91,45 @@
   gap: var(--mr-space-2) var(--mr-space-3);
 }
 
+.sa__eye {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-right: calc(-1 * var(--mr-space-2));
+  padding: 0;
+  border: 0;
+  border-radius: var(--mr-radius-sm);
+  background: none;
+  color: var(--mr-ink);
+  cursor: pointer;
+
+  .sa__item--hidden & {
+    color: var(--mr-ink-muted);
+  }
+
+  &[aria-disabled='true'] {
+    cursor: default;
+    opacity: 0.6;
+  }
+}
+
+// "Escondida": the players never get this action nor its rolls (RN-10); the words say it beside the eye.
+.sa__hidden {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+}
+
 .sa__what {
   display: flex;
   flex: 1 1 240px;

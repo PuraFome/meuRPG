@@ -33,9 +33,17 @@ describe('the list of the table content (E10-01 states 1, 2 and 10)', () => {
       spells: 1,
       feats: 0,
     });
-    expect(limitLine(entries)).toBe('7 de 300 entradas · o limite de uma campanha');
+    expect(limitLine(entries)).toBe('7 de 1000 entradas · o limite de uma campanha');
     expect(summaryLine(entries)).toBe('7 entradas, 1 arquivada');
     expect(summaryLine(entries.slice(0, 1))).toBe('1 entrada');
+  });
+
+  it('counts a campaign at the limit of 1000 entries', () => {
+    const full = Array.from({ length: 1000 }, (_, i) => ({
+      ...entries[0],
+      key: `class:c${i}@mesa`,
+    }));
+    expect(limitLine(full)).toBe('1000 de 1000 entradas · o limite de uma campanha');
   });
 
   it('lists a kind with the archived entries at the end', () => {

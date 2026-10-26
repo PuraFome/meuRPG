@@ -230,3 +230,26 @@
     flex-direction: column;
   }
 }
+
+// A player's reaction that came to the master after 10 s (C8-04): the warning surface, the title and the tag on one line.
+.card--late {
+  border-color: var(--mr-warning-line);
+  background: var(--mr-warning-surface);
+  color: var(--mr-warning-ink);
+
+  .card__sub {
+    color: var(--mr-warning-ink);
+  }
+}
+
+.late__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+
+  .card__title {
+    flex: 1 1 12ch;
+    min-width: 0;
+  }
+}

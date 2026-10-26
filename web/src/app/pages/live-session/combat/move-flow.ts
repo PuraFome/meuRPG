@@ -92,11 +92,13 @@ export class MoveFlow {
     return !!who && !who.actionUsed && !who.disengaged;
   });
   /** How far and how high the mover can jump: the creature's own options, or the character's. */
-  readonly jumps = computed(() =>
-    this.moverId()
-      ? this.ctx.creatureOptions().get(this.moverId())?.options?.jumps
-      : this.ctx.options()?.options?.jumps,
-  );
+  readonly jumps = computed(() => {
+    const id = this.moverId();
+    // The master's page for the character he acts for reads the character's own options.
+    return id && id !== this.ctx.own()?.id
+      ? this.ctx.creatureOptions().get(id)?.options?.jumps
+      : this.ctx.options()?.options?.jumps;
+  });
   /** The reach the master's map draws, as the server said it. */
   readonly masterReach = computed<Reach | null>(() => {
     const e = this.ctx.encounter();
@@ -117,6 +119,11 @@ export class MoveFlow {
       return null;
     }
     if (this.ctx.isMaster()) {
+      // Acting for a character (C8-01): its "Mover" page asks where it can go, as the player's own does.
+      const mover = this.mover();
+      if (this.ctx.state().moving() && mover?.placed && this.moverActs()) {
+        return mover.id;
+      }
       const who = currentCombatant(e);
       return this.reachOn() && who?.placed ? who.id : null;
     }
@@ -400,7 +407,8 @@ export class MoveFlow {
       return;
     }
     this.lockedDoor.set(false);
-    this.moverId.set('');
+    // The master moves the character he acts for: the page is told whose it is.
+    this.moverId.set(this.ctx.isMaster() ? (this.ctx.own()?.id ?? '') : '');
     this.dropStart.set(null);
     this.moveError.set('');
     this.ctx.state().moving.set(true);

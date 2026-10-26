@@ -177,6 +177,7 @@ type castFlow struct {
 	out  *castOut
 
 	v      combatViewer
+	sees   combatViewer // who picks the targets: the caster's player when the master acts for it
 	cs     []playdb.Combatant
 	caster playdb.Combatant
 	// targets and targs are who the cast touches: an area replaces the list, and a retry starts from the
@@ -287,6 +288,7 @@ func (f *castFlow) findCaster(ctx context.Context) error {
 	if err := f.v.mayAct(f.caster); err != nil {
 		return err
 	}
+	f.sees = f.c.actorSight(f.v, cs, f.caster)
 	if err := f.s.mustActNow(ctx, f.c, f.caster); err != nil {
 		return err
 	}
@@ -305,7 +307,7 @@ func (f *castFlow) findTargets(context.Context) error {
 	f.targs = make([]playdb.Combatant, len(f.targets))
 	for i, t := range f.targets {
 		var err error
-		if f.targs[i], err = findCombatant(f.cs, t.id, f.v); err != nil {
+		if f.targs[i], err = findCombatant(f.cs, t.id, f.sees); err != nil {
 			return err
 		}
 		// A dead player's character waits for the spell: a healing says it is dead.

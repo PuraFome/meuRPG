@@ -26,12 +26,13 @@ All checked in the first pass, before anything compiles; the error names the lim
 
 | What | Limit |
 | --- | --- |
-| Entries (of the seven kinds; features do not count) | 300 (`MaxOverlayEntries`) |
+| Entries (of the seven kinds; features do not count) | 1,000 (`MaxOverlayEntries`) |
 | Features | 60 per class and 60 per subclass, counted apart (`MaxTableFeatures`); the features the engine writes do not count |
 | Traits | 60 per race and per subrace (`MaxTraits`) |
 | Options in a feature's option list | 60 (`MaxFeatureOptions`) |
-| Effects | 20 per feature (`MaxFeatureEffects`); 2,000 in the set, the effects the engine writes included (`MaxOverlayEffects`) |
-| Distinct formulas | 500 in the set; a repeated one counts once (`MaxOverlayFormulas`) |
+| Effects | 20 per feature (`MaxFeatureEffects`); 6,000 in the set, the effects the engine writes included (`MaxOverlayEffects`) |
+| Distinct formulas | 500 in the set, and 100 KiB of their text added up; a repeated one counts once (`MaxOverlayFormulas`, `MaxOverlayFormulaBytes`) |
+| One formula | 1,024 bytes and 256 nodes (`formula.MaxSourceBytes`, `formula.MaxNodes`) |
 | Items in a list of an effect | 20 |
 | `choice` count | 1 to 18 (`MaxChoiceCount`) |
 | Name | 80 characters; a name over it is `bad_name` |
@@ -39,7 +40,8 @@ All checked in the first pass, before anything compiles; the error names the lim
 
 The 64 KiB per entry is a storage limit, checked by the server.
 Without these budgets, hundreds of classes of 60 features of 20 effects each cost seconds and gigabytes.
-The ADR-0018 budget for a realistic content (300 entries) is about 25 ms and 4 MB per `With`; measure with `go test -run '^$' -bench BenchmarkWith -benchmem ./internal/rules` (without `-race`), and the memory a content retains with `MEURPG_MEASURE=1 go test ./internal/rules -run TestWithMemory -v`.
+The ADR-0018 budget for a realistic content of 300 entries is about 25 ms and 4 MB per `With` (19 ms and 3.8 MB measured); a table of 1,000 entries takes 28 ms and 8.3 MB, and one with 6,000 effects 40 ms and 16.6 MB (76 ms and 33 MB with 480 distinct formulas), a content keeping 3.7 to 7 MB.
+The numbers, the machine and the commands (`BenchmarkWithEntries`, `BenchmarkWithEffects`, `TestWithMemoryByEntries`, `TestWithMemoryByEffects`) are in [Performance](../performance.md#table-content-at-its-limits).
 Cache and memory limits of the live source are in [Characters](characters-table-content.md#the-live-source).
 
 ## The closed menu of effects
@@ -49,6 +51,7 @@ A table feature has effects of these types only; anything else is `forbidden_eff
 | Type | Notes |
 | --- | --- |
 | `modifier`, `proficiency`, `sense`, `roll_mode`, `extra_attack`, `note` | As in [Effects](rules.md#effects). |
+| `proficiency` with `only_proficient` | A switch of the effect with level `expertise` on a skill (`skill:*` is every skill): the skill is doubled only where the character already has its proficiency from another source when the sheet is worked out (the race, the background, the sheet's picks or another feature), never from the effect itself or from another `only_proficient` effect. Without the switch the effect doubles the skill, proficient or not. Any other level, a target that is not a skill and any other effect type refuse it at `.only_proficient` (`bad_value`). It is a `yes_no` field of the proficiency type in the effect menu. |
 | `resource` | With uses and recharge. The resource may not have the name of an SRD one. |
 | `grant_action` | May carry `resource`: the name of a `resource` effect of the same entry, its class, or an SRD resource. Each use spends one and the action is off with none left. Refused as `bad_reference` when nothing defines it. |
 | `ranged_attack` | Checked at its fields: `applies` is `spell` or `weapon`; `range_multiplier` is 2 or 3 and only on `spell`; `no_long_range_disadvantage` only on `weapon`; an effect that sets none of the three switches is refused at `.type`; `tags` at `.tags`; the switches on any other type are stray fields. |
@@ -139,6 +142,10 @@ The ADR-0018 contract: hit die (6, 8, 10 or 12), two saves, skills, proficiencie
 The ability score improvement levels default to 4, 8, 12, 16 and 19; the server writes the features `<class>-ability-score-improvement-<n>@mesa`, which the engine finds by key like the SRD's.
 
 **Casting.** `none`, `full`, `half` or `pact`; the ability; `known` or `prepared`; and the list: an SRD class's (or a table class's own), plus the spells that cite the class.
+A class with a list of its own (`list_from` empty) can also name SRD spells in `casting.srd_spell_keys`, which join the table spells that cite the class (an apprentice-like class built on Cure Wounds, Aid and Revivify).
+Each key is an SRD spell (`spell:<index>`, never a table key), named once, and a class names at most `MaxClassSRDSpells` (400, checked with the other budgets).
+A class that reuses another list (`list_from` set), a class that does not cast and a third caster's subclass have none: the refusal is `bad_casting` at `casting.srd_spell_keys`; an unknown or table key is `dangling_reference` and a repeated one `bad_value`, at the key's index.
+The builder puts the class on the `Classes` of a copy of each named spell, so every reader of the list follows: the "Magias" page and its learnable filter, the catalog entry's `class_keys`, what a class prepares or learns, the level-up check and the sheet's `spell_not_on_list`.
 The number of prepared spells is a formula (default `max(1, mod + level)`, with half the level for the half caster).
 The "Conjuração" feature is written by the engine.
 Before the level casting starts the columns are zero; after, they have slots (a single slot level for pact).
@@ -152,6 +159,10 @@ Alone, the caster uses its own table.
 It carries the parent class (SRD's or the table's, which never changes), the features by class level, the optional third-caster casting and the always-prepared spells by class level, which do not count against the prepared limit.
 The choice level is the parent class's.
 The SRD's Fiend patron is the exception: its spells are an expanded list (`expanded_list_corrections` in `effects/corrections.json`), so they only join the warlock's list, to choose from, and count against the spells known.
+A table subclass does the same with `spells_expanded`: its always-prepared spells (and their class levels) are then not given, they join the class's list for a character of that subclass, and the picker's sources (`SpellSources`) offer them from their class level on.
+The builder puts the subclass on the `Subclasses` of a copy of each spell, as the SRD data does, so the sheet, the level-up check and the picker read one rule.
+The flag needs the subclass to name spells; without any it is refused at `table_subclass.spells_expanded` (`bad_value`).
+The catalog lists no always-prepared spell for an expanded subclass.
 
 ## Race, subrace, background
 

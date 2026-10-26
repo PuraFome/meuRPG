@@ -34,7 +34,7 @@ const (
 	tableSuffix = "@mesa"
 	// MaxOverlayEntries is the most entries (of the six kinds, features not
 	// counted) one table may have.
-	MaxOverlayEntries = 300
+	MaxOverlayEntries = 1000
 	// MaxTableFeatures is the most features one class may have, and the most
 	// one subclass may have, counted apart. The features the engine makes (the
 	// Ability Score Improvements and the Spellcasting feature) do not count.
@@ -144,6 +144,10 @@ type TableCasting struct {
 	// that name the class are then added to the ones of ListFrom. For a third
 	// caster it is required.
 	ListFrom string
+	// SRDSpells are SRD spells ("spell:cure-wounds") on the class's own list, next
+	// to the table spells that name the class. Only a class with a list of its own
+	// (ListFrom empty) has them; a third caster's subclass does not.
+	SRDSpells []string
 	// PreparedMax is the formula of how many spells a class that prepares may
 	// prepare. Empty is the synthesized one: the ability modifier plus the class
 	// level (half of it for a half caster), at least 1.
@@ -240,6 +244,10 @@ type TableSubclass struct {
 	Casting *TableCasting
 	// AlwaysPrepared are the spells it always has prepared.
 	AlwaysPrepared []TableAlwaysPrepared
+	// SpellsExpanded says AlwaysPrepared are not given: they join the class's spell
+	// list to choose from, as a warlock patron's expanded list does, and count
+	// against the spells known or prepared. It needs AlwaysPrepared to have spells.
+	SpellsExpanded bool
 }
 
 // TableRace is a race in the 2014 shape.

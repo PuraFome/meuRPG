@@ -262,11 +262,14 @@ describe("CombatView, the master's screen without a map", () => {
     expect(plain(alone.el.textContent)).toContain('Ninguém pode reagir agora.');
   });
 
-  it('gives a player on turn the card with the movement he may spend, but no offer; and none for a fallen one', async () => {
+  it('gives a player on turn the card with "Agir por", and none for a fallen one', async () => {
     const { fixture, el } = setup({ master: true, current: 't' });
     await settle(fixture);
-    expect(plain(el.textContent)).toContain('Vez do Toren');
+    expect(el.querySelector('[data-testid="act-as-card"]')).not.toBeNull();
+    // The movement he may spend for the character stays, as the NPC's card has it.
+    expect(plain(el.textContent)).toContain('Sem mapa: só o número');
     expect(plain(el.textContent)).toContain('Gastar movimento');
+    expect(plain(el.textContent)).toContain('Agir por Toren');
     expect(plain(el.textContent)).not.toContain('Oferecer ataque de oportunidade');
     const down = setup({
       master: true,
@@ -274,9 +277,8 @@ describe("CombatView, the master's screen without a map", () => {
       combatants: [toren, { ...brisa, state: CombatantState.DOWN }, goblin, cap],
     });
     await settle(down.fixture);
-    expect(plain(down.el.querySelector('app-npc-card')?.textContent)).not.toContain(
-      'Gastar movimento',
-    );
+    expect(plain(down.el.textContent)).not.toContain('Agir por');
+    expect(down.el.querySelector('app-npc-card')).toBeNull();
   });
 });
 

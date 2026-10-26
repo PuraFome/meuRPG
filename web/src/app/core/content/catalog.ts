@@ -1,6 +1,7 @@
 import { Ability, type Content } from '../../../gen/meurpg/rules/v1/rules_pb';
 import type { TableEntry } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import type { SelectOption } from '../../shared/form-fields/select-field';
+import { circleLabel } from './spell-options';
 
 /**
  * What the editors' pickers need from the campaign's catalog (`ContentService.ListContent`): the schools of magic, the
@@ -40,6 +41,8 @@ export interface CatalogVm {
   /** The races and sub-races a feat may ask for, not the archived. */
   readonly raceChoices: readonly SelectOption[];
   readonly spells: readonly SelectOption[];
+  /** The SRD's spells, not the table's, each named with its circle and school ("Auxílio (2º nível, Abjuração)"): what a class's own list can name. */
+  readonly srdSpells: readonly SelectOption[];
   /** The Portuguese name of any key of the catalog and of the table's entries (the key itself when unknown). */
   nameOf(key: string): string;
 }
@@ -133,6 +136,13 @@ export function catalogVm(content: Content, entries: readonly TableEntry[] = [])
     spells: content.spells
       .filter((s) => !s.archived)
       .map((s) => ({ value: s.key, label: s.namePt }))
+      .sort(byName),
+    srdSpells: content.spells
+      .filter((s) => !s.archived && !isTableKey(s.key))
+      .map((s) => ({
+        value: s.key,
+        label: `${s.namePt} (${circleLabel(s.level)}, ${s.schoolNamePt})`,
+      }))
       .sort(byName),
     nameOf: (key) => names.get(key) ?? key,
   };

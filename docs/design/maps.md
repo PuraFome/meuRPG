@@ -22,6 +22,8 @@ One map component, `shared/map-view`, serves the editor, the player's viewer and
 
 ## Legend
 
+The master's map has one row of token marks ("Personagem · NPC · Escondido (só você vê) · Vez") and no line about dragging; with fog on, the fog map's own legend leaves those marks to that row (no word twice) and keeps the layers and pins. The player's scene tab on a phone captions its map "Mapa · <nome>".
+
 Below every master's map, `app-map-layers-legend` lists only what the map draws, in the same order everywhere: wall, difficult terrain, the covers, doors (closed, open, locked, portcullis, secret), then the marks and tokens. Painted light is called "Claro", "Penumbra", "Escuro" everywhere.
 A swatch is `.mr-swatch` (22 px, `aria-hidden`); the words carry the meaning.
 

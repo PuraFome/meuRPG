@@ -361,8 +361,8 @@ type SceneAudience struct {
 	// (what a scene open with no audience is). `user_ids` must then be empty.
 	Everyone bool `protobuf:"varint,1,opt,name=everyone,proto3" json:"everyone,omitempty"`
 	// With `everyone` false: exactly these players, by account (a UUID each; the
-	// account of a player who owns a living character of the party), at least
-	// one, repeats ignored. The master is always in. A player not listed gets no
+	// account of a player of the campaign: the player of a dead character
+	// follows the scene like any other), at least one, repeats ignored. The master is always in. A player not listed gets no
 	// scene at all, as when none is open, and a player who joins later is out.
 	UserIds       []string `protobuf:"bytes,2,rep,name=user_ids,json=userIds,proto3" json:"user_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -495,7 +495,8 @@ type SceneAudienceView struct {
 	// The players in the scene, in the party's order.
 	Inside []*ScenePlayer `protobuf:"bytes,2,rep,name=inside,proto3" json:"inside,omitempty"`
 	// The players of the party who are not in it, in the party's order. A
-	// player who has no living character is in neither list.
+	// player who has no living character is in neither list, though the master
+	// can name them in a SceneAudience.
 	Outside       []*ScenePlayer `protobuf:"bytes,3,rep,name=outside,proto3" json:"outside,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1376,9 +1377,10 @@ type OpenSceneRequest struct {
 	state      protoimpl.MessageState `protogen:"open.v1"`
 	CampaignId string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
 	// A SCENE point of the campaign's maps, hidden or not (a UUID). It may
-	// have no actions. Opening a scene makes it "discovered" for the group
-	// (MR-030), so players may tag notes with it, even while the point is
-	// hidden on the map.
+	// have no actions. Opening a scene makes it "discovered" (MR-030), so
+	// players may tag notes with it, even while the point is hidden on the
+	// map: by the whole group when it is open to everyone, else by the players
+	// it is open to (and the ones brought in or who join later), alone.
 	PointId string `protobuf:"bytes,2,opt,name=point_id,json=pointId,proto3" json:"point_id,omitempty"`
 	// The players the scene is open to. Unset: the whole table, for a scene that
 	// was not open yet. For the scene that is open already, unset changes

@@ -187,7 +187,7 @@ A line the caller may not read is answered exactly like one that does not exist 
   A retry with the same key stores and publishes nothing.
 - **The image.** A fog map's image is copied first (`PrepareShow`, as "mostrar imagem"), so the raw image of a fog map never leaves through a line.
   `GET /images/{id}` lets a player open an image when a line they may read carries it or an NPC with it as its portrait speaks (`LiveSession.ImageInConversation`); the fog map's own image stays refused (MR-036).
-- **The speaker** is kept with the line (`speaker_name`, `speaker_image_id`), so a renamed or deleted NPC does not change what was said.
+- **The speaker** is kept with the line (`speaker_name`, `speaker_image_id`), so a renamed or deleted NPC does not change what was said. The line of an NPC hidden on the stage keeps its name and no portrait (`withoutHiddenPortrait`), so the image route never opens a hidden NPC's portrait; the stage is untouched, and only `SetSpeaker` shows the NPC.
   A line of an erased account stays and reads "Jogador removido" (`author_removed`).
 - **The summary** (`GetSessionSummary.conversation`) holds the last 500 lines the caller may read, with `conversation_truncated` when there are more.
 
@@ -239,7 +239,7 @@ Both live on the session's row in `game_sessions`, and only the master changes t
 | Reveals      | The map (RN-10): the player always sees the current map                         | Only the image itself, while it is shown                                      |
 | Snapshot     | `GetLiveSession.current_map_id`; the app reads the map with `MapService.GetMap` | `GetLiveSession.shown_image` (id, caption, size, URLs), only for who is in its audience |
 | Stream       | `current_map_changed`, to everyone                                              | `shown_image_changed`, to the master and to the players whose picture changed |
-| When deleted | `DeleteMap` sets it to null and sends an empty `current_map_changed`            | `DeleteGalleryImage` sets it to null and sends an empty `shown_image_changed` |
+| When deleted | `DeleteMap` sets it to null and sends an empty `current_map_changed`            | `DeleteGalleryImage` sets it to null and sends an empty `shown_image_changed` to the master and the players of the image's audience only (`LiveSession.ShownImageViewers`) |
 
 - A new session starts with neither.
   An ended session keeps the last ones, only as a record.
@@ -256,7 +256,7 @@ The shown image has one audience, `game_sessions.shown_image_audience`, and the 
 | --- | --- | --- |
 | `table` (`WHOLE_TABLE`) | Every member | The only one with no scene open or a scene open to everyone; the master may pick it at any time ("Mostrar a toda a mesa") |
 | `scene` (`SCENE_PLAYERS`) | The master and the players of the scene open to only some players, so it follows `SetSceneAudience` | The default while such a scene is open (`resolveAudience`); `SCENE_NOT_PARTIAL` if asked with none |
-| `chosen` (`CHOSEN_PLAYERS`) | The master and the players of `game_session_image_viewers` ("Mudar quem vê") | Picked in the show call or with `SetShownImageAudience`, like the conversation's "Para" (`playersOf`) |
+| `chosen` (`CHOSEN_PLAYERS`) | The master and the players of `game_session_image_viewers` ("Mudar quem vê") | Picked in the show call or with `SetShownImageAudience`: any player of the campaign (`playersOf`, `authz.IsActivePlayer`), also the player of a dead character |
 
 - **The read.** `GetLiveSession.shown_image` is unset for a player outside the audience (`shownImageFor`); the master gets the image with `ShownImage.audience`.
 - **The image route.** `maps.playersSeeImage` asks `LiveSession.ImageShownTo(user, image)` (one query, `ShownImageSeenBy`), so a player taken out is `404` on their next request, also on `If-None-Match`.
@@ -277,6 +277,6 @@ The switch of the image currently shown belongs to the session: `game_sessions.s
 | `TakeBackLeftImage(campaign_id, image_id)` | Master only: removes the image from the list (it stays in the gallery); `not_found` if it is not there                                                                                                                                                              |
 | `left_images_changed`                      | A contentless hint to the master and the players the image was left with: an image was left, taken back or deleted                                                                                                                                                  |
 
-The table belongs to the `maps` module (the images route reads it); `play` writes it through `MapKeeper` (`LeaveImage(…, audience)` inside its transaction, `ListLeftImages(user, master)`, `TakeBackImage`, which answers who it was left with).
+The table belongs to the `maps` module (the images route reads it); `play` writes it through `MapKeeper` (`LeaveImage(…, audience)` inside its transaction (an image left again keeps the widest audience of the two leavings, `ImageAudience.Union`), `ListLeftImages(user, master)`, `TakeBackImage`, which answers who it was left with).
 The audience is `campaign_left_images.audience_everyone` and `campaign_left_image_viewers`; the route reads it with `ImageIsLeftWith(user)`.
 `GetLiveSession.shown_image_keep` tells the master whether the switch is on; the player always receives `false`.

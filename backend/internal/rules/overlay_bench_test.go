@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// realisticOverlay is a table at the limit: 300 entries, as a master who writes
+// realisticOverlay is a table of 300 entries, as a master who writes
 // a whole setting would have: 10 classes of every casting kind with 20-level
 // tables and a dozen features each, 30 subclasses (some of SRD classes), 20
 // races with traits, 40 subraces, 40 backgrounds and 160 spells.
@@ -79,8 +79,8 @@ func TestRealisticOverlayIsValid(t *testing.T) {
 	t.Parallel()
 	srd := loadForTest(t)
 	o := realisticOverlay(t, srd)
-	if n := len(o.Classes) + len(o.Subclasses) + len(o.Races) + len(o.Subraces) + len(o.Backgrounds) + len(o.Spells); n != MaxOverlayEntries {
-		t.Fatalf("%d entries, want %d", n, MaxOverlayEntries)
+	if n := len(o.Classes) + len(o.Subclasses) + len(o.Races) + len(o.Subraces) + len(o.Backgrounds) + len(o.Spells); n != 300 {
+		t.Fatalf("%d entries, want 300", n)
 	}
 	if _, err := srd.With(o); err != nil {
 		t.Fatal(err)

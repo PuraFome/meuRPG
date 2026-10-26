@@ -22,7 +22,7 @@ The `play` module's tables are split over three pages because there are 35 of th
 | `play` (combat) | [combat.md](combat.md) | `encounters`, `combatants`, `pending_damages`, `roll_holds`, `reaction_holds`, `reaction_windows`, `opportunity_offers`, `hidden_reveals`, `roll_mode_requests`, `combat_reasons`, `combatant_states`, `hit_riders`, `spell_zones`, `combat_contests`, `combat_holds`, `combat_hide_attempts`, `combat_hiding`, `combat_helps`, `combat_surprised` |
 | `play` (puzzles) | [puzzles.md](puzzles.md) | `puzzles`, `puzzle_runs`, `puzzle_moves`, `puzzle_hint_tries` |
 | `maps` | [gallery.md](gallery.md) | `gallery_images`, `image_requests`, `campaign_left_images`, `campaign_left_image_viewers` |
-| `maps` | [maps.md](maps.md) | `maps`, `map_layers`, `map_vision_memory`, `generated_dungeons`, `map_points`, `map_point_reveals`, `map_treasure_finders`, `map_tokens`, `map_creature_tokens`, `map_point_images`, `scene_actions`, `scene_clues`, `scene_clue_reveals`, `scene_discoveries` |
+| `maps` | [maps.md](maps.md) | `maps`, `map_layers`, `map_vision_memory`, `generated_dungeons`, `map_points`, `map_point_reveals`, `map_treasure_finders`, `map_tokens`, `map_creature_tokens`, `map_point_images`, `scene_actions`, `scene_clues`, `scene_clue_reveals`, `scene_discoveries`, `scene_player_discoveries` |
 | `progression` | [progression.md](progression.md) | `xp_awards`, `xp_award_shares`, `xp_award_treasures`, `planned_milestones` |
 | `notes` | [notes.md](notes.md) | `player_notes` |
 | `campaignpackage` | [package.md](package.md) | `campaign_exports`, `campaign_imports`, `campaign_import_parts` |

@@ -47,7 +47,8 @@ export function isOptionalReaction(w: ReactionWindow): boolean {
 
 /** A window the master's screen passes after `AUTO_PASS_SECONDS`: an optional reaction of a player whose turn to answer it is. */
 export function autoPasses(w: ReactionWindow): boolean {
-  return isOptionalReaction(w) && w.reactorIsPlayer && w.answerNow;
+  // A window that came to the master (`unanswered`) waits for his answer: the server handed it over, nothing passes it by itself.
+  return isOptionalReaction(w) && w.reactorIsPlayer && w.answerNow && !w.unanswered;
 }
 
 /** Where a UUID keeps its version and variant digits ("xxxxxxxx-xxxx-Vxxx-Nxxx-xxxxxxxxxxxx"). */

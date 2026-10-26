@@ -191,24 +191,32 @@ func sceneChangedEvent() *playv1.WatchGameSessionResponse {
 	}}
 }
 
-// playersOf checks that every account names a player of the campaign who has a character in the party
-// (the same readers the conversation names), and returns them without repeats.
-func (s *Service) playersOf(ctx context.Context, campaignID string, raw []string) ([]string, error) {
-	party, err := s.roster.CombatParty(ctx, nil, campaignID)
-	if err != nil {
-		return nil, s.dbError(ctx, "read the party", err)
-	}
+// playersOf checks that every account names a player of the campaign, and returns them without repeats.
+// The audience of a scene or of an image is about players, not characters: the player of a dead character
+// follows a scene like anyone (MR-015).
+func playersOf(ctx context.Context, campaignID string, raw []string) ([]string, error) {
 	var out []string
 	for _, r := range raw {
 		id, err := uuid.Parse(r)
-		if err != nil || !slices.ContainsFunc(party, func(c link.Character) bool { return c.PlayerUserID == id.String() }) {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("the audience must name players of the campaign"))
+		if err != nil {
+			return nil, errAudienceNotPlayers()
+		}
+		ok, err := authz.IsActivePlayer(ctx, campaignID, id.String())
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return nil, errAudienceNotPlayers()
 		}
 		if !slices.Contains(out, id.String()) {
 			out = append(out, id.String())
 		}
 	}
 	return out, nil
+}
+
+func errAudienceNotPlayers() error {
+	return connect.NewError(connect.CodeInvalidArgument, errors.New("the audience must name players of the campaign"))
 }
 
 // parseSceneAudience reads the players a scene is open to. An unset audience is for the caller to
@@ -226,7 +234,7 @@ func (s *Service) parseSceneAudience(ctx context.Context, campaignID string, a *
 	if len(a.GetUserIds()) == 0 {
 		return viewers{}, false, connect.NewError(connect.CodeInvalidArgument, errors.New("pick at least one player, or everyone"))
 	}
-	users, err := s.playersOf(ctx, campaignID, a.GetUserIds())
+	users, err := playersOf(ctx, campaignID, a.GetUserIds())
 	if err != nil {
 		return viewers{}, false, err
 	}
@@ -333,10 +341,10 @@ func (s *Service) SetSceneAudience(
 		if _, ch, err = s.applySceneAudience(ctx, q, session, to); err != nil {
 			return err
 		}
-		if ch.changed && to.all {
-			return s.maps.DiscoverScene(ctx, tx, m.CampaignID, scene.PointID, s.now()) // everyone may know it now
+		if !ch.changed {
+			return nil
 		}
-		return nil
+		return s.discoverScene(ctx, tx, m.CampaignID, scene.PointID, to, s.now()) // the players now in may know it
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "set who the scene is open to", err)
@@ -471,7 +479,8 @@ func (s *Service) JoinScene(
 		if err != nil {
 			return err
 		}
-		if _, err := s.openSceneIn(ctx, tx, m.CampaignID, session); err != nil {
+		scene, err := s.openSceneIn(ctx, tx, m.CampaignID, session)
+		if err != nil {
 			return err
 		}
 		before, err := sceneViewersOf(ctx, q, session)
@@ -489,7 +498,7 @@ func (s *Service) JoinScene(
 			return fmt.Errorf("join the scene: %w", err)
 		}
 		ch = audienceChange{before: before, after: after, changed: true, image: sceneImageMove(session, before, after)}
-		return nil
+		return s.discoverScene(ctx, tx, m.CampaignID, scene.PointID, usersViewers([]string{m.UserID}), s.now()) // what they read, they read
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "join the scene", err)

@@ -142,6 +142,36 @@ describe('StageMaster', () => {
     expect(cards(el)[0].classList.contains('row--speaking')).toBe(false);
   });
 
+  describe('the eye of a row (RN-10)', () => {
+    it('hides an NPC from the players: "Escondida dos jogadores", a dashed "Dar a fala" that answers nothing', async () => {
+      const { el, api, fixture } = await setup();
+      button(el, 'Esconder Mira dos jogadores').click();
+      await settle(fixture);
+      expect(api.calls).toContain('hide mira');
+      expect(flat(cards(el)[0].querySelector('.row__sees'))).toBe('Escondida dos jogadores');
+      expect(cards(el)[0].classList.contains('row--hidden')).toBe(true);
+      expect(flat(el.querySelector('[role="status"]'))).toBe('Mira: escondida dos jogadores.');
+      const speak = cards(el)[0].querySelector<HTMLButtonElement>('.row__speak')!;
+      expect(speak.getAttribute('aria-disabled')).toBe('true');
+      expect(speak.classList.contains('row__speak--off')).toBe(true);
+      speak.click();
+      await settle(fixture);
+      expect(api.calls).not.toContain('speaker mira');
+    });
+
+    it('shows a hidden NPC again with the same eye', async () => {
+      const { el, api, fixture } = await setup([
+        stageNpc('s-mira', 'Mira', { master: true, characterId: 'mira', hidden: true }),
+      ]);
+      expect(flat(cards(el)[0].querySelector('.row__sees'))).toBe('Escondida dos jogadores');
+      button(el, 'Mostrar Mira aos jogadores').click();
+      await settle(fixture);
+      expect(api.calls).toContain('show mira');
+      expect(flat(cards(el)[0].querySelector('.row__sees'))).toBe('Os jogadores veem');
+      expect(button(el, 'Dar a fala a Mira').getAttribute('aria-disabled')).toBe('false');
+    });
+  });
+
   it('gives the speech to another NPC, and takes it back from the speaker', async () => {
     const { el, api, fixture, state } = await setup();
     button(el, 'Dar a fala a Mira').click();

@@ -303,8 +303,8 @@ service CombatService {
   //     take a turn (NOT_ACTIVE); the member has a damage that waits to be
   //     rolled, applied or for a reaction (PENDING_DAMAGE, see
   //     discard_pending_damage); the player's character is down and its death
-  //     save is due (DEATH_SAVE_DUE: roll it first; the master may end the part
-  //     anyway).
+  //     save is due (DEATH_SAVE_DUE: roll it first; the master rolls it for the
+  //     character, and the part ends after it).
   //   - `aborted`: expected_combatant_id is not a member who still acts.
   rpc EndTurn(EndTurnRequest) returns (EndTurnResponse);
 
@@ -1895,6 +1895,8 @@ enum EncounterBlockedReason {
   // shield it is not proficient with, and cannot cast spells (SRD 5.1, "Armor"). Nothing
   // is spent.
   ENCOUNTER_BLOCKED_REASON_ARMOR_NOT_PROFICIENT = 111;
+  // AnswerReaction: the window was answered already, by the player or by the master (the first answer wins).
+  ENCOUNTER_BLOCKED_REASON_REACTION_ALREADY_ANSWERED = 112;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -3475,6 +3477,11 @@ message TargetInReach {
   // A hit on this target is a critical hit: it is paralyzed or unconscious and the
   // attacker is within 5 ft (SRD 5.1, Conditions).
   bool critical_on_hit = 11;
+  // Only for the master reading the turn options of a player's character: the character's player does not see this
+  // creature (the master hid it, or it is in the dark of a fog map), so the master acting for the character cannot pick
+  // it. It is listed so the screen can dim it ("Pensantus não vê este alvo"); `untargetable` is true too. The server
+  // refuses it in RollAttack and CastSpell with `not_found`. Never set for a player.
+  bool not_seen = 12;
 }
 
 // RollAttackRequest rolls an attack.
@@ -5036,6 +5043,10 @@ message CombatLogEntry {
   CombatLogHitRider hit_rider = 110;
   // What a Channel Divinity action did (Preserve Life, Turn Undead): for the master and the cleric's player.
   ChannelDivinityResult channel_divinity = 111;
+  // The master did this for a player's character (the line reads "(pelo mestre)"): an attack, a spell, a death save,
+  // a move, a feature, a Wild Shape or the end of the turn made through the master's hand, not the player's. Everyone
+  // who gets the line gets the flag, the player too when they are back.
+  bool by_master = 112;
 }
 
 // CombatLogEffectEnd is an effect that ended, in the combat log.
@@ -5603,6 +5614,10 @@ message ReactionWindow {
   // longer; the player reads their own mark back. Never sent for a window nobody
   // marked.
   bool rolling = 13;
+  // Only the master: the reactor is a player's character and nobody answered in the first 10 s, so the question has come
+  // to the master ("10 s sem resposta"). The player may still answer; the first answer wins and the other reads
+  // REACTION_ALREADY_ANSWERED.
+  bool unanswered = 14;
   // Only whoever answers: the question, by kind.
   oneof prompt {
     ShieldPrompt shield = 20;

@@ -147,6 +147,10 @@ export class SubclassEditor {
     return Array.from({ length: LEVEL_COUNT - from + 1 }, (_, i) => from + i);
   });
   protected readonly spellOptions = computed<SelectOption[]>(() => [...this.catalog().spells]);
+  /** The switch "As magias da subclasse entram na lista da classe" is for a subclass that names spells. */
+  protected readonly hasSpells = computed(() =>
+    this.draft().alwaysPrepared.some((g) => g.spells.length > 0),
+  );
   protected readonly levelOptions = Array.from({ length: LEVEL_COUNT }, (_, i) => ({
     value: String(i + 1),
     label: `Nível ${i + 1}`,
@@ -337,6 +341,7 @@ export class SubclassEditor {
       `${p}.level`,
       `${p}.desc_pt`,
       `${p}.always_prepared`,
+      `${p}.spells_expanded`,
       `${p}.casting`,
       `${p}.casting.ability`,
       `${p}.casting.list_from`,

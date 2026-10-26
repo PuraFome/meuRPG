@@ -152,6 +152,13 @@ func (s *Service) DeleteGalleryImage(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the shown image", err)
 	}
+	// Who sees the image on screen, if it is this one: they are the ones to hear it go (RN-10).
+	var shownTo link.ImageAudience
+	if shown == id.String() {
+		if shownTo, err = s.live.ShownImageViewers(ctx, m.CampaignID); err != nil {
+			return nil, s.dbError(ctx, "read who sees the shown image", err)
+		}
+	}
 	// Who the image was left with, if it was: they are the ones to hear it go.
 	leftTo, err := leftWith(ctx, s.queries, m.CampaignID, id.String())
 	wasLeft := err == nil
@@ -163,7 +170,9 @@ func (s *Service) DeleteGalleryImage(
 		return nil, err
 	}
 	s.deleteFiles(ctx, m.CampaignID, id.String())
-	s.publishImageDeleted(ctx, m.CampaignID, shown == id.String(), portraits > 0, wasLeft, leftTo)
+	s.publishImageDeleted(ctx, m.CampaignID, imageGone{
+		shown: shown == id.String(), shownTo: shownTo, portraits: portraits > 0, left: wasLeft, leftTo: leftTo,
+	})
 	return connect.NewResponse(&mapsv1.DeleteGalleryImageResponse{}), nil
 }
 
@@ -214,31 +223,45 @@ func (s *Service) deleteImageTx(ctx context.Context, tx pgx.Tx, campaignID, imag
 	return portraits, nil
 }
 
+// imageGone is what a deleted image took with it.
+type imageGone struct {
+	shown     bool               // it was the image on screen,
+	shownTo   link.ImageAudience // and these players saw it
+	portraits bool               // it was the portrait of NPCs
+	left      bool               // it was left with the players,
+	leftTo    link.ImageAudience // and these players had it
+}
+
 // publishImageDeleted tells the session what a deleted image took with it: the
-// image on the screen, the NPC portraits on the stage and the image left with the
-// players (only the master and the players it was left with hear that).
-func (s *Service) publishImageDeleted(ctx context.Context, campaignID string, wasShown, hadPortraits, wasLeft bool, leftTo link.ImageAudience) {
-	if wasShown {
-		// Everyone watching the session stops seeing it.
-		s.live.Publish(campaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_ShownImageChanged_{
+// image on the screen (to the master and the players who saw it), the NPC portraits
+// on the stage and the image left with the players (only the master and the players
+// it was left with hear that).
+func (s *Service) publishImageDeleted(ctx context.Context, campaignID string, gone imageGone) {
+	if gone.shown {
+		ev := &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_ShownImageChanged_{
 			ShownImageChanged: &playv1.WatchGameSessionResponse_ShownImageChanged{},
-		}})
+		}}
+		s.tellAudience(campaignID, gone.shownTo, ev)
 	}
-	if hadPortraits {
+	if gone.portraits {
 		// The NPC may have been on the stage: its portrait is gone for the scene.
 		s.live.PublishToScene(ctx, campaignID, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_StageChanged_{
 			StageChanged: &playv1.WatchGameSessionResponse_StageChanged{},
 		}})
 	}
-	if wasLeft {
+	if gone.left {
 		// It left the players' list too (the foreign key deleted the row).
-		ev := &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_LeftImagesChanged_{
+		s.tellAudience(campaignID, gone.leftTo, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_LeftImagesChanged_{
 			LeftImagesChanged: &playv1.WatchGameSessionResponse_LeftImagesChanged{},
-		}}
-		s.live.Publish(campaignID, leftTo.Everyone, ev)
-		if !leftTo.Everyone {
-			s.live.PublishToUsers(campaignID, leftTo.UserIDs, ev)
-		}
+		}})
+	}
+}
+
+// tellAudience sends ev to the master and to the players of the audience, and to no other.
+func (s *Service) tellAudience(campaignID string, who link.ImageAudience, ev *playv1.WatchGameSessionResponse) {
+	s.live.Publish(campaignID, who.Everyone, ev)
+	if !who.Everyone {
+		s.live.PublishToUsers(campaignID, who.UserIDs, ev)
 	}
 }
 

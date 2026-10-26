@@ -292,3 +292,44 @@ func TestMiddlewareForPlainHTTPRoutes(t *testing.T) {
 		t.Errorf("lookups for two checks in one request = %d, want 1", got)
 	}
 }
+
+// IsActivePlayer is for a handler that names other players: an active player of the campaign is one, and
+// the master, a pending member, a stranger, another campaign's player and a malformed ID are not.
+func TestIsActivePlayer(t *testing.T) {
+	const (
+		activeID   = "6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e101"
+		masterID   = "6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e102"
+		pendingID  = "6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e103"
+		strangerID = "6f1c7a52-3b5e-4c55-9d0b-2a51f0c1e104"
+	)
+	source := &fakeSource{members: map[[2]string]fakeMember{
+		{campaignA, masterID}:   {RoleMaster, StatusActive},
+		{campaignA, activeID}:   {RolePlayer, StatusActive},
+		{campaignA, pendingID}:  {RolePlayer, StatusPending},
+		{campaignB, strangerID}: {RolePlayer, StatusActive},
+	}}
+	ctx := requestContext(t, source, masterID)
+	for _, c := range []struct {
+		name, campaign, user string
+		want                 bool
+	}{
+		{"an active player", campaignA, activeID, true},
+		{"the master", campaignA, masterID, false},
+		{"a pending member", campaignA, pendingID, false},
+		{"a player of another campaign", campaignA, strangerID, false},
+		{"not a UUID", campaignA, "x", false},
+		{"a campaign that is not a UUID", "x", activeID, false},
+	} {
+		got, err := IsActivePlayer(ctx, c.campaign, c.user)
+		if err != nil || got != c.want {
+			t.Errorf("%s: IsActivePlayer() = %v, %v; want %v", c.name, got, err, c.want)
+		}
+	}
+	source.err = errors.New("database down")
+	if _, err := IsActivePlayer(requestContext(t, source, masterID), campaignA, activeID); connect.CodeOf(err) != connect.CodeUnavailable {
+		t.Errorf("IsActivePlayer() with the source down error = %v, want unavailable", err)
+	}
+	if _, err := IsActivePlayer(t.Context(), campaignA, activeID); err == nil {
+		t.Error("IsActivePlayer() without the interceptor succeeded, want it to fail closed")
+	}
+}

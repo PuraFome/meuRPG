@@ -3,6 +3,7 @@ import {
   Component,
   computed,
   effect,
+  inject,
   input,
   model,
   signal,
@@ -16,7 +17,9 @@ import type {
   SceneActionView,
   SceneRoll,
 } from '../../../../../gen/meurpg/play/v1/scene_pb';
+import { MapsClient } from '../../../../core/maps/maps-client';
 import { actionSubtitle, actionTitle } from '../../../../core/maps/scene-actions';
+import { sceneErrorMessage } from '../../../../core/play/scene-errors';
 import type { SceneState } from '../../../../core/play/scene-state';
 import { initialOf, passText } from '../../../../core/play/scene-view';
 import { SceneRollLine } from '../scene-roll-line/scene-roll-line';
@@ -39,6 +42,7 @@ interface Row {
   readonly check: string;
   readonly dc: number;
   readonly attempts: string;
+  readonly hidden: boolean;
   readonly chips: readonly Chip[];
   readonly freshCount: number;
 }
@@ -62,15 +66,22 @@ function freshWords(n: number): string {
   styleUrl: './scene-actions.scss',
 })
 export class SceneActions {
+  private readonly maps = inject(MapsClient);
+
   readonly campaignId = input.required<string>();
   readonly state = input.required<SceneState>();
   readonly scene = input.required<OpenSceneInfo>();
+  /** The map the scene's point is on, for the eye of each action; empty when the point is not on the open map. */
+  readonly mapId = input('');
   /** "Teste em grupo" was pressed: the group check's form is open (the page owns it). */
   readonly groupAsk = model(false);
 
   /** The rolls whose chip waits to be opened, and the ones the master opened now. */
   private readonly fresh = signal<ReadonlySet<string>>(new Set());
   protected readonly open = signal<ReadonlySet<string>>(new Set());
+  protected readonly error = signal('');
+  protected readonly status = signal('');
+  private readonly eyeBusy = signal<ReadonlySet<string>>(new Set());
   private known: ReadonlySet<string> | null = null;
   private knownFor = '';
 
@@ -96,6 +107,7 @@ export class SceneActions {
         check: '',
         dc: 0,
         attempts: '',
+        hidden: false,
         chips,
         freshCount: chips.filter((c) => c.fresh).length,
       });
@@ -132,6 +144,7 @@ export class SceneActions {
       check: actionSubtitle(action),
       dc: action.dc,
       attempts: this.attempts(action),
+      hidden: action.hidden,
       chips,
       freshCount: chips.filter((c) => c.fresh).length,
     };
@@ -156,6 +169,42 @@ export class SceneActions {
       words: verdict === null ? '' : passText(verdict === 'passed', 0),
       fresh: fresh.has(roll.id),
     };
+  }
+
+  protected eyeDisabled(row: Row): boolean {
+    return !this.mapId() || this.eyeBusy().has(row.id);
+  }
+
+  /** The eye of an action: "Escondida" for the players, who then never get it nor its rolls (RN-10). */
+  protected async toggleHidden(row: Row): Promise<void> {
+    if (this.eyeDisabled(row)) {
+      return;
+    }
+    const hidden = !row.hidden;
+    this.eyeBusy.update((set) => new Set(set).add(row.id));
+    this.error.set('');
+    try {
+      await this.maps.updateSceneAction(
+        this.campaignId(),
+        this.mapId(),
+        this.scene().pointId,
+        row.id,
+        { hidden },
+      );
+      this.state().setActionHidden(row.id, hidden);
+      this.status.set(
+        hidden ? `${row.title}: escondida dos jogadores.` : `Os jogadores veem ${row.title}.`,
+      );
+    } catch (err) {
+      this.error.set(sceneErrorMessage(err, 'mudar a ação'));
+      void this.state().refresh();
+    } finally {
+      this.eyeBusy.update((set) => {
+        const next = new Set(set);
+        next.delete(row.id);
+        return next;
+      });
+    }
   }
 
   protected isOpen(id: string): boolean {
