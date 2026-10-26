@@ -7,8 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/sync/singleflight"
-
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/ratelimit"
@@ -57,9 +55,9 @@ type messageDeps struct {
 
 	typing typingBook
 	// gate lets one voice be made at a time on this server, so the daily count and the call to the
-	// model take turns; flights makes a second request for the same line wait for the first.
+	// model take turns; flights makes a second request for the same line wait for the first, and stops the work when the last reader leaves.
 	gate    sync.Mutex
-	flights singleflight.Group
+	flights voiceFlights
 }
 
 func newMessageDeps(cfg MessagesConfig) *messageDeps {
