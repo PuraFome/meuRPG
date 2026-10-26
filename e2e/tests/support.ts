@@ -557,6 +557,8 @@ export async function withDefaultChoices(page: Page, campaignId: string, body: R
     }
     const groups = ((await res.json()) as { groups?: { choices?: PreviewedChoice[] }[] }).groups ?? [];
     let added = false;
+    // A language or a tool taken by one choice of this round is taken for the others, which the answer does not say yet.
+    const takenNow = new Set<string>();
     for (const choice of groups.flatMap((g) => g.choices ?? [])) {
       let need = choice.missing ?? 0;
       const options = [...(choice.options ?? [])].sort((a, b) => rank(a.key) - rank(b.key));
@@ -564,8 +566,11 @@ export async function withDefaultChoices(page: Page, campaignId: string, body: R
         if (need === 0) {
           break;
         }
-        if (o.reasonPt || o.needsText || choice.picked?.includes(o.key) || keys.includes(o.storedKey)) {
+        if (o.reasonPt || o.needsText || choice.picked?.includes(o.key) || keys.includes(o.storedKey) || takenNow.has(o.key)) {
           continue;
+        }
+        if (o.key.startsWith('language:') || o.key.startsWith('proficiency:')) {
+          takenNow.add(o.key);
         }
         keys.push(o.storedKey);
         need--;
