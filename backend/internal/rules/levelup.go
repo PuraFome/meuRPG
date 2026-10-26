@@ -1325,7 +1325,7 @@ const levelUpChoicesField = "full.feature_choice_keys"
 func checkRemovedChoices(before, after Build, classKey string, swap PickSwap, swapped bool, c *content) *LevelUpError {
 	var gone []string
 	for _, k := range before.FeatureChoices {
-		if !slices.Contains(after.FeatureChoices, k) && !(swapped && swap.Group != SwapGroupCantrip && swap.From == k) {
+		if !slices.Contains(after.FeatureChoices, k) && (!swapped || swap.Group == SwapGroupCantrip || swap.From != k) {
 			gone = append(gone, k)
 		}
 	}

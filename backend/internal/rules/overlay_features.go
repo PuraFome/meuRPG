@@ -54,7 +54,7 @@ func (b *overlayBuilder) addFeature(f *TableFeature, k featureKind, path string)
 	b.n.namesEN[f.Key] = f.NamePT
 	b.n.namesPT[f.Key] = f.NamePT
 	switch k.prefix {
-	case "feature:":
+	case featureKeyPrefix:
 		if err := b.writeFeature(f, k, effects, path); err != nil {
 			return err
 		}
@@ -92,7 +92,7 @@ func (b *overlayBuilder) featureOptions(f *TableFeature, k featureKind, path str
 	if len(f.Options) == 0 {
 		return f.Effects, nil
 	}
-	if k.prefix != "feature:" {
+	if k.prefix != featureKeyPrefix {
 		return nil, ovErr(f.Key, "only a class or subclass feature has an option list").at(path+".options", ReasonEffect)
 	}
 	if len(f.Options) > MaxFeatureOptions {
@@ -199,7 +199,7 @@ func (b *overlayBuilder) addOptions(f *TableFeature, k featureKind, path string)
 		if len(o.Options) > 0 {
 			return nil, ovErr(o.Key, "an option does not have options of its own").at(at+".options", ReasonValue)
 		}
-		if err := checkTableKey("feature:", o.Key); err != nil {
+		if err := checkTableKey(featureKeyPrefix, o.Key); err != nil {
 			return nil, locate(err, at)
 		}
 		if err := b.claim(o.Key); err != nil {

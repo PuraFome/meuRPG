@@ -583,7 +583,7 @@ func (col *collector) options() {
 		switch {
 		case x.c.choiceValueOK(key):
 			// A pick of the choice engine (choicegroups.go), which checks it.
-		case strings.HasPrefix(key, "feature:"), strings.HasPrefix(key, OptionKeyPrefix):
+		case strings.HasPrefix(key, featureKeyPrefix), strings.HasPrefix(key, OptionKeyPrefix):
 			col.featureOption(field, key, pickedNames)
 		case strings.HasPrefix(key, "trait:"):
 			col.traitOption(field, key)
@@ -676,7 +676,7 @@ func (x *deriver) sourcePT(source string, level int) string {
 		if sub, ok := c.subclasses[source]; ok {
 			return fmt.Sprintf("%s (%s %d)", c.namePT(source), c.namePT(sub.Class), level)
 		}
-	case strings.HasPrefix(source, "feature:"), strings.HasPrefix(source, "trait:"):
+	case strings.HasPrefix(source, featureKeyPrefix), strings.HasPrefix(source, "trait:"):
 		// An option: say where its parent comes from.
 		for _, f := range x.d.Features {
 			if f.Key == source {

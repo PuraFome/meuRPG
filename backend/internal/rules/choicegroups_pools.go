@@ -360,7 +360,7 @@ func (cb *choiceBuilder) invocationBoon(feature string) OptionPrerequisite {
 // pactBoon is the Pact Boon the sheet has picked, or "".
 func (cb *choiceBuilder) pactBoon() string {
 	for _, k := range cb.plain {
-		if f := cb.c.features[k]; f != nil && f.Parent == "feature:pact-boon" {
+		if f := cb.c.features[k]; f != nil && f.Parent == pactBoonKey {
 			return k
 		}
 	}

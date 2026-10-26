@@ -214,7 +214,7 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
-	{Type: "granted_spell", NamePT: "Magia concedida", HintPT: "Uma magia que a entrada dá ao personagem fora das listas das classes dele: à vontade ou gastando usos de um recurso que a entrada define, sem espaço de magia. A magia de nível acima de truque é conjurada no próprio nível. A habilidade escolhida dá o bônus de ataque e a CD de resistência (8 + proficiência + modificador); \"o jogador escolhe\" pede essa escolha uma vez, ao pegar a entrada. Magias de ritual com \"só como ritual\" não gastam espaço nem preparo. Não dispensa componentes materiais.", Fields: []MenuField{
+	{Type: "granted_spell", NamePT: "Magia concedida", HintPT: "Uma magia que a entrada dá ao personagem fora das listas das classes dele: à vontade ou gastando usos de um recurso que a entrada define, sem espaço de magia. A magia de nível acima de truque é conjurada no próprio nível. A habilidade escolhida dá o bônus de ataque e a CD de resistência (8 + proficiência + modificador); \"o jogador escolhe\" pede essa escolha uma vez, ao pegar a entrada. Magias de ritual com \"só como ritual\" não gastam espaço nem preparo. Não dispensa o material que a magia pede.", Fields: []MenuField{
 		{Name: "spell", Required: true, Kind: "choice"},
 		{Name: "ability", Required: true, Kind: "choice", List: ListGrantAbilities},
 		{Name: "from_level", Kind: "formula"},

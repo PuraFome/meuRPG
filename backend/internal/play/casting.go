@@ -639,14 +639,8 @@ func (s *Service) planGranted(ctx context.Context, c *combatTx, m authz.Membersh
 	}
 	grant := plan.osp.Grants[i]
 	plan.grant = &grant
-	if plan.osp.Effect == link.EffectSummon {
-		return plan, badCast("a summoning spell is cast with the character's classes, not through a grant")
-	}
-	if plan.ritual != grant.RitualOnly {
-		if grant.RitualOnly {
-			return plan, badCast("this grant casts the spell only as a ritual")
-		}
-		return plan, badCast("this grant does not cast the spell as a ritual")
+	if err := plan.checkGrantMode(grant); err != nil {
+		return plan, err
 	}
 	level := plan.osp.Spell.Level
 	sp, err := s.roster.GrantedCombatSpell(ctx, c.tx, m.CampaignID, plan.g.caster.ID, plan.spell, source, level, "")
@@ -661,17 +655,8 @@ func (s *Service) planGranted(ctx context.Context, c *combatTx, m authz.Membersh
 		}
 		plan.minutes = plan.osp.RitualMinutes
 	case in != nil:
-		if level == 0 {
-			return plan, badCast("a cantrip is cast with no slot")
-		}
-		if !grant.AlsoWithSlot {
-			return plan, badCast("this grant does not cast the spell with a slot")
-		}
-		plan.grant = nil // a slot spends no use
-		if err := plan.planSlotted(in); err != nil {
-			return plan, err
-		}
-		return plan, nil
+		err = plan.planGrantedSlot(grant, level, in)
+		return plan, err
 	default:
 		plan.minutes = plan.osp.CastMinutes
 	}
@@ -679,6 +664,34 @@ func (s *Service) planGranted(ctx context.Context, c *combatTx, m authz.Membersh
 		return plan, errCasting(playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_NO_USES, "the grant has no use left")
 	}
 	return plan, nil
+}
+
+// checkGrantMode refuses a cast the grant does not allow: a summoning spell, or a ritual
+// cast against a grant that is (or is not) for rituals only.
+func (p *castPlan) checkGrantMode(grant link.OutsideGrant) error {
+	if p.osp.Effect == link.EffectSummon {
+		return badCast("a summoning spell is cast with the character's classes, not through a grant")
+	}
+	if p.ritual != grant.RitualOnly {
+		if grant.RitualOnly {
+			return badCast("this grant casts the spell only as a ritual")
+		}
+		return badCast("this grant does not cast the spell as a ritual")
+	}
+	return nil
+}
+
+// planGrantedSlot plans a granted spell cast with a slot, when the grant allows one: the slot
+// spends no use of the grant.
+func (p *castPlan) planGrantedSlot(grant link.OutsideGrant, level int, in *playv1.SpellSlot) error {
+	if level == 0 {
+		return badCast("a cantrip is cast with no slot")
+	}
+	if !grant.AlsoWithSlot {
+		return badCast("this grant does not cast the spell with a slot")
+	}
+	p.grant = nil // a slot spends no use
+	return p.planSlotted(in)
 }
 
 // planRitual plans a ritual: it spends no slot and cannot be cast at a higher level.
@@ -855,7 +868,7 @@ func readCastRequest(msg *playv1.CastSpellOutsideCombatRequest) (castRequest, er
 	if in.ritual = msg.GetAsRitual(); in.ritual && msg.GetSlot() != nil {
 		return in, badCast("a ritual is cast with no slot")
 	}
-	if in.grantedBy = msg.GetGrantedBy(); len(in.grantedBy) > 100 {
+	if in.grantedBy = msg.GetGrantedBy(); len(in.grantedBy) > maxSpellKeyLen {
 		return in, badCast("granted_by must name the trait, feat or feature that grants the spell")
 	}
 	return in, nil

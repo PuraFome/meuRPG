@@ -45,11 +45,11 @@ func (b *overlayBuilder) addClassFeature(o *TableClassFeature, path string) erro
 	if len(o.Effects) > MaxFeatureEffects {
 		c.at(key, path, ".effects", ReasonLimit, "%d effects; the limit is %d per feature", len(o.Effects), MaxFeatureEffects)
 	}
-	if o.Replaces != "" && (o.Replaces == key || !strings.HasPrefix(o.Replaces, "feature:") && !strings.HasPrefix(o.Replaces, ClassFeatureKeyPrefix)) {
+	if o.Replaces != "" && (o.Replaces == key || !strings.HasPrefix(o.Replaces, featureKeyPrefix) && !strings.HasPrefix(o.Replaces, ClassFeatureKeyPrefix)) {
 		c.at(key, path, ".replaces_feature_key", ReasonReference, "%q is not a feature of a class", o.Replaces)
 	}
 	tf := &TableFeature{Key: key, NamePT: o.NamePT, DescPT: o.DescPT, Effects: o.Effects}
-	k := featureKind{prefix: "feature:", owner: key, class: o.Class, level: o.Level}
+	k := featureKind{prefix: featureKeyPrefix, owner: key, class: o.Class, level: o.Level}
 	b.know(key, k)
 	b.declareResources(k, o.Effects)
 	if len(o.Effects) > 0 {

@@ -25,7 +25,8 @@ func grant(spell, ability string, edit ...func(*Effect)) Effect {
 }
 
 func graceOverlay(feat []Effect, trait []Effect) Overlay {
-	return Overlay{Revision: 1,
+	return Overlay{
+		Revision: 1,
 		Races: []TableRace{{
 			TableEntry: TableEntry{Key: graceRace, NamePT: "Agraciada"}, Size: "Medium", SpeedFt: 30,
 			Traits: []TableFeature{{Key: graceTrait, NamePT: "Dom de teste", DescPT: []string{"Texto de teste."}, Effects: trait}},

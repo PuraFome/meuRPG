@@ -21,7 +21,7 @@ const planFeat = "feat:graca@mesa"
 // grantRoster answers the grant's own numbers.
 type grantRoster struct{ noRoster }
 
-func (grantRoster) GrantedCombatSpell(_ context.Context, _ pgx.Tx, _, _, key, source string, _ int, _ string) (link.Spell, error) {
+func (grantRoster) GrantedCombatSpell(_ context.Context, _ pgx.Tx, _, _, key, _ string, _ int, _ string) (link.Spell, error) {
 	return link.Spell{Key: key, ToHit: 7, SaveDC: 15, CasterDC: 15}, nil
 }
 

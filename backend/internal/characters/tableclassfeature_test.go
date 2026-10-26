@@ -88,7 +88,9 @@ func TestMR025_ATableClassFeatureHasItsOwnSwitchAndCount(t *testing.T) {
 	t.Parallel()
 	tb := newChoiceTable(t)
 	key := tb.master.addEntry(t, tb.campaign, trackerGaze()).GetKey()
-	tb.create(tb.ana, choiceSheet("race:human", "", "class:fighter", "", 1, "feature:fighter-fighting-style-defense"))
+	if _, err := tb.create(tb.ana, choiceSheet("race:human", "", "class:fighter", "", 1, "feature:fighter-fighting-style-defense")); err != nil {
+		t.Fatalf("create() error = %v", err)
+	}
 	tb.master.create(t, tb.campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Rastreadora", choiceSheet("race:human", "", "class:ranger", "", 1))
 	list, err := tb.master.table.ListOptionSwitches(t.Context(), connect.NewRequest(&rulesv1.ListOptionSwitchesRequest{CampaignId: tb.campaign}))
 	if err != nil {

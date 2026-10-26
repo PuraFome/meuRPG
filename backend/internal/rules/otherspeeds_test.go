@@ -29,7 +29,8 @@ func speedsOverlay(walkBonus int) Overlay {
 	if walkBonus != 0 {
 		traits = append(traits, trait("passo-largo", "Passo largo", Effect{Type: "modifier", Target: "speed.walk", Mode: "add", Value: "10"}))
 	}
-	return Overlay{Revision: 1,
+	return Overlay{
+		Revision: 1,
 		Races: []TableRace{{
 			TableEntry: TableEntry{Key: swimmerRace, NamePT: "Nadadora"},
 			Size:       "Medium", SpeedFt: 30, Traits: traits,

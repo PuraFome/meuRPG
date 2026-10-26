@@ -72,28 +72,37 @@ func (c *content) swapGroups(b Build, classKey string) []SwapGroup {
 	for _, name := range swapGroupOrder {
 		g := SwapGroup{Group: name, NamePT: swapGroupNames[name]}
 		if name == SwapGroupCantrip {
-			g.Picks = c.keysNamed(b.Cantrips, nil)
-			for _, k := range c.sortedSpellKeys() {
-				s := c.spells[k]
-				if s.Level == 0 && c.onList(s, classKey) && !slices.Contains(b.Cantrips, k) {
-					g.Pool = append(g.Pool, NamedKey{Key: k, NamePT: c.namePT(k)})
-				}
-			}
+			c.fillCantripGroup(&g, b, classKey)
 		} else {
-			// The pool is what the features that offered the picks offer: a fighter's styles,
-			// not the paladin's.
-			opts := c.setOptions(name, b.FeatureChoices)
-			g.Picks = c.keysNamed(b.FeatureChoices, opts)
-			if len(g.Picks) > 0 {
-				g.Pool = c.keysNamed(opts, nil)
-				g.Pool = slices.DeleteFunc(g.Pool, func(n NamedKey) bool { return slices.Contains(b.FeatureChoices, n.Key) })
-			}
+			c.fillChoiceGroup(&g, b)
 		}
 		if len(g.Picks) > 0 && len(g.Pool) > 0 {
 			out = append(out, g)
 		}
 	}
 	return out
+}
+
+// fillCantripGroup fills the cantrip group: the known cantrips and the class's others.
+func (c *content) fillCantripGroup(g *SwapGroup, b Build, classKey string) {
+	g.Picks = c.keysNamed(b.Cantrips, nil)
+	for _, k := range c.sortedSpellKeys() {
+		s := c.spells[k]
+		if s.Level == 0 && c.onList(s, classKey) && !slices.Contains(b.Cantrips, k) {
+			g.Pool = append(g.Pool, NamedKey{Key: k, NamePT: c.namePT(k)})
+		}
+	}
+}
+
+// fillChoiceGroup fills a group of feature choices. The pool is what the features that
+// offered the picks offer: a fighter's styles, not the paladin's.
+func (c *content) fillChoiceGroup(g *SwapGroup, b Build) {
+	opts := c.setOptions(g.Group, b.FeatureChoices)
+	g.Picks = c.keysNamed(b.FeatureChoices, opts)
+	if len(g.Picks) > 0 {
+		g.Pool = c.keysNamed(opts, nil)
+		g.Pool = slices.DeleteFunc(g.Pool, func(n NamedKey) bool { return slices.Contains(b.FeatureChoices, n.Key) })
+	}
 }
 
 // keysNamed names the keys, only the ones in among when it is not nil.
@@ -128,31 +137,37 @@ func applySwap(after *Build, s PickSwap) {
 // false when no pick of an offered group was given up.
 func swapOf(before, after Build, offer LevelUpOffer) (swap PickSwap, found bool) {
 	for _, g := range offer.PickSwaps {
-		was, now := before.FeatureChoices, after.FeatureChoices
-		if g.Group == SwapGroupCantrip {
-			was, now = before.Cantrips, after.Cantrips
+		if swap, found = swapInGroup(before, after, g); found {
+			return swap, true
 		}
-		var gone string
-		for _, n := range g.Picks {
-			if !slices.Contains(now, n.Key) {
-				gone = n.Key
-			}
-		}
-		if gone == "" {
-			continue
-		}
-		swap = PickSwap{Group: g.Group, From: gone}
-		for _, n := range g.Pool {
-			if slices.Contains(now, n.Key) && !slices.Contains(was, n.Key) {
-				swap.To = n.Key
-			}
-		}
-		if swap.To == "" && g.Group != SwapGroupCantrip {
-			continue // a pick lost with nothing in its place is not a swap
-		}
-		return swap, true
 	}
 	return PickSwap{}, false
+}
+
+// swapInGroup finds the swap in one group: the pick the sheet gave up and the pool option it
+// took. found is false when no pick was given up, or one was lost with nothing in its place
+// (which is a swap only for a cantrip).
+func swapInGroup(before, after Build, g SwapGroup) (swap PickSwap, found bool) {
+	was, now := before.FeatureChoices, after.FeatureChoices
+	if g.Group == SwapGroupCantrip {
+		was, now = before.Cantrips, after.Cantrips
+	}
+	var gone string
+	for _, n := range g.Picks {
+		if !slices.Contains(now, n.Key) {
+			gone = n.Key
+		}
+	}
+	if gone == "" {
+		return PickSwap{}, false
+	}
+	swap = PickSwap{Group: g.Group, From: gone}
+	for _, n := range g.Pool {
+		if slices.Contains(now, n.Key) && !slices.Contains(was, n.Key) {
+			swap.To = n.Key
+		}
+	}
+	return swap, swap.To != "" || g.Group == SwapGroupCantrip
 }
 
 // Offers says the offer lets the swap be made: the group is offered, from is one of its

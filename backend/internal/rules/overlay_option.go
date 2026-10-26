@@ -27,7 +27,7 @@ type optionSetDef struct {
 // reads by name (the Land druid's terrain, the draconic ancestry) is not here.
 var optionSetDefs = []optionSetDef{
 	{"invocation", "Invocação mística", "As invocações do bruxo.", []string{invocationsFeature}},
-	{"pact_boon", "Dádiva do pacto", "A dádiva que o bruxo escolhe no 3º nível.", []string{"feature:pact-boon"}},
+	{"pact_boon", "Dádiva do pacto", "A dádiva que o bruxo escolhe no 3º nível.", []string{pactBoonKey}},
 	{"metamagic", "Metamagia", "As opções de Metamagia do feiticeiro.", []string{"feature:metamagic-1", "feature:metamagic-2", "feature:metamagic-3"}},
 	{"fighting_style", "Estilo de luta", "Os estilos de luta do guerreiro, do paladino e do patrulheiro.", []string{
 		"feature:fighter-fighting-style", "feature:additional-fighting-style", "feature:paladin-fighting-style", "feature:ranger-fighting-style",
@@ -49,6 +49,12 @@ func optionSetOf(name string) (optionSetDef, bool) {
 
 // OptionKeyPrefix starts the key of a table option.
 const OptionKeyPrefix = "option:"
+
+// featureKeyPrefix starts the key of a class, subclass or racial feature.
+const featureKeyPrefix = "feature:"
+
+// pactBoonKey is the warlock's Pact Boon, the parent of its options.
+const pactBoonKey = "feature:pact-boon"
 
 // MaxOptionRequires is the most options one option may require.
 const MaxOptionRequires = 10
@@ -225,7 +231,7 @@ func (b *overlayBuilder) isPact(key string) bool {
 		return set == "pact_boon" && b.entries[key]
 	}
 	f := b.base.features[key]
-	return f != nil && f.Parent == "feature:pact-boon"
+	return f != nil && f.Parent == pactBoonKey
 }
 
 // OptionEntry is a table option as the content lists it.

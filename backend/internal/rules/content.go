@@ -614,7 +614,7 @@ func (c *content) effectOwnerExists(key string) bool {
 			}
 		}
 		return false
-	case strings.HasPrefix(key, "feature:"), strings.HasPrefix(key, "trait:"),
+	case strings.HasPrefix(key, featureKeyPrefix), strings.HasPrefix(key, "trait:"),
 		strings.HasPrefix(key, "background:"), strings.HasPrefix(key, "race:"), strings.HasPrefix(key, "feat:"),
 		strings.HasPrefix(key, "subrace:"), strings.HasPrefix(key, "class:"),
 		strings.HasPrefix(key, "subclass:"), strings.HasPrefix(key, OptionKeyPrefix), strings.HasPrefix(key, ClassFeatureKeyPrefix):

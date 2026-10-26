@@ -88,39 +88,47 @@ func grantedAbilityKeys() []string {
 // any class's numbers.
 func (x *deriver) grantedSpells() {
 	for _, a := range x.active {
-		e := a.effect
-		if e.Type != "granted_spell" || !x.applies(a) {
-			continue
+		if g, ok := x.grantedSpellOf(a); ok {
+			x.d.GrantedSpells = append(x.d.GrantedSpells, g)
 		}
-		from := 1
-		if e.fromLevel != nil {
-			n, err := e.fromLevel.Int(x.env)
-			if err != nil {
-				x.issue(IssueFormula, "", "Um efeito de %s foi ignorado: a fórmula do nível falhou.", x.c.namePT(a.owner))
-				continue
-			}
-			from = n
-		}
-		if x.grantLevel(a.owner) < from {
-			continue
-		}
-		entry, ok := x.c.spellEntries[e.Spell]
-		if !ok {
-			continue
-		}
-		g := GrantedSpell{
-			Spell: entry, Source: a.owner, SourcePT: x.c.namePT(a.owner), AtWill: e.Uses == "" || e.Uses == GrantedAtWill,
-			AlsoWithSlot: e.AlsoWithSlot, RitualOnly: e.RitualOnly, CountsAsKnown: e.CountsAsKnown, FromLevel: from,
-		}
-		if !g.AtWill {
-			g.Resource = e.Uses
-		}
-		x.grantAbility(&g, e)
-		x.d.GrantedSpells = append(x.d.GrantedSpells, g)
 	}
 	slices.SortStableFunc(x.d.GrantedSpells, func(a, b GrantedSpell) int {
 		return cmp.Or(cmp.Compare(a.Spell.Level, b.Spell.Level), comparePT(a.Spell.NamePT, b.Spell.NamePT))
 	})
+}
+
+// grantedSpellOf builds the grant of one active effect. ok is false when the effect is not a
+// granted_spell, does not apply yet, or names a spell the content does not have.
+func (x *deriver) grantedSpellOf(a activeEffect) (GrantedSpell, bool) {
+	e := a.effect
+	if e.Type != "granted_spell" || !x.applies(a) {
+		return GrantedSpell{}, false
+	}
+	from := 1
+	if e.fromLevel != nil {
+		n, err := e.fromLevel.Int(x.env)
+		if err != nil {
+			x.issue(IssueFormula, "", "Um efeito de %s foi ignorado: a fórmula do nível falhou.", x.c.namePT(a.owner))
+			return GrantedSpell{}, false
+		}
+		from = n
+	}
+	if x.grantLevel(a.owner) < from {
+		return GrantedSpell{}, false
+	}
+	entry, ok := x.c.spellEntries[e.Spell]
+	if !ok {
+		return GrantedSpell{}, false
+	}
+	g := GrantedSpell{
+		Spell: entry, Source: a.owner, SourcePT: x.c.namePT(a.owner), AtWill: e.Uses == "" || e.Uses == GrantedAtWill,
+		AlsoWithSlot: e.AlsoWithSlot, RitualOnly: e.RitualOnly, CountsAsKnown: e.CountsAsKnown, FromLevel: from,
+	}
+	if !g.AtWill {
+		g.Resource = e.Uses
+	}
+	x.grantAbility(&g, e)
+	return g, true
 }
 
 // grantLevel is the level a grant is gated on: the level of the class a class or
