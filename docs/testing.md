@@ -139,7 +139,7 @@ The acceptance tests through the screen live in `e2e/`, a Playwright project wit
 - There are no retries (`retries: 0`): a flaky acceptance test is a bug to fix.
 - Each test that proves an acceptance criterion carries the story's or rule's tag, such as `@MR-001`; `npx playwright test --grep @MR-001` runs only that story's.
 - RPCs from a test go through `page.request` (same cookies as the page) with `Connect-Protocol-Version: 1`.
-- The d20 roll animation never plays (`reducedMotion: 'reduce'`), so no overlay covers a control and layout checks measure a still screen.
+- The dice animation never moves (`reducedMotion: 'reduce'`): the dice sit still in a card that neither dims nor blocks the page, so no overlay covers a control and layout checks measure a still screen.
 
 **Sign-in and session reuse.** Sign-in goes through the devidp, clicking the test user as a person would.
 `/auth/login` and `/auth/callback` share a per-client rate limit (`loginRateLimit` in `backend/internal/identity/login.go`), and signing in for every test exceeds it.

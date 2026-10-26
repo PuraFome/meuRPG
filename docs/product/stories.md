@@ -1410,7 +1410,8 @@ See [Architecture](../architecture/campaign-package.md).
 
 #### In the app
 - The "Dados" button in the session's header opens "Rolar dados": a bottom sheet on a phone, a dialog from a tablet up. It has the shortcuts (1d20, 1d6, 2d6, 1d100), the die, "Quantidade (1 a 20)", "Modificador (−20 a +20)", "Como rolar o d20" for a single d20, the master's "Quem vê" ("Para a mesa" or "Só eu"), "Suas últimas rolagens nesta sessão" with "Repetir", and one filled button ("Rolar 2d6 + 3"). The result card has "Mudar dados" and "Rolar … de novo".
-- "Rolagens da mesa" under the stage lists the session's free rolls, newest first; the dice overlay shows the others' roll as "<name> rolou".
+- "Rolagens da mesa" under the stage lists the session's free rolls, newest first; the dice overlay, a felt tray where the dice roll and land on the faces the server rolled, shows the others' roll as "<name> rolou".
+- The overlay's "Som dos dados" button switches the dice's sound on, quietly; it is off until the player taps it and stays on for the open tab only.
 - Rolling is rate limited per person.
 
 #### Related

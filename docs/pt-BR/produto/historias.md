@@ -1410,7 +1410,8 @@ Ver [Arquitetura](../../architecture/campaign-package.md).
 
 #### No app
 - O botão "Dados" no cabeçalho da sessão abre "Rolar dados": uma folha de baixo no celular, uma janela a partir do tablet. Ela tem os atalhos (1d20, 1d6, 2d6, 1d100), o dado, "Quantidade (1 a 20)", "Modificador (−20 a +20)", "Como rolar o d20" para um d20 só, o "Quem vê" do mestre ("Para a mesa" ou "Só eu"), "Suas últimas rolagens nesta sessão" com "Repetir", e um botão preenchido ("Rolar 2d6 + 3"). O cartão de resultado tem "Mudar dados" e "Rolar … de novo".
-- O "Rolagens da mesa" sob o palco lista as rolagens livres da sessão, da mais nova para a mais antiga; a animação dos dados mostra a rolagem dos outros como "<nome> rolou".
+- O "Rolagens da mesa" sob o palco lista as rolagens livres da sessão, da mais nova para a mais antiga; a animação dos dados, uma bandeja de feltro onde os dados rolam e param nas faces que o servidor sorteou, mostra a rolagem dos outros como "<nome> rolou".
+- O botão "Som dos dados" da animação liga o som dos dados, baixinho; ele começa desligado e só vale para a aba aberta.
 - Rolar tem limite de taxa por pessoa.
 
 #### Relacionadas
