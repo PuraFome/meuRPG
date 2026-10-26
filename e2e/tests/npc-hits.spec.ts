@@ -130,9 +130,9 @@ test('um personagem consciente que ainda não agiu continua perguntando: "Passar
     await passTurnsTo(m, campaignId, 'Vex');
     await openSessionPage(m, campaignId);
     await m.getByRole('button', { name: 'Próximo turno' }).click();
-    await expect(m.getByText(/Passar a vez de Vex\?/)).toBeVisible();
+    await expect(m.getByText(/Passar a vez de Vex, que ainda não agiu\?/)).toBeVisible();
     await m.getByRole('button', { name: 'Cancelar' }).click();
-    await expect(m.getByText(/Passar a vez de Vex\?/)).toHaveCount(0);
+    await expect(m.getByText(/Passar a vez de Vex, que ainda não agiu\?/)).toHaveCount(0);
   } finally {
     await t.done().catch(() => undefined);
   }
