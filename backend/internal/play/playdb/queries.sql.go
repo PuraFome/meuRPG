@@ -5735,7 +5735,8 @@ func (q *Queries) ListCreatureCombatants(ctx context.Context, encounterID string
 const listEncounterCombatEvents = `-- name: ListEncounterCombatEvents :many
 SELECT id, kind, payload FROM session_events
 WHERE encounter_id = $1
-  AND kind IN ('attack_rolled', 'damage_rolled', 'damage_applied', 'spell_cast', 'action_taken', 'action_undone')
+  AND kind IN ('attack_rolled', 'damage_rolled', 'damage_applied', 'spell_cast', 'action_taken', 'action_undone',
+    'reaction_answered', 'reaction_used', 'spell_zone_triggered', 'lasting_effect_triggered')
 ORDER BY seq
 LIMIT 20000
 `
