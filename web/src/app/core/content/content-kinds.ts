@@ -1,6 +1,8 @@
 import { TableContentKind, type TableEntry } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { joinDots, tight } from '../format/text';
 import { prerequisiteSupport } from './feat-text';
+import { classFeatureSupport } from './class-feature-text';
+import { optionSupport } from './option-text';
 import { metersText } from '../units';
 
 /**
@@ -14,7 +16,15 @@ import { metersText } from '../units';
  * "Raças" group holds them) but they are entries too: they sit in "Raças", after the races. */
 export interface ContentNavKind {
   /** The URL segment of "Nova …" and the list's key. */
-  readonly slug: 'classes' | 'subclasses' | 'races' | 'backgrounds' | 'spells' | 'feats';
+  readonly slug:
+    | 'classes'
+    | 'subclasses'
+    | 'races'
+    | 'backgrounds'
+    | 'spells'
+    | 'feats'
+    | 'options'
+    | 'classfeatures';
   /** Plural, the nav item and the panel title. */
   readonly plural: string;
   /** Singular with its article, for "Nova raça" and "Voltar para Raças". */
@@ -92,6 +102,26 @@ export const CONTENT_NAV: readonly ContentNavKind[] = [
     editable: true,
     createSegment: 'feat',
   },
+  {
+    slug: 'options',
+    plural: 'Opções',
+    singular: 'opção',
+    kinds: [TableContentKind.OPTION],
+    newLabel: 'Nova opção',
+    aOne: 'uma opção',
+    editable: true,
+    createSegment: 'option',
+  },
+  {
+    slug: 'classfeatures',
+    plural: 'Características de classe',
+    singular: 'característica de classe',
+    kinds: [TableContentKind.CLASS_FEATURE],
+    newLabel: 'Nova característica de classe',
+    aOne: 'uma característica de classe',
+    editable: true,
+    createSegment: 'classfeature',
+  },
 ];
 
 export function navOfKind(kind: TableContentKind): ContentNavKind | undefined {
@@ -111,6 +141,8 @@ export const KIND_WORDS: Readonly<Record<number, string>> = {
   [TableContentKind.BACKGROUND]: 'Antecedente',
   [TableContentKind.SPELL]: 'Magia',
   [TableContentKind.FEAT]: 'Talento',
+  [TableContentKind.OPTION]: 'Opção',
+  [TableContentKind.CLASS_FEATURE]: 'Característica de classe',
 };
 
 /** The noun of a kind with its article and the words that agree with it: "A magia … foi salva", "O antecedente … foi salvo". */
@@ -144,6 +176,13 @@ export const KIND_NOUNS: Readonly<Record<number, KindNoun>> = {
   },
   [TableContentKind.SPELL]: { article: 'A', noun: 'magia', saved: 'salva', archived: 'arquivada' },
   [TableContentKind.FEAT]: { article: 'O', noun: 'talento', saved: 'salvo', archived: 'arquivado' },
+  [TableContentKind.OPTION]: { article: 'A', noun: 'opção', saved: 'salva', archived: 'arquivada' },
+  [TableContentKind.CLASS_FEATURE]: {
+    article: 'A',
+    noun: 'característica de classe',
+    saved: 'salva',
+    archived: 'arquivada',
+  },
 };
 
 /** "A magia Lâmina de Nanquim foi salva." */
@@ -342,6 +381,15 @@ function supportParts(
       return [body.value.level === 0 ? 'Truque' : `${body.value.level}º nível`];
     case 'tableFeat':
       return featSupport(body.value, nameOf);
+    case 'tableOption':
+      return optionSupport(body.value.set, body.value.prerequisite, nameOf);
+    case 'tableClassFeature':
+      return classFeatureSupport(
+        body.value.classKey,
+        body.value.level,
+        body.value.replacesFeatureKey,
+        nameOf,
+      );
     default:
       return [];
   }

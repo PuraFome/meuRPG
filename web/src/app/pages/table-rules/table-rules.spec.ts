@@ -62,6 +62,7 @@ const saved: RulesDraft = {
   featsAllowed: false,
   enemyReactions: EnemyReactionsRule.ONLY_WHEN_POSSIBLE,
   showSaveDc: false,
+  pickSwapAllowed: false,
   houseRules: ['Beber uma poção é uma ação bônus'],
 };
 

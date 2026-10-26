@@ -4,6 +4,20 @@ import { MapLayer } from '../../../gen/meurpg/maps/v1/maps_pb';
 import type { Square } from '../combat/combat-grid';
 import { type MapLayers, NO_LAYERS, type PackedLayers, decodeLayers } from './layers';
 
+/** A one-bit layer (terrain, wall, "Não dá para passar"): square n is bit n % 8 of byte n / 8. */
+const BYTE_SHIFT = 3;
+const BIT_MASK = 7;
+
+function bitAt(bytes: Uint8Array, n: number): number {
+  return (bytes[n >> BYTE_SHIFT] >> (n & BIT_MASK)) & 1;
+}
+
+function setBit(bytes: Uint8Array, n: number, value: number): void {
+  const at = n >> BYTE_SHIFT;
+  const bit = n & BIT_MASK;
+  bytes[at] = (bytes[at] & ~(1 << bit)) | ((value & 1) << bit);
+}
+
 /**
  * The master's copy of the painted layers while he paints (MR-034, E9-01): the packed bytes `GetMapLayers`
  * sent, kept as full-size arrays so a stroke changes them at once (the drawing never waits for the server) and
@@ -21,6 +35,7 @@ export class PaintedLayers {
   private cover = new Uint8Array();
   private light = new Uint8Array();
   private doors = new Uint8Array();
+  private noPass = new Uint8Array();
   private frame: number | null = null;
 
   /** `perFrame`: the bytes change at once but the squares the screen draws are decoded at most once an animation frame, so a drag over a
@@ -37,6 +52,7 @@ export class PaintedLayers {
     this.cover = fit(packed.cover, Math.ceil(squares / 4));
     this.light = fit(packed.light ?? new Uint8Array(), Math.ceil(squares / 4));
     this.doors = fit(packed.doors ?? new Uint8Array(), Math.ceil(squares / 2));
+    this.noPass = fit(packed.noPass ?? new Uint8Array(), Math.ceil(squares / 8));
     this.publish();
   }
 
@@ -54,15 +70,17 @@ export class PaintedLayers {
     const n = row * this.columns + col;
     switch (layer) {
       case MapLayer.DIFFICULT_TERRAIN:
-        return (this.terrain[n >> 3] >> (n & 7)) & 1;
+        return bitAt(this.terrain, n);
       case MapLayer.WALL:
-        return (this.wall[n >> 3] >> (n & 7)) & 1;
+        return bitAt(this.wall, n);
       case MapLayer.COVER:
         return (this.cover[n >> 2] >> (2 * (n & 3))) & 3;
       case MapLayer.LIGHT:
         return (this.light[n >> 2] >> (2 * (n & 3))) & 3;
       case MapLayer.DOORS:
         return (this.doors[n >> 1] >> (4 * (n & 1))) & 15;
+      case MapLayer.NO_PASS:
+        return bitAt(this.noPass, n);
       default:
         return 0;
     }
@@ -90,10 +108,10 @@ export class PaintedLayers {
   private write(layer: MapLayer, n: number, value: number): void {
     switch (layer) {
       case MapLayer.DIFFICULT_TERRAIN:
-        this.terrain[n >> 3] = (this.terrain[n >> 3] & ~(1 << (n & 7))) | ((value & 1) << (n & 7));
+        setBit(this.terrain, n, value);
         break;
       case MapLayer.WALL:
-        this.wall[n >> 3] = (this.wall[n >> 3] & ~(1 << (n & 7))) | ((value & 1) << (n & 7));
+        setBit(this.wall, n, value);
         break;
       case MapLayer.COVER:
         this.cover[n >> 2] =
@@ -106,6 +124,9 @@ export class PaintedLayers {
       case MapLayer.DOORS:
         this.doors[n >> 1] =
           (this.doors[n >> 1] & ~(15 << (4 * (n & 1)))) | ((value & 15) << (4 * (n & 1)));
+        break;
+      case MapLayer.NO_PASS:
+        setBit(this.noPass, n, value);
         break;
     }
   }
@@ -140,6 +161,7 @@ export class PaintedLayers {
         cover: this.cover,
         light: this.light,
         doors: this.doors,
+        noPass: this.noPass,
       }),
     );
   }

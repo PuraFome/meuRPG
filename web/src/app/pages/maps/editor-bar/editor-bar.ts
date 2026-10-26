@@ -31,6 +31,7 @@ const TOOLS: readonly { tool: PaintTool; icon: string }[] = [
   { tool: 'wall', icon: 'brick' },
   { tool: 'cover', icon: 'fence' },
   { tool: 'light', icon: 'lightbulb' },
+  { tool: 'nopass', icon: 'block' },
   { tool: 'door', icon: 'door_front' },
 ];
 const LIGHT_ICON: Readonly<Record<LightDegree, string>> = {

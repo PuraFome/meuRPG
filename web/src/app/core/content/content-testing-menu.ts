@@ -182,6 +182,17 @@ export function menuResponse(): GetEffectMenuResponse {
         ],
       },
       {
+        name: 'option_set_names',
+        values: [
+          {
+            key: 'invocation',
+            namePt: 'Invocação mística',
+            hintPt: 'Uma opção da Invocação mística do bruxo.',
+          },
+          { key: 'fighting_style', namePt: 'Estilo de luta' },
+        ],
+      },
+      {
         name: 'tools',
         values: [{ key: 'proficiency:cartographers-tools', namePt: 'Ferramentas de cartógrafo' }],
       },
@@ -203,6 +214,12 @@ export function menuResponse(): GetEffectMenuResponse {
         namePt: 'Estilo de luta',
         choose: 1,
         options: [{ key: 'option:archery', namePt: 'Arquearia' }],
+      },
+      {
+        key: 'feature:pact-boon',
+        namePt: 'Dádiva do pacto',
+        choose: 1,
+        options: [{ key: 'feature:pact-of-the-tome', namePt: 'Dádiva do pacto: Pacto do Tomo' }],
       },
     ],
     classIndexes: ['wizard', 'cleric'],
@@ -271,6 +288,50 @@ export function resistanceMenu(): EffectMenuVm {
     create(EffectMenuListSchema, {
       name: 'resistance_conditions',
       values: [{ key: 'rage', namePt: 'Em fúria' }],
+    }),
+  );
+  return new EffectMenuVm(res);
+}
+
+/** The menu with the real one's granted_spell and breathes_water effects, for their own specs. */
+export function grantedSpellMenu(): EffectMenuVm {
+  const res = menuResponse();
+  res.types.push(
+    create(EffectMenuTypeSchema, {
+      type: 'granted_spell',
+      namePt: 'Magia concedida',
+      hintPt: 'Uma magia que a entrada dá ao personagem fora das listas das classes dele.',
+      fields: [
+        { name: 'spell', kind: 'choice', required: true },
+        { name: 'ability', kind: 'choice', required: true, list: 'granted_spell_abilities' },
+        { name: 'from_level', kind: 'formula' },
+        { name: 'uses', kind: 'resource_ref' },
+        { name: 'also_with_slot', kind: 'yes_no', alwaysShown: true },
+        { name: 'ritual_only', kind: 'yes_no', alwaysShown: true },
+        { name: 'counts_as_known', kind: 'yes_no', alwaysShown: true },
+        { name: 'when', kind: 'condition' },
+        { name: 'text_pt', kind: 'text' },
+      ],
+    }),
+    create(EffectMenuTypeSchema, {
+      type: 'breathes_water',
+      namePt: 'Respira na água',
+      hintPt: "O personagem respira debaixo d'água.",
+      fields: [
+        { name: 'when', kind: 'condition' },
+        { name: 'text_pt', kind: 'text' },
+      ],
+    }),
+  );
+  res.lists.push(
+    create(EffectMenuListSchema, {
+      name: 'granted_spell_abilities',
+      values: [
+        { key: 'int', namePt: 'Inteligência' },
+        { key: 'wis', namePt: 'Sabedoria' },
+        { key: 'cha', namePt: 'Carisma' },
+        { key: 'choice', namePt: 'O jogador escolhe' },
+      ],
     }),
   );
   return new EffectMenuVm(res);

@@ -242,3 +242,25 @@
 .row__error {
   color: var(--mr-danger-ink);
 }
+
+// B2: the box that chooses a character to move, and the row of a character chosen.
+.row__pick {
+  grid-row: span 2;
+  align-self: center;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--mr-accent);
+}
+
+.row--pick {
+  grid-template-columns: 20px 34px minmax(0, 1fr);
+
+  @container (min-width: 520px) {
+    grid-template-columns: 20px 34px minmax(0, 1fr) auto auto;
+  }
+}
+
+.row--chosen {
+  background: var(--mr-accent-soft);
+}

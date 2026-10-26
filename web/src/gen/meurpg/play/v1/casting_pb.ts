@@ -26,7 +26,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/play/v1/casting.proto.
  */
 export const file_meurpg_play_v1_casting: GenFile = /*@__PURE__*/
-  fileDesc("ChxtZXVycGcvcGxheS92MS9jYXN0aW5nLnByb3RvEg5tZXVycGcucGxheS52MSJtCg5DYXN0aW5nQmxvY2tlZBI0CgZyZWFzb24YASABKA4yJC5tZXVycGcucGxheS52MS5DYXN0aW5nQmxvY2tlZFJlYXNvbhIRCgltaW5fbGV2ZWwYAiABKAUSEgoKbWlzc2luZ19mdBgDIAEoBSLjBAoMQ2FzdGluZ1NwZWxsEiUKBXNwZWxsGAEgASgLMhYubWV1cnBnLnJ1bGVzLnYxLlNwZWxsEhAKCGNhbl9jYXN0GAIgASgIEhYKDnJpdHVhbF9hbGxvd2VkGAMgASgIEioKBXNsb3RzGAQgAygLMhsubWV1cnBnLnJ1bGVzLnYxLlNsb3RDaG9pY2USLwoGcmVhc29uGAUgASgLMh8ubWV1cnBnLnJ1bGVzLnYxLkRpc2FibGVkUmVhc29uEhcKD2Nhc3RpbmdfbWludXRlcxgGIAEoBRIWCg5yaXR1YWxfbWludXRlcxgHIAEoBRIXCg9jYXN0aW5nX3RpbWVfcHQYCCABKAkSDQoFbGFzdHMYCSABKAgSGAoQZHVyYXRpb25fc2Vjb25kcxgKIAEoBRIvCglyZXN0X2VuZHMYCyABKA4yHC5tZXVycGcucGxheS52MS5SZXN0VGhhdEVuZHMSMQoGZWZmZWN0GAwgASgOMiEubWV1cnBnLnBsYXkudjEuQ2FzdGluZ0VmZmVjdEtpbmQSEgoKcm9sbHNfZGljZRgNIAEoCBIRCglyb2xsX2RpY2UYDiABKAkSEwoLbWF4X3RhcmdldHMYDyABKAUSGQoRdGFyZ2V0c19wZXJfbGV2ZWwYECABKAUSEwoLY2FzdGVyX29ubHkYESABKAgSEgoKcmFuZ2Vfa2luZBgTIAEoCRIQCghyYW5nZV9mdBgUIAEoBRIrCgVyZWFjaBgVIAMoCzIcLm1ldXJwZy5wbGF5LnYxLkNhc3RpbmdSZWFjaBIPCgdzdW1tb25zGBIgASgIIkkKDENhc3RpbmdSZWFjaBIUCgxjaGFyYWN0ZXJfaWQYASABKAkSEAoIaW5fcmFuZ2UYAiABKAgSEQoJcmVhc29uX3B0GAMgASgJIm0KDUNhc3RpbmdUYXJnZXQSFAoMY2hhcmFjdGVyX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSCwoDbnBjGAMgASgIEhMKC2Rpc3RhbmNlX2Z0GAQgASgFEhYKDmRpc3RhbmNlX2tub3duGAUgASgIIkIKFUdldENhc3RPcHRpb25zUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkinQIKFkdldENhc3RPcHRpb25zUmVzcG9uc2USLAoGc3BlbGxzGAEgAygLMhwubWV1cnBnLnBsYXkudjEuQ2FzdGluZ1NwZWxsEi4KB3RhcmdldHMYAiADKAsyHS5tZXVycGcucGxheS52MS5DYXN0aW5nVGFyZ2V0EhEKCWluX2NvbWJhdBgDIAEoCBISCgp3aWxkX3NoYXBlGAQgASgIEiwKB2Nhc3RpbmcYBSABKAsyGy5tZXVycGcucGxheS52MS5PdXRzaWRlQ2FzdBIyCg1jb25jZW50cmF0aW5nGAYgASgLMhsubWV1cnBnLnBsYXkudjEuT3V0c2lkZUNhc3QSHAoUYXJtb3Jfbm90X3Byb2ZpY2llbnQYByABKAgixAIKHUNhc3RTcGVsbE91dHNpZGVDb21iYXRSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhsKE2Nhc3Rlcl9jaGFyYWN0ZXJfaWQYAiABKAkSEQoJc3BlbGxfa2V5GAMgASgJEhEKCWFzX3JpdHVhbBgEIAEoCBInCgRzbG90GAUgASgLMhkubWV1cnBnLnBsYXkudjEuU3BlbGxTbG90EhIKCnRhcmdldF9pZHMYBiADKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAcgASgJEhUKC3JvbGxfaW5fYXBwGAggASgISAASEwoJdHlwZWRfc3VtGAkgASgFSAASLAoGc3VtbW9uGAogASgLMhwubWV1cnBnLnBsYXkudjEuU3VtbW9uQ2hvaWNlEhMKC2FiaWxpdHlfa2V5GAsgASgJQgYKBHJvbGwivwEKHENvbmZpcm1DYXN0VGltZVBhc3NlZFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDwoHY2FzdF9pZBgCIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkSFQoLcm9sbF9pbl9hcHAYBCABKAhIABITCgl0eXBlZF9zdW0YBSABKAVIABIsCgZzdW1tb24YBiABKAsyHC5tZXVycGcucGxheS52MS5TdW1tb25DaG9pY2VCBgoEcm9sbCLKAQoeQ2FzdFNwZWxsT3V0c2lkZUNvbWJhdFJlc3BvbnNlEikKBGNhc3QYASABKAsyGy5tZXVycGcucGxheS52MS5PdXRzaWRlQ2FzdBIvCgZ2aXRhbHMYAiADKAsyHy5tZXVycGcucGxheS52MS5DaGFyYWN0ZXJWaXRhbHMSFAoMY3JlYXR1cmVfaWRzGAMgAygJEh4KFmRpc21pc3NlZF9jcmVhdHVyZV9pZHMYBCADKAkSFgoOZW5kZWRfY2FzdF9pZHMYBSADKAkiyQEKHUNvbmZpcm1DYXN0VGltZVBhc3NlZFJlc3BvbnNlEikKBGNhc3QYASABKAsyGy5tZXVycGcucGxheS52MS5PdXRzaWRlQ2FzdBIvCgZ2aXRhbHMYAiADKAsyHy5tZXVycGcucGxheS52MS5DaGFyYWN0ZXJWaXRhbHMSFAoMY3JlYXR1cmVfaWRzGAMgAygJEh4KFmRpc21pc3NlZF9jcmVhdHVyZV9pZHMYBCADKAkSFgoOZW5kZWRfY2FzdF9pZHMYBSADKAkiUwoSQWJhbmRvbkNhc3RSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg8KB2Nhc3RfaWQYAiABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAMgASgJIkAKE0FiYW5kb25DYXN0UmVzcG9uc2USKQoEY2FzdBgBIAEoCzIbLm1ldXJwZy5wbGF5LnYxLk91dHNpZGVDYXN0IlYKFUVuZEFjdGl2ZVNwZWxsUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIPCgdjYXN0X2lkGAIgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgDIAEoCSKUAQoWRW5kQWN0aXZlU3BlbGxSZXNwb25zZRIpCgRjYXN0GAEgASgLMhsubWV1cnBnLnBsYXkudjEuT3V0c2lkZUNhc3QSLwoGdml0YWxzGAIgAygLMh8ubWV1cnBnLnBsYXkudjEuQ2hhcmFjdGVyVml0YWxzEh4KFmRpc21pc3NlZF9jcmVhdHVyZV9pZHMYAyADKAkiQgoVTGlzdFNwZWxsQ2FzdHNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCSJvChZMaXN0U3BlbGxDYXN0c1Jlc3BvbnNlEisKBmFjdGl2ZRgBIAMoCzIbLm1ldXJwZy5wbGF5LnYxLk91dHNpZGVDYXN0EigKA2xvZxgCIAMoCzIbLm1ldXJwZy5wbGF5LnYxLk91dHNpZGVDYXN0IuwFCgtPdXRzaWRlQ2FzdBIKCgJpZBgBIAEoCRIRCglzcGVsbF9rZXkYAiABKAkSFQoNc3BlbGxfbmFtZV9wdBgDIAEoCRIRCgljYXN0ZXJfaWQYBCABKAkSEwoLY2FzdGVyX25hbWUYBSABKAkSFQoNY2FzdGVyX2lzX25wYxgGIAEoCBIxCgZzdGF0dXMYByABKA4yIS5tZXVycGcucGxheS52MS5PdXRzaWRlQ2FzdFN0YXR1cxIOCgZyaXR1YWwYCCABKAgSEgoKc2xvdF9sZXZlbBgJIAEoBRIRCglzbG90X3BhY3QYCiABKAgSFwoPY2FzdGluZ19taW51dGVzGAsgASgFEhUKDWNvbmNlbnRyYXRpbmcYDCABKAgSDQoFbGFzdHMYDSABKAgSGAoQZHVyYXRpb25fc2Vjb25kcxgOIAEoBRIvCglyZXN0X2VuZHMYDyABKA4yHC5tZXVycGcucGxheS52MS5SZXN0VGhhdEVuZHMSLgoKc3RhcnRlZF9hdBgQIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASKwoHY2FzdF9hdBgRIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLAoIZW5kZWRfYXQYEiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjIKCmVuZF9yZWFzb24YEyABKA4yHi5tZXVycGcucGxheS52MS5PdXRzaWRlQ2FzdEVuZBIyCgd0YXJnZXRzGBQgAygLMiEubWV1cnBnLnBsYXkudjEuT3V0c2lkZUNhc3RUYXJnZXQSEgoKZGljZV9jb3VudBgVIAEoBRISCgpkaWNlX3NpZGVzGBYgASgFEg0KBWZhY2VzGBcgAygFEhIKCnJvbGxfdG90YWwYGCABKAUSEAoIcGh5c2ljYWwYGSABKAgSDgoGc2VjcmV0GBogASgIEhQKDGNyZWF0dXJlX2lkcxgbIAMoCSLkAQoRT3V0c2lkZUNhc3RUYXJnZXQSFAoMY2hhcmFjdGVyX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSCwoDbnBjGAMgASgIEioKBmVmZmVjdBgEIAEoDjIaLm1ldXJwZy5wbGF5LnYxLkNhc3RFZmZlY3QSDgoGYW1vdW50GAUgASgFEhkKEWhpdF9wb2ludHNfYmVmb3JlGAYgASgFEhgKEGhpdF9wb2ludHNfYWZ0ZXIYByABKAUSGAoQZXh0cmFfaGl0X3BvaW50cxgJIAEoBRITCgthcm1vcl9jbGFzcxgIIAEoBSq4AQoRT3V0c2lkZUNhc3RTdGF0dXMSIwofT1VUU0lERV9DQVNUX1NUQVRVU19VTlNQRUNJRklFRBAAEh8KG09VVFNJREVfQ0FTVF9TVEFUVVNfQ0FTVElORxABEh4KGk9VVFNJREVfQ0FTVF9TVEFUVVNfQUNUSVZFEAISHQoZT1VUU0lERV9DQVNUX1NUQVRVU19FTkRFRBADEh4KGk9VVFNJREVfQ0FTVF9TVEFUVVNfRkFJTEVEEAQq8wEKDk91dHNpZGVDYXN0RW5kEiAKHE9VVFNJREVfQ0FTVF9FTkRfVU5TUEVDSUZJRUQQABIcChhPVVRTSURFX0NBU1RfRU5EX0lOU1RBTlQQARIeChpPVVRTSURFX0NBU1RfRU5EX0RJU01JU1NFRBACEiIKHk9VVFNJREVfQ0FTVF9FTkRfQ09OQ0VOVFJBVElPThADEhkKFU9VVFNJREVfQ0FTVF9FTkRfUkVTVBAEEiAKHE9VVFNJREVfQ0FTVF9FTkRfSU5URVJSVVBURUQQBRIgChxPVVRTSURFX0NBU1RfRU5EX0NBU1RFUl9HT05FEAYqYQoMUmVzdFRoYXRFbmRzEh4KGlJFU1RfVEhBVF9FTkRTX1VOU1BFQ0lGSUVEEAASGAoUUkVTVF9USEFUX0VORFNfU0hPUlQQARIXChNSRVNUX1RIQVRfRU5EU19MT05HEAIqvAEKCkNhc3RFZmZlY3QSGwoXQ0FTVF9FRkZFQ1RfVU5TUEVDSUZJRUQQABIYChRDQVNUX0VGRkVDVF9OQVJSQVRFRBABEhQKEENBU1RfRUZGRUNUX0hFQUwQAhIkCiBDQVNUX0VGRkVDVF9URU1QT1JBUllfSElUX1BPSU5UUxADEh4KGkNBU1RfRUZGRUNUX01BWF9ISVRfUE9JTlRTEAQSGwoXQ0FTVF9FRkZFQ1RfQVJNT1JfQ0xBU1MQBSr1AwoUQ2FzdGluZ0Jsb2NrZWRSZWFzb24SJgoiQ0FTVElOR19CTE9DS0VEX1JFQVNPTl9VTlNQRUNJRklFRBAAEiQKIENBU1RJTkdfQkxPQ0tFRF9SRUFTT05fSU5fQ09NQkFUEAESKwonQ0FTVElOR19CTE9DS0VEX1JFQVNPTl9DQVNUX0lOX1BST0dSRVNTEAISIgoeQ0FTVElOR19CTE9DS0VEX1JFQVNPTl9OT19TTE9UEAMSLQopQ0FTVElOR19CTE9DS0VEX1JFQVNPTl9UQVJHRVRfV0VBUlNfQVJNT1IQBBIpCiVDQVNUSU5HX0JMT0NLRURfUkVBU09OX0NBU1RfTk9UX0dPSU5HEAUSKgomQ0FTVElOR19CTE9DS0VEX1JFQVNPTl9DQVNUX05PVF9BQ1RJVkUQBhIuCipDQVNUSU5HX0JMT0NLRURfUkVBU09OX1RBUkdFVF9PVVRfT0ZfUkVBQ0gQBxIuCipDQVNUSU5HX0JMT0NLRURfUkVBU09OX0NMQVNTX0NBTk5PVF9SSVRVQUwQCBInCiNDQVNUSU5HX0JMT0NLRURfUkVBU09OX05PVF9BX1JJVFVBTBAJEi8KK0NBU1RJTkdfQkxPQ0tFRF9SRUFTT05fQVJNT1JfTk9UX1BST0ZJQ0lFTlQQCiqTAgoRQ2FzdGluZ0VmZmVjdEtpbmQSIwofQ0FTVElOR19FRkZFQ1RfS0lORF9VTlNQRUNJRklFRBAAEiAKHENBU1RJTkdfRUZGRUNUX0tJTkRfTkFSUkFURUQQARIcChhDQVNUSU5HX0VGRkVDVF9LSU5EX0hFQUwQAhIsCihDQVNUSU5HX0VGRkVDVF9LSU5EX1RFTVBPUkFSWV9ISVRfUE9JTlRTEAMSJgoiQ0FTVElOR19FRkZFQ1RfS0lORF9NQVhfSElUX1BPSU5UUxAEEiMKH0NBU1RJTkdfRUZGRUNUX0tJTkRfQVJNT1JfQ0xBU1MQBRIeChpDQVNUSU5HX0VGRkVDVF9LSU5EX1NVTU1PThAGMoQFCg5DYXN0aW5nU2VydmljZRJkCg5HZXRDYXN0T3B0aW9ucxIlLm1ldXJwZy5wbGF5LnYxLkdldENhc3RPcHRpb25zUmVxdWVzdBomLm1ldXJwZy5wbGF5LnYxLkdldENhc3RPcHRpb25zUmVzcG9uc2UiA5ACAhJ3ChZDYXN0U3BlbGxPdXRzaWRlQ29tYmF0Ei0ubWV1cnBnLnBsYXkudjEuQ2FzdFNwZWxsT3V0c2lkZUNvbWJhdFJlcXVlc3QaLi5tZXVycGcucGxheS52MS5DYXN0U3BlbGxPdXRzaWRlQ29tYmF0UmVzcG9uc2USdAoVQ29uZmlybUNhc3RUaW1lUGFzc2VkEiwubWV1cnBnLnBsYXkudjEuQ29uZmlybUNhc3RUaW1lUGFzc2VkUmVxdWVzdBotLm1ldXJwZy5wbGF5LnYxLkNvbmZpcm1DYXN0VGltZVBhc3NlZFJlc3BvbnNlElYKC0FiYW5kb25DYXN0EiIubWV1cnBnLnBsYXkudjEuQWJhbmRvbkNhc3RSZXF1ZXN0GiMubWV1cnBnLnBsYXkudjEuQWJhbmRvbkNhc3RSZXNwb25zZRJfCg5FbmRBY3RpdmVTcGVsbBIlLm1ldXJwZy5wbGF5LnYxLkVuZEFjdGl2ZVNwZWxsUmVxdWVzdBomLm1ldXJwZy5wbGF5LnYxLkVuZEFjdGl2ZVNwZWxsUmVzcG9uc2USZAoOTGlzdFNwZWxsQ2FzdHMSJS5tZXVycGcucGxheS52MS5MaXN0U3BlbGxDYXN0c1JlcXVlc3QaJi5tZXVycGcucGxheS52MS5MaXN0U3BlbGxDYXN0c1Jlc3BvbnNlIgOQAgJCugEKEmNvbS5tZXVycGcucGxheS52MUIMQ2FzdGluZ1Byb3RvUAFaPGdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9wbGF5L3YxO3BsYXl2MaICA01QWKoCDk1ldXJwZy5QbGF5LlYxygIOTWV1cnBnXFBsYXlcVjHiAhpNZXVycGdcUGxheVxWMVxHUEJNZXRhZGF0YeoCEE1ldXJwZzo6UGxheTo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp, file_meurpg_play_v1_combat, file_meurpg_play_v1_play, file_meurpg_rules_v1_rules]);
+  fileDesc("ChxtZXVycGcvcGxheS92MS9jYXN0aW5nLnByb3RvEg5tZXVycGcucGxheS52MSJtCg5DYXN0aW5nQmxvY2tlZBI0CgZyZWFzb24YASABKA4yJC5tZXVycGcucGxheS52MS5DYXN0aW5nQmxvY2tlZFJlYXNvbhIRCgltaW5fbGV2ZWwYAiABKAUSEgoKbWlzc2luZ19mdBgDIAEoBSKRBQoMQ2FzdGluZ1NwZWxsEiUKBXNwZWxsGAEgASgLMhYubWV1cnBnLnJ1bGVzLnYxLlNwZWxsEhAKCGNhbl9jYXN0GAIgASgIEhYKDnJpdHVhbF9hbGxvd2VkGAMgASgIEioKBXNsb3RzGAQgAygLMhsubWV1cnBnLnJ1bGVzLnYxLlNsb3RDaG9pY2USLwoGcmVhc29uGAUgASgLMh8ubWV1cnBnLnJ1bGVzLnYxLkRpc2FibGVkUmVhc29uEhcKD2Nhc3RpbmdfbWludXRlcxgGIAEoBRIWCg5yaXR1YWxfbWludXRlcxgHIAEoBRIXCg9jYXN0aW5nX3RpbWVfcHQYCCABKAkSDQoFbGFzdHMYCSABKAgSGAoQZHVyYXRpb25fc2Vjb25kcxgKIAEoBRIvCglyZXN0X2VuZHMYCyABKA4yHC5tZXVycGcucGxheS52MS5SZXN0VGhhdEVuZHMSMQoGZWZmZWN0GAwgASgOMiEubWV1cnBnLnBsYXkudjEuQ2FzdGluZ0VmZmVjdEtpbmQSEgoKcm9sbHNfZGljZRgNIAEoCBIRCglyb2xsX2RpY2UYDiABKAkSEwoLbWF4X3RhcmdldHMYDyABKAUSGQoRdGFyZ2V0c19wZXJfbGV2ZWwYECABKAUSEwoLY2FzdGVyX29ubHkYESABKAgSEgoKcmFuZ2Vfa2luZBgTIAEoCRIQCghyYW5nZV9mdBgUIAEoBRIrCgVyZWFjaBgVIAMoCzIcLm1ldXJwZy5wbGF5LnYxLkNhc3RpbmdSZWFjaBIPCgdzdW1tb25zGBIgASgIEiwKBmdyYW50cxgWIAMoCzIcLm1ldXJwZy5wbGF5LnYxLkNhc3RpbmdHcmFudCLkAQoMQ2FzdGluZ0dyYW50EhIKCnNvdXJjZV9rZXkYASABKAkSFgoOc291cmNlX25hbWVfcHQYAiABKAkSDwoHYXRfd2lsbBgDIAEoCBIQCghyZXNvdXJjZRgEIAEoCRIRCgl1c2VzX2xlZnQYBSABKAUSFgoOYWxzb193aXRoX3Nsb3QYBiABKAgSEwoLcml0dWFsX29ubHkYByABKAgSDQoFcmVhZHkYCCABKAgSDwoHYWJpbGl0eRgJIAEoCRIUCgxhdHRhY2tfYm9udXMYCiABKAUSDwoHc2F2ZV9kYxgLIAEoBSJJCgxDYXN0aW5nUmVhY2gSFAoMY2hhcmFjdGVyX2lkGAEgASgJEhAKCGluX3JhbmdlGAIgASgIEhEKCXJlYXNvbl9wdBgDIAEoCSJtCg1DYXN0aW5nVGFyZ2V0EhQKDGNoYXJhY3Rlcl9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEgsKA25wYxgDIAEoCBITCgtkaXN0YW5jZV9mdBgEIAEoBRIWCg5kaXN0YW5jZV9rbm93bhgFIAEoCCJCChVHZXRDYXN0T3B0aW9uc1JlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMY2hhcmFjdGVyX2lkGAIgASgJIp0CChZHZXRDYXN0T3B0aW9uc1Jlc3BvbnNlEiwKBnNwZWxscxgBIAMoCzIcLm1ldXJwZy5wbGF5LnYxLkNhc3RpbmdTcGVsbBIuCgd0YXJnZXRzGAIgAygLMh0ubWV1cnBnLnBsYXkudjEuQ2FzdGluZ1RhcmdldBIRCglpbl9jb21iYXQYAyABKAgSEgoKd2lsZF9zaGFwZRgEIAEoCBIsCgdjYXN0aW5nGAUgASgLMhsubWV1cnBnLnBsYXkudjEuT3V0c2lkZUNhc3QSMgoNY29uY2VudHJhdGluZxgGIAEoCzIbLm1ldXJwZy5wbGF5LnYxLk91dHNpZGVDYXN0EhwKFGFybW9yX25vdF9wcm9maWNpZW50GAcgASgIItgCCh1DYXN0U3BlbGxPdXRzaWRlQ29tYmF0UmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIbChNjYXN0ZXJfY2hhcmFjdGVyX2lkGAIgASgJEhEKCXNwZWxsX2tleRgDIAEoCRIRCglhc19yaXR1YWwYBCABKAgSJwoEc2xvdBgFIAEoCzIZLm1ldXJwZy5wbGF5LnYxLlNwZWxsU2xvdBISCgp0YXJnZXRfaWRzGAYgAygJEhcKD2lkZW1wb3RlbmN5X2tleRgHIAEoCRIVCgtyb2xsX2luX2FwcBgIIAEoCEgAEhMKCXR5cGVkX3N1bRgJIAEoBUgAEiwKBnN1bW1vbhgKIAEoCzIcLm1ldXJwZy5wbGF5LnYxLlN1bW1vbkNob2ljZRITCgthYmlsaXR5X2tleRgLIAEoCRISCgpncmFudGVkX2J5GAwgASgJQgYKBHJvbGwivwEKHENvbmZpcm1DYXN0VGltZVBhc3NlZFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSDwoHY2FzdF9pZBgCIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkSFQoLcm9sbF9pbl9hcHAYBCABKAhIABITCgl0eXBlZF9zdW0YBSABKAVIABIsCgZzdW1tb24YBiABKAsyHC5tZXVycGcucGxheS52MS5TdW1tb25DaG9pY2VCBgoEcm9sbCLKAQoeQ2FzdFNwZWxsT3V0c2lkZUNvbWJhdFJlc3BvbnNlEikKBGNhc3QYASABKAsyGy5tZXVycGcucGxheS52MS5PdXRzaWRlQ2FzdBIvCgZ2aXRhbHMYAiADKAsyHy5tZXVycGcucGxheS52MS5DaGFyYWN0ZXJWaXRhbHMSFAoMY3JlYXR1cmVfaWRzGAMgAygJEh4KFmRpc21pc3NlZF9jcmVhdHVyZV9pZHMYBCADKAkSFgoOZW5kZWRfY2FzdF9pZHMYBSADKAkiyQEKHUNvbmZpcm1DYXN0VGltZVBhc3NlZFJlc3BvbnNlEikKBGNhc3QYASABKAsyGy5tZXVycGcucGxheS52MS5PdXRzaWRlQ2FzdBIvCgZ2aXRhbHMYAiADKAsyHy5tZXVycGcucGxheS52MS5DaGFyYWN0ZXJWaXRhbHMSFAoMY3JlYXR1cmVfaWRzGAMgAygJEh4KFmRpc21pc3NlZF9jcmVhdHVyZV9pZHMYBCADKAkSFgoOZW5kZWRfY2FzdF9pZHMYBSADKAkiUwoSQWJhbmRvbkNhc3RSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEg8KB2Nhc3RfaWQYAiABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAMgASgJIkAKE0FiYW5kb25DYXN0UmVzcG9uc2USKQoEY2FzdBgBIAEoCzIbLm1ldXJwZy5wbGF5LnYxLk91dHNpZGVDYXN0IlYKFUVuZEFjdGl2ZVNwZWxsUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIPCgdjYXN0X2lkGAIgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgDIAEoCSKUAQoWRW5kQWN0aXZlU3BlbGxSZXNwb25zZRIpCgRjYXN0GAEgASgLMhsubWV1cnBnLnBsYXkudjEuT3V0c2lkZUNhc3QSLwoGdml0YWxzGAIgAygLMh8ubWV1cnBnLnBsYXkudjEuQ2hhcmFjdGVyVml0YWxzEh4KFmRpc21pc3NlZF9jcmVhdHVyZV9pZHMYAyADKAkiQgoVTGlzdFNwZWxsQ2FzdHNSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCSJvChZMaXN0U3BlbGxDYXN0c1Jlc3BvbnNlEisKBmFjdGl2ZRgBIAMoCzIbLm1ldXJwZy5wbGF5LnYxLk91dHNpZGVDYXN0EigKA2xvZxgCIAMoCzIbLm1ldXJwZy5wbGF5LnYxLk91dHNpZGVDYXN0IuwFCgtPdXRzaWRlQ2FzdBIKCgJpZBgBIAEoCRIRCglzcGVsbF9rZXkYAiABKAkSFQoNc3BlbGxfbmFtZV9wdBgDIAEoCRIRCgljYXN0ZXJfaWQYBCABKAkSEwoLY2FzdGVyX25hbWUYBSABKAkSFQoNY2FzdGVyX2lzX25wYxgGIAEoCBIxCgZzdGF0dXMYByABKA4yIS5tZXVycGcucGxheS52MS5PdXRzaWRlQ2FzdFN0YXR1cxIOCgZyaXR1YWwYCCABKAgSEgoKc2xvdF9sZXZlbBgJIAEoBRIRCglzbG90X3BhY3QYCiABKAgSFwoPY2FzdGluZ19taW51dGVzGAsgASgFEhUKDWNvbmNlbnRyYXRpbmcYDCABKAgSDQoFbGFzdHMYDSABKAgSGAoQZHVyYXRpb25fc2Vjb25kcxgOIAEoBRIvCglyZXN0X2VuZHMYDyABKA4yHC5tZXVycGcucGxheS52MS5SZXN0VGhhdEVuZHMSLgoKc3RhcnRlZF9hdBgQIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASKwoHY2FzdF9hdBgRIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLAoIZW5kZWRfYXQYEiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjIKCmVuZF9yZWFzb24YEyABKA4yHi5tZXVycGcucGxheS52MS5PdXRzaWRlQ2FzdEVuZBIyCgd0YXJnZXRzGBQgAygLMiEubWV1cnBnLnBsYXkudjEuT3V0c2lkZUNhc3RUYXJnZXQSEgoKZGljZV9jb3VudBgVIAEoBRISCgpkaWNlX3NpZGVzGBYgASgFEg0KBWZhY2VzGBcgAygFEhIKCnJvbGxfdG90YWwYGCABKAUSEAoIcGh5c2ljYWwYGSABKAgSDgoGc2VjcmV0GBogASgIEhQKDGNyZWF0dXJlX2lkcxgbIAMoCSLkAQoRT3V0c2lkZUNhc3RUYXJnZXQSFAoMY2hhcmFjdGVyX2lkGAEgASgJEgwKBG5hbWUYAiABKAkSCwoDbnBjGAMgASgIEioKBmVmZmVjdBgEIAEoDjIaLm1ldXJwZy5wbGF5LnYxLkNhc3RFZmZlY3QSDgoGYW1vdW50GAUgASgFEhkKEWhpdF9wb2ludHNfYmVmb3JlGAYgASgFEhgKEGhpdF9wb2ludHNfYWZ0ZXIYByABKAUSGAoQZXh0cmFfaGl0X3BvaW50cxgJIAEoBRITCgthcm1vcl9jbGFzcxgIIAEoBSq4AQoRT3V0c2lkZUNhc3RTdGF0dXMSIwofT1VUU0lERV9DQVNUX1NUQVRVU19VTlNQRUNJRklFRBAAEh8KG09VVFNJREVfQ0FTVF9TVEFUVVNfQ0FTVElORxABEh4KGk9VVFNJREVfQ0FTVF9TVEFUVVNfQUNUSVZFEAISHQoZT1VUU0lERV9DQVNUX1NUQVRVU19FTkRFRBADEh4KGk9VVFNJREVfQ0FTVF9TVEFUVVNfRkFJTEVEEAQq8wEKDk91dHNpZGVDYXN0RW5kEiAKHE9VVFNJREVfQ0FTVF9FTkRfVU5TUEVDSUZJRUQQABIcChhPVVRTSURFX0NBU1RfRU5EX0lOU1RBTlQQARIeChpPVVRTSURFX0NBU1RfRU5EX0RJU01JU1NFRBACEiIKHk9VVFNJREVfQ0FTVF9FTkRfQ09OQ0VOVFJBVElPThADEhkKFU9VVFNJREVfQ0FTVF9FTkRfUkVTVBAEEiAKHE9VVFNJREVfQ0FTVF9FTkRfSU5URVJSVVBURUQQBRIgChxPVVRTSURFX0NBU1RfRU5EX0NBU1RFUl9HT05FEAYqYQoMUmVzdFRoYXRFbmRzEh4KGlJFU1RfVEhBVF9FTkRTX1VOU1BFQ0lGSUVEEAASGAoUUkVTVF9USEFUX0VORFNfU0hPUlQQARIXChNSRVNUX1RIQVRfRU5EU19MT05HEAIqvAEKCkNhc3RFZmZlY3QSGwoXQ0FTVF9FRkZFQ1RfVU5TUEVDSUZJRUQQABIYChRDQVNUX0VGRkVDVF9OQVJSQVRFRBABEhQKEENBU1RfRUZGRUNUX0hFQUwQAhIkCiBDQVNUX0VGRkVDVF9URU1QT1JBUllfSElUX1BPSU5UUxADEh4KGkNBU1RfRUZGRUNUX01BWF9ISVRfUE9JTlRTEAQSGwoXQ0FTVF9FRkZFQ1RfQVJNT1JfQ0xBU1MQBSqZBAoUQ2FzdGluZ0Jsb2NrZWRSZWFzb24SJgoiQ0FTVElOR19CTE9DS0VEX1JFQVNPTl9VTlNQRUNJRklFRBAAEiQKIENBU1RJTkdfQkxPQ0tFRF9SRUFTT05fSU5fQ09NQkFUEAESKwonQ0FTVElOR19CTE9DS0VEX1JFQVNPTl9DQVNUX0lOX1BST0dSRVNTEAISIgoeQ0FTVElOR19CTE9DS0VEX1JFQVNPTl9OT19TTE9UEAMSLQopQ0FTVElOR19CTE9DS0VEX1JFQVNPTl9UQVJHRVRfV0VBUlNfQVJNT1IQBBIpCiVDQVNUSU5HX0JMT0NLRURfUkVBU09OX0NBU1RfTk9UX0dPSU5HEAUSKgomQ0FTVElOR19CTE9DS0VEX1JFQVNPTl9DQVNUX05PVF9BQ1RJVkUQBhIuCipDQVNUSU5HX0JMT0NLRURfUkVBU09OX1RBUkdFVF9PVVRfT0ZfUkVBQ0gQBxIuCipDQVNUSU5HX0JMT0NLRURfUkVBU09OX0NMQVNTX0NBTk5PVF9SSVRVQUwQCBInCiNDQVNUSU5HX0JMT0NLRURfUkVBU09OX05PVF9BX1JJVFVBTBAJEi8KK0NBU1RJTkdfQkxPQ0tFRF9SRUFTT05fQVJNT1JfTk9UX1BST0ZJQ0lFTlQQChIiCh5DQVNUSU5HX0JMT0NLRURfUkVBU09OX05PX1VTRVMQCyqTAgoRQ2FzdGluZ0VmZmVjdEtpbmQSIwofQ0FTVElOR19FRkZFQ1RfS0lORF9VTlNQRUNJRklFRBAAEiAKHENBU1RJTkdfRUZGRUNUX0tJTkRfTkFSUkFURUQQARIcChhDQVNUSU5HX0VGRkVDVF9LSU5EX0hFQUwQAhIsCihDQVNUSU5HX0VGRkVDVF9LSU5EX1RFTVBPUkFSWV9ISVRfUE9JTlRTEAMSJgoiQ0FTVElOR19FRkZFQ1RfS0lORF9NQVhfSElUX1BPSU5UUxAEEiMKH0NBU1RJTkdfRUZGRUNUX0tJTkRfQVJNT1JfQ0xBU1MQBRIeChpDQVNUSU5HX0VGRkVDVF9LSU5EX1NVTU1PThAGMoQFCg5DYXN0aW5nU2VydmljZRJkCg5HZXRDYXN0T3B0aW9ucxIlLm1ldXJwZy5wbGF5LnYxLkdldENhc3RPcHRpb25zUmVxdWVzdBomLm1ldXJwZy5wbGF5LnYxLkdldENhc3RPcHRpb25zUmVzcG9uc2UiA5ACAhJ3ChZDYXN0U3BlbGxPdXRzaWRlQ29tYmF0Ei0ubWV1cnBnLnBsYXkudjEuQ2FzdFNwZWxsT3V0c2lkZUNvbWJhdFJlcXVlc3QaLi5tZXVycGcucGxheS52MS5DYXN0U3BlbGxPdXRzaWRlQ29tYmF0UmVzcG9uc2USdAoVQ29uZmlybUNhc3RUaW1lUGFzc2VkEiwubWV1cnBnLnBsYXkudjEuQ29uZmlybUNhc3RUaW1lUGFzc2VkUmVxdWVzdBotLm1ldXJwZy5wbGF5LnYxLkNvbmZpcm1DYXN0VGltZVBhc3NlZFJlc3BvbnNlElYKC0FiYW5kb25DYXN0EiIubWV1cnBnLnBsYXkudjEuQWJhbmRvbkNhc3RSZXF1ZXN0GiMubWV1cnBnLnBsYXkudjEuQWJhbmRvbkNhc3RSZXNwb25zZRJfCg5FbmRBY3RpdmVTcGVsbBIlLm1ldXJwZy5wbGF5LnYxLkVuZEFjdGl2ZVNwZWxsUmVxdWVzdBomLm1ldXJwZy5wbGF5LnYxLkVuZEFjdGl2ZVNwZWxsUmVzcG9uc2USZAoOTGlzdFNwZWxsQ2FzdHMSJS5tZXVycGcucGxheS52MS5MaXN0U3BlbGxDYXN0c1JlcXVlc3QaJi5tZXVycGcucGxheS52MS5MaXN0U3BlbGxDYXN0c1Jlc3BvbnNlIgOQAgJCugEKEmNvbS5tZXVycGcucGxheS52MUIMQ2FzdGluZ1Byb3RvUAFaPGdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9wbGF5L3YxO3BsYXl2MaICA01QWKoCDk1ldXJwZy5QbGF5LlYxygIOTWV1cnBnXFBsYXlcVjHiAhpNZXVycGdcUGxheVxWMVxHUEJNZXRhZGF0YeoCEE1ldXJwZzo6UGxheTo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp, file_meurpg_play_v1_combat, file_meurpg_play_v1_play, file_meurpg_rules_v1_rules]);
 
 /**
  * CastingBlocked is the detail of CastingService's `failed_precondition`.
@@ -208,6 +208,15 @@ export type CastingSpell = Message<"meurpg.play.v1.CastingSpell"> & {
    * @generated from field: bool summons = 18;
    */
   summons: boolean;
+
+  /**
+   * The granted_spell effects that give the spell, each one a way to cast it with no slot
+   * (CastSpellOutsideCombatRequest.granted_by = source_key). The spell is listed once, even
+   * when the character's class has it too.
+   *
+   * @generated from field: repeated meurpg.play.v1.CastingGrant grants = 22;
+   */
+  grants: CastingGrant[];
 };
 
 /**
@@ -216,6 +225,85 @@ export type CastingSpell = Message<"meurpg.play.v1.CastingSpell"> & {
  */
 export const CastingSpellSchema: GenMessage<CastingSpell> = /*@__PURE__*/
   messageDesc(file_meurpg_play_v1_casting, 1);
+
+/**
+ * CastingGrant is a granted_spell effect that gives a spell the character casts outside a combat.
+ *
+ * @generated from message meurpg.play.v1.CastingGrant
+ */
+export type CastingGrant = Message<"meurpg.play.v1.CastingGrant"> & {
+  /**
+   * The trait, feat or feature that grants it, and its name.
+   *
+   * @generated from field: string source_key = 1;
+   */
+  sourceKey: string;
+
+  /**
+   * @generated from field: string source_name_pt = 2;
+   */
+  sourceNamePt: string;
+
+  /**
+   * @generated from field: bool at_will = 3;
+   */
+  atWill: boolean;
+
+  /**
+   * The resource a cast spends one of, and the uses left; empty and 0 for an at-will grant.
+   *
+   * @generated from field: string resource = 4;
+   */
+  resource: string;
+
+  /**
+   * @generated from field: int32 uses_left = 5;
+   */
+  usesLeft: number;
+
+  /**
+   * A spell slot casts it too, and: it casts only as a ritual.
+   *
+   * @generated from field: bool also_with_slot = 6;
+   */
+  alsoWithSlot: boolean;
+
+  /**
+   * @generated from field: bool ritual_only = 7;
+   */
+  ritualOnly: boolean;
+
+  /**
+   * Whether a cast works now: it is at will, or a use is left.
+   *
+   * @generated from field: bool ready = 8;
+   */
+  ready: boolean;
+
+  /**
+   * The casting ability of the grant and the numbers it gives.
+   *
+   * @generated from field: string ability = 9;
+   */
+  ability: string;
+
+  /**
+   * @generated from field: int32 attack_bonus = 10;
+   */
+  attackBonus: number;
+
+  /**
+   * @generated from field: int32 save_dc = 11;
+   */
+  saveDc: number;
+};
+
+/**
+ * Describes the message meurpg.play.v1.CastingGrant.
+ * Use `create(CastingGrantSchema)` to create a new message.
+ */
+export const CastingGrantSchema: GenMessage<CastingGrant> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_casting, 2);
 
 /**
  * CastingReach says whether a target can be picked for a spell.
@@ -246,7 +334,7 @@ export type CastingReach = Message<"meurpg.play.v1.CastingReach"> & {
  * Use `create(CastingReachSchema)` to create a new message.
  */
 export const CastingReachSchema: GenMessage<CastingReach> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 2);
+  messageDesc(file_meurpg_play_v1_casting, 3);
 
 /**
  * CastingTarget is a character the caller may pick as a target.
@@ -293,7 +381,7 @@ export type CastingTarget = Message<"meurpg.play.v1.CastingTarget"> & {
  * Use `create(CastingTargetSchema)` to create a new message.
  */
 export const CastingTargetSchema: GenMessage<CastingTarget> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 3);
+  messageDesc(file_meurpg_play_v1_casting, 4);
 
 /**
  * GetCastOptionsRequest names the caster.
@@ -319,7 +407,7 @@ export type GetCastOptionsRequest = Message<"meurpg.play.v1.GetCastOptionsReques
  * Use `create(GetCastOptionsRequestSchema)` to create a new message.
  */
 export const GetCastOptionsRequestSchema: GenMessage<GetCastOptionsRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 4);
+  messageDesc(file_meurpg_play_v1_casting, 5);
 
 /**
  * GetCastOptionsResponse is what the character can cast, and on whom.
@@ -382,7 +470,7 @@ export type GetCastOptionsResponse = Message<"meurpg.play.v1.GetCastOptionsRespo
  * Use `create(GetCastOptionsResponseSchema)` to create a new message.
  */
 export const GetCastOptionsResponseSchema: GenMessage<GetCastOptionsResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 5);
+  messageDesc(file_meurpg_play_v1_casting, 6);
 
 /**
  * CastSpellOutsideCombatRequest casts a spell outside a combat.
@@ -482,6 +570,18 @@ export type CastSpellOutsideCombatRequest = Message<"meurpg.play.v1.CastSpellOut
    * @generated from field: string ability_key = 11;
    */
   abilityKey: string;
+
+  /**
+   * The trait, feat or feature whose granted_spell effect casts the spell (the
+   * `source_key` of the sheet's granted spell): the cast takes no slot, spends a use of
+   * the grant's resource unless it is at will, and the spell attack and the save DC are
+   * the grant's. With a `slot` it casts through the slot instead, which the grant must
+   * allow (also_with_slot) and which spends no use. A grant that is only for rituals
+   * takes `as_ritual`. Empty for a spell of the character's classes.
+   *
+   * @generated from field: string granted_by = 12;
+   */
+  grantedBy: string;
 };
 
 /**
@@ -489,7 +589,7 @@ export type CastSpellOutsideCombatRequest = Message<"meurpg.play.v1.CastSpellOut
  * Use `create(CastSpellOutsideCombatRequestSchema)` to create a new message.
  */
 export const CastSpellOutsideCombatRequestSchema: GenMessage<CastSpellOutsideCombatRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 6);
+  messageDesc(file_meurpg_play_v1_casting, 7);
 
 /**
  * ConfirmCastTimePassedRequest ends the casting of a spell that takes time.
@@ -542,7 +642,7 @@ export type ConfirmCastTimePassedRequest = Message<"meurpg.play.v1.ConfirmCastTi
  * Use `create(ConfirmCastTimePassedRequestSchema)` to create a new message.
  */
 export const ConfirmCastTimePassedRequestSchema: GenMessage<ConfirmCastTimePassedRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 7);
+  messageDesc(file_meurpg_play_v1_casting, 8);
 
 /**
  * CastSpellOutsideCombatResponse returns the cast and what it changed.
@@ -594,7 +694,7 @@ export type CastSpellOutsideCombatResponse = Message<"meurpg.play.v1.CastSpellOu
  * Use `create(CastSpellOutsideCombatResponseSchema)` to create a new message.
  */
 export const CastSpellOutsideCombatResponseSchema: GenMessage<CastSpellOutsideCombatResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 8);
+  messageDesc(file_meurpg_play_v1_casting, 9);
 
 /**
  * ConfirmCastTimePassedResponse returns the cast and what it changed, as CastSpellOutsideCombatResponse does.
@@ -646,7 +746,7 @@ export type ConfirmCastTimePassedResponse = Message<"meurpg.play.v1.ConfirmCastT
  * Use `create(ConfirmCastTimePassedResponseSchema)` to create a new message.
  */
 export const ConfirmCastTimePassedResponseSchema: GenMessage<ConfirmCastTimePassedResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 9);
+  messageDesc(file_meurpg_play_v1_casting, 10);
 
 /**
  * AbandonCastRequest fails a cast that is being cast.
@@ -675,7 +775,7 @@ export type AbandonCastRequest = Message<"meurpg.play.v1.AbandonCastRequest"> & 
  * Use `create(AbandonCastRequestSchema)` to create a new message.
  */
 export const AbandonCastRequestSchema: GenMessage<AbandonCastRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 10);
+  messageDesc(file_meurpg_play_v1_casting, 11);
 
 /**
  * AbandonCastResponse returns the cast as it is.
@@ -694,7 +794,7 @@ export type AbandonCastResponse = Message<"meurpg.play.v1.AbandonCastResponse"> 
  * Use `create(AbandonCastResponseSchema)` to create a new message.
  */
 export const AbandonCastResponseSchema: GenMessage<AbandonCastResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 11);
+  messageDesc(file_meurpg_play_v1_casting, 12);
 
 /**
  * EndActiveSpellRequest ends a spell that lasts.
@@ -723,7 +823,7 @@ export type EndActiveSpellRequest = Message<"meurpg.play.v1.EndActiveSpellReques
  * Use `create(EndActiveSpellRequestSchema)` to create a new message.
  */
 export const EndActiveSpellRequestSchema: GenMessage<EndActiveSpellRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 12);
+  messageDesc(file_meurpg_play_v1_casting, 13);
 
 /**
  * EndActiveSpellResponse returns the cast as it is, and what ending it changed.
@@ -756,7 +856,7 @@ export type EndActiveSpellResponse = Message<"meurpg.play.v1.EndActiveSpellRespo
  * Use `create(EndActiveSpellResponseSchema)` to create a new message.
  */
 export const EndActiveSpellResponseSchema: GenMessage<EndActiveSpellResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 13);
+  messageDesc(file_meurpg_play_v1_casting, 14);
 
 /**
  * ListSpellCastsRequest asks for the casts of the open session.
@@ -782,7 +882,7 @@ export type ListSpellCastsRequest = Message<"meurpg.play.v1.ListSpellCastsReques
  * Use `create(ListSpellCastsRequestSchema)` to create a new message.
  */
 export const ListSpellCastsRequestSchema: GenMessage<ListSpellCastsRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 14);
+  messageDesc(file_meurpg_play_v1_casting, 15);
 
 /**
  * ListSpellCastsResponse is the casts, as the caller sees them.
@@ -810,7 +910,7 @@ export type ListSpellCastsResponse = Message<"meurpg.play.v1.ListSpellCastsRespo
  * Use `create(ListSpellCastsResponseSchema)` to create a new message.
  */
 export const ListSpellCastsResponseSchema: GenMessage<ListSpellCastsResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 15);
+  messageDesc(file_meurpg_play_v1_casting, 16);
 
 /**
  * OutsideCast is one casting outside a combat.
@@ -989,7 +1089,7 @@ export type OutsideCast = Message<"meurpg.play.v1.OutsideCast"> & {
  * Use `create(OutsideCastSchema)` to create a new message.
  */
 export const OutsideCastSchema: GenMessage<OutsideCast> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 16);
+  messageDesc(file_meurpg_play_v1_casting, 17);
 
 /**
  * OutsideCastTarget is what a cast did to one target.
@@ -1059,7 +1159,7 @@ export type OutsideCastTarget = Message<"meurpg.play.v1.OutsideCastTarget"> & {
  * Use `create(OutsideCastTargetSchema)` to create a new message.
  */
 export const OutsideCastTargetSchema: GenMessage<OutsideCastTarget> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_casting, 17);
+  messageDesc(file_meurpg_play_v1_casting, 18);
 
 /**
  * OutsideCastStatus is where a cast is.
@@ -1334,6 +1434,13 @@ export enum CastingBlockedReason {
    * @generated from enum value: CASTING_BLOCKED_REASON_ARMOR_NOT_PROFICIENT = 10;
    */
   ARMOR_NOT_PROFICIENT = 10,
+
+  /**
+   * granted_by: the grant is not at will and has no use left.
+   *
+   * @generated from enum value: CASTING_BLOCKED_REASON_NO_USES = 11;
+   */
+  NO_USES = 11,
 }
 
 /**

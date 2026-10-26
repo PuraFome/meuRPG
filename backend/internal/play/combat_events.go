@@ -341,8 +341,10 @@ type actionEvent struct {
 	// did to each target and the concentration it set or ended; a feature action:
 	// the resource a use of which was spent. For a damage roll of a cast, Settled
 	// is every pending damage the one roll settled.
-	CastID     string      `json:"cast_id,omitempty"`
-	Slot       *slotRef    `json:"slot,omitempty"`
+	CastID string   `json:"cast_id,omitempty"`
+	Slot   *slotRef `json:"slot,omitempty"`
+	// GrantUse is the resource a cast through a limited granted_spell effect spent a use of, for the undo.
+	GrantUse   string      `json:"grant_use,omitempty"`
 	Resource   string      `json:"resource,omitempty"`
 	Hits       []castHit   `json:"hits,omitempty"`
 	CoverUsers []string    `json:"cover_users,omitempty"` // the players the hits' CoverSeenMask counts, bit by bit

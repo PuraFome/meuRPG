@@ -1,5 +1,7 @@
 package link
 
+import "slices"
+
 // The reads casting outside a combat needs from the characters module (SRD 5.1,
 // "Spellcasting"). Like the rest of this package they are plain types: the module
 // that fills them and the one that reads them never import each other.
@@ -63,6 +65,32 @@ type OutsideSpell struct {
 	Healing HealFeatures
 	// NPC says the caster is an NPC: it has no slots to spend.
 	NPC bool
+	// Grants are the granted_spell effects that give the spell (empty when none does).
+	Grants []OutsideGrant
+}
+
+// GrantedRitual says a grant casts the spell as a ritual.
+func (o OutsideSpell) GrantedRitual() bool {
+	return slices.ContainsFunc(o.Grants, func(g OutsideGrant) bool { return g.RitualOnly })
+}
+
+// GrantedWithoutSlot says a grant casts the spell with no slot, not as a ritual.
+func (o OutsideSpell) GrantedWithoutSlot() bool {
+	return slices.ContainsFunc(o.Grants, func(g OutsideGrant) bool { return !g.RitualOnly })
+}
+
+// OutsideGrant is a way to cast a spell the character has from a granted_spell effect: with
+// no slot, spending a use of Resource unless AtWill. RitualOnly limits it to the ritual way;
+// AlsoWithSlot lets a spell slot cast it too. Ready says a cast works now (an at-will grant,
+// or a use left). The spell attack bonus and the save DC come with GrantedCombatSpell.
+type OutsideGrant struct {
+	Source, SourcePT string
+	AtWill           bool
+	Resource         string
+	UsesLeft         int
+	AlsoWithSlot     bool
+	RitualOnly       bool
+	Ready            bool
 }
 
 // MageArmor is what Mage Armor would do for a character: Wears says it wears armor (the
