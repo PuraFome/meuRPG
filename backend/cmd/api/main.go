@@ -450,7 +450,6 @@ func mountServices(ctx context.Context, logger *slog.Logger, srv *httpserver.Ser
 	// An export in flight stops with the server; the next read marks it
 	// interrupted. The sweeper deletes what expired while it runs.
 	srv.OnShutdown(m.packages.Cancel)
-	m.packages.RunSweeper(ctx)
 }
 
 // mountWeb serves the Angular build when WEB_DIR has one; without it the

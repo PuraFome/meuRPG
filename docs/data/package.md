@@ -26,7 +26,7 @@ The sweeper also removes rows whose campaign or account no longer exists, whatev
 
 One row per export.
 `id` is 32 random hex digits (128 bits, a `CHECK`) and is the download address.
-`state` is `running`, `done`, `failed` or `canceled`; `percent` is 0 to 100; `failure` is empty, `too_big` or `interrupted`.
+`state` is `pending` (the task has not claimed it yet), `running`, `done`, `failed` or `canceled`; `percent` is 0 to 100; `failure` is empty, `too_big` or `interrupted`.
 `file_name` is the name the download suggests (ASCII, from the campaign name); `blob_key`, `byte_size` and `entry_count` describe the file.
 `create_key`/`create_hash` are the idempotency key of `StartCampaignExport`, scoped to the campaign and the caller.
 `campaign_id` and `requested_by` are plain columns.
