@@ -688,7 +688,8 @@ func TestRaceBonusesToPlace(t *testing.T) {
 	if got[STR] != 12 || got[DEX] != 11 || got[CON] != 11 || got[WIS] != 11 {
 		t.Errorf("scores = %v", got)
 	}
-	if d.SpeedWalkFt != 25 || len(d.Languages) != 1 {
+	// The race's Common, and the three languages the sheet typed in the free field.
+	if d.SpeedWalkFt != 25 || len(d.Languages) != 4 {
 		t.Errorf("speed %d, languages %v", d.SpeedWalkFt, d.Languages)
 	}
 	if !slices.ContainsFunc(d.Senses, func(s Sense) bool {

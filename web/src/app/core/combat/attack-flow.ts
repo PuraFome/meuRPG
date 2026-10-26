@@ -150,6 +150,25 @@ export function targetRows(targets: readonly TargetInReach[], rangeFt: number): 
   });
 }
 
+/**
+ * The creature an attack starts aimed at: the nearest one in reach, and the first of the list among equals; with none
+ * in reach (or none measurable) the first of the list. The list itself keeps the server's order. Never a creature the
+ * attack cannot reach, while another it can reach stands there (a sword's turn used to start on the first of the
+ * order, 3 m away, with two others at 1,5 m).
+ */
+export function nearestInReach(targets: readonly TargetInReach[]): string {
+  let best: TargetInReach | undefined;
+  for (const t of targets) {
+    if (t.tooFar || t.untargetable) {
+      continue;
+    }
+    if (!best || (t.distanceFt ?? Infinity) < (best.distanceFt ?? Infinity)) {
+      best = t;
+    }
+  }
+  return (best ?? targets[0])?.combatantId ?? '';
+}
+
 /** The line about the target after the damage is rolled: "Goblin 2
  * derrotado", or the wait for the master when the target is a player's
  * character, or the target's new state word. */

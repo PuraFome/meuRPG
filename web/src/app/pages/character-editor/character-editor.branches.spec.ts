@@ -931,6 +931,50 @@ describe('CharacterEditor, what the server says about the draft', () => {
     expect((document.activeElement as HTMLElement).closest('[data-pending]')).not.toBeNull();
   });
 
+  it('marks the Escolhas step for an open language pick but does not stop the save, and says nothing of it under the button', async () => {
+    const { cmp, fixture, fake } = await ready();
+    const language = create(ChoiceSchema, {
+      key: 'background:acolyte#language',
+      featureKey: 'background:acolyte',
+      kind: ChoiceKind.OPTIONS,
+      titlePt: 'Idiomas',
+      labelPt: 'Idiomas (Acólito)',
+      picks: 2,
+      missing: 2,
+      advisory: true,
+      options: [
+        create(ChoiceOptionSchema, {
+          key: 'language:giant',
+          storedKey: 'background:acolyte#language=language:giant',
+          namePt: 'Gigante',
+        }),
+      ],
+    });
+    fake.choicesFn = () =>
+      Promise.resolve({
+        groups: [
+          create(ChoiceGroupSchema, {
+            origin: ChoiceOrigin.BACKGROUND,
+            sourceNamePt: 'Acólito',
+            choices: [language],
+          }),
+        ],
+        done: 0,
+        total: 2,
+        notOffered: [],
+        spellSources: [],
+      });
+    vi.useFakeTimers();
+    fill(cmp, { className: 'class:fighter' });
+    fixture.detectChanges();
+    await vi.advanceTimersByTimeAsync(PAUSE);
+    fixture.detectChanges();
+    vi.useRealTimers();
+    expect(cmp.server.pendingSteps()).toEqual(['Escolhas']);
+    expect(cmp.server.choicesBlocked()).toBe(false);
+    expect(cmp.server.missingText()).toBe('');
+  });
+
   it('has nowhere to lead a blocked save when there is no stepper or no Escolhas step', async () => {
     const { cmp } = await ready();
     cmp.stepper = undefined;
