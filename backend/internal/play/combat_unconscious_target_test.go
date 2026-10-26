@@ -68,3 +68,24 @@ func TestUnconsciousTargetSpellAttackFromAfarHasAdvantageOnly(t *testing.T) {
 		t.Fatalf("the damage at 0 = %v, %v; want one death save failure", applied, err)
 	}
 }
+
+// The master's choice of the d20 mode for an NPC against a character at 0 hit points wins over
+// the suggested advantage, with its reason; the critical hit from within 5 ft stays.
+func TestUnconsciousTargetTheMastersChosenModeWinsForAnNPCAttacker(t *testing.T) {
+	t.Parallel()
+	s := newSniperTable(t)
+	e := s.downedFight(t, "Goblin")
+
+	s.h.roller.queue(15, 16, 3, 3)
+	hit := s.mustAttack(t, s.master, e, "Goblin", sword, "Brisa", func(r *playv1.RollAttackRequest) {
+		r.Roll = &playv1.RollAttackRequest_RollInApp{RollInApp: true}
+		r.RollMode, r.ModeReason = playv1.RollMode_ROLL_MODE_DISADVANTAGE, "Escuridão"
+	})
+	r := hit.GetRoll()
+	if r.GetMode() != playv1.RollMode_ROLL_MODE_DISADVANTAGE || r.GetSuggestedMode() != playv1.RollMode_ROLL_MODE_ADVANTAGE || r.GetModeReason() != "Escuridão" {
+		t.Fatalf("the roll = mode %v, suggested %v, reason %q; want the master's disadvantage over the suggested advantage", r.GetMode(), r.GetSuggestedMode(), r.GetModeReason())
+	}
+	if !r.GetCriticalOnHit() || !hit.GetPendingDamage().GetCritical() {
+		t.Errorf("the hit = critical on hit %v, damage critical %v; want the critical to stay", r.GetCriticalOnHit(), hit.GetPendingDamage().GetCritical())
+	}
+}
