@@ -8,6 +8,7 @@ import { ABILITY_KEYS, type AbilityKey } from '../../../core/characters/characte
 import { FeatPicker } from '../../../shared/feat-picker/feat-picker';
 import { ChangeRowsList } from '../change-rows/change-rows';
 import { LevelUpSession } from '../level-up-session';
+import { SwapPicker } from '../swap-picker/swap-picker';
 
 const WIRE: Record<AbilityKey, Ability> = {
   str: Ability.STRENGTH,
@@ -41,7 +42,7 @@ const ABILITY_DERIVED = /^(dc|attack|prepared|armor|initiative|save-|skills-|pas
  */
 @Component({
   selector: 'app-abilities-step',
-  imports: [ChangeRowsList, FeatPicker, MatIconModule],
+  imports: [ChangeRowsList, FeatPicker, MatIconModule, SwapPicker],
   templateUrl: './abilities-step.html',
   styleUrl: './abilities-step.scss',
 })

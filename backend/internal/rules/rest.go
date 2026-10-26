@@ -22,13 +22,56 @@ import (
 // recharge belongs to a magic item or to the master's own ruling, and no rest
 // restores it by itself.
 func RechargesOnRest(recharge, kind string) bool {
+	return RestRecovery(recharge, kind) == RecoverAll
+}
+
+// Recovery is how much of a resource a moment gives back.
+type Recovery int
+
+// The Recover* values.
+const (
+	RecoverNone Recovery = iota
+	RecoverOne
+	RecoverAll
+)
+
+// RestRecovery says how much of a resource that recharges as recharge a rest of the
+// kind gives back. RecoverAll is what RechargesOnRest answers true to; the recharge
+// "restore_one_on_short_rest" gives one use on a short rest and all on a long one,
+// "restore_one_on_long_rest" one use on a long rest and none on a short one.
+func RestRecovery(recharge, kind string) Recovery {
 	switch recharge {
 	case RechargeShortRest:
-		return kind == RestShort || kind == RestLong
+		if kind == RestShort || kind == RestLong {
+			return RecoverAll
+		}
 	case RechargeLongRest:
-		return kind == RestLong
+		if kind == RestLong {
+			return RecoverAll
+		}
+	case RechargeRestoreOneShort:
+		switch kind {
+		case RestShort:
+			return RecoverOne
+		case RestLong:
+			return RecoverAll
+		}
+	case RechargeRestoreOneLong:
+		if kind == RestLong {
+			return RecoverOne
+		}
 	}
-	return false
+	return RecoverNone
+}
+
+// InitiativeRecovery is how many uses a resource that recharges as recharge gets
+// when its owner rolls initiative with used of total spent: one, and only when none
+// is left (used == total), for the recharge "initiative"; 0 otherwise.
+func InitiativeRecovery(recharge string, used, total int) int {
+	if recharge == RechargeInitiative && total > 0 && used >= total {
+		return 1
+	}
+	return 0
 }
 
 // PactSlotsReturnOn says whether a warlock's pact magic slots come back with the

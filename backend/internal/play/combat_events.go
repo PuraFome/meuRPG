@@ -341,8 +341,10 @@ type actionEvent struct {
 	// did to each target and the concentration it set or ended; a feature action:
 	// the resource a use of which was spent. For a damage roll of a cast, Settled
 	// is every pending damage the one roll settled.
-	CastID     string      `json:"cast_id,omitempty"`
-	Slot       *slotRef    `json:"slot,omitempty"`
+	CastID string   `json:"cast_id,omitempty"`
+	Slot   *slotRef `json:"slot,omitempty"`
+	// GrantUse is the resource a cast through a limited granted_spell effect spent a use of, for the undo.
+	GrantUse   string      `json:"grant_use,omitempty"`
 	Resource   string      `json:"resource,omitempty"`
 	Hits       []castHit   `json:"hits,omitempty"`
 	CoverUsers []string    `json:"cover_users,omitempty"` // the players the hits' CoverSeenMask counts, bit by bit
@@ -377,6 +379,15 @@ type actionEvent struct {
 	ByArea      bool `json:"by_area,omitempty"`
 	Heal        bool `json:"heal,omitempty"`
 	Concentrate bool `json:"concentrate,omitempty"`
+	// PointsSpent is how many uses of Resource a feature action of the table's content spent (0: one), TempTried says the
+	// action gave temporary hit points and TempGained how many the target kept of them (they do not stack): an undo
+	// gives the uses back and puts the target's hit points as Before has them.
+	PointsSpent int32 `json:"points_spent,omitempty"`
+	TempTried   bool  `json:"temp_tried,omitempty"`
+	TempGained  int32 `json:"temp_gained,omitempty"`
+	// Hook is the on_event hook of the character that ran in this event (a failed death save, dropping to 0 hit
+	// points): what it gave and what it spent, which an undo gives back.
+	Hook *hookEvent `json:"hook,omitempty"`
 	// ConcBefore is the spell the caster concentrated on before (empty: none),
 	// and ConcEnded the one the cast stopped (the same, when it replaced it).
 	ConcBefore string `json:"conc_before,omitempty"`

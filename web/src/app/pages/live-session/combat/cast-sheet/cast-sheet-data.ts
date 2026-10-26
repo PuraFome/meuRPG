@@ -15,6 +15,7 @@ import {
   type TurnOptions,
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { defaultSlot, slotRows } from '../../../../core/combat/cast-flow';
+import { optionOfRef, splitCastRef } from '../../../../core/combat/cast-ref';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import type { VitalsVm } from '../../../../core/play/live-session.types';
 import { SORCERY_POINTS_RESOURCE, poolOf } from '../../../../core/resources/pools';
@@ -29,6 +30,7 @@ export type SpellTurnOptions = GetTurnOptionsResponse & { readonly options: Turn
 
 /** Everything the page knows when it opens the cast sheet. */
 export interface CastSheetRequest {
+  /** The spell's key, or its reference when it is cast through a grant (`castRefOf`). */
   readonly key: string;
   readonly campaignId: string;
   readonly encounter: Encounter;
@@ -110,21 +112,25 @@ function casterFacts(vitals: VitalsVm | undefined) {
 export function castSheetData(req: CastSheetRequest): CastSheetData {
   const { options, spellTargets } = req.turn;
   const e = req.encounter;
-  const spell = options.spells.find((s) => s.spell?.key === req.key);
-  const cantrip = options.attacks.find((a) => a.attack?.key === req.key)?.attack;
+  const { key } = splitCastRef(req.key);
+  const spell = optionOfRef(options.spells, req.key);
+  const cantrip = options.attacks.find((a) => a.attack?.key === key)?.attack;
   return {
     campaignId: req.campaignId,
     encounterId: e.id,
     casterId: req.caster.id,
     round: e.round,
-    spellKey: req.key,
-    name: castName(spell, cantrip, req.key),
+    spellKey: key,
+    grant: spell?.grant ?? null,
+    name: castName(spell, cantrip, key),
     ...spellFacts(spell),
     ...optionFacts(spell, cantrip),
     ...casterFacts(req.vitals),
-    targets: spellTargets.find((t) => t.spellKey === req.key),
+    targets: spellTargets.find((t) => t.spellKey === key),
     ...shieldOf(options.spells),
-    attackBonus: spellAttackBonus(options.attacks.flatMap((a) => (a.attack ? [a.attack] : []))),
+    attackBonus:
+      spell?.grant?.attackBonus ??
+      spellAttackBonus(options.attacks.flatMap((a) => (a.attack ? [a.attack] : []))),
     master: req.master,
     diceMode: req.diceMode,
     preference: req.preference,

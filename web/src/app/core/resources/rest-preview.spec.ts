@@ -216,3 +216,58 @@ describe('hitDiceChoices', () => {
     expect(hitDiceChoices(restPreviewResponse([one, roomy, down]))).toEqual([]);
   });
 });
+
+describe("restSummary: the owner's hooks and the one-use recovery", () => {
+  const hookOf = (over: object) => ({ sourceNamePt: 'Fôlego da Mesa', ...over });
+
+  it('lists a hook of the rest: temporary hit points and a heal "em média", and the use it gives back', () => {
+    const preview = restPreviewResponse([
+      restPreview({
+        characterId: 'k',
+        name: 'Kai',
+        hooks: [
+          hookOf({ tempHpGained: 3 }),
+          hookOf({
+            sourceNamePt: 'Brasa de Teste',
+            healed: 4,
+            restored: 1,
+            restoredResource: 'reserva_de_teste',
+          }),
+        ] as never,
+      }),
+    ]);
+    const lines = restSummary(RestKind.LONG, preview, rechargeOf).lines.map(text);
+    expect(lines).toContain(
+      'Ao terminar o descanso longo, Kai: Fôlego da Mesa entrou em ação: ganha 3 PV temporários.',
+    );
+    expect(lines).toContain(
+      'Ao terminar o descanso longo, Kai: Brasa de Teste entrou em ação: recupera 4 PV (em média), devolve 1 uso de reserva de teste.',
+    );
+  });
+
+  it('says a short rest for a short rest, and nothing for a character with no hook', () => {
+    const preview = restPreviewResponse([
+      restPreview({ characterId: 'k', name: 'Kai', hooks: [hookOf({ tempHpGained: 2 })] as never }),
+      restPreview({ characterId: 'm', name: 'Mira' }),
+    ]);
+    const lines = restSummary(RestKind.SHORT, preview, rechargeOf).lines.map(text);
+    expect(lines.filter((l) => l.startsWith('Ao terminar'))).toEqual([
+      'Ao terminar o descanso curto, Kai: Fôlego da Mesa entrou em ação: ganha 2 PV temporários.',
+    ]);
+  });
+
+  it('says "+1 uso" for a resource that gives back one use, not all of them', () => {
+    const preview = restPreviewResponse([
+      restPreview({
+        characterId: 'k',
+        name: 'Kai',
+        resources: [
+          { key: 'reserva_de_teste', namePt: 'Reserva de Teste', spent: 2, total: 3, back: 1 },
+          { key: 'outra', namePt: 'Outra', spent: 1, total: 2 },
+        ],
+      }),
+    ]);
+    const lines = restSummary(RestKind.SHORT, preview, rechargeOf).lines.map(text);
+    expect(lines).toContain('Reserva de Teste: Kai +1 uso · Outra: Kai 2 de 2.');
+  });
+});

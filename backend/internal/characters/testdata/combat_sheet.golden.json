@@ -203,7 +203,8 @@
       "RangedWeaponNoLongRangeDisadvantage": false,
       "UnactedAdvantage": "",
       "SurprisedCritical": ""
-    }
+    },
+    "Hooks": null
   },
   "bardo do conhecimento 3": {
     "ArmorClass": 12,
@@ -290,7 +291,18 @@
         "Economy": "bonus_action",
         "Resource": "bardic_inspiration",
         "Pool": false,
-        "Standard": ""
+        "Standard": "",
+        "Cost": 0,
+        "CostMax": 0,
+        "Heal": null,
+        "HealPerPoint": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 0,
+          "DamageType": ""
+        },
+        "TempHP": 0,
+        "TempHPPerPoint": 0
       },
       {
         "Key": "feature:cutting-words",
@@ -298,7 +310,18 @@
         "Economy": "reaction",
         "Resource": "bardic_inspiration",
         "Pool": false,
-        "Standard": ""
+        "Standard": "",
+        "Cost": 0,
+        "CostMax": 0,
+        "Heal": null,
+        "HealPerPoint": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 0,
+          "DamageType": ""
+        },
+        "TempHP": 0,
+        "TempHPPerPoint": 0
       }
     ],
     "FighterLevel": 0,
@@ -344,7 +367,8 @@
       "RangedWeaponNoLongRangeDisadvantage": false,
       "UnactedAdvantage": "",
       "SurprisedCritical": ""
-    }
+    },
+    "Hooks": null
   },
   "bárbaro berserker 9": {
     "ArmorClass": 15,
@@ -431,7 +455,18 @@
         "Economy": "bonus_action",
         "Resource": "rage",
         "Pool": false,
-        "Standard": ""
+        "Standard": "",
+        "Cost": 0,
+        "CostMax": 0,
+        "Heal": null,
+        "HealPerPoint": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 0,
+          "DamageType": ""
+        },
+        "TempHP": 0,
+        "TempHPPerPoint": 0
       },
       {
         "Key": "feature:reckless-attack",
@@ -439,7 +474,18 @@
         "Economy": "free",
         "Resource": "",
         "Pool": false,
-        "Standard": ""
+        "Standard": "",
+        "Cost": 0,
+        "CostMax": 0,
+        "Heal": null,
+        "HealPerPoint": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 0,
+          "DamageType": ""
+        },
+        "TempHP": 0,
+        "TempHPPerPoint": 0
       }
     ],
     "FighterLevel": 0,
@@ -496,7 +542,8 @@
       "RangedWeaponNoLongRangeDisadvantage": false,
       "UnactedAdvantage": "",
       "SurprisedCritical": ""
-    }
+    },
+    "Hooks": null
   },
   "goblin de ficha básica": {
     "ArmorClass": 15,
@@ -620,7 +667,8 @@
       "RangedWeaponNoLongRangeDisadvantage": false,
       "UnactedAdvantage": "",
       "SurprisedCritical": ""
-    }
+    },
+    "Hooks": null
   },
   "guerreiro campeão 5": {
     "ArmorClass": 11,
@@ -707,7 +755,18 @@
         "Economy": "bonus_action",
         "Resource": "second_wind",
         "Pool": false,
-        "Standard": ""
+        "Standard": "",
+        "Cost": 0,
+        "CostMax": 0,
+        "Heal": null,
+        "HealPerPoint": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 0,
+          "DamageType": ""
+        },
+        "TempHP": 0,
+        "TempHPPerPoint": 0
       },
       {
         "Key": "feature:action-surge-1-use",
@@ -715,7 +774,18 @@
         "Economy": "free",
         "Resource": "action_surge",
         "Pool": false,
-        "Standard": ""
+        "Standard": "",
+        "Cost": 0,
+        "CostMax": 0,
+        "Heal": null,
+        "HealPerPoint": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 0,
+          "DamageType": ""
+        },
+        "TempHP": 0,
+        "TempHPPerPoint": 0
       }
     ],
     "FighterLevel": 5,
@@ -761,7 +831,8 @@
       "RangedWeaponNoLongRangeDisadvantage": false,
       "UnactedAdvantage": "",
       "SurprisedCritical": ""
-    }
+    },
+    "Hooks": null
   },
   "guerreiro de cota de malha": {
     "ArmorClass": 18,
@@ -872,7 +943,18 @@
         "Economy": "bonus_action",
         "Resource": "second_wind",
         "Pool": false,
-        "Standard": ""
+        "Standard": "",
+        "Cost": 0,
+        "CostMax": 0,
+        "Heal": null,
+        "HealPerPoint": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 0,
+          "DamageType": ""
+        },
+        "TempHP": 0,
+        "TempHPPerPoint": 0
       },
       {
         "Key": "feature:action-surge-1-use",
@@ -880,7 +962,18 @@
         "Economy": "free",
         "Resource": "action_surge",
         "Pool": false,
-        "Standard": ""
+        "Standard": "",
+        "Cost": 0,
+        "CostMax": 0,
+        "Heal": null,
+        "HealPerPoint": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 0,
+          "DamageType": ""
+        },
+        "TempHP": 0,
+        "TempHPPerPoint": 0
       }
     ],
     "FighterLevel": 2,
@@ -926,7 +1019,8 @@
       "RangedWeaponNoLongRangeDisadvantage": false,
       "UnactedAdvantage": "",
       "SurprisedCritical": ""
-    }
+    },
+    "Hooks": null
   },
   "monge da mão aberta 5": {
     "ArmorClass": 17,
@@ -1013,7 +1107,18 @@
         "Economy": "bonus_action",
         "Resource": "ki",
         "Pool": false,
-        "Standard": ""
+        "Standard": "",
+        "Cost": 0,
+        "CostMax": 0,
+        "Heal": null,
+        "HealPerPoint": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 0,
+          "DamageType": ""
+        },
+        "TempHP": 0,
+        "TempHPPerPoint": 0
       },
       {
         "Key": "feature:patient-defense",
@@ -1021,7 +1126,18 @@
         "Economy": "bonus_action",
         "Resource": "ki",
         "Pool": false,
-        "Standard": "standard:dodge"
+        "Standard": "standard:dodge",
+        "Cost": 0,
+        "CostMax": 0,
+        "Heal": null,
+        "HealPerPoint": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 0,
+          "DamageType": ""
+        },
+        "TempHP": 0,
+        "TempHPPerPoint": 0
       },
       {
         "Key": "feature:step-of-the-wind:disengage",
@@ -1029,7 +1145,18 @@
         "Economy": "bonus_action",
         "Resource": "ki",
         "Pool": false,
-        "Standard": "standard:disengage"
+        "Standard": "standard:disengage",
+        "Cost": 0,
+        "CostMax": 0,
+        "Heal": null,
+        "HealPerPoint": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 0,
+          "DamageType": ""
+        },
+        "TempHP": 0,
+        "TempHPPerPoint": 0
       },
       {
         "Key": "feature:step-of-the-wind:dash",
@@ -1037,7 +1164,18 @@
         "Economy": "bonus_action",
         "Resource": "ki",
         "Pool": false,
-        "Standard": "standard:dash"
+        "Standard": "standard:dash",
+        "Cost": 0,
+        "CostMax": 0,
+        "Heal": null,
+        "HealPerPoint": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 0,
+          "DamageType": ""
+        },
+        "TempHP": 0,
+        "TempHPPerPoint": 0
       },
       {
         "Key": "feature:deflect-missiles",
@@ -1045,7 +1183,18 @@
         "Economy": "reaction",
         "Resource": "",
         "Pool": false,
-        "Standard": ""
+        "Standard": "",
+        "Cost": 0,
+        "CostMax": 0,
+        "Heal": null,
+        "HealPerPoint": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 0,
+          "DamageType": ""
+        },
+        "TempHP": 0,
+        "TempHPPerPoint": 0
       },
       {
         "Key": "feature:slow-fall",
@@ -1053,7 +1202,18 @@
         "Economy": "reaction",
         "Resource": "",
         "Pool": false,
-        "Standard": ""
+        "Standard": "",
+        "Cost": 0,
+        "CostMax": 0,
+        "Heal": null,
+        "HealPerPoint": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 0,
+          "DamageType": ""
+        },
+        "TempHP": 0,
+        "TempHPPerPoint": 0
       }
     ],
     "FighterLevel": 0,
@@ -1099,7 +1259,8 @@
       "RangedWeaponNoLongRangeDisadvantage": false,
       "UnactedAdvantage": "",
       "SurprisedCritical": ""
-    }
+    },
+    "Hooks": null
   },
   "ogro do bestiário": {
     "ArmorClass": 11,
@@ -1247,7 +1408,8 @@
       "RangedWeaponNoLongRangeDisadvantage": false,
       "UnactedAdvantage": "",
       "SurprisedCritical": ""
-    }
+    },
+    "Hooks": null
   },
   "paladino 2": {
     "ArmorClass": 10,
@@ -1334,7 +1496,18 @@
         "Economy": "action",
         "Resource": "divine_sense",
         "Pool": false,
-        "Standard": ""
+        "Standard": "",
+        "Cost": 0,
+        "CostMax": 0,
+        "Heal": null,
+        "HealPerPoint": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 0,
+          "DamageType": ""
+        },
+        "TempHP": 0,
+        "TempHPPerPoint": 0
       },
       {
         "Key": "feature:lay-on-hands",
@@ -1342,7 +1515,18 @@
         "Economy": "action",
         "Resource": "lay_on_hands",
         "Pool": true,
-        "Standard": ""
+        "Standard": "",
+        "Cost": 0,
+        "CostMax": 0,
+        "Heal": null,
+        "HealPerPoint": {
+          "Count": 0,
+          "Sides": 0,
+          "Bonus": 0,
+          "DamageType": ""
+        },
+        "TempHP": 0,
+        "TempHPPerPoint": 0
       }
     ],
     "FighterLevel": 0,
@@ -1388,7 +1572,8 @@
       "RangedWeaponNoLongRangeDisadvantage": false,
       "UnactedAdvantage": "",
       "SurprisedCritical": ""
-    }
+    },
+    "Hooks": null
   },
   "refused: a character that is not there": {
     "code": "not_found",

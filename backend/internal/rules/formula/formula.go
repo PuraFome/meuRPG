@@ -80,6 +80,10 @@ type Env struct {
 	// "medium" or "heavy". Shield says whether a shield is carried.
 	Armor  func() string `expr:"armor"`
 	Shield func() bool   `expr:"shield"`
+	// SpeedWalk is the walking speed in feet after every modifier. It is 0
+	// while the walking speed itself is worked out, so only the other speeds
+	// may read it.
+	SpeedWalk func() int `expr:"speedwalk"`
 }
 
 // Abilities are the arguments mod and score accept.
@@ -430,7 +434,7 @@ func (c *Compiler) checkCall(n *ast.CallNode) error {
 	var literals []string // non-nil: the function takes one text argument from this set
 	arity := 0
 	switch callee.Value {
-	case "level", "prof", "armor", "shield":
+	case "level", "prof", "armor", "shield", "speedwalk":
 	case "mod", "score":
 		literals, arity = abilities, 1
 	case "classLevel":

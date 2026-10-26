@@ -454,7 +454,7 @@ func TestOptionsWarlockPactMagic(t *testing.T) {
 	}
 	o := Options(d, TurnState{}, Usage{})
 	charm := spellOf(t, o, "spell:charm-person")
-	if !charm.Enabled || len(charm.Slots) != 1 || charm.Slots[0] != (SlotChoice{Level: 2, Pact: true, Free: 2}) {
+	if !charm.Enabled || len(charm.Slots) != 1 || charm.Slots[0] != (SlotChoice{Level: 2, Pact: true, Free: 2, Total: 2}) {
 		t.Errorf("charm = %+v, want one pact slot of level 2", charm)
 	}
 	spent, err := SpendPactSlot(d, Usage{})

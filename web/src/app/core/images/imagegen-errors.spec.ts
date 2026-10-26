@@ -117,6 +117,17 @@ describe('a request that ended without a picture', () => {
     );
   });
 
+  it('a picture the server could not keep says that it did not count', () => {
+    const text = failureText({
+      failure: ImageGenerationFailure.STORAGE_FAILED,
+      slotSpent: false,
+      reasonPt: '',
+    });
+    expect(text).toContain('A imagem foi feita, mas não deu para guardá-la.');
+    expect(text).toContain('Esta tentativa não gastou nenhuma imagem do mês.');
+    expect(text).not.toContain('não respondeu');
+  });
+
   it('a gallery too full to keep the picture says that the slot was spent', () => {
     const text = failureText({
       failure: ImageGenerationFailure.GALLERY_FULL,
@@ -134,6 +145,7 @@ describe('a request that ended without a picture', () => {
       ImageGenerationFailure.IMAGE_MISSING,
       ImageGenerationFailure.TIMEOUT,
       ImageGenerationFailure.SERVICE_OFF,
+      ImageGenerationFailure.STORAGE_FAILED,
     ]) {
       expect(failureText({ failure, slotSpent: false, reasonPt: 'x' })).not.toContain('x Esta');
     }

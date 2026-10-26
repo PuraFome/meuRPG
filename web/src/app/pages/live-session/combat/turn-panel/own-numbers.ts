@@ -20,7 +20,8 @@ export interface OwnHitPoints {
 
 /**
  * "PV 23 de 23 · CA 12 · 1º ○○○● 2º ○○" (C4-03): the character's own numbers under the turn's title, so the hit points, the armor
- * class and the slots are on the first screen. Only the player's own numbers are here (RN-20); an open ring is a free slot, a
+ * class and the slots are on the first screen. The line stays one line on a phone: from 440px each circle has its rings and "3 de 4";
+ * below, the count "3/4" takes the place of the rings (and below 320px the icons go), the words still being the circle's accessible name. Only the player's own numbers are here (RN-20); an open ring is a free slot, a
  * crossed disc a used one, and each circle's words ("3 livres de 4") are its accessible name.
  */
 @Component({
@@ -41,6 +42,8 @@ export interface OwnHitPoints {
           <span class="slot" role="img" [attr.aria-label]="r.name + ': ' + r.text">
             <span aria-hidden="true">{{ r.short }}</span>
             <app-slot-dots size="small" [total]="r.total" [used]="r.used" />
+            <span class="slot__free slot__free--long" aria-hidden="true">{{ r.total - r.used }} de {{ r.total }}</span>
+            <span class="slot__free slot__free--short" aria-hidden="true">{{ r.total - r.used }}/{{ r.total }}</span>
           </span>
         }
       </span>

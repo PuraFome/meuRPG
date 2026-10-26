@@ -1,5 +1,6 @@
 import { DeathSaveOutcome, type DeathSave } from '../../../gen/meurpg/play/v1/combat_pb';
 import { rollText } from './combat-dice';
+import { hookEffects } from './hook-text';
 
 /**
  * The death saves as the screens write them (E6-13, E6-30, RN-03): the
@@ -23,6 +24,24 @@ export function countsSentence(successes: number, failures: number): string {
   return `${s}, ${f}`;
 }
 
+/** A hook that stood the character up (a table feature, MR-025): the save's word, who acted, and that no failure counts. */
+function standUpText(save: DeathSave): string {
+  const hook = save.hook;
+  if (!hook || !(hook.healed > 0) || save.outcome === DeathSaveOutcome.REVIVED) {
+    return '';
+  }
+  const word = save.outcome === DeathSaveOutcome.SUCCESS ? 'Sucesso' : 'Falha';
+  return `${word}, mas o traço ${hook.sourceNamePt || 'uma característica'} entrou em ação: você volta com ${hook.healed} PV. Nenhuma falha entra na conta.`;
+}
+
+/** What a hook that did not stand the character up gave: " O traço X entrou em ação: ganha 3 PV temporários." */
+function hookTail(hook: DeathSave['hook']): string {
+  const effects = hook ? hookEffects(hook) : [];
+  return hook && effects.length > 0
+    ? ` O traço ${hook.sourceNamePt || 'uma característica'} entrou em ação: ${effects.join(', ')}.`
+    : '';
+}
+
 /** The result a death save announces, in a live region: "Teste contra a
  * morte: 1d20 (14) = 14. Sucesso." A natural 20 brings the character back
  * ("Brisa volta com 1 PV"); three successes make it stable. */
@@ -30,15 +49,20 @@ export function saveAnnouncement(save: DeathSave, name: string): string {
   const roll = save.roll
     ? `Teste contra a morte: ${rollText(save.roll)}.`
     : 'Teste contra a morte.';
+  const stoodUp = standUpText(save);
+  if (stoodUp) {
+    return `${roll} ${stoodUp}`;
+  }
+  const tail = hookTail(save.hook);
   switch (save.outcome) {
     case DeathSaveOutcome.REVIVED:
-      return `${roll} ${name} volta com 1 PV.`;
+      return `${roll} ${name} volta com 1 PV.${tail}`;
     case DeathSaveOutcome.CRITICAL_FAILURE:
-      return `${roll} Falha: um 1 conta duas falhas.${save.failures >= 3 ? ' Três falhas.' : ''}`;
+      return `${roll} Falha: um 1 conta duas falhas.${save.failures >= 3 ? ' Três falhas.' : ''}${tail}`;
     case DeathSaveOutcome.FAILURE:
-      return `${roll} Falha.${save.failures >= 3 ? ' Três falhas.' : ''}`;
+      return `${roll} Falha.${save.failures >= 3 ? ' Três falhas.' : ''}${tail}`;
     default:
-      return `${roll} Sucesso.${save.stable ? ' Estável: não rola mais.' : ''}`;
+      return `${roll} Sucesso.${save.stable ? ' Estável: não rola mais.' : ''}${tail}`;
   }
 }
 

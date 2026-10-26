@@ -398,7 +398,8 @@ func (s *Service) dropToZero(ctx context.Context, c *combatTx, t fxTarget, h *ca
 // keeps the larger of what it had and what the spell gives (SRD 5.1). It notes the
 // hit points before for an undo and what the target gained in h.Healed.
 func (s *Service) giveTempHP(ctx context.Context, c *combatTx, t fxTarget, amount int, h *castHit) (*playv1.CharacterVitals, error) {
-	temp := clamp32(max(amount, t.temp), 0, math.MaxInt32)
+	given := combat.ApplyTempHP(t.temp, amount)
+	temp := clamp32(given.TempHP, 0, math.MaxInt32)
 	gained := temp - clamp32(t.temp, 0, math.MaxInt32)
 	h.Healed = &gained
 	if holdsHP(t.c) {

@@ -61,6 +61,7 @@ const base: RulesDraft = {
   featsAllowed: false,
   enemyReactions: EnemyReactionsRule.ONLY_WHEN_POSSIBLE,
   showSaveDc: false,
+  pickSwapAllowed: false,
   houseRules: [],
 };
 
@@ -155,6 +156,7 @@ describe('table rules', () => {
       featsAllowed: true,
       enemyReactions: EnemyReactionsRule.ALWAYS,
       showSaveDc: true,
+      pickSwapAllowed: false,
       houseRules: ['uma'],
     });
   });
@@ -229,5 +231,11 @@ describe('table rules', () => {
     expect(draftFromRules(undefined).featsAllowed).toBe(false);
     expect(draftFromRules({ featsAllowed: true } as never).featsAllowed).toBe(true);
     expect(changeCount({ ...base, featsAllowed: true }, base)).toBe(1);
+  });
+
+  it('keeps the pick swap rule: off by default, counted', () => {
+    expect(draftFromRules(undefined).pickSwapAllowed).toBe(false);
+    expect(draftFromRules({ pickSwapAllowed: true } as never).pickSwapAllowed).toBe(true);
+    expect(changeCount({ ...base, pickSwapAllowed: true }, base)).toBe(1);
   });
 });

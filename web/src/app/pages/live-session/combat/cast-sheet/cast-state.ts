@@ -14,6 +14,8 @@ export class CastState {
   readonly details = signal<SpellDetails | null>(null);
   readonly detailsFailed = signal(false);
   readonly slot = signal<SlotRow | null>(null);
+  /** A granted spell that also allows a slot is cast through the grant (no slot) until the caster asks for a slot. */
+  readonly freeCast = signal(true);
   readonly chosen = signal<string[]>([]);
   readonly dealt = signal<Dealt>(new Map());
   readonly typing = signal(false);

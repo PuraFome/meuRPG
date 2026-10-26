@@ -164,7 +164,7 @@ func tableTraitsOf(d rules.Derived) (maneuvers []link.Maneuver, extras []link.Ex
 	for _, m := range d.SpellModifiers {
 		options = append(options, link.SpellModifier{
 			Key: m.Key, NamePT: m.NamePT, AppliesTo: m.AppliesTo, Change: m.Change, BonusType: m.BonusType, Resource: m.Resource,
-			TextPT: m.TextPT, From: m.From, Bonus: m.Bonus, ExtraDice: m.ExtraDice,
+			TextPT: m.TextPT, From: m.From, Bonus: m.Bonus, ExtraDice: m.ExtraDice, Cost: m.Cost,
 		})
 	}
 	return maneuvers, extras, options

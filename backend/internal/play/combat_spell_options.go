@@ -3,6 +3,7 @@ package play
 import (
 	"context"
 	"errors"
+	"math"
 	"slices"
 	"strings"
 
@@ -194,15 +195,20 @@ func (f *castFlow) spendTableOptions(ctx context.Context) error {
 		if t.mod.Resource == "" {
 			continue
 		}
-		v, err := f.s.spendResource(ctx, f.c, f.caster.CharacterID, t.mod.Resource, 1)
+		v, err := f.s.spendResource(ctx, f.c, f.caster.CharacterID, t.mod.Resource, clamp32(optionCost(t.mod), 1, math.MaxInt32))
 		if err != nil {
 			return err
 		}
 		f.out.vitals = append(f.out.vitals, v)
-		f.out.made.TableUses = append(f.out.made.TableUses, t.mod.Resource)
+		for range optionCost(t.mod) {
+			f.out.made.TableUses = append(f.out.made.TableUses, t.mod.Resource)
+		}
 	}
 	return nil
 }
+
+// optionCost is how many uses of its resource an option spends: the cost the feature says, at least 1.
+func optionCost(m link.SpellModifier) int { return max(m.Cost, 1) }
 
 // tableUsesBack gives back the uses a cast's options spent.
 func (u *undoer) tableUsesBack(ctx context.Context, who playdb.Combatant, ev actionEvent) error {
@@ -274,8 +280,8 @@ func tableOptionsFor(f spellFacts, mods []link.SpellModifier, vitals *playv1.Cha
 		}
 		if m.Resource != "" {
 			left, _ := poolLeft(vitals, m.Resource)
-			o.UsesLeft = max(left, 0)
-			if left <= 0 {
+			o.UsesLeft, o.Cost = max(left, 0), clamp32(optionCost(m), 1, math.MaxInt32)
+			if int(left) < optionCost(m) {
 				o.Allowed, o.DisabledReasonPt = false, "Sem usos do recurso."
 			}
 		}

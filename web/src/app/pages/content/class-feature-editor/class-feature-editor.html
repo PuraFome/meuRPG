@@ -1,0 +1,57 @@
+@let d = draft();
+<app-editor-alerts [saver]="saver" (reload)="reload.emit()" />
+<div class="editor">
+  <div class="editor__main">
+    <section class="mr-panel block" aria-labelledby="cf-data-t">
+      <h2 class="mr-panel__title" id="cf-data-t">Dados da característica</h2>
+      <div class="grid grid--2">
+        @if (isNew()) {
+          <app-select-field label="Classe" [options]="classOptions()" [value]="d.classKey" placeholder="Escolha…" path="table_class_feature.class_key" [issues]="issuesOf('table_class_feature.class_key')" (valueChange)="patch({ classKey: $event })" />
+        } @else {
+          <div data-field="table_class_feature.class_key">
+            <p class="hint"><strong>Classe:</strong> {{ className() }}. A classe não muda depois de salvar.</p>
+            @for (m of issuesOf('table_class_feature.class_key'); track m) {
+              <p class="inline-issue" role="note">{{ m }}</p>
+            }
+          </div>
+        }
+        <app-text-field label="Nível na classe (1 a 20)" [value]="d.level" inputmode="numeric" path="table_class_feature.level" [issues]="issuesOf('table_class_feature.level')" (valueChange)="patch({ level: $event })" />
+      </div>
+      <app-text-field
+        label="Substitui"
+        hint="Deixe vazio se ela só se soma às da classe. Para tirar uma característica da classe, escreva o código dela (por exemplo feature:favored-enemy-1-type); a classe a perde deste nível em diante."
+        [value]="d.replaces"
+        path="table_class_feature.replaces_feature_key"
+        [issues]="issuesOf('table_class_feature.replaces_feature_key')"
+        (valueChange)="patch({ replaces: $event })"
+      />
+      <app-feature-editor
+        [feature]="d.feature"
+        [menu]="menu()"
+        basePath="table_class_feature"
+        [issuesOf]="issuesOf"
+        [spellOptions]="spellOptions()"
+        [flat]="true"
+        nameLabel="Nome da característica"
+        textLabel="Texto da característica"
+        (featureChange)="setFeature($event)"
+      />
+    </section>
+
+    <app-editor-bar saveLabel="Salvar característica" [saving]="saver.saving()" [blocked]="saveBlocked()" (save)="save()" (cancel)="cancelled.emit()" />
+  </div>
+
+  <aside class="editor__side" aria-label="Como os jogadores veem">
+    <section class="mr-panel preview" aria-labelledby="preview-t">
+      <h2 class="mr-panel__title" id="preview-t">Como os jogadores veem</h2>
+      <p class="preview__name">
+        <span>{{ d.feature.name.trim() || 'Nova característica' }}</span>
+        <span class="mr-tag"><mat-icon aria-hidden="true">menu_book</mat-icon>Da mesa</span>
+      </p>
+      <app-entry-read [read]="preview()" [plain]="true" />
+    </section>
+    @if (entry(); as saved) {
+      <app-players-switch [campaignId]="campaignId()" [entry]="saved" (switched)="switched.emit($event)" />
+    }
+  </aside>
+</div>

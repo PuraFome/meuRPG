@@ -290,8 +290,10 @@ options as options of Brisa to her player
 - .options.spells[spell:cure-wounds].enabled
 - .options.spells[spell:cure-wounds].slots[0].free
 - .options.spells[spell:cure-wounds].slots[0].level
+- .options.spells[spell:cure-wounds].slots[0].total
 - .options.spells[spell:cure-wounds].slots[1].free
 - .options.spells[spell:cure-wounds].slots[1].level
+- .options.spells[spell:cure-wounds].slots[1].total
 - .options.spells[spell:cure-wounds].spell.classKeys[0]
 - .options.spells[spell:cure-wounds].spell.classKeys[1]
 - .options.spells[spell:cure-wounds].spell.classKeys[2]
@@ -307,8 +309,10 @@ options as options of Brisa to her player
 - .options.spells[spell:guiding-bolt].enabled
 - .options.spells[spell:guiding-bolt].slots[0].free
 - .options.spells[spell:guiding-bolt].slots[0].level
+- .options.spells[spell:guiding-bolt].slots[0].total
 - .options.spells[spell:guiding-bolt].slots[1].free
 - .options.spells[spell:guiding-bolt].slots[1].level
+- .options.spells[spell:guiding-bolt].slots[1].total
 - .options.spells[spell:guiding-bolt].spell.classKeys[0]
 - .options.spells[spell:guiding-bolt].spell.key
 - .options.spells[spell:guiding-bolt].spell.level
@@ -320,8 +324,10 @@ options as options of Brisa to her player
 - .options.spells[spell:healing-word].enabled
 - .options.spells[spell:healing-word].slots[0].free
 - .options.spells[spell:healing-word].slots[0].level
+- .options.spells[spell:healing-word].slots[0].total
 - .options.spells[spell:healing-word].slots[1].free
 - .options.spells[spell:healing-word].slots[1].level
+- .options.spells[spell:healing-word].slots[1].total
 - .options.spells[spell:healing-word].spell.classKeys[0]
 - .options.spells[spell:healing-word].spell.classKeys[1]
 - .options.spells[spell:healing-word].spell.classKeys[2]
@@ -616,8 +622,10 @@ options
 .options.spells[spell:cure-wounds].enabled = true
 .options.spells[spell:cure-wounds].slots[0].free = 4
 .options.spells[spell:cure-wounds].slots[0].level = 1
+.options.spells[spell:cure-wounds].slots[0].total = 4
 .options.spells[spell:cure-wounds].slots[1].free = 2
 .options.spells[spell:cure-wounds].slots[1].level = 2
+.options.spells[spell:cure-wounds].slots[1].total = 2
 .options.spells[spell:cure-wounds].spell.classKeys[0] = "class:bard"
 .options.spells[spell:cure-wounds].spell.classKeys[1] = "class:cleric"
 .options.spells[spell:cure-wounds].spell.classKeys[2] = "class:druid"
@@ -633,8 +641,10 @@ options
 .options.spells[spell:guiding-bolt].enabled = true
 .options.spells[spell:guiding-bolt].slots[0].free = 4
 .options.spells[spell:guiding-bolt].slots[0].level = 1
+.options.spells[spell:guiding-bolt].slots[0].total = 4
 .options.spells[spell:guiding-bolt].slots[1].free = 2
 .options.spells[spell:guiding-bolt].slots[1].level = 2
+.options.spells[spell:guiding-bolt].slots[1].total = 2
 .options.spells[spell:guiding-bolt].spell.classKeys[0] = "class:cleric"
 .options.spells[spell:guiding-bolt].spell.key = "spell:guiding-bolt"
 .options.spells[spell:guiding-bolt].spell.level = 1
@@ -646,8 +656,10 @@ options
 .options.spells[spell:healing-word].enabled = true
 .options.spells[spell:healing-word].slots[0].free = 4
 .options.spells[spell:healing-word].slots[0].level = 1
+.options.spells[spell:healing-word].slots[0].total = 4
 .options.spells[spell:healing-word].slots[1].free = 2
 .options.spells[spell:healing-word].slots[1].level = 2
+.options.spells[spell:healing-word].slots[1].total = 2
 .options.spells[spell:healing-word].spell.classKeys[0] = "class:bard"
 .options.spells[spell:healing-word].spell.classKeys[1] = "class:cleric"
 .options.spells[spell:healing-word].spell.classKeys[2] = "class:druid"
@@ -984,8 +996,10 @@ options
 .options.spells[spell:cure-wounds].enabled = true
 .options.spells[spell:cure-wounds].slots[0].free = 4
 .options.spells[spell:cure-wounds].slots[0].level = 1
+.options.spells[spell:cure-wounds].slots[0].total = 4
 .options.spells[spell:cure-wounds].slots[1].free = 2
 .options.spells[spell:cure-wounds].slots[1].level = 2
+.options.spells[spell:cure-wounds].slots[1].total = 2
 .options.spells[spell:cure-wounds].spell.classKeys[0] = "class:bard"
 .options.spells[spell:cure-wounds].spell.classKeys[1] = "class:cleric"
 .options.spells[spell:cure-wounds].spell.classKeys[2] = "class:druid"
@@ -1001,8 +1015,10 @@ options
 .options.spells[spell:guiding-bolt].enabled = true
 .options.spells[spell:guiding-bolt].slots[0].free = 4
 .options.spells[spell:guiding-bolt].slots[0].level = 1
+.options.spells[spell:guiding-bolt].slots[0].total = 4
 .options.spells[spell:guiding-bolt].slots[1].free = 2
 .options.spells[spell:guiding-bolt].slots[1].level = 2
+.options.spells[spell:guiding-bolt].slots[1].total = 2
 .options.spells[spell:guiding-bolt].spell.classKeys[0] = "class:cleric"
 .options.spells[spell:guiding-bolt].spell.key = "spell:guiding-bolt"
 .options.spells[spell:guiding-bolt].spell.level = 1
@@ -1014,8 +1030,10 @@ options
 .options.spells[spell:healing-word].enabled = true
 .options.spells[spell:healing-word].slots[0].free = 4
 .options.spells[spell:healing-word].slots[0].level = 1
+.options.spells[spell:healing-word].slots[0].total = 4
 .options.spells[spell:healing-word].slots[1].free = 2
 .options.spells[spell:healing-word].slots[1].level = 2
+.options.spells[spell:healing-word].slots[1].total = 2
 .options.spells[spell:healing-word].spell.classKeys[0] = "class:bard"
 .options.spells[spell:healing-word].spell.classKeys[1] = "class:cleric"
 .options.spells[spell:healing-word].spell.classKeys[2] = "class:druid"
@@ -2235,8 +2253,10 @@ options
 .options.spells[spell:magic-missile].enabled = true
 .options.spells[spell:magic-missile].slots[0].free = 4
 .options.spells[spell:magic-missile].slots[0].level = 1
+.options.spells[spell:magic-missile].slots[0].total = 4
 .options.spells[spell:magic-missile].slots[1].free = 2
 .options.spells[spell:magic-missile].slots[1].level = 2
+.options.spells[spell:magic-missile].slots[1].total = 2
 .options.spells[spell:magic-missile].spell.classKeys[0] = "class:sorcerer"
 .options.spells[spell:magic-missile].spell.classKeys[1] = "class:wizard"
 .options.spells[spell:magic-missile].spell.key = "spell:magic-missile"
@@ -2249,6 +2269,7 @@ options
 .options.spells[spell:scorching-ray].enabled = true
 .options.spells[spell:scorching-ray].slots[0].free = 2
 .options.spells[spell:scorching-ray].slots[0].level = 2
+.options.spells[spell:scorching-ray].slots[0].total = 2
 .options.spells[spell:scorching-ray].spell.classKeys[0] = "class:sorcerer"
 .options.spells[spell:scorching-ray].spell.classKeys[1] = "class:wizard"
 .options.spells[spell:scorching-ray].spell.key = "spell:scorching-ray"
@@ -2680,8 +2701,10 @@ options
 .options.spells[spell:burning-hands].enabled = true
 .options.spells[spell:burning-hands].slots[0].free = 4
 .options.spells[spell:burning-hands].slots[0].level = 1
+.options.spells[spell:burning-hands].slots[0].total = 4
 .options.spells[spell:burning-hands].slots[1].free = 2
 .options.spells[spell:burning-hands].slots[1].level = 2
+.options.spells[spell:burning-hands].slots[1].total = 2
 .options.spells[spell:burning-hands].spell.classKeys[0] = "class:sorcerer"
 .options.spells[spell:burning-hands].spell.classKeys[1] = "class:wizard"
 .options.spells[spell:burning-hands].spell.key = "spell:burning-hands"
@@ -2694,6 +2717,7 @@ options
 .options.spells[spell:hold-person].enabled = true
 .options.spells[spell:hold-person].slots[0].free = 2
 .options.spells[spell:hold-person].slots[0].level = 2
+.options.spells[spell:hold-person].slots[0].total = 2
 .options.spells[spell:hold-person].spell.classKeys[0] = "class:bard"
 .options.spells[spell:hold-person].spell.classKeys[1] = "class:cleric"
 .options.spells[spell:hold-person].spell.classKeys[2] = "class:druid"
@@ -2711,8 +2735,10 @@ options
 .options.spells[spell:magic-missile].enabled = true
 .options.spells[spell:magic-missile].slots[0].free = 4
 .options.spells[spell:magic-missile].slots[0].level = 1
+.options.spells[spell:magic-missile].slots[0].total = 4
 .options.spells[spell:magic-missile].slots[1].free = 2
 .options.spells[spell:magic-missile].slots[1].level = 2
+.options.spells[spell:magic-missile].slots[1].total = 2
 .options.spells[spell:magic-missile].spell.classKeys[0] = "class:sorcerer"
 .options.spells[spell:magic-missile].spell.classKeys[1] = "class:wizard"
 .options.spells[spell:magic-missile].spell.key = "spell:magic-missile"
@@ -2725,8 +2751,10 @@ options
 .options.spells[spell:shield].reason.code = "DISABLED_REASON_CODE_REACTION_ONLY_WHEN_HIT"
 .options.spells[spell:shield].slots[0].free = 4
 .options.spells[spell:shield].slots[0].level = 1
+.options.spells[spell:shield].slots[0].total = 4
 .options.spells[spell:shield].slots[1].free = 2
 .options.spells[spell:shield].slots[1].level = 2
+.options.spells[spell:shield].slots[1].total = 2
 .options.spells[spell:shield].spell.classKeys[0] = "class:sorcerer"
 .options.spells[spell:shield].spell.classKeys[1] = "class:wizard"
 .options.spells[spell:shield].spell.key = "spell:shield"
@@ -2740,8 +2768,10 @@ options
 .options.spells[spell:sleep].enabled = true
 .options.spells[spell:sleep].slots[0].free = 4
 .options.spells[spell:sleep].slots[0].level = 1
+.options.spells[spell:sleep].slots[0].total = 4
 .options.spells[spell:sleep].slots[1].free = 2
 .options.spells[spell:sleep].slots[1].level = 2
+.options.spells[spell:sleep].slots[1].total = 2
 .options.spells[spell:sleep].spell.classKeys[0] = "class:bard"
 .options.spells[spell:sleep].spell.classKeys[1] = "class:sorcerer"
 .options.spells[spell:sleep].spell.classKeys[2] = "class:wizard"
@@ -2755,6 +2785,7 @@ options
 .options.spells[spell:web].enabled = true
 .options.spells[spell:web].slots[0].free = 2
 .options.spells[spell:web].slots[0].level = 2
+.options.spells[spell:web].slots[0].total = 2
 .options.spells[spell:web].spell.classKeys[0] = "class:sorcerer"
 .options.spells[spell:web].spell.classKeys[1] = "class:wizard"
 .options.spells[spell:web].spell.concentration = true
@@ -3103,8 +3134,10 @@ options
 .options.spells[spell:burning-hands].enabled = true
 .options.spells[spell:burning-hands].slots[0].free = 4
 .options.spells[spell:burning-hands].slots[0].level = 1
+.options.spells[spell:burning-hands].slots[0].total = 4
 .options.spells[spell:burning-hands].slots[1].free = 2
 .options.spells[spell:burning-hands].slots[1].level = 2
+.options.spells[spell:burning-hands].slots[1].total = 2
 .options.spells[spell:burning-hands].spell.classKeys[0] = "class:sorcerer"
 .options.spells[spell:burning-hands].spell.classKeys[1] = "class:wizard"
 .options.spells[spell:burning-hands].spell.key = "spell:burning-hands"
@@ -3117,6 +3150,7 @@ options
 .options.spells[spell:hold-person].enabled = true
 .options.spells[spell:hold-person].slots[0].free = 2
 .options.spells[spell:hold-person].slots[0].level = 2
+.options.spells[spell:hold-person].slots[0].total = 2
 .options.spells[spell:hold-person].spell.classKeys[0] = "class:bard"
 .options.spells[spell:hold-person].spell.classKeys[1] = "class:cleric"
 .options.spells[spell:hold-person].spell.classKeys[2] = "class:druid"
@@ -3134,8 +3168,10 @@ options
 .options.spells[spell:magic-missile].enabled = true
 .options.spells[spell:magic-missile].slots[0].free = 4
 .options.spells[spell:magic-missile].slots[0].level = 1
+.options.spells[spell:magic-missile].slots[0].total = 4
 .options.spells[spell:magic-missile].slots[1].free = 2
 .options.spells[spell:magic-missile].slots[1].level = 2
+.options.spells[spell:magic-missile].slots[1].total = 2
 .options.spells[spell:magic-missile].spell.classKeys[0] = "class:sorcerer"
 .options.spells[spell:magic-missile].spell.classKeys[1] = "class:wizard"
 .options.spells[spell:magic-missile].spell.key = "spell:magic-missile"
@@ -3148,8 +3184,10 @@ options
 .options.spells[spell:shield].reason.code = "DISABLED_REASON_CODE_REACTION_ONLY_WHEN_HIT"
 .options.spells[spell:shield].slots[0].free = 4
 .options.spells[spell:shield].slots[0].level = 1
+.options.spells[spell:shield].slots[0].total = 4
 .options.spells[spell:shield].slots[1].free = 2
 .options.spells[spell:shield].slots[1].level = 2
+.options.spells[spell:shield].slots[1].total = 2
 .options.spells[spell:shield].spell.classKeys[0] = "class:sorcerer"
 .options.spells[spell:shield].spell.classKeys[1] = "class:wizard"
 .options.spells[spell:shield].spell.key = "spell:shield"
@@ -3163,8 +3201,10 @@ options
 .options.spells[spell:sleep].enabled = true
 .options.spells[spell:sleep].slots[0].free = 4
 .options.spells[spell:sleep].slots[0].level = 1
+.options.spells[spell:sleep].slots[0].total = 4
 .options.spells[spell:sleep].slots[1].free = 2
 .options.spells[spell:sleep].slots[1].level = 2
+.options.spells[spell:sleep].slots[1].total = 2
 .options.spells[spell:sleep].spell.classKeys[0] = "class:bard"
 .options.spells[spell:sleep].spell.classKeys[1] = "class:sorcerer"
 .options.spells[spell:sleep].spell.classKeys[2] = "class:wizard"
@@ -3178,6 +3218,7 @@ options
 .options.spells[spell:web].enabled = true
 .options.spells[spell:web].slots[0].free = 2
 .options.spells[spell:web].slots[0].level = 2
+.options.spells[spell:web].slots[0].total = 2
 .options.spells[spell:web].spell.classKeys[0] = "class:sorcerer"
 .options.spells[spell:web].spell.classKeys[1] = "class:wizard"
 .options.spells[spell:web].spell.concentration = true

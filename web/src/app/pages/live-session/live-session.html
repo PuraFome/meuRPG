@@ -189,7 +189,7 @@
           (doorOpened)="toasts.push('door_open', 'Você abriu a porta.', 'Ela aparece aberta no mapa.')"
         >
           @if (state.ownVitals(); as v) {
-            <app-player-vitals [vitals]="v" [sheet]="state.ownSheet()" [beastAc]="state.beastAc()" [campaignId]="state.campaignId()" [armorClassBonus]="view.ownArmorBonus()" [ownDeathSaves]="view.ownDeathSaves()" [onTurn]="view.ownTurn()" [effectCards]="ownEffects.cards()" [conditionNames]="ownEffects.conditions()" [compact]="true" />
+            <app-player-vitals [vitals]="v" [sheet]="state.ownSheet()" [beastAc]="state.beastAc()" [campaignId]="state.campaignId()" [armorClassBonus]="view.ownArmorBonus()" [ownDeathSaves]="view.ownDeathSaves()" [onTurn]="view.ownTurn()" [lastHit]="view.ownHit()" [effectCards]="ownEffects.cards()" [conditionNames]="ownEffects.conditions()" [compact]="true" />
           }
           @if (state.isMaster() && !view.inTheatre() && view.fogMaster()) {
             <app-fog-master-panel
@@ -407,6 +407,7 @@
             [people]="view.viewAsPeople()"
             [viewAs]="state.viewAs()"
             [tick]="state.visionTick()"
+            [mover]="mover"
             (viewNoteChange)="state.viewNote.set($event)"
             (viewAsGone)="viewAsGone()"
             (viewAsBack)="setViewAs(null)"
@@ -417,6 +418,9 @@
               [campaignId]="state.campaignId()"
               [state]="mapState"
               [info]="state.partyInfo()"
+              [mover]="mover"
+              [party]="view.cluePlayers()"
+              [layers]="view.fogMaster() ? fog.layers() : null"
             />
             @if (view.fogMaster()) {
               <app-fog-master-panel
@@ -656,6 +660,7 @@
         [campaignId]="state.campaignId()"
         [armorClassBonus]="view.ownArmorBonus()"
         [ownDeathSaves]="view.ownDeathSaves()"
+        [lastHit]="view.ownHit()"
         [effectCards]="ownEffects.cards()"
         [conditionNames]="ownEffects.conditions()"
         [diceMode]="state.campaign()?.diceMode ?? 1"
@@ -722,5 +727,6 @@
             [seeing]="state.seeingFamiliar()"
             [seeingFamiliar]="state.familiarNameNow()"
             [creaturesTick]="state.creaturesTick()"
+            [mover]="mover"
           />
 </ng-template>

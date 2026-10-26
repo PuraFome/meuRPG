@@ -14,6 +14,7 @@ function packed(
     cover: Uint8Array;
     light: Uint8Array;
     doors: Uint8Array;
+    noPass: Uint8Array;
   }> = {},
 ) {
   return {
@@ -38,6 +39,26 @@ describe('PaintedLayers', () => {
     expect(layers.layers().walls).toEqual([]);
     expect(layers.value(MapLayer.DIFFICULT_TERRAIN, 2, 1)).toBe(1);
     expect(layers.value(MapLayer.WALL, 2, 1)).toBe(0);
+  });
+
+  it('keeps "Não dá para passar" as one bit a square, and paints and erases it', () => {
+    const layers = new PaintedLayers();
+    layers.load(packed(4, 2, { noPass: Uint8Array.of(0b0000_0100) }));
+    expect(layers.value(MapLayer.NO_PASS, 2, 0)).toBe(1);
+    expect(layers.layers().noPass).toEqual([{ col: 2, row: 0 }]);
+    expect(
+      layers.paint(MapLayer.NO_PASS, 1, [
+        { col: 3, row: 1 },
+        { col: 2, row: 0 },
+      ]),
+    ).toEqual([{ col: 3, row: 1 }]);
+    expect(layers.layers().noPass).toEqual([
+      { col: 2, row: 0 },
+      { col: 3, row: 1 },
+    ]);
+    layers.paint(MapLayer.NO_PASS, 0, [{ col: 2, row: 0 }]);
+    expect(layers.layers().noPass).toEqual([{ col: 3, row: 1 }]);
+    expect(layers.value(MapLayer.WALL, 3, 1)).toBe(0);
   });
 
   it('paints a wall at once, and says which squares changed', () => {

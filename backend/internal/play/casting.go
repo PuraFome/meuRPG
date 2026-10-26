@@ -355,19 +355,57 @@ func (s *Service) castOutside(ctx context.Context, c *combatTx, m authz.Membersh
 		return castOutcome{}, err
 	}
 	long := plan.minutes > 0
+	// A use of a grant is spent when the cast starts, a long casting included: the casting does
+	// not say afterwards which grant it went through.
+	spent, err := s.spendGrantUse(ctx, c, plan)
+	if err != nil {
+		return castOutcome{}, err
+	}
 	if plan.row, err = s.insertCast(ctx, c, m, plan, long); err != nil {
 		return castOutcome{}, err
 	}
 	if long {
-		return s.startLongCast(ctx, c, plan)
+		made, err := s.startLongCast(ctx, c, plan)
+		made.vitals = append(spent, made.vitals...)
+		return made, err
 	}
 	out, err := s.takeEffect(ctx, c, m, plan)
 	if err != nil {
 		return castOutcome{}, err
 	}
+	out.vitals = append(spent, out.vitals...)
 	out.guard = plan.g
 	c.characterID = &plan.g.caster.ID
 	return out, nil
+}
+
+// spendGrantUse spends the use a cast through a limited grant costs: one of the grant's resource,
+// refused with NO_USES when none is left. An NPC keeps no uses, as it keeps no slots; nothing is
+// spent for a spell of the classes, an at-will grant or a cast with a slot.
+func (s *Service) spendGrantUse(ctx context.Context, c *combatTx, plan castPlan) ([]*playv1.CharacterVitals, error) {
+	g := plan.grant
+	if g == nil || g.AtWill || !plan.g.caster.Player {
+		return nil, nil
+	}
+	v, err := s.spendResource(ctx, c, plan.g.caster.ID, g.Resource, 1)
+	if err != nil {
+		return nil, grantUseError(err)
+	}
+	return []*playv1.CharacterVitals{v}, nil
+}
+
+// grantUseError turns the combat's "no uses left" into the casting's.
+func grantUseError(err error) error {
+	if ce, ok := errors.AsType[*connect.Error](err); ok {
+		for _, d := range ce.Details() {
+			if blocked, derr := d.Value(); derr == nil {
+				if eb, ok := blocked.(*playv1.EncounterBlocked); ok && eb.GetReason() == playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_USES {
+					return errCasting(playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_NO_USES, "the grant has no use left")
+				}
+			}
+		}
+	}
+	return err
 }
 
 // planOutside reads the caster and the targets, plans the cast against the sheet and checks
@@ -380,7 +418,7 @@ func (s *Service) planOutside(ctx context.Context, c *combatTx, m authz.Membersh
 	if err := s.mayCastNow(ctx, c, g.caster); err != nil {
 		return castPlan{}, err
 	}
-	plan, err := s.planCast(ctx, c, m, g, in.spell, in.ritual, msg.GetSlot())
+	plan, err := s.planCast(ctx, c, m, g, in, msg.GetSlot())
 	if err != nil {
 		return castPlan{}, err
 	}
@@ -542,11 +580,14 @@ func (s *Service) mayCastNow(ctx context.Context, c *combatTx, caster link.Chara
 
 // castPlan is a cast once checked: who, what, with which slot.
 type castPlan struct {
-	g       castGuard
-	osp     link.OutsideSpell
-	spell   string
-	ritual  bool
-	slot    *slotRef
+	g      castGuard
+	osp    link.OutsideSpell
+	spell  string
+	ritual bool
+	slot   *slotRef
+	// grant is the granted_spell effect the cast goes through; nil for a spell of the
+	// character's classes. A cast with a grant and no slot spends a use of the grant's resource.
+	grant   *link.OutsideGrant
 	minutes int
 	in      rollInput
 	rolled  bool
@@ -560,7 +601,8 @@ type castPlan struct {
 // it can cast, the slot a free one of at least the spell's level, the ritual one the
 // caster's class casts as a ritual, and works out how long the casting takes
 // (SRD 5.1, "Rituals" and "Casting Time").
-func (s *Service) planCast(ctx context.Context, c *combatTx, m authz.Membership, g castGuard, spellKey string, ritual bool, in *playv1.SpellSlot) (castPlan, error) {
+func (s *Service) planCast(ctx context.Context, c *combatTx, m authz.Membership, g castGuard, req castRequest, in *playv1.SpellSlot) (castPlan, error) {
+	spellKey, ritual := req.spell, req.ritual
 	slotLevel := int(in.GetLevel())
 	osp, err := s.roster.OutsideSpell(ctx, c.tx, m.CampaignID, g.caster.ID, spellKey, slotLevel)
 	if err != nil {
@@ -570,6 +612,9 @@ func (s *Service) planCast(ctx context.Context, c *combatTx, m authz.Membership,
 		return castPlan{}, err
 	}
 	plan := castPlan{g: g, osp: osp, spell: spellKey, ritual: ritual}
+	if req.grantedBy != "" {
+		return s.planGranted(ctx, c, m, plan, req.grantedBy, in)
+	}
 	switch {
 	case ritual:
 		err = plan.planRitual()
@@ -581,6 +626,72 @@ func (s *Service) planCast(ctx context.Context, c *combatTx, m authz.Membership,
 		err = plan.planSlotted(in)
 	}
 	return plan, err
+}
+
+// planGranted plans a cast through a granted_spell effect. The spell is cast at its own level
+// with no slot, spending a use of the grant's resource unless it is at will; with a slot it is the
+// grant's only if it allows one, and nothing is spent but the slot. A grant that is only for
+// rituals casts as a ritual and nothing else.
+func (s *Service) planGranted(ctx context.Context, c *combatTx, m authz.Membership, plan castPlan, source string, in *playv1.SpellSlot) (castPlan, error) {
+	i := slices.IndexFunc(plan.osp.Grants, func(g link.OutsideGrant) bool { return g.Source == source })
+	if i < 0 {
+		return plan, badCast("granted_by is not a grant of this spell")
+	}
+	grant := plan.osp.Grants[i]
+	plan.grant = &grant
+	if err := plan.checkGrantMode(grant); err != nil {
+		return plan, err
+	}
+	level := plan.osp.Spell.Level
+	sp, err := s.roster.GrantedCombatSpell(ctx, c.tx, m.CampaignID, plan.g.caster.ID, plan.spell, source, level, "")
+	if err != nil {
+		return plan, err
+	}
+	plan.osp.Spell = sp
+	switch {
+	case plan.ritual:
+		if !plan.osp.Ritual {
+			return plan, errCasting(playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_NOT_A_RITUAL, "this spell does not have the ritual tag")
+		}
+		plan.minutes = plan.osp.RitualMinutes
+	case in != nil:
+		err = plan.planGrantedSlot(grant, level, in)
+		return plan, err
+	default:
+		plan.minutes = plan.osp.CastMinutes
+	}
+	if !grant.Ready {
+		return plan, errCasting(playv1.CastingBlockedReason_CASTING_BLOCKED_REASON_NO_USES, "the grant has no use left")
+	}
+	return plan, nil
+}
+
+// checkGrantMode refuses a cast the grant does not allow: a summoning spell, or a ritual
+// cast against a grant that is (or is not) for rituals only.
+func (p *castPlan) checkGrantMode(grant link.OutsideGrant) error {
+	if p.osp.Effect == link.EffectSummon {
+		return badCast("a summoning spell is cast with the character's classes, not through a grant")
+	}
+	if p.ritual != grant.RitualOnly {
+		if grant.RitualOnly {
+			return badCast("this grant casts the spell only as a ritual")
+		}
+		return badCast("this grant does not cast the spell as a ritual")
+	}
+	return nil
+}
+
+// planGrantedSlot plans a granted spell cast with a slot, when the grant allows one: the slot
+// spends no use of the grant.
+func (p *castPlan) planGrantedSlot(grant link.OutsideGrant, level int, in *playv1.SpellSlot) error {
+	if level == 0 {
+		return badCast("a cantrip is cast with no slot")
+	}
+	if !grant.AlsoWithSlot {
+		return badCast("this grant does not cast the spell with a slot")
+	}
+	p.grant = nil // a slot spends no use
+	return p.planSlotted(in)
 }
 
 // planRitual plans a ritual: it spends no slot and cannot be cast at a higher level.
@@ -712,6 +823,9 @@ type castRequest struct {
 	targetIDs       []string
 	ritual, rolled  bool
 	roll            rollInput
+	// grantedBy is the source of the granted_spell effect that casts the spell ("" for a spell
+	// of the character's classes).
+	grantedBy string
 }
 
 // readCastRequest checks the shape of a request: the ids, the spell, the targets (no more than
@@ -753,6 +867,9 @@ func readCastRequest(msg *playv1.CastSpellOutsideCombatRequest) (castRequest, er
 	}
 	if in.ritual = msg.GetAsRitual(); in.ritual && msg.GetSlot() != nil {
 		return in, badCast("a ritual is cast with no slot")
+	}
+	if in.grantedBy = msg.GetGrantedBy(); len(in.grantedBy) > maxSpellKeyLen {
+		return in, badCast("granted_by must name the trait, feat or feature that grants the spell")
 	}
 	return in, nil
 }

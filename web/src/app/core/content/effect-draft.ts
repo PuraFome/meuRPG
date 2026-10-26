@@ -6,8 +6,13 @@ import type {
   GetEffectMenuResponse,
   TableEffect,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
-import { feetToMeters, metersToFeet } from '../units';
-import { onlyProficientApplies, visibleFields } from './effect-visible';
+import { feetToMeters } from '../units';
+import type { EffectDraft, EffectInit } from './effect-draft.types';
+import { visibleFields } from './effect-visible';
+import { EFFECT_WRITERS, rangeFeet } from './effect-writers';
+
+export type { EffectDraft, EffectInit } from './effect-draft.types';
+export { onlyProficientApplies, rangeFeet, splitTags } from './effect-writers';
 
 /**
  * A feature's effect as the editor holds it (MR-025, ADR-0018, section 4), and the menu it is chosen from. The menu is the
@@ -16,57 +21,6 @@ import { onlyProficientApplies, visibleFields } from './effect-visible';
  * only the fields the chosen type reads (a field of another type is refused as `bad_value`), so changing the type drops
  * what the old one had.
  */
-
-/** The fields of `TableEffect`, as plain values: strings for text, arrays for lists, numbers for counts and ranges. */
-export interface EffectDraft {
-  /** A stable id the editor tracks the row by (never sent): focus and "Mais opções" follow a moved item. */
-  id: string;
-  type: string;
-  target: string;
-  mode: string;
-  value: string;
-  when: string;
-  /** Written as "against:magic, about:items": split into tags when sent. */
-  tags: string;
-  proficiency: string;
-  level: string;
-  roll: string;
-  targets: string[];
-  sense: string;
-  /** The range as typed, in metres (the server stores feet): kept as text so the field never rewrites what is being typed. */
-  rangeM: string;
-  resource: string;
-  max: string;
-  recharge: string;
-  choice: string;
-  count: number;
-  from: string[];
-  economy: string;
-  /** superiority_die: where the die goes, and the ability whose modifier a reduction adds. ranged_attack: "spell" or "weapon". */
-  applies: string;
-  ability: string;
-  spells: string[];
-  textPt: string;
-  /** ranged_attack's switches: past half and three-quarters cover, the spell range times 2 or 3 (0 is none), no disadvantage at long range. */
-  ignoreCover: boolean;
-  rangeMultiplier: number;
-  noLongRangeDisadvantage: boolean;
-  /** resistance: the damage type it leaves out, and when it holds ("rage"). */
-  except: string;
-  while: string;
-  /** extra_damage: the dice (a formula) and sides, the type ("" is the weapon's), weapon kind, frequency, no crit doubling. */
-  dice: string;
-  diceSides: number;
-  damageType: string;
-  weapon: string;
-  frequency: string;
-  noCritDoubling: boolean;
-  /** spell_modifier: the spells it fits and its change. */
-  appliesTo: string;
-  spellChange: string;
-  /** proficiency, level "expertise" on a skill: doubles it only where the character is already proficient. */
-  onlyProficient: boolean;
-}
 
 let nextId = 0;
 
@@ -106,6 +60,21 @@ export function emptyEffect(type = ''): EffectDraft {
     noLongRangeDisadvantage: false,
     except: '',
     while: '',
+    cost: '',
+    costMax: '',
+    valuePerPoint: '',
+    heal: '',
+    tempHp: '',
+    event: '',
+    restore: '',
+    healPercentMax: 0,
+    onlyProficient: false,
+    spell: '',
+    fromLevel: '',
+    uses: '',
+    alsoWithSlot: false,
+    ritualOnly: false,
+    countsAsKnown: false,
     dice: '',
     diceSides: 0,
     damageType: '',
@@ -114,7 +83,6 @@ export function emptyEffect(type = ''): EffectDraft {
     noCritDoubling: false,
     appliesTo: '',
     spellChange: '',
-    onlyProficient: false,
   };
 }
 
@@ -150,6 +118,21 @@ export function effectToDraft(e: TableEffect): EffectDraft {
     noLongRangeDisadvantage: e.noLongRangeDisadvantage,
     except: e.except,
     while: e.while,
+    cost: e.cost,
+    costMax: e.costMax,
+    valuePerPoint: e.valuePerPoint,
+    heal: e.heal,
+    tempHp: e.tempHp,
+    event: e.event,
+    restore: e.restore,
+    healPercentMax: e.healPercentMax,
+    onlyProficient: e.onlyProficient,
+    spell: e.spell,
+    fromLevel: e.fromLevel,
+    uses: e.uses,
+    alsoWithSlot: e.alsoWithSlot,
+    ritualOnly: e.ritualOnly,
+    countsAsKnown: e.countsAsKnown,
     dice: e.dice,
     diceSides: e.diceSides,
     damageType: e.damageType,
@@ -158,118 +141,8 @@ export function effectToDraft(e: TableEffect): EffectDraft {
     noCritDoubling: e.noCritDoubling,
     appliesTo: e.appliesTo,
     spellChange: e.spellChange,
-    onlyProficient: e.onlyProficient,
   };
 }
-
-/** The fields a request carries for one effect: the type, and only what that type reads. */
-export type EffectInit = Partial<Omit<TableEffect, '$typeName' | '$unknown'>>;
-
-/** The tags of "against:magic, about:items": trimmed, empty ones dropped. */
-export function splitTags(text: string): string[] {
-  return text
-    .split(',')
-    .map((t) => t.trim())
-    .filter((t) => t !== '');
-}
-
-type EffectWriter = (d: EffectDraft) => EffectInit;
-
-/** A text the server reads trimmed; an empty one is not sent. */
-const trimmedText =
-  (key: 'value' | 'when' | 'resource' | 'max' | 'textPt' | 'dice'): EffectWriter =>
-  (d) => {
-    const text = d[key].trim();
-    return text ? ({ [key]: text } as EffectInit) : {};
-  };
-
-/** A choice that is sent when something is picked. */
-const pickedText =
-  (
-    key:
-      | 'target'
-      | 'mode'
-      | 'proficiency'
-      | 'level'
-      | 'roll'
-      | 'sense'
-      | 'recharge'
-      | 'choice'
-      | 'economy'
-      | 'applies'
-      | 'ability'
-      | 'except'
-      | 'while'
-      | 'damageType'
-      | 'weapon'
-      | 'frequency'
-      | 'appliesTo'
-      | 'spellChange',
-  ): EffectWriter =>
-  (d) =>
-    d[key] ? ({ [key]: d[key] } as EffectInit) : {};
-
-/** A list that is sent (as a copy) when it has something in it. */
-const pickedList =
-  (key: 'targets' | 'from' | 'spells'): EffectWriter =>
-  (d) =>
-    d[key].length > 0 ? ({ [key]: [...d[key]] } as EffectInit) : {};
-
-/** How each field the menu names goes into the request, by the field's proto name. ranged_attack's switches and its multiplier
- * are only sent when on (or set). A name the table does not know writes nothing. */
-const EFFECT_WRITERS: ReadonlyMap<string, EffectWriter> = new Map<string, EffectWriter>([
-  ['target', pickedText('target')],
-  ['mode', pickedText('mode')],
-  ['value', trimmedText('value')],
-  ['when', trimmedText('when')],
-  [
-    'tags',
-    (d) => {
-      const tags = splitTags(d.tags);
-      return tags.length > 0 ? { tags } : {};
-    },
-  ],
-  ['proficiency', pickedText('proficiency')],
-  ['level', pickedText('level')],
-  ['roll', pickedText('roll')],
-  ['targets', pickedList('targets')],
-  ['sense', pickedText('sense')],
-  ['range_ft', (d) => (rangeFeet(d.rangeM) > 0 ? { rangeFt: rangeFeet(d.rangeM) } : {})],
-  ['resource', trimmedText('resource')],
-  ['max', trimmedText('max')],
-  ['recharge', pickedText('recharge')],
-  ['choice', pickedText('choice')],
-  ['count', (d) => (d.count > 0 ? { count: d.count } : {})],
-  ['from', pickedList('from')],
-  ['economy', pickedText('economy')],
-  ['applies', pickedText('applies')],
-  ['ability', pickedText('ability')],
-  ['spells', pickedList('spells')],
-  ['text_pt', trimmedText('textPt')],
-  ['except', pickedText('except')],
-  ['while', pickedText('while')],
-  ['dice', trimmedText('dice')],
-  ['dice_sides', (d) => (d.diceSides > 0 ? { diceSides: d.diceSides } : {})],
-  ['damage_type', pickedText('damageType')],
-  ['weapon', pickedText('weapon')],
-  ['frequency', pickedText('frequency')],
-  ['no_crit_doubling', (d) => (d.noCritDoubling ? { noCritDoubling: true } : {})],
-  ['applies_to', pickedText('appliesTo')],
-  ['spell_change', pickedText('spellChange')],
-  ['ignore_cover', (d) => (d.ignoreCover ? { ignoreCover: true } : {})],
-  [
-    'only_proficient',
-    (d) => (onlyProficientApplies(d) && d.onlyProficient ? { onlyProficient: true } : {}),
-  ],
-  [
-    'range_multiplier',
-    (d) => (d.rangeMultiplier > 0 ? { rangeMultiplier: d.rangeMultiplier } : {}),
-  ],
-  [
-    'no_long_range_disadvantage',
-    (d) => (d.noLongRangeDisadvantage ? { noLongRangeDisadvantage: true } : {}),
-  ],
-]);
 
 /** The effect a request sends: `type` and the fields the menu says that type reads, and nothing else. An empty text or an empty
  * list is not sent: the server reads "not set" the same way. */
@@ -386,12 +259,6 @@ export function rangeMeters(ft: number): string {
   return ft > 0 ? String(feetToMeters(ft)).replace('.', ',') : '';
 }
 
-/** The feet of what a range field holds ("18" or "4,5" metres); 0 for an empty or unreadable field. */
-export function rangeFeet(text: string): number {
-  const n = Number(text.trim().replace(',', '.'));
-  return Number.isFinite(n) && n > 0 ? metersToFeet(n) : 0;
-}
-
 /** Whether a range field holds something that is not a number of metres (empty is fine: it means none). */
 export function unreadableRange(text: string): boolean {
   const t = text.trim();
@@ -410,17 +277,23 @@ export function strictRangeFeet(text: string): number {
   return unreadableRange(text) ? Number.NaN : rangeFeet(text);
 }
 
-/** Whether a required closed-list field of the action, maneuver, resistance and spell_modifier types is still empty. */
+/** Whether a required closed-list field of the action, maneuver and resistance types is still empty. */
 function choiceEmpty(d: EffectDraft, name: string): boolean {
-  return (
-    (name === 'economy' && d.economy === '') ||
-    (name === 'applies' && d.applies === '') ||
-    (name === 'except' && d.except === '') ||
-    (name === 'while' && d.while === '') ||
-    (name === 'applies_to' && d.appliesTo === '') ||
-    (name === 'spell_change' && d.spellChange === '')
-  );
+  return CHOICE_FIELDS[name]?.(d) === '';
 }
+
+/** The draft's value of each required choice a request cannot leave empty. */
+const CHOICE_FIELDS: Readonly<Record<string, (d: EffectDraft) => string>> = {
+  event: (d) => d.event,
+  economy: (d) => d.economy,
+  applies: (d) => d.applies,
+  except: (d) => d.except,
+  while: (d) => d.while,
+  spell: (d) => d.spell,
+  ability: (d) => d.ability,
+  applies_to: (d) => d.appliesTo,
+  spell_change: (d) => d.spellChange,
+};
 
 /** A required field of the type that still has nothing: the editor says so before the server does. */
 export function missingRequired(d: EffectDraft, menu: EffectMenuVm): string[] {

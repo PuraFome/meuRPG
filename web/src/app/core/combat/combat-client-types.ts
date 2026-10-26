@@ -179,6 +179,8 @@ export interface CastExtras {
   readonly destination?: { readonly col: number; readonly row: number };
   /** The cast options of the character's table features that were ticked (`SpellOptionChoice`). */
   readonly spellOptions?: readonly { readonly key: string; readonly damageTypeKey: string }[];
+  /** A granted spell: the source of the grant it is cast through (`SpellGrantOption.source_key`). */
+  readonly grantedBy?: string;
 }
 
 /** What a summoning spell brings (`SummonChoice`): the option, a content key per creature and, optionally, a name each. */
@@ -209,6 +211,9 @@ export interface ActionResult {
   readonly encounter: Encounter;
   readonly roll: DiceRoll | undefined;
   readonly healed: number | undefined;
+  /** A table feature's action: the points it spent and the temporary hit points the target gained. */
+  readonly spent: number | undefined;
+  readonly tempHpGained: number | undefined;
 }
 
 /** What the master changes in "Condições…": the new set of conditions (unset

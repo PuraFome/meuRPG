@@ -61,8 +61,17 @@ export class CastChoices {
   readonly metaOptions: NonNullable<CastState['data']['metamagic']>;
   readonly sorceryPoints: Pool | null;
   readonly sculptOffered: boolean;
+  /** The grant the spell is cast through, if any. */
+  readonly grant: NonNullable<CastState['data']['grant']> | null;
+  /** The slots to pick from: a granted spell has none to pick unless its grant allows one. */
   readonly rows = computed(() =>
-    slotRows(this.s.data.level, this.s.data.slots, this.s.data.usage, this.s.data.pact),
+    this.grant && !this.grant.alsoWithSlot
+      ? []
+      : slotRows(this.s.data.level, this.s.data.slots, this.s.data.usage, this.s.data.pact),
+  );
+  /** The cast goes through the grant, with no slot: a grant with no slot allowed, or one the caster did not ask a slot for. */
+  readonly viaGrant = computed(
+    () => !!this.grant && (!this.grant.alsoWithSlot || this.s.freeCast()),
   );
   readonly kind = computed(() => spellKind(this.s.data.spellKey, this.s.details()));
   /** Sono and Leque Cromático roll a pool of dice: the dice at this slot. */
@@ -125,7 +134,7 @@ export class CastChoices {
       detailsRead: !!this.s.details(),
       detailsFailed: this.s.detailsFailed(),
       level: this.s.data.level,
-      slotChosen: !!this.s.slot(),
+      slotChosen: !!this.s.slot() || this.viaGrant(),
       spellKey: this.s.data.spellKey,
       ability: this.s.ability(),
       placedArea: !!this.area.flow,
@@ -160,13 +169,14 @@ export class CastChoices {
     private readonly canApp: boolean,
     private readonly canTypeDamage: boolean,
   ) {
+    this.grant = s.data.grant ?? null;
     this.asksAbility = needsAbility(s.data.spellKey);
     this.metaOptions = s.data.metamagic ?? [];
     this.sorceryPoints = s.data.sorceryPoints ?? null;
     this.sculptOffered = s.data.sculptSpells ?? false;
     // The lowest free slot is chosen, as the design draws it; an only target
     // and an only reachable dart target are chosen too.
-    const first = defaultSlot(this.rows());
+    const first = this.grant ? null : defaultSlot(this.rows());
     if (first) {
       s.slot.set(first);
     }
@@ -225,6 +235,12 @@ export class CastChoices {
   pickDestination(square: Square | null): void {
     this.s.destination.set(square);
     this.chose();
+  }
+
+  /** "Sem espaço (usa a concessão)" on or off: off asks for a slot, the lowest free one first. */
+  setFreeCast(on: boolean): void {
+    this.s.freeCast.set(on);
+    this.s.slot.set(on ? null : defaultSlot(this.rows()));
   }
 
   pickSlot(row: SlotRow): void {

@@ -416,6 +416,15 @@ a.mr-list__row:hover .mr-list__name {
       );
   }
 
+  // Não dá para passar: the checkerboard the map draws.
+  &--nopass {
+    background-image: repeating-conic-gradient(
+      color-mix(in srgb, var(--mr-map-token-ink) 65%, transparent) 0 25%,
+      transparent 0 50%
+    );
+    background-size: 25% 25%;
+  }
+
   &--terrain {
     background-image:
       repeating-linear-gradient(

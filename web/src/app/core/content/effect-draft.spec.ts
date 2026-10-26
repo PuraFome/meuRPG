@@ -8,6 +8,7 @@ import {
   resistanceMenu,
   spellModifierMenu,
 } from './content-testing-menu';
+import { grantedSpellMenu } from './content-testing-menu-costs';
 import {
   draftToEffect,
   effectToDraft,
@@ -147,7 +148,10 @@ describe("an effect from the server's menu (ADR-0018, section 4)", () => {
   it('offers what a choice may list, by the kind of choice', () => {
     expect(m.fromOptions('skill').map((o) => o.key)).toEqual(['skill:arcana', 'skill:perception']);
     expect(m.fromOptions('language').map((o) => o.namePt)).toEqual(['Comum', 'Primordial']);
-    expect(m.fromOptions('feature').map((o) => o.namePt)).toEqual(['Estilo de luta']);
+    expect(m.fromOptions('feature').map((o) => o.namePt)).toEqual([
+      'Estilo de luta',
+      'Dádiva do pacto',
+    ]);
     m.classNamePt = (k) => (k === 'class:wizard' ? 'Mago' : k);
     expect(m.fromOptions('spell').map((o) => o.namePt)).toEqual(['Mago', 'class:cleric']);
     expect(m.fromOptions('')).toEqual([]);
@@ -350,6 +354,61 @@ describe('extra_damage: dice, type, weapon and frequency', () => {
   });
 });
 
+describe('granted_spell: a spell the entry gives, cast with no slot', () => {
+  const m = grantedSpellMenu();
+
+  it('sends the spell, the ability, the level, what it spends and the switches that are on', () => {
+    const d = {
+      ...emptyEffect('granted_spell'),
+      spell: 'spell:light',
+      ability: 'choice',
+      fromLevel: ' 3 ',
+      uses: 'usos_de_teste',
+      alsoWithSlot: true,
+      countsAsKnown: true,
+    };
+    expect(draftToEffect(d, m)).toEqual({
+      type: 'granted_spell',
+      spell: 'spell:light',
+      ability: 'choice',
+      fromLevel: '3',
+      uses: 'usos_de_teste',
+      alsoWithSlot: true,
+      countsAsKnown: true,
+    });
+  });
+
+  it('sends nothing for an empty level, an empty resource (at will) and the switches that are off', () => {
+    const d = { ...emptyEffect('granted_spell'), spell: 'spell:light', ability: 'wis' };
+    expect(draftToEffect(d, m)).toEqual({
+      type: 'granted_spell',
+      spell: 'spell:light',
+      ability: 'wis',
+    });
+  });
+
+  it('asks for the spell and the ability', () => {
+    expect(missingRequired(emptyEffect('granted_spell'), m)).toEqual(['spell', 'ability']);
+  });
+
+  it('reads a stored one back and sends it unchanged', () => {
+    const stored = create(TableEffectSchema, {
+      type: 'granted_spell',
+      spell: 'spell:detect-magic',
+      ability: 'int',
+      uses: 'at_will',
+      ritualOnly: true,
+    });
+    expect(draftToEffect(effectToDraft(stored), m)).toEqual({
+      type: 'granted_spell',
+      spell: 'spell:detect-magic',
+      ability: 'int',
+      uses: 'at_will',
+      ritualOnly: true,
+    });
+  });
+});
+
 describe('spell_modifier: the change decides the fields', () => {
   const m = spellModifierMenu();
   const base = { ...emptyEffect('spell_modifier'), appliesTo: 'damage_spell' };
@@ -439,5 +498,22 @@ describe("superiority_die on the character's own rolls", () => {
       targets: ['skill.stealth'],
     });
     expect(draftToEffect({ ...d, applies: 'damage' }, m)).not.toHaveProperty('targets');
+  });
+});
+describe('breathes_water: no field of its own', () => {
+  const m = grantedSpellMenu();
+
+  it('sends the type and the condition only', () => {
+    const d = {
+      ...emptyEffect('breathes_water'),
+      when: 'level() >= 3',
+      textPt: ' Respira na água. ',
+    };
+    expect(draftToEffect(d, m)).toEqual({
+      type: 'breathes_water',
+      when: 'level() >= 3',
+      textPt: 'Respira na água.',
+    });
+    expect(missingRequired(emptyEffect('breathes_water'), m)).toEqual([]);
   });
 });

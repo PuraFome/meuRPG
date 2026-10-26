@@ -363,7 +363,7 @@ func (s *Service) previewSpell(ctx context.Context, m authz.Membership, msg *pla
 	if err != nil {
 		return link.Spell{}, s.dbError(ctx, "work out the turn options", err)
 	}
-	cast, err := castableOf(opts, msg.GetSpellKey())
+	cast, err := castableOf(opts, msg.GetSpellKey(), msg.GetGrantedBy())
 	if err != nil {
 		return link.Spell{}, err
 	}
@@ -375,7 +375,7 @@ func (s *Service) previewSpell(ctx context.Context, m authz.Membership, msg *pla
 	if slot != nil {
 		slotLevel = int(slot.Level)
 	}
-	sp, err := s.roster.CombatSpell(ctx, nil, m.CampaignID, caster.CharacterID, msg.GetSpellKey(), slotLevel, "")
+	sp, err := s.roster.GrantedCombatSpell(ctx, nil, m.CampaignID, caster.CharacterID, msg.GetSpellKey(), msg.GetGrantedBy(), slotLevel, "")
 	if err != nil {
 		return link.Spell{}, s.dbError(ctx, "read the spell", err)
 	}

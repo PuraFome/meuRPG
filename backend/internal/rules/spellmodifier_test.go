@@ -3,6 +3,7 @@ package rules
 import (
 	"errors"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -46,6 +47,37 @@ func TestDeriveExposesTheSpellModifierWorkedOut(t *testing.T) {
 	m := d.SpellModifiers[0]
 	if m.Key != optFeature || m.AppliesTo != "school:evocation" || m.Change != SpellChangeBonusDamage || m.BonusType != "damage-type:fire" || m.Resource != optUses || m.TextPT != "Brasas." || m.Bonus < 1 {
 		t.Errorf("spell modifier = %+v", m)
+	}
+}
+
+// The cost is the cost of grant_action: how many uses of the resource the option spends, at least 1.
+func TestASpellModifierCostIsWorkedOutAndCheckedLikeAnActions(t *testing.T) {
+	c := withOverlay(t, spellModifierOverlay(
+		Effect{Type: "resource", Resource: optUses, Max: "3", Recharge: "long_rest"},
+		Effect{Type: "spell_modifier", AppliesTo: "cantrip", SpellChange: SpellChangeExtraDice, Count: 1, Resource: optUses, Cost: "prof()"},
+	))
+	d := Derive(optBuild(5), c)
+	if len(d.SpellModifiers) != 1 || d.SpellModifiers[0].Cost != d.ProficiencyBonus {
+		t.Errorf("spell modifiers = %+v, want a cost of the proficiency bonus %d", d.SpellModifiers, d.ProficiencyBonus)
+	}
+	const at = "subclasses[0].levels[0].features[0].effects"
+	for name, tc := range map[string]struct {
+		effects []Effect
+		field   string
+	}{
+		"a cost with no resource": {[]Effect{{Type: "spell_modifier", AppliesTo: "cantrip", SpellChange: SpellChangeExtraDice, Count: 1, Cost: "2"}}, at + "[0]"},
+		"a cost the resource can never pay": {[]Effect{
+			{Type: "resource", Resource: optUses, Max: "3", Recharge: "long_rest"},
+			{Type: "spell_modifier", AppliesTo: "cantrip", SpellChange: SpellChangeExtraDice, Count: 1, Resource: optUses, Cost: "4"},
+		}, at + "[1].cost"},
+	} {
+		o := spellModifierOverlay(tc.effects...)
+		o.Strict = []string{optSubclass}
+		_, err := loadForTest(t).With(o)
+		var oe *OverlayError
+		if !errors.As(err, &oe) || !strings.HasPrefix(oe.Field, tc.field) {
+			t.Errorf("%s: error = %v, want it refused at %s", name, err, tc.field)
+		}
 	}
 }
 

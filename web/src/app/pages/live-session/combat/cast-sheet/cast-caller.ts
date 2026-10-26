@@ -119,6 +119,7 @@ export class CastCaller {
             ...(sculpted.length ? { sculptedIds: sculpted } : {}),
             ...(this.s.tablePicks().length ? { spellOptions: this.s.tablePicks() } : {}),
             ...(destination ? { destination } : {}),
+            ...(data.grant ? { grantedBy: data.grant.sourceKey } : {}),
           },
         );
         this.show(res.encounter, res.cast);

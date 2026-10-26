@@ -32,7 +32,7 @@ func bookRows(t testing.TB, n, extraEffects int) []charactersdb.CampaignContent 
 	spells := n - classes - subclasses - races - subraces - backgrounds - feats
 	var rows []charactersdb.CampaignContent
 	add := func(kind rulesv1.TableContentKind, name string, body tableBody) string {
-		key := entryKey(kind, name, rows)
+		key := entryKey(kind, &rulesv1.TableFeat{NamePt: name}, rows)
 		st, err := prepare(key, kind, body, nil)
 		if err != nil {
 			t.Fatalf("prepare(%s): %v", key, err)

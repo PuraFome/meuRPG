@@ -186,10 +186,9 @@ func (s *Service) CombatSheet(ctx context.Context, tx pgx.Tx, campaignID, charac
 	out.AttacksPerAction = max(d.AttacksPerAction, 1)
 	out.CriticalRange, out.TwoWeaponFighting, out.BrutalCriticalDice, out.SavageAttacks = d.CriticalRange, d.TwoWeaponFighting, d.BrutalCriticalDice, d.SavageAttacks
 	for _, a := range d.Actions {
-		out.FeatureActions = append(out.FeatureActions, link.FeatureAction{
-			Key: a.Key, Name: a.NamePT, Economy: a.Economy, Resource: a.Resource, Pool: poolResources[a.Resource], Standard: a.Standard,
-		})
+		out.FeatureActions = append(out.FeatureActions, featureActionOf(a))
 	}
+	out.Hooks = hooksOf(content, d.Hooks)
 	out.FighterLevel, _ = lastClassLevel(d, "class:fighter")
 	out.MonkLevel, _ = lastClassLevel(d, "class:monk")
 	if out.ClericLevel, _ = lastClassLevel(d, "class:cleric"); out.ClericLevel > 0 {
@@ -200,6 +199,36 @@ func (s *Service) CombatSheet(ctx context.Context, tx pgx.Tx, campaignID, charac
 		}
 	}
 	return out, nil
+}
+
+// featureActionOf is the combat's view of an action a feature grants: its economy, its resource and cost, and
+// what it heals or gives.
+func featureActionOf(a rules.Action) link.FeatureAction {
+	fa := link.FeatureAction{
+		Key: a.Key, Name: a.NamePT, Economy: a.Economy, Resource: a.Resource, Pool: poolResources[a.Resource], Standard: a.Standard,
+		Cost: a.Cost, CostMax: a.CostMax, TempHP: a.Result.TempHP, TempHPPerPoint: a.Result.TempHPPerPoint,
+		HealPerPoint: link.Dice{Count: a.Result.HealPerPoint.Count, Sides: a.Result.HealPerPoint.Sides, Bonus: a.Result.HealPerPoint.Bonus},
+	}
+	if h := a.Result.Heal; h != nil {
+		fa.Heal = &link.Dice{Count: h.Count, Sides: h.Sides, Bonus: h.Bonus}
+	}
+	return fa
+}
+
+// hooksOf is the combat's view of the character's on_event effects, with the name of the feature that has each.
+func hooksOf(content *rules.Content, hooks []rules.EventHook) []link.Hook {
+	var out []link.Hook
+	for _, h := range hooks {
+		lh := link.Hook{
+			Event: h.Event, Source: h.Source, SourceNamePT: content.NamePT(h.Source), HealPercentMax: h.HealPercentMax, TempHP: h.TempHP,
+			Restore: h.Restore, RestoreCount: h.RestoreCount, Spends: h.Spends, SpendCount: h.SpendCount,
+		}
+		if h.Heal != nil {
+			lh.Heal = &link.Dice{Count: h.Heal.Count, Sides: h.Heal.Sides, Bonus: h.Heal.Bonus}
+		}
+		out = append(out, lh)
+	}
+	return out
 }
 
 // lastClassLevel is the level of the class on the sheet, the last entry when the
@@ -354,7 +383,13 @@ func turnOptionsToProto(o combat.TurnOptions) *rulesv1.TurnOptions {
 			Spell: spellToProto(sp.Spell), Economy: economyToProto[sp.Economy], Enabled: sp.Enabled, Reason: reasonProto(sp.Reason),
 		}
 		for _, c := range sp.Slots {
-			so.Slots = append(so.Slots, &rulesv1.SlotChoice{Level: i32(c.Level), Pact: c.Pact, Free: i32(c.Free)})
+			so.Slots = append(so.Slots, &rulesv1.SlotChoice{Level: i32(c.Level), Pact: c.Pact, Free: i32(c.Free), Total: i32(c.Total)})
+		}
+		if g := sp.Grant; g != nil {
+			so.Grant = &rulesv1.SpellGrantOption{
+				SourceKey: g.Source, SourceNamePt: g.SourcePT, AtWill: g.AtWill, Resource: g.Resource, UsesLeft: i32(g.UsesLeft),
+				AlsoWithSlot: g.AlsoWithSlot, Ability: string(g.Ability), AttackBonus: i32(g.AttackBonus), SaveDc: i32(g.SaveDC),
+			}
 		}
 		out.Spells = append(out.Spells, so)
 	}

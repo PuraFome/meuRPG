@@ -1,3 +1,4 @@
+import { hookSentence } from '../combat/hook-text';
 import {
   type GetRestPreviewResponse,
   RestKind,
@@ -70,7 +71,12 @@ function resourcesBack(characters: readonly RestPreview[]): ResourceBack[] {
         entry = { key: r.key, name: r.namePt || 'Recurso', who: [] };
         byKey.set(r.key, entry);
       }
-      entry.who.push({ characterId: c.characterId, text: `${c.name} ${r.total} de ${r.total}` });
+      // A resource that gives back one use (restore_one_on_short_rest, restore_one_on_long_rest) says so, not "3 de 3".
+      const text =
+        r.back > 0
+          ? `${c.name} +${r.back} ${r.back === 1 ? 'uso' : 'usos'}`
+          : `${c.name} ${r.total} de ${r.total}`;
+      entry.who.push({ characterId: c.characterId, text });
     }
   }
   return [...byKey.values()];
@@ -102,6 +108,15 @@ function alsoShortItems(items: readonly ResourceBack[]): RestLine {
   });
   parts.push(plain(': voltam (também voltariam num descanso curto).'));
   return parts;
+}
+
+/** "Ao terminar o descanso longo, Kai: Fôlego da Mesa entrou em ação: ganha 3 PV temporários.": the hooks of the owner (the
+ * preview shows the average of their dice; the rest rolls them). */
+function hookLines(characters: readonly RestPreview[], long: boolean): RestLine[] {
+  const when = `Ao terminar o ${long ? 'descanso longo' : 'descanso curto'}`;
+  return characters.flatMap((c) =>
+    c.hooks.map((h) => [plain(`${when}, ${c.name}: ${hookSentence(h, true)}.`)]),
+  );
 }
 
 /** What the confirmation lists: the board's lines, from what the server says each character gets back. `rechargeOf`
@@ -154,6 +169,8 @@ export function restSummary(
       lines.push([bold('espaços de pacto'), plain(`: ${listWords(pact)}.`)]);
     }
   }
+
+  lines.push(...hookLines(characters, long));
 
   return {
     title: `Começar o ${long ? 'descanso longo' : 'descanso curto'}?`,

@@ -54,8 +54,9 @@ type SpellModifier struct {
 	BonusType string
 	// ExtraDice are the dice per slot level above the spell's own.
 	ExtraDice int
-	// Resource is the resource each use spends, one use; empty for none.
+	// Resource is the resource each use spends, Cost uses of it (at least 1); empty for none.
 	Resource string
+	Cost     int
 	// TextPT is the line the table reads.
 	TextPT string
 }
@@ -146,6 +147,9 @@ func (x effectCompiler) spellModifier() error {
 	if field, msg := x.c.spellModifierKeys(e); field != "" {
 		return x.fail("%s", msg)
 	}
+	if err := x.checkCosts(); err != nil {
+		return err
+	}
 	var err error
 	e.value, err = x.compile(e.Value, formula.Int)
 	return err
@@ -162,7 +166,7 @@ func (b *overlayBuilder) checkSpellModifier(site effectSite, e *Effect) error {
 	if e.Resource != "" && !b.resourceDefined(site.owner, e.Resource) {
 		return site.fail(".resource", ReasonReference, "the option spends %q, which no resource effect of this entry or its class defines", e.Resource)
 	}
-	return nil
+	return b.checkAffordable(site, e)
 }
 
 // spellModifiers fills Derived.SpellModifiers from the spell_modifier effects the character has. A resource
@@ -176,20 +180,35 @@ func (x *deriver) spellModifiers() {
 		if e.Resource != "" && !slices.ContainsFunc(x.d.Resources, func(r Resource) bool { return r.Key == e.Resource }) {
 			continue
 		}
-		m := SpellModifier{
-			Key: a.owner, NamePT: x.c.namePT(a.owner), AppliesTo: e.AppliesTo, Change: e.SpellChange, From: slices.Clone(e.From),
-			BonusType: e.DamageType, ExtraDice: e.Count, Resource: e.Resource, TextPT: e.TextPT,
+		if m, ok := x.spellModifierOf(a); ok {
+			x.d.SpellModifiers = append(x.d.SpellModifiers, m)
 		}
-		if e.value != nil {
-			n, err := e.value.Int(x.env)
-			if err != nil || n < 1 || n > maxSpellBonusDamage {
-				x.issue(IssueFormula, "", "Um efeito de %s foi ignorado: o dano da opção de magia não é válido.", m.NamePT)
-				continue
-			}
-			m.Bonus = n
-		}
-		x.d.SpellModifiers = append(x.d.SpellModifiers, m)
 	}
+}
+
+// spellModifierOf works out one spell_modifier for the character: the cost (at least 1) and the fixed damage. A
+// fixed damage the formulas do not give is an Issue and leaves the effect out.
+func (x *deriver) spellModifierOf(a activeEffect) (SpellModifier, bool) {
+	e := a.effect
+	m := SpellModifier{
+		Key: a.owner, NamePT: x.c.namePT(a.owner), AppliesTo: e.AppliesTo, Change: e.SpellChange, From: slices.Clone(e.From),
+		BonusType: e.DamageType, ExtraDice: e.Count, Resource: e.Resource, TextPT: e.TextPT, Cost: 1,
+	}
+	if e.cost != nil {
+		if n, ok := x.evalInt(e.cost, a); ok {
+			m.Cost = max(n, 1)
+		}
+	}
+	if e.value == nil {
+		return m, true
+	}
+	n, err := e.value.Int(x.env)
+	if err != nil || n < 1 || n > maxSpellBonusDamage {
+		x.issue(IssueFormula, "", "Um efeito de %s foi ignorado: o dano da opção de magia não é válido.", m.NamePT)
+		return m, false
+	}
+	m.Bonus = n
+	return m, true
 }
 
 var spellChangeNms = map[string][2]string{

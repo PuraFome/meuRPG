@@ -5,6 +5,7 @@ import type {
   MetamagicOption,
   SpellTableOption,
   SlotChoice,
+  SpellGrantOption,
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import type { MapLayers } from '../../../../core/maps/layers';
@@ -56,6 +57,9 @@ export interface CastSheetData {
   readonly shieldFree: number | null;
   /** Escudo's Portuguese name ("Escudo Arcano"), as the spell list says it. */
   readonly shieldName: string;
+  /** The grant the spell is cast through (`SpellOption.grant`): no slot unless it allows one, a use of its resource, its own
+   * attack bonus and save DC; `null` for a spell of the classes. */
+  readonly grant?: SpellGrantOption | null;
   /** The spell attack bonus, for the typed d20's total. */
   readonly attackBonus: number;
   readonly diceMode: DiceMode;

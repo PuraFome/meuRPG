@@ -42,7 +42,30 @@ export function raceBody(namePt = 'Corujeiro'): Record<string, unknown> {
   };
 }
 
-export async function createEntryRPC(master: Page, campaignId: string, kind: 'tableSpell' | 'tableRace' | 'tableBackground' | 'tableFeat', body: Record<string, unknown>): Promise<string> {
+/** A race whose traits carry the costs and hooks of Etapa 10: a pool that regains a use on initiative, an action that spends 1 to 3 of it
+ * to heal 1d6 per point, and a hook that gives temporary hit points on a long rest. Invented names. */
+export function costsRaceBody(namePt = 'Brasa de Teste'): Record<string, unknown> {
+  return {
+    ...raceBody(namePt),
+    traits: [
+      {
+        namePt: 'Reserva de Teste',
+        descPt: ['Uma reserva que a mesa inventou.'],
+        effects: [
+          { type: 'resource', resource: 'reserva_de_teste', max: '3', recharge: 'initiative' },
+          { type: 'grant_action', economy: 'bonus_action', resource: 'reserva_de_teste', cost: '1', costMax: '3', heal: '1d6', valuePerPoint: '1d6' },
+        ],
+      },
+      {
+        namePt: 'Fôlego da Mesa',
+        descPt: ['Ao fim de um descanso longo, a pessoa ganha pontos de vida temporários.'],
+        effects: [{ type: 'on_event', event: 'long_rest', tempHp: 'level()' }],
+      },
+    ],
+  };
+}
+
+export async function createEntryRPC(master: Page, campaignId: string, kind: 'tableSpell' | 'tableRace' | 'tableBackground' | 'tableOption' | 'tableClassFeature' | 'tableFeat', body: Record<string, unknown>): Promise<string> {
   const res = await callRPC(master, `${service}/CreateTableEntry`, { campaignId, [kind]: body });
   expect(res.ok(), await res.text()).toBeTruthy();
   return (await res.json()).entry.key as string;
@@ -66,7 +89,7 @@ export function entryRoute(campaignId: string, key: string): string {
 }
 
 /** `UpdateTableEntry` at the entry's current revision, as the other master's tab would. */
-export async function updateEntryRPC(master: Page, campaignId: string, key: string, kind: 'tableSpell' | 'tableRace' | 'tableBackground', body: Record<string, unknown>): Promise<void> {
+export async function updateEntryRPC(master: Page, campaignId: string, key: string, kind: 'tableSpell' | 'tableRace' | 'tableBackground' | 'tableOption' | 'tableClassFeature', body: Record<string, unknown>): Promise<void> {
   const current = (await listEntriesJSON(master, campaignId)).entries!.find((e) => e.key === key)!;
   const res = await callRPC(master, `${service}/UpdateTableEntry`, { campaignId, key, expectedRevision: current.revision, [kind]: body });
   expect(res.ok(), await res.text()).toBeTruthy();

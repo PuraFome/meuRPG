@@ -36,12 +36,21 @@ What each kind restores follows SRD 5.1:
 | Exhaustion | Unchanged | One level lower |
 | A character at 0 HP | Changes what it changes | Nothing: "a character must have at least 1 hit point at the start of the rest" |
 
-The recharge of each resource is the effect's (`recharge`, and `recharge_if` for Bardic Inspiration), so `rules.RechargesOnRest` is the only rule: `short_rest` means "short or long rest", `long_rest` waits for the long one, and `dawn` and `none` are restored by no rest.
+The recharge of each resource is the effect's (`recharge`, and `recharge_if` for Bardic Inspiration), so `rules.RestRecovery` is the only rule: `short_rest` means "short or long rest", `long_rest` waits for the long one, and `dawn` and `none` are restored by no rest.
+The table's content adds `restore_one_on_short_rest` (one use on a short rest, all on a long one) and `restore_one_on_long_rest` (one use on a long rest, none on a short one): `restResources` takes one use off `used` for `RecoverOne` and sets the preview's `back` to 1.
 A rest is refused with `COMBAT_OPEN` while a combat is running.
 
 **The clock.** The SRD allows one long rest in 24 hours and the app keeps no game clock, so it records the rest and warns: `GetRestPreview.long_rest_already_taken` says the open session already had one, and `TakeRest` never refuses for it.
 **Not tracked:** the death saves (they live on the combatant of one combat), and the slots Arcane Recovery and Natural Recovery choose (a use is a counter a long rest returns; the master adjusts slots by hand).
 A rest also moves game time on (`advanceGameTime`), which ends effects whose seconds run out (see [Lasting effects](lasting-effects.md)) and spells that last (see [Casting](casting.md)).
+
+### The table's hooks on a rest
+
+A table feature can carry an `on_event` effect for `short_rest` or `long_rest` (see [Costs, healing actions and hooks](../rules-table-content.md#costs-healing-actions-and-hooks)): the owner's alone, never the allies who rest nearby (that stays text).
+`planRestWith` runs the character's hooks last (`restHooks`, from `vitalsMax.hooks`, which `maxima` takes from `Derive`): a hook that spends a resource runs only with the uses left and spends them, `heal` (rolled by the app with `Service.roller`; `PreviewRest` shows the average) and `heal_percent_max` heal up to the maximum, `temp_hp` is given after a long rest ended the old temporary hit points (so the rest does not wipe the hook's gift) and keeps the larger number, and `restore` gives back uses, never more than are spent: a rest taken again changes nothing, and a character a rest changes in nothing keeps its revision.
+The result goes where the rest already goes: the vitals after (sent to the streams by `publishRest`) and the master's preview (`RestPreview.hooks`).
+
+**Initiative.** A resource that recharges as `initiative` gets one use back when its owner's initiative is rolled (`SubmitInitiative`, `regainOnInitiative`, in the transaction of the roll) and only if none is left (`rules.InitiativeRecovery`).
 
 ### Hit dice by die size
 

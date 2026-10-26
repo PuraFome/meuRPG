@@ -270,8 +270,8 @@
     [off]="!s.enabled || !!locked()"
     [reason]="locked() || spellReasonText(s)"
     [busy]="busy()"
-    [choosing]="choosing() === s.spell?.key"
-    (press)="cast.emit(s.spell?.key ?? '')"
+    [choosing]="choosing() === castRef(s)"
+    (press)="cast.emit(castRef(s))"
     (help)="describe.emit({ key: s.spell?.key ?? '', name: spellName(s) })"
   />
 </ng-template>
@@ -308,7 +308,7 @@
       button="Usar"
       [buttonLabel]="'Usar ' + (f.action?.namePt ?? '')"
       [off]="featureOff(f) || !!locked()"
-      [reason]="locked() || reasonText(f.reason)"
+      [reason]="locked() || featureWhy(f)"
       [busy]="busy()"
       (press)="pressFeature(f)"
     />

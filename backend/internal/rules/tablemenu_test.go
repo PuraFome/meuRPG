@@ -120,7 +120,7 @@ func TestEffectMenuIsWhatTheValidatorAccepts(t *testing.T) {
 	for name, want := range map[string][]string{
 		ListModifierModes: modifierModes, ListProficiencyLevels: proficiencyLevels, ListRollModes: rollModes,
 		ListSenses: senses, ListRecharges: recharges, ListEconomies: economies, ListChoiceKinds: overlayChoiceKinds,
-		ListRangedAttacks: rangedAttackApplies,
+		ListRangedAttacks: rangedAttackApplies, ListEvents: eventKinds,
 	} {
 		if got := valueKeys(menuList(t, m, name)); !slices.Equal(got, want) {
 			t.Errorf("list %s = %v, want %v", name, got, want)
@@ -175,6 +175,9 @@ func TestEffectMenuIsWhatTheValidatorAccepts(t *testing.T) {
 	}
 	for _, v := range menuList(t, m, ListEconomies) {
 		effects = append(effects, Effect{Type: "grant_action", Economy: v.Key})
+	}
+	for _, v := range menuList(t, m, ListEvents) {
+		effects = append(effects, Effect{Type: "on_event", Event: v.Key, TempHP: "2"})
 	}
 	for _, v := range menuList(t, m, ListSkills) {
 		effects = append(effects, Effect{Type: "choice", Choice: "skill", Count: 1, From: []string{v.Key}})
@@ -257,7 +260,10 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 		"extra_damage":    {Type: "extra_damage", Applies: ExtraDamageLargerTarget, Value: "2", Resource: "dados_de_teste"},
 		"ambush":          {Type: "ambush", Applies: AmbushUnactedAdvantage},
 		"spell_modifier":  {Type: "spell_modifier", AppliesTo: SpellAppliesCantrip, SpellChange: SpellChangeExtraDice, Count: 1},
+		"on_event":        {Type: "on_event", Event: EventLongRest, TempHP: "level()"},
 		"resistance":      {Type: "resistance", Except: "damage-type:psychic", While: ResistanceWhileRage},
+		"breathes_water":  {Type: "breathes_water"},
+		"granted_spell":   {Type: "granted_spell", Spell: "spell:detect-magic", Ability: "wis"},
 		// Only a feat has it, so it is hosted by a feat below.
 		"ability_increase": {Type: "ability_increase", Count: 1, From: []string{"str", "dex"}, Value: "1"},
 	}
@@ -295,10 +301,16 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 			e.SpellChange = ""
 		case "count":
 			e.Count = 0
+		case "spell":
+			e.Spell = ""
+		case "ability":
+			e.Ability = ""
 		case "except":
 			e.Except = ""
 		case "while":
 			e.While = ""
+		case "event":
+			e.Event = ""
 		case "choice":
 			e.Choice = ""
 		case "from":
@@ -392,6 +404,8 @@ func TestEffectMenuFormulaHelpers(t *testing.T) {
 		}
 		var e Effect
 		switch {
+		case h.Call == "speedwalk()":
+			e = Effect{Type: "modifier", Target: "speed.swim", Mode: "set", Value: "speedwalk()"}
 		case samples[h.Call] != "":
 			e = Effect{Type: "modifier", Target: "ac", Mode: "add", Value: samples[h.Call]}
 		case conditions[h.Call] != "":

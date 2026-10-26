@@ -28,6 +28,7 @@ export function castExtrasBody(extras: CastExtras) {
     ...(extras.spellOptions?.length
       ? { spellOptions: extras.spellOptions.map((o) => ({ ...o })) }
       : {}),
+    ...(extras.grantedBy ? { grantedBy: extras.grantedBy } : {}),
   };
 }
 
