@@ -1,4 +1,5 @@
 import { EncounterMode } from '../../../gen/meurpg/play/v1/combat_pb';
+import { ownHitOf } from '../../core/combat/own-hit';
 import { LiveStream, type LiveStreamHandlers } from '../../core/play/live-stream';
 import type { ShownImageVm } from '../../core/play/live-session.types';
 import { applyVitals } from '../../core/play/vitals';
@@ -95,6 +96,8 @@ export class LiveSessionEvents {
       onGroupCheckChanged: () => state.groupCheckTick.update((n) => n + 1),
       onSessionMessage: (message) => void parts.conversation.receive(message),
       onMasterTyping: (seconds) => parts.conversation.masterTyping(seconds),
+      // The sheet says the damage as the attack's, even when the attacker is hidden and has no line in the log.
+      onAttackHit: (hit) => parts.combat.ownHit.set(ownHitOf(hit)),
       onHeldRollsChanged: () => state.heldRollsTick.update((n) => n + 1),
       // Someone at the table rolled (never a secret roll): the log gets it and the dice tumble.
       onFreeRollRolled: (roll) => parts.freeDice.heard(roll),

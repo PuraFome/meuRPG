@@ -203,7 +203,8 @@ export function featureNote(name: string, resourceKey: string, frenzy: boolean):
 
 /**
  * The player character on turn who has not acted yet (Action, bonus action and movement all unspent; a reaction does not
- * count): "Próximo turno" asks before passing their turn. `''` for an NPC, a creature, a downed character or one who acted.
+ * count): "Próximo turno" asks before passing their turn. `''` for an NPC, a creature, one who acted, and a character at 0 hit
+ * points: their death save is the whole turn, so once it is made (or while it is due) the turn passes without asking.
  */
 export function unactedPlayerOnTurn(e: Encounter | null): string {
   const c = e?.combatants.find((x) => x.id === e.currentCombatantId);
@@ -211,7 +212,9 @@ export function unactedPlayerOnTurn(e: Encounter | null): string {
     !!c &&
     c.kind === CombatantKind.PLAYER &&
     !c.defeated &&
+    c.state !== CombatantState.DOWN &&
     c.state !== CombatantState.DYING &&
+    c.state !== CombatantState.STABLE &&
     !c.deathSaveDue &&
     !c.actionUsed &&
     !c.bonusActionUsed &&

@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 
-import { AreaPlacement } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { AreaPlacement, CombatantSide } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { AdvantageSourceKind, RollMode } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
 import { CombatUndone } from '../../../../core/combat/combat-undone';
 import { CombatClient } from '../../../../core/combat/combat-client';
@@ -445,5 +445,134 @@ describe('NpcCard: compact in the rail (C7-02)', () => {
 
   it('draws the big heading in a frame (the phone, the middle column of a combat without a map)', () => {
     expect(card(true).querySelector('h2')!.classList).not.toContain('mr-visually-hidden');
+  });
+});
+
+describe('NpcCard: the target an NPC attack starts on (G3)', () => {
+  const armor = () =>
+    combatant({ id: 'armor', label: 'Armadura animada', side: CombatantSide.ENEMY });
+  const everyone = () => [
+    armor(),
+    combatant({ id: 'espada', label: 'Espada voadora 2', side: CombatantSide.ENEMY }),
+    combatant({ id: 'toren', label: 'Toren', side: CombatantSide.PARTY }),
+    combatant({ id: 'pens', label: 'Pensantus', side: CombatantSide.PARTY }),
+    combatant({ id: 'brisa', label: 'Brisa', side: CombatantSide.PARTY }),
+  ];
+  /** The options of the armor's "Pancada": each target with its distance in feet and whether it is out of reach. */
+  const withDistances = (rows: [string, number, boolean][]) =>
+    ({
+      options: {
+        attacks: [
+          {
+            attack: {
+              key: 'a1',
+              saveDc: 0,
+              attackBonus: 4,
+              namePt: 'Pancada',
+              damage: '2d6',
+              damageTypePt: 'contundente',
+              rangeFt: 5,
+              longRangeFt: 0,
+            },
+          },
+        ],
+      },
+      attackTargets: [
+        {
+          attackKey: 'a1',
+          targets: rows.map(([id, distanceFt, tooFar]) => ({
+            combatantId: id,
+            label: id,
+            distanceFt,
+            tooFar,
+          })),
+        },
+      ],
+      pendingDamages: [],
+    }) as never;
+
+  async function mount(options: never) {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [{ provide: CombatClient, useValue: fakeCombatClient({}) }],
+    });
+    const fixture = TestBed.createComponent(NpcCard);
+    fixture.componentRef.setInput('campaignId', 'c');
+    fixture.componentRef.setInput('encounter', encounter({ combatants: everyone() }));
+    fixture.componentRef.setInput('subject', armor());
+    fixture.componentRef.setInput('state', { apply: vi.fn() } as unknown as CombatState);
+    fixture.componentRef.setInput('options', options);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const card = fixture.componentInstance as unknown as {
+      targetId(): string;
+      pickTarget(id: string): void;
+    };
+    const refresh = async (next: never) => {
+      fixture.componentRef.setInput('options', next);
+      fixture.detectChanges();
+      await fixture.whenStable();
+    };
+    return { card, refresh };
+  }
+
+  it('starts on a player character in reach, not on its own ally standing first in the list', async () => {
+    const { card } = await mount(
+      withDistances([
+        ['espada', 5, false],
+        ['toren', 5, false],
+        ['pens', 5, false],
+        ['brisa', 5, false],
+      ]),
+    );
+    expect(card.targetId()).toBe('toren');
+  });
+
+  it('follows the creature when it moves: the party comes into reach and the ally goes out of it', async () => {
+    const { card, refresh } = await mount(
+      withDistances([
+        ['espada', 5, false],
+        ['toren', 80, true],
+        ['pens', 90, true],
+        ['brisa', 70, true],
+      ]),
+    );
+    // None of the party is in reach: the nearest of them, not the ally at 1,5 m.
+    expect(card.targetId()).toBe('brisa');
+    await refresh(
+      withDistances([
+        ['espada', 40, true],
+        ['toren', 5, false],
+        ['pens', 5, false],
+        ['brisa', 5, false],
+      ]),
+    );
+    expect(card.targetId()).toBe('toren');
+  });
+
+  it('keeps the target the master picked by hand when the creature moves', async () => {
+    const { card, refresh } = await mount(
+      withDistances([
+        ['espada', 5, false],
+        ['toren', 5, false],
+        ['pens', 5, false],
+        ['brisa', 5, false],
+      ]),
+    );
+    card.pickTarget('pens');
+    await refresh(
+      withDistances([
+        ['espada', 5, false],
+        ['toren', 10, false],
+        ['pens', 15, false],
+        ['brisa', 5, false],
+      ]),
+    );
+    expect(card.targetId()).toBe('pens');
+  });
+
+  it('aims at an ally only when no other creature exists', async () => {
+    const { card } = await mount(withDistances([['espada', 5, false]]));
+    expect(card.targetId()).toBe('espada');
   });
 });
