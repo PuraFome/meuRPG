@@ -8635,6 +8635,18 @@ async function scanFreeDiceScreens(browser: Browser, colorScheme: 'light' | 'dar
     await expect(playerSheet.locator('app-free-roll-card .card__line')).toContainText('2d6 + 3 = ');
     await expect(playerSheet.getByRole('button', { name: 'Rolar 2d6 + 3 de novo' })).toBeEnabled();
     await expectScreenPasses(p, `Rolar dados, o resultado do jogador ${where}`);
+
+    // The master's page shows the player's roll on the dice overlay. The suite runs with reduced motion, so the dice sit
+    // still in a card that leaves the page usable: scan it with the "Som dos dados" toggle (off, a 44 px target) and close it.
+    const overlay = m.locator('app-roll-overlay');
+    await expect(overlay.locator('.result')).toContainText('Rolagem livre · 2d6 + 3', { timeout: 15_000 });
+    const sound = overlay.getByRole('button', { name: 'Som dos dados' });
+    await expect(sound).toHaveAttribute('aria-pressed', 'false');
+    expect((await sound.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+    await expectScreenPasses(m, `Rolar dados, a animação dos dados do mestre ${where}`);
+    await overlay.getByRole('button', { name: 'Fechar' }).click();
+    await expect(overlay.locator('.result')).toBeHidden();
+
     await p.keyboard.press('Escape');
     await expect(playerSheet).toBeHidden();
 
