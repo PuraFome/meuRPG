@@ -6,10 +6,12 @@ import type {
   GetEffectMenuResponse,
   TableEffect,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
-import { feetToMeters, metersToFeet } from '../units';
-import { EFFECT_WRITERS } from './effect-writers';
+import { feetToMeters } from '../units';
+import type { EffectDraft, EffectInit } from './effect-draft.types';
+import { EFFECT_WRITERS, rangeFeet } from './effect-writers';
 
-export { onlyProficientApplies } from './effect-writers';
+export type { EffectDraft, EffectInit } from './effect-draft.types';
+export { onlyProficientApplies, rangeFeet, splitTags } from './effect-writers';
 
 /**
  * A feature's effect as the editor holds it (MR-025, ADR-0018, section 4), and the menu it is chosen from. The menu is the
@@ -18,68 +20,6 @@ export { onlyProficientApplies } from './effect-writers';
  * only the fields the chosen type reads (a field of another type is refused as `bad_value`), so changing the type drops
  * what the old one had.
  */
-
-/** The fields of `TableEffect`, as plain values: strings for text, arrays for lists, numbers for counts and ranges. */
-export interface EffectDraft {
-  /** A stable id the editor tracks the row by (never sent): focus and "Mais opções" follow a moved item. */
-  id: string;
-  type: string;
-  target: string;
-  mode: string;
-  value: string;
-  when: string;
-  /** Written as "against:magic, about:items": split into tags when sent. */
-  tags: string;
-  proficiency: string;
-  level: string;
-  roll: string;
-  targets: string[];
-  sense: string;
-  /** The range as typed, in metres (the server stores feet): kept as text so the field never rewrites what is being typed. */
-  rangeM: string;
-  resource: string;
-  max: string;
-  recharge: string;
-  choice: string;
-  count: number;
-  from: string[];
-  economy: string;
-  /** superiority_die: where the die goes, and the ability whose modifier a reduction adds. ranged_attack: "spell" or "weapon". */
-  applies: string;
-  ability: string;
-  spells: string[];
-  textPt: string;
-  /** ranged_attack's switches: past half and three-quarters cover, the spell range times 2 or 3 (0 is none), no disadvantage at long range. */
-  ignoreCover: boolean;
-  rangeMultiplier: number;
-  noLongRangeDisadvantage: boolean;
-  /** resistance: the damage type it leaves out, and when it holds ("rage"). */
-  except: string;
-  while: string;
-  /** grant_action and on_event: what a use spends (a formula), and the most the player may choose to spend. */
-  cost: string;
-  costMax: string;
-  /** What each point spent above the cost adds: dice for the heal, a formula for the temporary hit points. */
-  valuePerPoint: string;
-  /** Hit points regained, as dice ("1d6", "2d4+2"); the ability's modifier is added when `ability` is set. */
-  heal: string;
-  /** Temporary hit points, a formula. */
-  tempHp: string;
-  /** on_event: when it runs ("long_rest"...), the resource it gives back, and the heal as a percentage of the maximum. */
-  event: string;
-  restore: string;
-  healPercentMax: number;
-  /** proficiency, level "expertise" on a skill: doubles it only where the character is already proficient. */
-  onlyProficient: boolean;
-  /** granted_spell: the spell (SRD or the table's), the level it starts at (a formula), the resource each cast spends one of
-   * (empty: at will), and the switches. The casting ability is `ability`. */
-  spell: string;
-  fromLevel: string;
-  uses: string;
-  alsoWithSlot: boolean;
-  ritualOnly: boolean;
-  countsAsKnown: boolean;
-}
 
 let nextId = 0;
 
@@ -185,17 +125,6 @@ export function effectToDraft(e: TableEffect): EffectDraft {
     ritualOnly: e.ritualOnly,
     countsAsKnown: e.countsAsKnown,
   };
-}
-
-/** The fields a request carries for one effect: the type, and only what that type reads. */
-export type EffectInit = Partial<Omit<TableEffect, '$typeName' | '$unknown'>>;
-
-/** The tags of "against:magic, about:items": trimmed, empty ones dropped. */
-export function splitTags(text: string): string[] {
-  return text
-    .split(',')
-    .map((t) => t.trim())
-    .filter((t) => t !== '');
 }
 
 /** The effect a request sends: `type` and the fields the menu says that type reads, and nothing else. An empty text or an empty
@@ -311,12 +240,6 @@ export class EffectMenuVm {
 /** The metres a range field shows, from the feet it stores. */
 export function rangeMeters(ft: number): string {
   return ft > 0 ? String(feetToMeters(ft)).replace('.', ',') : '';
-}
-
-/** The feet of what a range field holds ("18" or "4,5" metres); 0 for an empty or unreadable field. */
-export function rangeFeet(text: string): number {
-  const n = Number(text.trim().replace(',', '.'));
-  return Number.isFinite(n) && n > 0 ? metersToFeet(n) : 0;
 }
 
 /** Whether a range field holds something that is not a number of metres (empty is fine: it means none). */

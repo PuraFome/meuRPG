@@ -1,4 +1,19 @@
-import { type EffectDraft, type EffectInit, rangeFeet, splitTags } from './effect-draft';
+import { metersToFeet } from '../units';
+import { type EffectDraft, type EffectInit } from './effect-draft.types';
+
+/** The tags of "against:magic, about:items": trimmed, empty ones dropped. */
+export function splitTags(text: string): string[] {
+  return text
+    .split(',')
+    .map((t) => t.trim())
+    .filter((t) => t !== '');
+}
+
+/** The feet of what a range field holds ("18" or "4,5" metres); 0 for an empty or unreadable field. */
+export function rangeFeet(text: string): number {
+  const n = Number(text.trim().replace(',', '.'));
+  return Number.isFinite(n) && n > 0 ? metersToFeet(n) : 0;
+}
 
 type EffectWriter = (d: EffectDraft) => EffectInit;
 
