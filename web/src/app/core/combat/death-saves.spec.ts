@@ -83,3 +83,37 @@ describe('the conditions (E6-29)', () => {
     expect(listNames(['Cego'])).toBe('Cego');
   });
 });
+
+describe('the death save and an on_event hook (a failed save)', () => {
+  it('says the hook stood the character up, and that no failure was added', () => {
+    expect(
+      saveAnnouncement(
+        {
+          roll: roll(4),
+          outcome: DeathSaveOutcome.FAILURE,
+          failures: 1,
+          hook: { sourceNamePt: 'Reserva de Teste', healed: 6 },
+        } as never,
+        'Brisa',
+      ),
+    ).toBe(
+      'Teste contra a morte: 1d20 (4) = 4. Falha, mas o traço Reserva de Teste entrou em ação: você volta com 6 PV. Nenhuma falha entra na conta.',
+    );
+  });
+
+  it('keeps the failure words when the hook did not heal, and adds what it did', () => {
+    expect(
+      saveAnnouncement(
+        {
+          roll: roll(4),
+          outcome: DeathSaveOutcome.FAILURE,
+          failures: 1,
+          hook: { sourceNamePt: 'Reserva de Teste', tempHpGained: 3 },
+        } as never,
+        'Brisa',
+      ),
+    ).toBe(
+      'Teste contra a morte: 1d20 (4) = 4. Falha. O traço Reserva de Teste entrou em ação: ganha 3 PV temporários.',
+    );
+  });
+});

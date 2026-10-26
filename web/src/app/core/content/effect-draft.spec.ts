@@ -1,7 +1,8 @@
 import { create } from '@bufbuild/protobuf';
 
 import { TableEffectSchema } from '../../../gen/meurpg/rules/v1/table_content_pb';
-import { grantedSpellMenu, menu, rangedAttackMenu, resistanceMenu } from './content-testing-menu';
+import { menu, rangedAttackMenu, resistanceMenu } from './content-testing-menu';
+import { grantedSpellMenu } from './content-testing-menu-costs';
 import {
   draftToEffect,
   effectToDraft,

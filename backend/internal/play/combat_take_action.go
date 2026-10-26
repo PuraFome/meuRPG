@@ -47,6 +47,10 @@ type takeActionCall struct {
 	frenzy bool
 	// preserveLife is who Preserve Life restores and by how much.
 	preserveLife []preserveHeal
+	// spend is the number of points the player picked for an action that lets them choose (0: the least), and
+	// healTarget the ally a healing action goes to ("": the actor).
+	spend      int32
+	healTarget string
 }
 
 // readTakeActionCall reads the request, in the order the answers are given: the ids, the action, the roll.
@@ -67,6 +71,12 @@ func readTakeActionCall(req *playv1.TakeActionRequest) (takeActionCall, error) {
 		return call, err
 	}
 	call.useExtra, call.frenzy = req.GetUseExtraAction(), req.GetFrenzy()
+	call.spend = req.GetSpend()
+	if call.healTarget = req.GetHealTargetCombatantId(); call.healTarget != "" {
+		if call.healTarget, err = parseCombatID(call.healTarget, "heal target"); err != nil {
+			return call, err
+		}
+	}
 	if call.actionKey == preserveLifeAction {
 		call.preserveLife, err = readPreserveLife(req)
 	}
@@ -92,6 +102,8 @@ type takeActionOut struct {
 	made actionEvent
 	// vitals are the vitals of the resource spent, or of the hit points healed.
 	vitals *playv1.CharacterVitals
+	// extra are the vitals of the ally a healing action went to.
+	extra []*playv1.CharacterVitals
 }
 
 // TakeAction implements playv1connect.CombatServiceHandler.
@@ -128,6 +140,9 @@ func (s *Service) takeActionResponse(ctx context.Context, m authz.Membership, re
 		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
 		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
 		s.publishVitals(m.CampaignID, out.vitals)
+		for _, v := range out.extra {
+			s.publishVitals(m.CampaignID, v)
+		}
 	})
 	if err != nil {
 		return nil, err
@@ -136,6 +151,12 @@ func (s *Service) takeActionResponse(ctx context.Context, m authz.Membership, re
 	if ev.Heal {
 		resp.Roll = diceRoll(ev.DiceCount, ev.DiceSides, ev.Faces, ev.Modifier, ev.Total, ev.Physical)
 		resp.Healed = &ev.Amount
+	}
+	if ev.PointsSpent > 0 {
+		resp.Spent = &ev.PointsSpent
+	}
+	if ev.TempTried {
+		resp.TempHpGained = &ev.TempGained
 	}
 	resp.ChannelDivinity = channelProto(ev.Channel)
 	return connect.NewResponse(resp), nil
@@ -168,7 +189,7 @@ func newTakeActionFlow(s *Service, c *combatTx, m authz.Membership, call takeAct
 // run is the transaction: the checks, what the action spends and what it does. It answers the event the
 // write stores.
 func (f *takeActionFlow) run(ctx context.Context) (any, error) {
-	f.out.vitals = nil
+	f.out.vitals, f.out.extra = nil, nil
 	if err := f.locate(ctx); err != nil {
 		return nil, err
 	}
@@ -451,33 +472,42 @@ func (f *takeActionFlow) performFeature(ctx context.Context) (string, error) {
 	if standard == actionHide || standard == actionHelp {
 		return "", errHideOrHelp()
 	}
-	if err := f.spendFeatureUse(ctx, fa); err != nil {
+	spent, err := f.spendFeatureUse(ctx, fa)
+	if err != nil {
 		return "", err
 	}
-	if err := f.performKind(ctx, sheet); err != nil {
+	if err := f.performKind(ctx, sheet, fa, spent); err != nil {
 		return "", err
 	}
 	return standard, f.s.beginFeatureState(ctx, f.c, f.v, f.who, key, sheet, f.call.frenzy, &f.made)
 }
 
-// spendFeatureUse spends one use of the feature's resource: only a player's character counts them, and a
-// pool of points (Cura pelas mãos) is the master's.
-func (f *takeActionFlow) spendFeatureUse(ctx context.Context, fa link.FeatureAction) error {
+// spendFeatureUse spends the uses of the feature's resource (one, or what the table's content sets: its cost, or the
+// number the player picked from the range), read in this transaction: only a player's character counts them, and a pool
+// of points (Cura pelas mãos) is the master's. It returns how many it spent.
+func (f *takeActionFlow) spendFeatureUse(ctx context.Context, fa link.FeatureAction) (int, error) {
 	if fa.Resource == "" || fa.Pool || f.who.Kind != kindPlayer {
-		return nil
+		return 0, nil
 	}
-	vitals, err := f.s.spendResource(ctx, f.c, f.who.CharacterID, fa.Resource, 1)
+	n, err := f.pickSpend(ctx, fa)
 	if err != nil {
-		return err
+		return 0, err
+	}
+	vitals, err := f.s.spendResource(ctx, f.c, f.who.CharacterID, fa.Resource, clamp32(n, 0, math.MaxInt32))
+	if err != nil {
+		return 0, err
 	}
 	f.out.vitals = vitals
 	f.made.Resource = fa.Resource
-	return nil
+	if fa.Cost > 0 || fa.CostMax > 0 { // the table's content sets the cost: the answer says what was spent
+		f.made.PointsSpent = clamp32(n, 0, math.MaxInt32)
+	}
+	return n, nil
 }
 
 // performKind is the dispatch of the feature actions with an effect of their own on the numbers; the
 // others only spend the economy and a use.
-func (f *takeActionFlow) performKind(ctx context.Context, sheet link.Sheet) error {
+func (f *takeActionFlow) performKind(ctx context.Context, sheet link.Sheet, fa link.FeatureAction, spent int) error {
 	switch f.call.actionKey {
 	case slowFallAction:
 		return f.cutFall(ctx, sheet)
@@ -489,6 +519,9 @@ func (f *takeActionFlow) performKind(ctx context.Context, sheet link.Sheet) erro
 		return f.preserveLife(ctx, sheet)
 	case turnUndeadAction:
 		return f.turnUndead(ctx, sheet)
+	}
+	if givesResult(fa) {
+		return f.grantResult(ctx, fa, spent)
 	}
 	return nil
 }

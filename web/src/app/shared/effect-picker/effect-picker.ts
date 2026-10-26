@@ -111,10 +111,13 @@ export class EffectPicker {
     if (typed) {
       return typed;
     }
-    // The resource an action spends is the same proto field as a resource's own name.
-    return f.kind === 'resource_ref' && f.name === 'resource'
-      ? 'Gasta um uso de'
-      : (EFFECT_FIELD_LABELS[f.name] ?? f.name);
+    // The resource an action spends is the same proto field as a resource's own name; a hook's `restore` gives back.
+    if (f.kind === 'resource_ref') {
+      return this.effect().type === 'on_event'
+        ? (RESOURCE_REF_LABEL_HOOK[f.name] ?? 'Gasta usos de')
+        : 'Gasta usos de';
+    }
+    return EFFECT_FIELD_LABELS[f.name] ?? f.name;
   }
 
   /** The hint of a field that is not showing a refusal: written beside it. */
@@ -125,9 +128,6 @@ export class EffectPicker {
   protected hintOf(f: EffectMenuField): string {
     const own =
       EFFECT_TYPE_FIELD_HINTS[this.effect().type]?.[f.name] ?? EFFECT_FIELD_HINTS[f.name] ?? '';
-    if (f.name === 'uses') {
-      return own; // its own sentence: an empty resource is at will, not a disabled action
-    }
     if (f.name === 'count' && f.max > 0) {
       return `De ${f.min} a ${f.max}.`;
     }
@@ -135,10 +135,11 @@ export class EffectPicker {
       return this.menu().tagHint();
     }
     if (f.kind === 'formula') {
-      return this.menu().formulaHint();
+      return own ? `${own} ${this.menu().formulaHint()}` : this.menu().formulaHint();
     }
     if (f.kind === 'resource_ref') {
-      return 'O nome de um recurso que esta entrada define (o campo "Nome do recurso" de um efeito Recurso). Cada uso gasta 1; sem usos, a ação fica desligada.';
+      // `uses` has its own sentence (an empty resource is at will, not a disabled action), as `restore` does
+      return OWN_HINT_REFS.has(f.name) ? own : RESOURCE_REF_HINT;
     }
     if (f.kind === 'condition') {
       return 'Deixe vazio para valer sempre. Uma condição, como as fórmulas.';
@@ -250,6 +251,17 @@ export class EffectPicker {
     });
   }
 }
+
+/** The labels of a hook's two resource fields: the one it spends and the one it gives back. */
+const OWN_HINT_REFS: ReadonlySet<string> = new Set(['restore', 'uses']);
+
+const RESOURCE_REF_LABEL_HOOK: Readonly<Record<string, string>> = {
+  resource: 'Gasta usos de',
+  restore: 'Devolve usos de',
+};
+
+const RESOURCE_REF_HINT =
+  'O nome de um recurso que esta entrada define (o campo "Nome do recurso" de um efeito Recurso). Gasta o custo (1 se vazio); sem usos o bastante, a ação fica desligada.';
 
 /** "text_pt" → "textPt": the draft's key for a proto field. */
 function camel(name: string): keyof EffectDraft {

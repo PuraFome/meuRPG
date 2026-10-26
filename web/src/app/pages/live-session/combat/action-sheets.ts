@@ -11,6 +11,11 @@ import { openWildShape } from '../../../shared/wild-shape/wild-shape-sheet';
 import { type DoorSheetData, openDoorSheet } from '../door-sheet/door-sheet';
 import { openTrapSearch } from '../traps/trap-search-sheet/trap-search-sheet';
 import { ActionEconomy } from '../../../../gen/meurpg/rules/v1/rules_pb';
+import {
+  TableActionSheet,
+  type TableActionSheetData,
+} from './table-action-sheet/table-action-sheet';
+import type { ActionOption } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { AdjustNpc, type AdjustNpcData } from './adjust-npc/adjust-npc';
 import { ConditionsDialog, type ConditionsData } from './conditions-dialog/conditions-dialog';
 import { FeatureSheet, type FeatureSheetData } from './feature-sheet/feature-sheet';
@@ -165,6 +170,27 @@ export class ActionSheets {
       this.ctx.dialog,
       this.ctx.bottomSheet,
       FeatureSheet,
+      { data, ariaLabel: name, labelledBy: 'sheet-t' },
+    ).subscribe();
+  }
+
+  /** A table feature's action that asks how many to spend, for whom, or the dice of its heal (MR-025). */
+  tableAction(own: Combatant, e: Encounter, option: ActionOption): void {
+    const data: TableActionSheetData = {
+      campaignId: this.ctx.campaignId(),
+      encounterId: e.id,
+      combatantId: own.id,
+      option,
+      combatants: e.combatants,
+      diceMode: this.ctx.diceMode(),
+      preference: this.ctx.preference(),
+      state: this.ctx.state(),
+    };
+    const name = option.action?.namePt ?? '';
+    openSheet<TableActionSheet, TableActionSheetData, boolean>(
+      this.ctx.dialog,
+      this.ctx.bottomSheet,
+      TableActionSheet,
       { data, ariaLabel: name, labelledBy: 'sheet-t' },
     ).subscribe();
   }

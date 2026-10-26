@@ -17,7 +17,7 @@ import (
 // the SRD has no effect of that type (a feat from another book brings it).
 var overlayEffectTypes = []string{
 	"modifier", "proficiency", "resource", "sense", "roll_mode", "grant_action",
-	"superiority_die", "extra_attack", "extra_damage", "ambush", "ranged_attack", "resistance", "breathes_water", "granted_spell", "choice", "ability_increase", "note",
+	"superiority_die", "extra_attack", "extra_damage", "ambush", "ranged_attack", "resistance", "breathes_water", "granted_spell", "on_event", "choice", "ability_increase", "note",
 }
 
 // overlayChoiceKinds are the choices a table feature may offer. The subclass and
@@ -167,7 +167,7 @@ func (b *overlayBuilder) writeTrait(f *TableFeature, k featureKind) {
 func (b *overlayBuilder) know(key string, k featureKind) {
 	if b.featureEntry == nil {
 		b.featureEntry, b.featureClass, b.optionEntry = map[string]string{}, map[string]string{}, map[string]string{}
-		b.resources = map[string]map[string]bool{}
+		b.resources, b.resourceMax = map[string]map[string]bool{}, map[string]map[string]string{}
 	}
 	b.featureEntry[key], b.featureClass[key] = k.owner, k.class
 }
@@ -183,6 +183,10 @@ func (b *overlayBuilder) declareResources(k featureKind, effects []Effect) {
 			b.resources[k.owner] = map[string]bool{}
 		}
 		b.resources[k.owner][effects[i].Resource] = true
+		if b.resourceMax[k.owner] == nil {
+			b.resourceMax[k.owner] = map[string]string{}
+		}
+		b.resourceMax[k.owner][effects[i].Resource] = effects[i].Max
 	}
 }
 
@@ -258,9 +262,9 @@ func (b *overlayBuilder) checkEffect(owner, path string, e *Effect, strict bool)
 	case "ability_increase", "proficiency":
 		return checkOwnFields(site, e)
 	case "grant_action":
-		if e.Resource != "" && !b.resourceDefined(owner, e.Resource) {
-			return site.fail(".resource", ReasonReference, "the action spends %q, which no resource effect of this entry or its class defines", e.Resource)
-		}
+		return b.checkGrantAction(site, e)
+	case "on_event":
+		return b.checkOnEvent(site, e)
 	case "superiority_die":
 		return b.checkSuperiorityDie(site, e)
 	case "extra_damage", "ambush":
@@ -475,7 +479,10 @@ var ownFields = map[string][]string{
 	"resource":     {"resource", "max", "recharge"},
 	"choice":       {"choice", "count", "from"},
 	"extra_attack": {"count"},
-	"grant_action": {"economy", "resource"},
+	// A grant_action may cost several uses of its resource, let the player choose how many,
+	// and heal or give temporary hit points; an on_event is the owner's hook on an event.
+	"grant_action": {"economy", "resource", "cost", "cost_max", "value_per_point", "heal", "temp_hp", "ability"},
+	"on_event":     {"event", "resource", "cost", "restore", "value", "heal", "temp_hp", "heal_percent_max", "ability"},
 	"note":         {"value", "spells"},
 	// A superiority die is a feature option's (or a feature's) die from a resource.
 	"superiority_die": {"value", "resource", "economy", "applies", "ability"},
@@ -529,6 +536,14 @@ var effectFields = []effectField{
 	{"range_multiplier", func(e *Effect) bool { return e.RangeMultiplier != 0 }, func(e *Effect) { e.RangeMultiplier = 0 }},
 	{"no_long_range_disadvantage", func(e *Effect) bool { return e.NoLongRangeDisadvantage }, func(e *Effect) { e.NoLongRangeDisadvantage = false }},
 	{"only_proficient", func(e *Effect) bool { return e.OnlyProficient }, func(e *Effect) { e.OnlyProficient = false }},
+	{"cost", func(e *Effect) bool { return e.Cost != "" }, func(e *Effect) { e.Cost = "" }},
+	{"cost_max", func(e *Effect) bool { return e.CostMax != "" }, func(e *Effect) { e.CostMax = "" }},
+	{"value_per_point", func(e *Effect) bool { return e.ValuePerPoint != "" }, func(e *Effect) { e.ValuePerPoint = "" }},
+	{"heal", func(e *Effect) bool { return e.Heal != "" }, func(e *Effect) { e.Heal = "" }},
+	{"temp_hp", func(e *Effect) bool { return e.TempHP != "" }, func(e *Effect) { e.TempHP = "" }},
+	{"event", func(e *Effect) bool { return e.Event != "" }, func(e *Effect) { e.Event = "" }},
+	{"restore", func(e *Effect) bool { return e.Restore != "" }, func(e *Effect) { e.Restore = "" }},
+	{"heal_percent_max", func(e *Effect) bool { return e.HealPercentMax != 0 }, func(e *Effect) { e.HealPercentMax = 0 }},
 	{"except", func(e *Effect) bool { return e.Except != "" }, func(e *Effect) { e.Except = "" }},
 	{"while", func(e *Effect) bool { return e.While != "" }, func(e *Effect) { e.While = "" }},
 	{"progression", func(e *Effect) bool { return e.Progression != "" }, func(e *Effect) { e.Progression = "" }},
@@ -668,6 +683,15 @@ var effectErrorRules = []effectErrorRule{
 		return attr
 	}, ReasonValue},
 	{[]string{"unknown economy"}, fieldAttr(".economy"), ReasonValue},
+	{[]string{"needs a result"}, fieldAttr(".type"), ReasonValue},
+	{[]string{"cost_max is below", "cost_max needs", "cost_max must", "a hook has a fixed cost"}, fieldAttr(".cost_max"), ReasonValue},
+	{[]string{"cost needs", "cost must"}, fieldAttr(".cost"), ReasonValue},
+	{[]string{"value_per_point"}, fieldAttr(".value_per_point"), ReasonValue},
+	{[]string{"heal_percent_max"}, fieldAttr(".heal_percent_max"), ReasonValue},
+	{[]string{"heal is dice"}, fieldAttr(".heal"), ReasonValue},
+	{[]string{"unknown ability", "ability goes with"}, fieldAttr(".ability"), ReasonValue},
+	{[]string{"unknown event"}, fieldAttr(".event"), ReasonValue},
+	{[]string{"value goes with restore"}, fieldAttr(".value"), ReasonValue},
 	{[]string{"extra_attack needs"}, fieldAttr(".count"), ReasonValue},
 	{[]string{"empty tag"}, fieldAttr(".tags"), ReasonValue},
 	{[]string{"unknown spell"}, fieldAttr(".spells"), ReasonReference},
@@ -691,7 +715,16 @@ var effectErrorRules = []effectErrorRule{
 // formulaAttr is the field whose formula a compile error names (".when", ".value"
 // or ".max"), "" when it names none of them. has says whether the error says a word.
 func formulaAttr(e *Effect, has func(words ...string) bool) string {
-	for _, f := range []struct{ name, src string }{{"when", e.When}, {"value", e.Value}, {"max", e.Max}, {"from_level", e.FromLevel}} {
+	for _, f := range []struct{ name, src string }{
+		{"when", e.When},
+		{"value", e.Value},
+		{"max", e.Max},
+		{"from_level", e.FromLevel},
+		{"cost", e.Cost},
+		{"cost_max", e.CostMax},
+		{"temp_hp", e.TempHP},
+		{"value_per_point", e.ValuePerPoint},
+	} {
 		if f.src != "" && has("formula "+strconv.Quote(f.src)) {
 			return "." + f.name
 		}
